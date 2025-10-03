@@ -125,7 +125,7 @@
 }
 .submitButton {
     background-color: var(--primary); /* Color dorado principal */
-    color: #121212; /* Texto oscuro para contraste */
+    color: var(--color-text-on-gold); /* Texto oscuro para contraste */
     border: none;
     padding: 10px 20px;
     border-radius: 6px;
@@ -194,4 +194,76 @@
   /* Mantenemos el centrado */
   margin-left: auto;
   margin-right: auto;
+}
+
+/*
+============================================
+--- ESTILOS PARA LAS PESTAÑAS (TABS) ---
+============================================
+*/
+.pestanasContainer {
+  display: flex;
+  gap: 8px; /* Espacio entre los botones */
+  margin-bottom: 25px; /* Espacio antes del contenido de la vista */
+  padding-bottom: 10px;
+  border-bottom: 2px solid var(--border-color-on-light);
+  transition: border-color var(--transition-speed); /* Transición para modo oscuro */
+}
+
+.pestañaBtn {
+  padding: 8px 16px;
+  border: 1px solid var(--border-color-inputs);
+  background-color: var(--color-element-bg);
+  color: var(--color-text-on-light-bg);
+  border-radius: var(--border-radius-sm);
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.9em;
+  /* Transición suave para todos los cambios */
+  transition: background-color 0.2s, color 0.2s, border-color 0.2s;
+}
+
+/* Estilo cuando el mouse pasa por encima */
+.pestañaBtn:hover {
+  background-color: var(--color-duoc-blue-medium);
+  color: var(--color-text-on-dark-bg);
+  border-color: var(--color-duoc-blue-medium-hover);
+}
+
+/* Estilo para la pestaña que está activa (seleccionada) */
+.pestañaBtn.active {
+  background-color: var(--color-duoc-gold);
+  color: var(--color-text-on-gold); /* O --color-text-on-dark-bg si prefieres texto blanco */
+  border-color: var(--color-duoc-gold);
+  font-weight: bold;
+}
+
+/*
+============================================================
+--- ESTILOS ADICIONALES PARA LA VISTA DE "CREAR RECETA" ---
+============================================================
+*/
+.vistaRecetasContainer {
+  padding: 10px;
+  border: 1px dashed var(--border-color-inputs);
+  border-radius: var(--border-radius-sm);
+  background-color: var(--color-element-bg);
+  transition: background-color var(--transition-speed), border-color var(--transition-speed);
+}
+
+.formReceta {
+  margin-top: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  max-width: 500px; /* Limita el ancho para que se vea mejor */
+}
+
+/* src/pages/Solicitud/SolicitudPage.module.css */
+
+/* --- NUEVA REGLA PARA ESPACIADO --- */
+.crearRecetaContainer {
+  display: flex;
+  flex-direction: column; /* Apila todos los bloques verticalmente */
+  gap: 1.5rem;           /* AÑADE UN ESPACIO DE 1.5rem (24px) ENTRE CADA BLOQUE */
 }

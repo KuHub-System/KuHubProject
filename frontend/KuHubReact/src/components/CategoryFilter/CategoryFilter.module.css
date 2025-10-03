@@ -1,0 +1,30 @@
+/* src/components/CategoryFilter/CategoryFilter.module.css */
+.filterContainer {
+  display: flex;
+  flex-wrap: wrap; /* Permite que los botones se ajusten en varias líneas si no caben */
+  gap: 8px;
+  margin-bottom: 1rem;
+}
+
+.filterButton {
+  padding: 8px 16px;
+  border: 1px solid var(--border-color-inputs);
+  background-color: var(--color-element-bg);
+  color: var(--color-text-on-light-bg);
+  border-radius: var(--border-radius-sm);
+  cursor: pointer;
+  font-weight: 600;
+  transition: background-color 0.2s, color 0.2s, border-color 0.2s;
+}
+
+.filterButton:hover {
+  background-color: var(--color-duoc-blue-medium);
+  color: var(--color-text-on-dark-bg);
+}
+
+.filterButton.active {
+  background-color: var(--color-duoc-gold);
+  color: var(--color-text-on-gold); /* Usa la variable para texto sobre dorado */
+  border-color: var(--color-duoc-gold);
+  font-weight: bold;
+}

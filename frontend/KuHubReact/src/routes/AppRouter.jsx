@@ -7,6 +7,7 @@ import SolicitudPage from '../pages/Solicitud/SolicitudPage';
 import InventarioPage from '../pages/Inventario/InventarioPage';
 import AccountPage from '../pages/Account/AccountPage';
 import AsignaturasPage from '../pages/Asignaturas/AsignaturasPage';
+import RolesPage from '../pages/Roles/RolesPage';
 
 function AppRouter() {
   return (
@@ -20,6 +21,7 @@ function AppRouter() {
         <Route path="/admin/inventario" element={<InventarioPage />} />
         <Route path="/account" element={<AccountPage />} />
         <Route path="/admin/asignaturas" element={<AsignaturasPage />} />
+        <Route path="/admin/roles" element={<RolesPage />} />
         {/* ...tus otras rutas... */}
       </Routes>
     </main>

@@ -1,0 +1,85 @@
+/* src/pages/Solicitud/CrearReceta/CrearReceta.module.css */
+
+/* --- Estilos para los botones de filtro de categoría --- */
+.filterContainer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.filterButton {
+  padding: 8px 16px;
+  border: 1px solid var(--border-color-inputs);
+  background-color: var(--color-element-bg);
+  color: var(--color-text-on-light-bg);
+  border-radius: var(--border-radius-sm);
+  cursor: pointer;
+  font-weight: 600;
+  transition: background-color 0.2s, color 0.2s, border-color 0.2s;
+}
+
+.filterButton:hover {
+  background-color: var(--color-duoc-blue-medium);
+  color: var(--color-text-on-dark-bg);
+}
+
+.filterButton.active {
+  background-color: var(--color-duoc-gold);
+  color: var(--color-text-on-gold);
+  border-color: var(--color-duoc-gold);
+  font-weight: bold;
+}
+
+/* --- Estilo para el formulario de nombre de receta --- */
+.formReceta {
+  margin-bottom: 2rem;
+}
+
+/* --- Contenedor principal de la sección para agregar ingredientes --- */
+.agregarIngredienteSection {
+  display: flex;
+  flex-direction: column; /* Apila verticalmente (Filtro y Grupo de Acción) */
+  gap: 1rem;             /* AÑADE ESPACIO VERTICAL entre ellos */
+  background-color: var(--color-element-bg);
+  padding: 1rem;
+  border-radius: var(--border-radius-sm);
+  margin-bottom: 2rem;
+  transition: background-color var(--transition-speed);
+}
+
+/* --- El grupo de acción (producto, cantidad, botón) --- */
+.ingredienteActionGroup {
+  display: flex; /* Alinea horizontalmente */
+  gap: 1rem;     /* AÑADE ESPACIO HORIZONTAL entre ellos */
+  align-items: center;
+}
+
+/* --- Reglas de tamaño para ese grupo --- */
+.ingredienteActionGroup > select {
+  flex: 1; /* El selector de producto ocupa todo el espacio sobrante */
+}
+
+.ingredienteActionGroup > input {
+  flex-basis: 120px; /* Ancho fijo para cantidad */
+  flex-grow: 0;
+}
+
+.ingredienteActionGroup > button {
+  flex-basis: 120px; /* Ancho fijo para el botón */
+  flex-grow: 0;
+}
+
+/* --- Estilos para la lista de ingredientes --- */
+.listaIngredientes ul {
+  list-style: none;
+  padding: 0;
+}
+
+.listaIngredientes li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem;
+  border-bottom: 1px solid var(--border-color-on-light);
+  transition: border-color var(--transition-speed);
+}

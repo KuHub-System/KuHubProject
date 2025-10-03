@@ -73,6 +73,7 @@ body[data-theme="dark"] {
   --color-element-bg: #2d2d2d;
   --color-text-on-dark-bg: #f5f5f5;
   --color-text-on-light-bg: #e0e0e0;
+  --color-text-on-gold: #1a1a1a;
   --color-placeholder: #bbbbbb;
   --color-duoc-gold: #FFC140;
   --color-duoc-gold-hover: #FFE082;
@@ -169,7 +170,7 @@ body {
 
 .boton-volver-container:hover {
     background-color: var(--color-duoc-gold); /* Dorado en hover */
-    color: var(--color-text-on-dark-bg); /* Texto blanco sobre dorado */
+    color: var(--color-text-on-gold); /* Texto blanco sobre dorado */
 }
 
 /* --- Header --- */
@@ -346,6 +347,10 @@ body {
     transition: background-color var(--transition-speed), color var(--transition-speed), border-color var(--transition-speed);
     width: 100%; /* Asegura que los inputs llenen su espacio */
     box-sizing: border-box; /* Importante para inputs con padding/border */
+}
+
+.info-block::button {
+    color: var(--color-text-on-gold)
 }
 
 .info-block::placeholder {
@@ -754,7 +759,7 @@ table th {
 /* Estilo para la pestaña que está activa */
 .pestaña-btn.active {
     background-color: var(--color-duoc-gold);
-    color: var(--color-text-on-light-bg);
+    color: var(--color-text-on-gold);
     border-color: var(--color-duoc-gold);
 }
 

@@ -12,7 +12,7 @@ function App() {
 
   // Definimos las rutas donde NO queremos que aparezca el menú
   const noMenuRoutes = ['/', '/login'];
-  
+
   // La condición para mostrar el menú
   const showMenu = !noMenuRoutes.includes(location.pathname);
 
