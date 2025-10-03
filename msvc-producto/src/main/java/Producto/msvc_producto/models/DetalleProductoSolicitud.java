@@ -14,5 +14,5 @@ public class DetalleProductoSolicitud {
 
     private Long    idProducto;
 
-    private Integer cantidadUnidadMedida;
+    private Integer cantidadDetalleSolicitud;
 }

@@ -12,6 +12,6 @@ public interface MovimientoService {
     List<MovimientoDTO> findAll();
     List<MovimientoDTO> findByIdInventario(Long idInventario);
     MovimientoDTO update(Long id, MovimientoDTO movimientoDTO);
-    List<MovimientoDTO> findByIdProducto(Long idProducto);
+    List<MovimientoDTO> findByIdProducto(Long idproducto);
     void delete(Long id);
 }

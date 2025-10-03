@@ -22,7 +22,7 @@ public class DetalleRecetaResponseDTO {
 
     private String unidadMedida;
 
-    private Float cantidadUnidadMedida;
+    private Float cantidadDetalleReceta;
 
 
 }

@@ -1,7 +1,6 @@
 package DetalleReceta.msvc_DetalleReceta.models.entities;
 
 import jakarta.persistence.*;
-import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
 
@@ -29,6 +28,6 @@ public class DetalleReceta {
 
     @Column(name="cantidad_unidad_medida")
     @NotNull(message = "El campo cantidad no puede ser vacio")
-    private Float cantidadUnidadMedida;
+    private Float cantidadDetalleReceta;
 }
 

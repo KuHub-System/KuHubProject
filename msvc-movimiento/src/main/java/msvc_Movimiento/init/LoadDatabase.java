@@ -3,6 +3,7 @@ package msvc_Movimiento.init;
 import msvc_Movimiento.client.InventarioClientRest;
 import msvc_Movimiento.dtos.InventarioDTO;
 import msvc_Movimiento.dtos.MovimientoDTO;
+import msvc_Movimiento.model.Producto;
 import msvc_Movimiento.model.enums.TipoMovimiento;
 import msvc_Movimiento.repository.MovimientoRepository;
 import msvc_Movimiento.service.MovimientoService;
@@ -47,7 +48,6 @@ public class LoadDatabase implements CommandLineRunner {
 
                 mov.setCantidadMovimiento(5);
                 mov.setIdInventario(idPrueba);
-                mov.setIdProducto(idPrueba);
                 mov.setTipoMovimiento(tiposDeMovimiento[random.nextInt(tiposDeMovimiento.length)]);
 
 

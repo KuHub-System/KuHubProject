@@ -20,4 +20,5 @@ public interface DetalleRecetaService {
     boolean existsByIdReceta(Long idReceta);
     boolean existProductoInDetalleReceta(Long idProducto);
     List<DetalleRecetaResponseDTO> AsociarProductosAReceta(String nombreReceta);
+    List<DetalleReceta> saveAll(String nombreReceta, List<DetalleReceta> detalleRecetas);
 }

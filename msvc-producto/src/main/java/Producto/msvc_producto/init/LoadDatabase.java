@@ -1,6 +1,8 @@
 package Producto.msvc_producto.init;
 
+import Producto.msvc_producto.models.entity.Categoria;
 import Producto.msvc_producto.models.entity.Producto;
+import Producto.msvc_producto.repositories.CategoriaRepository;
 import Producto.msvc_producto.repositories.ProductoRepository;
 import net.datafaker.Faker;
 import org.slf4j.Logger;
@@ -19,6 +21,9 @@ import java.util.*;
         @Autowired
         private ProductoRepository productoRepository;
 
+        @Autowired
+        private CategoriaRepository categoriaRepository;
+
         private String generarUnidadAleatoria() {
             List<String> unidades = Arrays.asList("Kilo", "Litro", "Unidad");
             return unidades.get(new Random().nextInt(unidades.size()));
@@ -28,8 +33,32 @@ import java.util.*;
         public void run(String... args) throws Exception {
             Faker faker = new Faker(new Locale("pt", "BR"));
 
+            /* NUllPointerException, ayuda a protejernos de ese error.
+                Activar cuando el Prototipo esté funcional
+                y carguemos productos desde el Excel
+            */
+
+
+            String nombreCategoriaCero = "Sin Categoria";
+            if(this.categoriaRepository.findByNombreCategoria(nombreCategoriaCero.toLowerCase().trim()).isEmpty()) {
+                this.categoriaRepository.save(new Categoria(nombreCategoriaCero));
+            }
+
+
             if (productoRepository.count() == 0) {
                 Set<String> nombresGenerados = new HashSet<>();
+
+                //Categorias de Prueba
+                List<Categoria> categorias = new ArrayList<>();
+                categorias.add(new Categoria("Abarrotes"));
+                categorias.add(new Categoria("Aseo y Descartables"));
+                categorias.add(new Categoria("Carne"));
+                categorias.add(new Categoria("Frutas y Verduras Congeladas"));
+                categorias.add(new Categoria("Pescados y Mariscos"));
+                categorias.add(new Categoria("Utencilios"));
+                categorias.add(new Categoria("Vino y Destilados"));
+
+                this.categoriaRepository.saveAll(categorias);
 
                 for (int i = 0; i < 100; ) {
                     String nombre = faker.commerce().productName();
@@ -40,6 +69,7 @@ import java.util.*;
                     Producto producto = new Producto();
                     producto.setNombreProducto(nombre);
                     producto.setUnidadMedida(generarUnidadAleatoria());
+                    producto.setCategoria(categorias.get(new Random().nextInt(categorias.size())));
 
                     producto = productoRepository.save(producto);
                     log.info("Producto creado: {}", producto);

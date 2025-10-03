@@ -15,5 +15,5 @@ public class DetalleReceta {
 
     private Long idProducto;
 
-    private Float cantidadUnidadMedida;
+    private Float cantidadDetalleReceta;
 }

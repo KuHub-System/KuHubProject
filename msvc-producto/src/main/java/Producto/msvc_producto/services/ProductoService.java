@@ -1,6 +1,7 @@
 package Producto.msvc_producto.services;
 
 import Producto.msvc_producto.dtos.ProductoUpdateRequest;
+import Producto.msvc_producto.models.entity.Categoria;
 import Producto.msvc_producto.models.entity.Producto;
 
 import java.util.List;
@@ -15,4 +16,7 @@ public interface ProductoService {
     void deleteById(Long id);
     void deleteByName(String nombreProducto);
     List<Producto> findByIds(List<Long> ids);
+    Categoria findCategoriaByIdProducto(Long idProducto);
+    Categoria findCategoriaByNombreProducto(String nombreProducto);
+    List<Producto> findByCategoriaIdCategoria(Long idCategoria);
 }

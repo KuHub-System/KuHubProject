@@ -1,10 +1,5 @@
 package msvc_DetalleProductoSolicitud.DetalleProducto.models;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.validation.constraints.NotBlank;
 import lombok.*;
 
 @Getter
@@ -19,5 +14,14 @@ public class Producto {
     private String nombreProducto;
 
     private String unidadMedida;
+
+    private Categoria categoria;
+
+    public Producto(String nombreProducto, String unidadMedida) {
+        this.nombreProducto = nombreProducto;
+        this.unidadMedida = unidadMedida;
+
+    }
+
 
 }

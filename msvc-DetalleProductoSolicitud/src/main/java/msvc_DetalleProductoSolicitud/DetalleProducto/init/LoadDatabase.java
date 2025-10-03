@@ -30,7 +30,7 @@ public class LoadDatabase implements CommandLineRunner {
                 DetalleProductoSolicitud detalle = new DetalleProductoSolicitud();
                 detalle.setIdSolicitudDocente((long) (random.nextInt(20) + 1)); // Entre 1 y 20
                 detalle.setIdProducto((long) (random.nextInt(100) + 1)); // Entre 1 y 100
-                detalle.setCantidadUnidadMedida(random.nextFloat(20) + 1); // Entre 1 y 20
+                detalle.setCantidadDetalleSolicitud(random.nextFloat(20) + 1); // Entre 1 y 20
 
                 detalleProductoSolicitudRepository.save(detalle);
                 log.info("🧾 Detalle creado: {}", detalle);

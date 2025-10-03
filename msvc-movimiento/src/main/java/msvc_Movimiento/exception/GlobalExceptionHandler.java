@@ -1,10 +1,11 @@
-package msvc_Inventario.exception;
+package msvc_Movimiento.exception;
 
 
 
 
 
-import msvc_Inventario.dtos.ErrorDTO;
+
+import msvc_Movimiento.dtos.ErrorDTO;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
@@ -49,23 +50,34 @@ public class GlobalExceptionHandler {
     }
 
 
-    @ExceptionHandler(InventarioException.class)
-    public ResponseEntity<ErrorDTO> handleInventarioException(InventarioException exception){
+    @ExceptionHandler(MovimientoException.class)
+    public ResponseEntity<ErrorDTO> handleMovimientoException(MovimientoException exception){
 
         if(exception.getMessage().contains("No se encontró")) {
             // Esto nos sirve para cuando no existe en la base de datos el Inventario
-            Map<String, String> errorMap = Collections.singletonMap("Inventario no encontrado", exception.getMessage());
+            Map<String, String> errorMap = Collections.singletonMap("Movimiento no encontrado", exception.getMessage());
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(this.createErrorDTO(HttpStatus.NOT_FOUND.value(), new Date(), errorMap));
 
 
         }else{
             // Esto nos sirve para cuando el producto ya existe en nuestra base de datos
-            Map<String, String> errorMap = Collections.singletonMap("Inventario existente", exception.getMessage());
+            Map<String, String> errorMap = Collections.singletonMap("Movimiento no existente", exception.getMessage());
             return ResponseEntity.status(HttpStatus.CONFLICT)
                     .body(this.createErrorDTO(HttpStatus.CONFLICT.value(), new Date(), errorMap));
         }
     }
+
+    @ExceptionHandler(FaltaDeStockException.class)
+    public ResponseEntity<ErrorDTO> handleFaltaDeStock(FaltaDeStockException exception) {
+        Map<String, String> errorMap = Collections.singletonMap("Conflicto de Stock", exception.getMessage());
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(this.createErrorDTO(HttpStatus.CONFLICT.value(), new Date(), errorMap));
+    }
+
+
+
+
 
 
 }

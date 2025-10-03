@@ -35,7 +35,7 @@ public class LoadDatabase implements CommandLineRunner {
                 solicitud.setNumeroTaller((long) (random.nextInt(5) + 1));   // Taller entre 1 y 5
                 solicitud.setCantidadPersonas((long) (random.nextInt(20) + 10)); // Entre 10 y 30 personas
                 solicitud.setDescripcionSemana("Semana de " + faker.educator().course());
-                solicitud.setSesion(random.nextBoolean() ? "Mañana" : "Tarde");
+                solicitud.setSeccion(random.nextBoolean() ? "Mañana" : "Tarde");
                 solicitud.setNombreAsignatura(faker.educator().course());
 
                 // Fecha actual como programada

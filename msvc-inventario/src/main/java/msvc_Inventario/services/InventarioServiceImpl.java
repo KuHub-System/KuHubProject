@@ -25,6 +25,7 @@ public class InventarioServiceImpl implements InventarioService {
 
     // --- MÉTODOS CRUD ---
 
+    //Checkeado✅
     @Override
     @Transactional
     public InventarioDTO save(InventarioDTO dto) {
@@ -49,6 +50,7 @@ public class InventarioServiceImpl implements InventarioService {
         return toDto(inventarioGuardado, producto);
     }
 
+    //Checkeado✅
     @Override
     public InventarioDTO findById(Long id) {
         Inventario inventario = this.inventarioRepository.findById(id)
@@ -58,6 +60,7 @@ public class InventarioServiceImpl implements InventarioService {
         return toDto(inventario, producto);
     }
 
+    //Checkeado✅
     @Override
     public List<InventarioDTO> findAll() {
         // Versión optimizada para evitar el problema N+1.
@@ -106,22 +109,28 @@ public class InventarioServiceImpl implements InventarioService {
     }
 
 
+    //Checkeado✅
     @Override
     public Inventario getInventarioByIdProducto(Long idProducto) {
         return this.inventarioRepository.findByIdProducto(idProducto)
-                .orElseThrow(() -> new InventarioException("No existe inventario para el producto con ID: " + idProducto));
+                .orElseThrow(() -> new InventarioException("No se encontró inventario para el producto con ID: " + idProducto));
     }
+    //Checkeado✅
     @Override
     public Producto findProductoByIdInventario(Long idInventario){
-        return this.inventarioRepository.findProductoByIdInventario(idInventario)
-                .orElseThrow(()-> new InventarioException("No existe el producto con ID: " + idInventario));
+        Inventario inventarioPrueba = this.inventarioRepository.findById(idInventario)
+                .orElseThrow(()-> new InventarioException("No se encontró el Inventario"));
+
+        return this.productoClientRest.findProductoById(inventarioPrueba.getIdProducto());
+
     }
 
+    //FALTA PROBAR POSTMAN
     @Transactional
     @Override
     public void updateTotalInventario(Long id, float adjustmentAmount) {
         Inventario inventario = inventarioRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Inventory not found"));
+                .orElseThrow(() -> new RuntimeException("No se encontró Inventario con ID: " + id));
         float newTotal = inventario.getTotalInventario() + adjustmentAmount;
         inventario.setTotalInventario(newTotal);
         inventarioRepository.save(inventario);
@@ -159,6 +168,7 @@ public class InventarioServiceImpl implements InventarioService {
         if (producto != null) {
             dto.setNombreProducto(producto.getNombreProducto());
             dto.setUnidadMedida(producto.getUnidadMedida());
+            dto.setCategoria(producto.getCategoria());
         }
         return dto;
     }

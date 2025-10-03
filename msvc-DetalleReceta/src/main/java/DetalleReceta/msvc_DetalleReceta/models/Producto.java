@@ -17,4 +17,6 @@ public class Producto {
 
     private String unidadMedida;
 
+    private Categoria categoria;
+
 }

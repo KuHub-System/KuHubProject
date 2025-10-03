@@ -4,6 +4,7 @@ package msvc_Movimiento.service;
 import msvc_Movimiento.client.InventarioClientRest;
 import msvc_Movimiento.dtos.InventarioUpdateDTO;
 import msvc_Movimiento.dtos.MovimientoDTO;
+import msvc_Movimiento.model.Producto;
 import msvc_Movimiento.model.entity.Movimiento;
 import msvc_Movimiento.repository.MovimientoRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,12 +29,20 @@ public class MovimientoServiceImpl implements MovimientoService {
     @Transactional
     public MovimientoDTO crearMovimiento(MovimientoDTO dto) {
         // 1. Crear y guardar la entidad Movimiento (esto no cambia)
+
+        Producto productoPrueba = inventarioClient.getProductoByIdInventario(dto.getIdInventario());
+        if (productoPrueba == null) {
+            throw new RuntimeException("No se puede crear el Movimiento para un Producto Inexistente");
+        }
+
         Movimiento movimiento = new Movimiento();
         movimiento.setIdInventario(dto.getIdInventario());
-        movimiento.setIdProducto(dto.getIdProducto());
+        movimiento.setIdProducto(productoPrueba.getIdProducto());
         movimiento.setFechaMovimiento(LocalDate.now());
         movimiento.setCantidadMovimiento(dto.getCantidadMovimiento());
         movimiento.setTipoMovimiento(dto.getTipoMovimiento());
+
+
 
         Movimiento nuevoMovimiento = movimientoRepository.save(movimiento);
 
@@ -70,8 +79,8 @@ public class MovimientoServiceImpl implements MovimientoService {
     }
 
     @Override
-    public List<MovimientoDTO> findByIdProducto(Long idProducto){
-        return movimientoRepository.findAllByIdProducto(idProducto)
+    public List<MovimientoDTO> findByIdProducto(Long idproducto){
+        return movimientoRepository.findAllByIdProducto(idproducto)
                 .stream()
                 .map(this::toDto)
                 .collect(Collectors.toList());
@@ -100,7 +109,7 @@ public class MovimientoServiceImpl implements MovimientoService {
         mov.setTipoMovimiento(dto.getTipoMovimiento());
         mov.setFechaMovimiento(LocalDate.now());
         mov.setIdInventario(dto.getIdInventario());
-        mov.setIdProducto(dto.getIdProducto());
+
 
         return toDto(movimientoRepository.save(mov));
     }
@@ -120,7 +129,6 @@ public class MovimientoServiceImpl implements MovimientoService {
         MovimientoDTO dto = new MovimientoDTO();
         dto.setIdMovimiento(mov.getIdMovimiento());
         dto.setIdInventario(mov.getIdInventario());
-        dto.setIdProducto(mov.getIdProducto());
         dto.setFechaMovimiento(mov.getFechaMovimiento());
         dto.setCantidadMovimiento(mov.getCantidadMovimiento());
         dto.setTipoMovimiento(mov.getTipoMovimiento());

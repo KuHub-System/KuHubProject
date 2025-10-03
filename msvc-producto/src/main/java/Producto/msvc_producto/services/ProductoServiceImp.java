@@ -3,11 +3,10 @@ package Producto.msvc_producto.services;
 import Producto.msvc_producto.clients.DetalleProductoSolicitudClientRest;
 import Producto.msvc_producto.clients.DetalleRecetaClientRest;
 import Producto.msvc_producto.dtos.ProductoUpdateRequest;
-import Producto.msvc_producto.exceptions.ProductoException;
-import Producto.msvc_producto.exceptions.ProductoExistenteException;
-import Producto.msvc_producto.exceptions.ProductoNotFoundException;
-import Producto.msvc_producto.exceptions.ProductoVinculadoException;
+import Producto.msvc_producto.exceptions.*;
+import Producto.msvc_producto.models.entity.Categoria;
 import Producto.msvc_producto.models.entity.Producto;
+import Producto.msvc_producto.repositories.CategoriaRepository;
 import Producto.msvc_producto.repositories.ProductoRepository;
 import Producto.msvc_producto.utils.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,15 +15,18 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 
-import java.util.Arrays;
+
 import java.util.List;
-import java.util.stream.Collectors;
+
 
 @Service
 public class ProductoServiceImp implements ProductoService{
 
     @Autowired
     private ProductoRepository productoRepository;
+
+    @Autowired
+    private CategoriaRepository categoriaRepository;
 
     @Autowired
     private DetalleProductoSolicitudClientRest detalleProductoSolicitudClientRest;
@@ -65,7 +67,21 @@ public class ProductoServiceImp implements ProductoService{
         if (productoRepository.findByNombreProducto(capitalizado).isPresent()){
             throw new ProductoExistenteException(capitalizado);
         }
+        //Defino una Categoria Vacia
+        Categoria categoriaAsignada;
 
+        //Checkeo si la categoria que trae el producto corresponde a una de la base de Datos
+        if(producto.getCategoria()!=null){
+            categoriaAsignada = this.categoriaRepository.findById(producto.getCategoria().getIdCategoria())
+                    .orElseThrow(()-> new CategoriaNotFoundException(producto.getCategoria().getIdCategoria()));
+
+        }else{
+            //Le asigna la categoria "Sin Categoria" siesque esta existe en la base de datos
+            categoriaAsignada = this.categoriaRepository.findByNombreCategoria("Sin Categoria")
+                    .orElseThrow(() -> new RuntimeException("No existe esta categoria"));
+        }
+
+        producto.setCategoria(categoriaAsignada);
         producto.setNombreProducto(capitalizado);
         return productoRepository.save(producto);
     }
@@ -153,4 +169,26 @@ public class ProductoServiceImp implements ProductoService{
     public List<Producto> findByIds(List<Long> ids) {
         return productoRepository.findAllById(ids);
     }
+
+    @Override
+    public Categoria findCategoriaByIdProducto(Long idProducto) {
+        Producto producto = productoRepository.findById(idProducto).orElseThrow(
+                () -> new ProductoNotFoundException(idProducto)
+        );
+        return producto.getCategoria();
+    }
+
+    @Override
+    public Categoria findCategoriaByNombreProducto(String nombreProducto) {
+        Producto producto = productoRepository.findByNombreProducto(nombreProducto).orElseThrow(
+                () -> new ProductoNotFoundException(nombreProducto)
+        );
+        return producto.getCategoria();
+    }
+
+    @Override
+    public List<Producto> findByCategoriaIdCategoria(Long idCategoria) {
+        return this.productoRepository.findByCategoriaIdCategoria(idCategoria);
+    }
+
 }

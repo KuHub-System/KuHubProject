@@ -55,7 +55,7 @@ public class LoadDatabase implements CommandLineRunner {
                 DetalleReceta detalle = new DetalleReceta();
                 detalle.setIdReceta(receta.getIdReceta());
                 detalle.setIdProducto(producto.getIdProducto());
-                detalle.setCantidadUnidadMedida(cantidad);
+                detalle.setCantidadDetalleReceta(cantidad);
 
                 detalleRecetaRepository.save(detalle);
                 log.info("Detalle creado: Receta={} Producto={} Cantidad={}",

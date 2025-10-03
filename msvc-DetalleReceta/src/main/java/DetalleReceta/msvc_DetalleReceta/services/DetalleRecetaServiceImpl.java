@@ -79,7 +79,7 @@ public class DetalleRecetaServiceImpl implements DetalleRecetaService {
                     d.getIdProducto(),
                     p.getNombreProducto(),
                     p.getUnidadMedida(),
-                    d.getCantidadUnidadMedida()
+                    d.getCantidadDetalleReceta()
             ));
         }
         return responseDTOs;
@@ -110,7 +110,7 @@ public class DetalleRecetaServiceImpl implements DetalleRecetaService {
                     p.getIdProducto(),
                     p.getNombreProducto(),
                     p.getUnidadMedida(),
-                    d.getCantidadUnidadMedida()
+                    d.getCantidadDetalleReceta()
             ));
         }
         return responseDTOs;
@@ -136,7 +136,7 @@ public class DetalleRecetaServiceImpl implements DetalleRecetaService {
                 detalle.getIdProducto(),
                 producto.getNombreProducto(),
                 producto.getUnidadMedida(),
-                detalle.getCantidadUnidadMedida()
+                detalle.getCantidadDetalleReceta()
         );
     }
 
@@ -163,7 +163,7 @@ public class DetalleRecetaServiceImpl implements DetalleRecetaService {
             throw new ProductoClientException("Producto no encontrado");
         }
 
-        if (detalleReceta.getCantidadUnidadMedida() <= 0){
+        if (detalleReceta.getCantidadDetalleReceta() <= 0){
             throw new DetalleRecetaException("La cantidad de unidad medida no puede ser menor a 0");
         }
 
@@ -173,16 +173,70 @@ public class DetalleRecetaServiceImpl implements DetalleRecetaService {
 
     @Transactional
     @Override
+    public List<DetalleReceta> saveAll(String nombreReceta, List<DetalleReceta> detalleRecetas) {
+
+        // 1. Validar que la lista no esté vacía
+        if (detalleRecetas == null || detalleRecetas.isEmpty()) {
+            throw new DetalleRecetaException("La lista de detalles no puede estar vacía");
+        }
+
+        // 2. Verificar que la receta existe y obtener su ID
+        Receta receta;
+        try {
+            receta = this.recetaClientRest.findByNombreReceta(nombreReceta);
+        } catch (Exception e) {
+            throw new DetalleRecetaException("Receta no encontrada: " + nombreReceta);
+        }
+
+        Long idReceta = receta.getIdReceta();
+
+        // 3. Validar cada detalle antes de guardar
+        List<DetalleReceta> detallesValidados = new ArrayList<>();
+        Map<Long, Producto> cacheProductos = new HashMap<>();
+
+        for (DetalleReceta detalle : detalleRecetas) {
+            // Asignar el ID de la receta
+            detalle.setIdReceta(idReceta);
+
+            // Validar cantidad
+            if (detalle.getCantidadDetalleReceta() == null || detalle.getCantidadDetalleReceta() <= 0) {
+                throw new DetalleRecetaException(
+                        "La cantidad debe ser mayor a 0 para el producto ID: " + detalle.getIdProducto()
+                );
+            }
+
+            // Verificar que el producto existe (usando caché para evitar múltiples llamadas)
+            Producto producto = cacheProductos.computeIfAbsent(detalle.getIdProducto(), id -> {
+                try {
+                    Producto p = productoClientRest.findProductoById(id).getBody();
+                    if (p == null) {
+                        throw new ProductoClientException("Producto con ID " + id + " no encontrado");
+                    }
+                    return p;
+                } catch (Exception e) {
+                    throw new ProductoClientException(id, e);
+                }
+            });
+
+            detallesValidados.add(detalle);
+        }
+
+        // 4. Guardar todos los detalles
+        return detalleRecetaRepository.saveAll(detallesValidados);
+    }
+
+    @Transactional
+    @Override
     public DetalleReceta detalleRecetaUpdateQuantity(Long id, DetalleRecetaIUpdateQuantityRequestDTO quantityRequest){
 
         DetalleReceta detalleReceta = detalleRecetaRepository.findById(id).orElseThrow(
                 ()-> new DetalleRecetaNotFoundException(id));
 
-        if (quantityRequest.getCantidadUnidadMedida() == null || quantityRequest.getCantidadUnidadMedida() <= 0) {
+        if (quantityRequest.getCantidadDetalleReceta() == null || quantityRequest.getCantidadDetalleReceta() <= 0) {
             throw new DetalleRecetaException("La cantidad debe ser un número positivo");
         }
 
-        detalleReceta.setCantidadUnidadMedida(quantityRequest.getCantidadUnidadMedida());
+        detalleReceta.setCantidadDetalleReceta(quantityRequest.getCantidadDetalleReceta());
         return detalleRecetaRepository.save(detalleReceta);
     }
 

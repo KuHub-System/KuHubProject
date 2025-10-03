@@ -1,7 +1,6 @@
 package msvc_DetalleProductoSolicitud.DetalleProducto.models.entity;
 
 import jakarta.persistence.*;
-import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
 
@@ -29,5 +28,5 @@ public class DetalleProductoSolicitud {
 
     @Column(name = "cantidad_unidad_medida")
     @NotNull(message = "El campo id cantidad unidad medida no puede ser vacio")
-    private Float cantidadUnidadMedida;
+    private Float cantidadDetalleSolicitud;
 }

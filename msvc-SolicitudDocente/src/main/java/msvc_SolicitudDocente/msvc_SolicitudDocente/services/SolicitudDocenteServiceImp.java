@@ -81,7 +81,7 @@ public class SolicitudDocenteServiceImp implements SolicitudDocenteService{
                     D.getIdProducto(),
                     P.getNombreProducto(),
                     P.getUnidadMedida(),
-                    D.getCantidadUnidadMedida()
+                    D.getCantidadDetalleSolicitud()
                     );
                 detallesProductoSolicitud.add(dto);
             }
@@ -92,7 +92,7 @@ public class SolicitudDocenteServiceImp implements SolicitudDocenteService{
                     S.getNumeroTaller(),
                     S.getCantidadPersonas(),
                     S.getDescripcionSemana(),
-                    S.getSesion(),
+                    S.getSeccion(),
                     S.getNombreAsignatura(),
                     S.getFechaProgramada(),
                     detallesProductoSolicitud );

@@ -1,8 +1,5 @@
 package Recetas.msvc_Recetas.models;
 
-import jakarta.persistence.Column;
-import jakarta.validation.constraints.Digits;
-import jakarta.validation.constraints.NotNull;
 import lombok.*;
 
 @Getter
@@ -18,5 +15,5 @@ public class DetalleReceta {
 
     private Long idProducto;
 
-    private Float cantidadUnidadMedida;
+    private Float cantidadDetalleReceta;
 }

@@ -1,11 +1,5 @@
 package msvc_SolicitudDocente.msvc_SolicitudDocente.dtos;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -32,7 +26,7 @@ public class SolicitudDocenteResponseDTO {
 
     private String descripcionSemana;
 
-    private String sesion;
+    private String seccion;
 
     private String nombreAsignatura;
 

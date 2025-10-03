@@ -1,6 +1,5 @@
 package DetalleReceta.msvc_DetalleReceta.dtos;
 
-import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
 
@@ -12,5 +11,5 @@ import lombok.*;
 public class DetalleRecetaIUpdateQuantityRequestDTO {
 
     @NotNull(message = "El campo cantidad no puede ser vacio")
-    private Float cantidadUnidadMedida;
+    private Float cantidadDetalleReceta;
 }

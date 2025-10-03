@@ -2,7 +2,6 @@ package DetalleReceta.msvc_DetalleReceta.dtos;
 
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import jakarta.validation.constraints.Digits;
 import lombok.*;
 
 @Getter
@@ -23,7 +22,7 @@ public class DetalleRecetaResponseDTO {
 
     private String unidadMedida;
 
-    private Float cantidadUnidadMedida;
+    private Float cantidadDetalleReceta;
 
 
 }

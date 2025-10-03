@@ -21,8 +21,8 @@ public interface InventarioClientRest {
     InventarioDTO findById(@PathVariable Long id);
 
     @GetMapping("/getinventario/{idProducto}")
-    Inventario getInventarioByIdProducto(@PathVariable Long id);
+    Inventario getInventarioByIdProducto(@PathVariable Long idProducto);
 
     @GetMapping("/getproducto/{idInventario}")
-    Producto getProductoByIdInventario(@PathVariable Long id);
+    Producto getProductoByIdInventario(@PathVariable Long idInventario);
 }

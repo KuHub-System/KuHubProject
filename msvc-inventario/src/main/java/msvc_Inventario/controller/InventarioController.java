@@ -38,13 +38,13 @@ public class InventarioController {
     }
 
     @GetMapping("/getinventario/{idProducto}")
-    public ResponseEntity<Inventario> getInventarioByIdProducto(@PathVariable Long id){
-        return ResponseEntity.ok().body(this.inventarioService.getInventarioByIdProducto(id));
+    public ResponseEntity<Inventario> getInventarioByIdProducto(@PathVariable Long idProducto){
+        return ResponseEntity.ok().body(this.inventarioService.getInventarioByIdProducto(idProducto));
     }
 
     @GetMapping("/getproducto/{idInventario}")
-    public ResponseEntity<Producto> getProductoByIdInventario(@PathVariable Long id){
-        return ResponseEntity.ok().body(this.inventarioService.findProductoByIdInventario(id));
+    public ResponseEntity<Producto> getProductoByIdInventario(@PathVariable Long idInventario){
+        return ResponseEntity.ok().body(this.inventarioService.findProductoByIdInventario(idInventario));
     }
 
     @PutMapping("/{id}/update-total") // Endpoint que no contiene la cantidad

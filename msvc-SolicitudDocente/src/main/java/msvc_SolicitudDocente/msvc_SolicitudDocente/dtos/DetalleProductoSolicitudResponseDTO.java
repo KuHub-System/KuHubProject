@@ -17,6 +17,6 @@ public class DetalleProductoSolicitudResponseDTO {
     private Long idProducto;
     private String nombreProducto;
     private String unidadMedida;
-    private Float cantidadUnidadMedida;
+    private Float cantidadDetalleSolicitud;
 
 }

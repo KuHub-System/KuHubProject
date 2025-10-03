@@ -54,7 +54,7 @@ public class DetalleProductoSolicitudServiceImpl implements DetalleProductoSolic
         }
 
         //validar que cantidad sea mayor que cero
-        if (detalleProductoSolicitud.getCantidadUnidadMedida() <= 0) {
+        if (detalleProductoSolicitud.getCantidadDetalleSolicitud() <= 0) {
             throw new DetalleProductoSolicitudException("La cantidad debe ser mayor que cero");
         }
 
@@ -69,11 +69,11 @@ public class DetalleProductoSolicitudServiceImpl implements DetalleProductoSolic
                 () -> new DetalleProductoSolicitudException("Detalle de producto solicitud con el id " + id + " no encontrado")
         );
 
-        if (quantityRequest.getCantidadUnidadMedida() == null || quantityRequest.getCantidadUnidadMedida() < 0) {
+        if (quantityRequest.getCantidadDetalleSolicitud() == null || quantityRequest.getCantidadDetalleSolicitud() < 0) {
             throw new DetalleProductoSolicitudException("La cantidad debe ser un número positivo");
         }
 
-        detalleProductoSolicitud.setCantidadUnidadMedida(quantityRequest.getCantidadUnidadMedida());
+        detalleProductoSolicitud.setCantidadDetalleSolicitud(quantityRequest.getCantidadDetalleSolicitud());
         return detalleProductoSolicitudRepository.save(detalleProductoSolicitud);
     }
 

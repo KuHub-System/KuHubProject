@@ -26,5 +26,9 @@ public class Producto {
     @NotBlank(message = "El campo unidad medida no puede ser vacio")
     private String unidadMedida;
 
+    @ManyToOne
+    @JoinColumn(name="id_categoria")
+    private Categoria categoria;
+
 
 }

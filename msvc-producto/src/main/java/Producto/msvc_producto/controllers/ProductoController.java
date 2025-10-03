@@ -2,6 +2,7 @@ package Producto.msvc_producto.controllers;
 
 import Producto.msvc_producto.dtos.ProductoUpdateRequest;
 import Producto.msvc_producto.exceptions.ProductoException;
+import Producto.msvc_producto.models.entity.Categoria;
 import Producto.msvc_producto.models.entity.Producto;
 import Producto.msvc_producto.services.ProductoService;
 import jakarta.validation.Valid;
@@ -111,4 +112,26 @@ public class ProductoController {
     public List<Producto> obtenerPorIds(@RequestBody List<Long> ids) {
         return productoService.findByIds(ids);
     }
+
+    //Metodos nuevos agregados debido a Categorias
+
+    @GetMapping("/categoria-idProducto/{idProducto}")
+    public ResponseEntity<Categoria> findCategoriaByIdProducto(@PathVariable Long idProducto){
+        return ResponseEntity
+                .status(200)
+                .body(this.productoService.findCategoriaByIdProducto(idProducto));
+    }
+
+    @GetMapping("/categoria-nombreProducto/{nombreProducto}")
+    public ResponseEntity<Categoria> findCategoriaByNombreProducto(String nombreProducto){
+        return ResponseEntity
+                .status(200)
+                .body(this.productoService.findCategoriaByNombreProducto(nombreProducto));
+    }
+    @GetMapping("/listaProductos-idCategoria/{idCategoria}")
+    public ResponseEntity<List<Producto>> findByCategoriaIdCategoria(@PathVariable Long idCategoria){
+        return ResponseEntity
+                .status(200)
+                .body(productoService.findByCategoriaIdCategoria(idCategoria));
+    };
 }
