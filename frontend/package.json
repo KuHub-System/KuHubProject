@@ -7,7 +7,11 @@
     "dev": "vite",
     "build": "tsc --noCheck && vite build",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "vitest",
+    "test:ui": "vitest --ui",
+    "test:run": "vitest run",
+    "test:coverage": "vitest --coverage"
   },
   "dependencies": {
     "@heroui/react": "^2.8.3",
@@ -30,15 +34,21 @@
     "@babel/traverse": "^7.27.0",
     "@babel/types": "^7.27.0",
     "@tailwindcss/postcss": "^4.1.13",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.0",
+    "@testing-library/user-event": "^14.6.1",
     "@types/node": "^24.7.0",
     "@types/react": "^18.3.24",
     "@types/react-dom": "^18.3.7",
     "@types/react-router-dom": "^5.3.3",
     "@vitejs/plugin-react": "^4.7.0",
+    "@vitest/ui": "^4.0.3",
     "autoprefixer": "^10.4.21",
+    "jsdom": "^27.0.1",
     "postcss": "^8.5.6",
     "tailwindcss": "^4.1.11",
     "typescript": "^5.7.3",
-    "vite": "^6.0.11"
+    "vite": "^6.0.11",
+    "vitest": "^4.0.3"
   }
 }
