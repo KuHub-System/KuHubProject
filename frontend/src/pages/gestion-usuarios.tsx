@@ -27,7 +27,11 @@ const ROLES: RolUsuario[] = [
   'Asistente de Bodega'
 ];
 
+
+
+
 const GestionUsuariosPage: React.FC = () => {
+  const opcionesRol = ['Todos los roles', ...ROLES];
   const { user: usuarioActual, hasSpecificPermission } = useAuth();
   const [usuarios, setUsuarios] = useState<IUsuario[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -276,9 +280,10 @@ const GestionUsuariosPage: React.FC = () => {
                 selectedKeys={rolFiltro}
                 onSelectionChange={setRolFiltro}
               >
-                <SelectItem key="">Todos los roles</SelectItem>
-                {ROLES.map((rol) => (
-                  <SelectItem key={rol}>{rol}</SelectItem>
+                {opcionesRol.map((rol, index) => (
+                  <SelectItem key={index === 0 ? 'todos' : rol}>
+                    {rol}
+                  </SelectItem>
                 ))}
               </Select>
 

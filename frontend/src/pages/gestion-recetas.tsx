@@ -38,7 +38,7 @@ import {
 import { obtenerProductosService } from '../services/producto-service';
 
 /**
- * Página de gestión de recetas con persistencia real.
+ * Página de gestión de recetas simplificada.
  */
 const GestionRecetasPage: React.FC = () => {
   const [recetas, setRecetas] = React.useState<IReceta[]>([]);
@@ -47,7 +47,6 @@ const GestionRecetasPage: React.FC = () => {
   const [recetaSeleccionada, setRecetaSeleccionada] = React.useState<IReceta | null>(null);
   const [modalMode, setModalMode] = React.useState<'crear' | 'editar' | 'ver'>('crear');
   const [searchTerm, setSearchTerm] = React.useState<string>('');
-  const [selectedCategoria, setSelectedCategoria] = React.useState<string>('todas');
   const [currentPage, setCurrentPage] = React.useState<number>(1);
   const [isLoading, setIsLoading] = React.useState<boolean>(true);
   
@@ -68,8 +67,10 @@ const GestionRecetasPage: React.FC = () => {
       ]);
       setRecetas(recetasCargadas);
       setProductos(productosCargados);
+      console.log('📋 Recetas cargadas:', recetasCargadas.length);
+      console.log('📦 Productos cargados:', productosCargados.length);
     } catch (error) {
-      console.error('Error al cargar datos:', error);
+      console.error('❌ Error al cargar datos:', error);
       alert('Error al cargar las recetas');
     } finally {
       setIsLoading(false);
@@ -81,21 +82,12 @@ const GestionRecetasPage: React.FC = () => {
     if (searchTerm) {
       filtered = filtered.filter(receta => 
         receta.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        receta.descripcion.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        receta.asignatura.toLowerCase().includes(searchTerm.toLowerCase())
+        (receta.descripcion && receta.descripcion.toLowerCase().includes(searchTerm.toLowerCase()))
       );
-    }
-    if (selectedCategoria !== 'todas') {
-      filtered = filtered.filter(receta => receta.categoria === selectedCategoria);
     }
     setFilteredRecetas(filtered);
     setCurrentPage(1);
-  }, [searchTerm, selectedCategoria, recetas]);
-
-  const categorias = React.useMemo(() => {
-    const categoriasSet = new Set(recetas.map(receta => receta.categoria));
-    return ['todas', ...Array.from(categoriasSet)];
-  }, [recetas]);
+  }, [searchTerm, recetas]);
 
   const paginatedRecetas = React.useMemo(() => {
     const start = (currentPage - 1) * rowsPerPage;
@@ -123,10 +115,12 @@ const GestionRecetasPage: React.FC = () => {
 
   const cambiarEstadoReceta = async (id: string, nuevoEstado: 'Activa' | 'Inactiva') => {
     try {
+      console.log(`🔄 Cambiando estado de receta ${id} a ${nuevoEstado}`);
       await cambiarEstadoRecetaService(id, nuevoEstado === 'Activa');
-      await cargarDatos(); // Recargar datos
+      await cargarDatos();
+      alert(`✅ Receta ${nuevoEstado.toLowerCase()} correctamente`);
     } catch (error) {
-      console.error('Error al cambiar estado:', error);
+      console.error('❌ Error al cambiar estado:', error);
       alert('Error al cambiar el estado de la receta');
     }
   };
@@ -134,10 +128,10 @@ const GestionRecetasPage: React.FC = () => {
   const handleGuardarReceta = async (receta: IReceta) => {
     try {
       if (modalMode === 'crear') {
+        console.log('📝 Creando nueva receta:', receta.nombre);
         await crearRecetaService({
           nombre: receta.nombre,
           descripcion: receta.descripcion,
-          categoria: receta.categoria,
           ingredientes: receta.ingredientes.map(ing => ({
             productoId: ing.productoId,
             productoNombre: ing.productoNombre,
@@ -145,24 +139,24 @@ const GestionRecetasPage: React.FC = () => {
             unidadMedida: ing.unidadMedida
           })),
           instrucciones: receta.instrucciones,
-          asignatura: receta.asignatura,
           estado: receta.estado
         });
+        alert('✅ Receta creada correctamente');
       } else if (modalMode === 'editar') {
+        console.log('✏️ Actualizando receta:', receta.nombre);
         await actualizarRecetaService({
           id: receta.id,
           nombre: receta.nombre,
           descripcion: receta.descripcion,
-          categoria: receta.categoria,
-          ingredientes: receta.ingredientes, // Enviamos ingredientes completos con ID
+          ingredientes: receta.ingredientes,
           instrucciones: receta.instrucciones,
-          asignatura: receta.asignatura,
           estado: receta.estado
         });
+        alert('✅ Receta actualizada correctamente');
       }
-      await cargarDatos(); // Recargar datos
+      await cargarDatos();
     } catch (error: any) {
-      console.error('Error al guardar receta:', error);
+      console.error('❌ Error al guardar receta:', error);
       alert(error.message || 'Error al guardar la receta');
       throw error;
     }
@@ -198,7 +192,9 @@ const GestionRecetasPage: React.FC = () => {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold mb-2">Gestión de Recetas</h1>
-            <p className="text-default-500">Administre las recetas del sistema.</p>
+            <p className="text-default-500">
+              Administre las recetas base para las solicitudes de insumos.
+            </p>
           </div>
           <Button 
             color="primary" 
@@ -209,71 +205,119 @@ const GestionRecetasPage: React.FC = () => {
           </Button>
         </div>
 
+        {/* Estadísticas */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Card>
+            <CardBody className="text-center p-4">
+              <p className="text-sm text-default-500">Total Recetas</p>
+              <p className="text-3xl font-bold text-primary">{recetas.length}</p>
+            </CardBody>
+          </Card>
+          <Card>
+            <CardBody className="text-center p-4">
+              <p className="text-sm text-default-500">Activas</p>
+              <p className="text-3xl font-bold text-success">
+                {recetas.filter(r => r.estado === 'Activa').length}
+              </p>
+            </CardBody>
+          </Card>
+          <Card>
+            <CardBody className="text-center p-4">
+              <p className="text-sm text-default-500">Inactivas</p>
+              <p className="text-3xl font-bold text-danger">
+                {recetas.filter(r => r.estado === 'Inactiva').length}
+              </p>
+            </CardBody>
+          </Card>
+        </div>
+
+        {/* Filtros */}
         <div className="flex flex-col md:flex-row gap-4">
           <Input
             placeholder="Buscar recetas..."
             value={searchTerm}
             onValueChange={setSearchTerm}
             startContent={<Icon icon="lucide:search" className="text-default-400" />}
+            isClearable
+            onClear={() => setSearchTerm('')}
             className="w-full md:w-64"
-            aria-label="Buscar recetas"
           />
-          <Select 
-            label="Categoría"
-            placeholder="Todas las categorías"
-            selectedKeys={selectedCategoria ? [selectedCategoria] : []}
-            onSelectionChange={(keys) => setSelectedCategoria(Array.from(keys)[0] as string)}
-            className="w-full md:w-40"
-            aria-label="Filtrar por categoría"
-          >
-            {categorias.map((categoria) => (
-              <SelectItem key={categoria}>
-                {categoria === 'todas' ? 'Todas las categorías' : categoria}
-              </SelectItem>
-            ))}
-          </Select>
         </div>
 
+        {/* Tabla */}
         <Card className="shadow-sm">
           <CardBody className="p-0">
             <Table 
               aria-label="Tabla de recetas"
               removeWrapper
               bottomContent={
-                <div className="flex w-full justify-center">
-                  <Pagination
-                    total={Math.ceil(filteredRecetas.length / rowsPerPage)}
-                    page={currentPage}
-                    onChange={setCurrentPage}
-                    showControls
-                  />
-                </div>
+                filteredRecetas.length > rowsPerPage && (
+                  <div className="flex w-full justify-center">
+                    <Pagination
+                      total={Math.ceil(filteredRecetas.length / rowsPerPage)}
+                      page={currentPage}
+                      onChange={setCurrentPage}
+                      showControls
+                    />
+                  </div>
+                )
               }
             >
               <TableHeader>
                 <TableColumn>NOMBRE</TableColumn>
-                <TableColumn>CATEGORÍA</TableColumn>
-                <TableColumn>ASIGNATURA</TableColumn>
+                <TableColumn>DESCRIPCIÓN</TableColumn>
+                <TableColumn>INGREDIENTES</TableColumn>
                 <TableColumn>ESTADO</TableColumn>
                 <TableColumn>ACCIONES</TableColumn>
               </TableHeader>
               <TableBody emptyContent="No se encontraron recetas">
                 {paginatedRecetas.map((receta) => (
                   <TableRow key={receta.id}>
-                    <TableCell>{receta.nombre}</TableCell>
-                    <TableCell>{receta.categoria}</TableCell>
-                    <TableCell>{receta.asignatura}</TableCell>
+                    <TableCell>
+                      <p className="font-medium">{receta.nombre}</p>
+                    </TableCell>
+                    <TableCell>
+                      <p className="text-sm text-default-500 line-clamp-2">
+                        {receta.descripcion || '-'}
+                      </p>
+                    </TableCell>
+                    <TableCell>
+                      <Chip size="sm" variant="flat">
+                        {receta.ingredientes.length} ingredientes
+                      </Chip>
+                    </TableCell>
                     <TableCell>{renderEstado(receta.estado)}</TableCell>
                     <TableCell>
                       <div className="flex gap-2">
-                        <Button isIconOnly variant="light" size="sm" onPress={() => handleVerReceta(receta)}>
+                        <Button 
+                          isIconOnly 
+                          variant="light" 
+                          size="sm" 
+                          onPress={() => handleVerReceta(receta)}
+                        >
                           <Icon icon="lucide:eye" className="text-primary" />
                         </Button>
-                        <Button isIconOnly variant="light" size="sm" onPress={() => handleEditarReceta(receta)}>
+                        <Button 
+                          isIconOnly 
+                          variant="light" 
+                          size="sm" 
+                          onPress={() => handleEditarReceta(receta)}
+                        >
                           <Icon icon="lucide:edit" className="text-primary" />
                         </Button>
-                        <Button isIconOnly variant="light" size="sm" onPress={() => cambiarEstadoReceta(receta.id, receta.estado === 'Activa' ? 'Inactiva' : 'Activa')}>
-                          <Icon icon={receta.estado === 'Activa' ? 'lucide:x' : 'lucide:check'} className={receta.estado === 'Activa' ? 'text-danger' : 'text-success'} />
+                        <Button 
+                          isIconOnly 
+                          variant="light" 
+                          size="sm" 
+                          onPress={() => cambiarEstadoReceta(
+                            receta.id, 
+                            receta.estado === 'Activa' ? 'Inactiva' : 'Activa'
+                          )}
+                        >
+                          <Icon 
+                            icon={receta.estado === 'Activa' ? 'lucide:x' : 'lucide:check'} 
+                            className={receta.estado === 'Activa' ? 'text-danger' : 'text-success'} 
+                          />
                         </Button>
                       </div>
                     </TableCell>
@@ -285,7 +329,7 @@ const GestionRecetasPage: React.FC = () => {
         </Card>
       </motion.div>
 
-      <Modal isOpen={isOpen} onOpenChange={onOpenChange} size="3xl">
+      <Modal isOpen={isOpen} onOpenChange={onOpenChange} size="3xl" scrollBehavior="inside">
         <ModalContent>
           {(onClose) => (
             <DetalleReceta 
@@ -298,7 +342,7 @@ const GestionRecetasPage: React.FC = () => {
                   await handleGuardarReceta(nuevaReceta);
                   onClose();
                 } catch (error) {
-                  // Error ya manejado en handleGuardarReceta
+                  // Error ya manejado
                 }
               }}
             />
@@ -335,7 +379,7 @@ const DetalleReceta: React.FC<DetalleRecetaProps> = ({ receta, mode, productos, 
   return (
     <>
       <ModalHeader>
-        {mode === 'crear' ? 'Nueva Receta' : mode === 'editar' ? 'Editar Receta' : 'Detalle de Receta'}
+        {mode === 'crear' ? '➕ Nueva Receta' : mode === 'editar' ? '✏️ Editar Receta' : '👁️ Detalle de Receta'}
       </ModalHeader>
       <ModalBody>
         {mode === 'ver' ? (
@@ -378,28 +422,28 @@ const VistaReceta: React.FC<VistaRecetaProps> = ({ receta }) => {
     <div className="space-y-6">
       <div>
         <h3 className="text-xl font-semibold mb-2">{receta.nombre}</h3>
-        <p className="text-default-500">{receta.descripcion}</p>
+        {receta.descripcion && (
+          <p className="text-default-500">{receta.descripcion}</p>
+        )}
       </div>
       
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div>
-          <p className="text-sm text-default-500">Categoría</p>
-          <p className="font-medium">{receta.categoria}</p>
-        </div>
-        <div>
-          <p className="text-sm text-default-500">Asignatura</p>
-          <p className="font-medium">{receta.asignatura}</p>
-        </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
           <p className="text-sm text-default-500">Estado</p>
-          <p className="font-medium">{receta.estado}</p>
+          <Chip color={receta.estado === 'Activa' ? 'success' : 'danger'} size="sm">
+            {receta.estado}
+          </Chip>
+        </div>
+        <div>
+          <p className="text-sm text-default-500">Ingredientes</p>
+          <p className="font-medium">{receta.ingredientes.length} ingredientes</p>
         </div>
       </div>
       
       <Divider />
       
       <div>
-        <h4 className="font-semibold mb-2">Ingredientes</h4>
+        <h4 className="font-semibold mb-3">📦 Ingredientes</h4>
         <Table aria-label="Ingredientes" removeWrapper>
           <TableHeader>
             <TableColumn>INGREDIENTE</TableColumn>
@@ -409,7 +453,9 @@ const VistaReceta: React.FC<VistaRecetaProps> = ({ receta }) => {
             {receta.ingredientes.map((ingrediente) => (
               <TableRow key={ingrediente.id}>
                 <TableCell>{ingrediente.productoNombre}</TableCell>
-                <TableCell>{ingrediente.cantidad} {ingrediente.unidadMedida}</TableCell>
+                <TableCell className="font-semibold">
+                  {ingrediente.cantidad} {ingrediente.unidadMedida}
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>
@@ -419,9 +465,9 @@ const VistaReceta: React.FC<VistaRecetaProps> = ({ receta }) => {
       <Divider />
       
       <div>
-        <h4 className="font-semibold mb-2">Instrucciones</h4>
-        <div className="whitespace-pre-line bg-default-50 p-4 rounded-md">
-          {receta.instrucciones}
+        <h4 className="font-semibold mb-3">📝 Instrucciones</h4>
+        <div className="whitespace-pre-line bg-default-50 p-4 rounded-md text-sm">
+          {receta.instrucciones || 'Sin instrucciones'}
         </div>
       </div>
     </div>
@@ -435,205 +481,218 @@ interface FormularioRecetaProps {
   onSave: (receta: IReceta) => Promise<void>;
 }
 
-const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(({ receta, mode, productos, onSave }, ref) => {
-  const [nombre, setNombre] = React.useState(receta?.nombre || '');
-  const [descripcion, setDescripcion] = React.useState(receta?.descripcion || '');
-  const [categoria, setCategoria] = React.useState(receta?.categoria || '');
-  const [asignatura, setAsignatura] = React.useState(receta?.asignatura || '');
-  const [instrucciones, setInstrucciones] = React.useState(receta?.instrucciones || '');
-  const [estado, setEstado] = React.useState<'Activa' | 'Inactiva'>(receta?.estado || 'Activa');
-  const [ingredientes, setIngredientes] = React.useState<IIngrediente[]>(receta?.ingredientes || []);
+const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
+  ({ receta, mode, productos, onSave }, ref) => {
+    const [nombre, setNombre] = React.useState(receta?.nombre || '');
+    const [descripcion, setDescripcion] = React.useState(receta?.descripcion || '');
+    const [instrucciones, setInstrucciones] = React.useState(receta?.instrucciones || '');
+    const [estado, setEstado] = React.useState<'Activa' | 'Inactiva'>(receta?.estado || 'Activa');
+    const [ingredientes, setIngredientes] = React.useState<IIngrediente[]>(receta?.ingredientes || []);
 
-  React.useImperativeHandle(ref, () => ({
-    submit: async () => {
-      if (!nombre.trim()) {
-        throw new Error('El nombre es requerido');
-      }
-      if (ingredientes.length === 0) {
-        throw new Error('Debe agregar al menos un ingrediente');
-      }
+    React.useImperativeHandle(ref, () => ({
+      submit: async () => {
+        // Validaciones
+        if (!nombre.trim()) {
+          alert('⚠️ El nombre es obligatorio');
+          throw new Error('El nombre es requerido');
+        }
+        if (ingredientes.length === 0) {
+          alert('⚠️ Debe agregar al menos un ingrediente');
+          throw new Error('Debe agregar al menos un ingrediente');
+        }
+        
+        // Validar que todos los ingredientes tengan producto y cantidad
+        for (let i = 0; i < ingredientes.length; i++) {
+          const ing = ingredientes[i];
+          if (!ing.productoId) {
+            alert(`⚠️ Seleccione un producto para el ingrediente ${i + 1}`);
+            throw new Error('Producto no seleccionado');
+          }
+          if (ing.cantidad <= 0) {
+            alert(`⚠️ La cantidad del ingrediente ${i + 1} debe ser mayor a 0`);
+            throw new Error('Cantidad inválida');
+          }
+        }
 
-      const recetaData: IReceta = {
-        id: receta?.id || '',
-        nombre,
-        descripcion,
-        categoria,
-        asignatura,
-        ingredientes,
-        instrucciones,
-        estado,
-        fechaCreacion: receta?.fechaCreacion || new Date().toISOString(),
-        fechaActualizacion: new Date().toISOString(),
+        const recetaData: IReceta = {
+          id: receta?.id || '',
+          nombre: nombre.trim(),
+          descripcion: descripcion.trim(),
+          ingredientes,
+          instrucciones: instrucciones.trim(),
+          estado,
+          fechaCreacion: receta?.fechaCreacion || new Date().toISOString(),
+          fechaActualizacion: new Date().toISOString(),
+        };
+
+        await onSave(recetaData);
+      }
+    }));
+
+    const agregarIngrediente = () => {
+      const nuevoIngrediente: IIngrediente = {
+        id: Date.now().toString(),
+        productoId: '',
+        productoNombre: '',
+        cantidad: 0,
+        unidadMedida: ''
       };
-
-      await onSave(recetaData);
-    }
-  }));
-
-  const agregarIngrediente = () => {
-    const nuevoIngrediente: IIngrediente = {
-      id: Date.now().toString(),
-      productoId: '',
-      productoNombre: '',
-      cantidad: 0,
-      unidadMedida: ''
+      setIngredientes([...ingredientes, nuevoIngrediente]);
     };
-    setIngredientes([...ingredientes, nuevoIngrediente]);
-  };
 
-  const actualizarIngrediente = (index: number, campo: keyof IIngrediente, valor: any) => {
-    const nuevosIngredientes = [...ingredientes];
-    
-    if (campo === 'productoId') {
-      const producto = productos.find(p => p.id === valor);
-      if (producto) {
+    const actualizarIngrediente = (index: number, campo: keyof IIngrediente, valor: any) => {
+      const nuevosIngredientes = [...ingredientes];
+      
+      if (campo === 'productoId') {
+        const producto = productos.find(p => p.id === valor);
+        if (producto) {
+          nuevosIngredientes[index] = {
+            ...nuevosIngredientes[index],
+            productoId: producto.id,
+            productoNombre: producto.nombre,
+            unidadMedida: producto.unidadMedida
+          };
+        }
+      } else {
         nuevosIngredientes[index] = {
           ...nuevosIngredientes[index],
-          productoId: producto.id,
-          productoNombre: producto.nombre,
-          unidadMedida: producto.unidadMedida
+          [campo]: valor
         };
       }
-    } else {
-      nuevosIngredientes[index] = {
-        ...nuevosIngredientes[index],
-        [campo]: valor
-      };
-    }
-    
-    setIngredientes(nuevosIngredientes);
-  };
+      
+      setIngredientes(nuevosIngredientes);
+    };
 
-  const eliminarIngrediente = (index: number) => {
-    setIngredientes(ingredientes.filter((_, i) => i !== index));
-  };
+    const eliminarIngrediente = (index: number) => {
+      setIngredientes(ingredientes.filter((_, i) => i !== index));
+    };
 
-  return (
-    <div className="space-y-4">
-      <Input
-        label="Nombre"
-        placeholder="Nombre de la receta"
-        value={nombre}
-        onValueChange={setNombre}
-        isRequired
-      />
-      
-      <Textarea
-        label="Descripción"
-        placeholder="Descripción breve de la receta"
-        value={descripcion}
-        onValueChange={setDescripcion}
-      />
-      
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+    return (
+      <div className="space-y-4">
         <Input
-          label="Categoría"
-          placeholder="Categoría de la receta"
-          value={categoria}
-          onValueChange={setCategoria}
+          label="Nombre de la Receta"
+          placeholder="Ej: Pan Amasado, Torta de Chocolate, etc."
+          value={nombre}
+          onValueChange={setNombre}
           isRequired
+          variant="bordered"
         />
-        <Input
-          label="Asignatura"
-          placeholder="Asignatura relacionada"
-          value={asignatura}
-          onValueChange={setAsignatura}
-          isRequired
+        
+        <Textarea
+          label="Descripción (Opcional)"
+          placeholder="Descripción breve de la receta..."
+          value={descripcion}
+          onValueChange={setDescripcion}
+          variant="bordered"
+          minRows={2}
         />
-      </div>
-      
-      <Divider />
-      
-      <div>
-        <div className="flex justify-between items-center mb-2">
-          <h4 className="font-semibold">Ingredientes</h4>
-          <Button 
-            size="sm" 
-            color="primary" 
-            variant="flat"
-            startContent={<Icon icon="lucide:plus" />}
-            onPress={agregarIngrediente}
-          >
-            Agregar Ingrediente
-          </Button>
+        
+        <Divider />
+        
+        <div>
+          <div className="flex justify-between items-center mb-3">
+            <h4 className="font-semibold">📦 Ingredientes</h4>
+            <Button 
+              size="sm" 
+              color="primary" 
+              variant="flat"
+              startContent={<Icon icon="lucide:plus" />}
+              onPress={agregarIngrediente}
+            >
+              Agregar
+            </Button>
+          </div>
+          
+          {ingredientes.length === 0 ? (
+            <div className="text-center p-8 bg-default-50 rounded-lg">
+              <Icon icon="lucide:package-open" className="text-default-300 text-4xl mx-auto mb-2" />
+              <p className="text-default-500 text-sm">
+                No hay ingredientes. Click en "Agregar" para comenzar.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {ingredientes.map((ingrediente, index) => (
+                <Card key={ingrediente.id || index} shadow="none" className="border-2 border-default-200">
+                  <CardBody className="p-3">
+                    <div className="grid grid-cols-1 md:grid-cols-[2fr_1fr_auto_auto] gap-3 items-end">
+                      <Select 
+                        label="Producto"
+                        placeholder="Seleccione producto"
+                        selectedKeys={ingrediente.productoId ? [ingrediente.productoId] : []}
+                        onSelectionChange={(keys) => actualizarIngrediente(index, 'productoId', Array.from(keys)[0])}
+                        size="sm"
+                        variant="bordered"
+                        isRequired
+                      >
+                        {productos.map((producto) => (
+                          <SelectItem key={producto.id}>
+                            {producto.nombre}
+                          </SelectItem>
+                        ))}
+                      </Select>
+                      
+                      <Input 
+                        type="number"
+                        label="Cantidad"
+                        placeholder="0"
+                        value={ingrediente.cantidad.toString()}
+                        onValueChange={(val) => actualizarIngrediente(index, 'cantidad', parseFloat(val) || 0)}
+                        size="sm"
+                        variant="bordered"
+                        min="0"
+                        step="0.01"
+                        endContent={
+                          <span className="text-xs text-default-400">
+                            {ingrediente.unidadMedida || 'unidad'}
+                          </span>
+                        }
+                      />
+                      
+                      <span className="text-sm text-default-500 mb-2">
+                        {ingrediente.unidadMedida || '-'}
+                      </span>
+                      
+                      <Button 
+                        isIconOnly 
+                        variant="light" 
+                        size="sm"
+                        color="danger"
+                        onPress={() => eliminarIngrediente(index)}
+                      >
+                        <Icon icon="lucide:trash" />
+                      </Button>
+                    </div>
+                  </CardBody>
+                </Card>
+              ))}
+            </div>
+          )}
         </div>
         
-        <Table aria-label="Ingredientes" removeWrapper>
-          <TableHeader>
-            <TableColumn>PRODUCTO</TableColumn>
-            <TableColumn>CANTIDAD</TableColumn>
-            <TableColumn>UNIDAD</TableColumn>
-            <TableColumn>ACCIONES</TableColumn>
-          </TableHeader>
-          <TableBody emptyContent="No hay ingredientes agregados">
-            {ingredientes.map((ingrediente, index) => (
-              <TableRow key={ingrediente.id || index}>
-                <TableCell>
-                  <Select 
-                    placeholder="Seleccione producto"
-                    selectedKeys={ingrediente.productoId ? [ingrediente.productoId] : []}
-                    onSelectionChange={(keys) => actualizarIngrediente(index, 'productoId', Array.from(keys)[0])}
-                    size="sm"
-                    isRequired
-                  >
-                    {productos.map((producto) => (
-                      <SelectItem key={producto.id}>
-                        {producto.nombre}
-                      </SelectItem>
-                    ))}
-                  </Select>
-                </TableCell>
-                <TableCell>
-                  <Input 
-                    type="number"
-                    placeholder="Cantidad"
-                    value={ingrediente.cantidad.toString()}
-                    onValueChange={(val) => actualizarIngrediente(index, 'cantidad', parseFloat(val) || 0)}
-                    size="sm"
-                    min="0"
-                    step="0.01"
-                  />
-                </TableCell>
-                <TableCell>
-                  <span className="text-sm">{ingrediente.unidadMedida || '-'}</span>
-                </TableCell>
-                <TableCell>
-                  <Button 
-                    isIconOnly 
-                    variant="light" 
-                    size="sm"
-                    color="danger"
-                    onPress={() => eliminarIngrediente(index)}
-                  >
-                    <Icon icon="lucide:trash" />
-                  </Button>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+        <Divider />
+        
+        <Textarea
+          label="Instrucciones (Opcional)"
+          placeholder="Paso 1: ...&#10;Paso 2: ...&#10;Paso 3: ..."
+          value={instrucciones}
+          onValueChange={setInstrucciones}
+          variant="bordered"
+          minRows={5}
+        />
+        
+        <Select 
+          label="Estado"
+          selectedKeys={[estado]}
+          onSelectionChange={(keys) => setEstado(Array.from(keys)[0] as 'Activa' | 'Inactiva')}
+          variant="bordered"
+        >
+          <SelectItem key="Activa">Activa</SelectItem>
+          <SelectItem key="Inactiva">Inactiva</SelectItem>
+        </Select>
       </div>
-      
-      <Divider />
-      
-      <Textarea
-        label="Instrucciones"
-        placeholder="Instrucciones paso a paso para preparar la receta"
-        value={instrucciones}
-        onValueChange={setInstrucciones}
-        minRows={5}
-      />
-      
-      <Select 
-        label="Estado"
-        selectedKeys={[estado]}
-        onSelectionChange={(keys) => setEstado(Array.from(keys)[0] as 'Activa' | 'Inactiva')}
-      >
-        <SelectItem key="Activa">Activa</SelectItem>
-        <SelectItem key="Inactiva">Inactiva</SelectItem>
-      </Select>
-    </div>
-  );
-});
+    );
+  }
+);
 
 export default GestionRecetasPage;

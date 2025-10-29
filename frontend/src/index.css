@@ -46,7 +46,7 @@ body {
 .header {
   @apply sticky top-0 z-30 bg-background/80 backdrop-blur-md shadow-custom;
 }
-
+ 
 /* Estilos para el footer */
 .footer {
   @apply py-4 text-center text-sm text-default-500;

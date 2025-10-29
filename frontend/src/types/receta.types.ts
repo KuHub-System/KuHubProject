@@ -22,10 +22,8 @@ export interface IReceta {
   id: string;
   nombre: string;
   descripcion: string;
-  categoria: string;
   ingredientes: IIngrediente[];
   instrucciones: string;
-  asignatura: string;
   estado: 'Activa' | 'Inactiva';
   fechaCreacion: string;
   fechaActualizacion: string;
@@ -37,10 +35,8 @@ export interface IReceta {
 export interface ICrearReceta {
   nombre: string;
   descripcion: string;
-  categoria: string;
   ingredientes: Omit<IIngrediente, 'id'>[];
   instrucciones: string;
-  asignatura: string;
   estado: 'Activa' | 'Inactiva';
 }
 
@@ -51,10 +47,8 @@ export interface IActualizarReceta {
   id: string;
   nombre?: string;
   descripcion?: string;
-  categoria?: string;
   ingredientes?: IIngrediente[];
   instrucciones?: string;
-  asignatura?: string;
   estado?: 'Activa' | 'Inactiva';
 }
 

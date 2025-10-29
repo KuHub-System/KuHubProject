@@ -1,7 +1,6 @@
 import React from 'react';
 import { Button, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter } from '@heroui/react';
 
-// Definiciones de interfaces
 interface FinalOrder {
     producto: string;
     cantidad: number;
@@ -12,21 +11,25 @@ interface FinalOrder {
 interface FinProcesoModalProps {
     isOpen: boolean;
     onClose: () => void;
+    onGenerarPDFs: () => void; // Nueva prop
     finalOrderData: FinalOrder[];
 }
 
-const FinProcesoModal: React.FC<FinProcesoModalProps> = ({ isOpen, onClose, finalOrderData }: FinProcesoModalProps) => {
-
-    const handleDescargarPDF = () => {
-        window.print();
-    };
+const FinProcesoModal: React.FC<FinProcesoModalProps> = ({ 
+    isOpen, 
+    onClose, 
+    onGenerarPDFs,
+    finalOrderData 
+}) => {
 
     return (
         <Modal isOpen={isOpen} onOpenChange={onClose} size="xl">
             <ModalContent id="final-order-modal">
                 {(modalOnClose) => (
                     <>
-                        <ModalHeader>Paso 5: Fin del Proceso</ModalHeader>
+                        <ModalHeader>
+                            Paso 5: Fin del Proceso
+                        </ModalHeader>
                         <ModalBody>
                             {finalOrderData && finalOrderData.length > 0 ? (
                                 <div className="space-y-4">
@@ -58,8 +61,8 @@ const FinProcesoModal: React.FC<FinProcesoModalProps> = ({ isOpen, onClose, fina
                                 <p>No se ha realizado un pedido final.</p>
                             )}
                         </ModalBody>
-                        <ModalFooter className="no-print">
-                            <Button color="primary" onPress={handleDescargarPDF}>
+                        <ModalFooter>
+                            <Button color="primary" onPress={onGenerarPDFs}>
                                 Descargar PDF
                             </Button>
                             <Button color="success" onPress={modalOnClose}>

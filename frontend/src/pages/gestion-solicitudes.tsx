@@ -341,97 +341,154 @@ const GestionSolicitudesPage: React.FC = () => {
               removeWrapper
             >
               <TableHeader>
-                {esAdmin && <TableColumn>PROFESOR</TableColumn>}
-                <TableColumn>ASIGNATURA</TableColumn>
-                <TableColumn>FECHA CLASE</TableColumn>
-                <TableColumn>RECETA</TableColumn>
-                <TableColumn>PRODUCTOS</TableColumn>
-                <TableColumn>ESTADO</TableColumn>
-                <TableColumn>ACCIONES</TableColumn>
+                {esAdmin ? (
+                  // Header para Admin (7 columnas)
+                  <>
+                    <TableColumn>PROFESOR</TableColumn>
+                    <TableColumn>ASIGNATURA</TableColumn>
+                    <TableColumn>FECHA CLASE</TableColumn>
+                    <TableColumn>RECETA</TableColumn>
+                    <TableColumn>PRODUCTOS</TableColumn>
+                    <TableColumn>ESTADO</TableColumn>
+                    <TableColumn>ACCIONES</TableColumn>
+                  </>
+                ) : (
+                  // Header para Profesor (6 columnas)
+                  <>
+                    <TableColumn>ASIGNATURA</TableColumn>
+                    <TableColumn>FECHA CLASE</TableColumn>
+                    <TableColumn>RECETA</TableColumn>
+                    <TableColumn>PRODUCTOS</TableColumn>
+                    <TableColumn>ESTADO</TableColumn>
+                    <TableColumn>ACCIONES</TableColumn>
+                  </>
+                )}
               </TableHeader>
               <TableBody emptyContent="No hay solicitudes para mostrar">
                 {solicitudesFiltradas.map((solicitud) => (
                   <TableRow key={solicitud.id}>
-                    {esAdmin && (
-                      <TableCell>{solicitud.profesorNombre}</TableCell>
+                    {esAdmin ? (
+                      // Versión Admin (7 celdas)
+                      <>
+                        <TableCell>{solicitud.profesorNombre}</TableCell>
+                        <TableCell>
+                          <div>
+                            <p className="font-medium">{solicitud.asignaturaNombre}</p>
+                            {solicitud.esCustom && (
+                              <Chip size="sm" color="primary" variant="flat">Personalizado</Chip>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          {new Date(solicitud.fecha).toLocaleDateString('es-CL')}
+                        </TableCell>
+                        <TableCell>
+                          {solicitud.recetaNombre || <span className="text-default-400">Sin receta</span>}
+                        </TableCell>
+                        <TableCell>
+                          <Chip size="sm">{solicitud.items.length} productos</Chip>
+                        </TableCell>
+                        <TableCell>
+                          <Chip
+                            size="sm"
+                            color={getColorEstado(solicitud.estado)}
+                            variant="flat"
+                          >
+                            {solicitud.estado}
+                          </Chip>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex gap-2">
+                            {solicitud.estado === 'Pendiente' && (
+                              <>
+                                <Tooltip content="Aceptar">
+                                  <Button
+                                    isIconOnly
+                                    size="sm"
+                                    color="success"
+                                    variant="flat"
+                                    onPress={() => abrirModalAprobar(solicitud)}
+                                  >
+                                    <Icon icon="lucide:check" />
+                                  </Button>
+                                </Tooltip>
+                                <Tooltip content="Rechazar">
+                                  <Button
+                                    isIconOnly
+                                    size="sm"
+                                    color="danger"
+                                    variant="flat"
+                                    onPress={() => abrirModalRechazar(solicitud)}
+                                  >
+                                    <Icon icon="lucide:x" />
+                                  </Button>
+                                </Tooltip>
+                              </>
+                            )}
+                            {solicitud.estado === 'Rechazada' && solicitud.comentarioRechazo && (
+                              <Tooltip content={`Motivo: ${solicitud.comentarioRechazo}`}>
+                                <Button isIconOnly size="sm" variant="light">
+                                  <Icon icon="lucide:message-circle" className="text-warning" />
+                                </Button>
+                              </Tooltip>
+                            )}
+                          </div>
+                        </TableCell>
+                      </>
+                    ) : (
+                      // Versión Profesor (6 celdas)
+                      <>
+                        <TableCell>
+                          <div>
+                            <p className="font-medium">{solicitud.asignaturaNombre}</p>
+                            {solicitud.esCustom && (
+                              <Chip size="sm" color="primary" variant="flat">Personalizado</Chip>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          {new Date(solicitud.fecha).toLocaleDateString('es-CL')}
+                        </TableCell>
+                        <TableCell>
+                          {solicitud.recetaNombre || <span className="text-default-400">Sin receta</span>}
+                        </TableCell>
+                        <TableCell>
+                          <Chip size="sm">{solicitud.items.length} productos</Chip>
+                        </TableCell>
+                        <TableCell>
+                          <Chip
+                            size="sm"
+                            color={getColorEstado(solicitud.estado)}
+                            variant="flat"
+                          >
+                            {solicitud.estado}
+                          </Chip>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex gap-2">
+                            {solicitud.estado === 'Pendiente' && (
+                              <Tooltip content="Eliminar">
+                                <Button
+                                  isIconOnly
+                                  size="sm"
+                                  variant="light"
+                                  onPress={() => handleEliminar(solicitud)}
+                                >
+                                  <Icon icon="lucide:trash" className="text-danger" />
+                                </Button>
+                              </Tooltip>
+                            )}
+                            {solicitud.estado === 'Rechazada' && solicitud.comentarioRechazo && (
+                              <Tooltip content={`Motivo: ${solicitud.comentarioRechazo}`}>
+                                <Button isIconOnly size="sm" variant="light">
+                                  <Icon icon="lucide:message-circle" className="text-warning" />
+                                </Button>
+                              </Tooltip>
+                            )}
+                          </div>
+                        </TableCell>
+                      </>
                     )}
-                    <TableCell>
-                      <div>
-                        <p className="font-medium">{solicitud.asignaturaNombre}</p>
-                        {solicitud.esCustom && (
-                          <Chip size="sm" color="primary" variant="flat">Personalizado</Chip>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      {new Date(solicitud.fecha).toLocaleDateString('es-CL')}
-                    </TableCell>
-                    <TableCell>
-                      {solicitud.recetaNombre || <span className="text-default-400">Sin receta</span>}
-                    </TableCell>
-                    <TableCell>
-                      <Chip size="sm">{solicitud.items.length} productos</Chip>
-                    </TableCell>
-                    <TableCell>
-                      <Chip
-                        size="sm"
-                        color={getColorEstado(solicitud.estado)}
-                        variant="flat"
-                      >
-                        {solicitud.estado}
-                      </Chip>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex gap-2">
-                        {esAdmin && solicitud.estado === 'Pendiente' && (
-                          <>
-                            <Tooltip content="Aceptar">
-                              <Button
-                                isIconOnly
-                                size="sm"
-                                color="success"
-                                variant="flat"
-                                onPress={() => abrirModalAprobar(solicitud)}
-                              >
-                                <Icon icon="lucide:check" />
-                              </Button>
-                            </Tooltip>
-                            <Tooltip content="Rechazar">
-                              <Button
-                                isIconOnly
-                                size="sm"
-                                color="danger"
-                                variant="flat"
-                                onPress={() => abrirModalRechazar(solicitud)}
-                              >
-                                <Icon icon="lucide:x" />
-                              </Button>
-                            </Tooltip>
-                          </>
-                        )}
-
-                        {!esAdmin && solicitud.estado === 'Pendiente' && (
-                          <Tooltip content="Eliminar">
-                            <Button
-                              isIconOnly
-                              size="sm"
-                              variant="light"
-                              onPress={() => handleEliminar(solicitud)}
-                            >
-                              <Icon icon="lucide:trash" className="text-danger" />
-                            </Button>
-                          </Tooltip>
-                        )}
-
-                        {solicitud.estado === 'Rechazada' && solicitud.comentarioRechazo && (
-                          <Tooltip content={`Motivo: ${solicitud.comentarioRechazo}`}>
-                            <Button isIconOnly size="sm" variant="light">
-                              <Icon icon="lucide:message-circle" className="text-warning" />
-                            </Button>
-                          </Tooltip>
-                        )}
-                      </div>
-                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>

@@ -1,1236 +1,1427 @@
 import React, { useState, useEffect } from 'react';
-import { Card, CardBody, CardHeader, Progress, Divider, Button, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, useDisclosure, Input, Table, TableHeader, TableColumn, TableBody, TableRow, TableCell, Chip } from '@heroui/react';
+import { 
+  Card, 
+  CardBody, 
+  CardHeader, 
+  Button, 
+  Modal, 
+  ModalContent, 
+  ModalHeader, 
+  ModalBody, 
+  ModalFooter, 
+  useDisclosure, 
+  Input,
+  Chip,
+  Table,
+  TableHeader,
+  TableColumn,
+  TableBody,
+  TableRow,
+  TableCell,
+  Textarea,
+  Divider
+} from '@heroui/react';
 import { Icon } from '@iconify/react';
 import { useAuth } from '../contexts/auth-context';
 import { useHistory } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { PieChart, Pie, Cell, Tooltip } from 'recharts';
+import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+
+// IMPORTAR SERVICIOS REALES
+import { 
+  obtenerTodasSolicitudesService,
+  obtenerConteoSolicitudesService,
+  aprobarRechazarSolicitudService,
+  obtenerSolicitudesAceptadasParaPedidoService
+} from '../services/solicitud-service';
+import { obtenerProductos } from '../services/storage-service';
+import { 
+  obtenerProveedoresActivosService,
+  obtenerProveedoresConPreciosService,
+  IProveedor,
+  IProveedorConPrecio
+} from '../services/proveedor-service';
+import {
+  generarYDescargarTodosPDFs,
+  IProductoPedido,
+  IPedidoProveedor
+} from '../services/pdf-service';
+import { ISolicitud } from '../types/solicitud.types';
+import { IProducto } from '../types/producto.types';
+
+// IMPORTAR MODALES
 import ComprobacionModal from '../components/modals/ComprobacionModal';
 import CotizacionModal from '../components/modals/CotizacionModal';
 import FinProcesoModal from '../components/modals/FinProcesoModal';
-import { obtenerProductos } from '../services/storage-service';
-import { IProducto } from '../types/producto.types';
 
-// Definiciones de interfaces
-interface Pedido {
-    id: string;
-    asignatura: string;
-    profesor: string;
-    fechaSolicitud: string;
-    fechaClase: string;
-    estado: 'Pendiente' | 'Aprobado' | 'Rechazado' | 'Entregado';
-    items: {
-        id: string;
-        producto: string;
-        cantidad: number;
-        unidad: string;
-    }[];
-}
-
-interface ProductoConglomerado {
-    id: string;
-    nombre: string;
-    cantidadTotal: number;
-    unidad: string;
-    pedidos: number;
-    prioridad: 'Alta' | 'Media' | 'Baja';
-}
-
+/**
+ * Interfaces para el flujo de pedidos
+ */
 interface ComprobacionItem {
-    id: string;
-    nombre: string;
-    cantidadTotal: number;
-    unidad: string;
-    cantidadInventario: number;
-    totalEstimado: number;
-    total: number;
-}
-
-interface ProductoInventario {
-    nombre: string;
-    cantidad: number;
-    unidad: string;
+  id: string;
+  nombre: string;
+  cantidadTotal: number;
+  unidad: string;
+  cantidadInventario: number;
+  totalEstimado: number;
+  total: number;
 }
 
 interface Proveedor {
-    nombre: string;
-    precio: number;
+  nombre: string;
+  precio: number;
 }
 
 interface CotizacionItem {
-    producto: string;
-    cantidadNecesaria: number;
-    proveedores: Proveedor[];
-    selectedProveedor?: string;
+  producto: string;
+  cantidadNecesaria: number;
+  proveedores: Proveedor[];
+  selectedProveedor?: string;
 }
 
 interface FinalOrder {
-    producto: string;
-    cantidad: number;
-    proveedor: string;
-    precioTotal: number;
+  producto: string;
+  cantidad: number;
+  proveedor: string;
+  precioTotal: number;
 }
 
-interface Asignatura {
-    id: string;
-    nombre: string;
-    profesor: string;
-    pedidosSemanales: number;
-    ultimoPedido: string;
+interface AsignaturaConSolicitud {
+  id: string;
+  codigo: string;
+  nombre: string;
+  profesorCoordinador: string;
+  solicitud: ISolicitud | null;
+  totalSecciones: number;
 }
 
-// Datos simulados de asignaturas (esto debería venir de un servicio real)
-const mockAsignaturas: Asignatura[] = [
-    { id: '1', nombre: 'Panadería Básica', profesor: 'Juan Pérez', pedidosSemanales: 2, ultimoPedido: '2025-03-15' },
-    { id: '2', nombre: 'Pastelería Avanzada', profesor: 'María González', pedidosSemanales: 3, ultimoPedido: '2025-03-14' },
-    { id: '3', nombre: 'Cocina Internacional', profesor: 'Pedro Sánchez', pedidosSemanales: 1, ultimoPedido: '2025-03-13' },
-    { id: '4', nombre: 'Cocina Chilena', profesor: 'Ana Rodríguez', pedidosSemanales: 2, ultimoPedido: '2025-03-12' },
-    { id: '5', nombre: 'Técnicas de Conservación', profesor: 'Carlos Muñoz', pedidosSemanales: 1, ultimoPedido: '2025-03-11' },
-    { id: '6', nombre: 'Gastronomía Molecular', profesor: 'Laura Fernández', pedidosSemanales: 1, ultimoPedido: '2025-03-10' },
-    { id: '7', nombre: 'Cocina Mediterránea', profesor: 'Roberto Silva', pedidosSemanales: 2, ultimoPedido: '2025-03-09' },
-    { id: '8', nombre: 'Repostería Francesa', profesor: 'Sophie Dubois', pedidosSemanales: 3, ultimoPedido: '2025-03-08' },
-    { id: '9', nombre: 'Cocina Asiática', profesor: 'Kenji Tanaka', pedidosSemanales: 2, ultimoPedido: '2025-03-07' },
-    { id: '10', nombre: 'Chocolatería Artesanal', profesor: 'Diego Morales', pedidosSemanales: 1, ultimoPedido: '2025-03-06' },
-    { id: '11', nombre: 'Cocina Vegetariana', profesor: 'Carmen Ruiz', pedidosSemanales: 2, ultimoPedido: '2025-03-05' },
-    { id: '12', nombre: 'Enología y Maridaje', profesor: 'Antonio Vega', pedidosSemanales: 1, ultimoPedido: '2025-03-04' },
-    { id: '13', nombre: 'Cocina de Autor', profesor: 'Cristina Ortiz', pedidosSemanales: 2, ultimoPedido: '2025-03-03' },
-    { id: '14', nombre: 'Panadería Artesanal', profesor: 'Fernando Castro', pedidosSemanales: 3, ultimoPedido: '2025-03-02' },
-    { id: '15', nombre: 'Cocina Italiana', profesor: 'Giuseppe Romano', pedidosSemanales: 2, ultimoPedido: '2025-03-01' },
+const ASIGNATURAS_BASE = [
+  { id: '1', codigo: 'GAS-101', nombre: 'Panadería Básica', profesorCoordinador: 'Juan Pérez García', totalSecciones: 3 },
+  { id: '2', codigo: 'GAS-102', nombre: 'Pastelería Avanzada', profesorCoordinador: 'María González López', totalSecciones: 3 },
+  { id: '3', codigo: 'GAS-201', nombre: 'Cocina Internacional', profesorCoordinador: 'Pedro Sánchez Ruiz', totalSecciones: 2 },
+  { id: '4', codigo: 'GAS-202', nombre: 'Cocina Chilena', profesorCoordinador: 'Ana Rodríguez Silva', totalSecciones: 2 }
 ];
-
-// Datos simulados
-const mockUser = { nombre: 'Administrador' };
-const datosAsignaturas = [
-    { nombre: 'Panadería', value: 42, color: '#004A87', monto: 2100000 },
-    { nombre: 'Pastelería', value: 29, color: '#0070F0', monto: 1450000 },
-    { nombre: 'Cocina Internacional', value: 18, color: '#66aaf9', monto: 900000 },
-    { nombre: 'Cocina Chilena', value: 11, color: '#99c7fb', monto: 550000 },
-    { nombre: 'Otros cursos', value: 0, color: '#E30613', monto: 0 }
-];
-
-// Datos detallados de los pedidos para el progreso
-const progresoPedidosDetallados: (Pedido & { porcentaje: number })[] = [
-    { 
-        id: '3', 
-        porcentaje: 100,
-        asignatura: 'Panadería Básica',
-        profesor: 'Juan Pérez',
-        fechaSolicitud: '2025-03-10T14:20:00Z',
-        fechaClase: '2025-03-15T09:00:00Z',
-        estado: 'Entregado',
-        items: [
-            { id: '1', producto: 'Harina', cantidad: 5, unidad: 'kg' },
-            { id: '2', producto: 'Levadura', cantidad: 0.5, unidad: 'kg' },
-            { id: '3', producto: 'Sal', cantidad: 0.2, unidad: 'kg' }
-        ]
-    },
-    { 
-        id: '2', 
-        porcentaje: 75,
-        asignatura: 'Pastelería Avanzada',
-        profesor: 'María González',
-        fechaSolicitud: '2025-03-09T10:15:00Z',
-        fechaClase: '2025-03-14T14:00:00Z',
-        estado: 'Aprobado',
-        items: [
-            { id: '1', producto: 'Harina', cantidad: 3, unidad: 'kg' },
-            { id: '2', producto: 'Azúcar', cantidad: 2, unidad: 'kg' },
-            { id: '3', producto: 'Mantequilla', cantidad: 1.5, unidad: 'kg' },
-            { id: '4', producto: 'Huevos', cantidad: 24, unidad: 'unidad' }
-        ]
-    },
-    { 
-        id: '5', 
-        porcentaje: 50,
-        asignatura: 'Técnicas de Conservación',
-        profesor: 'Carlos Muñoz',
-        fechaSolicitud: '2025-03-06T09:30:00Z',
-        fechaClase: '2025-03-11T10:00:00Z',
-        estado: 'Aprobado',
-        items: [
-            { id: '1', producto: 'Sal', cantidad: 2, unidad: 'kg' },
-            { id: '2', producto: 'Azúcar', cantidad: 1.5, unidad: 'kg' },
-            { id: '3', producto: 'Vinagre', cantidad: 2, unidad: 'l' }
-        ]
-    },
-    { 
-        id: '4', 
-        porcentaje: 25,
-        asignatura: 'Cocina Chilena',
-        profesor: 'Ana Rodríguez',
-        fechaSolicitud: '2025-03-07T11:45:00Z',
-        fechaClase: '2025-03-12T14:00:00Z',
-        estado: 'Pendiente',
-        items: [
-            { id: '1', producto: 'Carne', cantidad: 3, unidad: 'kg' },
-            { id: '2', producto: 'Papas', cantidad: 2, unidad: 'kg' },
-            { id: '3', producto: 'Cebolla', cantidad: 1, unidad: 'kg' }
-        ]
-    },
-    { 
-        id: '1', 
-        porcentaje: 0,
-        asignatura: 'Cocina Internacional',
-        profesor: 'Pedro Sánchez',
-        fechaSolicitud: '2025-03-08T16:30:00Z',
-        fechaClase: '2025-03-13T10:00:00Z',
-        estado: 'Pendiente',
-        items: [
-            { id: '1', producto: 'Arroz', cantidad: 2, unidad: 'kg' },
-            { id: '2', producto: 'Aceite de Oliva', cantidad: 1, unidad: 'l' },
-            { id: '3', producto: 'Especias', cantidad: 0.5, unidad: 'kg' }
-        ]
-    }
-];
-
-const mockProductosConglomerados: ProductoConglomerado[] = [
-    { id: '1', nombre: 'Harina', cantidadTotal: 8, unidad: 'kg', pedidos: 5, prioridad: 'Alta' },
-    { id: '2', nombre: 'Azúcar', cantidadTotal: 3.5, unidad: 'kg', pedidos: 4, prioridad: 'Media' },
-    { id: '3', nombre: 'Huevos', cantidadTotal: 120, unidad: 'unidad', pedidos: 6, prioridad: 'Alta' },
-    { id: '4', nombre: 'Mantequilla', cantidadTotal: 1.5, unidad: 'kg', pedidos: 3, prioridad: 'Media' },
-    { id: '5', nombre: 'Aceite de Oliva', cantidadTotal: 1, unidad: 'l', pedidos: 2, prioridad: 'Baja' },
-    { id: '6', nombre: 'Levadura', cantidadTotal: 0.5, unidad: 'kg', pedidos: 4, prioridad: 'Alta' },
-    { id: '7', nombre: 'Sal', cantidadTotal: 2.2, unidad: 'kg', pedidos: 5, prioridad: 'Baja' },
-    { id: '8', nombre: 'Leche', cantidadTotal: 12, unidad: 'l', pedidos: 3, prioridad: 'Media' }
-];
-
-const mockInventario: ProductoInventario[] = [
-    { nombre: 'Harina', cantidad: 5, unidad: 'kg' },
-    { nombre: 'Azúcar', cantidad: 10, unidad: 'kg' },
-    { nombre: 'Huevos', cantidad: 50, unidad: 'unidad' },
-    { nombre: 'Mantequilla', cantidad: 2, unidad: 'kg' },
-    { nombre: 'Aceite de Oliva', cantidad: 0.5, unidad: 'l' },
-    { nombre: 'Levadura', cantidad: 1, unidad: 'kg' },
-    { nombre: 'Sal', cantidad: 3, unidad: 'kg' },
-    { nombre: 'Leche', cantidad: 10, unidad: 'l' }
-];
-
-const mockProveedores: Record<string, Proveedor[]> = {
-    'Harina': [{ nombre: 'Proveedor A', precio: 1.5 }, { nombre: 'Proveedor B', precio: 1.6 }],
-    'Azúcar': [{ nombre: 'Proveedor A', precio: 1.2 }, { nombre: 'Proveedor C', precio: 1.3 }],
-    'Huevos': [{ nombre: 'Proveedor D', precio: 0.2 }, { nombre: 'Proveedor E', precio: 0.25 }],
-    'Mantequilla': [{ nombre: 'Proveedor B', precio: 5.5 }, { nombre: 'Proveedor C', precio: 5.8 }],
-    'Aceite de Oliva': [{ nombre: 'Proveedor A', precio: 8.0 }, { nombre: 'Proveedor C', precio: 8.5 }],
-    'Levadura': [{ nombre: 'Proveedor D', precio: 4.0 }, { nombre: 'Proveedor E', precio: 4.2 }],
-    'Sal': [{ nombre: 'Proveedor B', precio: 0.5 }, { nombre: 'Proveedor C', precio: 0.6 }],
-    'Leche': [{ nombre: 'Proveedor A', precio: 1.1 }, { nombre: 'Proveedor D', precio: 1.2 }]
-};
 
 /**
- * FUNCIONES EXPORTABLES PARA CONTROL DE SOLICITUDES
- * Estas funciones pueden ser importadas en otras páginas para verificar
- * si se permite crear/editar solicitudes según el estado del proceso
- */
-
-/**
- * Verifica si actualmente se pueden crear o editar solicitudes
- * Solo se permite durante el paso 2 (proceso activo)
+ * FUNCIONES EXPORTABLES
  */
 export const puedenCrearseSolicitudes = (): boolean => {
-    const procesoActivo = localStorage.getItem('procesoActivo');
-    const currentStep = localStorage.getItem('currentStep');
-    
-    return procesoActivo === 'true' && currentStep === '2';
+  const procesoActivo = localStorage.getItem('procesoActivo');
+  const currentStep = localStorage.getItem('currentStep');
+  return procesoActivo === 'true' && currentStep === '2';
 };
 
-/**
- * Obtiene información del proceso actual
- */
 export const obtenerEstadoProceso = () => {
-    const procesoActivo = localStorage.getItem('procesoActivo');
-    const fechaInicio = localStorage.getItem('fechaInicioProceso');
-    const fechaFin = localStorage.getItem('fechaFinProceso');
-    const currentStep = localStorage.getItem('currentStep');
-    
-    return {
-        activo: procesoActivo === 'true',
-        paso: currentStep ? parseInt(currentStep) : 1,
-        fechaInicio: fechaInicio || null,
-        fechaFin: fechaFin || null,
-        permiteCrearSolicitudes: procesoActivo === 'true' && currentStep === '2'
-    };
+  const procesoActivo = localStorage.getItem('procesoActivo');
+  const fechaInicio = localStorage.getItem('fechaInicioProceso');
+  const fechaFin = localStorage.getItem('fechaFinProceso');
+  const currentStep = localStorage.getItem('currentStep');
+  
+  return {
+    activo: procesoActivo === 'true',
+    paso: currentStep ? parseInt(currentStep) : 1,
+    fechaInicio: fechaInicio || null,
+    fechaFin: fechaFin || null,
+    permiteCrearSolicitudes: procesoActivo === 'true' && currentStep === '2'
+  };
 };
 
-/**
- * Calcula los días restantes del proceso
- */
 export const calcularDiasRestantesProceso = (): number => {
-    const fechaFin = localStorage.getItem('fechaFinProceso');
-    if (!fechaFin) return 0;
-    
-    const ahora = new Date();
-    const fechaFinDate = new Date(fechaFin);
-    const diferencia = fechaFinDate.getTime() - ahora.getTime();
-    const dias = Math.ceil(diferencia / (1000 * 60 * 60 * 24));
-    
-    return Math.max(0, dias);
+  const fechaFin = localStorage.getItem('fechaFinProceso');
+  if (!fechaFin) return 0;
+  
+  const ahora = new Date();
+  const fechaFinDate = new Date(fechaFin);
+  const diferencia = fechaFinDate.getTime() - ahora.getTime();
+  const dias = Math.ceil(diferencia / (1000 * 60 * 60 * 24));
+  
+  return Math.max(0, dias);
 };
 
+const COLORS_PIE = ['#F5A524', '#17C964', '#F31260', '#9ca3af'];
+
 /**
- * Página de dashboard
+ * Dashboard Principal
  */
 const DashboardPage: React.FC = () => {
-    const user = mockUser;
-    const history = useHistory();
+  const { user } = useAuth();
+  const history = useHistory();
+  
+  // Estados para datos reales
+  const [solicitudes, setSolicitudes] = useState<ISolicitud[]>([]);
+  const [productos, setProductos] = useState<IProducto[]>([]);
+  const [productosBajoStock, setProductosBajoStock] = useState<IProducto[]>([]);
+  const [asignaturasConSolicitudes, setAsignaturasConSolicitudes] = useState<AsignaturaConSolicitud[]>([]);
+  const [conteoSolicitudes, setConteoSolicitudes] = useState({
+    pendientes: 0,
+    aceptadas: 0,
+    rechazadas: 0,
+    total: 0
+  });
+  
+  // Estados para el proceso de pedidos
+  const [currentStep, setCurrentStep] = useState(1);
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [procesoActivo, setProcesoActivo] = useState(false);
+  const [fechaInicioProceso, setFechaInicioProceso] = useState<string | null>(null);
+  const [fechaFinProceso, setFechaFinProceso] = useState<string | null>(null);
+  
+  // Estados para modales
+  const { isOpen: isPendientesOpen, onOpen: onPendientesOpen, onOpenChange: onPendientesOpenChange } = useDisclosure();
+  const { isOpen: isDetalleOpen, onOpen: onDetalleOpen, onOpenChange: onDetalleOpenChange } = useDisclosure();
+  const { isOpen: isRechazarOpen, onOpen: onRechazarOpen, onOpenChange: onRechazarOpenChange } = useDisclosure();
+  const { isOpen: isComprobacionOpen, onOpen: onComprobacionOpen, onOpenChange: onComprobacionOpenChange } = useDisclosure();
+  const { isOpen: isCotizacionOpen, onOpen: onCotizacionOpen, onOpenChange: onCotizacionOpenChange } = useDisclosure();
+  const { isOpen: isFinalOpen, onOpen: onFinalOpen, onOpenChange: onFinalOpenChange } = useDisclosure();
+  
+  const [solicitudSeleccionada, setSolicitudSeleccionada] = useState<ISolicitud | null>(null);
+  const [comentarioRechazo, setComentarioRechazo] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Estados para el flujo de pedidos
+  const [comprobacionData, setComprobacionData] = useState<ComprobacionItem[]>([]);
+  const [cotizacionData, setCotizacionData] = useState<CotizacionItem[]>([]);
+  const [finalOrderData, setFinalOrderData] = useState<FinalOrder[]>([]);
+  const [proveedoresDisponibles, setProveedoresDisponibles] = useState<IProveedor[]>([]);
+
+  // Cargar datos iniciales
+  useEffect(() => {
+    cargarDatos();
+    cargarEstadoProceso();
+  }, []);
+
+  const cargarDatos = async () => {
+    try {
+      setIsLoading(true);
+      
+      const [solicitudesData, conteo, proveedores] = await Promise.all([
+        obtenerTodasSolicitudesService(),
+        obtenerConteoSolicitudesService(),
+        obtenerProveedoresActivosService()
+      ]);
+      
+      setSolicitudes(solicitudesData);
+      setConteoSolicitudes(conteo);
+      setProveedoresDisponibles(proveedores);
+      
+      const productosData = obtenerProductos();
+      setProductos(productosData);
+      
+      const bajoStock = productosData.filter(p => p.stock <= p.stockMinimo);
+      setProductosBajoStock(bajoStock);
+      
+      const asignaturasRelacionadas: AsignaturaConSolicitud[] = ASIGNATURAS_BASE.map(asignatura => {
+        const solicitud = solicitudesData.find(s => s.asignaturaId === asignatura.id) || null;
+        return { ...asignatura, solicitud };
+      });
+      setAsignaturasConSolicitudes(asignaturasRelacionadas);
+      
+      console.log('✅ Datos del dashboard cargados');
+      console.log('📦 Proveedores activos:', proveedores.length);
+    } catch (error) {
+      console.error('❌ Error al cargar datos del dashboard:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const cargarEstadoProceso = () => {
+    const procesoGuardado = localStorage.getItem('procesoActivo');
+    const fechaInicioGuardada = localStorage.getItem('fechaInicioProceso');
+    const fechaFinGuardada = localStorage.getItem('fechaFinProceso');
+    const stepGuardado = localStorage.getItem('currentStep');
     
-    // Estados para productos reales
-    const [productos, setProductos] = useState<IProducto[]>([]);
-    const [productosBajoStock, setProductosBajoStock] = useState<IProducto[]>([]);
+    if (procesoGuardado === 'true' && fechaInicioGuardada && fechaFinGuardada) {
+      setProcesoActivo(true);
+      setFechaInicioProceso(fechaInicioGuardada);
+      setFechaFinProceso(fechaFinGuardada);
+      setStartDate(fechaInicioGuardada);
+      setEndDate(fechaFinGuardada);
+      
+      if (stepGuardado) {
+        setCurrentStep(parseInt(stepGuardado));
+      }
+    }
+  };
+
+  useEffect(() => {
+    if (procesoActivo) {
+      localStorage.setItem('currentStep', currentStep.toString());
+    }
+  }, [currentStep, procesoActivo]);
+
+  const calcularDiasRestantes = (): number => {
+    if (!fechaFinProceso) return 0;
+    return calcularDiasRestantesProceso();
+  };
+
+  const diasRestantes = procesoActivo ? calcularDiasRestantes() : 0;
+
+  const datosPieChart = [
+    { name: 'Pendientes', value: conteoSolicitudes.pendientes, color: COLORS_PIE[0] },
+    { name: 'Aceptadas', value: conteoSolicitudes.aceptadas, color: COLORS_PIE[1] },
+    { name: 'Rechazadas', value: conteoSolicitudes.rechazadas, color: COLORS_PIE[2] },
+    { 
+      name: 'Sin solicitud', 
+      value: ASIGNATURAS_BASE.length - conteoSolicitudes.total, 
+      color: COLORS_PIE[3] 
+    }
+  ].filter(item => item.value > 0);
+
+  // ==================== FUNCIONES DEL PROCESO ====================
+
+  const handleIniciarProceso = () => {
+    if (!startDate || !endDate) {
+      alert('⚠️ Por favor selecciona ambas fechas (inicio y término)');
+      return;
+    }
+
+    const fechaInicio = new Date(startDate);
+    const fechaFin = new Date(endDate);
+
+    if (fechaFin <= fechaInicio) {
+      alert('⚠️ La fecha de término debe ser posterior a la fecha de inicio');
+      return;
+    }
+
+    setProcesoActivo(true);
+    setFechaInicioProceso(startDate);
+    setFechaFinProceso(endDate);
+    setCurrentStep(2);
     
-    // Estado para el flujo de 6 pasos
-    const [currentStep, setCurrentStep] = useState(1);
-    const [startDate, setStartDate] = useState('');
-    const [endDate, setEndDate] = useState('');
-    const [procesoActivo, setProcesoActivo] = useState(false);
-    const [fechaInicioProceso, setFechaInicioProceso] = useState<string | null>(null);
-    const [fechaFinProceso, setFechaFinProceso] = useState<string | null>(null);
+    localStorage.setItem('procesoActivo', 'true');
+    localStorage.setItem('fechaInicioProceso', startDate);
+    localStorage.setItem('fechaFinProceso', endDate);
+    localStorage.setItem('currentStep', '2');
+
+    console.log(`✅ Proceso iniciado desde ${startDate} hasta ${endDate}`);
+    alert('✅ Proceso de pedidos iniciado. Los profesores ahora pueden crear solicitudes.');
+  };
+
+  const handleTerminarProceso = async () => {
+    const solicitudesPendientes = solicitudes.filter(s => s.estado === 'Pendiente');
     
-    const { isOpen: isComprobacionOpen, onOpen: onComprobacionOpen, onOpenChange: onComprobacionOpenChange } = useDisclosure();
-    const { isOpen: isCotizacionOpen, onOpen: onCotizacionOpen, onOpenChange: onCotizacionOpenChange } = useDisclosure();
-    const { isOpen: isFinalOpen, onOpen: onFinalOpen, onOpenChange: onFinalOpenChange } = useDisclosure();
+    if (solicitudesPendientes.length > 0) {
+      onPendientesOpen();
+      return;
+    }
 
-    // Estados para modales adicionales
-    const { isOpen: isDetalleOpen, onOpen: onDetalleOpen, onOpenChange: onDetalleOpenChange } = useDisclosure();
-    const { isOpen: isAsignaturasOpen, onOpen: onAsignaturasOpen, onOpenChange: onAsignaturasOpenChange } = useDisclosure();
-    const [pedidoSeleccionado, setPedidoSeleccionado] = useState<Pedido | null>(null);
+    if (window.confirm('¿Estás seguro de terminar el proceso de pedidos? Esto iniciará la comprobación de inventario.')) {
+      await iniciarComprobacion();
+    }
+  };
 
-    const [comprobacionData, setComprobacionData] = useState<ComprobacionItem[]>([]);
-    const [cotizacionData, setCotizacionData] = useState<CotizacionItem[]>([]);
-    const [finalOrderData, setFinalOrderData] = useState<FinalOrder[]>([]);
+  const handleCancelarProceso = () => {
+    if (window.confirm('¿Estás seguro de cancelar el proceso completo? Se perderá todo el progreso actual.')) {
+      resetearProceso();
+      alert('🔄 Proceso cancelado completamente');
+    }
+  };
 
-    // Cargar productos reales al montar el componente
-    useEffect(() => {
-        const cargarProductos = () => {
-            const productosReales = obtenerProductos();
-            setProductos(productosReales);
-            
-            // Filtrar productos con stock bajo
-            const bajoStock = productosReales.filter(p => p.stock <= p.stockMinimo);
-            setProductosBajoStock(bajoStock);
-        };
-        
-        cargarProductos();
-        
-        // Cargar estado del proceso desde localStorage
-        const procesoGuardado = localStorage.getItem('procesoActivo');
-        const fechaInicioGuardada = localStorage.getItem('fechaInicioProceso');
-        const fechaFinGuardada = localStorage.getItem('fechaFinProceso');
-        const stepGuardado = localStorage.getItem('currentStep');
-        const comprobacionGuardada = localStorage.getItem('comprobacionData');
-        const cotizacionGuardada = localStorage.getItem('cotizacionData');
-        
-        if (procesoGuardado === 'true' && fechaInicioGuardada && fechaFinGuardada) {
-            setProcesoActivo(true);
-            setFechaInicioProceso(fechaInicioGuardada);
-            setFechaFinProceso(fechaFinGuardada);
-            setStartDate(fechaInicioGuardada);
-            setEndDate(fechaFinGuardada);
-            
-            // Restaurar el paso actual
-            if (stepGuardado) {
-                setCurrentStep(parseInt(stepGuardado));
-            }
-            
-            // Restaurar datos de comprobación
-            if (comprobacionGuardada) {
-                try {
-                    setComprobacionData(JSON.parse(comprobacionGuardada));
-                } catch (e) {
-                    console.error('Error al cargar comprobación:', e);
-                }
-            }
-            
-            // Restaurar datos de cotización
-            if (cotizacionGuardada) {
-                try {
-                    setCotizacionData(JSON.parse(cotizacionGuardada));
-                } catch (e) {
-                    console.error('Error al cargar cotización:', e);
-                }
-            }
-        }
-    }, []);
+  const resetearProceso = () => {
+    setCurrentStep(1);
+    setComprobacionData([]);
+    setCotizacionData([]);
+    setFinalOrderData([]);
+    setProcesoActivo(false);
+    setFechaInicioProceso(null);
+    setFechaFinProceso(null);
+    setStartDate('');
+    setEndDate('');
+    
+    localStorage.removeItem('procesoActivo');
+    localStorage.removeItem('fechaInicioProceso');
+    localStorage.removeItem('fechaFinProceso');
+    localStorage.removeItem('currentStep');
+  };
 
-    // Guardar estado del proceso cuando cambie
-    useEffect(() => {
-        if (procesoActivo) {
-            localStorage.setItem('currentStep', currentStep.toString());
-        }
-    }, [currentStep, procesoActivo]);
+  // ==================== PASO 3: COMPROBACIÓN ====================
 
-    useEffect(() => {
-        if (comprobacionData.length > 0) {
-            localStorage.setItem('comprobacionData', JSON.stringify(comprobacionData));
-        }
-    }, [comprobacionData]);
+  const iniciarComprobacion = async () => {
+    try {
+      console.log('📦 Iniciando comprobación de inventario...');
+      
+      // Obtener solicitudes aceptadas
+      const solicitudesAceptadas = await obtenerSolicitudesAceptadasParaPedidoService();
+      console.log('✅ Solicitudes aceptadas:', solicitudesAceptadas.length);
+      
+      if (solicitudesAceptadas.length === 0) {
+        alert('⚠️ No hay solicitudes aceptadas para procesar');
+        return;
+      }
 
-    useEffect(() => {
-        if (cotizacionData.length > 0) {
-            localStorage.setItem('cotizacionData', JSON.stringify(cotizacionData));
-        }
-    }, [cotizacionData]);
-
-    // Verificar automáticamente si se alcanzó la fecha límite
-    useEffect(() => {
-        if (!procesoActivo || !fechaFinProceso) return;
-
-        const verificarFechaLimite = () => {
-            const ahora = new Date();
-            const fechaFin = new Date(fechaFinProceso);
-            
-            // Si ya pasó la fecha límite, terminar automáticamente
-            if (ahora >= fechaFin) {
-                handleTerminarProcesoAutomatico();
-            }
-        };
-
-        // Verificar inmediatamente
-        verificarFechaLimite();
-
-        // Verificar cada minuto
-        const intervalo = setInterval(verificarFechaLimite, 60000);
-
-        return () => clearInterval(intervalo);
-    }, [procesoActivo, fechaFinProceso]);
-
-    // Calcular estadísticas dinámicas
-    const estadisticas = {
-        pedidosCompletados: 85,
-        pedidosPendientes: progresoPedidosDetallados.filter(p => p.estado === 'Pendiente').length,
-        pedidosRechazados: 3,
-        stockBajo: productosBajoStock.length,
-        productosTotal: productos.length,
-        asignaturasActivas: mockAsignaturas.length
-    };
-
-    // Calcular días restantes del proceso
-    const calcularDiasRestantes = (): number => {
-        if (!fechaFinProceso) return 0;
-        const ahora = new Date();
-        const fechaFin = new Date(fechaFinProceso);
-        const diferencia = fechaFin.getTime() - ahora.getTime();
-        const dias = Math.ceil(diferencia / (1000 * 60 * 60 * 24));
-        return Math.max(0, dias);
-    };
-
-    const diasRestantes = procesoActivo ? calcularDiasRestantes() : 0;
-
-    // Variantes para las animaciones
-    const containerVariants = { hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.1 } } };
-    const itemVariants = { hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.4 } } };
-
-    const isStepActive = (step: number) => currentStep >= step;
-
-    // Función para ver detalles del pedido
-    const verDetallePedido = (pedido: Pedido) => {
-        setPedidoSeleccionado(pedido);
-        onDetalleOpen();
-    };
-
-    // Función para formatear fecha
-    const formatearFecha = (fechaISO: string) => {
-        const fecha = new Date(fechaISO);
-        return fecha.toLocaleDateString('es-CL', {
-            day: '2-digit',
-            month: '2-digit',
-            year: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
+      // Consolidar productos de todas las solicitudes
+      const productosConsolidados = new Map<string, { nombre: string, cantidad: number, unidad: string }>();
+      
+      solicitudesAceptadas.forEach(solicitud => {
+        solicitud.items.forEach(item => {
+          const key = item.productoNombre.toLowerCase();
+          if (productosConsolidados.has(key)) {
+            const existente = productosConsolidados.get(key)!;
+            existente.cantidad += item.cantidad;
+          } else {
+            productosConsolidados.set(key, {
+              nombre: item.productoNombre,
+              cantidad: item.cantidad,
+              unidad: item.unidadMedida
+            });
+          }
         });
-    };
+      });
 
-    // Función para renderizar estado
-    const renderEstado = (estado: string) => {
-        switch (estado) {
-            case 'Pendiente':
-                return <Chip color="warning" size="sm">{estado}</Chip>;
-            case 'Aprobado':
-                return <Chip color="primary" size="sm">{estado}</Chip>;
-            case 'Rechazado':
-                return <Chip color="danger" size="sm">{estado}</Chip>;
-            case 'Entregado':
-                return <Chip color="success" size="sm">{estado}</Chip>;
-            default:
-                return <Chip size="sm">{estado}</Chip>;
-        }
-    };
+      console.log('📊 Productos consolidados:', productosConsolidados.size);
 
-    // Funciones para navegar
-    const navegarAInventarioStockBajo = () => {
-        // Guardar filtro en sessionStorage para que el inventario lo recoja
-        sessionStorage.setItem('inventarioFiltro', 'stockBajo');
-        history.push('/inventario');
-    };
+      // Comparar con inventario
+      const inventarioActual = obtenerProductos();
+      const datosComprobacion: ComprobacionItem[] = [];
 
-    const navegarAPedidosPendientes = () => {
-        // Guardar filtro en sessionStorage
-        sessionStorage.setItem('pedidosFiltro', 'pendiente');
-        history.push('/gestion-pedidos');
-    };
+      productosConsolidados.forEach((consolidado, key) => {
+        const productoInventario = inventarioActual.find(
+          p => p.nombre.toLowerCase() === key
+        );
 
-    const mostrarAsignaturas = () => {
-        onAsignaturasOpen();
-    };
+        const cantidadInventario = productoInventario ? productoInventario.stock : 0;
+        const totalEstimado = Math.max(0, consolidado.cantidad - cantidadInventario);
 
-    // Funciones para gestionar el proceso de pedidos
-    const handleIniciarProceso = () => {
-        if (!startDate || !endDate) {
-            alert('Por favor selecciona ambas fechas (inicio y término)');
-            return;
-        }
-
-        const fechaInicio = new Date(startDate);
-        const fechaFin = new Date(endDate);
-
-        // Validar que la fecha de término sea posterior a la de inicio
-        if (fechaFin <= fechaInicio) {
-            alert('La fecha de término debe ser posterior a la fecha de inicio');
-            return;
-        }
-
-        // Guardar en estado y localStorage
-        setProcesoActivo(true);
-        setFechaInicioProceso(startDate);
-        setFechaFinProceso(endDate);
-        setCurrentStep(2);
-        
-        localStorage.setItem('procesoActivo', 'true');
-        localStorage.setItem('fechaInicioProceso', startDate);
-        localStorage.setItem('fechaFinProceso', endDate);
-        localStorage.setItem('currentStep', '2');
-
-        console.log(`✅ Proceso iniciado desde ${startDate} hasta ${endDate}`);
-    };
-
-    const handleCancelarProceso = () => {
-        if (window.confirm('¿Estás seguro de cancelar el proceso completo? Se perderá todo el progreso actual.')) {
-            resetearFlujo();
-            alert('Proceso cancelado completamente');
-        }
-    };
-
-    const handleTerminarProceso = () => {
-        // Confirmar antes de terminar
-        if (window.confirm('¿Estás seguro de terminar el proceso de pedidos? Esto iniciará la comprobación de inventario.')) {
-            iniciarComprobacion();
-        }
-    };
-
-    const handleTerminarProcesoAutomatico = () => {
-        console.log('⏰ Fecha límite alcanzada, terminando proceso automáticamente');
-        iniciarComprobacion();
-    };
-
-    const iniciarComprobacion = () => {
-        // NO limpiar el proceso activo aquí, solo avanzar al paso 3
-        handleComprobacionClick();
-    };
-
-    // Lógica del flujo de pedidos
-    const handleComprobacionClick = () => {
-        const data: ComprobacionItem[] = [
-            { id: '1', nombre: 'Harina', cantidadTotal: 8, unidad: 'kg' },
-            { id: '2', nombre: 'Azúcar', cantidadTotal: 3.5, unidad: 'kg' },
-            { id: '3', nombre: 'Huevos', cantidadTotal: 120, unidad: 'unidad' },
-            { id: '4', nombre: 'Mantequilla', cantidadTotal: 1.5, unidad: 'kg' },
-        ].map(p => {
-            const inventarioItem = mockInventario.find(inv => inv.nombre === p.nombre);
-            const cantidadInventario = inventarioItem ? inventarioItem.cantidad : 0;
-            const totalEstimado = Math.max(0, p.cantidadTotal - cantidadInventario);
-            return { 
-                ...p, 
-                cantidadInventario, 
-                totalEstimado, 
-                total: totalEstimado
-            };
+        datosComprobacion.push({
+          id: key,
+          nombre: consolidado.nombre,
+          cantidadTotal: consolidado.cantidad,
+          unidad: consolidado.unidad,
+          cantidadInventario,
+          totalEstimado,
+          total: totalEstimado
         });
-        setComprobacionData(data);
-        onComprobacionOpen();
-        setCurrentStep(3);
-    };
+      });
 
-    // Función para resetear el flujo
-    const resetearFlujo = () => {
-        setCurrentStep(1);
-        setComprobacionData([]);
-        setCotizacionData([]);
-        setFinalOrderData([]);
-        setProcesoActivo(false);
-        setFechaInicioProceso(null);
-        setFechaFinProceso(null);
-        setStartDate('');
-        setEndDate('');
-        
-        // Limpiar localStorage completamente
-        localStorage.removeItem('procesoActivo');
-        localStorage.removeItem('fechaInicioProceso');
-        localStorage.removeItem('fechaFinProceso');
-        localStorage.removeItem('currentStep');
-        localStorage.removeItem('comprobacionData');
-        localStorage.removeItem('cotizacionData');
-    };
+      console.log('✅ Datos de comprobación preparados:', datosComprobacion.length);
+      
+      setComprobacionData(datosComprobacion);
+      setCurrentStep(3);
+      onComprobacionOpen();
+      
+    } catch (error) {
+      console.error('❌ Error en comprobación:', error);
+      alert('Error al iniciar la comprobación de inventario');
+    }
+  };
 
-    // Función para rechazar específicamente - ahora solo cierra sin resetear
-    const handleRechazarComprobacion = () => {
-        onComprobacionOpenChange();
-        // Ya NO reseteamos el flujo, el proceso sigue activo
-    };
-
-    const handleRechazarCotizacion = () => {
-        onCotizacionOpenChange();
-        // Ya NO reseteamos el flujo, el proceso sigue activo
-    };
-
-    const handleAceptarComprobacion = (data: ComprobacionItem[]) => {
-        onComprobacionOpenChange();
-        const productosFaltantes = data.filter(p => p.total > p.cantidadInventario);
-        const dataParaCotizacion: CotizacionItem[] = productosFaltantes.map(p => ({
-            producto: p.nombre,
-            cantidadNecesaria: p.total,
-            proveedores: (mockProveedores[p.nombre] || []).map(prov => ({
-                nombre: prov.nombre,
-                precio: prov.precio
-            })),
-            selectedProveedor: mockProveedores[p.nombre]?.[0]?.nombre
-        }));
-        setCotizacionData(dataParaCotizacion);
-        onCotizacionOpen();
-        setCurrentStep(4);
-    };
-
-    const handleHacerPedido = (data: CotizacionItem[]) => {
-        onCotizacionOpenChange();
-        const finalOrder = data.map(item => {
-            const selectedProveedor = item.proveedores.find(p => p.nombre === item.selectedProveedor);
-            const precioTotal = selectedProveedor ? selectedProveedor.precio * item.cantidadNecesaria : 0;
-            return {
-                producto: item.producto,
-                cantidad: item.cantidadNecesaria,
-                proveedor: selectedProveedor ? selectedProveedor.nombre : 'N/A',
-                precioTotal
-            };
-        });
-        setFinalOrderData(finalOrder);
-        onFinalOpen();
-        setCurrentStep(5);
-    };
-
-    const handleCerrarFinal = () => {
-        onFinalOpenChange();
+  const handleAceptarComprobacion = async (data: ComprobacionItem[]) => {
+    try {
+      console.log('✅ Comprobación aceptada');
+      onComprobacionOpenChange();
+      
+      // Filtrar solo productos que necesitan ser comprados
+      const productosFaltantes = data.filter(p => p.total > 0);
+      
+      if (productosFaltantes.length === 0) {
+        alert('✅ No hay productos faltantes. El inventario cubre todas las solicitudes.');
         setCurrentStep(6);
-        setTimeout(() => {
-            resetearFlujo();
-            alert('✅ Proceso completado exitosamente. El sistema está listo para un nuevo ciclo de pedidos.');
-        }, 2000);
-    };
+        setTimeout(() => resetearProceso(), 2000);
+        return;
+      }
 
+      console.log('🔍 Buscando proveedores para', productosFaltantes.length, 'productos...');
+      
+      // Obtener proveedores con precios para cada producto
+      const nombresProductos = productosFaltantes.map(p => p.nombre);
+      const cotizaciones = await obtenerProveedoresConPreciosService(nombresProductos);
+      
+      const datosCotizacion: CotizacionItem[] = [];
+      
+      productosFaltantes.forEach(producto => {
+        const proveedoresProducto = cotizaciones.get(producto.nombre) || [];
+        
+        if (proveedoresProducto.length === 0) {
+          console.warn(`⚠️ No hay proveedores para: ${producto.nombre}`);
+        }
+
+        datosCotizacion.push({
+          producto: producto.nombre,
+          cantidadNecesaria: producto.total,
+          proveedores: proveedoresProducto.map(p => ({
+            nombre: p.proveedorNombre,
+            precio: p.precio
+          })),
+          selectedProveedor: proveedoresProducto[0]?.proveedorNombre // Seleccionar el más barato por defecto
+        });
+      });
+
+      console.log('💰 Cotizaciones preparadas:', datosCotizacion.length);
+      
+      setCotizacionData(datosCotizacion);
+      setCurrentStep(4);
+      onCotizacionOpen();
+      
+    } catch (error) {
+      console.error('❌ Error al procesar comprobación:', error);
+      alert('Error al buscar proveedores');
+    }
+  };
+
+  const handleRechazarComprobacion = () => {
+    onComprobacionOpenChange();
+  };
+
+  // ==================== PASO 4: COTIZACIÓN ====================
+
+  const handleHacerPedido = (data: CotizacionItem[]) => {
+    try {
+      console.log('📝 Generando orden de compra...');
+      
+      const ordenFinal: FinalOrder[] = data.map(item => {
+        const proveedorSeleccionado = item.proveedores.find(p => p.nombre === item.selectedProveedor);
+        const precioTotal = proveedorSeleccionado ? proveedorSeleccionado.precio * item.cantidadNecesaria : 0;
+        
+        return {
+          producto: item.producto,
+          cantidad: item.cantidadNecesaria,
+          proveedor: item.selectedProveedor || 'N/A',
+          precioTotal
+        };
+      });
+
+      setFinalOrderData(ordenFinal);
+      onCotizacionOpenChange();
+      setCurrentStep(5);
+      onFinalOpen();
+      
+      console.log('✅ Orden final generada con', ordenFinal.length, 'productos');
+      
+    } catch (error) {
+      console.error('❌ Error al generar pedido:', error);
+      alert('Error al generar la orden de compra');
+    }
+  };
+
+  const handleRechazarCotizacion = () => {
+    onCotizacionOpenChange();
+  };
+
+// ==================== PASO 5: ORDEN FINAL ====================
+
+const handleGenerarYDescargarPDFs = async () => {
+  try {
+    console.log('📄 Generando PDFs...');
+    
+    // Preparar datos para PDFs
+    const productosPDF: IProductoPedido[] = finalOrderData.map(item => {
+      const proveedorInfo = proveedoresDisponibles.find(p => p.nombre === item.proveedor);
+      const productoProveedor = proveedorInfo?.productos.find(
+        p => p.productoNombre === item.producto
+      );
+
+      return {
+        productoNombre: item.producto,
+        cantidad: item.cantidad,
+        unidadMedida: productoProveedor?.unidadMedida || 'unidad',
+        proveedorNombre: item.proveedor,
+        precioUnitario: productoProveedor?.precio || 0,
+        precioTotal: item.precioTotal
+      };
+    });
+
+    // Agrupar por proveedor para PDFs individuales
+    const pedidosPorProveedor = new Map<string, IPedidoProveedor>();
+    
+    productosPDF.forEach(producto => {
+      if (!pedidosPorProveedor.has(producto.proveedorNombre)) {
+        const proveedorInfo = proveedoresDisponibles.find(p => p.nombre === producto.proveedorNombre);
+        
+        pedidosPorProveedor.set(producto.proveedorNombre, {
+          proveedorNombre: producto.proveedorNombre,
+          proveedorContacto: proveedorInfo?.contacto || 'N/A',
+          proveedorTelefono: proveedorInfo?.telefono || 'N/A',
+          proveedorEmail: proveedorInfo?.email || 'N/A',
+          proveedorDireccion: proveedorInfo?.direccion || 'N/A',
+          productos: [],
+          totalPedido: 0
+        });
+      }
+
+      const pedido = pedidosPorProveedor.get(producto.proveedorNombre)!;
+      pedido.productos.push({
+        productoNombre: producto.productoNombre,
+        cantidad: producto.cantidad,
+        unidadMedida: producto.unidadMedida,
+        precioUnitario: producto.precioUnitario,
+        precioTotal: producto.precioTotal
+      });
+      pedido.totalPedido += producto.precioTotal;
+    });
+
+    const pedidosArray = Array.from(pedidosPorProveedor.values());
+
+    // Generar y descargar todos los PDFs
+    generarYDescargarTodosPDFs(productosPDF, pedidosArray, new Date().toISOString());
+
+    console.log('✅ PDFs generados exitosamente');
+    alert('✅ PDFs generados y descargados. Revisa tu carpeta de descargas.');
+
+    // Cerrar modal y avanzar al paso 6
+    onFinalOpenChange();
+    setCurrentStep(6);
+    
+    setTimeout(() => {
+      resetearProceso();
+      alert('✅ Proceso completado exitosamente. El sistema está listo para un nuevo ciclo de pedidos.');
+    }, 2000);
+    
+  } catch (error) {
+    console.error('❌ Error al generar PDFs:', error);
+    alert('Error al generar los documentos PDF');
+  }
+};
+
+const handleCerrarModalFinal = () => {
+  // Simplemente cerrar el modal sin generar PDFs
+  onFinalOpenChange();
+};
+
+  // ==================== GESTIÓN DE SOLICITUDES ====================
+
+  const verDetalleSolicitud = (solicitud: ISolicitud) => {
+    setSolicitudSeleccionada(solicitud);
+    onDetalleOpen();
+  };
+
+  const abrirModalAprobar = (solicitud: ISolicitud) => {
+    setSolicitudSeleccionada(solicitud);
+    handleAprobarSolicitud(solicitud.id);
+  };
+
+  const abrirModalRechazar = (solicitud: ISolicitud) => {
+    setSolicitudSeleccionada(solicitud);
+    setComentarioRechazo('');
+    onRechazarOpen();
+  };
+
+  const handleAprobarSolicitud = async (solicitudId: string) => {
+    try {
+      if (!user) return;
+      
+      await aprobarRechazarSolicitudService({
+        solicitudId,
+        estado: 'Aceptada',
+        aprobadoPor: user.id || user.nombre
+      });
+
+      await cargarDatos();
+      alert('✅ Solicitud aprobada correctamente');
+    } catch (error: any) {
+      console.error('❌ Error al aprobar solicitud:', error);
+      alert(error.message || 'Error al aprobar la solicitud');
+    }
+  };
+
+  const handleRechazarSolicitud = async () => {
+    try {
+      if (!user || !solicitudSeleccionada) return;
+      
+      if (!comentarioRechazo.trim()) {
+        alert('⚠️ Debes especificar un motivo de rechazo');
+        return;
+      }
+
+      await aprobarRechazarSolicitudService({
+        solicitudId: solicitudSeleccionada.id,
+        estado: 'Rechazada',
+        comentarioRechazo: comentarioRechazo.trim(),
+        aprobadoPor: user.id || user.nombre
+      });
+
+      await cargarDatos();
+      onRechazarOpenChange();
+      setSolicitudSeleccionada(null);
+      setComentarioRechazo('');
+      alert('✅ Solicitud rechazada');
+    } catch (error: any) {
+      console.error('❌ Error al rechazar solicitud:', error);
+      alert(error.message || 'Error al rechazar la solicitud');
+    }
+  };
+
+  const renderEstadoSolicitud = (estado: string | null) => {
+    if (!estado) return <Chip size="sm" variant="flat">Sin solicitud</Chip>;
+    
+    switch (estado) {
+      case 'Pendiente':
+        return <Chip color="warning" size="sm">{estado}</Chip>;
+      case 'Aceptada':
+        return <Chip color="success" size="sm">{estado}</Chip>;
+      case 'Rechazada':
+        return <Chip color="danger" size="sm">{estado}</Chip>;
+      default:
+        return <Chip size="sm">{estado}</Chip>;
+    }
+  };
+
+  const solicitudesPendientes = solicitudes.filter(s => s.estado === 'Pendiente');
+
+  if (isLoading) {
     return (
-        <div className="bg-gray-50 dark:bg-zinc-900 min-h-screen py-8 font-sans">
-            <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-6">
-                <div className="container mx-auto px-4">
-                    <motion.div variants={itemVariants}>
-                        <h1 className="text-2xl font-bold mb-2">Dashboard</h1>
-                        <p className="text-default-500">
-                            Bienvenido, <span className="font-medium">{user.nombre}</span>. Aquí tienes un resumen de la actividad reciente.
-                        </p>
-                    </motion.div>
-                </div>
-                
-                <div className="container mx-auto px-4">
-                    <motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                        <Card className="shadow-sm">
-                            <CardBody className="flex items-center p-4">
-                                <div className="w-12 h-12 rounded-full bg-success-100 flex items-center justify-center mr-4">
-                                    <Icon icon="lucide:check-circle" className="text-success text-xl" />
-                                </div>
-                                <div>
-                                    <p className="text-sm text-default-500">Pedidos Completados</p>
-                                    <p className="text-2xl font-semibold">{estadisticas.pedidosCompletados}%</p>
-                                </div>
-                            </CardBody>
-                        </Card>
-                        
-                        <Card 
-                            className="shadow-sm cursor-pointer hover:shadow-md transition-shadow" 
-                            isPressable
-                            onPress={navegarAPedidosPendientes}
-                        >
-                            <CardBody className="flex items-center justify-center p-4">
-                                <div className="w-12 h-12 rounded-full bg-warning-100 flex items-center justify-center mr-4">
-                                    <Icon icon="lucide:clock" className="text-warning text-xl" />
-                                </div>
-                                <div className="text-center">
-                                    <p className="text-sm text-default-500">Pedidos Pendientes</p>
-                                    <p className="text-2xl font-semibold">{estadisticas.pedidosPendientes}</p>
-                                </div>
-                            </CardBody>
-                        </Card>
-                        
-                        <Card 
-                            className="shadow-sm cursor-pointer hover:shadow-md transition-shadow" 
-                            isPressable
-                            onPress={navegarAInventarioStockBajo}
-                        >
-                            <CardBody className="flex items-center justify-center p-4">
-                                <div className="w-12 h-12 rounded-full bg-danger-100 flex items-center justify-center mr-4">
-                                    <Icon icon="lucide:alert-triangle" className="text-danger text-xl" />
-                                </div>
-                                <div className="text-center">
-                                    <p className="text-sm text-default-500">Productos con Stock Bajo</p>
-                                    <p className="text-2xl font-semibold">{estadisticas.stockBajo}</p>
-                                </div>
-                            </CardBody>
-                        </Card>
-                        
-                        <Card 
-                            className="shadow-sm cursor-pointer hover:shadow-md transition-shadow" 
-                            isPressable
-                            onPress={mostrarAsignaturas}
-                        >
-                            <CardBody className="flex items-center justify-center p-4">
-                                <div className="w-12 h-12 rounded-full bg-primary-100 flex items-center justify-center mr-4">
-                                    <Icon icon="lucide:book-open" className="text-primary text-xl" />
-                                </div>
-                                <div className="text-center">
-                                    <p className="text-sm text-default-500">Asignaturas Activas</p>
-                                    <p className="text-2xl font-semibold">{estadisticas.asignaturasActivas}</p>
-                                </div>
-                            </CardBody>
-                        </Card>
-                    </motion.div>
-                </div>
-
-                <div className="container mx-auto px-4 grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    <motion.div variants={itemVariants} className="lg:col-span-2">
-                        <Card className="shadow-sm h-full">
-                            <CardHeader className="pb-0 pt-4 px-4">
-                                <h3 className="text-lg font-semibold">Progreso de Pedidos</h3>
-                                <p className="text-default-500 text-sm">Semana actual</p>
-                            </CardHeader>
-                            <CardBody className="px-4 pb-4">
-                                <div className="space-y-4">
-                                    {progresoPedidosDetallados.map((pedido) => (
-                                        <div key={pedido.id}>
-                                            <div className="flex justify-between items-center mb-1">
-                                                <span className="text-sm">{pedido.asignatura}</span>
-                                                <div className="flex items-center gap-2">
-                                                    <span className="text-sm font-medium">{pedido.porcentaje}%</span>
-                                                    <Button 
-                                                        isIconOnly 
-                                                        variant="light" 
-                                                        size="sm" 
-                                                        className="text-primary hover:bg-default-100 active:bg-default-200"
-                                                        onPress={() => verDetallePedido(pedido)}
-                                                    >
-                                                        <Icon icon="lucide:eye" className="text-xl" />
-                                                    </Button>
-                                                </div>
-                                            </div>
-                                            <Progress
-                                                aria-label={`Progreso ${pedido.asignatura}`}
-                                                value={pedido.porcentaje}
-                                                color={pedido.porcentaje === 100 ? 'success' : pedido.porcentaje === 0 ? 'danger' : 'primary'}
-                                                className="h-2"
-                                            />
-                                        </div>
-                                    ))}
-                                </div>
-                            </CardBody>
-                        </Card>
-                    </motion.div>
-                    
-                    <motion.div variants={itemVariants} className="lg:col-span-1">
-                        <Card className="shadow-sm h-full">
-                            <CardHeader className="pb-0 pt-4 px-4">
-                                <h3 className="text-lg font-semibold">Distribución de Pedidos</h3>
-                                <p className="text-default-500 text-sm">Por valor monetario</p>
-                            </CardHeader>
-                            <CardBody className="px-4 pb-4">
-                                <div className="flex items-center justify-center mb-4">
-                                    <div style={{ width: '160px', height: '160px' }}>
-                                        <PieChart width={160} height={160}>
-                                            <Pie
-                                                data={datosAsignaturas}
-                                                cx="50%"
-                                                cy="50%"
-                                                labelLine={false}
-                                                outerRadius={60}
-                                                fill="#8884d8"
-                                                dataKey="value"
-                                            >
-                                                {datosAsignaturas.map((entry, index) => (
-                                                    <Cell key={`cell-${index}`} fill={entry.color} />
-                                                ))}
-                                            </Pie>
-                                            <Tooltip formatter={(value) => [`${value}%`, 'Porcentaje']} />
-                                        </PieChart>
-                                    </div>
-                                    
-                                    <div className="flex flex-col gap-2 ml-4 flex-1">
-                                        {datosAsignaturas.map((entry, index) => (
-                                            <div key={index} className="flex items-center gap-2 text-xs">
-                                                <div 
-                                                    className="w-3 h-3 rounded-sm flex-shrink-0" 
-                                                    style={{ backgroundColor: entry.color }}
-                                                />
-                                                <div className="flex-1">
-                                                    <div className="text-left font-medium">{entry.nombre}</div>
-                                                    <div className="text-gray-500">
-                                                        ${entry.monto.toLocaleString('es-CL')}
-                                                    </div>
-                                                </div>
-                                                <span className="font-semibold">{entry.value}%</span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-
-                                <Divider className="my-4" />
-
-                                <div className="space-y-3">
-                                    <h4 className="text-md font-semibold">Alertas</h4>
-                                    <div className="flex items-center gap-2 text-danger">
-                                        <Icon icon="lucide:alert-circle" />
-                                        <span className="text-sm">5 asignaturas sin pedidos esta semana</span>
-                                    </div>
-                                    {estadisticas.stockBajo > 0 && (
-                                        <div 
-                                            className="flex items-center gap-2 text-warning cursor-pointer hover:underline"
-                                            onClick={navegarAInventarioStockBajo}
-                                        >
-                                            <Icon icon="lucide:alert-triangle" />
-                                            <span className="text-sm">{estadisticas.stockBajo} productos con stock bajo</span>
-                                        </div>
-                                    )}
-                                    <div className="flex items-center gap-2 text-success">
-                                        <Icon icon="lucide:check-circle" />
-                                        <span className="text-sm">Todos los pedidos urgentes procesados</span>
-                                    </div>
-                                </div>
-                            </CardBody>
-                        </Card>
-                    </motion.div>
-                </div>
-
-                <div className="container mx-auto px-4">
-                    <Card className="shadow-sm">
-                        <CardHeader className="pb-0 pt-4 px-4">
-                            <div className="flex justify-between items-start w-full">
-                                <div>
-                                    <h3 className="text-lg font-semibold">Progreso del Proceso de Pedidos</h3>
-                                    <p className="text-default-500 text-sm">Estado actual del flujo de trabajo</p>
-                                </div>
-                                {procesoActivo && fechaInicioProceso && fechaFinProceso && (
-                                    <div className="text-right">
-                                        <Chip 
-                                            color={diasRestantes <= 2 ? "danger" : diasRestantes <= 5 ? "warning" : "primary"} 
-                                            variant="flat" 
-                                            size="sm"
-                                            startContent={<Icon icon="lucide:clock" />}
-                                        >
-                                            {diasRestantes === 0 ? 'Último día' : `${diasRestantes} días restantes`}
-                                        </Chip>
-                                        <p className="text-xs text-default-500 mt-1">
-                                            Termina: {new Date(fechaFinProceso).toLocaleDateString('es-CL', {
-                                                weekday: 'short',
-                                                day: 'numeric',
-                                                month: 'short'
-                                            })}
-                                        </p>
-                                    </div>
-                                )}
-                            </div>
-                        </CardHeader>
-                        <CardBody className="px-4 pb-4">
-                            <div className="relative h-2 bg-gray-200 rounded-full my-6 overflow-hidden">
-                                {/* Barra de progreso con animación */}
-                                <motion.div 
-                                    className="absolute h-full bg-gradient-to-r from-primary-400 to-primary-600 rounded-full"
-                                    initial={{ width: 0 }}
-                                    animate={{ width: `${(currentStep - 1) / 5 * 100}%` }}
-                                    transition={{ duration: 0.8, ease: "easeInOut" }}
-                                >
-                                    {/* Efecto de brillo animado */}
-                                    <motion.div
-                                        className="absolute inset-0 bg-gradient-to-r from-transparent via-white to-transparent opacity-30"
-                                        animate={{
-                                            x: ['-100%', '200%']
-                                        }}
-                                        transition={{
-                                            duration: 2,
-                                            repeat: Infinity,
-                                            ease: "linear"
-                                        }}
-                                    />
-                                </motion.div>
-                                
-                                {/* Círculos de los pasos - fuera de la barra */}
-                                <div className="flex justify-between items-center absolute w-full -top-3 left-0">
-                                    {[1, 2, 3, 4, 5, 6].map((step) => (
-                                        <motion.div 
-                                            key={step}
-                                            className={`w-10 h-10 rounded-full border-3 flex items-center justify-center text-xs font-bold z-10 shadow-lg ${
-                                                isStepActive(step) 
-                                                    ? 'bg-primary-500 border-primary-500 text-white' 
-                                                    : 'bg-white border-gray-300 text-gray-500'
-                                            }`}
-                                            initial={{ scale: 0.8 }}
-                                            animate={{ 
-                                                scale: currentStep === step ? [1, 1.15, 1] : 1
-                                            }}
-                                            transition={{
-                                                duration: 0.5,
-                                                repeat: currentStep === step ? Infinity : 0,
-                                                repeatDelay: 1
-                                            }}
-                                        >
-                                            {isStepActive(step) && step < currentStep ? (
-                                                <Icon icon="lucide:check" className="text-base" />
-                                            ) : (
-                                                step
-                                            )}
-                                        </motion.div>
-                                    ))}
-                                </div>
-                            </div>
-                            
-                            {/* Labels de los pasos */}
-                            <div className="flex justify-between text-xs text-default-500 mb-6">
-                                <span className="w-16 text-center">Inicio</span>
-                                <span className="w-16 text-center">Activo</span>
-                                <span className="w-16 text-center">Comprobar</span>
-                                <span className="w-16 text-center">Cotizar</span>
-                                <span className="w-16 text-center">Ordenar</span>
-                                <span className="w-16 text-center">Fin</span>
-                            </div>
-
-                            {!procesoActivo ? (
-                                // Formulario para iniciar proceso
-                                <div className="space-y-4">
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <Input
-                                            type="date"
-                                            label="Fecha de Inicio del Proceso"
-                                            value={startDate}
-                                            onValueChange={setStartDate}
-                                            labelPlacement="outside"
-                                            placeholder="Seleccione fecha"
-                                            description="Fecha en que comienza la recepción de pedidos"
-                                        />
-                                        <Input
-                                            type="date"
-                                            label="Fecha de Término del Proceso"
-                                            value={endDate}
-                                            onValueChange={setEndDate}
-                                            labelPlacement="outside"
-                                            placeholder="Seleccione fecha"
-                                            description="Fecha límite para recibir pedidos"
-                                        />
-                                    </div>
-                                    <div className="flex justify-end">
-                                        <Button
-                                            color="primary"
-                                            size="lg"
-                                            startContent={<Icon icon="lucide:play" />}
-                                            onPress={handleIniciarProceso}
-                                            isDisabled={!startDate || !endDate}
-                                        >
-                                            Iniciar Proceso de Pedidos
-                                        </Button>
-                                    </div>
-                                </div>
-                            ) : (
-                                // Información del proceso activo y botones
-                                <div className="space-y-4">
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-primary-50 dark:bg-primary-900/20 rounded-lg border-2 border-primary-200 dark:border-primary-800">
-                                        <div>
-                                            <p className="text-sm text-default-500 mb-1">Fecha de Inicio</p>
-                                            <p className="font-semibold flex items-center gap-2">
-                                                <Icon icon="lucide:calendar" className="text-primary" />
-                                                {new Date(fechaInicioProceso!).toLocaleDateString('es-CL', {
-                                                    weekday: 'long',
-                                                    year: 'numeric',
-                                                    month: 'long',
-                                                    day: 'numeric'
-                                                })}
-                                            </p>
-                                        </div>
-                                        <div>
-                                            <p className="text-sm text-default-500 mb-1">Fecha de Término</p>
-                                            <p className="font-semibold flex items-center gap-2">
-                                                <Icon icon="lucide:calendar-check" className="text-primary" />
-                                                {new Date(fechaFinProceso!).toLocaleDateString('es-CL', {
-                                                    weekday: 'long',
-                                                    year: 'numeric',
-                                                    month: 'long',
-                                                    day: 'numeric'
-                                                })}
-                                            </p>
-                                        </div>
-                                    </div>
-                                    
-                                    {/* Contador de días con animación */}
-                                    <motion.div 
-                                        className={`p-4 rounded-lg text-center ${
-                                            diasRestantes <= 2 
-                                                ? 'bg-danger-50 dark:bg-danger-900/20 border-2 border-danger-200 dark:border-danger-800' 
-                                                : diasRestantes <= 5
-                                                ? 'bg-warning-50 dark:bg-warning-900/20 border-2 border-warning-200 dark:border-warning-800'
-                                                : 'bg-success-50 dark:bg-success-900/20 border-2 border-success-200 dark:border-success-800'
-                                        }`}
-                                        animate={{
-                                            scale: diasRestantes <= 2 ? [1, 1.02, 1] : 1
-                                        }}
-                                        transition={{
-                                            duration: 1,
-                                            repeat: diasRestantes <= 2 ? Infinity : 0
-                                        }}
-                                    >
-                                        <div className="flex items-center justify-center gap-3">
-                                            <Icon 
-                                                icon={diasRestantes <= 2 ? "lucide:alert-circle" : "lucide:clock"} 
-                                                className={`text-2xl ${
-                                                    diasRestantes <= 2 ? 'text-danger' : diasRestantes <= 5 ? 'text-warning' : 'text-success'
-                                                }`}
-                                            />
-                                            <div>
-                                                <p className={`text-3xl font-bold ${
-                                                    diasRestantes <= 2 ? 'text-danger' : diasRestantes <= 5 ? 'text-warning' : 'text-success'
-                                                }`}>
-                                                    {diasRestantes}
-                                                </p>
-                                                <p className="text-sm text-default-600">
-                                                    {diasRestantes === 1 ? 'día restante' : 'días restantes'}
-                                                </p>
-                                            </div>
-                                        </div>
-                                        {diasRestantes <= 2 && (
-                                            <p className="text-xs text-danger mt-2 font-medium">
-                                                ⚠️ El proceso está por finalizar
-                                            </p>
-                                        )}
-                                    </motion.div>
-                                    
-                                    <div className="flex flex-col sm:flex-row gap-3 justify-between items-stretch sm:items-center">
-                                        <div className="flex items-center gap-2 text-sm text-default-500">
-                                            <Icon icon="lucide:info" />
-                                            <span>
-                                                {currentStep === 2 && 'Los pedidos están siendo recibidos actualmente'}
-                                                {currentStep === 3 && 'Comprobando inventario...'}
-                                                {currentStep === 4 && 'Cotizando con proveedores...'}
-                                                {currentStep === 5 && 'Procesando orden de compra...'}
-                                                {currentStep === 6 && 'Proceso completado'}
-                                            </span>
-                                        </div>
-                                        <div className="flex gap-2 flex-wrap">
-                                            {/* Botón de cancelar siempre visible */}
-                                            <Button
-                                                color="danger"
-                                                variant="light"
-                                                size="sm"
-                                                startContent={<Icon icon="lucide:x" />}
-                                                onPress={handleCancelarProceso}
-                                            >
-                                                Cancelar Proceso
-                                            </Button>
-                                            
-                                            {/* Botones para reabrir pasos completados */}
-                                            {currentStep >= 3 && currentStep < 6 && comprobacionData.length > 0 && (
-                                                <Button
-                                                    color="primary"
-                                                    variant="bordered"
-                                                    size="sm"
-                                                    startContent={<Icon icon="lucide:package-check" />}
-                                                    onPress={onComprobacionOpen}
-                                                >
-                                                    Ver Comprobación
-                                                </Button>
-                                            )}
-                                            
-                                            {currentStep >= 4 && currentStep < 6 && cotizacionData.length > 0 && (
-                                                <Button
-                                                    color="primary"
-                                                    variant="bordered"
-                                                    size="sm"
-                                                    startContent={<Icon icon="lucide:receipt" />}
-                                                    onPress={onCotizacionOpen}
-                                                >
-                                                    Ver Cotización
-                                                </Button>
-                                            )}
-                                            
-                                            {currentStep >= 5 && currentStep < 6 && finalOrderData.length > 0 && (
-                                                <Button
-                                                    color="primary"
-                                                    variant="bordered"
-                                                    size="sm"
-                                                    startContent={<Icon icon="lucide:file-text" />}
-                                                    onPress={onFinalOpen}
-                                                >
-                                                    Ver Orden Final
-                                                </Button>
-                                            )}
-                                            
-                                            {/* Botón principal según el paso */}
-                                            {currentStep === 2 && (
-                                                <Button
-                                                    color="primary"
-                                                    variant="flat"
-                                                    size="sm"
-                                                    startContent={<Icon icon="lucide:stop-circle" />}
-                                                    onPress={handleTerminarProceso}
-                                                >
-                                                    Terminar y Procesar
-                                                </Button>
-                                            )}
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-                        </CardBody>
-                    </Card>
-                </div>
-            </motion.div>
-
-            {/* Modal de detalle de pedido */}
-            <Modal isOpen={isDetalleOpen} onOpenChange={onDetalleOpenChange} size="lg">
-                <ModalContent>
-                    {(onClose) => (
-                        <>
-                            <ModalHeader>Detalle del Pedido</ModalHeader>
-                            <ModalBody>
-                                {pedidoSeleccionado && (
-                                    <div className="space-y-6">
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            <div>
-                                                <p className="text-sm text-default-500">Asignatura</p>
-                                                <p className="font-semibold">{pedidoSeleccionado.asignatura}</p>
-                                            </div>
-                                            <div>
-                                                <p className="text-sm text-default-500">Profesor</p>
-                                                <p className="font-semibold">{pedidoSeleccionado.profesor}</p>
-                                            </div>
-                                            <div>
-                                                <p className="text-sm text-default-500">Fecha de Solicitud</p>
-                                                <p className="font-semibold">{formatearFecha(pedidoSeleccionado.fechaSolicitud)}</p>
-                                            </div>
-                                            <div>
-                                                <p className="text-sm text-default-500">Fecha de Clase</p>
-                                                <p className="font-semibold">{formatearFecha(pedidoSeleccionado.fechaClase)}</p>
-                                            </div>
-                                            <div>
-                                                <p className="text-sm text-default-500">Estado</p>
-                                                <div>{renderEstado(pedidoSeleccionado.estado)}</div>
-                                            </div>
-                                        </div>
-                                        
-                                        <div>
-                                            <p className="font-medium mb-2">Productos Solicitados</p>
-                                            <Table 
-                                                aria-label="Productos solicitados"
-                                                removeWrapper
-                                            >
-                                                <TableHeader>
-                                                    <TableColumn>PRODUCTO</TableColumn>
-                                                    <TableColumn>CANTIDAD</TableColumn>
-                                                </TableHeader>
-                                                <TableBody>
-                                                    {pedidoSeleccionado.items.map((item) => (
-                                                        <TableRow key={item.id}>
-                                                            <TableCell>{item.producto}</TableCell>
-                                                            <TableCell>{item.cantidad} {item.unidad}</TableCell>
-                                                        </TableRow>
-                                                    ))}
-                                                </TableBody>
-                                            </Table>
-                                        </div>
-                                    </div>
-                                )}
-                            </ModalBody>
-                            <ModalFooter>
-                                <Button variant="flat" onPress={onClose}>
-                                    Cerrar
-                                </Button>
-                            </ModalFooter>
-                        </>
-                    )}
-                </ModalContent>
-            </Modal>
-
-            {/* Modal de Asignaturas Activas */}
-            <Modal isOpen={isAsignaturasOpen} onOpenChange={onAsignaturasOpenChange} size="2xl">
-                <ModalContent>
-                    {(onClose) => (
-                        <>
-                            <ModalHeader className="flex flex-col gap-1">
-                                <h2 className="text-xl font-bold">Asignaturas Activas</h2>
-                                <p className="text-sm text-default-500 font-normal">
-                                    Total: {mockAsignaturas.length} asignaturas
-                                </p>
-                            </ModalHeader>
-                            <ModalBody>
-                                <Table 
-                                    aria-label="Tabla de asignaturas activas"
-                                    removeWrapper
-                                >
-                                    <TableHeader>
-                                        <TableColumn>ASIGNATURA</TableColumn>
-                                        <TableColumn>PROFESOR</TableColumn>
-                                        <TableColumn>PEDIDOS/SEMANA</TableColumn>
-                                        <TableColumn>ÚLTIMO PEDIDO</TableColumn>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {mockAsignaturas.map((asignatura) => (
-                                            <TableRow key={asignatura.id}>
-                                                <TableCell>{asignatura.nombre}</TableCell>
-                                                <TableCell>{asignatura.profesor}</TableCell>
-                                                <TableCell>
-                                                    <Chip size="sm" color="primary" variant="flat">
-                                                        {asignatura.pedidosSemanales}
-                                                    </Chip>
-                                                </TableCell>
-                                                <TableCell>
-                                                    {new Date(asignatura.ultimoPedido).toLocaleDateString('es-CL')}
-                                                </TableCell>
-                                            </TableRow>
-                                        ))}
-                                    </TableBody>
-                                </Table>
-                            </ModalBody>
-                            <ModalFooter>
-                                <Button color="primary" onPress={onClose}>
-                                    Cerrar
-                                </Button>
-                            </ModalFooter>
-                        </>
-                    )}
-                </ModalContent>
-            </Modal>
-
-            {/* Modals para los pasos del flujo */}
-            <ComprobacionModal
-                isOpen={isComprobacionOpen}
-                onClose={handleRechazarComprobacion}
-                comprobacionData={comprobacionData}
-                setComprobacionData={setComprobacionData}
-                onAccept={handleAceptarComprobacion}
-            />
-            
-            <CotizacionModal
-                isOpen={isCotizacionOpen}
-                onClose={handleRechazarCotizacion}
-                cotizacionData={cotizacionData}
-                setCotizacionData={setCotizacionData}
-                onAccept={handleHacerPedido}
-            />
-
-            <FinProcesoModal
-                isOpen={isFinalOpen}
-                onClose={handleCerrarFinal}
-                finalOrderData={finalOrderData}
-            />
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p>Cargando dashboard...</p>
         </div>
+      </div>
     );
+  }
+
+  return (
+    <div className="bg-gray-50 dark:bg-zinc-900 min-h-screen py-8">
+      <div className="container mx-auto px-4 space-y-6">
+        {/* Encabezado */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+        >
+          <h1 className="text-2xl font-bold mb-2">Dashboard</h1>
+          <p className="text-default-500">
+            Bienvenido, <span className="font-medium">{user?.nombre}</span>
+          </p>
+        </motion.div>
+
+        {/* PROCESO DE PEDIDOS */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.1 }}
+        >
+          <Card className="shadow-md border-2 border-primary-200">
+            <CardHeader className="pb-0 pt-4 px-4">
+              <div className="flex justify-between items-start w-full">
+                <div>
+                  <h3 className="text-xl font-bold flex items-center gap-2">
+                    <Icon icon="lucide:calendar-clock" className="text-primary" />
+                    Proceso de Pedidos
+                  </h3>
+                  <p className="text-default-500 text-sm">Estado actual del flujo de trabajo</p>
+                </div>
+                {procesoActivo && fechaInicioProceso && fechaFinProceso && (
+                  <Chip 
+                    color={diasRestantes <= 2 ? "danger" : diasRestantes <= 5 ? "warning" : "success"} 
+                    variant="flat"
+                    size="lg"
+                    startContent={<Icon icon="lucide:clock" />}
+                  >
+                    {diasRestantes === 0 ? 'Último día' : `${diasRestantes} día${diasRestantes !== 1 ? 's' : ''} restante${diasRestantes !== 1 ? 's' : ''}`}
+                  </Chip>
+                )}
+              </div>
+            </CardHeader>
+            <CardBody className="px-4 pb-4">
+              {/* Barra de progreso */}
+              <div className="relative h-2 bg-default-200 rounded-full my-6">
+                <motion.div 
+                  className="absolute h-full bg-gradient-to-r from-primary-400 to-primary-600 rounded-full"
+                  initial={{ width: 0 }}
+                  animate={{ width: `${((currentStep - 1) / 5) * 100}%` }}
+                  transition={{ duration: 0.8 }}
+                />
+                
+                <div className="flex justify-between items-center absolute w-full -top-3">
+                  {[1, 2, 3, 4, 5, 6].map((step) => (
+                    <motion.div 
+                      key={step}
+                      className={`w-10 h-10 rounded-full border-3 flex items-center justify-center text-xs font-bold z-10 shadow-lg ${
+                        currentStep >= step
+                          ? 'bg-primary-500 border-primary-500 text-white' 
+                          : 'bg-white dark:bg-zinc-800 border-default-300 text-default-500'
+                      }`}
+                      animate={{ 
+                        scale: currentStep === step ? [1, 1.1, 1] : 1
+                      }}
+                      transition={{
+                        duration: 0.5,
+                        repeat: currentStep === step ? Infinity : 0,
+                        repeatDelay: 1
+                      }}
+                    >
+                      {currentStep > step ? (
+                        <Icon icon="lucide:check" className="text-base" />
+                      ) : (
+                        step
+                      )}
+                    </motion.div>
+                  ))}
+                </div>
+              </div>
+              
+              <div className="flex justify-between text-xs text-default-500 mb-6">
+                <span className="w-16 text-center">Inicio</span>
+                <span className="w-16 text-center">Activo</span>
+                <span className="w-16 text-center">Comprobar</span>
+                <span className="w-16 text-center">Cotizar</span>
+                <span className="w-16 text-center">Ordenar</span>
+                <span className="w-16 text-center">Fin</span>
+              </div>
+
+              {!procesoActivo ? (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <Input
+                      type="date"
+                      label="Fecha de Inicio"
+                      value={startDate}
+                      onValueChange={setStartDate}
+                      description="Inicio de recepción de solicitudes"
+                    />
+                    <Input
+                      type="date"
+                      label="Fecha de Término"
+                      value={endDate}
+                      onValueChange={setEndDate}
+                      description="Fecha límite para solicitudes"
+                    />
+                  </div>
+                  <div className="flex justify-end">
+                    <Button
+                      color="primary"
+                      size="lg"
+                      startContent={<Icon icon="lucide:play" />}
+                      onPress={handleIniciarProceso}
+                      isDisabled={!startDate || !endDate}
+                    >
+                      Iniciar Proceso de Pedidos
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {solicitudesPendientes.length > 0 && currentStep === 2 && (
+                    <motion.div
+                      initial={{ scale: 0.95 }}
+                      animate={{ scale: [1, 1.02, 1] }}
+                      transition={{ duration: 2, repeat: Infinity }}
+                      className="p-4 bg-warning-50 dark:bg-warning-900/20 border-2 border-warning-500 rounded-lg"
+                    >
+                      <div className="flex items-center gap-3">
+                        <Icon icon="lucide:alert-triangle" className="text-warning text-2xl" />
+                        <div className="flex-1">
+                          <p className="font-semibold text-warning-700 dark:text-warning-400">
+                            ⚠️ {solicitudesPendientes.length} solicitud{solicitudesPendientes.length !== 1 ? 'es' : ''} pendiente{solicitudesPendientes.length !== 1 ? 's' : ''} de revisar
+                          </p>
+                          <p className="text-sm text-warning-600 dark:text-warning-500">
+                            Debes aprobar o rechazar todas las solicitudes antes de cerrar el proceso
+                          </p>
+                        </div>
+                        <Button
+                          color="warning"
+                          variant="flat"
+                          onPress={onPendientesOpen}
+                          startContent={<Icon icon="lucide:eye" />}
+                        >
+                          Ver Pendientes
+                        </Button>
+                      </div>
+                    </motion.div>
+                  )}
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-primary-50 dark:bg-primary-900/20 rounded-lg border border-primary-200">
+                    <div>
+                      <p className="text-sm text-default-500 mb-1">Fecha de Inicio</p>
+                      <p className="font-semibold">{new Date(fechaInicioProceso!).toLocaleDateString('es-CL')}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-default-500 mb-1">Fecha de Término</p>
+                      <p className="font-semibold">{new Date(fechaFinProceso!).toLocaleDateString('es-CL')}</p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex justify-between items-center">
+                    <p className="text-sm text-default-500">
+                      {currentStep === 2 && 'Recepción de solicitudes activa'}
+                      {currentStep === 3 && 'Comprobando inventario...'}
+                      {currentStep === 4 && 'Cotizando con proveedores...'}
+                      {currentStep === 5 && 'Procesando orden de compra...'}
+                      {currentStep === 6 && 'Proceso completado'}
+                    </p>
+                    <div className="flex gap-2">
+                      <Button
+                        color="danger"
+                        variant="light"
+                        size="sm"
+                        onPress={handleCancelarProceso}
+                      >
+                        Cancelar
+                      </Button>
+                      
+                      {currentStep >= 3 && currentStep < 6 && comprobacionData.length > 0 && (
+                        <Button
+                          color="primary"
+                          variant="bordered"
+                          size="sm"
+                          startContent={<Icon icon="lucide:package-check" />}
+                          onPress={onComprobacionOpen}
+                        >
+                          Ver Comprobación
+                        </Button>
+                      )}
+                      
+                      {currentStep >= 4 && currentStep < 6 && cotizacionData.length > 0 && (
+                        <Button
+                          color="primary"
+                          variant="bordered"
+                          size="sm"
+                          startContent={<Icon icon="lucide:receipt" />}
+                          onPress={onCotizacionOpen}
+                        >
+                          Ver Cotización
+                        </Button>
+                      )}
+                      
+                      {currentStep >= 5 && currentStep < 6 && finalOrderData.length > 0 && (
+                        <Button
+                          color="primary"
+                          variant="bordered"
+                          size="sm"
+                          startContent={<Icon icon="lucide:file-text" />}
+                          onPress={onFinalOpen}
+                        >
+                          Ver Orden Final
+                        </Button>
+                      )}
+                      
+                      {currentStep === 2 && (
+                        <Button
+                          color="primary"
+                          size="sm"
+                          startContent={<Icon icon="lucide:check-circle" />}
+                          onPress={handleTerminarProceso}
+                        >
+                          Terminar y Procesar
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </CardBody>
+          </Card>
+        </motion.div>
+
+        {/* TARJETAS DE ESTADÍSTICAS */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.2 }}
+          className="grid grid-cols-1 md:grid-cols-4 gap-4"
+        >
+          <Card 
+            className="shadow-sm cursor-pointer hover:shadow-md transition-shadow" 
+            isPressable
+            onPress={() => solicitudesPendientes.length > 0 && onPendientesOpen()}
+          >
+            <CardBody className="text-center p-4">
+              <div className="w-12 h-12 rounded-full bg-warning-100 dark:bg-warning-900/30 flex items-center justify-center mx-auto mb-2">
+                <Icon icon="lucide:clock" className="text-warning text-2xl" />
+              </div>
+              <p className="text-sm text-default-500">Pendientes</p>
+              <p className="text-3xl font-bold text-warning">{conteoSolicitudes.pendientes}</p>
+            </CardBody>
+          </Card>
+
+          <Card className="shadow-sm">
+            <CardBody className="text-center p-4">
+              <div className="w-12 h-12 rounded-full bg-success-100 dark:bg-success-900/30 flex items-center justify-center mx-auto mb-2">
+                <Icon icon="lucide:check-circle" className="text-success text-2xl" />
+              </div>
+              <p className="text-sm text-default-500">Aceptadas</p>
+              <p className="text-3xl font-bold text-success">{conteoSolicitudes.aceptadas}</p>
+            </CardBody>
+          </Card>
+
+          <Card className="shadow-sm">
+            <CardBody className="text-center p-4">
+              <div className="w-12 h-12 rounded-full bg-danger-100 dark:bg-danger-900/30 flex items-center justify-center mx-auto mb-2">
+                <Icon icon="lucide:x-circle" className="text-danger text-2xl" />
+              </div>
+              <p className="text-sm text-default-500">Rechazadas</p>
+              <p className="text-3xl font-bold text-danger">{conteoSolicitudes.rechazadas}</p>
+            </CardBody>
+          </Card>
+
+          <Card 
+            className="shadow-sm cursor-pointer hover:shadow-md transition-shadow" 
+            isPressable
+            onPress={() => history.push('/inventario')}
+          >
+            <CardBody className="text-center p-4">
+              <div className="w-12 h-12 rounded-full bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center mx-auto mb-2">
+                <Icon icon="lucide:package" className="text-primary text-2xl" />
+              </div>
+              <p className="text-sm text-default-500">Stock Bajo</p>
+              <p className="text-3xl font-bold text-primary">{productosBajoStock.length}</p>
+            </CardBody>
+          </Card>
+        </motion.div>
+
+        {/* TABLA Y GRÁFICO */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.4, delay: 0.3 }}
+            className="lg:col-span-2"
+          >
+            <Card className="shadow-sm h-full">
+              <CardHeader className="pb-0 pt-4 px-4">
+                <h3 className="text-lg font-semibold">Asignaturas y Sus Solicitudes</h3>
+              </CardHeader>
+              <CardBody className="px-4 pb-4">
+                <Table removeWrapper aria-label="Tabla de asignaturas">
+                  <TableHeader>
+                    <TableColumn>ASIGNATURA</TableColumn>
+                    <TableColumn>PROFESOR</TableColumn>
+                    <TableColumn>ESTADO</TableColumn>
+                    <TableColumn>ACCIONES</TableColumn>
+                  </TableHeader>
+                  <TableBody emptyContent="No hay asignaturas registradas">
+                    {asignaturasConSolicitudes.map((asignatura) => (
+                      <TableRow key={asignatura.id}>
+                        <TableCell>
+                          <div>
+                            <p className="font-medium">{asignatura.nombre}</p>
+                            <p className="text-xs text-default-400">{asignatura.codigo}</p>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <p className="text-sm">{asignatura.profesorCoordinador}</p>
+                        </TableCell>
+                        <TableCell>
+                          {renderEstadoSolicitud(asignatura.solicitud?.estado || null)}
+                        </TableCell>
+                        <TableCell>
+                          {asignatura.solicitud ? (
+                            <div className="flex gap-2">
+                              <Button
+                                isIconOnly
+                                size="sm"
+                                variant="light"
+                                onPress={() => verDetalleSolicitud(asignatura.solicitud!)}
+                              >
+                                <Icon icon="lucide:eye" className="text-primary" />
+                              </Button>
+                              {asignatura.solicitud.estado === 'Pendiente' && (
+                                <>
+                                  <Button
+                                    isIconOnly
+                                    size="sm"
+                                    variant="light"
+                                    color="success"
+                                    onPress={() => abrirModalAprobar(asignatura.solicitud!)}
+                                  >
+                                    <Icon icon="lucide:check" />
+                                  </Button>
+                                  <Button
+                                    isIconOnly
+                                    size="sm"
+                                    variant="light"
+                                    color="danger"
+                                    onPress={() => abrirModalRechazar(asignatura.solicitud!)}
+                                  >
+                                    <Icon icon="lucide:x" />
+                                  </Button>
+                                </>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-xs text-default-400">Sin solicitud</span>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardBody>
+            </Card>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.4, delay: 0.3 }}
+          >
+            <Card className="shadow-sm h-full">
+              <CardHeader className="pb-0 pt-4 px-4">
+                <h3 className="text-lg font-semibold">Distribución por Estado</h3>
+              </CardHeader>
+              <CardBody className="px-4 pb-4">
+                {datosPieChart.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={250}>
+                    <PieChart>
+                      <Pie
+                        data={datosPieChart}
+                        cx="50%"
+                        cy="50%"
+                        labelLine={false}
+                        label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                        outerRadius={80}
+                        dataKey="value"
+                      >
+                        {datosPieChart.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip />
+                      <Legend />
+                    </PieChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="flex items-center justify-center h-64 text-default-400">
+                    Sin datos para mostrar
+                  </div>
+                )}
+                
+                <Divider className="my-4" />
+                
+                <div className="space-y-2">
+                  <h4 className="text-sm font-semibold mb-2">Resumen</h4>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-default-500">Total Asignaturas:</span>
+                    <span className="font-semibold">{ASIGNATURAS_BASE.length}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-default-500">Con Solicitud:</span>
+                    <span className="font-semibold">{conteoSolicitudes.total}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-default-500">Sin Solicitud:</span>
+                    <span className="font-semibold">{ASIGNATURAS_BASE.length - conteoSolicitudes.total}</span>
+                  </div>
+                </div>
+              </CardBody>
+            </Card>
+          </motion.div>
+        </div>
+
+        {/* PRODUCTOS CON STOCK BAJO */}
+        {productosBajoStock.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.4 }}
+          >
+            <Card className="shadow-sm">
+              <CardHeader className="pb-0 pt-4 px-4 flex justify-between items-center">
+                <h3 className="text-lg font-semibold">⚠️ Productos con Stock Bajo</h3>
+                <Button
+                  size="sm"
+                  variant="flat"
+                  color="primary"
+                  onPress={() => history.push('/inventario')}
+                  endContent={<Icon icon="lucide:arrow-right" />}
+                >
+                  Ver Inventario
+                </Button>
+              </CardHeader>
+              <CardBody className="px-4 pb-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                  {productosBajoStock.slice(0, 8).map((producto) => (
+                    <div 
+                      key={producto.id}
+                      className="p-3 border border-danger-200 rounded-lg bg-danger-50 dark:bg-danger-900/10"
+                    >
+                      <p className="font-medium text-sm">{producto.nombre}</p>
+                      <p className="text-xs text-danger-600 dark:text-danger-400">
+                        {producto.stock} {producto.unidadMedida} (Mín: {producto.stockMinimo})
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </CardBody>
+            </Card>
+          </motion.div>
+        )}
+      </div>
+
+      {/* MODALES */}
+      
+      {/* Modal: Solicitudes Pendientes */}
+      <Modal 
+        isOpen={isPendientesOpen} 
+        onOpenChange={onPendientesOpenChange}
+        size="2xl"
+        scrollBehavior="inside"
+      >
+        <ModalContent>
+          {(onClose) => (
+            <>
+              <ModalHeader>
+                <div>
+                  <h2 className="text-xl font-bold flex items-center gap-2">
+                    <Icon icon="lucide:alert-triangle" className="text-warning" />
+                    Solicitudes Pendientes
+                  </h2>
+                  <p className="text-sm text-default-500 font-normal">
+                    {solicitudesPendientes.length} solicitud{solicitudesPendientes.length !== 1 ? 'es' : ''} requiere{solicitudesPendientes.length === 1 ? '' : 'n'} tu revisión
+                  </p>
+                </div>
+              </ModalHeader>
+              <ModalBody>
+                <Table removeWrapper aria-label="Solicitudes pendientes">
+                  <TableHeader>
+                    <TableColumn>ASIGNATURA</TableColumn>
+                    <TableColumn>PROFESOR</TableColumn>
+                    <TableColumn>FECHA</TableColumn>
+                    <TableColumn>ACCIONES</TableColumn>
+                  </TableHeader>
+                  <TableBody emptyContent="No hay solicitudes pendientes">
+                    {solicitudesPendientes.map((solicitud) => (
+                      <TableRow key={solicitud.id}>
+                        <TableCell>
+                          <div>
+                            <p className="font-medium">{solicitud.asignaturaNombre}</p>
+                            {solicitud.recetaNombre && (
+                              <p className="text-xs text-default-400">{solicitud.recetaNombre}</p>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>{solicitud.profesorNombre}</TableCell>
+                        <TableCell>
+                          {new Date(solicitud.fechaCreacion).toLocaleDateString('es-CL')}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              variant="flat"
+                              onPress={() => verDetalleSolicitud(solicitud)}
+                            >
+                              Ver
+                            </Button>
+                            <Button
+                              size="sm"
+                              color="success"
+                              onPress={() => {
+                                handleAprobarSolicitud(solicitud.id);
+                                if (solicitudesPendientes.length === 1) {
+                                  onClose();
+                                }
+                              }}
+                            >
+                              Aprobar
+                            </Button>
+                            <Button
+                              size="sm"
+                              color="danger"
+                              onPress={() => {
+                                setSolicitudSeleccionada(solicitud);
+                                onRechazarOpen();
+                              }}
+                            >
+                              Rechazar
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </ModalBody>
+              <ModalFooter>
+                <Button variant="flat" onPress={onClose}>
+                  Cerrar
+                </Button>
+              </ModalFooter>
+            </>
+          )}
+        </ModalContent>
+      </Modal>
+
+      {/* Modal: Detalle de Solicitud */}
+      <Modal isOpen={isDetalleOpen} onOpenChange={onDetalleOpenChange} size="lg">
+        <ModalContent>
+          {(onClose) => (
+            <>
+              <ModalHeader>Detalle de Solicitud</ModalHeader>
+              <ModalBody>
+                {solicitudSeleccionada && (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-sm text-default-500">Asignatura</p>
+                        <p className="font-semibold">{solicitudSeleccionada.asignaturaNombre}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-default-500">Profesor</p>
+                        <p className="font-semibold">{solicitudSeleccionada.profesorNombre}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-default-500">Estado</p>
+                        {renderEstadoSolicitud(solicitudSeleccionada.estado)}
+                      </div>
+                      <div>
+                        <p className="text-sm text-default-500">Fecha de Clase</p>
+                        <p className="font-semibold">
+                          {new Date(solicitudSeleccionada.fecha).toLocaleDateString('es-CL')}
+                        </p>
+                      </div>
+                    </div>
+
+                    {solicitudSeleccionada.recetaNombre && (
+                      <div>
+                        <p className="text-sm text-default-500">Receta Base</p>
+                        <p className="font-semibold">{solicitudSeleccionada.recetaNombre}</p>
+                      </div>
+                    )}
+
+                    <Divider />
+
+                    <div>
+                      <p className="font-semibold mb-2">Productos Solicitados</p>
+                      <Table removeWrapper aria-label="Productos">
+                        <TableHeader>
+                          <TableColumn>PRODUCTO</TableColumn>
+                          <TableColumn>CANTIDAD</TableColumn>
+                          <TableColumn>TIPO</TableColumn>
+                        </TableHeader>
+                        <TableBody>
+                          {solicitudSeleccionada.items.map((item) => (
+                            <TableRow key={item.id}>
+                              <TableCell>{item.productoNombre}</TableCell>
+                              <TableCell>
+                                {item.cantidad} {item.unidadMedida}
+                              </TableCell>
+                              <TableCell>
+                                {item.esAdicional ? (
+                                  <Chip size="sm" color="warning" variant="flat">Adicional</Chip>
+                                ) : (
+                                  <Chip size="sm" variant="flat">Receta</Chip>
+                                )}
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+
+                    {solicitudSeleccionada.observaciones && (
+                      <>
+                        <Divider />
+                        <div>
+                          <p className="text-sm text-default-500 mb-1">Observaciones</p>
+                          <p className="text-sm">{solicitudSeleccionada.observaciones}</p>
+                        </div>
+                      </>
+                    )}
+
+                    {solicitudSeleccionada.comentarioRechazo && (
+                      <>
+                        <Divider />
+                        <div className="bg-danger-50 dark:bg-danger-900/20 p-3 rounded-lg">
+                          <p className="text-sm text-danger-600 dark:text-danger-400 font-medium mb-1">
+                            Motivo de Rechazo:
+                          </p>
+                          <p className="text-sm">{solicitudSeleccionada.comentarioRechazo}</p>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
+              </ModalBody>
+              <ModalFooter>
+                <Button variant="flat" onPress={onClose}>
+                  Cerrar
+                </Button>
+                {solicitudSeleccionada?.estado === 'Pendiente' && (
+                  <>
+                    <Button 
+                      color="danger"
+                      onPress={() => {
+                        onClose();
+                        onRechazarOpen();
+                      }}
+                    >
+                      Rechazar
+                    </Button>
+                    <Button 
+                      color="success"
+                      onPress={() => {
+                        handleAprobarSolicitud(solicitudSeleccionada.id);
+                        onClose();
+                      }}
+                    >
+                      Aprobar
+                    </Button>
+                  </>
+                )}
+              </ModalFooter>
+            </>
+          )}
+        </ModalContent>
+      </Modal>
+
+      {/* Modal: Rechazar Solicitud */}
+      <Modal isOpen={isRechazarOpen} onOpenChange={onRechazarOpenChange}>
+        <ModalContent>
+          {(onClose) => (
+            <>
+              <ModalHeader>
+                <div className="flex items-center gap-2">
+                  <Icon icon="lucide:x-circle" className="text-danger" />
+                  Rechazar Solicitud
+                </div>
+              </ModalHeader>
+              <ModalBody>
+                <p className="text-sm text-default-500 mb-4">
+                  Estás a punto de rechazar la solicitud de <strong>{solicitudSeleccionada?.profesorNombre}</strong> para <strong>{solicitudSeleccionada?.asignaturaNombre}</strong>.
+                </p>
+                <Textarea
+                  label="Motivo del Rechazo"
+                  placeholder="Explica por qué se rechaza esta solicitud..."
+                  value={comentarioRechazo}
+                  onValueChange={setComentarioRechazo}
+                  minRows={4}
+                  isRequired
+                />
+              </ModalBody>
+              <ModalFooter>
+                <Button variant="flat" onPress={onClose}>
+                  Cancelar
+                </Button>
+                <Button 
+                  color="danger"
+                  onPress={handleRechazarSolicitud}
+                  isDisabled={!comentarioRechazo.trim()}
+                >
+                  Rechazar Solicitud
+                </Button>
+              </ModalFooter>
+            </>
+          )}
+        </ModalContent>
+      </Modal>
+
+      {/* MODALES DEL PROCESO */}
+      <ComprobacionModal
+        isOpen={isComprobacionOpen}
+        onClose={handleRechazarComprobacion}
+        comprobacionData={comprobacionData}
+        setComprobacionData={setComprobacionData}
+        onAccept={handleAceptarComprobacion}
+      />
+      
+      <CotizacionModal
+        isOpen={isCotizacionOpen}
+        onClose={handleRechazarCotizacion}
+        cotizacionData={cotizacionData}
+        setCotizacionData={setCotizacionData}
+        onAccept={handleHacerPedido}
+      />
+
+      <FinProcesoModal
+        isOpen={isFinalOpen}
+        onClose={handleCerrarModalFinal}
+        onGenerarPDFs={handleGenerarYDescargarPDFs}
+        finalOrderData={finalOrderData}
+        />
+    </div>
+  );
 };
 
 export default DashboardPage;

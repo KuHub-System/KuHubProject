@@ -28,172 +28,130 @@ import {
 import { Icon } from '@iconify/react';
 import { motion } from 'framer-motion';
 
-/**
- * Interfaz para un pedido.
- */
-interface Pedido {
-  id: string;
-  asignatura: string;
-  profesor: string;
-  fechaSolicitud: string;
-  fechaClase: string;
-  estado: 'Pendiente' | 'Aprobado' | 'Rechazado' | 'Entregado';
-  items: {
-    id: string;
-    producto: string;
-    cantidad: number;
-    unidad: string;
-  }[];
-}
-
-/**
- * Datos de ejemplo para los pedidos.
- */
-const pedidosIniciales: Pedido[] = [
-  {
-    id: '1',
-    asignatura: 'Panadería Básica',
-    profesor: 'Juan Pérez',
-    fechaSolicitud: '2025-03-10T14:20:00Z',
-    fechaClase: '2025-03-15T09:00:00Z',
-    estado: 'Pendiente',
-    items: [
-      { id: '1', producto: 'Harina', cantidad: 5, unidad: 'kg' },
-      { id: '2', producto: 'Levadura', cantidad: 0.5, unidad: 'kg' },
-      { id: '3', producto: 'Sal', cantidad: 0.2, unidad: 'kg' }
-    ]
-  },
-  {
-    id: '2',
-    asignatura: 'Pastelería Avanzada',
-    profesor: 'María González',
-    fechaSolicitud: '2025-03-09T10:15:00Z',
-    fechaClase: '2025-03-14T14:00:00Z',
-    estado: 'Aprobado',
-    items: [
-      { id: '1', producto: 'Harina', cantidad: 3, unidad: 'kg' },
-      { id: '2', producto: 'Azúcar', cantidad: 2, unidad: 'kg' },
-      { id: '3', producto: 'Mantequilla', cantidad: 1.5, unidad: 'kg' },
-      { id: '4', producto: 'Huevos', cantidad: 24, unidad: 'unidad' }
-    ]
-  },
-  {
-    id: '3',
-    asignatura: 'Cocina Internacional',
-    profesor: 'Pedro Sánchez',
-    fechaSolicitud: '2025-03-08T16:30:00Z',
-    fechaClase: '2025-03-13T10:00:00Z',
-    estado: 'Entregado',
-    items: [
-      { id: '1', producto: 'Arroz', cantidad: 2, unidad: 'kg' },
-      { id: '2', producto: 'Aceite de Oliva', cantidad: 1, unidad: 'l' },
-      { id: '3', producto: 'Especias', cantidad: 0.5, unidad: 'kg' }
-    ]
-  },
-  {
-    id: '4',
-    asignatura: 'Cocina Chilena',
-    profesor: 'Ana Rodríguez',
-    fechaSolicitud: '2025-03-07T11:45:00Z',
-    fechaClase: '2025-03-12T14:00:00Z',
-    estado: 'Rechazado',
-    items: [
-      { id: '1', producto: 'Carne', cantidad: 3, unidad: 'kg' },
-      { id: '2', producto: 'Papas', cantidad: 2, unidad: 'kg' },
-      { id: '3', producto: 'Cebolla', cantidad: 1, unidad: 'kg' }
-    ]
-  },
-  {
-    id: '5',
-    asignatura: 'Técnicas de Conservación',
-    profesor: 'Carlos Muñoz',
-    fechaSolicitud: '2025-03-06T09:30:00Z',
-    fechaClase: '2025-03-11T10:00:00Z',
-    estado: 'Pendiente',
-    items: [
-      { id: '1', producto: 'Sal', cantidad: 2, unidad: 'kg' },
-      { id: '2', producto: 'Azúcar', cantidad: 1.5, unidad: 'kg' },
-      { id: '3', producto: 'Vinagre', cantidad: 2, unidad: 'l' }
-    ]
-  }
-];
+// ✅ IMPORTAR SERVICIOS Y TIPOS REALES
+import { ISolicitud, EstadoSolicitud } from '../types/solicitud.types';
+import { 
+  obtenerTodasSolicitudesService,
+  aprobarRechazarSolicitudService,
+  obtenerConteoSolicitudesService
+} from '../services/solicitud-service';
+import { useAuth } from '../contexts/auth-context';
 
 /**
  * Página de gestión de pedidos.
  * Permite gestionar los pedidos de insumos realizados por los profesores.
- * 
- * @returns {JSX.Element} La página de gestión de pedidos.
  */
 const GestionPedidosPage: React.FC = () => {
-  const [pedidos, setPedidos] = React.useState<Pedido[]>(pedidosIniciales);
-  const [filteredPedidos, setFilteredPedidos] = React.useState<Pedido[]>(pedidosIniciales);
+  const { user } = useAuth();
+  const [solicitudes, setSolicitudes] = React.useState<ISolicitud[]>([]);
+  const [filteredSolicitudes, setFilteredSolicitudes] = React.useState<ISolicitud[]>([]);
   const [searchTerm, setSearchTerm] = React.useState<string>('');
   const [selectedEstado, setSelectedEstado] = React.useState<string>('todos');
   const [currentPage, setCurrentPage] = React.useState<number>(1);
-  const [pedidoSeleccionado, setPedidoSeleccionado] = React.useState<Pedido | null>(null);
+  const [solicitudSeleccionada, setSolicitudSeleccionada] = React.useState<ISolicitud | null>(null);
+  const [isLoading, setIsLoading] = React.useState(true);
+  const [contadores, setContadores] = React.useState({
+    pendientes: 0,
+    aceptadas: 0,
+    rechazadas: 0,
+    total: 0
+  });
   
   const { isOpen, onOpen, onOpenChange } = useDisclosure();
   const rowsPerPage = 5;
 
+  // ✅ CARGAR SOLICITUDES AL MONTAR
+  React.useEffect(() => {
+    cargarDatos();
+  }, []);
+
+  const cargarDatos = async () => {
+    try {
+      setIsLoading(true);
+      const [solicitudesData, conteosData] = await Promise.all([
+        obtenerTodasSolicitudesService(),
+        obtenerConteoSolicitudesService()
+      ]);
+      setSolicitudes(solicitudesData);
+      setFilteredSolicitudes(solicitudesData);
+      setContadores(conteosData);
+      console.log('📋 Solicitudes cargadas en Gestión de Pedidos:', solicitudesData.length);
+    } catch (error) {
+      console.error('❌ Error al cargar solicitudes:', error);
+      alert('Error al cargar las solicitudes');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   /**
-   * Filtra los pedidos según los criterios de búsqueda.
+   * Filtra las solicitudes según los criterios de búsqueda.
    */
   React.useEffect(() => {
-    let filtered = [...pedidos];
+    let filtered = [...solicitudes];
     
     // Filtrar por término de búsqueda
     if (searchTerm) {
-      filtered = filtered.filter(pedido => 
-        pedido.asignatura.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        pedido.profesor.toLowerCase().includes(searchTerm.toLowerCase())
+      filtered = filtered.filter(solicitud => 
+        solicitud.asignaturaNombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        solicitud.profesorNombre.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
     
     // Filtrar por estado
     if (selectedEstado !== 'todos') {
-      filtered = filtered.filter(pedido => pedido.estado === selectedEstado);
+      filtered = filtered.filter(solicitud => solicitud.estado === selectedEstado);
     }
     
-    setFilteredPedidos(filtered);
-    setCurrentPage(1); // Resetear a la primera página al filtrar
-  }, [searchTerm, selectedEstado, pedidos]);
+    setFilteredSolicitudes(filtered);
+    setCurrentPage(1);
+  }, [searchTerm, selectedEstado, solicitudes]);
 
   /**
-   * Calcula los pedidos a mostrar en la página actual.
+   * Calcula las solicitudes a mostrar en la página actual.
    */
-  const paginatedPedidos = React.useMemo(() => {
+  const paginatedSolicitudes = React.useMemo(() => {
     const start = (currentPage - 1) * rowsPerPage;
     const end = start + rowsPerPage;
-    return filteredPedidos.slice(start, end);
-  }, [currentPage, filteredPedidos, rowsPerPage]);
+    return filteredSolicitudes.slice(start, end);
+  }, [currentPage, filteredSolicitudes, rowsPerPage]);
 
   /**
-   * Abre el modal para ver los detalles de un pedido.
-   * 
-   * @param {Pedido} pedido - Pedido a ver.
+   * Abre el modal para ver los detalles de una solicitud.
    */
-  const verDetallePedido = (pedido: Pedido) => {
-    setPedidoSeleccionado(pedido);
+  const verDetalleSolicitud = (solicitud: ISolicitud) => {
+    setSolicitudSeleccionada(solicitud);
     onOpen();
   };
 
   /**
-   * Cambia el estado de un pedido.
-   * 
-   * @param {string} id - ID del pedido.
-   * @param {'Pendiente' | 'Aprobado' | 'Rechazado' | 'Entregado'} nuevoEstado - Nuevo estado.
+   * Cambia el estado de una solicitud.
    */
-  const cambiarEstadoPedido = (id: string, nuevoEstado: 'Pendiente' | 'Aprobado' | 'Rechazado' | 'Entregado') => {
-    setPedidos(pedidos.map(pedido => 
-      pedido.id === id ? { ...pedido, estado: nuevoEstado } : pedido
-    ));
+  const cambiarEstadoSolicitud = async (id: string, nuevoEstado: 'Aceptada' | 'Rechazada') => {
+    try {
+      if (!user) return;
+      
+      console.log(`🔄 Cambiando estado de solicitud ${id} a ${nuevoEstado}`);
+      
+      const aprobadorId = user.id || user.nombre;
+      await aprobarRechazarSolicitudService({
+        solicitudId: id,
+        estado: nuevoEstado,
+        aprobadoPor: aprobadorId
+      });
+
+      // Recargar datos
+      await cargarDatos();
+      
+      alert(`✅ Solicitud ${nuevoEstado.toLowerCase()} correctamente`);
+    } catch (error: any) {
+      console.error('❌ Error al cambiar estado:', error);
+      alert(error.message || 'Error al cambiar el estado de la solicitud');
+    }
   };
 
   /**
    * Formatea una fecha ISO a una cadena legible.
-   * 
-   * @param {string} fechaISO - Fecha en formato ISO.
-   * @returns {string} Fecha formateada.
    */
   const formatearFecha = (fechaISO: string) => {
     const fecha = new Date(fechaISO);
@@ -207,27 +165,33 @@ const GestionPedidosPage: React.FC = () => {
   };
 
   /**
-   * Renderiza un chip con el color correspondiente al estado del pedido.
-   * 
-   * @param {string} estado - Estado del pedido.
-   * @returns {JSX.Element} Chip con el estado del pedido.
+   * Renderiza un chip con el color correspondiente al estado.
    */
-  const renderEstado = (estado: string) => {
+  const renderEstado = (estado: EstadoSolicitud) => {
     switch (estado) {
       case 'Pendiente':
         return <Chip color="warning" size="sm">{estado}</Chip>;
-      case 'Aprobado':
-        return <Chip color="primary" size="sm">{estado}</Chip>;
-      case 'Rechazado':
-        return <Chip color="danger" size="sm">{estado}</Chip>;
-      case 'Entregado':
+      case 'Aceptada':
         return <Chip color="success" size="sm">{estado}</Chip>;
+      case 'Rechazada':
+        return <Chip color="danger" size="sm">{estado}</Chip>;
       default:
         return <Chip size="sm">{estado}</Chip>;
     }
   };
 
-return (
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p>Cargando solicitudes...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
     <div className="container mx-auto px-4 py-8">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
@@ -235,7 +199,7 @@ return (
         transition={{ duration: 0.4 }}
         className="space-y-6"
       >
-        {/* Encabezado (sin cambios) */}
+        {/* Encabezado */}
         <div>
           <h1 className="text-2xl font-bold mb-2">Gestión de Pedidos</h1>
           <p className="text-default-500">
@@ -243,19 +207,44 @@ return (
           </p>
         </div>
 
+        {/* Estadísticas */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <Card>
+            <CardBody className="text-center p-4">
+              <p className="text-sm text-default-500">Total</p>
+              <p className="text-3xl font-bold text-primary">{contadores.total}</p>
+            </CardBody>
+          </Card>
+          <Card>
+            <CardBody className="text-center p-4">
+              <p className="text-sm text-default-500">Pendientes</p>
+              <p className="text-3xl font-bold text-warning">{contadores.pendientes}</p>
+            </CardBody>
+          </Card>
+          <Card>
+            <CardBody className="text-center p-4">
+              <p className="text-sm text-default-500">Aceptadas</p>
+              <p className="text-3xl font-bold text-success">{contadores.aceptadas}</p>
+            </CardBody>
+          </Card>
+          <Card>
+            <CardBody className="text-center p-4">
+              <p className="text-sm text-default-500">Rechazadas</p>
+              <p className="text-3xl font-bold text-danger">{contadores.rechazadas}</p>
+            </CardBody>
+          </Card>
+        </div>
+
         {/* Filtros */}
         <div className="flex flex-col md:flex-row gap-4">
           <Input
-            placeholder="Buscar pedidos..."
+            placeholder="Buscar solicitudes..."
             value={searchTerm}
             onValueChange={setSearchTerm}
             startContent={<Icon icon="lucide:search" className="text-default-400" />}
             className="w-full md:w-64"
           />
           
-          {/* ================================================================= */}
-          {/* CORRECCIÓN #1: Ajustar el componente Select a la API de HeroUI */}
-          {/* ================================================================= */}
           <Select 
             placeholder="Estado"
             selectedKeys={selectedEstado ? [selectedEstado] : []}
@@ -264,27 +253,28 @@ return (
           >
             <SelectItem key="todos">Todos los estados</SelectItem>
             <SelectItem key="Pendiente">Pendiente</SelectItem>
-            <SelectItem key="Aprobado">Aprobado</SelectItem>
-            <SelectItem key="Rechazado">Rechazado</SelectItem>
-            <SelectItem key="Entregado">Entregado</SelectItem>
+            <SelectItem key="Aceptada">Aceptada</SelectItem>
+            <SelectItem key="Rechazada">Rechazada</SelectItem>
           </Select>
         </div>
 
-        {/* Tabla de pedidos */}
+        {/* Tabla de solicitudes */}
         <Card className="shadow-sm">
           <CardBody className="p-0">
             <Table 
-              aria-label="Tabla de pedidos"
+              aria-label="Tabla de solicitudes"
               removeWrapper
               bottomContent={
-                <div className="flex w-full justify-center">
-                  <Pagination
-                    total={Math.ceil(filteredPedidos.length / rowsPerPage)}
-                    page={currentPage}
-                    onChange={setCurrentPage}
-                    showControls
-                  />
-                </div>
+                filteredSolicitudes.length > rowsPerPage && (
+                  <div className="flex w-full justify-center">
+                    <Pagination
+                      total={Math.ceil(filteredSolicitudes.length / rowsPerPage)}
+                      page={currentPage}
+                      onChange={setCurrentPage}
+                      showControls
+                    />
+                  </div>
+                )
               }
             >
               <TableHeader>
@@ -295,28 +285,25 @@ return (
                 <TableColumn>ESTADO</TableColumn>
                 <TableColumn>ACCIONES</TableColumn>
               </TableHeader>
-              <TableBody emptyContent="No se encontraron pedidos">
-                {paginatedPedidos.map((pedido) => (
-                  <TableRow key={pedido.id}>
-                    <TableCell>{pedido.asignatura}</TableCell>
-                    <TableCell>{pedido.profesor}</TableCell>
-                    <TableCell>{formatearFecha(pedido.fechaSolicitud)}</TableCell>
-                    <TableCell>{formatearFecha(pedido.fechaClase)}</TableCell>
-                    <TableCell>{renderEstado(pedido.estado)}</TableCell>
+              <TableBody emptyContent="No se encontraron solicitudes">
+                {paginatedSolicitudes.map((solicitud) => (
+                  <TableRow key={solicitud.id}>
+                    <TableCell>{solicitud.asignaturaNombre}</TableCell>
+                    <TableCell>{solicitud.profesorNombre}</TableCell>
+                    <TableCell>{formatearFecha(solicitud.fechaCreacion)}</TableCell>
+                    <TableCell>{new Date(solicitud.fecha).toLocaleDateString('es-CL')}</TableCell>
+                    <TableCell>{renderEstado(solicitud.estado)}</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
                         <Button 
                           isIconOnly 
                           variant="light" 
                           size="sm"
-                          onPress={() => verDetallePedido(pedido)}
+                          onPress={() => verDetalleSolicitud(solicitud)}
                         >
                           <Icon icon="lucide:eye" className="text-primary" />
                         </Button>
 
-                        {/* =============================================================== */}
-                        {/* CORRECCIÓN #2: Usar el Dropdown real con lógica centralizada */}
-                        {/* =============================================================== */}
                         <Dropdown>
                           <DropdownTrigger>
                             <Button 
@@ -328,33 +315,25 @@ return (
                             </Button>
                           </DropdownTrigger>
                           <DropdownMenu 
-                            aria-label="Acciones de pedido"
+                            aria-label="Acciones de solicitud"
                             onAction={(key) => {
-                                if (key === 'aprobar') cambiarEstadoPedido(pedido.id, 'Aprobado');
-                                if (key === 'rechazar') cambiarEstadoPedido(pedido.id, 'Rechazado');
-                                if (key === 'entregar') cambiarEstadoPedido(pedido.id, 'Entregado');
+                              if (key === 'aprobar') cambiarEstadoSolicitud(solicitud.id, 'Aceptada');
+                              if (key === 'rechazar') cambiarEstadoSolicitud(solicitud.id, 'Rechazada');
                             }}
                           >
                             <DropdownItem 
                               key="aprobar" 
-                              startContent={<Icon icon="lucide:check" className="text-primary" />}
-                              isDisabled={pedido.estado === 'Aprobado' || pedido.estado === 'Entregado'}
+                              startContent={<Icon icon="lucide:check" className="text-success" />}
+                              isDisabled={solicitud.estado !== 'Pendiente'}
                             >
                               Aprobar
                             </DropdownItem>
                             <DropdownItem 
                               key="rechazar" 
                               startContent={<Icon icon="lucide:x" className="text-danger" />}
-                              isDisabled={pedido.estado === 'Rechazado' || pedido.estado === 'Entregado'}
+                              isDisabled={solicitud.estado !== 'Pendiente'}
                             >
                               Rechazar
-                            </DropdownItem>
-                            <DropdownItem 
-                              key="entregar" 
-                              startContent={<Icon icon="lucide:package" className="text-success" />}
-                              isDisabled={pedido.estado !== 'Aprobado'}
-                            >
-                              Marcar como Entregado
                             </DropdownItem>
                           </DropdownMenu>
                         </Dropdown>
@@ -368,38 +347,60 @@ return (
         </Card>
       </motion.div>
 
-      {/* Modal de detalle de pedido */}
+      {/* Modal de detalle de solicitud */}
       <Modal isOpen={isOpen} onOpenChange={onOpenChange} size="lg">
         <ModalContent>
           {(onClose) => (
             <>
-              <ModalHeader>Detalle del Pedido</ModalHeader>
+              <ModalHeader>Detalle de la Solicitud</ModalHeader>
               <ModalBody>
-                {pedidoSeleccionado && (
+                {solicitudSeleccionada && (
                   <div className="space-y-6">
                     {/* Información general */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
                         <p className="text-sm text-default-500">Asignatura</p>
-                        <p className="font-semibold">{pedidoSeleccionado.asignatura}</p>
+                        <p className="font-semibold">{solicitudSeleccionada.asignaturaNombre}</p>
                       </div>
                       <div>
                         <p className="text-sm text-default-500">Profesor</p>
-                        <p className="font-semibold">{pedidoSeleccionado.profesor}</p>
+                        <p className="font-semibold">{solicitudSeleccionada.profesorNombre}</p>
                       </div>
                       <div>
                         <p className="text-sm text-default-500">Fecha de Solicitud</p>
-                        <p className="font-semibold">{formatearFecha(pedidoSeleccionado.fechaSolicitud)}</p>
+                        <p className="font-semibold">{formatearFecha(solicitudSeleccionada.fechaCreacion)}</p>
                       </div>
                       <div>
                         <p className="text-sm text-default-500">Fecha de Clase</p>
-                        <p className="font-semibold">{formatearFecha(pedidoSeleccionado.fechaClase)}</p>
+                        <p className="font-semibold">{new Date(solicitudSeleccionada.fecha).toLocaleDateString('es-CL')}</p>
                       </div>
                       <div>
                         <p className="text-sm text-default-500">Estado</p>
-                        <div>{renderEstado(pedidoSeleccionado.estado)}</div>
+                        <div>{renderEstado(solicitudSeleccionada.estado)}</div>
                       </div>
+                      {solicitudSeleccionada.recetaNombre && (
+                        <div>
+                          <p className="text-sm text-default-500">Receta</p>
+                          <p className="font-semibold">{solicitudSeleccionada.recetaNombre}</p>
+                        </div>
+                      )}
                     </div>
+                    
+                    {/* Observaciones */}
+                    {solicitudSeleccionada.observaciones && (
+                      <div>
+                        <p className="text-sm text-default-500">Observaciones</p>
+                        <p className="font-semibold">{solicitudSeleccionada.observaciones}</p>
+                      </div>
+                    )}
+
+                    {/* Comentario de rechazo */}
+                    {solicitudSeleccionada.comentarioRechazo && (
+                      <div className="bg-danger-50 p-4 rounded-lg">
+                        <p className="text-sm text-danger-500 font-medium">Motivo del rechazo:</p>
+                        <p className="text-danger-700">{solicitudSeleccionada.comentarioRechazo}</p>
+                      </div>
+                    )}
                     
                     {/* Lista de productos */}
                     <div>
@@ -411,12 +412,20 @@ return (
                         <TableHeader>
                           <TableColumn>PRODUCTO</TableColumn>
                           <TableColumn>CANTIDAD</TableColumn>
+                          <TableColumn>TIPO</TableColumn>
                         </TableHeader>
                         <TableBody>
-                          {pedidoSeleccionado.items.map((item) => (
+                          {solicitudSeleccionada.items.map((item) => (
                             <TableRow key={item.id}>
-                              <TableCell>{item.producto}</TableCell>
-                              <TableCell>{item.cantidad} {item.unidad}</TableCell>
+                              <TableCell>{item.productoNombre}</TableCell>
+                              <TableCell>{item.cantidad} {item.unidadMedida}</TableCell>
+                              <TableCell>
+                                {item.esAdicional ? (
+                                  <Chip size="sm" color="warning" variant="flat">Adicional</Chip>
+                                ) : (
+                                  <Chip size="sm" variant="flat">Receta</Chip>
+                                )}
+                              </TableCell>
                             </TableRow>
                           ))}
                         </TableBody>
@@ -424,40 +433,26 @@ return (
                     </div>
                     
                     {/* Acciones según estado */}
-                    {pedidoSeleccionado.estado === 'Pendiente' && (
+                    {solicitudSeleccionada.estado === 'Pendiente' && (
                       <div className="flex gap-2 justify-end">
                         <Button 
                           color="danger" 
                           variant="flat"
                           onPress={() => {
-                            cambiarEstadoPedido(pedidoSeleccionado.id, 'Rechazado');
+                            cambiarEstadoSolicitud(solicitudSeleccionada.id, 'Rechazada');
                             onClose();
                           }}
                         >
                           Rechazar
                         </Button>
                         <Button 
-                          color="primary"
+                          color="success"
                           onPress={() => {
-                            cambiarEstadoPedido(pedidoSeleccionado.id, 'Aprobado');
+                            cambiarEstadoSolicitud(solicitudSeleccionada.id, 'Aceptada');
                             onClose();
                           }}
                         >
                           Aprobar
-                        </Button>
-                      </div>
-                    )}
-                    
-                    {pedidoSeleccionado.estado === 'Aprobado' && (
-                      <div className="flex justify-end">
-                        <Button 
-                          color="success"
-                          onPress={() => {
-                            cambiarEstadoPedido(pedidoSeleccionado.id, 'Entregado');
-                            onClose();
-                          }}
-                        >
-                          Marcar como Entregado
                         </Button>
                       </div>
                     )}
@@ -476,6 +471,5 @@ return (
     </div>
   );
 };
-
 
 export default GestionPedidosPage;

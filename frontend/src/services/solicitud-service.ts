@@ -13,7 +13,8 @@ import {
 } from '../types/solicitud.types';
 import { obtenerUsuarioActualService } from './auth-service';
 
-const STORAGE_KEY = 'solicitudes';
+// ✅ CAMBIO CRÍTICO: Usar la misma clave que storage-service
+const STORAGE_KEY = 'kuhub-solicitudes';
 
 /**
  * Helper para obtener solicitudes del localStorage
@@ -28,6 +29,7 @@ const obtenerSolicitudesStorage = (): ISolicitud[] => {
  */
 const guardarSolicitudesStorage = (solicitudes: ISolicitud[]): void => {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(solicitudes));
+  console.log('💾 Solicitudes guardadas:', solicitudes.length);
 };
 
 /**
@@ -44,6 +46,7 @@ export const crearSolicitudService = (data: ISolicitudCreacion): Promise<ISolici
         }
         
         const solicitudes = obtenerSolicitudesStorage();
+        console.log('📋 Solicitudes antes de crear:', solicitudes.length);
         
         const nuevaSolicitud: ISolicitud = {
           id: Date.now().toString(),
@@ -69,8 +72,10 @@ export const crearSolicitudService = (data: ISolicitudCreacion): Promise<ISolici
         guardarSolicitudesStorage(solicitudes);
         
         console.log('✅ Solicitud creada:', nuevaSolicitud.id);
+        console.log('📋 Solicitudes después de crear:', solicitudes.length);
         resolve(nuevaSolicitud);
       } catch (error) {
+        console.error('❌ Error al crear solicitud:', error);
         reject(error);
       }
     }, 100);
@@ -86,6 +91,7 @@ export const obtenerTodasSolicitudesService = (
   return new Promise((resolve) => {
     setTimeout(() => {
       let solicitudes = obtenerSolicitudesStorage();
+      console.log('📋 Solicitudes cargadas:', solicitudes.length);
       
       // Aplicar filtros
       if (filtros) {
@@ -127,12 +133,15 @@ export const obtenerMisSolicitudesService = (): Promise<ISolicitud[]> => {
         }
         
         const solicitudes = obtenerSolicitudesStorage();
+        console.log('📋 Solicitudes totales:', solicitudes.length);
+        
         const misSolicitudes = solicitudes
           .filter(s => s.profesorId === usuario.id)
           .sort((a, b) => 
             new Date(b.fechaCreacion).getTime() - new Date(a.fechaCreacion).getTime()
           );
         
+        console.log('📋 Mis solicitudes:', misSolicitudes.length);
         resolve(misSolicitudes);
       } catch (error) {
         reject(error);
@@ -270,12 +279,16 @@ export const aprobarRechazarSolicitudService = (
     setTimeout(() => {
       try {
         const solicitudes = obtenerSolicitudesStorage();
+        console.log('📋 Solicitudes antes de aprobar/rechazar:', solicitudes.length);
+        
         const index = solicitudes.findIndex(s => s.id === data.solicitudId);
         
         if (index === -1) {
           reject(new Error('Solicitud no encontrada'));
           return;
         }
+        
+        console.log(`🔄 Cambiando estado de "${solicitudes[index].estado}" a "${data.estado}"`);
         
         // Actualizar estado
         solicitudes[index] = {
@@ -289,8 +302,10 @@ export const aprobarRechazarSolicitudService = (
         guardarSolicitudesStorage(solicitudes);
         
         console.log(`✅ Solicitud ${data.estado.toLowerCase()}:`, data.solicitudId);
+        console.log('📋 Estado guardado:', solicitudes[index].estado);
         resolve(solicitudes[index]);
       } catch (error) {
+        console.error('❌ Error al aprobar/rechazar:', error);
         reject(error);
       }
     }, 100);
@@ -305,10 +320,13 @@ export const aceptarTodasSolicitudesService = (aprobadoPor: string): Promise<num
     setTimeout(() => {
       try {
         const solicitudes = obtenerSolicitudesStorage();
+        console.log('📋 Solicitudes antes de aceptar todas:', solicitudes.length);
+        
         let contador = 0;
         
         solicitudes.forEach((solicitud) => {
           if (solicitud.estado === 'Pendiente') {
+            console.log(`🔄 Aceptando solicitud: ${solicitud.id}`);
             solicitud.estado = 'Aceptada';
             solicitud.fechaAprobacion = new Date().toISOString();
             solicitud.aprobadoPor = aprobadoPor;
@@ -321,6 +339,7 @@ export const aceptarTodasSolicitudesService = (aprobadoPor: string): Promise<num
         console.log(`✅ ${contador} solicitudes aceptadas automáticamente`);
         resolve(contador);
       } catch (error) {
+        console.error('❌ Error al aceptar todas:', error);
         reject(error);
       }
     }, 100);
@@ -347,6 +366,7 @@ export const obtenerConteoSolicitudesService = (): Promise<{
         total: solicitudes.length,
       };
       
+      console.log('📊 Conteo de solicitudes:', conteo);
       resolve(conteo);
     }, 100);
   });
@@ -360,6 +380,7 @@ export const obtenerSolicitudesAceptadasParaPedidoService = (): Promise<ISolicit
     setTimeout(() => {
       const solicitudes = obtenerSolicitudesStorage();
       const aceptadas = solicitudes.filter(s => s.estado === 'Aceptada');
+      console.log('✅ Solicitudes aceptadas para pedido:', aceptadas.length);
       resolve(aceptadas);
     }, 100);
   });

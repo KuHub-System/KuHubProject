@@ -82,15 +82,7 @@ export const crearRecetaService = async (recetaData: ICrearReceta): Promise<IRec
   if (!recetaData.nombre || recetaData.nombre.trim() === '') {
     throw new Error('El nombre de la receta es requerido');
   }
-  
-  if (!recetaData.categoria || recetaData.categoria.trim() === '') {
-    throw new Error('La categoría es requerida');
-  }
-  
-  if (!recetaData.asignatura || recetaData.asignatura.trim() === '') {
-    throw new Error('La asignatura es requerida');
-  }
-  
+
   if (recetaData.ingredientes.length === 0) {
     throw new Error('Debe agregar al menos un ingrediente');
   }
