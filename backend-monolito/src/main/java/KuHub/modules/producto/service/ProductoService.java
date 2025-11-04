@@ -1,7 +1,7 @@
 package KuHub.modules.producto.service;
 
 
-import KuHub.modules.producto.dto.ProductoUpdateRequest;
+import KuHub.modules.producto.dtos.ProductoUpdateRequest;
 import KuHub.modules.producto.entity.Producto;
 
 import java.util.List;

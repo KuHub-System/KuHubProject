@@ -1,4 +1,4 @@
-package KuHub.modules.producto.dto;
+package KuHub.modules.producto.dtos;
 
 import jakarta.validation.constraints.NotBlank;
 import lombok.*;

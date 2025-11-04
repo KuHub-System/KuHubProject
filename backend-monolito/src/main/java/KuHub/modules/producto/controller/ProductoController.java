@@ -1,6 +1,6 @@
 package KuHub.modules.producto.controller;
 
-import KuHub.modules.producto.dto.ProductoUpdateRequest;
+import KuHub.modules.producto.dtos.ProductoUpdateRequest;
 import KuHub.modules.producto.entity.Producto;
 import KuHub.modules.producto.exceptions.ProductoException;
 import KuHub.modules.producto.service.ProductoService;

@@ -1,7 +1,7 @@
 package KuHub.modules.producto.exceptions;
 
 
-import KuHub.modules.producto.dto.ErrorDTO;
+import KuHub.config.ErrorDTO;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -17,7 +17,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 @RestControllerAdvice
-public class GlobalExceptionHandler {
+public class ProductoExceptionHandler {
 
     // Se crea metodo privado que permite generar el error DTO con los elementos basicos del error
     private ErrorDTO createErrorDTO(int status, Date date, Map<String, String> errorMap) {

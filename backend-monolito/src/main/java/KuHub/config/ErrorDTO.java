@@ -1,4 +1,4 @@
-package KuHub.modules.producto.dto;
+package KuHub.config;
 
 import lombok.Getter;
 import lombok.Setter;
