@@ -1,7 +1,7 @@
-package KuHub.controller;
+package KuHub.modules.producto.controller;
 
-import KuHub.entity.Producto;
-import KuHub.service.ProductoService;
+import KuHub.modules.producto.entity.Producto;
+import KuHub.modules.producto.service.ProductoService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
@@ -29,10 +29,14 @@ public class ProductoController {
                 .body(productoService.findAll());
     }
 
+    @GetMapping
+
     @GetMapping("/id/{id}")
     public ResponseEntity<Producto> findProductoById(@PathVariable Long id){
         return ResponseEntity
                 .status(200)
                 .body(productoService.findById(id));
     }
+
+
 }

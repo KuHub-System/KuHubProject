@@ -32,7 +32,8 @@
 		<module>msvc-Asignatura</module>				<!-- puerto 8089 -->
 		<module>msvc-movimiento</module>				<!-- puerto 8090 -->
 		<module>msvc-Seccion</module>				    <!-- puerto 8091 -->
-		<module>msvc-apigateway</module>				<!-- puerto 8095 -->
+		<module>msvc-apigateway</module>
+        <module>backend-monolito</module>                <!-- puerto 8095 -->
 
 	</modules>
 

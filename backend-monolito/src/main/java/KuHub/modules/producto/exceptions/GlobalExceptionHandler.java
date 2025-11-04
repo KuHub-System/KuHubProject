@@ -1,7 +1,7 @@
-package KuHub.exceptions;
+package KuHub.modules.producto.exceptions;
 
 
-import KuHub.dto.ErrorDTO;
+import KuHub.modules.producto.dto.ErrorDTO;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;

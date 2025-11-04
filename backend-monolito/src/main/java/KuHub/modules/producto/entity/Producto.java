@@ -1,4 +1,4 @@
-package KuHub.entity;
+package KuHub.modules.producto.entity;
 
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;

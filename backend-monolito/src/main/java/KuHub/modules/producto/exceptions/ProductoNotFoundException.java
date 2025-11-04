@@ -1,4 +1,4 @@
-package KuHub.exceptions;
+package KuHub.modules.producto.exceptions;
 
 import lombok.Getter;
 

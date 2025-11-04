@@ -1,4 +1,4 @@
-package KuHub.exceptions;
+package KuHub.modules.producto.exceptions;
 
 import lombok.Getter;
 
@@ -10,5 +10,5 @@ public class ProductoExistenteException extends RuntimeException {
 
   public ProductoExistenteException(String nombre) {
     super("El producto con nombre " + nombre + " ya existe");
-  }
+  }  
 }
