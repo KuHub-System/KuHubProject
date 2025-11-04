@@ -32,13 +32,6 @@ public class ProductoServiceImpl implements ProductoService{
         return productoRepository.findByActivo(activo);
     }
 
-    @Transactional(readOnly = true)
-    @Override
-    public Producto findByNombreProducto(String nombre){
-        return productoRepository.findByNombreProducto(nombre).orElseThrow(
-                ()-> new ProductoNotFoundException(nombre)
-        );
-    }
 
     @Transactional
     @Override
@@ -50,9 +43,25 @@ public class ProductoServiceImpl implements ProductoService{
 
     @Transactional
     @Override
-    public Producto findByIdAndActivo(Long id, Boolean activo){
-        return productoRepository.findByIdAndActivo(id,activo).orElseThrow(
+    public Producto findByIdProductoAndActivo(Long id, Boolean activo){
+        return productoRepository.findByIdProductoAndActivo(id,activo).orElseThrow(
                 ()-> new ProductoNotFoundException(id)
+        );
+    }
+
+    @Transactional(readOnly = true)
+    @Override
+    public Producto findByNombreProducto(String nombre){
+        return productoRepository.findByNombreProducto(nombre).orElseThrow(
+                ()-> new ProductoNotFoundException(nombre)
+        );
+    }
+
+    @Transactional
+    @Override
+    public Producto findByNombreProductoAndActivo(String nombreProducto, Boolean activo){
+        return productoRepository.findByNombreProductoAndActivo(nombreProducto,activo).orElseThrow(
+                ()-> new ProductoNotFoundException(nombreProducto)
         );
     }
 
@@ -135,6 +144,17 @@ public class ProductoServiceImpl implements ProductoService{
         //VEREFICAR COMO AFECATARA A OTROS PRODUCTOS
 
         //eliminar de manera logica
+        producto.setActivo(false);
+        productoRepository.save(producto);
+    }
+
+    @Transactional
+    @Override
+    public void deleteById(Long id)  {
+        Producto producto = productoRepository.findById(id).orElseThrow(
+                () -> new ProductoNotFoundException(id));
+
+        //eliminar de maneira logica
         producto.setActivo(false);
         productoRepository.save(producto);
     }
