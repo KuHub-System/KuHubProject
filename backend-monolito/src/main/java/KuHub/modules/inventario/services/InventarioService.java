@@ -6,7 +6,7 @@ import KuHub.modules.inventario.entity.Inventario;
 import java.util.List;
 
 public interface InventarioService {
-
+    void sincronizarSecuenciaInventario();
     //InventarioDTO save(InventarioDTO dto);
 
     List<Inventario> findAll();

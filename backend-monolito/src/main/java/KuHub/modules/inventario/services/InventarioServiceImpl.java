@@ -22,6 +22,12 @@ public class InventarioServiceImpl implements InventarioService {
     private ProductoService productoService;
 
     @Transactional
+    public void sincronizarSecuenciaInventario() {
+        Long nuevoValor = inventarioRepository.sincronizarSecuencia();
+        System.out.println("Secuencia de inventario sincronizada. Nuevo valor: " + nuevoValor);
+    }
+
+    @Transactional
     @Override
     public List<Inventario> findAll() {
         return inventarioRepository.findAll();
@@ -52,7 +58,7 @@ public class InventarioServiceImpl implements InventarioService {
     @Transactional
     @Override
     public Inventario  save (InventoryWithProductCreateRequestDTO inventarioRequest){
-
+        sincronizarSecuenciaInventario();
         //validar que el stock no es negativo
         if (inventarioRequest.getStock() < 0 ){
             throw new InventarioException("El inventario no puede ser negativo");
