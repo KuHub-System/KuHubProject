@@ -20,7 +20,6 @@ public class ProductoController {
     @Autowired
     private ProductoService productoService;
 
-
     /**Listar todos los productos independente de los valores activo TRUE/FALSE */
     @GetMapping
     public ResponseEntity<List<Producto>> findAllProductos(){
@@ -73,6 +72,7 @@ public class ProductoController {
                 .body(productoService.findByNombreProductoAndActivo(nombreProducto, activo));
     }
 
+
     @PostMapping
     public ResponseEntity<Producto> save(@RequestBody Producto producto){
         return ResponseEntity
@@ -116,12 +116,12 @@ public class ProductoController {
     public ResponseEntity<String> deleteProductoById(@PathVariable Long id){
         try {
             productoService.deleteById(id);
+            return ResponseEntity.noContent().build(); // 204 No Content
         } catch (ProductoException e) {
             return ResponseEntity.status(HttpStatus.CONFLICT).body(e.getMessage());
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error inesperado: " + e.getMessage());
         }
-        return null;
     }
 
 

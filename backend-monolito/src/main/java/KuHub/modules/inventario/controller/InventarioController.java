@@ -27,7 +27,7 @@ public class InventarioController {
                 .body(inventarioService.findAll());
     }
 
-    @GetMapping("activo/{activo}")
+    @GetMapping("/activo/{activo}")
     public ResponseEntity<List<Inventario>> findInventoriesWithProductsActive(@PathVariable Boolean activo){
         return ResponseEntity
                 .status(200)
@@ -52,8 +52,11 @@ public class InventarioController {
                 );
     }
 
-    @PostMapping("/front-page")
-    public ResponseEntity<Inventario> save(@Valid @RequestBody InventoryWithProductCreateRequestDTO inventarioRequest){
+    /**crear inventario para el FrontEnd */
+    @PostMapping("/front-page/")
+    public ResponseEntity<Inventario> save(
+            @Valid @RequestBody
+            InventoryWithProductCreateRequestDTO inventarioRequest){
         return ResponseEntity
                 .status(200)
                 .body(inventarioService.save(inventarioRequest));
