@@ -14,8 +14,9 @@ import lombok.*;
 public class Producto {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "id_producto",nullable = false)
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "producto_seq")
+    @SequenceGenerator(name = "producto_seq", sequenceName = "producto_id_producto_seq", allocationSize = 1)
+    @Column(name = "id_producto", nullable = false)
     private Long idProducto;
 
     @Column(name="cod_producto",unique = true)
@@ -25,9 +26,9 @@ public class Producto {
     @NotBlank(message = "El campo nombre del producto no puede ser vacio")
     private String nombreProducto;
 
-    @Column(name="categoria",nullable = false)
+    @Column(name="nombre_categoria",nullable = false)
     @NotBlank(message = "El campo categoria no puede ser vacio")
-    private String categoria;
+    private String nombreCategoria;
 
     @Column(name="unidad_medida" , nullable = false)
     @NotBlank(message = "El campo unidad medida no puede ser vacio")
@@ -44,7 +45,7 @@ public class Producto {
      id_producto SERIAL PRIMARY KEY,
      cod_producto VARCHAR(30),
      nombre_producto VARCHAR(100) NOT NULL,
-     categoria VARCHAR(100) NOT NULL,
+     nombre_categoria VARCHAR(100) NOT NULL,
      unidad_medida VARCHAR(50) NOT NULL,
      activo BOOLEAN DEFAULT TRUE, --soft delete
      foto_producto BYTEA

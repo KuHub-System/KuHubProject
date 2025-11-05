@@ -12,6 +12,9 @@ import java.util.Optional;
 @Repository
 public interface InventarioRepository extends JpaRepository<Inventario, Long> {
 
+    @Query(value = "SELECT setval('inventario_id_inventario_seq', (SELECT COALESCE(MAX(id_inventario), 1) FROM inventario))", nativeQuery = true)
+    Long sincronizarSecuencia();
+
     @Query("SELECT i FROM Inventario i JOIN i.producto p WHERE p.activo = :activo")
     List<Inventario> findInventoriesWithProductsActive(@Param("activo") Boolean activo);
 

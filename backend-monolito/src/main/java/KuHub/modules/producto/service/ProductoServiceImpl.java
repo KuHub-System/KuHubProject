@@ -32,6 +32,12 @@ public class ProductoServiceImpl implements ProductoService{
         return productoRepository.findByActivo(activo);
     }
 
+    @Transactional
+    @Override
+    public void sincronizarSecuenciaProducto() {
+        Long nuevoValor = productoRepository.sincronizarSecuencia();
+        System.out.println("Secuencia sincronizada. Nuevo valor: " + nuevoValor);
+    }
 
     @Transactional
     @Override
@@ -59,6 +65,18 @@ public class ProductoServiceImpl implements ProductoService{
 
     @Transactional
     @Override
+    public List<String> findDistinctCategoriaAndActivoTrue(){
+        return productoRepository.findDistinctCategoriaByActivoTrue();
+    }
+
+    @Transactional
+    @Override
+    public List<String> findDistinctUnidadMedidaByActivoTrue(){
+        return productoRepository.findDistinctUnidadMedidaByActivoTrue();
+    }
+
+    @Transactional
+    @Override
     public Producto findByNombreProductoAndActivo(String nombreProducto, Boolean activo){
         return productoRepository.findByNombreProductoAndActivo(nombreProducto,activo).orElseThrow(
                 ()-> new ProductoNotFoundException(nombreProducto)
@@ -68,6 +86,7 @@ public class ProductoServiceImpl implements ProductoService{
     @Transactional
     @Override
     public Producto save (Producto producto) {
+        sincronizarSecuenciaProducto();
         //capotalizar nombre producto para luego comparar en la base de datos
         String nombreProductoCap = StringUtils.capitalizarPalabras(producto.getNombreProducto());
 
@@ -80,8 +99,9 @@ public class ProductoServiceImpl implements ProductoService{
             throw new ProductoException("El codigo del producto "+producto.getCodProducto()+" ya existe");
         }
 
+
         //guardar en el objeto el nombre categoria captalizado
-        producto.setCategoria(StringUtils.capitalizarPalabras(producto.getCategoria()));
+        producto.setNombreCategoria(StringUtils.capitalizarPalabras(producto.getNombreCategoria()));
         //guardar en el objeto el nombre capitalizado
         producto.setNombreProducto(nombreProductoCap);
         //guardar en el objeto la unidades en mayusculas

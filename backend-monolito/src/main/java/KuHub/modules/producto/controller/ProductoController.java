@@ -44,6 +44,20 @@ public class ProductoController {
                 .body(productoService.findById(id));
     }
 
+    @GetMapping("/find-categoria-name-product-active/")
+    public ResponseEntity<List<String>> findByCategoriaNameProductActive(){
+        return ResponseEntity
+                .status(200)
+                .body(productoService.findDistinctCategoriaAndActivoTrue());
+    }
+
+    @GetMapping("/find-unidad-medida-product-active/")
+    public ResponseEntity<List<String>> findByUnidadMedidaProductActive(){
+        return ResponseEntity
+                .status(200)
+                .body(productoService.findDistinctUnidadMedidaByActivoTrue());
+    }
+
     /**Lista producto segun el valor activo TRUE/FALSE*/
     @GetMapping("/id-activo/{id}/{activo}")
     public ResponseEntity<Producto> findProductoByIdAndActivo(
