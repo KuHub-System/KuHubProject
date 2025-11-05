@@ -13,6 +13,7 @@ public interface InventarioService {
     List<Inventario> findInventoriesWithProductsActive(Boolean activo);
     Inventario findById(Long id);
     Inventario findByIdInventoryWithProductActive(Long idInventario,Boolean activo);
+    Long countInventoryForPaginationRows(String nombreCategoria);
     Inventario save (InventoryWithProductCreateRequestDTO inventarioRequest);
 
     //Inventario getInventarioByIdProducto(Long idProducto);

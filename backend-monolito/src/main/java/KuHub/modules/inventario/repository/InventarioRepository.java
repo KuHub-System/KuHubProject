@@ -22,4 +22,7 @@ public interface InventarioRepository extends JpaRepository<Inventario, Long> {
     Optional<Inventario> findByIdInventoryWithProductActive(
             @Param("idInventario") Long idInventario,
             @Param("activo") Boolean activo);
+
+    @Query("SELECT COUNT(i) FROM Inventario i JOIN i.producto p WHERE p.activo = true AND (:nombreCategoria IS NULL OR :nombreCategoria = '' OR lower(p.nombreCategoria) = lower(:nombreCategoria))")
+    Optional<Long> countAllInventarios(@Param("nombreCategoria") String nombreCategoria);
 }

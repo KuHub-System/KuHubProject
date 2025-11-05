@@ -57,6 +57,26 @@ public class InventarioServiceImpl implements InventarioService {
 
     @Transactional
     @Override
+    public Long countInventoryForPaginationRows(String nombreCategoria){
+
+        // Si el string es "null" o vacío, lo convertimos a null
+        String categoria = (nombreCategoria == null || nombreCategoria.trim().isEmpty() || "null".equalsIgnoreCase(nombreCategoria)) ? null : nombreCategoria;
+
+
+        Long cantidadInventario =inventarioRepository.countAllInventarios(categoria).orElseThrow(
+                ()-> new InventarioException("No hay inventarios para obtener un numero para la paginacion")
+        );
+
+        //para el fronta la cantidad de paginacion esta dividada para una lista de 10 elementos
+        // Convertir a double para usar Math.ceil y luego volver a Long
+        double paginas = Math.ceil((double) cantidadInventario / 10);
+        Long cantidadPaginas = (long) paginas;
+
+        return cantidadPaginas;
+    }
+
+    @Transactional
+    @Override
     public Inventario  save (InventoryWithProductCreateRequestDTO inventarioRequest){
         sincronizarSecuenciaInventario();
         //validar que el stock no es negativo
@@ -71,7 +91,7 @@ public class InventarioServiceImpl implements InventarioService {
         //crear objeto producto
         Producto producto = new Producto(null,null,
                 inventarioRequest.getNombreProducto(),inventarioRequest.getCategoria(), inventarioRequest.getUnidadMedida(),
-                null,null);
+                true,null);
         //la validacion esta en el metodo en service
 
         //como el metodo retorna el producto, puedo obtener el id para crear el inventario

@@ -21,6 +21,7 @@ public interface ProductoService {
     List<String> findDistinctCategoriaAndActivoTrue();
     List<String> findDistinctUnidadMedidaByActivoTrue();
 
+
     Producto save (Producto producto);
 
     Producto updateByName(String nombreProductoActual , ProductoUpdateRequest productoRequest);

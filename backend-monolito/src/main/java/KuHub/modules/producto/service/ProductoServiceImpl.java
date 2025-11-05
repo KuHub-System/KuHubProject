@@ -83,6 +83,7 @@ public class ProductoServiceImpl implements ProductoService{
         );
     }
 
+
     @Transactional
     @Override
     public Producto save (Producto producto) {
@@ -106,6 +107,8 @@ public class ProductoServiceImpl implements ProductoService{
         producto.setNombreProducto(nombreProductoCap);
         //guardar en el objeto la unidades en mayusculas
         producto.setUnidadMedida(producto.getUnidadMedida().toUpperCase());
+        //actico con true
+        producto.setActivo(true);
 
         return productoRepository.save(producto);
     }

@@ -52,6 +52,13 @@ public class InventarioController {
                 );
     }
 
+    @GetMapping("/count-inventory-for-pagination-rows/{nombreCategoria}")
+    public ResponseEntity<Long>  countInventoryForPaginationRows(@PathVariable String nombreCategoria){
+        return ResponseEntity
+                .status(200)
+                .body(inventarioService.countInventoryForPaginationRows(nombreCategoria));
+    }
+
     /**crear inventario para el FrontEnd */
     @PostMapping("/front-page/")
     public ResponseEntity<Inventario> save(
