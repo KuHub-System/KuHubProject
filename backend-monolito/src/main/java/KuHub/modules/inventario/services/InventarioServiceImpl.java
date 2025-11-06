@@ -124,7 +124,7 @@ public class InventarioServiceImpl implements InventarioService {
         }
 
         //crear objeto producto
-        Producto producto = new Producto(null,null,
+        Producto producto = new Producto(null,null,null,
                 inventarioRequest.getNombreProducto(),inventarioRequest.getCategoria(), inventarioRequest.getUnidadMedida(),
                 true,null);
         //la validacion esta en el metodo en service
