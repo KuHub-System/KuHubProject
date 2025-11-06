@@ -22,6 +22,9 @@ public class Producto {
     @Column(name="cod_producto",unique = true)
     private String codProducto;
 
+    @Column(name = "descripcion_producto")
+    private String descripcionProducto;
+
     @Column(name="nombre_producto",nullable = false,unique = true)
     @NotBlank(message = "El campo nombre del producto no puede ser vacio")
     private String nombreProducto;
