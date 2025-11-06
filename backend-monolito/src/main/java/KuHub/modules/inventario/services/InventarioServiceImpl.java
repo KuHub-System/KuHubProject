@@ -1,6 +1,7 @@
 package KuHub.modules.inventario.services;
 
 import KuHub.modules.inventario.dtos.InventoryWithProductCreateRequestDTO;
+import KuHub.modules.inventario.dtos.InventoryWithProductoResponseViewDTO;
 import KuHub.modules.inventario.entity.Inventario;
 import KuHub.modules.inventario.exceptions.InventarioException;
 import KuHub.modules.inventario.repository.InventarioRepository;
@@ -57,20 +58,54 @@ public class InventarioServiceImpl implements InventarioService {
 
     @Transactional
     @Override
-    public Long countInventoryForPaginationRows(String nombreCategoria){
+    public List<InventoryWithProductoResponseViewDTO> findInventariosForNumberPage(Long numeroPagina, String nombreCategoria) {
 
-        // Si el string es "null" o vacío, lo convertimos a null
-        String categoria = (nombreCategoria == null || nombreCategoria.trim().isEmpty() || "null".equalsIgnoreCase(nombreCategoria)) ? null : nombreCategoria;
+        // Debug de entrada
+        System.out.println("=== DEBUG FIND INVENTARIOS ===");
+        System.out.println("numeroPagina: " + numeroPagina);
+        System.out.println("nombreCategoria: '" + nombreCategoria + "'");
 
+        // Calcular startRow CORRECTO: (página - 1) * 10
+        Long startRow = (numeroPagina - 1) * 10;
+        System.out.println("startRow calculado: " + startRow);
 
-        Long cantidadInventario =inventarioRepository.countAllInventarios(categoria).orElseThrow(
-                ()-> new InventarioException("No hay inventarios para obtener un numero para la paginacion")
-        );
+        // Procesar categoría CORRECTAMENTE
+        String categoria = (nombreCategoria == null || "null".equalsIgnoreCase(nombreCategoria) || nombreCategoria.trim().isEmpty())
+                ? null
+                : nombreCategoria.trim();
 
-        //para el fronta la cantidad de paginacion esta dividada para una lista de 10 elementos
-        // Convertir a double para usar Math.ceil y luego volver a Long
+        System.out.println("categoria procesada: " + categoria);
+        System.out.println("es null?: " + (categoria == null));
+
+        // Ejecutar consulta
+        List<InventoryWithProductoResponseViewDTO> resultado = inventarioRepository.findInventariosForNumberPage(startRow, categoria);
+
+        System.out.println("resultado tamaño: " + resultado.size());
+        System.out.println("=== FIN DEBUG ===");
+
+        return resultado;
+    }
+
+    @Transactional
+    @Override
+    public Long countInventoryForPaginationRows(String nombreCategoria) {
+
+        // 🎯 Convertir a null si está vacío para que la consulta cuente TODO
+        String categoriaParam = (nombreCategoria == null || nombreCategoria.trim().isEmpty() || "null".equalsIgnoreCase(nombreCategoria))
+                ? null
+                : nombreCategoria.trim();
+
+        System.out.println("🔍 Counting with category: " + categoriaParam);
+
+        Long cantidadInventario = inventarioRepository.countAllInventarios(categoriaParam)
+                .orElseThrow(() -> new InventarioException("No hay inventarios"));
+
+        System.out.println("📊 Total count: " + cantidadInventario);
+        //independente de las decimales redondea hace arriba a entero
         double paginas = Math.ceil((double) cantidadInventario / 10);
         Long cantidadPaginas = (long) paginas;
+
+        System.out.println("📄 Pages calculated: " + cantidadPaginas);
 
         return cantidadPaginas;
     }

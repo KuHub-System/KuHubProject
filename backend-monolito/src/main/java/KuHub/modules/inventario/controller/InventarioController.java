@@ -1,6 +1,7 @@
 package KuHub.modules.inventario.controller;
 
 import KuHub.modules.inventario.dtos.InventoryWithProductCreateRequestDTO;
+import KuHub.modules.inventario.dtos.InventoryWithProductoResponseViewDTO;
 import KuHub.modules.inventario.entity.Inventario;
 import KuHub.modules.inventario.services.InventarioService;
 import jakarta.validation.Valid;
@@ -33,6 +34,18 @@ public class InventarioController {
                 .status(200)
                 .body(inventarioService.findInventoriesWithProductsActive(activo));
     }
+
+    @GetMapping("/find-inventories-for-number-page/{numberPage}/{nombreCategoria}")
+    public ResponseEntity<List<InventoryWithProductoResponseViewDTO>> findInventariosForNumberPage(
+            @PathVariable Long numberPage,
+            @PathVariable String nombreCategoria){
+        return ResponseEntity
+                .status(200)
+                .body(inventarioService.findInventariosForNumberPage(
+                        numberPage, nombreCategoria
+                ));
+    }
+
 
     @GetMapping("/{id}")
     public ResponseEntity<Inventario> findById(@PathVariable Long id){
