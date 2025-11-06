@@ -1,6 +1,7 @@
 package KuHub.modules.inventario.services;
 
 import KuHub.modules.inventario.dtos.InventoryWithProductCreateRequestDTO;
+import KuHub.modules.inventario.dtos.InventoryWithProductoResponseViewDTO;
 import KuHub.modules.inventario.entity.Inventario;
 
 import java.util.List;
@@ -11,6 +12,7 @@ public interface InventarioService {
 
     List<Inventario> findAll();
     List<Inventario> findInventoriesWithProductsActive(Boolean activo);
+    List<InventoryWithProductoResponseViewDTO> findInventariosForNumberPage(Long startRow, String nombreCategoria);
     Inventario findById(Long id);
     Inventario findByIdInventoryWithProductActive(Long idInventario,Boolean activo);
     Long countInventoryForPaginationRows(String nombreCategoria);
