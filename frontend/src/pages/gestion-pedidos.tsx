@@ -1,191 +1,219 @@
 import React from 'react';
-import { 
-  Table, 
-  TableHeader, 
-  TableColumn, 
-  TableBody, 
-  TableRow, 
-  TableCell,
-  Button,
+import {
   Card,
   CardBody,
-  Input,
-  Chip,
-  Pagination,
+  CardHeader,
+  Button,
+  Table,
+  TableHeader,
+  TableColumn,
+  TableBody,
+  TableRow,
+  TableCell,
   Select,
   SelectItem,
+  Input,
+  Chip,
   Modal,
   ModalContent,
   ModalHeader,
   ModalBody,
   ModalFooter,
   useDisclosure,
-  Dropdown,
-  DropdownTrigger,
-  DropdownMenu,
-  DropdownItem
+  Selection,
+  Divider,
 } from '@heroui/react';
 import { Icon } from '@iconify/react';
 import { motion } from 'framer-motion';
-
-// ✅ IMPORTAR SERVICIOS Y TIPOS REALES
+import { useToast } from '../hooks/useToast';
+import { obtenerPedidosService } from '../services/pedido-service';
+import { obtenerTodasSolicitudesService } from '../services/solicitud-service';
+import { IPedido, IPedidoResumen, EstadoPedido } from '../types/pedido.types';
 import { ISolicitud, EstadoSolicitud } from '../types/solicitud.types';
-import { 
-  obtenerTodasSolicitudesService,
-  aprobarRechazarSolicitudService,
-  obtenerConteoSolicitudesService
-} from '../services/solicitud-service';
-import { useAuth } from '../contexts/auth-context';
+import { EstadoSolicitudChip } from '../components/dashboard/shared/EstadoSolicitudChip';
+import { logger } from '../utils/logger';
 
-/**
- * Página de gestión de pedidos.
- * Permite gestionar los pedidos de insumos realizados por los profesores.
- */
-const GestionPedidosPage: React.FC = () => {
-  const { user } = useAuth();
-  const [solicitudes, setSolicitudes] = React.useState<ISolicitud[]>([]);
-  const [filteredSolicitudes, setFilteredSolicitudes] = React.useState<ISolicitud[]>([]);
-  const [searchTerm, setSearchTerm] = React.useState<string>('');
-  const [selectedEstado, setSelectedEstado] = React.useState<string>('todos');
-  const [currentPage, setCurrentPage] = React.useState<number>(1);
-  const [solicitudSeleccionada, setSolicitudSeleccionada] = React.useState<ISolicitud | null>(null);
-  const [isLoading, setIsLoading] = React.useState(true);
-  const [contadores, setContadores] = React.useState({
-    pendientes: 0,
-    aceptadas: 0,
-    rechazadas: 0,
-    total: 0
+type PedidoConSolicitudes = IPedidoResumen & {
+  solicitudes: ISolicitud[];
+};
+
+const SEMANAS = Array.from({ length: 18 }, (_, index) => index + 1);
+
+const construirResumenPedido = (
+  pedido: IPedido,
+  solicitudes: ISolicitud[]
+): PedidoConSolicitudes => {
+  const totalPendientes = solicitudes.filter((s) => s.estado === 'Pendiente').length;
+  const totalAceptadas = solicitudes.filter((s) => s.estado === 'Aceptada').length;
+  const totalAceptadasModificadas = solicitudes.filter(
+    (s) => s.estado === 'AceptadaModificada'
+  ).length;
+  const totalRechazadas = solicitudes.filter((s) => s.estado === 'Rechazada').length;
+
+  return {
+    ...pedido,
+    totalSolicitudes: solicitudes.length,
+    totalPendientes,
+    totalAceptadas,
+    totalAceptadasModificadas,
+    totalRechazadas,
+    solicitudes,
+  };
+};
+
+const formatearFecha = (fechaISO?: string) => {
+  if (!fechaISO) return '—';
+  const fecha = new Date(fechaISO);
+  return fecha.toLocaleString('es-CL', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
   });
-  
-  const { isOpen, onOpen, onOpenChange } = useDisclosure();
-  const rowsPerPage = 5;
+};
 
-  // ✅ CARGAR SOLICITUDES AL MONTAR
-  React.useEffect(() => {
-    cargarDatos();
-  }, []);
+const renderEstadoPedido = (estado: EstadoPedido) => {
+  switch (estado) {
+    case 'EnCurso':
+      return <Chip color="warning" size="sm" variant="flat">En curso</Chip>;
+    case 'Completado':
+      return <Chip color="success" size="sm" variant="flat">Completado</Chip>;
+    case 'Cancelado':
+      return <Chip color="danger" size="sm" variant="flat">Cancelado</Chip>;
+    default:
+      return <Chip size="sm" variant="flat">{estado}</Chip>;
+  }
+};
 
-  const cargarDatos = async () => {
+const GestionPedidosPage: React.FC = () => {
+  const toast = useToast();
+  const [pedidos, setPedidos] = React.useState<PedidoConSolicitudes[]>([]);
+  const [isLoading, setIsLoading] = React.useState(true);
+  const [filtroEstado, setFiltroEstado] = React.useState<Selection>(new Set([]));
+  const [filtroSemana, setFiltroSemana] = React.useState<Selection>(new Set([]));
+  const [busqueda, setBusqueda] = React.useState('');
+
+  const [pedidoSeleccionado, setPedidoSeleccionado] = React.useState<PedidoConSolicitudes | null>(null);
+  const [estadoDetalle, setEstadoDetalle] = React.useState<Selection>(new Set([]));
+  const [solicitudSeleccionada, setSolicitudSeleccionada] = React.useState<ISolicitud | null>(null);
+
+  const { isOpen: isDetalleOpen, onOpen: onDetalleOpen, onOpenChange: onDetalleOpenChange } = useDisclosure();
+  const { isOpen: isSolicitudOpen, onOpen: onSolicitudOpen, onOpenChange: onSolicitudOpenChange } = useDisclosure();
+
+  const cargarPedidos = React.useCallback(async () => {
     try {
       setIsLoading(true);
-      const [solicitudesData, conteosData] = await Promise.all([
-        obtenerTodasSolicitudesService(),
-        obtenerConteoSolicitudesService()
-      ]);
-      setSolicitudes(solicitudesData);
-      setFilteredSolicitudes(solicitudesData);
-      setContadores(conteosData);
-      console.log('📋 Solicitudes cargadas en Gestión de Pedidos:', solicitudesData.length);
+      const pedidosBase = await obtenerPedidosService();
+
+      const pedidosConSolicitudes = await Promise.all(
+        pedidosBase.map(async (pedido) => {
+          const solicitudesSemana = await obtenerTodasSolicitudesService({ semana: pedido.semana });
+          return construirResumenPedido(pedido, solicitudesSemana);
+        })
+      );
+
+      setPedidos(pedidosConSolicitudes);
     } catch (error) {
-      console.error('❌ Error al cargar solicitudes:', error);
-      alert('Error al cargar las solicitudes');
+      logger.error('❌ Error al cargar los pedidos semanales:', error);
+      toast.error('Error al cargar los pedidos semanales');
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [toast]);
 
-  /**
-   * Filtra las solicitudes según los criterios de búsqueda.
-   */
   React.useEffect(() => {
-    let filtered = [...solicitudes];
-    
-    // Filtrar por término de búsqueda
-    if (searchTerm) {
-      filtered = filtered.filter(solicitud => 
-        solicitud.asignaturaNombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        solicitud.profesorNombre.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-    }
-    
-    // Filtrar por estado
-    if (selectedEstado !== 'todos') {
-      filtered = filtered.filter(solicitud => solicitud.estado === selectedEstado);
-    }
-    
-    setFilteredSolicitudes(filtered);
-    setCurrentPage(1);
-  }, [searchTerm, selectedEstado, solicitudes]);
+    cargarPedidos();
+  }, [cargarPedidos]);
 
-  /**
-   * Calcula las solicitudes a mostrar en la página actual.
-   */
-  const paginatedSolicitudes = React.useMemo(() => {
-    const start = (currentPage - 1) * rowsPerPage;
-    const end = start + rowsPerPage;
-    return filteredSolicitudes.slice(start, end);
-  }, [currentPage, filteredSolicitudes, rowsPerPage]);
+  const estadoSeleccionado = React.useMemo(() => {
+    if (filtroEstado === 'all') return '';
+    const valor = Array.from(filtroEstado)[0] as string | undefined;
+    return valor && valor !== 'todos' ? valor : '';
+  }, [filtroEstado]);
 
-  /**
-   * Abre el modal para ver los detalles de una solicitud.
-   */
-  const verDetalleSolicitud = (solicitud: ISolicitud) => {
-    setSolicitudSeleccionada(solicitud);
-    onOpen();
-  };
+  const semanaSeleccionada = React.useMemo(() => {
+    if (filtroSemana === 'all') return 0;
+    const valor = Array.from(filtroSemana)[0] as string | undefined;
+    return valor && valor !== 'todas' ? parseInt(valor, 10) : 0;
+  }, [filtroSemana]);
 
-  /**
-   * Cambia el estado de una solicitud.
-   */
-  const cambiarEstadoSolicitud = async (id: string, nuevoEstado: 'Aceptada' | 'Rechazada') => {
-    try {
-      if (!user) return;
-      
-      console.log(`🔄 Cambiando estado de solicitud ${id} a ${nuevoEstado}`);
-      
-      const aprobadorId = user.id || user.nombre;
-      await aprobarRechazarSolicitudService({
-        solicitudId: id,
-        estado: nuevoEstado,
-        aprobadoPor: aprobadorId
-      });
+  const pedidosFiltrados = React.useMemo(() => {
+    return pedidos.filter((pedido) => {
+      if (estadoSeleccionado && pedido.estado !== estadoSeleccionado) {
+        return false;
+      }
 
-      // Recargar datos
-      await cargarDatos();
-      
-      alert(`✅ Solicitud ${nuevoEstado.toLowerCase()} correctamente`);
-    } catch (error: any) {
-      console.error('❌ Error al cambiar estado:', error);
-      alert(error.message || 'Error al cambiar el estado de la solicitud');
-    }
-  };
+      if (semanaSeleccionada && pedido.semana !== semanaSeleccionada) {
+        return false;
+      }
 
-  /**
-   * Formatea una fecha ISO a una cadena legible.
-   */
-  const formatearFecha = (fechaISO: string) => {
-    const fecha = new Date(fechaISO);
-    return fecha.toLocaleDateString('es-CL', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
+      if (busqueda) {
+        const texto = busqueda.toLowerCase();
+        const coincidePedido =
+          (pedido.creadoPorNombre || '').toLowerCase().includes(texto) ||
+          (pedido.comentario || '').toLowerCase().includes(texto) ||
+          pedido.id.toLowerCase().includes(texto);
+
+        const coincideSolicitud = pedido.solicitudes.some((solicitud) =>
+          solicitud.asignaturaNombre.toLowerCase().includes(texto) ||
+          solicitud.profesorNombre.toLowerCase().includes(texto)
+        );
+
+        if (!coincidePedido && !coincideSolicitud) {
+          return false;
+        }
+      }
+
+      return true;
     });
+  }, [pedidos, estadoSeleccionado, semanaSeleccionada, busqueda]);
+
+  const resumenGlobal = React.useMemo(() => {
+    const totalSolicitudes = pedidos.reduce((acc, pedido) => acc + pedido.totalSolicitudes, 0);
+    return {
+      totalPedidos: pedidos.length,
+      enCurso: pedidos.filter((p) => p.estado === 'EnCurso').length,
+      completados: pedidos.filter((p) => p.estado === 'Completado').length,
+      cancelados: pedidos.filter((p) => p.estado === 'Cancelado').length,
+      totalSolicitudes,
+    };
+  }, [pedidos]);
+
+  const estadoDetalleSeleccionado = React.useMemo(() => {
+    if (estadoDetalle === 'all') return '';
+    const valor = Array.from(estadoDetalle)[0] as string | undefined;
+    return valor && valor !== 'todos' ? valor : '';
+  }, [estadoDetalle]);
+
+  const solicitudesDetalle = React.useMemo(() => {
+    if (!pedidoSeleccionado) return [];
+
+    return pedidoSeleccionado.solicitudes.filter((solicitud) => {
+      if (estadoDetalleSeleccionado && solicitud.estado !== estadoDetalleSeleccionado) {
+        return false;
+      }
+      return true;
+    });
+  }, [pedidoSeleccionado, estadoDetalleSeleccionado]);
+
+  const abrirDetallePedido = (pedido: PedidoConSolicitudes) => {
+    setPedidoSeleccionado(pedido);
+    setEstadoDetalle(new Set([]));
+    onDetalleOpen();
   };
 
-  /**
-   * Renderiza un chip con el color correspondiente al estado.
-   */
-  const renderEstado = (estado: EstadoSolicitud) => {
-    switch (estado) {
-      case 'Pendiente':
-        return <Chip color="warning" size="sm">{estado}</Chip>;
-      case 'Aceptada':
-        return <Chip color="success" size="sm">{estado}</Chip>;
-      case 'Rechazada':
-        return <Chip color="danger" size="sm">{estado}</Chip>;
-      default:
-        return <Chip size="sm">{estado}</Chip>;
-    }
+  const abrirDetalleSolicitud = (solicitud: ISolicitud) => {
+    setSolicitudSeleccionada(solicitud);
+    onSolicitudOpen();
   };
 
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-96">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p>Cargando solicitudes...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4" />
+          <p>Cargando pedidos semanales...</p>
         </div>
       </div>
     );
@@ -199,145 +227,136 @@ const GestionPedidosPage: React.FC = () => {
         transition={{ duration: 0.4 }}
         className="space-y-6"
       >
-        {/* Encabezado */}
-        <div>
-          <h1 className="text-2xl font-bold mb-2">Gestión de Pedidos</h1>
-          <p className="text-default-500">
-            Administre los pedidos de insumos realizados por los profesores.
-          </p>
-        </div>
+        <Card>
+          <CardHeader className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div>
+              <h1 className="text-2xl font-bold mb-1">Gestión de Pedidos Semanales</h1>
+              <p className="text-default-500 text-sm">
+                Visualiza los procesos de pedidos generados por la administración y revisa las solicitudes agrupadas por semana.
+              </p>
+            </div>
+            <Button
+              variant="flat"
+              color="primary"
+              startContent={<Icon icon="lucide:refresh-cw" />}
+              onPress={cargarPedidos}
+            >
+              Actualizar
+            </Button>
+          </CardHeader>
+          <Divider />
+          <CardBody className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <ResumenCard
+              titulo="Pedidos totales"
+              valor={resumenGlobal.totalPedidos}
+              icono="lucide:layers"
+              color="primary"
+            />
+            <ResumenCard
+              titulo="En curso"
+              valor={resumenGlobal.enCurso}
+              icono="lucide:play-circle"
+              color="warning"
+            />
+            <ResumenCard
+              titulo="Completados"
+              valor={resumenGlobal.completados}
+              icono="lucide:check-circle"
+              color="success"
+            />
+            <ResumenCard
+              titulo="Solicitudes procesadas"
+              valor={resumenGlobal.totalSolicitudes}
+              icono="lucide:clipboard-check"
+              color="secondary"
+            />
+          </CardBody>
+        </Card>
 
-        {/* Estadísticas */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <Card>
-            <CardBody className="text-center p-4">
-              <p className="text-sm text-default-500">Total</p>
-              <p className="text-3xl font-bold text-primary">{contadores.total}</p>
-            </CardBody>
-          </Card>
-          <Card>
-            <CardBody className="text-center p-4">
-              <p className="text-sm text-default-500">Pendientes</p>
-              <p className="text-3xl font-bold text-warning">{contadores.pendientes}</p>
-            </CardBody>
-          </Card>
-          <Card>
-            <CardBody className="text-center p-4">
-              <p className="text-sm text-default-500">Aceptadas</p>
-              <p className="text-3xl font-bold text-success">{contadores.aceptadas}</p>
-            </CardBody>
-          </Card>
-          <Card>
-            <CardBody className="text-center p-4">
-              <p className="text-sm text-default-500">Rechazadas</p>
-              <p className="text-3xl font-bold text-danger">{contadores.rechazadas}</p>
-            </CardBody>
-          </Card>
-        </div>
+        <Card>
+          <CardBody className="p-4 space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-[1fr_200px_200px] gap-4">
+              <Input
+                placeholder="Buscar por profesor, asignatura o comentario..."
+                value={busqueda}
+                onValueChange={setBusqueda}
+                startContent={<Icon icon="lucide:search" className="text-default-400" />}
+                isClearable
+                onClear={() => setBusqueda('')}
+              />
+              <Select
+                label="Estado del pedido"
+                placeholder="Todos los estados"
+                selectedKeys={filtroEstado}
+                onSelectionChange={setFiltroEstado}
+              >
+                <SelectItem key="todos">Todos</SelectItem>
+                <SelectItem key="EnCurso">En curso</SelectItem>
+                <SelectItem key="Completado">Completado</SelectItem>
+                <SelectItem key="Cancelado">Cancelado</SelectItem>
+              </Select>
+              <Select
+                label="Semana"
+                placeholder="Todas las semanas"
+                selectedKeys={filtroSemana}
+                onSelectionChange={setFiltroSemana}
+              >
+                <SelectItem key="todas">Todas</SelectItem>
+                {SEMANAS.map((semana) => (
+                  <SelectItem key={semana.toString()}>
+                    Semana {semana}
+                  </SelectItem>
+                ))}
+              </Select>
+            </div>
+          </CardBody>
+        </Card>
 
-        {/* Filtros */}
-        <div className="flex flex-col md:flex-row gap-4">
-          <Input
-            placeholder="Buscar solicitudes..."
-            value={searchTerm}
-            onValueChange={setSearchTerm}
-            startContent={<Icon icon="lucide:search" className="text-default-400" />}
-            className="w-full md:w-64"
-          />
-          
-          <Select 
-            placeholder="Estado"
-            selectedKeys={selectedEstado ? [selectedEstado] : []}
-            onSelectionChange={(keys) => setSelectedEstado(Array.from(keys)[0] as string)}
-            className="w-full md:w-40"
-          >
-            <SelectItem key="todos">Todos los estados</SelectItem>
-            <SelectItem key="Pendiente">Pendiente</SelectItem>
-            <SelectItem key="Aceptada">Aceptada</SelectItem>
-            <SelectItem key="Rechazada">Rechazada</SelectItem>
-          </Select>
-        </div>
-
-        {/* Tabla de solicitudes */}
         <Card className="shadow-sm">
           <CardBody className="p-0">
-            <Table 
-              aria-label="Tabla de solicitudes"
-              removeWrapper
-              bottomContent={
-                filteredSolicitudes.length > rowsPerPage && (
-                  <div className="flex w-full justify-center">
-                    <Pagination
-                      total={Math.ceil(filteredSolicitudes.length / rowsPerPage)}
-                      page={currentPage}
-                      onChange={setCurrentPage}
-                      showControls
-                    />
-                  </div>
-                )
-              }
-            >
+            <Table removeWrapper aria-label="Tabla de pedidos semanales">
               <TableHeader>
-                <TableColumn>ASIGNATURA</TableColumn>
-                <TableColumn>PROFESOR</TableColumn>
-                <TableColumn>FECHA SOLICITUD</TableColumn>
-                <TableColumn>FECHA CLASE</TableColumn>
+                <TableColumn>SEMANA</TableColumn>
                 <TableColumn>ESTADO</TableColumn>
+                <TableColumn>INICIO</TableColumn>
+                <TableColumn>CIERRE</TableColumn>
+                <TableColumn>TOTAL SOLICITUDES</TableColumn>
+                <TableColumn>PENDIENTES</TableColumn>
+                <TableColumn>ACEPTADAS</TableColumn>
+                <TableColumn>MODIFICADAS</TableColumn>
+                <TableColumn>RECHAZADAS</TableColumn>
                 <TableColumn>ACCIONES</TableColumn>
               </TableHeader>
-              <TableBody emptyContent="No se encontraron solicitudes">
-                {paginatedSolicitudes.map((solicitud) => (
-                  <TableRow key={solicitud.id}>
-                    <TableCell>{solicitud.asignaturaNombre}</TableCell>
-                    <TableCell>{solicitud.profesorNombre}</TableCell>
-                    <TableCell>{formatearFecha(solicitud.fechaCreacion)}</TableCell>
-                    <TableCell>{new Date(solicitud.fecha).toLocaleDateString('es-CL')}</TableCell>
-                    <TableCell>{renderEstado(solicitud.estado)}</TableCell>
+              <TableBody emptyContent="No hay pedidos registrados para los filtros seleccionados">
+                {pedidosFiltrados.map((pedido) => (
+                  <TableRow key={pedido.id}>
                     <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Button 
-                          isIconOnly 
-                          variant="light" 
-                          size="sm"
-                          onPress={() => verDetalleSolicitud(solicitud)}
-                        >
-                          <Icon icon="lucide:eye" className="text-primary" />
-                        </Button>
-
-                        <Dropdown>
-                          <DropdownTrigger>
-                            <Button 
-                              isIconOnly 
-                              variant="light" 
-                              size="sm"
-                            >
-                              <Icon icon="lucide:more-vertical" />
-                            </Button>
-                          </DropdownTrigger>
-                          <DropdownMenu 
-                            aria-label="Acciones de solicitud"
-                            onAction={(key) => {
-                              if (key === 'aprobar') cambiarEstadoSolicitud(solicitud.id, 'Aceptada');
-                              if (key === 'rechazar') cambiarEstadoSolicitud(solicitud.id, 'Rechazada');
-                            }}
-                          >
-                            <DropdownItem 
-                              key="aprobar" 
-                              startContent={<Icon icon="lucide:check" className="text-success" />}
-                              isDisabled={solicitud.estado !== 'Pendiente'}
-                            >
-                              Aprobar
-                            </DropdownItem>
-                            <DropdownItem 
-                              key="rechazar" 
-                              startContent={<Icon icon="lucide:x" className="text-danger" />}
-                              isDisabled={solicitud.estado !== 'Pendiente'}
-                            >
-                              Rechazar
-                            </DropdownItem>
-                          </DropdownMenu>
-                        </Dropdown>
+                      <div>
+                        <p className="font-semibold">Semana {pedido.semana}</p>
+                        <p className="text-xs text-default-400">Pedido #{pedido.id.slice(-6)}</p>
                       </div>
+                    </TableCell>
+                    <TableCell>{renderEstadoPedido(pedido.estado)}</TableCell>
+                    <TableCell>{formatearFecha(pedido.fechaInicio)}</TableCell>
+                    <TableCell>{formatearFecha(pedido.fechaCierre)}</TableCell>
+                    <TableCell>
+                      <Chip size="sm" variant="flat">
+                        {pedido.totalSolicitudes} solicitudes
+                      </Chip>
+                    </TableCell>
+                    <TableCell>{pedido.totalPendientes}</TableCell>
+                    <TableCell>{pedido.totalAceptadas}</TableCell>
+                    <TableCell>{pedido.totalAceptadasModificadas}</TableCell>
+                    <TableCell>{pedido.totalRechazadas}</TableCell>
+                    <TableCell>
+                      <Button
+                        isIconOnly
+                        variant="light"
+                        size="sm"
+                        onPress={() => abrirDetallePedido(pedido)}
+                      >
+                        <Icon icon="lucide:eye" className="text-primary" />
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -347,68 +366,173 @@ const GestionPedidosPage: React.FC = () => {
         </Card>
       </motion.div>
 
-      {/* Modal de detalle de solicitud */}
-      <Modal isOpen={isOpen} onOpenChange={onOpenChange} size="lg">
+      <Modal isOpen={isDetalleOpen} onOpenChange={onDetalleOpenChange} size="3xl" scrollBehavior="inside">
         <ModalContent>
           {(onClose) => (
             <>
-              <ModalHeader>Detalle de la Solicitud</ModalHeader>
-              <ModalBody>
-                {solicitudSeleccionada && (
-                  <div className="space-y-6">
-                    {/* Información general */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <p className="text-sm text-default-500">Asignatura</p>
-                        <p className="font-semibold">{solicitudSeleccionada.asignaturaNombre}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-default-500">Profesor</p>
-                        <p className="font-semibold">{solicitudSeleccionada.profesorNombre}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-default-500">Fecha de Solicitud</p>
-                        <p className="font-semibold">{formatearFecha(solicitudSeleccionada.fechaCreacion)}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-default-500">Fecha de Clase</p>
-                        <p className="font-semibold">{new Date(solicitudSeleccionada.fecha).toLocaleDateString('es-CL')}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-default-500">Estado</p>
-                        <div>{renderEstado(solicitudSeleccionada.estado)}</div>
-                      </div>
-                      {solicitudSeleccionada.recetaNombre && (
+              <ModalHeader className="flex flex-col gap-1">
+                <span className="text-xl font-semibold">
+                  Detalle del pedido semanal {pedidoSeleccionado?.semana}
+                </span>
+                <span className="text-sm text-default-500">
+                  Pedido #{pedidoSeleccionado?.id.slice(-6)} · Creado por {pedidoSeleccionado?.creadoPorNombre || 'Administración'}
+                </span>
+              </ModalHeader>
+              <ModalBody className="space-y-4">
+                {pedidoSeleccionado && (
+                  <>
+                    <Card variant="flat">
+                      <CardBody className="grid grid-cols-1 md:grid-cols-4 gap-3 text-sm">
                         <div>
-                          <p className="text-sm text-default-500">Receta</p>
-                          <p className="font-semibold">{solicitudSeleccionada.recetaNombre}</p>
+                          <p className="text-default-500">Estado</p>
+                          <div className="mt-1">
+                            {renderEstadoPedido(pedidoSeleccionado.estado)}
+                          </div>
+                        </div>
+                        <div>
+                          <p className="text-default-500">Fecha inicio</p>
+                          <p className="font-medium">{formatearFecha(pedidoSeleccionado.fechaInicio)}</p>
+                        </div>
+                        <div>
+                          <p className="text-default-500">Fecha cierre</p>
+                          <p className="font-medium">{formatearFecha(pedidoSeleccionado.fechaCierre)}</p>
+                        </div>
+                        <div>
+                          <p className="text-default-500">Total solicitudes</p>
+                          <p className="font-medium">{pedidoSeleccionado.totalSolicitudes}</p>
+                        </div>
+                      </CardBody>
+                    </Card>
+
+                    <div className="flex flex-col md:flex-row gap-4 md:items-end">
+                      <Select
+                        label="Filtrar por estado"
+                        placeholder="Todos los estados"
+                        selectedKeys={estadoDetalle}
+                        onSelectionChange={setEstadoDetalle}
+                        className="md:w-64"
+                      >
+                        <SelectItem key="todos">Todos</SelectItem>
+                        <SelectItem key="Pendiente">Pendiente</SelectItem>
+                        <SelectItem key="Aceptada">Aceptada</SelectItem>
+                        <SelectItem key="AceptadaModificada">Aceptada (modificada)</SelectItem>
+                        <SelectItem key="Rechazada">Rechazada</SelectItem>
+                      </Select>
+                      {pedidoSeleccionado.comentario && (
+                        <Chip color="secondary" variant="flat">
+                          Comentario admin: {pedidoSeleccionado.comentario}
+                        </Chip>
+                      )}
+                    </div>
+
+                    <Table removeWrapper aria-label="Solicitudes asociadas al pedido">
+                      <TableHeader>
+                        <TableColumn>PROFESOR</TableColumn>
+                        <TableColumn>ASIGNATURA</TableColumn>
+                        <TableColumn>FECHA CLASE</TableColumn>
+                        <TableColumn>ESTADO</TableColumn>
+                        <TableColumn>ACCIONES</TableColumn>
+                      </TableHeader>
+                      <TableBody emptyContent="No hay solicitudes para mostrar">
+                        {solicitudesDetalle.map((solicitud) => (
+                          <TableRow key={solicitud.id}>
+                            <TableCell>{solicitud.profesorNombre}</TableCell>
+                            <TableCell>
+                              <div>
+                                <p className="font-medium">{solicitud.asignaturaNombre}</p>
+                                <p className="text-xs text-default-400">Semana {solicitud.semana}</p>
+                              </div>
+                            </TableCell>
+                            <TableCell>{new Date(solicitud.fecha).toLocaleDateString('es-CL')}</TableCell>
+                            <TableCell>
+                              <EstadoSolicitudChip estado={solicitud.estado} />
+                            </TableCell>
+                            <TableCell>
+                              <Button
+                                isIconOnly
+                                variant="light"
+                                size="sm"
+                                onPress={() => abrirDetalleSolicitud(solicitud)}
+                              >
+                                <Icon icon="lucide:eye" className="text-primary" />
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </>
+                )}
+              </ModalBody>
+              <ModalFooter>
+                <Button variant="flat" onPress={onClose}>
+                  Cerrar
+                </Button>
+                <Button
+                  color="primary"
+                  variant="bordered"
+                  onPress={() => window.open('/gestion-solicitudes', '_blank')}
+                >
+                  Ir a Gestión de Solicitudes
+                </Button>
+              </ModalFooter>
+            </>
+          )}
+        </ModalContent>
+      </Modal>
+
+      <Modal isOpen={isSolicitudOpen} onOpenChange={onSolicitudOpenChange} size="xl" scrollBehavior="inside">
+        <ModalContent>
+          {(onClose) => (
+            <>
+              <ModalHeader>
+                Detalle de la solicitud
+              </ModalHeader>
+              <ModalBody className="space-y-4">
+                {solicitudSeleccionada && (
+                  <>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <p className="text-default-500">Profesor</p>
+                        <p className="font-medium">{solicitudSeleccionada.profesorNombre}</p>
+                      </div>
+                      <div>
+                        <p className="text-default-500">Asignatura</p>
+                        <p className="font-medium">{solicitudSeleccionada.asignaturaNombre}</p>
+                      </div>
+                      <div>
+                        <p className="text-default-500">Fecha clase</p>
+                        <p className="font-medium">
+                          {new Date(solicitudSeleccionada.fecha).toLocaleDateString('es-CL')}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-default-500">Estado</p>
+                        <EstadoSolicitudChip estado={solicitudSeleccionada.estado} />
+                      </div>
+                      {solicitudSeleccionada.comentarioRechazo && (
+                        <div className="md:col-span-2">
+                          <p className="text-default-500">Comentario de rechazo</p>
+                          <p className="font-medium text-danger-500">
+                            {solicitudSeleccionada.comentarioRechazo}
+                          </p>
+                        </div>
+                      )}
+                      {solicitudSeleccionada.comentarioAdministrador && (
+                        <div className="md:col-span-2">
+                          <p className="text-default-500">Comentario administrador</p>
+                          <p className="font-medium">
+                            {solicitudSeleccionada.comentarioAdministrador}
+                          </p>
                         </div>
                       )}
                     </div>
-                    
-                    {/* Observaciones */}
-                    {solicitudSeleccionada.observaciones && (
-                      <div>
-                        <p className="text-sm text-default-500">Observaciones</p>
-                        <p className="font-semibold">{solicitudSeleccionada.observaciones}</p>
-                      </div>
-                    )}
 
-                    {/* Comentario de rechazo */}
-                    {solicitudSeleccionada.comentarioRechazo && (
-                      <div className="bg-danger-50 p-4 rounded-lg">
-                        <p className="text-sm text-danger-500 font-medium">Motivo del rechazo:</p>
-                        <p className="text-danger-700">{solicitudSeleccionada.comentarioRechazo}</p>
-                      </div>
-                    )}
-                    
-                    {/* Lista de productos */}
+                    <Divider />
+
                     <div>
-                      <p className="font-medium mb-2">Productos Solicitados</p>
-                      <Table 
-                        aria-label="Productos solicitados"
-                        removeWrapper
-                      >
+                      <h4 className="font-semibold mb-2">Productos solicitados</h4>
+                      <Table removeWrapper aria-label="Productos de la solicitud">
                         <TableHeader>
                           <TableColumn>PRODUCTO</TableColumn>
                           <TableColumn>CANTIDAD</TableColumn>
@@ -420,43 +544,16 @@ const GestionPedidosPage: React.FC = () => {
                               <TableCell>{item.productoNombre}</TableCell>
                               <TableCell>{item.cantidad} {item.unidadMedida}</TableCell>
                               <TableCell>
-                                {item.esAdicional ? (
-                                  <Chip size="sm" color="warning" variant="flat">Adicional</Chip>
-                                ) : (
-                                  <Chip size="sm" variant="flat">Receta</Chip>
-                                )}
+                                <Chip size="sm" variant="flat" color={item.esAdicional ? 'warning' : 'default'}>
+                                  {item.esAdicional ? 'Adicional' : 'Receta'}
+                                </Chip>
                               </TableCell>
                             </TableRow>
                           ))}
                         </TableBody>
                       </Table>
                     </div>
-                    
-                    {/* Acciones según estado */}
-                    {solicitudSeleccionada.estado === 'Pendiente' && (
-                      <div className="flex gap-2 justify-end">
-                        <Button 
-                          color="danger" 
-                          variant="flat"
-                          onPress={() => {
-                            cambiarEstadoSolicitud(solicitudSeleccionada.id, 'Rechazada');
-                            onClose();
-                          }}
-                        >
-                          Rechazar
-                        </Button>
-                        <Button 
-                          color="success"
-                          onPress={() => {
-                            cambiarEstadoSolicitud(solicitudSeleccionada.id, 'Aceptada');
-                            onClose();
-                          }}
-                        >
-                          Aprobar
-                        </Button>
-                      </div>
-                    )}
-                  </div>
+                  </>
                 )}
               </ModalBody>
               <ModalFooter>
@@ -472,4 +569,35 @@ const GestionPedidosPage: React.FC = () => {
   );
 };
 
+interface ResumenCardProps {
+  titulo: string;
+  valor: number;
+  icono: string;
+  color: 'primary' | 'secondary' | 'success' | 'warning';
+}
+
+const ResumenCard: React.FC<ResumenCardProps> = ({ titulo, valor, icono, color }) => {
+  const colorClasses: Record<ResumenCardProps['color'], string> = {
+    primary: 'bg-primary-100 text-primary-600',
+    secondary: 'bg-secondary-100 text-secondary-600',
+    success: 'bg-success-100 text-success-600',
+    warning: 'bg-warning-100 text-warning-600',
+  };
+
+  return (
+    <Card variant="flat" className="border border-default-200">
+      <CardBody className="flex items-center gap-4">
+        <div className={`p-3 rounded-full ${colorClasses[color]}`}>
+          <Icon icon={icono} className="text-xl" />
+        </div>
+        <div>
+          <p className="text-sm text-default-500">{titulo}</p>
+          <p className="text-2xl font-semibold">{valor}</p>
+        </div>
+      </CardBody>
+    </Card>
+  );
+};
+
 export default GestionPedidosPage;
+

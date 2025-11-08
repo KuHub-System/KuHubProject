@@ -1,20 +1,21 @@
 import React from 'react';
 import { 
-  Card, CardBody, Button, Input, Select, SelectItem, 
+  Card, CardBody, Button, Input, Select, SelectItem, Chip,
   Table, TableHeader, TableColumn, TableBody, TableRow, TableCell,
-  Textarea, Divider
+  Textarea, Divider, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, useDisclosure
 } from '@heroui/react';
 import { Icon } from '@iconify/react';
 import { motion } from 'framer-motion';
+import { useToast } from '../hooks/useToast';
+import { logger } from '../utils/logger';
 
 // IMPORTAR TIPOS Y SERVICIOS
 import { IReceta, IItemSolicitud } from '../types/receta.types';
 import { IProducto } from '../types/producto.types';
 import { obtenerRecetasActivasService } from '../services/receta-service';
 import { obtenerProductosService } from '../services/producto-service';
-import { crearSolicitudService } from '../services/solicitud-service';
-import AlertaProcesoSolicitudes from '../components/AlertaProcesoSolicitudes';
-import { puedenCrearseSolicitudes } from '../pages/dashboard';
+import { crearSolicitudService, obtenerMisSolicitudesService } from '../services/solicitud-service';
+import { ISolicitud, EstadoSolicitud } from '../types/solicitud.types';
 
 // Datos de asignaturas (esto podría venir de una API o contexto)
 const asignaturas = [
@@ -25,11 +26,13 @@ const asignaturas = [
 ];
 
 const SolicitudPage: React.FC = () => {
+  const toast = useToast();
   const [recetasDisponibles, setRecetasDisponibles] = React.useState<IReceta[]>([]);
   const [productos, setProductos] = React.useState<IProducto[]>([]);
   const [isLoading, setIsLoading] = React.useState<boolean>(true);
   
   const [asignaturaId, setAsignaturaId] = React.useState<string>('');
+  const [semana, setSemana] = React.useState<string>('');
   const [fecha, setFecha] = React.useState<string>('');
   const [observaciones, setObservaciones] = React.useState<string>('');
   const [items, setItems] = React.useState<IItemSolicitud[]>([]);
@@ -41,35 +44,25 @@ const SolicitudPage: React.FC = () => {
   const [nuevoProductoId, setNuevoProductoId] = React.useState<string>('');
   const [nuevaCantidad, setNuevaCantidad] = React.useState<string>('');
 
-  // Estado para control del proceso de pedidos
-  const [procesoPermiteCrear, setProcesoPermiteCrear] = React.useState<boolean>(puedenCrearseSolicitudes());
+  const [historialSolicitudes, setHistorialSolicitudes] = React.useState<ISolicitud[]>([]);
+  const [cargandoHistorial, setCargandoHistorial] = React.useState<boolean>(false);
+  const { isOpen: isDetalleOpen, onOpen: onDetalleOpen, onOpenChange: onDetalleOpenChange } = useDisclosure();
+  const [solicitudDetalle, setSolicitudDetalle] = React.useState<ISolicitud | null>(null);
 
-  // Cargar recetas y productos al montar
-  React.useEffect(() => {
-    cargarDatos();
+  const cargarHistorial = React.useCallback(async () => {
+    try {
+      setCargandoHistorial(true);
+      const data = await obtenerMisSolicitudesService();
+      setHistorialSolicitudes(data);
+    } catch (error) {
+      logger.error('Error al cargar el historial de solicitudes:', error);
+    } finally {
+      setCargandoHistorial(false);
+    }
   }, []);
 
-  // Verificar periódicamente si se puede crear solicitudes
-  React.useEffect(() => {
-    // Verificar cada minuto
-    const intervalo = setInterval(() => {
-      setProcesoPermiteCrear(puedenCrearseSolicitudes());
-    }, 60000);
-
-    // Verificar cuando la ventana recupera el foco
-    const handleFocus = () => {
-      setProcesoPermiteCrear(puedenCrearseSolicitudes());
-    };
-
-    window.addEventListener('focus', handleFocus);
-
-    return () => {
-      clearInterval(intervalo);
-      window.removeEventListener('focus', handleFocus);
-    };
-  }, []);
-
-  const cargarDatos = async () => {
+  // Cargar recetas, productos e historial al montar
+  const cargarDatos = React.useCallback(async () => {
     try {
       setIsLoading(true);
       const [recetas, productosData] = await Promise.all([
@@ -78,20 +71,20 @@ const SolicitudPage: React.FC = () => {
       ]);
       setRecetasDisponibles(recetas);
       setProductos(productosData);
+      await cargarHistorial();
     } catch (error) {
-      console.error('Error al cargar datos:', error);
-      alert('Error al cargar los datos');
+      logger.error('Error al cargar datos:', error);
+      toast.error('Error al cargar los datos');
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [cargarHistorial]);
+
+  React.useEffect(() => {
+    cargarDatos();
+  }, [cargarDatos]);
 
   const handleSeleccionarReceta = (recetaId: string) => {
-    if (!procesoPermiteCrear) {
-      alert('⚠️ No puedes modificar solicitudes en este momento. El proceso de pedidos no está activo o ya cerró el período de recepción.');
-      return;
-    }
-
     if (!recetaId) return;
 
     const recetaSeleccionada = recetasDisponibles.find(r => r.id === recetaId);
@@ -114,13 +107,8 @@ const SolicitudPage: React.FC = () => {
   };
 
   const agregarProductoExtra = () => {
-    if (!procesoPermiteCrear) {
-      alert('⚠️ No puedes modificar solicitudes en este momento. El proceso de pedidos no está activo o ya cerró el período de recepción.');
-      return;
-    }
-
     if (!nuevoProductoId || !nuevaCantidad || parseFloat(nuevaCantidad) <= 0) {
-      alert('Por favor, seleccione un producto y especifique una cantidad válida');
+      toast.warning('Por favor, seleccione un producto y especifique una cantidad válida');
       return;
     }
     
@@ -143,11 +131,6 @@ const SolicitudPage: React.FC = () => {
   };
 
   const eliminarItem = (id: string) => {
-    if (!procesoPermiteCrear) {
-      alert('⚠️ No puedes modificar solicitudes en este momento. El proceso de pedidos no está activo o ya cerró el período de recepción.');
-      return;
-    }
-
     const nuevoItems = items.filter(item => item.id !== id);
     setItems(nuevoItems);
     
@@ -160,14 +143,34 @@ const SolicitudPage: React.FC = () => {
     }
   };
 
+  const renderEstadoChip = (estado: EstadoSolicitud) => {
+    switch (estado) {
+      case 'Pendiente':
+        return <Chip color="warning" variant="flat" size="sm">Pendiente</Chip>;
+      case 'Aceptada':
+        return <Chip color="success" variant="flat" size="sm">Aceptada</Chip>;
+      case 'AceptadaModificada':
+        return <Chip color="success" variant="flat" size="sm">Aceptada (modificada)</Chip>;
+      case 'Rechazada':
+        return <Chip color="danger" variant="flat" size="sm">Rechazada</Chip>;
+      default:
+        return <Chip size="sm" variant="flat">{estado}</Chip>;
+    }
+  };
+
+  const abrirDetalleSolicitud = (solicitud: ISolicitud) => {
+    setSolicitudDetalle(solicitud);
+    onDetalleOpen();
+  };
+
   const enviarSolicitud = async () => {
-    if (!procesoPermiteCrear) {
-      alert('⚠️ No puedes crear solicitudes en este momento. El proceso de pedidos no está activo o ya cerró el período de recepción.');
+    if (!asignaturaId || !fecha || !semana || items.length === 0) {
+      toast.warning('Por favor, complete todos los campos obligatorios, seleccione la semana y agregue al menos un producto');
       return;
     }
-
-    if (!asignaturaId || !fecha || items.length === 0) {
-      alert('Por favor, complete todos los campos obligatorios y agregue al menos un producto');
+    const semanaNumero = parseInt(semana, 10);
+    if (Number.isNaN(semanaNumero) || semanaNumero < 1 || semanaNumero > 18) {
+      toast.warning('La semana seleccionada no es válida');
       return;
     }
     
@@ -179,6 +182,7 @@ const SolicitudPage: React.FC = () => {
       await crearSolicitudService({
         asignaturaId,
         asignaturaNombre,
+        semana: semanaNumero,
         fecha,
         recetaId: recetaCargada?.id || null,
         recetaNombre: recetaCargada?.nombre || null,
@@ -195,16 +199,19 @@ const SolicitudPage: React.FC = () => {
       
       // Limpiar formulario
       setAsignaturaId('');
+      setSemana('');
       setFecha('');
       setObservaciones('');
       setItems([]);
       setRecetaCargada(null);
       setEsCustom(false);
       
-      alert('✅ Solicitud enviada correctamente');
+      await cargarHistorial();
+
+      toast.success('Solicitud enviada correctamente');
     } catch (error: any) {
-      console.error('Error al enviar la solicitud:', error);
-      alert(error.message || 'Error al enviar la solicitud');
+      logger.error('Error al enviar la solicitud:', error);
+      toast.error(error.message || 'Error al enviar la solicitud');
     } finally {
       setIsSubmitting(false);
     }
@@ -236,20 +243,16 @@ const SolicitudPage: React.FC = () => {
           </p>
         </div>
 
-        {/* Alerta del proceso de pedidos */}
-        <AlertaProcesoSolicitudes />
-
         <Card className="shadow-sm">
           <CardBody className="p-6">
             <div className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <Select 
                   label="Asignatura" 
                   placeholder="Seleccione una asignatura"
                   selectedKeys={asignaturaId ? [asignaturaId] : []}
                   onSelectionChange={(keys) => setAsignaturaId(Array.from(keys)[0] as string)}
                   isRequired
-                  isDisabled={!procesoPermiteCrear}
                 >
                   {asignaturas.map((asignatura) => (
                     <SelectItem key={asignatura.id}>
@@ -264,8 +267,24 @@ const SolicitudPage: React.FC = () => {
                   value={fecha}
                   onValueChange={setFecha}
                   isRequired
-                  isDisabled={!procesoPermiteCrear}
                 />
+
+                <Select
+                  label="Semana académica"
+                  placeholder="Seleccione la semana (1 - 18)"
+                  selectedKeys={semana ? [semana] : []}
+                  onSelectionChange={(keys) => setSemana(Array.from(keys)[0] as string)}
+                  isRequired
+                >
+                  {Array.from({ length: 18 }, (_, index) => {
+                    const semanaValor = (index + 1).toString();
+                    return (
+                      <SelectItem key={semanaValor}>
+                        Semana {semanaValor}
+                      </SelectItem>
+                    );
+                  })}
+                </Select>
               </div>
               
               <Divider />
@@ -276,7 +295,6 @@ const SolicitudPage: React.FC = () => {
                   label="Receta" 
                   placeholder="Seleccione una receta para cargar sus ingredientes"
                   onSelectionChange={(keys) => handleSeleccionarReceta(Array.from(keys)[0] as string)}
-                  isDisabled={!procesoPermiteCrear}
                 >
                   {recetasDisponibles.map((receta) => (
                     <SelectItem key={receta.id}>
@@ -303,7 +321,6 @@ const SolicitudPage: React.FC = () => {
                         placeholder="Seleccione un producto"
                         selectedKeys={nuevoProductoId ? [nuevoProductoId] : []}
                         onSelectionChange={(keys) => setNuevoProductoId(Array.from(keys)[0] as string)}
-                        isDisabled={!procesoPermiteCrear}
                       >
                         {productos.map((producto) => (
                           <SelectItem key={producto.id}>
@@ -320,7 +337,6 @@ const SolicitudPage: React.FC = () => {
                         min="0"
                         step="0.1"
                         className="w-32"
-                        isDisabled={!procesoPermiteCrear}
                         endContent={
                           nuevoProductoId && (
                             <span className="text-default-400 text-xs">
@@ -335,7 +351,6 @@ const SolicitudPage: React.FC = () => {
                         onPress={agregarProductoExtra}
                         startContent={<Icon icon="lucide:plus" />}
                         className="h-14"
-                        isDisabled={!procesoPermiteCrear}
                       >
                         Agregar
                       </Button>
@@ -379,7 +394,6 @@ const SolicitudPage: React.FC = () => {
                             variant="light" 
                             size="sm"
                             onPress={() => eliminarItem(item.id)}
-                            isDisabled={!procesoPermiteCrear}
                           >
                             <Icon icon="lucide:trash" className="text-danger" />
                           </Button>
@@ -399,7 +413,6 @@ const SolicitudPage: React.FC = () => {
                   value={observaciones}
                   onValueChange={setObservaciones}
                   minRows={3}
-                  isDisabled={!procesoPermiteCrear}
                 />
               </div>
               
@@ -411,10 +424,10 @@ const SolicitudPage: React.FC = () => {
                     setRecetaCargada(null);
                     setEsCustom(false);
                     setAsignaturaId('');
+                    setSemana('');
                     setFecha('');
                     setObservaciones('');
                   }}
-                  isDisabled={!procesoPermiteCrear}
                 >
                   Cancelar
                 </Button>
@@ -422,7 +435,7 @@ const SolicitudPage: React.FC = () => {
                   color="primary" 
                   onPress={enviarSolicitud}
                   isLoading={isSubmitting}
-                  isDisabled={!procesoPermiteCrear || isSubmitting || items.length === 0 || !asignaturaId || !fecha}
+                  isDisabled={isSubmitting || items.length === 0 || !asignaturaId || !fecha || !semana}
                 >
                   Enviar Solicitud
                 </Button>
@@ -430,7 +443,153 @@ const SolicitudPage: React.FC = () => {
             </div>
           </CardBody>
         </Card>
+
+        <Card className="shadow-sm">
+          <CardBody className="p-6 space-y-4">
+            <div>
+              <h2 className="text-xl font-semibold">Historial de solicitudes</h2>
+              <p className="text-default-500 text-sm">
+                Revisa el estado de tus solicitudes por semana. Podrás ver si fueron aceptadas, modificadas o rechazadas.
+              </p>
+            </div>
+
+            {cargandoHistorial ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="text-center">
+                  <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary mx-auto mb-3" />
+                  <p className="text-default-500">Cargando historial...</p>
+                </div>
+              </div>
+            ) : historialSolicitudes.length === 0 ? (
+              <div className="text-center py-10">
+                <Icon icon="lucide:history" className="text-5xl text-default-300 mx-auto mb-4" />
+                <p className="text-default-500">
+                  Aún no has enviado solicitudes. Cuando registres una, aparecerá aquí.
+                </p>
+              </div>
+            ) : (
+              <Table removeWrapper aria-label="Historial de solicitudes">
+                <TableHeader>
+                  <TableColumn>SEMANA</TableColumn>
+                  <TableColumn>FECHA CLASE</TableColumn>
+                  <TableColumn>ESTADO</TableColumn>
+                  <TableColumn>COMENTARIO</TableColumn>
+                  <TableColumn>ACCIONES</TableColumn>
+                </TableHeader>
+                <TableBody>
+                  {historialSolicitudes.map((solicitud) => (
+                    <TableRow key={solicitud.id}>
+                      <TableCell>Semana {solicitud.semana}</TableCell>
+                      <TableCell>{new Date(solicitud.fecha).toLocaleDateString('es-CL')}</TableCell>
+                      <TableCell>{renderEstadoChip(solicitud.estado)}</TableCell>
+                      <TableCell>
+                        {solicitud.estado === 'Rechazada'
+                          ? solicitud.comentarioRechazo || '—'
+                          : solicitud.comentarioAdministrador || '—'}
+                      </TableCell>
+                      <TableCell>
+                        <Button
+                          isIconOnly
+                          variant="light"
+                          size="sm"
+                          onPress={() => abrirDetalleSolicitud(solicitud)}
+                        >
+                          <Icon icon="lucide:eye" className="text-primary" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </CardBody>
+        </Card>
       </motion.div>
+
+      <Modal isOpen={isDetalleOpen} onOpenChange={onDetalleOpenChange} size="lg" scrollBehavior="inside">
+        <ModalContent>
+          {(onClose) => (
+            <>
+              <ModalHeader>
+                Detalle de la solicitud
+              </ModalHeader>
+              <ModalBody className="space-y-4">
+                {solicitudDetalle && (
+                  <>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <p className="text-default-500">Asignatura</p>
+                        <p className="font-medium">{solicitudDetalle.asignaturaNombre}</p>
+                      </div>
+                      <div>
+                        <p className="text-default-500">Semana</p>
+                        <p className="font-medium">{solicitudDetalle.semana}</p>
+                      </div>
+                      <div>
+                        <p className="text-default-500">Fecha clase</p>
+                        <p className="font-medium">
+                          {new Date(solicitudDetalle.fecha).toLocaleDateString('es-CL')}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-default-500">Estado</p>
+                        {renderEstadoChip(solicitudDetalle.estado)}
+                      </div>
+                      {solicitudDetalle.comentarioAdministrador && (
+                        <div className="md:col-span-2">
+                          <p className="text-default-500">Comentario administrador</p>
+                          <p className="font-medium">
+                            {solicitudDetalle.comentarioAdministrador}
+                          </p>
+                        </div>
+                      )}
+                      {solicitudDetalle.comentarioRechazo && (
+                        <div className="md:col-span-2">
+                          <p className="text-default-500">Motivo de rechazo</p>
+                          <p className="font-medium text-danger-500">
+                            {solicitudDetalle.comentarioRechazo}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+
+                    <Divider />
+
+                    <div>
+                      <h4 className="font-semibold mb-2">Productos solicitados</h4>
+                      <Table removeWrapper aria-label="Productos de la solicitud seleccionada">
+                        <TableHeader>
+                          <TableColumn>PRODUCTO</TableColumn>
+                          <TableColumn>CANTIDAD</TableColumn>
+                          <TableColumn>TIPO</TableColumn>
+                        </TableHeader>
+                        <TableBody>
+                          {solicitudDetalle.items.map((item) => (
+                            <TableRow key={item.id}>
+                              <TableCell>{item.productoNombre}</TableCell>
+                              <TableCell>{item.cantidad} {item.unidadMedida}</TableCell>
+                              <TableCell>
+                                <Chip size="sm" variant="flat" color={item.esAdicional ? 'warning' : 'default'}>
+                                  {item.esAdicional ? 'Adicional' : 'Receta'}
+                                </Chip>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </>
+                )}
+              </ModalBody>
+              <ModalFooter>
+                <Button variant="flat" onPress={onClose}>
+                  Cerrar
+                </Button>
+              </ModalFooter>
+            </>
+          )}
+        </ModalContent>
+      </Modal>
     </div>
   );
 };

@@ -35,18 +35,30 @@ import {
 // ✅ IMPORTAR SERVICIOS Y TIPOS REALES
 import { obtenerSolicitudesAceptadasParaPedidoService } from '../services/solicitud-service';
 import { ISolicitud } from '../types/solicitud.types';
+import { useToast } from '../hooks/useToast';
 
 /**
  * Interfaz para un producto consolidado.
  */
+interface DetalleProducto {
+  solicitudId: string;
+  asignaturaNombre: string;
+  profesorNombre: string;
+  semana: number;
+  fechaClase: string;
+  cantidad: number;
+  unidadMedida: string;
+  esAdicional: boolean;
+}
+
 interface ProductoConsolidado {
   productoId: string;
   productoNombre: string;
   cantidadTotal: number;
   unidadMedida: string;
-  numeroPedidos: number;
-  solicitudes: string[]; // IDs de solicitudes que incluyen este producto
-  esAdicional: boolean; // Si alguna vez fue marcado como adicional
+  totalSolicitudes: number;
+  incluyeAdicionales: boolean;
+  detalles: DetalleProducto[];
 }
 
 /**
@@ -54,10 +66,13 @@ interface ProductoConsolidado {
  * Consolida todos los productos de las solicitudes ACEPTADAS.
  */
 const ConglomeradoPedidosPage: React.FC = () => {
+  const toast = useToast();
   const [solicitudesAceptadas, setSolicitudesAceptadas] = React.useState<ISolicitud[]>([]);
   const [productosConsolidados, setProductosConsolidados] = React.useState<ProductoConsolidado[]>([]);
   const [filteredProductos, setFilteredProductos] = React.useState<ProductoConsolidado[]>([]);
   const [searchTerm, setSearchTerm] = React.useState<string>('');
+  const [semanaSeleccionada, setSemanaSeleccionada] = React.useState<string>('todas');
+  const [expandedProductos, setExpandedProductos] = React.useState<Set<string>>(new Set());
   const [isLoading, setIsLoading] = React.useState(true);
 
   // ✅ CARGAR SOLICITUDES ACEPTADAS
@@ -70,55 +85,100 @@ const ConglomeradoPedidosPage: React.FC = () => {
       setIsLoading(true);
       const solicitudes = await obtenerSolicitudesAceptadasParaPedidoService();
       setSolicitudesAceptadas(solicitudes);
-      
       console.log('📋 Solicitudes aceptadas cargadas:', solicitudes.length);
-      
-      // ✅ CONSOLIDAR PRODUCTOS
-      const consolidado = consolidarProductos(solicitudes);
-      setProductosConsolidados(consolidado);
-      setFilteredProductos(consolidado);
-      
-      console.log('📦 Productos consolidados:', consolidado.length);
     } catch (error) {
       console.error('❌ Error al cargar solicitudes aceptadas:', error);
-      alert('Error al cargar los datos');
+      toast.error('Error al cargar los datos del conglomerado');
     } finally {
       setIsLoading(false);
     }
   };
 
+  const semanasDisponibles = React.useMemo(() => {
+    const semanas = Array.from(
+      new Set(
+        solicitudesAceptadas
+          .map((s) => (Number.isInteger(s.semana) ? s.semana : undefined))
+          .filter((semana): semana is number => semana !== undefined)
+      )
+    );
+    return semanas.sort((a, b) => a - b);
+  }, [solicitudesAceptadas]);
+
+  const solicitudesFiltradas = React.useMemo(() => {
+    if (semanaSeleccionada === 'todas') {
+      return solicitudesAceptadas;
+    }
+    const semanaNumero = parseInt(semanaSeleccionada, 10);
+    if (Number.isNaN(semanaNumero)) {
+      return solicitudesAceptadas;
+    }
+    return solicitudesAceptadas.filter((s) => s.semana === semanaNumero);
+  }, [semanaSeleccionada, solicitudesAceptadas]);
+
+  React.useEffect(() => {
+    const consolidado = consolidarProductos(solicitudesFiltradas);
+    setProductosConsolidados(consolidado);
+    setExpandedProductos(new Set());
+    if (!searchTerm) {
+      setFilteredProductos(consolidado);
+    }
+  }, [solicitudesFiltradas, searchTerm]);
+
   /**
    * ✅ CONSOLIDA todos los productos de las solicitudes aceptadas
    */
   const consolidarProductos = (solicitudes: ISolicitud[]): ProductoConsolidado[] => {
-    const mapaProductos = new Map<string, ProductoConsolidado>();
+    const mapaProductos = new Map<
+      string,
+      {
+        data: ProductoConsolidado;
+        solicitudesSet: Set<string>;
+      }
+    >();
 
-    solicitudes.forEach(solicitud => {
-      solicitud.items.forEach(item => {
+    solicitudes.forEach((solicitud) => {
+      solicitud.items.forEach((item) => {
         const key = item.productoId;
-        
+        const detalle: DetalleProducto = {
+          solicitudId: solicitud.id,
+          asignaturaNombre: solicitud.asignaturaNombre,
+          profesorNombre: solicitud.profesorNombre,
+          semana: solicitud.semana,
+          fechaClase: solicitud.fecha,
+          cantidad: item.cantidad,
+          unidadMedida: item.unidadMedida,
+          esAdicional: item.esAdicional,
+        };
+
         if (mapaProductos.has(key)) {
           const existente = mapaProductos.get(key)!;
-          existente.cantidadTotal += item.cantidad;
-          existente.numeroPedidos += 1;
-          existente.solicitudes.push(solicitud.id);
-          existente.esAdicional = existente.esAdicional || item.esAdicional;
+          existente.data.cantidadTotal += item.cantidad;
+          existente.data.detalles.push(detalle);
+          existente.data.incluyeAdicionales = existente.data.incluyeAdicionales || item.esAdicional;
+          existente.solicitudesSet.add(solicitud.id);
+          existente.data.totalSolicitudes = existente.solicitudesSet.size;
         } else {
+          const solicitudesSet = new Set<string>([solicitud.id]);
           mapaProductos.set(key, {
-            productoId: item.productoId,
-            productoNombre: item.productoNombre,
-            cantidadTotal: item.cantidad,
-            unidadMedida: item.unidadMedida,
-            numeroPedidos: 1,
-            solicitudes: [solicitud.id],
-            esAdicional: item.esAdicional
+            data: {
+              productoId: item.productoId,
+              productoNombre: item.productoNombre,
+              cantidadTotal: item.cantidad,
+              unidadMedida: item.unidadMedida,
+              totalSolicitudes: 1,
+              incluyeAdicionales: item.esAdicional,
+              detalles: [detalle],
+            },
+            solicitudesSet,
           });
         }
       });
     });
 
-    // Ordenar por cantidad total (descendente)
-    return Array.from(mapaProductos.values()).sort((a, b) => b.cantidadTotal - a.cantidadTotal);
+    return Array.from(mapaProductos.values())
+      .map((entry) => entry.data)
+      .sort((a, b) => b.cantidadTotal - a.cantidadTotal);
   };
 
   /**
@@ -141,7 +201,7 @@ const ConglomeradoPedidosPage: React.FC = () => {
    */
   const generarOrdenCompra = () => {
     if (productosConsolidados.length === 0) {
-      alert('⚠️ No hay productos para generar orden de compra');
+      toast.warning('No hay productos para generar la orden de compra');
       return;
     }
 
@@ -149,22 +209,22 @@ const ConglomeradoPedidosPage: React.FC = () => {
     let orden = '=== ORDEN DE COMPRA ===\n\n';
     orden += `Fecha: ${new Date().toLocaleDateString('es-CL')}\n`;
     orden += `Total de productos: ${productosConsolidados.length}\n`;
-    orden += `Basado en ${solicitudesAceptadas.length} solicitudes aceptadas\n\n`;
+    orden += `Basado en ${solicitudesFiltradas.length} solicitudes aceptadas\n\n`;
     orden += '--- PRODUCTOS ---\n\n';
 
     productosConsolidados.forEach((producto, index) => {
       orden += `${index + 1}. ${producto.productoNombre}\n`;
       orden += `   Cantidad: ${producto.cantidadTotal} ${producto.unidadMedida}\n`;
-      orden += `   Pedidos: ${producto.numeroPedidos}\n\n`;
+      orden += `   Solicitudes: ${producto.totalSolicitudes}\n\n`;
     });
 
     // Copiar al portapapeles
     navigator.clipboard.writeText(orden).then(() => {
-      alert('✅ Orden de compra copiada al portapapeles');
+      toast.success('Orden de compra copiada al portapapeles');
     }).catch(() => {
       // Si falla, mostrar en consola
       console.log(orden);
-      alert('✅ Orden de compra generada (ver consola)');
+      toast.info('Orden de compra generada. Revisa la consola del navegador.');
     });
   };
 
@@ -188,7 +248,7 @@ const ConglomeradoPedidosPage: React.FC = () => {
   const datosDistribucion = React.useMemo(() => {
     const distribucion: { [key: string]: number } = {};
     
-    solicitudesAceptadas.forEach(solicitud => {
+    solicitudesFiltradas.forEach(solicitud => {
       const key = solicitud.asignaturaNombre;
       distribucion[key] = (distribucion[key] || 0) + 1;
     });
@@ -197,7 +257,27 @@ const ConglomeradoPedidosPage: React.FC = () => {
       name: nombre,
       value: valor
     }));
-  }, [solicitudesAceptadas]);
+  }, [solicitudesFiltradas]);
+
+  const toggleProducto = (productoId: string) => {
+    setExpandedProductos((prev) => {
+      const nuevo = new Set(prev);
+      if (nuevo.has(productoId)) {
+        nuevo.delete(productoId);
+      } else {
+        nuevo.add(productoId);
+      }
+      return nuevo;
+    });
+  };
+
+  const formatearFechaClase = (fechaISO: string) => {
+    const fecha = new Date(fechaISO);
+    if (Number.isNaN(fecha.getTime())) {
+      return '—';
+    }
+    return fecha.toLocaleDateString('es-CL');
+  };
 
   const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D'];
 
@@ -243,7 +323,7 @@ const ConglomeradoPedidosPage: React.FC = () => {
           <Card>
             <CardBody className="text-center p-4">
               <p className="text-sm text-default-500">Solicitudes Aceptadas</p>
-              <p className="text-3xl font-bold text-success">{solicitudesAceptadas.length}</p>
+              <p className="text-3xl font-bold text-success">{solicitudesFiltradas.length}</p>
             </CardBody>
           </Card>
           <Card>
@@ -256,7 +336,7 @@ const ConglomeradoPedidosPage: React.FC = () => {
             <CardBody className="text-center p-4">
               <p className="text-sm text-default-500">Total de Items</p>
               <p className="text-3xl font-bold text-warning">
-                {productosConsolidados.reduce((sum, p) => sum + p.numeroPedidos, 0)}
+                {productosConsolidados.reduce((sum, p) => sum + p.detalles.length, 0)}
               </p>
             </CardBody>
           </Card>
@@ -264,7 +344,7 @@ const ConglomeradoPedidosPage: React.FC = () => {
             <CardBody className="text-center p-4">
               <p className="text-sm text-default-500">Profesores</p>
               <p className="text-3xl font-bold text-secondary">
-                {new Set(solicitudesAceptadas.map(s => s.profesorId)).size}
+                {new Set(solicitudesFiltradas.map(s => s.profesorId)).size}
               </p>
             </CardBody>
           </Card>
@@ -351,6 +431,21 @@ const ConglomeradoPedidosPage: React.FC = () => {
             onClear={() => setSearchTerm('')}
             className="w-full md:w-64"
           />
+
+          <Select
+            label="Semana"
+            selectedKeys={new Set([semanaSeleccionada])}
+            onSelectionChange={(keys) => {
+              const value = Array.from(keys)[0] as string | undefined;
+              setSemanaSeleccionada(value || 'todas');
+            }}
+            className="w-full md:w-56"
+          >
+            <SelectItem key="todas">Todas las semanas</SelectItem>
+            {semanasDisponibles.map((semana) => (
+              <SelectItem key={semana.toString()}>Semana {semana}</SelectItem>
+            ))}
+          </Select>
           
           <Button
             color="primary"
@@ -373,58 +468,95 @@ const ConglomeradoPedidosPage: React.FC = () => {
                 <TableColumn>PRODUCTO</TableColumn>
                 <TableColumn>CANTIDAD TOTAL</TableColumn>
                 <TableColumn>UNIDAD</TableColumn>
-                <TableColumn>N° PEDIDOS</TableColumn>
+                <TableColumn>SOLICITUDES</TableColumn>
                 <TableColumn>TIPO</TableColumn>
-                <TableColumn>ACCIONES</TableColumn>
+                <TableColumn>DETALLE</TableColumn>
               </TableHeader>
               <TableBody emptyContent="No hay productos consolidados. Asegúrese de que existan solicitudes aceptadas.">
-                {filteredProductos.map((producto) => (
-                  <TableRow key={producto.productoId}>
-                    <TableCell>
-                      <div>
-                        <p className="font-medium">{producto.productoNombre}</p>
-                        <p className="text-xs text-default-400">
-                          {producto.solicitudes.length} solicitud{producto.solicitudes.length !== 1 ? 'es' : ''}
-                        </p>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <span className="font-semibold text-lg">{producto.cantidadTotal}</span>
-                    </TableCell>
-                    <TableCell>{producto.unidadMedida}</TableCell>
-                    <TableCell>
-                      <Chip size="sm" color="primary" variant="flat">
-                        {producto.numeroPedidos}
-                      </Chip>
-                    </TableCell>
-                    <TableCell>
-                      {producto.esAdicional ? (
-                        <Chip size="sm" color="warning" variant="flat">
-                          Incluye adicionales
-                        </Chip>
-                      ) : (
-                        <Chip size="sm" variant="flat">
-                          Solo receta
-                        </Chip>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <Button 
-                        isIconOnly 
-                        variant="light" 
-                        size="sm"
-                        onPress={() => {
-                          alert(`Detalles de ${producto.productoNombre}:\n\n` +
-                                `Cantidad total: ${producto.cantidadTotal} ${producto.unidadMedida}\n` +
-                                `Número de pedidos: ${producto.numeroPedidos}\n` +
-                                `Solicitudes: ${producto.solicitudes.join(', ')}`);
-                        }}
-                      >
-                        <Icon icon="lucide:info" className="text-primary" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {filteredProductos.map((producto) => {
+                  const expandido = expandedProductos.has(producto.productoId);
+                  return (
+                    <TableRow key={producto.productoId}>
+                        <TableCell>
+                          <div>
+                            <p className="font-medium">{producto.productoNombre}</p>
+                            {expandido && (
+                              <div className="mt-3 bg-default-50 dark:bg-default-100/10 rounded-lg p-4 space-y-3 border border-default-200">
+                                <p className="text-sm text-default-500">
+                                  Detalle de solicitudes:
+                                </p>
+                                <div className="space-y-3">
+                                  {producto.detalles.map((detalle, index) => (
+                                    <div
+                                      key={`${detalle.solicitudId}-${index}`}
+                                      className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between border border-default-200 rounded-md p-3 bg-content1/50"
+                                    >
+                                      <div>
+                                        <p className="font-medium">
+                                          Solicitud #{detalle.solicitudId.slice(-6)} · Semana {detalle.semana}
+                                        </p>
+                                        <p className="text-xs text-default-500">
+                                          {detalle.asignaturaNombre} — {detalle.profesorNombre}
+                                        </p>
+                                        <p className="text-xs text-default-400">
+                                          Clase: {formatearFechaClase(detalle.fechaClase)}
+                                        </p>
+                                      </div>
+                                      <div className="flex items-center gap-2 flex-wrap">
+                                        <Chip color="primary" variant="flat" size="sm">
+                                          {detalle.cantidad} {detalle.unidadMedida}
+                                        </Chip>
+                                        <Chip
+                                          color={detalle.esAdicional ? 'warning' : 'success'}
+                                          variant="flat"
+                                          size="sm"
+                                        >
+                                          {detalle.esAdicional ? 'Adicional' : 'Receta'}
+                                        </Chip>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <span className="font-semibold text-lg">{producto.cantidadTotal}</span>
+                        </TableCell>
+                        <TableCell>{producto.unidadMedida}</TableCell>
+                        <TableCell>
+                          <Chip size="sm" color="primary" variant="flat">
+                            {producto.totalSolicitudes}
+                          </Chip>
+                        </TableCell>
+                        <TableCell>
+                          {producto.incluyeAdicionales ? (
+                            <Chip size="sm" color="warning" variant="flat">
+                              Incluye adicionales
+                            </Chip>
+                          ) : (
+                            <Chip size="sm" variant="flat">
+                              Solo receta
+                            </Chip>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <Button
+                            isIconOnly
+                            variant="light"
+                            size="sm"
+                            onPress={() => toggleProducto(producto.productoId)}
+                          >
+                            <Icon
+                              icon={expandido ? 'lucide:chevron-up' : 'lucide:chevron-down'}
+                              className="text-primary"
+                            />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           </CardBody>

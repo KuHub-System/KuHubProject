@@ -6,6 +6,7 @@ export type RolUsuario =
   | 'Administrador'
   | 'Co-Administrador'
   | 'Gestor de Pedidos'
+  | 'Profesor'
   | 'Profesor a Cargo'
   | 'Encargado de Bodega'
   | 'Asistente de Bodega';
@@ -94,6 +95,18 @@ export const PERMISOS_POR_ROL: Record<RolUsuario, IPermisosRol> = {
     crearSolicitudes: false,
     aprobarSolicitudes: false,
     gestionarProcesoPedidos: true,
+  },
+  'Profesor': {
+    dashboard: false,
+    gestionUsuarios: false,
+    gestionSolicitudes: false,
+    gestionRecetas: true,
+    inventario: false,
+    bodegaPrincipal: false,
+    bodegaTransito: false,
+    crearSolicitudes: false,
+    aprobarSolicitudes: false,
+    gestionarProcesoPedidos: false,
   },
   'Profesor a Cargo': {
     dashboard: false,

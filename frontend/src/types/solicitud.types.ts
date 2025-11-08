@@ -2,7 +2,7 @@
  * TIPOS DE SOLICITUDES ACTUALIZADOS CON SISTEMA DE APROBACIÓN
  */
 
-export type EstadoSolicitud = 'Pendiente' | 'Aceptada' | 'Rechazada';
+export type EstadoSolicitud = 'Pendiente' | 'Aceptada' | 'AceptadaModificada' | 'Rechazada';
 
 export interface IItemSolicitud {
   id: string;
@@ -19,6 +19,7 @@ export interface ISolicitud {
   profesorNombre: string;
   asignaturaId: string;
   asignaturaNombre: string;
+  semana: number; // Semana académica (1-18)
   fecha: string; // Fecha de la clase
   recetaId: string | null;
   recetaNombre: string | null;
@@ -31,11 +32,13 @@ export interface ISolicitud {
   fechaUltimaModificacion: string;
   fechaAprobacion?: string;
   aprobadoPor?: string; // ID del admin que aprobó/rechazó
+  comentarioAdministrador?: string;
 }
 
 export interface ISolicitudCreacion {
   asignaturaId: string;
   asignaturaNombre: string;
+  semana: number;
   fecha: string;
   recetaId: string | null;
   recetaNombre: string | null;
@@ -47,6 +50,7 @@ export interface ISolicitudCreacion {
 export interface ISolicitudActualizacion {
   asignaturaId?: string;
   asignaturaNombre?: string;
+  semana?: number;
   fecha?: string;
   recetaId?: string | null;
   recetaNombre?: string | null;
@@ -57,9 +61,11 @@ export interface ISolicitudActualizacion {
 
 export interface IAprobarRechazarSolicitud {
   solicitudId: string;
-  estado: 'Aceptada' | 'Rechazada';
+  estado: 'Aceptada' | 'AceptadaModificada' | 'Rechazada';
   comentarioRechazo?: string;
+  comentarioAdministrador?: string;
   aprobadoPor: string; // ID del admin
+  actualizacion?: ISolicitudActualizacion;
 }
 
 /**
@@ -70,4 +76,5 @@ export interface IFiltrosSolicitudes {
   profesorId?: string;
   fechaDesde?: string;
   fechaHasta?: string;
+  semana?: number;
 }

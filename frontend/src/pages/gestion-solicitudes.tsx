@@ -8,6 +8,7 @@ import {
 import { Icon } from '@iconify/react';
 import { motion } from 'framer-motion';
 import { useAuth } from '../contexts/auth-context';
+import { useToast, useConfirm } from '../hooks/useToast';
 import {
   obtenerTodasSolicitudesService,
   obtenerMisSolicitudesService,
@@ -22,12 +23,16 @@ import { ISolicitud, EstadoSolicitud } from '../types/solicitud.types';
 import { IUsuario } from '../types/usuario.types';
 
 const GestionSolicitudesPage: React.FC = () => {
+  const toast = useToast();
+  const confirm = useConfirm();
   const { user, hasSpecificPermission } = useAuth();
   const [solicitudes, setSolicitudes] = useState<ISolicitud[]>([]);
   const [usuarios, setUsuarios] = useState<IUsuario[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [filtroEstado, setFiltroEstado] = useState<Selection>(new Set([]));
   const [filtroProfesor, setFiltroProfesor] = useState<Selection>(new Set([]));
+  const [filtroSemana, setFiltroSemana] = useState<Selection>(new Set([]));
+  const [filtroAsignatura, setFiltroAsignatura] = useState<Selection>(new Set([]));
   const [busqueda, setBusqueda] = useState('');
   const [tabSeleccionada, setTabSeleccionada] = useState('todas');
   
@@ -48,6 +53,7 @@ const GestionSolicitudesPage: React.FC = () => {
                  user?.rol === 'Admin' || 
                  user?.rol === 'Co-Admin' ||
                  user?.rol === 'Gestor de Pedidos';
+  const esAdministradorGeneral = user?.rol === 'Administrador';
 
   useEffect(() => {
     cargarDatos();
@@ -73,7 +79,7 @@ const GestionSolicitudesPage: React.FC = () => {
       }
     } catch (error) {
       console.error('Error al cargar datos:', error);
-      alert('Error al cargar las solicitudes');
+      toast.error('Error al cargar las solicitudes');
     } finally {
       setIsLoading(false);
     }
@@ -97,7 +103,7 @@ const GestionSolicitudesPage: React.FC = () => {
     if (!solicitudSeleccionada || !user) return;
 
     if (accionModal === 'rechazar' && !comentarioRechazo.trim()) {
-      alert('Por favor ingrese un comentario explicando el motivo del rechazo');
+      toast.warning('Por favor ingrese un comentario explicando el motivo del rechazo');
       return;
     }
 
@@ -121,47 +127,81 @@ const GestionSolicitudesPage: React.FC = () => {
         accionModal === 'rechazar' ? comentarioRechazo : undefined
       );
 
-      alert(accionModal === 'aprobar' 
-        ? '✅ Solicitud aceptada correctamente' 
-        : '❌ Solicitud rechazada correctamente'
+      toast.success(accionModal === 'aprobar' 
+        ? 'Solicitud aceptada correctamente' 
+        : 'Solicitud rechazada correctamente'
       );
 
       await cargarDatos();
       onOpenChange();
     } catch (error: any) {
-      alert(error.message || 'Error al procesar la solicitud');
+      toast.error(error.message || 'Error al procesar la solicitud');
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const handleAceptarTodas = async () => {
-    if (!window.confirm(`¿Está seguro de aceptar TODAS las solicitudes pendientes (${contadores.pendientes})?`)) {
-      return;
-    }
+    const confirmed = await confirm(`¿Está seguro de aceptar TODAS las solicitudes pendientes (${contadores.pendientes})?`, {
+      confirmColor: 'success',
+      confirmText: 'Aceptar todas',
+    });
+    if (!confirmed) return;
 
     try {
       if (!user) return;
       const aprobadorId = user.id || user.nombre;
       const cantidad = await aceptarTodasSolicitudesService(aprobadorId);
-      alert(`✅ ${cantidad} solicitudes aceptadas correctamente`);
+      toast.success(`${cantidad} solicitudes aceptadas correctamente`);
       await cargarDatos();
     } catch (error: any) {
-      alert(error.message || 'Error al aceptar solicitudes');
+      toast.error(error.message || 'Error al aceptar solicitudes');
     }
   };
 
   const handleEliminar = async (solicitud: ISolicitud) => {
-    if (!window.confirm(`¿Está seguro de eliminar la solicitud de ${solicitud.asignaturaNombre}?`)) {
-      return;
-    }
+    const confirmed = await confirm(`¿Está seguro de eliminar la solicitud de ${solicitud.asignaturaNombre}?`, {
+      confirmColor: 'danger',
+      confirmText: 'Eliminar',
+    });
+    if (!confirmed) return;
 
     try {
       await eliminarSolicitudService(solicitud.id);
-      alert('✅ Solicitud eliminada correctamente');
+      toast.success('Solicitud eliminada correctamente');
       await cargarDatos();
     } catch (error: any) {
-      alert(error.message || 'Error al eliminar solicitud');
+      toast.error(error.message || 'Error al eliminar solicitud');
+    }
+  };
+
+  const handleEliminarAdmin = async (solicitud: ISolicitud) => {
+    if (!esAdministradorGeneral) {
+      toast.warning('Solo el rol Administrador puede eliminar solicitudes de forma permanente.');
+      return;
+    }
+
+    const confirmed = await confirm(
+      `Esta acción eliminará definitivamente la solicitud de ${solicitud.asignaturaNombre} (Semana ${solicitud.semana}).`,
+      {
+        title: 'Eliminar solicitud',
+        confirmText: 'Eliminar',
+        cancelText: 'Cancelar',
+        confirmColor: 'danger',
+        requireText: 'ELIMINAR',
+        requireTextLabel: 'Confirma escribiendo "ELIMINAR"',
+        requireTextHelper: 'Esta acción es irreversible y solo debe usarse en fase de pruebas.',
+      }
+    );
+
+    if (!confirmed) return;
+
+    try {
+      await eliminarSolicitudService(solicitud.id);
+      toast.success('Solicitud eliminada permanentemente');
+      await cargarDatos();
+    } catch (error: any) {
+      toast.error(error.message || 'Error al eliminar la solicitud');
     }
   };
 
@@ -177,6 +217,35 @@ const GestionSolicitudesPage: React.FC = () => {
     return valor === 'todos' ? '' : valor;
   }, [filtroProfesor]);
 
+  const semanaSeleccionada = React.useMemo(() => {
+    if (filtroSemana === 'all') return undefined;
+    const valor = Array.from(filtroSemana)[0] as string | undefined;
+    return valor && valor !== 'todas' ? parseInt(valor, 10) : undefined;
+  }, [filtroSemana]);
+
+  const asignaturaSeleccionada = React.useMemo(() => {
+    if (filtroAsignatura === 'all') return '';
+    const valor = Array.from(filtroAsignatura)[0] as string | undefined;
+    return valor && valor !== 'todas' ? valor : '';
+  }, [filtroAsignatura]);
+
+  const semanasDisponibles = React.useMemo(() => {
+    const semanas = Array.from(
+      new Set(
+        solicitudes
+          .map((s) => (Number.isInteger(s.semana) ? s.semana : undefined))
+          .filter((semana): semana is number => semana !== undefined)
+      )
+    );
+    return semanas.sort((a, b) => a - b);
+  }, [solicitudes]);
+
+  const asignaturasDisponibles = React.useMemo(() => {
+    const set = new Set<string>();
+    solicitudes.forEach((s) => set.add(s.asignaturaNombre));
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [solicitudes]);
+
   const solicitudesFiltradas = solicitudes.filter(s => {
     if (tabSeleccionada === 'pendientes' && s.estado !== 'Pendiente') return false;
     if (tabSeleccionada === 'aceptadas' && s.estado !== 'Aceptada') return false;
@@ -184,6 +253,8 @@ const GestionSolicitudesPage: React.FC = () => {
 
     if (estadoSeleccionado && s.estado !== estadoSeleccionado) return false;
     if (profesorSeleccionado && s.profesorId !== profesorSeleccionado) return false;
+    if (semanaSeleccionada && s.semana !== semanaSeleccionada) return false;
+    if (asignaturaSeleccionada && s.asignaturaNombre !== asignaturaSeleccionada) return false;
 
     if (busqueda) {
       const texto = busqueda.toLowerCase();
@@ -279,7 +350,7 @@ const GestionSolicitudesPage: React.FC = () => {
 
         <Card>
           <CardBody className="p-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
               <Input
                 placeholder="Buscar por asignatura, profesor o producto..."
                 value={busqueda}
@@ -313,6 +384,28 @@ const GestionSolicitudesPage: React.FC = () => {
                 <SelectItem key="Pendiente">Pendiente</SelectItem>
                 <SelectItem key="Aceptada">Aceptada</SelectItem>
                 <SelectItem key="Rechazada">Rechazada</SelectItem>
+              </Select>
+
+              <Select
+                placeholder="Filtrar por semana"
+                selectedKeys={filtroSemana}
+                onSelectionChange={setFiltroSemana}
+              >
+                <SelectItem key="todas">Todas las semanas</SelectItem>
+                {semanasDisponibles.map((semana) => (
+                  <SelectItem key={semana.toString()}>Semana {semana}</SelectItem>
+                ))}
+              </Select>
+
+              <Select
+                placeholder="Filtrar por asignatura"
+                selectedKeys={filtroAsignatura}
+                onSelectionChange={setFiltroAsignatura}
+              >
+                <SelectItem key="todas">Todas las asignaturas</SelectItem>
+                {asignaturasDisponibles.map((asignatura) => (
+                  <SelectItem key={asignatura}>{asignatura}</SelectItem>
+                ))}
               </Select>
             </div>
           </CardBody>
@@ -365,132 +458,140 @@ const GestionSolicitudesPage: React.FC = () => {
                 )}
               </TableHeader>
               <TableBody emptyContent="No hay solicitudes para mostrar">
-                {solicitudesFiltradas.map((solicitud) => (
-                  <TableRow key={solicitud.id}>
-                    {esAdmin ? (
-                      // Versión Admin (7 celdas)
-                      <>
-                        <TableCell>{solicitud.profesorNombre}</TableCell>
-                        <TableCell>
-                          <div>
-                            <p className="font-medium">{solicitud.asignaturaNombre}</p>
-                            {solicitud.esCustom && (
-                              <Chip size="sm" color="primary" variant="flat">Personalizado</Chip>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          {new Date(solicitud.fecha).toLocaleDateString('es-CL')}
-                        </TableCell>
-                        <TableCell>
-                          {solicitud.recetaNombre || <span className="text-default-400">Sin receta</span>}
-                        </TableCell>
-                        <TableCell>
-                          <Chip size="sm">{solicitud.items.length} productos</Chip>
-                        </TableCell>
-                        <TableCell>
-                          <Chip
-                            size="sm"
-                            color={getColorEstado(solicitud.estado)}
-                            variant="flat"
-                          >
-                            {solicitud.estado}
-                          </Chip>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex gap-2">
-                            {solicitud.estado === 'Pendiente' && (
-                              <>
-                                <Tooltip content="Aceptar">
-                                  <Button
-                                    isIconOnly
-                                    size="sm"
-                                    color="success"
-                                    variant="flat"
-                                    onPress={() => abrirModalAprobar(solicitud)}
-                                  >
-                                    <Icon icon="lucide:check" />
-                                  </Button>
-                                </Tooltip>
-                                <Tooltip content="Rechazar">
-                                  <Button
-                                    isIconOnly
-                                    size="sm"
-                                    color="danger"
-                                    variant="flat"
-                                    onPress={() => abrirModalRechazar(solicitud)}
-                                  >
-                                    <Icon icon="lucide:x" />
-                                  </Button>
-                                </Tooltip>
-                              </>
-                            )}
-                            {solicitud.estado === 'Rechazada' && solicitud.comentarioRechazo && (
-                              <Tooltip content={`Motivo: ${solicitud.comentarioRechazo}`}>
-                                <Button isIconOnly size="sm" variant="light">
-                                  <Icon icon="lucide:message-circle" className="text-warning" />
-                                </Button>
-                              </Tooltip>
-                            )}
-                          </div>
-                        </TableCell>
-                      </>
-                    ) : (
-                      // Versión Profesor (6 celdas)
-                      <>
-                        <TableCell>
-                          <div>
-                            <p className="font-medium">{solicitud.asignaturaNombre}</p>
-                            {solicitud.esCustom && (
-                              <Chip size="sm" color="primary" variant="flat">Personalizado</Chip>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          {new Date(solicitud.fecha).toLocaleDateString('es-CL')}
-                        </TableCell>
-                        <TableCell>
-                          {solicitud.recetaNombre || <span className="text-default-400">Sin receta</span>}
-                        </TableCell>
-                        <TableCell>
-                          <Chip size="sm">{solicitud.items.length} productos</Chip>
-                        </TableCell>
-                        <TableCell>
-                          <Chip
-                            size="sm"
-                            color={getColorEstado(solicitud.estado)}
-                            variant="flat"
-                          >
-                            {solicitud.estado}
-                          </Chip>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex gap-2">
-                            {solicitud.estado === 'Pendiente' && (
-                              <Tooltip content="Eliminar">
+                {solicitudesFiltradas.map((solicitud) =>
+                  esAdmin ? (
+                    <TableRow key={solicitud.id}>
+                      <TableCell>{solicitud.profesorNombre}</TableCell>
+                      <TableCell>
+                        <div>
+                          <p className="font-medium">{solicitud.asignaturaNombre}</p>
+                          {solicitud.esCustom && (
+                            <Chip size="sm" color="primary" variant="flat">Personalizado</Chip>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {new Date(solicitud.fecha).toLocaleDateString('es-CL')}
+                      </TableCell>
+                      <TableCell>
+                        {solicitud.recetaNombre || <span className="text-default-400">Sin receta</span>}
+                      </TableCell>
+                      <TableCell>
+                        <Chip size="sm">{solicitud.items.length} productos</Chip>
+                      </TableCell>
+                      <TableCell>
+                        <Chip
+                          size="sm"
+                          color={getColorEstado(solicitud.estado)}
+                          variant="flat"
+                        >
+                          {solicitud.estado}
+                        </Chip>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex gap-2">
+                          {solicitud.estado === 'Pendiente' && (
+                            <>
+                              <Tooltip content="Aceptar">
                                 <Button
                                   isIconOnly
                                   size="sm"
-                                  variant="light"
-                                  onPress={() => handleEliminar(solicitud)}
+                                  color="success"
+                                  variant="flat"
+                                  onPress={() => abrirModalAprobar(solicitud)}
                                 >
-                                  <Icon icon="lucide:trash" className="text-danger" />
+                                  <Icon icon="lucide:check" />
                                 </Button>
                               </Tooltip>
-                            )}
-                            {solicitud.estado === 'Rechazada' && solicitud.comentarioRechazo && (
-                              <Tooltip content={`Motivo: ${solicitud.comentarioRechazo}`}>
-                                <Button isIconOnly size="sm" variant="light">
-                                  <Icon icon="lucide:message-circle" className="text-warning" />
+                              <Tooltip content="Rechazar">
+                                <Button
+                                  isIconOnly
+                                  size="sm"
+                                  color="danger"
+                                  variant="flat"
+                                  onPress={() => abrirModalRechazar(solicitud)}
+                                >
+                                  <Icon icon="lucide:x" />
                                 </Button>
                               </Tooltip>
-                            )}
-                          </div>
-                        </TableCell>
-                      </>
-                    )}
-                  </TableRow>
-                ))}
+                            </>
+                          )}
+                          {solicitud.estado === 'Rechazada' && solicitud.comentarioRechazo && (
+                            <Tooltip content={`Motivo: ${solicitud.comentarioRechazo}`}>
+                              <Button isIconOnly size="sm" variant="light">
+                                <Icon icon="lucide:message-circle" className="text-warning" />
+                              </Button>
+                            </Tooltip>
+                          )}
+                          {esAdministradorGeneral && (
+                            <Tooltip content="Eliminar solicitud">
+                              <Button
+                                isIconOnly
+                                size="sm"
+                                variant="light"
+                                onPress={() => handleEliminarAdmin(solicitud)}
+                              >
+                                <Icon icon="lucide:trash" className="text-danger" />
+                              </Button>
+                            </Tooltip>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    <TableRow key={solicitud.id}>
+                      <TableCell>
+                        <div>
+                          <p className="font-medium">{solicitud.asignaturaNombre}</p>
+                          {solicitud.esCustom && (
+                            <Chip size="sm" color="primary" variant="flat">Personalizado</Chip>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {new Date(solicitud.fecha).toLocaleDateString('es-CL')}
+                      </TableCell>
+                      <TableCell>
+                        {solicitud.recetaNombre || <span className="text-default-400">Sin receta</span>}
+                      </TableCell>
+                      <TableCell>
+                        <Chip size="sm">{solicitud.items.length} productos</Chip>
+                      </TableCell>
+                      <TableCell>
+                        <Chip
+                          size="sm"
+                          color={getColorEstado(solicitud.estado)}
+                          variant="flat"
+                        >
+                          {solicitud.estado}
+                        </Chip>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex gap-2">
+                          {solicitud.estado === 'Pendiente' && (
+                            <Tooltip content="Eliminar">
+                              <Button
+                                isIconOnly
+                                size="sm"
+                                variant="light"
+                                onPress={() => handleEliminar(solicitud)}
+                              >
+                                <Icon icon="lucide:trash" className="text-danger" />
+                              </Button>
+                            </Tooltip>
+                          )}
+                          {solicitud.estado === 'Rechazada' && solicitud.comentarioRechazo && (
+                            <Tooltip content={`Motivo: ${solicitud.comentarioRechazo}`}>
+                              <Button isIconOnly size="sm" variant="light">
+                                <Icon icon="lucide:message-circle" className="text-warning" />
+                              </Button>
+                            </Tooltip>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  )
+                )}
               </TableBody>
             </Table>
           </CardBody>

@@ -17,11 +17,14 @@ import {
   subirFotoPerfilService
 } from '../services/usuario-service';
 import { useAuth } from '../contexts/auth-context';
+import { useToast, useConfirm } from '../hooks/useToast';
+import { logger } from '../utils/logger';
 
 const ROLES: RolUsuario[] = [
   'Administrador',
   'Co-Administrador',
   'Gestor de Pedidos',
+  'Profesor',
   'Profesor a Cargo',
   'Encargado de Bodega',
   'Asistente de Bodega'
@@ -31,6 +34,8 @@ const ROLES: RolUsuario[] = [
 
 
 const GestionUsuariosPage: React.FC = () => {
+  const toast = useToast();
+  const confirm = useConfirm();
   const opcionesRol = ['Todos los roles', ...ROLES];
   const { user: usuarioActual, hasSpecificPermission } = useAuth();
   const [usuarios, setUsuarios] = useState<IUsuario[]>([]);
@@ -48,10 +53,10 @@ const GestionUsuariosPage: React.FC = () => {
     nombreCompleto: '',
     correo: '',
     contrasena: '',
-    rol: 'Profesor a Cargo',
+    rol: 'Profesor',
     fotoPerfil: undefined
   });
-  const [selectedRolForm, setSelectedRolForm] = useState<Selection>(new Set(['Profesor a Cargo']));
+  const [selectedRolForm, setSelectedRolForm] = useState<Selection>(new Set(['Profesor']));
   const [archivoFoto, setArchivoFoto] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -73,8 +78,8 @@ const GestionUsuariosPage: React.FC = () => {
       const data = await obtenerUsuariosService();
       setUsuarios(data);
     } catch (error) {
-      console.error('Error al cargar usuarios:', error);
-      alert('Error al cargar usuarios');
+      logger.error('Error al cargar usuarios:', error);
+      toast.error('Error al cargar usuarios');
     } finally {
       setIsLoading(false);
     }
@@ -87,10 +92,10 @@ const GestionUsuariosPage: React.FC = () => {
       nombreCompleto: '',
       correo: '',
       contrasena: '',
-      rol: 'Profesor a Cargo',
+      rol: 'Profesor',
       fotoPerfil: undefined
     });
-    setSelectedRolForm(new Set(['Profesor a Cargo']));
+    setSelectedRolForm(new Set(['Profesor']));
     setArchivoFoto(null);
     onOpen();
   };
@@ -114,11 +119,11 @@ const GestionUsuariosPage: React.FC = () => {
     const file = e.target.files?.[0];
     if (file) {
       if (!file.type.startsWith('image/')) {
-        alert('Por favor seleccione una imagen válida');
+        toast.warning('Por favor seleccione una imagen válida');
         return;
       }
       if (file.size > 2 * 1024 * 1024) {
-        alert('La imagen no debe superar los 2MB');
+        toast.warning('La imagen no debe superar los 2MB');
         return;
       }
       setArchivoFoto(file);
@@ -130,12 +135,12 @@ const GestionUsuariosPage: React.FC = () => {
       setIsSubmitting(true);
 
       if (!formData.nombreCompleto || !formData.correo || !formData.rol) {
-        alert('Por favor complete todos los campos obligatorios');
+        toast.warning('Por favor complete todos los campos obligatorios');
         return;
       }
 
       if (!modoEdicion && !formData.contrasena) {
-        alert('La contraseña es obligatoria para nuevos usuarios');
+        toast.warning('La contraseña es obligatoria para nuevos usuarios');
         return;
       }
 
@@ -162,42 +167,58 @@ const GestionUsuariosPage: React.FC = () => {
         }
 
         await actualizarUsuarioService(usuarioEditando.id, dataActualizacion);
-        alert('✅ Usuario actualizado correctamente');
+        toast.success('Usuario actualizado correctamente');
       } else {
         await crearUsuarioService(dataConFoto);
-        alert('✅ Usuario creado correctamente');
+        toast.success('Usuario creado correctamente');
       }
 
       await cargarUsuarios();
       onOpenChange();
     } catch (error: any) {
-      alert(error.message || 'Error al guardar usuario');
+      toast.error(error.message || 'Error al guardar usuario');
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const handleEliminar = async (usuario: IUsuario) => {
-    if (!window.confirm(`¿Está seguro de desactivar al usuario ${usuario.nombreCompleto}?`)) {
+    if (usuarioActual?.rol !== 'Administrador') {
+      toast.warning('Solo el rol Administrador puede desactivar usuarios.');
+      return;
+    }
+
+    const result = await confirm(
+      `Esta acción desactivará al usuario ${usuario.nombreCompleto}.`,
+      {
+        title: 'Desactivar usuario',
+        confirmText: 'Desactivar',
+        confirmColor: 'danger',
+        requireText: 'ELIMINAR',
+        requireTextLabel: 'Escribe "ELIMINAR" para confirmar',
+        requireTextHelper: 'Usa esta opción solo para depurar datos de prueba.',
+      }
+    );
+    if (!result) {
       return;
     }
 
     try {
       await eliminarUsuarioService(usuario.id);
-      alert('✅ Usuario desactivado correctamente');
+      toast.success('Usuario desactivado correctamente');
       await cargarUsuarios();
     } catch (error: any) {
-      alert(error.message || 'Error al desactivar usuario');
+      toast.error(error.message || 'Error al desactivar usuario');
     }
   };
 
   const handleActivar = async (usuario: IUsuario) => {
     try {
       await activarUsuarioService(usuario.id);
-      alert('✅ Usuario activado correctamente');
+      toast.success('Usuario activado correctamente');
       await cargarUsuarios();
     } catch (error: any) {
-      alert(error.message || 'Error al activar usuario');
+      toast.error(error.message || 'Error al activar usuario');
     }
   };
 
@@ -384,7 +405,11 @@ const GestionUsuariosPage: React.FC = () => {
                               size="sm"
                               variant="light"
                               onPress={() => handleEliminar(usuario)}
-                              isDisabled={usuario.id === usuarioActual?.id || usuario.nombreCompleto === usuarioActual?.nombre}
+                              isDisabled={
+                                usuario.id === usuarioActual?.id ||
+                                usuario.nombreCompleto === usuarioActual?.nombre ||
+                                usuarioActual?.rol !== 'Administrador'
+                              }
                             >
                               <Icon icon="lucide:user-x" className="text-danger" />
                             </Button>

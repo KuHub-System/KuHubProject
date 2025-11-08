@@ -1,32 +1,45 @@
-import React from 'react';
+import React, { lazy, Suspense } from 'react';
 import { Switch, Route, Redirect } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/auth-context';
 import { ThemeProvider } from './contexts/theme-context';
+import ErrorBoundary from './components/ErrorBoundary';
+import { NotificationProvider } from './utils/notifications';
+import { Spinner } from '@heroui/react';
 
-// Layouts
+// Layouts (se mantienen sincrónicos porque son pequeños)
 import MainLayout from './layouts/main-layout';
 import AuthLayout from './layouts/auth-layout';
 
-// Páginas
-import LoginPage from './pages/login';
-import DashboardPage from './pages/dashboard';
-import InventarioPage from './pages/inventario';
-import MovimientosProductoPage from './pages/movimientos-producto';
-import PerfilUsuarioPage from './pages/perfil-usuario';
-import GestionRolesPage from './pages/gestion-roles';
-import SolicitudPage from './pages/solicitud';
-import RamosAdminPage from './pages/ramos-admin';
-import GestionPedidosPage from './pages/gestion-pedidos';
-import ConglomeradoPedidosPage from './pages/conglomerado-pedidos';
-import GestionProveedoresPage from './pages/gestion-proveedores';
-import BodegaTransitoPage from './pages/bodega-transito';
-import GestionRecetasPage from './pages/gestion-recetas';
-import GestionUsuariosPage from './pages/gestion-usuarios'; // 🔥 NUEVA
-import GestionSolicitudesPage from './pages/gestion-solicitudes'; // 🔥 NUEVA
-import NotFoundPage from './pages/not-found';
+// Páginas - Lazy Loading para mejor rendimiento
+const LoginPage = lazy(() => import('./pages/login'));
+const DashboardPage = lazy(() => import('./pages/dashboard'));
+const InventarioPage = lazy(() => import('./pages/inventario'));
+const MovimientosProductoPage = lazy(() => import('./pages/movimientos-producto'));
+const PerfilUsuarioPage = lazy(() => import('./pages/perfil-usuario'));
+const GestionRolesPage = lazy(() => import('./pages/gestion-roles'));
+const SolicitudPage = lazy(() => import('./pages/solicitud'));
+const RamosAdminPage = lazy(() => import('./pages/ramos-admin'));
+const GestionPedidosPage = lazy(() => import('./pages/gestion-pedidos'));
+const ConglomeradoPedidosPage = lazy(() => import('./pages/conglomerado-pedidos'));
+const GestionProveedoresPage = lazy(() => import('./pages/gestion-proveedores'));
+const BodegaTransitoPage = lazy(() => import('./pages/bodega-transito'));
+const GestionRecetasPage = lazy(() => import('./pages/gestion-recetas'));
+const GestionUsuariosPage = lazy(() => import('./pages/gestion-usuarios'));
+const GestionSolicitudesPage = lazy(() => import('./pages/gestion-solicitudes'));
+const NotFoundPage = lazy(() => import('./pages/not-found'));
 
 // Componente de ruta protegida
 import ProtectedRoute from './components/protected-route';
+
+// Componente de carga para Suspense
+const PageLoader: React.FC = () => (
+  <div className="flex items-center justify-center h-screen">
+    <div className="text-center">
+      <Spinner size="lg" color="primary" className="mb-4" />
+      <p className="text-default-500">Cargando...</p>
+    </div>
+  </div>
+);
 
 /**
  * 🔥 COMPONENTE NUEVO: Redirección Inteligente
@@ -54,8 +67,6 @@ const SmartRedirect: React.FC = () => {
 
   // Obtener permisos del usuario
   const permisos = getUserPermissions();
-  
-  console.log('🔀 SmartRedirect - Permisos disponibles:', permisos);
 
   // Mapa de permisos a rutas (en orden de prioridad)
   const rutasPorPermiso: { [key: string]: string } = {
@@ -76,7 +87,6 @@ const SmartRedirect: React.FC = () => {
   // Buscar la primera ruta donde el usuario tenga permiso
   for (const permiso of permisos) {
     if (rutasPorPermiso[permiso]) {
-      console.log(`🔀 Redirigiendo a primera página con permisos: ${rutasPorPermiso[permiso]}`);
       return <Redirect to={rutasPorPermiso[permiso]} />;
     }
   }
@@ -101,16 +111,22 @@ const SmartRedirect: React.FC = () => {
 /**
  * Componente principal de la aplicación.
  * Ahora usa permisos dinámicos en lugar de roles fijos.
+ * Implementa lazy loading para mejor rendimiento.
  */
 const App: React.FC = () => {
   return (
-    <ThemeProvider>
-      <AuthProvider>
-        <Switch>
+    <ErrorBoundary>
+      <ThemeProvider>
+        <NotificationProvider>
+          <AuthProvider>
+            <Suspense fallback={<PageLoader />}>
+              <Switch>
           {/* Rutas de autenticación */}
           <Route path="/login">
             <AuthLayout>
-              <LoginPage />
+              <Suspense fallback={<PageLoader />}>
+                <LoginPage />
+              </Suspense>
             </AuthLayout>
           </Route>
 
@@ -204,7 +220,9 @@ const App: React.FC = () => {
           {/* Ruta para página no encontrada */}
           <Route path="/404">
             <MainLayout>
-              <NotFoundPage />
+              <Suspense fallback={<PageLoader />}>
+                <NotFoundPage />
+              </Suspense>
             </MainLayout>
           </Route>
 
@@ -233,9 +251,12 @@ const App: React.FC = () => {
           <Route path="*">
             <Redirect to="/404" />
           </Route>
-        </Switch>
-      </AuthProvider>
-    </ThemeProvider>
+              </Switch>
+            </Suspense>
+          </AuthProvider>
+        </NotificationProvider>
+      </ThemeProvider>
+    </ErrorBoundary>
   );
 };
 
