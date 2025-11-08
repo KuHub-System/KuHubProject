@@ -67,6 +67,15 @@ export const inicializarUsuariosPorDefecto = (): void => {
         fechaCreacion: new Date().toISOString(),
       },
       {
+        id: '7',
+        nombreCompleto: 'Profesor Invitado',
+        correo: 'profesor.inv@kuhub.cl',
+        contrasena: 'profesor123',
+        rol: 'Profesor',
+        activo: true,
+        fechaCreacion: new Date().toISOString(),
+      },
+      {
         id: '5',
         nombreCompleto: 'Encargado de Bodega',
         correo: 'bodega@kuhub.cl',
@@ -87,7 +96,7 @@ export const inicializarUsuariosPorDefecto = (): void => {
     ];
     
     guardarUsuariosStorage(usuariosPorDefecto);
-    console.log('✅ Usuarios por defecto inicializados (6 usuarios demo)');
+    console.log('✅ Usuarios por defecto inicializados (7 usuarios demo)');
   }
 };
 

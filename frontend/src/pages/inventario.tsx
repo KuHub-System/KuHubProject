@@ -30,8 +30,12 @@ import { IProducto } from '../types/producto.types';
 import { 
   obtenerProductosService, 
   crearProductoService, 
-  actualizarProductoService 
+  actualizarProductoService,
+  eliminarProductoService,
 } from '../services/producto-service';
+import { useToast, useConfirm } from '../hooks/useToast';
+import { logger } from '../utils/logger';
+import { useAuth } from '../contexts/auth-context';
 
 /**
  * Interfaz para un item del pedido masivo
@@ -50,6 +54,10 @@ interface ItemPedidoMasivo {
  * @returns {JSX.Element} La página de inventario.
  */
 const InventarioPage: React.FC = () => {
+  const toast = useToast();
+  const confirm = useConfirm();
+  const { user } = useAuth();
+  const esAdministrador = user?.rol === 'Administrador';
   const [productos, setProductos] = React.useState<IProducto[]>([]);
   const [filteredProductos, setFilteredProductos] = React.useState<IProducto[]>([]);
   const [isLoading, setIsLoading] = React.useState<boolean>(true);
@@ -76,7 +84,7 @@ const InventarioPage: React.FC = () => {
       setProductos(data);
       setFilteredProductos(data);
     } catch (error) {
-      console.error('Error al cargar productos:', error);
+      logger.error('Error al cargar productos:', error);
     } finally {
       setIsLoading(false);
     }
@@ -171,6 +179,35 @@ const InventarioPage: React.FC = () => {
     setModalMode('crear');
     setProductoSeleccionado(null);
     onOpen();
+  };
+
+  const handleEliminarProducto = async (producto: IProducto) => {
+    if (!esAdministrador) {
+      toast.warning('Solo el rol Administrador puede eliminar productos.');
+      return;
+    }
+
+    const confirmado = await confirm(
+      `Eliminarás definitivamente el producto "${producto.nombre}".`,
+      {
+        title: 'Eliminar producto',
+        confirmText: 'Eliminar',
+        confirmColor: 'danger',
+        requireText: 'ELIMINAR',
+        requireTextHelper: 'Esta acción elimina el producto y sus datos asociados.',
+      }
+    );
+
+    if (!confirmado) return;
+
+    try {
+      await eliminarProductoService(producto.id);
+      toast.success('Producto eliminado correctamente');
+      window.dispatchEvent(new Event('productosActualizados'));
+    } catch (error: any) {
+      logger.error('Error al eliminar producto:', error);
+      toast.error(error.message || 'Error al eliminar el producto');
+    }
   };
 
   /**
@@ -329,6 +366,16 @@ const InventarioPage: React.FC = () => {
                     >
                       <Icon icon="lucide:list" className="text-default-600" />
                     </Button>
+                    {esAdministrador && (
+                      <Button
+                        isIconOnly
+                        variant="light"
+                        size="sm"
+                        onPress={() => handleEliminarProducto(producto)}
+                      >
+                        <Icon icon="lucide:trash" className="text-danger" />
+                      </Button>
+                    )}
                   </div>
                 </TableCell>
               </TableRow>
@@ -388,6 +435,7 @@ interface FormularioProductoProps {
  * @returns {JSX.Element} El formulario de producto.
  */
 const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto, onClose, mode }) => {
+  const toast = useToast();
   const [nombre, setNombre] = React.useState(producto?.nombre || '');
   const [descripcion, setDescripcion] = React.useState(producto?.descripcion || '');
   const [categoria, setCategoria] = React.useState(producto?.categoria || '');
@@ -399,15 +447,15 @@ const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto, onClo
   const handleSubmit = async () => {
     // Validaciones
     if (!nombre.trim()) {
-      alert('El nombre del producto es requerido');
+      toast.warning('El nombre del producto es requerido');
       return;
     }
     if (!categoria.trim()) {
-      alert('La categoría es requerida');
+      toast.warning('La categoría es requerida');
       return;
     }
     if (!unidadMedida.trim()) {
-      alert('La unidad de medida es requerida');
+      toast.warning('La unidad de medida es requerida');
       return;
     }
 
@@ -426,7 +474,7 @@ const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto, onClo
         };
         
         await crearProductoService(datosProducto);
-        alert('Producto creado exitosamente');
+        toast.success('Producto creado exitosamente');
       } else {
         // Actualizar producto existente usando el servicio
         if (!producto?.id) {
@@ -444,7 +492,7 @@ const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto, onClo
         };
         
         await actualizarProductoService(datosActualizacion);
-        alert('Producto actualizado exitosamente');
+        toast.success('Producto actualizado exitosamente');
       }
 
       // Despachar evento personalizado para notificar el cambio
@@ -452,8 +500,8 @@ const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto, onClo
       
       onClose();
     } catch (error) {
-      console.error('Error al guardar producto:', error);
-      alert(error instanceof Error ? error.message : 'Error al guardar el producto');
+      logger.error('Error al guardar producto:', error);
+      toast.error(error instanceof Error ? error.message : 'Error al guardar el producto');
     } finally {
       setIsLoading(false);
     }
@@ -564,6 +612,7 @@ interface PedidoMasivoModalProps {
  * Modal para realizar pedidos masivos hacia bodega de tránsito
  */
 const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ productos, onClose }) => {
+  const toast = useToast();
   const [itemsPedido, setItemsPedido] = React.useState<ItemPedidoMasivo[]>([]);
   const [productoSeleccionado, setProductoSeleccionado] = React.useState<string>('');
   const [cantidad, setCantidad] = React.useState<string>('');
@@ -593,16 +642,16 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ productos, onClos
   const procesarPedido = async () => {
     try {
       // Aquí iría la lógica para procesar el pedido masivo
-      console.log('Procesando pedido masivo:', itemsPedido);
+      logger.log('Procesando pedido masivo:', itemsPedido);
       
       // Simular procesamiento
       await new Promise(resolve => setTimeout(resolve, 1000));
       
-      alert(`Pedido procesado exitosamente. ${itemsPedido.length} productos enviados a bodega de tránsito.`);
+      toast.success(`Pedido procesado exitosamente. ${itemsPedido.length} productos enviados a bodega de tránsito.`);
       onClose();
     } catch (error) {
-      console.error('Error al procesar pedido:', error);
-      alert('Error al procesar el pedido');
+      logger.error('Error al procesar pedido:', error);
+      toast.error('Error al procesar el pedido');
     }
   };
 

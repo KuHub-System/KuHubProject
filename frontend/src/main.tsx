@@ -6,6 +6,9 @@ import { inicializarApp } from './services/init-system';
 import App from './App';
 import './index.css';
 
+// Inicializar sistema antes de renderizar
+inicializarApp();
+
 /**
  * Punto de entrada principal de la aplicación.
  * Configura los proveedores necesarios:
@@ -13,8 +16,6 @@ import './index.css';
  * - ToastProvider: Para las notificaciones
  * - Router: Para la navegación entre páginas
  */
-
-inicializarApp();
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

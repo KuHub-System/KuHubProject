@@ -2,6 +2,7 @@ import React from 'react';
 import { Route, Redirect, RouteProps } from 'react-router-dom';
 import { useAuth } from '../contexts/auth-context';
 import { Spinner } from '@heroui/react';
+import { logger } from '../utils/logger';
 
 /**
  * 🔥 INTERFAZ ACTUALIZADA
@@ -49,19 +50,19 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     // Si tiene pageId, usar verificación dinámica (NUEVO)
     if (pageId) {
       const access = canAccessPage(pageId);
-      console.log(`🔐 Verificando acceso a "${pageId}":`, access ? '✅' : '❌');
+      logger.log(`🔐 Verificando acceso a "${pageId}":`, access ? '✅' : '❌');
       return access;
     }
 
     // Si tiene roles, usar verificación estática (DEPRECADO)
     if (roles.length > 0) {
       const access = hasPermission(roles);
-      console.log(`🔐 Verificando roles [${roles.join(', ')}]:`, access ? '✅' : '❌');
+      logger.log(`🔐 Verificando roles [${roles.join(', ')}]:`, access ? '✅' : '❌');
       return access;
     }
 
     // Si no tiene restricciones, permitir acceso (solo requiere login)
-    console.log(`🔐 Ruta sin restricciones: ✅`);
+    logger.log(`🔐 Ruta sin restricciones: ✅`);
     return true;
   };
 
@@ -80,13 +81,13 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 
     // Si no está autenticado, redirige a login
     if (!isAuthenticated) {
-      console.log('❌ No autenticado, redirigiendo a /login');
+      logger.log('❌ No autenticado, redirigiendo a /login');
       return <Redirect to="/login" />;
     }
 
     // Si no tiene permisos, redirige a página de sin acceso
     if (!hasAccess()) {
-      console.log('❌ Sin permisos, redirigiendo a /sin-acceso');
+      logger.log('❌ Sin permisos, redirigiendo a /sin-acceso');
       return <Redirect to="/sin-acceso" />;
     }
 

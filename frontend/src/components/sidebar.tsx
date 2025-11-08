@@ -4,7 +4,8 @@ import { Button, Divider } from '@heroui/react';
 import { Icon } from '@iconify/react';
 import { useAuth } from '../contexts/auth-context';
 import { motion } from 'framer-motion';
-import logo from './assets/KüHubLogoWBG.png';
+
+const LOGO_URL = new URL('./assets/KuHubLogoWBG.png', import.meta.url).href;
 
 /**
  * Interfaz para las propiedades del componente Sidebar.
@@ -129,7 +130,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
     const hasAccess = canAccessPage(item.pageId);
     
     // Log para debugging (puedes quitarlo después)
-    if (process.env.NODE_ENV === 'development') {
+    if (typeof import.meta !== 'undefined' && (import.meta as any).env?.DEV) {
       console.log(`📄 ${item.title} (${item.pageId}):`, hasAccess ? '✅' : '❌');
     }
     
@@ -160,7 +161,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
           <div className="flex items-center">
             {/* Logo de KüHub */}
             <div className="w-10 h-10 bg-content2 dark:bg-zinc-900 flex items-center justify-center rounded-md">
-              <img src={logo} alt="Logo KüHub" className="h-8 w-8 object-contain" />
+              <img src={LOGO_URL} alt="Logo KüHub" className="h-8 w-8 object-contain" />
             </div>
             <motion.span 
               className="text-xl font-bold ml-3 text-primary"

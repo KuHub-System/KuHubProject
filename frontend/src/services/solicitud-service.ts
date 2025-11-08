@@ -45,6 +45,11 @@ export const crearSolicitudService = (data: ISolicitudCreacion): Promise<ISolici
           return;
         }
         
+        if (!Number.isInteger(data.semana) || data.semana < 1 || data.semana > 18) {
+          reject(new Error('La semana seleccionada no es válida'));
+          return;
+        }
+
         const solicitudes = obtenerSolicitudesStorage();
         console.log('📋 Solicitudes antes de crear:', solicitudes.length);
         
@@ -54,6 +59,7 @@ export const crearSolicitudService = (data: ISolicitudCreacion): Promise<ISolici
           profesorNombre: usuario.nombreCompleto,
           asignaturaId: data.asignaturaId,
           asignaturaNombre: data.asignaturaNombre,
+          semana: data.semana,
           fecha: data.fecha,
           recetaId: data.recetaId,
           recetaNombre: data.recetaNombre,
@@ -95,6 +101,9 @@ export const obtenerTodasSolicitudesService = (
       
       // Aplicar filtros
       if (filtros) {
+        if (typeof filtros.semana === 'number') {
+          solicitudes = solicitudes.filter(s => s.semana === filtros.semana);
+        }
         if (filtros.estado) {
           solicitudes = solicitudes.filter(s => s.estado === filtros.estado);
         }
@@ -195,14 +204,29 @@ export const actualizarSolicitudService = (
           return;
         }
         
-        // Si la solicitud estaba Aceptada, volver a Pendiente
-        const nuevoEstado: EstadoSolicitud = 
-          solicitud.estado === 'Aceptada' ? 'Pendiente' : solicitud.estado;
+        if (data.semana !== undefined) {
+          if (!Number.isInteger(data.semana) || data.semana < 1 || data.semana > 18) {
+            reject(new Error('La semana seleccionada no es válida'));
+            return;
+          }
+        }
+
+        // Si la solicitud estaba aceptada (normal o modificada), volver a Pendiente
+        const estabaAceptada = solicitud.estado === 'Aceptada' || solicitud.estado === 'AceptadaModificada';
+        const nuevoEstado: EstadoSolicitud = estabaAceptada ? 'Pendiente' : solicitud.estado;
+
+        const itemsActualizados = data.items
+          ? data.items.map(item => ({
+              ...item,
+              id: item.id || `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
+            }))
+          : solicitud.items;
         
         // Actualizar solicitud
         solicitudes[index] = {
           ...solicitud,
           ...data,
+          items: itemsActualizados,
           estado: nuevoEstado,
           fechaUltimaModificacion: new Date().toISOString(),
         };
@@ -210,7 +234,7 @@ export const actualizarSolicitudService = (
         guardarSolicitudesStorage(solicitudes);
         
         console.log('✅ Solicitud actualizada:', id);
-        if (nuevoEstado === 'Pendiente' && solicitud.estado === 'Aceptada') {
+        if (nuevoEstado === 'Pendiente' && estabaAceptada) {
           console.log('⚠️ Solicitud volvió a Pendiente por modificación');
         }
         
@@ -245,14 +269,16 @@ export const eliminarSolicitudService = (id: string): Promise<void> => {
         
         const solicitud = solicitudes[index];
         
-        // Verificar que sea el dueño
-        if (solicitud.profesorId !== usuario.id) {
+        const esAdmin = usuario.rol === 'Administrador';
+        
+        // Verificar permisos: el profesor dueño o el administrador pueden eliminar
+        if (!esAdmin && solicitud.profesorId !== usuario.id) {
           reject(new Error('No tienes permiso para eliminar esta solicitud'));
           return;
         }
         
-        // Solo permitir eliminar si está en Pendiente
-        if (solicitud.estado !== 'Pendiente') {
+        // Solo limitar estado cuando no es administrador
+        if (!esAdmin && solicitud.estado !== 'Pendiente') {
           reject(new Error('Solo se pueden eliminar solicitudes en estado Pendiente'));
           return;
         }
@@ -290,14 +316,31 @@ export const aprobarRechazarSolicitudService = (
         
         console.log(`🔄 Cambiando estado de "${solicitudes[index].estado}" a "${data.estado}"`);
         
+        if (data.actualizacion?.semana !== undefined) {
+          if (!Number.isInteger(data.actualizacion.semana) || data.actualizacion.semana < 1 || data.actualizacion.semana > 18) {
+            reject(new Error('La semana seleccionada no es válida'));
+            return;
+          }
+        }
+        
         // Actualizar estado
         solicitudes[index] = {
           ...solicitudes[index],
+          ...data.actualizacion,
           estado: data.estado,
+          semana: data.actualizacion?.semana ?? solicitudes[index].semana,
           comentarioRechazo: data.estado === 'Rechazada' ? data.comentarioRechazo : undefined,
+          comentarioAdministrador: data.estado === 'Rechazada' ? undefined : data.comentarioAdministrador,
           fechaAprobacion: new Date().toISOString(),
           aprobadoPor: data.aprobadoPor,
+          fechaUltimaModificacion: new Date().toISOString(),
         };
+        if (data.actualizacion?.items) {
+          solicitudes[index].items = data.actualizacion.items.map(item => ({
+            ...item,
+            id: item.id || `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
+          }));
+        }
         
         guardarSolicitudesStorage(solicitudes);
         
@@ -361,7 +404,7 @@ export const obtenerConteoSolicitudesService = (): Promise<{
       
       const conteo = {
         pendientes: solicitudes.filter(s => s.estado === 'Pendiente').length,
-        aceptadas: solicitudes.filter(s => s.estado === 'Aceptada').length,
+        aceptadas: solicitudes.filter(s => s.estado === 'Aceptada' || s.estado === 'AceptadaModificada').length,
         rechazadas: solicitudes.filter(s => s.estado === 'Rechazada').length,
         total: solicitudes.length,
       };
@@ -379,7 +422,7 @@ export const obtenerSolicitudesAceptadasParaPedidoService = (): Promise<ISolicit
   return new Promise((resolve) => {
     setTimeout(() => {
       const solicitudes = obtenerSolicitudesStorage();
-      const aceptadas = solicitudes.filter(s => s.estado === 'Aceptada');
+      const aceptadas = solicitudes.filter(s => s.estado === 'Aceptada' || s.estado === 'AceptadaModificada');
       console.log('✅ Solicitudes aceptadas para pedido:', aceptadas.length);
       resolve(aceptadas);
     }, 100);

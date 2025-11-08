@@ -4,7 +4,8 @@ import { Icon } from '@iconify/react';
 import { useAuth } from '../contexts/auth-context';
 import { useThemeContext } from '../contexts/theme-context';
 import { useHistory } from 'react-router-dom';
-import logo from './assets/KüHubLogoWBG.png';
+
+const LOGO_URL = new URL('./assets/KuHubLogoWBG.png', import.meta.url).href;
 
 /**
  * Interfaz para las propiedades del componente Header.
@@ -53,7 +54,7 @@ const Header: React.FC<HeaderProps> = ({ toggleSidebar }) => {
             <DropdownItem key="profile" onPress={goToProfile}>
                 <div className="flex items-center gap-2">
                     {/* Cambia el icono por el logo */}
-                    <img src={logo} alt="Logo KuHub" className="h-5 w-5 rounded" />
+                    <img src={LOGO_URL} alt="Logo KuHub" className="h-5 w-5 rounded" />
                     <span>Perfil</span>
                 </div>
             </DropdownItem>

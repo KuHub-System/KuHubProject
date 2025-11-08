@@ -29,6 +29,7 @@ export const ROLES_SISTEMA: IRole[] = [
       'inventario',
       'solicitud',
       'gestion-pedidos',
+      'gestion-solicitudes',
       'conglomerado-pedidos',
       'gestion-proveedores',
       'bodega-transito',
@@ -46,6 +47,7 @@ export const ROLES_SISTEMA: IRole[] = [
       'inventario',
       'solicitud',
       'gestion-pedidos',
+      'gestion-solicitudes',
       'conglomerado-pedidos',
       'gestion-proveedores',
       'bodega-transito',
@@ -59,6 +61,7 @@ export const ROLES_SISTEMA: IRole[] = [
     permisos: [
       'dashboard',
       'gestion-pedidos',
+      'gestion-solicitudes',
       'conglomerado-pedidos'
     ]
   },
@@ -85,6 +88,13 @@ export const ROLES_SISTEMA: IRole[] = [
       'dashboard',
       'bodega-transito'
     ]
+  },
+  {
+    id: '7',
+    nombre: 'Profesor',
+    permisos: [
+      'gestion-recetas'
+    ]
   }
 ];
 
@@ -97,6 +107,7 @@ export const PAGINAS_DISPONIBLES = [
   { id: 'inventario', nombre: 'Inventario', descripcion: 'Gestión de productos' },
   { id: 'solicitud', nombre: 'Solicitud', descripcion: 'Creación de solicitudes de insumos' },
   { id: 'gestion-pedidos', nombre: 'Gestión de Pedidos', descripcion: 'Administración de pedidos' },
+  { id: 'gestion-solicitudes', nombre: 'Gestión de Solicitudes', descripcion: 'Administración de solicitudes' },
   { id: 'conglomerado-pedidos', nombre: 'Conglomerado de Pedidos', descripcion: 'Agrupación de pedidos' },
   { id: 'gestion-proveedores', nombre: 'Gestión de Proveedores', descripcion: 'Administración de proveedores' },
   { id: 'bodega-transito', nombre: 'Bodega de Tránsito', descripcion: 'Control de productos en tránsito' },
@@ -126,8 +137,24 @@ export const cargarRoles = (): IRole[] => {
       );
       
       if (rolesValidos && roles.length === ROLES_SISTEMA.length) {
-        console.log('✅ Roles cargados desde localStorage:', roles.map((r: IRole) => r.nombre).join(', '));
-        return roles;
+        const tienenPermisosActualizados = roles.every((rol: IRole) => {
+          const rolDefecto = ROLES_SISTEMA.find(r => r.nombre === rol.nombre);
+          if (!rolDefecto) return false;
+          const permisosActuales = [...rol.permisos].sort();
+          const permisosDefecto = [...rolDefecto.permisos].sort();
+          if (permisosActuales.length !== permisosDefecto.length) return false;
+          return permisosDefecto.every((permiso, index) => permiso === permisosActuales[index]);
+        });
+
+        if (tienenPermisosActualizados) {
+          console.log('✅ Roles cargados desde localStorage:', roles.map((r: IRole) => r.nombre).join(', '));
+          return roles;
+        }
+
+        console.warn('⚠️ Los roles en localStorage no tienen los permisos actualizados. Actualizando configuración...');
+        localStorage.setItem(ROLES_STORAGE_KEY, JSON.stringify(ROLES_SISTEMA));
+        window.dispatchEvent(new Event('roles-updated'));
+        return ROLES_SISTEMA;
       } else {
         console.warn('⚠️ Roles en localStorage tienen nombres incorrectos. Corrigiendo...');
         console.warn('   Guardados:', roles.map((r: IRole) => r.nombre).join(', '));

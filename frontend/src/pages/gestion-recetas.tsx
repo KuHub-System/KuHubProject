@@ -25,6 +25,8 @@ import {
 } from '@heroui/react';
 import { Icon } from '@iconify/react';
 import { motion } from 'framer-motion';
+import { useToast, useConfirm } from '../hooks/useToast';
+import { useAuth } from '../contexts/auth-context';
 
 // IMPORTAR TIPOS Y SERVICIOS
 import { IReceta, IIngrediente } from '../types/receta.types';
@@ -33,7 +35,8 @@ import {
   obtenerRecetasService, 
   crearRecetaService, 
   actualizarRecetaService,
-  cambiarEstadoRecetaService 
+  cambiarEstadoRecetaService,
+  eliminarRecetaService,
 } from '../services/receta-service';
 import { obtenerProductosService } from '../services/producto-service';
 
@@ -41,6 +44,12 @@ import { obtenerProductosService } from '../services/producto-service';
  * Página de gestión de recetas simplificada.
  */
 const GestionRecetasPage: React.FC = () => {
+  const toast = useToast();
+  const confirm = useConfirm();
+  const { user } = useAuth();
+  const esSoloLectura = user?.rol === 'Profesor';
+  const esAdministrador = user?.rol === 'Administrador';
+
   const [recetas, setRecetas] = React.useState<IReceta[]>([]);
   const [productos, setProductos] = React.useState<IProducto[]>([]);
   const [filteredRecetas, setFilteredRecetas] = React.useState<IReceta[]>([]);
@@ -71,7 +80,7 @@ const GestionRecetasPage: React.FC = () => {
       console.log('📦 Productos cargados:', productosCargados.length);
     } catch (error) {
       console.error('❌ Error al cargar datos:', error);
-      alert('Error al cargar las recetas');
+      toast.error('Error al cargar las recetas');
     } finally {
       setIsLoading(false);
     }
@@ -118,10 +127,10 @@ const GestionRecetasPage: React.FC = () => {
       console.log(`🔄 Cambiando estado de receta ${id} a ${nuevoEstado}`);
       await cambiarEstadoRecetaService(id, nuevoEstado === 'Activa');
       await cargarDatos();
-      alert(`✅ Receta ${nuevoEstado.toLowerCase()} correctamente`);
+      toast.success(`Receta ${nuevoEstado.toLowerCase()} correctamente`);
     } catch (error) {
       console.error('❌ Error al cambiar estado:', error);
-      alert('Error al cambiar el estado de la receta');
+      toast.error('Error al cambiar el estado de la receta');
     }
   };
 
@@ -141,7 +150,7 @@ const GestionRecetasPage: React.FC = () => {
           instrucciones: receta.instrucciones,
           estado: receta.estado
         });
-        alert('✅ Receta creada correctamente');
+        toast.success('Receta creada correctamente');
       } else if (modalMode === 'editar') {
         console.log('✏️ Actualizando receta:', receta.nombre);
         await actualizarRecetaService({
@@ -152,13 +161,41 @@ const GestionRecetasPage: React.FC = () => {
           instrucciones: receta.instrucciones,
           estado: receta.estado
         });
-        alert('✅ Receta actualizada correctamente');
+        toast.success('Receta actualizada correctamente');
       }
       await cargarDatos();
     } catch (error: any) {
       console.error('❌ Error al guardar receta:', error);
-      alert(error.message || 'Error al guardar la receta');
+      toast.error(error.message || 'Error al guardar la receta');
       throw error;
+    }
+  };
+
+  const handleEliminarReceta = async (receta: IReceta) => {
+    if (!esAdministrador) {
+      toast.warning('Solo el rol Administrador puede eliminar recetas.');
+      return;
+    }
+
+    const confirmado = await confirm(
+      `Eliminarás definitivamente la receta "${receta.nombre}".`,
+      {
+        title: 'Eliminar receta',
+        confirmText: 'Eliminar',
+        confirmColor: 'danger',
+        requireText: 'ELIMINAR',
+        requireTextHelper: 'Esta acción es irreversible. Escribe ELIMINAR para confirmar.',
+      }
+    );
+
+    if (!confirmado) return;
+
+    try {
+      await eliminarRecetaService(receta.id);
+      toast.success('Receta eliminada correctamente');
+      await cargarDatos();
+    } catch (error: any) {
+      toast.error(error.message || 'Error al eliminar la receta');
     }
   };
 
@@ -195,14 +232,21 @@ const GestionRecetasPage: React.FC = () => {
             <p className="text-default-500">
               Administre las recetas base para las solicitudes de insumos.
             </p>
+            {esSoloLectura && (
+              <p className="text-xs text-default-400 mt-1">
+                Rol Profesor: acceso de solo lectura. Para crear o modificar recetas, contacte al profesor a cargo.
+              </p>
+            )}
           </div>
-          <Button 
-            color="primary" 
-            startContent={<Icon icon="lucide:plus" />}
-            onPress={handleNuevaReceta}
-          >
-            Nueva Receta
-          </Button>
+          {!esSoloLectura && (
+            <Button 
+              color="primary" 
+              startContent={<Icon icon="lucide:plus" />}
+              onPress={handleNuevaReceta}
+            >
+              Nueva Receta
+            </Button>
+          )}
         </div>
 
         {/* Estadísticas */}
@@ -297,28 +341,42 @@ const GestionRecetasPage: React.FC = () => {
                         >
                           <Icon icon="lucide:eye" className="text-primary" />
                         </Button>
-                        <Button 
-                          isIconOnly 
-                          variant="light" 
-                          size="sm" 
-                          onPress={() => handleEditarReceta(receta)}
-                        >
-                          <Icon icon="lucide:edit" className="text-primary" />
-                        </Button>
-                        <Button 
-                          isIconOnly 
-                          variant="light" 
-                          size="sm" 
-                          onPress={() => cambiarEstadoReceta(
-                            receta.id, 
-                            receta.estado === 'Activa' ? 'Inactiva' : 'Activa'
-                          )}
-                        >
-                          <Icon 
-                            icon={receta.estado === 'Activa' ? 'lucide:x' : 'lucide:check'} 
-                            className={receta.estado === 'Activa' ? 'text-danger' : 'text-success'} 
-                          />
-                        </Button>
+                        {!esSoloLectura && (
+                          <>
+                            <Button 
+                              isIconOnly 
+                              variant="light" 
+                              size="sm" 
+                              onPress={() => handleEditarReceta(receta)}
+                            >
+                              <Icon icon="lucide:edit" className="text-primary" />
+                            </Button>
+                            <Button 
+                              isIconOnly 
+                              variant="light" 
+                              size="sm" 
+                              onPress={() => cambiarEstadoReceta(
+                                receta.id, 
+                                receta.estado === 'Activa' ? 'Inactiva' : 'Activa'
+                              )}
+                            >
+                              <Icon 
+                                icon={receta.estado === 'Activa' ? 'lucide:x' : 'lucide:check'} 
+                                className={receta.estado === 'Activa' ? 'text-danger' : 'text-success'} 
+                              />
+                            </Button>
+                            {esAdministrador && (
+                              <Button
+                                isIconOnly
+                                variant="light"
+                                size="sm"
+                                onPress={() => handleEliminarReceta(receta)}
+                              >
+                                <Icon icon="lucide:trash" className="text-danger" />
+                              </Button>
+                            )}
+                          </>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>
@@ -483,6 +541,7 @@ interface FormularioRecetaProps {
 
 const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
   ({ receta, mode, productos, onSave }, ref) => {
+    const toast = useToast();
     const [nombre, setNombre] = React.useState(receta?.nombre || '');
     const [descripcion, setDescripcion] = React.useState(receta?.descripcion || '');
     const [instrucciones, setInstrucciones] = React.useState(receta?.instrucciones || '');
@@ -493,11 +552,11 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
       submit: async () => {
         // Validaciones
         if (!nombre.trim()) {
-          alert('⚠️ El nombre es obligatorio');
+          toast.warning('El nombre de la receta es obligatorio');
           throw new Error('El nombre es requerido');
         }
         if (ingredientes.length === 0) {
-          alert('⚠️ Debe agregar al menos un ingrediente');
+          toast.warning('Debe agregar al menos un ingrediente');
           throw new Error('Debe agregar al menos un ingrediente');
         }
         
@@ -505,11 +564,11 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
         for (let i = 0; i < ingredientes.length; i++) {
           const ing = ingredientes[i];
           if (!ing.productoId) {
-            alert(`⚠️ Seleccione un producto para el ingrediente ${i + 1}`);
+            toast.warning(`Seleccione un producto para el ingrediente ${i + 1}`);
             throw new Error('Producto no seleccionado');
           }
           if (ing.cantidad <= 0) {
-            alert(`⚠️ La cantidad del ingrediente ${i + 1} debe ser mayor a 0`);
+            toast.warning(`La cantidad del ingrediente ${i + 1} debe ser mayor a 0`);
             throw new Error('Cantidad inválida');
           }
         }
