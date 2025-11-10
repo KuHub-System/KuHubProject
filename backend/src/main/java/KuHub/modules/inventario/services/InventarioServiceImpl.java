@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
 
 @Service
 public class InventarioServiceImpl implements InventarioService {
@@ -23,8 +24,8 @@ public class InventarioServiceImpl implements InventarioService {
     private ProductoService productoService;
 
     @Transactional
-    public void sincronizarSecuenciaInventario() {
-        Long nuevoValor = inventarioRepository.sincronizarSecuencia();
+    public void syncSeq() {
+        Long nuevoValor = inventarioRepository.syncSeq();
         System.out.println("Secuencia de inventario sincronizada. Nuevo valor: " + nuevoValor);
     }
 
@@ -58,16 +59,15 @@ public class InventarioServiceImpl implements InventarioService {
 
     @Transactional
     @Override
-    public List<InventoryWithProductoResponseViewDTO> findInventariosForNumberPage(Long numeroPagina, String nombreCategoria) {
+    public List<InventoryWithProductoResponseViewDTO> findInventariosForNumberPageByFilterCategoria(Long cantidadesPaginasCalculada, String nombreCategoria) {
 
         // Debug de entrada
         System.out.println("=== DEBUG FIND INVENTARIOS ===");
-        System.out.println("numeroPagina: " + numeroPagina);
+        System.out.println("numeroPagina: " + cantidadesPaginasCalculada);
         System.out.println("nombreCategoria: '" + nombreCategoria + "'");
 
-        // Calcular startRow CORRECTO: (página - 1) * 10
-        Long startRow = (numeroPagina - 1) * 10;
-        System.out.println("startRow calculado: " + startRow);
+
+        Long startRow = calculaterStartRow(cantidadesPaginasCalculada);
 
         // Procesar categoría CORRECTAMENTE
         String categoria = (nombreCategoria == null || "null".equalsIgnoreCase(nombreCategoria) || nombreCategoria.trim().isEmpty())
@@ -88,7 +88,64 @@ public class InventarioServiceImpl implements InventarioService {
 
     @Transactional
     @Override
-    public Long countInventoryForPaginationRows(String nombreCategoria) {
+    public List<InventoryWithProductoResponseViewDTO> findInventariosForNumberPageSeachSimilarName(
+            Long cantidadesPaginasCalculada,String buscarProductoNombreSimilares  ){
+        // Debug de entrada
+        System.out.println("=== DEBUG FIND INVENTARIOS ===");
+        System.out.println("numeroPagina: " + cantidadesPaginasCalculada);
+
+        Long startRow = calculaterStartRow(cantidadesPaginasCalculada);
+
+        // Ejecutar consulta
+        List<InventoryWithProductoResponseViewDTO> resultado = inventarioRepository.findInventoriesInProductsSimilarByNameWithPagination(
+                startRow, buscarProductoNombreSimilares
+        );
+
+        System.out.println("resultado tamaño: " + resultado.size());
+        System.out.println("=== FIN DEBUG ===");
+
+        return resultado;
+    }
+
+
+    @Transactional
+    @Override
+    public Long countInventoryForPaginationRowsSeachSimilarName(String buscarProductoNombreSimilares){
+
+        //buscar na cantidad total de inventario segun la similitud del nombre
+        Long cantidadInventario = inventarioRepository.countAllInventoriesBySimilarName(buscarProductoNombreSimilares).orElseThrow(
+                () -> new InventarioException("No hay inventarios con nombre de productos similares a : " + buscarProductoNombreSimilares)
+        );
+
+        Long cantidadPaginas = calculaterCountPages(cantidadInventario);
+
+        return calculaterStartRow(cantidadPaginas);
+    }
+
+    @Override
+    public Long calculaterStartRow(Long numeroPagina) {
+        // Definimos el tamaño de la página (debe coincidir con el usado para calcular páginas)
+        long pageSize = 10L;
+
+        // Asumimos que el número de página es 1-based (la primera página es la 1).
+        // Si el númeroPagina es 1, startRow debe ser 0.
+
+        // Fórmula: (página - 1) * pageSize
+        Long startRow = (numeroPagina - 1) * pageSize;
+
+        System.out.println("Página solicitada: " + numeroPagina);
+        System.out.println("startRow calculado: " + startRow);
+
+        return startRow;
+        /**numeroPagina,Cálculo,Resultado (startRow)
+         1,(1−1)×10,0
+         2,(2−1)×10,10
+         3,(3−1)×10,20*/
+    }
+
+    @Transactional
+    @Override
+    public Long countInventoryForPaginationRowsByCategoria(String nombreCategoria) {
 
         // 🎯 Convertir a null si está vacío para que la consulta cuente TODO
         String categoriaParam = (nombreCategoria == null || nombreCategoria.trim().isEmpty() || "null".equalsIgnoreCase(nombreCategoria))
@@ -97,23 +154,30 @@ public class InventarioServiceImpl implements InventarioService {
 
         System.out.println("🔍 Counting with category: " + categoriaParam);
 
-        Long cantidadInventario = inventarioRepository.countAllInventarios(categoriaParam)
+        Long cantidadInventario = inventarioRepository.countAllInventories(categoriaParam)
                 .orElseThrow(() -> new InventarioException("No hay inventarios"));
 
-        System.out.println("📊 Total count: " + cantidadInventario);
-        //independente de las decimales redondea hace arriba a entero
-        double paginas = Math.ceil((double) cantidadInventario / 10);
+        return calculaterCountPages(cantidadInventario);
+    }
+
+    @Override
+    public Long calculaterCountPages(Long cantidadInventarios) {
+        long pageSize = 10L;
+        System.out.println("📊 Total count: " + cantidadInventarios);
+
+        // Aplicamos la fórmula: Math.ceil(Total / TamañoPágina)
+        double paginas = Math.ceil((double) cantidadInventarios / pageSize);
         Long cantidadPaginas = (long) paginas;
 
         System.out.println("📄 Pages calculated: " + cantidadPaginas);
-
         return cantidadPaginas;
+
     }
 
     @Transactional
     @Override
     public Inventario  save (InventoryWithProductCreateRequestDTO inventarioRequest){
-        sincronizarSecuenciaInventario();
+        syncSeq();
         //validar que el stock no es negativo
         if (inventarioRequest.getStock() < 0 ){
             throw new InventarioException("El inventario no puede ser negativo");

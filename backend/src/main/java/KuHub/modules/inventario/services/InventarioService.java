@@ -7,15 +7,20 @@ import KuHub.modules.inventario.entity.Inventario;
 import java.util.List;
 
 public interface InventarioService {
-    void sincronizarSecuenciaInventario();
+    void syncSeq();
     //InventarioDTO save(InventarioDTO dto);
 
     List<Inventario> findAll();
     List<Inventario> findInventoriesWithProductsActive(Boolean activo);
-    List<InventoryWithProductoResponseViewDTO> findInventariosForNumberPage(Long startRow, String nombreCategoria);
+    List<InventoryWithProductoResponseViewDTO> findInventariosForNumberPageByFilterCategoria(Long startRow, String nombreCategoria);
+    List<InventoryWithProductoResponseViewDTO> findInventariosForNumberPageSeachSimilarName(
+            Long cantidadesPaginasCalculada,String buscarProductoNombreSimilares);
     Inventario findById(Long id);
     Inventario findByIdInventoryWithProductActive(Long idInventario,Boolean activo);
-    Long countInventoryForPaginationRows(String nombreCategoria);
+    Long countInventoryForPaginationRowsByCategoria(String nombreCategoria);
+    Long countInventoryForPaginationRowsSeachSimilarName(String buscarProductoNombreSimilares);
+    Long calculaterCountPages(Long cantidadInventarios);
+    Long calculaterStartRow(Long numeroPagina);
     Inventario save (InventoryWithProductCreateRequestDTO inventarioRequest);
 
     //Inventario getInventarioByIdProducto(Long idProducto);
