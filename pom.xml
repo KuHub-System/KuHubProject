@@ -21,19 +21,7 @@
 	<url>https://github.com/tuusuario/kuhub</url>
 
 	<modules>
-		<module>msvc-Producto</module> 					<!-- puerto 8081 -->
-		<module>msvc-DetalleProductoSolicitud</module> 	<!-- puerto 8082 -->
-		<module>msvc-SolicitudDocente</module> 			<!-- puerto 8083 -->
-		<module>msvc-Usuario</module> 					<!-- puerto 8084 -->
-		<module>msvc-Inventario</module>				<!-- puerto 8085 -->
-		<module>msvc-Rol</module> 						<!-- puerto 8086 -->
-		<module>msvc-Receta</module>					<!-- puerto 8087 -->
-		<module>msvc-DetalleReceta</module>				<!-- puerto 8088 -->
-		<module>msvc-Asignatura</module>				<!-- puerto 8089 -->
-		<module>msvc-movimiento</module>				<!-- puerto 8090 -->
-		<module>msvc-Seccion</module>				    <!-- puerto 8091 -->
-		<module>msvc-apigateway</module>				<!-- puerto 8095 -->
-
+        <module>backend</module>                        <!-- puerto 8080 -->
 	</modules>
 
 	<properties>
