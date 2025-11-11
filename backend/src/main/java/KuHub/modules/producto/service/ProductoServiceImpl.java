@@ -22,6 +22,13 @@ public class ProductoServiceImpl implements ProductoService{
 
     @Transactional
     @Override
+    public void sincronizarSecuenciaProducto() {
+        Integer nuevoValor = productoRepository.sincronizarSecuencia();
+        System.out.println("Secuencia sincronizada. Nuevo valor: " + nuevoValor);
+    }
+
+    @Transactional
+    @Override
     public List<Producto> findAll() {
         return productoRepository.findAll();
     }
@@ -34,14 +41,7 @@ public class ProductoServiceImpl implements ProductoService{
 
     @Transactional
     @Override
-    public void sincronizarSecuenciaProducto() {
-        Long nuevoValor = productoRepository.sincronizarSecuencia();
-        System.out.println("Secuencia sincronizada. Nuevo valor: " + nuevoValor);
-    }
-
-    @Transactional
-    @Override
-    public Producto findById(Long id){
+    public Producto findById(Integer id){
         return productoRepository.findById(id).orElseThrow(
                 ()-> new ProductoNotFoundException(id)
         );
@@ -49,9 +49,9 @@ public class ProductoServiceImpl implements ProductoService{
 
     @Transactional
     @Override
-    public Producto findByIdProductoAndActivo(Long id, Boolean activo){
-        return productoRepository.findByIdProductoAndActivo(id,activo).orElseThrow(
-                ()-> new ProductoNotFoundException(id)
+    public Producto findByIdProductoAndActivoTrue(Integer id_producto){
+        return productoRepository.findByIdProductoAndActivoTrue(id_producto).orElseThrow(
+                ()-> new ProductoNotFoundException(id_producto)
         );
     }
 
@@ -83,31 +83,38 @@ public class ProductoServiceImpl implements ProductoService{
         );
     }
 
+    @Transactional
+    @Override
+    public Boolean existProductByName (String nombreProducto){
+        return productoRepository.existsByNombreProducto(nombreProducto);
+    }
+
 
     @Transactional
     @Override
     public Producto save (Producto producto) {
         sincronizarSecuenciaProducto();
-        //capotalizar nombre producto para luego comparar en la base de datos
+        //capitalizar nombre producto para luego comparar en la base de datos
         String nombreProductoCap = StringUtils.capitalizarPalabras(producto.getNombreProducto());
 
         //validar que no exista producto con ese nombre
         if (productoRepository.findByNombreProducto(nombreProductoCap).isPresent()){
             throw new ProductoExistenteException(nombreProductoCap);
         }
-        //validar que no exista producto activo en TRUE con ese codigo
-        if(productoRepository.existsBycodProductoAndActivo(producto.getCodProducto(),true)){
-            throw new ProductoException("El codigo del producto "+producto.getCodProducto()+" ya existe");
+        //validar que no exista producto activo en TRUE con el mismo código
+        if (producto.getCodProducto() != null) {
+            if (productoRepository.existsBycodProductoAndActivo(producto.getCodProducto(), true)) {
+                throw new ProductoException("El código del producto " + producto.getCodProducto() + " ya existe");
+            }
         }
 
-
-        //guardar en el objeto el nombre categoria captalizado
+        //guardar en el objeto el nombre categoría capitalizado
         producto.setNombreCategoria(StringUtils.capitalizarPalabras(producto.getNombreCategoria()));
         //guardar en el objeto el nombre capitalizado
         producto.setNombreProducto(nombreProductoCap);
-        //guardar en el objeto la unidades en mayusculas
+        //guardar en el objeto las unidades en mayúsculas
         producto.setUnidadMedida(producto.getUnidadMedida().toUpperCase());
-        //actico con true
+        //activo con true
         producto.setActivo(true);
 
         return productoRepository.save(producto);
@@ -136,7 +143,7 @@ public class ProductoServiceImpl implements ProductoService{
 
     @Transactional
     @Override
-    public Producto updateById(Long id, ProductoUpdateRequest productoRequest){
+    public Producto updateById(Integer id, ProductoUpdateRequest productoRequest){
 
         Producto P = productoRepository.findById(id).orElseThrow(() ->
                 new ProductoNotFoundException(id));
@@ -173,7 +180,7 @@ public class ProductoServiceImpl implements ProductoService{
 
     @Transactional
     @Override
-    public void deleteById(Long id)  {
+    public void deleteById(Integer id)  {
         Producto producto = productoRepository.findById(id).orElseThrow(
                 () -> new ProductoNotFoundException(id));
 

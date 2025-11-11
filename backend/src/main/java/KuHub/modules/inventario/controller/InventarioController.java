@@ -1,7 +1,7 @@
 package KuHub.modules.inventario.controller;
 
-import KuHub.modules.inventario.dtos.InventoryWithProductCreateRequestDTO;
-import KuHub.modules.inventario.dtos.InventoryWithProductoResponseViewDTO;
+import KuHub.modules.inventario.dtos.InventoryWithProductCreateUpdateDTO;
+import KuHub.modules.inventario.dtos.InventoryWithProductoResponseDTO;
 import KuHub.modules.inventario.entity.Inventario;
 import KuHub.modules.inventario.services.InventarioService;
 import jakarta.validation.Valid;
@@ -22,7 +22,7 @@ public class InventarioController {
     private InventarioService inventarioService;
 
     @GetMapping("/{id}")
-    public ResponseEntity<Inventario> findById(@PathVariable Long id){
+    public ResponseEntity<Inventario> findById(@PathVariable Integer id){
         return ResponseEntity
                 .status(200)
                 .body(inventarioService.findById(id));
@@ -30,7 +30,7 @@ public class InventarioController {
 
     @GetMapping("/id-activo/{id}/{activo}")
     public ResponseEntity<Inventario>findByIdInventoryWithProductActive(
-            @PathVariable Long id,
+            @PathVariable Integer id,
             @PathVariable Boolean activo){
         return ResponseEntity
                 .status(200)
@@ -47,60 +47,54 @@ public class InventarioController {
     }
 
     @GetMapping("/activo/{activo}")
-    public ResponseEntity<List<Inventario>> findInventoriesWithProductsActive(@PathVariable Boolean activo){
+    public ResponseEntity<List<Inventario>> findInventoriesWithProductsActive(@PathVariable Boolean activo ){
         return ResponseEntity
                 .status(200)
                 .body(inventarioService.findInventoriesWithProductsActive(activo));
     }
 
-    @GetMapping("/find-inventories-for-number-page-by-filter-categoria/{numberPage}/{nombreCategoria}")
-    public ResponseEntity<List<InventoryWithProductoResponseViewDTO>> findInventoriesForNumberPageByFilterCategoria(
-            @PathVariable Long numberPage,
-            @PathVariable String nombreCategoria){
+    @GetMapping("/find-all-inventories-active/")
+    public ResponseEntity<List<InventoryWithProductoResponseDTO>> findAllActiveInventoryOrderedByName(){
         return ResponseEntity
                 .status(200)
-                .body(inventarioService.findInventariosForNumberPageByFilterCategoria(
-                        numberPage, nombreCategoria
-                ));
+                .body(inventarioService.findAllActiveInventoryOrderedByName());
     }
 
-    @GetMapping("/find-inventories-for-number-page-seach-similar-name/{numberPage}/{nombreProductoSimilar}")
-    public ResponseEntity<List<InventoryWithProductoResponseViewDTO>> findInventariosForNumberPageSeachSimilarName(
-            @PathVariable Long numberPage,
-            @PathVariable String nombreProductoSimilar){
-        return ResponseEntity
-                .status(200)
-                .body(inventarioService.findInventariosForNumberPageSeachSimilarName(
-                        numberPage, nombreProductoSimilar
-                ));
-    }
-    //findInventariosForNumberPageSeachSimilarName
-    //findInventoriesInProductsSimilarByNameWithPagination
-
-    @GetMapping("/count-inventory-for-pagination-rows/{nombreCategoria}")
-    public ResponseEntity<Long>  countInventoryForPaginationRowsByCategoria(@PathVariable String nombreCategoria){
-        return ResponseEntity
-                .status(200)
-                .body(inventarioService.countInventoryForPaginationRowsByCategoria(nombreCategoria));
-    }
-
-    @GetMapping("/count-inventory-for-pagination-rows-seach-similar-name/{nombreProductoSimilar})")
-    public ResponseEntity<Long> countInventoryForPaginationRowsSeachSimilarName(@PathVariable String nombreProductoSimilar){
-        return ResponseEntity
-                .status(200)
-                .body(inventarioService.countInventoryForPaginationRowsSeachSimilarName(nombreProductoSimilar));
-    }
 
     /**crear inventario para el FrontEnd */
-    @PostMapping("/front-page/")
-    public ResponseEntity<Inventario> save(
+    @PostMapping("/create-inventory-with-product/")
+    public ResponseEntity<InventoryWithProductCreateUpdateDTO> save(
             @Valid @RequestBody
-            InventoryWithProductCreateRequestDTO inventarioRequest){
+            InventoryWithProductCreateUpdateDTO inventarioRequest){
         return ResponseEntity
-                .status(200)
+                .status(201)
                 .body(inventarioService.save(inventarioRequest));
     }
 
+    /**actualizar inventario para el FrontEnd */
+    @PutMapping("/update-inventory-with-product/")
+    public ResponseEntity<InventoryWithProductCreateUpdateDTO> updateInventoryWithProduct(
+            @RequestBody InventoryWithProductCreateUpdateDTO inventarioRequest){
+
+        if (inventarioRequest.getIdInventario() == null) {
+            // Lanza un error 400 (Bad Request)
+            throw new IllegalArgumentException("El ID de Inventario es requerido para la actualización.");
+        }
+
+        return ResponseEntity
+                .status(200)
+                .body(inventarioService.updateInventoryWithProduct(inventarioRequest));
+    }
+
+    /**actualizar el valor activo a false para realizar la eliminacion logica*/
+    @PutMapping("/update-active-value-product-false/{id_inventario}")
+    public ResponseEntity<Void> updateActiveValueProductFalse(
+            @PathVariable Integer id_inventario){
+
+            inventarioService.updateActiveValueProductFalse(id_inventario);
+
+            return  ResponseEntity.status(200).build();
+    }
 
 
 

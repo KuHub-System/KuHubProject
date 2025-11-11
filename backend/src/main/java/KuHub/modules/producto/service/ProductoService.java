@@ -12,8 +12,10 @@ public interface ProductoService {
     List<Producto> findAll();
     List<Producto> findByActivo(Boolean activo);
 
-    Producto findById(Long id);
-    Producto findByIdProductoAndActivo(Long id, Boolean activo);
+    Boolean existProductByName (String nombreProducto);
+
+    Producto findById(Integer id);
+    Producto findByIdProductoAndActivoTrue(Integer id_producto);
 
     Producto findByNombreProducto(String nombreProducto); //ultilizado en service no en controller
     Producto findByNombreProductoAndActivo(String nombreProducto, Boolean activo);
@@ -25,9 +27,9 @@ public interface ProductoService {
     Producto save (Producto producto);
 
     Producto updateByName(String nombreProductoActual , ProductoUpdateRequest productoRequest);
-    Producto updateById(Long id, ProductoUpdateRequest productoRequest);
+    Producto updateById(Integer id, ProductoUpdateRequest productoRequest);
 
-    void deleteById(Long id);
+    void deleteById(Integer id);
     void deleteByName(String nombreProducto);
     //List<Producto> findByIds(List<Long> ids);
     //Categoria findCategoriaByIdProducto(Long idProducto);

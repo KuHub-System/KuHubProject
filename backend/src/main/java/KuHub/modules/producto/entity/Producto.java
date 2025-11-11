@@ -17,7 +17,7 @@ public class Producto {
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "producto_seq")
     @SequenceGenerator(name = "producto_seq", sequenceName = "producto_id_producto_seq", allocationSize = 1)
     @Column(name = "id_producto", nullable = false)
-    private Long idProducto;
+    private Integer idProducto;
 
     @Column(name="cod_producto",unique = true)
     private String codProducto;

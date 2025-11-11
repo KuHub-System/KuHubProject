@@ -22,15 +22,15 @@ public class ProductoController {
 
     /**Listar todos los productos independente de los valores activo TRUE/FALSE */
     @GetMapping
-    public ResponseEntity<List<Producto>> findAllProductos(){
+    public ResponseEntity<List<Producto>> findAllProducts(){
         return ResponseEntity
                 .status(200)
                 .body(productoService.findAll());
     }
 
     /**Listar todos los productos segun el valor activo TRUE/FALSE */
-    @GetMapping("/activo/{activo}")
-    public ResponseEntity<List<Producto>> findByActivo(@PathVariable Boolean activo){
+    @GetMapping("/all-value-active/{activo}")
+    public ResponseEntity<List<Producto>> findByActive(@PathVariable Boolean activo){
         return ResponseEntity
                 .status(200)
                 .body(productoService.findByActivo(activo));
@@ -38,7 +38,7 @@ public class ProductoController {
 
     /**Lista producto independente del valor activo TRUE/FALSE*/
     @GetMapping("/id/{id}")
-    public ResponseEntity<Producto> findProductoById(@PathVariable Long id){
+    public ResponseEntity<Producto> findProductById(@PathVariable Integer id){
         return ResponseEntity
                 .status(200)
                 .body(productoService.findById(id));
@@ -59,13 +59,13 @@ public class ProductoController {
     }
 
     /**Lista producto segun el valor activo TRUE/FALSE*/
-    @GetMapping("/id-activo/{id}/{activo}")
-    public ResponseEntity<Producto> findProductoByIdAndActivo(
-            @PathVariable Long id,
-            @PathVariable Boolean activo){
+    @GetMapping("/find-product-by-id-active/{id_producto}")
+    public ResponseEntity<Producto> findProductByIdAndActive(
+            @PathVariable Integer id_producto) { // <-- Falta la llave de inicio aquí
+
         return ResponseEntity
                 .status(200)
-                .body(productoService.findByIdProductoAndActivo(id, activo));
+                .body(productoService.findByIdProductoAndActivoTrue(id_producto));
     }
 
     /**Lista producto por nombre independente del valor activo TRUE/FALSE*/
@@ -105,7 +105,7 @@ public class ProductoController {
 
     @PutMapping("/id/{id}")
     public ResponseEntity<Producto> updateProductoById(
-            @PathVariable Long id,
+            @PathVariable Integer id,
             @Validated @RequestBody ProductoUpdateRequest productoUpdateRequest){
         return ResponseEntity
                 .status(200)
@@ -127,7 +127,7 @@ public class ProductoController {
 
     /**Eliminacion logica por id producto actualizando el producto activo a FALSE*/
     @PutMapping("solf-delete/id/{id}")
-    public ResponseEntity<String> deleteProductoById(@PathVariable Long id){
+    public ResponseEntity<String> deleteProductoById(@PathVariable Integer id){
         try {
             productoService.deleteById(id);
             return ResponseEntity.noContent().build(); // 204 No Content
