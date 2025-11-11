@@ -1,26 +1,25 @@
 package KuHub.modules.inventario.services;
 
-import KuHub.modules.inventario.dtos.InventoryWithProductCreateRequestDTO;
-import KuHub.modules.inventario.dtos.InventoryWithProductoResponseViewDTO;
+import KuHub.modules.inventario.dtos.InventoryWithProductCreateUpdateDTO;
+import KuHub.modules.inventario.dtos.InventoryWithProductoResponseDTO;
 import KuHub.modules.inventario.entity.Inventario;
 
 import java.util.List;
 
 public interface InventarioService {
-    void sincronizarSecuenciaInventario();
+    void syncSeq();
     //InventarioDTO save(InventarioDTO dto);
 
     List<Inventario> findAll();
     List<Inventario> findInventoriesWithProductsActive(Boolean activo);
-    List<InventoryWithProductoResponseViewDTO> findInventariosForNumberPage(Long startRow, String nombreCategoria);
-    Inventario findById(Long id);
-    Inventario findByIdInventoryWithProductActive(Long idInventario,Boolean activo);
-    Long countInventoryForPaginationRows(String nombreCategoria);
-    Inventario save (InventoryWithProductCreateRequestDTO inventarioRequest);
-
+    Inventario findById(Integer id);
+    Inventario findByIdInventoryWithProductActive(Integer idInventario,Boolean activo);
+    List<InventoryWithProductoResponseDTO> findAllActiveInventoryOrderedByName();
+    InventoryWithProductCreateUpdateDTO updateInventoryWithProduct(InventoryWithProductCreateUpdateDTO inventarioRequest);
+    InventoryWithProductCreateUpdateDTO  save (InventoryWithProductCreateUpdateDTO inventarioRequest);
     //Inventario getInventarioByIdProducto(Long idProducto);
     //Producto findProductoByIdInventario(Long idInventario);
-    void deleteById(Long id);
+    void updateActiveValueProductFalse(Integer id);
     //InventarioDTO update(Long id,InventarioDTO dto);
     //void updateTotalInventario(Long id, float adjustmentAmount);
 }

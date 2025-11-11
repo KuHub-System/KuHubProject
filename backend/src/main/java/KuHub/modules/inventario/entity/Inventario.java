@@ -19,11 +19,11 @@ public class Inventario {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id_inventario")
-    private Long idInventario;
+    private Integer idInventario;
 
     @NotNull(message = "El producto es obligatorio")
     @Column(name = "id_producto", nullable = false, unique = true)
-    private Long idProducto;
+    private Integer idProducto;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_producto", insertable = false, updatable = false)

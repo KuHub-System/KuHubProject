@@ -10,10 +10,10 @@ import java.util.List;
 import java.util.Optional;
 
 @Repository
-public interface ProductoRepository extends JpaRepository<Producto, Long> {
+public interface ProductoRepository extends JpaRepository<Producto, Integer> {
     //hay un problema de desincronizacion que necesita crear este metodo, para no estar recreando en la bbdd se engatilla aca
     @Query(value = "SELECT setval('producto_id_producto_seq', (SELECT COALESCE(MAX(id_producto), 1) FROM producto))", nativeQuery = true)
-    Long sincronizarSecuencia();
+    Integer sincronizarSecuencia();
 
     @Query("SELECT DISTINCT (p.nombreCategoria) FROM Producto p WHERE p.activo = true")
     List<String> findDistinctCategoriaByActivoTrue();
@@ -22,7 +22,7 @@ public interface ProductoRepository extends JpaRepository<Producto, Long> {
     List<String> findDistinctUnidadMedidaByActivoTrue();
 
     Optional<Producto> findByNombreProducto(String nombreProducto);
-    Optional<Producto> findByIdProductoAndActivo(Long idProducto, Boolean activo);
+    Optional<Producto> findByIdProductoAndActivoTrue(Integer id_producto);
     Optional<Producto> findByNombreProductoAndActivo(String nombreProducto, Boolean activo);
 
 
