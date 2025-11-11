@@ -1,10 +1,10 @@
 name: Build and Push Docker Image
 
-# Se ejecuta cuando haces push a la rama 'main'
+# Se ejecuta cuando haces push a la rama 'master'
 on:
   push:
     branches:
-      - main
+      - master
 
 jobs:
   build:
