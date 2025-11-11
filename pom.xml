@@ -16,8 +16,7 @@
 	<version>1.0-SNAPSHOT</version>
 	<packaging>pom</packaging>
 
-	<name>KuHub Microservices Project</name>
-	<description>Proyecto modular para microservicios como msvc-producto</description>
+	<name>KuHub Monolitico Project</name>
 	<url>https://github.com/tuusuario/kuhub</url>
 
 	<modules>
