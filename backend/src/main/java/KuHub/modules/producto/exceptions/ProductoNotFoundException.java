@@ -4,7 +4,7 @@ import lombok.Getter;
 
 @Getter
 public class ProductoNotFoundException extends RuntimeException {
-  public ProductoNotFoundException(Long id) {
+  public ProductoNotFoundException(Integer id) {
     super("No se encontró el producto con el id: " + id);
   }
 

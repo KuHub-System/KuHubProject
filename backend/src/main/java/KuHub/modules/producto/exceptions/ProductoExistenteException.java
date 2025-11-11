@@ -4,7 +4,7 @@ import lombok.Getter;
 
 @Getter
 public class ProductoExistenteException extends RuntimeException {
-  public ProductoExistenteException(Long id) {
+  public ProductoExistenteException(Integer id) {
     super("El producto con id " + id + " ya existe");
   }
 
