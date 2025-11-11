@@ -1,0 +1,44 @@
+name: Build and Push Docker Image
+
+# Se ejecuta cuando haces push a la rama 'main'
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Clonar el repositorio
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 2. Configurar JDK 21 (Necesario para el 'runner' de Docker)
+      # Aunque el build es en Docker, este paso es buena práctica
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      # (Paso 3 'Build with Maven' ELIMINADO - Ya no es necesario)
+
+      # 3. Loguearse en Docker Hub
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      # 4. Construir y subir la imagen
+      # Esta acción ejecutará tu Dockerfile, que ya incluye
+      # el 'mvn clean install'
+      - name: Build and Push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile  # Tu Dockerfile en la raíz
+          push: true
+          tags: martorias/kuhub-backend:latest
