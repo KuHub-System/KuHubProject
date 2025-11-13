@@ -1,8 +1,6 @@
 /**
  * SERVICIO DE GESTIÓN DE USUARIOS - CONECTADO AL BACKEND
  * Se comunica con la API REST de Spring Boot
- * 
- * ⚠️ IMPORTANTE: Este archivo REEMPLAZA completamente el usuario-service.ts anterior
  */
 
 import api from '../config/Axios';
@@ -13,15 +11,12 @@ import { IUsuario, IUsuarioCreacion, IUsuarioActualizacion } from '../types/usua
  */
 export const obtenerUsuariosService = async (): Promise<IUsuario[]> => {
   try {
-    console.log('📡 Obteniendo usuarios del backend...');
     const response = await api.get('/usuarios');
-    
-    console.log('✅ Usuarios obtenidos:', response.data.length);
     
     // Convertir del formato backend al formato frontend
     return response.data.map((usuario: any) => convertirUsuarioBackendAFrontend(usuario));
   } catch (error: any) {
-    console.error('❌ Error al obtener usuarios:', error);
+    console.error('Error al obtener usuarios:', error);
     throw new Error(error.response?.data?.message || 'Error al cargar usuarios');
   }
 };
@@ -57,16 +52,14 @@ export const obtenerUsuarioPorCorreoService = async (correo: string): Promise<IU
  */
 export const crearUsuarioService = async (data: IUsuarioCreacion): Promise<IUsuario> => {
   try {
-    console.log('📡 Creando usuario en backend:', data.correo);
-    
     // Mapear el rol del frontend al ID del backend
     const rolMap: { [key: string]: number } = {
-      'Administrador': 1,           // → ADMINISTRADOR en BD
-      'Co-Administrador': 2,        // → CO_ADMINISTRADOR en BD
-      'Gestor de Pedidos': 3,       // → GESTOR_PEDIDOS en BD
-      'Profesor a Cargo': 4,        // → PROFESOR_A_CARGO en BD
-      'Encargado de Bodega': 6,     // → ENCARGADO_BODEGA en BD
-      'Asistente de Bodega': 7      // → ASISTENTE_BODEGA en BD
+      'Administrador': 1,
+      'Co-Administrador': 2,
+      'Gestor de Pedidos': 3,
+      'Profesor a Cargo': 4,
+      'Encargado de Bodega': 5,
+      'Asistente de Bodega': 6
     };
 
     const idRol = rolMap[data.rol];
@@ -76,7 +69,7 @@ export const crearUsuarioService = async (data: IUsuarioCreacion): Promise<IUsua
     }
 
     // Separar el nombre completo en sus partes
-    const nombres = data.nombreCompleto.trim().split(' ');
+    const nombres = data.nombreCompleto.split(' ');
     const primerNombre = nombres[0] || '';
     const segundoNombre = nombres.length > 3 ? nombres[1] : '';
     const apellidoPaterno = nombres.length > 2 ? nombres[nombres.length - 2] : (nombres[1] || '');
@@ -85,25 +78,22 @@ export const crearUsuarioService = async (data: IUsuarioCreacion): Promise<IUsua
     const payload = {
       idRol: idRol,
       primerNombre: primerNombre,
-      segundoNombre: segundoNombre || null,
+      segundoNombre: segundoNombre,
       apellidoPaterno: apellidoPaterno,
-      apellidoMaterno: apellidoMaterno || null,
+      apellidoMaterno: apellidoMaterno,
       email: data.correo.toLowerCase(),
       username: data.correo.split('@')[0], // Generar username desde email
       contrasena: data.contrasena,
-      fotoPerfil: data.fotoPerfil || null,
+      fotoPerfil: data.fotoPerfil,
       activo: true
     };
-
-    console.log('📤 Payload enviado al backend:', payload);
 
     const response = await api.post('/usuarios', payload);
     
     console.log('✅ Usuario creado en backend:', response.data.email);
     return convertirUsuarioBackendAFrontend(response.data);
   } catch (error: any) {
-    console.error('❌ Error al crear usuario:', error);
-    console.error('❌ Detalles:', error.response?.data);
+    console.error('Error al crear usuario:', error);
     throw new Error(error.response?.data?.message || 'Error al crear usuario');
   }
 };
@@ -116,8 +106,6 @@ export const actualizarUsuarioService = async (
   data: IUsuarioActualizacion
 ): Promise<IUsuario> => {
   try {
-    console.log('📡 Actualizando usuario en backend:', id);
-    
     const payload: any = {};
 
     // Mapear rol si se proporciona
@@ -135,11 +123,11 @@ export const actualizarUsuarioService = async (
 
     // Separar nombre completo si se proporciona
     if (data.nombreCompleto) {
-      const nombres = data.nombreCompleto.trim().split(' ');
+      const nombres = data.nombreCompleto.split(' ');
       payload.primerNombre = nombres[0] || '';
-      payload.segundoNombre = nombres.length > 3 ? nombres[1] : null;
+      payload.segundoNombre = nombres.length > 3 ? nombres[1] : '';
       payload.apellidoPaterno = nombres.length > 2 ? nombres[nombres.length - 2] : (nombres[1] || '');
-      payload.apellidoMaterno = nombres.length > 2 ? nombres[nombres.length - 1] : null;
+      payload.apellidoMaterno = nombres.length > 2 ? nombres[nombres.length - 1] : '';
     }
 
     if (data.correo) payload.email = data.correo.toLowerCase();
@@ -147,15 +135,12 @@ export const actualizarUsuarioService = async (
     if (data.fotoPerfil !== undefined) payload.fotoPerfil = data.fotoPerfil;
     if (data.activo !== undefined) payload.activo = data.activo;
 
-    console.log('📤 Payload enviado al backend:', payload);
-
     const response = await api.put(`/usuarios/${id}`, payload);
     
     console.log('✅ Usuario actualizado en backend:', response.data.email);
     return convertirUsuarioBackendAFrontend(response.data);
   } catch (error: any) {
-    console.error('❌ Error al actualizar usuario:', error);
-    console.error('❌ Detalles:', error.response?.data);
+    console.error('Error al actualizar usuario:', error);
     throw new Error(error.response?.data?.message || 'Error al actualizar usuario');
   }
 };
@@ -165,11 +150,10 @@ export const actualizarUsuarioService = async (
  */
 export const eliminarUsuarioService = async (id: string): Promise<void> => {
   try {
-    console.log('📡 Desactivando usuario en backend:', id);
     await api.patch(`/usuarios/${id}/desactivar`);
     console.log('✅ Usuario desactivado en backend');
   } catch (error: any) {
-    console.error('❌ Error al desactivar usuario:', error);
+    console.error('Error al desactivar usuario:', error);
     throw new Error(error.response?.data?.message || 'Error al desactivar usuario');
   }
 };
@@ -179,11 +163,10 @@ export const eliminarUsuarioService = async (id: string): Promise<void> => {
  */
 export const activarUsuarioService = async (id: string): Promise<void> => {
   try {
-    console.log('📡 Activando usuario en backend:', id);
     await api.patch(`/usuarios/${id}/activar`);
     console.log('✅ Usuario activado en backend');
   } catch (error: any) {
-    console.error('❌ Error al activar usuario:', error);
+    console.error('Error al activar usuario:', error);
     throw new Error(error.response?.data?.message || 'Error al activar usuario');
   }
 };
