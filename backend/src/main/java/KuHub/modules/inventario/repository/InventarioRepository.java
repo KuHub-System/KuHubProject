@@ -1,6 +1,6 @@
 package KuHub.modules.inventario.repository;
 
-import KuHub.modules.inventario.dtos.InventoryWithProductoResponseDTO;
+import KuHub.modules.inventario.dtos.InventoryWithProductResponseAnswerUpdateDTO;
 import KuHub.modules.inventario.entity.Inventario;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -27,10 +27,11 @@ public interface InventarioRepository extends JpaRepository<Inventario, Integer>
     @Query(value = "SELECT i.id_inventario, " +
                     "p.id_producto, " +
                     "p.nombre_producto, " +
+                    "p.descripcion_producto, " +
                     "p.nombre_categoria, " +
+                    "p.unidad_medida, " +
                     "i.stock, " +
                     "i.stock_limit_min, " +
-                    "p.unidad_medida, " +
                     "CASE " +
                     "    WHEN i.stock = 0 THEN 'Sin stock' " +
                     "    WHEN i.stock < i.stock_limit_min THEN 'Stock mínimo' " +
@@ -41,7 +42,7 @@ public interface InventarioRepository extends JpaRepository<Inventario, Integer>
                     "WHERE p.activo = TRUE " +
                     "ORDER BY p.nombre_producto",
                     nativeQuery = true)
-    List<InventoryWithProductoResponseDTO> findAllActiveInventoryOrderedByName();
+    List<InventoryWithProductResponseAnswerUpdateDTO> findAllActiveInventoryOrderedByName();
 
 
 

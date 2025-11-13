@@ -1,18 +1,23 @@
 package KuHub.modules.inventario.dtos;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import lombok.*;
 
 @Getter@Setter@ToString@NoArgsConstructor@AllArgsConstructor
-public class InventoryWithProductCreateUpdateDTO {
+public class InventoryWithProductCreateDTO {
 
-    //MISMOS ATRIBUTOS DEL FRONT ACTUAL
     private  Integer idInventario;
     private  Integer idProducto;
+    @NotBlank
     private  String nombreProducto;
     private  String descripcionProducto;
+    @NotBlank
     private  String nombreCategoria;
+    @NotBlank
     private  String unidadMedida;
+    @NotNull
     private  Double stock;
-    private  Double stockMinimo;
+    @NotNull
+    private  Double stockLimitMin;
 }

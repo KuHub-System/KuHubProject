@@ -1,7 +1,7 @@
 package KuHub.modules.inventario.controller;
 
-import KuHub.modules.inventario.dtos.InventoryWithProductCreateUpdateDTO;
-import KuHub.modules.inventario.dtos.InventoryWithProductoResponseDTO;
+import KuHub.modules.inventario.dtos.InventoryWithProductCreateDTO;
+import KuHub.modules.inventario.dtos.InventoryWithProductResponseAnswerUpdateDTO;
 import KuHub.modules.inventario.entity.Inventario;
 import KuHub.modules.inventario.services.InventarioService;
 import jakarta.validation.Valid;
@@ -54,7 +54,7 @@ public class InventarioController {
     }
 
     @GetMapping("/find-all-inventories-active/")
-    public ResponseEntity<List<InventoryWithProductoResponseDTO>> findAllActiveInventoryOrderedByName(){
+    public ResponseEntity<List<InventoryWithProductResponseAnswerUpdateDTO>> findAllActiveInventoryOrderedByName(){
         return ResponseEntity
                 .status(200)
                 .body(inventarioService.findAllActiveInventoryOrderedByName());
@@ -63,9 +63,9 @@ public class InventarioController {
 
     /**crear inventario para el FrontEnd */
     @PostMapping("/create-inventory-with-product/")
-    public ResponseEntity<InventoryWithProductCreateUpdateDTO> save(
+    public ResponseEntity<InventoryWithProductCreateDTO> save(
             @Valid @RequestBody
-            InventoryWithProductCreateUpdateDTO inventarioRequest){
+            InventoryWithProductCreateDTO inventarioRequest){
         return ResponseEntity
                 .status(201)
                 .body(inventarioService.save(inventarioRequest));
@@ -73,8 +73,8 @@ public class InventarioController {
 
     /**actualizar inventario para el FrontEnd */
     @PutMapping("/update-inventory-with-product/")
-    public ResponseEntity<InventoryWithProductCreateUpdateDTO> updateInventoryWithProduct(
-            @RequestBody InventoryWithProductCreateUpdateDTO inventarioRequest){
+    public ResponseEntity<InventoryWithProductCreateDTO> updateInventoryWithProduct(
+            @RequestBody InventoryWithProductCreateDTO inventarioRequest){
 
         if (inventarioRequest.getIdInventario() == null) {
             // Lanza un error 400 (Bad Request)

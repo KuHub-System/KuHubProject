@@ -1,7 +1,7 @@
 package KuHub.modules.inventario.services;
 
-import KuHub.modules.inventario.dtos.InventoryWithProductCreateUpdateDTO;
-import KuHub.modules.inventario.dtos.InventoryWithProductoResponseDTO;
+import KuHub.modules.inventario.dtos.InventoryWithProductCreateDTO;
+import KuHub.modules.inventario.dtos.InventoryWithProductResponseAnswerUpdateDTO;
 import KuHub.modules.inventario.entity.Inventario;
 
 import java.util.List;
@@ -14,9 +14,9 @@ public interface InventarioService {
     List<Inventario> findInventoriesWithProductsActive(Boolean activo);
     Inventario findById(Integer id);
     Inventario findByIdInventoryWithProductActive(Integer idInventario,Boolean activo);
-    List<InventoryWithProductoResponseDTO> findAllActiveInventoryOrderedByName();
-    InventoryWithProductCreateUpdateDTO updateInventoryWithProduct(InventoryWithProductCreateUpdateDTO inventarioRequest);
-    InventoryWithProductCreateUpdateDTO  save (InventoryWithProductCreateUpdateDTO inventarioRequest);
+    List<InventoryWithProductResponseAnswerUpdateDTO> findAllActiveInventoryOrderedByName();
+    InventoryWithProductCreateDTO updateInventoryWithProduct(InventoryWithProductCreateDTO inventarioRequest);
+    InventoryWithProductCreateDTO save (InventoryWithProductCreateDTO inventarioRequest);
     //Inventario getInventarioByIdProducto(Long idProducto);
     //Producto findProductoByIdInventario(Long idInventario);
     void updateActiveValueProductFalse(Integer id);

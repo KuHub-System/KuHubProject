@@ -1,7 +1,7 @@
 package KuHub.modules.inventario.services;
 
-import KuHub.modules.inventario.dtos.InventoryWithProductCreateUpdateDTO;
-import KuHub.modules.inventario.dtos.InventoryWithProductoResponseDTO;
+import KuHub.modules.inventario.dtos.InventoryWithProductCreateDTO;
+import KuHub.modules.inventario.dtos.InventoryWithProductResponseAnswerUpdateDTO;
 import KuHub.modules.inventario.entity.Inventario;
 import KuHub.modules.inventario.exceptions.InventarioException;
 import KuHub.modules.inventario.repository.InventarioRepository;
@@ -63,21 +63,21 @@ public class InventarioServiceImpl implements InventarioService {
 
     @Transactional
     @Override
-    public List<InventoryWithProductoResponseDTO> findAllActiveInventoryOrderedByName(){
+    public List<InventoryWithProductResponseAnswerUpdateDTO> findAllActiveInventoryOrderedByName(){
         return inventarioRepository.findAllActiveInventoryOrderedByName();
     }
 
 
     @Transactional
     @Override
-    public InventoryWithProductCreateUpdateDTO  save (InventoryWithProductCreateUpdateDTO inventarioRequest){
+    public InventoryWithProductCreateDTO save (InventoryWithProductCreateDTO inventarioRequest){
         syncSeq();
         //validar que el stock no es negativo
         if (inventarioRequest.getStock() < 0 ){
             throw new InventarioException("El inventario no puede ser negativo");
         }
         //validar que el stock minimo no es negativo
-        if (inventarioRequest.getStockMinimo() < 0){
+        if (inventarioRequest.getStockLimitMin() < 0){
             throw new InventarioException("El stock mínimo no puede ser negativo");
         }
 
@@ -93,7 +93,7 @@ public class InventarioServiceImpl implements InventarioService {
         //Crear inventario de producto con los atributos obtenidos en el frontend y guardarlo
         Inventario newInventario = inventarioRepository.save(
                 new Inventario(null,newProducto.getIdProducto(),newProducto,inventarioRequest.getStock(),
-                        inventarioRequest.getStockMinimo() ));
+                        inventarioRequest.getStockLimitMin() ));
         //retornamos el inventario con los ids para comprobar guardado
         inventarioRequest.setIdInventario(newInventario.getIdInventario());
         inventarioRequest.setIdProducto(newProducto.getIdProducto());
@@ -102,7 +102,7 @@ public class InventarioServiceImpl implements InventarioService {
 
     @Transactional
     @Override
-    public InventoryWithProductCreateUpdateDTO updateInventoryWithProduct(InventoryWithProductCreateUpdateDTO inventarioRequest){
+    public InventoryWithProductCreateDTO updateInventoryWithProduct(InventoryWithProductCreateDTO inventarioRequest){
         //validar que producto e inventario existen
         Inventario inventario = inventarioRepository.findByIdInventoryWithProductActive(
                 Math.toIntExact(Long.valueOf(inventarioRequest.getIdInventario())),true).orElseThrow(
@@ -119,7 +119,7 @@ public class InventarioServiceImpl implements InventarioService {
         //Todavía no existe atributo para el cód de producto en el frontend para validar
 
         //---VALIDACIONES DE INVENTARIO--
-        if (inventarioRequest.getStockMinimo() != null && inventarioRequest.getStockMinimo() < 0) {
+        if (inventarioRequest.getStockLimitMin() != null && inventarioRequest.getStockLimitMin() < 0) {
             throw new InventarioException("El stock mínimo no puede ser negativo");
         }
 
@@ -133,7 +133,7 @@ public class InventarioServiceImpl implements InventarioService {
 
         //PENDIENTE -- IMPLEMENTAR AJUSTE O MOVIMIENTO --
         inventario.setStock(inventarioRequest.getStock());
-        inventario.setStockLimitMin(inventarioRequest.getStockMinimo());
+        inventario.setStockLimitMin(inventarioRequest.getStockLimitMin());
         inventarioRepository.save(inventario);
 
         return inventarioRequest;
