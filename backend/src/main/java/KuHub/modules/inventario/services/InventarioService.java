@@ -15,7 +15,7 @@ public interface InventarioService {
     Inventario findById(Integer id);
     Inventario findByIdInventoryWithProductActive(Integer idInventario,Boolean activo);
     List<InventoryWithProductResponseAnswerUpdateDTO> findAllActiveInventoryOrderedByName();
-    InventoryWithProductCreateDTO updateInventoryWithProduct(InventoryWithProductCreateDTO inventarioRequest);
+    InventoryWithProductResponseAnswerUpdateDTO updateInventoryWithProduct(InventoryWithProductResponseAnswerUpdateDTO inventarioRequest);
     InventoryWithProductCreateDTO save (InventoryWithProductCreateDTO inventarioRequest);
     //Inventario getInventarioByIdProducto(Long idProducto);
     //Producto findProductoByIdInventario(Long idInventario);

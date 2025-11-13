@@ -102,7 +102,7 @@ public class InventarioServiceImpl implements InventarioService {
 
     @Transactional
     @Override
-    public InventoryWithProductCreateDTO updateInventoryWithProduct(InventoryWithProductCreateDTO inventarioRequest){
+    public InventoryWithProductResponseAnswerUpdateDTO updateInventoryWithProduct(InventoryWithProductResponseAnswerUpdateDTO inventarioRequest){
         //validar que producto e inventario existen
         Inventario inventario = inventarioRepository.findByIdInventoryWithProductActive(
                 Math.toIntExact(Long.valueOf(inventarioRequest.getIdInventario())),true).orElseThrow(
@@ -130,6 +130,8 @@ public class InventarioServiceImpl implements InventarioService {
 
         //Después de validado se actualiza
         producto.setNombreProducto(actualizarNombreProducto);
+        producto.setNombreCategoria(inventarioRequest.getNombreCategoria());
+        producto.setUnidadMedida(inventarioRequest.getUnidadMedida());
         productoRepository.save(producto);
 
         //PENDIENTE -- IMPLEMENTAR AJUSTE O MOVIMIENTO --
