@@ -111,9 +111,10 @@ public class InventarioServiceImpl implements InventarioService {
         Producto producto = productoService.findByIdProductoAndActivoTrue(Math.toIntExact(Long.valueOf(inventarioRequest.getIdProducto())));
 
         //---VALIDACIONES DE PRODUCTO--
-        //validar que no existe un producto con el mismo nombre antes de actualizar
+        //validar que no existe un producto si es de otra id distinta
         String actualizarNombreProducto = StringUtils.capitalizarPalabras(inventarioRequest.getNombreProducto());
-        if(producto.getNombreProducto().equals(actualizarNombreProducto)){
+        if(producto.getNombreProducto().equals(actualizarNombreProducto)  &&
+                productoRepository.existsByNombreProductoAndIdProductoIsNot(actualizarNombreProducto,inventarioRequest.getIdProducto())){
             throw new InventarioException("El producto con el nombre " + producto.getNombreProducto() + " ya existe");
         }
         //Todavía no existe atributo para el cód de producto en el frontend para validar

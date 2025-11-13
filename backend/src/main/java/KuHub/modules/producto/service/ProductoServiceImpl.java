@@ -131,8 +131,8 @@ public class ProductoServiceImpl implements ProductoService{
                 ()-> new ProductoNotFoundException(nombrePActual)
         );
 
-        if (!nombrePActual.equals(nombrePNuevo) &&
-                productoRepository.existsByNombreProducto(nombrePNuevo)) {
+        if (!P.getNombreProducto().equals(nombrePNuevo) &&
+                productoRepository.existsByNombreProductoAndIdProductoIsNot(nombrePNuevo, P.getIdProducto())) {
             throw new ProductoExistenteException(nombrePNuevo);
         }
 
@@ -151,7 +151,7 @@ public class ProductoServiceImpl implements ProductoService{
         String nombrePNuevo = StringUtils.capitalizarPalabras(productoRequest.getNombreProductoNuevo());
 
         if (!P.getNombreProducto().equals(nombrePNuevo) &&
-                productoRepository.existsByNombreProducto(nombrePNuevo)) {
+                productoRepository.existsByNombreProductoAndIdProductoIsNot(nombrePNuevo, P.getIdProducto())) {
             throw new ProductoExistenteException(nombrePNuevo);
         }
 
