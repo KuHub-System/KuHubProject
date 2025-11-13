@@ -73,8 +73,8 @@ public class InventarioController {
 
     /**actualizar inventario para el FrontEnd */
     @PutMapping("/update-inventory-with-product/")
-    public ResponseEntity<InventoryWithProductCreateDTO> updateInventoryWithProduct(
-            @RequestBody InventoryWithProductCreateDTO inventarioRequest){
+    public ResponseEntity<InventoryWithProductResponseAnswerUpdateDTO> updateInventoryWithProduct(
+            @RequestBody InventoryWithProductResponseAnswerUpdateDTO inventarioRequest){
 
         if (inventarioRequest.getIdInventario() == null) {
             // Lanza un error 400 (Bad Request)
