@@ -8,7 +8,7 @@ import { obtenerSesionActualService } from '../services/auth-service';
 
 // Crear instancia de axios con configuración base
 const api: AxiosInstance = axios.create({
-    baseURL: 'http://localhost:8080/api/v1',
+    baseURL: 'http://54.91.158.125/api/v1',
     timeout: 10000,
     headers: {
         'Content-Type': 'application/json',
