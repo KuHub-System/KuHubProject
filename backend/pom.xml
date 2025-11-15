@@ -44,8 +44,14 @@
         <dependency>
             <groupId>org.postgresql</groupId>
             <artifactId>postgresql</artifactId>
-            <version>${postgresql.version}</version>
-            <scope>runtime</scope>
+            <version>42.7.3</version>
+        </dependency>
+
+        <!-- Manejo nativo de ENUM PostgreSQL en Hibernate 6 -->
+        <dependency>
+            <groupId>com.vladmihalcea</groupId>
+            <artifactId>hibernate-types-60</artifactId>
+            <version>2.21.1</version>
         </dependency>
 
         <!-- ===== VALIDACIONES ===== -->
