@@ -20,5 +20,6 @@ public interface RecetaService {
     RecipeWithDetailsAnswerUpdateDTO updateRecipeWithDetails(
             RecipeWithDetailsAnswerUpdateDTO dto
     );
-    void updateStatusActiveFalseRecipeWithDetails(Integer idReceta);
+    void updateDeleteStatusActiveFalseRecipeWithDetails(Integer idReceta);
+    void updateChangingStatusRecipeWith(Integer idReceta);
 }

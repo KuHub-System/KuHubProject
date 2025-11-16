@@ -505,7 +505,7 @@ public class RecetaServiceImp implements RecetaService{
 
     @Transactional
     @Override
-    public void updateStatusActiveFalseRecipeWithDetails(Integer idReceta) {
+    public void updateDeleteStatusActiveFalseRecipeWithDetails(Integer idReceta) {
 
         log.info("🚫 Iniciando eliminación lógica de receta {}", idReceta);
 
@@ -518,6 +518,19 @@ public class RecetaServiceImp implements RecetaService{
 
         log.info("✔ Receta {} marcada como inactiva", idReceta);
         log.info("🏁 Proceso finalizado. No se eliminan detalles por política del sistema.");
+    }
+
+    @Transactional
+    @Override
+    public void updateChangingStatusRecipeWith(Integer idReceta){
+        Receta receta = findByIdRecetaAndActivoRecetaIsTrue(idReceta);
+
+        if(receta.getEstadoReceta() == Receta.EstadoRecetaType.ACTIVO){
+            receta.setEstadoReceta(Receta.EstadoRecetaType.INACTIVO);
+        }else{
+            receta.setEstadoReceta(Receta.EstadoRecetaType.ACTIVO);
+        }
+        recetaRepository.save(receta);
     }
 
 

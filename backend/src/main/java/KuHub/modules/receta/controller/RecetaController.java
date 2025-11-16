@@ -10,7 +10,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/receta")
@@ -36,20 +38,25 @@ public class RecetaController {
     }
 
     @PutMapping("/update-recipe-with-details/")
-    public ResponseEntity<?> updateRecipe(
+    public ResponseEntity<Map<String, Object>> updateRecipe(
             @RequestBody RecipeWithDetailsAnswerUpdateDTO dtoUpdate
     ){
-        return ResponseEntity
-                .status(200)
-                .body(recetaService.updateRecipeWithDetails(dtoUpdate));
+        Map<String, Object> response = new HashMap<>();
+
+        var result = recetaService.updateRecipeWithDetails(dtoUpdate);
+
+        response.put("mensaje", "Receta actualizada correctamente");
+        response.put("data", result);
+
+        return ResponseEntity.status(200).body(response);
     }
 
     @PutMapping("/update-status-active-false-recipe-with-details/{id_receta}")
-    public ResponseEntity<?> updateStatusActiveFalseRecipeWithDetails(
+    public ResponseEntity<?> updateDeleteStatusActiveFalseRecipeWithDetails(
             @PathVariable("id_receta") Integer idReceta) {
 
         try {
-            recetaService.updateStatusActiveFalseRecipeWithDetails(idReceta);
+            recetaService.updateDeleteStatusActiveFalseRecipeWithDetails(idReceta);
             return ResponseEntity.ok().build();
 
         } catch (RuntimeException ex) {
@@ -62,6 +69,19 @@ public class RecetaController {
             **/
             // Respuesta genérica al cliente
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Error inesperado al procesar la solicitud.");
+        }
+    }
+
+    @PutMapping("/update-changing-status-recipe-with/{id_receta}")
+        public ResponseEntity<?> updateChangingStatusRecipeWithDetalis(
+            @PathVariable("id_receta") Integer idReceta) {
+
+        try {
+            recetaService.updateChangingStatusRecipeWith(idReceta);
+            return ResponseEntity.ok().build();
+        }catch (RuntimeException ex) {
+            return ResponseEntity.status(500)
                     .body("Error inesperado al procesar la solicitud.");
         }
     }
