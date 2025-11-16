@@ -252,36 +252,40 @@ public class RecetaServiceImp implements RecetaService{
     public RecipeWithDetailsAnswerUpdateDTO updateRecipeWithDetails(
             RecipeWithDetailsAnswerUpdateDTO dto
     ){
-        log.info("🔄 Iniciando actualización de receta ID {}", dto.getIdReceta());
+        try {
+            log.info("🔄 Iniciando actualización de receta ID {}", dto.getIdReceta());
+            log.info("📦 DTO recibido: {}", dto); // 🔥 AGREGAR ESTE LOG
 
             // === 1. Cargar solo la receta ===
-        Receta receta = recetaRepository.findByIdRecetaAndActivoRecetaIsTrue(dto.getIdReceta())
-                .orElseThrow(() -> new RecetaException(
-                        "No existe receta activa con id " + dto.getIdReceta()
-                ));
+            Receta receta = recetaRepository.findByIdRecetaAndActivoRecetaIsTrue(dto.getIdReceta())
+                    .orElseThrow(() -> new RecetaException(
+                            "No existe receta activa con id " + dto.getIdReceta()
+                    ));
 
-        // ============================
-        // === 2. Cambios en Receta ===
-        // ============================
-        if (dto.isCambioReceta()) {
-            log.info("✏️  Detectado cambio en RECETA ID {}", dto.getIdReceta());
-            log.debug("Antes -> nombre: {}, desc: {}, instr: {}",
-                    receta.getNombreReceta(),
-                    receta.getDescripcionReceta(),
-                    receta.getInstruccionesReceta()
-            );
+            log.info("✅ Receta encontrada: {}", receta); // 🔥 AGREGAR ESTE LOG
 
-            receta.setNombreReceta(dto.getNombreReceta());
-            receta.setDescripcionReceta(dto.getDescripcionReceta());
-            receta.setInstruccionesReceta(dto.getInstrucciones());
-            receta.setEstadoReceta(dto.getEstadoReceta());
+            // === 2. Cambios en Receta ===
+            if (dto.isCambioReceta()) {
+                log.info("✏️  Detectado cambio en RECETA ID {}", dto.getIdReceta());
 
-            log.debug("Después -> nombre: {}, desc: {}, instr: {}",
-                    dto.getNombreReceta(),
-                    dto.getDescripcionReceta(),
-                    dto.getInstrucciones()
-            );
-        }
+                // 🔥 AGREGAR VALIDACIÓN DEL ESTADO
+                if (dto.getEstadoReceta() == null) {
+                    log.error("❌ estadoReceta es NULL en el DTO");
+                    throw new RecetaException("El estado de la receta no puede ser nulo");
+                }
+
+                log.info("🔍 Estado recibido: {}", dto.getEstadoReceta());
+                log.info("🔍 Tipo de estado: {}", dto.getEstadoReceta().getClass().getName());
+
+                receta.setNombreReceta(dto.getNombreReceta());
+                receta.setDescripcionReceta(dto.getDescripcionReceta());
+                receta.setInstruccionesReceta(dto.getInstrucciones());
+                receta.setEstadoReceta(dto.getEstadoReceta()); // 🔥 AQUÍ PUEDE ESTAR EL ERROR
+
+                log.info("✅ Campos de receta actualizados correctamente");
+            }
+
+
         //Actualizacion en el dto para retorna el mismo dto
         dto.setNombreReceta(StringUtils.capitalize(receta.getNombreReceta()));
         // =============================================
@@ -434,8 +438,6 @@ public class RecetaServiceImp implements RecetaService{
             }
         }
 
-
-
         // === Guardar solo si hubo cambio en receta ===
         if (dto.isCambioReceta()) {
             recetaRepository.save(receta);
@@ -445,6 +447,13 @@ public class RecetaServiceImp implements RecetaService{
         // === Retornar DTO final ===
         log.info("✅ Actualización completa para receta ID {}", receta.getIdReceta());
         return dto;
+        } catch (RecetaException e) {
+            log.error("❌ RecetaException: {}", e.getMessage(), e);
+            throw e;
+        } catch (Exception e) {
+            log.error("💥 Error inesperado al actualizar receta", e);
+            throw new RecetaException("Error al actualizar receta: " + e.getMessage());
+        }
     }
 
     /*
