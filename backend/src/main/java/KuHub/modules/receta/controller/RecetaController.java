@@ -38,18 +38,14 @@ public class RecetaController {
     }
 
     @PutMapping("/update-recipe-with-details/")
-    public ResponseEntity<Map<String, Object>> updateRecipe(
+    public ResponseEntity<RecipeWithDetailsAnswerUpdateDTO> updateRecipe(
             @RequestBody RecipeWithDetailsAnswerUpdateDTO dtoUpdate
     ){
-        Map<String, Object> response = new HashMap<>();
-
-        var result = recetaService.updateRecipeWithDetails(dtoUpdate);
-
-        response.put("mensaje", "Receta actualizada correctamente");
-        response.put("data", result);
-
-        return ResponseEntity.status(200).body(response);
+        return ResponseEntity
+                .status(200)
+                .body(recetaService.updateRecipeWithDetails(dtoUpdate));
     }
+
 
     @PutMapping("/update-status-active-false-recipe-with-details/{id_receta}")
     public ResponseEntity<?> updateDeleteStatusActiveFalseRecipeWithDetails(
