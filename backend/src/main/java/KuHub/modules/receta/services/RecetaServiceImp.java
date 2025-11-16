@@ -247,7 +247,7 @@ public class RecetaServiceImp implements RecetaService{
         return dto ;
     }
 
-    @Transactional
+    @Transactional(noRollbackFor = ProductoNotFoundException.class)
     @Override
     public RecipeWithDetailsAnswerUpdateDTO updateRecipeWithDetails(
             RecipeWithDetailsAnswerUpdateDTO dto
