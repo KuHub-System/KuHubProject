@@ -70,15 +70,15 @@ public class RecetaController {
     }
 
     @PutMapping("/update-changing-status-recipe-with/{id_receta}")
-        public ResponseEntity<?> updateChangingStatusRecipeWithDetalis(
+    public ResponseEntity<Void> updateChangingStatusRecipeWithDetalis(
             @PathVariable("id_receta") Integer idReceta) {
 
         try {
             recetaService.updateChangingStatusRecipeWith(idReceta);
-            return ResponseEntity.ok().build();
-        }catch (RuntimeException ex) {
+            return ResponseEntity.noContent().build(); // <--- ✔ sin body real
+        } catch (RuntimeException ex) {
             return ResponseEntity.status(500)
-                    .body("Error inesperado al procesar la solicitud.");
+                    .build();
         }
     }
 
