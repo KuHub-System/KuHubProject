@@ -512,29 +512,12 @@ public class RecetaServiceImp implements RecetaService{
         // 1. Obtener receta activa
         Receta receta = findByIdRecetaAndActivoRecetaIsTrue(idReceta);
 
-        // Si ya está inactiva → no hacer nada
-        if (!receta.getActivoReceta()) {
-            log.info("ℹ️ Receta {} ya estaba inactiva. No se realizan cambios.", idReceta);
-        }
-
-        // 2. Marcar receta como inactiva
+        // 2. Marcar como inactiva
         receta.setActivoReceta(false);
         recetaRepository.save(receta);
 
         log.info("✔ Receta {} marcada como inactiva", idReceta);
-
-        List<DetalleReceta> detalles = detalleRecetaService.findAllByReceta(receta);
-
-        if (detalles.isEmpty()) {
-            log.info("ℹ️ Receta {} no tiene detalles. Proceso completado.", idReceta);
-        }
-
-        log.info("ℹ️ Receta {} tiene {} detalles. No se eliminara debido al futuro uso en historiales.",
-                idReceta, detalles.size());
-
-        log.info("🏁 Proceso de eliminación lógica finalizado para receta {}", idReceta);
-
-
+        log.info("🏁 Proceso finalizado. No se eliminan detalles por política del sistema.");
     }
 
 
