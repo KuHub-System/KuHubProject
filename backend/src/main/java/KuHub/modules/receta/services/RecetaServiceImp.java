@@ -321,18 +321,23 @@ public class RecetaServiceImp implements RecetaService{
         // ==============================================
         // === FILTRAR productos INACTIVOS del DTO ======
         // ==============================================
-        List<RecipeItemDTO> itemsFiltrados = dto.getListaItems().stream()
-                .filter(item -> {
-                    try {
-                        productoService.findByIdProductoAndActivoTrue(item.getIdProducto());
-                        return true; // producto activo → OK
-                    } catch (ProductoNotFoundException ex) {
-                        log.warn("⚠️ Producto {} está INACTIVO → removido del DTO",
-                                item.getIdProducto());
-                        return false; // producto inactivo → excluir
-                    }
-                })
-                .collect(Collectors.toList());
+            List<RecipeItemDTO> itemsFiltrados = dto.getListaItems().stream()
+                    .filter(item -> {
+                        Producto p = productoService.findById(item.getIdProducto());
+
+                        if (p == null) {
+                            log.warn("⚠️ Producto {} no existe → removido", item.getIdProducto());
+                            return false;
+                        }
+
+                        if (!p.getActivo()) {
+                            log.warn("⚠️ Producto {} INACTIVO → removido", item.getIdProducto());
+                            return false;
+                        }
+
+                        return true; // activo → OK
+                    })
+                    .collect(Collectors.toList());
 
         dto.setListaItems(itemsFiltrados);
         log.info("🔎 Lista final filtrada (solo productos activos): {}", itemsFiltrados);
@@ -394,8 +399,6 @@ public class RecetaServiceImp implements RecetaService{
         // =======================================================
         // === FIN VALIDACIÓN — continúa tu código normalmente ===
         // =======================================================
-
-
 
         // === Inserts nuevos ===
             // === Inserts nuevos ===
