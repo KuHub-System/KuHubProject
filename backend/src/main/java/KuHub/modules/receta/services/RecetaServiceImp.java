@@ -247,7 +247,7 @@ public class RecetaServiceImp implements RecetaService{
         return dto ;
     }
 
-    @Transactional(noRollbackFor = ProductoNotFoundException.class)
+    @Transactional(noRollbackFor = ProductoNotFoundException.class)//ESTO SE VA UNA VEZ CONTROLANDO EN EL FROT DE RECETA LOS PRODUCTO INATIVOS
     @Override
     public RecipeWithDetailsAnswerUpdateDTO updateRecipeWithDetails(
             RecipeWithDetailsAnswerUpdateDTO dto
@@ -318,14 +318,32 @@ public class RecetaServiceImp implements RecetaService{
                         DetalleRecetaIdProductoProjection::getCantProducto
                 ));
 
+        // ==============================================
+        // === FILTRAR productos INACTIVOS del DTO ======
+        // ==============================================
+        List<RecipeItemDTO> itemsFiltrados = dto.getListaItems().stream()
+                .filter(item -> {
+                    try {
+                        productoService.findByIdProductoAndActivoTrue(item.getIdProducto());
+                        return true; // producto activo → OK
+                    } catch (ProductoNotFoundException ex) {
+                        log.warn("⚠️ Producto {} está INACTIVO → removido del DTO",
+                                item.getIdProducto());
+                        return false; // producto inactivo → excluir
+                    }
+                })
+                .collect(Collectors.toList());
+
+        dto.setListaItems(itemsFiltrados);
+        log.info("🔎 Lista final filtrada (solo productos activos): {}", itemsFiltrados);
+
+        // Ahora sí se puede construir los sets correctamente
         Set<Integer> oldIds = oldMap.keySet();
-        Set<Integer> newIds = dto.getListaItems()
-                .stream()
+        Set<Integer> newIds = dto.getListaItems().stream()
                 .map(RecipeItemDTO::getIdProducto)
                 .collect(Collectors.toSet());
 
-
-        // =======================================================
+            // =======================================================
         // === VALIDACIÓN AGREGADA: detectar SI hay cambios reales ===
         // =======================================================
         boolean hayCambiosReales = false;
@@ -380,31 +398,29 @@ public class RecetaServiceImp implements RecetaService{
 
 
         // === Inserts nuevos ===
-        for (RecipeItemDTO item : dto.getListaItems()) {
-            if (!oldIds.contains(item.getIdProducto())) {
-                log.info("➕ INSERT detalle: producto {} (cantidad {})",
-                        item.getIdProducto(),
-                        item.getCantUnidadMedida()
-                );
+            // === Inserts nuevos ===
+            for (RecipeItemDTO item : dto.getListaItems()) {
 
-                Producto prod; // <-- declarar aquí
+                if (!oldIds.contains(item.getIdProducto())) {
 
-                try {
-                    prod = productoService.findByIdProductoAndActivoTrue(item.getIdProducto());
-                } catch (ProductoNotFoundException ex) {
-                    log.warn("⚠️ Producto {} no existe o está inactivo. Se ignora el INSERT.",
-                            item.getIdProducto());
-                    continue; // saltamos este item, sin romper todo el update
+                    log.info("➕ INSERT detalle: producto {} (cantidad {})",
+                            item.getIdProducto(),
+                            item.getCantUnidadMedida()
+                    );
+
+                    // Ya está filtrado → no es necesario validar activo
+                    Producto prod = productoService.findByIdProductoAndActivoTrue(
+                            item.getIdProducto()
+                    );
+
+                    DetalleReceta nuevo = new DetalleReceta();
+                    nuevo.setReceta(receta);
+                    nuevo.setProducto(prod);
+                    nuevo.setCantProducto(item.getCantUnidadMedida());
+
+                    detalleRecetaService.save(nuevo);
                 }
-
-                DetalleReceta nuevo = new DetalleReceta();
-                nuevo.setReceta(receta);
-                nuevo.setProducto(prod);
-                nuevo.setCantProducto(item.getCantUnidadMedida());
-
-                detalleRecetaService.save(nuevo);
             }
-        }
 
 
         // === Updates en cantidades ===
