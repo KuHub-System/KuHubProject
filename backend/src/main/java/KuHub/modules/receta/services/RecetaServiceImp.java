@@ -84,7 +84,8 @@ public class RecetaServiceImp implements RecetaService{
                     d.getProducto().getIdProducto(),
                     d.getProducto().getNombreProducto(),
                     d.getProducto().getUnidadMedida(),
-                    d.getCantProducto()
+                    d.getCantProducto(),
+                    d.getProducto().getActivo()
             ));
         }
         return new RecipeWithDetailsAnswerUpdateDTO(
@@ -141,7 +142,8 @@ public class RecetaServiceImp implements RecetaService{
                             d.getProducto().getIdProducto(),
                             d.getProducto().getNombreProducto(),
                             d.getProducto().getUnidadMedida(),
-                            d.getCantProducto()
+                            d.getCantProducto(),
+                            d.getProducto().getActivo()
                     ))
                     .collect(Collectors.toList());
 
@@ -280,7 +282,7 @@ public class RecetaServiceImp implements RecetaService{
                 receta.setNombreReceta(dto.getNombreReceta());
                 receta.setDescripcionReceta(dto.getDescripcionReceta());
                 receta.setInstruccionesReceta(dto.getInstrucciones());
-                receta.setEstadoReceta(dto.getEstadoReceta()); // 🔥 AQUÍ PUEDE ESTAR EL ERROR
+                receta.setEstadoReceta(dto.getEstadoReceta());
 
                 log.info("✅ Campos de receta actualizados correctamente");
             }
@@ -348,12 +350,12 @@ public class RecetaServiceImp implements RecetaService{
                 .map(RecipeItemDTO::getIdProducto)
                 .collect(Collectors.toSet());
 
-            // =======================================================
+        // =======================================================
         // === VALIDACIÓN AGREGADA: detectar SI hay cambios reales ===
         // =======================================================
         boolean hayCambiosReales = false;
 
-        // 1. Si hay producto nuevo → hay cambios
+        // Si hay producto nuevo → hay cambios
         for (RecipeItemDTO item : dto.getListaItems()) {
             if (!oldIds.contains(item.getIdProducto())) {
                 hayCambiosReales = true;
@@ -362,7 +364,7 @@ public class RecetaServiceImp implements RecetaService{
             }
         }
 
-        // 2. Si hay producto eliminado → hay cambios
+        // Si hay producto eliminado → hay cambios
         if (!hayCambiosReales) {
             for (Integer idOld : oldIds) {
                 if (!newIds.contains(idOld)) {
@@ -373,7 +375,7 @@ public class RecetaServiceImp implements RecetaService{
             }
         }
 
-        // 3. Si cambió la cantidad → hay cambios
+        // Si cambió la cantidad → hay cambios
         if (!hayCambiosReales) {
             for (RecipeItemDTO item : dto.getListaItems()) {
                 Double oldCant = oldMap.get(item.getIdProducto());

@@ -14,4 +14,6 @@ public class RecipeItemDTO {
     private String unidadMedida;
     @NotNull
     private Double cantUnidadMedida;
+    @NotNull
+    private Boolean activo;
 }
