@@ -1,6 +1,9 @@
 package KuHub.config;
 
 import KuHub.modules.gestionusuario.exceptions.*;
+import KuHub.modules.producto.exceptions.ProductoException;
+import KuHub.modules.producto.exceptions.ProductoNotFoundException;
+import KuHub.modules.receta.exceptions.RecetaException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
@@ -152,5 +155,47 @@ public class GlobalExceptionHandler {
         ex.printStackTrace();
 
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+    }
+
+    /**
+     * Maneja RecetaException de RecetaServiceImp
+     * */
+    @ExceptionHandler(RecetaException.class)
+    public ResponseEntity<Map<String, Object>> handleRecetaException(RecetaException ex) {
+        Map<String, Object> response = new HashMap<>();
+        response.put("timestamp", LocalDateTime.now());
+        response.put("status", HttpStatus.NOT_FOUND.value());
+        response.put("error", "Receta no encontrada o inactiva");
+        response.put("message", ex.getMessage());
+
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+    }
+
+    /**
+     * Maneja ProductoNotFoundException (no provoca rollback)
+     */
+    @ExceptionHandler(ProductoNotFoundException.class)
+    public ResponseEntity<Map<String, Object>> handleProductoNotFound(ProductoNotFoundException ex) {
+        Map<String, Object> response = new HashMap<>();
+        response.put("timestamp", LocalDateTime.now());
+        response.put("status", HttpStatus.NOT_FOUND.value());
+        response.put("error", "Producto no encontrado");
+        response.put("message", ex.getMessage());
+
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+    }
+
+    /**
+     * Maneja ProductoException genérica
+     */
+    @ExceptionHandler(ProductoException.class)
+    public ResponseEntity<Map<String, Object>> handleProductoException(ProductoException ex) {
+        Map<String, Object> response = new HashMap<>();
+        response.put("timestamp", LocalDateTime.now());
+        response.put("status", HttpStatus.BAD_REQUEST.value());
+        response.put("error", "Error de producto");
+        response.put("message", ex.getMessage());
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
     }
 }

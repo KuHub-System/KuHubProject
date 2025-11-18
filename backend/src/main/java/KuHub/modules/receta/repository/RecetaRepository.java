@@ -18,9 +18,13 @@ public interface RecetaRepository extends JpaRepository<Receta,Integer> {
 
     boolean existsByNombreRecetaAndActivoRecetaTrue(String nombreReceta);
 
+    boolean existsById(Integer id);
+
     Optional<Receta> findByIdRecetaAndActivoRecetaIsTrue(Integer idReceta);
 
     List<Receta> findAllByActivoRecetaTrue();
+
+
 
 
 }

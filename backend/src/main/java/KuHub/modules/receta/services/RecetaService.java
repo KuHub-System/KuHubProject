@@ -16,10 +16,13 @@ public interface RecetaService {
     Receta save (Receta receta);
     RecipeWithDetailsCreateDTO saveRecipeWithDetails (RecipeWithDetailsCreateDTO dto);
     Boolean existsByNombreRecetaAndActivoRecetaTrue(String nombreReceta);
+    Boolean existsById(Integer id);
     List<RecipeWithDetailsAnswerUpdateDTO> findAllRecipeWithDetailsActive();
     RecipeWithDetailsAnswerUpdateDTO updateRecipeWithDetails(
             RecipeWithDetailsAnswerUpdateDTO dto
     );
     void updateDeleteStatusActiveFalseRecipeWithDetails(Integer idReceta);
     void updateChangingStatusRecipeWith(Integer idReceta);
+    void deleteById(Integer id);
+
 }
