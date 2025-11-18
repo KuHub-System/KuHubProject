@@ -43,26 +43,26 @@ public class RecetaServiceImp implements RecetaService{
         System.out.println("Secencia sincronizada. Valor:" + nuevoValor);
     }
 
-    @Transactional
+    @Transactional(readOnly = true)
     @Override
     public List<Receta> findAll() {
         return recetaRepository.findAll();
     }
 
-    @Transactional
+    @Transactional(readOnly = true)
     @Override
     public List<Receta>findAllByActivoRecetaTrue(){
         return recetaRepository.findAllByActivoRecetaTrue();
     }
 
-    @Transactional
+    @Transactional(readOnly = true)
     @Override
     public Receta findById(Integer id) {
         return recetaRepository.findById(id).orElseThrow(
         ()-> new RecetaException("No existe la receta con el id " + id));
     }
 
-    @Transactional
+    @Transactional(readOnly = true)
     @Override
     public Receta findByIdRecetaAndActivoRecetaIsTrue(Integer id){
         Receta receta = findById(id);
@@ -73,7 +73,7 @@ public class RecetaServiceImp implements RecetaService{
         }
     }
 
-    @Transactional
+    @Transactional(readOnly = true)
     @Override
     public RecipeWithDetailsAnswerUpdateDTO findRecipeWithDetailsActiveInTrue(
             Integer id
@@ -110,7 +110,7 @@ public class RecetaServiceImp implements RecetaService{
      *
      * No futuro se puede crear una condicionalidad para que filtre sea por True/False or All
      */
-    @Transactional
+    @Transactional(readOnly = true)
     @Override
     public List<RecipeWithDetailsAnswerUpdateDTO> findAllRecipeWithDetailsActive() {
 
@@ -168,13 +168,13 @@ public class RecetaServiceImp implements RecetaService{
         return dtos;
     }
 
-    @Transactional
+    @Transactional(readOnly = true)
     @Override
     public Boolean existsByNombreRecetaAndActivoRecetaTrue(String nombreReceta) {
         return recetaRepository.existsByNombreRecetaAndActivoRecetaTrue(nombreReceta);
     }
 
-    @Transactional
+    @Transactional(readOnly = true)
     @Override
     public Boolean existsById(Integer id){
         return recetaRepository.existsById(id);

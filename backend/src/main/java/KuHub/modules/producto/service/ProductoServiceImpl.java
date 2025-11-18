@@ -27,19 +27,19 @@ public class ProductoServiceImpl implements ProductoService{
         System.out.println("Secuencia sincronizada. Nuevo valor: " + nuevoValor);
     }
 
-    @Transactional
+    @Transactional(readOnly = true)
     @Override
     public List<Producto> findAll() {
         return productoRepository.findAll();
     }
 
-    @Transactional
+    @Transactional(readOnly = true)
     @Override
     public List<Producto> findByActivo(Boolean activo){
         return productoRepository.findByActivo(activo);
     }
 
-    @Transactional
+    @Transactional(readOnly = true)
     @Override
     public Producto findById(Integer id){
         return productoRepository.findById(id).orElseThrow(
@@ -47,7 +47,7 @@ public class ProductoServiceImpl implements ProductoService{
         );
     }
 
-    @Transactional
+    @Transactional(readOnly = true)
     @Override
     public Producto findByIdProductoAndActivoTrue(Integer id_producto){
         return productoRepository.findByIdProductoAndActivoTrue(id_producto).orElseThrow(
@@ -63,19 +63,19 @@ public class ProductoServiceImpl implements ProductoService{
         );
     }
 
-    @Transactional
+    @Transactional(readOnly = true)
     @Override
     public List<String> findDistinctCategoriaAndActivoTrue(){
         return productoRepository.findDistinctCategoriaByActivoTrue();
     }
 
-    @Transactional
+    @Transactional(readOnly = true)
     @Override
     public List<String> findDistinctUnidadMedidaByActivoTrue(){
         return productoRepository.findDistinctUnidadMedidaByActivoTrue();
     }
 
-    @Transactional
+    @Transactional(readOnly = true)
     @Override
     public Producto findByNombreProductoAndActivo(String nombreProducto, Boolean activo){
         return productoRepository.findByNombreProductoAndActivo(nombreProducto,activo).orElseThrow(
@@ -83,7 +83,7 @@ public class ProductoServiceImpl implements ProductoService{
         );
     }
 
-    @Transactional
+    @Transactional(readOnly = true)
     @Override
     public Boolean existProductByName (String nombreProducto){
         return productoRepository.existsByNombreProducto(nombreProducto);
