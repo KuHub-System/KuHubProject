@@ -28,24 +28,25 @@ public class InventarioServiceImpl implements InventarioService {
     private ProductoRepository productoRepository;
 
     @Transactional
+    @Override
     public void syncSeq() {
         Integer nuevoValor = inventarioRepository.syncSeq();
         System.out.println("Secuencia de inventario sincronizada. Nuevo valor: " + nuevoValor);
     }
 
-    @Transactional
+    @Transactional(readOnly = true)
     @Override
     public List<Inventario> findAll() {
         return inventarioRepository.findAll();
     }
 
-    @Transactional
+    @Transactional(readOnly = true)
     @Override
     public List<Inventario> findInventoriesWithProductsActive(Boolean activo){
         return inventarioRepository.findInventoriesWithProductsActive(activo);
     }
 
-    @Transactional
+    @Transactional(readOnly = true)
     @Override
     public Inventario findById(Integer id) {
         return inventarioRepository.findById(id).orElseThrow(
@@ -53,7 +54,7 @@ public class InventarioServiceImpl implements InventarioService {
         );
     }
 
-    @Transactional
+    @Transactional(readOnly = true)
     @Override
     public Inventario findByIdInventoryWithProductActive(Integer idInventario,Boolean activo){
         return inventarioRepository.findByIdInventoryWithProductActive(idInventario,activo).orElseThrow(
@@ -61,7 +62,7 @@ public class InventarioServiceImpl implements InventarioService {
         );
     }
 
-    @Transactional
+    @Transactional(readOnly = true)
     @Override
     public List<InventoryWithProductResponseAnswerUpdateDTO> findAllActiveInventoryOrderedByName(){
         return inventarioRepository.findAllActiveInventoryOrderedByName();

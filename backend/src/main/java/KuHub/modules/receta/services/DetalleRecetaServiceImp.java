@@ -23,7 +23,7 @@ public class DetalleRecetaServiceImp implements DetalleRecetaService{
         System.out.println("Secuencia sincronizada. Nuevo valor: " + nuevoValor);
     }
 
-    @Transactional
+    @Transactional(readOnly = true)
     @Override
     public DetalleReceta findById(Integer id){
         return detalleRecetaRepository.findById(id).orElseThrow(
@@ -31,13 +31,13 @@ public class DetalleRecetaServiceImp implements DetalleRecetaService{
         );
     }
 
-    @Transactional
+    @Transactional(readOnly = true)
     @Override
     public List<DetalleReceta> findAll(){
         return detalleRecetaRepository.findAll();
     }
 
-    @Transactional
+    @Transactional(readOnly = true)
     @Override
     public List<DetalleReceta> findAllByReceta(Receta receta){
 
@@ -51,7 +51,7 @@ public class DetalleRecetaServiceImp implements DetalleRecetaService{
         return detalles;
     }
 
-    @Transactional
+    @Transactional(readOnly = true)
     @Override
     public List<DetalleRecetaIdProductoProjection> findAllIdProductoAndCantidadByReceta(
             Integer idReceta){
