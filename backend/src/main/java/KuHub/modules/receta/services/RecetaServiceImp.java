@@ -12,6 +12,7 @@ import KuHub.modules.receta.entity.Receta;
 import KuHub.modules.receta.exceptions.RecetaException;
 import KuHub.modules.receta.projection.DetalleRecetaIdProductoProjection;
 import KuHub.modules.receta.repository.RecetaRepository;
+import jakarta.persistence.criteria.CriteriaBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -66,9 +67,12 @@ public class RecetaServiceImp implements RecetaService{
     @Transactional
     @Override
     public Receta findByIdRecetaAndActivoRecetaIsTrue(Integer id){
-        return recetaRepository.findByIdRecetaAndActivoRecetaIsTrue(id).orElseThrow(
-                ()-> new RecetaException("No existe la receta con el id " + id)
-        );
+        Receta receta = findById(id);
+        if (receta.getActivoReceta() == null || !receta.getActivoReceta()){
+            throw new RecetaException("No existe la receta con el id " + id + " o esta inactivo");
+        }else{
+            return receta;
+        }
     }
 
     @Transactional
@@ -174,6 +178,12 @@ public class RecetaServiceImp implements RecetaService{
 
     @Transactional
     @Override
+    public Boolean existsById(Integer id){
+        return recetaRepository.existsById(id);
+    }
+
+    @Transactional
+    @Override
     public Receta save (Receta receta){
         syncSeqReceta();
         //Validar que el nombre de la receta no existe para seguir las validaciones
@@ -249,28 +259,59 @@ public class RecetaServiceImp implements RecetaService{
         return dto ;
     }
 
-    @Transactional(noRollbackFor = ProductoNotFoundException.class)//ESTO SE VA UNA VEZ CONTROLANDO EN EL FROT DE RECETA LOS PRODUCTO INATIVOS
+    /**
+     * Actualiza una receta y sus detalles de ingredientes de forma optimizada.
+     *
+     * Este método gestiona la actualización completa de una receta, incluyendo sus datos básicos
+     * (nombre, descripción, instrucciones, estado) y sus detalles de ingredientes (productos y cantidades).
+     *
+     * Funcionamiento:
+     * 1. Valida la existencia de la receta activa en base de datos
+     * 2. Si hay cambios en datos básicos de la receta, los actualiza
+     * 3. Si no hay cambios en detalles, termina la ejecución guardando solo la receta si fue modificada
+     * 4. Si hay cambios en detalles, realiza un proceso optimizado:
+     *    - Carga solo los IDs de productos y cantidades actuales (no entidades completas)
+     *    - Filtra productos inactivos del DTO recibido para prevenir errores
+     *    - Detecta cambios reales comparando productos nuevos, eliminados o con cantidades modificadas
+     *    - Si no hay cambios reales, evita operaciones innecesarias en base de datos
+     *    - Si hay cambios, ejecuta operaciones específicas: INSERT (nuevos), UPDATE (cantidades) y DELETE (eliminados)
+     * 5. Guarda la receta solo si hubo modificaciones en sus datos básicos
+     * 6. Retorna el DTO actualizado con los cambios aplicados
+     *
+     * Optimizaciones implementadas:
+     * - Uso de proyecciones para cargar solo datos necesarios
+     * - Validación temprana para evitar procesamiento innecesario
+     * - Operaciones batch para updates y deletes
+     * - Filtrado preventivo de productos inactivos
+     * - Detección de cambios reales antes de ejecutar operaciones en BD
+     *
+     * @param dto DTO conteniendo la receta y sus detalles a actualizar, con flags indicando qué secciones cambiaron
+     * @return El mismo DTO con datos actualizados y sincronizados con la base de datos
+     * @throws RecetaException si la receta no existe, está inactiva, o hay errores de validación
+     * @throws ProductoNotFoundException excluida del rollback, permite continuar si un producto no existe
+     */
+    @Transactional(noRollbackFor = ProductoNotFoundException.class)
     @Override
     public RecipeWithDetailsAnswerUpdateDTO updateRecipeWithDetails(
             RecipeWithDetailsAnswerUpdateDTO dto
     ){
         try {
             log.info("🔄 Iniciando actualización de receta ID {}", dto.getIdReceta());
-            log.info("📦 DTO recibido: {}", dto); // 🔥 AGREGAR ESTE LOG
+            log.info("📦 DTO recibido: {}", dto);
 
-            // === 1. Cargar solo la receta ===
+            /** Paso 1: Carga y validación de la entidad Receta desde base de datos */
             Receta receta = recetaRepository.findByIdRecetaAndActivoRecetaIsTrue(dto.getIdReceta())
                     .orElseThrow(() -> new RecetaException(
                             "No existe receta activa con id " + dto.getIdReceta()
                     ));
 
-            log.info("✅ Receta encontrada: {}", receta); // 🔥 AGREGAR ESTE LOG
+            log.info("✅ Receta encontrada: {}", receta);
 
-            // === 2. Cambios en Receta ===
+            /** Paso 2: Actualización de campos básicos de la receta si el flag indica cambios */
             if (dto.isCambioReceta()) {
                 log.info("✏️  Detectado cambio en RECETA ID {}", dto.getIdReceta());
 
-                // 🔥 AGREGAR VALIDACIÓN DEL ESTADO
+                /** Validación de estado no nulo antes de asignar */
                 if (dto.getEstadoReceta() == null) {
                     log.error("❌ estadoReceta es NULL en el DTO");
                     throw new RecetaException("El estado de la receta no puede ser nulo");
@@ -279,6 +320,7 @@ public class RecetaServiceImp implements RecetaService{
                 log.info("🔍 Estado recibido: {}", dto.getEstadoReceta());
                 log.info("🔍 Tipo de estado: {}", dto.getEstadoReceta().getClass().getName());
 
+                /** Asignación de valores actualizados a la entidad */
                 receta.setNombreReceta(dto.getNombreReceta());
                 receta.setDescripcionReceta(dto.getDescripcionReceta());
                 receta.setInstruccionesReceta(dto.getInstrucciones());
@@ -287,123 +329,112 @@ public class RecetaServiceImp implements RecetaService{
                 log.info("✅ Campos de receta actualizados correctamente");
             }
 
+            /** Sincronización del DTO con el valor actual de la entidad */
+            dto.setNombreReceta(StringUtils.capitalize(receta.getNombreReceta()));
 
-        //Actualizacion en el dto para retorna el mismo dto
-        dto.setNombreReceta(StringUtils.capitalize(receta.getNombreReceta()));
-        // =============================================
-        // === 2.5 Si NO hay cambios en detalles, salir ===
-        // =============================================
-        if (!dto.isCambioDetalles()) {
-            // Si hubo cambios en la receta, guardar
-            if (dto.isCambioReceta()) {
-                recetaRepository.save(receta);
-                log.info("💾 Receta ID {} guardada (solo cambios en receta)", receta.getIdReceta());
+            /** Paso 2.5: Salida anticipada si no hay cambios en detalles */
+            if (!dto.isCambioDetalles()) {
+                /** Persiste cambios solo si se modificó la receta */
+                if (dto.isCambioReceta()) {
+                    recetaRepository.save(receta);
+                    log.info("💾 Receta ID {} guardada (solo cambios en receta)", receta.getIdReceta());
+                }
+                log.info("➡️ Retornando DTO sin cambios en detalles");
+                return dto;
             }
-            // Retornar el dto sin cambios en detalles
-            log.info("➡️ Retornando DTO sin cambios en detalles");
-            return dto;
-        }
 
-        // =================================
-        // === 3. Cambios en Detalles ===
-        // =================================
-        log.info("🧩 Procesando cambios en DETALLES de receta {}", receta.getIdReceta());
+            /** Paso 3: Procesamiento de cambios en detalles de ingredientes */
+            log.info("🧩 Procesando cambios en DETALLES de receta {}", receta.getIdReceta());
 
-        // 3.1 Cargar solo datos mínimos
-        List<DetalleRecetaIdProductoProjection> oldDetails =
-                detalleRecetaService.findAllIdProductoAndCantidadByReceta(dto.getIdReceta());
+            /** 3.1: Carga optimizada usando proyección - solo IDs y cantidades, no entidades completas */
+            List<DetalleRecetaIdProductoProjection> oldDetails =
+                    detalleRecetaService.findAllIdProductoAndCantidadByReceta(dto.getIdReceta());
 
-        // 3.2 Convertir oldDetails en mapa para comparación rápida
-        Map<Integer, Double> oldMap = oldDetails.stream()
-                .collect(Collectors.toMap(
-                        DetalleRecetaIdProductoProjection::getIdProducto,
-                        DetalleRecetaIdProductoProjection::getCantProducto
-                ));
+            /** 3.2: Conversión a Map para búsquedas O(1) durante comparaciones */
+            Map<Integer, Double> oldMap = oldDetails.stream()
+                    .collect(Collectors.toMap(
+                            DetalleRecetaIdProductoProjection::getIdProducto,
+                            DetalleRecetaIdProductoProjection::getCantProducto
+                    ));
 
-        // ==============================================
-        // === FILTRAR productos INACTIVOS del DTO ======
-        // ==============================================
+            /** Paso 3.3: Filtrado preventivo de productos inactivos o inexistentes del DTO */
             List<RecipeItemDTO> itemsFiltrados = dto.getListaItems().stream()
                     .filter(item -> {
                         Producto p = productoService.findById(item.getIdProducto());
 
+                        /** Validación de existencia del producto */
                         if (p == null) {
                             log.warn("⚠️ Producto {} no existe → removido", item.getIdProducto());
                             return false;
                         }
 
+                        /** Validación de estado activo del producto */
                         if (!p.getActivo()) {
                             log.warn("⚠️ Producto {} INACTIVO → removido", item.getIdProducto());
                             return false;
                         }
 
-                        return true; // activo → OK
+                        return true;
                     })
                     .collect(Collectors.toList());
 
-        dto.setListaItems(itemsFiltrados);
-        log.info("🔎 Lista final filtrada (solo productos activos): {}", itemsFiltrados);
+            /** Actualización del DTO con la lista filtrada */
+            dto.setListaItems(itemsFiltrados);
+            log.info("🔎 Lista final filtrada (solo productos activos): {}", itemsFiltrados);
 
-        // Ahora sí se puede construir los sets correctamente
-        Set<Integer> oldIds = oldMap.keySet();
-        Set<Integer> newIds = dto.getListaItems().stream()
-                .map(RecipeItemDTO::getIdProducto)
-                .collect(Collectors.toSet());
+            /** Construcción de conjuntos para comparación de IDs antiguos vs nuevos */
+            Set<Integer> oldIds = oldMap.keySet();
+            Set<Integer> newIds = dto.getListaItems().stream()
+                    .map(RecipeItemDTO::getIdProducto)
+                    .collect(Collectors.toSet());
 
-        // =======================================================
-        // === VALIDACIÓN AGREGADA: detectar SI hay cambios reales ===
-        // =======================================================
-        boolean hayCambiosReales = false;
+            /** Paso 4: Detección inteligente de cambios reales en detalles */
+            boolean hayCambiosReales = false;
 
-        // Si hay producto nuevo → hay cambios
-        for (RecipeItemDTO item : dto.getListaItems()) {
-            if (!oldIds.contains(item.getIdProducto())) {
-                hayCambiosReales = true;
-                log.info("🔍 Detectado cambio REAL: producto nuevo {}", item.getIdProducto());
-                break;
-            }
-        }
-
-        // Si hay producto eliminado → hay cambios
-        if (!hayCambiosReales) {
-            for (Integer idOld : oldIds) {
-                if (!newIds.contains(idOld)) {
-                    hayCambiosReales = true;
-                    log.info("🔍 Detectado cambio REAL: producto eliminado {}", idOld);
-                    break;
-                }
-            }
-        }
-
-        // Si cambió la cantidad → hay cambios
-        if (!hayCambiosReales) {
+            /** 4.1: Detección de productos nuevos (INSERT) */
             for (RecipeItemDTO item : dto.getListaItems()) {
-                Double oldCant = oldMap.get(item.getIdProducto());
-                if (oldCant != null && !oldCant.equals(item.getCantUnidadMedida())) {
+                if (!oldIds.contains(item.getIdProducto())) {
                     hayCambiosReales = true;
-                    log.info("🔍 Detectado cambio REAL: cantidad modificada en producto {}", item.getIdProducto());
+                    log.info("🔍 Detectado cambio REAL: producto nuevo {}", item.getIdProducto());
                     break;
                 }
             }
-        }
 
-        // SI NO HAY CAMBIOS REALES → SALIR
-        if (!hayCambiosReales) {
-            log.info("🟦 No hubo CAMBIOS REALES en detalles. Saltando INSERT/UPDATE/DELETE.");
-
-            if (dto.isCambioReceta()) {
-                recetaRepository.save(receta);
-                log.info("💾 Receta ID {} guardada (solo cambios en receta)", receta.getIdReceta());
+            /** 4.2: Detección de productos eliminados (DELETE) */
+            if (!hayCambiosReales) {
+                for (Integer idOld : oldIds) {
+                    if (!newIds.contains(idOld)) {
+                        hayCambiosReales = true;
+                        log.info("🔍 Detectado cambio REAL: producto eliminado {}", idOld);
+                        break;
+                    }
+                }
             }
 
-            return dto;
-        }
-        // =======================================================
-        // === FIN VALIDACIÓN — continúa tu código normalmente ===
-        // =======================================================
+            /** 4.3: Detección de cambios en cantidades (UPDATE) */
+            if (!hayCambiosReales) {
+                for (RecipeItemDTO item : dto.getListaItems()) {
+                    Double oldCant = oldMap.get(item.getIdProducto());
+                    if (oldCant != null && !oldCant.equals(item.getCantUnidadMedida())) {
+                        hayCambiosReales = true;
+                        log.info("🔍 Detectado cambio REAL: cantidad modificada en producto {}", item.getIdProducto());
+                        break;
+                    }
+                }
+            }
 
-        // === Inserts nuevos ===
-            // === Inserts nuevos ===
+            /** Salida anticipada si no hay cambios reales detectados */
+            if (!hayCambiosReales) {
+                log.info("🟦 No hubo CAMBIOS REALES en detalles. Saltando INSERT/UPDATE/DELETE.");
+
+                if (dto.isCambioReceta()) {
+                    recetaRepository.save(receta);
+                    log.info("💾 Receta ID {} guardada (solo cambios en receta)", receta.getIdReceta());
+                }
+                return dto;
+            }
+
+            /** Paso 5: Ejecución de operaciones en base de datos - INSERT para nuevos productos */
             for (RecipeItemDTO item : dto.getListaItems()) {
 
                 if (!oldIds.contains(item.getIdProducto())) {
@@ -413,11 +444,12 @@ public class RecetaServiceImp implements RecetaService{
                             item.getCantUnidadMedida()
                     );
 
-                    // Ya está filtrado → no es necesario validar activo
+                    /** Carga del producto ya validado como activo en filtrado previo */
                     Producto prod = productoService.findByIdProductoAndActivoTrue(
                             item.getIdProducto()
                     );
 
+                    /** Creación y persistencia de nuevo detalle de receta */
                     DetalleReceta nuevo = new DetalleReceta();
                     nuevo.setReceta(receta);
                     nuevo.setProducto(prod);
@@ -427,47 +459,47 @@ public class RecetaServiceImp implements RecetaService{
                 }
             }
 
+            /** Paso 6: UPDATE para productos existentes con cantidades modificadas */
+            for (RecipeItemDTO item : dto.getListaItems()) {
+                Double oldCant = oldMap.get(item.getIdProducto());
+                if (oldCant != null && !oldCant.equals(item.getCantUnidadMedida())) {
+                    log.info("✏️ UPDATE cantidad producto {}: {} → {}",
+                            item.getIdProducto(),
+                            oldCant,
+                            item.getCantUnidadMedida()
+                    );
 
-        // === Updates en cantidades ===
-        for (RecipeItemDTO item : dto.getListaItems()) {
-            Double oldCant = oldMap.get(item.getIdProducto());
-            if (oldCant != null && !oldCant.equals(item.getCantUnidadMedida())) {
-                log.info("✏️ UPDATE cantidad producto {}: {} → {}",
-                        item.getIdProducto(),
-                        oldCant,
-                        item.getCantUnidadMedida()
-                );
-
-                detalleRecetaService.updateQuantityByIdRecetaAndIdProducto(
-                        receta.getIdReceta(),
-                        item.getIdProducto(),
-                        item.getCantUnidadMedida()
-                );
+                    /** Actualización directa de cantidad sin cargar entidad completa */
+                    detalleRecetaService.updateQuantityByIdRecetaAndIdProducto(
+                            receta.getIdReceta(),
+                            item.getIdProducto(),
+                            item.getCantUnidadMedida()
+                    );
+                }
             }
-        }
 
+            /** Paso 7: DELETE para productos removidos de la receta */
+            for (Integer idOld : oldIds) {
+                if (!newIds.contains(idOld)) {
+                    log.info("🗑️ DELETE detalle producto {}", idOld);
 
-        // === Deletes (productos removidos) ===
-        for (Integer idOld : oldIds) {
-            if (!newIds.contains(idOld)) {
-                log.info("🗑️ DELETE detalle producto {}", idOld);
-
-                detalleRecetaService.deleteByRecetaAndProductoIds(
-                        receta.getIdReceta(),
-                        List.of(idOld)
-                );
+                    /** Eliminación en batch de detalles por IDs */
+                    detalleRecetaService.deleteByRecetaAndProductoIds(
+                            receta.getIdReceta(),
+                            List.of(idOld)
+                    );
+                }
             }
-        }
 
-        // === Guardar solo si hubo cambio en receta ===
-        if (dto.isCambioReceta()) {
-            recetaRepository.save(receta);
-            log.info("💾 Receta ID {} guardada (cambios en receta + detalles)", receta.getIdReceta());
-        }
+            /** Paso 8: Persistencia final de la receta si hubo cambios en sus datos básicos */
+            if (dto.isCambioReceta()) {
+                recetaRepository.save(receta);
+                log.info("💾 Receta ID {} guardada (cambios en receta + detalles)", receta.getIdReceta());
+            }
 
-        // === Retornar DTO final ===
-        log.info("✅ Actualización completa para receta ID {}", receta.getIdReceta());
-        return dto;
+            /** Retorno del DTO actualizado con todos los cambios aplicados */
+            log.info("✅ Actualización completa para receta ID {}", receta.getIdReceta());
+            return dto;
         } catch (RecetaException e) {
             log.error("❌ RecetaException: {}", e.getMessage(), e);
             throw e;
@@ -476,62 +508,6 @@ public class RecetaServiceImp implements RecetaService{
             throw new RecetaException("Error al actualizar receta: " + e.getMessage());
         }
     }
-
-    /*
-    PROCESO DE ACTUALIZACIÓN OPTIMIZADO (Receta + Detalles)
-    -------------------------------------------------------
-    Este método está diseñado para ejecutar la mínima cantidad posible de consultas
-    y actualizaciones en la base de datos, incluso cuando el front envía todos los
-    datos completos en cada actualización.
-
-    === 1) Uso de los booleanos (cambioReceta / cambioDetalles) ===
-    El front siempre envía la receta completa y todos los detalles, pero el backend
-    valida qué realmente cambió:
-        - cambioReceta = true  → solo se actualizan los campos modificados de la receta.
-        - cambioReceta = false → se ignoran los datos de receta aunque vengan en el DTO.
-        - cambioDetalles = true → se procesa la lista de productos (insert/update/delete).
-        - cambioDetalles = false → se ignora completamente la lista de items.
-
-    Gracias a esto, se evita procesar estructuras pesadas si el front solo actualizó
-    un texto o un estado, o viceversa.
-
-    === 2) Consultas mínimas a la base de datos ===
-    El método realiza solo dos SELECT obligatorios:
-        1) SELECT de la receta (1 registro)
-        2) SELECT de los detalles actuales (id_producto y cantidad) en una sola query
-
-    Todo el análisis de diferencias (comparaciones) se hace en memoria usando mapas y sets.
-    No se consulta cada producto ni cada detalle individualmente.
-
-    === 3) Control inteligente de cambios en detalles ===
-    El backend compara la lista enviada por el front con la lista actual de la BD:
-        - INSERT: sólo para productos nuevos que no existen en la BD.
-        - UPDATE: sólo si la cantidad enviada es distinta de la cantidad actual.
-        - DELETE: sólo para productos que existen en BD pero no aparecen en la nueva lista.
-
-    Productos sin cambios:
-        - No generan consultas adicionales.
-        - No generan updates innecesarios.
-        - No tocan la base de datos.
-
-    === 4) Validaciones implicadas ===
-    Aunque el front envíe 20 o 50 productos cada vez:
-        - El backend detecta cuáles realmente cambiaron.
-        - Se valida que cada producto exista y esté activo SOLO si se va a insertar.
-        - No se actualiza nada si las cantidades son idénticas.
-        - No se elimina nada si el producto aún está presente en la nueva lista.
-
-    === 5) Resultado final ===
-    El método procesa exclusivamente los cambios reales:
-        - Evita cargar la BD con operaciones innecesarias.
-        - Escala bien incluso con muchas recetas y cientos de productos.
-        - Garantiza integridad y consistencia sin sacrificar rendimiento.
-        - Mantiene el control en el backend (el front no decide qué cambiar realmente).
-
-    En resumen:
-    Aunque el front envíe todo, el backend actúa solo sobre lo que realmente cambió,
-    ejecutando INSERT/UPDATE/DELETE únicamente cuando es estrictamente necesario.
-*/
 
     @Transactional
     @Override
@@ -561,6 +537,15 @@ public class RecetaServiceImp implements RecetaService{
             receta.setEstadoReceta(Receta.EstadoRecetaType.ACTIVO);
         }
         recetaRepository.save(receta);
+    }
+
+    @Transactional
+    @Override
+    public void deleteById (Integer id){
+        if( !existsById(id) ){
+            throw new RecetaException("No existe receta con id " + id);
+        }
+        recetaRepository.deleteById(id);
     }
 
 

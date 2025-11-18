@@ -2,6 +2,7 @@ package KuHub.modules.receta.controller;
 
 import KuHub.modules.receta.dtos.RecipeWithDetailsAnswerUpdateDTO;
 import KuHub.modules.receta.dtos.RecipeWithDetailsCreateDTO;
+import KuHub.modules.receta.entity.Receta;
 import KuHub.modules.receta.services.RecetaService;
 import feign.Param;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,11 +23,58 @@ public class RecetaController {
     @Autowired
     private RecetaService recetaService;
 
+    @GetMapping("/find-by-id/{id}")
+    public ResponseEntity<Receta> findById(@PathVariable Integer id){
+        return ResponseEntity
+                .status(200)
+                .body(recetaService.findById(id));
+    }
+
+    @GetMapping("/find-by-id-active-recipe-true/{id}")
+        public ResponseEntity<Receta> findByIdRecetaAndActivoRecetaIsTrue(@PathVariable Integer id){
+        return ResponseEntity
+                .status(200)
+                .body(recetaService.findByIdRecetaAndActivoRecetaIsTrue(id));
+    }
+
+
+    @GetMapping("/find-all/")
+    public ResponseEntity<List<Receta>> findAll(){
+        return ResponseEntity
+                .status(200)
+                .body(recetaService.findAll());
+    }
+
+    @GetMapping("/find-all-by-active-recipe-true/")
+    public ResponseEntity<List<Receta>> findAllByActivoRecetaTrue(){
+        return ResponseEntity
+                .status(200)
+                .body(recetaService.findAllByActivoRecetaTrue());
+    }
+
+    @GetMapping("/exist-by-name-recipe-active-true/{nameRecipe}")
+    public ResponseEntity<Boolean> existByNombreRecetaAndActivoRecetaTrue(
+            @PathVariable String nameRecipe
+    ){
+        return ResponseEntity
+                .status(200)
+                .body(recetaService.existsByNombreRecetaAndActivoRecetaTrue(nameRecipe));
+    }
+
     @GetMapping("/find-all-recipe-with-details-active/")
     public ResponseEntity<List<RecipeWithDetailsAnswerUpdateDTO>> findAllRecipeWithDetailsActive(){
         return ResponseEntity
                 .status(200)
                 .body(recetaService.findAllRecipeWithDetailsActive());
+    }
+
+    @PostMapping("/create-recipe/")
+    public ResponseEntity<Receta> save(
+            @RequestBody Receta recipe
+    ){
+        return ResponseEntity
+                .status(201)
+                .body(recetaService.save(recipe));
     }
 
     @PostMapping("/create-recipe-with-details/")
@@ -82,5 +130,11 @@ public class RecetaController {
         }
     }
 
+    @DeleteMapping("/delete-recipe/{id}")
+    public ResponseEntity<Void> deleteRecipe(@PathVariable Integer id) {
+        recetaService.deleteById(id);
+        return ResponseEntity.noContent().build();
+
+    }
 
 }
