@@ -1,14 +1,9 @@
 package KuHub.modules.receta.services;
-
-import KuHub.modules.producto.entity.Producto;
-import KuHub.modules.producto.service.ProductoService;
-import KuHub.modules.receta.dtos.RecipeWithDetailsAnswerUpdateDTO;
 import KuHub.modules.receta.entity.DetalleReceta;
 import KuHub.modules.receta.entity.Receta;
 import KuHub.modules.receta.exceptions.RecetaException;
 import KuHub.modules.receta.projection.DetalleRecetaIdProductoProjection;
 import KuHub.modules.receta.repository.DetalleRecetaRepository;
-import feign.Param;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,15 +16,19 @@ public class DetalleRecetaServiceImp implements DetalleRecetaService{
     @Autowired
     private DetalleRecetaRepository detalleRecetaRepository;
 
-    @Autowired
-    private ProductoService productoService;
-
-
     @Transactional
     @Override
     public void syncSeqDetalleReceta(){
         Integer nuevoValor = detalleRecetaRepository.syncSeqDetalleReceta();
         System.out.println("Secuencia sincronizada. Nuevo valor: " + nuevoValor);
+    }
+
+    @Transactional
+    @Override
+    public DetalleReceta findById(Integer id){
+        return detalleRecetaRepository.findById(id).orElseThrow(
+                ()-> new RecetaException("No existe el detalle receta con el id: " + id)
+        );
     }
 
     @Transactional
@@ -54,20 +53,10 @@ public class DetalleRecetaServiceImp implements DetalleRecetaService{
 
     @Transactional
     @Override
-    public DetalleReceta findById(Integer id){
-        return detalleRecetaRepository.findById(id).orElseThrow(
-                ()-> new RecetaException("No existe el detalle receta con el id: " + id)
-        );
-    }
-
-    @Transactional
-    @Override
     public List<DetalleRecetaIdProductoProjection> findAllIdProductoAndCantidadByReceta(
             Integer idReceta){
         return detalleRecetaRepository.findAllIdProductoAndCantidadByReceta(idReceta);
     }
-
-
 
     @Transactional
     @Override
@@ -87,6 +76,15 @@ public class DetalleRecetaServiceImp implements DetalleRecetaService{
     @Override
     public void deleteByRecetaAndProductoIds(Integer idReceta, List<Integer> idsProducto){
         detalleRecetaRepository.deleteByRecetaAndProductoIds(idReceta,idsProducto);
+    }
+
+    @Transactional
+    @Override
+    public void deleteById(Integer id){
+        if( !detalleRecetaRepository.existsById(id) ){
+            throw new RecetaException("No existe detalle receta con id " + id);
+        }
+        detalleRecetaRepository.deleteById(id);
     }
 
 }

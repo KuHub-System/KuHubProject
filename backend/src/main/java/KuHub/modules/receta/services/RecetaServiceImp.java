@@ -1,7 +1,6 @@
 package KuHub.modules.receta.services;
 
 import KuHub.modules.producto.entity.Producto;
-import KuHub.modules.producto.exceptions.ProductoException;
 import KuHub.modules.producto.exceptions.ProductoNotFoundException;
 import KuHub.modules.producto.service.ProductoService;
 import KuHub.modules.receta.dtos.RecipeItemDTO;
@@ -12,7 +11,6 @@ import KuHub.modules.receta.entity.Receta;
 import KuHub.modules.receta.exceptions.RecetaException;
 import KuHub.modules.receta.projection.DetalleRecetaIdProductoProjection;
 import KuHub.modules.receta.repository.RecetaRepository;
-import jakarta.persistence.criteria.CriteriaBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
