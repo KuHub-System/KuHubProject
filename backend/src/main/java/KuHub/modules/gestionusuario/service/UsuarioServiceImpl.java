@@ -377,6 +377,7 @@ public class UsuarioServiceImpl implements UsuarioService {
                 usuario.getApellidoMaterno(),
                 usuario.getNombreCompleto(),
                 usuario.getEmail(),
+                usuario.getContrasena(),
                 usuario.getUsername(),
                 fotoBase64,
                 usuario.getActivo(),
