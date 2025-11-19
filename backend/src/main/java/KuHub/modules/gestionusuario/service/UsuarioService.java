@@ -1,6 +1,7 @@
 package KuHub.modules.gestionusuario.service;
 
 import KuHub.modules.gestionusuario.dtos.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -72,7 +73,7 @@ public interface UsuarioService {
     /**
      * Actualiza la foto de perfil
      */
-    UsuarioResponseDTO actualizarFotoPerfil(Integer idUsuario, String fotoPerfil);
+    UsuarioResponseDTO actualizarFotoPerfil(Integer idUsuario, MultipartFile foto);
 
     /**
      * Verifica credenciales y realiza login

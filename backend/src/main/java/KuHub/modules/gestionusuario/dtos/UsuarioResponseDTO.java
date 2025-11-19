@@ -23,7 +23,6 @@ public class UsuarioResponseDTO {
     private String apellidoMaterno;
     private String nombreCompleto;
     private String email;
-    private String contrasena;
     private String username;
     private String fotoPerfil;
     private Boolean activo;

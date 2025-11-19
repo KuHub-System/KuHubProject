@@ -1,12 +1,15 @@
 package KuHub.modules.gestionusuario.controller;
 
 import KuHub.modules.gestionusuario.dtos.*;
+import KuHub.modules.gestionusuario.exceptions.UsuarioNotFoundException;
 import KuHub.modules.gestionusuario.service.UsuarioService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+
 import java.util.List;
 import java.util.Map;
 
@@ -148,16 +151,27 @@ public class UsuarioController {
     }
 
     /**
-     * PATCH /api/v1/usuarios/{id}/foto-perfil
-     * Actualiza la foto de perfil
+     * PUT /api/v1/usuarios/{id}/foto
+     * Actualiza la foto de perfil de un usuario
      */
-    @PatchMapping("/{id}/foto-perfil")
-    public ResponseEntity<UsuarioResponseDTO> actualizarFotoPerfil(
+    @PutMapping("/{id}/foto")
+    public ResponseEntity<?> actualizarFotoPerfil(
             @PathVariable Integer id,
-            @RequestBody Map<String, String> body) {
-        String fotoPerfil = body.get("fotoPerfil");
-        UsuarioResponseDTO usuario = usuarioService.actualizarFotoPerfil(id, fotoPerfil);
-        return ResponseEntity.ok(usuario);
+            @RequestParam("foto") MultipartFile foto) {
+        try {
+            UsuarioResponseDTO usuarioActualizado = usuarioService.actualizarFotoPerfil(id, foto);
+            return ResponseEntity.ok(usuarioActualizado);
+        } catch (UsuarioNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body("Usuario no encontrado con id: " + id);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(e.getMessage());
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Error al actualizar la foto de perfil");
+        }
     }
 
     /**

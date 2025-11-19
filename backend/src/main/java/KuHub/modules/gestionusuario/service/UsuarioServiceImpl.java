@@ -10,6 +10,9 @@ import KuHub.utils.ImagenUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.Base64;
 import java.util.List;
@@ -265,32 +268,36 @@ public class UsuarioServiceImpl implements UsuarioService {
 
     @Override
     @Transactional
-    public UsuarioResponseDTO actualizarFotoPerfil(Integer idUsuario, String fotoPerfil) {
+    public UsuarioResponseDTO actualizarFotoPerfil(Integer idUsuario, MultipartFile foto) {
 
         Usuario usuario = usuarioRepository.findById(idUsuario)
                 .orElseThrow(() -> new UsuarioNotFoundException(idUsuario));
 
-        if (fotoPerfil != null && !fotoPerfil.isEmpty()) {
+        if (foto != null && !foto.isEmpty()) {
+            try {
+                byte[] fotoBytes = foto.getBytes();
 
-            // Base64 → byte[]
-            byte[] fotoBytes = Base64.getDecoder().decode(fotoPerfil);
+                // Validar tamaño máximo 10MB
+                if (fotoBytes.length > 10 * 1024 * 1024) {
+                    throw new IllegalArgumentException("La foto no puede superar 10MB");
+                }
 
-            // Validar tamaño máximo 10MB
-            if (fotoBytes.length > 10 * 1024 * 1024) {
-                throw new IllegalArgumentException("La foto no puede superar 10MB");
+                // Validar que realmente es una imagen (JPG, PNG, etc.)
+                if (!ImagenUtils.esImagenValida(fotoBytes)) {
+                    throw new IllegalArgumentException("El archivo no es una imagen válida (JPG/PNG).");
+                }
+
+                usuario.setFotoPerfil(fotoBytes);
+
+            } catch (IOException e) {
+                throw new RuntimeException("Error al leer el archivo", e);
             }
-
-            // 🔍 VALIDAR que realmente es una imagen
-            if (!ImagenUtils.esImagenValida(fotoBytes)) {
-                throw new IllegalArgumentException("El archivo no es una imagen válida (JPG/PNG).");
-            }
-
-            usuario.setFotoPerfil(fotoBytes);
         }
 
         Usuario usuarioActualizado = usuarioRepository.save(usuario);
         return convertirADTO(usuarioActualizado);
     }
+
 
 
     @Override
@@ -377,7 +384,6 @@ public class UsuarioServiceImpl implements UsuarioService {
                 usuario.getApellidoMaterno(),
                 usuario.getNombreCompleto(),
                 usuario.getEmail(),
-                usuario.getContrasena(),
                 usuario.getUsername(),
                 fotoBase64,
                 usuario.getActivo(),
