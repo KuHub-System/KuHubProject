@@ -199,38 +199,8 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
     }
 
-    @ExceptionHandler(UsuarioNotFoundException.class)
-    public ResponseEntity<Map<String, Object>> handleUsuarioNotFoundException(UsuarioNotFoundException ex) {
-        Map<String, Object> response = new HashMap<>();
-        response.put("timestamp", LocalDateTime.now());
-        response.put("status", HttpStatus.NOT_FOUND.value());
-        response.put("error", "Usuario no encontrado");
-        response.put("message", ex.getMessage());
 
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
-    }
 
-    @ExceptionHandler(EmailAlreadyExistsException.class)
-    public ResponseEntity<Map<String, Object>> handleEmailAlreadyExistsException(EmailAlreadyExistsException ex) {
-        Map<String, Object> response = new HashMap<>();
-        response.put("timestamp", LocalDateTime.now());
-        response.put("status", HttpStatus.CONFLICT.value());
-        response.put("error", "Email ya registrado");
-        response.put("message", ex.getMessage());
-
-        return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
-    }
-
-    @ExceptionHandler(InvalidCredentialsException.class)
-    public ResponseEntity<Map<String, Object>> handleInvalidCredentialsException(InvalidCredentialsException ex) {
-        Map<String, Object> response = new HashMap<>();
-        response.put("timestamp", LocalDateTime.now());
-        response.put("status", HttpStatus.UNAUTHORIZED.value());
-        response.put("error", "Credenciales inválidas");
-        response.put("message", ex.getMessage());
-
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
-    }
 
 
 
