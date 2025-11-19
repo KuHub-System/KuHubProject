@@ -47,8 +47,10 @@ public class Usuario {
     @Column(name = "contrasena", nullable = false, length = 255)
     private String contrasena;
 
-    @Column(name = "foto_perfil", columnDefinition = "TEXT")
-    private String fotoPerfil;
+    @Lob
+    @Basic(fetch = FetchType.LAZY)
+    @Column(name = "foto_perfil")
+    private byte[] fotoPerfil;
 
     @Column(name = "activo", nullable = false)
     private Boolean activo = true;

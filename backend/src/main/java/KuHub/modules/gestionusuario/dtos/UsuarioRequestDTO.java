@@ -45,6 +45,9 @@ public class UsuarioRequestDTO {
     @Size(min = 6, max = 255, message = "La contraseña debe tener entre 6 y 255 caracteres")
     private String contrasena;
 
+    /**
+     * La foto se envía como Base64
+     */
     private String fotoPerfil;
 
     private Boolean activo = true;
