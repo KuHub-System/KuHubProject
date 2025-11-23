@@ -8,6 +8,7 @@ import KuHub.modules.gestionusuario.repository.RolRepository;
 import KuHub.modules.gestionusuario.repository.UsuarioRepository;
 import KuHub.utils.ImagenUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.password.PasswordEncoder; // ⚠️ NUEVO IMPORT
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -21,6 +22,7 @@ import java.util.stream.Collectors;
 
 /**
  * Implementación del servicio de Usuarios
+ * ⚠️ MODIFICADO: Agregado BCrypt para hashear contraseñas
  */
 @Service
 public class UsuarioServiceImpl implements UsuarioService {
@@ -30,6 +32,10 @@ public class UsuarioServiceImpl implements UsuarioService {
 
     @Autowired
     private RolRepository rolRepository;
+
+    // ⚠️ NUEVO: Inyectamos el PasswordEncoder (BCrypt)
+    @Autowired
+    private PasswordEncoder passwordEncoder;
 
     @Override
     @Transactional(readOnly = true)
@@ -115,8 +121,9 @@ public class UsuarioServiceImpl implements UsuarioService {
         usuario.setEmail(usuarioRequestDTO.getEmail().toLowerCase());
         usuario.setUsername(usuarioRequestDTO.getUsername());
 
-        // En producción, hashear la contraseña con BCrypt
-        usuario.setContrasena(usuarioRequestDTO.getContrasena());
+        // ⚠️ MODIFICADO: Hashear la contraseña con BCrypt
+        String contrasenaHasheada = passwordEncoder.encode(usuarioRequestDTO.getContrasena());
+        usuario.setContrasena(contrasenaHasheada);
 
         // FOTO PERFIL: convertir Base64 a byte[]
         if (usuarioRequestDTO.getFotoPerfil() != null
@@ -194,10 +201,10 @@ public class UsuarioServiceImpl implements UsuarioService {
             usuario.setUsername(usuarioUpdateDTO.getUsername());
         }
 
-        // Actualizar contraseña si se proporciona
+        // ⚠️ MODIFICADO: Actualizar contraseña con BCrypt si se proporciona
         if (usuarioUpdateDTO.getContrasena() != null && !usuarioUpdateDTO.getContrasena().trim().isEmpty()) {
-            // En producción, hashear con BCrypt
-            usuario.setContrasena(usuarioUpdateDTO.getContrasena());
+            String contrasenaHasheada = passwordEncoder.encode(usuarioUpdateDTO.getContrasena());
+            usuario.setContrasena(contrasenaHasheada);
         }
 
         // Actualizar foto de perfil si se proporciona
@@ -205,21 +212,17 @@ public class UsuarioServiceImpl implements UsuarioService {
             try {
                 byte[] fotoBytes = Base64.getDecoder().decode(usuarioUpdateDTO.getFotoPerfil());
 
-                // Validar tamaño máximo 10MB
                 if (fotoBytes.length > 10 * 1024 * 1024) {
-                    throw new IllegalArgumentException("La foto no puede superar 10MB");
+                    usuario.setFotoPerfil(null);
+                } else {
+                    usuario.setFotoPerfil(fotoBytes);
                 }
 
-                usuario.setFotoPerfil(fotoBytes);
-
             } catch (IllegalArgumentException e) {
-                // Base64 malformado u otro error → se inserta null sin detener la transacción
                 usuario.setFotoPerfil(null);
-                System.out.println("⚠️ Imagen inválida. Se guardó 'null' y el proceso continúa.");
             }
         }
 
-        // Actualizar estado si se proporciona
         if (usuarioUpdateDTO.getActivo() != null) {
             usuario.setActivo(usuarioUpdateDTO.getActivo());
         }
@@ -261,8 +264,9 @@ public class UsuarioServiceImpl implements UsuarioService {
         Usuario usuario = usuarioRepository.findById(idUsuario)
                 .orElseThrow(() -> new UsuarioNotFoundException(idUsuario));
 
-        // En producción, hashear con BCrypt
-        usuario.setContrasena(nuevaContrasena);
+        // ⚠️ MODIFICADO: Hashear con BCrypt
+        String contrasenaHasheada = passwordEncoder.encode(nuevaContrasena);
+        usuario.setContrasena(contrasenaHasheada);
         usuarioRepository.save(usuario);
     }
 
@@ -298,35 +302,26 @@ public class UsuarioServiceImpl implements UsuarioService {
         return convertirADTO(usuarioActualizado);
     }
 
-
+    // ⚠️ MÉTODO login() ELIMINADO
+    // Ya no es necesario porque el login lo maneja JwtAuthenticationFilter
+    // Si intentas usar este método, Spring Security NO lo usará
+    // El login ahora se hace automáticamente mediante POST /login con los filtros JWT
 
     @Override
     @Transactional
     public LoginResponseDTO login(LoginRequestDTO loginRequestDTO) {
-        // Buscar usuario por email
-        Usuario usuario = usuarioRepository.findByEmailIgnoreCase(loginRequestDTO.getEmail())
-                .orElseThrow(() -> new InvalidCredentialsException());
+        // ⚠️ ESTE MÉTODO YA NO SE USA CON JWT
+        // El login lo manejan los filtros:
+        // - JwtAuthenticationFilter: procesa el login
+        // - JpaUserDetailsService: valida las credenciales
 
-        // Verificar que el usuario esté activo
-        if (!usuario.getActivo()) {
-            throw new UsuarioInactivoException();
-        }
+        // Sin embargo, lo dejamos aquí por si lo usas en alguna prueba
+        // pero en producción, este método NO se ejecutará
 
-        // Verificar contraseña (en producción usar BCrypt.matches())
-        if (!usuario.getContrasena().equals(loginRequestDTO.getContrasena())) {
-            throw new InvalidCredentialsException();
-        }
-
-        // Actualizar último acceso
-        usuario.setUltimoAcceso(LocalDateTime.now());
-        usuarioRepository.save(usuario);
-
-        // Generar token (simulado - en producción usar JWT)
-        String token = generarToken(usuario);
-
-        // Crear respuesta
-        UsuarioResponseDTO usuarioDTO = convertirADTO(usuario);
-        return new LoginResponseDTO(usuarioDTO, token);
+        throw new UnsupportedOperationException(
+                "El login ahora se maneja mediante JWT. " +
+                        "Usa POST /login con { \"email\": \"...\", \"contrasena\": \"...\" }"
+        );
     }
 
     @Override
@@ -347,12 +342,9 @@ public class UsuarioServiceImpl implements UsuarioService {
     }
 
     /**
-     * Genera un token simulado (en producción usar JWT)
+     * ⚠️ MÉTODO generarToken() ELIMINADO
+     * Ya no se necesita porque el token JWT lo genera JwtAuthenticationFilter
      */
-    private String generarToken(Usuario usuario) {
-        String data = usuario.getIdUsuario() + ":" + System.currentTimeMillis();
-        return Base64.getEncoder().encodeToString(data.getBytes());
-    }
 
     /**
      * Convierte una entidad Usuario a DTO
