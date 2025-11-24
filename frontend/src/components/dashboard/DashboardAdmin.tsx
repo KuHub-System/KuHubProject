@@ -46,6 +46,12 @@ import {
   sincronizarSolicitudesPedidoService,
 } from '../../services/pedido-service';
 
+const getFirstSelectionValue = (keys: any): string | undefined => {
+  if (!keys || keys === 'all') return undefined;
+  const firstKey = Array.from(keys as Set<React.Key>)[0];
+  return firstKey != null ? String(firstKey) : undefined;
+};
+
 const COLORS_PIE = ['#F5A524', '#17C964', '#F31260', '#9ca3af'];
 
 // Interfaces para el flujo de pedidos
@@ -118,6 +124,10 @@ export const DashboardAdmin: React.FC = () => {
   const [modoDetalle, setModoDetalle] = useState<'view' | 'approve'>('view');
   const [isAprobando, setIsAprobando] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const semanaAprobacionSelectedKeys = React.useMemo(
+    () => (semanaAprobacion !== null ? new Set([semanaAprobacion.toString()]) : new Set<string>()),
+    [semanaAprobacion]
+  );
 
   // Estados para el flujo de pedidos
   const [comprobacionData, setComprobacionData] = useState<ComprobacionItem[]>([]);
@@ -567,7 +577,7 @@ export const DashboardAdmin: React.FC = () => {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, delay: 0.2 }}
-        className="grid grid-cols-1 md:grid-cols-4 gap-4"
+        className="grid grid-cols-1 md:grid-cols-4 gap-4 items-stretch"
       >
           <StatsCard
             title="Pendientes"
@@ -857,15 +867,20 @@ export const DashboardAdmin: React.FC = () => {
                           <Divider />
                           <Select
                             label="Semana a asignar"
-                            selectedKeys={semanaAprobacion !== null ? [semanaAprobacion.toString()] : []}
+                            selectedKeys={semanaAprobacionSelectedKeys}
                             onSelectionChange={(keys) => {
-                              const valor = Array.from(keys)[0] as string | undefined;
+                              const valor = getFirstSelectionValue(keys);
                               setSemanaAprobacion(valor ? parseInt(valor, 10) : null);
                             }}
                           >
-                            {semanasDisponibles.map((semana) => (
-                              <SelectItem key={semana.toString()}>Semana {semana}</SelectItem>
-                            ))}
+                            {semanasDisponibles.map((semana) => {
+                              const label = `Semana ${semana}`;
+                              return (
+                                <SelectItem key={semana.toString()} textValue={label}>
+                                  {label}
+                                </SelectItem>
+                              );
+                            })}
                           </Select>
 
                           <Textarea
