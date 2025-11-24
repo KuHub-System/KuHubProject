@@ -1,8 +1,6 @@
 /**
  * SERVICIO DE AUTENTICACIÓN - CONECTADO AL BACKEND
  * Maneja login, logout y sesión actual con API REST
- * 
- * ⚠️ IMPORTANTE: Este archivo REEMPLAZA completamente el auth-service.ts anterior
  */
 
 import api from '../config/Axios';
@@ -16,15 +14,11 @@ const SESION_KEY = 'sesion_actual';
  */
 export const iniciarSesionService = async (correo: string, contrasena: string): Promise<ISesion> => {
   try {
-    console.log('🔐 Intentando login en backend:', correo);
-    
     // Llamada al backend
     const response = await api.post('/auth/login', {
       email: correo,
       contrasena: contrasena
     });
-
-    console.log('✅ Respuesta del backend:', response.data);
 
     // El backend devuelve: { usuario: {...}, token: "...", mensaje: "..." }
     const { usuario, token } = response.data;
@@ -56,7 +50,6 @@ export const iniciarSesionService = async (correo: string, contrasena: string): 
     return sesion;
   } catch (error: any) {
     console.error('❌ Error al iniciar sesión:', error);
-    console.error('❌ Detalles del error:', error.response?.data);
     throw new Error(error.response?.data?.message || 'Error al iniciar sesión');
   }
 };
@@ -182,14 +175,6 @@ export const actualizarFotoPerfilService = async (archivo: File): Promise<string
   } catch (error: any) {
     throw new Error(error.response?.data?.message || error.message || 'Error al actualizar foto de perfil');
   }
-};
-
-/**
- * Inicializar el servicio de autenticación
- * NOTA: Ya no es necesario inicializar usuarios por defecto
- */
-export const inicializarAuthService = (): void => {
-  console.log('ℹ️ Auth service conectado al backend - no requiere inicialización');
 };
 
 // Alias para compatibilidad
