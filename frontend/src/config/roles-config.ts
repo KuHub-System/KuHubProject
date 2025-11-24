@@ -1,24 +1,27 @@
 /**
  * CONFIGURACIÓN CENTRALIZADA DE ROLES
- * 
+ *
  * Este archivo es la ÚNICA fuente de verdad para los roles del sistema.
  * Todos los demás archivos deben importar desde aquí.
- * 
- * ⚠️ IMPORTANTE: No definir roles en ningún otro archivo.
+ *
+ * ⚠️ ACTUALIZADO: Ahora incluye los 7 roles del sistema
+ * ⚠️ IMPORTANTE: Los nombres DEBEN coincidir con los del backend
  */
 
 import { IRole } from '../types/user.types';
 
 /**
  * CLAVE PARA LOCALSTORAGE
- * Debe ser la misma en toda la aplicación
  */
 export const ROLES_STORAGE_KEY = 'sistema-roles-configurados';
 
 /**
- * ROLES DEL SISTEMA
- * Esta es la configuración por defecto que se usa cuando no hay roles guardados.
- * Los nombres DEBEN coincidir con los roles en usuario.types.ts
+ * ROLES DEL SISTEMA - Actualizados con los 7 roles
+ *
+ * Mapeo Frontend ↔ Backend:
+ * - Frontend usa: "Administrador", "Co-Administrador", etc.
+ * - Backend ENUM: "ADMINISTRADOR", "CO_ADMINISTRADOR", etc.
+ * - La conversión se hace automáticamente en los servicios
  */
 export const ROLES_SISTEMA: IRole[] = [
   {
@@ -75,6 +78,14 @@ export const ROLES_SISTEMA: IRole[] = [
   },
   {
     id: '5',
+    nombre: 'Docente',
+    permisos: [
+      'dashboard',
+      'solicitud'  // Solo lectura de solicitudes
+    ]
+  },
+  {
+    id: '6',
     nombre: 'Encargado de Bodega',
     permisos: [
       'dashboard',
@@ -82,7 +93,7 @@ export const ROLES_SISTEMA: IRole[] = [
     ]
   },
   {
-    id: '6',
+    id: '7',
     nombre: 'Asistente de Bodega',
     permisos: [
       'dashboard',
@@ -100,7 +111,6 @@ export const ROLES_SISTEMA: IRole[] = [
 
 /**
  * PÁGINAS DISPONIBLES EN EL SISTEMA
- * Lista de todas las páginas que pueden ser asignadas como permisos
  */
 export const PAGINAS_DISPONIBLES = [
   { id: 'dashboard', nombre: 'Dashboard', descripcion: 'Panel principal con estadísticas' },
@@ -129,13 +139,13 @@ export const cargarRoles = (): IRole[] => {
     const rolesGuardados = localStorage.getItem(ROLES_STORAGE_KEY);
     if (rolesGuardados) {
       const roles = JSON.parse(rolesGuardados);
-      
-      // ✅ Validar que los roles guardados tengan los nombres correctos
+
+      // Validar que los roles guardados tengan los nombres correctos
       const nombresCorrectos = ROLES_SISTEMA.map(r => r.nombre);
-      const rolesValidos = roles.every((rol: IRole) => 
-        nombresCorrectos.includes(rol.nombre)
+      const rolesValidos = roles.every((rol: IRole) =>
+          nombresCorrectos.includes(rol.nombre)
       );
-      
+
       if (rolesValidos && roles.length === ROLES_SISTEMA.length) {
         const tienenPermisosActualizados = roles.every((rol: IRole) => {
           const rolDefecto = ROLES_SISTEMA.find(r => r.nombre === rol.nombre);
@@ -156,18 +166,14 @@ export const cargarRoles = (): IRole[] => {
         window.dispatchEvent(new Event('roles-updated'));
         return ROLES_SISTEMA;
       } else {
-        console.warn('⚠️ Roles en localStorage tienen nombres incorrectos. Corrigiendo...');
-        console.warn('   Guardados:', roles.map((r: IRole) => r.nombre).join(', '));
-        console.warn('   Correctos:', nombresCorrectos.join(', '));
-        // Guardar los roles correctos automáticamente
+        console.warn('⚠️ Roles en localStorage desactualizados. Corrigiendo...');
         localStorage.setItem(ROLES_STORAGE_KEY, JSON.stringify(ROLES_SISTEMA));
         window.dispatchEvent(new Event('roles-updated'));
         return ROLES_SISTEMA;
       }
     }
-    
-    console.log('📝 No hay roles en localStorage. Usando y guardando ROLES_SISTEMA.');
-    // Guardar los roles por defecto
+
+    console.log('📁 No hay roles en localStorage. Usando y guardando ROLES_SISTEMA.');
     localStorage.setItem(ROLES_STORAGE_KEY, JSON.stringify(ROLES_SISTEMA));
     return ROLES_SISTEMA;
   } catch (error) {
@@ -182,7 +188,6 @@ export const cargarRoles = (): IRole[] => {
 export const guardarRoles = (roles: IRole[]): void => {
   try {
     localStorage.setItem(ROLES_STORAGE_KEY, JSON.stringify(roles));
-    // Disparar evento para que otros componentes se enteren
     window.dispatchEvent(new Event('roles-updated'));
     console.log('✅ Roles guardados correctamente');
   } catch (error) {
@@ -196,8 +201,8 @@ export const guardarRoles = (roles: IRole[]): void => {
  */
 export const buscarRolPorNombre = (nombre: string, roles?: IRole[]): IRole | undefined => {
   const rolesActuales = roles || cargarRoles();
-  return rolesActuales.find(rol => 
-    rol.nombre.toLowerCase() === nombre.toLowerCase()
+  return rolesActuales.find(rol =>
+      rol.nombre.toLowerCase() === nombre.toLowerCase()
   );
 };
 
