@@ -87,7 +87,9 @@ public class SpringSecurityConfig {
                         // Usuarios - ADMINISTRADOR tiene acceso total
                         .requestMatchers(HttpMethod.GET, "/api/v1/usuarios").hasRole("ADMINISTRADOR")
                         .requestMatchers(HttpMethod.GET, "/api/v1/usuarios/**").hasRole("ADMINISTRADOR")
-                        .requestMatchers(HttpMethod.POST, "/api/v1/usuarios").hasRole("ADMINISTRADOR")
+                        //Creador de Usuarios sin ROL
+                        .requestMatchers(HttpMethod.POST, "/api/v1/usuarios").permitAll()
+                        //.requestMatchers(HttpMethod.POST, "/api/v1/usuarios").hasRole("ADMINISTRADOR")
                         .requestMatchers(HttpMethod.PUT, "/api/v1/usuarios/**").hasRole("ADMINISTRADOR")
                         .requestMatchers(HttpMethod.DELETE, "/api/v1/usuarios/**").hasRole("ADMINISTRADOR")
                         .requestMatchers(HttpMethod.PATCH, "/api/v1/usuarios/**").hasRole("ADMINISTRADOR")
