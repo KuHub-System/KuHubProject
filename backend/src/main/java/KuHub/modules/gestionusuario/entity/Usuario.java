@@ -1,5 +1,6 @@
 package KuHub.modules.gestionusuario.entity;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -54,9 +55,11 @@ public class Usuario {
     private Boolean activo = true;
 
     @Column(name = "fecha_creacion", nullable = false, updatable = false)
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime fechaCreacion;
 
     @Column(name = "ultimo_acceso")
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime ultimoAcceso;
 
     @PrePersist

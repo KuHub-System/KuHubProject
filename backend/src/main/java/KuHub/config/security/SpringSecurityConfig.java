@@ -2,6 +2,8 @@ package KuHub.config.security;
 
 import KuHub.config.security.filter.JwtAuthenticationFilter;
 import KuHub.config.security.filter.JwtValidationFilter;
+import KuHub.modules.gestionusuario.repository.UsuarioRepository;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -21,7 +23,8 @@ import java.util.Arrays;
 
 /**
  * Configuración de seguridad de Spring Security con JWT
- * Creada desde cero adaptada a tu proyecto KuHub
+ * ✅ CONFIGURACIÓN SEGURA: CORS restrictivo, validación de tokens, roles por endpoint
+ * ✅ ObjectMapper inyectado para manejo correcto de fechas
  */
 @Configuration
 public class SpringSecurityConfig {
@@ -29,10 +32,14 @@ public class SpringSecurityConfig {
     @Autowired
     private AuthenticationConfiguration authenticationConfiguration;
 
+    @Autowired
+    private UsuarioRepository usuarioRepository;
+
+    @Autowired
+    private ObjectMapper objectMapper;
+
     /**
      * Bean que proporciona el codificador de contraseñas BCrypt
-     * Se usa para hashear las contraseñas en crear() y actualizar()
-     * Y para validar contraseñas en el login
      */
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -41,7 +48,6 @@ public class SpringSecurityConfig {
 
     /**
      * Bean que proporciona el AuthenticationManager
-     * Necesario para los filtros JWT
      */
     @Bean
     public AuthenticationManager authenticationManager() throws Exception {
@@ -62,13 +68,13 @@ public class SpringSecurityConfig {
                         // Login - manejado por JwtAuthenticationFilter
                         .requestMatchers(HttpMethod.POST, "/login").permitAll()
 
-                        // TEMPORAL PARA CREAR USUARIO SIN TENER PERMISO
-                        //.requestMatchers(HttpMethod.POST, "/api/v1/usuarios").permitAll()
-                        
-                        // Endpoints de roles (puedes ajustar según necesites)
+                        // Preflight requests de CORS (OPTIONS)
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+
+                        // Endpoints de roles (lectura pública)
                         .requestMatchers(HttpMethod.GET, "/api/v1/roles").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/roles/**").permitAll()
-                        
+
                         // ========================================
                         // ENDPOINTS PROTEGIDOS POR ROL
                         // ========================================
@@ -77,36 +83,32 @@ public class SpringSecurityConfig {
                         .requestMatchers(HttpMethod.PUT, "/api/v1/roles/**").hasRole("ADMINISTRADOR")
                         .requestMatchers(HttpMethod.DELETE, "/api/v1/roles/**").hasRole("ADMINISTRADOR")
                         .requestMatchers(HttpMethod.PATCH, "/api/v1/roles/**").hasRole("ADMINISTRADOR")
-                        
+
                         // Usuarios - ADMINISTRADOR tiene acceso total
                         .requestMatchers(HttpMethod.GET, "/api/v1/usuarios").hasRole("ADMINISTRADOR")
                         .requestMatchers(HttpMethod.GET, "/api/v1/usuarios/**").hasRole("ADMINISTRADOR")
-                        //SE DESACTIVA SI SE QUIERE CREAR USUARIO SIN TENER PERMISO
                         .requestMatchers(HttpMethod.POST, "/api/v1/usuarios").hasRole("ADMINISTRADOR")
                         .requestMatchers(HttpMethod.PUT, "/api/v1/usuarios/**").hasRole("ADMINISTRADOR")
                         .requestMatchers(HttpMethod.DELETE, "/api/v1/usuarios/**").hasRole("ADMINISTRADOR")
                         .requestMatchers(HttpMethod.PATCH, "/api/v1/usuarios/**").hasRole("ADMINISTRADOR")
-                        
+
                         // ========================================
                         // RESTO DE ENDPOINTS
                         // ========================================
                         // Cualquier otra petición requiere autenticación (sin importar el rol)
                         .anyRequest().authenticated()
                 )
-                // Agregamos el filtro de autenticación (login)
-                .addFilter(new JwtAuthenticationFilter(authenticationManager()))
-                
-                // Agregamos el filtro de validación (verifica el token en cada petición)
+                // Agregar filtros JWT EN ORDEN - inyectando ObjectMapper configurado
+                .addFilter(new JwtAuthenticationFilter(authenticationManager(), usuarioRepository, objectMapper))
                 .addFilter(new JwtValidationFilter(authenticationManager()))
-                
-                // Desactivamos CSRF porque usamos JWT (API REST stateless)
+
+                // Desactivar CSRF (no necesario con JWT)
                 .csrf(config -> config.disable())
-                
-                // Configuramos CORS
+
+                // Configurar CORS
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-                
-                // Configuramos la sesión como STATELESS (sin sesiones HTTP)
-                // La autenticación se maneja solo con JWT
+
+                // Configurar sesión como STATELESS (sin sesiones HTTP)
                 .sessionManagement(management ->
                         management.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
@@ -114,33 +116,80 @@ public class SpringSecurityConfig {
     }
 
     /**
-     * Configuración de CORS
-     * ⚠️ CORREGIDO: No se puede usar allowedOrigins("*") con allowCredentials(true)
+     * Configuración de CORS - RESTRICTIVA Y SEGURA
+     * ✅ Solo permite el origen específico del frontend
+     * ✅ Solo permite los métodos HTTP necesarios
+     * ✅ Solo expone los headers necesarios
      */
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        
-        // IMPORTANTE: Especificamos el origen exacto del frontend
-        // NO usamos "*" porque no es compatible con allowCredentials(true)
-        configuration.setAllowedOrigins(Arrays.asList("http://localhost:5173"));
-        
-        // Métodos HTTP permitidos
-        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
-        
-        // Headers permitidos
-        configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type"));
-        
-        // Permitimos el envío de credenciales (cookies, headers de autenticación)
-        configuration.setAllowCredentials(true);
-        
-        // Headers que el frontend puede leer de la respuesta
-        configuration.setExposedHeaders(Arrays.asList("Authorization"));
 
-        // Aplicamos la configuración a todas las rutas
+        // ========================================
+        // ORÍGENES PERMITIDOS
+        // ========================================
+        // ⚠️ DESARROLLO: localhost:5173
+        configuration.setAllowedOrigins(Arrays.asList(
+                "http://localhost:5173"
+        ));
+
+        // ⚠️ PRODUCCIÓN: Cambiar a la URL de tu frontend en AWS
+        // configuration.setAllowedOrigins(Arrays.asList(
+        //     "https://tu-dominio-frontend.com"
+        // ));
+
+        // ========================================
+        // MÉTODOS HTTP PERMITIDOS
+        // ========================================
+        configuration.setAllowedMethods(Arrays.asList(
+                "GET",
+                "POST",
+                "PUT",
+                "DELETE",
+                "PATCH",
+                "OPTIONS"
+        ));
+
+        // ========================================
+        // HEADERS PERMITIDOS
+        // ========================================
+        // Permitir los headers que el frontend envía
+        configuration.setAllowedHeaders(Arrays.asList(
+                "Authorization",     // Para el token JWT
+                "Content-Type",      // Para JSON
+                "Accept",            // Para negociación de contenido
+                "Origin",            // Para CORS
+                "Access-Control-Request-Method",   // Para preflight
+                "Access-Control-Request-Headers"   // Para preflight
+        ));
+
+        // ========================================
+        // CREDENCIALES
+        // ========================================
+        // Permitir el envío de cookies y headers de autenticación
+        configuration.setAllowCredentials(true);
+
+        // ========================================
+        // HEADERS EXPUESTOS
+        // ========================================
+        // Headers que el frontend puede leer de la respuesta
+        configuration.setExposedHeaders(Arrays.asList(
+                "Authorization",     // Para que el frontend lea el token
+                "Content-Type"
+        ));
+
+        // ========================================
+        // CACHE DEL PREFLIGHT
+        // ========================================
+        // El navegador cachea la respuesta del preflight por 1 hora
+        configuration.setMaxAge(3600L);
+
+        // ========================================
+        // APLICAR A TODAS LAS RUTAS
+        // ========================================
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
-        
+
         return source;
     }
 }

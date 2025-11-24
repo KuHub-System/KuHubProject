@@ -1,8 +1,8 @@
 /**
  * SERVICIO DE AUTENTICACIÓN - CONECTADO AL BACKEND
  * Maneja login, logout y sesión actual con API REST
- * 
- * ⚠️ IMPORTANTE: Este archivo REEMPLAZA completamente el auth-service.ts anterior
+ *
+ * ⚠️ CORREGIDO: URL de login actualizada a /login (sin /api/v1/auth)
  */
 
 import api from '../config/Axios';
@@ -13,13 +13,14 @@ const SESION_KEY = 'sesion_actual';
 
 /**
  * Iniciar sesión - CONECTADO AL BACKEND
+ * ✅ CORREGIDO: Ahora usa POST /login (sin /api/v1/auth)
  */
 export const iniciarSesionService = async (correo: string, contrasena: string): Promise<ISesion> => {
   try {
     console.log('🔐 Intentando login en backend:', correo);
-    
-    // Llamada al backend
-    const response = await api.post('/auth/login', {
+
+    // ✅ CAMBIO CRÍTICO: /auth/login → /login
+    const response = await api.post('/login', {
       email: correo,
       contrasena: contrasena
     });
@@ -63,13 +64,16 @@ export const iniciarSesionService = async (correo: string, contrasena: string): 
 
 /**
  * Cerrar sesión
+ * ⚠️ NOTA: El endpoint /auth/logout ya NO existe en el backend
+ * El logout se maneja solo en el frontend eliminando el token
  */
 export const cerrarSesionService = async (): Promise<void> => {
   try {
-    // Opcional: notificar al backend (si quieres llevar registro)
-    await api.post('/auth/logout');
+    // Ya no hacemos POST /auth/logout porque ese endpoint no existe
+    // El backend con JWT no necesita ser notificado del logout
+    console.log('📤 Cerrando sesión (solo frontend)');
   } catch (error) {
-    console.error('Error al notificar logout al backend:', error);
+    console.error('Error al cerrar sesión:', error);
   } finally {
     localStorage.removeItem(SESION_KEY);
     console.log('✅ Sesión cerrada');
@@ -182,14 +186,6 @@ export const actualizarFotoPerfilService = async (archivo: File): Promise<string
   } catch (error: any) {
     throw new Error(error.response?.data?.message || error.message || 'Error al actualizar foto de perfil');
   }
-};
-
-/**
- * Inicializar el servicio de autenticación
- * NOTA: Ya no es necesario inicializar usuarios por defecto
- */
-export const inicializarAuthService = (): void => {
-  console.log('ℹ️ Auth service conectado al backend - no requiere inicialización');
 };
 
 // Alias para compatibilidad

@@ -89,4 +89,11 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Integer> {
      * Cuenta usuarios por rol
      */
     long countByRol(Rol rol);
+
+    /**
+     * Verificar si existe un usuario con el email dado
+     */
+    boolean existsByEmailIgnoreCase(String email);
+
+
 }
