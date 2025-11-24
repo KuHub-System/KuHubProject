@@ -46,13 +46,14 @@ export const StatsCard: React.FC<StatsCardProps> = ({
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4 }}
+      className="h-full w-full"
     >
       <Card
-        className={`shadow-sm ${onClick ? 'cursor-pointer hover:shadow-md transition-shadow' : ''}`}
+        className={`shadow-sm h-full w-full flex flex-col ${onClick ? 'cursor-pointer hover:shadow-md transition-shadow' : ''}`}
         isPressable={!!onClick}
         onPress={onClick}
       >
-        <CardBody className="text-center p-4 space-y-1">
+        <CardBody className="text-center p-4 flex flex-col items-center justify-center gap-2">
           <div
             className={`w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-2 ${iconWrapperClasses[color]}`}
           >

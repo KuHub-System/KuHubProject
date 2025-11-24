@@ -92,7 +92,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
       pageId: 'gestion-recetas'
     },
     {
-      title: 'Ramos Admin',
+      title: 'Gestión de Asignaturas',
       path: '/ramos-admin',
       icon: 'lucide:graduation-cap',
       pageId: 'ramos-admin'

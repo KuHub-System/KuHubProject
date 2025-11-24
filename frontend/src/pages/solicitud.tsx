@@ -12,23 +12,24 @@ import { logger } from '../utils/logger';
 // IMPORTAR TIPOS Y SERVICIOS
 import { IReceta, IItemSolicitud } from '../types/receta.types';
 import { IProducto } from '../types/producto.types';
+import { IAsignatura } from '../types/asignatura.types';
 import { obtenerRecetasActivasService } from '../services/receta-service';
 import { obtenerProductosService } from '../services/producto-service';
 import { crearSolicitudService, obtenerMisSolicitudesService } from '../services/solicitud-service';
+import { obtenerAsignaturasService } from '../services/asignatura-service';
 import { ISolicitud, EstadoSolicitud } from '../types/solicitud.types';
 
-// Datos de asignaturas (esto podría venir de una API o contexto)
-const asignaturas = [
-  { id: '1', nombre: 'Panadería Básica' },
-  { id: '2', nombre: 'Pastelería Avanzada' },
-  { id: '3', nombre: 'Cocina Internacional' },
-  { id: '4', nombre: 'Panadería Avanzada' },
-];
+const getFirstSelectionValue = (keys: any): string | undefined => {
+  if (!keys || keys === 'all') return undefined;
+  const firstKey = Array.from(keys as Set<React.Key>)[0];
+  return firstKey != null ? String(firstKey) : undefined;
+};
 
 const SolicitudPage: React.FC = () => {
   const toast = useToast();
   const [recetasDisponibles, setRecetasDisponibles] = React.useState<IReceta[]>([]);
   const [productos, setProductos] = React.useState<IProducto[]>([]);
+  const [asignaturas, setAsignaturas] = React.useState<IAsignatura[]>([]);
   const [isLoading, setIsLoading] = React.useState<boolean>(true);
   
   const [asignaturaId, setAsignaturaId] = React.useState<string>('');
@@ -37,6 +38,7 @@ const SolicitudPage: React.FC = () => {
   const [observaciones, setObservaciones] = React.useState<string>('');
   const [items, setItems] = React.useState<IItemSolicitud[]>([]);
   const [isSubmitting, setIsSubmitting] = React.useState<boolean>(false);
+  const [multiplicadorReceta, setMultiplicadorReceta] = React.useState<number>(1);
 
   const [recetaCargada, setRecetaCargada] = React.useState<{id: string, nombre: string} | null>(null);
   const [esCustom, setEsCustom] = React.useState<boolean>(false);
@@ -48,6 +50,18 @@ const SolicitudPage: React.FC = () => {
   const [cargandoHistorial, setCargandoHistorial] = React.useState<boolean>(false);
   const { isOpen: isDetalleOpen, onOpen: onDetalleOpen, onOpenChange: onDetalleOpenChange } = useDisclosure();
   const [solicitudDetalle, setSolicitudDetalle] = React.useState<ISolicitud | null>(null);
+  const asignaturaSelectedKeys = React.useMemo(
+    () => (asignaturaId ? new Set([asignaturaId]) : new Set<string>()),
+    [asignaturaId]
+  );
+  const semanaSelectedKeys = React.useMemo(
+    () => (semana ? new Set([semana]) : new Set<string>()),
+    [semana]
+  );
+  const nuevoProductoSelectedKeys = React.useMemo(
+    () => (nuevoProductoId ? new Set([nuevoProductoId]) : new Set<string>()),
+    [nuevoProductoId]
+  );
 
   const cargarHistorial = React.useCallback(async () => {
     try {
@@ -61,16 +75,18 @@ const SolicitudPage: React.FC = () => {
     }
   }, []);
 
-  // Cargar recetas, productos e historial al montar
+  // Cargar recetas, productos, asignaturas e historial al montar
   const cargarDatos = React.useCallback(async () => {
     try {
       setIsLoading(true);
-      const [recetas, productosData] = await Promise.all([
+      const [recetas, productosData, asignaturasData] = await Promise.all([
         obtenerRecetasActivasService(),
-        obtenerProductosService()
+        obtenerProductosService(),
+        obtenerAsignaturasService()
       ]);
       setRecetasDisponibles(recetas);
       setProductos(productosData);
+      setAsignaturas(asignaturasData);
       await cargarHistorial();
     } catch (error) {
       logger.error('Error al cargar datos:', error);
@@ -78,11 +94,46 @@ const SolicitudPage: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [cargarHistorial]);
+  }, [cargarHistorial, toast]);
 
   React.useEffect(() => {
     cargarDatos();
   }, [cargarDatos]);
+
+  // Calcular multiplicador cuando cambia la asignatura seleccionada
+  React.useEffect(() => {
+    if (asignaturaId) {
+      const asignatura = asignaturas.find(a => a.id === asignaturaId);
+      if (asignatura) {
+        // Calcular total de alumnos activos
+        const totalAlumnos = asignatura.secciones
+          .filter(s => s.estado === 'Activa')
+          .reduce((sum, s) => sum + s.cantidadAlumnos, 0);
+        
+        // Multiplicador: receta base es para 20 personas
+        const multiplicador = totalAlumnos > 0 ? totalAlumnos / 20 : 1;
+        setMultiplicadorReceta(multiplicador);
+        
+        // Si hay una receta cargada, recalcular las cantidades
+        if (recetaCargada) {
+          const recetaSeleccionada = recetasDisponibles.find(r => r.id === recetaCargada.id);
+          if (recetaSeleccionada) {
+            const nuevosItems: IItemSolicitud[] = recetaSeleccionada.ingredientes.map(ing => ({
+              id: `${recetaCargada.id}-${ing.id}-${Date.now()}`,
+              productoId: ing.productoId,
+              productoNombre: ing.productoNombre,
+              cantidad: ing.cantidad * multiplicador,
+              unidadMedida: ing.unidadMedida,
+              esAdicional: false
+            }));
+            setItems(nuevosItems);
+          }
+        }
+      }
+    } else {
+      setMultiplicadorReceta(1);
+    }
+  }, [asignaturaId, asignaturas, recetaCargada, recetasDisponibles]);
 
   const handleSeleccionarReceta = (recetaId: string) => {
     if (!recetaId) return;
@@ -94,11 +145,12 @@ const SolicitudPage: React.FC = () => {
     setEsCustom(false);
 
     // Convertir ingredientes de receta a items de solicitud
+    // Multiplicar por el multiplicador actual (basado en alumnos de la asignatura)
     const nuevosItems: IItemSolicitud[] = recetaSeleccionada.ingredientes.map(ing => ({
         id: `${recetaId}-${ing.id}-${Date.now()}`,
         productoId: ing.productoId,
         productoNombre: ing.productoNombre,
-        cantidad: ing.cantidad,
+        cantidad: ing.cantidad * multiplicadorReceta,
         unidadMedida: ing.unidadMedida,
         esAdicional: false // Viene de la receta
     }));
@@ -250,12 +302,15 @@ const SolicitudPage: React.FC = () => {
                 <Select 
                   label="Asignatura" 
                   placeholder="Seleccione una asignatura"
-                  selectedKeys={asignaturaId ? [asignaturaId] : []}
-                  onSelectionChange={(keys) => setAsignaturaId(Array.from(keys)[0] as string)}
+                  selectedKeys={asignaturaSelectedKeys}
+                  onSelectionChange={(keys) => {
+                    const selected = getFirstSelectionValue(keys);
+                    setAsignaturaId(selected ?? '');
+                  }}
                   isRequired
                 >
                   {asignaturas.map((asignatura) => (
-                    <SelectItem key={asignatura.id}>
+                    <SelectItem key={asignatura.id} textValue={asignatura.nombre}>
                       {asignatura.nombre}
                     </SelectItem>
                   ))}
@@ -272,15 +327,19 @@ const SolicitudPage: React.FC = () => {
                 <Select
                   label="Semana académica"
                   placeholder="Seleccione la semana (1 - 18)"
-                  selectedKeys={semana ? [semana] : []}
-                  onSelectionChange={(keys) => setSemana(Array.from(keys)[0] as string)}
+                  selectedKeys={semanaSelectedKeys}
+                  onSelectionChange={(keys) => {
+                    const selected = getFirstSelectionValue(keys);
+                    setSemana(selected ?? '');
+                  }}
                   isRequired
                 >
                   {Array.from({ length: 18 }, (_, index) => {
                     const semanaValor = (index + 1).toString();
+                    const label = `Semana ${semanaValor}`;
                     return (
-                      <SelectItem key={semanaValor}>
-                        Semana {semanaValor}
+                      <SelectItem key={semanaValor} textValue={label}>
+                        {label}
                       </SelectItem>
                     );
                   })}
@@ -291,13 +350,24 @@ const SolicitudPage: React.FC = () => {
               
               <div>
                 <h3 className="text-lg font-semibold mb-4">Cargar Receta Base</h3>
+                {asignaturaId && multiplicadorReceta > 0 && (
+                  <div className="mb-3 p-3 bg-primary-50 dark:bg-primary-900/20 rounded-lg border border-primary-200 dark:border-primary-800">
+                    <p className="text-sm text-primary-700 dark:text-primary-300">
+                      <Icon icon="lucide:info" className="inline mr-1" />
+                      <strong>Multiplicador activo:</strong> {multiplicadorReceta.toFixed(2)}x 
+                      (Receta base: 20 personas | Total alumnos activos: {asignaturas.find(a => a.id === asignaturaId)?.secciones.filter(s => s.estado === 'Activa').reduce((sum, s) => sum + s.cantidadAlumnos, 0) || 0})
+                    </p>
+                  </div>
+                )}
                 <Select 
                   label="Receta" 
                   placeholder="Seleccione una receta para cargar sus ingredientes"
                   onSelectionChange={(keys) => handleSeleccionarReceta(Array.from(keys)[0] as string)}
+                  isDisabled={!asignaturaId}
+                  description={!asignaturaId ? "Primero seleccione una asignatura" : "Las cantidades se multiplicarán automáticamente según el total de alumnos"}
                 >
                   {recetasDisponibles.map((receta) => (
-                    <SelectItem key={receta.id}>
+                    <SelectItem key={receta.id} textValue={receta.nombre}>
                       {receta.nombre}
                     </SelectItem>
                   ))}
@@ -319,14 +389,20 @@ const SolicitudPage: React.FC = () => {
                       <Select 
                         label="Producto" 
                         placeholder="Seleccione un producto"
-                        selectedKeys={nuevoProductoId ? [nuevoProductoId] : []}
-                        onSelectionChange={(keys) => setNuevoProductoId(Array.from(keys)[0] as string)}
+                        selectedKeys={nuevoProductoSelectedKeys}
+                        onSelectionChange={(keys) => {
+                          const selected = getFirstSelectionValue(keys);
+                          setNuevoProductoId(selected ?? '');
+                        }}
                       >
-                        {productos.map((producto) => (
-                          <SelectItem key={producto.id}>
-                            {producto.nombre} ({producto.stock} {producto.unidadMedida} disponibles)
-                          </SelectItem>
-                        ))}
+                        {productos.map((producto) => {
+                          const label = `${producto.nombre} (${producto.stock} ${producto.unidadMedida} disponibles)`;
+                          return (
+                            <SelectItem key={producto.id} textValue={producto.nombre}>
+                              {label}
+                            </SelectItem>
+                          );
+                        })}
                       </Select>
                       <Input
                         type="number"
