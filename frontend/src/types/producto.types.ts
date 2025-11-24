@@ -11,6 +11,8 @@ export interface IProducto {
   stockMinimo: number;
   fechaCreacion: string;
   fechaActualizacion: string;
+  // Propiedad interna para almacenar el idInventario (no se usa en UI)
+  _idInventario?: number;
 }
 
 /**

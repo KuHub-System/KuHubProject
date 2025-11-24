@@ -99,14 +99,8 @@ export const ROLES_SISTEMA: IRole[] = [
       'dashboard',
       'bodega-transito'
     ]
-  },
-  {
-    id: '7',
-    nombre: 'Profesor',
-    permisos: [
-      'gestion-recetas'
-    ]
   }
+
 ];
 
 /**
