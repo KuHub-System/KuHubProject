@@ -1,12 +1,47 @@
 /**
  * SERVICIO DE GESTIÓN DE USUARIOS - CONECTADO AL BACKEND
  * Se comunica con la API REST de Spring Boot
- * 
- * ⚠️ IMPORTANTE: Este archivo REEMPLAZA completamente el usuario-service.ts anterior
+ *
+ * ⚠️ VERSIÓN CORREGIDA CON DEBUG
  */
 
 import api from '../config/Axios';
 import { IUsuario, IUsuarioCreacion, IUsuarioActualizacion } from '../types/usuario.types';
+
+/**
+ * Mapeo centralizado de roles Frontend → Backend
+ * ⚠️ IMPORTANTE: Los nombres deben coincidir EXACTAMENTE con los del Select en el frontend
+ */
+const ROL_MAP: { [key: string]: number } = {
+  'Administrador': 1,           // → ADMINISTRADOR en BD
+  'Co-Administrador': 2,        // → CO_ADMINISTRADOR en BD
+  'Gestor de Pedidos': 3,       // → GESTOR_PEDIDOS en BD
+  'Profesor a Cargo': 4,        // → PROFESOR_A_CARGO en BD
+  'Docente': 5,                 // → DOCENTE en BD ✅ CORREGIDO
+  'Profesor': 5,                // → Alias para "Docente" (por si se usa este nombre)
+  'Encargado de Bodega': 6,     // → ENCARGADO_BODEGA en BD
+  'Bodeguero': 6,               // → Alias para "Encargado de Bodega"
+  'Asistente de Bodega': 7      // → ASISTENTE_BODEGA en BD
+};
+
+/**
+ * Función helper para obtener el ID del rol con validación
+ */
+const obtenerIdRol = (nombreRol: string): number => {
+  console.log('🔍 Buscando ID para rol:', nombreRol);
+  console.log('🔍 Roles disponibles:', Object.keys(ROL_MAP));
+
+  const idRol = ROL_MAP[nombreRol];
+
+  if (!idRol) {
+    console.error('❌ Rol no encontrado en el mapeo:', nombreRol);
+    console.error('❌ Roles válidos:', Object.keys(ROL_MAP).join(', '));
+    throw new Error(`Rol '${nombreRol}' no válido. Roles disponibles: ${Object.keys(ROL_MAP).join(', ')}`);
+  }
+
+  console.log('✅ ID del rol encontrado:', idRol);
+  return idRol;
+};
 
 /**
  * Obtener todos los usuarios - BACKEND
@@ -15,9 +50,9 @@ export const obtenerUsuariosService = async (): Promise<IUsuario[]> => {
   try {
     console.log('📡 Obteniendo usuarios del backend...');
     const response = await api.get('/usuarios');
-    
+
     console.log('✅ Usuarios obtenidos:', response.data.length);
-    
+
     // Convertir del formato backend al formato frontend
     return response.data.map((usuario: any) => convertirUsuarioBackendAFrontend(usuario));
   } catch (error: any) {
@@ -57,23 +92,15 @@ export const obtenerUsuarioPorCorreoService = async (correo: string): Promise<IU
  */
 export const crearUsuarioService = async (data: IUsuarioCreacion): Promise<IUsuario> => {
   try {
-    console.log('📡 Creando usuario en backend:', data.correo);
-    
-    // Mapear el rol del frontend al ID del backend
-    const rolMap: { [key: string]: number } = {
-      'Administrador': 1,           // → ADMINISTRADOR en BD
-      'Co-Administrador': 2,        // → CO_ADMINISTRADOR en BD
-      'Gestor de Pedidos': 3,       // → GESTOR_PEDIDOS en BD
-      'Profesor a Cargo': 4,        // → PROFESOR_A_CARGO en BD
-      'Encargado de Bodega': 6,     // → ENCARGADO_BODEGA en BD
-      'Asistente de Bodega': 7      // → ASISTENTE_BODEGA en BD
-    };
+    console.log('📡 Creando usuario en backend...');
+    console.log('📋 Datos recibidos:', {
+      nombreCompleto: data.nombreCompleto,
+      correo: data.correo,
+      rol: data.rol
+    });
 
-    const idRol = rolMap[data.rol];
-    
-    if (!idRol) {
-      throw new Error(`Rol '${data.rol}' no válido`);
-    }
+    // Obtener ID del rol con validación
+    const idRol = obtenerIdRol(data.rol);
 
     // Separar el nombre completo en sus partes
     const nombres = data.nombreCompleto.trim().split(' ');
@@ -95,10 +122,13 @@ export const crearUsuarioService = async (data: IUsuarioCreacion): Promise<IUsua
       activo: true
     };
 
-    console.log('📤 Payload enviado al backend:', payload);
+    console.log('📤 Payload enviado al backend:', {
+      ...payload,
+      contrasena: '***' // No mostrar contraseña en logs
+    });
 
     const response = await api.post('/usuarios', payload);
-    
+
     console.log('✅ Usuario creado en backend:', response.data.email);
     return convertirUsuarioBackendAFrontend(response.data);
   } catch (error: any) {
@@ -112,25 +142,24 @@ export const crearUsuarioService = async (data: IUsuarioCreacion): Promise<IUsua
  * Actualizar usuario - BACKEND
  */
 export const actualizarUsuarioService = async (
-  id: string,
-  data: IUsuarioActualizacion
+    id: string,
+    data: IUsuarioActualizacion
 ): Promise<IUsuario> => {
   try {
     console.log('📡 Actualizando usuario en backend:', id);
-    
+    console.log('📋 Datos a actualizar:', {
+      nombreCompleto: data.nombreCompleto,
+      correo: data.correo,
+      rol: data.rol,
+      activo: data.activo
+    });
+
     const payload: any = {};
 
     // Mapear rol si se proporciona
     if (data.rol) {
-      const rolMap: { [key: string]: number } = {
-        'Administrador': 1,
-        'Co-Administrador': 2,
-        'Gestor de Pedidos': 3,
-        'Profesor a Cargo': 4,
-        'Encargado de Bodega': 5,
-        'Asistente de Bodega': 6
-      };
-      payload.idRol = rolMap[data.rol];
+      payload.idRol = obtenerIdRol(data.rol);
+      console.log('🔄 Rol mapeado:', data.rol, '→', payload.idRol);
     }
 
     // Separar nombre completo si se proporciona
@@ -147,10 +176,13 @@ export const actualizarUsuarioService = async (
     if (data.fotoPerfil !== undefined) payload.fotoPerfil = data.fotoPerfil;
     if (data.activo !== undefined) payload.activo = data.activo;
 
-    console.log('📤 Payload enviado al backend:', payload);
+    console.log('📤 Payload enviado al backend:', {
+      ...payload,
+      contrasena: payload.contrasena ? '***' : undefined
+    });
 
     const response = await api.put(`/usuarios/${id}`, payload);
-    
+
     console.log('✅ Usuario actualizado en backend:', response.data.email);
     return convertirUsuarioBackendAFrontend(response.data);
   } catch (error: any) {
@@ -231,4 +263,15 @@ function convertirUsuarioBackendAFrontend(usuarioBackend: any): IUsuario {
  */
 export const inicializarUsuariosPorDefecto = (): void => {
   console.log('ℹ️ Usuarios manejados por el backend - no requiere inicialización');
+};
+
+/**
+ * FUNCIÓN DE UTILIDAD: Exportar el mapeo de roles para uso en otros componentes
+ */
+export const obtenerRolesDisponibles = (): string[] => {
+  return Object.keys(ROL_MAP);
+};
+
+export const validarNombreRol = (nombreRol: string): boolean => {
+  return nombreRol in ROL_MAP;
 };
