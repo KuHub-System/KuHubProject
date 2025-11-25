@@ -25,6 +25,7 @@ import java.util.Arrays;
  * Configuración de seguridad de Spring Security con JWT
  * ✅ CONFIGURACIÓN SEGURA: CORS restrictivo, validación de tokens, roles por endpoint
  * ✅ ObjectMapper inyectado para manejo correcto de fechas
+ * ✅ Swagger UI habilitado para desarrollo
  */
 @Configuration
 public class SpringSecurityConfig {
@@ -71,28 +72,82 @@ public class SpringSecurityConfig {
                         // Preflight requests de CORS (OPTIONS)
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
-                        // Endpoints de roles (lectura pública)
+                        // ========================================
+                        // 📚 SWAGGER UI - PÚBLICO PARA DESARROLLO
+                        // ========================================
+                        .requestMatchers(
+                                "/swagger-ui/**",
+                                "/swagger-ui.html",
+                                "/v3/api-docs/**",
+                                "/v3/api-docs.yaml",
+                                "/swagger-resources/**",
+                                "/swagger-resources",
+                                "/configuration/ui",
+                                "/configuration/security",
+                                "/webjars/**",
+                                "/api-docs/**"
+                        ).permitAll()
+
+                        // ⚠️ PRODUCCIÓN: Comentar las líneas de arriba o restringir por IP/rol
+                        // .requestMatchers("/swagger-ui/**").hasRole("ADMINISTRADOR")
+
+                        // ========================================
+                        // ENDPOINTS DE ROLES
+                        // ========================================
+                        // Endpoints de roles v1 (lectura pública)
                         .requestMatchers(HttpMethod.GET, "/api/v1/roles").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/roles/**").permitAll()
 
-                        // ========================================
-                        // ENDPOINTS PROTEGIDOS POR ROL
-                        // ========================================
-                        // Solo ADMINISTRADOR puede crear/modificar roles
-                        .requestMatchers(HttpMethod.POST, "/api/v1/roles").hasRole("ADMINISTRADOR")
-                        .requestMatchers(HttpMethod.PUT, "/api/v1/roles/**").hasRole("ADMINISTRADOR")
-                        .requestMatchers(HttpMethod.DELETE, "/api/v1/roles/**").hasRole("ADMINISTRADOR")
-                        .requestMatchers(HttpMethod.PATCH, "/api/v1/roles/**").hasRole("ADMINISTRADOR")
+                        // Endpoints de roles v2 con HATEOAS (lectura pública)
+                        .requestMatchers(HttpMethod.GET, "/api/v2/roles").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v2/roles/**").permitAll()
 
-                        // Usuarios - ADMINISTRADOR tiene acceso total
-                        .requestMatchers(HttpMethod.GET, "/api/v1/usuarios").hasRole("ADMINISTRADOR")
-                        .requestMatchers(HttpMethod.GET, "/api/v1/usuarios/**").hasRole("ADMINISTRADOR")
-                        //Creador de Usuarios sin ROL
-                        .requestMatchers(HttpMethod.POST, "/api/v1/usuarios").permitAll()
-                        //.requestMatchers(HttpMethod.POST, "/api/v1/usuarios").hasRole("ADMINISTRADOR")
-                        .requestMatchers(HttpMethod.PUT, "/api/v1/usuarios/**").hasRole("ADMINISTRADOR")
-                        .requestMatchers(HttpMethod.DELETE, "/api/v1/usuarios/**").hasRole("ADMINISTRADOR")
-                        .requestMatchers(HttpMethod.PATCH, "/api/v1/usuarios/**").hasRole("ADMINISTRADOR")
+                        // Solo ADMINISTRADOR puede crear/modificar roles
+                        .requestMatchers(HttpMethod.POST, "/api/v*/roles").hasRole("ADMINISTRADOR")
+                        .requestMatchers(HttpMethod.PUT, "/api/v*/roles/**").hasRole("ADMINISTRADOR")
+                        .requestMatchers(HttpMethod.DELETE, "/api/v*/roles/**").hasRole("ADMINISTRADOR")
+                        .requestMatchers(HttpMethod.PATCH, "/api/v*/roles/**").hasRole("ADMINISTRADOR")
+
+                        // ========================================
+                        // ENDPOINTS DE USUARIOS
+                        // ========================================
+                        // ADMINISTRADOR tiene acceso total (v1 y v2)
+                        .requestMatchers(HttpMethod.GET, "/api/v*/usuarios").hasRole("ADMINISTRADOR")
+                        .requestMatchers(HttpMethod.GET, "/api/v*/usuarios/**").hasRole("ADMINISTRADOR")
+
+                        // ⚠️ TEMPORAL: Creador de Usuarios sin ROL (para desarrollo)
+                        // En producción, cambiar a .hasRole("ADMINISTRADOR")
+                        .requestMatchers(HttpMethod.POST, "/api/v*/usuarios").permitAll()
+
+                        .requestMatchers(HttpMethod.PUT, "/api/v*/usuarios/**").hasRole("ADMINISTRADOR")
+                        .requestMatchers(HttpMethod.DELETE, "/api/v*/usuarios/**").hasRole("ADMINISTRADOR")
+                        .requestMatchers(HttpMethod.PATCH, "/api/v*/usuarios/**").hasRole("ADMINISTRADOR")
+
+                        // ========================================
+                        // ENDPOINTS DE PRODUCTOS
+                        // ========================================
+                        // Productos - lectura pública, modificación restringida
+                        .requestMatchers(HttpMethod.GET, "/api/v*/producto/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v*/productos/**").permitAll()
+
+                        .requestMatchers(HttpMethod.POST, "/api/v*/producto").hasAnyRole("ADMINISTRADOR", "ENCARGADO_BODEGA")
+                        .requestMatchers(HttpMethod.POST, "/api/v*/productos").hasAnyRole("ADMINISTRADOR", "ENCARGADO_BODEGA")
+
+                        .requestMatchers(HttpMethod.PUT, "/api/v*/producto/**").hasAnyRole("ADMINISTRADOR", "ENCARGADO_BODEGA")
+                        .requestMatchers(HttpMethod.PUT, "/api/v*/productos/**").hasAnyRole("ADMINISTRADOR", "ENCARGADO_BODEGA")
+
+                        .requestMatchers(HttpMethod.DELETE, "/api/v*/producto/**").hasRole("ADMINISTRADOR")
+                        .requestMatchers(HttpMethod.DELETE, "/api/v*/productos/**").hasRole("ADMINISTRADOR")
+
+                        // ========================================
+                        // ENDPOINTS DE INVENTARIO
+                        // ========================================
+                        // Inventario - lectura pública, modificación restringida
+                        .requestMatchers(HttpMethod.GET, "/api/v*/inventario/**").permitAll()
+
+                        .requestMatchers(HttpMethod.POST, "/api/v*/inventario/**").hasAnyRole("ADMINISTRADOR", "ENCARGADO_BODEGA")
+                        .requestMatchers(HttpMethod.PUT, "/api/v*/inventario/**").hasAnyRole("ADMINISTRADOR", "ENCARGADO_BODEGA")
+                        .requestMatchers(HttpMethod.DELETE, "/api/v*/inventario/**").hasRole("ADMINISTRADOR")
 
                         // ========================================
                         // RESTO DE ENDPOINTS
