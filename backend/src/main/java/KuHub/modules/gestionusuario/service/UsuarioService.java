@@ -1,6 +1,7 @@
 package KuHub.modules.gestionusuario.service;
 
 import KuHub.modules.gestionusuario.dtos.*;
+import KuHub.modules.gestionusuario.entity.Usuario;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
@@ -21,9 +22,33 @@ public interface UsuarioService {
     List<UsuarioResponseDTO> obtenerActivos();
 
     /**
+     * Obtiene nombre completo del usuario
+     */
+    String obtenerNombreCompleto(UsuarioResponseDTO dto);
+
+    /**
+     * Formatea el nombre completo del usuario
+     * */
+    String formatearNombreCompleto(Usuario u);
+
+    /**
+     * Obtiene docentes ACTIVOS por el nombre de rol
+     */
+    List<UsuarioResponseDTO> obtenerDocentesYProfesoresActivos();
+
+    /**
+     * Obtiene todos los profesores a cargo
+     * */
+    List<UserIdAndCompleteNameDTO> obtenerTodosProfesorACargo();
+    /**
      * Obtiene un usuario por su ID
      */
     UsuarioResponseDTO obtenerPorId(Integer idUsuario);
+
+    /**
+     * Obtiene un usuario por su ID a la forma de entidade
+     */
+    Usuario obtenerPorIdEntidad(Integer idUsuario);
 
     /**
      * Obtiene un usuario por su email
@@ -39,6 +64,8 @@ public interface UsuarioService {
      * Obtiene usuarios por rol
      */
     List<UsuarioResponseDTO> obtenerPorRol(Integer idRol);
+
+
 
     /**
      * Crea un nuevo usuario
@@ -89,4 +116,9 @@ public interface UsuarioService {
      * Obtiene estadísticas de usuarios
      */
     UsuarioEstadisticasDTO obtenerEstadisticas();
+
+    /**
+     * Convierte un usuario en un DTO ahora publico
+     */
+    UsuarioResponseDTO convertirADTO(Usuario usuario);
 }

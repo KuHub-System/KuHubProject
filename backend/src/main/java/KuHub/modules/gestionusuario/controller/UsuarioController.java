@@ -85,6 +85,19 @@ public class UsuarioController {
         return ResponseEntity.ok(usuarios);
     }
 
+    @GetMapping("/docentes-activos")
+    public ResponseEntity<List<UsuarioResponseDTO>> obtenerDocentesYProfesoresActivos(){
+        List<UsuarioResponseDTO> usuarios = usuarioService.obtenerDocentesYProfesoresActivos();
+        return ResponseEntity.ok(usuarios);
+
+    }
+
+    @GetMapping( "/profesores-a-cargo/")
+    public ResponseEntity<List<UserIdAndCompleteNameDTO>> obtenerTodosProfesorACargo(){
+        List<UserIdAndCompleteNameDTO> profes = usuarioService.obtenerTodosProfesorACargo();
+        return ResponseEntity.ok(profes);
+    }
+
     /**
      * POST /api/v1/usuarios
      * Crea un nuevo usuario
