@@ -42,12 +42,14 @@ public class Inventario {
 
     /**-- Tabla inventario
      CREATE TABLE inventario (
-     id_inventario SERIAL PRIMARY KEY,
+     id_inventario INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
      id_producto INTEGER NOT NULL,
-     stock DOUBLE PRECISION NOT NULL,
-     stock_limit_min DOUBLE PRECISION,
+     stock DOUBLE PRECISION NOT NULL CHECK (stock >= 0),
+     stock_limit_min DOUBLE PRECISION CHECK (stock_limit_min IS NULL OR stock_limit_min >= 0),
+     stock_limit_max DOUBLE PRECISION CHECK (stock_limit_max IS NULL OR stock_limit_max >= 0),
      FOREIGN KEY (id_producto) REFERENCES producto(id_producto),
      UNIQUE(id_producto)
-     );*/
+     );
+     */
 
 }

@@ -20,12 +20,6 @@ public class ProductoServiceImpl implements ProductoService{
     @Autowired
     private ProductoRepository productoRepository;
 
-    @Transactional
-    @Override
-    public void sincronizarSecuenciaProducto() {
-        Integer nuevoValor = productoRepository.sincronizarSecuencia();
-        System.out.println("Secuencia sincronizada. Nuevo valor: " + nuevoValor);
-    }
 
     @Transactional(readOnly = true)
     @Override
@@ -93,7 +87,6 @@ public class ProductoServiceImpl implements ProductoService{
     @Transactional
     @Override
     public Producto save (Producto producto) {
-        sincronizarSecuenciaProducto();
         //capitalizar nombre producto para luego comparar en la base de datos
         String nombreProductoCap = StringUtils.capitalizarPalabras(producto.getNombreProducto());
 

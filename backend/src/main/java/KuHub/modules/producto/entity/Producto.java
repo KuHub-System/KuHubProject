@@ -14,8 +14,7 @@ import lombok.*;
 public class Producto {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "producto_seq")
-    @SequenceGenerator(name = "producto_seq", sequenceName = "producto_id_producto_seq", allocationSize = 1)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id_producto", nullable = false)
     private Integer idProducto;
 
@@ -45,12 +44,14 @@ public class Producto {
 
     /**-- Tabla producto
      CREATE TABLE producto (
-     id_producto SERIAL PRIMARY KEY,
+     id_producto INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
      cod_producto VARCHAR(30),
+     descripcion_producto VARCHAR(150),
      nombre_producto VARCHAR(100) NOT NULL,
      nombre_categoria VARCHAR(100) NOT NULL,
      unidad_medida VARCHAR(50) NOT NULL,
      activo BOOLEAN DEFAULT TRUE, --soft delete
      foto_producto BYTEA
-     );*/
+     );
+     */
 }

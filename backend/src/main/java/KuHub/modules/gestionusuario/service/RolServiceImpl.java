@@ -48,6 +48,12 @@ public class RolServiceImpl implements RolService {
 
     @Override
     @Transactional(readOnly = true)
+    public Rol obtenerEntityPorId(Integer idRol){
+        return rolRepository.findById(idRol).orElseThrow(() -> new RolNotFoundException(idRol));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public RolResponseDTO obtenerPorNombre(String nombreRol) {
         Rol rol = rolRepository.findByNombreRolIgnoreCase(nombreRol)
                 .orElseThrow(() -> new RolNotFoundException("nombre", nombreRol));

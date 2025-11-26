@@ -27,12 +27,6 @@ public class InventarioServiceImpl implements InventarioService {
     @Autowired
     private ProductoRepository productoRepository;
 
-    @Transactional
-    @Override
-    public void syncSeq() {
-        Integer nuevoValor = inventarioRepository.syncSeq();
-        System.out.println("Secuencia de inventario sincronizada. Nuevo valor: " + nuevoValor);
-    }
 
     @Transactional(readOnly = true)
     @Override
@@ -72,7 +66,6 @@ public class InventarioServiceImpl implements InventarioService {
     @Transactional
     @Override
     public InventoryWithProductCreateDTO save (InventoryWithProductCreateDTO inventarioRequest){
-        syncSeq();
         //validar que el stock no es negativo
         if (inventarioRequest.getStock() < 0 ){
             throw new InventarioException("El inventario no puede ser negativo");

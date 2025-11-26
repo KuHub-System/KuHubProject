@@ -1,5 +1,6 @@
 package KuHub.config;
 
+import KuHub.modules.gestion_academica.exceptions.GestionAcademicaException;
 import KuHub.modules.gestionusuario.exceptions.*;
 import KuHub.modules.producto.exceptions.ProductoException;
 import KuHub.modules.producto.exceptions.ProductoNotFoundException;
@@ -199,7 +200,20 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
     }
 
+    /**
+     * Maneja GestionAcademicaException
+     * Captura errores relacionados con la gestión académica, como asignaturas o secciones.
+     */
+    @ExceptionHandler(GestionAcademicaException.class)
+    public ResponseEntity<Map<String, Object>> handleGestionAcademicaException(GestionAcademicaException ex) {
+        Map<String, Object> response = new HashMap<>();
+        response.put("timestamp", LocalDateTime.now());
+        response.put("status", HttpStatus.BAD_REQUEST.value()); // Puedes usar otro status si lo deseas
+        response.put("error", "Error de Gestión Académica");
+        response.put("message", ex.getMessage());
 
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+    }
 
 
 

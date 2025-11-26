@@ -58,6 +58,11 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Integer> {
     List<Usuario> findByRolAndActivoTrue(Rol rol);
 
     /**
+     * Obtiene todos los usuarios de un rol
+     * */
+    List<Usuario> findAllByRol_IdRol(Integer idRol);
+
+    /**
      * Busca usuarios por nombre (búsqueda parcial)
      */
     @Query("SELECT u FROM Usuario u WHERE " +
