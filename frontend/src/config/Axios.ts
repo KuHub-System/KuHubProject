@@ -7,10 +7,10 @@
 
 import axios, { AxiosInstance, AxiosError, InternalAxiosRequestConfig } from 'axios';
 import { obtenerSesionActualService } from '../services/auth-service';
-
+//http://localhost:8080/api/v1
 // Crear instancia de axios con configuración base
 const api: AxiosInstance = axios.create({
-    baseURL: 'http://localhost:8080/api/v1',  // ⚠️ Para producción cambiar a AWS
+    baseURL: 'http://3.94.161.1/api/v1',  // ⚠️ Para producción cambiar a AWS
     timeout: 10000,
     headers: {
         'Content-Type': 'application/json',
@@ -22,7 +22,7 @@ api.interceptors.request.use(
     (config: InternalAxiosRequestConfig) => {
         // ✅ NUEVO: Si la URL es /login, usar baseURL sin /api/v1
         if (config.url === '/login') {
-            config.baseURL = 'http://localhost:8080';  // ⚠️ Para producción cambiar a AWS
+            config.baseURL = 'http://3.94.161.1';  // ⚠️ Para producción cambiar a AWS
             console.log('🔐 Petición de login detectada - usando baseURL:', config.baseURL);
         }
 
