@@ -76,6 +76,15 @@ public class SeccionController {
                 .body(seccionService.createSection(sectionCreateDTO));
     }
 
+    @PutMapping( "/update-seccion-frontend/")
+    public ResponseEntity<SectionAnswerUpdateDTO> updateSectionFrontend(
+            @RequestBody SectionAnswerUpdateDTO sectionAnswerUpdateDTO
+    ){
+        return ResponseEntity
+                .status(200)
+                .body(seccionService.updateSection(sectionAnswerUpdateDTO));
+    }
+
     @PutMapping("/soft-delete/{id}")
     public ResponseEntity<?> softDelete(
             @PathVariable Integer id

@@ -13,4 +13,5 @@ public interface ReservaSalaService {
     ReservaSalaEntityResponseDTO save(ReservaSala reservaSala);
     List<Integer> findReservedBlocksByIdSalaAndDayWeek(Integer idSala, String diaSemana);
     Boolean validatedThatTheBlockIsNotReserved(Integer idSala, String diaSemana, Integer numeroBloque);
+    void deleteReserveById(Integer idReservaSala);
 }
