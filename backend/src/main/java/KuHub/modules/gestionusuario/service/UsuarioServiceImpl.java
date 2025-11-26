@@ -7,6 +7,7 @@ import KuHub.modules.gestionusuario.exceptions.*;
 import KuHub.modules.gestionusuario.repository.RolRepository;
 import KuHub.modules.gestionusuario.repository.UsuarioRepository;
 import KuHub.utils.ImagenUtils;
+import KuHub.utils.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder; // ⚠️ NUEVO IMPORT
 import org.springframework.stereotype.Service;
@@ -15,9 +16,11 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 
 /**
@@ -56,11 +59,75 @@ public class UsuarioServiceImpl implements UsuarioService {
     }
 
     @Override
+    public String obtenerNombreCompleto(UsuarioResponseDTO dto){
+        return StringUtils.capitalizarPalabras(Stream.of(
+                        dto.getPrimerNombre(),
+                        dto.getSegundoNombre(),
+                        dto.getApellidoPaterno(),
+                        dto.getApellidoMaterno()
+                )
+                .filter(s -> s != null && !s.isBlank())  // elimina null y vacíos
+                .collect(Collectors.joining(" ")));
+    }
+
+    @Override
+    public String formatearNombreCompleto(Usuario u) {
+        return StringUtils.capitalizarPalabras(Stream.of(
+                        u.getPrimerNombre(),
+                        u.getSegundoNombre(),
+                        u.getApellidoPaterno(),
+                        u.getApellidoMaterno()
+                )
+                .filter(s -> s != null && !s.isBlank())
+                .collect(Collectors.joining(" ")));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<UsuarioResponseDTO> obtenerDocentesYProfesoresActivos() {
+        return usuarioRepository.findAll().stream()
+                .filter(u ->
+                        u.getActivo() && (
+                                "DOCENTE".equalsIgnoreCase(u.getRol().getNombreRol()) ||
+                                        "PROFESOR_A_CARGO".equalsIgnoreCase(u.getRol().getNombreRol())
+                        )
+                )
+                .map(this::convertirADTO)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<UserIdAndCompleteNameDTO> obtenerTodosProfesorACargo(){
+        List<Usuario> profesoreACargo = usuarioRepository.findAllByRol_IdRol(4);
+
+        List<UserIdAndCompleteNameDTO> profes = new ArrayList<>();
+        for (Usuario pc : profesoreACargo) {
+            if( pc.getActivo()){
+                profes.add (new UserIdAndCompleteNameDTO(
+                        pc.getIdUsuario(),
+                        formatearNombreCompleto(pc)
+                ));
+            }
+
+
+        }
+        return profes;
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public UsuarioResponseDTO obtenerPorId(Integer idUsuario) {
         Usuario usuario = usuarioRepository.findById(idUsuario)
                 .orElseThrow(() -> new UsuarioNotFoundException(idUsuario));
         return convertirADTO(usuario);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Usuario obtenerPorIdEntidad(Integer idUsuario){
+        return usuarioRepository.findById(idUsuario)
+                .orElseThrow(() -> new UsuarioNotFoundException(idUsuario));
     }
 
     @Override
@@ -350,7 +417,8 @@ public class UsuarioServiceImpl implements UsuarioService {
      * Convierte una entidad Usuario a DTO
      * ⭐ IMPORTANTE: Convierte el nombre del rol ENUM al formato legible
      */
-    private UsuarioResponseDTO convertirADTO(Usuario usuario) {
+    @Override
+    public UsuarioResponseDTO convertirADTO(Usuario usuario) {
         String fotoBase64 = null;
 
         if (usuario.getFotoPerfil() != null && usuario.getFotoPerfil().length > 0) {

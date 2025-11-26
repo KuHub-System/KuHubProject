@@ -110,6 +110,13 @@
             <artifactId>jakarta.validation-api</artifactId>
         </dependency>
 
+        <!-- ===== JACKSON - JAVA 8 DATE/TIME ===== -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.datatype</groupId>
+            <artifactId>jackson-datatype-jsr310</artifactId>
+        </dependency>
+
+
         <!-- ===== HERRAMIENTAS DE DESARROLLO ===== -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

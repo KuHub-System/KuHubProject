@@ -2,6 +2,8 @@ package KuHub.modules.gestionusuario.service;
 
 import KuHub.modules.gestionusuario.dtos.RolRequestDTO;
 import KuHub.modules.gestionusuario.dtos.RolResponseDTO;
+import KuHub.modules.gestionusuario.entity.Rol;
+
 import java.util.List;
 
 /**
@@ -24,6 +26,8 @@ public interface RolService {
      */
     RolResponseDTO obtenerPorId(Integer idRol);
 
+
+    Rol obtenerEntityPorId(Integer idRol);
     /**
      * Obtiene un rol por su nombre
      */

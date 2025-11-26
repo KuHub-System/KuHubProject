@@ -9,6 +9,12 @@ import { Icon } from '@iconify/react';
 import { motion } from 'framer-motion';
 import { EstadoProceso } from '../../services/dashboard-service';
 
+const getFirstSelectionValue = (keys: any): string | undefined => {
+  if (!keys || keys === 'all') return undefined;
+  const firstKey = Array.from(keys as Set<React.Key>)[0];
+  return firstKey != null ? String(firstKey) : undefined;
+};
+
 interface ProcesoPedidosSectionProps {
   estadoProceso: EstadoProceso;
   semanaSeleccionada: number | null;
@@ -78,6 +84,10 @@ export const ProcesoPedidosSection: React.FC<ProcesoPedidosSectionProps> = ({
   showOrdenFinal = false,
 }) => {
   const semanas = React.useMemo(() => Array.from({ length: 18 }, (_, index) => index + 1), []);
+  const semanaSeleccionadaKeys = React.useMemo(
+    () => (semanaSeleccionada ? new Set([semanaSeleccionada.toString()]) : new Set<string>()),
+    [semanaSeleccionada]
+  );
 
   return (
     <motion.div
@@ -166,17 +176,20 @@ export const ProcesoPedidosSection: React.FC<ProcesoPedidosSectionProps> = ({
               <Select
                 label="Semana académica a procesar"
                 placeholder="Selecciona la semana (1 - 18)"
-                selectedKeys={
-                  semanaSeleccionada ? [semanaSeleccionada.toString()] : []
-                }
+                selectedKeys={semanaSeleccionadaKeys}
                 onSelectionChange={(keys) => {
-                  const value = Array.from(keys)[0] as string | undefined;
+                  const value = getFirstSelectionValue(keys);
                   onSemanaSeleccionadaChange(value ? parseInt(value, 10) : null);
                 }}
               >
-                {semanas.map((semana) => (
-                  <SelectItem key={semana.toString()}>Semana {semana}</SelectItem>
-                ))}
+                {semanas.map((semana) => {
+                  const label = `Semana ${semana}`;
+                  return (
+                    <SelectItem key={semana.toString()} textValue={label}>
+                      {label}
+                    </SelectItem>
+                  );
+                })}
               </Select>
               <Button
                 color="primary"
@@ -190,45 +203,55 @@ export const ProcesoPedidosSection: React.FC<ProcesoPedidosSectionProps> = ({
             </div>
           ) : (
             <div className="space-y-4">
-              {solicitudesPendientesCount > 0 && estadoProceso.paso === 2 && (
-                <motion.div
-                  initial={{ scale: 0.95 }}
-                  animate={{ scale: [1, 1.02, 1] }}
-                  transition={{ duration: 2, repeat: Infinity }}
-                  className="p-4 bg-warning-50 dark:bg-warning-900/20 border-2 border-warning-500 rounded-lg"
-                >
-                  <div className="flex items-center gap-3">
-                    <Icon icon="lucide:alert-triangle" className="text-warning text-2xl" />
-                    <div className="flex-1">
-                      <p className="font-semibold text-warning-700 dark:text-warning-400">
-                        ⚠️ {solicitudesPendientesCount} solicitud{solicitudesPendientesCount !== 1 ? 'es' : ''} pendiente{solicitudesPendientesCount !== 1 ? 's' : ''} de revisar
-                      </p>
-                      <p className="text-sm text-warning-600 dark:text-warning-500">
-                        Revisa cada solicitud antes de avanzar con la semana {estadoProceso.semanaSeleccionada}.
-                      </p>
+            {solicitudesPendientesCount > 0 && estadoProceso.paso === 2 && (
+              <motion.div
+                initial={{ scale: 0.95 }}
+                animate={{ scale: [1, 1.02, 1] }}
+                transition={{ duration: 2, repeat: Infinity }}
+                className="h-full"
+              >
+                <Card className="bg-warning-50 dark:bg-warning-900/20 border-2 border-warning-500 h-full">
+                  <CardBody className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                    <div className="flex items-center gap-3">
+                      <Icon icon="lucide:alert-triangle" className="text-warning text-2xl" />
+                      <div>
+                        <p className="font-semibold text-warning-700 dark:text-warning-400">
+                          ⚠️ {solicitudesPendientesCount} solicitud{solicitudesPendientesCount !== 1 ? 'es' : ''} pendiente{solicitudesPendientesCount !== 1 ? 's' : ''} de revisar
+                        </p>
+                        <p className="text-sm text-warning-600 dark:text-warning-500">
+                          Revisa cada solicitud antes de avanzar con la semana {estadoProceso.semanaSeleccionada}.
+                        </p>
+                      </div>
                     </div>
-                    <Button
-                      color="warning"
-                      variant="flat"
-                      onPress={onVerPendientes}
-                      startContent={<Icon icon="lucide:eye" />}
-                    >
-                      Ver pendientes
-                    </Button>
-                  </div>
-                </motion.div>
-              )}
+                    <div className="flex justify-end sm:ml-auto">
+                      <Button
+                        color="warning"
+                        variant="flat"
+                        onPress={onVerPendientes}
+                        startContent={<Icon icon="lucide:eye" />}
+                      >
+                        Ver pendientes
+                      </Button>
+                    </div>
+                  </CardBody>
+                </Card>
+              </motion.div>
+            )}
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-primary-50 dark:bg-primary-900/20 rounded-lg border border-primary-200">
-                <div>
-                  <p className="text-sm text-default-500 mb-1">Semana en proceso</p>
-                  <p className="font-semibold">Semana {estadoProceso.semanaSeleccionada ?? '—'}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-default-500 mb-1">Solicitudes pendientes</p>
-                  <p className="font-semibold">{solicitudesPendientesCount}</p>
-                </div>
-              </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Card className="h-full bg-primary-50 dark:bg-primary-900/20 border border-primary-200">
+                <CardBody className="space-y-1">
+                  <p className="text-sm text-default-500">Semana en proceso</p>
+                  <p className="font-semibold text-lg">Semana {estadoProceso.semanaSeleccionada ?? '—'}</p>
+                </CardBody>
+              </Card>
+              <Card className="h-full bg-primary-50 dark:bg-primary-900/10 border border-primary-200">
+                <CardBody className="space-y-1">
+                  <p className="text-sm text-default-500">Solicitudes pendientes</p>
+                  <p className="font-semibold text-lg">{solicitudesPendientesCount}</p>
+                </CardBody>
+              </Card>
+            </div>
 
               <div className="flex justify-between items-center">
                 <p className="text-sm text-default-500">

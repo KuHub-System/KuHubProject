@@ -8,7 +8,6 @@ import java.util.List;
 
 public interface ProductoService {
 
-    void sincronizarSecuenciaProducto();
     List<Producto> findAll();
     List<Producto> findByActivo(Boolean activo);
 
