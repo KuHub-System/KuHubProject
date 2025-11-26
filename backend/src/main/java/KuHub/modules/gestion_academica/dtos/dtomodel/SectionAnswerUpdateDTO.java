@@ -1,6 +1,6 @@
 package KuHub.modules.gestion_academica.dtos.dtomodel;
 
-import KuHub.modules.gestion_academica.entity.ReservaSala;
+
 import KuHub.modules.gestion_academica.entity.Seccion;
 import jakarta.persistence.Column;
 import jakarta.validation.Valid;

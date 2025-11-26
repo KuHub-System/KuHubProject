@@ -19,8 +19,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -303,11 +302,11 @@ public class SeccionServiceImp implements SeccionService{
 
 
 
-    /**@Transactional
+    @Transactional
     @Override
     public SectionAnswerUpdateDTO updateSection(SectionAnswerUpdateDTO dto){
 
-        /**validar capacidad maxima y cantidad de inscritos
+        /**validar capacidad maxima y cantidad de inscritos*/
         if (dto.getCantInscritos() < 0 || dto.getCapacidadMaxInscritos() < 0){
             throw new GestionAcademicaException("La capacidad maxima y cantidad de incritos no pueden ser negativas");
         }
@@ -318,7 +317,7 @@ public class SeccionServiceImp implements SeccionService{
 
         Seccion seccion = findByIdAndActiveIsTrueEntity(dto.getIdSeccion());
 
-        /**Validar existencia de asignatura y que este activa
+        /**Validar existencia de asignatura y que este activa*/
         if ( dto.getIdAsignatura()!= null) {
             if (!asignaturaService.existsByIdAsignaturaAndTrue(dto.getIdAsignatura())){
                 throw new GestionAcademicaException("La asignatura con el id: " + dto.getIdAsignatura() + " no existe");
@@ -327,7 +326,7 @@ public class SeccionServiceImp implements SeccionService{
             throw new GestionAcademicaException("Debe indicar una asignatura válida");
         }
 
-        /**Validar duplicidad de nombre de la seccion en la misma asignatura
+        /**Validar duplicidad de nombre de la seccion en la misma asignatura*/
         if (dto.getNombreSeccion() != null && !dto.getNombreSeccion().isBlank()) {
             if(!seccion.getNombreSeccion().equals(StringUtils.capitalizarPalabras(dto.getNombreSeccion()))){
                 if(seccionRepository.existsByAsignaturaTrueAndSeccionTrueAndNombreSeccionIlike(
@@ -344,8 +343,8 @@ public class SeccionServiceImp implements SeccionService{
             }
         }
 
-        /**Validar existencia de usuario y que sea docente o profesor
-        Usuario docente = usuarioService.obtenerPorIdEntidad(dto.getIdUsuarioDocente());
+        /**Validar existencia de usuario y que sea docente o profesor*/
+        Usuario docente = usuarioService.obtenerPorIdEntidad(dto.getIdDocente());
         boolean esActivo = docente.getActivo();
         boolean esRolValido = false;
         try {
@@ -358,45 +357,93 @@ public class SeccionServiceImp implements SeccionService{
             throw new GestionAcademicaException("Los usuario registrados a la seccion solo pueden ser docentes o profesores");
         }
 
-        /**Obtener tabla intermedia DocenteSeccion y actualizar si hay cambios
+        /**Obtener tabla intermedia DocenteSeccion y actualizar si hay cambios*/
         DocenteSeccion dulce = docenteSeccionService.findByIdSeccionEntity(seccion.getIdSeccion());
 
-        if (dulce.getUsuario().getIdUsuario() != dto.getIdUsuarioDocente()){
+        if (dulce.getUsuario().getIdUsuario() != dto.getIdDocente()){
             dulce.setUsuario(docente);
             dulce.setFechaAsignacion(LocalDate.now());
         }
         docenteSeccionService.save(dulce);
         dto.setNombreCompletoDocente(usuarioService.formatearNombreCompleto(docente));
 
-        /**Actualizar seccion
+        /**Actualizar seccion*/
         seccion.setCapacidadMax(dto.getCapacidadMaxInscritos());
         seccion.setCantInscritos(dto.getCantInscritos());
         seccionRepository.save(seccion);
 
 
-        /** Procesa siempre los bloques (crea sala sólo cuando corresponde)
-        if (dto.getBloquesHorarios() != null) {
-            /**
-             * Procesa los bloques de tiempo de la sección,
-             * creando sala solo si corresponde, pero siempre validando los bloques.
+        /** Procesar cambios en bloques horarios */
+        if (dto.getBloquesHorarios() != null && !dto.getBloquesHorarios().isEmpty()) {
 
+            // Obtener reservas actuales de la sección
+            List<ReservaSala> reservasActuales = reservaSalaService.findAllReserveByIdSeccion(dto.getIdSeccion());
 
+            // Crear un mapa de reservas actuales con clave única: idSala-diaSemana-numeroBloque
+            Map<String, ReservaSala> reservasActualesMap = reservasActuales.stream()
+                    .collect(Collectors.toMap(
+                            r -> r.getSala().getIdSala() + "-" +
+                                    r.getDiaSemana().name() + "-" +
+                                    r.getBloqueHorario().getNumeroBloque(),
+                            r -> r
+                    ));
+
+            // Crear un Set con las claves de las nuevas reservas
+            Set<String> reservasNuevasKeys = new HashSet<>();
+
+            // Primera pasada: identificar las claves de las nuevas reservas
+            for (BookTImeBlocksRequestDTO B : dto.getBloquesHorarios()) {
+                ReservaSala.DiaSemana diaSemanaEnum =
+                        ReservaSala.DiaSemana.valueOf(B.getDiaSemana().name().toUpperCase());
+
+                // Para crear sala nueva, usar un identificador temporal
+                String clave = (B.getIdSala() != null ? B.getIdSala() : "NUEVA-" + B.getCodSala()) + "-" +
+                        diaSemanaEnum.name() + "-" +
+                        B.getNumeroBloque();
+                reservasNuevasKeys.add(clave);
+            }
+
+            // Identificar y eliminar reservas que ya no están
+            List<ReservaSala> reservasAEliminar = reservasActuales.stream()
+                    .filter(r -> {
+                        String key = r.getSala().getIdSala() + "-" +
+                                r.getDiaSemana().name() + "-" +
+                                r.getBloqueHorario().getNumeroBloque();
+                        return !reservasNuevasKeys.contains(key);
+                    })
+                    .collect(Collectors.toList());
+
+            // Eliminar reservas obsoletas
+            for (ReservaSala reservaAEliminar : reservasAEliminar) {
+                reservaSalaService.deleteReserveById(reservaAEliminar.getIdReservaSala());
+            }
+
+            // Procesar cada bloque horario del DTO
             for (BookTImeBlocksRequestDTO B : dto.getBloquesHorarios()) {
 
-                /** Normalizamos el día
+                /** Normalizar el día */
                 ReservaSala.DiaSemana diaSemanaEnum =
-                        ReservaSala.DiaSemana.valueOf(
-                                B.getDiaSemana().toString().toUpperCase()
-                        );
+                        ReservaSala.DiaSemana.valueOf(B.getDiaSemana().name().toUpperCase());
 
                 Sala sala;
+                boolean esNuevaReserva = false;
 
-                /**
-                 * Si se indicó crear sala y el bloque NO tiene idSala,
-                 * entonces debemos crear una nueva.
+                /** Determinar si necesitamos crear una sala nueva */
+                if (Boolean.TRUE.equals(dto.getCrearSala()) && B.getIdSala() == null) {
 
-                if (dto.getCrearSala() && B.getIdSala() == null) {
+                    // Validar que se proporcionen los datos necesarios para crear la sala
+                    if (B.getCodSala() == null || B.getCodSala().isBlank()) {
+                        throw new GestionAcademicaException(
+                                "Debe proporcionar el código de sala para crear una nueva sala en el bloque " + B.getNumeroBloque()
+                        );
+                    }
+                    if (B.getNombreSala() == null || B.getNombreSala().isBlank()) {
+                        throw new GestionAcademicaException(
+                                "Debe proporcionar el nombre de sala para crear una nueva sala en el bloque " + B.getNumeroBloque()
+                        );
+                    }
 
+                    // Crear la nueva sala
                     sala = salaService.save(
                             new Sala(
                                     null,
@@ -412,55 +459,72 @@ public class SeccionServiceImp implements SeccionService{
                         );
                     }
 
+                    esNuevaReserva = true;
+
                 } else {
 
-                    /** Si no se crea sala, debe existir una
+                    /** Si no se crea sala, debe existir una */
                     if (B.getIdSala() == null) {
                         throw new GestionAcademicaException(
-                                "No se indicó idSala para el bloque " + B.getNumeroBloque()
+                                "No se indicó idSala para el bloque " + B.getNumeroBloque() +
+                                        ". Si desea crear una nueva sala, active la opción 'crearSala'"
                         );
                     }
 
+                    // Obtener la sala existente
                     sala = salaService.findById(B.getIdSala());
+
+                    // Verificar si esta reserva ya existe
+                    String claveReserva = sala.getIdSala() + "-" +
+                            diaSemanaEnum.name() + "-" +
+                            B.getNumeroBloque();
+
+                    esNuevaReserva = !reservasActualesMap.containsKey(claveReserva);
                 }
 
-                /**Actualizar para respuesta
+                /** Actualizar datos en el DTO para la respuesta */
                 B.setIdSala(sala.getIdSala());
                 B.setNombreSala(sala.getNombreSala());
                 B.setCodSala(sala.getCodSala());
 
-                /** Validar disponibilidad del bloque
-                boolean disponible = reservaSalaService.validatedThatTheBlockIsNotReserved(
-                        sala.getIdSala(),
-                        diaSemanaEnum.name(),
-                        B.getNumeroBloque()
-                );
+                /** Solo procesar si es una nueva reserva */
+                if (esNuevaReserva) {
 
-                if (!disponible) {
-                    throw new GestionAcademicaException(
-                            "El bloque " + B.getNumeroBloque() +
-                                    " ya está reservado para una sala en una seccion"
+                    /** Validar disponibilidad del bloque */
+                    boolean disponible = reservaSalaService.validatedThatTheBlockIsNotReserved(
+                            sala.getIdSala(),
+                            diaSemanaEnum.name(),
+                            B.getNumeroBloque()
                     );
+
+                    if (!disponible) {
+                        throw new GestionAcademicaException(
+                                "El bloque " + B.getNumeroBloque() +
+                                        " del día " + diaSemanaEnum.name() +
+                                        " ya está reservado para la sala '" + sala.getNombreSala() + "'"
+                        );
+                    }
+
+                    /** Obtener bloque horario */
+                    BloqueHorario bloqueHorario = bloqueHorarioService.findById(B.getNumeroBloque());
+
+                    /** Crear y guardar la nueva reserva */
+                    ReservaSala nuevaReserva = new ReservaSala(
+                            null,
+                            seccion,
+                            sala,
+                            bloqueHorario,
+                            diaSemanaEnum
+                    );
+
+                    reservaSalaService.save(nuevaReserva);
                 }
-
-                /** Obtener bloque horario
-                BloqueHorario bloqueHorario = bloqueHorarioService.findById(B.getNumeroBloque());
-
-                /** Crear y guardar la reserva
-                ReservaSala reservaSala = new ReservaSala(
-                        null,
-                        seccion,
-                        sala,
-                        bloqueHorario,
-                        diaSemanaEnum
-                );
-
-                reservaSalaService.save(reservaSala);
-                bloqueResponse.add(B);
             }
         }
 
-    } */
+        return dto;
+
+    }
 
 
 
