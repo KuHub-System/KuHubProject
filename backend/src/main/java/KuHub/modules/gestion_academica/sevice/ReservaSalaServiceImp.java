@@ -71,8 +71,13 @@ public class ReservaSalaServiceImp implements ReservaSalaService{
     @Transactional
     @Override
     public ReservaSalaEntityResponseDTO save(ReservaSala reservaSala){
-
         return covertsDTO(reservaSalaRepository.save(reservaSala));
+    }
+
+    @Transactional
+    @Override
+    public void deleteReserveById(Integer idReservaSala){
+        reservaSalaRepository.deleteById(idReservaSala);
     }
 
     private ReservaSalaEntityResponseDTO covertsDTO(ReservaSala reservaSala){

@@ -17,6 +17,6 @@ public interface SeccionService {
     List<SeccionEntityResponseDTO> findAllByActivoTrue();
     SeccionEntityResponseDTO save(Seccion seccion);
     SectionAnswerUpdateDTO createSection (SectionCreateDTO dto);
-    //SectionAnswerUpdateDTO updateSection(SectionAnswerUpdateDTO dto);
+    SectionAnswerUpdateDTO updateSection(SectionAnswerUpdateDTO dto);
     void softDelete(Integer id);
 }
