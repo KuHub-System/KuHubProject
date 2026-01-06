@@ -34,7 +34,7 @@ public interface UsuarioService {
     /**
      * Obtiene docentes ACTIVOS por el nombre de rol
      */
-    List<UsuarioResponseDTO> obtenerDocentesYProfesoresActivos();
+    List<UserIdAndCompleteNameDTO> obtenerDocentesYProfesoresActivos();
 
     /**
      * Obtiene todos los profesores a cargo

@@ -134,5 +134,8 @@ public interface SeccionRepository extends JpaRepository <Seccion, Integer> {
     )
     List<Object[]> findAllAsignaturasConSeccionesYReservas();
 
-
+    Optional<Seccion> findByAsignaturaIdAsignaturaAndActivoTrueAndNombreSeccionIgnoreCase(
+            Integer idAsignatura,
+            String nombreSeccion
+    );
 }

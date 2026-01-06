@@ -84,15 +84,19 @@ public class UsuarioServiceImpl implements UsuarioService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<UsuarioResponseDTO> obtenerDocentesYProfesoresActivos() {
+    public List<UserIdAndCompleteNameDTO> obtenerDocentesYProfesoresActivos() {
         return usuarioRepository.findAll().stream()
                 .filter(u ->
-                        u.getActivo() && (
-                                "DOCENTE".equalsIgnoreCase(u.getRol().getNombreRol()) ||
-                                        "PROFESOR_A_CARGO".equalsIgnoreCase(u.getRol().getNombreRol())
-                        )
+                        Boolean.TRUE.equals(u.getActivo()) &&
+                                (
+                                        "DOCENTE".equalsIgnoreCase(u.getRol().getNombreRol()) ||
+                                                "PROFESOR_A_CARGO".equalsIgnoreCase(u.getRol().getNombreRol())
+                                )
                 )
-                .map(this::convertirADTO)
+                .map(u -> new UserIdAndCompleteNameDTO(
+                        u.getIdUsuario(),
+                        formatearNombreCompleto(u)
+                ))
                 .collect(Collectors.toList());
     }
 
