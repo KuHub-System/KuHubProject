@@ -56,6 +56,87 @@ public class SpringSecurityConfig {
     }
 
     /**
+     * Configuración de CORS - RESTRICTIVA Y SEGURA
+     * ✅ Solo permite el origen específico del frontend
+     * ✅ Solo permite los métodos HTTP necesarios
+     * ✅ Solo expone los headers necesarios
+     */
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration configuration = new CorsConfiguration();
+
+        // ========================================
+        // ORÍGENES PERMITIDOS
+        // ========================================
+        // ⚠️ DESARROLLO: localhost:5173
+        configuration.setAllowedOrigins(Arrays.asList(
+                "http://localhost:5173",
+                "http://localhost:3000",
+                "http://127.0.0.1:5173",
+                "http://127.0.0.1:3000"
+        ));
+
+        // ⚠️ PRODUCCIÓN: Cambiar a la URL de tu frontend en AWS
+        // configuration.setAllowedOrigins(Arrays.asList(
+        //     "https://tu-dominio-frontend.com"
+        // ));
+
+        // ========================================
+        // MÉTODOS HTTP PERMITIDOS
+        // ========================================
+        configuration.setAllowedMethods(Arrays.asList(
+                "GET",
+                "POST",
+                "PUT",
+                "DELETE",
+                "PATCH",
+                "OPTIONS"
+        ));
+
+        // ========================================
+        // HEADERS PERMITIDOS
+        // ========================================
+        // Permitir los headers que el frontend envía
+        configuration.setAllowedHeaders(Arrays.asList(
+                "Authorization",     // Para el token JWT
+                "Content-Type",      // Para JSON
+                "Accept",            // Para negociación de contenido
+                "Origin",            // Para CORS
+                "Access-Control-Request-Method",   // Para preflight
+                "Access-Control-Request-Headers"   // Para preflight
+        ));
+
+        // ========================================
+        // CREDENCIALES
+        // ========================================
+        // Permitir el envío de cookies y headers de autenticación
+        configuration.setAllowCredentials(true);
+
+        // ========================================
+        // HEADERS EXPUESTOS
+        // ========================================
+        // Headers que el frontend puede leer de la respuesta
+        configuration.setExposedHeaders(Arrays.asList(
+                "Authorization",     // Para que el frontend lea el token
+                "Content-Type"
+        ));
+
+        // ========================================
+        // CACHE DEL PREFLIGHT
+        // ========================================
+        // El navegador cachea la respuesta del preflight por 1 hora
+        configuration.setMaxAge(3600L);
+
+        // ========================================
+        // APLICAR A TODAS LAS RUTAS
+        // ========================================
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", configuration);
+
+        return source;
+    }
+
+    /**
      * Configuración principal de seguridad
      * Define qué endpoints son públicos y cuáles requieren autenticación
      */
@@ -172,81 +253,5 @@ public class SpringSecurityConfig {
                 .build();
     }
 
-    /**
-     * Configuración de CORS - RESTRICTIVA Y SEGURA
-     * ✅ Solo permite el origen específico del frontend
-     * ✅ Solo permite los métodos HTTP necesarios
-     * ✅ Solo expone los headers necesarios
-     */
-    @Bean
-    public CorsConfigurationSource corsConfigurationSource() {
-        CorsConfiguration configuration = new CorsConfiguration();
 
-        // ========================================
-        // ORÍGENES PERMITIDOS
-        // ========================================
-        // ⚠️ DESARROLLO: localhost:5173
-        configuration.setAllowedOrigins(Arrays.asList(
-                "http://localhost:5173"
-        ));
-
-        // ⚠️ PRODUCCIÓN: Cambiar a la URL de tu frontend en AWS
-        // configuration.setAllowedOrigins(Arrays.asList(
-        //     "https://tu-dominio-frontend.com"
-        // ));
-
-        // ========================================
-        // MÉTODOS HTTP PERMITIDOS
-        // ========================================
-        configuration.setAllowedMethods(Arrays.asList(
-                "GET",
-                "POST",
-                "PUT",
-                "DELETE",
-                "PATCH",
-                "OPTIONS"
-        ));
-
-        // ========================================
-        // HEADERS PERMITIDOS
-        // ========================================
-        // Permitir los headers que el frontend envía
-        configuration.setAllowedHeaders(Arrays.asList(
-                "Authorization",     // Para el token JWT
-                "Content-Type",      // Para JSON
-                "Accept",            // Para negociación de contenido
-                "Origin",            // Para CORS
-                "Access-Control-Request-Method",   // Para preflight
-                "Access-Control-Request-Headers"   // Para preflight
-        ));
-
-        // ========================================
-        // CREDENCIALES
-        // ========================================
-        // Permitir el envío de cookies y headers de autenticación
-        configuration.setAllowCredentials(true);
-
-        // ========================================
-        // HEADERS EXPUESTOS
-        // ========================================
-        // Headers que el frontend puede leer de la respuesta
-        configuration.setExposedHeaders(Arrays.asList(
-                "Authorization",     // Para que el frontend lea el token
-                "Content-Type"
-        ));
-
-        // ========================================
-        // CACHE DEL PREFLIGHT
-        // ========================================
-        // El navegador cachea la respuesta del preflight por 1 hora
-        configuration.setMaxAge(3600L);
-
-        // ========================================
-        // APLICAR A TODAS LAS RUTAS
-        // ========================================
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", configuration);
-
-        return source;
-    }
 }
