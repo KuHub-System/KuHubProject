@@ -42,102 +42,72 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
    * 🔥 LISTA ACTUALIZADA: Ahora incluye Gestión de Usuarios y Gestión de Solicitudes
    * Los permisos se verifican dinámicamente contra la configuración actual
    */
-  const menuItems: MenuItem[] = [
+  /**
+   * Estructura de categorías del menú
+   */
+  interface MenuCategory {
+    title: string;
+    items: MenuItem[];
+  }
+
+  const menuCategories: MenuCategory[] = [
     {
-      title: 'Dashboard',
-      path: '/dashboard',
-      icon: 'lucide:layout-dashboard',
-      pageId: 'dashboard'
+      title: 'General',
+      items: [
+        { title: 'Dashboard', path: '/dashboard', icon: 'lucide:layout-dashboard', pageId: 'dashboard' },
+        { title: 'Solicitud', path: '/solicitud', icon: 'lucide:clipboard-list', pageId: 'solicitud' }
+      ]
+    },
+    {
+      title: 'Administración',
+      items: [
+        { title: 'Gestión de Pedidos', path: '/gestion-pedidos', icon: 'lucide:shopping-cart', pageId: 'gestion-pedidos' },
+        { title: 'Conglomerado de Pedidos', path: '/conglomerado-pedidos', icon: 'lucide:layers', pageId: 'conglomerado-pedidos' },
+        { title: 'Gestión de Recetas', path: '/gestion-recetas', icon: 'lucide:book-open', pageId: 'gestion-recetas' },
+        { title: 'Gestión de Asignaturas', path: '/ramos-admin', icon: 'lucide:graduation-cap', pageId: 'ramos-admin' },
+        { title: 'Gestión de Solicitudes', path: '/gestion-solicitudes', icon: 'lucide:clipboard-check', pageId: 'gestion-solicitudes' }
+      ]
     },
     {
       title: 'Inventario',
-      path: '/inventario',
-      icon: 'lucide:package',
-      pageId: 'inventario'
+      items: [
+        { title: 'Inventario', path: '/inventario', icon: 'lucide:package', pageId: 'inventario' },
+        { title: 'Historial / Movimientos ', path: '/movimientos', icon: 'lucide:history', pageId: 'inventario' },
+        { title: 'Bodega de Tránsito', path: '/bodega-transito', icon: 'lucide:warehouse', pageId: 'bodega-transito' },
+        { title: 'Gestión de Proveedores', path: '/gestion-proveedores', icon: 'lucide:truck', pageId: 'gestion-proveedores' }
+      ]
     },
     {
-      title: 'Solicitud',
-      path: '/solicitud',
-      icon: 'lucide:clipboard-list',
-      pageId: 'solicitud'
-    },
-    {
-      title: 'Gestión de Pedidos',
-      path: '/gestion-pedidos',
-      icon: 'lucide:shopping-cart',
-      pageId: 'gestion-pedidos'
-    },
-    {
-      title: 'Conglomerado de Pedidos',
-      path: '/conglomerado-pedidos',
-      icon: 'lucide:layers',
-      pageId: 'conglomerado-pedidos'
-    },
-    {
-      title: 'Gestión de Proveedores',
-      path: '/gestion-proveedores',
-      icon: 'lucide:truck',
-      pageId: 'gestion-proveedores'
-    },
-    {
-      title: 'Bodega de Tránsito',
-      path: '/bodega-transito',
-      icon: 'lucide:warehouse',
-      pageId: 'bodega-transito'
-    },
-    {
-      title: 'Gestión de Recetas',
-      path: '/gestion-recetas',
-      icon: 'lucide:book-open',
-      pageId: 'gestion-recetas'
-    },
-    {
-      title: 'Gestión de Asignaturas',
-      path: '/ramos-admin',
-      icon: 'lucide:graduation-cap',
-      pageId: 'ramos-admin'
-    },
-    {
-      title: 'Gestión de Roles',
-      path: '/gestion-roles',
-      icon: 'lucide:users',
-      pageId: 'gestion-roles'
-    },
-    // 🔥 NUEVAS RUTAS AGREGADAS
-    {
-      title: 'Gestión de Usuarios',
-      path: '/gestion-usuarios',
-      icon: 'lucide:user-cog',
-      pageId: 'gestion-usuarios'
-    },
-    {
-      title: 'Gestión de Solicitudes',
-      path: '/gestion-solicitudes',
-      icon: 'lucide:clipboard-check',
-      pageId: 'gestion-solicitudes'
+      title: 'Usuarios',
+      items: [
+        { title: 'Gestión de Roles', path: '/gestion-roles', icon: 'lucide:users', pageId: 'gestion-roles' },
+        { title: 'Gestión de Usuarios', path: '/gestion-usuarios', icon: 'lucide:user-cog', pageId: 'gestion-usuarios' }
+      ]
     }
   ];
 
   /**
-   * 🔥 FILTRADO DINÁMICO: Ahora verifica contra permisos actuales
-   * canAccessPage() lee los permisos desde la configuración actualizada de roles
+   * Filtra las categorías y sus items según permisos
    */
-  const filteredMenuItems = menuItems.filter(item => {
-    // Verificar que el usuario esté logueado
-    if (!user) return false;
-    
-    // Verificar si el usuario tiene permiso para esta página
-    const hasAccess = canAccessPage(item.pageId);
-    
-    // Log para debugging (puedes quitarlo después)
-    if (typeof import.meta !== 'undefined' && (import.meta as any).env?.DEV) {
-      console.log(`📄 ${item.title} (${item.pageId}):`, hasAccess ? '✅' : '❌');
-    }
-    
-    return hasAccess;
-  });
+  const filteredCategories = menuCategories.map(category => ({
+    ...category,
+    items: category.items.filter(item => {
+      if (!user) return false;
+      return canAccessPage(item.pageId);
+    })
+  })).filter(category => category.items.length > 0);
 
-  // Variantes para las animaciones con Framer Motion
+  // Estado para controlar qué categorías están colapsadas
+  const [collapsedCategories, setCollapsedCategories] = React.useState<Record<string, boolean>>({});
+
+  const toggleCategory = (title: string) => {
+    setCollapsedCategories(prev => ({
+      ...prev,
+      [title]: !prev[title]
+    }));
+  };
+
+  // Variantes para las animaciones con Framer Motion (existentes)
   const sidebarVariants = {
     open: { width: '280px', transition: { duration: 0.3 } },
     closed: { width: '80px', transition: { duration: 0.3 } }
@@ -148,9 +118,14 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
     closed: { opacity: 0, display: 'none', transition: { duration: 0.1 } }
   };
 
+  const headerVariants = {
+    open: { opacity: 1, display: 'flex', transition: { delay: 0.1 } },
+    closed: { opacity: 0, display: 'none', transition: { duration: 0.1 } }
+  };
+
   return (
     <motion.div
-      className="sidebar bg-content1 shadow-md overflow-hidden"
+      className="sidebar bg-content1 shadow-md overflow-hidden h-screen z-50 sticky top-0"
       variants={sidebarVariants}
       animate={isOpen ? 'open' : 'closed'}
       initial={isOpen ? 'open' : 'closed'}
@@ -163,7 +138,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
             <div className="w-10 h-10 bg-content2 dark:bg-zinc-900 flex items-center justify-center rounded-md">
               <img src={LOGO_URL} alt="Logo KüHub" className="h-8 w-8 object-contain" />
             </div>
-            <motion.span 
+            <motion.span
               className="text-xl font-bold ml-3 text-primary"
               variants={textVariants}
               animate={isOpen ? 'open' : 'closed'}
@@ -186,28 +161,69 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
 
         {/* Elementos del menú */}
         <div className="flex-grow overflow-y-auto py-2 scrollbar-hidden">
-          {filteredMenuItems.length > 0 ? (
-            filteredMenuItems.map((item) => (
-              <NavLink
-                key={item.path}
-                to={item.path}
-                className={`flex items-center px-4 py-3 my-1 mx-2 rounded-md transition-all-200 ${
-                  location.pathname === item.path
-                    ? 'bg-primary-100 text-primary'
-                    : 'text-foreground hover:bg-default-100'
-                }`}
-              >
-                <Icon icon={item.icon} className="text-xl" />
-                <motion.span 
-                  className="ml-3 text-sm font-medium"
-                  variants={textVariants}
-                  animate={isOpen ? 'open' : 'closed'}
-                  initial={isOpen ? 'open' : 'closed'}
-                >
-                  {item.title}
-                </motion.span>
-              </NavLink>
-            ))
+          {filteredCategories.length > 0 ? (
+            filteredCategories.map((category, index) => {
+              const isCollapsed = collapsedCategories[category.title];
+
+              return (
+                <div key={category.title} className="mb-2">
+                  {/* Título de Categoría (Clickable solo si está abierto el sidebar) */}
+                  <motion.div
+                    className={`px-4 py-2 flex items-center gap-2 ${isOpen ? 'cursor-pointer hover:text-primary transition-colors' : ''}`}
+                    variants={headerVariants}
+                    animate={isOpen ? 'open' : 'closed'}
+                    initial={isOpen ? 'open' : 'closed'}
+                    onClick={() => isOpen && toggleCategory(category.title)}
+                  >
+                    <span className="text-xs font-bold text-default-500 uppercase tracking-wider">
+                      {category.title}
+                    </span>
+                    {isOpen && (
+                      <Icon
+                        icon="lucide:chevron-down"
+                        className={`text-default-400 text-sm transition-transform duration-200 ${isCollapsed ? '-rotate-90' : 'rotate-0'}`}
+                      />
+                    )}
+                  </motion.div>
+
+                  {/* Separador visual para modo cerrado si no es el primero */}
+                  {!isOpen && index > 0 && <Divider className="my-2 mx-2 w-auto" />}
+
+                  {/* Lista de Items (Colapsable) */}
+                  <motion.div
+                    initial="expanded"
+                    animate={isCollapsed && isOpen ? "collapsed" : "expanded"}
+                    variants={{
+                      expanded: { height: 'auto', opacity: 1, overflow: 'hidden' },
+                      collapsed: { height: 0, opacity: 0, overflow: 'hidden' }
+                    }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    {category.items.map((item) => (
+                      <NavLink
+                        key={item.path}
+                        to={item.path}
+                        className={`flex items-center px-4 py-3 my-1 mx-2 rounded-md transition-all-200 ${location.pathname === item.path
+                          ? 'bg-primary-100 text-primary'
+                          : 'text-foreground hover:bg-default-100'
+                          }`}
+                        title={!isOpen ? item.title : undefined}
+                      >
+                        <Icon icon={item.icon} className="text-xl flex-shrink-0" />
+                        <motion.span
+                          className="ml-3 text-sm font-medium whitespace-nowrap"
+                          variants={textVariants}
+                          animate={isOpen ? 'open' : 'closed'}
+                          initial={isOpen ? 'open' : 'closed'}
+                        >
+                          {item.title}
+                        </motion.span>
+                      </NavLink>
+                    ))}
+                  </motion.div>
+                </div>
+              );
+            })
           ) : (
             <div className="px-4 py-8 text-center text-default-400 text-sm">
               <Icon icon="lucide:lock" className="text-3xl mx-auto mb-2" />
@@ -228,14 +244,13 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
         <div className="p-4">
           <NavLink
             to="/perfil"
-            className={`flex items-center px-4 py-3 rounded-md transition-all-200 ${
-              location.pathname === '/perfil'
-                ? 'bg-primary-100 text-primary'
-                : 'text-foreground hover:bg-default-100'
-            }`}
+            className={`flex items-center px-4 py-3 rounded-md transition-all-200 ${location.pathname === '/perfil'
+              ? 'bg-primary-100 text-primary'
+              : 'text-foreground hover:bg-default-100'
+              }`}
           >
             <Icon icon="lucide:user" className="text-xl" />
-            <motion.span 
+            <motion.span
               className="ml-3 text-sm font-medium"
               variants={textVariants}
               animate={isOpen ? 'open' : 'closed'}

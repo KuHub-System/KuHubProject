@@ -26,6 +26,7 @@ import {
 import {
   obtenerMovimientosPorProducto,
   crearMovimiento,
+  obtenerMovimientos, // ✅ Importamos esto para el filtro general
 } from './storage-service';
 
 import { obtenerUsuarioActualService } from './auth-service';
@@ -72,34 +73,105 @@ export const eliminarProductoService = async (id: string): Promise<boolean> => {
  */
 
 /**
- * Obtiene los movimientos de un producto (LOCAL - HARDCODED)
+ * Filtros para la búsqueda de movimientos
  */
-export const obtenerMovimientosProductoService = async (
-    productoId: string,
-    pagina: number = 1,
-    limite: number = 10
+export interface IFiltrosMovimiento {
+  productoId?: string;
+  fechaInicio?: string;
+  fechaFin?: string;
+  tipo?: 'Entrada' | 'Salida' | 'Merma';
+  orden?: 'reciente' | 'antiguo' | 'cantidad_asc' | 'cantidad_desc';
+}
+
+/**
+ * Obtiene los movimientos filtrados y paginados (LOCAL - HARDCODED)
+ */
+export const obtenerMovimientosFiltradosService = async (
+  filtros: IFiltrosMovimiento,
+  pagina: number = 1,
+  limite: number = 10
 ): Promise<{ movimientos: IMovimientoProducto[], total: number }> => {
-  console.log(`📋 Obteniendo movimientos del producto ${productoId} - Página ${pagina} (LOCAL)`);
+  console.log(`📋 Obteniendo movimientos filtrados`, filtros);
 
   // Simulamos un tiempo de respuesta
   await new Promise(resolve => setTimeout(resolve, 400));
 
-  // Obtener todos los movimientos del producto
-  const todosLosMovimientos = obtenerMovimientosPorProducto(productoId);
+  // 1. Obtener todos los movimientos (sin filtrar)
+  // Nota: Importamos obtenerMovimientos de storage-service (necesitamos agregarlo a los imports)
+  const todosLosMovimientos = obtenerMovimientos();
 
-  // Calcular paginación
-  const total = todosLosMovimientos.length;
+  // 2. Aplicar filtros
+  let movimientosFiltrados = [...todosLosMovimientos];
+
+  // Filtro por Producto
+  if (filtros.productoId && filtros.productoId !== 'todos') {
+    movimientosFiltrados = movimientosFiltrados.filter(m => m.productoId === filtros.productoId);
+  }
+
+  // Filtro por Tipo
+  if (filtros.tipo) {
+    movimientosFiltrados = movimientosFiltrados.filter(m => m.tipo === filtros.tipo);
+  }
+
+  // Filtro por Fechas
+  if (filtros.fechaInicio) {
+    const inicio = new Date(filtros.fechaInicio).getTime();
+    movimientosFiltrados = movimientosFiltrados.filter(m => new Date(m.fechaMovimiento).getTime() >= inicio);
+  }
+  if (filtros.fechaFin) {
+    const fin = new Date(filtros.fechaFin).getTime();
+    // Ajustar fin al final del día
+    const fechaFin = new Date(filtros.fechaFin);
+    fechaFin.setHours(23, 59, 59, 999);
+    const finMs = fechaFin.getTime();
+    movimientosFiltrados = movimientosFiltrados.filter(m => new Date(m.fechaMovimiento).getTime() <= finMs);
+  }
+
+  // 3. Ordenamiento
+  movimientosFiltrados.sort((a, b) => {
+    const fechaA = new Date(a.fechaMovimiento).getTime();
+    const fechaB = new Date(b.fechaMovimiento).getTime();
+
+    switch (filtros.orden) {
+      case 'reciente':
+        return fechaB - fechaA;
+      case 'antiguo':
+        return fechaA - fechaB;
+      case 'cantidad_asc':
+        return a.cantidad - b.cantidad;
+      case 'cantidad_desc':
+        return b.cantidad - a.cantidad;
+      default:
+        return fechaB - fechaA; // Default: más reciente primero
+    }
+  });
+
+  // 4. Paginación
+  const total = movimientosFiltrados.length;
   const inicio = (pagina - 1) * limite;
   const fin = inicio + limite;
 
-  const movimientosPaginados = todosLosMovimientos.slice(inicio, fin);
-
-  console.log(`✅ ${movimientosPaginados.length} movimientos de ${total} totales`);
+  const movimientosPaginados = movimientosFiltrados.slice(inicio, fin);
 
   return {
     movimientos: movimientosPaginados,
     total
   };
+};
+
+/**
+ * Obtiene los movimientos de un producto (Mantiene compatibilidad, usa el nuevo servicio)
+ */
+export const obtenerMovimientosProductoService = async (
+  productoId: string,
+  pagina: number = 1,
+  limite: number = 10
+): Promise<{ movimientos: IMovimientoProducto[], total: number }> => {
+  return obtenerMovimientosFiltradosService(
+    { productoId, orden: 'reciente' },
+    pagina,
+    limite
+  );
 };
 
 /**

@@ -121,136 +121,144 @@ const App: React.FC = () => {
           <AuthProvider>
             <Suspense fallback={<PageLoader />}>
               <Switch>
-          {/* Rutas de autenticación */}
-          <Route path="/login">
-            <AuthLayout>
-              <Suspense fallback={<PageLoader />}>
-                <LoginPage />
-              </Suspense>
-            </AuthLayout>
-          </Route>
+                {/* Rutas de autenticación */}
+                <Route path="/login">
+                  <AuthLayout>
+                    <Suspense fallback={<PageLoader />}>
+                      <LoginPage />
+                    </Suspense>
+                  </AuthLayout>
+                </Route>
 
-          {/* 🔥 RUTAS ACTUALIZADAS: Ahora usan pageId en lugar de roles fijos */}
-          
-          <ProtectedRoute path="/dashboard" pageId="dashboard">
-            <MainLayout>
-              <DashboardPage />
-            </MainLayout>
-          </ProtectedRoute>
+                {/* 🔥 RUTAS ACTUALIZADAS: Ahora usan pageId en lugar de roles fijos */}
 
-          <ProtectedRoute path="/inventario" pageId="inventario">
-            <MainLayout>
-              <InventarioPage />
-            </MainLayout>
-          </ProtectedRoute>
+                <ProtectedRoute path="/dashboard" pageId="dashboard">
+                  <MainLayout>
+                    <DashboardPage />
+                  </MainLayout>
+                </ProtectedRoute>
 
-          <ProtectedRoute path="/movimientos-producto/:id" pageId="inventario">
-            <MainLayout>
-              <MovimientosProductoPage />
-            </MainLayout>
-          </ProtectedRoute>
+                <ProtectedRoute path="/inventario" pageId="inventario">
+                  <MainLayout>
+                    <InventarioPage />
+                  </MainLayout>
+                </ProtectedRoute>
 
-          <ProtectedRoute path="/perfil">
-            <MainLayout>
-              <PerfilUsuarioPage />
-            </MainLayout>
-          </ProtectedRoute>
+                {/* 🔥 NUEVA RUTA GENERICA DE MOVIMIENTOS */}
+                <ProtectedRoute exact path="/movimientos" pageId="inventario">
+                  <MainLayout>
+                    <MovimientosProductoPage />
+                  </MainLayout>
+                </ProtectedRoute>
 
-          <ProtectedRoute path="/gestion-roles" pageId="gestion-roles">
-            <MainLayout>
-              <GestionRolesPage />
-            </MainLayout>
-          </ProtectedRoute>
+                {/* Mantenemos la ruta anterior por compatibilidad, pero ahora es opcional */}
+                <ProtectedRoute path="/movimientos-producto/:id" pageId="inventario">
+                  <MainLayout>
+                    <MovimientosProductoPage />
+                  </MainLayout>
+                </ProtectedRoute>
 
-          {/* 🔥 NUEVAS RUTAS AGREGADAS */}
-          <ProtectedRoute path="/gestion-usuarios" pageId="gestion-usuarios">
-            <MainLayout>
-              <GestionUsuariosPage />
-            </MainLayout>
-          </ProtectedRoute>
+                <ProtectedRoute path="/perfil">
+                  <MainLayout>
+                    <PerfilUsuarioPage />
+                  </MainLayout>
+                </ProtectedRoute>
 
-          <ProtectedRoute path="/gestion-solicitudes" pageId="gestion-solicitudes">
-            <MainLayout>
-              <GestionSolicitudesPage />
-            </MainLayout>
-          </ProtectedRoute>
+                <ProtectedRoute path="/gestion-roles" pageId="gestion-roles">
+                  <MainLayout>
+                    <GestionRolesPage />
+                  </MainLayout>
+                </ProtectedRoute>
 
-          <ProtectedRoute path="/solicitud" pageId="solicitud">
-            <MainLayout>
-              <SolicitudPage />
-            </MainLayout>
-          </ProtectedRoute>
+                {/* 🔥 NUEVAS RUTAS AGREGADAS */}
+                <ProtectedRoute path="/gestion-usuarios" pageId="gestion-usuarios">
+                  <MainLayout>
+                    <GestionUsuariosPage />
+                  </MainLayout>
+                </ProtectedRoute>
 
-          <ProtectedRoute path="/ramos-admin" pageId="ramos-admin">
-            <MainLayout>
-              <RamosAdminPage />
-            </MainLayout>
-          </ProtectedRoute>
+                <ProtectedRoute path="/gestion-solicitudes" pageId="gestion-solicitudes">
+                  <MainLayout>
+                    <GestionSolicitudesPage />
+                  </MainLayout>
+                </ProtectedRoute>
 
-          <ProtectedRoute path="/gestion-pedidos" pageId="gestion-pedidos">
-            <MainLayout>
-              <GestionPedidosPage />
-            </MainLayout>
-          </ProtectedRoute>
+                <ProtectedRoute path="/solicitud" pageId="solicitud">
+                  <MainLayout>
+                    <SolicitudPage />
+                  </MainLayout>
+                </ProtectedRoute>
 
-          <ProtectedRoute path="/conglomerado-pedidos" pageId="conglomerado-pedidos">
-            <MainLayout>
-              <ConglomeradoPedidosPage />
-            </MainLayout>
-          </ProtectedRoute>
+                <ProtectedRoute path="/ramos-admin" pageId="ramos-admin">
+                  <MainLayout>
+                    <RamosAdminPage />
+                  </MainLayout>
+                </ProtectedRoute>
 
-          <ProtectedRoute path="/gestion-proveedores" pageId="gestion-proveedores">
-            <MainLayout>
-              <GestionProveedoresPage />
-            </MainLayout>
-          </ProtectedRoute>
+                <ProtectedRoute path="/gestion-pedidos" pageId="gestion-pedidos">
+                  <MainLayout>
+                    <GestionPedidosPage />
+                  </MainLayout>
+                </ProtectedRoute>
 
-          <ProtectedRoute path="/bodega-transito" pageId="bodega-transito">
-            <MainLayout>
-              <BodegaTransitoPage />
-            </MainLayout>
-          </ProtectedRoute>
+                <ProtectedRoute path="/conglomerado-pedidos" pageId="conglomerado-pedidos">
+                  <MainLayout>
+                    <ConglomeradoPedidosPage />
+                  </MainLayout>
+                </ProtectedRoute>
 
-          <ProtectedRoute path="/gestion-recetas" pageId="gestion-recetas">
-            <MainLayout>
-              <GestionRecetasPage />
-            </MainLayout>
-          </ProtectedRoute>
+                <ProtectedRoute path="/gestion-proveedores" pageId="gestion-proveedores">
+                  <MainLayout>
+                    <GestionProveedoresPage />
+                  </MainLayout>
+                </ProtectedRoute>
 
-          {/* Ruta para página no encontrada */}
-          <Route path="/404">
-            <MainLayout>
-              <Suspense fallback={<PageLoader />}>
-                <NotFoundPage />
-              </Suspense>
-            </MainLayout>
-          </Route>
+                <ProtectedRoute path="/bodega-transito" pageId="bodega-transito">
+                  <MainLayout>
+                    <BodegaTransitoPage />
+                  </MainLayout>
+                </ProtectedRoute>
 
-          {/* 🔥 NUEVA: Página de sin acceso */}
-          <Route path="/sin-acceso">
-            <MainLayout>
-              <div className="flex flex-col items-center justify-center h-full p-8 text-center">
-                <div className="text-6xl mb-4">🚫</div>
-                <h1 className="text-2xl font-bold mb-2">Acceso Denegado</h1>
-                <p className="text-default-500 mb-4">
-                  No tienes permisos para acceder a esta página.
-                </p>
-                <p className="text-sm text-default-400">
-                  Si crees que esto es un error, contacta al administrador.
-                </p>
-              </div>
-            </MainLayout>
-          </Route>
+                <ProtectedRoute path="/gestion-recetas" pageId="gestion-recetas">
+                  <MainLayout>
+                    <GestionRecetasPage />
+                  </MainLayout>
+                </ProtectedRoute>
 
-          {/* 🔥 REDIRECCIÓN INTELIGENTE: Va a la primera página con permisos */}
-          <Route exact path="/">
-            <SmartRedirect />
-          </Route>
+                {/* Ruta para página no encontrada */}
+                <Route path="/404">
+                  <MainLayout>
+                    <Suspense fallback={<PageLoader />}>
+                      <NotFoundPage />
+                    </Suspense>
+                  </MainLayout>
+                </Route>
 
-          {/* Redirección a 404 para cualquier otra ruta */}
-          <Route path="*">
-            <Redirect to="/404" />
-          </Route>
+                {/* 🔥 NUEVA: Página de sin acceso */}
+                <Route path="/sin-acceso">
+                  <MainLayout>
+                    <div className="flex flex-col items-center justify-center h-full p-8 text-center">
+                      <div className="text-6xl mb-4">🚫</div>
+                      <h1 className="text-2xl font-bold mb-2">Acceso Denegado</h1>
+                      <p className="text-default-500 mb-4">
+                        No tienes permisos para acceder a esta página.
+                      </p>
+                      <p className="text-sm text-default-400">
+                        Si crees que esto es un error, contacta al administrador.
+                      </p>
+                    </div>
+                  </MainLayout>
+                </Route>
+
+                {/* 🔥 REDIRECCIÓN INTELIGENTE: Va a la primera página con permisos */}
+                <Route exact path="/">
+                  <SmartRedirect />
+                </Route>
+
+                {/* Redirección a 404 para cualquier otra ruta */}
+                <Route path="*">
+                  <Redirect to="/404" />
+                </Route>
               </Switch>
             </Suspense>
           </AuthProvider>

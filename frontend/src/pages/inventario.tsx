@@ -1,10 +1,10 @@
 import React from 'react';
-import { 
-  Table, 
-  TableHeader, 
-  TableColumn, 
-  TableBody, 
-  TableRow, 
+import {
+  Table,
+  TableHeader,
+  TableColumn,
+  TableBody,
+  TableRow,
   TableCell,
   Input,
   Button,
@@ -27,9 +27,9 @@ import { Icon } from '@iconify/react';
 import { useHistory } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { IProducto } from '../types/producto.types';
-import { 
-  obtenerProductosService, 
-  crearProductoService, 
+import {
+  obtenerProductosService,
+  crearProductoService,
   actualizarProductoService,
   eliminarProductoService,
 } from '../services/producto-service';
@@ -65,7 +65,7 @@ const InventarioPage: React.FC = () => {
   const [currentPage, setCurrentPage] = React.useState<number>(1);
   const [selectedCategoria, setSelectedCategoria] = React.useState<string>('todas');
   const rowsPerPage = 10;
-  
+
   const history = useHistory();
   const { isOpen, onOpen, onOpenChange } = useDisclosure();
   const { isOpen: isPedidoMasivoOpen, onOpen: onPedidoMasivoOpen, onOpenChange: onPedidoMasivoOpenChange } = useDisclosure();
@@ -78,7 +78,7 @@ const InventarioPage: React.FC = () => {
   const cargarProductos = React.useCallback(async () => {
     try {
       setIsLoading(true);
-      
+
       // Cargar productos desde el servicio (que usa storage-service internamente)
       const data = await obtenerProductosService();
       setProductos(data);
@@ -118,30 +118,30 @@ const InventarioPage: React.FC = () => {
    */
   React.useEffect(() => {
     let filtered = [...productos];
-    
+
     // Filtrar por término de búsqueda
     if (searchTerm) {
-      filtered = filtered.filter(producto => 
+      filtered = filtered.filter(producto =>
         producto.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
         producto.descripcion.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
-    
+
     // Filtrar por categoría o stock bajo
     if (selectedCategoria !== 'todas') {
       if (selectedCategoria === 'stock-bajo') {
         // Filtro especial para productos con stock bajo
-        filtered = filtered.filter(producto => 
+        filtered = filtered.filter(producto =>
           producto.stock <= producto.stockMinimo
         );
       } else {
         // Filtro normal por categoría
-        filtered = filtered.filter(producto => 
+        filtered = filtered.filter(producto =>
           producto.categoria === selectedCategoria
         );
       }
     }
-    
+
     setFilteredProductos(filtered);
     setCurrentPage(1); // Resetear a la primera página al filtrar
   }, [searchTerm, selectedCategoria, productos]);
@@ -169,7 +169,7 @@ const InventarioPage: React.FC = () => {
    * @param {string} id - ID del producto.
    */
   const verMovimientos = (id: string) => {
-    history.push(`/movimientos-producto/${id}`);
+    history.push(`/movimientos?productoId=${id}`);
   };
 
   /**
@@ -263,48 +263,48 @@ const InventarioPage: React.FC = () => {
               startContent={<Icon icon="lucide:search" className="text-default-400" />}
               className="w-full sm:w-64"
             />
-            
+
             <Dropdown>
               <DropdownTrigger>
-                <Button 
-                  variant="flat" 
+                <Button
+                  variant="flat"
                   startContent={<Icon icon="lucide:filter" />}
                 >
-                  {selectedCategoria === 'todas' 
-                    ? 'Todas las categorías' 
+                  {selectedCategoria === 'todas'
+                    ? 'Todas las categorías'
                     : selectedCategoria === 'stock-bajo'
-                    ? '⚠️ Stock Bajo'
-                    : selectedCategoria}
+                      ? '⚠️ Stock Bajo'
+                      : selectedCategoria}
                 </Button>
               </DropdownTrigger>
-              <DropdownMenu 
+              <DropdownMenu
                 aria-label="Categorías"
                 onAction={(key) => setSelectedCategoria(key as string)}
               >
                 {categorias.map((categoria) => (
                   <DropdownItem key={categoria}>
-                    {categoria === 'todas' 
-                      ? 'Todas las categorías' 
+                    {categoria === 'todas'
+                      ? 'Todas las categorías'
                       : categoria === 'stock-bajo'
-                      ? '⚠️ Stock Bajo'
-                      : categoria}
+                        ? '⚠️ Stock Bajo'
+                        : categoria}
                   </DropdownItem>
                 ))}
               </DropdownMenu>
             </Dropdown>
           </div>
-          
+
           <div className="flex gap-2">
-            <Button 
-              color="secondary" 
+            <Button
+              color="secondary"
               variant="flat"
               startContent={<Icon icon="lucide:shopping-cart" />}
               onPress={onPedidoMasivoOpen}
             >
               Realizar Pedido
             </Button>
-            <Button 
-              color="primary" 
+            <Button
+              color="primary"
               startContent={<Icon icon="lucide:plus" />}
               onPress={handleNuevoProducto}
             >
@@ -314,7 +314,7 @@ const InventarioPage: React.FC = () => {
         </div>
 
         {/* Tabla de productos */}
-        <Table 
+        <Table
           aria-label="Tabla de productos"
           removeWrapper
           bottomContent={
@@ -332,35 +332,41 @@ const InventarioPage: React.FC = () => {
             <TableColumn>NOMBRE</TableColumn>
             <TableColumn>CATEGORÍA</TableColumn>
             <TableColumn>STOCK</TableColumn>
+            <TableColumn>STOCK MÍNIMO</TableColumn>
             <TableColumn>UNIDAD</TableColumn>
             <TableColumn>ESTADO</TableColumn>
             <TableColumn>ACCIONES</TableColumn>
           </TableHeader>
-          <TableBody 
+          <TableBody
             isLoading={isLoading}
             loadingContent="Cargando productos..."
             emptyContent="No se encontraron productos"
           >
             {paginatedProductos.map((producto) => (
-              <TableRow key={producto.id}>
+              <TableRow
+                key={producto.id}
+                className="cursor-pointer hover:bg-default-100 transition-colors rounded-2xl"
+                onClick={() => verMovimientos(producto.id)}
+              >
                 <TableCell>{producto.nombre}</TableCell>
                 <TableCell>{producto.categoria}</TableCell>
                 <TableCell>{producto.stock}</TableCell>
+                <TableCell>{producto.stockMinimo}</TableCell>
                 <TableCell>{producto.unidadMedida}</TableCell>
                 <TableCell>{renderStockStatus(producto)}</TableCell>
                 <TableCell>
-                  <div className="flex gap-2">
-                    <Button 
-                      isIconOnly 
-                      variant="light" 
+                  <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
+                    <Button
+                      isIconOnly
+                      variant="light"
                       size="sm"
                       onPress={() => handleEditarProducto(producto)}
                     >
                       <Icon icon="lucide:edit" className="text-primary" />
                     </Button>
-                    <Button 
-                      isIconOnly 
-                      variant="light" 
+                    <Button
+                      isIconOnly
+                      variant="light"
                       size="sm"
                       onPress={() => verMovimientos(producto.id)}
                     >
@@ -393,8 +399,8 @@ const InventarioPage: React.FC = () => {
                 {modalMode === 'crear' ? 'Nuevo Producto' : 'Editar Producto'}
               </ModalHeader>
               <ModalBody>
-                <FormularioProducto 
-                  producto={productoSeleccionado} 
+                <FormularioProducto
+                  producto={productoSeleccionado}
                   onClose={onClose}
                   mode={modalMode}
                 />
@@ -408,7 +414,7 @@ const InventarioPage: React.FC = () => {
       <Modal isOpen={isPedidoMasivoOpen} onOpenChange={onPedidoMasivoOpenChange} size="4xl">
         <ModalContent>
           {(onClose) => (
-            <PedidoMasivoModal 
+            <PedidoMasivoModal
               productos={productos}
               onClose={onClose}
             />
@@ -461,7 +467,7 @@ const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto, onClo
 
     try {
       setIsLoading(true);
-      
+
       if (mode === 'crear') {
         // Crear nuevo producto usando el servicio
         const datosProducto = {
@@ -472,7 +478,7 @@ const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto, onClo
           stock: parseFloat(stock) || 0,
           stockMinimo: parseFloat(stockMinimo) || 0,
         };
-        
+
         await crearProductoService(datosProducto);
         toast.success('Producto creado exitosamente');
       } else {
@@ -480,7 +486,7 @@ const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto, onClo
         if (!producto?.id) {
           throw new Error('ID de producto no encontrado');
         }
-        
+
         const datosActualizacion = {
           id: producto.id,
           nombre: nombre.trim(),
@@ -490,14 +496,14 @@ const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto, onClo
           stock: parseFloat(stock) || 0,
           stockMinimo: parseFloat(stockMinimo) || 0,
         };
-        
+
         await actualizarProductoService(datosActualizacion);
         toast.success('Producto actualizado exitosamente');
       }
 
       // Despachar evento personalizado para notificar el cambio
       window.dispatchEvent(new Event('productosActualizados'));
-      
+
       onClose();
     } catch (error) {
       logger.error('Error al guardar producto:', error);
@@ -516,14 +522,14 @@ const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto, onClo
         onValueChange={setNombre}
         isRequired
       />
-      
+
       <Input
         label="Descripción"
         placeholder="Descripción del producto"
         value={descripcion}
         onValueChange={setDescripcion}
       />
-      
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="flex flex-col gap-2">
           <label className="text-sm font-medium">
@@ -545,7 +551,7 @@ const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto, onClo
             <option value="Vinos y Destilados">Vinos y Destilados</option>
           </select>
         </div>
-        
+
         <div className="flex flex-col gap-2">
           <label className="text-sm font-medium">
             Unidad de Medida <span className="text-danger">*</span>
@@ -565,7 +571,7 @@ const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto, onClo
           </select>
         </div>
       </div>
-      
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Input
           type="number"
@@ -576,7 +582,7 @@ const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto, onClo
           min="0"
           step="0.01"
         />
-        
+
         <Input
           type="number"
           label="Stock Mínimo"
@@ -587,7 +593,7 @@ const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto, onClo
           step="0.01"
         />
       </div>
-      
+
       <div className="flex justify-end gap-2 pt-4">
         <Button variant="flat" onPress={onClose} isDisabled={isLoading}>
           Cancelar
@@ -627,7 +633,7 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ productos, onClos
         cantidad: parseFloat(cantidad),
         notas: notas.trim() || undefined
       };
-      
+
       setItemsPedido([...itemsPedido, nuevoItem]);
       setProductoSeleccionado('');
       setCantidad('');
@@ -643,10 +649,10 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ productos, onClos
     try {
       // Aquí iría la lógica para procesar el pedido masivo
       logger.log('Procesando pedido masivo:', itemsPedido);
-      
+
       // Simular procesamiento
       await new Promise(resolve => setTimeout(resolve, 1000));
-      
+
       toast.success(`Pedido procesado exitosamente. ${itemsPedido.length} productos enviados a bodega de tránsito.`);
       onClose();
     } catch (error) {
@@ -687,7 +693,7 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ productos, onClos
                   </AutocompleteItem>
                 ))}
               </Autocomplete>
-              
+
               <Input
                 type="number"
                 label="Cantidad"
@@ -702,15 +708,15 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ productos, onClos
                   </span>
                 }
               />
-              
+
               <Input
                 label="Notas (opcional)"
                 placeholder="Observaciones"
                 value={notas}
                 onValueChange={setNotas}
               />
-              
-              <Button 
+
+              <Button
                 color="primary"
                 onPress={agregarProducto}
                 isDisabled={!productoSeleccionado || !cantidad || parseFloat(cantidad) <= 0}
@@ -740,7 +746,7 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ productos, onClos
                         <p className="text-sm text-default-500 mt-1">{item.notas}</p>
                       )}
                     </div>
-                    <Button 
+                    <Button
                       isIconOnly
                       variant="light"
                       color="danger"
@@ -773,7 +779,7 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ productos, onClos
         <Button variant="light" onPress={onClose}>
           Cancelar
         </Button>
-        <Button 
+        <Button
           color="primary"
           onPress={procesarPedido}
           isDisabled={itemsPedido.length === 0}
