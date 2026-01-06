@@ -1,11 +1,11 @@
 import React from 'react';
-import { useParams, useHistory } from 'react-router-dom';
-import { 
-  Table, 
-  TableHeader, 
-  TableColumn, 
-  TableBody, 
-  TableRow, 
+import { useParams, useHistory, useLocation } from 'react-router-dom';
+import {
+  Table,
+  TableHeader,
+  TableColumn,
+  TableBody,
+  TableRow,
   TableCell,
   Button,
   Pagination,
@@ -20,14 +20,17 @@ import {
   Input,
   Select,
   SelectItem,
-  useDisclosure
+  useDisclosure,
+  Autocomplete,
+  AutocompleteItem
 } from '@heroui/react';
 import { Icon } from '@iconify/react';
 import { motion } from 'framer-motion';
-import { 
-  obtenerProductoPorIdService, 
-  obtenerMovimientosProductoService,
-  crearMovimientoService
+import {
+  obtenerProductoPorIdService,
+  obtenerMovimientosFiltradosService,
+  crearMovimientoService,
+  obtenerProductosService
 } from '../services/producto-service';
 import { IProducto, IMovimientoProducto } from '../types/producto.types';
 
@@ -35,67 +38,114 @@ import { IProducto, IMovimientoProducto } from '../types/producto.types';
  * Interfaz para los parámetros de la URL.
  */
 interface MovimientosParams {
-  id: string;
+  id?: string;
+}
+
+/**
+ * Hook personalizado para obtener query params
+ */
+function useQuery() {
+  const { search } = useLocation();
+  return React.useMemo(() => new URLSearchParams(search), [search]);
 }
 
 /**
  * Página de movimientos de producto.
- * Muestra el historial de movimientos (entradas, salidas, mermas) de un producto específico.
- * 
- * @returns {JSX.Element} La página de movimientos de producto.
+ * Muestra el historial de movimientos con filtros avanzados.
  */
 const MovimientosProductoPage: React.FC = () => {
   const { id } = useParams<MovimientosParams>();
   const history = useHistory();
+  const query = useQuery();
+  const queryProductoId = query.get('productoId');
+
   const { isOpen, onOpen, onOpenChange } = useDisclosure();
-  
-  const [producto, setProducto] = React.useState<IProducto | null>(null);
+
+  // Estado de datos
+  const [productos, setProductos] = React.useState<IProducto[]>([]);
   const [movimientos, setMovimientos] = React.useState<IMovimientoProducto[]>([]);
   const [totalMovimientos, setTotalMovimientos] = React.useState<number>(0);
+  const [productoActual, setProductoActual] = React.useState<IProducto | null>(null);
+
+  // Estado de filtros
+  const [filtroProducto, setFiltroProducto] = React.useState<string | null>(id || queryProductoId || 'todos');
+  const [filtroTipo, setFiltroTipo] = React.useState<string>('todos');
+  const [filtroOrden, setFiltroOrden] = React.useState<'reciente' | 'antiguo' | 'cantidad_asc' | 'cantidad_desc'>('reciente');
+  const [filtroFecha, setFiltroFecha] = React.useState<string>('');
+
   const [currentPage, setCurrentPage] = React.useState<number>(1);
   const [isLoading, setIsLoading] = React.useState<boolean>(true);
   const [isLoadingMovimientos, setIsLoadingMovimientos] = React.useState<boolean>(true);
-  
+
   const rowsPerPage = 10;
 
   /**
-   * Carga los datos del producto al montar el componente.
+   * Carga la lista de productos para el filtro
    */
   React.useEffect(() => {
-    const cargarProducto = async () => {
+    const cargarProductos = async () => {
       try {
-        setIsLoading(true);
-        const data = await obtenerProductoPorIdService(id);
-        setProducto(data);
+        const data = await obtenerProductosService();
+        setProductos(data);
+
+        // Si hay un ID en la URL, buscamos ese producto para mostrar su info
+        const targetId = id || queryProductoId;
+        if (targetId) {
+          const prod = data.find(p => p.id === targetId);
+          if (prod) setProductoActual(prod);
+          setFiltroProducto(targetId);
+        }
       } catch (error) {
-        console.error('Error al cargar el producto:', error);
-      } finally {
-        setIsLoading(false);
+        console.error('Error al cargar productos:', error);
       }
     };
-
-    cargarProducto();
-  }, [id]);
+    cargarProductos();
+  }, [id, queryProductoId]);
 
   /**
-   * Carga los movimientos del producto cuando cambia la página.
+   * Carga los movimientos basado en filtros
    */
   React.useEffect(() => {
     const cargarMovimientos = async () => {
       try {
         setIsLoadingMovimientos(true);
-        const { movimientos, total } = await obtenerMovimientosProductoService(id, currentPage, rowsPerPage);
+
+        const { movimientos, total } = await obtenerMovimientosFiltradosService(
+          {
+            productoId: filtroProducto === 'todos' ? undefined : filtroProducto || undefined,
+            tipo: filtroTipo === 'todos' ? undefined : filtroTipo as any,
+            orden: filtroOrden,
+            fechaInicio: filtroFecha || undefined,
+            fechaFin: filtroFecha || undefined
+          },
+          currentPage,
+          rowsPerPage
+        );
+
         setMovimientos(movimientos);
         setTotalMovimientos(total);
       } catch (error) {
-        console.error('Error al cargar los movimientos:', error);
+        console.error('Error al cargar movimientos:', error);
       } finally {
         setIsLoadingMovimientos(false);
+        setIsLoading(false);
       }
     };
 
     cargarMovimientos();
-  }, [id, currentPage]);
+  }, [filtroProducto, filtroTipo, filtroOrden, filtroFecha, currentPage]);
+
+  /**
+   * Actualiza el producto actual cuando cambia el filtro de producto
+   */
+  React.useEffect(() => {
+    if (filtroProducto && filtroProducto !== 'todos') {
+      const prod = productos.find(p => p.id === filtroProducto);
+      setProductoActual(prod || null);
+    } else {
+      setProductoActual(null);
+    }
+  }, [filtroProducto, productos]);
 
   /**
    * Vuelve a la página de inventario.
@@ -104,39 +154,21 @@ const MovimientosProductoPage: React.FC = () => {
     history.push('/inventario');
   };
 
-  /**
-   * Renderiza un chip con el color correspondiente al tipo de movimiento.
-   * 
-   * @param {string} tipo - Tipo de movimiento.
-   * @returns {JSX.Element} Chip con el tipo de movimiento.
-   */
   const renderTipoMovimiento = (tipo: string) => {
     switch (tipo) {
-      case 'Entrada':
-        return <Chip color="success" size="sm">{tipo}</Chip>;
-      case 'Salida':
-        return <Chip color="primary" size="sm">{tipo}</Chip>;
-      case 'Merma':
-        return <Chip color="danger" size="sm">{tipo}</Chip>;
-      default:
-        return <Chip size="sm">{tipo}</Chip>;
+      case 'Entrada': return <Chip color="success" size="sm" variant="flat">Entrada</Chip>;
+      case 'Salida': return <Chip color="primary" size="sm" variant="flat">Salida</Chip>;
+      case 'Merma': return <Chip color="danger" size="sm" variant="flat">Merma</Chip>;
+      default: return <Chip size="sm">{tipo}</Chip>;
     }
   };
 
-  /**
-   * Formatea una fecha ISO a una cadena legible.
-   * 
-   * @param {string} fechaISO - Fecha en formato ISO.
-   * @returns {string} Fecha formateada.
-   */
   const formatearFecha = (fechaISO: string) => {
+    if (!fechaISO) return '-';
     const fecha = new Date(fechaISO);
     return fecha.toLocaleDateString('es-CL', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
+      day: '2-digit', month: '2-digit', year: 'numeric',
+      hour: '2-digit', minute: '2-digit'
     });
   };
 
@@ -148,69 +180,116 @@ const MovimientosProductoPage: React.FC = () => {
         transition={{ duration: 0.4 }}
         className="space-y-6"
       >
-        {/* Encabezado */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold mb-2">Movimientos de Producto</h1>
-            <p className="text-default-500">
-              Historial de entradas, salidas y mermas del producto seleccionado.
-            </p>
-          </div>
-          <Button 
-            variant="flat" 
-            startContent={<Icon icon="lucide:arrow-left" />}
-            onPress={volverAInventario}
-          >
-            Volver a Inventario
-          </Button>
-        </div>
+        {/* Encabezado y Filtros */}
+        <Card className="shadow-sm">
+          <CardBody className="p-4 space-y-4">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+              <div>
+                <h1 className="text-2xl font-bold">Movimientos de Inventario</h1>
+                <p className="text-small text-default-500">Gestione y visualice el historial de movimientos.</p>
+              </div>
+              <Button
+                variant="light"
+                startContent={<Icon icon="lucide:arrow-left" />}
+                onPress={volverAInventario}
+              >
+                Volver
+              </Button>
+            </div>
 
-        {/* Información del producto */}
-        {isLoading ? (
-          <div className="flex justify-center py-8">
-            <span className="loading loading-spinner loading-lg"></span>
-          </div>
-        ) : producto ? (
-          <Card className="shadow-sm">
-            <CardBody className="p-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div>
-                  <p className="text-sm text-default-500">Nombre</p>
-                  <p className="font-semibold">{producto.nombre}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-default-500">Categoría</p>
-                  <p className="font-semibold">{producto.categoria}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-default-500">Stock Actual</p>
-                  <p className="font-semibold">{producto.stock} {producto.unidadMedida}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-default-500">Stock Mínimo</p>
-                  <p className="font-semibold">{producto.stockMinimo} {producto.unidadMedida}</p>
-                </div>
-              </div>
-              
-              <div className="flex justify-end mt-4">
-                <Button 
-                  color="primary" 
-                  startContent={<Icon icon="lucide:plus" />}
-                  onPress={onOpen}
+            {/* Fila de Filtros */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+              {/* Filtro Producto */}
+              <div className="sm:col-span-2">
+                <Autocomplete
+                  label="Filtrar por Producto"
+                  placeholder="Todos los productos"
+                  selectedKey={filtroProducto}
+                  onSelectionChange={(key) => {
+                    setFiltroProducto(key as string);
+                    setCurrentPage(1);
+                  }}
+                  defaultItems={productos}
                 >
-                  Nuevo Movimiento
-                </Button>
+                  {(item) => <AutocompleteItem key={item.id}>{item.nombre}</AutocompleteItem>}
+                </Autocomplete>
               </div>
+
+              {/* Filtro Tipo */}
+              <Select
+                label="Tipo"
+                selectedKeys={[filtroTipo]}
+                onChange={(e) => {
+                  setFiltroTipo(e.target.value);
+                  setCurrentPage(1);
+                }}
+              >
+                <SelectItem key="todos">Todos</SelectItem>
+                <SelectItem key="Entrada">Entrada</SelectItem>
+                <SelectItem key="Salida">Salida</SelectItem>
+                <SelectItem key="Merma">Merma</SelectItem>
+              </Select>
+
+              {/* Filtro Orden */}
+              <Select
+                label="Orden"
+                selectedKeys={[filtroOrden]}
+                onChange={(e) => {
+                  setFiltroOrden(e.target.value as any);
+                  setCurrentPage(1);
+                }}
+              >
+                <SelectItem key="reciente">Más Recientes</SelectItem>
+                <SelectItem key="antiguo">Más Antiguos</SelectItem>
+                <SelectItem key="cantidad_asc">Menor Cantidad</SelectItem>
+                <SelectItem key="cantidad_desc">Mayor Cantidad</SelectItem>
+              </Select>
+
+              {/* Filtro Fecha */}
+              <Input
+                type="date"
+                label="Fecha Específica"
+                placeholder="Seleccione fecha"
+                value={filtroFecha}
+                max={new Date().toISOString().split('T')[0]} // Restringir a fecha actual o anterior
+                onValueChange={(val) => {
+                  setFiltroFecha(val);
+                  setCurrentPage(1);
+                }}
+              />
+            </div>
+          </CardBody>
+        </Card>
+
+        {/* Resumen del Producto (Solo si hay uno seleccionado) */}
+        {productoActual && (
+          <Card className="shadow-sm bg-primary-50 dark:bg-primary-900/20">
+            <CardBody className="py-3 px-6 flex-row items-center justify-between gap-4">
+              <div className="flex items-center gap-4">
+                <div className="p-2 bg-primary/10 rounded-lg">
+                  <Icon icon="lucide:package" className="text-primary text-xl" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold">{productoActual.nombre}</h3>
+                  <p className="text-sm text-default-500">Stock Actual: <span className="font-semibold">{productoActual.stock} {productoActual.unidadMedida}</span></p>
+                </div>
+              </div>
+              <Button
+                size="sm"
+                color="primary"
+                variant="flat"
+                onPress={() => {
+                  onOpen();
+                }}
+              >
+                Nuevo Movimiento
+              </Button>
             </CardBody>
           </Card>
-        ) : (
-          <div className="text-center py-8">
-            <p>Producto no encontrado</p>
-          </div>
         )}
 
         {/* Tabla de movimientos */}
-        <Table 
+        <Table
           aria-label="Tabla de movimientos"
           removeWrapper
           bottomContent={
@@ -225,21 +304,34 @@ const MovimientosProductoPage: React.FC = () => {
           }
         >
           <TableHeader>
+            <TableColumn>PRODUCTO</TableColumn>
+            <TableColumn>CATEGORÍA</TableColumn>
             <TableColumn>TIPO</TableColumn>
             <TableColumn>CANTIDAD</TableColumn>
             <TableColumn>FECHA</TableColumn>
             <TableColumn>RESPONSABLE</TableColumn>
             <TableColumn>OBSERVACIÓN</TableColumn>
           </TableHeader>
-          <TableBody 
+          <TableBody
             isLoading={isLoadingMovimientos}
             loadingContent="Cargando movimientos..."
             emptyContent="No se encontraron movimientos para este producto"
           >
             {movimientos.map((movimiento) => (
               <TableRow key={movimiento.id}>
+                <TableCell>
+                  <div className="flex flex-col">
+                    <span className="text-bold text-sm">{movimiento.productoNombre}</span>
+                  </div>
+                </TableCell>
+                <TableCell>
+                  {productos.find(p => p.id === movimiento.productoId)?.categoria || '-'}
+                </TableCell>
                 <TableCell>{renderTipoMovimiento(movimiento.tipo)}</TableCell>
-                <TableCell>{movimiento.cantidad} {producto?.unidadMedida}</TableCell>
+                <TableCell>{movimiento.cantidad} {
+                  // Intentar buscar la unidad del producto si no está disponible directamente
+                  productos.find(p => p.id === movimiento.productoId)?.unidadMedida || ''
+                }</TableCell>
                 <TableCell>{formatearFecha(movimiento.fechaMovimiento)}</TableCell>
                 <TableCell>{movimiento.responsable}</TableCell>
                 <TableCell>{movimiento.observacion}</TableCell>
@@ -253,10 +345,14 @@ const MovimientosProductoPage: React.FC = () => {
       <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
         <ModalContent>
           {(onClose) => (
-            <FormularioMovimiento 
-              productoId={id} 
-              onClose={onClose} 
-              unidadMedida={producto?.unidadMedida || ''}
+            <FormularioMovimiento
+              productoId={productoActual?.id || ''}
+              onClose={() => {
+                onClose();
+                // Necesitamos refrescar los movimientos y el producto
+                window.location.reload();
+              }}
+              unidadMedida={productoActual?.unidadMedida || ''}
             />
           )}
         </ModalContent>
@@ -318,8 +414,8 @@ const FormularioMovimiento: React.FC<FormularioMovimientoProps> = ({ productoId,
       <ModalHeader>Nuevo Movimiento</ModalHeader>
       <ModalBody>
         <div className="space-y-4">
-          <Select 
-            label="Tipo de Movimiento" 
+          <Select
+            label="Tipo de Movimiento"
             selectedKeys={[tipo]}
             onChange={(e) => setTipo(e.target.value as 'Entrada' | 'Salida' | 'Merma')}
           >
@@ -327,7 +423,7 @@ const FormularioMovimiento: React.FC<FormularioMovimientoProps> = ({ productoId,
             <SelectItem key="Salida">Salida</SelectItem>
             <SelectItem key="Merma">Merma</SelectItem>
           </Select>
-          
+
           <Input
             type="number"
             label="Cantidad"
@@ -337,7 +433,7 @@ const FormularioMovimiento: React.FC<FormularioMovimientoProps> = ({ productoId,
             min="1"
             endContent={<span className="text-default-400">{unidadMedida}</span>}
           />
-          
+
           <Input
             label="Observación"
             placeholder="Ingrese una observación"
@@ -350,8 +446,8 @@ const FormularioMovimiento: React.FC<FormularioMovimientoProps> = ({ productoId,
         <Button variant="flat" onPress={onClose}>
           Cancelar
         </Button>
-        <Button 
-          color="primary" 
+        <Button
+          color="primary"
           onPress={handleSubmit}
           isLoading={isLoading}
           isDisabled={isLoading}

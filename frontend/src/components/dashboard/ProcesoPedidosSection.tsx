@@ -83,11 +83,7 @@ export const ProcesoPedidosSection: React.FC<ProcesoPedidosSectionProps> = ({
   showCotizacion = false,
   showOrdenFinal = false,
 }) => {
-  const semanas = React.useMemo(() => Array.from({ length: 18 }, (_, index) => index + 1), []);
-  const semanaSeleccionadaKeys = React.useMemo(
-    () => (semanaSeleccionada ? new Set([semanaSeleccionada.toString()]) : new Set<string>()),
-    [semanaSeleccionada]
-  );
+
 
   return (
     <motion.div
@@ -108,7 +104,7 @@ export const ProcesoPedidosSection: React.FC<ProcesoPedidosSectionProps> = ({
               </p>
             </div>
             {estadoProceso.activo && estadoProceso.semanaSeleccionada && (
-              <Chip 
+              <Chip
                 color="primary"
                 variant="flat"
                 size="lg"
@@ -131,7 +127,7 @@ export const ProcesoPedidosSection: React.FC<ProcesoPedidosSectionProps> = ({
         </CardHeader>
         <CardBody className="px-4 pb-4 space-y-6">
           <div className="relative h-2 bg-default-200 rounded-full mt-2">
-            <motion.div 
+            <motion.div
               className="absolute h-full bg-gradient-to-r from-primary-400 to-primary-600 rounded-full"
               initial={{ width: 0 }}
               animate={{ width: `${((estadoProceso.paso - 1) / 5) * 100}%` }}
@@ -139,14 +135,13 @@ export const ProcesoPedidosSection: React.FC<ProcesoPedidosSectionProps> = ({
             />
             <div className="flex justify-between items-center absolute w-full -top-3">
               {pasos.map((step) => (
-                <motion.div 
+                <motion.div
                   key={step}
-                  className={`w-10 h-10 rounded-full border-3 flex items-center justify-center text-xs font-bold z-10 shadow-lg ${
-                    estadoProceso.paso >= step
-                      ? 'bg-primary-500 border-primary-500 text-white' 
-                      : 'bg-white dark:bg-zinc-800 border-default-300 text-default-500'
-                  }`}
-                  animate={{ 
+                  className={`w-10 h-10 rounded-full border-3 flex items-center justify-center text-xs font-bold z-10 shadow-lg ${estadoProceso.paso >= step
+                    ? 'bg-primary-500 border-primary-500 text-white'
+                    : 'bg-white dark:bg-zinc-800 border-default-300 text-default-500'
+                    }`}
+                  animate={{
                     scale: estadoProceso.paso === step ? [1, 1.1, 1] : 1
                   }}
                   transition={{
@@ -172,86 +167,68 @@ export const ProcesoPedidosSection: React.FC<ProcesoPedidosSectionProps> = ({
           </div>
 
           {!estadoProceso.activo ? (
-            <div className="grid grid-cols-1 md:grid-cols-[2fr_1fr] gap-4 items-end">
-              <Select
-                label="Semana académica a procesar"
-                placeholder="Selecciona la semana (1 - 18)"
-                selectedKeys={semanaSeleccionadaKeys}
-                onSelectionChange={(keys) => {
-                  const value = getFirstSelectionValue(keys);
-                  onSemanaSeleccionadaChange(value ? parseInt(value, 10) : null);
-                }}
-              >
-                {semanas.map((semana) => {
-                  const label = `Semana ${semana}`;
-                  return (
-                    <SelectItem key={semana.toString()} textValue={label}>
-                      {label}
-                    </SelectItem>
-                  );
-                })}
-              </Select>
+            <div className="flex justify-end w-full">
               <Button
                 color="primary"
                 size="lg"
                 startContent={<Icon icon="lucide:play" />}
                 onPress={onIniciarProceso}
-                isDisabled={semanaSeleccionada === null}
+                className="w-full sm:w-auto"
               >
                 Iniciar proceso
               </Button>
             </div>
           ) : (
             <div className="space-y-4">
-            {solicitudesPendientesCount > 0 && estadoProceso.paso === 2 && (
-              <motion.div
-                initial={{ scale: 0.95 }}
-                animate={{ scale: [1, 1.02, 1] }}
-                transition={{ duration: 2, repeat: Infinity }}
-                className="h-full"
-              >
-                <Card className="bg-warning-50 dark:bg-warning-900/20 border-2 border-warning-500 h-full">
-                  <CardBody className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                    <div className="flex items-center gap-3">
-                      <Icon icon="lucide:alert-triangle" className="text-warning text-2xl" />
-                      <div>
-                        <p className="font-semibold text-warning-700 dark:text-warning-400">
-                          ⚠️ {solicitudesPendientesCount} solicitud{solicitudesPendientesCount !== 1 ? 'es' : ''} pendiente{solicitudesPendientesCount !== 1 ? 's' : ''} de revisar
-                        </p>
-                        <p className="text-sm text-warning-600 dark:text-warning-500">
-                          Revisa cada solicitud antes de avanzar con la semana {estadoProceso.semanaSeleccionada}.
-                        </p>
+              {solicitudesPendientesCount > 0 && estadoProceso.paso === 2 && (
+                <motion.div
+                  initial={{ scale: 0.95 }}
+                  animate={{ scale: [1, 1.02, 1] }}
+                  transition={{ duration: 2, repeat: Infinity }}
+                  className="h-full"
+                >
+                  <Card className="bg-warning-50 dark:bg-warning-900/20 border-2 border-warning-500 h-full">
+                    <CardBody className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                      <div className="flex items-center gap-3">
+                        <Icon icon="lucide:alert-triangle" className="text-warning text-2xl" />
+                        <div>
+                          <p className="font-semibold text-warning-700 dark:text-warning-400">
+                            ⚠️ {solicitudesPendientesCount} solicitud{solicitudesPendientesCount !== 1 ? 'es' : ''} pendiente{solicitudesPendientesCount !== 1 ? 's' : ''} de revisar
+                          </p>
+                          <p className="text-sm text-warning-600 dark:text-warning-500">
+                            Revisa cada solicitud antes de avanzar con la semana {estadoProceso.semanaSeleccionada}.
+                          </p>
+                        </div>
                       </div>
-                    </div>
-                    <div className="flex justify-end sm:ml-auto">
-                      <Button
-                        color="warning"
-                        variant="flat"
-                        onPress={onVerPendientes}
-                        startContent={<Icon icon="lucide:eye" />}
-                      >
-                        Ver pendientes
-                      </Button>
-                    </div>
+                      <div className="flex justify-end sm:ml-auto">
+                        <Button
+                          color="warning"
+                          variant="flat"
+                          onPress={onVerPendientes}
+                          startContent={<Icon icon="lucide:eye" />}
+                        >
+                          Ver pendientes
+                        </Button>
+                      </div>
+                    </CardBody>
+                  </Card>
+                </motion.div>
+              )}
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Card className="h-full bg-primary-50 dark:bg-primary-900/20 border border-primary-200">
+                  <CardBody className="space-y-1">
+                    <p className="text-sm text-default-500">Semana en proceso</p>
+                    <p className="font-semibold text-lg">Semana {estadoProceso.semanaSeleccionada ?? '—'}</p>
                   </CardBody>
                 </Card>
-              </motion.div>
-            )}
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Card className="h-full bg-primary-50 dark:bg-primary-900/20 border border-primary-200">
-                <CardBody className="space-y-1">
-                  <p className="text-sm text-default-500">Semana en proceso</p>
-                  <p className="font-semibold text-lg">Semana {estadoProceso.semanaSeleccionada ?? '—'}</p>
-                </CardBody>
-              </Card>
-              <Card className="h-full bg-primary-50 dark:bg-primary-900/10 border border-primary-200">
-                <CardBody className="space-y-1">
-                  <p className="text-sm text-default-500">Solicitudes pendientes</p>
-                  <p className="font-semibold text-lg">{solicitudesPendientesCount}</p>
-                </CardBody>
-              </Card>
-            </div>
+                <Card className="h-full bg-primary-50 dark:bg-primary-900/10 border border-primary-200">
+                  <CardBody className="space-y-1">
+                    <p className="text-sm text-default-500">Solicitudes pendientes</p>
+                    <p className="font-semibold text-lg">{solicitudesPendientesCount}</p>
+                  </CardBody>
+                </Card>
+              </div>
 
               <div className="flex justify-between items-center">
                 <p className="text-sm text-default-500">
