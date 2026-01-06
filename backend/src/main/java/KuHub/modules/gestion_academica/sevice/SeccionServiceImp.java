@@ -326,21 +326,30 @@ public class SeccionServiceImp implements SeccionService{
             throw new GestionAcademicaException("Debe indicar una asignatura válida");
         }
 
-        /**Validar duplicidad de nombre de la seccion en la misma asignatura*/
+
+/**Validar duplicidad de nombre de la seccion en la misma asignatura*/
         if (dto.getNombreSeccion() != null && !dto.getNombreSeccion().isBlank()) {
-            if(!seccion.getNombreSeccion().equals(StringUtils.capitalizarPalabras(dto.getNombreSeccion()))){
-                if(seccionRepository.existsByAsignaturaTrueAndSeccionTrueAndNombreSeccionIlike(
-                        dto.getIdAsignatura(),
-                        StringUtils.normalizeSpaces(dto.getNombreSeccion())
-                )){
-                    throw new GestionAcademicaException("Ya existe una seccion con el nombre: " + dto.getNombreSeccion()
-                            + " en misma asignatura la asignatura: " + dto.getIdAsignatura()
+            String nuevoNombreNormalizado = StringUtils.normalizeSpaces(dto.getNombreSeccion());
+
+            // Buscar si existe otra sección con el mismo nombre en la misma asignatura
+            Optional<Seccion> seccionConMismoNombre = seccionRepository
+                    .findByAsignaturaIdAsignaturaAndActivoTrueAndNombreSeccionIgnoreCase(
+                            dto.getIdAsignatura(),
+                            nuevoNombreNormalizado
                     );
-                }else {
-                    seccion.setNombreSeccion(StringUtils.normalizeSpaces(dto.getNombreSeccion()));
-                    dto.setNombreSeccion(seccion.getNombreSeccion());
-                }
+
+            // Si existe una sección con ese nombre Y no es la misma que estoy actualizando
+            if (seccionConMismoNombre.isPresent() &&
+                    !seccionConMismoNombre.get().getIdSeccion().equals(dto.getIdSeccion())) {
+                throw new GestionAcademicaException(
+                        "Ya existe otra seccion con el nombre: " + dto.getNombreSeccion() +
+                                " en la asignatura: " + dto.getIdAsignatura()
+                );
             }
+
+            // Actualizar el nombre manteniendo el formato original (solo normalizando espacios)
+            seccion.setNombreSeccion(nuevoNombreNormalizado);
+            dto.setNombreSeccion(seccion.getNombreSeccion());
         }
 
         /**Validar existencia de usuario y que sea docente o profesor*/

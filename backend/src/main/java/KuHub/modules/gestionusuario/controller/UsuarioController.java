@@ -86,8 +86,8 @@ public class UsuarioController {
     }
 
     @GetMapping("/docentes-activos")
-    public ResponseEntity<List<UsuarioResponseDTO>> obtenerDocentesYProfesoresActivos(){
-        List<UsuarioResponseDTO> usuarios = usuarioService.obtenerDocentesYProfesoresActivos();
+    public ResponseEntity<List<UserIdAndCompleteNameDTO>> obtenerDocentesYProfesoresActivos(){
+        List<UserIdAndCompleteNameDTO> usuarios = usuarioService.obtenerDocentesYProfesoresActivos();
         return ResponseEntity.ok(usuarios);
 
     }

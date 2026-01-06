@@ -8,7 +8,7 @@ import lombok.*;
 @AllArgsConstructor@ToString
 public class UserIdAndCompleteNameDTO {
     @NotNull
-    private Integer idProfesorACargo;
+    private Integer idProfODocente;
     @NotEmpty
     private String nombreCompleto;
 }
