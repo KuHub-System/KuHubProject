@@ -83,6 +83,11 @@ public class ProductoServiceImpl implements ProductoService{
         return productoRepository.existsByNombreProducto(nombreProducto);
     }
 
+    @Transactional(readOnly = true)
+    @Override
+    public Boolean existProductoById (Integer id){
+        return productoRepository.existsById(id);
+    }
 
     @Transactional
     @Override

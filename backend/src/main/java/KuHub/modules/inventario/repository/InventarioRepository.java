@@ -13,8 +13,6 @@ import java.util.Optional;
 @Repository
 public interface InventarioRepository extends JpaRepository<Inventario, Integer> {
 
-    @Query(value = "SELECT setval('inventario_id_inventario_seq', (SELECT COALESCE(MAX(id_inventario), 1) FROM inventario))", nativeQuery = true)
-    Integer syncSeq();
 
     @Query("SELECT i FROM Inventario i JOIN i.producto p WHERE p.activo = :activo")
     List<Inventario> findInventoriesWithProductsActive(@Param("activo") Boolean activo);
@@ -44,7 +42,7 @@ public interface InventarioRepository extends JpaRepository<Inventario, Integer>
                     nativeQuery = true)
     List<InventoryWithProductResponseAnswerUpdateDTO> findAllActiveInventoryOrderedByName();
 
-
+    boolean existsByIdInventario(Integer idInventario);
 
 
 }

@@ -164,6 +164,12 @@ public class UsuarioServiceImpl implements UsuarioService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public Boolean existeUsuarioActivo (Integer id){
+        return usuarioRepository.existsUsuarioByIdUsuarioAndActivoTrue(id);
+    }
+
+    @Override
     @Transactional
     public UsuarioResponseDTO crear(UsuarioRequestDTO usuarioRequestDTO) {
         // Validar que el email no exista

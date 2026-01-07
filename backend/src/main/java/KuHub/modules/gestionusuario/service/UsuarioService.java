@@ -65,7 +65,7 @@ public interface UsuarioService {
      */
     List<UsuarioResponseDTO> obtenerPorRol(Integer idRol);
 
-
+    Boolean existeUsuarioActivo (Integer id);
 
     /**
      * Crea un nuevo usuario
