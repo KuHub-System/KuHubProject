@@ -383,10 +383,18 @@ public class SeccionServiceImp implements SeccionService{
 
 
         /** Procesar cambios en bloques horarios */
-        if (dto.getBloquesHorarios() != null && !dto.getBloquesHorarios().isEmpty()) {
+        if (dto.getBloquesHorarios() != null) {
 
             // Obtener reservas actuales de la sección
             List<ReservaSala> reservasActuales = reservaSalaService.findAllReserveByIdSeccion(dto.getIdSeccion());
+
+            // Si el array viene vacío, eliminar todas las reservas
+            if (dto.getBloquesHorarios().isEmpty()) {
+                for (ReservaSala reserva : reservasActuales) {
+                    reservaSalaService.deleteReserveById(reserva.getIdReservaSala());
+                }
+                return dto; // Retornar inmediatamente, no hay nada más que procesar
+            }
 
             // Crear un mapa de reservas actuales con clave única: idSala-diaSemana-numeroBloque
             Map<String, ReservaSala> reservasActualesMap = reservasActuales.stream()
@@ -405,11 +413,15 @@ public class SeccionServiceImp implements SeccionService{
                 ReservaSala.DiaSemana diaSemanaEnum =
                         ReservaSala.DiaSemana.valueOf(B.getDiaSemana().name().toUpperCase());
 
-                // Para crear sala nueva, usar un identificador temporal
-                String clave = (B.getIdSala() != null ? B.getIdSala() : "NUEVA-" + B.getCodSala()) + "-" +
-                        diaSemanaEnum.name() + "-" +
-                        B.getNumeroBloque();
-                reservasNuevasKeys.add(clave);
+                // Solo usar idSala si existe, no generar claves temporales aquí
+                if (B.getIdSala() != null) {
+                    String clave = B.getIdSala() + "-" +
+                            diaSemanaEnum.name() + "-" +
+                            B.getNumeroBloque();
+                    reservasNuevasKeys.add(clave);
+                }
+                // Si idSala es null, significa que se va a crear una sala nueva,
+                // por lo tanto no puede existir en reservasActuales y no necesitamos la clave
             }
 
             // Identificar y eliminar reservas que ya no están
@@ -468,7 +480,7 @@ public class SeccionServiceImp implements SeccionService{
                         );
                     }
 
-                    esNuevaReserva = true;
+                    esNuevaReserva = true; // Siempre es nueva si acabamos de crear la sala
 
                 } else {
 
