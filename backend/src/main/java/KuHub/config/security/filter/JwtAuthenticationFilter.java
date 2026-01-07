@@ -1,7 +1,7 @@
 package KuHub.config.security.filter;
 
-import KuHub.modules.gestionusuario.entity.Usuario;
-import KuHub.modules.gestionusuario.repository.UsuarioRepository;
+import KuHub.modules.gestion_usuario.entity.Usuario;
+import KuHub.modules.gestion_usuario.repository.UsuarioRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;

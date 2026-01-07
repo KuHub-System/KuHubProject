@@ -1,10 +1,10 @@
 package KuHub.config;
 
 import KuHub.modules.gestion_academica.exceptions.GestionAcademicaException;
-import KuHub.modules.gestionusuario.exceptions.*;
+import KuHub.modules.gestion_usuario.exceptions.*;
 import KuHub.modules.producto.exceptions.ProductoException;
 import KuHub.modules.producto.exceptions.ProductoNotFoundException;
-import KuHub.modules.receta.exceptions.RecetaException;
+import KuHub.modules.gestion_receta.exceptions.RecetaException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;

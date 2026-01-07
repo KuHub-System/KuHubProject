@@ -1,7 +1,7 @@
 package KuHub.modules.gestion_academica.sevice;
 
 import KuHub.modules.gestion_academica.entity.AsignaturaProfesorCargo;
-import KuHub.modules.gestionusuario.entity.Usuario;
+import KuHub.modules.gestion_usuario.entity.Usuario;
 
 public interface AsignaturaProfesorCargoService {
 

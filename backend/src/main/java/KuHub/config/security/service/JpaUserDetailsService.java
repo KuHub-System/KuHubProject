@@ -1,7 +1,7 @@
 package KuHub.config.security.service;
 
-import KuHub.modules.gestionusuario.entity.Usuario;
-import KuHub.modules.gestionusuario.repository.UsuarioRepository;
+import KuHub.modules.gestion_usuario.entity.Usuario;
+import KuHub.modules.gestion_usuario.repository.UsuarioRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;

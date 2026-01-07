@@ -2,7 +2,7 @@ package KuHub.config.security;
 
 import KuHub.config.security.filter.JwtAuthenticationFilter;
 import KuHub.config.security.filter.JwtValidationFilter;
-import KuHub.modules.gestionusuario.repository.UsuarioRepository;
+import KuHub.modules.gestion_usuario.repository.UsuarioRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;

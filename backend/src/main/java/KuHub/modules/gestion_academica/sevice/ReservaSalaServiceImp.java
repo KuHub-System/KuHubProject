@@ -4,7 +4,7 @@ import KuHub.modules.gestion_academica.dtos.dtoentity.ReservaSalaEntityResponseD
 import KuHub.modules.gestion_academica.dtos.projection.NumberBlockProjection;
 import KuHub.modules.gestion_academica.entity.ReservaSala;
 import KuHub.modules.gestion_academica.repository.ReservaSalaRepository;
-import KuHub.modules.receta.exceptions.RecetaException;
+import KuHub.modules.gestion_receta.exceptions.RecetaException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

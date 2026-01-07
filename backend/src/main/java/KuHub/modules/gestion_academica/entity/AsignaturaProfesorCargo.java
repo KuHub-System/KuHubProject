@@ -1,6 +1,6 @@
 package KuHub.modules.gestion_academica.entity;
 
-import KuHub.modules.gestionusuario.entity.Usuario;
+import KuHub.modules.gestion_usuario.entity.Usuario;
 import jakarta.persistence.*;
 import lombok.*;
 
