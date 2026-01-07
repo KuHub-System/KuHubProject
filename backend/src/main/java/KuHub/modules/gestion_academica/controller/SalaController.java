@@ -46,7 +46,12 @@ public class SalaController {
                 .body(salaService.save(sala));
     }
 
-
+    @PutMapping("/update-sala/")
+    public ResponseEntity<Sala> updateRoom(@RequestBody Sala sala){
+        return ResponseEntity
+                .status(200)
+                .body(salaService.updateRoom(sala));
+    }
 
     @PutMapping("/soft-delete/{id}")
     public ResponseEntity<?> softDelete(

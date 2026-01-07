@@ -11,5 +11,5 @@ public interface SalaService {
     Boolean existsByCodSala(String codSala);
     Sala save (Sala sala);
     void softDelete(Integer id);
-
+    Sala updateRoom( Sala salaActualizada);
 }

@@ -78,7 +78,53 @@ public class SalaServiceImp implements SalaService {
         return salaRepository.save(sala);
     }
 
-    //falta actualizar datos entity...
+
+    @Transactional
+    @Override
+    public Sala updateRoom( Sala s) {
+
+        // Buscar la sala existente
+        Sala salaExistente = salaRepository.findById(s.getIdSala())
+                .orElseThrow(() -> new GestionAcademicaException("La sala con id: " + s.getIdSala() + " no existe"));
+
+        // Normalizar código solo si no es null
+        String parsearCod = s.getCodSala() != null
+                ? StringUtils.normalizeSpaces(s.getCodSala())
+                : null;
+
+        // Normalizar nombre solo si no es null
+        String parsearNombre = s.getNombreSala() != null
+                ? StringUtils.normalizeSpaces(s.getNombreSala())
+                : null;
+
+        // Validación de código duplicado (ignorando la sala actual)
+        if (parsearCod != null) {
+            if (salaRepository.existsByCodSalaIgnoreCaseAndIdSalaNot(parsearCod, s.getIdSala())) {
+                throw new GestionAcademicaException("Ya existe otra sala con el código: " + s.getCodSala());
+            }
+        }
+
+        // Validación de nombre duplicado (ignorando la sala actual)
+        if (parsearNombre != null) {
+            if (salaRepository.existsByNombreSalaIgnoreCaseAndIdSalaNot(parsearNombre, s.getIdSala())) {
+                throw new GestionAcademicaException("Ya existe otra sala con el nombre: " + s.getNombreSala());
+            }
+        }
+
+        // Actualizar solo los campos que no son null
+        if (parsearCod != null) {
+            salaExistente.setCodSala(parsearCod);
+        }
+
+        if (parsearNombre != null) {
+            salaExistente.setNombreSala(parsearNombre);
+        }
+
+        // Siempre mantener activo en true en actualizaciones
+        salaExistente.setActivo(true);
+
+        return salaRepository.save(salaExistente);
+    }
 
     @Transactional
     @Override
