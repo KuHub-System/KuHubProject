@@ -42,6 +42,8 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Integer> {
      */
     boolean existsByUsername(String username);
 
+    boolean existsUsuarioByIdUsuarioAndActivoTrue(Integer idUsuario);
+
     /**
      * Obtiene todos los usuarios activos
      */

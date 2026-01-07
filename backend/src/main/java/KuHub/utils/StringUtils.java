@@ -25,4 +25,41 @@ public class StringUtils {
         replaceAll("\\s+", " ") reduce múltiples espacios internos a uno solo*/
         return texto.trim().replaceAll("\\s+", " ");
     }
+
+    /**
+     * Elimina las tildes de un texto.
+     * Ejemplo: "MÁS RECIENTES" -> "MAS RECIENTES"
+     */
+    public static String removeAccents(String texto) {
+        if (texto == null) return null;
+
+        // Método manual (Rápido y explícito, como pediste)
+        return texto
+                .replace("Á", "A").replace("á", "a")
+                .replace("É", "E").replace("é", "e")
+                .replace("Í", "I").replace("í", "i")
+                .replace("Ó", "O").replace("ó", "o")
+                .replace("Ú", "U").replace("ú", "u");
+
+        // Opción PRO: Si prefieres usar java.text.Normalizer (cubre más casos):
+        // String nfdNormalizedString = Normalizer.normalize(texto, Normalizer.Form.NFD);
+        // Pattern pattern = Pattern.compile("\\p{InCombiningDiacriticalMarks}+");
+        // return pattern.matcher(nfdNormalizedString).replaceAll("");
+    }
+
+    /**
+     * Prepara un texto "humano" para ser usado como clave de Enum o DB.
+     * Pasa a mayúsculas.
+     * Reemplaza espacios por guion bajo (_).
+     * Quita las tildes.
+     * Ejemplo: "Más Recientes" -> "MAS_RECIENTES"
+     */
+    public static String normalizeToEnumKey(String texto) {
+        if (texto == null || texto.isBlank()) return null;
+
+        String normalizado = texto.trim().toUpperCase();
+        normalizado = normalizado.replace(" ", "_");
+
+        return removeAccents(normalizado);
+    }
 }

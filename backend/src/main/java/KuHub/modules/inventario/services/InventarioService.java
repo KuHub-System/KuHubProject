@@ -16,7 +16,7 @@ public interface InventarioService {
     List<InventoryWithProductResponseAnswerUpdateDTO> findAllActiveInventoryOrderedByName();
     InventoryWithProductResponseAnswerUpdateDTO updateInventoryWithProduct(InventoryWithProductResponseAnswerUpdateDTO inventarioRequest);
     InventoryWithProductCreateDTO save (InventoryWithProductCreateDTO inventarioRequest);
-    //Inventario getInventarioByIdProducto(Long idProducto);
+    boolean existInventory (Integer id);
     //Producto findProductoByIdInventario(Long idInventario);
     void updateActiveValueProductFalse(Integer id);
     //InventarioDTO update(Long id,InventarioDTO dto);

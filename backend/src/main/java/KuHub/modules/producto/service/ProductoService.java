@@ -12,6 +12,7 @@ public interface ProductoService {
     List<Producto> findByActivo(Boolean activo);
 
     Boolean existProductByName (String nombreProducto);
+    Boolean existProductoById (Integer id);
 
     Producto findById(Integer id);
     Producto findByIdProductoAndActivoTrue(Integer id_producto);

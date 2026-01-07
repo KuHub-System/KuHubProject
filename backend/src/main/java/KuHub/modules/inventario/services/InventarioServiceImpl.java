@@ -2,7 +2,9 @@ package KuHub.modules.inventario.services;
 
 import KuHub.modules.inventario.dtos.InventoryWithProductCreateDTO;
 import KuHub.modules.inventario.dtos.InventoryWithProductResponseAnswerUpdateDTO;
+import KuHub.modules.inventario.dtos.MotionCreateDTO;
 import KuHub.modules.inventario.entity.Inventario;
+import KuHub.modules.inventario.entity.Movimiento;
 import KuHub.modules.inventario.exceptions.InventarioException;
 import KuHub.modules.inventario.repository.InventarioRepository;
 import KuHub.modules.producto.entity.Producto;
@@ -27,6 +29,8 @@ public class InventarioServiceImpl implements InventarioService {
     @Autowired
     private ProductoRepository productoRepository;
 
+    @Autowired
+    private MovimientoService movimientoService;
 
     @Transactional(readOnly = true)
     @Override
@@ -54,6 +58,12 @@ public class InventarioServiceImpl implements InventarioService {
         return inventarioRepository.findByIdInventoryWithProductActive(idInventario,activo).orElseThrow(
                 () -> new InventarioException("No se encontro el producto con el id: " + idInventario)
         );
+    }
+
+    @Transactional(readOnly = true)
+    @Override
+    public boolean existInventory (Integer id){
+        return inventarioRepository.existsById(id);
     }
 
     @Transactional(readOnly = true)
@@ -131,10 +141,15 @@ public class InventarioServiceImpl implements InventarioService {
         producto.setUnidadMedida(req.getUnidadMedida());
         productoRepository.save(producto);
 
-        // ---- ACTUALIZAR INVENTARIO ----
-        inventario.setStock(req.getStock());
-        inventario.setStockLimitMin(req.getStockLimitMin());
-        inventarioRepository.save(inventario);
+        //-----CREAR MOVIMIENTO DE AJUSTE AL MOMENTO DEFAULT POR ADMIN QUE REALIZA EL UPDATE
+        movimientoService.saveMotion(new MotionCreateDTO(
+                1,
+                inventario.getIdInventario(),
+                req.getStock(),
+                req.getStockLimitMin(),
+                "AJUSTE",
+                null
+        ));
 
         return req;
     }
