@@ -2,7 +2,7 @@ package KuHub.modules.gestion_academica.controller;
 
 import KuHub.modules.gestion_academica.entity.Sala;
 import KuHub.modules.gestion_academica.exceptions.GestionAcademicaException;
-import KuHub.modules.gestion_academica.sevice.SalaService;
+import KuHub.modules.gestion_academica.service.SalaService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;

@@ -149,7 +149,6 @@ public class SpringSecurityConfig {
                         // ========================================
                         // Login - manejado por JwtAuthenticationFilter
                         .requestMatchers(HttpMethod.POST, "/login").permitAll()
-
                         // Preflight requests de CORS (OPTIONS)
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
@@ -192,6 +191,10 @@ public class SpringSecurityConfig {
                         // ========================================
                         // ENDPOINTS DE USUARIOS
                         // ========================================
+
+                        // Permite que cualquier usuario autenticado cambie su propia contraseña
+                        .requestMatchers(HttpMethod.PATCH, "/api/v*/usuarios/cambiar-contrasena").authenticated()
+
                         // ADMINISTRADOR tiene acceso total (v1 y v2)
                         .requestMatchers(HttpMethod.GET, "/api/v*/usuarios").hasRole("ADMINISTRADOR")
                         .requestMatchers(HttpMethod.GET, "/api/v*/usuarios/**").hasRole("ADMINISTRADOR")

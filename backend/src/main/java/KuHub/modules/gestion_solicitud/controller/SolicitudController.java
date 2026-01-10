@@ -1,0 +1,41 @@
+package KuHub.modules.gestion_solicitud.controller;
+
+import KuHub.modules.gestion_solicitud.dtos.CheckSectionAvailabilityRequestDTO;
+import KuHub.modules.gestion_solicitud.dtos.SolicitationAnswerDTO;
+import KuHub.modules.gestion_solicitud.dtos.SolicitationCreateRequestDTO;
+import KuHub.modules.gestion_solicitud.dtos.proyeccion.SectionAvailabilityView;
+import KuHub.modules.gestion_solicitud.service.SolicitudService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/api/v1/solicitud")
+@Validated
+public class SolicitudController {
+
+    @Autowired
+    private SolicitudService solicitudService;
+
+    @PostMapping("/check-section-availability")
+    public ResponseEntity<List<SectionAvailabilityView>> checkSectionAvailability(
+            @RequestBody CheckSectionAvailabilityRequestDTO r
+            ){
+        return ResponseEntity
+                .status(200)
+                .body(solicitudService.checkSectionAvailability(r));
+    }
+
+    @PostMapping("/save-solicitation")
+    public ResponseEntity<List<SolicitationAnswerDTO>> saveSolicitation(
+            @RequestBody SolicitationCreateRequestDTO r
+            ){
+        return ResponseEntity
+                .status(201)
+                .body(solicitudService.saveSolicitation(r));
+    }
+
+}

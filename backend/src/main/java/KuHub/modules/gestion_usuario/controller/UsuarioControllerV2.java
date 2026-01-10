@@ -11,6 +11,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import org.springframework.security.core.Authentication;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.hateoas.CollectionModel;
 import org.springframework.hateoas.EntityModel;
@@ -21,7 +22,6 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
-import java.util.Map;
 
 import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.linkTo;
 import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.methodOn;
@@ -372,32 +372,29 @@ public class UsuarioControllerV2 {
         return ResponseEntity.noContent().build();
     }
 
-    @PatchMapping("/{id}/cambiar-contrasena")
+    @PatchMapping("/cambiar-contrasena")
     @Operation(
-            summary = "Cambiar contraseña",
-            description = "Permite actualizar la contraseña de un usuario"
+            summary = "Cambiar contraseña (Seguro)",
+            description = "Cambia la contraseña del usuario autenticado."
     )
-    @ApiResponses(value = {
-            @ApiResponse(
-                    responseCode = "204",
-                    description = "Contraseña cambiada exitosamente"
-            ),
-            @ApiResponse(
-                    responseCode = "404",
-                    description = "Usuario no encontrado"
-            ),
-            @ApiResponse(
-                    responseCode = "400",
-                    description = "Nueva contraseña inválida"
-            )
-    })
     public ResponseEntity<Void> cambiarContrasena(
-            @Parameter(description = "ID del usuario", required = true)
-            @PathVariable Integer id,
-            @RequestBody Map<String, String> body) {
-        
-        String nuevaContrasena = body.get("nuevaContrasena");
-        usuarioService.cambiarContrasena(id, nuevaContrasena);
+            @Valid @RequestBody ChangePasswordRequestDTO request,
+            Authentication authentication
+    ) {
+        // Ahora sí existe la variable 'authentication'
+        String username = authentication.getName();
+
+        // Buscamos el ID real
+        Integer idUsuario = usuarioService.buscarIdPorUsername(username);
+
+        // Ejecutamos el cambio
+        usuarioService.cambiarContrasena(
+                idUsuario,
+                request.getPasswordActual(),
+                request.getNuevaPassword(),
+                request.getConfirmacionPassword()
+        );
+
         return ResponseEntity.noContent().build();
     }
 

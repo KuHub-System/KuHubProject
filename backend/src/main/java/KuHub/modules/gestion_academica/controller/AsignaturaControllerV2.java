@@ -6,7 +6,7 @@ import KuHub.modules.gestion_academica.dtos.dtomodel.CourseUpdateDTO;
 import KuHub.modules.gestion_academica.dtos.dtomodel.CourserAnswerDTGOD;
 import KuHub.modules.gestion_academica.entity.Asignatura;
 import KuHub.modules.gestion_academica.exceptions.GestionAcademicaException;
-import KuHub.modules.gestion_academica.sevice.AsignaturaService;
+import KuHub.modules.gestion_academica.service.AsignaturaService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;

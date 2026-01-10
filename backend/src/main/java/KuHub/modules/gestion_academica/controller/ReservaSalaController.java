@@ -2,7 +2,7 @@ package KuHub.modules.gestion_academica.controller;
 
 import KuHub.modules.gestion_academica.dtos.dtoentity.ReservaSalaEntityResponseDTO;
 import KuHub.modules.gestion_academica.entity.ReservaSala;
-import KuHub.modules.gestion_academica.sevice.ReservaSalaService;
+import KuHub.modules.gestion_academica.service.ReservaSalaService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;

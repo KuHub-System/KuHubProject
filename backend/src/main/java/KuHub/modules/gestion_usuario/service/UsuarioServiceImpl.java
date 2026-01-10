@@ -9,10 +9,12 @@ import KuHub.modules.gestion_usuario.repository.UsuarioRepository;
 import KuHub.utils.ImagenUtils;
 import KuHub.utils.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder; // ⚠️ NUEVO IMPORT
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.io.IOException;
 import java.time.LocalDateTime;
@@ -39,6 +41,21 @@ public class UsuarioServiceImpl implements UsuarioService {
     // ⚠️ NUEVO: Inyectamos el PasswordEncoder (BCrypt)
     @Autowired
     private PasswordEncoder passwordEncoder;
+
+    @Override
+    @Transactional(readOnly = true)
+    public Integer buscarIdPorUsername(String identifier) {
+        // 1. Intentamos buscar por el campo 'username'
+        Usuario usuario = usuarioRepository.findByUsername(identifier).orElse(null);
+
+        // 2. Si no lo encontramos, intentamos por 'email' (por si el token trae el email)
+        if (usuario == null) {
+            usuario = usuarioRepository.findByEmailIgnoreCase(identifier)
+                    .orElseThrow(() -> new UsuarioNotFoundException("username/email", identifier));
+        }
+
+        return usuario.getIdUsuario();
+    }
 
     @Override
     @Transactional(readOnly = true)
@@ -336,14 +353,29 @@ public class UsuarioServiceImpl implements UsuarioService {
     }
 
     @Override
-    @Transactional
-    public void cambiarContrasena(Integer idUsuario, String nuevaContrasena) {
-        Usuario usuario = usuarioRepository.findById(idUsuario)
-                .orElseThrow(() -> new UsuarioNotFoundException(idUsuario));
+    @Transactional // Importante para asegurar la operación en BDD
+    public void cambiarContrasena(Integer idUsuario, String passwordActual, String nuevaPassword, String confirmacionPassword) {
 
-        // ⚠️ MODIFICADO: Hashear con BCrypt
-        String contrasenaHasheada = passwordEncoder.encode(nuevaContrasena);
-        usuario.setContrasena(contrasenaHasheada);
+        // 1. Validar que la nueva contraseña y la confirmación coinciden
+        if (!nuevaPassword.equals(confirmacionPassword)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Las contraseñas nuevas no coinciden");
+        }
+
+        // 2. Buscar al usuario en la BDD
+        Usuario usuario = usuarioRepository.findById(idUsuario)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuario no encontrado"));
+
+        // 3. Validar que la contraseña ACTUAL ingresada sea correcta
+        // passwordEncoder.matches(textoPlano, hashGuardado)
+        if (!passwordEncoder.matches(passwordActual, usuario.getContrasena())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La contraseña actual es incorrecta");
+        }
+
+        // 4. Encriptar la nueva contraseña
+        String passwordEncriptada = passwordEncoder.encode(nuevaPassword);
+
+        // 5. Actualizar y guardar
+        usuario.setContrasena(passwordEncriptada);
         usuarioRepository.save(usuario);
     }
 

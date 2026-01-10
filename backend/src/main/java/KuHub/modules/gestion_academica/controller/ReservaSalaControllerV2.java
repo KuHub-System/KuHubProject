@@ -3,7 +3,7 @@ package KuHub.modules.gestion_academica.controller;
 import KuHub.modules.gestion_academica.assemblers.ReservaSalaModelAssembler;
 import KuHub.modules.gestion_academica.dtos.dtoentity.ReservaSalaEntityResponseDTO;
 import KuHub.modules.gestion_academica.entity.ReservaSala;
-import KuHub.modules.gestion_academica.sevice.ReservaSalaService;
+import KuHub.modules.gestion_academica.service.ReservaSalaService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;

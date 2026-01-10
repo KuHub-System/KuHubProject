@@ -7,11 +7,11 @@ import KuHub.modules.gestion_receta.entity.Receta;
 import java.util.List;
 
 public interface RecetaService {
-    void syncSeqReceta();
     List<Receta> findAll();
     List<Receta>findAllByActivoRecetaTrue();
     Receta findById(Integer id);
     Receta findByIdRecetaAndActivoRecetaIsTrue(Integer idReceta);
+    String findNombreById (Integer id);
     RecipeWithDetailsAnswerUpdateDTO findRecipeWithDetailsActiveInTrue(Integer id);
     Receta save (Receta receta);
     RecipeWithDetailsCreateDTO saveRecipeWithDetails (RecipeWithDetailsCreateDTO dto);

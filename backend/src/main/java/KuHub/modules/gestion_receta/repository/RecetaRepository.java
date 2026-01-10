@@ -3,6 +3,7 @@ package KuHub.modules.gestion_receta.repository;
 import KuHub.modules.gestion_receta.entity.Receta;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -44,7 +45,9 @@ public interface RecetaRepository extends JpaRepository<Receta,Integer> {
 
     List<Receta> findAllByActivoRecetaTrue();
 
-
+    // JPQL personalizado: Solo selecciona la columna nombre
+    @Query("SELECT r.nombreReceta FROM Receta r WHERE r.idReceta = :id")
+    Optional<String> findNombreById(@Param("id") Integer id);
 
 
 }

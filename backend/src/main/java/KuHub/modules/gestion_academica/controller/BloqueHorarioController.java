@@ -2,7 +2,7 @@ package KuHub.modules.gestion_academica.controller;
 
 import KuHub.modules.gestion_academica.dtos.dtomodel.FilterTimeBlockRequestDTO;
 import KuHub.modules.gestion_academica.entity.BloqueHorario;
-import KuHub.modules.gestion_academica.sevice.BloqueHorarioService;
+import KuHub.modules.gestion_academica.service.BloqueHorarioService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
