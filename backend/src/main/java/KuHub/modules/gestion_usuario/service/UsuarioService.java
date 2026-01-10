@@ -11,6 +11,8 @@ import java.util.List;
  */
 public interface UsuarioService {
 
+    Integer buscarIdPorUsername(String username);
+
     /**
      * Obtiene todos los usuarios
      */
@@ -95,7 +97,7 @@ public interface UsuarioService {
     /**
      * Cambia la contraseña de un usuario
      */
-    void cambiarContrasena(Integer idUsuario, String nuevaContrasena);
+    void cambiarContrasena(Integer idUsuario, String passwordActual, String nuevaPassword, String confirmacionPassword);;
 
     /**
      * Actualiza la foto de perfil

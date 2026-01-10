@@ -3,7 +3,7 @@ package KuHub.modules.gestion_academica.controller;
 import KuHub.modules.gestion_academica.assemblers.BloqueHorarioModelAssembler;
 import KuHub.modules.gestion_academica.dtos.dtomodel.FilterTimeBlockRequestDTO;
 import KuHub.modules.gestion_academica.entity.BloqueHorario;
-import KuHub.modules.gestion_academica.sevice.BloqueHorarioService;
+import KuHub.modules.gestion_academica.service.BloqueHorarioService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;

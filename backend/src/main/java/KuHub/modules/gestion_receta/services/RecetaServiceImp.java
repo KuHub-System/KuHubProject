@@ -36,13 +36,6 @@ public class RecetaServiceImp implements RecetaService{
     private static final Logger log = LoggerFactory.getLogger(RecetaServiceImp.class);
 
 
-    @Transactional
-    @Override
-    public void syncSeqReceta() {
-        Integer nuevoValor = recetaRepository.syncSeqReceta();
-        System.out.println("Secencia sincronizada. Valor:" + nuevoValor);
-    }
-
     @Transactional(readOnly = true)
     @Override
     public List<Receta> findAll() {
@@ -101,6 +94,12 @@ public class RecetaServiceImp implements RecetaService{
                 false
         );
 
+    }
+
+    @Transactional(readOnly = true)
+    @Override
+    public String findNombreById (Integer id){
+        return findByIdRecetaAndActivoRecetaIsTrue(id).getNombreReceta();
     }
 
     /**
@@ -183,7 +182,6 @@ public class RecetaServiceImp implements RecetaService{
     @Transactional
     @Override
     public Receta save (Receta receta){
-        syncSeqReceta();
         //Validar que el nombre de la receta no existe para seguir las validaciones
         String capNombreReceta = StringUtils.capitalize(receta.getNombreReceta());
         if (recetaRepository.existsByNombreRecetaAndActivoRecetaTrue(capNombreReceta)) {
@@ -231,15 +229,13 @@ public class RecetaServiceImp implements RecetaService{
 
         //INICIO GUARDADOS FILTRADOS POR VALIDACIONES
         //GUARDAR RECETA
-        syncSeqReceta();
         Receta recetaGuardada = save(new Receta(
                 null,                       // idReceta (autogenerado)
                 dto.getNombreReceta(),              // nombreReceta
                 dto.getDescripcionReceta(),         // descripcionReceta
                 dto.getInstrucciones(),             // instruccionesReceta
                 true,                               // activoReceta
-                Receta.EstadoRecetaType.ACTIVO,     // estadoReceta
-                null                                // fotoReceta (nula por ahora)
+                Receta.EstadoRecetaType.ACTIVO     // estadoReceta
         ));
         //GUARDAR LOS DETALLES
 

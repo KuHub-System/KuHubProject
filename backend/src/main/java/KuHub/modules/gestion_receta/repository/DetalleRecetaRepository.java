@@ -3,6 +3,7 @@ package KuHub.modules.gestion_receta.repository;
 import KuHub.modules.gestion_receta.entity.DetalleReceta;
 import KuHub.modules.gestion_receta.entity.Receta;
 import KuHub.modules.gestion_receta.projection.DetalleRecetaIdProductoProjection;
+import KuHub.modules.gestion_receta.projection.RecipeDetailsView;
 import feign.Param;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -68,6 +69,18 @@ public interface DetalleRecetaRepository extends JpaRepository<DetalleReceta, In
     List<DetalleRecetaIdProductoProjection> findAllIdProductoAndCantidadByReceta(
             @Param("idReceta") Integer idReceta
     );
+
+    List<DetalleReceta> findDetalleRecetaByReceta_IdReceta(Integer idReceta);
+
+    @Query("SELECT " +
+            "  dr.idDetalleReceta AS idDetalleReceta, " +
+            "  dr.producto.idProducto AS idProducto, " +
+            "  dr.cantProducto AS cantProducto, " +
+            "  dr.producto.unidadMedida AS unidadMedida " +
+            "FROM DetalleReceta dr " +
+            "WHERE dr.receta.idReceta = :idReceta " +
+            "AND dr.producto.activo = true")
+    List<RecipeDetailsView> findActiveDetailsByRecipeId(@Param("idReceta") Integer idReceta);
 
     /**
      * Actualiza la cantidad de un producto específico dentro de una receta.

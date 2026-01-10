@@ -16,13 +16,6 @@ public class DetalleRecetaServiceImp implements DetalleRecetaService{
     @Autowired
     private DetalleRecetaRepository detalleRecetaRepository;
 
-    @Transactional
-    @Override
-    public void syncSeqDetalleReceta(){
-        Integer nuevoValor = detalleRecetaRepository.syncSeqDetalleReceta();
-        System.out.println("Secuencia sincronizada. Nuevo valor: " + nuevoValor);
-    }
-
     @Transactional(readOnly = true)
     @Override
     public DetalleReceta findById(Integer id){
@@ -53,6 +46,12 @@ public class DetalleRecetaServiceImp implements DetalleRecetaService{
 
     @Transactional(readOnly = true)
     @Override
+    public List<DetalleReceta> findAllByIdReceta(Integer id){
+        return detalleRecetaRepository.findDetalleRecetaByReceta_IdReceta(id);
+    }
+
+    @Transactional(readOnly = true)
+    @Override
     public List<DetalleRecetaIdProductoProjection> findAllIdProductoAndCantidadByReceta(
             Integer idReceta){
         return detalleRecetaRepository.findAllIdProductoAndCantidadByReceta(idReceta);
@@ -61,7 +60,6 @@ public class DetalleRecetaServiceImp implements DetalleRecetaService{
     @Transactional
     @Override
     public DetalleReceta save (DetalleReceta dr){
-        syncSeqDetalleReceta();
         return detalleRecetaRepository.save(dr);
     }
 
@@ -69,7 +67,6 @@ public class DetalleRecetaServiceImp implements DetalleRecetaService{
     @Override
     public void updateQuantityByIdRecetaAndIdProducto(Integer idReceta, Integer idProducto, Double cantidad){
         detalleRecetaRepository.updateQuantityByIdRecetaAndIdProducto(idReceta,idProducto,cantidad );
-
     }
 
     @Transactional

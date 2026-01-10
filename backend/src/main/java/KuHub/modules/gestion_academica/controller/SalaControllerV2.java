@@ -3,7 +3,7 @@ package KuHub.modules.gestion_academica.controller;
 import KuHub.modules.gestion_academica.assemblers.SalaModelAssembler;
 import KuHub.modules.gestion_academica.entity.Sala;
 import KuHub.modules.gestion_academica.exceptions.GestionAcademicaException;
-import KuHub.modules.gestion_academica.sevice.SalaService;
+import KuHub.modules.gestion_academica.service.SalaService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;

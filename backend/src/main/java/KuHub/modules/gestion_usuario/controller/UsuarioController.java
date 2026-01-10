@@ -7,6 +7,7 @@ import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -151,15 +152,45 @@ public class UsuarioController {
     }
 
     /**
-     * PATCH /api/v1/usuarios/{id}/cambiar-contrasena
      * Cambia la contraseña de un usuario
      */
-    @PatchMapping("/{id}/cambiar-contrasena")
+    @PatchMapping("/cambiar-contrasena")
     public ResponseEntity<Void> cambiarContrasena(
-            @PathVariable Integer id,
-            @RequestBody Map<String, String> body) {
-        String nuevaContrasena = body.get("nuevaContrasena");
-        usuarioService.cambiarContrasena(id, nuevaContrasena);
+            @Valid @RequestBody ChangePasswordRequestDTO request,
+            Authentication authentication
+    ) {
+        System.out.println("=== INICIO cambiarContrasena ===");
+        System.out.println("Authentication: " + authentication);
+        System.out.println("Principal: " + (authentication != null ? authentication.getPrincipal() : "null"));
+        System.out.println("Authorities: " + (authentication != null ? authentication.getAuthorities() : "null"));
+        System.out.println("Is Authenticated: " + (authentication != null ? authentication.isAuthenticated() : "false"));
+
+        if (authentication == null || !authentication.isAuthenticated()) {
+            System.out.println("❌ ERROR: Authentication es NULL o no está autenticado");
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        String usernameDelToken = authentication.getName();
+        System.out.println("✅ Usuario autenticado: " + usernameDelToken);
+        System.out.println("✅ Datos recibidos: PassActual=" + request.getPasswordActual() + ", Nueva=" + request.getNuevaPassword());
+
+        Integer idUsuarioReal = usuarioService.buscarIdPorUsername(usernameDelToken);
+
+        if (idUsuarioReal == null) {
+            System.out.println("❌ ERROR: No se encontró ID para el usuario: " + usernameDelToken);
+            return ResponseEntity.notFound().build();
+        }
+
+        System.out.println("✅ ID encontrado en BD: " + idUsuarioReal);
+
+        usuarioService.cambiarContrasena(
+                idUsuarioReal,
+                request.getPasswordActual(),
+                request.getNuevaPassword(),
+                request.getConfirmacionPassword()
+        );
+
+        System.out.println("✅ Contraseña cambiada exitosamente");
         return ResponseEntity.noContent().build();
     }
 

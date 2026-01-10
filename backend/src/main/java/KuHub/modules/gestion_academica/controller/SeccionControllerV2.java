@@ -6,7 +6,7 @@ import KuHub.modules.gestion_academica.dtos.dtomodel.SectionAnswerUpdateDTO;
 import KuHub.modules.gestion_academica.dtos.dtomodel.SectionCreateDTO;
 import KuHub.modules.gestion_academica.entity.Seccion;
 import KuHub.modules.gestion_academica.exceptions.GestionAcademicaException;
-import KuHub.modules.gestion_academica.sevice.SeccionService;
+import KuHub.modules.gestion_academica.service.SeccionService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;

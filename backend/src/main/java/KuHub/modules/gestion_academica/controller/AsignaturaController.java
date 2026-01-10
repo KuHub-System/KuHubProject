@@ -5,7 +5,7 @@ import KuHub.modules.gestion_academica.dtos.dtomodel.CourseUpdateDTO;
 import KuHub.modules.gestion_academica.dtos.dtomodel.CourserAnswerDTGOD;
 import KuHub.modules.gestion_academica.entity.Asignatura;
 import KuHub.modules.gestion_academica.exceptions.GestionAcademicaException;
-import KuHub.modules.gestion_academica.sevice.AsignaturaService;
+import KuHub.modules.gestion_academica.service.AsignaturaService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;

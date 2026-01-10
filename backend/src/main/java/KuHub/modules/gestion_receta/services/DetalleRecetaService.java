@@ -9,8 +9,6 @@ import java.util.List;
 
 public interface DetalleRecetaService {
 
-    void syncSeqDetalleReceta();
-
     DetalleReceta findById(Integer id);
 
     List<DetalleRecetaIdProductoProjection> findAllIdProductoAndCantidadByReceta(Integer idReceta);
@@ -18,6 +16,8 @@ public interface DetalleRecetaService {
     List<DetalleReceta> findAll();
 
     List<DetalleReceta> findAllByReceta(Receta receta);
+
+    List<DetalleReceta> findAllByIdReceta(Integer id);
 
     DetalleReceta save(DetalleReceta detalleReceta);
 

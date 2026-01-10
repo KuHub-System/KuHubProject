@@ -43,16 +43,6 @@ public class Receta {
     )
     private EstadoRecetaType estadoReceta;
 
-    @Lob
-    @Column(
-            name = "foto_receta",
-            columnDefinition = "BYTEA",
-            insertable = false,
-            updatable = false
-    )
-    private byte[] fotoReceta;
-
-
 
     public enum EstadoRecetaType {
         ACTIVO,

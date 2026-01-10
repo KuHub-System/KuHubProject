@@ -138,4 +138,5 @@ public interface SeccionRepository extends JpaRepository <Seccion, Integer> {
             Integer idAsignatura,
             String nombreSeccion
     );
+
 }
