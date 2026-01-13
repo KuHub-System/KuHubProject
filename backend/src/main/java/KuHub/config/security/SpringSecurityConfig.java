@@ -226,13 +226,28 @@ public class SpringSecurityConfig {
                         // ========================================
                         // ENDPOINTS DE INVENTARIO
                         // ========================================
-                        // Inventario - lectura pública, modificación restringida
+                        // 1. Lectura: Permitida para todos (Público o Autenticados)
                         .requestMatchers(HttpMethod.GET, "/api/v*/inventario/**").permitAll()
 
-                        .requestMatchers(HttpMethod.POST, "/api/v*/inventario/**").hasAnyRole("ADMINISTRADOR", "ENCARGADO_BODEGA")
-                        .requestMatchers(HttpMethod.PUT, "/api/v*/inventario/**").hasAnyRole("ADMINISTRADOR", "ENCARGADO_BODEGA")
-                        .requestMatchers(HttpMethod.DELETE, "/api/v*/inventario/**").hasRole("ADMINISTRADOR")
+                        // 2. Creación (POST): Administradores, Co-Admins, Gestores y Encargados de Bodega
+                        .requestMatchers(HttpMethod.POST, "/api/v*/inventario/**")
+                        .hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR", "GESTOR_PEDIDOS", "ENCARGADO_BODEGA")
 
+                        // 3. Modificación (PUT): Los mismos que pueden crear (incluyendo el ajuste de stock)
+                        .requestMatchers(HttpMethod.PUT, "/api/v*/inventario/**")
+                        .hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR", "GESTOR_PEDIDOS", "ENCARGADO_BODEGA")
+
+                        // 4. Eliminación (DELETE): Acceso restringido solo a la jerarquía más alta
+                        .requestMatchers(HttpMethod.DELETE, "/api/v*/inventario/**")
+                        .hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR")
+
+                        // ========================================
+                        // ENDPOINTS DE MOVIMIENTOS DE INVENTARIO
+                        // ========================================
+
+                        // Centraliza la seguridad solo para las peticiones POST de movimientos
+                        .requestMatchers(HttpMethod.POST, "/api/v1/movimiento/**")
+                        .hasAnyRole("ADMINISTRADOR", "GESTOR_PEDIDOS", "ENCARGADO_BODEGA", "ASISTENTE_BODEGA")
 
                         // ========================================
                         // ENDPOINTS DE RECETAS

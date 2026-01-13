@@ -21,5 +21,4 @@ public class InventoryWithProductResponseAnswerUpdateDTO {
     private  Double stock;
     @NotNull
     private  Double stockLimitMin;
-    private  String estadoStock;
 }

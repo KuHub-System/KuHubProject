@@ -32,6 +32,9 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Integer> {
      */
     Optional<Usuario> findByUsername(String username);
 
+    @Query("SELECT u FROM Usuario u WHERE LOWER(u.username) = LOWER(:identificador) OR LOWER(u.email) = LOWER(:identificador)")
+    Optional<Usuario> findByIdentificador(@Param("identificador") String identificador);
+
     /**
      * Verifica si existe un usuario con ese email
      */

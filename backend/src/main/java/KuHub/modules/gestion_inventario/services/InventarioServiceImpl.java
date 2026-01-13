@@ -10,12 +10,15 @@ import KuHub.modules.producto.entity.Producto;
 import KuHub.modules.producto.repository.ProductoRepository;
 import KuHub.modules.producto.service.ProductoService;
 import KuHub.utils.StringUtils;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Objects;
 
+@Slf4j
 @Service
 public class InventarioServiceImpl implements InventarioService {
 
@@ -75,31 +78,44 @@ public class InventarioServiceImpl implements InventarioService {
     @Transactional
     @Override
     public InventoryWithProductCreateDTO save (InventoryWithProductCreateDTO inventarioRequest){
-        //validar que el stock no es negativo
+        // 1. Validaciones de negocio
         if (inventarioRequest.getStock() < 0 ){
             throw new InventarioException("El inventario no puede ser negativo");
         }
-        //validar que el stock minimo no es negativo
         if (inventarioRequest.getStockLimitMin() < 0){
             throw new InventarioException("El stock mínimo no puede ser negativo");
         }
-
-        if (productoService.existProductByName(inventarioRequest.getNombreProducto())){
+        if (productoService.existProductByName(StringUtils.capitalizarPalabras(inventarioRequest.getNombreProducto()))){
             throw new InventarioException("El producto ya existe");
         }
 
-        // Crear producto con los atributos obtenidos en el frontend y guardarlo
+        // 2. Crear y guardar el Producto
         Producto newProducto = productoService.save(
-                new Producto(null,null,inventarioRequest.getDescripcionProducto(),inventarioRequest.getNombreProducto(),
-                        inventarioRequest.getNombreCategoria(), inventarioRequest.getUnidadMedida(), true));
+                new Producto(null, null, inventarioRequest.getDescripcionProducto(),
+                        StringUtils.capitalizarPalabras(inventarioRequest.getNombreProducto()),
+                        StringUtils.capitalizarPalabras(inventarioRequest.getNombreCategoria()),
+                        inventarioRequest.getUnidadMedida().toUpperCase(), true));
 
-        //Crear inventario de producto con los atributos obtenidos en el frontend y guardarlo
+        // 3. Crear y guardar el Inventario
         Inventario newInventario = inventarioRepository.save(
-                new Inventario(null,newProducto.getIdProducto(),newProducto,inventarioRequest.getStock(),
-                        inventarioRequest.getStockLimitMin() ));
-        //retornamos el inventario con los ids para comprobar guardado
+                new Inventario(null, newProducto.getIdProducto(), newProducto,
+                        inventarioRequest.getStock(),
+                        inventarioRequest.getStockLimitMin()));
+
+        // 4. CREAR MOVIMIENTO DE ENTRADA INICIAL
+        // Solo creamos el movimiento si el stock inicial es mayor a 0 (o siempre, según prefieras)
+        movimientoService.saveMotion(new MotionCreateDTO(
+                newInventario.getIdInventario(),
+                inventarioRequest.getStock(),
+                inventarioRequest.getStockLimitMin(),
+                "ENTRADA",
+                "Carga inicial de inventario por creación de producto"
+        ));
+
+        // 5. Preparar respuesta
         inventarioRequest.setIdInventario(newInventario.getIdInventario());
         inventarioRequest.setIdProducto(newProducto.getIdProducto());
+
         return inventarioRequest;
     }
 
@@ -133,21 +149,37 @@ public class InventarioServiceImpl implements InventarioService {
         if (req.getStock() != null && req.getStock() < 0)
             throw new InventarioException("El stock no puede ser negativo");
 
-        // ---- ACTUALIZAR PRODUCTO ----
-        producto.setNombreProducto(nuevoNombre);
-        producto.setDescripcionProducto(req.getDescripcionProducto());  // ← FALTABA
-        producto.setNombreCategoria(req.getNombreCategoria());
-        producto.setUnidadMedida(req.getUnidadMedida());
-        productoRepository.save(producto);
+        // Validar si realmente hubo cambios antes de proceder
+        // 1. Verificar si hay cambios en los DATOS del producto
+        boolean huboCambiosEnProducto = !producto.getNombreProducto().equals(nuevoNombre) ||
+                !java.util.Objects.equals(producto.getDescripcionProducto(), req.getDescripcionProducto()) ||
+                !producto.getNombreCategoria().equals(req.getNombreCategoria()) ||
+                !producto.getUnidadMedida().equals(req.getUnidadMedida()) ||
+                !java.util.Objects.equals(inventario.getStockLimitMin(), req.getStockLimitMin()) ||
+                !java.util.Objects.equals(inventario.getStock(), req.getStock());
 
-        //-----CREAR MOVIMIENTO DE AJUSTE AL MOMENTO DEFAULT POR ADMIN QUE REALIZA EL UPDATE
+        // 2. Si hay cambios en texto/minimo, actualizamos las entidades
+        if (huboCambiosEnProducto) {
+            producto.setNombreProducto(nuevoNombre);
+            producto.setDescripcionProducto(req.getDescripcionProducto());
+            producto.setNombreCategoria(req.getNombreCategoria());
+            producto.setUnidadMedida(req.getUnidadMedida());
+            productoRepository.save(producto);
+
+            if (req.getStockLimitMin() != null) {
+                inventario.setStockLimitMin(req.getStockLimitMin());
+                inventarioRepository.save(inventario);
+            }
+        }
+
+        // 3. FUERA del IF: Siempre creamos el movimiento de AJUSTE
+        // Esto garantiza que aunque el stock sea el mismo, quede el registro en la tabla movimientos
         movimientoService.saveMotion(new MotionCreateDTO(
-                1,
                 inventario.getIdInventario(),
-                req.getStock(),
+                req.getStock(),        // Valor enviado desde el front
                 req.getStockLimitMin(),
                 "AJUSTE",
-                null
+                "Verificación/Ajuste manual de inventario"
         ));
 
         return req;
@@ -165,7 +197,7 @@ public class InventarioServiceImpl implements InventarioService {
         );
 
         if (inventario.getStock() != 0 ){
-            new InventarioException("Existe producto disponible en el inventario ");
+            throw new InventarioException("Existe producto disponible en el inventario ");
         }
 
         //eliminar producto lógicamente para deshabilitar la visualización de este producto en el inventario

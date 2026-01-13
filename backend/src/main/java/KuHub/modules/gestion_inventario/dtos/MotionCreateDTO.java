@@ -10,8 +10,6 @@ import lombok.*;
 @NoArgsConstructor
 @AllArgsConstructor
 public class MotionCreateDTO {
-    @NotNull(message = "El ID del usuario es obligatorio")
-    private Integer idUsuario;
 
     @NotNull(message = "El ID del inventario es obligatorio")
     private Integer idInventario;

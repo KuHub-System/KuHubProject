@@ -4,6 +4,7 @@ import KuHub.modules.gestion_inventario.dtos.MotionAnswerDTO;
 import KuHub.modules.gestion_inventario.dtos.MotionCreateDTO;
 import KuHub.modules.gestion_inventario.dtos.MotionFilterRequestDTO;
 import KuHub.modules.gestion_inventario.services.MovimientoService;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
@@ -28,7 +29,8 @@ public class MovimientoController {
 
 
     @PostMapping("/create-motion")
-    public ResponseEntity<MotionAnswerDTO> createMotion(@RequestBody MotionCreateDTO m){
+    public ResponseEntity<MotionAnswerDTO> createMotion(@RequestBody @Valid MotionCreateDTO m) {
+        // Al llamar a saveMotion, el servicio se encarga de ver quién está logueado
         return ResponseEntity
                 .status(201)
                 .body(movimientoService.saveMotion(m));
