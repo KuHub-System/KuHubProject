@@ -237,13 +237,20 @@ public class SpringSecurityConfig {
                         // ========================================
                         // ENDPOINTS DE RECETAS
                         // ========================================
-                        // Lectura de recetas - permitido para cualquier usuario que haya hecho login
-                        .requestMatchers(HttpMethod.GET, "/api/v*/receta/**").authenticated()
+                        // 1. Lectura de recetas: Permitido para todos los roles autorizados
+                        .requestMatchers(HttpMethod.GET, "/api/v*/receta/**")
+                        .hasAnyRole("ADMINISTRADOR", "PROFESOR_A_CARGO", "GESTOR_PEDIDOS", "CO_ADMINISTRADOR", "DOCENTE")
 
-                        // Creación, Modificación y Eliminación - EXCLUSIVO ADMINISTRADOR
-                        .requestMatchers(HttpMethod.POST, "/api/v*/receta/**").hasRole("ADMINISTRADOR")
-                        .requestMatchers(HttpMethod.PUT, "/api/v*/receta/**").hasRole("ADMINISTRADOR")
-                        .requestMatchers(HttpMethod.DELETE, "/api/v*/receta/**").hasRole("ADMINISTRADOR")
+                        // 2. Creación y Modificación: Permitido para roles de gestión
+                        .requestMatchers(HttpMethod.POST, "/api/v*/receta/**")
+                        .hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR", "PROFESOR_A_CARGO")
+
+                        .requestMatchers(HttpMethod.PUT, "/api/v*/receta/**")
+                        .hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR", "PROFESOR_A_CARGO")
+
+                        // 3. Eliminación (Opcional): Generalmente solo el Administrador
+                        .requestMatchers(HttpMethod.DELETE, "/api/v*/receta/**")
+                        .hasRole("ADMINISTRADOR")
                         .requestMatchers(HttpMethod.PATCH, "/api/v*/receta/**").hasRole("ADMINISTRADOR")
 
                         // ========================================
