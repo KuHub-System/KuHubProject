@@ -13,13 +13,8 @@ import lombok.*;
 public class Receta {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "receta_seq")
-    @SequenceGenerator(
-            name = "receta_seq",
-            sequenceName = "receta_id_receta_seq",
-            allocationSize = 1
-    )
-    @Column(name = "id_receta", nullable = false)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id_receta")
     private Integer idReceta;
 
     @Column(name = "nombre_receta", nullable = false, length = 100)

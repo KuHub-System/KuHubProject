@@ -39,19 +39,5 @@ public class Producto {
     @Column(name="activo",nullable = false)
     private Boolean activo = true;
 
-    @Column(name="foto_producto")
-    private byte[] fotoProducto;
 
-    /**-- Tabla producto
-     CREATE TABLE producto (
-     id_producto INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-     cod_producto VARCHAR(30),
-     descripcion_producto VARCHAR(150),
-     nombre_producto VARCHAR(100) NOT NULL,
-     nombre_categoria VARCHAR(100) NOT NULL,
-     unidad_medida VARCHAR(50) NOT NULL,
-     activo BOOLEAN DEFAULT TRUE, --soft delete
-     foto_producto BYTEA
-     );
-     */
 }

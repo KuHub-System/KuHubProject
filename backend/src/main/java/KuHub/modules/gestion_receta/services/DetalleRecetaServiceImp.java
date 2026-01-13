@@ -1,9 +1,11 @@
 package KuHub.modules.gestion_receta.services;
+import KuHub.modules.gestion_receta.dtos.projection.DetalleRecetaItemProjection;
 import KuHub.modules.gestion_receta.entity.DetalleReceta;
 import KuHub.modules.gestion_receta.entity.Receta;
 import KuHub.modules.gestion_receta.exceptions.RecetaException;
-import KuHub.modules.gestion_receta.projection.DetalleRecetaIdProductoProjection;
+import KuHub.modules.gestion_receta.dtos.projection.DetalleRecetaIdProductoProjection;
 import KuHub.modules.gestion_receta.repository.DetalleRecetaRepository;
+import feign.Param;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -46,6 +48,18 @@ public class DetalleRecetaServiceImp implements DetalleRecetaService{
 
     @Transactional(readOnly = true)
     @Override
+    public List<Integer> findProductoIdsByRecetaId(@Param("idReceta") Integer idReceta){
+        return detalleRecetaRepository.findProductoIdsByRecetaId(idReceta);
+    }
+
+    @Transactional(readOnly = true)
+    @Override
+    public List<DetalleRecetaItemProjection> findItemsByRecetaId(@Param("idReceta") Integer idReceta){
+        return detalleRecetaRepository.findItemsByRecetaId(idReceta);
+    }
+
+    @Transactional(readOnly = true)
+    @Override
     public List<DetalleReceta> findAllByIdReceta(Integer id){
         return detalleRecetaRepository.findDetalleRecetaByReceta_IdReceta(id);
     }
@@ -55,6 +69,11 @@ public class DetalleRecetaServiceImp implements DetalleRecetaService{
     public List<DetalleRecetaIdProductoProjection> findAllIdProductoAndCantidadByReceta(
             Integer idReceta){
         return detalleRecetaRepository.findAllIdProductoAndCantidadByReceta(idReceta);
+    }
+
+    @Override
+    public List<DetalleReceta> saveAll(List<DetalleReceta> detalles) {
+        return detalleRecetaRepository.saveAll(detalles);
     }
 
     @Transactional

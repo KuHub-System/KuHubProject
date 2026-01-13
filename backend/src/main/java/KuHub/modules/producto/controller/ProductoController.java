@@ -1,6 +1,7 @@
 package KuHub.modules.producto.controller;
 
 import KuHub.modules.producto.dtos.ProductoUpdateRequest;
+import KuHub.modules.producto.dtos.proyeccion.ProductRecipeView;
 import KuHub.modules.producto.entity.Producto;
 import KuHub.modules.producto.exceptions.ProductoException;
 import KuHub.modules.producto.service.ProductoService;
@@ -26,6 +27,13 @@ public class ProductoController {
         return ResponseEntity
                 .status(200)
                 .body(productoService.findAll());
+    }
+
+    @GetMapping("/find-all-product-active-for-recipe")
+    public ResponseEntity<List<ProductRecipeView>> findAllActiveForRecipe() {
+        return ResponseEntity
+                .status(200)
+                .body(productoService.findAllActiveForRecipe());
     }
 
     /**Listar todos los productos segun el valor activo TRUE/FALSE */

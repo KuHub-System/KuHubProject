@@ -16,12 +16,7 @@ import lombok.*;
 public class DetalleReceta {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "detalle_receta_seq")
-    @SequenceGenerator(
-            name = "detalle_receta_seq",
-            sequenceName = "detalle_receta_id_detalle_receta_seq",
-            allocationSize = 1
-    )
+    @GeneratedValue(strategy = GenerationType.IDENTITY) // Cambiado de SEQUENCE a IDENTITY
     @Column(name = "id_detalle_receta", nullable = false)
     private Integer idDetalleReceta;
 
@@ -50,14 +45,5 @@ public class DetalleReceta {
     @Column(name = "cant_producto", nullable = false)
     private Double cantProducto;
 
-    /**-- Tabla detalle_receta
-     CREATE TABLE detalle_receta (
-     id_detalle_receta SERIAL PRIMARY KEY,
-     id_receta INTEGER NOT NULL,
-     id_producto INTEGER NOT NULL,
-     cant_producto DOUBLE PRECISION NOT NULL,
-     FOREIGN KEY (id_receta) REFERENCES receta(id_receta),
-     FOREIGN KEY (id_producto) REFERENCES producto(id_producto),
-     UNIQUE(id_receta, id_producto)
-     );*/
+
 }

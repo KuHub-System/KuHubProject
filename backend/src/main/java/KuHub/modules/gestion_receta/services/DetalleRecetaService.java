@@ -1,8 +1,9 @@
 package KuHub.modules.gestion_receta.services;
 
+import KuHub.modules.gestion_receta.dtos.projection.DetalleRecetaItemProjection;
 import KuHub.modules.gestion_receta.entity.DetalleReceta;
 import KuHub.modules.gestion_receta.entity.Receta;
-import KuHub.modules.gestion_receta.projection.DetalleRecetaIdProductoProjection;
+import KuHub.modules.gestion_receta.dtos.projection.DetalleRecetaIdProductoProjection;
 import feign.Param;
 
 import java.util.List;
@@ -18,6 +19,12 @@ public interface DetalleRecetaService {
     List<DetalleReceta> findAllByReceta(Receta receta);
 
     List<DetalleReceta> findAllByIdReceta(Integer id);
+
+    List<Integer> findProductoIdsByRecetaId(@Param("idReceta") Integer idReceta);
+
+    List<DetalleRecetaItemProjection> findItemsByRecetaId(@Param("idReceta") Integer idReceta);
+
+    List<DetalleReceta> saveAll(List<DetalleReceta> detalles);
 
     DetalleReceta save(DetalleReceta detalleReceta);
 

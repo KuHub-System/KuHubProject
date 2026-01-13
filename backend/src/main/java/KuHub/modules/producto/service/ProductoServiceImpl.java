@@ -1,6 +1,7 @@
 package KuHub.modules.producto.service;
 
 import KuHub.modules.producto.dtos.ProductoUpdateRequest;
+import KuHub.modules.producto.dtos.proyeccion.ProductRecipeView;
 import KuHub.modules.producto.entity.Producto;
 import KuHub.modules.producto.exceptions.ProductoException;
 import KuHub.modules.producto.exceptions.ProductoExistenteException;
@@ -11,6 +12,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Collection;
 import java.util.List;
 
 @Service
@@ -43,10 +45,22 @@ public class ProductoServiceImpl implements ProductoService{
 
     @Transactional(readOnly = true)
     @Override
+    public List<ProductRecipeView> findAllActiveForRecipe(){
+        return productoRepository.findAllActiveForRecipe();
+    }
+
+    @Transactional(readOnly = true)
+    @Override
     public Producto findByIdProductoAndActivoTrue(Integer id_producto){
         return productoRepository.findByIdProductoAndActivoTrue(id_producto).orElseThrow(
                 ()-> new ProductoNotFoundException(id_producto)
         );
+    }
+
+    @Transactional(readOnly = true)
+    @Override
+    public List<Producto> findAllByIdInAndActivoTrue(Collection<Integer> ids){
+        return productoRepository.findAllByIdProductoInAndActivoTrue(ids);
     }
 
     @Transactional(readOnly = true)

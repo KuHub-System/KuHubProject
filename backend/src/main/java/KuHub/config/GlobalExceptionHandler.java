@@ -159,7 +159,7 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * Maneja RecetaException de RecetaServiceImp
+     * Maneja RecetaException de RecetaServiceImp y DetalleRecetaServiceImp
      * */
     @ExceptionHandler(RecetaException.class)
     public ResponseEntity<Map<String, Object>> handleRecetaException(RecetaException ex) {

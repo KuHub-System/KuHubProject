@@ -91,7 +91,7 @@ public class InventarioServiceImpl implements InventarioService {
         // Crear producto con los atributos obtenidos en el frontend y guardarlo
         Producto newProducto = productoService.save(
                 new Producto(null,null,inventarioRequest.getDescripcionProducto(),inventarioRequest.getNombreProducto(),
-                        inventarioRequest.getNombreCategoria(), inventarioRequest.getUnidadMedida(), true, null));
+                        inventarioRequest.getNombreCategoria(), inventarioRequest.getUnidadMedida(), true));
 
         //Crear inventario de producto con los atributos obtenidos en el frontend y guardarlo
         Inventario newInventario = inventarioRepository.save(

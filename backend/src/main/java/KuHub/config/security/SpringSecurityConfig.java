@@ -233,6 +233,19 @@ public class SpringSecurityConfig {
                         .requestMatchers(HttpMethod.PUT, "/api/v*/inventario/**").hasAnyRole("ADMINISTRADOR", "ENCARGADO_BODEGA")
                         .requestMatchers(HttpMethod.DELETE, "/api/v*/inventario/**").hasRole("ADMINISTRADOR")
 
+
+                        // ========================================
+                        // ENDPOINTS DE RECETAS
+                        // ========================================
+                        // Lectura de recetas - permitido para cualquier usuario que haya hecho login
+                        .requestMatchers(HttpMethod.GET, "/api/v*/receta/**").authenticated()
+
+                        // Creación, Modificación y Eliminación - EXCLUSIVO ADMINISTRADOR
+                        .requestMatchers(HttpMethod.POST, "/api/v*/receta/**").hasRole("ADMINISTRADOR")
+                        .requestMatchers(HttpMethod.PUT, "/api/v*/receta/**").hasRole("ADMINISTRADOR")
+                        .requestMatchers(HttpMethod.DELETE, "/api/v*/receta/**").hasRole("ADMINISTRADOR")
+                        .requestMatchers(HttpMethod.PATCH, "/api/v*/receta/**").hasRole("ADMINISTRADOR")
+
                         // ========================================
                         // RESTO DE ENDPOINTS
                         // ========================================
