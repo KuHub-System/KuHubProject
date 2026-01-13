@@ -398,7 +398,7 @@ public class UsuarioControllerV2 {
         return ResponseEntity.noContent().build();
     }
 
-    @PutMapping("/{id}/foto")
+    @PutMapping("/foto")
     @Operation(
             summary = "Actualizar foto de perfil",
             description = "Permite subir o actualizar la foto de perfil del usuario"
@@ -422,12 +422,10 @@ public class UsuarioControllerV2 {
             )
     })
     public ResponseEntity<EntityModel<UsuarioResponseDTO>> actualizarFotoPerfil(
-            @Parameter(description = "ID del usuario", required = true)
-            @PathVariable Integer id,
             @Parameter(description = "Archivo de imagen", required = true)
             @RequestParam("foto") MultipartFile foto) {
         
-        UsuarioResponseDTO usuarioActualizado = usuarioService.actualizarFotoPerfil(id, foto);
+        UsuarioResponseDTO usuarioActualizado = usuarioService.actualizarFotoPerfil( foto);
         EntityModel<UsuarioResponseDTO> entityModel = usuarioModelAssembler.toModel(usuarioActualizado);
         
         return ResponseEntity.ok(entityModel);

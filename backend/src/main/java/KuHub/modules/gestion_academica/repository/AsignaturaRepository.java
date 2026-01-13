@@ -138,7 +138,17 @@ public interface AsignaturaRepository extends JpaRepository <Asignatura, Integer
         """, nativeQuery = true)
     List<Object[]> findAllCourserActiveTrueRaw();
 
-
+    @Query(value = "SELECT a.id_asignatura, a.nombre_asignatura, " +
+                    "CAST(JSON_AGG(JSON_BUILD_OBJECT(" +
+                    "'idSeccion', s.id_seccion, " +
+                    "'nombreSeccion', s.nombre_seccion, " +
+                    "'cantInscritos', s.cant_inscritos)) AS TEXT) AS secciones " +
+                    "FROM asignatura a " +
+                    "JOIN seccion s ON s.id_asignatura = a.id_asignatura " +
+                    "WHERE s.activo = TRUE " +
+                    "GROUP BY a.id_asignatura, a.nombre_asignatura",
+                    nativeQuery = true)
+    List<Object[]> findCourserForSolicitation();
 
 
 }

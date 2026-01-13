@@ -1,6 +1,7 @@
 package KuHub.modules.gestion_academica.service;
 
 import KuHub.modules.gestion_academica.dtos.dtomodel.CourseCreateDTO;
+import KuHub.modules.gestion_academica.dtos.dtomodel.CourseSolicitationResponseDTO;
 import KuHub.modules.gestion_academica.dtos.dtomodel.CourseUpdateDTO;
 import KuHub.modules.gestion_academica.dtos.dtomodel.CourserAnswerDTGOD;
 import KuHub.modules.gestion_academica.entity.Asignatura;
@@ -13,6 +14,7 @@ public interface AsignaturaService {
     Boolean existsByIdAsignatura(Integer id);
     Boolean existsByIdAsignaturaAndTrue(Integer id);
     List<CourserAnswerDTGOD> findAllCourserActiveTrueWithSeccion();
+    List<CourseSolicitationResponseDTO> findCourserForSolicitation();
     List<Asignatura> findAll();
     Asignatura save (Asignatura asignatura);
     CourseUpdateDTO updateCourser (CourseUpdateDTO co);

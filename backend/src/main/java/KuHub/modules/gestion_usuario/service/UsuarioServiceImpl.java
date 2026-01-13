@@ -381,10 +381,14 @@ public class UsuarioServiceImpl implements UsuarioService {
 
     @Override
     @Transactional
-    public UsuarioResponseDTO actualizarFotoPerfil(Integer idUsuario, MultipartFile foto) {
+    public UsuarioResponseDTO actualizarFotoPerfil(MultipartFile foto) {
+        // 1. Obtener el identificador (email/username) directamente del token
+        String identificador = org.springframework.security.core.context.SecurityContextHolder
+                .getContext().getAuthentication().getName();
 
-        Usuario usuario = usuarioRepository.findById(idUsuario)
-                .orElseThrow(() -> new UsuarioNotFoundException(idUsuario));
+        // 2. Buscar al usuario usando el método flexible findByIdentificador que ya creamos
+        Usuario usuario = usuarioRepository.findByIdentificador(identificador)
+                .orElseThrow(() -> new RuntimeException("Usuario del token no encontrado: " + identificador));
 
         if (foto != null && !foto.isEmpty()) {
             try {
@@ -395,7 +399,7 @@ public class UsuarioServiceImpl implements UsuarioService {
                     throw new IllegalArgumentException("La foto no puede superar 10MB");
                 }
 
-                // Validar que realmente es una imagen (JPG, PNG, etc.)
+                // Validar tipo de archivo
                 if (!ImagenUtils.esImagenValida(fotoBytes)) {
                     throw new IllegalArgumentException("El archivo no es una imagen válida (JPG/PNG).");
                 }
@@ -403,7 +407,7 @@ public class UsuarioServiceImpl implements UsuarioService {
                 usuario.setFotoPerfil(fotoBytes);
 
             } catch (IOException e) {
-                throw new RuntimeException("Error al leer el archivo", e);
+                throw new RuntimeException("Error al procesar la imagen", e);
             }
         }
 

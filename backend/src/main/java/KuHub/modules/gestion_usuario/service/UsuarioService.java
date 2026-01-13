@@ -102,7 +102,7 @@ public interface UsuarioService {
     /**
      * Actualiza la foto de perfil
      */
-    UsuarioResponseDTO actualizarFotoPerfil(Integer idUsuario, MultipartFile foto);
+    UsuarioResponseDTO actualizarFotoPerfil(MultipartFile foto);
 
     /**
      * Verifica credenciales y realiza login

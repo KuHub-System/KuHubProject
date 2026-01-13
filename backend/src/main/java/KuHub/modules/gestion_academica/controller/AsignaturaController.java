@@ -1,6 +1,7 @@
 package KuHub.modules.gestion_academica.controller;
 
 import KuHub.modules.gestion_academica.dtos.dtomodel.CourseCreateDTO;
+import KuHub.modules.gestion_academica.dtos.dtomodel.CourseSolicitationResponseDTO;
 import KuHub.modules.gestion_academica.dtos.dtomodel.CourseUpdateDTO;
 import KuHub.modules.gestion_academica.dtos.dtomodel.CourserAnswerDTGOD;
 import KuHub.modules.gestion_academica.entity.Asignatura;
@@ -40,6 +41,13 @@ public class AsignaturaController {
         return ResponseEntity
                 .status(200)
                 .body(asignaturaService.findAllCourserActiveTrueWithSeccion());
+    }
+
+    @GetMapping("/find-all-courses-for-solicitation")
+    public ResponseEntity<List<CourseSolicitationResponseDTO>> findAllCoursesForSolicitation(){
+        return ResponseEntity
+                .status(200)
+                .body(asignaturaService.findCourserForSolicitation());
     }
 
     @PostMapping("/create-asignatura/")

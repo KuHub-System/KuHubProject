@@ -198,21 +198,15 @@ public class UsuarioController {
      * PUT /api/v1/usuarios/{id}/foto
      * Actualiza la foto de perfil de un usuario
      */
-    @PutMapping("/{id}/foto")
-    public ResponseEntity<?> actualizarFotoPerfil(
-            @PathVariable Integer id,
-            @RequestParam("foto") MultipartFile foto) {
+    @PutMapping("/perfil/foto")
+    public ResponseEntity<?> actualizarFotoPerfil(@RequestParam("foto") MultipartFile foto) {
         try {
-            UsuarioResponseDTO usuarioActualizado = usuarioService.actualizarFotoPerfil(id, foto);
+            // Ya no pasamos el ID, el servicio lo obtiene del token
+            UsuarioResponseDTO usuarioActualizado = usuarioService.actualizarFotoPerfil(foto);
             return ResponseEntity.ok(usuarioActualizado);
-        } catch (UsuarioNotFoundException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body("Usuario no encontrado con id: " + id);
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
         } catch (Exception e) {
-            e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body("Error al actualizar la foto de perfil");
         }

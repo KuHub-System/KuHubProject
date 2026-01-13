@@ -192,20 +192,21 @@ public class SpringSecurityConfig {
                         // ENDPOINTS DE USUARIOS
                         // ========================================
 
-                        // Permite que cualquier usuario autenticado cambie su propia contraseña
+                        // 1. UNIVERSAL: Cualquier usuario logueado puede cambiar su PROPIA clave o foto
+                        // Se usa .authenticated() para que aplique a Docentes, Asistentes, Admins, etc.
                         .requestMatchers(HttpMethod.PATCH, "/api/v*/usuarios/cambiar-contrasena").authenticated()
+                        .requestMatchers(HttpMethod.PUT, "/api/v*/usuarios/actualizar-foto").authenticated()
 
-                        // ADMINISTRADOR tiene acceso total (v1 y v2)
-                        .requestMatchers(HttpMethod.GET, "/api/v*/usuarios").hasRole("ADMINISTRADOR")
-                        .requestMatchers(HttpMethod.GET, "/api/v*/usuarios/**").hasRole("ADMINISTRADOR")
+                        // 2. LECTURA (Listar usuarios): Solo roles que gestionan personal
+                        .requestMatchers(HttpMethod.GET, "/api/v*/usuarios/**")
+                        .hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR", "GESTOR_PEDIDOS", "PROFESOR_A_CARGO")
 
-                        // ⚠️ TEMPORAL: Creador de Usuarios sin ROL (para desarrollo)
-                        // En producción, cambiar a .hasRole("ADMINISTRADOR")
-                        .requestMatchers(HttpMethod.POST, "/api/v*/usuarios").permitAll()
+                        // 3. GESTIÓN ADMINISTRATIVA (Crear/Editar otros usuarios)
+                        .requestMatchers(HttpMethod.POST, "/api/v*/usuarios").hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR")
+                        .requestMatchers(HttpMethod.PUT, "/api/v*/usuarios/**").hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR")
 
-                        .requestMatchers(HttpMethod.PUT, "/api/v*/usuarios/**").hasRole("ADMINISTRADOR")
+                        // 4. ELIMINACIÓN: Solo el Administrador principal
                         .requestMatchers(HttpMethod.DELETE, "/api/v*/usuarios/**").hasRole("ADMINISTRADOR")
-                        .requestMatchers(HttpMethod.PATCH, "/api/v*/usuarios/**").hasRole("ADMINISTRADOR")
 
                         // ========================================
                         // ENDPOINTS DE PRODUCTOS
@@ -267,6 +268,33 @@ public class SpringSecurityConfig {
                         .requestMatchers(HttpMethod.DELETE, "/api/v*/receta/**")
                         .hasRole("ADMINISTRADOR")
                         .requestMatchers(HttpMethod.PATCH, "/api/v*/receta/**").hasRole("ADMINISTRADOR")
+
+                        // ========================================
+                        // ENDPOINTS DE SOLICITUDES
+                        // ========================================
+
+                        // 1. Consulta de Disponibilidad (POST): Todos los roles operativos
+                        .requestMatchers("/api/v*/solicitud/check-section-availability")
+                        .hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR", "GESTOR_PEDIDOS", "PROFESOR_A_CARGO")
+
+                        // 2. Creación de Solicitudes (POST): Todos los roles operativos
+                        .requestMatchers("/api/v*/solicitud/save-solicitation")
+                        .hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR", "GESTOR_PEDIDOS", "PROFESOR_A_CARGO")
+
+                                // ========================================
+                        // ENDPOINTS DE SEMANAS (CALENDARIO ACADÉMICO)
+                        // ========================================
+
+                        // Lectura de semanas activas: Todos los roles operativos
+                        .requestMatchers(HttpMethod.POST, "/api/v*/semanas/activas-por-anio").hasAnyRole(
+                        "ADMINISTRADOR", "CO_ADMINISTRADOR", "GESTOR_PEDIDOS", "PROFESOR_A_CARGO")
+
+                        .requestMatchers(HttpMethod.GET, "/api/v*/semanas/**").hasAnyRole(
+                        "ADMINISTRADOR", "CO_ADMINISTRADOR", "GESTOR_PEDIDOS", "PROFESOR_A_CARGO")
+
+                        // Gestión (Crear/Eliminar): Solo niveles administrativos
+                        .requestMatchers(HttpMethod.POST, "/api/v*/semanas").hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR")
+                        .requestMatchers(HttpMethod.DELETE, "/api/v*/semanas/**").hasRole("ADMINISTRADOR")
 
                         // ========================================
                         // RESTO DE ENDPOINTS

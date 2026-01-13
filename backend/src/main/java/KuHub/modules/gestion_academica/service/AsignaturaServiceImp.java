@@ -22,6 +22,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -172,6 +173,33 @@ public class AsignaturaServiceImp implements AsignaturaService{
 
         log.info("Se encontraron {} asignaturas activas", coursers.size());
         return coursers;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<CourseSolicitationResponseDTO> findCourserForSolicitation() {
+        // 1. Ejecutar la consulta nativa que definimos antes
+        List<Object[]> rawData = asignaturaRepository.findCourserForSolicitation();
+
+        // Jackson para convertir el String JSON a objetos Java
+        ObjectMapper objectMapper = new ObjectMapper();
+
+        return rawData.stream().map(fila -> {
+            try {
+                Integer id = (Integer) fila[0];
+                String nombre = (String) fila[1];
+                String seccionesJson = (String) fila[2];
+
+                // Convertimos el JSON String de la BD a List<SeccionSolicitationDTO>
+                List<SeccionSolicitationDTO> secciones = objectMapper.readValue(seccionesJson,
+                        new TypeReference<List<SeccionSolicitationDTO>>() {});
+
+                return new CourseSolicitationResponseDTO(id, nombre, secciones);
+            } catch (Exception e) {
+                log.error("Error al procesar JSON de secciones para asignatura: {}", fila[1], e);
+                throw new RuntimeException("Error en el procesamiento de datos de asignaturas");
+            }
+        }).collect(Collectors.toList());
     }
 
     @Transactional
