@@ -1,6 +1,7 @@
 package KuHub.modules.gestion_usuario.service;
 
 import KuHub.modules.gestion_usuario.dtos.*;
+import KuHub.modules.gestion_usuario.dtos.record.UserIdNameDTO;
 import KuHub.modules.gestion_usuario.entity.Usuario;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -10,6 +11,8 @@ import java.util.List;
  * Interfaz del servicio para gestión de Usuarios
  */
 public interface UsuarioService {
+
+    UserIdNameDTO getUsuarioConectado();
 
     Integer buscarIdPorUsername(String username);
 

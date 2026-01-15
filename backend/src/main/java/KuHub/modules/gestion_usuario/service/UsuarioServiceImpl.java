@@ -1,6 +1,8 @@
 package KuHub.modules.gestion_usuario.service;
 
 import KuHub.modules.gestion_usuario.dtos.*;
+import KuHub.modules.gestion_usuario.dtos.proyection.UserIdNameView;
+import KuHub.modules.gestion_usuario.dtos.record.UserIdNameDTO;
 import KuHub.modules.gestion_usuario.entity.Rol;
 import KuHub.modules.gestion_usuario.entity.Usuario;
 import KuHub.modules.gestion_usuario.exceptions.*;
@@ -41,6 +43,32 @@ public class UsuarioServiceImpl implements UsuarioService {
     // ⚠️ NUEVO: Inyectamos el PasswordEncoder (BCrypt)
     @Autowired
     private PasswordEncoder passwordEncoder;
+
+    /**
+     * Obtiene el ID y Nombre del usuario actualmente logueado (desde el Token)
+     * Úsalo cuando necesites guardar quién hizo algo.
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public UserIdNameDTO getUsuarioConectado() {
+        // 1. Obtener email del Token actual
+        String email = org.springframework.security.core.context.SecurityContextHolder
+                .getContext().getAuthentication().getName();
+
+        // 2. Buscar datos crudos (View)
+        // Asegúrate de haber agregado el método 'findViewByEmail' en tu Repository
+        UserIdNameView rawData = usuarioRepository.findViewByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Error: El usuario del token no existe en la BBDD"));
+
+        // 3. Retornar el Record limpio
+        return UserIdNameDTO.crearDesdeDatos(
+                rawData.getIdUsuario(),
+                rawData.getPrimerNombre(),
+                rawData.getSegundoNombre(),
+                rawData.getApellidoPaterno(),
+                rawData.getApellidoMaterno()
+        );
+    }
 
     @Override
     @Transactional(readOnly = true)

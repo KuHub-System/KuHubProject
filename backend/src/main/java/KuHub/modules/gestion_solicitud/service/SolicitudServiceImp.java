@@ -1,10 +1,7 @@
 package KuHub.modules.gestion_solicitud.service;
 
-import KuHub.modules.gestion_academica.service.SeccionService;
 import KuHub.modules.gestion_receta.entity.DetalleReceta;
-import KuHub.modules.gestion_receta.repository.DetalleRecetaRepository;
 import KuHub.modules.gestion_receta.services.DetalleRecetaService;
-import KuHub.modules.gestion_receta.services.RecetaService;
 import KuHub.modules.gestion_solicitud.dtos.*;
 import KuHub.modules.gestion_solicitud.dtos.proyeccion.ProductoUnidadView;
 import KuHub.modules.gestion_solicitud.dtos.proyeccion.SeccionInscritosView;
@@ -12,12 +9,16 @@ import KuHub.modules.gestion_solicitud.dtos.proyeccion.SectionAvailabilityView;
 import KuHub.modules.gestion_solicitud.entity.DetalleSolicitud;
 import KuHub.modules.gestion_solicitud.entity.Solicitud;
 import KuHub.modules.gestion_solicitud.repository.SolicitudRepository;
+import KuHub.modules.gestion_usuario.dtos.record.UserIdNameDTO;
+import KuHub.modules.gestion_usuario.service.UsuarioService;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -29,6 +30,8 @@ public class SolicitudServiceImp implements SolicitudService{
     private SolicitudRepository solicitudRepository;
     @Autowired
     private DetalleRecetaService detalleRecetaService;
+    @Autowired
+    private UsuarioService usuarioService;
 
     @Transactional(readOnly = true)
     @Override
@@ -39,6 +42,12 @@ public class SolicitudServiceImp implements SolicitudService{
     @Transactional
     @Override
     public List<SolicitationAnswerDTO> saveSolicitation (SolicitationCreateRequestDTO request){
+
+        // Llamamos al método que creamos antes. Esto valida el token y trae el ID real.
+        UserIdNameDTO usuarioLogueado = usuarioService.getUsuarioConectado();
+
+        // Guardamos el ID en una variable para usarla más abajo en el bucle
+        Integer idUsuarioAutenticado = usuarioLogueado.id();
 
         // ========================================================================================
         // 1. PREPARACIÓN DE DATOS (FUERA DEL BUCLE)
@@ -121,7 +130,7 @@ public class SolicitudServiceImp implements SolicitudService{
         for (ContextoSeccion ctx : listaContextoSecciones) {
 
             Solicitud solicitud = new Solicitud();
-            solicitud.setIdUsuarioGestorSolicitud(request.getIdUsuarioGestorSolicitud());
+            solicitud.setIdUsuarioGestorSolicitud(idUsuarioAutenticado);
             solicitud.setIdSeccion(ctx.getIdSeccion());
             solicitud.setFechaSolicitada(ctx.getFechaSolicitada());
             solicitud.setObservaciones(request.getObservaciones());
@@ -153,6 +162,12 @@ public class SolicitudServiceImp implements SolicitudService{
 
                 if ("UNIDAD".equalsIgnoreCase(dr.getProducto().getUnidadMedida())) {
                     cantidadEscalada = Math.ceil(cantidadEscalada);
+                } else {
+                    // CAMBIO: Usamos 3 decimales en lugar de 2
+                    // Esto permite guardar cantidades como 0.125 Kg (125 gramos) sin perder precisión
+                    cantidadEscalada = BigDecimal.valueOf(cantidadEscalada)
+                            .setScale(3, RoundingMode.HALF_UP)
+                            .doubleValue();
                 }
 
                 detalle.setIdProducto(idProducto);
@@ -179,6 +194,12 @@ public class SolicitudServiceImp implements SolicitudService{
                     // 3. Redondeo usando la unidad del CONTEXTO (Ram)
                     if ("UNIDAD".equalsIgnoreCase(ctxProd.getUnidadaMedida())) {
                         cantidadEscalada = Math.ceil(cantidadEscalada);
+                    } else {
+                        // CAMBIO: Usamos 3 decimales en lugar de 2
+                        // Esto permite guardar cantidades como 0.125 Kg (125 gramos) sin perder precisión
+                        cantidadEscalada = BigDecimal.valueOf(cantidadEscalada)
+                                .setScale(3, RoundingMode.HALF_UP)
+                                .doubleValue();
                     }
 
                     detalleExtra.setCantProductoSolicitud(cantidadEscalada);
@@ -197,14 +218,28 @@ public class SolicitudServiceImp implements SolicitudService{
         List<Solicitud> solicitudesGuardadas = solicitudRepository.saveAll(listaParaGuardar);
 
         return solicitudesGuardadas.stream()
-                .map(s -> new SolicitationAnswerDTO(
-                        s.getIdSolicitud(),
-                        s.getIdUsuarioGestorSolicitud(),
-                        s.getIdSeccion(),
-                        s.getFechaSolicitada(),
-                        s.getEstadoSolicitud().name(),
-                        s.getObservaciones()
-                ))
+                .map(s -> {
+                    // A. CONVERTIMOS LOS DETALLES A DTO
+                    // Aquí es donde podrás ver si el redondeo funcionó (cantidad)
+                    List<DetalleAnswerDTO> detallesDto = s.getDetalles().stream()
+                            .map(d -> new DetalleAnswerDTO(
+                                    d.getIdProducto(),
+                                    d.getCantProductoSolicitud(), // <--- EL DATO QUE QUIERES VERIFICAR
+                                    d.getObservacion()
+                            ))
+                            .collect(Collectors.toList());
+
+                    // B. CREAMOS EL DTO PADRE CON LA LISTA
+                    return new SolicitationAnswerDTO(
+                            s.getIdSolicitud(),
+                            s.getIdUsuarioGestorSolicitud(),
+                            s.getIdSeccion(),
+                            s.getFechaSolicitada(),
+                            s.getEstadoSolicitud().name(),
+                            s.getObservaciones(),
+                            detallesDto // <--- PASAMOS LA LISTA AQUÍ
+                    );
+                })
                 .collect(Collectors.toList());
     }
 

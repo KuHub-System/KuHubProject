@@ -11,8 +11,6 @@ import java.util.List;
 @Getter@Setter@NoArgsConstructor@AllArgsConstructor@ToString
 public class SolicitationCreateRequestDTO {
 
-    @NotNull(message = "La id del usuario no puede ser nula")
-    private Integer idUsuarioGestorSolicitud;
     @NotEmpty(message = "Debes enviar al menos una sección")
     @Valid
     private List<SectionsForSolicitationRequestDTO> secciones;// La lista de secciones con sus fechas

@@ -6,6 +6,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.time.LocalDate;
+import java.util.List;
 
 @Getter
 @Setter
@@ -19,4 +20,5 @@ public class SolicitationAnswerDTO {
     private LocalDate fechaSolicitada;
     private String estadoSolicitud; // Aquí guardamos el .name() del Enum
     private String observaciones;
+    private List<DetalleAnswerDTO> detalles;
 }

@@ -1,5 +1,6 @@
 package KuHub.modules.gestion_usuario.repository;
 
+import KuHub.modules.gestion_usuario.dtos.proyection.UserIdNameView;
 import KuHub.modules.gestion_usuario.entity.Usuario;
 import KuHub.modules.gestion_usuario.entity.Rol;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -26,6 +27,8 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Integer> {
      * Busca un usuario por email ignorando mayúsculas/minúsculas
      */
     Optional<Usuario> findByEmailIgnoreCase(String email);
+
+    Optional<UserIdNameView> findViewByEmail(String email);
 
     /**
      * Busca un usuario por username
