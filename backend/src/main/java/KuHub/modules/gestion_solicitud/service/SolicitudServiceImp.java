@@ -1,16 +1,21 @@
 package KuHub.modules.gestion_solicitud.service;
 
+import KuHub.modules.gestion_academica.dtos.projection.CourseSolicitationSelectView;
+import KuHub.modules.gestion_academica.repository.AsignaturaRepository;
 import KuHub.modules.gestion_receta.entity.DetalleReceta;
 import KuHub.modules.gestion_receta.services.DetalleRecetaService;
 import KuHub.modules.gestion_solicitud.dtos.*;
 import KuHub.modules.gestion_solicitud.dtos.proyeccion.ProductoUnidadView;
 import KuHub.modules.gestion_solicitud.dtos.proyeccion.SeccionInscritosView;
 import KuHub.modules.gestion_solicitud.dtos.proyeccion.SectionAvailabilityView;
+import KuHub.modules.gestion_solicitud.dtos.proyeccion.WeekIdDescripcionView;
 import KuHub.modules.gestion_solicitud.entity.DetalleSolicitud;
 import KuHub.modules.gestion_solicitud.entity.Solicitud;
 import KuHub.modules.gestion_solicitud.repository.SolicitudRepository;
+import KuHub.modules.gestion_usuario.dtos.UserIdAndCompleteNameDTO;
 import KuHub.modules.gestion_usuario.dtos.record.UserIdNameDTO;
 import KuHub.modules.gestion_usuario.service.UsuarioService;
+import KuHub.modules.semanas.repository.SemanaRepository;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -32,6 +37,33 @@ public class SolicitudServiceImp implements SolicitudService{
     private DetalleRecetaService detalleRecetaService;
     @Autowired
     private UsuarioService usuarioService;
+    @Autowired
+    private SemanaRepository semanaRepository;
+    @Autowired
+    private AsignaturaRepository asignaturaRepository;
+
+    @Transactional(readOnly = true)
+    @Override
+    public ManagementSolicitationSelectorsDTO getSelectorsForManagement() {
+        // 1. Obtener Semanas (Usando la proyección nativa que arreglamos antes)
+        List<WeekIdDescripcionView> semanas = semanaRepository.findAllForSelector();
+
+        // 2. Obtener Asignaturas (Asegúrate de tener este método o uno similar en tu repo)
+        // Podría ser findAllProjectedBy() o algo similar que devuelva CourseSolicitationSelectView
+        List<CourseSolicitationSelectView> asignaturas = asignaturaRepository.findAllActiveForSelector();
+
+        // 3. Obtener Docentes (Usuarios con rol docente)
+        // Asegúrate de tener un método que devuelva UserIdAndCompleteNameDTO
+        List<UserIdAndCompleteNameDTO> docentes = usuarioService.obtenerDocentesYProfesoresActivos();
+
+        // 4. Construir y retornar el DTO
+        ManagementSolicitationSelectorsDTO response = new ManagementSolicitationSelectorsDTO();
+        response.setSemanas(semanas);
+        response.setAsignaturas(asignaturas);
+        response.setDocentes(docentes);
+
+        return response;
+    }
 
     @Transactional(readOnly = true)
     @Override

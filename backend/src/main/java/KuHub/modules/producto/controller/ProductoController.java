@@ -121,7 +121,7 @@ public class ProductoController {
     }
 
     /**Eliminacion logica por nombre producto actualizando el producto activo a FALSE*/
-    @PutMapping("solf-delete/nombre-producto/{nombreProducto}")
+    @PutMapping("soft-delete/nombre-producto/{nombreProducto}")
     public ResponseEntity<String> deleteProductoByName(@PathVariable String nombreProducto){
         try {
             productoService.deleteByName(nombreProducto);
@@ -134,7 +134,7 @@ public class ProductoController {
     }
 
     /**Eliminacion logica por id producto actualizando el producto activo a FALSE*/
-    @PutMapping("solf-delete/id/{id}")
+    @PutMapping("soft-delete/id/{id}")
     public ResponseEntity<String> deleteProductoById(@PathVariable Integer id){
         try {
             productoService.deleteById(id);
