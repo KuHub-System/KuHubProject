@@ -4,7 +4,6 @@ import KuHub.modules.semanas.dtos.YearFilterRequestDTO;
 import KuHub.modules.semanas.entity.Semana;
 import KuHub.modules.semanas.service.SemanaService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.repository.query.Param;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -30,7 +29,9 @@ public class SemanaController {
     public ResponseEntity<List<Semana>> findWeekActiveForYear(
             @RequestBody YearFilterRequestDTO yearEnd
     ){
-        return ResponseEntity.ok(semanaService.findWeekActiveForYear(yearEnd));
+        return ResponseEntity
+                .status(200)
+                .body(semanaService.findWeekActiveForYear(yearEnd));
     }
 
 }

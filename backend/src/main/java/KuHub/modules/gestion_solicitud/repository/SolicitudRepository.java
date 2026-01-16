@@ -56,7 +56,7 @@ public interface SolicitudRepository extends JpaRepository<Solicitud, Integer> {
 
         FROM reserva_sala rs
         JOIN seccion sc ON sc.id_seccion = rs.id_seccion
-        JOIN semanas s ON s.id = :idSemana
+        JOIN semanas s ON s.id_semana = :idSemana
         WHERE rs.id_seccion IN (:idsSecciones)
         ORDER BY rs.id_seccion
     """, nativeQuery = true)

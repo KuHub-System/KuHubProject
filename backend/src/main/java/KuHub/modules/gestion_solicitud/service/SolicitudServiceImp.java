@@ -73,7 +73,7 @@ public class SolicitudServiceImp implements SolicitudService{
 
     @Transactional
     @Override
-    public List<SolicitationAnswerDTO> saveSolicitation (SolicitationCreateRequestDTO request){
+    public void saveSolicitation(SolicitationCreateRequestDTO request){
 
         // Llamamos al método que creamos antes. Esto valida el token y trae el ID real.
         UserIdNameDTO usuarioLogueado = usuarioService.getUsuarioConectado();
@@ -247,32 +247,9 @@ public class SolicitudServiceImp implements SolicitudService{
         // ========================================================================================
         // 3. GUARDADO
         // ========================================================================================
-        List<Solicitud> solicitudesGuardadas = solicitudRepository.saveAll(listaParaGuardar);
-
-        return solicitudesGuardadas.stream()
-                .map(s -> {
-                    // A. CONVERTIMOS LOS DETALLES A DTO
-                    // Aquí es donde podrás ver si el redondeo funcionó (cantidad)
-                    List<DetalleAnswerDTO> detallesDto = s.getDetalles().stream()
-                            .map(d -> new DetalleAnswerDTO(
-                                    d.getIdProducto(),
-                                    d.getCantProductoSolicitud(), // <--- EL DATO QUE QUIERES VERIFICAR
-                                    d.getObservacion()
-                            ))
-                            .collect(Collectors.toList());
-
-                    // B. CREAMOS EL DTO PADRE CON LA LISTA
-                    return new SolicitationAnswerDTO(
-                            s.getIdSolicitud(),
-                            s.getIdUsuarioGestorSolicitud(),
-                            s.getIdSeccion(),
-                            s.getFechaSolicitada(),
-                            s.getEstadoSolicitud().name(),
-                            s.getObservaciones(),
-                            detallesDto // <--- PASAMOS LA LISTA AQUÍ
-                    );
-                })
-                .collect(Collectors.toList());
+        System.out.println("Lista para guardar: " + listaParaGuardar.size());
+        solicitudRepository.saveAll(listaParaGuardar);
+        System.out.println("¡Guardado completado!");
     }
 
     @Getter

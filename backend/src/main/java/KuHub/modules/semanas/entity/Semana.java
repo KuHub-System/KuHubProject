@@ -19,7 +19,8 @@ public class Semana {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Integer id;
+    @Column(name = "id_semana") // <--- Agrega esto para que Java sepa que "id" es "id_semana"
+    private Integer idSemana;
 
     @Column(name = "nombre_semana", nullable = false, length = 50)
     private String nombreSemana;

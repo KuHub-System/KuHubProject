@@ -10,6 +10,6 @@ import java.util.List;
 
 public interface SolicitudService {
     List<SectionAvailabilityView> checkSectionAvailability (CheckSectionAvailabilityRequestDTO r);
-    List<SolicitationAnswerDTO> saveSolicitation (SolicitationCreateRequestDTO rest);
+    void saveSolicitation(SolicitationCreateRequestDTO request);
     ManagementSolicitationSelectorsDTO getSelectorsForManagement();
 }

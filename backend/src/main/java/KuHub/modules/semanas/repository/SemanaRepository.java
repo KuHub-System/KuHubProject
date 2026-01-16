@@ -13,19 +13,20 @@ import java.util.List;
 public interface SemanaRepository extends JpaRepository<Semana, Integer> {
 
     // Consulta con parámetro dinámico para el año
-    @Query(value = "SELECT * FROM semanas " +
-                    "WHERE fecha_fin >= CURRENT_DATE " +
-                    "AND anio BETWEEN EXTRACT(YEAR FROM CURRENT_DATE) AND :anioFin " +
-                    "ORDER BY fecha_inicio ASC",
-                    nativeQuery = true)
-    List<Semana> findWeekActiveForYear(@Param("anioFin") Integer yearEnd);;
+    @Query(value = """
+            SELECT * FROM semanas 
+            WHERE fecha_fin >= CURRENT_DATE 
+            AND anio BETWEEN EXTRACT(YEAR FROM CURRENT_DATE) AND :anioFin 
+            ORDER BY fecha_inicio ASC
+    """, nativeQuery = true)
+    List<Semana> findWeekActiveForYear(@Param("anioFin") Integer yearEnd);
 
     @Query(value = """
-    SELECT 
-        ID_SEMANA AS ID, 
-        NOMBRE_SEMANA || ' - S' || SEMESTRE || ' - '|| ANIO AS ETIQUETA_SEMANA 
-    FROM SEMANAS
-    ORDER BY ID DESC
-    """, nativeQuery = true)
+            SELECT 
+                ID_SEMANA AS ID, 
+                NOMBRE_SEMANA || ' - S' || SEMESTRE || ' - '|| ANIO AS ETIQUETA_SEMANA 
+            FROM SEMANAS
+            ORDER BY ID DESC
+            """, nativeQuery = true)
     List<WeekIdDescripcionView> findAllForSelector();
 }

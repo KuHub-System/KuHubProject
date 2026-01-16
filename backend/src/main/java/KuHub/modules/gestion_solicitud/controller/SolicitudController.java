@@ -38,12 +38,13 @@ public class SolicitudController {
     }
 
     @PostMapping("/save-solicitation")
-    public ResponseEntity<List<SolicitationAnswerDTO>> saveSolicitation(
+    public ResponseEntity<Void> saveSolicitation(
             @RequestBody SolicitationCreateRequestDTO r
             ){
+        solicitudService.saveSolicitation(r);
         return ResponseEntity
                 .status(201)
-                .body(solicitudService.saveSolicitation(r));
+                .build();
     }
 
 
