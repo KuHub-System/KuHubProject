@@ -1,5 +1,6 @@
 package KuHub.modules.gestion_academica.repository;
 
+import KuHub.modules.gestion_academica.dtos.projection.CourseSolicitationSelectView;
 import KuHub.modules.gestion_academica.entity.Asignatura;
 import feign.Param;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -16,6 +17,15 @@ public interface AsignaturaRepository extends JpaRepository <Asignatura, Integer
     Boolean existsByNombreAsignaturaAndActivoIsTrue(String nombreAsignatura);
     Boolean existsByNombreAsignaturaAndCodAsignaturaAndActivoIsTrue(String nombreAsignatura, String codAsignatura);
     List<Asignatura> findAllByActivoTrue();
+
+    @Query(value = """
+    SELECT 
+        ID_ASIGNATURA,
+        NOMBRE_ASIGNATURA
+    FROM ASIGNATURA
+    WHERE ACTIVO = TRUE
+    """, nativeQuery = true)
+    List<CourseSolicitationSelectView> findAllActiveForSelector();
 
     /**
      * Verifica si existe alguna asignatura activa cuyo código coincida con el dado,

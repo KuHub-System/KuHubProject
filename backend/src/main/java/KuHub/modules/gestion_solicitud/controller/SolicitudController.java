@@ -1,6 +1,7 @@
 package KuHub.modules.gestion_solicitud.controller;
 
 import KuHub.modules.gestion_solicitud.dtos.CheckSectionAvailabilityRequestDTO;
+import KuHub.modules.gestion_solicitud.dtos.ManagementSolicitationSelectorsDTO;
 import KuHub.modules.gestion_solicitud.dtos.SolicitationAnswerDTO;
 import KuHub.modules.gestion_solicitud.dtos.SolicitationCreateRequestDTO;
 import KuHub.modules.gestion_solicitud.dtos.proyeccion.SectionAvailabilityView;
@@ -20,6 +21,13 @@ public class SolicitudController {
     @Autowired
     private SolicitudService solicitudService;
 
+
+    @GetMapping("/selectors-for-management-solicitation") // OJO: Escribe bien "management" esta vez
+    public ResponseEntity<ManagementSolicitationSelectorsDTO> getSelectorsForManagement() {
+        ManagementSolicitationSelectorsDTO selectors = solicitudService.getSelectorsForManagement();
+        return ResponseEntity.ok(selectors);
+    }
+
     @PostMapping("/check-section-availability")
     public ResponseEntity<List<SectionAvailabilityView>> checkSectionAvailability(
             @RequestBody CheckSectionAvailabilityRequestDTO r
@@ -37,5 +45,6 @@ public class SolicitudController {
                 .status(201)
                 .body(solicitudService.saveSolicitation(r));
     }
+
 
 }
