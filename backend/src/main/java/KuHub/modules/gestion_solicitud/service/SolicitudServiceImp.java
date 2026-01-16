@@ -5,10 +5,7 @@ import KuHub.modules.gestion_academica.repository.AsignaturaRepository;
 import KuHub.modules.gestion_receta.entity.DetalleReceta;
 import KuHub.modules.gestion_receta.services.DetalleRecetaService;
 import KuHub.modules.gestion_solicitud.dtos.*;
-import KuHub.modules.gestion_solicitud.dtos.proyeccion.ProductoUnidadView;
-import KuHub.modules.gestion_solicitud.dtos.proyeccion.SeccionInscritosView;
-import KuHub.modules.gestion_solicitud.dtos.proyeccion.SectionAvailabilityView;
-import KuHub.modules.gestion_solicitud.dtos.proyeccion.WeekIdDescripcionView;
+import KuHub.modules.gestion_solicitud.dtos.proyeccion.*;
 import KuHub.modules.gestion_solicitud.entity.DetalleSolicitud;
 import KuHub.modules.gestion_solicitud.entity.Solicitud;
 import KuHub.modules.gestion_solicitud.repository.SolicitudRepository;
@@ -16,6 +13,7 @@ import KuHub.modules.gestion_usuario.dtos.UserIdAndCompleteNameDTO;
 import KuHub.modules.gestion_usuario.dtos.record.UserIdNameDTO;
 import KuHub.modules.gestion_usuario.service.UsuarioService;
 import KuHub.modules.semanas.repository.SemanaRepository;
+import KuHub.utils.StringUtils;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -41,6 +39,70 @@ public class SolicitudServiceImp implements SolicitudService{
     private SemanaRepository semanaRepository;
     @Autowired
     private AsignaturaRepository asignaturaRepository;
+
+    @Transactional(readOnly = true)
+    @Override
+    public List<ManagementSolicitationView> findManagementSolicitations(ManagementFilterRequestDTO filter) {
+
+        // Si el filtro es nulo total, mandamos todo null
+        if (filter == null) {
+            return solicitudRepository.findManagementSolicitations(null, null, null, null);
+        }
+
+        // 1. Procesamos los IDs numéricos (convierte 0 en null)
+        Integer idDocente = processIdFilter(filter.getIdDocente());
+        Integer idSemana = processIdFilter(filter.getIdSemana());
+        Integer idAsignatura = processIdFilter(filter.getIdAsignatura());
+
+        // 2. Procesamos el Estado (convierte "Todos" en null y normaliza texto)
+        String estadoProcesado = processEstadoFilter(filter.getEstadoSolicitud());
+
+        return solicitudRepository.findManagementSolicitations(
+                idDocente,
+                idSemana,
+                idAsignatura,
+                estadoProcesado
+        );
+    }
+
+// =========================================================================
+// MÉTODOS PRIVADOS DE CONTROL Y PARSEO
+// =========================================================================
+
+    /**
+     * Controla los filtros numéricos (IDs).
+     * Regla: Si es NULL o es 0 (valor por defecto de "Select"), retorna NULL para ignorar el filtro en SQL.
+     */
+    private Integer processIdFilter(Integer id) {
+        if (id == null || id == 0) {
+            return null;
+        }
+        return id;
+    }
+
+    /**
+     * Controla el filtro de Estado (String).
+     * Regla 1: Si es NULL, Vacío, "0" o contiene "TODOS", retorna NULL.
+     * Regla 2: Si es un valor válido, lo normaliza a formato ENUM (Mayúsculas, sin tildes, guiones bajos).
+     */
+    private String processEstadoFilter(String rawEstado) {
+        if (rawEstado == null || rawEstado.isBlank()) {
+            return null;
+        }
+
+        // Normalizamos temporalmente para chequear si es la opción "Todos"
+        // "Todos los estados" -> "TODOS LOS ESTADOS" o "0"
+        String checkValue = rawEstado.trim().toUpperCase();
+
+        if (checkValue.equals("0") || checkValue.contains("TODOS")) {
+            return null; // El WHERE (:estado IS NULL) hará el trabajo
+        }
+
+        // Si llegamos aquí, es un estado real (ej: "Pendiente", "Aceptada")
+        // Usamos tu utilidad para convertirlo a "PENDIENTE", "ACEPTADA", etc.
+        return StringUtils.normalizeToEnumKey(rawEstado);
+    }
+
 
     @Transactional(readOnly = true)
     @Override

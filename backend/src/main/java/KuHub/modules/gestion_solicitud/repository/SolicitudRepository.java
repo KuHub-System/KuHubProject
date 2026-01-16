@@ -1,5 +1,6 @@
 package KuHub.modules.gestion_solicitud.repository;
 
+import KuHub.modules.gestion_solicitud.dtos.proyeccion.ManagementSolicitationView;
 import KuHub.modules.gestion_solicitud.dtos.proyeccion.ProductoUnidadView;
 import KuHub.modules.gestion_solicitud.dtos.proyeccion.SeccionInscritosView;
 import KuHub.modules.gestion_solicitud.dtos.proyeccion.SectionAvailabilityView;
@@ -13,6 +14,48 @@ import java.util.List;
 
 @Repository
 public interface SolicitudRepository extends JpaRepository<Solicitud, Integer> {
+
+
+    @Query(value = """
+        SELECT  
+            S.id_solicitud AS idSolicitud,
+            CONCAT_WS(' ', U.p_nombre, U.s_nombre, U.app_paterno, U.app_materno) AS nombreProfesor,
+            A.nombre_asignatura AS nombreAsignatura,
+            S.fecha_solicitada AS fechaSolicitada,  
+            CASE 
+                WHEN S.id_receta IS NULL THEN 'RECETA NO ASIGNADA' 
+                ELSE R.nombre_receta 
+            END AS nombreReceta,
+            S.estado_solicitud AS estadoSolicitud,
+            COALESCE(C.cantidad_productos, 0) AS totalProductos
+        FROM solicitud S
+        LEFT JOIN semanas SM ON S.fecha_solicitada BETWEEN SM.fecha_inicio AND SM.fecha_fin
+        LEFT JOIN receta R ON R.id_receta = S.id_receta 
+        JOIN seccion SC ON S.id_seccion = SC.id_seccion
+        JOIN asignatura A ON A.id_asignatura = SC.id_asignatura
+        JOIN docente_seccion DC ON DC.id_seccion = S.id_seccion 
+        JOIN usuario U ON U.id_usuario = DC.id_usuario
+        LEFT JOIN (
+            SELECT id_solicitud, COUNT(*) AS cantidad_productos
+            FROM detalle_solicitud
+            GROUP BY id_solicitud
+        ) C ON C.id_solicitud = S.id_solicitud
+        WHERE 
+            (:idDocente IS NULL OR U.id_usuario = :idDocente)
+            AND 
+            (:idSemana IS NULL OR SM.id_semana = :idSemana)
+            AND 
+            (:idAsignatura IS NULL OR A.id_asignatura = :idAsignatura)
+            AND
+            (:estadoSolicitud IS NULL OR S.estado_solicitud = CAST(:estadoSolicitud AS estado_solicitud_type))
+        ORDER BY S.fecha_solicitada DESC
+    """, nativeQuery = true)
+    List<ManagementSolicitationView> findManagementSolicitations(
+            @Param("idDocente") Integer idDocente,
+            @Param("idSemana") Integer idSemana,
+            @Param("idAsignatura") Integer idAsignatura,
+            @Param("estadoSolicitud") String estadoSolicitud // Nuevo parámetro
+    );
 
     @Query(value = """
         SELECT DISTINCT
