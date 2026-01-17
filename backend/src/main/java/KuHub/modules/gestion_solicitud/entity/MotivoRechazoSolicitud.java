@@ -1,34 +1,33 @@
 package KuHub.modules.gestion_solicitud.entity;
 
 import jakarta.persistence.*;
-import lombok.Getter;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
 
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "motivo_rechazo_solicitud")
-@Getter
-@Setter
+@Data
+@Builder
 @NoArgsConstructor
-public class MotivoRechazo {
+@AllArgsConstructor
+public class MotivoRechazoSolicitud {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id_motivo")
     private Integer idMotivo;
 
-    @Column(nullable = false)
+    @Column(name = "id_solicitud", nullable = false, unique = true)
+    private Integer idSolicitud; // Usamos el ID directo para facilitar la inserción
+
+    @Column(name = "motivo", nullable = false, length = 200)
     private String motivo;
 
     @Column(name = "fecha_rechazo")
+    @Builder.Default
     private LocalDateTime fechaRechazo = LocalDateTime.now();
-
-    @Column(name = "id_solicitud", nullable = false)
-    private Integer idSolicitud;
-
-    public MotivoRechazo(Integer idSolicitud, String motivo) {
-        this.idSolicitud = idSolicitud;
-        this.motivo = motivo;
-    }
 }
