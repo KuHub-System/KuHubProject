@@ -4,6 +4,7 @@ import KuHub.modules.gestion_solicitud.dtos.*;
 import KuHub.modules.gestion_solicitud.dtos.proyeccion.ManagementSolicitationView;
 import KuHub.modules.gestion_solicitud.dtos.proyeccion.SectionAvailabilityView;
 import KuHub.modules.gestion_solicitud.service.SolicitudService;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
@@ -52,6 +53,15 @@ public class SolicitudController {
         return ResponseEntity
                 .status(201)
                 .build();
+    }
+
+    @PatchMapping("/update-solicitation-status")
+    public ResponseEntity<Void> updateSolicitationStatus(
+            @RequestBody @Valid SolicitationStatusUpdateDTO dto
+    ) {
+        solicitudService.updateSolicitationStatus(dto);
+        // Retornamos 204 No Content: Todo salió bien, no hay cuerpo que devolver.
+        return ResponseEntity.status(204).build();
     }
 
 

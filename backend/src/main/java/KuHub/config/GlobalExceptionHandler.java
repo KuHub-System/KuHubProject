@@ -1,6 +1,7 @@
 package KuHub.config;
 
 import KuHub.modules.gestion_academica.exceptions.GestionAcademicaException;
+import KuHub.modules.gestion_solicitud.exception.GestionSolicitudException;
 import KuHub.modules.gestion_usuario.exceptions.*;
 import KuHub.modules.producto.exceptions.ProductoException;
 import KuHub.modules.producto.exceptions.ProductoNotFoundException;
@@ -213,6 +214,13 @@ public class GlobalExceptionHandler {
         response.put("message", ex.getMessage());
 
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+    }
+
+    @ExceptionHandler(GestionSolicitudException.class)
+    public ResponseEntity<Map<String, String>> handleGestionSolicitudException(GestionSolicitudException ex) {
+        // Retornamos un 400 Bad Request con el mensaje limpio
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(Map.of("mensaje", ex.getMessage()));
     }
 
 

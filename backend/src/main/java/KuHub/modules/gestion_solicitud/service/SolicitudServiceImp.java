@@ -7,7 +7,10 @@ import KuHub.modules.gestion_receta.services.DetalleRecetaService;
 import KuHub.modules.gestion_solicitud.dtos.*;
 import KuHub.modules.gestion_solicitud.dtos.proyeccion.*;
 import KuHub.modules.gestion_solicitud.entity.DetalleSolicitud;
+import KuHub.modules.gestion_solicitud.entity.MotivoRechazoSolicitud;
 import KuHub.modules.gestion_solicitud.entity.Solicitud;
+import KuHub.modules.gestion_solicitud.exception.GestionSolicitudException;
+import KuHub.modules.gestion_solicitud.repository.MotivoRechazoRepository;
 import KuHub.modules.gestion_solicitud.repository.SolicitudRepository;
 import KuHub.modules.gestion_usuario.dtos.UserIdAndCompleteNameDTO;
 import KuHub.modules.gestion_usuario.dtos.record.UserIdNameDTO;
@@ -23,6 +26,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -39,6 +43,62 @@ public class SolicitudServiceImp implements SolicitudService{
     private SemanaRepository semanaRepository;
     @Autowired
     private AsignaturaRepository asignaturaRepository;
+    @Autowired
+    private MotivoRechazoRepository motivoRechazoRepository;
+
+    @Transactional(readOnly = true)
+    @Override
+    public Solicitud findById(Integer idSolicitud){
+        return solicitudRepository.findById(idSolicitud).orElseThrow((
+        ) -> new RuntimeException("Solicitud no encontrada"));
+    }
+
+    @Transactional
+    @Override
+    public void updateSolicitationStatus(SolicitationStatusUpdateDTO dto) {
+
+        // 1. Reutilizamos tu método findById (Si falla, lanza la Excepción automáticamente)
+        Solicitud solicitud = this.findById(dto.getIdSolicitud());
+
+        // 2. Validación de Estado PROCESADO (Regla de negocio: si ya está cerrada no se toca)
+        if (solicitud.getEstadoSolicitud() == Solicitud.EstadoSolicitud.PROCESADO) {
+            throw new GestionSolicitudException("No se puede modificar una solicitud que ya está PROCESADA.");
+        }
+
+        // 3. Normalización y Conversión segura usando tu StringUtils
+        String estadoKey = StringUtils.normalizeToEnumKey(dto.getEstado());
+
+        Solicitud.EstadoSolicitud nuevoEstado;
+        try {
+            nuevoEstado = Solicitud.EstadoSolicitud.valueOf(estadoKey);
+        } catch (IllegalArgumentException | NullPointerException e) {
+            throw new GestionSolicitudException("El estado enviado no es válido: " + dto.getEstado());
+        }
+
+        // 4. Lógica Específica según el nuevo estado
+        if (nuevoEstado == Solicitud.EstadoSolicitud.RECHAZADA) {
+            // A. Validación: Obligatorio tener motivo
+            if (dto.getMotivoRechazo() == null || dto.getMotivoRechazo().isBlank()) {
+                throw new GestionSolicitudException("Para RECHAZAR una solicitud, debe ingresar un motivo.");
+            }
+
+            // B. Guardar en tabla separada (motivo_rechazo_solicitud)
+            MotivoRechazoSolicitud rechazo = MotivoRechazoSolicitud.builder()
+                    .idSolicitud(solicitud.getIdSolicitud())
+                    .motivo(StringUtils.normalizeSpaces(dto.getMotivoRechazo()))
+                    .build();
+
+            motivoRechazoRepository.save(rechazo);
+
+        } else if (nuevoEstado == Solicitud.EstadoSolicitud.ACEPTADA) {
+            // Opcional: Podrías querer borrar un motivo de rechazo previo si existiera
+            // pero dado que es un historial, dejarlo o borrarlo depende de tu regla de negocio.
+        }
+
+        // 5. Actualizar el estado en la tabla principal
+        solicitud.setEstadoSolicitud(nuevoEstado);
+        solicitudRepository.save(solicitud);
+    }
 
     @Transactional(readOnly = true)
     @Override
