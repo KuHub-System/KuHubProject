@@ -1,0 +1,16 @@
+# Configuración extraída de tus credenciales de Git
+spring:
+  datasource:
+    # URL construida con el Host, Puerto y Nombre de la imagen
+    url: jdbc:postgresql://kuhub-system.cfyqugtyn9lo.us-east-1.rds.amazonaws.com:5432/postgres
+
+    # Usuario y contraseña exactos de tu captura
+    username: Kuhub
+    password: KubHub_2026
+
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    show-sql: true
+    hibernate:
+      ddl-auto: none
