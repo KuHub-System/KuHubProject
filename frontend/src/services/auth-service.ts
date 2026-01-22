@@ -186,11 +186,7 @@ export const actualizarFotoPerfilService = async (archivo: File): Promise<string
 
     console.log('📤 Enviando foto de perfil (FormData) al backend...');
 
-    const response = await api.put(`/usuarios/perfil/foto`, formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    });
+    const response = await api.put(`/usuarios/${usuarioActual.id}/foto`, formData);
 
     console.log('✅ Foto de perfil actualizada en backend');
 

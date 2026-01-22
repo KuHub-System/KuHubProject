@@ -121,11 +121,36 @@ const InformacionPersonal: React.FC<{ user: any }> = ({ user }) => {
 
     try {
       setIsLoading(true);
-      const newAvatarUrl = await actualizarFotoPerfilService(file);
-      setAvatarUrl(newAvatarUrl);
-    } catch (error) {
+
+      const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        // Validar que sea una imagen permitida (PNG, JPG, JPEG)
+        const validTypes = ['image/jpeg', 'image/png', 'image/jpg'];
+        if (!validTypes.includes(file.type)) {
+          alert('Solo se permiten archivos PNG, JPG o JPEG');
+          return;
+        }
+
+        try {
+          setIsLoading(true);
+
+          // Usar servicio de Auth (FormData)
+          const newAvatarUrl = await actualizarFotoPerfilService(file);
+          setAvatarUrl(newAvatarUrl);
+
+          // Nota: actualizarFotoPerfilService ya actualiza la sesión interna
+        } catch (error: any) {
+          console.error('Error al actualizar la foto de perfil:', error);
+          alert(error.message || 'Error al actualizar la foto de perfil');
+        } finally {
+          setIsLoading(false);
+        }
+      };
+    } catch (error: any) {
       console.error('Error al actualizar la foto de perfil:', error);
-      alert('Error al actualizar la foto de perfil');
+      alert(error.message || 'Error al actualizar la foto de perfil');
     } finally {
       setIsLoading(false);
     }
