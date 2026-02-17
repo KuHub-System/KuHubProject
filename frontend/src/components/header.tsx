@@ -41,82 +41,85 @@ const Header: React.FC<HeaderProps> = ({ toggleSidebar }) => {
   };
 
   return (
-    <header className="header w-full py-2 px-4">
+    <header className="header w-full py-3 px-6 bg-white dark:bg-content1 border-b border-default-200 dark:border-default-100 sticky top-0 z-40 transition-colors duration-200">
       <div className="flex items-center justify-between">
         {/* Botón para mostrar/ocultar sidebar en móviles */}
         <Button
           isIconOnly
           variant="light"
-          className="md:hidden"
+          className="md:hidden text-default-600 dark:text-default-400"
           aria-label="Toggle Sidebar"
           onPress={toggleSidebar}
         >
-            <DropdownItem key="profile" onPress={goToProfile}>
-                <div className="flex items-center gap-2">
-                    {/* Cambia el icono por el logo */}
-                    <img src={LOGO_URL} alt="Logo KuHub" className="h-5 w-5 rounded" />
-                    <span>Perfil</span>
-                </div>
-            </DropdownItem>
+          <Icon icon="lucide:menu" width={24} />
         </Button>
 
         {/* Título de la página (visible solo en móviles) */}
-        <h1 className="text-lg font-semibold md:hidden">KuHub</h1>
+        <div className="flex items-center gap-2 md:hidden">
+          <img src={LOGO_URL} alt="Logo" className="h-6 w-6" />
+          <h1 className="text-lg font-bold text-secondary dark:text-foreground">KüHub</h1>
+        </div>
 
         {/* Espacio vacío para alinear a la derecha en desktop */}
         <div className="hidden md:block"></div>
 
         {/* Controles de la derecha */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           {/* Botón de cambio de tema */}
           <Button
             isIconOnly
             variant="light"
+            size="sm"
             aria-label="Toggle Theme"
             onPress={toggleTheme}
+            className="text-default-500 hover:text-primary transition-colors"
           >
-            <Icon 
-              icon={theme === 'light' ? 'lucide:moon' : 'lucide:sun'} 
-              className="text-lg"
+            <Icon
+              icon={theme === 'light' ? 'lucide:moon' : 'lucide:sun'}
+              width={20}
             />
           </Button>
 
+          <div className="h-6 w-px bg-default-200 mx-1 hidden md:block"></div>
+
           {/* Dropdown del usuario */}
           {user && (
-            <Dropdown>
+            <Dropdown placement="bottom-end">
               <DropdownTrigger>
                 <Button
                   variant="light"
-                  className="flex items-center gap-2 px-2"
+                  className="flex items-center gap-3 px-2 h-auto py-1 data-[hover=true]:bg-default-100 dark:data-[hover=true]:bg-default-50"
                 >
+                  <div className="flex flex-col items-end hidden md:flex">
+                    <span className="text-sm font-bold text-secondary dark:text-foreground leading-none">{user.nombre}</span>
+                    <span className="text-[10px] text-default-500 font-medium uppercase mt-0.5">{user.rol}</span>
+                  </div>
                   <Avatar
                     name={user.nombre}
                     size="sm"
-                    src={user.avatar || undefined}
+                    src={user.fotoPerfil || undefined}
+                    className="w-8 h-8 text-tiny font-bold bg-primary text-secondary ring-2 ring-white dark:ring-default-100"
                   />
-                  <span className="hidden md:inline text-sm font-medium">
-                    {user.nombre}
-                  </span>
-                  <Icon icon="lucide:chevron-down" className="text-sm" />
+                  <Icon icon="lucide:chevron-down" className="text-default-400 text-xs" />
                 </Button>
               </DropdownTrigger>
-              <DropdownMenu aria-label="Acciones de usuario">
-                <DropdownItem key="profile" onPress={goToProfile}>
+              <DropdownMenu aria-label="Acciones de usuario" className="w-56">
+                <DropdownItem key="profile" onPress={goToProfile} className="gap-2">
                   <div className="flex items-center gap-2">
-                    <Icon icon="lucide:user" />
-                    <span>Perfil</span>
+                    <Icon icon="lucide:user" width={16} />
+                    <span className="font-medium">Mi Perfil</span>
                   </div>
                 </DropdownItem>
-                <DropdownItem key="role" isReadOnly>
-                  <div className="flex items-center gap-2 text-default-500">
-                    <Icon icon="lucide:shield" />
-                    <span>Rol: {user.rol}</span>
+                <DropdownItem key="settings" showDivider className="gap-2">
+                  <div className="flex items-center gap-2">
+                    <Icon icon="lucide:settings" width={16} />
+                    <span className="font-medium">Configuración</span>
                   </div>
                 </DropdownItem>
-                <DropdownItem key="logout" className="text-danger" color="danger" onPress={handleLogout}>
+                <DropdownItem key="logout" className="text-danger color-danger" onPress={handleLogout}>
                   <div className="flex items-center gap-2">
-                    <Icon icon="lucide:log-out" />
-                    <span>Cerrar sesión</span>
+                    <Icon icon="lucide:log-out" width={16} />
+                    <span className="font-medium">Cerrar Sesión</span>
                   </div>
                 </DropdownItem>
               </DropdownMenu>

@@ -227,7 +227,7 @@ const GestionPedidosPage: React.FC = () => {
         transition={{ duration: 0.4 }}
         className="space-y-6"
       >
-        <Card>
+        <Card className="bg-white dark:bg-content1">
           <CardHeader className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
               <h1 className="text-2xl font-bold mb-1">Gestión de Pedidos Semanales</h1>
@@ -273,7 +273,7 @@ const GestionPedidosPage: React.FC = () => {
           </CardBody>
         </Card>
 
-        <Card>
+        <Card className="bg-white dark:bg-content1">
           <CardBody className="p-4 space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-[1fr_200px_200px] gap-4">
               <Input
@@ -289,6 +289,8 @@ const GestionPedidosPage: React.FC = () => {
                 placeholder="Todos los estados"
                 selectedKeys={filtroEstado}
                 onSelectionChange={setFiltroEstado}
+                variant="bordered"
+                classNames={{ trigger: "bg-white dark:bg-default-100/50" }}
               >
                 <SelectItem key="todos">Todos</SelectItem>
                 <SelectItem key="EnCurso">En curso</SelectItem>
@@ -300,6 +302,8 @@ const GestionPedidosPage: React.FC = () => {
                 placeholder="Todas las semanas"
                 selectedKeys={filtroSemana}
                 onSelectionChange={setFiltroSemana}
+                variant="bordered"
+                classNames={{ trigger: "bg-white dark:bg-default-100/50" }}
               >
                 <SelectItem key="todas">Todas</SelectItem>
                 {SEMANAS.map((semana) => (
@@ -312,7 +316,7 @@ const GestionPedidosPage: React.FC = () => {
           </CardBody>
         </Card>
 
-        <Card className="shadow-sm">
+        <Card className="shadow-sm bg-white dark:bg-content1">
           <CardBody className="p-0">
             <Table removeWrapper aria-label="Tabla de pedidos semanales">
               <TableHeader>
@@ -370,7 +374,7 @@ const GestionPedidosPage: React.FC = () => {
         <ModalContent>
           {(onClose) => (
             <>
-              <ModalHeader className="flex flex-col gap-1">
+              <ModalHeader className="flex flex-col gap-1 border-b border-default-100 dark:border-default-50 bg-default-50 dark:bg-content2">
                 <span className="text-xl font-semibold">
                   Detalle del pedido semanal {pedidoSeleccionado?.semana}
                 </span>
@@ -381,7 +385,7 @@ const GestionPedidosPage: React.FC = () => {
               <ModalBody className="space-y-4">
                 {pedidoSeleccionado && (
                   <>
-                    <Card variant="flat">
+                    <Card className="border border-default-200 dark:border-default-100 bg-transparent shadow-none">
                       <CardBody className="grid grid-cols-1 md:grid-cols-4 gap-3 text-sm">
                         <div>
                           <p className="text-default-500">Estado</p>
@@ -485,7 +489,7 @@ const GestionPedidosPage: React.FC = () => {
         <ModalContent>
           {(onClose) => (
             <>
-              <ModalHeader>
+              <ModalHeader className="border-b border-default-100 dark:border-default-50 bg-default-50 dark:bg-content2">
                 Detalle de la solicitud
               </ModalHeader>
               <ModalBody className="space-y-4">
@@ -585,7 +589,7 @@ const ResumenCard: React.FC<ResumenCardProps> = ({ titulo, valor, icono, color }
   };
 
   return (
-    <Card variant="flat" className="border border-default-200">
+    <Card className="border border-default-200 dark:border-default-100 bg-transparent shadow-none">
       <CardBody className="flex items-center gap-4">
         <div className={`p-3 rounded-full ${colorClasses[color]}`}>
           <Icon icon={icono} className="text-xl" />

@@ -673,8 +673,8 @@ export const DashboardAdmin: React.FC = () => {
 
   return (
     <>
-      <div className="container mx-auto px-4 py-6 space-y-6">
-        <DashboardHeader userName={user?.nombre || 'Usuario'} />
+      <div className="container mx-auto px-4 py-8 space-y-8 font-sans">
+        <DashboardHeader userName={user?.nombre || 'Administrador'} subtitle="Panel de Gestión General" />
 
         {/* Proceso de Pedidos */}
         <ProcesoPedidosSection
@@ -700,13 +700,14 @@ export const DashboardAdmin: React.FC = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, delay: 0.2 }}
-          className="grid grid-cols-1 md:grid-cols-4 gap-4 items-stretch"
+          className="grid grid-cols-1 md:grid-cols-4 gap-6 items-stretch"
         >
           <StatsCard
             title="Pendientes"
             value={conteoSemana.pendientes}
             icon="lucide:clock"
             color="warning"
+            description="Solicitudes por revisar"
             onClick={solicitudesPendientes.length > 0 ? onPendientesOpen : undefined}
           />
           <StatsCard
@@ -714,18 +715,21 @@ export const DashboardAdmin: React.FC = () => {
             value={conteoSemana.aceptadas}
             icon="lucide:check-circle"
             color="success"
+            description="Aprobadas esta semana"
           />
           <StatsCard
             title="Rechazadas"
             value={conteoSemana.rechazadas}
             icon="lucide:x-circle"
             color="danger"
+            description="Devueltas a profesores"
           />
           <StatsCard
-            title="Stock Bajo"
+            title="Stock Crítico"
             value={productosBajoStock.length}
-            icon="lucide:package"
+            icon="lucide:package-alert"
             color="primary"
+            description="Productos bajo mínimo"
             onClick={() => history.push('/inventario')}
           />
         </motion.div>
@@ -738,48 +742,63 @@ export const DashboardAdmin: React.FC = () => {
             transition={{ duration: 0.4, delay: 0.3 }}
             className="lg:col-span-2"
           >
-            <Card className="shadow-sm h-full">
-              <CardHeader className="pb-0 pt-4 px-4 flex justify-between items-center">
-                <h3 className="text-lg font-semibold">Asignaturas y sus solicitudes</h3>
-                {estadoProceso.semanaSeleccionada && (
-                  <Chip color="primary" variant="flat" size="sm">
+            <Card className="shadow-sm h-full border-t-4 border-secondary bg-white dark:bg-content1">
+              <CardHeader className="pb-0 pt-6 px-6 flex justify-between items-center bg-white dark:bg-content1">
+                <h3 className="text-lg font-bold text-secondary">
+                  Asignaturas y Solicitudes
+                  <span className="block text-xs font-normal text-default-400 mt-1">Resumen por coordinación</span>
+                </h3>
+                {estadoProceso.semanaSeleccionada ? (
+                  <Chip className="bg-primary text-secondary font-bold shadow-sm" size="sm">
                     Semana {estadoProceso.semanaSeleccionada}
                   </Chip>
+                ) : (
+                  <Chip variant="flat" size="sm">Semana Actual</Chip>
                 )}
               </CardHeader>
-              <CardBody className="px-4 pb-4">
-                <Table removeWrapper aria-label="Asignaturas y solicitudes por semana">
+              <CardBody className="px-6 pb-6">
+                <Table
+                  removeWrapper
+                  aria-label="Asignaturas y solicitudes por semana"
+                  className="mt-2"
+                >
                   <TableHeader>
-                    <TableColumn>ASIGNATURA</TableColumn>
-                    <TableColumn>PROFESOR</TableColumn>
-                    <TableColumn>ESTADO</TableColumn>
-                    <TableColumn>ACCIONES</TableColumn>
+                    <TableColumn className="bg-default-100 dark:bg-default-50/20 text-default-500 font-bold uppercase text-xs">ASIGNATURA</TableColumn>
+                    <TableColumn className="bg-default-100 dark:bg-default-50/20 text-default-500 font-bold uppercase text-xs">COORDINADOR</TableColumn>
+                    <TableColumn className="bg-default-100 dark:bg-default-50/20 text-default-500 font-bold uppercase text-xs">ESTADO</TableColumn>
+                    <TableColumn className="bg-default-100 dark:bg-default-50/20 text-default-500 font-bold uppercase text-xs">ACCIONES</TableColumn>
                   </TableHeader>
-                  <TableBody emptyContent="No hay solicitudes registradas para esta semana">
+                  <TableBody emptyContent="No hay solicitudes registradas para esta semana" className="gap-2">
                     {asignaturasParaMostrar.map((asignatura) => (
-                      <TableRow key={asignatura.id}>
+                      <TableRow key={asignatura.id} className="border-b border-default-100 last:border-none hover:bg-default-50 transition-colors">
                         <TableCell>
                           <div>
-                            <p className="font-medium">{asignatura.nombre}</p>
-                            <p className="text-xs text-default-400">{asignatura.codigo}</p>
+                            <p className="font-bold text-secondary text-sm">{asignatura.nombre}</p>
+                            <p className="text-xs text-default-500 mt-0.5">{asignatura.codigo}</p>
                           </div>
                         </TableCell>
                         <TableCell>
-                          <p className="text-sm">{asignatura.profesorCoordinador}</p>
+                          <div className="flex items-center gap-2">
+                            <div className="w-6 h-6 rounded-full bg-default-200 flex items-center justify-center text-xs font-bold text-default-600">
+                              {asignatura.profesorCoordinador.charAt(0)}
+                            </div>
+                            <p className="text-sm text-default-600">{asignatura.profesorCoordinador}</p>
+                          </div>
                         </TableCell>
                         <TableCell>
                           {renderEstadoSolicitud(asignatura.solicitud?.estado ?? null)}
                         </TableCell>
                         <TableCell>
                           {asignatura.solicitud ? (
-                            <div className="flex gap-2">
+                            <div className="flex gap-1">
                               <Button
                                 isIconOnly
                                 size="sm"
                                 variant="light"
                                 onPress={() => verDetalleSolicitud(asignatura.solicitud!)}
+                                className="text-default-400 hover:text-primary transition-colors"
                               >
-                                <Icon icon="lucide:eye" className="text-primary" />
+                                <Icon icon="lucide:eye" width={18} />
                               </Button>
                               {asignatura.solicitud.estado === 'Pendiente' && (
                                 <>
@@ -789,8 +808,9 @@ export const DashboardAdmin: React.FC = () => {
                                     variant="light"
                                     color="success"
                                     onPress={() => abrirModalAprobar(asignatura.solicitud!)}
+                                    className="text-success hover:bg-success-50"
                                   >
-                                    <Icon icon="lucide:check" />
+                                    <Icon icon="lucide:check" width={18} />
                                   </Button>
                                   <Button
                                     isIconOnly
@@ -798,14 +818,15 @@ export const DashboardAdmin: React.FC = () => {
                                     variant="light"
                                     color="danger"
                                     onPress={() => abrirModalRechazar(asignatura.solicitud!)}
+                                    className="text-danger hover:bg-danger-50"
                                   >
-                                    <Icon icon="lucide:x" />
+                                    <Icon icon="lucide:x" width={18} />
                                   </Button>
                                 </>
                               )}
                             </div>
                           ) : (
-                            <span className="text-xs text-default-400">Sin solicitud</span>
+                            <span className="text-xs text-default-300 italic">Sin solicitud</span>
                           )}
                         </TableCell>
                       </TableRow>
@@ -821,7 +842,7 @@ export const DashboardAdmin: React.FC = () => {
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.4, delay: 0.3 }}
           >
-            <Card className="shadow-sm h-full">
+            <Card className="shadow-sm h-full border-t-4 border-warning bg-white">
               <CardHeader className="pb-0 pt-4 px-4">
                 <h3 className="text-lg font-semibold">Distribución por Estado</h3>
               </CardHeader>
@@ -854,47 +875,49 @@ export const DashboardAdmin: React.FC = () => {
               </CardBody>
             </Card>
           </motion.div>
-        </div>
+        </div >
 
         {/* Productos con Stock Bajo */}
-        {productosBajoStock.length > 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: 0.4 }}
-          >
-            <Card className="shadow-sm">
-              <CardHeader className="pb-0 pt-4 px-4 flex justify-between items-center">
-                <h3 className="text-lg font-semibold">⚠️ Productos con Stock Bajo</h3>
-                <Button
-                  size="sm"
-                  variant="flat"
-                  color="primary"
-                  onPress={() => history.push('/inventario')}
-                  endContent={<Icon icon="lucide:arrow-right" />}
-                >
-                  Ver Inventario
-                </Button>
-              </CardHeader>
-              <CardBody className="px-4 pb-4">
-                <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                  {productosBajoStock.slice(0, 8).map((producto) => (
-                    <div
-                      key={producto.id}
-                      className="p-3 border border-danger-200 rounded-lg bg-default-50 dark:bg-default-900/10"
-                    >
-                      <p className="font-medium text-sm">{producto.nombre}</p>
-                      <p className="text-xs text-danger-600 dark:text-danger-400">
-                        {producto.stock} {producto.unidadMedida} (Mín: {producto.stockMinimo})
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              </CardBody>
-            </Card>
-          </motion.div>
-        )}
-      </div>
+        {
+          productosBajoStock.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, delay: 0.4 }}
+            >
+              <Card className="shadow-sm">
+                <CardHeader className="pb-0 pt-4 px-4 flex justify-between items-center">
+                  <h3 className="text-lg font-semibold">⚠️ Productos con Stock Bajo</h3>
+                  <Button
+                    size="sm"
+                    variant="flat"
+                    color="primary"
+                    onPress={() => history.push('/inventario')}
+                    endContent={<Icon icon="lucide:arrow-right" />}
+                  >
+                    Ver Inventario
+                  </Button>
+                </CardHeader>
+                <CardBody className="px-4 pb-4">
+                  <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                    {productosBajoStock.slice(0, 8).map((producto) => (
+                      <div
+                        key={producto.id}
+                        className="p-3 border border-danger-200 rounded-lg bg-default-50 dark:bg-default-900/10"
+                      >
+                        <p className="font-medium text-sm">{producto.nombre}</p>
+                        <p className="text-xs text-danger-600 dark:text-danger-400">
+                          {producto.stock} {producto.unidadMedida} (Mín: {producto.stockMinimo})
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </CardBody>
+              </Card>
+            </motion.div>
+          )
+        }
+      </div >
 
       <Modal
         isOpen={isDetalleOpen}
