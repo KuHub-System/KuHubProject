@@ -17,6 +17,7 @@ import {
   SelectItem
 } from '@heroui/react';
 import { Icon } from '@iconify/react';
+import { usePageTitle } from '../hooks/usePageTitle';
 import { motion } from 'framer-motion';
 import {
   BarChart,
@@ -76,6 +77,7 @@ const ConglomeradoPedidosPage: React.FC = () => {
   const [isLoading, setIsLoading] = React.useState(true);
 
   // ✅ CARGAR SOLICITUDES ACEPTADAS
+  usePageTitle('Conglomerado de Pedidos', 'Vista consolidada de todos los productos de solicitudes aceptadas.');
   React.useEffect(() => {
     cargarDatos();
   }, []);
@@ -301,13 +303,7 @@ const ConglomeradoPedidosPage: React.FC = () => {
         className="space-y-6"
       >
         {/* Encabezado */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold mb-2 text-foreground">Conglomerado de Pedidos</h1>
-            <p className="text-default-500">
-              Vista consolidada de todos los productos de solicitudes aceptadas.
-            </p>
-          </div>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-end gap-4">
           <Button
             color="primary"
             startContent={<Icon icon="lucide:file-text" />}

@@ -9,7 +9,8 @@ import {
   Chip, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Select, SelectItem, Textarea, Divider
 } from '@heroui/react';
 import { Icon } from '@iconify/react';
-import { motion } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
+import { usePageTitle } from '../../hooks/usePageTitle';
 import { useHistory } from 'react-router-dom';
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { useToast, useConfirm } from '../../hooks/useToast';
@@ -29,7 +30,6 @@ import {
   IProveedor
 } from '../../services/proveedor-service';
 import { obtenerProductos } from '../../services/storage-service';
-import { DashboardHeader } from './shared/DashboardHeader';
 import { StatsCard } from './shared/StatsCard';
 import { EstadoSolicitudChip } from './shared/EstadoSolicitudChip';
 import { ProcesoPedidosSection } from './ProcesoPedidosSection';
@@ -103,6 +103,8 @@ export const DashboardAdmin: React.FC = () => {
   const history = useHistory();
   const toast = useToast();
   const confirm = useConfirm();
+
+  usePageTitle('Dashboard', 'Panel de Gestión General');
 
   // Estados de datos
   const [solicitudes, setSolicitudes] = useState<ISolicitud[]>([]);
@@ -672,9 +674,8 @@ export const DashboardAdmin: React.FC = () => {
   }
 
   return (
-    <>
+    <div className="bg-gray-50 dark:bg-background min-h-screen">
       <div className="container mx-auto px-4 py-8 space-y-8 font-sans">
-        <DashboardHeader userName={user?.nombre || 'Administrador'} subtitle="Panel de Gestión General" />
 
         {/* Proceso de Pedidos */}
         <ProcesoPedidosSection
@@ -744,7 +745,7 @@ export const DashboardAdmin: React.FC = () => {
           >
             <Card className="shadow-sm h-full border-t-4 border-secondary bg-white dark:bg-content1">
               <CardHeader className="pb-0 pt-6 px-6 flex justify-between items-center bg-white dark:bg-content1">
-                <h3 className="text-lg font-bold text-secondary">
+                <h3 className="text-lg font-bold text-secondary dark:text-foreground">
                   Asignaturas y Solicitudes
                   <span className="block text-xs font-normal text-default-400 mt-1">Resumen por coordinación</span>
                 </h3>
@@ -763,17 +764,17 @@ export const DashboardAdmin: React.FC = () => {
                   className="mt-2"
                 >
                   <TableHeader>
-                    <TableColumn className="bg-default-100 dark:bg-default-50/20 text-default-500 font-bold uppercase text-xs">ASIGNATURA</TableColumn>
-                    <TableColumn className="bg-default-100 dark:bg-default-50/20 text-default-500 font-bold uppercase text-xs">COORDINADOR</TableColumn>
-                    <TableColumn className="bg-default-100 dark:bg-default-50/20 text-default-500 font-bold uppercase text-xs">ESTADO</TableColumn>
-                    <TableColumn className="bg-default-100 dark:bg-default-50/20 text-default-500 font-bold uppercase text-xs">ACCIONES</TableColumn>
+                    <TableColumn className="bg-default-100 dark:bg-default-50/50 text-default-500 font-bold uppercase text-xs">ASIGNATURA</TableColumn>
+                    <TableColumn className="bg-default-100 dark:bg-default-50/50 text-default-500 font-bold uppercase text-xs">COORDINADOR</TableColumn>
+                    <TableColumn className="bg-default-100 dark:bg-default-50/50 text-default-500 font-bold uppercase text-xs">ESTADO</TableColumn>
+                    <TableColumn className="bg-default-100 dark:bg-default-50/50 text-default-500 font-bold uppercase text-xs">ACCIONES</TableColumn>
                   </TableHeader>
                   <TableBody emptyContent="No hay solicitudes registradas para esta semana" className="gap-2">
                     {asignaturasParaMostrar.map((asignatura) => (
                       <TableRow key={asignatura.id} className="border-b border-default-100 last:border-none hover:bg-default-50 transition-colors">
                         <TableCell>
                           <div>
-                            <p className="font-bold text-secondary text-sm">{asignatura.nombre}</p>
+                            <p className="font-bold text-secondary dark:text-foreground text-sm">{asignatura.nombre}</p>
                             <p className="text-xs text-default-500 mt-0.5">{asignatura.codigo}</p>
                           </div>
                         </TableCell>
@@ -1167,7 +1168,7 @@ export const DashboardAdmin: React.FC = () => {
           )}
         </ModalContent>
       </Modal>
-    </>
+    </div>
   );
 };
 

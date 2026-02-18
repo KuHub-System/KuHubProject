@@ -26,6 +26,7 @@ import {
   CardBody
 } from '@heroui/react';
 import { Icon } from '@iconify/react';
+import { usePageTitle } from '../hooks/usePageTitle';
 import { useHistory } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { IProducto } from '../types/producto.types';
@@ -73,6 +74,8 @@ const InventarioPage: React.FC = () => {
   const { isOpen: isPedidoMasivoOpen, onOpen: onPedidoMasivoOpen, onOpenChange: onPedidoMasivoOpenChange } = useDisclosure();
   const [productoSeleccionado, setProductoSeleccionado] = React.useState<IProducto | null>(null);
   const [modalMode, setModalMode] = React.useState<'crear' | 'editar'>('crear');
+
+  usePageTitle('Inventario', 'Gestione los productos del inventario, vea movimientos y actualice existencias.');
 
   /**
    * Carga los productos al montar el componente.
@@ -249,12 +252,6 @@ const InventarioPage: React.FC = () => {
       >
         {/* Encabezado */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-default-200 dark:border-default-100 pb-4">
-          <div>
-            <h1 className="text-3xl font-bold text-secondary dark:text-foreground mb-2">Inventario</h1>
-            <p className="text-default-500 text-lg">
-              Gestione los productos del inventario, vea movimientos y actualice existencias.
-            </p>
-          </div>
           <div className="flex gap-3">
             <Button
               color="secondary"

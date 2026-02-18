@@ -6,6 +6,7 @@ import {
   Textarea, Tabs, Tab, Divider, Tooltip, Selection, CardHeader
 } from '@heroui/react';
 import { Icon } from '@iconify/react';
+import { usePageTitle } from '../hooks/usePageTitle';
 import { motion } from 'framer-motion';
 import { useAuth } from '../contexts/auth-context';
 import { useToast, useConfirm } from '../hooks/useToast';
@@ -175,7 +176,9 @@ const GestionSolicitudesPage: React.FC = () => {
     }
   };
 
-  const handleEliminarAdmin = async (solicitud: ISolicitud) => {
+  usePageTitle('Gestión de Solicitudes', 'Administre las solicitudes de insumos realizadas por los docentes.');
+
+  const handleEliminarSolicitud = async (solicitud: ISolicitud) => {
     if (!esAdministradorGeneral) {
       toast.warning('Solo el rol Administrador puede eliminar solicitudes de forma permanente.');
       return;
@@ -295,15 +298,15 @@ const GestionSolicitudesPage: React.FC = () => {
         className="space-y-8"
       >
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-default-200 dark:border-default-100 pb-4">
-          <div>
-            <h1 className="text-3xl font-bold text-secondary dark:text-foreground mb-2">
-              {esAdmin ? 'Gestión de Solicitudes' : 'Mis Solicitudes'}
-            </h1>
-            <p className="text-default-500 text-lg">
-              {esAdmin
-                ? 'Revisa y aprueba las solicitudes de los profesores'
-                : 'Gestiona tus solicitudes de insumos'}
-            </p>
+          <div className="flex gap-2">
+            <Button
+              className={tabSeleccionada === 'pendientes' ? 'bg-primary text-secondary font-bold' : 'bg-transparent text-default-500'}
+              variant={tabSeleccionada === 'pendientes' ? 'solid' : 'light'}
+              onPress={() => setTabSeleccionada('pendientes')}
+              size="lg"
+            >
+              Pendientes ({contadores.pendientes})
+            </Button>
           </div>
 
           {esAdmin && contadores.pendientes > 0 && (
@@ -635,7 +638,7 @@ const GestionSolicitudesPage: React.FC = () => {
                                 isIconOnly
                                 size="sm"
                                 variant="light"
-                                onPress={() => handleEliminarAdmin(solicitud)}
+                                onPress={() => handleEliminarSolicitud(solicitud)}
                                 className="text-default-300 hover:text-danger hover:bg-danger-50"
                               >
                                 <Icon icon="lucide:trash" width={18} />

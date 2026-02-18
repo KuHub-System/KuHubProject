@@ -24,6 +24,7 @@ import {
   Divider,
 } from '@heroui/react';
 import { Icon } from '@iconify/react';
+import { usePageTitle } from '../hooks/usePageTitle';
 import { motion } from 'framer-motion';
 import { useToast } from '../hooks/useToast';
 import { obtenerPedidosService } from '../services/pedido-service';
@@ -100,6 +101,8 @@ const GestionPedidosPage: React.FC = () => {
 
   const { isOpen: isDetalleOpen, onOpen: onDetalleOpen, onOpenChange: onDetalleOpenChange } = useDisclosure();
   const { isOpen: isSolicitudOpen, onOpen: onSolicitudOpen, onOpenChange: onSolicitudOpenChange } = useDisclosure();
+
+  usePageTitle('Gestión de Pedidos Semanales', 'Visualiza los procesos de pedidos generados por la administración.');
 
   const cargarPedidos = React.useCallback(async () => {
     try {
@@ -228,13 +231,7 @@ const GestionPedidosPage: React.FC = () => {
         className="space-y-6"
       >
         <Card className="bg-white dark:bg-content1">
-          <CardHeader className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <div>
-              <h1 className="text-2xl font-bold mb-1">Gestión de Pedidos Semanales</h1>
-              <p className="text-default-500 text-sm">
-                Visualiza los procesos de pedidos generados por la administración y revisa las solicitudes agrupadas por semana.
-              </p>
-            </div>
+          <CardHeader className="flex flex-col md:flex-row md:items-center md:justify-end gap-4">
             <Button
               variant="flat"
               color="primary"

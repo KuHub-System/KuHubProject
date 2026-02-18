@@ -5,6 +5,7 @@ import {
   Input, Checkbox, ScrollShadow
 } from '@heroui/react';
 import { Icon } from '@iconify/react';
+import { usePageTitle } from '../hooks/usePageTitle';
 import { motion } from 'framer-motion';
 import { ISolicitud, IItemSolicitud } from '../types/solicitud.types';
 import { obtenerTodasSolicitudesService, actualizarEstadoBodegaService, obtenerSolicitudPorIdService } from '../services/solicitud-service';
@@ -145,6 +146,8 @@ const RequestCard: React.FC<RequestCardProps> = ({ solicitud, onUpdate, onAddExt
 const BodegaTransitoPage: React.FC = () => {
   const [solicitudes, setSolicitudes] = React.useState<ISolicitud[]>([]);
   const [selectedDate, setSelectedDate] = React.useState<Date>(new Date());
+
+  usePageTitle('Bodega de Tránsito', 'Gestión de armado de carros diarios | Escuela de Gastronomía');
 
   // Modals state
   const { isOpen: isExtraOpen, onOpen: onExtraOpen, onOpenChange: onExtraOpenChange } = useDisclosure();
@@ -341,11 +344,7 @@ const BodegaTransitoPage: React.FC = () => {
       <div className="print:hidden mb-6 bg-white dark:bg-content1 p-6 rounded-xl shadow-sm border border-default-200 dark:border-default-100">
         <div className="flex justify-between items-center">
           <div>
-            <div className="flex items-center gap-3 mb-1">
-              <div className="w-1.5 h-8 bg-primary rounded-full"></div>
-              <h1 className="text-3xl font-bold text-secondary dark:text-foreground tracking-tight">Bodega de Tránsito</h1>
-            </div>
-            <p className="text-default-500 pl-4.5">Gestión de armado de carros diarios | <span className="text-gastronomia font-semibold">Escuela de Gastronomía</span></p>
+            {/* Espacio reservado para título si se requiere en el futuro */}
           </div>
           <div className="flex items-center gap-2 bg-default-50 dark:bg-default-100/20 rounded-full p-1.5 border border-default-200 dark:border-default-100">
             <Button isIconOnly variant="light" onPress={handlePrevDay} className="rounded-full text-secondary dark:text-foreground hover:bg-white dark:hover:bg-default-100 hover:shadow-sm">

@@ -46,6 +46,8 @@ export interface ISolicitudCreacion {
   asignaturaNombre: string;
   semana: number;
   fecha: string;
+  bloqueInicio: number;
+  bloqueFin: number;
   recetaId: string | null;
   recetaNombre: string | null;
   items: Omit<IItemSolicitud, 'id'>[];
@@ -58,6 +60,8 @@ export interface ISolicitudActualizacion {
   asignaturaNombre?: string;
   semana?: number;
   fecha?: string;
+  bloqueInicio?: number;
+  bloqueFin?: number;
   recetaId?: string | null;
   recetaNombre?: string | null;
   items?: IItemSolicitud[];

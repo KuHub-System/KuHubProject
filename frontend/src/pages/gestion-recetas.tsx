@@ -25,6 +25,7 @@ import {
 } from '@heroui/react';
 import { Icon } from '@iconify/react';
 import { motion } from 'framer-motion';
+import { usePageTitle } from '../hooks/usePageTitle';
 import { useToast, useConfirm } from '../hooks/useToast';
 import { useAuth } from '../contexts/auth-context';
 
@@ -228,10 +229,6 @@ const GestionRecetasPage: React.FC = () => {
       >
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-default-200 dark:border-default-100 pb-4">
           <div>
-            <h1 className="text-3xl font-bold text-secondary dark:text-foreground mb-2">Gestión de Recetas</h1>
-            <p className="text-default-500 text-lg">
-              Administre las recetas base para las solicitudes de insumos.
-            </p>
             {esSoloLectura && (
               <p className="text-sm text-warning-600 font-medium mt-1">
                 Rol Profesor: acceso de solo lectura. Para crear o modificar recetas, contacte al profesor a cargo.
@@ -264,7 +261,7 @@ const GestionRecetasPage: React.FC = () => {
               </div>
             </CardBody>
           </Card>
-          <Card className="shadow-sm border border-default-200 bg-white">
+          <Card className="shadow-sm border border-default-200 dark:border-default-100 bg-white dark:bg-content1">
             <CardBody className="flex flex-row items-center justify-between p-6">
               <div>
                 <p className="text-sm text-default-500 font-bold uppercase">Activas</p>
@@ -277,7 +274,7 @@ const GestionRecetasPage: React.FC = () => {
               </div>
             </CardBody>
           </Card>
-          <Card className="shadow-sm border border-default-200 bg-white">
+          <Card className="shadow-sm border border-default-200 dark:border-default-100 bg-white dark:bg-content1">
             <CardBody className="flex flex-row items-center justify-between p-6">
               <div>
                 <p className="text-sm text-default-500 font-bold uppercase">Inactivas</p>
@@ -318,7 +315,7 @@ const GestionRecetasPage: React.FC = () => {
               aria-label="Tabla de recetas"
               removeWrapper
               classNames={{
-                th: "bg-default-100 dark:bg-default-50 text-default-500 font-bold uppercase text-xs h-12",
+                th: "bg-default-100 dark:bg-default-50/50 text-default-500 font-bold uppercase text-xs h-12",
                 td: "py-3 border-b border-default-50 dark:border-default-50/20 group-data-[last=true]:border-none"
               }}
               bottomContent={
@@ -475,7 +472,7 @@ const DetalleReceta: React.FC<DetalleRecetaProps> = ({ receta, mode, productos, 
 
   return (
     <>
-      <ModalHeader className="border-b border-default-100 dark:border-default-50 bg-secondary-50 dark:bg-secondary-50/10">
+      <ModalHeader className="border-b border-default-100 dark:border-default-50/50 bg-secondary-50 dark:bg-content2">
         <div className="flex items-center gap-2">
           <Icon icon={mode === 'crear' ? 'lucide:plus-circle' : mode === 'editar' ? 'lucide:edit-3' : 'lucide:book-open'} className="text-secondary dark:text-secondary-400" width={24} />
           <span className="font-bold text-lg text-secondary dark:text-foreground">
@@ -496,7 +493,7 @@ const DetalleReceta: React.FC<DetalleRecetaProps> = ({ receta, mode, productos, 
           />
         )}
       </ModalBody>
-      <ModalFooter className="bg-default-50 dark:bg-content2 border-t border-default-100 dark:border-default-50">
+      <ModalFooter className="bg-default-50 dark:bg-content2 border-t border-default-100 dark:border-default-50/50">
         <Button variant="ghost" onPress={onClose} isDisabled={isSaving} className="font-medium">
           {mode === 'ver' ? 'Cerrar' : 'Cancelar'}
         </Button>
@@ -719,7 +716,7 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
           ) : (
             <div className="space-y-3">
               {ingredientes.map((ingrediente, index) => (
-                <Card key={ingrediente.id || index} shadow="none" className="border-2 border-default-200 dark:border-default-100 bg-transparent">
+                <Card key={ingrediente.id || index} shadow="none" className="border-2 border-default-200 dark:border-default-100 dark:bg-content1">
                   <CardBody className="p-3">
                     <div className="grid grid-cols-1 md:grid-cols-[2fr_1fr_auto_auto] gap-3 items-end">
                       <Select

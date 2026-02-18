@@ -4,6 +4,7 @@ import { Icon } from '@iconify/react';
 import { useAuth } from '../contexts/auth-context';
 import { useThemeContext } from '../contexts/theme-context';
 import { useHistory } from 'react-router-dom';
+import { usePageTitleContext } from '../contexts/PageTitleContext';
 
 const LOGO_URL = new URL('./assets/KuHubLogoWBG.png', import.meta.url).href;
 
@@ -23,6 +24,7 @@ interface HeaderProps {
 const Header: React.FC<HeaderProps> = ({ toggleSidebar }) => {
   const { user, logout } = useAuth();
   const { theme, toggleTheme } = useThemeContext();
+  const { title, subtitle } = usePageTitleContext();
   const history = useHistory();
 
   /**
@@ -60,8 +62,14 @@ const Header: React.FC<HeaderProps> = ({ toggleSidebar }) => {
           <h1 className="text-lg font-bold text-secondary dark:text-foreground">KüHub</h1>
         </div>
 
-        {/* Espacio vacío para alinear a la derecha en desktop */}
-        <div className="hidden md:block"></div>
+        {/* Título dinámico (visible en desktop) */}
+        <div className="hidden md:flex flex-col ml-4">
+          <h1 className="text-xl font-bold text-secondary dark:text-foreground leading-tight">{title || 'KüHub'}</h1>
+          {subtitle && <p className="text-xs text-default-500">{subtitle}</p>}
+        </div>
+
+        {/* Espacio flexible */}
+        <div className="flex-1"></div>
 
         {/* Controles de la derecha */}
         <div className="flex items-center gap-3">

@@ -142,16 +142,16 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
           <div className="flex items-center">
             {/* Logo de KüHub */}
             <div className="w-10 h-10 bg-primary flex items-center justify-center rounded-lg shadow-sm">
-              <img src={LOGO_URL} alt="Logo KüHub" className="h-8 w-8 object-contain brightness-0 invert" />
+              <img src={LOGO_URL} alt="Logo KüHub" />
             </div>
             <motion.div
               className="ml-3 flex flex-col justify-center"
-              variants={textVariants}
+              variants={headerVariants}
               animate={isOpen ? 'open' : 'closed'}
               initial={isOpen ? 'open' : 'closed'}
             >
               <span className="text-xl font-bold text-secondary dark:text-foreground leading-none tracking-tight">KüHub</span>
-              <span className="text-[10px] font-semibold text-default-400 uppercase tracking-widest mt-0.5">Gestión Taller</span>
+              <span className="text-[10px] font-semibold text-default-400 uppercase tracking-widest mt-0.5">Sistema de Gestión</span>
             </motion.div>
           </div>
           {isOpen && (

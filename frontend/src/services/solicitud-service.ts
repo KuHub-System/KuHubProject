@@ -13,6 +13,11 @@ import {
 } from '../types/solicitud.types';
 import { obtenerUsuarioActualService } from './auth-service';
 
+const API_BASE_URL = 'http://localhost:8083/api/v1';
+const ENDPOINTS = {
+  SOLICITUDES_DETALLES: `${API_BASE_URL}/solicituddocente/detalles`
+};
+
 // ✅ CAMBIO CRÍTICO: Usar la misma clave que storage-service
 const STORAGE_KEY = 'kuhub-solicitudes';
 
@@ -61,6 +66,8 @@ export const crearSolicitudService = (data: ISolicitudCreacion): Promise<ISolici
           asignaturaNombre: data.asignaturaNombre,
           semana: data.semana,
           fecha: data.fecha,
+          bloqueInicio: data.bloqueInicio,
+          bloqueFin: data.bloqueFin,
           recetaId: data.recetaId,
           recetaNombre: data.recetaNombre,
           items: data.items.map(item => ({
@@ -94,7 +101,33 @@ export const crearSolicitudService = (data: ISolicitudCreacion): Promise<ISolici
 export const obtenerTodasSolicitudesService = (
   filtros?: IFiltrosSolicitudes
 ): Promise<ISolicitud[]> => {
-  return new Promise((resolve) => {
+  return new Promise(async (resolve) => {
+    try {
+      // Intentar obtener datos del backend
+      console.log('🌐 Obteniendo solicitudes desde backend...', ENDPOINTS.SOLICITUDES_DETALLES);
+      const response = await fetch(ENDPOINTS.SOLICITUDES_DETALLES);
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log('✅ Datos obtenidos del backend:', data);
+
+        // Mapeo básico si es necesario, o retorno directo si coincide la estructura
+        // Asumimos que data es un array de ISolicitud o compatible
+        if (Array.isArray(data)) {
+          // Si el backend devuelve status 200 y un array, usamos eso.
+          // Podríamos validar campos aquí si fuera crítico.
+          resolve(data as ISolicitud[]);
+          return;
+        }
+      } else {
+        console.error('❌ Error al obtener solicitudes del backend:', response.status, response.statusText);
+      }
+    } catch (error) {
+      console.error('⚠️ Error de conexión con backend:', error);
+      console.log('⚠️ Usando datos locales de respaldo (localStorage/Mock)');
+    }
+
+    // FALLBACK: Lógica original (localStorage + Mock)
     setTimeout(() => {
       let solicitudes = obtenerSolicitudesStorage();
       console.log('📋 Solicitudes cargadas:', solicitudes.length);

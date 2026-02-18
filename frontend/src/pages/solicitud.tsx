@@ -6,6 +6,8 @@ import {
 } from '@heroui/react';
 import { Icon } from '@iconify/react';
 import { motion } from 'framer-motion';
+import { usePageTitle } from '../hooks/usePageTitle';
+import { useAuth } from '../contexts/auth-context';
 import { useToast } from '../hooks/useToast';
 import { logger } from '../utils/logger';
 
@@ -26,7 +28,10 @@ const getFirstSelectionValue = (keys: any): string | undefined => {
 };
 
 const SolicitudPage: React.FC = () => {
+  const { user } = useAuth();
   const toast = useToast();
+
+  usePageTitle('Solicitud de Insumos', 'Complete el formulario para realizar un pedido de insumos para sus clases prácticas.');
   const [recetasDisponibles, setRecetasDisponibles] = React.useState<IReceta[]>([]);
   const [productos, setProductos] = React.useState<IProducto[]>([]);
   const [asignaturas, setAsignaturas] = React.useState<IAsignatura[]>([]);
@@ -35,6 +40,8 @@ const SolicitudPage: React.FC = () => {
   const [asignaturaId, setAsignaturaId] = React.useState<string>('');
   const [semana, setSemana] = React.useState<string>('');
   const [fecha, setFecha] = React.useState<string>('');
+  const [bloqueInicio, setBloqueInicio] = React.useState<string>('');
+  const [bloqueFin, setBloqueFin] = React.useState<string>('');
   const [observaciones, setObservaciones] = React.useState<string>('');
   const [items, setItems] = React.useState<IItemSolicitud[]>([]);
   const [isSubmitting, setIsSubmitting] = React.useState<boolean>(false);
@@ -57,6 +64,14 @@ const SolicitudPage: React.FC = () => {
   const semanaSelectedKeys = React.useMemo(
     () => (semana ? new Set([semana]) : new Set<string>()),
     [semana]
+  );
+  const bloqueInicioSelectedKeys = React.useMemo(
+    () => (bloqueInicio ? new Set([bloqueInicio]) : new Set<string>()),
+    [bloqueInicio]
+  );
+  const bloqueFinSelectedKeys = React.useMemo(
+    () => (bloqueFin ? new Set([bloqueFin]) : new Set<string>()),
+    [bloqueFin]
   );
   const nuevoProductoSelectedKeys = React.useMemo(
     () => (nuevoProductoId ? new Set([nuevoProductoId]) : new Set<string>()),
@@ -216,13 +231,26 @@ const SolicitudPage: React.FC = () => {
   };
 
   const enviarSolicitud = async () => {
-    if (!asignaturaId || !fecha || !semana || items.length === 0) {
-      toast.warning('Por favor, complete todos los campos obligatorios, seleccione la semana y agregue al menos un producto');
+    if (!asignaturaId || !fecha || !semana || !bloqueInicio || !bloqueFin || items.length === 0) {
+      toast.warning('Por favor, complete todos los campos obligatorios y agregue al menos un producto');
       return;
     }
     const semanaNumero = parseInt(semana, 10);
+    const bloqueInicioNumero = parseInt(bloqueInicio, 10);
+    const bloqueFinNumero = parseInt(bloqueFin, 10);
+
     if (Number.isNaN(semanaNumero) || semanaNumero < 1 || semanaNumero > 18) {
       toast.warning('La semana seleccionada no es válida');
+      return;
+    }
+
+    if (Number.isNaN(bloqueInicioNumero) || Number.isNaN(bloqueFinNumero)) {
+      toast.warning('Los bloques seleccionados no son válidos');
+      return;
+    }
+
+    if (bloqueInicioNumero > bloqueFinNumero) {
+      toast.warning('El bloque de inicio no puede ser mayor al bloque de fin');
       return;
     }
 
@@ -236,6 +264,8 @@ const SolicitudPage: React.FC = () => {
         asignaturaNombre,
         semana: semanaNumero,
         fecha,
+        bloqueInicio: bloqueInicioNumero,
+        bloqueFin: bloqueFinNumero,
         recetaId: recetaCargada?.id || null,
         recetaNombre: recetaCargada?.nombre || null,
         items: items.map(item => ({
@@ -253,6 +283,8 @@ const SolicitudPage: React.FC = () => {
       setAsignaturaId('');
       setSemana('');
       setFecha('');
+      setBloqueInicio('');
+      setBloqueFin('');
       setObservaciones('');
       setItems([]);
       setRecetaCargada(null);
@@ -289,10 +321,6 @@ const SolicitudPage: React.FC = () => {
         className="space-y-8"
       >
         <div className="border-b border-default-200 dark:border-default-100 pb-4">
-          <h1 className="text-3xl font-bold text-secondary dark:text-foreground mb-2">Solicitud de Insumos</h1>
-          <p className="text-default-500">
-            Complete el formulario para realizar un pedido de insumos para sus clases prácticas.
-          </p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -317,7 +345,10 @@ const SolicitudPage: React.FC = () => {
                       isRequired
                       variant="bordered"
                       labelPlacement="outside"
-                      classNames={{ trigger: "bg-default-50" }}
+                      classNames={{
+                        trigger: "bg-default-50 dark:bg-default-100/50",
+                        popoverContent: "dark:bg-content1"
+                      }}
                     >
                       {asignaturas.map((asignatura) => (
                         <SelectItem key={asignatura.id} textValue={asignatura.nombre}>
@@ -348,13 +379,70 @@ const SolicitudPage: React.FC = () => {
                       isRequired
                       variant="bordered"
                       labelPlacement="outside"
-                      classNames={{ trigger: "bg-default-50" }}
+                      classNames={{
+                        trigger: "bg-default-50 dark:bg-default-100/50",
+                        popoverContent: "dark:bg-content1"
+                      }}
                     >
                       {Array.from({ length: 18 }, (_, index) => {
                         const semanaValor = (index + 1).toString();
                         const label = `Semana ${semanaValor}`;
                         return (
                           <SelectItem key={semanaValor} textValue={label}>
+                            {label}
+                          </SelectItem>
+                        );
+                      })}
+                    </Select>
+
+                    <Select
+                      label="Bloque Inicio"
+                      placeholder="Inicio"
+                      selectedKeys={bloqueInicioSelectedKeys}
+                      onSelectionChange={(keys) => {
+                        const selected = getFirstSelectionValue(keys);
+                        setBloqueInicio(selected ?? '');
+                      }}
+                      isRequired
+                      variant="bordered"
+                      labelPlacement="outside"
+                      classNames={{
+                        trigger: "bg-default-50 dark:bg-default-100/50",
+                        popoverContent: "dark:bg-content1"
+                      }}
+                    >
+                      {Array.from({ length: 20 }, (_, index) => {
+                        const bloqueValor = (index + 1).toString();
+                        const label = `Bloque ${bloqueValor}`;
+                        return (
+                          <SelectItem key={bloqueValor} textValue={label}>
+                            {label}
+                          </SelectItem>
+                        );
+                      })}
+                    </Select>
+
+                    <Select
+                      label="Bloque Fin"
+                      placeholder="Fin"
+                      selectedKeys={bloqueFinSelectedKeys}
+                      onSelectionChange={(keys) => {
+                        const selected = getFirstSelectionValue(keys);
+                        setBloqueFin(selected ?? '');
+                      }}
+                      isRequired
+                      variant="bordered"
+                      labelPlacement="outside"
+                      classNames={{
+                        trigger: "bg-default-50 dark:bg-default-100/50",
+                        popoverContent: "dark:bg-content1"
+                      }}
+                    >
+                      {Array.from({ length: 20 }, (_, index) => {
+                        const bloqueValor = (index + 1).toString();
+                        const label = `Bloque ${bloqueValor}`;
+                        return (
+                          <SelectItem key={bloqueValor} textValue={label}>
                             {label}
                           </SelectItem>
                         );
@@ -392,7 +480,10 @@ const SolicitudPage: React.FC = () => {
                     description={!asignaturaId ? "Primero seleccione una asignatura" : undefined}
                     variant="bordered"
                     labelPlacement="outside"
-                    classNames={{ trigger: "bg-default-50 dark:bg-default-100/50" }}
+                    classNames={{
+                      trigger: "bg-default-50 dark:bg-default-100/50",
+                      popoverContent: "dark:bg-content1"
+                    }}
                   >
                     {recetasDisponibles.map((receta) => (
                       <SelectItem key={receta.id} textValue={receta.nombre}>
@@ -428,7 +519,10 @@ const SolicitudPage: React.FC = () => {
                           variant="bordered"
                           labelPlacement="outside"
                           size="sm"
-                          classNames={{ trigger: "bg-white dark:bg-default-100/50" }}
+                          classNames={{
+                            trigger: "bg-white dark:bg-default-100/50",
+                            popoverContent: "dark:bg-content1"
+                          }}
                         >
                           {productos.map((producto) => (
                             <SelectItem key={producto.id} textValue={producto.nombre}>
@@ -552,6 +646,8 @@ const SolicitudPage: React.FC = () => {
                       setAsignaturaId('');
                       setSemana('');
                       setFecha('');
+                      setBloqueInicio('');
+                      setBloqueFin('');
                       setObservaciones('');
                     }}
                   >
@@ -561,7 +657,7 @@ const SolicitudPage: React.FC = () => {
                     color="primary"
                     onPress={enviarSolicitud}
                     isLoading={isSubmitting}
-                    isDisabled={isSubmitting || items.length === 0 || !asignaturaId || !fecha || !semana}
+                    isDisabled={isSubmitting || items.length === 0 || !asignaturaId || !fecha || !semana || !bloqueInicio || !bloqueFin}
                     className="font-bold text-secondary px-8"
                     endContent={<Icon icon="lucide:send" />}
                   >
@@ -574,9 +670,9 @@ const SolicitudPage: React.FC = () => {
 
           {/* Historial Sidebar */}
           <div className="lg:col-span-1">
-            <Card className="shadow-sm border-t-4 border-default-400 bg-white sticky top-24">
-              <CardHeader className="bg-default-50 border-b border-default-100 px-6 py-4">
-                <h2 className="text-lg font-bold text-secondary flex items-center gap-2">
+            <Card className="shadow-sm border-t-4 border-default-400 bg-white dark:bg-content1 sticky top-24">
+              <CardHeader className="bg-default-50 dark:bg-content2 border-b border-default-100 dark:border-default-50/50 px-6 py-4">
+                <h2 className="text-lg font-bold text-secondary dark:text-foreground flex items-center gap-2">
                   <Icon icon="lucide:history" />
                   Historial Reciente
                 </h2>

@@ -20,6 +20,7 @@ import {
   useDisclosure
 } from '@heroui/react';
 import { Icon } from '@iconify/react';
+import { usePageTitle } from '../hooks/usePageTitle';
 import { motion, AnimatePresence } from 'framer-motion';
 
 /**
@@ -162,6 +163,8 @@ const GestionProveedoresPage: React.FC = () => {
   const { isOpen, onOpen, onOpenChange } = useDisclosure();
   const rowsPerPage = 5;
 
+  usePageTitle('Gestión de Proveedores', 'Administre los proveedores y sus productos con precios actualizados.');
+
   /**
    * Filtra los proveedores según los criterios de búsqueda.
    */
@@ -251,13 +254,7 @@ const GestionProveedoresPage: React.FC = () => {
         className="space-y-8"
       >
         {/* Encabezado */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-default-200 dark:border-default-100 pb-4">
-          <div>
-            <h1 className="text-3xl font-bold text-secondary dark:text-foreground mb-2">Gestión de Proveedores</h1>
-            <p className="text-default-500 text-lg">
-              Administre los proveedores y sus productos con precios actualizados.
-            </p>
-          </div>
+        <div className="flex flex-col md:flex-row justify-end items-start md:items-center gap-4 border-b border-default-200 dark:border-default-100 pb-4">
           <Button
             color="primary"
             variant="solid"

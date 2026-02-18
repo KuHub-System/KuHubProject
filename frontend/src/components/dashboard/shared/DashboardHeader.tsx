@@ -25,10 +25,10 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
       <div className="flex items-center gap-3">
         <div className="w-1.5 h-8 bg-primary rounded-full"></div>
         <div>
-          <h1 className="text-2xl font-bold text-secondary leading-tight">Dashboard</h1>
+          <h1 className="text-2xl font-bold text-secondary dark:text-foreground leading-tight">Dashboard</h1>
           <p className="text-default-500 text-sm">
             {subtitle || `Bienvenido, `}
-            <span className="font-semibold text-secondary">{userName}</span>
+            <span className="font-semibold text-secondary dark:text-foreground">{userName}</span>
           </p>
         </div>
       </div>
