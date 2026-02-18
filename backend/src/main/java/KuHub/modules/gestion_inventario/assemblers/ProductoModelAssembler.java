@@ -1,7 +1,7 @@
-package KuHub.modules.producto.assemblers;
+package KuHub.modules.gestion_inventario.assemblers;
 
-import KuHub.modules.producto.controller.ProductoControllerV2;
-import KuHub.modules.producto.entity.Producto;
+import KuHub.modules.gestion_inventario.controller.ProductoControllerV2;
+import KuHub.modules.gestion_inventario.entity.Producto;
 import org.springframework.hateoas.EntityModel;
 import org.springframework.hateoas.server.RepresentationModelAssembler;
 import org.springframework.stereotype.Component;
@@ -13,11 +13,13 @@ public class ProductoModelAssembler implements RepresentationModelAssembler<Prod
 
     @Override
     public EntityModel<Producto> toModel(Producto entity) {
+        /**
         return EntityModel.of(
                 entity,
                 linkTo(methodOn(ProductoControllerV2.class).findProductById(entity.getIdProducto())).withSelfRel(),
                 linkTo(methodOn(ProductoControllerV2.class).findAllProducts()).withRel("productos"),
                 linkTo(methodOn(ProductoControllerV2.class).findByActive(entity.getActivo())).withRel("productos-por-estado")
-        );
+        );*/
+        return null;
     }
 }

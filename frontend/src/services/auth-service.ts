@@ -1,83 +1,72 @@
 /**
  * SERVICIO DE AUTENTICACIÓN - CONECTADO AL BACKEND
  * Maneja login, logout y sesión actual con API REST
- *
- * ⚠️ CORREGIDO: URL de login actualizada a /login (sin /api/v1/auth)
  */
 
 import api from '../config/Axios';
-import { IUsuario } from '../types/usuario.types';
-import { ISesion } from '../types/auth.types';
+import { RolUsuario } from '../types/usuario.types';
+
+// --- DEFINICIÓN DE INTERFAZ (Según tu solicitud) ---
+export interface IUsuarioAuth {
+  nombreCompleto: string;
+  correo: string;
+  rol: RolUsuario; // Asegúrate de que 'Administrador' | 'Usuario' coincida con lo que viene del back
+  fotoPerfil?: string;
+  ultimoAcceso?: string;
+}
+
+// Actualizamos la definición de Sesión para usar la nueva interfaz
+export interface ISesion {
+  usuario: IUsuarioAuth;
+  token: string;
+  fechaInicio: string;
+}
 
 const SESION_KEY = 'sesion_actual';
 
 /**
- * Iniciar sesión - CONECTADO AL BACKEND
- * ✅ CORREGIDO: Ahora usa POST /login (sin /api/v1/auth)
+ * Iniciar sesión - ESTANDARIZADO A /api/v1/auth/login
  */
 export const iniciarSesionService = async (correo: string, contrasena: string): Promise<ISesion> => {
   try {
-    console.log('🔐 Intentando login en backend:', correo);
+    console.log('🔐 Intentando login en:', correo);
 
-    // ✅ CAMBIO CRÍTICO: /auth/login → /login
-    const response = await api.post('/login', {
+    // Axios usará baseURL (http://localhost:8080/api/v1) + /auth/login
+    const response = await api.post('/auth/login', {
       email: correo,
       contrasena: contrasena
     });
 
-    console.log('✅ Respuesta del backend:', response.data);
-
-    // El backend devuelve: { usuario: {...}, token: "...", mensaje: "..." }
     const { usuario, token } = response.data;
 
-    // Convertir el usuario del backend al formato del frontend
-    const usuarioFrontend: IUsuario = {
-      id: usuario.idUsuario.toString(),
+    const usuarioFrontend: IUsuarioAuth = {
       nombreCompleto: usuario.nombreCompleto,
-      correo: usuario.email,
-      contrasena: '', // No guardar la contraseña
-      rol: usuario.nombreRol,
-      fotoPerfil: usuario.fotoPerfil,
-      activo: usuario.activo,
-      fechaCreacion: usuario.fechaCreacion,
+      correo: usuario.email,             // Mapeo: email -> correo
+      rol: usuario.nombreRol,            // Mapeo: nombreRol -> rol
+      fotoPerfil: usuario.urlFotoPerfil, // Mapeo: urlFotoPerfil -> fotoPerfil
       ultimoAcceso: usuario.ultimoAcceso
     };
 
-    // Crear sesión
     const sesion: ISesion = {
       usuario: usuarioFrontend,
       token: token,
       fechaInicio: new Date().toISOString(),
     };
 
-    // Guardar sesión en localStorage
     localStorage.setItem(SESION_KEY, JSON.stringify(sesion));
-
-    console.log('✅ Sesión iniciada (BACKEND):', usuarioFrontend.correo, `(${usuarioFrontend.rol})`);
     return sesion;
   } catch (error: any) {
-    console.error('❌ Error al iniciar sesión:', error);
-    console.error('❌ Detalles del error:', error.response?.data);
+    console.error('❌ Error login:', error.response?.data || error.message);
     throw new Error(error.response?.data?.message || 'Error al iniciar sesión');
   }
 };
 
 /**
- * Cerrar sesión
- * ⚠️ NOTA: El endpoint /auth/logout ya NO existe en el backend
- * El logout se maneja solo en el frontend eliminando el token
+ * Cerrar sesión - Solo limpieza local (JWT no requiere notificación al backend)
  */
 export const cerrarSesionService = async (): Promise<void> => {
-  try {
-    // Ya no hacemos POST /auth/logout porque ese endpoint no existe
-    // El backend con JWT no necesita ser notificado del logout
-    console.log('📤 Cerrando sesión (solo frontend)');
-  } catch (error) {
-    console.error('Error al cerrar sesión:', error);
-  } finally {
-    localStorage.removeItem(SESION_KEY);
-    console.log('✅ Sesión cerrada');
-  }
+  localStorage.removeItem(SESION_KEY);
+  console.log('✅ Sesión cerrada localmente');
 };
 
 /**
@@ -106,7 +95,7 @@ export const hayaSesionActivaService = (): boolean => {
 /**
  * Obtener usuario actual
  */
-export const obtenerUsuarioActualService = (): IUsuario | null => {
+export const obtenerUsuarioActualService = (): IUsuarioAuth | null => {
   const sesion = obtenerSesionActualService();
   return sesion ? sesion.usuario : null;
 };
@@ -114,7 +103,7 @@ export const obtenerUsuarioActualService = (): IUsuario | null => {
 /**
  * Actualizar usuario en sesión actual
  */
-export const actualizarUsuarioEnSesionService = (usuario: IUsuario): void => {
+export const actualizarUsuarioEnSesionService = (usuario: IUsuarioAuth): void => {
   const sesion = obtenerSesionActualService();
   if (sesion) {
     sesion.usuario = usuario;
@@ -137,13 +126,13 @@ export const cambiarPasswordService = async (datos: {
       throw new Error('No hay sesión activa');
     }
 
-    // Verificar que las contraseñas nuevas coincidan
     if (datos.passwordNueva !== datos.confirmarPassword) {
       throw new Error('Las contraseñas nuevas no coinciden');
     }
 
-    // Llamar al backend para cambiar la contraseña
-    await api.patch(`/usuarios/${usuarioActual.id}/cambiar-contrasena`, {
+    // MODIFICADO: Se elimina ${id} de la URL. 
+    // Se asume ruta: PATCH /usuarios/cambiar-contrasena (usando Token)
+    await api.patch(`/usuarios/cambiar-contrasena`, {
       nuevaContrasena: datos.passwordNueva
     });
 
@@ -154,7 +143,8 @@ export const cambiarPasswordService = async (datos: {
 };
 
 /**
- * Actualizar foto de perfil del usuario actual - CONECTADO AL BACKEND
+ * Actualizar foto de perfil del usuario actual
+ * NOTA: Al no tener ID, la ruta debe ser genérica y usar el Token.
  */
 export const actualizarFotoPerfilService = async (archivo: File): Promise<string> => {
   try {
@@ -164,7 +154,6 @@ export const actualizarFotoPerfilService = async (archivo: File): Promise<string
       throw new Error('No hay sesión activa');
     }
 
-    // Leer el archivo como base64
     const base64String = await new Promise<string>((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = () => resolve(reader.result as string);
@@ -172,8 +161,9 @@ export const actualizarFotoPerfilService = async (archivo: File): Promise<string
       reader.readAsDataURL(archivo);
     });
 
-    // Actualizar en el backend
-    const response = await api.patch(`/usuarios/${usuarioActual.id}/foto-perfil`, {
+    // MODIFICADO: Se elimina ${id} de la URL.
+    // Se asume ruta: PATCH /usuarios/foto-perfil (usando Token)
+    await api.patch(`/usuarios/foto-perfil`, {
       fotoPerfil: base64String
     });
 

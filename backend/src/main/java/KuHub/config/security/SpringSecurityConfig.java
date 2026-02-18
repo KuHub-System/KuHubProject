@@ -148,7 +148,8 @@ public class SpringSecurityConfig {
                         // ENDPOINTS PÚBLICOS (sin autenticación)
                         // ========================================
                         // Login - manejado por JwtAuthenticationFilter
-                        .requestMatchers(HttpMethod.POST, "/login").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/auth/login").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/auth/logout").permitAll()
                         // Preflight requests de CORS (OPTIONS)
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
@@ -316,6 +317,15 @@ public class SpringSecurityConfig {
                 .sessionManagement(management ->
                         management.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
+                .exceptionHandling(exception -> exception
+                        .authenticationEntryPoint((request, response, authException) -> {
+                            response.setContentType("application/json");
+                            response.setStatus(401);
+                            response.getWriter().write("{\"error\": \"No autorizado\", \"message\": \"" + authException.getMessage() + "\"}");
+                        })
+                )
+                .httpBasic(basic -> basic.disable())
+                .formLogin(form -> form.disable())
                 .build();
     }
 

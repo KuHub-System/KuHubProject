@@ -19,7 +19,7 @@ public class MovimientoController {
 
     @Autowired
     private MovimientoService movimientoService;
-
+    /**
     @PostMapping("/find-all-motion-filter")
     public ResponseEntity<List<MotionAnswerDTO>> findAllMotionFilter(@RequestBody MotionFilterRequestDTO m){
         return ResponseEntity
@@ -27,14 +27,14 @@ public class MovimientoController {
                 .body(movimientoService.findAllMotionFilter(m));
     }
 
-
+    /**
     @PostMapping("/create-motion")
     public ResponseEntity<MotionAnswerDTO> createMotion(@RequestBody @Valid MotionCreateDTO m) {
         // Al llamar a saveMotion, el servicio se encarga de ver quién está logueado
         return ResponseEntity
                 .status(201)
                 .body(movimientoService.saveMotion(m));
-    }
+    }*/
 
 
 

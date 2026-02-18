@@ -12,6 +12,7 @@ import java.util.List;
 @Repository
 public interface MovimientoRepository extends JpaRepository<Movimiento, Integer> {
 
+    /**
     @Query(value = "SELECT " +
             "    m.id_movimiento, " +
             "    p.nombre_producto, " +
@@ -40,7 +41,7 @@ public interface MovimientoRepository extends JpaRepository<Movimiento, Integer>
             @Param("nombreProducto") String nombreProducto,
             @Param("tipoMovimiento") String tipoMovimiento,
             @Param("orden") String orden
-    );
+    );*/
 
 
 }

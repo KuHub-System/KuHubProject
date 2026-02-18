@@ -1,6 +1,8 @@
 package KuHub.modules.gestion_usuario.service;
 
 import KuHub.modules.gestion_usuario.dtos.*;
+import KuHub.modules.gestion_usuario.dtos.dtofilter.UserAuth;
+import KuHub.modules.gestion_usuario.dtos.dtofilter.pro.UserAuthProjection;
 import KuHub.modules.gestion_usuario.dtos.proyection.UserIdNameView;
 import KuHub.modules.gestion_usuario.dtos.record.UserIdNameDTO;
 import KuHub.modules.gestion_usuario.entity.Rol;
@@ -43,6 +45,21 @@ public class UsuarioServiceImpl implements UsuarioService {
     // ⚠️ NUEVO: Inyectamos el PasswordEncoder (BCrypt)
     @Autowired
     private PasswordEncoder passwordEncoder;
+
+    @Override
+    @Transactional(readOnly = true)
+    public UserAuth loginDetails(String usernameOrEmail, String password) {
+        UserAuthProjection data = usuarioRepository.findUserAuth(usernameOrEmail)
+                .orElseThrow(() -> new RuntimeException("Credenciales incorrectas o usuario inactivo"));
+
+        return new UserAuth(
+                data.getNombreCompleto(),
+                data.getEmail(),
+                data.getUltimoAcceso(),
+                data.getNombreRol(),
+                data.getUrlFotoPerfil()
+        );
+    }
 
     /**
      * Obtiene el ID y Nombre del usuario actualmente logueado (desde el Token)
@@ -257,14 +274,14 @@ public class UsuarioServiceImpl implements UsuarioService {
                 // Validar tamaño máximo 10MB
                 if (fotoBytes.length > 10 * 1024 * 1024) {
                     // Foto demasiado grande → se ignora y se guarda NULL
-                    usuario.setFotoPerfil(null);
+                    usuario.setUrlFotoPerfil(null);
                 } else {
-                    usuario.setFotoPerfil(fotoBytes);
+                    usuario.setUrlFotoPerfil(fotoBytes);
                 }
 
             } catch (IllegalArgumentException e) {
                 // Base64 inválido → se guarda NULL sin afectar la transacción
-                usuario.setFotoPerfil(null);
+                usuario.setUrlFotoPerfil(null);
             }
         }
         usuario.setActivo(usuarioRequestDTO.getActivo() != null ? usuarioRequestDTO.getActivo() : true);
@@ -335,13 +352,13 @@ public class UsuarioServiceImpl implements UsuarioService {
                 byte[] fotoBytes = Base64.getDecoder().decode(usuarioUpdateDTO.getFotoPerfil());
 
                 if (fotoBytes.length > 10 * 1024 * 1024) {
-                    usuario.setFotoPerfil(null);
+                    usuario.setUrlFotoPerfil(null);
                 } else {
-                    usuario.setFotoPerfil(fotoBytes);
+                    usuario.setUrlFotoPerfil(fotoBytes);
                 }
 
             } catch (IllegalArgumentException e) {
-                usuario.setFotoPerfil(null);
+                usuario.setUrlFotoPerfil(null);
             }
         }
 
@@ -432,7 +449,7 @@ public class UsuarioServiceImpl implements UsuarioService {
                     throw new IllegalArgumentException("El archivo no es una imagen válida (JPG/PNG).");
                 }
 
-                usuario.setFotoPerfil(fotoBytes);
+                usuario.setUrlFotoPerfil(fotoBytes);
 
             } catch (IOException e) {
                 throw new RuntimeException("Error al procesar la imagen", e);
@@ -495,11 +512,11 @@ public class UsuarioServiceImpl implements UsuarioService {
     public UsuarioResponseDTO convertirADTO(Usuario usuario) {
         String fotoBase64 = null;
 
-        if (usuario.getFotoPerfil() != null && usuario.getFotoPerfil().length > 0) {
+        if (usuario.getUrlFotoPerfil() != null && usuario.getUrlFotoPerfil().length > 0) {
             try {
                 // Validar si es imagen real
-                if (ImagenUtils.esImagenValida(usuario.getFotoPerfil())) {
-                    fotoBase64 = Base64.getEncoder().encodeToString(usuario.getFotoPerfil());
+                if (ImagenUtils.esImagenValida(usuario.getUrlFotoPerfil())) {
+                    fotoBase64 = Base64.getEncoder().encodeToString(usuario.getUrlFotoPerfil());
                 }
                 // Si NO es una imagen válida, fotoBase64 queda en null
             } catch (Exception e) {

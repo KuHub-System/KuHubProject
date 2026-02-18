@@ -2,9 +2,9 @@ package KuHub.modules.gestion_receta.services;
 
 import KuHub.modules.gestion_receta.dtos.*;
 import KuHub.modules.gestion_receta.dtos.projection.DetalleRecetaItemProjection;
-import KuHub.modules.producto.entity.Producto;
-import KuHub.modules.producto.exceptions.ProductoNotFoundException;
-import KuHub.modules.producto.service.ProductoService;
+import KuHub.modules.gestion_inventario.entity.Producto;
+import KuHub.modules.gestion_inventario.exceptions.ProductoNotFoundException;
+import KuHub.modules.gestion_inventario.services.ProductoService;
 import KuHub.modules.gestion_receta.entity.DetalleReceta;
 import KuHub.modules.gestion_receta.entity.Receta;
 import KuHub.modules.gestion_receta.exceptions.RecetaException;
@@ -141,7 +141,7 @@ public class RecetaServiceImp implements RecetaService{
                     .map(d -> new RecipeItemAnswerDTO(
                             d.getProducto().getIdProducto(),
                             d.getProducto().getNombreProducto(),
-                            d.getProducto().getUnidadMedida(),
+                            d.getProducto().getUnidadMedida().getNombreUnidad(),
                             d.getCantProducto(),
                             d.getProducto().getActivo()
                     ))

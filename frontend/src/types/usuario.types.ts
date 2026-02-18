@@ -2,7 +2,7 @@
  * TIPOS DEL SISTEMA DE USUARIOS Y ROLES
  */
 
-export type RolUsuario = 
+export type RolUsuario =
   | 'Administrador'
   | 'Co-Administrador'
   | 'Gestor de Pedidos'
@@ -11,15 +11,11 @@ export type RolUsuario =
   | 'Encargado de Bodega'
   | 'Asistente de Bodega';
 
-export interface IUsuario {
-  id: string;
+export interface IUsuarioAuth {
   nombreCompleto: string;
   correo: string;
-  contrasena: string; // En producción esto debería estar hasheado
   rol: RolUsuario;
-  fotoPerfil?: string; // URL o base64 de la imagen
-  activo: boolean;
-  fechaCreacion: string;
+  fotoPerfil?: string; // URL o base64 de la imagen  
   ultimoAcceso?: string;
 }
 

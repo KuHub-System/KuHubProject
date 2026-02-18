@@ -1,6 +1,6 @@
 package KuHub.modules.gestion_receta.entity;
 
-import KuHub.modules.producto.entity.Producto;
+import KuHub.modules.gestion_inventario.entity.Producto;
 import jakarta.persistence.*;
 import lombok.*;
 

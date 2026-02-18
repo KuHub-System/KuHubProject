@@ -1,4 +1,4 @@
-package KuHub.modules.producto.dtos.proyeccion;
+package KuHub.modules.gestion_inventario.dtos.proyeccion;
 
 public interface ProductRecipeView {
     Integer getIdProducto();

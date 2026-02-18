@@ -1,4 +1,4 @@
-package KuHub.modules.producto.exceptions;
+package KuHub.modules.gestion_inventario.exceptions;
 
 
 import KuHub.config.ErrorDTO;

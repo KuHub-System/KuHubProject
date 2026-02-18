@@ -38,7 +38,7 @@ public class InventarioControllerV2 {
 
     @Autowired
     private InventarioModelAssembler inventarioModelAssembler;
-
+    /**
     @GetMapping("/{id}")
     @Operation(
             summary = "Obtener inventario por ID",
@@ -280,5 +280,5 @@ public class InventarioControllerV2 {
 
         inventarioService.updateActiveValueProductFalse(id_inventario);
         return ResponseEntity.status(HttpStatus.OK).build();
-    }
+    }*/
 }

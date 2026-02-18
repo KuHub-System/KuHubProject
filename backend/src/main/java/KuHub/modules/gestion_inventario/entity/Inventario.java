@@ -1,19 +1,17 @@
 package KuHub.modules.gestion_inventario.entity;
 
-import KuHub.modules.producto.entity.Producto;
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
 
+import java.math.BigDecimal;
+
 @Entity
 @Table(name = "inventario")
 @NoArgsConstructor
 @AllArgsConstructor
-@Getter
-@Setter
-@ToString
+@Data
 public class Inventario {
 
     @Id
@@ -21,34 +19,49 @@ public class Inventario {
     @Column(name = "id_inventario")
     private Integer idInventario;
 
+    // --- RELACIÓN ONE-TO-ONE (Dueña de la columna) ---
+    // Al ser Option 1, eliminamos el campo 'Integer idProducto' duplicado.
     @NotNull(message = "El producto es obligatorio")
-    @Column(name = "id_producto", nullable = false, unique = true)
-    private Integer idProducto;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "id_producto", insertable = false, updatable = false)
-    @JsonIgnore
+    @OneToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "id_producto", nullable = false, unique = true)
     private Producto producto;
 
+    // --- CAMPOS NUMÉRICOS ---
     @NotNull(message = "El stock no puede ser nulo")
     @Min(value = 0, message = "El stock no puede ser negativo")
-    @Column(name = "stock", nullable = false)
-    private Double stock;
+    @Column(name = "stock", nullable = false, precision = 10, scale = 3)
+    private BigDecimal stock;
 
-    @Min(value = 0, message = "El stock mínimo no puede ser negativo")
-    @Column(name = "stock_limit_min")
-    private Double stockLimitMin;
+    @Min(value = 0, message = "El stock límite no puede ser negativo")
+    @Column(name = "stock_limit", precision = 10, scale = 3)
+    private BigDecimal stockLimit;
+
+    // --- MÉTODO AYUDANTE (Patrón Setter Inteligente) ---
+    /**
+     * Permite asignar el producto al inventario usando solo el ID (Integer).
+     * Útil cuando recibes un JSON { "productoId": 10, "stock": 100 }
+     */
+    public void setProductoId(Integer id) {
+        if (id != null) {
+            this.producto = new Producto();
+            this.producto.setIdProducto(id);
+        }
+    }
 
 
-    /**-- Tabla inventario
+    /** ACTUALIZADO 17/02/26
+     * -- Tabla inventario
      CREATE TABLE inventario (
      id_inventario INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
      id_producto INTEGER NOT NULL,
-     stock DOUBLE PRECISION NOT NULL CHECK (stock >= 0),
-     stock_limit_min DOUBLE PRECISION CHECK (stock_limit_min IS NULL OR stock_limit_min >= 0),
-     stock_limit_max DOUBLE PRECISION CHECK (stock_limit_max IS NULL OR stock_limit_max >= 0),
-     FOREIGN KEY (id_producto) REFERENCES producto(id_producto),
+     stock NUMERIC(10, 3) NOT NULL CHECK (stock >= 0),
+     stock_limit NUMERIC(10, 3) CHECK (stock_limit IS NULL OR stock_limit >= 0),
+
+     CONSTRAINT fk_inventario_producto
+     FOREIGN KEY (id_producto) REFERENCES producto(id_producto)
+     ON UPDATE CASCADE ON DELETE RESTRICT,
      UNIQUE(id_producto)
+
      );
      */
 
