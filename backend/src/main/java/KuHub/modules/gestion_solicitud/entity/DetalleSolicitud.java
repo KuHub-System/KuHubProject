@@ -1,6 +1,5 @@
 package KuHub.modules.gestion_solicitud.entity;
 
-import KuHub.modules.producto.entity.Producto;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;

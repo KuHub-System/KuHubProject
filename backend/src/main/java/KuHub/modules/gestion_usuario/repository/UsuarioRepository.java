@@ -1,5 +1,6 @@
 package KuHub.modules.gestion_usuario.repository;
 
+import KuHub.modules.gestion_usuario.dtos.dtofilter.pro.UserAuthProjection;
 import KuHub.modules.gestion_usuario.dtos.proyection.UserIdNameView;
 import KuHub.modules.gestion_usuario.entity.Usuario;
 import KuHub.modules.gestion_usuario.entity.Rol;
@@ -29,6 +30,20 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Integer> {
     Optional<Usuario> findByEmailIgnoreCase(String email);
 
     Optional<UserIdNameView> findViewByEmail(String email);
+
+    @Query(value = "SELECT " +
+            "concat_ws(' ', u.p_nombre, u.s_nombre, u.app_paterno, u.app_materno) AS nombreCompleto, " +
+            "u.email AS email, " +
+            "u.ultimo_acceso AS ultimoAcceso, " +
+            "u.url_foto_perfil AS urlFotoPerfil, " +
+            "r.nombre_rol AS nombreRol, " +
+            "u.contrasena AS contrasena, " +
+            "u.activo AS activo " +
+            "FROM usuario u " +
+            "JOIN rol r ON r.id_rol = u.id_rol " +
+            "WHERE (u.username = :identificador OR u.email = :identificador) " +
+            "AND u.activo = true", nativeQuery = true)
+    Optional<UserAuthProjection> findUserAuth(@Param("identificador") String identificador);
 
     /**
      * Busca un usuario por username

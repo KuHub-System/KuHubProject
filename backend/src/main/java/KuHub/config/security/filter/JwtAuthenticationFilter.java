@@ -46,6 +46,7 @@ public class JwtAuthenticationFilter extends UsernamePasswordAuthenticationFilte
         this.authenticationManager = authenticationManager;
         this.usuarioRepository = usuarioRepository;
         this.objectMapper = objectMapper;
+        setFilterProcessesUrl("/api/v1/auth/login");
         System.out.println("✅ JwtAuthenticationFilter inicializado con ObjectMapper configurado");
     }
 
@@ -99,7 +100,7 @@ public class JwtAuthenticationFilter extends UsernamePasswordAuthenticationFilte
             Authentication authResult) throws IOException, ServletException {
 
         try {
-            System.out.println("✅ [7] Entrando a successfulAuthentication...");
+            System.out.println(" Entrando a successfulAuthentication...");
 
             org.springframework.security.core.userdetails.User user =
                     (org.springframework.security.core.userdetails.User) authResult.getPrincipal();
@@ -107,18 +108,12 @@ public class JwtAuthenticationFilter extends UsernamePasswordAuthenticationFilte
             String username = user.getUsername();
             Collection<? extends GrantedAuthority> roles = authResult.getAuthorities();
 
-            System.out.println("✅ [8] Username: " + username);
-            System.out.println("✅ [9] Roles: " + roles);
-
-            // Crear claims
-            System.out.println("✅ [10] Creando claims...");
+            // Generar Token (Igual que antes)
             Claims claims = Jwts.claims()
                     .add("authorities", objectMapper.writeValueAsString(roles))
                     .add("username", username)
                     .build();
 
-            // Generar token
-            System.out.println("✅ [11] Generando token JWT...");
             String token = Jwts.builder()
                     .subject(username)
                     .claims(claims)
@@ -127,75 +122,54 @@ public class JwtAuthenticationFilter extends UsernamePasswordAuthenticationFilte
                     .signWith(SECRET_KEY)
                     .compact();
 
-            System.out.println("✅ [12] Token generado: " + token.substring(0, 20) + "...");
-
             // Buscar usuario en BD
-            System.out.println("✅ [13] Buscando usuario en BD con email: " + username);
-
-            if (usuarioRepository == null) {
-                System.err.println("❌ [ERROR] UsuarioRepository es NULL!");
-                throw new RuntimeException("UsuarioRepository no está inyectado");
-            }
-
             Usuario usuario = usuarioRepository.findByEmailIgnoreCase(username)
-                    .orElseThrow(() -> {
-                        System.err.println("❌ [ERROR] Usuario no encontrado en BD: " + username);
-                        return new RuntimeException("Usuario no encontrado");
-                    });
+                    .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
 
-            System.out.println("✅ [14] Usuario encontrado: ID=" + usuario.getIdUsuario());
-
-            // ⭐ ACTUALIZAR ULTIMO ACCESO AUTOMÁTICAMENTE
-            System.out.println("✅ [14.1] Actualizando ultimoAcceso...");
+            // Actualizar ultimoAcceso
             LocalDateTime ahora = LocalDateTime.now();
             usuario.setUltimoAcceso(ahora);
             usuarioRepository.save(usuario);
-            System.out.println("✅ [14.2] ultimoAcceso actualizado a: " + ahora);
 
-            // Crear objeto usuario
-            System.out.println("✅ [15] Creando objeto usuario para respuesta...");
-            Map<String, Object> usuarioData = new HashMap<>();
-            usuarioData.put("idUsuario", usuario.getIdUsuario());
-            usuarioData.put("nombreCompleto", usuario.getNombreCompleto());
-            usuarioData.put("email", usuario.getEmail());
+            // ==========================================
+            // ⚠️ AQUÍ ESTÁ EL CAMBIO PARA LIMPIAR EL JSON
+            // ==========================================
+            Map<String, Object> usuarioLimpio = new HashMap<>();
 
+            // 1. Mapeamos SOLO los campos que quiere el Frontend
+            usuarioLimpio.put("nombreCompleto", usuario.getNombreCompleto());
+            usuarioLimpio.put("email", usuario.getEmail());
+
+            // Convertimos el rol a formato legible
             String nombreRol = convertirNombreRolEnumALegible(usuario.getRol().getNombreRol());
-            System.out.println("✅ [16] Rol convertido: " + nombreRol);
+            usuarioLimpio.put("nombreRol", nombreRol);
 
-            usuarioData.put("nombreRol", nombreRol);
-            usuarioData.put("fotoPerfil", usuario.getFotoPerfil());
-            usuarioData.put("activo", usuario.getActivo());
-            usuarioData.put("fechaCreacion", usuario.getFechaCreacion());
-            usuarioData.put("ultimoAcceso", ahora); // ⭐ Usar la fecha actualizada
+            usuarioLimpio.put("urlFotoPerfil", usuario.getUrlFotoPerfil()); // Ojo: asegúrate que en frontend se lea este key
+            usuarioLimpio.put("ultimoAcceso", ahora);
 
-            System.out.println("✅ [17] Agregando token al header...");
+            // ❌ ELIMINAMOS LO QUE NO QUIERES:
+            // usuarioData.put("idUsuario", ...);  <- ELIMINADO
+            // usuarioData.put("activo", ...);     <- ELIMINADO
+            // usuarioData.put("fechaCreacion", ...); <- ELIMINADO
+
+            // Agregando token al header
             response.addHeader(HEADER_STRING, JWT_TOKEN_PREFIX + token);
 
-            System.out.println("✅ [18] Creando body de respuesta...");
+            // Creando body final de respuesta
             Map<String, Object> body = new HashMap<>();
+            body.put("usuario", usuarioLimpio); // Aquí va el objeto limpio
             body.put("token", token);
-            body.put("usuario", usuarioData);
-            body.put("mensaje", String.format("Autenticación exitosa para %s", username));
 
-            System.out.println("✅ [19] Escribiendo respuesta...");
+            // Escribiendo respuesta
             response.getWriter().write(objectMapper.writeValueAsString(body));
             response.setContentType(CONTENT_TYPE);
             response.setStatus(HttpServletResponse.SC_OK);
 
-            System.out.println("✅ [20] ¡Login completado exitosamente!");
-
         } catch (Exception e) {
-            System.err.println("❌ [ERROR CRÍTICO] Error en successfulAuthentication: " + e.getMessage());
             e.printStackTrace();
-
-            // Responder con error
             response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-            response.setContentType("application/json");
-
             Map<String, String> errorBody = new HashMap<>();
-            errorBody.put("error", "Error interno del servidor");
-            errorBody.put("mensaje", e.getMessage());
-
+            errorBody.put("error", "Error interno en autenticación");
             response.getWriter().write(objectMapper.writeValueAsString(errorBody));
         }
     }

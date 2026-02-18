@@ -6,9 +6,8 @@ import KuHub.modules.gestion_inventario.dtos.MotionCreateDTO;
 import KuHub.modules.gestion_inventario.entity.Inventario;
 import KuHub.modules.gestion_inventario.exceptions.InventarioException;
 import KuHub.modules.gestion_inventario.repository.InventarioRepository;
-import KuHub.modules.producto.entity.Producto;
-import KuHub.modules.producto.repository.ProductoRepository;
-import KuHub.modules.producto.service.ProductoService;
+import KuHub.modules.gestion_inventario.entity.Producto;
+import KuHub.modules.gestion_inventario.repository.ProductoRepository;
 import KuHub.utils.StringUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,7 +15,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.Objects;
 
 @Slf4j
 @Service
@@ -34,6 +32,7 @@ public class InventarioServiceImpl implements InventarioService {
     @Autowired
     private MovimientoService movimientoService;
 
+    /**
     @Transactional(readOnly = true)
     @Override
     public List<Inventario> findAll() {
@@ -118,6 +117,7 @@ public class InventarioServiceImpl implements InventarioService {
 
         return inventarioRequest;
     }
+
 
     @Transactional
     @Override
@@ -204,7 +204,7 @@ public class InventarioServiceImpl implements InventarioService {
         productoService.deleteById(inventario.getIdProducto());
 
     }
-
+    */
 
 
 }

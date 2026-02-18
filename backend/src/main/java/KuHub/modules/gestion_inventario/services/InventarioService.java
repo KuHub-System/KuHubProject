@@ -8,7 +8,7 @@ import java.util.List;
 
 public interface InventarioService {
     //InventarioDTO save(InventarioDTO dto);
-
+    /**
     List<Inventario> findAll();
     List<Inventario> findInventoriesWithProductsActive(Boolean activo);
     Inventario findById(Integer id);
@@ -21,4 +21,5 @@ public interface InventarioService {
     void updateActiveValueProductFalse(Integer id);
     //InventarioDTO update(Long id,InventarioDTO dto);
     //void updateTotalInventario(Long id, float adjustmentAmount);
+     */
 }

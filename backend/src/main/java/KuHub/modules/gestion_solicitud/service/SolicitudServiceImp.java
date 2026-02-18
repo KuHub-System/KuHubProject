@@ -314,7 +314,7 @@ public class SolicitudServiceImp implements SolicitudService{
                 // Cálculo y Redondeo
                 Double cantidadEscalada = (cantidadBase / 20.0) * ctx.getNumInscritos();
 
-                if ("UNIDAD".equalsIgnoreCase(dr.getProducto().getUnidadMedida())) {
+                /**if ("UNIDAD".equalsIgnoreCase(dr.getProducto().getUnidadMedida())) {
                     cantidadEscalada = Math.ceil(cantidadEscalada);
                 } else {
                     // CAMBIO: Usamos 3 decimales en lugar de 2
@@ -322,7 +322,7 @@ public class SolicitudServiceImp implements SolicitudService{
                     cantidadEscalada = BigDecimal.valueOf(cantidadEscalada)
                             .setScale(3, RoundingMode.HALF_UP)
                             .doubleValue();
-                }
+                }*/
 
                 detalle.setIdProducto(idProducto);
                 detalle.setCantProductoSolicitud(cantidadEscalada);

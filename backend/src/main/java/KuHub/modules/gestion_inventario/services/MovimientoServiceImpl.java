@@ -1,14 +1,11 @@
 package KuHub.modules.gestion_inventario.services;
 
-import KuHub.modules.gestion_usuario.entity.Usuario;
 import KuHub.modules.gestion_usuario.repository.UsuarioRepository;
 import KuHub.modules.gestion_usuario.service.UsuarioService;
 import KuHub.modules.gestion_inventario.dtos.MotionAnswerDTO;
-import KuHub.modules.gestion_inventario.dtos.MotionCreateDTO;
 import KuHub.modules.gestion_inventario.dtos.MotionFilterRequestDTO;
 import KuHub.modules.gestion_inventario.entity.Inventario;
 import KuHub.modules.gestion_inventario.entity.Movimiento;
-import KuHub.modules.gestion_inventario.exceptions.InventarioException;
 import KuHub.modules.gestion_inventario.repository.InventarioRepository;
 import KuHub.modules.gestion_inventario.repository.MovimientoRepository;
 import KuHub.utils.StringUtils;
@@ -37,6 +34,7 @@ public class MovimientoServiceImpl implements MovimientoService {
     @Autowired
     private UsuarioRepository usuarioRepository;
 
+    /**
     @Transactional(readOnly = true)
     @Override
     public List<MotionAnswerDTO> findAllMotionFilter (MotionFilterRequestDTO filter){
@@ -129,7 +127,7 @@ public class MovimientoServiceImpl implements MovimientoService {
 
     }
 
-
+    /**
     @Transactional
     @Override
     public MotionAnswerDTO saveMotion(MotionCreateDTO m) {
@@ -161,9 +159,9 @@ public class MovimientoServiceImpl implements MovimientoService {
             throw new RuntimeException("Tipo de movimiento inválido: " + m.getTipoMovimiento());
         }
 
-        // 5. Actualizar stock mínimo
+        /** 5. Actualizar stock mínimo
         if (m.getStockLimitMin() != null) {
-            i.setStockLimitMin(m.getStockLimitMin());
+            i.setStockLimit(m.getStockLimitMin());
         }
 
         // 6. Lógica de stock
@@ -177,26 +175,26 @@ public class MovimientoServiceImpl implements MovimientoService {
         // 7. Guardar el movimiento
         // Asegúrate de que el constructor de Movimiento acepte estos parámetros
         Movimiento mv = movimientoRepository.save(new Movimiento(
-                null, u, i, m.getStockMovimiento(), tipoEnum, null, observacionFinal
+                null, u, i, , tipoEnum, null, observacionFinal
         ));
 
         return new MotionAnswerDTO(
                 mv.getIdMovimiento(),
                 i.getProducto().getNombreProducto(),
-                i.getProducto().getNombreCategoria(),
+                i.getProducto().getCategoria().getNombreCategoria(),
                 m.getTipoMovimiento(),
                 m.getStockMovimiento(),
                 mv.getFechaMovimiento(),
                 nombreUsuario,
                 mv.getObservacion()
         );
-    }
+    }*/
 
     private String actualizarStockInventario(Inventario i, Double stockMovimiento, Movimiento.TipoMovimiento tipo){
 
-        Double stockActual = i.getStock();
+        Double stockActual = 0.0;//i.getStock();
         String mensajeAjuste = null;
-
+        /**
         switch (tipo) {
             case ENTRADA:
                 stockActual += stockMovimiento;
@@ -229,7 +227,7 @@ public class MovimientoServiceImpl implements MovimientoService {
                     mensajeAjuste = "[Auto] Ajuste: Stock verificado, se mantiene igual.";
                 }
                 break;
-        }
+        }*/
 
         //Actualizar inventario
         inventarioRepository.save(i);

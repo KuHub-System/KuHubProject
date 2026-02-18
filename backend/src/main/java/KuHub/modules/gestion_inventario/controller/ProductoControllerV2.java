@@ -1,9 +1,8 @@
-package KuHub.modules.producto.controller;
+package KuHub.modules.gestion_inventario.controller;
 
-import KuHub.modules.producto.assemblers.ProductoModelAssembler;
-import KuHub.modules.producto.dtos.ProductoUpdateRequest;
-import KuHub.modules.producto.entity.Producto;
-import KuHub.modules.producto.service.ProductoService;
+import KuHub.modules.gestion_inventario.assemblers.ProductoModelAssembler;
+import KuHub.modules.gestion_inventario.entity.Producto;
+import KuHub.modules.gestion_inventario.services.ProductoService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -37,7 +36,7 @@ public class ProductoControllerV2 {
 
     @Autowired
     private ProductoModelAssembler productoModelAssembler;
-
+    /**
     @GetMapping
     @Operation(
             summary = "Obtener todos los productos",
@@ -262,46 +261,7 @@ public class ProductoControllerV2 {
         return ResponseEntity.status(HttpStatus.CREATED).body(entityModel);
     }
 
-    @PutMapping("/id/{id}")
-    @Operation(
-            summary = "Actualizar producto por ID",
-            description = "Actualiza los datos de un producto existente según su ID"
-    )
-    @ApiResponses(value = {
-            @ApiResponse(
-                    responseCode = "200",
-                    description = "Producto actualizado exitosamente",
-                    content = @Content(
-                            mediaType = MediaTypes.HAL_JSON_VALUE,
-                            schema = @Schema(implementation = Producto.class)
-                    )
-            ),
-            @ApiResponse(
-                    responseCode = "404",
-                    description = "Producto no encontrado"
-            ),
-            @ApiResponse(
-                    responseCode = "400",
-                    description = "Datos inválidos"
-            )
-    })
-    @io.swagger.v3.oas.annotations.parameters.RequestBody(
-            description = "Datos actualizados del producto",
-            content = @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = ProductoUpdateRequest.class)
-            )
-    )
-    public ResponseEntity<EntityModel<Producto>> updateProductoById(
-            @Parameter(description = "ID del producto a actualizar", required = true)
-            @PathVariable Integer id,
-            @Validated @RequestBody ProductoUpdateRequest productoUpdateRequest) {
-        
-        Producto productoActualizado = productoService.updateById(id, productoUpdateRequest);
-        EntityModel<Producto> entityModel = productoModelAssembler.toModel(productoActualizado);
-        
-        return ResponseEntity.status(HttpStatus.OK).body(entityModel);
-    }
+
 
     @PutMapping("/soft-delete/id/{id}")
     @Operation(
@@ -328,5 +288,5 @@ public class ProductoControllerV2 {
         
         productoService.deleteById(id);
         return ResponseEntity.noContent().build();
-    }
+    }*/
 }

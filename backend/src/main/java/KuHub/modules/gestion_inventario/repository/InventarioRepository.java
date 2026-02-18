@@ -21,7 +21,7 @@ public interface InventarioRepository extends JpaRepository<Inventario, Integer>
     Optional<Inventario> findByIdInventoryWithProductActive(
             @Param("idInventario") Integer idInventario,
             @Param("activo") Boolean activo);
-
+    /**
     @Query(value = "SELECT i.id_inventario, " +
                     "p.id_producto, " +
                     "p.nombre_producto, " +
@@ -40,7 +40,7 @@ public interface InventarioRepository extends JpaRepository<Inventario, Integer>
                     "WHERE p.activo = TRUE " +
                     "ORDER BY p.nombre_producto",
                     nativeQuery = true)
-    List<InventoryWithProductResponseAnswerUpdateDTO> findAllActiveInventoryOrderedByName();
+    List<InventoryWithProductResponseAnswerUpdateDTO> findAllActiveInventoryOrderedByName();*/
 
     boolean existsByIdInventario(Integer idInventario);
 

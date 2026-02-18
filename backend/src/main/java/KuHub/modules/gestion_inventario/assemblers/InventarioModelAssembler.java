@@ -2,6 +2,7 @@ package KuHub.modules.gestion_inventario.assemblers;
 
 import KuHub.modules.gestion_inventario.controller.InventarioControllerV2;
 import KuHub.modules.gestion_inventario.entity.Inventario;
+import org.springframework.boot.actuate.cache.NonUniqueCacheException;
 import org.springframework.hateoas.EntityModel;
 import org.springframework.hateoas.server.RepresentationModelAssembler;
 import org.springframework.stereotype.Component;
@@ -13,11 +14,12 @@ public class InventarioModelAssembler implements RepresentationModelAssembler<In
 
     @Override
     public EntityModel<Inventario> toModel(Inventario entity) {
-        return EntityModel.of(
+        /**return EntityModel.of(
                 entity,
                 linkTo(methodOn(InventarioControllerV2.class).findById(entity.getIdInventario())).withSelfRel(),
                 linkTo(methodOn(InventarioControllerV2.class).findAll()).withRel("inventarios"),
                 linkTo(methodOn(InventarioControllerV2.class).findInventoriesWithProductsActive(true)).withRel("inventarios-activos")
-        );
+        );*/
+        return null;
     }
 }

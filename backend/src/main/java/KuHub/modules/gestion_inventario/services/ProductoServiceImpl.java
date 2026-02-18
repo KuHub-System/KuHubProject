@@ -1,12 +1,9 @@
-package KuHub.modules.producto.service;
+package KuHub.modules.gestion_inventario.services;
 
-import KuHub.modules.producto.dtos.ProductoUpdateRequest;
-import KuHub.modules.producto.dtos.proyeccion.ProductRecipeView;
-import KuHub.modules.producto.entity.Producto;
-import KuHub.modules.producto.exceptions.ProductoException;
-import KuHub.modules.producto.exceptions.ProductoExistenteException;
-import KuHub.modules.producto.exceptions.ProductoNotFoundException;
-import KuHub.modules.producto.repository.ProductoRepository;
+import KuHub.modules.gestion_inventario.dtos.proyeccion.ProductRecipeView;
+import KuHub.modules.gestion_inventario.entity.Producto;
+import KuHub.modules.gestion_inventario.exceptions.*;
+import KuHub.modules.gestion_inventario.repository.ProductoRepository;
 import KuHub.utils.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -16,95 +13,88 @@ import java.util.Collection;
 import java.util.List;
 
 @Service
-public class ProductoServiceImpl implements ProductoService{
-
+public class ProductoServiceImpl implements ProductoService {
 
     @Autowired
     private ProductoRepository productoRepository;
 
+    @Autowired
+    private CategoriaService categoriaService;
+
+    @Autowired
+    private UnidadMedidaService unidadMedidaService;
 
     @Transactional(readOnly = true)
-    @Override
+    @Override // ❌ Sin uso: Implementado por contrato del servicio y buenas prácticas; actualmente no es invocado por ningún controlador.
     public List<Producto> findAll() {
         return productoRepository.findAll();
     }
 
     @Transactional(readOnly = true)
-    @Override
+    @Override // ❌ Sin uso: Implementado por contrato del servicio y buenas prácticas; actualmente no es invocado por ningún controlador.
     public List<Producto> findByActivo(Boolean activo){
         return productoRepository.findByActivo(activo);
     }
 
     @Transactional(readOnly = true)
-    @Override
+    @Override // ❌ Sin uso: Implementado por contrato del servicio y buenas prácticas; actualmente no es invocado por ningún controlador.
     public Producto findById(Integer id){
         return productoRepository.findById(id).orElseThrow(
-                ()-> new ProductoNotFoundException(id)
+                ()-> new GestionInventarioException("No existe el producto con el id: " + id + "")
         );
     }
 
+    /**
     @Transactional(readOnly = true)
-    @Override
+    @Override// ✅ En uso: Método invocado por el controlador.
     public List<ProductRecipeView> findAllActiveForRecipe(){
         return productoRepository.findAllActiveForRecipe();
-    }
+    }*/
 
     @Transactional(readOnly = true)
-    @Override
+    @Override //✅ En uso: Método invocado por el controlador.
     public Producto findByIdProductoAndActivoTrue(Integer id_producto){
         return productoRepository.findByIdProductoAndActivoTrue(id_producto).orElseThrow(
-                ()-> new ProductoNotFoundException(id_producto)
+                ()-> new GestionInventarioException("No existe el producto con el id: " + id_producto + "")
         );
     }
 
     @Transactional(readOnly = true)
-    @Override
+    @Override//✅ En uso: Método invocado por el controlador.
     public List<Producto> findAllByIdInAndActivoTrue(Collection<Integer> ids){
         return productoRepository.findAllByIdProductoInAndActivoTrue(ids);
     }
 
     @Transactional(readOnly = true)
-    @Override
+    @Override//✅ En uso: Método invocado por el controlador.
     public Producto findByNombreProducto(String nombre){
         return productoRepository.findByNombreProducto(nombre).orElseThrow(
-                ()-> new ProductoNotFoundException(nombre)
+                ()-> new GestionInventarioException("No existe el producto con el nombre: " + nombre + "")
         );
     }
 
     @Transactional(readOnly = true)
-    @Override
-    public List<String> findDistinctCategoriaAndActivoTrue(){
-        return productoRepository.findDistinctCategoriaByActivoTrue();
-    }
-
-    @Transactional(readOnly = true)
-    @Override
-    public List<String> findDistinctUnidadMedidaByActivoTrue(){
-        return productoRepository.findDistinctUnidadMedidaByActivoTrue();
-    }
-
-    @Transactional(readOnly = true)
-    @Override
+    @Override//✅ En uso: Método invocado por el controlador.
     public Producto findByNombreProductoAndActivo(String nombreProducto, Boolean activo){
         return productoRepository.findByNombreProductoAndActivo(nombreProducto,activo).orElseThrow(
-                ()-> new ProductoNotFoundException(nombreProducto)
+                ()-> new GestionInventarioException("No existe el producto con el nombre: " + nombreProducto + "")
         );
     }
 
     @Transactional(readOnly = true)
-    @Override
+    @Override//✅ En uso: Método invocado por el controlador.
     public Boolean existProductByName (String nombreProducto){
         return productoRepository.existsByNombreProducto(nombreProducto);
     }
 
     @Transactional(readOnly = true)
-    @Override
+    @Override // ❌ Sin uso: Implementado por contrato del servicio y buenas prácticas; actualmente no es invocado por ningún controlador.
     public Boolean existProductoById (Integer id){
         return productoRepository.existsById(id);
     }
 
     @Transactional
-    @Override
+    @Override // ❌ Sin uso: Implementado por contrato del servicio y buenas prácticas; actualmente no es invocado por ningún controlador.
     public Producto save (Producto producto) {
         //capitalizar nombre producto para luego comparar en la base de datos
         String nombreProductoCap = StringUtils.capitalizarPalabras(producto.getNombreProducto());
@@ -119,79 +109,44 @@ public class ProductoServiceImpl implements ProductoService{
                 throw new ProductoException("El código del producto " + producto.getCodProducto() + " ya existe");
             }
         }
+        if (producto.getCategoria() != null) {
+            if (!categoriaService.existsByIdCategoria(producto.getCategoria().getIdCategoria())){
+                throw new InventarioException("La categoria no existe!! contacte el adminitrador");
+            }
+        }
+        if (producto.getUnidadMedida() != null) {
+            if(!unidadMedidaService.existsByIdUnidadMedida(producto.getUnidadMedida().getIdUnidad())){
+                throw new InventarioException("La unidad de medida no existe!! contacte el adminitrador");
+            }
+        }
 
-        //guardar en el objeto el nombre categoría capitalizado
-        producto.setNombreCategoria(StringUtils.capitalizarPalabras(producto.getNombreCategoria()));
-        //guardar en el objeto el nombre capitalizado
         producto.setNombreProducto(nombreProductoCap);
-        //guardar en el objeto las unidades en mayúsculas
-        producto.setUnidadMedida(producto.getUnidadMedida().toUpperCase());
+
         //activo con true
         producto.setActivo(true);
 
         return productoRepository.save(producto);
     }
 
-    @Transactional
-    @Override
-    public Producto updateByName(String nombreProductoActual , ProductoUpdateRequest productoRequest) {
-
-        String nombrePActual = StringUtils.capitalizarPalabras(nombreProductoActual);
-        String nombrePNuevo = StringUtils.capitalizarPalabras(productoRequest.getNombreProductoNuevo());
-
-        Producto P = productoRepository.findByNombreProducto(nombrePActual).orElseThrow(
-                ()-> new ProductoNotFoundException(nombrePActual)
-        );
-
-        if (!P.getNombreProducto().equals(nombrePNuevo) &&
-                productoRepository.existsByNombreProductoAndIdProductoIsNot(nombrePNuevo, P.getIdProducto())) {
-            throw new ProductoExistenteException(nombrePNuevo);
-        }
-
-        P.setNombreProducto(nombrePNuevo);
-        P.setUnidadMedida(productoRequest.getUnidadMedida());
-        return productoRepository.save(P);
-    }
-
-    @Transactional
-    @Override
-    public Producto updateById(Integer id, ProductoUpdateRequest productoRequest){
-
-        Producto P = productoRepository.findById(id).orElseThrow(() ->
-                new ProductoNotFoundException(id));
-
-        String nombrePNuevo = StringUtils.capitalizarPalabras(productoRequest.getNombreProductoNuevo());
-
-        if (!P.getNombreProducto().equals(nombrePNuevo) &&
-                productoRepository.existsByNombreProductoAndIdProductoIsNot(nombrePNuevo, P.getIdProducto())) {
-            throw new ProductoExistenteException(nombrePNuevo);
-        }
-
-        P.setNombreProducto(nombrePNuevo);
-        P.setUnidadMedida(productoRequest.getUnidadMedida());
-        return productoRepository.save(P);
-    }
-
     // Eliminacion logica de producto por nombre
     @Transactional
-    @Override
+    @Override// ✅ En uso: Método invocado por el controlador.
     public void deleteByName(String nombreProducto) {
 
         String nombreProductoCapitalizado = StringUtils.capitalizarPalabras(nombreProducto);
 
         Producto producto = productoRepository.findByNombreProducto(nombreProductoCapitalizado).orElseThrow(
-                ()-> new ProductoNotFoundException(nombreProductoCapitalizado)
+                ()-> new GestionInventarioException("No existe el producto con el nombre: " + nombreProductoCapitalizado + "")
         );
 
         //VEREFICAR COMO AFECATARA A OTROS PRODUCTOS
-
         //eliminar de manera logica
         producto.setActivo(false);
         productoRepository.save(producto);
     }
 
     @Transactional
-    @Override
+    @Override// ❌ Sin uso: Implementado por contrato del servicio y buenas prácticas; actualmente no es invocado por ningún controlador.
     public void deleteById(Integer id)  {
         Producto producto = productoRepository.findById(id).orElseThrow(
                 () -> new ProductoNotFoundException(id));

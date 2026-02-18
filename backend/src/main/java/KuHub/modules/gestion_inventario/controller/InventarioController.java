@@ -20,7 +20,7 @@ public class InventarioController {
 
     @Autowired
     private InventarioService inventarioService;
-
+    /**
     @GetMapping("/{id}")
     public ResponseEntity<Inventario> findById(@PathVariable Integer id){
         return ResponseEntity
@@ -61,7 +61,7 @@ public class InventarioController {
     }
 
 
-    /**crear inventario para el FrontEnd */
+    /**crear inventario para el FrontEnd
     @PostMapping("/create-inventory-with-product/")
     public ResponseEntity<InventoryWithProductCreateDTO> save(
             @Valid @RequestBody
@@ -71,7 +71,7 @@ public class InventarioController {
                 .body(inventarioService.save(inventarioRequest));
     }
 
-    /**actualizar inventario para el FrontEnd */
+    /**actualizar inventario para el FrontEnd
     @PutMapping("/update-inventory-with-product/")
     public ResponseEntity<InventoryWithProductResponseAnswerUpdateDTO> updateInventoryWithProduct(
             @RequestBody InventoryWithProductResponseAnswerUpdateDTO inventarioRequest){
@@ -86,7 +86,7 @@ public class InventarioController {
                 .body(inventarioService.updateInventoryWithProduct(inventarioRequest));
     }
 
-    /**actualizar el valor activo a false para realizar la eliminacion logica*/
+    /**actualizar el valor activo a false para realizar la eliminacion logica
     @PutMapping("/update-active-value-product-false/{id_inventario}")
     public ResponseEntity<Void> updateActiveValueProductFalse(
             @PathVariable Integer id_inventario){
@@ -96,6 +96,6 @@ public class InventarioController {
             return  ResponseEntity.status(200).build();
     }
 
-
+    */
 
 }

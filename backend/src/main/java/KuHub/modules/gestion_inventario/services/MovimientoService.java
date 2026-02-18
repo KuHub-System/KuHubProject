@@ -7,6 +7,6 @@ import KuHub.modules.gestion_inventario.dtos.MotionFilterRequestDTO;
 import java.util.List;
 
 public interface MovimientoService {
-    MotionAnswerDTO saveMotion (MotionCreateDTO m);
-    List<MotionAnswerDTO> findAllMotionFilter (MotionFilterRequestDTO filter);
+    //MotionAnswerDTO saveMotion (MotionCreateDTO m);
+    //List<MotionAnswerDTO> findAllMotionFilter (MotionFilterRequestDTO filter);
 }

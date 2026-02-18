@@ -1,9 +1,8 @@
-package KuHub.modules.producto.repository;
+package KuHub.modules.gestion_inventario.repository;
 
-import KuHub.modules.producto.dtos.proyeccion.ProductRecipeView;
-import KuHub.modules.producto.entity.Producto;
+import KuHub.modules.gestion_inventario.dtos.proyeccion.ProductRecipeView;
+import KuHub.modules.gestion_inventario.entity.Producto;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
@@ -13,7 +12,7 @@ import java.util.Optional;
 
 @Repository
 public interface ProductoRepository extends JpaRepository<Producto, Integer> {
-
+    /**
     @Query("SELECT DISTINCT (p.nombreCategoria) FROM Producto p WHERE p.activo = true")
     List<String> findDistinctCategoriaByActivoTrue();
 
@@ -26,10 +25,11 @@ public interface ProductoRepository extends JpaRepository<Producto, Integer> {
         WHERE p.activo = true 
         ORDER BY p.nombreProducto ASC
     """)
-    List<ProductRecipeView> findAllActiveForRecipe();
+    List<ProductRecipeView> findAllActiveForRecipe();*/
 
+    /**
     @Query("SELECT DISTINCT p.unidadMedida FROM Producto p WHERE p.activo = true")
-    List<String> findDistinctUnidadMedidaByActivoTrue();
+    List<String> findDistinctUnidadMedidaByActivoTrue();*/
 
     Optional<Producto> findByNombreProducto(String nombreProducto);
     Optional<Producto> findByIdProductoAndActivoTrue(Integer id_producto);
