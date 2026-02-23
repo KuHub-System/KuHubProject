@@ -24,6 +24,9 @@ public class UnidadMedida {
     @Column(name = "nombre_unidad", length = 30, nullable = false, unique = true)
     private String nombreUnidad;
 
+    @Column(name = "abreviatura", length = 10, nullable = false, unique = true)
+    private String abreviatura;
+
     @Column(name = "activo", nullable = false)
     private Boolean activo = true;
 

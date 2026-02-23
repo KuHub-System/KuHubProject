@@ -23,6 +23,8 @@ public class Categoria {
     @Column(name = "activo")
     private Boolean activo = true;
 
+
+
     /** CREACION 17/02/26
      * CREATE TABLE categoria (
      *     -- SMALLINT ocupa solo 2 bytes (rango hasta 32,767)
