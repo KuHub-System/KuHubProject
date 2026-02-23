@@ -5,6 +5,7 @@ export interface ICategoria {
   id: string;
   nombre: string;
   activo: boolean; // Para "prender y apagar"
+  asociados?: number; // Cantidad de productos asociados
 }
 
 /**

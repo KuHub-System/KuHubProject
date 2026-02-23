@@ -1,6 +1,7 @@
 package KuHub.config;
 
 import KuHub.modules.gestion_academica.exceptions.GestionAcademicaException;
+import KuHub.modules.gestion_inventario.exceptions.InventarioException;
 import KuHub.modules.gestion_solicitud.exception.GestionSolicitudException;
 import KuHub.modules.gestion_usuario.exceptions.*;
 import KuHub.modules.gestion_inventario.exceptions.ProductoException;
@@ -224,6 +225,16 @@ public class GlobalExceptionHandler {
     }
 
 
+    @ExceptionHandler(InventarioException.class)
+    public ResponseEntity<Map<String, Object>> handleInventarioException(InventarioException ex) {
 
+        Map<String, Object> response = new HashMap<>();
+        response.put("timestamp", LocalDateTime.now());
+        response.put("status", HttpStatus.BAD_REQUEST.value());
+        response.put("error", "Error de inventario");
+        response.put("message", ex.getMessage());
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+    }
 
 }
