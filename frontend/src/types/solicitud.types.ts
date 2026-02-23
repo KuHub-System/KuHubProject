@@ -21,6 +21,8 @@ export interface ISolicitud {
   asignaturaNombre: string;
   semana: number; // Semana académica (1-18)
   fecha: string; // Fecha de la clase
+  bloqueInicio: number; // 1-20
+  bloqueFin: number; // 1-20
   recetaId: string | null;
   recetaNombre: string | null;
   items: IItemSolicitud[];
@@ -33,6 +35,10 @@ export interface ISolicitud {
   fechaAprobacion?: string;
   aprobadoPor?: string; // ID del admin que aprobó/rechazó
   comentarioAdministrador?: string;
+
+  // Campos para Bodega de Tránsito
+  estadoBodega?: 'Pendiente' | 'Armado';
+  itemsAdicionalesBodega?: IItemSolicitud[];
 }
 
 export interface ISolicitudCreacion {
@@ -40,6 +46,8 @@ export interface ISolicitudCreacion {
   asignaturaNombre: string;
   semana: number;
   fecha: string;
+  bloqueInicio: number;
+  bloqueFin: number;
   recetaId: string | null;
   recetaNombre: string | null;
   items: Omit<IItemSolicitud, 'id'>[];
@@ -52,6 +60,8 @@ export interface ISolicitudActualizacion {
   asignaturaNombre?: string;
   semana?: number;
   fecha?: string;
+  bloqueInicio?: number;
+  bloqueFin?: number;
   recetaId?: string | null;
   recetaNombre?: string | null;
   items?: IItemSolicitud[];

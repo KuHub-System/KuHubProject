@@ -1,5 +1,5 @@
 import React from 'react';
-import { NavLink, useLocation } from 'react-router-dom';
+import { NavLink, useLocation, useHistory } from 'react-router-dom';
 import { Button, Divider } from '@heroui/react';
 import { Icon } from '@iconify/react';
 import { useAuth } from '../contexts/auth-context';
@@ -35,8 +35,14 @@ interface MenuItem {
  */
 const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
   // 🔥 Ahora usamos canAccessPage para verificar permisos dinámicos
-  const { user, canAccessPage } = useAuth();
+  const { user, canAccessPage, logout } = useAuth();
   const location = useLocation();
+  const history = useHistory();
+
+  const handleLogout = () => {
+    logout();
+    history.push('/login');
+  };
 
   /**
    * 🔥 LISTA ACTUALIZADA: Ahora incluye Gestión de Usuarios y Gestión de Solicitudes
@@ -109,8 +115,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
 
   // Variantes para las animaciones con Framer Motion (existentes)
   const sidebarVariants = {
-    open: { width: '280px', transition: { duration: 0.3 } },
-    closed: { width: '80px', transition: { duration: 0.3 } }
+    open: { width: '280px', transition: { duration: 0.3, ease: "easeInOut" } },
+    closed: { width: '80px', transition: { duration: 0.3, ease: "easeInOut" } }
   };
 
   const textVariants = {
@@ -125,69 +131,81 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
 
   return (
     <motion.div
-      className="sidebar bg-content1 shadow-md overflow-hidden h-screen z-50 sticky top-0"
+      className="sidebar bg-white dark:bg-content1 border-r border-default-200 dark:border-default-100 h-screen z-50 sticky top-0 flex flex-col font-sans"
       variants={sidebarVariants}
       animate={isOpen ? 'open' : 'closed'}
       initial={isOpen ? 'open' : 'closed'}
     >
       <div className="flex flex-col h-full">
         {/* Encabezado del sidebar */}
-        <div className="p-4 flex items-center justify-between">
+        <div className="p-5 flex items-center justify-between border-b border-default-100 dark:border-default-50">
           <div className="flex items-center">
             {/* Logo de KüHub */}
-            <div className="w-10 h-10 bg-content2 dark:bg-zinc-900 flex items-center justify-center rounded-md">
-              <img src={LOGO_URL} alt="Logo KüHub" className="h-8 w-8 object-contain" />
+            <div className="w-10 h-10 bg-primary flex items-center justify-center rounded-lg shadow-sm">
+              <img src={LOGO_URL} alt="Logo KüHub" />
             </div>
-            <motion.span
-              className="text-xl font-bold ml-3 text-primary"
-              variants={textVariants}
+            <motion.div
+              className="ml-3 flex flex-col justify-center"
+              variants={headerVariants}
               animate={isOpen ? 'open' : 'closed'}
               initial={isOpen ? 'open' : 'closed'}
             >
-              KüHub
-            </motion.span>
+              <span className="text-xl font-bold text-secondary dark:text-foreground leading-none tracking-tight">KüHub</span>
+              <span className="text-[10px] font-semibold text-default-400 uppercase tracking-widest mt-0.5">Sistema de Gestión</span>
+            </motion.div>
           </div>
-          <Button
-            isIconOnly
-            variant="light"
-            aria-label="Toggle Sidebar"
-            onPress={toggleSidebar}
-          >
-            <Icon icon={isOpen ? "lucide:chevron-left" : "lucide:chevron-right"} className="text-lg" />
-          </Button>
+          {isOpen && (
+            <Button
+              isIconOnly
+              size="sm"
+              variant="light"
+              aria-label="Toggle Sidebar"
+              onPress={toggleSidebar}
+              className="text-default-400 hover:text-secondary dark:hover:text-foreground hover:bg-default-100 dark:hover:bg-default-50"
+            >
+              <Icon icon="lucide:chevron-left" width={20} />
+            </Button>
+          )}
         </div>
 
-        <Divider />
-
         {/* Elementos del menú */}
-        <div className="flex-grow overflow-y-auto py-2 scrollbar-hidden">
+        <div className="flex-grow overflow-y-auto py-4 px-3 scrollbar-hide space-y-4">
+          {/* Botón flotante para abrir el sidebar si está cerrado */}
+          {!isOpen && (
+            <div className="flex justify-center mb-4">
+              <Button isIconOnly variant="light" onPress={toggleSidebar}>
+                <Icon icon="lucide:menu" className="text-default-500" width={24} />
+              </Button>
+            </div>
+          )}
+
           {filteredCategories.length > 0 ? (
             filteredCategories.map((category, index) => {
               const isCollapsed = collapsedCategories[category.title];
 
               return (
-                <div key={category.title} className="mb-2">
+                <div key={category.title}>
                   {/* Título de Categoría (Clickable solo si está abierto el sidebar) */}
                   <motion.div
-                    className={`px-4 py-2 flex items-center gap-2 ${isOpen ? 'cursor-pointer hover:text-primary transition-colors' : ''}`}
+                    className={`px-3 flex items-center justify-between mb-2 group ${isOpen ? 'cursor-pointer' : ''}`}
                     variants={headerVariants}
                     animate={isOpen ? 'open' : 'closed'}
                     initial={isOpen ? 'open' : 'closed'}
                     onClick={() => isOpen && toggleCategory(category.title)}
                   >
-                    <span className="text-xs font-bold text-default-500 uppercase tracking-wider">
+                    <span className="text-[11px] font-bold text-default-400 uppercase tracking-wider group-hover:text-primary transition-colors">
                       {category.title}
                     </span>
                     {isOpen && (
                       <Icon
                         icon="lucide:chevron-down"
-                        className={`text-default-400 text-sm transition-transform duration-200 ${isCollapsed ? '-rotate-90' : 'rotate-0'}`}
+                        className={`text-default-300 text-xs transition-transform duration-200 group-hover:text-primary ${isCollapsed ? '-rotate-90' : 'rotate-0'}`}
                       />
                     )}
                   </motion.div>
 
                   {/* Separador visual para modo cerrado si no es el primero */}
-                  {!isOpen && index > 0 && <Divider className="my-2 mx-2 w-auto" />}
+                  {!isOpen && index > 0 && <div className="h-px bg-default-100 mx-2 my-2" />}
 
                   {/* Lista de Items (Colapsable) */}
                   <motion.div
@@ -198,35 +216,50 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
                       collapsed: { height: 0, opacity: 0, overflow: 'hidden' }
                     }}
                     transition={{ duration: 0.2 }}
+                    className="space-y-0.5"
                   >
-                    {category.items.map((item) => (
-                      <NavLink
-                        key={item.path}
-                        to={item.path}
-                        className={`flex items-center px-4 py-3 my-1 mx-2 rounded-md transition-all-200 ${location.pathname === item.path
-                          ? 'bg-primary-100 text-primary'
-                          : 'text-foreground hover:bg-default-100'
-                          }`}
-                        title={!isOpen ? item.title : undefined}
-                      >
-                        <Icon icon={item.icon} className="text-xl flex-shrink-0" />
-                        <motion.span
-                          className="ml-3 text-sm font-medium whitespace-nowrap"
-                          variants={textVariants}
-                          animate={isOpen ? 'open' : 'closed'}
-                          initial={isOpen ? 'open' : 'closed'}
+                    {category.items.map((item) => {
+                      const isActive = location.pathname.startsWith(item.path); // Usa startsWith para subrutas
+
+                      return (
+                        <NavLink
+                          key={item.path}
+                          to={item.path}
+                          className={`
+                             group flex items-center px-3 py-2.5 rounded-lg transition-all duration-200 outline-none
+                             ${isActive
+                              ? 'bg-primary text-secondary shadow-md shadow-primary/20 font-semibold'
+                              : 'text-default-600 dark:text-default-400 hover:bg-default-100 dark:hover:bg-default-50 hover:text-secondary dark:hover:text-foreground'
+                            }
+                          `}
+                          title={!isOpen ? item.title : undefined}
                         >
-                          {item.title}
-                        </motion.span>
-                      </NavLink>
-                    ))}
+                          <Icon
+                            icon={item.icon}
+                            width={20}
+                            className={`flex-shrink-0 transition-colors ${isActive ? 'text-secondary' : 'text-default-400 group-hover:text-secondary dark:group-hover:text-foreground'}`}
+                          />
+                          <motion.span
+                            className="ml-3 text-sm whitespace-nowrap"
+                            variants={textVariants}
+                            animate={isOpen ? 'open' : 'closed'}
+                            initial={isOpen ? 'open' : 'closed'}
+                          >
+                            {item.title}
+                          </motion.span>
+
+                          {/* Indicador activo (punto) opcional */}
+                          {isActive && isOpen && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-secondary block" />}
+                        </NavLink>
+                      );
+                    })}
                   </motion.div>
                 </div>
               );
             })
           ) : (
             <div className="px-4 py-8 text-center text-default-400 text-sm">
-              <Icon icon="lucide:lock" className="text-3xl mx-auto mb-2" />
+              <Icon icon="lucide:lock" className="text-3xl mx-auto mb-2 opacity-50" />
               <motion.p
                 variants={textVariants}
                 animate={isOpen ? 'open' : 'closed'}
@@ -238,27 +271,22 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
           )}
         </div>
 
-        <Divider />
-
         {/* Pie del sidebar */}
-        <div className="p-4">
-          <NavLink
-            to="/perfil"
-            className={`flex items-center px-4 py-3 rounded-md transition-all-200 ${location.pathname === '/perfil'
-              ? 'bg-primary-100 text-primary'
-              : 'text-foreground hover:bg-default-100'
-              }`}
+        <div className="p-4 bg-default-50 dark:bg-content2 border-t border-default-100 dark:border-default-50">
+          <button
+            onClick={handleLogout}
+            className="w-full flex items-center px-4 py-2 rounded-lg transition-colors text-default-500 hover:bg-red-50 dark:hover:bg-danger-50 hover:text-red-600 dark:hover:text-danger-500 group"
           >
-            <Icon icon="lucide:user" className="text-xl" />
+            <Icon icon="lucide:log-out" width={20} className="group-hover:stroke-current" />
             <motion.span
               className="ml-3 text-sm font-medium"
               variants={textVariants}
               animate={isOpen ? 'open' : 'closed'}
               initial={isOpen ? 'open' : 'closed'}
             >
-              Perfil
+              Cerrar sesión
             </motion.span>
-          </NavLink>
+          </button>
         </div>
       </div>
     </motion.div>
