@@ -16,4 +16,5 @@ export interface IUnidadMedida {
   nombre: string;
   abreviatura: string;
   activo: boolean; // Para "prender y apagar"
+  asociados?: number; // Cantidad de productos asociados
 }

@@ -63,7 +63,7 @@ export const crearCategoriaService = async (nombreCategoria: string): Promise<bo
 
     } catch (error: any) {
         console.error('❌ Error al crear categoría en backend:', error);
-        return false;
+        throw new Error(error.response?.data?.message || error.response?.data || 'Error al crear la categoría');
     }
 };
 
@@ -94,7 +94,7 @@ export const actualizarCategoriaService = async (id: string, nombre: string, act
 
     } catch (error: any) {
         console.error('❌ Error al actualizar categoría en backend (PATCH):', error);
-        return false;
+        throw new Error(error.response?.data?.message || error.response?.data || 'Error al actualizar la categoría');
     }
 };
 
@@ -156,7 +156,7 @@ export const cambiarEstadoCategoriaService = async (id: string, activo: boolean)
 
     } catch (error: any) {
         console.error('❌ Error al cambiar status en backend:', error);
-        return false;
+        throw new Error(error.response?.data?.message || error.response?.data || 'Error al cambiar el estado');
     }
 };
 
