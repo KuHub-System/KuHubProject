@@ -3,8 +3,11 @@ package KuHub.modules.gestion_inventario.repository;
 import KuHub.modules.gestion_inventario.dtos.proyeccion.ProductRecipeView;
 import KuHub.modules.gestion_inventario.entity.Producto;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Collection;
 import java.util.List;
@@ -41,6 +44,19 @@ public interface ProductoRepository extends JpaRepository<Producto, Integer> {
     boolean existsByNombreProducto(String nombreProducto);
     boolean existsBycodProductoAndActivo(String codProducto, Boolean activo);
     boolean existsByIdProducto(Integer idProducto);
+    boolean existsByCategoria_IdCategoria(Short idCategoria);
+
+    @Modifying
+    @Transactional
+    @Query("""
+           UPDATE Producto p
+           SET p.categoria.idCategoria = :categoriaDestino
+           WHERE p.categoria.idCategoria = :categoriaOrigen
+           """)
+    int actualizarCategoriaMasivo(
+            @Param("categoriaOrigen") Short categoriaOrigen,
+            @Param("categoriaDestino") Short categoriaDestino
+    );
 
     // Cambia "Id" por "IdProducto"
     List<Producto> findAllByIdProductoInAndActivoTrue(Collection<Integer> ids);;
