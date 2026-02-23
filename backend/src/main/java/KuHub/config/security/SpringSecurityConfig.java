@@ -15,6 +15,7 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -210,6 +211,25 @@ public class SpringSecurityConfig {
                         .requestMatchers(HttpMethod.DELETE, "/api/v*/usuarios/**").hasRole("ADMINISTRADOR")
 
                         // ========================================
+                        // ENDPOINTS DE CATEGORIA
+                        // ========================================
+
+                        // Lectura pública
+                        .requestMatchers(HttpMethod.GET, "/api/v*/categoria/**").permitAll()
+
+                        // Crear
+                        .requestMatchers(HttpMethod.POST, "/api/v*/categoria/**")
+                        .hasAnyRole("ADMINISTRADOR", "ENCARGADO_BODEGA")
+
+                        // Actualizar (PATCH → lo estás usando)
+                        .requestMatchers(HttpMethod.PATCH, "/api/v*/categoria/**")
+                        .hasAnyRole("ADMINISTRADOR", "ENCARGADO_BODEGA")
+
+                        // Eliminar
+                        .requestMatchers(HttpMethod.DELETE, "/api/v*/categoria/**")
+                        .hasRole("ADMINISTRADOR")
+
+                        // ========================================
                         // ENDPOINTS DE PRODUCTOS
                         // ========================================
                         // Productos - lectura pública, modificación restringida
@@ -305,7 +325,8 @@ public class SpringSecurityConfig {
                 )
                 // Agregar filtros JWT EN ORDEN - inyectando ObjectMapper configurado
                 .addFilter(new JwtAuthenticationFilter(authenticationManager(), usuarioRepository, objectMapper))
-                .addFilter(new JwtValidationFilter(authenticationManager()))
+                .addFilterBefore(new JwtValidationFilter(authenticationManager()),
+                        UsernamePasswordAuthenticationFilter.class)
 
                 // Desactivar CSRF (no necesario con JWT)
                 .csrf(config -> config.disable())
