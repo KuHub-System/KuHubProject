@@ -36,6 +36,9 @@ import {
 import { useToast, useConfirm } from '../hooks/useToast';
 import { logger } from '../utils/logger';
 import { useAuth } from '../contexts/auth-context';
+import { obtenerCategorias, obtenerUnidades } from '../services/storage-service';
+import GestionCategoriasModal from '../components/modals/GestionCategoriasModal';
+import GestionUnidadesModal from '../components/modals/GestionUnidadesModal';
 
 /**
  * Interfaz para un item del pedido masivo
@@ -69,6 +72,8 @@ const InventarioPage: React.FC = () => {
   const history = useHistory();
   const { isOpen, onOpen, onOpenChange } = useDisclosure();
   const { isOpen: isPedidoMasivoOpen, onOpen: onPedidoMasivoOpen, onOpenChange: onPedidoMasivoOpenChange } = useDisclosure();
+  const { isOpen: isCategoriasOpen, onOpen: onCategoriasOpen, onOpenChange: onCategoriasOpenChange } = useDisclosure();
+  const { isOpen: isUnidadesOpen, onOpen: onUnidadesOpen, onOpenChange: onUnidadesOpenChange } = useDisclosure();
   const [productoSeleccionado, setProductoSeleccionado] = React.useState<IProducto | null>(null);
   const [modalMode, setModalMode] = React.useState<'crear' | 'editar'>('crear');
 
@@ -150,7 +155,9 @@ const InventarioPage: React.FC = () => {
    * Obtiene las categorías únicas de los productos, agregando la opción de Stock Bajo.
    */
   const categorias = React.useMemo(() => {
-    const categoriasSet = new Set(productos.map(producto => producto.categoria));
+    // Usar las categorías de storage-service (reales) si están habilitadas
+    const catReales = obtenerCategorias().filter(c => c.activo).map(c => c.nombre);
+    const categoriasSet = new Set([...catReales, ...productos.map(producto => producto.categoria)]);
     return ['todas', 'stock-bajo', ...Array.from(categoriasSet)];
   }, [productos]);
 
@@ -296,6 +303,22 @@ const InventarioPage: React.FC = () => {
 
           <div className="flex gap-2">
             <Button
+              isIconOnly
+              variant="flat"
+              onPress={onCategoriasOpen}
+              title="Gestionar Categorías"
+            >
+              <Icon icon="lucide:tags" className="text-default-600" />
+            </Button>
+            <Button
+              isIconOnly
+              variant="flat"
+              onPress={onUnidadesOpen}
+              title="Gestionar Unidades de Medida"
+            >
+              <Icon icon="lucide:scale" className="text-default-600" />
+            </Button>
+            <Button
               color="secondary"
               variant="flat"
               startContent={<Icon icon="lucide:shopping-cart" />}
@@ -421,6 +444,19 @@ const InventarioPage: React.FC = () => {
           )}
         </ModalContent>
       </Modal>
+
+      {/* Modales de gestión de categorías y unidades */}
+      <GestionCategoriasModal
+        isOpen={isCategoriasOpen}
+        onOpenChange={onCategoriasOpenChange}
+        onRefresh={cargarProductos} // Para recargar si algo cambia
+      />
+
+      <GestionUnidadesModal
+        isOpen={isUnidadesOpen}
+        onOpenChange={onUnidadesOpenChange}
+        onRefresh={cargarProductos}
+      />
     </div>
   );
 };
@@ -449,6 +485,10 @@ const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto, onClo
   const [stock, setStock] = React.useState(producto?.stock?.toString() || '0');
   const [stockMinimo, setStockMinimo] = React.useState(producto?.stockMinimo?.toString() || '0');
   const [isLoading, setIsLoading] = React.useState(false);
+
+  // Cargar categorías y unidades reales
+  const categoriasReales = React.useMemo(() => obtenerCategorias().filter(c => c.activo), []);
+  const unidadesReales = React.useMemo(() => obtenerUnidades().filter(u => u.activo), []);
 
   const handleSubmit = async () => {
     // Validaciones
@@ -542,13 +582,14 @@ const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto, onClo
             required
           >
             <option value="">Seleccione una categoría</option>
-            <option value="Abarrotes">Abarrotes</option>
-            <option value="Aseo y Descartables">Aseo y Descartables</option>
-            <option value="Carnes">Carnes</option>
-            <option value="Frutas y Verduras Congeladas">Frutas y Verduras Congeladas</option>
-            <option value="Pescado y Mariscos">Pescado y Mariscos</option>
-            <option value="Utensilios">Utensilios</option>
-            <option value="Vinos y Destilados">Vinos y Destilados</option>
+            {/* Categorías dinámicas */}
+            {categoriasReales.map(cat => (
+              <option key={cat.id} value={cat.nombre}>{cat.nombre}</option>
+            ))}
+            {/* Mantener compatibilidad si el producto tiene una categoría no listada (ej: hardcoded anterior) */}
+            {categoria && !categoriasReales.find(c => c.nombre === categoria) && (
+              <option value={categoria}>{categoria}</option>
+            )}
           </select>
         </div>
 
@@ -563,11 +604,14 @@ const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto, onClo
             required
           >
             <option value="">Seleccione una unidad</option>
-            <option value="kg">Kilo (kg)</option>
-            <option value="l">Litro (l)</option>
-            <option value="unidad">Unidad</option>
-            <option value="manga">Manga</option>
-            <option value="botella">Botella</option>
+            {/* Unidades dinámicas */}
+            {unidadesReales.map(uni => (
+              <option key={uni.id} value={uni.abreviatura}>{uni.nombre} ({uni.abreviatura})</option>
+            ))}
+            {/* Mantener compatibilidad */}
+            {unidadMedida && !unidadesReales.find(u => u.abreviatura === unidadMedida) && (
+              <option value={unidadMedida}>{unidadMedida}</option>
+            )}
           </select>
         </div>
       </div>

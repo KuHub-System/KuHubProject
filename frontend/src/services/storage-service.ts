@@ -7,13 +7,14 @@
 
 import { IProducto, IMovimientoProducto } from '../types/producto.types';
 import { IUser, IRole } from '../types/user.types';
-import { 
-  IReceta, 
-  IIngrediente, 
-  ISolicitud, 
+import {
+  IReceta,
+  IIngrediente,
+  ISolicitud,
   IItemSolicitud,
   IActualizarSolicitud
 } from '../types/receta.types';
+import { ICategoria, IUnidadMedida } from '../types/inventario.types.ts';
 import { ROLES_STORAGE_KEY, ROLES_SISTEMA, guardarRoles as guardarRolesConfig } from '../config/roles-config';
 
 // ==========================================
@@ -210,6 +211,30 @@ export const inicializarSistema = (): void => {
     console.log('✅ Roles iniciales creados desde roles-config');
   }
 
+  if (!localStorage.getItem(STORAGE_KEYS.CATEGORIAS)) {
+    const categoriasIniciales: ICategoria[] = [
+      { id: generarId(), nombre: 'Abarrotes', activo: true },
+      { id: generarId(), nombre: 'Aseo y Descartables', activo: true },
+      { id: generarId(), nombre: 'Carnes', activo: true },
+      { id: generarId(), nombre: 'Frutas y Verduras Congeladas', activo: true },
+      { id: generarId(), nombre: 'Pescado y Mariscos', activo: true },
+      { id: generarId(), nombre: 'Utensilios', activo: true },
+      { id: generarId(), nombre: 'Vinos y Destilados', activo: true },
+    ];
+    localStorage.setItem(STORAGE_KEYS.CATEGORIAS, JSON.stringify(categoriasIniciales));
+  }
+
+  if (!localStorage.getItem(STORAGE_KEYS.UNIDADES)) {
+    const unidadesIniciales: IUnidadMedida[] = [
+      { id: generarId(), nombre: 'Kilogramo', abreviatura: 'kg', activo: true },
+      { id: generarId(), nombre: 'Litro', abreviatura: 'l', activo: true },
+      { id: generarId(), nombre: 'Unidad', abreviatura: 'un', activo: true },
+      { id: generarId(), nombre: 'Manga', abreviatura: 'mg', activo: true },
+      { id: generarId(), nombre: 'Botella', abreviatura: 'bt', activo: true },
+    ];
+    localStorage.setItem(STORAGE_KEYS.UNIDADES, JSON.stringify(unidadesIniciales));
+  }
+
   console.log('🎉 Sistema inicializado correctamente');
 };
 
@@ -220,7 +245,7 @@ export const inicializarSistema = (): void => {
 export const obtenerUsuarios = (): IUser[] => {
   const usuarios = localStorage.getItem(STORAGE_KEYS.USUARIOS);
   if (!usuarios) return [];
-  
+
   const storedUsers: StoredUser[] = JSON.parse(usuarios);
   return storedUsers.map(({ password, ...user }) => user);
 };
@@ -228,17 +253,17 @@ export const obtenerUsuarios = (): IUser[] => {
 export const autenticarUsuario = (email: string, password: string): IUser | null => {
   const usuarios = localStorage.getItem(STORAGE_KEYS.USUARIOS);
   if (!usuarios) return null;
-  
+
   const storedUsers: StoredUser[] = JSON.parse(usuarios);
   const usuario = storedUsers.find(u => u.email.toLowerCase() === email.toLowerCase());
-  
+
   if (!usuario || !verificarPassword(password, usuario.password)) {
     return null;
   }
-  
+
   usuario.ultimoAcceso = new Date().toISOString();
   localStorage.setItem(STORAGE_KEYS.USUARIOS, JSON.stringify(storedUsers));
-  
+
   const { password: _, ...userSinPassword } = usuario;
   return userSinPassword;
 };
@@ -246,7 +271,7 @@ export const autenticarUsuario = (email: string, password: string): IUser | null
 export const crearUsuario = (datos: Omit<StoredUser, 'id' | 'fechaCreacion' | 'ultimoAcceso'>): IUser => {
   const usuarios = localStorage.getItem(STORAGE_KEYS.USUARIOS);
   const storedUsers: StoredUser[] = usuarios ? JSON.parse(usuarios) : [];
-  
+
   const nuevoUsuario: StoredUser = {
     id: generarId(),
     ...datos,
@@ -254,10 +279,10 @@ export const crearUsuario = (datos: Omit<StoredUser, 'id' | 'fechaCreacion' | 'u
     fechaCreacion: new Date().toISOString(),
     ultimoAcceso: new Date().toISOString(),
   };
-  
+
   storedUsers.push(nuevoUsuario);
   localStorage.setItem(STORAGE_KEYS.USUARIOS, JSON.stringify(storedUsers));
-  
+
   const { password, ...userSinPassword } = nuevoUsuario;
   return userSinPassword;
 };
@@ -278,33 +303,33 @@ export const obtenerProductoPorId = (id: string): IProducto | null => {
 
 export const crearProducto = (producto: Omit<IProducto, 'id' | 'fechaCreacion' | 'fechaActualizacion'>): IProducto => {
   const productos = obtenerProductos();
-  
+
   const nuevoProducto: IProducto = {
     id: generarId(),
     ...producto,
     fechaCreacion: new Date().toISOString(),
     fechaActualizacion: new Date().toISOString(),
   };
-  
+
   productos.push(nuevoProducto);
   localStorage.setItem(STORAGE_KEYS.PRODUCTOS, JSON.stringify(productos));
-  
+
   return nuevoProducto;
 };
 
 export const actualizarProducto = (id: string, cambios: Partial<IProducto>): IProducto | null => {
   const productos = obtenerProductos();
   const index = productos.findIndex(p => p.id === id);
-  
+
   if (index === -1) return null;
-  
+
   productos[index] = {
     ...productos[index],
     ...cambios,
     id,
     fechaActualizacion: new Date().toISOString(),
   };
-  
+
   localStorage.setItem(STORAGE_KEYS.PRODUCTOS, JSON.stringify(productos));
   return productos[index];
 };
@@ -312,11 +337,11 @@ export const actualizarProducto = (id: string, cambios: Partial<IProducto>): IPr
 export const eliminarProducto = (id: string): boolean => {
   const productos = obtenerProductos();
   const productosFiltrados = productos.filter(p => p.id !== id);
-  
+
   if (productos.length === productosFiltrados.length) {
     return false;
   }
-  
+
   localStorage.setItem(STORAGE_KEYS.PRODUCTOS, JSON.stringify(productosFiltrados));
   return true;
 };
@@ -348,7 +373,7 @@ export const crearMovimiento = (
 ): IMovimientoProducto | null => {
   const producto = obtenerProductoPorId(movimientoData.productoId);
   if (!producto) return null;
-  
+
   let nuevoStock = producto.stock;
   switch (movimientoData.tipo) {
     case 'Entrada':
@@ -362,7 +387,7 @@ export const crearMovimiento = (
       }
       break;
   }
-  
+
   const nuevoMovimiento: IMovimientoProducto = {
     id: generarId(),
     productoId: movimientoData.productoId,
@@ -373,13 +398,13 @@ export const crearMovimiento = (
     fechaMovimiento: new Date().toISOString(),
     responsable,
   };
-  
+
   const movimientos = obtenerMovimientos();
   movimientos.push(nuevoMovimiento);
   localStorage.setItem(STORAGE_KEYS.MOVIMIENTOS, JSON.stringify(movimientos));
-  
+
   actualizarProducto(producto.id, { stock: nuevoStock });
-  
+
   return nuevoMovimiento;
 };
 
@@ -412,12 +437,12 @@ export const obtenerRecetaPorId = (id: string): IReceta | null => {
 
 export const crearReceta = (recetaData: Omit<IReceta, 'id' | 'fechaCreacion' | 'fechaActualizacion'>): IReceta => {
   const recetas = obtenerRecetas();
-  
+
   const ingredientesConId: IIngrediente[] = recetaData.ingredientes.map(ing => ({
     ...ing,
     id: 'id' in ing && ing.id ? ing.id : generarId()
   }));
-  
+
   const nuevaReceta: IReceta = {
     id: generarId(),
     ...recetaData,
@@ -425,19 +450,19 @@ export const crearReceta = (recetaData: Omit<IReceta, 'id' | 'fechaCreacion' | '
     fechaCreacion: new Date().toISOString(),
     fechaActualizacion: new Date().toISOString(),
   };
-  
+
   recetas.push(nuevaReceta);
   localStorage.setItem(STORAGE_KEYS.RECETAS, JSON.stringify(recetas));
-  
+
   return nuevaReceta;
 };
 
 export const actualizarReceta = (id: string, cambios: Partial<Omit<IReceta, 'id' | 'fechaCreacion' | 'fechaActualizacion'>>): IReceta | null => {
   const recetas = obtenerRecetas();
   const index = recetas.findIndex(r => r.id === id);
-  
+
   if (index === -1) return null;
-  
+
   let cambiosConIngredientes = { ...cambios };
   if (cambios.ingredientes) {
     const ingredientesConId: IIngrediente[] = cambios.ingredientes.map((ing: any) => ({
@@ -446,14 +471,14 @@ export const actualizarReceta = (id: string, cambios: Partial<Omit<IReceta, 'id'
     }));
     cambiosConIngredientes.ingredientes = ingredientesConId;
   }
-  
+
   recetas[index] = {
     ...recetas[index],
     ...cambiosConIngredientes,
     id,
     fechaActualizacion: new Date().toISOString(),
   };
-  
+
   localStorage.setItem(STORAGE_KEYS.RECETAS, JSON.stringify(recetas));
   return recetas[index];
 };
@@ -465,11 +490,11 @@ export const obtenerRecetasActivas = (): IReceta[] => {
 export const eliminarReceta = (id: string): boolean => {
   const recetas = obtenerRecetas();
   const recetasFiltradas = recetas.filter(r => r.id !== id);
-  
+
   if (recetas.length === recetasFiltradas.length) {
     return false;
   }
-  
+
   localStorage.setItem(STORAGE_KEYS.RECETAS, JSON.stringify(recetasFiltradas));
   return true;
 };
@@ -501,12 +526,12 @@ export const crearSolicitud = (
   usuarioId: string
 ): ISolicitud => {
   const solicitudes = obtenerSolicitudes();
-  
+
   const itemsConId: IItemSolicitud[] = solicitudData.items.map(item => ({
     ...item,
     id: 'id' in item && item.id ? item.id : generarId()
   }));
-  
+
   const nuevaSolicitud: ISolicitud = {
     id: generarId(),
     ...solicitudData,
@@ -518,27 +543,27 @@ export const crearSolicitud = (
     fechaCreacion: new Date().toISOString(),
     fechaActualizacion: new Date().toISOString(),
   };
-  
+
   solicitudes.push(nuevaSolicitud);
   localStorage.setItem(STORAGE_KEYS.SOLICITUDES, JSON.stringify(solicitudes));
-  
+
   return nuevaSolicitud;
 };
 
 export const actualizarSolicitud = (datos: IActualizarSolicitud): ISolicitud | null => {
   const solicitudes = obtenerSolicitudes();
   const index = solicitudes.findIndex(s => s.id === datos.id);
-  
+
   if (index === -1) return null;
-  
+
   const { id, ...cambios } = datos;
-  
+
   solicitudes[index] = {
     ...solicitudes[index],
     ...cambios,
     fechaActualizacion: new Date().toISOString(),
   };
-  
+
   localStorage.setItem(STORAGE_KEYS.SOLICITUDES, JSON.stringify(solicitudes));
   return solicitudes[index];
 };
@@ -546,11 +571,11 @@ export const actualizarSolicitud = (datos: IActualizarSolicitud): ISolicitud | n
 export const eliminarSolicitud = (id: string): boolean => {
   const solicitudes = obtenerSolicitudes();
   const solicitudesFiltradas = solicitudes.filter(s => s.id !== id);
-  
+
   if (solicitudes.length === solicitudesFiltradas.length) {
     return false;
   }
-  
+
   localStorage.setItem(STORAGE_KEYS.SOLICITUDES, JSON.stringify(solicitudesFiltradas));
   return true;
 };
@@ -579,8 +604,71 @@ export const exportarDatos = () => {
     roles: obtenerRoles(),
     recetas: obtenerRecetas(),
     solicitudes: obtenerSolicitudes(),
+    categorias: obtenerCategorias(),
+    unidades: obtenerUnidades(),
     fecha: new Date().toISOString(),
   };
+};
+
+// ==========================================
+// GESTIÓN DE CATEGORÍAS
+// ==========================================
+
+export const obtenerCategorias = (): ICategoria[] => {
+  const categorias = localStorage.getItem(STORAGE_KEYS.CATEGORIAS);
+  return categorias ? JSON.parse(categorias) : [];
+};
+
+export const crearCategoria = (nombre: string): ICategoria => {
+  const categorias = obtenerCategorias();
+  const nuevaCategoria: ICategoria = {
+    id: generarId(),
+    nombre,
+    activo: true,
+  };
+  categorias.push(nuevaCategoria);
+  localStorage.setItem(STORAGE_KEYS.CATEGORIAS, JSON.stringify(categorias));
+  return nuevaCategoria;
+};
+
+export const actualizarCategoria = (id: string, cambios: Partial<ICategoria>): ICategoria | null => {
+  const categorias = obtenerCategorias();
+  const index = categorias.findIndex(c => c.id === id);
+  if (index === -1) return null;
+  categorias[index] = { ...categorias[index], ...cambios };
+  localStorage.setItem(STORAGE_KEYS.CATEGORIAS, JSON.stringify(categorias));
+  return categorias[index];
+};
+
+// ==========================================
+// GESTIÓN DE UNIDADES DE MEDIDA
+// ==========================================
+
+export const obtenerUnidades = (): IUnidadMedida[] => {
+  const unidades = localStorage.getItem(STORAGE_KEYS.UNIDADES);
+  return unidades ? JSON.parse(unidades) : [];
+};
+
+export const crearUnidad = (nombre: string, abreviatura: string): IUnidadMedida => {
+  const unidades = obtenerUnidades();
+  const nuevaUnidad: IUnidadMedida = {
+    id: generarId(),
+    nombre,
+    abreviatura,
+    activo: true,
+  };
+  unidades.push(nuevaUnidad);
+  localStorage.setItem(STORAGE_KEYS.UNIDADES, JSON.stringify(unidades));
+  return nuevaUnidad;
+};
+
+export const actualizarUnidad = (id: string, cambios: Partial<IUnidadMedida>): IUnidadMedida | null => {
+  const unidades = obtenerUnidades();
+  const index = unidades.findIndex(u => u.id === id);
+  if (index === -1) return null;
+  unidades[index] = { ...unidades[index], ...cambios };
+  localStorage.setItem(STORAGE_KEYS.UNIDADES, JSON.stringify(unidades));
+  return unidades[index];
 };
 
 export const estadisticasSistema = () => {
