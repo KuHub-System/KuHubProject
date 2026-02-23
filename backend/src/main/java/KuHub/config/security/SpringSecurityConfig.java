@@ -230,6 +230,28 @@ public class SpringSecurityConfig {
                         .hasRole("ADMINISTRADOR")
 
                         // ========================================
+                        // ENDPOINTS DE UNIDAD DE MEDIDA
+                        // ========================================
+
+                        // Lectura pública
+                        .requestMatchers(HttpMethod.GET, "/api/v*/unidad-medida/**").permitAll()
+
+                        // Crear
+                        .requestMatchers(HttpMethod.POST, "/api/v*/unidad-medida/**")
+                        .hasAnyRole("ADMINISTRADOR", "ENCARGADO_BODEGA")
+
+                        // Actualizar
+                        .requestMatchers(HttpMethod.PUT, "/api/v*/unidad-medida/**")
+                        .hasAnyRole("ADMINISTRADOR", "ENCARGADO_BODEGA")
+
+                        .requestMatchers(HttpMethod.PATCH, "/api/v*/unidad-medida/**")
+                        .hasAnyRole("ADMINISTRADOR", "ENCARGADO_BODEGA")
+
+                        // Eliminar
+                        .requestMatchers(HttpMethod.DELETE, "/api/v*/unidad-medida/**")
+                        .hasRole("ADMINISTRADOR")
+
+                        // ========================================
                         // ENDPOINTS DE PRODUCTOS
                         // ========================================
                         // Productos - lectura pública, modificación restringida

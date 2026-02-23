@@ -112,10 +112,10 @@ const GestionCategoriasModal: React.FC<GestionCategoriasModalProps> = ({
                 cargarCategorias();
                 if (onRefresh) onRefresh();
             } else {
-                toast.error('No se pudo cambiar el estado en el servidor');
+                toast.error('No se pudo cambiar el estado');
             }
-        } catch (error) {
-            toast.error('Error al cambiar el estado de la categoría');
+        } catch (error: any) {
+            toast.error(error.message || 'Error al cambiar el estado de la categoría');
         } finally {
             setTogglingIds(prev => {
                 const next = new Set(prev);
@@ -158,10 +158,10 @@ const GestionCategoriasModal: React.FC<GestionCategoriasModalProps> = ({
                 toast.success('Categoría agregada correctamente');
                 if (onRefresh) onRefresh();
             } else {
-                toast.error('El backend no pudo crear la categoría');
+                toast.error('No se pudo crear la categoría');
             }
-        } catch (error) {
-            toast.error('Error de conexión con el servidor');
+        } catch (error: any) {
+            toast.error(error.message || 'Error al crear la categoría');
         } finally {
             setIsLoadingBackend(false);
         }
@@ -190,8 +190,8 @@ const GestionCategoriasModal: React.FC<GestionCategoriasModalProps> = ({
                 } else {
                     toast.error('No se pudo actualizar la categoría');
                 }
-            } catch (error) {
-                toast.error('Error al actualizar');
+            } catch (error: any) {
+                toast.error(error.message || 'Error al actualizar');
             } finally {
                 setIsUpdating(false);
             }
