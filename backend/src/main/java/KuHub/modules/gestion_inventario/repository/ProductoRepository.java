@@ -45,6 +45,7 @@ public interface ProductoRepository extends JpaRepository<Producto, Integer> {
     boolean existsBycodProductoAndActivo(String codProducto, Boolean activo);
     boolean existsByIdProducto(Integer idProducto);
     boolean existsByCategoria_IdCategoria(Short idCategoria);
+    boolean existsByUnidadMedida_IdUnidad(Short idUnidad);
 
     @Modifying
     @Transactional
@@ -56,6 +57,18 @@ public interface ProductoRepository extends JpaRepository<Producto, Integer> {
     int actualizarCategoriaMasivo(
             @Param("categoriaOrigen") Short categoriaOrigen,
             @Param("categoriaDestino") Short categoriaDestino
+    );
+
+    @Modifying
+    @Transactional
+    @Query("""
+       UPDATE Producto p
+       SET p.unidadMedida.idUnidad = :unidadDestino
+       WHERE p.unidadMedida.idUnidad = :unidadOrigen
+       """)
+    int actualizarUnidadMedidaMasivo(
+            @Param("unidadOrigen") Short unidadOrigen,
+            @Param("unidadDestino") Short unidadDestino
     );
 
     // Cambia "Id" por "IdProducto"
