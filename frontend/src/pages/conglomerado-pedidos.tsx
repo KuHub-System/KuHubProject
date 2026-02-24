@@ -1,10 +1,10 @@
 import React from 'react';
-import { 
-  Table, 
-  TableHeader, 
-  TableColumn, 
-  TableBody, 
-  TableRow, 
+import {
+  Table,
+  TableHeader,
+  TableColumn,
+  TableBody,
+  TableRow,
   TableCell,
   Button,
   Card,
@@ -17,15 +17,16 @@ import {
   SelectItem
 } from '@heroui/react';
 import { Icon } from '@iconify/react';
+import { usePageTitle } from '../hooks/usePageTitle';
 import { motion } from 'framer-motion';
-import { 
-  BarChart, 
-  Bar, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  Legend, 
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
   ResponsiveContainer,
   PieChart,
   Pie,
@@ -76,6 +77,7 @@ const ConglomeradoPedidosPage: React.FC = () => {
   const [isLoading, setIsLoading] = React.useState(true);
 
   // ✅ CARGAR SOLICITUDES ACEPTADAS
+  usePageTitle('Conglomerado de Pedidos', 'Vista consolidada de todos los productos de solicitudes aceptadas.');
   React.useEffect(() => {
     cargarDatos();
   }, []);
@@ -186,13 +188,13 @@ const ConglomeradoPedidosPage: React.FC = () => {
    */
   React.useEffect(() => {
     let filtered = [...productosConsolidados];
-    
+
     if (searchTerm) {
-      filtered = filtered.filter(producto => 
+      filtered = filtered.filter(producto =>
         producto.productoNombre.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
-    
+
     setFilteredProductos(filtered);
   }, [searchTerm, productosConsolidados]);
 
@@ -235,8 +237,8 @@ const ConglomeradoPedidosPage: React.FC = () => {
     return productosConsolidados
       .slice(0, 10)
       .map(p => ({
-        nombre: p.productoNombre.length > 15 
-          ? p.productoNombre.substring(0, 15) + '...' 
+        nombre: p.productoNombre.length > 15
+          ? p.productoNombre.substring(0, 15) + '...'
           : p.productoNombre,
         cantidad: p.cantidadTotal
       }));
@@ -247,7 +249,7 @@ const ConglomeradoPedidosPage: React.FC = () => {
    */
   const datosDistribucion = React.useMemo(() => {
     const distribucion: { [key: string]: number } = {};
-    
+
     solicitudesFiltradas.forEach(solicitud => {
       const key = solicitud.asignaturaNombre;
       distribucion[key] = (distribucion[key] || 0) + 1;
@@ -301,15 +303,9 @@ const ConglomeradoPedidosPage: React.FC = () => {
         className="space-y-6"
       >
         {/* Encabezado */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold mb-2">Conglomerado de Pedidos</h1>
-            <p className="text-default-500">
-              Vista consolidada de todos los productos de solicitudes aceptadas.
-            </p>
-          </div>
-          <Button 
-            color="primary" 
+        <div className="flex flex-col sm:flex-row sm:items-center justify-end gap-4">
+          <Button
+            color="primary"
             startContent={<Icon icon="lucide:file-text" />}
             onPress={generarOrdenCompra}
             isDisabled={productosConsolidados.length === 0}
@@ -320,19 +316,19 @@ const ConglomeradoPedidosPage: React.FC = () => {
 
         {/* Tarjetas de estadísticas */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <Card>
+          <Card className="bg-white dark:bg-content1">
             <CardBody className="text-center p-4">
               <p className="text-sm text-default-500">Solicitudes Aceptadas</p>
               <p className="text-3xl font-bold text-success">{solicitudesFiltradas.length}</p>
             </CardBody>
           </Card>
-          <Card>
+          <Card className="bg-white dark:bg-content1">
             <CardBody className="text-center p-4">
               <p className="text-sm text-default-500">Productos Únicos</p>
               <p className="text-3xl font-bold text-primary">{productosConsolidados.length}</p>
             </CardBody>
           </Card>
-          <Card>
+          <Card className="bg-white dark:bg-content1">
             <CardBody className="text-center p-4">
               <p className="text-sm text-default-500">Total de Items</p>
               <p className="text-3xl font-bold text-warning">
@@ -340,7 +336,7 @@ const ConglomeradoPedidosPage: React.FC = () => {
               </p>
             </CardBody>
           </Card>
-          <Card>
+          <Card className="bg-white dark:bg-content1">
             <CardBody className="text-center p-4">
               <p className="text-sm text-default-500">Profesores</p>
               <p className="text-3xl font-bold text-secondary">
@@ -353,7 +349,7 @@ const ConglomeradoPedidosPage: React.FC = () => {
         {/* Gráficos */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Gráfico de barras - Top 10 productos */}
-          <Card className="shadow-sm">
+          <Card className="shadow-sm bg-white dark:bg-content1">
             <CardHeader className="pb-0 pt-4 px-4">
               <h3 className="text-lg font-semibold">Top 10 Productos Más Solicitados</h3>
             </CardHeader>
@@ -386,7 +382,7 @@ const ConglomeradoPedidosPage: React.FC = () => {
           </Card>
 
           {/* Gráfico de pastel - Distribución por asignatura */}
-          <Card className="shadow-sm">
+          <Card className="shadow-sm bg-white dark:bg-content1">
             <CardHeader className="pb-0 pt-4 px-4">
               <h3 className="text-lg font-semibold">Distribución por Asignatura</h3>
             </CardHeader>
@@ -446,7 +442,7 @@ const ConglomeradoPedidosPage: React.FC = () => {
               <SelectItem key={semana.toString()}>Semana {semana}</SelectItem>
             ))}
           </Select>
-          
+
           <Button
             color="primary"
             variant="flat"
@@ -458,9 +454,9 @@ const ConglomeradoPedidosPage: React.FC = () => {
         </div>
 
         {/* Tabla de productos consolidados */}
-        <Card className="shadow-sm">
+        <Card className="shadow-sm bg-white dark:bg-content1">
           <CardBody className="p-0">
-            <Table 
+            <Table
               aria-label="Tabla de productos consolidados"
               removeWrapper
             >
@@ -477,84 +473,84 @@ const ConglomeradoPedidosPage: React.FC = () => {
                   const expandido = expandedProductos.has(producto.productoId);
                   return (
                     <TableRow key={producto.productoId}>
-                        <TableCell>
-                          <div>
-                            <p className="font-medium">{producto.productoNombre}</p>
-                            {expandido && (
-                              <div className="mt-3 bg-default-50 dark:bg-default-100/10 rounded-lg p-4 space-y-3 border border-default-200">
-                                <p className="text-sm text-default-500">
-                                  Detalle de solicitudes:
-                                </p>
-                                <div className="space-y-3">
-                                  {producto.detalles.map((detalle, index) => (
-                                    <div
-                                      key={`${detalle.solicitudId}-${index}`}
-                                      className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between border border-default-200 rounded-md p-3 bg-content1/50"
-                                    >
-                                      <div>
-                                        <p className="font-medium">
-                                          Solicitud #{detalle.solicitudId.slice(-6)} · Semana {detalle.semana}
-                                        </p>
-                                        <p className="text-xs text-default-500">
-                                          {detalle.asignaturaNombre} — {detalle.profesorNombre}
-                                        </p>
-                                        <p className="text-xs text-default-400">
-                                          Clase: {formatearFechaClase(detalle.fechaClase)}
-                                        </p>
-                                      </div>
-                                      <div className="flex items-center gap-2 flex-wrap">
-                                        <Chip color="primary" variant="flat" size="sm">
-                                          {detalle.cantidad} {detalle.unidadMedida}
-                                        </Chip>
-                                        <Chip
-                                          color={detalle.esAdicional ? 'warning' : 'success'}
-                                          variant="flat"
-                                          size="sm"
-                                        >
-                                          {detalle.esAdicional ? 'Adicional' : 'Receta'}
-                                        </Chip>
-                                      </div>
+                      <TableCell>
+                        <div>
+                          <p className="font-medium">{producto.productoNombre}</p>
+                          {expandido && (
+                            <div className="mt-3 bg-default-50 dark:bg-default-100/20 rounded-lg p-4 space-y-3 border border-default-200 dark:border-default-100">
+                              <p className="text-sm text-default-500">
+                                Detalle de solicitudes:
+                              </p>
+                              <div className="space-y-3">
+                                {producto.detalles.map((detalle, index) => (
+                                  <div
+                                    key={`${detalle.solicitudId}-${index}`}
+                                    className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between border border-default-200 rounded-md p-3 bg-content1/50"
+                                  >
+                                    <div>
+                                      <p className="font-medium">
+                                        Solicitud #{detalle.solicitudId.slice(-6)} · Semana {detalle.semana}
+                                      </p>
+                                      <p className="text-xs text-default-500">
+                                        {detalle.asignaturaNombre} — {detalle.profesorNombre}
+                                      </p>
+                                      <p className="text-xs text-default-400">
+                                        Clase: {formatearFechaClase(detalle.fechaClase)}
+                                      </p>
                                     </div>
-                                  ))}
-                                </div>
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                      <Chip color="primary" variant="flat" size="sm">
+                                        {detalle.cantidad} {detalle.unidadMedida}
+                                      </Chip>
+                                      <Chip
+                                        color={detalle.esAdicional ? 'warning' : 'success'}
+                                        variant="flat"
+                                        size="sm"
+                                      >
+                                        {detalle.esAdicional ? 'Adicional' : 'Receta'}
+                                      </Chip>
+                                    </div>
+                                  </div>
+                                ))}
                               </div>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <span className="font-semibold text-lg">{producto.cantidadTotal}</span>
-                        </TableCell>
-                        <TableCell>{producto.unidadMedida}</TableCell>
-                        <TableCell>
-                          <Chip size="sm" color="primary" variant="flat">
-                            {producto.totalSolicitudes}
-                          </Chip>
-                        </TableCell>
-                        <TableCell>
-                          {producto.incluyeAdicionales ? (
-                            <Chip size="sm" color="warning" variant="flat">
-                              Incluye adicionales
-                            </Chip>
-                          ) : (
-                            <Chip size="sm" variant="flat">
-                              Solo receta
-                            </Chip>
+                            </div>
                           )}
-                        </TableCell>
-                        <TableCell>
-                          <Button
-                            isIconOnly
-                            variant="light"
-                            size="sm"
-                            onPress={() => toggleProducto(producto.productoId)}
-                          >
-                            <Icon
-                              icon={expandido ? 'lucide:chevron-up' : 'lucide:chevron-down'}
-                              className="text-primary"
-                            />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <span className="font-semibold text-lg">{producto.cantidadTotal}</span>
+                      </TableCell>
+                      <TableCell>{producto.unidadMedida}</TableCell>
+                      <TableCell>
+                        <Chip size="sm" color="primary" variant="flat">
+                          {producto.totalSolicitudes}
+                        </Chip>
+                      </TableCell>
+                      <TableCell>
+                        {producto.incluyeAdicionales ? (
+                          <Chip size="sm" color="warning" variant="flat">
+                            Incluye adicionales
+                          </Chip>
+                        ) : (
+                          <Chip size="sm" variant="flat">
+                            Solo receta
+                          </Chip>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <Button
+                          isIconOnly
+                          variant="light"
+                          size="sm"
+                          onPress={() => toggleProducto(producto.productoId)}
+                        >
+                          <Icon
+                            icon={expandido ? 'lucide:chevron-up' : 'lucide:chevron-down'}
+                            className="text-primary"
+                          />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
                   );
                 })}
               </TableBody>
@@ -564,7 +560,7 @@ const ConglomeradoPedidosPage: React.FC = () => {
 
         {/* Información adicional */}
         {solicitudesAceptadas.length === 0 && (
-          <Card>
+          <Card className="bg-white dark:bg-content1">
             <CardBody className="text-center p-8">
               <Icon icon="lucide:inbox" className="text-default-300 text-6xl mx-auto mb-4" />
               <h3 className="text-lg font-semibold mb-2">No hay solicitudes aceptadas</h3>

@@ -3,15 +3,20 @@
  * Incluye sistema de aprobación y gestión de estados
  */
 
-import { 
-  ISolicitud, 
-  ISolicitudCreacion, 
+import {
+  ISolicitud,
+  ISolicitudCreacion,
   ISolicitudActualizacion,
   IAprobarRechazarSolicitud,
   IFiltrosSolicitudes,
-  EstadoSolicitud 
+  EstadoSolicitud
 } from '../types/solicitud.types';
 import { obtenerUsuarioActualService } from './auth-service';
+
+const API_BASE_URL = 'http://localhost:8083/api/v1';
+const ENDPOINTS = {
+  SOLICITUDES_DETALLES: `${API_BASE_URL}/solicituddocente/detalles`
+};
 
 // ✅ CAMBIO CRÍTICO: Usar la misma clave que storage-service
 const STORAGE_KEY = 'kuhub-solicitudes';
@@ -44,7 +49,7 @@ export const crearSolicitudService = (data: ISolicitudCreacion): Promise<ISolici
           reject(new Error('No hay sesión activa'));
           return;
         }
-        
+
         if (!Number.isInteger(data.semana) || data.semana < 1 || data.semana > 18) {
           reject(new Error('La semana seleccionada no es válida'));
           return;
@@ -52,7 +57,7 @@ export const crearSolicitudService = (data: ISolicitudCreacion): Promise<ISolici
 
         const solicitudes = obtenerSolicitudesStorage();
         console.log('📋 Solicitudes antes de crear:', solicitudes.length);
-        
+
         const nuevaSolicitud: ISolicitud = {
           id: Date.now().toString(),
           profesorId: usuario.id,
@@ -61,6 +66,8 @@ export const crearSolicitudService = (data: ISolicitudCreacion): Promise<ISolici
           asignaturaNombre: data.asignaturaNombre,
           semana: data.semana,
           fecha: data.fecha,
+          bloqueInicio: data.bloqueInicio,
+          bloqueFin: data.bloqueFin,
           recetaId: data.recetaId,
           recetaNombre: data.recetaNombre,
           items: data.items.map(item => ({
@@ -73,10 +80,10 @@ export const crearSolicitudService = (data: ISolicitudCreacion): Promise<ISolici
           fechaCreacion: new Date().toISOString(),
           fechaUltimaModificacion: new Date().toISOString(),
         };
-        
+
         solicitudes.push(nuevaSolicitud);
         guardarSolicitudesStorage(solicitudes);
-        
+
         console.log('✅ Solicitud creada:', nuevaSolicitud.id);
         console.log('📋 Solicitudes después de crear:', solicitudes.length);
         resolve(nuevaSolicitud);
@@ -94,11 +101,37 @@ export const crearSolicitudService = (data: ISolicitudCreacion): Promise<ISolici
 export const obtenerTodasSolicitudesService = (
   filtros?: IFiltrosSolicitudes
 ): Promise<ISolicitud[]> => {
-  return new Promise((resolve) => {
+  return new Promise(async (resolve) => {
+    try {
+      // Intentar obtener datos del backend
+      console.log('🌐 Obteniendo solicitudes desde backend...', ENDPOINTS.SOLICITUDES_DETALLES);
+      const response = await fetch(ENDPOINTS.SOLICITUDES_DETALLES);
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log('✅ Datos obtenidos del backend:', data);
+
+        // Mapeo básico si es necesario, o retorno directo si coincide la estructura
+        // Asumimos que data es un array de ISolicitud o compatible
+        if (Array.isArray(data)) {
+          // Si el backend devuelve status 200 y un array, usamos eso.
+          // Podríamos validar campos aquí si fuera crítico.
+          resolve(data as ISolicitud[]);
+          return;
+        }
+      } else {
+        console.error('❌ Error al obtener solicitudes del backend:', response.status, response.statusText);
+      }
+    } catch (error) {
+      console.error('⚠️ Error de conexión con backend:', error);
+      console.log('⚠️ Usando datos locales de respaldo (localStorage/Mock)');
+    }
+
+    // FALLBACK: Lógica original (localStorage + Mock)
     setTimeout(() => {
       let solicitudes = obtenerSolicitudesStorage();
       console.log('📋 Solicitudes cargadas:', solicitudes.length);
-      
+
       // Aplicar filtros
       if (filtros) {
         if (typeof filtros.semana === 'number') {
@@ -117,12 +150,12 @@ export const obtenerTodasSolicitudesService = (
           solicitudes = solicitudes.filter(s => s.fecha <= filtros.fechaHasta!);
         }
       }
-      
+
       // Ordenar por fecha de creación (más recientes primero)
-      solicitudes.sort((a, b) => 
+      solicitudes.sort((a, b) =>
         new Date(b.fechaCreacion).getTime() - new Date(a.fechaCreacion).getTime()
       );
-      
+
       resolve(solicitudes);
     }, 100);
   });
@@ -140,16 +173,16 @@ export const obtenerMisSolicitudesService = (): Promise<ISolicitud[]> => {
           reject(new Error('No hay sesión activa'));
           return;
         }
-        
+
         const solicitudes = obtenerSolicitudesStorage();
         console.log('📋 Solicitudes totales:', solicitudes.length);
-        
+
         const misSolicitudes = solicitudes
           .filter(s => s.profesorId === usuario.id)
-          .sort((a, b) => 
+          .sort((a, b) =>
             new Date(b.fechaCreacion).getTime() - new Date(a.fechaCreacion).getTime()
           );
-        
+
         console.log('📋 Mis solicitudes:', misSolicitudes.length);
         resolve(misSolicitudes);
       } catch (error) {
@@ -187,23 +220,23 @@ export const actualizarSolicitudService = (
           reject(new Error('No hay sesión activa'));
           return;
         }
-        
+
         const solicitudes = obtenerSolicitudesStorage();
         const index = solicitudes.findIndex(s => s.id === id);
-        
+
         if (index === -1) {
           reject(new Error('Solicitud no encontrada'));
           return;
         }
-        
+
         const solicitud = solicitudes[index];
-        
+
         // Verificar que sea el dueño de la solicitud
         if (solicitud.profesorId !== usuario.id) {
           reject(new Error('No tienes permiso para editar esta solicitud'));
           return;
         }
-        
+
         if (data.semana !== undefined) {
           if (!Number.isInteger(data.semana) || data.semana < 1 || data.semana > 18) {
             reject(new Error('La semana seleccionada no es válida'));
@@ -217,11 +250,11 @@ export const actualizarSolicitudService = (
 
         const itemsActualizados = data.items
           ? data.items.map(item => ({
-              ...item,
-              id: item.id || `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
-            }))
+            ...item,
+            id: item.id || `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
+          }))
           : solicitud.items;
-        
+
         // Actualizar solicitud
         solicitudes[index] = {
           ...solicitud,
@@ -230,14 +263,14 @@ export const actualizarSolicitudService = (
           estado: nuevoEstado,
           fechaUltimaModificacion: new Date().toISOString(),
         };
-        
+
         guardarSolicitudesStorage(solicitudes);
-        
+
         console.log('✅ Solicitud actualizada:', id);
         if (nuevoEstado === 'Pendiente' && estabaAceptada) {
           console.log('⚠️ Solicitud volvió a Pendiente por modificación');
         }
-        
+
         resolve(solicitudes[index]);
       } catch (error) {
         reject(error);
@@ -258,34 +291,34 @@ export const eliminarSolicitudService = (id: string): Promise<void> => {
           reject(new Error('No hay sesión activa'));
           return;
         }
-        
+
         const solicitudes = obtenerSolicitudesStorage();
         const index = solicitudes.findIndex(s => s.id === id);
-        
+
         if (index === -1) {
           reject(new Error('Solicitud no encontrada'));
           return;
         }
-        
+
         const solicitud = solicitudes[index];
-        
+
         const esAdmin = usuario.rol === 'Administrador';
-        
+
         // Verificar permisos: el profesor dueño o el administrador pueden eliminar
         if (!esAdmin && solicitud.profesorId !== usuario.id) {
           reject(new Error('No tienes permiso para eliminar esta solicitud'));
           return;
         }
-        
+
         // Solo limitar estado cuando no es administrador
         if (!esAdmin && solicitud.estado !== 'Pendiente') {
           reject(new Error('Solo se pueden eliminar solicitudes en estado Pendiente'));
           return;
         }
-        
+
         solicitudes.splice(index, 1);
         guardarSolicitudesStorage(solicitudes);
-        
+
         console.log('✅ Solicitud eliminada:', id);
         resolve();
       } catch (error) {
@@ -306,23 +339,23 @@ export const aprobarRechazarSolicitudService = (
       try {
         const solicitudes = obtenerSolicitudesStorage();
         console.log('📋 Solicitudes antes de aprobar/rechazar:', solicitudes.length);
-        
+
         const index = solicitudes.findIndex(s => s.id === data.solicitudId);
-        
+
         if (index === -1) {
           reject(new Error('Solicitud no encontrada'));
           return;
         }
-        
+
         console.log(`🔄 Cambiando estado de "${solicitudes[index].estado}" a "${data.estado}"`);
-        
+
         if (data.actualizacion?.semana !== undefined) {
           if (!Number.isInteger(data.actualizacion.semana) || data.actualizacion.semana < 1 || data.actualizacion.semana > 18) {
             reject(new Error('La semana seleccionada no es válida'));
             return;
           }
         }
-        
+
         // Actualizar estado
         solicitudes[index] = {
           ...solicitudes[index],
@@ -341,9 +374,9 @@ export const aprobarRechazarSolicitudService = (
             id: item.id || `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
           }));
         }
-        
+
         guardarSolicitudesStorage(solicitudes);
-        
+
         console.log(`✅ Solicitud ${data.estado.toLowerCase()}:`, data.solicitudId);
         console.log('📋 Estado guardado:', solicitudes[index].estado);
         resolve(solicitudes[index]);
@@ -364,9 +397,9 @@ export const aceptarTodasSolicitudesService = (aprobadoPor: string): Promise<num
       try {
         const solicitudes = obtenerSolicitudesStorage();
         console.log('📋 Solicitudes antes de aceptar todas:', solicitudes.length);
-        
+
         let contador = 0;
-        
+
         solicitudes.forEach((solicitud) => {
           if (solicitud.estado === 'Pendiente') {
             console.log(`🔄 Aceptando solicitud: ${solicitud.id}`);
@@ -376,9 +409,9 @@ export const aceptarTodasSolicitudesService = (aprobadoPor: string): Promise<num
             contador++;
           }
         });
-        
+
         guardarSolicitudesStorage(solicitudes);
-        
+
         console.log(`✅ ${contador} solicitudes aceptadas automáticamente`);
         resolve(contador);
       } catch (error) {
@@ -401,14 +434,14 @@ export const obtenerConteoSolicitudesService = (): Promise<{
   return new Promise((resolve) => {
     setTimeout(() => {
       const solicitudes = obtenerSolicitudesStorage();
-      
+
       const conteo = {
         pendientes: solicitudes.filter(s => s.estado === 'Pendiente').length,
         aceptadas: solicitudes.filter(s => s.estado === 'Aceptada' || s.estado === 'AceptadaModificada').length,
         rechazadas: solicitudes.filter(s => s.estado === 'Rechazada').length,
         total: solicitudes.length,
       };
-      
+
       console.log('📊 Conteo de solicitudes:', conteo);
       resolve(conteo);
     }, 100);
@@ -425,6 +458,45 @@ export const obtenerSolicitudesAceptadasParaPedidoService = (): Promise<ISolicit
       const aceptadas = solicitudes.filter(s => s.estado === 'Aceptada' || s.estado === 'AceptadaModificada');
       console.log('✅ Solicitudes aceptadas para pedido:', aceptadas.length);
       resolve(aceptadas);
+    }, 100);
+  });
+};
+
+/**
+ * Actualizar estado de bodega y agregar ítems adicionales
+ */
+export const actualizarEstadoBodegaService = (
+  id: string,
+  estado: 'Pendiente' | 'Armado',
+  itemsAdicionales?: import('../types/solicitud.types').IItemSolicitud[]
+): Promise<ISolicitud> => {
+  return new Promise((resolve, reject) => {
+    setTimeout(() => {
+      try {
+        const solicitudes = obtenerSolicitudesStorage();
+        const index = solicitudes.findIndex(s => s.id === id);
+
+        if (index === -1) {
+          reject(new Error('Solicitud no encontrada'));
+          return;
+        }
+
+        // Actualizar solo campos de bodega
+        solicitudes[index] = {
+          ...solicitudes[index],
+          estadoBodega: estado,
+          itemsAdicionalesBodega: itemsAdicionales || solicitudes[index].itemsAdicionalesBodega || [],
+          fechaUltimaModificacion: new Date().toISOString(),
+        };
+
+        guardarSolicitudesStorage(solicitudes);
+
+        console.log(`✅ Estado bodega actualizado para solicitud ${id}: ${estado}`);
+        resolve(solicitudes[index]);
+      } catch (error) {
+        console.error('❌ Error al actualizar estado bodega:', error);
+        reject(error);
+      }
     }, 100);
   });
 };

@@ -1,10 +1,10 @@
 import React from 'react';
-import { 
-  Table, 
-  TableHeader, 
-  TableColumn, 
-  TableBody, 
-  TableRow, 
+import {
+  Table,
+  TableHeader,
+  TableColumn,
+  TableBody,
+  TableRow,
   TableCell,
   Button,
   Card,
@@ -20,6 +20,7 @@ import {
   useDisclosure
 } from '@heroui/react';
 import { Icon } from '@iconify/react';
+import { usePageTitle } from '../hooks/usePageTitle';
 import { motion, AnimatePresence } from 'framer-motion';
 
 /**
@@ -142,8 +143,8 @@ const renderEstado = (estado: string) => {
  * Renderiza un chip con el estado de disponibilidad del producto.
  */
 const renderDisponibilidad = (disponible: boolean) => {
-  return disponible ? 
-    <Chip color="success" size="sm">Disponible</Chip> : 
+  return disponible ?
+    <Chip color="success" size="sm">Disponible</Chip> :
     <Chip color="warning" size="sm">No Disponible</Chip>;
 };
 
@@ -158,28 +159,30 @@ const GestionProveedoresPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = React.useState<string>('');
   const [currentPage, setCurrentPage] = React.useState<number>(1);
   const [expandedRows, setExpandedRows] = React.useState<Set<string>>(new Set());
-  
+
   const { isOpen, onOpen, onOpenChange } = useDisclosure();
   const rowsPerPage = 5;
+
+  usePageTitle('Gestión de Proveedores', 'Administre los proveedores y sus productos con precios actualizados.');
 
   /**
    * Filtra los proveedores según los criterios de búsqueda.
    */
   React.useEffect(() => {
     let filtered = [...proveedores];
-    
+
     // Filtrar por término de búsqueda
     if (searchTerm) {
-      filtered = filtered.filter(proveedor => 
+      filtered = filtered.filter(proveedor =>
         proveedor.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
         proveedor.contacto.toLowerCase().includes(searchTerm.toLowerCase()) ||
         proveedor.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        proveedor.productos.some(producto => 
+        proveedor.productos.some(producto =>
           producto.nombre.toLowerCase().includes(searchTerm.toLowerCase())
         )
       );
     }
-    
+
     setFilteredProveedores(filtered);
     setCurrentPage(1);
   }, [searchTerm, proveedores]);
@@ -237,30 +240,26 @@ const GestionProveedoresPage: React.FC = () => {
    * Cambia el estado de un proveedor.
    */
   const cambiarEstadoProveedor = (id: string, nuevoEstado: 'Activo' | 'Inactivo') => {
-    setProveedores(proveedores.map(proveedor => 
+    setProveedores(proveedores.map(proveedor =>
       proveedor.id === id ? { ...proveedor, estado: nuevoEstado } : proveedor
     ));
   };
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto px-4 py-8 space-y-8 font-sans">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4 }}
-        className="space-y-6"
+        className="space-y-8"
       >
         {/* Encabezado */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold mb-2">Gestión de Proveedores</h1>
-            <p className="text-default-500">
-              Administre los proveedores y sus productos con precios actualizados.
-            </p>
-          </div>
-          <Button 
-            color="primary" 
-            startContent={<Icon icon="lucide:plus" />}
+        <div className="flex flex-col md:flex-row justify-end items-start md:items-center gap-4 border-b border-default-200 dark:border-default-100 pb-4">
+          <Button
+            color="primary"
+            variant="solid"
+            className="font-bold text-secondary shadow-md"
+            startContent={<Icon icon="lucide:plus" width={20} />}
             onPress={handleNuevoProveedor}
           >
             Nuevo Proveedor
@@ -268,23 +267,31 @@ const GestionProveedoresPage: React.FC = () => {
         </div>
 
         {/* Filtros */}
-        <div className="flex flex-col md:flex-row gap-4">
-          <Input
-            placeholder="Buscar proveedores o productos..."
-            value={searchTerm}
-            onValueChange={setSearchTerm}
-            startContent={<Icon icon="lucide:search" className="text-default-400" />}
-            className="w-full md:w-80"
-          />
-        </div>
+        <Card className="shadow-sm bg-default-50 dark:bg-content1 border border-default-200 dark:border-default-100">
+          <CardBody className="p-6">
+            <div className="flex flex-col md:flex-row gap-4">
+              <Input
+                placeholder="Buscar proveedores, contactos o productos..."
+                value={searchTerm}
+                onValueChange={setSearchTerm}
+                startContent={<Icon icon="lucide:search" className="text-default-400" />}
+                className="w-full md:w-1/3"
+                variant="bordered"
+                classNames={{ inputWrapper: "bg-white dark:bg-default-100/50" }}
+                isClearable
+                onClear={() => setSearchTerm('')}
+              />
+            </div>
+          </CardBody>
+        </Card>
 
         {/* Cards de proveedores en lugar de tabla */}
         <div className="space-y-4">
           {paginatedProveedores.map((proveedor) => (
-            <Card key={proveedor.id} className="shadow-sm">
+            <Card key={proveedor.id} className="shadow-md border border-default-200 dark:border-default-100 bg-white dark:bg-content1">
               <CardBody className="p-0">
                 {/* Fila principal del proveedor */}
-                <div className="flex items-center justify-between p-4 border-b border-default-200">
+                <div className="flex flex-col md:flex-row md:items-center justify-between p-4 border-b border-default-100 dark:border-default-50 gap-4">
                   <div className="flex items-center gap-4">
                     <Button
                       isIconOnly
@@ -292,51 +299,60 @@ const GestionProveedoresPage: React.FC = () => {
                       size="sm"
                       onPress={() => toggleRowExpansion(proveedor.id)}
                     >
-                      <Icon 
-                        icon={expandedRows.has(proveedor.id) ? "lucide:chevron-down" : "lucide:chevron-right"} 
+                      <Icon
+                        icon={expandedRows.has(proveedor.id) ? "lucide:chevron-down" : "lucide:chevron-right"}
                         className="text-default-400"
                       />
                     </Button>
                     <div>
-                      <h3 className="font-semibold text-lg">{proveedor.nombre}</h3>
-                      <p className="text-sm text-default-500">{proveedor.contacto} • {proveedor.telefono}</p>
+                      <h3 className="font-bold text-lg text-secondary">{proveedor.nombre}</h3>
+                      <div className="flex items-center gap-2 text-sm text-default-500 mt-1">
+                        <Icon icon="lucide:user" width={14} />
+                        <span>{proveedor.contacto}</span>
+                        <span className="text-default-300">•</span>
+                        <Icon icon="lucide:phone" width={14} />
+                        <span>{proveedor.telefono}</span>
+                      </div>
                     </div>
                   </div>
-                  
+
                   <div className="flex items-center gap-4">
                     <Chip color="primary" size="sm">
                       {proveedor.productos.length} productos
                     </Chip>
                     {renderEstado(proveedor.estado)}
                     <div className="flex gap-2">
-                      <Button 
-                        isIconOnly 
-                        variant="light" 
+                      <Button
+                        isIconOnly
+                        variant="light"
                         size="sm"
                         onPress={() => handleVerProveedor(proveedor)}
                       >
                         <Icon icon="lucide:eye" className="text-primary" />
+
                       </Button>
-                      <Button 
-                        isIconOnly 
-                        variant="light" 
+                      <Button
+                        isIconOnly
+                        variant="light"
                         size="sm"
                         onPress={() => handleEditarProveedor(proveedor)}
+                        className="text-default-400 hover:text-secondary"
                       >
-                        <Icon icon="lucide:edit" className="text-primary" />
+                        <Icon icon="lucide:edit" width={18} />
                       </Button>
-                      <Button 
-                        isIconOnly 
-                        variant="light" 
+                      <Button
+                        isIconOnly
+                        variant="light"
                         size="sm"
                         onPress={() => cambiarEstadoProveedor(
-                          proveedor.id, 
+                          proveedor.id,
                           proveedor.estado === 'Activo' ? 'Inactivo' : 'Activo'
                         )}
+                        className={proveedor.estado === 'Activo' ? 'text-default-400 hover:text-danger' : 'text-default-400 hover:text-success'}
                       >
-                        <Icon 
-                          icon={proveedor.estado === 'Activo' ? 'lucide:x' : 'lucide:check'} 
-                          className={proveedor.estado === 'Activo' ? 'text-danger' : 'text-success'} 
+                        <Icon
+                          icon={proveedor.estado === 'Activo' ? 'lucide:x-circle' : 'lucide:check-circle'}
+                          width={18}
                         />
                       </Button>
                     </div>
@@ -353,12 +369,12 @@ const GestionProveedoresPage: React.FC = () => {
                       transition={{ duration: 0.3 }}
                       className="overflow-hidden"
                     >
-                      <div className="p-4 bg-default-50 dark:bg-default-100">
+                      <div className="p-4 bg-default-50 dark:bg-default-100/30">
                         <h4 className="font-semibold mb-3 text-sm">Productos y Precios</h4>
                         <div className="overflow-x-auto">
                           <table className="w-full text-sm">
                             <thead>
-                              <tr className="border-b border-default-200">
+                              <tr className="border-b border-default-200 dark:border-default-100">
                                 <th className="text-left py-2 px-2 font-medium">Producto</th>
                                 <th className="text-left py-2 px-2 font-medium">Precio</th>
                                 <th className="text-left py-2 px-2 font-medium">Unidad</th>
@@ -389,24 +405,27 @@ const GestionProveedoresPage: React.FC = () => {
         </div>
 
         {/* Paginación */}
-        {filteredProveedores.length > rowsPerPage && (
-          <div className="flex w-full justify-center">
-            <Pagination
-              total={Math.ceil(filteredProveedores.length / rowsPerPage)}
-              page={currentPage}
-              onChange={setCurrentPage}
-              showControls
-            />
-          </div>
-        )}
-      </motion.div>
+        {
+          filteredProveedores.length > rowsPerPage && (
+            <div className="flex w-full justify-center">
+              <Pagination
+                total={Math.ceil(filteredProveedores.length / rowsPerPage)}
+                page={currentPage}
+                onChange={setCurrentPage}
+                showControls
+                color="primary"
+              />
+            </div>
+          )
+        }
+      </motion.div >
 
       {/* Modal para crear/editar/ver proveedor */}
-      <Modal isOpen={isOpen} onOpenChange={onOpenChange} size="xl">
+      < Modal isOpen={isOpen} onOpenChange={onOpenChange} size="xl" >
         <ModalContent>
           {(onClose) => (
-            <FormularioProveedor 
-              proveedor={proveedorSeleccionado} 
+            <FormularioProveedor
+              proveedor={proveedorSeleccionado}
               mode={modalMode}
               onClose={onClose}
               onSave={(nuevoProveedor) => {
@@ -420,8 +439,8 @@ const GestionProveedoresPage: React.FC = () => {
             />
           )}
         </ModalContent>
-      </Modal>
-    </div>
+      </Modal >
+    </div >
   );
 };
 
@@ -449,13 +468,13 @@ const FormularioProveedor: React.FC<FormularioProveedorProps> = ({ proveedor, mo
       setError('Todos los campos son obligatorios');
       return;
     }
-    
+
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
       setError('El correo electrónico no es válido');
       return;
     }
-    
+
     onSave({
       id: proveedor?.id || '',
       nombre: nombre.trim(),
@@ -470,8 +489,13 @@ const FormularioProveedor: React.FC<FormularioProveedorProps> = ({ proveedor, mo
 
   return (
     <>
-      <ModalHeader>
-        {mode === 'crear' ? 'Nuevo Proveedor' : mode === 'editar' ? 'Editar Proveedor' : 'Detalles del Proveedor'}
+      <ModalHeader className="border-b border-default-100 dark:border-default-50 bg-secondary-50 dark:bg-secondary-50/10">
+        <div className="flex items-center gap-2">
+          <Icon icon={mode === 'crear' ? 'lucide:plus-circle' : mode === 'editar' ? 'lucide:edit-3' : 'lucide:building-2'} className="text-secondary dark:text-secondary-400" width={24} />
+          <span className="font-bold text-lg text-secondary dark:text-foreground">
+            {mode === 'crear' ? 'Nuevo Proveedor' : mode === 'editar' ? 'Editar Proveedor' : 'Detalles del Proveedor'}
+          </span>
+        </div>
       </ModalHeader>
       <ModalBody>
         <div className="space-y-4">
@@ -481,15 +505,16 @@ const FormularioProveedor: React.FC<FormularioProveedorProps> = ({ proveedor, mo
               {error}
             </div>
           )}
-          
+
           <Input
             label="Nombre"
             placeholder="Nombre del proveedor"
             value={nombre}
             onValueChange={setNombre}
             isReadOnly={mode === 'ver'}
+            variant="bordered"
           />
-          
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Input
               label="Contacto"
@@ -497,6 +522,7 @@ const FormularioProveedor: React.FC<FormularioProveedorProps> = ({ proveedor, mo
               value={contacto}
               onValueChange={setContacto}
               isReadOnly={mode === 'ver'}
+              variant="bordered"
             />
             <Input
               label="Teléfono"
@@ -504,9 +530,10 @@ const FormularioProveedor: React.FC<FormularioProveedorProps> = ({ proveedor, mo
               value={telefono}
               onValueChange={setTelefono}
               isReadOnly={mode === 'ver'}
+              variant="bordered"
             />
           </div>
-          
+
           <Input
             label="Email"
             placeholder="Correo electrónico"
@@ -514,7 +541,7 @@ const FormularioProveedor: React.FC<FormularioProveedorProps> = ({ proveedor, mo
             onValueChange={setEmail}
             isReadOnly={mode === 'ver'}
           />
-          
+
           <Input
             label="Dirección"
             placeholder="Dirección del proveedor"
@@ -534,9 +561,9 @@ const FormularioProveedor: React.FC<FormularioProveedorProps> = ({ proveedor, mo
           {mode === 'ver' && proveedor?.productos && proveedor.productos.length > 0 && (
             <div>
               <p className="text-sm mb-2 font-medium">Productos ({proveedor.productos.length})</p>
-              <div className="max-h-60 overflow-y-auto border rounded-md">
+              <div className="max-h-60 overflow-y-auto border rounded-md border-default-200 dark:border-default-100">
                 <table className="w-full text-sm">
-                  <thead className="bg-default-100 sticky top-0">
+                  <thead className="bg-default-100 dark:bg-default-50 sticky top-0">
                     <tr>
                       <th className="text-left py-2 px-3 font-medium">Producto</th>
                       <th className="text-left py-2 px-3 font-medium">Precio</th>
@@ -545,7 +572,7 @@ const FormularioProveedor: React.FC<FormularioProveedorProps> = ({ proveedor, mo
                   </thead>
                   <tbody>
                     {proveedor.productos.map((producto) => (
-                      <tr key={producto.id} className="border-b border-default-100 last:border-b-0">
+                      <tr key={producto.id} className="border-b border-default-100 dark:border-default-50 last:border-b-0">
                         <td className="py-2 px-3">{producto.nombre}</td>
                         <td className="py-2 px-3">${producto.precio.toLocaleString('es-CL')} / {producto.unidad}</td>
                         <td className="py-2 px-3">{renderDisponibilidad(producto.disponible)}</td>
@@ -558,12 +585,18 @@ const FormularioProveedor: React.FC<FormularioProveedorProps> = ({ proveedor, mo
           )}
         </div>
       </ModalBody>
-      <ModalFooter>
-        <Button variant="flat" onPress={onClose}>
+      <ModalFooter className="bg-default-50 dark:bg-content2 border-t border-default-100 dark:border-default-50">
+        <Button variant="ghost" onPress={onClose} className="font-medium">
           {mode === 'ver' ? 'Cerrar' : 'Cancelar'}
         </Button>
         {mode !== 'ver' && (
-          <Button color="primary" onPress={handleSubmit}>
+          <Button
+            color="primary"
+            variant="solid"
+            onPress={handleSubmit}
+            className="font-bold text-secondary shadow-md"
+            startContent={<Icon icon="lucide:save" />}
+          >
             {mode === 'crear' ? 'Crear Proveedor' : 'Guardar Cambios'}
           </Button>
         )}
