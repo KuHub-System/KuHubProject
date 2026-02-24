@@ -261,22 +261,6 @@ const InventarioPage: React.FC = () => {
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-default-200 dark:border-default-100 pb-4">
           <div className="flex gap-3">
             <Button
-              isIconOnly
-              variant="flat"
-              onPress={onCategoriasOpen}
-              title="Gestionar Categorías"
-            >
-              <Icon icon="lucide:tags" className="text-default-600" />
-            </Button>
-            <Button
-              isIconOnly
-              variant="flat"
-              onPress={onUnidadesOpen}
-              title="Gestionar Unidades de Medida"
-            >
-              <Icon icon="lucide:scale" className="text-default-600" />
-            </Button>
-            <Button
               color="secondary"
               variant="solid"
               className="font-bold shadow-md"
@@ -293,6 +277,22 @@ const InventarioPage: React.FC = () => {
               onPress={handleNuevoProducto}
             >
               Nuevo Producto
+            </Button>
+            <Button
+              isIconOnly
+              variant="flat"
+              onPress={onCategoriasOpen}
+              title="Gestionar Categorías"
+            >
+              <Icon icon="lucide:tags" className="text-default-600" />
+            </Button>
+            <Button
+              isIconOnly
+              variant="flat"
+              onPress={onUnidadesOpen}
+              title="Gestionar Unidades de Medida"
+            >
+              <Icon icon="lucide:scale" className="text-default-600" />
             </Button>
           </div>
         </div>
