@@ -173,32 +173,39 @@ const MovimientosProductoPage: React.FC = () => {
   };
 
   return (
-    <div className="container mx-auto px-4">
+    <div className="container mx-auto px-4 py-8 space-y-8 font-sans">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4 }}
-        className="space-y-6"
+        className="space-y-8"
       >
         {/* Encabezado y Filtros */}
-        <Card className="shadow-sm">
-          <CardBody className="p-4 space-y-4">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-              <div>
-                <h1 className="text-2xl font-bold">Movimientos de Inventario</h1>
-                <p className="text-small text-default-500">Gestione y visualice el historial de movimientos.</p>
-              </div>
-              <Button
-                variant="light"
-                startContent={<Icon icon="lucide:arrow-left" />}
-                onPress={volverAInventario}
-              >
-                Volver
-              </Button>
-            </div>
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-default-200 dark:border-default-100 pb-4">
+          <div>
+            <h1 className="text-3xl font-bold text-secondary dark:text-foreground mb-2">Movimientos de Inventario</h1>
+            <p className="text-default-500 text-lg">Gestione y visualice el historial de movimientos.</p>
+          </div>
+          <Button
+            color="primary"
+            variant="ghost"
+            startContent={<Icon icon="lucide:arrow-left" width={20} />}
+            onPress={volverAInventario}
+            className="font-medium text-secondary dark:text-foreground"
+          >
+            Volver al Inventario
+          </Button>
+        </div>
+
+        <Card className="shadow-sm bg-default-50 dark:bg-content1 border border-default-200 dark:border-default-100">
+          <CardBody className="p-6 space-y-6">
+            <h3 className="text-lg font-bold text-secondary dark:text-foreground flex items-center gap-2">
+              <Icon icon="lucide:filter" width={20} />
+              Filtros de Búsqueda
+            </h3>
 
             {/* Fila de Filtros */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
               {/* Filtro Producto */}
               <div className="sm:col-span-2">
                 <Autocomplete
@@ -210,6 +217,8 @@ const MovimientosProductoPage: React.FC = () => {
                     setCurrentPage(1);
                   }}
                   defaultItems={productos}
+                  variant="bordered"
+                  startContent={<Icon icon="lucide:package" className="text-default-400" />}
                 >
                   {(item) => <AutocompleteItem key={item.id}>{item.nombre}</AutocompleteItem>}
                 </Autocomplete>
@@ -217,17 +226,19 @@ const MovimientosProductoPage: React.FC = () => {
 
               {/* Filtro Tipo */}
               <Select
-                label="Tipo"
+                label="Tipo de Movimiento"
                 selectedKeys={[filtroTipo]}
                 onChange={(e) => {
                   setFiltroTipo(e.target.value);
                   setCurrentPage(1);
                 }}
+                variant="bordered"
+                classNames={{ trigger: "bg-white dark:bg-default-100/50" }}
               >
                 <SelectItem key="todos">Todos</SelectItem>
-                <SelectItem key="Entrada">Entrada</SelectItem>
-                <SelectItem key="Salida">Salida</SelectItem>
-                <SelectItem key="Merma">Merma</SelectItem>
+                <SelectItem key="Entrada" startContent={<Icon icon="lucide:arrow-down-circle" className="text-success" />}>Entrada</SelectItem>
+                <SelectItem key="Salida" startContent={<Icon icon="lucide:arrow-up-circle" className="text-primary" />}>Salida</SelectItem>
+                <SelectItem key="Merma" startContent={<Icon icon="lucide:alert-circle" className="text-danger" />}>Merma</SelectItem>
               </Select>
 
               {/* Filtro Orden */}
@@ -238,6 +249,8 @@ const MovimientosProductoPage: React.FC = () => {
                   setFiltroOrden(e.target.value as any);
                   setCurrentPage(1);
                 }}
+                variant="bordered"
+                classNames={{ trigger: "bg-white dark:bg-default-100/50" }}
               >
                 <SelectItem key="reciente">Más Recientes</SelectItem>
                 <SelectItem key="antiguo">Más Antiguos</SelectItem>
@@ -256,6 +269,8 @@ const MovimientosProductoPage: React.FC = () => {
                   setFiltroFecha(val);
                   setCurrentPage(1);
                 }}
+                variant="bordered"
+                classNames={{ inputWrapper: "bg-white dark:bg-default-100/50" }}
               />
             </div>
           </CardBody>
@@ -263,21 +278,28 @@ const MovimientosProductoPage: React.FC = () => {
 
         {/* Resumen del Producto (Solo si hay uno seleccionado) */}
         {productoActual && (
-          <Card className="shadow-sm bg-primary-50 dark:bg-primary-900/20">
-            <CardBody className="py-3 px-6 flex-row items-center justify-between gap-4">
-              <div className="flex items-center gap-4">
-                <div className="p-2 bg-primary/10 rounded-lg">
-                  <Icon icon="lucide:package" className="text-primary text-xl" />
+          <Card className="shadow-md bg-white dark:bg-content1 border-l-4 border-primary">
+            <CardBody className="p-6 flex-col md:flex-row items-center justify-between gap-6">
+              <div className="flex items-center gap-6">
+                <div className="p-4 bg-primary-100 rounded-full text-primary-700">
+                  <Icon icon="lucide:box" width={32} height={32} />
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold">{productoActual.nombre}</h3>
-                  <p className="text-sm text-default-500">Stock Actual: <span className="font-semibold">{productoActual.stock} {productoActual.unidadMedida}</span></p>
+                  <h3 className="text-xl font-bold text-secondary dark:text-foreground">{productoActual.nombre}</h3>
+                  <div className="flex items-center gap-2 mt-1">
+                    <p className="text-default-500">Stock Actual:</p>
+                    <Chip size="md" variant="flat" color="primary" className="font-bold">
+                      {productoActual.stock} {productoActual.unidadMedida}
+                    </Chip>
+                  </div>
                 </div>
               </div>
               <Button
-                size="sm"
+                size="lg"
                 color="primary"
-                variant="flat"
+                variant="solid"
+                className="font-bold text-secondary dark:text-primary-foreground shadow-lg"
+                startContent={<Icon icon="lucide:plus-circle" width={20} />}
                 onPress={() => {
                   onOpen();
                 }}
@@ -289,71 +311,114 @@ const MovimientosProductoPage: React.FC = () => {
         )}
 
         {/* Tabla de movimientos */}
-        <Table
-          aria-label="Tabla de movimientos"
-          removeWrapper
-          bottomContent={
-            <div className="flex w-full justify-center">
-              <Pagination
-                total={Math.ceil(totalMovimientos / rowsPerPage)}
-                page={currentPage}
-                onChange={setCurrentPage}
-                showControls
-              />
-            </div>
-          }
-        >
-          <TableHeader>
-            <TableColumn>PRODUCTO</TableColumn>
-            <TableColumn>CATEGORÍA</TableColumn>
-            <TableColumn>TIPO</TableColumn>
-            <TableColumn>CANTIDAD</TableColumn>
-            <TableColumn>FECHA</TableColumn>
-            <TableColumn>RESPONSABLE</TableColumn>
-            <TableColumn>OBSERVACIÓN</TableColumn>
-          </TableHeader>
-          <TableBody
-            isLoading={isLoadingMovimientos}
-            loadingContent="Cargando movimientos..."
-            emptyContent="No se encontraron movimientos para este producto"
-          >
-            {movimientos.map((movimiento) => (
-              <TableRow key={movimiento.id}>
-                <TableCell>
-                  <div className="flex flex-col">
-                    <span className="text-bold text-sm">{movimiento.productoNombre}</span>
+        <Card className="shadow-md border border-default-200 dark:border-default-100 bg-white dark:bg-content1">
+          <CardBody className="p-0">
+            <Table
+              aria-label="Tabla de movimientos"
+              removeWrapper
+              classNames={{
+                th: "bg-default-100 dark:bg-default-50/20 text-default-500 font-bold uppercase text-xs h-12",
+                td: "py-3 border-b border-default-50 dark:border-default-50/10 group-data-[last=true]:border-none"
+              }}
+              bottomContent={
+                totalMovimientos > 0 ? (
+                  <div className="flex w-full justify-center py-4 border-t border-default-100">
+                    <Pagination
+                      total={Math.ceil(totalMovimientos / rowsPerPage)}
+                      page={currentPage}
+                      onChange={setCurrentPage}
+                      showControls
+                      color="primary"
+                    />
                   </div>
-                </TableCell>
-                <TableCell>
-                  {productos.find(p => p.id === movimiento.productoId)?.categoria || '-'}
-                </TableCell>
-                <TableCell>{renderTipoMovimiento(movimiento.tipo)}</TableCell>
-                <TableCell>{movimiento.cantidad} {
-                  // Intentar buscar la unidad del producto si no está disponible directamente
-                  productos.find(p => p.id === movimiento.productoId)?.unidadMedida || ''
-                }</TableCell>
-                <TableCell>{formatearFecha(movimiento.fechaMovimiento)}</TableCell>
-                <TableCell>{movimiento.responsable}</TableCell>
-                <TableCell>{movimiento.observacion}</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+                ) : null
+              }
+            >
+              <TableHeader>
+                <TableColumn>PRODUCTO</TableColumn>
+                <TableColumn>CATEGORÍA</TableColumn>
+                <TableColumn>TIPO</TableColumn>
+                <TableColumn>CANTIDAD</TableColumn>
+                <TableColumn>FECHA</TableColumn>
+                <TableColumn>RESPONSABLE</TableColumn>
+                <TableColumn>OBSERVACIÓN</TableColumn>
+              </TableHeader>
+              <TableBody
+                isLoading={isLoadingMovimientos}
+                loadingContent={<div className="py-8 text-center">Cargando movimientos...</div>}
+                emptyContent={
+                  <div className="py-12 text-center text-default-400">
+                    <Icon icon="lucide:clipboard-list" className="mx-auto mb-3 opacity-50" width={48} />
+                    <p className="text-lg font-medium">No se encontraron movimientos</p>
+                    <p className="text-sm">Intenta ajustar los filtros.</p>
+                  </div>
+                }
+              >
+                {movimientos.map((movimiento) => (
+                  <TableRow key={movimiento.id} className="hover:bg-default-50 dark:hover:bg-default-100/50 transition-colors">
+                    <TableCell>
+                      <div className="flex flex-col">
+                        <span className="font-semibold text-secondary dark:text-foreground">{movimiento.productoNombre}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Chip size="sm" variant="flat" className="bg-default-100 dark:bg-default-100/50 text-default-600 dark:text-default-300">
+                        {productos.find(p => p.id === movimiento.productoId)?.categoria || '-'}
+                      </Chip>
+                    </TableCell>
+                    <TableCell>{renderTipoMovimiento(movimiento.tipo)}</TableCell>
+                    <TableCell>
+                      <span className="font-bold text-default-700 dark:text-default-300">
+                        {movimiento.cantidad} {
+                          productos.find(p => p.id === movimiento.productoId)?.unidadMedida || ''
+                        }
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex flex-col">
+                        <span className="font-medium">{new Date(movimiento.fechaMovimiento).toLocaleDateString('es-CL')}</span>
+                        <span className="text-xs text-default-400">{new Date(movimiento.fechaMovimiento).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell>{movimiento.responsable}</TableCell>
+                    <TableCell>
+                      {movimiento.observacion ? (
+                        <span className="italic text-default-500">{movimiento.observacion}</span>
+                      ) : (
+                        <span className="text-default-300">-</span>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardBody>
+        </Card>
       </motion.div>
 
       {/* Modal para nuevo movimiento */}
-      <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
+      <Modal isOpen={isOpen} onOpenChange={onOpenChange} size="md" backdrop="blur">
         <ModalContent>
           {(onClose) => (
-            <FormularioMovimiento
-              productoId={productoActual?.id || ''}
-              onClose={() => {
-                onClose();
-                // Necesitamos refrescar los movimientos y el producto
-                window.location.reload();
-              }}
-              unidadMedida={productoActual?.unidadMedida || ''}
-            />
+            <>
+              <ModalHeader className="border-b border-default-100 dark:border-default-50 bg-secondary-50 dark:bg-secondary-50/10">
+                <div className="flex items-center gap-2">
+                  <Icon icon="lucide:arrow-left-right" className="text-secondary" width={24} />
+                  <span className="font-bold text-lg text-secondary dark:text-foreground">Registrar Movimiento</span>
+                </div>
+              </ModalHeader>
+              <ModalBody className="py-6">
+                <FormularioMovimiento
+                  productoId={productoActual?.id || ''}
+                  onClose={() => {
+                    onClose();
+                    // Necesitamos refrescar los movimientos y el producto
+                    window.location.reload();
+                  }}
+                  unidadMedida={productoActual?.unidadMedida || ''}
+                />
+              </ModalBody>
+            </>
           )}
         </ModalContent>
       </Modal>
@@ -411,50 +476,58 @@ const FormularioMovimiento: React.FC<FormularioMovimientoProps> = ({ productoId,
 
   return (
     <>
-      <ModalHeader>Nuevo Movimiento</ModalHeader>
-      <ModalBody>
-        <div className="space-y-4">
-          <Select
-            label="Tipo de Movimiento"
-            selectedKeys={[tipo]}
-            onChange={(e) => setTipo(e.target.value as 'Entrada' | 'Salida' | 'Merma')}
-          >
-            <SelectItem key="Entrada">Entrada</SelectItem>
-            <SelectItem key="Salida">Salida</SelectItem>
-            <SelectItem key="Merma">Merma</SelectItem>
-          </Select>
+      <div className="space-y-4 bg-default-50 dark:bg-content2 p-4 rounded-lg border border-default-200 dark:border-default-100">
+        <Select
+          label="Tipo de Movimiento"
+          selectedKeys={[tipo]}
+          onChange={(e) => setTipo(e.target.value as 'Entrada' | 'Salida' | 'Merma')}
+          variant="bordered"
+          classNames={{ trigger: "bg-white dark:bg-default-100/50" }}
+          disallowEmptySelection
+        >
+          <SelectItem key="Entrada" startContent={<Icon icon="lucide:arrow-down-circle" className="text-success" />}>Entrada</SelectItem>
+          <SelectItem key="Salida" startContent={<Icon icon="lucide:arrow-up-circle" className="text-primary" />}>Salida</SelectItem>
+          <SelectItem key="Merma" startContent={<Icon icon="lucide:alert-circle" className="text-danger" />}>Merma</SelectItem>
+        </Select>
 
-          <Input
-            type="number"
-            label="Cantidad"
-            placeholder="Ingrese la cantidad"
-            value={cantidad}
-            onValueChange={setCantidad}
-            min="1"
-            endContent={<span className="text-default-400">{unidadMedida}</span>}
-          />
+        <Input
+          type="number"
+          label="Cantidad"
+          placeholder="Ingrese la cantidad"
+          value={cantidad}
+          onValueChange={setCantidad}
+          min="1"
+          variant="bordered"
+          classNames={{ inputWrapper: "bg-white dark:bg-default-100/50" }}
+          endContent={<span className="text-default-400">{unidadMedida}</span>}
+        />
 
-          <Input
-            label="Observación"
-            placeholder="Ingrese una observación"
-            value={observacion}
-            onValueChange={setObservacion}
-          />
-        </div>
-      </ModalBody>
-      <ModalFooter>
-        <Button variant="flat" onPress={onClose}>
+        <Input
+          label="Observación"
+          placeholder="Ingrese una observación (opcional)"
+          value={observacion}
+          onValueChange={setObservacion}
+          variant="bordered"
+          classNames={{ inputWrapper: "bg-white dark:bg-default-100/50" }}
+        />
+      </div>
+
+      <div className="flex justify-end gap-2 mt-6">
+        <Button variant="ghost" onPress={onClose} className="font-medium">
           Cancelar
         </Button>
         <Button
           color="primary"
+          variant="solid"
           onPress={handleSubmit}
           isLoading={isLoading}
           isDisabled={isLoading}
+          className="font-bold text-secondary dark:text-primary-foreground shadow-md"
+          startContent={<Icon icon="lucide:save" />}
         >
-          Guardar
+          Guardar Movimiento
         </Button>
-      </ModalFooter>
+      </div>
     </>
   );
 };

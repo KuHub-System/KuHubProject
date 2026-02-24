@@ -91,7 +91,7 @@ export const ProcesoPedidosSection: React.FC<ProcesoPedidosSectionProps> = ({
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, delay: 0.1 }}
     >
-      <Card className="shadow-md border-2 border-primary-200">
+      <Card className="shadow-md border-2 border-primary-200 bg-white dark:bg-content1">
         <CardHeader className="pb-0 pt-4 px-4">
           <div className="flex justify-between items-start w-full">
             <div>

@@ -21,9 +21,12 @@ import {
   useDisclosure,
   Chip,
   Autocomplete,
-  AutocompleteItem
+  AutocompleteItem,
+  Card,
+  CardBody
 } from '@heroui/react';
 import { Icon } from '@iconify/react';
+import { usePageTitle } from '../hooks/usePageTitle';
 import { useHistory } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { IProducto } from '../types/producto.types';
@@ -76,6 +79,8 @@ const InventarioPage: React.FC = () => {
   const { isOpen: isUnidadesOpen, onOpen: onUnidadesOpen, onOpenChange: onUnidadesOpenChange } = useDisclosure();
   const [productoSeleccionado, setProductoSeleccionado] = React.useState<IProducto | null>(null);
   const [modalMode, setModalMode] = React.useState<'crear' | 'editar'>('crear');
+
+  usePageTitle('Inventario', 'Gestione los productos del inventario, vea movimientos y actualice existencias.');
 
   /**
    * Carga los productos al montar el componente.
@@ -236,72 +241,43 @@ const InventarioPage: React.FC = () => {
    */
   const renderStockStatus = (producto: IProducto) => {
     if (producto.stock <= 0) {
-      return <Chip color="danger" size="sm">Sin stock</Chip>;
+      return <Chip color="danger" size="sm" variant="flat" className="text-danger-700 dark:text-danger-400 bg-danger-50 dark:bg-danger-50/10 font-medium">Sin stock</Chip>;
     } else if (producto.stock < producto.stockMinimo) {
-      return <Chip color="warning" size="sm">Stock bajo</Chip>;
+      return <Chip color="warning" size="sm" variant="flat" className="text-warning-700 dark:text-warning-400 bg-warning-50 dark:bg-warning-50/10 font-medium">Stock bajo</Chip>;
     } else {
-      return <Chip color="success" size="sm">Disponible</Chip>;
+      return <Chip color="success" size="sm" variant="flat" className="text-success-700 dark:text-success-400 bg-success-50 dark:bg-success-50/10 font-medium">Disponible</Chip>;
     }
   };
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto px-4 py-8 space-y-8 font-sans">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4 }}
-        className="space-y-6"
+        className="space-y-8"
       >
         {/* Encabezado */}
-        <div>
-          <h1 className="text-2xl font-bold mb-2">Inventario</h1>
-          <p className="text-default-500">
-            Gestione los productos del inventario, vea movimientos y actualice existencias.
-          </p>
-        </div>
-
-        {/* Barra de herramientas */}
-        <div className="flex flex-col md:flex-row gap-4 justify-between">
-          <div className="flex flex-col sm:flex-row gap-4 w-full md:w-auto">
-            <Input
-              placeholder="Buscar productos..."
-              value={searchTerm}
-              onValueChange={setSearchTerm}
-              startContent={<Icon icon="lucide:search" className="text-default-400" />}
-              className="w-full sm:w-64"
-            />
-
-            <Dropdown>
-              <DropdownTrigger>
-                <Button
-                  variant="flat"
-                  startContent={<Icon icon="lucide:filter" />}
-                >
-                  {selectedCategoria === 'todas'
-                    ? 'Todas las categorías'
-                    : selectedCategoria === 'stock-bajo'
-                      ? '⚠️ Stock Bajo'
-                      : selectedCategoria}
-                </Button>
-              </DropdownTrigger>
-              <DropdownMenu
-                aria-label="Categorías"
-                onAction={(key) => setSelectedCategoria(key as string)}
-              >
-                {categorias.map((categoria) => (
-                  <DropdownItem key={categoria}>
-                    {categoria === 'todas'
-                      ? 'Todas las categorías'
-                      : categoria === 'stock-bajo'
-                        ? '⚠️ Stock Bajo'
-                        : categoria}
-                  </DropdownItem>
-                ))}
-              </DropdownMenu>
-            </Dropdown>
-          </div>
-
-          <div className="flex gap-2">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-default-200 dark:border-default-100 pb-4">
+          <div className="flex gap-3">
+            <Button
+              color="secondary"
+              variant="solid"
+              className="font-bold shadow-md"
+              startContent={<Icon icon="lucide:shopping-cart" width={20} />}
+              onPress={onPedidoMasivoOpen}
+            >
+              Realizar Pedido
+            </Button>
+            <Button
+              color="primary"
+              variant="solid"
+              className="font-bold text-secondary shadow-md"
+              startContent={<Icon icon="lucide:plus" width={20} />}
+              onPress={handleNuevoProducto}
+            >
+              Nuevo Producto
+            </Button>
             <Button
               isIconOnly
               variant="flat"
@@ -318,110 +294,187 @@ const InventarioPage: React.FC = () => {
             >
               <Icon icon="lucide:scale" className="text-default-600" />
             </Button>
-            <Button
-              color="secondary"
-              variant="flat"
-              startContent={<Icon icon="lucide:shopping-cart" />}
-              onPress={onPedidoMasivoOpen}
-            >
-              Realizar Pedido
-            </Button>
-            <Button
-              color="primary"
-              startContent={<Icon icon="lucide:plus" />}
-              onPress={handleNuevoProducto}
-            >
-              Nuevo Producto
-            </Button>
           </div>
         </div>
 
-        {/* Tabla de productos */}
-        <Table
-          aria-label="Tabla de productos"
-          removeWrapper
-          bottomContent={
-            <div className="flex w-full justify-center">
-              <Pagination
-                total={Math.ceil(filteredProductos.length / rowsPerPage)}
-                page={currentPage}
-                onChange={setCurrentPage}
-                showControls
-              />
+        {/* Barra de herramientas */}
+        <Card className="shadow-sm bg-default-50 dark:bg-content1 border border-default-200 dark:border-default-100">
+          <CardBody className="p-4">
+            <div className="flex flex-col md:flex-row gap-4 justify-between items-center">
+              <div className="w-full md:w-1/3">
+                <Input
+                  placeholder="Buscar productos por nombre o descripción..."
+                  value={searchTerm}
+                  onValueChange={setSearchTerm}
+                  startContent={<Icon icon="lucide:search" className="text-default-400" />}
+                  variant="bordered"
+                  classNames={{ inputWrapper: "bg-white dark:bg-default-100/50" }}
+                  isClearable
+                  onClear={() => setSearchTerm('')}
+                />
+              </div>
+
+              <div className="flex gap-4 w-full md:w-auto">
+                <Dropdown>
+                  <DropdownTrigger>
+                    <Button
+                      variant="bordered"
+                      className="bg-white dark:bg-default-100/50"
+                      startContent={<Icon icon="lucide:filter" className="text-default-500" />}
+                    >
+                      {selectedCategoria === 'todas'
+                        ? 'Todas las categorías'
+                        : selectedCategoria === 'stock-bajo'
+                          ? 'Stock Bajo'
+                          : selectedCategoria}
+                    </Button>
+                  </DropdownTrigger>
+                  <DropdownMenu
+                    aria-label="Categorías"
+                    onAction={(key) => setSelectedCategoria(key as string)}
+                    selectionMode="single"
+                    selectedKeys={new Set([selectedCategoria])}
+                  >
+                    {categorias.map((categoria) => (
+                      <DropdownItem key={categoria} startContent={categoria === 'stock-bajo' ? <Icon icon="lucide:alert-triangle" className="text-warning" /> : null}>
+                        {categoria === 'todas'
+                          ? 'Todas las categorías'
+                          : categoria === 'stock-bajo'
+                            ? 'Stock Bajo'
+                            : categoria}
+                      </DropdownItem>
+                    ))}
+                  </DropdownMenu>
+                </Dropdown>
+              </div>
             </div>
-          }
-        >
-          <TableHeader>
-            <TableColumn>NOMBRE</TableColumn>
-            <TableColumn>CATEGORÍA</TableColumn>
-            <TableColumn>STOCK</TableColumn>
-            <TableColumn>STOCK MÍNIMO</TableColumn>
-            <TableColumn>UNIDAD</TableColumn>
-            <TableColumn>ESTADO</TableColumn>
-            <TableColumn>ACCIONES</TableColumn>
-          </TableHeader>
-          <TableBody
-            isLoading={isLoading}
-            loadingContent="Cargando productos..."
-            emptyContent="No se encontraron productos"
-          >
-            {paginatedProductos.map((producto) => (
-              <TableRow
-                key={producto.id}
-                className="cursor-pointer hover:bg-default-100 transition-colors rounded-2xl"
-                onClick={() => verMovimientos(producto.id)}
-              >
-                <TableCell>{producto.nombre}</TableCell>
-                <TableCell>{producto.categoria}</TableCell>
-                <TableCell>{producto.stock}</TableCell>
-                <TableCell>{producto.stockMinimo}</TableCell>
-                <TableCell>{producto.unidadMedida}</TableCell>
-                <TableCell>{renderStockStatus(producto)}</TableCell>
-                <TableCell>
-                  <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
-                    <Button
-                      isIconOnly
+          </CardBody>
+        </Card>
+
+        {/* Tabla de productos */}
+        <Card className="shadow-md border border-default-200 dark:border-default-100 bg-white dark:bg-content1">
+          <CardBody className="p-0">
+            <Table
+              aria-label="Tabla de productos"
+              removeWrapper
+              classNames={{
+                th: "bg-default-100 dark:bg-default-50/20 text-default-500 font-bold uppercase text-xs h-12",
+                td: "py-3 border-b border-default-50 dark:border-default-50/10 group-data-[last=true]:border-none"
+              }}
+              bottomContent={
+                filteredProductos.length > 0 ? (
+                  <div className="flex w-full justify-center py-4 border-t border-default-100">
+                    <Pagination
+                      total={Math.ceil(filteredProductos.length / rowsPerPage)}
+                      page={currentPage}
+                      onChange={setCurrentPage}
+                      showControls
+                      color="primary"
                       variant="light"
-                      size="sm"
-                      onPress={() => handleEditarProducto(producto)}
-                    >
-                      <Icon icon="lucide:edit" className="text-primary" />
-                    </Button>
-                    <Button
-                      isIconOnly
-                      variant="light"
-                      size="sm"
-                      onPress={() => verMovimientos(producto.id)}
-                    >
-                      <Icon icon="lucide:list" className="text-default-600" />
-                    </Button>
-                    {esAdministrador && (
-                      <Button
-                        isIconOnly
-                        variant="light"
-                        size="sm"
-                        onPress={() => handleEliminarProducto(producto)}
-                      >
-                        <Icon icon="lucide:trash" className="text-danger" />
-                      </Button>
-                    )}
+                    />
                   </div>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+                ) : null
+              }
+            >
+              <TableHeader>
+                <TableColumn>NOMBRE</TableColumn>
+                <TableColumn>CATEGORÍA</TableColumn>
+                <TableColumn>STOCK</TableColumn>
+                <TableColumn>STOCK MÍNIMO</TableColumn>
+                <TableColumn>UNIDAD</TableColumn>
+                <TableColumn>ESTADO</TableColumn>
+                <TableColumn align="center">ACCIONES</TableColumn>
+              </TableHeader>
+              <TableBody
+                isLoading={isLoading}
+                loadingContent={<div className="py-8 text-center">Cargando productos...</div>}
+                emptyContent={
+                  <div className="py-12 text-center text-default-400">
+                    <Icon icon="lucide:package-open" className="mx-auto mb-3 opacity-50" width={48} />
+                    <p className="text-lg font-medium">No se encontraron productos</p>
+                    <p className="text-sm">Intenta ajustar los filtros o agrega un nuevo producto.</p>
+                  </div>
+                }
+              >
+                {paginatedProductos.map((producto) => (
+                  <TableRow
+                    key={producto.id}
+                    className="cursor-pointer hover:bg-default-50 dark:hover:bg-default-100/50 transition-colors"
+                    onClick={() => verMovimientos(producto.id)}
+                  >
+                    <TableCell>
+                      <span className="font-semibold text-secondary dark:text-foreground">{producto.nombre}</span>
+                      {producto.descripcion && (
+                        <p className="text-xs text-default-400 truncate max-w-xs">{producto.descripcion}</p>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <Chip size="sm" variant="flat" className="bg-default-100 dark:bg-default-100/50 text-default-600 dark:text-default-300">
+                        {producto.categoria}
+                      </Chip>
+                    </TableCell>
+                    <TableCell>
+                      <span className={`font-bold ${producto.stock <= producto.stockMinimo ? 'text-danger' : 'text-default-700 dark:text-default-300'}`}>
+                        {producto.stock}
+                      </span>
+                    </TableCell>
+                    <TableCell>{producto.stockMinimo}</TableCell>
+                    <TableCell className="text-default-500">{producto.unidadMedida}</TableCell>
+                    <TableCell>{renderStockStatus(producto)}</TableCell>
+                    <TableCell>
+                      <div className="flex justify-center gap-1" onClick={(e) => e.stopPropagation()}>
+                        <Button
+                          isIconOnly
+                          variant="light"
+                          size="sm"
+                          onPress={() => handleEditarProducto(producto)}
+                          className="text-default-400 hover:text-primary"
+                        >
+                          <Icon icon="lucide:edit" width={18} />
+                        </Button>
+                        <Button
+                          isIconOnly
+                          variant="light"
+                          size="sm"
+                          onPress={() => verMovimientos(producto.id)}
+                          className="text-default-400 hover:text-secondary"
+                        >
+                          <Icon icon="lucide:list" width={18} />
+                        </Button>
+                        {esAdministrador && (
+                          <Button
+                            isIconOnly
+                            variant="light"
+                            size="sm"
+                            color="danger"
+                            onPress={() => handleEliminarProducto(producto)}
+                            className="text-default-400 hover:text-danger"
+                          >
+                            <Icon icon="lucide:trash" width={18} />
+                          </Button>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardBody>
+        </Card>
       </motion.div>
 
       {/* Modal para crear/editar producto */}
-      <Modal isOpen={isOpen} onOpenChange={onOpenChange} size="lg">
+      <Modal isOpen={isOpen} onOpenChange={onOpenChange} size="lg" backdrop="blur">
         <ModalContent>
           {(onClose) => (
             <>
-              <ModalHeader>
-                {modalMode === 'crear' ? 'Nuevo Producto' : 'Editar Producto'}
+              <ModalHeader className="border-b border-default-100 dark:border-default-50 bg-default-50 dark:bg-content2">
+                <div className="flex items-center gap-2">
+                  <Icon icon={modalMode === 'crear' ? "lucide:plus-circle" : "lucide:edit-3"} className="text-primary" width={24} />
+                  <span className="font-bold text-lg text-secondary dark:text-foreground">{modalMode === 'crear' ? 'Nuevo Producto' : 'Editar Producto'}</span>
+                </div>
               </ModalHeader>
-              <ModalBody>
+              <ModalBody className="py-6">
                 <FormularioProducto
                   producto={productoSeleccionado}
                   onClose={onClose}
@@ -434,7 +487,7 @@ const InventarioPage: React.FC = () => {
       </Modal>
 
       {/* Modal para pedido masivo */}
-      <Modal isOpen={isPedidoMasivoOpen} onOpenChange={onPedidoMasivoOpenChange} size="4xl">
+      <Modal isOpen={isPedidoMasivoOpen} onOpenChange={onPedidoMasivoOpenChange} size="4xl" backdrop="blur" scrollBehavior="inside">
         <ModalContent>
           {(onClose) => (
             <PedidoMasivoModal
@@ -561,6 +614,8 @@ const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto, onClo
         value={nombre}
         onValueChange={setNombre}
         isRequired
+        variant="bordered"
+        classNames={{ inputWrapper: "bg-default-50 dark:bg-default-100/50" }}
       />
 
       <Input
@@ -568,6 +623,8 @@ const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto, onClo
         placeholder="Descripción del producto"
         value={descripcion}
         onValueChange={setDescripcion}
+        variant="bordered"
+        classNames={{ inputWrapper: "bg-default-50 dark:bg-default-100/50" }}
       />
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -578,7 +635,7 @@ const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto, onClo
           <select
             value={categoria}
             onChange={(e) => setCategoria(e.target.value)}
-            className="px-3 py-2 rounded-lg border-2 border-default-200 hover:border-default-400 focus:border-primary focus:outline-none transition-colors bg-default-100"
+            className="px-3 py-2 rounded-lg border-2 border-default-200 dark:border-default-100 hover:border-default-400 focus:border-primary focus:outline-none transition-colors bg-default-100 dark:bg-default-100/50 text-foreground"
             required
           >
             <option value="">Seleccione una categoría</option>
@@ -600,7 +657,7 @@ const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto, onClo
           <select
             value={unidadMedida}
             onChange={(e) => setUnidadMedida(e.target.value)}
-            className="px-3 py-2 rounded-lg border-2 border-default-200 hover:border-default-400 focus:border-primary focus:outline-none transition-colors bg-default-100"
+            className="px-3 py-2 rounded-lg border-2 border-default-200 dark:border-default-100 hover:border-default-400 focus:border-primary focus:outline-none transition-colors bg-default-100 dark:bg-default-100/50 text-foreground"
             required
           >
             <option value="">Seleccione una unidad</option>
@@ -625,6 +682,8 @@ const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto, onClo
           onValueChange={setStock}
           min="0"
           step="0.01"
+          variant="bordered"
+          classNames={{ inputWrapper: "bg-default-50 dark:bg-default-100/50" }}
         />
 
         <Input
@@ -635,14 +694,23 @@ const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto, onClo
           onValueChange={setStockMinimo}
           min="0"
           step="0.01"
+          variant="bordered"
+          classNames={{ inputWrapper: "bg-default-50 dark:bg-default-100/50" }}
         />
       </div>
 
-      <div className="flex justify-end gap-2 pt-4">
-        <Button variant="flat" onPress={onClose} isDisabled={isLoading}>
+      <div className="flex justify-end gap-2 pt-4 border-t border-default-100 mt-4">
+        <Button variant="ghost" onPress={onClose} isDisabled={isLoading} className="font-medium">
           Cancelar
         </Button>
-        <Button color="primary" onPress={handleSubmit} isLoading={isLoading}>
+        <Button
+          color="primary"
+          variant="solid"
+          onPress={handleSubmit}
+          isLoading={isLoading}
+          className="font-bold text-secondary shadow-md"
+          startContent={<Icon icon="lucide:save" />}
+        >
           {mode === 'crear' ? 'Crear Producto' : 'Guardar Cambios'}
         </Button>
       </div>
@@ -709,85 +777,103 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ productos, onClos
 
   return (
     <>
-      <ModalHeader className="flex flex-col gap-1">
-        <h2 className="text-xl font-bold">Realizar Pedido Masivo</h2>
+      <ModalHeader className="flex flex-col gap-1 border-b border-default-100 dark:border-default-50 bg-secondary-50 dark:bg-secondary-50/10">
+        <h2 className="text-xl font-bold text-secondary dark:text-foreground">Realizar Pedido Masivo</h2>
         <p className="text-sm text-default-500">Envíe múltiples productos hacia la bodega de tránsito</p>
       </ModalHeader>
       <ModalBody>
-        <div className="space-y-6">
+        <div className="space-y-6 py-4">
           {/* Sección para agregar productos */}
-          <div className="p-4 border border-default-200 rounded-lg">
-            <h3 className="font-semibold mb-4">Agregar Producto</h3>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <Autocomplete
-                label="Producto"
-                placeholder="Buscar producto"
-                selectedKey={productoSeleccionado}
-                onSelectionChange={(key) => setProductoSeleccionado(key as string)}
-                allowsCustomValue={false}
-              >
-                {productos.map((producto) => (
-                  <AutocompleteItem key={producto.id}>
-                    <div className="flex flex-col">
-                      <span className="text-small">{producto.nombre}</span>
-                      <span className="text-tiny text-default-400">
-                        Stock: {producto.stock} {producto.unidadMedida}
-                      </span>
-                    </div>
-                  </AutocompleteItem>
-                ))}
-              </Autocomplete>
+          <div className="p-4 border border-default-200 dark:border-default-100 rounded-lg bg-default-50 dark:bg-content2">
+            <h3 className="font-bold text-secondary dark:text-foreground mb-4 flex items-center gap-2">
+              <Icon icon="lucide:plus-circle" width={18} />
+              Agregar Producto
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+              <div className="md:col-span-1">
+                <Autocomplete
+                  label="Producto"
+                  placeholder="Buscar producto"
+                  selectedKey={productoSeleccionado}
+                  onSelectionChange={(key) => setProductoSeleccionado(key as string)}
+                  allowsCustomValue={false}
+                  variant="bordered"
+                  className="max-w-xs"
+                >
+                  {productos.map((producto) => (
+                    <AutocompleteItem key={producto.id} textValue={producto.nombre}>
+                      <div className="flex flex-col">
+                        <span className="text-small font-semibold">{producto.nombre}</span>
+                        <span className="text-tiny text-default-400">
+                          Stock: {producto.stock} {producto.unidadMedida}
+                        </span>
+                      </div>
+                    </AutocompleteItem>
+                  ))}
+                </Autocomplete>
+              </div>
 
-              <Input
-                type="number"
-                label="Cantidad"
-                placeholder="0"
-                value={cantidad}
-                onValueChange={setCantidad}
-                min="0.01"
-                step="0.01"
-                endContent={
-                  <span className="text-tiny text-default-400">
-                    {productoSeleccionadoObj?.unidadMedida || ''}
-                  </span>
-                }
-              />
+              <div className="md:col-span-1">
+                <Input
+                  type="number"
+                  label="Cantidad"
+                  placeholder="0"
+                  value={cantidad}
+                  onValueChange={setCantidad}
+                  min="0.01"
+                  step="0.01"
+                  variant="bordered"
+                  endContent={
+                    <span className="text-tiny text-default-400">
+                      {productoSeleccionadoObj?.unidadMedida || ''}
+                    </span>
+                  }
+                />
+              </div>
 
-              <Input
-                label="Notas (opcional)"
-                placeholder="Observaciones"
-                value={notas}
-                onValueChange={setNotas}
-              />
+              <div className="md:col-span-1">
+                <Input
+                  label="Notas (opcional)"
+                  placeholder="Observaciones"
+                  value={notas}
+                  onValueChange={setNotas}
+                  variant="bordered"
+                />
+              </div>
 
-              <Button
-                color="primary"
-                onPress={agregarProducto}
-                isDisabled={!productoSeleccionado || !cantidad || parseFloat(cantidad) <= 0}
-                className="h-14"
-              >
-                <Icon icon="lucide:plus" />
-                Agregar
-              </Button>
+              <div className="md:col-span-1">
+                <Button
+                  color="secondary"
+                  onPress={agregarProducto}
+                  isDisabled={!productoSeleccionado || !cantidad || parseFloat(cantidad) <= 0}
+                  className="w-full font-bold shadow-sm"
+                  startContent={<Icon icon="lucide:plus" />}
+                >
+                  Agregar
+                </Button>
+              </div>
             </div>
           </div>
 
           {/* Lista de productos agregados */}
           {itemsPedido.length > 0 && (
             <div>
-              <h3 className="font-semibold mb-4">Productos en el Pedido ({itemsPedido.length})</h3>
-              <div className="space-y-2 max-h-64 overflow-y-auto">
+              <h3 className="font-bold text-secondary mb-4 flex items-center gap-2">
+                <Icon icon="lucide:list" width={18} />
+                Productos en el Pedido ({itemsPedido.length})
+              </h3>
+              <div className="space-y-2 max-h-64 overflow-y-auto px-1">
                 {itemsPedido.map((item) => (
-                  <div key={item.id} className="flex items-center justify-between p-3 border border-default-200 rounded-lg">
+                  <div key={item.id} className="flex items-center justify-between p-3 border border-default-200 rounded-lg bg-white shadow-sm">
                     <div className="flex-1">
                       <div className="flex items-center gap-2">
-                        <span className="font-medium">{item.producto.nombre}</span>
-                        <Chip size="sm" color="primary">
+                        <span className="font-semibold text-secondary">{item.producto.nombre}</span>
+                        <Chip size="sm" color="primary" variant="flat" className="text-xs">
                           {item.cantidad} {item.producto.unidadMedida}
                         </Chip>
                       </div>
                       {item.notas && (
-                        <p className="text-sm text-default-500 mt-1">{item.notas}</p>
+                        <p className="text-sm text-default-500 mt-1 italic">"{item.notas}"</p>
                       )}
                     </div>
                     <Button
@@ -796,8 +882,9 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ productos, onClos
                       color="danger"
                       size="sm"
                       onPress={() => eliminarItem(item.id)}
+                      className="text-danger-400 hover:text-danger hover:bg-danger-50"
                     >
-                      <Icon icon="lucide:trash-2" />
+                      <Icon icon="lucide:trash-2" width={18} />
                     </Button>
                   </div>
                 ))}
@@ -819,15 +906,17 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ productos, onClos
           )}
         </div>
       </ModalBody>
-      <ModalFooter>
-        <Button variant="light" onPress={onClose}>
+      <ModalFooter className="bg-default-50 border-t border-default-100">
+        <Button variant="ghost" onPress={onClose} className="font-medium">
           Cancelar
         </Button>
         <Button
           color="primary"
+          variant="solid"
           onPress={procesarPedido}
           isDisabled={itemsPedido.length === 0}
           startContent={<Icon icon="lucide:send" />}
+          className="font-bold text-secondary shadow-md"
         >
           Procesar Pedido ({itemsPedido.length})
         </Button>

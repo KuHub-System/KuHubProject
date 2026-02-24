@@ -1,10 +1,10 @@
 import React from 'react';
-import { 
-  Table, 
-  TableHeader, 
-  TableColumn, 
-  TableBody, 
-  TableRow, 
+import {
+  Table,
+  TableHeader,
+  TableColumn,
+  TableBody,
+  TableRow,
   TableCell,
   Button,
   Card,
@@ -96,7 +96,7 @@ const GestionRolesPage: React.FC = () => {
   const [rolSeleccionado, setRolSeleccionado] = React.useState<IRole | null>(null);
   const [modalMode, setModalMode] = React.useState<'crear' | 'editar'>('crear');
   const [loading, setLoading] = React.useState<boolean>(false);
-  
+
   const { isOpen, onOpen, onOpenChange } = useDisclosure();
 
   /**
@@ -131,15 +131,15 @@ const GestionRolesPage: React.FC = () => {
    */
   const handleEliminarRol = (id: string) => {
     const rolAEliminar = roles.find(rol => rol.id === id);
-    
+
     if (rolAEliminar?.nombre === 'Admin') {
       alert('No se puede eliminar el rol de Administrador');
       return;
     }
-    
+
     if (window.confirm('¿Está seguro de que desea eliminar este rol?')) {
       setLoading(true);
-      
+
       setTimeout(() => {
         const nuevosRoles = roles.filter(rol => rol.id !== id);
         setRoles(nuevosRoles);
@@ -155,7 +155,7 @@ const GestionRolesPage: React.FC = () => {
   const resetearRoles = () => {
     if (window.confirm('¿Está seguro de que desea resetear todos los roles a su configuración inicial?')) {
       setLoading(true);
-      
+
       setTimeout(() => {
         setRoles(rolesIniciales);
         console.log('🔄 Roles reseteados, notificación enviada');
@@ -180,10 +180,10 @@ const GestionRolesPage: React.FC = () => {
               Administre los roles y permisos del sistema. Los cambios se aplican inmediatamente.
             </p>
           </div>
-          
+
           <div className="flex gap-2">
-            <Button 
-              color="warning" 
+            <Button
+              color="warning"
               variant="flat"
               startContent={<Icon icon="lucide:refresh-cw" />}
               onPress={resetearRoles}
@@ -191,8 +191,8 @@ const GestionRolesPage: React.FC = () => {
             >
               Resetear
             </Button>
-            <Button 
-              color="primary" 
+            <Button
+              color="primary"
               startContent={<Icon icon="lucide:plus" />}
               onPress={handleNuevoRol}
               isDisabled={loading}
@@ -204,7 +204,7 @@ const GestionRolesPage: React.FC = () => {
 
         {/* 🔥 INDICADOR MEJORADO */}
         {roles.length > 0 && (
-          <div className="bg-success-50 border border-success-200 text-success-700 p-3 rounded-lg">
+          <div className="bg-success-50 dark:bg-success-50/10 border border-success-200 dark:border-success-100 text-success-700 dark:text-success-400 p-3 rounded-lg">
             <div className="flex items-start gap-2">
               <Icon icon="lucide:check-circle" className="text-xl flex-shrink-0 mt-0.5" />
               <div className="text-sm">
@@ -216,9 +216,9 @@ const GestionRolesPage: React.FC = () => {
         )}
 
         {/* Tabla de roles */}
-        <Card className="shadow-sm">
+        <Card className="shadow-sm bg-white dark:bg-content1">
           <CardBody className="p-0">
-            <Table 
+            <Table
               aria-label="Tabla de roles del sistema"
               removeWrapper
             >
@@ -242,8 +242,8 @@ const GestionRolesPage: React.FC = () => {
                           rol.permisos.map((permiso) => {
                             const pagina = paginasDisponibles.find(p => p.id === permiso);
                             return (
-                              <Chip 
-                                key={permiso} 
+                              <Chip
+                                key={permiso}
                                 size="sm"
                                 variant="flat"
                                 color="primary"
@@ -259,9 +259,9 @@ const GestionRolesPage: React.FC = () => {
                     </TableCell>
                     <TableCell>
                       <div className="flex gap-2">
-                        <Button 
-                          isIconOnly 
-                          variant="light" 
+                        <Button
+                          isIconOnly
+                          variant="light"
                           size="sm"
                           onPress={() => handleEditarRol(rol)}
                           isDisabled={loading}
@@ -269,17 +269,17 @@ const GestionRolesPage: React.FC = () => {
                         >
                           <Icon icon="lucide:edit" className="text-primary" />
                         </Button>
-                        <Button 
-                          isIconOnly 
-                          variant="light" 
+                        <Button
+                          isIconOnly
+                          variant="light"
                           size="sm"
                           onPress={() => handleEliminarRol(rol.id)}
                           isDisabled={loading || rol.nombre === 'Admin'}
                           title={rol.nombre === 'Admin' ? 'No se puede eliminar el rol Admin' : 'Eliminar rol'}
                         >
-                          <Icon 
-                            icon="lucide:trash" 
-                            className={rol.nombre === 'Admin' ? 'text-default-300' : 'text-danger'} 
+                          <Icon
+                            icon="lucide:trash"
+                            className={rol.nombre === 'Admin' ? 'text-default-300' : 'text-danger'}
                           />
                         </Button>
                       </div>
@@ -296,18 +296,18 @@ const GestionRolesPage: React.FC = () => {
       <Modal isOpen={isOpen} onOpenChange={onOpenChange} size="3xl">
         <ModalContent>
           {(onClose) => (
-            <FormularioRol 
-              rol={rolSeleccionado} 
+            <FormularioRol
+              rol={rolSeleccionado}
               mode={modalMode}
               rolesExistentes={roles}
               onClose={onClose}
               onSave={(nuevoRol) => {
                 setLoading(true);
-                
+
                 setTimeout(() => {
                   if (modalMode === 'crear') {
-                    const rolConId = { 
-                      ...nuevoRol, 
+                    const rolConId = {
+                      ...nuevoRol,
                       id: Date.now().toString()
                     };
                     setRoles([...roles, rolConId]);
@@ -342,12 +342,12 @@ interface FormularioRolProps {
 /**
  * Componente de formulario para crear o editar un rol.
  */
-const FormularioRol: React.FC<FormularioRolProps> = ({ 
-  rol, 
-  mode, 
+const FormularioRol: React.FC<FormularioRolProps> = ({
+  rol,
+  mode,
   rolesExistentes,
-  onClose, 
-  onSave 
+  onClose,
+  onSave
 }) => {
   const [nombre, setNombre] = React.useState<string>(rol?.nombre || '');
   const [permisos, setPermisos] = React.useState<string[]>(rol?.permisos || []);
@@ -362,7 +362,7 @@ const FormularioRol: React.FC<FormularioRolProps> = ({
     } else {
       setPermisos(permisos.filter(p => p !== permisoId));
     }
-    
+
     if (errores.length > 0) {
       setErrores([]);
     }
@@ -378,7 +378,7 @@ const FormularioRol: React.FC<FormularioRolProps> = ({
     }
 
     if (mode === 'crear' || (rol && rol.nombre !== nombre.trim())) {
-      const rolExistente = rolesExistentes.find(r => 
+      const rolExistente = rolesExistentes.find(r =>
         r.nombre.toLowerCase() === nombre.trim().toLowerCase()
       );
       if (rolExistente) {
@@ -427,18 +427,18 @@ const FormularioRol: React.FC<FormularioRolProps> = ({
     <>
       <ModalHeader>
         <div className="flex items-center gap-2">
-          <Icon 
-            icon={mode === 'crear' ? 'lucide:plus-circle' : 'lucide:edit'} 
-            className="text-primary" 
+          <Icon
+            icon={mode === 'crear' ? 'lucide:plus-circle' : 'lucide:edit'}
+            className="text-primary"
           />
           {mode === 'crear' ? 'Crear Nuevo Rol' : `Editar Rol: ${rol?.nombre}`}
         </div>
       </ModalHeader>
-      
+
       <ModalBody>
         <div className="space-y-6">
           {errores.length > 0 && (
-            <Card className="bg-danger-50 border-danger-200">
+            <Card className="bg-danger-50 dark:bg-danger-50/10 border-danger-200 dark:border-danger-100">
               <CardBody className="p-4">
                 <div className="flex items-start gap-2">
                   <Icon icon="lucide:alert-circle" className="text-danger mt-0.5" />
@@ -454,7 +454,7 @@ const FormularioRol: React.FC<FormularioRolProps> = ({
               </CardBody>
             </Card>
           )}
-          
+
           <Input
             label="Nombre del Rol"
             placeholder="Ej: Supervisor de Inventario"
@@ -464,7 +464,7 @@ const FormularioRol: React.FC<FormularioRolProps> = ({
             description="El nombre debe ser único y descriptivo"
             isInvalid={errores.some(e => e.includes('nombre'))}
           />
-          
+
           <div>
             <div className="flex items-center justify-between mb-4">
               <div>
@@ -473,7 +473,7 @@ const FormularioRol: React.FC<FormularioRolProps> = ({
                   Seleccione las páginas a las que este rol tendrá acceso
                 </p>
               </div>
-              
+
               <Button
                 size="sm"
                 variant="flat"
@@ -484,7 +484,7 @@ const FormularioRol: React.FC<FormularioRolProps> = ({
                 {todosMarcados ? 'Desmarcar Todos' : 'Marcar Todos'}
               </Button>
             </div>
-            
+
             <Card>
               <CardBody className="p-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -502,7 +502,7 @@ const FormularioRol: React.FC<FormularioRolProps> = ({
                     </Checkbox>
                   ))}
                 </div>
-                
+
                 <div className="mt-4 pt-4 border-t">
                   <p className="text-sm text-default-600">
                     <Icon icon="lucide:info" className="inline mr-1" />
@@ -514,26 +514,26 @@ const FormularioRol: React.FC<FormularioRolProps> = ({
           </div>
         </div>
       </ModalBody>
-      
+
       <ModalFooter>
-        <Button 
-          variant="flat" 
+        <Button
+          variant="flat"
           onPress={onClose}
           isDisabled={guardando}
         >
           Cancelar
         </Button>
-        <Button 
-          color="primary" 
+        <Button
+          color="primary"
           onPress={handleSubmit}
           isDisabled={guardando || (mode === 'editar' && rol?.nombre === 'Admin')}
           isLoading={guardando}
           startContent={!guardando && <Icon icon="lucide:save" />}
         >
-          {guardando 
-            ? 'Guardando...' 
-            : mode === 'crear' 
-              ? 'Crear Rol' 
+          {guardando
+            ? 'Guardando...'
+            : mode === 'crear'
+              ? 'Crear Rol'
               : 'Guardar Cambios'
           }
         </Button>
