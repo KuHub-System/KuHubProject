@@ -31,10 +31,12 @@ import { useHistory } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { IProducto } from '../types/producto.types';
 import {
-  obtenerProductosService,
   crearProductoService,
   actualizarProductoService,
   eliminarProductoService,
+  obtenerFiltrosInventarioService,
+  obtenerProductosPaginadosService,
+  transformarPageItemAProducto,
 } from '../services/producto-service';
 import { useToast, useConfirm } from '../hooks/useToast';
 import { logger } from '../utils/logger';
@@ -66,10 +68,17 @@ const InventarioPage: React.FC = () => {
   const esAdministrador = user?.rol === 'Administrador';
   const [productos, setProductos] = React.useState<IProducto[]>([]);
   const [filteredProductos, setFilteredProductos] = React.useState<IProducto[]>([]);
+  const [categoriasFull, setCategoriasFull] = React.useState<{ id: number, nombre: string }[]>([]);
+  const [unidadesFull, setUnidadesFull] = React.useState<{ id: number, nombre: string }[]>([]);
+  const [totalPaginas, setTotalPaginas] = React.useState<number>(1);
+  const [totalRegistros, setTotalRegistros] = React.useState<number>(0);
   const [isLoading, setIsLoading] = React.useState<boolean>(true);
   const [searchTerm, setSearchTerm] = React.useState<string>('');
   const [currentPage, setCurrentPage] = React.useState<number>(1);
-  const [selectedCategoria, setSelectedCategoria] = React.useState<string>('todas');
+  const [selectedFilters, setSelectedFilters] = React.useState<Set<string>>(new Set(['todas']));
+  const filtersRef = React.useRef<Set<string>>(new Set(['todas']));
+  const [cache, setCache] = React.useState<Record<number, IProducto[]>>({});
+  const cacheRef = React.useRef<Record<number, IProducto[]>>({});
   const rowsPerPage = 10;
 
   const history = useHistory();
@@ -83,37 +92,169 @@ const InventarioPage: React.FC = () => {
   usePageTitle('Inventario', 'Gestione los productos del inventario, vea movimientos y actualice existencias.');
 
   /**
-   * Carga los productos al montar el componente.
+   * Carga los filtros (categorías y unidades) desde el backend.
    */
-  const cargarProductos = React.useCallback(async () => {
+  const cargarFiltros = React.useCallback(async () => {
     try {
-      setIsLoading(true);
-
-      // Cargar productos desde el servicio (que usa storage-service internamente)
-      const data = await obtenerProductosService();
-      setProductos(data);
-      setFilteredProductos(data);
+      const data = await obtenerFiltrosInventarioService();
+      setCategoriasFull(data.categorias);
+      setUnidadesFull(data.unidades);
     } catch (error) {
-      logger.error('Error al cargar productos:', error);
-    } finally {
-      setIsLoading(false);
+      logger.error('Error al cargar filtros:', error);
     }
   }, []);
 
-  React.useEffect(() => {
-    cargarProductos();
+  /**
+   * Carga de forma silenciosa la siguiente página de la API.
+   */
+  const prefetchSiguientePagina = React.useCallback(async (currentUiPage: number) => {
+    // Si UI es 1, ya tenemos API 1 (que sirve para UI 2). Siguiente API es 2.
+    // Si UI es 2, ya tenemos API 1. Siguiente API es 2.
+    // Si UI es 3 (API 2), siguiente API es 3.
+    // En general: si UI >= 2, prefetch API = UI.
+    const apiPageToPrefetch = currentUiPage < 2 ? 2 : currentUiPage;
 
-    // Verificar si hay un filtro pendiente desde el dashboard
-    const filtroGuardado = sessionStorage.getItem('inventarioFiltro');
-    if (filtroGuardado === 'stockBajo') {
-      // Aplicar filtro de stock bajo
-      setSelectedCategoria('stock-bajo');
-      sessionStorage.removeItem('inventarioFiltro');
+    if (cacheRef.current[apiPageToPrefetch] || apiPageToPrefetch > totalPaginas) return;
+
+    try {
+      const currentFilters = Array.from(filtersRef.current);
+
+      const categoriasIds = currentFilters
+        .filter(f => f && typeof f === 'string' && f.startsWith('cat-'))
+        .map(f => parseInt(f.replace('cat-', '')))
+        .filter(id => !isNaN(id));
+
+      const unidadesIds = currentFilters
+        .filter(f => f && typeof f === 'string' && f.startsWith('uni-'))
+        .map(f => parseInt(f.replace('uni-', '')))
+        .filter(id => !isNaN(id));
+
+      const soloStockBajo = filtersRef.current.has('stock-bajo');
+
+      console.log(`🚀 Prefetching API Page ${apiPageToPrefetch} con filtros:`, currentFilters);
+      const response = await obtenerProductosPaginadosService({
+        page: apiPageToPrefetch,
+        categoriasIds,
+        unidadesIds,
+        soloStockBajo
+      });
+
+      const productosTransformados = response.items.map(transformarPageItemAProducto);
+      cacheRef.current[apiPageToPrefetch] = productosTransformados;
+      setCache(prev => ({ ...prev, [apiPageToPrefetch]: productosTransformados }));
+    } catch (e) {
+      console.warn('Silent prefetch failed', e);
+    }
+  }, [totalPaginas]);
+
+  /**
+   * Carga los productos usando una caché local para manejar la asimetría del backend.
+   * UI Page 1 & 2 -> API Page 1 (20 items)
+   * UI Page 3 -> API Page 2 (10 items)
+   * UI Page n -> API Page n-1
+   */
+  const cargarProductosPaginados = React.useCallback(async (uiPage: number, forceFetch: boolean = false) => {
+    // Mapeo UI -> API
+    const apiPage = uiPage <= 2 ? 1 : uiPage - 1;
+
+    if (forceFetch) {
+      setProductos([]);
+      setFilteredProductos([]);
+      cacheRef.current = {};
+      setCache({});
     }
 
-    // Escuchar evento personalizado para recargar productos cuando se actualizan
+    // Verificar si ya tenemos los datos en caché
+    if (!forceFetch && cacheRef.current[apiPage]) {
+      console.log(`📦 Usando caché para API Page ${apiPage}`);
+      setIsLoading(false);
+      setProductos(cacheRef.current[apiPage]); // Actualizar productos para filtros locales
+
+      // Prefetch de la siguiente página de API si es necesario
+      prefetchSiguientePagina(uiPage);
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+
+      // Extraer IDs de filtros seleccionados (asegurando números desde el Ref para evitar cierres obsoletos)
+      const currentFilters = Array.from(filtersRef.current);
+
+      const categoriasIds = currentFilters
+        .filter(f => f && typeof f === 'string' && f.startsWith('cat-'))
+        .map(f => parseInt(f.replace('cat-', '')))
+        .filter(id => !isNaN(id));
+
+      const unidadesIds = currentFilters
+        .filter(f => f && typeof f === 'string' && f.startsWith('uni-'))
+        .map(f => parseInt(f.replace('uni-', '')))
+        .filter(id => !isNaN(id));
+
+      const soloStockBajo = filtersRef.current.has('stock-bajo');
+
+      const requestBody = {
+        page: apiPage,
+        categoriasIds,
+        unidadesIds,
+        soloStockBajo,
+        pageSize: apiPage === 1 ? 20 : 10
+      };
+
+      console.log('📦 Enviando request al backend:', requestBody);
+
+      const response = await obtenerProductosPaginadosService(requestBody);
+
+      // Transformar datos
+      const productosTransformados = response.items.map(transformarPageItemAProducto);
+
+      cacheRef.current[apiPage] = productosTransformados;
+      setCache(prev => ({ ...prev, [apiPage]: productosTransformados }));
+      setProductos(productosTransformados);
+
+      // El backend manda totalPages (basado en su lógica 20/10)
+      // Pero nosotros calculamos totalPaginas UI basado en 10 para todas las páginas
+      console.log(`📊 Metadatos recibidos: totalItems=${response.totalItems}, totalPages=${response.totalPages}`);
+
+      if (forceFetch || uiPage === 1 || totalRegistros === 0) {
+        const calculatedUiPages = Math.ceil(response.totalItems / 10);
+        console.log(`🔢 Calculadas ${calculatedUiPages} páginas para la UI`);
+        setTotalPaginas(calculatedUiPages);
+        setTotalRegistros(response.totalItems);
+      }
+
+      // Prefetch de la siguiente
+      prefetchSiguientePagina(uiPage);
+
+    } catch (error) {
+      logger.error('Error al cargar productos paginados:', error);
+      toast.error('Error al cargar productos');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [totalRegistros, toast, prefetchSiguientePagina]);
+
+  React.useEffect(() => {
+    cargarFiltros();
+
+    const filtroGuardado = sessionStorage.getItem('inventarioFiltro');
+    if (filtroGuardado === 'stockBajo') {
+      const newSet = new Set(['stock-bajo']);
+      setSelectedFilters(newSet);
+      filtersRef.current = newSet;
+      sessionStorage.removeItem('inventarioFiltro');
+    }
+  }, [cargarFiltros]);
+
+  // Cargar productos cuando cambian la página de la UI
+  React.useEffect(() => {
+    cargarProductosPaginados(currentPage);
+  }, [currentPage, cargarProductosPaginados]);
+
+  React.useEffect(() => {
     const handleProductosActualizados = () => {
-      cargarProductos();
+      setCache({}); // Forzar recarga completa al actualizar
+      cargarProductosPaginados(currentPage, true);
     };
 
     window.addEventListener('productosActualizados', handleProductosActualizados);
@@ -121,59 +262,71 @@ const InventarioPage: React.FC = () => {
     return () => {
       window.removeEventListener('productosActualizados', handleProductosActualizados);
     };
-  }, [cargarProductos]);
+  }, [cargarProductosPaginados, currentPage]);
 
   /**
-   * Filtra los productos según el término de búsqueda y la categoría seleccionada.
+   * Filtra los productos localmente solo por el término de búsqueda.
+   * El filtrado por categorías/unidades ahora lo hace el backend.
    */
   React.useEffect(() => {
-    let filtered = [...productos];
-
-    // Filtrar por término de búsqueda
-    if (searchTerm) {
-      filtered = filtered.filter(producto =>
-        producto.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        producto.descripcion.toLowerCase().includes(searchTerm.toLowerCase())
-      );
+    if (!searchTerm) {
+      setFilteredProductos(productos);
+      return;
     }
 
-    // Filtrar por categoría o stock bajo
-    if (selectedCategoria !== 'todas') {
-      if (selectedCategoria === 'stock-bajo') {
-        // Filtro especial para productos con stock bajo
-        filtered = filtered.filter(producto =>
-          producto.stock <= producto.stockMinimo
-        );
-      } else {
-        // Filtro normal por categoría
-        filtered = filtered.filter(producto =>
-          producto.categoria === selectedCategoria
-        );
-      }
-    }
+    const filtered = productos.filter(producto =>
+      producto.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (producto.descripcion && producto.descripcion.toLowerCase().includes(searchTerm.toLowerCase()))
+    );
 
     setFilteredProductos(filtered);
-    setCurrentPage(1); // Resetear a la primera página al filtrar
-  }, [searchTerm, selectedCategoria, productos]);
+  }, [searchTerm, productos]);
+
+  // Resetear página al cambiar filtros
+  React.useEffect(() => {
+    // Si no estamos en la página 1, volvemos a ella al cambiar filtros
+    if (currentPage !== 1) {
+      setCurrentPage(1);
+    }
+  }, [selectedFilters]);
 
   /**
    * Obtiene las categorías únicas de los productos, agregando la opción de Stock Bajo.
    */
-  const categorias = React.useMemo(() => {
-    // Usar las categorías de storage-service (reales) si están habilitadas
-    const catReales = obtenerCategorias().filter(c => c.activo).map(c => c.nombre);
-    const categoriasSet = new Set([...catReales, ...productos.map(producto => producto.categoria)]);
-    return ['todas', 'stock-bajo', ...Array.from(categoriasSet)];
-  }, [productos]);
+  /**
+   * Obtiene todos los filtros combinados (Categorías + Unidades) con IDs
+   */
+  const filtrosCombinados = React.useMemo(() => {
+    const categoras = categoriasFull.map(c => ({ id: `cat-${c.id}`, nombre: c.nombre }));
+    const unidades = unidadesFull.map(u => ({ id: `uni-${u.id}`, nombre: u.nombre }));
+
+    return [
+      { id: 'todas', nombre: 'Todas las categorías' },
+      { id: 'stock-bajo', nombre: 'Stock Bajo' },
+      ...categoras,
+      ...unidades
+    ];
+  }, [categoriasFull, unidadesFull]);
 
   /**
-   * Calcula los productos a mostrar en la página actual.
+   * Extrae los productos a mostrar para la página actual de la UI, 
+   * usando los datos cargados en la caché de la API.
    */
   const paginatedProductos = React.useMemo(() => {
-    const start = (currentPage - 1) * rowsPerPage;
-    const end = start + rowsPerPage;
-    return filteredProductos.slice(start, end);
-  }, [currentPage, filteredProductos, rowsPerPage]);
+    const apiPage = currentPage <= 2 ? 1 : currentPage - 1;
+    const data = cache[apiPage] || [];
+
+    if (currentPage === 1) {
+      return data.slice(0, 10);
+    }
+    if (currentPage === 2) {
+      return data.slice(10, 20);
+    }
+
+    // Para UI 3+, el backend devuelve 10 registros por página,
+    // así que los mostramos completos.
+    return data;
+  }, [currentPage, cache]);
 
   /**
    * Navega a la página de movimientos del producto.
@@ -315,33 +468,70 @@ const InventarioPage: React.FC = () => {
               </div>
 
               <div className="flex gap-4 w-full md:w-auto">
-                <Dropdown>
+                <Dropdown onOpenChange={(isOpen) => {
+                  if (!isOpen) {
+                    console.log('🔴 Dropdown cerrado, actualizando resultados con filtros:', Array.from(filtersRef.current));
+                    cacheRef.current = {};
+                    setCache({});
+                    setCurrentPage(1);
+                    // Forzamos la carga con los filtros actuales
+                    cargarProductosPaginados(1, true);
+                  }
+                }}>
                   <DropdownTrigger>
                     <Button
                       variant="bordered"
                       className="bg-white dark:bg-default-100/50"
                       startContent={<Icon icon="lucide:filter" className="text-default-500" />}
                     >
-                      {selectedCategoria === 'todas'
+                      {selectedFilters.has('todas')
                         ? 'Todas las categorías'
-                        : selectedCategoria === 'stock-bajo'
-                          ? 'Stock Bajo'
-                          : selectedCategoria}
+                        : selectedFilters.size === 1
+                          ? filtrosCombinados.find(f => f.id === Array.from(selectedFilters)[0])?.nombre
+                          : `${selectedFilters.size} filtros aplicados`}
                     </Button>
                   </DropdownTrigger>
                   <DropdownMenu
-                    aria-label="Categorías"
-                    onAction={(key) => setSelectedCategoria(key as string)}
-                    selectionMode="single"
-                    selectedKeys={new Set([selectedCategoria])}
+                    aria-label="Filtros"
+                    closeOnSelect={false}
+                    selectionMode="multiple"
+                    selectedKeys={selectedFilters}
+                    onSelectionChange={(keys) => {
+                      const newKeys = Array.from(keys) as string[];
+                      let resultSet: Set<string>;
+
+                      // Lógica de "Todas las categorías"
+                      const wasTodasSelected = filtersRef.current.has('todas');
+                      const isTodasSelectedNow = newKeys.includes('todas');
+
+                      if (isTodasSelectedNow && !wasTodasSelected) {
+                        // Si se seleccionó "todas" ahora, limpiamos el resto
+                        resultSet = new Set(['todas']);
+                      } else if (newKeys.length > 1 && isTodasSelectedNow) {
+                        // Si "todas" estaba y seleccionamos otro, quitamos "todas"
+                        const filtered = newKeys.filter(k => k !== 'todas');
+                        resultSet = new Set(filtered);
+                      } else if (newKeys.length === 0) {
+                        // Si se desmarcó todo, volvemos a "todas"
+                        resultSet = new Set(['todas']);
+                      } else {
+                        resultSet = new Set(newKeys);
+                      }
+
+                      setSelectedFilters(resultSet);
+                      filtersRef.current = resultSet;
+                    }}
                   >
-                    {categorias.map((categoria) => (
-                      <DropdownItem key={categoria} startContent={categoria === 'stock-bajo' ? <Icon icon="lucide:alert-triangle" className="text-warning" /> : null}>
-                        {categoria === 'todas'
-                          ? 'Todas las categorías'
-                          : categoria === 'stock-bajo'
-                            ? 'Stock Bajo'
-                            : categoria}
+                    {filtrosCombinados.map((filtro) => (
+                      <DropdownItem
+                        key={filtro.id}
+                        startContent={
+                          filtro.id === 'stock-bajo'
+                            ? <Icon icon="lucide:alert-triangle" className="text-warning" />
+                            : null
+                        }
+                      >
+                        {filtro.nombre}
                       </DropdownItem>
                     ))}
                   </DropdownMenu>
@@ -362,15 +552,17 @@ const InventarioPage: React.FC = () => {
                 td: "py-3 border-b border-default-50 dark:border-default-50/10 group-data-[last=true]:border-none"
               }}
               bottomContent={
-                filteredProductos.length > 0 ? (
+                totalRegistros > 0 ? (
                   <div className="flex w-full justify-center py-4 border-t border-default-100">
                     <Pagination
-                      total={Math.ceil(filteredProductos.length / rowsPerPage)}
+                      total={totalPaginas}
                       page={currentPage}
                       onChange={setCurrentPage}
                       showControls
                       color="primary"
                       variant="light"
+                      // Hidden if only one page to keep it clean
+                      className={totalPaginas <= 1 ? "hidden" : ""}
                     />
                   </div>
                 ) : null
@@ -379,10 +571,10 @@ const InventarioPage: React.FC = () => {
               <TableHeader>
                 <TableColumn>NOMBRE</TableColumn>
                 <TableColumn>CATEGORÍA</TableColumn>
-                <TableColumn>STOCK</TableColumn>
-                <TableColumn>STOCK MÍNIMO</TableColumn>
+                <TableColumn align="center">STOCK</TableColumn>
+                <TableColumn align="center">STOCK MÍNIMO</TableColumn>
                 <TableColumn>UNIDAD</TableColumn>
-                <TableColumn>ESTADO</TableColumn>
+                <TableColumn align="center">ESTADO</TableColumn>
                 <TableColumn align="center">ACCIONES</TableColumn>
               </TableHeader>
               <TableBody
@@ -479,6 +671,8 @@ const InventarioPage: React.FC = () => {
                   producto={productoSeleccionado}
                   onClose={onClose}
                   mode={modalMode}
+                  categorias={categoriasFull.map(c => c.nombre)}
+                  unidades={unidadesFull.map(u => u.nombre)}
                 />
               </ModalBody>
             </>
@@ -502,13 +696,13 @@ const InventarioPage: React.FC = () => {
       <GestionCategoriasModal
         isOpen={isCategoriasOpen}
         onOpenChange={onCategoriasOpenChange}
-        onRefresh={cargarProductos} // Para recargar si algo cambia
+        onRefresh={() => cargarProductosPaginados(1, true)} // Para recargar si algo cambia
       />
 
       <GestionUnidadesModal
         isOpen={isUnidadesOpen}
         onOpenChange={onUnidadesOpenChange}
-        onRefresh={cargarProductos}
+        onRefresh={() => cargarProductosPaginados(1, true)}
       />
     </div>
   );
@@ -521,6 +715,8 @@ interface FormularioProductoProps {
   producto: IProducto | null;
   onClose: () => void;
   mode: 'crear' | 'editar';
+  categorias: string[];
+  unidades: string[];
 }
 
 /**
@@ -529,7 +725,7 @@ interface FormularioProductoProps {
  * @param {FormularioProductoProps} props - Propiedades del componente.
  * @returns {JSX.Element} El formulario de producto.
  */
-const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto, onClose, mode }) => {
+const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto, onClose, mode, categorias, unidades }) => {
   const toast = useToast();
   const [nombre, setNombre] = React.useState(producto?.nombre || '');
   const [descripcion, setDescripcion] = React.useState(producto?.descripcion || '');
@@ -538,10 +734,6 @@ const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto, onClo
   const [stock, setStock] = React.useState(producto?.stock?.toString() || '0');
   const [stockMinimo, setStockMinimo] = React.useState(producto?.stockMinimo?.toString() || '0');
   const [isLoading, setIsLoading] = React.useState(false);
-
-  // Cargar categorías y unidades reales
-  const categoriasReales = React.useMemo(() => obtenerCategorias().filter(c => c.activo), []);
-  const unidadesReales = React.useMemo(() => obtenerUnidades().filter(u => u.activo), []);
 
   const handleSubmit = async () => {
     // Validaciones
@@ -640,11 +832,11 @@ const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto, onClo
           >
             <option value="">Seleccione una categoría</option>
             {/* Categorías dinámicas */}
-            {categoriasReales.map(cat => (
-              <option key={cat.id} value={cat.nombre}>{cat.nombre}</option>
+            {categorias.map(cat => (
+              <option key={cat} value={cat}>{cat}</option>
             ))}
-            {/* Mantener compatibilidad si el producto tiene una categoría no listada (ej: hardcoded anterior) */}
-            {categoria && !categoriasReales.find(c => c.nombre === categoria) && (
+            {/* Mantener compatibilidad si el producto tiene una categoría no listada */}
+            {categoria && !categorias.includes(categoria) && (
               <option value={categoria}>{categoria}</option>
             )}
           </select>
@@ -662,11 +854,11 @@ const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto, onClo
           >
             <option value="">Seleccione una unidad</option>
             {/* Unidades dinámicas */}
-            {unidadesReales.map(uni => (
-              <option key={uni.id} value={uni.abreviatura}>{uni.nombre} ({uni.abreviatura})</option>
+            {unidades.map(uni => (
+              <option key={uni} value={uni}>{uni}</option>
             ))}
             {/* Mantener compatibilidad */}
-            {unidadMedida && !unidadesReales.find(u => u.abreviatura === unidadMedida) && (
+            {unidadMedida && !unidades.includes(unidadMedida) && (
               <option value={unidadMedida}>{unidadMedida}</option>
             )}
           </select>
