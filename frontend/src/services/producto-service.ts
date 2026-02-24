@@ -10,7 +10,10 @@ import {
   IMovimientoProducto,
   ICrearProducto,
   IActualizarProducto,
-  ICrearMovimiento
+  ICrearMovimiento,
+  IInventoryPageRequest,
+  IInventoryPageItem,
+  IInventoryPageResponse
 } from '../types/producto.types';
 
 // Importar el servicio real de inventario
@@ -20,7 +23,15 @@ import {
   crearProductoService as crearProductoBackend,
   actualizarProductoService as actualizarProductoBackend,
   eliminarProductoService as eliminarProductoBackend,
+  obtenerFiltrosInventarioService as obtenerFiltrosInventarioBackend,
+  obtenerProductosPaginadosService as obtenerProductosPaginadosBackend,
+  transformarPageItemAProducto
 } from './inventario-service';
+
+// Exportar la obtención de filtros
+export const obtenerFiltrosInventarioService = async () => {
+  return await obtenerFiltrosInventarioBackend();
+};
 
 // Importar funciones locales solo para movimientos (hardcoded)
 import {
@@ -65,6 +76,15 @@ export const actualizarProductoService = async (productoData: IActualizarProduct
 export const eliminarProductoService = async (id: string): Promise<boolean> => {
   return await eliminarProductoBackend(id);
 };
+
+/**
+ * Obtiene los productos del inventario de forma paginada y con filtros dinámicos desde el BACKEND REAL
+ */
+export const obtenerProductosPaginadosService = async (request: IInventoryPageRequest): Promise<IInventoryPageResponse> => {
+  return await obtenerProductosPaginadosBackend(request);
+};
+
+export { transformarPageItemAProducto };
 
 /**
  * ========================================

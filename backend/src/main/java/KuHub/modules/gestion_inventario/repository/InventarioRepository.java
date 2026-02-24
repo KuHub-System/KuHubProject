@@ -44,5 +44,108 @@ public interface InventarioRepository extends JpaRepository<Inventario, Integer>
 
     boolean existsByIdInventario(Integer idInventario);
 
+    //MODI V2 A BAJO ARRIBA SE VA
+    @Query(value = """
+            SELECT COUNT(*)
+            FROM inventario i
+            JOIN producto p ON p.id_producto = i.id_producto
+            WHERE
+                i.activo = TRUE
+                AND p.activo = TRUE
+                AND (
+                    :useCategorias = FALSE
+                    OR p.id_categoria = ANY(CAST(:categoriasIds AS INTEGER[]))
+                )
+                AND (
+                    :useUnidades = FALSE
+                    OR p.id_unidad = ANY(CAST(:unidadesIds AS INTEGER[]))
+                )
+                AND (
+                    :soloStockBajo = FALSE
+                    OR i.stock <= i.stock_limit
+                )
+        """, nativeQuery = true)
+    long countInventarioFiltered(
+            @Param("useCategorias") boolean useCategorias,
+            @Param("categoriasIds") Integer[] categoriasIds,
+            @Param("useUnidades") boolean useUnidades,
+            @Param("unidadesIds") Integer[] unidadesIds,
+            @Param("soloStockBajo") boolean soloStockBajo
+    );
+
+    @Query(value = """
+            SELECT
+                p.nombre_producto,
+                c.nombre_categoria,
+                i.stock,
+                i.stock_limit,
+                u.nombre_unidad,
+                i.id_inventario,
+                p.id_producto,
+                c.id_categoria,
+                u.id_unidad
+            FROM inventario i
+            JOIN producto p ON p.id_producto = i.id_producto
+            JOIN categoria c ON c.id_categoria = p.id_categoria
+            JOIN unidad_medida u ON u.id_unidad = p.id_unidad
+            WHERE
+                i.activo = TRUE
+                AND p.activo = TRUE
+                AND (
+                    :useCategorias = FALSE
+                    OR c.id_categoria = ANY(CAST(:categoriasIds AS INTEGER[]))
+                )
+                AND (
+                    :useUnidades = FALSE
+                    OR u.id_unidad = ANY(CAST(:unidadesIds AS INTEGER[]))
+                )
+                AND (
+                    :soloStockBajo = FALSE
+                    OR i.stock <= i.stock_limit
+                )
+            ORDER BY p.nombre_producto
+            LIMIT :limit OFFSET :offset
+        """, nativeQuery = true)
+    List<Object[]> findInventarioPage(
+            @Param("useCategorias") boolean useCategorias,
+            @Param("categoriasIds") Integer[] categoriasIds,
+            @Param("useUnidades") boolean useUnidades,
+            @Param("unidadesIds") Integer[] unidadesIds,
+            @Param("soloStockBajo") boolean soloStockBajo,
+            @Param("limit") int limit,
+            @Param("offset") int offset
+    );
+
+    @Query(
+            value = """
+        SELECT
+            json_build_object(
+                'categorias',
+                (
+                    SELECT json_agg(
+                        json_build_object(
+                            'id', c.id_categoria,
+                            'nombre', c.nombre_categoria
+                        )
+                    )
+                    FROM categoria c
+                    WHERE c.activo = TRUE
+                ),
+                'unidades',
+                (
+                    SELECT json_agg(
+                        json_build_object(
+                            'id', u.id_unidad,
+                            'nombre', u.nombre_unidad
+                        )
+                    )
+                    FROM unidad_medida u
+                    WHERE u.activo = TRUE
+                )
+            )
+        """,
+            nativeQuery = true
+    )
+    String getFiltersInventory();
 
 }

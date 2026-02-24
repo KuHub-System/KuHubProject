@@ -2,6 +2,9 @@ package KuHub.modules.gestion_inventario.controller;
 
 import KuHub.modules.gestion_inventario.dtos.InventoryWithProductCreateDTO;
 import KuHub.modules.gestion_inventario.dtos.InventoryWithProductResponseAnswerUpdateDTO;
+import KuHub.modules.gestion_inventario.dtos.request.dto.FilterInventoryPageDTO;
+import KuHub.modules.gestion_inventario.dtos.request.dto.InventoryPageResponseDTO;
+import KuHub.modules.gestion_inventario.dtos.response.InventoryFiltersDTO;
 import KuHub.modules.gestion_inventario.entity.Inventario;
 import KuHub.modules.gestion_inventario.services.InventarioService;
 import jakarta.validation.Valid;
@@ -20,6 +23,30 @@ public class InventarioController {
 
     @Autowired
     private InventarioService inventarioService;
+
+    /**
+     * 🔹 Combos de filtros (categorías + unidades)
+     * Usado al cargar la página de inventario
+    * ✅ En uso: Endpoint consumido por el frontend.*/
+    @GetMapping("/filters")
+    public ResponseEntity<InventoryFiltersDTO> getFiltersInventory() {
+        return ResponseEntity.ok(
+                inventarioService.getFiltersInventory()
+        );
+    }
+
+    /**
+     * 📦 Inventario paginado con filtros
+     */
+    @PostMapping("/paged-inventory")
+    public ResponseEntity<InventoryPageResponseDTO> getPagedInventory(
+            @RequestBody FilterInventoryPageDTO filter
+    ) {
+        return ResponseEntity.ok(
+                inventarioService.getPagedInventory(filter)
+        );
+    }
+
     /**
     @GetMapping("/{id}")
     public ResponseEntity<Inventario> findById(@PathVariable Integer id){

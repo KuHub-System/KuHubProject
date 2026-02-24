@@ -3,21 +3,31 @@ package KuHub.modules.gestion_inventario.services;
 import KuHub.modules.gestion_inventario.dtos.InventoryWithProductCreateDTO;
 import KuHub.modules.gestion_inventario.dtos.InventoryWithProductResponseAnswerUpdateDTO;
 import KuHub.modules.gestion_inventario.dtos.MotionCreateDTO;
+import KuHub.modules.gestion_inventario.dtos.request.dto.FilterInventoryPageDTO;
+import KuHub.modules.gestion_inventario.dtos.request.dto.InventoryPageDTO;
+import KuHub.modules.gestion_inventario.dtos.request.dto.InventoryPageResponseDTO;
+import KuHub.modules.gestion_inventario.dtos.response.InventoryFiltersDTO;
 import KuHub.modules.gestion_inventario.entity.Inventario;
 import KuHub.modules.gestion_inventario.exceptions.InventarioException;
 import KuHub.modules.gestion_inventario.repository.InventarioRepository;
 import KuHub.modules.gestion_inventario.entity.Producto;
 import KuHub.modules.gestion_inventario.repository.ProductoRepository;
 import KuHub.utils.StringUtils;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class InventarioServiceImpl implements InventarioService {
 
     @Autowired
@@ -31,6 +41,127 @@ public class InventarioServiceImpl implements InventarioService {
 
     @Autowired
     private MovimientoService movimientoService;
+
+    @Autowired
+    private ObjectMapper objectMapper;
+
+    @Override
+    @Transactional(readOnly = true)
+    public InventoryPageResponseDTO getPagedInventory(FilterInventoryPageDTO filter) {
+
+        Integer[] categoriasIds = (filter.getCategoriasIds() == null || filter.getCategoriasIds().isEmpty())
+                ? null
+                : filter.getCategoriasIds().toArray(new Integer[0]);
+
+        Integer[] unidadesIds = (filter.getUnidadesIds() == null || filter.getUnidadesIds().isEmpty())
+                ? null
+                : filter.getUnidadesIds().toArray(new Integer[0]);
+
+        // 🔍 LOGS (clave para debug)
+        log.debug("📦 getPagedInventory");
+        log.debug("➡️ categoriasIds = {}", categoriasIds == null ? "null" : Arrays.toString(categoriasIds));
+        log.debug("➡️ unidadesIds   = {}", unidadesIds == null ? "null" : Arrays.toString(unidadesIds));
+        log.debug("➡️ soloStockBajo = {}", filter.getSoloStockBajo());
+        log.debug("➡️ page          = {}", filter.getPage());
+
+        boolean useCategorias = categoriasIds != null && categoriasIds.length > 0;
+        boolean useUnidades   = unidadesIds   != null && unidadesIds.length > 0;
+        boolean soloStockBajo = Boolean.TRUE.equals(filter.getSoloStockBajo());
+
+        // 1️⃣ COUNT
+        long totalRegistros = inventarioRepository.countInventarioFiltered(
+                useCategorias,
+                categoriasIds,
+                useUnidades,
+                unidadesIds,
+                soloStockBajo
+        );
+
+        // 2️⃣ TOTAL PÁGINAS
+        int totalPaginas = calcularTotalPaginas(totalRegistros);
+
+        // 3️⃣ página solicitada
+        int page = filter.getPage() != null && filter.getPage() > 0
+                ? filter.getPage()
+                : 1;
+
+        if (page > totalPaginas && totalPaginas > 0) {
+            page = totalPaginas;
+        }
+
+        // 4️⃣ offset / limit
+        int limit;
+        int offset;
+
+        if (page == 1) {
+            limit = 20;
+            offset = 0;
+        } else {
+            limit = 10;
+            offset = 20 + (page - 2) * 10;
+        }
+
+        // 5️⃣ data
+        List<Object[]> rows = inventarioRepository.findInventarioPage(
+                useCategorias,
+                categoriasIds,
+                useUnidades,
+                unidadesIds,
+                soloStockBajo,
+                limit,
+                offset
+        );
+
+        List<InventoryPageDTO> data = new ArrayList<>();
+
+        for (Object[] r : rows) {
+            data.add(new InventoryPageDTO(
+                    ((Number) r[5]).intValue(), // id_inventario
+                    ((Number) r[6]).intValue(), // id_producto
+                    (String) r[0],              // nombre_producto
+                    ((Number) r[7]).intValue(), // id_categoria (SMALLINT)
+                    (String) r[1],              // nombre_categoria
+                    ((Number) r[8]).intValue(), // id_unidad (SMALLINT)
+                    (String) r[4],              // nombre_unidad
+                    (BigDecimal) r[2],          // stock
+                    (BigDecimal) r[3]           // stock_limit
+            ));
+        }
+
+        return new InventoryPageResponseDTO(
+                data,
+                page,
+                limit,
+                totalPaginas,
+                totalRegistros
+        );
+    }
+
+    private int calcularTotalPaginas(long totalRegistros) {
+        if (totalRegistros <= 0) {
+            return 0;
+        }
+        if (totalRegistros <= 20) {
+            return 1;
+        }
+        return 1 + (int) Math.ceil((totalRegistros - 20) / 10.0);
+    }
+
+    /**
+     * 🔹 Combos de filtros (categorías + unidades)
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public InventoryFiltersDTO getFiltersInventory() {
+
+        String json = inventarioRepository.getFiltersInventory();
+
+        try {
+            return objectMapper.readValue(json, InventoryFiltersDTO.class);
+        } catch (Exception e) {
+            throw new RuntimeException("Error parseando filtros de inventario", e);
+        }
+    }
 
     /**
     @Transactional(readOnly = true)

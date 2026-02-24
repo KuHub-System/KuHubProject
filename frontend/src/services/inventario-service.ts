@@ -9,8 +9,31 @@ import api from '../config/Axios';
 import {
     IProducto,
     ICrearProducto,
-    IActualizarProducto
+    IActualizarProducto,
+    IFiltrosInventarioResponse,
+    IInventoryPageRequest,
+    IInventoryPageItem,
+    IInventoryPageResponse
 } from '../types/producto.types';
+
+/**
+ * Obtiene las categorías y unidades de medida para los filtros
+ */
+export const obtenerFiltrosInventarioService = async (): Promise<IFiltrosInventarioResponse> => {
+    console.log('🔍 Obteniendo filtros del inventario (categorías y unidades) desde el backend');
+
+    try {
+        const response = await api.get<IFiltrosInventarioResponse>('/inventario/filters');
+        console.log('✅ Filtros obtenidos:', response.data);
+        return response.data;
+    } catch (error: any) {
+        console.error('❌ Error al obtener filtros del inventario:', error);
+        throw new Error(
+            error.response?.data?.message ||
+            'Error al cargar los filtros del inventario'
+        );
+    }
+};
 
 /**
  * DTO que viene del backend
@@ -300,4 +323,71 @@ export const eliminarProductoService = async (id: string): Promise<boolean> => {
             'Error al eliminar el producto'
         );
     }
+};
+
+/**
+ * Obtiene los productos del inventario de forma paginada y con filtros dinámicos
+ */
+export const obtenerProductosPaginadosService = async (request: IInventoryPageRequest): Promise<IInventoryPageResponse> => {
+    console.log('📦 Solicitud de productos paginados:', JSON.stringify(request));
+
+    try {
+        const response = await api.post<IInventoryPageResponse>(
+            '/inventario/paged-inventory',
+            request
+        );
+
+        const data = response.data;
+        if (!data) throw new Error('El backend no devolvió datos');
+
+        console.log('📡 Respuesta completa del backend:', JSON.stringify(data));
+
+        // El backend podría devolver items o data (según versiones)
+        const items = data.items || (data as any).data || [];
+        const totalItems = data.totalItems ?? (data as any).totalRegistros ?? 0;
+        const totalPages = data.totalPages ?? (data as any).totalPaginas ?? 1;
+
+        console.log(`✅ ${items.length} productos obtenidos (página ${data.page}), Total Items: ${totalItems}, Total Backend Pages: ${totalPages}`);
+
+        // Normalizamos la respuesta
+        return {
+            ...data,
+            items,
+            totalItems,
+            totalPages
+        };
+
+    } catch (error: any) {
+        console.error('❌ Error al obtener productos paginados:', error);
+        throw new Error(
+            error.response?.data?.message ||
+            'Error al cargar los productos del inventario'
+        );
+    }
+};
+
+/**
+ * Transforma un item de la página de inventario al formato IProducto para compatibilidad UI
+ */
+export const transformarPageItemAProducto = (item: IInventoryPageItem): IProducto => {
+    // Si la estructura no es la esperada (nombres directos vs anidado)
+    const idProducto = item.producto?.idProducto ?? (item as any).idProducto ?? 0;
+    const nombre = item.producto?.nombre ?? (item as any).nombreProducto ?? 'Sin nombre';
+    const categoria = item.producto?.categoria?.nombre ?? (item as any).nombreCategoria ?? 'Sin categoría';
+    const unidad = item.producto?.unidad?.nombre ?? (item as any).nombreUnidad ?? (item as any).unidadMedida ?? 'Sin unidad';
+    const stockActual = item.stockActual ?? (item as any).stock ?? 0;
+    const stockMinimo = item.stockMinimo ?? (item as any).stockLimit ?? 0;
+
+    return {
+        id: idProducto.toString(),
+        nombre,
+        descripcion: '',
+        categoria,
+        unidadMedida: unidad,
+        stock: stockActual,
+        stockMinimo: stockMinimo,
+        fechaCreacion: new Date().toISOString(),
+        fechaActualizacion: new Date().toISOString(),
+        _idInventario: item.idInventario,
+    } as IProducto;
 };
