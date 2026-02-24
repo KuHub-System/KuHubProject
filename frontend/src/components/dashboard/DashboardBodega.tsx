@@ -20,7 +20,7 @@ export const DashboardBodega: React.FC = () => {
   const { user } = useAuth();
   const history = useHistory();
   const toast = useToast();
-  
+
   const [productos, setProductos] = useState<IProducto[]>([]);
   const [productosBajoStock, setProductosBajoStock] = useState<IProducto[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -33,10 +33,10 @@ export const DashboardBodega: React.FC = () => {
     try {
       setIsLoading(true);
       const data = await cargarDashboardBodega();
-      
+
       setProductos(data.productos);
       setProductosBajoStock(data.productosBajoStock);
-      
+
       logger.log('✅ Datos del dashboard bodega cargados');
     } catch (error) {
       logger.error('❌ Error al cargar datos del dashboard:', error);
@@ -64,10 +64,10 @@ export const DashboardBodega: React.FC = () => {
   }
 
   return (
-    <div className="container mx-auto px-4 py-6 space-y-6">
-      <DashboardHeader 
+    <div className="container mx-auto px-4 py-8 space-y-8 font-sans">
+      <DashboardHeader
         userName={user?.nombre || 'Usuario'}
-        subtitle="Panel de gestión de inventario"
+        subtitle="Panel de Gestión de Inventario"
       />
 
       {/* Tarjetas de Estadísticas */}
@@ -75,34 +75,38 @@ export const DashboardBodega: React.FC = () => {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, delay: 0.1 }}
-        className="grid grid-cols-1 md:grid-cols-4 gap-4"
+        className="grid grid-cols-1 md:grid-cols-4 gap-6 items-stretch"
       >
-          <StatsCard
-            title="Total Productos"
-            value={totalProductos}
-            icon="lucide:package"
-            color="primary"
-            onClick={() => history.push('/inventario')}
-          />
-          <StatsCard
-            title="Con Stock"
-            value={productosConStock}
-            icon="lucide:check-circle"
-            color="success"
-          />
-          <StatsCard
-            title="Sin Stock"
-            value={productosSinStock}
-            icon="lucide:x-circle"
-            color="danger"
-          />
-          <StatsCard
-            title="Stock Bajo"
-            value={productosBajoStock.length}
-            icon="lucide:alert-triangle"
-            color="warning"
-            onClick={productosBajoStock.length > 0 ? () => history.push('/inventario') : undefined}
-          />
+        <StatsCard
+          title="Total Productos"
+          value={totalProductos}
+          icon="lucide:package"
+          color="primary"
+          description="Items registrados"
+          onClick={() => history.push('/inventario')}
+        />
+        <StatsCard
+          title="Con Stock"
+          value={productosConStock}
+          icon="lucide:check-circle"
+          color="success"
+          description="Disponibles para uso"
+        />
+        <StatsCard
+          title="Sin Stock"
+          value={productosSinStock}
+          icon="lucide:x-circle"
+          color="danger"
+          description="Agotados"
+        />
+        <StatsCard
+          title="Stock Bajo"
+          value={productosBajoStock.length}
+          icon="lucide:alert-triangle"
+          color="warning"
+          description="Requieren reposición"
+          onClick={productosBajoStock.length > 0 ? () => history.push('/inventario') : undefined}
+        />
       </motion.div>
 
       {/* Alerta de Productos con Stock Bajo */}
@@ -112,15 +116,15 @@ export const DashboardBodega: React.FC = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, delay: 0.2 }}
         >
-          <Card className="shadow-sm border border-warning-200">
-            <CardHeader className="pb-0 pt-4 px-4 flex justify-between items-center">
+          <Card className="shadow-sm border-t-4 border-warning bg-white dark:bg-content1">
+            <CardHeader className="pb-0 pt-6 px-6 flex justify-between items-center bg-white dark:bg-content1">
               <div>
-                <h3 className="text-lg font-semibold flex items-center gap-2 text-warning">
-                  <Icon icon="lucide:alert-triangle" />
+                <h3 className="text-lg font-bold flex items-center gap-2 text-secondary">
+                  <Icon icon="lucide:alert-triangle" className="text-warning" />
                   Productos con Stock Bajo
                 </h3>
-                <p className="text-default-500 text-sm">
-                  {productosBajoStock.length} producto{productosBajoStock.length !== 1 ? 's' : ''} necesita{productosBajoStock.length === 1 ? '' : 'n'} atención
+                <p className="text-default-500 text-sm mt-1">
+                  Atención requerida: {productosBajoStock.length} producto{productosBajoStock.length !== 1 ? 's' : ''} bajo el mínimo.
                 </p>
               </div>
               <Button
@@ -129,33 +133,38 @@ export const DashboardBodega: React.FC = () => {
                 variant="flat"
                 onPress={() => history.push('/inventario')}
                 endContent={<Icon icon="lucide:arrow-right" />}
+                className="font-medium"
               >
-                Ver Inventario
+                Ver Inventario Completo
               </Button>
             </CardHeader>
-            <CardBody className="px-4 pb-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            <CardBody className="px-6 pb-6 pt-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {productosBajoStock.slice(0, 6).map((producto) => (
-                  <div 
+                  <div
                     key={producto.id}
-                    className="p-4 border border-warning-200 rounded-lg bg-default-50 dark:bg-default-900/10 hover:shadow-md transition-shadow cursor-pointer"
+                    className="p-4 border border-default-200 rounded-lg hover:border-warning-300 hover:shadow-md transition-all cursor-pointer bg-default-50/50 dark:bg-default-50/5 group"
                     onClick={() => history.push(`/movimientos-producto/${producto.id}`)}
                   >
                     <div className="flex justify-between items-start mb-2">
-                      <p className="font-semibold text-sm">{producto.nombre}</p>
-                      <Icon icon="lucide:arrow-right" className="text-warning text-sm" />
+                      <p className="font-bold text-secondary text-sm group-hover:text-warning-700 transition-colors">{producto.nombre}</p>
+                      <Icon icon="lucide:arrow-right" className="text-default-300 group-hover:text-warning transition-colors text-sm" />
                     </div>
-                    <div className="space-y-1">
-                      <p className="text-xs text-default-600">
-                        Stock actual: <span className="font-semibold text-warning">{producto.stock}</span> {producto.unidadMedida}
-                      </p>
-                      <p className="text-xs text-default-500">
-                        Mínimo: {producto.stockMinimo} {producto.unidadMedida}
-                      </p>
+                    <div className="space-y-1.5">
+                      <div className="flex justify-between items-center text-xs">
+                        <span className="text-default-500">Stock actual:</span>
+                        <span className="font-bold text-warning-600 bg-warning-50 px-2 py-0.5 rounded-full">{producto.stock} {producto.unidadMedida}</span>
+                      </div>
+                      <div className="flex justify-between items-center text-xs">
+                        <span className="text-default-500">Mínimo requerido:</span>
+                        <span className="font-medium text-default-700">{producto.stockMinimo} {producto.unidadMedida}</span>
+                      </div>
                       {producto.categoria && (
-                        <p className="text-xs text-default-400">
-                          {producto.categoria}
-                        </p>
+                        <div className="pt-1 mt-1 border-t border-default-100">
+                          <span className="text-[10px] uppercase font-semibold text-default-400 tracking-wider">
+                            {producto.categoria}
+                          </span>
+                        </div>
                       )}
                     </div>
                   </div>
@@ -165,10 +174,11 @@ export const DashboardBodega: React.FC = () => {
                 <div className="mt-4 text-center">
                   <Button
                     size="sm"
-                    variant="flat"
+                    variant="light"
+                    color="warning"
                     onPress={() => history.push('/inventario')}
                   >
-                    Ver todos los productos ({productosBajoStock.length})
+                    Ver {productosBajoStock.length - 6} más...
                   </Button>
                 </div>
               )}
@@ -183,46 +193,46 @@ export const DashboardBodega: React.FC = () => {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, delay: 0.3 }}
       >
-        <Card className="shadow-sm">
-          <CardHeader className="pb-0 pt-4 px-4">
-            <h3 className="text-lg font-semibold">Acciones Rápidas</h3>
+        <Card className="shadow-sm border-t-4 border-primary bg-white dark:bg-content1">
+          <CardHeader className="pb-0 pt-6 px-6 bg-white dark:bg-content1">
+            <h3 className="text-lg font-bold text-secondary">Acciones Rápidas</h3>
           </CardHeader>
-          <CardBody className="px-4 pb-4">
+          <CardBody className="px-6 pb-6 pt-4">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <Button
                 color="primary"
-                variant="bordered"
-                startContent={<Icon icon="lucide:package" />}
+                variant="flat"
+                startContent={<Icon icon="lucide:package" width={24} />}
                 onPress={() => history.push('/inventario')}
-                className="h-20"
+                className="h-24 justify-start px-6 bg-primary-50 dark:bg-primary-900/20 hover:bg-primary-100/80 dark:hover:bg-primary-900/30 border border-primary-100 dark:border-primary-900/50"
               >
-                <div className="text-left">
-                  <p className="font-semibold">Gestionar Inventario</p>
-                  <p className="text-xs text-default-500">Ver y editar productos</p>
+                <div className="text-left ml-2">
+                  <p className="font-bold text-primary-900 text-medium">Gestionar Inventario</p>
+                  <p className="text-xs text-primary-600/80 font-medium mt-1">Ver y editar productos</p>
                 </div>
               </Button>
               <Button
                 color="success"
-                variant="bordered"
-                startContent={<Icon icon="lucide:plus-circle" />}
-                onPress={() => history.push('/inventario')}
-                className="h-20"
+                variant="flat"
+                startContent={<Icon icon="lucide:plus-circle" width={24} />}
+                onPress={() => history.push('/inventario')} // Assuming logic to open creation modal exists or navigates
+                className="h-24 justify-start px-6 bg-success-50 dark:bg-success-900/20 hover:bg-success-100/80 dark:hover:bg-success-900/30 border border-success-100 dark:border-success-900/50"
               >
-                <div className="text-left">
-                  <p className="font-semibold">Agregar Producto</p>
-                  <p className="text-xs text-default-500">Crear nuevo producto</p>
+                <div className="text-left ml-2">
+                  <p className="font-bold text-success-900 text-medium">Agregar Producto</p>
+                  <p className="text-xs text-success-600/80 font-medium mt-1">Crear nuevo ítem</p>
                 </div>
               </Button>
               <Button
                 color="warning"
-                variant="bordered"
-                startContent={<Icon icon="lucide:trending-down" />}
+                variant="flat"
+                startContent={<Icon icon="lucide:history" width={24} />}
                 onPress={() => history.push('/movimientos-producto')}
-                className="h-20"
+                className="h-24 justify-start px-6 bg-warning-50 dark:bg-warning-900/20 hover:bg-warning-100/80 dark:hover:bg-warning-900/30 border border-warning-100 dark:border-warning-900/50"
               >
-                <div className="text-left">
-                  <p className="font-semibold">Ver Movimientos</p>
-                  <p className="text-xs text-default-500">Historial de cambios</p>
+                <div className="text-left ml-2">
+                  <p className="font-bold text-warning-900 text-medium">Ver Movimientos</p>
+                  <p className="text-xs text-warning-600/80 font-medium mt-1">Historial de cambios</p>
                 </div>
               </Button>
             </div>

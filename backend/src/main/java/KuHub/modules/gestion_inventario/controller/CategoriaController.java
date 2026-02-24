@@ -74,7 +74,7 @@ public class CategoriaController {
     }
 
     /**✅ FUNCIONAL IMPLEMENTADO EN EL FRONT*/
-    @PatchMapping("/change-products-to-another-category")
+    @PutMapping("/change-products-to-another-category")
     public ResponseEntity<String> changeProductsToAnotherCategory(
             @RequestBody ChangeProductsToAnotherCategoryDTO dto){
         return ResponseEntity
