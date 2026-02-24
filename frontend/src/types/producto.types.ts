@@ -30,6 +30,14 @@ export interface IMovimientoProducto {
 }
 
 /**
+ * Interfaz para la respuesta del endpoint de filtros del inventario
+ */
+export interface IFiltrosInventarioResponse {
+  categorias: Array<{ id: number; nombre: string }>;
+  unidades: Array<{ id: number; nombre: string }>;
+}
+
+/**
  * Interfaz para los datos de creación de un producto.
  */
 export interface ICrearProducto {
@@ -56,4 +64,48 @@ export interface ICrearMovimiento {
   tipo: 'Entrada' | 'Salida' | 'Merma';
   cantidad: number;
   observacion: string;
+}
+
+/**
+ * Interfaz para la solicitud de inventario paginado.
+ */
+export interface IInventoryPageRequest {
+  categoriasIds: number[];
+  unidadesIds: number[];
+  soloStockBajo: boolean;
+  page: number;
+}
+
+/**
+ * Interfaz para un item individual en la respuesta de inventario paginado.
+ * Basado en la nueva estructura anidada del backend.
+ */
+export interface IInventoryPageItem {
+  idInventario: number;
+  producto: {
+    idProducto: number;
+    nombre: string;
+    categoria: {
+      idCategoria: number;
+      nombre: string;
+    };
+    unidad: {
+      idUnidad: number;
+      nombre: string;
+    };
+  };
+  stockActual: number;
+  stockMinimo: number;
+  stockBajo: boolean;
+}
+
+/**
+ * Interfaz para la respuesta completa de inventario paginado.
+ */
+export interface IInventoryPageResponse {
+  items: IInventoryPageItem[];
+  page: number;
+  pageSize: number;
+  totalPages: number;
+  totalItems: number;
 }

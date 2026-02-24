@@ -2,11 +2,23 @@ package KuHub.modules.gestion_inventario.services;
 
 import KuHub.modules.gestion_inventario.dtos.InventoryWithProductCreateDTO;
 import KuHub.modules.gestion_inventario.dtos.InventoryWithProductResponseAnswerUpdateDTO;
+import KuHub.modules.gestion_inventario.dtos.request.dto.FilterInventoryPageDTO;
+import KuHub.modules.gestion_inventario.dtos.request.dto.InventoryPageResponseDTO;
+import KuHub.modules.gestion_inventario.dtos.response.InventoryFiltersDTO;
 import KuHub.modules.gestion_inventario.entity.Inventario;
 
 import java.util.List;
 
 public interface InventarioService {
+
+    InventoryPageResponseDTO getPagedInventory(FilterInventoryPageDTO filter);
+    InventoryFiltersDTO getFiltersInventory();
+
+
+
+
+
+
     //InventarioDTO save(InventarioDTO dto);
     /**
     List<Inventario> findAll();
