@@ -1,8 +1,9 @@
 package KuHub.modules.gestion_inventario.dtos;
 
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.*;
 import lombok.*;
+
+import java.math.BigDecimal;
 
 @Getter
 @Setter
@@ -14,14 +15,15 @@ public class MotionCreateDTO {
     @NotNull(message = "El ID del inventario es obligatorio")
     private Integer idInventario;
 
-    @NotNull(message = "La cantidad (stock) es obligatoria")
-    @Positive(message = "El movimiento debe ser mayor a 0")
-    private Double stockMovimiento;
+    @NotNull(message = "La cantidad del movimiento es obligatoria")
+    // Cambiamos a DecimalMin para manejar la precisión de BigDecimal correctamente
+    @DecimalMin(value = "0.001", message = "El movimiento debe ser mayor a 0")
+    @Digits(integer = 7, fraction = 3, message = "El movimiento debe tener máximo 7 enteros y 3 decimales")
+    private BigDecimal stockMovimiento;
 
-    private Double stockLimitMin;
-
-    @NotNull(message = "El tipo de movimiento es obligatorio")
+    @NotBlank(message = "El tipo de movimiento es obligatorio")
     private String tipoMovimiento;
 
+    @Size(max = 150, message = "La observación no puede exceder los 150 caracteres")
     private String observacion;
 }

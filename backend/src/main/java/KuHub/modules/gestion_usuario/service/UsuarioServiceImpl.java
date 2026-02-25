@@ -48,6 +48,24 @@ public class UsuarioServiceImpl implements UsuarioService {
 
     @Override
     @Transactional(readOnly = true)
+    public Usuario findUserByUsernameOrEmail(String identifier){
+        return usuarioRepository.findByIdentifier(identifier).orElseThrow(
+                ()-> new UsuarioException("Usuario no encontrado", HttpStatus.NOT_FOUND)
+        );
+    }
+
+
+
+
+
+
+
+
+
+
+
+    @Override
+    @Transactional(readOnly = true)
     public UserAuth loginDetails(String usernameOrEmail, String password) {
         UserAuthProjection data = usuarioRepository.findUserAuth(usernameOrEmail)
                 .orElseThrow(() -> new RuntimeException("Credenciales incorrectas o usuario inactivo"));
@@ -432,7 +450,7 @@ public class UsuarioServiceImpl implements UsuarioService {
                 .getContext().getAuthentication().getName();
 
         // 2. Buscar al usuario usando el método flexible findByIdentificador que ya creamos
-        Usuario usuario = usuarioRepository.findByIdentificador(identificador)
+        Usuario usuario = usuarioRepository.findByIdentifier(identificador)
                 .orElseThrow(() -> new RuntimeException("Usuario del token no encontrado: " + identificador));
 
         if (foto != null && !foto.isEmpty()) {

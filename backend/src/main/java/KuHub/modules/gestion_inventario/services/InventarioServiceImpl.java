@@ -1,11 +1,20 @@
 package KuHub.modules.gestion_inventario.services;
 
+import KuHub.modules.gestion_inventario.dtos.InventoryWithProductCreateDTO;
+import KuHub.modules.gestion_inventario.dtos.MotionCreateDTO;
 import KuHub.modules.gestion_inventario.dtos.request.dto.FilterInventoryPageDTO;
 import KuHub.modules.gestion_inventario.dtos.response.InventoriesPageDTO;
 import KuHub.modules.gestion_inventario.dtos.response.InventoryFiltersDTO;
 import KuHub.modules.gestion_inventario.dtos.response.InventoryPageDTO;
+import KuHub.modules.gestion_inventario.entity.Categoria;
+import KuHub.modules.gestion_inventario.entity.Inventario;
+import KuHub.modules.gestion_inventario.entity.Producto;
+import KuHub.modules.gestion_inventario.entity.UnidadMedida;
+import KuHub.modules.gestion_inventario.exceptions.InventarioException;
 import KuHub.modules.gestion_inventario.repository.InventarioRepository;
 import KuHub.modules.gestion_inventario.repository.ProductoRepository;
+import KuHub.modules.gestion_inventario.repository.UnidadaMedidaRepository;
+import KuHub.utils.StringUtils;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -34,10 +43,49 @@ public class InventarioServiceImpl implements InventarioService {
     private ProductoRepository productoRepository;
 
     @Autowired
+    private CategoriaService categoriaService;
+
+    @Autowired
+    private UnidadMedidaService unidadMedidaService;
+
+    @Autowired
     private MovimientoService movimientoService;
 
     @Autowired
     private ObjectMapper objectMapper;
+
+    @Transactional(readOnly = true)
+    @Override
+    public Inventario findById(Integer id) {
+        return inventarioRepository.findById(id).orElseThrow(
+                () -> new InventarioException("No se encontro el producto con el id: " + id)
+        );
+    }
+
+
+    /*****************************************************************************************
+     * BUSQUEDA DE INVENTARIO CON PAGINACION DINAMICA ASIMETRICA (20/10 ITEMS)
+     * - METODO-Realiza la localización de productos mediante búsqueda por nombre o
+     * descripción, retornando 20 resultados en la carga inicial y 10 en las siguientes
+     * para optimizar el rendimiento y la experiencia de usuario.
+     * - METODO-Realiza calculo y consulta dinamica para filtros seleccionados (20/10 ITEMS)
+     *****************************************************************************************/
+
+    /**
+     * 🔹 Combos de filtros (categorías + unidades), usado para seleccion multipla
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public InventoryFiltersDTO getFiltersInventory() {
+
+        String json = inventarioRepository.getFiltersInventory();
+
+        try {
+            return objectMapper.readValue(json, InventoryFiltersDTO.class);
+        } catch (Exception e) {
+            throw new RuntimeException("Error parseando filtros de inventario", e);
+        }
+    }
 
     @Override
     @Transactional(readOnly = true)
@@ -52,7 +100,7 @@ public class InventarioServiceImpl implements InventarioService {
         long totalRegistros = inventarioRepository.countSearchInventario(term);
 
         // 3️⃣ TOTAL PÁGINAS (Reutilizamos tu método privado calcularTotalPaginas)
-        int totalPaginas = calcularTotalPaginas(totalRegistros);
+        int totalPaginas = calculateTotalPages(totalRegistros);
 
         // 4️⃣ Ajuste de página solicitada
         int page = (pageRequested != null && pageRequested > 0) ? pageRequested : 1;
@@ -122,7 +170,7 @@ public class InventarioServiceImpl implements InventarioService {
         );
 
         // 2️⃣ TOTAL PÁGINAS
-        int totalPaginas = calcularTotalPaginas(totalRegistros);
+        int totalPaginas = calculateTotalPages(totalRegistros);
 
         // 3️⃣ página solicitada
         int page = filter.getPage() != null && filter.getPage() > 0
@@ -169,7 +217,61 @@ public class InventarioServiceImpl implements InventarioService {
         );
     }
 
-    private int calcularTotalPaginas(long totalRegistros) {
+    @Transactional
+    @Override
+    public boolean saveInventoryWithProduct (InventoryWithProductCreateDTO request){
+        String nombreProducto = StringUtils.capitalizarPalabras(request.getNombreProducto());
+        String codigoProducto = StringUtils.normalizeSpaces(request.getCodigoProducto());
+        // 1. Validaciones de negocio
+        if (productoRepository.existsByNombreProducto(nombreProducto)){
+            throw new InventarioException("El producto ya existe");
+        }
+        if (codigoProducto != null && !codigoProducto.isBlank()) {
+            if (productoRepository.existsBycodProductoAndActivo(codigoProducto, true)) {
+                throw new InventarioException("El código '" + codigoProducto + "' ya está asignado a otro producto activo");
+            }
+        }
+        Categoria categoria = categoriaService.findById(request.getIdCategoria());
+        UnidadMedida unidadMedida = unidadMedidaService.findById(request.getIdUnidadMedida());
+
+        //Crear Producto
+        Producto newProducto = new Producto();
+        newProducto.setNombreProducto(nombreProducto);
+        newProducto.setCodProducto(codigoProducto);
+        newProducto.setDescripcionProducto(request.getDescripcionProducto());
+        newProducto.setCategoria(categoria);
+        newProducto.setUnidadMedida(unidadMedida);
+        productoRepository.save(newProducto);
+
+        //Crear y guardar el Inventario
+        Inventario newInventario = new Inventario();
+        newInventario.setStockLimit(request.getStockLimit());
+        newInventario.setStock(request.getStock());
+        newInventario.setProducto(newProducto);
+        newInventario = inventarioRepository.save(newInventario);
+
+        // CREAR MOVIMIENTO DE ENTRADA INICIAL
+        // Solo creamos el movimiento si el stock inicial es mayor a 0
+        if (newInventario.getStock().compareTo(BigDecimal.ZERO) > 0) {
+            MotionCreateDTO motion = new MotionCreateDTO();
+            motion.setTipoMovimiento("ENTRADA");
+            motion.setIdInventario(newInventario.getIdInventario());
+            motion.setStockMovimiento(newInventario.getStock());
+            motion.setObservacion("ENTRADA INICIAL EN CREACIÓN DE PRODUCTO EN INVENTARIO ->" + newProducto.getNombreProducto());
+            // Enviamos el objeto 'newInventario' para evitar que saveMotion lo busque de nuevo en la DB
+            boolean validar = movimientoService.saveMotion(motion,newInventario);
+            if (!validar) {
+                throw new InventarioException("No se pudo crear el movimiento de entrada inicial");
+            }
+        }
+        return true;
+    }
+
+
+    /**
+     * METODOS PRIVADOS PARA MENEJO IMPLEMENTADO EN LA LOGICA DE GESTION DE PAGINACION Y LISTADO DINAMICO
+     * */
+    private int calculateTotalPages(long totalRegistros) {
         if (totalRegistros <= 0) {
             return 0;
         }
@@ -179,21 +281,7 @@ public class InventarioServiceImpl implements InventarioService {
         return 1 + (int) Math.ceil((totalRegistros - 20) / 10.0);
     }
 
-    /**
-     * 🔹 Combos de filtros (categorías + unidades)
-     */
-    @Override
-    @Transactional(readOnly = true)
-    public InventoryFiltersDTO getFiltersInventory() {
 
-        String json = inventarioRepository.getFiltersInventory();
-
-        try {
-            return objectMapper.readValue(json, InventoryFiltersDTO.class);
-        } catch (Exception e) {
-            throw new RuntimeException("Error parseando filtros de inventario", e);
-        }
-    }
 
     /**
      * METODOS PRIVADOS MAPEOS
@@ -226,13 +314,7 @@ public class InventarioServiceImpl implements InventarioService {
         return inventarioRepository.findInventoriesWithProductsActive(activo);
     }
 
-    @Transactional(readOnly = true)
-    @Override
-    public Inventario findById(Integer id) {
-        return inventarioRepository.findById(id).orElseThrow(
-                () -> new InventarioException("No se encontro el producto con el id: " + id)
-        );
-    }
+
 
     @Transactional(readOnly = true)
     @Override

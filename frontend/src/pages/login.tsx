@@ -1,6 +1,6 @@
 import React from 'react';
 import { useHistory } from 'react-router-dom';
-import { Card, CardBody, Input, Button, Checkbox, Divider } from '@heroui/react';
+import { Card, CardBody, Input, Button, Checkbox, Divider, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, useDisclosure } from '@heroui/react';
 import { Icon } from '@iconify/react';
 import { useAuth } from '../contexts/auth-context';
 import { motion } from 'framer-motion';
@@ -76,9 +76,12 @@ const LoginPage: React.FC = () => {
   const [isLoading, setIsLoading] = React.useState<boolean>(false);
   const [error, setError] = React.useState<string | null>(null);
   const [selectedDemo, setSelectedDemo] = React.useState<string | null>(null);
+  const [showDemos, setShowDemos] = React.useState<boolean>(false);
+  const [recoveryEmail, setRecoveryEmail] = React.useState<string>('');
 
   const { login } = useAuth();
   const history = useHistory();
+  const { isOpen, onOpen, onOpenChange } = useDisclosure();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -251,6 +254,7 @@ const LoginPage: React.FC = () => {
                   size="sm"
                   className="text-primary-600 dark:text-primary-400 text-sm font-medium h-auto p-0"
                   isDisabled={isLoading}
+                  onPress={onOpen}
                 >
                   ¿Olvidó su contraseña?
                 </Button>
@@ -269,60 +273,68 @@ const LoginPage: React.FC = () => {
               </Button>
             </form>
 
-            <Divider className="my-6" />
+            {showDemos && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                transition={{ duration: 0.4 }}
+              >
+                <Divider className="my-6" />
 
-            <div className="space-y-4">
-              <div className="text-center">
-                <p className="text-sm font-bold text-default-700 dark:text-default-300 mb-1 uppercase tracking-wider text-xs">
-                  Accesos Rápidos (Demo)
-                </p>
-                <p className="text-[10px] text-default-400">
-                  Selecciona un rol para probar el sistema
-                </p>
-              </div>
+                <div className="space-y-4">
+                  <div className="text-center">
+                    <p className="text-sm font-bold text-default-700 dark:text-default-300 mb-1 uppercase tracking-wider text-xs">
+                      Accesos Rápidos (Demo)
+                    </p>
+                    <p className="text-[10px] text-default-400">
+                      Selecciona un rol para probar el sistema
+                    </p>
+                  </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                {DEMO_USERS.map((demoUser) => (
-                  <Button
-                    key={demoUser.key}
-                    variant={selectedDemo === demoUser.key ? "solid" : "bordered"}
-                    color={selectedDemo === demoUser.key ? "primary" : "default"}
-                    onPress={() => handleDemoSelect(demoUser.key)}
-                    isDisabled={isLoading}
-                    className={`h-auto py-3 px-3 justify-start ${selectedDemo === demoUser.key ? 'text-secondary font-bold' : 'text-default-600 dark:text-default-300 border-default-200 dark:border-default-100'}`}
-                  >
-                    <div className="flex items-center gap-3 w-full">
-                      <div className={`p-1.5 rounded-lg ${selectedDemo === demoUser.key ? 'bg-secondary/20' : 'bg-default-100 dark:bg-default-100/10'}`}>
-                        <Icon
-                          icon={demoUser.icono}
-                          className="text-lg"
-                        />
-                      </div>
-                      <div className="flex flex-col items-start text-left overflow-hidden">
-                        <span className="text-xs font-bold truncate w-full">
-                          {demoUser.nombre}
-                        </span>
-                        <span className="text-[10px] opacity-70 truncate w-full">
-                          {demoUser.descripcion}
-                        </span>
-                      </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    {DEMO_USERS.map((demoUser) => (
+                      <Button
+                        key={demoUser.key}
+                        variant={selectedDemo === demoUser.key ? "solid" : "bordered"}
+                        color={selectedDemo === demoUser.key ? "primary" : "default"}
+                        onPress={() => handleDemoSelect(demoUser.key)}
+                        isDisabled={isLoading}
+                        className={`h-auto py-3 px-3 justify-start ${selectedDemo === demoUser.key ? 'text-secondary font-bold' : 'text-default-600 dark:text-default-300 border-default-200 dark:border-default-100'}`}
+                      >
+                        <div className="flex items-center gap-3 w-full">
+                          <div className={`p-1.5 rounded-lg ${selectedDemo === demoUser.key ? 'bg-secondary/20' : 'bg-default-100 dark:bg-default-100/10'}`}>
+                            <Icon
+                              icon={demoUser.icono}
+                              className="text-lg"
+                            />
+                          </div>
+                          <div className="flex flex-col items-start text-left overflow-hidden">
+                            <span className="text-xs font-bold truncate w-full">
+                              {demoUser.nombre}
+                            </span>
+                            <span className="text-[10px] opacity-70 truncate w-full">
+                              {demoUser.descripcion}
+                            </span>
+                          </div>
+                        </div>
+                      </Button>
+                    ))}
+                  </div>
+
+                  <div className="bg-warning-50 dark:bg-warning-50/5 border border-warning-200 dark:border-warning-100/20 rounded-lg p-3 mt-4">
+                    <div className="flex items-start gap-2">
+                      <Icon
+                        icon="lucide:lightbulb"
+                        className="text-warning-600 text-lg flex-shrink-0 mt-0.5"
+                      />
+                      <p className="text-[10px] text-warning-800 dark:text-warning-300 leading-relaxed font-medium">
+                        <strong>Tip:</strong> Entorno de demostración. Las contraseñas son autocompletadas para facilitar las pruebas.
+                      </p>
                     </div>
-                  </Button>
-                ))}
-              </div>
-
-              <div className="bg-warning-50 dark:bg-warning-50/5 border border-warning-200 dark:border-warning-100/20 rounded-lg p-3 mt-4">
-                <div className="flex items-start gap-2">
-                  <Icon
-                    icon="lucide:lightbulb"
-                    className="text-warning-600 text-lg flex-shrink-0 mt-0.5"
-                  />
-                  <p className="text-[10px] text-warning-800 dark:text-warning-300 leading-relaxed font-medium">
-                    <strong>Tip:</strong> Entorno de demostración. Las contraseñas son autocompletadas para facilitar las pruebas.
-                  </p>
+                  </div>
                 </div>
-              </div>
-            </div>
+              </motion.div>
+            )}
           </CardBody>
         </Card>
 
@@ -330,6 +342,74 @@ const LoginPage: React.FC = () => {
           © {new Date().getFullYear()} KuHub - Sistema de Gestión Gastronómica DuocUC
         </p>
       </motion.div>
+
+      {/* Modal de Recuperación de Contraseña */}
+      <Modal
+        isOpen={isOpen}
+        onOpenChange={onOpenChange}
+        backdrop="blur"
+        classNames={{
+          backdrop: "bg-gradient-to-t from-zinc-900/50 to-zinc-900/80 backdrop-opacity-20"
+        }}
+      >
+        <ModalContent>
+          {(onClose) => (
+            <>
+              <ModalHeader className="flex flex-col gap-1 border-b border-default-100">
+                <div className="flex items-center gap-2">
+                  <div className="p-2 bg-primary/10 rounded-lg">
+                    <Icon icon="lucide:key-round" className="text-primary text-xl" />
+                  </div>
+                  <span className="text-xl font-bold text-secondary dark:text-foreground">Recuperar Contraseña</span>
+                </div>
+              </ModalHeader>
+              <ModalBody className="py-6">
+                <p className="text-sm text-default-500 mb-4">
+                  Ingrese su correo electrónico institucional para recibir las instrucciones de recuperación.
+                </p>
+                <div className="space-y-4">
+                  <Input
+                    label="Correo Electrónico"
+                    placeholder="ejemplo@duoc.cl"
+                    value={recoveryEmail}
+                    onValueChange={setRecoveryEmail}
+                    variant="bordered"
+                    startContent={<Icon icon="lucide:mail" className="text-default-400" />}
+                    classNames={{
+                      inputWrapper: "bg-default-50 dark:bg-default-100/50"
+                    }}
+                  />
+                  <div className="bg-primary/5 p-4 rounded-xl border border-primary/10 flex gap-3">
+                    <Icon icon="lucide:info" className="text-primary mt-1 flex-shrink-0" />
+                    <p className="text-xs text-secondary-600 dark:text-secondary-300 leading-relaxed">
+                      Se enviará un código de verificación temporal a su bandeja de entrada. Si no lo recibe, contacte al administrador del sistema.
+                    </p>
+                  </div>
+                </div>
+              </ModalBody>
+              <ModalFooter className="border-t border-default-100">
+                <Button variant="light" onPress={onClose} className="font-medium">
+                  Cancelar
+                </Button>
+                <Button
+                  color="primary"
+                  className="font-bold text-secondary shadow-md"
+                  onPress={() => {
+                    if (recoveryEmail === 'adminquestweb') {
+                      setShowDemos(true);
+                      console.log('🔓 Demos revelados vía código secreto');
+                    }
+                    setRecoveryEmail('');
+                    onClose();
+                  }}
+                >
+                  Enviar Instrucciones
+                </Button>
+              </ModalFooter>
+            </>
+          )}
+        </ModalContent>
+      </Modal>
     </div>
   );
 };

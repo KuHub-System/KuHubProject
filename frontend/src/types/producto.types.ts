@@ -43,8 +43,9 @@ export interface IFiltrosInventarioResponse {
 export interface ICrearProducto {
   nombre: string;
   descripcion: string;
-  categoria: string;
-  unidadMedida: string;
+  codProducto?: string;
+  idCategoria: number;
+  idUnidadMedida: number;
   stock: number;
   stockMinimo: number;
 }
@@ -52,8 +53,15 @@ export interface ICrearProducto {
 /**
  * Interfaz para los datos de actualización de un producto.
  */
-export interface IActualizarProducto extends Partial<ICrearProducto> {
+export interface IActualizarProducto {
   id: string;
+  nombre?: string;
+  descripcion?: string;
+  codProducto?: string;
+  categoria?: string;
+  unidadMedida?: string;
+  stock?: number;
+  stockMinimo?: number;
 }
 
 /**
