@@ -1,18 +1,11 @@
 package KuHub.modules.gestion_inventario.services;
 
-import KuHub.modules.gestion_inventario.dtos.InventoryWithProductCreateDTO;
-import KuHub.modules.gestion_inventario.dtos.InventoryWithProductResponseAnswerUpdateDTO;
-import KuHub.modules.gestion_inventario.dtos.MotionCreateDTO;
 import KuHub.modules.gestion_inventario.dtos.request.dto.FilterInventoryPageDTO;
-import KuHub.modules.gestion_inventario.dtos.request.dto.InventoryPageDTO;
-import KuHub.modules.gestion_inventario.dtos.request.dto.InventoryPageResponseDTO;
+import KuHub.modules.gestion_inventario.dtos.response.InventoriesPageDTO;
 import KuHub.modules.gestion_inventario.dtos.response.InventoryFiltersDTO;
-import KuHub.modules.gestion_inventario.entity.Inventario;
-import KuHub.modules.gestion_inventario.exceptions.InventarioException;
+import KuHub.modules.gestion_inventario.dtos.response.InventoryPageDTO;
 import KuHub.modules.gestion_inventario.repository.InventarioRepository;
-import KuHub.modules.gestion_inventario.entity.Producto;
 import KuHub.modules.gestion_inventario.repository.ProductoRepository;
-import KuHub.utils.StringUtils;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -24,6 +17,7 @@ import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -47,7 +41,57 @@ public class InventarioServiceImpl implements InventarioService {
 
     @Override
     @Transactional(readOnly = true)
-    public InventoryPageResponseDTO getPagedInventory(FilterInventoryPageDTO filter) {
+    public InventoriesPageDTO searchInventory(String searchTerm, Integer pageRequested) {
+
+        // 1️⃣ Limpieza del término de búsqueda
+        String term = (searchTerm == null || searchTerm.trim().isEmpty()) ? "" : searchTerm.trim();
+
+        log.debug("🔍 searchInventory - Term: '{}', Page: {}", term, pageRequested);
+
+        // 2️⃣ COUNT (Usando la nueva consulta de búsqueda)
+        long totalRegistros = inventarioRepository.countSearchInventario(term);
+
+        // 3️⃣ TOTAL PÁGINAS (Reutilizamos tu método privado calcularTotalPaginas)
+        int totalPaginas = calcularTotalPaginas(totalRegistros);
+
+        // 4️⃣ Ajuste de página solicitada
+        int page = (pageRequested != null && pageRequested > 0) ? pageRequested : 1;
+        if (page > totalPaginas && totalPaginas > 0) {
+            page = totalPaginas;
+        }
+
+        // 5️⃣ Cálculo de OFFSET / LIMIT (Misma lógica: Pág 1 -> 20, resto -> 10)
+        int limit;
+        int offset;
+        if (page == 1) {
+            limit = 20;
+            offset = 0;
+        } else {
+            limit = 10;
+            offset = 20 + (page - 2) * 10;
+        }
+
+        // 6️⃣ DATA (Llamada al repositorio con búsqueda por nombre/descripción)
+        List<Object[]> rows = inventarioRepository.searchInventarioPage(term, limit, offset);
+
+        // 7️⃣ Mapeo de resultados al DTO
+        List<InventoryPageDTO> data = rows.stream()
+                .map(this::mapToInventoryPageDTO)
+                .collect(Collectors.toList());
+
+        // 8️⃣ Retorno del DTO de respuesta
+        return new InventoriesPageDTO(
+                data,
+                page,
+                limit,
+                totalPaginas,
+                totalRegistros
+        );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public InventoriesPageDTO getPagedInventory(FilterInventoryPageDTO filter) {
 
         Integer[] categoriasIds = (filter.getCategoriasIds() == null || filter.getCategoriasIds().isEmpty())
                 ? null
@@ -112,23 +156,11 @@ public class InventarioServiceImpl implements InventarioService {
                 offset
         );
 
-        List<InventoryPageDTO> data = new ArrayList<>();
+        List<InventoryPageDTO> data = rows.stream()
+                .map(this::mapToInventoryPageDTO)
+                .collect(Collectors.toList());
 
-        for (Object[] r : rows) {
-            data.add(new InventoryPageDTO(
-                    ((Number) r[5]).intValue(), // id_inventario
-                    ((Number) r[6]).intValue(), // id_producto
-                    (String) r[0],              // nombre_producto
-                    ((Number) r[7]).intValue(), // id_categoria (SMALLINT)
-                    (String) r[1],              // nombre_categoria
-                    ((Number) r[8]).intValue(), // id_unidad (SMALLINT)
-                    (String) r[4],              // nombre_unidad
-                    (BigDecimal) r[2],          // stock
-                    (BigDecimal) r[3]           // stock_limit
-            ));
-        }
-
-        return new InventoryPageResponseDTO(
+        return new InventoriesPageDTO(
                 data,
                 page,
                 limit,
@@ -162,6 +194,24 @@ public class InventarioServiceImpl implements InventarioService {
             throw new RuntimeException("Error parseando filtros de inventario", e);
         }
     }
+
+    /**
+     * METODOS PRIVADOS MAPEOS
+     * */
+    private InventoryPageDTO mapToInventoryPageDTO(Object[] row) {
+        return new InventoryPageDTO(
+                ((Number) row[5]).intValue(), // id_inventario
+                ((Number) row[6]).intValue(), // id_producto
+                (String) row[0],              // nombre_producto
+                ((Number) row[7]).intValue(), // id_categoria
+                (String) row[1],              // nombre_categoria
+                ((Number) row[8]).intValue(), // id_unidad
+                (String) row[4],              // nombre_unidad
+                (BigDecimal) row[2],          // stock
+                (BigDecimal) row[3]           // stock_limit
+        );
+    }
+
 
     /**
     @Transactional(readOnly = true)

@@ -1,4 +1,4 @@
-package KuHub.modules.gestion_inventario.dtos.request;
+package KuHub.modules.gestion_inventario.dtos.request.dto;
 
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;

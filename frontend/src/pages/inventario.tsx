@@ -36,6 +36,7 @@ import {
   eliminarProductoService,
   obtenerFiltrosInventarioService,
   obtenerProductosPaginadosService,
+  buscarProductosService,
   transformarPageItemAProducto,
 } from '../services/producto-service';
 import { useToast, useConfirm } from '../hooks/useToast';
@@ -74,9 +75,11 @@ const InventarioPage: React.FC = () => {
   const [totalRegistros, setTotalRegistros] = React.useState<number>(0);
   const [isLoading, setIsLoading] = React.useState<boolean>(true);
   const [searchTerm, setSearchTerm] = React.useState<string>('');
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = React.useState<string>('');
   const [currentPage, setCurrentPage] = React.useState<number>(1);
   const [selectedFilters, setSelectedFilters] = React.useState<Set<string>>(new Set(['todas']));
   const filtersRef = React.useRef<Set<string>>(new Set(['todas']));
+  const searchTermRef = React.useRef<string>('');
   const [cache, setCache] = React.useState<Record<number, IProducto[]>>({});
   const cacheRef = React.useRef<Record<number, IProducto[]>>({});
   const rowsPerPage = 10;
@@ -108,36 +111,39 @@ const InventarioPage: React.FC = () => {
    * Carga de forma silenciosa la siguiente página de la API.
    */
   const prefetchSiguientePagina = React.useCallback(async (currentUiPage: number) => {
-    // Si UI es 1, ya tenemos API 1 (que sirve para UI 2). Siguiente API es 2.
-    // Si UI es 2, ya tenemos API 1. Siguiente API es 2.
-    // Si UI es 3 (API 2), siguiente API es 3.
-    // En general: si UI >= 2, prefetch API = UI.
     const apiPageToPrefetch = currentUiPage < 2 ? 2 : currentUiPage;
 
     if (cacheRef.current[apiPageToPrefetch] || apiPageToPrefetch > totalPaginas) return;
 
     try {
-      const currentFilters = Array.from(filtersRef.current);
+      let response;
+      const currentSearch = searchTermRef.current;
 
-      const categoriasIds = currentFilters
-        .filter(f => f && typeof f === 'string' && f.startsWith('cat-'))
-        .map(f => parseInt(f.replace('cat-', '')))
-        .filter(id => !isNaN(id));
+      if (currentSearch) {
+        console.log(`🚀 Prefetching Search Results API Page ${apiPageToPrefetch} para term: "${currentSearch}"`);
+        response = await buscarProductosService(currentSearch, apiPageToPrefetch);
+      } else {
+        const currentFilters = Array.from(filtersRef.current);
+        const categoriasIds = currentFilters
+          .filter(f => f && typeof f === 'string' && f.startsWith('cat-'))
+          .map(f => parseInt(f.replace('cat-', '')))
+          .filter(id => !isNaN(id));
 
-      const unidadesIds = currentFilters
-        .filter(f => f && typeof f === 'string' && f.startsWith('uni-'))
-        .map(f => parseInt(f.replace('uni-', '')))
-        .filter(id => !isNaN(id));
+        const unidadesIds = currentFilters
+          .filter(f => f && typeof f === 'string' && f.startsWith('uni-'))
+          .map(f => parseInt(f.replace('uni-', '')))
+          .filter(id => !isNaN(id));
 
-      const soloStockBajo = filtersRef.current.has('stock-bajo');
+        const soloStockBajo = filtersRef.current.has('stock-bajo');
 
-      console.log(`🚀 Prefetching API Page ${apiPageToPrefetch} con filtros:`, currentFilters);
-      const response = await obtenerProductosPaginadosService({
-        page: apiPageToPrefetch,
-        categoriasIds,
-        unidadesIds,
-        soloStockBajo
-      });
+        console.log(`🚀 Prefetching API Page ${apiPageToPrefetch} con filtros:`, currentFilters);
+        response = await obtenerProductosPaginadosService({
+          page: apiPageToPrefetch,
+          categoriasIds,
+          unidadesIds,
+          soloStockBajo
+        });
+      }
 
       const productosTransformados = response.items.map(transformarPageItemAProducto);
       cacheRef.current[apiPageToPrefetch] = productosTransformados;
@@ -149,12 +155,8 @@ const InventarioPage: React.FC = () => {
 
   /**
    * Carga los productos usando una caché local para manejar la asimetría del backend.
-   * UI Page 1 & 2 -> API Page 1 (20 items)
-   * UI Page 3 -> API Page 2 (10 items)
-   * UI Page n -> API Page n-1
    */
   const cargarProductosPaginados = React.useCallback(async (uiPage: number, forceFetch: boolean = false) => {
-    // Mapeo UI -> API
     const apiPage = uiPage <= 2 ? 1 : uiPage - 1;
 
     if (forceFetch) {
@@ -164,70 +166,64 @@ const InventarioPage: React.FC = () => {
       setCache({});
     }
 
-    // Verificar si ya tenemos los datos en caché
     if (!forceFetch && cacheRef.current[apiPage]) {
       console.log(`📦 Usando caché para API Page ${apiPage}`);
       setIsLoading(false);
-      setProductos(cacheRef.current[apiPage]); // Actualizar productos para filtros locales
-
-      // Prefetch de la siguiente página de API si es necesario
+      setProductos(cacheRef.current[apiPage]);
       prefetchSiguientePagina(uiPage);
       return;
     }
 
     try {
       setIsLoading(true);
+      let response;
+      const currentSearch = searchTermRef.current;
 
-      // Extraer IDs de filtros seleccionados (asegurando números desde el Ref para evitar cierres obsoletos)
-      const currentFilters = Array.from(filtersRef.current);
+      if (currentSearch) {
+        console.log(`🔍 Realizando búsqueda global para: "${currentSearch}", API Page: ${apiPage}`);
+        response = await buscarProductosService(currentSearch, apiPage);
+      } else {
+        const currentFilters = Array.from(filtersRef.current);
+        const categoriasIds = currentFilters
+          .filter(f => f && typeof f === 'string' && f.startsWith('cat-'))
+          .map(f => parseInt(f.replace('cat-', '')))
+          .filter(id => !isNaN(id));
 
-      const categoriasIds = currentFilters
-        .filter(f => f && typeof f === 'string' && f.startsWith('cat-'))
-        .map(f => parseInt(f.replace('cat-', '')))
-        .filter(id => !isNaN(id));
+        const unidadesIds = currentFilters
+          .filter(f => f && typeof f === 'string' && f.startsWith('uni-'))
+          .map(f => parseInt(f.replace('uni-', '')))
+          .filter(id => !isNaN(id));
 
-      const unidadesIds = currentFilters
-        .filter(f => f && typeof f === 'string' && f.startsWith('uni-'))
-        .map(f => parseInt(f.replace('uni-', '')))
-        .filter(id => !isNaN(id));
+        const soloStockBajo = filtersRef.current.has('stock-bajo');
 
-      const soloStockBajo = filtersRef.current.has('stock-bajo');
+        const requestBody = {
+          page: apiPage,
+          categoriasIds,
+          unidadesIds,
+          soloStockBajo,
+          pageSize: apiPage === 1 ? 20 : 10
+        };
 
-      const requestBody = {
-        page: apiPage,
-        categoriasIds,
-        unidadesIds,
-        soloStockBajo,
-        pageSize: apiPage === 1 ? 20 : 10
-      };
+        console.log('📦 Enviando request de inventario paginado:', requestBody);
+        response = await obtenerProductosPaginadosService(requestBody);
+      }
 
-      console.log('📦 Enviando request al backend:', requestBody);
-
-      const response = await obtenerProductosPaginadosService(requestBody);
-
-      // Transformar datos
       const productosTransformados = response.items.map(transformarPageItemAProducto);
-
       cacheRef.current[apiPage] = productosTransformados;
       setCache(prev => ({ ...prev, [apiPage]: productosTransformados }));
       setProductos(productosTransformados);
 
-      // El backend manda totalPages (basado en su lógica 20/10)
-      // Pero nosotros calculamos totalPaginas UI basado en 10 para todas las páginas
       console.log(`📊 Metadatos recibidos: totalItems=${response.totalItems}, totalPages=${response.totalPages}`);
 
       if (forceFetch || uiPage === 1 || totalRegistros === 0) {
         const calculatedUiPages = Math.ceil(response.totalItems / 10);
-        console.log(`🔢 Calculadas ${calculatedUiPages} páginas para la UI`);
         setTotalPaginas(calculatedUiPages);
         setTotalRegistros(response.totalItems);
       }
 
-      // Prefetch de la siguiente
       prefetchSiguientePagina(uiPage);
-
     } catch (error) {
-      logger.error('Error al cargar productos paginados:', error);
+      logger.error('Error al cargar productos:', error);
       toast.error('Error al cargar productos');
     } finally {
       setIsLoading(false);
@@ -264,11 +260,36 @@ const InventarioPage: React.FC = () => {
     };
   }, [cargarProductosPaginados, currentPage]);
 
+  // Lógica de Debounce para búsqueda (4 segundos)
+  React.useEffect(() => {
+    if (searchTerm === debouncedSearchTerm) return;
+
+    const handler = setTimeout(() => {
+      console.log(`⏳ Debounce completo: "${searchTerm}"`);
+      setDebouncedSearchTerm(searchTerm);
+      searchTermRef.current = searchTerm;
+
+      // Resetear estados para nueva búsqueda
+      cacheRef.current = {};
+      setCache({});
+      setCurrentPage(1);
+      cargarProductosPaginados(1, true);
+    }, 4000);
+
+    return () => clearTimeout(handler);
+  }, [searchTerm, debouncedSearchTerm, cargarProductosPaginados]);
+
   /**
-   * Filtra los productos localmente solo por el término de búsqueda.
-   * El filtrado por categorías/unidades ahora lo hace el backend.
+   * Filtra los productos localmente solo si no hay búsqueda global activa.
    */
   React.useEffect(() => {
+    // Si hay búsqueda global (debounced), no filtramos localmente 
+    // porque el backend ya nos trajo solo lo que coincide.
+    if (debouncedSearchTerm) {
+      setFilteredProductos(productos);
+      return;
+    }
+
     if (!searchTerm) {
       setFilteredProductos(productos);
       return;
@@ -280,7 +301,7 @@ const InventarioPage: React.FC = () => {
     );
 
     setFilteredProductos(filtered);
-  }, [searchTerm, productos]);
+  }, [searchTerm, debouncedSearchTerm, productos]);
 
   // Resetear página al cambiar filtros
   React.useEffect(() => {
@@ -816,6 +837,8 @@ const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto, onClo
         value={descripcion}
         onValueChange={setDescripcion}
         variant="bordered"
+        maxLength={100}
+        description={`${descripcion.length}/100`}
         classNames={{ inputWrapper: "bg-default-50 dark:bg-default-100/50" }}
       />
 

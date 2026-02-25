@@ -1,6 +1,6 @@
 package KuHub.modules.gestion_inventario.repository;
 
-import KuHub.modules.gestion_inventario.dtos.response.UnidadMedidaView;
+import KuHub.modules.gestion_inventario.dtos.response.proyeccion.UnidadMedidaView;
 import KuHub.modules.gestion_inventario.entity.UnidadMedida;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;

@@ -1,19 +1,14 @@
 package KuHub.modules.gestion_inventario.controller;
 
-import KuHub.modules.gestion_inventario.dtos.InventoryWithProductCreateDTO;
-import KuHub.modules.gestion_inventario.dtos.InventoryWithProductResponseAnswerUpdateDTO;
 import KuHub.modules.gestion_inventario.dtos.request.dto.FilterInventoryPageDTO;
-import KuHub.modules.gestion_inventario.dtos.request.dto.InventoryPageResponseDTO;
+import KuHub.modules.gestion_inventario.dtos.request.dto.SearchDTO;
+import KuHub.modules.gestion_inventario.dtos.response.InventoriesPageDTO;
 import KuHub.modules.gestion_inventario.dtos.response.InventoryFiltersDTO;
-import KuHub.modules.gestion_inventario.entity.Inventario;
 import KuHub.modules.gestion_inventario.services.InventarioService;
-import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 //Porto du Phonk ahora 8080
 @RestController
@@ -30,8 +25,23 @@ public class InventarioController {
     * ✅ En uso: Endpoint consumido por el frontend.*/
     @GetMapping("/filters")
     public ResponseEntity<InventoryFiltersDTO> getFiltersInventory() {
+        return ResponseEntity
+                .status(200)
+                .body(inventarioService.getFiltersInventory());
+    }
+
+    /**
+     * 🔍 Búsqueda de inventario
+     */
+    @PostMapping("/search-inventory")
+    public ResponseEntity<InventoriesPageDTO> searchInventory(
+            @RequestBody SearchDTO searchRequest
+    ) {
         return ResponseEntity.ok(
-                inventarioService.getFiltersInventory()
+                inventarioService.searchInventory(
+                        searchRequest.getTerm(),
+                        searchRequest.getPage()
+                )
         );
     }
 
@@ -39,12 +49,11 @@ public class InventarioController {
      * 📦 Inventario paginado con filtros
      */
     @PostMapping("/paged-inventory")
-    public ResponseEntity<InventoryPageResponseDTO> getPagedInventory(
+    public ResponseEntity<InventoriesPageDTO> getPagedInventory(
             @RequestBody FilterInventoryPageDTO filter
     ) {
-        return ResponseEntity.ok(
-                inventarioService.getPagedInventory(filter)
-        );
+        return ResponseEntity.status(200)
+                .body(inventarioService.getPagedInventory(filter));
     }
 
     /**

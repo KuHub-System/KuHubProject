@@ -367,6 +367,42 @@ export const obtenerProductosPaginadosService = async (request: IInventoryPageRe
 };
 
 /**
+ * Busca productos en el inventario por término global (nombre o descripción)
+ */
+export const buscarProductosService = async (term: string, page: number = 1): Promise<IInventoryPageResponse> => {
+    console.log(`🔍 Buscando productos con término: "${term}", página: ${page}`);
+
+    try {
+        const response = await api.post<IInventoryPageResponse>(
+            '/inventario/search-inventory',
+            { term, page }
+        );
+
+        const data = response.data;
+        if (!data) throw new Error('El backend no devolvió datos');
+
+        // Normalizamos la respuesta igual que obtenerProductosPaginadosService
+        const items = data.items || (data as any).data || [];
+        const totalItems = data.totalItems ?? (data as any).totalRegistros ?? 0;
+        const totalPages = data.totalPages ?? (data as any).totalPaginas ?? 1;
+
+        return {
+            ...data,
+            items,
+            totalItems,
+            totalPages
+        };
+
+    } catch (error: any) {
+        console.error('❌ Error al buscar productos:', error);
+        throw new Error(
+            error.response?.data?.message ||
+            'Error al realizar la búsqueda en el inventario'
+        );
+    }
+};
+
+/**
  * Transforma un item de la página de inventario al formato IProducto para compatibilidad UI
  */
 export const transformarPageItemAProducto = (item: IInventoryPageItem): IProducto => {

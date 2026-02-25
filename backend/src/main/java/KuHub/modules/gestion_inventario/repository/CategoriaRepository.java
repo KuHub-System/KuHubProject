@@ -1,6 +1,6 @@
 package KuHub.modules.gestion_inventario.repository;
 
-import KuHub.modules.gestion_inventario.dtos.response.CategoriaView;
+import KuHub.modules.gestion_inventario.dtos.response.proyeccion.CategoriaView;
 import KuHub.modules.gestion_inventario.entity.Categoria;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;

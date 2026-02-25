@@ -4,7 +4,7 @@ import KuHub.modules.gestion_inventario.dtos.request.dto.ChangeProductsToAnother
 import KuHub.modules.gestion_inventario.dtos.request.dto.ChangeStatusActiveCategoriaDTO;
 import KuHub.modules.gestion_inventario.dtos.request.dto.CreateCategoriaDTO;
 import KuHub.modules.gestion_inventario.dtos.request.UpdateCategoriaDTO;
-import KuHub.modules.gestion_inventario.dtos.response.CategoriaView;
+import KuHub.modules.gestion_inventario.dtos.response.proyeccion.CategoriaView;
 import KuHub.modules.gestion_inventario.entity.Categoria;
 
 import java.util.List;
