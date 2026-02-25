@@ -25,6 +25,7 @@ import {
   eliminarProductoService as eliminarProductoBackend,
   obtenerFiltrosInventarioService as obtenerFiltrosInventarioBackend,
   obtenerProductosPaginadosService as obtenerProductosPaginadosBackend,
+  buscarProductosService as buscarProductosBackend,
   transformarPageItemAProducto
 } from './inventario-service';
 
@@ -82,6 +83,13 @@ export const eliminarProductoService = async (id: string): Promise<boolean> => {
  */
 export const obtenerProductosPaginadosService = async (request: IInventoryPageRequest): Promise<IInventoryPageResponse> => {
   return await obtenerProductosPaginadosBackend(request);
+};
+
+/**
+ * Busca productos en el inventario por término global (nombre o descripción) desde el BACKEND REAL
+ */
+export const buscarProductosService = async (term: string, page: number = 1): Promise<IInventoryPageResponse> => {
+  return await buscarProductosBackend(term, page);
 };
 
 export { transformarPageItemAProducto };

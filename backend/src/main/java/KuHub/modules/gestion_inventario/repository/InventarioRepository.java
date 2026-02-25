@@ -44,27 +44,73 @@ public interface InventarioRepository extends JpaRepository<Inventario, Integer>
 
     boolean existsByIdInventario(Integer idInventario);
 
-    //MODI V2 A BAJO ARRIBA SE VA
+    //MODI V2 A BAJO, ARRIBA SE VA
+
+
+
     @Query(value = """
-            SELECT COUNT(*)
-            FROM inventario i
-            JOIN producto p ON p.id_producto = i.id_producto
-            WHERE
-                i.activo = TRUE
-                AND p.activo = TRUE
-                AND (
-                    :useCategorias = FALSE
-                    OR p.id_categoria = ANY(CAST(:categoriasIds AS INTEGER[]))
-                )
-                AND (
-                    :useUnidades = FALSE
-                    OR p.id_unidad = ANY(CAST(:unidadesIds AS INTEGER[]))
-                )
-                AND (
-                    :soloStockBajo = FALSE
-                    OR i.stock <= i.stock_limit
-                )
+        SELECT 
+            p.nombre_producto, 
+            c.nombre_categoria, 
+            i.stock, 
+            i.stock_limit, 
+            u.nombre_unidad,
+            i.id_inventario, 
+            p.id_producto, 
+            c.id_categoria, 
+            u.id_unidad
+        FROM inventario i
+        JOIN producto p ON p.id_producto = i.id_producto
+        JOIN categoria c ON c.id_categoria = p.id_categoria
+        JOIN unidad_medida u ON u.id_unidad = p.id_unidad
+        WHERE i.activo = TRUE 
+          AND p.activo = TRUE
+          AND (
+              LOWER(p.nombre_producto) LIKE LOWER(CONCAT('%', :searchTerm, '%'))
+              OR LOWER(p.descripcion_producto) LIKE LOWER(CONCAT('%', :searchTerm, '%'))
+          )
+        ORDER BY p.nombre_producto
+        LIMIT :limit OFFSET :offset
         """, nativeQuery = true)
+    List<Object[]> searchInventarioPage(
+            @Param("searchTerm") String searchTerm,
+            @Param("limit") int limit,
+            @Param("offset") int offset
+    );
+
+    @Query(value = """
+        SELECT COUNT(*)
+        FROM inventario i
+        JOIN producto p ON p.id_producto = i.id_producto
+        WHERE i.activo = TRUE 
+          AND p.activo = TRUE
+          AND (
+              LOWER(p.nombre_producto) LIKE LOWER(CONCAT('%', :searchTerm, '%'))
+              OR LOWER(p.descripcion_producto) LIKE LOWER(CONCAT('%', :searchTerm, '%'))
+          )
+        """, nativeQuery = true)
+    long countSearchInventario(@Param("searchTerm") String searchTerm);
+
+    @Query(value = """
+        SELECT COUNT(*)
+        FROM inventario i
+        JOIN producto p ON p.id_producto = i.id_producto
+        WHERE
+            i.activo = TRUE
+            AND p.activo = TRUE
+            AND (
+                :useCategorias = FALSE
+                OR p.id_categoria = ANY(CAST(:categoriasIds AS INTEGER[]))
+            )
+            AND (
+                :useUnidades = FALSE
+                OR p.id_unidad = ANY(CAST(:unidadesIds AS INTEGER[]))
+            )
+            AND (
+                :soloStockBajo = FALSE
+                OR i.stock <= i.stock_limit
+            )
+    """, nativeQuery = true)
     long countInventarioFiltered(
             @Param("useCategorias") boolean useCategorias,
             @Param("categoriasIds") Integer[] categoriasIds,
@@ -74,38 +120,38 @@ public interface InventarioRepository extends JpaRepository<Inventario, Integer>
     );
 
     @Query(value = """
-            SELECT
-                p.nombre_producto,
-                c.nombre_categoria,
-                i.stock,
-                i.stock_limit,
-                u.nombre_unidad,
-                i.id_inventario,
-                p.id_producto,
-                c.id_categoria,
-                u.id_unidad
-            FROM inventario i
-            JOIN producto p ON p.id_producto = i.id_producto
-            JOIN categoria c ON c.id_categoria = p.id_categoria
-            JOIN unidad_medida u ON u.id_unidad = p.id_unidad
-            WHERE
-                i.activo = TRUE
-                AND p.activo = TRUE
-                AND (
-                    :useCategorias = FALSE
-                    OR c.id_categoria = ANY(CAST(:categoriasIds AS INTEGER[]))
-                )
-                AND (
-                    :useUnidades = FALSE
-                    OR u.id_unidad = ANY(CAST(:unidadesIds AS INTEGER[]))
-                )
-                AND (
-                    :soloStockBajo = FALSE
-                    OR i.stock <= i.stock_limit
-                )
-            ORDER BY p.nombre_producto
-            LIMIT :limit OFFSET :offset
-        """, nativeQuery = true)
+        SELECT
+            p.nombre_producto,
+            c.nombre_categoria,
+            i.stock,
+            i.stock_limit,
+            u.nombre_unidad,
+            i.id_inventario,
+            p.id_producto,
+            c.id_categoria,
+            u.id_unidad
+        FROM inventario i
+        JOIN producto p ON p.id_producto = i.id_producto
+        JOIN categoria c ON c.id_categoria = p.id_categoria
+        JOIN unidad_medida u ON u.id_unidad = p.id_unidad
+        WHERE
+            i.activo = TRUE
+            AND p.activo = TRUE
+            AND (
+                :useCategorias = FALSE
+                OR c.id_categoria = ANY(CAST(:categoriasIds AS INTEGER[]))
+            )
+            AND (
+                :useUnidades = FALSE
+                OR u.id_unidad = ANY(CAST(:unidadesIds AS INTEGER[]))
+            )
+            AND (
+                :soloStockBajo = FALSE
+                OR i.stock <= i.stock_limit
+            )
+        ORDER BY p.nombre_producto
+        LIMIT :limit OFFSET :offset
+    """, nativeQuery = true)
     List<Object[]> findInventarioPage(
             @Param("useCategorias") boolean useCategorias,
             @Param("categoriasIds") Integer[] categoriasIds,
@@ -116,8 +162,7 @@ public interface InventarioRepository extends JpaRepository<Inventario, Integer>
             @Param("offset") int offset
     );
 
-    @Query(
-            value = """
+    @Query(value = """
         SELECT
             json_build_object(
                 'categorias',
