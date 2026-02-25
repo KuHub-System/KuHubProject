@@ -18,6 +18,8 @@ public interface UnidadaMedidaRepository extends JpaRepository<UnidadMedida, Sho
             String abreviatura, Short idUnidadMedida);
     boolean existsByAbreviaturaIgnoreCase(String abreviatura);;
 
+    List<UnidadMedida> findByActivo(Boolean activo);
+
     @Query("""
         SELECT 
             u.idUnidad AS idUnidad,

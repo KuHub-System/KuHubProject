@@ -39,6 +39,14 @@ public class UnidadMedidaController {
     }
 
     /**✅ FUNCIONAL IMPLEMENTADO EN EL FRONT*/
+    @GetMapping("/find-all-active-true")
+    public ResponseEntity<List<UnidadMedida>> findAllActiveTrue(){
+        return ResponseEntity
+                .status(200)
+                .body(unidadMedidaService.findAllActiveTrue());
+    }
+
+    /**✅ FUNCIONAL IMPLEMENTADO EN EL FRONT*/
     @PostMapping()
     public ResponseEntity<Boolean> create
             (@Validated @RequestBody CreateUnidadDTO dto){

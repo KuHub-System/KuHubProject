@@ -47,6 +47,12 @@ public class UnidadMedidaServiceImp implements UnidadMedidaService{
 
     @Override
     @Transactional(readOnly = true)
+    public List<UnidadMedida> findAllActiveTrue(){
+        return unidadaMedidaRepository.findByActivo(true);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<UnidadMedidaView> findAllWithAsociados(){
         return unidadaMedidaRepository.findAllWithAsociados();
     }

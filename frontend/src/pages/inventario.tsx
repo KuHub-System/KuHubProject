@@ -45,6 +45,9 @@ import { useAuth } from '../contexts/auth-context';
 import { obtenerCategorias, obtenerUnidades } from '../services/storage-service';
 import GestionCategoriasModal from '../components/modals/GestionCategoriasModal';
 import GestionUnidadesModal from '../components/modals/GestionUnidadesModal';
+import { obtenerCategoriasActivasService } from '../services/categoria-service';
+import { obtenerUnidadesActivasService } from '../services/unidad-medida-service';
+import { IUnidadMedida } from '../types/inventario.types';
 
 /**
  * Interfaz para un item del pedido masivo
@@ -70,7 +73,9 @@ const InventarioPage: React.FC = () => {
   const [productos, setProductos] = React.useState<IProducto[]>([]);
   const [filteredProductos, setFilteredProductos] = React.useState<IProducto[]>([]);
   const [categoriasFull, setCategoriasFull] = React.useState<{ id: number, nombre: string }[]>([]);
+  const [categoriasActivas, setCategoriasActivas] = React.useState<{ id: number, nombre: string }[]>([]);
   const [unidadesFull, setUnidadesFull] = React.useState<{ id: number, nombre: string }[]>([]);
+  const [unidadesActivas, setUnidadesActivas] = React.useState<IUnidadMedida[]>([]);
   const [totalPaginas, setTotalPaginas] = React.useState<number>(1);
   const [totalRegistros, setTotalRegistros] = React.useState<number>(0);
   const [isLoading, setIsLoading] = React.useState<boolean>(true);
@@ -99,9 +104,23 @@ const InventarioPage: React.FC = () => {
    */
   const cargarFiltros = React.useCallback(async () => {
     try {
-      const data = await obtenerFiltrosInventarioService();
-      setCategoriasFull(data.categorias);
-      setUnidadesFull(data.unidades);
+      const [resFiltros, resCategoriasActivas, resUnidadesActivas] = await Promise.all([
+        obtenerFiltrosInventarioService(),
+        obtenerCategoriasActivasService(),
+        obtenerUnidadesActivasService()
+      ]);
+
+      setCategoriasFull(resFiltros.categorias);
+      setUnidadesFull(resFiltros.unidades);
+
+      // Mapear ICategoria[] a coincidir con el formato de categoriasFull
+      const activasMapeadas = resCategoriasActivas.map(c => ({
+        id: parseInt(c.id),
+        nombre: c.nombre
+      }));
+      setCategoriasActivas(activasMapeadas);
+      setUnidadesActivas(resUnidadesActivas);
+
     } catch (error) {
       logger.error('Error al cargar filtros:', error);
     }
@@ -241,6 +260,14 @@ const InventarioPage: React.FC = () => {
       sessionStorage.removeItem('inventarioFiltro');
     }
   }, [cargarFiltros]);
+
+  // Recargar filtros (categorías activas) cada vez que se abre el modal de producto
+  React.useEffect(() => {
+    if (isOpen) {
+      console.log('🔄 Refrescando categorías activas al abrir el modal...');
+      cargarFiltros();
+    }
+  }, [isOpen, cargarFiltros]);
 
   // Cargar productos cuando cambian la página de la UI
   React.useEffect(() => {
@@ -692,8 +719,8 @@ const InventarioPage: React.FC = () => {
                   producto={productoSeleccionado}
                   onClose={onClose}
                   mode={modalMode}
-                  categorias={categoriasFull.map(c => c.nombre)}
-                  unidades={unidadesFull.map(u => u.nombre)}
+                  categorias={categoriasActivas.map(c => c.nombre)}
+                  unidades={unidadesActivas}
                 />
               </ModalBody>
             </>
@@ -737,7 +764,7 @@ interface FormularioProductoProps {
   onClose: () => void;
   mode: 'crear' | 'editar';
   categorias: string[];
-  unidades: string[];
+  unidades: IUnidadMedida[];
 }
 
 /**
@@ -749,12 +776,14 @@ interface FormularioProductoProps {
 const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto, onClose, mode, categorias, unidades }) => {
   const toast = useToast();
   const [nombre, setNombre] = React.useState(producto?.nombre || '');
+  const [codProducto, setCodProducto] = React.useState((producto as any)?.codProducto || '');
   const [descripcion, setDescripcion] = React.useState(producto?.descripcion || '');
   const [categoria, setCategoria] = React.useState(producto?.categoria || '');
   const [unidadMedida, setUnidadMedida] = React.useState(producto?.unidadMedida || '');
   const [stock, setStock] = React.useState(producto?.stock?.toString() || '0');
   const [stockMinimo, setStockMinimo] = React.useState(producto?.stockMinimo?.toString() || '0');
   const [isLoading, setIsLoading] = React.useState(false);
+  const [mostrarAbreviatura, setMostrarAbreviatura] = React.useState(false);
 
   const handleSubmit = async () => {
     // Validaciones
@@ -768,6 +797,22 @@ const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto, onClo
     }
     if (!unidadMedida.trim()) {
       toast.warning('La unidad de medida es requerida');
+      return;
+    }
+
+    const stockNum = parseFloat(stock);
+    const stockMinNum = parseFloat(stockMinimo);
+
+    if (isNaN(stockNum)) {
+      toast.warning('El stock es requerido y debe ser un número');
+      return;
+    }
+    if (stockNum < 0) {
+      toast.warning('El stock no puede ser negativo');
+      return;
+    }
+    if (!isNaN(stockMinNum) && stockMinNum < 0) {
+      toast.warning('El stock mínimo no puede ser negativo');
       return;
     }
 
@@ -819,6 +864,14 @@ const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto, onClo
     }
   };
 
+  const isFormInvalid =
+    !nombre.trim() ||
+    !categoria.trim() ||
+    !unidadMedida.trim() ||
+    !stock.trim() ||
+    parseFloat(stock) < 0 ||
+    (stockMinimo.trim() !== '' && parseFloat(stockMinimo) < 0);
+
   return (
     <div className="space-y-4">
       <Input
@@ -828,11 +881,24 @@ const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto, onClo
         onValueChange={setNombre}
         isRequired
         variant="bordered"
+        maxLength={100}
+        description={`${nombre.length}/100`}
         classNames={{ inputWrapper: "bg-default-50 dark:bg-default-100/50" }}
       />
 
       <Input
-        label="Descripción"
+        label="Código de producto (Opcional)"
+        placeholder="Ej: PRD-001"
+        value={codProducto}
+        onValueChange={setCodProducto}
+        variant="bordered"
+        maxLength={25}
+        description={`${codProducto.length}/25`}
+        classNames={{ inputWrapper: "bg-default-50 dark:bg-default-100/50" }}
+      />
+
+      <Input
+        label="Descripción (Opcional)"
         placeholder="Descripción del producto"
         value={descripcion}
         onValueChange={setDescripcion}
@@ -866,9 +932,27 @@ const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto, onClo
         </div>
 
         <div className="flex flex-col gap-2">
-          <label className="text-sm font-medium">
-            Unidad de Medida <span className="text-danger">*</span>
-          </label>
+          <div className="flex items-center justify-between">
+            <label className="text-sm font-medium">
+              Unidad de Medida <span className="text-danger">*</span>
+            </label>
+            <Button
+              isIconOnly
+              size="sm"
+              variant="light"
+              onPress={() => setMostrarAbreviatura(!mostrarAbreviatura)}
+              className="text-default-400 hover:text-primary min-w-unit-6 h-6"
+              title={mostrarAbreviatura ? "Mostrar nombres completos" : "Mostrar abreviaturas"}
+            >
+              <motion.div
+                animate={{ rotate: mostrarAbreviatura ? 180 : 0 }}
+                transition={{ duration: 0.3 }}
+                className="flex items-center justify-center"
+              >
+                <Icon icon="lucide:arrow-left-right" width={16} />
+              </motion.div>
+            </Button>
+          </div>
           <select
             value={unidadMedida}
             onChange={(e) => setUnidadMedida(e.target.value)}
@@ -876,12 +960,14 @@ const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto, onClo
             required
           >
             <option value="">Seleccione una unidad</option>
-            {/* Unidades dinámicas */}
+            {/* Unidades dinámicas activas */}
             {unidades.map(uni => (
-              <option key={uni} value={uni}>{uni}</option>
+              <option key={uni.id} value={uni.nombre}>
+                {mostrarAbreviatura ? uni.abreviatura : uni.nombre}
+              </option>
             ))}
-            {/* Mantener compatibilidad */}
-            {unidadMedida && !unidades.includes(unidadMedida) && (
+            {/* Mantener compatibilidad si el producto tiene una unidad no listada/inactiva */}
+            {unidadMedida && !unidades.some(u => u.nombre === unidadMedida) && (
               <option value={unidadMedida}>{unidadMedida}</option>
             )}
           </select>
@@ -897,13 +983,14 @@ const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto, onClo
           onValueChange={setStock}
           min="0"
           step="0.01"
+          isRequired
           variant="bordered"
           classNames={{ inputWrapper: "bg-default-50 dark:bg-default-100/50" }}
         />
 
         <Input
           type="number"
-          label="Stock Mínimo"
+          label="Stock Mínimo (Opcional)"
           placeholder="Stock mínimo"
           value={stockMinimo}
           onValueChange={setStockMinimo}
@@ -923,7 +1010,8 @@ const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto, onClo
           variant="solid"
           onPress={handleSubmit}
           isLoading={isLoading}
-          className="font-bold text-secondary shadow-md"
+          isDisabled={isFormInvalid || isLoading}
+          className="font-bold text-secondary shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
           startContent={<Icon icon="lucide:save" />}
         >
           {mode === 'crear' ? 'Crear Producto' : 'Guardar Cambios'}
