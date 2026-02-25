@@ -13,6 +13,7 @@ public interface UnidadMedidaService {
     Boolean existsByIdUnidadMedida(Short idUnidadMedida);
     UnidadMedida findById(Short idUnidadMedida);
     List<UnidadMedida> findAll();
+    List<UnidadMedida> findAllActiveTrue();
     List<UnidadMedidaView> findAllWithAsociados();
     boolean createUnidad(CreateUnidadDTO dto);
     boolean updateUnidad(UpdateUnidadDTO dto);

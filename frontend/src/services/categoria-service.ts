@@ -47,6 +47,24 @@ export const obtenerCategoriasService = async (): Promise<ICategoria[]> => {
 };
 
 /**
+ * Obtiene solo las categorías activas desde el backend
+ * @returns Promise<ICategoria[]>
+ */
+export const obtenerCategoriasActivasService = async (): Promise<ICategoria[]> => {
+    console.log('📦 Obteniendo solo categorías activas (v1/categoria/active-true)');
+
+    try {
+        const response = await api.get<BackendCategoriaDTO[]>('/categoria/active-true');
+        console.log(`✅ ${response.data.length} categorías activas obtenidas`);
+        return response.data.map(transformarBackendAFrontend);
+
+    } catch (error: any) {
+        console.error('❌ Error al obtener categorías activas del backend:', error);
+        throw new Error(error.response?.data?.message || 'Error al cargar las categorías activas');
+    }
+};
+
+/**
  * Crea una nueva categoría en el backend
  * @param nombreCategoria Nombre de la categoría a crear
  * @returns Promise<boolean> true si se creó correctamente, false en caso contrario

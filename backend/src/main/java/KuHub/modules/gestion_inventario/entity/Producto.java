@@ -16,7 +16,8 @@ public class Producto {
     @Column(name = "id_producto")
     private Integer idProducto;
 
-    @Column(name = "cod_producto", length = 25, unique = true)
+    // nullable = true (opcional) y unique = true (único)
+    @Column(name = "cod_producto", length = 25, nullable = true, unique = true)
     private String codProducto;
 
     @Column(name = "descripcion_producto", columnDefinition = "TEXT")
@@ -62,17 +63,40 @@ public class Producto {
         }
     }
 
-    /** * COMENTARIO DE REFERENCIA SQL ACTUALIZADO 17/02/26
+    /** * COMENTARIO DE REFERENCIA SQL ACTUALIZADO (Con Unique Constraints) 25/02
      * CREATE TABLE producto (
-     * id_producto INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-     * cod_producto VARCHAR(25),
-     * descripcion_producto TEXT,
-     * nombre_producto VARCHAR(100) NOT NULL UNIQUE,
-     * id_categoria SMALLINT NOT NULL,
-     * id_unidad SMALLINT NOT NULL, -- Relación con unidad_medida
-     * activo BOOLEAN DEFAULT TRUE,
-     * CONSTRAINT fk_categoria_producto FOREIGN KEY (id_categoria) REFERENCES categoria (id_categoria),
-     * CONSTRAINT fk_unidad_producto FOREIGN KEY (id_unidad) REFERENCES unidad_medida (id_unidad)
+     *     id_producto INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+     *     -- Opcional (admite NULL) pero no permite repetidos si tiene valor
+     *     cod_producto VARCHAR(25),
+     * 	-- Usando TEXT para máxima flexibilidad y eficiencia
+     *     descripcion_producto TEXT,
+     *     nombre_producto VARCHAR(100) NOT NULL UNIQUE,
+     *     activo BOOLEAN DEFAULT TRUE,
+     *     -- Relaciones (SMALLINT para compatibilidad)
+     *     id_categoria SMALLINT NOT NULL,
+     *     id_unidad SMALLINT NOT NULL,
+     *
+     * 	---------------------------------------------------------
+     *     -- RESTRICCIONES DE UNICIDAD (UNIQUE CONSTRAINTS)
+     *     ---------------------------------------------------------
+     *     -- El nombre siempre debe ser único
+     *     CONSTRAINT uk_producto_nombre UNIQUE (nombre_producto),
+     *
+     *     -- El código es opcional pero único si se ingresa
+     *     CONSTRAINT uk_producto_codigo UNIQUE (cod_producto),
+     *
+     *     ---------------------------------------------------------
+     *     -- LLAVES FORÁNEAS (FOREIGN KEYS)
+     *     ---------------------------------------------------------
+     *     CONSTRAINT fk_categoria_producto
+     *         FOREIGN KEY (id_categoria)
+     *         REFERENCES categoria (id_categoria)
+     *         ON UPDATE CASCADE ON DELETE RESTRICT,
+     *
+     *     CONSTRAINT fk_unidad_producto
+     *         FOREIGN KEY (id_unidad)
+     *         REFERENCES unidad_medida (id_unidad)
+     *         ON UPDATE CASCADE ON DELETE RESTRICT
      * );
      */
 }

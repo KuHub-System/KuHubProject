@@ -50,7 +50,6 @@ public class CategoriaServiceImp implements CategoriaService{
     }
 
 
-
     @Override
     @Transactional(readOnly = true)
     public Categoria findById (Short idcategoria){

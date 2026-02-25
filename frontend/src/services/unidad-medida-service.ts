@@ -35,6 +35,28 @@ export const obtenerUnidadesService = async (): Promise<IUnidadMedida[]> => {
 };
 
 /**
+ * Obtiene solo las unidades de medida activas desde el backend.
+ * @returns Promise<IUnidadMedida[]>
+ */
+export const obtenerUnidadesActivasService = async (): Promise<IUnidadMedida[]> => {
+    console.log('📦 Obteniendo unidades de medida activas (find-all-active-true)...');
+    try {
+        const response = await api.get<UnidadMedidaView[]>('/unidad-medida/find-all-active-true');
+
+        return response.data.map((viewDirecta: UnidadMedidaView) => ({
+            id: viewDirecta.idUnidad.toString(),
+            nombre: viewDirecta.nombreUnidad,
+            abreviatura: viewDirecta.abreviatura,
+            activo: viewDirecta.activo,
+            asociados: viewDirecta.asociados || 0
+        }));
+    } catch (error) {
+        console.error('❌ Error al obtener unidades de medida activas:', error);
+        return [];
+    }
+};
+
+/**
  * Crea una nueva unidad de medida.
  * @param nombre Nombre de la unidad (ej: Kilogramo)
  * @param abreviatura Abreviatura (ej: KG)

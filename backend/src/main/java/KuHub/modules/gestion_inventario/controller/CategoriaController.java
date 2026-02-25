@@ -39,7 +39,7 @@ public class CategoriaController {
                 .body(categoriaService.findAllPage());
     }
 
-    /**❌FUNCIONAL PERO NO IMPLEMENTADO EN EL FRONT*/
+    /**✅ FUNCIONAL IMPLEMENTADO EN EL FRONT*/
     @GetMapping("/active-true")
     public ResponseEntity<List<Categoria>> findAllActiveTrue(){
         return ResponseEntity
