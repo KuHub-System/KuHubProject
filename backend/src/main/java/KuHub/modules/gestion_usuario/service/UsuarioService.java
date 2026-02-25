@@ -13,6 +13,14 @@ import java.util.List;
  */
 public interface UsuarioService {
 
+    Usuario findUserByUsernameOrEmail(String identifier);
+
+
+
+
+
+
+
     UserIdNameDTO getUsuarioConectado();
 
     Integer buscarIdPorUsername(String username);

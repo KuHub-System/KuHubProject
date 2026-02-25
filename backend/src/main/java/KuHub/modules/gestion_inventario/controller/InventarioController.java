@@ -1,10 +1,12 @@
 package KuHub.modules.gestion_inventario.controller;
 
+import KuHub.modules.gestion_inventario.dtos.InventoryWithProductCreateDTO;
 import KuHub.modules.gestion_inventario.dtos.request.dto.FilterInventoryPageDTO;
 import KuHub.modules.gestion_inventario.dtos.request.dto.SearchDTO;
 import KuHub.modules.gestion_inventario.dtos.response.InventoriesPageDTO;
 import KuHub.modules.gestion_inventario.dtos.response.InventoryFiltersDTO;
 import KuHub.modules.gestion_inventario.services.InventarioService;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
@@ -56,6 +58,16 @@ public class InventarioController {
                 .body(inventarioService.getPagedInventory(filter));
     }
 
+    /**crear inventario para el FrontEnd*/
+     @PostMapping("/create-inventory-with-product")
+        public ResponseEntity<Boolean> saveInventoryWithProduct(
+         @Valid @RequestBody
+         InventoryWithProductCreateDTO inventarioRequest){
+             return ResponseEntity
+                 .status(201)
+                 .body(inventarioService.saveInventoryWithProduct(inventarioRequest));
+     }
+
     /**
     @GetMapping("/{id}")
     public ResponseEntity<Inventario> findById(@PathVariable Integer id){
@@ -97,15 +109,7 @@ public class InventarioController {
     }
 
 
-    /**crear inventario para el FrontEnd
-    @PostMapping("/create-inventory-with-product/")
-    public ResponseEntity<InventoryWithProductCreateDTO> save(
-            @Valid @RequestBody
-            InventoryWithProductCreateDTO inventarioRequest){
-        return ResponseEntity
-                .status(201)
-                .body(inventarioService.save(inventarioRequest));
-    }
+
 
     /**actualizar inventario para el FrontEnd
     @PutMapping("/update-inventory-with-product/")

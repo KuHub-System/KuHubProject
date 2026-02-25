@@ -1,5 +1,9 @@
 package KuHub.modules.gestion_inventario.services;
 
+import KuHub.modules.gestion_inventario.dtos.MotionCreateDTO;
+import KuHub.modules.gestion_inventario.exceptions.InventarioException;
+import KuHub.modules.gestion_usuario.entity.Usuario;
+import KuHub.modules.gestion_usuario.exceptions.UsuarioException;
 import KuHub.modules.gestion_usuario.repository.UsuarioRepository;
 import KuHub.modules.gestion_usuario.service.UsuarioService;
 import KuHub.modules.gestion_inventario.dtos.MotionAnswerDTO;
@@ -9,16 +13,19 @@ import KuHub.modules.gestion_inventario.entity.Movimiento;
 import KuHub.modules.gestion_inventario.repository.InventarioRepository;
 import KuHub.modules.gestion_inventario.repository.MovimientoRepository;
 import KuHub.utils.StringUtils;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
-
+@Slf4j
 @Service
 public class MovimientoServiceImpl implements MovimientoService {
 
@@ -33,6 +40,95 @@ public class MovimientoServiceImpl implements MovimientoService {
 
     @Autowired
     private UsuarioRepository usuarioRepository;
+
+    //LA IDEA ES USAR DE MANDERA HIBRIDA, PERO AHORA CREA MOVIMIENTO EN INVENTARIO EN LA CREACCION PRODUCTO CON INVENTARIO
+    @Transactional
+    @Override
+    public boolean saveMotion(MotionCreateDTO m, Inventario inventario) {
+        log.info("📦 Iniciando registro de movimiento para Inventario ID: {}", m.getIdInventario());
+
+        // 1. Obtener el username desde el token JWT
+        String username = org.springframework.security.core.context.SecurityContextHolder
+                .getContext().getAuthentication().getName();
+        log.debug("🔑 Usuario extraído del token: [{}]", username);
+
+
+        // 2. Buscar al usuario
+        Usuario u = usuarioService.findUserByUsernameOrEmail(username);
+        if (u == null) {
+            log.error("❌ No se encontró el usuario con username: {}", username);
+            throw new UsuarioException("Usuario no autenticado o no encontrado en el sistema", HttpStatus.NOT_FOUND);
+        }
+        String nombreUsuario = usuarioService.formatearNombreCompleto(u);
+        log.debug("👤 Operación realizada por: {}", nombreUsuario);
+
+
+        Inventario i;
+        if (inventario != null) {
+            log.debug("🆕 Usando inventario recién creado para producto nuevo");
+            i = inventario;
+        } else {
+            log.debug("🔍 Buscando inventario existente ID: {}", m.getIdInventario());
+            i = inventarioRepository.findById(m.getIdInventario())
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Inventario no encontrado"));
+        }
+
+        // 4. Validar el Tipo de Movimiento
+        Movimiento.TipoMovimiento tipoEnum;
+        try {
+            // Limpieza robusta del string
+            String tipoLimpio = m.getTipoMovimiento().trim().toUpperCase().replace(" ", "_");
+            tipoEnum = Movimiento.TipoMovimiento.valueOf(tipoLimpio);
+            log.info("✅ Tipo de movimiento validado: {}", tipoEnum);
+        } catch (IllegalArgumentException e) {
+            log.error("🚫 Error de validación: '{}' no es un TipoMovimiento válido", m.getTipoMovimiento());
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Tipo de movimiento inválido: " + m.getTipoMovimiento());
+        }
+
+        //Guerdar movimiento Entity
+        Movimiento newMovimiento = new Movimiento();
+        newMovimiento.setUsuario(u);
+        newMovimiento.setInventario(i);
+        newMovimiento.setStockMovimiento(m.getStockMovimiento());
+        newMovimiento.setTipoMovimiento(tipoEnum);
+        newMovimiento.setObservacion(m.getObservacion());
+        movimientoRepository.save(newMovimiento);
+
+        log.info("💾 Movimiento guardado exitosamente por {}", username);
+        return true;
+    }
+
+        /** 5. Actualizar stock mínimo
+         if (m.getStockLimitMin() != null) {
+         i.setStockLimit(m.getStockLimitMin());
+         }
+
+         // 6. Lógica de stock
+         String mensajeAjuste = actualizarStockInventario(i, m.getStockMovimiento(), tipoEnum);
+
+         String observacionFinal = m.getObservacion();
+         if (mensajeAjuste != null) {
+         observacionFinal = (observacionFinal != null) ? observacionFinal + " - " + mensajeAjuste : mensajeAjuste;
+         }
+
+         // 7. Guardar el movimiento
+         // Asegúrate de que el constructor de Movimiento acepte estos parámetros
+         Movimiento mv = movimientoRepository.save(new Movimiento(
+         null, u, i, , tipoEnum, null, observacionFinal
+         ));
+
+         return new MotionAnswerDTO(
+         mv.getIdMovimiento(),
+         i.getProducto().getNombreProducto(),
+         i.getProducto().getCategoria().getNombreCategoria(),
+         m.getTipoMovimiento(),
+         m.getStockMovimiento(),
+         mv.getFechaMovimiento(),
+         nombreUsuario,
+         mv.getObservacion()
+         );
+         }
 
     /**
     @Transactional(readOnly = true)
@@ -128,67 +224,7 @@ public class MovimientoServiceImpl implements MovimientoService {
     }
 
     /**
-    @Transactional
-    @Override
-    public MotionAnswerDTO saveMotion(MotionCreateDTO m) {
-        // 1. Obtener el username desde el token JWT
-        String username = org.springframework.security.core.context.SecurityContextHolder
-                .getContext().getAuthentication().getName();
-
-        // DEBUG: Imprime en consola para ver si el nombre tiene espacios o mayúsculas raras
-        System.out.println("DEBUG: El username extraído del token es: [" + username + "]");
-
-        // 2. Buscar al usuario por username
-        // Si falla aquí, es porque el 'username' del token no coincide con la columna 'username' de la DB
-        // Cambia la línea 146 por esta búsqueda más flexible:
-        Usuario u = usuarioRepository.findByIdentificador(username)
-                .orElseThrow(() -> new RuntimeException("Error: El identificador '" + username + "' no existe como username ni como email."));
-
-        String nombreUsuario = usuarioService.formatearNombreCompleto(u);
-
-        // 3. Buscar inventario
-        Inventario i = inventarioRepository.findById(m.getIdInventario())
-                .orElseThrow(() -> new InventarioException("El inventario con ID " + m.getIdInventario() + " no existe"));
-
-        // 4. Validar el Tipo de Movimiento
-        Movimiento.TipoMovimiento tipoEnum;
-        try {
-            String tipoLimpio = m.getTipoMovimiento().trim().toUpperCase().replace(" ", "");
-            tipoEnum = Movimiento.TipoMovimiento.valueOf(tipoLimpio);
-        } catch (IllegalArgumentException e) {
-            throw new RuntimeException("Tipo de movimiento inválido: " + m.getTipoMovimiento());
-        }
-
-        /** 5. Actualizar stock mínimo
-        if (m.getStockLimitMin() != null) {
-            i.setStockLimit(m.getStockLimitMin());
-        }
-
-        // 6. Lógica de stock
-        String mensajeAjuste = actualizarStockInventario(i, m.getStockMovimiento(), tipoEnum);
-
-        String observacionFinal = m.getObservacion();
-        if (mensajeAjuste != null) {
-            observacionFinal = (observacionFinal != null) ? observacionFinal + " - " + mensajeAjuste : mensajeAjuste;
-        }
-
-        // 7. Guardar el movimiento
-        // Asegúrate de que el constructor de Movimiento acepte estos parámetros
-        Movimiento mv = movimientoRepository.save(new Movimiento(
-                null, u, i, , tipoEnum, null, observacionFinal
-        ));
-
-        return new MotionAnswerDTO(
-                mv.getIdMovimiento(),
-                i.getProducto().getNombreProducto(),
-                i.getProducto().getCategoria().getNombreCategoria(),
-                m.getTipoMovimiento(),
-                m.getStockMovimiento(),
-                mv.getFechaMovimiento(),
-                nombreUsuario,
-                mv.getObservacion()
-        );
-    }*/
+    */
 
     private String actualizarStockInventario(Inventario i, Double stockMovimiento, Movimiento.TipoMovimiento tipo){
 

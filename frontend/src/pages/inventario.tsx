@@ -719,7 +719,7 @@ const InventarioPage: React.FC = () => {
                   producto={productoSeleccionado}
                   onClose={onClose}
                   mode={modalMode}
-                  categorias={categoriasActivas.map(c => c.nombre)}
+                  categorias={categoriasActivas}
                   unidades={unidadesActivas}
                 />
               </ModalBody>
@@ -763,7 +763,7 @@ interface FormularioProductoProps {
   producto: IProducto | null;
   onClose: () => void;
   mode: 'crear' | 'editar';
-  categorias: string[];
+  categorias: { id: number; nombre: string }[];
   unidades: IUnidadMedida[];
 }
 
@@ -778,8 +778,20 @@ const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto, onClo
   const [nombre, setNombre] = React.useState(producto?.nombre || '');
   const [codProducto, setCodProducto] = React.useState((producto as any)?.codProducto || '');
   const [descripcion, setDescripcion] = React.useState(producto?.descripcion || '');
-  const [categoria, setCategoria] = React.useState(producto?.categoria || '');
-  const [unidadMedida, setUnidadMedida] = React.useState(producto?.unidadMedida || '');
+  const [idCategoria, setIdCategoria] = React.useState<string>(() => {
+    if (producto?.categoria) {
+      const cat = categorias.find(c => c.nombre === producto.categoria);
+      return cat ? cat.id.toString() : '';
+    }
+    return '';
+  });
+  const [idUnidadMedida, setIdUnidadMedida] = React.useState<string>(() => {
+    if (producto?.unidadMedida) {
+      const uni = unidades.find(u => u.nombre === producto.unidadMedida);
+      return uni ? uni.id.toString() : '';
+    }
+    return '';
+  });
   const [stock, setStock] = React.useState(producto?.stock?.toString() || '0');
   const [stockMinimo, setStockMinimo] = React.useState(producto?.stockMinimo?.toString() || '0');
   const [isLoading, setIsLoading] = React.useState(false);
@@ -791,11 +803,11 @@ const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto, onClo
       toast.warning('El nombre del producto es requerido');
       return;
     }
-    if (!categoria.trim()) {
+    if (!idCategoria) {
       toast.warning('La categoría es requerida');
       return;
     }
-    if (!unidadMedida.trim()) {
+    if (!idUnidadMedida) {
       toast.warning('La unidad de medida es requerida');
       return;
     }
@@ -823,9 +835,10 @@ const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto, onClo
         // Crear nuevo producto usando el servicio
         const datosProducto = {
           nombre: nombre.trim(),
+          codProducto: codProducto.trim() || undefined,
           descripcion: descripcion.trim(),
-          categoria: categoria.trim(),
-          unidadMedida: unidadMedida.trim(),
+          idCategoria: parseInt(idCategoria),
+          idUnidadMedida: parseInt(idUnidadMedida),
           stock: parseFloat(stock) || 0,
           stockMinimo: parseFloat(stockMinimo) || 0,
         };
@@ -838,12 +851,16 @@ const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto, onClo
           throw new Error('ID de producto no encontrado');
         }
 
+        const catNombre = categorias.find(c => c.id.toString() === idCategoria)?.nombre || '';
+        const uniNombre = unidades.find(u => u.id.toString() === idUnidadMedida)?.nombre || '';
+
         const datosActualizacion = {
           id: producto.id,
           nombre: nombre.trim(),
+          codProducto: codProducto.trim() || undefined,
           descripcion: descripcion.trim(),
-          categoria: categoria.trim(),
-          unidadMedida: unidadMedida.trim(),
+          categoria: catNombre,
+          unidadMedida: uniNombre,
           stock: parseFloat(stock) || 0,
           stockMinimo: parseFloat(stockMinimo) || 0,
         };
@@ -866,8 +883,8 @@ const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto, onClo
 
   const isFormInvalid =
     !nombre.trim() ||
-    !categoria.trim() ||
-    !unidadMedida.trim() ||
+    !idCategoria ||
+    !idUnidadMedida ||
     !stock.trim() ||
     parseFloat(stock) < 0 ||
     (stockMinimo.trim() !== '' && parseFloat(stockMinimo) < 0);
@@ -914,20 +931,16 @@ const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto, onClo
             Categoría <span className="text-danger">*</span>
           </label>
           <select
-            value={categoria}
-            onChange={(e) => setCategoria(e.target.value)}
+            value={idCategoria}
+            onChange={(e) => setIdCategoria(e.target.value)}
             className="px-3 py-2 rounded-lg border-2 border-default-200 dark:border-default-100 hover:border-default-400 focus:border-primary focus:outline-none transition-colors bg-default-100 dark:bg-default-100/50 text-foreground"
             required
           >
             <option value="">Seleccione una categoría</option>
             {/* Categorías dinámicas */}
             {categorias.map(cat => (
-              <option key={cat} value={cat}>{cat}</option>
+              <option key={cat.id} value={cat.id.toString()}>{cat.nombre}</option>
             ))}
-            {/* Mantener compatibilidad si el producto tiene una categoría no listada */}
-            {categoria && !categorias.includes(categoria) && (
-              <option value={categoria}>{categoria}</option>
-            )}
           </select>
         </div>
 
@@ -954,22 +967,18 @@ const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto, onClo
             </Button>
           </div>
           <select
-            value={unidadMedida}
-            onChange={(e) => setUnidadMedida(e.target.value)}
+            value={idUnidadMedida}
+            onChange={(e) => setIdUnidadMedida(e.target.value)}
             className="px-3 py-2 rounded-lg border-2 border-default-200 dark:border-default-100 hover:border-default-400 focus:border-primary focus:outline-none transition-colors bg-default-100 dark:bg-default-100/50 text-foreground"
             required
           >
             <option value="">Seleccione una unidad</option>
             {/* Unidades dinámicas activas */}
             {unidades.map(uni => (
-              <option key={uni.id} value={uni.nombre}>
+              <option key={uni.id} value={uni.id}>
                 {mostrarAbreviatura ? uni.abreviatura : uni.nombre}
               </option>
             ))}
-            {/* Mantener compatibilidad si el producto tiene una unidad no listada/inactiva */}
-            {unidadMedida && !unidades.some(u => u.nombre === unidadMedida) && (
-              <option value={unidadMedida}>{unidadMedida}</option>
-            )}
           </select>
         </div>
       </div>

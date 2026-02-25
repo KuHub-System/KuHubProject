@@ -55,11 +55,12 @@ interface BackendInventarioDTO {
  */
 interface BackendCrearInventarioDTO {
     nombreProducto: string;
+    codigoProducto?: string;
     descripcionProducto: string;
-    nombreCategoria: string;
-    unidadMedida: string;
+    idCategoria: number;
+    idUnidadMedida: number;
     stock: number;
-    stockLimitMin: number;
+    stockLimit: number;
 }
 
 /**
@@ -152,7 +153,7 @@ export const obtenerProductoPorIdService = async (id: string): Promise<IProducto
 /**
  * Crea un nuevo producto en el inventario
  */
-export const crearProductoService = async (productoData: ICrearProducto): Promise<IProducto> => {
+export const crearProductoService = async (productoData: ICrearProducto): Promise<boolean> => {
     console.log('➕ Creando nuevo producto:', productoData.nombre);
 
     // Validaciones
@@ -172,22 +173,21 @@ export const crearProductoService = async (productoData: ICrearProducto): Promis
         // Transformar al formato del backend
         const backendDTO: BackendCrearInventarioDTO = {
             nombreProducto: productoData.nombre.trim(),
+            codigoProducto: productoData.codProducto?.trim(),
             descripcionProducto: productoData.descripcion.trim(),
-            nombreCategoria: productoData.categoria.trim(),
-            unidadMedida: productoData.unidadMedida.trim(),
+            idCategoria: productoData.idCategoria,
+            idUnidadMedida: productoData.idUnidadMedida,
             stock: productoData.stock,
-            stockLimitMin: productoData.stockMinimo,
+            stockLimit: productoData.stockMinimo,
         };
 
-        const response = await api.post<BackendInventarioDTO>(
-            '/inventario/create-inventory-with-product/',
+        const response = await api.post<boolean>(
+            '/inventario/create-inventory-with-product',
             backendDTO
         );
 
-        const nuevoProducto = transformarBackendAFrontend(response.data);
-
-        console.log(`✅ Producto creado: ${nuevoProducto.nombre} (ID: ${nuevoProducto.id})`);
-        return nuevoProducto;
+        console.log(`✅ Resultado creación producto: ${response.data}`);
+        return response.data;
 
     } catch (error: any) {
         console.error('❌ Error al crear producto:', error);
