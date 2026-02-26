@@ -37,6 +37,7 @@ import {
   obtenerFiltrosInventarioService,
   obtenerProductosPaginadosService,
   buscarProductosService,
+  buscarProductosPorCodigoService,
   transformarPageItemAProducto,
 } from '../services/producto-service';
 import { useToast, useConfirm } from '../hooks/useToast';
@@ -85,6 +86,10 @@ const InventarioPage: React.FC = () => {
   const [selectedFilters, setSelectedFilters] = React.useState<Set<string>>(new Set(['todas']));
   const filtersRef = React.useRef<Set<string>>(new Set(['todas']));
   const searchTermRef = React.useRef<string>('');
+
+  const [searchCode, setSearchCode] = React.useState<string>('');
+  const [debouncedSearchCode, setDebouncedSearchCode] = React.useState<string>('');
+  const searchCodeRef = React.useRef<string>('');
   const [cache, setCache] = React.useState<Record<number, IProducto[]>>({});
   const cacheRef = React.useRef<Record<number, IProducto[]>>({});
   const rowsPerPage = 10;
@@ -137,8 +142,12 @@ const InventarioPage: React.FC = () => {
     try {
       let response;
       const currentSearch = searchTermRef.current;
+      const currentSearchCode = searchCodeRef.current;
 
-      if (currentSearch) {
+      if (currentSearchCode) {
+        console.log(`🚀 Prefetching Search Results API Page ${apiPageToPrefetch} para código: "${currentSearchCode}"`);
+        response = await buscarProductosPorCodigoService(currentSearchCode, apiPageToPrefetch);
+      } else if (currentSearch) {
         console.log(`🚀 Prefetching Search Results API Page ${apiPageToPrefetch} para term: "${currentSearch}"`);
         response = await buscarProductosService(currentSearch, apiPageToPrefetch);
       } else {
@@ -197,8 +206,12 @@ const InventarioPage: React.FC = () => {
       setIsLoading(true);
       let response;
       const currentSearch = searchTermRef.current;
+      const currentSearchCode = searchCodeRef.current;
 
-      if (currentSearch) {
+      if (currentSearchCode) {
+        console.log(`🔍 Realizando búsqueda global por código: "${currentSearchCode}", API Page: ${apiPage}`);
+        response = await buscarProductosPorCodigoService(currentSearchCode, apiPage);
+      } else if (currentSearch) {
         console.log(`🔍 Realizando búsqueda global para: "${currentSearch}", API Page: ${apiPage}`);
         response = await buscarProductosService(currentSearch, apiPage);
       } else {
@@ -287,14 +300,17 @@ const InventarioPage: React.FC = () => {
     };
   }, [cargarProductosPaginados, currentPage]);
 
-  // Lógica de Debounce para búsqueda (4 segundos)
+  // Lógica de Debounce para búsqueda
   React.useEffect(() => {
-    if (searchTerm === debouncedSearchTerm) return;
+    if (searchTerm === debouncedSearchTerm && searchCode === debouncedSearchCode) return;
 
     const handler = setTimeout(() => {
-      console.log(`⏳ Debounce completo: "${searchTerm}"`);
+      console.log(`⏳ Debounce completo: term="${searchTerm}", code="${searchCode}"`);
       setDebouncedSearchTerm(searchTerm);
       searchTermRef.current = searchTerm;
+
+      setDebouncedSearchCode(searchCode);
+      searchCodeRef.current = searchCode;
 
       // Resetear estados para nueva búsqueda
       cacheRef.current = {};
@@ -304,7 +320,7 @@ const InventarioPage: React.FC = () => {
     }, 4000);
 
     return () => clearTimeout(handler);
-  }, [searchTerm, debouncedSearchTerm, cargarProductosPaginados]);
+  }, [searchTerm, debouncedSearchTerm, searchCode, debouncedSearchCode, cargarProductosPaginados]);
 
   /**
    * Filtra los productos localmente solo si no hay búsqueda global activa.
@@ -312,12 +328,12 @@ const InventarioPage: React.FC = () => {
   React.useEffect(() => {
     // Si hay búsqueda global (debounced), no filtramos localmente 
     // porque el backend ya nos trajo solo lo que coincide.
-    if (debouncedSearchTerm) {
+    if (debouncedSearchTerm || debouncedSearchCode) {
       setFilteredProductos(productos);
       return;
     }
 
-    if (!searchTerm) {
+    if (!searchTerm && !searchCode) {
       setFilteredProductos(productos);
       return;
     }
@@ -502,11 +518,29 @@ const InventarioPage: React.FC = () => {
         <Card className="shadow-sm bg-default-50 dark:bg-content1 border border-default-200 dark:border-default-100">
           <CardBody className="p-4">
             <div className="flex flex-col md:flex-row gap-4 justify-between items-center">
-              <div className="w-full md:w-1/3">
+              <div className="w-full flex flex-col md:flex-row gap-2 md:w-1/2">
                 <Input
+                  className="w-full md:w-1/2"
+                  placeholder="Buscar código de producto..."
+                  value={searchCode}
+                  onValueChange={(val) => {
+                    setSearchCode(val);
+                    if (val) setSearchTerm('');
+                  }}
+                  startContent={<Icon icon="lucide:barcode" className="text-default-400" />}
+                  variant="bordered"
+                  classNames={{ inputWrapper: "bg-white dark:bg-default-100/50" }}
+                  isClearable
+                  onClear={() => setSearchCode('')}
+                />
+                <Input
+                  className="w-full md:w-1/2"
                   placeholder="Buscar productos por nombre o descripción..."
                   value={searchTerm}
-                  onValueChange={setSearchTerm}
+                  onValueChange={(val) => {
+                    setSearchTerm(val);
+                    if (val) setSearchCode('');
+                  }}
                   startContent={<Icon icon="lucide:search" className="text-default-400" />}
                   variant="bordered"
                   classNames={{ inputWrapper: "bg-white dark:bg-default-100/50" }}
@@ -881,13 +915,38 @@ const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto, onClo
     }
   };
 
+  // Verificar si hay cambios respecto al producto original (para deshabilitar el botón si no hay cambios)
+  const hasChanges = React.useMemo(() => {
+    if (mode === 'crear') return true;
+    if (!producto) return false;
+
+    const originalCategoria = producto.categoria ? categorias.find(c => c.nombre === producto.categoria)?.id.toString() || '' : '';
+    const originalUnidad = producto.unidadMedida ? unidades.find(u => u.nombre === producto.unidadMedida)?.id.toString() || '' : '';
+    const originalCodProducto = (producto as any).codProducto || '';
+    const originalDescripcion = producto.descripcion || '';
+    const originalStock = producto.stock?.toString() || '0';
+    const originalStockMinimo = producto.stockMinimo?.toString() || '0';
+
+    return (
+      nombre.trim() !== (producto.nombre || '') ||
+      codProducto.trim() !== originalCodProducto ||
+      descripcion.trim() !== originalDescripcion ||
+      idCategoria !== originalCategoria ||
+      idUnidadMedida !== originalUnidad ||
+      stock.trim() !== originalStock ||
+      stockMinimo.trim() !== originalStockMinimo
+    );
+  }, [mode, producto, nombre, codProducto, descripcion, idCategoria, idUnidadMedida, stock, stockMinimo, categorias, unidades]);
+
   const isFormInvalid =
     !nombre.trim() ||
     !idCategoria ||
     !idUnidadMedida ||
     !stock.trim() ||
+    isNaN(parseFloat(stock)) ||
     parseFloat(stock) < 0 ||
-    (stockMinimo.trim() !== '' && parseFloat(stockMinimo) < 0);
+    (stockMinimo.trim() !== '' && (isNaN(parseFloat(stockMinimo)) || parseFloat(stockMinimo) < 0)) ||
+    !hasChanges;
 
   return (
     <div className="space-y-4">

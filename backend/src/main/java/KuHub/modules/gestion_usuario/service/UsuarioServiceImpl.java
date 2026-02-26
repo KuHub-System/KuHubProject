@@ -50,7 +50,7 @@ public class UsuarioServiceImpl implements UsuarioService {
     @Transactional(readOnly = true)
     public Usuario findUserByUsernameOrEmail(String identifier){
         return usuarioRepository.findByIdentifier(identifier).orElseThrow(
-                ()-> new UsuarioException("Usuario no encontrado", HttpStatus.NOT_FOUND)
+                ()-> new GestionUsuarioException("Usuario no encontrado", HttpStatus.NOT_FOUND)
         );
     }
 

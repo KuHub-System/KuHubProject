@@ -56,6 +56,7 @@ interface BackendInventarioDTO {
 interface BackendCrearInventarioDTO {
     nombreProducto: string;
     codigoProducto?: string;
+    codProducto?: string;
     descripcionProducto: string;
     idCategoria: number;
     idUnidadMedida: number;
@@ -71,6 +72,8 @@ interface BackendActualizarInventarioDTO {
     idProducto: number;
     nombreProducto: string;
     descripcionProducto: string;
+    codProducto?: string;
+    codigoProducto?: string;
     nombreCategoria: string;
     unidadMedida: string;
     stock: number;
@@ -86,6 +89,7 @@ const transformarBackendAFrontend = (backendDTO: BackendInventarioDTO): IProduct
         id: backendDTO.idProducto.toString(),
         nombre: backendDTO.nombreProducto,
         descripcion: backendDTO.descripcionProducto || '',
+        codProducto: (backendDTO as any).codProducto,
         categoria: backendDTO.nombreCategoria,
         unidadMedida: backendDTO.unidadMedida,
         stock: backendDTO.stock,
@@ -241,7 +245,9 @@ export const actualizarProductoService = async (productoData: IActualizarProduct
             idInventario: idInventario, // ✅ Usar el idInventario real del producto
             idProducto: idProductoNumerico,
             nombreProducto: productoData.nombre?.trim() || productoActual.nombre,
-            descripcionProducto: productoData.descripcion?.trim() || productoActual.descripcion,
+            descripcionProducto: (productoData.descripcion !== undefined) ? productoData.descripcion.trim() : productoActual.descripcion,
+            codProducto: (productoData.codProducto !== undefined) ? productoData.codProducto.trim() : productoActual.codProducto,
+            codigoProducto: (productoData.codProducto !== undefined) ? productoData.codProducto.trim() : productoActual.codProducto,
             nombreCategoria: productoData.categoria?.trim() || productoActual.categoria,
             unidadMedida: productoData.unidadMedida?.trim() || productoActual.unidadMedida,
             stock: productoData.stock ?? productoActual.stock,
@@ -367,6 +373,41 @@ export const obtenerProductosPaginadosService = async (request: IInventoryPageRe
 };
 
 /**
+ * Busca productos en el inventario por código
+ */
+export const buscarProductosPorCodigoService = async (codigo: string, page: number = 1): Promise<IInventoryPageResponse> => {
+    console.log(`🔍 Buscando productos con código: "${codigo}", página: ${page}`);
+
+    try {
+        const response = await api.post<IInventoryPageResponse>(
+            '/inventario/search-inventory-by-code',
+            { term: codigo, page }
+        );
+
+        const data = response.data;
+        if (!data) throw new Error('El backend no devolvió datos');
+
+        const items = data.items || (data as any).data || [];
+        const totalItems = data.totalItems ?? (data as any).totalRegistros ?? 0;
+        const totalPages = data.totalPages ?? (data as any).totalPaginas ?? 1;
+
+        return {
+            ...data,
+            items,
+            totalItems,
+            totalPages
+        };
+
+    } catch (error: any) {
+        console.error('❌ Error al obtener productos paginados por código:', error);
+        throw new Error(
+            error.response?.data?.message ||
+            'Error al cargar los productos del inventario'
+        );
+    }
+};
+
+/**
  * Busca productos en el inventario por término global (nombre o descripción)
  */
 export const buscarProductosService = async (term: string, page: number = 1): Promise<IInventoryPageResponse> => {
@@ -414,10 +455,14 @@ export const transformarPageItemAProducto = (item: IInventoryPageItem): IProduct
     const stockActual = item.stockActual ?? (item as any).stock ?? 0;
     const stockMinimo = item.stockMinimo ?? (item as any).stockLimit ?? 0;
 
+    const codProducto = item.producto?.codProducto ?? item.codProducto ?? (item as any).codigoProducto ?? undefined;
+    const descripcion = item.producto?.descripcionProducto ?? item.descripcionProducto ?? (item as any).descripcion ?? '';
+
     return {
         id: idProducto.toString(),
         nombre,
-        descripcion: '',
+        descripcion: descripcion,
+        codProducto: codProducto,
         categoria,
         unidadMedida: unidad,
         stock: stockActual,
