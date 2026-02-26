@@ -1,4 +1,4 @@
-package KuHub.modules.gestion_inventario.dtos;
+package KuHub.modules.gestion_inventario.dtos.request.dto;
 
 import jakarta.validation.constraints.*;
 import lombok.*;

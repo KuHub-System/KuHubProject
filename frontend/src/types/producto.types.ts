@@ -5,6 +5,7 @@ export interface IProducto {
   id: string;
   nombre: string;
   descripcion: string;
+  codProducto?: string;
   categoria: string;
   unidadMedida: string;
   stock: number;
@@ -93,6 +94,8 @@ export interface IInventoryPageItem {
   producto: {
     idProducto: number;
     nombre: string;
+    codProducto?: string;
+    descripcionProducto?: string;
     categoria: {
       idCategoria: number;
       nombre: string;
@@ -105,6 +108,9 @@ export interface IInventoryPageItem {
   stockActual: number;
   stockMinimo: number;
   stockBajo: boolean;
+  // El backend no está devolviendo anidado a veces, sino plano
+  codProducto?: string;
+  descripcionProducto?: string;
 }
 
 /**
