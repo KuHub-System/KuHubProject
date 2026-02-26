@@ -2,6 +2,7 @@ import React from 'react';
 import { IUser, IRole } from '../types/user.types';
 import { iniciarSesionService, cerrarSesionService, obtenerUsuarioActualService } from '../services/auth-service';
 import { ROLES_STORAGE_KEY, ROLES_SISTEMA, cargarRoles as cargarRolesConfig } from '../config/roles-config';
+import { useInactivityTimeout } from '../hooks/useInactivityTimeout';
 
 /**
  * FUNCIONES PARA MANEJAR LOS ROLES DINÁMICOS
@@ -32,14 +33,14 @@ const AuthContext = React.createContext<IAuthContext>({
   isAuthenticated: false,
   isLoading: true,
   login: async () => false,
-  logout: () => {},
+  logout: () => { },
   hasPermission: () => false,
   hasSpecificPermission: () => false,
   getUserPermissions: () => [],
   canAccessPage: () => false,
   userRole: null,
   availableRoles: [],
-  reloadRoles: () => {},
+  reloadRoles: () => { },
 });
 
 export const useAuth = (): IAuthContext => {
@@ -61,6 +62,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setAvailableRoles(nuevosRoles);
     setRolesLoaded(true);
   }, []);
+
+  // Logout para inactividad (sin necesidad de retornar Promesa, que `cerrarSesionService` sí requiere en el type de context)
+  const handleInactivityLogout = React.useCallback(() => {
+    console.log('⏰ Tiempo de inactividad alcanzado. Cerrando sesión...');
+    cerrarSesionService()
+      .then(() => {
+        setUser(null);
+        setUserRole(null);
+        window.location.href = '/login';
+      })
+      .catch((error) => console.error('Error en logout por inactividad:', error));
+  }, []);
+
+  // Inicializar hook de inactividad (5 minutos = 5 * 60 * 1000 = 300000ms)
+  useInactivityTimeout(handleInactivityLogout, !!user, 5 * 60 * 1000);
 
   React.useEffect(() => {
     console.log('🚀 Inicializando auth-context');
@@ -98,7 +114,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.log('🔍 Roles disponibles:', availableRoles.map(r => r.nombre));
 
       const rolActualizado = availableRoles.find(rol =>
-          rol.nombre === user.rol || rol.nombre.toLowerCase() === user.rol.toLowerCase()
+        rol.nombre === user.rol || rol.nombre.toLowerCase() === user.rol.toLowerCase()
       );
 
       if (rolActualizado) {
@@ -305,10 +321,10 @@ interface PermissionGuardProps {
 }
 
 export const PermissionGuard: React.FC<PermissionGuardProps> = ({
-                                                                  permission,
-                                                                  children,
-                                                                  fallback = null
-                                                                }) => {
+  permission,
+  children,
+  fallback = null
+}) => {
   const { hasSpecificPermission, isLoading } = useAuth();
 
   if (isLoading) {
