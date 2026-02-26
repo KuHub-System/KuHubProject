@@ -20,7 +20,7 @@ api.interceptors.request.use(
         config.baseURL = isLocalMode ? LOCAL_URL : CLOUD_URL;
 
         const sesion = obtenerSesionActualService();
-        if (sesion?.token && config.headers) {
+        if (sesion?.token && config.headers && !config.url?.includes('/auth/login')) {
             config.headers.Authorization = `Bearer ${sesion.token}`;
         }
         return config;

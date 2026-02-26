@@ -192,7 +192,7 @@ const LoginPage: React.FC = () => {
               </motion.div>
             )}
 
-            <form onSubmit={handleSubmit} className="space-y-5">
+            <form onSubmit={handleSubmit} className="space-y-5" autoComplete="off">
               <Input
                 label="Correo Electrónico"
                 type="email"
@@ -202,6 +202,7 @@ const LoginPage: React.FC = () => {
                   handleManualInput();
                 }}
                 placeholder="correo@duoc.cl"
+                autoComplete="off"
                 startContent={
                   <Icon icon="lucide:mail" className="text-default-400 text-lg" />
                 }
@@ -224,6 +225,7 @@ const LoginPage: React.FC = () => {
                   handleManualInput();
                 }}
                 placeholder="••••••••"
+                autoComplete="new-password"
                 startContent={
                   <Icon icon="lucide:lock" className="text-default-400 text-lg" />
                 }
