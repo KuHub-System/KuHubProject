@@ -1,6 +1,6 @@
 package KuHub.modules.gestion_inventario.controller;
 
-import KuHub.modules.gestion_inventario.dtos.InventoryWithProductCreateDTO;
+import KuHub.modules.gestion_inventario.dtos.request.dto.InventoryWithProductCreateDTO;
 import KuHub.modules.gestion_inventario.dtos.request.dto.FilterInventoryPageDTO;
 import KuHub.modules.gestion_inventario.dtos.request.dto.SearchDTO;
 import KuHub.modules.gestion_inventario.dtos.response.InventoriesPageDTO;
@@ -58,7 +58,24 @@ public class InventarioController {
                 .body(inventarioService.getPagedInventory(filter));
     }
 
-    /**crear inventario para el FrontEnd*/
+    /**
+     * 🔍 Búsqueda de inventario por código de producto
+     */
+    @PostMapping("/search-inventory-by-code")
+    public ResponseEntity<InventoriesPageDTO> searchInventoryByCodProducto(
+            @RequestBody SearchDTO searchRequest
+    ){
+        return ResponseEntity
+            .status(201)
+            .body(
+            inventarioService.searchInventoryByCodProducto(
+                searchRequest.getTerm(), // acá el term es el código
+                searchRequest.getPage()
+            )
+        );
+    }
+
+    /** Crear inventario para el FrontEnd*/
      @PostMapping("/create-inventory-with-product")
         public ResponseEntity<Boolean> saveInventoryWithProduct(
          @Valid @RequestBody

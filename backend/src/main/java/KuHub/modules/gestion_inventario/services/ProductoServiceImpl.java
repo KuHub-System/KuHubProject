@@ -6,6 +6,7 @@ import KuHub.modules.gestion_inventario.exceptions.*;
 import KuHub.modules.gestion_inventario.repository.ProductoRepository;
 import KuHub.utils.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -40,7 +41,7 @@ public class ProductoServiceImpl implements ProductoService {
     @Override // ❌ Sin uso: Implementado por contrato del servicio y buenas prácticas; actualmente no es invocado por ningún controlador.
     public Producto findById(Integer id){
         return productoRepository.findById(id).orElseThrow(
-                ()-> new GestionInventarioException("No existe el producto con el id: " + id + "")
+                ()-> new GestionInventarioException("No existe el producto con el id: " + id + "", HttpStatus.NOT_FOUND)
         );
     }
 
@@ -55,7 +56,7 @@ public class ProductoServiceImpl implements ProductoService {
     @Override //✅ En uso: Método invocado por el controlador.
     public Producto findByIdProductoAndActivoTrue(Integer id_producto){
         return productoRepository.findByIdProductoAndActivoTrue(id_producto).orElseThrow(
-                ()-> new GestionInventarioException("No existe el producto con el id: " + id_producto + "")
+                ()-> new GestionInventarioException("No existe el producto con el id: " + id_producto + "", HttpStatus.NOT_FOUND)
         );
     }
 
@@ -69,7 +70,7 @@ public class ProductoServiceImpl implements ProductoService {
     @Override//✅ En uso: Método invocado por el controlador.
     public Producto findByNombreProducto(String nombre){
         return productoRepository.findByNombreProducto(nombre).orElseThrow(
-                ()-> new GestionInventarioException("No existe el producto con el nombre: " + nombre + "")
+                ()-> new GestionInventarioException("No existe el producto con el nombre: " + nombre + "", HttpStatus.NOT_FOUND)
         );
     }
 
@@ -77,7 +78,7 @@ public class ProductoServiceImpl implements ProductoService {
     @Override//✅ En uso: Método invocado por el controlador.
     public Producto findByNombreProductoAndActivo(String nombreProducto, Boolean activo){
         return productoRepository.findByNombreProductoAndActivo(nombreProducto,activo).orElseThrow(
-                ()-> new GestionInventarioException("No existe el producto con el nombre: " + nombreProducto + "")
+                ()-> new GestionInventarioException("No existe el producto con el nombre: " + nombreProducto + "", HttpStatus.NOT_FOUND)
         );
     }
 
@@ -136,7 +137,7 @@ public class ProductoServiceImpl implements ProductoService {
         String nombreProductoCapitalizado = StringUtils.capitalizarPalabras(nombreProducto);
 
         Producto producto = productoRepository.findByNombreProducto(nombreProductoCapitalizado).orElseThrow(
-                ()-> new GestionInventarioException("No existe el producto con el nombre: " + nombreProductoCapitalizado + "")
+                ()-> new GestionInventarioException("No existe el producto con el nombre: " + nombreProductoCapitalizado + "", HttpStatus.CONFLICT)
         );
 
         //VEREFICAR COMO AFECATARA A OTROS PRODUCTOS

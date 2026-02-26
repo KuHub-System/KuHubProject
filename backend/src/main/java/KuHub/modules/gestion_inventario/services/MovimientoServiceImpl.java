@@ -1,29 +1,20 @@
 package KuHub.modules.gestion_inventario.services;
 
 import KuHub.modules.gestion_inventario.dtos.MotionCreateDTO;
-import KuHub.modules.gestion_inventario.exceptions.InventarioException;
 import KuHub.modules.gestion_usuario.entity.Usuario;
-import KuHub.modules.gestion_usuario.exceptions.UsuarioException;
+import KuHub.modules.gestion_usuario.exceptions.GestionUsuarioException;
 import KuHub.modules.gestion_usuario.repository.UsuarioRepository;
 import KuHub.modules.gestion_usuario.service.UsuarioService;
-import KuHub.modules.gestion_inventario.dtos.MotionAnswerDTO;
-import KuHub.modules.gestion_inventario.dtos.MotionFilterRequestDTO;
 import KuHub.modules.gestion_inventario.entity.Inventario;
 import KuHub.modules.gestion_inventario.entity.Movimiento;
 import KuHub.modules.gestion_inventario.repository.InventarioRepository;
 import KuHub.modules.gestion_inventario.repository.MovimientoRepository;
-import KuHub.utils.StringUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
-
-import java.time.LocalDateTime;
-import java.time.LocalTime;
-import java.util.List;
-import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -57,7 +48,7 @@ public class MovimientoServiceImpl implements MovimientoService {
         Usuario u = usuarioService.findUserByUsernameOrEmail(username);
         if (u == null) {
             log.error("❌ No se encontró el usuario con username: {}", username);
-            throw new UsuarioException("Usuario no autenticado o no encontrado en el sistema", HttpStatus.NOT_FOUND);
+            throw new GestionUsuarioException("Usuario no autenticado o no encontrado en el sistema", HttpStatus.NOT_FOUND);
         }
         String nombreUsuario = usuarioService.formatearNombreCompleto(u);
         log.debug("👤 Operación realizada por: {}", nombreUsuario);

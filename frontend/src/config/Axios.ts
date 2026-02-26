@@ -23,6 +23,12 @@ api.interceptors.request.use(
         if (sesion?.token && config.headers && !config.url?.includes('/auth/login')) {
             config.headers.Authorization = `Bearer ${sesion.token}`;
         }
+
+        // Notificar actividad de API para reiniciar el timeout de inactividad
+        if (typeof window !== 'undefined') {
+            window.dispatchEvent(new Event('api-request'));
+        }
+
         return config;
     }
 );
@@ -39,6 +45,13 @@ api.interceptors.response.use(
             originalRequest.baseURL = LOCAL_URL;
             return api(originalRequest);
         }
+        // Handle 401 Unauthorized (Token expires or invalid)
+        if (error.response?.status === 401) {
+            console.warn('🔒 Sesión expirada o no autorizada. Redirigiendo al login...');
+            localStorage.removeItem('sesion_actual');
+            window.location.href = '/login';
+        }
+
         return Promise.reject(error);
     }
 );

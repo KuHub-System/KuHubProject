@@ -12,7 +12,10 @@ import java.math.BigDecimal;
 public class InventoryPageDTO {
     private Integer idInventario;
     private Integer idProducto;
+
     private String nombreProducto;
+    private String codProducto;
+    private String descripcionProducto;
 
     private Integer idCategoria;
     private String nombreCategoria;

@@ -1,8 +1,9 @@
 package KuHub.modules.gestion_inventario.services;
 
-import KuHub.modules.gestion_inventario.dtos.InventoryWithProductCreateDTO;
+import KuHub.modules.gestion_inventario.dtos.request.dto.InventoryWithProductCreateDTO;
 import KuHub.modules.gestion_inventario.dtos.MotionCreateDTO;
 import KuHub.modules.gestion_inventario.dtos.request.dto.FilterInventoryPageDTO;
+import KuHub.modules.gestion_inventario.dtos.request.dto.InventoryWithProductUpdateDTO;
 import KuHub.modules.gestion_inventario.dtos.response.InventoriesPageDTO;
 import KuHub.modules.gestion_inventario.dtos.response.InventoryFiltersDTO;
 import KuHub.modules.gestion_inventario.dtos.response.InventoryPageDTO;
@@ -10,21 +11,20 @@ import KuHub.modules.gestion_inventario.entity.Categoria;
 import KuHub.modules.gestion_inventario.entity.Inventario;
 import KuHub.modules.gestion_inventario.entity.Producto;
 import KuHub.modules.gestion_inventario.entity.UnidadMedida;
+import KuHub.modules.gestion_inventario.exceptions.GestionInventarioException;
 import KuHub.modules.gestion_inventario.exceptions.InventarioException;
 import KuHub.modules.gestion_inventario.repository.InventarioRepository;
 import KuHub.modules.gestion_inventario.repository.ProductoRepository;
-import KuHub.modules.gestion_inventario.repository.UnidadaMedidaRepository;
 import KuHub.utils.StringUtils;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -54,14 +54,14 @@ public class InventarioServiceImpl implements InventarioService {
     @Autowired
     private ObjectMapper objectMapper;
 
+
     @Transactional(readOnly = true)
     @Override
     public Inventario findById(Integer id) {
         return inventarioRepository.findById(id).orElseThrow(
-                () -> new InventarioException("No se encontro el producto con el id: " + id)
+                () -> new GestionInventarioException("No se encontro el producto con el id: " + id , HttpStatus.NOT_FOUND)
         );
     }
-
 
     /*****************************************************************************************
      * BUSQUEDA DE INVENTARIO CON PAGINACION DINAMICA ASIMETRICA (20/10 ITEMS)
@@ -72,7 +72,7 @@ public class InventarioServiceImpl implements InventarioService {
      *****************************************************************************************/
 
     /**
-     * 🔹 Combos de filtros (categorías + unidades), usado para seleccion multipla
+     * 🔹 COMBOS DE FILTROS (CATEGORIA + UNIDADES), USADO PARA SELECCION MULTIPLA
      */
     @Override
     @Transactional(readOnly = true)
@@ -83,60 +83,57 @@ public class InventarioServiceImpl implements InventarioService {
         try {
             return objectMapper.readValue(json, InventoryFiltersDTO.class);
         } catch (Exception e) {
-            throw new RuntimeException("Error parseando filtros de inventario", e);
+            throw new GestionInventarioException("Error parseando filtros de inventario", HttpStatus.NOT_ACCEPTABLE);
         }
     }
 
+    /**
+     * METODO PARA LISTAR INVENTARIO POR NOMBRE O DESCRIPCION DE PRODUCTO
+     * */
     @Override
     @Transactional(readOnly = true)
     public InventoriesPageDTO searchInventory(String searchTerm, Integer pageRequested) {
 
-        // 1️⃣ Limpieza del término de búsqueda
-        String term = (searchTerm == null || searchTerm.trim().isEmpty()) ? "" : searchTerm.trim();
+        String term = normalize(searchTerm);
 
-        log.debug("🔍 searchInventory - Term: '{}', Page: {}", term, pageRequested);
-
-        // 2️⃣ COUNT (Usando la nueva consulta de búsqueda)
         long totalRegistros = inventarioRepository.countSearchInventario(term);
 
-        // 3️⃣ TOTAL PÁGINAS (Reutilizamos tu método privado calcularTotalPaginas)
-        int totalPaginas = calculateTotalPages(totalRegistros);
+        Paging paging = buildPaging(pageRequested, totalRegistros);
 
-        // 4️⃣ Ajuste de página solicitada
-        int page = (pageRequested != null && pageRequested > 0) ? pageRequested : 1;
-        if (page > totalPaginas && totalPaginas > 0) {
-            page = totalPaginas;
-        }
-
-        // 5️⃣ Cálculo de OFFSET / LIMIT (Misma lógica: Pág 1 -> 20, resto -> 10)
-        int limit;
-        int offset;
-        if (page == 1) {
-            limit = 20;
-            offset = 0;
-        } else {
-            limit = 10;
-            offset = 20 + (page - 2) * 10;
-        }
-
-        // 6️⃣ DATA (Llamada al repositorio con búsqueda por nombre/descripción)
-        List<Object[]> rows = inventarioRepository.searchInventarioPage(term, limit, offset);
-
-        // 7️⃣ Mapeo de resultados al DTO
-        List<InventoryPageDTO> data = rows.stream()
-                .map(this::mapToInventoryPageDTO)
-                .collect(Collectors.toList());
-
-        // 8️⃣ Retorno del DTO de respuesta
-        return new InventoriesPageDTO(
-                data,
-                page,
-                limit,
-                totalPaginas,
-                totalRegistros
+        List<Object[]> rows = inventarioRepository.searchInventarioPage(
+                term,
+                paging.limit,
+                paging.offset
         );
+
+        return buildResponse(rows, paging, totalRegistros);
     }
 
+    /**
+     * METODO PARA LISTAR EL INVENTARIO POR CODIGO DE PRODUCTO
+     * */
+    @Override
+    @Transactional(readOnly = true)
+    public InventoriesPageDTO searchInventoryByCodProducto(String codProducto, Integer pageRequested) {
+
+        String term = normalize(codProducto);
+
+        long totalRegistros = inventarioRepository.countSearchInventarioByCodProducto(term);
+
+        Paging paging = buildPaging(pageRequested, totalRegistros);
+
+        List<Object[]> rows = inventarioRepository.searchInventarioByCodProductoPage(
+                term,
+                paging.limit,
+                paging.offset
+        );
+
+        return buildResponse(rows, paging, totalRegistros);
+    }
+
+    /**
+     * METODO PARA LISTAR EL INVENTARIO CON CONSULTA DINAMICA SEGUN FILTRO O NO
+     * */
     @Override
     @Transactional(readOnly = true)
     public InventoriesPageDTO getPagedInventory(FilterInventoryPageDTO filter) {
@@ -149,18 +146,10 @@ public class InventarioServiceImpl implements InventarioService {
                 ? null
                 : filter.getUnidadesIds().toArray(new Integer[0]);
 
-        // 🔍 LOGS (clave para debug)
-        log.debug("📦 getPagedInventory");
-        log.debug("➡️ categoriasIds = {}", categoriasIds == null ? "null" : Arrays.toString(categoriasIds));
-        log.debug("➡️ unidadesIds   = {}", unidadesIds == null ? "null" : Arrays.toString(unidadesIds));
-        log.debug("➡️ soloStockBajo = {}", filter.getSoloStockBajo());
-        log.debug("➡️ page          = {}", filter.getPage());
-
         boolean useCategorias = categoriasIds != null && categoriasIds.length > 0;
         boolean useUnidades   = unidadesIds   != null && unidadesIds.length > 0;
         boolean soloStockBajo = Boolean.TRUE.equals(filter.getSoloStockBajo());
 
-        // 1️⃣ COUNT
         long totalRegistros = inventarioRepository.countInventarioFiltered(
                 useCategorias,
                 categoriasIds,
@@ -169,54 +158,23 @@ public class InventarioServiceImpl implements InventarioService {
                 soloStockBajo
         );
 
-        // 2️⃣ TOTAL PÁGINAS
-        int totalPaginas = calculateTotalPages(totalRegistros);
+        Paging paging = buildPaging(filter.getPage(), totalRegistros);
 
-        // 3️⃣ página solicitada
-        int page = filter.getPage() != null && filter.getPage() > 0
-                ? filter.getPage()
-                : 1;
-
-        if (page > totalPaginas && totalPaginas > 0) {
-            page = totalPaginas;
-        }
-
-        // 4️⃣ offset / limit
-        int limit;
-        int offset;
-
-        if (page == 1) {
-            limit = 20;
-            offset = 0;
-        } else {
-            limit = 10;
-            offset = 20 + (page - 2) * 10;
-        }
-
-        // 5️⃣ data
         List<Object[]> rows = inventarioRepository.findInventarioPage(
                 useCategorias,
                 categoriasIds,
                 useUnidades,
                 unidadesIds,
                 soloStockBajo,
-                limit,
-                offset
+                paging.limit,
+                paging.offset
         );
-
-        List<InventoryPageDTO> data = rows.stream()
-                .map(this::mapToInventoryPageDTO)
-                .collect(Collectors.toList());
-
-        return new InventoriesPageDTO(
-                data,
-                page,
-                limit,
-                totalPaginas,
-                totalRegistros
-        );
+        return buildResponse(rows, paging, totalRegistros);
     }
 
+    /**
+     * METODO PARA CREAR PRODUCTO Y INVENTARIO, SI EL STOCK ASIGNADO ES MAYOR QUE [0] SE CREA UN MOVIMIENTO DE ENTRADA
+     * */
     @Transactional
     @Override
     public boolean saveInventoryWithProduct (InventoryWithProductCreateDTO request){
@@ -224,11 +182,11 @@ public class InventarioServiceImpl implements InventarioService {
         String codigoProducto = StringUtils.normalizeSpaces(request.getCodigoProducto());
         // 1. Validaciones de negocio
         if (productoRepository.existsByNombreProducto(nombreProducto)){
-            throw new InventarioException("El producto ya existe");
+            throw new GestionInventarioException("El producto ya existe", HttpStatus.CONFLICT);
         }
         if (codigoProducto != null && !codigoProducto.isBlank()) {
             if (productoRepository.existsBycodProductoAndActivo(codigoProducto, true)) {
-                throw new InventarioException("El código '" + codigoProducto + "' ya está asignado a otro producto activo");
+                throw new GestionInventarioException("El código '" + codigoProducto + "' ya está asignado a otro producto activo", HttpStatus.CONFLICT);
             }
         }
         Categoria categoria = categoriaService.findById(request.getIdCategoria());
@@ -253,20 +211,147 @@ public class InventarioServiceImpl implements InventarioService {
         // CREAR MOVIMIENTO DE ENTRADA INICIAL
         // Solo creamos el movimiento si el stock inicial es mayor a 0
         if (newInventario.getStock().compareTo(BigDecimal.ZERO) > 0) {
-            MotionCreateDTO motion = new MotionCreateDTO();
-            motion.setTipoMovimiento("ENTRADA");
-            motion.setIdInventario(newInventario.getIdInventario());
-            motion.setStockMovimiento(newInventario.getStock());
-            motion.setObservacion("ENTRADA INICIAL EN CREACIÓN DE PRODUCTO EN INVENTARIO ->" + newProducto.getNombreProducto());
-            // Enviamos el objeto 'newInventario' para evitar que saveMotion lo busque de nuevo en la DB
-            boolean validar = movimientoService.saveMotion(motion,newInventario);
-            if (!validar) {
-                throw new InventarioException("No se pudo crear el movimiento de entrada inicial");
-            }
+            crearMovimientoInventario(
+                    "ENTRADA",
+                    newInventario,
+                    newInventario.getStock(),
+                    "ENTRADA INICIAL EN CREACIÓN DE PRODUCTO EN INVENTARIO -> "
+                            + newProducto.getNombreProducto()
+            );
         }
         return true;
     }
 
+    @Transactional
+    @Override
+    public boolean updateInventoryWithProduct (InventoryWithProductUpdateDTO request){
+        Inventario oldInventario = inventarioRepository.findByIdInventoryWithProductActive(request.getIdInventario(),true).orElseThrow(
+                () -> new GestionInventarioException("El inventario no existe", HttpStatus.NOT_FOUND)
+        );
+
+        Producto oldProducto = oldInventario.getProducto();
+        String nombreProducto = StringUtils.capitalizarPalabras(request.getNombreProducto());
+        String codigoProducto = StringUtils.normalizeSpaces(request.getCodigoProducto());
+
+        /**Validaciones de producto*/
+        if (!oldInventario.getProducto().getNombreProducto().equals(nombreProducto)){
+            if (productoRepository.existsByNombreProducto(nombreProducto)){
+                throw new GestionInventarioException("El producto ya existe", HttpStatus.CONFLICT);
+            }else {
+                oldProducto.setNombreProducto(nombreProducto);
+            }
+        }
+        if (codigoProducto != null && !codigoProducto.isBlank()) {
+            if (!codigoProducto.equals(oldProducto.getCodProducto())) {
+                if (productoRepository.existsBycodProductoAndActivo(codigoProducto,true)){
+                    throw new GestionInventarioException("El codigo de producto ya esta en uso", HttpStatus.CONFLICT);
+                }else {
+                    oldProducto.setCodProducto(codigoProducto);
+                }
+            }
+        }
+        if (!oldProducto.getDescripcionProducto().equals(request.getDescripcionProducto())){
+            oldProducto.setDescripcionProducto(request.getDescripcionProducto());
+        }
+
+        /**Validaciones de Categoria y Unidad de Medida, la consulta del opcion lista todas las categorias y unidades de medida activas en la bbdd*/
+        if (!oldInventario.getProducto().getCategoria().getIdCategoria().equals(request.getIdCategoria())){
+            oldProducto.setCategoriaId(request.getIdCategoria());
+        }
+        if (!oldInventario.getProducto().getUnidadMedida().getIdUnidad().equals(request.getIdUnidadMedida())){
+            oldProducto.setUnidadMedidaId(request.getIdUnidadMedida());
+        }
+
+        /**Validar Stocks*/
+        if (!oldInventario.getStock().equals(request.getStock())){
+            oldInventario.setStock(request.getStock());
+            if (oldInventario.getStock().compareTo(BigDecimal.ZERO) > 0) {
+                crearMovimientoInventario(
+                        "AJUSTE",
+                        oldInventario,
+                        oldInventario.getStock(),
+                        "AJUSTE DE STOCK POR ACTUALIZACIÓN DE INVENTARIO"
+                );
+            }
+        }
+        if (!oldInventario.getStockLimit().equals(request.getStockLimit())){
+            oldInventario.setStockLimit(request.getStockLimit());
+        }
+
+
+
+
+
+
+        return true;
+    }
+
+    private void crearMovimientoInventario(
+            String tipoMovimiento,
+            Inventario inventario,
+            BigDecimal stockMovimiento,
+            String observacion
+    ) {
+        MotionCreateDTO motion = new MotionCreateDTO();
+        motion.setTipoMovimiento(tipoMovimiento);
+        motion.setIdInventario(inventario.getIdInventario());
+        motion.setStockMovimiento(stockMovimiento);
+        motion.setObservacion(observacion);
+
+        // Enviamos el inventario para evitar otra consulta a la DB
+        boolean validar = movimientoService.saveMotion(motion, inventario);
+        if (!validar) {
+            throw new InventarioException("No se pudo crear el movimiento de inventario");
+        }
+    }
+
+    /**Normalización reutilizable (searchTerm / codProducto)*/
+    private String normalize(String value) {
+        return (value == null || value.trim().isEmpty())
+                ? ""
+                : value.trim();
+    }
+
+    /** Factory del response (evita repetir el constructor)*/
+    private InventoriesPageDTO buildResponse(
+            List<Object[]> rows,
+            Paging paging,
+            long totalRegistros
+    ) {
+        return new InventoriesPageDTO(
+                mapRows(rows),
+                paging.page,
+                paging.limit,
+                paging.totalPages,
+                totalRegistros
+        );
+    }
+
+    /** Mapeo de rows → DTO*/
+    private List<InventoryPageDTO> mapRows(List<Object[]> rows) {
+        return rows.stream()
+                .map(this::mapToInventoryPageDTO)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * METODOS PRIVADO PARA MAPEO
+     * */
+    private InventoryPageDTO mapToInventoryPageDTO(Object[] row) {
+        return new InventoryPageDTO(
+                ((Number) row[7]).intValue(), // idInventario
+                ((Number) row[8]).intValue(), // idProducto
+                (String) row[0],              // nombreProducto
+                (String) row[1],              // codProducto
+                (String) row[2],              // descripcionProducto
+                ((Number) row[9]).intValue(), // idCategoria
+                (String) row[3],              // nombreCategoria
+                ((Number) row[10]).intValue(), // idUnidad
+                (String) row[6],               // nombreUnidad
+                (BigDecimal) row[4],           // stock
+                (BigDecimal) row[5]            // stockLimit
+        );
+    }
 
     /**
      * METODOS PRIVADOS PARA MENEJO IMPLEMENTADO EN LA LOGICA DE GESTION DE PAGINACION Y LISTADO DINAMICO
@@ -281,25 +366,43 @@ public class InventarioServiceImpl implements InventarioService {
         return 1 + (int) Math.ceil((totalRegistros - 20) / 10.0);
     }
 
+    /**Cálculo único de paginación asimétrica (20 / 10)*/
+    private Paging buildPaging(Integer pageRequested, long totalRegistros) {
 
+        int totalPages = calculateTotalPages(totalRegistros);
 
-    /**
-     * METODOS PRIVADOS MAPEOS
-     * */
-    private InventoryPageDTO mapToInventoryPageDTO(Object[] row) {
-        return new InventoryPageDTO(
-                ((Number) row[5]).intValue(), // id_inventario
-                ((Number) row[6]).intValue(), // id_producto
-                (String) row[0],              // nombre_producto
-                ((Number) row[7]).intValue(), // id_categoria
-                (String) row[1],              // nombre_categoria
-                ((Number) row[8]).intValue(), // id_unidad
-                (String) row[4],              // nombre_unidad
-                (BigDecimal) row[2],          // stock
-                (BigDecimal) row[3]           // stock_limit
-        );
+        int page = (pageRequested != null && pageRequested > 0) ? pageRequested : 1;
+        if (page > totalPages && totalPages > 0) {
+            page = totalPages;
+        }
+
+        int limit;
+        int offset;
+
+        if (page == 1) {
+            limit = 20;
+            offset = 0;
+        } else {
+            limit = 10;
+            offset = 20 + (page - 2) * 10;
+        }
+        return new Paging(page, limit, offset, totalPages);
     }
 
+    /**DTO interno para paginación (simple y efectivo)*/
+    private static class Paging {
+        int page;
+        int limit;
+        int offset;
+        int totalPages;
+
+        Paging(int page, int limit, int offset, int totalPages) {
+            this.page = page;
+            this.limit = limit;
+            this.offset = offset;
+            this.totalPages = totalPages;
+        }
+    }
 
     /**
     @Transactional(readOnly = true)

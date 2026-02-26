@@ -26,6 +26,7 @@ import {
   obtenerFiltrosInventarioService as obtenerFiltrosInventarioBackend,
   obtenerProductosPaginadosService as obtenerProductosPaginadosBackend,
   buscarProductosService as buscarProductosBackend,
+  buscarProductosPorCodigoService as buscarProductosPorCodigoBackend,
   transformarPageItemAProducto
 } from './inventario-service';
 
@@ -90,6 +91,13 @@ export const obtenerProductosPaginadosService = async (request: IInventoryPageRe
  */
 export const buscarProductosService = async (term: string, page: number = 1): Promise<IInventoryPageResponse> => {
   return await buscarProductosBackend(term, page);
+};
+
+/**
+ * Busca productos en el inventario por código de producto desde el BACKEND REAL
+ */
+export const buscarProductosPorCodigoService = async (codigo: string, page: number = 1): Promise<IInventoryPageResponse> => {
+  return await buscarProductosPorCodigoBackend(codigo, page);
 };
 
 export { transformarPageItemAProducto };

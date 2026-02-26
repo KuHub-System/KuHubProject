@@ -41,15 +41,9 @@ export const useInactivityTimeout = (
             }
         }, 10000); // Check every 10 seconds
 
-        // Events that denote user activity
+        // Events that denote user activity, ahora basado en peticiones a la API
         const events = [
-            'mousemove',
-            'mousedown',
-            'keydown',
-            'touchstart',
-            'scroll',
-            'wheel',
-            'click'
+            'api-request'
         ];
 
         // Throttle the event listeners locally so we don't query Date.now() a million times on mouse move
