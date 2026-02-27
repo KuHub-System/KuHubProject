@@ -2,6 +2,7 @@ package KuHub.modules.gestion_inventario.controller;
 
 import KuHub.modules.gestion_inventario.dtos.request.dto.InventoryWithProductCreateDTO;
 import KuHub.modules.gestion_inventario.dtos.request.dto.FilterInventoryPageDTO;
+import KuHub.modules.gestion_inventario.dtos.request.dto.InventoryWithProductUpdateDTO;
 import KuHub.modules.gestion_inventario.dtos.request.dto.SearchDTO;
 import KuHub.modules.gestion_inventario.dtos.response.InventoriesPageDTO;
 import KuHub.modules.gestion_inventario.dtos.response.InventoryFiltersDTO;
@@ -37,12 +38,12 @@ public class InventarioController {
      */
     @PostMapping("/search-inventory")
     public ResponseEntity<InventoriesPageDTO> searchInventory(
-            @RequestBody SearchDTO searchRequest
+            @RequestBody SearchDTO request
     ) {
         return ResponseEntity.ok(
                 inventarioService.searchInventory(
-                        searchRequest.getTerm(),
-                        searchRequest.getPage()
+                        request.getTerm(),
+                        request.getPage()
                 )
         );
     }
@@ -52,10 +53,10 @@ public class InventarioController {
      */
     @PostMapping("/paged-inventory")
     public ResponseEntity<InventoriesPageDTO> getPagedInventory(
-            @RequestBody FilterInventoryPageDTO filter
+            @RequestBody FilterInventoryPageDTO request
     ) {
         return ResponseEntity.status(200)
-                .body(inventarioService.getPagedInventory(filter));
+                .body(inventarioService.getPagedInventory(request));
     }
 
     /**
@@ -63,14 +64,14 @@ public class InventarioController {
      */
     @PostMapping("/search-inventory-by-code")
     public ResponseEntity<InventoriesPageDTO> searchInventoryByCodProducto(
-            @RequestBody SearchDTO searchRequest
+            @RequestBody SearchDTO request
     ){
         return ResponseEntity
             .status(201)
             .body(
             inventarioService.searchInventoryByCodProducto(
-                searchRequest.getTerm(), // acá el term es el código
-                searchRequest.getPage()
+                    request.getTerm(), // acá el term es el código
+                    request.getPage()
             )
         );
     }
@@ -79,10 +80,18 @@ public class InventarioController {
      @PostMapping("/create-inventory-with-product")
         public ResponseEntity<Boolean> saveInventoryWithProduct(
          @Valid @RequestBody
-         InventoryWithProductCreateDTO inventarioRequest){
+         InventoryWithProductCreateDTO request){
              return ResponseEntity
                  .status(201)
-                 .body(inventarioService.saveInventoryWithProduct(inventarioRequest));
+                 .body(inventarioService.saveInventoryWithProduct(request));
+     }
+
+     @PatchMapping("/update-inventory-with-product")
+        public ResponseEntity<Boolean> updateInventoryWithProduct(
+             @Validated @RequestBody InventoryWithProductUpdateDTO request){
+         return ResponseEntity
+                     .status(200)
+                     .body(inventarioService.updateInventoryWithProduct(request));
      }
 
     /**

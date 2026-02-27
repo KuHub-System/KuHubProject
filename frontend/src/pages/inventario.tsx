@@ -888,19 +888,29 @@ const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto, onClo
         const catNombre = categorias.find(c => c.id.toString() === idCategoria)?.nombre || '';
         const uniNombre = unidades.find(u => u.id.toString() === idUnidadMedida)?.nombre || '';
 
+        const stockActualizado = parseFloat(stock) || 0;
+        const stockCambiado = producto.stock !== stockActualizado;
+
         const datosActualizacion = {
           id: producto.id,
+          idInventario: producto._idInventario || 0, // Fallback safe
           nombre: nombre.trim(),
           codProducto: codProducto.trim() || undefined,
           descripcion: descripcion.trim(),
           categoria: catNombre,
           unidadMedida: uniNombre,
-          stock: parseFloat(stock) || 0,
+          idCategoria: parseInt(idCategoria),
+          idUnidadMedida: parseInt(idUnidadMedida),
+          stock: stockActualizado,
           stockMinimo: parseFloat(stockMinimo) || 0,
         };
 
         await actualizarProductoService(datosActualizacion);
-        toast.success('Producto actualizado exitosamente');
+        if (stockCambiado) {
+          toast.success('Actualizacion realizada con exito, movimiento de ajuste realizado');
+        } else {
+          toast.success('Actualizacion realizada con exito');
+        }
       }
 
       // Despachar evento personalizado para notificar el cambio

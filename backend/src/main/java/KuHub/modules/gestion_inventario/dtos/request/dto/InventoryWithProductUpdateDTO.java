@@ -17,4 +17,7 @@ public class InventoryWithProductUpdateDTO extends InventoryWithProductCreateDTO
 
     @NotNull(message = "El id del producto es obligatorio")
     private Integer idProducto;
+
+    @NotNull(message = "El tipo de movimiento es obligatorio")
+    private String tipoMovimiento;
 }

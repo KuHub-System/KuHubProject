@@ -1,6 +1,7 @@
 package KuHub.modules.gestion_inventario.services;
 
 import KuHub.modules.gestion_inventario.dtos.MotionCreateDTO;
+import KuHub.modules.gestion_inventario.exceptions.GestionInventarioException;
 import KuHub.modules.gestion_usuario.entity.Usuario;
 import KuHub.modules.gestion_usuario.exceptions.GestionUsuarioException;
 import KuHub.modules.gestion_usuario.repository.UsuarioRepository;
@@ -9,12 +10,15 @@ import KuHub.modules.gestion_inventario.entity.Inventario;
 import KuHub.modules.gestion_inventario.entity.Movimiento;
 import KuHub.modules.gestion_inventario.repository.InventarioRepository;
 import KuHub.modules.gestion_inventario.repository.MovimientoRepository;
+import KuHub.utils.StringUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
+
+import java.math.BigDecimal;
 
 @Slf4j
 @Service
@@ -32,6 +36,14 @@ public class MovimientoServiceImpl implements MovimientoService {
     @Autowired
     private UsuarioRepository usuarioRepository;
 
+    /**Save crudo usado en inventario al crear un producto con inventario*/
+    @Transactional
+    @Override
+    public void save (Movimiento m){
+        movimientoRepository.save(m);
+    }
+
+    //NO USADO 26/02 - SE VA!
     //LA IDEA ES USAR DE MANDERA HIBRIDA, PERO AHORA CREA MOVIMIENTO EN INVENTARIO EN LA CREACCION PRODUCTO CON INVENTARIO
     @Transactional
     @Override
@@ -89,6 +101,88 @@ public class MovimientoServiceImpl implements MovimientoService {
         log.info("💾 Movimiento guardado exitosamente por {}", username);
         return true;
     }
+
+    /**METODO DE VALIDACION DE MOVIMIENTO PARA LA PAGE DE INVENTARIO, IMPLEMENADO PARA CUANDO SE ACTUALIZA UN PRODUCTO EN EL INVENTARIO REALIZAR MOVIMIENTO*/
+    @Transactional
+    @Override
+    public boolean motionInUpdateInventory(Inventario oldInventory, BigDecimal newStock, String typeMotion) {
+        String tipoKey = StringUtils.normalizeToEnumKey(typeMotion);
+        BigDecimal calculatedAmount = BigDecimal.ZERO;
+        String description = "";
+
+        switch (tipoKey) {
+            case "ENTRADA":
+                if (newStock.compareTo(oldInventory.getStock()) < 0) {
+                    throw new GestionInventarioException("La entrada no puede resultar en un stock menor al actual del producto -> " +
+                            oldInventory.getProducto().getNombreProducto(), HttpStatus.BAD_REQUEST);
+                }
+                calculatedAmount = newStock.subtract(oldInventory.getStock());
+                description = "Entrada en inventario del producto " + oldInventory.getProducto().getNombreProducto();
+                break;
+
+            case "SALIDA":
+                // Lógica corregida: Si el stock nuevo es mayor al antiguo, es un error.
+                if (newStock.compareTo(oldInventory.getStock()) > 0) {
+                    throw new GestionInventarioException("La salida no puede resultar en un stock mayor al actual del producto -> " +
+                            oldInventory.getProducto().getNombreProducto(), HttpStatus.BAD_REQUEST);
+                }
+                // Para salida, restamos el nuevo del antiguo para que la cantidad calculada sea positiva
+                calculatedAmount = oldInventory.getStock().subtract(newStock);
+                description = "Salida de inventario del producto " + oldInventory.getProducto().getNombreProducto();
+                break;
+
+            case "MERMA":
+                // Agregada la validación de seguridad (igual que salida)
+                if (newStock.compareTo(oldInventory.getStock()) > 0) {
+                    throw new GestionInventarioException("La merma no puede resultar en un stock mayor al actual del producto -> " +
+                            oldInventory.getProducto().getNombreProducto(), HttpStatus.BAD_REQUEST);
+                }
+                // Cálculopara que no dé negativo
+                calculatedAmount = oldInventory.getStock().subtract(newStock);
+                description = "Merma de inventario del producto " + oldInventory.getProducto().getNombreProducto();
+                break;
+
+            case "AJUSTE":
+                // Si el stock nuevo es MAYOR que el antiguo = Ajuste Positivo
+                if (newStock.compareTo(oldInventory.getStock()) > 0) {
+                    calculatedAmount = newStock.subtract(oldInventory.getStock());
+                    description = "Ajuste positivo de inventario del producto " + oldInventory.getProducto().getNombreProducto();
+                }
+                // Si el stock nuevo es MENOR que el antiguo = Ajuste Negativo
+                else if (newStock.compareTo(oldInventory.getStock()) < 0) {
+                    calculatedAmount = oldInventory.getStock().subtract(newStock);
+                    description = "Ajuste negativo de inventario del producto " + oldInventory.getProducto().getNombreProducto();
+                }
+                break;
+
+            case "DEVOLUCION":
+                // Agregada la validación de seguridad (igual que entrada)
+                if (newStock.compareTo(oldInventory.getStock()) < 0) {
+                    throw new GestionInventarioException("La devolución no puede resultar en un stock menor al actual del producto -> " +
+                            oldInventory.getProducto().getNombreProducto(), HttpStatus.BAD_REQUEST);
+                }
+                calculatedAmount = newStock.subtract(oldInventory.getStock());
+                description = "Devolucion en inventario del producto " + oldInventory.getProducto().getNombreProducto();
+                break;
+
+            default:
+                throw new GestionInventarioException("Tipo de movimiento no válido: " + tipoKey, HttpStatus.BAD_REQUEST);
+        }
+
+        //CREAR MOVIMIENTO
+        Movimiento newMotion =new Movimiento();
+        newMotion.setUsuario(usuarioService.findUserByToken());
+        newMotion.setInventario(oldInventory);
+        newMotion.setStockMovimiento(calculatedAmount);
+        newMotion.setTipoMovimiento(Movimiento.TipoMovimiento.valueOf(tipoKey));
+        newMotion.setObservacion(description);
+        movimientoRepository.save(newMotion);
+        return true;
+    }
+
+
+
+
 
         /** 5. Actualizar stock mínimo
          if (m.getStockLimitMin() != null) {

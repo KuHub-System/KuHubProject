@@ -61,7 +61,7 @@ export const obtenerProductoPorIdService = async (id: string): Promise<IProducto
 /**
  * Crea un nuevo producto en el BACKEND REAL
  */
-export const crearProductoService = async (productoData: ICrearProducto): Promise<IProducto> => {
+export const crearProductoService = async (productoData: ICrearProducto): Promise<boolean> => {
   return await crearProductoBackend(productoData);
 };
 
