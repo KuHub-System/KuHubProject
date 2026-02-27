@@ -77,6 +77,7 @@ interface InventoryWithProductUpdateDTO {
     idUnidadMedida: number;
     stock: number;
     stockLimit: number;
+    tipoMovimiento: string;
 }
 
 /**
@@ -233,7 +234,6 @@ export const actualizarProductoService = async (productoData: IActualizarProduct
             throw new Error('No se proporcionó el ID de inventario del producto');
         }
 
-        // Transformar al formato del backend EXACTO que se necesita para el PATCH
         const backendDTO: InventoryWithProductUpdateDTO = {
             idInventario: idInventario,
             idProducto: idProductoNumerico,
@@ -244,6 +244,7 @@ export const actualizarProductoService = async (productoData: IActualizarProduct
             idUnidadMedida: productoData.idUnidadMedida,
             stock: productoData.stock ?? 0,
             stockLimit: productoData.stockMinimo ?? 0,
+            tipoMovimiento: productoData.tipoMovimiento,
         };
 
         const response = await api.patch<boolean>(

@@ -23,7 +23,9 @@ import {
   Autocomplete,
   AutocompleteItem,
   Card,
-  CardBody
+  CardBody,
+  Select,
+  SelectItem
 } from '@heroui/react';
 import { Icon } from '@iconify/react';
 import { usePageTitle } from '../hooks/usePageTitle';
@@ -493,7 +495,7 @@ const InventarioPage: React.FC = () => {
               startContent={<Icon icon="lucide:plus" width={20} />}
               onPress={handleNuevoProducto}
             >
-              Nuevo Producto
+              Nuevo Inventario
             </Button>
             <Button
               isIconOnly
@@ -745,7 +747,7 @@ const InventarioPage: React.FC = () => {
               <ModalHeader className="border-b border-default-100 dark:border-default-50 bg-default-50 dark:bg-content2">
                 <div className="flex items-center gap-2">
                   <Icon icon={modalMode === 'crear' ? "lucide:plus-circle" : "lucide:edit-3"} className="text-primary" width={24} />
-                  <span className="font-bold text-lg text-secondary dark:text-foreground">{modalMode === 'crear' ? 'Nuevo Producto' : 'Editar Producto'}</span>
+                  <span className="font-bold text-lg text-secondary dark:text-foreground">{modalMode === 'crear' ? 'Nuevo Inventario' : 'Editar Inventario'}</span>
                 </div>
               </ModalHeader>
               <ModalBody className="py-6">
@@ -828,6 +830,7 @@ const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto, onClo
   });
   const [stock, setStock] = React.useState(producto?.stock?.toString() || '0');
   const [stockMinimo, setStockMinimo] = React.useState(producto?.stockMinimo?.toString() || '0');
+  const [tipoMovimiento, setTipoMovimiento] = React.useState('');
   const [isLoading, setIsLoading] = React.useState(false);
   const [mostrarAbreviatura, setMostrarAbreviatura] = React.useState(false);
 
@@ -859,6 +862,10 @@ const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto, onClo
     }
     if (!isNaN(stockMinNum) && stockMinNum < 0) {
       toast.warning('El stock mínimo no puede ser negativo');
+      return;
+    }
+    if (mode === 'editar' && !tipoMovimiento) {
+      toast.warning('El motivo (Tipo de Movimiento) es requerido');
       return;
     }
 
@@ -903,6 +910,7 @@ const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto, onClo
           idUnidadMedida: parseInt(idUnidadMedida),
           stock: stockActualizado,
           stockMinimo: parseFloat(stockMinimo) || 0,
+          tipoMovimiento: tipoMovimiento,
         };
 
         await actualizarProductoService(datosActualizacion);
@@ -956,6 +964,7 @@ const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto, onClo
     isNaN(parseFloat(stock)) ||
     parseFloat(stock) < 0 ||
     (stockMinimo.trim() !== '' && (isNaN(parseFloat(stockMinimo)) || parseFloat(stockMinimo) < 0)) ||
+    (mode === 'editar' && !tipoMovimiento) ||
     !hasChanges;
 
   return (
@@ -995,29 +1004,37 @@ const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto, onClo
       />
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="flex flex-col gap-2">
-          <label className="text-sm font-medium">
-            Categoría <span className="text-danger">*</span>
-          </label>
-          <select
-            value={idCategoria}
-            onChange={(e) => setIdCategoria(e.target.value)}
-            className="px-3 py-2 rounded-lg border-2 border-default-200 dark:border-default-100 hover:border-default-400 focus:border-primary focus:outline-none transition-colors bg-default-100 dark:bg-default-100/50 text-foreground"
-            required
-          >
-            <option value="">Seleccione una categoría</option>
-            {/* Categorías dinámicas */}
-            {categorias.map(cat => (
-              <option key={cat.id} value={cat.id.toString()}>{cat.nombre}</option>
-            ))}
-          </select>
-        </div>
+        <Select
+          label="Categoría"
+          placeholder="Seleccione..."
+          selectedKeys={idCategoria ? [idCategoria] : []}
+          onChange={(e: any) => setIdCategoria(e.target.value)}
+          isRequired
+          variant="bordered"
+          classNames={{ trigger: "bg-default-50 dark:bg-default-100/50" }}
+        >
+          {categorias.map(cat => (
+            <SelectItem key={cat.id.toString()}>{cat.nombre}</SelectItem>
+          ))}
+        </Select>
 
-        <div className="flex flex-col gap-2">
-          <div className="flex items-center justify-between">
-            <label className="text-sm font-medium">
-              Unidad de Medida <span className="text-danger">*</span>
-            </label>
+        <div className="relative">
+          <Select
+            label="Unidad de Medida"
+            placeholder="Seleccione..."
+            selectedKeys={idUnidadMedida ? [idUnidadMedida] : []}
+            onChange={(e: any) => setIdUnidadMedida(e.target.value)}
+            isRequired
+            variant="bordered"
+            classNames={{ trigger: "bg-default-50 dark:bg-default-100/50 pr-10" }}
+          >
+            {unidades.map(uni => (
+              <SelectItem key={uni.id.toString()}>
+                {mostrarAbreviatura ? uni.abreviatura : uni.nombre}
+              </SelectItem>
+            ))}
+          </Select>
+          <div className="absolute right-10 top-1/2 -translate-y-1/2 z-10">
             <Button
               isIconOnly
               size="sm"
@@ -1035,32 +1052,23 @@ const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto, onClo
               </motion.div>
             </Button>
           </div>
-          <select
-            value={idUnidadMedida}
-            onChange={(e) => setIdUnidadMedida(e.target.value)}
-            className="px-3 py-2 rounded-lg border-2 border-default-200 dark:border-default-100 hover:border-default-400 focus:border-primary focus:outline-none transition-colors bg-default-100 dark:bg-default-100/50 text-foreground"
-            required
-          >
-            <option value="">Seleccione una unidad</option>
-            {/* Unidades dinámicas activas */}
-            {unidades.map(uni => (
-              <option key={uni.id} value={uni.id}>
-                {mostrarAbreviatura ? uni.abreviatura : uni.nombre}
-              </option>
-            ))}
-          </select>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className={`grid grid-cols-1 ${mode === 'editar' ? 'md:grid-cols-3' : 'md:grid-cols-2'} gap-4`}>
         <Input
           type="number"
           label="Stock"
-          placeholder="Stock actual"
+          placeholder="Ej: 10"
           value={stock}
-          onValueChange={setStock}
+          onValueChange={(val) => {
+            if (val === '' || /^\d{0,7}(\.\d{0,3})?$/.test(val)) {
+              setStock(val);
+            }
+          }}
           min="0"
-          step="0.01"
+          max="9999999.999"
+          step="0.001"
           isRequired
           variant="bordered"
           classNames={{ inputWrapper: "bg-default-50 dark:bg-default-100/50" }}
@@ -1068,15 +1076,38 @@ const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto, onClo
 
         <Input
           type="number"
-          label="Stock Mínimo (Opcional)"
-          placeholder="Stock mínimo"
+          label={<span className="whitespace-nowrap truncate max-w-full">Stock Mín. (Opcional)</span>}
+          placeholder="Ej: 5"
           value={stockMinimo}
-          onValueChange={setStockMinimo}
+          onValueChange={(val) => {
+            if (val === '' || /^\d{0,7}(\.\d{0,3})?$/.test(val)) {
+              setStockMinimo(val);
+            }
+          }}
           min="0"
-          step="0.01"
+          max="9999999.999"
+          step="0.001"
           variant="bordered"
           classNames={{ inputWrapper: "bg-default-50 dark:bg-default-100/50" }}
         />
+
+        {mode === 'editar' && (
+          <Select
+            label="Motivo"
+            placeholder="Seleccione..."
+            selectedKeys={tipoMovimiento ? [tipoMovimiento] : []}
+            onChange={(e: any) => setTipoMovimiento(e.target.value)}
+            isRequired
+            variant="bordered"
+            classNames={{ trigger: "bg-default-50 dark:bg-default-100/50" }}
+          >
+            <SelectItem key="Entrada">Entrada</SelectItem>
+            <SelectItem key="Salida">Salida</SelectItem>
+            <SelectItem key="Ajuste">Ajuste</SelectItem>
+            <SelectItem key="Merma">Merma</SelectItem>
+            <SelectItem key="Devolucion">Devolución</SelectItem>
+          </Select>
+        )}
       </div>
 
       <div className="flex justify-end gap-2 pt-4 border-t border-default-100 mt-4">
@@ -1092,7 +1123,7 @@ const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto, onClo
           className="font-bold text-secondary shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
           startContent={<Icon icon="lucide:save" />}
         >
-          {mode === 'crear' ? 'Crear Producto' : 'Guardar Cambios'}
+          {mode === 'crear' ? 'Crear Inventario' : 'Guardar Cambios'}
         </Button>
       </div>
     </div>
