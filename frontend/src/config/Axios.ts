@@ -34,7 +34,26 @@ api.interceptors.request.use(
 );
 
 api.interceptors.response.use(
-    (response) => response,
+    (response) => {
+        // Renovar token si viene en el header Authorization
+        const authHeader = response.headers['authorization'];
+        if (authHeader && typeof authHeader === 'string' && authHeader.startsWith('Bearer ')) {
+            const newToken = authHeader.substring(7);
+            const sesionStr = localStorage.getItem('sesion_actual');
+            if (sesionStr) {
+                try {
+                    const sesion = JSON.parse(sesionStr);
+                    sesion.token = newToken;
+                    localStorage.setItem('sesion_actual', JSON.stringify(sesion));
+                    // Disparar evento para reiniciar el contador de inactividad
+                    window.dispatchEvent(new Event('api-request'));
+                } catch (e) {
+                    console.error('Error actualizando token renovado:', e);
+                }
+            }
+        }
+        return response;
+    },
     async (error: AxiosError) => {
         const originalRequest = error.config;
 
@@ -45,9 +64,10 @@ api.interceptors.response.use(
             originalRequest.baseURL = LOCAL_URL;
             return api(originalRequest);
         }
+
         // Handle 401 Unauthorized (Token expires or invalid)
         if (error.response?.status === 401) {
-            console.warn('🔒 Sesión expirada o no autorizada. Redirigiendo al login...');
+            console.warn('🔒 Sesión expirada (401). Redirigiendo al login...');
             localStorage.removeItem('sesion_actual');
             window.location.href = '/login';
         }
