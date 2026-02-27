@@ -55,12 +55,15 @@ export interface ICrearProducto {
  * Interfaz para los datos de actualización de un producto.
  */
 export interface IActualizarProducto {
-  id: string;
+  id: string; // idProducto
+  idInventario: number;
   nombre?: string;
   descripcion?: string;
   codProducto?: string;
   categoria?: string;
   unidadMedida?: string;
+  idCategoria: number;
+  idUnidadMedida: number;
   stock?: number;
   stockMinimo?: number;
 }

@@ -65,19 +65,18 @@ interface BackendCrearInventarioDTO {
 }
 
 /**
- * DTO para actualizar inventario en backend
+ * DTO para actualizar inventario en backend response
  */
-interface BackendActualizarInventarioDTO {
+interface InventoryWithProductUpdateDTO {
     idInventario: number;
     idProducto: number;
     nombreProducto: string;
     descripcionProducto: string;
-    codProducto?: string;
     codigoProducto?: string;
-    nombreCategoria: string;
-    unidadMedida: string;
+    idCategoria: number;
+    idUnidadMedida: number;
     stock: number;
-    stockLimitMin: number;
+    stockLimit: number;
 }
 
 /**
@@ -227,39 +226,48 @@ export const actualizarProductoService = async (productoData: IActualizarProduct
     }
 
     try {
-        // Primero obtener el producto actual para tener idInventario y todos los datos
-        const productoActual = await obtenerProductoPorIdService(productoData.id);
-
-        // Convertir el ID a número
         const idProductoNumerico = parseInt(productoData.id);
-
-        // Obtener el idInventario del producto (viene como propiedad interna)
-        const idInventario = (productoActual as any)._idInventario;
+        const idInventario = productoData.idInventario;
 
         if (!idInventario) {
-            throw new Error('No se pudo obtener el ID de inventario del producto');
+            throw new Error('No se proporcionó el ID de inventario del producto');
         }
 
-        // Transformar al formato del backend (merge con datos actuales)
-        const backendDTO: BackendActualizarInventarioDTO = {
-            idInventario: idInventario, // ✅ Usar el idInventario real del producto
+        // Transformar al formato del backend EXACTO que se necesita para el PATCH
+        const backendDTO: InventoryWithProductUpdateDTO = {
+            idInventario: idInventario,
             idProducto: idProductoNumerico,
-            nombreProducto: productoData.nombre?.trim() || productoActual.nombre,
-            descripcionProducto: (productoData.descripcion !== undefined) ? productoData.descripcion.trim() : productoActual.descripcion,
-            codProducto: (productoData.codProducto !== undefined) ? productoData.codProducto.trim() : productoActual.codProducto,
-            codigoProducto: (productoData.codProducto !== undefined) ? productoData.codProducto.trim() : productoActual.codProducto,
-            nombreCategoria: productoData.categoria?.trim() || productoActual.categoria,
-            unidadMedida: productoData.unidadMedida?.trim() || productoActual.unidadMedida,
-            stock: productoData.stock ?? productoActual.stock,
-            stockLimitMin: productoData.stockMinimo ?? productoActual.stockMinimo,
+            nombreProducto: productoData.nombre?.trim() || '',
+            codigoProducto: productoData.codProducto?.trim() || '',
+            descripcionProducto: productoData.descripcion?.trim() || '',
+            idCategoria: productoData.idCategoria,
+            idUnidadMedida: productoData.idUnidadMedida,
+            stock: productoData.stock ?? 0,
+            stockLimit: productoData.stockMinimo ?? 0,
         };
 
-        const response = await api.put<BackendActualizarInventarioDTO>(
-            '/inventario/update-inventory-with-product/',
+        const response = await api.patch<boolean>(
+            '/inventario/update-inventory-with-product',
             backendDTO
         );
 
-        const productoActualizado = transformarBackendAFrontend(response.data);
+        if (!response.data) {
+            throw new Error('El backend indicó que no se actualizó el producto');
+        }
+
+        const productoActualizado: IProducto = {
+            id: productoData.id,
+            nombre: backendDTO.nombreProducto,
+            descripcion: backendDTO.descripcionProducto,
+            codProducto: backendDTO.codigoProducto,
+            stock: backendDTO.stock,
+            stockMinimo: backendDTO.stockLimit,
+            categoria: productoData.categoria || '',
+            unidadMedida: productoData.unidadMedida || '',
+            fechaCreacion: new Date().toISOString(),
+            fechaActualizacion: new Date().toISOString(),
+            _idInventario: idInventario
+        };
 
         console.log(`✅ Producto actualizado: ${productoActualizado.nombre}`);
         return productoActualizado;

@@ -54,7 +54,15 @@ public class UsuarioServiceImpl implements UsuarioService {
         );
     }
 
-
+    @Override
+    @Transactional(readOnly = true)
+    public Usuario findUserByToken (){
+        String email = org.springframework.security.core.context.SecurityContextHolder
+                .getContext().getAuthentication().getName();
+        return usuarioRepository.findByEmailIgnoreCase(email).orElseThrow(
+                ()-> new GestionUsuarioException("Usuario no encontrado", HttpStatus.NOT_FOUND)
+        );
+    }
 
 
 

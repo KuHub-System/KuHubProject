@@ -281,6 +281,9 @@ public class SpringSecurityConfig {
                         .requestMatchers(HttpMethod.PUT, "/api/v*/inventario/**")
                         .hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR", "GESTOR_PEDIDOS", "ENCARGADO_BODEGA")
 
+                        .requestMatchers(HttpMethod.PATCH, "/api/v*/inventario/**")
+                        .hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR", "GESTOR_PEDIDOS", "ENCARGADO_BODEGA")
+
                         // 4. Eliminación (DELETE): Acceso restringido solo a la jerarquía más alta
                         .requestMatchers(HttpMethod.DELETE, "/api/v*/inventario/**")
                         .hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR")

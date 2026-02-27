@@ -1,20 +1,16 @@
 package KuHub.modules.gestion_inventario.services;
 
 import KuHub.modules.gestion_inventario.dtos.request.dto.InventoryWithProductCreateDTO;
-import KuHub.modules.gestion_inventario.dtos.MotionCreateDTO;
 import KuHub.modules.gestion_inventario.dtos.request.dto.FilterInventoryPageDTO;
 import KuHub.modules.gestion_inventario.dtos.request.dto.InventoryWithProductUpdateDTO;
 import KuHub.modules.gestion_inventario.dtos.response.InventoriesPageDTO;
 import KuHub.modules.gestion_inventario.dtos.response.InventoryFiltersDTO;
 import KuHub.modules.gestion_inventario.dtos.response.InventoryPageDTO;
-import KuHub.modules.gestion_inventario.entity.Categoria;
-import KuHub.modules.gestion_inventario.entity.Inventario;
-import KuHub.modules.gestion_inventario.entity.Producto;
-import KuHub.modules.gestion_inventario.entity.UnidadMedida;
+import KuHub.modules.gestion_inventario.entity.*;
 import KuHub.modules.gestion_inventario.exceptions.GestionInventarioException;
-import KuHub.modules.gestion_inventario.exceptions.InventarioException;
 import KuHub.modules.gestion_inventario.repository.InventarioRepository;
 import KuHub.modules.gestion_inventario.repository.ProductoRepository;
+import KuHub.modules.gestion_usuario.service.UsuarioService;
 import KuHub.utils.StringUtils;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -33,15 +29,13 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class InventarioServiceImpl implements InventarioService {
 
+    /**Repositories*/
     @Autowired
     private InventarioRepository inventarioRepository;
 
     @Autowired
-    private ProductoService productoService;
-
-    @Autowired
     private ProductoRepository productoRepository;
-
+    /**Services*/
     @Autowired
     private CategoriaService categoriaService;
 
@@ -51,6 +45,9 @@ public class InventarioServiceImpl implements InventarioService {
     @Autowired
     private MovimientoService movimientoService;
 
+    @Autowired
+    private UsuarioService usuarioService;
+    /**Others*/
     @Autowired
     private ObjectMapper objectMapper;
 
@@ -211,13 +208,13 @@ public class InventarioServiceImpl implements InventarioService {
         // CREAR MOVIMIENTO DE ENTRADA INICIAL
         // Solo creamos el movimiento si el stock inicial es mayor a 0
         if (newInventario.getStock().compareTo(BigDecimal.ZERO) > 0) {
-            crearMovimientoInventario(
-                    "ENTRADA",
-                    newInventario,
-                    newInventario.getStock(),
-                    "ENTRADA INICIAL EN CREACIÓN DE PRODUCTO EN INVENTARIO -> "
-                            + newProducto.getNombreProducto()
-            );
+            Movimiento motion = new Movimiento();
+            motion.setUsuario(usuarioService.findUserByToken());
+            motion.setInventario(newInventario);
+            motion.setStockMovimiento(newInventario.getStock());
+            motion.setTipoMovimiento(Movimiento.TipoMovimiento.ENTRADA);
+            motion.setObservacion("ENTRADA INICIAL DE PRODUCTO: " + newProducto.getNombreProducto());
+            movimientoService.save(motion);
         }
         return true;
     }
@@ -264,46 +261,28 @@ public class InventarioServiceImpl implements InventarioService {
 
         /**Validar Stocks*/
         if (!oldInventario.getStock().equals(request.getStock())){
-            oldInventario.setStock(request.getStock());
-            if (oldInventario.getStock().compareTo(BigDecimal.ZERO) > 0) {
-                crearMovimientoInventario(
-                        "AJUSTE",
-                        oldInventario,
-                        oldInventario.getStock(),
-                        "AJUSTE DE STOCK POR ACTUALIZACIÓN DE INVENTARIO"
-                );
+            //Crear movimiento personalizado para el update segun el tipo de movimiento
+            boolean validar = movimientoService.motionInUpdateInventory(oldInventario,request.getStock(),request.getTipoMovimiento());
+            if (validar){
+                // Vereficar
+                log.info("Inventario actualizado y movimiento de [{}] registrado con éxito. Producto: '{}' | Nuevo Stock: {} ",
+                        request.getTipoMovimiento().toUpperCase(),
+                        oldInventario.getProducto().getNombreProducto(),
+                        request.getStock());
             }
+            oldInventario.setStock(request.getStock());
         }
+
         if (!oldInventario.getStockLimit().equals(request.getStockLimit())){
             oldInventario.setStockLimit(request.getStockLimit());
         }
 
-
-
-
-
+        inventarioRepository.save(oldInventario);//<--updateInventario
 
         return true;
     }
 
-    private void crearMovimientoInventario(
-            String tipoMovimiento,
-            Inventario inventario,
-            BigDecimal stockMovimiento,
-            String observacion
-    ) {
-        MotionCreateDTO motion = new MotionCreateDTO();
-        motion.setTipoMovimiento(tipoMovimiento);
-        motion.setIdInventario(inventario.getIdInventario());
-        motion.setStockMovimiento(stockMovimiento);
-        motion.setObservacion(observacion);
 
-        // Enviamos el inventario para evitar otra consulta a la DB
-        boolean validar = movimientoService.saveMotion(motion, inventario);
-        if (!validar) {
-            throw new InventarioException("No se pudo crear el movimiento de inventario");
-        }
-    }
 
     /**Normalización reutilizable (searchTerm / codProducto)*/
     private String normalize(String value) {

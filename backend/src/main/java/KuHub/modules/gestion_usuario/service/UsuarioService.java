@@ -14,7 +14,7 @@ import java.util.List;
 public interface UsuarioService {
 
     Usuario findUserByUsernameOrEmail(String identifier);
-
+    Usuario findUserByToken ();
 
 
 
