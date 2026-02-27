@@ -36,6 +36,10 @@ public class Inventario {
     @Column(name = "stock_limit", precision = 10, scale = 3)
     private BigDecimal stockLimit;
 
+    @Column(name = "activo")
+    private Boolean activo = true;
+
+
     // --- MÉTODO AYUDANTE (Patrón Setter Inteligente) ---
     /**
      * Permite asignar el producto al inventario usando solo el ID (Integer).

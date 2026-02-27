@@ -25,7 +25,8 @@ import {
   Card,
   CardBody,
   Select,
-  SelectItem
+  SelectItem,
+  Tooltip
 } from '@heroui/react';
 import { Icon } from '@iconify/react';
 import { usePageTitle } from '../hooks/usePageTitle';
@@ -41,6 +42,7 @@ import {
   buscarProductosService,
   buscarProductosPorCodigoService,
   transformarPageItemAProducto,
+  softDeleteInventarioService
 } from '../services/producto-service';
 import { useToast, useConfirm } from '../hooks/useToast';
 import { logger } from '../utils/logger';
@@ -103,6 +105,11 @@ const InventarioPage: React.FC = () => {
   const { isOpen: isUnidadesOpen, onOpen: onUnidadesOpen, onOpenChange: onUnidadesOpenChange } = useDisclosure();
   const [productoSeleccionado, setProductoSeleccionado] = React.useState<IProducto | null>(null);
   const [modalMode, setModalMode] = React.useState<'crear' | 'editar'>('crear');
+  const [showStockWarning, setShowStockWarning] = React.useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = React.useState(false);
+  const [confirmText, setConfirmText] = React.useState('');
+  const [isDeleting, setIsDeleting] = React.useState(false);
+  const [productoParaEliminar, setProductoParaEliminar] = React.useState<IProducto | null>(null);
 
   usePageTitle('Inventario', 'Gestione los productos del inventario, vea movimientos y actualice existencias.');
 
@@ -418,26 +425,51 @@ const InventarioPage: React.FC = () => {
       return;
     }
 
-    const confirmado = await confirm(
-      `Eliminarás definitivamente el producto "${producto.nombre}".`,
-      {
-        title: 'Eliminar producto',
-        confirmText: 'Eliminar',
-        confirmColor: 'danger',
-        requireText: 'ELIMINAR',
-        requireTextHelper: 'Esta acción elimina el producto y sus datos asociados.',
-      }
-    );
+    // Nueva validación: No se puede eliminar si hay stock
+    if (producto.stock > 0) {
+      setProductoParaEliminar(producto);
+      setShowStockWarning(true);
+      return;
+    }
 
-    if (!confirmado) return;
+    // Si tiene stock 0, proceder con el nuevo modal de confirmación custom
+    setProductoParaEliminar(producto);
+    setConfirmText('');
+    setShowDeleteConfirm(true);
+  };
 
+  const handleConfirmarEliminacion = async () => {
+    if (!productoParaEliminar) return;
+
+    if (confirmText !== 'CONFIRMAR') {
+      toast.warning('Escribe CONFIRMAR para confirmar');
+      return;
+    }
+
+    const idInventario = (productoParaEliminar as any)._idInventario;
+    if (!idInventario) {
+      toast.error('No se pudo encontrar el ID de inventario para este producto.');
+      return;
+    }
+
+    setIsDeleting(true);
     try {
-      await eliminarProductoService(producto.id);
-      toast.success('Producto eliminado correctamente');
-      window.dispatchEvent(new Event('productosActualizados'));
+      const exito = await softDeleteInventarioService(idInventario);
+      if (exito) {
+        toast.success(`Producto "${productoParaEliminar.nombre}" eliminado correctamente.`);
+        setShowDeleteConfirm(false);
+        setProductoParaEliminar(null);
+        // Forzar recarga completa limpiando caché
+        setCache({});
+        cacheRef.current = {};
+        cargarProductosPaginados(currentPage, true);
+      } else {
+        toast.error('No se pudo eliminar el producto.');
+      }
     } catch (error: any) {
-      logger.error('Error al eliminar producto:', error);
-      toast.error(error.message || 'Error al eliminar el producto');
+      toast.error(error.message || 'Error al eliminar el producto.');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -699,35 +731,43 @@ const InventarioPage: React.FC = () => {
                     <TableCell>{renderStockStatus(producto)}</TableCell>
                     <TableCell>
                       <div className="flex justify-center gap-1" onClick={(e) => e.stopPropagation()}>
-                        <Button
-                          isIconOnly
-                          variant="light"
-                          size="sm"
-                          onPress={() => handleEditarProducto(producto)}
-                          className="text-default-400 hover:text-primary"
-                        >
-                          <Icon icon="lucide:edit" width={18} />
-                        </Button>
-                        <Button
-                          isIconOnly
-                          variant="light"
-                          size="sm"
-                          onPress={() => verMovimientos(producto.id)}
-                          className="text-default-400 hover:text-secondary"
-                        >
-                          <Icon icon="lucide:list" width={18} />
-                        </Button>
-                        {esAdministrador && (
+                        <Tooltip content="Editar" color="primary" closeDelay={0}>
                           <Button
                             isIconOnly
                             variant="light"
                             size="sm"
-                            color="danger"
-                            onPress={() => handleEliminarProducto(producto)}
-                            className="text-default-400 hover:text-danger"
+                            onPress={() => handleEditarProducto(producto)}
+                            className="text-default-400 hover:text-primary"
                           >
-                            <Icon icon="lucide:trash" width={18} />
+                            <Icon icon="lucide:edit" width={18} />
                           </Button>
+                        </Tooltip>
+
+                        <Tooltip content="Ir a movimientos" color="secondary" closeDelay={0}>
+                          <Button
+                            isIconOnly
+                            variant="light"
+                            size="sm"
+                            onPress={() => verMovimientos(producto.id)}
+                            className="text-default-400 hover:text-secondary"
+                          >
+                            <Icon icon="lucide:list" width={18} />
+                          </Button>
+                        </Tooltip>
+
+                        {esAdministrador && (
+                          <Tooltip content="Eliminar" color="danger" closeDelay={0}>
+                            <Button
+                              isIconOnly
+                              variant="light"
+                              size="sm"
+                              color="danger"
+                              onPress={() => handleEliminarProducto(producto)}
+                              className="text-default-400 hover:text-danger"
+                            >
+                              <Icon icon="lucide:trash" width={18} />
+                            </Button>
+                          </Tooltip>
                         )}
                       </div>
                     </TableCell>
@@ -788,6 +828,125 @@ const InventarioPage: React.FC = () => {
         onOpenChange={onUnidadesOpenChange}
         onRefresh={() => cargarProductosPaginados(1, true)}
       />
+
+      {/* Modal Informativo: No se puede eliminar con stock */}
+      <Modal isOpen={showStockWarning} onOpenChange={setShowStockWarning} backdrop="blur">
+        <ModalContent>
+          {(onClose) => (
+            <>
+              <ModalHeader className="flex flex-col gap-1 items-center pt-8">
+                <div className="p-3 bg-danger-50 rounded-full text-danger-500 mb-2">
+                  <Icon icon="lucide:alert-circle" width={40} />
+                </div>
+                <h2 className="text-xl font-bold text-secondary dark:text-foreground">No se puede eliminar</h2>
+              </ModalHeader>
+              <ModalBody className="text-center pb-6">
+                <p className="text-default-600">
+                  El inventario <strong>"{productoParaEliminar?.nombre}"</strong> no puede ser eliminado porque aún tiene stock disponible (<strong>{productoParaEliminar?.stock}</strong>).
+                </p>
+                <p className="text-sm text-default-400 mt-2">
+                  Para eliminar un item, primero debes dejar su stock en 0.
+                </p>
+              </ModalBody>
+              <ModalFooter className="flex flex-col gap-2 pb-8">
+                <Button
+                  color="primary"
+                  onPress={() => {
+                    onClose();
+                    if (productoParaEliminar) handleEditarProducto(productoParaEliminar);
+                  }}
+                  className="w-full font-bold"
+                >
+                  Editar Inventario
+                </Button>
+                <Button variant="light" onPress={onClose} className="w-full">
+                  Cerrar
+                </Button>
+              </ModalFooter>
+            </>
+          )}
+        </ModalContent>
+      </Modal>
+
+      {/* Modal de Confirmación de Eliminación (Estilo Categoría) */}
+      <Modal
+        isOpen={showDeleteConfirm}
+        onOpenChange={setShowDeleteConfirm}
+        size="md"
+        backdrop="blur"
+      >
+        <ModalContent>
+          {(onClose) => (
+            <>
+              <ModalHeader className="bg-danger-50 border-b border-danger-100 py-4">
+                <div className="flex items-center gap-3 text-danger-600 px-2">
+                  <Icon icon="lucide:alert-octagon" width={28} className="flex-shrink-0" />
+                  <div className="flex flex-col text-left">
+                    <h2 className="font-bold text-lg leading-tight">Eliminar producto</h2>
+                    <p className="text-[11px] opacity-70 font-semibold uppercase tracking-wider">Acción irreversible</p>
+                  </div>
+                </div>
+              </ModalHeader>
+              <ModalBody className="py-6 px-6">
+                <div className="flex flex-col gap-6">
+                  <div className="bg-danger-50 p-4 rounded-xl flex items-start gap-3 border border-danger-100 shadow-sm">
+                    <div className="p-2.5 bg-white rounded-lg text-danger-500 shadow-sm mt-0.5">
+                      <Icon icon="lucide:trash-2" width={20} />
+                    </div>
+                    <div>
+                      <p className="text-danger-700 font-bold mb-1">Confirmar eliminación</p>
+                      <p className="text-sm text-danger-600/90 leading-relaxed">
+                        Eliminarás definitivamente el producto <strong>"{productoParaEliminar?.nombre}"</strong>. Esta acción no se puede deshacer.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col gap-3">
+                    <div className="flex items-center gap-2 text-default-600 mb-1">
+                      <Icon icon="lucide:pen-line" width={16} />
+                      <p className="text-sm font-semibold">
+                        Escribe <span className="text-danger-600">CONFIRMAR</span> para proceder:
+                      </p>
+                    </div>
+                    <Input
+                      placeholder="Escribe CONFIRMAR"
+                      value={confirmText}
+                      onValueChange={setConfirmText}
+                      variant="bordered"
+                      isInvalid={confirmText !== '' && confirmText !== 'CONFIRMAR'}
+                      className="max-w-full"
+                      autoFocus
+                      classNames={{
+                        input: "font-semibold",
+                        inputWrapper: "border-2 group-data-[focus=true]:border-danger-500"
+                      }}
+                    />
+                  </div>
+                </div>
+              </ModalBody>
+              <ModalFooter className="border-t border-default-100 py-4 px-6 gap-3">
+                <Button
+                  variant="light"
+                  onPress={onClose}
+                  isDisabled={isDeleting}
+                  className="font-bold text-default-500"
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  color="danger"
+                  onPress={handleConfirmarEliminacion}
+                  isLoading={isDeleting}
+                  isDisabled={confirmText !== 'CONFIRMAR'}
+                  className="font-bold px-8 shadow-lg shadow-danger-200"
+                >
+                  Eliminar
+                </Button>
+              </ModalFooter>
+            </>
+          )}
+        </ModalContent>
+      </Modal>
     </div>
   );
 };

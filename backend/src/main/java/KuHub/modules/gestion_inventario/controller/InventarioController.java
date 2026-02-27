@@ -94,6 +94,15 @@ public class InventarioController {
                      .body(inventarioService.updateInventoryWithProduct(request));
      }
 
+    @DeleteMapping("/soft-delete-inventory-with-product/{idInventario}")
+        public ResponseEntity<Boolean> softDeleteInventoryWithProduct(
+                @PathVariable Integer idInventario){
+         return ResponseEntity
+                 .status(204)
+                 .body(inventarioService.softDeleteByInventoryWithProduct(idInventario));
+    }
+
+
     /**
     @GetMapping("/{id}")
     public ResponseEntity<Inventario> findById(@PathVariable Integer id){

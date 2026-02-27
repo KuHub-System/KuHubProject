@@ -15,6 +15,7 @@ public interface InventarioService {
     InventoryFiltersDTO getFiltersInventory();
     boolean saveInventoryWithProduct (InventoryWithProductCreateDTO inventarioRequest);
     boolean updateInventoryWithProduct (InventoryWithProductUpdateDTO request);
+    boolean softDeleteByInventoryWithProduct(Integer idInventario);
 
 
 

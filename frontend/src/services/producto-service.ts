@@ -27,7 +27,8 @@ import {
   obtenerProductosPaginadosService as obtenerProductosPaginadosBackend,
   buscarProductosService as buscarProductosBackend,
   buscarProductosPorCodigoService as buscarProductosPorCodigoBackend,
-  transformarPageItemAProducto
+  transformarPageItemAProducto,
+  softDeleteInventarioService as softDeleteInventarioBackend
 } from './inventario-service';
 
 // Exportar la obtención de filtros
@@ -77,6 +78,13 @@ export const actualizarProductoService = async (productoData: IActualizarProduct
  */
 export const eliminarProductoService = async (id: string): Promise<boolean> => {
   return await eliminarProductoBackend(id);
+};
+
+/**
+ * Realiza una eliminación lógica (soft delete) del inventario con producto
+ */
+export const softDeleteInventarioService = async (idInventario: number): Promise<boolean> => {
+  return await softDeleteInventarioBackend(idInventario);
 };
 
 /**
