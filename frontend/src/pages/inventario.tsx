@@ -933,7 +933,6 @@ const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto, onClo
     }
   };
 
-  // Verificar si hay cambios respecto al producto original (para deshabilitar el botón si no hay cambios)
   const hasChanges = React.useMemo(() => {
     if (mode === 'crear') return true;
     if (!producto) return false;
@@ -956,6 +955,32 @@ const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto, onClo
     );
   }, [mode, producto, nombre, codProducto, descripcion, idCategoria, idUnidadMedida, stock, stockMinimo, categorias, unidades]);
 
+  // Validaciones de lógica de Stock vs Motivo
+  const originalStockVal = parseFloat(producto?.stock?.toString() || '0');
+  const currentStockVal = parseFloat(stock);
+
+  let stockError = '';
+  let diffText = '';
+
+  if (mode === 'editar' && tipoMovimiento && stock.trim() !== '') {
+    if (!isNaN(currentStockVal) && !isNaN(originalStockVal)) {
+      const diff = Math.abs(currentStockVal - originalStockVal);
+      if (diff > 0) {
+        // Formatear diferencia sin ceros innecesarios
+        const formattedDiff = parseFloat(diff.toFixed(3));
+        const motivoTarget = tipoMovimiento.toLowerCase();
+
+        if ((tipoMovimiento === 'Entrada' || tipoMovimiento === 'Devolucion') && currentStockVal <= originalStockVal) {
+          stockError = `Para ${motivoTarget}, el stock debe ser mayor al actual (${originalStockVal})`;
+        } else if ((tipoMovimiento === 'Salida' || tipoMovimiento === 'Merma') && currentStockVal >= originalStockVal) {
+          stockError = `Para ${motivoTarget}, el stock debe ser menor al actual (${originalStockVal})`;
+        } else {
+          diffText = `Se registrarán ${formattedDiff} de ${motivoTarget} de movimiento.`;
+        }
+      }
+    }
+  }
+
   const isFormInvalid =
     !nombre.trim() ||
     !idCategoria ||
@@ -963,6 +988,7 @@ const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto, onClo
     !stock.trim() ||
     isNaN(parseFloat(stock)) ||
     parseFloat(stock) < 0 ||
+    !!stockError ||
     (stockMinimo.trim() !== '' && (isNaN(parseFloat(stockMinimo)) || parseFloat(stockMinimo) < 0)) ||
     (mode === 'editar' && !tipoMovimiento) ||
     !hasChanges;
@@ -1059,7 +1085,7 @@ const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto, onClo
         <Input
           type="number"
           label="Stock"
-          placeholder="Ej: 10"
+          placeholder="Stock actual"
           value={stock}
           onValueChange={(val) => {
             if (val === '' || /^\d{0,7}(\.\d{0,3})?$/.test(val)) {
@@ -1070,6 +1096,10 @@ const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto, onClo
           max="9999999.999"
           step="0.001"
           isRequired
+          isDisabled={mode === 'editar' && !tipoMovimiento}
+          isInvalid={!!stockError}
+          errorMessage={stockError}
+          description={diffText}
           variant="bordered"
           classNames={{ inputWrapper: "bg-default-50 dark:bg-default-100/50" }}
         />
@@ -1077,7 +1107,7 @@ const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto, onClo
         <Input
           type="number"
           label={<span className="whitespace-nowrap truncate max-w-full">Stock Mín. (Opcional)</span>}
-          placeholder="Ej: 5"
+          placeholder="Stock mínimo"
           value={stockMinimo}
           onValueChange={(val) => {
             if (val === '' || /^\d{0,7}(\.\d{0,3})?$/.test(val)) {
