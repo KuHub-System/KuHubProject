@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 
@@ -50,6 +51,32 @@ public interface InventarioRepository extends JpaRepository<Inventario, Integer>
 
 
     //MODI V2 A BAJO, ARRIBA SE VA
+
+    /**Consulta para obtener un registro específico de inventario por su ID con todos sus detalles
+     * Usada en caso estrategico especifico, cuanto al intentar actualizar un inventario, otro usuario actualizo
+     * en paralelo retornando detalle para la sincronizacion*/
+    @Query(value = """
+    SELECT 
+        p.nombre_producto,      -- [0]
+        p.cod_producto,         -- [1]
+        p.descripcion_producto, -- [2]
+        c.nombre_categoria,     -- [3]
+        i.stock,                -- [4]
+        i.stock_limit,          -- [5]
+        u.nombre_unidad,        -- [6]
+        i.id_inventario,        -- [7]
+        p.id_producto,          -- [8]
+        c.id_categoria,         -- [9]
+        u.id_unidad             -- [10]
+    FROM inventario i
+    JOIN producto p ON p.id_producto = i.id_producto
+    JOIN categoria c ON c.id_categoria = p.id_categoria
+    JOIN unidad_medida u ON u.id_unidad = p.id_unidad
+    WHERE i.id_inventario = :idInventario 
+      AND i.activo = TRUE 
+      AND p.activo = TRUE
+""", nativeQuery = true)
+    List<Object[]> findByIdToInventoryPage(@Param("idInventario") Integer idInventario);
 
     /**Consulta para listar inventario por codigo de producto*/
     @Query(value = """
@@ -248,4 +275,7 @@ public interface InventarioRepository extends JpaRepository<Inventario, Integer>
     )
     String getFiltersInventory();
 
+    /**Vereficaciones boleandas*/
+    boolean existsInventarioByIdInventarioAndStock(Integer idInventario, BigDecimal stock);
+    boolean existsInventarioByIdInventarioAndActivo(Integer idInventario, Boolean activo);
 }

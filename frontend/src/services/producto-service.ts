@@ -28,12 +28,20 @@ import {
   buscarProductosService as buscarProductosBackend,
   buscarProductosPorCodigoService as buscarProductosPorCodigoBackend,
   transformarPageItemAProducto,
-  softDeleteInventarioService as softDeleteInventarioBackend
+  softDeleteInventarioService as softDeleteInventarioBackend,
+  validateStockBeforeUpdatingService as validateStockBeforeUpdatingBackend
 } from './inventario-service';
 
 // Exportar la obtención de filtros
 export const obtenerFiltrosInventarioService = async () => {
   return await obtenerFiltrosInventarioBackend();
+};
+
+/**
+ * Valida el stock antes de proceder con una actualización
+ */
+export const validateStockBeforeUpdatingService = async (request: any) => {
+  return await validateStockBeforeUpdatingBackend(request);
 };
 
 // Importar funciones locales solo para movimientos (hardcoded)

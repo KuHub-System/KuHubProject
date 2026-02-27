@@ -127,3 +127,28 @@ export interface IInventoryPageResponse {
   totalPages: number;
   totalItems: number;
 }
+
+/**
+ * DTO para validar el stock antes de actualizar
+ */
+export interface IValidateStockRequest {
+  validateStock: number;
+  idInventario: number;
+}
+
+/**
+ * DTO para la respuesta de conflicto (409) en la validación de stock
+ */
+export interface IValidateStockConflictResponse {
+  idInventario: number;
+  idProducto: number;
+  nombreProducto: string;
+  codProducto?: string | null;
+  descripcionProducto?: string | null;
+  idCategoria: number;
+  nombreCategoria: string;
+  idUnidad: number;
+  nombreUnidad: string;
+  stock: number;
+  stockLimit: number;
+}
