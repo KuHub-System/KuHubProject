@@ -341,6 +341,36 @@ export const eliminarProductoService = async (id: string): Promise<boolean> => {
 };
 
 /**
+ * Realiza una eliminación lógica (soft delete) del inventario con producto
+ */
+export const softDeleteInventarioService = async (idInventario: number): Promise<boolean> => {
+    console.log(`🗑️ Aplicando soft-delete (DELETE) al inventario ID: ${idInventario}`);
+
+    try {
+        const response = await api.delete<any>(
+            `/inventario/soft-delete-inventory-with-product/${idInventario}`
+        );
+
+        console.log(`✅ Respuesta del servidor (Status: ${response.status}):`, response.data);
+
+        // Caso 204: No hay contenido, pero HTTP indica éxito.
+        if (response.status === 204) return true;
+
+        // Caso con cuerpo: Revisar si el backend envió false explícitamente.
+        if (response.data === false || response.data === 'false') return false;
+
+        // Caso con cuerpo exitoso: "true", true o simplemente status 2xx.
+        return response.status >= 200 && response.status < 300;
+    } catch (error: any) {
+        console.error('❌ Error en soft-delete del inventario:', error);
+        throw new Error(
+            error.response?.data?.message ||
+            'No se pudo completar la eliminación del inventario'
+        );
+    }
+};
+
+/**
  * Obtiene los productos del inventario de forma paginada y con filtros dinámicos
  */
 export const obtenerProductosPaginadosService = async (request: IInventoryPageRequest): Promise<IInventoryPageResponse> => {

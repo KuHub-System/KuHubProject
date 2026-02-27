@@ -247,7 +247,7 @@ public class InventarioServiceImpl implements InventarioService {
                 }
             }
         }
-        if (!oldProducto.getDescripcionProducto().equals(request.getDescripcionProducto())){
+        if (!java.util.Objects.equals(oldProducto.getDescripcionProducto(), request.getDescripcionProducto())) {
             oldProducto.setDescripcionProducto(request.getDescripcionProducto());
         }
 
@@ -280,6 +280,24 @@ public class InventarioServiceImpl implements InventarioService {
         inventarioRepository.save(oldInventario);//<--updateInventario
 
         return true;
+    }
+
+    @Transactional
+    @Override
+    public boolean softDeleteByInventoryWithProduct(Integer idInventario){
+        Inventario oldInventory = findById(idInventario);
+        if(oldInventory.getStock().compareTo(BigDecimal.ZERO)==0){
+            // Desactivamos Producto
+            Producto producto = oldInventory.getProducto();
+            producto.setActivo(false);
+            productoRepository.save(producto);
+            // Desactivamos Inventario
+            oldInventory.setActivo(false);
+            inventarioRepository.save(oldInventory);
+            return true;
+        }else{
+            throw new GestionInventarioException("Para eliminar el item del inventario el stock tiene que ser 0", HttpStatus.CONFLICT);
+        }
     }
 
 
