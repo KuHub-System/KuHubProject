@@ -42,8 +42,10 @@ import {
   buscarProductosService,
   buscarProductosPorCodigoService,
   transformarPageItemAProducto,
-  softDeleteInventarioService
+  softDeleteInventarioService,
+  validateStockBeforeUpdatingService
 } from '../services/producto-service';
+import { IValidateStockConflictResponse } from '../types/producto.types';
 import { useToast, useConfirm } from '../hooks/useToast';
 import { logger } from '../utils/logger';
 import { useAuth } from '../contexts/auth-context';
@@ -485,6 +487,36 @@ const InventarioPage: React.FC = () => {
   };
 
   /**
+   * Sincroniza un producto en la caché local y en el estado sin refrescar toda la tabla.
+   * Útil para conflictos (409) donde recibimos la versión más nueva del servidor.
+   * 
+   * @param {IProducto} productoActualizado - El producto con los datos frescos del servidor.
+   */
+  const handleConflictSync = React.useCallback((productoActualizado: IProducto) => {
+    console.log(`🔄 Sincronizando item ID: ${productoActualizado.id} en caché local`);
+
+    // 1. Actualizar estado 'productos'
+    setProductos(prev => prev.map(p => p.id === productoActualizado.id ? productoActualizado : p));
+
+    // 2. Actualizar estado 'filteredProductos'
+    setFilteredProductos(prev => prev.map(p => p.id === productoActualizado.id ? productoActualizado : p));
+
+    // 3. Buscar en qué página está en la caché y actualizarla (usamos la página actual para simplificar)
+    const apiPage = currentPage <= 2 ? 1 : currentPage - 1;
+
+    if (cacheRef.current[apiPage]) {
+      cacheRef.current[apiPage] = cacheRef.current[apiPage].map(p =>
+        p.id === productoActualizado.id ? productoActualizado : p
+      );
+
+      setCache(prev => ({
+        ...prev,
+        [apiPage]: cacheRef.current[apiPage]
+      }));
+    }
+  }, [currentPage]);
+
+  /**
    * Renderiza el estado del stock con un chip de color según el nivel.
    * 
    * @param {IProducto} producto - Producto a evaluar.
@@ -797,6 +829,7 @@ const InventarioPage: React.FC = () => {
                   mode={modalMode}
                   categorias={categoriasActivas}
                   unidades={unidadesActivas}
+                  onConflictSync={handleConflictSync}
                 />
               </ModalBody>
             </>
@@ -841,7 +874,7 @@ const InventarioPage: React.FC = () => {
                 <h2 className="text-xl font-bold text-secondary dark:text-foreground">No se puede eliminar</h2>
               </ModalHeader>
               <ModalBody className="text-center pb-6">
-                <p className="text-default-600">
+                <p className="text-default-600 text-justify">
                   El inventario <strong>"{productoParaEliminar?.nombre}"</strong> no puede ser eliminado porque aún tiene stock disponible (<strong>{productoParaEliminar?.stock}</strong>).
                 </p>
                 <p className="text-sm text-default-400 mt-2">
@@ -895,7 +928,7 @@ const InventarioPage: React.FC = () => {
                     </div>
                     <div>
                       <p className="text-danger-700 font-bold mb-1">Confirmar eliminación</p>
-                      <p className="text-sm text-danger-600/90 leading-relaxed">
+                      <p className="text-sm text-danger-600/90 leading-relaxed text-justify">
                         Eliminarás definitivamente el producto <strong>"{productoParaEliminar?.nombre}"</strong>. Esta acción no se puede deshacer.
                       </p>
                     </div>
@@ -960,6 +993,7 @@ interface FormularioProductoProps {
   mode: 'crear' | 'editar';
   categorias: { id: number; nombre: string }[];
   unidades: IUnidadMedida[];
+  onConflictSync?: (producto: IProducto) => void;
 }
 
 /**
@@ -968,7 +1002,7 @@ interface FormularioProductoProps {
  * @param {FormularioProductoProps} props - Propiedades del componente.
  * @returns {JSX.Element} El formulario de producto.
  */
-const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto, onClose, mode, categorias, unidades }) => {
+const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto, onClose, mode, categorias, unidades, onConflictSync }) => {
   const toast = useToast();
   const [nombre, setNombre] = React.useState(producto?.nombre || '');
   const [codProducto, setCodProducto] = React.useState((producto as any)?.codProducto || '');
@@ -992,6 +1026,10 @@ const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto, onClo
   const [tipoMovimiento, setTipoMovimiento] = React.useState('');
   const [isLoading, setIsLoading] = React.useState(false);
   const [mostrarAbreviatura, setMostrarAbreviatura] = React.useState(false);
+
+  // Estado local para el producto de referencia (usado para validaciones de stock y cambios)
+  // Se inicializa con el prop 'producto' pero puede actualizarse en caso de conflicto (409)
+  const [productoReferencia, setProductoReferencia] = React.useState<IProducto | null>(producto);
 
   const handleSubmit = async () => {
     // Validaciones
@@ -1055,7 +1093,7 @@ const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto, onClo
         const uniNombre = unidades.find(u => u.id.toString() === idUnidadMedida)?.nombre || '';
 
         const stockActualizado = parseFloat(stock) || 0;
-        const stockCambiado = producto.stock !== stockActualizado;
+        const stockCambiado = (producto?.stock ?? 0) !== stockActualizado;
 
         const datosActualizacion = {
           id: producto.id,
@@ -1072,11 +1110,61 @@ const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto, onClo
           tipoMovimiento: tipoMovimiento,
         };
 
-        await actualizarProductoService(datosActualizacion);
-        if (stockCambiado) {
-          toast.success('Actualizacion realizada con exito, movimiento de ajuste realizado');
+        // --- NUEVA VALIDACIÓN ANTES DEL PATCH ---
+        console.log(`🛡️ Validando stock antes del Patch para ID: ${datosActualizacion.idInventario}`);
+        const validationResult = await validateStockBeforeUpdatingService({
+          idInventario: datosActualizacion.idInventario,
+          validateStock: productoReferencia?.stock ?? 0 // Enviamos el stock original que teníamos al abrir/sync
+        });
+
+        if (validationResult === true) {
+          // OK: Proceder con el PATCH
+          await actualizarProductoService(datosActualizacion);
+          if (stockCambiado) {
+            toast.success('Actualizacion realizada con exito, movimiento de ajuste realizado');
+          } else {
+            toast.success('Actualizacion realizada con exito');
+          }
         } else {
-          toast.success('Actualizacion realizada con exito');
+          // CONFLICTO (409): Otro usuario cambió los datos
+          const conflictData = validationResult as IValidateStockConflictResponse;
+          toast.warning('Peticiones simultáneas, sincronizando datos antes de actualizar...', {
+            title: 'Sincronizando...',
+            animate: true
+          });
+
+          // Sincronizar campos del formulario con los nuevos datos
+          setNombre(conflictData.nombreProducto);
+          setCodProducto(conflictData.codProducto || '');
+          setDescripcion(conflictData.descripcionProducto || '');
+          setIdCategoria(conflictData.idCategoria.toString());
+          setIdUnidadMedida(conflictData.idUnidad.toString());
+          setStock(conflictData.stock.toString());
+          setStockMinimo(conflictData.stockLimit.toString());
+
+          // --- NUEVO: Sincronizar también el producto de referencia para las validaciones visuales ---
+          const productoActualizado: IProducto = {
+            id: conflictData.idProducto.toString(),
+            nombre: conflictData.nombreProducto,
+            descripcion: conflictData.descripcionProducto || '',
+            codProducto: conflictData.codProducto || undefined,
+            categoria: conflictData.nombreCategoria,
+            unidadMedida: conflictData.nombreUnidad,
+            stock: conflictData.stock,
+            stockMinimo: conflictData.stockLimit,
+            fechaCreacion: new Date().toISOString(),
+            fechaActualizacion: new Date().toISOString(),
+            _idInventario: conflictData.idInventario
+          };
+          setProductoReferencia(productoActualizado);
+
+          // Sincronizar también con el padre para que la lista en segundo plano se vea actualizada
+          if (onConflictSync) {
+            onConflictSync(productoActualizado);
+          }
+
+          // No llamamos al Patch, permitimos que el usuario revise
+          return;
         }
       }
 
@@ -1084,9 +1172,20 @@ const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto, onClo
       window.dispatchEvent(new Event('productosActualizados'));
 
       onClose();
-    } catch (error) {
+    } catch (error: any) {
       logger.error('Error al guardar producto:', error);
-      toast.error(error instanceof Error ? error.message : 'Error al guardar el producto');
+
+      const errorMessage = error instanceof Error ? error.message : 'Error al guardar el producto';
+
+      // Si el error es 410 (Eliminado por otro usuario), usamos título personalizado, refrescamos y cerramos
+      if (error.status === 410) {
+        console.warn('🔄 Detectado error 410: Refrescando inventario y cerrando modal...');
+        toast.error(errorMessage, 'Operación cancelada');
+        window.dispatchEvent(new Event('productosActualizados'));
+        onClose();
+      } else {
+        toast.error(errorMessage);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -1094,17 +1193,17 @@ const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto, onClo
 
   const hasChanges = React.useMemo(() => {
     if (mode === 'crear') return true;
-    if (!producto) return false;
+    if (!productoReferencia) return false;
 
-    const originalCategoria = producto.categoria ? categorias.find(c => c.nombre === producto.categoria)?.id.toString() || '' : '';
-    const originalUnidad = producto.unidadMedida ? unidades.find(u => u.nombre === producto.unidadMedida)?.id.toString() || '' : '';
-    const originalCodProducto = (producto as any).codProducto || '';
-    const originalDescripcion = producto.descripcion || '';
-    const originalStock = producto.stock?.toString() || '0';
-    const originalStockMinimo = producto.stockMinimo?.toString() || '0';
+    const originalCategoria = productoReferencia.categoria ? categorias.find(c => c.nombre === productoReferencia.categoria)?.id.toString() || '' : '';
+    const originalUnidad = productoReferencia.unidadMedida ? unidades.find(u => u.nombre === productoReferencia.unidadMedida)?.id.toString() || '' : '';
+    const originalCodProducto = (productoReferencia as any).codProducto || '';
+    const originalDescripcion = productoReferencia.descripcion || '';
+    const originalStock = productoReferencia.stock?.toString() || '0';
+    const originalStockMinimo = productoReferencia.stockMinimo?.toString() || '0';
 
     return (
-      nombre.trim() !== (producto.nombre || '') ||
+      nombre.trim() !== (productoReferencia.nombre || '') ||
       codProducto.trim() !== originalCodProducto ||
       descripcion.trim() !== originalDescripcion ||
       idCategoria !== originalCategoria ||
@@ -1112,10 +1211,10 @@ const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto, onClo
       stock.trim() !== originalStock ||
       stockMinimo.trim() !== originalStockMinimo
     );
-  }, [mode, producto, nombre, codProducto, descripcion, idCategoria, idUnidadMedida, stock, stockMinimo, categorias, unidades]);
+  }, [mode, productoReferencia, nombre, codProducto, descripcion, idCategoria, idUnidadMedida, stock, stockMinimo, categorias, unidades]);
 
   // Validaciones de lógica de Stock vs Motivo
-  const originalStockVal = parseFloat(producto?.stock?.toString() || '0');
+  const originalStockVal = parseFloat(productoReferencia?.stock?.toString() || '0');
   const currentStockVal = parseFloat(stock);
 
   let stockError = '';

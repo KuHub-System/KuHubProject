@@ -3,6 +3,7 @@ package KuHub.modules.gestion_inventario.services;
 import KuHub.modules.gestion_inventario.dtos.request.dto.InventoryWithProductCreateDTO;
 import KuHub.modules.gestion_inventario.dtos.request.dto.FilterInventoryPageDTO;
 import KuHub.modules.gestion_inventario.dtos.request.dto.InventoryWithProductUpdateDTO;
+import KuHub.modules.gestion_inventario.dtos.request.dto.ValidateStockBeforeUpdatingDTO;
 import KuHub.modules.gestion_inventario.dtos.response.InventoriesPageDTO;
 import KuHub.modules.gestion_inventario.dtos.response.InventoryFiltersDTO;
 import KuHub.modules.gestion_inventario.dtos.response.InventoryPageDTO;
@@ -58,6 +59,28 @@ public class InventarioServiceImpl implements InventarioService {
         return inventarioRepository.findById(id).orElseThrow(
                 () -> new GestionInventarioException("No se encontro el producto con el id: " + id , HttpStatus.NOT_FOUND)
         );
+    }
+
+    /**
+     * Recupera un inventario específico y lo mapea directamente a un DTO que es usando para listar en la page de inventario.
+     * Usado para retornar el inventario para sincronizacion a la tentativa de update por causa de actualizaciones en paralelo.
+     */
+    @Transactional(readOnly = true)
+    public InventoryPageDTO findSingleInventoryById(Integer idInventario) {
+        //Llamada al repositorio con List
+        List<Object[]> results = inventarioRepository.findByIdToInventoryPage(idInventario);
+        if (results.isEmpty()) {
+            throw new GestionInventarioException(
+                    "El inventario con ID " + idInventario + " no existe o está inactivo",
+                    HttpStatus.NOT_FOUND
+            );
+        }
+
+        //Extraemos la primera (y única) fila
+        Object[] row = results.get(0);
+
+        // Mapeo seguro
+        return mapToInventoryPageDTO(row);
     }
 
     /*****************************************************************************************
@@ -219,12 +242,34 @@ public class InventarioServiceImpl implements InventarioService {
         return true;
     }
 
+    @Transactional()
+    @Override
+    public Object validateStockBeforeUpdating(ValidateStockBeforeUpdatingDTO request){
+
+        /**Control de sincronizacion con exception, si otro usuario modifica en paralelo lanzar error y actualizar en el frontend segun casos*/
+        /**Caso en que el inventario fue eliminado en paralelo a la peticion*/
+        if (inventarioRepository.existsInventarioByIdInventarioAndActivo(request.getIdInventario(), false)){
+            throw new GestionInventarioException(
+                    "El inventario fue eliminado por otro usuario antes de procesar la petición",
+                    HttpStatus.GONE // El código 410 (Gone) es ideal para recursos eliminados
+            );
+        }
+        /**Caso en que el inventario fue actualizado en paralelo, retornamos el objeto para sicronizar la vista */
+        if (!inventarioRepository.existsInventarioByIdInventarioAndStock(request.getIdInventario(), request.getValidateStock())){
+            return findSingleInventoryById(request.getIdInventario());
+        }
+        return true;
+    }
+
+    /**Metodo para actualizar inventario con producto depues de ser validado para actualizacion con el metodo `validateStockBeforeUpdating`
+     * donde se setea y guada solamente cuando el dato cambio realmente*/
     @Transactional
     @Override
     public boolean updateInventoryWithProduct (InventoryWithProductUpdateDTO request){
         Inventario oldInventario = inventarioRepository.findByIdInventoryWithProductActive(request.getIdInventario(),true).orElseThrow(
                 () -> new GestionInventarioException("El inventario no existe", HttpStatus.NOT_FOUND)
         );
+
 
         Producto oldProducto = oldInventario.getProducto();
         String nombreProducto = StringUtils.capitalizarPalabras(request.getNombreProducto());
@@ -282,6 +327,7 @@ public class InventarioServiceImpl implements InventarioService {
         return true;
     }
 
+    /**La eliminacion logica ocurre cuando el invantario es = a cero, el frontend redireccion el usuario a editar si intenta eliminar con stock*/
     @Transactional
     @Override
     public boolean softDeleteByInventoryWithProduct(Integer idInventario){
@@ -300,7 +346,7 @@ public class InventarioServiceImpl implements InventarioService {
         }
     }
 
-
+    /**<------TODOS METODOS PRIVADOS------>*/
 
     /**Normalización reutilizable (searchTerm / codProducto)*/
     private String normalize(String value) {

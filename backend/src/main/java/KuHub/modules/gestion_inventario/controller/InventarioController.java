@@ -1,14 +1,13 @@
 package KuHub.modules.gestion_inventario.controller;
 
-import KuHub.modules.gestion_inventario.dtos.request.dto.InventoryWithProductCreateDTO;
-import KuHub.modules.gestion_inventario.dtos.request.dto.FilterInventoryPageDTO;
-import KuHub.modules.gestion_inventario.dtos.request.dto.InventoryWithProductUpdateDTO;
-import KuHub.modules.gestion_inventario.dtos.request.dto.SearchDTO;
+import KuHub.modules.gestion_inventario.dtos.request.dto.*;
 import KuHub.modules.gestion_inventario.dtos.response.InventoriesPageDTO;
 import KuHub.modules.gestion_inventario.dtos.response.InventoryFiltersDTO;
+import KuHub.modules.gestion_inventario.dtos.response.InventoryPageDTO;
 import KuHub.modules.gestion_inventario.services.InventarioService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
@@ -35,7 +34,7 @@ public class InventarioController {
 
     /**
      * 🔍 Búsqueda de inventario
-     */
+       ✅ En uso: Endpoint consumido por el frontend.*/
     @PostMapping("/search-inventory")
     public ResponseEntity<InventoriesPageDTO> searchInventory(
             @RequestBody SearchDTO request
@@ -50,7 +49,7 @@ public class InventarioController {
 
     /**
      * 📦 Inventario paginado con filtros
-     */
+       ✅ En uso: Endpoint consumido por el frontend.*/
     @PostMapping("/paged-inventory")
     public ResponseEntity<InventoriesPageDTO> getPagedInventory(
             @RequestBody FilterInventoryPageDTO request
@@ -61,7 +60,7 @@ public class InventarioController {
 
     /**
      * 🔍 Búsqueda de inventario por código de producto
-     */
+       ✅ En uso: Endpoint consumido por el frontend.*/
     @PostMapping("/search-inventory-by-code")
     public ResponseEntity<InventoriesPageDTO> searchInventoryByCodProducto(
             @RequestBody SearchDTO request
@@ -76,7 +75,8 @@ public class InventarioController {
         );
     }
 
-    /** Crear inventario para el FrontEnd*/
+    /** Crear inventario para el FrontEnd
+     * ✅ En uso: Endpoint consumido por el frontend.*/
      @PostMapping("/create-inventory-with-product")
         public ResponseEntity<Boolean> saveInventoryWithProduct(
          @Valid @RequestBody
@@ -86,6 +86,27 @@ public class InventarioController {
                  .body(inventarioService.saveInventoryWithProduct(request));
      }
 
+    /** Metodo que realiza en el btn de guarda en editar inventario, donde realiza esta petion y en seguida el patch
+     *  Metodo hibrido de control antes de update, verefica si el inventario a actulizar no fue eliminado en paralelo,
+     *  verefica si el stock de inventario fue actualizado por otro usuario en paralelo retornando el objeto en caso de que esta alterado,
+     *  el frontend actualiza el formulario de editar y el iten de la lista en caso de que cierre el modal y vea los cambios.
+     *  si no se cumple las validaciones es porque no actualizan en paralo podiendo proceder con el patch de actualizar
+     *  ✅ En uso: Endpoint consumido por el frontend.*/
+    @PostMapping("/validate-stock-before-updating")
+    public ResponseEntity<?> validateStockBeforeUpdating(
+            @Validated @RequestBody ValidateStockBeforeUpdatingDTO request) {
+        Object result = inventarioService.validateStockBeforeUpdating(request);
+
+        /**Si nos retorna un inventario es porque hubo un conflicto de update en paralelo,
+         * Retornamos con 409 y el objeto para actualizar la vista*/
+        if (result instanceof InventoryPageDTO) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(result);
+        }
+        return ResponseEntity.ok(result);
+    }
+
+    /**Actualiza inventario con producto una vez validado
+     * ✅ En uso: Endpoint consumido por el frontend.*/
      @PatchMapping("/update-inventory-with-product")
         public ResponseEntity<Boolean> updateInventoryWithProduct(
              @Validated @RequestBody InventoryWithProductUpdateDTO request){
@@ -94,6 +115,8 @@ public class InventarioController {
                      .body(inventarioService.updateInventoryWithProduct(request));
      }
 
+     /**Desactiva el estado actvio si el stock es 0
+      * ✅ En uso: Endpoint consumido por el frontend.*/
     @DeleteMapping("/soft-delete-inventory-with-product/{idInventario}")
         public ResponseEntity<Boolean> softDeleteInventoryWithProduct(
                 @PathVariable Integer idInventario){

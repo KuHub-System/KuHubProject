@@ -14,6 +14,7 @@ import {
   Input,
 } from '@heroui/react';
 import { Icon } from '@iconify/react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 // Tipos de notificación
 export type NotificationType = 'success' | 'error' | 'warning' | 'info';
@@ -24,6 +25,7 @@ interface NotificationOptions {
   type?: NotificationType;
   duration?: number;
   onClose?: () => void;
+  animate?: boolean;
 }
 
 interface ConfirmOptions {
@@ -61,7 +63,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const showNotification = useCallback((options: NotificationOptions) => {
     setNotification(options);
     setIsNotificationOpen(true);
-    
+
     // Auto-cerrar después de la duración
     const duration = options.duration !== undefined ? options.duration : 3000;
     if (duration > 0) {
@@ -178,21 +180,33 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
           {(onClose) => {
             if (!notification) return null;
             const config = getNotificationConfig(notification.type);
-            
+
             return (
               <>
                 <ModalHeader className={`${config.bgColor} ${config.borderColor} border-b-2`}>
                   <div className="flex items-center gap-3 w-full">
-                    <Icon icon={config.icon} className={`text-2xl ${config.textColor}`} />
+                    <motion.div
+                      animate={notification.animate ? {
+                        scale: [1, 1.15, 1],
+                        opacity: [1, 0.8, 1]
+                      } : {}}
+                      transition={notification.animate ? {
+                        duration: 1.5,
+                        repeat: Infinity,
+                        ease: "easeInOut"
+                      } : {}}
+                    >
+                      <Icon icon={config.icon} className={`text-2xl ${config.textColor}`} />
+                    </motion.div>
                     <div>
-                      <h3 className={`font-bold ${config.textColor}`}>
+                      <h3 className={`font-bold ${config.textColor} text-justify`}>
                         {notification.title || 'Notificación'}
                       </h3>
                     </div>
                   </div>
                 </ModalHeader>
                 <ModalBody className="pt-4">
-                  <p className="text-default-700">{notification.message}</p>
+                  <p className="text-default-700 text-justify">{notification.message}</p>
                 </ModalBody>
                 {notification.duration === 0 && (
                   <ModalFooter>
@@ -219,7 +233,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
             if (!confirm) return null;
             const requireText = confirm.requireText;
             const confirmDisabled = !!requireText && confirmInputValue.trim() !== requireText;
-            
+
             return (
               <>
                 <ModalHeader>
@@ -231,7 +245,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
                   </div>
                 </ModalHeader>
                 <ModalBody>
-                  <p className="text-default-700">{confirm.message}</p>
+                  <p className="text-default-700 text-justify">{confirm.message}</p>
                   {requireText && (
                     <div className="mt-4 space-y-2">
                       <Input

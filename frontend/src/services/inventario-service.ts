@@ -13,7 +13,9 @@ import {
     IFiltrosInventarioResponse,
     IInventoryPageRequest,
     IInventoryPageItem,
-    IInventoryPageResponse
+    IInventoryPageResponse,
+    IValidateStockRequest,
+    IValidateStockConflictResponse
 } from '../types/producto.types';
 
 /**
@@ -99,6 +101,47 @@ const transformarBackendAFrontend = (backendDTO: BackendInventarioDTO): IProduct
         // Guardamos idInventario como propiedad interna (no declarada en IProducto pero JS lo permite)
         _idInventario: backendDTO.idInventario,
     } as IProducto;
+};
+
+/**
+ * Valida el stock antes de proceder con una actualización para evitar conflictos
+ * @param request Datos de validación (idInventario y stock actual en UI)
+ * @returns true si no hay conflictos, o el objeto actualizado si hay conflicto (409)
+ */
+export const validateStockBeforeUpdatingService = async (request: IValidateStockRequest): Promise<boolean | IValidateStockConflictResponse> => {
+    console.log(`🔍 Validando stock antes de editar para Inventario ID: ${request.idInventario}`);
+
+    try {
+        const response = await api.post<boolean | IValidateStockConflictResponse>(
+            '/inventario/validate-stock-before-updating',
+            request
+        );
+
+        console.log('✅ Validación completada:', response.data);
+        return response.data;
+
+    } catch (error: any) {
+        console.error('❌ Error en validación de stock:', error);
+
+        if (error.response?.status === 410) {
+            const goneError = new Error(
+                error.response.data?.message ||
+                'El inventario fue eliminado por otro usuario antes de procesar la petición.'
+            );
+            (goneError as any).status = 410;
+            throw goneError;
+        }
+
+        if (error.response?.status === 409) {
+            // Retornar el objeto de conflicto directamente para que el frontend lo use
+            return error.response.data as IValidateStockConflictResponse;
+        }
+
+        throw new Error(
+            error.response?.data?.message ||
+            'Error al validar el estado del inventario'
+        );
+    }
 };
 
 /**
@@ -285,6 +328,15 @@ export const actualizarProductoService = async (productoData: IActualizarProduct
 
         if (error.response?.status === 404) {
             throw new Error(`Producto con ID ${productoData.id} no encontrado`);
+        }
+
+        if (error.response?.status === 410) {
+            const goneError = new Error(
+                error.response.data?.message ||
+                'El inventario fue eliminado por otro usuario antes de procesar la petición.'
+            );
+            (goneError as any).status = 410;
+            throw goneError;
         }
 
         throw new Error(
