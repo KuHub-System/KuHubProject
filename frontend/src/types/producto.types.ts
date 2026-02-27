@@ -66,6 +66,7 @@ export interface IActualizarProducto {
   idUnidadMedida: number;
   stock?: number;
   stockMinimo?: number;
+  tipoMovimiento: string;
 }
 
 /**
