@@ -22,8 +22,11 @@ import {
   SelectItem,
   useDisclosure,
   Autocomplete,
-  AutocompleteItem
+  AutocompleteItem,
+  DateRangePicker,
+  Tooltip
 } from '@heroui/react';
+import { parseDate, CalendarDate, today, getLocalTimeZone } from '@internationalized/date';
 import { Icon } from '@iconify/react';
 import { motion } from 'framer-motion';
 import {
@@ -32,7 +35,33 @@ import {
   crearMovimientoService,
   obtenerProductosService
 } from '../services/producto-service';
-import { IProducto, IMovimientoProducto } from '../types/producto.types';
+import { findMovimientosConFiltros } from '../services/movimiento-service';
+import { IProducto } from '../types/producto.types';
+
+/**
+ * DTO para la solicitud de filtrado de movimientos (MotionFilterRequestDTO)
+ */
+interface IMotionFilterRequest {
+  nombreProducto: string;
+  nombreResponsable: string;
+  tipoMovimiento: 'ENTRADA' | 'SALIDA' | 'MERMA' | 'AJUSTE' | 'DEVOLUCION' | 'TODOS';
+  orden: 'MAS_RECIENTES' | 'MAS_ANTIGUOS' | 'MENOR_CANTIDAD' | 'MAYOR_CANTIDAD';
+  fechaInicio: string | null;
+  fechaFin: string | null;
+}
+
+/**
+ * DTO para la respuesta de un movimiento (MotionAnswerDTO)
+ */
+interface IMotionAnswer {
+  nombreProducto: string;
+  nombreCategoria: string;
+  tipoMovimiento: string;
+  stockMovimiento: number;
+  fechaMovimiento: string;
+  nombreUsuario: string;
+  observacion?: string;
+}
 
 /**
  * Interfaz para los parámetros de la URL.
@@ -63,15 +92,30 @@ const MovimientosProductoPage: React.FC = () => {
 
   // Estado de datos
   const [productos, setProductos] = React.useState<IProducto[]>([]);
-  const [movimientos, setMovimientos] = React.useState<IMovimientoProducto[]>([]);
-  const [totalMovimientos, setTotalMovimientos] = React.useState<number>(0);
+  const [movimientos, setMovimientos] = React.useState<IMotionAnswer[]>([]);
   const [productoActual, setProductoActual] = React.useState<IProducto | null>(null);
 
-  // Estado de filtros
-  const [filtroProducto, setFiltroProducto] = React.useState<string | null>(id || queryProductoId || 'todos');
-  const [filtroTipo, setFiltroTipo] = React.useState<string>('todos');
-  const [filtroOrden, setFiltroOrden] = React.useState<'reciente' | 'antiguo' | 'cantidad_asc' | 'cantidad_desc'>('reciente');
-  const [filtroFecha, setFiltroFecha] = React.useState<string>('');
+  // Estado de filtros (Alineado con MotionFilterRequestDTO)
+  const [nombreProductoFiltro, setNombreProductoFiltro] = React.useState<string>('TODOS');
+  const [nombreResponsableFiltro, setNombreResponsableFiltro] = React.useState<string>('TODOS');
+  const [tipoMovimientoFiltro, setTipoMovimientoFiltro] = React.useState<IMotionFilterRequest['tipoMovimiento']>('TODOS');
+  const [ordenFiltro, setOrdenFiltro] = React.useState<IMotionFilterRequest['orden']>('MAS_RECIENTES');
+
+  // Estado para el componente DateRangePicker
+  const [dateRangeValue, setDateRangeValue] = React.useState<{ start: CalendarDate | null, end: CalendarDate | null }>({
+    start: null,
+    end: null
+  });
+
+  // Estado para el debounce (3 segundos)
+  const [debouncedRequest, setDebouncedRequest] = React.useState<IMotionFilterRequest>({
+    nombreProducto: id || queryProductoId ? 'CARGANDO...' : 'TODOS',
+    nombreResponsable: 'TODOS',
+    tipoMovimiento: 'TODOS',
+    orden: 'MAS_RECIENTES',
+    fechaInicio: null,
+    fechaFin: null
+  });
 
   const [currentPage, setCurrentPage] = React.useState<number>(1);
   const [isLoading, setIsLoading] = React.useState<boolean>(true);
@@ -88,12 +132,20 @@ const MovimientosProductoPage: React.FC = () => {
         const data = await obtenerProductosService();
         setProductos(data);
 
-        // Si hay un ID en la URL, buscamos ese producto para mostrar su info
+        // Si hay un ID en la URL, buscamos ese producto para el filtro inicial
         const targetId = id || queryProductoId;
         if (targetId) {
           const prod = data.find(p => p.id === targetId);
-          if (prod) setProductoActual(prod);
-          setFiltroProducto(targetId);
+          if (prod) {
+            setProductoActual(prod);
+            setNombreProductoFiltro(prod.nombre);
+            // Actualizar inmediatamente el debounced request para la carga inicial con producto
+            setDebouncedRequest(prev => ({ ...prev, nombreProducto: prod.nombre, nombreResponsable: 'TODOS' }));
+          } else {
+            setDebouncedRequest(prev => ({ ...prev, nombreProducto: 'TODOS', nombreResponsable: 'TODOS' }));
+          }
+        } else {
+          setDebouncedRequest(prev => ({ ...prev, nombreProducto: 'TODOS', nombreResponsable: 'TODOS' }));
         }
       } catch (error) {
         console.error('Error al cargar productos:', error);
@@ -105,25 +157,42 @@ const MovimientosProductoPage: React.FC = () => {
   /**
    * Carga los movimientos basado en filtros
    */
+  /**
+   * Efecto para manejar el debounce de los filtros (3 segundos)
+   */
   React.useEffect(() => {
+    // Si es la carga inicial y tenemos productoId, esperamos a que cargarProductos actualice el filtro
+    if (debouncedRequest.nombreProducto === 'CARGANDO...') return;
+
+    const handler = setTimeout(() => {
+      const nombreFinal = nombreProductoFiltro.trim() === '' ? 'TODOS' : nombreProductoFiltro.trim();
+      const responsableFinal = nombreResponsableFiltro.trim() === '' ? 'TODOS' : nombreResponsableFiltro.trim();
+
+      setDebouncedRequest({
+        nombreProducto: nombreFinal,
+        nombreResponsable: responsableFinal,
+        tipoMovimiento: tipoMovimientoFiltro,
+        orden: ordenFiltro,
+        fechaInicio: dateRangeValue.start ? dateRangeValue.start.toString() : null,
+        fechaFin: dateRangeValue.end ? dateRangeValue.end.toString() : null
+      });
+      setCurrentPage(1); // Resetear a la primera página al cambiar filtros
+    }, 3000);
+
+    return () => clearTimeout(handler);
+  }, [nombreProductoFiltro, nombreResponsableFiltro, tipoMovimientoFiltro, ordenFiltro, dateRangeValue]);
+
+  /**
+   * Carga los movimientos basado en el request debounced
+   */
+  React.useEffect(() => {
+    if (!debouncedRequest) return;
+
     const cargarMovimientos = async () => {
       try {
         setIsLoadingMovimientos(true);
-
-        const { movimientos, total } = await obtenerMovimientosFiltradosService(
-          {
-            productoId: filtroProducto === 'todos' ? undefined : filtroProducto || undefined,
-            tipo: filtroTipo === 'todos' ? undefined : filtroTipo as any,
-            orden: filtroOrden,
-            fechaInicio: filtroFecha || undefined,
-            fechaFin: filtroFecha || undefined
-          },
-          currentPage,
-          rowsPerPage
-        );
-
-        setMovimientos(movimientos);
-        setTotalMovimientos(total);
+        const data = await findMovimientosConFiltros(debouncedRequest);
+        setMovimientos(data);
       } catch (error) {
         console.error('Error al cargar movimientos:', error);
       } finally {
@@ -133,19 +202,20 @@ const MovimientosProductoPage: React.FC = () => {
     };
 
     cargarMovimientos();
-  }, [filtroProducto, filtroTipo, filtroOrden, filtroFecha, currentPage]);
+  }, [debouncedRequest]);
 
   /**
    * Actualiza el producto actual cuando cambia el filtro de producto
    */
   React.useEffect(() => {
-    if (filtroProducto && filtroProducto !== 'todos') {
-      const prod = productos.find(p => p.id === filtroProducto);
+    const trimmed = nombreProductoFiltro.trim();
+    if (trimmed !== '' && trimmed !== 'TODOS') {
+      const prod = productos.find(p => p.nombre.toLowerCase() === trimmed.toLowerCase());
       setProductoActual(prod || null);
     } else {
       setProductoActual(null);
     }
-  }, [filtroProducto, productos]);
+  }, [nombreProductoFiltro, productos]);
 
   /**
    * Vuelve a la página de inventario.
@@ -155,11 +225,14 @@ const MovimientosProductoPage: React.FC = () => {
   };
 
   const renderTipoMovimiento = (tipo: string) => {
-    switch (tipo) {
-      case 'Entrada': return <Chip color="success" size="sm" variant="flat">Entrada</Chip>;
-      case 'Salida': return <Chip color="primary" size="sm" variant="flat">Salida</Chip>;
-      case 'Merma': return <Chip color="danger" size="sm" variant="flat">Merma</Chip>;
-      default: return <Chip size="sm">{tipo}</Chip>;
+    const tipoNormalizado = tipo.toUpperCase();
+    switch (tipoNormalizado) {
+      case 'ENTRADA': return <span className="text-success font-bold uppercase tracking-wide text-xs">Entrada</span>;
+      case 'SALIDA': return <span className="text-warning font-bold uppercase tracking-wide text-xs">Salida</span>;
+      case 'MERMA': return <span className="text-danger font-bold uppercase tracking-wide text-xs">Merma</span>;
+      case 'AJUSTE': return <span className="text-warning-600 font-bold uppercase tracking-wide text-xs opacity-90">Ajuste</span>;
+      case 'DEVOLUCION': return <span className="text-secondary font-bold uppercase tracking-wide text-xs">Devolución</span>;
+      default: return <span className="font-bold uppercase tracking-wide text-xs">{tipo}</span>;
     }
   };
 
@@ -205,73 +278,92 @@ const MovimientosProductoPage: React.FC = () => {
             </h3>
 
             {/* Fila de Filtros */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {/* Filtro Producto */}
-              <div className="sm:col-span-2">
-                <Autocomplete
+              <div className="sm:col-span-2 lg:col-span-1">
+                <Input
                   label="Filtrar por Producto"
-                  placeholder="Todos los productos"
-                  selectedKey={filtroProducto}
-                  onSelectionChange={(key) => {
-                    setFiltroProducto(key as string);
-                    setCurrentPage(1);
+                  placeholder="Escriba nombre del producto..."
+                  value={nombreProductoFiltro === 'TODOS' ? '' : nombreProductoFiltro}
+                  onValueChange={(val) => {
+                    setNombreProductoFiltro(val);
                   }}
-                  defaultItems={productos}
+                  maxLength={100}
                   variant="bordered"
                   startContent={<Icon icon="lucide:package" className="text-default-400" />}
-                >
-                  {(item) => <AutocompleteItem key={item.id}>{item.nombre}</AutocompleteItem>}
-                </Autocomplete>
+                  classNames={{ inputWrapper: "bg-white dark:bg-default-100/50" }}
+                />
+              </div>
+
+              {/* Filtro Responsable */}
+              <div className="sm:col-span-2 lg:col-span-1">
+                <Input
+                  label="Filtrar por Responsable"
+                  placeholder="Escriba nombre del responsable..."
+                  value={nombreResponsableFiltro === 'TODOS' ? '' : nombreResponsableFiltro}
+                  onValueChange={(val) => {
+                    setNombreResponsableFiltro(val);
+                  }}
+                  maxLength={100}
+                  variant="bordered"
+                  startContent={<Icon icon="lucide:user" className="text-default-400" />}
+                  classNames={{ inputWrapper: "bg-white dark:bg-default-100/50" }}
+                />
               </div>
 
               {/* Filtro Tipo */}
               <Select
                 label="Tipo de Movimiento"
-                selectedKeys={[filtroTipo]}
+                selectedKeys={[tipoMovimientoFiltro]}
                 onChange={(e) => {
-                  setFiltroTipo(e.target.value);
-                  setCurrentPage(1);
+                  setTipoMovimientoFiltro(e.target.value as IMotionFilterRequest['tipoMovimiento']);
                 }}
                 variant="bordered"
                 classNames={{ trigger: "bg-white dark:bg-default-100/50" }}
               >
-                <SelectItem key="todos">Todos</SelectItem>
-                <SelectItem key="Entrada" startContent={<Icon icon="lucide:arrow-down-circle" className="text-success" />}>Entrada</SelectItem>
-                <SelectItem key="Salida" startContent={<Icon icon="lucide:arrow-up-circle" className="text-primary" />}>Salida</SelectItem>
-                <SelectItem key="Merma" startContent={<Icon icon="lucide:alert-circle" className="text-danger" />}>Merma</SelectItem>
+                <SelectItem key="TODOS">Todos</SelectItem>
+                <SelectItem key="ENTRADA" startContent={<Icon icon="lucide:arrow-down-circle" className="text-success" />}>Entrada</SelectItem>
+                <SelectItem key="SALIDA" startContent={<Icon icon="lucide:arrow-up-circle" className="text-primary" />}>Salida</SelectItem>
+                <SelectItem key="MERMA" startContent={<Icon icon="lucide:alert-circle" className="text-danger" />}>Merma</SelectItem>
+                <SelectItem key="AJUSTE" startContent={<Icon icon="lucide:settings-2" className="text-warning" />}>Ajuste</SelectItem>
+                <SelectItem key="DEVOLUCION" startContent={<Icon icon="lucide:rotate-ccw" className="text-secondary" />}>Devolución</SelectItem>
               </Select>
+
+              {/* Filtro Rango de Fechas */}
+              <div className="sm:col-span-2 lg:col-span-1">
+                <DateRangePicker
+                  label="Rango de Fechas"
+                  value={dateRangeValue.start && dateRangeValue.end ? { start: dateRangeValue.start, end: dateRangeValue.end } : null}
+                  onChange={(val) => {
+                    if (val) {
+                      setDateRangeValue({ start: val.start as CalendarDate, end: val.end as CalendarDate });
+                    } else {
+                      setDateRangeValue({ start: null, end: null });
+                    }
+                  }}
+                  variant="bordered"
+                  maxValue={today(getLocalTimeZone())}
+                  classNames={{
+                    base: "bg-white dark:bg-default-100/50",
+                  }}
+                />
+              </div>
 
               {/* Filtro Orden */}
               <Select
                 label="Orden"
-                selectedKeys={[filtroOrden]}
+                selectedKeys={[ordenFiltro]}
                 onChange={(e) => {
-                  setFiltroOrden(e.target.value as any);
-                  setCurrentPage(1);
+                  setOrdenFiltro(e.target.value as IMotionFilterRequest['orden']);
                 }}
                 variant="bordered"
                 classNames={{ trigger: "bg-white dark:bg-default-100/50" }}
               >
-                <SelectItem key="reciente">Más Recientes</SelectItem>
-                <SelectItem key="antiguo">Más Antiguos</SelectItem>
-                <SelectItem key="cantidad_asc">Menor Cantidad</SelectItem>
-                <SelectItem key="cantidad_desc">Mayor Cantidad</SelectItem>
+                <SelectItem key="MAS_RECIENTES">Más Recientes</SelectItem>
+                <SelectItem key="MAS_ANTIGUOS">Más Antiguos</SelectItem>
+                <SelectItem key="MENOR_CANTIDAD">Menor Cantidad</SelectItem>
+                <SelectItem key="MAYOR_CANTIDAD">Mayor Cantidad</SelectItem>
               </Select>
-
-              {/* Filtro Fecha */}
-              <Input
-                type="date"
-                label="Fecha Específica"
-                placeholder="Seleccione fecha"
-                value={filtroFecha}
-                max={new Date().toISOString().split('T')[0]} // Restringir a fecha actual o anterior
-                onValueChange={(val) => {
-                  setFiltroFecha(val);
-                  setCurrentPage(1);
-                }}
-                variant="bordered"
-                classNames={{ inputWrapper: "bg-white dark:bg-default-100/50" }}
-              />
             </div>
           </CardBody>
         </Card>
@@ -316,15 +408,16 @@ const MovimientosProductoPage: React.FC = () => {
             <Table
               aria-label="Tabla de movimientos"
               removeWrapper
+              layout="fixed"
               classNames={{
                 th: "bg-default-100 dark:bg-default-50/20 text-default-500 font-bold uppercase text-xs h-12",
                 td: "py-3 border-b border-default-50 dark:border-default-50/10 group-data-[last=true]:border-none"
               }}
               bottomContent={
-                totalMovimientos > 0 ? (
+                movimientos.length > 0 ? (
                   <div className="flex w-full justify-center py-4 border-t border-default-100">
                     <Pagination
-                      total={Math.ceil(totalMovimientos / rowsPerPage)}
+                      total={Math.ceil(movimientos.length / rowsPerPage)}
                       page={currentPage}
                       onChange={setCurrentPage}
                       showControls
@@ -335,13 +428,13 @@ const MovimientosProductoPage: React.FC = () => {
               }
             >
               <TableHeader>
-                <TableColumn>PRODUCTO</TableColumn>
-                <TableColumn>CATEGORÍA</TableColumn>
-                <TableColumn>TIPO</TableColumn>
-                <TableColumn>CANTIDAD</TableColumn>
-                <TableColumn>FECHA</TableColumn>
-                <TableColumn>RESPONSABLE</TableColumn>
-                <TableColumn>OBSERVACIÓN</TableColumn>
+                <TableColumn width="15%" align="center">PRODUCTO</TableColumn>
+                <TableColumn width="10%" align="center">CATEGORÍA</TableColumn>
+                <TableColumn width="10%" align="center">TIPO</TableColumn>
+                <TableColumn width="5%" align="center">CANTIDAD</TableColumn>
+                <TableColumn width="15%" align="center">FECHA</TableColumn>
+                <TableColumn width="20%" align="center">RESPONSABLE</TableColumn>
+                <TableColumn width="25%" align="center">OBSERVACIÓN</TableColumn>
               </TableHeader>
               <TableBody
                 isLoading={isLoadingMovimientos}
@@ -354,42 +447,50 @@ const MovimientosProductoPage: React.FC = () => {
                   </div>
                 }
               >
-                {movimientos.map((movimiento) => (
-                  <TableRow key={movimiento.id} className="hover:bg-default-50 dark:hover:bg-default-100/50 transition-colors">
-                    <TableCell>
-                      <div className="flex flex-col">
-                        <span className="font-semibold text-secondary dark:text-foreground">{movimiento.productoNombre}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Chip size="sm" variant="flat" className="bg-default-100 dark:bg-default-100/50 text-default-600 dark:text-default-300">
-                        {productos.find(p => p.id === movimiento.productoId)?.categoria || '-'}
-                      </Chip>
-                    </TableCell>
-                    <TableCell>{renderTipoMovimiento(movimiento.tipo)}</TableCell>
-                    <TableCell>
-                      <span className="font-bold text-default-700 dark:text-default-300">
-                        {movimiento.cantidad} {
-                          productos.find(p => p.id === movimiento.productoId)?.unidadMedida || ''
-                        }
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex flex-col">
-                        <span className="font-medium">{new Date(movimiento.fechaMovimiento).toLocaleDateString('es-CL')}</span>
-                        <span className="text-xs text-default-400">{new Date(movimiento.fechaMovimiento).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell>{movimiento.responsable}</TableCell>
-                    <TableCell>
-                      {movimiento.observacion ? (
-                        <span className="italic text-default-500">{movimiento.observacion}</span>
-                      ) : (
-                        <span className="text-default-300">-</span>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {movimientos
+                  .slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage)
+                  .map((movimiento, index) => (
+                    <TableRow key={`${movimiento.fechaMovimiento}-${index}`} className="hover:bg-default-50 dark:hover:bg-default-100/50 transition-colors">
+                      <TableCell className="max-w-[200px]">
+                        <Tooltip content={movimiento.nombreProducto} delay={500} closeDelay={0}>
+                          <div className="flex flex-col items-center truncate">
+                            <span className="font-semibold text-secondary dark:text-foreground truncate text-center w-full">{movimiento.nombreProducto}</span>
+                          </div>
+                        </Tooltip>
+                      </TableCell>
+                      <TableCell>
+                        <Chip size="sm" variant="flat" className="bg-default-100 dark:bg-default-100/50 text-default-600 dark:text-default-300">
+                          {movimiento.nombreCategoria}
+                        </Chip>
+                      </TableCell>
+                      <TableCell>{renderTipoMovimiento(movimiento.tipoMovimiento)}</TableCell>
+                      <TableCell>
+                        <span className="font-bold text-default-700 dark:text-default-300">
+                          {movimiento.stockMovimiento}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex flex-col items-center">
+                          <span className="font-medium text-center">{new Date(movimiento.fechaMovimiento).toLocaleDateString('es-CL')}</span>
+                          <span className="text-xs text-default-400 text-center">{new Date(movimiento.fechaMovimiento).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="max-w-[180px]">
+                        <Tooltip content={movimiento.nombreUsuario} delay={500} closeDelay={0}>
+                          <span className="truncate block text-center w-full">{movimiento.nombreUsuario}</span>
+                        </Tooltip>
+                      </TableCell>
+                      <TableCell className="max-w-[250px]">
+                        {movimiento.observacion ? (
+                          <Tooltip content={movimiento.observacion} delay={500} closeDelay={0}>
+                            <span className="italic text-default-500 truncate block text-center w-full">{movimiento.observacion}</span>
+                          </Tooltip>
+                        ) : (
+                          <div className="text-center text-default-300">-</div>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
               </TableBody>
             </Table>
           </CardBody>
@@ -442,7 +543,7 @@ interface FormularioMovimientoProps {
  * @returns {JSX.Element} El formulario de movimiento.
  */
 const FormularioMovimiento: React.FC<FormularioMovimientoProps> = ({ productoId, onClose, unidadMedida }) => {
-  const [tipo, setTipo] = React.useState<'Entrada' | 'Salida' | 'Merma'>('Entrada');
+  const [tipo, setTipo] = React.useState<'Entrada' | 'Salida' | 'Merma' | 'Ajuste' | 'Devolucion'>('Entrada');
   const [cantidad, setCantidad] = React.useState<string>('');
   const [observacion, setObservacion] = React.useState<string>('');
   const [isLoading, setIsLoading] = React.useState<boolean>(false);
@@ -488,6 +589,8 @@ const FormularioMovimiento: React.FC<FormularioMovimientoProps> = ({ productoId,
           <SelectItem key="Entrada" startContent={<Icon icon="lucide:arrow-down-circle" className="text-success" />}>Entrada</SelectItem>
           <SelectItem key="Salida" startContent={<Icon icon="lucide:arrow-up-circle" className="text-primary" />}>Salida</SelectItem>
           <SelectItem key="Merma" startContent={<Icon icon="lucide:alert-circle" className="text-danger" />}>Merma</SelectItem>
+          <SelectItem key="Ajuste" startContent={<Icon icon="lucide:settings-2" className="text-warning" />}>Ajuste</SelectItem>
+          <SelectItem key="Devolucion" startContent={<Icon icon="lucide:rotate-ccw" className="text-secondary" />}>Devolución</SelectItem>
         </Select>
 
         <Input
