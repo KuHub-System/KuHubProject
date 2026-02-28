@@ -1,6 +1,8 @@
 package KuHub.modules.gestion_inventario.services;
 
 import KuHub.modules.gestion_inventario.dtos.MotionCreateDTO;
+import KuHub.modules.gestion_inventario.dtos.MotionFilterRequestDTO;
+import KuHub.modules.gestion_inventario.dtos.response.MotionAnswerDTO;
 import KuHub.modules.gestion_inventario.exceptions.GestionInventarioException;
 import KuHub.modules.gestion_usuario.entity.Usuario;
 import KuHub.modules.gestion_usuario.exceptions.GestionUsuarioException;
@@ -19,6 +21,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -36,10 +42,85 @@ public class MovimientoServiceImpl implements MovimientoService {
     @Autowired
     private UsuarioRepository usuarioRepository;
 
-    /**Save crudo usado en inventario al crear un producto con inventario*/
+
+    @Transactional(readOnly = true)
+    @Override
+    public List<MotionAnswerDTO> findAllMotionWithFilter(MotionFilterRequestDTO request) {
+
+        /**Clase local de tipo record*/
+        record MotionQueryArgs(
+                LocalDateTime inicio,
+                LocalDateTime fin,
+                String producto,
+                String tipo,
+                String orden,
+                String responsable
+        ) {
+            /** Constructor para centralizar lógica de limpieza y defaults*/
+            public MotionQueryArgs(MotionFilterRequestDTO req) {
+                this(
+                        req.getFechaInicio() != null ? req.getFechaInicio().atStartOfDay() : LocalDateTime.now().minusHours(24),
+                        req.getFechaFin() != null ? req.getFechaFin().atTime(LocalTime.MAX) : LocalDateTime.now(),
+                        parseProducto(req.getNombreProducto()),
+                        parseTipo(req.getTipoMovimiento()),
+                        parseOrden(req.getOrden()),
+                        parseResponsable(req.getNombreResponsable())
+                );
+            }
+
+            private static String parseProducto(String p) {
+                String limpio = StringUtils.normalizeSpaces(p); // Limpia espacios dobles
+                if (limpio == null || limpio.isBlank()) return null;
+
+                String cap = StringUtils.capitalizarPalabras(limpio); // "arroz" -> "Arroz"
+                return ("Todos Los Productos".equals(cap) || "Todos".equals(cap)) ? null : cap;
+            }
+
+            private static String parseResponsable(String r) {
+                String limpio = StringUtils.normalizeSpaces(r);
+                if (limpio == null || limpio.isBlank()) return null;
+
+                // Si el usuario escribe "todos", ignoramos el filtro
+                return ("Todos".equalsIgnoreCase(limpio)) ? null : limpio;
+            }
+
+            private static String parseTipo(String t) {
+                // Convierte "Devolución" -> "DEVOLUCION" y quita espacios
+                String key = StringUtils.normalizeToEnumKey(t);
+                return (key == null || "TODOS".equals(key)) ? null : key;
+            }
+
+            private static String parseOrden(String o) {
+                String key = StringUtils.normalizeToEnumKey(o); // "Más Recientes" -> "MAS_RECIENTES"
+                return (key != null) ? key : "MAS_RECIENTES";
+            }
+        }
+
+        // 1. Instanciamos los argumentos procesados
+        MotionQueryArgs args = new MotionQueryArgs(request);
+
+        // 2. Ejecución de la consulta (limpia y legible)
+        List<Object[]> resultados = movimientoRepository.findDynamicMovements(
+                args.inicio(),
+                args.fin(),
+                args.producto(),
+                args.tipo(),
+                args.orden(),
+                args.responsable()
+        );
+
+        // 3. Mapeo a DTO de respuesta
+        return resultados.stream()
+                .map(this::mapToMotionAnswerDTO)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Save crudo usado en inventario al crear un producto con inventario
+     */
     @Transactional
     @Override
-    public void save (Movimiento m){
+    public void save(Movimiento m) {
         movimientoRepository.save(m);
     }
 
@@ -102,7 +183,9 @@ public class MovimientoServiceImpl implements MovimientoService {
         return true;
     }
 
-    /**METODO DE VALIDACION DE MOVIMIENTO PARA LA PAGE DE INVENTARIO, IMPLEMENADO PARA CUANDO SE ACTUALIZA UN PRODUCTO EN EL INVENTARIO REALIZAR MOVIMIENTO*/
+    /**
+     * METODO DE VALIDACION DE MOVIMIENTO PARA LA PAGE DE INVENTARIO, IMPLEMENADO PARA CUANDO SE ACTUALIZA UN PRODUCTO EN EL INVENTARIO REALIZAR MOVIMIENTO
+     */
     @Transactional
     @Override
     public boolean motionInUpdateInventory(Inventario oldInventory, BigDecimal newStock, String typeMotion) {
@@ -170,7 +253,7 @@ public class MovimientoServiceImpl implements MovimientoService {
         }
 
         //CREAR MOVIMIENTO
-        Movimiento newMotion =new Movimiento();
+        Movimiento newMotion = new Movimiento();
         newMotion.setUsuario(usuarioService.findUserByToken());
         newMotion.setInventario(oldInventory);
         newMotion.setStockMovimiento(calculatedAmount);
@@ -180,7 +263,23 @@ public class MovimientoServiceImpl implements MovimientoService {
         return true;
     }
 
+    /***/
+    /**
+     * Mapea la consulta dinamica aplicado en historioles de movimiento
+     */
+    private MotionAnswerDTO mapToMotionAnswerDTO(Object[] row) {
+        return new MotionAnswerDTO(
+                (String) row[0],                                 // nombre_producto
+                (String) row[1],                                 // nombre_categoria
+                (String) row[2],                                 // tipo_movimiento
+                (java.math.BigDecimal) row[3],                   // stock_movimiento
+                ((java.sql.Timestamp) row[4]).toLocalDateTime(), // fecha_movimiento
+                (String) row[5],                                 // nombreUsuario (concatenado)
+                (String) row[6]                                  // observacion
+        );
+    }
 
+}
 
 
 
@@ -215,101 +314,9 @@ public class MovimientoServiceImpl implements MovimientoService {
          );
          }
 
-    /**
-    @Transactional(readOnly = true)
-    @Override
-    public List<MotionAnswerDTO> findAllMotionFilter (MotionFilterRequestDTO filter){
-
-        LocalDateTime queryInicio;
-        LocalDateTime queryFin;
-
-        if (filter.getFechaInicio() != null) {
-            queryInicio = filter.getFechaInicio().atStartOfDay();
-        } else {
-            queryInicio = LocalDateTime.now().minusDays(7);
-        }
-
-        if (filter.getFechaFin() != null) {
-            queryFin = filter.getFechaFin().atTime(LocalTime.MAX);
-        } else {
-            queryFin = LocalDateTime.now();
-        }
-
-        // null en caso de todos
-        String tipoParaQuery = null;
-        String tipoMovimientoRequest = filter.getTipoMovimiento();
-        if (tipoMovimientoRequest != null && !tipoMovimientoRequest.trim().isEmpty()) {
-            String tipoMovimientoParseado = tipoMovimientoRequest.trim().toUpperCase().replace(" ", "");
-            if (!"TODOS".equals(tipoMovimientoParseado)) {
-                tipoParaQuery = tipoMovimientoParseado;
-            }
-        }
 
 
-        String productoQuery = null;
-        String productoRequest = filter.getNombreProducto();
-        if (productoRequest != null && !productoRequest.isBlank()) {
-            String productoParseado = StringUtils.capitalizarPalabras(filter.getNombreProducto());
-            if (!"TODOS LOS PRODUCTOS".equalsIgnoreCase(productoParseado) &&
-                    !"TODOS".equalsIgnoreCase(productoParseado)) {
-                productoQuery = productoParseado;
-            }
-        }
 
-        String ordenParseado = StringUtils.normalizeToEnumKey(filter.getOrden());
-        String ordenQuery = "MAS_RECIENTES"; // Valor por defecto
-        if (ordenParseado != null) {
-            switch (ordenParseado) {
-                case "MAS_ANTIGUOS":
-                    ordenQuery = "MAS_ANTIGUOS";
-                    break;
-                case "MENOR_CANTIDAD":
-                    ordenQuery = "MENOR_CANTIDAD";
-                    break;
-                case "MAYOR_CANTIDAD":
-                    ordenQuery = "MAYOR_CANTIDAD";
-                    break;
-            }
-        }
-
-
-        List<Object[]> resultados = movimientoRepository.buscarMovimientosDinamico(
-                queryInicio,
-                queryFin,
-                productoQuery,
-                tipoParaQuery,
-                ordenQuery
-        );
-
-        // Mapear Object[] a DTO
-        return resultados.stream()
-                .map(obj -> {
-                    Integer idMovimiento = (Integer) obj[0];
-                    String nombreProducto = (String) obj[1];
-                    String nombreCategoria = (String) obj[2];
-                    String tipoMovimiento = (String) obj[3];
-                    Double stockMovimiento = ((Number) obj[4]).doubleValue();
-                    LocalDateTime fechaMovimiento = ((java.sql.Timestamp) obj[5]).toLocalDateTime();
-                    String nombreUsuario = (String) obj[6];
-                    String observacion = (String) obj[7];
-
-                    return new MotionAnswerDTO(
-                            idMovimiento,
-                            nombreProducto,
-                            nombreCategoria,
-                            tipoMovimiento,
-                            stockMovimiento,
-                            fechaMovimiento,
-                            nombreUsuario,
-                            observacion
-                    );
-                })
-                .collect(Collectors.toList());
-
-    }
-
-    /**
-    */
 
     private String actualizarStockInventario(Inventario i, Double stockMovimiento, Movimiento.TipoMovimiento tipo){
 
@@ -349,10 +356,3 @@ public class MovimientoServiceImpl implements MovimientoService {
                 }
                 break;
         }*/
-
-        //Actualizar inventario
-        inventarioRepository.save(i);
-        return mensajeAjuste;
-    }
-
-}

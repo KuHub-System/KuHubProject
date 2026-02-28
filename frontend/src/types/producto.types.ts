@@ -23,7 +23,7 @@ export interface IMovimientoProducto {
   id: string;
   productoId: string;
   productoNombre: string;
-  tipo: 'Entrada' | 'Salida' | 'Merma';
+  tipo: 'Entrada' | 'Salida' | 'Merma' | 'Ajuste' | 'Devolucion';
   cantidad: number;
   fechaMovimiento: string;
   responsable: string;
@@ -74,7 +74,7 @@ export interface IActualizarProducto {
  */
 export interface ICrearMovimiento {
   productoId: string;
-  tipo: 'Entrada' | 'Salida' | 'Merma';
+  tipo: 'Entrada' | 'Salida' | 'Merma' | 'Ajuste' | 'Devolucion';
   cantidad: number;
   observacion: string;
 }

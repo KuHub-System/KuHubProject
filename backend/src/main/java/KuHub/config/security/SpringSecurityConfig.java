@@ -327,7 +327,7 @@ public class SpringSecurityConfig {
                         .requestMatchers("/api/v*/solicitud/save-solicitation")
                         .hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR", "GESTOR_PEDIDOS", "PROFESOR_A_CARGO")
 
-                                // ========================================
+                        // ========================================
                         // ENDPOINTS DE SEMANAS (CALENDARIO ACADÉMICO)
                         // ========================================
 
