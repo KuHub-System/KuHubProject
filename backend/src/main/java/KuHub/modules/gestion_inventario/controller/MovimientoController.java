@@ -1,10 +1,8 @@
 package KuHub.modules.gestion_inventario.controller;
 
-import KuHub.modules.gestion_inventario.dtos.MotionAnswerDTO;
-import KuHub.modules.gestion_inventario.dtos.MotionCreateDTO;
 import KuHub.modules.gestion_inventario.dtos.MotionFilterRequestDTO;
+import KuHub.modules.gestion_inventario.dtos.response.MotionAnswerDTO;
 import KuHub.modules.gestion_inventario.services.MovimientoService;
-import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
@@ -19,12 +17,12 @@ public class MovimientoController {
 
     @Autowired
     private MovimientoService movimientoService;
-    /**
-    @PostMapping("/find-all-motion-filter")
-    public ResponseEntity<List<MotionAnswerDTO>> findAllMotionFilter(@RequestBody MotionFilterRequestDTO m){
+
+    @PostMapping("/find-all-motion-with-filter")
+    public ResponseEntity<List<MotionAnswerDTO>> findAllMotionWithFilter(@RequestBody MotionFilterRequestDTO m){
         return ResponseEntity
                 .status(200)
-                .body(movimientoService.findAllMotionFilter(m));
+                .body(movimientoService.findAllMotionWithFilter(m));
     }
 
     /**
