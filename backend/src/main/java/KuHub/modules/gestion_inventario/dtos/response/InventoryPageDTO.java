@@ -22,6 +22,7 @@ public class InventoryPageDTO {
 
     private Integer idUnidad;
     private String nombreUnidad;
+    private Boolean esFraccionario;
 
     private BigDecimal stock;
     private BigDecimal stockLimit;

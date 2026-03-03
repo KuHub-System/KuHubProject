@@ -137,7 +137,7 @@ export const cargarRoles = (): IRole[] => {
       // Validar que los roles guardados tengan los nombres correctos
       const nombresCorrectos = ROLES_SISTEMA.map(r => r.nombre);
       const rolesValidos = roles.every((rol: IRole) =>
-          nombresCorrectos.includes(rol.nombre)
+        nombresCorrectos.includes(rol.nombre)
       );
 
       if (rolesValidos && roles.length === ROLES_SISTEMA.length) {
@@ -151,7 +151,6 @@ export const cargarRoles = (): IRole[] => {
         });
 
         if (tienenPermisosActualizados) {
-          console.log('✅ Roles cargados desde localStorage:', roles.map((r: IRole) => r.nombre).join(', '));
           return roles;
         }
 
@@ -167,7 +166,6 @@ export const cargarRoles = (): IRole[] => {
       }
     }
 
-    console.log('📁 No hay roles en localStorage. Usando y guardando ROLES_SISTEMA.');
     localStorage.setItem(ROLES_STORAGE_KEY, JSON.stringify(ROLES_SISTEMA));
     return ROLES_SISTEMA;
   } catch (error) {
@@ -183,7 +181,6 @@ export const guardarRoles = (roles: IRole[]): void => {
   try {
     localStorage.setItem(ROLES_STORAGE_KEY, JSON.stringify(roles));
     window.dispatchEvent(new Event('roles-updated'));
-    console.log('✅ Roles guardados correctamente');
   } catch (error) {
     console.error('❌ Error al guardar roles:', error);
     throw error;
@@ -196,7 +193,7 @@ export const guardarRoles = (roles: IRole[]): void => {
 export const buscarRolPorNombre = (nombre: string, roles?: IRole[]): IRole | undefined => {
   const rolesActuales = roles || cargarRoles();
   return rolesActuales.find(rol =>
-      rol.nombre.toLowerCase() === nombre.toLowerCase()
+    rol.nombre.toLowerCase() === nombre.toLowerCase()
   );
 };
 

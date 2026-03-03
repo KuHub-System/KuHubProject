@@ -9,6 +9,7 @@ export interface UnidadMedidaView {
     nombreUnidad: string;
     abreviatura: string;
     activo: boolean;
+    esFraccionario: boolean;
     asociados: number;
 }
 
@@ -16,20 +17,29 @@ export interface UnidadMedidaView {
  * Obtiene todas las unidades de medida con el conteo de productos asociados.
  */
 export const obtenerUnidadesService = async (): Promise<IUnidadMedida[]> => {
-    console.log('📦 Obteniendo unidades de medida (find-all-view)...');
     try {
         const response = await api.get<UnidadMedidaView[]>('/unidad-medida/find-all-view');
 
         // Mapear el retorno del backend a nuestra interfaz IUnidadMedida
-        return response.data.map((viewDirecta: UnidadMedidaView) => ({
-            id: viewDirecta.idUnidad.toString(),
-            nombre: viewDirecta.nombreUnidad,
-            abreviatura: viewDirecta.abreviatura,
-            activo: viewDirecta.activo,
-            asociados: viewDirecta.asociados
-        }));
+        // Somos extremadamente robustos con los nombres de propiedad y tipos
+        return response.data.map((viewDirecta: any) => {
+            const val = viewDirecta.esFraccionario !== undefined ? viewDirecta.esFraccionario :
+                viewDirecta.es_fraccionario !== undefined ? viewDirecta.es_fraccionario :
+                    viewDirecta.esFraccionado !== undefined ? viewDirecta.esFraccionado :
+                        viewDirecta.es_fraccionado !== undefined ? viewDirecta.es_fraccionado :
+                            viewDirecta.fraccionario !== undefined ? viewDirecta.fraccionario :
+                                viewDirecta.fraccionado;
+
+            return {
+                id: (viewDirecta.idUnidad ?? viewDirecta.id_unidad ?? viewDirecta.id).toString(),
+                nombre: viewDirecta.nombreUnidad ?? viewDirecta.nombre_unidad ?? viewDirecta.nombre,
+                abreviatura: viewDirecta.abreviatura,
+                activo: !!(viewDirecta.activo ?? viewDirecta.enable),
+                esFraccionario: val === true || val === 1 || val === "true" || val === "1" || val === "T",
+                asociados: Number(viewDirecta.asociados ?? 0)
+            };
+        });
     } catch (error) {
-        console.error('❌ Error al obtener unidades de medida:', error);
         return [];
     }
 };
@@ -39,19 +49,27 @@ export const obtenerUnidadesService = async (): Promise<IUnidadMedida[]> => {
  * @returns Promise<IUnidadMedida[]>
  */
 export const obtenerUnidadesActivasService = async (): Promise<IUnidadMedida[]> => {
-    console.log('📦 Obteniendo unidades de medida activas (find-all-active-true)...');
     try {
         const response = await api.get<UnidadMedidaView[]>('/unidad-medida/find-all-active-true');
 
-        return response.data.map((viewDirecta: UnidadMedidaView) => ({
-            id: viewDirecta.idUnidad.toString(),
-            nombre: viewDirecta.nombreUnidad,
-            abreviatura: viewDirecta.abreviatura,
-            activo: viewDirecta.activo,
-            asociados: viewDirecta.asociados || 0
-        }));
+        return response.data.map((viewDirecta: any) => {
+            const val = viewDirecta.esFraccionario !== undefined ? viewDirecta.esFraccionario :
+                viewDirecta.es_fraccionario !== undefined ? viewDirecta.es_fraccionario :
+                    viewDirecta.esFraccionado !== undefined ? viewDirecta.esFraccionado :
+                        viewDirecta.es_fraccionado !== undefined ? viewDirecta.es_fraccionado :
+                            viewDirecta.fraccionario !== undefined ? viewDirecta.fraccionario :
+                                viewDirecta.fraccionado;
+
+            return {
+                id: (viewDirecta.idUnidad ?? viewDirecta.id_unidad ?? viewDirecta.id).toString(),
+                nombre: viewDirecta.nombreUnidad ?? viewDirecta.nombre_unidad ?? viewDirecta.nombre,
+                abreviatura: viewDirecta.abreviatura,
+                activo: !!(viewDirecta.activo ?? viewDirecta.enable),
+                esFraccionario: val === true || val === 1 || val === "true" || val === "1" || val === "T",
+                asociados: Number(viewDirecta.asociados ?? 0)
+            };
+        });
     } catch (error) {
-        console.error('❌ Error al obtener unidades de medida activas:', error);
         return [];
     }
 };
@@ -61,18 +79,20 @@ export const obtenerUnidadesActivasService = async (): Promise<IUnidadMedida[]> 
  * @param nombre Nombre de la unidad (ej: Kilogramo)
  * @param abreviatura Abreviatura (ej: KG)
  */
-export const crearUnidadService = async (nombre: string, abreviatura: string): Promise<boolean> => {
-    console.log(`➕ Creando unidad de medida: ${nombre} (${abreviatura})`);
+export const crearUnidadService = async (nombre: string, abreviatura: string, esFraccionario: boolean): Promise<boolean> => {
     try {
-        const payload = {
+        const payload: any = {
             nombreUnidad: nombre,
             abreviatura: abreviatura,
+            esFraccionario: esFraccionario,
+            es_fraccionario: esFraccionario,
+            esFraccionado: esFraccionario,
+            es_fraccionado: esFraccionario,
             activo: true // Por defecto activa
         };
         const response = await api.post<boolean>('/unidad-medida', payload);
         return response.data === true;
     } catch (error: any) {
-        console.error('❌ Error al crear unidad de medida:', error);
         throw new Error(error.response?.data?.message || error.response?.data || 'Error al crear la unidad');
     }
 };
@@ -83,18 +103,23 @@ export const crearUnidadService = async (nombre: string, abreviatura: string): P
  * @param nombre Nuevo nombre
  * @param abreviatura Nueva abreviatura
  */
-export const actualizarUnidadService = async (id: string, nombre: string, abreviatura: string): Promise<boolean> => {
-    console.log(`📝 Actualizando unidad de medida ${id}: ${nombre} (${abreviatura})`);
+export const actualizarUnidadService = async (id: string, nombre: string, abreviatura: string, esFraccionario: boolean): Promise<boolean> => {
     try {
-        const payload = {
+        const payload: any = {
             idUnidadMedida: parseInt(id),
+            idUnidad: parseInt(id), // Algunos endpoints usan idUnidad
             nombreUnidad: nombre,
-            abreviatura: abreviatura
+            abreviatura: abreviatura,
+            // Mandamos todas las variaciones posibles para el booleano
+            esFraccionario: esFraccionario,
+            es_fraccionario: esFraccionario,
+            esFraccionado: esFraccionario,
+            es_fraccionado: esFraccionario
         };
-        const response = await api.patch<boolean>('/unidad-medida', payload);
-        return response.data === true;
+        const response = await api.patch<any>('/unidad-medida', payload);
+        // Si el backend retorna true O el objeto actualizado, lo consideramos éxito
+        return response.status === 200 || response.status === 204 || !!response.data;
     } catch (error: any) {
-        console.error('❌ Error al actualizar unidad de medida:', error);
         throw new Error(error.response?.data?.message || error.response?.data || 'Error al actualizar la unidad');
     }
 };
@@ -104,7 +129,6 @@ export const actualizarUnidadService = async (id: string, nombre: string, abrevi
  * Siguiendo el mismo patrón de ChangeStatus usado en categorías.
  */
 export const cambiarEstadoUnidadService = async (id: string, enable: boolean): Promise<boolean> => {
-    console.log(`🔌 [PATCH Status] Cambiando estado de unidad ${id} a: ${enable}`);
     try {
         const payload = {
             idUnidadMedida: parseInt(id),
@@ -114,7 +138,6 @@ export const cambiarEstadoUnidadService = async (id: string, enable: boolean): P
         await api.patch('/unidad-medida/update-unidad-status', payload);
         return true;
     } catch (error: any) {
-        console.error('❌ Error al cambiar status de unidad:', error);
         throw new Error(error.response?.data?.message || error.response?.data || 'Error al cambiar estado de la unidad');
     }
 };
@@ -124,14 +147,12 @@ export const cambiarEstadoUnidadService = async (id: string, enable: boolean): P
  * @param id ID de la unidad
  */
 export const eliminarUnidadService = async (id: string): Promise<boolean> => {
-    console.log(`🗑️ Eliminando unidad de medida del backend: ${id}`);
     try {
         const idNumerico = parseInt(id);
         // El usuario indicó que tiene retorno void
         await api.delete(`/unidad-medida/${idNumerico}`);
         return true;
     } catch (error: any) {
-        console.error('❌ Error al eliminar unidad de medida:', error);
         throw new Error(error.response?.data?.message || error.response?.data || 'Error al eliminar la unidad');
     }
 };
@@ -142,7 +163,6 @@ export const eliminarUnidadService = async (id: string): Promise<boolean> => {
  * @param idDestino ID de la unidad de destino
  */
 export const transferirProductosUnidadService = async (idOrigen: string, idDestino: string): Promise<string> => {
-    console.log(`🔄 Transfiriendo productos de unidad ${idOrigen} a ${idDestino}`);
     try {
         const payload = {
             oldIdUnidadMedida: parseInt(idOrigen),
@@ -152,7 +172,6 @@ export const transferirProductosUnidadService = async (idOrigen: string, idDesti
         const response = await api.put<string>('/unidad-medida', payload);
         return response.data;
     } catch (error: any) {
-        console.error('❌ Error en transferencia de unidades:', error);
         throw new Error(error.response?.data?.message || error.response?.data || 'Error al transferir productos');
     }
 };

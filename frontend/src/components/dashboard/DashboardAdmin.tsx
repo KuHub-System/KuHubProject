@@ -219,31 +219,21 @@ export const DashboardAdmin: React.FC = () => {
 
   // NEW: Function to prepare and open the board
   const handleIniciarProcesoBoard = async () => {
-    console.log('🚀 handleIniciarProcesoBoard started');
     if (estadoProceso.activo) {
       toast.info('Ya existe un proceso de pedidos en curso.');
       return;
     }
 
-    console.log('❓ Requesting confirmation...');
     const confirmResult = await confirm('¿Deseas iniciar un nuevo proceso de pedido semanal?');
-    console.log('✅ Confirmation result:', confirmResult);
 
     if (!confirmResult) return;
 
     try {
-      console.log('🔄 Fetching accepted requests...');
       setIsLoading(true);
-      // Fetch ALL requests (or maybe just accepted ones? User said "pool de solicitudes agregadas", implies picking from accepted pending ones)
-      // Ideally we pick 'Aceptada' requests that haven't been processed yet.
       const all = await obtenerSolicitudesAceptadasParaPedidoService();
-      console.log('📦 Fetched requests:', all.length);
       setAllSolicitudesBoard(all);
-      console.log('🔓 Opening Board Modal...');
       onBoardOpen();
-      console.log('✅ Board Modal Open Signal Sent');
     } catch (error) {
-      console.error('❌ Error in handleIniciarProcesoBoard:', error);
       toast.error('Error al cargar solicitudes para el tablero');
     } finally {
       setIsLoading(false);
@@ -380,13 +370,11 @@ export const DashboardAdmin: React.FC = () => {
 
           if (pedido && pedido.solicitudesAsociadas && pedido.solicitudesAsociadas.length > 0) {
             // ✅ Modern Flow: Use requests explicitly selected in Board
-            console.log('📦 Using requests from Order:', pedido.solicitudesAsociadas.length);
             solicitudesSeleccionadas = solicitudesAceptadas.filter(s =>
               pedido.solicitudesAsociadas.includes(s.id)
             );
           } else {
             // ⚠️ Legacy/Fallback: If no requests linked, use Week logic and Sync
-            console.log('⚠️ No linked requests, using Week logic fallback');
             const solicitudesSemana = estadoProceso.semanaSeleccionada
               ? solicitudesAceptadas.filter(s => s.semana === estadoProceso.semanaSeleccionada)
               : solicitudesAceptadas;

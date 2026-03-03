@@ -16,7 +16,7 @@ const STORAGE_KEY = 'sistema-roles-configurados';
 export const notificarCambioRoles = (): void => {
   // Evento personalizado para el mismo tab
   window.dispatchEvent(new CustomEvent('roles-updated'));
-  
+
   // Forzar evento storage para otros tabs (hack)
   // El evento storage normalmente solo se dispara entre tabs diferentes
   // Este truco simula un cambio para forzar la actualización
@@ -24,8 +24,7 @@ export const notificarCambioRoles = (): void => {
   if (roles) {
     localStorage.setItem(STORAGE_KEY, roles);
   }
-  
-  console.log('🔔 Notificación de cambio de roles enviada');
+
 };
 
 /**
@@ -35,7 +34,6 @@ export const notificarCambioRoles = (): void => {
 export const guardarRoles = (roles: IRole[]): void => {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(roles));
   notificarCambioRoles();
-  console.log('💾 Roles guardados y notificación enviada');
 };
 
 /**
@@ -44,7 +42,7 @@ export const guardarRoles = (roles: IRole[]): void => {
 export const obtenerRoles = (): IRole[] => {
   const rolesStr = localStorage.getItem(STORAGE_KEY);
   if (!rolesStr) return [];
-  
+
   try {
     return JSON.parse(rolesStr);
   } catch {

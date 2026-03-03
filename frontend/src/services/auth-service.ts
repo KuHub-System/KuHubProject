@@ -4,16 +4,7 @@
  */
 
 import api from '../config/Axios';
-import { RolUsuario } from '../types/usuario.types';
-
-// --- DEFINICIÓN DE INTERFAZ (Según tu solicitud) ---
-export interface IUsuarioAuth {
-  nombreCompleto: string;
-  correo: string;
-  rol: RolUsuario; // Asegúrate de que 'Administrador' | 'Usuario' coincida con lo que viene del back
-  fotoPerfil?: string;
-  ultimoAcceso?: string;
-}
+import { RolUsuario, IUsuarioAuth } from '../types/usuario.types';
 
 // Actualizamos la definición de Sesión para usar la nueva interfaz
 export interface ISesion {
@@ -29,7 +20,6 @@ const SESION_KEY = 'sesion_actual';
  */
 export const iniciarSesionService = async (correo: string, contrasena: string): Promise<ISesion> => {
   try {
-    console.log('🔐 Intentando login en:', correo);
 
     // Axios usará baseURL (http://localhost:8080/api/v1) + /auth/login
     const response = await api.post('/auth/login', {
@@ -40,11 +30,13 @@ export const iniciarSesionService = async (correo: string, contrasena: string): 
     const { usuario, token } = response.data;
 
     const usuarioFrontend: IUsuarioAuth = {
-      nombreCompleto: usuario.nombreCompleto,
-      correo: usuario.email,             // Mapeo: email -> correo
-      rol: usuario.nombreRol,            // Mapeo: nombreRol -> rol
-      fotoPerfil: usuario.urlFotoPerfil, // Mapeo: urlFotoPerfil -> fotoPerfil
-      ultimoAcceso: usuario.ultimoAcceso
+      id: (usuario.idUsuario || usuario.id || '').toString(),
+      nombreCompleto: usuario.nombreCompleto || '',
+      correo: usuario.email || correo,
+      rol: usuario.nombreRol || usuario.rol || '',
+      fotoPerfil: usuario.urlFotoPerfil || usuario.fotoPerfil,
+      fechaCreacion: usuario.fechaCreacion || new Date().toISOString(),
+      ultimoAcceso: usuario.ultimoAcceso || new Date().toISOString()
     };
 
     const sesion: ISesion = {
@@ -56,7 +48,6 @@ export const iniciarSesionService = async (correo: string, contrasena: string): 
     localStorage.setItem(SESION_KEY, JSON.stringify(sesion));
     return sesion;
   } catch (error: any) {
-    console.error('❌ Error login:', error.response?.data || error.message);
     throw new Error(error.response?.data?.message || 'Error al iniciar sesión');
   }
 };
@@ -66,7 +57,6 @@ export const iniciarSesionService = async (correo: string, contrasena: string): 
  */
 export const cerrarSesionService = async (): Promise<void> => {
   localStorage.removeItem(SESION_KEY);
-  console.log('✅ Sesión cerrada localmente');
 };
 
 /**
@@ -80,7 +70,6 @@ export const obtenerSesionActualService = (): ISesion | null => {
     const sesion: ISesion = JSON.parse(data);
     return sesion;
   } catch (error) {
-    console.error('Error al parsear sesión:', error);
     return null;
   }
 };
@@ -136,7 +125,6 @@ export const cambiarPasswordService = async (datos: {
       nuevaContrasena: datos.passwordNueva
     });
 
-    console.log('✅ Contraseña actualizada correctamente');
   } catch (error: any) {
     throw new Error(error.response?.data?.message || error.message || 'Error al cambiar la contraseña');
   }
@@ -171,7 +159,6 @@ export const actualizarFotoPerfilService = async (archivo: File): Promise<string
     const usuarioActualizado = { ...usuarioActual, fotoPerfil: base64String };
     actualizarUsuarioEnSesionService(usuarioActualizado);
 
-    console.log('✅ Foto de perfil actualizada correctamente');
     return base64String;
   } catch (error: any) {
     throw new Error(error.response?.data?.message || error.message || 'Error al actualizar foto de perfil');

@@ -12,8 +12,9 @@ export interface IProducto {
   stockMinimo: number;
   fechaCreacion: string;
   fechaActualizacion: string;
-  // Propiedad interna para almacenar el idInventario (no se usa en UI)
+  // Propiedades internas (no se usan en UI)
   _idInventario?: number;
+  _esFraccionario?: boolean;
 }
 
 /**
@@ -87,6 +88,7 @@ export interface IInventoryPageRequest {
   unidadesIds: number[];
   soloStockBajo: boolean;
   page: number;
+  pageSize?: number;
 }
 
 /**
@@ -112,6 +114,7 @@ export interface IInventoryPageItem {
   stockActual: number;
   stockMinimo: number;
   stockBajo: boolean;
+  esFraccionario?: boolean;
   // El backend no está devolviendo anidado a veces, sino plano
   codProducto?: string;
   descripcionProducto?: string;

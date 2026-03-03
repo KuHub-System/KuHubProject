@@ -30,8 +30,8 @@ const AuthLayout: React.FC<AuthLayoutProps> = ({ children }) => {
           aria-label="Toggle Theme"
           onPress={toggleTheme}
         >
-          <Icon 
-            icon={theme === 'light' ? 'lucide:moon' : 'lucide:sun'} 
+          <Icon
+            icon={theme === 'light' ? 'lucide:moon' : 'lucide:sun'}
             className="text-lg"
           />
         </Button>
@@ -40,12 +40,7 @@ const AuthLayout: React.FC<AuthLayoutProps> = ({ children }) => {
       {/* Contenido centrado */}
       <div className="flex-grow flex items-center justify-center p-4">
         <div className="w-full max-w-md">
-          {/* Logo */}
-          <div className="flex justify-center mb-8">
-            <div className="w-16 h-16 bg-primary flex items-center justify-center rounded-lg shadow-md">
-              <Icon icon="lucide:utensils" className="text-white text-3xl" />
-            </div>
-          </div>
+
 
           {/* Contenido de autenticación */}
           {children}

@@ -27,6 +27,9 @@ public class UnidadMedida {
     @Column(name = "abreviatura", length = 10, nullable = false, unique = true)
     private String abreviatura;
 
+    @Column(name = "es_fraccionario", nullable = false)
+    private Boolean esFraccionario;
+
     @Column(name = "activo", nullable = false)
     private Boolean activo = true;
 

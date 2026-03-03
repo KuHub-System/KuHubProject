@@ -35,7 +35,6 @@ export interface IMotionAnswer {
  * @returns Lista de movimientos (MotionAnswerDTO[])
  */
 export const findMovimientosConFiltros = async (request: IMotionFilterRequest): Promise<IMotionAnswer[]> => {
-    console.log('📡 Solicitando movimientos con filtros:', JSON.stringify(request));
 
     try {
         const response = await api.post<IMotionAnswer[]>(
@@ -43,11 +42,9 @@ export const findMovimientosConFiltros = async (request: IMotionFilterRequest): 
             request
         );
 
-        console.log(`✅ ${response.data.length} movimientos obtenidos del backend`);
         return response.data;
 
     } catch (error: any) {
-        console.error('❌ Error al obtener movimientos filtrados:', error);
         throw new Error(
             error.response?.data?.message ||
             'Error al cargar el historial de movimientos'

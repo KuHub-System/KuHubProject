@@ -33,15 +33,12 @@ const transformarBackendAFrontend = (dto: BackendCategoriaDTO): ICategoria => ({
  * @returns Promise<ICategoria[]>
  */
 export const obtenerCategoriasService = async (): Promise<ICategoria[]> => {
-    console.log('📦 Obteniendo categorías balanceadas (find-all-view)');
 
     try {
         const response = await api.get<BackendCategoriaDTO[]>('/categoria/find-all-view');
-        console.log(`✅ ${response.data.length} categorías obtenidas con contadores`);
         return response.data.map(transformarBackendAFrontend);
 
     } catch (error: any) {
-        console.error('❌ Error al obtener categorías del backend:', error);
         throw new Error(error.response?.data?.message || 'Error al cargar las categorías');
     }
 };
@@ -51,15 +48,12 @@ export const obtenerCategoriasService = async (): Promise<ICategoria[]> => {
  * @returns Promise<ICategoria[]>
  */
 export const obtenerCategoriasActivasService = async (): Promise<ICategoria[]> => {
-    console.log('📦 Obteniendo solo categorías activas (v1/categoria/active-true)');
 
     try {
         const response = await api.get<BackendCategoriaDTO[]>('/categoria/active-true');
-        console.log(`✅ ${response.data.length} categorías activas obtenidas`);
         return response.data.map(transformarBackendAFrontend);
 
     } catch (error: any) {
-        console.error('❌ Error al obtener categorías activas del backend:', error);
         throw new Error(error.response?.data?.message || 'Error al cargar las categorías activas');
     }
 };
@@ -70,17 +64,14 @@ export const obtenerCategoriasActivasService = async (): Promise<ICategoria[]> =
  * @returns Promise<boolean> true si se creó correctamente, false en caso contrario
  */
 export const crearCategoriaService = async (nombreCategoria: string): Promise<boolean> => {
-    console.log(`➕ Creando categoría en backend: ${nombreCategoria}`);
 
     try {
         // El backend espera un objeto CreateCategoriaDTO { nombreCategoria: String }
         const response = await api.post<boolean>('/categoria', { nombreCategoria });
 
-        console.log('✅ Respuesta del backend (crear):', response.data);
         return response.data === true;
 
     } catch (error: any) {
-        console.error('❌ Error al crear categoría en backend:', error);
         throw new Error(error.response?.data?.message || error.response?.data || 'Error al crear la categoría');
     }
 };
@@ -93,7 +84,6 @@ export const crearCategoriaService = async (nombreCategoria: string): Promise<bo
  * @returns Promise<boolean>
  */
 export const actualizarCategoriaService = async (id: string, nombre: string, activo: boolean): Promise<boolean> => {
-    console.log(`✏️ Actualizando categoría ${id} (PATCH) - Nombre: ${nombre}, Activo: ${activo}`);
 
     try {
         const idNumerico = parseInt(id);
@@ -107,11 +97,9 @@ export const actualizarCategoriaService = async (id: string, nombre: string, act
 
         const response = await api.patch<boolean>('/categoria', payload);
 
-        console.log('✅ Respuesta del backend (PATCH actualizar):', response.data);
         return response.data === true;
 
     } catch (error: any) {
-        console.error('❌ Error al actualizar categoría en backend (PATCH):', error);
         throw new Error(error.response?.data?.message || error.response?.data || 'Error al actualizar la categoría');
     }
 };
@@ -122,20 +110,16 @@ export const actualizarCategoriaService = async (id: string, nombre: string, act
  * @returns Promise<boolean>
  */
 export const eliminarCategoriaService = async (id: string): Promise<boolean> => {
-    console.log(`🗑️ Eliminando categoría del backend: ${id}`);
 
     try {
         const idNumerico = parseInt(id);
-        console.warn(`� [CRITICAL] SOLICITUD DE ELIMINACIÓN RECIBIDA PARA ID: ${idNumerico}`);
 
         // Verificación extra-defensiva: si por algún motivo llegamos aquí, registramos el rastro
         const response = await api.delete<boolean>(`/categoria/${idNumerico}`);
 
-        console.log('✅ [RESPONSE] Resultado eliminar:', response.data);
         return response.data === true;
 
     } catch (error: any) {
-        console.error('❌ Error al eliminar categoría en backend:', error);
 
         // El backend puede enviar un objeto con message o una cadena directamente
         const backendMessage = error.response?.data?.message ||
@@ -155,7 +139,6 @@ export const eliminarCategoriaService = async (id: string): Promise<boolean> => 
  * @param activo Nuevo estado
  */
 export const cambiarEstadoCategoriaService = async (id: string, activo: boolean): Promise<boolean> => {
-    console.log(`🔌 [PATCH Status] Cambiando estado de categoría ${id} a: ${activo}`);
 
     try {
         const idNumerico = parseInt(id);
@@ -169,11 +152,9 @@ export const cambiarEstadoCategoriaService = async (id: string, activo: boolean)
 
         await api.patch('/categoria/change-status', payload);
 
-        console.log('✅ Respuesta backend (Status): Éxito (Void)');
         return true;
 
     } catch (error: any) {
-        console.error('❌ Error al cambiar status en backend:', error);
         throw new Error(error.response?.data?.message || error.response?.data || 'Error al cambiar el estado');
     }
 };
@@ -185,22 +166,18 @@ export const cambiarEstadoCategoriaService = async (id: string, activo: boolean)
  * @returns Promise<string> Mensaje del backend
  */
 export const transferirProductosService = async (idOrigen: string, idDestino: string): Promise<string> => {
-    console.log(`🔄 Transfiriendo productos de categoría ${idOrigen} a ${idDestino}`);
 
     try {
         const payload = {
             oldIdCategoria: parseInt(idOrigen),
             newIdCategoria: parseInt(idDestino)
         };
-        console.info(`ℹ️ [INFO] LLAMANDO SOLO A TRANSFERENCIA (PUT):`, payload);
 
         // El backend indica que el endpoint es /categoria/change-products-to-another-category y devuelve un string
         const response = await api.put<string>('/categoria/change-products-to-another-category', payload);
 
-        console.log('✅ [RESPONSE] Resultado transferir:', response.data);
         return response.data;
     } catch (error: any) {
-        console.error('❌ Error en transferencia:', error);
         throw new Error(error.response?.data?.message || error.response?.data || 'Error al transferir productos');
     }
 };

@@ -127,7 +127,6 @@ export const inicializarSistema = (): void => {
       },
     ];
     localStorage.setItem(STORAGE_KEYS.USUARIOS, JSON.stringify(usuariosIniciales));
-    console.log('✅ Usuarios iniciales creados');
   }
 
   if (!localStorage.getItem(STORAGE_KEYS.PRODUCTOS)) {
@@ -189,7 +188,6 @@ export const inicializarSistema = (): void => {
       },
     ];
     localStorage.setItem(STORAGE_KEYS.PRODUCTOS, JSON.stringify(productosIniciales));
-    console.log('✅ Productos iniciales creados');
   }
 
   if (!localStorage.getItem(STORAGE_KEYS.MOVIMIENTOS)) {
@@ -198,17 +196,14 @@ export const inicializarSistema = (): void => {
 
   if (!localStorage.getItem(STORAGE_KEYS.RECETAS)) {
     localStorage.setItem(STORAGE_KEYS.RECETAS, JSON.stringify([]));
-    console.log('✅ Sistema de recetas inicializado');
   }
 
   if (!localStorage.getItem(STORAGE_KEYS.SOLICITUDES)) {
     localStorage.setItem(STORAGE_KEYS.SOLICITUDES, JSON.stringify([]));
-    console.log('✅ Sistema de solicitudes inicializado');
   }
 
   if (!localStorage.getItem(STORAGE_KEYS.ROLES)) {
     guardarRolesConfig(ROLES_SISTEMA);
-    console.log('✅ Roles iniciales creados desde roles-config');
   }
 
   if (!localStorage.getItem(STORAGE_KEYS.CATEGORIAS)) {
@@ -226,16 +221,15 @@ export const inicializarSistema = (): void => {
 
   if (!localStorage.getItem(STORAGE_KEYS.UNIDADES)) {
     const unidadesIniciales: IUnidadMedida[] = [
-      { id: generarId(), nombre: 'Kilogramo', abreviatura: 'kg', activo: true },
-      { id: generarId(), nombre: 'Litro', abreviatura: 'l', activo: true },
-      { id: generarId(), nombre: 'Unidad', abreviatura: 'un', activo: true },
-      { id: generarId(), nombre: 'Manga', abreviatura: 'mg', activo: true },
-      { id: generarId(), nombre: 'Botella', abreviatura: 'bt', activo: true },
+      { id: generarId(), nombre: 'Kilogramo', abreviatura: 'kg', activo: true, esFraccionario: true },
+      { id: generarId(), nombre: 'Litro', abreviatura: 'l', activo: true, esFraccionario: true },
+      { id: generarId(), nombre: 'Unidad', abreviatura: 'un', activo: true, esFraccionario: false },
+      { id: generarId(), nombre: 'Manga', abreviatura: 'mg', activo: true, esFraccionario: false },
+      { id: generarId(), nombre: 'Botella', abreviatura: 'bt', activo: true, esFraccionario: false },
     ];
     localStorage.setItem(STORAGE_KEYS.UNIDADES, JSON.stringify(unidadesIniciales));
   }
 
-  console.log('🎉 Sistema inicializado correctamente');
 };
 
 // ==========================================
@@ -365,7 +359,7 @@ export const obtenerMovimientosPorProducto = (productoId: string): IMovimientoPr
 export const crearMovimiento = (
   movimientoData: {
     productoId: string;
-    tipo: 'Entrada' | 'Salida' | 'Merma';
+    tipo: 'Entrada' | 'Salida' | 'Merma' | 'Ajuste' | 'Devolucion';
     cantidad: number;
     observacion: string;
   },
@@ -377,6 +371,8 @@ export const crearMovimiento = (
   let nuevoStock = producto.stock;
   switch (movimientoData.tipo) {
     case 'Entrada':
+    case 'Ajuste': // Ajuste positivo (simplificado)
+    case 'Devolucion':
       nuevoStock += movimientoData.cantidad;
       break;
     case 'Salida':
@@ -593,7 +589,6 @@ export const resetearSistema = (): void => {
     localStorage.removeItem(key);
   });
   inicializarSistema();
-  console.log('🔄 Sistema reseteado completamente');
 };
 
 export const exportarDatos = () => {
@@ -649,13 +644,14 @@ export const obtenerUnidades = (): IUnidadMedida[] => {
   return unidades ? JSON.parse(unidades) : [];
 };
 
-export const crearUnidad = (nombre: string, abreviatura: string): IUnidadMedida => {
+export const crearUnidad = (nombre: string, abreviatura: string, esFraccionario: boolean = false): IUnidadMedida => {
   const unidades = obtenerUnidades();
   const nuevaUnidad: IUnidadMedida = {
     id: generarId(),
     nombre,
     abreviatura,
     activo: true,
+    esFraccionario
   };
   unidades.push(nuevaUnidad);
   localStorage.setItem(STORAGE_KEYS.UNIDADES, JSON.stringify(unidades));

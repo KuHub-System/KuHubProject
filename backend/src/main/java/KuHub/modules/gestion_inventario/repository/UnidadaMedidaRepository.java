@@ -26,6 +26,7 @@ public interface UnidadaMedidaRepository extends JpaRepository<UnidadMedida, Sho
             u.nombreUnidad AS nombreUnidad,
             u.abreviatura AS abreviatura,
             u.activo AS activo,
+            u.esFraccionario AS esFraccionario,
             COUNT(p.idProducto) AS asociados
         FROM UnidadMedida u
         LEFT JOIN Producto p 

@@ -71,6 +71,7 @@ public class UnidadMedidaServiceImp implements UnidadMedidaService{
         UnidadMedida nuevaUnidad = new UnidadMedida();
         nuevaUnidad.setNombreUnidad(dto.getNombreUnidad());
         nuevaUnidad.setAbreviatura(dto.getAbreviatura());
+        nuevaUnidad.setEsFraccionario(dto.getEsFraccionario());
         unidadaMedidaRepository.save(nuevaUnidad);
         return true;
     }
@@ -90,6 +91,9 @@ public class UnidadMedidaServiceImp implements UnidadMedidaService{
                 }
                 upUni.setNombreUnidad(capNombre);
             }
+        }
+        if (!upUni.getEsFraccionario().equals(dto.getEsFraccionario())) {
+            upUni.setEsFraccionario(dto.getEsFraccionario());
         }
 
         if (dto.getAbreviatura() != null) {

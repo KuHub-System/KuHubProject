@@ -52,12 +52,12 @@ export const generarPDFOrdenGeneral = (
   // ENCABEZADO
   doc.setFillColor(...colorPrimario);
   doc.rect(0, 0, 210, 40, 'F');
-  
+
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(24);
   doc.setFont('helvetica', 'bold');
   doc.text('ORDEN DE COMPRA GENERAL', 105, 20, { align: 'center' });
-  
+
   doc.setFontSize(12);
   doc.setFont('helvetica', 'normal');
   doc.text(`Fecha: ${fechaFormateada}`, 105, 30, { align: 'center' });
@@ -66,12 +66,12 @@ export const generarPDFOrdenGeneral = (
   doc.setTextColor(0, 0, 0);
   doc.setFontSize(10);
   let yPos = 50;
-  
+
   doc.setFont('helvetica', 'bold');
   doc.text('Institución:', 20, yPos);
   doc.setFont('helvetica', 'normal');
   doc.text('Centro de Formación Técnica Gastronomía', 60, yPos);
-  
+
   yPos += 7;
   doc.setFont('helvetica', 'bold');
   doc.text('Departamento:', 20, yPos);
@@ -91,7 +91,7 @@ export const generarPDFOrdenGeneral = (
   doc.setFontSize(14);
   doc.setTextColor(...colorPrimario);
   doc.text('DETALLE DE PRODUCTOS', 20, yPos);
-  
+
   yPos += 5;
 
   // Preparar datos para la tabla
@@ -140,17 +140,17 @@ export const generarPDFOrdenGeneral = (
   // Cuadro de totales
   doc.setFillColor(245, 245, 245);
   doc.rect(130, yPos, 60, 30, 'F');
-  
+
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(10);
   doc.setTextColor(0, 0, 0);
-  
+
   doc.text('Subtotal:', 135, yPos + 8);
   doc.text(`$${totalGeneral.toLocaleString('es-CL')}`, 185, yPos + 8, { align: 'right' });
-  
+
   doc.text('IVA (19%):', 135, yPos + 16);
   doc.text(`$${iva.toLocaleString('es-CL')}`, 185, yPos + 16, { align: 'right' });
-  
+
   doc.setFontSize(12);
   doc.setTextColor(...colorPrimario);
   doc.text('TOTAL:', 135, yPos + 25);
@@ -158,7 +158,7 @@ export const generarPDFOrdenGeneral = (
 
   // RESUMEN POR PROVEEDOR
   yPos += 40;
-  
+
   if (yPos > 250) {
     doc.addPage();
     yPos = 20;
@@ -168,12 +168,12 @@ export const generarPDFOrdenGeneral = (
   doc.setFontSize(14);
   doc.setTextColor(...colorPrimario);
   doc.text('RESUMEN POR PROVEEDOR', 20, yPos);
-  
+
   yPos += 5;
 
   // Agrupar por proveedor
   const proveedoresMap = new Map<string, { productos: IProductoPedido[], total: number }>();
-  
+
   productos.forEach(p => {
     if (!proveedoresMap.has(p.proveedorNombre)) {
       proveedoresMap.set(p.proveedorNombre, { productos: [], total: 0 });
@@ -253,12 +253,12 @@ export const generarPDFOrdenProveedor = (
   // ENCABEZADO
   doc.setFillColor(...colorPrimario);
   doc.rect(0, 0, 210, 40, 'F');
-  
+
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(24);
   doc.setFont('helvetica', 'bold');
   doc.text('ORDEN DE COMPRA', 105, 20, { align: 'center' });
-  
+
   doc.setFontSize(12);
   doc.setFont('helvetica', 'normal');
   doc.text(`Fecha: ${fechaFormateada}`, 105, 30, { align: 'center' });
@@ -267,11 +267,11 @@ export const generarPDFOrdenProveedor = (
   doc.setTextColor(0, 0, 0);
   doc.setFontSize(10);
   let yPos = 50;
-  
+
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(12);
   doc.text('DATOS DEL COMPRADOR', 20, yPos);
-  
+
   doc.setFontSize(10);
   doc.setFont('helvetica', 'normal');
   yPos += 7;
@@ -287,7 +287,7 @@ export const generarPDFOrdenProveedor = (
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(12);
   doc.text('PROVEEDOR', 20, yPos);
-  
+
   doc.setFontSize(10);
   doc.setFont('helvetica', 'normal');
   yPos += 7;
@@ -308,7 +308,7 @@ export const generarPDFOrdenProveedor = (
   doc.setFontSize(14);
   doc.setTextColor(...colorPrimario);
   doc.text('PRODUCTOS SOLICITADOS', 20, yPos);
-  
+
   yPos += 5;
 
   const tableData = pedido.productos.map((p, index) => [
@@ -352,24 +352,24 @@ export const generarPDFOrdenProveedor = (
 
   doc.setFillColor(...colorPrimario);
   doc.rect(130, yPos, 60, 35, 'F');
-  
+
   doc.setTextColor(255, 255, 255);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(10);
-  
+
   doc.text('Subtotal:', 135, yPos + 8);
   doc.text(`$${subtotal.toLocaleString('es-CL')}`, 185, yPos + 8, { align: 'right' });
-  
+
   doc.text('IVA (19%):', 135, yPos + 16);
   doc.text(`$${iva.toLocaleString('es-CL')}`, 185, yPos + 16, { align: 'right' });
-  
+
   doc.setFontSize(12);
   doc.text('TOTAL:', 135, yPos + 27);
   doc.text(`$${total.toLocaleString('es-CL')}`, 185, yPos + 27, { align: 'right' });
 
   // CONDICIONES
   yPos += 45;
-  
+
   if (yPos > 240) {
     doc.addPage();
     yPos = 20;
@@ -379,7 +379,7 @@ export const generarPDFOrdenProveedor = (
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(11);
   doc.text('CONDICIONES DE COMPRA', 20, yPos);
-  
+
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9);
   yPos += 7;
@@ -395,7 +395,7 @@ export const generarPDFOrdenProveedor = (
 
   // FIRMAS
   yPos += 20;
-  
+
   if (yPos > 250) {
     doc.addPage();
     yPos = 20;
@@ -403,14 +403,14 @@ export const generarPDFOrdenProveedor = (
 
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(10);
-  
+
   // Firma Comprador
   doc.line(20, yPos + 15, 80, yPos + 15);
   doc.text('Firma y Timbre Comprador', 50, yPos + 20, { align: 'center' });
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(8);
   doc.text('Dpto. Gestión de Inventarios', 50, yPos + 25, { align: 'center' });
-  
+
   // Firma Proveedor
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(10);
@@ -444,7 +444,6 @@ export const generarPDFOrdenProveedor = (
  */
 export const descargarPDF = (doc: jsPDF, nombreArchivo: string): void => {
   doc.save(nombreArchivo);
-  console.log(`📄 PDF descargado: ${nombreArchivo}`);
 };
 
 /**
@@ -471,7 +470,6 @@ export const generarYDescargarTodosPDFs = (
     });
   }, 1000);
 
-  console.log(`✅ Generados ${1 + pedidosPorProveedor.length} PDFs`);
 };
 
 /**

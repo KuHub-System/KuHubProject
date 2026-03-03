@@ -12,11 +12,10 @@ import { IUsuario, IUsuarioCreacion, IUsuarioActualizacion } from '../types/usua
 export const obtenerUsuariosService = async (): Promise<IUsuario[]> => {
   try {
     const response = await api.get('/usuarios');
-    
+
     // Convertir del formato backend al formato frontend
     return response.data.map((usuario: any) => convertirUsuarioBackendAFrontend(usuario));
   } catch (error: any) {
-    console.error('Error al obtener usuarios:', error);
     throw new Error(error.response?.data?.message || 'Error al cargar usuarios');
   }
 };
@@ -29,7 +28,6 @@ export const obtenerUsuarioPorIdService = async (id: string): Promise<IUsuario |
     const response = await api.get(`/usuarios/${id}`);
     return convertirUsuarioBackendAFrontend(response.data);
   } catch (error: any) {
-    console.error('Error al obtener usuario:', error);
     return null;
   }
 };
@@ -42,7 +40,6 @@ export const obtenerUsuarioPorCorreoService = async (correo: string): Promise<IU
     const response = await api.get(`/usuarios/email/${correo}`);
     return convertirUsuarioBackendAFrontend(response.data);
   } catch (error: any) {
-    console.error('Error al obtener usuario:', error);
     return null;
   }
 };
@@ -63,7 +60,7 @@ export const crearUsuarioService = async (data: IUsuarioCreacion): Promise<IUsua
     };
 
     const idRol = rolMap[data.rol];
-    
+
     if (!idRol) {
       throw new Error(`Rol '${data.rol}' no válido`);
     }
@@ -89,11 +86,9 @@ export const crearUsuarioService = async (data: IUsuarioCreacion): Promise<IUsua
     };
 
     const response = await api.post('/usuarios', payload);
-    
-    console.log('✅ Usuario creado en backend:', response.data.email);
+
     return convertirUsuarioBackendAFrontend(response.data);
   } catch (error: any) {
-    console.error('Error al crear usuario:', error);
     throw new Error(error.response?.data?.message || 'Error al crear usuario');
   }
 };
@@ -136,11 +131,9 @@ export const actualizarUsuarioService = async (
     if (data.activo !== undefined) payload.activo = data.activo;
 
     const response = await api.put(`/usuarios/${id}`, payload);
-    
-    console.log('✅ Usuario actualizado en backend:', response.data.email);
+
     return convertirUsuarioBackendAFrontend(response.data);
   } catch (error: any) {
-    console.error('Error al actualizar usuario:', error);
     throw new Error(error.response?.data?.message || 'Error al actualizar usuario');
   }
 };
@@ -151,9 +144,7 @@ export const actualizarUsuarioService = async (
 export const eliminarUsuarioService = async (id: string): Promise<void> => {
   try {
     await api.patch(`/usuarios/${id}/desactivar`);
-    console.log('✅ Usuario desactivado en backend');
   } catch (error: any) {
-    console.error('Error al desactivar usuario:', error);
     throw new Error(error.response?.data?.message || 'Error al desactivar usuario');
   }
 };
@@ -164,9 +155,7 @@ export const eliminarUsuarioService = async (id: string): Promise<void> => {
 export const activarUsuarioService = async (id: string): Promise<void> => {
   try {
     await api.patch(`/usuarios/${id}/activar`);
-    console.log('✅ Usuario activado en backend');
   } catch (error: any) {
-    console.error('Error al activar usuario:', error);
     throw new Error(error.response?.data?.message || 'Error al activar usuario');
   }
 };
@@ -213,5 +202,4 @@ function convertirUsuarioBackendAFrontend(usuarioBackend: any): IUsuario {
  * ya que la base de datos ya debe tener datos
  */
 export const inicializarUsuariosPorDefecto = (): void => {
-  console.log('ℹ️ Usuarios manejados por el backend - no requiere inicialización');
 };

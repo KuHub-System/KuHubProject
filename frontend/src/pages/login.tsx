@@ -13,7 +13,6 @@ interface DemoUser {
   key: string;
   nombre: string;
   email: string;
-  password: string;
   icono: string;
   descripcion: string;
 }
@@ -23,7 +22,6 @@ const DEMO_USERS: DemoUser[] = [
     key: 'admin',
     nombre: 'Administrador',
     email: 'adminhash@kuhub.cl',
-    password: 'admin123',
     icono: 'lucide:shield',
     descripcion: 'Acceso total'
   },
@@ -31,7 +29,6 @@ const DEMO_USERS: DemoUser[] = [
     key: 'coadmin',
     nombre: 'Co-Admin',
     email: 'ma.delarahash@kubhub.cl',
-    password: 'matheusmago',
     icono: 'lucide:shield-check',
     descripcion: 'Casi todos los permisos'
   },
@@ -39,7 +36,6 @@ const DEMO_USERS: DemoUser[] = [
     key: 'gestor',
     nombre: 'Gestor',
     email: 'gestorhash@kuhub.cl',
-    password: 'gestor123',
     icono: 'lucide:shopping-cart',
     descripcion: 'Gestión de pedidos'
   },
@@ -47,7 +43,6 @@ const DEMO_USERS: DemoUser[] = [
     key: 'profesor',
     nombre: 'Profesor',
     email: 'profesorhash@kuhub.cl',
-    password: 'profesor123',
     icono: 'lucide:book',
     descripcion: 'Solicitudes'
   },
@@ -55,7 +50,6 @@ const DEMO_USERS: DemoUser[] = [
     key: 'bodega',
     nombre: 'Bodega',
     email: 'bodegahash@kuhub.cl',
-    password: 'bodega123',
     icono: 'lucide:package',
     descripcion: 'Inventario'
   },
@@ -63,7 +57,6 @@ const DEMO_USERS: DemoUser[] = [
     key: 'asistente',
     nombre: 'Asistente',
     email: 'asistentehash@kuhub.cl',
-    password: 'asistente123',
     icono: 'lucide:warehouse',
     descripcion: 'Tránsito'
   }
@@ -101,20 +94,16 @@ const LoginPage: React.FC = () => {
       setIsLoading(true);
       setError(null);
 
-      console.log('🔐 Intentando login con:', email);
 
       const success = await login(email, password);
 
       if (success) {
-        console.log('✅ Login exitoso, redirigiendo...');
         history.push('/');
       } else {
         setError('Email o contraseña incorrectos');
-        console.log('❌ Credenciales inválidas');
       }
     } catch (err) {
       setError('Error al iniciar sesión. Intente nuevamente.');
-      console.error('❌ Error de inicio de sesión:', err);
     } finally {
       setIsLoading(false);
     }
@@ -124,9 +113,7 @@ const LoginPage: React.FC = () => {
     const demoUser = DEMO_USERS.find(user => user.key === userKey);
 
     if (demoUser) {
-      console.log('👤 Demo seleccionado:', demoUser.nombre);
       setEmail(demoUser.email);
-      setPassword(demoUser.password);
       setSelectedDemo(userKey);
       setError(null);
     }
@@ -145,8 +132,8 @@ const LoginPage: React.FC = () => {
         className="w-full max-w-md space-y-8"
       >
         <div className="text-center">
-          <div className="mx-auto h-16 w-16 bg-secondary dark:bg-content1 text-primary rounded-xl flex items-center justify-center mb-4 shadow-lg">
-            <Icon icon="lucide:package-open" width={32} height={32} />
+          <div className="mx-auto h-16 w-16 bg-primary flex items-center justify-center mb-4 shadow-lg rounded-xl">
+            <Icon icon="lucide:utensils" className="text-white" width={32} height={32} />
           </div>
           <h2 className="text-3xl font-extrabold text-secondary dark:text-foreground tracking-tight">
             KuHub
@@ -330,7 +317,7 @@ const LoginPage: React.FC = () => {
                         className="text-warning-600 text-lg flex-shrink-0 mt-0.5"
                       />
                       <p className="text-[10px] text-warning-800 dark:text-warning-300 leading-relaxed font-medium">
-                        <strong>Tip:</strong> Entorno de demostración. Las contraseñas son autocompletadas para facilitar las pruebas.
+                        <strong>Tip:</strong> Entorno de demostración. Selecciona un rol para autocompletar el correo. La contraseña debe ingresarse manualmente.
                       </p>
                     </div>
                   </div>
@@ -399,7 +386,6 @@ const LoginPage: React.FC = () => {
                   onPress={() => {
                     if (recoveryEmail === 'adminquestweb') {
                       setShowDemos(true);
-                      console.log('🔓 Demos revelados vía código secreto');
                     }
                     setRecoveryEmail('');
                     onClose();

@@ -64,10 +64,11 @@ public interface InventarioRepository extends JpaRepository<Inventario, Integer>
         i.stock,                -- [4]
         i.stock_limit,          -- [5]
         u.nombre_unidad,        -- [6]
-        i.id_inventario,        -- [7]
-        p.id_producto,          -- [8]
-        c.id_categoria,         -- [9]
-        u.id_unidad             -- [10]
+        u.es_fraccionario,      -- [7]
+        i.id_inventario,        -- [8]
+        p.id_producto,          -- [9]
+        c.id_categoria,         -- [10]
+        u.id_unidad             -- [11]
     FROM inventario i
     JOIN producto p ON p.id_producto = i.id_producto
     JOIN categoria c ON c.id_categoria = p.id_categoria
@@ -88,6 +89,7 @@ public interface InventarioRepository extends JpaRepository<Inventario, Integer>
             i.stock, 
             i.stock_limit, 
             u.nombre_unidad,
+            u.es_fraccionario,
             i.id_inventario, 
             p.id_producto, 
             c.id_categoria, 
@@ -131,6 +133,7 @@ public interface InventarioRepository extends JpaRepository<Inventario, Integer>
             i.stock, 
             i.stock_limit, 
             u.nombre_unidad,
+            u.es_fraccionario,
             i.id_inventario, 
             p.id_producto, 
             c.id_categoria, 
@@ -178,6 +181,7 @@ public interface InventarioRepository extends JpaRepository<Inventario, Integer>
             i.stock,
             i.stock_limit,
             u.nombre_unidad,
+            u.es_fraccionario,
             i.id_inventario,
             p.id_producto,
             c.id_categoria,

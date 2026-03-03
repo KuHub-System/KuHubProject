@@ -123,7 +123,6 @@ const InformacionPersonal: React.FC<{ user: any }> = ({ user }) => {
       const newAvatarUrl = await actualizarFotoPerfilService(file);
       setAvatarUrl(newAvatarUrl);
     } catch (error) {
-      console.error('Error al actualizar la foto de perfil:', error);
       alert('Error al actualizar la foto de perfil');
     } finally {
       setIsLoading(false);

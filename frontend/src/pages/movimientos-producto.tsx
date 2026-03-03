@@ -87,6 +87,7 @@ const MovimientosProductoPage: React.FC = () => {
   const history = useHistory();
   const query = useQuery();
   const queryProductoId = query.get('productoId');
+  const queryNombre = query.get('nombre');
 
   const { isOpen, onOpen, onOpenChange } = useDisclosure();
 
@@ -96,7 +97,7 @@ const MovimientosProductoPage: React.FC = () => {
   const [productoActual, setProductoActual] = React.useState<IProducto | null>(null);
 
   // Estado de filtros (Alineado con MotionFilterRequestDTO)
-  const [nombreProductoFiltro, setNombreProductoFiltro] = React.useState<string>('TODOS');
+  const [nombreProductoFiltro, setNombreProductoFiltro] = React.useState<string>(queryNombre || 'TODOS');
   const [nombreResponsableFiltro, setNombreResponsableFiltro] = React.useState<string>('TODOS');
   const [tipoMovimientoFiltro, setTipoMovimientoFiltro] = React.useState<IMotionFilterRequest['tipoMovimiento']>('TODOS');
   const [ordenFiltro, setOrdenFiltro] = React.useState<IMotionFilterRequest['orden']>('MAS_RECIENTES');
@@ -109,7 +110,7 @@ const MovimientosProductoPage: React.FC = () => {
 
   // Estado para el debounce (3 segundos)
   const [debouncedRequest, setDebouncedRequest] = React.useState<IMotionFilterRequest>({
-    nombreProducto: id || queryProductoId ? 'CARGANDO...' : 'TODOS',
+    nombreProducto: queryNombre || ((id || queryProductoId) ? 'CARGANDO...' : 'TODOS'),
     nombreResponsable: 'TODOS',
     tipoMovimiento: 'TODOS',
     orden: 'MAS_RECIENTES',
@@ -148,7 +149,6 @@ const MovimientosProductoPage: React.FC = () => {
           setDebouncedRequest(prev => ({ ...prev, nombreProducto: 'TODOS', nombreResponsable: 'TODOS' }));
         }
       } catch (error) {
-        console.error('Error al cargar productos:', error);
       }
     };
     cargarProductos();
@@ -194,7 +194,6 @@ const MovimientosProductoPage: React.FC = () => {
         const data = await findMovimientosConFiltros(debouncedRequest);
         setMovimientos(data);
       } catch (error) {
-        console.error('Error al cargar movimientos:', error);
       } finally {
         setIsLoadingMovimientos(false);
         setIsLoading(false);
@@ -568,7 +567,6 @@ const FormularioMovimiento: React.FC<FormularioMovimientoProps> = ({ productoId,
       onClose();
       // En una implementación real, aquí se actualizaría la lista de movimientos
     } catch (error) {
-      console.error('Error al crear el movimiento:', error);
       alert('Error al crear el movimiento');
     } finally {
       setIsLoading(false);

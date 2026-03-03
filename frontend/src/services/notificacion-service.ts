@@ -42,7 +42,7 @@ export const crearNotificacionService = (
   solicitudId?: string
 ): void => {
   const notificaciones = obtenerNotificacionesStorage();
-  
+
   const nuevaNotificacion: INotificacion = {
     id: Date.now().toString(),
     usuarioId,
@@ -53,11 +53,10 @@ export const crearNotificacionService = (
     fecha: new Date().toISOString(),
     solicitudId,
   };
-  
+
   notificaciones.push(nuevaNotificacion);
   guardarNotificacionesStorage(notificaciones);
-  
-  console.log('📬 Notificación creada:', titulo);
+
 };
 
 /**
@@ -70,20 +69,20 @@ export const obtenerNotificacionesUsuarioService = (
   return new Promise((resolve) => {
     setTimeout(() => {
       let notificaciones = obtenerNotificacionesStorage();
-      
+
       // Filtrar por usuario
       notificaciones = notificaciones.filter(n => n.usuarioId === usuarioId);
-      
+
       // Filtrar solo no leídas si se solicita
       if (soloNoLeidas) {
         notificaciones = notificaciones.filter(n => !n.leida);
       }
-      
+
       // Ordenar por fecha (más recientes primero)
-      notificaciones.sort((a, b) => 
+      notificaciones.sort((a, b) =>
         new Date(b.fecha).getTime() - new Date(a.fecha).getTime()
       );
-      
+
       resolve(notificaciones);
     }, 100);
   });
@@ -98,15 +97,15 @@ export const marcarNotificacionLeidaService = (id: string): Promise<void> => {
       try {
         const notificaciones = obtenerNotificacionesStorage();
         const index = notificaciones.findIndex(n => n.id === id);
-        
+
         if (index === -1) {
           reject(new Error('Notificación no encontrada'));
           return;
         }
-        
+
         notificaciones[index].leida = true;
         guardarNotificacionesStorage(notificaciones);
-        
+
         resolve();
       } catch (error) {
         reject(error);
@@ -122,13 +121,13 @@ export const marcarTodasLeidasService = (usuarioId: string): Promise<void> => {
   return new Promise((resolve) => {
     setTimeout(() => {
       const notificaciones = obtenerNotificacionesStorage();
-      
+
       notificaciones.forEach(n => {
         if (n.usuarioId === usuarioId) {
           n.leida = true;
         }
       });
-      
+
       guardarNotificacionesStorage(notificaciones);
       resolve();
     }, 100);
@@ -145,7 +144,7 @@ export const obtenerConteoNoLeidasService = (usuarioId: string): Promise<number>
       const noLeidas = notificaciones.filter(
         n => n.usuarioId === usuarioId && !n.leida
       ).length;
-      
+
       resolve(noLeidas);
     }, 100);
   });
@@ -160,15 +159,15 @@ export const eliminarNotificacionService = (id: string): Promise<void> => {
       try {
         const notificaciones = obtenerNotificacionesStorage();
         const index = notificaciones.findIndex(n => n.id === id);
-        
+
         if (index === -1) {
           reject(new Error('Notificación no encontrada'));
           return;
         }
-        
+
         notificaciones.splice(index, 1);
         guardarNotificacionesStorage(notificaciones);
-        
+
         resolve();
       } catch (error) {
         reject(error);
@@ -187,16 +186,16 @@ export const notificarCambioEstadoSolicitudService = (
   asignaturaNombre: string,
   comentarioRechazo?: string
 ): void => {
-  const tipo: INotificacion['tipo'] = 
+  const tipo: INotificacion['tipo'] =
     estado === 'Aceptada' ? 'solicitud_aceptada' : 'solicitud_rechazada';
-  
-  const titulo = estado === 'Aceptada' 
-    ? '✅ Solicitud Aceptada' 
+
+  const titulo = estado === 'Aceptada'
+    ? '✅ Solicitud Aceptada'
     : '❌ Solicitud Rechazada';
-  
+
   const mensaje = estado === 'Aceptada'
     ? `Tu solicitud para ${asignaturaNombre} ha sido aceptada y será incluida en el pedido.`
     : `Tu solicitud para ${asignaturaNombre} ha sido rechazada. ${comentarioRechazo ? `Motivo: ${comentarioRechazo}` : ''}`;
-  
+
   crearNotificacionService(usuarioId, tipo, titulo, mensaje, solicitudId);
 };

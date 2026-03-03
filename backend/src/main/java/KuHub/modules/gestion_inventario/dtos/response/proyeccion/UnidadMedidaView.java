@@ -5,5 +5,6 @@ public interface UnidadMedidaView {
     String getNombreUnidad();
     String getAbreviatura();
     Boolean getActivo();
+    Boolean getEsFraccionario();
     Long getAsociados();
 }

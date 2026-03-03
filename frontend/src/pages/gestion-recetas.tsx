@@ -77,10 +77,7 @@ const GestionRecetasPage: React.FC = () => {
       ]);
       setRecetas(recetasCargadas);
       setProductos(productosCargados);
-      console.log('📋 Recetas cargadas:', recetasCargadas.length);
-      console.log('📦 Productos cargados:', productosCargados.length);
     } catch (error) {
-      console.error('❌ Error al cargar datos:', error);
       toast.error('Error al cargar las recetas');
     } finally {
       setIsLoading(false);
@@ -125,12 +122,10 @@ const GestionRecetasPage: React.FC = () => {
 
   const cambiarEstadoReceta = async (id: string, nuevoEstado: 'Activa' | 'Inactiva') => {
     try {
-      console.log(`🔄 Cambiando estado de receta ${id} a ${nuevoEstado}`);
       await cambiarEstadoRecetaService(id, nuevoEstado === 'Activa');
       await cargarDatos();
       toast.success(`Receta ${nuevoEstado.toLowerCase()} correctamente`);
     } catch (error) {
-      console.error('❌ Error al cambiar estado:', error);
       toast.error('Error al cambiar el estado de la receta');
     }
   };
@@ -138,7 +133,6 @@ const GestionRecetasPage: React.FC = () => {
   const handleGuardarReceta = async (receta: IReceta) => {
     try {
       if (modalMode === 'crear') {
-        console.log('📝 Creando nueva receta:', receta.nombre);
         await crearRecetaService({
           nombre: receta.nombre,
           descripcion: receta.descripcion,
@@ -153,7 +147,6 @@ const GestionRecetasPage: React.FC = () => {
         });
         toast.success('Receta creada correctamente');
       } else if (modalMode === 'editar') {
-        console.log('✏️ Actualizando receta:', receta.nombre);
         await actualizarRecetaService({
           id: receta.id,
           nombre: receta.nombre,
@@ -166,7 +159,6 @@ const GestionRecetasPage: React.FC = () => {
       }
       await cargarDatos();
     } catch (error: any) {
-      console.error('❌ Error al guardar receta:', error);
       toast.error(error.message || 'Error al guardar la receta');
       throw error;
     }
