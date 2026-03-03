@@ -36,7 +36,7 @@ export const useInactivityTimeout = (
         // Handle tab visibility changes
         const handleVisibilityChange = () => {
             if (document.visibilityState === 'hidden') {
-                console.log('Pestaña en segundo plano: El usuario ya no está interactuando con el proyecto.');
+                // El usuario ya no está interactuando con el proyecto
             }
         };
 

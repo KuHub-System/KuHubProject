@@ -132,13 +132,11 @@ const transformarAsignatura = (asignatura: CourserAnswerDTGOD): IAsignatura => {
 export const obtenerAsignaturasService = async (): Promise<IAsignatura[]> => {
   try {
     const response = await api.get<CourserAnswerDTGOD[]>(
-        '/asignatura/find-all-courses-active-true/'
+      '/asignatura/find-all-courses-active-true/'
     );
 
-    console.log('📦 Respuesta del backend:', response.data);
 
     if (!response.data || !Array.isArray(response.data)) {
-      console.error('❌ Respuesta inválida del backend:', response.data);
       return [];
     }
 
@@ -146,17 +144,13 @@ export const obtenerAsignaturasService = async (): Promise<IAsignatura[]> => {
       try {
         return transformarAsignatura(asignatura);
       } catch (error) {
-        console.error(`❌ Error al transformar asignatura ${index}:`, asignatura, error);
         throw error;
       }
     });
 
-    console.log('✅ Asignaturas transformadas:', asignaturas);
     return asignaturas;
 
   } catch (error: any) {
-    console.error('❌ Error completo:', error);
-    console.error('❌ Respuesta del servidor:', error.response?.data);
     throw new Error(error.response?.data?.message || 'Error al obtener las asignaturas');
   }
 };
@@ -169,7 +163,6 @@ export const obtenerAsignaturaPorIdService = async (id: string): Promise<IAsigna
     const asignaturas = await obtenerAsignaturasService();
     return asignaturas.find(a => a.id === id) || null;
   } catch (error: any) {
-    console.error('Error al obtener asignatura:', error);
     throw new Error(error.response?.data?.message || 'Error al obtener la asignatura');
   }
 };
@@ -188,14 +181,14 @@ export const crearAsignaturaService = async (data: IAsignaturaCreacion): Promise
     };
 
     const response = await api.post<CourseCreateDTO>(
-        '/asignatura/create-course/',
-        payload
+      '/asignatura/create-course/',
+      payload
     );
 
     // Recargar la lista completa para obtener el objeto completo
     const asignaturas = await obtenerAsignaturasService();
     const nuevaAsignatura = asignaturas.find(
-        a => a.codigo === response.data.codAsignatura
+      a => a.codigo === response.data.codAsignatura
     );
 
     if (!nuevaAsignatura) {
@@ -204,7 +197,6 @@ export const crearAsignaturaService = async (data: IAsignaturaCreacion): Promise
 
     return nuevaAsignatura;
   } catch (error: any) {
-    console.error('Error al crear asignatura:', error);
     throw new Error(error.response?.data?.message || 'Error al crear la asignatura');
   }
 };
@@ -213,8 +205,8 @@ export const crearAsignaturaService = async (data: IAsignaturaCreacion): Promise
  * Actualizar asignatura
  */
 export const actualizarAsignaturaService = async (
-    id: string,
-    data: Partial<IAsignatura>
+  id: string,
+  data: Partial<IAsignatura>
 ): Promise<IAsignatura> => {
   try {
     const payload: CourseUpdateDTO = {
@@ -227,8 +219,8 @@ export const actualizarAsignaturaService = async (
     };
 
     await api.put<CourseUpdateDTO>(
-        '/asignatura/update-course/',
-        payload
+      '/asignatura/update-course/',
+      payload
     );
 
     // Recargar la asignatura actualizada
@@ -239,7 +231,6 @@ export const actualizarAsignaturaService = async (
 
     return asignaturaActualizada;
   } catch (error: any) {
-    console.error('Error al actualizar asignatura:', error);
     throw new Error(error.response?.data?.message || 'Error al actualizar la asignatura');
   }
 };
@@ -251,7 +242,6 @@ export const eliminarAsignaturaService = async (id: string): Promise<void> => {
   try {
     await api.put(`/asignatura/soft-delete-course/${id}`);
   } catch (error: any) {
-    console.error('Error al eliminar asignatura:', error);
     throw new Error(error.response?.data?.message || 'Error al eliminar la asignatura');
   }
 };
@@ -264,8 +254,8 @@ export const eliminarAsignaturaService = async (id: string): Promise<void> => {
  * Agregar sección a una asignatura
  */
 export const agregarSeccionService = async (
-    asignaturaId: string,
-    seccion: Omit<ISeccionCreacion, 'idAsignatura'>
+  asignaturaId: string,
+  seccion: Omit<ISeccionCreacion, 'idAsignatura'>
 ): Promise<IAsignatura> => {
   try {
     const payload = {
@@ -289,7 +279,6 @@ export const agregarSeccionService = async (
 
     return asignaturaActualizada;
   } catch (error: any) {
-    console.error('Error al agregar sección:', error);
     throw new Error(error.response?.data?.message || 'Error al agregar la sección');
   }
 };
@@ -298,9 +287,9 @@ export const agregarSeccionService = async (
  * Actualizar sección completa (incluye bloques horarios)
  */
 export const actualizarSeccionService = async (
-    asignaturaId: string,
-    seccionId: string,
-    seccion: SectionAnswerUpdateDTO
+  asignaturaId: string,
+  seccionId: string,
+  seccion: SectionAnswerUpdateDTO
 ): Promise<IAsignatura> => {
   try {
     const payload: SectionAnswerUpdateDTO = {
@@ -326,7 +315,6 @@ export const actualizarSeccionService = async (
 
     return asignaturaActualizada;
   } catch (error: any) {
-    console.error('Error al actualizar sección:', error);
     throw new Error(error.response?.data?.message || 'Error al actualizar la sección');
   }
 };
@@ -335,8 +323,8 @@ export const actualizarSeccionService = async (
  * Eliminar sección (soft delete)
  */
 export const eliminarSeccionService = async (
-    asignaturaId: string,
-    seccionId: string
+  asignaturaId: string,
+  seccionId: string
 ): Promise<IAsignatura> => {
   try {
     await api.put(`/seccion/soft-delete/${seccionId}`);
@@ -349,7 +337,6 @@ export const eliminarSeccionService = async (
 
     return asignaturaActualizada;
   } catch (error: any) {
-    console.error('Error al eliminar sección:', error);
     throw new Error(error.response?.data?.message || 'Error al eliminar la sección');
   }
 };
@@ -363,10 +350,9 @@ export const calcularTotalAlumnosService = async (asignaturaId: string): Promise
     if (!asignatura) return 0;
 
     return asignatura.secciones
-        .filter(s => s.estado === 'ACTIVA')
-        .reduce((sum, s) => sum + s.cantInscritos, 0);
+      .filter(s => s.estado === 'ACTIVA')
+      .reduce((sum, s) => sum + s.cantInscritos, 0);
   } catch (error) {
-    console.error('Error al calcular total de alumnos:', error);
     return 0;
   }
 };

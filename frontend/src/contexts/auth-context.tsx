@@ -61,7 +61,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [rolesLoaded, setRolesLoaded] = React.useState<boolean>(false);
 
   const reloadRoles = React.useCallback(() => {
-    console.log('🔄 Recargando roles...');
     const nuevosRoles = cargarRolesActuales();
     setAvailableRoles(nuevosRoles);
     setRolesLoaded(true);
@@ -71,14 +70,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Logout para inactividad
   const handleInactivityLogout = React.useCallback(() => {
     setIsWarningModalOpen(false);
-    console.log('⏰ Tiempo de inactividad alcanzado. Cerrando sesión...');
     cerrarSesionService()
       .then(() => {
         setUser(null);
         setUserRole(null);
         window.location.href = '/login';
       })
-      .catch((error) => console.error('Error en logout por inactividad:', error));
+      .catch(() => { });
   }, []);
 
   // Inicializar hook de inactividad (25 minutos = 25 * 60 * 1000 = 1500000ms)
@@ -92,7 +90,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   );
 
   React.useEffect(() => {
-    console.log('🚀 Inicializando auth-context');
     const roles = cargarRolesActuales();
     setAvailableRoles(roles);
     setRolesLoaded(true); // 🆕 Marcar como cargado
@@ -101,13 +98,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   React.useEffect(() => {
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === ROLES_STORAGE_KEY) {
-        console.log('📢 Cambio de roles detectado (otro tab)');
         reloadRoles();
       }
     };
 
     const handleRolesUpdated = () => {
-      console.log('📢 Cambio de roles detectado (mismo tab)');
       reloadRoles();
     };
 
@@ -123,8 +118,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // 🆕 Efecto mejorado: Espera a que TANTO el usuario COMO los roles estén cargados
   React.useEffect(() => {
     if (user && rolesLoaded && availableRoles.length > 0) {
-      console.log('🔍 Buscando rol para usuario:', user.rol);
-      console.log('🔍 Roles disponibles:', availableRoles.map(r => r.nombre));
 
       const rolActualizado = availableRoles.find(rol =>
         rol.nombre === user.rol || rol.nombre.toLowerCase() === user.rol.toLowerCase()
@@ -132,14 +125,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (rolActualizado) {
         if (JSON.stringify(userRole?.permisos) !== JSON.stringify(rolActualizado.permisos)) {
-          console.log('🔄 Actualizando permisos del usuario:', user.nombre);
-          console.log('   Rol:', rolActualizado.nombre);
-          console.log('   Permisos:', rolActualizado.permisos);
           setUserRole(rolActualizado);
         }
       } else {
-        console.warn('⚠️ No se encontró el rol del usuario:', user.rol);
-        console.warn('⚠️ Roles disponibles:', availableRoles.map(r => r.nombre).join(', '));
         setUserRole(null);
       }
     } else if (!user) {
@@ -165,15 +153,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           };
 
           setUser(userData);
-          console.log('✅ Usuario autenticado:', userData.nombre, `(${userData.rol})`);
         } else {
           setUser(null);
-          console.log('ℹ️ No hay sesión activa');
           // Si no hay usuario, podemos marcar como "no loading" inmediatamente
           setIsLoading(false);
         }
       } catch (error: any) {
-        console.error('Error al verificar la autenticación:', error);
         setUser(null);
         setIsLoading(false);
       }
@@ -206,17 +191,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const hasSpecificPermission = (permission: string): boolean => {
     // 🆕 Si todavía está cargando, retorna false
     if (isLoading) {
-      console.log('⏳ Todavía cargando, permiso denegado temporalmente');
       return false;
     }
 
     if (!user || !userRole) {
-      console.log('❌ Sin usuario o sin rol, permiso denegado');
       return false;
     }
 
     const tienePermiso = userRole.permisos.includes(permission);
-    console.log(`🔐 Verificando permiso "${permission}":`, tienePermiso ? '✅' : '❌');
 
     return tienePermiso;
   };
@@ -250,16 +232,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       setUser(userData);
 
-      console.log('✅ Login completado para:', userData.nombre);
-      console.log('   Rol asignado:', userData.rol);
 
       return true;
     } catch (error) {
-      console.error('❌ Error al iniciar sesión:', error);
+      setIsLoading(false);
       return false;
     } finally {
-      // No marcar isLoading=false aquí, dejar que el efecto lo maneje
-      // cuando userRole esté listo
+      // Nota: Si success, el efecto se encarga de setIsLoading(false)
+      // pero si hay error, debemos asegurarnos de que no se quede en true
     }
   };
 
@@ -267,12 +247,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       setIsLoading(true);
       await cerrarSesionService();
+    } catch (error) {
+    } finally {
       setUser(null);
       setUserRole(null);
-      console.log('👋 Sesión cerrada');
-    } catch (error) {
-      console.error('Error al cerrar sesión:', error);
-    } finally {
       setIsLoading(false);
     }
   };

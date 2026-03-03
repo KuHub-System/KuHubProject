@@ -203,7 +203,8 @@ public class MovimientoServiceImpl implements MovimientoService {
                 description = "Entrada en inventario del producto " + oldInventory.getProducto().getNombreProducto();
                 break;
 
-            case "SALIDA":
+            case "SALIDA_INVENTARIO":
+            case "MERMA":
                 // Lógica corregida: Si el stock nuevo es mayor al antiguo, es un error.
                 if (newStock.compareTo(oldInventory.getStock()) > 0) {
                     throw new GestionInventarioException("La salida no puede resultar en un stock mayor al actual del producto -> " +
@@ -211,18 +212,8 @@ public class MovimientoServiceImpl implements MovimientoService {
                 }
                 // Para salida, restamos el nuevo del antiguo para que la cantidad calculada sea positiva
                 calculatedAmount = oldInventory.getStock().subtract(newStock);
-                description = "Salida de inventario del producto " + oldInventory.getProducto().getNombreProducto();
-                break;
-
-            case "MERMA":
-                // Agregada la validación de seguridad (igual que salida)
-                if (newStock.compareTo(oldInventory.getStock()) > 0) {
-                    throw new GestionInventarioException("La merma no puede resultar en un stock mayor al actual del producto -> " +
-                            oldInventory.getProducto().getNombreProducto(), HttpStatus.BAD_REQUEST);
-                }
-                // Cálculopara que no dé negativo
-                calculatedAmount = oldInventory.getStock().subtract(newStock);
-                description = "Merma de inventario del producto " + oldInventory.getProducto().getNombreProducto();
+                description = tipoKey.equals("SALIDA_INVENTARIO") ? "Salida por uso/consumo: " + oldInventory.getProducto().getNombreProducto()
+                                                                  : "Baja por merma/daño: " + oldInventory.getProducto().getNombreProducto();
                 break;
 
             case "AJUSTE":
@@ -236,16 +227,17 @@ public class MovimientoServiceImpl implements MovimientoService {
                     calculatedAmount = oldInventory.getStock().subtract(newStock);
                     description = "Ajuste negativo de inventario del producto " + oldInventory.getProducto().getNombreProducto();
                 }
+                description = (newStock.compareTo(oldInventory.getStock()) > 0 ? "Ajuste positivo: "
+                                                                               : "Ajuste negativo: ") + oldInventory.getProducto().getNombreProducto();
                 break;
 
-            case "DEVOLUCION":
-                // Agregada la validación de seguridad (igual que entrada)
-                if (newStock.compareTo(oldInventory.getStock()) < 0) {
-                    throw new GestionInventarioException("La devolución no puede resultar en un stock menor al actual del producto -> " +
-                            oldInventory.getProducto().getNombreProducto(), HttpStatus.BAD_REQUEST);
-                }
-                calculatedAmount = newStock.subtract(oldInventory.getStock());
-                description = "Devolucion en inventario del producto " + oldInventory.getProducto().getNombreProducto();
+            case "TRASLADO":
+                /** * TODO: IMPLEMENTACIÓN FUTURA - BODEGA DE TRÁNSITO
+                 * Actualmente registra el movimiento físico entre ubicaciones.
+                 * En el futuro, esto debería afectar una tabla de 'Ubicaciones' o 'Bodega de Tránsito'.
+                 */
+                calculatedAmount = newStock.subtract(oldInventory.getStock()).abs();
+                description = "Traslado a bodega de tránsito (Pendiente de validación logística): " + oldInventory.getProducto().getNombreProducto();
                 break;
 
             default:
@@ -271,7 +263,7 @@ public class MovimientoServiceImpl implements MovimientoService {
         return new MotionAnswerDTO(
                 (String) row[0],                                 // nombre_producto
                 (String) row[1],                                 // nombre_categoria
-                (String) row[2],                                 // tipo_movimiento
+                StringUtils.enumToHumanText((String) row[2]),    // tipo_movimiento (Formateado)
                 (java.math.BigDecimal) row[3],                   // stock_movimiento
                 ((java.sql.Timestamp) row[4]).toLocalDateTime(), // fecha_movimiento
                 (String) row[5],                                 // nombreUsuario (concatenado)

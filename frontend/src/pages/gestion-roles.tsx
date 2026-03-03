@@ -104,7 +104,6 @@ const GestionRolesPage: React.FC = () => {
    * Ahora usa guardarRoles() que automáticamente notifica a todos los usuarios
    */
   React.useEffect(() => {
-    console.log('💾 Guardando roles y notificando cambios...');
     guardarRoles(roles); // Usa la función del helper que notifica automáticamente
   }, [roles]);
 
@@ -143,7 +142,6 @@ const GestionRolesPage: React.FC = () => {
       setTimeout(() => {
         const nuevosRoles = roles.filter(rol => rol.id !== id);
         setRoles(nuevosRoles);
-        console.log('🗑️ Rol eliminado, notificación enviada');
         setLoading(false);
       }, 300);
     }
@@ -158,7 +156,6 @@ const GestionRolesPage: React.FC = () => {
 
       setTimeout(() => {
         setRoles(rolesIniciales);
-        console.log('🔄 Roles reseteados, notificación enviada');
         setLoading(false);
       }, 500);
     }
@@ -311,10 +308,8 @@ const GestionRolesPage: React.FC = () => {
                       id: Date.now().toString()
                     };
                     setRoles([...roles, rolConId]);
-                    console.log('✅ Nuevo rol creado:', rolConId.nombre);
                   } else {
                     setRoles(roles.map(r => r.id === nuevoRol.id ? nuevoRol : r));
-                    console.log('✅ Rol actualizado:', nuevoRol.nombre);
                   }
                   setLoading(false);
                   onClose();

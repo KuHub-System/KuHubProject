@@ -28,18 +28,13 @@ const ROL_MAP: { [key: string]: number } = {
  * Función helper para obtener el ID del rol con validación
  */
 const obtenerIdRol = (nombreRol: string): number => {
-  console.log('🔍 Buscando ID para rol:', nombreRol);
-  console.log('🔍 Roles disponibles:', Object.keys(ROL_MAP));
 
   const idRol = ROL_MAP[nombreRol];
 
   if (!idRol) {
-    console.error('❌ Rol no encontrado en el mapeo:', nombreRol);
-    console.error('❌ Roles válidos:', Object.keys(ROL_MAP).join(', '));
     throw new Error(`Rol '${nombreRol}' no válido. Roles disponibles: ${Object.keys(ROL_MAP).join(', ')}`);
   }
 
-  console.log('✅ ID del rol encontrado:', idRol);
   return idRol;
 };
 
@@ -48,15 +43,12 @@ const obtenerIdRol = (nombreRol: string): number => {
  */
 export const obtenerUsuariosService = async (): Promise<IUsuario[]> => {
   try {
-    console.log('📡 Obteniendo usuarios del backend...');
     const response = await api.get('/usuarios');
 
-    console.log('✅ Usuarios obtenidos:', response.data.length);
 
     // Convertir del formato backend al formato frontend
     return response.data.map((usuario: any) => convertirUsuarioBackendAFrontend(usuario));
   } catch (error: any) {
-    console.error('❌ Error al obtener usuarios:', error);
     throw new Error(error.response?.data?.message || 'Error al cargar usuarios');
   }
 };
@@ -69,7 +61,6 @@ export const obtenerUsuarioPorIdService = async (id: string): Promise<IUsuario |
     const response = await api.get(`/usuarios/${id}`);
     return convertirUsuarioBackendAFrontend(response.data);
   } catch (error: any) {
-    console.error('Error al obtener usuario:', error);
     return null;
   }
 };
@@ -82,7 +73,6 @@ export const obtenerUsuarioPorCorreoService = async (correo: string): Promise<IU
     const response = await api.get(`/usuarios/email/${correo}`);
     return convertirUsuarioBackendAFrontend(response.data);
   } catch (error: any) {
-    console.error('Error al obtener usuario:', error);
     return null;
   }
 };
@@ -92,12 +82,6 @@ export const obtenerUsuarioPorCorreoService = async (correo: string): Promise<IU
  */
 export const crearUsuarioService = async (data: IUsuarioCreacion): Promise<IUsuario> => {
   try {
-    console.log('📡 Creando usuario en backend...');
-    console.log('📋 Datos recibidos:', {
-      nombreCompleto: data.nombreCompleto,
-      correo: data.correo,
-      rol: data.rol
-    });
 
     // Obtener ID del rol con validación
     const idRol = obtenerIdRol(data.rol);
@@ -122,18 +106,11 @@ export const crearUsuarioService = async (data: IUsuarioCreacion): Promise<IUsua
       activo: true
     };
 
-    console.log('📤 Payload enviado al backend:', {
-      ...payload,
-      contrasena: '***' // No mostrar contraseña en logs
-    });
 
     const response = await api.post('/usuarios', payload);
 
-    console.log('✅ Usuario creado en backend:', response.data.email);
     return convertirUsuarioBackendAFrontend(response.data);
   } catch (error: any) {
-    console.error('❌ Error al crear usuario:', error);
-    console.error('❌ Detalles:', error.response?.data);
     throw new Error(error.response?.data?.message || 'Error al crear usuario');
   }
 };
@@ -142,24 +119,16 @@ export const crearUsuarioService = async (data: IUsuarioCreacion): Promise<IUsua
  * Actualizar usuario - BACKEND
  */
 export const actualizarUsuarioService = async (
-    id: string,
-    data: IUsuarioActualizacion
+  id: string,
+  data: IUsuarioActualizacion
 ): Promise<IUsuario> => {
   try {
-    console.log('📡 Actualizando usuario en backend:', id);
-    console.log('📋 Datos a actualizar:', {
-      nombreCompleto: data.nombreCompleto,
-      correo: data.correo,
-      rol: data.rol,
-      activo: data.activo
-    });
 
     const payload: any = {};
 
     // Mapear rol si se proporciona
     if (data.rol) {
       payload.idRol = obtenerIdRol(data.rol);
-      console.log('🔄 Rol mapeado:', data.rol, '→', payload.idRol);
     }
 
     // Separar nombre completo si se proporciona
@@ -176,18 +145,11 @@ export const actualizarUsuarioService = async (
     if (data.fotoPerfil !== undefined) payload.fotoPerfil = data.fotoPerfil;
     if (data.activo !== undefined) payload.activo = data.activo;
 
-    console.log('📤 Payload enviado al backend:', {
-      ...payload,
-      contrasena: payload.contrasena ? '***' : undefined
-    });
 
     const response = await api.put(`/usuarios/${id}`, payload);
 
-    console.log('✅ Usuario actualizado en backend:', response.data.email);
     return convertirUsuarioBackendAFrontend(response.data);
   } catch (error: any) {
-    console.error('❌ Error al actualizar usuario:', error);
-    console.error('❌ Detalles:', error.response?.data);
     throw new Error(error.response?.data?.message || 'Error al actualizar usuario');
   }
 };
@@ -197,11 +159,8 @@ export const actualizarUsuarioService = async (
  */
 export const eliminarUsuarioService = async (id: string): Promise<void> => {
   try {
-    console.log('📡 Desactivando usuario en backend:', id);
     await api.patch(`/usuarios/${id}/desactivar`);
-    console.log('✅ Usuario desactivado en backend');
   } catch (error: any) {
-    console.error('❌ Error al desactivar usuario:', error);
     throw new Error(error.response?.data?.message || 'Error al desactivar usuario');
   }
 };
@@ -211,11 +170,8 @@ export const eliminarUsuarioService = async (id: string): Promise<void> => {
  */
 export const activarUsuarioService = async (id: string): Promise<void> => {
   try {
-    console.log('📡 Activando usuario en backend:', id);
     await api.patch(`/usuarios/${id}/activar`);
-    console.log('✅ Usuario activado en backend');
   } catch (error: any) {
-    console.error('❌ Error al activar usuario:', error);
     throw new Error(error.response?.data?.message || 'Error al activar usuario');
   }
 };
@@ -262,7 +218,6 @@ function convertirUsuarioBackendAFrontend(usuarioBackend: any): IUsuario {
  * ya que la base de datos ya debe tener datos
  */
 export const inicializarUsuariosPorDefecto = (): void => {
-  console.log('ℹ️ Usuarios manejados por el backend - no requiere inicialización');
 };
 
 /**

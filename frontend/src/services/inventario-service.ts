@@ -22,14 +22,11 @@ import {
  * Obtiene las categorías y unidades de medida para los filtros
  */
 export const obtenerFiltrosInventarioService = async (): Promise<IFiltrosInventarioResponse> => {
-    console.log('🔍 Obteniendo filtros del inventario (categorías y unidades) desde el backend');
 
     try {
         const response = await api.get<IFiltrosInventarioResponse>('/inventario/filters');
-        console.log('✅ Filtros obtenidos:', response.data);
         return response.data;
     } catch (error: any) {
-        console.error('❌ Error al obtener filtros del inventario:', error);
         throw new Error(
             error.response?.data?.message ||
             'Error al cargar los filtros del inventario'
@@ -50,6 +47,7 @@ interface BackendInventarioDTO {
     stock: number;
     stockLimitMin: number;
     estadoStock?: string;
+    esFraccionario?: boolean;
 }
 
 /**
@@ -80,6 +78,7 @@ interface InventoryWithProductUpdateDTO {
     stock: number;
     stockLimit: number;
     tipoMovimiento: string;
+    esFraccionario?: boolean;
 }
 
 /**
@@ -100,6 +99,7 @@ const transformarBackendAFrontend = (backendDTO: BackendInventarioDTO): IProduct
         fechaActualizacion: new Date().toISOString(),
         // Guardamos idInventario como propiedad interna (no declarada en IProducto pero JS lo permite)
         _idInventario: backendDTO.idInventario,
+        _esFraccionario: backendDTO.esFraccionario,
     } as IProducto;
 };
 
@@ -109,7 +109,6 @@ const transformarBackendAFrontend = (backendDTO: BackendInventarioDTO): IProduct
  * @returns true si no hay conflictos, o el objeto actualizado si hay conflicto (409)
  */
 export const validateStockBeforeUpdatingService = async (request: IValidateStockRequest): Promise<boolean | IValidateStockConflictResponse> => {
-    console.log(`🔍 Validando stock antes de editar para Inventario ID: ${request.idInventario}`);
 
     try {
         const response = await api.post<boolean | IValidateStockConflictResponse>(
@@ -117,11 +116,9 @@ export const validateStockBeforeUpdatingService = async (request: IValidateStock
             request
         );
 
-        console.log('✅ Validación completada:', response.data);
         return response.data;
 
     } catch (error: any) {
-        console.error('❌ Error en validación de stock:', error);
 
         if (error.response?.status === 410) {
             const goneError = new Error(
@@ -148,7 +145,6 @@ export const validateStockBeforeUpdatingService = async (request: IValidateStock
  * Obtiene todos los productos activos del inventario
  */
 export const obtenerProductosService = async (): Promise<IProducto[]> => {
-    console.log('📦 Obteniendo productos del inventario desde el backend');
 
     try {
         const response = await api.get<BackendInventarioDTO[]>(
@@ -157,11 +153,9 @@ export const obtenerProductosService = async (): Promise<IProducto[]> => {
 
         const productosTransformados = response.data.map(transformarBackendAFrontend);
 
-        console.log(`✅ ${productosTransformados.length} productos obtenidos`);
         return productosTransformados;
 
     } catch (error: any) {
-        console.error('❌ Error al obtener productos:', error);
         throw new Error(
             error.response?.data?.message ||
             'Error al cargar los productos del inventario'
@@ -173,7 +167,6 @@ export const obtenerProductosService = async (): Promise<IProducto[]> => {
  * Obtiene un producto por su ID
  */
 export const obtenerProductoPorIdService = async (id: string): Promise<IProducto> => {
-    console.log(`🔍 Buscando producto con ID: ${id}`);
 
     try {
         // Convertir string a number para el backend
@@ -185,11 +178,9 @@ export const obtenerProductoPorIdService = async (id: string): Promise<IProducto
 
         const producto = transformarBackendAFrontend(response.data);
 
-        console.log(`✅ Producto encontrado: ${producto.nombre}`);
         return producto;
 
     } catch (error: any) {
-        console.error('❌ Error al obtener producto:', error);
         throw new Error(
             error.response?.data?.message ||
             `Producto con ID ${id} no encontrado`
@@ -201,7 +192,6 @@ export const obtenerProductoPorIdService = async (id: string): Promise<IProducto
  * Crea un nuevo producto en el inventario
  */
 export const crearProductoService = async (productoData: ICrearProducto): Promise<boolean> => {
-    console.log('➕ Creando nuevo producto:', productoData.nombre);
 
     // Validaciones
     if (!productoData.nombre || productoData.nombre.trim() === '') {
@@ -233,11 +223,9 @@ export const crearProductoService = async (productoData: ICrearProducto): Promis
             backendDTO
         );
 
-        console.log(`✅ Resultado creación producto: ${response.data}`);
         return response.data;
 
     } catch (error: any) {
-        console.error('❌ Error al crear producto:', error);
 
         // Manejar errores específicos del backend
         if (error.response?.status === 400) {
@@ -258,7 +246,6 @@ export const crearProductoService = async (productoData: ICrearProducto): Promis
  * Actualiza un producto existente
  */
 export const actualizarProductoService = async (productoData: IActualizarProducto): Promise<IProducto> => {
-    console.log(`✏️ Actualizando producto ID: ${productoData.id}`);
 
     // Validaciones
     if (productoData.stock !== undefined && productoData.stock < 0) {
@@ -313,11 +300,9 @@ export const actualizarProductoService = async (productoData: IActualizarProduct
             _idInventario: idInventario
         };
 
-        console.log(`✅ Producto actualizado: ${productoActualizado.nombre}`);
         return productoActualizado;
 
     } catch (error: any) {
-        console.error('❌ Error al actualizar producto:', error);
 
         if (error.response?.status === 400) {
             throw new Error(
@@ -350,7 +335,6 @@ export const actualizarProductoService = async (productoData: IActualizarProduct
  * Elimina un producto (eliminación lógica)
  */
 export const eliminarProductoService = async (id: string): Promise<boolean> => {
-    console.log(`🗑️ Eliminando producto ID: ${id}`);
 
     try {
         // Primero obtener el producto para conseguir el idInventario
@@ -368,11 +352,9 @@ export const eliminarProductoService = async (id: string): Promise<boolean> => {
             `/inventario/update-active-value-product-false/${idInventario}`
         );
 
-        console.log('✅ Producto eliminado (desactivado) exitosamente');
         return true;
 
     } catch (error: any) {
-        console.error('❌ Error al eliminar producto:', error);
 
         if (error.response?.status === 404) {
             throw new Error(`Producto con ID ${id} no encontrado`);
@@ -396,14 +378,12 @@ export const eliminarProductoService = async (id: string): Promise<boolean> => {
  * Realiza una eliminación lógica (soft delete) del inventario con producto
  */
 export const softDeleteInventarioService = async (idInventario: number): Promise<boolean> => {
-    console.log(`🗑️ Aplicando soft-delete (DELETE) al inventario ID: ${idInventario}`);
 
     try {
         const response = await api.delete<any>(
             `/inventario/soft-delete-inventory-with-product/${idInventario}`
         );
 
-        console.log(`✅ Respuesta del servidor (Status: ${response.status}):`, response.data);
 
         // Caso 204: No hay contenido, pero HTTP indica éxito.
         if (response.status === 204) return true;
@@ -414,7 +394,6 @@ export const softDeleteInventarioService = async (idInventario: number): Promise
         // Caso con cuerpo exitoso: "true", true o simplemente status 2xx.
         return response.status >= 200 && response.status < 300;
     } catch (error: any) {
-        console.error('❌ Error en soft-delete del inventario:', error);
         throw new Error(
             error.response?.data?.message ||
             'No se pudo completar la eliminación del inventario'
@@ -426,7 +405,6 @@ export const softDeleteInventarioService = async (idInventario: number): Promise
  * Obtiene los productos del inventario de forma paginada y con filtros dinámicos
  */
 export const obtenerProductosPaginadosService = async (request: IInventoryPageRequest): Promise<IInventoryPageResponse> => {
-    console.log('📦 Solicitud de productos paginados:', JSON.stringify(request));
 
     try {
         const response = await api.post<IInventoryPageResponse>(
@@ -437,14 +415,12 @@ export const obtenerProductosPaginadosService = async (request: IInventoryPageRe
         const data = response.data;
         if (!data) throw new Error('El backend no devolvió datos');
 
-        console.log('📡 Respuesta completa del backend:', JSON.stringify(data));
 
         // El backend podría devolver items o data (según versiones)
         const items = data.items || (data as any).data || [];
         const totalItems = data.totalItems ?? (data as any).totalRegistros ?? 0;
         const totalPages = data.totalPages ?? (data as any).totalPaginas ?? 1;
 
-        console.log(`✅ ${items.length} productos obtenidos (página ${data.page}), Total Items: ${totalItems}, Total Backend Pages: ${totalPages}`);
 
         // Normalizamos la respuesta
         return {
@@ -455,7 +431,6 @@ export const obtenerProductosPaginadosService = async (request: IInventoryPageRe
         };
 
     } catch (error: any) {
-        console.error('❌ Error al obtener productos paginados:', error);
         throw new Error(
             error.response?.data?.message ||
             'Error al cargar los productos del inventario'
@@ -466,13 +441,12 @@ export const obtenerProductosPaginadosService = async (request: IInventoryPageRe
 /**
  * Busca productos en el inventario por código
  */
-export const buscarProductosPorCodigoService = async (codigo: string, page: number = 1): Promise<IInventoryPageResponse> => {
-    console.log(`🔍 Buscando productos con código: "${codigo}", página: ${page}`);
+export const buscarProductosPorCodigoService = async (codigo: string, page: number = 1, pageSize: number = 10): Promise<IInventoryPageResponse> => {
 
     try {
         const response = await api.post<IInventoryPageResponse>(
             '/inventario/search-inventory-by-code',
-            { term: codigo, page }
+            { term: codigo, page, pageSize }
         );
 
         const data = response.data;
@@ -490,7 +464,6 @@ export const buscarProductosPorCodigoService = async (codigo: string, page: numb
         };
 
     } catch (error: any) {
-        console.error('❌ Error al obtener productos paginados por código:', error);
         throw new Error(
             error.response?.data?.message ||
             'Error al cargar los productos del inventario'
@@ -501,13 +474,12 @@ export const buscarProductosPorCodigoService = async (codigo: string, page: numb
 /**
  * Busca productos en el inventario por término global (nombre o descripción)
  */
-export const buscarProductosService = async (term: string, page: number = 1): Promise<IInventoryPageResponse> => {
-    console.log(`🔍 Buscando productos con término: "${term}", página: ${page}`);
+export const buscarProductosService = async (term: string, page: number = 1, pageSize: number = 10): Promise<IInventoryPageResponse> => {
 
     try {
         const response = await api.post<IInventoryPageResponse>(
             '/inventario/search-inventory',
-            { term, page }
+            { term, page, pageSize }
         );
 
         const data = response.data;
@@ -526,7 +498,6 @@ export const buscarProductosService = async (term: string, page: number = 1): Pr
         };
 
     } catch (error: any) {
-        console.error('❌ Error al buscar productos:', error);
         throw new Error(
             error.response?.data?.message ||
             'Error al realizar la búsqueda en el inventario'
@@ -561,5 +532,6 @@ export const transformarPageItemAProducto = (item: IInventoryPageItem): IProduct
         fechaCreacion: new Date().toISOString(),
         fechaActualizacion: new Date().toISOString(),
         _idInventario: item.idInventario,
+        _esFraccionario: item.esFraccionario
     } as IProducto;
 };

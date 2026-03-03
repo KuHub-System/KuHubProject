@@ -62,4 +62,19 @@ public class StringUtils {
 
         return removeAccents(normalizado);
     }
+
+    /**
+     * Convierte una clave de Enum (SNAKE_CASE) a texto humano capitalizado.
+     * Ejemplo: "SALIDA_INVENTARIO" -> "Salida Inventario"
+     * "ENTRADA" -> "Entrada"
+     */
+    public static String enumToHumanText(String enumKey) {
+        if (enumKey == null || enumKey.isBlank()) return enumKey;
+
+        // 1. Reemplazamos guiones bajos por espacios
+        String conEspacios = enumKey.replace("_", " ");
+
+        // 2. Usamos tu método existente para poner en mayúscula cada palabra
+        return capitalizarPalabras(conEspacios);
+    }
 }

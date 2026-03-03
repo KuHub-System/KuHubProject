@@ -31,11 +31,11 @@ interface ProtectedRouteProps extends RouteProps {
  * @param {ProtectedRouteProps} props - Propiedades del componente.
  * @returns {JSX.Element} Componente Route protegido.
  */
-const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ 
-  roles = [], 
+const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
+  roles = [],
   pageId,
-  children, 
-  ...rest 
+  children,
+  ...rest
 }) => {
   const { isAuthenticated, isLoading, hasPermission, canAccessPage } = useAuth();
 
@@ -50,19 +50,16 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     // Si tiene pageId, usar verificación dinámica (NUEVO)
     if (pageId) {
       const access = canAccessPage(pageId);
-      logger.log(`🔐 Verificando acceso a "${pageId}":`, access ? '✅' : '❌');
       return access;
     }
 
     // Si tiene roles, usar verificación estática (DEPRECADO)
     if (roles.length > 0) {
       const access = hasPermission(roles);
-      logger.log(`🔐 Verificando roles [${roles.join(', ')}]:`, access ? '✅' : '❌');
       return access;
     }
 
     // Si no tiene restricciones, permitir acceso (solo requiere login)
-    logger.log(`🔐 Ruta sin restricciones: ✅`);
     return true;
   };
 

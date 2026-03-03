@@ -105,15 +105,15 @@ export const obtenerProductosPaginadosService = async (request: IInventoryPageRe
 /**
  * Busca productos en el inventario por término global (nombre o descripción) desde el BACKEND REAL
  */
-export const buscarProductosService = async (term: string, page: number = 1): Promise<IInventoryPageResponse> => {
-  return await buscarProductosBackend(term, page);
+export const buscarProductosService = async (term: string, page: number = 1, pageSize: number = 10): Promise<IInventoryPageResponse> => {
+  return await buscarProductosBackend(term, page, pageSize);
 };
 
 /**
  * Busca productos en el inventario por código de producto desde el BACKEND REAL
  */
-export const buscarProductosPorCodigoService = async (codigo: string, page: number = 1): Promise<IInventoryPageResponse> => {
-  return await buscarProductosPorCodigoBackend(codigo, page);
+export const buscarProductosPorCodigoService = async (codigo: string, page: number = 1, pageSize: number = 10): Promise<IInventoryPageResponse> => {
+  return await buscarProductosPorCodigoBackend(codigo, page, pageSize);
 };
 
 export { transformarPageItemAProducto };
@@ -131,7 +131,7 @@ export interface IFiltrosMovimiento {
   productoId?: string;
   fechaInicio?: string;
   fechaFin?: string;
-  tipo?: 'Entrada' | 'Salida' | 'Merma';
+  tipo?: 'Entrada' | 'Salida' | 'Merma' | 'Ajuste' | 'Devolucion';
   orden?: 'reciente' | 'antiguo' | 'cantidad_asc' | 'cantidad_desc';
 }
 
@@ -143,7 +143,6 @@ export const obtenerMovimientosFiltradosService = async (
   pagina: number = 1,
   limite: number = 10
 ): Promise<{ movimientos: IMovimientoProducto[], total: number }> => {
-  console.log(`📋 Obteniendo movimientos filtrados`, filtros);
 
   // Simulamos un tiempo de respuesta
   await new Promise(resolve => setTimeout(resolve, 400));
@@ -230,7 +229,6 @@ export const obtenerMovimientosProductoService = async (
  * Crea un nuevo movimiento de producto (LOCAL - HARDCODED)
  */
 export const crearMovimientoService = async (movimientoData: ICrearMovimiento): Promise<IMovimientoProducto> => {
-  console.log("📝 Creando movimiento (LOCAL):", movimientoData.tipo, movimientoData.cantidad);
 
   // Validaciones
   if (movimientoData.cantidad <= 0) {
@@ -263,10 +261,8 @@ export const crearMovimientoService = async (movimientoData: ICrearMovimiento): 
       throw new Error('Error al crear el movimiento');
     }
 
-    console.log(`✅ Movimiento creado: ${movimientoData.tipo} de ${movimientoData.cantidad} unidades`);
     return nuevoMovimiento;
   } catch (error) {
-    console.error('❌ Error al crear movimiento:', error);
     throw error;
   }
 };

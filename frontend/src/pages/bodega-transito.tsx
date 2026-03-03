@@ -247,7 +247,6 @@ const BodegaTransitoPage: React.FC = () => {
       // Combinar con FAKE data (Solo visualización, no se guardan en BD real al cargar)
       setSolicitudes([...realFiltered, ...FAKE_REQUESTS]);
     } catch (error) {
-      console.error("Error loading requests:", error);
     }
   };
 

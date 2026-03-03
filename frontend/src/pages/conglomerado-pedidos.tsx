@@ -87,9 +87,7 @@ const ConglomeradoPedidosPage: React.FC = () => {
       setIsLoading(true);
       const solicitudes = await obtenerSolicitudesAceptadasParaPedidoService();
       setSolicitudesAceptadas(solicitudes);
-      console.log('📋 Solicitudes aceptadas cargadas:', solicitudes.length);
     } catch (error) {
-      console.error('❌ Error al cargar solicitudes aceptadas:', error);
       toast.error('Error al cargar los datos del conglomerado');
     } finally {
       setIsLoading(false);
@@ -224,8 +222,6 @@ const ConglomeradoPedidosPage: React.FC = () => {
     navigator.clipboard.writeText(orden).then(() => {
       toast.success('Orden de compra copiada al portapapeles');
     }).catch(() => {
-      // Si falla, mostrar en consola
-      console.log(orden);
       toast.info('Orden de compra generada. Revisa la consola del navegador.');
     });
   };

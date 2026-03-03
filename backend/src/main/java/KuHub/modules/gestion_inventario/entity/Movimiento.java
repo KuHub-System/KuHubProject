@@ -50,10 +50,12 @@ public class Movimiento {
 
     public enum TipoMovimiento {
         ENTRADA,
-        SALIDA,
+        SALIDA_INVENTARIO,
+        SALIDA_BODEGA,
         DEVOLUCION,
         MERMA,
-        AJUSTE
+        AJUSTE,
+        TRASLADO
     }
 
     // --- MÉTODOS AYUDANTES (Setters Inteligentes) ---

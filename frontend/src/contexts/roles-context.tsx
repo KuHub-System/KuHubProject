@@ -49,7 +49,6 @@ export const RolesProvider: React.FC<RolesProviderProps> = ({ children }) => {
         const rolesGuardados = cargarRolesDelAlmacenamiento();
         setRoles(rolesGuardados);
       } catch (error) {
-        console.error('Error al inicializar roles:', error);
         // Si hay error, usar array vacío - los roles se cargarán desde roles-config
         setRoles([]);
       } finally {
@@ -114,11 +113,11 @@ export const RolesProvider: React.FC<RolesProviderProps> = ({ children }) => {
  */
 export const useRoles = (): RolesContextType => {
   const context = useContext(RolesContext);
-  
+
   if (context === undefined) {
     throw new Error('useRoles debe ser usado dentro de un RolesProvider');
   }
-  
+
   return context;
 };
 

@@ -270,7 +270,6 @@ public class InventarioServiceImpl implements InventarioService {
                 () -> new GestionInventarioException("El inventario no existe", HttpStatus.NOT_FOUND)
         );
 
-
         Producto oldProducto = oldInventario.getProducto();
         String nombreProducto = StringUtils.capitalizarPalabras(request.getNombreProducto());
         String codigoProducto = StringUtils.normalizeSpaces(request.getCodigoProducto());
@@ -382,15 +381,16 @@ public class InventarioServiceImpl implements InventarioService {
      * */
     private InventoryPageDTO mapToInventoryPageDTO(Object[] row) {
         return new InventoryPageDTO(
-                ((Number) row[7]).intValue(), // idInventario
-                ((Number) row[8]).intValue(), // idProducto
-                (String) row[0],              // nombreProducto
-                (String) row[1],              // codProducto
-                (String) row[2],              // descripcionProducto
-                ((Number) row[9]).intValue(), // idCategoria
-                (String) row[3],              // nombreCategoria
-                ((Number) row[10]).intValue(), // idUnidad
+                ((Number) row[8]).intValue(),  // idInventario (antes 7)
+                ((Number) row[9]).intValue(),  // idProducto (antes 8)
+                (String) row[0],               // nombreProducto
+                (String) row[1],               // codProducto
+                (String) row[2],               // descripcionProducto
+                ((Number) row[10]).intValue(), // idCategoria (antes 9)
+                (String) row[3],               // nombreCategoria
+                ((Number) row[11]).intValue(), // idUnidad (antes 10)
                 (String) row[6],               // nombreUnidad
+                (Boolean) row[7],              // esFraccionario (NUEVO)
                 (BigDecimal) row[4],           // stock
                 (BigDecimal) row[5]            // stockLimit
         );

@@ -7,7 +7,6 @@ import {
     ModalFooter,
     Button,
     Input,
-    Switch,
     Listbox,
     ListboxItem,
     Divider,
@@ -112,7 +111,7 @@ const GestionCategoriasModal: React.FC<GestionCategoriasModalProps> = ({
                 cargarCategorias();
                 if (onRefresh) onRefresh();
             } else {
-                toast.error('No se pudo cambiar el estado');
+
             }
         } catch (error: any) {
             toast.error(error.message || 'Error al cambiar el estado de la categoría');
@@ -138,7 +137,6 @@ const GestionCategoriasModal: React.FC<GestionCategoriasModalProps> = ({
         );
 
         if (existe) {
-            toast.warning('Esta categoría ya existe en la lista');
             return;
         }
 
@@ -229,7 +227,6 @@ const GestionCategoriasModal: React.FC<GestionCategoriasModalProps> = ({
 
         // VERIFICACIÓN REDUNDANTE: Si por algún error llegamos aquí con productos, bloqueamos
         if (catParaEliminar.asociados && catParaEliminar.asociados > 0) {
-            console.error('🛑 [BLOQUEO] Se intentó eliminar una categoría que aún tiene productos:', catParaEliminar.nombre);
             setShowDeleteConfirm(false);
             setShowReassociate(true); // Redirigimos al modal de transferencia por seguridad
             toast.error('No se puede eliminar: La categoría aún tiene productos asociados');
@@ -252,7 +249,6 @@ const GestionCategoriasModal: React.FC<GestionCategoriasModalProps> = ({
                 if (onRefresh) onRefresh();
             }
         } catch (error: any) {
-            console.error('❌ Error capturado en handleConfirmarEliminacionSimple:', error.message);
             toast.error(error.message || 'Error al eliminar');
         } finally {
             setIsDeleting(false);
@@ -476,13 +472,26 @@ const GestionCategoriasModal: React.FC<GestionCategoriasModalProps> = ({
                                                             {togglingIds.has(cat.id) && (
                                                                 <div className="w-3 h-3 border-2 border-success border-t-transparent rounded-full animate-spin"></div>
                                                             )}
-                                                            <Switch
-                                                                size="sm"
-                                                                isSelected={cat.activo}
-                                                                onValueChange={() => handleToggleActivo(cat.id, cat.activo)}
-                                                                color="success"
-                                                                isDisabled={togglingIds.has(cat.id)}
-                                                            />
+                                                            <label className={`relative inline-flex items-center cursor-pointer transition-all duration-300 ${togglingIds.has(cat.id) ? 'opacity-50 pointer-events-none' : ''}`}>
+                                                                <input
+                                                                    type="checkbox"
+                                                                    className="sr-only peer"
+                                                                    checked={cat.activo}
+                                                                    onChange={() => handleToggleActivo(cat.id, cat.activo)}
+                                                                    disabled={togglingIds.has(cat.id)}
+                                                                />
+                                                                <div className="w-11 h-6 bg-default-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-success flex items-center justify-between px-1 gap-1">
+                                                                    <svg aria-label="enabled" className={`w-3 h-3 text-white transition-opacity duration-300 ${cat.activo ? 'opacity-100' : 'opacity-0'}`} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                                                                        <g strokeLinejoin="round" strokeLinecap="round" strokeWidth="4" fill="none" stroke="currentColor">
+                                                                            <path d="M20 6 9 17l-5-5"></path>
+                                                                        </g>
+                                                                    </svg>
+                                                                    <svg aria-label="disabled" className={`w-3 h-3 text-default-400 transition-opacity duration-300 ${!cat.activo ? 'opacity-100' : 'opacity-0'}`} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
+                                                                        <path d="M18 6 6 18" />
+                                                                        <path d="m6 6 12 12" />
+                                                                    </svg>
+                                                                </div>
+                                                            </label>
                                                         </div>
                                                     </div>
                                                 </div>

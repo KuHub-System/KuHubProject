@@ -13,36 +13,20 @@ import { inicializarUsuariosPorDefecto } from './usuario-service';
  * Debe llamarse en main.tsx o App.tsx antes de renderizar
  */
 export const inicializarApp = (): void => {
-  console.log('🚀 Iniciando sistema KüHub...');
-  
+
   try {
     // Inicializar el sistema de almacenamiento
     inicializarSistema();
-    
+
     // 🔥 NUEVO: Inicializar usuarios de prueba
     inicializarUsuariosPorDefecto();
-    
+
     // Mostrar estadísticas
     const stats = estadisticasSistema();
-    console.log('📊 Estadísticas del sistema:');
-    console.log(`   - Productos: ${stats.totalProductos}`);
-    console.log(`   - Movimientos: ${stats.totalMovimientos}`);
-    console.log(`   - Usuarios: ${stats.totalUsuarios}`);
-    console.log(`   - Roles: ${stats.totalRoles}`);
-    console.log(`   - Productos bajo stock: ${stats.productosBajoStock}`);
-    
+
     // Mostrar información de usuarios de prueba
-    console.log('\n👥 Usuarios de prueba disponibles:');
-    console.log('   📧 admin@kuhub.cl - 🔑 admin123 (Admin completo)');
-    console.log('   📧 coadmin@kuhub.cl - 🔑 coadmin123 (Co-Admin)');
-    console.log('   📧 gestor@kuhub.cl - 🔑 gestor123 (Gestor de Pedidos)');
-    console.log('   📧 profesor@kuhub.cl - 🔑 profesor123 (Profesor)');
-    console.log('   📧 bodega@kuhub.cl - 🔑 bodega123 (Bodega)');
-    console.log('   📧 asistente@kuhub.cl - 🔑 asistente123 (Asistente)');
-    
-    console.log('\n✅ Sistema inicializado correctamente\n');
+
   } catch (error) {
-    console.error('❌ Error al inicializar el sistema:', error);
     throw error;
   }
 };
@@ -55,10 +39,8 @@ export const resetearSistemaDesarrollo = (): void => {
   try {
     // Limpiar todo el localStorage
     localStorage.clear();
-    console.log('🔄 Sistema reseteado. Recargando...');
     window.location.reload();
   } catch (error) {
-    console.error('Error al resetear sistema:', error);
   }
 };
 
@@ -66,8 +48,5 @@ export const resetearSistemaDesarrollo = (): void => {
 if (typeof window !== 'undefined') {
   (window as any).resetKuHub = resetearSistemaDesarrollo;
   (window as any).statsKuHub = estadisticasSistema;
-  
-  console.log('🛠️ Funciones de desarrollo disponibles:');
-  console.log('   - window.resetKuHub() - Resetea todo el sistema');
-  console.log('   - window.statsKuHub() - Muestra estadísticas');
+
 }

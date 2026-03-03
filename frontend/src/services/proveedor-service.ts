@@ -57,7 +57,7 @@ const obtenerProveedoresStorage = (): IProveedor[] => {
   if (data) {
     return JSON.parse(data);
   }
-  
+
   // Si no hay datos, inicializar con proveedores de ejemplo
   const proveedoresIniciales = inicializarProveedoresEjemplo();
   guardarProveedoresStorage(proveedoresIniciales);
@@ -69,7 +69,6 @@ const obtenerProveedoresStorage = (): IProveedor[] => {
  */
 const guardarProveedoresStorage = (proveedores: IProveedor[]): void => {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(proveedores));
-  console.log('💾 Proveedores guardados:', proveedores.length);
 };
 
 /**
@@ -86,40 +85,40 @@ const inicializarProveedoresEjemplo = (): IProveedor[] => {
       direccion: 'Av. Principal 123, Santiago',
       estado: 'Activo',
       productos: [
-        { 
-          id: '1-1', 
+        {
+          id: '1-1',
           productoId: 'harina-001',
-          productoNombre: 'Harina', 
-          precio: 1200, 
-          unidadMedida: 'kg', 
-          disponible: true, 
+          productoNombre: 'Harina',
+          precio: 1200,
+          unidadMedida: 'kg',
+          disponible: true,
           fechaActualizacion: new Date().toISOString()
         },
-        { 
-          id: '1-2', 
+        {
+          id: '1-2',
           productoId: 'azucar-001',
-          productoNombre: 'Azúcar', 
-          precio: 800, 
-          unidadMedida: 'kg', 
-          disponible: true, 
+          productoNombre: 'Azúcar',
+          precio: 800,
+          unidadMedida: 'kg',
+          disponible: true,
           fechaActualizacion: new Date().toISOString()
         },
-        { 
-          id: '1-3', 
+        {
+          id: '1-3',
           productoId: 'sal-001',
-          productoNombre: 'Sal', 
-          precio: 400, 
-          unidadMedida: 'kg', 
-          disponible: true, 
+          productoNombre: 'Sal',
+          precio: 400,
+          unidadMedida: 'kg',
+          disponible: true,
           fechaActualizacion: new Date().toISOString()
         },
-        { 
-          id: '1-4', 
+        {
+          id: '1-4',
           productoId: 'levadura-001',
-          productoNombre: 'Levadura', 
-          precio: 3500, 
-          unidadMedida: 'kg', 
-          disponible: true, 
+          productoNombre: 'Levadura',
+          precio: 3500,
+          unidadMedida: 'kg',
+          disponible: true,
           fechaActualizacion: new Date().toISOString()
         }
       ],
@@ -135,31 +134,31 @@ const inicializarProveedoresEjemplo = (): IProveedor[] => {
       direccion: 'Calle Comercio 456, Viña del Mar',
       estado: 'Activo',
       productos: [
-        { 
-          id: '2-1', 
+        {
+          id: '2-1',
           productoId: 'aceite-oliva-001',
-          productoNombre: 'Aceite de Oliva', 
-          precio: 8500, 
-          unidadMedida: 'l', 
-          disponible: true, 
+          productoNombre: 'Aceite de Oliva',
+          precio: 8500,
+          unidadMedida: 'l',
+          disponible: true,
           fechaActualizacion: new Date().toISOString()
         },
-        { 
-          id: '2-2', 
+        {
+          id: '2-2',
           productoId: 'harina-001',
-          productoNombre: 'Harina', 
-          precio: 1300, 
-          unidadMedida: 'kg', 
-          disponible: true, 
+          productoNombre: 'Harina',
+          precio: 1300,
+          unidadMedida: 'kg',
+          disponible: true,
           fechaActualizacion: new Date().toISOString()
         },
-        { 
-          id: '2-3', 
+        {
+          id: '2-3',
           productoId: 'sal-001',
-          productoNombre: 'Sal', 
-          precio: 450, 
-          unidadMedida: 'kg', 
-          disponible: true, 
+          productoNombre: 'Sal',
+          precio: 450,
+          unidadMedida: 'kg',
+          disponible: true,
           fechaActualizacion: new Date().toISOString()
         }
       ],
@@ -175,31 +174,31 @@ const inicializarProveedoresEjemplo = (): IProveedor[] => {
       direccion: 'Ruta 5 Sur Km 10, Osorno',
       estado: 'Activo',
       productos: [
-        { 
-          id: '3-1', 
+        {
+          id: '3-1',
           productoId: 'leche-001',
-          productoNombre: 'Leche', 
-          precio: 950, 
-          unidadMedida: 'l', 
-          disponible: true, 
+          productoNombre: 'Leche',
+          precio: 950,
+          unidadMedida: 'l',
+          disponible: true,
           fechaActualizacion: new Date().toISOString()
         },
-        { 
-          id: '3-2', 
+        {
+          id: '3-2',
           productoId: 'mantequilla-001',
-          productoNombre: 'Mantequilla', 
-          precio: 5200, 
-          unidadMedida: 'kg', 
-          disponible: true, 
+          productoNombre: 'Mantequilla',
+          precio: 5200,
+          unidadMedida: 'kg',
+          disponible: true,
           fechaActualizacion: new Date().toISOString()
         },
-        { 
-          id: '3-3', 
+        {
+          id: '3-3',
           productoId: 'azucar-001',
-          productoNombre: 'Azúcar', 
-          precio: 850, 
-          unidadMedida: 'kg', 
-          disponible: true, 
+          productoNombre: 'Azúcar',
+          precio: 850,
+          unidadMedida: 'kg',
+          disponible: true,
           fechaActualizacion: new Date().toISOString()
         }
       ],
@@ -215,22 +214,22 @@ const inicializarProveedoresEjemplo = (): IProveedor[] => {
       direccion: 'Camino Rural 78, Melipilla',
       estado: 'Activo',
       productos: [
-        { 
-          id: '4-1', 
+        {
+          id: '4-1',
           productoId: 'huevos-001',
-          productoNombre: 'Huevos', 
-          precio: 180, 
-          unidadMedida: 'unidad', 
-          disponible: true, 
+          productoNombre: 'Huevos',
+          precio: 180,
+          unidadMedida: 'unidad',
+          disponible: true,
           fechaActualizacion: new Date().toISOString()
         },
-        { 
-          id: '4-2', 
+        {
+          id: '4-2',
           productoId: 'levadura-001',
-          productoNombre: 'Levadura', 
-          precio: 3800, 
-          unidadMedida: 'kg', 
-          disponible: true, 
+          productoNombre: 'Levadura',
+          precio: 3800,
+          unidadMedida: 'kg',
+          disponible: true,
           fechaActualizacion: new Date().toISOString()
         }
       ],
@@ -247,7 +246,6 @@ export const obtenerProveedoresService = (): Promise<IProveedor[]> => {
   return new Promise((resolve) => {
     setTimeout(() => {
       const proveedores = obtenerProveedoresStorage();
-      console.log('📋 Proveedores cargados:', proveedores.length);
       resolve(proveedores);
     }, 100);
   });
@@ -261,7 +259,6 @@ export const obtenerProveedoresActivosService = (): Promise<IProveedor[]> => {
     setTimeout(() => {
       const proveedores = obtenerProveedoresStorage();
       const activos = proveedores.filter(p => p.estado === 'Activo');
-      console.log('✅ Proveedores activos:', activos.length);
       resolve(activos);
     }, 100);
   });
@@ -288,7 +285,7 @@ export const crearProveedorService = (data: ICrearProveedor): Promise<IProveedor
     setTimeout(() => {
       try {
         const proveedores = obtenerProveedoresStorage();
-        
+
         const nuevoProveedor: IProveedor = {
           id: Date.now().toString(),
           nombre: data.nombre,
@@ -301,11 +298,10 @@ export const crearProveedorService = (data: ICrearProveedor): Promise<IProveedor
           fechaCreacion: new Date().toISOString(),
           fechaActualizacion: new Date().toISOString()
         };
-        
+
         proveedores.push(nuevoProveedor);
         guardarProveedoresStorage(proveedores);
-        
-        console.log('✅ Proveedor creado:', nuevoProveedor.nombre);
+
         resolve(nuevoProveedor);
       } catch (error) {
         reject(error);
@@ -323,21 +319,20 @@ export const actualizarProveedorService = (data: IActualizarProveedor): Promise<
       try {
         const proveedores = obtenerProveedoresStorage();
         const index = proveedores.findIndex(p => p.id === data.id);
-        
+
         if (index === -1) {
           reject(new Error('Proveedor no encontrado'));
           return;
         }
-        
+
         proveedores[index] = {
           ...proveedores[index],
           ...data,
           fechaActualizacion: new Date().toISOString()
         };
-        
+
         guardarProveedoresStorage(proveedores);
-        
-        console.log('✅ Proveedor actualizado:', proveedores[index].nombre);
+
         resolve(proveedores[index]);
       } catch (error) {
         reject(error);
@@ -350,7 +345,7 @@ export const actualizarProveedorService = (data: IActualizarProveedor): Promise<
  * Cambiar estado de proveedor
  */
 export const cambiarEstadoProveedorService = (
-  id: string, 
+  id: string,
   estado: 'Activo' | 'Inactivo'
 ): Promise<IProveedor> => {
   return new Promise((resolve, reject) => {
@@ -358,18 +353,17 @@ export const cambiarEstadoProveedorService = (
       try {
         const proveedores = obtenerProveedoresStorage();
         const index = proveedores.findIndex(p => p.id === id);
-        
+
         if (index === -1) {
           reject(new Error('Proveedor no encontrado'));
           return;
         }
-        
+
         proveedores[index].estado = estado;
         proveedores[index].fechaActualizacion = new Date().toISOString();
-        
+
         guardarProveedoresStorage(proveedores);
-        
-        console.log(`🔄 Proveedor ${estado}:`, proveedores[index].nombre);
+
         resolve(proveedores[index]);
       } catch (error) {
         reject(error);
@@ -387,16 +381,15 @@ export const eliminarProveedorService = (id: string): Promise<void> => {
       try {
         const proveedores = obtenerProveedoresStorage();
         const index = proveedores.findIndex(p => p.id === id);
-        
+
         if (index === -1) {
           reject(new Error('Proveedor no encontrado'));
           return;
         }
-        
+
         proveedores.splice(index, 1);
         guardarProveedoresStorage(proveedores);
-        
-        console.log('🗑️ Proveedor eliminado');
+
         resolve();
       } catch (error) {
         reject(error);
@@ -417,23 +410,22 @@ export const agregarProductoProveedorService = (
       try {
         const proveedores = obtenerProveedoresStorage();
         const index = proveedores.findIndex(p => p.id === proveedorId);
-        
+
         if (index === -1) {
           reject(new Error('Proveedor no encontrado'));
           return;
         }
-        
+
         const nuevoProducto: IProductoProveedor = {
           ...producto,
           id: `${proveedorId}-${Date.now()}`
         };
-        
+
         proveedores[index].productos.push(nuevoProducto);
         proveedores[index].fechaActualizacion = new Date().toISOString();
-        
+
         guardarProveedoresStorage(proveedores);
-        
-        console.log('➕ Producto agregado al proveedor');
+
         resolve(proveedores[index]);
       } catch (error) {
         reject(error);
@@ -455,32 +447,31 @@ export const actualizarProductoProveedorService = (
       try {
         const proveedores = obtenerProveedoresStorage();
         const proveedorIndex = proveedores.findIndex(p => p.id === proveedorId);
-        
+
         if (proveedorIndex === -1) {
           reject(new Error('Proveedor no encontrado'));
           return;
         }
-        
+
         const productoIndex = proveedores[proveedorIndex].productos.findIndex(
           p => p.id === productoId
         );
-        
+
         if (productoIndex === -1) {
           reject(new Error('Producto no encontrado'));
           return;
         }
-        
+
         proveedores[proveedorIndex].productos[productoIndex] = {
           ...proveedores[proveedorIndex].productos[productoIndex],
           ...datos,
           fechaActualizacion: new Date().toISOString()
         };
-        
+
         proveedores[proveedorIndex].fechaActualizacion = new Date().toISOString();
-        
+
         guardarProveedoresStorage(proveedores);
-        
-        console.log('✏️ Producto actualizado');
+
         resolve(proveedores[proveedorIndex]);
       } catch (error) {
         reject(error);
@@ -501,21 +492,20 @@ export const eliminarProductoProveedorService = (
       try {
         const proveedores = obtenerProveedoresStorage();
         const proveedorIndex = proveedores.findIndex(p => p.id === proveedorId);
-        
+
         if (proveedorIndex === -1) {
           reject(new Error('Proveedor no encontrado'));
           return;
         }
-        
+
         proveedores[proveedorIndex].productos = proveedores[proveedorIndex].productos.filter(
           p => p.id !== productoId
         );
-        
+
         proveedores[proveedorIndex].fechaActualizacion = new Date().toISOString();
-        
+
         guardarProveedoresStorage(proveedores);
-        
-        console.log('🗑️ Producto eliminado del proveedor');
+
         resolve(proveedores[proveedorIndex]);
       } catch (error) {
         reject(error);
@@ -535,13 +525,12 @@ export const buscarProveedoresPorProductoService = (
       const proveedores = obtenerProveedoresStorage();
       const proveedoresConProducto = proveedores.filter(proveedor =>
         proveedor.estado === 'Activo' &&
-        proveedor.productos.some(p => 
+        proveedor.productos.some(p =>
           p.productoNombre.toLowerCase().includes(productoNombre.toLowerCase()) &&
           p.disponible
         )
       );
-      
-      console.log(`🔍 Proveedores con "${productoNombre}":`, proveedoresConProducto.length);
+
       resolve(proveedoresConProducto);
     }, 100);
   });
@@ -565,16 +554,16 @@ export const obtenerProveedoresConPreciosService = (
     setTimeout(() => {
       const proveedores = obtenerProveedoresStorage();
       const resultado = new Map<string, IProveedorConPrecio[]>();
-      
+
       productosNombres.forEach(productoNombre => {
         const proveedoresConProducto: IProveedorConPrecio[] = [];
-        
+
         proveedores.forEach(proveedor => {
           if (proveedor.estado === 'Activo') {
             const producto = proveedor.productos.find(p =>
               p.productoNombre.toLowerCase() === productoNombre.toLowerCase()
             );
-            
+
             if (producto) {
               proveedoresConProducto.push({
                 proveedorId: proveedor.id,
@@ -586,14 +575,13 @@ export const obtenerProveedoresConPreciosService = (
             }
           }
         });
-        
+
         // Ordenar por precio (menor a mayor)
         proveedoresConProducto.sort((a, b) => a.precio - b.precio);
-        
+
         resultado.set(productoNombre, proveedoresConProducto);
       });
-      
-      console.log('💰 Cotizaciones obtenidas para', productosNombres.length, 'productos');
+
       resolve(resultado);
     }, 100);
   });

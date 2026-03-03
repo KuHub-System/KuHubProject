@@ -48,7 +48,6 @@ api.interceptors.response.use(
                     // Disparar evento para reiniciar el contador de inactividad
                     window.dispatchEvent(new Event('api-request'));
                 } catch (e) {
-                    console.error('Error actualizando token renovado:', e);
                 }
             }
         }
@@ -59,7 +58,6 @@ api.interceptors.response.use(
 
         // Si falla la nube y no estamos en local, reintentar en local
         if (!error.response && !isLocalMode && originalRequest) {
-            console.warn('🌐 Intentando conector local...');
             isLocalMode = true;
             originalRequest.baseURL = LOCAL_URL;
             return api(originalRequest);
@@ -67,7 +65,6 @@ api.interceptors.response.use(
 
         // Handle 401 Unauthorized (Token expires or invalid)
         if (error.response?.status === 401) {
-            console.warn('🔒 Sesión expirada (401). Redirigiendo al login...');
             localStorage.removeItem('sesion_actual');
             window.location.href = '/login';
         }

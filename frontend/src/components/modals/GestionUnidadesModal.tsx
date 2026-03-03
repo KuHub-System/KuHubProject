@@ -38,12 +38,15 @@ const GestionUnidadesModal: React.FC<GestionUnidadesModalProps> = ({
     const [unidades, setUnidades] = React.useState<IUnidadMedida[]>([]);
     const [nombre, setNombre] = React.useState('');
     const [abreviatura, setAbreviatura] = React.useState('');
+    const [esFraccionario, setEsFraccionario] = React.useState<string>('');
     const [isAdding, setIsAdding] = React.useState(false);
     const [isLoading, setIsLoading] = React.useState(false);
     const [togglingIds, setTogglingIds] = React.useState<Set<string>>(new Set());
     const [editingId, setEditingId] = React.useState<string | null>(null);
     const [editNombre, setEditNombre] = React.useState('');
     const [editAbreviatura, setEditAbreviatura] = React.useState('');
+    const [editEsFraccionario, setEditEsFraccionario] = React.useState<string>('');
+    const [originalData, setOriginalData] = React.useState<{ nombre: string, abreviatura: string, esFraccionario: boolean } | null>(null);
 
     // Estados para reasociación (eliminación con productos asociados)
     const [showReassociate, setShowReassociate] = React.useState(false);
@@ -112,10 +115,15 @@ const GestionUnidadesModal: React.FC<GestionUnidadesModalProps> = ({
 
         setIsLoading(true);
         try {
-            const exito = await crearUnidadService(nombre.trim(), abreviatura.trim());
+            const exito = await crearUnidadService(
+                nombre.trim(),
+                abreviatura.trim(),
+                esFraccionario === 'decimal'
+            );
             if (exito) {
                 setNombre('');
                 setAbreviatura('');
+                setEsFraccionario('');
                 setIsAdding(false);
                 cargarUnidades();
                 toast.success('Unidad agregada correctamente');
@@ -150,7 +158,12 @@ const GestionUnidadesModal: React.FC<GestionUnidadesModalProps> = ({
 
         setIsLoading(true);
         try {
-            const exito = await actualizarUnidadService(editingId, editNombre.trim(), editAbreviatura.trim());
+            const exito = await actualizarUnidadService(
+                editingId,
+                editNombre.trim(),
+                editAbreviatura.trim(),
+                editEsFraccionario === 'decimal'
+            );
             if (exito) {
                 setEditingId(null);
                 cargarUnidades();
@@ -170,6 +183,12 @@ const GestionUnidadesModal: React.FC<GestionUnidadesModalProps> = ({
         setEditingId(uni.id);
         setEditNombre(uni.nombre);
         setEditAbreviatura(uni.abreviatura);
+        setEditEsFraccionario(uni.esFraccionario ? 'decimal' : 'entera');
+        setOriginalData({
+            nombre: uni.nombre.trim(),
+            abreviatura: uni.abreviatura.trim(),
+            esFraccionario: !!uni.esFraccionario
+        });
         setIsAdding(false);
     };
 
@@ -244,10 +263,15 @@ const GestionUnidadesModal: React.FC<GestionUnidadesModalProps> = ({
                 <ModalContent>
                     {(onClose) => (
                         <>
-                            <ModalHeader className="flex flex-col gap-1">
-                                Gestión de Unidades de Medida
+                            <ModalHeader className="flex items-center gap-3 py-4 border-b border-default-100">
+                                <div className="p-2 bg-yellow-100 rounded-full">
+                                    <Icon icon="lucide:plus-circle" className="text-yellow-600 text-xl" />
+                                </div>
+                                <h2 className="text-xl font-bold text-secondary dark:text-foreground">
+                                    {editingId ? 'Editar Unidad' : isAdding ? 'Nueva Unidad' : 'Gestión de Unidades'}
+                                </h2>
                             </ModalHeader>
-                            <ModalBody>
+                            <ModalBody className="py-6">
                                 <div className="flex flex-col gap-4">
                                     <div className="flex items-center justify-between">
                                         <h3 className="text-sm font-semibold text-default-500 uppercase">Lista de Unidades</h3>
@@ -256,60 +280,111 @@ const GestionUnidadesModal: React.FC<GestionUnidadesModalProps> = ({
                                             size="sm"
                                             color="primary"
                                             variant="flat"
-                                            onPress={() => setIsAdding(!isAdding)}
+                                            onPress={() => {
+                                                if (editingId) {
+                                                    setEditingId(null);
+                                                } else {
+                                                    setIsAdding(!isAdding);
+                                                }
+                                            }}
                                         >
-                                            <Icon icon={isAdding ? "lucide:minus" : "lucide:plus"} />
+                                            <Icon icon={(isAdding || editingId) ? "lucide:minus" : "lucide:plus"} />
                                         </Button>
                                     </div>
 
                                     {editingId ? (
-                                        <div className="flex flex-col gap-2 p-3 bg-default-100 rounded-xl animate-in fade-in slide-in-from-top-1">
-                                            <div className="flex gap-2 text-xs font-bold text-default-500 uppercase px-1">
-                                                Editando Unidad
-                                            </div>
-                                            <div className="flex gap-2">
+                                        <div className="flex flex-col gap-4 p-4 bg-default-50 rounded-xl border border-default-200 shadow-sm animate-in fade-in slide-in-from-top-1">
+                                            <Input
+                                                label="Nombre"
+                                                placeholder="Nombre de la unidad"
+                                                value={editNombre}
+                                                onValueChange={setEditNombre}
+                                                variant="bordered"
+                                                isRequired
+                                            />
+                                            <div className="grid grid-cols-2 gap-4">
                                                 <Input
-                                                    size="sm"
-                                                    label="Nombre"
-                                                    value={editNombre}
-                                                    onValueChange={setEditNombre}
-                                                />
-                                                <Input
-                                                    size="sm"
-                                                    label="Abrev."
+                                                    label="Abreviatura"
+                                                    placeholder="Ej: KG"
                                                     value={editAbreviatura}
                                                     onValueChange={setEditAbreviatura}
+                                                    variant="bordered"
+                                                    isRequired
                                                 />
+                                                <Select
+                                                    label="Tipo"
+                                                    placeholder="Seleccione tipo"
+                                                    selectedKeys={editEsFraccionario ? [editEsFraccionario] : []}
+                                                    onSelectionChange={(keys) => setEditEsFraccionario(Array.from(keys)[0] as string)}
+                                                    variant="bordered"
+                                                    isRequired
+                                                >
+                                                    <SelectItem key="entera" textValue="Entero">Entero</SelectItem>
+                                                    <SelectItem key="decimal" textValue="Decimal">Decimal</SelectItem>
+                                                </Select>
                                             </div>
                                             <div className="flex gap-2">
-                                                <Button size="sm" color="primary" onPress={handleActualizar} className="flex-1">
+                                                <Button
+                                                    color="primary"
+                                                    onPress={handleActualizar}
+                                                    className="flex-1 font-bold"
+                                                    isDisabled={
+                                                        !editNombre.trim() ||
+                                                        !editAbreviatura.trim() ||
+                                                        !editEsFraccionario ||
+                                                        (
+                                                            !!originalData &&
+                                                            editNombre.trim().toLowerCase() === originalData.nombre.toLowerCase() &&
+                                                            editAbreviatura.trim().toLowerCase() === originalData.abreviatura.toLowerCase() &&
+                                                            (editEsFraccionario === 'decimal') === originalData.esFraccionario
+                                                        )
+                                                    }
+                                                >
                                                     Guardar Cambios
                                                 </Button>
-                                                <Button size="sm" variant="flat" onPress={() => setEditingId(null)}>
+                                                <Button variant="flat" onPress={() => setEditingId(null)} className="flex-1">
                                                     Cancelar
                                                 </Button>
                                             </div>
                                         </div>
                                     ) : isAdding && (
-                                        <div className="flex flex-col gap-2 p-3 bg-default-50 rounded-xl animate-in fade-in slide-in-from-top-1">
-                                            <div className="flex gap-2">
+                                        <div className="flex flex-col gap-4 p-4 bg-default-50 rounded-xl border border-default-200 shadow-sm animate-in fade-in slide-in-from-top-1">
+                                            <Input
+                                                label="Nombre"
+                                                placeholder="Nombre de la unidad"
+                                                value={nombre}
+                                                onValueChange={setNombre}
+                                                variant="bordered"
+                                                isRequired
+                                            />
+                                            <div className="grid grid-cols-2 gap-4">
                                                 <Input
-                                                    size="sm"
-                                                    label="Nombre"
-                                                    placeholder="Ej: Kilogramo"
-                                                    value={nombre}
-                                                    onValueChange={setNombre}
-                                                />
-                                                <Input
-                                                    size="sm"
-                                                    label="Abrev."
-                                                    placeholder="Ej: kg"
+                                                    label="Abreviatura"
+                                                    placeholder="Ej: KG"
                                                     value={abreviatura}
                                                     onValueChange={setAbreviatura}
+                                                    variant="bordered"
+                                                    isRequired
                                                 />
+                                                <Select
+                                                    label="Tipo"
+                                                    placeholder="Seleccione tipo"
+                                                    selectedKeys={esFraccionario ? [esFraccionario] : []}
+                                                    onSelectionChange={(keys) => setEsFraccionario(Array.from(keys)[0] as string)}
+                                                    variant="bordered"
+                                                    isRequired
+                                                >
+                                                    <SelectItem key="entera" textValue="Entero">Entero</SelectItem>
+                                                    <SelectItem key="decimal" textValue="Decimal">Decimal</SelectItem>
+                                                </Select>
                                             </div>
-                                            <Button size="sm" color="primary" onPress={handleAgregar} className="w-full">
-                                                Añadir Unidad
+                                            <Button
+                                                color="primary"
+                                                onPress={handleAgregar}
+                                                className="w-full font-bold"
+                                                isDisabled={!nombre.trim() || !abreviatura.trim() || !esFraccionario}
+                                            >
+                                                Crear Unidad
                                             </Button>
                                         </div>
                                     )}
@@ -332,6 +407,12 @@ const GestionUnidadesModal: React.FC<GestionUnidadesModalProps> = ({
                                                         </span>
                                                         <div className="flex items-center gap-2">
                                                             <span className="text-[10px] bg-default-200 px-1 rounded text-default-500 uppercase font-bold">{uni.abreviatura}</span>
+                                                            <span className={`text-[10px] px-1.5 py-0.5 rounded uppercase font-bold ${uni.esFraccionario
+                                                                    ? 'bg-[#FFF0EE] dark:bg-[#FF7052]/10 text-[#FF7052]'
+                                                                    : 'bg-warning-50 dark:bg-warning-50/10 text-warning-600 dark:text-warning-400'
+                                                                }`}>
+                                                                {uni.esFraccionario ? 'Decimal' : 'Entero'}
+                                                            </span>
                                                             <span className="text-xs text-default-400 italic">
                                                                 {uni.asociados ?? 0} {uni.asociados === 1 ? 'producto' : 'productos'}
                                                             </span>
@@ -359,13 +440,26 @@ const GestionUnidadesModal: React.FC<GestionUnidadesModalProps> = ({
                                                         {togglingIds.has(uni.id) && (
                                                             <Spinner size="sm" color="success" />
                                                         )}
-                                                        <Switch
-                                                            size="sm"
-                                                            isSelected={uni.activo}
-                                                            onValueChange={() => handleToggleActivo(uni.id, uni.activo)}
-                                                            color="success"
-                                                            isDisabled={togglingIds.has(uni.id)}
-                                                        />
+                                                        <label className={`relative inline-flex items-center cursor-pointer transition-all duration-300 ${togglingIds.has(uni.id) ? 'opacity-50 pointer-events-none' : ''}`}>
+                                                            <input
+                                                                type="checkbox"
+                                                                className="sr-only peer"
+                                                                checked={uni.activo}
+                                                                onChange={() => handleToggleActivo(uni.id, uni.activo)}
+                                                                disabled={togglingIds.has(uni.id)}
+                                                            />
+                                                            <div className="w-11 h-6 bg-default-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-success flex items-center justify-between px-1 gap-1">
+                                                                <svg aria-label="enabled" className={`w-3 h-3 text-white transition-opacity duration-300 ${uni.activo ? 'opacity-100' : 'opacity-0'}`} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                                                                    <g strokeLinejoin="round" strokeLinecap="round" strokeWidth="4" fill="none" stroke="currentColor">
+                                                                        <path d="M20 6 9 17l-5-5"></path>
+                                                                    </g>
+                                                                </svg>
+                                                                <svg aria-label="disabled" className={`w-3 h-3 text-default-400 transition-opacity duration-300 ${!uni.activo ? 'opacity-100' : 'opacity-0'}`} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
+                                                                    <path d="M18 6 6 18" />
+                                                                    <path d="m6 6 12 12" />
+                                                                </svg>
+                                                            </div>
+                                                        </label>
                                                     </div>
                                                 </div>
                                             ))

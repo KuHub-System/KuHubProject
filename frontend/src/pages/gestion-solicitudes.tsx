@@ -79,8 +79,6 @@ const GestionSolicitudesPage: React.FC = () => {
         setUsuarios(profesores);
       }
     } catch (error) {
-      console.error('Error al cargar datos:', error);
-      toast.error('Error al cargar las solicitudes');
     } finally {
       setIsLoading(false);
     }

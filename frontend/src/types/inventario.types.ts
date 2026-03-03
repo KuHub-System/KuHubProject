@@ -16,5 +16,6 @@ export interface IUnidadMedida {
   nombre: string;
   abreviatura: string;
   activo: boolean; // Para "prender y apagar"
+  esFraccionario: boolean; // Tipo: Entera (false) o Decimal (true)
   asociados?: number; // Cantidad de productos asociados
 }

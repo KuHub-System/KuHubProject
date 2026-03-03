@@ -12,10 +12,24 @@ export type RolUsuario =
   | 'Asistente de Bodega';
 
 export interface IUsuarioAuth {
+  id: string;
   nombreCompleto: string;
   correo: string;
   rol: RolUsuario;
-  fotoPerfil?: string; // URL o base64 de la imagen  
+  fotoPerfil?: string;
+  fechaCreacion: string;
+  ultimoAcceso?: string;
+}
+
+export interface IUsuario {
+  id: string;
+  nombreCompleto: string;
+  correo: string;
+  contrasena?: string;
+  rol: string;
+  fotoPerfil?: string;
+  activo: boolean;
+  fechaCreacion: string;
   ultimoAcceso?: string;
 }
 

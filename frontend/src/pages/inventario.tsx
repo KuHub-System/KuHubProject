@@ -26,7 +26,8 @@ import {
   CardBody,
   Select,
   SelectItem,
-  Tooltip
+  Tooltip,
+  Spinner
 } from '@heroui/react';
 import { Icon } from '@iconify/react';
 import { usePageTitle } from '../hooks/usePageTitle';
@@ -112,6 +113,10 @@ const InventarioPage: React.FC = () => {
   const [confirmText, setConfirmText] = React.useState('');
   const [isDeleting, setIsDeleting] = React.useState(false);
   const [productoParaEliminar, setProductoParaEliminar] = React.useState<IProducto | null>(null);
+  const scrollerRef = React.useRef<HTMLDivElement>(null);
+  const isScrollingRef = React.useRef(false);
+  const isLoadingRef = React.useRef(false);
+  const nextPageRef = React.useRef(1); // Tracker para carga secuencial
 
   usePageTitle('Inventario', 'Gestione los productos del inventario, vea movimientos y actualice existencias.');
 
@@ -138,7 +143,7 @@ const InventarioPage: React.FC = () => {
       setUnidadesActivas(resUnidadesActivas);
 
     } catch (error) {
-      logger.error('Error al cargar filtros:', error);
+      // Error cargando filtros
     }
   }, []);
 
@@ -146,7 +151,9 @@ const InventarioPage: React.FC = () => {
    * Carga de forma silenciosa la siguiente página de la API.
    */
   const prefetchSiguientePagina = React.useCallback(async (currentUiPage: number) => {
-    const apiPageToPrefetch = currentUiPage < 2 ? 2 : currentUiPage;
+    // Si la primera página trajo 20 items, la siguiente API page a prefetch es la 3 (que corresponde a UI page 3)
+    // Si la primera página trajo 10 items, la siguiente API page a prefetch es la 2 (que corresponde a UI page 2)
+    const apiPageToPrefetch = currentUiPage === 1 && productos.length === 20 ? 3 : currentUiPage + 1;
 
     if (cacheRef.current[apiPageToPrefetch] || apiPageToPrefetch > totalPaginas) return;
 
@@ -154,13 +161,12 @@ const InventarioPage: React.FC = () => {
       let response;
       const currentSearch = searchTermRef.current;
       const currentSearchCode = searchCodeRef.current;
+      const size = 10; // Prefetch siempre de 10 en 10
 
       if (currentSearchCode) {
-        console.log(`🚀 Prefetching Search Results API Page ${apiPageToPrefetch} para código: "${currentSearchCode}"`);
-        response = await buscarProductosPorCodigoService(currentSearchCode, apiPageToPrefetch);
+        response = await buscarProductosPorCodigoService(currentSearchCode, apiPageToPrefetch, size);
       } else if (currentSearch) {
-        console.log(`🚀 Prefetching Search Results API Page ${apiPageToPrefetch} para term: "${currentSearch}"`);
-        response = await buscarProductosService(currentSearch, apiPageToPrefetch);
+        response = await buscarProductosService(currentSearch, apiPageToPrefetch, size);
       } else {
         const currentFilters = Array.from(filtersRef.current);
         const categoriasIds = currentFilters
@@ -175,12 +181,12 @@ const InventarioPage: React.FC = () => {
 
         const soloStockBajo = filtersRef.current.has('stock-bajo');
 
-        console.log(`🚀 Prefetching API Page ${apiPageToPrefetch} con filtros:`, currentFilters);
         response = await obtenerProductosPaginadosService({
           page: apiPageToPrefetch,
           categoriasIds,
           unidadesIds,
-          soloStockBajo
+          soloStockBajo,
+          pageSize: size
         });
       }
 
@@ -188,90 +194,130 @@ const InventarioPage: React.FC = () => {
       cacheRef.current[apiPageToPrefetch] = productosTransformados;
       setCache(prev => ({ ...prev, [apiPageToPrefetch]: productosTransformados }));
     } catch (e) {
-      console.warn('Silent prefetch failed', e);
+      // Prefetch fallido silenciosamente
     }
-  }, [totalPaginas]);
+  }, [totalPaginas, productos.length]);
 
   /**
    * Carga los productos usando una caché local para manejar la asimetría del backend.
    */
-  const cargarProductosPaginados = React.useCallback(async (uiPage: number, forceFetch: boolean = false) => {
-    const apiPage = uiPage <= 2 ? 1 : uiPage - 1;
+  const cargarProductosPaginados = React.useCallback(async (uiPage: number, forceFetch = false) => {
+    // Si ya estamos cargando y no es forzado, salimos para evitar duplicados
+    if (isLoadingRef.current && !forceFetch) return;
 
-    if (forceFetch) {
-      setProductos([]);
-      setFilteredProductos([]);
-      cacheRef.current = {};
-      setCache({});
-    }
+    // Ya tenemos estos datos?
+    if (!forceFetch && cacheRef.current[uiPage]) {
+      const cachedItems = cacheRef.current[uiPage];
+      setProductos(prev => {
+        const existingIds = new Set(prev.map(p => p.id));
+        const newItems = cachedItems.filter(p => !existingIds.has(p.id));
 
-    if (!forceFetch && cacheRef.current[apiPage]) {
-      console.log(`📦 Usando caché para API Page ${apiPage}`);
-      setIsLoading(false);
-      setProductos(cacheRef.current[apiPage]);
-      prefetchSiguientePagina(uiPage);
+        // Si al descargar la caché el contador de página actual es menor, lo actualizamos
+        if (newItems.length > 0) {
+          nextPageRef.current = Math.max(nextPageRef.current, uiPage + 1);
+        }
+
+        return [...prev, ...newItems];
+      });
       return;
     }
 
     try {
       setIsLoading(true);
+      isLoadingRef.current = true;
       let response;
       const currentSearch = searchTermRef.current;
       const currentSearchCode = searchCodeRef.current;
 
+      // El backend aplica offset = (page-1) * pageSize
+      // Page 1, Size 20 -> 0-19
+      // Page 3, Size 10 -> 20-29
+      const apiPage = uiPage;
+      const size = uiPage === 1 ? 20 : 10;
+
+
       if (currentSearchCode) {
-        console.log(`🔍 Realizando búsqueda global por código: "${currentSearchCode}", API Page: ${apiPage}`);
-        response = await buscarProductosPorCodigoService(currentSearchCode, apiPage);
+        response = await buscarProductosPorCodigoService(currentSearchCode, apiPage, size);
       } else if (currentSearch) {
-        console.log(`🔍 Realizando búsqueda global para: "${currentSearch}", API Page: ${apiPage}`);
-        response = await buscarProductosService(currentSearch, apiPage);
+        response = await buscarProductosService(currentSearch, apiPage, size);
       } else {
-        const currentFilters = Array.from(filtersRef.current);
-        const categoriasIds = currentFilters
-          .filter(f => f && typeof f === 'string' && f.startsWith('cat-'))
-          .map(f => parseInt(f.replace('cat-', '')))
-          .filter(id => !isNaN(id));
+        const categoriesKeys = Array.from(filtersRef.current);
+        const categoriesFiltered = categoriesKeys.filter(k => k.startsWith('cat-'));
+        const unitFiltered = categoriesKeys.filter(k => k.startsWith('uni-'));
 
-        const unidadesIds = currentFilters
-          .filter(f => f && typeof f === 'string' && f.startsWith('uni-'))
-          .map(f => parseInt(f.replace('uni-', '')))
-          .filter(id => !isNaN(id));
+        const categoriasIds = categoriesKeys.includes('todas') || categoriesKeys.includes('stock-bajo')
+          ? []
+          : categoriesFiltered.map(k => parseInt(k.replace('cat-', '')));
 
-        const soloStockBajo = filtersRef.current.has('stock-bajo');
+        const soloStockBajo = categoriesKeys.includes('stock-bajo');
+        const unidadesIds = unitFiltered.map(k => parseInt(k.replace('uni-', '')));
 
         const requestBody = {
           page: apiPage,
           categoriasIds,
           unidadesIds,
           soloStockBajo,
-          pageSize: apiPage === 1 ? 20 : 10
+          pageSize: size
         };
 
-        console.log('📦 Enviando request de inventario paginado:', requestBody);
         response = await obtenerProductosPaginadosService(requestBody);
       }
 
       const productosTransformados = response.items.map(transformarPageItemAProducto);
-      cacheRef.current[apiPage] = productosTransformados;
-      setCache(prev => ({ ...prev, [apiPage]: productosTransformados }));
-      setProductos(productosTransformados);
 
-      console.log(`📊 Metadatos recibidos: totalItems=${response.totalItems}, totalPages=${response.totalPages}`);
+      if (forceFetch || uiPage === 1) {
+        if (forceFetch) {
+          cacheRef.current = {};
+          setCache({});
+        }
 
-      if (forceFetch || uiPage === 1 || totalRegistros === 0) {
-        const calculatedUiPages = Math.ceil(response.totalItems / 10);
-        setTotalPaginas(calculatedUiPages);
-        setTotalRegistros(response.totalItems);
+        setProductos(productosTransformados);
+
+        // El cache por UI page
+        if (uiPage === 1 && size === 20) {
+          cacheRef.current[1] = productosTransformados.slice(0, 10);
+          cacheRef.current[2] = productosTransformados.slice(10, 20);
+          setCache(prev => ({ ...prev, [1]: productosTransformados.slice(0, 10), [2]: productosTransformados.slice(10, 20) }));
+          nextPageRef.current = 3; // Siguiente es la 3
+        } else {
+          cacheRef.current[uiPage] = productosTransformados;
+          setCache(prev => ({ ...prev, [uiPage]: productosTransformados }));
+          nextPageRef.current = Math.max(nextPageRef.current, uiPage + 1);
+        }
+      } else {
+        // Para scroll infinito, acumulamos en productos si no están ya
+        setProductos(prev => {
+          const existingIds = new Set(prev.map(p => p.id));
+          const newItems = productosTransformados.filter(p => !existingIds.has(p.id));
+          return [...prev, ...newItems];
+        });
+
+        // También guardamos en caché individual por si acaso
+        cacheRef.current[uiPage] = productosTransformados;
+        setCache(prev => ({ ...prev, [uiPage]: productosTransformados }));
+        nextPageRef.current = Math.max(nextPageRef.current, uiPage + 1);
       }
 
+
+      // totalPaginas ahora se calcula en bloques de 10, incluso si la primera página trae 20
+      const calculatedUiPages = Math.ceil(response.totalItems / 10);
+      setTotalPaginas(calculatedUiPages);
+      setTotalRegistros(response.totalItems);
+
+      checkpointPaginationScroll(apiPage);
       prefetchSiguientePagina(uiPage);
     } catch (error) {
-      logger.error('Error al cargar productos:', error);
       toast.error('Error al cargar productos');
     } finally {
       setIsLoading(false);
+      isLoadingRef.current = false;
     }
-  }, [totalRegistros, toast, prefetchSiguientePagina]);
+  }, [toast, prefetchSiguientePagina, productos.length]);
+
+  const checkpointPaginationScroll = React.useCallback((apiPage: number) => {
+    // Si saltamos a una página lejana vía paginación, limpiamos y cargamos desde ahí
+    // Pero para scroll infinito simple, esto ayuda a saber dónde estamos.
+  }, []);
 
   React.useEffect(() => {
     cargarFiltros();
@@ -288,15 +334,51 @@ const InventarioPage: React.FC = () => {
   // Recargar filtros (categorías activas) cada vez que se abre el modal de producto
   React.useEffect(() => {
     if (isOpen) {
-      console.log('🔄 Refrescando categorías activas al abrir el modal...');
       cargarFiltros();
     }
   }, [isOpen, cargarFiltros]);
 
-  // Cargar productos cuando cambian la página de la UI
+  // Cargar productos iniciales
   React.useEffect(() => {
-    cargarProductosPaginados(currentPage);
-  }, [currentPage, cargarProductosPaginados]);
+    cargarProductosPaginados(1);
+  }, [cargarProductosPaginados]);
+
+  /**
+   * Maneja el scroll para sincronizar la paginación y cargar más datos.
+   */
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const scroller = e.currentTarget;
+    if (!scroller) return;
+
+    const scrollTop = scroller.scrollTop;
+    const clientHeight = scroller.clientHeight;
+    const scrollHeight = scroller.scrollHeight;
+
+    // Trigger para cargar más: si el scroll está cerca del fondo
+    const scrollBottom = scrollTop + clientHeight;
+    const threshold = scrollHeight - 1200; // Gatillo aún más preventivo (1200px)
+
+    if (scrollBottom > threshold && !isLoading && !isLoadingRef.current) {
+      if (productos.length < totalRegistros) {
+        const pageToLoad = nextPageRef.current;
+        cargarProductosPaginados(pageToLoad);
+      }
+    }
+
+    // Usar una referencia para evitar actualizaciones de estado a 60fps
+    if (!isScrollingRef.current) {
+      isScrollingRef.current = true;
+
+      const visualPage = Math.floor(scrollTop / (60 * 10)) + 1;
+      if (visualPage !== currentPage && visualPage > 0 && visualPage <= totalPaginas) {
+        setCurrentPage(visualPage);
+      }
+
+      setTimeout(() => {
+        isScrollingRef.current = false;
+      }, 100); // Throttle de 100ms para actualizaciones visuales
+    }
+  };
 
   React.useEffect(() => {
     const handleProductosActualizados = () => {
@@ -316,7 +398,6 @@ const InventarioPage: React.FC = () => {
     if (searchTerm === debouncedSearchTerm && searchCode === debouncedSearchCode) return;
 
     const handler = setTimeout(() => {
-      console.log(`⏳ Debounce completo: term="${searchTerm}", code="${searchCode}"`);
       setDebouncedSearchTerm(searchTerm);
       searchTermRef.current = searchTerm;
 
@@ -388,28 +469,20 @@ const InventarioPage: React.FC = () => {
    * usando los datos cargados en la caché de la API.
    */
   const paginatedProductos = React.useMemo(() => {
-    const apiPage = currentPage <= 2 ? 1 : currentPage - 1;
-    const data = cache[apiPage] || [];
-
-    if (currentPage === 1) {
-      return data.slice(0, 10);
-    }
-    if (currentPage === 2) {
-      return data.slice(10, 20);
-    }
-
-    // Para UI 3+, el backend devuelve 10 registros por página,
-    // así que los mostramos completos.
-    return data;
-  }, [currentPage, cache]);
+    // Para scroll infinito continuo, mostramos todos los productos acumulados
+    // Pero si el usuario cambia de página vía botones, quizás quiera saltar?
+    // Por ahora, devolvemos la lista completa para permitir scroll fluido.
+    return productos;
+  }, [productos]);
 
   /**
-   * Navega a la página de movimientos del producto.
-   * 
-   * @param {string} id - ID del producto.
-   */
-  const verMovimientos = (id: string) => {
-    history.push(`/movimientos?productoId=${id}`);
+ * Navega a la página de movimientos del producto.
+ * 
+ * @param {string} id - ID del producto.
+ * @param {string} nombre - Nombre del producto.
+ */
+  const verMovimientos = (id: string, nombre: string) => {
+    history.push(`/movimientos?productoId=${id}&nombre=${encodeURIComponent(nombre)}`);
   };
 
   /**
@@ -493,7 +566,6 @@ const InventarioPage: React.FC = () => {
    * @param {IProducto} productoActualizado - El producto con los datos frescos del servidor.
    */
   const handleConflictSync = React.useCallback((productoActualizado: IProducto) => {
-    console.log(`🔄 Sincronizando item ID: ${productoActualizado.id} en caché local`);
 
     // 1. Actualizar estado 'productos'
     setProductos(prev => prev.map(p => p.id === productoActualizado.id ? productoActualizado : p));
@@ -502,7 +574,7 @@ const InventarioPage: React.FC = () => {
     setFilteredProductos(prev => prev.map(p => p.id === productoActualizado.id ? productoActualizado : p));
 
     // 3. Buscar en qué página está en la caché y actualizarla (usamos la página actual para simplificar)
-    const apiPage = currentPage <= 2 ? 1 : currentPage - 1;
+    const apiPage = currentPage;
 
     if (cacheRef.current[apiPage]) {
       cacheRef.current[apiPage] = cacheRef.current[apiPage].map(p =>
@@ -618,7 +690,6 @@ const InventarioPage: React.FC = () => {
               <div className="flex gap-4 w-full md:w-auto">
                 <Dropdown onOpenChange={(isOpen) => {
                   if (!isOpen) {
-                    console.log('🔴 Dropdown cerrado, actualizando resultados con filtros:', Array.from(filtersRef.current));
                     cacheRef.current = {};
                     setCache({});
                     setCurrentPage(1);
@@ -689,137 +760,163 @@ const InventarioPage: React.FC = () => {
           </CardBody>
         </Card>
 
-        {/* Tabla de productos */}
+        {/* Tabla de productos con scroll manual */}
         <Card className="shadow-md border border-default-200 dark:border-default-100 bg-white dark:bg-content1">
           <CardBody className="p-0">
-            <Table
-              aria-label="Tabla de productos"
-              removeWrapper
-              classNames={{
-                th: "bg-default-100 dark:bg-default-50/20 text-default-500 font-bold uppercase text-xs h-12",
-                td: "py-3 border-b border-default-50 dark:border-default-50/10 group-data-[last=true]:border-none"
-              }}
-              bottomContent={
-                totalRegistros > 0 ? (
-                  <div className="flex w-full justify-center py-4 border-t border-default-100">
-                    <Pagination
-                      total={totalPaginas}
-                      page={currentPage}
-                      onChange={setCurrentPage}
-                      showControls
-                      color="primary"
-                      variant="light"
-                      // Hidden if only one page to keep it clean
-                      className={totalPaginas <= 1 ? "hidden" : ""}
-                    />
-                  </div>
-                ) : null
-              }
+            <div
+              ref={scrollerRef}
+              onScroll={handleScroll}
+              className="max-h-[600px] overflow-y-auto relative scrollbar-hide scroll-smooth overscroll-contain snap-y snap-proximity"
             >
-              <TableHeader>
-                <TableColumn>NOMBRE</TableColumn>
-                <TableColumn>CATEGORÍA</TableColumn>
-                <TableColumn align="center">STOCK</TableColumn>
-                <TableColumn align="center">STOCK MÍNIMO</TableColumn>
-                <TableColumn>UNIDAD</TableColumn>
-                <TableColumn align="center">ESTADO</TableColumn>
-                <TableColumn align="center">ACCIONES</TableColumn>
-              </TableHeader>
-              <TableBody
-                isLoading={isLoading}
-                loadingContent={<div className="py-8 text-center">Cargando productos...</div>}
-                emptyContent={
-                  <div className="py-12 text-center text-default-400">
-                    <Icon icon="lucide:package-open" className="mx-auto mb-3 opacity-50" width={48} />
-                    <p className="text-lg font-medium">No se encontraron productos</p>
-                    <p className="text-sm">Intenta ajustar los filtros o agrega un nuevo producto.</p>
-                  </div>
+              <Table
+                aria-label="Tabla de inventario"
+                isHeaderSticky
+                removeWrapper
+                className="min-w-full"
+                layout="fixed"
+                classNames={{
+                  table: "min-w-full table-fixed border-collapse",
+                  thead: "[&>tr]:first:shadow-none sticky top-0 z-20",
+                  th: "bg-default-100 dark:bg-default-50/20 text-black dark:text-white font-bold uppercase text-xs h-12 sticky top-0 z-20 border-b border-default-200/50 shadow-sm border-x-0 outline-none",
+                  td: "py-3 border-b border-default-50 dark:border-default-50/10 group-data-[last=true]:border-none"
+                }}
+                bottomContent={
+                  isLoading && productos.length > 0 ? (
+                    <div className="flex w-full justify-center py-4">
+                      <Spinner size="sm" label="Cargando más..." color="primary" labelColor="primary" />
+                    </div>
+                  ) : null
                 }
               >
-                {paginatedProductos.map((producto) => (
-                  <TableRow
-                    key={producto.id}
-                    className="cursor-pointer hover:bg-default-50 dark:hover:bg-default-100/50 transition-colors"
-                    onClick={() => verMovimientos(producto.id)}
-                  >
-                    <TableCell>
-                      <span className="font-semibold text-secondary dark:text-foreground">{producto.nombre}</span>
-                      {producto.descripcion && (
-                        <p className="text-xs text-default-400 truncate max-w-xs">{producto.descripcion}</p>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <Chip size="sm" variant="flat" className="bg-default-100 dark:bg-default-100/50 text-default-600 dark:text-default-300">
-                        {producto.categoria}
-                      </Chip>
-                    </TableCell>
-                    <TableCell>
-                      <span className={`font-bold ${producto.stock <= producto.stockMinimo ? 'text-danger' : 'text-default-700 dark:text-default-300'}`}>
-                        {producto.stock}
-                      </span>
-                    </TableCell>
-                    <TableCell>{producto.stockMinimo}</TableCell>
-                    <TableCell className="text-default-500">{producto.unidadMedida}</TableCell>
-                    <TableCell>{renderStockStatus(producto)}</TableCell>
-                    <TableCell>
-                      <div className="flex justify-center gap-1" onClick={(e) => e.stopPropagation()}>
-                        <Tooltip content="Editar" color="primary" closeDelay={0}>
-                          <Button
-                            isIconOnly
-                            variant="light"
-                            size="sm"
-                            onPress={() => handleEditarProducto(producto)}
-                            className="text-default-400 hover:text-primary"
-                          >
-                            <Icon icon="lucide:edit" width={18} />
-                          </Button>
+                <TableHeader>
+                  <TableColumn width="30%" align="center" className="truncate text-center">NOMBRE PRODUCTO</TableColumn>
+                  <TableColumn width="15%" align="center" className="truncate text-center">CATEGORÍA</TableColumn>
+                  <TableColumn width="10%" align="center" className="truncate text-center">STOCK</TableColumn>
+                  <TableColumn width="10%" align="center" className="truncate text-center">STOCK MÍN</TableColumn>
+                  <TableColumn width="10%" align="center" className="truncate text-center">UNIDAD</TableColumn>
+                  <TableColumn width="15%" align="center" className="truncate text-center">ESTADO</TableColumn>
+                  <TableColumn width="10%" align="center" className="truncate text-center">ACCIONES</TableColumn>
+                </TableHeader>
+                <TableBody
+                  isLoading={isLoading && productos.length === 0}
+                  loadingContent={<div className="py-8 text-center text-primary"><Spinner /> Cargando productos...</div>}
+                  emptyContent={
+                    <div className="py-12 text-center text-default-400">
+                      <Icon icon="lucide:package-open" className="mx-auto mb-3 opacity-50" width={48} />
+                      <p className="text-lg font-medium">No se encontraron productos</p>
+                      <p className="text-sm">Intenta ajustar los filtros o agrega un nuevo producto.</p>
+                    </div>
+                  }
+                >
+                  {paginatedProductos.map((producto) => (
+                    <TableRow
+                      key={producto.id}
+                      className="cursor-pointer hover:bg-default-50 dark:hover:bg-default-100/50 transition-colors duration-200 snap-start"
+                      style={{
+                        contentVisibility: 'auto',
+                        containIntrinsicSize: '60px 60px',
+                        willChange: 'transform'
+                      } as any}
+                      onClick={() => handleEditarProducto(producto)}
+                    >
+                      <TableCell>
+                        <Tooltip content="Control de Inventario" color="primary" delay={100} closeDelay={0}>
+                          <div className="w-full overflow-hidden text-center">
+                            <span className="font-semibold text-secondary dark:text-foreground block truncate">{producto.nombre}</span>
+                            {producto.descripcion && (
+                              <p className="text-xs text-default-400 truncate w-full">{producto.descripcion}</p>
+                            )}
+                          </div>
                         </Tooltip>
-
-                        <Tooltip content="Ir a movimientos" color="secondary" closeDelay={0}>
-                          <Button
-                            isIconOnly
-                            variant="light"
-                            size="sm"
-                            onPress={() => verMovimientos(producto.id)}
-                            className="text-default-400 hover:text-secondary"
-                          >
-                            <Icon icon="lucide:list" width={18} />
-                          </Button>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <Tooltip content="Control de Inventario" color="primary" delay={100} closeDelay={0}>
+                          <div className="flex justify-center w-full">
+                            <Chip size="sm" variant="flat" className="bg-default-100 dark:bg-default-100/50 text-default-600 dark:text-default-300">
+                              {producto.categoria}
+                            </Chip>
+                          </div>
                         </Tooltip>
-
-                        {esAdministrador && (
-                          <Tooltip content="Eliminar" color="danger" closeDelay={0}>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <Tooltip content="Control de Inventario" color="primary" delay={100} closeDelay={0}>
+                          <span className={`font-bold ${producto.stock <= producto.stockMinimo ? 'text-danger' : 'text-default-700 dark:text-default-300'}`}>
+                            {producto.stock}
+                          </span>
+                        </Tooltip>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <Tooltip content="Control de Inventario" color="primary" delay={100} closeDelay={0}>
+                          <span>{producto.stockMinimo}</span>
+                        </Tooltip>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <Tooltip content="Control de Inventario" color="primary" delay={100} closeDelay={0}>
+                          <span className="text-default-500">{producto.unidadMedida}</span>
+                        </Tooltip>
+                      </TableCell>
+                      <TableCell>
+                        <Tooltip content="Control de Inventario" color="primary" delay={100} closeDelay={0} className="w-full">
+                          <div className="w-full h-full">{renderStockStatus(producto)}</div>
+                        </Tooltip>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex justify-center gap-1" onClick={(e) => e.stopPropagation()}>
+                          <Tooltip content="Control de Inventario" color="secondary" delay={100} closeDelay={0}>
                             <Button
                               isIconOnly
                               variant="light"
                               size="sm"
-                              color="danger"
-                              onPress={() => handleEliminarProducto(producto)}
-                              className="text-default-400 hover:text-danger"
+                              onPress={() => verMovimientos(producto.id, producto.nombre)}
+                              className="text-default-400 hover:text-secondary"
                             >
-                              <Icon icon="lucide:trash" width={18} />
+                              <Icon icon="lucide:arrow-right" width={18} />
                             </Button>
                           </Tooltip>
-                        )}
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+
+                          {esAdministrador && (
+                            <Tooltip content="Eliminar" color="danger" delay={100} closeDelay={0}>
+                              <Button
+                                isIconOnly
+                                variant="light"
+                                size="sm"
+                                color="danger"
+                                onPress={() => handleEliminarProducto(producto)}
+                                className="text-default-400 hover:text-danger"
+                              >
+                                <Icon icon="lucide:trash" width={18} />
+                              </Button>
+                            </Tooltip>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           </CardBody>
         </Card>
       </motion.div>
 
       {/* Modal para crear/editar producto */}
-      <Modal isOpen={isOpen} onOpenChange={onOpenChange} size="lg" backdrop="blur">
+      <Modal
+        isOpen={isOpen}
+        onOpenChange={onOpenChange}
+        size="lg"
+        backdrop="blur"
+        placement="top"
+        classNames={{
+          base: "mt-4"
+        }}
+      >
         <ModalContent>
           {(onClose) => (
             <>
-              <ModalHeader className="border-b border-default-100 dark:border-default-50 bg-default-50 dark:bg-content2">
+              <ModalHeader className="border-b border-default-100 dark:border-default-50 bg-white dark:bg-content2">
                 <div className="flex items-center gap-2">
-                  <Icon icon={modalMode === 'crear' ? "lucide:plus-circle" : "lucide:edit-3"} className="text-primary" width={24} />
-                  <span className="font-bold text-lg text-secondary dark:text-foreground">{modalMode === 'crear' ? 'Nuevo Inventario' : 'Editar Inventario'}</span>
+                  <Icon icon={modalMode === 'crear' ? "lucide:plus-circle" : "lucide:package-check"} className="text-primary" width={24} />
+                  <span className="font-bold text-lg text-secondary dark:text-foreground">{modalMode === 'crear' ? 'Nuevo Inventario' : 'Control de Inventario'}</span>
                 </div>
               </ModalHeader>
               <ModalBody className="py-6">
@@ -890,7 +987,7 @@ const InventarioPage: React.FC = () => {
                   }}
                   className="w-full font-bold"
                 >
-                  Editar Inventario
+                  Control de Inventario
                 </Button>
                 <Button variant="light" onPress={onClose} className="w-full">
                   Cerrar
@@ -980,7 +1077,7 @@ const InventarioPage: React.FC = () => {
           )}
         </ModalContent>
       </Modal>
-    </div>
+    </div >
   );
 };
 
@@ -1026,6 +1123,31 @@ const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto, onClo
   const [tipoMovimiento, setTipoMovimiento] = React.useState('');
   const [isLoading, setIsLoading] = React.useState(false);
   const [mostrarAbreviatura, setMostrarAbreviatura] = React.useState(false);
+  const [editandoDatosBasicos, setEditandoDatosBasicos] = React.useState(mode === 'crear');
+
+  // Determinar si la unidad actual es fraccionaria
+  const esUnidadFraccionaria = React.useMemo(() => {
+    if (!idUnidadMedida) return true; // Por defecto permitir decimales si no hay unidad
+    const uni = unidades.find(u => u.id.toString() === idUnidadMedida);
+    return uni ? uni.esFraccionario : true;
+  }, [idUnidadMedida, unidades]);
+
+  // Limpiar decimales si se cambia a una unidad no fraccionaria
+  React.useEffect(() => {
+    if (!esUnidadFraccionaria) {
+      const limpiarDecimales = (val: string) => {
+        if (!val) return '0';
+        const num = parseFloat(val);
+        return isNaN(num) ? '0' : Math.floor(num).toString();
+      };
+
+      const newStock = limpiarDecimales(stock);
+      const newStockMin = limpiarDecimales(stockMinimo);
+
+      if (newStock !== stock) setStock(newStock);
+      if (newStockMin !== stockMinimo) setStockMinimo(newStockMin);
+    }
+  }, [esUnidadFraccionaria, stock, stockMinimo]);
 
   // Estado local para el producto de referencia (usado para validaciones de stock y cambios)
   // Se inicializa con el prop 'producto' pero puede actualizarse en caso de conflicto (409)
@@ -1111,7 +1233,6 @@ const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto, onClo
         };
 
         // --- NUEVA VALIDACIÓN ANTES DEL PATCH ---
-        console.log(`🛡️ Validando stock antes del Patch para ID: ${datosActualizacion.idInventario}`);
         const validationResult = await validateStockBeforeUpdatingService({
           idInventario: datosActualizacion.idInventario,
           validateStock: productoReferencia?.stock ?? 0 // Enviamos el stock original que teníamos al abrir/sync
@@ -1173,13 +1294,9 @@ const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto, onClo
 
       onClose();
     } catch (error: any) {
-      logger.error('Error al guardar producto:', error);
-
       const errorMessage = error instanceof Error ? error.message : 'Error al guardar el producto';
 
-      // Si el error es 410 (Eliminado por otro usuario), usamos título personalizado, refrescamos y cerramos
       if (error.status === 410) {
-        console.warn('🔄 Detectado error 410: Refrescando inventario y cerrando modal...');
         toast.error(errorMessage, 'Operación cancelada');
         window.dispatchEvent(new Event('productosActualizados'));
         onClose();
@@ -1220,22 +1337,31 @@ const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto, onClo
   let stockError = '';
   let diffText = '';
 
-  if (mode === 'editar' && tipoMovimiento && stock.trim() !== '') {
-    if (!isNaN(currentStockVal) && !isNaN(originalStockVal)) {
-      const diff = Math.abs(currentStockVal - originalStockVal);
-      if (diff > 0) {
-        // Formatear diferencia sin ceros innecesarios
-        const formattedDiff = parseFloat(diff.toFixed(3));
-        const motivoTarget = tipoMovimiento.toLowerCase();
+  const motivoDescripcion = React.useMemo(() => {
+    switch (tipoMovimiento) {
+      case 'Entrada': return "Registrando ingreso de mercadería al sistema del Inventario";
+      case 'Salida Inventario': return "Registrando retiro o consumo de productos al sistema del Inventario";
+      case 'Traslado': return "Iniciando movimiento a Bodega de Transito";
+      case 'Ajuste': return "Corrigiendo saldo para sincronizar con stock físico";
+      case 'Merma': return "Reportar Pérdida o Producto Dañado";
+      default: return "";
+    }
+  }, [tipoMovimiento]);
 
-        if ((tipoMovimiento === 'Entrada' || tipoMovimiento === 'Devolucion') && currentStockVal <= originalStockVal) {
-          stockError = `Para ${motivoTarget}, el stock debe ser mayor al actual (${originalStockVal})`;
-        } else if ((tipoMovimiento === 'Salida' || tipoMovimiento === 'Merma') && currentStockVal >= originalStockVal) {
-          stockError = `Para ${motivoTarget}, el stock debe ser menor al actual (${originalStockVal})`;
-        } else {
-          diffText = `Se registrarán ${formattedDiff} de ${motivoTarget} de movimiento.`;
-        }
+  if (mode === 'editar' && tipoMovimiento && stock.trim() !== '') {
+    if (tipoMovimiento === 'Entrada') {
+      if (currentStockVal <= originalStockVal) {
+        stockError = 'Para Entrada, el stock debe ser mayor al actual';
       }
+      diffText = currentStockVal > originalStockVal ? `+${(currentStockVal - originalStockVal).toFixed(3)}` : '';
+    } else if (tipoMovimiento === 'Salida Inventario' || tipoMovimiento === 'Traslado' || tipoMovimiento === 'Merma') {
+      if (currentStockVal >= originalStockVal) {
+        stockError = `Para ${tipoMovimiento}, el stock debe ser menor al actual`;
+      }
+      diffText = currentStockVal < originalStockVal ? `${(currentStockVal - originalStockVal).toFixed(3)}` : '';
+    } else if (tipoMovimiento === 'Ajuste') {
+      const diff = currentStockVal - originalStockVal;
+      diffText = diff > 0 ? `+${diff.toFixed(3)}` : diff < 0 ? `${diff.toFixed(3)}` : '0.000';
     }
   }
 
@@ -1253,6 +1379,26 @@ const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto, onClo
 
   return (
     <div className="space-y-4">
+      {mode === 'editar' && (
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-2 text-default-600 font-bold">
+            <Icon icon="lucide:package-2" width={20} />
+            <span>Datos del Producto</span>
+          </div>
+          <Button
+            isIconOnly
+            size="sm"
+            variant="flat"
+            color="warning"
+            onPress={() => setEditandoDatosBasicos(!editandoDatosBasicos)}
+            title={editandoDatosBasicos ? "Bloquear edición" : "Habilitar edición de campos básicos"}
+            className="shadow-sm"
+          >
+            <Icon icon={editandoDatosBasicos ? "lucide:lock-open" : "lucide:edit-2"} width={16} />
+          </Button>
+        </div>
+      )}
+
       <Input
         label="Nombre"
         placeholder="Nombre del producto"
@@ -1262,7 +1408,8 @@ const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto, onClo
         variant="bordered"
         maxLength={100}
         description={`${nombre.length}/100`}
-        classNames={{ inputWrapper: "bg-default-50 dark:bg-default-100/50" }}
+        isDisabled={!editandoDatosBasicos}
+        classNames={{ inputWrapper: "bg-white dark:bg-default-100/50" }}
       />
 
       <Input
@@ -1273,7 +1420,8 @@ const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto, onClo
         variant="bordered"
         maxLength={25}
         description={`${codProducto.length}/25`}
-        classNames={{ inputWrapper: "bg-default-50 dark:bg-default-100/50" }}
+        isDisabled={!editandoDatosBasicos}
+        classNames={{ inputWrapper: "bg-white dark:bg-default-100/50" }}
       />
 
       <Input
@@ -1284,7 +1432,8 @@ const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto, onClo
         variant="bordered"
         maxLength={100}
         description={`${descripcion.length}/100`}
-        classNames={{ inputWrapper: "bg-default-50 dark:bg-default-100/50" }}
+        isDisabled={!editandoDatosBasicos}
+        classNames={{ inputWrapper: "bg-white dark:bg-default-100/50" }}
       />
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1295,7 +1444,8 @@ const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto, onClo
           onChange={(e: any) => setIdCategoria(e.target.value)}
           isRequired
           variant="bordered"
-          classNames={{ trigger: "bg-default-50 dark:bg-default-100/50" }}
+          isDisabled={!editandoDatosBasicos}
+          classNames={{ trigger: "bg-white dark:bg-default-100/50" }}
         >
           {categorias.map(cat => (
             <SelectItem key={cat.id.toString()}>{cat.nombre}</SelectItem>
@@ -1310,7 +1460,8 @@ const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto, onClo
             onChange={(e: any) => setIdUnidadMedida(e.target.value)}
             isRequired
             variant="bordered"
-            classNames={{ trigger: "bg-default-50 dark:bg-default-100/50 pr-10" }}
+            isDisabled={!editandoDatosBasicos}
+            classNames={{ trigger: "bg-white dark:bg-default-100/50 pr-10" }}
           >
             {unidades.map(uni => (
               <SelectItem key={uni.id.toString()}>
@@ -1339,6 +1490,29 @@ const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto, onClo
         </div>
       </div>
 
+      {mode === 'editar' && (
+        <div className="pt-2">
+          {motivoDescripcion ? (
+            <motion.div
+              initial={{ opacity: 0, y: -5 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-4 p-3 bg-secondary/5 rounded-medium border border-secondary/10 dark:bg-white/5 dark:border-white/10"
+            >
+              <p className="text-secondary dark:text-foreground text-sm font-medium flex items-center gap-2">
+                <Icon icon="lucide:info" width={16} className="text-secondary" />
+                {motivoDescripcion}
+              </p>
+            </motion.div>
+          ) : (
+            <hr className="border-default-100 mb-4" />
+          )}
+          <div className="flex items-center gap-2 mb-4 text-warning font-bold">
+            <Icon icon="lucide:arrow-up-down" width={20} />
+            <span>Flujo de Stock</span>
+          </div>
+        </div>
+      )}
+
       <div className={`grid grid-cols-1 ${mode === 'editar' ? 'md:grid-cols-3' : 'md:grid-cols-2'} gap-4`}>
         <Input
           type="number"
@@ -1346,20 +1520,28 @@ const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto, onClo
           placeholder="Stock actual"
           value={stock}
           onValueChange={(val) => {
-            if (val === '' || /^\d{0,7}(\.\d{0,3})?$/.test(val)) {
+            if (val === '') {
+              setStock('');
+              return;
+            }
+
+            // Regex dinámico según si es fraccionario o no
+            const regex = esUnidadFraccionaria
+              ? /^\d{0,7}(\.\d{0,3})?$/
+              : /^\d{0,7}$/;
+
+            if (regex.test(val)) {
               setStock(val);
             }
           }}
           min="0"
           max="9999999.999"
-          step="0.001"
+          step={esUnidadFraccionaria ? "0.001" : "1"}
           isRequired
           isDisabled={mode === 'editar' && !tipoMovimiento}
-          isInvalid={!!stockError}
-          errorMessage={stockError}
-          description={diffText}
+          description={stockError || diffText}
           variant="bordered"
-          classNames={{ inputWrapper: "bg-default-50 dark:bg-default-100/50" }}
+          classNames={{ inputWrapper: "bg-white dark:bg-default-100/50" }}
         />
 
         <Input
@@ -1368,15 +1550,25 @@ const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto, onClo
           placeholder="Stock mínimo"
           value={stockMinimo}
           onValueChange={(val) => {
-            if (val === '' || /^\d{0,7}(\.\d{0,3})?$/.test(val)) {
+            if (val === '') {
+              setStockMinimo('');
+              return;
+            }
+
+            // Regex dinámico según si es fraccionario o no
+            const regex = esUnidadFraccionaria
+              ? /^\d{0,7}(\.\d{0,3})?$/
+              : /^\d{0,7}$/;
+
+            if (regex.test(val)) {
               setStockMinimo(val);
             }
           }}
           min="0"
           max="9999999.999"
-          step="0.001"
+          step={esUnidadFraccionaria ? "0.001" : "1"}
           variant="bordered"
-          classNames={{ inputWrapper: "bg-default-50 dark:bg-default-100/50" }}
+          classNames={{ inputWrapper: "bg-white dark:bg-default-100/50" }}
         />
 
         {mode === 'editar' && (
@@ -1387,13 +1579,17 @@ const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto, onClo
             onChange={(e: any) => setTipoMovimiento(e.target.value)}
             isRequired
             variant="bordered"
-            classNames={{ trigger: "bg-default-50 dark:bg-default-100/50" }}
+            classNames={{ trigger: "bg-white dark:bg-default-100/50" }}
           >
             <SelectItem key="Entrada">Entrada</SelectItem>
-            <SelectItem key="Salida">Salida</SelectItem>
+            <SelectItem key="Traslado">Traslado</SelectItem>
             <SelectItem key="Ajuste">Ajuste</SelectItem>
+            <SelectItem key="Salida Inventario" textValue="Salida Inventario">
+              <Tooltip content="Salida Inventario" placement="right" closeDelay={0}>
+                <span className="w-full inline-block">Salida Inventario</span>
+              </Tooltip>
+            </SelectItem>
             <SelectItem key="Merma">Merma</SelectItem>
-            <SelectItem key="Devolucion">Devolución</SelectItem>
           </Select>
         )}
       </div>
@@ -1460,7 +1656,6 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ productos, onClos
   const procesarPedido = async () => {
     try {
       // Aquí iría la lógica para procesar el pedido masivo
-      logger.log('Procesando pedido masivo:', itemsPedido);
 
       // Simular procesamiento
       await new Promise(resolve => setTimeout(resolve, 1000));
@@ -1468,7 +1663,6 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ productos, onClos
       toast.success(`Pedido procesado exitosamente. ${itemsPedido.length} productos enviados a bodega de tránsito.`);
       onClose();
     } catch (error) {
-      logger.error('Error al procesar pedido:', error);
       toast.error('Error al procesar el pedido');
     }
   };
@@ -1624,5 +1818,8 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ productos, onClos
     </>
   );
 };
+
+// El componente de fila se eliminó por incompatibilidad con el sistema de colecciones de HeroUI TableBody.
+// La optimización se mantiene mediante estilos inline y pre-fetching.
 
 export default InventarioPage;
