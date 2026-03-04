@@ -95,7 +95,7 @@ public class InventarioController {
      *  ✅ En uso: Endpoint consumido por el frontend.*/
     @PostMapping("/validate-stock-before-updating")
     public ResponseEntity<?> validateStockBeforeUpdating(
-            @Validated @RequestBody ValidateStockBeforeUpdatingDTO request) {
+            @Validated @RequestBody ValidateInventoryStockDTO request) {
         Object result = inventarioService.validateStockBeforeUpdating(request);
 
         /**Si nos retorna un inventario es porque hubo un conflicto de update en paralelo,
@@ -106,7 +106,7 @@ public class InventarioController {
         return ResponseEntity.ok(result);
     }
 
-    /**Actualiza inventario con producto una vez validado
+    /**Actualiza inventario con producto, creando movimiento segun tipo, una vez validado
      * ✅ En uso: Endpoint consumido por el frontend.*/
      @PatchMapping("/update-inventory-with-product")
         public ResponseEntity<Boolean> updateInventoryWithProduct(

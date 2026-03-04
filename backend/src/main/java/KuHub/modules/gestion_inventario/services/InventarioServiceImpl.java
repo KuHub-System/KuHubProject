@@ -3,7 +3,7 @@ package KuHub.modules.gestion_inventario.services;
 import KuHub.modules.gestion_inventario.dtos.request.dto.InventoryWithProductCreateDTO;
 import KuHub.modules.gestion_inventario.dtos.request.dto.FilterInventoryPageDTO;
 import KuHub.modules.gestion_inventario.dtos.request.dto.InventoryWithProductUpdateDTO;
-import KuHub.modules.gestion_inventario.dtos.request.dto.ValidateStockBeforeUpdatingDTO;
+import KuHub.modules.gestion_inventario.dtos.request.dto.ValidateInventoryStockDTO;
 import KuHub.modules.gestion_inventario.dtos.response.InventoriesPageDTO;
 import KuHub.modules.gestion_inventario.dtos.response.InventoryFiltersDTO;
 import KuHub.modules.gestion_inventario.dtos.response.InventoryPageDTO;
@@ -167,16 +167,21 @@ public class InventarioServiceImpl implements InventarioService {
                 ? null
                 : filter.getUnidadesIds().toArray(new Integer[0]);
 
+        boolean ocultarAgotados = Boolean.TRUE.equals(filter.getOcultarAgotados());
+        boolean orderAsc = true;//<--por defecto es Asc.
+        if (Boolean.TRUE.equals(filter.getIsDesc())) {
+            orderAsc = false;
+        } else if (Boolean.TRUE.equals(filter.getIsAsc())) {
+            orderAsc = true;
+        }
         boolean useCategorias = categoriasIds != null && categoriasIds.length > 0;
         boolean useUnidades   = unidadesIds   != null && unidadesIds.length > 0;
         boolean soloStockBajo = Boolean.TRUE.equals(filter.getSoloStockBajo());
 
         long totalRegistros = inventarioRepository.countInventarioFiltered(
-                useCategorias,
-                categoriasIds,
-                useUnidades,
-                unidadesIds,
-                soloStockBajo
+                useCategorias, categoriasIds,
+                useUnidades, unidadesIds,
+                soloStockBajo, ocultarAgotados
         );
 
         PaginationUtils.PagingResult paging = PaginationUtils.buildPaging(filter.getPage(), totalRegistros);
@@ -187,6 +192,8 @@ public class InventarioServiceImpl implements InventarioService {
                 useUnidades,
                 unidadesIds,
                 soloStockBajo,
+                ocultarAgotados,
+                orderAsc,
                 paging.limit(),
                 paging.offset()
         );
@@ -243,9 +250,11 @@ public class InventarioServiceImpl implements InventarioService {
         return true;
     }
 
+    /**Metodo para validar el stock con el id, antes de enviar el update para vereficar que no sofriran cambios en paralo
+     * sincronizando con el retorno exato si hay cambio y reveficar si no eliminan el iten en medio proceso*/
     @Transactional()
     @Override
-    public Object validateStockBeforeUpdating(ValidateStockBeforeUpdatingDTO request){
+    public Object validateStockBeforeUpdating(ValidateInventoryStockDTO request){
 
         /**Control de sincronizacion con exception, si otro usuario modifica en paralelo lanzar error y actualizar en el frontend segun casos*/
         /**Caso en que el inventario fue eliminado en paralelo a la peticion*/

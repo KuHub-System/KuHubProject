@@ -2,16 +2,17 @@ package KuHub.modules.gestion_inventario.controller;
 
 import KuHub.modules.gestion_inventario.dtos.request.dto.FilterInventoryPageDTO;
 import KuHub.modules.gestion_inventario.dtos.request.dto.SearchDTO;
+import KuHub.modules.gestion_inventario.dtos.request.dto.ValidateTransitStockDTO;
+import KuHub.modules.gestion_inventario.dtos.request.dto.WarehouseWithProductUpdateDTO;
+import KuHub.modules.gestion_inventario.dtos.response.WarehousePageDTO;
 import KuHub.modules.gestion_inventario.dtos.response.WarehousesPageDTO;
 import KuHub.modules.gestion_inventario.services.BodegaTransitoService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequiredArgsConstructor
@@ -65,5 +66,36 @@ public class BodegaTransitoController {
         return ResponseEntity
                 .status(200)
                 .body(bodegaTransitoService.getPagedTransitWarehouse(filter));
+    }
+
+    /**
+     * 🛡️ Control de validación para Bodega de Tránsito
+     * Verifica conflictos de edición en paralelo antes de realizar el PATCH.
+     */
+    @PostMapping("/validate-stock-before-updating")
+    public ResponseEntity<?> validateStockBeforeUpdating(
+            @Validated @RequestBody ValidateTransitStockDTO request) {
+
+        Object result = bodegaTransitoService.validateTransitStockBeforeUpdating(request);
+
+        // Si retorna un WarehousePageDTO, hubo un conflicto (409 Conflict)
+        if (result instanceof WarehousePageDTO) {
+            return ResponseEntity
+                    .status(409)
+                    .body(result);
+        }
+        return ResponseEntity
+                .status(200)
+                .body(result);
+    }
+
+    /**Actualiza bodega de transito con producto, creando movimiento segun tipo, una vez validado
+     * ✅ En uso: Endpoint consumido por el frontend.*/
+    @PatchMapping("/update-warehouse-with-product")
+        public ResponseEntity<Boolean> updateTransitWarehouseWithProduct(
+            @Validated @RequestBody WarehouseWithProductUpdateDTO request){
+        return ResponseEntity
+                .status(200)
+                .body(bodegaTransitoService.updateTransitWarehouseWithProduct(request));
     }
 }

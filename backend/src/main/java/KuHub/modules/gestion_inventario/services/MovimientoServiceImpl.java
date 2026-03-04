@@ -260,7 +260,7 @@ public class MovimientoServiceImpl implements MovimientoService {
                 throw new GestionInventarioException("Tipo de movimiento no válido: " + tipoKey, HttpStatus.BAD_REQUEST);
         }
 
-        //CREAR MOVIMIENTO
+        //CREAR MOVIMIENTO ASIGNANDO EL INVENTARIO
         Movimiento newMotion = new Movimiento();
         newMotion.setUsuario(usuarioService.findUserByToken());
         newMotion.setInventario(oldInventory);
@@ -272,6 +272,79 @@ public class MovimientoServiceImpl implements MovimientoService {
     }
 
     /***/
+
+    @Transactional
+    @Override
+    public boolean motionInUpdateTransitWarehouse(BodegaTransito oldTransit, BigDecimal newStock, String typeMotion) {
+        String tipoKey = StringUtils.normalizeToEnumKey(typeMotion);
+        BigDecimal calculatedAmount = BigDecimal.ZERO;
+        String description = "";
+        Inventario mainInventory = oldTransit.getInventario();
+
+        switch (tipoKey) {
+            case "SALIDA_BODEGA":
+            case "MERMA":
+                // Salidas desde tránsito (consumo en clases o daño de insumos en espera)
+                if (newStock.compareTo(oldTransit.getStock()) > 0) {
+                    throw new GestionInventarioException("La " + tipoKey.toLowerCase() + " no puede resultar en un stock mayor al actual en tránsito."
+                            , HttpStatus.BAD_REQUEST);
+                }
+                calculatedAmount = oldTransit.getStock().subtract(newStock);
+                description = (tipoKey.equals("SALIDA_BODEGA") ? "Salida de bodega de tránsito para procesos/clases: "
+                        : "Baja por merma en bodega de tránsito: ") + mainInventory.getProducto().getNombreProducto();
+                break;
+
+            case "DEVOLUCION":
+                // Lógica corregida: Lo que sale de tránsito vuelve al Inventario Principal
+                if (newStock.compareTo(oldTransit.getStock()) > 0) {
+                    throw new GestionInventarioException("La devolución no puede ser mayor al stock actual en tránsito."
+                            , HttpStatus.BAD_REQUEST);
+                }
+                calculatedAmount = oldTransit.getStock().subtract(newStock);
+
+                // ACTUALIZACIÓN ATÓMICA: La base de datos manda
+                int rowsAffected = inventarioRepository.addStockToInventory(
+                        mainInventory.getIdInventario(),
+                        calculatedAmount
+                );
+
+                if (rowsAffected == 0) {
+                    throw new GestionInventarioException("No se pudo actualizar el stock principal. El inventario podría estar inactivo."
+                            , HttpStatus.CONFLICT);
+                }
+
+                description = "Devolución de stock de tránsito al inventario principal: " + mainInventory.getProducto().getNombreProducto();
+                break;
+
+            case "AJUSTE":
+                // Sincronización manual del stock físico en tránsito
+                if (newStock.compareTo(oldTransit.getStock()) > 0) {
+                    calculatedAmount = newStock.subtract(oldTransit.getStock());
+                    description = "Ajuste positivo en stock de tránsito: ";
+                } else if (newStock.compareTo(oldTransit.getStock()) < 0) {
+                    calculatedAmount = oldTransit.getStock().subtract(newStock);
+                    description = "Ajuste negativo en stock de tránsito: ";
+                }
+                description += mainInventory.getProducto().getNombreProducto();
+                break;
+
+            default:
+                throw new GestionInventarioException("Tipo de movimiento no válido para Bodega de Tránsito: " + tipoKey
+                        ,HttpStatus.BAD_REQUEST);
+        }
+
+        //CREAR MOVIMIENTO ASIGNADO INVENTARIO Y BODEGA
+        Movimiento newMotion = new Movimiento();
+        newMotion.setUsuario(usuarioService.findUserByToken());
+        newMotion.setInventario(oldTransit.getInventario());
+        newMotion.setBodegaTransito(oldTransit);
+        newMotion.setStockMovimiento(calculatedAmount);
+        newMotion.setTipoMovimiento(Movimiento.TipoMovimiento.valueOf(tipoKey));
+        newMotion.setObservacion(description);
+        movimientoRepository.save(newMotion);
+        return true;
+    }
+
     /**
      * Mapea la consulta dinamica aplicado en historioles de movimiento
      */
