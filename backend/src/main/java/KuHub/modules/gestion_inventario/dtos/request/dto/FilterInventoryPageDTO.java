@@ -11,14 +11,19 @@ import java.util.List;
 @AllArgsConstructor
 public class FilterInventoryPageDTO {
 
-    // filtros múltiples
+    // Filtros múltiples
     private List<Integer> categoriasIds;
     private List<Integer> unidadesIds;
 
-    // stock bajo
+    // Filtros de Stock
     private Boolean soloStockBajo;
+    private Boolean ocultarAgotados;
 
-    // paginación
-    private Integer page;      // 1..n
+    // Ordenamiento
+    private Boolean isAsc;
+    private Boolean isDesc;
+
+    // Paginación
+    private Integer page;
     private Integer pageSize;  // opcional (default 20)
 }

@@ -2,9 +2,11 @@ package KuHub.modules.gestion_inventario.repository;
 
 import KuHub.modules.gestion_inventario.entity.Inventario;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -205,7 +207,13 @@ public interface InventarioRepository extends JpaRepository<Inventario, Integer>
                 :soloStockBajo = FALSE
                 OR i.stock <= i.stock_limit
             )
-        ORDER BY p.nombre_producto
+            AND (
+                :ocultarAgotados = FALSE
+                OR i.stock > 0
+                    )
+            ORDER BY
+                    CASE WHEN :isAsc = TRUE THEN p.nombre_producto END ASC,
+                    CASE WHEN :isAsc = FALSE THEN p.nombre_producto END DESC
         LIMIT :limit OFFSET :offset
     """, nativeQuery = true)
     List<Object[]> findInventoryPage(
@@ -214,6 +222,8 @@ public interface InventarioRepository extends JpaRepository<Inventario, Integer>
             @Param("useUnidades") boolean useUnidades,
             @Param("unidadesIds") Integer[] unidadesIds,
             @Param("soloStockBajo") boolean soloStockBajo,
+            @Param("ocultarAgotados") boolean ocultarAgotados,
+            @Param("isAsc") boolean isAsc,
             @Param("limit") int limit,
             @Param("offset") int offset
     );
@@ -238,13 +248,18 @@ public interface InventarioRepository extends JpaRepository<Inventario, Integer>
                 :soloStockBajo = FALSE
                 OR i.stock <= i.stock_limit
             )
+            AND (
+                        :ocultarAgotados = FALSE
+                        OR i.stock > 0
+                    )
     """, nativeQuery = true)
     long countInventarioFiltered(
             @Param("useCategorias") boolean useCategorias,
             @Param("categoriasIds") Integer[] categoriasIds,
             @Param("useUnidades") boolean useUnidades,
             @Param("unidadesIds") Integer[] unidadesIds,
-            @Param("soloStockBajo") boolean soloStockBajo
+            @Param("soloStockBajo") boolean soloStockBajo,
+            @Param("ocultarAgotados") boolean ocultarAgotados
     );
 
     /**Consulta para listar filtros de inventario*/
@@ -278,6 +293,17 @@ public interface InventarioRepository extends JpaRepository<Inventario, Integer>
             nativeQuery = true
     )
     String getFiltersInventory();
+
+    /**
+     * Incrementa el stock del inventario principal de forma atómica.
+     * Se realiza directamente en DB para evitar procesos en paralelos prevenindo errores.
+     */
+    @Modifying
+    @Transactional
+    @Query(value = "UPDATE inventario SET stock = stock + :cantidad " +
+            "WHERE id_inventario = :idInventario AND activo = true", nativeQuery = true)
+    int addStockToInventory(@Param("idInventario") Integer idInventario,
+                            @Param("cantidad") java.math.BigDecimal cantidad);
 
     /**Vereficaciones boleandas*/
     boolean existsInventarioByIdInventarioAndStock(Integer idInventario, BigDecimal stock);
