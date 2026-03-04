@@ -29,6 +29,10 @@ public class Movimiento {
     @JoinColumn(name = "id_inventario", nullable = false)
     private Inventario inventario;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_bodega_transito", nullable = true)
+    private BodegaTransito bodegaTransito;
+
     // --- DATOS DEL MOVIMIENTO ---
 
     // Usamos BigDecimal para coincidir con NUMERIC(10, 3)
@@ -80,4 +84,13 @@ public class Movimiento {
         }
     }
 
+    /**
+     *  Permite asignar la bodega de tránsito afectada usando solo su ID.
+     */
+    public void setIdBodegaTransito(Integer id) {
+        if (id != null) {
+            this.bodegaTransito = new BodegaTransito();
+            this.bodegaTransito.setIdBodegaTransito(id);
+        }
+    }
 }

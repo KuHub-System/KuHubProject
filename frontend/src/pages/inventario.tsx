@@ -56,6 +56,7 @@ import GestionUnidadesModal from '../components/modals/GestionUnidadesModal';
 import { obtenerCategoriasActivasService } from '../services/categoria-service';
 import { obtenerUnidadesActivasService } from '../services/unidad-medida-service';
 import { IUnidadMedida } from '../types/inventario.types';
+import { actualizarBodegaTransitoConProductoService, WarehouseWithProductUpdateDTO } from '../services/bodega-transito-service';
 
 /**
  * Interfaz para un item del pedido masivo
@@ -179,12 +180,18 @@ const InventarioPage: React.FC = () => {
           .filter(id => !isNaN(id));
 
         const soloStockBajo = filtersRef.current.has('stock-bajo');
+        const ocultarAgotados = filtersRef.current.has('ocultar-cero');
+        const isAsc = filtersRef.current.has('ascendente');
+        const isDesc = filtersRef.current.has('descendente');
 
         response = await obtenerProductosPaginadosService({
           page: apiPageToPrefetch,
           categoriasIds,
           unidadesIds,
           soloStockBajo,
+          ocultarAgotados,
+          isAsc,
+          isDesc,
           pageSize: size
         });
       }
@@ -248,6 +255,9 @@ const InventarioPage: React.FC = () => {
           : categoriesFiltered.map(k => parseInt(k.replace('cat-', '')));
 
         const soloStockBajo = categoriesKeys.includes('stock-bajo');
+        const ocultarAgotados = categoriesKeys.includes('ocultar-cero');
+        const isAsc = categoriesKeys.includes('ascendente');
+        const isDesc = categoriesKeys.includes('descendente');
         const unidadesIds = unitFiltered.map(k => parseInt(k.replace('uni-', '')));
 
         const requestBody = {
@@ -255,6 +265,9 @@ const InventarioPage: React.FC = () => {
           categoriasIds,
           unidadesIds,
           soloStockBajo,
+          ocultarAgotados,
+          isAsc,
+          isDesc,
           pageSize: size
         };
 
@@ -439,6 +452,9 @@ const InventarioPage: React.FC = () => {
     return [
       { id: 'todas', nombre: 'Todas las categorías' },
       { id: 'stock-bajo', nombre: 'Stock Bajo' },
+      { id: 'ocultar-cero', nombre: 'Ocultar stock en 0' },
+      { id: 'ascendente', nombre: 'Ascendente' },
+      { id: 'descendente', nombre: 'Descendente' },
       ...categoras,
       ...unidades
     ];
@@ -449,9 +465,6 @@ const InventarioPage: React.FC = () => {
    * usando los datos cargados en la caché de la API.
    */
   const paginatedProductos = React.useMemo(() => {
-    // Para scroll infinito continuo, mostramos todos los productos acumulados
-    // Pero si el usuario cambia de página vía botones, quizás quiera saltar?
-    // Por ahora, devolvemos la lista completa para permitir scroll fluido.
     return productos;
   }, [productos]);
 
@@ -692,21 +705,45 @@ const InventarioPage: React.FC = () => {
                   closeOnSelect={false}
                   selectionMode="multiple"
                   selectedKeys={selectedFilters}
+                  className="max-h-[500px] overflow-y-auto w-full"
                   onSelectionChange={(keys) => {
                     const newKeys = Array.from(keys) as string[];
                     let resultSet: Set<string>;
+
                     const wasTodasSelected = filtersRef.current.has('todas');
                     const isTodasSelectedNow = newKeys.includes('todas');
-                    if (isTodasSelectedNow && !wasTodasSelected) {
-                      resultSet = new Set(['todas']);
-                    } else if (newKeys.length > 1 && isTodasSelectedNow) {
-                      const filtered = newKeys.filter(k => k !== 'todas');
-                      resultSet = new Set(filtered);
-                    } else if (newKeys.length === 0) {
+
+                    const newlyAdded = newKeys.filter(k => !filtersRef.current.has(k));
+                    let finalKeys = newKeys;
+
+                    if (newlyAdded.includes('ascendente')) {
+                      finalKeys = finalKeys.filter(k => k !== 'descendente');
+                    } else if (newlyAdded.includes('descendente')) {
+                      finalKeys = finalKeys.filter(k => k !== 'ascendente');
+                    }
+
+                    const updatedIsTodas = finalKeys.includes('todas');
+                    const nonCatFilters = finalKeys.filter(k => k === 'ocultar-cero' || k === 'ascendente' || k === 'descendente' || k === 'stock-bajo');
+
+                    if (updatedIsTodas && !wasTodasSelected) {
+                      resultSet = new Set(['todas', ...nonCatFilters]);
+                    } else if (finalKeys.length > 1 && updatedIsTodas) {
+                      const hasCatOrUnit = finalKeys.some(k => k.startsWith('cat-') || k.startsWith('uni-'));
+                      if (hasCatOrUnit) {
+                        resultSet = new Set(finalKeys.filter(k => k !== 'todas'));
+                      } else {
+                        resultSet = new Set(finalKeys);
+                      }
+                    } else if (finalKeys.length === 0) {
                       resultSet = new Set(['todas']);
                     } else {
-                      resultSet = new Set(newKeys);
+                      resultSet = new Set(finalKeys);
                     }
+
+                    if (!Array.from(resultSet).some(k => k.startsWith('cat-') || k.startsWith('uni-') || k === 'todas')) {
+                      resultSet.add('todas');
+                    }
+
                     setSelectedFilters(resultSet);
                     filtersRef.current = resultSet;
                   }}
@@ -1074,8 +1111,9 @@ export const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto
       toast.warning('El stock mínimo no puede ser negativo');
       return;
     }
-    if (mode === 'editar' && !tipoMovimiento) {
-      toast.warning('El motivo (Tipo de Movimiento) es requerido');
+    const originalStockRef = parseFloat(productoReferencia?.stock?.toString() || '0');
+    if (mode === 'editar' && !tipoMovimiento && stockNum !== originalStockRef) {
+      toast.warning('El motivo (Tipo de Movimiento) es requerido para cambiar el stock');
       return;
     }
 
@@ -1108,75 +1146,95 @@ export const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto
         const stockActualizado = parseFloat(stock) || 0;
         const stockCambiado = (producto?.stock ?? 0) !== stockActualizado;
 
-        const datosActualizacion = {
-          id: producto.id,
-          idInventario: producto._idInventario || 0, // Fallback safe
-          nombre: nombre.trim(),
-          codProducto: codProducto.trim() || undefined,
-          descripcion: descripcion.trim(),
-          categoria: catNombre,
-          unidadMedida: uniNombre,
-          idCategoria: parseInt(idCategoria),
-          idUnidadMedida: parseInt(idUnidadMedida),
-          stock: stockActualizado,
-          stockMinimo: parseFloat(stockMinimo) || 0,
-          tipoMovimiento: tipoMovimiento,
-        };
-
-        // --- NUEVA VALIDACIÓN ANTES DEL PATCH ---
-        const validationResult = await validateStockBeforeUpdatingService({
-          idInventario: datosActualizacion.idInventario,
-          validateStock: productoReferencia?.stock ?? 0 // Enviamos el stock original que teníamos al abrir/sync
-        });
-
-        if (validationResult === true) {
-          // OK: Proceder con el PATCH
-          await actualizarProductoService(datosActualizacion);
-          if (stockCambiado) {
-            toast.success('Actualizacion realizada con exito, movimiento de ajuste realizado');
-          } else {
-            toast.success('Actualizacion realizada con exito');
-          }
+        if (origenContext === 'bodega') {
+          // --- NUEVA LÓGICA PARA BODEGA ---
+          const datosBodega: WarehouseWithProductUpdateDTO = {
+            idBodegaTransito: (producto as any)._idBodegaTransito || 0,
+            idInventario: producto._idInventario || 0,
+            idProducto: parseInt(producto.id),
+            tipoMovimiento: tipoMovimiento || 'Ajuste',
+            nombreProducto: nombre.trim(),
+            codigoProducto: codProducto.trim() || undefined,
+            descripcionProducto: descripcion.trim(),
+            idCategoria: parseInt(idCategoria),
+            idUnidadMedida: parseInt(idUnidadMedida),
+            stock: stockActualizado,
+            stockLimit: parseFloat(stockMinimo) || 0,
+          };
+          await actualizarBodegaTransitoConProductoService(datosBodega);
+          toast.success('Cambios guardados exitosamente en la bodega');
         } else {
-          // CONFLICTO (409): Otro usuario cambió los datos
-          const conflictData = validationResult as IValidateStockConflictResponse;
-          toast.warning('Peticiones simultáneas, sincronizando datos antes de actualizar...', {
-            title: 'Sincronizando...',
-            animate: true
+          // --- LÓGICA EXISTENTE PARA INVENTARIO ---
+          const datosActualizacion = {
+            id: producto.id,
+            idInventario: producto._idInventario || 0, // Fallback safe
+            nombre: nombre.trim(),
+            codProducto: codProducto.trim() || undefined,
+            descripcion: descripcion.trim(),
+            categoria: catNombre,
+            unidadMedida: uniNombre,
+            idCategoria: parseInt(idCategoria),
+            idUnidadMedida: parseInt(idUnidadMedida),
+            stock: stockActualizado,
+            stockMinimo: parseFloat(stockMinimo) || 0,
+            tipoMovimiento: tipoMovimiento || 'Ajuste',
+          };
+
+          // --- NUEVA VALIDACIÓN ANTES DEL PATCH ---
+          const validationResult = await validateStockBeforeUpdatingService({
+            idInventario: datosActualizacion.idInventario,
+            validateStock: productoReferencia?.stock ?? 0 // Enviamos el stock original que teníamos al abrir/sync
           });
 
-          // Sincronizar campos del formulario con los nuevos datos
-          setNombre(conflictData.nombreProducto);
-          setCodProducto(conflictData.codProducto || '');
-          setDescripcion(conflictData.descripcionProducto || '');
-          setIdCategoria(conflictData.idCategoria.toString());
-          setIdUnidadMedida(conflictData.idUnidad.toString());
-          setStock(conflictData.stock.toString());
-          setStockMinimo(conflictData.stockLimit.toString());
+          if (validationResult === true) {
+            // OK: Proceder con el PATCH
+            await actualizarProductoService(datosActualizacion);
+            if (stockCambiado) {
+              toast.success('Actualizacion realizada con exito, movimiento de ajuste realizado');
+            } else {
+              toast.success('Actualizacion realizada con exito');
+            }
+          } else {
+            // CONFLICTO (409): Otro usuario cambió los datos
+            const conflictData = validationResult as IValidateStockConflictResponse;
+            toast.warning('Peticiones simultáneas, sincronizando datos antes de actualizar...', {
+              title: 'Sincronizando...',
+              animate: true
+            });
 
-          // --- NUEVO: Sincronizar también el producto de referencia para las validaciones visuales ---
-          const productoActualizado: IProducto = {
-            id: conflictData.idProducto.toString(),
-            nombre: conflictData.nombreProducto,
-            descripcion: conflictData.descripcionProducto || '',
-            codProducto: conflictData.codProducto || undefined,
-            categoria: conflictData.nombreCategoria,
-            unidadMedida: conflictData.nombreUnidad,
-            stock: conflictData.stock,
-            stockMinimo: conflictData.stockLimit,
-            fechaCreacion: new Date().toISOString(),
-            fechaActualizacion: new Date().toISOString(),
-            _idInventario: conflictData.idInventario
-          };
-          setProductoReferencia(productoActualizado);
+            // Sincronizar campos del formulario con los nuevos datos
+            setNombre(conflictData.nombreProducto);
+            setCodProducto(conflictData.codProducto || '');
+            setDescripcion(conflictData.descripcionProducto || '');
+            setIdCategoria(conflictData.idCategoria.toString());
+            setIdUnidadMedida(conflictData.idUnidad.toString());
+            setStock(conflictData.stock.toString());
+            setStockMinimo(conflictData.stockLimit.toString());
 
-          // Sincronizar también con el padre para que la lista en segundo plano se vea actualizada
-          if (onConflictSync) {
-            onConflictSync(productoActualizado);
+            // --- NUEVO: Sincronizar también el producto de referencia para las validaciones visuales ---
+            const productoActualizado: IProducto = {
+              id: conflictData.idProducto.toString(),
+              nombre: conflictData.nombreProducto,
+              descripcion: conflictData.descripcionProducto || '',
+              codProducto: conflictData.codProducto || undefined,
+              categoria: conflictData.nombreCategoria,
+              unidadMedida: conflictData.nombreUnidad,
+              stock: conflictData.stock,
+              stockMinimo: conflictData.stockLimit,
+              fechaCreacion: new Date().toISOString(),
+              fechaActualizacion: new Date().toISOString(),
+              _idInventario: conflictData.idInventario
+            };
+            setProductoReferencia(productoActualizado);
+
+            // Sincronizar también con el padre para que la lista en segundo plano se vea actualizada
+            if (onConflictSync) {
+              onConflictSync(productoActualizado);
+            }
+
+            // No llamamos al Patch, permitimos que el usuario revise
+            return;
           }
-
-          // No llamamos al Patch, permitimos que el usuario revise
-          return;
         }
       }
 
@@ -1232,10 +1290,12 @@ export const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto
     switch (tipoMovimiento) {
       case 'Entrada': return "Registrando ingreso de mercadería al sistema del Inventario";
       case 'Salida Inventario':
+      case 'Salida Bodega':
         return origenContext === 'bodega'
           ? "Registrando la salida de insumos para el desarrollo de clases, talleres o procesos académicos."
           : "Registrando retiro o consumo de productos al sistema del Inventario";
       case 'Traslado':
+      case 'Devolución':
         return origenContext === 'bodega'
           ? "Registrando el reingreso de productos no utilizados al inventario principal."
           : "Iniciando movimiento a Bodega de Transito";
@@ -1251,11 +1311,9 @@ export const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto
         stockError = 'Para Entrada, el stock debe ser mayor al actual';
       }
       diffText = currentStockVal > originalStockVal ? `+${(currentStockVal - originalStockVal).toFixed(3)}` : '';
-    } else if (tipoMovimiento === 'Salida Inventario' || tipoMovimiento === 'Traslado' || tipoMovimiento === 'Merma') {
+    } else if (tipoMovimiento === 'Salida Inventario' || tipoMovimiento === 'Salida Bodega' || tipoMovimiento === 'Traslado' || tipoMovimiento === 'Devolución' || tipoMovimiento === 'Merma') {
       if (currentStockVal >= originalStockVal) {
-        const actionName = tipoMovimiento === 'Salida Inventario' && origenContext === 'bodega' ? 'Salida Bodega' :
-          tipoMovimiento === 'Traslado' && origenContext === 'bodega' ? 'Devolución' :
-            tipoMovimiento;
+        const actionName = tipoMovimiento;
         stockError = `Para ${actionName}, el stock debe ser menor al actual`;
       }
       diffText = currentStockVal < originalStockVal ? `${(currentStockVal - originalStockVal).toFixed(3)}` : '';
@@ -1274,7 +1332,7 @@ export const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto
     parseFloat(stock) < 0 ||
     !!stockError ||
     (stockMinimo.trim() !== '' && (isNaN(parseFloat(stockMinimo)) || parseFloat(stockMinimo) < 0)) ||
-    (mode === 'editar' && !tipoMovimiento) ||
+    (mode === 'editar' && !tipoMovimiento && currentStockVal !== originalStockVal) ||
     !hasChanges;
 
   return (
@@ -1474,9 +1532,9 @@ export const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto
         {mode === 'editar' && (() => {
           const opcionesMotivo = [
             ...(origenContext === 'inventario' ? [{ key: 'Entrada', label: 'Entrada' }] : []),
-            { key: 'Traslado', label: origenContext === 'bodega' ? 'Devolución' : 'Traslado' },
+            { key: origenContext === 'bodega' ? 'Devolución' : 'Traslado', label: origenContext === 'bodega' ? 'Devolución' : 'Traslado' },
             { key: 'Ajuste', label: 'Ajuste' },
-            { key: 'Salida Inventario', label: origenContext === 'bodega' ? 'Salida Bodega' : 'Salida Inventario' },
+            { key: origenContext === 'bodega' ? 'Salida Bodega' : 'Salida Inventario', label: origenContext === 'bodega' ? 'Salida Bodega' : 'Salida Inventario' },
             { key: 'Merma', label: 'Merma' }
           ];
 
@@ -1492,7 +1550,7 @@ export const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto
             >
               {opcionesMotivo.map(opcion => (
                 <SelectItem key={opcion.key} textValue={opcion.label}>
-                  <Tooltip content={opcion.label} placement="right" closeDelay={0} isDisabled={opcion.key !== 'Salida Inventario' && opcion.key !== 'Traslado'}>
+                  <Tooltip content={opcion.label} placement="right" closeDelay={0} isDisabled={opcion.key !== 'Salida Inventario' && opcion.key !== 'Traslado' && opcion.key !== 'Salida Bodega' && opcion.key !== 'Devolución'}>
                     <span className="w-full inline-block">{opcion.label}</span>
                   </Tooltip>
                 </SelectItem>

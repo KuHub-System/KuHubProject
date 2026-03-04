@@ -4,10 +4,10 @@ import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
-
 import java.math.BigDecimal;
+
 @Data
-public class ValidateStockBeforeUpdatingDTO {
+public class ValidateInventoryStockDTO {
 
         @NotNull(message = "El stock es obligatorio")
         @DecimalMin(value = "0.0", message = "El stock no puede ser negativo")

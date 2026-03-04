@@ -89,6 +89,9 @@ export interface IInventoryPageRequest {
   soloStockBajo: boolean;
   page: number;
   pageSize?: number;
+  ocultarAgotados?: boolean;
+  isDesc?: boolean;
+  isAsc?: boolean;
 }
 
 /**

@@ -166,8 +166,20 @@ const BodegaTransitoPage: React.FC = () => {
   const filtrosCombinados = React.useMemo(() => {
     const cats = categoriasFull.map(c => ({ id: `cat-${c.id}`, nombre: c.nombre }));
     const unis = unidadesFull.map(u => ({ id: `uni-${u.id}`, nombre: u.nombre }));
-    return [{ id: 'todas', nombre: 'Todas las categorías' }, { id: 'stock-bajo', nombre: 'Stock Bajo' }, ...cats, ...unis];
+    return [
+      { id: 'todas', nombre: 'Todas las categorías' },
+      { id: 'stock-bajo', nombre: 'Stock Bajo' },
+      { id: 'ocultar-cero', nombre: 'Ocultar stock en 0' },
+      { id: 'ascendente', nombre: 'Ascendente' },
+      { id: 'descendente', nombre: 'Descendente' },
+      ...cats,
+      ...unis
+    ];
   }, [categoriasFull, unidadesFull]);
+
+  const paginatedProductos = React.useMemo(() => {
+    return productos;
+  }, [productos]);
 
   const loadData = React.useCallback(async () => {
     try {
@@ -203,7 +215,10 @@ const BodegaTransitoPage: React.FC = () => {
           pageSize: 40,
           categoriasIds: Array.from(filtersRef.current).filter(f => f.startsWith('cat-')).map(f => parseInt(f.replace('cat-', ''))),
           unidadesIds: Array.from(filtersRef.current).filter(f => f.startsWith('uni-')).map(f => parseInt(f.replace('uni-', ''))),
-          soloStockBajo: filtersRef.current.has('stock-bajo')
+          soloStockBajo: filtersRef.current.has('stock-bajo'),
+          ocultarAgotados: filtersRef.current.has('ocultar-cero'),
+          isAsc: filtersRef.current.has('ascendente'),
+          isDesc: filtersRef.current.has('descendente')
         });
       }
 
@@ -277,6 +292,19 @@ const BodegaTransitoPage: React.FC = () => {
     return () => clearTimeout(handler);
   }, [searchTerm, searchCode, cargarProductosPaginados]);
 
+  React.useEffect(() => {
+    const handleProductosActualizados = () => {
+      cacheRef.current = {};
+      cargarProductosPaginados(currentPage, true);
+    };
+
+    window.addEventListener('productosActualizados', handleProductosActualizados);
+
+    return () => {
+      window.removeEventListener('productosActualizados', handleProductosActualizados);
+    };
+  }, [cargarProductosPaginados, currentPage]);
+
   const verMovimientos = (id: string, nombre: string) => {
     history.push(`/movimientos?productoId=${id}&nombre=${encodeURIComponent(nombre)}`);
   };
@@ -329,13 +357,14 @@ const BodegaTransitoPage: React.FC = () => {
       categoria: item.nombreCategoria,
       stock: item.stock,
       stockMinimo: item.stockLimit || 0,
-      estado: item.stock > (item.stockLimit || 0) ? 'Disponible' : 'Bajo Stock',
+      estado: item.stock <= 0 ? 'Sin stock' : item.stock <= (item.stockLimit || 0) ? 'Bajo Stock' : 'Disponible',
       precio: 0,
       unidadMedida: item.nombreUnidad,
       idCategoria: 0,
       idUnidadMedida: 0,
       _esFraccionario: item.esFraccionario,
-      _idInventario: item.idInventario
+      _idInventario: item.idInventario,
+      _idBodegaTransito: item.idBodegaTransito
     };
 
     const catF = categoriasFull.find(c => c.nombre === item.nombreCategoria);
@@ -416,21 +445,43 @@ const BodegaTransitoPage: React.FC = () => {
                         closeOnSelect={false}
                         selectionMode="multiple"
                         selectedKeys={selectedFilters}
+                        className="max-h-[500px] overflow-y-auto w-full"
                         onSelectionChange={(keys) => {
                           const newKeys = Array.from(keys) as string[];
                           let resultSet: Set<string>;
+
                           const wasTodasSelected = filtersRef.current.has('todas');
                           const isTodasSelectedNow = newKeys.includes('todas');
 
-                          if (isTodasSelectedNow && !wasTodasSelected) {
-                            resultSet = new Set(['todas']);
-                          } else if (newKeys.length > 1 && isTodasSelectedNow) {
-                            const filtered = newKeys.filter(k => k !== 'todas');
-                            resultSet = new Set(filtered);
-                          } else if (newKeys.length === 0) {
+                          const newlyAdded = newKeys.filter(k => !filtersRef.current.has(k));
+                          let finalKeys = newKeys;
+
+                          if (newlyAdded.includes('ascendente')) {
+                            finalKeys = finalKeys.filter(k => k !== 'descendente');
+                          } else if (newlyAdded.includes('descendente')) {
+                            finalKeys = finalKeys.filter(k => k !== 'ascendente');
+                          }
+
+                          const updatedIsTodas = finalKeys.includes('todas');
+                          const nonCatFilters = finalKeys.filter(k => k === 'ocultar-cero' || k === 'ascendente' || k === 'descendente' || k === 'stock-bajo');
+
+                          if (updatedIsTodas && !wasTodasSelected) {
+                            resultSet = new Set(['todas', ...nonCatFilters]);
+                          } else if (finalKeys.length > 1 && updatedIsTodas) {
+                            const hasCatOrUnit = finalKeys.some(k => k.startsWith('cat-') || k.startsWith('uni-'));
+                            if (hasCatOrUnit) {
+                              resultSet = new Set(finalKeys.filter(k => k !== 'todas'));
+                            } else {
+                              resultSet = new Set(finalKeys);
+                            }
+                          } else if (finalKeys.length === 0) {
                             resultSet = new Set(['todas']);
                           } else {
-                            resultSet = new Set(newKeys);
+                            resultSet = new Set(finalKeys);
+                          }
+
+                          if (!Array.from(resultSet).some(k => k.startsWith('cat-') || k.startsWith('uni-') || k === 'todas')) {
+                            resultSet.add('todas');
                           }
 
                           setSelectedFilters(resultSet);
@@ -480,13 +531,13 @@ const BodegaTransitoPage: React.FC = () => {
                   <TableColumn width="30%" align="center" className="text-center">NOMBRE PRODUCTO</TableColumn>
                   <TableColumn width="15%" align="center" className="text-center">CATEGORÍA</TableColumn>
                   <TableColumn width="10%" align="center" className="text-center">STOCK</TableColumn>
-                  <TableColumn width="10%" align="center" className="text-center">STOCK MÍN</TableColumn>
+                  <TableColumn width="10%" align="center" className="text-center">STOCK MÁX</TableColumn>
                   <TableColumn width="10%" align="center" className="text-center">UNIDAD</TableColumn>
                   <TableColumn width="15%" align="center" className="text-center">ESTADO</TableColumn>
                   <TableColumn width="10%" align="center" className="text-center">ACCIONES</TableColumn>
                 </TableHeader>
                 <TableBody
-                  items={productos}
+                  items={paginatedProductos}
                   isLoading={isLoading && productos.length === 0}
                   loadingContent={<Spinner size="lg" />}
                 >
@@ -521,7 +572,7 @@ const BodegaTransitoPage: React.FC = () => {
                       </TableCell>
                       <TableCell className="text-center">
                         <Tooltip content="Control Bodega" color="primary" delay={100} closeDelay={0}>
-                          <span className={`font-bold block text-center ${item.stock <= (item.stockLimit || 0) ? 'text-danger' : 'text-default-700 dark:text-default-300'}`}>
+                          <span className={`font-bold block text-center ${item.stock <= 0 ? 'text-danger' : (item.stockLimit && item.stock > item.stockLimit) ? 'text-warning' : 'text-default-700 dark:text-default-300'}`}>
                             {item.stock}
                           </span>
                         </Tooltip>
@@ -539,9 +590,13 @@ const BodegaTransitoPage: React.FC = () => {
                       <TableCell>
                         <Tooltip content="Control Bodega" color="primary" delay={100} closeDelay={0} className="w-full">
                           <div className="w-full h-full text-center flex justify-center">
-                            <Chip size="sm" variant="flat" color={item.stock <= (item.stockLimit || 0) ? "danger" : "success"}>
-                              {item.stock <= (item.stockLimit || 0) ? "Crítico" : "Disponible"}
-                            </Chip>
+                            {item.stock <= 0 ? (
+                              <Chip color="danger" size="sm" variant="flat" className="text-danger-700 dark:text-danger-400 bg-danger-50 dark:bg-danger-50/10 font-medium">Sin stock</Chip>
+                            ) : (item.stockLimit && item.stock > item.stockLimit) ? (
+                              <Chip color="warning" size="sm" variant="flat" className="text-warning-700 dark:text-warning-400 bg-warning-50 dark:bg-warning-50/10 font-medium">Excedido</Chip>
+                            ) : (
+                              <Chip color="success" size="sm" variant="flat" className="text-success-700 dark:text-success-400 bg-success-50 dark:bg-success-50/10 font-medium">Disponible</Chip>
+                            )}
                           </div>
                         </Tooltip>
                       </TableCell>
