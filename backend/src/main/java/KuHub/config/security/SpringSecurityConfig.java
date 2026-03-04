@@ -297,6 +297,19 @@ public class SpringSecurityConfig {
                         .hasAnyRole("ADMINISTRADOR", "GESTOR_PEDIDOS", "ENCARGADO_BODEGA", "ASISTENTE_BODEGA")
 
                         // ========================================
+                        // ENDPOINTS DE BODEGA DE TRÁNSITO
+                        // ========================================
+
+                        .requestMatchers(HttpMethod.GET, "/api/v*/bodega-transito/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/v*/bodega-transito/**").permitAll()
+
+                        .requestMatchers(HttpMethod.PATCH, "/api/v*/bodega-transito/**")
+                        .hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR", "GESTOR_PEDIDOS", "ENCARGADO_BODEGA")
+
+                        .requestMatchers(HttpMethod.DELETE, "/api/v*/bodega-transito/**")
+                        .hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR")
+
+                        // ========================================
                         // ENDPOINTS DE RECETAS
                         // ========================================
                         // 1. Lectura de recetas: Permitido para todos los roles autorizados

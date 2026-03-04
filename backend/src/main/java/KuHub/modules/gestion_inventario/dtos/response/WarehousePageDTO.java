@@ -9,26 +9,27 @@ import java.math.BigDecimal;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class InventoryPageDTO {
-    // --- IDs Principales Relacionales ---
+public class WarehousePageDTO {
+    // IDs principales
+    private Integer idBodegaTransito;
     private Integer idInventario;
     private Integer idProducto;
 
-    // --- Datos del Producto ---
+    // Datos del Producto
     private String nombreProducto;
     private String codProducto;
     private String descripcionProducto;
 
-    // --- Datos de la Categoría ---
+    // Datos de la Categoría
     private Integer idCategoria;
     private String nombreCategoria;
 
-    // --- Datos de la Unidad de Medida ---
+    // Datos de la Unidad
     private Integer idUnidad;
     private String nombreUnidad;
     private Boolean esFraccionario;
 
-    // --- Datos de Existencias (Stock Físico) ---
+    // Datos de Stock (en tránsito)
     private BigDecimal stock;
     private BigDecimal stockLimit;
 }

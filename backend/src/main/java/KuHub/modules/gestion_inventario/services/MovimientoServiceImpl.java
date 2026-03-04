@@ -3,10 +3,11 @@ package KuHub.modules.gestion_inventario.services;
 import KuHub.modules.gestion_inventario.dtos.MotionCreateDTO;
 import KuHub.modules.gestion_inventario.dtos.MotionFilterRequestDTO;
 import KuHub.modules.gestion_inventario.dtos.response.MotionAnswerDTO;
+import KuHub.modules.gestion_inventario.entity.BodegaTransito;
 import KuHub.modules.gestion_inventario.exceptions.GestionInventarioException;
+import KuHub.modules.gestion_inventario.repository.BodegaTransitoRepository;
 import KuHub.modules.gestion_usuario.entity.Usuario;
 import KuHub.modules.gestion_usuario.exceptions.GestionUsuarioException;
-import KuHub.modules.gestion_usuario.repository.UsuarioRepository;
 import KuHub.modules.gestion_usuario.service.UsuarioService;
 import KuHub.modules.gestion_inventario.entity.Inventario;
 import KuHub.modules.gestion_inventario.entity.Movimiento;
@@ -40,9 +41,9 @@ public class MovimientoServiceImpl implements MovimientoService {
     private UsuarioService usuarioService;
 
     @Autowired
-    private UsuarioRepository usuarioRepository;
+    private BodegaTransitoRepository bodegaTransitoRepository;
 
-
+    /**METODO para realizar una consulta dinamica de los filtros del frontend con formato parseado para mejor experiencia usuario*/
     @Transactional(readOnly = true)
     @Override
     public List<MotionAnswerDTO> findAllMotionWithFilter(MotionFilterRequestDTO request) {
@@ -184,7 +185,9 @@ public class MovimientoServiceImpl implements MovimientoService {
     }
 
     /**
-     * METODO DE VALIDACION DE MOVIMIENTO PARA LA PAGE DE INVENTARIO, IMPLEMENADO PARA CUANDO SE ACTUALIZA UN PRODUCTO EN EL INVENTARIO REALIZAR MOVIMIENTO
+     * METODO DE VALIDACION DE MOVIMIENTO PARA LA PAGE DE INVENTARIO, IMPLEMENADO PARA CUANDO SE ACTUALIZA UN PRODUCTO EN EL INVENTARIO
+     * REALIZAR MOVIMIENTO, EN CASO DE TRASLADO SE REALIZAR LA SUMA SI EXISTE EL ITEN DE LA BODEGA EN LA BBDD PARA EVITAR PROCESOS PARALELO
+     * O CREA UN NUEVO ITEM A BODEGA SI NO EXISTE
      */
     @Transactional
     @Override
@@ -232,12 +235,25 @@ public class MovimientoServiceImpl implements MovimientoService {
                 break;
 
             case "TRASLADO":
-                /** * TODO: IMPLEMENTACIÓN FUTURA - BODEGA DE TRÁNSITO
-                 * Actualmente registra el movimiento físico entre ubicaciones.
-                 * En el futuro, esto debería afectar una tabla de 'Ubicaciones' o 'Bodega de Tránsito'.
-                 */
+                /**calcular diferencia*/
                 calculatedAmount = newStock.subtract(oldInventory.getStock()).abs();
-                description = "Traslado a bodega de tránsito (Pendiente de validación logística): " + oldInventory.getProducto().getNombreProducto();
+                if (newStock.compareTo(oldInventory.getStock()) > 0) {
+                    throw new GestionInventarioException("Para un traslado a tránsito, el nuevo stock debe ser menor al actual.",
+                            HttpStatus.BAD_REQUEST);
+                }
+
+                int rowsaffected = bodegaTransitoRepository.addStockInTransit(
+                        oldInventory.getIdInventario(), calculatedAmount);
+
+                if (rowsaffected == 0) {
+                    BodegaTransito newWarehouse = new BodegaTransito();
+                    newWarehouse.setInventario(oldInventory);
+                    newWarehouse.setStock(calculatedAmount);
+                    newWarehouse.setStockLimit(oldInventory.getStockLimit());
+                    bodegaTransitoRepository.save(newWarehouse);
+                }
+
+                description = "Traslado a bodega de tránsito: " + oldInventory.getProducto().getNombreProducto();
                 break;
 
             default:

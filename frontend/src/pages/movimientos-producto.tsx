@@ -29,6 +29,7 @@ import {
 import { parseDate, CalendarDate, today, getLocalTimeZone } from '@internationalized/date';
 import { Icon } from '@iconify/react';
 import { motion } from 'framer-motion';
+import { usePageTitle } from '../hooks/usePageTitle';
 import {
   obtenerProductoPorIdService,
   obtenerMovimientosFiltradosService,
@@ -88,8 +89,9 @@ const MovimientosProductoPage: React.FC = () => {
   const query = useQuery();
   const queryProductoId = query.get('productoId');
   const queryNombre = query.get('nombre');
-
   const { isOpen, onOpen, onOpenChange } = useDisclosure();
+
+  usePageTitle('Movimientos y Gestión de Stocks', 'Gestione y visualice el historial de movimientos.');
 
   // Estado de datos
   const [productos, setProductos] = React.useState<IProducto[]>([]);
@@ -252,12 +254,8 @@ const MovimientosProductoPage: React.FC = () => {
         transition={{ duration: 0.4 }}
         className="space-y-8"
       >
-        {/* Encabezado y Filtros */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-default-200 dark:border-default-100 pb-4">
-          <div>
-            <h1 className="text-3xl font-bold text-secondary dark:text-foreground mb-2">Movimientos de Inventario</h1>
-            <p className="text-default-500 text-lg">Gestione y visualice el historial de movimientos.</p>
-          </div>
+        {/* Navegación */}
+        <div className="flex justify-end items-center gap-4">
           <Button
             color="primary"
             variant="ghost"

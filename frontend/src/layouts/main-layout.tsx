@@ -2,7 +2,6 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import Header from '../components/header';
 import Sidebar from '../components/sidebar';
-import Footer from '../components/footer';
 
 /**
  * Interfaz para las propiedades del componente MainLayout.
@@ -31,11 +30,11 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
 
   // Variantes para las animaciones con Framer Motion
   const contentVariants = {
-    sidebarOpen: { 
+    sidebarOpen: {
       marginLeft: '280px',
       transition: { duration: 0.3 }
     },
-    sidebarClosed: { 
+    sidebarClosed: {
       marginLeft: '80px',
       transition: { duration: 0.3 }
     }
@@ -60,9 +59,6 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
         <main className="py-6">
           {children}
         </main>
-
-        {/* Footer */}
-        <Footer />
       </motion.div>
     </div>
   );
