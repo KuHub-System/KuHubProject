@@ -104,7 +104,7 @@ public interface InventarioRepository extends JpaRepository<Inventario, Integer>
         ORDER BY p.nombre_producto
         LIMIT :limit OFFSET :offset
     """, nativeQuery = true)
-    List<Object[]> searchInventarioByCodProductoPage(
+    List<Object[]> searchInventarioByCodProductPage(
             @Param("codProducto") String codProducto,
             @Param("limit") int limit,
             @Param("offset") int offset
@@ -119,7 +119,7 @@ public interface InventarioRepository extends JpaRepository<Inventario, Integer>
           AND p.activo = TRUE
           AND LOWER(p.cod_producto) LIKE LOWER(CONCAT('%', :codProducto, '%'))
     """, nativeQuery = true)
-    long countSearchInventarioByCodProducto(
+    long countSearchInventarioByCodProduct(
             @Param("codProducto") String codProducto
     );
 
@@ -151,7 +151,7 @@ public interface InventarioRepository extends JpaRepository<Inventario, Integer>
         ORDER BY p.nombre_producto
         LIMIT :limit OFFSET :offset
     """, nativeQuery = true)
-    List<Object[]> searchInventarioPage(
+    List<Object[]> searchInventoryPage(
             @Param("searchTerm") String searchTerm,
             @Param("limit") int limit,
             @Param("offset") int offset
@@ -169,7 +169,7 @@ public interface InventarioRepository extends JpaRepository<Inventario, Integer>
               OR LOWER(p.descripcion_producto) LIKE LOWER(CONCAT('%', :searchTerm, '%'))
           )
         """, nativeQuery = true)
-    long countSearchInventario(@Param("searchTerm") String searchTerm);
+    long countSearchInventory(@Param("searchTerm") String searchTerm);
 
     /**Consulta para listar inventario con consulta dinamica segun filtros*/
     @Query(value = """
@@ -208,7 +208,7 @@ public interface InventarioRepository extends JpaRepository<Inventario, Integer>
         ORDER BY p.nombre_producto
         LIMIT :limit OFFSET :offset
     """, nativeQuery = true)
-    List<Object[]> findInventarioPage(
+    List<Object[]> findInventoryPage(
             @Param("useCategorias") boolean useCategorias,
             @Param("categoriasIds") Integer[] categoriasIds,
             @Param("useUnidades") boolean useUnidades,

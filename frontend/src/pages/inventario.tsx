@@ -99,7 +99,6 @@ const InventarioPage: React.FC = () => {
   const searchCodeRef = React.useRef<string>('');
   const [cache, setCache] = React.useState<Record<number, IProducto[]>>({});
   const cacheRef = React.useRef<Record<number, IProducto[]>>({});
-  const rowsPerPage = 10;
 
   const history = useHistory();
   const { isOpen, onOpen, onOpenChange } = useDisclosure();
@@ -161,7 +160,7 @@ const InventarioPage: React.FC = () => {
       let response;
       const currentSearch = searchTermRef.current;
       const currentSearchCode = searchCodeRef.current;
-      const size = 10; // Prefetch siempre de 10 en 10
+      const size = 40; // Prefetch de 40 en 40 para ser consistente con el scroll infinito
 
       if (currentSearchCode) {
         response = await buscarProductosPorCodigoService(currentSearchCode, apiPageToPrefetch, size);
@@ -230,10 +229,9 @@ const InventarioPage: React.FC = () => {
       const currentSearchCode = searchCodeRef.current;
 
       // El backend aplica offset = (page-1) * pageSize
-      // Page 1, Size 20 -> 0-19
-      // Page 3, Size 10 -> 20-29
+      // Para scroll infinito transparente, cargamos bloques de 40 items
       const apiPage = uiPage;
-      const size = uiPage === 1 ? 20 : 10;
+      const size = 40;
 
 
       if (currentSearchCode) {
@@ -273,17 +271,12 @@ const InventarioPage: React.FC = () => {
 
         setProductos(productosTransformados);
 
-        // El cache por UI page
-        if (uiPage === 1 && size === 20) {
-          cacheRef.current[1] = productosTransformados.slice(0, 10);
-          cacheRef.current[2] = productosTransformados.slice(10, 20);
-          setCache(prev => ({ ...prev, [1]: productosTransformados.slice(0, 10), [2]: productosTransformados.slice(10, 20) }));
-          nextPageRef.current = 3; // Siguiente es la 3
-        } else {
-          cacheRef.current[uiPage] = productosTransformados;
-          setCache(prev => ({ ...prev, [uiPage]: productosTransformados }));
-          nextPageRef.current = Math.max(nextPageRef.current, uiPage + 1);
-        }
+        // Almacenamos en cache por bloque de 40
+        cacheRef.current[uiPage] = productosTransformados;
+        setCache(prev => ({ ...prev, [uiPage]: productosTransformados }));
+
+        // Si es la primera página, la siguiente a cargar es la 2
+        nextPageRef.current = uiPage + 1;
       } else {
         // Para scroll infinito, acumulamos en productos si no están ya
         setProductos(prev => {
@@ -299,8 +292,8 @@ const InventarioPage: React.FC = () => {
       }
 
 
-      // totalPaginas ahora se calcula en bloques de 10, incluso si la primera página trae 20
-      const calculatedUiPages = Math.ceil(response.totalItems / 10);
+      // totalPaginas ahora se calcula en bloques de 40, alineado con el pageSize
+      const calculatedUiPages = Math.ceil(response.totalItems / 40);
       setTotalPaginas(calculatedUiPages);
       setTotalRegistros(response.totalItems);
 
@@ -344,41 +337,28 @@ const InventarioPage: React.FC = () => {
   }, [cargarProductosPaginados]);
 
   /**
-   * Maneja el scroll para sincronizar la paginación y cargar más datos.
+   * Maneja el scroll global para cargar más datos.
    */
-  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
-    const scroller = e.currentTarget;
-    if (!scroller) return;
+  React.useEffect(() => {
+    const onScroll = () => {
+      if (isLoading || isLoadingRef.current) return;
 
-    const scrollTop = scroller.scrollTop;
-    const clientHeight = scroller.clientHeight;
-    const scrollHeight = scroller.scrollHeight;
+      const scrollY = window.scrollY;
+      const windowHeight = window.innerHeight;
+      const fullHeight = document.documentElement.scrollHeight;
 
-    // Trigger para cargar más: si el scroll está cerca del fondo
-    const scrollBottom = scrollTop + clientHeight;
-    const threshold = scrollHeight - 1200; // Gatillo aún más preventivo (1200px)
-
-    if (scrollBottom > threshold && !isLoading && !isLoadingRef.current) {
-      if (productos.length < totalRegistros) {
-        const pageToLoad = nextPageRef.current;
-        cargarProductosPaginados(pageToLoad);
+      // Gatillo: cargamos cuando faltan 3000px para el final (muy anticipado)
+      if (scrollY + windowHeight > fullHeight - 3000) {
+        if (productos.length < totalRegistros) {
+          const pageToLoad = nextPageRef.current;
+          cargarProductosPaginados(pageToLoad);
+        }
       }
-    }
+    };
 
-    // Usar una referencia para evitar actualizaciones de estado a 60fps
-    if (!isScrollingRef.current) {
-      isScrollingRef.current = true;
-
-      const visualPage = Math.floor(scrollTop / (60 * 10)) + 1;
-      if (visualPage !== currentPage && visualPage > 0 && visualPage <= totalPaginas) {
-        setCurrentPage(visualPage);
-      }
-
-      setTimeout(() => {
-        isScrollingRef.current = false;
-      }, 100); // Throttle de 100ms para actualizaciones visuales
-    }
-  };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, [isLoading, productos.length, totalRegistros, cargarProductosPaginados]);
 
   React.useEffect(() => {
     const handleProductosActualizados = () => {
@@ -418,7 +398,7 @@ const InventarioPage: React.FC = () => {
    * Filtra los productos localmente solo si no hay búsqueda global activa.
    */
   React.useEffect(() => {
-    // Si hay búsqueda global (debounced), no filtramos localmente 
+    // Si hay búsqueda global (debounced), no filtramos localmente
     // porque el backend ya nos trajo solo lo que coincide.
     if (debouncedSearchTerm || debouncedSearchCode) {
       setFilteredProductos(productos);
@@ -465,7 +445,7 @@ const InventarioPage: React.FC = () => {
   }, [categoriasFull, unidadesFull]);
 
   /**
-   * Extrae los productos a mostrar para la página actual de la UI, 
+   * Extrae los productos a mostrar para la página actual de la UI,
    * usando los datos cargados en la caché de la API.
    */
   const paginatedProductos = React.useMemo(() => {
@@ -477,7 +457,7 @@ const InventarioPage: React.FC = () => {
 
   /**
  * Navega a la página de movimientos del producto.
- * 
+ *
  * @param {string} id - ID del producto.
  * @param {string} nombre - Nombre del producto.
  */
@@ -550,7 +530,7 @@ const InventarioPage: React.FC = () => {
 
   /**
    * Abre el modal para editar un producto existente.
-   * 
+   *
    * @param {IProducto} producto - Producto a editar.
    */
   const handleEditarProducto = (producto: IProducto) => {
@@ -562,7 +542,7 @@ const InventarioPage: React.FC = () => {
   /**
    * Sincroniza un producto en la caché local y en el estado sin refrescar toda la tabla.
    * Útil para conflictos (409) donde recibimos la versión más nueva del servidor.
-   * 
+   *
    * @param {IProducto} productoActualizado - El producto con los datos frescos del servidor.
    */
   const handleConflictSync = React.useCallback((productoActualizado: IProducto) => {
@@ -590,7 +570,7 @@ const InventarioPage: React.FC = () => {
 
   /**
    * Renderiza el estado del stock con un chip de color según el nivel.
-   * 
+   *
    * @param {IProducto} producto - Producto a evaluar.
    * @returns {JSX.Element} Chip con el estado del stock.
    */
@@ -605,58 +585,61 @@ const InventarioPage: React.FC = () => {
   };
 
   return (
-    <div className="container mx-auto px-4 py-8 space-y-8 font-sans">
+    <div className="min-h-screen bg-default-50/50 dark:bg-background pb-20 font-sans">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4 }}
-        className="space-y-8"
+        className="space-y-6"
       >
-        {/* Encabezado */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-default-200 dark:border-default-100 pb-4">
-          <div className="flex gap-3">
-            <Button
-              color="secondary"
-              variant="solid"
-              className="font-bold shadow-md"
-              startContent={<Icon icon="lucide:shopping-cart" width={20} />}
-              onPress={onPedidoMasivoOpen}
-            >
-              Realizar Pedido
-            </Button>
-            <Button
-              color="primary"
-              variant="solid"
-              className="font-bold text-secondary shadow-md"
-              startContent={<Icon icon="lucide:plus" width={20} />}
-              onPress={handleNuevoProducto}
-            >
-              Nuevo Inventario
-            </Button>
-            <Button
-              isIconOnly
-              variant="flat"
-              onPress={onCategoriasOpen}
-              title="Gestionar Categorías"
-            >
-              <Icon icon="lucide:tags" className="text-default-600" />
-            </Button>
-            <Button
-              isIconOnly
-              variant="flat"
-              onPress={onUnidadesOpen}
-              title="Gestionar Unidades de Medida"
-            >
-              <Icon icon="lucide:scale" className="text-default-600" />
-            </Button>
-          </div>
+        <div className="flex flex-wrap items-center gap-3 px-4 mt-8 mb-4">
+          <Button
+            color="secondary"
+            variant="solid"
+            size="md"
+            className="font-bold shadow-sm"
+            startContent={<Icon icon="lucide:shopping-cart" width={18} />}
+            onPress={onPedidoMasivoOpen}
+          >
+            Pedido
+          </Button>
+          <Button
+            color="primary"
+            variant="solid"
+            size="md"
+            className="font-bold text-secondary shadow-sm"
+            startContent={<Icon icon="lucide:plus" width={18} />}
+            onPress={handleNuevoProducto}
+          >
+            Nuevo
+          </Button>
+          <Button
+            isIconOnly
+            variant="flat"
+            size="md"
+            onPress={onCategoriasOpen}
+            title="Categorías"
+            className="bg-default-100 dark:bg-default-50/10"
+          >
+            <Icon icon="lucide:tags" className="text-default-600" width={20} />
+          </Button>
+          <Button
+            isIconOnly
+            variant="flat"
+            size="md"
+            onPress={onUnidadesOpen}
+            title="Unidades"
+            className="bg-default-100 dark:bg-default-50/10"
+          >
+            <Icon icon="lucide:scale" className="text-default-600" width={20} />
+          </Button>
         </div>
 
         {/* Barra de herramientas */}
-        <Card className="shadow-sm bg-default-50 dark:bg-content1 border border-default-200 dark:border-default-100">
+        <Card className="shadow-sm bg-white dark:bg-content1 border border-default-200 dark:border-default-100 mx-4">
           <CardBody className="p-4">
             <div className="flex flex-col md:flex-row gap-4 justify-between items-center">
-              <div className="w-full flex flex-col md:flex-row gap-2 md:w-1/2">
+              <div className="w-full flex flex-col md:flex-row gap-2 md:w-3/4">
                 <Input
                   className="w-full md:w-1/2"
                   placeholder="Buscar código de producto..."
@@ -673,7 +656,7 @@ const InventarioPage: React.FC = () => {
                 />
                 <Input
                   className="w-full md:w-1/2"
-                  placeholder="Buscar productos por nombre o descripción..."
+                  placeholder="Buscar productos por nombre..."
                   value={searchTerm}
                   onValueChange={(val) => {
                     setSearchTerm(val);
@@ -687,348 +670,277 @@ const InventarioPage: React.FC = () => {
                 />
               </div>
 
-              <div className="flex gap-4 w-full md:w-auto">
-                <Dropdown onOpenChange={(isOpen) => {
-                  if (!isOpen) {
-                    cacheRef.current = {};
-                    setCache({});
-                    setCurrentPage(1);
-                    // Forzamos la carga con los filtros actuales
-                    cargarProductosPaginados(1, true);
-                  }
-                }}>
-                  <DropdownTrigger>
-                    <Button
-                      variant="bordered"
-                      className="bg-white dark:bg-default-100/50"
-                      startContent={<Icon icon="lucide:filter" className="text-default-500" />}
-                    >
-                      {selectedFilters.has('todas')
-                        ? 'Todas las categorías'
-                        : selectedFilters.size === 1
-                          ? filtrosCombinados.find(f => f.id === Array.from(selectedFilters)[0])?.nombre
-                          : `${selectedFilters.size} filtros aplicados`}
-                    </Button>
-                  </DropdownTrigger>
-                  <DropdownMenu
-                    aria-label="Filtros"
-                    closeOnSelect={false}
-                    selectionMode="multiple"
-                    selectedKeys={selectedFilters}
-                    onSelectionChange={(keys) => {
-                      const newKeys = Array.from(keys) as string[];
-                      let resultSet: Set<string>;
-
-                      // Lógica de "Todas las categorías"
-                      const wasTodasSelected = filtersRef.current.has('todas');
-                      const isTodasSelectedNow = newKeys.includes('todas');
-
-                      if (isTodasSelectedNow && !wasTodasSelected) {
-                        // Si se seleccionó "todas" ahora, limpiamos el resto
-                        resultSet = new Set(['todas']);
-                      } else if (newKeys.length > 1 && isTodasSelectedNow) {
-                        // Si "todas" estaba y seleccionamos otro, quitamos "todas"
-                        const filtered = newKeys.filter(k => k !== 'todas');
-                        resultSet = new Set(filtered);
-                      } else if (newKeys.length === 0) {
-                        // Si se desmarcó todo, volvemos a "todas"
-                        resultSet = new Set(['todas']);
-                      } else {
-                        resultSet = new Set(newKeys);
-                      }
-
-                      setSelectedFilters(resultSet);
-                      filtersRef.current = resultSet;
-                    }}
-                  >
-                    {filtrosCombinados.map((filtro) => (
-                      <DropdownItem
-                        key={filtro.id}
-                        startContent={
-                          filtro.id === 'stock-bajo'
-                            ? <Icon icon="lucide:alert-triangle" className="text-warning" />
-                            : null
-                        }
-                      >
-                        {filtro.nombre}
-                      </DropdownItem>
-                    ))}
-                  </DropdownMenu>
-                </Dropdown>
-              </div>
-            </div>
-          </CardBody>
-        </Card>
-
-        {/* Tabla de productos con scroll manual */}
-        <Card className="shadow-md border border-default-200 dark:border-default-100 bg-white dark:bg-content1">
-          <CardBody className="p-0">
-            <div
-              ref={scrollerRef}
-              onScroll={handleScroll}
-              className="max-h-[600px] overflow-y-auto relative scrollbar-hide scroll-smooth overscroll-contain snap-y snap-proximity"
-            >
-              <Table
-                aria-label="Tabla de inventario"
-                isHeaderSticky
-                removeWrapper
-                className="min-w-full"
-                layout="fixed"
-                classNames={{
-                  table: "min-w-full table-fixed border-collapse",
-                  thead: "[&>tr]:first:shadow-none sticky top-0 z-20",
-                  th: "bg-default-100 dark:bg-default-50/20 text-black dark:text-white font-bold uppercase text-xs h-12 sticky top-0 z-20 border-b border-default-200/50 shadow-sm border-x-0 outline-none",
-                  td: "py-3 border-b border-default-50 dark:border-default-50/10 group-data-[last=true]:border-none"
-                }}
-                bottomContent={
-                  isLoading && productos.length > 0 ? (
-                    <div className="flex w-full justify-center py-4">
-                      <Spinner size="sm" label="Cargando más..." color="primary" labelColor="primary" />
-                    </div>
-                  ) : null
+              <Dropdown onOpenChange={(isOpen) => {
+                if (!isOpen) {
+                  cacheRef.current = {};
+                  setCache({});
+                  setCurrentPage(1);
+                  cargarProductosPaginados(1, true);
                 }
-              >
-                <TableHeader>
-                  <TableColumn width="30%" align="center" className="truncate text-center">NOMBRE PRODUCTO</TableColumn>
-                  <TableColumn width="15%" align="center" className="truncate text-center">CATEGORÍA</TableColumn>
-                  <TableColumn width="10%" align="center" className="truncate text-center">STOCK</TableColumn>
-                  <TableColumn width="10%" align="center" className="truncate text-center">STOCK MÍN</TableColumn>
-                  <TableColumn width="10%" align="center" className="truncate text-center">UNIDAD</TableColumn>
-                  <TableColumn width="15%" align="center" className="truncate text-center">ESTADO</TableColumn>
-                  <TableColumn width="10%" align="center" className="truncate text-center">ACCIONES</TableColumn>
-                </TableHeader>
-                <TableBody
-                  isLoading={isLoading && productos.length === 0}
-                  loadingContent={<div className="py-8 text-center text-primary"><Spinner /> Cargando productos...</div>}
-                  emptyContent={
-                    <div className="py-12 text-center text-default-400">
-                      <Icon icon="lucide:package-open" className="mx-auto mb-3 opacity-50" width={48} />
-                      <p className="text-lg font-medium">No se encontraron productos</p>
-                      <p className="text-sm">Intenta ajustar los filtros o agrega un nuevo producto.</p>
-                    </div>
-                  }
+              }}>
+                <DropdownTrigger>
+                  <Button
+                    variant="bordered"
+                    className="bg-white dark:bg-default-100/50 w-full md:w-auto"
+                    startContent={<Icon icon="lucide:filter" className="text-default-500" />}
+                  >
+                    {selectedFilters.has('todas') ? 'Todas las categorías' : `${selectedFilters.size} Filtros`}
+                  </Button>
+                </DropdownTrigger>
+                <DropdownMenu
+                  aria-label="Filtros"
+                  closeOnSelect={false}
+                  selectionMode="multiple"
+                  selectedKeys={selectedFilters}
+                  onSelectionChange={(keys) => {
+                    const newKeys = Array.from(keys) as string[];
+                    let resultSet: Set<string>;
+                    const wasTodasSelected = filtersRef.current.has('todas');
+                    const isTodasSelectedNow = newKeys.includes('todas');
+                    if (isTodasSelectedNow && !wasTodasSelected) {
+                      resultSet = new Set(['todas']);
+                    } else if (newKeys.length > 1 && isTodasSelectedNow) {
+                      const filtered = newKeys.filter(k => k !== 'todas');
+                      resultSet = new Set(filtered);
+                    } else if (newKeys.length === 0) {
+                      resultSet = new Set(['todas']);
+                    } else {
+                      resultSet = new Set(newKeys);
+                    }
+                    setSelectedFilters(resultSet);
+                    filtersRef.current = resultSet;
+                  }}
                 >
-                  {paginatedProductos.map((producto) => (
-                    <TableRow
-                      key={producto.id}
-                      className="cursor-pointer hover:bg-default-50 dark:hover:bg-default-100/50 transition-colors duration-200 snap-start"
-                      style={{
-                        contentVisibility: 'auto',
-                        containIntrinsicSize: '60px 60px',
-                        willChange: 'transform'
-                      } as any}
-                      onClick={() => handleEditarProducto(producto)}
+                  {filtrosCombinados.map((filtro) => (
+                    <DropdownItem
+                      key={filtro.id}
+                      startContent={
+                        filtro.id === 'stock-bajo'
+                          ? <Icon icon="lucide:alert-triangle" className="text-warning" />
+                          : null
+                      }
                     >
-                      <TableCell>
-                        <Tooltip content="Control de Inventario" color="primary" delay={100} closeDelay={0}>
-                          <div className="w-full overflow-hidden text-center">
-                            <span className="font-semibold text-secondary dark:text-foreground block truncate">{producto.nombre}</span>
-                            {producto.descripcion && (
-                              <p className="text-xs text-default-400 truncate w-full">{producto.descripcion}</p>
-                            )}
-                          </div>
-                        </Tooltip>
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <Tooltip content="Control de Inventario" color="primary" delay={100} closeDelay={0}>
-                          <div className="flex justify-center w-full">
-                            <Chip size="sm" variant="flat" className="bg-default-100 dark:bg-default-100/50 text-default-600 dark:text-default-300">
-                              {producto.categoria}
-                            </Chip>
-                          </div>
-                        </Tooltip>
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <Tooltip content="Control de Inventario" color="primary" delay={100} closeDelay={0}>
-                          <span className={`font-bold ${producto.stock <= producto.stockMinimo ? 'text-danger' : 'text-default-700 dark:text-default-300'}`}>
-                            {producto.stock}
-                          </span>
-                        </Tooltip>
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <Tooltip content="Control de Inventario" color="primary" delay={100} closeDelay={0}>
-                          <span>{producto.stockMinimo}</span>
-                        </Tooltip>
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <Tooltip content="Control de Inventario" color="primary" delay={100} closeDelay={0}>
-                          <span className="text-default-500">{producto.unidadMedida}</span>
-                        </Tooltip>
-                      </TableCell>
-                      <TableCell>
-                        <Tooltip content="Control de Inventario" color="primary" delay={100} closeDelay={0} className="w-full">
-                          <div className="w-full h-full">{renderStockStatus(producto)}</div>
-                        </Tooltip>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex justify-center gap-1" onClick={(e) => e.stopPropagation()}>
-                          <Tooltip content="Control de Inventario" color="secondary" delay={100} closeDelay={0}>
-                            <Button
-                              isIconOnly
-                              variant="light"
-                              size="sm"
-                              onPress={() => verMovimientos(producto.id, producto.nombre)}
-                              className="text-default-400 hover:text-secondary"
-                            >
-                              <Icon icon="lucide:arrow-right" width={18} />
-                            </Button>
-                          </Tooltip>
-
-                          {esAdministrador && (
-                            <Tooltip content="Eliminar" color="danger" delay={100} closeDelay={0}>
-                              <Button
-                                isIconOnly
-                                variant="light"
-                                size="sm"
-                                color="danger"
-                                onPress={() => handleEliminarProducto(producto)}
-                                className="text-default-400 hover:text-danger"
-                              >
-                                <Icon icon="lucide:trash" width={18} />
-                              </Button>
-                            </Tooltip>
-                          )}
-                        </div>
-                      </TableCell>
-                    </TableRow>
+                      {filtro.nombre}
+                    </DropdownItem>
                   ))}
-                </TableBody>
-              </Table>
+                </DropdownMenu>
+              </Dropdown>
             </div>
           </CardBody>
         </Card>
-      </motion.div>
 
-      {/* Modal para crear/editar producto */}
-      <Modal
-        isOpen={isOpen}
-        onOpenChange={onOpenChange}
-        size="lg"
-        backdrop="blur"
-        placement="top"
-        classNames={{
-          base: "mt-4"
-        }}
-      >
-        <ModalContent>
-          {(onClose) => (
-            <>
-              <ModalHeader className="border-b border-default-100 dark:border-default-50 bg-white dark:bg-content2">
-                <div className="flex items-center gap-2">
-                  <Icon icon={modalMode === 'crear' ? "lucide:plus-circle" : "lucide:package-check"} className="text-primary" width={24} />
-                  <span className="font-bold text-lg text-secondary dark:text-foreground">{modalMode === 'crear' ? 'Nuevo Inventario' : 'Control de Inventario'}</span>
-                </div>
-              </ModalHeader>
-              <ModalBody className="py-6">
-                <FormularioProducto
-                  producto={productoSeleccionado}
-                  onClose={onClose}
-                  mode={modalMode}
-                  categorias={categoriasActivas}
-                  unidades={unidadesActivas}
-                  onConflictSync={handleConflictSync}
-                />
-              </ModalBody>
-            </>
-          )}
-        </ModalContent>
-      </Modal>
+        {/* Tabla de productos (Sin Card para sentimiento infinito) */}
+        <Table
+          aria-label="Tabla de inventario"
+          isHeaderSticky
+          removeWrapper
+          className="min-w-full relative"
+          layout="fixed"
+          classNames={{
+            table: "min-w-full table-fixed border-collapse bg-transparent",
+            thead: "[&>tr]:first:shadow-none sticky top-[4rem] z-20",
+            th: "bg-default-100 dark:bg-default-100 text-default-500 font-bold uppercase text-xs h-12 sticky top-[4rem] z-20 border-b border-default-200/50 shadow-sm outline-none text-center",
+            td: "py-3 border-b border-default-50 dark:border-default-50/10 group-data-[last=true]:border-none px-4 text-center"
+          }}
+          bottomContent={
+            isLoading && productos.length > 0 ? (
+              <div className="flex w-full justify-center py-10">
+                <Spinner size="lg" label="Cargando existencias..." color="primary" labelColor="primary" />
+              </div>
+            ) : null
+          }
+        >
+          <TableHeader>
+            <TableColumn width="30%" align="center" className="text-center">NOMBRE PRODUCTO</TableColumn>
+            <TableColumn width="15%" align="center" className="text-center">CATEGORÍA</TableColumn>
+            <TableColumn width="10%" align="center" className="text-center">STOCK</TableColumn>
+            <TableColumn width="10%" align="center" className="text-center">STOCK MÍN</TableColumn>
+            <TableColumn width="10%" align="center" className="text-center">UNIDAD</TableColumn>
+            <TableColumn width="15%" align="center" className="text-center">ESTADO</TableColumn>
+            <TableColumn width="10%" align="center" className="text-center">ACCIONES</TableColumn>
+          </TableHeader>
+          <TableBody
+            isLoading={isLoading && productos.length === 0}
+            loadingContent={<div className="py-20 text-center text-primary"><Spinner size="lg" /> <p className="mt-4 font-bold">Cargando inventario...</p></div>}
+            emptyContent={
+              <div className="py-20 text-center text-default-400">
+                <Icon icon="lucide:package-open" className="mx-auto mb-4 opacity-50" width={64} />
+                <p className="text-xl font-medium">No se encontraron productos</p>
+                <p className="text-sm">Ajusta los filtros o agrega un nuevo producto.</p>
+              </div>
+            }
+          >
+            {paginatedProductos.map((producto) => (
+              <TableRow
+                key={producto.id}
+                className="cursor-pointer hover:bg-default-50 dark:hover:bg-default-100/50 transition-colors duration-200 border-b border-default-50 dark:border-default-50/10"
+                style={{
+                  contentVisibility: 'auto',
+                  containIntrinsicSize: '70px 70px'
+                } as any}
+                onClick={() => handleEditarProducto(producto)}
+              >
+                <TableCell>
+                  <Tooltip content="Control de Inventario" color="primary" delay={100} closeDelay={0}>
+                    <div className="w-full overflow-hidden text-center flex flex-col items-center">
+                      <span className="font-semibold text-secondary dark:text-foreground block truncate w-full">{producto.nombre}</span>
+                      {producto.descripcion && (
+                        <p className="text-xs text-default-400 truncate w-full">{producto.descripcion}</p>
+                      )}
+                    </div>
+                  </Tooltip>
+                </TableCell>
+                <TableCell className="text-center">
+                  <Tooltip content="Control de Inventario" color="primary" delay={100} closeDelay={0}>
+                    <div className="flex justify-center w-full">
+                      <Chip size="sm" variant="flat" className="bg-default-100 dark:bg-default-100/50 text-default-600 dark:text-default-300">
+                        {producto.categoria}
+                      </Chip>
+                    </div>
+                  </Tooltip>
+                </TableCell>
+                <TableCell className="text-center">
+                  <Tooltip content="Control de Inventario" color="primary" delay={100} closeDelay={0}>
+                    <span className={`font-bold block text-center ${producto.stock <= producto.stockMinimo ? 'text-danger' : 'text-default-700 dark:text-default-300'}`}>
+                      {producto.stock}
+                    </span>
+                  </Tooltip>
+                </TableCell>
+                <TableCell className="text-center">
+                  <Tooltip content="Control de Inventario" color="primary" delay={100} closeDelay={0}>
+                    <span className="block text-center">{producto.stockMinimo}</span>
+                  </Tooltip>
+                </TableCell>
+                <TableCell className="text-center">
+                  <Tooltip content="Control de Inventario" color="primary" delay={100} closeDelay={0}>
+                    <span className="text-default-500 block text-center">{producto.unidadMedida}</span>
+                  </Tooltip>
+                </TableCell>
+                <TableCell>
+                  <Tooltip content="Control de Inventario" color="primary" delay={100} closeDelay={0} className="w-full">
+                    <div className="w-full h-full text-center flex justify-center">{renderStockStatus(producto)}</div>
+                  </Tooltip>
+                </TableCell>
+                <TableCell>
+                  <div className="flex justify-center gap-1" onClick={(e) => e.stopPropagation()}>
+                    <Tooltip content="Ver Movimiento" color="secondary" delay={100} closeDelay={0}>
+                      <Button
+                        isIconOnly
+                        variant="light"
+                        size="sm"
+                        onPress={() => verMovimientos(producto.id, producto.nombre)}
+                        className="text-default-400 hover:text-secondary"
+                      >
+                        <Icon icon="lucide:arrow-right" width={18} />
+                      </Button>
+                    </Tooltip>
 
-      {/* Modal para pedido masivo */}
-      <Modal isOpen={isPedidoMasivoOpen} onOpenChange={onPedidoMasivoOpenChange} size="4xl" backdrop="blur" scrollBehavior="inside">
-        <ModalContent>
-          {(onClose) => (
-            <PedidoMasivoModal
-              productos={productos}
-              onClose={onClose}
-            />
-          )}
-        </ModalContent>
-      </Modal>
-
-      {/* Modales de gestión de categorías y unidades */}
-      <GestionCategoriasModal
-        isOpen={isCategoriasOpen}
-        onOpenChange={onCategoriasOpenChange}
-        onRefresh={() => cargarProductosPaginados(1, true)} // Para recargar si algo cambia
-      />
-
-      <GestionUnidadesModal
-        isOpen={isUnidadesOpen}
-        onOpenChange={onUnidadesOpenChange}
-        onRefresh={() => cargarProductosPaginados(1, true)}
-      />
-
-      {/* Modal Informativo: No se puede eliminar con stock */}
-      <Modal isOpen={showStockWarning} onOpenChange={setShowStockWarning} backdrop="blur">
-        <ModalContent>
-          {(onClose) => (
-            <>
-              <ModalHeader className="flex flex-col gap-1 items-center pt-8">
-                <div className="p-3 bg-danger-50 rounded-full text-danger-500 mb-2">
-                  <Icon icon="lucide:alert-circle" width={40} />
-                </div>
-                <h2 className="text-xl font-bold text-secondary dark:text-foreground">No se puede eliminar</h2>
-              </ModalHeader>
-              <ModalBody className="text-center pb-6">
-                <p className="text-default-600 text-justify">
-                  El inventario <strong>"{productoParaEliminar?.nombre}"</strong> no puede ser eliminado porque aún tiene stock disponible (<strong>{productoParaEliminar?.stock}</strong>).
-                </p>
-                <p className="text-sm text-default-400 mt-2">
-                  Para eliminar un item, primero debes dejar su stock en 0.
-                </p>
-              </ModalBody>
-              <ModalFooter className="flex flex-col gap-2 pb-8">
-                <Button
-                  color="primary"
-                  onPress={() => {
-                    onClose();
-                    if (productoParaEliminar) handleEditarProducto(productoParaEliminar);
-                  }}
-                  className="w-full font-bold"
-                >
-                  Control de Inventario
-                </Button>
-                <Button variant="light" onPress={onClose} className="w-full">
-                  Cerrar
-                </Button>
-              </ModalFooter>
-            </>
-          )}
-        </ModalContent>
-      </Modal>
-
-      {/* Modal de Confirmación de Eliminación (Estilo Categoría) */}
-      <Modal
-        isOpen={showDeleteConfirm}
-        onOpenChange={setShowDeleteConfirm}
-        size="md"
-        backdrop="blur"
-      >
-        <ModalContent>
-          {(onClose) => (
-            <>
-              <ModalHeader className="bg-danger-50 border-b border-danger-100 py-4">
-                <div className="flex items-center gap-3 text-danger-600 px-2">
-                  <Icon icon="lucide:alert-octagon" width={28} className="flex-shrink-0" />
-                  <div className="flex flex-col text-left">
-                    <h2 className="font-bold text-lg leading-tight">Eliminar producto</h2>
-                    <p className="text-[11px] opacity-70 font-semibold uppercase tracking-wider">Acción irreversible</p>
+                    {esAdministrador && (
+                      <Tooltip content="Eliminar" color="danger" delay={100} closeDelay={0}>
+                        <Button
+                          isIconOnly
+                          variant="light"
+                          size="sm"
+                          color="danger"
+                          onPress={() => handleEliminarProducto(producto)}
+                          className="text-default-400 hover:text-danger"
+                        >
+                          <Icon icon="lucide:trash" width={18} />
+                        </Button>
+                      </Tooltip>
+                    )}
                   </div>
-                </div>
-              </ModalHeader>
-              <ModalBody className="py-6 px-6">
-                <div className="flex flex-col gap-6">
-                  <div className="bg-danger-50 p-4 rounded-xl flex items-start gap-3 border border-danger-100 shadow-sm">
-                    <div className="p-2.5 bg-white rounded-lg text-danger-500 shadow-sm mt-0.5">
-                      <Icon icon="lucide:trash-2" width={20} />
-                    </div>
-                    <div>
-                      <p className="text-danger-700 font-bold mb-1">Confirmar eliminación</p>
-                      <p className="text-sm text-danger-600/90 leading-relaxed text-justify">
-                        Eliminarás definitivamente el producto <strong>"{productoParaEliminar?.nombre}"</strong>. Esta acción no se puede deshacer.
-                      </p>
-                    </div>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+
+        {/* Modales */}
+        <Modal isOpen={isOpen} onOpenChange={onOpenChange} size="lg" backdrop="blur" placement="top" classNames={{ base: "mt-4" }}>
+          <ModalContent>
+            {(onClose) => (
+              <>
+                <ModalHeader className="border-b border-default-100 dark:border-default-50 bg-white dark:bg-content2">
+                  <div className="flex items-center gap-2">
+                    <Icon icon={modalMode === 'crear' ? "lucide:plus-circle" : "lucide:package-check"} className="text-primary" width={24} />
+                    <span className="font-bold text-lg text-secondary dark:text-foreground">{modalMode === 'crear' ? 'Nuevo Inventario' : 'Control de Inventario'}</span>
+                  </div>
+                </ModalHeader>
+                <ModalBody className="py-6">
+                  <FormularioProducto
+                    producto={productoSeleccionado}
+                    onClose={onClose}
+                    mode={modalMode}
+                    categorias={categoriasActivas}
+                    unidades={unidadesActivas}
+                    onConflictSync={handleConflictSync}
+                  />
+                </ModalBody>
+              </>
+            )}
+          </ModalContent>
+        </Modal>
+
+        <Modal isOpen={isPedidoMasivoOpen} onOpenChange={onPedidoMasivoOpenChange} size="4xl" backdrop="blur" scrollBehavior="inside">
+          <ModalContent>
+            {(onClose) => (
+              <PedidoMasivoModal productos={productos} onClose={onClose} />
+            )}
+          </ModalContent>
+        </Modal>
+
+        <GestionCategoriasModal
+          isOpen={isCategoriasOpen}
+          onOpenChange={onCategoriasOpenChange}
+          onRefresh={() => cargarProductosPaginados(1, true)}
+        />
+
+        <GestionUnidadesModal
+          isOpen={isUnidadesOpen}
+          onOpenChange={onUnidadesOpenChange}
+          onRefresh={() => cargarProductosPaginados(1, true)}
+        />
+
+        <Modal isOpen={showStockWarning} onOpenChange={setShowStockWarning} backdrop="blur">
+          <ModalContent>
+            {(onClose) => (
+              <>
+                <ModalHeader className="flex flex-col gap-1 items-center pt-8">
+                  <div className="p-3 bg-danger-50 rounded-full text-danger-500 mb-2">
+                    <Icon icon="lucide:alert-circle" width={40} />
+                  </div>
+                  <h2 className="text-xl font-bold text-secondary dark:text-foreground">No se puede eliminar</h2>
+                </ModalHeader>
+                <ModalBody className="text-center pb-6">
+                  <p className="text-default-600 text-justify px-4">
+                    El inventario <strong>"{productoParaEliminar?.nombre}"</strong> no puede ser eliminado porque aún tiene stock disponible (<strong>{productoParaEliminar?.stock}</strong>).
+                  </p>
+                  <div className="flex justify-center mt-4">
+                    <Button color="primary" variant="flat" onPress={onClose} className="font-bold">Entendido</Button>
+                  </div>
+                </ModalBody>
+              </>
+            )}
+          </ModalContent>
+        </Modal>
+
+        <Modal isOpen={showDeleteConfirm} onOpenChange={setShowDeleteConfirm} backdrop="blur" hideCloseButton>
+          <ModalContent>
+            {(onClose) => (
+              <>
+                <ModalHeader className="flex flex-col gap-1 items-center pt-8">
+                  <div className="p-3 bg-danger-50 rounded-full text-danger-500 mb-2">
+                    <Icon icon="lucide:trash-2" width={40} />
+                  </div>
+                  <h2 className="text-xl font-bold text-danger">¿Estás seguro?</h2>
+                </ModalHeader>
+                <ModalBody className="px-8 pb-6">
+                  <div className="p-4 bg-danger-50/50 rounded-xl border border-danger-100 mb-4 text-center">
+                    <p className="text-danger-700 font-bold mb-1">Confirmar eliminación</p>
+                    <p className="text-sm text-danger-600/90 leading-relaxed text-justify">
+                      Eliminarás definitivamente el producto <strong>"{productoParaEliminar?.nombre}"</strong>. Esta acción no se puede deshacer.
+                    </p>
                   </div>
 
                   <div className="flex flex-col gap-3">
@@ -1044,46 +956,24 @@ const InventarioPage: React.FC = () => {
                       onValueChange={setConfirmText}
                       variant="bordered"
                       isInvalid={confirmText !== '' && confirmText !== 'CONFIRMAR'}
-                      className="max-w-full"
+                      classNames={{ inputWrapper: "border-2 group-data-[focus=true]:border-danger-500" }}
                       autoFocus
-                      classNames={{
-                        input: "font-semibold",
-                        inputWrapper: "border-2 group-data-[focus=true]:border-danger-500"
-                      }}
                     />
                   </div>
-                </div>
-              </ModalBody>
-              <ModalFooter className="border-t border-default-100 py-4 px-6 gap-3">
-                <Button
-                  variant="light"
-                  onPress={onClose}
-                  isDisabled={isDeleting}
-                  className="font-bold text-default-500"
-                >
-                  Cancelar
-                </Button>
-                <Button
-                  color="danger"
-                  onPress={handleConfirmarEliminacion}
-                  isLoading={isDeleting}
-                  isDisabled={confirmText !== 'CONFIRMAR'}
-                  className="font-bold px-8 shadow-lg shadow-danger-200"
-                >
-                  Eliminar
-                </Button>
-              </ModalFooter>
-            </>
-          )}
-        </ModalContent>
-      </Modal>
-    </div >
+                </ModalBody>
+                <ModalFooter className="border-t border-default-100 py-4 px-6 gap-3">
+                  <Button variant="light" onPress={onClose} isDisabled={isDeleting} className="font-bold text-default-500">Cancelar</Button>
+                  <Button color="danger" onPress={handleConfirmarEliminacion} isLoading={isDeleting} isDisabled={confirmText !== 'CONFIRMAR'} className="font-bold px-8 shadow-lg shadow-danger-200">Eliminar</Button>
+                </ModalFooter>
+              </>
+            )}
+          </ModalContent>
+        </Modal>
+      </motion.div>
+    </div>
   );
 };
 
-/**
- * Interfaz para las propiedades del componente FormularioProducto.
- */
 interface FormularioProductoProps {
   producto: IProducto | null;
   onClose: () => void;
@@ -1091,6 +981,7 @@ interface FormularioProductoProps {
   categorias: { id: number; nombre: string }[];
   unidades: IUnidadMedida[];
   onConflictSync?: (producto: IProducto) => void;
+  origenContext?: 'inventario' | 'bodega';
 }
 
 /**
@@ -1099,7 +990,7 @@ interface FormularioProductoProps {
  * @param {FormularioProductoProps} props - Propiedades del componente.
  * @returns {JSX.Element} El formulario de producto.
  */
-const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto, onClose, mode, categorias, unidades, onConflictSync }) => {
+export const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto, onClose, mode, categorias, unidades, onConflictSync, origenContext = 'inventario' }) => {
   const toast = useToast();
   const [nombre, setNombre] = React.useState(producto?.nombre || '');
   const [codProducto, setCodProducto] = React.useState((producto as any)?.codProducto || '');
@@ -1340,13 +1231,19 @@ const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto, onClo
   const motivoDescripcion = React.useMemo(() => {
     switch (tipoMovimiento) {
       case 'Entrada': return "Registrando ingreso de mercadería al sistema del Inventario";
-      case 'Salida Inventario': return "Registrando retiro o consumo de productos al sistema del Inventario";
-      case 'Traslado': return "Iniciando movimiento a Bodega de Transito";
+      case 'Salida Inventario':
+        return origenContext === 'bodega'
+          ? "Registrando la salida de insumos para el desarrollo de clases, talleres o procesos académicos."
+          : "Registrando retiro o consumo de productos al sistema del Inventario";
+      case 'Traslado':
+        return origenContext === 'bodega'
+          ? "Registrando el reingreso de productos no utilizados al inventario principal."
+          : "Iniciando movimiento a Bodega de Transito";
       case 'Ajuste': return "Corrigiendo saldo para sincronizar con stock físico";
       case 'Merma': return "Reportar Pérdida o Producto Dañado";
       default: return "";
     }
-  }, [tipoMovimiento]);
+  }, [tipoMovimiento, origenContext]);
 
   if (mode === 'editar' && tipoMovimiento && stock.trim() !== '') {
     if (tipoMovimiento === 'Entrada') {
@@ -1356,7 +1253,10 @@ const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto, onClo
       diffText = currentStockVal > originalStockVal ? `+${(currentStockVal - originalStockVal).toFixed(3)}` : '';
     } else if (tipoMovimiento === 'Salida Inventario' || tipoMovimiento === 'Traslado' || tipoMovimiento === 'Merma') {
       if (currentStockVal >= originalStockVal) {
-        stockError = `Para ${tipoMovimiento}, el stock debe ser menor al actual`;
+        const actionName = tipoMovimiento === 'Salida Inventario' && origenContext === 'bodega' ? 'Salida Bodega' :
+          tipoMovimiento === 'Traslado' && origenContext === 'bodega' ? 'Devolución' :
+            tipoMovimiento;
+        stockError = `Para ${actionName}, el stock debe ser menor al actual`;
       }
       diffText = currentStockVal < originalStockVal ? `${(currentStockVal - originalStockVal).toFixed(3)}` : '';
     } else if (tipoMovimiento === 'Ajuste') {
@@ -1571,27 +1471,35 @@ const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto, onClo
           classNames={{ inputWrapper: "bg-white dark:bg-default-100/50" }}
         />
 
-        {mode === 'editar' && (
-          <Select
-            label="Motivo"
-            placeholder="Seleccione..."
-            selectedKeys={tipoMovimiento ? [tipoMovimiento] : []}
-            onChange={(e: any) => setTipoMovimiento(e.target.value)}
-            isRequired
-            variant="bordered"
-            classNames={{ trigger: "bg-white dark:bg-default-100/50" }}
-          >
-            <SelectItem key="Entrada">Entrada</SelectItem>
-            <SelectItem key="Traslado">Traslado</SelectItem>
-            <SelectItem key="Ajuste">Ajuste</SelectItem>
-            <SelectItem key="Salida Inventario" textValue="Salida Inventario">
-              <Tooltip content="Salida Inventario" placement="right" closeDelay={0}>
-                <span className="w-full inline-block">Salida Inventario</span>
-              </Tooltip>
-            </SelectItem>
-            <SelectItem key="Merma">Merma</SelectItem>
-          </Select>
-        )}
+        {mode === 'editar' && (() => {
+          const opcionesMotivo = [
+            ...(origenContext === 'inventario' ? [{ key: 'Entrada', label: 'Entrada' }] : []),
+            { key: 'Traslado', label: origenContext === 'bodega' ? 'Devolución' : 'Traslado' },
+            { key: 'Ajuste', label: 'Ajuste' },
+            { key: 'Salida Inventario', label: origenContext === 'bodega' ? 'Salida Bodega' : 'Salida Inventario' },
+            { key: 'Merma', label: 'Merma' }
+          ];
+
+          return (
+            <Select
+              label="Motivo"
+              placeholder="Seleccione..."
+              selectedKeys={tipoMovimiento ? [tipoMovimiento] : []}
+              onChange={(e: any) => setTipoMovimiento(e.target.value)}
+              isRequired
+              variant="bordered"
+              classNames={{ trigger: "bg-white dark:bg-default-100/50" }}
+            >
+              {opcionesMotivo.map(opcion => (
+                <SelectItem key={opcion.key} textValue={opcion.label}>
+                  <Tooltip content={opcion.label} placement="right" closeDelay={0} isDisabled={opcion.key !== 'Salida Inventario' && opcion.key !== 'Traslado'}>
+                    <span className="w-full inline-block">{opcion.label}</span>
+                  </Tooltip>
+                </SelectItem>
+              ))}
+            </Select>
+          );
+        })()}
       </div>
 
       <div className="flex justify-end gap-2 pt-4 border-t border-default-100 mt-4">

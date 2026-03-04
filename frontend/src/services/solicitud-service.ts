@@ -97,26 +97,7 @@ export const obtenerTodasSolicitudesService = (
   filtros?: IFiltrosSolicitudes
 ): Promise<ISolicitud[]> => {
   return new Promise(async (resolve) => {
-    try {
-      // Intentar obtener datos del backend
-      const response = await fetch(ENDPOINTS.SOLICITUDES_DETALLES);
-
-      if (response.ok) {
-        const data = await response.json();
-
-        // Mapeo básico si es necesario, o retorno directo si coincide la estructura
-        // Asumimos que data es un array de ISolicitud o compatible
-        if (Array.isArray(data)) {
-          // Si el backend devuelve status 200 y un array, usamos eso.
-          // Podríamos validar campos aquí si fuera crítico.
-          resolve(data as ISolicitud[]);
-          return;
-        }
-      } else {
-      }
-    } catch (error) {
-    }
-
+    // Intentar obtener datos del backend
     // FALLBACK: Lógica original (localStorage + Mock)
     setTimeout(() => {
       let solicitudes = obtenerSolicitudesStorage();

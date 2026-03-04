@@ -12,6 +12,7 @@ import KuHub.modules.gestion_inventario.exceptions.GestionInventarioException;
 import KuHub.modules.gestion_inventario.repository.InventarioRepository;
 import KuHub.modules.gestion_inventario.repository.ProductoRepository;
 import KuHub.modules.gestion_usuario.service.UsuarioService;
+import KuHub.utils.PaginationUtils;
 import KuHub.utils.StringUtils;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -116,14 +117,14 @@ public class InventarioServiceImpl implements InventarioService {
 
         String term = normalize(searchTerm);
 
-        long totalRegistros = inventarioRepository.countSearchInventario(term);
+        long totalRegistros = inventarioRepository.countSearchInventory(term);
 
-        Paging paging = buildPaging(pageRequested, totalRegistros);
+        PaginationUtils.PagingResult paging = PaginationUtils.buildPaging(pageRequested, totalRegistros);
 
-        List<Object[]> rows = inventarioRepository.searchInventarioPage(
+        List<Object[]> rows = inventarioRepository.searchInventoryPage(
                 term,
-                paging.limit,
-                paging.offset
+                paging.limit(),
+                paging.offset()
         );
 
         return buildResponse(rows, paging, totalRegistros);
@@ -138,14 +139,14 @@ public class InventarioServiceImpl implements InventarioService {
 
         String term = normalize(codProducto);
 
-        long totalRegistros = inventarioRepository.countSearchInventarioByCodProducto(term);
+        long totalRegistros = inventarioRepository.countSearchInventarioByCodProduct(term);
 
-        Paging paging = buildPaging(pageRequested, totalRegistros);
+        PaginationUtils.PagingResult paging = PaginationUtils.buildPaging(pageRequested, totalRegistros);
 
-        List<Object[]> rows = inventarioRepository.searchInventarioByCodProductoPage(
+        List<Object[]> rows = inventarioRepository.searchInventarioByCodProductPage(
                 term,
-                paging.limit,
-                paging.offset
+                paging.limit(),
+                paging.offset()
         );
 
         return buildResponse(rows, paging, totalRegistros);
@@ -178,16 +179,16 @@ public class InventarioServiceImpl implements InventarioService {
                 soloStockBajo
         );
 
-        Paging paging = buildPaging(filter.getPage(), totalRegistros);
+        PaginationUtils.PagingResult paging = PaginationUtils.buildPaging(filter.getPage(), totalRegistros);
 
-        List<Object[]> rows = inventarioRepository.findInventarioPage(
+        List<Object[]> rows = inventarioRepository.findInventoryPage(
                 useCategorias,
                 categoriasIds,
                 useUnidades,
                 unidadesIds,
                 soloStockBajo,
-                paging.limit,
-                paging.offset
+                paging.limit(),
+                paging.offset()
         );
         return buildResponse(rows, paging, totalRegistros);
     }
@@ -355,17 +356,13 @@ public class InventarioServiceImpl implements InventarioService {
     }
 
     /** Factory del response (evita repetir el constructor)*/
-    private InventoriesPageDTO buildResponse(
-            List<Object[]> rows,
-            Paging paging,
-            long totalRegistros
-    ) {
+    private InventoriesPageDTO buildResponse(List<Object[]> rows, PaginationUtils.PagingResult paging, long total) {
         return new InventoriesPageDTO(
                 mapRows(rows),
-                paging.page,
-                paging.limit,
-                paging.totalPages,
-                totalRegistros
+                paging.page(),
+                paging.limit(),
+                paging.totalPages(),
+                total
         );
     }
 
@@ -396,56 +393,7 @@ public class InventarioServiceImpl implements InventarioService {
         );
     }
 
-    /**
-     * METODOS PRIVADOS PARA MENEJO IMPLEMENTADO EN LA LOGICA DE GESTION DE PAGINACION Y LISTADO DINAMICO
-     * */
-    private int calculateTotalPages(long totalRegistros) {
-        if (totalRegistros <= 0) {
-            return 0;
-        }
-        if (totalRegistros <= 20) {
-            return 1;
-        }
-        return 1 + (int) Math.ceil((totalRegistros - 20) / 10.0);
-    }
 
-    /**Cálculo único de paginación asimétrica (20 / 10)*/
-    private Paging buildPaging(Integer pageRequested, long totalRegistros) {
-
-        int totalPages = calculateTotalPages(totalRegistros);
-
-        int page = (pageRequested != null && pageRequested > 0) ? pageRequested : 1;
-        if (page > totalPages && totalPages > 0) {
-            page = totalPages;
-        }
-
-        int limit;
-        int offset;
-
-        if (page == 1) {
-            limit = 20;
-            offset = 0;
-        } else {
-            limit = 10;
-            offset = 20 + (page - 2) * 10;
-        }
-        return new Paging(page, limit, offset, totalPages);
-    }
-
-    /**DTO interno para paginación (simple y efectivo)*/
-    private static class Paging {
-        int page;
-        int limit;
-        int offset;
-        int totalPages;
-
-        Paging(int page, int limit, int offset, int totalPages) {
-            this.page = page;
-            this.limit = limit;
-            this.offset = offset;
-            this.totalPages = totalPages;
-        }
-    }
 
     /**
     @Transactional(readOnly = true)

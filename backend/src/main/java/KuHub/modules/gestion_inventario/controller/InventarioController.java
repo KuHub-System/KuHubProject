@@ -39,11 +39,12 @@ public class InventarioController {
     public ResponseEntity<InventoriesPageDTO> searchInventory(
             @RequestBody SearchDTO request
     ) {
-        return ResponseEntity.ok(
-                inventarioService.searchInventory(
+        return ResponseEntity
+                .status(200)
+                .body(inventarioService.searchInventory(
                         request.getTerm(),
                         request.getPage()
-                )
+            )
         );
     }
 
