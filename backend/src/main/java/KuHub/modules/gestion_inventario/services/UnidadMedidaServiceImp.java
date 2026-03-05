@@ -51,12 +51,14 @@ public class UnidadMedidaServiceImp implements UnidadMedidaService{
         return unidadaMedidaRepository.findByActivo(true);
     }
 
+    /**Metodo usando para mostrar las unidades de medida con sus productos asociados*/
     @Override
     @Transactional(readOnly = true)
     public List<UnidadMedidaView> findAllWithAsociados(){
         return unidadaMedidaRepository.findAllWithAsociados();
     }
 
+    /**Metodo para crear una unidad de medida*/
     @Override
     @Transactional
     public boolean createUnidad(CreateUnidadDTO dto){
@@ -112,6 +114,7 @@ public class UnidadMedidaServiceImp implements UnidadMedidaService{
         return true;
     }
 
+    /**Metodo para cambiar la unidad de medida transferiendo a otros productos*/
     @Override
     @Transactional
     public String changeProductsToAnotherUnidadMedida(
@@ -137,6 +140,7 @@ public class UnidadMedidaServiceImp implements UnidadMedidaService{
                 + newUnidad.getNombreUnidad() + ".";
     }
 
+    /**Metodo para desactivar o activar una unidad de medida*/
     @Override
     @Transactional
     public void changeStatusEnable (ChangeStatusActiveUnidadDTO dto){
@@ -145,6 +149,7 @@ public class UnidadMedidaServiceImp implements UnidadMedidaService{
         unidadaMedidaRepository.save(unidad);
     }
 
+    /**Deletar una unidad de medida permanentemente si no tiene productos asociados*/
     @Override
     @Transactional
     public void deleteUnidad(Short idUnidad){

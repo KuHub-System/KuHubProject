@@ -73,6 +73,18 @@ public class Usuario {
     }
 
     /**
+     * Método auxiliar para asignar el rol directamente mediante su ID.
+     * Facilita el mapeo desde el DTO sin necesidad de una consulta previa al Service de Roles.
+     */
+    public void setRolById(Integer idRol) {
+        if (idRol != null) {
+            Rol r = new Rol();
+            r.setIdRol(idRol); // Asumiendo que la entidad Rol tiene setIdRol
+            this.rol = r;
+        }
+    }
+
+    /**
      * Método helper para obtener el nombre completo del usuario
      */
     public String getNombreCompleto() {

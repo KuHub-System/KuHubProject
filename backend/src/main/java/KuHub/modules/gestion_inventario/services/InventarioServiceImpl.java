@@ -386,6 +386,8 @@ public class InventarioServiceImpl implements InventarioService {
         return true;
     }
 
+    /**Metodo para que actualice de manera masiva manejo de movimientos calculando stock, este metodo se realiza
+     * despues de la validacion `validateBulkInventoryStockBeforeUpdating` */
     @Transactional
     @Override
     public boolean updateBulkInventoryStock(BulkInventoryUpdateDTO request) {

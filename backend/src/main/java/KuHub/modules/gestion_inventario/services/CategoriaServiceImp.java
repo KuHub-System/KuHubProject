@@ -104,6 +104,7 @@ public class CategoriaServiceImp implements CategoriaService{
         categoriaRepository.save(categoria);
     }
 
+    /**Metodo para transferir productos de una categoria a otra*/
     @Override
     @Transactional
     public String changeProductsToAnotherCategory (ChangeProductsToAnotherCategoryDTO dto){
@@ -128,7 +129,7 @@ public class CategoriaServiceImp implements CategoriaService{
 
     }
 
-
+    /**Metodo para eliminar una categoria si no tiene productos asociados*/
     @Override
     @Transactional
     public boolean deleteCategoria(Short idCategoria){

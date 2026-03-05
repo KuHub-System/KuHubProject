@@ -2,6 +2,7 @@ package KuHub.modules.gestion_usuario.repository;
 
 import KuHub.modules.gestion_usuario.dtos.dtofilter.pro.UserAuthProjection;
 import KuHub.modules.gestion_usuario.dtos.proyection.UserIdNameView;
+import KuHub.modules.gestion_usuario.dtos.response.UsersView;
 import KuHub.modules.gestion_usuario.entity.Usuario;
 import KuHub.modules.gestion_usuario.entity.Rol;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -23,6 +24,147 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Integer> {
     Optional<Usuario> findByIdentifier(@Param("identifier") String identifier);
 
 
+    /**
+     * Obtiene la lista de usuarios con formato para el frontend y paginación manual.
+     */
+    @Query(value =
+        "SELECT " +
+        "    u.url_foto_perfil AS urlFotoPerfil, " +
+        "    CONCAT_WS(' ', " +
+        "        NULLIF(TRIM(u.p_nombre), ''), " +
+        "        NULLIF(TRIM(u.s_nombre), ''), " +
+        "        NULLIF(TRIM(u.app_paterno), ''), " +
+        "        NULLIF(TRIM(u.app_materno), '') " +
+        "    ) AS nombreCompleto, " +
+        "    u.email AS email, " +
+        "    u.username AS username, " +
+        "    INITCAP(REPLACE(CAST(r.nombre_rol AS TEXT), '_', '-')) AS rolFormateado, " +
+        "    u.activo AS activo, " +
+        "    u.ultimo_acceso AS ultimoAcceso, " +
+        "    u.p_nombre AS primerNombre, " + // Alias sincronizado con UsersView
+        "    u.s_nombre AS segundoNombre, " +
+        "    u.app_paterno AS apellidoPaterno, " +
+        "    u.app_materno AS apellidoMaterno " +
+        "FROM usuario u " +
+        "JOIN rol r ON r.id_rol = u.id_rol " +
+        "WHERE u.id_usuario NOT IN (1, 2, 3, 4, 5, 6, 7) " +
+        "AND u.activo = true " +
+        "ORDER BY u.ultimo_acceso DESC " +
+        "LIMIT :limit OFFSET :offset",
+        nativeQuery = true)
+    List<UsersView> findUsuariosParaFrontend(
+            @Param("limit") int limit,
+            @Param("offset") int offset
+    );
+
+    /**
+     * Cuenta el total de usuarios (excluyendo sistemas) para el cálculo de páginas totales.
+     */
+    @Query(value = "SELECT COUNT(*) FROM usuario u " +
+            "WHERE u.id_usuario NOT IN (1, 2, 3, 4, 5, 6, 7)" +
+            "AND u.activo = true",
+            nativeQuery = true)
+    long countUsuariosParaFrontend();
+
+    /**
+     * Busca usuarios por nombre o email con filtros de sistema y paginación.
+     */
+    @Query(value =
+        "SELECT " +
+            "    u.url_foto_perfil AS \"urlFotoPerfil\", " +
+            "    CONCAT_WS(' ', " +
+            "        NULLIF(TRIM(u.p_nombre), ''), " +
+            "        NULLIF(TRIM(u.s_nombre), ''), " +
+            "        NULLIF(TRIM(u.app_paterno), ''), " +
+            "        NULLIF(TRIM(u.app_materno), '') " +
+            "    ) AS \"nombreCompleto\", " +
+            "    u.email AS \"email\", " +
+            "    u.username AS \"username\", " +
+            "    INITCAP(REPLACE(CAST(r.nombre_rol AS TEXT), '_', '-')) AS \"rolFormateado\", " +
+            "    u.activo AS \"activo\", " +
+            "    u.ultimo_acceso AS \"ultimoAcceso\", " +
+            "    u.p_nombre AS \"primerNombre\", " +
+            "    u.s_nombre AS \"segundoNombre\", " +
+            "    u.app_paterno AS \"apellidoPaterno\", " +
+            "    u.app_materno AS \"apellidoMaterno\" " +
+            "FROM usuario u " +
+            "JOIN rol r ON r.id_rol = u.id_rol " +
+            "WHERE u.id_usuario NOT IN (1, 2, 3, 4, 5, 6, 7) " +
+            "AND u.activo = true " +
+                "AND (" +
+                "    CONCAT_WS(' ', " + // Búsqueda por nombre completo concatenado
+                "        NULLIF(TRIM(u.p_nombre), ''), " +
+                "        NULLIF(TRIM(u.s_nombre), ''), " +
+                "        NULLIF(TRIM(u.app_paterno), ''), " +
+                "        NULLIF(TRIM(u.app_materno), '') " +
+                "    ) ILIKE CONCAT('%', :term, '%') OR " +
+                "    u.email ILIKE CONCAT('%', :term, '%') " +
+                ") " +
+            "ORDER BY u.ultimo_acceso DESC " +
+            "LIMIT :limit OFFSET :offset",
+        nativeQuery = true)
+    List<UsersView> searchUsuariosParaFrontend(
+            @Param("term") String term,
+            @Param("limit") int limit,
+            @Param("offset") int offset
+    );
+
+    /**
+     * Cuenta el total de coincidencias para la búsqueda (necesario para la metadata de paginación).
+     */
+    @Query(value =
+        "SELECT COUNT(*) FROM usuario u " +
+                "WHERE u.id_usuario NOT IN (1, 2, 3, 4, 5, 6, 7) " +
+                "AND u.activo = true " +
+                "AND (" +
+                "    CONCAT_WS(' ', " +
+                "        NULLIF(TRIM(u.p_nombre), ''), " +
+                "        NULLIF(TRIM(u.s_nombre), ''), " +
+                "        NULLIF(TRIM(u.app_paterno), ''), " +
+                "        NULLIF(TRIM(u.app_materno), '') " +
+                "    ) ILIKE CONCAT('%', :term, '%') OR " +
+                "    u.email ILIKE CONCAT('%', :term, '%') " +
+                ")",
+        nativeQuery = true)
+    long countSearchUsuariosParaFrontend(@Param("term") String term);
+
+    Optional<Usuario> findUsuarioByEmailAndActivo(String email, Boolean activo);
+    Optional<Usuario> findByEmailIgnoreCaseAndActivoTrue(String email);
+
+
+
+    /**Validaciones booleanas*/
+    boolean existsUsuarioByUsernameAndActivo(String username, Boolean activo);
+    boolean existsUsuarioByEmailAndActivo(String email, Boolean activo);
+    boolean existsByUsernameAndIdUsuarioNot(String username, Integer idUsuario);
+    boolean existsByEmailAndIdUsuarioNot(String email, Integer idUsuario);
+
+
+    @Query(value = "SELECT " +
+            "concat_ws(' ', u.p_nombre, u.s_nombre, u.app_paterno, u.app_materno) AS nombreCompleto, " +
+            "u.email AS email, " +
+            "u.ultimo_acceso AS ultimoAcceso, " +
+            "u.url_foto_perfil AS urlFotoPerfil, " +
+            "r.nombre_rol AS nombreRol, " +
+            "u.contrasena AS contrasena, " +
+            "u.activo AS activo " +
+            "FROM usuario u " +
+            "JOIN rol r ON r.id_rol = u.id_rol " +
+            "WHERE (u.username = :identificador OR u.email = :identificador) " +
+            "AND u.activo = true", nativeQuery = true)
+    Optional<UserAuthProjection> findUserAuth(@Param("identificador") String identificador);
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -39,19 +181,7 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Integer> {
 
     Optional<UserIdNameView> findViewByEmail(String email);
 
-    @Query(value = "SELECT " +
-            "concat_ws(' ', u.p_nombre, u.s_nombre, u.app_paterno, u.app_materno) AS nombreCompleto, " +
-            "u.email AS email, " +
-            "u.ultimo_acceso AS ultimoAcceso, " +
-            "u.url_foto_perfil AS urlFotoPerfil, " +
-            "r.nombre_rol AS nombreRol, " +
-            "u.contrasena AS contrasena, " +
-            "u.activo AS activo " +
-            "FROM usuario u " +
-            "JOIN rol r ON r.id_rol = u.id_rol " +
-            "WHERE (u.username = :identificador OR u.email = :identificador) " +
-            "AND u.activo = true", nativeQuery = true)
-    Optional<UserAuthProjection> findUserAuth(@Param("identificador") String identificador);
+
 
     /**
      * Busca un usuario por username

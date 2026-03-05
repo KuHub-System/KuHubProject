@@ -6,7 +6,6 @@
  */
 
 import { inicializarSistema, estadisticasSistema } from './storage-service';
-import { inicializarUsuariosPorDefecto } from './usuario-service';
 
 /**
  * Inicializa todo el sistema de persistencia
@@ -17,9 +16,6 @@ export const inicializarApp = (): void => {
   try {
     // Inicializar el sistema de almacenamiento
     inicializarSistema();
-
-    // 🔥 NUEVO: Inicializar usuarios de prueba
-    inicializarUsuariosPorDefecto();
 
     // Mostrar estadísticas
     const stats = estadisticasSistema();

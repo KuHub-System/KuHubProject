@@ -6,6 +6,7 @@ export type RolUsuario =
   | 'Administrador'
   | 'Co-Administrador'
   | 'Gestor de Pedidos'
+  | 'Docente'
   | 'Profesor'
   | 'Profesor a Cargo'
   | 'Encargado de Bodega'
@@ -26,25 +27,54 @@ export interface IUsuario {
   nombreCompleto: string;
   correo: string;
   contrasena?: string;
-  rol: string;
+  username?: string;
+  primerNombre?: string;
+  segundoNombre?: string;
+  apellidoPaterno?: string;
+  apellidoMaterno?: string;
+  rol: RolUsuario;
   fotoPerfil?: string;
   activo: boolean;
   fechaCreacion: string;
   ultimoAcceso?: string;
 }
 
+export interface IPaginatedUsuarioResponse {
+  content: IUsuario[];
+  pagination: {
+    page: number;
+    limit: number;
+    offset: number;
+    totalPages: number;
+  };
+}
+
 export interface IUsuarioCreacion {
-  nombreCompleto: string;
-  correo: string;
-  contrasena: string;
-  rol: RolUsuario;
+  primeroNombre: string;
+  segundoNombre?: string;
+  apellidoPaterno: string;
+  apellidoMaterno?: string;
+  username: string;
+  email: string;
+  password: string;
+  confirmarPassword?: string; // Solo para validación en frontend
+  rol: RolUsuario; // Seguimos usando el string del select en el form, el service mapeará a idRol
   fotoPerfil?: string;
 }
 
+export interface ISearchUserRequest {
+  term: string;
+  page: number;
+}
+
 export interface IUsuarioActualizacion {
-  nombreCompleto?: string;
-  correo?: string;
-  contrasena?: string;
+  primeroNombre?: string;
+  segundoNombre?: string;
+  apellidoPaterno?: string;
+  apellidoMaterno?: string;
+  username?: string;
+  email?: string;
+  password?: string;
   rol?: RolUsuario;
   fotoPerfil?: string;
   activo?: boolean;
@@ -105,6 +135,18 @@ export const PERMISOS_POR_ROL: Record<RolUsuario, IPermisosRol> = {
     crearSolicitudes: false,
     aprobarSolicitudes: false,
     gestionarProcesoPedidos: true,
+  },
+  'Docente': {
+    dashboard: false,
+    gestionUsuarios: false,
+    gestionSolicitudes: false,
+    gestionRecetas: true,
+    inventario: false,
+    bodegaPrincipal: false,
+    bodegaTransito: false,
+    crearSolicitudes: false,
+    aprobarSolicitudes: false,
+    gestionarProcesoPedidos: false,
   },
   'Profesor': {
     dashboard: false,

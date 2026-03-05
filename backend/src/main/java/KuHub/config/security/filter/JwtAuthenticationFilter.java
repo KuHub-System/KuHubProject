@@ -123,8 +123,8 @@ public class JwtAuthenticationFilter extends UsernamePasswordAuthenticationFilte
                     .compact();
 
             // Buscar usuario en BD
-            Usuario usuario = usuarioRepository.findByEmailIgnoreCase(username)
-                    .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+            Usuario usuario = usuarioRepository.findByEmailIgnoreCaseAndActivoTrue(username)
+                    .orElseThrow(() -> new RuntimeException("Usuario activo no encontrado"));
 
             // Actualizar ultimoAcceso
             LocalDateTime ahora = LocalDateTime.now();
