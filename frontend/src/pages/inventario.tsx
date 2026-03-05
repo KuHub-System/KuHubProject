@@ -32,7 +32,7 @@ import {
 import { Icon } from '@iconify/react';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useHistory } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { IProducto } from '../types/producto.types';
 import {
   crearProductoService,
@@ -57,15 +57,19 @@ import { obtenerCategoriasActivasService } from '../services/categoria-service';
 import { obtenerUnidadesActivasService } from '../services/unidad-medida-service';
 import { IUnidadMedida } from '../types/inventario.types';
 import { actualizarBodegaTransitoConProductoService, WarehouseWithProductUpdateDTO } from '../services/bodega-transito-service';
+import {
+  obtenerBulkProductoInventoryListingService,
+  IBulkProductoInventoryListing,
+  validateBulkInventoryStockService,
+  bulkUpdateInventoryStockService
+} from '../services/inventario-service';
 
-/**
- * Interfaz para un item del pedido masivo
- */
 interface ItemPedidoMasivo {
   id: string;
-  producto: IProducto;
-  cantidad: number;
-  notas?: string;
+  producto: IBulkProductoInventoryListing;
+  stockNuevo: number;
+  motivo: string;
+  diferenciaCalculada?: number;
 }
 
 /**
@@ -104,6 +108,8 @@ const InventarioPage: React.FC = () => {
   const history = useHistory();
   const { isOpen, onOpen, onOpenChange } = useDisclosure();
   const { isOpen: isPedidoMasivoOpen, onOpen: onPedidoMasivoOpen, onOpenChange: onPedidoMasivoOpenChange } = useDisclosure();
+  const { isOpen: isResultModalOpen, onOpen: onResultModalOpen, onOpenChange: onResultModalOpenChange } = useDisclosure();
+  const [bulkResult, setBulkResult] = React.useState<{ success: number, conflict: number, gone: number } | null>(null);
   const { isOpen: isCategoriasOpen, onOpen: onCategoriasOpen, onOpenChange: onCategoriasOpenChange } = useDisclosure();
   const { isOpen: isUnidadesOpen, onOpen: onUnidadesOpen, onOpenChange: onUnidadesOpenChange } = useDisclosure();
   const [productoSeleccionado, setProductoSeleccionado] = React.useState<IProducto | null>(null);
@@ -611,10 +617,10 @@ const InventarioPage: React.FC = () => {
             variant="solid"
             size="md"
             className="font-bold shadow-sm"
-            startContent={<Icon icon="lucide:shopping-cart" width={18} />}
+            startContent={<Icon icon="lucide:arrow-right-left" width={18} />}
             onPress={onPedidoMasivoOpen}
           >
-            Pedido
+            Control de Inventario
           </Button>
           <Button
             color="primary"
@@ -922,7 +928,81 @@ const InventarioPage: React.FC = () => {
         <Modal isOpen={isPedidoMasivoOpen} onOpenChange={onPedidoMasivoOpenChange} size="4xl" backdrop="blur" scrollBehavior="inside">
           <ModalContent>
             {(onClose) => (
-              <PedidoMasivoModal productos={productos} onClose={onClose} />
+              <PedidoMasivoModal
+                productos={productos}
+                onClose={onClose}
+                onNuevoProducto={handleNuevoProducto}
+                onProcessComplete={(data) => {
+                  setBulkResult(data);
+                  onResultModalOpen();
+                }}
+              />
+            )}
+          </ModalContent>
+        </Modal>
+
+        <Modal
+          backdrop="opaque"
+          isOpen={isResultModalOpen}
+          onOpenChange={onResultModalOpenChange}
+          size="md"
+          classNames={{
+            backdrop: "bg-background/50 backdrop-blur-sm",
+            base: "bg-background dark:bg-content1 shadow-xl border border-default-200 dark:border-default-100",
+          }}
+        >
+          <ModalContent>
+            {(onClose) => (
+              <>
+                <ModalBody>
+                  <div className="flex flex-col items-center justify-center p-8 text-center gap-4 animate-appearance-in">
+                    <Icon icon="lucide:check-circle" className="text-success w-20 h-20" />
+                    <h3 className="text-2xl font-bold">Proceso Completado</h3>
+                    <p className="text-default-600 text-lg">
+                      {bulkResult?.success} {bulkResult?.success === 1 ? 'producto procesado' : 'productos procesados'} con éxito.
+                    </p>
+
+                    {bulkResult && bulkResult.conflict > 0 && (
+                      <div className="p-4 bg-warning/10 dark:bg-warning/20 border border-warning/20 rounded-lg mt-2 flex flex-col items-center gap-2">
+                        <Icon icon="lucide:refresh-cw" className="text-warning-600 dark:text-warning-400 w-8 h-8" />
+                        <span className="text-warning-600 dark:text-warning-400 font-semibold text-medium">
+                          {bulkResult.conflict} sincronizados automáticamente por procesos en paralelo.
+                        </span>
+                      </div>
+                    )}
+
+                    {bulkResult && bulkResult.gone > 0 && (
+                      <p className="text-danger mt-2 font-medium">
+                        {bulkResult.gone} ignorados (producto eliminado).
+                      </p>
+                    )}
+                  </div>
+                </ModalBody>
+                <ModalFooter className="flex justify-center border-t border-default-100 bg-default-50 w-full pt-4 pb-4">
+                  <Button
+                    color="primary"
+                    size="lg"
+                    className="font-bold px-10"
+                    startContent={<Icon icon="lucide:thumbs-up" width={18} />}
+                    onPress={() => {
+                      onClose();
+                      setSearchTerm('');
+                      setDebouncedSearchTerm('');
+                      setSearchCode('');
+                      setDebouncedSearchCode('');
+                      searchTermRef.current = '';
+                      searchCodeRef.current = '';
+                      const defaultFilters = new Set(['todas']);
+                      setSelectedFilters(defaultFilters);
+                      filtersRef.current = defaultFilters;
+                      setCurrentPage(1);
+                      cargarProductosPaginados(1, true); // Recargar la tabla como la primera vez
+                    }}
+                  >
+                    Entendido
+                  </Button>
+                </ModalFooter>
+              </>
             )}
           </ModalContent>
         </Modal>
@@ -1349,104 +1429,116 @@ export const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto
             variant="flat"
             color="warning"
             onPress={() => setEditandoDatosBasicos(!editandoDatosBasicos)}
-            title={editandoDatosBasicos ? "Bloquear edición" : "Habilitar edición de campos básicos"}
+            title={editandoDatosBasicos ? "Cerrar campos" : "Habilitar edición de campos básicos"}
             className="shadow-sm"
           >
-            <Icon icon={editandoDatosBasicos ? "lucide:lock-open" : "lucide:edit-2"} width={16} />
+            <Icon icon={editandoDatosBasicos ? "lucide:lock" : "lucide:edit-2"} width={16} />
           </Button>
         </div>
       )}
 
-      <Input
-        label="Nombre"
-        placeholder="Nombre del producto"
-        value={nombre}
-        onValueChange={setNombre}
-        isRequired
-        variant="bordered"
-        maxLength={100}
-        description={`${nombre.length}/100`}
-        isDisabled={!editandoDatosBasicos}
-        classNames={{ inputWrapper: "bg-white dark:bg-default-100/50" }}
-      />
-
-      <Input
-        label="Código de producto (Opcional)"
-        placeholder="Ej: PRD-001"
-        value={codProducto}
-        onValueChange={setCodProducto}
-        variant="bordered"
-        maxLength={25}
-        description={`${codProducto.length}/25`}
-        isDisabled={!editandoDatosBasicos}
-        classNames={{ inputWrapper: "bg-white dark:bg-default-100/50" }}
-      />
-
-      <Input
-        label="Descripción (Opcional)"
-        placeholder="Descripción del producto"
-        value={descripcion}
-        onValueChange={setDescripcion}
-        variant="bordered"
-        maxLength={100}
-        description={`${descripcion.length}/100`}
-        isDisabled={!editandoDatosBasicos}
-        classNames={{ inputWrapper: "bg-white dark:bg-default-100/50" }}
-      />
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Select
-          label="Categoría"
-          placeholder="Seleccione..."
-          selectedKeys={idCategoria ? [idCategoria] : []}
-          onChange={(e: any) => setIdCategoria(e.target.value)}
-          isRequired
-          variant="bordered"
-          isDisabled={!editandoDatosBasicos}
-          classNames={{ trigger: "bg-white dark:bg-default-100/50" }}
-        >
-          {categorias.map(cat => (
-            <SelectItem key={cat.id.toString()}>{cat.nombre}</SelectItem>
-          ))}
-        </Select>
-
-        <div className="relative">
-          <Select
-            label="Unidad de Medida"
-            placeholder="Seleccione..."
-            selectedKeys={idUnidadMedida ? [idUnidadMedida] : []}
-            onChange={(e: any) => setIdUnidadMedida(e.target.value)}
-            isRequired
-            variant="bordered"
-            isDisabled={!editandoDatosBasicos}
-            classNames={{ trigger: "bg-white dark:bg-default-100/50 pr-10" }}
+      <AnimatePresence initial={false}>
+        {(mode === 'crear' || editandoDatosBasicos) && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.3 }}
+            className="space-y-4 overflow-hidden"
           >
-            {unidades.map(uni => (
-              <SelectItem key={uni.id.toString()}>
-                {mostrarAbreviatura ? uni.abreviatura : uni.nombre}
-              </SelectItem>
-            ))}
-          </Select>
-          <div className="absolute right-10 top-1/2 -translate-y-1/2 z-10">
-            <Button
-              isIconOnly
-              size="sm"
-              variant="light"
-              onPress={() => setMostrarAbreviatura(!mostrarAbreviatura)}
-              className="text-default-400 hover:text-primary min-w-unit-6 h-6"
-              title={mostrarAbreviatura ? "Mostrar nombres completos" : "Mostrar abreviaturas"}
-            >
-              <motion.div
-                animate={{ rotate: mostrarAbreviatura ? 180 : 0 }}
-                transition={{ duration: 0.3 }}
-                className="flex items-center justify-center"
+            <Input
+              label="Nombre"
+              placeholder="Nombre del producto"
+              value={nombre}
+              onValueChange={setNombre}
+              isRequired
+              variant="bordered"
+              maxLength={100}
+              description={`${nombre.length}/100`}
+              isDisabled={!editandoDatosBasicos && mode !== 'crear'}
+              classNames={{ inputWrapper: "bg-white dark:bg-default-100/50" }}
+            />
+
+            <Input
+              label="Código de producto (Opcional)"
+              placeholder="Ej: PRD-001"
+              value={codProducto}
+              onValueChange={setCodProducto}
+              variant="bordered"
+              maxLength={25}
+              description={`${codProducto.length}/25`}
+              isDisabled={!editandoDatosBasicos && mode !== 'crear'}
+              classNames={{ inputWrapper: "bg-white dark:bg-default-100/50" }}
+            />
+
+            <Input
+              label="Descripción (Opcional)"
+              placeholder="Descripción del producto"
+              value={descripcion}
+              onValueChange={setDescripcion}
+              variant="bordered"
+              maxLength={100}
+              description={`${descripcion.length}/100`}
+              isDisabled={!editandoDatosBasicos && mode !== 'crear'}
+              classNames={{ inputWrapper: "bg-white dark:bg-default-100/50" }}
+            />
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Select
+                label="Categoría"
+                placeholder="Seleccione..."
+                selectedKeys={idCategoria ? [idCategoria] : []}
+                onChange={(e: any) => setIdCategoria(e.target.value)}
+                isRequired
+                variant="bordered"
+                isDisabled={!editandoDatosBasicos && mode !== 'crear'}
+                classNames={{ trigger: "bg-white dark:bg-default-100/50" }}
               >
-                <Icon icon="lucide:arrow-left-right" width={16} />
-              </motion.div>
-            </Button>
-          </div>
-        </div>
-      </div>
+                {categorias.map(cat => (
+                  <SelectItem key={cat.id.toString()}>{cat.nombre}</SelectItem>
+                ))}
+              </Select>
+
+              <div className="relative">
+                <Select
+                  label="Unidad de Medida"
+                  placeholder="Seleccione..."
+                  selectedKeys={idUnidadMedida ? [idUnidadMedida] : []}
+                  onChange={(e: any) => setIdUnidadMedida(e.target.value)}
+                  isRequired
+                  variant="bordered"
+                  isDisabled={!editandoDatosBasicos && mode !== 'crear'}
+                  classNames={{ trigger: "bg-white dark:bg-default-100/50 pr-10" }}
+                >
+                  {unidades.map(uni => (
+                    <SelectItem key={uni.id.toString()}>
+                      {mostrarAbreviatura ? uni.abreviatura : uni.nombre}
+                    </SelectItem>
+                  ))}
+                </Select>
+                <div className="absolute right-10 top-1/2 -translate-y-1/2 z-10">
+                  <Button
+                    isIconOnly
+                    size="sm"
+                    variant="light"
+                    onPress={() => setMostrarAbreviatura(!mostrarAbreviatura)}
+                    className="text-default-400 hover:text-primary min-w-unit-6 h-6"
+                    title={mostrarAbreviatura ? "Mostrar nombres completos" : "Mostrar abreviaturas"}
+                  >
+                    <motion.div
+                      animate={{ rotate: mostrarAbreviatura ? 180 : 0 }}
+                      transition={{ duration: 0.3 }}
+                      className="flex items-center justify-center"
+                    >
+                      <Icon icon="lucide:arrow-left-right" width={16} />
+                    </motion.div>
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {mode === 'editar' && (
         <div className="pt-2">
@@ -1586,32 +1678,210 @@ export const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto
 interface PedidoMasivoModalProps {
   productos: IProducto[];
   onClose: () => void;
+  onNuevoProducto?: () => void;
+  onProcessComplete?: (data: { success: number, conflict: number, gone: number }) => void;
 }
 
 /**
  * Modal para realizar pedidos masivos hacia bodega de tránsito
  */
-const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ productos, onClose }) => {
+const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoProducto, onProcessComplete }) => {
   const toast = useToast();
   const [itemsPedido, setItemsPedido] = React.useState<ItemPedidoMasivo[]>([]);
   const [productoSeleccionado, setProductoSeleccionado] = React.useState<string>('');
-  const [cantidad, setCantidad] = React.useState<string>('');
-  const [notas, setNotas] = React.useState<string>('');
+  const [stockInput, setStockInput] = React.useState<string>('');
+  const [motivo, setMotivo] = React.useState<string>('');
+
+  // States para la paginación y búsqueda
+  const [bulkProductos, setBulkProductos] = React.useState<IBulkProductoInventoryListing[]>([]);
+  const [isLoadingBulk, setIsLoadingBulk] = React.useState(false);
+  const isLoadingRef = React.useRef(false);
+  const [pageBulk, setPageBulk] = React.useState(1);
+  const [hasMoreBulk, setHasMoreBulk] = React.useState(true);
+  const hasMoreBulkRef = React.useRef(true);
+  const [searchTermBulk, setSearchTermBulk] = React.useState('');
+
+  React.useEffect(() => {
+    let mounted = true;
+    let delayDebounceFn: NodeJS.Timeout;
+
+    const fetchBulk = async (isLoadMore: boolean) => {
+      try {
+        isLoadingRef.current = true;
+        setIsLoadingBulk(true);
+        console.log(`[BULK-FETCH] Iniciando petición página=${pageBulk}, searchTerm="${searchTermBulk}", isLoadMore=${isLoadMore}`);
+        const data = await obtenerBulkProductoInventoryListingService({
+          searchTerm: searchTermBulk,
+          page: pageBulk
+        });
+
+        if (mounted) {
+          console.log(`[BULK-FETCH] Respuesta: page=${data.page}, totalPages=${data.totalPages}, items=${data.content.length}`);
+          setBulkProductos(prev => {
+            const newList = isLoadMore ? [...prev, ...data.content] : data.content;
+            console.log(`[BULK-FETCH] Total productos en lista: ${newList.length}`);
+            return newList;
+          });
+          const hasMore = data.page < data.totalPages;
+          setHasMoreBulk(hasMore);
+          hasMoreBulkRef.current = hasMore;
+          console.log(`[BULK-FETCH] hasMore=${hasMore} (page ${data.page} de ${data.totalPages})`);
+        }
+      } catch (error) {
+        console.error('[BULK-FETCH] Error:', error);
+        if (mounted) toast.error('Error al cargar la lista de productos masivos');
+      } finally {
+        if (mounted) {
+          isLoadingRef.current = false;
+          setIsLoadingBulk(false);
+          console.log(`[BULK-FETCH] Finalizado. isLoadingRef=false`);
+        }
+      }
+    };
+
+    if (pageBulk === 1) {
+      delayDebounceFn = setTimeout(() => {
+        fetchBulk(false);
+      }, 500);
+    } else {
+      fetchBulk(true);
+    }
+
+    return () => {
+      mounted = false;
+      if (delayDebounceFn) clearTimeout(delayDebounceFn);
+    };
+  }, [pageBulk, searchTermBulk, toast]);
+
+  const scrollContainerRef = React.useRef<HTMLElement | null>(null);
+  const [isDropdownOpen, setIsDropdownOpen] = React.useState(false);
+  const dropdownRef = React.useRef<HTMLDivElement>(null);
+  const inputWrapperRef = React.useRef<HTMLDivElement>(null);
+  const [inputDisplayBulk, setInputDisplayBulk] = React.useState('');
+  const [processState, setProcessState] = React.useState<'idle' | 'procesando' | 'sincronizando'>('idle');
+
+  // Cerrar dropdown al hacer click fuera
+  React.useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (
+        dropdownRef.current && !dropdownRef.current.contains(e.target as Node) &&
+        inputWrapperRef.current && !inputWrapperRef.current.contains(e.target as Node)
+      ) {
+        setIsDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handleDropdownScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
+    if (
+      scrollHeight - Math.round(scrollTop) <= clientHeight * 1.5 &&
+      !isLoadingRef.current &&
+      hasMoreBulkRef.current
+    ) {
+      isLoadingRef.current = true;
+      console.log('[BULK-SCROLL] >>> DISPARANDO siguiente página');
+      setPageBulk(prev => prev + 1);
+    }
+  };
+
+  const handleSelectProduct = (producto: IBulkProductoInventoryListing) => {
+    setProductoSeleccionado(producto.idProducto.toString());
+    setStockInput(producto.stock.toString());
+    setInputDisplayBulk(producto.nombreProducto);
+    setIsDropdownOpen(false);
+  };
+
+  const handleInputChange = (value: string) => {
+    setInputDisplayBulk(value);
+    setSearchTermBulk(value);
+    setProductoSeleccionado('');
+    setStockInput('');
+    setPageBulk(1);
+    setBulkProductos([]);
+    hasMoreBulkRef.current = true;
+    if (!isDropdownOpen) setIsDropdownOpen(true);
+  };
+
+  const productoActual = bulkProductos.find(p => p.idProducto.toString() === productoSeleccionado);
+
+  // Efecto para resetear el stock al original cuando cambia el motivo
+  React.useEffect(() => {
+    if (productoSeleccionado && productoActual) {
+      setStockInput(productoActual.stock.toString());
+    }
+  }, [motivo, productoSeleccionado, productoActual]);
+
+  const originalStock = productoActual ? productoActual.stock : 0;
+  const esFraccionario = productoActual ? productoActual.esFraccionario : false;
+  const currentStockVal = parseFloat(stockInput);
+
+  let stockError = '';
+  const isStockModified = stockInput !== originalStock.toString();
+  // Solo mostramos error visual si hay motivo Y si el stock fue modificado
+  if (motivo && stockInput.trim() !== '' && isStockModified && !isNaN(currentStockVal)) {
+    if (motivo === 'Entrada') {
+      if (currentStockVal <= originalStock) stockError = `Para Entrada, el stock debe ser mayor a ${originalStock}`;
+    } else if (motivo === 'Salida Inventario' || motivo === 'Traslado' || motivo === 'Merma' || motivo === 'Salida Bodega' || motivo === 'Devolución') {
+      if (currentStockVal >= originalStock) stockError = `Para Salida/Merma, el stock debe ser menor a ${originalStock}`;
+    }
+  }
+
+  // Texto amigable para el flujo de stock (igual que en edición normal)
+  let diffText = '';
+  if (productoSeleccionado && motivo && stockInput.trim() !== '' && !isNaN(currentStockVal) && isStockModified) {
+    const diff = currentStockVal - originalStock;
+    // Función para formatear: hasta 3 decimales, pero sin ceros a la derecha innecesarios
+    const formatDiff = (num: number) => esFraccionario ? parseFloat(num.toFixed(3)).toString() : num.toString();
+
+    if (motivo === 'Entrada') {
+      diffText = `Aumentará ${diff > 0 ? formatDiff(diff) : 0} al inventario`;
+    } else if (motivo === 'Traslado') {
+      // Usamos Math.abs para quitar el signo negativo y mostramos el destino interactivo
+      diffText = `Se disminuirá ${diff < 0 ? formatDiff(Math.abs(diff)) : 0} del inventario hacia la ${stockInput} a la bodega`;
+    } else if (motivo === 'Salida Inventario') {
+      diffText = `Salida directa del inventario ${diff < 0 ? formatDiff(Math.abs(diff)) : 0}`;
+    } else if (motivo === 'Merma') {
+      diffText = `Se disminuirá ${diff < 0 ? formatDiff(Math.abs(diff)) : 0} de inventario`;
+    } else if (motivo === 'Salida Bodega' || motivo === 'Devolución') {
+      // Usamos Math.abs para que no diga "Disminuirá en -11"
+      diffText = `Disminuirá en ${diff < 0 ? formatDiff(Math.abs(diff)) : 0}`;
+    } else if (motivo === 'Ajuste') {
+      diffText = `Se ajustará de ${originalStock} a ${stockInput}`;
+    }
+  } else if (productoSeleccionado && !motivo) {
+    diffText = 'Seleccione un motivo primero';
+  }
+
+  // Para la validación del formulario (deshabilitar botón), comprobamos la lógica estricta siempre
+  let isStrictlyValid = true;
+  if (!motivo) isStrictlyValid = false;
+  if (motivo === 'Entrada' && currentStockVal <= originalStock) isStrictlyValid = false;
+  if ((motivo === 'Salida Inventario' || motivo === 'Traslado' || motivo === 'Merma' || motivo === 'Salida Bodega' || motivo === 'Devolución') && currentStockVal >= originalStock) isStrictlyValid = false;
+  if (motivo === 'Ajuste' && isNaN(currentStockVal)) isStrictlyValid = false;
+
+  const isFormValid = productoSeleccionado && stockInput !== '' && !isNaN(currentStockVal) && currentStockVal >= 0 && motivo && isStrictlyValid;
 
   const agregarProducto = () => {
-    const producto = productos.find(p => p.id === productoSeleccionado);
-    if (producto && cantidad && parseFloat(cantidad) > 0) {
+    if (isFormValid && productoActual) {
+      const diff = currentStockVal - originalStock;
       const nuevoItem: ItemPedidoMasivo = {
         id: Date.now().toString(),
-        producto,
-        cantidad: parseFloat(cantidad),
-        notas: notas.trim() || undefined
+        producto: productoActual,
+        stockNuevo: currentStockVal,
+        motivo: motivo,
+        diferenciaCalculada: diff
       };
 
       setItemsPedido([...itemsPedido, nuevoItem]);
       setProductoSeleccionado('');
-      setCantidad('');
-      setNotas('');
+      setStockInput('');
+      setMotivo('');
+      setInputDisplayBulk('');
+      setSearchTermBulk('');
+      setPageBulk(1);
     }
   };
 
@@ -1619,101 +1889,241 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ productos, onClos
     setItemsPedido(itemsPedido.filter(item => item.id !== id));
   };
 
+  const vaciarLista = () => {
+    setItemsPedido([]);
+  };
+
   const procesarPedido = async () => {
-    try {
-      // Aquí iría la lógica para procesar el pedido masivo
+    if (itemsPedido.length > 0) {
+      setProcessState('procesando');
+      console.log('----------------------------------------------------');
+      console.log(`[PROCESO MASIVO] Iniciando con ${itemsPedido.length} productos...`);
+      console.log('----------------------------------------------------');
 
-      // Simular procesamiento
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      try {
+        let successCount = 0;
+        let conflictCount = 0;
+        let goneCount = 0;
 
-      toast.success(`Pedido procesado exitosamente. ${itemsPedido.length} productos enviados a bodega de tránsito.`);
-      onClose();
-    } catch (error) {
-      toast.error('Error al procesar el pedido');
+        for (const item of itemsPedido) {
+          console.log(`[PROCESO MASIVO] Producto: ${item.producto.nombreProducto} (ID Inventario: ${item.producto.idInventario})`);
+          console.log(`[PROCESO MASIVO]   -- Motivo: ${item.motivo}`);
+          console.log(`[PROCESO MASIVO]   -- Stock UI original: ${item.producto.stock}`);
+          console.log(`[PROCESO MASIVO]   -- Diferencia calculada UI: ${item.diferenciaCalculada}`);
+          console.log(`[PROCESO MASIVO]   -- Nuevo stock pretendido: ${item.stockNuevo}`);
+
+          const validateReq = {
+            idInventario: item.producto.idInventario,
+            validateStock: item.producto.stock
+          };
+
+          const validation = await validateBulkInventoryStockService(validateReq);
+
+          if (validation.success || validation.errorType === 'CONFLICT') {
+            let finalStock = item.stockNuevo;
+
+            if (validation.errorType === 'CONFLICT' && validation.data) {
+              console.warn(`[PROCESO MASIVO]   ⚠️  CONFLICTO 409 detectado.`);
+              setProcessState('sincronizando');
+
+              // Pausa de 1.5s para permitir que el usuario vea la animación de sincronizando
+              await new Promise(r => setTimeout(r, 1500));
+
+              const currentRealStock = validation.data.stock;
+              console.log(`[PROCESO MASIVO]   -- Stock real en BD: ${currentRealStock}`);
+
+              finalStock = currentRealStock + (item.diferenciaCalculada || 0);
+              if (finalStock < 0) finalStock = 0;
+
+              console.log(`[PROCESO MASIVO]   -- Stock real recalculado para enviar: ${finalStock}`);
+
+              conflictCount++;
+              setProcessState('procesando'); // Volver a procesando tras la sincronización
+            }
+
+            console.log(`[PROCESO MASIVO]   >> Procesando actualización a BD con stock final ${finalStock}...`);
+            await bulkUpdateInventoryStockService({
+              idInventario: item.producto.idInventario,
+              stock: finalStock,
+              tipoMovimiento: item.motivo
+            });
+            console.log(`[PROCESO MASIVO]   ✅ OK`);
+            successCount++;
+          } else if (validation.errorType === 'GONE') {
+            console.error(`[PROCESO MASIVO]   ❌ ERROR: Producto Eliminado (GONE 410)`);
+            goneCount++;
+          }
+        }
+
+        console.log('----------------------------------------------------');
+        if (onProcessComplete) {
+          onProcessComplete({ success: successCount, conflict: conflictCount, gone: goneCount });
+        } else {
+          let mensaje = `Pedido procesado. ${successCount} actualizados.`;
+          if (conflictCount > 0) mensaje += ` (${conflictCount} resincronizados automáticamente).`;
+          if (goneCount > 0) mensaje += ` (${goneCount} ignorados, producto eliminado).`;
+          toast.success(mensaje);
+        }
+        console.log(`[PROCESO MASIVO] FIN DEL PROCESO`);
+        console.log('----------------------------------------------------');
+
+        onClose();
+        // Opcional: trigger a refresh call if needed by the parent component, 
+        // pero la recarga se manejará al cerrar el modal si está configurada así.
+      } catch (error: any) {
+        toast.error(error.message || 'Ocurrió un error al procesar el pedido masivo.');
+        console.error('[PROCESO MASIVO] Error crítico:', error);
+      } finally {
+        setProcessState('idle');
+      }
     }
   };
 
-  const productoSeleccionadoObj = productos.find(p => p.id === productoSeleccionado);
+  const opcionesMotivoMap: Record<string, string[]> = {
+    'bodega': ['Entrada', 'Ajuste', 'Salida Bodega', 'Devolución', 'Merma'],
+    'inventario': ['Entrada', 'Ajuste', 'Salida Inventario', 'Traslado', 'Merma']
+  };
+
+  const context = window.location.pathname.includes('bodega') ? 'bodega' : 'inventario';
+  const opcionesMotivoList = opcionesMotivoMap[context];
 
   return (
-    <>
-      <ModalHeader className="flex flex-col gap-1 border-b border-default-100 dark:border-default-50 bg-secondary-50 dark:bg-secondary-50/10">
-        <h2 className="text-xl font-bold text-secondary dark:text-foreground">Realizar Pedido Masivo</h2>
-        <p className="text-sm text-default-500">Envíe múltiples productos hacia la bodega de tránsito</p>
+    <div className="flex flex-col w-full">
+      <ModalHeader className="flex flex-col gap-1 border-b border-default-100 dark:border-default-50 bg-white dark:bg-content2 px-6 py-4">
+        <h2 className="text-xl font-bold text-secondary dark:text-foreground">Realizar procesos masivos</h2>
+        <p className="text-sm font-medium text-default-500">
+          Envíe múltiples productos hacia la bodega, registre entradas, salidas, mermas o ajustes de forma estructurada.
+        </p>
       </ModalHeader>
-      <ModalBody>
+      <ModalBody className="min-h-[400px]">
         <div className="space-y-6 py-4">
           {/* Sección para agregar productos */}
           <div className="p-4 border border-default-200 dark:border-default-100 rounded-lg bg-default-50 dark:bg-content2">
-            <h3 className="font-bold text-secondary dark:text-foreground mb-4 flex items-center gap-2">
-              <Icon icon="lucide:plus-circle" width={18} />
-              Agregar Producto
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-              <div className="md:col-span-1">
-                <Autocomplete
-                  label="Producto"
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-start">
+              <div className="md:col-span-2 relative" ref={inputWrapperRef}>
+                <Input
+                  label="Nombre Producto"
                   placeholder="Buscar producto"
-                  selectedKey={productoSeleccionado}
-                  onSelectionChange={(key) => setProductoSeleccionado(key as string)}
-                  allowsCustomValue={false}
+                  value={inputDisplayBulk}
+                  onValueChange={handleInputChange}
+                  onFocus={() => setIsDropdownOpen(true)}
                   variant="bordered"
-                  className="max-w-xs"
-                >
-                  {productos.map((producto) => (
-                    <AutocompleteItem key={producto.id} textValue={producto.nombre}>
-                      <div className="flex flex-col">
-                        <span className="text-small font-semibold">{producto.nombre}</span>
-                        <span className="text-tiny text-default-400">
-                          Stock: {producto.stock} {producto.unidadMedida}
-                        </span>
+                  isRequired
+                  className="w-full"
+                  endContent={isLoadingBulk ? <Spinner size="sm" /> : null}
+                />
+                {isDropdownOpen && (
+                  <div
+                    ref={dropdownRef}
+                    className="absolute z-50 w-full mt-1.5 bg-white dark:bg-content1 border border-default-200 dark:border-default-100 rounded-xl shadow-lg max-h-[220px] overflow-y-auto py-1"
+                    onScroll={handleDropdownScroll}
+                  >
+                    {bulkProductos.length === 0 && !isLoadingBulk && (
+                      <div className="px-4 py-4 text-center text-default-400 text-sm">
+                        No se encontraron productos
                       </div>
-                    </AutocompleteItem>
-                  ))}
-                </Autocomplete>
+                    )}
+                    {bulkProductos.map((producto) => {
+                      const nombreCorto = producto.nombreProducto.length > 50
+                        ? producto.nombreProducto.substring(0, 50) + '...'
+                        : producto.nombreProducto;
+                      return (
+                        <div
+                          key={producto.idProducto}
+                          className="px-4 py-2.5 mx-1 my-0.5 hover:bg-default-100 dark:hover:bg-default-50 cursor-pointer transition-colors rounded-lg"
+                          onClick={() => handleSelectProduct(producto)}
+                          title={producto.nombreProducto}
+                        >
+                          <span className="text-small font-semibold block leading-snug">{nombreCorto}</span>
+                          <span className="text-tiny text-default-400 block leading-snug mt-0.5">{producto.detalles}</span>
+                        </div>
+                      );
+                    })}
+                    {isLoadingBulk && (
+                      <div className="flex justify-center py-3">
+                        <Spinner size="sm" />
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               <div className="md:col-span-1">
                 <Input
                   type="number"
-                  label="Cantidad"
-                  placeholder="0"
-                  value={cantidad}
-                  onValueChange={setCantidad}
-                  min="0.01"
-                  step="0.01"
+                  label="Stock Actual"
+                  placeholder="Stock Final"
+                  value={stockInput}
+                  onValueChange={(val) => {
+                    if (val === '') {
+                      setStockInput('');
+                      return;
+                    }
+                    const regex = esFraccionario ? /^\d{0,7}(\.\d{0,3})?$/ : /^\d{0,7}$/;
+                    if (regex.test(val)) {
+                      setStockInput(val);
+                    }
+                  }}
+                  min="0"
+                  step={esFraccionario ? "0.001" : "1"}
                   variant="bordered"
-                  endContent={
-                    <span className="text-tiny text-default-400">
-                      {productoSeleccionadoObj?.unidadMedida || ''}
-                    </span>
-                  }
+                  isDisabled={!productoSeleccionado || !motivo}
+                  isInvalid={!!stockError}
+                  errorMessage={stockError}
+                  description={diffText}
+                  isRequired
                 />
               </div>
 
               <div className="md:col-span-1">
-                <Input
-                  label="Notas (opcional)"
-                  placeholder="Observaciones"
-                  value={notas}
-                  onValueChange={setNotas}
+                <Select
+                  label="Motivo"
+                  placeholder="Seleccione..."
+                  selectedKeys={motivo ? [motivo] : []}
+                  onChange={(e: any) => setMotivo(e.target.value)}
+                  isRequired
                   variant="bordered"
-                />
-              </div>
-
-              <div className="md:col-span-1">
-                <Button
-                  color="secondary"
-                  onPress={agregarProducto}
-                  isDisabled={!productoSeleccionado || !cantidad || parseFloat(cantidad) <= 0}
-                  className="w-full font-bold shadow-sm"
-                  startContent={<Icon icon="lucide:plus" />}
+                  classNames={{ trigger: "bg-white dark:bg-default-100/50" }}
                 >
-                  Agregar
-                </Button>
+                  <SelectItem key="Entrada" textValue="Entrada">Entrada</SelectItem>
+                  <SelectItem key="Traslado" textValue="Traslado">Traslado</SelectItem>
+                  <SelectItem key="Ajuste" textValue="Ajuste">Ajuste</SelectItem>
+                  <SelectItem key="Salida Inventario" textValue="Salida Inventario">Salida Inventario</SelectItem>
+                  <SelectItem key="Merma" textValue="Merma">Merma</SelectItem>
+                </Select>
               </div>
+
             </div>
           </div>
+
+          <AnimatePresence>
+            {motivo && (
+              <motion.div
+                initial={{ opacity: 0, height: 0, y: -10 }}
+                animate={{ opacity: 1, height: 'auto', y: 0 }}
+                exit={{ opacity: 0, height: 0, y: -10 }}
+                className="overflow-hidden"
+              >
+                <div className="p-3 bg-secondary/5 rounded-medium border border-secondary/10 dark:bg-white/5 dark:border-white/10 mt-2">
+                  <p className="text-secondary dark:text-foreground text-sm font-medium flex items-center gap-2">
+                    <Icon icon="lucide:info" width={16} className="text-secondary shrink-0" />
+                    {(() => {
+                      switch (motivo) {
+                        case 'Entrada': return 'Registrando ingreso de mercadería al sistema del Inventario';
+                        case 'Salida Bodega': return 'Iniciando movimiento a Destino Externo'; // Asumiendo de contexto 
+                        case 'Traslado': return 'Iniciando movimiento a Bodega de Transito';
+                        case 'Ajuste': return 'Corrigiendo saldo para sincronizar con stock físico';
+                        case 'Salida Inventario': return 'Registrando retiro o consumo de productos al sistema del Inventario';
+                        case 'Merma': return 'Reportar Pérdida o Producto Dañado';
+                        case 'Devolución': return 'Registrando el reingreso de productos devueltos'; // Asumiendo de contexto
+                        default: return 'Seleccione un motivo para ver detalles de la operación.';
+                      }
+                    })()}
+                  </p>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {/* Lista de productos agregados */}
           {itemsPedido.length > 0 && (
@@ -1727,13 +2137,13 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ productos, onClos
                   <div key={item.id} className="flex items-center justify-between p-3 border border-default-200 rounded-lg bg-white shadow-sm">
                     <div className="flex-1">
                       <div className="flex items-center gap-2">
-                        <span className="font-semibold text-secondary">{item.producto.nombre}</span>
+                        <span className="font-semibold text-secondary">{item.producto.nombreProducto}</span>
                         <Chip size="sm" color="primary" variant="flat" className="text-xs">
-                          {item.cantidad} {item.producto.unidadMedida}
+                          {item.stockNuevo}
                         </Chip>
                       </div>
-                      {item.notas && (
-                        <p className="text-sm text-default-500 mt-1 italic">"{item.notas}"</p>
+                      {item.motivo && (
+                        <p className="text-sm text-default-500 mt-1 italic">T. Movimiento: {item.motivo}</p>
                       )}
                     </div>
                     <Button
@@ -1766,22 +2176,37 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ productos, onClos
           )}
         </div>
       </ModalBody>
-      <ModalFooter className="bg-default-50 border-t border-default-100">
-        <Button variant="ghost" onPress={onClose} className="font-medium">
-          Cancelar
-        </Button>
-        <Button
-          color="primary"
-          variant="solid"
-          onPress={procesarPedido}
-          isDisabled={itemsPedido.length === 0}
-          startContent={<Icon icon="lucide:send" />}
-          className="font-bold text-secondary shadow-md"
-        >
-          Procesar Pedido ({itemsPedido.length})
-        </Button>
+      <ModalFooter className="bg-default-50 border-t border-default-100 flex justify-between items-center w-full">
+        <div className="flex gap-4">
+          <Button
+            variant="light"
+            onPress={agregarProducto}
+            isDisabled={!isFormValid}
+            className="font-bold text-secondary px-2"
+            startContent={<Icon icon="lucide:plus-circle" width={18} />}
+          >
+            Agregar Producto
+          </Button>
+        </div>
+
+        <div className="flex gap-2">
+          <Button variant="ghost" onPress={onClose} className="font-medium">
+            Cancelar
+          </Button>
+          <Button
+            color={processState === 'sincronizando' ? "secondary" : "warning"}
+            onPress={procesarPedido}
+            isDisabled={itemsPedido.length === 0 || processState !== 'idle'}
+            isLoading={processState !== 'idle'}
+            startContent={processState === 'idle' && <Icon icon="lucide:send" width={18} />}
+          >
+            {processState === 'idle' ? `Procesar (${itemsPedido.length})`
+              : processState === 'sincronizando' ? 'Sincronizando...'
+                : 'Procesando...'}
+          </Button>
+        </div>
       </ModalFooter>
-    </>
+    </div>
   );
 };
 

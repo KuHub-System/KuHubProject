@@ -1,5 +1,6 @@
 package KuHub.modules.gestion_inventario.repository;
 
+import KuHub.modules.gestion_inventario.dtos.response.proyeccion.ProductInventoryBulkView;
 import KuHub.modules.gestion_inventario.entity.Inventario;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -293,6 +294,71 @@ public interface InventarioRepository extends JpaRepository<Inventario, Integer>
             nativeQuery = true
     )
     String getFiltersInventory();
+
+
+    /**
+     * Conteo dinámico: Cuenta todo si searchTerm es vacío, o filtra si tiene texto.
+     * para el listado de contro inventario masivo
+     */
+    @Query(value = """
+        SELECT COUNT(*) 
+        FROM inventario i 
+        JOIN producto p ON p.id_producto = i.id_producto
+        WHERE i.activo = true 
+          AND (
+              :searchTerm = '' 
+              OR LOWER(p.nombre_producto) LIKE LOWER(CONCAT('%', :searchTerm, '%'))
+          )
+    """, nativeQuery = true)
+    long countBulkInventoryFiltered(@Param("searchTerm") String searchTerm);
+
+    /**
+     * Consulta masiva paginada con filtro opcional por nombre de producto.
+     */
+    @Query(value = """
+        SELECT 
+            p.nombre_producto AS nombreProducto, 
+            'Stock: ' || trim(trailing '.' from to_char(i.stock, 'FM9999990.999')) || ' ' || u.nombre_unidad AS detalles,
+            i.stock AS stock, 
+            u.es_fraccionario AS esFraccionario,
+            i.id_inventario AS idInventario, 
+            p.id_producto AS idProducto
+        FROM inventario i
+        JOIN producto p ON i.id_producto = p.id_producto 
+        JOIN unidad_medida u ON u.id_unidad = p.id_unidad 
+        WHERE i.activo = true
+          AND (
+          :searchTerm = '' 
+          OR LOWER(p.nombre_producto) LIKE LOWER(CONCAT('%', :searchTerm, '%'))
+      )
+        ORDER BY p.nombre_producto
+        LIMIT :limit OFFSET :offset
+    """, nativeQuery = true)
+    List<ProductInventoryBulkView> bulkProductInventoryListingPage(
+            @Param("searchTerm") String searchTerm,
+            @Param("limit") int limit,
+            @Param("offset") int offset
+    );
+
+    /**
+     * Busca un único inventario con el formato de la vista masiva.
+     * Usado para sincronización en conflictos de stock en procesos masivos.
+     */
+    @Query(value = """
+        SELECT 
+            p.nombre_producto AS nombreProducto, 
+            'Stock: ' || trim(trailing '.' from to_char(i.stock, 'FM9999990.999')) || ' ' || u.nombre_unidad AS detalles,
+            i.stock AS stock, 
+            u.es_fraccionario AS esFraccionario,
+            i.id_inventario AS idInventario, 
+            p.id_producto AS idProducto
+        FROM inventario i
+        JOIN producto p ON i.id_producto = p.id_producto 
+        JOIN unidad_medida u ON u.id_unidad = p.id_unidad 
+        WHERE i.id_inventario = :idInventario AND i.activo = true
+    """, nativeQuery = true)
+    Optional<ProductInventoryBulkView> findBulkInventoryById(@Param("idInventario") Integer idInventario);
+
 
     /**
      * Incrementa el stock del inventario principal de forma atómica.

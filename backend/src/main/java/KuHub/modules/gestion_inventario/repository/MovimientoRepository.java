@@ -33,16 +33,33 @@ public interface MovimientoRepository extends JpaRepository<Movimiento, Integer>
             "    CASE WHEN :orden = 'MAS_RECIENTES' THEN m.fecha_movimiento END DESC, " +
             "    CASE WHEN :orden = 'MAS_ANTIGUOS' THEN m.fecha_movimiento END ASC, " +
             "    CASE WHEN :orden = 'MENOR_CANTIDAD' THEN m.stock_movimiento END ASC, " +
-            "    CASE WHEN :orden = 'MAYOR_CANTIDAD' THEN m.stock_movimiento END DESC", // <-- SIN COMA AL FINAL
-            nativeQuery = true)
+                "CASE WHEN :orden = 'MAYOR_CANTIDAD' THEN m.stock_movimiento END DESC " +
+                " LIMIT :limit OFFSET :offset",
+                 nativeQuery = true)
     List<Object[]> findDynamicMovements(
             @Param("fechaInicio") LocalDateTime fechaInicio,
             @Param("fechaFin") LocalDateTime fechaFin,
             @Param("nombreProducto") String nombreProducto,
             @Param("tipoMovimiento") String tipoMovimiento,
             @Param("orden") String orden,
-            @Param("nombreResponsable") String nombreResponsable
+            @Param("nombreResponsable") String nombreResponsable,
+            @Param("limit") int limit,
+            @Param("offset") int offset
     );
+
+    /**Metodo usado para calcular la paginacion con los mismos parametros del filtro dinamico*/
+    @Query(value = "SELECT COUNT(*) FROM movimiento m " +
+            "JOIN inventario i ON i.id_inventario = m.id_inventario " +
+            "JOIN producto p ON p.id_producto = i.id_producto " +
+            "JOIN usuario u ON u.id_usuario = m.id_usuario " +
+            "WHERE m.fecha_movimiento BETWEEN :inicio AND :fin " +
+            "AND (:producto IS NULL OR LOWER(p.nombre_producto) LIKE LOWER('%' || :producto || '%')) " +
+            "AND (:tipo IS NULL OR CAST(m.tipo_movimiento AS TEXT) = :tipo) " +
+            "AND (:responsable IS NULL OR LOWER(CONCAT_WS(' ', u.p_nombre, u.s_nombre, u.app_paterno, u.app_materno)) LIKE LOWER('%' || :responsable || '%'))",
+            nativeQuery = true)
+    long countDynamicMovements(@Param("inicio") LocalDateTime inicio, @Param("fin") LocalDateTime fin,
+                               @Param("producto") String producto, @Param("tipo") String tipo,
+                               @Param("responsable") String responsable);
 
 
 }
