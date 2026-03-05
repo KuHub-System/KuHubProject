@@ -535,3 +535,95 @@ export const transformarPageItemAProducto = (item: IInventoryPageItem): IProduct
         _esFraccionario: item.esFraccionario
     } as IProducto;
 };
+
+export interface IBulkProductoInventoryListing {
+    stock: number;
+    nombreProducto: string;
+    idInventario: number;
+    idProducto: number;
+    detalles: string;
+    esFraccionario: boolean;
+}
+
+export interface BulkInventoryRequestDTO {
+    searchTerm?: string;
+    page: number;
+}
+
+export interface IBulkInventoryResponse {
+    content: IBulkProductoInventoryListing[];
+    page: number;
+    limit: number;
+    totalPages: number;
+    totalElements: number;
+}
+
+/**
+ * Obtiene la lista paginada de productos para los procesos masivos
+ */
+export const obtenerBulkProductoInventoryListingService = async (request: BulkInventoryRequestDTO): Promise<IBulkInventoryResponse> => {
+    try {
+        const response = await api.post<IBulkInventoryResponse>('/inventario/bulk-producto-inventory-listing', request);
+        return response.data;
+    } catch (error: any) {
+        throw new Error(
+            error.response?.data?.message ||
+            'Error al cargar la lista de productos para procesos masivos'
+        );
+    }
+};
+
+export interface IBulkValidateRequest {
+    idInventario: number;
+    validateStock: number;
+}
+
+export interface IBulkUpdateStockRequest {
+    idInventario: number;
+    stock: number;
+    tipoMovimiento: string;
+}
+
+/**
+ * Valida el stock antes de realizar una actualización masiva.
+ * Maneja internamente los códigos 409 (Conflict) y 410 (Gone).
+ */
+export const validateBulkInventoryStockService = async (request: IBulkValidateRequest): Promise<{ success: boolean; data?: any; errorType?: 'GONE' | 'CONFLICT' }> => {
+    try {
+        const response = await api.post('/inventario/validate-bulk-inventory-stock-before-updating', request);
+        return { success: true, data: response.data };
+    } catch (error: any) {
+        if (error.response?.status === 410) {
+            return { success: false, errorType: 'GONE' };
+        }
+        if (error.response?.status === 409) {
+            // error.response.data debe contener el ProductInventoryBulkView actualizado
+            return { success: false, errorType: 'CONFLICT', data: error.response.data };
+        }
+        let errorMsg = 'Error al validar stock masivo';
+        if (typeof error.response?.data === 'string') {
+            errorMsg = error.response.data;
+        } else if (error.response?.data?.message) {
+            errorMsg = error.response.data.message;
+        }
+        throw new Error(errorMsg);
+    }
+};
+
+/**
+ * Actualiza el stock de un ítem en procesos masivos.
+ */
+export const bulkUpdateInventoryStockService = async (request: IBulkUpdateStockRequest): Promise<boolean> => {
+    try {
+        const response = await api.patch<boolean>('/inventario/bulk-update-inventory-stock', request);
+        return response.data;
+    } catch (error: any) {
+        let errorMsg = 'Error al actualizar stock masivo';
+        if (typeof error.response?.data === 'string') {
+            errorMsg = error.response.data;
+        } else if (error.response?.data?.message) {
+            errorMsg = error.response.data.message;
+        }
+        throw new Error(errorMsg);
+    }
+};

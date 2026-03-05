@@ -4,13 +4,15 @@
  */
 
 import api from '../config/Axios';
+
 /**
  * DTO para la solicitud de filtrado de movimientos (MotionFilterRequestDTO)
  */
 export interface IMotionFilterRequest {
+    page: number;
     nombreProducto: string;
     nombreResponsable: string;
-    tipoMovimiento: 'ENTRADA' | 'SALIDA' | 'MERMA' | 'AJUSTE' | 'DEVOLUCION' | 'TODOS';
+    tipoMovimiento: 'ENTRADA' | 'SALIDA_INVENTARIO' | 'SALIDA_BODEGA' | 'TRASLADO' | 'MERMA' | 'AJUSTE' | 'DEVOLUCION' | 'TODOS';
     orden: 'MAS_RECIENTES' | 'MAS_ANTIGUOS' | 'MENOR_CANTIDAD' | 'MAYOR_CANTIDAD';
     fechaInicio: string | null;
     fechaFin: string | null;
@@ -30,14 +32,27 @@ export interface IMotionAnswer {
 }
 
 /**
- * Obtiene los movimientos filtrados desde el backend
- * @param request Filtros de búsqueda (MotionFilterRequestDTO)
- * @returns Lista de movimientos (MotionAnswerDTO[])
+ * DTO para la respuesta paginada de movimientos (PaginatedMotionDTO)
  */
-export const findMovimientosConFiltros = async (request: IMotionFilterRequest): Promise<IMotionAnswer[]> => {
+export interface IPaginatedMotionResponse {
+    content: IMotionAnswer[];
+    pagination: {
+        page: number;
+        limit: number;
+        offset: number;
+        totalPages: number;
+    };
+}
+
+/**
+ * Obtiene los movimientos filtrados desde el backend con paginación
+ * @param request Filtros de búsqueda (MotionFilterRequestDTO)
+ * @returns Respuesta paginada con movimientos (PaginatedMotionDTO)
+ */
+export const findMovimientosConFiltros = async (request: IMotionFilterRequest): Promise<IPaginatedMotionResponse> => {
 
     try {
-        const response = await api.post<IMotionAnswer[]>(
+        const response = await api.post<IPaginatedMotionResponse>(
             '/movimiento/find-all-motion-with-filter',
             request
         );

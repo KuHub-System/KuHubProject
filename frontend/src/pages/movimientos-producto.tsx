@@ -8,7 +8,7 @@ import {
   TableRow,
   TableCell,
   Button,
-  Pagination,
+  Spinner,
   Chip,
   Card,
   CardBody,
@@ -36,16 +36,17 @@ import {
   crearMovimientoService,
   obtenerProductosService
 } from '../services/producto-service';
-import { findMovimientosConFiltros } from '../services/movimiento-service';
+import { findMovimientosConFiltros, IPaginatedMotionResponse } from '../services/movimiento-service';
 import { IProducto } from '../types/producto.types';
 
 /**
  * DTO para la solicitud de filtrado de movimientos (MotionFilterRequestDTO)
  */
 interface IMotionFilterRequest {
+  page: number;
   nombreProducto: string;
   nombreResponsable: string;
-  tipoMovimiento: 'ENTRADA' | 'SALIDA' | 'MERMA' | 'AJUSTE' | 'DEVOLUCION' | 'TODOS';
+  tipoMovimiento: 'ENTRADA' | 'SALIDA_INVENTARIO' | 'SALIDA_BODEGA' | 'TRASLADO' | 'MERMA' | 'AJUSTE' | 'DEVOLUCION' | 'TODOS';
   orden: 'MAS_RECIENTES' | 'MAS_ANTIGUOS' | 'MENOR_CANTIDAD' | 'MAYOR_CANTIDAD';
   fechaInicio: string | null;
   fechaFin: string | null;
@@ -112,6 +113,7 @@ const MovimientosProductoPage: React.FC = () => {
 
   // Estado para el debounce (3 segundos)
   const [debouncedRequest, setDebouncedRequest] = React.useState<IMotionFilterRequest>({
+    page: 1,
     nombreProducto: queryNombre || ((id || queryProductoId) ? 'CARGANDO...' : 'TODOS'),
     nombreResponsable: 'TODOS',
     tipoMovimiento: 'TODOS',
@@ -120,11 +122,13 @@ const MovimientosProductoPage: React.FC = () => {
     fechaFin: null
   });
 
-  const [currentPage, setCurrentPage] = React.useState<number>(1);
+  // Infinite scroll states
+  const [totalPages, setTotalPages] = React.useState<number>(1);
+  const nextPageRef = React.useRef<number>(2);
+  const isLoadingMoreRef = React.useRef<boolean>(false);
+  const [isLoadingMore, setIsLoadingMore] = React.useState<boolean>(false);
   const [isLoading, setIsLoading] = React.useState<boolean>(true);
   const [isLoadingMovimientos, setIsLoadingMovimientos] = React.useState<boolean>(true);
-
-  const rowsPerPage = 10;
 
   /**
    * Carga la lista de productos para el filtro
@@ -171,6 +175,7 @@ const MovimientosProductoPage: React.FC = () => {
       const responsableFinal = nombreResponsableFiltro.trim() === '' ? 'TODOS' : nombreResponsableFiltro.trim();
 
       setDebouncedRequest({
+        page: 1,
         nombreProducto: nombreFinal,
         nombreResponsable: responsableFinal,
         tipoMovimiento: tipoMovimientoFiltro,
@@ -178,7 +183,6 @@ const MovimientosProductoPage: React.FC = () => {
         fechaInicio: dateRangeValue.start ? dateRangeValue.start.toString() : null,
         fechaFin: dateRangeValue.end ? dateRangeValue.end.toString() : null
       });
-      setCurrentPage(1); // Resetear a la primera página al cambiar filtros
     }, 3000);
 
     return () => clearTimeout(handler);
@@ -193,8 +197,10 @@ const MovimientosProductoPage: React.FC = () => {
     const cargarMovimientos = async () => {
       try {
         setIsLoadingMovimientos(true);
-        const data = await findMovimientosConFiltros(debouncedRequest);
-        setMovimientos(data);
+        const data = await findMovimientosConFiltros({ ...debouncedRequest, page: 1 });
+        setMovimientos(data.content);
+        setTotalPages(data.pagination.totalPages);
+        nextPageRef.current = 2;
       } catch (error) {
       } finally {
         setIsLoadingMovimientos(false);
@@ -204,6 +210,47 @@ const MovimientosProductoPage: React.FC = () => {
 
     cargarMovimientos();
   }, [debouncedRequest]);
+
+  /**
+   * Carga la siguiente página de movimientos (scroll infinito)
+   */
+  const cargarMasMovimientos = React.useCallback(async () => {
+    if (isLoadingMoreRef.current || nextPageRef.current > totalPages) return;
+
+    try {
+      isLoadingMoreRef.current = true;
+      setIsLoadingMore(true);
+      const data = await findMovimientosConFiltros({ ...debouncedRequest, page: nextPageRef.current });
+      setMovimientos(prev => [...prev, ...data.content]);
+      nextPageRef.current += 1;
+    } catch (error) {
+    } finally {
+      isLoadingMoreRef.current = false;
+      setIsLoadingMore(false);
+    }
+  }, [debouncedRequest, totalPages]);
+
+  /**
+   * Scroll listener para cargar más datos al acercarse al final
+   */
+  React.useEffect(() => {
+    const onScroll = () => {
+      if (isLoadingMoreRef.current) return;
+
+      const scrollY = window.scrollY;
+      const windowHeight = window.innerHeight;
+      const fullHeight = document.documentElement.scrollHeight;
+
+      if (scrollY + windowHeight > fullHeight - 500) {
+        if (nextPageRef.current <= totalPages) {
+          cargarMasMovimientos();
+        }
+      }
+    };
+
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, [totalPages, cargarMasMovimientos]);
 
   /**
    * Actualiza el producto actual cuando cambia el filtro de producto
@@ -229,7 +276,9 @@ const MovimientosProductoPage: React.FC = () => {
     const tipoNormalizado = tipo.toUpperCase();
     switch (tipoNormalizado) {
       case 'ENTRADA': return <span className="text-success font-bold uppercase tracking-wide text-xs">Entrada</span>;
-      case 'SALIDA': return <span className="text-warning font-bold uppercase tracking-wide text-xs">Salida</span>;
+      case 'SALIDA INVENTARIO': return <span className="text-warning font-bold uppercase tracking-wide text-xs">Salida Inventario</span>;
+      case 'SALIDA BODEGA': return <span className="text-warning font-bold uppercase tracking-wide text-xs">Salida Bodega</span>;
+      case 'TRASLADO': return <span className="text-primary font-bold uppercase tracking-wide text-xs">Traslado</span>;
       case 'MERMA': return <span className="text-danger font-bold uppercase tracking-wide text-xs">Merma</span>;
       case 'AJUSTE': return <span className="text-warning-600 font-bold uppercase tracking-wide text-xs opacity-90">Ajuste</span>;
       case 'DEVOLUCION': return <span className="text-secondary font-bold uppercase tracking-wide text-xs">Devolución</span>;
@@ -320,7 +369,9 @@ const MovimientosProductoPage: React.FC = () => {
               >
                 <SelectItem key="TODOS">Todos</SelectItem>
                 <SelectItem key="ENTRADA" startContent={<Icon icon="lucide:arrow-down-circle" className="text-success" />}>Entrada</SelectItem>
-                <SelectItem key="SALIDA" startContent={<Icon icon="lucide:arrow-up-circle" className="text-primary" />}>Salida</SelectItem>
+                <SelectItem key="SALIDA_INVENTARIO" startContent={<Icon icon="lucide:arrow-up-circle" className="text-warning" />}>Salida Inventario</SelectItem>
+                <SelectItem key="SALIDA_BODEGA" startContent={<Icon icon="lucide:arrow-up-circle" className="text-warning" />}>Salida Bodega</SelectItem>
+                <SelectItem key="TRASLADO" startContent={<Icon icon="lucide:truck" className="text-primary" />}>Traslado</SelectItem>
                 <SelectItem key="MERMA" startContent={<Icon icon="lucide:alert-circle" className="text-danger" />}>Merma</SelectItem>
                 <SelectItem key="AJUSTE" startContent={<Icon icon="lucide:settings-2" className="text-warning" />}>Ajuste</SelectItem>
                 <SelectItem key="DEVOLUCION" startContent={<Icon icon="lucide:rotate-ccw" className="text-secondary" />}>Devolución</SelectItem>
@@ -411,15 +462,9 @@ const MovimientosProductoPage: React.FC = () => {
                 td: "py-3 border-b border-default-50 dark:border-default-50/10 group-data-[last=true]:border-none"
               }}
               bottomContent={
-                movimientos.length > 0 ? (
-                  <div className="flex w-full justify-center py-4 border-t border-default-100">
-                    <Pagination
-                      total={Math.ceil(movimientos.length / rowsPerPage)}
-                      page={currentPage}
-                      onChange={setCurrentPage}
-                      showControls
-                      color="primary"
-                    />
+                isLoadingMore ? (
+                  <div className="flex w-full justify-center py-4">
+                    <Spinner size="sm" />
                   </div>
                 ) : null
               }
@@ -445,7 +490,6 @@ const MovimientosProductoPage: React.FC = () => {
                 }
               >
                 {movimientos
-                  .slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage)
                   .map((movimiento, index) => (
                     <TableRow key={`${movimiento.fechaMovimiento}-${index}`} className="hover:bg-default-50 dark:hover:bg-default-100/50 transition-colors">
                       <TableCell className="max-w-[200px]">

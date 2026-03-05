@@ -2,6 +2,7 @@ package KuHub.modules.gestion_inventario.controller;
 
 import KuHub.modules.gestion_inventario.dtos.MotionFilterRequestDTO;
 import KuHub.modules.gestion_inventario.dtos.response.MotionAnswerDTO;
+import KuHub.modules.gestion_inventario.dtos.response.PaginatedMotionDTO;
 import KuHub.modules.gestion_inventario.services.MovimientoService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -19,7 +20,7 @@ public class MovimientoController {
     private MovimientoService movimientoService;
 
     @PostMapping("/find-all-motion-with-filter")
-    public ResponseEntity<List<MotionAnswerDTO>> findAllMotionWithFilter(@RequestBody MotionFilterRequestDTO m){
+    public ResponseEntity<PaginatedMotionDTO> findAllMotionWithFilter(@RequestBody MotionFilterRequestDTO m){
         return ResponseEntity
                 .status(200)
                 .body(movimientoService.findAllMotionWithFilter(m));

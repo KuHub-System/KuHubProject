@@ -1,9 +1,11 @@
 package KuHub.modules.gestion_inventario.controller;
 
 import KuHub.modules.gestion_inventario.dtos.request.dto.*;
+import KuHub.modules.gestion_inventario.dtos.response.BulkInventoriesPageDTO;
 import KuHub.modules.gestion_inventario.dtos.response.InventoriesPageDTO;
 import KuHub.modules.gestion_inventario.dtos.response.InventoryFiltersDTO;
 import KuHub.modules.gestion_inventario.dtos.response.InventoryPageDTO;
+import KuHub.modules.gestion_inventario.dtos.response.proyeccion.ProductInventoryBulkView;
 import KuHub.modules.gestion_inventario.services.InventarioService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -11,6 +13,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 //Porto du Phonk ahora 8080
 @RestController
@@ -30,6 +34,17 @@ public class InventarioController {
         return ResponseEntity
                 .status(200)
                 .body(inventarioService.getFiltersInventory());
+    }
+
+    /**
+     * 🔍 Búsqueda de producto de inventario para cargar option y detalles logicos de contro de producto masivo
+     ✅ En uso: Endpoint consumido por el frontend.*/
+    @PostMapping("/bulk-producto-inventory-listing")
+    public ResponseEntity<BulkInventoriesPageDTO> bulkProductInventoryListing(
+            @RequestBody BulkInventoryRequestDTO request){
+        return ResponseEntity
+                .status(200)
+                .body(inventarioService.getBulkInventoryPaginated(request));
     }
 
     /**
@@ -87,6 +102,23 @@ public class InventarioController {
                  .body(inventarioService.saveInventoryWithProduct(request));
      }
 
+    @PostMapping("/validate-bulk-inventory-stock-before-updating")
+    public ResponseEntity<?> validateBulkInventoryStockBeforeUpdating(
+            @Validated @RequestBody ValidateInventoryStockDTO request) {
+
+        Object result = inventarioService.validateBulkInventoryStockBeforeUpdating(request);
+
+        /**
+         * ✅ Cambiado: Ahora validamos contra ProductInventoryBulkView
+         * para el flujo de procesos masivos.
+         */
+        if (result instanceof ProductInventoryBulkView) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(result);
+        }
+
+        return ResponseEntity.ok(result);
+    }
+
     /** Metodo que realiza en el btn de guarda en editar inventario, donde realiza esta petion y en seguida el patch
      *  Metodo hibrido de control antes de update, verefica si el inventario a actulizar no fue eliminado en paralelo,
      *  verefica si el stock de inventario fue actualizado por otro usuario en paralelo retornando el objeto en caso de que esta alterado,
@@ -115,6 +147,17 @@ public class InventarioController {
                      .status(200)
                      .body(inventarioService.updateInventoryWithProduct(request));
      }
+
+    /**
+     * 🛠️ Actualización unitaria de stock para procesos masivos.
+     * ✅ En uso: Consumido por el bucle del modal de procesos masivos en el frontend.
+     */
+    @PatchMapping("/bulk-update-inventory-stock")
+    public ResponseEntity<Boolean> updateBulkInventoryStock(
+            @Validated @RequestBody BulkInventoryUpdateDTO request) {
+        return ResponseEntity
+                .ok(inventarioService.updateBulkInventoryStock(request));
+    }
 
      /**Desactiva el estado actvio si el stock es 0
       * ✅ En uso: Endpoint consumido por el frontend.*/

@@ -3,6 +3,7 @@ package KuHub.modules.gestion_inventario.services;
 import KuHub.modules.gestion_inventario.dtos.MotionCreateDTO;
 import KuHub.modules.gestion_inventario.dtos.MotionFilterRequestDTO;
 import KuHub.modules.gestion_inventario.dtos.response.MotionAnswerDTO;
+import KuHub.modules.gestion_inventario.dtos.response.PaginatedMotionDTO;
 import KuHub.modules.gestion_inventario.entity.BodegaTransito;
 import KuHub.modules.gestion_inventario.exceptions.GestionInventarioException;
 import KuHub.modules.gestion_inventario.repository.BodegaTransitoRepository;
@@ -13,6 +14,7 @@ import KuHub.modules.gestion_inventario.entity.Inventario;
 import KuHub.modules.gestion_inventario.entity.Movimiento;
 import KuHub.modules.gestion_inventario.repository.InventarioRepository;
 import KuHub.modules.gestion_inventario.repository.MovimientoRepository;
+import KuHub.utils.PaginationUtils;
 import KuHub.utils.StringUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -46,7 +48,7 @@ public class MovimientoServiceImpl implements MovimientoService {
     /**METODO para realizar una consulta dinamica de los filtros del frontend con formato parseado para mejor experiencia usuario*/
     @Transactional(readOnly = true)
     @Override
-    public List<MotionAnswerDTO> findAllMotionWithFilter(MotionFilterRequestDTO request) {
+    public PaginatedMotionDTO findAllMotionWithFilter(MotionFilterRequestDTO request) {
 
         /**Clase local de tipo record*/
         record MotionQueryArgs(
@@ -97,23 +99,35 @@ public class MovimientoServiceImpl implements MovimientoService {
             }
         }
 
-        // 1. Instanciamos los argumentos procesados
         MotionQueryArgs args = new MotionQueryArgs(request);
 
-        // 2. Ejecución de la consulta (limpia y legible)
+        long totalRegistros = movimientoRepository.countDynamicMovements(
+                args.inicio(),
+                args.fin(),
+                args.producto(),
+                args.tipo(),
+                args.responsable()
+        );
+
+        PaginationUtils.PagingResult paging = PaginationUtils.buildPaging(request.getPage(), totalRegistros);
+
         List<Object[]> resultados = movimientoRepository.findDynamicMovements(
                 args.inicio(),
                 args.fin(),
                 args.producto(),
                 args.tipo(),
                 args.orden(),
-                args.responsable()
+                args.responsable(),
+                paging.limit(),
+                paging.offset()
         );
 
-        // 3. Mapeo a DTO de respuesta
-        return resultados.stream()
+        List<MotionAnswerDTO> contenido = resultados.stream()
                 .map(this::mapToMotionAnswerDTO)
                 .collect(Collectors.toList());
+
+        // F. Retornamos el DTO envolvente con la data y la metadata de paginación
+        return new PaginatedMotionDTO(contenido, paging);
     }
 
     /**

@@ -1,12 +1,11 @@
 package KuHub.modules.gestion_inventario.services;
 
-import KuHub.modules.gestion_inventario.dtos.request.dto.InventoryWithProductCreateDTO;
-import KuHub.modules.gestion_inventario.dtos.request.dto.FilterInventoryPageDTO;
-import KuHub.modules.gestion_inventario.dtos.request.dto.InventoryWithProductUpdateDTO;
-import KuHub.modules.gestion_inventario.dtos.request.dto.ValidateInventoryStockDTO;
+import KuHub.modules.gestion_inventario.dtos.request.dto.*;
+import KuHub.modules.gestion_inventario.dtos.response.BulkInventoriesPageDTO;
 import KuHub.modules.gestion_inventario.dtos.response.InventoriesPageDTO;
 import KuHub.modules.gestion_inventario.dtos.response.InventoryFiltersDTO;
 import KuHub.modules.gestion_inventario.dtos.response.InventoryPageDTO;
+import KuHub.modules.gestion_inventario.dtos.response.proyeccion.ProductInventoryBulkView;
 import KuHub.modules.gestion_inventario.entity.*;
 import KuHub.modules.gestion_inventario.exceptions.GestionInventarioException;
 import KuHub.modules.gestion_inventario.repository.InventarioRepository;
@@ -201,6 +200,32 @@ public class InventarioServiceImpl implements InventarioService {
     }
 
     /**
+     * Consulta masiva para listar productos con stock formateado mediante Proyección.
+     * para cargar en el modal control de stock inventario masivos
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public BulkInventoriesPageDTO getBulkInventoryPaginated(BulkInventoryRequestDTO request) {
+
+        // 1. Normalización: null o "   " -> ""
+        String term = (request.getSearchTerm() == null) ? "" : request.getSearchTerm().trim();
+        Integer pageRequested = (request.getPage() != null) ? request.getPage() : 1;
+
+        // 2. Conteo dinámico (respeta el filtro si existe)
+        long totalRegistros = inventarioRepository.countBulkInventoryFiltered(term);
+
+        // 3. Paginación asimétrica 20/10
+        PaginationUtils.PagingResult paging = PaginationUtils.buildPaging(pageRequested, totalRegistros);
+
+        // 4. Consulta final
+        List<ProductInventoryBulkView> rows = inventarioRepository.bulkProductInventoryListingPage(
+                term, paging.limit(), paging.offset()
+        );
+
+        return new BulkInventoriesPageDTO(rows, paging.page(), paging.limit(), paging.totalPages(), totalRegistros);
+    }
+
+    /**
      * METODO PARA CREAR PRODUCTO Y INVENTARIO, SI EL STOCK ASIGNADO ES MAYOR QUE [0] SE CREA UN MOVIMIENTO DE ENTRADA
      * */
     @Transactional
@@ -246,6 +271,31 @@ public class InventarioServiceImpl implements InventarioService {
             motion.setTipoMovimiento(Movimiento.TipoMovimiento.ENTRADA);
             motion.setObservacion("ENTRADA INICIAL DE PRODUCTO: " + newProducto.getNombreProducto());
             movimientoService.save(motion);
+        }
+        return true;
+    }
+
+    /**
+     * Valida el stock antes de actualizar.
+     * Si hay conflicto, retorna la proyección ProductInventoryBulkView para el modal masivo.
+     */
+    @Transactional(readOnly = true)
+    @Override
+    public Object validateBulkInventoryStockBeforeUpdating(ValidateInventoryStockDTO request) {
+
+        // 1. Verificar si fue eliminado
+        if (inventarioRepository.existsInventarioByIdInventarioAndActivo(request.getIdInventario(), false)) {
+            throw new GestionInventarioException(
+                    "El inventario fue eliminado por otro usuario antes de procesar la petición",
+                    HttpStatus.GONE
+            );
+        }
+
+        // 2. Verificar conflicto de stock
+        if (!inventarioRepository.existsInventarioByIdInventarioAndStock(request.getIdInventario(), request.getValidateStock())) {
+            // Retornamos la proyección específica para el modal masivo
+            return inventarioRepository.findBulkInventoryById(request.getIdInventario())
+                    .orElseThrow(() -> new GestionInventarioException("Inventario no encontrado", HttpStatus.NOT_FOUND));
         }
         return true;
     }
@@ -334,6 +384,42 @@ public class InventarioServiceImpl implements InventarioService {
         inventarioRepository.save(oldInventario);//<--updateInventario
 
         return true;
+    }
+
+    @Transactional
+    @Override
+    public boolean updateBulkInventoryStock(BulkInventoryUpdateDTO request) {
+        // 1. Obtener el inventario activo
+        Inventario oldInventario = inventarioRepository.findByIdInventoryWithProductActive(request.getIdInventario(), true)
+                .orElseThrow(() -> new GestionInventarioException("El inventario no existe", HttpStatus.NOT_FOUND));
+
+        // 2. Validar si el stock realmente cambió
+        if (!oldInventario.getStock().equals(request.getStock())) {
+
+            // 3. Registrar el movimiento (Trazabilidad)
+            // Se utiliza el método ya existente en MovimientoService
+            boolean movimientoRegistrado = movimientoService.motionInUpdateInventory(
+                    oldInventario,
+                    request.getStock(),
+                    request.getTipoMovimiento()
+            );
+
+            if (movimientoRegistrado) {
+                log.info("Proceso Masivo: Producto '{}' actualizado a {} mediante {}",
+                        oldInventario.getProducto().getNombreProducto(),
+                        request.getStock(),
+                        request.getTipoMovimiento());
+            }
+
+            // 4. Actualizar el stock en la entidad
+            oldInventario.setStock(request.getStock());
+            inventarioRepository.save(oldInventario);
+
+            return true;
+        }
+
+        // Retorna false si no hubo cambios, indicando que no fue necesario procesar nada
+        return false;
     }
 
     /**La eliminacion logica ocurre cuando el invantario es = a cero, el frontend redireccion el usuario a editar si intenta eliminar con stock*/
