@@ -3,6 +3,10 @@ package KuHub.modules.gestion_usuario.service;
 import KuHub.modules.gestion_usuario.dtos.*;
 import KuHub.modules.gestion_usuario.dtos.dtofilter.UserAuth;
 import KuHub.modules.gestion_usuario.dtos.record.UserIdNameDTO;
+import KuHub.modules.gestion_usuario.dtos.request.CreateUser;
+import KuHub.modules.gestion_usuario.dtos.request.SearchUserRequest;
+import KuHub.modules.gestion_usuario.dtos.request.UpdateUser;
+import KuHub.modules.gestion_usuario.dtos.response.PaginatedUsersDTO;
 import KuHub.modules.gestion_usuario.entity.Usuario;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -15,6 +19,13 @@ public interface UsuarioService {
 
     Usuario findUserByUsernameOrEmail(String identifier);
     Usuario findUserByToken ();
+    PaginatedUsersDTO findAllUsersWithPagination(Integer pageRequested);
+    PaginatedUsersDTO searchUsers(SearchUserRequest request);
+    boolean createUser (CreateUser request);
+    boolean updateUser(String currentEmail,UpdateUser request);
+    boolean deleteUser(String email);
+
+
 
 
 

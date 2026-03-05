@@ -1,115 +1,114 @@
 /**
  * SERVICIO DE GESTIÓN DE USUARIOS - CONECTADO AL BACKEND
  * Se comunica con la API REST de Spring Boot
- *
- * ⚠️ VERSIÓN CORREGIDA CON DEBUG
  */
 
 import api from '../config/Axios';
-import { IUsuario, IUsuarioCreacion, IUsuarioActualizacion } from '../types/usuario.types';
+import { IUsuario, IUsuarioCreacion, IUsuarioActualizacion, IPaginatedUsuarioResponse } from '../types/usuario.types';
 
 /**
  * Mapeo centralizado de roles Frontend → Backend
- * ⚠️ IMPORTANTE: Los nombres deben coincidir EXACTAMENTE con los del Select en el frontend
  */
 const ROL_MAP: { [key: string]: number } = {
-  'Administrador': 1,           // → ADMINISTRADOR en BD
-  'Co-Administrador': 2,        // → CO_ADMINISTRADOR en BD
-  'Gestor de Pedidos': 3,       // → GESTOR_PEDIDOS en BD
-  'Profesor a Cargo': 4,        // → PROFESOR_A_CARGO en BD
-  'Docente': 5,                 // → DOCENTE en BD ✅ CORREGIDO
-  'Profesor': 5,                // → Alias para "Docente" (por si se usa este nombre)
-  'Encargado de Bodega': 6,     // → ENCARGADO_BODEGA en BD
-  'Bodeguero': 6,               // → Alias para "Encargado de Bodega"
-  'Asistente de Bodega': 7      // → ASISTENTE_BODEGA en BD
+  'Administrador': 1,
+  'Co-Administrador': 2,
+  'Gestor de Pedidos': 3,
+  'Profesor a Cargo': 4,
+  'Docente': 5,
+  'Profesor': 5,
+  'Encargado de Bodega': 6,
+  'Asistente de Bodega': 7
 };
 
 /**
  * Función helper para obtener el ID del rol con validación
  */
 const obtenerIdRol = (nombreRol: string): number => {
-
   const idRol = ROL_MAP[nombreRol];
-
   if (!idRol) {
-    throw new Error(`Rol '${nombreRol}' no válido. Roles disponibles: ${Object.keys(ROL_MAP).join(', ')}`);
+    throw new Error(`Rol '${nombreRol}' no válido.`);
   }
-
   return idRol;
 };
 
 /**
- * Obtener todos los usuarios - BACKEND
+ * Obtener usuarios paginados - BACKEND
+ * POST /v1/usuarios/find-all-users-with-pagination
  */
-export const obtenerUsuariosService = async (): Promise<IUsuario[]> => {
+export const obtenerUsuariosPaginadosService = async (page: number): Promise<IPaginatedUsuarioResponse> => {
   try {
-    const response = await api.get('/usuarios');
-
-
-    // Convertir del formato backend al formato frontend
-    return response.data.map((usuario: any) => convertirUsuarioBackendAFrontend(usuario));
+    const response = await api.post('/usuarios/find-all-users-with-pagination', page);
+    return {
+      content: response.data.content.map((usuario: any) => convertirPaginatedUsuarioBackendAFrontend(usuario)),
+      pagination: response.data.pagination
+    };
   } catch (error: any) {
-    throw new Error(error.response?.data?.message || 'Error al cargar usuarios');
+    throw new Error(error.response?.data?.message || 'Error al cargar usuarios paginados');
   }
 };
 
 /**
- * Obtener usuario por ID - BACKEND
+ * Buscar usuarios por filtro - BACKEND
+ * POST /v1/usuarios/find-users-by-filter
  */
-export const obtenerUsuarioPorIdService = async (id: string): Promise<IUsuario | null> => {
+export const buscarUsuariosService = async (term: string, page: number): Promise<IPaginatedUsuarioResponse> => {
   try {
-    const response = await api.get(`/usuarios/${id}`);
-    return convertirUsuarioBackendAFrontend(response.data);
+    const response = await api.post('/usuarios/find-users-by-filter', { term, page });
+    return {
+      content: response.data.content.map((usuario: any) => convertirPaginatedUsuarioBackendAFrontend(usuario)),
+      pagination: response.data.pagination
+    };
   } catch (error: any) {
-    return null;
+    throw new Error(error.response?.data?.message || 'Error al buscar usuarios');
   }
 };
 
 /**
- * Obtener usuario por correo - BACKEND
+ * Función helper para convertir usuario paginado del backend al formato frontend
  */
-export const obtenerUsuarioPorCorreoService = async (correo: string): Promise<IUsuario | null> => {
-  try {
-    const response = await api.get(`/usuarios/email/${correo}`);
-    return convertirUsuarioBackendAFrontend(response.data);
-  } catch (error: any) {
-    return null;
-  }
-};
+function convertirPaginatedUsuarioBackendAFrontend(u: any): IUsuario {
+  return {
+    id: (u.idUsuario || u.email).toString(),
+    nombreCompleto: u.nombreCompleto,
+    correo: u.email,
+    contrasena: '',
+    username: u.username,
+    primerNombre: u.primerNombre,
+    segundoNombre: u.segundoNombre,
+    apellidoPaterno: u.apellidoPaterno,
+    apellidoMaterno: u.apellidoMaterno,
+    rol: u.rolFormateado,
+    fotoPerfil: u.urlFotoPerfil,
+    activo: u.activo,
+    fechaCreacion: u.fechaCreacion || '',
+    ultimoAcceso: u.ultimoAcceso
+  };
+}
 
 /**
  * Crear nuevo usuario - BACKEND
+ * POST /v1/usuarios/create-user
  */
 export const crearUsuarioService = async (data: IUsuarioCreacion): Promise<IUsuario> => {
   try {
-
-    // Obtener ID del rol con validación
-    const idRol = obtenerIdRol(data.rol);
-
-    // Separar el nombre completo en sus partes
-    const nombres = data.nombreCompleto.trim().split(' ');
-    const primerNombre = nombres[0] || '';
-    const segundoNombre = nombres.length > 3 ? nombres[1] : '';
-    const apellidoPaterno = nombres.length > 2 ? nombres[nombres.length - 2] : (nombres[1] || '');
-    const apellidoMaterno = nombres.length > 2 ? nombres[nombres.length - 1] : '';
-
     const payload = {
-      idRol: idRol,
-      primerNombre: primerNombre,
-      segundoNombre: segundoNombre || null,
-      apellidoPaterno: apellidoPaterno,
-      apellidoMaterno: apellidoMaterno || null,
-      email: data.correo.toLowerCase(),
-      username: data.correo.split('@')[0], // Generar username desde email
-      contrasena: data.contrasena,
+      primeroNombre: data.primeroNombre,
+      segundoNombre: data.segundoNombre || null,
+      apellidoPaterno: data.apellidoPaterno,
+      apellidoMaterno: data.apellidoMaterno || null,
+      username: data.username,
+      email: data.email,
+      password: data.password,
+      idRol: obtenerIdRol(data.rol),
       fotoPerfil: data.fotoPerfil || null,
       activo: true
     };
 
-
-    const response = await api.post('/usuarios', payload);
-
-    return convertirUsuarioBackendAFrontend(response.data);
+    const response = await api.post('/usuarios/create-user', payload);
+    if (typeof response.data === 'boolean' && !response.data) {
+      throw new Error('El servidor no pudo crear el usuario');
+    }
+    return response.data;
   } catch (error: any) {
     throw new Error(error.response?.data?.message || 'Error al crear usuario');
   }
@@ -117,38 +116,30 @@ export const crearUsuarioService = async (data: IUsuarioCreacion): Promise<IUsua
 
 /**
  * Actualizar usuario - BACKEND
+ * PATCH /v1/usuarios/update-user
  */
 export const actualizarUsuarioService = async (
-  id: string,
+  currentEmail: string,
   data: IUsuarioActualizacion
-): Promise<IUsuario> => {
+): Promise<boolean> => {
   try {
+    const payload = {
+      primeroNombre: data.primeroNombre,
+      segundoNombre: data.segundoNombre || null,
+      apellidoPaterno: data.apellidoPaterno,
+      apellidoMaterno: data.apellidoMaterno || null,
+      username: data.username,
+      email: data.email,
+      password: data.password || null,
+      idRol: data.rol ? obtenerIdRol(data.rol) : null
+    };
 
-    const payload: any = {};
+    const response = await api.patch(`/usuarios/update-user/${currentEmail}`, payload);
 
-    // Mapear rol si se proporciona
-    if (data.rol) {
-      payload.idRol = obtenerIdRol(data.rol);
+    if (typeof response.data === 'boolean') {
+      return response.data;
     }
-
-    // Separar nombre completo si se proporciona
-    if (data.nombreCompleto) {
-      const nombres = data.nombreCompleto.trim().split(' ');
-      payload.primerNombre = nombres[0] || '';
-      payload.segundoNombre = nombres.length > 3 ? nombres[1] : null;
-      payload.apellidoPaterno = nombres.length > 2 ? nombres[nombres.length - 2] : (nombres[1] || '');
-      payload.apellidoMaterno = nombres.length > 2 ? nombres[nombres.length - 1] : null;
-    }
-
-    if (data.correo) payload.email = data.correo.toLowerCase();
-    if (data.contrasena) payload.contrasena = data.contrasena;
-    if (data.fotoPerfil !== undefined) payload.fotoPerfil = data.fotoPerfil;
-    if (data.activo !== undefined) payload.activo = data.activo;
-
-
-    const response = await api.put(`/usuarios/${id}`, payload);
-
-    return convertirUsuarioBackendAFrontend(response.data);
+    return true;
   } catch (error: any) {
     throw new Error(error.response?.data?.message || 'Error al actualizar usuario');
   }
@@ -156,10 +147,11 @@ export const actualizarUsuarioService = async (
 
 /**
  * Eliminar usuario (desactivar) - BACKEND
+ * DELETE /v1/usuarios/delete-user/{email}
  */
-export const eliminarUsuarioService = async (id: string): Promise<void> => {
+export const eliminarUsuarioService = async (email: string): Promise<void> => {
   try {
-    await api.patch(`/usuarios/${id}/desactivar`);
+    await api.delete(`/usuarios/delete-user/${email}`);
   } catch (error: any) {
     throw new Error(error.response?.data?.message || 'Error al desactivar usuario');
   }
@@ -182,51 +174,16 @@ export const activarUsuarioService = async (id: string): Promise<void> => {
 export const subirFotoPerfilService = (archivo: File): Promise<string> => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
-
-    reader.onload = (e) => {
-      const base64 = e.target?.result as string;
-      resolve(base64);
-    };
-
-    reader.onerror = () => {
-      reject(new Error('Error al leer el archivo'));
-    };
-
+    reader.onload = (e) => resolve(e.target?.result as string);
+    reader.onerror = () => reject(new Error('Error al leer el archivo'));
     reader.readAsDataURL(archivo);
   });
 };
 
 /**
- * Función helper para convertir usuario del backend al formato frontend
+ * Función para satisfacer dependencias de inicialización heredadas
  */
-function convertirUsuarioBackendAFrontend(usuarioBackend: any): IUsuario {
-  return {
-    id: usuarioBackend.idUsuario.toString(),
-    nombreCompleto: usuarioBackend.nombreCompleto,
-    correo: usuarioBackend.email,
-    contrasena: '', // No devolver contraseña
-    rol: usuarioBackend.nombreRol,
-    fotoPerfil: usuarioBackend.fotoPerfil,
-    activo: usuarioBackend.activo,
-    fechaCreacion: usuarioBackend.fechaCreacion,
-    ultimoAcceso: usuarioBackend.ultimoAcceso
-  };
-}
+export const inicializarUsuariosPorDefecto = (): void => { };
 
-/**
- * NOTA: No es necesario inicializar usuarios por defecto
- * ya que la base de datos ya debe tener datos
- */
-export const inicializarUsuariosPorDefecto = (): void => {
-};
-
-/**
- * FUNCIÓN DE UTILIDAD: Exportar el mapeo de roles para uso en otros componentes
- */
-export const obtenerRolesDisponibles = (): string[] => {
-  return Object.keys(ROL_MAP);
-};
-
-export const validarNombreRol = (nombreRol: string): boolean => {
-  return nombreRol in ROL_MAP;
-};
+export const obtenerRolesDisponibles = (): string[] => Object.keys(ROL_MAP);
+export const validarNombreRol = (nombreRol: string): boolean => nombreRol in ROL_MAP;

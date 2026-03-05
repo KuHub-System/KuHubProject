@@ -12,6 +12,22 @@ import java.util.List;
 @Repository
 public interface RolRepository extends JpaRepository<Rol, Integer> {
 
+
+
+
+
+    /**Validaciones booleanas*/
+    boolean existsByIdRolAndActivo (Integer idRol, Boolean activo);
+
+
+
+
+
+
+
+
+
+
     /**
      * Busca un rol por su nombre
      */

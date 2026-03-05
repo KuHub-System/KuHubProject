@@ -5,12 +5,18 @@ import KuHub.modules.gestion_usuario.dtos.dtofilter.UserAuth;
 import KuHub.modules.gestion_usuario.dtos.dtofilter.pro.UserAuthProjection;
 import KuHub.modules.gestion_usuario.dtos.proyection.UserIdNameView;
 import KuHub.modules.gestion_usuario.dtos.record.UserIdNameDTO;
+import KuHub.modules.gestion_usuario.dtos.request.CreateUser;
+import KuHub.modules.gestion_usuario.dtos.request.SearchUserRequest;
+import KuHub.modules.gestion_usuario.dtos.request.UpdateUser;
+import KuHub.modules.gestion_usuario.dtos.response.PaginatedUsersDTO;
+import KuHub.modules.gestion_usuario.dtos.response.UsersView;
 import KuHub.modules.gestion_usuario.entity.Rol;
 import KuHub.modules.gestion_usuario.entity.Usuario;
 import KuHub.modules.gestion_usuario.exceptions.*;
 import KuHub.modules.gestion_usuario.repository.RolRepository;
 import KuHub.modules.gestion_usuario.repository.UsuarioRepository;
 import KuHub.utils.ImagenUtils;
+import KuHub.utils.PaginationUtils;
 import KuHub.utils.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -25,6 +31,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -64,6 +71,191 @@ public class UsuarioServiceImpl implements UsuarioService {
         );
     }
 
+    /**
+     * Lista los usuarios para el frontend aplicando filtros de sistema y paginación 20/10.
+     * @param pageRequested Página solicitada por el frontend.
+     * @return DTO paginado con la lista de usuarios y metadata.
+     */
+    @Transactional(readOnly = true)
+    @Override
+    public PaginatedUsersDTO findAllUsersWithPagination(Integer pageRequested) {
+
+        // 1. Obtener el conteo total de usuarios (excluyendo los de sistema 1-7)
+        long totalRegistros = usuarioRepository.countUsuariosParaFrontend();
+
+        // 2. Calcular los parámetros de paginación asimétrica (limit y offset)
+        // Si pageRequested es null, la utilidad asigna la página 1 por defecto
+        PaginationUtils.PagingResult paging = PaginationUtils.buildPaging(pageRequested, totalRegistros);
+
+        // 3. Consultar la base de datos usando la proyección UsersView
+        List<UsersView> usuarios = usuarioRepository.findUsuariosParaFrontend(
+                paging.limit(),
+                paging.offset()
+        );
+
+        // 4. Envolver el resultado en el DTO estandarizado
+        return new PaginatedUsersDTO(usuarios, paging);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PaginatedUsersDTO searchUsers(SearchUserRequest request){
+
+        String term = (request.getTerm() != null)
+                ? StringUtils.normalizeSpaces(request.getTerm())
+                : "";
+
+        // 2. Obtener el conteo total filtrado
+        long totalMatches = usuarioRepository.countSearchUsuariosParaFrontend(term);
+
+        // 3. Calcular limit y offset (Lógica 20/10)
+        PaginationUtils.PagingResult paging = PaginationUtils.buildPaging(request.getPage(), totalMatches);
+
+        // 4. Realizar la búsqueda paginada
+        List<UsersView> usuarios = usuarioRepository.searchUsuariosParaFrontend(
+                term,
+                paging.limit(),
+                paging.offset()
+        );
+
+        return new PaginatedUsersDTO(usuarios, paging);
+    }
+
+    /**PENDIENTE EL GUARDADO DE LA FOTO DEBIDO CONFIRMACION DE ALOJAMIENTO EN EL SERVIDOR
+     * Crear usuario formato frontend*/
+    @Override
+    @Transactional()
+    public boolean createUser (CreateUser request){
+        /**Validar si existe username y email*/
+        String username = StringUtils.normalizeSpaces(request.getUsername());
+        String email = StringUtils.normalizeSpaces(request.getEmail());
+        if (usuarioRepository.existsUsuarioByUsernameAndActivo(username,true)) {
+            throw new GestionUsuarioException("Ya existe un usuario con ese nombre de usuario", HttpStatus.CONFLICT);
+        }
+        if (usuarioRepository.existsUsuarioByEmailAndActivo(email,true)) {
+            throw new GestionUsuarioException("Ya existe un usuario con ese email", HttpStatus.CONFLICT);
+        }
+        /**Validar rol activo*/
+        if (!rolRepository.existsById(request.getIdRol())) {
+            throw new GestionUsuarioException("No existe un rol con ese id", HttpStatus.CONFLICT);
+        }
+
+        /**Crear usuario*/
+        /**Hash en la contrasena*/
+        String contrasenaHasheada = passwordEncoder.encode(request.getPassword());
+        Usuario usuario = new Usuario();
+        usuario.setPrimerNombre(request.getPrimeroNombre());
+        usuario.setSegundoNombre(request.getSegundoNombre());
+        usuario.setApellidoPaterno(request.getApellidoPaterno());
+        usuario.setApellidoMaterno(request.getApellidoMaterno());
+        usuario.setEmail(email);
+        usuario.setUsername(username);
+        usuario.setContrasena(contrasenaHasheada);
+        usuario.setRolById(request.getIdRol());
+        usuarioRepository.save(usuario);
+    return true;
+    }
+
+    /**Actualizar usuario si hugo cambios, update parcial con Patch*/
+    @Override
+    @Transactional()
+    public boolean updateUser(String currentEmail,UpdateUser request){
+        String username = StringUtils.normalizeSpaces(request.getUsername());
+        String email = StringUtils.normalizeSpaces(request.getEmail());
+        /**Obtener usuario por email usuario true*/
+        Usuario upUser = usuarioRepository.findUsuarioByEmailAndActivo(currentEmail,true).orElseThrow(
+                ()-> new GestionUsuarioException("Usuario no encontrado", HttpStatus.NOT_FOUND)
+        );
+
+        /**Validar que username y email no esta en uso*/
+        if(!username.equals(upUser.getUsername())){
+            if (usuarioRepository.existsByUsernameAndIdUsuarioNot(username, upUser.getIdUsuario())) {
+                throw new GestionUsuarioException("Conflicto: El username ya pertenece a otro usuario", HttpStatus.CONFLICT);
+            }
+        }
+        if (!email.equals(upUser.getEmail())) {
+            if (usuarioRepository.existsByEmailAndIdUsuarioNot(email, upUser.getIdUsuario())) {
+                throw new GestionUsuarioException(
+                        "El correo electrónico '" + email + "' ya está registrado por otro usuario",
+                        HttpStatus.CONFLICT
+                );
+            }
+        }
+
+        if (!upUser.getRol().getIdRol().equals(request.getIdRol())) {
+            if (!rolRepository.existsById(request.getIdRol())) {
+                throw new GestionUsuarioException("No existe un rol con ese id", HttpStatus.CONFLICT);
+            }
+            upUser.setRolById(request.getIdRol());//-Asignacion para evitar redundancia mas adelante
+        }
+
+        /**validar cambios para signacion*/
+        if (!Objects.equals(upUser.getPrimerNombre(), request.getPrimeroNombre())) {
+            upUser.setPrimerNombre(request.getPrimeroNombre());
+        }
+
+        if (!Objects.equals(upUser.getSegundoNombre(), request.getSegundoNombre())) {
+            upUser.setSegundoNombre(request.getSegundoNombre());
+        }
+
+        if (!Objects.equals(upUser.getApellidoPaterno(), request.getApellidoPaterno())) {
+            upUser.setApellidoPaterno(request.getApellidoPaterno());
+        }
+
+        if (!Objects.equals(upUser.getApellidoMaterno(), request.getApellidoMaterno())) {
+            upUser.setApellidoMaterno(request.getApellidoMaterno());
+        }
+        if (!upUser.getEmail().equals(request.getEmail())){
+            upUser.setEmail(email);
+        }
+        if (!upUser.getUsername().equals(request.getUsername())){
+            upUser.setUsername(username);
+        }
+        if (request.getPassword() != null && !request.getPassword().isBlank()) {
+            String contrasenaHasheada = passwordEncoder.encode(request.getPassword());
+            upUser.setContrasena(contrasenaHasheada);
+        }
+        usuarioRepository.save(upUser);
+        return true;
+    }
+
+    /**Metodo para eliminacion logica*/
+    @Override
+    @Transactional
+    public boolean deleteUser(String email){
+        String username = StringUtils.normalizeSpaces(email);
+        /**Obtener usuario por email usuario true*/
+        Usuario upUser = usuarioRepository.findUsuarioByEmailAndActivo(email,true).orElseThrow(
+                ()-> new GestionUsuarioException("Usuario no encontrado", HttpStatus.NOT_FOUND)
+        );
+        upUser.setActivo(false);
+        usuarioRepository.save(upUser);
+        return true;
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -86,6 +278,8 @@ public class UsuarioServiceImpl implements UsuarioService {
                 data.getUrlFotoPerfil()
         );
     }
+
+
 
     /**
      * Obtiene el ID y Nombre del usuario actualmente logueado (desde el Token)
