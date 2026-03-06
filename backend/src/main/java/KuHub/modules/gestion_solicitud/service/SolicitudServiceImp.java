@@ -193,6 +193,7 @@ public class SolicitudServiceImp implements SolicitudService{
         return solicitudRepository.checkSectionAvailability(r.getIdSemana(),r.getIdsSecciones());
     }
 
+    /**
     @Transactional
     @Override
     public void saveSolicitation(SolicitationCreateRequestDTO request){
@@ -297,7 +298,7 @@ public class SolicitudServiceImp implements SolicitudService{
                 DetalleSolicitud detalle = new DetalleSolicitud();
                 Integer idProducto = dr.getProducto().getIdProducto();
 
-                Double cantidadBase = dr.getCantProducto();
+                BigDecimal cantidadBase = dr.getCantProducto();
                 String observacionFinal = null;
 
                 // Fusión usando el Mapa Contexto (Ya tiene la info necesaria)
@@ -305,7 +306,7 @@ public class SolicitudServiceImp implements SolicitudService{
                     ContextoProductoUnidad ctxProd = mapaContextoAdicionales.get(idProducto);
 
                     Double cantAdicional = ctxProd.getCantidadAdicional();
-                    cantidadBase += cantAdicional;
+                    cantidadBase.add(cantAdicional;
 
                     observacionFinal = String.format("Se adicionaron %.2f unidades (base) al producto", cantAdicional);
                     idsAdicionalesProcesados.add(idProducto);
@@ -322,7 +323,7 @@ public class SolicitudServiceImp implements SolicitudService{
                     cantidadEscalada = BigDecimal.valueOf(cantidadEscalada)
                             .setScale(3, RoundingMode.HALF_UP)
                             .doubleValue();
-                }*/
+                }
 
                 detalle.setIdProducto(idProducto);
                 detalle.setCantProductoSolicitud(cantidadEscalada);
@@ -372,7 +373,7 @@ public class SolicitudServiceImp implements SolicitudService{
         System.out.println("Lista para guardar: " + listaParaGuardar.size());
         solicitudRepository.saveAll(listaParaGuardar);
         System.out.println("¡Guardado completado!");
-    }
+    }*/
 
     @Getter
     @AllArgsConstructor

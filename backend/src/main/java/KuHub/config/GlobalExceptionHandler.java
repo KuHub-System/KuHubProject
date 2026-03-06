@@ -7,7 +7,7 @@ import KuHub.modules.gestion_solicitud.exception.GestionSolicitudException;
 import KuHub.modules.gestion_usuario.exceptions.*;
 import KuHub.modules.gestion_inventario.exceptions.ProductoException;
 import KuHub.modules.gestion_inventario.exceptions.ProductoNotFoundException;
-import KuHub.modules.gestion_receta.exceptions.RecetaException;
+import KuHub.modules.gestion_receta.exceptions.GestionRecetaException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
@@ -164,8 +164,8 @@ public class GlobalExceptionHandler {
     /**
      * Maneja RecetaException de RecetaServiceImp y DetalleRecetaServiceImp
      * */
-    @ExceptionHandler(RecetaException.class)
-    public ResponseEntity<Map<String, Object>> handleRecetaException(RecetaException ex) {
+    @ExceptionHandler(GestionRecetaException.class)
+    public ResponseEntity<Map<String, Object>> handleRecetaException(GestionRecetaException ex) {
         Map<String, Object> response = new HashMap<>();
         response.put("timestamp", LocalDateTime.now());
         response.put("status", HttpStatus.NOT_FOUND.value());

@@ -24,7 +24,7 @@ export interface IReceta {
   descripcion: string;
   ingredientes: IIngrediente[];
   instrucciones: string;
-  estado: 'Activa' | 'Inactiva';
+  estado: 'Activo' | 'Inactivo';
   fechaCreacion: string;
   fechaActualizacion: string;
 }
@@ -37,7 +37,7 @@ export interface ICrearReceta {
   descripcion: string;
   ingredientes: Omit<IIngrediente, 'id'>[];
   instrucciones: string;
-  estado: 'Activa' | 'Inactiva';
+  estado: 'Activo' | 'Inactivo';
 }
 
 /**
@@ -49,7 +49,7 @@ export interface IActualizarReceta {
   descripcion?: string;
   ingredientes?: IIngrediente[];
   instrucciones?: string;
-  estado?: 'Activa' | 'Inactiva';
+  estado?: 'Activo' | 'Inactivo';
 }
 
 /**
@@ -106,4 +106,23 @@ export interface IActualizarSolicitud {
   id: string;
   estado?: 'Pendiente' | 'Aprobada' | 'Rechazada' | 'Completada';
   observaciones?: string;
+}
+
+/**
+ * DTO para crear un item de receta (Backend)
+ */
+export interface IRecipeItemCreateDTO {
+  idProducto: number;
+  cantUnidadMedida: number;
+}
+
+/**
+ * DTO para crear una receta con detalles (Backend)
+ */
+export interface IRecipeWithDetailsCreateDTO {
+  nombreReceta: string;
+  descripcionReceta: string;
+  listaItems: IRecipeItemCreateDTO[];
+  instrucciones: string;
+  estadoReceta: 'Activo' | 'Inactivo';
 }

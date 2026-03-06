@@ -12,7 +12,6 @@ import {
   crearUsuarioService,
   actualizarUsuarioService,
   eliminarUsuarioService,
-  activarUsuarioService,
   subirFotoPerfilService,
   obtenerUsuariosPaginadosService,
   buscarUsuariosService
@@ -343,16 +342,6 @@ const GestionUsuariosPage: React.FC = () => {
     }
   };
 
-  const handleActivar = async (usuario: IUsuario) => {
-    try {
-      await activarUsuarioService(usuario.id);
-      toast.success('Usuario activado correctamente');
-      await cargarUsuarios();
-    } catch (error: any) {
-      toast.error(error.message || 'Error al activar usuario');
-    }
-  };
-
   // No hay filtros adicionales por ahora
   const usuariosFiltrados = usuarios;
 
@@ -558,7 +547,7 @@ const GestionUsuariosPage: React.FC = () => {
                           </Button>
                         </Tooltip>
 
-                        {usuario.activo ? (
+                        {usuario.activo && (
                           <Tooltip content="Desactivar">
                             <Button
                               isIconOnly
@@ -573,18 +562,6 @@ const GestionUsuariosPage: React.FC = () => {
                               className="text-default-400 hover:text-danger"
                             >
                               <Icon icon="lucide:user-x" width={18} />
-                            </Button>
-                          </Tooltip>
-                        ) : (
-                          <Tooltip content="Activar">
-                            <Button
-                              isIconOnly
-                              size="sm"
-                              variant="light"
-                              onPress={() => handleActivar(usuario)}
-                              className="text-default-400 hover:text-success"
-                            >
-                              <Icon icon="lucide:user-check" width={18} />
                             </Button>
                           </Tooltip>
                         )}

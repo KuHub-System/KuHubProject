@@ -7,8 +7,11 @@
 import {
   IReceta,
   ICrearReceta,
-  IActualizarReceta
+  IActualizarReceta,
+  IRecipeWithDetailsCreateDTO
 } from '../types/receta.types';
+
+import api from '../config/Axios';
 
 import {
   obtenerRecetas,
@@ -132,6 +135,23 @@ export const actualizarRecetaService = async (recetaData: IActualizarReceta): Pr
 };
 
 /**
+ * Crea una receta llamando al backend con el formato detallado.
+ * @param {IRecipeWithDetailsCreateDTO} data - DTO con los detalles de la receta.
+ * @returns {Promise<boolean>} Promesa que resuelve a true si se creó correctamente.
+ */
+export const crearRecetaConDetallesService = async (data: IRecipeWithDetailsCreateDTO): Promise<boolean> => {
+  try {
+    const response = await api.post<boolean>('/receta/create-recipe-with-details', data);
+    return response.data;
+  } catch (error: any) {
+    throw new Error(
+      error.response?.data?.message ||
+      'Error al crear la receta en el servidor'
+    );
+  }
+};
+
+/**
  * Elimina una receta.
  * @param {string} id - ID de la receta a eliminar.
  * @returns {Promise<boolean>} Promesa que resuelve a true si la eliminación fue exitosa.
@@ -160,7 +180,7 @@ export const cambiarEstadoRecetaService = async (id: string, activa: boolean): P
   await new Promise(resolve => setTimeout(resolve, 300));
 
   const recetaActualizada = actualizarReceta(id, {
-    estado: activa ? 'Activa' : 'Inactiva'
+    estado: activa ? 'Activo' : 'Inactivo'
   });
 
   if (!recetaActualizada) {

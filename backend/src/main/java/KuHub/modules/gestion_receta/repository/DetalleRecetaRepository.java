@@ -16,6 +16,18 @@ import java.util.List;
 @Repository
 public interface DetalleRecetaRepository extends JpaRepository<DetalleReceta, Integer> {
 
+
+    /**Validaciones boleanas*/
+
+
+
+
+
+
+
+
+
+
     @Query("""
     SELECT 
         p.idProducto AS idProducto,

@@ -1,25 +1,25 @@
 package KuHub.modules.gestion_receta.services;
 
 import KuHub.modules.gestion_receta.dtos.*;
-import KuHub.modules.gestion_receta.dtos.projection.DetalleRecetaItemProjection;
-import KuHub.modules.gestion_inventario.entity.Producto;
-import KuHub.modules.gestion_inventario.exceptions.ProductoNotFoundException;
 import KuHub.modules.gestion_inventario.services.ProductoService;
+import KuHub.modules.gestion_receta.dtos.respose.RecipeItemCreateDTO;
 import KuHub.modules.gestion_receta.entity.DetalleReceta;
 import KuHub.modules.gestion_receta.entity.Receta;
-import KuHub.modules.gestion_receta.exceptions.RecetaException;
+import KuHub.modules.gestion_receta.exceptions.GestionRecetaException;
+import KuHub.modules.gestion_receta.repository.DetalleRecetaRepository;
 import KuHub.modules.gestion_receta.repository.RecetaRepository;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.util.CollectionUtils;
-import org.springframework.util.StringUtils;
+import KuHub.utils.StringUtils;
 
+import java.math.BigDecimal;
 import java.util.*;
-import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 public class RecetaServiceImp implements RecetaService{
 
@@ -27,13 +27,88 @@ public class RecetaServiceImp implements RecetaService{
     private RecetaRepository recetaRepository;
 
     @Autowired
+    private DetalleRecetaRepository detalleRecetaRepository;
+
+    @Autowired
     private ProductoService productoService;
 
     @Autowired
-    private DetalleRecetaService detalleRecetaService;
+    private ObjectMapper objectMapper;
 
-    private static final Logger log = LoggerFactory.getLogger(RecetaServiceImp.class);
 
+
+
+
+    /**Metodo para crear la receta con los detalles de producto activo
+     * implementado*/
+    @Transactional
+    @Override
+    public boolean saveRecipeWithDetails(RecipeWithDetailsCreateDTO request) {
+        String nombreReceta = StringUtils.capitalizarPalabras(request.getNombreReceta());
+
+        if (recetaRepository.existsByNombreRecetaAndActivoRecetaTrue(nombreReceta)) {
+            throw new GestionRecetaException("Ya existe una receta activa con el nombre: " + nombreReceta,
+                    HttpStatus.CONFLICT);
+        }
+
+        Receta newReceta = new Receta();
+        newReceta.setNombreReceta(nombreReceta);
+        String key = StringUtils.normalizeToEnumKey(request.getEstadoReceta());
+        Receta.EstadoRecetaType estadoEnum = Receta.EstadoRecetaType.valueOf(key);
+        newReceta.setEstadoReceta(estadoEnum);
+
+        newReceta.setDescripcionReceta((request.getDescripcionReceta() == null || request.getDescripcionReceta().isBlank())
+                ? null : StringUtils.normalizeSpaces(request.getDescripcionReceta()));
+
+        newReceta.setInstruccionesReceta((request.getInstrucciones() == null || request.getInstrucciones().isBlank())
+                ? null : StringUtils.normalizeSpaces(request.getInstrucciones()));
+
+        Receta recetaGuardada = recetaRepository.save(newReceta);
+
+        Map<Integer, BigDecimal> itemsConsolidados = new HashMap<>();
+
+        for (RecipeItemCreateDTO item : request.getListaItems()) {
+            // merge: Si el ID no existe, lo pone. Si existe, aplica la suma (BigDecimal::add)
+            itemsConsolidados.merge(
+                    item.getIdProducto(),
+                    item.getCantUnidadMedida(),
+                    BigDecimal::add
+            );
+        }
+
+        itemsConsolidados.forEach((idProducto, cantidadTotal) -> {
+            DetalleReceta detalle = new DetalleReceta();
+
+            // Asociamos usando el objeto guardado (para el ID)
+            detalle.setReceta(recetaGuardada);
+
+            // Usamos setProductoById para evitar un SELECT innecesario del objeto Producto
+            detalle.setProductoById(idProducto);
+
+            detalle.setCantProducto(cantidadTotal);
+
+            detalleRecetaRepository.save(detalle);
+        });
+        return true;
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    /**
 
     @Transactional(readOnly = true)
     @Override
@@ -51,7 +126,7 @@ public class RecetaServiceImp implements RecetaService{
     @Override
     public Receta findById(Integer id) {
         return recetaRepository.findById(id).orElseThrow(
-        ()-> new RecetaException("No existe la receta con el id " + id));
+        ()-> new GestionRecetaException("No existe la receta con el id " + id));
     }
 
     @Transactional(readOnly = true)
@@ -59,12 +134,13 @@ public class RecetaServiceImp implements RecetaService{
     public Receta findByIdRecetaAndActivoRecetaIsTrue(Integer id){
         Receta receta = findById(id);
         if (receta.getActivoReceta() == null || !receta.getActivoReceta()){
-            throw new RecetaException("No existe la receta con el id " + id + " o esta inactivo");
+            throw new GestionRecetaException("No existe la receta con el id " + id + " o esta inactivo");
         }else{
             return receta;
         }
     }
 
+    /**
     @Transactional(readOnly = true)
     @Override
     public RecipeWithDetailsAnswerDTO findRecipeWithDetailsActiveInTrue(Integer id) {
@@ -72,7 +148,7 @@ public class RecetaServiceImp implements RecetaService{
 
         // 1. Buscamos la cabecera de la receta
         Receta receta = recetaRepository.findByIdRecetaAndActivoRecetaIsTrue(id)
-                .orElseThrow(() -> new RecetaException("Receta no encontrada o inactiva con ID: " + id));
+                .orElseThow(() -> new RecetaException("Receta no encontrada o inactiva con ID: " + id));
 
         // 2. ⚡ AQUÍ ESTÁ EL CAMBIO: Llamamos directamente a tu consulta del Repo
         // Esto es mucho más eficiente porque la base de datos ya hace el JOIN
@@ -112,29 +188,29 @@ public class RecetaServiceImp implements RecetaService{
     @Override
     public List<RecipeWithDetailsAnswerDTO> findAllRecipeWithDetailsActive() {
 
-        /** Obtiene solo las recetas activas */
+        /** Obtiene solo las recetas activas
         List<Receta> recetas = findAllByActivoRecetaTrue();
 
-        /** Obtiene todos los detalles de receta desde la BD */
+        /** Obtiene todos los detalles de receta desde la BD
         List<DetalleReceta> detalles = detalleRecetaService.findAll();
 
         /**
          * Agrupa los detalles por el ID de su receta para acceso rápido.
          * Esto reduce la complejidad a O(n + m).
-         */
+
         Map<Integer, List<DetalleReceta>> detallesPorReceta = detalles.stream()
                 .collect(Collectors.groupingBy(d -> d.getReceta().getIdReceta()));
 
         /** Lista final que se devolverá al caller */
-        List<RecipeWithDetailsAnswerDTO> dtos = new ArrayList<>();
+        //List<RecipeWithDetailsDTO> dtos = new ArrayList<>();
 
-        /** Recorre todas las recetas */
+        /** Recorre todas las recetas
         for (Receta r : recetas) {
 
             /**
              * Obtiene solo los detalles que pertenecen a esta receta.
              * Si no tiene detalles, devuelve una lista vacía.
-             */
+
             List<RecipeItemAnswerDTO> items = detallesPorReceta
                     .getOrDefault(r.getIdReceta(), Collections.emptyList())
                     .stream()
@@ -147,7 +223,7 @@ public class RecetaServiceImp implements RecetaService{
                     ))
                     .collect(Collectors.toList());
 
-            /** Construye el DTO final de receta con detalles */
+            /** Construye el DTO final de receta con detalles
             dtos.add(new RecipeWithDetailsAnswerDTO(
                     r.getIdReceta(),
                     r.getNombreReceta(),
@@ -158,7 +234,7 @@ public class RecetaServiceImp implements RecetaService{
             ));
         }
 
-        /** Log del total de recetas procesadas */
+        /** Log del total de recetas procesadas
         log.info("Se generaron {} recetas con detalles", dtos.size());
 
         return dtos;
@@ -182,7 +258,7 @@ public class RecetaServiceImp implements RecetaService{
         //Validar que el nombre de la receta no existe para seguir las validaciones
         String capNombreReceta = StringUtils.capitalize(receta.getNombreReceta());
         if (recetaRepository.existsByNombreRecetaAndActivoRecetaTrue(capNombreReceta)) {
-            throw new RecetaException("El nombre de la receta ya existe");
+            throw new GestionRecetaException("El nombre de la receta ya existe");
         }
 
         receta.setNombreReceta(capNombreReceta);
@@ -191,67 +267,7 @@ public class RecetaServiceImp implements RecetaService{
         return recetaRepository.save(receta);
     }
 
-    @Transactional
-    @Override
-    public RecipeWithDetailsAnswerDTO saveRecipeWithDetails(RecipeWithDetailsCreateDTO dto) {
-        log.info("🚀 Creando nueva receta: {}", dto.getNombreReceta());
 
-        // 1. Validación inicial
-        if (CollectionUtils.isEmpty(dto.getListaItems())) {
-            throw new RecetaException("La lista de items no puede estar vacía");
-        }
-
-        // 2. Carga masiva de productos
-        Set<Integer> idsProductos = dto.getListaItems().stream()
-                .map(RecipeItemCreateDTO::getIdProducto) // <-- Aquí estaba el error
-                .collect(Collectors.toSet());
-
-        Map<Integer, Producto> productosValidos = productoService
-                .findAllByIdInAndActivoTrue(idsProductos)
-                .stream()
-                .collect(Collectors.toMap(Producto::getIdProducto, p -> p));
-
-        // 3. Crear y guardar la cabecera de la Receta
-        Receta nuevaReceta = new Receta();
-        nuevaReceta.setNombreReceta(dto.getNombreReceta());
-        nuevaReceta.setDescripcionReceta(dto.getDescripcionReceta());
-        nuevaReceta.setInstruccionesReceta(dto.getInstrucciones());
-        nuevaReceta.setEstadoReceta(dto.getEstadoReceta() != null ? dto.getEstadoReceta() : Receta.EstadoRecetaType.ACTIVO);
-        nuevaReceta.setActivoReceta(true);
-
-        Receta recetaGuardada = recetaRepository.save(nuevaReceta);
-
-        // 4. Preparar detalles para Guardado Masivo (saveAll)
-        List<DetalleReceta> detallesAGuardar = dto.getListaItems().stream()
-                .filter(item -> {
-                    if (!productosValidos.containsKey(item.getIdProducto())) {
-                        log.warn("⚠️ Producto ID {} no existe o está inactivo. Se omitirá.", item.getIdProducto());
-                        return false;
-                    }
-                    if (item.getCantUnidadMedida() < 0) {
-                        throw new RecetaException("La cantidad para el producto " + item.getIdProducto() + " no puede ser negativa");
-                    }
-                    return true;
-                })
-                .map(item -> {
-                    DetalleReceta detalle = new DetalleReceta();
-                    detalle.setReceta(recetaGuardada);
-                    detalle.setProducto(productosValidos.get(item.getIdProducto()));
-                    detalle.setCantProducto(item.getCantUnidadMedida());
-                    return detalle;
-                })
-                .collect(Collectors.toList());
-
-        if (detallesAGuardar.isEmpty()) {
-            throw new RecetaException("No se pudo agregar ningún producto válido a la receta");
-        }
-
-        detalleRecetaService.saveAll(detallesAGuardar);
-        log.info("✅ Receta ID {} creada con {} detalles", recetaGuardada.getIdReceta(), detallesAGuardar.size());
-
-        // 5. Retornar la respuesta usando el helper que ya creamos (con proyecciones)
-        return buildResponseDTO(recetaGuardada);
-    }
 
     @Transactional(noRollbackFor = ProductoNotFoundException.class)
     @Override
@@ -260,12 +276,12 @@ public class RecetaServiceImp implements RecetaService{
 
         // Paso 1: Validar receta existe
         Receta receta = recetaRepository.findByIdRecetaAndActivoRecetaIsTrue(dto.getIdReceta())
-                .orElseThrow(() -> new RecetaException("Receta no encontrada: " + dto.getIdReceta()));
+                .orElseThrow(() -> new GestionRecetaException("Receta no encontrada: " + dto.getIdReceta()));
 
         // Paso 2: Actualizar campos básicos SI HAY CAMBIOS
         if (dto.isCambioReceta()) {
             if (dto.getEstadoReceta() == null) {
-                throw new RecetaException("El estado no puede ser nulo");
+                throw new GestionRecetaException("El estado no puede ser nulo");
             }
 
             receta.setNombreReceta(dto.getNombreReceta());
@@ -330,7 +346,7 @@ public class RecetaServiceImp implements RecetaService{
                             detalleRecetaService.updateQuantityByIdRecetaAndIdProducto(
                                     receta.getIdReceta(),
                                     item.getIdProducto(),
-                                    item.getCantUnidadMedida()
+                                    item.getCantUnidadMedida().doubleValue()
                             );
                             return false; // No insertarlo
                         }
@@ -378,7 +394,7 @@ public class RecetaServiceImp implements RecetaService{
                         detalleRecetaService.updateQuantityByIdRecetaAndIdProducto(
                                 receta.getIdReceta(),
                                 item.getIdProducto(),
-                                item.getCantUnidadMedida()
+                                item.getCantUnidadMedida().doubleValue()
                         )
                 );
 
@@ -463,10 +479,10 @@ public class RecetaServiceImp implements RecetaService{
     @Override
     public void deleteById (Integer id){
         if( !existsById(id) ){
-            throw new RecetaException("No existe receta con id " + id);
+            throw new GestionRecetaException("No existe receta con id " + id);
         }
         recetaRepository.deleteById(id);
     }
 
-
-    }
+    */
+}

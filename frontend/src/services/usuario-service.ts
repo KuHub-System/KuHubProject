@@ -32,6 +32,14 @@ const obtenerIdRol = (nombreRol: string): number => {
 };
 
 /**
+ * Obtener primera página de usuarios (Compatibilidad)
+ */
+export const obtenerUsuariosService = async (): Promise<IUsuario[]> => {
+  const response = await obtenerUsuariosPaginadosService(1);
+  return response.content;
+};
+
+/**
  * Obtener usuarios paginados - BACKEND
  * POST /v1/usuarios/find-all-users-with-pagination
  */
@@ -154,17 +162,6 @@ export const eliminarUsuarioService = async (email: string): Promise<void> => {
     await api.delete(`/usuarios/delete-user/${email}`);
   } catch (error: any) {
     throw new Error(error.response?.data?.message || 'Error al desactivar usuario');
-  }
-};
-
-/**
- * Activar usuario - BACKEND
- */
-export const activarUsuarioService = async (id: string): Promise<void> => {
-  try {
-    await api.patch(`/usuarios/${id}/activar`);
-  } catch (error: any) {
-    throw new Error(error.response?.data?.message || 'Error al activar usuario');
   }
 };
 

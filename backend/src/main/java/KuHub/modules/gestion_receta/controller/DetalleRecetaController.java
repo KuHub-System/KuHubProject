@@ -1,7 +1,7 @@
 package KuHub.modules.gestion_receta.controller;
 
 import KuHub.modules.gestion_receta.entity.DetalleReceta;
-import KuHub.modules.gestion_receta.exceptions.RecetaException;
+import KuHub.modules.gestion_receta.exceptions.GestionRecetaException;
 import KuHub.modules.gestion_receta.services.DetalleRecetaService;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
@@ -20,6 +20,28 @@ public class DetalleRecetaController {
 
     @Autowired
     private DetalleRecetaService detalleRecetaService;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     @GetMapping("/find-by-id/{id}")
     public ResponseEntity<DetalleReceta> findById(@PathVariable Integer id){
@@ -57,7 +79,7 @@ public class DetalleRecetaController {
 
             // 204: petición correcta, sin contenido
             return ResponseEntity.noContent().build();
-        } catch (RecetaException ex) {
+        } catch (GestionRecetaException ex) {
             // si tu service lanza RecetaException para indicar "no existe receta" o similar
             return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
         } catch (IllegalArgumentException ex) {
@@ -74,7 +96,7 @@ public class DetalleRecetaController {
         try {
             detalleRecetaService.deleteById(id);
             return ResponseEntity.noContent().build();
-        } catch (RecetaException ex) {
+        } catch (GestionRecetaException ex) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
         } catch (IllegalArgumentException ex) {
             return ResponseEntity.badRequest().build();

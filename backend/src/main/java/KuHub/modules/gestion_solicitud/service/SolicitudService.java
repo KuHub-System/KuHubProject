@@ -12,6 +12,6 @@ public interface SolicitudService {
     List<ManagementSolicitationView> findManagementSolicitations(ManagementFilterRequestDTO filter);
     List<SectionAvailabilityView> checkSectionAvailability (CheckSectionAvailabilityRequestDTO r);
     void updateSolicitationStatus(SolicitationStatusUpdateDTO dto);
-    void saveSolicitation(SolicitationCreateRequestDTO request);
+    //void saveSolicitation(SolicitationCreateRequestDTO request);
     ManagementSolicitationSelectorsDTO getSelectorsForManagement();
 }
