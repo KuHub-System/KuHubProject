@@ -21,7 +21,8 @@ import {
   Divider,
   Textarea,
   Select,
-  SelectItem
+  SelectItem,
+  Spinner
 } from '@heroui/react';
 import { Icon } from '@iconify/react';
 import { motion } from 'framer-motion';
@@ -31,15 +32,16 @@ import { useAuth } from '../contexts/auth-context';
 
 // IMPORTAR TIPOS Y SERVICIOS
 import { IReceta, IIngrediente } from '../types/receta.types';
-import { IProducto } from '../types/producto.types';
 import {
   obtenerRecetasService,
   crearRecetaService,
   actualizarRecetaService,
   cambiarEstadoRecetaService,
   eliminarRecetaService,
+  crearRecetaConDetallesService,
 } from '../services/receta-service';
-import { obtenerProductosService } from '../services/producto-service';
+import { obtenerProductosParaRecetaService } from '../services/producto-service';
+import { IProductoRecetaSelection } from '../types/producto.types';
 
 /**
  * Página de gestión de recetas simplificada.
@@ -52,7 +54,7 @@ const GestionRecetasPage: React.FC = () => {
   const esAdministrador = user?.rol === 'Administrador';
 
   const [recetas, setRecetas] = React.useState<IReceta[]>([]);
-  const [productos, setProductos] = React.useState<IProducto[]>([]);
+  const [productos, setProductos] = React.useState<IProductoRecetaSelection[]>([]);
   const [filteredRecetas, setFilteredRecetas] = React.useState<IReceta[]>([]);
   const [recetaSeleccionada, setRecetaSeleccionada] = React.useState<IReceta | null>(null);
   const [modalMode, setModalMode] = React.useState<'crear' | 'editar' | 'ver'>('crear');
@@ -73,14 +75,11 @@ const GestionRecetasPage: React.FC = () => {
       setIsLoading(true);
       const [recetasCargadas, productosCargados] = await Promise.all([
         obtenerRecetasService(),
-        obtenerProductosService()
+        obtenerProductosParaRecetaService()
       ]);
       setRecetas(recetasCargadas);
       setProductos(productosCargados);
-      console.log('📋 Recetas cargadas:', recetasCargadas.length);
-      console.log('📦 Productos cargados:', productosCargados.length);
     } catch (error) {
-      console.error('❌ Error al cargar datos:', error);
       toast.error('Error al cargar las recetas');
     } finally {
       setIsLoading(false);
@@ -123,14 +122,12 @@ const GestionRecetasPage: React.FC = () => {
     onOpen();
   };
 
-  const cambiarEstadoReceta = async (id: string, nuevoEstado: 'Activa' | 'Inactiva') => {
+  const cambiarEstadoReceta = async (id: string, nuevoEstado: 'Activo' | 'Inactivo') => {
     try {
-      console.log(`🔄 Cambiando estado de receta ${id} a ${nuevoEstado}`);
-      await cambiarEstadoRecetaService(id, nuevoEstado === 'Activa');
+      await cambiarEstadoRecetaService(id, nuevoEstado === 'Activo');
       await cargarDatos();
       toast.success(`Receta ${nuevoEstado.toLowerCase()} correctamente`);
     } catch (error) {
-      console.error('❌ Error al cambiar estado:', error);
       toast.error('Error al cambiar el estado de la receta');
     }
   };
@@ -138,35 +135,35 @@ const GestionRecetasPage: React.FC = () => {
   const handleGuardarReceta = async (receta: IReceta) => {
     try {
       if (modalMode === 'crear') {
-        console.log('📝 Creando nueva receta:', receta.nombre);
-        await crearRecetaService({
-          nombre: receta.nombre,
-          descripcion: receta.descripcion,
-          ingredientes: receta.ingredientes.map(ing => ({
-            productoId: ing.productoId,
-            productoNombre: ing.productoNombre,
-            cantidad: ing.cantidad,
-            unidadMedida: ing.unidadMedida
+        const success = await crearRecetaConDetallesService({
+          nombreReceta: receta.nombre,
+          descripcionReceta: receta.descripcion,
+          listaItems: receta.ingredientes.map(ing => ({
+            idProducto: parseInt(ing.productoId),
+            cantUnidadMedida: ing.cantidad
           })),
           instrucciones: receta.instrucciones,
-          estado: receta.estado
+          estadoReceta: receta.estado === 'Activo' || (receta.estado as any) === 'Activa' ? 'Activo' : 'Inactivo'
         });
-        toast.success('Receta creada correctamente');
+
+        if (success) {
+          toast.success('Receta creada correctamente');
+        } else {
+          toast.error('No se pudo crear la receta');
+        }
       } else if (modalMode === 'editar') {
-        console.log('✏️ Actualizando receta:', receta.nombre);
         await actualizarRecetaService({
           id: receta.id,
           nombre: receta.nombre,
           descripcion: receta.descripcion,
           ingredientes: receta.ingredientes,
           instrucciones: receta.instrucciones,
-          estado: receta.estado
+          estado: receta.estado === 'Activo' || (receta.estado as any) === 'Activa' ? 'Activo' : 'Inactivo'
         });
         toast.success('Receta actualizada correctamente');
       }
       await cargarDatos();
     } catch (error: any) {
-      console.error('❌ Error al guardar receta:', error);
       toast.error(error.message || 'Error al guardar la receta');
       throw error;
     }
@@ -202,8 +199,8 @@ const GestionRecetasPage: React.FC = () => {
 
   const renderEstado = (estado: string) => {
     switch (estado) {
-      case 'Activa': return <Chip color="success" size="sm">{estado}</Chip>;
-      case 'Inactiva': return <Chip color="danger" size="sm">{estado}</Chip>;
+      case 'Activo': return <Chip color="success" size="sm">{estado}</Chip>;
+      case 'Inactivo': return <Chip color="danger" size="sm">{estado}</Chip>;
       default: return <Chip size="sm">{estado}</Chip>;
     }
   };
@@ -212,86 +209,87 @@ const GestionRecetasPage: React.FC = () => {
     return (
       <div className="flex items-center justify-center h-96">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-default-500">Cargando recetas...</p>
+          <Spinner size="lg" color="primary" className="mb-4" />
+          <p className="text-default-500 font-bold">Cargando recetas...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto px-4 py-8 space-y-8 font-sans">
+    <div className="min-h-screen bg-default-50/50 dark:bg-background pb-20 font-sans">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4 }}
-        className="space-y-8"
+        className="space-y-6"
       >
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-default-200 dark:border-default-100 pb-4">
-          <div>
-            {esSoloLectura && (
-              <p className="text-sm text-warning-600 font-medium mt-1">
-                Rol Profesor: acceso de solo lectura. Para crear o modificar recetas, contacte al profesor a cargo.
-              </p>
-            )}
-          </div>
+        {/* Barra de acciones */}
+        <div className="flex flex-wrap items-center gap-3 px-4 mt-8 mb-4">
           {!esSoloLectura && (
             <Button
               color="primary"
               variant="solid"
-              className="font-bold text-secondary shadow-md"
-              startContent={<Icon icon="lucide:plus" width={20} />}
+              size="md"
+              className="font-bold text-secondary shadow-sm"
+              startContent={<Icon icon="lucide:plus" width={18} />}
               onPress={handleNuevaReceta}
             >
               Nueva Receta
             </Button>
           )}
+          {esSoloLectura && (
+            <div className="flex items-center gap-2 text-sm text-warning-700 font-medium bg-warning-50 dark:bg-warning-50/10 px-3 py-2 rounded-lg border border-warning-200 dark:border-warning-200/20">
+              <Icon icon="lucide:info" width={15} className="shrink-0" />
+              Rol Profesor: acceso de solo lectura.
+            </div>
+          )}
         </div>
 
         {/* Estadísticas */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <Card className="shadow-sm border border-default-200 dark:border-default-100 bg-white dark:bg-content1">
-            <CardBody className="flex flex-row items-center justify-between p-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 px-4">
+          <Card className="shadow-sm border-l-4 border-primary bg-white dark:bg-content1">
+            <CardBody className="flex flex-row items-center justify-between p-4 gap-4">
               <div>
-                <p className="text-sm text-default-500 font-bold uppercase">Total Recetas</p>
-                <p className="text-4xl font-bold text-primary mt-1">{recetas.length}</p>
+                <p className="text-sm font-semibold text-default-500 uppercase tracking-wide">Total Recetas</p>
+                <p className="text-3xl font-bold text-secondary mt-1">{recetas.length}</p>
               </div>
-              <div className="p-3 bg-primary-50 rounded-full text-primary">
-                <Icon icon="lucide:book-open" width={32} />
+              <div className="w-12 h-12 rounded-lg flex items-center justify-center bg-primary-100 dark:bg-primary-900/30 text-primary shrink-0">
+                <Icon icon="lucide:book-open" width={24} />
               </div>
             </CardBody>
           </Card>
-          <Card className="shadow-sm border border-default-200 dark:border-default-100 bg-white dark:bg-content1">
-            <CardBody className="flex flex-row items-center justify-between p-6">
+          <Card className="shadow-sm border-l-4 border-success bg-white dark:bg-content1">
+            <CardBody className="flex flex-row items-center justify-between p-4 gap-4">
               <div>
-                <p className="text-sm text-default-500 font-bold uppercase">Activas</p>
-                <p className="text-4xl font-bold text-success mt-1">
-                  {recetas.filter(r => r.estado === 'Activa').length}
+                <p className="text-sm font-semibold text-default-500 uppercase tracking-wide">Activos</p>
+                <p className="text-3xl font-bold text-secondary mt-1">
+                  {recetas.filter(r => r.estado === 'Activo').length}
                 </p>
               </div>
-              <div className="p-3 bg-success-50 rounded-full text-success">
-                <Icon icon="lucide:check-circle" width={32} />
+              <div className="w-12 h-12 rounded-lg flex items-center justify-center bg-success-100 dark:bg-success-900/30 text-success shrink-0">
+                <Icon icon="lucide:check-circle" width={24} />
               </div>
             </CardBody>
           </Card>
-          <Card className="shadow-sm border border-default-200 dark:border-default-100 bg-white dark:bg-content1">
-            <CardBody className="flex flex-row items-center justify-between p-6">
+          <Card className="shadow-sm border-l-4 border-danger bg-white dark:bg-content1">
+            <CardBody className="flex flex-row items-center justify-between p-4 gap-4">
               <div>
-                <p className="text-sm text-default-500 font-bold uppercase">Inactivas</p>
-                <p className="text-4xl font-bold text-danger mt-1">
-                  {recetas.filter(r => r.estado === 'Inactiva').length}
+                <p className="text-sm font-semibold text-default-500 uppercase tracking-wide">Inactivos</p>
+                <p className="text-3xl font-bold text-secondary mt-1">
+                  {recetas.filter(r => r.estado === 'Inactivo').length}
                 </p>
               </div>
-              <div className="p-3 bg-danger-50 rounded-full text-danger">
-                <Icon icon="lucide:x-circle" width={32} />
+              <div className="w-12 h-12 rounded-lg flex items-center justify-center bg-danger-100 dark:bg-danger-900/30 text-danger shrink-0">
+                <Icon icon="lucide:x-circle" width={24} />
               </div>
             </CardBody>
           </Card>
         </div>
 
         {/* Filtros */}
-        <Card className="shadow-sm bg-default-50 dark:bg-content1 border border-default-200 dark:border-default-100">
-          <CardBody className="p-6">
+        <Card className="shadow-sm bg-white dark:bg-content1 border border-default-200 dark:border-default-100 mx-4">
+          <CardBody className="p-4">
             <div className="flex flex-col md:flex-row gap-4">
               <Input
                 placeholder="Buscar recetas por nombre o descripción..."
@@ -309,14 +307,14 @@ const GestionRecetasPage: React.FC = () => {
         </Card>
 
         {/* Tabla */}
-        <Card className="shadow-md border border-default-200 dark:border-default-100 bg-white dark:bg-content1">
+        <Card className="shadow-sm border border-default-200 dark:border-default-100 bg-white dark:bg-content1 mx-4">
           <CardBody className="p-0">
             <Table
               aria-label="Tabla de recetas"
               removeWrapper
               classNames={{
-                th: "bg-default-100 dark:bg-default-50/50 text-default-500 font-bold uppercase text-xs h-12",
-                td: "py-3 border-b border-default-50 dark:border-default-50/20 group-data-[last=true]:border-none"
+                th: "bg-default-100 dark:bg-default-100 text-default-500 font-bold uppercase text-xs h-12 border-b border-default-200/50",
+                td: "py-3 border-b border-default-50 dark:border-default-50/10 group-data-[last=true]:border-none px-4"
               }}
               bottomContent={
                 filteredRecetas.length > rowsPerPage && (
@@ -391,12 +389,12 @@ const GestionRecetasPage: React.FC = () => {
                               size="sm"
                               onPress={() => cambiarEstadoReceta(
                                 receta.id,
-                                receta.estado === 'Activa' ? 'Inactiva' : 'Activa'
+                                receta.estado === 'Activo' ? 'Inactivo' : 'Activo'
                               )}
-                              className={receta.estado === 'Activa' ? 'text-default-400 hover:text-danger' : 'text-default-400 hover:text-success'}
+                              className={receta.estado === 'Activo' ? 'text-default-400 hover:text-danger' : 'text-default-400 hover:text-success'}
                             >
                               <Icon
-                                icon={receta.estado === 'Activa' ? 'lucide:x-circle' : 'lucide:check-circle'}
+                                icon={receta.estado === 'Activo' ? 'lucide:x-circle' : 'lucide:check-circle'}
                                 width={18}
                               />
                             </Button>
@@ -423,7 +421,7 @@ const GestionRecetasPage: React.FC = () => {
         </Card>
       </motion.div>
 
-      <Modal isOpen={isOpen} onOpenChange={onOpenChange} size="3xl" scrollBehavior="inside">
+      <Modal isOpen={isOpen} onOpenChange={onOpenChange} size="3xl" scrollBehavior="inside" radius="lg" backdrop="blur">
         <ModalContent>
           {(onClose) => (
             <DetalleReceta
@@ -450,13 +448,14 @@ const GestionRecetasPage: React.FC = () => {
 interface DetalleRecetaProps {
   receta: IReceta | null;
   mode: 'crear' | 'editar' | 'ver';
-  productos: IProducto[];
+  productos: IProductoRecetaSelection[];
   onClose: () => void;
   onSave: (receta: IReceta) => Promise<void>;
 }
 
 const DetalleReceta: React.FC<DetalleRecetaProps> = ({ receta, mode, productos, onClose, onSave }) => {
   const [isSaving, setIsSaving] = React.useState(false);
+  const [isValidForm, setIsValidForm] = React.useState(false);
   const formRef = React.useRef<any>(null);
 
   const handleSubmit = async () => {
@@ -490,6 +489,7 @@ const DetalleReceta: React.FC<DetalleRecetaProps> = ({ receta, mode, productos, 
             mode={mode}
             productos={productos}
             onSave={onSave}
+            onValidationChange={setIsValidForm}
           />
         )}
       </ModalBody>
@@ -503,7 +503,7 @@ const DetalleReceta: React.FC<DetalleRecetaProps> = ({ receta, mode, productos, 
             variant="solid"
             onPress={handleSubmit}
             isLoading={isSaving}
-            isDisabled={isSaving}
+            isDisabled={isSaving || !isValidForm}
             className="font-bold text-secondary shadow-md"
             startContent={<Icon icon="lucide:save" />}
           >
@@ -532,7 +532,7 @@ const VistaReceta: React.FC<VistaRecetaProps> = ({ receta }) => {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
           <p className="text-sm text-default-500">Estado</p>
-          <Chip color={receta.estado === 'Activa' ? 'success' : 'danger'} size="sm">
+          <Chip color={receta.estado === 'Activo' ? 'success' : 'danger'} size="sm">
             {receta.estado}
           </Chip>
         </div>
@@ -579,22 +579,39 @@ const VistaReceta: React.FC<VistaRecetaProps> = ({ receta }) => {
 interface FormularioRecetaProps {
   receta: IReceta | null;
   mode: 'crear' | 'editar';
-  productos: IProducto[];
+  productos: IProductoRecetaSelection[];
   onSave: (receta: IReceta) => Promise<void>;
+  onValidationChange: (isValid: boolean) => void;
 }
 
 const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
-  ({ receta, mode, productos, onSave }, ref) => {
+  ({ receta, mode, productos, onSave, onValidationChange }, ref) => {
     const toast = useToast();
     const [nombre, setNombre] = React.useState(receta?.nombre || '');
     const [descripcion, setDescripcion] = React.useState(receta?.descripcion || '');
     const [instrucciones, setInstrucciones] = React.useState(receta?.instrucciones || '');
-    const [estado, setEstado] = React.useState<'Activa' | 'Inactiva'>(receta?.estado || 'Activa');
+    const [estado, setEstado] = React.useState<'Activo' | 'Inactivo'>(() => {
+      const initial = receta?.estado;
+      if (initial === 'Activo' || (initial as any) === 'Activa') return 'Activo';
+      if (initial === 'Inactivo' || (initial as any) === 'Inactiva') return 'Inactivo';
+      return 'Activo';
+    });
     const [ingredientes, setIngredientes] = React.useState<IIngrediente[]>(receta?.ingredientes || []);
+
+    React.useEffect(() => {
+      const isNombreValid = nombre.trim().length > 0;
+      const isEstadoValid = !!estado;
+      const hasIngredients = ingredientes.length > 0;
+      const areIngredientsValid = ingredientes.every(ing =>
+        ing.productoId && ing.cantidad > 0
+      );
+
+      onValidationChange(isNombreValid && isEstadoValid && hasIngredients && areIngredientsValid);
+    }, [nombre, estado, ingredientes, onValidationChange]);
 
     React.useImperativeHandle(ref, () => ({
       submit: async () => {
-        // Validaciones
+        // Validaciones iniciales
         if (!nombre.trim()) {
           toast.warning('El nombre de la receta es obligatorio');
           throw new Error('El nombre es requerido');
@@ -604,7 +621,7 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
           throw new Error('Debe agregar al menos un ingrediente');
         }
 
-        // Validar que todos los ingredientes tengan producto y cantidad
+        // Validar que todos los ingredientes tengan producto y cantidad antes de consolidar
         for (let i = 0; i < ingredientes.length; i++) {
           const ing = ingredientes[i];
           if (!ing.productoId) {
@@ -617,11 +634,25 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
           }
         }
 
+        // Consolidar productos duplicados
+        const ingredientesConsolidados: IIngrediente[] = [];
+        const seenProductsMap = new Map<string, number>();
+
+        ingredientes.forEach(ing => {
+          if (seenProductsMap.has(ing.productoId)) {
+            const index = seenProductsMap.get(ing.productoId)!;
+            ingredientesConsolidados[index].cantidad += ing.cantidad;
+          } else {
+            seenProductsMap.set(ing.productoId, ingredientesConsolidados.length);
+            ingredientesConsolidados.push({ ...ing });
+          }
+        });
+
         const recetaData: IReceta = {
           id: receta?.id || '',
           nombre: nombre.trim(),
           descripcion: descripcion.trim(),
-          ingredientes,
+          ingredientes: ingredientesConsolidados,
           instrucciones: instrucciones.trim(),
           estado,
           fechaCreacion: receta?.fechaCreacion || new Date().toISOString(),
@@ -647,13 +678,14 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
       const nuevosIngredientes = [...ingredientes];
 
       if (campo === 'productoId') {
-        const producto = productos.find(p => p.id === valor);
+        const producto = productos.find(p => p.idProducto.toString() === valor);
+
         if (producto) {
           nuevosIngredientes[index] = {
             ...nuevosIngredientes[index],
-            productoId: producto.id,
-            productoNombre: producto.nombre,
-            unidadMedida: producto.unidadMedida
+            productoId: producto.idProducto.toString(),
+            productoNombre: producto.nombreProducto,
+            unidadMedida: producto.nombreUnidad
           };
         }
       } else {
@@ -679,6 +711,8 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
           onValueChange={setNombre}
           isRequired
           variant="bordered"
+          maxLength={100}
+          description={`${nombre.length}/100 caracteres`}
         />
 
         <Textarea
@@ -715,62 +749,75 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
             </div>
           ) : (
             <div className="space-y-3">
-              {ingredientes.map((ingrediente, index) => (
-                <Card key={ingrediente.id || index} shadow="none" className="border-2 border-default-200 dark:border-default-100 dark:bg-content1">
-                  <CardBody className="p-3">
-                    <div className="grid grid-cols-1 md:grid-cols-[2fr_1fr_auto_auto] gap-3 items-end">
-                      <Select
-                        label="Producto"
-                        placeholder="Seleccione producto"
-                        selectedKeys={ingrediente.productoId ? [ingrediente.productoId] : []}
-                        onSelectionChange={(keys) => actualizarIngrediente(index, 'productoId', Array.from(keys)[0])}
-                        size="sm"
-                        variant="bordered"
-                        classNames={{ trigger: "bg-white dark:bg-default-100/50" }}
-                        isRequired
-                        items={productos}
-                      >
-                        {(producto) => (
-                          <SelectItem key={producto.id}>
-                            {producto.nombre}
-                          </SelectItem>
-                        )}
-                      </Select>
+              {ingredientes.map((ingrediente, index) => {
+                const productoInfo = productos.find(p => p.idProducto.toString() === ingrediente.productoId);
+                const esFraccionario = productoInfo?.esFraccionario || false;
 
-                      <Input
-                        type="number"
-                        label="Cantidad"
-                        placeholder="0"
-                        value={ingrediente.cantidad.toString()}
-                        onValueChange={(val) => actualizarIngrediente(index, 'cantidad', parseFloat(val) || 0)}
-                        size="sm"
-                        variant="bordered"
-                        min="0"
-                        step="0.01"
-                        endContent={
-                          <span className="text-xs text-default-400">
-                            {ingrediente.unidadMedida || 'unidad'}
-                          </span>
-                        }
-                      />
+                return (
+                  <Card key={ingrediente.id || index} shadow="none" className="border-2 border-default-200 dark:border-default-100 dark:bg-content1">
+                    <CardBody className="p-3">
+                      <div className="grid grid-cols-1 md:grid-cols-[2fr_1.5fr_auto] gap-3 items-end">
+                        <Select
+                          label="Producto"
+                          placeholder="Seleccione producto"
+                          selectedKeys={ingrediente.productoId ? [ingrediente.productoId] : []}
+                          onSelectionChange={(keys) => actualizarIngrediente(index, 'productoId', Array.from(keys)[0])}
+                          size="sm"
+                          variant="bordered"
+                          classNames={{ trigger: "bg-white dark:bg-default-100/50" }}
+                          isRequired
+                          items={productos}
+                        >
+                          {(producto) => (
+                            <SelectItem key={producto.idProducto.toString()}>
+                              {producto.nombreProducto}
+                            </SelectItem>
+                          )}
+                        </Select>
 
-                      <span className="text-sm text-default-500 mb-2">
-                        {ingrediente.unidadMedida || '-'}
-                      </span>
+                        <Input
+                          type="number"
+                          label="Cantidad"
+                          placeholder="0"
+                          value={ingrediente.cantidad === 0 ? '' : ingrediente.cantidad.toString()}
+                          onValueChange={(val) => {
+                            // Si no es fraccionario, forzar entero
+                            if (!esFraccionario && val.includes('.')) {
+                              return;
+                            }
+                            // Si es fraccionario, permitir 3 decimales
+                            if (esFraccionario && val.includes('.') && val.split('.')[1].length > 3) {
+                              return;
+                            }
+                            actualizarIngrediente(index, 'cantidad', parseFloat(val) || 0);
+                          }}
+                          size="sm"
+                          variant="bordered"
+                          min="0"
+                          step={esFraccionario ? "0.001" : "1"}
+                          isRequired
+                          endContent={
+                            <span className="text-xs text-default-400 min-w-16 text-right">
+                              {ingrediente.unidadMedida || 'unidad'}
+                            </span>
+                          }
+                        />
 
-                      <Button
-                        isIconOnly
-                        variant="light"
-                        size="sm"
-                        color="danger"
-                        onPress={() => eliminarIngrediente(index)}
-                      >
-                        <Icon icon="lucide:trash" />
-                      </Button>
-                    </div>
-                  </CardBody>
-                </Card>
-              ))}
+                        <Button
+                          isIconOnly
+                          variant="light"
+                          size="md"
+                          color="danger"
+                          onPress={() => eliminarIngrediente(index)}
+                          className="mb-1"
+                        >
+                          <Icon icon="lucide:trash" width={20} />
+                        </Button>
+                      </div>
+                    </CardBody>
+                  </Card>
+                );
+              })}
             </div>
           )}
         </div>
@@ -788,12 +835,14 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
 
         <Select
           label="Estado"
+          placeholder="Seleccione el estado"
           selectedKeys={[estado]}
-          onSelectionChange={(keys) => setEstado(Array.from(keys)[0] as 'Activa' | 'Inactiva')}
+          onSelectionChange={(keys) => setEstado(Array.from(keys)[0] as 'Activo' | 'Inactivo')}
           variant="bordered"
+          isRequired
         >
-          <SelectItem key="Activa">Activa</SelectItem>
-          <SelectItem key="Inactiva">Inactiva</SelectItem>
+          <SelectItem key="Activo">Activo</SelectItem>
+          <SelectItem key="Inactivo">Inactivo</SelectItem>
         </Select>
       </div>
     );
