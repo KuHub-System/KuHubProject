@@ -4,7 +4,7 @@ import {
   Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, useDisclosure,
   Input, ScrollShadow, Accordion, AccordionItem,
   Table, TableHeader, TableColumn, TableBody, TableRow, TableCell,
-  Spinner, Tooltip, Dropdown, DropdownTrigger, DropdownMenu, DropdownItem
+  Spinner, Tooltip, Dropdown, DropdownTrigger, DropdownMenu, DropdownItem, Checkbox
 } from '@heroui/react';
 import { Icon } from '@iconify/react';
 import { usePageTitle } from '../hooks/usePageTitle';
@@ -163,19 +163,18 @@ const BodegaTransitoPage: React.FC = () => {
   const onModalOpenChange = (open: boolean) => setIsModalOpen(open);
   const [productoSeleccionado, setProductoSeleccionado] = React.useState<IProducto | null>(null);
 
-  const filtrosCombinados = React.useMemo(() => {
+  const filtrosCategorias = React.useMemo(() => {
     const cats = categoriasFull.map(c => ({ id: `cat-${c.id}`, nombre: c.nombre }));
-    const unis = unidadesFull.map(u => ({ id: `uni-${u.id}`, nombre: u.nombre }));
-    return [
-      { id: 'todas', nombre: 'Todas las categorías' },
-      { id: 'stock-bajo', nombre: 'Stock Bajo' },
-      { id: 'ocultar-cero', nombre: 'Ocultar stock en 0' },
-      { id: 'ascendente', nombre: 'Ascendente' },
-      { id: 'descendente', nombre: 'Descendente' },
-      ...cats,
-      ...unis
-    ];
-  }, [categoriasFull, unidadesFull]);
+    return [{ id: 'todas', nombre: 'Todas las categorías' }, ...cats];
+  }, [categoriasFull]);
+
+  const filtrosUnidades = React.useMemo(() => {
+    return unidadesFull.map(u => ({ id: `uni-${u.id}`, nombre: u.nombre }));
+  }, [unidadesFull]);
+
+  const filtrosCombinados = React.useMemo(() => {
+    return [...filtrosCategorias, ...filtrosUnidades];
+  }, [filtrosCategorias, filtrosUnidades]);
 
   const paginatedProductos = React.useMemo(() => {
     return productos;
@@ -402,7 +401,7 @@ const BodegaTransitoPage: React.FC = () => {
               <Card className="shadow-sm bg-white dark:bg-content1 border border-default-200 dark:border-default-100 mx-4">
                 <CardBody className="p-4">
                   <div className="flex flex-col md:flex-row gap-4 justify-between items-center">
-                    <div className="w-full flex flex-col md:flex-row gap-2 md:w-3/4">
+                    <div className="w-full flex flex-col md:flex-row gap-2 md:w-[48%]">
                       <Input
                         className="w-full md:w-1/2"
                         placeholder="Buscar código..."
@@ -428,80 +427,164 @@ const BodegaTransitoPage: React.FC = () => {
                         isClearable
                       />
                     </div>
-                    <Dropdown onOpenChange={(isOpen) => {
-                      if (!isOpen) {
-                        cacheRef.current = {};
-                        setCurrentPage(1);
-                        cargarProductosPaginados(1, true);
-                      }
-                    }}>
-                      <DropdownTrigger>
-                        <Button variant="bordered" startContent={<Icon icon="lucide:filter" className="text-default-400" />} className="bg-white dark:bg-default-100/50 w-full md:w-auto">
-                          {selectedFilters.has('todas') ? 'Todas las categorías' : `${selectedFilters.size} Filtros`}
-                        </Button>
-                      </DropdownTrigger>
-                      <DropdownMenu
-                        aria-label="Filtros de Inventario"
-                        closeOnSelect={false}
-                        selectionMode="multiple"
-                        selectedKeys={selectedFilters}
-                        className="max-h-[500px] overflow-y-auto w-full"
-                        onSelectionChange={(keys) => {
-                          const newKeys = Array.from(keys) as string[];
-                          let resultSet: Set<string>;
 
-                          const wasTodasSelected = filtersRef.current.has('todas');
-                          const isTodasSelectedNow = newKeys.includes('todas');
+                    <div className="flex items-center gap-3 flex-wrap">
+                      <div className="flex flex-col gap-1">
+                        <Checkbox
+                          isSelected={selectedFilters.has('stock-bajo')}
+                          onValueChange={(checked) => {
+                            const newSet = new Set(selectedFilters);
+                            if (checked) newSet.add('stock-bajo'); else newSet.delete('stock-bajo');
+                            setSelectedFilters(newSet);
+                            filtersRef.current = newSet;
+                            cacheRef.current = {};
+                            setCurrentPage(1);
+                            cargarProductosPaginados(1, true);
+                          }}
+                          color="warning"
+                          size="sm"
+                        >
+                          <span className="text-sm font-medium flex items-center gap-1">
+                            <Icon icon="lucide:alert-triangle" width={13} className="text-warning" />
+                            Stock Bajo
+                          </span>
+                        </Checkbox>
+                        <Checkbox
+                          isSelected={selectedFilters.has('ocultar-cero')}
+                          onValueChange={(checked) => {
+                            const newSet = new Set(selectedFilters);
+                            if (checked) newSet.add('ocultar-cero'); else newSet.delete('ocultar-cero');
+                            setSelectedFilters(newSet);
+                            filtersRef.current = newSet;
+                            cacheRef.current = {};
+                            setCurrentPage(1);
+                            cargarProductosPaginados(1, true);
+                          }}
+                          size="sm"
+                        >
+                          <span className="text-sm font-medium">Ocultar Stock 0</span>
+                        </Checkbox>
+                      </div>
 
-                          const newlyAdded = newKeys.filter(k => !filtersRef.current.has(k));
-                          let finalKeys = newKeys;
-
-                          if (newlyAdded.includes('ascendente')) {
-                            finalKeys = finalKeys.filter(k => k !== 'descendente');
-                          } else if (newlyAdded.includes('descendente')) {
-                            finalKeys = finalKeys.filter(k => k !== 'ascendente');
-                          }
-
-                          const updatedIsTodas = finalKeys.includes('todas');
-                          const nonCatFilters = finalKeys.filter(k => k === 'ocultar-cero' || k === 'ascendente' || k === 'descendente' || k === 'stock-bajo');
-
-                          if (updatedIsTodas && !wasTodasSelected) {
-                            resultSet = new Set(['todas', ...nonCatFilters]);
-                          } else if (finalKeys.length > 1 && updatedIsTodas) {
-                            const hasCatOrUnit = finalKeys.some(k => k.startsWith('cat-') || k.startsWith('uni-'));
-                            if (hasCatOrUnit) {
-                              resultSet = new Set(finalKeys.filter(k => k !== 'todas'));
-                            } else {
-                              resultSet = new Set(finalKeys);
-                            }
-                          } else if (finalKeys.length === 0) {
-                            resultSet = new Set(['todas']);
-                          } else {
-                            resultSet = new Set(finalKeys);
-                          }
-
-                          if (!Array.from(resultSet).some(k => k.startsWith('cat-') || k.startsWith('uni-') || k === 'todas')) {
-                            resultSet.add('todas');
-                          }
-
-                          setSelectedFilters(resultSet);
-                          filtersRef.current = resultSet;
-                        }}
-                      >
-                        {filtrosCombinados.map((filtro) => (
-                          <DropdownItem
-                            key={filtro.id}
-                            startContent={
-                              filtro.id === 'stock-bajo'
-                                ? <Icon icon="lucide:alert-triangle" className="text-warning" />
-                                : null
-                            }
+                      {/* Dropdown Categorías */}
+                      <Dropdown onOpenChange={(isOpen) => {
+                        if (!isOpen) {
+                          cacheRef.current = {};
+                          setCurrentPage(1);
+                          cargarProductosPaginados(1, true);
+                        }
+                      }}>
+                        <DropdownTrigger>
+                          <Button
+                            variant="bordered"
+                            className="bg-white dark:bg-default-100/50"
+                            startContent={<Icon icon="lucide:tag" className="text-default-500" />}
+                            endContent={<Icon icon="lucide:chevron-down" className="text-default-400" width={14} />}
                           >
-                            {filtro.nombre}
-                          </DropdownItem>
-                        ))}
-                      </DropdownMenu>
-                    </Dropdown>
+                            {(() => {
+                              const catKeys = Array.from(selectedFilters).filter(k => k.startsWith('cat-'));
+                              if (catKeys.length === 0) return 'Todas las categorías';
+                              if (catKeys.length === 1) {
+                                const found = filtrosCategorias.find(f => f.id === catKeys[0]);
+                                return found ? found.nombre : 'Categoría';
+                              }
+                              return `${catKeys.length} categorías`;
+                            })()}
+                          </Button>
+                        </DropdownTrigger>
+                        <DropdownMenu
+                          aria-label="Categorías"
+                          closeOnSelect={false}
+                          selectionMode="multiple"
+                          selectedKeys={selectedFilters}
+                          className="max-h-[400px] overflow-y-auto"
+                          onSelectionChange={(keys) => {
+                            const newKeys = Array.from(keys) as string[];
+                            let resultSet: Set<string>;
+
+                            const wasTodasSelected = filtersRef.current.has('todas');
+                            let finalKeys = newKeys;
+
+                            const updatedIsTodas = finalKeys.includes('todas');
+                            const nonCatFilters = Array.from(filtersRef.current).filter(k =>
+                              k === 'ocultar-cero' || k === 'ascendente' || k === 'descendente' || k === 'stock-bajo' || k.startsWith('uni-')
+                            );
+
+                            if (updatedIsTodas && !wasTodasSelected) {
+                              resultSet = new Set(['todas', ...nonCatFilters]);
+                            } else if (finalKeys.length > 1 && updatedIsTodas) {
+                              const hasCat = finalKeys.some(k => k.startsWith('cat-'));
+                              if (hasCat) {
+                                resultSet = new Set([...finalKeys.filter(k => k !== 'todas'), ...nonCatFilters]);
+                              } else {
+                                resultSet = new Set([...finalKeys, ...nonCatFilters]);
+                              }
+                            } else if (finalKeys.length === 0) {
+                              resultSet = new Set(['todas', ...nonCatFilters]);
+                            } else {
+                              resultSet = new Set([...finalKeys, ...nonCatFilters]);
+                            }
+
+                            if (!Array.from(resultSet).some(k => k.startsWith('cat-') || k === 'todas')) {
+                              resultSet.add('todas');
+                            }
+
+                            setSelectedFilters(resultSet);
+                            filtersRef.current = resultSet;
+                          }}
+                        >
+                          {filtrosCategorias.map((filtro) => (
+                            <DropdownItem key={filtro.id}>{filtro.nombre}</DropdownItem>
+                          ))}
+                        </DropdownMenu>
+                      </Dropdown>
+
+                      {/* Dropdown Unidades */}
+                      <Dropdown onOpenChange={(isOpen) => {
+                        if (!isOpen) {
+                          cacheRef.current = {};
+                          setCurrentPage(1);
+                          cargarProductosPaginados(1, true);
+                        }
+                      }}>
+                        <DropdownTrigger>
+                          <Button
+                            variant="bordered"
+                            className="bg-white dark:bg-default-100/50"
+                            startContent={<Icon icon="lucide:ruler" className="text-default-500" />}
+                            endContent={<Icon icon="lucide:chevron-down" className="text-default-400" width={14} />}
+                          >
+                            {(() => {
+                              const uniKeys = Array.from(selectedFilters).filter(k => k.startsWith('uni-'));
+                              if (uniKeys.length === 0) return 'Todas las unidades';
+                              if (uniKeys.length === 1) {
+                                const found = filtrosUnidades.find(f => f.id === uniKeys[0]);
+                                return found ? found.nombre : 'Unidad';
+                              }
+                              return `${uniKeys.length} unidades`;
+                            })()}
+                          </Button>
+                        </DropdownTrigger>
+                        <DropdownMenu
+                          aria-label="Unidades"
+                          closeOnSelect={false}
+                          selectionMode="multiple"
+                          selectedKeys={new Set(Array.from(selectedFilters).filter(k => k.startsWith('uni-')))}
+                          className="max-h-[400px] overflow-y-auto"
+                          onSelectionChange={(keys) => {
+                            const newUniKeys = Array.from(keys) as string[];
+                            const nonUni = Array.from(filtersRef.current).filter(k => !k.startsWith('uni-'));
+                            const resultSet = new Set([...nonUni, ...newUniKeys]);
+                            setSelectedFilters(resultSet);
+                            filtersRef.current = resultSet;
+                          }}
+                        >
+                          {filtrosUnidades.map((u) => (
+                            <DropdownItem key={u.id}>{u.nombre}</DropdownItem>
+                          ))}
+                        </DropdownMenu>
+                      </Dropdown>
+                    </div>
                   </div>
                 </CardBody>
               </Card>
@@ -528,7 +611,38 @@ const BodegaTransitoPage: React.FC = () => {
                 }
               >
                 <TableHeader>
-                  <TableColumn width="30%" align="center" className="text-center">NOMBRE PRODUCTO</TableColumn>
+                  <TableColumn width="30%" align="center" className="text-center">
+                    <div className="flex items-center justify-center gap-1">
+                      NOMBRE PRODUCTO
+                      <Button
+                        isIconOnly
+                        size="sm"
+                        variant="light"
+                        className="h-5 w-5 min-w-0 text-default-400 hover:text-secondary"
+                        onPress={() => {
+                          const newSet = new Set(selectedFilters);
+                          if (newSet.has('ascendente')) {
+                            newSet.delete('ascendente');
+                            newSet.add('descendente');
+                          } else if (newSet.has('descendente')) {
+                            newSet.delete('descendente');
+                          } else {
+                            newSet.add('ascendente');
+                          }
+                          setSelectedFilters(newSet);
+                          filtersRef.current = newSet;
+                          cacheRef.current = {};
+                          setCurrentPage(1);
+                          cargarProductosPaginados(1, true);
+                        }}
+                      >
+                        <Icon
+                          icon={selectedFilters.has('ascendente') ? 'lucide:arrow-up-a-z' : selectedFilters.has('descendente') ? 'lucide:arrow-down-z-a' : 'lucide:arrow-up-down'}
+                          width={13}
+                        />
+                      </Button>
+                    </div>
+                  </TableColumn>
                   <TableColumn width="15%" align="center" className="text-center">CATEGORÍA</TableColumn>
                   <TableColumn width="10%" align="center" className="text-center">STOCK</TableColumn>
                   <TableColumn width="10%" align="center" className="text-center">STOCK MÁX</TableColumn>

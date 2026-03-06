@@ -477,7 +477,7 @@ const GestionUsuariosPage: React.FC = () => {
                 {usuariosFiltrados.map((usuario) => (
                   <TableRow key={usuario.id + usuario.correo} className="hover:bg-default-50 dark:hover:bg-default-100/50 transition-colors">
                     <TableCell>
-                      <div className="flex items-center gap-3 overflow-hidden">
+                      <div className="flex items-center gap-3">
                         <Avatar
                           src={usuario.fotoPerfil}
                           name={usuario.nombreCompleto}
@@ -485,6 +485,7 @@ const GestionUsuariosPage: React.FC = () => {
                           isBordered
                           color={usuario.activo ? "success" : "default"}
                           className="flex-shrink-0"
+                          classNames={{ img: "scale-90" }}
                         />
                         <div className="overflow-hidden">
                           <Tooltip content={usuario.nombreCompleto} delay={1000}>

@@ -21,7 +21,8 @@ import {
   Divider,
   Textarea,
   Select,
-  SelectItem
+  SelectItem,
+  Spinner
 } from '@heroui/react';
 import { Icon } from '@iconify/react';
 import { motion } from 'framer-motion';
@@ -208,86 +209,87 @@ const GestionRecetasPage: React.FC = () => {
     return (
       <div className="flex items-center justify-center h-96">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-default-500">Cargando recetas...</p>
+          <Spinner size="lg" color="primary" className="mb-4" />
+          <p className="text-default-500 font-bold">Cargando recetas...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto px-4 py-8 space-y-8 font-sans">
+    <div className="min-h-screen bg-default-50/50 dark:bg-background pb-20 font-sans">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4 }}
-        className="space-y-8"
+        className="space-y-6"
       >
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-default-200 dark:border-default-100 pb-4">
-          <div>
-            {esSoloLectura && (
-              <p className="text-sm text-warning-600 font-medium mt-1">
-                Rol Profesor: acceso de solo lectura. Para crear o modificar recetas, contacte al profesor a cargo.
-              </p>
-            )}
-          </div>
+        {/* Barra de acciones */}
+        <div className="flex flex-wrap items-center gap-3 px-4 mt-8 mb-4">
           {!esSoloLectura && (
             <Button
               color="primary"
               variant="solid"
-              className="font-bold text-secondary shadow-md"
-              startContent={<Icon icon="lucide:plus" width={20} />}
+              size="md"
+              className="font-bold text-secondary shadow-sm"
+              startContent={<Icon icon="lucide:plus" width={18} />}
               onPress={handleNuevaReceta}
             >
               Nueva Receta
             </Button>
           )}
+          {esSoloLectura && (
+            <div className="flex items-center gap-2 text-sm text-warning-700 font-medium bg-warning-50 dark:bg-warning-50/10 px-3 py-2 rounded-lg border border-warning-200 dark:border-warning-200/20">
+              <Icon icon="lucide:info" width={15} className="shrink-0" />
+              Rol Profesor: acceso de solo lectura.
+            </div>
+          )}
         </div>
 
         {/* Estadísticas */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <Card className="shadow-sm border border-default-200 dark:border-default-100 bg-white dark:bg-content1">
-            <CardBody className="flex flex-row items-center justify-between p-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 px-4">
+          <Card className="shadow-sm border-l-4 border-primary bg-white dark:bg-content1">
+            <CardBody className="flex flex-row items-center justify-between p-4 gap-4">
               <div>
-                <p className="text-sm text-default-500 font-bold uppercase">Total Recetas</p>
-                <p className="text-4xl font-bold text-primary mt-1">{recetas.length}</p>
+                <p className="text-sm font-semibold text-default-500 uppercase tracking-wide">Total Recetas</p>
+                <p className="text-3xl font-bold text-secondary mt-1">{recetas.length}</p>
               </div>
-              <div className="p-3 bg-primary-50 rounded-full text-primary">
-                <Icon icon="lucide:book-open" width={32} />
+              <div className="w-12 h-12 rounded-lg flex items-center justify-center bg-primary-100 dark:bg-primary-900/30 text-primary shrink-0">
+                <Icon icon="lucide:book-open" width={24} />
               </div>
             </CardBody>
           </Card>
-          <Card className="shadow-sm border border-default-200 dark:border-default-100 bg-white dark:bg-content1">
-            <CardBody className="flex flex-row items-center justify-between p-6">
+          <Card className="shadow-sm border-l-4 border-success bg-white dark:bg-content1">
+            <CardBody className="flex flex-row items-center justify-between p-4 gap-4">
               <div>
-                <p className="text-sm text-default-500 font-bold uppercase">Activos</p>
-                <p className="text-4xl font-bold text-success mt-1">
+                <p className="text-sm font-semibold text-default-500 uppercase tracking-wide">Activos</p>
+                <p className="text-3xl font-bold text-secondary mt-1">
                   {recetas.filter(r => r.estado === 'Activo').length}
                 </p>
               </div>
-              <div className="p-3 bg-success-50 rounded-full text-success">
-                <Icon icon="lucide:check-circle" width={32} />
+              <div className="w-12 h-12 rounded-lg flex items-center justify-center bg-success-100 dark:bg-success-900/30 text-success shrink-0">
+                <Icon icon="lucide:check-circle" width={24} />
               </div>
             </CardBody>
           </Card>
-          <Card className="shadow-sm border border-default-200 dark:border-default-100 bg-white dark:bg-content1">
-            <CardBody className="flex flex-row items-center justify-between p-6">
+          <Card className="shadow-sm border-l-4 border-danger bg-white dark:bg-content1">
+            <CardBody className="flex flex-row items-center justify-between p-4 gap-4">
               <div>
-                <p className="text-sm text-default-500 font-bold uppercase">Inactivos</p>
-                <p className="text-4xl font-bold text-danger mt-1">
+                <p className="text-sm font-semibold text-default-500 uppercase tracking-wide">Inactivos</p>
+                <p className="text-3xl font-bold text-secondary mt-1">
                   {recetas.filter(r => r.estado === 'Inactivo').length}
                 </p>
               </div>
-              <div className="p-3 bg-danger-50 rounded-full text-danger">
-                <Icon icon="lucide:x-circle" width={32} />
+              <div className="w-12 h-12 rounded-lg flex items-center justify-center bg-danger-100 dark:bg-danger-900/30 text-danger shrink-0">
+                <Icon icon="lucide:x-circle" width={24} />
               </div>
             </CardBody>
           </Card>
         </div>
 
         {/* Filtros */}
-        <Card className="shadow-sm bg-default-50 dark:bg-content1 border border-default-200 dark:border-default-100">
-          <CardBody className="p-6">
+        <Card className="shadow-sm bg-white dark:bg-content1 border border-default-200 dark:border-default-100 mx-4">
+          <CardBody className="p-4">
             <div className="flex flex-col md:flex-row gap-4">
               <Input
                 placeholder="Buscar recetas por nombre o descripción..."
@@ -305,14 +307,14 @@ const GestionRecetasPage: React.FC = () => {
         </Card>
 
         {/* Tabla */}
-        <Card className="shadow-md border border-default-200 dark:border-default-100 bg-white dark:bg-content1">
+        <Card className="shadow-sm border border-default-200 dark:border-default-100 bg-white dark:bg-content1 mx-4">
           <CardBody className="p-0">
             <Table
               aria-label="Tabla de recetas"
               removeWrapper
               classNames={{
-                th: "bg-default-100 dark:bg-default-50/50 text-default-500 font-bold uppercase text-xs h-12",
-                td: "py-3 border-b border-default-50 dark:border-default-50/20 group-data-[last=true]:border-none"
+                th: "bg-default-100 dark:bg-default-100 text-default-500 font-bold uppercase text-xs h-12 border-b border-default-200/50",
+                td: "py-3 border-b border-default-50 dark:border-default-50/10 group-data-[last=true]:border-none px-4"
               }}
               bottomContent={
                 filteredRecetas.length > rowsPerPage && (
@@ -419,7 +421,7 @@ const GestionRecetasPage: React.FC = () => {
         </Card>
       </motion.div>
 
-      <Modal isOpen={isOpen} onOpenChange={onOpenChange} size="3xl" scrollBehavior="inside">
+      <Modal isOpen={isOpen} onOpenChange={onOpenChange} size="3xl" scrollBehavior="inside" radius="lg" backdrop="blur">
         <ModalContent>
           {(onClose) => (
             <DetalleReceta
