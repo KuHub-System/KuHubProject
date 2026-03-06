@@ -1,7 +1,7 @@
 package KuHub.modules.gestion_inventario.services;
 
 
-import KuHub.modules.gestion_inventario.dtos.proyeccion.ProductRecipeView;
+import KuHub.modules.gestion_inventario.dtos.response.proyeccion.ProductRecipeView;
 import KuHub.modules.gestion_inventario.entity.Producto;
 
 import java.util.Collection;
@@ -13,8 +13,7 @@ public interface ProductoService {
     List<Producto> findByActivo(Boolean activo);
 
     List<Producto> findAllByIdInAndActivoTrue(Collection<Integer> ids);
-
-    //List<ProductRecipeView> findAllActiveForRecipe();
+    List<ProductRecipeView> findAllActiveForRecipe();
 
     Boolean existProductByName (String nombreProducto);
     Boolean existProductoById (Integer id);

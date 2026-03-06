@@ -480,7 +480,7 @@ export const actualizarReceta = (id: string, cambios: Partial<Omit<IReceta, 'id'
 };
 
 export const obtenerRecetasActivas = (): IReceta[] => {
-  return obtenerRecetas().filter(r => r.estado === 'Activa');
+  return obtenerRecetas().filter(r => r.estado === 'Activo' || (r.estado as any) === 'Activa');
 };
 
 export const eliminarReceta = (id: string): boolean => {

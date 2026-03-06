@@ -12,6 +12,15 @@ import java.util.Optional;
 @Repository
 public interface RecetaRepository extends JpaRepository<Receta,Integer> {
 
+    
+
+    long countByActivoRecetaTrue();
+
+
+
+
+
+    /***/
 
     boolean existsByNombreRecetaAndActivoRecetaTrue(String nombreReceta);
 

@@ -45,6 +45,7 @@ public class SolicitudController {
                 .body(solicitudService.checkSectionAvailability(r));
     }
 
+    /**
     @PostMapping("/save-solicitation")
     public ResponseEntity<Void> saveSolicitation(
             @RequestBody SolicitationCreateRequestDTO r
@@ -53,7 +54,7 @@ public class SolicitudController {
         return ResponseEntity
                 .status(201)
                 .build();
-    }
+    }*/
 
     @PatchMapping("/update-solicitation-status")
     public ResponseEntity<Void> updateSolicitationStatus(
