@@ -301,13 +301,9 @@ const GestionPedidosPage: React.FC = () => {
                 onSelectionChange={setFiltroSemana}
                 variant="bordered"
                 classNames={{ trigger: "bg-white dark:bg-default-100/50" }}
+                items={[{ key: 'todas', label: 'Todas' }, ...SEMANAS.map(s => ({ key: s.toString(), label: `Semana ${s}` }))]}
               >
-                <SelectItem key="todas">Todas</SelectItem>
-                {SEMANAS.map((semana) => (
-                  <SelectItem key={semana.toString()}>
-                    Semana {semana}
-                  </SelectItem>
-                ))}
+                {(item) => <SelectItem key={item.key}>{item.label}</SelectItem>}
               </Select>
             </div>
           </CardBody>

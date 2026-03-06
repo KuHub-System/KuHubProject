@@ -432,11 +432,9 @@ const ConglomeradoPedidosPage: React.FC = () => {
               setSemanaSeleccionada(value || 'todas');
             }}
             className="w-full md:w-56"
+            items={[{ key: 'todas', label: 'Todas las semanas' }, ...semanasDisponibles.map(s => ({ key: s.toString(), label: `Semana ${s}` }))]}
           >
-            <SelectItem key="todas">Todas las semanas</SelectItem>
-            {semanasDisponibles.map((semana) => (
-              <SelectItem key={semana.toString()}>Semana {semana}</SelectItem>
-            ))}
+            {(item) => <SelectItem key={item.key}>{item.label}</SelectItem>}
           </Select>
 
           <Button
