@@ -31,16 +31,15 @@ import { useAuth } from '../contexts/auth-context';
 
 // IMPORTAR TIPOS Y SERVICIOS
 import { IReceta, IIngrediente } from '../types/receta.types';
+import { IProducto } from '../types/producto.types';
 import {
   obtenerRecetasService,
   crearRecetaService,
   actualizarRecetaService,
   cambiarEstadoRecetaService,
   eliminarRecetaService,
-  crearRecetaConDetallesService,
 } from '../services/receta-service';
-import { obtenerProductosParaRecetaService } from '../services/producto-service';
-import { IProductoRecetaSelection } from '../types/producto.types';
+import { obtenerProductosService } from '../services/producto-service';
 
 /**
  * Página de gestión de recetas simplificada.
@@ -53,7 +52,7 @@ const GestionRecetasPage: React.FC = () => {
   const esAdministrador = user?.rol === 'Administrador';
 
   const [recetas, setRecetas] = React.useState<IReceta[]>([]);
-  const [productos, setProductos] = React.useState<IProductoRecetaSelection[]>([]);
+  const [productos, setProductos] = React.useState<IProducto[]>([]);
   const [filteredRecetas, setFilteredRecetas] = React.useState<IReceta[]>([]);
   const [recetaSeleccionada, setRecetaSeleccionada] = React.useState<IReceta | null>(null);
   const [modalMode, setModalMode] = React.useState<'crear' | 'editar' | 'ver'>('crear');
@@ -74,11 +73,14 @@ const GestionRecetasPage: React.FC = () => {
       setIsLoading(true);
       const [recetasCargadas, productosCargados] = await Promise.all([
         obtenerRecetasService(),
-        obtenerProductosParaRecetaService()
+        obtenerProductosService()
       ]);
       setRecetas(recetasCargadas);
       setProductos(productosCargados);
+      console.log('📋 Recetas cargadas:', recetasCargadas.length);
+      console.log('📦 Productos cargados:', productosCargados.length);
     } catch (error) {
+      console.error('❌ Error al cargar datos:', error);
       toast.error('Error al cargar las recetas');
     } finally {
       setIsLoading(false);
@@ -121,12 +123,14 @@ const GestionRecetasPage: React.FC = () => {
     onOpen();
   };
 
-  const cambiarEstadoReceta = async (id: string, nuevoEstado: 'Activo' | 'Inactivo') => {
+  const cambiarEstadoReceta = async (id: string, nuevoEstado: 'Activa' | 'Inactiva') => {
     try {
-      await cambiarEstadoRecetaService(id, nuevoEstado === 'Activo');
+      console.log(`🔄 Cambiando estado de receta ${id} a ${nuevoEstado}`);
+      await cambiarEstadoRecetaService(id, nuevoEstado === 'Activa');
       await cargarDatos();
       toast.success(`Receta ${nuevoEstado.toLowerCase()} correctamente`);
     } catch (error) {
+      console.error('❌ Error al cambiar estado:', error);
       toast.error('Error al cambiar el estado de la receta');
     }
   };
@@ -134,35 +138,35 @@ const GestionRecetasPage: React.FC = () => {
   const handleGuardarReceta = async (receta: IReceta) => {
     try {
       if (modalMode === 'crear') {
-        const success = await crearRecetaConDetallesService({
-          nombreReceta: receta.nombre,
-          descripcionReceta: receta.descripcion,
-          listaItems: receta.ingredientes.map(ing => ({
-            idProducto: parseInt(ing.productoId),
-            cantUnidadMedida: ing.cantidad
+        console.log('📝 Creando nueva receta:', receta.nombre);
+        await crearRecetaService({
+          nombre: receta.nombre,
+          descripcion: receta.descripcion,
+          ingredientes: receta.ingredientes.map(ing => ({
+            productoId: ing.productoId,
+            productoNombre: ing.productoNombre,
+            cantidad: ing.cantidad,
+            unidadMedida: ing.unidadMedida
           })),
           instrucciones: receta.instrucciones,
-          estadoReceta: receta.estado === 'Activo' || (receta.estado as any) === 'Activa' ? 'Activo' : 'Inactivo'
+          estado: receta.estado
         });
-
-        if (success) {
-          toast.success('Receta creada correctamente');
-        } else {
-          toast.error('No se pudo crear la receta');
-        }
+        toast.success('Receta creada correctamente');
       } else if (modalMode === 'editar') {
+        console.log('✏️ Actualizando receta:', receta.nombre);
         await actualizarRecetaService({
           id: receta.id,
           nombre: receta.nombre,
           descripcion: receta.descripcion,
           ingredientes: receta.ingredientes,
           instrucciones: receta.instrucciones,
-          estado: receta.estado === 'Activo' || (receta.estado as any) === 'Activa' ? 'Activo' : 'Inactivo'
+          estado: receta.estado
         });
         toast.success('Receta actualizada correctamente');
       }
       await cargarDatos();
     } catch (error: any) {
+      console.error('❌ Error al guardar receta:', error);
       toast.error(error.message || 'Error al guardar la receta');
       throw error;
     }
@@ -198,8 +202,8 @@ const GestionRecetasPage: React.FC = () => {
 
   const renderEstado = (estado: string) => {
     switch (estado) {
-      case 'Activo': return <Chip color="success" size="sm">{estado}</Chip>;
-      case 'Inactivo': return <Chip color="danger" size="sm">{estado}</Chip>;
+      case 'Activa': return <Chip color="success" size="sm">{estado}</Chip>;
+      case 'Inactiva': return <Chip color="danger" size="sm">{estado}</Chip>;
       default: return <Chip size="sm">{estado}</Chip>;
     }
   };
@@ -260,9 +264,9 @@ const GestionRecetasPage: React.FC = () => {
           <Card className="shadow-sm border border-default-200 dark:border-default-100 bg-white dark:bg-content1">
             <CardBody className="flex flex-row items-center justify-between p-6">
               <div>
-                <p className="text-sm text-default-500 font-bold uppercase">Activos</p>
+                <p className="text-sm text-default-500 font-bold uppercase">Activas</p>
                 <p className="text-4xl font-bold text-success mt-1">
-                  {recetas.filter(r => r.estado === 'Activo').length}
+                  {recetas.filter(r => r.estado === 'Activa').length}
                 </p>
               </div>
               <div className="p-3 bg-success-50 rounded-full text-success">
@@ -273,9 +277,9 @@ const GestionRecetasPage: React.FC = () => {
           <Card className="shadow-sm border border-default-200 dark:border-default-100 bg-white dark:bg-content1">
             <CardBody className="flex flex-row items-center justify-between p-6">
               <div>
-                <p className="text-sm text-default-500 font-bold uppercase">Inactivos</p>
+                <p className="text-sm text-default-500 font-bold uppercase">Inactivas</p>
                 <p className="text-4xl font-bold text-danger mt-1">
-                  {recetas.filter(r => r.estado === 'Inactivo').length}
+                  {recetas.filter(r => r.estado === 'Inactiva').length}
                 </p>
               </div>
               <div className="p-3 bg-danger-50 rounded-full text-danger">
@@ -387,12 +391,12 @@ const GestionRecetasPage: React.FC = () => {
                               size="sm"
                               onPress={() => cambiarEstadoReceta(
                                 receta.id,
-                                receta.estado === 'Activo' ? 'Inactivo' : 'Activo'
+                                receta.estado === 'Activa' ? 'Inactiva' : 'Activa'
                               )}
-                              className={receta.estado === 'Activo' ? 'text-default-400 hover:text-danger' : 'text-default-400 hover:text-success'}
+                              className={receta.estado === 'Activa' ? 'text-default-400 hover:text-danger' : 'text-default-400 hover:text-success'}
                             >
                               <Icon
-                                icon={receta.estado === 'Activo' ? 'lucide:x-circle' : 'lucide:check-circle'}
+                                icon={receta.estado === 'Activa' ? 'lucide:x-circle' : 'lucide:check-circle'}
                                 width={18}
                               />
                             </Button>
@@ -446,14 +450,13 @@ const GestionRecetasPage: React.FC = () => {
 interface DetalleRecetaProps {
   receta: IReceta | null;
   mode: 'crear' | 'editar' | 'ver';
-  productos: IProductoRecetaSelection[];
+  productos: IProducto[];
   onClose: () => void;
   onSave: (receta: IReceta) => Promise<void>;
 }
 
 const DetalleReceta: React.FC<DetalleRecetaProps> = ({ receta, mode, productos, onClose, onSave }) => {
   const [isSaving, setIsSaving] = React.useState(false);
-  const [isValidForm, setIsValidForm] = React.useState(false);
   const formRef = React.useRef<any>(null);
 
   const handleSubmit = async () => {
@@ -487,7 +490,6 @@ const DetalleReceta: React.FC<DetalleRecetaProps> = ({ receta, mode, productos, 
             mode={mode}
             productos={productos}
             onSave={onSave}
-            onValidationChange={setIsValidForm}
           />
         )}
       </ModalBody>
@@ -501,7 +503,7 @@ const DetalleReceta: React.FC<DetalleRecetaProps> = ({ receta, mode, productos, 
             variant="solid"
             onPress={handleSubmit}
             isLoading={isSaving}
-            isDisabled={isSaving || !isValidForm}
+            isDisabled={isSaving}
             className="font-bold text-secondary shadow-md"
             startContent={<Icon icon="lucide:save" />}
           >
@@ -530,7 +532,7 @@ const VistaReceta: React.FC<VistaRecetaProps> = ({ receta }) => {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
           <p className="text-sm text-default-500">Estado</p>
-          <Chip color={receta.estado === 'Activo' ? 'success' : 'danger'} size="sm">
+          <Chip color={receta.estado === 'Activa' ? 'success' : 'danger'} size="sm">
             {receta.estado}
           </Chip>
         </div>
@@ -577,39 +579,22 @@ const VistaReceta: React.FC<VistaRecetaProps> = ({ receta }) => {
 interface FormularioRecetaProps {
   receta: IReceta | null;
   mode: 'crear' | 'editar';
-  productos: IProductoRecetaSelection[];
+  productos: IProducto[];
   onSave: (receta: IReceta) => Promise<void>;
-  onValidationChange: (isValid: boolean) => void;
 }
 
 const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
-  ({ receta, mode, productos, onSave, onValidationChange }, ref) => {
+  ({ receta, mode, productos, onSave }, ref) => {
     const toast = useToast();
     const [nombre, setNombre] = React.useState(receta?.nombre || '');
     const [descripcion, setDescripcion] = React.useState(receta?.descripcion || '');
     const [instrucciones, setInstrucciones] = React.useState(receta?.instrucciones || '');
-    const [estado, setEstado] = React.useState<'Activo' | 'Inactivo'>(() => {
-      const initial = receta?.estado;
-      if (initial === 'Activo' || (initial as any) === 'Activa') return 'Activo';
-      if (initial === 'Inactivo' || (initial as any) === 'Inactiva') return 'Inactivo';
-      return 'Activo';
-    });
+    const [estado, setEstado] = React.useState<'Activa' | 'Inactiva'>(receta?.estado || 'Activa');
     const [ingredientes, setIngredientes] = React.useState<IIngrediente[]>(receta?.ingredientes || []);
-
-    React.useEffect(() => {
-      const isNombreValid = nombre.trim().length > 0;
-      const isEstadoValid = !!estado;
-      const hasIngredients = ingredientes.length > 0;
-      const areIngredientsValid = ingredientes.every(ing =>
-        ing.productoId && ing.cantidad > 0
-      );
-
-      onValidationChange(isNombreValid && isEstadoValid && hasIngredients && areIngredientsValid);
-    }, [nombre, estado, ingredientes, onValidationChange]);
 
     React.useImperativeHandle(ref, () => ({
       submit: async () => {
-        // Validaciones iniciales
+        // Validaciones
         if (!nombre.trim()) {
           toast.warning('El nombre de la receta es obligatorio');
           throw new Error('El nombre es requerido');
@@ -619,7 +604,7 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
           throw new Error('Debe agregar al menos un ingrediente');
         }
 
-        // Validar que todos los ingredientes tengan producto y cantidad antes de consolidar
+        // Validar que todos los ingredientes tengan producto y cantidad
         for (let i = 0; i < ingredientes.length; i++) {
           const ing = ingredientes[i];
           if (!ing.productoId) {
@@ -632,25 +617,11 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
           }
         }
 
-        // Consolidar productos duplicados
-        const ingredientesConsolidados: IIngrediente[] = [];
-        const seenProductsMap = new Map<string, number>();
-
-        ingredientes.forEach(ing => {
-          if (seenProductsMap.has(ing.productoId)) {
-            const index = seenProductsMap.get(ing.productoId)!;
-            ingredientesConsolidados[index].cantidad += ing.cantidad;
-          } else {
-            seenProductsMap.set(ing.productoId, ingredientesConsolidados.length);
-            ingredientesConsolidados.push({ ...ing });
-          }
-        });
-
         const recetaData: IReceta = {
           id: receta?.id || '',
           nombre: nombre.trim(),
           descripcion: descripcion.trim(),
-          ingredientes: ingredientesConsolidados,
+          ingredientes,
           instrucciones: instrucciones.trim(),
           estado,
           fechaCreacion: receta?.fechaCreacion || new Date().toISOString(),
@@ -676,14 +647,13 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
       const nuevosIngredientes = [...ingredientes];
 
       if (campo === 'productoId') {
-        const producto = productos.find(p => p.idProducto.toString() === valor);
-
+        const producto = productos.find(p => p.id === valor);
         if (producto) {
           nuevosIngredientes[index] = {
             ...nuevosIngredientes[index],
-            productoId: producto.idProducto.toString(),
-            productoNombre: producto.nombreProducto,
-            unidadMedida: producto.nombreUnidad
+            productoId: producto.id,
+            productoNombre: producto.nombre,
+            unidadMedida: producto.unidadMedida
           };
         }
       } else {
@@ -709,8 +679,6 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
           onValueChange={setNombre}
           isRequired
           variant="bordered"
-          maxLength={100}
-          description={`${nombre.length}/100 caracteres`}
         />
 
         <Textarea
@@ -747,75 +715,62 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
             </div>
           ) : (
             <div className="space-y-3">
-              {ingredientes.map((ingrediente, index) => {
-                const productoInfo = productos.find(p => p.idProducto.toString() === ingrediente.productoId);
-                const esFraccionario = productoInfo?.esFraccionario || false;
+              {ingredientes.map((ingrediente, index) => (
+                <Card key={ingrediente.id || index} shadow="none" className="border-2 border-default-200 dark:border-default-100 dark:bg-content1">
+                  <CardBody className="p-3">
+                    <div className="grid grid-cols-1 md:grid-cols-[2fr_1fr_auto_auto] gap-3 items-end">
+                      <Select
+                        label="Producto"
+                        placeholder="Seleccione producto"
+                        selectedKeys={ingrediente.productoId ? [ingrediente.productoId] : []}
+                        onSelectionChange={(keys) => actualizarIngrediente(index, 'productoId', Array.from(keys)[0])}
+                        size="sm"
+                        variant="bordered"
+                        classNames={{ trigger: "bg-white dark:bg-default-100/50" }}
+                        isRequired
+                        items={productos}
+                      >
+                        {(producto) => (
+                          <SelectItem key={producto.id}>
+                            {producto.nombre}
+                          </SelectItem>
+                        )}
+                      </Select>
 
-                return (
-                  <Card key={ingrediente.id || index} shadow="none" className="border-2 border-default-200 dark:border-default-100 dark:bg-content1">
-                    <CardBody className="p-3">
-                      <div className="grid grid-cols-1 md:grid-cols-[2fr_1.5fr_auto] gap-3 items-end">
-                        <Select
-                          label="Producto"
-                          placeholder="Seleccione producto"
-                          selectedKeys={ingrediente.productoId ? [ingrediente.productoId] : []}
-                          onSelectionChange={(keys) => actualizarIngrediente(index, 'productoId', Array.from(keys)[0])}
-                          size="sm"
-                          variant="bordered"
-                          classNames={{ trigger: "bg-white dark:bg-default-100/50" }}
-                          isRequired
-                          items={productos}
-                        >
-                          {(producto) => (
-                            <SelectItem key={producto.idProducto.toString()}>
-                              {producto.nombreProducto}
-                            </SelectItem>
-                          )}
-                        </Select>
+                      <Input
+                        type="number"
+                        label="Cantidad"
+                        placeholder="0"
+                        value={ingrediente.cantidad.toString()}
+                        onValueChange={(val) => actualizarIngrediente(index, 'cantidad', parseFloat(val) || 0)}
+                        size="sm"
+                        variant="bordered"
+                        min="0"
+                        step="0.01"
+                        endContent={
+                          <span className="text-xs text-default-400">
+                            {ingrediente.unidadMedida || 'unidad'}
+                          </span>
+                        }
+                      />
 
-                        <Input
-                          type="number"
-                          label="Cantidad"
-                          placeholder="0"
-                          value={ingrediente.cantidad === 0 ? '' : ingrediente.cantidad.toString()}
-                          onValueChange={(val) => {
-                            // Si no es fraccionario, forzar entero
-                            if (!esFraccionario && val.includes('.')) {
-                              return;
-                            }
-                            // Si es fraccionario, permitir 3 decimales
-                            if (esFraccionario && val.includes('.') && val.split('.')[1].length > 3) {
-                              return;
-                            }
-                            actualizarIngrediente(index, 'cantidad', parseFloat(val) || 0);
-                          }}
-                          size="sm"
-                          variant="bordered"
-                          min="0"
-                          step={esFraccionario ? "0.001" : "1"}
-                          isRequired
-                          endContent={
-                            <span className="text-xs text-default-400 min-w-16 text-right">
-                              {ingrediente.unidadMedida || 'unidad'}
-                            </span>
-                          }
-                        />
+                      <span className="text-sm text-default-500 mb-2">
+                        {ingrediente.unidadMedida || '-'}
+                      </span>
 
-                        <Button
-                          isIconOnly
-                          variant="light"
-                          size="md"
-                          color="danger"
-                          onPress={() => eliminarIngrediente(index)}
-                          className="mb-1"
-                        >
-                          <Icon icon="lucide:trash" width={20} />
-                        </Button>
-                      </div>
-                    </CardBody>
-                  </Card>
-                );
-              })}
+                      <Button
+                        isIconOnly
+                        variant="light"
+                        size="sm"
+                        color="danger"
+                        onPress={() => eliminarIngrediente(index)}
+                      >
+                        <Icon icon="lucide:trash" />
+                      </Button>
+                    </div>
+                  </CardBody>
+                </Card>
+              ))}
             </div>
           )}
         </div>
@@ -833,14 +788,12 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
 
         <Select
           label="Estado"
-          placeholder="Seleccione el estado"
           selectedKeys={[estado]}
-          onSelectionChange={(keys) => setEstado(Array.from(keys)[0] as 'Activo' | 'Inactivo')}
+          onSelectionChange={(keys) => setEstado(Array.from(keys)[0] as 'Activa' | 'Inactiva')}
           variant="bordered"
-          isRequired
         >
-          <SelectItem key="Activo">Activo</SelectItem>
-          <SelectItem key="Inactivo">Inactivo</SelectItem>
+          <SelectItem key="Activa">Activa</SelectItem>
+          <SelectItem key="Inactiva">Inactiva</SelectItem>
         </Select>
       </div>
     );
