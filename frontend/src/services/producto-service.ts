@@ -29,7 +29,8 @@ import {
   buscarProductosPorCodigoService as buscarProductosPorCodigoBackend,
   transformarPageItemAProducto,
   softDeleteInventarioService as softDeleteInventarioBackend,
-  validateStockBeforeUpdatingService as validateStockBeforeUpdatingBackend
+  validateStockBeforeUpdatingService as validateStockBeforeUpdatingBackend,
+  obtenerProductosParaRecetaService as obtenerProductosParaRecetaBackend
 } from './inventario-service';
 
 // Exportar la obtención de filtros
@@ -58,6 +59,13 @@ import { obtenerUsuarioActualService } from './auth-service';
  */
 export const obtenerProductosService = async (): Promise<IProducto[]> => {
   return await obtenerProductosBackend();
+};
+
+/**
+ * Obtiene la lista de productos optimizada para selección en recetas
+ */
+export const obtenerProductosParaRecetaService = async () => {
+  return await obtenerProductosParaRecetaBackend();
 };
 
 /**

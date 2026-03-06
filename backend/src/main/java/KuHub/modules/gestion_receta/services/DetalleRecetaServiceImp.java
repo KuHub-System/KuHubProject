@@ -2,11 +2,12 @@ package KuHub.modules.gestion_receta.services;
 import KuHub.modules.gestion_receta.dtos.projection.DetalleRecetaItemProjection;
 import KuHub.modules.gestion_receta.entity.DetalleReceta;
 import KuHub.modules.gestion_receta.entity.Receta;
-import KuHub.modules.gestion_receta.exceptions.RecetaException;
+import KuHub.modules.gestion_receta.exceptions.GestionRecetaException;
 import KuHub.modules.gestion_receta.dtos.projection.DetalleRecetaIdProductoProjection;
 import KuHub.modules.gestion_receta.repository.DetalleRecetaRepository;
 import feign.Param;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,8 +23,8 @@ public class DetalleRecetaServiceImp implements DetalleRecetaService{
     @Override
     public DetalleReceta findById(Integer id){
         return detalleRecetaRepository.findById(id).orElseThrow(
-                ()-> new RecetaException("No existe el detalle receta con el id: " + id)
-        );
+                ()-> new GestionRecetaException("No existe el detalle receta con el id: " + id
+                        , HttpStatus.NOT_FOUND));
     }
 
     @Transactional(readOnly = true)
@@ -37,11 +38,13 @@ public class DetalleRecetaServiceImp implements DetalleRecetaService{
     public List<DetalleReceta> findAllByReceta(Receta receta){
 
         if (receta == null) {
-            throw new RecetaException("La receta no puede ser nula");
+            throw new GestionRecetaException("La receta no puede ser nula"
+                    , HttpStatus.NOT_FOUND);
         }
         List<DetalleReceta> detalles = detalleRecetaRepository.findAllByReceta(receta);
         if (detalles.isEmpty()) {
-            throw new RecetaException("La receta no tiene detalles");
+            throw new GestionRecetaException("La receta no tiene detalles"
+                    , HttpStatus.NOT_FOUND);
         }
         return detalles;
     }
@@ -98,7 +101,8 @@ public class DetalleRecetaServiceImp implements DetalleRecetaService{
     @Override
     public void deleteById(Integer id){
         if( !detalleRecetaRepository.existsById(id) ){
-            throw new RecetaException("No existe detalle receta con id " + id);
+            throw new GestionRecetaException("No existe detalle receta con id " + id
+                    , HttpStatus.NOT_FOUND);
         }
         detalleRecetaRepository.deleteById(id);
     }

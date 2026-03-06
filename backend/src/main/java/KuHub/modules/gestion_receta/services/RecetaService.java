@@ -1,19 +1,22 @@
 package KuHub.modules.gestion_receta.services;
 
-import KuHub.modules.gestion_receta.dtos.RecipeUpdateDeltaDTO;
-import KuHub.modules.gestion_receta.dtos.RecipeWithDetailsAnswerDTO;
 import KuHub.modules.gestion_receta.dtos.RecipeWithDetailsCreateDTO;
-import KuHub.modules.gestion_receta.entity.Receta;
-
-import java.util.List;
 
 public interface RecetaService {
+
+    boolean saveRecipeWithDetails(RecipeWithDetailsCreateDTO dto);
+
+
+
+
+
+    /**
     List<Receta> findAll();
     List<Receta>findAllByActivoRecetaTrue();
     Receta findById(Integer id);
     Receta findByIdRecetaAndActivoRecetaIsTrue(Integer idReceta);
     String findNombreById (Integer id);
-    RecipeWithDetailsAnswerDTO findRecipeWithDetailsActiveInTrue(Integer id);
+    //RecipeWithDetailsAnswerDTO findRecipeWithDetailsActiveInTrue(Integer id);
     Receta save (Receta receta);
     RecipeWithDetailsAnswerDTO saveRecipeWithDetails(RecipeWithDetailsCreateDTO dto);
     Boolean existsByNombreRecetaAndActivoRecetaTrue(String nombreReceta);
@@ -22,6 +25,6 @@ public interface RecetaService {
     RecipeWithDetailsAnswerDTO updateRecipeWithDelta(RecipeUpdateDeltaDTO dto);
     void updateDeleteStatusActiveFalseRecipeWithDetails(Integer idReceta);
     void updateChangingStatusRecipeWith(Integer idReceta);
-    void deleteById(Integer id);
+    void deleteById(Integer id);*/
 
 }

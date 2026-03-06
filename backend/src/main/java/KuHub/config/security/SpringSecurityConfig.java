@@ -310,23 +310,27 @@ public class SpringSecurityConfig {
                         .hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR")
 
                         // ========================================
-                        // ENDPOINTS DE RECETAS
+                        // ENDPOINTS DE RECETAS Y DETALLES (REORGANIZADO)
                         // ========================================
-                        // 1. Lectura de recetas: Permitido para todos los roles autorizados
-                        .requestMatchers(HttpMethod.GET, "/api/v*/receta/**")
-                        .hasAnyRole("ADMINISTRADOR", "PROFESOR_A_CARGO", "GESTOR_PEDIDOS", "CO_ADMINISTRADOR", "DOCENTE")
 
-                        // 2. Creación y Modificación: Permitido para roles de gestión
-                        .requestMatchers(HttpMethod.POST, "/api/v*/receta/**")
+                        // 1. LECTURA (GET): Permitido para todos los roles académicos y administrativos
+                        .requestMatchers(HttpMethod.GET, "/api/v*/receta/**", "/api/v*/detalle-receta/**")
+                        .hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR", "GESTOR_PEDIDOS", "PROFESOR_A_CARGO", "DOCENTE")
+
+                        // 2. CREACIÓN (POST): Solo quienes diseñan el programa académico
+                        .requestMatchers(HttpMethod.POST, "/api/v*/receta/**", "/api/v*/detalle-receta/**")
                         .hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR", "PROFESOR_A_CARGO")
 
-                        .requestMatchers(HttpMethod.PUT, "/api/v*/receta/**")
+                        // 3. EDICIÓN (PUT / PATCH): Solo quienes diseñan el programa académico
+                        .requestMatchers(HttpMethod.PUT, "/api/v*/receta/**", "/api/v*/detalle-receta/**")
                         .hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR", "PROFESOR_A_CARGO")
 
-                        // 3. Eliminación (Opcional): Generalmente solo el Administrador
-                        .requestMatchers(HttpMethod.DELETE, "/api/v*/receta/**")
-                        .hasRole("ADMINISTRADOR")
-                        .requestMatchers(HttpMethod.PATCH, "/api/v*/receta/**").hasRole("ADMINISTRADOR")
+                        .requestMatchers(HttpMethod.PATCH, "/api/v*/receta/**", "/api/v*/detalle-receta/**")
+                        .hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR", "PROFESOR_A_CARGO")
+
+                        // 4. ELIMINACIÓN (DELETE): Restringido a la jerarquía más alta
+                        .requestMatchers(HttpMethod.DELETE, "/api/v*/receta/**", "/api/v*/detalle-receta/**")
+                        .hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR")
 
                         // ========================================
                         // ENDPOINTS DE SOLICITUDES

@@ -15,7 +15,8 @@ import {
     IInventoryPageItem,
     IInventoryPageResponse,
     IValidateStockRequest,
-    IValidateStockConflictResponse
+    IValidateStockConflictResponse,
+    IProductoRecetaSelection
 } from '../types/producto.types';
 
 /**
@@ -162,6 +163,25 @@ export const obtenerProductosService = async (): Promise<IProducto[]> => {
         );
     }
 };
+
+/**
+ * Obtiene todos los productos activos formateados para la selección en recetas
+ * GET /v1/producto/find-all-product-active-for-recipe
+ */
+export const obtenerProductosParaRecetaService = async (): Promise<IProductoRecetaSelection[]> => {
+    try {
+        const response = await api.get<IProductoRecetaSelection[]>(
+            '/producto/find-all-product-active-for-recipe'
+        );
+        return response.data;
+    } catch (error: any) {
+        throw new Error(
+            error.response?.data?.message ||
+            'Error al cargar los productos para la receta'
+        );
+    }
+};
+
 
 /**
  * Obtiene un producto por su ID

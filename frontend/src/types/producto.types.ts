@@ -158,3 +158,15 @@ export interface IValidateStockConflictResponse {
   stock: number;
   stockLimit: number;
 }
+
+/**
+ * DTO para la selección de productos en recetas.
+ * GET /v1/producto/find-all-product-active-for-recipe
+ */
+export interface IProductoRecetaSelection {
+  idProducto: number;
+  nombreProducto: string;
+  idUnidad: number;
+  nombreUnidad: string;
+  esFraccionario: boolean;
+}

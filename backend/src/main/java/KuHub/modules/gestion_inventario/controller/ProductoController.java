@@ -1,6 +1,6 @@
 package KuHub.modules.gestion_inventario.controller;
 
-import KuHub.modules.gestion_inventario.dtos.proyeccion.ProductRecipeView;
+import KuHub.modules.gestion_inventario.dtos.response.proyeccion.ProductRecipeView;
 import KuHub.modules.gestion_inventario.entity.Producto;
 import KuHub.modules.gestion_inventario.exceptions.ProductoException;
 import KuHub.modules.gestion_inventario.services.ProductoService;
@@ -29,13 +29,14 @@ public class ProductoController {
                 .body(productoService.findAll());
     }
 
-    /** ✅ En uso: Endpoint consumido por el frontend.
+    /** Usado en option para crear receta
+     *  ✅ En uso: Endpoint consumido por el frontend.*/
     @GetMapping("/find-all-product-active-for-recipe")
     public ResponseEntity<List<ProductRecipeView>> findAllActiveForRecipe() {
         return ResponseEntity
                 .status(200)
                 .body(productoService.findAllActiveForRecipe());
-    }*/
+    }
 
     // ❌ Sin uso: Endpoint disponible pero actualmente no es consumido por el frontend.
     /**Listar todos los productos segun el valor activo TRUE/FALSE */

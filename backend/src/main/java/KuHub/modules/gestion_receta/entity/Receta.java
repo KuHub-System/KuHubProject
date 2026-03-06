@@ -20,16 +20,18 @@ public class Receta {
     @Column(name = "nombre_receta", nullable = false, length = 100)
     private String nombreReceta;
 
-    @Column(name = "descripcion_receta", length = 5000)
+    // Cambiado a TEXT para permitir nulos y gran longitud sin límite de 5000
+    @Column(name = "descripcion_receta", columnDefinition = "TEXT")
     private String descripcionReceta;
 
-    @Column(name = "instrucciones", length = 5000)
+    // Sincronizado el nombre de la columna con el SQL ('instrucciones')
+    @Column(name = "instrucciones", columnDefinition = "TEXT")
     private String instruccionesReceta;
 
-    @Column(name = "activo")
+    // Sincronizado con 'activo BOOLEAN NOT NULL'
+    @Column(name = "activo", nullable = false)
     private Boolean activoReceta = true;
 
-    // ⭐ SOLO ESTO — El CAST ya hace TODO.
     @Enumerated(EnumType.STRING)
     @Column(
             name = "estado_receta",
@@ -43,4 +45,15 @@ public class Receta {
         ACTIVO,
         INACTIVO
     }
+
+    /** ACTUALIZADO 05/03/26
+     * CREATE TABLE receta (
+     *     id_receta INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,--ASUMINDO QUE LA RECETA ESTA DISENADA PARA 20 PERSONAS
+     *     nombre_receta VARCHAR(100) NOT NULL,
+     *     descripcion_receta TEXT,
+     *     instrucciones TEXT,
+     *     activo BOOLEAN NOT NULL,
+     *     estado_receta estado_receta_type NOT NULL
+     * ); */
+
 }
