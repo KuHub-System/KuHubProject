@@ -8,7 +8,9 @@ import {
   IReceta,
   ICrearReceta,
   IActualizarReceta,
-  IRecipeWithDetailsCreateDTO
+  IRecipeWithDetailsCreateDTO,
+  IPaginatedRecetasResponse,
+  IRecetaCountResponse
 } from '../types/receta.types';
 
 import api from '../config/Axios';
@@ -21,6 +23,43 @@ import {
   eliminarReceta,
   obtenerRecetasActivas,
 } from './storage-service';
+
+/**
+ * Obtiene las recetas con paginación desde el backend.
+ * @param {number} page - El número de página (por defecto 1).
+ * @returns {Promise<IPaginatedRecetasResponse>} Promesa que resuelve la repuesta paginada.
+ */
+export const obtenerRecetasPaginadasService = async (page: number = 1): Promise<IPaginatedRecetasResponse> => {
+  try {
+    const response = await api.post<IPaginatedRecetasResponse>(`/receta/find-all-recipes-pagined/${page}`);
+    return response.data;
+  } catch (error: any) {
+    console.error('Error al obtener recetas paginadas', error);
+    throw new Error(
+      error.response?.data?.message ||
+      'Error al obtener receta paginada'
+    );
+  }
+};
+
+/**
+ * Busca recetas por término (nombre o descripción) con paginación.
+ * @param {string} term - Término de búsqueda.
+ * @param {number} page - Número de página.
+ * @returns {Promise<IPaginatedRecetasResponse>}
+ */
+export const buscarRecetasPaginadasService = async (term: string, page: number = 1): Promise<IPaginatedRecetasResponse> => {
+  try {
+    const response = await api.post<IPaginatedRecetasResponse>('/receta/search-recipes', { term, page });
+    return response.data;
+  } catch (error: any) {
+    console.error('Error al buscar recetas paginadas', error);
+    throw new Error(
+      error.response?.data?.message ||
+      'Error al buscar recetas'
+    );
+  }
+};
 
 /**
  * Obtiene todas las recetas.
@@ -188,4 +227,21 @@ export const cambiarEstadoRecetaService = async (id: string, activa: boolean): P
   }
 
   return recetaActualizada;
+};
+
+/**
+ * Obtiene el conteo total de recetas (activas, inactivas y total).
+ * @returns {Promise<IRecetaCountResponse>}
+ */
+export const obtenerRecetasCountService = async (): Promise<IRecetaCountResponse> => {
+  try {
+    const response = await api.get<IRecetaCountResponse>('/receta/count-recipes');
+    return response.data;
+  } catch (error: any) {
+    console.error('Error al obtener el conteo de recetas', error);
+    throw new Error(
+      error.response?.data?.message ||
+      'Error al obtener el conteo de recetas'
+    );
+  }
 };

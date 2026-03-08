@@ -7,12 +7,11 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.util.List;
-
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
-public class RecipePagedResponseDTO {
-    //private List<RecipeWithDetailsDTO> content;
+public class RecipePagedDTO {
+    private List<RecipeWithDetailsDTO> content;
     private PaginationUtils.PagingResult paging;
 }
