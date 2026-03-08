@@ -1,13 +1,20 @@
 package KuHub.modules.gestion_receta.services;
 
+import KuHub.modules.gestion_inventario.dtos.request.dto.SearchDTO;
 import KuHub.modules.gestion_receta.dtos.*;
 import KuHub.modules.gestion_inventario.services.ProductoService;
+import KuHub.modules.gestion_receta.dtos.projection.CountRecipesAndStatusView;
+import KuHub.modules.gestion_receta.dtos.respose.RecipeItemAnswerDTO;
 import KuHub.modules.gestion_receta.dtos.respose.RecipeItemCreateDTO;
+import KuHub.modules.gestion_receta.dtos.respose.RecipePagedDTO;
+import KuHub.modules.gestion_receta.dtos.respose.RecipeWithDetailsDTO;
 import KuHub.modules.gestion_receta.entity.DetalleReceta;
 import KuHub.modules.gestion_receta.entity.Receta;
 import KuHub.modules.gestion_receta.exceptions.GestionRecetaException;
 import KuHub.modules.gestion_receta.repository.DetalleRecetaRepository;
 import KuHub.modules.gestion_receta.repository.RecetaRepository;
+import KuHub.utils.PaginationUtils;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -35,8 +42,99 @@ public class RecetaServiceImp implements RecetaService{
     @Autowired
     private ObjectMapper objectMapper;
 
+    @Transactional(readOnly = true)
+    @Override
+    public CountRecipesAndStatusView countRecipesAndStatus() {
+        return recetaRepository.countRecipesAndStatus();
+    }
 
+    @Transactional(readOnly = true)
+    @Override
+    public RecipePagedDTO findAllRecipesPaginated(Integer pageRequested) {
+        // 1. Paginación asimétrica
+        long totalRecords = recetaRepository.countByActivoRecetaTrue();
+        PaginationUtils.PagingResult paging = PaginationUtils.buildPaging(pageRequested, totalRecords);
 
+        // 2. Consulta a la DB
+        List<Map<String, Object>> rows = recetaRepository.findAllWithDetailsPaging(
+                paging.limit(),
+                paging.offset()
+        );
+
+        // 3. Mapeo a RecipeWithDetailsDTO
+        List<RecipeWithDetailsDTO> content = rows.stream().map(row -> {
+            List<RecipeItemAnswerDTO> listaDetalles;
+            try {
+                // Deserializamos el JSON de ingredientes
+                String jsonStr = row.get("detallesJson").toString();
+                listaDetalles = objectMapper.readValue(jsonStr,
+                        new TypeReference<List<RecipeItemAnswerDTO>>() {});
+            } catch (Exception e) {
+                listaDetalles = Collections.emptyList();
+            }
+
+            return RecipeWithDetailsDTO.builder()
+                    .idReceta((Integer) row.get("idReceta"))
+                    .nombreReceta((String) row.get("nombreReceta"))
+                    .descripcionReceta((String) row.get("descripcionReceta"))
+                    .estado((Boolean) row.get("estado"))
+                    .totalIngredientes(((Number) row.get("totalIngredientes")).longValue())
+                    .detalles(listaDetalles)
+                    .build();
+        }).toList();
+
+        // 4. Retorno del objeto de respuesta tipado
+        return RecipePagedDTO.builder()
+                .content(content)
+                .paging(paging)
+                .build();
+    }
+
+    @Transactional(readOnly = true)
+    @Override
+    public RecipePagedDTO findAllWithDetailsAndSearchPaging(SearchDTO searchDto) {
+        String term = (searchDto.getTerm() == null) ? "" : searchDto.getTerm().trim();
+        int page = (searchDto.getPage() == null || searchDto.getPage() < 1) ? 1 : searchDto.getPage();
+
+        // 2. Cálculos de paginación asimétrica
+        long totalRecords = recetaRepository.countWithSearch(term);
+        PaginationUtils.PagingResult paging = PaginationUtils.buildPaging(page, totalRecords);
+
+        // 3. Ejecutar consulta a DB
+        List<Map<String, Object>> rows = recetaRepository.findAllWithDetailsAndSearch(
+                term,
+                paging.limit(),
+                paging.offset()
+        );
+
+        // 4. Mapear resultados a DTOs finales
+        List<RecipeWithDetailsDTO> content = rows.stream().map(row -> {
+            List<RecipeItemAnswerDTO> listaDetalles;
+            try {
+                listaDetalles = objectMapper.readValue(
+                        row.get("detallesJson").toString(),
+                        new TypeReference<List<RecipeItemAnswerDTO>>() {
+                        }
+                );
+            } catch (Exception e) {
+                listaDetalles = Collections.emptyList();
+            }
+
+            return RecipeWithDetailsDTO.builder()
+                    .idReceta((Integer) row.get("idReceta"))
+                    .nombreReceta((String) row.get("nombreReceta"))
+                    .descripcionReceta((String) row.get("descripcionReceta"))
+                    .estado((Boolean) row.get("estado"))
+                    .totalIngredientes(((Number) row.get("totalIngredientes")).longValue())
+                    .detalles(listaDetalles)
+                    .build();
+        }).toList();
+
+        return RecipePagedDTO.builder()
+                .content(content)
+                .paging(paging)
+                .build();
+    }
 
 
     /**Metodo para crear la receta con los detalles de producto activo

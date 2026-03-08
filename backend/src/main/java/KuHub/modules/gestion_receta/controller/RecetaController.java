@@ -1,6 +1,9 @@
 package KuHub.modules.gestion_receta.controller;
 
+import KuHub.modules.gestion_inventario.dtos.request.dto.SearchDTO;
 import KuHub.modules.gestion_receta.dtos.RecipeWithDetailsCreateDTO;
+import KuHub.modules.gestion_receta.dtos.projection.CountRecipesAndStatusView;
+import KuHub.modules.gestion_receta.dtos.respose.RecipePagedDTO;
 import KuHub.modules.gestion_receta.services.RecetaService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,6 +19,36 @@ public class RecetaController {
     @Autowired
     private RecetaService recetaService;
 
+    /**
+     * Conta total de recetas, activas, inactivas
+     * ✅ FUNCIONAL IMPLEMENTADO EN EL FRONT*/
+    @GetMapping("/count-recipes")
+    public ResponseEntity<CountRecipesAndStatusView> countRecipesAndStatus(){
+        return ResponseEntity
+                .status(200)
+                .body(recetaService.countRecipesAndStatus());
+    }
+
+    /**
+     * Crea una nueva receta junto con todos sus ingredientes detallados.
+     * ✅ FUNCIONAL IMPLEMENTADO EN EL FRONT*/
+    @PostMapping("/find-all-recipes-pagined/{page}")
+    public ResponseEntity<RecipePagedDTO> findAllRecipesPaginated(
+            @PathVariable Integer page
+    ){
+        return ResponseEntity
+                .status(200)
+                .body(recetaService.findAllRecipesPaginated(page));
+    }
+
+    @PostMapping("/search-recipes")
+    public ResponseEntity<RecipePagedDTO> findAllWithDetailsAndSearchPaging(
+            @RequestBody SearchDTO searchDto
+    ){
+        return ResponseEntity
+                .status(200)
+                .body(recetaService.findAllWithDetailsAndSearchPaging(searchDto));
+    }
 
     /**Crea la receta con detalles
      * ✅ FUNCIONAL IMPLEMENTADO EN EL FRONT*/

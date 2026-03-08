@@ -126,3 +126,54 @@ export interface IRecipeWithDetailsCreateDTO {
   instrucciones: string;
   estadoReceta: 'Activo' | 'Inactivo';
 }
+
+/**
+ * DTO para el detalle de una receta en Paginación (Backend)
+ */
+export interface IDetalleRecetaDTO {
+  idDetalleReceta: number;
+  nombreProducto: string;
+  cantProducto: number;
+  abreviatura: string;
+  idProducto: number;
+  idUnidad: number;
+}
+
+/**
+ * DTO para una receta en Paginación (Backend)
+ */
+export interface IRecetaPaginedDTO {
+  idReceta: number;
+  nombreReceta: string;
+  descripcionReceta: string;
+  estado: boolean;
+  totalIngredientes: number;
+  detalles: IDetalleRecetaDTO[];
+}
+
+/**
+ * Meta información de paginación
+ */
+export interface IPaginationMeta {
+  page: number;
+  limit: number;
+  offset: number;
+  totalPages: number;
+}
+
+/**
+ * Respuesta Paginada de Recetas
+ */
+export interface IPaginatedRecetasResponse {
+  content: IRecetaPaginedDTO[];
+  paging: IPaginationMeta;
+}
+
+/**
+ * Respuesta del conteo de recetas
+ */
+export interface IRecetaCountResponse {
+  totalReceta: number;
+  total_inactivos: number;
+  total_activos: number;
+}

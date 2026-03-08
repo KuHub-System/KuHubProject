@@ -1,9 +1,14 @@
 package KuHub.modules.gestion_receta.services;
 
+import KuHub.modules.gestion_inventario.dtos.request.dto.SearchDTO;
 import KuHub.modules.gestion_receta.dtos.RecipeWithDetailsCreateDTO;
+import KuHub.modules.gestion_receta.dtos.projection.CountRecipesAndStatusView;
+import KuHub.modules.gestion_receta.dtos.respose.RecipePagedDTO;
 
 public interface RecetaService {
-
+    CountRecipesAndStatusView countRecipesAndStatus();
+    RecipePagedDTO findAllRecipesPaginated(Integer pageRequested);
+    RecipePagedDTO findAllWithDetailsAndSearchPaging(SearchDTO searchDto);
     boolean saveRecipeWithDetails(RecipeWithDetailsCreateDTO dto);
 
 
