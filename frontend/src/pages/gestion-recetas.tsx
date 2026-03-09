@@ -22,6 +22,8 @@ import {
   Textarea,
   Select,
   SelectItem,
+  Autocomplete,
+  AutocompleteItem,
   Spinner,
   Tooltip
 } from '@heroui/react';
@@ -32,7 +34,7 @@ import { useToast, useConfirm } from '../hooks/useToast';
 import { useAuth } from '../contexts/auth-context';
 
 // IMPORTAR TIPOS Y SERVICIOS
-import { IReceta, IIngrediente } from '../types/receta.types';
+import { IReceta, IIngrediente, IRecipeWithDetailsUpdateDTO } from '../types/receta.types';
 import {
   obtenerRecetasPaginadasService,
   crearRecetaService,
@@ -40,12 +42,14 @@ import {
   cambiarEstadoRecetaService,
   eliminarRecetaService,
   crearRecetaConDetallesService,
+  actualizarRecetaConDetallesService,
   obtenerRecetasCountService,
-  buscarRecetasPaginadasService
+  buscarRecetasPaginadasService,
+  softDeleteRecetaService
 } from '../services/receta-service';
 import { obtenerProductosParaRecetaService } from '../services/producto-service';
 import { IProductoRecetaSelection } from '../types/producto.types';
-import { IRecetaPaginedDTO, IPaginationMeta, IRecetaCountResponse } from '../types/receta.types';
+import { IRecetaPaginedDTO, IDetalleRecetaDTO, IPaginationMeta, IRecetaCountResponse } from '../types/receta.types';
 
 /**
  * Página de gestión de recetas simplificada.
@@ -85,14 +89,20 @@ const GestionRecetasPage: React.FC = () => {
   const cargarDatosIniciales = async () => {
     try {
       setIsLoading(true);
+
+      // Productos se cargan una sola vez (el servicio usa cache interno)
+      const productosPromise = productos.length === 0
+        ? obtenerProductosParaRecetaService()
+        : Promise.resolve(productos);
+
       const [resRecetas, resProductos, resCounts] = await Promise.all([
         obtenerRecetasPaginadasService(1),
-        obtenerProductosParaRecetaService(),
+        productosPromise,
         obtenerRecetasCountService()
       ]);
 
       setRecetas(resRecetas.content);
-      setProductos(resProductos);
+      if (productos.length === 0) setProductos(resProductos);
       setRecetaCounts(resCounts);
       setTotalPages(resRecetas.paging.totalPages);
       nextPageRef.current = 2;
@@ -188,17 +198,25 @@ const GestionRecetasPage: React.FC = () => {
     onOpen();
   };
 
-  const cambiarEstadoReceta = async (id: string | number, nuevoEstado: boolean) => {
+  const cambiarEstadoReceta = async (id: number | string) => {
     try {
-      await cambiarEstadoRecetaService(id.toString(), nuevoEstado);
-      await cargarDatosIniciales();
-      toast.success(`Receta ${nuevoEstado ? 'activada' : 'inactivada'} correctamente`);
+      console.log(`🔄 Cambiando estado de receta ${id}`);
+      const success = await cambiarEstadoRecetaService(id.toString());
+
+      if (success) {
+        // Recargar datos para que se actualice la tabla y los contadores (TOTAL, ACTIVO, INACTIVO)
+        await cargarDatosIniciales();
+        toast.success(`Estado de la receta actualizado correctamente`);
+      } else {
+        toast.error('No se pudo cambiar el estado de la receta');
+      }
     } catch (error) {
+      console.error('❌ Error al cambiar estado:', error);
       toast.error('Error al cambiar el estado de la receta');
     }
   };
 
-  const handleGuardarReceta = async (receta: IReceta) => {
+  const handleGuardarReceta = async (receta: IReceta, updatePayload?: IRecipeWithDetailsUpdateDTO) => {
     try {
       if (modalMode === 'crear') {
         const success = await crearRecetaConDetallesService({
@@ -217,16 +235,13 @@ const GestionRecetasPage: React.FC = () => {
         } else {
           toast.error('No se pudo crear la receta');
         }
-      } else if (modalMode === 'editar') {
-        await actualizarRecetaService({
-          id: receta.id,
-          nombre: receta.nombre,
-          descripcion: receta.descripcion,
-          ingredientes: receta.ingredientes,
-          instrucciones: receta.instrucciones,
-          estado: receta.estado === 'Activo' || (receta.estado as any) === 'Activa' ? 'Activo' : 'Inactivo'
-        });
-        toast.success('Receta actualizada correctamente');
+      } else if (modalMode === 'editar' && updatePayload) {
+        const success = await actualizarRecetaConDetallesService(updatePayload);
+        if (success) {
+          toast.success('Receta actualizada correctamente');
+        } else {
+          toast.error('No se pudo actualizar la receta');
+        }
       }
       await cargarDatosIniciales();
     } catch (error: any) {
@@ -241,33 +256,34 @@ const GestionRecetasPage: React.FC = () => {
       return;
     }
 
-    const confirmado = await confirm(
-      `Eliminarás definitivamente la receta "${receta.nombreReceta}".`,
-      {
-        title: 'Eliminar receta',
-        confirmText: 'Eliminar',
-        confirmColor: 'danger',
-        requireText: 'ELIMINAR',
-        requireTextHelper: 'Esta acción es irreversible. Escribe ELIMINAR para confirmar.',
-      }
-    );
+    const confirmado = await confirm('', {
+      title: 'Eliminar receta',
+      subtitle: 'Esta acción es irreversible',
+      headerVariant: 'danger',
+      alertTitle: 'Atención',
+      alertMessage: `Eliminarás definitivamente la receta "${receta.nombreReceta}". Esta acción no se puede deshacer.`,
+      confirmText: 'Eliminar',
+      confirmColor: 'danger',
+      requireText: 'ELIMINAR',
+      requireTextLabel: undefined,
+      requireTextHelper: 'Esta acción es irreversible. Escribe ELIMINAR para confirmar.',
+    });
 
     if (!confirmado) return;
 
     try {
-      await eliminarRecetaService(receta.idReceta.toString());
-      toast.success('Receta eliminada correctamente');
+      await softDeleteRecetaService(receta.idReceta);
+      toast.success('Receta eliminada correctamente', { title: 'Receta eliminada' });
       await cargarDatosIniciales();
     } catch (error: any) {
       toast.error(error.message || 'Error al eliminar la receta');
     }
   };
 
-  const renderEstado = (estado: boolean) => {
-    if (estado) return <Chip color="success" size="sm">Activo</Chip>;
+  const renderEstado = (estado: string) => {
+    if (estado === 'Activo') return <Chip color="success" size="sm">Activo</Chip>;
     return <Chip color="danger" size="sm">Inactivo</Chip>;
   };
-
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-96">
@@ -442,7 +458,7 @@ const GestionRecetasPage: React.FC = () => {
                         {receta.totalIngredientes} ingredientes
                       </Chip>
                     </TableCell>
-                    <TableCell className="text-center">{renderEstado(receta.estado)}</TableCell>
+                    <TableCell className="text-center">{renderEstado(receta.estadoReceta)}</TableCell>
                     <TableCell>
                       <div className="flex justify-center gap-1">
                         {!esSoloLectura && (
@@ -460,20 +476,17 @@ const GestionRecetasPage: React.FC = () => {
                               </Button>
                             </Tooltip>
 
-                            <Tooltip content={receta.estado ? 'Inactivar receta' : 'Activar receta'} delay={0}>
+                            <Tooltip content={receta.estadoReceta === 'Activo' ? 'Inactivar receta' : 'Activar receta'} delay={0}>
                               <Button
                                 isIconOnly
                                 variant="light"
                                 size="sm"
-                                onPress={() => cambiarEstadoReceta(
-                                  receta.idReceta,
-                                  !receta.estado
-                                )}
-                                className={receta.estado ? 'text-default-400 hover:text-danger z-10' : 'text-default-400 hover:text-success z-10'}
+                                onPress={() => cambiarEstadoReceta(receta.idReceta)}
+                                className={receta.estadoReceta === 'Activo' ? 'text-default-400 hover:text-danger z-10' : 'text-default-400 hover:text-success z-10'}
                                 style={{ cursor: 'pointer' }}
                               >
                                 <Icon
-                                  icon={receta.estado ? 'lucide:x-circle' : 'lucide:check-circle'}
+                                  icon={receta.estadoReceta === 'Activo' ? 'lucide:x-circle' : 'lucide:check-circle'}
                                   width={18}
                                 />
                               </Button>
@@ -523,9 +536,9 @@ const GestionRecetasPage: React.FC = () => {
               mode={modalMode}
               productos={productos}
               onClose={onClose}
-              onSave={async (nuevaReceta) => {
+              onSave={async (nuevaReceta, updatePayload) => {
                 try {
-                  await handleGuardarReceta(nuevaReceta);
+                  await handleGuardarReceta(nuevaReceta, updatePayload);
                   onClose();
                 } catch (error) {
                   // Error ya manejado
@@ -544,7 +557,7 @@ interface DetalleRecetaProps {
   mode: 'crear' | 'editar' | 'ver';
   productos: IProductoRecetaSelection[];
   onClose: () => void;
-  onSave: (receta: IReceta) => Promise<void>;
+  onSave: (receta: IReceta, updatePayload?: IRecipeWithDetailsUpdateDTO) => Promise<void>;
 }
 
 const DetalleReceta: React.FC<DetalleRecetaProps> = ({ receta, mode, productos, onClose, onSave }) => {
@@ -618,98 +631,104 @@ interface VistaRecetaProps {
 }
 
 const VistaReceta: React.FC<VistaRecetaProps> = ({ receta }) => {
+  const isActivo = receta.estadoReceta === 'Activo';
+
   return (
     <div className="space-y-6">
-      <Card shadow="none" className="border-1 border-default-200 dark:border-default-100 bg-default-50/50">
-        <CardBody className="gap-2">
-          <h3 className="text-xl font-bold text-secondary dark:text-foreground">{receta.nombreReceta}</h3>
-          {receta.descripcionReceta && (
-            <p className="text-default-500 text-sm leading-relaxed">{receta.descripcionReceta}</p>
-          )}
-        </CardBody>
-      </Card>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Card shadow="none" className="border-1 border-default-200 dark:border-default-100">
-          <CardBody className="p-4 flex flex-col justify-center gap-1">
-            <p className="text-xs text-default-500 uppercase font-semibold tracking-wider">Estado de Receta</p>
-            <div>
-              <Chip
-                color={receta.estado ? 'success' : 'danger'}
-                size="sm"
-                variant="flat"
-                className="font-medium"
-                startContent={<Icon icon={receta.estado ? 'lucide:check-circle-2' : 'lucide:x-circle'} width={14} className="ml-1" />}
-              >
-                {receta.estado ? 'Activo' : 'Inactivo'}
-              </Chip>
-            </div>
-          </CardBody>
-        </Card>
-
-        <Card shadow="none" className="border-1 border-default-200 dark:border-default-100">
-          <CardBody className="p-4 flex flex-col justify-center gap-1">
-            <p className="text-xs text-default-500 uppercase font-semibold tracking-wider">Total Elementos</p>
-            <div className="flex items-center gap-2">
-              <Icon icon="lucide:layers" className="text-primary" width={18} />
-              <p className="font-semibold text-lg">{receta.totalIngredientes} ingredientes</p>
-            </div>
-          </CardBody>
-        </Card>
-      </div>
-
-      <div>
-        <div className="flex items-center gap-2 mb-4 mt-2">
-          <div className="p-2 rounded-lg bg-primary-100 dark:bg-primary-900/30 text-primary">
-            <Icon icon="lucide:package-open" width={20} />
-          </div>
-          <h4 className="font-bold text-lg">Ingredientes de la formulación</h4>
-        </div>
-
-        <Card shadow="none" className="border border-default-200 dark:border-default-100">
-          <CardBody className="p-0">
-            <Table
-              aria-label="Ingredientes"
-              removeWrapper
-              classNames={{
-                th: "bg-default-50 text-default-500 font-bold uppercase text-xs h-10 border-b border-default-200/50",
-                td: "py-3 border-b border-default-50 dark:border-default-50/10 group-data-[last=true]:border-none px-4"
+      {/* === Header con gradiente y nombre === */}
+      <div
+        className="relative rounded-2xl overflow-hidden p-5"
+        style={{
+          background: isActivo
+            ? 'linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 50%, #a5d6a7 100%)'
+            : 'linear-gradient(135deg, #fce4ec 0%, #f8bbd0 50%, #f48fb1 100%)',
+        }}
+      >
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex items-center gap-3 min-w-0 flex-1">
+            <div
+              className="p-3 rounded-xl shrink-0"
+              style={{
+                background: 'rgba(255,255,255,0.6)',
+                backdropFilter: 'blur(8px)',
               }}
             >
-              <TableHeader>
-                <TableColumn>PRODUCTO</TableColumn>
-                <TableColumn align="end">CANTIDAD</TableColumn>
-              </TableHeader>
-              <TableBody>
-                {(receta.detalles || []).map((detalle) => (
-                  <TableRow key={detalle.idDetalleReceta} className="hover:bg-default-50 dark:hover:bg-default-100/50">
-                    <TableCell>
-                      <span className="font-medium">{detalle.nombreProducto}</span>
-                    </TableCell>
-                    <TableCell>
-                      <Chip variant="faded" color="primary" size="sm" className="font-semibold">
-                        {detalle.cantProducto} {detalle.abreviatura}
-                      </Chip>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardBody>
-        </Card>
+              <Icon icon="lucide:chef-hat" width={28} className={isActivo ? 'text-success-700' : 'text-danger-700'} />
+            </div>
+            <div className="min-w-0">
+              <h3 className="text-xl font-bold text-secondary dark:text-foreground truncate">{receta.nombreReceta}</h3>
+              {receta.descripcionReceta && (
+                <p className="text-sm text-default-600 mt-1 line-clamp-2">{receta.descripcionReceta}</p>
+              )}
+            </div>
+          </div>
+          <Chip
+            color={isActivo ? 'success' : 'danger'}
+            size="sm"
+            variant="flat"
+            className="font-bold shrink-0"
+            startContent={<Icon icon={isActivo ? 'lucide:check-circle-2' : 'lucide:x-circle'} width={14} className="ml-1" />}
+          >
+            {receta.estadoReceta}
+          </Chip>
+        </div>
       </div>
 
+
+      {/* === SECCIÓN: Ingredientes === */}
       <div>
-        <div className="flex items-center gap-2 mb-3 mt-4">
+        <div className="flex justify-between items-center mb-4">
+          <div className="flex items-center gap-2">
+            <div className="p-2 rounded-lg bg-warning-100 dark:bg-warning-900/30 text-warning-600">
+              <Icon icon="lucide:package-open" width={20} />
+            </div>
+            <div>
+              <h4 className="font-bold text-base text-secondary dark:text-foreground">Ingredientes de la Formulación</h4>
+              <p className="text-xs text-default-400">
+                {receta.totalIngredientes} ingrediente{receta.totalIngredientes > 1 ? 's' : ''} en esta receta
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          {(receta.detalles || []).map((detalle, index) => (
+            <Card
+              key={detalle.idDetalleReceta}
+              shadow="none"
+              className="border border-default-200 dark:border-default-100 hover:border-primary-200 dark:hover:border-primary-400/30 transition-colors"
+            >
+              <CardBody className="p-3">
+                <div className="flex items-center gap-3">
+                  <Chip size="sm" variant="flat" color="primary" className="font-bold min-w-[28px] h-6">
+                    {index + 1}
+                  </Chip>
+                  <div className="flex-1 min-w-0">
+                    <span className="font-medium text-sm text-secondary dark:text-foreground">{detalle.nombreProducto}</span>
+                  </div>
+                  <Chip variant="faded" size="sm" className="shrink-0 bg-default-100 border-default-200">
+                    <span className="font-bold text-foreground">{detalle.cantProducto}</span>
+                    <span className="ml-1" style={{ opacity: 0.7 }}>{detalle.abreviatura}</span>
+                  </Chip>
+                </div>
+              </CardBody>
+            </Card>
+          ))}
+        </div>
+      </div>
+
+      {/* === SECCIÓN: Instrucciones === */}
+      <div>
+        <div className="flex items-center gap-2 mb-3">
           <div className="p-2 rounded-lg bg-secondary-100 dark:bg-secondary-900/30 text-secondary">
             <Icon icon="lucide:file-text" width={20} />
           </div>
-          <h4 className="font-bold text-lg">Instrucciones</h4>
+          <h4 className="font-bold text-base text-secondary dark:text-foreground">Instrucciones</h4>
         </div>
         <Card shadow="none" className="bg-default-50 dark:bg-default-100/30 border border-default-200 dark:border-default-100/50">
           <CardBody className="p-4">
             <p className="whitespace-pre-line text-sm text-default-600 dark:text-default-400 italic">
-              Sin instrucciones disponibles en la vista rápida
+              {receta.instruccionesReceta?.trim() || 'Sin instrucciones registradas.'}
             </p>
           </CardBody>
         </Card>
@@ -722,7 +741,7 @@ interface FormularioRecetaProps {
   receta: IRecetaPaginedDTO | null;
   mode: 'crear' | 'editar';
   productos: IProductoRecetaSelection[];
-  onSave: (receta: IReceta) => Promise<void>;
+  onSave: (receta: IReceta, updatePayload?: IRecipeWithDetailsUpdateDTO) => Promise<void>;
   onValidationChange: (isValid: boolean) => void;
 }
 
@@ -731,37 +750,85 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
     const toast = useToast();
     const [nombre, setNombre] = React.useState(receta?.nombreReceta || '');
     const [descripcion, setDescripcion] = React.useState(receta?.descripcionReceta || '');
-    const [instrucciones, setInstrucciones] = React.useState(''); // RecetaPaginedDTO no devuelve instrucciones (esto es una carga de listado simple) para el editar se necesitaría un fetch completo si quisieramos las instrucciones. Pero se omitirá o se dejará un fetch condicional. Para simplificar, se la asumimos vacía.
-    const [estado, setEstado] = React.useState<'Activo' | 'Inactivo'>(() => {
-      if (mode === 'crear') return 'Activo';
-      const initial = receta?.estado;
-      if (initial) return 'Activo';
-      return 'Inactivo';
-    });
+    const [instrucciones, setInstrucciones] = React.useState(receta?.instruccionesReceta || '');
+    const [estado, setEstado] = React.useState<'Activo' | 'Inactivo'>(receta?.estadoReceta || 'Activo');
 
     const qtyRefs = React.useRef<Record<string, HTMLInputElement | null>>({});
 
-    // Mapeo inverso de los detalles a la estructura IReceta esperada por el form
+    // Snapshot de los detalles originales para calcular deltas en modo editar
+    const originalDetallesRef = React.useRef<IDetalleRecetaDTO[]>(receta?.detalles || []);
+
+    // REEMPLAZAR deletedDetailIds por deletedProductIds
+    const [deletedProductIds, setDeletedProductIds] = React.useState<number[]>([]);
+
+    // Set de IDs de productos originales (los que vinieron de la DB)
+    const originalProductIdsRef = React.useRef<Set<string>>(
+      new Set((receta?.detalles || []).map(d => d.idProducto.toString()))
+    );
+
+    // REEMPLAZAR el estado y la inicialización de ingredientes en FormularioReceta
     const [ingredientes, setIngredientes] = React.useState<IIngrediente[]>(
       (receta?.detalles || []).map(d => ({
-        id: Date.now().toString() + Math.random().toString(), // Generar ids al azar
+        id: d.idDetalleReceta.toString(),
         productoId: d.idProducto.toString(),
         productoNombre: d.nombreProducto,
         cantidad: d.cantProducto,
-        unidadMedida: d.abreviatura
+        unidadMedida: d.abreviatura,
       }))
     );
 
     React.useEffect(() => {
+      // 1. Validaciones básicas de integridad
       const isNombreValid = nombre.trim().length > 0;
       const isEstadoValid = !!estado;
       const hasIngredients = ingredientes.length > 0;
       const areIngredientsValid = ingredientes.every(ing =>
         ing.productoId && ing.cantidad > 0
       );
+      const isValid = isNombreValid && isEstadoValid && hasIngredients && areIngredientsValid;
 
-      onValidationChange(isNombreValid && isEstadoValid && hasIngredients && areIngredientsValid);
-    }, [nombre, estado, ingredientes, onValidationChange]);
+      // 2. Detección de cambios (solo relevante en modo editar)
+      let hasChanges = false;
+      if (mode === 'editar' && receta) {
+        const changedNombre = nombre.trim() !== (receta.nombreReceta || '');
+        const changedDesc = descripcion.trim() !== (receta.descripcionReceta || '');
+        const changedInstr = (instrucciones || '').trim() !== (receta.instruccionesReceta || '').trim();
+        const changedEstado = estado !== (receta.estadoReceta || 'Activo');
+
+        // Comparar ingredientes consolidando cantidades para la comparación
+        const currentIngsMap = new Map<string, number>();
+        ingredientes.forEach(ing => {
+          if (ing.productoId) {
+            const currentQty = currentIngsMap.get(ing.productoId) || 0;
+            currentIngsMap.set(ing.productoId, currentQty + ing.cantidad);
+          }
+        });
+
+        const originalIngsMap = new Map(
+          (receta.detalles || []).map(d => [d.idProducto.toString(), d.cantProducto])
+        );
+
+        // ¿Diferente cantidad de productos únicos?
+        let changedIngs = currentIngsMap.size !== originalIngsMap.size;
+
+        if (!changedIngs) {
+          // Si tienen el mismo número de productos, verificar si los IDs y cantidades coinciden
+          for (const [prodId, qty] of currentIngsMap.entries()) {
+            const origQty = originalIngsMap.get(prodId);
+            if (origQty === undefined || Math.abs(origQty - qty) > 0.0001) {
+              changedIngs = true;
+              break;
+            }
+          }
+        }
+
+        hasChanges = changedNombre || changedDesc || changedInstr || changedEstado || changedIngs;
+      }
+
+      // En modo 'crear' habilitamos si es válido. En 'editar' solo si es válido Y hubo cambios.
+      const canSave = mode === 'crear' ? isValid : (isValid && hasChanges);
+      onValidationChange(canSave);
+    }, [nombre, descripcion, instrucciones, estado, ingredientes, mode, receta, onValidationChange]);
 
     React.useImperativeHandle(ref, () => ({
       submit: async () => {
@@ -813,7 +880,41 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
           fechaActualizacion: new Date().toISOString(),
         };
 
-        await onSave(recetaData);
+        // REEMPLAZAR la sección de cálculo de deltas dentro del submit (modo editar)
+        if (mode === 'editar' && receta) {
+          const originalDetalles = originalDetallesRef.current;
+          const originalMap = new Map(originalDetalles.map(d => [d.idProducto.toString(), d]));
+
+          const newItems: { idProducto: number; cantUnidadMedida: number }[] = [];
+          const updateItems: { idProducto: number; cantUnidadMedida: number }[] = [];
+
+          ingredientesConsolidados.forEach(ing => {
+            const original = originalMap.get(ing.productoId);
+
+            if (!original) {
+              // Producto nuevo (no estaba en la DB)
+              newItems.push({ idProducto: parseInt(ing.productoId), cantUnidadMedida: ing.cantidad });
+            } else if (original.cantProducto !== ing.cantidad) {
+              // Producto existente con cantidad modificada
+              updateItems.push({ idProducto: parseInt(ing.productoId), cantUnidadMedida: ing.cantidad });
+            }
+          });
+
+          const updatePayload: IRecipeWithDetailsUpdateDTO = {
+            idReceta: receta.idReceta,
+            nombreReceta: nombre.trim(),
+            descripcionReceta: descripcion.trim() || undefined,
+            instruccionesReceta: instrucciones.trim() || undefined,
+            estadoReceta: estado,
+            newItems,
+            updateItems,
+            deleteItems: deletedProductIds, // IDs de PRODUCTOS, no de detalles
+          };
+
+          await onSave(recetaData, updatePayload);
+        } else {
+          await onSave(recetaData);
+        }
       }
     }));
 
@@ -888,7 +989,13 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
       setIngredientes(nuevosIngredientes);
     };
 
+    // REEMPLAZAR la función eliminarIngrediente
     const eliminarIngrediente = (index: number) => {
+      const ingToRemove = ingredientes[index];
+      // Solo agregar a deleteItems si el producto existía originalmente en la DB
+      if (originalProductIdsRef.current.has(ingToRemove.productoId)) {
+        setDeletedProductIds(prev => [...prev, parseInt(ingToRemove.productoId)]);
+      }
       setIngredientes(ingredientes.filter((_, i) => i !== index));
     };
 
@@ -973,23 +1080,26 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
                       </Button>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-[2fr_1.5fr] gap-3">
-                      <Select
+                      <Autocomplete
                         label="Producto"
-                        placeholder="Seleccione producto"
-                        selectedKeys={ingrediente.productoId ? [ingrediente.productoId] : []}
-                        onSelectionChange={(keys) => actualizarIngrediente(index, 'productoId', Array.from(keys)[0])}
+                        placeholder="Buscar producto..."
+                        selectedKey={ingrediente.productoId || null}
+                        onSelectionChange={(key) => {
+                          if (key) actualizarIngrediente(index, 'productoId', key.toString());
+                        }}
                         size="sm"
                         variant="bordered"
-                        classNames={{ trigger: "bg-white dark:bg-default-100/50" }}
+                        classNames={{ base: "bg-white dark:bg-default-100/50" }}
                         isRequired
-                        items={productos}
+                        defaultItems={productos}
+                        isClearable={false}
                       >
                         {(producto) => (
-                          <SelectItem key={producto.idProducto.toString()}>
+                          <AutocompleteItem key={producto.idProducto.toString()}>
                             {producto.nombreProducto}
-                          </SelectItem>
+                          </AutocompleteItem>
                         )}
-                      </Select>
+                      </Autocomplete>
 
                       <Input
                         ref={(el) => {

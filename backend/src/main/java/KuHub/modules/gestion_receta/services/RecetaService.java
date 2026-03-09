@@ -4,13 +4,18 @@ import KuHub.modules.gestion_inventario.dtos.request.dto.SearchDTO;
 import KuHub.modules.gestion_receta.dtos.RecipeWithDetailsCreateDTO;
 import KuHub.modules.gestion_receta.dtos.projection.CountRecipesAndStatusView;
 import KuHub.modules.gestion_receta.dtos.respose.RecipePagedDTO;
+import KuHub.modules.gestion_receta.dtos.respose.request.RecipeWithDetailsUpdateDTO;
+import KuHub.modules.gestion_receta.entity.Receta;
 
 public interface RecetaService {
+    Receta findById(Integer id);
     CountRecipesAndStatusView countRecipesAndStatus();
     RecipePagedDTO findAllRecipesPaginated(Integer pageRequested);
     RecipePagedDTO findAllWithDetailsAndSearchPaging(SearchDTO searchDto);
     boolean saveRecipeWithDetails(RecipeWithDetailsCreateDTO dto);
-
+    boolean updateRecipeWithDetails (RecipeWithDetailsUpdateDTO request);
+    boolean changeStatus(Integer idReceta);
+    boolean softDeleteRecipeWithDetails(Integer idReceta);
 
 
 

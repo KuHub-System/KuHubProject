@@ -5,9 +5,13 @@ import KuHub.modules.gestion_receta.dtos.*;
 import KuHub.modules.gestion_inventario.services.ProductoService;
 import KuHub.modules.gestion_receta.dtos.projection.CountRecipesAndStatusView;
 import KuHub.modules.gestion_receta.dtos.respose.RecipeItemAnswerDTO;
-import KuHub.modules.gestion_receta.dtos.respose.RecipeItemCreateDTO;
+import KuHub.modules.gestion_receta.dtos.respose.RecipeItemDTO;
 import KuHub.modules.gestion_receta.dtos.respose.RecipePagedDTO;
 import KuHub.modules.gestion_receta.dtos.respose.RecipeWithDetailsDTO;
+import KuHub.modules.gestion_receta.dtos.respose.projection.DetailsByUpdateView;
+import KuHub.modules.gestion_receta.dtos.respose.projection.RecipeWithDetailsView;
+import KuHub.modules.gestion_receta.dtos.respose.record.DetailsByUpdateRec;
+import KuHub.modules.gestion_receta.dtos.respose.request.RecipeWithDetailsUpdateDTO;
 import KuHub.modules.gestion_receta.entity.DetalleReceta;
 import KuHub.modules.gestion_receta.entity.Receta;
 import KuHub.modules.gestion_receta.exceptions.GestionRecetaException;
@@ -25,6 +29,7 @@ import KuHub.utils.StringUtils;
 
 import java.math.BigDecimal;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -44,6 +49,13 @@ public class RecetaServiceImp implements RecetaService{
 
     @Transactional(readOnly = true)
     @Override
+    public Receta findById(Integer id) {
+        return recetaRepository.findById(id).orElseThrow(
+                ()-> new GestionRecetaException("No existe la receta con el id " + id, HttpStatus.NOT_FOUND));
+    }
+
+    @Transactional(readOnly = true)
+    @Override
     public CountRecipesAndStatusView countRecipesAndStatus() {
         return recetaRepository.countRecipesAndStatus();
     }
@@ -56,7 +68,7 @@ public class RecetaServiceImp implements RecetaService{
         PaginationUtils.PagingResult paging = PaginationUtils.buildPaging(pageRequested, totalRecords);
 
         // 2. Consulta a la DB
-        List<Map<String, Object>> rows = recetaRepository.findAllWithDetailsPaging(
+        List<RecipeWithDetailsView> rows = recetaRepository.findAllWithDetailsPaging(
                 paging.limit(),
                 paging.offset()
         );
@@ -65,20 +77,27 @@ public class RecetaServiceImp implements RecetaService{
         List<RecipeWithDetailsDTO> content = rows.stream().map(row -> {
             List<RecipeItemAnswerDTO> listaDetalles;
             try {
-                // Deserializamos el JSON de ingredientes
-                String jsonStr = row.get("detallesJson").toString();
-                listaDetalles = objectMapper.readValue(jsonStr,
-                        new TypeReference<List<RecipeItemAnswerDTO>>() {});
+                // Deserializamos el JSON directamente con el getter
+                String jsonStr = row.getDetallesJson();
+                if (jsonStr != null && !jsonStr.isBlank()) {
+                    listaDetalles = objectMapper.readValue(jsonStr,
+                            new TypeReference<List<RecipeItemAnswerDTO>>() {});
+                } else {
+                    listaDetalles = Collections.emptyList();
+                }
             } catch (Exception e) {
+                log.error("Error mapeando detalles JSON para receta ID {}: {}", row.getIdReceta(), e.getMessage());
                 listaDetalles = Collections.emptyList();
             }
 
+            // 4. Construcción limpia del DTO, cero casteos manuales
             return RecipeWithDetailsDTO.builder()
-                    .idReceta((Integer) row.get("idReceta"))
-                    .nombreReceta((String) row.get("nombreReceta"))
-                    .descripcionReceta((String) row.get("descripcionReceta"))
-                    .estado((Boolean) row.get("estado"))
-                    .totalIngredientes(((Number) row.get("totalIngredientes")).longValue())
+                    .idReceta(row.getIdReceta())
+                    .nombreReceta(row.getNombreReceta())
+                    .descripcionReceta(row.getDescripcionReceta())
+                    .instruccionesReceta(row.getInstruccionesReceta())
+                    .estadoReceta(StringUtils.enumToHumanText(row.getEstadoReceta()))
+                    .totalIngredientes(row.getTotalIngredientes())
                     .detalles(listaDetalles)
                     .build();
         }).toList();
@@ -101,7 +120,7 @@ public class RecetaServiceImp implements RecetaService{
         PaginationUtils.PagingResult paging = PaginationUtils.buildPaging(page, totalRecords);
 
         // 3. Ejecutar consulta a DB
-        List<Map<String, Object>> rows = recetaRepository.findAllWithDetailsAndSearch(
+        List<RecipeWithDetailsView> rows = recetaRepository.findAllWithDetailsAndSearch(
                 term,
                 paging.limit(),
                 paging.offset()
@@ -111,21 +130,28 @@ public class RecetaServiceImp implements RecetaService{
         List<RecipeWithDetailsDTO> content = rows.stream().map(row -> {
             List<RecipeItemAnswerDTO> listaDetalles;
             try {
-                listaDetalles = objectMapper.readValue(
-                        row.get("detallesJson").toString(),
-                        new TypeReference<List<RecipeItemAnswerDTO>>() {
-                        }
-                );
+                // Obtenemos el JSON directamente como String tipado
+                String jsonStr = row.getDetallesJson();
+                if (jsonStr != null && !jsonStr.isBlank()) {
+                    listaDetalles = objectMapper.readValue(
+                            jsonStr,
+                            new TypeReference<List<RecipeItemAnswerDTO>>() {}
+                    );
+                } else {
+                    listaDetalles = Collections.emptyList();
+                }
             } catch (Exception e) {
+                log.error("Error mapeando detalles JSON para receta ID {}: {}", row.getIdReceta(), e.getMessage());
                 listaDetalles = Collections.emptyList();
             }
 
             return RecipeWithDetailsDTO.builder()
-                    .idReceta((Integer) row.get("idReceta"))
-                    .nombreReceta((String) row.get("nombreReceta"))
-                    .descripcionReceta((String) row.get("descripcionReceta"))
-                    .estado((Boolean) row.get("estado"))
-                    .totalIngredientes(((Number) row.get("totalIngredientes")).longValue())
+                    .idReceta(row.getIdReceta())
+                    .nombreReceta(row.getNombreReceta())
+                    .descripcionReceta(row.getDescripcionReceta())
+                    .instruccionesReceta(row.getInstruccionesReceta())
+                    .estadoReceta(StringUtils.enumToHumanText(row.getEstadoReceta()))
+                    .totalIngredientes(row.getTotalIngredientes())
                     .detalles(listaDetalles)
                     .build();
         }).toList();
@@ -165,7 +191,7 @@ public class RecetaServiceImp implements RecetaService{
 
         Map<Integer, BigDecimal> itemsConsolidados = new HashMap<>();
 
-        for (RecipeItemCreateDTO item : request.getListaItems()) {
+        for (RecipeItemDTO item : request.getListaItems()) {
             // merge: Si el ID no existe, lo pone. Si existe, aplica la suma (BigDecimal::add)
             itemsConsolidados.merge(
                     item.getIdProducto(),
@@ -191,9 +217,193 @@ public class RecetaServiceImp implements RecetaService{
     }
 
 
+    /**Evitar consulta objeto para cambiar estado, cambiar directamente retono de fila afetada*/
+    @Transactional
+    @Override
+    public boolean changeStatus(Integer idReceta) {
+        int rowsAffected = recetaRepository.toggleRecipeStatus(idReceta);
+        if (rowsAffected == 0) {
+            throw new GestionRecetaException(
+                    "No se pudo cambiar el estado: La receta con ID " + idReceta + " no existe.",
+                    HttpStatus.NOT_FOUND
+            );
+        }
+        return rowsAffected > 0;
+    }
 
+    @Transactional()
+    @Override
+    public boolean updateRecipeWithDetails (RecipeWithDetailsUpdateDTO request) {
+        /**Validar existencia de la receta obtenendo el objeto*/
+        Receta oldRecipe = findById(request.getIdReceta());
+        /**Parsear String y validar cambios*/
+        String nombreReceta = StringUtils.capitalizarPalabras(request.getNombreReceta());
+        if (!nombreReceta.equals(request.getNombreReceta())
+                && recetaRepository.existsByNombreRecetaAndActivoRecetaTrue(nombreReceta)) {
+            throw new GestionRecetaException("Ya existe una receta con el nombre : " + nombreReceta
+                    , HttpStatus.CONFLICT);
+        } else {
+            oldRecipe.setNombreReceta(nombreReceta);
+        }
+        /**Parsear String y validar cambios*/
+        String descripcion = (request.getDescripcionReceta() != null)
+                ? StringUtils.normalizeSpaces(request.getDescripcionReceta())
+                : null;
+        if (!Objects.equals(descripcion, oldRecipe.getDescripcionReceta())) {
+            oldRecipe.setDescripcionReceta(descripcion);
+        }
+        /**Parsear String y validar cambios*/
+        String instruciones = (request.getInstruccionesReceta() != null)
+                ? StringUtils.normalizeSpaces(request.getInstruccionesReceta())
+                : null;
+        if (!Objects.equals(instruciones, oldRecipe.getInstruccionesReceta())) {
+            oldRecipe.setInstruccionesReceta(instruciones);
+        }
+        /** Validar y setear el estado */
+        String keyEstado = StringUtils.normalizeToEnumKey(request.getEstadoReceta());
+        Receta.EstadoRecetaType nuevoEstado = Receta.EstadoRecetaType.valueOf(keyEstado);
 
+        if (oldRecipe.getEstadoReceta() != nuevoEstado) {
+            oldRecipe.setEstadoReceta(nuevoEstado);
+        }
+        /**Update Recipe Head*/
+        recetaRepository.save(oldRecipe);
 
+        /**Obtener detalles de la receta*/
+        List<DetailsByUpdateView> rows = detalleRecetaRepository.findDetailsForUpdate(request.getIdReceta());
+        if (rows.isEmpty()){
+            throw new GestionRecetaException("La receta no tiene detalles anteriores, error al crear una receta!"
+            ,HttpStatus.NOT_FOUND);
+        }
+
+        Map<Integer, DetailsByUpdateRec> currentMap = rows.stream()
+                .collect(Collectors.toMap(
+                        DetailsByUpdateView::getIdProducto,
+                        row -> new DetailsByUpdateRec(
+                                row.getIdDetalle(),
+                                row.getIdProducto(),
+                                row.getCantidad()
+                        )
+                ));
+
+        /** --- PROCESAMIENTO DE DELTAS ---*/
+
+        /**llama metodo que retorna la cantidad de itens eliminados*/
+        int deleted = processDeletions(request.getIdReceta(), request.getDeleteItems(), currentMap);
+
+        /**llama el metodo que retorna la cantidad de itens modificados*/
+        int updated = processUpdates(request.getIdReceta(), request.getUpdateItems(), currentMap);
+
+        /**llama el metodo que retorna la cantidad de intes creados*/
+        int created = processNewItems(request.getIdReceta(), request.getNewItems(), currentMap);
+
+        /**logo para validaciones*/
+        log.info("Sincronización finalizada para Receta {}: [Borrados: {}, Actualizados: {}, Creados: {}]",
+                request.getIdReceta(), deleted, updated, created);
+
+        return true;
+    }
+
+    @Transactional // ¡Aquí es donde debe ir la anotación!
+    @Override
+    public boolean softDeleteRecipeWithDetails(Integer idReceta) {
+        int rowsAffected = recetaRepository.softDeleteRecipeById(idReceta);
+        if (rowsAffected > 0) {
+            log.info("🚫 Receta ID {} desactivada exitosamente.", idReceta);
+            return true;
+        }
+        return false;
+    }
+
+    /**Metodo que procesa deleciones de iten desmarcados en frontend de detalles recetas*/
+    private int processDeletions(Integer idReceta, List<Integer> idsToDelete, Map<Integer, DetailsByUpdateRec> currentMap) {
+        if (idsToDelete == null || idsToDelete.isEmpty()) {
+            return 0;
+        }
+
+        for (Integer idProd : idsToDelete) {
+            if (!currentMap.containsKey(idProd)) {
+                throw new GestionRecetaException("El producto con ID " + idProd + " no pertenece a esta receta.",
+                        HttpStatus.BAD_REQUEST);
+            }
+        }
+
+        int rowsDeleted = detalleRecetaRepository.deleteByRecetaAndProductoIds(idReceta, idsToDelete);
+
+        /***/
+        if (rowsDeleted > 0) {
+            idsToDelete.forEach(currentMap::remove);
+            log.info("🗑️ Se eliminaron {} ingredientes de la receta ID {}", rowsDeleted, idReceta);
+        }
+
+        return rowsDeleted;
+    }
+
+    /**Metodo que actualizar las cantidades alteradas de itens de detalles recetas*/
+    private int processUpdates(Integer idReceta, List<RecipeItemDTO> itemsToUpdate, Map<Integer, DetailsByUpdateRec> currentMap) {
+        if (itemsToUpdate == null || itemsToUpdate.isEmpty()) {
+            return 0;
+        }
+
+        int totalUpdated = 0;
+        for (RecipeItemDTO item : itemsToUpdate) {
+            // Validación: Solo actualizamos si el producto existe actualmente en la receta
+            if (currentMap.containsKey(item.getIdProducto())) {
+
+                // Solo ejecutamos el SQL si la cantidad es realmente diferente a la actual en la DB
+                if (currentMap.get(item.getIdProducto()).cantidad().compareTo(item.getCantUnidadMedida()) != 0) {
+                    totalUpdated += detalleRecetaRepository.updateQuantityByRecipeAndProduct(
+                            idReceta,
+                            item.getIdProducto(),
+                            item.getCantUnidadMedida()
+                    );
+                }
+            } else {
+                // Seguridad: Si el front intenta actualizar algo que no existe, lanzamos error
+                throw new GestionRecetaException("El producto ID " + item.getIdProducto() + " no existe en esta receta para ser actualizado.",
+                        HttpStatus.BAD_REQUEST);
+            }
+        }
+
+        if (totalUpdated > 0) {
+            log.info("✏️ Se actualizaron cantidades para {} ingredientes", totalUpdated);
+        }
+
+        return totalUpdated;
+    }
+
+    /**Metodo que crea itens nuevos al actualizar los detalles de la receta*/
+    private int processNewItems(Integer idReceta, List<RecipeItemDTO> newItems, Map<Integer, DetailsByUpdateRec> currentMap) {
+        if (newItems == null || newItems.isEmpty()) {
+            return 0;
+        }
+
+        List<DetalleReceta> entitiesToSave = new ArrayList<>();
+
+        for (RecipeItemDTO item : newItems) {
+            /***/
+            if (currentMap.containsKey(item.getIdProducto())) {
+                throw new GestionRecetaException("El producto ID " + item.getIdProducto() + " ya existe en la receta. Use la lista de actualización.",
+                        HttpStatus.BAD_REQUEST);
+            }
+
+            DetalleReceta nuevoDetalle = new DetalleReceta();
+            nuevoDetalle.setRecetaById(idReceta);
+            nuevoDetalle.setProductoById(item.getIdProducto());
+            nuevoDetalle.setCantProducto(item.getCantUnidadMedida());
+
+            entitiesToSave.add(nuevoDetalle);
+        }
+
+        /***/
+        if (!entitiesToSave.isEmpty()) {
+            List<DetalleReceta> saved = detalleRecetaRepository.saveAll(entitiesToSave);
+            log.info("➕ Se agregaron {} nuevos ingredientes a la receta ID {}", saved.size(), idReceta);
+            return saved.size();
+        }
+
+        return 0;
+    }
 
 
 
@@ -220,12 +430,7 @@ public class RecetaServiceImp implements RecetaService{
         return recetaRepository.findAllByActivoRecetaTrue();
     }
 
-    @Transactional(readOnly = true)
-    @Override
-    public Receta findById(Integer id) {
-        return recetaRepository.findById(id).orElseThrow(
-        ()-> new GestionRecetaException("No existe la receta con el id " + id));
-    }
+
 
     @Transactional(readOnly = true)
     @Override

@@ -10,7 +10,7 @@ import java.math.BigDecimal;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class RecipeItemCreateDTO {
+public class RecipeItemDTO {
     @NotNull(message = "El ID del producto es obligatorio")
     @Positive(message = "El ID del producto debe ser un número positivo")
     private Integer idProducto;

@@ -4,6 +4,7 @@ import KuHub.modules.gestion_inventario.dtos.request.dto.SearchDTO;
 import KuHub.modules.gestion_receta.dtos.RecipeWithDetailsCreateDTO;
 import KuHub.modules.gestion_receta.dtos.projection.CountRecipesAndStatusView;
 import KuHub.modules.gestion_receta.dtos.respose.RecipePagedDTO;
+import KuHub.modules.gestion_receta.dtos.respose.request.RecipeWithDetailsUpdateDTO;
 import KuHub.modules.gestion_receta.services.RecetaService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,7 +31,7 @@ public class RecetaController {
     }
 
     /**
-     * Crea una nueva receta junto con todos sus ingredientes detallados.
+     * llama todas las recetas paginas
      * ✅ FUNCIONAL IMPLEMENTADO EN EL FRONT*/
     @PostMapping("/find-all-recipes-pagined/{page}")
     public ResponseEntity<RecipePagedDTO> findAllRecipesPaginated(
@@ -41,6 +42,9 @@ public class RecetaController {
                 .body(recetaService.findAllRecipesPaginated(page));
     }
 
+    /**
+     * Llama las recetas por el nombre o descripcion similares paginada
+     * ✅ FUNCIONAL IMPLEMENTADO EN EL FRONT*/
     @PostMapping("/search-recipes")
     public ResponseEntity<RecipePagedDTO> findAllWithDetailsAndSearchPaging(
             @RequestBody SearchDTO searchDto
@@ -59,6 +63,34 @@ public class RecetaController {
                 .status(201)
                 .body(recetaService.saveRecipeWithDetails(request));
     }
+
+    /**Actualiza el estado de la receta del tipo enum manejada para usar la receta en solicitudes
+     * ✅ FUNCIONAL IMPLEMENTADO EN EL FRONT*/
+    @PatchMapping("/change-status/{idReceta}")
+    public ResponseEntity<Boolean> changeStatus(
+            @PathVariable Integer idReceta
+    ){
+        return ResponseEntity
+                .status(200)
+                .body(recetaService.changeStatus(idReceta));
+    }
+
+    @PatchMapping("/update-recipe-with-details")
+    public ResponseEntity<Boolean> updateRecipeWithDetails(
+            @RequestBody RecipeWithDetailsUpdateDTO request ){
+        return ResponseEntity
+                .status(200)
+                .body(recetaService.updateRecipeWithDetails(request));
+    }
+
+    @DeleteMapping("/soft-delete-receta/{idReceta}")
+    public ResponseEntity<Boolean> softDeleteRecipeWithDetails(
+        @PathVariable Integer idReceta){
+        return ResponseEntity
+                .status(204)
+                .body(recetaService.softDeleteRecipeWithDetails(idReceta));
+    }
+
 
 
 

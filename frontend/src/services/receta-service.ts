@@ -9,6 +9,7 @@ import {
   ICrearReceta,
   IActualizarReceta,
   IRecipeWithDetailsCreateDTO,
+  IRecipeWithDetailsUpdateDTO,
   IPaginatedRecetasResponse,
   IRecetaCountResponse
 } from '../types/receta.types';
@@ -191,6 +192,23 @@ export const crearRecetaConDetallesService = async (data: IRecipeWithDetailsCrea
 };
 
 /**
+ * Actualiza una receta con detalles mediante deltas (newItems, updateItems, deleteItems).
+ * @param {IRecipeWithDetailsUpdateDTO} data - DTO con los cambios de la receta.
+ * @returns {Promise<boolean>} Promesa que resuelve a true si se actualizó correctamente.
+ */
+export const actualizarRecetaConDetallesService = async (data: IRecipeWithDetailsUpdateDTO): Promise<boolean> => {
+  try {
+    const response = await api.patch<boolean>('/receta/update-recipe-with-details', data);
+    return response.data;
+  } catch (error: any) {
+    throw new Error(
+      error.response?.data?.message ||
+      'Error al actualizar la receta en el servidor'
+    );
+  }
+};
+
+/**
  * Elimina una receta.
  * @param {string} id - ID de la receta a eliminar.
  * @returns {Promise<boolean>} Promesa que resuelve a true si la eliminación fue exitosa.
@@ -209,24 +227,40 @@ export const eliminarRecetaService = async (id: string): Promise<boolean> => {
 };
 
 /**
- * Cambia el estado de una receta (Activa/Inactiva).
+ * Cambia el estado de una receta (Activo/Inactivo) mediante el backend.
  * @param {string} id - ID de la receta.
- * @param {boolean} activa - true para activar, false para desactivar.
- * @returns {Promise<IReceta>} Promesa que resuelve a la receta actualizada.
+ * @returns {Promise<boolean>} Promesa que resuelve a true si el cambio fue exitoso.
  */
-export const cambiarEstadoRecetaService = async (id: string, activa: boolean): Promise<IReceta> => {
-
-  await new Promise(resolve => setTimeout(resolve, 300));
-
-  const recetaActualizada = actualizarReceta(id, {
-    estado: activa ? 'Activo' : 'Inactivo'
-  });
-
-  if (!recetaActualizada) {
-    throw new Error(`Receta con ID ${id} no encontrada`);
+export const cambiarEstadoRecetaService = async (id: string): Promise<boolean> => {
+  try {
+    const idNumero = parseInt(id, 10);
+    const response = await api.patch<boolean>(`/receta/change-status/${idNumero}`);
+    return response.data;
+  } catch (error: any) {
+    console.error('Error al cambiar el estado de la receta', error);
+    throw new Error(
+      error.response?.data?.message ||
+      'Error al cambiar el estado de la receta'
+    );
   }
+};
 
-  return recetaActualizada;
+/**
+ * Elimina (soft delete) una receta por su ID.
+ * @param {number} idReceta - ID numérico de la receta.
+ * @returns {Promise<boolean>} Promesa que resuelve a true si la eliminación fue exitosa (204).
+ */
+export const softDeleteRecetaService = async (idReceta: number): Promise<boolean> => {
+  try {
+    await api.delete(`/receta/soft-delete-receta/${idReceta}`);
+    return true;
+  } catch (error: any) {
+    console.error('Error al eliminar la receta', error);
+    throw new Error(
+      error.response?.data?.message ||
+      'Error al eliminar la receta'
+    );
+  }
 };
 
 /**

@@ -1,6 +1,7 @@
 package KuHub.modules.gestion_receta.repository;
 
 import KuHub.modules.gestion_receta.dtos.projection.DetalleRecetaItemProjection;
+import KuHub.modules.gestion_receta.dtos.respose.projection.DetailsByUpdateView;
 import KuHub.modules.gestion_receta.entity.DetalleReceta;
 import KuHub.modules.gestion_receta.entity.Receta;
 import KuHub.modules.gestion_receta.dtos.projection.DetalleRecetaIdProductoProjection;
@@ -16,6 +17,40 @@ import java.util.List;
 @Repository
 public interface DetalleRecetaRepository extends JpaRepository<DetalleReceta, Integer> {
 
+    /**METODO PARA LOGICA INTERNA
+     * Llamar los atributos de detalles para actualizar omitindo la receta irrelavante para el metodo*/
+    @Query(value = """
+        SELECT 
+            d.id_detalle_receta AS "idDetalle", 
+            d.id_producto AS "idProducto", 
+            d.cant_producto AS "cantidad"
+        FROM detalle_receta d
+        WHERE d.id_receta = :idReceta
+        """, nativeQuery = true)
+    List<DetailsByUpdateView> findDetailsForUpdate(@Param("idReceta") Integer idReceta);
+
+
+    /**Metodo usado en update de receta para deletar los itens eliminado en el frontend*/
+    @Modifying
+    @Query("DELETE FROM DetalleReceta d " +
+            "WHERE d.receta.idReceta = :idReceta " +
+            "AND d.producto.idProducto IN :idsProducto")
+    int deleteByRecetaAndProductoIds(@Param("idReceta") Integer idReceta,
+                                     @Param("idsProducto") List<Integer> idsProducto);
+
+    /**Metodo usado en update de receta para actualizar los itens modificados en el frontend*/
+    @Modifying
+    @Query("""
+       UPDATE DetalleReceta d
+       SET d.cantProducto = :cant
+       WHERE d.receta.idReceta = :idReceta
+       AND d.producto.idProducto = :idProducto
+       """)
+    int updateQuantityByRecipeAndProduct(
+            @Param("idReceta") Integer idReceta,
+            @Param("idProducto") Integer idProducto,
+            @Param("cant") java.math.BigDecimal cant
+    );
 
     /**Validaciones boleanas*/
 
@@ -26,7 +61,7 @@ public interface DetalleRecetaRepository extends JpaRepository<DetalleReceta, In
 
 
 
-
+///
 
     @Query("""
     SELECT 
@@ -68,25 +103,8 @@ public interface DetalleRecetaRepository extends JpaRepository<DetalleReceta, In
     @Query("SELECT d.producto.idProducto FROM DetalleReceta d WHERE d.receta.idReceta = :idReceta")
     List<Integer> findProductoIdsByRecetaId(@Param("idReceta") Integer idReceta);
 
-    @Modifying
-    @Query("""
-       UPDATE DetalleReceta d
-       SET d.cantProducto = :cant
-       WHERE d.receta.idReceta = :idReceta
-       AND d.producto.idProducto = :idProducto
-       """)
-    void updateQuantityByIdRecetaAndIdProducto(
-            @Param("idReceta") Integer idReceta,
-            @Param("idProducto") Integer idProducto,
-            @Param("cant") Double cant
-    );
 
-    @Modifying
-    @Query("DELETE FROM DetalleReceta d " +
-            "WHERE d.receta.idReceta = :idReceta " +
-            "AND d.producto.idProducto IN :idsProducto")
-    void deleteByRecetaAndProductoIds(@Param("idReceta") Integer idReceta,
-                                      @Param("idsProducto") List<Integer> idsProducto);
+
 
     List<DetalleReceta> findAllByReceta(Receta receta);
 }

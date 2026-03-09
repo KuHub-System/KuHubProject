@@ -85,17 +85,7 @@ public class DetalleRecetaServiceImp implements DetalleRecetaService{
         return detalleRecetaRepository.save(dr);
     }
 
-    @Transactional
-    @Override
-    public void updateQuantityByIdRecetaAndIdProducto(Integer idReceta, Integer idProducto, Double cantidad){
-        detalleRecetaRepository.updateQuantityByIdRecetaAndIdProducto(idReceta,idProducto,cantidad );
-    }
 
-    @Transactional
-    @Override
-    public void deleteByRecetaAndProductoIds(Integer idReceta, List<Integer> idsProducto){
-        detalleRecetaRepository.deleteByRecetaAndProductoIds(idReceta,idsProducto);
-    }
 
     @Transactional
     @Override

@@ -64,31 +64,7 @@ public class DetalleRecetaController {
                 .body(detalleRecetaService.save(detalleReceta));
     }
 
-    @DeleteMapping("/receta/{idReceta}/productos")
-    public ResponseEntity<Void> deleteByRecetaAndProductoIds(
-            @PathVariable @NotNull Integer idReceta,
-            @RequestBody @NotEmpty List<Integer> idsProducto
-    ) {
-        try {
-            // valida lista vacía/NULL con anotaciones y también aquí por si acaso
-            if (idsProducto == null || idsProducto.isEmpty()) {
-                return ResponseEntity.badRequest().build();
-            }
 
-            detalleRecetaService.deleteByRecetaAndProductoIds(idReceta, idsProducto);
-
-            // 204: petición correcta, sin contenido
-            return ResponseEntity.noContent().build();
-        } catch (GestionRecetaException ex) {
-            // si tu service lanza RecetaException para indicar "no existe receta" o similar
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
-        } catch (IllegalArgumentException ex) {
-            return ResponseEntity.badRequest().build();
-        } catch (Exception ex) {
-            // opcional: log.error("...", ex);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        }
-    }
 
 
     @DeleteMapping("/{id}")

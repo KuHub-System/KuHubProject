@@ -13,7 +13,8 @@ import {
   ICrearMovimiento,
   IInventoryPageRequest,
   IInventoryPageItem,
-  IInventoryPageResponse
+  IInventoryPageResponse,
+  IProductoRecetaSelection
 } from '../types/producto.types';
 
 // Importar el servicio real de inventario
@@ -62,10 +63,22 @@ export const obtenerProductosService = async (): Promise<IProducto[]> => {
 };
 
 /**
- * Obtiene la lista de productos optimizada para selección en recetas
+ * Cache en memoria para los productos para receta.
+ * Se llena una sola vez y se reutiliza en todo el ciclo de vida de la aplicación.
  */
-export const obtenerProductosParaRecetaService = async () => {
-  return await obtenerProductosParaRecetaBackend();
+let cachedProductosParaReceta: IProductoRecetaSelection[] | null = null;
+
+/**
+ * Obtiene la lista de productos optimizada para selección en recetas.
+ * Usa cache en memoria: la primera llamada consulta el backend, las siguientes retornan el cache.
+ */
+export const obtenerProductosParaRecetaService = async (): Promise<IProductoRecetaSelection[]> => {
+  if (cachedProductosParaReceta) {
+    return cachedProductosParaReceta;
+  }
+  const data = await obtenerProductosParaRecetaBackend();
+  cachedProductosParaReceta = data;
+  return data;
 };
 
 /**

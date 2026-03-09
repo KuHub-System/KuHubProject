@@ -15,7 +15,8 @@ public class RecipeWithDetailsDTO {
     private Integer idReceta;
     private String nombreReceta;
     private String descripcionReceta;
-    private Boolean estado;
+    private String instruccionesReceta;
+    private String estadoReceta;
     private Long totalIngredientes;
     private List<RecipeItemAnswerDTO> detalles;
 }

@@ -1,11 +1,14 @@
 package KuHub.modules.gestion_receta.repository;
 
 import KuHub.modules.gestion_receta.dtos.projection.CountRecipesAndStatusView;
+import KuHub.modules.gestion_receta.dtos.respose.projection.RecipeWithDetailsView;
 import KuHub.modules.gestion_receta.entity.Receta;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Map;
@@ -25,7 +28,8 @@ public interface RecetaRepository extends JpaRepository<Receta,Integer> {
             r.id_receta AS "idReceta",
             r.nombre_receta AS "nombreReceta",
             r.descripcion_receta AS "descripcionReceta",
-            r.activo AS "estado",
+            r.instrucciones AS "instruccionesReceta",
+            r.estado_receta::text AS "estadoReceta",
             COUNT(d.id_detalle_receta) AS "totalIngredientes",
             jsonb_agg(
                 jsonb_build_object(
@@ -42,11 +46,11 @@ public interface RecetaRepository extends JpaRepository<Receta,Integer> {
         LEFT JOIN producto p ON d.id_producto = p.id_producto
         LEFT JOIN unidad_medida u ON u.id_unidad = p.id_unidad
         WHERE r.activo = true
-        GROUP BY r.id_receta, r.nombre_receta, r.descripcion_receta, r.activo
+        GROUP BY r.id_receta, r.nombre_receta, r.descripcion_receta, r.instrucciones, r.estado_receta
         ORDER BY r.nombre_receta ASC
         LIMIT :limit OFFSET :offset
         """, nativeQuery = true)
-    List<Map<String, Object>> findAllWithDetailsPaging(
+    List<RecipeWithDetailsView> findAllWithDetailsPaging(
             @Param("limit") int limit,
             @Param("offset") int offset);
     /**Contar recetas activas para la paginacion*/
@@ -58,7 +62,8 @@ public interface RecetaRepository extends JpaRepository<Receta,Integer> {
             r.id_receta AS "idReceta",
             r.nombre_receta AS "nombreReceta",
             r.descripcion_receta AS "descripcionReceta",
-            r.activo AS "estado",
+            r.instrucciones AS "instruccionesReceta",
+            r.estado_receta::text AS "estadoReceta",
             COUNT(d.id_detalle_receta) AS "totalIngredientes",
             jsonb_agg(
                 jsonb_build_object(
@@ -76,11 +81,11 @@ public interface RecetaRepository extends JpaRepository<Receta,Integer> {
         LEFT JOIN unidad_medida u ON u.id_unidad = p.id_unidad
         WHERE r.activo = true 
           AND (r.nombre_receta ILIKE %:term% OR r.descripcion_receta ILIKE %:term%)
-        GROUP BY r.id_receta, r.nombre_receta, r.descripcion_receta, r.activo
+        GROUP BY r.id_receta, r.nombre_receta, r.descripcion_receta, r.instrucciones, r.estado_receta
         ORDER BY r.nombre_receta ASC
         LIMIT :limit OFFSET :offset
         """, nativeQuery = true)
-    List<Map<String, Object>> findAllWithDetailsAndSearch(
+    List<RecipeWithDetailsView> findAllWithDetailsAndSearch(
             @Param("term") String term,
             @Param("limit") int limit,
             @Param("offset") int offset);
@@ -103,6 +108,30 @@ public interface RecetaRepository extends JpaRepository<Receta,Integer> {
         WHERE activo = true
         """, nativeQuery = true)
     CountRecipesAndStatusView countRecipesAndStatus();
+
+    /**Modificar esta estaco actual por reverso, con query para evitar consultar extras, devolve filas afectas*/
+    @Modifying
+    @Query(value = """
+        UPDATE receta 
+        SET estado_receta = (
+            CASE 
+                WHEN estado_receta = 'ACTIVO' THEN 'INACTIVO'::estado_receta_type 
+                ELSE 'ACTIVO'::estado_receta_type 
+            END
+        ) 
+        WHERE id_receta = :idReceta
+        """, nativeQuery = true)
+    int toggleRecipeStatus(@Param("idReceta") Integer idReceta);
+
+
+    /** Metodo para desactivar (borrado lógico) una receta por su ID */
+    @Modifying
+    @Query("""
+   UPDATE Receta r
+   SET r.activoReceta = false
+   WHERE r.idReceta = :idReceta
+   """)
+    int softDeleteRecipeById(@Param("idReceta") Integer idReceta);
 
 
 
