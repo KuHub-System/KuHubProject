@@ -128,6 +128,21 @@ export interface IRecipeWithDetailsCreateDTO {
 }
 
 /**
+ * DTO para actualizar una receta con detalles (Backend)
+ * PUT /v1/receta/update-recipe-with-details
+ */
+export interface IRecipeWithDetailsUpdateDTO {
+  idReceta: number;
+  nombreReceta: string;
+  descripcionReceta?: string;
+  instruccionesReceta?: string;
+  estadoReceta: string;
+  newItems: IRecipeItemCreateDTO[];
+  updateItems: IRecipeItemCreateDTO[];
+  deleteItems: number[];
+}
+
+/**
  * DTO para el detalle de una receta en Paginación (Backend)
  */
 export interface IDetalleRecetaDTO {
@@ -146,7 +161,8 @@ export interface IRecetaPaginedDTO {
   idReceta: number;
   nombreReceta: string;
   descripcionReceta: string;
-  estado: boolean;
+  instruccionesReceta?: string;
+  estadoReceta: 'Activo' | 'Inactivo';
   totalIngredientes: number;
   detalles: IDetalleRecetaDTO[];
 }

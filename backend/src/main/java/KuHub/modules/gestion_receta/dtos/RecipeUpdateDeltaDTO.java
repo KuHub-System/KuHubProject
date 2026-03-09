@@ -1,6 +1,6 @@
 package KuHub.modules.gestion_receta.dtos;
 
-import KuHub.modules.gestion_receta.dtos.respose.RecipeItemCreateDTO;
+import KuHub.modules.gestion_receta.dtos.respose.RecipeItemDTO;
 import KuHub.modules.gestion_receta.entity.Receta;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
@@ -17,7 +17,7 @@ public class RecipeUpdateDeltaDTO {
     private String instrucciones;
     private Receta.EstadoRecetaType estadoReceta;
 
-    private List<RecipeItemCreateDTO> itemsAgregados;
-    private List<RecipeItemCreateDTO> itemsModificados;
+    private List<RecipeItemDTO> itemsAgregados;
+    private List<RecipeItemDTO> itemsModificados;
     private List<Integer> idsItemsEliminados;
 }

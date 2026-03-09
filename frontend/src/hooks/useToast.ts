@@ -70,9 +70,13 @@ export const useConfirm = () => {
     message: string,
     options?: {
       title?: string;
+      subtitle?: string;
       confirmText?: string;
       cancelText?: string;
       confirmColor?: 'default' | 'primary' | 'secondary' | 'success' | 'warning' | 'danger';
+      headerVariant?: 'danger' | 'warning' | 'default';
+      alertTitle?: string;
+      alertMessage?: string;
       requireText?: string;
       requireTextLabel?: string;
       requireTextPlaceholder?: string;
@@ -83,9 +87,13 @@ export const useConfirm = () => {
       showConfirm({
         message,
         title: options?.title || 'Confirmar acción',
+        subtitle: options?.subtitle,
         confirmText: options?.confirmText || 'Confirmar',
         cancelText: options?.cancelText || 'Cancelar',
         confirmColor: options?.confirmColor || 'primary',
+        headerVariant: options?.headerVariant,
+        alertTitle: options?.alertTitle,
+        alertMessage: options?.alertMessage,
         requireText: options?.requireText,
         requireTextLabel: options?.requireTextLabel,
         requireTextPlaceholder: options?.requireTextPlaceholder,
