@@ -19,8 +19,8 @@ public class Asignatura {
     @Column(name = "nombre_asignatura", length = 100, nullable = false)
     private String nombreAsignatura;
 
-    @Column(name = "activo")
-    private Boolean activo ;
+    @Column(name = "activo", nullable = false, columnDefinition = "boolean default true")
+    private Boolean activo = true;
 
     @Column(name = "descripcion", length = 250 )
     private String descripcion;

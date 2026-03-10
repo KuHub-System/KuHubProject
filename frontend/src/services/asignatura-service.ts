@@ -20,6 +20,14 @@ import {
 // INTERFACES PARA RESPUESTAS DEL BACKEND
 // ============================================
 
+interface IAsignaturaPaginadaResponse {
+  content: CourserAnswerDTGOD[];
+  page: number;
+  limit: number;
+  totalPages: number;
+  totalElements: number;
+}
+
 interface CourserAnswerDTGOD {
   idAsignatura: number;
   codAsignatura: string;
@@ -56,8 +64,7 @@ interface BookTImeBlocksRequestDTO {
 interface CourseCreateDTO {
   codAsignatura: string;
   nombreAsignatura: string;
-  idProfesor: number;
-  nombreProfesor: string;
+  idUsuarioGestorAsignatura: number;
   descripcionAsignatura: string;
 }
 
@@ -127,29 +134,26 @@ const transformarAsignatura = (asignatura: CourserAnswerDTGOD): IAsignatura => {
 // ============================================
 
 /**
- * Obtener todas las asignaturas activas con sus secciones
+ * Obtener asignaturas activas paginadas (20 por página)
+ * POST /v1/asignatura/find-all-courses-active-true/{page}
  */
-export const obtenerAsignaturasService = async (): Promise<IAsignatura[]> => {
+export const obtenerAsignaturasService = async (
+  page: number = 1
+): Promise<{ asignaturas: IAsignatura[]; totalPages: number }> => {
   try {
-    const response = await api.get<CourserAnswerDTGOD[]>(
-      '/asignatura/find-all-courses-active-true/'
+    const response = await api.post<IAsignaturaPaginadaResponse>(
+      `/asignatura/find-all-courses-active-true/${page}`
     );
 
-
-    if (!response.data || !Array.isArray(response.data)) {
-      return [];
+    const content = response.data?.content;
+    if (!content || !Array.isArray(content)) {
+      return { asignaturas: [], totalPages: 1 };
     }
 
-    const asignaturas = response.data.map((asignatura, index) => {
-      try {
-        return transformarAsignatura(asignatura);
-      } catch (error) {
-        throw error;
-      }
-    });
-
-    return asignaturas;
-
+    return {
+      asignaturas: content.map(transformarAsignatura),
+      totalPages: response.data.totalPages ?? 1,
+    };
   } catch (error: any) {
     throw new Error(error.response?.data?.message || 'Error al obtener las asignaturas');
   }
@@ -160,7 +164,7 @@ export const obtenerAsignaturasService = async (): Promise<IAsignatura[]> => {
  */
 export const obtenerAsignaturaPorIdService = async (id: string): Promise<IAsignatura | null> => {
   try {
-    const asignaturas = await obtenerAsignaturasService();
+    const { asignaturas } = await obtenerAsignaturasService(1);
     return asignaturas.find(a => a.id === id) || null;
   } catch (error: any) {
     throw new Error(error.response?.data?.message || 'Error al obtener la asignatura');
@@ -169,33 +173,20 @@ export const obtenerAsignaturaPorIdService = async (id: string): Promise<IAsigna
 
 /**
  * Crear nueva asignatura
+ * POST /v1/asignatura/create-course
+ * Retorna true si fue exitoso
  */
-export const crearAsignaturaService = async (data: IAsignaturaCreacion): Promise<IAsignatura> => {
+export const crearAsignaturaService = async (data: IAsignaturaCreacion): Promise<boolean> => {
   try {
     const payload: CourseCreateDTO = {
       codAsignatura: data.codigo,
       nombreAsignatura: data.nombre,
-      idProfesor: parseInt(data.profesorACargoId),
-      nombreProfesor: '', // Se llena automáticamente en el backend
-      descripcionAsignatura: data.descripcion
+      idUsuarioGestorAsignatura: parseInt(data.profesorACargoId),
+      descripcionAsignatura: data.descripcion,
     };
 
-    const response = await api.post<CourseCreateDTO>(
-      '/asignatura/create-course/',
-      payload
-    );
-
-    // Recargar la lista completa para obtener el objeto completo
-    const asignaturas = await obtenerAsignaturasService();
-    const nuevaAsignatura = asignaturas.find(
-      a => a.codigo === response.data.codAsignatura
-    );
-
-    if (!nuevaAsignatura) {
-      throw new Error('No se pudo encontrar la asignatura creada');
-    }
-
-    return nuevaAsignatura;
+    await api.post<boolean>('/asignatura/create-course', payload);
+    return true;
   } catch (error: any) {
     throw new Error(error.response?.data?.message || 'Error al crear la asignatura');
   }

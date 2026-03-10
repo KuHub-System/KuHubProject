@@ -1,4 +1,4 @@
-package KuHub.modules.gestion_academica.dtos.dtomodel;
+package KuHub.modules.gestion_academica.dtos.response;
 
 import jakarta.persistence.Column;
 import jakarta.validation.constraints.NotEmpty;

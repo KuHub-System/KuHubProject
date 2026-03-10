@@ -5,6 +5,7 @@ import KuHub.modules.gestion_academica.exceptions.GestionAcademicaException;
 import KuHub.modules.gestion_academica.repository.SalaRepository;
 import KuHub.utils.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,11 +17,30 @@ public class SalaServiceImp implements SalaService {
     @Autowired
     private SalaRepository salaRepository;
 
+
+    @Transactional(readOnly = true)
+    @Override
+    public List<Sala> findAllActiveRoomsTrue (){
+        return salaRepository.findAllByActivoTrue();
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
     @Transactional(readOnly = true)
     @Override
     public Sala findById(Integer id) {
         return salaRepository.findById(id).orElseThrow(
-                () -> new GestionAcademicaException("La sala con el id: " + id + " no existe")
+                () -> new GestionAcademicaException("La sala con el id: " + id + " no existe", HttpStatus.NOT_FOUND)
         );
     }
 
@@ -30,11 +50,7 @@ public class SalaServiceImp implements SalaService {
         return salaRepository.findAll();
     }
 
-    @Transactional(readOnly = true)
-    @Override
-    public List<Sala> findAllActiveRoomsTrue (){
-        return salaRepository.findAllByActivoTrue();
-    }
+
 
     @Transactional(readOnly = true)
     @Override
@@ -59,7 +75,7 @@ public class SalaServiceImp implements SalaService {
 
         // Validación: si codSala no es null -> revisa duplicado
         if (parsearCod != null && salaRepository.existsByCodSala(parsearCod)) {
-            throw new GestionAcademicaException("Ya existe una sala con el código: " + sala.getCodSala());
+            throw new GestionAcademicaException("Ya existe una sala con el código: " + sala.getCodSala(), HttpStatus.NOT_FOUND);
         }
 
         // Validación combinada solo si ambas no son null
@@ -68,7 +84,7 @@ public class SalaServiceImp implements SalaService {
                 salaRepository.existsByNombreSalaAndCodSala(parsearNombre, parsearCod)) {
 
             throw new GestionAcademicaException("Ya existe una sala con el nombre: "
-                    + sala.getNombreSala() + " y el código: " + sala.getCodSala());
+                    + sala.getNombreSala() + " y el código: " + sala.getCodSala(), HttpStatus.NOT_FOUND);
         }
 
         sala.setNombreSala(parsearNombre);
@@ -85,7 +101,7 @@ public class SalaServiceImp implements SalaService {
 
         // Buscar la sala existente
         Sala salaExistente = salaRepository.findById(s.getIdSala())
-                .orElseThrow(() -> new GestionAcademicaException("La sala con id: " + s.getIdSala() + " no existe"));
+                .orElseThrow(() -> new GestionAcademicaException("La sala con id: " + s.getIdSala() + " no existe" , HttpStatus.NOT_FOUND));
 
         // Normalizar código solo si no es null
         String parsearCod = s.getCodSala() != null
@@ -100,14 +116,14 @@ public class SalaServiceImp implements SalaService {
         // Validación de código duplicado (ignorando la sala actual)
         if (parsearCod != null) {
             if (salaRepository.existsByCodSalaIgnoreCaseAndIdSalaNot(parsearCod, s.getIdSala())) {
-                throw new GestionAcademicaException("Ya existe otra sala con el código: " + s.getCodSala());
+                throw new GestionAcademicaException("Ya existe otra sala con el código: " + s.getCodSala(), HttpStatus.NOT_FOUND);
             }
         }
 
         // Validación de nombre duplicado (ignorando la sala actual)
         if (parsearNombre != null) {
             if (salaRepository.existsByNombreSalaIgnoreCaseAndIdSalaNot(parsearNombre, s.getIdSala())) {
-                throw new GestionAcademicaException("Ya existe otra sala con el nombre: " + s.getNombreSala());
+                throw new GestionAcademicaException("Ya existe otra sala con el nombre: " + s.getNombreSala(), HttpStatus.NOT_FOUND);
             }
         }
 

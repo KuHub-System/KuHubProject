@@ -2,20 +2,17 @@ package KuHub.modules.gestion_solicitud.service;
 
 import KuHub.modules.gestion_academica.dtos.projection.CourseSolicitationSelectView;
 import KuHub.modules.gestion_academica.repository.AsignaturaRepository;
-import KuHub.modules.gestion_receta.entity.DetalleReceta;
 import KuHub.modules.gestion_receta.services.DetalleRecetaService;
 import KuHub.modules.gestion_solicitud.dtos.*;
 import KuHub.modules.gestion_solicitud.dtos.proyeccion.*;
-import KuHub.modules.gestion_solicitud.entity.DetalleSolicitud;
 import KuHub.modules.gestion_solicitud.entity.MotivoRechazoSolicitud;
 import KuHub.modules.gestion_solicitud.entity.Solicitud;
 import KuHub.modules.gestion_solicitud.exception.GestionSolicitudException;
 import KuHub.modules.gestion_solicitud.repository.MotivoRechazoRepository;
 import KuHub.modules.gestion_solicitud.repository.SolicitudRepository;
 import KuHub.modules.gestion_usuario.dtos.UserIdAndCompleteNameDTO;
-import KuHub.modules.gestion_usuario.dtos.record.UserIdNameDTO;
 import KuHub.modules.gestion_usuario.service.UsuarioService;
-import KuHub.modules.semanas.repository.SemanaRepository;
+import KuHub.modules.gestion_academica.repository.SemanaRepository;
 import KuHub.utils.StringUtils;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -23,12 +20,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Service
 public class SolicitudServiceImp implements SolicitudService{

@@ -39,7 +39,8 @@ export const ROLES_SISTEMA: IRole[] = [
       'gestion-recetas',
       'ramos-admin',
       'gestion-roles',
-      'gestion-usuarios'
+      'gestion-usuarios',
+      'admin-sistema'
     ]
   },
   {
@@ -118,7 +119,8 @@ export const PAGINAS_DISPONIBLES = [
   { id: 'gestion-recetas', nombre: 'Gestión de Recetas', descripcion: 'Administración de recetas' },
   { id: 'ramos-admin', nombre: 'Ramos Admin', descripcion: 'Administración de asignaturas' },
   { id: 'gestion-roles', nombre: 'Gestión de Roles', descripcion: 'Administración de roles y permisos' },
-  { id: 'gestion-usuarios', nombre: 'Gestión de Usuarios', descripcion: 'Administración de usuarios del sistema' }
+  { id: 'gestion-usuarios', nombre: 'Gestión de Usuarios', descripcion: 'Administración de usuarios del sistema' },
+  { id: 'admin-sistema', nombre: 'Administración del Sistema', descripcion: 'Centro de control: horarios, semanas y salas académicas' }
 ];
 
 /**

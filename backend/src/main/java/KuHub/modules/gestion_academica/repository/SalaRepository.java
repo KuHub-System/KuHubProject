@@ -11,9 +11,15 @@ import java.util.Optional;
 @Repository
 public interface SalaRepository extends JpaRepository <Sala, Integer> {
 
+
+    List<Sala> findAllByActivoTrue();
+
+
+
+
     Boolean existsByCodSala(String codSala);
     Boolean existsByNombreSalaAndCodSala(String nombreSala, String codSala);
-    List<Sala> findAllByActivoTrue();
+
     Optional<Sala> findByCodSalaIgnoreCase(String codSala);
     Boolean existsByCodSalaIgnoreCaseAndIdSalaNot(String codSala, Integer idSala);
     Boolean existsByNombreSalaIgnoreCaseAndIdSalaNot(String nombreSala, Integer idSala);
