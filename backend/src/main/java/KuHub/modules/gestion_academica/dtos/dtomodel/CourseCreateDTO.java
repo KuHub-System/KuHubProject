@@ -1,22 +1,28 @@
 package KuHub.modules.gestion_academica.dtos.dtomodel;
 
 import jakarta.persistence.Column;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import lombok.*;
 
-@Getter@Setter@NoArgsConstructor@AllArgsConstructor@ToString
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class CourseCreateDTO {
 
-    @NotEmpty
-    @Column( length = 50)
+    @NotBlank(message = "El código de asignatura no puede estar vacío")
+    @Size(max = 50, message = "El código no puede superar los 50 caracteres")
     private String codAsignatura;
-    @NotEmpty
-    @Column( length = 100)
+
+    @NotBlank(message = "El nombre de la asignatura no puede estar vacío")
+    @Size(max = 100, message = "El nombre no puede superar los 100 caracteres")
     private String nombreAsignatura;
-    @NotNull
-    private Integer idProfesor;
-    @NotEmpty
-    private String nombreProfesor;
+
+    @NotNull(message = "Debe asignar un profesor gestor a la asignatura")
+    private Integer idUsuarioGestorAsignatura;
+
+    @Size(max = 250, message = "La descripción no puede superar los 250 caracteres")
     private String descripcionAsignatura;
 }

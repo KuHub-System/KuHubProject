@@ -1,4 +1,4 @@
-package KuHub.modules.gestion_academica.dtos.dtomodel;
+package KuHub.modules.gestion_academica.dtos.response;
 
 
 import KuHub.modules.gestion_academica.entity.Seccion;
@@ -32,6 +32,6 @@ public class SectionAnswerUpdateDTO {
     private Integer cantInscritos;
     @NotEmpty
     @Valid
-    private List<BookTImeBlocksRequestDTO> bloquesHorarios;
+    private List<BookTImeBlocksDTO> bloquesHorarios;
     private Boolean crearSala;
 }

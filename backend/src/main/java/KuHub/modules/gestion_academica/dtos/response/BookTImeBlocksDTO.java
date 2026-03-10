@@ -1,18 +1,16 @@
-package KuHub.modules.gestion_academica.dtos.dtomodel;
+package KuHub.modules.gestion_academica.dtos.response;
 
 import KuHub.modules.gestion_academica.entity.ReservaSala;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
 
-import java.time.LocalTime;
-
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @ToString
-public class BookTImeBlocksRequestDTO {
+public class BookTImeBlocksDTO {
     @NotNull
     private Integer numeroBloque;
     @NotNull

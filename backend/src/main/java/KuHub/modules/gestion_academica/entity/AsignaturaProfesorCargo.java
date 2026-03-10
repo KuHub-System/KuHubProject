@@ -40,4 +40,26 @@ public class AsignaturaProfesorCargo {
     @Column(name = "fecha_asignacion",
             columnDefinition = "TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
     private LocalDateTime fechaAsignacion;
+
+    /**
+     * Vincula una Asignatura a esta relación utilizando solo su ID.
+     * @param id Identificador de la asignatura.
+     */
+    public void setIdAsignatura(Integer id) {
+        if (id != null) {
+            this.asignatura = new Asignatura();
+            this.asignatura.setIdAsignatura(id);
+        }
+    }
+
+    /**
+     * Vincula un Usuario (Profesor) a esta relación utilizando solo su ID.
+     * @param id Identificador del usuario.
+     */
+    public void setIdUsuario(Integer id) {
+        if (id != null) {
+            this.usuario = new Usuario();
+            this.usuario.setIdUsuario(id);
+        }
+    }
 }

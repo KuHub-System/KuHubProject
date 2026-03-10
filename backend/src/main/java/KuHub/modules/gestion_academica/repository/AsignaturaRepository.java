@@ -11,73 +11,7 @@ import java.util.List;
 
 @Repository
 public interface AsignaturaRepository extends JpaRepository <Asignatura, Integer> {
-    Boolean existsByIdAsignatura(Integer id);
-    Boolean existsByIdAsignaturaAndActivoTrue(Integer id);
 
-    Boolean existsByNombreAsignaturaAndActivoIsTrue(String nombreAsignatura);
-    Boolean existsByNombreAsignaturaAndCodAsignaturaAndActivoIsTrue(String nombreAsignatura, String codAsignatura);
-    List<Asignatura> findAllByActivoTrue();
-
-    @Query(value = """
-    SELECT 
-        ID_ASIGNATURA,
-        NOMBRE_ASIGNATURA
-    FROM ASIGNATURA
-    WHERE ACTIVO = TRUE
-    """, nativeQuery = true)
-    List<CourseSolicitationSelectView> findAllActiveForSelector();
-
-    /**
-     * Verifica si existe alguna asignatura activa cuyo código coincida con el dado,
-     * ignorando mayúsculas/minúsculas, acentos, espacios múltiples y caracteres especiales.
-     * Solo considera asignaturas con activo = TRUE.
-     *
-     * @param codAsignatura Código de asignatura a validar.
-     * @return true si existe una coincidencia, false en caso contrario.
-     */
-    @Query(
-            value = """
-        SELECT COUNT(*) > 0
-        FROM asignatura a
-        WHERE a.activo = TRUE
-          AND regexp_replace(
-                  public.unaccent(a.cod_asignatura::text),
-                  '[^a-zA-Z0-9]+',
-                  '',
-                  'g'
-              )
-          ILIKE regexp_replace(
-                  public.unaccent(:codAsignatura),
-                  '[^a-zA-Z0-9]+',
-                  '',
-                  'g'
-              )
-    """,
-            nativeQuery = true
-    )
-    Boolean existsByCodAsignaturaAndActivoIsTrueIgnoreAccents
-            (@Param("codAsignatura") String codAsignatura);
-
-    /**
-     * Obtiene todas las asignaturas activas junto con su profesor asignado.
-     *
-     * Esta consulta realiza un JOIN explícito entre la entidad Asignatura y la
-     * entidad AsignaturaProfesorCargo para recuperar, en una sola operación,
-     * tanto la información de la asignatura como el usuario asociado como profesor.
-     *
-     * Retorna una lista de arreglos de objetos (Object[]) donde:
-     *   - [0] = Asignatura
-     *   - [1] = Usuario (profesor a cargo)
-     *
-     * Se incluyen únicamente las asignaturas cuyo campo "activo" es TRUE.
-     */
-    @Query("""
-    SELECT a, apc.usuario
-    FROM Asignatura a
-    JOIN AsignaturaProfesorCargo apc ON apc.asignatura.idAsignatura = a.idAsignatura
-    WHERE a.activo = true
-""")
-    List<Object[]> findAllAsignaturasWithProfesor();
 
 
     @Query(value = """
@@ -145,8 +79,105 @@ public interface AsignaturaRepository extends JpaRepository <Asignatura, Integer
             u.app_materno,
             a.descripcion
         ORDER BY a.id_asignatura
+        LIMIT :limit OFFSET :offset
         """, nativeQuery = true)
-    List<Object[]> findAllCourserActiveTrueRaw();
+    List<Object[]> findAllCourserActiveTrueRaw(
+       @Param("limit") int limit,
+       @Param("offset") int offset
+    );
+
+    @Query(value = "SELECT COUNT(*) FROM asignatura WHERE activo = TRUE", nativeQuery = true)
+    long countActiveAsignaturas();
+
+
+    /**Validaciones boleanas*/
+    boolean existsByNombreAsignaturaAndActivoIsTrue(String nombreAsignatura);
+
+
+    /**
+     * Verifica si existe alguna asignatura activa cuyo código coincida con el dado,
+     * ignorando mayúsculas/minúsculas, acentos, espacios múltiples y caracteres especiales.
+     * Solo considera asignaturas con activo = TRUE.
+     *
+     * @param codAsignatura Código de asignatura a validar.
+     * @return true si existe una coincidencia, false en caso contrario.
+     */
+    @Query(
+            value = """
+        SELECT COUNT(*) > 0
+        FROM asignatura a
+        WHERE a.activo = TRUE
+          AND regexp_replace(
+                  public.unaccent(a.cod_asignatura::text),
+                  '[^a-zA-Z0-9]+',
+                  '',
+                  'g'
+              )
+          ILIKE regexp_replace(
+                  public.unaccent(:codAsignatura),
+                  '[^a-zA-Z0-9]+',
+                  '',
+                  'g'
+              )
+    """,
+            nativeQuery = true
+    )
+    Boolean existsByCodAsignaturaAndActivoIsTrueIgnoreAccents
+    (@Param("codAsignatura") String codAsignatura);
+
+
+
+
+
+
+
+
+
+
+
+
+
+    Boolean existsByIdAsignatura(Integer id);
+    Boolean existsByIdAsignaturaAndActivoTrue(Integer id);
+
+
+    Boolean existsByNombreAsignaturaAndCodAsignaturaAndActivoIsTrue(String nombreAsignatura, String codAsignatura);
+    List<Asignatura> findAllByActivoTrue();
+
+    @Query(value = """
+    SELECT 
+        ID_ASIGNATURA,
+        NOMBRE_ASIGNATURA
+    FROM ASIGNATURA
+    WHERE ACTIVO = TRUE
+    """, nativeQuery = true)
+    List<CourseSolicitationSelectView> findAllActiveForSelector();
+
+
+
+    /**
+     * Obtiene todas las asignaturas activas junto con su profesor asignado.
+     *
+     * Esta consulta realiza un JOIN explícito entre la entidad Asignatura y la
+     * entidad AsignaturaProfesorCargo para recuperar, en una sola operación,
+     * tanto la información de la asignatura como el usuario asociado como profesor.
+     *
+     * Retorna una lista de arreglos de objetos (Object[]) donde:
+     *   - [0] = Asignatura
+     *   - [1] = Usuario (profesor a cargo)
+     *
+     * Se incluyen únicamente las asignaturas cuyo campo "activo" es TRUE.
+     */
+    @Query("""
+    SELECT a, apc.usuario
+    FROM Asignatura a
+    JOIN AsignaturaProfesorCargo apc ON apc.asignatura.idAsignatura = a.idAsignatura
+    WHERE a.activo = true
+""")
+    List<Object[]> findAllAsignaturasWithProfesor();
+
+
+
 
     @Query(value = "SELECT a.id_asignatura, a.nombre_asignatura, " +
                     "CAST(JSON_AGG(JSON_BUILD_OBJECT(" +

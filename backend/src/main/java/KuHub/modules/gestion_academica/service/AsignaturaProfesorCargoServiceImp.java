@@ -6,6 +6,7 @@ import KuHub.modules.gestion_academica.repository.AsignaturaProfesorCargoReposit
 import KuHub.modules.gestion_usuario.entity.Usuario;
 import KuHub.modules.gestion_usuario.service.UsuarioService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,7 +34,8 @@ public class AsignaturaProfesorCargoServiceImp implements AsignaturaProfesorCarg
 
         AsignaturaProfesorCargo asignaturaProfesorCargo = asignaturaProfesorCargoRepository
                 .findByUsuario_ActivoTrueAndAsignatura_IdAsignatura(idAsignatura).orElseThrow(
-                        ()->new GestionAcademicaException("no existe el usuario registrado para la asignatura")
+                        ()->new GestionAcademicaException("no existe el usuario registrado para la asignatura"
+                        , HttpStatus.NOT_FOUND)
                 );
         return usuarioService.obtenerPorIdEntidad(asignaturaProfesorCargo.getUsuario().getIdUsuario());
 
@@ -43,7 +45,8 @@ public class AsignaturaProfesorCargoServiceImp implements AsignaturaProfesorCarg
     @Override
     public AsignaturaProfesorCargo findByAsignaturaProfesorCargoByIdAsignatura(Integer idAsignatura){
         return asignaturaProfesorCargoRepository.findByAsignatura_IdAsignatura(idAsignatura).orElseThrow(
-                ()-> new GestionAcademicaException("No existe la asignatura con el id: " + idAsignatura)
+                ()-> new GestionAcademicaException("No existe la asignatura con el id: " + idAsignatura
+                ,HttpStatus.NOT_FOUND)
         );
     }
 

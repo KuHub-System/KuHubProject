@@ -16,6 +16,29 @@ public class BloqueHorarioController {
     @Autowired
     private BloqueHorarioService bloqueHorarioService;
 
+
+    @GetMapping( "/find-all")
+    public ResponseEntity<List<BloqueHorario>> findAll(){
+        return ResponseEntity
+                .status(200)
+                .body(bloqueHorarioService.findAll());
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     @GetMapping("/find-by-id/{id}")
     public ResponseEntity<BloqueHorario> findById(
             @PathVariable Integer id
@@ -26,12 +49,7 @@ public class BloqueHorarioController {
     }
 
 
-    @GetMapping( "/find-all")
-    public ResponseEntity<List<BloqueHorario>> findAll(){
-        return ResponseEntity
-                .status(200)
-                .body(bloqueHorarioService.findAll());
-    }
+
 
     @GetMapping( "/filter-by-numbers-blocks/{numbersBlocksFilter}")
     public ResponseEntity<List<BloqueHorario>> filterBlocksByNumbersBlocks(

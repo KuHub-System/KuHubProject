@@ -1,7 +1,7 @@
 package KuHub.modules.gestion_academica.service;
 
 import KuHub.modules.gestion_academica.dtos.dtoentity.SeccionEntityResponseDTO;
-import KuHub.modules.gestion_academica.dtos.dtomodel.SectionAnswerUpdateDTO;
+import KuHub.modules.gestion_academica.dtos.response.SectionAnswerUpdateDTO;
 import KuHub.modules.gestion_academica.dtos.dtomodel.SectionCreateDTO;
 import KuHub.modules.gestion_academica.entity.Seccion;
 

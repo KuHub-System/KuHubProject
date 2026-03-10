@@ -1,6 +1,7 @@
 package KuHub.modules.gestion_usuario.controller;
 
 import KuHub.modules.gestion_usuario.dtos.*;
+import KuHub.modules.gestion_usuario.dtos.proyection.UsersToManageCourseView;
 import KuHub.modules.gestion_usuario.dtos.request.CreateUser;
 import KuHub.modules.gestion_usuario.dtos.request.SearchUserRequest;
 import KuHub.modules.gestion_usuario.dtos.request.UpdateUser;
@@ -28,6 +29,16 @@ public class UsuarioController {
     @Autowired
     private UsuarioService usuarioService;
 
+    /**
+     * Endpoint para listar usuarios en option de crear nueva asignatura
+     * ✅ En uso: Endpoint consumido por el frontend.
+     */
+    @GetMapping( "/users-to-manager-course")
+    public ResponseEntity<List<UsersToManageCourseView>> usersToManageCourse(){
+        return ResponseEntity
+                .status(200)
+                .body(usuarioService.usersToManageCourse());
+    }
 
     /**
      * Endpoint para listar usuarios con el formato requerido por el frontend.
@@ -172,11 +183,7 @@ public class UsuarioController {
 
     }
 
-    @GetMapping( "/profesores-a-cargo/")
-    public ResponseEntity<List<UserIdAndCompleteNameDTO>> obtenerTodosProfesorACargo(){
-        List<UserIdAndCompleteNameDTO> profes = usuarioService.obtenerTodosProfesorACargo();
-        return ResponseEntity.ok(profes);
-    }
+
 
     /**
      * POST /api/v1/usuarios

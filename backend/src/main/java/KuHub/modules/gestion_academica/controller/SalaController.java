@@ -16,6 +16,32 @@ public class SalaController {
     @Autowired
     private SalaService salaService;
 
+    /** Listar salas activas usado en el frontend
+     *  ✅ En uso: Endpoint consumido por el frontend.*/
+    @GetMapping( "/find-all-active")
+    public ResponseEntity<List<Sala>> findAllActiveRoomsTrue(){
+        return ResponseEntity
+                .status(200)
+                .body(salaService.findAllActiveRoomsTrue());
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     @GetMapping( "/find-by-id/{id}")
     public ResponseEntity<Sala> findById(
             @PathVariable Integer id
@@ -25,19 +51,7 @@ public class SalaController {
                 .body(salaService.findById(id));
     }
 
-    @GetMapping( "/find-all/")
-    public ResponseEntity<List<Sala>> findAll(){
-        return ResponseEntity
-                .status(200)
-                .body(salaService.findAll());
-    }
 
-    @GetMapping( "/find-all-active-rooms-true/")
-    public ResponseEntity<List<Sala>> findAllActiveRoomsTrue (){
-        return ResponseEntity
-                .status(200)
-                .body(salaService.findAllActiveRoomsTrue());
-    }
 
     @PostMapping("/create-sala/")
     public ResponseEntity<Sala> save(@RequestBody Sala sala){

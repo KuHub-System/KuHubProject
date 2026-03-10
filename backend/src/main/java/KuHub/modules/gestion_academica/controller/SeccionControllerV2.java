@@ -2,7 +2,7 @@ package KuHub.modules.gestion_academica.controller;
 
 import KuHub.modules.gestion_academica.assemblers.SeccionModelAssembler;
 import KuHub.modules.gestion_academica.dtos.dtoentity.SeccionEntityResponseDTO;
-import KuHub.modules.gestion_academica.dtos.dtomodel.SectionAnswerUpdateDTO;
+import KuHub.modules.gestion_academica.dtos.response.SectionAnswerUpdateDTO;
 import KuHub.modules.gestion_academica.dtos.dtomodel.SectionCreateDTO;
 import KuHub.modules.gestion_academica.entity.Seccion;
 import KuHub.modules.gestion_academica.exceptions.GestionAcademicaException;
