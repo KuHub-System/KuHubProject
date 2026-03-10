@@ -1,5 +1,4 @@
 import React from 'react';
-import { useParams, useHistory, useLocation } from 'react-router-dom';
 import {
   Table,
   TableHeader,
@@ -8,467 +7,377 @@ import {
   TableRow,
   TableCell,
   Button,
-  Pagination,
+  Input,
+  Select,
+  SelectItem,
+  useDisclosure,
+  Tooltip,
+  Spinner,
   Chip,
-  Card,
-  CardBody,
   Modal,
   ModalContent,
   ModalHeader,
   ModalBody,
   ModalFooter,
-  Input,
-  Select,
-  SelectItem,
-  useDisclosure,
-  Autocomplete,
-  AutocompleteItem
+  DateRangePicker
 } from '@heroui/react';
 import { Icon } from '@iconify/react';
-import { motion } from 'framer-motion';
+import { CalendarDate, today, getLocalTimeZone } from '@internationalized/date';
 import {
-  obtenerProductoPorIdService,
-  obtenerMovimientosFiltradosService,
-  crearMovimientoService,
-  obtenerProductosService
-} from '../services/producto-service';
-import { IProducto, IMovimientoProducto } from '../types/producto.types';
+  findMovimientosConFiltros,
+  IMotionAnswer,
+  IMotionFilterRequest
+} from '../services/movimiento-service';
 
-/**
- * Interfaz para los parámetros de la URL.
- */
-interface MovimientosParams {
-  id?: string;
-}
+// ─── Helpers ────────────────────────────────────────────────────────────────
 
-/**
- * Hook personalizado para obtener query params
- */
-function useQuery() {
-  const { search } = useLocation();
-  return React.useMemo(() => new URLSearchParams(search), [search]);
-}
+const renderTipoMovimiento = (tipo: string) => {
+  switch (tipo) {
+    case 'ENTRADA':
+      return <Chip color="success" size="sm" variant="flat" startContent={<Icon icon="lucide:arrow-down-circle" width={13} />}>Entrada</Chip>;
+    case 'SALIDA_INVENTARIO':
+      return <Chip color="primary" size="sm" variant="flat" startContent={<Icon icon="lucide:arrow-up-circle" width={13} />}>Salida Inv.</Chip>;
+    case 'SALIDA_BODEGA':
+      return <Chip color="primary" size="sm" variant="flat" startContent={<Icon icon="lucide:arrow-up-circle" width={13} />}>Salida Bod.</Chip>;
+    case 'TRASLADO':
+      return <Chip color="warning" size="sm" variant="flat" startContent={<Icon icon="lucide:truck" width={13} />}>Traslado</Chip>;
+    case 'MERMA':
+      return <Chip color="danger" size="sm" variant="flat" startContent={<Icon icon="lucide:alert-circle" width={13} />}>Merma</Chip>;
+    case 'AJUSTE':
+      return <Chip color="secondary" size="sm" variant="flat" startContent={<Icon icon="lucide:sliders-horizontal" width={13} />}>Ajuste</Chip>;
+    case 'DEVOLUCION':
+      return <Chip color="default" size="sm" variant="flat" startContent={<Icon icon="lucide:undo-2" width={13} />}>Devolución</Chip>;
+    default:
+      return <Chip size="sm" variant="flat">{tipo}</Chip>;
+  }
+};
 
-/**
- * Página de movimientos de producto.
- * Muestra el historial de movimientos con filtros avanzados.
- */
+const formatearFecha = (fechaISO: string) => {
+  if (!fechaISO) return '-';
+  const fecha = new Date(fechaISO);
+  return fecha.toLocaleString('es-CL', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+};
+
+// ─── Page ────────────────────────────────────────────────────────────────────
+
 const MovimientosProductoPage: React.FC = () => {
-  const { id } = useParams<MovimientosParams>();
-  const history = useHistory();
-  const query = useQuery();
-  const queryProductoId = query.get('productoId');
-
   const { isOpen, onOpen, onOpenChange } = useDisclosure();
 
-  // Estado de datos
-  const [productos, setProductos] = React.useState<IProducto[]>([]);
-  const [movimientos, setMovimientos] = React.useState<IMovimientoProducto[]>([]);
-  const [totalMovimientos, setTotalMovimientos] = React.useState<number>(0);
-  const [productoActual, setProductoActual] = React.useState<IProducto | null>(null);
+  // Data state
+  const [movimientos, setMovimientos] = React.useState<IMotionAnswer[]>([]);
+  const [isLoading, setIsLoading] = React.useState(false);
 
-  // Estado de filtros
-  const [filtroProducto, setFiltroProducto] = React.useState<string | null>(id || queryProductoId || 'todos');
-  const [filtroTipo, setFiltroTipo] = React.useState<string>('todos');
-  const [filtroOrden, setFiltroOrden] = React.useState<'reciente' | 'antiguo' | 'cantidad_asc' | 'cantidad_desc'>('reciente');
-  const [filtroFecha, setFiltroFecha] = React.useState<string>('');
+  // Refs to avoid stale closures in scroll handler
+  const nextPageRef = React.useRef<number>(1);
+  const isLoadingMoreRef = React.useRef<boolean>(false);
+  const totalPagesRef = React.useRef<number>(1);
 
-  const [currentPage, setCurrentPage] = React.useState<number>(1);
-  const [isLoading, setIsLoading] = React.useState<boolean>(true);
-  const [isLoadingMovimientos, setIsLoadingMovimientos] = React.useState<boolean>(true);
+  // Filter state
+  const [nombreProducto, setNombreProducto] = React.useState('');
+  const [nombreResponsable, setNombreResponsable] = React.useState('');
+  const [tipoMovimiento, setTipoMovimiento] = React.useState<IMotionFilterRequest['tipoMovimiento']>('TODOS');
+  const [orden, setOrden] = React.useState<IMotionFilterRequest['orden']>('MAS_RECIENTES');
+  const [dateRangeValue, setDateRangeValue] = React.useState<{ start: CalendarDate; end: CalendarDate } | null>(null);
 
-  const rowsPerPage = 10;
+  // Debounced request
+  const [debouncedRequest, setDebouncedRequest] = React.useState<IMotionFilterRequest | null>(null);
 
-  /**
-   * Carga la lista de productos para el filtro
-   */
+  // Build debounced request on filter change
   React.useEffect(() => {
-    const cargarProductos = async () => {
-      try {
-        const data = await obtenerProductosService();
-        setProductos(data);
+    const timer = setTimeout(() => {
+      setDebouncedRequest({
+        page: 1,
+        nombreProducto,
+        nombreResponsable,
+        tipoMovimiento,
+        orden,
+        fechaInicio: dateRangeValue
+          ? `${dateRangeValue.start.year}-${String(dateRangeValue.start.month).padStart(2, '0')}-${String(dateRangeValue.start.day).padStart(2, '0')}`
+          : null,
+        fechaFin: dateRangeValue
+          ? `${dateRangeValue.end.year}-${String(dateRangeValue.end.month).padStart(2, '0')}-${String(dateRangeValue.end.day).padStart(2, '0')}`
+          : null
+      });
+    }, 3000);
+    return () => clearTimeout(timer);
+  }, [nombreProducto, nombreResponsable, tipoMovimiento, orden, dateRangeValue]);
 
-        // Si hay un ID en la URL, buscamos ese producto para mostrar su info
-        const targetId = id || queryProductoId;
-        if (targetId) {
-          const prod = data.find(p => p.id === targetId);
-          if (prod) setProductoActual(prod);
-          setFiltroProducto(targetId);
-        }
-      } catch (error) {
-        console.error('Error al cargar productos:', error);
-      }
-    };
-    cargarProductos();
-  }, [id, queryProductoId]);
-
-  /**
-   * Carga los movimientos basado en filtros
-   */
+  // Load first page when debounced request changes
   React.useEffect(() => {
-    const cargarMovimientos = async () => {
+    if (!debouncedRequest) return;
+
+    const cargar = async () => {
       try {
-        setIsLoadingMovimientos(true);
-
-        const { movimientos, total } = await obtenerMovimientosFiltradosService(
-          {
-            productoId: filtroProducto === 'todos' ? undefined : filtroProducto || undefined,
-            tipo: filtroTipo === 'todos' ? undefined : filtroTipo as any,
-            orden: filtroOrden,
-            fechaInicio: filtroFecha || undefined,
-            fechaFin: filtroFecha || undefined
-          },
-          currentPage,
-          rowsPerPage
-        );
-
-        setMovimientos(movimientos);
-        setTotalMovimientos(total);
-      } catch (error) {
-        console.error('Error al cargar movimientos:', error);
+        setIsLoading(true);
+        const res = await findMovimientosConFiltros({ ...debouncedRequest, page: 1 });
+        setMovimientos(res.content);
+        totalPagesRef.current = res.pagination.totalPages;
+        nextPageRef.current = 2;
+      } catch (err) {
+        console.error('Error al cargar movimientos:', err);
       } finally {
-        setIsLoadingMovimientos(false);
         setIsLoading(false);
+        isLoadingMoreRef.current = false;
       }
     };
 
-    cargarMovimientos();
-  }, [filtroProducto, filtroTipo, filtroOrden, filtroFecha, currentPage]);
+    cargar();
+  }, [debouncedRequest]);
 
-  /**
-   * Actualiza el producto actual cuando cambia el filtro de producto
-   */
+  // Infinite scroll: load more pages
+  const cargarMasMovimientos = React.useCallback(async () => {
+    if (!debouncedRequest) return;
+    if (isLoadingMoreRef.current) return;
+    if (nextPageRef.current > totalPagesRef.current) return;
+
+    isLoadingMoreRef.current = true;
+    try {
+      const res = await findMovimientosConFiltros({
+        ...debouncedRequest,
+        page: nextPageRef.current
+      });
+      setMovimientos(prev => [...prev, ...res.content]);
+      nextPageRef.current += 1;
+    } catch (err) {
+      console.error('Error al cargar más movimientos:', err);
+    } finally {
+      isLoadingMoreRef.current = false;
+    }
+  }, [debouncedRequest]);
+
+  // Scroll listener
   React.useEffect(() => {
-    if (filtroProducto && filtroProducto !== 'todos') {
-      const prod = productos.find(p => p.id === filtroProducto);
-      setProductoActual(prod || null);
-    } else {
-      setProductoActual(null);
-    }
-  }, [filtroProducto, productos]);
+    const handleScroll = () => {
+      const scrollY = window.scrollY;
+      const windowHeight = window.innerHeight;
+      const fullHeight = document.documentElement.scrollHeight;
+      if (scrollY + windowHeight > fullHeight - 500) {
+        cargarMasMovimientos();
+      }
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [cargarMasMovimientos]);
 
-  /**
-   * Vuelve a la página de inventario.
-   */
-  const volverAInventario = () => {
-    history.push('/inventario');
-  };
-
-  const renderTipoMovimiento = (tipo: string) => {
-    switch (tipo) {
-      case 'Entrada': return <Chip color="success" size="sm" variant="flat">Entrada</Chip>;
-      case 'Salida': return <Chip color="primary" size="sm" variant="flat">Salida</Chip>;
-      case 'Merma': return <Chip color="danger" size="sm" variant="flat">Merma</Chip>;
-      default: return <Chip size="sm">{tipo}</Chip>;
-    }
-  };
-
-  const formatearFecha = (fechaISO: string) => {
-    if (!fechaISO) return '-';
-    const fecha = new Date(fechaISO);
-    return fecha.toLocaleDateString('es-CL', {
-      day: '2-digit', month: '2-digit', year: 'numeric',
-      hour: '2-digit', minute: '2-digit'
+  // Trigger initial load on mount
+  React.useEffect(() => {
+    setDebouncedRequest({
+      page: 1,
+      nombreProducto: '',
+      nombreResponsable: '',
+      tipoMovimiento: 'TODOS',
+      orden: 'MAS_RECIENTES',
+      fechaInicio: null,
+      fechaFin: null
     });
-  };
+  }, []);
 
   return (
-    <div className="container mx-auto px-4 py-8 space-y-8 font-sans">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4 }}
-        className="space-y-8"
+    <div className="container mx-auto px-4 py-8 space-y-6 font-sans">
+      {/* Header */}
+      <div className="border-b border-default-200 pb-4">
+        <h1 className="text-3xl font-bold text-secondary dark:text-foreground mb-1">
+          Movimientos de Inventario
+        </h1>
+        <p className="text-default-500">Historial completo de movimientos con filtros avanzados.</p>
+      </div>
+
+      {/* Filters */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 items-end">
+        <Input
+          label="Producto"
+          placeholder="Buscar por producto..."
+          value={nombreProducto}
+          onValueChange={setNombreProducto}
+          variant="bordered"
+          startContent={<Icon icon="lucide:package" className="text-default-400" />}
+          isClearable
+          onClear={() => setNombreProducto('')}
+        />
+
+        <Input
+          label="Responsable"
+          placeholder="Buscar por responsable..."
+          value={nombreResponsable}
+          onValueChange={setNombreResponsable}
+          variant="bordered"
+          startContent={<Icon icon="lucide:user" className="text-default-400" />}
+          isClearable
+          onClear={() => setNombreResponsable('')}
+        />
+
+        <Select
+          label="Tipo de Movimiento"
+          selectedKeys={[tipoMovimiento]}
+          onChange={e => setTipoMovimiento(e.target.value as IMotionFilterRequest['tipoMovimiento'])}
+          variant="bordered"
+        >
+          <SelectItem key="TODOS" startContent={<Icon icon="lucide:layers" className="text-default-400" />}>Todos</SelectItem>
+          <SelectItem key="ENTRADA" startContent={<Icon icon="lucide:arrow-down-circle" className="text-success" />}>Entrada</SelectItem>
+          <SelectItem key="SALIDA_INVENTARIO" startContent={<Icon icon="lucide:arrow-up-circle" className="text-primary" />}>Salida Inventario</SelectItem>
+          <SelectItem key="SALIDA_BODEGA" startContent={<Icon icon="lucide:arrow-up-circle" className="text-primary" />}>Salida Bodega</SelectItem>
+          <SelectItem key="TRASLADO" startContent={<Icon icon="lucide:truck" className="text-warning" />}>Traslado</SelectItem>
+          <SelectItem key="MERMA" startContent={<Icon icon="lucide:alert-circle" className="text-danger" />}>Merma</SelectItem>
+          <SelectItem key="AJUSTE" startContent={<Icon icon="lucide:sliders-horizontal" className="text-secondary" />}>Ajuste</SelectItem>
+          <SelectItem key="DEVOLUCION" startContent={<Icon icon="lucide:undo-2" className="text-default-500" />}>Devolución</SelectItem>
+        </Select>
+
+        <Select
+          label="Orden"
+          selectedKeys={[orden]}
+          onChange={e => setOrden(e.target.value as IMotionFilterRequest['orden'])}
+          variant="bordered"
+        >
+          <SelectItem key="MAS_RECIENTES">Más Recientes</SelectItem>
+          <SelectItem key="MAS_ANTIGUOS">Más Antiguos</SelectItem>
+          <SelectItem key="MENOR_CANTIDAD">Menor Cantidad</SelectItem>
+          <SelectItem key="MAYOR_CANTIDAD">Mayor Cantidad</SelectItem>
+        </Select>
+
+        <DateRangePicker
+          label="Rango de fechas"
+          variant="bordered"
+          maxValue={today(getLocalTimeZone())}
+          value={dateRangeValue}
+          onChange={setDateRangeValue}
+        />
+      </div>
+
+      {/* Actions row */}
+      <div className="flex justify-between items-center">
+        <p className="text-default-400 text-sm">
+          {movimientos.length} movimiento(s) cargado(s)
+        </p>
+        <Button
+          color="primary"
+          startContent={<Icon icon="lucide:plus" />}
+          onPress={onOpen}
+        >
+          Nuevo Movimiento
+        </Button>
+      </div>
+
+      {/* Table */}
+      <Table
+        aria-label="Tabla de movimientos"
+        removeWrapper
+        classNames={{
+          th: "bg-default-100 dark:bg-default-50/20 text-default-500 font-bold uppercase text-xs h-12",
+          td: "py-3 border-b border-default-50 dark:border-default-50/10 group-data-[last=true]:border-none"
+        }}
       >
-        {/* Encabezado y Filtros */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-default-200 dark:border-default-100 pb-4">
-          <div>
-            <h1 className="text-3xl font-bold text-secondary dark:text-foreground mb-2">Movimientos de Inventario</h1>
-            <p className="text-default-500 text-lg">Gestione y visualice el historial de movimientos.</p>
-          </div>
-          <Button
-            color="primary"
-            variant="ghost"
-            startContent={<Icon icon="lucide:arrow-left" width={20} />}
-            onPress={volverAInventario}
-            className="font-medium text-secondary dark:text-foreground"
-          >
-            Volver al Inventario
-          </Button>
-        </div>
-
-        <Card className="shadow-sm bg-default-50 dark:bg-content1 border border-default-200 dark:border-default-100">
-          <CardBody className="p-6 space-y-6">
-            <h3 className="text-lg font-bold text-secondary dark:text-foreground flex items-center gap-2">
-              <Icon icon="lucide:filter" width={20} />
-              Filtros de Búsqueda
-            </h3>
-
-            {/* Fila de Filtros */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
-              {/* Filtro Producto */}
-              <div className="sm:col-span-2">
-                <Autocomplete
-                  label="Filtrar por Producto"
-                  placeholder="Todos los productos"
-                  selectedKey={filtroProducto}
-                  onSelectionChange={(key) => {
-                    setFiltroProducto(key as string);
-                    setCurrentPage(1);
-                  }}
-                  defaultItems={productos}
-                  variant="bordered"
-                  startContent={<Icon icon="lucide:package" className="text-default-400" />}
-                >
-                  {(item) => <AutocompleteItem key={item.id}>{item.nombre}</AutocompleteItem>}
-                </Autocomplete>
-              </div>
-
-              {/* Filtro Tipo */}
-              <Select
-                label="Tipo de Movimiento"
-                selectedKeys={[filtroTipo]}
-                onChange={(e) => {
-                  setFiltroTipo(e.target.value);
-                  setCurrentPage(1);
-                }}
-                variant="bordered"
-                classNames={{ trigger: "bg-white dark:bg-default-100/50" }}
-              >
-                <SelectItem key="todos">Todos</SelectItem>
-                <SelectItem key="Entrada" startContent={<Icon icon="lucide:arrow-down-circle" className="text-success" />}>Entrada</SelectItem>
-                <SelectItem key="Salida" startContent={<Icon icon="lucide:arrow-up-circle" className="text-primary" />}>Salida</SelectItem>
-                <SelectItem key="Merma" startContent={<Icon icon="lucide:alert-circle" className="text-danger" />}>Merma</SelectItem>
-              </Select>
-
-              {/* Filtro Orden */}
-              <Select
-                label="Orden"
-                selectedKeys={[filtroOrden]}
-                onChange={(e) => {
-                  setFiltroOrden(e.target.value as any);
-                  setCurrentPage(1);
-                }}
-                variant="bordered"
-                classNames={{ trigger: "bg-white dark:bg-default-100/50" }}
-              >
-                <SelectItem key="reciente">Más Recientes</SelectItem>
-                <SelectItem key="antiguo">Más Antiguos</SelectItem>
-                <SelectItem key="cantidad_asc">Menor Cantidad</SelectItem>
-                <SelectItem key="cantidad_desc">Mayor Cantidad</SelectItem>
-              </Select>
-
-              {/* Filtro Fecha */}
-              <Input
-                type="date"
-                label="Fecha Específica"
-                placeholder="Seleccione fecha"
-                value={filtroFecha}
-                max={new Date().toISOString().split('T')[0]} // Restringir a fecha actual o anterior
-                onValueChange={(val) => {
-                  setFiltroFecha(val);
-                  setCurrentPage(1);
-                }}
-                variant="bordered"
-                classNames={{ inputWrapper: "bg-white dark:bg-default-100/50" }}
-              />
+        <TableHeader>
+          <TableColumn>PRODUCTO</TableColumn>
+          <TableColumn>CATEGORÍA</TableColumn>
+          <TableColumn>TIPO</TableColumn>
+          <TableColumn>CANTIDAD</TableColumn>
+          <TableColumn>FECHA</TableColumn>
+          <TableColumn>RESPONSABLE</TableColumn>
+          <TableColumn>OBSERVACIÓN</TableColumn>
+        </TableHeader>
+        <TableBody
+          isLoading={isLoading}
+          loadingContent={<Spinner label="Cargando movimientos..." />}
+          emptyContent={
+            <div className="py-12 text-center text-default-400">
+              <Icon icon="lucide:clipboard-list" className="mx-auto mb-3 opacity-50" width={48} />
+              <p className="text-lg font-medium">No se encontraron movimientos</p>
+              <p className="text-sm">Intente ajustar los filtros de búsqueda.</p>
             </div>
-          </CardBody>
-        </Card>
+          }
+        >
+          {movimientos.map((mov, idx) => (
+            <TableRow key={idx} className="hover:bg-default-50 dark:hover:bg-default-100/50 transition-colors">
+              <TableCell>
+                <Tooltip content={mov.nombreProducto}>
+                  <span className="font-semibold text-secondary dark:text-foreground max-w-[120px] truncate block">
+                    {mov.nombreProducto}
+                  </span>
+                </Tooltip>
+              </TableCell>
+              <TableCell>
+                <span className="text-default-600">{mov.nombreCategoria || '-'}</span>
+              </TableCell>
+              <TableCell>{renderTipoMovimiento(mov.tipoMovimiento)}</TableCell>
+              <TableCell>
+                <span className="font-bold text-default-700 dark:text-default-300">
+                  {mov.stockMovimiento}
+                </span>
+              </TableCell>
+              <TableCell>
+                <span className="text-default-600 text-sm whitespace-nowrap">
+                  {formatearFecha(mov.fechaMovimiento)}
+                </span>
+              </TableCell>
+              <TableCell>
+                <Tooltip content={mov.nombreUsuario}>
+                  <span className="max-w-[120px] truncate block">{mov.nombreUsuario}</span>
+                </Tooltip>
+              </TableCell>
+              <TableCell>
+                {mov.observacion ? (
+                  <Tooltip content={mov.observacion}>
+                    <span className="italic text-default-500 max-w-[150px] truncate block">
+                      {mov.observacion}
+                    </span>
+                  </Tooltip>
+                ) : (
+                  <span className="text-default-300">-</span>
+                )}
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
 
-        {/* Resumen del Producto (Solo si hay uno seleccionado) */}
-        {productoActual && (
-          <Card className="shadow-md bg-white dark:bg-content1 border-l-4 border-primary">
-            <CardBody className="p-6 flex-col md:flex-row items-center justify-between gap-6">
-              <div className="flex items-center gap-6">
-                <div className="p-4 bg-primary-100 rounded-full text-primary-700">
-                  <Icon icon="lucide:box" width={32} height={32} />
-                </div>
-                <div>
-                  <h3 className="text-xl font-bold text-secondary dark:text-foreground">{productoActual.nombre}</h3>
-                  <div className="flex items-center gap-2 mt-1">
-                    <p className="text-default-500">Stock Actual:</p>
-                    <Chip size="md" variant="flat" color="primary" className="font-bold">
-                      {productoActual.stock} {productoActual.unidadMedida}
-                    </Chip>
-                  </div>
-                </div>
-              </div>
-              <Button
-                size="lg"
-                color="primary"
-                variant="solid"
-                className="font-bold text-secondary dark:text-primary-foreground shadow-lg"
-                startContent={<Icon icon="lucide:plus-circle" width={20} />}
-                onPress={() => {
-                  onOpen();
-                }}
-              >
-                Nuevo Movimiento
-              </Button>
-            </CardBody>
-          </Card>
-        )}
+      {/* Load-more spinner */}
+      {isLoadingMoreRef.current && (
+        <div className="flex justify-center py-4">
+          <Spinner size="sm" />
+        </div>
+      )}
 
-        {/* Tabla de movimientos */}
-        <Card className="shadow-md border border-default-200 dark:border-default-100 bg-white dark:bg-content1">
-          <CardBody className="p-0">
-            <Table
-              aria-label="Tabla de movimientos"
-              removeWrapper
-              classNames={{
-                th: "bg-default-100 dark:bg-default-50/20 text-default-500 font-bold uppercase text-xs h-12",
-                td: "py-3 border-b border-default-50 dark:border-default-50/10 group-data-[last=true]:border-none"
-              }}
-              bottomContent={
-                totalMovimientos > 0 ? (
-                  <div className="flex w-full justify-center py-4 border-t border-default-100">
-                    <Pagination
-                      total={Math.ceil(totalMovimientos / rowsPerPage)}
-                      page={currentPage}
-                      onChange={setCurrentPage}
-                      showControls
-                      color="primary"
-                    />
-                  </div>
-                ) : null
-              }
-            >
-              <TableHeader>
-                <TableColumn>PRODUCTO</TableColumn>
-                <TableColumn>CATEGORÍA</TableColumn>
-                <TableColumn>TIPO</TableColumn>
-                <TableColumn>CANTIDAD</TableColumn>
-                <TableColumn>FECHA</TableColumn>
-                <TableColumn>RESPONSABLE</TableColumn>
-                <TableColumn>OBSERVACIÓN</TableColumn>
-              </TableHeader>
-              <TableBody
-                isLoading={isLoadingMovimientos}
-                loadingContent={<div className="py-8 text-center">Cargando movimientos...</div>}
-                emptyContent={
-                  <div className="py-12 text-center text-default-400">
-                    <Icon icon="lucide:clipboard-list" className="mx-auto mb-3 opacity-50" width={48} />
-                    <p className="text-lg font-medium">No se encontraron movimientos</p>
-                    <p className="text-sm">Intenta ajustar los filtros.</p>
-                  </div>
-                }
-              >
-                {movimientos.map((movimiento) => (
-                  <TableRow key={movimiento.id} className="hover:bg-default-50 dark:hover:bg-default-100/50 transition-colors">
-                    <TableCell>
-                      <div className="flex flex-col">
-                        <span className="font-semibold text-secondary dark:text-foreground">{movimiento.productoNombre}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Chip size="sm" variant="flat" className="bg-default-100 dark:bg-default-100/50 text-default-600 dark:text-default-300">
-                        {productos.find(p => p.id === movimiento.productoId)?.categoria || '-'}
-                      </Chip>
-                    </TableCell>
-                    <TableCell>{renderTipoMovimiento(movimiento.tipo)}</TableCell>
-                    <TableCell>
-                      <span className="font-bold text-default-700 dark:text-default-300">
-                        {movimiento.cantidad} {
-                          productos.find(p => p.id === movimiento.productoId)?.unidadMedida || ''
-                        }
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex flex-col">
-                        <span className="font-medium">{new Date(movimiento.fechaMovimiento).toLocaleDateString('es-CL')}</span>
-                        <span className="text-xs text-default-400">{new Date(movimiento.fechaMovimiento).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell>{movimiento.responsable}</TableCell>
-                    <TableCell>
-                      {movimiento.observacion ? (
-                        <span className="italic text-default-500">{movimiento.observacion}</span>
-                      ) : (
-                        <span className="text-default-300">-</span>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardBody>
-        </Card>
-      </motion.div>
-
-      {/* Modal para nuevo movimiento */}
+      {/* Modal nuevo movimiento */}
       <Modal isOpen={isOpen} onOpenChange={onOpenChange} size="md" backdrop="blur">
         <ModalContent>
-          {(onClose) => (
-            <>
-              <ModalHeader className="border-b border-default-100 dark:border-default-50 bg-secondary-50 dark:bg-secondary-50/10">
-                <div className="flex items-center gap-2">
-                  <Icon icon="lucide:arrow-left-right" className="text-secondary" width={24} />
-                  <span className="font-bold text-lg text-secondary dark:text-foreground">Registrar Movimiento</span>
-                </div>
-              </ModalHeader>
-              <ModalBody className="py-6">
-                <FormularioMovimiento
-                  productoId={productoActual?.id || ''}
-                  onClose={() => {
-                    onClose();
-                    // Necesitamos refrescar los movimientos y el producto
-                    window.location.reload();
-                  }}
-                  unidadMedida={productoActual?.unidadMedida || ''}
-                />
-              </ModalBody>
-            </>
-          )}
+          {(onClose) => <FormularioMovimiento onClose={onClose} />}
         </ModalContent>
       </Modal>
     </div>
   );
 };
 
-/**
- * Interfaz para las propiedades del componente FormularioMovimiento.
- */
+// ─── FormularioMovimiento ────────────────────────────────────────────────────
+
 interface FormularioMovimientoProps {
-  productoId: string;
   onClose: () => void;
-  unidadMedida: string;
 }
 
-/**
- * Componente de formulario para crear un nuevo movimiento.
- * 
- * @param {FormularioMovimientoProps} props - Propiedades del componente.
- * @returns {JSX.Element} El formulario de movimiento.
- */
-const FormularioMovimiento: React.FC<FormularioMovimientoProps> = ({ productoId, onClose, unidadMedida }) => {
-  const [tipo, setTipo] = React.useState<'Entrada' | 'Salida' | 'Merma'>('Entrada');
-  const [cantidad, setCantidad] = React.useState<string>('');
-  const [observacion, setObservacion] = React.useState<string>('');
-  const [isLoading, setIsLoading] = React.useState<boolean>(false);
+const FormularioMovimiento: React.FC<FormularioMovimientoProps> = ({ onClose }) => {
+  const [tipo, setTipo] = React.useState<IMotionFilterRequest['tipoMovimiento']>('ENTRADA');
+  const [cantidad, setCantidad] = React.useState('');
+  const [observacion, setObservacion] = React.useState('');
+  const [productoNombre, setProductoNombre] = React.useState('');
+  const [isLoading, setIsLoading] = React.useState(false);
 
-  /**
-   * Maneja el envío del formulario.
-   */
   const handleSubmit = async () => {
     if (!cantidad || parseInt(cantidad) <= 0) {
       alert('La cantidad debe ser mayor a 0');
       return;
     }
-
     try {
       setIsLoading(true);
-      await crearMovimientoService({
-        productoId,
-        tipo,
-        cantidad: parseInt(cantidad),
-        observacion
-      });
+      // TODO: conectar con endpoint de creación de movimiento
+      console.log({ tipo, cantidad, observacion, productoNombre });
       onClose();
-      // En una implementación real, aquí se actualizaría la lista de movimientos
-    } catch (error) {
-      console.error('Error al crear el movimiento:', error);
-      alert('Error al crear el movimiento');
+    } catch (err) {
+      console.error('Error al registrar movimiento:', err);
     } finally {
       setIsLoading(false);
     }
@@ -476,20 +385,35 @@ const FormularioMovimiento: React.FC<FormularioMovimientoProps> = ({ productoId,
 
   return (
     <>
-      <div className="space-y-4 bg-default-50 dark:bg-content2 p-4 rounded-lg border border-default-200 dark:border-default-100">
+      <ModalHeader className="border-b border-default-100">
+        <div className="flex items-center gap-2">
+          <Icon icon="lucide:arrow-left-right" className="text-secondary" width={22} />
+          <span className="font-bold text-lg text-secondary dark:text-foreground">Registrar Movimiento</span>
+        </div>
+      </ModalHeader>
+      <ModalBody className="py-5 space-y-4">
+        <Input
+          label="Producto"
+          placeholder="Nombre del producto"
+          value={productoNombre}
+          onValueChange={setProductoNombre}
+          variant="bordered"
+        />
         <Select
           label="Tipo de Movimiento"
           selectedKeys={[tipo]}
-          onChange={(e) => setTipo(e.target.value as 'Entrada' | 'Salida' | 'Merma')}
+          onChange={e => setTipo(e.target.value as IMotionFilterRequest['tipoMovimiento'])}
           variant="bordered"
-          classNames={{ trigger: "bg-white dark:bg-default-100/50" }}
           disallowEmptySelection
         >
-          <SelectItem key="Entrada" startContent={<Icon icon="lucide:arrow-down-circle" className="text-success" />}>Entrada</SelectItem>
-          <SelectItem key="Salida" startContent={<Icon icon="lucide:arrow-up-circle" className="text-primary" />}>Salida</SelectItem>
-          <SelectItem key="Merma" startContent={<Icon icon="lucide:alert-circle" className="text-danger" />}>Merma</SelectItem>
+          <SelectItem key="ENTRADA" startContent={<Icon icon="lucide:arrow-down-circle" className="text-success" />}>Entrada</SelectItem>
+          <SelectItem key="SALIDA_INVENTARIO" startContent={<Icon icon="lucide:arrow-up-circle" className="text-primary" />}>Salida Inventario</SelectItem>
+          <SelectItem key="SALIDA_BODEGA" startContent={<Icon icon="lucide:arrow-up-circle" className="text-primary" />}>Salida Bodega</SelectItem>
+          <SelectItem key="TRASLADO" startContent={<Icon icon="lucide:truck" className="text-warning" />}>Traslado</SelectItem>
+          <SelectItem key="MERMA" startContent={<Icon icon="lucide:alert-circle" className="text-danger" />}>Merma</SelectItem>
+          <SelectItem key="AJUSTE" startContent={<Icon icon="lucide:sliders-horizontal" className="text-secondary" />}>Ajuste</SelectItem>
+          <SelectItem key="DEVOLUCION" startContent={<Icon icon="lucide:undo-2" className="text-default-500" />}>Devolución</SelectItem>
         </Select>
-
         <Input
           type="number"
           label="Cantidad"
@@ -498,36 +422,26 @@ const FormularioMovimiento: React.FC<FormularioMovimientoProps> = ({ productoId,
           onValueChange={setCantidad}
           min="1"
           variant="bordered"
-          classNames={{ inputWrapper: "bg-white dark:bg-default-100/50" }}
-          endContent={<span className="text-default-400">{unidadMedida}</span>}
         />
-
         <Input
           label="Observación"
-          placeholder="Ingrese una observación (opcional)"
+          placeholder="Observación (opcional)"
           value={observacion}
           onValueChange={setObservacion}
           variant="bordered"
-          classNames={{ inputWrapper: "bg-white dark:bg-default-100/50" }}
         />
-      </div>
-
-      <div className="flex justify-end gap-2 mt-6">
-        <Button variant="ghost" onPress={onClose} className="font-medium">
-          Cancelar
-        </Button>
+      </ModalBody>
+      <ModalFooter>
+        <Button variant="ghost" onPress={onClose}>Cancelar</Button>
         <Button
           color="primary"
-          variant="solid"
           onPress={handleSubmit}
           isLoading={isLoading}
-          isDisabled={isLoading}
-          className="font-bold text-secondary dark:text-primary-foreground shadow-md"
           startContent={<Icon icon="lucide:save" />}
         >
-          Guardar Movimiento
+          Guardar
         </Button>
-      </div>
+      </ModalFooter>
     </>
   );
 };
