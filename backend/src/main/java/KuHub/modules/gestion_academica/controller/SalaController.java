@@ -16,7 +16,7 @@ public class SalaController {
     @Autowired
     private SalaService salaService;
 
-    /** Listar salas activas usado en el frontend
+    /** Listar salas activas usando en crear seccion y editar
      *  ✅ En uso: Endpoint consumido por el frontend.*/
     @GetMapping( "/find-all-active")
     public ResponseEntity<List<Sala>> findAllActiveRoomsTrue(){

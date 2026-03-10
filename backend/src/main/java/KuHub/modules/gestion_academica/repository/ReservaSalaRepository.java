@@ -1,6 +1,6 @@
 package KuHub.modules.gestion_academica.repository;
 
-import KuHub.modules.gestion_academica.dtos.projection.NumberBlockProjection;
+import KuHub.modules.gestion_academica.dtos.request.projection.NumberBlockProjection;
 import KuHub.modules.gestion_academica.entity.ReservaSala;
 import feign.Param;
 import org.springframework.data.jpa.repository.JpaRepository;

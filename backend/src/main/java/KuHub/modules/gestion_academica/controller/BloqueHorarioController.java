@@ -1,6 +1,6 @@
 package KuHub.modules.gestion_academica.controller;
 
-import KuHub.modules.gestion_academica.dtos.dtomodel.FilterTimeBlockRequestDTO;
+import KuHub.modules.gestion_academica.dtos.request.FilterTimeBlockDTO;
 import KuHub.modules.gestion_academica.entity.BloqueHorario;
 import KuHub.modules.gestion_academica.service.BloqueHorarioService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,7 +16,10 @@ public class BloqueHorarioController {
     @Autowired
     private BloqueHorarioService bloqueHorarioService;
 
-
+    /**
+     * ultilizado en crear y editar seccion
+     *
+     ✅ En uso: Endpoint consumido por el frontend.*/
     @GetMapping( "/find-all")
     public ResponseEntity<List<BloqueHorario>> findAll(){
         return ResponseEntity
@@ -24,6 +27,18 @@ public class BloqueHorarioController {
                 .body(bloqueHorarioService.findAll());
     }
 
+    /**
+     * ultilizado en crear y editar seccion
+     *
+     ✅ En uso: Endpoint consumido por el frontend.*/
+    @PostMapping( "/filter-by-day-week-and-id-room")
+    public ResponseEntity<List<BloqueHorario>> filterBlocksDayWeekAndIdRoom(
+            @RequestBody FilterTimeBlockDTO request
+    ){
+        return ResponseEntity
+            .status(200)
+            .body(bloqueHorarioService.filterBlocksByDayWeekAndIdRoom(request));
+    }
 
 
 
@@ -60,12 +75,5 @@ public class BloqueHorarioController {
                 .body(bloqueHorarioService.filterBlocksByNumbersBlocks(numbersBlocksFilter));
     }
 
-    @PostMapping( "/filter-by-day-week-and-id-room/")
-    public ResponseEntity<List<BloqueHorario>> filterBlocksDayWeekAndIdRoom(
-            @RequestBody FilterTimeBlockRequestDTO filterTimeBlockRequestDTO
-            ){
-        return ResponseEntity
-                .status(200)
-                .body(bloqueHorarioService.filterBlocksByDayWeekAndIdRoom(filterTimeBlockRequestDTO));
-    }
+
 }

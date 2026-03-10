@@ -50,6 +50,38 @@ public class ReservaSala {
         DOMINGO
     }
 
+    // ----------- Métodos Helper para asignación por ID -----------
+
+    /**
+     * Permite asignar la sección usando solo el ID.
+     */
+    public void setIdSeccion(Integer id) {
+        if (id != null) {
+            this.seccion = new Seccion();
+            this.seccion.setIdSeccion(id);
+        }
+    }
+
+    /**
+     * Permite asignar la sala usando solo el ID.
+     */
+    public void setIdSala(Integer id) {
+        if (id != null) {
+            this.sala = new Sala();
+            this.sala.setIdSala(id);
+        }
+    }
+
+    /**
+     * Permite asignar el bloque horario usando solo el ID.
+     */
+    public void setIdBloque(Integer id) {
+        if (id != null) {
+            this.bloqueHorario = new BloqueHorario();
+            this.bloqueHorario.setIdBloque(id);
+        }
+    }
+
     /** 24/11/25 fecha mod en la bbdd
      * CREATE CAST (varchar AS dia_semana_type) WITH INOUT AS IMPLICIT;
      * -- Tabla reserva_sala

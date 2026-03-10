@@ -1,6 +1,6 @@
 package KuHub.modules.gestion_solicitud.dtos;
 
-import KuHub.modules.gestion_academica.dtos.projection.CourseSolicitationSelectView;
+import KuHub.modules.gestion_academica.dtos.request.projection.CourseSolicitationSelectView;
 import KuHub.modules.gestion_solicitud.dtos.proyeccion.WeekIdDescripcionView;
 import KuHub.modules.gestion_usuario.dtos.UserIdAndCompleteNameDTO;
 import lombok.*;

@@ -1,9 +1,10 @@
 package KuHub.modules.gestion_academica.repository;
 
-import KuHub.modules.gestion_academica.dtos.projection.CourseSolicitationSelectView;
+import KuHub.modules.gestion_academica.dtos.request.projection.CourseSolicitationSelectView;
 import KuHub.modules.gestion_academica.entity.Asignatura;
 import feign.Param;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
@@ -20,7 +21,12 @@ public interface AsignaturaRepository extends JpaRepository <Asignatura, Integer
             a.cod_asignatura AS codAsignatura,
             a.nombre_asignatura AS nombreAsignatura,
             u.id_usuario AS idCompletoProfesor,
-            u.p_nombre ||' '|| u.s_nombre ||' '|| u.app_paterno ||' '|| u.app_materno AS nombreProfesor,
+            CONCAT_WS(' ',\s
+                    NULLIF(TRIM(u.p_nombre), ''),\s
+                    NULLIF(TRIM(u.s_nombre), ''),\s
+                    NULLIF(TRIM(u.app_paterno), ''),\s
+                    NULLIF(TRIM(u.app_materno), '')
+                ) AS nombreProfesor,
             a.descripcion AS descripcionAsignatura,
             COALESCE(
                 json_agg(
@@ -30,7 +36,12 @@ public interface AsignaturaRepository extends JpaRepository <Asignatura, Integer
                         'nombreSeccion', s.nombre_seccion,
                         'estadoSeccion', s.estado_seccion,
                         'idDocente', u_docente.id_usuario,
-                        'nombreCompletoDocente', u_docente.p_nombre ||' '|| u_docente.s_nombre ||' '|| u_docente.app_paterno ||' '|| u_docente.app_materno,
+                        'nombreCompletoDocente', CONCAT_WS(' ',\s
+                               NULLIF(TRIM(u_docente.p_nombre), ''),\s
+                               NULLIF(TRIM(u_docente.s_nombre), ''),\s
+                               NULLIF(TRIM(u_docente.app_paterno), ''),\s
+                               NULLIF(TRIM(u_docente.app_materno), '')
+                           ),
                         'capacidadMaxInscritos', s.capacidad_max,
                         'cantInscritos', s.cant_inscritos,
                         'bloquesHorarios', COALESCE((
@@ -89,6 +100,15 @@ public interface AsignaturaRepository extends JpaRepository <Asignatura, Integer
     @Query(value = "SELECT COUNT(*) FROM asignatura WHERE activo = TRUE", nativeQuery = true)
     long countActiveAsignaturas();
 
+    /**Actualizar estado asignatura a false para eliminacion logica para saltar el findbyid*/
+    @Modifying
+    @Query("""
+       UPDATE Asignatura a 
+       SET a.activo = false 
+       WHERE a.idAsignatura = :id
+       """)
+    int softDeleteAsignaturaById(@Param("id") Integer id);
+
 
     /**Validaciones boleanas*/
     boolean existsByNombreAsignaturaAndActivoIsTrue(String nombreAsignatura);
@@ -122,7 +142,7 @@ public interface AsignaturaRepository extends JpaRepository <Asignatura, Integer
     """,
             nativeQuery = true
     )
-    Boolean existsByCodAsignaturaAndActivoIsTrueIgnoreAccents
+    boolean existsByCodAsignaturaAndActivoIsTrueIgnoreAccents
     (@Param("codAsignatura") String codAsignatura);
 
 

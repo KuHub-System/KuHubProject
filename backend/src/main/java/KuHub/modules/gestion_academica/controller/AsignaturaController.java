@@ -1,8 +1,8 @@
 package KuHub.modules.gestion_academica.controller;
 
-import KuHub.modules.gestion_academica.dtos.dtomodel.CourseCreateDTO;
+import KuHub.modules.gestion_academica.dtos.request.CourseCreateDTO;
 import KuHub.modules.gestion_academica.dtos.dtomodel.CourseSolicitationResponseDTO;
-import KuHub.modules.gestion_academica.dtos.dtomodel.CourseUpdateDTO;
+import KuHub.modules.gestion_academica.dtos.request.CourseUpdateDTO;
 import KuHub.modules.gestion_academica.dtos.response.CourserPageDTGOD;
 import KuHub.modules.gestion_academica.entity.Asignatura;
 import KuHub.modules.gestion_academica.exceptions.GestionAcademicaException;
@@ -45,10 +45,29 @@ public class AsignaturaController {
                 .body(asignaturaService.createCourse(courseCreateDTO));
     }
 
+    /**
+     *  Usado para actualizar asignatura
+     ✅ En uso: Endpoint consumido por el frontend.*/
+    @PatchMapping("/update-course")
+    public ResponseEntity<Boolean> updateCourser(
+            @Validated @RequestBody CourseUpdateDTO request
+    ){
+        return ResponseEntity
+                .status(200)
+                .body(asignaturaService.updateCourser(request));
+    }
 
-
-
-
+    /**
+     *  Usado para delectar asignatura
+     ✅ En uso: Endpoint consumido por el frontend.*/
+    @DeleteMapping("/soft-delete/{idAsignatura}")
+    public ResponseEntity<Boolean> softDeleteCourse(
+            @PathVariable Integer idAsignatura
+    ){
+        return ResponseEntity
+                .status(204)
+                .body(asignaturaService.softDeleteCourse(idAsignatura));
+    }
 
 
 
@@ -86,30 +105,9 @@ public class AsignaturaController {
 
 
 
-    @PutMapping( "/update-course/")
-    public ResponseEntity<CourseUpdateDTO> updateCourser(
-            @RequestBody CourseUpdateDTO courseUpdateDTO
-    ){
-        return ResponseEntity
-                .status(200)
-                .body(asignaturaService.updateCourser(courseUpdateDTO));
-    }
 
-    @PutMapping( "/soft-delete-course/{id}")
-    public ResponseEntity<?> softDeleteCourse(
-            @PathVariable Integer id
-    ){
-        try {
-            asignaturaService.softDeleteCourse(id);
-            return ResponseEntity.noContent().build();
-        }catch (GestionAcademicaException e){
-            return ResponseEntity.status(400)
-                    .body("Error: " + e.getMessage());
-        }catch (Exception e){
-            return ResponseEntity.status(500)
-                    .body("Error interno al intentar eliminar la sala: " + e.getMessage());
-        }
-    }
+
+
 
 
 

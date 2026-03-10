@@ -1,4 +1,4 @@
-package KuHub.modules.gestion_academica.dtos.projection;
+package KuHub.modules.gestion_academica.dtos.request.projection;
 
 import org.springframework.beans.factory.annotation.Value;
 

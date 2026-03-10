@@ -1,6 +1,6 @@
 package KuHub.modules.gestion_academica.service;
 
-import KuHub.modules.gestion_academica.dtos.dtomodel.FilterTimeBlockRequestDTO;
+import KuHub.modules.gestion_academica.dtos.request.FilterTimeBlockDTO;
 import KuHub.modules.gestion_academica.entity.BloqueHorario;
 
 import java.util.List;
@@ -11,5 +11,5 @@ public interface BloqueHorarioService {
     BloqueHorario findByNumberBlock (Integer numberBlock);
     List<BloqueHorario> findAll();
     List<BloqueHorario> filterBlocksByNumbersBlocks(List<Integer> numbersBlocksFilter);
-    List<BloqueHorario> filterBlocksByDayWeekAndIdRoom(FilterTimeBlockRequestDTO filterTimeBlockRequestDTO);
+    List<BloqueHorario> filterBlocksByDayWeekAndIdRoom(FilterTimeBlockDTO filterTimeBlockDTO);
 }

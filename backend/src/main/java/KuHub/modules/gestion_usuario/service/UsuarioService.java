@@ -2,7 +2,7 @@ package KuHub.modules.gestion_usuario.service;
 
 import KuHub.modules.gestion_usuario.dtos.*;
 import KuHub.modules.gestion_usuario.dtos.dtofilter.UserAuth;
-import KuHub.modules.gestion_usuario.dtos.proyection.UsersToManageCourseView;
+import KuHub.modules.gestion_usuario.dtos.response.proyection.UsersToManageCourseOrSectionView;
 import KuHub.modules.gestion_usuario.dtos.record.UserIdNameDTO;
 import KuHub.modules.gestion_usuario.dtos.request.CreateUser;
 import KuHub.modules.gestion_usuario.dtos.request.SearchUserRequest;
@@ -20,7 +20,8 @@ public interface UsuarioService {
 
     Usuario findUserByUsernameOrEmail(String identifier);
     Usuario findUserByToken ();
-    List<UsersToManageCourseView> usersToManageCourse();
+    List<UsersToManageCourseOrSectionView> usersToManageCourse();
+    List<UsersToManageCourseOrSectionView> usersAssignedToSection();
     PaginatedUsersDTO findAllUsersWithPagination(Integer pageRequested);
     PaginatedUsersDTO searchUsers(SearchUserRequest request);
     boolean createUser (CreateUser request);
@@ -60,10 +61,7 @@ public interface UsuarioService {
      * */
     String formatearNombreCompleto(Usuario u);
 
-    /**
-     * Obtiene docentes ACTIVOS por el nombre de rol
-     */
-    List<UserIdAndCompleteNameDTO> obtenerDocentesYProfesoresActivos();
+
 
     /**
      * Obtiene todos los profesores a cargo

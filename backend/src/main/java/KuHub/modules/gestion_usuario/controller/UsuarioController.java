@@ -1,7 +1,7 @@
 package KuHub.modules.gestion_usuario.controller;
 
 import KuHub.modules.gestion_usuario.dtos.*;
-import KuHub.modules.gestion_usuario.dtos.proyection.UsersToManageCourseView;
+import KuHub.modules.gestion_usuario.dtos.response.proyection.UsersToManageCourseOrSectionView;
 import KuHub.modules.gestion_usuario.dtos.request.CreateUser;
 import KuHub.modules.gestion_usuario.dtos.request.SearchUserRequest;
 import KuHub.modules.gestion_usuario.dtos.request.UpdateUser;
@@ -34,10 +34,22 @@ public class UsuarioController {
      * ✅ En uso: Endpoint consumido por el frontend.
      */
     @GetMapping( "/users-to-manager-course")
-    public ResponseEntity<List<UsersToManageCourseView>> usersToManageCourse(){
+    public ResponseEntity<List<UsersToManageCourseOrSectionView>> usersToManageCourse(){
         return ResponseEntity
                 .status(200)
                 .body(usuarioService.usersToManageCourse());
+    }
+
+    /**
+     * Endpoint para listar usuarios en option de crear nueva seccion y editar
+     * ✅ En uso: Endpoint consumido por el frontend.
+     */
+    @GetMapping("/users-assigned-to-section")
+    public  ResponseEntity<List<UsersToManageCourseOrSectionView>>  usersAssignedToSection(){
+        return ResponseEntity
+                .status(200)
+                .body(usuarioService.usersAssignedToSection());
+
     }
 
     /**
@@ -116,6 +128,7 @@ public class UsuarioController {
 
 
 
+
     /**
      * GET /api/v1/usuarios
      * Obtiene todos los usuarios
@@ -176,12 +189,7 @@ public class UsuarioController {
         return ResponseEntity.ok(usuarios);
     }
 
-    @GetMapping("/docentes-activos")
-    public ResponseEntity<List<UserIdAndCompleteNameDTO>> obtenerDocentesYProfesoresActivos(){
-        List<UserIdAndCompleteNameDTO> usuarios = usuarioService.obtenerDocentesYProfesoresActivos();
-        return ResponseEntity.ok(usuarios);
 
-    }
 
 
 

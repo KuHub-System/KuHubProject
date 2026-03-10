@@ -1,7 +1,7 @@
 package KuHub.modules.gestion_academica.controller;
 
 import KuHub.modules.gestion_academica.assemblers.BloqueHorarioModelAssembler;
-import KuHub.modules.gestion_academica.dtos.dtomodel.FilterTimeBlockRequestDTO;
+import KuHub.modules.gestion_academica.dtos.request.FilterTimeBlockDTO;
 import KuHub.modules.gestion_academica.entity.BloqueHorario;
 import KuHub.modules.gestion_academica.service.BloqueHorarioService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -150,20 +150,20 @@ public class BloqueHorarioControllerV2 {
             description = "Filtros para buscar bloques horarios",
             content = @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = FilterTimeBlockRequestDTO.class)
+                    schema = @Schema(implementation = FilterTimeBlockDTO.class)
             )
     )
     public ResponseEntity<CollectionModel<EntityModel<BloqueHorario>>> filterBlocksDayWeekAndIdRoom(
-            @Valid @RequestBody FilterTimeBlockRequestDTO filterTimeBlockRequestDTO) {
+            @Valid @RequestBody FilterTimeBlockDTO filterTimeBlockDTO) {
         
-        List<EntityModel<BloqueHorario>> bloques = bloqueHorarioService.filterBlocksByDayWeekAndIdRoom(filterTimeBlockRequestDTO)
+        List<EntityModel<BloqueHorario>> bloques = bloqueHorarioService.filterBlocksByDayWeekAndIdRoom(filterTimeBlockDTO)
                 .stream()
                 .map(bloqueHorarioModelAssembler::toModel)
                 .toList();
 
         CollectionModel<EntityModel<BloqueHorario>> collectionModel = CollectionModel.of(
                 bloques,
-                linkTo(methodOn(BloqueHorarioControllerV2.class).filterBlocksDayWeekAndIdRoom(filterTimeBlockRequestDTO)).withSelfRel(),
+                linkTo(methodOn(BloqueHorarioControllerV2.class).filterBlocksDayWeekAndIdRoom(filterTimeBlockDTO)).withSelfRel(),
                 linkTo(methodOn(BloqueHorarioControllerV2.class).findAll()).withRel("todos-bloques")
         );
 

@@ -201,3 +201,16 @@ export const obtenerUsuariosGestoresAsignaturaService = async (): Promise<{ idUs
     throw new Error(error.response?.data?.message || 'Error al cargar gestores de asignatura');
   }
 };
+
+/**
+ * Obtener usuarios que pueden ser asignados como docente de sección
+ * GET /v1/usuarios/users-assigned-to-section
+ */
+export const obtenerUsuariosAsignadosSeccionService = async (): Promise<{ idUsuario: number; nombreCompleto: string }[]> => {
+  try {
+    const response = await api.get('/usuarios/users-assigned-to-section');
+    return response.data;
+  } catch (error: any) {
+    throw new Error(error.response?.data?.message || 'Error al cargar docentes disponibles');
+  }
+};

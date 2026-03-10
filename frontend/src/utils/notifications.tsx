@@ -180,7 +180,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
             <motion.div
               initial={{ opacity: 0, x: 40 }}
               animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, y: -50 }}
+              exit={{ opacity: 0, y: -16, transition: { duration: 1.0, ease: 'easeIn' } }}
               transition={{ duration: 0.35, ease: 'easeOut' }}
               className="fixed top-6 right-6 z-[9999]"
               style={{ minWidth: 320, maxWidth: 420, pointerEvents: 'auto' }}

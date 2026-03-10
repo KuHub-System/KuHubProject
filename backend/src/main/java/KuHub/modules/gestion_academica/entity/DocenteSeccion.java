@@ -50,6 +50,28 @@ public class DocenteSeccion {
     private LocalDate fechaAsignacion = LocalDate.now();
 
 
+    // ----------- Métodos Helper para asignación por ID -----------
+
+    /**
+     * Permite asignar el usuario (docente) usando solo el ID.
+     */
+    public void setIdUsuario(Integer id) {
+        if (id != null) {
+            this.usuario = new Usuario();
+            this.usuario.setIdUsuario(id);
+        }
+    }
+
+    /**
+     * Permite asignar la sección usando solo el ID.
+     */
+    public void setIdSeccion(Integer id) {
+        if (id != null) {
+            this.seccion = new Seccion();
+            this.seccion.setIdSeccion(id);
+        }
+    }
+
     /** 24/11/25 fecha de modificacion en la bbdd
      *  -- Tabla docente_seccion
      * CREATE TABLE docente_seccion (

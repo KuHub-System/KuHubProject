@@ -1,6 +1,6 @@
 package KuHub.modules.gestion_solicitud.service;
 
-import KuHub.modules.gestion_academica.dtos.projection.CourseSolicitationSelectView;
+import KuHub.modules.gestion_academica.dtos.request.projection.CourseSolicitationSelectView;
 import KuHub.modules.gestion_academica.repository.AsignaturaRepository;
 import KuHub.modules.gestion_receta.services.DetalleRecetaService;
 import KuHub.modules.gestion_solicitud.dtos.*;
@@ -11,6 +11,7 @@ import KuHub.modules.gestion_solicitud.exception.GestionSolicitudException;
 import KuHub.modules.gestion_solicitud.repository.MotivoRechazoRepository;
 import KuHub.modules.gestion_solicitud.repository.SolicitudRepository;
 import KuHub.modules.gestion_usuario.dtos.UserIdAndCompleteNameDTO;
+import KuHub.modules.gestion_usuario.dtos.response.proyection.UsersToManageCourseOrSectionView;
 import KuHub.modules.gestion_usuario.service.UsuarioService;
 import KuHub.modules.gestion_academica.repository.SemanaRepository;
 import KuHub.utils.StringUtils;
@@ -169,13 +170,13 @@ public class SolicitudServiceImp implements SolicitudService{
 
         // 3. Obtener Docentes (Usuarios con rol docente)
         // Asegúrate de tener un método que devuelva UserIdAndCompleteNameDTO
-        List<UserIdAndCompleteNameDTO> docentes = usuarioService.obtenerDocentesYProfesoresActivos();
+        List<UsersToManageCourseOrSectionView> docentes = usuarioService.usersAssignedToSection();
 
         // 4. Construir y retornar el DTO
         ManagementSolicitationSelectorsDTO response = new ManagementSolicitationSelectorsDTO();
         response.setSemanas(semanas);
         response.setAsignaturas(asignaturas);
-        response.setDocentes(docentes);
+
 
         return response;
     }

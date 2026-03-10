@@ -1,5 +1,6 @@
 package KuHub.modules.gestion_usuario.dtos.response;
 
+import KuHub.modules.gestion_usuario.dtos.UsersView;
 import KuHub.utils.PaginationUtils;
 import lombok.AllArgsConstructor;
 import lombok.Data;

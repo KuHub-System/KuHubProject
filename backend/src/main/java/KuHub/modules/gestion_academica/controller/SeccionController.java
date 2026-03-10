@@ -2,10 +2,11 @@ package KuHub.modules.gestion_academica.controller;
 
 import KuHub.modules.gestion_academica.dtos.dtoentity.SeccionEntityResponseDTO;
 import KuHub.modules.gestion_academica.dtos.response.SectionAnswerUpdateDTO;
-import KuHub.modules.gestion_academica.dtos.dtomodel.SectionCreateDTO;
+import KuHub.modules.gestion_academica.dtos.request.SectionCreateDTO;
 import KuHub.modules.gestion_academica.entity.Seccion;
 import KuHub.modules.gestion_academica.exceptions.GestionAcademicaException;
 import KuHub.modules.gestion_academica.service.SeccionService;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -19,6 +20,37 @@ public class SeccionController {
     @Autowired
     private SeccionService seccionService;
 
+
+    /**
+     *  Usado apra crear secciones
+     ✅ En uso: Endpoint consumido por el frontend.*/
+    @PostMapping( "/create-section")
+    public ResponseEntity<Boolean> createSectionFrontend(
+            @Valid @RequestBody SectionCreateDTO request
+    ){
+        return ResponseEntity
+                .status(201)
+                .body(seccionService.createSection(request));
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    /**
     @GetMapping( "/find-by-id/{id}")
     public ResponseEntity<SeccionEntityResponseDTO> findById(
             @PathVariable Integer id
@@ -37,14 +69,14 @@ public class SeccionController {
                 .body(seccionService.findByIdAndActiveIsTrueResponseDTO(id));
     }
 
-    /**@GetMapping( "/find-by-section-by-id-seccion/{idSeccion}")
+    @GetMapping( "/find-by-section-by-id-seccion/{idSeccion}")
     public ResponseEntity<SectionAnswerUpdateDTO> findBySectionByIdSeccion (
             @PathVariable Integer idSeccion
     ){
         return ResponseEntity
                 .status(200)
                 .body(seccionService.findBySectionByIdSeccion(idSeccion));
-    }*/
+    }
 
     @GetMapping( "/find-all/")
     public ResponseEntity<List<SeccionEntityResponseDTO>> findAll(){
@@ -67,14 +99,7 @@ public class SeccionController {
                 .body(seccionService.save(seccion));
     }
 
-    @PostMapping( "/create-seccion-frontend/")
-    public ResponseEntity<SectionAnswerUpdateDTO> createSectionFrontend(
-            @RequestBody SectionCreateDTO sectionCreateDTO
-    ){
-        return ResponseEntity
-                .status(200)
-                .body(seccionService.createSection(sectionCreateDTO));
-    }
+
 
     @PutMapping( "/update-seccion-frontend/")
     public ResponseEntity<SectionAnswerUpdateDTO> updateSectionFrontend(
@@ -83,7 +108,7 @@ public class SeccionController {
         return ResponseEntity
                 .status(200)
                 .body(seccionService.updateSection(sectionAnswerUpdateDTO));
-    }
+    }*/
 
     @PutMapping("/soft-delete/{id}")
     public ResponseEntity<?> softDelete(

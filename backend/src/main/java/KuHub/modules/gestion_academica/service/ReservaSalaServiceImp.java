@@ -1,10 +1,13 @@
 package KuHub.modules.gestion_academica.service;
 
 import KuHub.modules.gestion_academica.dtos.dtoentity.ReservaSalaEntityResponseDTO;
-import KuHub.modules.gestion_academica.dtos.projection.NumberBlockProjection;
+import KuHub.modules.gestion_academica.dtos.record.CheckAvailability;
+import KuHub.modules.gestion_academica.dtos.request.projection.NumberBlockProjection;
 import KuHub.modules.gestion_academica.entity.ReservaSala;
+import KuHub.modules.gestion_academica.exceptions.GestionAcademicaException;
 import KuHub.modules.gestion_academica.repository.ReservaSalaRepository;
 import KuHub.modules.gestion_receta.exceptions.GestionRecetaException;
+import KuHub.utils.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -17,6 +20,52 @@ public class ReservaSalaServiceImp implements ReservaSalaService{
 
     @Autowired
     private ReservaSalaRepository reservaSalaRepository;
+
+    /**Metodo ultilizado para obtener los */
+    @Transactional(readOnly = true)
+    @Override
+    public List<Integer> findReservedBlocksByIdSalaAndDayWeek(Integer idSala, String diaSemana){
+        ReservaSala.DiaSemana enumDia = ReservaSala.DiaSemana.valueOf(diaSemana.toUpperCase());
+
+        return reservaSalaRepository.findDistinctBySalaIdSalaAndSalaActivoTrueAndDiaSemana(idSala, enumDia.name())
+                .stream()
+                .map(NumberBlockProjection::getBloqueHorarioNumeroBloque)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    @Override
+    public CheckAvailability validatedThatTheBlockIsNotReserved
+                (Integer idSala, String diaSemanaRaw, Integer numeroBloque) {
+
+        String key = StringUtils.normalizeToEnumKey(diaSemanaRaw);
+        ReservaSala.DiaSemana enumDia;
+
+        try {
+            enumDia = ReservaSala.DiaSemana.valueOf(key);
+        } catch (IllegalArgumentException | NullPointerException e) {
+            // Si el frontend manda algo raro o nulo, lanzamos tu excepción personalizada
+            throw new GestionAcademicaException("Día de la semana no válido: " + diaSemanaRaw
+                ,HttpStatus.NOT_ACCEPTABLE);
+        }
+
+        List<Integer> numbersBlocksReserved = reservaSalaRepository
+                .findDistinctBySalaIdSalaAndSalaActivoTrueAndDiaSemana(idSala, enumDia.name())
+                .stream()
+                .map(NumberBlockProjection::getBloqueHorarioNumeroBloque)
+                .toList();
+
+
+        boolean disponible = !numbersBlocksReserved.contains(numeroBloque);
+
+        // 4. Retornamos el record con la info procesada
+        return new CheckAvailability(disponible, enumDia);
+    }
+
+
+
+
+
 
 
     @Transactional(readOnly = true)
@@ -44,31 +93,9 @@ public class ReservaSalaServiceImp implements ReservaSalaService{
         return reservaSalaRepository.findBySeccion_IdSeccion(idseccio);
     }
 
-    @Transactional(readOnly = true)
-    @Override
-    public List<Integer> findReservedBlocksByIdSalaAndDayWeek(Integer idSala, String diaSemana){
-        ReservaSala.DiaSemana enumDia = ReservaSala.DiaSemana.valueOf(diaSemana.toUpperCase());
 
-        return reservaSalaRepository.findDistinctBySalaIdSalaAndSalaActivoTrueAndDiaSemana(idSala, enumDia.name())
-                .stream()
-                .map(NumberBlockProjection::getBloqueHorarioNumeroBloque)
-                .toList();
-    }
 
-    @Transactional(readOnly = true)
-    @Override
-    public Boolean validatedThatTheBlockIsNotReserved(Integer idSala, String diaSemana, Integer numeroBloque){
-        ReservaSala.DiaSemana enumDia = ReservaSala.DiaSemana.valueOf(diaSemana.toUpperCase());
-        List<Integer> numbersBlocksReserved = reservaSalaRepository.findDistinctBySalaIdSalaAndSalaActivoTrueAndDiaSemana(idSala, enumDia.name())
-                .stream()
-                .map(NumberBlockProjection::getBloqueHorarioNumeroBloque)
-                .toList();
 
-        if (numbersBlocksReserved.contains(numeroBloque)){
-            return false;
-        }
-        return true;
-    }
 
     @Transactional
     @Override
