@@ -15,11 +15,11 @@ import java.util.Optional;
 public interface BloqueHorarioRepository extends JpaRepository <BloqueHorario, Integer> {
 
     List<BloqueHorario> findAllByOrderByNumeroBloqueAsc();
-
-
-
-
-
     List<BloqueHorario> findByNumeroBloqueNotIn(List<Integer> numbersBlocksFilter);
+
+
+
+
+
     Optional<BloqueHorario> findByNumeroBloque(Integer numeroBloque);
 }

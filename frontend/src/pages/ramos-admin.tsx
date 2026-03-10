@@ -22,6 +22,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useToast } from '../hooks/useToast';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { logger } from '../utils/logger';
+import { useNotifications } from '../utils/notifications';
 
 // Importar tipos y servicios actualizados
 import { IAsignatura, ISeccion, IBloqueHorario, EstadoSeccion } from '../types/asignatura.types';
@@ -31,43 +32,59 @@ import {
   crearAsignaturaService,
   actualizarAsignaturaService,
   eliminarAsignaturaService,
-  agregarSeccionService,
   actualizarSeccionService,
   eliminarSeccionService,
+  crearSeccionNuevaService,
 } from '../services/asignatura-service';
 import { obtenerSalasActivasService, ISala } from '../services/sala-service';
-import { obtenerUsuariosService, obtenerUsuariosGestoresAsignaturaService } from '../services/usuario-service';
+import { filtrarBloquesPorSalaYDiaService, IBloqueDisponible } from '../services/bloque-horario-service';
+import { obtenerUsuariosService, obtenerUsuariosGestoresAsignaturaService, obtenerUsuariosAsignadosSeccionService } from '../services/usuario-service';
 
-/**
- * Formatea los bloques horarios en un string legible
- * Formato: "Lun 08:00-10:00, Mie 14:00-16:00"
- */
-const formatearHorario = (bloques: IBloqueHorario[]): string => {
-  if (!bloques || bloques.length === 0) return 'Sin horario';
-
-  const diasAbrev: Record<string, string> = {
-    'LUNES': 'Lun',
-    'MARTES': 'Mar',
-    'MIERCOLES': 'Mié',
-    'JUEVES': 'Jue',
-    'VIERNES': 'Vie',
-    'SABADO': 'Sáb',
-    'DOMINGO': 'Dom'
-  };
-
-  return bloques
-    .map(b => `${diasAbrev[b.diaSemana]} ${b.horaInicio}-${b.horaFin}`)
-    .join(', ');
+const DIAS_ABREV: Record<string, string> = {
+  LUNES: 'Lun', MARTES: 'Mar', MIERCOLES: 'Mié',
+  JUEVES: 'Jue', VIERNES: 'Vie', SABADO: 'Sáb', DOMINGO: 'Dom'
 };
 
 /**
- * Obtiene la lista única de salas de los bloques horarios
+ * Agrupa bloques por sala+día, fusiona bloques consecutivos en rangos.
+ * Retorna una línea por grupo: { sala, dia, rangos }
  */
-const obtenerSalas = (bloques: IBloqueHorario[]): string => {
-  if (!bloques || bloques.length === 0) return 'Sin sala';
+const formatearHorarioAgrupado = (bloques: IBloqueHorario[]): { sala: string; dia: string; rangos: string[] }[] => {
+  if (!bloques || bloques.length === 0) return [];
 
-  const salasUnicas = Array.from(new Set(bloques.map(b => b.nombreSala)));
-  return salasUnicas.join(', ');
+  const grupos = new Map<string, IBloqueHorario[]>();
+  for (const b of bloques) {
+    const key = `${b.idSala}__${b.diaSemana}`;
+    if (!grupos.has(key)) grupos.set(key, []);
+    grupos.get(key)!.push(b);
+  }
+
+  const result: { sala: string; dia: string; rangos: string[] }[] = [];
+
+  for (const gruposBloques of grupos.values()) {
+    const sorted = [...gruposBloques].sort((a, b) => a.numeroBloque - b.numeroBloque);
+    const sala = sorted[0].nombreSala;
+    const dia = DIAS_ABREV[sorted[0].diaSemana] ?? sorted[0].diaSemana;
+
+    const rangos: string[] = [];
+    let inicio = sorted[0];
+    let anterior = sorted[0];
+
+    for (let i = 1; i < sorted.length; i++) {
+      const cur = sorted[i];
+      if (cur.numeroBloque === anterior.numeroBloque + 1) {
+        anterior = cur;
+      } else {
+        rangos.push(`${inicio.horaInicio.slice(0, 5)}-${anterior.horaFin.slice(0, 5)}`);
+        inicio = cur;
+        anterior = cur;
+      }
+    }
+    rangos.push(`${inicio.horaInicio.slice(0, 5)}-${anterior.horaFin.slice(0, 5)}`);
+    result.push({ sala, dia, rangos });
+  }
+
+  return result;
 };
 
 /**
@@ -92,6 +109,7 @@ const renderEstadoSeccion = (estado: EstadoSeccion) => {
 const GestionAsignaturasPage: React.FC = () => {
   usePageTitle('Gestión de Asignaturas', 'Administre asignaturas, secciones y asignaciones de gestores');
   const toast = useToast();
+  const { showConfirm } = useNotifications();
   const [asignaturas, setAsignaturas] = React.useState<IAsignatura[]>([]);
   const [profesores, setProfesores] = React.useState<IUsuario[]>([]);
   const [searchTerm, setSearchTerm] = React.useState<string>('');
@@ -229,16 +247,14 @@ const GestionAsignaturasPage: React.FC = () => {
   /**
    * Guarda una nueva sección creada
    */
-  const handleCrearSeccion = async (seccionData: any) => {
-    if (!asignaturaParaSeccion) return;
+  const handleCrearSeccion = async () => {
     try {
-      await agregarSeccionService(asignaturaParaSeccion.id, seccionData);
       await cargarDatos();
       onCrearSeccionModalOpenChange();
       toast.success('Sección creada correctamente');
     } catch (error: any) {
-      logger.error('Error al crear sección:', error);
-      toast.error(error.message || 'Error al crear la sección');
+      logger.error('Error al recargar datos:', error);
+      toast.error(error.message || 'Error al recargar los datos');
     }
   };
 
@@ -256,11 +272,10 @@ const GestionAsignaturasPage: React.FC = () => {
         nombreSeccion: seccionEditada.numeroSeccion,
         estadoSeccion: seccionEditada.estado,
         idDocente: parseInt(seccionEditada.profesorAsignadoId),
-        NombreCompletoDocente: seccionEditada.profesorAsignado,
+        nombreCompletoDocente: seccionEditada.profesorAsignado,
         capacidadMaxInscritos: seccionEditada.capacidadMax,
         cantInscritos: seccionEditada.cantInscritos,
         bloquesHorarios: seccionEditada.bloquesHorarios,
-        crearSala: false
       };
 
       await actualizarSeccionService(
@@ -308,17 +323,29 @@ const GestionAsignaturasPage: React.FC = () => {
   /**
    * Elimina una asignatura
    */
-  const eliminarAsignatura = async (asignaturaId: string) => {
-    if (!confirm('¿Está seguro de eliminar esta asignatura? Esto eliminará todas sus secciones.')) return;
-
-    try {
-      await eliminarAsignaturaService(asignaturaId);
-      await cargarDatos();
-      toast.success('Asignatura eliminada correctamente');
-    } catch (error: any) {
-      logger.error('Error al eliminar asignatura:', error);
-      toast.error(error.message || 'Error al eliminar la asignatura');
-    }
+  const eliminarAsignatura = async (asignaturaId: string, nombreAsignatura: string) => {
+    showConfirm({
+      title: 'Eliminar Asignatura',
+      subtitle: 'Esta acción no se puede deshacer',
+      headerVariant: 'danger',
+      alertTitle: 'Acción irreversible',
+      alertMessage: `Se eliminarán permanentemente la asignatura "${nombreAsignatura}" y todas las secciones vinculadas a ella. Los alumnos inscritos perderán su inscripción.`,
+      message: '',
+      confirmText: 'Eliminar',
+      confirmColor: 'danger',
+      requireText: 'ELIMINAR',
+      requireTextHelper: 'Esta acción es irreversible. Escribe ELIMINAR para confirmar.',
+      onConfirm: async () => {
+        try {
+          await eliminarAsignaturaService(asignaturaId);
+          await cargarDatos();
+          toast.success('Asignatura eliminada correctamente');
+        } catch (error: any) {
+          logger.error('Error al eliminar asignatura:', error);
+          toast.error(error.message || 'Error al eliminar la asignatura');
+        }
+      }
+    });
   };
 
   /**
@@ -449,19 +476,19 @@ const GestionAsignaturasPage: React.FC = () => {
                           <Button
                             isIconOnly
                             variant="light"
-                            size="sm"
+                            size="md"
                             onPress={() => editarAsignatura(asignatura)}
                           >
-                            <Icon icon="lucide:edit" className="text-primary" />
+                            <Icon icon="lucide:edit" width={18} className="text-primary" />
                           </Button>
                           <Button
                             isIconOnly
                             variant="light"
-                            size="sm"
+                            size="md"
                             color="danger"
-                            onPress={() => eliminarAsignatura(asignatura.id)}
+                            onPress={() => eliminarAsignatura(asignatura.id, asignatura.nombre)}
                           >
-                            <Icon icon="lucide:trash-2" />
+                            <Icon icon="lucide:trash-2" width={18} />
                           </Button>
                         </div>
                       </div>
@@ -478,64 +505,63 @@ const GestionAsignaturasPage: React.FC = () => {
                           className="overflow-hidden"
                         >
                           <div className="p-4 bg-default-50 dark:bg-default-100/10">
-                            <div className="flex justify-between items-center mb-4">
+                            <div className="flex justify-between items-center mb-3">
                               <h4 className="font-semibold text-sm">Secciones ({asignatura.secciones.length})</h4>
                             </div>
 
-                            <div className="grid gap-3">
-                              {asignatura.secciones.map((seccion: ISeccion) => (
-                                <div key={seccion.id} className="flex items-center justify-between p-3 bg-white dark:bg-content1 rounded-lg border border-default-200">
-                                  <div className="flex-1 grid grid-cols-1 md:grid-cols-4 gap-4">
-                                    <div>
-                                      <p className="text-xs text-default-500 mb-1">SECCIÓN</p>
-                                      <p className="font-semibold text-lg">{seccion.numeroSeccion}</p>
-                                    </div>
-                                    <div>
-                                      <p className="text-xs text-default-500 mb-1">PROFESOR ASIGNADO</p>
-                                      <p className="font-medium text-sm">{seccion.profesorAsignado}</p>
-                                    </div>
-                                    <div>
-                                      <p className="text-xs text-default-500 mb-1">HORARIO / AULA</p>
-                                      <p className="text-sm">{formatearHorario(seccion.bloquesHorarios)}</p>
-                                      <p className="text-xs text-default-400">{obtenerSalas(seccion.bloquesHorarios)}</p>
-                                    </div>
-                                    <div>
-                                      <p className="text-xs text-default-500 mb-1">ALUMNOS / ESTADO</p>
-                                      <div className="flex items-center gap-2">
-                                        <p className="text-sm font-semibold">
-                                          {seccion.cantInscritos}/{seccion.capacidadMax} alumnos
-                                        </p>
-                                        {renderEstadoSeccion(seccion.estado)}
-                                      </div>
-                                    </div>
-                                  </div>
-                                  <div className="flex gap-2 ml-4">
-                                    <Button
-                                      isIconOnly
-                                      variant="light"
-                                      size="sm"
-                                      onPress={() => editarSeccion(asignatura, seccion)}
-                                    >
-                                      <Icon icon="lucide:edit" className="text-primary" />
-                                    </Button>
-                                    <Button
-                                      isIconOnly
-                                      variant="light"
-                                      size="sm"
-                                      color="danger"
-                                      onPress={() => eliminarSeccion(asignatura.id, seccion.id)}
-                                    >
-                                      <Icon icon="lucide:trash-2" />
-                                    </Button>
-                                  </div>
-                                </div>
-                              ))}
-                              {asignatura.secciones.length === 0 && (
-                                <div className="text-center py-6 text-default-400">
-                                  <Icon icon="lucide:book-open" className="text-3xl mx-auto mb-2" />
+                            {/* Grid único: cabecera + cuerpo comparten el mismo contexto de columnas */}
+                            <div style={{ display: 'grid', gridTemplateColumns: '5rem 1fr 2fr 7rem 5rem', columnGap: '1.5rem', textAlign: 'center' }}>
+                              {/* Cabecera */}
+                              <div className="pb-2 text-xs text-default-400 uppercase tracking-widest font-semibold">Sección</div>
+                              <div className="pb-2 text-xs text-default-400 uppercase tracking-widest font-semibold">Docente</div>
+                              <div className="pb-2 text-xs text-default-400 uppercase tracking-widest font-semibold">Sala / Horario</div>
+                              <div className="pb-2 text-xs text-default-400 uppercase tracking-widest font-semibold">Alumnos</div>
+                              <div className="pb-2 text-xs text-default-400 uppercase tracking-widest font-semibold">Acciones</div>
+                              {/* Línea divisoria única continua */}
+                              <div style={{ gridColumn: '1 / -1' }} className="border-b-2 border-default-300 mb-1" />
+
+                              {/* Filas */}
+                              {asignatura.secciones.length === 0 ? (
+                                <div style={{ gridColumn: '1 / -1' }} className="text-center py-6 text-default-400">
                                   <p>No hay secciones registradas.</p>
                                 </div>
-                              )}
+                              ) : asignatura.secciones.map((seccion: ISeccion) => (
+                                <React.Fragment key={seccion.id}>
+                                  <div className="py-2.5 border-b border-default-100">
+                                    <p className="font-bold text-base">{seccion.numeroSeccion}</p>
+                                  </div>
+                                  <div className="py-2.5 border-b border-default-100">
+                                    <p className="text-base font-medium leading-snug">
+                                      {seccion.profesorAsignado || <span className="text-default-300 italic text-sm">Sin asignar</span>}
+                                    </p>
+                                  </div>
+                                  <div className="py-2.5 border-b border-default-100">
+                                    {seccion.bloquesHorarios.length === 0
+                                      ? <p className="text-sm text-default-300 italic">Sin horario</p>
+                                      : formatearHorarioAgrupado(seccion.bloquesHorarios).map((item, i) => (
+                                        <div key={i} className="flex justify-center items-baseline gap-1 text-sm leading-6">
+                                          <span className="font-semibold text-default-700 dark:text-default-300 shrink-0">{item.sala}</span>
+                                          <span className="text-default-400 shrink-0">·</span>
+                                          <span className="text-default-500 shrink-0">{item.dia}:</span>
+                                          <span className="text-default-600 dark:text-default-400">{item.rangos.join(' / ')}</span>
+                                        </div>
+                                      ))
+                                    }
+                                  </div>
+                                  <div className="py-2.5 border-b border-default-100">
+                                    <p className="text-base font-semibold">{seccion.cantInscritos}/{seccion.capacidadMax}</p>
+                                    <div className="mt-1">{renderEstadoSeccion(seccion.estado)}</div>
+                                  </div>
+                                  <div className="py-2.5 border-b border-default-100 flex gap-1 justify-center items-start">
+                                    <Button isIconOnly variant="light" size="md" onPress={() => editarSeccion(asignatura, seccion)}>
+                                      <Icon icon="lucide:edit" width={18} className="text-primary" />
+                                    </Button>
+                                    <Button isIconOnly variant="light" size="md" color="danger" onPress={() => eliminarSeccion(asignatura.id, seccion.id)}>
+                                      <Icon icon="lucide:trash-2" width={18} />
+                                    </Button>
+                                  </div>
+                                </React.Fragment>
+                              ))}
                             </div>
 
                             {/* Botón para agregar nueva sección */}
@@ -596,9 +622,8 @@ const GestionAsignaturasPage: React.FC = () => {
           {(onClose) => (
             <CrearSeccionModal
               asignatura={asignaturaParaSeccion}
-              profesores={profesores}
               onClose={onClose}
-              onSave={handleCrearSeccion}
+              onCreated={handleCrearSeccion}
             />
           )}
         </ModalContent>
@@ -634,21 +659,21 @@ const GestionAsignaturasPage: React.FC = () => {
 // ─── MODAL: CREAR SECCIÓN ────────────────────────────────────────────────────
 
 const DIAS_SEMANA_OPTIONS = [
-  { value: 'LUNES',     label: 'Lunes' },
-  { value: 'MARTES',    label: 'Martes' },
+  { value: 'LUNES', label: 'Lunes' },
+  { value: 'MARTES', label: 'Martes' },
   { value: 'MIERCOLES', label: 'Miércoles' },
-  { value: 'JUEVES',    label: 'Jueves' },
-  { value: 'VIERNES',   label: 'Viernes' },
+  { value: 'JUEVES', label: 'Jueves' },
+  { value: 'VIERNES', label: 'Viernes' },
+  { value: 'SABADO', label: 'Sábado' },
 ];
 
 interface CrearSeccionModalProps {
   asignatura: IAsignatura | null;
-  profesores: IUsuario[];
   onClose: () => void;
-  onSave: (seccion: any) => void;
+  onCreated: () => void;
 }
 
-const CrearSeccionModal: React.FC<CrearSeccionModalProps> = ({ asignatura, profesores, onClose, onSave }) => {
+const CrearSeccionModal: React.FC<CrearSeccionModalProps> = ({ asignatura, onClose, onCreated }) => {
   const [nombreSeccion, setNombreSeccion] = React.useState('');
   const [docenteId, setDocenteId] = React.useState('');
   const [estado, setEstado] = React.useState<EstadoSeccion>('ACTIVA');
@@ -656,58 +681,126 @@ const CrearSeccionModal: React.FC<CrearSeccionModalProps> = ({ asignatura, profe
   const [cantInscritos, setCantInscritos] = React.useState(0);
   const [isSaving, setIsSaving] = React.useState(false);
 
+  // Docentes
+  const [docentes, setDocentes] = React.useState<{ idUsuario: number; nombreCompleto: string }[]>([]);
+  const [isLoadingDocentes, setIsLoadingDocentes] = React.useState(false);
+
   // Bloques horarios
   const [salas, setSalas] = React.useState<ISala[]>([]);
   const [isLoadingSalas, setIsLoadingSalas] = React.useState(false);
   const [salaId, setSalaId] = React.useState('');
   const [dia, setDia] = React.useState('');
-  const [bloquesSeleccionados, setBloquesSeleccionados] = React.useState<{ numeroBloque: number; horaInicio: string; horaFin: string; diaSemana: string }[]>([]);
+  const [bloquesDisponibles, setBloquesDisponibles] = React.useState<IBloqueDisponible[]>([]);
+  const [isLoadingBloques, setIsLoadingBloques] = React.useState(false);
+  const [bloquesSeleccionados, setBloquesSeleccionados] = React.useState<{ idBloque: number; numeroBloque: number; horaInicio: string; horaFin: string; diaSemana: string; idSala: number; codSala: string }[]>([]);
 
   React.useEffect(() => {
-    const cargarSalas = async () => {
+    const cargarInicial = async () => {
       try {
+        setIsLoadingDocentes(true);
         setIsLoadingSalas(true);
-        const data = await obtenerSalasActivasService();
-        setSalas(data);
+        const [docentesData, salasData] = await Promise.all([
+          obtenerUsuariosAsignadosSeccionService(),
+          obtenerSalasActivasService()
+        ]);
+        setDocentes(docentesData);
+        setSalas(salasData);
       } catch { /* silencioso */ } finally {
+        setIsLoadingDocentes(false);
         setIsLoadingSalas(false);
       }
     };
-    cargarSalas();
+    cargarInicial();
   }, []);
+
+  // Carga bloques disponibles cuando sala Y día están seleccionados
+  React.useEffect(() => {
+    if (!salaId || !dia) {
+      setBloquesDisponibles([]);
+      return;
+    }
+    const cargarBloques = async () => {
+      try {
+        setIsLoadingBloques(true);
+        const data = await filtrarBloquesPorSalaYDiaService(parseInt(salaId), dia);
+        setBloquesDisponibles(data);
+      } catch { /* silencioso */ } finally {
+        setIsLoadingBloques(false);
+      }
+    };
+    cargarBloques();
+  }, [salaId, dia]);
 
   const salaSeleccionada = salas.find(s => s.idSala.toString() === salaId);
 
-  const toggleBloque = (bloque: { numeroBloque: number; horaInicio: string; horaFin: string; diaSemana: string }) => {
+  const currentSalaId = parseInt(salaId);
+
+  // Clave única: idBloque + idSala + diaSemana (un mismo número de bloque puede existir en distintas salas/días)
+  const estaSeleccionado = (bloque: IBloqueDisponible) =>
+    bloquesSeleccionados.some(
+      b => b.idBloque === bloque.idBloque && b.idSala === currentSalaId && b.diaSemana === dia
+    );
+
+  const toggleBloque = (bloque: IBloqueDisponible) => {
     setBloquesSeleccionados(prev => {
-      const existe = prev.some(b => b.numeroBloque === bloque.numeroBloque);
-      return existe ? prev.filter(b => b.numeroBloque !== bloque.numeroBloque) : [...prev, bloque];
+      const existe = prev.some(
+        b => b.idBloque === bloque.idBloque && b.idSala === currentSalaId && b.diaSemana === dia
+      );
+      if (existe) {
+        return prev.filter(
+          b => !(b.idBloque === bloque.idBloque && b.idSala === currentSalaId && b.diaSemana === dia)
+        );
+      }
+      return [...prev, {
+        idBloque: bloque.idBloque,
+        numeroBloque: bloque.numeroBloque,
+        horaInicio: bloque.horaInicio,
+        horaFin: bloque.horaFin,
+        diaSemana: dia,
+        idSala: currentSalaId,
+        codSala: salaSeleccionada?.codSala ?? ''
+      }];
     });
+  };
+
+  const removerBloque = (idBloque: number, idSala: number, diaSemana: string) => {
+    setBloquesSeleccionados(prev =>
+      prev.filter(b => !(b.idBloque === idBloque && b.idSala === idSala && b.diaSemana === diaSemana))
+    );
   };
 
   const handleSave = async () => {
     if (!asignatura) return;
     setIsSaving(true);
     try {
-      await onSave({
+      await crearSeccionNuevaService({
+        idAsignatura: parseInt(asignatura.id),
         nombreSeccion,
-        idUsuarioDocente: parseInt(docenteId),
         estadoSeccion: estado,
-        capacidadMaxInscritos: capacidadMax,
+        idUsuarioDocente: parseInt(docenteId),
+        capacidadMax,
         cantInscritos,
         bloquesHorarios: bloquesSeleccionados.map(b => ({
+          idBloque: b.idBloque,
           numeroBloque: b.numeroBloque,
+          horaInicio: b.horaInicio,
+          horaFin: b.horaFin,
           diaSemana: b.diaSemana,
-          idSala: parseInt(salaId) || undefined,
+          idSala: b.idSala,
         })),
-        crearSala: false,
       });
+      onCreated();
     } finally {
       setIsSaving(false);
     }
   };
 
-  const isFormValid = nombreSeccion.trim() && docenteId;
+  const isFormValid =
+    nombreSeccion.trim() &&
+    docenteId &&
+    cantInscritos > 0 &&
+    cantInscritos <= capacidadMax &&
+    bloquesSeleccionados.length > 0;
 
   if (!asignatura) return null;
 
@@ -725,16 +818,20 @@ const CrearSeccionModal: React.FC<CrearSeccionModalProps> = ({ asignatura, profe
           {/* ── Info básica ── */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Input
-              label="Número de Sección"
-              placeholder="001"
+              label="N° / Nombre de Sección"
+              placeholder="Ej: 001 o Sección Mañana"
               value={nombreSeccion}
               onValueChange={setNombreSeccion}
+              maxLength={100}
+              description={`${nombreSeccion.length}/100 caracteres`}
               isRequired
             />
             <Select
               label="Estado"
               selectedKeys={[estado]}
               onSelectionChange={keys => setEstado(Array.from(keys)[0] as EstadoSeccion)}
+              isRequired
+              disallowEmptySelection
             >
               <SelectItem key="ACTIVA">Activa</SelectItem>
               <SelectItem key="INACTIVA">Inactiva</SelectItem>
@@ -744,13 +841,16 @@ const CrearSeccionModal: React.FC<CrearSeccionModalProps> = ({ asignatura, profe
 
           <Select
             label="Docente Asignado"
-            placeholder="Seleccione un docente"
+            placeholder={isLoadingDocentes ? 'Cargando docentes...' : 'Seleccione un docente'}
             selectedKeys={docenteId ? [docenteId] : []}
             onSelectionChange={keys => setDocenteId(Array.from(keys)[0] as string)}
+            isLoading={isLoadingDocentes}
             isRequired
           >
-            {profesores.map(p => (
-              <SelectItem key={p.id}>{p.nombreCompleto} ({p.rol})</SelectItem>
+            {docentes.map(d => (
+              <SelectItem key={d.idUsuario.toString()} textValue={d.nombreCompleto}>
+                {d.nombreCompleto}
+              </SelectItem>
             ))}
           </Select>
 
@@ -769,6 +869,14 @@ const CrearSeccionModal: React.FC<CrearSeccionModalProps> = ({ asignatura, profe
               value={cantInscritos.toString()}
               onValueChange={v => setCantInscritos(parseInt(v) || 0)}
               min="0"
+              max={capacidadMax}
+              isRequired
+              isInvalid={cantInscritos > capacidadMax}
+              errorMessage={
+                cantInscritos > capacidadMax
+                  ? `No puede superar la capacidad máxima (${capacidadMax})`
+                  : undefined
+              }
             />
           </div>
 
@@ -785,12 +893,12 @@ const CrearSeccionModal: React.FC<CrearSeccionModalProps> = ({ asignatura, profe
                 label="Sala"
                 placeholder={isLoadingSalas ? 'Cargando salas...' : 'Seleccione una sala'}
                 selectedKeys={salaId ? [salaId] : []}
-                onSelectionChange={keys => { setSalaId(Array.from(keys)[0] as string); setBloquesSeleccionados([]); }}
+                onSelectionChange={keys => setSalaId(Array.from(keys)[0] as string)}
                 isLoading={isLoadingSalas}
               >
                 {salas.map(s => (
-                  <SelectItem key={s.idSala.toString()}>
-                    {s.codSala} — {s.nombreSala}
+                  <SelectItem key={s.idSala.toString()} textValue={`Sala: ${s.nombreSala} - Cod: ${s.codSala}`}>
+                    Sala: {s.nombreSala} - Cod: {s.codSala}
                   </SelectItem>
                 ))}
               </Select>
@@ -798,7 +906,7 @@ const CrearSeccionModal: React.FC<CrearSeccionModalProps> = ({ asignatura, profe
                 label="Día de la semana"
                 placeholder="Seleccione un día"
                 selectedKeys={dia ? [dia] : []}
-                onSelectionChange={keys => { setDia(Array.from(keys)[0] as string); setBloquesSeleccionados([]); }}
+                onSelectionChange={keys => setDia(Array.from(keys)[0] as string)}
               >
                 {DIAS_SEMANA_OPTIONS.map(d => (
                   <SelectItem key={d.value}>{d.label}</SelectItem>
@@ -823,34 +931,82 @@ const CrearSeccionModal: React.FC<CrearSeccionModalProps> = ({ asignatura, profe
                     <Chip size="sm" color="primary" variant="flat">{bloquesSeleccionados.length} seleccionado(s)</Chip>
                   )}
                 </div>
-                {/* Placeholder — reemplazar con fetch real de bloques disponibles */}
-                <div className="rounded-lg border-2 border-dashed border-warning-200 bg-warning-50 dark:bg-warning-900/10 p-4 flex items-center gap-3">
-                  <Icon icon="lucide:construction" className="text-warning-500 shrink-0" width={20} />
-                  <div>
-                    <p className="text-sm font-semibold text-warning-700 dark:text-warning-400">Consulta de bloques pendiente</p>
-                    <p className="text-xs text-warning-600 dark:text-warning-500">
-                      La búsqueda de bloques disponibles se implementará próximamente. Los bloques seleccionados se enviarán al guardar.
-                    </p>
-                  </div>
-                </div>
 
-                {/* Bloques seleccionados manualmente */}
-                {bloquesSeleccionados.length > 0 && (
-                  <div className="mt-3 space-y-2">
-                    <p className="text-xs font-medium text-default-500">Bloques seleccionados:</p>
-                    {bloquesSeleccionados.map(b => (
-                      <div key={b.numeroBloque} className="flex items-center justify-between px-3 py-2 bg-primary-50 dark:bg-primary-900/20 rounded-lg border border-primary-200">
-                        <div className="flex items-center gap-2">
-                          <Chip size="sm" color="primary" variant="flat" className="font-bold">B{b.numeroBloque}</Chip>
-                          <span className="text-xs text-default-600">{b.horaInicio} – {b.horaFin}</span>
-                        </div>
-                        <Button isIconOnly size="sm" variant="light" color="danger" onPress={() => toggleBloque(b)}>
-                          <Icon icon="lucide:x" width={14} />
-                        </Button>
-                      </div>
-                    ))}
+                {/* Lista de bloques disponibles */}
+                {isLoadingBloques ? (
+                  <div className="flex items-center justify-center py-6 gap-2 text-default-400">
+                    <Spinner size="sm" />
+                    <span className="text-sm">Cargando bloques...</span>
+                  </div>
+                ) : bloquesDisponibles.length === 0 ? (
+                  <div className="rounded-lg border-2 border-dashed border-default-200 p-4 flex flex-col items-center gap-1 text-default-400">
+                    <Icon icon="lucide:calendar-x" width={22} className="opacity-50" />
+                    <p className="text-sm">No hay bloques disponibles para esta combinación</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {bloquesDisponibles.map(bloque => {
+                      const seleccionado = estaSeleccionado(bloque);
+                      return (
+                        <button
+                          key={bloque.idBloque}
+                          type="button"
+                          onClick={() => toggleBloque(bloque)}
+                          className={`flex items-center justify-between px-3 py-2.5 rounded-lg border transition-colors text-left ${seleccionado
+                            ? 'bg-primary-50 dark:bg-primary-900/30 border-primary-300 dark:border-primary-700'
+                            : 'bg-white dark:bg-default-100/20 border-default-200 hover:border-primary-200 hover:bg-primary-50/30'
+                            }`}
+                        >
+                          <div className="flex items-center gap-2">
+                            <Chip size="sm" color={seleccionado ? 'primary' : 'default'} variant="flat" className="font-bold min-w-[36px]">
+                              B{bloque.numeroBloque}
+                            </Chip>
+                            <span className="text-xs text-default-600 dark:text-default-400">
+                              {bloque.horaInicio.slice(0, 5)} – {bloque.horaFin.slice(0, 5)}
+                            </span>
+                          </div>
+                          <Icon
+                            icon={seleccionado ? 'lucide:check-circle-2' : 'lucide:circle'}
+                            width={16}
+                            className={seleccionado ? 'text-primary' : 'text-default-300'}
+                          />
+                        </button>
+                      );
+                    })}
                   </div>
                 )}
+
+              </div>
+            )}
+
+            {/* Resumen acumulado — siempre visible si hay bloques seleccionados */}
+            {bloquesSeleccionados.length > 0 && (
+              <div className="mt-3 rounded-xl border border-primary-200 bg-primary-50 dark:bg-primary-900/20 p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-xs font-semibold text-primary-700 dark:text-primary-400 uppercase tracking-wider">
+                    Bloques reservados · {bloquesSeleccionados.length} total
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setBloquesSeleccionados([])}
+                    className="text-xs text-danger hover:underline"
+                  >
+                    Limpiar todo
+                  </button>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {bloquesSeleccionados.map(b => (
+                    <Chip
+                      key={b.idBloque}
+                      size="sm"
+                      color="primary"
+                      variant="flat"
+                      onClose={() => removerBloque(b.idBloque, b.idSala, b.diaSemana)}
+                    >
+                      B{b.numeroBloque} · {b.horaInicio.slice(0, 5)}–{b.horaFin.slice(0, 5)} · {b.codSala} · {DIAS_SEMANA_OPTIONS.find(d => d.value === b.diaSemana)?.label}
+                    </Chip>
+                  ))}
+                </div>
               </div>
             )}
           </div>
@@ -952,6 +1108,8 @@ const EditarSeccionModal: React.FC<EditarSeccionModalProps> = ({
               label="Estado"
               selectedKeys={[estado]}
               onSelectionChange={(keys) => setEstado(Array.from(keys)[0] as EstadoSeccion)}
+              isRequired
+              disallowEmptySelection
             >
               <SelectItem key="ACTIVA">Activa</SelectItem>
               <SelectItem key="INACTIVA">Inactiva</SelectItem>
@@ -991,6 +1149,12 @@ const EditarSeccionModal: React.FC<EditarSeccionModalProps> = ({
               min="0"
               max={capacidadMax}
               isRequired
+              isInvalid={cantInscritos > capacidadMax}
+              errorMessage={
+                cantInscritos > capacidadMax
+                  ? `No puede superar la capacidad máxima (${capacidadMax})`
+                  : undefined
+              }
             />
           </div>
 
@@ -1034,7 +1198,7 @@ const EditarSeccionModal: React.FC<EditarSeccionModalProps> = ({
         <Button
           color="primary"
           onPress={handleSave}
-          isDisabled={!numeroSeccion || !profesorAsignadoId || capacidadMax < cantInscritos}
+          isDisabled={!numeroSeccion || !profesorAsignadoId || capacidadMax < cantInscritos || cantInscritos <= 0}
         >
           Guardar Cambios
         </Button>
@@ -1095,27 +1259,23 @@ const EditarAsignaturaModal: React.FC<EditarAsignaturaModalProps> = ({
     }
   }, [asignatura]);
 
+  const hasChanges = React.useMemo(() => {
+    if (!asignatura) return true; // creación siempre habilitada
+    return (
+      codigo.trim() !== asignatura.codigo.trim() ||
+      nombre.trim() !== asignatura.nombre.trim() ||
+      profesorACargoId !== asignatura.profesorACargoId ||
+      descripcion.trim() !== (asignatura.descripcion ?? '').trim()
+    );
+  }, [asignatura, codigo, nombre, profesorACargoId, descripcion]);
+
   const handleSave = () => {
     if (asignatura) {
-      // Editar
-      onSave({
-        codigo,
-        nombre,
-        profesorACargoId,
-        profesorACargoNombre: gestores.find(g => g.idUsuario.toString() === profesorACargoId)?.nombreCompleto || '',
-        descripcion
-      });
+      onSave({ codigo, nombre, profesorACargoId, descripcion });
     } else {
-      // Crear
       const gestorSeleccionado = gestores.find(g => g.idUsuario.toString() === profesorACargoId);
       if (!gestorSeleccionado) return;
-
-      onCrear({
-        codigo,
-        nombre,
-        profesorACargoId,
-        descripcion
-      });
+      onCrear({ codigo, nombre, profesorACargoId, descripcion });
     }
   };
 
@@ -1185,7 +1345,7 @@ const EditarAsignaturaModal: React.FC<EditarAsignaturaModalProps> = ({
         <Button
           color="primary"
           onPress={handleSave}
-          isDisabled={!codigo || !nombre || !profesorACargoId}
+          isDisabled={!codigo || !nombre || !profesorACargoId || !hasChanges}
         >
           {asignatura ? 'Guardar Cambios' : 'Crear Asignatura'}
         </Button>

@@ -3,14 +3,14 @@ package KuHub.modules.gestion_usuario.service;
 import KuHub.modules.gestion_usuario.dtos.*;
 import KuHub.modules.gestion_usuario.dtos.dtofilter.UserAuth;
 import KuHub.modules.gestion_usuario.dtos.dtofilter.pro.UserAuthProjection;
-import KuHub.modules.gestion_usuario.dtos.proyection.UserIdNameView;
-import KuHub.modules.gestion_usuario.dtos.proyection.UsersToManageCourseView;
+import KuHub.modules.gestion_usuario.dtos.response.proyection.UserIdNameView;
+import KuHub.modules.gestion_usuario.dtos.response.proyection.UsersToManageCourseOrSectionView;
 import KuHub.modules.gestion_usuario.dtos.record.UserIdNameDTO;
 import KuHub.modules.gestion_usuario.dtos.request.CreateUser;
 import KuHub.modules.gestion_usuario.dtos.request.SearchUserRequest;
 import KuHub.modules.gestion_usuario.dtos.request.UpdateUser;
 import KuHub.modules.gestion_usuario.dtos.response.PaginatedUsersDTO;
-import KuHub.modules.gestion_usuario.dtos.response.UsersView;
+import KuHub.modules.gestion_usuario.dtos.UsersView;
 import KuHub.modules.gestion_usuario.entity.Rol;
 import KuHub.modules.gestion_usuario.entity.Usuario;
 import KuHub.modules.gestion_usuario.exceptions.*;
@@ -29,7 +29,6 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.io.IOException;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
 import java.util.Objects;
@@ -50,10 +49,10 @@ public class UsuarioServiceImpl implements UsuarioService {
     @Autowired
     private RolRepository rolRepository;
 
-    // ⚠️ NUEVO: Inyectamos el PasswordEncoder (BCrypt)
     @Autowired
     private PasswordEncoder passwordEncoder;
 
+    /**Metodo para obtener usuario por username o email que son unicos si son activos*/
     @Override
     @Transactional(readOnly = true)
     public Usuario findUserByUsernameOrEmail(String identifier){
@@ -62,6 +61,7 @@ public class UsuarioServiceImpl implements UsuarioService {
         );
     }
 
+    /**Metodo para obtene el usuario que esta conectado al sistema con el token*/
     @Override
     @Transactional(readOnly = true)
     public Usuario findUserByToken (){
@@ -72,10 +72,18 @@ public class UsuarioServiceImpl implements UsuarioService {
         );
     }
 
+    /**Metoso para obtener usuario que poderian ser asignados para la gestion de asignaturas*/
     @Override
     @Transactional(readOnly = true)
-    public List<UsersToManageCourseView> usersToManageCourse(){
+    public List<UsersToManageCourseOrSectionView> usersToManageCourse(){
         return usuarioRepository.usersToManageCourse();
+    }
+
+    /**Metodo para obtener los docentes para asignar a una seccion*/
+    @Override
+    @Transactional(readOnly = true)
+    public List<UsersToManageCourseOrSectionView> usersAssignedToSection() {
+        return usuarioRepository.usersAssignedToSection();
     }
 
     /**
@@ -371,23 +379,7 @@ public class UsuarioServiceImpl implements UsuarioService {
                 .collect(Collectors.joining(" ")));
     }
 
-    @Override
-    @Transactional(readOnly = true)
-    public List<UserIdAndCompleteNameDTO> obtenerDocentesYProfesoresActivos() {
-        return usuarioRepository.findAll().stream()
-                .filter(u ->
-                        Boolean.TRUE.equals(u.getActivo()) &&
-                                (
-                                        "DOCENTE".equalsIgnoreCase(u.getRol().getNombreRol()) ||
-                                                "PROFESOR_A_CARGO".equalsIgnoreCase(u.getRol().getNombreRol())
-                                )
-                )
-                .map(u -> new UserIdAndCompleteNameDTO(
-                        u.getIdUsuario(),
-                        formatearNombreCompleto(u)
-                ))
-                .collect(Collectors.toList());
-    }
+
 
 
 

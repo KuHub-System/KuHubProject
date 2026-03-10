@@ -1,6 +1,6 @@
 package KuHub.modules.gestion_academica.service;
 
-import KuHub.modules.gestion_academica.dtos.dtomodel.FilterTimeBlockRequestDTO;
+import KuHub.modules.gestion_academica.dtos.request.FilterTimeBlockDTO;
 import KuHub.modules.gestion_academica.entity.BloqueHorario;
 import KuHub.modules.gestion_academica.exceptions.GestionAcademicaException;
 import KuHub.modules.gestion_academica.repository.BloqueHorarioRepository;
@@ -22,16 +22,33 @@ public class BloqueHorarioServiceImp implements BloqueHorarioService{
     @Autowired
     private ReservaSalaService reservaSalaService;
 
-
+    /**Metodos par obtener todas los bloques de horari ordenado por numero de bloque*/
     @Transactional(readOnly = true)
     @Override
     public List<BloqueHorario> findAll() {
-        return bloqueHorarioRepository.findAllByOrderByNumeroBloqueAsc();//lo que manda es el numero del bloque
+        return bloqueHorarioRepository.findAllByOrderByNumeroBloqueAsc();
     }
 
+    /**Metodo para obtner los ids de bloque que ya esta reservados para una id_sala y dia de la semana espeficico
+     * con esos ids se puede omitirlos para mostrar los horarios disponibles*/
+    @Transactional(readOnly = true)
+    @Override
+    public List<BloqueHorario> filterBlocksByDayWeekAndIdRoom(FilterTimeBlockDTO request){
+        List<Integer> numbersBlocksFilter = reservaSalaService.findReservedBlocksByIdSalaAndDayWeek(
+                request.getIdSala(), request.getDiaSemana());
+        return filterBlocksByNumbersBlocks(numbersBlocksFilter);
+    }
 
-
-
+    /**Metodo para obtener los bloques de horarios filtrados por ids de bloques reservados para una id_sala y dia
+     * de la semana espeficico, si no hay reserva retorna el bloque completo*/
+    @Transactional
+    @Override
+    public List<BloqueHorario> filterBlocksByNumbersBlocks(List<Integer> numbersBlocksFilter){
+        if (numbersBlocksFilter == null || numbersBlocksFilter.isEmpty()) {
+            return bloqueHorarioRepository.findAll();
+        }
+        return bloqueHorarioRepository.findByNumeroBloqueNotIn(numbersBlocksFilter);
+    }
 
 
 
@@ -57,23 +74,9 @@ public class BloqueHorarioServiceImp implements BloqueHorarioService{
 
 
 
-    @Transactional
-    @Override
-    public List<BloqueHorario> filterBlocksByNumbersBlocks(List<Integer> numbersBlocksFilter){
-        if (numbersBlocksFilter == null || numbersBlocksFilter.isEmpty()) {
 
-            return bloqueHorarioRepository.findAll();
-        }
-         return bloqueHorarioRepository.findByNumeroBloqueNotIn(numbersBlocksFilter);
-    }
 
-    @Transactional(readOnly = true)
-    @Override
-    public List<BloqueHorario> filterBlocksByDayWeekAndIdRoom(FilterTimeBlockRequestDTO f){
 
-        List<Integer> numbersBlocksFilter = reservaSalaService.findReservedBlocksByIdSalaAndDayWeek(f.getIdSala(), f.getDiaSemana());
-        return filterBlocksByNumbersBlocks(numbersBlocksFilter);
-    }
 
 
 

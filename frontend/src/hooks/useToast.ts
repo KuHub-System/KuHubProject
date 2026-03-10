@@ -34,7 +34,7 @@ export const useToast = () => {
     error: (message: string, params?: string | ToastParams) => {
       const title = typeof params === 'string' ? params : params?.title;
       const animate = typeof params === 'object' ? params?.animate : false;
-      showNotification({ message, title: title || 'Error', type: 'error', duration: 0, animate });
+      showNotification({ message, title: title || 'Error', type: 'error', duration: 30000, animate });
     },
     warning: (message: string, params?: string | ToastParams) => {
       const title = typeof params === 'string' ? params : params?.title;

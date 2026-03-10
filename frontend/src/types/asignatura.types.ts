@@ -94,7 +94,6 @@ export interface ISeccionCreacion {
     codSala?: string; // Para crear sala nueva
     nombreSala?: string; // Para crear sala nueva
   }[];
-  crearSala?: boolean;
 }
 
 /**

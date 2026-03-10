@@ -1,13 +1,12 @@
 package KuHub.modules.gestion_academica.service;
 
-import KuHub.modules.gestion_academica.dtos.dtoentity.SeccionEntityResponseDTO;
-import KuHub.modules.gestion_academica.dtos.response.BookTImeBlocksDTO;
-import KuHub.modules.gestion_academica.dtos.response.SectionAnswerUpdateDTO;
-import KuHub.modules.gestion_academica.dtos.dtomodel.SectionCreateDTO;
+import KuHub.modules.gestion_academica.dtos.record.CheckAvailability;
+import KuHub.modules.gestion_academica.dtos.request.BookTImeBlocksDTO;
+import KuHub.modules.gestion_academica.dtos.request.SectionCreateDTO;
 import KuHub.modules.gestion_academica.entity.*;
 import KuHub.modules.gestion_academica.exceptions.GestionAcademicaException;
+import KuHub.modules.gestion_academica.repository.DocenteSeccionRepository;
 import KuHub.modules.gestion_academica.repository.SeccionRepository;
-import KuHub.modules.gestion_usuario.entity.Usuario;
 import KuHub.modules.gestion_usuario.service.RolService;
 import KuHub.modules.gestion_usuario.service.UsuarioService;
 import KuHub.utils.StringUtils;
@@ -16,9 +15,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDate;
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Service
 public class SeccionServiceImp implements SeccionService{
@@ -42,7 +39,7 @@ public class SeccionServiceImp implements SeccionService{
     private BloqueHorarioService bloqueHorarioService;
 
     @Autowired
-    private DocenteSeccionService docenteSeccionService;
+    private DocenteSeccionRepository docenteSeccionRepository;
 
     @Autowired
     private RolService rolService;
@@ -50,175 +47,69 @@ public class SeccionServiceImp implements SeccionService{
 
     @Transactional
     @Override
-    public SectionAnswerUpdateDTO createSection (SectionCreateDTO dto){
-        SectionAnswerUpdateDTO dtoResponse = new SectionAnswerUpdateDTO();
-
-        /***validar capacidad maxima y cantidad de inscritos */
-        if (dto.getCantInscritos() < 0 || dto.getCapacidadMaxInscritos() < 0){
-            throw new GestionAcademicaException("La capacidad maxima y cantidad de incritos no pueden ser negativas" , HttpStatus.NOT_FOUND);
-        }
-        dtoResponse.setCapacidadMaxInscritos(dto.getCapacidadMaxInscritos());
-
-        if (dto.getCantInscritos() > dto.getCapacidadMaxInscritos()){
-            throw new GestionAcademicaException("La cantidad de inscritos no puede ser mayor a la capacidad maxima" , HttpStatus.NOT_FOUND);
-        }
-        dtoResponse.setCantInscritos(dto.getCantInscritos());
-
-        /**Validar existencia de asignatura y que este activa*/
-        if ( dto.getIdAsignatura()!= null) {
-            if (!asignaturaService.existsByIdAsignaturaAndTrue(dto.getIdAsignatura())){
-                throw new GestionAcademicaException("La asignatura con el id: " + dto.getIdAsignatura() + " no existe" , HttpStatus.NOT_FOUND);
-            }
-        }else {
-            throw new GestionAcademicaException("Debe indicar una asignatura válida" , HttpStatus.NOT_FOUND);
-        }
-        dtoResponse.setIdAsignatura(dto.getIdAsignatura());
+    public boolean createSection (SectionCreateDTO request) {
+        /***Parsear antes de validar */
+        String nombreSeccion = StringUtils.normalizeSpaces(request.getNombreSeccion());
 
         /**Validar duplicidad de nombre de la seccion en la misma asignatura*/
-        if (dto.getNombreSeccion() != null && !dto.getNombreSeccion().isBlank()) {
-
-            if(seccionRepository.existsByAsignaturaTrueAndSeccionTrueAndNombreSeccionIlike(
-                    dto.getIdAsignatura(),
-                    StringUtils.normalizeSpaces(dto.getNombreSeccion()))
-            ) {
-                throw new GestionAcademicaException("Ya existe una seccion con el nombre: " + dto.getNombreSeccion()
-                        + " en misma asignatura la asignatura: " + dto.getIdAsignatura(), HttpStatus.NOT_FOUND
-                );
-            }
-        }else {
-            throw new GestionAcademicaException("No se puede crear una seccion sin nombre", HttpStatus.NOT_FOUND);
+        if (seccionRepository.existsByAsignaturaTrueAndSeccionTrueAndNombreSeccionIlike(
+                request.getIdAsignatura(), StringUtils.normalizeSpaces(nombreSeccion))) {
+            throw new GestionAcademicaException("Ya existe una seccion con el nombre: " + nombreSeccion
+                    + " en misma asignatura la asignatura: ", HttpStatus.CONFLICT
+            );
         }
-        dtoResponse.setNombreSeccion(StringUtils.normalizeSpaces(dto.getNombreSeccion()));
 
-        /**Validar existencia de usuario y que sea docente o profesor */
-        Usuario docente = usuarioService.obtenerPorIdEntidad(dto.getIdUsuarioDocente());
-        boolean esActivo = docente.getActivo();
-        boolean esRolValido = false;
+        /**Crear objeto seccion*/
+        Seccion newSection = new Seccion();
+        newSection.setIdAsignatura(request.getIdAsignatura());
+        newSection.setNombreSeccion(nombreSeccion);
+        newSection.setCapacidadMax(request.getCapacidadMax());
+        newSection.setCantInscritos(request.getCantInscritos());
+        String enumKey = StringUtils.normalizeToEnumKey(request.getEstadoSeccion());
         try {
-            Seccion.RolValido.valueOf(docente.getRol().getNombreRol().toUpperCase());
-            esRolValido = true; // Si no lanza excepción, el rol es válido
-        } catch (IllegalArgumentException e) {
-            esRolValido = false; // Rol no permitido
-        }
-        if(!esRolValido || !esActivo){
-            throw new GestionAcademicaException("Los usuario registrados a la seccion solo pueden ser docentes o profesores", HttpStatus.NOT_FOUND);
-        }
-        dtoResponse.setIdDocente(docente.getIdUsuario());
-
-        /**Crear seccion*/
-        Seccion seccion = seccionRepository.save( new Seccion(
-                null,
-                asignaturaService.findById(dto.getIdAsignatura()),
-                StringUtils.normalizeSpaces(dto.getNombreSeccion()),
-                dto.getCapacidadMaxInscritos(),
-                dto.getCantInscritos(),
-                true,
-                Seccion.EstadoSeccion.ACTIVA));
-        dtoResponse.setIdSeccion(seccion.getIdSeccion());
-
-        List<BookTImeBlocksDTO> bloqueResponse = new ArrayList<>();
-        /** Procesa siempre los bloques (crea sala sólo cuando corresponde)*/
-        if (dto.getBloquesHorarios() != null) {
-            /**
-             * Procesa los bloques de tiempo de la sección,
-             * creando sala solo si corresponde, pero siempre validando los bloques.
-             */
-
-            for (BookTImeBlocksDTO B : dto.getBloquesHorarios()) {
-
-                /** Normalizamos el día */
-                ReservaSala.DiaSemana diaSemanaEnum =
-                        ReservaSala.DiaSemana.valueOf(
-                                B.getDiaSemana().toString().toUpperCase()
-                        );
-
-                Sala sala;
-
-                /**
-                 * Si se indicó crear sala y el bloque NO tiene idSala,
-                 * entonces debemos crear una nueva.
-                 */
-                if (dto.getCrearSala() && B.getIdSala() == null) {
-
-                    sala = salaService.save(
-                            new Sala(
-                                    null,
-                                    B.getCodSala(),
-                                    StringUtils.capitalizarPalabras(B.getNombreSala()),
-                                    true
-                            )
-                    );
-
-                    if (sala == null || sala.getIdSala() == null) {
-                        throw new GestionAcademicaException(
-                                "No se pudo crear la sala para el bloque " + B.getNumeroBloque(), HttpStatus.NOT_FOUND
-                        );
-                    }
-
-                } else {
-
-                    /** Si no se crea sala, debe existir una */
-                    if (B.getIdSala() == null) {
-                        throw new GestionAcademicaException(
-                                "No se indicó idSala para el bloque " + B.getNumeroBloque(), HttpStatus.NOT_FOUND
-                        );
-                    }
-
-                    sala = salaService.findById(B.getIdSala());
-                }
-                B.setIdSala(sala.getIdSala());
-                B.setNombreSala(sala.getNombreSala());
-                B.setCodSala(sala.getCodSala());
-
-                /** Validar disponibilidad del bloque */
-                boolean disponible = reservaSalaService.validatedThatTheBlockIsNotReserved(
-                        sala.getIdSala(),
-                        diaSemanaEnum.name(),
-                        B.getNumeroBloque()
-                );
-
-                if (!disponible) {
-                    throw new GestionAcademicaException(
-                            "El bloque " + B.getNumeroBloque() +
-                                    " ya está reservado para una sala en una seccion", HttpStatus.NOT_FOUND
-                    );
-                }
-
-                /** Obtener bloque horario */
-                BloqueHorario bloqueHorario = bloqueHorarioService.findById(B.getNumeroBloque());
-
-                /** Crear y guardar la reserva */
-                ReservaSala reservaSala = new ReservaSala(
-                        null,
-                        seccion,
-                        sala,
-                        bloqueHorario,
-                        diaSemanaEnum
-                );
-
-                reservaSalaService.save(reservaSala);
-                bloqueResponse.add(B);
+            if (enumKey != null) {
+                newSection.setEstadoSeccion(Seccion.EstadoSeccion.valueOf(enumKey));
             }
+        } catch (IllegalArgumentException e) {
+            // Si el frontend envía algo que no existe, asignamos un default seguro
+            newSection.setEstadoSeccion(Seccion.EstadoSeccion.ACTIVA);
         }
-        dtoResponse.setBloquesHorarios(bloqueResponse);
+        /**Crear en la bbdd*/
+        Seccion savedSection = seccionRepository.save(newSection);
 
-        /**SE INSETA a la tabla intermedia DocenteSeccion, el save no tiene restricciones, en un futuro puede ser que si
-         * esto significa que pueda cambiar el guadardo, la otra opcion es llamar el repo justo en esta parte */
-        docenteSeccionService.save(new DocenteSeccion(
-                null,
-                docente,
-                seccion,
-                null
-        ));
+        /** Valdar disponibilidad para reservar bloques */
+        for (BookTImeBlocksDTO B : request.getBloquesHorarios()) {
 
+            /** Validar disponibilidad del bloque y retorno del tipo enun formateado*/
+            CheckAvailability check = reservaSalaService.validatedThatTheBlockIsNotReserved(
+                    B.getIdSala(),
+                    B.getDiaSemana(), // El String crudo
+                    B.getNumeroBloque()
+            );
+            if (!check.isAvailable()) {
+                throw new GestionAcademicaException(
+                        "El bloque " + B.getNumeroBloque() +
+                                " ya está reservado para una sala en una seccion", HttpStatus.CONFLICT
+                );
+            }
 
-        /**Estos atributos son meramente visuale, debido en las tablas se asignan valores por defecto*/
-        /**Obtener nombre completo del docente usando metodo*/
-        dtoResponse.setNombreCompletoDocente(usuarioService.formatearNombreCompleto(docente));
-        /**Asignar valores por defecto*/
-        dtoResponse.setEstadoSeccion(Seccion.EstadoSeccion.ACTIVA);
+            /** Crear y guardar la reserva */
+            ReservaSala newReservation = new ReservaSala();
+            newReservation.setSeccion(savedSection);
+            newReservation.setIdSala(B.getIdSala());
+            newReservation.setIdBloque(B.getIdBloque());
+            newReservation.setDiaSemana(check.enumDay());
 
-        return dtoResponse;
+            reservaSalaService.save(newReservation);
+        }
+
+        /**Asiganar el usuario docente a seccion*/
+        DocenteSeccion newTeaching = new DocenteSeccion();
+        newTeaching.setSeccion(savedSection);
+        newTeaching.setIdUsuario(request.getIdUsuarioDocente());
+        docenteSeccionRepository.save(newTeaching);
+
+        return true;
     }
 
 
@@ -234,24 +125,6 @@ public class SeccionServiceImp implements SeccionService{
 
 
 
-
-    @Transactional(readOnly = true)
-    @Override
-    public SeccionEntityResponseDTO findById(Integer id) {
-        Seccion seccion = seccionRepository.findById(id).orElseThrow(
-                () -> new GestionAcademicaException("La seccion con el id: " + id + " no existe" , HttpStatus.NOT_FOUND)
-        );
-        return convertirADTO(seccion);
-    }
-
-    @Transactional(readOnly = true)
-    @Override
-    public SeccionEntityResponseDTO findByIdAndActiveIsTrueResponseDTO(Integer id){
-        Seccion seccion = seccionRepository.findByIdSeccionAndActivoTrue(id).orElseThrow(
-                () -> new GestionAcademicaException("La seccion con el id: " + id + " no existe" , HttpStatus.NOT_FOUND)
-        );
-        return convertirADTO(seccion);
-    }
 
     @Transactional(readOnly = true)
     @Override
@@ -261,28 +134,53 @@ public class SeccionServiceImp implements SeccionService{
         );
     }
 
+
+
     @Transactional(readOnly = true)
     @Override
-    public List<SeccionEntityResponseDTO> findAll() {
-        return seccionRepository.findAll()
-                .stream()
-                .map(this::convertirADTO)
-                .collect(Collectors.toList());
+    public List<Seccion> findAllSeccionsSeccionList(List<Integer> seccionesIds){
+        return seccionRepository.findAllById(seccionesIds);
     }
 
-    @Transactional
+
+    /**
+
+
+     @Transactional(readOnly = true)
+     @Override
+     public SeccionEntityResponseDTO findById(Integer id) {
+     Seccion seccion = seccionRepository.findById(id).orElseThrow(
+     () -> new GestionAcademicaException("La seccion con el id: " + id + " no existe" , HttpStatus.NOT_FOUND)
+     );
+     return convertirADTO(seccion);
+     }
+
+     @Transactional(readOnly = true)
+     @Override
+     public SeccionEntityResponseDTO findByIdAndActiveIsTrueResponseDTO(Integer id){
+     Seccion seccion = seccionRepository.findByIdSeccionAndActivoTrue(id).orElseThrow(
+     () -> new GestionAcademicaException("La seccion con el id: " + id + " no existe" , HttpStatus.NOT_FOUND)
+     );
+     return convertirADTO(seccion);
+     }
+
+     @Transactional(readOnly = true)
+     @Override
+     public List<SeccionEntityResponseDTO> findAll() {
+     return seccionRepository.findAll()
+     .stream()
+     .map(this::convertirADTO)
+     .collect(Collectors.toList());
+     }
+
+
+     @Transactional
     @Override
     public List<SeccionEntityResponseDTO> findAllByActivoTrue(){
         return seccionRepository.findAllByActivoTrue()
                 .stream()
                 .map(this::convertirADTO)
                 .collect(Collectors.toList());
-    }
-
-    @Transactional(readOnly = true)
-    @Override
-    public List<Seccion> findAllSeccionsSeccionList(List<Integer> seccionesIds){
-        return seccionRepository.findAllById(seccionesIds);
     }
 
     @Transactional
@@ -323,12 +221,12 @@ public class SeccionServiceImp implements SeccionService{
 
 
 
-
+    /**
     @Transactional
     @Override
     public SectionAnswerUpdateDTO updateSection(SectionAnswerUpdateDTO dto){
 
-        /**validar capacidad maxima y cantidad de inscritos*/
+        /**validar capacidad maxima y cantidad de inscritos
         if (dto.getCantInscritos() < 0 || dto.getCapacidadMaxInscritos() < 0){
             throw new GestionAcademicaException("La capacidad maxima y cantidad de incritos no pueden ser negativas", HttpStatus.NOT_FOUND);
         }
@@ -339,7 +237,7 @@ public class SeccionServiceImp implements SeccionService{
 
         Seccion seccion = findByIdAndActiveIsTrueEntity(dto.getIdSeccion());
 
-        /**Validar existencia de asignatura y que este activa*/
+        /**Validar existencia de asignatura y que este activa
         if ( dto.getIdAsignatura()!= null) {
             if (!asignaturaService.existsByIdAsignaturaAndTrue(dto.getIdAsignatura())){
                 throw new GestionAcademicaException("La asignatura con el id: " + dto.getIdAsignatura() + " no existe", HttpStatus.NOT_FOUND);
@@ -349,7 +247,7 @@ public class SeccionServiceImp implements SeccionService{
         }
 
 
-/**Validar duplicidad de nombre de la seccion en la misma asignatura*/
+/**Validar duplicidad de nombre de la seccion en la misma asignatura
         if (dto.getNombreSeccion() != null && !dto.getNombreSeccion().isBlank()) {
             String nuevoNombreNormalizado = StringUtils.normalizeSpaces(dto.getNombreSeccion());
 
@@ -374,7 +272,7 @@ public class SeccionServiceImp implements SeccionService{
             dto.setNombreSeccion(seccion.getNombreSeccion());
         }
 
-        /**Validar existencia de usuario y que sea docente o profesor*/
+        /**Validar existencia de usuario y que sea docente o profesor
         Usuario docente = usuarioService.obtenerPorIdEntidad(dto.getIdDocente());
         boolean esActivo = docente.getActivo();
         boolean esRolValido = false;
@@ -388,7 +286,7 @@ public class SeccionServiceImp implements SeccionService{
             throw new GestionAcademicaException("Los usuario registrados a la seccion solo pueden ser docentes o profesores", HttpStatus.NOT_FOUND);
         }
 
-        /**Obtener tabla intermedia DocenteSeccion y actualizar si hay cambios*/
+        /**Obtener tabla intermedia DocenteSeccion y actualizar si hay cambios
         DocenteSeccion dulce = docenteSeccionService.findByIdSeccionEntity(seccion.getIdSeccion());
 
         if (dulce.getUsuario().getIdUsuario() != dto.getIdDocente()){
@@ -398,13 +296,13 @@ public class SeccionServiceImp implements SeccionService{
         docenteSeccionService.save(dulce);
         dto.setNombreCompletoDocente(usuarioService.formatearNombreCompleto(docente));
 
-        /**Actualizar seccion*/
+        /**Actualizar seccion
         seccion.setCapacidadMax(dto.getCapacidadMaxInscritos());
         seccion.setCantInscritos(dto.getCantInscritos());
         seccionRepository.save(seccion);
 
 
-        /** Procesar cambios en bloques horarios */
+        /** Procesar cambios en bloques horarios
         if (dto.getBloquesHorarios() != null) {
 
             // Obtener reservas actuales de la sección
@@ -464,14 +362,14 @@ public class SeccionServiceImp implements SeccionService{
             // Procesar cada bloque horario del DTO
             for (BookTImeBlocksDTO B : dto.getBloquesHorarios()) {
 
-                /** Normalizar el día */
+                /** Normalizar el día
                 ReservaSala.DiaSemana diaSemanaEnum =
                         ReservaSala.DiaSemana.valueOf(B.getDiaSemana().name().toUpperCase());
 
                 Sala sala;
                 boolean esNuevaReserva = false;
 
-                /** Determinar si necesitamos crear una sala nueva */
+                /** Determinar si necesitamos crear una sala nueva
                 if (Boolean.TRUE.equals(dto.getCrearSala()) && B.getIdSala() == null) {
 
                     // Validar que se proporcionen los datos necesarios para crear la sala
@@ -506,7 +404,7 @@ public class SeccionServiceImp implements SeccionService{
 
                 } else {
 
-                    /** Si no se crea sala, debe existir una */
+                    /** Si no se crea sala, debe existir una
                     if (B.getIdSala() == null) {
                         throw new GestionAcademicaException(
                                 "No se indicó idSala para el bloque " + B.getNumeroBloque() +
@@ -525,15 +423,15 @@ public class SeccionServiceImp implements SeccionService{
                     esNuevaReserva = !reservasActualesMap.containsKey(claveReserva);
                 }
 
-                /** Actualizar datos en el DTO para la respuesta */
+                /** Actualizar datos en el DTO para la respuesta
                 B.setIdSala(sala.getIdSala());
                 B.setNombreSala(sala.getNombreSala());
                 B.setCodSala(sala.getCodSala());
 
-                /** Solo procesar si es una nueva reserva */
+                /** Solo procesar si es una nueva reserva
                 if (esNuevaReserva) {
 
-                    /** Validar disponibilidad del bloque */
+                    /** Validar disponibilidad del bloque
                     boolean disponible = reservaSalaService.validatedThatTheBlockIsNotReserved(
                             sala.getIdSala(),
                             diaSemanaEnum.name(),
@@ -548,10 +446,10 @@ public class SeccionServiceImp implements SeccionService{
                         );
                     }
 
-                    /** Obtener bloque horario */
+                    /** Obtener bloque horario
                     BloqueHorario bloqueHorario = bloqueHorarioService.findById(B.getNumeroBloque());
 
-                    /** Crear y guardar la nueva reserva */
+                    /** Crear y guardar la nueva reserva
                     ReservaSala nuevaReserva = new ReservaSala(
                             null,
                             seccion,
@@ -567,7 +465,7 @@ public class SeccionServiceImp implements SeccionService{
 
         return dto;
 
-    }
+    }*/
 
 
 
@@ -581,15 +479,5 @@ public class SeccionServiceImp implements SeccionService{
         seccionRepository.save(seccion);
     }
 
-    private SeccionEntityResponseDTO convertirADTO(Seccion seccion){
-        return new SeccionEntityResponseDTO(
-                seccion.getIdSeccion(),
-                seccion.getAsignatura().getIdAsignatura(),
-                seccion.getNombreSeccion(),
-                seccion.getCapacidadMax(),
-                seccion.getCantInscritos(),
-                seccion.getActivo(),
-                seccion.getEstadoSeccion().name()
-        );
-    }
+
 }

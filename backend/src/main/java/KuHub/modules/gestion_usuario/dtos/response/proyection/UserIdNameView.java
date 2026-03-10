@@ -1,4 +1,4 @@
-package KuHub.modules.gestion_usuario.dtos.proyection;
+package KuHub.modules.gestion_usuario.dtos.response.proyection;
 
 public interface UserIdNameView {
     // Mapea la columna ID_USUARIO

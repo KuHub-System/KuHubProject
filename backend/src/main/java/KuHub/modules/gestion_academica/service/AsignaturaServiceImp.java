@@ -1,18 +1,18 @@
 package KuHub.modules.gestion_academica.service;
 
 import KuHub.modules.gestion_academica.dtos.dtomodel.*;
-import KuHub.modules.gestion_academica.dtos.response.BookTImeBlocksDTO;
+import KuHub.modules.gestion_academica.dtos.request.CourseCreateDTO;
+import KuHub.modules.gestion_academica.dtos.request.CourseUpdateDTO;
 import KuHub.modules.gestion_academica.dtos.response.CourserAnswerDTGOD;
 import KuHub.modules.gestion_academica.dtos.response.CourserPageDTGOD;
 import KuHub.modules.gestion_academica.dtos.response.SectionAnswerUpdateDTO;
+import KuHub.modules.gestion_academica.dtos.response.SectionBlockDTO;
 import KuHub.modules.gestion_academica.entity.Asignatura;
 import KuHub.modules.gestion_academica.entity.AsignaturaProfesorCargo;
-import KuHub.modules.gestion_academica.entity.ReservaSala;
 import KuHub.modules.gestion_academica.entity.Seccion;
 import KuHub.modules.gestion_academica.exceptions.GestionAcademicaException;
 import KuHub.modules.gestion_academica.repository.AsignaturaProfesorCargoRepository;
 import KuHub.modules.gestion_academica.repository.AsignaturaRepository;
-import KuHub.modules.gestion_usuario.entity.Usuario;
 import KuHub.modules.gestion_usuario.service.UsuarioService;
 import KuHub.utils.PaginationUtils;
 import KuHub.utils.StringUtils;
@@ -28,6 +28,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -37,8 +38,6 @@ public class AsignaturaServiceImp implements AsignaturaService{
     @Autowired
     private AsignaturaRepository asignaturaRepository;
 
-    @Autowired
-    private AsignaturaProfesorCargoService asignaturaProfesorCargoService;
 
     @Autowired
     private UsuarioService usuarioService;
@@ -116,21 +115,19 @@ public class AsignaturaServiceImp implements AsignaturaService{
                         @SuppressWarnings("unchecked")
                         List<Map<String, Object>> bloquesMap = (List<Map<String, Object>>) seccionMap.get("bloquesHorarios");
 
-                        List<BookTImeBlocksDTO> bloques = new ArrayList<>();
+                        List<SectionBlockDTO> bloques = new ArrayList<>();
 
                         if (bloquesMap != null) {
                             for (Map<String, Object> bloqueMap : bloquesMap) {
-                                BookTImeBlocksDTO bloque = new BookTImeBlocksDTO();
+                                SectionBlockDTO bloque = new SectionBlockDTO();
 
                                 bloque.setNumeroBloque((Integer) bloqueMap.get("numeroBloque"));
                                 bloque.setHoraInicio((String) bloqueMap.get("horaInicio"));
                                 bloque.setHoraFin((String) bloqueMap.get("horaFin"));
 
-                                // Mapeo del enum DiaSemana
+                                // CORRECCIÓN: Asignar el valor recuperado al DTO
                                 String diaStr = (String) bloqueMap.get("diaSemana");
-                                if (diaStr != null) {
-                                    bloque.setDiaSemana(ReservaSala.DiaSemana.valueOf(diaStr));
-                                }
+                                bloque.setDiaSemana(diaStr);
 
                                 bloque.setIdSala((Integer) bloqueMap.get("idSala"));
                                 bloque.setCodSala((String) bloqueMap.get("codSala"));
@@ -217,10 +214,78 @@ public class AsignaturaServiceImp implements AsignaturaService{
         return true;
     }
 
+    /**
+     * Actualiza una asignatura y su profesor a cargo.
+     * - Valida nombre y código sin duplicar existentes activos
+     * - Actualiza datos capitalizados / normalizados
+     * - Cambia el profesor a cargo si es diferente
+     */
+    @Transactional
+    @Override
+    public boolean updateCourser(CourseUpdateDTO request){
+
+        /**Obtner asignatura anterior para comparar diferencias*/
+        Asignatura oldCourse = findById(request.getIdAsignatura());
+
+        /**
+         * Si cambio verifica si ya existe una asignatura activa con el mismo nombre.
+         * La comparación considera mayúsculas/minúsculas y capitaliza las palabras.
+         */
+        String nombreAsignatura = StringUtils.capitalizarPalabras(request.getNombreAsignatura());
+        String codAsinatura =StringUtils.normalizeSpaces(request.getCodAsignatura());
+
+        if (!oldCourse.getNombreAsignatura().equals(nombreAsignatura)){
+            if (asignaturaRepository.existsByNombreAsignaturaAndActivoIsTrue(nombreAsignatura)) {
+                throw new GestionAcademicaException("Ya existe una asignatura con el nombre: " + nombreAsignatura
+                        , HttpStatus.CONFLICT);
+            }
+            oldCourse.setNombreAsignatura(nombreAsignatura);
+        }
+        if (!oldCourse.getCodAsignatura().equals(codAsinatura)){
+            if (asignaturaRepository.existsByCodAsignaturaAndActivoIsTrueIgnoreAccents(codAsinatura)){
+                throw new GestionAcademicaException("Ya existe una asignatura con el codigo: "+ codAsinatura
+                        , HttpStatus.CONFLICT);
+            }
+            oldCourse.setCodAsignatura(codAsinatura);
+        }
+
+        String descRaw = (request.getDescripcionAsignatura() != null) ? request.getDescripcionAsignatura().trim() : "";
+        if (!Objects.equals(oldCourse.getDescripcion(), descRaw)) {
+            oldCourse.setDescripcion(descRaw);
+        }
+
+        /** Obtener el registro profesor–asignatura para validar si hubo cambio*/
+        AsignaturaProfesorCargo apc = asignaturaProfesorCargoRepository
+            .findByAsignatura_IdAsignatura(request.getIdAsignatura())
+            .orElseThrow(() -> new GestionAcademicaException("Relación asignatura-profesor no encontrada", HttpStatus.NOT_FOUND));
+
+        /**Guardar cambios*/
+        asignaturaRepository.save(oldCourse);
+
+        if (!request.getIdUsuarioGestorAsignatura().equals(apc.getUsuario().getIdUsuario())){
+            apc.setIdUsuario(request.getIdUsuarioGestorAsignatura());
+            apc.setFechaAsignacion(LocalDateTime.now());
+            asignaturaProfesorCargoRepository.save(apc);
+        }
+
+        return true;
+    }
 
 
+    @Transactional
+    @Override
+    public boolean softDeleteCourse(Integer id) {
+        // Ejecutamos la query directa de actualización
+        int rowsAffected = asignaturaRepository.softDeleteAsignaturaById(id);
 
-
+        if (rowsAffected == 0) {
+            throw new GestionAcademicaException(
+                    "Error al eliminar: No se encontró la asignatura con ID " + id,
+                    HttpStatus.NOT_FOUND
+            );
+        }
+        return true;
+    }
 
 
 
@@ -309,75 +374,8 @@ public class AsignaturaServiceImp implements AsignaturaService{
 
 
 
-    /**
-     * Actualiza una asignatura y su profesor a cargo.
-     * - Valida que el profesor exista y tenga rol de profesor (rol 4)
-     * - Valida nombre y código sin duplicar existentes activos
-     * - Actualiza datos capitalizados / normalizados
-     * - Cambia el profesor a cargo si es diferente
-     */
-    @Transactional
-    @Override
-    public CourseUpdateDTO updateCourser (CourseUpdateDTO co){
-        /** Buscar asignatura por ID */
-        Asignatura asignatura = findById(co.getIdAsignatura());
-
-        /** Buscar profesor por ID */
-        Usuario profesor = usuarioService.obtenerPorIdEntidad(co.getIdProfesor());
-
-        /** Validar que el usuario tiene rol de profesor (rol 4) */
-        if (!profesor.getRol().getIdRol().equals(4)){
-            throw new GestionAcademicaException("El usuario con el id: " + co.getIdProfesor() + " no es un profesor" , HttpStatus.NOT_FOUND);
-        }
-
-        /** Obtener el registro profesor–asignatura */
-        AsignaturaProfesorCargo apc = asignaturaProfesorCargoService
-                .findByAsignaturaProfesorCargoByIdAsignatura(co.getIdAsignatura());
-
-        /** Validar y actualizar nombre de asignatura */
-        if(!asignatura.getNombreAsignatura().equals(StringUtils.capitalizarPalabras(co.getNombreAsignatura()))){
-            if (asignaturaRepository.existsByNombreAsignaturaAndActivoIsTrue(StringUtils.capitalizarPalabras(co.getNombreAsignatura()))){
-                throw new GestionAcademicaException("Ya existe una asignatura con el nombre: " + StringUtils.capitalizarPalabras(co.getNombreAsignatura()) , HttpStatus.NOT_FOUND);
-            }
-            asignatura.setNombreAsignatura(StringUtils.capitalizarPalabras(co.getNombreAsignatura()));
-        }
-
-        /** Validar y actualizar código de asignatura */
-        if(!asignatura.getCodAsignatura().equals(StringUtils.normalizeSpaces(co.getCodAsignatura()))){
-            if (asignaturaRepository.existsByCodAsignaturaAndActivoIsTrueIgnoreAccents(StringUtils.normalizeSpaces(co.getCodAsignatura()))){
-                throw new GestionAcademicaException("Ya existe una asignatura con el codigo: " + StringUtils.normalizeSpaces(co.getCodAsignatura()) , HttpStatus.NOT_FOUND);
-            }
-            asignatura.setCodAsignatura(StringUtils.normalizeSpaces(co.getCodAsignatura()));
-        }
-
-        /** Actualizar descripción si cambió */
-        if(!asignatura.getDescripcion().equals(co.getDescripcionAsignatura())){
-            asignatura.setDescripcion(co.getDescripcionAsignatura());
-        }
-
-        /** Guardar asignatura actualizada */
-        asignaturaRepository.save(asignatura);
-
-        /** Si el profesor cambió, actualizar la relación y la fecha */
-        if (!apc.getUsuario().getIdUsuario().equals(profesor.getIdUsuario())){
-            apc.setUsuario(profesor);
-            apc.setFechaAsignacion(LocalDateTime.now());
-            asignaturaProfesorCargoRepository.save(apc);
-        }
-
-        /** Setear valores actualizados para retornar */
-        // pendiente co.getNombreCompletoProfesor(usuarioService.formatearNombreCompleto(profesor));
-        co.setCodAsignatura(StringUtils.normalizeSpaces(co.getCodAsignatura()));
-        co.setNombreAsignatura(StringUtils.capitalizarPalabras(co.getNombreAsignatura()));
-        return co;
-    }
 
 
-    @Transactional
-    @Override
-    public void softDeleteCourse (Integer id){
-        Asignatura asignatura = findById(id);
-        asignatura.setActivo(false);
-        asignaturaRepository.save(asignatura);
-    }
+
+
 }

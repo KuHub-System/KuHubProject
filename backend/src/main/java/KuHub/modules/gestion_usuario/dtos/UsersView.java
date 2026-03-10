@@ -1,4 +1,4 @@
-package KuHub.modules.gestion_usuario.dtos.response;
+package KuHub.modules.gestion_usuario.dtos;
 
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 

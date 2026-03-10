@@ -127,10 +127,10 @@ public interface RecetaRepository extends JpaRepository<Receta,Integer> {
     /** Metodo para desactivar (borrado lógico) una receta por su ID */
     @Modifying
     @Query("""
-   UPDATE Receta r
-   SET r.activoReceta = false
-   WHERE r.idReceta = :idReceta
-   """)
+       UPDATE Receta r
+       SET r.activoReceta = false
+       WHERE r.idReceta = :idReceta
+       """)
     int softDeleteRecipeById(@Param("idReceta") Integer idReceta);
 
 

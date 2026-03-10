@@ -1,9 +1,9 @@
 package KuHub.modules.gestion_usuario.repository;
 
 import KuHub.modules.gestion_usuario.dtos.dtofilter.pro.UserAuthProjection;
-import KuHub.modules.gestion_usuario.dtos.proyection.UserIdNameView;
-import KuHub.modules.gestion_usuario.dtos.proyection.UsersToManageCourseView;
-import KuHub.modules.gestion_usuario.dtos.response.UsersView;
+import KuHub.modules.gestion_usuario.dtos.response.proyection.UserIdNameView;
+import KuHub.modules.gestion_usuario.dtos.response.proyection.UsersToManageCourseOrSectionView;
+import KuHub.modules.gestion_usuario.dtos.UsersView;
 import KuHub.modules.gestion_usuario.entity.Usuario;
 import KuHub.modules.gestion_usuario.entity.Rol;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -170,10 +170,24 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Integer> {
           AND u.id_usuario NOT IN (1, 2, 3, 4, 5, 6, 7) -- Excluye usuarios de sistema
         ORDER BY nombreCompleto ASC
         """, nativeQuery = true)
-    List<UsersToManageCourseView> usersToManageCourse();
+    List<UsersToManageCourseOrSectionView> usersToManageCourse();
 
 
-
+    @Query(value = """
+        SELECT 
+            u.id_usuario AS idUsuario,
+            CONCAT_WS(' ', 
+                NULLIF(TRIM(u.p_nombre), ''), 
+                NULLIF(TRIM(u.s_nombre), ''), 
+                NULLIF(TRIM(u.app_paterno), ''), 
+                NULLIF(TRIM(u.app_materno), '')
+            ) AS nombreCompleto
+        FROM usuario u
+        WHERE u.id_rol IN (4,5)
+          AND u.id_usuario NOT IN (1, 2, 3, 4, 5, 6, 7) -- Excluye usuarios de sistema
+        ORDER BY nombreCompleto ASC
+        """, nativeQuery = true)
+    List<UsersToManageCourseOrSectionView> usersAssignedToSection();
 
 
 

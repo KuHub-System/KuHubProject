@@ -44,11 +44,10 @@ interface SectionAnswerUpdateDTO {
   nombreSeccion: string;
   estadoSeccion: EstadoSeccion;
   idDocente: number;
-  NombreCompletoDocente: string;
+  nombreCompletoDocente: string;
   capacidadMaxInscritos: number;
   cantInscritos: number;
   bloquesHorarios: BookTImeBlocksRequestDTO[]
-  crearSala?: boolean;
 }
 
 interface BookTImeBlocksRequestDTO {
@@ -72,8 +71,7 @@ interface CourseUpdateDTO {
   idAsignatura: number;
   codAsignatura: string;
   nombreAsignatura: string;
-  idProfesor: number;
-  nombreCompletoProfesor: string;
+  idUsuarioGestorAsignatura: number;
   descripcionAsignatura: string;
 }
 
@@ -103,7 +101,7 @@ const transformarSeccion = (seccion: SectionAnswerUpdateDTO): ISeccion => {
   return {
     id: seccion.idSeccion?.toString() || '0',
     numeroSeccion: seccion.nombreSeccion || 'Sin nombre',
-    profesorAsignado: seccion.NombreCompletoDocente || 'Sin asignar',
+    profesorAsignado: seccion.nombreCompletoDocente || 'Sin asignar',
     profesorAsignadoId: seccion.idDocente?.toString() || '0',
     capacidadMax: seccion.capacidadMaxInscritos || 0,
     cantInscritos: seccion.cantInscritos || 0,
@@ -198,29 +196,20 @@ export const crearAsignaturaService = async (data: IAsignaturaCreacion): Promise
 export const actualizarAsignaturaService = async (
   id: string,
   data: Partial<IAsignatura>
-): Promise<IAsignatura> => {
+): Promise<void> => {
   try {
     const payload: CourseUpdateDTO = {
       idAsignatura: parseInt(id),
       codAsignatura: data.codigo || '',
       nombreAsignatura: data.nombre || '',
-      idProfesor: data.profesorACargoId ? parseInt(data.profesorACargoId) : 0,
-      nombreCompletoProfesor: data.profesorACargoNombre || '',
+      idUsuarioGestorAsignatura: data.profesorACargoId ? parseInt(data.profesorACargoId) : 0,
       descripcionAsignatura: data.descripcion || ''
     };
 
-    await api.put<CourseUpdateDTO>(
-      '/asignatura/update-course/',
+    await api.patch<boolean>(
+      '/asignatura/update-course',
       payload
     );
-
-    // Recargar la asignatura actualizada
-    const asignaturaActualizada = await obtenerAsignaturaPorIdService(id);
-    if (!asignaturaActualizada) {
-      throw new Error('No se pudo encontrar la asignatura actualizada');
-    }
-
-    return asignaturaActualizada;
   } catch (error: any) {
     throw new Error(error.response?.data?.message || 'Error al actualizar la asignatura');
   }
@@ -231,7 +220,7 @@ export const actualizarAsignaturaService = async (
  */
 export const eliminarAsignaturaService = async (id: string): Promise<void> => {
   try {
-    await api.put(`/asignatura/soft-delete-course/${id}`);
+    await api.delete(`/asignatura/soft-delete/${id}`);
   } catch (error: any) {
     throw new Error(error.response?.data?.message || 'Error al eliminar la asignatura');
   }
@@ -240,6 +229,38 @@ export const eliminarAsignaturaService = async (id: string): Promise<void> => {
 // ============================================
 // SERVICIOS - SECCIONES
 // ============================================
+
+export interface IBookTimeBlockDTO {
+  idBloque: number;
+  numeroBloque: number;
+  horaInicio: string;
+  horaFin: string;
+  diaSemana: string;
+  idSala: number;
+}
+
+export interface ISectionCreateDTO {
+  idAsignatura: number;
+  nombreSeccion: string;
+  estadoSeccion: string;
+  idUsuarioDocente: number;
+  capacidadMax: number;
+  cantInscritos: number;
+  bloquesHorarios: IBookTimeBlockDTO[];
+}
+
+/**
+ * Crear sección con nuevo endpoint
+ * POST /v1/seccion/create-section
+ */
+export const crearSeccionNuevaService = async (dto: ISectionCreateDTO): Promise<boolean> => {
+  try {
+    const response = await api.post<boolean>('/seccion/create-section', dto);
+    return response.data;
+  } catch (error: any) {
+    throw new Error(error.response?.data?.message || 'Error al crear la sección');
+  }
+};
 
 /**
  * Agregar sección a una asignatura
@@ -257,7 +278,6 @@ export const agregarSeccionService = async (
       cantInscritos: seccion.cantInscritos,
       estadoSeccion: seccion.estadoSeccion || 'ACTIVA',
       bloquesHorarios: seccion.bloquesHorarios,
-      crearSala: seccion.crearSala || false
     };
 
     await api.post('/seccion/create-seccion-frontend/', payload);
@@ -289,11 +309,10 @@ export const actualizarSeccionService = async (
       nombreSeccion: seccion.nombreSeccion,
       estadoSeccion: seccion.estadoSeccion,
       idDocente: seccion.idDocente,
-      NombreCompletoDocente: seccion.NombreCompletoDocente || '',
+      nombreCompletoDocente: seccion.nombreCompletoDocente || '',
       capacidadMaxInscritos: seccion.capacidadMaxInscritos,
       cantInscritos: seccion.cantInscritos,
       bloquesHorarios: seccion.bloquesHorarios,
-      crearSala: seccion.crearSala || false
     };
 
     await api.put('/seccion/update-seccion/', payload);
