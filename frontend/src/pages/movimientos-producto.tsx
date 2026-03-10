@@ -274,13 +274,13 @@ const MovimientosProductoPage: React.FC = () => {
         }}
       >
         <TableHeader>
-          <TableColumn className="max-w-[200px] truncate">PRODUCTO</TableColumn>
-          <TableColumn>CATEGORÍA</TableColumn>
-          <TableColumn>TIPO</TableColumn>
-          <TableColumn>CANTIDAD</TableColumn>
-          <TableColumn>FECHA</TableColumn>
-          <TableColumn className="max-w-[120px] truncate">RESPONSABLE</TableColumn>
-          <TableColumn className="max-w-[250px] truncate">OBSERVACIÓN</TableColumn>
+          <TableColumn width="15%" align="center">PRODUCTO</TableColumn>
+          <TableColumn width="10%" align="center">CATEGORÍA</TableColumn>
+          <TableColumn width="10%" align="center">TIPO</TableColumn>
+          <TableColumn width="5%"  align="center">CANTIDAD</TableColumn>
+          <TableColumn width="15%" align="center">FECHA</TableColumn>
+          <TableColumn width="20%" align="center">RESPONSABLE</TableColumn>
+          <TableColumn width="25%" align="center">OBSERVACIÓN</TableColumn>
         </TableHeader>
         <TableBody
           isLoading={isLoading}
