@@ -6,18 +6,12 @@ import {
   TableBody,
   TableRow,
   TableCell,
-  Button,
   Input,
   Select,
   SelectItem,
-  useDisclosure,
   Tooltip,
   Spinner,
-  Modal,
-  ModalContent,
-  ModalHeader,
-  ModalBody,
-  ModalFooter,
+  Chip,
   DateRangePicker
 } from '@heroui/react';
 import { Icon } from '@iconify/react';
@@ -52,26 +46,13 @@ const renderTipoMovimiento = (tipo: string) => {
   }
 };
 
-const formatearFecha = (fechaISO: string) => {
-  if (!fechaISO) return '-';
-  const fecha = new Date(fechaISO);
-  return fecha.toLocaleString('es-CL', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
-  });
-};
-
 // ─── Page ────────────────────────────────────────────────────────────────────
 
 const MovimientosProductoPage: React.FC = () => {
-  const { isOpen, onOpen, onOpenChange } = useDisclosure();
-
   // Data state
   const [movimientos, setMovimientos] = React.useState<IMotionAnswer[]>([]);
   const [isLoading, setIsLoading] = React.useState(false);
+  const [isLoadingMore, setIsLoadingMore] = React.useState(false);
 
   // Refs to avoid stale closures in scroll handler
   const nextPageRef = React.useRef<number>(1);
@@ -137,6 +118,7 @@ const MovimientosProductoPage: React.FC = () => {
     if (nextPageRef.current > totalPagesRef.current) return;
 
     isLoadingMoreRef.current = true;
+    setIsLoadingMore(true);
     try {
       const res = await findMovimientosConFiltros({
         ...debouncedRequest,
@@ -148,6 +130,7 @@ const MovimientosProductoPage: React.FC = () => {
       console.error('Error al cargar más movimientos:', err);
     } finally {
       isLoadingMoreRef.current = false;
+      setIsLoadingMore(false);
     }
   }, [debouncedRequest]);
 
@@ -161,7 +144,7 @@ const MovimientosProductoPage: React.FC = () => {
         cargarMasMovimientos();
       }
     };
-    window.addEventListener('scroll', handleScroll);
+    window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
   }, [cargarMasMovimientos]);
 
@@ -220,9 +203,9 @@ const MovimientosProductoPage: React.FC = () => {
         >
           <SelectItem key="TODOS" startContent={<Icon icon="lucide:layers" className="text-default-400" />}>Todos</SelectItem>
           <SelectItem key="ENTRADA" startContent={<Icon icon="lucide:arrow-down-circle" className="text-success" />}>Entrada</SelectItem>
-          <SelectItem key="SALIDA_INVENTARIO" startContent={<Icon icon="lucide:arrow-up-circle" className="text-primary" />}>Salida Inventario</SelectItem>
-          <SelectItem key="SALIDA_BODEGA" startContent={<Icon icon="lucide:arrow-up-circle" className="text-primary" />}>Salida Bodega</SelectItem>
-          <SelectItem key="TRASLADO" startContent={<Icon icon="lucide:truck" className="text-warning" />}>Traslado</SelectItem>
+          <SelectItem key="SALIDA_INVENTARIO" startContent={<Icon icon="lucide:arrow-up-circle" className="text-warning" />}>Salida Inventario</SelectItem>
+          <SelectItem key="SALIDA_BODEGA" startContent={<Icon icon="lucide:arrow-up-circle" className="text-warning" />}>Salida Bodega</SelectItem>
+          <SelectItem key="TRASLADO" startContent={<Icon icon="lucide:truck" className="text-primary" />}>Traslado</SelectItem>
           <SelectItem key="MERMA" startContent={<Icon icon="lucide:alert-circle" className="text-danger" />}>Merma</SelectItem>
           <SelectItem key="AJUSTE" startContent={<Icon icon="lucide:sliders-horizontal" className="text-secondary" />}>Ajuste</SelectItem>
           <SelectItem key="DEVOLUCION" startContent={<Icon icon="lucide:undo-2" className="text-default-500" />}>Devolución</SelectItem>
@@ -249,19 +232,10 @@ const MovimientosProductoPage: React.FC = () => {
         />
       </div>
 
-      {/* Actions row */}
-      <div className="flex justify-between items-center">
-        <p className="text-default-400 text-sm">
-          {movimientos.length} movimiento(s) cargado(s)
-        </p>
-        <Button
-          color="primary"
-          startContent={<Icon icon="lucide:plus" />}
-          onPress={onOpen}
-        >
-          Nuevo Movimiento
-        </Button>
-      </div>
+      {/* Count */}
+      <p className="text-default-400 text-sm">
+        {movimientos.length} movimiento(s) cargado(s)
+      </p>
 
       {/* Table */}
       <Table
@@ -272,6 +246,13 @@ const MovimientosProductoPage: React.FC = () => {
           th: "bg-default-100 dark:bg-default-50/20 text-default-500 font-bold uppercase text-xs h-12",
           td: "py-3 border-b border-default-50 dark:border-default-50/10 group-data-[last=true]:border-none"
         }}
+        bottomContent={
+          isLoadingMore ? (
+            <div className="flex w-full justify-center py-4">
+              <Spinner size="sm" />
+            </div>
+          ) : null
+        }
       >
         <TableHeader>
           <TableColumn width="15%" align="center">PRODUCTO</TableColumn>
@@ -296,7 +277,7 @@ const MovimientosProductoPage: React.FC = () => {
           {movimientos.map((mov, idx) => (
             <TableRow key={idx} className="hover:bg-default-50 dark:hover:bg-default-100/50 transition-colors">
               <TableCell className="max-w-[200px]">
-                <Tooltip content={mov.nombreProducto} delay={500}>
+                <Tooltip content={mov.nombreProducto} delay={500} closeDelay={0}>
                   <div className="flex flex-col items-center truncate">
                     <span className="font-semibold text-secondary dark:text-foreground truncate text-center w-full">
                       {mov.nombreProducto}
@@ -305,7 +286,9 @@ const MovimientosProductoPage: React.FC = () => {
                 </Tooltip>
               </TableCell>
               <TableCell>
-                <span className="text-default-600">{mov.nombreCategoria || '-'}</span>
+                <Chip size="sm" variant="flat" className="bg-default-100 dark:bg-default-100/50 text-default-600 dark:text-default-300">
+                  {mov.nombreCategoria || '-'}
+                </Chip>
               </TableCell>
               <TableCell>{renderTipoMovimiento(mov.tipoMovimiento)}</TableCell>
               <TableCell>
@@ -314,18 +297,23 @@ const MovimientosProductoPage: React.FC = () => {
                 </span>
               </TableCell>
               <TableCell>
-                <span className="text-default-600 text-sm whitespace-nowrap">
-                  {formatearFecha(mov.fechaMovimiento)}
-                </span>
+                <div className="flex flex-col items-center">
+                  <span className="font-medium text-center">
+                    {new Date(mov.fechaMovimiento).toLocaleDateString('es-CL')}
+                  </span>
+                  <span className="text-xs text-default-400 text-center">
+                    {new Date(mov.fechaMovimiento).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                </div>
               </TableCell>
-              <TableCell>
-                <Tooltip content={mov.nombreUsuario}>
-                  <span className="max-w-[120px] truncate block">{mov.nombreUsuario}</span>
+              <TableCell className="max-w-[180px]">
+                <Tooltip content={mov.nombreUsuario} delay={500} closeDelay={0}>
+                  <span className="truncate block text-center w-full">{mov.nombreUsuario}</span>
                 </Tooltip>
               </TableCell>
               <TableCell className="max-w-[250px]">
                 {mov.observacion ? (
-                  <Tooltip content={mov.observacion} delay={500}>
+                  <Tooltip content={mov.observacion} delay={500} closeDelay={0}>
                     <span className="italic text-default-500 truncate block text-center w-full">
                       {mov.observacion}
                     </span>
@@ -338,114 +326,7 @@ const MovimientosProductoPage: React.FC = () => {
           ))}
         </TableBody>
       </Table>
-
-      {/* Load-more spinner */}
-      {isLoadingMoreRef.current && (
-        <div className="flex justify-center py-4">
-          <Spinner size="sm" />
-        </div>
-      )}
-
-      {/* Modal nuevo movimiento */}
-      <Modal isOpen={isOpen} onOpenChange={onOpenChange} size="md" backdrop="blur">
-        <ModalContent>
-          {(onClose) => <FormularioMovimiento onClose={onClose} />}
-        </ModalContent>
-      </Modal>
     </div>
-  );
-};
-
-// ─── FormularioMovimiento ────────────────────────────────────────────────────
-
-interface FormularioMovimientoProps {
-  onClose: () => void;
-}
-
-const FormularioMovimiento: React.FC<FormularioMovimientoProps> = ({ onClose }) => {
-  const [tipo, setTipo] = React.useState<IMotionFilterRequest['tipoMovimiento']>('ENTRADA');
-  const [cantidad, setCantidad] = React.useState('');
-  const [observacion, setObservacion] = React.useState('');
-  const [productoNombre, setProductoNombre] = React.useState('');
-  const [isLoading, setIsLoading] = React.useState(false);
-
-  const handleSubmit = async () => {
-    if (!cantidad || parseInt(cantidad) <= 0) {
-      alert('La cantidad debe ser mayor a 0');
-      return;
-    }
-    try {
-      setIsLoading(true);
-      // TODO: conectar con endpoint de creación de movimiento
-      console.log({ tipo, cantidad, observacion, productoNombre });
-      onClose();
-    } catch (err) {
-      console.error('Error al registrar movimiento:', err);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  return (
-    <>
-      <ModalHeader className="border-b border-default-100">
-        <div className="flex items-center gap-2">
-          <Icon icon="lucide:arrow-left-right" className="text-secondary" width={22} />
-          <span className="font-bold text-lg text-secondary dark:text-foreground">Registrar Movimiento</span>
-        </div>
-      </ModalHeader>
-      <ModalBody className="py-5 space-y-4">
-        <Input
-          label="Producto"
-          placeholder="Nombre del producto"
-          value={productoNombre}
-          onValueChange={setProductoNombre}
-          variant="bordered"
-        />
-        <Select
-          label="Tipo de Movimiento"
-          selectedKeys={[tipo]}
-          onChange={e => setTipo(e.target.value as IMotionFilterRequest['tipoMovimiento'])}
-          variant="bordered"
-          disallowEmptySelection
-        >
-          <SelectItem key="ENTRADA" startContent={<Icon icon="lucide:arrow-down-circle" className="text-success" />}>Entrada</SelectItem>
-          <SelectItem key="SALIDA_INVENTARIO" startContent={<Icon icon="lucide:arrow-up-circle" className="text-primary" />}>Salida Inventario</SelectItem>
-          <SelectItem key="SALIDA_BODEGA" startContent={<Icon icon="lucide:arrow-up-circle" className="text-primary" />}>Salida Bodega</SelectItem>
-          <SelectItem key="TRASLADO" startContent={<Icon icon="lucide:truck" className="text-warning" />}>Traslado</SelectItem>
-          <SelectItem key="MERMA" startContent={<Icon icon="lucide:alert-circle" className="text-danger" />}>Merma</SelectItem>
-          <SelectItem key="AJUSTE" startContent={<Icon icon="lucide:sliders-horizontal" className="text-secondary" />}>Ajuste</SelectItem>
-          <SelectItem key="DEVOLUCION" startContent={<Icon icon="lucide:undo-2" className="text-default-500" />}>Devolución</SelectItem>
-        </Select>
-        <Input
-          type="number"
-          label="Cantidad"
-          placeholder="Ingrese la cantidad"
-          value={cantidad}
-          onValueChange={setCantidad}
-          min="1"
-          variant="bordered"
-        />
-        <Input
-          label="Observación"
-          placeholder="Observación (opcional)"
-          value={observacion}
-          onValueChange={setObservacion}
-          variant="bordered"
-        />
-      </ModalBody>
-      <ModalFooter>
-        <Button variant="ghost" onPress={onClose}>Cancelar</Button>
-        <Button
-          color="primary"
-          onPress={handleSubmit}
-          isLoading={isLoading}
-          startContent={<Icon icon="lucide:save" />}
-        >
-          Guardar
-        </Button>
-      </ModalFooter>
-    </>
   );
 };
 
