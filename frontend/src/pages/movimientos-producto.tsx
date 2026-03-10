@@ -13,7 +13,6 @@ import {
   useDisclosure,
   Tooltip,
   Spinner,
-  Chip,
   Modal,
   ModalContent,
   ModalHeader,
@@ -32,23 +31,24 @@ import {
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
 const renderTipoMovimiento = (tipo: string) => {
-  switch (tipo) {
+  const tipoNormalizado = tipo.toUpperCase();
+  switch (tipoNormalizado) {
     case 'ENTRADA':
-      return <Chip color="success" size="sm" variant="flat" startContent={<Icon icon="lucide:arrow-down-circle" width={13} />}>Entrada</Chip>;
+      return <span className="text-success font-bold uppercase tracking-wide text-xs">Entrada</span>;
     case 'SALIDA_INVENTARIO':
-      return <Chip color="primary" size="sm" variant="flat" startContent={<Icon icon="lucide:arrow-up-circle" width={13} />}>Salida Inv.</Chip>;
+      return <span className="text-warning font-bold uppercase tracking-wide text-xs">Salida Inventario</span>;
     case 'SALIDA_BODEGA':
-      return <Chip color="primary" size="sm" variant="flat" startContent={<Icon icon="lucide:arrow-up-circle" width={13} />}>Salida Bod.</Chip>;
+      return <span className="text-warning font-bold uppercase tracking-wide text-xs">Salida Bodega</span>;
     case 'TRASLADO':
-      return <Chip color="warning" size="sm" variant="flat" startContent={<Icon icon="lucide:truck" width={13} />}>Traslado</Chip>;
+      return <span className="text-primary font-bold uppercase tracking-wide text-xs">Traslado</span>;
     case 'MERMA':
-      return <Chip color="danger" size="sm" variant="flat" startContent={<Icon icon="lucide:alert-circle" width={13} />}>Merma</Chip>;
+      return <span className="text-danger font-bold uppercase tracking-wide text-xs">Merma</span>;
     case 'AJUSTE':
-      return <Chip color="secondary" size="sm" variant="flat" startContent={<Icon icon="lucide:sliders-horizontal" width={13} />}>Ajuste</Chip>;
+      return <span className="text-warning-600 font-bold uppercase tracking-wide text-xs opacity-90">Ajuste</span>;
     case 'DEVOLUCION':
-      return <Chip color="default" size="sm" variant="flat" startContent={<Icon icon="lucide:undo-2" width={13} />}>Devolución</Chip>;
+      return <span className="text-secondary font-bold uppercase tracking-wide text-xs">Devolución</span>;
     default:
-      return <Chip size="sm" variant="flat">{tipo}</Chip>;
+      return <span className="font-bold uppercase tracking-wide text-xs">{tipo}</span>;
   }
 };
 
@@ -267,19 +267,20 @@ const MovimientosProductoPage: React.FC = () => {
       <Table
         aria-label="Tabla de movimientos"
         removeWrapper
+        layout="fixed"
         classNames={{
           th: "bg-default-100 dark:bg-default-50/20 text-default-500 font-bold uppercase text-xs h-12",
           td: "py-3 border-b border-default-50 dark:border-default-50/10 group-data-[last=true]:border-none"
         }}
       >
         <TableHeader>
-          <TableColumn>PRODUCTO</TableColumn>
+          <TableColumn className="max-w-[200px] truncate">PRODUCTO</TableColumn>
           <TableColumn>CATEGORÍA</TableColumn>
           <TableColumn>TIPO</TableColumn>
           <TableColumn>CANTIDAD</TableColumn>
           <TableColumn>FECHA</TableColumn>
-          <TableColumn>RESPONSABLE</TableColumn>
-          <TableColumn>OBSERVACIÓN</TableColumn>
+          <TableColumn className="max-w-[120px] truncate">RESPONSABLE</TableColumn>
+          <TableColumn className="max-w-[250px] truncate">OBSERVACIÓN</TableColumn>
         </TableHeader>
         <TableBody
           isLoading={isLoading}
@@ -294,11 +295,13 @@ const MovimientosProductoPage: React.FC = () => {
         >
           {movimientos.map((mov, idx) => (
             <TableRow key={idx} className="hover:bg-default-50 dark:hover:bg-default-100/50 transition-colors">
-              <TableCell>
-                <Tooltip content={mov.nombreProducto}>
-                  <span className="font-semibold text-secondary dark:text-foreground max-w-[120px] truncate block">
-                    {mov.nombreProducto}
-                  </span>
+              <TableCell className="max-w-[200px]">
+                <Tooltip content={mov.nombreProducto} delay={500}>
+                  <div className="flex flex-col items-center truncate">
+                    <span className="font-semibold text-secondary dark:text-foreground truncate text-center w-full">
+                      {mov.nombreProducto}
+                    </span>
+                  </div>
                 </Tooltip>
               </TableCell>
               <TableCell>
@@ -320,15 +323,15 @@ const MovimientosProductoPage: React.FC = () => {
                   <span className="max-w-[120px] truncate block">{mov.nombreUsuario}</span>
                 </Tooltip>
               </TableCell>
-              <TableCell>
+              <TableCell className="max-w-[250px]">
                 {mov.observacion ? (
-                  <Tooltip content={mov.observacion}>
-                    <span className="italic text-default-500 max-w-[150px] truncate block">
+                  <Tooltip content={mov.observacion} delay={500}>
+                    <span className="italic text-default-500 truncate block text-center w-full">
                       {mov.observacion}
                     </span>
                   </Tooltip>
                 ) : (
-                  <span className="text-default-300">-</span>
+                  <div className="text-center text-default-300">-</div>
                 )}
               </TableCell>
             </TableRow>
