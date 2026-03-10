@@ -2,6 +2,7 @@ package KuHub.config.security;
 
 import KuHub.config.security.filter.JwtAuthenticationFilter;
 import KuHub.config.security.filter.JwtValidationFilter;
+import KuHub.config.security.rate_limiting.RateLimitFilter;
 import KuHub.modules.gestion_usuario.repository.UsuarioRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -31,14 +32,21 @@ import java.util.Arrays;
 @Configuration
 public class SpringSecurityConfig {
 
-    @Autowired
-    private AuthenticationConfiguration authenticationConfiguration;
+    private final AuthenticationConfiguration authenticationConfiguration;
+    private final UsuarioRepository usuarioRepository;
+    private final ObjectMapper objectMapper;
+    private final RateLimitFilter rateLimitFilter;
 
     @Autowired
-    private UsuarioRepository usuarioRepository;
-
-    @Autowired
-    private ObjectMapper objectMapper;
+    public SpringSecurityConfig(AuthenticationConfiguration authenticationConfiguration,
+                                UsuarioRepository usuarioRepository,
+                                ObjectMapper objectMapper,
+                                RateLimitFilter rateLimitFilter) {
+        this.authenticationConfiguration = authenticationConfiguration;
+        this.usuarioRepository = usuarioRepository;
+        this.objectMapper = objectMapper;
+        this.rateLimitFilter = rateLimitFilter;
+    }
 
     /**
      * Bean que proporciona el codificador de contraseñas BCrypt
@@ -333,6 +341,45 @@ public class SpringSecurityConfig {
                         .hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR")
 
                         // ========================================
+                        // ENDPOINTS DE BLOQUES HORARIOS
+                        // ========================================
+
+                        // 1. Lectura pública: Para que el frontend liste los horarios disponibles
+                        .requestMatchers(HttpMethod.GET, "/api/v*/bloque-horario/**").permitAll()
+
+                        // 2. Gestión (Crear, Editar, Borrar): Solo roles administrativos
+                        .requestMatchers(HttpMethod.POST, "/api/v*/bloque-horario/**").hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR")
+                        .requestMatchers(HttpMethod.PUT, "/api/v*/bloque-horario/**").hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR")
+                        .requestMatchers(HttpMethod.PATCH, "/api/v*/bloque-horario/**").hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR")
+                        .requestMatchers(HttpMethod.DELETE, "/api/v*/bloque-horario/**").hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR")
+
+                        // ========================================
+                        // ENDPOINTS DE SEMANAS (CALENDARIO ACADÉMICO)
+                        // ========================================
+
+                        // 1. Lectura pública: Para que todos puedan ver el calendario del semestre
+                        .requestMatchers(HttpMethod.GET, "/api/v*/semanas/**").permitAll()
+
+                        // 2. Gestión (Crear, Editar, Borrar, Generar): Solo roles administrativos
+                        .requestMatchers(HttpMethod.POST, "/api/v*/semanas/**").hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR")
+                        .requestMatchers(HttpMethod.PUT, "/api/v*/semanas/**").hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR")
+                        .requestMatchers(HttpMethod.PATCH, "/api/v*/semanas/**").hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR")
+                        .requestMatchers(HttpMethod.DELETE, "/api/v*/semanas/**").hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR")
+
+                        // ========================================
+                        // ENDPOINTS DE SALAS
+                        // ========================================
+
+                        // 1. Lectura pública: Para que el frontend pueda listar las salas en los formularios
+                        .requestMatchers(HttpMethod.GET, "/api/v*/sala/**").permitAll()
+
+                        // 2. Gestión (Crear, Editar, Borrar): Solo roles administrativos
+                        .requestMatchers(HttpMethod.POST, "/api/v*/sala/**").hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR")
+                        .requestMatchers(HttpMethod.PUT, "/api/v*/sala/**").hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR")
+                        .requestMatchers(HttpMethod.PATCH, "/api/v*/sala/**").hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR")
+                        .requestMatchers(HttpMethod.DELETE, "/api/v*/sala/**").hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR")
+
+                        // ========================================
                         // ENDPOINTS DE SOLICITUDES
                         // ========================================
 
@@ -365,10 +412,10 @@ public class SpringSecurityConfig {
                         // Cualquier otra petición requiere autenticación (sin importar el rol)
                         .anyRequest().authenticated()
                 )
+                .addFilterBefore(rateLimitFilter, JwtAuthenticationFilter.class)
                 // Agregar filtros JWT EN ORDEN - inyectando ObjectMapper configurado
                 .addFilter(new JwtAuthenticationFilter(authenticationManager(), usuarioRepository, objectMapper))
-                .addFilterBefore(new JwtValidationFilter(authenticationManager()),
-                        UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(new JwtValidationFilter(authenticationManager()), UsernamePasswordAuthenticationFilter.class)
 
                 // Desactivar CSRF (no necesario con JWT)
                 .csrf(config -> config.disable())

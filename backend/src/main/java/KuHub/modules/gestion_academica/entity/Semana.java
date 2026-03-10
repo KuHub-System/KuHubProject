@@ -1,4 +1,4 @@
-package KuHub.modules.semanas.entity;
+package KuHub.modules.gestion_academica.entity;
 
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;

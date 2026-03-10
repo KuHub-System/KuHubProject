@@ -4,6 +4,7 @@ import KuHub.modules.gestion_usuario.dtos.*;
 import KuHub.modules.gestion_usuario.dtos.dtofilter.UserAuth;
 import KuHub.modules.gestion_usuario.dtos.dtofilter.pro.UserAuthProjection;
 import KuHub.modules.gestion_usuario.dtos.proyection.UserIdNameView;
+import KuHub.modules.gestion_usuario.dtos.proyection.UsersToManageCourseView;
 import KuHub.modules.gestion_usuario.dtos.record.UserIdNameDTO;
 import KuHub.modules.gestion_usuario.dtos.request.CreateUser;
 import KuHub.modules.gestion_usuario.dtos.request.SearchUserRequest;
@@ -69,6 +70,12 @@ public class UsuarioServiceImpl implements UsuarioService {
         return usuarioRepository.findByEmailIgnoreCase(email).orElseThrow(
                 ()-> new GestionUsuarioException("Usuario no encontrado", HttpStatus.NOT_FOUND)
         );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<UsersToManageCourseView> usersToManageCourse(){
+        return usuarioRepository.usersToManageCourse();
     }
 
     /**
@@ -382,24 +389,7 @@ public class UsuarioServiceImpl implements UsuarioService {
                 .collect(Collectors.toList());
     }
 
-    @Override
-    @Transactional(readOnly = true)
-    public List<UserIdAndCompleteNameDTO> obtenerTodosProfesorACargo(){
-        List<Usuario> profesoreACargo = usuarioRepository.findAllByRol_IdRol(4);
 
-        List<UserIdAndCompleteNameDTO> profes = new ArrayList<>();
-        for (Usuario pc : profesoreACargo) {
-            if( pc.getActivo()){
-                profes.add (new UserIdAndCompleteNameDTO(
-                        pc.getIdUsuario(),
-                        formatearNombreCompleto(pc)
-                ));
-            }
-
-
-        }
-        return profes;
-    }
 
     @Override
     @Transactional(readOnly = true)

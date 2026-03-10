@@ -3,12 +3,13 @@ package KuHub.modules.gestion_academica.controller;
 import KuHub.modules.gestion_academica.dtos.dtomodel.CourseCreateDTO;
 import KuHub.modules.gestion_academica.dtos.dtomodel.CourseSolicitationResponseDTO;
 import KuHub.modules.gestion_academica.dtos.dtomodel.CourseUpdateDTO;
-import KuHub.modules.gestion_academica.dtos.dtomodel.CourserAnswerDTGOD;
+import KuHub.modules.gestion_academica.dtos.response.CourserPageDTGOD;
 import KuHub.modules.gestion_academica.entity.Asignatura;
 import KuHub.modules.gestion_academica.exceptions.GestionAcademicaException;
 import KuHub.modules.gestion_academica.service.AsignaturaService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -19,6 +20,37 @@ public class AsignaturaController {
 
     @Autowired
     private AsignaturaService asignaturaService;
+
+    /**
+     * 🔍 Búsqueda de Asignatura con seccion paginada
+     ✅ En uso: Endpoint consumido por el frontend.*/
+    @PostMapping( "/find-all-courses-active-true/{page}")
+    public ResponseEntity<CourserPageDTGOD> findAllCourserActiveTrueWithSeccion(
+            @PathVariable Integer page
+    ){
+        return ResponseEntity
+                .status(200)
+                .body(asignaturaService.findAllCourserActiveTrueWithSeccion(page));
+    }
+
+    /**
+     *  Usado apra crear asignatura
+     ✅ En uso: Endpoint consumido por el frontend.*/
+    @PostMapping( "/create-course")
+    public ResponseEntity<Boolean> createCourse(
+            @Validated @RequestBody CourseCreateDTO courseCreateDTO
+    ){
+        return ResponseEntity
+                .status(201)
+                .body(asignaturaService.createCourse(courseCreateDTO));
+    }
+
+
+
+
+
+
+
 
     @GetMapping("/find-by-id/{id}")
     public ResponseEntity<Asignatura> findById(
@@ -36,12 +68,7 @@ public class AsignaturaController {
                 .body(asignaturaService.findAll());
     }
 
-    @GetMapping( "/find-all-courses-active-true/")
-    public ResponseEntity<List<CourserAnswerDTGOD>> findAllCourserActiveTrueWithSeccion(){
-        return ResponseEntity
-                .status(200)
-                .body(asignaturaService.findAllCourserActiveTrueWithSeccion());
-    }
+
 
     @GetMapping("/find-all-courses-for-solicitation")
     public ResponseEntity<List<CourseSolicitationResponseDTO>> findAllCoursesForSolicitation(){
@@ -57,14 +84,7 @@ public class AsignaturaController {
                 .body(asignaturaService.save(asignatura));
     }
 
-    @PostMapping( "/create-course/")
-    public ResponseEntity<CourseCreateDTO> createCourse(
-            @RequestBody CourseCreateDTO courseCreateDTO
-    ){
-        return ResponseEntity
-                .status(200)
-                .body(asignaturaService.createCourse(courseCreateDTO));
-    }
+
 
     @PutMapping( "/update-course/")
     public ResponseEntity<CourseUpdateDTO> updateCourser(

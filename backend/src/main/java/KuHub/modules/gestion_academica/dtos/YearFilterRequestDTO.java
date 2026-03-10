@@ -1,4 +1,4 @@
-package KuHub.modules.semanas.dtos;
+package KuHub.modules.gestion_academica.dtos;
 
 import lombok.Data;
 

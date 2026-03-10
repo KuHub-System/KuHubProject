@@ -104,69 +104,38 @@ const InformacionPersonal: React.FC<{ user: any }> = ({ user }) => {
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   /**
-   * Maneja la selección de un archivo para la foto de perfil.
-   * 
-   * @param {React.ChangeEvent<HTMLInputElement>} e - Evento de cambio del input de archivo.
-   */
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    // Validar que sea una imagen
-    if (!file.type.startsWith('image/')) {
-      alert('Por favor, seleccione un archivo de imagen válido');
-      return;
-    }
-
-    try {
-      setIsLoading(true);
-      const newAvatarUrl = await actualizarFotoPerfilService(file);
-      setAvatarUrl(newAvatarUrl);
-    } catch (error) {
-      alert('Error al actualizar la foto de perfil');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  /**
-   * Abre el diálogo de selección de archivo.
+   * Maneja la selección de un archivo para la foto de perfil (DESHABILITADO)
    */
   const handleAvatarClick = () => {
-    fileInputRef.current?.click();
+    // Función deshabilitada por mantenimiento
   };
+
 
   return (
     <div className="space-y-6">
       {/* Foto de perfil */}
-      <div className="flex flex-col items-center">
+      <div className="flex flex-col items-center gap-4">
         <div className="relative">
           <Avatar
             src={avatarUrl}
             name={user?.nombre || "Usuario"}
-            className="w-24 h-24 text-large"
+            className="w-28 h-28 text-large shadow-md transition-transform"
+            isBordered
           />
-          <Button
-            isIconOnly
-            size="sm"
-            color="primary"
-            className="absolute bottom-0 right-0"
-            onPress={handleAvatarClick}
-            isLoading={isLoading}
-          >
-            <Icon icon="lucide:camera" />
-          </Button>
-          <input
-            type="file"
-            ref={fileInputRef}
-            className="hidden"
-            accept="image/*"
-            onChange={handleFileChange}
-          />
+          <div className="absolute bottom-1 right-1 p-1.5 rounded-full bg-default-100 dark:bg-default-100/50 text-default-400 border-2 border-white dark:border-default-50">
+            <Icon icon="lucide:camera-off" width={16} />
+          </div>
         </div>
-        <p className="mt-2 text-sm text-default-500">
-          Haga clic en el ícono para cambiar su foto de perfil
-        </p>
+
+        <div className="p-3 rounded-2xl bg-warning-50 dark:bg-warning-900/10 border border-warning-200 dark:border-warning-900/30 max-w-xs text-center">
+          <div className="flex items-center justify-center gap-2 mb-1 text-warning-600 dark:text-warning-400">
+            <Icon icon="lucide:construction" width={18} />
+            <p className="text-xs font-bold uppercase tracking-wider">Mantenimiento</p>
+          </div>
+          <p className="text-xs text-default-500 leading-relaxed">
+            La actualización de foto de perfil no está disponible temporalmente.
+          </p>
+        </div>
       </div>
 
       <Divider />

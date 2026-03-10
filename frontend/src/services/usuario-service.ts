@@ -184,3 +184,20 @@ export const inicializarUsuariosPorDefecto = (): void => { };
 
 export const obtenerRolesDisponibles = (): string[] => Object.keys(ROL_MAP);
 export const validarNombreRol = (nombreRol: string): boolean => nombreRol in ROL_MAP;
+
+let cacheGestores: { idUsuario: number; nombreCompleto: string }[] | null = null;
+
+/**
+ * Obtener usuarios que pueden ser gestores de asignatura
+ * GET /v1/usuarios/users-to-manager-course
+ */
+export const obtenerUsuariosGestoresAsignaturaService = async (): Promise<{ idUsuario: number; nombreCompleto: string }[]> => {
+  if (cacheGestores) return cacheGestores;
+  try {
+    const response = await api.get('/usuarios/users-to-manager-course');
+    cacheGestores = response.data;
+    return cacheGestores || [];
+  } catch (error: any) {
+    throw new Error(error.response?.data?.message || 'Error al cargar gestores de asignatura');
+  }
+};

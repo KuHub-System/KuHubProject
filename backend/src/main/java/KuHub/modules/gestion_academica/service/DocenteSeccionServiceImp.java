@@ -7,6 +7,7 @@ import KuHub.modules.gestion_academica.repository.DocenteSeccionRepository;
 import KuHub.modules.gestion_usuario.dtos.UsuarioResponseDTO;
 import KuHub.modules.gestion_usuario.service.UsuarioService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,7 +27,8 @@ public class DocenteSeccionServiceImp implements DocenteSeccionService{
     @Override
     public DocenteSeccionEntityDTO findByIdDocenteSeccion (Integer idDocenteSeccion){
         DocenteSeccion docenteSeccion = docenteSeccionRepository.findById(idDocenteSeccion)
-                .orElseThrow(() -> new GestionAcademicaException("No existe una DocenteSeccion del id : "+idDocenteSeccion+" registrada")
+                .orElseThrow(() -> new GestionAcademicaException("No existe una DocenteSeccion del id : "+idDocenteSeccion+" registrada"
+                , HttpStatus.NOT_FOUND)
         );
         return covertsDTO(docenteSeccion);
     }
@@ -37,7 +39,7 @@ public class DocenteSeccionServiceImp implements DocenteSeccionService{
         DocenteSeccion docenteSeccion = docenteSeccionRepository.findByUsuario_IdUsuarioAndSeccion_IdSeccion(
                 idDocente, idSeccion
             ).orElseThrow(() -> new GestionAcademicaException("No existe una DocenteSeccion del id docente : "+idDocente
-                                                            +" y id seccion "+idSeccion+" registrada")
+                                                            +" y id seccion "+idSeccion+" registrada", HttpStatus.NOT_FOUND)
             );
         return covertsDTO(docenteSeccion);
     }
@@ -47,7 +49,7 @@ public class DocenteSeccionServiceImp implements DocenteSeccionService{
     public DocenteSeccion findByDocenteAndSeccionEntity(Integer idDocente, Integer idSeccion){
         return docenteSeccionRepository.findByUsuario_IdUsuarioAndSeccion_IdSeccion(idDocente, idSeccion)
                 .orElseThrow(() -> new GestionAcademicaException("No existe una DocenteSeccion del id docente : "+idDocente
-                                                            +" y id seccion "+idSeccion+" registrada")
+                                                            +" y id seccion "+idSeccion+" registrada", HttpStatus.NOT_FOUND)
         );
     }
 
@@ -55,7 +57,7 @@ public class DocenteSeccionServiceImp implements DocenteSeccionService{
     @Override
     public DocenteSeccion findByIdSeccionEntity(Integer idSeccion){
         return docenteSeccionRepository.findBySeccion_IdSeccion(idSeccion)
-                .orElseThrow(() -> new GestionAcademicaException("No existe una DocenteSeccion del id seccion : "+idSeccion+" registrada")
+                .orElseThrow(() -> new GestionAcademicaException("No existe una DocenteSeccion del id seccion : "+idSeccion+" registrada", HttpStatus.NOT_FOUND)
         );
     }
 

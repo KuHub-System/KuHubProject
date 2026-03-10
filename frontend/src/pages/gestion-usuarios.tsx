@@ -707,33 +707,38 @@ const GestionUsuariosPage: React.FC = () => {
                     ))}
                   </Select>
 
-                  <div>
-                    <label className="block text-sm font-medium mb-1">
-                      Foto de Perfil (Opcional)
-                    </label>
-                    <input
-                      type="file"
-                      accept="image/png,image/jpeg,image/jpg"
-                      onChange={handleFotoChange}
-                      className="block w-full text-sm text-default-500
-                        file:mr-4 file:py-2 file:px-4
-                        file:rounded-full file:border-0
-                        file:text-sm file:font-semibold
-                        file:bg-primary file:text-white
-                        hover:file:bg-primary-600
-                        cursor-pointer"
-                    />
-                    <p className="text-xs text-default-400 mt-1">
-                      PNG o JPG, máximo 2MB
-                    </p>
+                  <div className="p-4 rounded-2xl bg-default-50 dark:bg-default-100/50 border border-default-200 dark:border-default-100">
+                    <div className="flex items-center gap-4 mb-3">
+                      <div className="p-2.5 rounded-xl bg-warning-100 dark:bg-warning-900/30 text-warning-600 dark:text-warning-400">
+                        <Icon icon="lucide:construction" width={24} />
+                      </div>
+                      <div>
+                        <p className="text-sm font-bold text-secondary dark:text-foreground">Carga de Fotos en Mantenimiento</p>
+                        <p className="text-xs text-default-500">Esta función no está disponible temporalmente.</p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white dark:bg-content1 border border-dashed border-default-300 dark:border-default-200 opacity-60">
+                      <Button
+                        size="sm"
+                        variant="flat"
+                        isDisabled
+                        className="font-semibold"
+                        startContent={<Icon icon="lucide:image-plus" width={16} />}
+                      >
+                        Seleccionar archivo
+                      </Button>
+                      <span className="text-xs text-default-400 italic">No disponible por actualizaciones</span>
+                    </div>
                   </div>
 
-                  {(formData.fotoPerfil || archivoFoto) && (
-                    <div className="flex justify-center">
+                  {formData.fotoPerfil && (
+                    <div className="flex justify-center pt-2">
                       <Avatar
-                        src={archivoFoto ? URL.createObjectURL(archivoFoto) : formData.fotoPerfil}
+                        src={formData.fotoPerfil}
                         name={formData.primeroNombre}
                         size="lg"
+                        isBordered
                       />
                     </div>
                   )}

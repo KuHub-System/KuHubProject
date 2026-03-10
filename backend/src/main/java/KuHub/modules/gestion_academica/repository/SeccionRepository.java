@@ -12,6 +12,21 @@ import java.util.Optional;
 @Repository
 public interface SeccionRepository extends JpaRepository <Seccion, Integer> {
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     /**
      * Comprueba si existe una sección activa para una asignatura activa,
      * aplicando normalización para ignorar mayúsculas/minúsculas, tildes
