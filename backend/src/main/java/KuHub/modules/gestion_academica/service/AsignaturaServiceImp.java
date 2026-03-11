@@ -120,7 +120,7 @@ public class AsignaturaServiceImp implements AsignaturaService{
                         if (bloquesMap != null) {
                             for (Map<String, Object> bloqueMap : bloquesMap) {
                                 SectionBlockDTO bloque = new SectionBlockDTO();
-
+                                bloque.setIdReservaSala((Integer) bloqueMap.get("idReservaSala"));
                                 bloque.setNumeroBloque((Integer) bloqueMap.get("numeroBloque"));
                                 bloque.setHoraInicio((String) bloqueMap.get("horaInicio"));
                                 bloque.setHoraFin((String) bloqueMap.get("horaFin"));
@@ -280,8 +280,8 @@ public class AsignaturaServiceImp implements AsignaturaService{
 
         if (rowsAffected == 0) {
             throw new GestionAcademicaException(
-                    "Error al eliminar: No se encontró la asignatura con ID " + id,
-                    HttpStatus.NOT_FOUND
+                "Error al eliminar: No se encontró la asignatura con ID " + id,
+                HttpStatus.NOT_FOUND
             );
         }
         return true;

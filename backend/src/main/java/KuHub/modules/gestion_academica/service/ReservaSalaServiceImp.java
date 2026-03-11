@@ -27,7 +27,8 @@ public class ReservaSalaServiceImp implements ReservaSalaService{
     public List<Integer> findReservedBlocksByIdSalaAndDayWeek(Integer idSala, String diaSemana){
         ReservaSala.DiaSemana enumDia = ReservaSala.DiaSemana.valueOf(diaSemana.toUpperCase());
 
-        return reservaSalaRepository.findDistinctBySalaIdSalaAndSalaActivoTrueAndDiaSemana(idSala, enumDia.name())
+        return reservaSalaRepository.findDistinctRersevaActivoTrueBySalaIdSalaAndSalaActivoTrueAndDiaSemana
+            (idSala, enumDia.name())
                 .stream()
                 .map(NumberBlockProjection::getBloqueHorarioNumeroBloque)
                 .toList();
@@ -50,7 +51,7 @@ public class ReservaSalaServiceImp implements ReservaSalaService{
         }
 
         List<Integer> numbersBlocksReserved = reservaSalaRepository
-                .findDistinctBySalaIdSalaAndSalaActivoTrueAndDiaSemana(idSala, enumDia.name())
+                .findDistinctRersevaActivoTrueBySalaIdSalaAndSalaActivoTrueAndDiaSemana(idSala, enumDia.name())
                 .stream()
                 .map(NumberBlockProjection::getBloqueHorarioNumeroBloque)
                 .toList();
@@ -61,6 +62,10 @@ public class ReservaSalaServiceImp implements ReservaSalaService{
         // 4. Retornamos el record con la info procesada
         return new CheckAvailability(disponible, enumDia);
     }
+
+
+
+
 
 
 

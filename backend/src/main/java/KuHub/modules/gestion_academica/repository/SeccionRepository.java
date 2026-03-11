@@ -3,6 +3,7 @@ package KuHub.modules.gestion_academica.repository;
 import KuHub.modules.gestion_academica.entity.Seccion;
 import feign.Param;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
@@ -13,7 +14,18 @@ import java.util.Optional;
 public interface SeccionRepository extends JpaRepository <Seccion, Integer> {
 
 
-
+    /**
+     * Actualiza el estado de la sección a false (eliminación lógica) saltando el findById.
+     * Retorna la cantidad de filas afectadas.
+     */
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("""
+       UPDATE Seccion s
+       SET s.activo = false 
+       WHERE s.idSeccion = :id 
+         AND s.activo = true
+       """)
+    int softDeleteSeccionById(@Param("id") Integer id);
 
 
 

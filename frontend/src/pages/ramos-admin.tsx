@@ -32,7 +32,7 @@ import {
   crearAsignaturaService,
   actualizarAsignaturaService,
   eliminarAsignaturaService,
-  actualizarSeccionService,
+  actualizarSeccionDeltaService,
   eliminarSeccionService,
   crearSeccionNuevaService,
 } from '../services/asignatura-service';
@@ -107,7 +107,7 @@ const renderEstadoSeccion = (estado: EstadoSeccion) => {
  * Página de gestión de asignaturas con secciones
  */
 const GestionAsignaturasPage: React.FC = () => {
-  usePageTitle('Gestión de Asignaturas', 'Administre asignaturas, secciones y asignaciones de gestores');
+  usePageTitle('Gestión de Asignaturas', 'Administre asignaturas, secciones y asignaciones de gestores. Las recetas se multiplicarán por el total de alumnos activos.');
   const toast = useToast();
   const { showConfirm } = useNotifications();
   const [asignaturas, setAsignaturas] = React.useState<IAsignatura[]>([]);
@@ -261,29 +261,10 @@ const GestionAsignaturasPage: React.FC = () => {
   /**
    * Guarda los cambios de una sección
    */
-  const guardarSeccion = async (seccionEditada: any) => {
+  const guardarSeccion = async (payload: any) => {
     if (!seccionSeleccionada) return;
-
     try {
-      // Construir payload completo para el backend
-      const payload = {
-        idSeccion: parseInt(seccionEditada.id),
-        idAsignatura: parseInt(seccionSeleccionada.asignatura.id),
-        nombreSeccion: seccionEditada.numeroSeccion,
-        estadoSeccion: seccionEditada.estado,
-        idDocente: parseInt(seccionEditada.profesorAsignadoId),
-        nombreCompletoDocente: seccionEditada.profesorAsignado,
-        capacidadMaxInscritos: seccionEditada.capacidadMax,
-        cantInscritos: seccionEditada.cantInscritos,
-        bloquesHorarios: seccionEditada.bloquesHorarios,
-      };
-
-      await actualizarSeccionService(
-        seccionSeleccionada.asignatura.id,
-        seccionEditada.id,
-        payload as any
-      );
-
+      await actualizarSeccionDeltaService(payload);
       await cargarDatos();
       onSeccionModalOpenChange();
       setSeccionSeleccionada(null);
@@ -351,17 +332,29 @@ const GestionAsignaturasPage: React.FC = () => {
   /**
    * Elimina una sección
    */
-  const eliminarSeccion = async (asignaturaId: string, seccionId: string) => {
-    if (!confirm('¿Está seguro de eliminar esta sección?')) return;
-
-    try {
-      await eliminarSeccionService(asignaturaId, seccionId);
-      await cargarDatos();
-      toast.success('Sección eliminada correctamente');
-    } catch (error: any) {
-      logger.error('Error al eliminar sección:', error);
-      toast.error(error.message || 'Error al eliminar la sección');
-    }
+  const eliminarSeccion = (asignaturaId: string, seccionId: string, nombreSeccion: string) => {
+    showConfirm({
+      title: 'Eliminar Sección',
+      subtitle: 'Esta acción no se puede deshacer',
+      headerVariant: 'danger',
+      alertTitle: 'Acción irreversible',
+      alertMessage: `Se eliminará permanentemente la sección "${nombreSeccion}". Los alumnos inscritos en esta sección perderán su inscripción.`,
+      message: '',
+      confirmText: 'Eliminar',
+      confirmColor: 'danger',
+      requireText: 'ELIMINAR',
+      requireTextHelper: 'Esta acción es irreversible. Escribe ELIMINAR para confirmar.',
+      onConfirm: async () => {
+        try {
+          await eliminarSeccionService(asignaturaId, seccionId);
+          await cargarDatos();
+          toast.success('Sección eliminada correctamente');
+        } catch (error: any) {
+          logger.error('Error al eliminar sección:', error);
+          toast.error(error.message || 'Error al eliminar la sección');
+        }
+      }
+    });
   };
 
   if (isLoading) {
@@ -383,14 +376,14 @@ const GestionAsignaturasPage: React.FC = () => {
         transition={{ duration: 0.4 }}
         className="space-y-6"
       >
-        {/* Encabezado */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold mb-2">Gestión de Asignaturas</h1>
-            <p className="text-default-500">
-              Administre asignaturas, secciones y asignaciones de gestores. Las recetas se multiplicarán por el total de alumnos activos.
-            </p>
-          </div>
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <Input
+            placeholder="Buscar asignaturas, códigos, gestores o secciones..."
+            value={searchTerm}
+            onValueChange={setSearchTerm}
+            startContent={<Icon icon="lucide:search" className="text-default-400" />}
+            className="w-full md:w-96"
+          />
           <Button
             color="primary"
             startContent={<Icon icon="lucide:plus" />}
@@ -401,17 +394,6 @@ const GestionAsignaturasPage: React.FC = () => {
           >
             Nueva Asignatura
           </Button>
-        </div>
-
-        {/* Filtros */}
-        <div className="flex flex-col md:flex-row gap-4">
-          <Input
-            placeholder="Buscar asignaturas, códigos, gestores o secciones..."
-            value={searchTerm}
-            onValueChange={setSearchTerm}
-            startContent={<Icon icon="lucide:search" className="text-default-400" />}
-            className="w-full md:w-96"
-          />
         </div>
 
         {/* Cards de asignaturas */}
@@ -509,60 +491,60 @@ const GestionAsignaturasPage: React.FC = () => {
                               <h4 className="font-semibold text-sm">Secciones ({asignatura.secciones.length})</h4>
                             </div>
 
-                            {/* Grid único: cabecera + cuerpo comparten el mismo contexto de columnas */}
-                            <div style={{ display: 'grid', gridTemplateColumns: '5rem 1fr 2fr 7rem 5rem', columnGap: '1.5rem', textAlign: 'center' }}>
-                              {/* Cabecera */}
-                              <div className="pb-2 text-xs text-default-400 uppercase tracking-widest font-semibold">Sección</div>
-                              <div className="pb-2 text-xs text-default-400 uppercase tracking-widest font-semibold">Docente</div>
-                              <div className="pb-2 text-xs text-default-400 uppercase tracking-widest font-semibold">Sala / Horario</div>
-                              <div className="pb-2 text-xs text-default-400 uppercase tracking-widest font-semibold">Alumnos</div>
-                              <div className="pb-2 text-xs text-default-400 uppercase tracking-widest font-semibold">Acciones</div>
-                              {/* Línea divisoria única continua */}
-                              <div style={{ gridColumn: '1 / -1' }} className="border-b-2 border-default-300 mb-1" />
+                            {/* Tabla de secciones — cabecera solo si hay datos */}
+                            {asignatura.secciones.length === 0 ? (
+                              <p className="text-center py-6 text-default-400 text-sm">No hay secciones registradas.</p>
+                            ) : (
+                              <div style={{ display: 'grid', gridTemplateColumns: '5rem 1fr 2fr 7rem 5rem', columnGap: '1.5rem', textAlign: 'center' }}>
+                                {/* Cabecera */}
+                                <div className="pb-2 text-xs text-default-400 uppercase tracking-widest font-semibold">Sección</div>
+                                <div className="pb-2 text-xs text-default-400 uppercase tracking-widest font-semibold">Docente</div>
+                                <div className="pb-2 text-xs text-default-400 uppercase tracking-widest font-semibold">Sala / Horario</div>
+                                <div className="pb-2 text-xs text-default-400 uppercase tracking-widest font-semibold">Alumnos</div>
+                                <div className="pb-2 text-xs text-default-400 uppercase tracking-widest font-semibold">Acciones</div>
+                                {/* Línea divisoria única continua */}
+                                <div style={{ gridColumn: '1 / -1' }} className="border-b-2 border-default-300 mb-1" />
 
-                              {/* Filas */}
-                              {asignatura.secciones.length === 0 ? (
-                                <div style={{ gridColumn: '1 / -1' }} className="text-center py-6 text-default-400">
-                                  <p>No hay secciones registradas.</p>
-                                </div>
-                              ) : asignatura.secciones.map((seccion: ISeccion) => (
-                                <React.Fragment key={seccion.id}>
-                                  <div className="py-2.5 border-b border-default-100">
-                                    <p className="font-bold text-base">{seccion.numeroSeccion}</p>
-                                  </div>
-                                  <div className="py-2.5 border-b border-default-100">
-                                    <p className="text-base font-medium leading-snug">
-                                      {seccion.profesorAsignado || <span className="text-default-300 italic text-sm">Sin asignar</span>}
-                                    </p>
-                                  </div>
-                                  <div className="py-2.5 border-b border-default-100">
-                                    {seccion.bloquesHorarios.length === 0
-                                      ? <p className="text-sm text-default-300 italic">Sin horario</p>
-                                      : formatearHorarioAgrupado(seccion.bloquesHorarios).map((item, i) => (
-                                        <div key={i} className="flex justify-center items-baseline gap-1 text-sm leading-6">
-                                          <span className="font-semibold text-default-700 dark:text-default-300 shrink-0">{item.sala}</span>
-                                          <span className="text-default-400 shrink-0">·</span>
-                                          <span className="text-default-500 shrink-0">{item.dia}:</span>
-                                          <span className="text-default-600 dark:text-default-400">{item.rangos.join(' / ')}</span>
-                                        </div>
-                                      ))
-                                    }
-                                  </div>
-                                  <div className="py-2.5 border-b border-default-100">
-                                    <p className="text-base font-semibold">{seccion.cantInscritos}/{seccion.capacidadMax}</p>
-                                    <div className="mt-1">{renderEstadoSeccion(seccion.estado)}</div>
-                                  </div>
-                                  <div className="py-2.5 border-b border-default-100 flex gap-1 justify-center items-start">
-                                    <Button isIconOnly variant="light" size="md" onPress={() => editarSeccion(asignatura, seccion)}>
-                                      <Icon icon="lucide:edit" width={18} className="text-primary" />
-                                    </Button>
-                                    <Button isIconOnly variant="light" size="md" color="danger" onPress={() => eliminarSeccion(asignatura.id, seccion.id)}>
-                                      <Icon icon="lucide:trash-2" width={18} />
-                                    </Button>
-                                  </div>
-                                </React.Fragment>
-                              ))}
-                            </div>
+                                {/* Filas */}
+                                {asignatura.secciones.map((seccion: ISeccion) => (
+                                  <React.Fragment key={seccion.id}>
+                                    <div className="py-2.5 border-b border-default-100">
+                                      <p className="font-semibold text-base">{seccion.numeroSeccion}</p>
+                                    </div>
+                                    <div className="py-2.5 border-b border-default-100">
+                                      <p className="text-base font-medium leading-snug">
+                                        {seccion.profesorAsignado || <span className="text-default-300 italic text-sm">Sin asignar</span>}
+                                      </p>
+                                    </div>
+                                    <div className="py-2.5 border-b border-default-100">
+                                      {seccion.bloquesHorarios.length === 0
+                                        ? <p className="text-sm text-default-300 italic">Sin horario</p>
+                                        : formatearHorarioAgrupado(seccion.bloquesHorarios).map((item, i) => (
+                                          <div key={i} className="flex justify-center items-baseline gap-1 text-base leading-6">
+                                            <span className="font-semibold text-default-700 dark:text-default-300 shrink-0">{item.sala}</span>
+                                            <span className="text-default-400 shrink-0">·</span>
+                                            <span className="text-default-500 shrink-0">{item.dia}:</span>
+                                            <span className="text-default-600 dark:text-default-400">{item.rangos.join(' / ')}</span>
+                                          </div>
+                                        ))
+                                      }
+                                    </div>
+                                    <div className="py-2.5 border-b border-default-100">
+                                      <p className="text-base font-semibold">{seccion.cantInscritos}/{seccion.capacidadMax}</p>
+                                      <div className="mt-1">{renderEstadoSeccion(seccion.estado)}</div>
+                                    </div>
+                                    <div className="py-2.5 border-b border-default-100 flex gap-1 justify-center items-start">
+                                      <Button isIconOnly variant="light" size="md" onPress={() => editarSeccion(asignatura, seccion)}>
+                                        <Icon icon="lucide:edit" width={18} className="text-primary" />
+                                      </Button>
+                                      <Button isIconOnly variant="light" size="md" color="danger" onPress={() => eliminarSeccion(asignatura.id, seccion.id, seccion.numeroSeccion)}>
+                                        <Icon icon="lucide:trash-2" width={18} />
+                                      </Button>
+                                    </div>
+                                  </React.Fragment>
+                                ))}
+                              </div>
+                            )}
 
                             {/* Botón para agregar nueva sección */}
                             <button
@@ -608,7 +590,6 @@ const GestionAsignaturasPage: React.FC = () => {
           {(onClose) => (
             <EditarSeccionModal
               seccionData={seccionSeleccionada}
-              profesores={profesores}
               onClose={onClose}
               onSave={guardarSeccion}
             />
@@ -1032,58 +1013,193 @@ const CrearSeccionModal: React.FC<CrearSeccionModalProps> = ({ asignatura, onClo
  */
 interface EditarSeccionModalProps {
   seccionData: { asignatura: IAsignatura, seccion: ISeccion } | null;
-  profesores: IUsuario[];
   onClose: () => void;
-  onSave: (seccion: any) => void;
+  onSave: (payload: any) => void;
 }
 
-const EditarSeccionModal: React.FC<EditarSeccionModalProps> = ({
-  seccionData,
-  profesores,
-  onClose,
-  onSave
-}) => {
+// Tipos internos del modal de edición
+type BloquePreCargado = {
+  idReservaSala: number; idBloque: number; numeroBloque: number;
+  horaInicio: string; horaFin: string; diaSemana: string;
+  idSala: number; codSala: string; nombreSala: string;
+};
+type BloqueNuevo = {
+  idBloque: number; numeroBloque: number; horaInicio: string; horaFin: string;
+  diaSemana: string; idSala: number; codSala: string; nombreSala: string;
+};
+
+const EditarSeccionModal: React.FC<EditarSeccionModalProps> = ({ seccionData, onClose, onSave }) => {
   const [numeroSeccion, setNumeroSeccion] = React.useState('');
-  const [profesorAsignadoId, setProfesorAsignadoId] = React.useState('');
-  const [capacidadMax, setCapacidadMax] = React.useState(20);
-  const [cantInscritos, setCantInscritos] = React.useState(0);
+  const [docenteId, setDocenteId] = React.useState('');
   const [estado, setEstado] = React.useState<EstadoSeccion>('ACTIVA');
-  const [bloquesHorarios, setBloquesHorarios] = React.useState<IBloqueHorario[]>([]);
+  const [capacidadMax, setCapacidadMax] = React.useState(30);
+  const [cantInscritos, setCantInscritos] = React.useState(0);
+
+  const [docentes, setDocentes] = React.useState<{ idUsuario: number; nombreCompleto: string }[]>([]);
+  const [isLoadingDocentes, setIsLoadingDocentes] = React.useState(false);
+  const [salas, setSalas] = React.useState<ISala[]>([]);
+  const [isLoadingSalas, setIsLoadingSalas] = React.useState(false);
+  const [salaId, setSalaId] = React.useState('');
+  const [dia, setDia] = React.useState('');
+  const [bloquesDisponibles, setBloquesDisponibles] = React.useState<IBloqueDisponible[]>([]);
+  const [isLoadingBloques, setIsLoadingBloques] = React.useState(false);
+
+  // Delta: bloques pre-cargados (existentes con idReservaSala)
+  const [bloquesPreCargados, setBloquesPreCargados] = React.useState<BloquePreCargado[]>([]);
+  // IDs de reservas eliminadas por el usuario
+  const [idsEliminados, setIdsEliminados] = React.useState<Set<number>>(new Set());
+  // Bloques nuevos añadidos en esta sesión de edición
+  const [bloquesNuevos, setBloquesNuevos] = React.useState<BloqueNuevo[]>([]);
 
   React.useEffect(() => {
-    if (seccionData?.seccion) {
-      const { seccion } = seccionData;
-      setNumeroSeccion(seccion.numeroSeccion);
-      setProfesorAsignadoId(seccion.profesorAsignadoId);
-      setCapacidadMax(seccion.capacidadMax);
-      setCantInscritos(seccion.cantInscritos);
-      setEstado(seccion.estado);
-      setBloquesHorarios([...seccion.bloquesHorarios]);
-    }
+    if (!seccionData?.seccion) return;
+    const { seccion } = seccionData;
+    setNumeroSeccion(seccion.numeroSeccion);
+    setDocenteId(seccion.profesorAsignadoId);
+    setCapacidadMax(seccion.capacidadMax);
+    setCantInscritos(seccion.cantInscritos);
+    setEstado(seccion.estado);
+    setSalaId(''); setDia(''); setBloquesDisponibles([]);
+    setIdsEliminados(new Set());
+    setBloquesNuevos([]);
+
+    const init = async () => {
+      try {
+        setIsLoadingDocentes(true); setIsLoadingSalas(true);
+        const [docentesData, salasData] = await Promise.all([
+          obtenerUsuariosAsignadosSeccionService(),
+          obtenerSalasActivasService()
+        ]);
+        setDocentes(docentesData); setSalas(salasData);
+        setIsLoadingDocentes(false); setIsLoadingSalas(false);
+
+        if (seccion.bloquesHorarios.length > 0) {
+          const combinations = [...new Map(
+            seccion.bloquesHorarios.map(b => [`${b.idSala}__${b.diaSemana}`, { idSala: b.idSala, diaSemana: b.diaSemana }])
+          ).values()];
+
+          const fetched = await Promise.all(
+            combinations.map(({ idSala, diaSemana }) =>
+              filtrarBloquesPorSalaYDiaService(idSala, diaSemana)
+                .then(blocks => blocks.map(b => ({ ...b, idSala, diaSemana })))
+                .catch(() => [])
+            )
+          );
+          const allAvailable = fetched.flat();
+
+          setBloquesPreCargados(seccion.bloquesHorarios.map(bh => {
+            const match = allAvailable.find(
+              ab => ab.numeroBloque === bh.numeroBloque && ab.idSala === bh.idSala && ab.diaSemana === bh.diaSemana
+            );
+            return {
+              idReservaSala: bh.idReservaSala ?? 0,
+              idBloque: match?.idBloque ?? 0,
+              numeroBloque: bh.numeroBloque,
+              horaInicio: bh.horaInicio, horaFin: bh.horaFin,
+              diaSemana: bh.diaSemana, idSala: bh.idSala,
+              codSala: bh.codSala, nombreSala: bh.nombreSala
+            };
+          }));
+        } else {
+          setBloquesPreCargados([]);
+        }
+      } catch { /* silencioso */ }
+    };
+    init();
   }, [seccionData]);
+
+  React.useEffect(() => {
+    if (!salaId || !dia) { setBloquesDisponibles([]); return; }
+    const cargar = async () => {
+      try {
+        setIsLoadingBloques(true);
+        setBloquesDisponibles(await filtrarBloquesPorSalaYDiaService(parseInt(salaId), dia));
+      } catch { /* silencioso */ } finally { setIsLoadingBloques(false); }
+    };
+    cargar();
+  }, [salaId, dia]);
+
+  const salaSeleccionada = salas.find(s => s.idSala.toString() === salaId);
+  const currentSalaId = parseInt(salaId);
+
+  const estaSeleccionado = (bloque: IBloqueDisponible) => {
+    const enPreCargados = bloquesPreCargados.some(
+      b => b.idBloque === bloque.idBloque && b.idSala === currentSalaId && b.diaSemana === dia && !idsEliminados.has(b.idReservaSala)
+    );
+    const enNuevos = bloquesNuevos.some(
+      b => b.idBloque === bloque.idBloque && b.idSala === currentSalaId && b.diaSemana === dia
+    );
+    return enPreCargados || enNuevos;
+  };
+
+  const toggleBloque = (bloque: IBloqueDisponible) => {
+    const preExiste = bloquesPreCargados.find(
+      b => b.idBloque === bloque.idBloque && b.idSala === currentSalaId && b.diaSemana === dia
+    );
+    if (preExiste) {
+      // Toggle pre-cargado: activar o desactivar via idsEliminados
+      setIdsEliminados(prev => {
+        const next = new Set(prev);
+        if (next.has(preExiste.idReservaSala)) next.delete(preExiste.idReservaSala);
+        else next.add(preExiste.idReservaSala);
+        return next;
+      });
+    } else {
+      // Toggle nuevo
+      const existe = bloquesNuevos.some(
+        b => b.idBloque === bloque.idBloque && b.idSala === currentSalaId && b.diaSemana === dia
+      );
+      if (existe) {
+        setBloquesNuevos(prev => prev.filter(
+          b => !(b.idBloque === bloque.idBloque && b.idSala === currentSalaId && b.diaSemana === dia)
+        ));
+      } else {
+        setBloquesNuevos(prev => [...prev, {
+          idBloque: bloque.idBloque, numeroBloque: bloque.numeroBloque,
+          horaInicio: bloque.horaInicio, horaFin: bloque.horaFin,
+          diaSemana: dia, idSala: currentSalaId,
+          codSala: salaSeleccionada?.codSala ?? '', nombreSala: salaSeleccionada?.nombreSala ?? ''
+        }]);
+      }
+    }
+  };
+
+  const removerBloquePreCargado = (idReservaSala: number) =>
+    setIdsEliminados(prev => new Set([...prev, idReservaSala]));
+
+  const removerBloqueNuevo = (idBloque: number, idSala: number, diaSemana: string) =>
+    setBloquesNuevos(prev => prev.filter(b => !(b.idBloque === idBloque && b.idSala === idSala && b.diaSemana === diaSemana)));
+
+  const limpiarTodo = () => {
+    setIdsEliminados(new Set(bloquesPreCargados.map(b => b.idReservaSala)));
+    setBloquesNuevos([]);
+  };
+
+  const bloquesPreActivos = bloquesPreCargados.filter(b => !idsEliminados.has(b.idReservaSala));
+  const totalBloques = bloquesPreActivos.length + bloquesNuevos.length;
 
   const handleSave = () => {
     if (!seccionData?.seccion) return;
-
-    const profesorSeleccionado = profesores.find(p => p.id === profesorAsignadoId);
-
-    const seccionEditada = {
-      id: seccionData.seccion.id,
-      numeroSeccion,
-      profesorAsignadoId,
-      profesorAsignado: profesorSeleccionado?.nombreCompleto || '',
+    onSave({
+      idAsignatura: parseInt(seccionData.asignatura.id),
+      idSeccion: parseInt(seccionData.seccion.id),
+      nombreSeccion: numeroSeccion,
+      estadoSeccion: estado,
+      idUsuarioDocente: parseInt(docenteId),
       capacidadMax,
       cantInscritos,
-      estado,
-      bloquesHorarios
-    };
-
-    onSave(seccionEditada);
+      bloquesNuevos: bloquesNuevos.map(b => ({
+        idBloque: b.idBloque, numeroBloque: b.numeroBloque,
+        horaInicio: b.horaInicio, horaFin: b.horaFin,
+        diaSemana: b.diaSemana, idSala: b.idSala
+      })),
+      idsReservasEliminar: [...idsEliminados]
+    });
   };
 
   if (!seccionData) return null;
 
-  const profesorSelectedKeys = profesorAsignadoId ? [profesorAsignadoId] : [];
+  const isFormValid = numeroSeccion.trim() && docenteId && capacidadMax > 0 && cantInscritos <= capacidadMax;
 
   return (
     <>
@@ -1094,20 +1210,20 @@ const EditarSeccionModal: React.FC<EditarSeccionModalProps> = ({
         </div>
       </ModalHeader>
       <ModalBody>
-        <div className="space-y-4">
+        <div className="space-y-5">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Input
-              label="Número de Sección"
-              placeholder="101"
+              label="N° / Nombre de Sección"
               value={numeroSeccion}
               onValueChange={setNumeroSeccion}
+              maxLength={100}
+              description={`${numeroSeccion.length}/100 caracteres`}
               isRequired
             />
-
             <Select
               label="Estado"
               selectedKeys={[estado]}
-              onSelectionChange={(keys) => setEstado(Array.from(keys)[0] as EstadoSeccion)}
+              onSelectionChange={keys => setEstado(Array.from(keys)[0] as EstadoSeccion)}
               isRequired
               disallowEmptySelection
             >
@@ -1118,15 +1234,16 @@ const EditarSeccionModal: React.FC<EditarSeccionModalProps> = ({
           </div>
 
           <Select
-            label="Profesor Asignado"
-            placeholder="Seleccione un profesor"
-            selectedKeys={profesorSelectedKeys}
-            onSelectionChange={(keys) => setProfesorAsignadoId(Array.from(keys)[0] as string)}
+            label="Docente Asignado"
+            placeholder={isLoadingDocentes ? 'Cargando docentes...' : 'Seleccione un docente'}
+            selectedKeys={docenteId ? [docenteId] : []}
+            onSelectionChange={keys => setDocenteId(Array.from(keys)[0] as string)}
+            isLoading={isLoadingDocentes}
             isRequired
           >
-            {profesores.map((profesor) => (
-              <SelectItem key={profesor.id}>
-                {profesor.nombreCompleto} ({profesor.rol})
+            {docentes.map(d => (
+              <SelectItem key={d.idUsuario.toString()} textValue={d.nombreCompleto}>
+                {d.nombreCompleto}
               </SelectItem>
             ))}
           </Select>
@@ -1136,70 +1253,153 @@ const EditarSeccionModal: React.FC<EditarSeccionModalProps> = ({
               type="number"
               label="Capacidad Máxima"
               value={capacidadMax.toString()}
-              onValueChange={(val) => setCapacidadMax(parseInt(val) || 0)}
-              min="0"
+              onValueChange={v => setCapacidadMax(parseInt(v) || 0)}
+              min="1"
               isRequired
             />
-
             <Input
               type="number"
               label="Cantidad Inscritos"
               value={cantInscritos.toString()}
-              onValueChange={(val) => setCantInscritos(parseInt(val) || 0)}
+              onValueChange={v => setCantInscritos(parseInt(v) || 0)}
               min="0"
               max={capacidadMax}
               isRequired
               isInvalid={cantInscritos > capacidadMax}
-              errorMessage={
-                cantInscritos > capacidadMax
-                  ? `No puede superar la capacidad máxima (${capacidadMax})`
-                  : undefined
-              }
+              errorMessage={cantInscritos > capacidadMax ? `No puede superar la capacidad máxima (${capacidadMax})` : undefined}
             />
           </div>
 
           <Divider />
 
+          {/* ── Selector sala + día (mismo que CrearSeccionModal) ── */}
           <div>
-            <h3 className="text-sm font-semibold mb-2">Bloques Horarios y Salas</h3>
-            <div className="space-y-2 max-h-60 overflow-y-auto">
-              {bloquesHorarios.map((bloque, index) => (
-                <div key={index} className="p-3 bg-default-100 dark:bg-default-50/20 rounded-lg text-sm">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <p className="font-semibold">Bloque {bloque.numeroBloque}</p>
-                      <p className="text-xs text-default-500">
-                        {bloque.diaSemana} • {bloque.horaInicio} - {bloque.horaFin}
-                      </p>
-                      <p className="text-xs text-default-600">
-                        {bloque.nombreSala} ({bloque.codSala})
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              ))}
-              {bloquesHorarios.length === 0 && (
-                <p className="text-sm text-default-400 text-center py-4">
-                  No hay bloques horarios asignados
-                </p>
-              )}
-            </div>
-            <p className="text-xs text-default-400 mt-2">
-              Nota: La edición de bloques horarios no está disponible en esta versión.
-              Para cambiar horarios, contacte al administrador del sistema.
+            <p className="text-sm font-semibold mb-3 flex items-center gap-2">
+              <Icon icon="lucide:calendar-clock" width={16} className="text-primary" />
+              Bloques Horarios
             </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
+              <Select
+                label="Sala"
+                placeholder={isLoadingSalas ? 'Cargando salas...' : 'Seleccione una sala'}
+                selectedKeys={salaId ? [salaId] : []}
+                onSelectionChange={keys => setSalaId(Array.from(keys)[0] as string)}
+                isLoading={isLoadingSalas}
+              >
+                {salas.map(s => (
+                  <SelectItem key={s.idSala.toString()} textValue={`Sala: ${s.nombreSala} - Cod: ${s.codSala}`}>
+                    Sala: {s.nombreSala} - Cod: {s.codSala}
+                  </SelectItem>
+                ))}
+              </Select>
+              <Select
+                label="Día de la semana"
+                placeholder="Seleccione un día"
+                selectedKeys={dia ? [dia] : []}
+                onSelectionChange={keys => setDia(Array.from(keys)[0] as string)}
+              >
+                {DIAS_SEMANA_OPTIONS.map(d => (
+                  <SelectItem key={d.value}>{d.label}</SelectItem>
+                ))}
+              </Select>
+            </div>
+
+            {!salaId || !dia ? (
+              <div className="rounded-xl border-2 border-dashed border-default-200 p-6 flex flex-col items-center gap-2 text-default-400">
+                <Icon icon="lucide:calendar-search" width={28} className="opacity-50" />
+                <p className="text-sm font-medium">Selecciona sala y día para ver bloques</p>
+                <p className="text-xs text-center">Los bloques ya seleccionados se muestran abajo</p>
+              </div>
+            ) : (
+              <div className="rounded-xl border border-default-200 bg-default-50 dark:bg-default-100/10 p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-xs font-semibold text-default-500 uppercase tracking-wider">
+                    Bloques disponibles · {DIAS_SEMANA_OPTIONS.find(d => d.value === dia)?.label} · {salaSeleccionada?.codSala}
+                  </p>
+                  {totalBloques > 0 && (
+                    <Chip size="sm" color="primary" variant="flat">{totalBloques} seleccionado(s)</Chip>
+                  )}
+                </div>
+                {isLoadingBloques ? (
+                  <div className="flex items-center justify-center py-6 gap-2 text-default-400">
+                    <Spinner size="sm" /><span className="text-sm">Cargando bloques...</span>
+                  </div>
+                ) : bloquesDisponibles.length === 0 ? (
+                  <div className="rounded-lg border-2 border-dashed border-default-200 p-4 flex flex-col items-center gap-1 text-default-400">
+                    <Icon icon="lucide:calendar-x" width={22} className="opacity-50" />
+                    <p className="text-sm">No hay bloques disponibles para esta combinación</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {bloquesDisponibles.map(bloque => {
+                      const seleccionado = estaSeleccionado(bloque);
+                      return (
+                        <button
+                          key={bloque.idBloque}
+                          type="button"
+                          onClick={() => toggleBloque(bloque)}
+                          className={`flex items-center justify-between px-3 py-2.5 rounded-lg border transition-colors text-left ${seleccionado
+                            ? 'bg-primary-50 dark:bg-primary-900/30 border-primary-300 dark:border-primary-700'
+                            : 'bg-white dark:bg-default-100/20 border-default-200 hover:border-primary-200 hover:bg-primary-50/30'
+                            }`}
+                        >
+                          <div className="flex items-center gap-2">
+                            <Chip size="sm" color={seleccionado ? 'primary' : 'default'} variant="flat" className="font-bold min-w-[36px]">
+                              B{bloque.numeroBloque}
+                            </Chip>
+                            <span className="text-xs text-default-600 dark:text-default-400">
+                              {bloque.horaInicio.slice(0, 5)} – {bloque.horaFin.slice(0, 5)}
+                            </span>
+                          </div>
+                          <Icon icon={seleccionado ? 'lucide:check-circle-2' : 'lucide:circle'} width={16}
+                            className={seleccionado ? 'text-primary' : 'text-default-300'} />
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Resumen acumulado */}
+            {totalBloques > 0 && (
+              <div className="mt-3 rounded-xl border border-primary-200 bg-primary-50 dark:bg-primary-900/20 p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-xs font-semibold text-primary-700 dark:text-primary-400 uppercase tracking-wider">
+                    Bloques reservados · {totalBloques} total
+                  </p>
+                  <button type="button" onClick={limpiarTodo} className="text-xs text-danger hover:underline">
+                    Limpiar todo
+                  </button>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {bloquesPreActivos.map(b => (
+                    <Chip
+                      key={`pre-${b.idReservaSala}`}
+                      size="sm" color="primary" variant="flat"
+                      onClose={() => removerBloquePreCargado(b.idReservaSala)}
+                    >
+                      B{b.numeroBloque} · {b.horaInicio.slice(0, 5)}–{b.horaFin.slice(0, 5)} · {b.codSala} · {DIAS_SEMANA_OPTIONS.find(d => d.value === b.diaSemana)?.label}
+                    </Chip>
+                  ))}
+                  {bloquesNuevos.map(b => (
+                    <Chip
+                      key={`new-${b.idBloque}-${b.idSala}-${b.diaSemana}`}
+                      size="sm" color="success" variant="flat"
+                      onClose={() => removerBloqueNuevo(b.idBloque, b.idSala, b.diaSemana)}
+                    >
+                      B{b.numeroBloque} · {b.horaInicio.slice(0, 5)}–{b.horaFin.slice(0, 5)} · {b.codSala} · {DIAS_SEMANA_OPTIONS.find(d => d.value === b.diaSemana)?.label} · Nuevo
+                    </Chip>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </ModalBody>
       <ModalFooter>
-        <Button variant="light" onPress={onClose}>
-          Cancelar
-        </Button>
-        <Button
-          color="primary"
-          onPress={handleSave}
-          isDisabled={!numeroSeccion || !profesorAsignadoId || capacidadMax < cantInscritos || cantInscritos <= 0}
-        >
+        <Button variant="light" onPress={onClose}>Cancelar</Button>
+        <Button color="primary" onPress={handleSave} isDisabled={!isFormValid}>
           Guardar Cambios
         </Button>
       </ModalFooter>

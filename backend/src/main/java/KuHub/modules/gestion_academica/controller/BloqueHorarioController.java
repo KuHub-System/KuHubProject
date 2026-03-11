@@ -28,7 +28,8 @@ public class BloqueHorarioController {
     }
 
     /**
-     * ultilizado en crear y editar seccion
+     * ultilizado en crear y editar seccion para obtener los bloques de horarios
+     * que estan disponibles que no esta reservados con el activo true de ReservaSala
      *
      ✅ En uso: Endpoint consumido por el frontend.*/
     @PostMapping( "/filter-by-day-week-and-id-room")

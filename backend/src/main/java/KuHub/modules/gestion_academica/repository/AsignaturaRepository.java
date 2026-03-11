@@ -47,6 +47,7 @@ public interface AsignaturaRepository extends JpaRepository <Asignatura, Integer
                         'bloquesHorarios', COALESCE((
                             SELECT json_agg(
                                 json_build_object(
+                                    'idReservaSala', rs.id_reserva_sala,
                                     'numeroBloque', b.id_bloque,
                                     'horaInicio', to_char(b.hora_inicio, 'HH24:MI:SS'),
                                     'horaFin', to_char(b.hora_fin, 'HH24:MI:SS'),
@@ -61,15 +62,16 @@ public interface AsignaturaRepository extends JpaRepository <Asignatura, Integer
                             JOIN bloque_horario b ON b.id_bloque = rs.id_bloque
                             JOIN sala sa ON sa.id_sala = rs.id_sala
                             WHERE rs.id_seccion = s.id_seccion
+                                AND rs.activo = TRUE
                         ), '[]'::json)
                     )
                 ) FILTER (WHERE s.id_seccion IS NOT NULL),
                 '[]'::json
             ) AS secciones
         FROM asignatura a
-        JOIN asignatura_profesor_cargo apc 
+        LEFT JOIN asignatura_profesor_cargo apc 
             ON apc.id_asignatura = a.id_asignatura
-        JOIN usuario u
+        LEFT JOIN usuario u
             ON u.id_usuario = apc.id_usuario
         LEFT JOIN seccion s
             ON s.id_asignatura = a.id_asignatura
@@ -103,7 +105,7 @@ public interface AsignaturaRepository extends JpaRepository <Asignatura, Integer
     /**Actualizar estado asignatura a false para eliminacion logica para saltar el findbyid*/
     @Modifying
     @Query("""
-       UPDATE Asignatura a 
+       UPDATE Asignatura a
        SET a.activo = false 
        WHERE a.idAsignatura = :id
        """)
@@ -112,6 +114,7 @@ public interface AsignaturaRepository extends JpaRepository <Asignatura, Integer
 
     /**Validaciones boleanas*/
     boolean existsByNombreAsignaturaAndActivoIsTrue(String nombreAsignatura);
+
 
 
     /**

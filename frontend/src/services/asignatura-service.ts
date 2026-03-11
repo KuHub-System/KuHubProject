@@ -51,6 +51,7 @@ interface SectionAnswerUpdateDTO {
 }
 
 interface BookTImeBlocksRequestDTO {
+  idReservaSala?: number;
   numeroBloque: number;
   horaInicio: string;
   horaFin: string;
@@ -58,6 +59,18 @@ interface BookTImeBlocksRequestDTO {
   idSala: number;
   codSala: string;
   nombreSala: string;
+}
+
+interface SectionUpdateDTO {
+  idAsignatura: number;
+  idSeccion: number;
+  nombreSeccion: string;
+  estadoSeccion: string;
+  idUsuarioDocente: number;
+  capacidadMax: number;
+  cantInscritos: number;
+  bloquesNuevos: { idBloque: number; numeroBloque: number; horaInicio: string; horaFin: string; diaSemana: string; idSala: number }[];
+  idsReservasEliminar: number[];
 }
 
 interface CourseCreateDTO {
@@ -84,6 +97,7 @@ interface CourseUpdateDTO {
  */
 const transformarBloqueHorario = (bloque: BookTImeBlocksRequestDTO): IBloqueHorario => {
   return {
+    idReservaSala: bloque.idReservaSala,
     numeroBloque: bloque.numeroBloque || 0,
     horaInicio: bloque.horaInicio || '00:00',
     horaFin: bloque.horaFin || '00:00',
@@ -330,22 +344,29 @@ export const actualizarSeccionService = async (
 };
 
 /**
+ * Actualizar sección con delta de bloques
+ * PATCH /v1/seccion/update-section
+ */
+export const actualizarSeccionDeltaService = async (dto: SectionUpdateDTO): Promise<boolean> => {
+  try {
+    const response = await api.patch<boolean>('/seccion/update-section', dto);
+    return response.data;
+  } catch (error: any) {
+    throw new Error(error.response?.data?.message || 'Error al actualizar la sección');
+  }
+};
+
+/**
  * Eliminar sección (soft delete)
+ * DELETE /v1/seccion/soft-delete/{idSeccion}
  */
 export const eliminarSeccionService = async (
   asignaturaId: string,
   seccionId: string
-): Promise<IAsignatura> => {
+): Promise<boolean> => {
   try {
-    await api.put(`/seccion/soft-delete/${seccionId}`);
-
-    // Recargar la asignatura completa
-    const asignaturaActualizada = await obtenerAsignaturaPorIdService(asignaturaId);
-    if (!asignaturaActualizada) {
-      throw new Error('No se pudo encontrar la asignatura actualizada');
-    }
-
-    return asignaturaActualizada;
+    const response = await api.delete<boolean>(`/seccion/soft-delete/${seccionId}`);
+    return response.data;
   } catch (error: any) {
     throw new Error(error.response?.data?.message || 'Error al eliminar la sección');
   }

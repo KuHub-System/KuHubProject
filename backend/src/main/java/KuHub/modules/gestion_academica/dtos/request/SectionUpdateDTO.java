@@ -2,15 +2,22 @@ package KuHub.modules.gestion_academica.dtos.request;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.util.List;
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class SectionCreateDTO {
+public class SectionUpdateDTO {
+
     @NotNull(message = "La asignatura es obligatoria")
     private Integer idAsignatura;
+
+    @NotNull(message = "El ID de la sección es obligatorio")
+    private Integer idSeccion;
 
     @NotBlank(message = "El nombre de la sección no puede estar vacío")
     @Size(max = 100, message = "El nombre no puede superar los 100 caracteres")
@@ -27,10 +34,17 @@ public class SectionCreateDTO {
     private Short capacidadMax;
 
     @NotNull(message = "La cantidad de inscritos es obligatoria")
-    @Positive(message = "La cantidad de inscritos debe ser un número positivo")
+    @PositiveOrZero(message = "La cantidad de inscritos no puede ser negativa")
     private Short cantInscritos;
 
-    @NotEmpty(message = "Debe asignar al menos un horario")
-    @Valid
-    private List<BookTimeBlocksDTO> bloquesHorarios;
+    // ----- SECCIÓN DE DELTAS -----
+
+    @Valid // Para validar cada objeto dentro de la lista
+    private List<BookTimeBlocksDTO> bloquesNuevos;
+
+    /**
+     * Lista de IDs de las reservas (reserva_sala) a eliminar (borrado lógico).
+     * Ya no necesitamos el DTO completo, solo el ID primario.
+     */
+    private List<Integer> idsReservasEliminar;
 }
