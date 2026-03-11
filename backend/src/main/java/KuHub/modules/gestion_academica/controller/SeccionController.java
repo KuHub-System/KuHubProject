@@ -1,6 +1,7 @@
 package KuHub.modules.gestion_academica.controller;
 
 import KuHub.modules.gestion_academica.dtos.dtoentity.SeccionEntityResponseDTO;
+import KuHub.modules.gestion_academica.dtos.request.SectionUpdateDTO;
 import KuHub.modules.gestion_academica.dtos.response.SectionAnswerUpdateDTO;
 import KuHub.modules.gestion_academica.dtos.request.SectionCreateDTO;
 import KuHub.modules.gestion_academica.entity.Seccion;
@@ -9,6 +10,7 @@ import KuHub.modules.gestion_academica.service.SeccionService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -26,11 +28,37 @@ public class SeccionController {
      ✅ En uso: Endpoint consumido por el frontend.*/
     @PostMapping( "/create-section")
     public ResponseEntity<Boolean> createSectionFrontend(
-            @Valid @RequestBody SectionCreateDTO request
+            @Validated @RequestBody SectionCreateDTO request
     ){
         return ResponseEntity
-                .status(201)
-                .body(seccionService.createSection(request));
+            .status(201)
+            .body(seccionService.createSection(request));
+    }
+
+    /**
+     * Usado para actualizar la información, deltas y horarios de una sección
+     * ✅ En uso: Endpoint consumido por el frontend.
+     */
+    @PatchMapping("/update-section")
+    public ResponseEntity<Boolean> updateSectionFrontend(
+            @Validated @RequestBody SectionUpdateDTO request
+    ) {
+        return ResponseEntity
+            .status(200)
+            .body(seccionService.updateSection(request));
+    }
+
+    /**
+     * Usado para eliminar logicamente actualizando el estado activo a false
+     * ✅ En uso: Endpoint consumido por el frontend.
+     */
+    @DeleteMapping("/soft-delete/{idSeccion}")
+    public ResponseEntity<Boolean> softDelete(
+            @PathVariable Integer idSeccion
+    ){
+        return ResponseEntity
+                .status(204)
+                .body(seccionService.softDelete(idSeccion));
     }
 
 
@@ -110,21 +138,7 @@ public class SeccionController {
                 .body(seccionService.updateSection(sectionAnswerUpdateDTO));
     }*/
 
-    @PutMapping("/soft-delete/{id}")
-    public ResponseEntity<?> softDelete(
-            @PathVariable Integer id
-    ){
-        try {
-            seccionService.softDelete(id);
-            return ResponseEntity.noContent().build();
-        }catch (GestionAcademicaException e){
-            return ResponseEntity.status(400)
-                    .body("Error: " + e.getMessage());
-        }catch (Exception e){
-            return ResponseEntity.status(500)
-                    .body("Error interno al intentar eliminar la seccion: " + e.getMessage());
-        }
-    }
+
 
 
 }

@@ -1044,7 +1044,7 @@ const InventarioPage: React.FC = () => {
           </ModalContent>
         </Modal>
 
-        <Modal isOpen={isPedidoMasivoOpen} onOpenChange={onPedidoMasivoOpenChange} size="4xl" backdrop="blur" scrollBehavior="inside" radius="lg">
+        <Modal isOpen={isPedidoMasivoOpen} onOpenChange={onPedidoMasivoOpenChange} size="4xl" backdrop="blur" scrollBehavior="inside" radius="lg" classNames={{ base: 'rounded-2xl overflow-hidden' }}>
           <ModalContent>
             {(onClose) => (
               <PedidoMasivoModal
@@ -1997,7 +1997,7 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoP
       setItemsPedido([...itemsPedido, nuevoItem]);
       setProductoSeleccionado('');
       setStockInput('');
-      setMotivo('');
+      setMotivo(motivo);
       setInputDisplayBulk('');
       setSearchTermBulk('');
       setPageBulk(1);

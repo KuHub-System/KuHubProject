@@ -17,6 +17,7 @@ export type EstadoSeccion = 'ACTIVA' | 'INACTIVA' | 'SUSPENDIDA';
  * Interfaz para un bloque horario con sala
  */
 export interface IBloqueHorario {
+  idReservaSala?: number; // ID de la reserva_sala (viene del backend al cargar secciones)
   numeroBloque: number;
   horaInicio: string; // "08:00"
   horaFin: string;    // "10:00"

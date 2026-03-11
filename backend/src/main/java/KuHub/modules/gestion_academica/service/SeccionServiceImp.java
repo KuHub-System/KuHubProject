@@ -1,22 +1,26 @@
 package KuHub.modules.gestion_academica.service;
 
 import KuHub.modules.gestion_academica.dtos.record.CheckAvailability;
-import KuHub.modules.gestion_academica.dtos.request.BookTImeBlocksDTO;
+import KuHub.modules.gestion_academica.dtos.request.BookTimeBlocksDTO;
 import KuHub.modules.gestion_academica.dtos.request.SectionCreateDTO;
+import KuHub.modules.gestion_academica.dtos.request.SectionUpdateDTO;
 import KuHub.modules.gestion_academica.entity.*;
 import KuHub.modules.gestion_academica.exceptions.GestionAcademicaException;
 import KuHub.modules.gestion_academica.repository.DocenteSeccionRepository;
+import KuHub.modules.gestion_academica.repository.ReservaSalaRepository;
 import KuHub.modules.gestion_academica.repository.SeccionRepository;
 import KuHub.modules.gestion_usuario.service.RolService;
 import KuHub.modules.gestion_usuario.service.UsuarioService;
 import KuHub.utils.StringUtils;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
 import java.util.*;
 
+@Slf4j
 @Service
 public class SeccionServiceImp implements SeccionService{
 
@@ -36,6 +40,9 @@ public class SeccionServiceImp implements SeccionService{
     private ReservaSalaService reservaSalaService;
 
     @Autowired
+    private ReservaSalaRepository reservaSalaRepository;
+
+    @Autowired
     private BloqueHorarioService bloqueHorarioService;
 
     @Autowired
@@ -44,6 +51,12 @@ public class SeccionServiceImp implements SeccionService{
     @Autowired
     private RolService rolService;
 
+    public Seccion findById (Integer idSection){
+        return seccionRepository.findById(idSection).orElseThrow(
+                () -> new GestionAcademicaException("Seccion con la id no encontrada"
+                , HttpStatus.NOT_FOUND)
+        );
+    }
 
     @Transactional
     @Override
@@ -78,7 +91,7 @@ public class SeccionServiceImp implements SeccionService{
         Seccion savedSection = seccionRepository.save(newSection);
 
         /** Valdar disponibilidad para reservar bloques */
-        for (BookTImeBlocksDTO B : request.getBloquesHorarios()) {
+        for (BookTimeBlocksDTO B : request.getBloquesHorarios()) {
 
             /** Validar disponibilidad del bloque y retorno del tipo enun formateado*/
             CheckAvailability check = reservaSalaService.validatedThatTheBlockIsNotReserved(
@@ -112,20 +125,145 @@ public class SeccionServiceImp implements SeccionService{
         return true;
     }
 
+    @Transactional
+    @Override
+    public boolean updateSection (SectionUpdateDTO request) {
+        Seccion oldSeccion = findById(request.getIdSeccion());
+        boolean changes = false;
+        /***Parsear antes de validar */
+        String nombreSeccion = StringUtils.normalizeSpaces(request.getNombreSeccion());
+        if (!oldSeccion.getNombreSeccion().equals(nombreSeccion)) {
+            if (seccionRepository.existsByAsignaturaTrueAndSeccionTrueAndNombreSeccionIlike(
+                    request.getIdAsignatura(), StringUtils.normalizeSpaces(nombreSeccion))) {
+                throw new GestionAcademicaException("Ya existe una seccion con el nombre: " + nombreSeccion
+                        + " en misma asignatura la asignatura: ", HttpStatus.CONFLICT
+                );
+            }
+            oldSeccion.setNombreSeccion(nombreSeccion);
+            changes = true;
+        }
+        if (!oldSeccion.getCapacidadMax().equals(request.getCapacidadMax())) {
+            oldSeccion.setCapacidadMax(request.getCapacidadMax());
+            changes = true;
+        }
+        if (!oldSeccion.getCantInscritos().equals(request.getCantInscritos())) {
+            oldSeccion.setCantInscritos(request.getCantInscritos());
+            changes = true;
+        }
+
+        String enumKey = StringUtils.normalizeToEnumKey(request.getEstadoSeccion());
+
+        if (enumKey != null) {
+            try {
+                Seccion.EstadoSeccion nuevoEstado = Seccion.EstadoSeccion.valueOf(enumKey);
+                if (oldSeccion.getEstadoSeccion() != nuevoEstado) {
+                    oldSeccion.setEstadoSeccion(nuevoEstado);
+                    changes = true;
+                }
+            } catch (IllegalArgumentException e) {
+                throw new GestionAcademicaException("El estado '" + enumKey + "' no es válido."
+                        , HttpStatus.BAD_REQUEST);
+            }
+        }
+
+        /**guardar cambios en la bbdd*/
+        if (changes) {
+            seccionRepository.save(oldSeccion);
+        }
+
+        // ==========================================================
+        // PROCESAR DELTAS: - ELIMINAR BLOQUES (Borrado lógico masivo)
+        // ==========================================================
+        log.info("Revisando deltas de eliminación... IDs recibidos desde frontend: {}", request.getIdsReservasEliminar());
+        if (request.getIdsReservasEliminar() != null && !request.getIdsReservasEliminar().isEmpty()) {
+            log.info("Entró al proceso de eliminación masiva. Ejecutando query para los IDs: {}", request.getIdsReservasEliminar());
+            // Ejecutamos y capturamos el número de filas afectadas
+            int filasAfectadas = reservaSalaRepository.deactivateReservationsMass(request.getIdsReservasEliminar());
+
+            // Registramos en la consola del backend
+            log.info("Se intentaron eliminar {} reservas. Filas realmente desactivadas: {} para la Sección ID: {}",
+                    request.getIdsReservasEliminar().size(),
+                    filasAfectadas,
+                    oldSeccion.getIdSeccion());
+
+            // Opcional: Podrías lanzar un warning si no coinciden
+            if (filasAfectadas != request.getIdsReservasEliminar().size()) {
+                log.warn("¡Atención! Algunas reservas enviadas para eliminar ya estaban inactivas o no existen.");
+            }
+        }else {
+            // 3. LOG ELSE: Para estar seguros de que el if está saltando
+            log.info("No se ejecutará eliminación. La lista de IDs viene nula o vacía.");
+        }
+
+        // ==========================================================
+        // PROCESAR DELTAS:  AGREGAR NUEVOS BLOQUES
+        // ==========================================================
+
+        if (request.getBloquesNuevos() != null && !request.getBloquesNuevos().isEmpty()) {
+            for (BookTimeBlocksDTO nuevoBloque : request.getBloquesNuevos()) {
+
+                String diaNormalizado = StringUtils.normalizeToEnumKey(nuevoBloque.getDiaSemana());
+                if (reservaSalaRepository.isOccupiedRoom(nuevoBloque.getIdSala(), diaNormalizado, nuevoBloque.getIdBloque())) {
+                    throw new GestionAcademicaException(
+                            String.format("La sala seleccionada ya está ocupada el %s en el bloque %d.",
+                                    StringUtils.enumToHumanText(diaNormalizado), // Lo volvemos legible ("Lunes")
+                                    nuevoBloque.getNumeroBloque()),
+                            HttpStatus.CONFLICT
+                    );
+                }
+
+                ReservaSala.DiaSemana diaEnum;
+                try {
+                    diaEnum = ReservaSala.DiaSemana.valueOf(diaNormalizado);
+                } catch (IllegalArgumentException e) {
+                    throw new GestionAcademicaException(
+                            "El día de la semana '" + nuevoBloque.getDiaSemana() + "' no es válido.",
+                            HttpStatus.BAD_REQUEST
+                    );
+                }
+
+                // 3. Si está libre, preparamos la entidad para guardar
+                ReservaSala newReservation = new ReservaSala();
+                newReservation.setIdSeccion(oldSeccion.getIdSeccion());
+                newReservation.setIdSala(nuevoBloque.getIdSala());
+                newReservation.setIdBloque(nuevoBloque.getIdBloque());
+                newReservation.setDiaSemana(diaEnum);
+
+                try {
+                    reservaSalaRepository.save(newReservation);
+                } catch (DataIntegrityViolationException e) {
+                    // Si dos usuarios pasaron el 'if' al mismo milisegundo, la Base de Datos
+                    // usará el Índice Único para bloquear a uno de ellos y caerá aquí.
+                    log.error("Error de concurrencia: Índice único bloqueó la inserción.", e);
+                    throw new GestionAcademicaException(
+                        "Error de concurrencia: El horario fue ocupado por otro usuario en este instante.",
+                        HttpStatus.CONFLICT
+                    );
+                }
+            }
+        }
+        return true;
+    }
+
+    @Transactional
+    @Override
+    public boolean softDelete(Integer id)   {
+        // Ejecutamos el UPDATE directo y capturamos cuántas filas se modificaron
+        int filasAfectadas = seccionRepository.softDeleteSeccionById(id);
+        // Si es 0, significa que la ID no existe en la BD o ya estaba con activo = false
+        if (filasAfectadas == 0) {
+            throw new GestionAcademicaException(
+                    "La sección con el id: " + id + " no existe o ya fue eliminada anteriormente.",
+                    HttpStatus.NOT_FOUND
+            );
+        }
+        return true; // Retornamos true indicando éxito total
+    }
 
 
 
 
-
-
-
-
-
-
-
-
-
-
+    /**
     @Transactional(readOnly = true)
     @Override
     public Seccion findByIdAndActiveIsTrueEntity(Integer id){
@@ -466,18 +604,6 @@ public class SeccionServiceImp implements SeccionService{
         return dto;
 
     }*/
-
-
-
-    @Transactional
-    @Override
-    public void softDelete(Integer id) {
-        Seccion seccion = seccionRepository.findById(id).orElseThrow(
-                () -> new GestionAcademicaException("La seccion con el id: " + id + " no existe", HttpStatus.NOT_FOUND)
-        );
-        seccion.setActivo(false);
-        seccionRepository.save(seccion);
-    }
 
 
 }

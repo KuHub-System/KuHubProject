@@ -4,6 +4,7 @@ import KuHub.modules.gestion_academica.dtos.request.projection.NumberBlockProjec
 import KuHub.modules.gestion_academica.entity.ReservaSala;
 import feign.Param;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
@@ -34,12 +35,48 @@ public interface ReservaSalaRepository extends JpaRepository<ReservaSala, Intege
         JOIN bloque_horario b on r.id_bloque = b.id_bloque
             WHERE r.id_sala = :idSala
               AND s.activo = TRUE
+              AND r.activo = TRUE
               AND r.dia_semana = cast(:diaSemana AS dia_semana_type)
-""", nativeQuery = true)
-    List<NumberBlockProjection> findDistinctBySalaIdSalaAndSalaActivoTrueAndDiaSemana(
+    """, nativeQuery = true)
+    List<NumberBlockProjection> findDistinctRersevaActivoTrueBySalaIdSalaAndSalaActivoTrueAndDiaSemana(
             @Param("idSala") Integer idSala,
             @Param("diaSemana") String diaSemana
     );
+
+    /**Desactiva las reservas para el cambios de estado activo=false para tornar los horarios disponibles en el sistema
+     * para este dia y sala */
+    @Modifying
+    @Query("UPDATE ReservaSala rs SET rs.activo = false WHERE rs.idReservaSala IN :ids AND rs.activo = true")
+    int deactivateReservationsMass(@Param("ids") List<Integer> ids);
+
+
+
+    /** Verificamos si existe una reserva ACTIVA para esa sala, día y bloque*/
+    @Query(value = """
+        SELECT CASE WHEN COUNT(rs.id_reserva_sala) > 0 THEN true ELSE false END 
+        FROM reserva_sala rs 
+        WHERE rs.id_sala = :idSala 
+          AND rs.dia_semana = CAST(:diaSemana AS dia_semana_type) 
+          AND rs.id_bloque = :idBloque 
+          AND rs.activo = true
+    """, nativeQuery = true)
+    boolean isOccupiedRoom(
+            @Param("idSala") Integer idSala,
+            @Param("diaSemana") String diaSemana,
+            @Param("idBloque") Integer idBloque
+    );
+
+
+
+
+
+
+
+
+
+
+
+
 
     List<ReservaSala> findBySeccion_IdSeccion(Integer idSeccion);
 

@@ -8,6 +8,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class SectionBlockDTO {
+    private Integer idReservaSala;
     private Integer numeroBloque;
     private String horaInicio;
     private String horaFin;

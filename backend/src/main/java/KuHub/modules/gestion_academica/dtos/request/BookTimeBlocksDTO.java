@@ -7,7 +7,7 @@ import lombok.*;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class BookTImeBlocksDTO {
+public class BookTimeBlocksDTO {
     @NotNull(message = "El ID del bloque es obligatorio")
     private Integer idBloque;
 

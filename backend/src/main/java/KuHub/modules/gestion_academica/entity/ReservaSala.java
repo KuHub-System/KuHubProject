@@ -40,6 +40,9 @@ public class ReservaSala {
     @Column(name = "dia_semana", nullable = false)
     private DiaSemana diaSemana;
 
+    @Column(name = "activo", nullable = false)
+    private Boolean activo = true;
+
     public enum DiaSemana {
         LUNES,
         MARTES,
