@@ -1,5 +1,7 @@
 package KuHub.modules.gestion_solicitud.entity;
 
+import KuHub.modules.gestion_academica.entity.Seccion;
+import KuHub.modules.gestion_usuario.entity.Usuario;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -13,24 +15,29 @@ import java.util.List;
 
 @Entity
 @Table(name = "solicitud")
+@IdClass(SolicitudId.class)
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 public class Solicitud {
 
-    @Id
+    @Id // Parte 1 de la PK
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id_solicitud")
     private Integer idSolicitud;
 
-    @Column(name = "id_usuario_gestor_solicitud", nullable = false)
-    private Integer idUsuarioGestorSolicitud;
-
-    @Column(name = "id_seccion", nullable = false)
-    private Integer idSeccion;
-
+    @Id // Parte 2 de la PK (Clave de partición)
     @Column(name = "fecha_solicitada", nullable = false)
     private LocalDate fechaSolicitada;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_usuario_gestor_solicitud", nullable = false)
+    private Usuario usuarioGestor;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_seccion", nullable = false)
+    private Seccion seccion;
 
     @Column(name = "fecha_registro", insertable = false, updatable = false)
     private LocalDateTime fechaRegistro;
@@ -42,9 +49,24 @@ public class Solicitud {
     @Column(name = "estado_solicitud", columnDefinition = "estado_solicitud_type")
     private EstadoSolicitud estadoSolicitud;
 
-    // --- RELACIÓN PADRE-HIJO
     @OneToMany(mappedBy = "solicitud", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
     private List<DetalleSolicitud> detalles = new ArrayList<>();
+
+    // ----------- Métodos Helper para asignación por ID -----------
+
+    public void setIdUsuarioGestorSolicitud(Integer id) {
+        if (id != null) {
+            this.usuarioGestor = new Usuario();
+            this.usuarioGestor.setIdUsuario(id);
+        }
+    }
+
+    public void setIdSeccion(Integer id) {
+        if (id != null) {
+            this.seccion = new Seccion();
+            this.seccion.setIdSeccion(id);
+        }
+    }
 
     public void addDetalle(DetalleSolicitud detalle) {
         detalles.add(detalle);

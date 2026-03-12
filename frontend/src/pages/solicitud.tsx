@@ -2,7 +2,6 @@
  * SOLICITUD DE INSUMOS — masiva
  * Por cada asignatura: selecciona secciones + semana + receta + observaciones.
  * Al enviar se crean N solicitudes (una por sección seleccionada).
- * Semanas cargadas desde el backend con caché por periodo.
  */
 
 import React from 'react';
@@ -23,21 +22,22 @@ import {
   detectarPeriodoActual,
   encontrarSemanaActual,
 } from '../services/semana-service';
+import {
+  IAsignaturaCurso, ISeccionCurso, IHorarioCurso,
+  obtenerCursosParaSolicitudService,
+} from '../services/solicitud-service';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// TIPOS (mock para asignaturas — se reemplazará con endpoint real)
+// TIPOS LOCALES
 // ─────────────────────────────────────────────────────────────────────────────
-
-interface MockBloque { dia: string; bloque: number; horaInicio: string; horaFin: string; sala: string; }
-interface MockSeccion { id: string; numero: string; docente: string; inscritos: number; capacidad: number; bloques: MockBloque[]; }
-interface MockAsignatura { id: string; codigo: string; nombre: string; secciones: MockSeccion[]; }
 
 interface ItemSolicitud { id: string; nombre: string; cantidadBase: number; cantidad: number; unidad: string; esExtra: boolean; }
 interface MockReceta { id: string; nombre: string; porciones: number; items: ItemSolicitud[]; }
 
 interface AsigConfig {
-  seccionesIds: Set<string>;
-  semanaId: string; // String(ISemana.idSemana)
+  /** Claves de bloques seleccionados: "${secId}|${diaSemana}|${idSala}" */
+  bloquesIds: Set<string>;
+  semanaId: string;
   recetaId: string;
   items: ItemSolicitud[];
   observaciones: string;
@@ -45,37 +45,52 @@ interface AsigConfig {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// DATOS MOCK (asignaturas y recetas — pendiente conexión real)
+// CONSTANTES Y HELPERS
 // ─────────────────────────────────────────────────────────────────────────────
 
 const DIA_OFFSET: Record<string, number> = { LUNES: 0, MARTES: 1, MIERCOLES: 2, JUEVES: 3, VIERNES: 4, SABADO: 5, DOMINGO: 6 };
 const DIA_ABREV: Record<string, string>  = { LUNES: 'Lun', MARTES: 'Mar', MIERCOLES: 'Mié', JUEVES: 'Jue', VIERNES: 'Vie', SABADO: 'Sáb', DOMINGO: 'Dom' };
 
-const MOCK_ASIGNATURAS: MockAsignatura[] = [
-  {
-    id: '1', codigo: 'BMD-01-033', nombre: 'Bollería Y Masas Dulces Spa',
-    secciones: [
-      { id: 's1', numero: '001D', docente: 'Sofia Elena Morales Rojas',       inscritos: 25, capacidad: 30, bloques: [{ dia: 'LUNES',     bloque: 3, horaInicio: '08:01', horaFin: '12:20', sala: '402' }] },
-      { id: 's2', numero: '002',  docente: 'Javier Andres Fuentes Ortega',    inscritos: 28, capacidad: 30, bloques: [{ dia: 'MARTES', bloque: 5, horaInicio: '11:01', horaFin: '11:40', sala: '403' }, { dia: 'JUEVES', bloque: 5, horaInicio: '11:01', horaFin: '11:40', sala: '403' }] },
-      { id: 's3', numero: '003',  docente: 'Carmen Rosa Jimenez Navarro',     inscritos: 22, capacidad: 30, bloques: [{ dia: 'VIERNES',    bloque: 7, horaInicio: '14:41', horaFin: '15:20', sala: '404' }] },
-      { id: 's4', numero: '0034', docente: 'Carmen Rosa Jimenez Navarro',     inscritos: 20, capacidad: 30, bloques: [{ dia: 'MIERCOLES',  bloque: 8, horaInicio: '19:41', horaFin: '22:10', sala: '405' }] },
-      { id: 's5', numero: '023D', docente: 'Beatriz Isabel Sepulveda Duran',  inscritos: 20, capacidad: 30, bloques: [{ dia: 'LUNES',     bloque: 9, horaInicio: '19:41', horaFin: '22:10', sala: '403' }] },
-    ],
-  },
-  {
-    id: '2', codigo: 'PAS-02-011', nombre: 'Pastelería Avanzada',
-    secciones: [
-      { id: 's6', numero: '001A', docente: 'Carlos Mendoza Torres',   inscritos: 18, capacidad: 25, bloques: [{ dia: 'MIERCOLES', bloque: 4, horaInicio: '09:41', horaFin: '12:20', sala: '501' }] },
-      { id: 's7', numero: '002A', docente: 'Ana Lucia Vargas Rojas',  inscritos: 20, capacidad: 25, bloques: [{ dia: 'LUNES',     bloque: 6, horaInicio: '13:11', horaFin: '16:00', sala: '502' }] },
-    ],
-  },
-  {
-    id: '3', codigo: 'CHO-01-005', nombre: 'Chocolatería y Confitería',
-    secciones: [
-      { id: 's8', numero: '001C', docente: 'Maria Jose Reyes Fuentes', inscritos: 15, capacidad: 20, bloques: [{ dia: 'JUEVES', bloque: 2, horaInicio: '07:01', horaFin: '08:40', sala: '301' }] },
-    ],
-  },
-];
+// ── Feriados Chile ────────────────────────────────────────────────────────────
+/** Algoritmo de Meeus/Jones/Butcher para calcular Pascua */
+const calcularPascua = (y: number): Date => {
+  const a = y % 19, b = Math.floor(y / 100), c = y % 100;
+  const d = Math.floor(b / 4), e = b % 4, f = Math.floor((b + 8) / 25);
+  const g = Math.floor((b - f + 1) / 3), h = (19 * a + b - d - g + 15) % 30;
+  const i = Math.floor(c / 4), k = c % 4, l = (32 + 2 * e + 2 * i - h - k) % 7;
+  const m = Math.floor((a + 11 * h + 22 * l) / 451);
+  const month = Math.floor((h + l - 7 * m + 114) / 31);
+  const day   = ((h + l - 7 * m + 114) % 31) + 1;
+  return new Date(y, month - 1, day);
+};
+
+const esFeriadoChile = (d: Date): boolean => {
+  const mm  = d.getMonth() + 1; // 1-12
+  const dd  = d.getDate();
+  const y   = d.getFullYear();
+  // Feriados fijos
+  const fijos: [number, number][] = [
+    [1,  1],  // Año Nuevo
+    [5,  1],  // Día del Trabajo
+    [5,  21], // Glorias Navales
+    [6,  29], // San Pedro y San Pablo
+    [7,  16], // Virgen del Carmen
+    [8,  15], // Asunción de la Virgen
+    [9,  18], // Independencia
+    [9,  19], // Glorias del Ejército
+    [10, 12], // Encuentro Dos Mundos
+    [10, 31], // Iglesias Evangélicas
+    [11, 1],  // Todos los Santos
+    [12, 8],  // Inmaculada Concepción
+    [12, 25], // Navidad
+  ];
+  if (fijos.some(([fm, fd]) => fm === mm && fd === dd)) return true;
+  // Viernes Santo y Sábado Santo
+  const pascua = calcularPascua(y);
+  const vs = new Date(pascua); vs.setDate(vs.getDate() - 2); // Viernes Santo
+  const ss = new Date(pascua); ss.setDate(ss.getDate() - 1); // Sábado Santo
+  return (d.getTime() === vs.getTime() || d.getTime() === ss.getTime());
+};
 
 const MOCK_RECETAS: MockReceta[] = [
   {
@@ -92,11 +107,11 @@ const MOCK_RECETAS: MockReceta[] = [
   {
     id: 'r2', nombre: 'Muffin Arándanos Básico', porciones: 20,
     items: [
-      { id: 'i1', nombre: 'Harina leudante',  cantidadBase: 400, cantidad: 400, unidad: 'g',  esExtra: false },
-      { id: 'i2', nombre: 'Arándanos frescos',cantidadBase: 200, cantidad: 200, unidad: 'g',  esExtra: false },
-      { id: 'i3', nombre: 'Huevo',            cantidadBase: 3,   cantidad: 3,   unidad: 'un', esExtra: false },
-      { id: 'i4', nombre: 'Azúcar blanca',    cantidadBase: 150, cantidad: 150, unidad: 'g',  esExtra: false },
-      { id: 'i5', nombre: 'Aceite vegetal',   cantidadBase: 100, cantidad: 100, unidad: 'ml', esExtra: false },
+      { id: 'i1', nombre: 'Harina leudante',   cantidadBase: 400, cantidad: 400, unidad: 'g',  esExtra: false },
+      { id: 'i2', nombre: 'Arándanos frescos', cantidadBase: 200, cantidad: 200, unidad: 'g',  esExtra: false },
+      { id: 'i3', nombre: 'Huevo',             cantidadBase: 3,   cantidad: 3,   unidad: 'un', esExtra: false },
+      { id: 'i4', nombre: 'Azúcar blanca',     cantidadBase: 150, cantidad: 150, unidad: 'g',  esExtra: false },
+      { id: 'i5', nombre: 'Aceite vegetal',    cantidadBase: 100, cantidad: 100, unidad: 'ml', esExtra: false },
     ],
   },
   {
@@ -111,9 +126,33 @@ const MOCK_RECETAS: MockReceta[] = [
   },
 ];
 
-// ─────────────────────────────────────────────────────────────────────────────
-// HELPERS
-// ─────────────────────────────────────────────────────────────────────────────
+/** Agrupa los horarios de una sección por (diaSemana + sala): calcula rango inicio→fin */
+interface HorarioAgrupado {
+  diaSemana: string;
+  idSala: number;
+  nombreSala: string;
+  horaInicio: string; // "08:01"
+  horaFin: string;    // "12:20"
+}
+
+const agruparHorarios = (horarios: IHorarioCurso[]): HorarioAgrupado[] => {
+  const map = new Map<string, IHorarioCurso[]>();
+  for (const h of horarios) {
+    const key = `${h.diaSemana}-${h.idSala}`;
+    if (!map.has(key)) map.set(key, []);
+    map.get(key)!.push(h);
+  }
+  return Array.from(map.values()).map(group => {
+    const sorted = [...group].sort((a, b) => a.horaInicio.localeCompare(b.horaInicio));
+    return {
+      diaSemana: sorted[0].diaSemana,
+      idSala: sorted[0].idSala,
+      nombreSala: sorted[0].nombreSala,
+      horaInicio: sorted[0].horaInicio.substring(0, 5),
+      horaFin: sorted[sorted.length - 1].horaFin.substring(0, 5),
+    };
+  });
+};
 
 const calcFecha = (fechaInicio: string, dia: string): Date => {
   const [y, m, d] = fechaInicio.split('-').map(Number);
@@ -122,14 +161,24 @@ const calcFecha = (fechaInicio: string, dia: string): Date => {
   return f;
 };
 
-const fmtCorto = (d: Date) => d.toLocaleDateString('es-CL', { day: 'numeric', month: 'short' });
-const fmtLargo = (d: Date) => d.toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long' });
+const fmtCorto  = (d: Date) => d.toLocaleDateString('es-CL', { day: 'numeric', month: 'short' });
+const fmtLargo  = (d: Date) => d.toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long' });
 
 const fmtSemanaLabel = (s: ISemana) =>
   `${s.nombreSemana}  ·  ${fmtCorto(new Date(s.fechaInicio + 'T00:00:00'))} – ${fmtCorto(new Date(s.fechaFin + 'T00:00:00'))}`;
 
+/** Clave única de un bloque agrupado */
+const mkBlkKey = (secId: number, diaSemana: string, idSala: number) =>
+  `${secId}|${diaSemana}|${idSala}`;
+
+/** Secciones que tienen al menos un bloque seleccionado */
+const seccionesSeleccionadas = (secciones: ISeccionCurso[], bloquesIds: Set<string>) =>
+  secciones.filter(sec =>
+    agruparHorarios(sec.horarios).some(h => bloquesIds.has(mkBlkKey(sec.id_seccion, h.diaSemana, h.idSala)))
+  );
+
 const makeEmptyConfig = (defaultSemanaId: string): AsigConfig => ({
-  seccionesIds: new Set(), semanaId: defaultSemanaId,
+  bloquesIds: new Set(), semanaId: defaultSemanaId,
   recetaId: '', items: [], observaciones: '',
   extraNombre: '', extraCantidad: '', extraUnidad: '',
 });
@@ -139,38 +188,45 @@ const makeEmptyConfig = (defaultSemanaId: string): AsigConfig => ({
 // ─────────────────────────────────────────────────────────────────────────────
 
 interface AsigCardProps {
-  asig: MockAsignatura;
+  asig: IAsignaturaCurso;
   config: AsigConfig;
   isExpanded: boolean;
   semanas: ISemana[];
   defaultSemanaId: string;
+  isLoadingSemanas: boolean;
   onToggleExpand: () => void;
   onUpdate: (fn: (prev: AsigConfig) => AsigConfig) => void;
 }
 
 const AsigCard: React.FC<AsigCardProps> = ({
-  asig, config, isExpanded, semanas, defaultSemanaId, onToggleExpand, onUpdate,
+  asig, config, isExpanded, semanas, defaultSemanaId, isLoadingSemanas, onToggleExpand, onUpdate,
 }) => {
   const semana = semanas.find(s => String(s.idSemana) === config.semanaId) ?? null;
-  const selCount = config.seccionesIds.size;
-  const allSel = selCount === asig.secciones.length && selCount > 0;
-  const indeterminate = selCount > 0 && !allSel;
 
-  const totalInscritos = asig.secciones
-    .filter(s => config.seccionesIds.has(s.id))
-    .reduce((sum, s) => sum + s.inscritos, 0);
-  const multiplicador = totalInscritos > 0 ? totalInscritos / 20 : 1;
+  // ── derivados de bloquesIds ──
+  const secSel         = seccionesSeleccionadas(asig.secciones, config.bloquesIds);
+  const selCount       = secSel.length;
+  const allBlkKeys     = asig.secciones.flatMap(sec =>
+    agruparHorarios(sec.horarios).map(h => mkBlkKey(sec.id_seccion, h.diaSemana, h.idSala))
+  );
+  const allSel         = allBlkKeys.length > 0 && allBlkKeys.every(k => config.bloquesIds.has(k));
+  const indeterminate  = !allSel && allBlkKeys.some(k => config.bloquesIds.has(k));
 
+  const totalInscritos = secSel.reduce((sum, s) => sum + s.cant_inscritos, 0);
+  const multiplicador  = totalInscritos > 0 ? totalInscritos / 20 : 1;
+
+  /** Clases calculadas: solo bloques seleccionados, ordenadas por fecha */
   const clases = React.useMemo(() => {
     if (!semana || selCount === 0) return [];
-    const result: { fecha: Date; seccion: MockSeccion; bloque: MockBloque }[] = [];
-    asig.secciones
-      .filter(s => config.seccionesIds.has(s.id))
-      .forEach(sec => sec.bloques.forEach(b =>
-        result.push({ fecha: calcFecha(semana.fechaInicio, b.dia), seccion: sec, bloque: b })
-      ));
+    const result: { fecha: Date; seccion: ISeccionCurso; h: HorarioAgrupado }[] = [];
+    asig.secciones.forEach(sec =>
+      agruparHorarios(sec.horarios).forEach(h => {
+        if (config.bloquesIds.has(mkBlkKey(sec.id_seccion, h.diaSemana, h.idSala)))
+          result.push({ fecha: calcFecha(semana.fechaInicio, h.diaSemana), seccion: sec, h });
+      })
+    );
     return result.sort((a, b) => a.fecha.getTime() - b.fecha.getTime());
-  }, [semana, config.seccionesIds, selCount]);
+  }, [semana, config.bloquesIds, selCount, asig.secciones]);
 
   const isValid   = selCount > 0 && config.recetaId !== '';
   const isPartial = selCount > 0 && config.recetaId === '';
@@ -178,20 +234,35 @@ const AsigCard: React.FC<AsigCardProps> = ({
   const reapplyMultiplier = (items: ItemSolicitud[], newMult: number) =>
     items.map(item => item.esExtra ? item : { ...item, cantidad: parseFloat((item.cantidadBase * newMult).toFixed(2)) });
 
-  const toggleSec = (id: string) => onUpdate(prev => {
-    const next = new Set(prev.seccionesIds);
-    next.has(id) ? next.delete(id) : next.add(id);
-    const ins = asig.secciones.filter(s => next.has(s.id)).reduce((s, sec) => s + sec.inscritos, 0);
-    return { ...prev, seccionesIds: next, items: reapplyMultiplier(prev.items, ins > 0 ? ins / 20 : 1) };
+  const recomputeIns = (next: Set<string>) =>
+    seccionesSeleccionadas(asig.secciones, next).reduce((s, sec) => s + sec.cant_inscritos, 0);
+
+  /** Alterna un bloque individual */
+  const toggleBloque = (secId: number, dia: string, idSala: number) => onUpdate(prev => {
+    const key  = mkBlkKey(secId, dia, idSala);
+    const next = new Set(prev.bloquesIds);
+    next.has(key) ? next.delete(key) : next.add(key);
+    const ins = recomputeIns(next);
+    return { ...prev, bloquesIds: next, items: reapplyMultiplier(prev.items, ins > 0 ? ins / 20 : 1) };
   });
 
+  /** Alterna todos los bloques de una sección (select si alguno falta, deselect si todos están) */
+  const toggleSeccion = (sec: ISeccionCurso) => onUpdate(prev => {
+    const keys     = agruparHorarios(sec.horarios).map(h => mkBlkKey(sec.id_seccion, h.diaSemana, h.idSala));
+    const allSelec = keys.every(k => prev.bloquesIds.has(k));
+    const next     = new Set(prev.bloquesIds);
+    keys.forEach(k => allSelec ? next.delete(k) : next.add(k));
+    const ins = recomputeIns(next);
+    return { ...prev, bloquesIds: next, items: reapplyMultiplier(prev.items, ins > 0 ? ins / 20 : 1) };
+  });
+
+  /** Alterna todos los bloques de todas las secciones */
   const toggleAll = () => onUpdate(prev => {
-    const ids = asig.secciones.map(s => s.id);
-    const allSelected = ids.every(id => prev.seccionesIds.has(id));
-    const next = new Set(prev.seccionesIds);
-    ids.forEach(id => allSelected ? next.delete(id) : next.add(id));
-    const ins = asig.secciones.filter(s => next.has(s.id)).reduce((sum, s) => sum + s.inscritos, 0);
-    return { ...prev, seccionesIds: next, items: reapplyMultiplier(prev.items, ins > 0 ? ins / 20 : 1) };
+    const next = new Set(prev.bloquesIds);
+    if (allSel) { allBlkKeys.forEach(k => next.delete(k)); }
+    else        { allBlkKeys.forEach(k => next.add(k));    }
+    const ins = recomputeIns(next);
+    return { ...prev, bloquesIds: next, items: reapplyMultiplier(prev.items, ins > 0 ? ins / 20 : 1) };
   });
 
   const handleSelectReceta = (recetaId: string) => {
@@ -240,8 +311,7 @@ const AsigCard: React.FC<AsigCardProps> = ({
         className="w-full flex items-center gap-3 px-5 py-4 text-left hover:bg-default-50 transition-colors rounded-t-xl"
       >
         {statusDot}
-        <Chip size="sm" variant="flat" color="warning" className="font-bold shrink-0">{asig.codigo}</Chip>
-        <span className="font-semibold text-sm flex-1 min-w-0 truncate">{asig.nombre}</span>
+        <span className="font-semibold text-sm flex-1 min-w-0 truncate">{asig.nombreAsignatura}</span>
         <div className="flex items-center gap-2 shrink-0">
           {selCount > 0 && <Chip size="sm" color={isValid ? 'success' : 'primary'} variant="flat">{selCount} secc.</Chip>}
           {semana && selCount > 0 && <Chip size="sm" color="default" variant="flat" className="hidden sm:flex">{semana.nombreSemana}</Chip>}
@@ -271,26 +341,48 @@ const AsigCard: React.FC<AsigCardProps> = ({
                     </div>
                     <div className="divide-y divide-default-100">
                       {asig.secciones.map(sec => {
-                        const isSel = config.seccionesIds.has(sec.id);
+                        const horariosAgrupados = agruparHorarios(sec.horarios);
+                        const blkKeys    = horariosAgrupados.map(h => mkBlkKey(sec.id_seccion, h.diaSemana, h.idSala));
+                        const secAllSel  = blkKeys.length > 0 && blkKeys.every(k => config.bloquesIds.has(k));
+                        const secIndeterm = !secAllSel && blkKeys.some(k => config.bloquesIds.has(k));
                         return (
-                          <div key={sec.id} onClick={() => toggleSec(sec.id)}
-                            className={`flex items-start gap-2.5 px-3 py-2.5 cursor-pointer transition-colors ${isSel ? 'bg-primary-50 dark:bg-primary-900/20' : 'hover:bg-default-50'}`}
-                          >
-                            <Checkbox isSelected={isSel} size="sm" className="mt-0.5 pointer-events-none" />
-                            <div className="min-w-0 flex-1">
-                              <div className="flex items-center gap-1.5">
-                                <span className="font-bold text-sm">{sec.numero}</span>
-                                <span className="text-[11px] text-default-400 truncate flex-1">{sec.docente}</span>
-                                <span className="text-[11px] text-default-300 shrink-0">{sec.inscritos}/{sec.capacidad}</span>
-                              </div>
-                              <div className="flex flex-wrap gap-1 mt-1">
-                                {sec.bloques.map((b, i) => (
-                                  <span key={i} className="text-[10px] bg-default-100 text-default-500 px-1.5 py-0.5 rounded-full">
-                                    {DIA_ABREV[b.dia]} {b.horaInicio}–{b.horaFin} · {b.sala}
-                                  </span>
-                                ))}
-                              </div>
+                          <div key={sec.id_seccion} className="divide-y divide-default-50">
+                            {/* Fila sección — selecciona/deselecciona todos sus bloques */}
+                            <div onClick={() => toggleSeccion(sec)}
+                              className={`flex items-center gap-2.5 px-3 py-2 cursor-pointer transition-colors ${secAllSel ? 'bg-primary-50 dark:bg-primary-900/20' : secIndeterm ? 'bg-primary-50/40' : 'hover:bg-default-50'}`}
+                            >
+                              <Checkbox isSelected={secAllSel} isIndeterminate={secIndeterm} size="sm" className="pointer-events-none shrink-0" />
+                              <span className="font-bold text-sm">{sec.nombre_seccion}</span>
+                              <span className="text-[11px] text-default-400 truncate flex-1">{sec.nombre_docente}</span>
+                              <span className="text-[11px] text-default-300 shrink-0">{sec.cant_inscritos}/{sec.capacidad_max}</span>
                             </div>
+                            {/* Bloques individuales */}
+                            {horariosAgrupados.map((h, i) => {
+                              const key     = mkBlkKey(sec.id_seccion, h.diaSemana, h.idSala);
+                              const isSel   = config.bloquesIds.has(key);
+                              const fecha   = semana ? calcFecha(semana.fechaInicio, h.diaSemana) : null;
+                              const feriado = fecha ? esFeriadoChile(fecha) : false;
+                              return (
+                                <div key={i}
+                                  onClick={e => { e.stopPropagation(); toggleBloque(sec.id_seccion, h.diaSemana, h.idSala); }}
+                                  className={`flex items-center gap-2 pl-8 pr-3 py-1.5 cursor-pointer transition-colors ${isSel ? 'bg-primary-50/60 dark:bg-primary-900/10' : 'hover:bg-default-50'}`}
+                                >
+                                  <Checkbox isSelected={isSel} size="sm" className="pointer-events-none shrink-0" />
+                                  {feriado ? (
+                                    <span className="text-[10px] px-1.5 py-0.5 rounded-full font-bold"
+                                      style={{ background: '#fef3c7', color: '#b45309' }}>
+                                      {DIA_ABREV[h.diaSemana]} {h.horaInicio}–{h.horaFin} · Sala {h.nombreSala}
+                                      {fecha && ` · ${fmtCorto(fecha)} · feriado`}
+                                    </span>
+                                  ) : (
+                                    <span className="text-[10px] bg-default-100 text-default-500 px-1.5 py-0.5 rounded-full">
+                                      {DIA_ABREV[h.diaSemana]} {h.horaInicio}–{h.horaFin} · Sala {h.nombreSala}
+                                      {fecha && <span className="ml-1 font-bold text-black dark:text-white">· {fmtCorto(fecha)}</span>}
+                                    </span>
+                                  )}
+                                </div>
+                              );
+                            })}
                           </div>
                         );
                       })}
@@ -308,10 +400,12 @@ const AsigCard: React.FC<AsigCardProps> = ({
                 <div className="space-y-3">
                   <div>
                     <p className="text-xs font-bold text-default-500 uppercase tracking-wider mb-2">Semana Académica</p>
-                    {semanas.length === 0 ? (
+                    {isLoadingSemanas ? (
                       <div className="flex items-center gap-2 text-sm text-default-400 py-2">
                         <Spinner size="sm" /> Cargando semanas...
                       </div>
+                    ) : semanas.length === 0 ? (
+                      <p className="text-sm text-default-400 py-2">Sin semanas disponibles para este período.</p>
                     ) : (
                       <Select
                         selectedKeys={config.semanaId ? new Set([config.semanaId]) : new Set()}
@@ -340,7 +434,7 @@ const AsigCard: React.FC<AsigCardProps> = ({
                     {semana && (
                       <p className="text-xs text-default-400 mt-1.5">
                         {fmtLargo(new Date(semana.fechaInicio + 'T00:00:00'))} al {fmtLargo(new Date(semana.fechaFin + 'T00:00:00'))}
-                        {config.semanaId === defaultSemanaId && <span className="text-success ml-1 font-medium">· en curso</span>}
+                        {config.semanaId === defaultSemanaId && defaultSemanaId && <span className="text-success ml-1 font-medium">· en curso</span>}
                       </p>
                     )}
                   </div>
@@ -355,8 +449,8 @@ const AsigCard: React.FC<AsigCardProps> = ({
                             <div className="w-14 shrink-0 text-center bg-success text-white rounded-full px-2 py-0.5 font-bold text-[10px]">
                               {fmtCorto(c.fecha)}
                             </div>
-                            <span className="font-semibold">§{c.seccion.numero}</span>
-                            <span className="text-default-400">B{c.bloque.bloque} · {c.bloque.horaInicio}–{c.bloque.horaFin} · Sala {c.bloque.sala}</span>
+                            <span className="font-semibold">§{c.seccion.nombre_seccion}</span>
+                            <span className="text-default-400">{c.h.horaInicio}–{c.h.horaFin} · Sala {c.h.nombreSala}</span>
                           </div>
                         ))}
                       </div>
@@ -489,19 +583,20 @@ const SolicitudPage: React.FC = () => {
   const toast = useToast();
 
   // ── semanas state ──
-  const [semanas,         setSemanas]         = React.useState<ISemana[]>([]);
-  const [periodos,        setPeriodos]         = React.useState<IPeriodoAcademico[]>([]);
-  const [currentPeriodo,  setCurrentPeriodo]   = React.useState<{ anio: number; semestre: number } | null>(null);
-  const [defaultSemanaId, setDefaultSemanaId]  = React.useState<string>('');
-  const [isLoadingSemanas, setIsLoadingSemanas] = React.useState(true);
-  const [needsManualInput, setNeedsManualInput] = React.useState(false);
-  const [manualAnio,      setManualAnio]        = React.useState<string>(String(new Date().getFullYear()));
-  const [manualSemestre,  setManualSemestre]    = React.useState<string>('');
+  const [semanas,          setSemanas]          = React.useState<ISemana[]>([]);
+  const [periodos,         setPeriodos]          = React.useState<IPeriodoAcademico[]>([]);
+  const [currentPeriodo,   setCurrentPeriodo]    = React.useState<{ anio: number; semestre: number } | null>(null);
+  const [defaultSemanaId,  setDefaultSemanaId]   = React.useState<string>('');
+  const [isLoadingSemanas, setIsLoadingSemanas]  = React.useState(true);
+
+  // ── asignaturas state ──
+  const [asignaturas,      setAsignaturas]       = React.useState<IAsignaturaCurso[]>([]);
+  const [isLoadingAsig,    setIsLoadingAsig]      = React.useState(true);
 
   // ── form state ──
-  const [configs,       setConfigs]      = React.useState<Map<string, AsigConfig>>(new Map());
-  const [expanded,      setExpanded]     = React.useState<Set<string>>(new Set(['1']));
-  const [isSubmitting,  setIsSubmitting] = React.useState(false);
+  const [configs,          setConfigs]           = React.useState<Map<string, AsigConfig>>(new Map());
+  const [expanded,         setExpanded]          = React.useState<Set<string>>(new Set()); // todos cerrados
+  const [isSubmitting,     setIsSubmitting]      = React.useState(false);
 
   // ── helpers ──
   const getConfig = React.useCallback(
@@ -514,6 +609,22 @@ const SolicitudPage: React.FC = () => {
 
   const toggleExpand = (id: string) =>
     setExpanded(prev => { const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s; });
+
+  // ── cargar asignaturas ──
+  React.useEffect(() => {
+    const load = async () => {
+      setIsLoadingAsig(true);
+      try {
+        const data = await obtenerCursosParaSolicitudService();
+        setAsignaturas(data);
+      } catch {
+        toast.error('Error al cargar las asignaturas');
+      } finally {
+        setIsLoadingAsig(false);
+      }
+    };
+    load();
+  }, []);
 
   // ── cargar semanas para un periodo concreto ──
   const cargarSemanasParaPeriodo = React.useCallback(async (anio: number, semestre: number) => {
@@ -531,19 +642,15 @@ const SolicitudPage: React.FC = () => {
     }
   }, [toast]);
 
-  // ── carga inicial ──
+  // ── carga inicial de semanas ──
   React.useEffect(() => {
     const init = async () => {
       setIsLoadingSemanas(true);
       try {
-        // 1. Periodos disponibles (una sola vez)
         const periodosData = await obtenerPeriodosAcademicosService();
         setPeriodos(periodosData);
 
-        // 2. Detectar periodo actual por sysdate
         const { anio, semestre } = detectarPeriodoActual();
-
-        // Intentos: semestre según mes, luego el opuesto
         const intentos = [
           { anio, semestre },
           { anio, semestre: semestre === 1 ? 2 : 1 },
@@ -555,32 +662,29 @@ const SolicitudPage: React.FC = () => {
             p => p.anio === intento.anio && p.semestres.includes(intento.semestre)
           );
           if (!existe) continue;
-
-          const data = await obtenerSemanasPorPeriodoService(intento.anio, intento.semestre);
-          const actual = encontrarSemanaActual(data);
-
-          setSemanas(data);
-          setCurrentPeriodo(intento);
-          setDefaultSemanaId(actual ? String(actual.idSemana) : '');
-          resolved = true;
-          if (actual) break; // semana exacta encontrada
+          try {
+            const data = await obtenerSemanasPorPeriodoService(intento.anio, intento.semestre);
+            const actual = encontrarSemanaActual(data);
+            setSemanas(data);
+            setCurrentPeriodo(intento);
+            setDefaultSemanaId(actual ? String(actual.idSemana) : '');
+            resolved = true;
+            if (actual) break;
+          } catch { /* sigue al siguiente intento */ }
         }
 
-        // Fallback: usar primer periodo disponible
-        if (!resolved) {
-          if (periodosData.length > 0) {
-            const p = periodosData[0];
-            const s = p.semestres[0];
+        if (!resolved && periodosData.length > 0) {
+          const p = periodosData[0];
+          const s = p.semestres[0];
+          try {
             const data = await obtenerSemanasPorPeriodoService(p.anio, s);
             setSemanas(data);
             setCurrentPeriodo({ anio: p.anio, semestre: s });
             setDefaultSemanaId('');
-          } else {
-            setNeedsManualInput(true);
-          }
+          } catch { setCurrentPeriodo({ anio: p.anio, semestre: s }); }
         }
       } catch {
-        setNeedsManualInput(true);
+        // API de periodos falló — usar chips por defecto
       } finally {
         setIsLoadingSemanas(false);
       }
@@ -588,37 +692,32 @@ const SolicitudPage: React.FC = () => {
     init();
   }, []);
 
-  // ── cambiar periodo manualmente ──
-  const handleManualBuscar = async () => {
-    const anio = parseInt(manualAnio);
-    const semestre = parseInt(manualSemestre);
-    if (!anio || !semestre || semestre < 1 || semestre > 2) {
-      toast.warning('Ingrese un año válido y seleccione el semestre');
-      return;
-    }
-    setNeedsManualInput(false);
-    await cargarSemanasParaPeriodo(anio, semestre);
-  };
+  // ── periodos para mostrar (API o fallback año actual) ──
+  const periodosDisponibles = React.useMemo<IPeriodoAcademico[]>(() => {
+    if (periodos.length > 0) return periodos;
+    return [{ anio: new Date().getFullYear(), semestres: [1, 2] }];
+  }, [periodos]);
 
   // ── totales globales ──
   const resumen = React.useMemo(() => {
     let totalSolicitudes = 0;
     let totalAlumnos = 0;
-    const asigConfiguradas: { asig: MockAsignatura; cfg: AsigConfig }[] = [];
-    MOCK_ASIGNATURAS.forEach(asig => {
-      const cfg = getConfig(asig.id);
-      if (cfg.seccionesIds.size > 0 && cfg.recetaId) {
-        totalSolicitudes += cfg.seccionesIds.size;
-        totalAlumnos += asig.secciones.filter(s => cfg.seccionesIds.has(s.id)).reduce((sum, s) => sum + s.inscritos, 0);
-        asigConfiguradas.push({ asig, cfg });
+    const asigConfiguradas: { asig: IAsignaturaCurso; cfg: AsigConfig; secSel: ISeccionCurso[] }[] = [];
+    asignaturas.forEach(asig => {
+      const cfg     = getConfig(String(asig.idAsignatura));
+      const secSel  = seccionesSeleccionadas(asig.secciones, cfg.bloquesIds);
+      if (secSel.length > 0 && cfg.recetaId) {
+        totalSolicitudes += secSel.length;
+        totalAlumnos     += secSel.reduce((sum, s) => sum + s.cant_inscritos, 0);
+        asigConfiguradas.push({ asig, cfg, secSel });
       }
     });
     return { totalSolicitudes, totalAlumnos, asigConfiguradas };
-  }, [configs, getConfig]);
+  }, [configs, getConfig, asignaturas]);
 
   const isFormValid = resumen.totalSolicitudes > 0;
 
-  const limpiar = () => { setConfigs(new Map()); setExpanded(new Set(['1'])); };
+  const limpiar = () => { setConfigs(new Map()); setExpanded(new Set()); };
 
   const enviar = async () => {
     if (!isFormValid) { toast.warning('Configure al menos una asignatura'); return; }
@@ -645,8 +744,7 @@ const SolicitudPage: React.FC = () => {
               Período académico
             </div>
 
-            {/* Period chips */}
-            {periodos.flatMap(p =>
+            {periodosDisponibles.flatMap(p =>
               p.semestres.map(s => {
                 const isActive = currentPeriodo?.anio === p.anio && currentPeriodo?.semestre === s;
                 return (
@@ -666,25 +764,6 @@ const SolicitudPage: React.FC = () => {
 
             {isLoadingSemanas && <Spinner size="sm" color="primary" />}
 
-            {/* Manual input fallback */}
-            {needsManualInput && (
-              <div className="flex items-center gap-2 ml-auto">
-                <Input size="sm" type="number" placeholder="Año" value={manualAnio}
-                  onValueChange={setManualAnio} min="2020" max="2100"
-                  className="w-20" variant="bordered"
-                  classNames={{ inputWrapper: 'h-7 min-h-7 bg-default-50' }} />
-                <Button size="sm" color={manualSemestre === '1' ? 'primary' : 'default'} variant={manualSemestre === '1' ? 'solid' : 'flat'}
-                  onPress={() => setManualSemestre('1')} className="h-7 min-w-0 px-3 font-bold text-xs">S1</Button>
-                <Button size="sm" color={manualSemestre === '2' ? 'primary' : 'default'} variant={manualSemestre === '2' ? 'solid' : 'flat'}
-                  onPress={() => setManualSemestre('2')} className="h-7 min-w-0 px-3 font-bold text-xs">S2</Button>
-                <Button size="sm" color="secondary" onPress={handleManualBuscar}
-                  isDisabled={!manualAnio || !manualSemestre} className="h-7 px-3 text-xs font-bold">
-                  Buscar
-                </Button>
-              </div>
-            )}
-
-            {/* Info del periodo activo */}
             {currentPeriodo && !isLoadingSemanas && (
               <div className="ml-auto flex items-center gap-1.5 text-xs text-default-400">
                 <Icon icon="lucide:info" width={12} />
@@ -710,16 +789,28 @@ const SolicitudPage: React.FC = () => {
       >
         {/* ── Asignaturas ── */}
         <div className="lg:col-span-2 space-y-4">
-          {MOCK_ASIGNATURAS.map(asig => (
-            <AsigCard key={asig.id} asig={asig}
-              config={getConfig(asig.id)}
-              isExpanded={expanded.has(asig.id)}
-              semanas={semanas}
-              defaultSemanaId={defaultSemanaId}
-              onToggleExpand={() => toggleExpand(asig.id)}
-              onUpdate={fn => updateConfig(asig.id, fn)}
-            />
-          ))}
+          {isLoadingAsig ? (
+            <div className="flex items-center justify-center gap-3 py-12 text-default-400">
+              <Spinner size="md" /> Cargando asignaturas...
+            </div>
+          ) : asignaturas.length === 0 ? (
+            <div className="text-center py-12 text-default-400">
+              <Icon icon="lucide:book-x" width={32} className="mx-auto mb-2" />
+              <p className="text-sm">No hay asignaturas disponibles</p>
+            </div>
+          ) : (
+            asignaturas.map(asig => (
+              <AsigCard key={asig.idAsignatura} asig={asig}
+                config={getConfig(String(asig.idAsignatura))}
+                isExpanded={expanded.has(String(asig.idAsignatura))}
+                semanas={semanas}
+                defaultSemanaId={defaultSemanaId}
+                isLoadingSemanas={isLoadingSemanas}
+                onToggleExpand={() => toggleExpand(String(asig.idAsignatura))}
+                onUpdate={fn => updateConfig(String(asig.idAsignatura), fn)}
+              />
+            ))
+          )}
         </div>
 
         {/* ── Sidebar ── */}
@@ -751,23 +842,20 @@ const SolicitudPage: React.FC = () => {
                       </div>
                     </div>
                     <div className="space-y-3">
-                      {resumen.asigConfiguradas.map(({ asig, cfg }) => {
-                        const s = semanas.find(s => String(s.idSemana) === cfg.semanaId);
-                        const r = MOCK_RECETAS.find(r => r.id === cfg.recetaId);
-                        const ins = asig.secciones.filter(sec => cfg.seccionesIds.has(sec.id)).reduce((sum, sec) => sum + sec.inscritos, 0);
+                      {resumen.asigConfiguradas.map(({ asig, cfg, secSel }) => {
+                        const s   = semanas.find(s => String(s.idSemana) === cfg.semanaId);
+                        const r   = MOCK_RECETAS.find(r => r.id === cfg.recetaId);
+                        const ins = secSel.reduce((sum, sec) => sum + sec.cant_inscritos, 0);
                         return (
-                          <div key={asig.id} className="rounded-xl border border-default-200 p-3 space-y-1.5">
-                            <div className="flex items-center gap-2">
-                              <Chip size="sm" variant="flat" color="warning" className="font-bold text-[10px]">{asig.codigo}</Chip>
-                              <span className="text-xs font-semibold truncate">{asig.nombre}</span>
-                            </div>
+                          <div key={asig.idAsignatura} className="rounded-xl border border-default-200 p-3 space-y-1.5">
+                            <span className="text-xs font-semibold truncate block">{asig.nombreAsignatura}</span>
                             <div className="space-y-0.5 text-xs text-default-500 pl-1">
-                              <div className="flex items-center gap-1.5"><Icon icon="lucide:layers" width={11} />{cfg.seccionesIds.size} sección(es) · {ins} alumnos</div>
+                              <div className="flex items-center gap-1.5"><Icon icon="lucide:layers" width={11} />{secSel.length} sección(es) · {ins} alumnos</div>
                               <div className="flex items-center gap-1.5"><Icon icon="lucide:calendar" width={11} />{s?.nombreSemana ?? '—'}</div>
                               <div className="flex items-center gap-1.5"><Icon icon="lucide:book-open" width={11} /><span className="truncate">{r?.nombre ?? '—'}</span></div>
                             </div>
                             <Chip size="sm" color="success" variant="flat" className="text-[10px] w-full justify-center">
-                              {cfg.seccionesIds.size} solicitud{cfg.seccionesIds.size > 1 ? 'es' : ''} a crear
+                              {secSel.length} solicitud{secSel.length > 1 ? 'es' : ''} a crear
                             </Chip>
                           </div>
                         );
