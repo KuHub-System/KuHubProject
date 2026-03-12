@@ -5,6 +5,8 @@ import KuHub.modules.gestion_academica.repository.AsignaturaRepository;
 import KuHub.modules.gestion_receta.services.DetalleRecetaService;
 import KuHub.modules.gestion_solicitud.dtos.*;
 import KuHub.modules.gestion_solicitud.dtos.proyeccion.*;
+import KuHub.modules.gestion_solicitud.dtos.request.CourseForSolicitationDTO;
+import KuHub.modules.gestion_solicitud.dtos.request.SectionForSolicitationDTO;
 import KuHub.modules.gestion_solicitud.entity.MotivoRechazoSolicitud;
 import KuHub.modules.gestion_solicitud.entity.Solicitud;
 import KuHub.modules.gestion_solicitud.exception.GestionSolicitudException;
@@ -15,6 +17,8 @@ import KuHub.modules.gestion_usuario.dtos.response.proyection.UsersToManageCours
 import KuHub.modules.gestion_usuario.service.UsuarioService;
 import KuHub.modules.gestion_academica.repository.SemanaRepository;
 import KuHub.utils.StringUtils;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -39,6 +43,8 @@ public class SolicitudServiceImp implements SolicitudService{
     private AsignaturaRepository asignaturaRepository;
     @Autowired
     private MotivoRechazoRepository motivoRechazoRepository;
+    @Autowired
+    private ObjectMapper objectMapper;
 
     @Transactional(readOnly = true)
     @Override
@@ -47,6 +53,39 @@ public class SolicitudServiceImp implements SolicitudService{
         ) -> new RuntimeException("Solicitud no encontrada"));
     }
 
+    @Transactional(readOnly = true)
+    public List<CourseForSolicitationDTO> findCourseWithSectionsAndBlocksRaw() {
+        List<Object[]> rawResults = solicitudRepository.findCourseWithSectionsAndBlocksRaw();
+        List<CourseForSolicitationDTO> responseList = new ArrayList<>();
+
+        for (Object[] row : rawResults) {
+            CourseForSolicitationDTO courseDTO = new CourseForSolicitationDTO();
+
+            // row[0] es nombre_asignatura, row[1] es id_asignatura
+            courseDTO.setNombreAsignatura((String) row[0]);
+            courseDTO.setIdAsignatura(((Number) row[1]).intValue());
+
+            // row[2] es el JSON de secciones anidadas
+            String seccionesJson = row[2].toString();
+
+            try {
+                // Jackson lee el String y lo convierte en la Lista de Secciones (y Bloques adentro)
+                List<SectionForSolicitationDTO> seccionesList = objectMapper.readValue(
+                        seccionesJson,
+                        new TypeReference<List<SectionForSolicitationDTO>>() {}
+                );
+                courseDTO.setSecciones(seccionesList);
+            } catch (Exception e) {
+                throw new RuntimeException("Error al mapear el JSON de secciones: " + seccionesJson, e);
+            }
+
+            responseList.add(courseDTO);
+        }
+
+        return responseList;
+    }
+
+    /**
     @Transactional
     @Override
     public void updateSolicitationStatus(SolicitationStatusUpdateDTO dto) {
@@ -126,7 +165,7 @@ public class SolicitudServiceImp implements SolicitudService{
     /**
      * Controla los filtros numéricos (IDs).
      * Regla: Si es NULL o es 0 (valor por defecto de "Select"), retorna NULL para ignorar el filtro en SQL.
-     */
+
     private Integer processIdFilter(Integer id) {
         if (id == null || id == 0) {
             return null;
@@ -138,7 +177,7 @@ public class SolicitudServiceImp implements SolicitudService{
      * Controla el filtro de Estado (String).
      * Regla 1: Si es NULL, Vacío, "0" o contiene "TODOS", retorna NULL.
      * Regla 2: Si es un valor válido, lo normaliza a formato ENUM (Mayúsculas, sin tildes, guiones bajos).
-     */
+
     private String processEstadoFilter(String rawEstado) {
         if (rawEstado == null || rawEstado.isBlank()) {
             return null;
@@ -367,7 +406,7 @@ public class SolicitudServiceImp implements SolicitudService{
         System.out.println("Lista para guardar: " + listaParaGuardar.size());
         solicitudRepository.saveAll(listaParaGuardar);
         System.out.println("¡Guardado completado!");
-    }*/
+    }
 
     @Getter
     @AllArgsConstructor
@@ -384,5 +423,5 @@ public class SolicitudServiceImp implements SolicitudService{
         private String unidadaMedida;
         private Double cantidadAdicional;
     }
-
+    */
 }

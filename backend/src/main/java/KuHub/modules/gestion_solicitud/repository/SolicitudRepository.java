@@ -16,6 +16,78 @@ import java.util.List;
 public interface SolicitudRepository extends JpaRepository<Solicitud, Integer> {
 
 
+
+    @Query(value = """
+            SELECT 
+                a.nombre_asignatura,
+                a.id_asignatura,
+                JSON_AGG(
+                    JSON_BUILD_OBJECT(
+                        'id_seccion', s.id_seccion, 
+                        'nombre_seccion', s.nombre_seccion,
+                        'id_usuario', u.id_usuario,
+                        'nombre_docente', CONCAT_WS(' ', 
+                            NULLIF(TRIM(u.p_nombre), ''), 
+                            NULLIF(TRIM(u.s_nombre), ''), 
+                            NULLIF(TRIM(u.app_paterno), ''), 
+                            NULLIF(TRIM(u.app_materno), '')
+                        ),
+                        'cant_inscritos', s.cant_inscritos,
+                        'capacidad_max', s.capacidad_max,
+                        'horarios', (
+                            SELECT json_agg(
+                                json_build_object(
+                                    'numeroBloque', b.id_bloque,
+                                    'horaInicio', to_char(b.hora_inicio, 'HH24:MI:SS'),
+                                    'horaFin', to_char(b.hora_fin, 'HH24:MI:SS'),
+                                    'diaSemana', rs.dia_semana,
+                                    'idSala', sa.id_sala,
+                                    'codSala', sa.cod_sala,
+                                    'nombreSala', sa.nombre_sala
+                                ) ORDER BY rs.dia_semana ASC, b.id_bloque ASC
+                            )
+                            FROM reserva_sala rs
+                            INNER JOIN bloque_horario b ON b.id_bloque = rs.id_bloque
+                            INNER JOIN sala sa ON sa.id_sala = rs.id_sala
+                            WHERE rs.id_seccion = s.id_seccion 
+                              AND rs.activo = true
+                              AND sa.activo = true
+                        )
+                    ) ORDER BY s.nombre_seccion ASC 
+                ) AS secciones
+            FROM asignatura a
+            INNER JOIN seccion s ON s.id_asignatura = a.id_asignatura 
+            INNER JOIN docente_seccion ds ON ds.id_seccion = s.id_seccion  
+            INNER JOIN usuario u ON u.id_usuario = ds.id_usuario
+            WHERE a.activo = true 
+              AND s.activo = true
+              AND s.estado_seccion = 'ACTIVA'
+              AND EXISTS (
+                  SELECT 1 
+                  FROM reserva_sala rs
+                  WHERE rs.id_seccion = s.id_seccion
+                  AND rs.activo = true
+                  AND s.activo = true
+              )
+            GROUP BY a.id_asignatura, a.nombre_asignatura
+            ORDER BY a.nombre_asignatura ASC
+            """, nativeQuery = true)
+    List<Object[]> findCourseWithSectionsAndBlocksRaw();
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     @Query(value = """
         SELECT  
             S.id_solicitud AS idSolicitud,

@@ -12,6 +12,37 @@ import {
   EstadoSolicitud
 } from '../types/solicitud.types';
 import { obtenerUsuarioActualService } from './auth-service';
+import api from '../config/Axios';
+
+// ── Tipos para cursos/asignaturas disponibles para solicitud ──
+export interface IHorarioCurso {
+  numeroBloque: number;
+  horaInicio: string;   // "08:01:00"
+  horaFin: string;      // "08:40:00"
+  diaSemana: string;    // "LUNES" | "MARTES" | ...
+  idSala: number;
+  codSala: string;
+  nombreSala: string;
+}
+export interface ISeccionCurso {
+  id_seccion: number;
+  nombre_seccion: string;
+  id_usuario: number;
+  nombre_docente: string;
+  cant_inscritos: number;
+  capacidad_max: number;
+  horarios: IHorarioCurso[];
+}
+export interface IAsignaturaCurso {
+  idAsignatura: number;
+  nombreAsignatura: string;
+  secciones: ISeccionCurso[];
+}
+
+export const obtenerCursosParaSolicitudService = async (): Promise<IAsignaturaCurso[]> => {
+  const response = await api.get<IAsignaturaCurso[]>('/solicitud/curses-by-solicitation');
+  return response.data;
+};
 
 const API_BASE_URL = 'http://localhost:8083/api/v1';
 const ENDPOINTS = {
