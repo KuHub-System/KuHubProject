@@ -61,7 +61,6 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
       title: 'General',
       items: [
         { title: 'Dashboard', path: '/dashboard', icon: 'lucide:layout-dashboard', pageId: 'dashboard' },
-        { title: 'Solicitud', path: '/solicitud', icon: 'lucide:clipboard-list', pageId: 'solicitud' }
       ]
     },
     {
@@ -72,6 +71,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
         { title: 'Gestión de Recetas', path: '/gestion-recetas', icon: 'lucide:book-open', pageId: 'gestion-recetas' },
         { title: 'Gestión de Asignaturas', path: '/ramos-admin', icon: 'lucide:graduation-cap', pageId: 'ramos-admin' },
         { title: 'Gestión de Solicitudes', path: '/gestion-solicitudes', icon: 'lucide:clipboard-check', pageId: 'gestion-solicitudes' },
+        { title: 'Solicitud', path: '/solicitud', icon: 'lucide:clipboard-list', pageId: 'solicitud' },
         { title: 'Administración del Sistema', path: '/admin-sistema', icon: 'lucide:settings-2', pageId: 'admin-sistema' }
       ]
     },

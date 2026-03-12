@@ -2,6 +2,8 @@ package KuHub.modules.gestion_academica.controller;
 
 import KuHub.modules.gestion_academica.dtos.YearFilterRequestDTO;
 import KuHub.modules.gestion_academica.dtos.request.WeekGeneratorDTO;
+import KuHub.modules.gestion_academica.dtos.request.WeeklyFilterForSolicitationDTO;
+import KuHub.modules.gestion_academica.dtos.response.YearWithSemestersDTO;
 import KuHub.modules.gestion_academica.entity.Semana;
 import KuHub.modules.gestion_academica.service.SemanaService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,6 +20,25 @@ public class SemanaController {
     @Autowired
     private SemanaService semanaService;
 
+
+    /** Obtiene los anios disponible del anio actual hace adelante para filtro
+     *  ✅ En uso: Endpoint consumido por el frontend.*/
+    @GetMapping("/years-for-filter-week")
+    public ResponseEntity<List<Short>> yearsForFilterWeek(){
+        return ResponseEntity
+                .status(200)
+                .body(semanaService.yearsForFilterWeek());
+    }
+
+    /** Obtiene los periodos del anio y semestre existentes para cargar options
+     *  ✅ En uso: Endpoint consumido por el frontend.*/
+    @GetMapping("/find-grouped-perions-academic")
+    public ResponseEntity<List<YearWithSemestersDTO>> findGroupedPeriodsAcademic(){
+        return ResponseEntity
+                .status(200)
+                .body(semanaService.findGroupedPeriodsAcademic());
+    }
+
     /** Busca semanas por filtro
      *  ✅ En uso: Endpoint consumido por el frontend.*/
     @PostMapping("/find-all-by-year/{year}")
@@ -29,24 +50,17 @@ public class SemanaController {
             .body(semanaService.findAllByYear(year));
     }
 
-    /** Otiene los anios disponible del anio actual hace adelante para filtro
+
+    /** Obtiene los las semanas por filtro de anio y semestre para el option de solicitud
      *  ✅ En uso: Endpoint consumido por el frontend.*/
-    @GetMapping("/years-for-filter-week")
-    public ResponseEntity<List<Short>> yearsForFilterWeek(){
+    @PostMapping("/find-by-weekly-for-solicitation")
+    public ResponseEntity<List<Semana>> findByWeeklyFilterForSolicitation(
+            @Validated @RequestBody WeeklyFilterForSolicitationDTO request){
         return ResponseEntity
                 .status(200)
-                .body(semanaService.yearsForFilterWeek());
+                .body(semanaService.findByWeeklyFilterForSolicitation(request));
     }
 
-
-    @GetMapping( "/find-week-active-for-year/")
-    public ResponseEntity<List<Semana>> findWeekActiveForYear(
-            @RequestBody YearFilterRequestDTO yearEnd
-    ){
-        return ResponseEntity
-                .status(200)
-                .body(semanaService.findWeekActiveForYear(yearEnd));
-    }
 
     /** Crear 18 semanas en cascada con una unica fecha Lunes para la consistencia
      *  ✅ En uso: Endpoint consumido por el frontend.*/
@@ -56,6 +70,15 @@ public class SemanaController {
         return ResponseEntity
                 .status(200)
                 .body(semanaService.generateSemesterCalendar(request));
+    }
+
+    @GetMapping( "/find-week-active-for-year/")
+    public ResponseEntity<List<Semana>> findWeekActiveForYear(
+            @RequestBody YearFilterRequestDTO yearEnd
+    ){
+        return ResponseEntity
+                .status(200)
+                .body(semanaService.findWeekActiveForYear(yearEnd));
     }
 
 }
