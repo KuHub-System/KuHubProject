@@ -383,28 +383,24 @@ public class SpringSecurityConfig {
                         // ENDPOINTS DE SOLICITUDES
                         // ========================================
 
-                        // 1. Consulta de Disponibilidad (POST): Todos los roles operativos
-                        .requestMatchers("/api/v*/solicitud/check-section-availability")
+                        // 1. LECTURA (GET): Todos los roles operativos y académicos
+                        .requestMatchers(HttpMethod.GET, "/api/v*/solicitudes/**", "/api/v*/solicitud/**")
+                        .hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR", "GESTOR_PEDIDOS", "PROFESOR_A_CARGO", "DOCENTE")
+
+                        // 2. CREACIÓN (POST): Roles operativos que pueden solicitar insumos
+                        .requestMatchers(HttpMethod.POST, "/api/v*/solicitudes/**", "/api/v*/solicitud/**")
                         .hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR", "GESTOR_PEDIDOS", "PROFESOR_A_CARGO")
 
-                        // 2. Creación de Solicitudes (POST): Todos los roles operativos
-                        .requestMatchers("/api/v*/solicitud/save-solicitation")
+                        // 3. EDICIÓN COMPLETA (PUT) Y PARCIAL (PATCH): Modificar estados, observaciones, etc.
+                        .requestMatchers(HttpMethod.PUT, "/api/v*/solicitudes/**", "/api/v*/solicitud/**")
                         .hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR", "GESTOR_PEDIDOS", "PROFESOR_A_CARGO")
 
-                        // ========================================
-                        // ENDPOINTS DE SEMANAS (CALENDARIO ACADÉMICO)
-                        // ========================================
+                        .requestMatchers(HttpMethod.PATCH, "/api/v*/solicitudes/**", "/api/v*/solicitud/**")
+                        .hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR", "GESTOR_PEDIDOS", "PROFESOR_A_CARGO")
 
-                        // Lectura de semanas activas: Todos los roles operativos
-                        .requestMatchers(HttpMethod.POST, "/api/v*/semanas/activas-por-anio").hasAnyRole(
-                        "ADMINISTRADOR", "CO_ADMINISTRADOR", "GESTOR_PEDIDOS", "PROFESOR_A_CARGO")
-
-                        .requestMatchers(HttpMethod.GET, "/api/v*/semanas/**").hasAnyRole(
-                        "ADMINISTRADOR", "CO_ADMINISTRADOR", "GESTOR_PEDIDOS", "PROFESOR_A_CARGO")
-
-                        // Gestión (Crear/Eliminar): Solo niveles administrativos
-                        .requestMatchers(HttpMethod.POST, "/api/v*/semanas").hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR")
-                        .requestMatchers(HttpMethod.DELETE, "/api/v*/semanas/**").hasRole("ADMINISTRADOR")
+                        // 4. ELIMINACIÓN (DELETE): Solo jerarquía administrativa (borrado físico o soft-delete)
+                        .requestMatchers(HttpMethod.DELETE, "/api/v*/solicitudes/**", "/api/v*/solicitud/**")
+                        .hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR")
 
                         // ========================================
                         // RESTO DE ENDPOINTS

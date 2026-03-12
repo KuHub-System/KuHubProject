@@ -6,6 +6,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
@@ -21,8 +22,12 @@ public class MotivoRechazoSolicitud {
     @Column(name = "id_motivo")
     private Integer idMotivo;
 
-    @Column(name = "id_solicitud", nullable = false, unique = true)
-    private Integer idSolicitud; // Usamos el ID directo para facilitar la inserción
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumns({
+            @JoinColumn(name = "id_solicitud", referencedColumnName = "id_solicitud", nullable = false),
+            @JoinColumn(name = "fecha_solicitada", referencedColumnName = "fecha_solicitada", nullable = false)
+    })
+    private Solicitud solicitud;
 
     @Column(name = "motivo", nullable = false, length = 200)
     private String motivo;
@@ -30,4 +35,14 @@ public class MotivoRechazoSolicitud {
     @Column(name = "fecha_rechazo")
     @Builder.Default
     private LocalDateTime fechaRechazo = LocalDateTime.now();
+
+    // ----------- Métodos Helper para asignación por ID -----------
+
+    public void setIdSolicitudRechazada(Integer id, LocalDate fecha) {
+        if (id != null && fecha != null) {
+            this.solicitud = new Solicitud();
+            this.solicitud.setIdSolicitud(id);
+            this.solicitud.setFechaSolicitada(fecha);
+        }
+    }
 }

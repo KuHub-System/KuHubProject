@@ -3,6 +3,7 @@ package KuHub.modules.gestion_solicitud.controller;
 import KuHub.modules.gestion_solicitud.dtos.*;
 import KuHub.modules.gestion_solicitud.dtos.proyeccion.ManagementSolicitationView;
 import KuHub.modules.gestion_solicitud.dtos.proyeccion.SectionAvailabilityView;
+import KuHub.modules.gestion_solicitud.dtos.request.CourseForSolicitationDTO;
 import KuHub.modules.gestion_solicitud.service.SolicitudService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,6 +21,16 @@ public class SolicitudController {
     @Autowired
     private SolicitudService solicitudService;
 
+    /**Actualiza inventario con producto, creando movimiento segun tipo, una vez validado
+     * ✅ En uso: Endpoint consumido por el frontend.*/
+    @GetMapping("/curses-by-solicitation")
+    public ResponseEntity<List<CourseForSolicitationDTO>> findCourseWithSectionsAndBlocksActive(){
+        return ResponseEntity
+                .status(200)
+                .body(solicitudService.findCourseWithSectionsAndBlocksRaw());
+    }
+
+    /**
     @PostMapping("/management-solicitations-filter")
     public ResponseEntity<List<ManagementSolicitationView>> getManagementSolicitations(
             @RequestBody ManagementFilterRequestDTO filter
@@ -45,7 +56,7 @@ public class SolicitudController {
                 .body(solicitudService.checkSectionAvailability(r));
     }
 
-    /**
+
     @PostMapping("/save-solicitation")
     public ResponseEntity<Void> saveSolicitation(
             @RequestBody SolicitationCreateRequestDTO r
@@ -54,7 +65,7 @@ public class SolicitudController {
         return ResponseEntity
                 .status(201)
                 .build();
-    }*/
+    }
 
     @PatchMapping("/update-solicitation-status")
     public ResponseEntity<Void> updateSolicitationStatus(
@@ -63,7 +74,7 @@ public class SolicitudController {
         solicitudService.updateSolicitationStatus(dto);
         // Retornamos 204 No Content: Todo salió bien, no hay cuerpo que devolver.
         return ResponseEntity.status(204).build();
-    }
+    }*/
 
 
 }
