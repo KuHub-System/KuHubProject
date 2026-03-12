@@ -1,10 +1,14 @@
 package KuHub.modules.gestion_academica.service;
 
+import KuHub.modules.gestion_academica.dtos.request.WeeklyFilterForSolicitationDTO;
+import KuHub.modules.gestion_academica.dtos.response.YearWithSemestersDTO;
 import KuHub.modules.gestion_academica.exceptions.GestionAcademicaException;
 import KuHub.modules.gestion_academica.dtos.YearFilterRequestDTO;
 import KuHub.modules.gestion_academica.dtos.request.WeekGeneratorDTO;
 import KuHub.modules.gestion_academica.entity.Semana;
 import KuHub.modules.gestion_academica.repository.SemanaRepository;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -22,14 +26,55 @@ public class SemanaServiceImpl implements SemanaService {
     @Autowired
     private SemanaRepository semanaRepository;
 
+    @Autowired
+    private ObjectMapper objectMapper;
+
     @Transactional(readOnly = true)
     @Override
     public List<Semana> findAllByYear(Short anio) {
         // Si no se envía año, usamos el año actual (2026) como fallback
         Short anioBusqueda = (anio != null) ? anio : (short) java.time.LocalDate.now().getYear();
-
         return semanaRepository.findByAnioOrderByFechaInicioAsc(anioBusqueda);
     }
+
+    @Transactional(readOnly = true)
+    @Override
+    public List<Semana> findByWeeklyFilterForSolicitation(WeeklyFilterForSolicitationDTO request){
+        return semanaRepository.findByAnioAndSemestreOrderByFechaInicioAsc(request.getAnio(),request.getSemestre());
+
+    }
+
+    @Transactional(readOnly = true)
+    @Override
+    public List<YearWithSemestersDTO> findGroupedPeriodsAcademic() {
+        List<Object[]> rawResults = semanaRepository.findAniosAndSemestresRaw();
+
+        List<YearWithSemestersDTO> responseList = new ArrayList<>();
+
+        for (Object[] row : rawResults) {
+            YearWithSemestersDTO dto = new YearWithSemestersDTO();
+
+            Number anioDb = (Number) row[0];
+            dto.setAnio(anioDb.shortValue());
+
+            String semestresJson = row[1].toString();
+
+            try {
+                // Convertimos el String "[1, 2]" a un List<Short> real
+                List<Short> semestresList = objectMapper.readValue(
+                        semestresJson,
+                        new TypeReference<List<Short>>() {}
+                );
+                dto.setSemestres(semestresList);
+            } catch (Exception e) {
+                throw new RuntimeException("Error al mapear el JSON de semestres: " + semestresJson, e);
+            }
+            // Agregamos el DTO ya armado a la lista final
+            responseList.add(dto);
+        }
+        return responseList;
+    }
+
 
     @Transactional(readOnly = true)
     @Override
@@ -82,6 +127,7 @@ public class SemanaServiceImpl implements SemanaService {
         semanaRepository.saveAll(semanasNuevas);
         return true;
     }
+
 
 
 
