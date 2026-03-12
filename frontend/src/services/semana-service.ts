@@ -5,6 +5,67 @@
 import api from '../config/Axios';
 import { ISemana, IWeekGeneratorDTO } from '../types/semana.types';
 
+export interface IPeriodoAcademico {
+  anio: number;
+  semestres: number[];
+}
+
+// Caché para semanas por periodo: key = `${anio}-${semestre}`
+const semanasPorPeriodoCache = new Map<string, ISemana[]>();
+
+/**
+ * Obtener periodos académicos agrupados (anio + semestres disponibles)
+ * GET /v1/semanas/find-grouped-perions-academic
+ */
+export const obtenerPeriodosAcademicosService = async (): Promise<IPeriodoAcademico[]> => {
+  try {
+    const response = await api.get<IPeriodoAcademico[]>('/semanas/find-grouped-perions-academic');
+    return response.data;
+  } catch (error: any) {
+    throw new Error(error.response?.data?.message || 'Error al obtener los periodos académicos');
+  }
+};
+
+/**
+ * Obtener semanas por año y semestre con caché
+ * POST /v1/semanas/find-by-weekly-for-solicitation
+ */
+export const obtenerSemanasPorPeriodoService = async (anio: number, semestre: number): Promise<ISemana[]> => {
+  const key = `${anio}-${semestre}`;
+  if (semanasPorPeriodoCache.has(key)) return semanasPorPeriodoCache.get(key)!;
+  try {
+    const response = await api.post<ISemana[]>('/semanas/find-by-weekly-for-solicitation', { anio, semestre });
+    semanasPorPeriodoCache.set(key, response.data);
+    return response.data;
+  } catch (error: any) {
+    throw new Error(error.response?.data?.message || 'Error al obtener las semanas del período');
+  }
+};
+
+/**
+ * Detecta el periodo académico actual basándose en sysdate.
+ * Meses 1-6 → semestre 1, meses 7-12 → semestre 2.
+ */
+export const detectarPeriodoActual = (): { anio: number; semestre: number } => {
+  const today = new Date();
+  return {
+    anio: today.getFullYear(),
+    semestre: today.getMonth() + 1 <= 6 ? 1 : 2,
+  };
+};
+
+/**
+ * Encuentra la semana actual dentro de una lista de semanas.
+ */
+export const encontrarSemanaActual = (semanas: ISemana[]): ISemana | null => {
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  return semanas.find(s => {
+    const ini = new Date(s.fechaInicio + 'T00:00:00');
+    const fin = new Date(s.fechaFin + 'T23:59:59');
+    return today >= ini && today <= fin;
+  }) ?? null;
+};
+
 // Caché simple para almacenar semanas por año
 const weeksCache: Record<number, ISemana[]> = {};
 
