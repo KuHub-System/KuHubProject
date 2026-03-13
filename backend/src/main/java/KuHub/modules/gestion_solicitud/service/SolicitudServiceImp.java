@@ -1,33 +1,31 @@
 package KuHub.modules.gestion_solicitud.service;
 
-import KuHub.modules.gestion_academica.dtos.request.projection.CourseSolicitationSelectView;
 import KuHub.modules.gestion_academica.repository.AsignaturaRepository;
 import KuHub.modules.gestion_receta.services.DetalleRecetaService;
 import KuHub.modules.gestion_solicitud.dtos.*;
 import KuHub.modules.gestion_solicitud.dtos.proyeccion.*;
-import KuHub.modules.gestion_solicitud.dtos.request.CourseForSolicitationDTO;
-import KuHub.modules.gestion_solicitud.dtos.request.SectionForSolicitationDTO;
-import KuHub.modules.gestion_solicitud.entity.MotivoRechazoSolicitud;
+import KuHub.modules.gestion_solicitud.dtos.request.*;
+import KuHub.modules.gestion_solicitud.dtos.respose.CourseDetailsDTO;
+import KuHub.modules.gestion_solicitud.dtos.respose.ProductDetailSolicitationDTO;
+import KuHub.modules.gestion_solicitud.dtos.respose.ResultsMassSolicitationView;
+import KuHub.modules.gestion_solicitud.dtos.respose.SolicitationManagementDTO;
 import KuHub.modules.gestion_solicitud.entity.Solicitud;
-import KuHub.modules.gestion_solicitud.exception.GestionSolicitudException;
 import KuHub.modules.gestion_solicitud.repository.MotivoRechazoRepository;
 import KuHub.modules.gestion_solicitud.repository.SolicitudRepository;
-import KuHub.modules.gestion_usuario.dtos.UserIdAndCompleteNameDTO;
-import KuHub.modules.gestion_usuario.dtos.response.proyection.UsersToManageCourseOrSectionView;
 import KuHub.modules.gestion_usuario.service.UsuarioService;
 import KuHub.modules.gestion_academica.repository.SemanaRepository;
 import KuHub.utils.StringUtils;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.time.LocalDate;
 import java.util.*;
+import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 public class SolicitudServiceImp implements SolicitudService{
 
@@ -54,6 +52,7 @@ public class SolicitudServiceImp implements SolicitudService{
     }
 
     @Transactional(readOnly = true)
+    @Override
     public List<CourseForSolicitationDTO> findCourseWithSectionsAndBlocksRaw() {
         List<Object[]> rawResults = solicitudRepository.findCourseWithSectionsAndBlocksRaw();
         List<CourseForSolicitationDTO> responseList = new ArrayList<>();
@@ -64,10 +63,8 @@ public class SolicitudServiceImp implements SolicitudService{
             // row[0] es nombre_asignatura, row[1] es id_asignatura
             courseDTO.setNombreAsignatura((String) row[0]);
             courseDTO.setIdAsignatura(((Number) row[1]).intValue());
-
             // row[2] es el JSON de secciones anidadas
             String seccionesJson = row[2].toString();
-
             try {
                 // Jackson lee el String y lo convierte en la Lista de Secciones (y Bloques adentro)
                 List<SectionForSolicitationDTO> seccionesList = objectMapper.readValue(
@@ -78,12 +75,184 @@ public class SolicitudServiceImp implements SolicitudService{
             } catch (Exception e) {
                 throw new RuntimeException("Error al mapear el JSON de secciones: " + seccionesJson, e);
             }
-
             responseList.add(courseDTO);
         }
-
         return responseList;
     }
+
+    @Transactional(readOnly = true)
+    @Override
+    public List<RecipeSolicitationDTO> findActiveRecipesWithDetailsRaw() {
+
+        List<Object[]> rawResults = solicitudRepository.findActiveRecipesWithDetailsRaw();
+        List<RecipeSolicitationDTO> responseList = new ArrayList<>();
+
+        for (Object[] row : rawResults) {
+            RecipeSolicitationDTO dto = new RecipeSolicitationDTO();
+
+            // Mapeamos el ID y el Nombre
+            dto.setIdReceta(((Number) row[0]).intValue());
+            dto.setNombreReceta((String) row[1]);
+            // Mapeamos el JSONB a la lista de detalles
+            String detallesJsonb = row[2].toString();
+            try {
+                List<RecipeDetailsSolicitationDTO> detallesList = objectMapper.readValue(
+                        detallesJsonb,
+                        new TypeReference<List<RecipeDetailsSolicitationDTO>>() {}
+                );
+                dto.setDetalles(detallesList);
+            } catch (Exception e) {
+                throw new RuntimeException("Error al mapear JSONB de receta detalles: " + detallesJsonb, e);
+            }
+            responseList.add(dto);
+        }
+        return responseList;
+    }
+
+
+    @Transactional(readOnly = true)
+    @Override
+    public List<SolicitationManagementDTO> findSolicitationsPerWeekRaw(DateRangeDTO request) {
+
+        // 1. Ejecutamos la "Súper Consulta" usando las fechas que vienen en el DTO
+        List<Object[]> rawResults = solicitudRepository.findSolicitationsPerWeekRaw(
+                request.getFechaInicio(),
+                request.getFechaFin()
+        );
+        List<SolicitationManagementDTO> responseList = new ArrayList<>();
+
+        // 2. Iteramos y mapeamos los resultados
+        for (Object[] row : rawResults) {
+            SolicitationManagementDTO dto = new SolicitationManagementDTO();
+            // row[0] -> fecha_solicitada
+            dto.setFechaSolicitada(((java.sql.Date) row[0]).toLocalDate());
+            // row[1] -> nombre_receta
+            dto.setNombreReceta((String) row[1]);
+            // row[2] -> id_solicitud
+            dto.setIdSolicitud((Integer) row[2]);
+            // row[3] -> id_receta (Manejo de Long/Integer de JPA)
+            dto.setIdReceta(row[3] != null ? ((Number) row[3]).intValue() : null);
+            // row[4] -> id_reserva_sala
+            dto.setIdReservaSala(row[4] != null ? ((Number) row[4]).intValue() : null);
+            // row[5] -> estado_solicitud
+            dto.setEstadoSolicitud(row[5].toString());
+            // row[6] -> observaciones
+            dto.setObservaciones(row[6] != null ? row[6].toString() : "");
+            // --- Mapeo de JSONs ---
+            // row[7] -> productos_solicitados (Lista de insumos)
+            try {
+                if (row[7] != null) {
+                    List<ProductDetailSolicitationDTO> productos = objectMapper.readValue(
+                            row[7].toString(),
+                            new TypeReference<List<ProductDetailSolicitationDTO>>() {}
+                    );
+                    dto.setProductos(productos);
+                } else {
+                    dto.setProductos(new ArrayList<>());
+                }
+            } catch (Exception e) {
+                dto.setProductos(new ArrayList<>()); // Fallback por si el JSON falla
+            }
+            // row[8] -> asignatura_detalle (Estructura de la clase)
+            try {
+                if (row[8] != null) {
+                    CourseDetailsDTO courseDetails = objectMapper.readValue(
+                            row[8].toString(),
+                            CourseDetailsDTO.class
+                    );
+                    dto.setAsignaturaDetalle(courseDetails);
+                }
+            } catch (Exception e) {
+                throw new RuntimeException("Error crítico al mapear asignatura_detalle: " + row[8], e);
+            }
+            responseList.add(dto);
+        }
+        return responseList;
+    }
+
+    /**
+     * Procesa y guarda de manera masiva múltiples solicitudes de insumos y sus detalles.
+     * <p>
+     * Este método optimiza el rendimiento delegando la lógica de negocio intensiva directamente
+     * al motor de base de datos (PostgreSQL). Serializa la lista de solicitudes a un formato JSON crudo
+     * y lo envía a una función PL/pgSQL encargada de realizar el "Súper Cálculo".
+     * </p>
+     * <b>Operaciones realizadas por la Base de Datos:</b>
+     * <ul>
+     * <li>Cálculo dinámico del multiplicador de porciones (inscritos / 20 base).</li>
+     * <li>Procesamiento de "Deltas": omisión de productos eliminados, actualización de modificados e inserción de nuevos.</li>
+     * <li>Aplicación de reglas de redondeo estricto (hacia arriba) para unidades no fraccionarias.</li>
+     * <li>Filtrado de seguridad para ignorar productos inactivos.</li>
+     * <li>Inserción masiva en las tablas particionadas de {@code solicitud} y {@code detalle_solicitud}.</li>
+     * </ul>
+     *
+     * @param payloadList Lista de DTOs ({@link MassiveSolicitationDTO}) que contiene la estructura
+     * jerárquica de asignaturas, secciones, horarios, recetas y deltas a procesar.
+     * @return {@link ResultsMassSolicitationView} Proyección con las métricas finales del proceso
+     * (total de solicitudes creadas y total de detalles procesados).
+     * @throws RuntimeException Si ocurre un error de serialización (Jackson) al intentar convertir
+     * la lista de objetos a su representación JSON.
+     */
+    @Override
+    @Transactional
+    public ResultsMassSolicitationView saveMass(List<MassiveSolicitationDTO> payloadList) {
+        try {
+            // 1. Convertimos la lista de DTOs a un String JSON
+            String jsonPayload = objectMapper.writeValueAsString(payloadList);
+
+            // 2. Ejecutamos la función en la base de datos y retornamos directamente la interfaz
+            return solicitudRepository.ejecutarSolicitudMasivaRaw(jsonPayload);
+
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException("Error crítico al serializar el payload de solicitudes masivas", e);
+        }
+    }
+
+    @Override
+    @Transactional
+    public boolean changeMassiveStatus(ChangeSolicitationStatusDTO request) {
+
+        // 1. Sabemos exactamente cuántas solicitudes deberíamos actualizar
+        int totalEsperados = request.getEstadosSolicitudes().size();
+        int totalActualizados = 0;
+
+        // 2. Agrupamos los IDs por estado
+        Map<String, List<Integer>> idsPorEstado = request.getEstadosSolicitudes().stream()
+                .collect(Collectors.groupingBy(
+                        item -> StringUtils.normalizeToEnumKey(item.getEstado()),
+                        Collectors.mapping(SolicitationStatusItemDTO::getIdSolicitud, Collectors.toList())
+                ));
+
+        // 3. Ejecutamos los UPDATES masivos y sumamos las filas afectadas
+        for (Map.Entry<String, List<Integer>> entry : idsPorEstado.entrySet()) {
+            String estadoNormalizado = entry.getKey();
+            List<Integer> listaIds = entry.getValue();
+
+            if (estadoNormalizado != null && !estadoNormalizado.isEmpty() && !listaIds.isEmpty()) {
+                // El repositorio nos devuelve cuántas filas se afectaron en este grupo
+                int filasAfectadas = solicitudRepository.updateMassiveStateSolicitation(listaIds, estadoNormalizado);
+                totalActualizados += filasAfectadas;
+            } else {
+                throw new IllegalArgumentException("Se detectó un estado inválido en la petición masiva.");
+            }
+        }
+
+        // 4. Validación de integridad
+        if (totalActualizados != totalEsperados) {
+            /* OJO AQUÍ: Como estamos en un @Transactional, si lanzamos una excepción
+               (RuntimeException), PostgreSQL hará un ROLLBACK automático.
+               Es decir, si mandaron 10 IDs y solo existían 8 en la base de datos,
+               la base de datos deshace los 8 cambios para proteger la integridad. */
+            log.error("ROLLBACK ACTIVADO - Inconsistencia de datos. Se esperaban actualizar {} solicitudes, pero la BD reportó" +
+                    " {}", totalEsperados, totalActualizados);
+
+            throw new RuntimeException("Inconsistencia de datos: Se esperaba actualizar "
+                    + totalEsperados + " solicitudes, pero se encontraron " + totalActualizados);
+        }
+        log.info("Actualización masiva exitosa. Se actualizaron {} solicitudes correctamente.", totalActualizados);
+        return true;
+    }
+
 
     /**
     @Transactional

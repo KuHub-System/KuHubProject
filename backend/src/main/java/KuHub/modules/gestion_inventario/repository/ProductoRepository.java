@@ -19,18 +19,19 @@ public interface ProductoRepository extends JpaRepository<Producto, Integer> {
      * Obtiene la lista de productos activos con su unidad de medida
      * para ser seleccionados en el formulario de recetas.
      */
-    @Query(value =
-        "SELECT " +
-                "    p.nombre_producto AS \"nombreProducto\", " +
-                "    u.nombre_unidad AS \"nombreUnidad\", " +
-                "    u.es_fraccionario AS \"esFraccionario\", " +
-                "    p.id_producto AS \"idProducto\", " + // Logica interna
-                "    u.id_unidad AS \"idUnidad\" " +      // Logica interna
-                "FROM producto p " +
-                "JOIN unidad_medida u ON p.id_unidad = u.id_unidad " +
-                "WHERE p.activo = true " +
-                "ORDER BY p.nombre_producto ASC",
-        nativeQuery = true)
+    @Query(value = """
+        SELECT 
+            p.nombre_producto AS "nombreProducto", 
+            u.nombre_unidad AS "nombreUnidad", 
+            u.abreviatura AS "abreviatura", 
+            u.es_fraccionario AS "esFraccionario", 
+            p.id_producto AS "idProducto", 
+            u.id_unidad AS "idUnidad" 
+        FROM producto p 
+        JOIN unidad_medida u ON p.id_unidad = u.id_unidad 
+        WHERE p.activo = true 
+        ORDER BY p.nombre_producto ASC
+        """, nativeQuery = true)
     List<ProductRecipeView> findAllActiveForRecipe();
 
     /**

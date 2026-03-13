@@ -31,7 +31,7 @@ public class ProductoController {
 
     /** Usado en option para crear receta
      *  ✅ En uso: Endpoint consumido por el frontend.*/
-    @GetMapping("/find-all-product-active-for-recipe")
+    @GetMapping("/find-all-product-active-for-option")
     public ResponseEntity<List<ProductRecipeView>> findAllActiveForRecipe() {
         return ResponseEntity
                 .status(200)

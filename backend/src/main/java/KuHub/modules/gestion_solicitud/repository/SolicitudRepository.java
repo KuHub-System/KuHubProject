@@ -4,19 +4,23 @@ import KuHub.modules.gestion_solicitud.dtos.proyeccion.ManagementSolicitationVie
 import KuHub.modules.gestion_solicitud.dtos.proyeccion.ProductoUnidadView;
 import KuHub.modules.gestion_solicitud.dtos.proyeccion.SeccionInscritosView;
 import KuHub.modules.gestion_solicitud.dtos.proyeccion.SectionAvailabilityView;
+import KuHub.modules.gestion_solicitud.dtos.respose.ResultsMassSolicitationView;
 import KuHub.modules.gestion_solicitud.entity.Solicitud;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @Repository
 public interface SolicitudRepository extends JpaRepository<Solicitud, Integer> {
 
 
-
+    /**Obtiene las asignaturas que tiene al menos una seccion con el estado ACTIVO y con bloques de horarios asignados o sea
+     * reservas de sala para dia semana asigando, para cargar en la pagina de solicitud*/
     @Query(value = """
             SELECT 
                 a.nombre_asignatura,
@@ -37,6 +41,7 @@ public interface SolicitudRepository extends JpaRepository<Solicitud, Integer> {
                         'horarios', (
                             SELECT json_agg(
                                 json_build_object(
+                                    'idReservaSala', rs.id_reserva_sala,
                                     'numeroBloque', b.id_bloque,
                                     'horaInicio', to_char(b.hora_inicio, 'HH24:MI:SS'),
                                     'horaFin', to_char(b.hora_fin, 'HH24:MI:SS'),
@@ -52,7 +57,19 @@ public interface SolicitudRepository extends JpaRepository<Solicitud, Integer> {
                             WHERE rs.id_seccion = s.id_seccion 
                               AND rs.activo = true
                               AND sa.activo = true
-                        )
+                        ),
+                         'solicitudes', ( 
+                             SELECT COALESCE(
+                                 json_agg(f.fecha_solicitada),\s
+                                 '[]'::json
+                             )
+                             FROM (
+                                 SELECT DISTINCT fecha_solicitada\s
+                                 FROM solicitud\s
+                                 WHERE id_seccion = s.id_seccion\s
+                                 ORDER BY fecha_solicitada DESC
+                             ) f
+                         )
                     ) ORDER BY s.nombre_seccion ASC 
                 ) AS secciones
             FROM asignatura a
@@ -73,6 +90,138 @@ public interface SolicitudRepository extends JpaRepository<Solicitud, Integer> {
             ORDER BY a.nombre_asignatura ASC
             """, nativeQuery = true)
     List<Object[]> findCourseWithSectionsAndBlocksRaw();
+
+    /**Obtiene las recetas asignadas como estado ACTIVO asignado para usalas en solicitud,
+     * muestra todos los productos asignados a la receta los que fueran eliminados logicamente
+     * se mustrara no disponible en el frontend,*/
+    @Query(value = """
+            SELECT
+                r.id_receta AS idReceta,
+                r.nombre_receta AS nombreReceta,
+                COALESCE(
+                    jsonb_agg(
+                        jsonb_build_object(
+                            'nombreProducto', p.nombre_producto,
+                            'cantProducto', d.cant_producto,
+                            'abreviatura', u.abreviatura,
+                            'esFraccionario', u.es_fraccionario,
+                            'activoProducto', p.activo,
+                            'idDetalleReceta', d.id_detalle_receta,
+                            'idProducto', p.id_producto,
+                            'idUnidad', u.id_unidad
+                        )
+                    ) FILTER (WHERE d.id_detalle_receta IS NOT NULL), 
+                    '[]'::jsonb
+                ) AS detallesJson
+            FROM receta r
+            LEFT JOIN detalle_receta d ON d.id_receta = r.id_receta
+            LEFT JOIN producto p ON d.id_producto = p.id_producto
+            LEFT JOIN unidad_medida u ON u.id_unidad = p.id_unidad
+            WHERE r.activo = true 
+            AND r.estado_receta = 'ACTIVO'
+            GROUP BY r.id_receta, r.nombre_receta
+            ORDER BY r.nombre_receta ASC
+            """, nativeQuery = true)
+    List<Object[]> findActiveRecipesWithDetailsRaw();
+
+    /**Llama la funcion para crear solicitudes masivas retornado valores de filas insertadas*/
+    @Query(value = """
+            SELECT 
+                total_solicitudes AS totalSolicitudes, 
+                total_detalles AS totalDetalles 
+            FROM generar_solicitudes_masivas(CAST(:payload AS jsonb))
+            """, nativeQuery = true)
+    ResultsMassSolicitationView ejecutarSolicitudMasivaRaw(@Param("payload") String payload);
+
+
+    @Query(value = """
+        SELECT 
+            so.fecha_solicitada,
+            COALESCE(rc.nombre_receta, 'Sin receta') AS nombre_receta,
+            so.id_solicitud,
+            so.id_receta,
+            so.id_reserva_sala, -- Agregamos el ID para el DTO
+            so.estado_solicitud,
+            so.observaciones,  
+           (
+               SELECT COALESCE(
+                   json_agg(
+                       json_build_object(
+                           'nombreProducto', p.nombre_producto,
+                           'cantidad', ds.cant_producto_solicitud,
+                           'unidad', u.nombre_unidad
+                       )
+                   ),
+                   '[]'::json
+               )
+               FROM detalle_solicitud ds
+               JOIN producto p ON p.id_producto = ds.id_producto
+               JOIN unidad_medida u ON u.id_unidad = p.id_unidad
+               WHERE ds.id_solicitud = so.id_solicitud
+                 AND ds.fecha_solicitada = so.fecha_solicitada
+           ) AS productos_solicitados,
+            JSON_BUILD_OBJECT(
+                'nombre_asignatura', a.nombre_asignatura,
+                'id_asignatura', a.id_asignatura,
+                'seccion', JSON_BUILD_OBJECT(
+                    'id_seccion', s.id_seccion, 
+                    'nombre_seccion', s.nombre_seccion,
+                    'id_usuario', u.id_usuario,
+                    'nombre_docente', CONCAT_WS(' ', 
+                        NULLIF(TRIM(u.p_nombre), ''), 
+                        NULLIF(TRIM(u.s_nombre), ''), 
+                        NULLIF(TRIM(u.app_paterno), ''), 
+                        NULLIF(TRIM(u.app_materno), '')
+                    ),
+                    'cant_inscritos', s.cant_inscritos,
+                    'capacidad_max', s.capacidad_max,
+                    'horarios', (
+                        SELECT COALESCE(
+                            json_agg(
+                                json_build_object(
+                                    'numeroBloque', b.id_bloque,
+                                    'horaInicio', to_char(b.hora_inicio, 'HH24:MI:SS'),
+                                    'horaFin', to_char(b.hora_fin, 'HH24:MI:SS'),
+                                    'nombreSala', sa.nombre_sala || '-' || sa.cod_sala
+                                ) ORDER BY b.id_bloque ASC
+                            ),
+                            '[]'::json
+                        )
+                        FROM reserva_sala rs_detail
+                        -- Buscamos los datos de la reserva original vinculada a la solicitud
+                        INNER JOIN reserva_sala rs_ref ON rs_ref.id_reserva_sala = so.id_reserva_sala
+                        INNER JOIN bloque_horario b ON b.id_bloque = rs_detail.id_bloque
+                        INNER JOIN sala sa ON sa.id_sala = rs_detail.id_sala
+                        -- Filtramos para traer TODOS los bloques de esa misma clase (misma sala, día y sección)
+                        WHERE rs_detail.id_seccion = rs_ref.id_seccion
+                          AND rs_detail.id_sala = rs_ref.id_sala
+                          AND rs_detail.dia_semana = rs_ref.dia_semana
+                          AND rs_detail.activo = true
+                          AND sa.activo = true
+                    )
+                )
+            ) AS asignatura_detalle
+        FROM solicitud so
+        LEFT JOIN receta rc ON rc.id_receta = so.id_receta
+        JOIN seccion s ON s.id_seccion = so.id_seccion
+        JOIN asignatura a ON a.id_asignatura = s.id_asignatura
+        JOIN docente_seccion dc ON dc.id_seccion = s.id_seccion
+        JOIN usuario u ON u.id_usuario = dc.id_usuario 
+        WHERE so.fecha_solicitada BETWEEN :fechaInicio AND :fechaFin
+        ORDER BY so.fecha_solicitada ASC, so.estado_solicitud ASC;
+        """, nativeQuery = true)
+    List<Object[]> findSolicitationsPerWeekRaw(@Param("fechaInicio") LocalDate fechaInicio, @Param("fechaFin") LocalDate fechaFin);
+
+
+    @Modifying
+    @Query(value = """
+            UPDATE solicitud 
+            SET estado_solicitud = CAST(:estado AS estado_solicitud_type) 
+            WHERE id_solicitud IN (:ids)
+            """, nativeQuery = true)
+    int updateMassiveStateSolicitation(@Param("ids") List<Integer> ids, @Param("estado") String estado);
+
+
 
 
 

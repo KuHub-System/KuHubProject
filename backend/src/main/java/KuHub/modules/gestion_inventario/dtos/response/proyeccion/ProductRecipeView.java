@@ -5,6 +5,7 @@ import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 @JsonPropertyOrder({
         "nombreProducto",
         "nombreUnidad",
+        "abreviatura",
         "esFraccionario",
         "idProducto",
         "idUnidad"
@@ -12,9 +13,9 @@ import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 public interface ProductRecipeView {
     String getNombreProducto();
     String getNombreUnidad();
+    String getAbreviatura();
     Boolean getEsFraccionario();
-
-    // Lógica interna al final
     Integer getIdProducto();
     Integer getIdUnidad();
+
 }

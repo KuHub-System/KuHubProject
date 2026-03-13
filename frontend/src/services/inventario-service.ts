@@ -165,19 +165,19 @@ export const obtenerProductosService = async (): Promise<IProducto[]> => {
 };
 
 /**
- * Obtiene todos los productos activos formateados para la selección en recetas
- * GET /v1/producto/find-all-product-active-for-recipe
+ * Obtiene todos los productos activos para selección en recetas/solicitudes
+ * GET /v1/producto/find-all-product-active-for-option
  */
 export const obtenerProductosParaRecetaService = async (): Promise<IProductoRecetaSelection[]> => {
     try {
         const response = await api.get<IProductoRecetaSelection[]>(
-            '/producto/find-all-product-active-for-recipe'
+            '/producto/find-all-product-active-for-option'
         );
         return response.data;
     } catch (error: any) {
         throw new Error(
             error.response?.data?.message ||
-            'Error al cargar los productos para la receta'
+            'Error al cargar los productos'
         );
     }
 };

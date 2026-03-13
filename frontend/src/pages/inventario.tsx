@@ -138,8 +138,8 @@ const InventarioPage: React.FC = () => {
         obtenerUnidadesActivasService()
       ]);
 
-      setCategoriasFull(resFiltros.categorias);
-      setUnidadesFull(resFiltros.unidades);
+      setCategoriasFull(resFiltros.categorias ?? []);
+      setUnidadesFull(resFiltros.unidades ?? []);
 
       // Mapear ICategoria[] a coincidir con el formato de categoriasFull
       const activasMapeadas = resCategoriasActivas.map(c => ({

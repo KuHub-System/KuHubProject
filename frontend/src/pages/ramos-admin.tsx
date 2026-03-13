@@ -722,6 +722,12 @@ const CrearSeccionModal: React.FC<CrearSeccionModalProps> = ({ asignatura, onClo
       b => b.idBloque === bloque.idBloque && b.idSala === currentSalaId && b.diaSemana === dia
     );
 
+  // Conflicto: la sección ya tiene ese numeroBloque+diaSemana en OTRA sala
+  const tieneConflicto = (bloque: IBloqueDisponible) =>
+    bloquesSeleccionados.some(
+      b => b.numeroBloque === bloque.numeroBloque && b.diaSemana === dia && b.idSala !== currentSalaId
+    );
+
   const toggleBloque = (bloque: IBloqueDisponible) => {
     setBloquesSeleccionados(prev => {
       const existe = prev.some(
@@ -928,28 +934,35 @@ const CrearSeccionModal: React.FC<CrearSeccionModalProps> = ({ asignatura, onClo
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     {bloquesDisponibles.map(bloque => {
                       const seleccionado = estaSeleccionado(bloque);
+                      const conflicto    = !seleccionado && tieneConflicto(bloque);
                       return (
                         <button
                           key={bloque.idBloque}
                           type="button"
-                          onClick={() => toggleBloque(bloque)}
-                          className={`flex items-center justify-between px-3 py-2.5 rounded-lg border transition-colors text-left ${seleccionado
-                            ? 'bg-primary-50 dark:bg-primary-900/30 border-primary-300 dark:border-primary-700'
-                            : 'bg-white dark:bg-default-100/20 border-default-200 hover:border-primary-200 hover:bg-primary-50/30'
-                            }`}
+                          disabled={conflicto}
+                          onClick={() => !conflicto && toggleBloque(bloque)}
+                          className={`flex items-center justify-between px-3 py-2.5 rounded-lg border transition-colors text-left ${
+                            conflicto
+                              ? 'bg-danger-50 dark:bg-danger-900/20 border-danger-200 cursor-not-allowed opacity-80'
+                              : seleccionado
+                              ? 'bg-primary-50 dark:bg-primary-900/30 border-primary-300 dark:border-primary-700'
+                              : 'bg-white dark:bg-default-100/20 border-default-200 hover:border-primary-200 hover:bg-primary-50/30'
+                          }`}
                         >
                           <div className="flex items-center gap-2">
-                            <Chip size="sm" color={seleccionado ? 'primary' : 'default'} variant="flat" className="font-bold min-w-[36px]">
+                            <Chip size="sm"
+                              color={conflicto ? 'danger' : seleccionado ? 'primary' : 'default'}
+                              variant="flat" className="font-bold min-w-[36px]">
                               B{bloque.numeroBloque}
                             </Chip>
-                            <span className="text-xs text-default-600 dark:text-default-400">
-                              {bloque.horaInicio.slice(0, 5)} – {bloque.horaFin.slice(0, 5)}
+                            <span className={`text-xs ${conflicto ? 'text-danger-600 dark:text-danger-400 font-medium' : 'text-default-600 dark:text-default-400'}`}>
+                              {conflicto ? 'Conflicto' : `${bloque.horaInicio.slice(0, 5)} – ${bloque.horaFin.slice(0, 5)}`}
                             </span>
                           </div>
                           <Icon
-                            icon={seleccionado ? 'lucide:check-circle-2' : 'lucide:circle'}
+                            icon={conflicto ? 'lucide:alert-circle' : seleccionado ? 'lucide:check-circle-2' : 'lucide:circle'}
                             width={16}
-                            className={seleccionado ? 'text-primary' : 'text-default-300'}
+                            className={conflicto ? 'text-danger-400' : seleccionado ? 'text-primary' : 'text-default-300'}
                           />
                         </button>
                       );
@@ -1130,6 +1143,17 @@ const EditarSeccionModal: React.FC<EditarSeccionModalProps> = ({ seccionData, on
       b => b.idBloque === bloque.idBloque && b.idSala === currentSalaId && b.diaSemana === dia
     );
     return enPreCargados || enNuevos;
+  };
+
+  // Conflicto: la sección ya tiene ese numeroBloque+diaSemana activo en OTRA sala
+  const tieneConflicto = (bloque: IBloqueDisponible) => {
+    const enPreCargadosOtraSala = bloquesPreCargados.some(
+      b => b.numeroBloque === bloque.numeroBloque && b.diaSemana === dia && b.idSala !== currentSalaId && !idsEliminados.has(b.idReservaSala)
+    );
+    const enNuevosOtraSala = bloquesNuevos.some(
+      b => b.numeroBloque === bloque.numeroBloque && b.diaSemana === dia && b.idSala !== currentSalaId
+    );
+    return enPreCargadosOtraSala || enNuevosOtraSala;
   };
 
   const toggleBloque = (bloque: IBloqueDisponible) => {
@@ -1333,26 +1357,33 @@ const EditarSeccionModal: React.FC<EditarSeccionModalProps> = ({ seccionData, on
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     {bloquesDisponibles.map(bloque => {
                       const seleccionado = estaSeleccionado(bloque);
+                      const conflicto    = !seleccionado && tieneConflicto(bloque);
                       return (
                         <button
                           key={bloque.idBloque}
                           type="button"
-                          onClick={() => toggleBloque(bloque)}
-                          className={`flex items-center justify-between px-3 py-2.5 rounded-lg border transition-colors text-left ${seleccionado
-                            ? 'bg-primary-50 dark:bg-primary-900/30 border-primary-300 dark:border-primary-700'
-                            : 'bg-white dark:bg-default-100/20 border-default-200 hover:border-primary-200 hover:bg-primary-50/30'
-                            }`}
+                          disabled={conflicto}
+                          onClick={() => !conflicto && toggleBloque(bloque)}
+                          className={`flex items-center justify-between px-3 py-2.5 rounded-lg border transition-colors text-left ${
+                            conflicto
+                              ? 'bg-danger-50 dark:bg-danger-900/20 border-danger-200 cursor-not-allowed opacity-80'
+                              : seleccionado
+                              ? 'bg-primary-50 dark:bg-primary-900/30 border-primary-300 dark:border-primary-700'
+                              : 'bg-white dark:bg-default-100/20 border-default-200 hover:border-primary-200 hover:bg-primary-50/30'
+                          }`}
                         >
                           <div className="flex items-center gap-2">
-                            <Chip size="sm" color={seleccionado ? 'primary' : 'default'} variant="flat" className="font-bold min-w-[36px]">
+                            <Chip size="sm"
+                              color={conflicto ? 'danger' : seleccionado ? 'primary' : 'default'}
+                              variant="flat" className="font-bold min-w-[36px]">
                               B{bloque.numeroBloque}
                             </Chip>
-                            <span className="text-xs text-default-600 dark:text-default-400">
-                              {bloque.horaInicio.slice(0, 5)} – {bloque.horaFin.slice(0, 5)}
+                            <span className={`text-xs ${conflicto ? 'text-danger-600 dark:text-danger-400 font-medium' : 'text-default-600 dark:text-default-400'}`}>
+                              {conflicto ? 'Conflicto' : `${bloque.horaInicio.slice(0, 5)} – ${bloque.horaFin.slice(0, 5)}`}
                             </span>
                           </div>
-                          <Icon icon={seleccionado ? 'lucide:check-circle-2' : 'lucide:circle'} width={16}
-                            className={seleccionado ? 'text-primary' : 'text-default-300'} />
+                          <Icon icon={conflicto ? 'lucide:alert-circle' : seleccionado ? 'lucide:check-circle-2' : 'lucide:circle'} width={16}
+                            className={conflicto ? 'text-danger-400' : seleccionado ? 'text-primary' : 'text-default-300'} />
                         </button>
                       );
                     })}
@@ -1519,6 +1550,7 @@ const EditarAsignaturaModal: React.FC<EditarAsignaturaModalProps> = ({
             description="El gestor de asignatura será quien realice los pedidos para esta asignatura"
             isRequired
             isLoading={isLoadingGestores}
+            listboxProps={{ emptyContent: "Sin gestores disponibles. Contacte al administrador." }}
           >
             {gestores.map((gestor) => (
               <SelectItem key={gestor.idUsuario.toString()}>
