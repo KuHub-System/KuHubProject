@@ -9,10 +9,8 @@ import java.util.List;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class CourseForSolicitationDTO {
-    private Integer idAsignatura;
-    private String nombreAsignatura;
-
-    private List<SectionForSolicitationDTO> secciones;
-
+public class RecipeSolicitationDTO {
+    private Integer idReceta;
+    private String nombreReceta;
+    private List<RecipeDetailsSolicitationDTO> detalles;
 }

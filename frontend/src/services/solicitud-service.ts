@@ -16,6 +16,7 @@ import api from '../config/Axios';
 
 // ── Tipos para cursos/asignaturas disponibles para solicitud ──
 export interface IHorarioCurso {
+  idReservaSala: number;
   numeroBloque: number;
   horaInicio: string;   // "08:01:00"
   horaFin: string;      // "08:40:00"
@@ -32,6 +33,7 @@ export interface ISeccionCurso {
   cant_inscritos: number;
   capacidad_max: number;
   horarios: IHorarioCurso[];
+  solicitudes?: string[]; // fechas "YYYY-MM-DD" con solicitudes ya registradas
 }
 export interface IAsignaturaCurso {
   idAsignatura: number;
@@ -41,6 +43,158 @@ export interface IAsignaturaCurso {
 
 export const obtenerCursosParaSolicitudService = async (): Promise<IAsignaturaCurso[]> => {
   const response = await api.get<IAsignaturaCurso[]>('/solicitud/curses-by-solicitation');
+  return response.data;
+};
+
+// ── Recetas con detalles ──────────────────────────────────────────────────────
+export interface IDetalleReceta {
+  idDetalleReceta: number;
+  idProducto: number;
+  idUnidad: number;
+  nombreProducto: string;
+  cantProducto: number;
+  abreviatura: string;
+  esFraccionario: boolean;
+  activoProducto: boolean;
+}
+export interface IReceta {
+  idReceta: number;
+  nombreReceta: string;
+  detalles: IDetalleReceta[];
+}
+
+export const obtenerRecetasSolicitudService = async (): Promise<IReceta[]> => {
+  const response = await api.get<IReceta[]>('/solicitud/recipes-with-details-by-solicitation');
+  return response.data;
+};
+
+// ── Productos activos para selección ─────────────────────────────────────────
+export interface IProductoOpcion {
+  idProducto: number;
+  idUnidad: number;
+  nombreProducto: string;
+  nombreUnidad: string;
+  abreviatura: string;
+  esFraccionario: boolean;
+}
+
+export const obtenerProductosOpcionService = async (): Promise<IProductoOpcion[]> => {
+  const response = await api.get<IProductoOpcion[]>('/producto/find-all-product-active-for-option');
+  return response.data;
+};
+
+// ── DTOs para solicitud masiva ────────────────────────────────────────────────
+export interface IScheduleSolicitationDTO {
+  idReservaSala: number;
+  fechaSolicitadaCalculada: string; // "YYYY-MM-DD"
+}
+export interface ISectionCreateSolicitationDTO {
+  idSeccion: number;
+  idUsuario: number;
+  cantInscritos: number;
+  horarios: IScheduleSolicitationDTO[];
+}
+export interface IModifiedDetailSolicitationDTO {
+  idDetalleReceta: number;
+  cantProducto: number;
+}
+export interface INewProductSolicitationDTO {
+  idProducto: number;
+  cantProducto: number;
+}
+export interface IDeltasSolicitationDTO {
+  eliminados: number[];
+  modificados: IModifiedDetailSolicitationDTO[];
+  nuevos: INewProductSolicitationDTO[];
+}
+export interface IMassiveSolicitationDTO {
+  idAsignatura: number;
+  idSemana: number;
+  idReceta?: number;
+  observacion?: string;
+  secciones: ISectionCreateSolicitationDTO[];
+  deltas?: IDeltasSolicitationDTO;
+}
+export interface IResultsMassSolicitation {
+  totalSolicitudes: number;
+  totalDetalles: number;
+}
+
+export const generarSolicitudesMasivasService = async (
+  payload: IMassiveSolicitationDTO[]
+): Promise<IResultsMassSolicitation> => {
+  const response = await api.post<IResultsMassSolicitation>('/solicitud/generate-mass-solicitions', payload);
+  return response.data;
+};
+
+// ── Gestión de solicitudes por semana (admin) ─────────────────────────────────
+
+export interface IDateRangeDTO {
+  fechaInicio: string; // "YYYY-MM-DD"
+  fechaFin: string;    // "YYYY-MM-DD"
+}
+
+export interface IHorarioItemResponse {
+  numeroBloque: number;
+  horaInicio: string;  // "HH:mm:ss"
+  horaFin: string;     // "HH:mm:ss"
+  nombreSala: string;
+}
+
+export interface IProductoSolicitudResponse {
+  nombreProducto: string;
+  cantidad: number;
+  unidad: string;
+}
+
+export interface ISolicitudPorSemanaResponse {
+  idSolicitud: number;
+  idReservaSala: number;
+  idReceta: number;
+  nombreReceta: string;
+  fechaSolicitada: string;    // "YYYY-MM-DD"
+  estadoSolicitud: string;    // "PENDIENTE" | "ACEPTADA" | "RECHAZADA" | "PROCESADA"
+  motivoRechazo?: string;
+  observaciones?: string;
+  productos: IProductoSolicitudResponse[];
+  asignaturaDetalle: {
+    id_asignatura: number;
+    nombre_asignatura: string;
+    seccion: {
+      id_seccion: number;
+      nombre_seccion: string;
+      id_usuario: number;
+      nombre_docente: string;
+      cant_inscritos: number;
+      capacidad_max: number;
+      horarios: IHorarioItemResponse[];
+    };
+  };
+}
+
+export const obtenerSolicitudesPorSemanaService = async (
+  dto: IDateRangeDTO
+): Promise<ISolicitudPorSemanaResponse[]> => {
+  const response = await api.post<ISolicitudPorSemanaResponse[]>(
+    '/solicitud/find-solicitations-per-week',
+    dto
+  );
+  return response.data;
+};
+
+export interface ISolicitationStatusItemDTO {
+  idSolicitud: number;
+  estado: string; // "PENDIENTE" | "ACEPTADA" | "RECHAZADA"
+}
+
+export interface IChangeMassiveStatusDTO {
+  estadosSolicitudes: ISolicitationStatusItemDTO[];
+}
+
+export const cambiarEstadoMasivoService = async (
+  payload: IChangeMassiveStatusDTO
+): Promise<boolean> => {
+  const response = await api.patch<boolean>('/solicitud/change-massive-status', payload);
   return response.data;
 };
 
@@ -103,7 +257,7 @@ export const crearSolicitudService = (data: ISolicitudCreacion): Promise<ISolici
           recetaNombre: data.recetaNombre,
           items: data.items.map(item => ({
             ...item,
-            id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+            id: `${Date.now()}-${Math.random().toString(36).substring(2, 11)}`
           })),
           observaciones: data.observaciones,
           esCustom: data.esCustom,

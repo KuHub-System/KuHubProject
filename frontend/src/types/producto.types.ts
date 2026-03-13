@@ -160,13 +160,14 @@ export interface IValidateStockConflictResponse {
 }
 
 /**
- * DTO para la selección de productos en recetas.
- * GET /v1/producto/find-all-product-active-for-recipe
+ * DTO para la selección de productos en recetas/solicitudes.
+ * GET /v1/producto/find-all-product-active-for-option
  */
 export interface IProductoRecetaSelection {
   idProducto: number;
   nombreProducto: string;
   idUnidad: number;
   nombreUnidad: string;
+  abreviatura: string;
   esFraccionario: boolean;
 }

@@ -35,7 +35,7 @@ export const obtenerSemanasPorPeriodoService = async (anio: number, semestre: nu
   if (semanasPorPeriodoCache.has(key)) return semanasPorPeriodoCache.get(key)!;
   try {
     const response = await api.post<ISemana[]>('/semanas/find-by-weekly-for-solicitation', { anio, semestre });
-    semanasPorPeriodoCache.set(key, response.data);
+    if (response.data.length > 0) semanasPorPeriodoCache.set(key, response.data);
     return response.data;
   } catch (error: any) {
     throw new Error(error.response?.data?.message || 'Error al obtener las semanas del período');

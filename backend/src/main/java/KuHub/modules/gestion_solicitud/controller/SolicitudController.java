@@ -3,7 +3,9 @@ package KuHub.modules.gestion_solicitud.controller;
 import KuHub.modules.gestion_solicitud.dtos.*;
 import KuHub.modules.gestion_solicitud.dtos.proyeccion.ManagementSolicitationView;
 import KuHub.modules.gestion_solicitud.dtos.proyeccion.SectionAvailabilityView;
-import KuHub.modules.gestion_solicitud.dtos.request.CourseForSolicitationDTO;
+import KuHub.modules.gestion_solicitud.dtos.request.*;
+import KuHub.modules.gestion_solicitud.dtos.respose.ResultsMassSolicitationView;
+import KuHub.modules.gestion_solicitud.dtos.respose.SolicitationManagementDTO;
 import KuHub.modules.gestion_solicitud.service.SolicitudService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,13 +23,60 @@ public class SolicitudController {
     @Autowired
     private SolicitudService solicitudService;
 
-    /**Actualiza inventario con producto, creando movimiento segun tipo, una vez validado
+    /**Carga todas las asignaturar con todas las secciones,con al menos una seccion activa con horarios reservados a una sala
      * ✅ En uso: Endpoint consumido por el frontend.*/
     @GetMapping("/curses-by-solicitation")
     public ResponseEntity<List<CourseForSolicitationDTO>> findCourseWithSectionsAndBlocksActive(){
         return ResponseEntity
                 .status(200)
                 .body(solicitudService.findCourseWithSectionsAndBlocksRaw());
+    }
+
+    /**
+     * ✅ En uso: Endpoint consumido por el frontend.*/
+    @GetMapping("/recipes-with-details-by-solicitation")
+    public ResponseEntity<List<RecipeSolicitationDTO>> findActiveRecipesWithDetails(){
+        return ResponseEntity
+                .status(200)
+                .body(solicitudService.findActiveRecipesWithDetailsRaw());
+    }
+
+    /**
+     * Obtiene el listado completo de solicitudes con su jerarquía anidada
+     * (Asignatura -> Sección -> Horarios) filtrando por un rango de fechas.
+     * * DETALLES!!
+     * ✅ En uso: Endpoint consumido por el frontend para cargar la vista semanal de solicitudes.
+     */
+    @PostMapping("/find-solicitations-per-week")
+    public ResponseEntity<List<SolicitationManagementDTO>> findSolicitationsPerWeek(
+            @Valid @RequestBody DateRangeDTO request) {
+        return ResponseEntity
+                .status(200)
+                .body(solicitudService.findSolicitationsPerWeekRaw(request));
+    }
+
+    /** ✅ En uso: Endpoint consumido por el frontend para cargar la vista semanal de solicitudes.
+            */
+    @PostMapping("/generate-mass-solicitions")
+    public ResponseEntity<ResultsMassSolicitationView> generarSolicitudesMasivas(
+            @Validated @RequestBody List<MassiveSolicitationDTO> payloadList) {
+
+        if (payloadList == null || payloadList.isEmpty()) {
+            return ResponseEntity.badRequest().build();
+        }
+        return ResponseEntity
+                .status(201)
+                .body(solicitudService.saveMass(payloadList));
+    }
+
+    /** ✅ En uso: Endpoint consumido por el frontend para cargar la vista semanal de solicitudes.
+     */
+    @PatchMapping("/change-massive-status")
+    public ResponseEntity<Boolean> changeMassiveStatus(
+            @Validated @RequestBody ChangeSolicitationStatusDTO request){
+        return ResponseEntity
+                .status(200)
+                .body(solicitudService.changeMassiveStatus(request));
     }
 
     /**

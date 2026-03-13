@@ -9,6 +9,9 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class BloquesForSolicitationDTO {
+    @JsonProperty("idReservaSala")
+    private Integer idReservaSala;
+
     @JsonProperty("numeroBloque")
     private Integer numeroBloque;
 

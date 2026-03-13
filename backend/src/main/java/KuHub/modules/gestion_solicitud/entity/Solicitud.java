@@ -1,6 +1,8 @@
 package KuHub.modules.gestion_solicitud.entity;
 
+import KuHub.modules.gestion_academica.entity.ReservaSala;
 import KuHub.modules.gestion_academica.entity.Seccion;
+import KuHub.modules.gestion_receta.entity.Receta;
 import KuHub.modules.gestion_usuario.entity.Usuario;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -39,6 +41,14 @@ public class Solicitud {
     @JoinColumn(name = "id_seccion", nullable = false)
     private Seccion seccion;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_receta", nullable = true) // Es nullable = true por defecto, pero es buena práctica declararlo
+    private Receta receta;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_reserva_sala", nullable = true)
+    private ReservaSala reservaSala;
+
     @Column(name = "fecha_registro", insertable = false, updatable = false)
     private LocalDateTime fechaRegistro;
 
@@ -65,6 +75,20 @@ public class Solicitud {
         if (id != null) {
             this.seccion = new Seccion();
             this.seccion.setIdSeccion(id);
+        }
+    }
+
+    public void setIdReceta(Integer id) {
+        if (id != null) {
+            this.receta = new Receta();
+            this.receta.setIdReceta(id);
+        }
+    }
+
+    public void setIdReservaSala(Integer id) {
+        if (id != null) {
+            this.reservaSala = new ReservaSala();
+            this.reservaSala.setIdReservaSala(id);
         }
     }
 

@@ -8,7 +8,9 @@ import React from 'react';
 import {
   Card, CardBody, CardHeader, CardFooter,
   Button, Select, SelectItem,
+  Autocomplete, AutocompleteItem,
   Chip, Checkbox, Textarea, Input, Divider, Spinner,
+  Modal, ModalContent, ModalHeader, ModalBody, ModalFooter,
 } from '@heroui/react';
 import { Icon } from '@iconify/react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -24,15 +26,23 @@ import {
 } from '../services/semana-service';
 import {
   IAsignaturaCurso, ISeccionCurso, IHorarioCurso,
+  IReceta, IProductoOpcion,
+  IResultsMassSolicitation,
   obtenerCursosParaSolicitudService,
+  obtenerRecetasSolicitudService,
+  obtenerProductosOpcionService,
+  generarSolicitudesMasivasService,
 } from '../services/solicitud-service';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TIPOS LOCALES
 // ─────────────────────────────────────────────────────────────────────────────
 
-interface ItemSolicitud { id: string; nombre: string; cantidadBase: number; cantidad: number; unidad: string; esExtra: boolean; }
-interface MockReceta { id: string; nombre: string; porciones: number; items: ItemSolicitud[]; }
+interface ItemSolicitud {
+  id: string; nombre: string; cantidadBase: number; cantidad: number; unidad: string;
+  esExtra: boolean; esFraccionario: boolean; activoProducto: boolean;
+  idProducto?: number; // set for extra (nuevos) items
+}
 
 interface AsigConfig {
   /** Claves de bloques seleccionados: "${secId}|${diaSemana}|${idSala}" */
@@ -41,7 +51,8 @@ interface AsigConfig {
   recetaId: string;
   items: ItemSolicitud[];
   observaciones: string;
-  extraNombre: string; extraCantidad: string; extraUnidad: string;
+  extraProductoId: string;
+  extraCantidad: string;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -92,39 +103,6 @@ const esFeriadoChile = (d: Date): boolean => {
   return (d.getTime() === vs.getTime() || d.getTime() === ss.getTime());
 };
 
-const MOCK_RECETAS: MockReceta[] = [
-  {
-    id: 'r1', nombre: 'Croissant Mantequilla Clásico', porciones: 20,
-    items: [
-      { id: 'i1', nombre: 'Harina 000',          cantidadBase: 500, cantidad: 500, unidad: 'g',  esExtra: false },
-      { id: 'i2', nombre: 'Mantequilla sin sal',  cantidadBase: 250, cantidad: 250, unidad: 'g',  esExtra: false },
-      { id: 'i3', nombre: 'Leche entera',         cantidadBase: 200, cantidad: 200, unidad: 'ml', esExtra: false },
-      { id: 'i4', nombre: 'Levadura fresca',      cantidadBase: 20,  cantidad: 20,  unidad: 'g',  esExtra: false },
-      { id: 'i5', nombre: 'Azúcar blanca',        cantidadBase: 50,  cantidad: 50,  unidad: 'g',  esExtra: false },
-      { id: 'i6', nombre: 'Sal fina',             cantidadBase: 10,  cantidad: 10,  unidad: 'g',  esExtra: false },
-    ],
-  },
-  {
-    id: 'r2', nombre: 'Muffin Arándanos Básico', porciones: 20,
-    items: [
-      { id: 'i1', nombre: 'Harina leudante',   cantidadBase: 400, cantidad: 400, unidad: 'g',  esExtra: false },
-      { id: 'i2', nombre: 'Arándanos frescos', cantidadBase: 200, cantidad: 200, unidad: 'g',  esExtra: false },
-      { id: 'i3', nombre: 'Huevo',             cantidadBase: 3,   cantidad: 3,   unidad: 'un', esExtra: false },
-      { id: 'i4', nombre: 'Azúcar blanca',     cantidadBase: 150, cantidad: 150, unidad: 'g',  esExtra: false },
-      { id: 'i5', nombre: 'Aceite vegetal',    cantidadBase: 100, cantidad: 100, unidad: 'ml', esExtra: false },
-    ],
-  },
-  {
-    id: 'r3', nombre: 'Tarta de Manzana Tradicional', porciones: 20,
-    items: [
-      { id: 'i1', nombre: 'Harina 000',    cantidadBase: 600, cantidad: 600, unidad: 'g', esExtra: false },
-      { id: 'i2', nombre: 'Manzana verde', cantidadBase: 800, cantidad: 800, unidad: 'g', esExtra: false },
-      { id: 'i3', nombre: 'Mantequilla',   cantidadBase: 200, cantidad: 200, unidad: 'g', esExtra: false },
-      { id: 'i4', nombre: 'Canela molida', cantidadBase: 5,   cantidad: 5,   unidad: 'g', esExtra: false },
-      { id: 'i5', nombre: 'Azúcar morena', cantidadBase: 200, cantidad: 200, unidad: 'g', esExtra: false },
-    ],
-  },
-];
 
 /** Agrupa los horarios de una sección por (diaSemana + sala): calcula rango inicio→fin */
 interface HorarioAgrupado {
@@ -161,6 +139,13 @@ const calcFecha = (fechaInicio: string, dia: string): Date => {
   return f;
 };
 
+const toISODate = (d: Date): string => {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${dd}`;
+};
+
 const fmtCorto  = (d: Date) => d.toLocaleDateString('es-CL', { day: 'numeric', month: 'short' });
 const fmtLargo  = (d: Date) => d.toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long' });
 
@@ -180,7 +165,7 @@ const seccionesSeleccionadas = (secciones: ISeccionCurso[], bloquesIds: Set<stri
 const makeEmptyConfig = (defaultSemanaId: string): AsigConfig => ({
   bloquesIds: new Set(), semanaId: defaultSemanaId,
   recetaId: '', items: [], observaciones: '',
-  extraNombre: '', extraCantidad: '', extraUnidad: '',
+  extraProductoId: '', extraCantidad: '',
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -194,12 +179,14 @@ interface AsigCardProps {
   semanas: ISemana[];
   defaultSemanaId: string;
   isLoadingSemanas: boolean;
+  recetas: IReceta[];
+  productos: IProductoOpcion[];
   onToggleExpand: () => void;
   onUpdate: (fn: (prev: AsigConfig) => AsigConfig) => void;
 }
 
 const AsigCard: React.FC<AsigCardProps> = ({
-  asig, config, isExpanded, semanas, defaultSemanaId, isLoadingSemanas, onToggleExpand, onUpdate,
+  asig, config, isExpanded, semanas, defaultSemanaId, isLoadingSemanas, recetas, productos, onToggleExpand, onUpdate,
 }) => {
   const semana = semanas.find(s => String(s.idSemana) === config.semanaId) ?? null;
 
@@ -228,11 +215,16 @@ const AsigCard: React.FC<AsigCardProps> = ({
     return result.sort((a, b) => a.fecha.getTime() - b.fecha.getTime());
   }, [semana, config.bloquesIds, selCount, asig.secciones]);
 
-  const isValid   = selCount > 0 && config.recetaId !== '';
-  const isPartial = selCount > 0 && config.recetaId === '';
+  const blkCount  = config.bloquesIds.size;
+  const isValid   = selCount > 0 && config.recetaId !== '' && config.semanaId !== '';
+  const isPartial = selCount > 0 && (!config.recetaId || !config.semanaId);
 
   const reapplyMultiplier = (items: ItemSolicitud[], newMult: number) =>
-    items.map(item => item.esExtra ? item : { ...item, cantidad: parseFloat((item.cantidadBase * newMult).toFixed(2)) });
+    items.map((item: ItemSolicitud) => {
+      if (item.esExtra) return item;
+      const raw = item.cantidadBase * newMult;
+      return { ...item, cantidad: item.esFraccionario ? parseFloat(raw.toFixed(3)) : Math.round(raw) };
+    });
 
   const recomputeIns = (next: Set<string>) =>
     seccionesSeleccionadas(asig.secciones, next).reduce((s, sec) => s + sec.cant_inscritos, 0);
@@ -266,34 +258,68 @@ const AsigCard: React.FC<AsigCardProps> = ({
   });
 
   const handleSelectReceta = (recetaId: string) => {
-    const receta = MOCK_RECETAS.find(r => r.id === recetaId);
+    const receta = recetas.find(r => String(r.idReceta) === recetaId);
     if (!receta) return;
     onUpdate(prev => ({
       ...prev, recetaId,
-      items: receta.items.map(item => ({ ...item, cantidad: parseFloat((item.cantidadBase * multiplicador).toFixed(2)) })),
+      items: receta.detalles.map(d => ({
+        id: String(d.idDetalleReceta),
+        nombre: d.nombreProducto,
+        cantidadBase: d.cantProducto,
+        cantidad: d.esFraccionario
+          ? parseFloat((d.cantProducto * multiplicador).toFixed(3))
+          : Math.round(d.cantProducto * multiplicador),
+        unidad: d.abreviatura,
+        esExtra: false,
+        esFraccionario: d.esFraccionario,
+        activoProducto: d.activoProducto,
+      })),
     }));
   };
 
-  const actualizarCantidad = (itemId: string, val: string) => {
-    const n = parseFloat(val);
-    if (!isNaN(n) && n >= 0)
-      onUpdate(prev => ({ ...prev, items: prev.items.map(i => i.id === itemId ? { ...i, cantidad: n } : i) }));
+  const actualizarCantidad = (itemId: string, val: string, esFraccionario: boolean) => {
+    let n = parseFloat(val);
+    if (isNaN(n) || n < 0) return;
+    n = esFraccionario ? parseFloat(n.toFixed(3)) : Math.round(n);
+    onUpdate(prev => ({ ...prev, items: prev.items.map(i => i.id === itemId ? { ...i, cantidad: n } : i) }));
   };
+
+  const extraProducto = productos.find(p => String(p.idProducto) === config.extraProductoId) ?? null;
 
   const agregarExtra = () => {
-    if (!config.extraNombre.trim() || !config.extraCantidad || parseFloat(config.extraCantidad) <= 0) return;
-    onUpdate(prev => ({
-      ...prev,
-      items: [...prev.items, {
-        id: `extra-${Date.now()}`,
-        nombre: prev.extraNombre.trim(),
-        cantidadBase: parseFloat(prev.extraCantidad),
-        cantidad: parseFloat(prev.extraCantidad),
-        unidad: prev.extraUnidad || 'un',
-        esExtra: true,
-      }],
-      extraNombre: '', extraCantidad: '', extraUnidad: '',
-    }));
+    if (!extraProducto || !config.extraCantidad || parseFloat(config.extraCantidad) <= 0) return;
+    const qty = extraProducto.esFraccionario
+      ? parseFloat(parseFloat(config.extraCantidad).toFixed(3))
+      : Math.round(parseFloat(config.extraCantidad));
+    onUpdate(prev => {
+      const existing = prev.items.findIndex(i => i.esExtra && i.idProducto === extraProducto.idProducto);
+      if (existing !== -1) {
+        // merge: sum quantities
+        const updated = prev.items.map((i, idx) => {
+          if (idx !== existing) return i;
+          const newQty = i.esFraccionario
+            ? parseFloat((i.cantidadBase + qty).toFixed(3))
+            : Math.round(i.cantidadBase + qty);
+          return { ...i, cantidadBase: newQty, cantidad: newQty };
+        });
+        return { ...prev, items: updated, extraProductoId: '', extraCantidad: '' };
+      }
+      return {
+        ...prev,
+        items: [...prev.items, {
+          id: `extra-${Date.now()}`,
+          nombre: extraProducto.nombreProducto,
+          cantidadBase: qty,
+          cantidad: qty,
+          unidad: extraProducto.abreviatura,
+          esExtra: true,
+          esFraccionario: extraProducto.esFraccionario,
+          activoProducto: true,
+          idProducto: extraProducto.idProducto,
+        }],
+        extraProductoId: '', extraCantidad: '',
+      };
+    });
   };
 
   const statusDot = isValid
@@ -444,15 +470,25 @@ const AsigCard: React.FC<AsigCardProps> = ({
                     <div className="rounded-xl border border-success-200 bg-success-50/50 dark:bg-success-900/10 p-3">
                       <p className="text-[11px] font-bold text-success-700 uppercase tracking-wider mb-2">Clases de esta semana</p>
                       <div className="space-y-1.5">
-                        {clases.map((c, i) => (
-                          <div key={i} className="flex items-center gap-2 text-xs">
-                            <div className="w-14 shrink-0 text-center bg-success text-white rounded-full px-2 py-0.5 font-bold text-[10px]">
-                              {fmtCorto(c.fecha)}
+                        {clases.map((c, i) => {
+                          const fechaISO    = toISODate(c.fecha);
+                          const yaRegistrada = c.seccion.solicitudes?.includes(fechaISO) ?? false;
+                          return (
+                            <div key={i} className="flex items-center gap-2 text-xs">
+                              <div className="w-14 shrink-0 text-center bg-success text-white rounded-full px-2 py-0.5 font-bold text-[10px]">
+                                {fmtCorto(c.fecha)}
+                              </div>
+                              <span className="font-semibold">§{c.seccion.nombre_seccion}</span>
+                              <span className="text-default-400">{c.h.horaInicio}–{c.h.horaFin} · Sala {c.h.nombreSala}</span>
+                              {yaRegistrada && (
+                                <span className="flex items-center gap-1 ml-auto shrink-0 text-default-600 bg-default-100 border border-default-200 rounded-full px-2 py-0.5 font-medium text-[10px]">
+                                  <Icon icon="lucide:info" width={10} />
+                                  Ya existe registro(s)
+                                </span>
+                              )}
                             </div>
-                            <span className="font-semibold">§{c.seccion.nombre_seccion}</span>
-                            <span className="text-default-400">{c.h.horaInicio}–{c.h.horaFin} · Sala {c.h.nombreSala}</span>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     </div>
                   )}
@@ -478,12 +514,12 @@ const AsigCard: React.FC<AsigCardProps> = ({
                   variant="bordered" size="sm" placeholder="Seleccione una receta..."
                   classNames={{ trigger: 'bg-default-50', popoverContent: 'dark:bg-content1' }}
                 >
-                  {MOCK_RECETAS.map(r => (
-                    <SelectItem key={r.id} textValue={r.nombre}>
+                  {recetas.map(r => (
+                    <SelectItem key={String(r.idReceta)} textValue={r.nombreReceta}>
                       <div className="flex items-center gap-2">
                         <Icon icon="lucide:book-open" width={13} className="text-default-400" />
-                        <span>{r.nombre}</span>
-                        <span className="text-default-400 text-xs ml-auto">{r.porciones} porc.</span>
+                        <span>{r.nombreReceta}</span>
+                        <span className="text-default-400 text-xs ml-auto">{r.detalles.length} items</span>
                       </div>
                     </SelectItem>
                   ))}
@@ -496,15 +532,24 @@ const AsigCard: React.FC<AsigCardProps> = ({
                     </div>
                     {config.items.map(item => (
                       <div key={item.id}
-                        className={`grid grid-cols-[1fr_90px_60px_30px] gap-1.5 items-center px-2 py-1.5 rounded-lg ${item.esExtra ? 'bg-warning-50 dark:bg-warning-900/10' : 'bg-default-50 dark:bg-default-100/10'}`}
+                        className={`grid grid-cols-[1fr_90px_60px_30px] gap-1.5 items-center px-2 py-1.5 rounded-lg ${
+                          !item.activoProducto ? 'bg-default-100/50 opacity-60' :
+                          item.esExtra ? 'bg-warning-50 dark:bg-warning-900/10' : 'bg-default-50 dark:bg-default-100/10'
+                        }`}
                       >
                         <div className="flex items-center gap-1.5 min-w-0">
                           {item.esExtra && <Chip size="sm" color="warning" variant="flat" className="text-[9px] h-4 px-1 shrink-0">+</Chip>}
-                          <span className="text-xs font-medium truncate">{item.nombre}</span>
+                          <span className={`text-xs font-medium truncate ${!item.activoProducto ? 'line-through text-default-400' : ''}`}>
+                            {item.nombre}
+                          </span>
+                          {!item.activoProducto && (
+                            <span className="text-[9px] text-danger font-medium shrink-0 ml-1">no disponible</span>
+                          )}
                         </div>
                         <Input type="number" size="sm" value={String(item.cantidad)}
-                          onValueChange={v => actualizarCantidad(item.id, v)}
-                          min="0" step="0.1" variant="bordered"
+                          onValueChange={v => actualizarCantidad(item.id, v, item.esFraccionario)}
+                          isDisabled={!item.activoProducto}
+                          min="0" step={item.esFraccionario ? '0.001' : '1'} variant="bordered"
                           classNames={{ inputWrapper: 'h-7 bg-white dark:bg-content1 min-h-7', input: 'text-center text-xs font-bold' }} />
                         <span className="text-xs text-default-500 text-center">{item.unidad}</span>
                         <Button isIconOnly variant="light" color="danger" size="sm" className="h-7 w-7 min-w-7"
@@ -514,18 +559,49 @@ const AsigCard: React.FC<AsigCardProps> = ({
                       </div>
                     ))}
                     {/* Agregar extra */}
-                    <div className="mt-2 pt-2 border-t border-dashed border-default-200">
-                      <div className="grid grid-cols-[1fr_80px_60px_auto] gap-1.5 items-end">
-                        <Input size="sm" placeholder="Producto extra..." value={config.extraNombre}
-                          onValueChange={v => onUpdate(p => ({ ...p, extraNombre: v }))}
-                          variant="bordered" classNames={{ inputWrapper: 'h-7 bg-white dark:bg-content1 min-h-7', input: 'text-xs' }} />
-                        <Input size="sm" type="number" placeholder="Cant." value={config.extraCantidad}
+                    <div className="mt-2 pt-2 border-t border-dashed border-default-200 space-y-2">
+                      {/* Info */}
+                      <div className="flex items-start gap-1.5 px-2 py-1.5 rounded-lg bg-warning-50 dark:bg-warning-900/10 border border-warning-200 text-[10px] text-warning-700">
+                        <Icon icon="lucide:info" width={11} className="shrink-0 mt-0.5" />
+                        <span>La cantidad ingresada corresponde a <strong>20 porciones base</strong>. El sistema calculará automáticamente la cantidad proporcional según los alumnos inscritos por sección.</span>
+                      </div>
+                      <div className="grid grid-cols-[1fr_90px_50px_auto] gap-1.5 items-end">
+                        <Autocomplete size="sm" placeholder="Buscar producto..."
+                          selectedKey={config.extraProductoId || null}
+                          onSelectionChange={key => {
+                            const id = key ? String(key) : '';
+                            onUpdate(p => ({ ...p, extraProductoId: id, extraCantidad: '' }));
+                          }}
+                          variant="bordered"
+                          classNames={{ 
+                            base: 'min-w-[150px] w-full',
+                            popoverContent: 'dark:bg-content1'
+                          }}
+                          inputProps={{
+                            classNames: {
+                              inputWrapper: 'h-7 min-h-7 bg-white dark:bg-content1',
+                              input: 'text-xs border-none shadow-none focus:outline-none focus:ring-0',
+                            }
+                          }}
+                        >
+                          {productos.map(p => (
+                            <AutocompleteItem key={String(p.idProducto)} textValue={p.nombreProducto}>
+                              <span className="text-xs">{p.nombreProducto}</span>
+                              <span className="text-[10px] text-default-400 ml-1">({p.abreviatura})</span>
+                            </AutocompleteItem>
+                          ))}
+                        </Autocomplete>
+                        <Input size="sm" type="number" placeholder="Cant."
+                          value={config.extraCantidad}
                           onValueChange={v => onUpdate(p => ({ ...p, extraCantidad: v }))}
-                          min="0" step="0.1" variant="bordered" classNames={{ inputWrapper: 'h-7 bg-white dark:bg-content1 min-h-7', input: 'text-xs text-center' }} />
-                        <Input size="sm" placeholder="g/ml/un" value={config.extraUnidad}
-                          onValueChange={v => onUpdate(p => ({ ...p, extraUnidad: v }))}
-                          variant="bordered" classNames={{ inputWrapper: 'h-7 bg-white dark:bg-content1 min-h-7', input: 'text-xs text-center' }} />
+                          isDisabled={!extraProducto}
+                          min="0" step={extraProducto?.esFraccionario ? '0.001' : '1'} variant="bordered"
+                          classNames={{ inputWrapper: 'h-7 min-h-7 bg-white dark:bg-content1', input: 'text-xs text-center font-bold' }} />
+                        <span className="text-xs text-default-500 text-center pb-1">
+                          {extraProducto?.abreviatura ?? '—'}
+                        </span>
                         <Button size="sm" color="secondary" variant="flat" onPress={agregarExtra}
+                          isDisabled={!extraProducto || !config.extraCantidad || parseFloat(config.extraCantidad) <= 0}
                           className="h-7 px-2 text-xs font-medium" startContent={<Icon icon="lucide:plus" width={12} />}>
                           Agregar
                         </Button>
@@ -561,7 +637,7 @@ const AsigCard: React.FC<AsigCardProps> = ({
                 }`}>
                   <Icon icon={isValid ? 'lucide:check-circle-2' : 'lucide:alert-circle'} width={14} />
                   {isValid
-                    ? `Generará ${selCount} solicitud${selCount > 1 ? 'es' : ''} · ${selCount} sección${selCount > 1 ? 'es' : ''} · ${totalInscritos} alumnos`
+                    ? `Generará ${blkCount} solicitud${blkCount > 1 ? 'es' : ''} · ${selCount} sección${selCount > 1 ? 'es' : ''} · ${totalInscritos} alumnos`
                     : 'Seleccione una receta para completar la configuración'
                   }
                 </div>
@@ -593,10 +669,15 @@ const SolicitudPage: React.FC = () => {
   const [asignaturas,      setAsignaturas]       = React.useState<IAsignaturaCurso[]>([]);
   const [isLoadingAsig,    setIsLoadingAsig]      = React.useState(true);
 
+  // ── recetas + productos state ──
+  const [recetas,          setRecetas]           = React.useState<IReceta[]>([]);
+  const [productos,        setProductos]         = React.useState<IProductoOpcion[]>([]);
+
   // ── form state ──
   const [configs,          setConfigs]           = React.useState<Map<string, AsigConfig>>(new Map());
   const [expanded,         setExpanded]          = React.useState<Set<string>>(new Set()); // todos cerrados
   const [isSubmitting,     setIsSubmitting]      = React.useState(false);
+  const [sendResult,       setSendResult]        = React.useState<IResultsMassSolicitation | null>(null);
 
   // ── helpers ──
   const getConfig = React.useCallback(
@@ -610,15 +691,21 @@ const SolicitudPage: React.FC = () => {
   const toggleExpand = (id: string) =>
     setExpanded(prev => { const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s; });
 
-  // ── cargar asignaturas ──
+  // ── cargar asignaturas y recetas (una sola vez) ──
   React.useEffect(() => {
     const load = async () => {
       setIsLoadingAsig(true);
       try {
-        const data = await obtenerCursosParaSolicitudService();
-        setAsignaturas(data);
+        const [asigData, recetasData, productosData] = await Promise.all([
+          obtenerCursosParaSolicitudService(),
+          obtenerRecetasSolicitudService(),
+          obtenerProductosOpcionService(),
+        ]);
+        setAsignaturas(asigData);
+        setRecetas(recetasData);
+        setProductos(productosData);
       } catch {
-        toast.error('Error al cargar las asignaturas');
+        toast.error('Error al cargar los datos de la solicitud');
       } finally {
         setIsLoadingAsig(false);
       }
@@ -702,14 +789,21 @@ const SolicitudPage: React.FC = () => {
   const resumen = React.useMemo(() => {
     let totalSolicitudes = 0;
     let totalAlumnos = 0;
-    const asigConfiguradas: { asig: IAsignaturaCurso; cfg: AsigConfig; secSel: ISeccionCurso[] }[] = [];
+    const asigConfiguradas: { asig: IAsignaturaCurso; cfg: AsigConfig; secSel: ISeccionCurso[]; blkCount: number }[] = [];
     asignaturas.forEach(asig => {
-      const cfg     = getConfig(String(asig.idAsignatura));
-      const secSel  = seccionesSeleccionadas(asig.secciones, cfg.bloquesIds);
-      if (secSel.length > 0 && cfg.recetaId) {
-        totalSolicitudes += secSel.length;
-        totalAlumnos     += secSel.reduce((sum, s) => sum + s.cant_inscritos, 0);
-        asigConfiguradas.push({ asig, cfg, secSel });
+      const cfg      = getConfig(String(asig.idAsignatura));
+      const secSel   = seccionesSeleccionadas(asig.secciones, cfg.bloquesIds);
+      const blkCount = cfg.bloquesIds.size; // one solicitud per selected block (day×room)
+      if (secSel.length > 0 && cfg.recetaId && cfg.semanaId) {
+        totalSolicitudes += blkCount;
+        // sum students × number of blocks selected for each section
+        totalAlumnos += secSel.reduce((sum, sec) => {
+          const secBlks = agruparHorarios(sec.horarios).filter(h =>
+            cfg.bloquesIds.has(mkBlkKey(sec.id_seccion, h.diaSemana, h.idSala))
+          ).length;
+          return sum + sec.cant_inscritos * secBlks;
+        }, 0);
+        asigConfiguradas.push({ asig, cfg, secSel, blkCount });
       }
     });
     return { totalSolicitudes, totalAlumnos, asigConfiguradas };
@@ -722,10 +816,82 @@ const SolicitudPage: React.FC = () => {
   const enviar = async () => {
     if (!isFormValid) { toast.warning('Configure al menos una asignatura'); return; }
     setIsSubmitting(true);
-    await new Promise(r => setTimeout(r, 1200));
-    setIsSubmitting(false);
-    toast.success(`${resumen.totalSolicitudes} solicitud(es) creada(s) correctamente`);
-    limpiar();
+    try {
+      const payload = resumen.asigConfiguradas.map(({ asig, cfg, secSel }) => {
+        const semana = semanas.find(s => String(s.idSemana) === cfg.semanaId)!;
+        const receta = cfg.recetaId ? recetas.find((r: IReceta) => String(r.idReceta) === cfg.recetaId) : null;
+        const totalIns = secSel.reduce((sum, s) => sum + s.cant_inscritos, 0);
+        const mult = totalIns > 0 ? totalIns / 20 : 1;
+
+        // ── deltas ──────────────────────────────────────────────────────────
+        let deltas: { eliminados: number[]; modificados: { idDetalleReceta: number; cantProducto: number }[]; nuevos: { idProducto: number; cantProducto: number }[] } | undefined;
+        if (receta) {
+          const originalIds = new Set(receta.detalles.map(d => String(d.idDetalleReceta)));
+          const currentRecipeIds = new Set(cfg.items.filter(i => !i.esExtra).map(i => i.id));
+
+          const eliminados = receta.detalles
+            .filter(d => !currentRecipeIds.has(String(d.idDetalleReceta)))
+            .map(d => d.idDetalleReceta);
+
+          const modificados = cfg.items
+            .filter(i => !i.esExtra && originalIds.has(i.id))
+            .filter(i => {
+              const orig = receta.detalles.find(d => String(d.idDetalleReceta) === i.id);
+              return orig && Math.abs(i.cantidad / mult - i.cantidadBase) > 0.0001;
+            })
+            .map(i => ({
+              idDetalleReceta: parseInt(i.id),
+              cantProducto: parseFloat((i.cantidad / mult).toFixed(3)),
+            }));
+
+          const nuevos = cfg.items
+            .filter(i => i.esExtra && i.idProducto != null)
+            .map(i => ({
+              idProducto: i.idProducto!,
+              cantProducto: i.cantidadBase,
+            }));
+
+          if (eliminados.length > 0 || modificados.length > 0 || nuevos.length > 0) {
+            deltas = { eliminados, modificados, nuevos };
+          }
+        }
+
+        // ── secciones: one entry per selected block (day×room) ───────────────
+        const secciones = secSel.flatMap(sec => {
+          const grupos = agruparHorarios(sec.horarios);
+          return grupos
+            .filter(h => cfg.bloquesIds.has(mkBlkKey(sec.id_seccion, h.diaSemana, h.idSala)))
+            .map(group => ({
+              idSeccion: sec.id_seccion,
+              idUsuario: sec.id_usuario,
+              cantInscritos: sec.cant_inscritos,
+              horarios: sec.horarios
+                .filter(h => h.diaSemana === group.diaSemana && h.idSala === group.idSala)
+                .map(h => ({
+                  idReservaSala: h.idReservaSala,
+                  fechaSolicitadaCalculada: toISODate(calcFecha(semana.fechaInicio, h.diaSemana)),
+                })),
+            }));
+        });
+
+        return {
+          idAsignatura: asig.idAsignatura,
+          idSemana: parseInt(cfg.semanaId),
+          ...(cfg.recetaId ? { idReceta: parseInt(cfg.recetaId) } : {}),
+          ...(cfg.observaciones ? { observacion: cfg.observaciones } : {}),
+          secciones,
+          ...(deltas ? { deltas } : {}),
+        };
+      });
+
+      const result = await generarSolicitudesMasivasService(payload);
+      setSendResult(result);
+      limpiar();
+    } catch {
+      toast.error('Error al enviar las solicitudes. Verifique los datos e intente nuevamente.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -806,6 +972,8 @@ const SolicitudPage: React.FC = () => {
                 semanas={semanas}
                 defaultSemanaId={defaultSemanaId}
                 isLoadingSemanas={isLoadingSemanas}
+                recetas={recetas}
+                productos={productos}
                 onToggleExpand={() => toggleExpand(String(asig.idAsignatura))}
                 onUpdate={fn => updateConfig(String(asig.idAsignatura), fn)}
               />
@@ -837,14 +1005,14 @@ const SolicitudPage: React.FC = () => {
                         <p className="text-2xl font-bold text-primary">{resumen.totalSolicitudes}</p>
                       </div>
                       <div className="text-right">
-                        <p className="text-xs text-primary-600 font-medium">Alumnos cubiertos</p>
+                        <p className="text-xs text-primary-600 font-medium">Atenciones totales</p>
                         <p className="text-2xl font-bold text-primary">{resumen.totalAlumnos}</p>
                       </div>
                     </div>
                     <div className="space-y-3">
-                      {resumen.asigConfiguradas.map(({ asig, cfg, secSel }) => {
+                      {resumen.asigConfiguradas.map(({ asig, cfg, secSel, blkCount }) => {
                         const s   = semanas.find(s => String(s.idSemana) === cfg.semanaId);
-                        const r   = MOCK_RECETAS.find(r => r.id === cfg.recetaId);
+                        const r   = recetas.find((r: IReceta) => String(r.idReceta) === cfg.recetaId);
                         const ins = secSel.reduce((sum, sec) => sum + sec.cant_inscritos, 0);
                         return (
                           <div key={asig.idAsignatura} className="rounded-xl border border-default-200 p-3 space-y-1.5">
@@ -852,10 +1020,10 @@ const SolicitudPage: React.FC = () => {
                             <div className="space-y-0.5 text-xs text-default-500 pl-1">
                               <div className="flex items-center gap-1.5"><Icon icon="lucide:layers" width={11} />{secSel.length} sección(es) · {ins} alumnos</div>
                               <div className="flex items-center gap-1.5"><Icon icon="lucide:calendar" width={11} />{s?.nombreSemana ?? '—'}</div>
-                              <div className="flex items-center gap-1.5"><Icon icon="lucide:book-open" width={11} /><span className="truncate">{r?.nombre ?? '—'}</span></div>
+                              <div className="flex items-center gap-1.5"><Icon icon="lucide:book-open" width={11} /><span className="truncate">{r?.nombreReceta ?? '—'}</span></div>
                             </div>
                             <Chip size="sm" color="success" variant="flat" className="text-[10px] w-full justify-center">
-                              {secSel.length} solicitud{secSel.length > 1 ? 'es' : ''} a crear
+                              {blkCount} solicitud{blkCount > 1 ? 'es' : ''} a crear
                             </Chip>
                           </div>
                         );
@@ -885,6 +1053,33 @@ const SolicitudPage: React.FC = () => {
           </div>
         </div>
       </motion.div>
+
+      {/* ── Modal de resultado ── */}
+      <Modal isOpen={sendResult !== null} onClose={() => setSendResult(null)} size="sm">
+        <ModalContent>
+          <ModalHeader className="flex items-center gap-2 text-success">
+            <Icon icon="lucide:check-circle-2" width={20} />
+            Solicitudes creadas exitosamente
+          </ModalHeader>
+          <ModalBody>
+            <div className="flex gap-4 justify-center py-2">
+              <div className="flex flex-col items-center gap-1 px-5 py-3 rounded-xl bg-success-50 border border-success-200 min-w-[110px]">
+                <span className="text-3xl font-bold text-success">{sendResult?.totalSolicitudes}</span>
+                <span className="text-xs text-success-600 font-medium text-center">Solicitudes<br/>creadas</span>
+              </div>
+              <div className="flex flex-col items-center gap-1 px-5 py-3 rounded-xl bg-primary-50 border border-primary-200 min-w-[110px]">
+                <span className="text-3xl font-bold text-primary">{sendResult?.totalDetalles}</span>
+                <span className="text-xs text-primary-600 font-medium text-center">Detalles<br/>generados</span>
+              </div>
+            </div>
+          </ModalBody>
+          <ModalFooter>
+            <Button color="success" fullWidth onPress={() => setSendResult(null)}>
+              Aceptar
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
     </div>
   );
 };
