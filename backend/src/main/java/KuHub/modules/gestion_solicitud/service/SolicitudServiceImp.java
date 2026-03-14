@@ -4,6 +4,7 @@ import KuHub.modules.gestion_academica.repository.AsignaturaRepository;
 import KuHub.modules.gestion_receta.services.DetalleRecetaService;
 import KuHub.modules.gestion_solicitud.dtos.*;
 import KuHub.modules.gestion_solicitud.dtos.proyeccion.*;
+import KuHub.modules.gestion_solicitud.dtos.record.DashboardConsolidadoResponse;
 import KuHub.modules.gestion_solicitud.dtos.request.*;
 import KuHub.modules.gestion_solicitud.dtos.respose.CourseDetailsDTO;
 import KuHub.modules.gestion_solicitud.dtos.respose.ProductDetailSolicitationDTO;
@@ -22,6 +23,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDate;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -251,6 +254,53 @@ public class SolicitudServiceImp implements SolicitudService{
         }
         log.info("Actualización masiva exitosa. Se actualizaron {} solicitudes correctamente.", totalActualizados);
         return true;
+    }
+
+    @Transactional(readOnly = true)
+    @Override
+    public DashboardConsolidadoResponse obtenerDashboard(DateRangeDTO request) {
+
+        // 1. Obtener y mapear la lista de solicitudes (Consulta A)
+        List<Object[]> rawSolicitudes = solicitudRepository.findSolicitudesParaDashboard(request.getFechaInicio(), request.getFechaFin());
+        List<DashboardConsolidadoResponse.SolicitudDashboardDTO> listaSolicitudes = new ArrayList<>();
+
+        for (Object[] row : rawSolicitudes) {
+            try {
+                // Parsear el JSON de la columna 4 al Record AsignaturaDetalleDTO
+                String jsonAsignaturaDetalle = (row[4] != null) ? row[4].toString() : "{}";
+
+                DashboardConsolidadoResponse.AsignaturaDetalleDTO asignaturaDetalle =
+                        objectMapper.readValue(jsonAsignaturaDetalle, DashboardConsolidadoResponse.AsignaturaDetalleDTO.class);
+
+                listaSolicitudes.add(new DashboardConsolidadoResponse.SolicitudDashboardDTO(
+                        ((Number) row[0]).intValue(),                 // idSolicitud
+                        ((java.sql.Date) row[1]).toLocalDate(),       // fechaSolicitada
+                        (String) row[2],                              // nombreReceta
+                        (String) row[3],                              // observaciones
+                        asignaturaDetalle                             // JSON Parseado correctamente
+                ));
+            } catch (Exception e) {
+                log.error("Error parseando detalle de la solicitud ID: {}", row[0], e);
+            }
+        }
+
+        // 2. Obtener y parsear el JSON del consolidado global (Consulta B)
+        String jsonConsolidado = solicitudRepository.findConsolidadoGlobalJson(request.getFechaInicio(), request.getFechaFin());
+        List<DashboardConsolidadoResponse.ProductoConsolidadoDTO> listaConsolidado = new ArrayList<>();
+
+        try {
+            if (jsonConsolidado != null && !jsonConsolidado.isEmpty()) {
+                listaConsolidado = objectMapper.readValue(
+                        jsonConsolidado,
+                        new TypeReference<List<DashboardConsolidadoResponse.ProductoConsolidadoDTO>>() {}
+                );
+            }
+        } catch (Exception e) {
+            log.error("Error parseando el consolidado global", e);
+        }
+
+        // 3. Empaquetar y retornar
+        return new DashboardConsolidadoResponse(listaSolicitudes, listaConsolidado);
     }
 
 
