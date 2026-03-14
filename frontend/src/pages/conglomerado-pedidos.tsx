@@ -1,570 +1,757 @@
+/**
+ * CONGLOMERADO DE PEDIDOS
+ * Vista consolidada de solicitudes ACEPTADAS para la semana seleccionada.
+ * Permite revisar el pedido consolidado y finalizarlo para su partición por sección.
+ */
+
 import React from 'react';
 import {
-  Table,
-  TableHeader,
-  TableColumn,
-  TableBody,
-  TableRow,
-  TableCell,
-  Button,
-  Card,
-  CardBody,
-  CardHeader,
-  Input,
-  Chip,
-  Divider,
-  Select,
-  SelectItem
+  Card, CardBody, CardHeader,
+  Button, Input, Chip,
+  Select, SelectItem,
+  Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, useDisclosure,
+  Divider, Spinner,
 } from '@heroui/react';
 import { Icon } from '@iconify/react';
 import { usePageTitle } from '../hooks/usePageTitle';
-import { motion } from 'framer-motion';
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell
-} from 'recharts';
-
-// ✅ IMPORTAR SERVICIOS Y TIPOS REALES
-import { obtenerSolicitudesAceptadasParaPedidoService } from '../services/solicitud-service';
-import { ISolicitud } from '../types/solicitud.types';
 import { useToast } from '../hooks/useToast';
+import { ISemana } from '../types/semana.types';
+import {
+  IPeriodoAcademico,
+  obtenerPeriodosAcademicosService,
+  obtenerSemanasPorPeriodoService,
+  detectarPeriodoActual,
+  encontrarSemanaActual,
+} from '../services/semana-service';
+import { ISolicitudPorSemanaResponse } from '../services/solicitud-service';
 
-/**
- * Interfaz para un producto consolidado.
- */
-interface DetalleProducto {
-  solicitudId: string;
-  asignaturaNombre: string;
-  profesorNombre: string;
-  semana: number;
+// ─────────────────────────────────────────────────────────────────────────────
+// MOCK — solicitudes aceptadas (reemplazar con endpoint real cuando esté listo)
+// ─────────────────────────────────────────────────────────────────────────────
+
+const MOCK_ACEPTADAS: ISolicitudPorSemanaResponse[] = [
+  {
+    idSolicitud: 1001, idReservaSala: 101, idReceta: 10,
+    nombreReceta: 'Pasta Carbonara', fechaSolicitada: '2026-03-17',
+    estadoSolicitud: 'ACEPTADA', observaciones: 'Clase práctica de pastas italianas',
+    productos: [
+      { nombreProducto: 'Spaghetti',      cantidad: 2,   unidad: 'kg' },
+      { nombreProducto: 'Huevos',          cantidad: 12,  unidad: 'un' },
+      { nombreProducto: 'Tocino ahumado',  cantidad: 300, unidad: 'g'  },
+      { nombreProducto: 'Queso parmesano', cantidad: 200, unidad: 'g'  },
+    ],
+    asignaturaDetalle: {
+      id_asignatura: 1, nombre_asignatura: 'Cocina Internacional',
+      seccion: {
+        id_seccion: 11, nombre_seccion: '001-2', id_usuario: 201,
+        nombre_docente: 'Carlos Méndez', cant_inscritos: 20, capacidad_max: 25,
+        horarios: [
+          { numeroBloque: 1, horaInicio: '08:01:00', horaFin: '08:40:00', nombreSala: 'Lab. Cocina A' },
+          { numeroBloque: 2, horaInicio: '08:41:00', horaFin: '09:20:00', nombreSala: 'Lab. Cocina A' },
+        ],
+      },
+    },
+  },
+  {
+    idSolicitud: 1002, idReservaSala: 102, idReceta: 10,
+    nombreReceta: 'Pasta Carbonara', fechaSolicitada: '2026-03-18',
+    estadoSolicitud: 'ACEPTADA',
+    productos: [
+      { nombreProducto: 'Spaghetti',      cantidad: 2.5, unidad: 'kg' },
+      { nombreProducto: 'Huevos',          cantidad: 15,  unidad: 'un' },
+      { nombreProducto: 'Tocino ahumado',  cantidad: 400, unidad: 'g'  },
+      { nombreProducto: 'Queso parmesano', cantidad: 250, unidad: 'g'  },
+    ],
+    asignaturaDetalle: {
+      id_asignatura: 1, nombre_asignatura: 'Cocina Internacional',
+      seccion: {
+        id_seccion: 12, nombre_seccion: '002-2', id_usuario: 202,
+        nombre_docente: 'Ana Flores', cant_inscritos: 25, capacidad_max: 25,
+        horarios: [
+          { numeroBloque: 3, horaInicio: '09:21:00', horaFin: '10:00:00', nombreSala: 'Lab. Cocina B' },
+          { numeroBloque: 4, horaInicio: '10:01:00', horaFin: '10:40:00', nombreSala: 'Lab. Cocina B' },
+        ],
+      },
+    },
+  },
+  {
+    idSolicitud: 1003, idReservaSala: 103, idReceta: 11,
+    nombreReceta: 'Risotto de Champiñones', fechaSolicitada: '2026-03-17',
+    estadoSolicitud: 'ACEPTADA', observaciones: 'Requiere arroz arborio de calidad',
+    productos: [
+      { nombreProducto: 'Arroz arborio',       cantidad: 1.5, unidad: 'kg' },
+      { nombreProducto: 'Champiñones frescos', cantidad: 500, unidad: 'g'  },
+      { nombreProducto: 'Caldo de verduras',   cantidad: 1.5, unidad: 'L'  },
+      { nombreProducto: 'Mantequilla',          cantidad: 100, unidad: 'g'  },
+      { nombreProducto: 'Queso parmesano',      cantidad: 150, unidad: 'g'  },
+    ],
+    asignaturaDetalle: {
+      id_asignatura: 2, nombre_asignatura: 'Técnicas de Cocina Italiana',
+      seccion: {
+        id_seccion: 21, nombre_seccion: '001-4', id_usuario: 203,
+        nombre_docente: 'Roberto Silva', cant_inscritos: 18, capacidad_max: 20,
+        horarios: [
+          { numeroBloque: 5, horaInicio: '14:01:00', horaFin: '14:40:00', nombreSala: 'Lab. Cocina C' },
+          { numeroBloque: 6, horaInicio: '14:41:00', horaFin: '15:20:00', nombreSala: 'Lab. Cocina C' },
+        ],
+      },
+    },
+  },
+  {
+    idSolicitud: 1004, idReservaSala: 104, idReceta: 12,
+    nombreReceta: 'Crema Catalana', fechaSolicitada: '2026-03-19',
+    estadoSolicitud: 'ACEPTADA',
+    productos: [
+      { nombreProducto: 'Leche entera',    cantidad: 1,   unidad: 'L'  },
+      { nombreProducto: 'Huevos',           cantidad: 8,   unidad: 'un' },
+      { nombreProducto: 'Azúcar',           cantidad: 200, unidad: 'g'  },
+      { nombreProducto: 'Canela en rama',   cantidad: 2,   unidad: 'un' },
+    ],
+    asignaturaDetalle: {
+      id_asignatura: 3, nombre_asignatura: 'Repostería y Pastelería',
+      seccion: {
+        id_seccion: 31, nombre_seccion: '001-6', id_usuario: 204,
+        nombre_docente: 'María Gutiérrez', cant_inscritos: 22, capacidad_max: 25,
+        horarios: [
+          { numeroBloque: 1, horaInicio: '08:01:00', horaFin: '08:40:00', nombreSala: 'Lab. Pastelería' },
+          { numeroBloque: 2, horaInicio: '08:41:00', horaFin: '09:20:00', nombreSala: 'Lab. Pastelería' },
+          { numeroBloque: 3, horaInicio: '09:21:00', horaFin: '10:00:00', nombreSala: 'Lab. Pastelería' },
+        ],
+      },
+    },
+  },
+  {
+    idSolicitud: 1005, idReservaSala: 105, idReceta: 11,
+    nombreReceta: 'Risotto de Champiñones', fechaSolicitada: '2026-03-20',
+    estadoSolicitud: 'ACEPTADA',
+    productos: [
+      { nombreProducto: 'Arroz arborio',       cantidad: 1,   unidad: 'kg' },
+      { nombreProducto: 'Champiñones frescos', cantidad: 400, unidad: 'g'  },
+      { nombreProducto: 'Caldo de verduras',   cantidad: 1,   unidad: 'L'  },
+      { nombreProducto: 'Mantequilla',          cantidad: 80,  unidad: 'g'  },
+      { nombreProducto: 'Queso parmesano',      cantidad: 100, unidad: 'g'  },
+    ],
+    asignaturaDetalle: {
+      id_asignatura: 2, nombre_asignatura: 'Técnicas de Cocina Italiana',
+      seccion: {
+        id_seccion: 22, nombre_seccion: '002-4', id_usuario: 205,
+        nombre_docente: 'Laura Pérez', cant_inscritos: 16, capacidad_max: 20,
+        horarios: [
+          { numeroBloque: 7, horaInicio: '15:21:00', horaFin: '16:00:00', nombreSala: 'Lab. Cocina C' },
+          { numeroBloque: 8, horaInicio: '16:01:00', horaFin: '16:40:00', nombreSala: 'Lab. Cocina C' },
+        ],
+      },
+    },
+  },
+  {
+    idSolicitud: 1006, idReservaSala: 106, idReceta: 13,
+    nombreReceta: 'Tarta de Manzana', fechaSolicitada: '2026-03-21',
+    estadoSolicitud: 'ACEPTADA',
+    productos: [
+      { nombreProducto: 'Manzanas',   cantidad: 6,   unidad: 'un' },
+      { nombreProducto: 'Harina',      cantidad: 300, unidad: 'g'  },
+      { nombreProducto: 'Mantequilla', cantidad: 150, unidad: 'g'  },
+      { nombreProducto: 'Azúcar',      cantidad: 150, unidad: 'g'  },
+      { nombreProducto: 'Huevos',      cantidad: 3,   unidad: 'un' },
+    ],
+    asignaturaDetalle: {
+      id_asignatura: 3, nombre_asignatura: 'Repostería y Pastelería',
+      seccion: {
+        id_seccion: 32, nombre_seccion: '002-6', id_usuario: 206,
+        nombre_docente: 'Jorge Ramos', cant_inscritos: 19, capacidad_max: 25,
+        horarios: [
+          { numeroBloque: 5, horaInicio: '14:01:00', horaFin: '14:40:00', nombreSala: 'Lab. Pastelería' },
+          { numeroBloque: 6, horaInicio: '14:41:00', horaFin: '15:20:00', nombreSala: 'Lab. Pastelería' },
+        ],
+      },
+    },
+  },
+];
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TIPOS INTERNOS
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface IDetallePorSeccion {
+  idSolicitud: number;
+  nombreAsignatura: string;
+  nombreSeccion: string;
+  nombreDocente: string;
   fechaClase: string;
+  horaInicio: string;
+  horaFin: string;
+  nombreSala: string;
+  cantInscritos: number;
   cantidad: number;
-  unidadMedida: string;
-  esAdicional: boolean;
 }
 
-interface ProductoConsolidado {
-  productoId: string;
-  productoNombre: string;
+interface IProductoConsolidado {
+  nombreProducto: string;
+  unidad: string;
   cantidadTotal: number;
-  unidadMedida: string;
-  totalSolicitudes: number;
-  incluyeAdicionales: boolean;
-  detalles: DetalleProducto[];
+  secciones: IDetallePorSeccion[];
 }
 
-/**
- * Página de conglomerado de pedidos.
- * Consolida todos los productos de las solicitudes ACEPTADAS.
- */
-const ConglomeradoPedidosPage: React.FC = () => {
-  const toast = useToast();
-  const [solicitudesAceptadas, setSolicitudesAceptadas] = React.useState<ISolicitud[]>([]);
-  const [productosConsolidados, setProductosConsolidados] = React.useState<ProductoConsolidado[]>([]);
-  const [filteredProductos, setFilteredProductos] = React.useState<ProductoConsolidado[]>([]);
-  const [searchTerm, setSearchTerm] = React.useState<string>('');
-  const [semanaSeleccionada, setSemanaSeleccionada] = React.useState<string>('todas');
-  const [expandedProductos, setExpandedProductos] = React.useState<Set<string>>(new Set());
-  const [isLoading, setIsLoading] = React.useState(true);
+// ─────────────────────────────────────────────────────────────────────────────
+// HELPERS
+// ─────────────────────────────────────────────────────────────────────────────
 
-  // ✅ CARGAR SOLICITUDES ACEPTADAS
+const fmtHora = (hms: string) => hms?.slice(0, 5) ?? '';
+
+const fmtFecha = (iso: string) =>
+  new Date(iso + 'T00:00:00').toLocaleDateString('es-CL', { weekday: 'short', day: 'numeric', month: 'short' });
+
+const fmtFechaCorta = (iso: string) => {
+  const d = new Date(iso + 'T00:00:00');
+  const dia = d.toLocaleDateString('es-CL', { weekday: 'short' }).toUpperCase().replace('.', '');
+  return { dia, fecha: `${d.getDate()}/${d.getMonth() + 1}` };
+};
+
+const isHoy = (iso: string) => iso === new Date().toISOString().slice(0, 10);
+
+const consolidarProductos = (solicitudes: ISolicitudPorSemanaResponse[]): IProductoConsolidado[] => {
+  const mapa = new Map<string, IProductoConsolidado>();
+  for (const sol of solicitudes) {
+    const { seccion } = sol.asignaturaDetalle;
+    const horarios = seccion.horarios ?? [];
+    const primerH = horarios[0];
+    const ultimoH = horarios[horarios.length - 1];
+    for (const p of sol.productos) {
+      const key = `${p.nombreProducto.trim()}||${p.unidad.trim()}`;
+      const det: IDetallePorSeccion = {
+        idSolicitud:     sol.idSolicitud,
+        nombreAsignatura: sol.asignaturaDetalle.nombre_asignatura,
+        nombreSeccion:   seccion.nombre_seccion,
+        nombreDocente:   seccion.nombre_docente,
+        fechaClase:      sol.fechaSolicitada,
+        horaInicio:      fmtHora(primerH?.horaInicio ?? ''),
+        horaFin:         fmtHora(ultimoH?.horaFin ?? ''),
+        nombreSala:      primerH?.nombreSala ?? '',
+        cantInscritos:   seccion.cant_inscritos,
+        cantidad:        p.cantidad,
+      };
+      if (mapa.has(key)) {
+        const e = mapa.get(key)!;
+        e.cantidadTotal += p.cantidad;
+        e.secciones.push(det);
+      } else {
+        mapa.set(key, { nombreProducto: p.nombreProducto, unidad: p.unidad, cantidadTotal: p.cantidad, secciones: [det] });
+      }
+    }
+  }
+  return Array.from(mapa.values()).sort((a, b) => a.nombreProducto.localeCompare(b.nombreProducto));
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PAGE
+// ─────────────────────────────────────────────────────────────────────────────
+
+const ConglomeradoPedidosPage: React.FC = () => {
   usePageTitle('Conglomerado de Pedidos', 'Vista consolidada de todos los productos de solicitudes aceptadas.');
+  const toast = useToast();
+  const confirmarModal = useDisclosure();
+
+  // ── Semanas ──
+  const [periodos,        setPeriodos]        = React.useState<IPeriodoAcademico[]>([]);
+  const [semanas,         setSemanas]         = React.useState<ISemana[]>([]);
+  const [semanaId,        setSemanaId]        = React.useState<string>('');
+  const [defaultSemanaId, setDefaultSemanaId] = React.useState<string>('');
+  const [isLoadingSem,    setIsLoadingSem]    = React.useState(true);
+
+  // ── Datos ──
+  const [solicitudes,    setSolicitudes]    = React.useState<ISolicitudPorSemanaResponse[]>([]);
+  const [isLoadingDatos, setIsLoadingDatos] = React.useState(false);
+  const [consolidado,    setConsolidado]    = React.useState(false);
+  const [isConsolidando, setIsConsolidando] = React.useState(false);
+  const [confirmarTexto, setConfirmarTexto] = React.useState('');
+
+  // ── UI ──
+  const [busqueda,    setBusqueda]    = React.useState('');
+  const [expandidos,  setExpandidos]  = React.useState<Set<string>>(new Set());
+  const [vistaActiva, setVistaActiva] = React.useState<'consolidado' | 'solicitudes'>('consolidado');
+
+  // ── Carga inicial de semanas ──
   React.useEffect(() => {
-    cargarDatos();
+    const init = async () => {
+      setIsLoadingSem(true);
+      try {
+        const periodosData = await obtenerPeriodosAcademicosService();
+        setPeriodos(periodosData);
+        const { anio, semestre } = detectarPeriodoActual();
+        const intentos = [{ anio, semestre }, { anio, semestre: semestre === 1 ? 2 : 1 }];
+        let cargadas: ISemana[] = [];
+        for (const intento of intentos) {
+          if (!periodosData.some(p => p.anio === intento.anio && p.semestres.includes(intento.semestre))) continue;
+          try { cargadas = await obtenerSemanasPorPeriodoService(intento.anio, intento.semestre); if (cargadas.length > 0) break; } catch { /* */ }
+        }
+        if (cargadas.length === 0 && periodosData.length > 0) {
+          const p = periodosData[0];
+          cargadas = await obtenerSemanasPorPeriodoService(p.anio, p.semestres[0]).catch(() => []);
+        }
+        setSemanas(cargadas);
+        const actual = encontrarSemanaActual(cargadas);
+        setDefaultSemanaId(actual ? String(actual.idSemana) : '');
+        setSemanaId(actual ? String(actual.idSemana) : cargadas.length > 0 ? String(cargadas[0].idSemana) : '');
+      } catch { toast.error('Error al cargar las semanas'); }
+      finally { setIsLoadingSem(false); }
+    };
+    init();
   }, []);
 
-  const cargarDatos = async () => {
+  const handlePeriodoChange = async (anio: number, semestre: number) => {
+    setIsLoadingSem(true); setSolicitudes([]); setSemanaId(''); setConsolidado(false);
     try {
-      setIsLoading(true);
-      const solicitudes = await obtenerSolicitudesAceptadasParaPedidoService();
-      setSolicitudesAceptadas(solicitudes);
-    } catch (error) {
-      toast.error('Error al cargar los datos del conglomerado');
-    } finally {
-      setIsLoading(false);
-    }
+      const data = await obtenerSemanasPorPeriodoService(anio, semestre);
+      setSemanas(data);
+      const actual = encontrarSemanaActual(data);
+      setDefaultSemanaId(actual ? String(actual.idSemana) : '');
+      if (data.length > 0) setSemanaId(actual ? String(actual.idSemana) : String(data[0].idSemana));
+    } catch { toast.error('Error al cargar semanas del período'); }
+    finally { setIsLoadingSem(false); }
   };
 
-  const semanasDisponibles = React.useMemo(() => {
-    const semanas = Array.from(
-      new Set(
-        solicitudesAceptadas
-          .map((s) => (Number.isInteger(s.semana) ? s.semana : undefined))
-          .filter((semana): semana is number => semana !== undefined)
-      )
-    );
-    return semanas.sort((a, b) => a - b);
-  }, [solicitudesAceptadas]);
-
-  const solicitudesFiltradas = React.useMemo(() => {
-    if (semanaSeleccionada === 'todas') {
-      return solicitudesAceptadas;
-    }
-    const semanaNumero = parseInt(semanaSeleccionada, 10);
-    if (Number.isNaN(semanaNumero)) {
-      return solicitudesAceptadas;
-    }
-    return solicitudesAceptadas.filter((s) => s.semana === semanaNumero);
-  }, [semanaSeleccionada, solicitudesAceptadas]);
-
+  // ── Carga de solicitudes al cambiar semana (mock) ──
   React.useEffect(() => {
-    const consolidado = consolidarProductos(solicitudesFiltradas);
-    setProductosConsolidados(consolidado);
-    setExpandedProductos(new Set());
-    if (!searchTerm) {
-      setFilteredProductos(consolidado);
+    if (!semanaId) { setSolicitudes([]); setConsolidado(false); return; }
+    setIsLoadingDatos(true); setConsolidado(false); setExpandidos(new Set()); setBusqueda('');
+    const t = setTimeout(() => { setSolicitudes(MOCK_ACEPTADAS); setIsLoadingDatos(false); }, 500);
+    return () => clearTimeout(t);
+  }, [semanaId]);
+
+  // ── Derivados ──
+  const productosConsolidados = React.useMemo(() => consolidarProductos(solicitudes), [solicitudes]);
+
+  const productosFiltrados = React.useMemo(() => {
+    if (!busqueda.trim()) return productosConsolidados;
+    const q = busqueda.toLowerCase();
+    return productosConsolidados.filter(p => p.nombreProducto.toLowerCase().includes(q));
+  }, [productosConsolidados, busqueda]);
+
+  const gruposPorAsignatura = React.useMemo(() => {
+    const map = new Map<number, { idAsignatura: number; nombre: string; items: ISolicitudPorSemanaResponse[] }>();
+    for (const s of solicitudes) {
+      const id = s.asignaturaDetalle.id_asignatura;
+      if (!map.has(id)) map.set(id, { idAsignatura: id, nombre: s.asignaturaDetalle.nombre_asignatura, items: [] });
+      map.get(id)!.items.push(s);
     }
-  }, [solicitudesFiltradas, searchTerm]);
+    return Array.from(map.values()).sort((a, b) => a.nombre.localeCompare(b.nombre));
+  }, [solicitudes]);
 
-  /**
-   * ✅ CONSOLIDA todos los productos de las solicitudes aceptadas
-   */
-  const consolidarProductos = (solicitudes: ISolicitud[]): ProductoConsolidado[] => {
-    const mapaProductos = new Map<
-      string,
-      {
-        data: ProductoConsolidado;
-        solicitudesSet: Set<string>;
-      }
-    >();
+  const contadores = React.useMemo(() => ({
+    solicitudes: solicitudes.length,
+    productosUnicos: productosConsolidados.length,
+    secciones: new Set(solicitudes.map(s => s.asignaturaDetalle.seccion.id_seccion)).size,
+    asignaturas: new Set(solicitudes.map(s => s.asignaturaDetalle.id_asignatura)).size,
+  }), [solicitudes, productosConsolidados]);
 
-    solicitudes.forEach((solicitud) => {
-      solicitud.items.forEach((item) => {
-        const key = item.productoId;
-        const detalle: DetalleProducto = {
-          solicitudId: solicitud.id,
-          asignaturaNombre: solicitud.asignaturaNombre,
-          profesorNombre: solicitud.profesorNombre,
-          semana: solicitud.semana,
-          fechaClase: solicitud.fecha,
-          cantidad: item.cantidad,
-          unidadMedida: item.unidadMedida,
-          esAdicional: item.esAdicional,
-        };
-
-        if (mapaProductos.has(key)) {
-          const existente = mapaProductos.get(key)!;
-          existente.data.cantidadTotal += item.cantidad;
-          existente.data.detalles.push(detalle);
-          existente.data.incluyeAdicionales = existente.data.incluyeAdicionales || item.esAdicional;
-          existente.solicitudesSet.add(solicitud.id);
-          existente.data.totalSolicitudes = existente.solicitudesSet.size;
-        } else {
-          const solicitudesSet = new Set<string>([solicitud.id]);
-          mapaProductos.set(key, {
-            data: {
-              productoId: item.productoId,
-              productoNombre: item.productoNombre,
-              cantidadTotal: item.cantidad,
-              unidadMedida: item.unidadMedida,
-              totalSolicitudes: 1,
-              incluyeAdicionales: item.esAdicional,
-              detalles: [detalle],
-            },
-            solicitudesSet,
-          });
-        }
-      });
-    });
-
-    return Array.from(mapaProductos.values())
-      .map((entry) => entry.data)
-      .sort((a, b) => b.cantidadTotal - a.cantidadTotal);
+  const toggleExpandido = (key: string) => {
+    setExpandidos(prev => { const n = new Set(prev); n.has(key) ? n.delete(key) : n.add(key); return n; });
   };
 
-  /**
-   * Filtra los productos según el término de búsqueda.
-   */
-  React.useEffect(() => {
-    let filtered = [...productosConsolidados];
-
-    if (searchTerm) {
-      filtered = filtered.filter(producto =>
-        producto.productoNombre.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-    }
-
-    setFilteredProductos(filtered);
-  }, [searchTerm, productosConsolidados]);
-
-  /**
-   * ✅ GENERA ORDEN DE COMPRA (puede ser exportado o impreso)
-   */
-  const generarOrdenCompra = () => {
-    if (productosConsolidados.length === 0) {
-      toast.warning('No hay productos para generar la orden de compra');
-      return;
-    }
-
-    // Crear contenido de la orden
-    let orden = '=== ORDEN DE COMPRA ===\n\n';
-    orden += `Fecha: ${new Date().toLocaleDateString('es-CL')}\n`;
-    orden += `Total de productos: ${productosConsolidados.length}\n`;
-    orden += `Basado en ${solicitudesFiltradas.length} solicitudes aceptadas\n\n`;
-    orden += '--- PRODUCTOS ---\n\n';
-
-    productosConsolidados.forEach((producto, index) => {
-      orden += `${index + 1}. ${producto.productoNombre}\n`;
-      orden += `   Cantidad: ${producto.cantidadTotal} ${producto.unidadMedida}\n`;
-      orden += `   Solicitudes: ${producto.totalSolicitudes}\n\n`;
-    });
-
-    // Copiar al portapapeles
-    navigator.clipboard.writeText(orden).then(() => {
-      toast.success('Orden de compra copiada al portapapeles');
-    }).catch(() => {
-      toast.info('Orden de compra generada. Revisa la consola del navegador.');
-    });
+  const handleConsolidar = async () => {
+    setIsConsolidando(true);
+    await new Promise(r => setTimeout(r, 800)); // mock POST
+    setConsolidado(true);
+    setIsConsolidando(false);
+    confirmarModal.onClose();
+    toast.success('Pedido consolidado. Las particiones por sección quedan programadas para sus fechas correspondientes.');
   };
 
-  /**
-   * ✅ DATOS PARA EL GRÁFICO - Top 10 productos más solicitados
-   */
-  const datosGrafico = React.useMemo(() => {
-    return productosConsolidados
-      .slice(0, 10)
-      .map(p => ({
-        nombre: p.productoNombre.length > 15
-          ? p.productoNombre.substring(0, 15) + '...'
-          : p.productoNombre,
-        cantidad: p.cantidadTotal
-      }));
-  }, [productosConsolidados]);
-
-  /**
-   * ✅ DATOS PARA EL GRÁFICO DE PASTEL - Distribución de pedidos
-   */
-  const datosDistribucion = React.useMemo(() => {
-    const distribucion: { [key: string]: number } = {};
-
-    solicitudesFiltradas.forEach(solicitud => {
-      const key = solicitud.asignaturaNombre;
-      distribucion[key] = (distribucion[key] || 0) + 1;
-    });
-
-    return Object.entries(distribucion).map(([nombre, valor]) => ({
-      name: nombre,
-      value: valor
-    }));
-  }, [solicitudesFiltradas]);
-
-  const toggleProducto = (productoId: string) => {
-    setExpandedProductos((prev) => {
-      const nuevo = new Set(prev);
-      if (nuevo.has(productoId)) {
-        nuevo.delete(productoId);
-      } else {
-        nuevo.add(productoId);
-      }
-      return nuevo;
-    });
-  };
-
-  const formatearFechaClase = (fechaISO: string) => {
-    const fecha = new Date(fechaISO);
-    if (Number.isNaN(fecha.getTime())) {
-      return '—';
-    }
-    return fecha.toLocaleDateString('es-CL');
-  };
-
-  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D'];
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-96">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p>Cargando conglomerado...</p>
-        </div>
-      </div>
-    );
-  }
+  const semanaActual = semanas.find(s => String(s.idSemana) === semanaId) ?? null;
+  const periodosDisponibles = periodos.length > 0 ? periodos : [{ anio: new Date().getFullYear(), semestres: [1, 2] }];
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4 }}
-        className="space-y-6"
-      >
-        {/* Encabezado */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-end gap-4">
-          <Button
-            color="primary"
-            startContent={<Icon icon="lucide:file-text" />}
-            onPress={generarOrdenCompra}
-            isDisabled={productosConsolidados.length === 0}
-          >
-            Generar Orden de Compra
-          </Button>
-        </div>
+    <div className="max-w-7xl mx-auto px-4 py-6 space-y-5">
 
-        {/* Tarjetas de estadísticas */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <Card className="bg-white dark:bg-content1">
-            <CardBody className="text-center p-4">
-              <p className="text-sm text-default-500">Solicitudes Aceptadas</p>
-              <p className="text-3xl font-bold text-success">{solicitudesFiltradas.length}</p>
-            </CardBody>
-          </Card>
-          <Card className="bg-white dark:bg-content1">
-            <CardBody className="text-center p-4">
-              <p className="text-sm text-default-500">Productos Únicos</p>
-              <p className="text-3xl font-bold text-primary">{productosConsolidados.length}</p>
-            </CardBody>
-          </Card>
-          <Card className="bg-white dark:bg-content1">
-            <CardBody className="text-center p-4">
-              <p className="text-sm text-default-500">Total de Items</p>
-              <p className="text-3xl font-bold text-warning">
-                {productosConsolidados.reduce((sum, p) => sum + p.detalles.length, 0)}
-              </p>
-            </CardBody>
-          </Card>
-          <Card className="bg-white dark:bg-content1">
-            <CardBody className="text-center p-4">
-              <p className="text-sm text-default-500">Profesores</p>
-              <p className="text-3xl font-bold text-secondary">
-                {new Set(solicitudesFiltradas.map(s => s.profesorId)).size}
-              </p>
-            </CardBody>
-          </Card>
-        </div>
-
-        {/* Gráficos */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Gráfico de barras - Top 10 productos */}
-          <Card className="shadow-sm bg-white dark:bg-content1">
-            <CardHeader className="pb-0 pt-4 px-4">
-              <h3 className="text-lg font-semibold">Top 10 Productos Más Solicitados</h3>
-            </CardHeader>
-            <CardBody className="px-2 pb-4">
-              {datosGrafico.length > 0 ? (
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart
-                    data={datosGrafico}
-                    margin={{
-                      top: 20,
-                      right: 30,
-                      left: 20,
-                      bottom: 5,
-                    }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="nombre" angle={-45} textAnchor="end" height={80} />
-                    <YAxis />
-                    <Tooltip />
-                    <Legend />
-                    <Bar dataKey="cantidad" name="Cantidad Total" fill="#0070F0" />
-                  </BarChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="flex items-center justify-center h-[300px] text-default-400">
-                  No hay datos para mostrar
-                </div>
-              )}
-            </CardBody>
-          </Card>
-
-          {/* Gráfico de pastel - Distribución por asignatura */}
-          <Card className="shadow-sm bg-white dark:bg-content1">
-            <CardHeader className="pb-0 pt-4 px-4">
-              <h3 className="text-lg font-semibold">Distribución por Asignatura</h3>
-            </CardHeader>
-            <CardBody className="px-2 pb-4">
-              {datosDistribucion.length > 0 ? (
-                <ResponsiveContainer width="100%" height={300}>
-                  <PieChart>
-                    <Pie
-                      data={datosDistribucion}
-                      cx="50%"
-                      cy="50%"
-                      labelLine={false}
-                      label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                      outerRadius={80}
-                      fill="#8884d8"
-                      dataKey="value"
-                    >
-                      {datosDistribucion.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip />
-                  </PieChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="flex items-center justify-center h-[300px] text-default-400">
-                  No hay datos para mostrar
-                </div>
-              )}
-            </CardBody>
-          </Card>
-        </div>
-
-        {/* Filtros */}
-        <div className="flex flex-col md:flex-row gap-4">
-          <Input
-            placeholder="Buscar productos..."
-            value={searchTerm}
-            onValueChange={setSearchTerm}
-            startContent={<Icon icon="lucide:search" className="text-default-400" />}
-            isClearable
-            onClear={() => setSearchTerm('')}
-            className="w-full md:w-64"
-          />
-
-          <Select
-            label="Semana"
-            selectedKeys={new Set([semanaSeleccionada])}
-            onSelectionChange={(keys) => {
-              const value = Array.from(keys)[0] as string | undefined;
-              setSemanaSeleccionada(value || 'todas');
-            }}
-            className="w-full md:w-56"
-            items={[{ key: 'todas', label: 'Todas las semanas' }, ...semanasDisponibles.map(s => ({ key: s.toString(), label: `Semana ${s}` }))]}
-          >
-            {(item) => <SelectItem key={item.key}>{item.label}</SelectItem>}
-          </Select>
-
-          <Button
-            color="primary"
-            variant="flat"
-            startContent={<Icon icon="lucide:refresh-cw" />}
-            onPress={cargarDatos}
-          >
-            Actualizar
-          </Button>
-        </div>
-
-        {/* Tabla de productos consolidados */}
-        <Card className="shadow-sm bg-white dark:bg-content1">
-          <CardBody className="p-0">
-            <Table
-              aria-label="Tabla de productos consolidados"
-              removeWrapper
-            >
-              <TableHeader>
-                <TableColumn>PRODUCTO</TableColumn>
-                <TableColumn>CANTIDAD TOTAL</TableColumn>
-                <TableColumn>UNIDAD</TableColumn>
-                <TableColumn>SOLICITUDES</TableColumn>
-                <TableColumn>TIPO</TableColumn>
-                <TableColumn>DETALLE</TableColumn>
-              </TableHeader>
-              <TableBody emptyContent="No hay productos consolidados. Asegúrese de que existan solicitudes aceptadas.">
-                {filteredProductos.map((producto) => {
-                  const expandido = expandedProductos.has(producto.productoId);
+      {/* ── Selector período + semana ── */}
+      <Card className="shadow-sm">
+        <CardBody className="px-5 py-4">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+            <div className="flex items-center gap-2 shrink-0">
+              <Icon icon="lucide:calendar-days" className="text-default-400" width={16} />
+              <span className="text-xs font-bold text-default-500 uppercase tracking-wider">Período</span>
+              {periodosDisponibles.map(p =>
+                p.semestres.map(s => {
+                  const isActive = semanas.length > 0 && semanas[0].anio === p.anio && semanas[0].semestre === s;
                   return (
-                    <TableRow key={producto.productoId}>
-                      <TableCell>
-                        <div>
-                          <p className="font-medium">{producto.productoNombre}</p>
-                          {expandido && (
-                            <div className="mt-3 bg-default-50 dark:bg-default-100/20 rounded-lg p-4 space-y-3 border border-default-200 dark:border-default-100">
-                              <p className="text-sm text-default-500">
-                                Detalle de solicitudes:
-                              </p>
-                              <div className="space-y-3">
-                                {producto.detalles.map((detalle, index) => (
-                                  <div
-                                    key={`${detalle.solicitudId}-${index}`}
-                                    className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between border border-default-200 rounded-md p-3 bg-content1/50"
-                                  >
-                                    <div>
-                                      <p className="font-medium">
-                                        Solicitud #{detalle.solicitudId.slice(-6)} · Semana {detalle.semana}
-                                      </p>
-                                      <p className="text-xs text-default-500">
-                                        {detalle.asignaturaNombre} — {detalle.profesorNombre}
-                                      </p>
-                                      <p className="text-xs text-default-400">
-                                        Clase: {formatearFechaClase(detalle.fechaClase)}
-                                      </p>
-                                    </div>
-                                    <div className="flex items-center gap-2 flex-wrap">
-                                      <Chip color="primary" variant="flat" size="sm">
-                                        {detalle.cantidad} {detalle.unidadMedida}
-                                      </Chip>
-                                      <Chip
-                                        color={detalle.esAdicional ? 'warning' : 'success'}
-                                        variant="flat"
-                                        size="sm"
-                                      >
-                                        {detalle.esAdicional ? 'Adicional' : 'Receta'}
-                                      </Chip>
-                                    </div>
+                    <button key={`${p.anio}-${s}`} onClick={() => handlePeriodoChange(p.anio, s)}
+                      className={`px-3 py-1 rounded-full text-xs font-bold border transition-all ${
+                        isActive ? 'bg-warning text-white border-warning' : 'bg-default-100 text-default-600 border-default-200 hover:bg-default-200'
+                      }`}>
+                      {p.anio} S{s}
+                    </button>
+                  );
+                })
+              )}
+            </div>
+
+            <Divider orientation="vertical" className="hidden sm:block h-6" />
+
+            <div className="flex-1 min-w-0">
+              {isLoadingSem ? (
+                <div className="flex items-center gap-2 text-sm text-default-400"><Spinner size="sm" /> Cargando semanas...</div>
+              ) : semanas.length === 0 ? (
+                <p className="text-sm text-default-400">Sin semanas disponibles para este período.</p>
+              ) : (
+                <Select size="sm" variant="bordered"
+                  selectedKeys={semanaId ? new Set([semanaId]) : new Set()}
+                  onSelectionChange={keys => { const v = Array.from(keys as Set<string>)[0]; if (v) setSemanaId(v); }}
+                  placeholder="Seleccione una semana"
+                  classNames={{ trigger: 'bg-default-50', base: 'max-w-xs' }}
+                  startContent={<Icon icon="lucide:calendar" width={14} className="text-default-400 shrink-0" />}
+                >
+                  {semanas.map(s => (
+                    <SelectItem key={String(s.idSemana)} textValue={s.nombreSemana}>
+                      <span className="font-semibold">{s.nombreSemana}</span>
+                      <span className="text-default-400 ml-2 text-xs">
+                        {new Date(s.fechaInicio + 'T00:00:00').toLocaleDateString('es-CL', { day: 'numeric', month: 'short' })}
+                        {' – '}
+                        {new Date(s.fechaFin + 'T00:00:00').toLocaleDateString('es-CL', { day: 'numeric', month: 'short' })}
+                      </span>
+                      {String(s.idSemana) === defaultSemanaId && defaultSemanaId && (
+                        <Chip size="sm" color="success" variant="flat" className="ml-auto shrink-0">Actual</Chip>
+                      )}
+                    </SelectItem>
+                  ))}
+                </Select>
+              )}
+            </div>
+
+            {semanaActual && (
+              <p className="text-xs text-default-400 shrink-0">
+                {new Date(semanaActual.fechaInicio + 'T00:00:00').toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long' })}
+                {' al '}
+                {new Date(semanaActual.fechaFin + 'T00:00:00').toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long' })}
+                {semanaId === defaultSemanaId && defaultSemanaId && (
+                  <span className="text-success ml-1 font-medium">· en curso</span>
+                )}
+              </p>
+            )}
+          </div>
+        </CardBody>
+      </Card>
+
+      {/* ── Tarjetas de conteo ── */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {([
+          { label: 'Solicitudes',      val: contadores.solicitudes,     color: 'border-success-200', icon: 'lucide:check-circle',    text: 'text-success-700'  },
+          { label: 'Productos únicos', val: contadores.productosUnicos,  color: 'border-primary-200', icon: 'lucide:package',          text: 'text-primary-700'  },
+          { label: 'Secciones',        val: contadores.secciones,        color: 'border-warning-200', icon: 'lucide:users',            text: 'text-warning-700'  },
+          { label: 'Asignaturas',      val: contadores.asignaturas,      color: 'border-default-200', icon: 'lucide:graduation-cap',   text: 'text-default-700'  },
+        ] as const).map(c => (
+          <Card key={c.label} className={`shadow-sm border ${c.color}`}>
+            <CardBody className="px-4 py-3 flex flex-row items-center gap-3">
+              <Icon icon={c.icon} width={22} className={c.text} />
+              <div>
+                <p className={`text-2xl font-bold ${c.text}`}>{c.val}</p>
+                <p className="text-xs text-default-500">{c.label}</p>
+              </div>
+            </CardBody>
+          </Card>
+        ))}
+      </div>
+
+      {/* ── Banner consolidado ── */}
+      {consolidado && (
+        <div className="flex items-center gap-3 px-4 py-3 bg-success-50 border border-success-200 rounded-xl text-success-800">
+          <Icon icon="lucide:check-circle-2" width={20} className="shrink-0 text-success-600" />
+          <div>
+            <p className="font-semibold text-sm">Pedido consolidado</p>
+            <p className="text-xs">Las particiones por sección quedan programadas para ejecutarse en las fechas correspondientes de cada clase.</p>
+          </div>
+        </div>
+      )}
+
+      {/* ── Contenido principal ── */}
+      <Card className="shadow-sm">
+        <CardHeader className="px-5 py-4 flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+          {/* Tabs vista */}
+          <div className="flex items-center gap-1 bg-default-100 rounded-lg p-1">
+            {(['consolidado', 'solicitudes'] as const).map(v => (
+              <button key={v} onClick={() => setVistaActiva(v)}
+                className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
+                  vistaActiva === v ? 'bg-white shadow-sm text-primary' : 'text-default-500 hover:text-default-700'
+                }`}>
+                {v === 'consolidado' ? 'Resumen de Productos' : 'Solicitudes Aceptadas'}
+              </button>
+            ))}
+          </div>
+
+          {vistaActiva === 'consolidado' && (
+            <Input size="sm" variant="bordered" placeholder="Buscar producto..."
+              value={busqueda} onValueChange={setBusqueda}
+              startContent={<Icon icon="lucide:search" className="text-default-400" width={14} />}
+              classNames={{ base: 'max-w-xs', inputWrapper: 'bg-default-50' }}
+            />
+          )}
+
+          <div className="sm:ml-auto shrink-0">
+            {!consolidado ? (
+              <Button color="primary" isDisabled={solicitudes.length === 0 || isLoadingDatos}
+                onPress={() => { setConfirmarTexto(''); confirmarModal.onOpen(); }}
+                startContent={<Icon icon="lucide:layers" width={15} />}>
+                Consolidar Pedido
+              </Button>
+            ) : (
+              <Chip color="success" variant="flat" startContent={<Icon icon="lucide:check" width={12} />} className="px-3 py-4">
+                Consolidado
+              </Chip>
+            )}
+          </div>
+        </CardHeader>
+
+        <Divider />
+
+        <CardBody className="p-4">
+          {isLoadingDatos ? (
+            <div className="py-16 flex flex-col items-center gap-3 text-default-400">
+              <Spinner size="lg" />
+              <p className="text-sm">Cargando solicitudes aceptadas...</p>
+            </div>
+          ) : !semanaId ? (
+            <div className="py-16 flex flex-col items-center gap-3 text-default-400">
+              <Icon icon="lucide:calendar-search" width={48} className="opacity-40" />
+              <p className="text-sm">Seleccione una semana para ver el conglomerado.</p>
+            </div>
+          ) : solicitudes.length === 0 ? (
+            <div className="py-16 flex flex-col items-center gap-3 text-default-400">
+              <Icon icon="lucide:inbox" width={48} className="opacity-40" />
+              <p className="text-sm">No hay solicitudes aceptadas para esta semana.</p>
+            </div>
+          ) : vistaActiva === 'consolidado' ? (
+
+            /* ── Vista resumen de productos ── */
+            <div className="space-y-2">
+              {productosFiltrados.length === 0 ? (
+                <div className="py-10 flex flex-col items-center gap-3 text-default-400">
+                  <Icon icon="lucide:search-x" width={36} className="opacity-40" />
+                  <p className="text-sm">Sin resultados para "{busqueda}"</p>
+                </div>
+              ) : productosFiltrados.map(prod => {
+                const key = `${prod.nombreProducto}||${prod.unidad}`;
+                const abierto = expandidos.has(key);
+                return (
+                  <div key={key} className="border border-default-200 rounded-xl overflow-hidden">
+                    {/* Cabecera del producto */}
+                    <button
+                      className="w-full flex items-center gap-3 px-4 py-3 bg-default-50 hover:bg-default-100 transition-colors text-left"
+                      onClick={() => toggleExpandido(key)}
+                    >
+                      <Icon icon="lucide:package" width={15} className="text-primary shrink-0" />
+                      <span className="flex-1 font-semibold text-sm text-default-800">{prod.nombreProducto}</span>
+
+                      <div className="flex items-center gap-3 mr-2">
+                        <div className="text-right">
+                          <p className="text-lg font-bold text-primary leading-none">{prod.cantidadTotal}</p>
+                          <p className="text-[10px] text-default-400">{prod.unidad} total</p>
+                        </div>
+                        <Chip size="sm" color="default" variant="flat">
+                          {prod.secciones.length} sección{prod.secciones.length > 1 ? 'es' : ''}
+                        </Chip>
+                      </div>
+
+                      <Icon icon={abierto ? 'lucide:chevron-up' : 'lucide:chevron-down'} width={16} className="text-default-400 shrink-0" />
+                    </button>
+
+                    {/* Detalle por sección */}
+                    {abierto && (
+                      <div className="divide-y divide-default-100">
+                        {prod.secciones.map((det, idx) => {
+                          const fch = fmtFechaCorta(det.fechaClase);
+                          const hoy = isHoy(det.fechaClase);
+                          return (
+                            <div key={`${det.idSolicitud}-${idx}`}
+                              className="flex flex-col sm:flex-row sm:items-center gap-3 px-4 py-2.5 bg-white hover:bg-default-50/50">
+
+                              {/* Fecha */}
+                              <div className={`shrink-0 flex flex-col items-center justify-center rounded-lg px-2.5 py-1.5 min-w-[52px] text-center border ${
+                                hoy ? 'bg-warning-50 border-warning-200' : 'bg-primary-50 border-primary-100'
+                              }`}>
+                                <span className={`text-[10px] font-bold uppercase leading-none ${hoy ? 'text-warning-600' : 'text-primary-500'}`}>{fch.dia}</span>
+                                <span className={`text-sm font-bold leading-tight ${hoy ? 'text-warning-700' : 'text-primary'}`}>{fch.fecha}</span>
+                                {hoy && <span className="text-[9px] font-bold text-warning-600 leading-none">HOY</span>}
+                              </div>
+
+                              {/* Info sección */}
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="font-semibold text-sm text-default-800">§{det.nombreSeccion}</span>
+                                  <span className="text-xs text-default-400">·</span>
+                                  <span className="text-sm text-default-600">{det.nombreDocente}</span>
+                                  <span className="text-xs text-default-400">·</span>
+                                  <span className="text-xs text-default-500">{det.nombreAsignatura}</span>
+                                </div>
+                                <div className="flex items-center gap-3 mt-0.5 text-xs text-default-400 flex-wrap">
+                                  <span className="flex items-center gap-1"><Icon icon="lucide:clock" width={11} />{det.horaInicio}–{det.horaFin}</span>
+                                  <span className="flex items-center gap-1"><Icon icon="lucide:door-open" width={11} />{det.nombreSala}</span>
+                                  <span className="flex items-center gap-1"><Icon icon="lucide:users" width={11} />{det.cantInscritos} alumnos</span>
+                                </div>
+                              </div>
+
+                              {/* Cantidad para esta sección */}
+                              <div className="shrink-0 text-right">
+                                <p className="text-base font-bold text-default-700">{det.cantidad} <span className="text-xs font-normal text-default-400">{prod.unidad}</span></p>
+                                <p className="text-[10px] text-default-400">esta sección</p>
+                              </div>
+                            </div>
+                          );
+                        })}
+
+                        {/* Total fila */}
+                        <div className="flex items-center justify-end gap-2 px-4 py-2 bg-default-50 border-t border-default-200">
+                          <span className="text-xs text-default-500 font-medium">Total a comprar:</span>
+                          <span className="text-sm font-bold text-primary">{prod.cantidadTotal} {prod.unidad}</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+          ) : (
+
+            /* ── Vista solicitudes aceptadas por asignatura ── */
+            <div className="space-y-4">
+              {gruposPorAsignatura.map(grupo => (
+                <div key={grupo.idAsignatura} className="rounded-xl border border-default-200 overflow-hidden">
+                  {/* Cabecera asignatura */}
+                  <div className="flex items-center gap-3 px-4 py-2.5 bg-default-50 border-b border-default-200">
+                    <Icon icon="lucide:graduation-cap" width={14} className="text-default-500 shrink-0" />
+                    <span className="font-bold text-sm text-default-700">{grupo.nombre}</span>
+                    <span className="ml-auto text-xs text-default-400">{grupo.items.length} solicitud{grupo.items.length > 1 ? 'es' : ''}</span>
+                  </div>
+
+                  {/* Solicitudes del grupo */}
+                  <div className="divide-y divide-default-100">
+                    {grupo.items.map(sol => {
+                      const { seccion } = sol.asignaturaDetalle;
+                      const horarios = seccion.horarios ?? [];
+                      const primerH = horarios[0];
+                      const ultimoH = horarios[horarios.length - 1];
+                      const fch = fmtFechaCorta(sol.fechaSolicitada);
+                      const hoy = isHoy(sol.fechaSolicitada);
+                      const solKey = String(sol.idSolicitud);
+                      const abierto = expandidos.has(solKey);
+
+                      return (
+                        <div key={sol.idSolicitud}>
+                          <button
+                            className="w-full flex flex-col sm:flex-row sm:items-center gap-3 px-4 py-3 hover:bg-default-50/50 transition-colors text-left"
+                            onClick={() => toggleExpandido(solKey)}
+                          >
+                            {/* Fecha */}
+                            <div className={`shrink-0 flex flex-col items-center justify-center rounded-lg px-2.5 py-1.5 min-w-[52px] text-center border ${
+                              hoy ? 'bg-warning-50 border-warning-200' : 'bg-primary-50 border-primary-100'
+                            }`}>
+                              <span className={`text-[10px] font-bold uppercase leading-none ${hoy ? 'text-warning-600' : 'text-primary-500'}`}>{fch.dia}</span>
+                              <span className={`text-sm font-bold leading-tight ${hoy ? 'text-warning-700' : 'text-primary'}`}>{fch.fecha}</span>
+                              {hoy && <span className="text-[9px] font-bold text-warning-600 leading-none">HOY</span>}
+                            </div>
+
+                            {/* Info */}
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="font-semibold text-sm">§{seccion.nombre_seccion}</span>
+                                <span className="text-xs text-default-400">·</span>
+                                <span className="text-sm text-default-600">{seccion.nombre_docente}</span>
+                              </div>
+                              <div className="flex items-center gap-3 mt-0.5 text-xs text-default-400 flex-wrap">
+                                <span className="flex items-center gap-1"><Icon icon="lucide:book-open" width={11} />{sol.nombreReceta}</span>
+                                <span className="flex items-center gap-1"><Icon icon="lucide:clock" width={11} />{fmtHora(primerH?.horaInicio ?? '')}–{fmtHora(ultimoH?.horaFin ?? '')}</span>
+                                <span className="flex items-center gap-1"><Icon icon="lucide:door-open" width={11} />{primerH?.nombreSala ?? ''}</span>
+                                <span className="flex items-center gap-1"><Icon icon="lucide:users" width={11} />{seccion.cant_inscritos} alumnos</span>
+                                <span className="flex items-center gap-1"><Icon icon="lucide:package" width={11} />{sol.productos.length} productos</span>
+                              </div>
+                              {sol.observaciones && (
+                                <p className="mt-0.5 text-xs text-default-500 italic">Obs: {sol.observaciones}</p>
+                              )}
+                            </div>
+
+                            <div className="flex items-center gap-2 shrink-0">
+                              <Chip size="sm" color="success" variant="flat" startContent={<Icon icon="lucide:check-circle" width={11} />}>
+                                Aceptada
+                              </Chip>
+                              <Icon icon={abierto ? 'lucide:chevron-up' : 'lucide:chevron-down'} width={16} className="text-default-400" />
+                            </div>
+                          </button>
+
+                          {/* Productos de la solicitud */}
+                          {abierto && (
+                            <div className="px-4 pb-3">
+                              <div className="rounded-lg border border-default-100 overflow-hidden">
+                                <div className="grid grid-cols-3 px-3 py-1.5 bg-default-50 text-[10px] font-bold text-default-500 uppercase tracking-wider">
+                                  <span>Producto</span><span className="text-right">Cantidad</span><span className="text-center">Unidad</span>
+                                </div>
+                                {sol.productos.map((p, i) => (
+                                  <div key={i} className="grid grid-cols-3 px-3 py-2 text-sm border-t border-default-100 hover:bg-default-50/50">
+                                    <span className="text-default-700">{p.nombreProducto}</span>
+                                    <span className="text-right font-mono font-semibold text-primary">{p.cantidad}</span>
+                                    <span className="text-center text-default-500">{p.unidad}</span>
                                   </div>
                                 ))}
                               </div>
                             </div>
                           )}
                         </div>
-                      </TableCell>
-                      <TableCell>
-                        <span className="font-semibold text-lg">{producto.cantidadTotal}</span>
-                      </TableCell>
-                      <TableCell>{producto.unidadMedida}</TableCell>
-                      <TableCell>
-                        <Chip size="sm" color="primary" variant="flat">
-                          {producto.totalSolicitudes}
-                        </Chip>
-                      </TableCell>
-                      <TableCell>
-                        {producto.incluyeAdicionales ? (
-                          <Chip size="sm" color="warning" variant="flat">
-                            Incluye adicionales
-                          </Chip>
-                        ) : (
-                          <Chip size="sm" variant="flat">
-                            Solo receta
-                          </Chip>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <Button
-                          isIconOnly
-                          variant="light"
-                          size="sm"
-                          onPress={() => toggleProducto(producto.productoId)}
-                        >
-                          <Icon
-                            icon={expandido ? 'lucide:chevron-up' : 'lucide:chevron-down'}
-                            className="text-primary"
-                          />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </CardBody>
-        </Card>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardBody>
+      </Card>
 
-        {/* Información adicional */}
-        {solicitudesAceptadas.length === 0 && (
-          <Card className="bg-white dark:bg-content1">
-            <CardBody className="text-center p-8">
-              <Icon icon="lucide:inbox" className="text-default-300 text-6xl mx-auto mb-4" />
-              <h3 className="text-lg font-semibold mb-2">No hay solicitudes aceptadas</h3>
-              <p className="text-default-500">
-                El conglomerado se actualizará automáticamente cuando haya solicitudes aceptadas.
-              </p>
-            </CardBody>
-          </Card>
-        )}
-      </motion.div>
+      {/* ── Modal Consolidar ── */}
+      <Modal isOpen={confirmarModal.isOpen} onOpenChange={confirmarModal.onOpenChange} size="sm">
+        <ModalContent>
+          {onClose => (
+            <>
+              <ModalHeader className="flex items-center gap-2 text-primary">
+                <Icon icon="lucide:layers" width={18} />
+                Consolidar Pedido de la Semana
+              </ModalHeader>
+              <ModalBody className="space-y-3">
+                <div className="bg-primary-50 border border-primary-200 rounded-lg px-3 py-2.5 text-sm text-primary-800 space-y-1">
+                  <p className="font-semibold flex items-center gap-1.5">
+                    <Icon icon="lucide:info" width={14} /> Información
+                  </p>
+                  <p>
+                    Se consolidarán <strong>{contadores.solicitudes} solicitudes</strong> con <strong>{contadores.productosUnicos} productos únicos</strong>.
+                    Las particiones por sección quedarán programadas para ejecutarse automáticamente en las fechas de cada clase.
+                  </p>
+                </div>
+                {semanaActual && (
+                  <p className="text-sm text-default-600">
+                    <span className="font-semibold">Semana:</span> {fmtFecha(semanaActual.fechaInicio)} al {fmtFecha(semanaActual.fechaFin)}
+                  </p>
+                )}
+                <Input
+                  label='Escriba "CONFIRMAR" para continuar'
+                  placeholder="CONFIRMAR"
+                  value={confirmarTexto}
+                  onValueChange={setConfirmarTexto}
+                  variant="bordered"
+                  color={confirmarTexto.trim().toUpperCase() === 'CONFIRMAR' ? 'success' : 'default'}
+                  endContent={confirmarTexto.trim().toUpperCase() === 'CONFIRMAR'
+                    ? <Icon icon="lucide:check-circle" width={16} className="text-success" /> : null}
+                />
+              </ModalBody>
+              <ModalFooter>
+                <Button variant="light" onPress={onClose}>Cancelar</Button>
+                <Button color="primary" isLoading={isConsolidando}
+                  isDisabled={confirmarTexto.trim().toUpperCase() !== 'CONFIRMAR'}
+                  onPress={handleConsolidar}
+                  startContent={!isConsolidando && <Icon icon="lucide:layers" width={14} />}>
+                  Confirmar consolidación
+                </Button>
+              </ModalFooter>
+            </>
+          )}
+        </ModalContent>
+      </Modal>
     </div>
   );
 };

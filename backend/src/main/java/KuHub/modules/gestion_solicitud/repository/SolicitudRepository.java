@@ -223,15 +223,181 @@ public interface SolicitudRepository extends JpaRepository<Solicitud, Integer> {
 
 
 
+    /**Super consulta nada a declara suerte! !*/
+    @Query(value = """
+        SELECT 
+            sol.id_solicitud,
+            sol.fecha_solicitada,
+            COALESCE(rec.nombre_receta, 'Sin receta') AS nombre_receta,
+            sol.observaciones, 
+            JSON_BUILD_OBJECT(
+                'nombre_asignatura', asig.nombre_asignatura,
+                'id_asignatura', asig.id_asignatura,
+                'seccion', JSON_BUILD_OBJECT(
+                    'id_seccion', sec.id_seccion,
+                    'nombre_seccion', sec.nombre_seccion,
+                    'id_usuario', usr.id_usuario,
+                    'nombre_docente', CONCAT_WS(' ',
+                        NULLIF(TRIM(usr.p_nombre), ''),
+                        NULLIF(TRIM(usr.s_nombre), ''),
+                        NULLIF(TRIM(usr.app_paterno), ''),
+                        NULLIF(TRIM(usr.app_materno), '')
+                    ),
+                    'cant_inscritos', sec.cant_inscritos,
+        
+                    -- Cantidad de productos asociados a esta solicitud
+                    'cant_productos', (
+                        SELECT COUNT(ds_count.id_producto)
+                        FROM detalle_solicitud ds_count
+                        WHERE ds_count.id_solicitud = sol.id_solicitud
+                          AND ds_count.fecha_solicitada = sol.fecha_solicitada
+                    ),
+        
+                    -- Lista de productos de la solicitud
+                    'productos_solicitados', (
+                        SELECT COALESCE(
+                            json_agg(
+                                json_build_object(
+                                    'nombreProducto', prod.nombre_producto,
+                                    'cantidad', det_sol.cant_producto_solicitud,
+                                    'unidad_abreviada', uni.abreviatura
+                                ) ORDER BY prod.nombre_producto ASC
+                            ),
+                            '[]'::json
+                        )
+                        FROM detalle_solicitud det_sol
+                        JOIN producto prod ON prod.id_producto = det_sol.id_producto
+                        JOIN unidad_medida uni ON uni.id_unidad = prod.id_unidad
+                        WHERE det_sol.id_solicitud = sol.id_solicitud
+                          AND det_sol.fecha_solicitada = sol.fecha_solicitada
+                    ),
+        
+                    -- Horarios con lógica de "Huecos e Islas"
+                    'horarios', (
+                        SELECT COALESCE(
+                            (
+                                SELECT json_build_object(
+                                    'nombreSala', MAX(islas_agrupadas.sala),
+                                    'rangoHoras', string_agg(islas_agrupadas.rango, ' / ' ORDER BY min_inicio)
+                                )
+                                FROM (
+                                    SELECT
+                                        sala,
+                                        MIN(hora_inicio) AS min_inicio,
+                                        to_char(MIN(hora_inicio), 'HH24:MI') || ' - ' || to_char(MAX(hora_fin), 'HH24:MI') AS rango
+                                    FROM (
+                                        SELECT
+                                            sala.nombre_sala || '-' || sala.cod_sala AS sala,
+                                            bloq.hora_inicio,
+                                            bloq.hora_fin,
+                                            bloq.id_bloque - CAST(ROW_NUMBER() OVER (ORDER BY bloq.id_bloque ASC) AS INT) AS grp
+                                        FROM reserva_sala res_sal
+                                        INNER JOIN reserva_sala rs_ref ON rs_ref.id_reserva_sala = sol.id_reserva_sala
+                                        INNER JOIN bloque_horario bloq ON bloq.id_bloque = res_sal.id_bloque
+                                        INNER JOIN sala sala ON sala.id_sala = res_sal.id_sala
+                                        WHERE res_sal.id_seccion = rs_ref.id_seccion
+                                          AND res_sal.id_sala = rs_ref.id_sala
+                                          AND res_sal.dia_semana = rs_ref.dia_semana
+                                          AND res_sal.activo = true
+                                          AND sala.activo = true
+                                    ) islas
+                                    GROUP BY sala, grp
+                                ) islas_agrupadas
+                            ),
+                            '{}'::json
+                        )
+                    )
+                )
+            ) AS asignatura_detalle
+        FROM solicitud sol
+        LEFT JOIN receta rec ON rec.id_receta = sol.id_receta
+        JOIN seccion sec ON sec.id_seccion = sol.id_seccion
+        JOIN asignatura asig ON asig.id_asignatura = sec.id_asignatura
+        JOIN docente_seccion doc_sec ON doc_sec.id_seccion = sec.id_seccion
+        JOIN usuario usr ON usr.id_usuario = doc_sec.id_usuario
+        WHERE sol.fecha_solicitada BETWEEN :fechaInicio AND :fechaFin
+          AND sol.estado_solicitud = 'ACEPTADA'
+        ORDER BY sol.fecha_solicitada ASC; 
+    """, nativeQuery = true)
+    List<Object[]> findSolicitudesParaDashboard(@Param("fechaInicio") LocalDate fechaInicio, @Param("fechaFin") LocalDate fechaFin);
 
 
-
-
-
-
-
-
-
+    @Query(value = """
+        SELECT COALESCE(
+            json_agg(
+                json_build_object(
+                    'idProducto', agg.id_producto,
+                    'nombreProducto', agg.nombre_producto,
+                    'cantidadTotal', agg.cantidad_total,
+                    'unidad', agg.unidad,
+                    'totalSecciones', agg.total_secciones,
+                    'detalles', agg.detalles_secciones
+                ) ORDER BY agg.nombre_producto ASC
+            ),
+            '[]'::json
+        ) AS json_productos_consolidados
+        FROM (
+            SELECT\s
+                prod.id_producto,
+                prod.nombre_producto,
+                SUM(det_sol.cant_producto_solicitud) AS cantidad_total,
+                uni.nombre_unidad AS unidad,
+                COUNT(DISTINCT sol.id_seccion) AS total_secciones,
+                -- Sub-arreglo de las solicitudes específicas para este producto
+                json_agg(
+                    json_build_object(
+                        'idSolicitud', sol.id_solicitud,
+                        'fechaSolicitada', sol.fecha_solicitada,
+                        'nombreSeccion', sec.nombre_seccion,
+                        'nombreAsignatura', asig.nombre_asignatura,
+                        'nombreDocente', CONCAT_WS(' ', NULLIF(TRIM(usr.p_nombre), ''), NULLIF(TRIM(usr.app_paterno), '')),
+                        'cantidad', det_sol.cant_producto_solicitud,
+                        'alumnos', sec.cant_inscritos,
+                        'nombreSala', (
+                            SELECT sala.nombre_sala
+                            FROM reserva_sala res_sal
+                            JOIN sala sala ON sala.id_sala = res_sal.id_sala
+                            WHERE res_sal.id_reserva_sala = sol.id_reserva_sala
+                            LIMIT 1
+                        ),
+                        'rangoHoras', (
+                            SELECT string_agg(rango, ' / ' ORDER BY min_inicio)
+                            FROM (
+                                SELECT MIN(hora_inicio) AS min_inicio,
+                                       to_char(MIN(hora_inicio), 'HH24:MI') || '-' || to_char(MAX(hora_fin), 'HH24:MI') AS rango
+                                FROM (
+                                    SELECT bloq.hora_inicio, bloq.hora_fin,
+                                           bloq.id_bloque - CAST(ROW_NUMBER() OVER (ORDER BY bloq.id_bloque ASC) AS INT) AS grp
+                                    FROM reserva_sala res_sal
+                                    INNER JOIN reserva_sala rs_ref ON rs_ref.id_reserva_sala = sol.id_reserva_sala
+                                    INNER JOIN bloque_horario bloq ON bloq.id_bloque = res_sal.id_bloque
+                                    WHERE res_sal.id_seccion = rs_ref.id_seccion
+                                      AND res_sal.id_sala = rs_ref.id_sala
+                                      AND res_sal.dia_semana = rs_ref.dia_semana
+                                      AND res_sal.activo = true
+                                ) islas
+                                GROUP BY grp
+                            ) rangos
+                        )
+                    ) ORDER BY sol.fecha_solicitada ASC
+                ) AS detalles_secciones
+        
+            FROM solicitud sol
+            JOIN detalle_solicitud det_sol ON det_sol.id_solicitud = sol.id_solicitud
+                AND det_sol.fecha_solicitada = sol.fecha_solicitada
+            JOIN producto prod ON prod.id_producto = det_sol.id_producto
+            JOIN unidad_medida uni ON uni.id_unidad = prod.id_unidad
+            JOIN seccion sec ON sec.id_seccion = sol.id_seccion
+            JOIN asignatura asig ON asig.id_asignatura = sec.id_asignatura
+            JOIN docente_seccion doc_sec ON doc_sec.id_seccion = sec.id_seccion
+            JOIN usuario usr ON usr.id_usuario = doc_sec.id_usuario
+        
+            WHERE sol.fecha_solicitada BETWEEN :fechaInicio AND :fechaFin
+              AND sol.estado_solicitud = 'ACEPTADA'
+            GROUP BY prod.id_producto, prod.nombre_producto, uni.nombre_unidad
+        ) agg;
+        """, nativeQuery = true)
+    String findConsolidadoGlobalJson(@Param("fechaInicio") LocalDate fechaInicio, @Param("fechaFin") LocalDate fechaFin);
 
 
 

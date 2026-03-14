@@ -3,6 +3,7 @@ package KuHub.modules.gestion_solicitud.controller;
 import KuHub.modules.gestion_solicitud.dtos.*;
 import KuHub.modules.gestion_solicitud.dtos.proyeccion.ManagementSolicitationView;
 import KuHub.modules.gestion_solicitud.dtos.proyeccion.SectionAvailabilityView;
+import KuHub.modules.gestion_solicitud.dtos.record.DashboardConsolidadoResponse;
 import KuHub.modules.gestion_solicitud.dtos.request.*;
 import KuHub.modules.gestion_solicitud.dtos.respose.ResultsMassSolicitationView;
 import KuHub.modules.gestion_solicitud.dtos.respose.SolicitationManagementDTO;
@@ -67,6 +68,16 @@ public class SolicitudController {
         return ResponseEntity
                 .status(201)
                 .body(solicitudService.saveMass(payloadList));
+    }
+
+    /** ✅ En uso: Endpoint consumido por el frontend para cargar la vista semanal de solicitudes.
+     */
+    @PostMapping("/order-for-consolidation")
+    public ResponseEntity<DashboardConsolidadoResponse> obtenerDashboard(
+            @Validated @RequestBody DateRangeDTO request){
+        return ResponseEntity
+                .status(200)
+                .body(solicitudService.obtenerDashboard(request));
     }
 
     /** ✅ En uso: Endpoint consumido por el frontend para cargar la vista semanal de solicitudes.
