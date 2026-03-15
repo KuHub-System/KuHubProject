@@ -1,4 +1,4 @@
-package KuHub.modules.gestion_solicitud.dtos.record;
+package KuHub.modules.gestion_solicitud.dtos.respose.record;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;

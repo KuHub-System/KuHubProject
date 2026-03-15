@@ -198,6 +198,80 @@ export const cambiarEstadoMasivoService = async (
   return response.data;
 };
 
+// ── Order for consolidation ───────────────────────────────────────────────────
+
+export interface IProductoSolicitadoItem {
+  nombreProducto: string;
+  cantidad: number;
+  unidad_abreviada: string;
+}
+
+export interface IHorarioConsolidacion {
+  nombreSala: string;
+  rangoHoras: string;
+}
+
+export interface ISeccionConsolidacionItem {
+  id_seccion: number;
+  nombre_seccion: string;
+  id_usuario: number;
+  nombre_docente: string;
+  cant_inscritos: number;
+  cant_productos: number;
+  productos_solicitados: IProductoSolicitadoItem[];
+  horarios: IHorarioConsolidacion;
+}
+
+export interface IAsignaturaConsolidacionDetalle {
+  id_asignatura: number;
+  nombre_asignatura: string;
+  seccion: ISeccionConsolidacionItem;
+}
+
+export interface ISolicitudConsolidacionItem {
+  idSolicitud: number;
+  fechaSolicitada: string;
+  nombreReceta: string;
+  observaciones?: string;
+  asignaturaDetalle: IAsignaturaConsolidacionDetalle;
+}
+
+export interface IDetalleConsolidadoItem {
+  idSolicitud: number;
+  fechaSolicitada: string;
+  nombreSeccion: string;
+  nombreAsignatura: string;
+  nombreDocente: string;
+  cantidad: number;
+  alumnos: number;
+  nombreSala: string;
+  rangoHoras: string;
+}
+
+export interface IProductoConsolidadoResponse {
+  idProducto: number;
+  nombreProducto: string;
+  cantidadTotal: number;
+  unidad: string;
+  totalSecciones: number;
+  detalles: IDetalleConsolidadoItem[];
+}
+
+export interface IOrderConsolidationResponse {
+  solicitudes: ISolicitudConsolidacionItem[];
+  consolidado: IProductoConsolidadoResponse[];
+}
+
+export const obtenerOrdenConsolidacionService = async (
+  dto: IDateRangeDTO
+): Promise<IOrderConsolidationResponse> => {
+  const response = await api.post<IOrderConsolidationResponse>(
+    '/solicitud/order-for-consolidation',
+    dto
+  );
+  return response.data;
+};
+
 const API_BASE_URL = 'http://localhost:8083/api/v1';
 const ENDPOINTS = {
   SOLICITUDES_DETALLES: `${API_BASE_URL}/solicituddocente/detalles`
