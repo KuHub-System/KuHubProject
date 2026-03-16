@@ -2,14 +2,14 @@ package KuHub.modules.gestion_solicitud.service;
 
 import KuHub.modules.gestion_academica.repository.AsignaturaRepository;
 import KuHub.modules.gestion_receta.services.DetalleRecetaService;
-import KuHub.modules.gestion_solicitud.dtos.request.record.ChangeSolicitationStatusRequest;
-import KuHub.modules.gestion_solicitud.dtos.request.record.MassiveSolicitationRequest;
-import KuHub.modules.gestion_solicitud.dtos.respose.record.CourseForSolicitationResponse;
-import KuHub.modules.gestion_solicitud.dtos.respose.record.DashboardConsolidadoResponse;
+import KuHub.modules.gestion_solicitud.dtos.request.record.ChangeSolicitationStatus;
+import KuHub.modules.gestion_solicitud.dtos.request.record.MassiveSolicitation;
+import KuHub.modules.gestion_solicitud.dtos.respose.record.CourseForSolicitation;
+import KuHub.modules.gestion_solicitud.dtos.respose.record.DashboardConsolidado;
 import KuHub.modules.gestion_solicitud.dtos.request.*;
 import KuHub.modules.gestion_solicitud.dtos.respose.projection.ResultsMassSolicitationView;
-import KuHub.modules.gestion_solicitud.dtos.respose.record.RecipeSolicitationResponse;
-import KuHub.modules.gestion_solicitud.dtos.respose.record.SolicitationManagementResponse;
+import KuHub.modules.gestion_solicitud.dtos.respose.record.RecipeSolicitation;
+import KuHub.modules.gestion_solicitud.dtos.respose.record.SolicitationManagement;
 import KuHub.modules.gestion_solicitud.entity.Solicitud;
 import KuHub.modules.gestion_solicitud.repository.MotivoRechazoRepository;
 import KuHub.modules.gestion_solicitud.repository.SolicitudRepository;
@@ -55,25 +55,25 @@ public class SolicitudServiceImp implements SolicitudService{
 
     @Transactional(readOnly = true)
     @Override
-    public List<CourseForSolicitationResponse> findCourseWithSectionsAndBlocksRaw() {
+    public List<CourseForSolicitation> findCourseWithSectionsAndBlocksRaw() {
 
         List<Object[]> rawResults = solicitudRepository.findCourseWithSectionsAndBlocksRaw();
-        List<CourseForSolicitationResponse> responseList = new ArrayList<>();
+        List<CourseForSolicitation> responseList = new ArrayList<>();
 
         for (Object[] row : rawResults) {
 
             String seccionesJson = row[2].toString();
-            List<CourseForSolicitationResponse.SectionDTO> secciones;
+            List<CourseForSolicitation.SectionDTO> secciones;
             try {
                 secciones = objectMapper.readValue(
                         seccionesJson,
-                        new TypeReference<List<CourseForSolicitationResponse.SectionDTO>>() {}
+                        new TypeReference<List<CourseForSolicitation.SectionDTO>>() {}
                 );
             } catch (Exception e) {
                 throw new RuntimeException("Error al mapear el JSON de secciones: " + seccionesJson, e);
             }
 
-            responseList.add(new CourseForSolicitationResponse(
+            responseList.add(new CourseForSolicitation(
                     ((Number) row[1]).intValue(), // idAsignatura
                     (String) row[0],              // nombreAsignatura
                     secciones
@@ -84,23 +84,23 @@ public class SolicitudServiceImp implements SolicitudService{
 
     @Transactional(readOnly = true)
     @Override
-    public List<RecipeSolicitationResponse> findActiveRecipesWithDetailsRaw()  {
+    public List<RecipeSolicitation> findActiveRecipesWithDetailsRaw()  {
 
         List<Object[]> rawResults = solicitudRepository.findActiveRecipesWithDetailsRaw();
-        List<RecipeSolicitationResponse> responseList = new ArrayList<>();
+        List<RecipeSolicitation> responseList = new ArrayList<>();
 
         for (Object[] row : rawResults) {
             String detallesJsonb = row[2].toString();
-            List<RecipeSolicitationResponse.RecipeDetailsDTO> detalles;
+            List<RecipeSolicitation.RecipeDetailsDTO> detalles;
             try {
                 detalles = objectMapper.readValue(
                         detallesJsonb,
-                        new TypeReference<List<RecipeSolicitationResponse.RecipeDetailsDTO>>() {}
+                        new TypeReference<List<RecipeSolicitation.RecipeDetailsDTO>>() {}
                 );
             } catch (Exception e) {
                 throw new RuntimeException("Error al mapear JSONB de receta detalles: " + detallesJsonb, e);
             }
-            responseList.add(new RecipeSolicitationResponse(
+            responseList.add(new RecipeSolicitation(
                     ((Number) row[0]).intValue(), // idReceta
                     (String) row[1],              // nombreReceta
                     detalles
@@ -112,40 +112,40 @@ public class SolicitudServiceImp implements SolicitudService{
 
     @Transactional(readOnly = true)
     @Override
-    public List<SolicitationManagementResponse> findSolicitationsPerWeekRaw(DateRangeDTO request) {
+    public List<SolicitationManagement> findSolicitationsPerWeekRaw(DateRangeDTO request) {
 
         // 1. Ejecutamos la "Súper Consulta" usando las fechas que vienen en el DTO
         List<Object[]> rawResults = solicitudRepository.findSolicitationsPerWeekRaw(
                 request.getFechaInicio(),
                 request.getFechaFin()
         );
-        List<SolicitationManagementResponse> responseList = new ArrayList<>();
+        List<SolicitationManagement> responseList = new ArrayList<>();
 
         // 2. Iteramos y mapeamos los resultados
         for (Object[] row : rawResults) {
             // row[7] -> productos_solicitados
-            List<SolicitationManagementResponse.ProductDetailDTO> productos;
+            List<SolicitationManagement.ProductDetailDTO> productos;
             try {
                 productos = row[7] != null
                         ? objectMapper.readValue(row[7].toString(),
-                        new TypeReference<List<SolicitationManagementResponse.ProductDetailDTO>>() {})
+                        new TypeReference<List<SolicitationManagement.ProductDetailDTO>>() {})
                         : new ArrayList<>();
             } catch (Exception e) {
                 productos = new ArrayList<>();
             }
             // row[8] -> asignatura_detalle
-            SolicitationManagementResponse.CourseDetailsDTO courseDetails = null;
+            SolicitationManagement.CourseDetailsDTO courseDetails = null;
             try {
                 if (row[8] != null) {
                     courseDetails = objectMapper.readValue(
                             row[8].toString(),
-                            SolicitationManagementResponse.CourseDetailsDTO.class
+                            SolicitationManagement.CourseDetailsDTO.class
                     );
                 }
             } catch (Exception e) {
                 throw new RuntimeException("Error crítico al mapear asignatura_detalle: " + row[8], e);
             }
-            responseList.add(new SolicitationManagementResponse(
+            responseList.add(new SolicitationManagement(
                     ((java.sql.Date) row[0]).toLocalDate(),   // fechaSolicitada
                     (String) row[1],                          // nombreReceta
                     (Integer) row[2],                         // idSolicitud
@@ -185,7 +185,7 @@ public class SolicitudServiceImp implements SolicitudService{
      */
     @Override
     @Transactional
-    public ResultsMassSolicitationView saveMass(List<MassiveSolicitationRequest> payloadList) {
+    public ResultsMassSolicitationView saveMass(List<MassiveSolicitation> payloadList) {
         try {
             // 1. Convertimos la lista de DTOs a un String JSON
             String jsonPayload = objectMapper.writeValueAsString(payloadList);
@@ -200,7 +200,7 @@ public class SolicitudServiceImp implements SolicitudService{
 
     @Override
     @Transactional
-    public boolean changeMassiveStatus(ChangeSolicitationStatusRequest request) {
+    public boolean changeMassiveStatus(ChangeSolicitationStatus request) {
 
         // 1. Sabemos exactamente cuántas solicitudes deberíamos actualizar
         int totalEsperados = request.estadosSolicitudes().size();
@@ -211,7 +211,7 @@ public class SolicitudServiceImp implements SolicitudService{
                 .collect(Collectors.groupingBy(
                         item -> StringUtils.normalizeToEnumKey(item.estado()),
                         Collectors.mapping(
-                                ChangeSolicitationStatusRequest.StatusItemDTO::idSolicitud,
+                                ChangeSolicitationStatus.StatusItemDTO::idSolicitud,
                                 Collectors.toList()
                         )
                 ));
@@ -243,21 +243,21 @@ public class SolicitudServiceImp implements SolicitudService{
 
     @Transactional(readOnly = true)
     @Override
-    public DashboardConsolidadoResponse obtenerDashboard(DateRangeDTO request) {
+    public DashboardConsolidado obtenerDashboard(DateRangeDTO request) {
 
         // 1. Obtener y mapear la lista de solicitudes (Consulta A)
         List<Object[]> rawSolicitudes = solicitudRepository.findSolicitudesParaDashboard(request.getFechaInicio(), request.getFechaFin());
-        List<DashboardConsolidadoResponse.SolicitudDashboardDTO> listaSolicitudes = new ArrayList<>();
+        List<DashboardConsolidado.SolicitudDashboardDTO> listaSolicitudes = new ArrayList<>();
 
         for (Object[] row : rawSolicitudes) {
             try {
                 // Parsear el JSON de la columna 4 al Record AsignaturaDetalleDTO
                 String jsonAsignaturaDetalle = (row[4] != null) ? row[4].toString() : "{}";
 
-                DashboardConsolidadoResponse.AsignaturaDetalleDTO asignaturaDetalle =
-                        objectMapper.readValue(jsonAsignaturaDetalle, DashboardConsolidadoResponse.AsignaturaDetalleDTO.class);
+                DashboardConsolidado.AsignaturaDetalleDTO asignaturaDetalle =
+                        objectMapper.readValue(jsonAsignaturaDetalle, DashboardConsolidado.AsignaturaDetalleDTO.class);
 
-                listaSolicitudes.add(new DashboardConsolidadoResponse.SolicitudDashboardDTO(
+                listaSolicitudes.add(new DashboardConsolidado.SolicitudDashboardDTO(
                         ((Number) row[0]).intValue(),                 // idSolicitud
                         ((java.sql.Date) row[1]).toLocalDate(),       // fechaSolicitada
                         (String) row[2],                              // nombreReceta
@@ -271,13 +271,13 @@ public class SolicitudServiceImp implements SolicitudService{
 
         // 2. Obtener y parsear el JSON del consolidado global (Consulta B)
         String jsonConsolidado = solicitudRepository.findConsolidadoGlobalJson(request.getFechaInicio(), request.getFechaFin());
-        List<DashboardConsolidadoResponse.ProductoConsolidadoDTO> listaConsolidado = new ArrayList<>();
+        List<DashboardConsolidado.ProductoConsolidadoDTO> listaConsolidado = new ArrayList<>();
 
         try {
             if (jsonConsolidado != null && !jsonConsolidado.isEmpty()) {
                 listaConsolidado = objectMapper.readValue(
                         jsonConsolidado,
-                        new TypeReference<List<DashboardConsolidadoResponse.ProductoConsolidadoDTO>>() {}
+                        new TypeReference<List<DashboardConsolidado.ProductoConsolidadoDTO>>() {}
                 );
             }
         } catch (Exception e) {
@@ -285,7 +285,7 @@ public class SolicitudServiceImp implements SolicitudService{
         }
 
         // 3. Empaquetar y retornar
-        return new DashboardConsolidadoResponse(listaSolicitudes, listaConsolidado);
+        return new DashboardConsolidado(listaSolicitudes, listaConsolidado);
     }
 
 }

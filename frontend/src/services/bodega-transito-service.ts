@@ -94,20 +94,60 @@ export interface WarehouseWithProductUpdateDTO {
     descripcionProducto?: string;
     idCategoria: number;
     idUnidadMedida: number;
-    stock: number;
+    stock: number;       // stock en vista (requerido por validación del backend)
     stockLimit: number;
+    delta: number;       // para AJUSTE_BODEGA: nuevo stock absoluto; para otros: cantidad a mover
+    stockEnVista: number; // stock actual que el usuario ve (para detección de desync)
+}
+
+export interface IBodegaStockSyncWarning {
+    desync: true;
+    warning: string;
+    item: IBodegaTransitoItem;
+}
+
+export interface IBodegaStockInsuficiente {
+    insuficiente: true;
+    warning: string;
+    item: IBodegaTransitoItem;
 }
 
 /**
  * Servicio para actualizar un producto en la bodega de tránsito.
  * Endpoint: PATCH /v1/bodega-transito/update-warehouse-with-product
+ * Respuestas:
+ *   200 OK              → IBodegaTransitoItem (éxito limpio)
+ *   409 Conflict        → { warning, item } (desincronizado pero guardado)
+ *   422 Unprocessable   → { warning, item } (stock insuficiente, no guardado)
  */
-export const actualizarBodegaTransitoConProductoService = async (data: WarehouseWithProductUpdateDTO): Promise<boolean> => {
+export const actualizarBodegaTransitoConProductoService = async (
+    data: WarehouseWithProductUpdateDTO
+): Promise<IBodegaTransitoItem | IBodegaStockSyncWarning | IBodegaStockInsuficiente> => {
     try {
-        const response = await api.patch<boolean>('/bodega-transito/update-warehouse-with-product', data);
-        return response.data;
-    } catch (error) {
-        console.error('Error al actualizar bodega de tránsito:', error);
-        throw error;
+        const response = await api.patch<any>('/bodega-transito/update-warehouse-with-product', data);
+        const body = response.data;
+
+        // El backend retorna 200 para los 3 casos; se distingue por presencia del campo 'warning'
+        if (body?.warning) {
+            // Distinguir desync (operación guardada) de insuficiente (rollback) por el mensaje
+            const esInsuficiente = typeof body.warning === 'string' &&
+                body.warning.toLowerCase().includes('insuficiente');
+            if (esInsuficiente) {
+                return { insuficiente: true, warning: body.warning, item: body.item } as IBodegaStockInsuficiente;
+            }
+            return { desync: true, warning: body.warning, item: body.item } as IBodegaStockSyncWarning;
+        }
+
+        return body as IBodegaTransitoItem;
+    } catch (error: any) {
+        if (error.response?.status === 409) {
+            throw new Error(error.response.data?.message || 'El nombre o código del producto ya está en uso');
+        }
+        if (error.response?.status === 410 || error.response?.status === 404) {
+            const err = new Error(error.response.data?.message || 'El registro fue eliminado antes de procesar la petición.');
+            (err as any).status = 410;
+            throw err;
+        }
+        throw new Error(error.response?.data?.message || 'Error al actualizar bodega de tránsito');
     }
 };

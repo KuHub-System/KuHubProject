@@ -68,6 +68,9 @@ export interface IActualizarProducto {
   stock?: number;
   stockMinimo?: number;
   tipoMovimiento: string;
+  delta?: number;
+  stockEnVista?: number;
+  ajustePositivo?: boolean | null;
 }
 
 /**

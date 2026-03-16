@@ -2,11 +2,8 @@ package KuHub.config;
 
 import KuHub.modules.gestion_academica.exceptions.GestionAcademicaException;
 import KuHub.modules.gestion_inventario.exceptions.GestionInventarioException;
-import KuHub.modules.gestion_inventario.exceptions.InventarioException;
 import KuHub.modules.gestion_solicitud.exception.GestionSolicitudException;
 import KuHub.modules.gestion_usuario.exceptions.*;
-import KuHub.modules.gestion_inventario.exceptions.ProductoException;
-import KuHub.modules.gestion_inventario.exceptions.ProductoNotFoundException;
 import KuHub.modules.gestion_receta.exceptions.GestionRecetaException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -175,33 +172,8 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
     }
 
-    /**
-     * Maneja ProductoNotFoundException (no provoca rollback)
-     */
-    @ExceptionHandler(ProductoNotFoundException.class)
-    public ResponseEntity<Map<String, Object>> handleProductoNotFound(ProductoNotFoundException ex) {
-        Map<String, Object> response = new HashMap<>();
-        response.put("timestamp", LocalDateTime.now());
-        response.put("status", HttpStatus.NOT_FOUND.value());
-        response.put("error", "Producto no encontrado");
-        response.put("message", ex.getMessage());
 
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
-    }
 
-    /**
-     * Maneja ProductoException genérica
-     */
-    @ExceptionHandler(ProductoException.class)
-    public ResponseEntity<Map<String, Object>> handleProductoException(ProductoException ex) {
-        Map<String, Object> response = new HashMap<>();
-        response.put("timestamp", LocalDateTime.now());
-        response.put("status", HttpStatus.BAD_REQUEST.value());
-        response.put("error", "Error de producto");
-        response.put("message", ex.getMessage());
-
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
-    }
 
     /**
      * Maneja GestionAcademicaException
@@ -224,26 +196,6 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(Map.of("mensaje", ex.getMessage()));
     }
-
-
-    @ExceptionHandler(InventarioException.class)
-    public ResponseEntity<Map<String, Object>> handleInventarioException(InventarioException ex) {
-
-        Map<String, Object> response = new HashMap<>();
-        response.put("timestamp", LocalDateTime.now());
-        response.put("status", HttpStatus.BAD_REQUEST.value());
-        response.put("error", "Error de inventario");
-        response.put("message", ex.getMessage());
-
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
-    }
-
-
-
-
-
-
-
 
 
     @ExceptionHandler(GestionInventarioException.class)

@@ -17,6 +17,9 @@ public interface SalaRepository extends JpaRepository <Sala, Integer> {
 
 
 
+
+
+
     Boolean existsByCodSala(String codSala);
     Boolean existsByNombreSalaAndCodSala(String nombreSala, String codSala);
 

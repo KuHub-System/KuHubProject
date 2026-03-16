@@ -1,6 +1,7 @@
 package KuHub.modules.gestion_inventario.repository;
 
 import KuHub.modules.gestion_inventario.dtos.response.proyeccion.ProductInventoryBulkView;
+import KuHub.modules.gestion_inventario.dtos.response.record.BulkInventoriesPage;
 import KuHub.modules.gestion_inventario.entity.Inventario;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -16,48 +17,20 @@ import java.util.Optional;
 @Repository
 public interface InventarioRepository extends JpaRepository<Inventario, Integer> {
 
+    /** Carga múltiples inventarios activos con su producto asociado por lista de IDs. */
+    @Query("SELECT i FROM Inventario i JOIN FETCH i.producto WHERE i.idInventario IN :ids AND i.activo = true")
+    List<Inventario> findAllByIdsWithProductsActive(@Param("ids") List<Integer> ids);
 
-    @Query("SELECT i FROM Inventario i JOIN i.producto p WHERE p.activo = :activo")
-    List<Inventario> findInventoriesWithProductsActive(@Param("activo") Boolean activo);
-
+    /** Busca un inventario activo con su producto por ID. */
     @Query("SELECT i FROM Inventario i JOIN i.producto p WHERE p.activo = :activo AND i.idInventario = :idInventario")
     Optional<Inventario> findByIdInventoryWithProductActive(
             @Param("idInventario") Integer idInventario,
             @Param("activo") Boolean activo);
+
     /**
-    @Query(value = "SELECT i.id_inventario, " +
-                    "p.id_producto, " +
-                    "p.nombre_producto, " +
-                    "p.descripcion_producto, " +
-                    "p.nombre_categoria, " +
-                    "p.unidad_medida, " +
-                    "i.stock, " +
-                    "i.stock_limit_min, " +
-                    "CASE " +
-                    "    WHEN i.stock = 0 THEN 'Sin stock' " +
-                    "    WHEN i.stock < i.stock_limit_min THEN 'Stock mínimo' " +
-                    "    WHEN i.stock >= i.stock_limit_min THEN 'Disponible' " +
-                    "END as estado_stock " +
-                    "FROM inventario i " +
-                    "JOIN producto p ON i.id_producto = p.id_producto " +
-                    "WHERE p.activo = TRUE " +
-                    "ORDER BY p.nombre_producto",
-                    nativeQuery = true)
-    List<InventoryWithProductResponseAnswerUpdateDTO> findAllActiveInventoryOrderedByName();*/
-
-    boolean existsByIdInventario(Integer idInventario);
-
-
-
-
-
-
-
-    //MODI V2 A BAJO, ARRIBA SE VA
-
-    /**Consulta para obtener un registro específico de inventario por su ID con todos sus detalles
-     * Usada en caso estrategico especifico, cuanto al intentar actualizar un inventario, otro usuario actualizo
-     * en paralelo retornando detalle para la sincronizacion*/
+     * Retorna el detalle completo de un inventario específico mapeado por índice de columna.
+     * Usado para sincronizar la vista del frontend cuando otro usuario actualizó en paralelo.
+     */
     @Query(value = """
     SELECT 
         p.nombre_producto,      -- [0]
@@ -82,7 +55,8 @@ public interface InventarioRepository extends JpaRepository<Inventario, Integer>
 """, nativeQuery = true)
     List<Object[]> findByIdToInventoryPage(@Param("idInventario") Integer idInventario);
 
-    /**Consulta para listar inventario por codigo de producto*/
+
+    /** Lista paginada de inventario filtrada por código de producto. */
     @Query(value = """
         SELECT 
             p.nombre_producto,
@@ -113,7 +87,7 @@ public interface InventarioRepository extends JpaRepository<Inventario, Integer>
             @Param("offset") int offset
     );
 
-    /**Consulta contar y usada para calcular total de paginas de inventario por codigo de producto*/
+    /** Cuenta el total de inventarios filtrados por código de producto para calcular la paginación. */
     @Query(value = """
         SELECT COUNT(*)
         FROM inventario i
@@ -126,7 +100,7 @@ public interface InventarioRepository extends JpaRepository<Inventario, Integer>
             @Param("codProducto") String codProducto
     );
 
-    /**Consulta para listar inventario por nombre o descripcion*/
+    /** Lista paginada de inventario filtrada por nombre o descripción del producto. */
     @Query(value = """
         SELECT 
             p.nombre_producto,
@@ -160,7 +134,7 @@ public interface InventarioRepository extends JpaRepository<Inventario, Integer>
             @Param("offset") int offset
     );
 
-    /**Consulta contar y usada para calcular total de paginas de inventario por nombre o descripcion*/
+    /** Cuenta el total de inventarios filtrados por nombre o descripción para calcular la paginación. */
     @Query(value = """
         SELECT COUNT(*)
         FROM inventario i
@@ -174,7 +148,8 @@ public interface InventarioRepository extends JpaRepository<Inventario, Integer>
         """, nativeQuery = true)
     long countSearchInventory(@Param("searchTerm") String searchTerm);
 
-    /**Consulta para listar inventario con consulta dinamica segun filtros*/
+
+    /** Lista paginada de inventario con filtros dinámicos: categorías, unidades, stock bajo y agotados. */
     @Query(value = """
         SELECT
             p.nombre_producto,
@@ -229,7 +204,7 @@ public interface InventarioRepository extends JpaRepository<Inventario, Integer>
             @Param("offset") int offset
     );
 
-    /**Consulta contar y usada para calcular total de paginas de inventario por consulta dinamica segun filtros*/
+    /** Cuenta el total de inventarios según filtros dinámicos para calcular la paginación. */
     @Query(value = """
         SELECT COUNT(*)
         FROM inventario i
@@ -263,7 +238,7 @@ public interface InventarioRepository extends JpaRepository<Inventario, Integer>
             @Param("ocultarAgotados") boolean ocultarAgotados
     );
 
-    /**Consulta para listar filtros de inventario*/
+    /** Retorna en JSON los filtros disponibles de categorías y unidades de medida activas. */
     @Query(value = """
         SELECT
             json_build_object(
@@ -296,10 +271,7 @@ public interface InventarioRepository extends JpaRepository<Inventario, Integer>
     String getFiltersInventory();
 
 
-    /**
-     * Conteo dinámico: Cuenta todo si searchTerm es vacío, o filtra si tiene texto.
-     * para el listado de contro inventario masivo
-     */
+    /** Cuenta el total de inventarios para control masivo, filtrando por nombre o código si se proporciona un término. */
     @Query(value = """
         SELECT COUNT(*) 
         FROM inventario i 
@@ -308,13 +280,12 @@ public interface InventarioRepository extends JpaRepository<Inventario, Integer>
           AND (
               :searchTerm = '' 
               OR LOWER(p.nombre_producto) LIKE LOWER(CONCAT('%', :searchTerm, '%'))
+              OR LOWER(p.cod_producto) LIKE LOWER(CONCAT('%', :searchTerm, '%'))
           )
-    """, nativeQuery = true)
+""", nativeQuery = true)
     long countBulkInventoryFiltered(@Param("searchTerm") String searchTerm);
 
-    /**
-     * Consulta masiva paginada con filtro opcional por nombre de producto.
-     */
+    /** Lista paginada de inventarios con stock formateado para el modal de control masivo. */
     @Query(value = """
         SELECT 
             p.nombre_producto AS nombreProducto, 
@@ -328,22 +299,20 @@ public interface InventarioRepository extends JpaRepository<Inventario, Integer>
         JOIN unidad_medida u ON u.id_unidad = p.id_unidad 
         WHERE i.activo = true
           AND (
-          :searchTerm = '' 
-          OR LOWER(p.nombre_producto) LIKE LOWER(CONCAT('%', :searchTerm, '%'))
-      )
+              :searchTerm = '' 
+              OR LOWER(p.nombre_producto) LIKE LOWER(CONCAT('%', :searchTerm, '%'))
+              OR LOWER(p.cod_producto) LIKE LOWER(CONCAT('%', :searchTerm, '%'))
+          )
         ORDER BY p.nombre_producto
         LIMIT :limit OFFSET :offset
-    """, nativeQuery = true)
-    List<ProductInventoryBulkView> bulkProductInventoryListingPage(
+""", nativeQuery = true)
+    List<BulkInventoriesPage.ProductInventoryBulkView> bulkProductInventoryListingPage(
             @Param("searchTerm") String searchTerm,
             @Param("limit") int limit,
             @Param("offset") int offset
     );
 
-    /**
-     * Busca un único inventario con el formato de la vista masiva.
-     * Usado para sincronización en conflictos de stock en procesos masivos.
-     */
+    /** Retorna un inventario único con formato masivo. Usado para sincronización en conflictos de stock. */
     @Query(value = """
         SELECT 
             p.nombre_producto AS nombreProducto, 
@@ -360,10 +329,9 @@ public interface InventarioRepository extends JpaRepository<Inventario, Integer>
     Optional<ProductInventoryBulkView> findBulkInventoryById(@Param("idInventario") Integer idInventario);
 
 
-    /**
-     * Incrementa el stock del inventario principal de forma atómica.
-     * Se realiza directamente en DB para evitar procesos en paralelos prevenindo errores.
-     */
+    // ─── MODIFICACIONES ──────────────────────────────────────────────────────────
+
+    /** Incrementa el stock del inventario de forma atómica directamente en BD para evitar conflictos en paralelo. */
     @Modifying
     @Transactional
     @Query(value = "UPDATE inventario SET stock = stock + :cantidad " +
@@ -371,7 +339,10 @@ public interface InventarioRepository extends JpaRepository<Inventario, Integer>
     int addStockToInventory(@Param("idInventario") Integer idInventario,
                             @Param("cantidad") java.math.BigDecimal cantidad);
 
-    /**Vereficaciones boleandas*/
+    // ─── BOOLEANOS ───────────────────────────────────────────────────────────────
+
+    /** Verifica si existe un inventario con el ID y stock indicados. */
     boolean existsInventarioByIdInventarioAndStock(Integer idInventario, BigDecimal stock);
+    /** Verifica si existe un inventario con el ID y estado activo indicado. */
     boolean existsInventarioByIdInventarioAndActivo(Integer idInventario, Boolean activo);
 }

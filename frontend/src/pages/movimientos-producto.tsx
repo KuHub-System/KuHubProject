@@ -21,34 +21,54 @@ import {
   IMotionAnswer,
   IMotionFilterRequest
 } from '../services/movimiento-service';
+import { usePageTitle } from '../hooks/usePageTitle';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
+const GREEN = '#16a34a';
+const RED = '#ef4444';
+const YELLOW = '#f59e0b';
+const PURPLE = '#3b0764';
+const GRAY = '#6b7280';
+
+const TIPO_CONFIG: Record<string, { label: string; color: string }> = {
+  ENTRADA_INVENTARIO: { label: 'Entrada Inventario', color: GREEN },
+  ENTRADA_BODEGA: { label: 'Entrada Bodega', color: GREEN },
+  ENTRADA: { label: 'Entrada', color: GREEN },
+  SALIDA_INVENTARIO: { label: 'Salida Inventario', color: RED },
+  SALIDA_BODEGA: { label: 'Salida Bodega', color: RED },
+  SALIDA: { label: 'Salida', color: RED },
+  MERMA_INVENTARIO: { label: 'Merma Inventario', color: RED },
+  MERMA_BODEGA: { label: 'Merma Bodega', color: RED },
+  MERMA: { label: 'Merma', color: RED },
+  TRASLADO: { label: 'Traslado', color: YELLOW },
+  DEVOLUCION: { label: 'Devolución', color: YELLOW },
+  AJUSTE_INVENTARIO: { label: 'Ajuste Inventario', color: PURPLE },
+  AJUSTE_BODEGA: { label: 'Ajuste Bodega', color: PURPLE },
+  AJUSTE: { label: 'Ajuste', color: PURPLE },
+};
+
 const renderTipoMovimiento = (tipo: string) => {
-  const tipoNormalizado = tipo.toUpperCase();
-  switch (tipoNormalizado) {
-    case 'ENTRADA':
-      return <span className="text-success font-bold uppercase tracking-wide text-xs">Entrada</span>;
-    case 'SALIDA_INVENTARIO':
-      return <span className="text-warning font-bold uppercase tracking-wide text-xs">Salida Inventario</span>;
-    case 'SALIDA_BODEGA':
-      return <span className="text-warning font-bold uppercase tracking-wide text-xs">Salida Bodega</span>;
-    case 'TRASLADO':
-      return <span className="text-primary font-bold uppercase tracking-wide text-xs">Traslado</span>;
-    case 'MERMA':
-      return <span className="text-danger font-bold uppercase tracking-wide text-xs">Merma</span>;
-    case 'AJUSTE':
-      return <span className="text-warning-600 font-bold uppercase tracking-wide text-xs opacity-90">Ajuste</span>;
-    case 'DEVOLUCION':
-      return <span className="text-secondary font-bold uppercase tracking-wide text-xs">Devolución</span>;
-    default:
-      return <span className="font-bold uppercase tracking-wide text-xs">{tipo}</span>;
-  }
+  const normalizedTipo = tipo
+    .toUpperCase()
+    .trim()
+    .replace(/\s+/g, '_')
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+    
+  const cfg = TIPO_CONFIG[normalizedTipo] ?? { label: tipo, color: GRAY };
+  return (
+    <b style={{ color: cfg.color, fontSize: '0.8rem', whiteSpace: 'nowrap' }}>
+      {cfg.label}
+    </b>
+  );
 };
 
 // ─── Page ────────────────────────────────────────────────────────────────────
 
 const MovimientosProductoPage: React.FC = () => {
+  usePageTitle('Movimientos', 'Historial de movimientos de inventario y bodega de tránsito.');
+
   // Data state
   const [movimientos, setMovimientos] = React.useState<IMotionAnswer[]>([]);
   const [isLoading, setIsLoading] = React.useState(false);
@@ -163,13 +183,7 @@ const MovimientosProductoPage: React.FC = () => {
 
   return (
     <div className="container mx-auto px-4 py-8 space-y-6 font-sans">
-      {/* Header */}
-      <div className="border-b border-default-200 pb-4">
-        <h1 className="text-3xl font-bold text-secondary dark:text-foreground mb-1">
-          Movimientos de Inventario
-        </h1>
-        <p className="text-default-500">Historial completo de movimientos con filtros avanzados.</p>
-      </div>
+
 
       {/* Filters */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 items-end">
@@ -202,13 +216,16 @@ const MovimientosProductoPage: React.FC = () => {
           variant="bordered"
         >
           <SelectItem key="TODOS" startContent={<Icon icon="lucide:layers" className="text-default-400" />}>Todos</SelectItem>
-          <SelectItem key="ENTRADA" startContent={<Icon icon="lucide:arrow-down-circle" className="text-success" />}>Entrada</SelectItem>
+          <SelectItem key="ENTRADA_INVENTARIO" startContent={<Icon icon="lucide:arrow-down-circle" className="text-success" />}>Entrada Inventario</SelectItem>
+          <SelectItem key="ENTRADA_BODEGA" startContent={<Icon icon="lucide:arrow-down-circle" className="text-success" />}>Entrada Bodega</SelectItem>
           <SelectItem key="SALIDA_INVENTARIO" startContent={<Icon icon="lucide:arrow-up-circle" className="text-warning" />}>Salida Inventario</SelectItem>
           <SelectItem key="SALIDA_BODEGA" startContent={<Icon icon="lucide:arrow-up-circle" className="text-warning" />}>Salida Bodega</SelectItem>
           <SelectItem key="TRASLADO" startContent={<Icon icon="lucide:truck" className="text-primary" />}>Traslado</SelectItem>
-          <SelectItem key="MERMA" startContent={<Icon icon="lucide:alert-circle" className="text-danger" />}>Merma</SelectItem>
-          <SelectItem key="AJUSTE" startContent={<Icon icon="lucide:sliders-horizontal" className="text-secondary" />}>Ajuste</SelectItem>
           <SelectItem key="DEVOLUCION" startContent={<Icon icon="lucide:undo-2" className="text-default-500" />}>Devolución</SelectItem>
+          <SelectItem key="MERMA_INVENTARIO" startContent={<Icon icon="lucide:alert-circle" className="text-danger" />}>Merma Inventario</SelectItem>
+          <SelectItem key="MERMA_BODEGA" startContent={<Icon icon="lucide:alert-circle" className="text-danger" />}>Merma Bodega</SelectItem>
+          <SelectItem key="AJUSTE_INVENTARIO" startContent={<Icon icon="lucide:sliders-horizontal" className="text-secondary" />}>Ajuste Inventario</SelectItem>
+          <SelectItem key="AJUSTE_BODEGA" startContent={<Icon icon="lucide:sliders-horizontal" className="text-secondary" />}>Ajuste Bodega</SelectItem>
         </Select>
 
         <Select
@@ -258,7 +275,7 @@ const MovimientosProductoPage: React.FC = () => {
           <TableColumn width="15%" align="center">PRODUCTO</TableColumn>
           <TableColumn width="10%" align="center">CATEGORÍA</TableColumn>
           <TableColumn width="10%" align="center">TIPO</TableColumn>
-          <TableColumn width="5%"  align="center">CANTIDAD</TableColumn>
+          <TableColumn width="5%" align="center">CANTIDAD</TableColumn>
           <TableColumn width="15%" align="center">FECHA</TableColumn>
           <TableColumn width="20%" align="center">RESPONSABLE</TableColumn>
           <TableColumn width="25%" align="center">OBSERVACIÓN</TableColumn>

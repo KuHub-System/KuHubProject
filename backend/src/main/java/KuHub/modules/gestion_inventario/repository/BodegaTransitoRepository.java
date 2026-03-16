@@ -12,13 +12,12 @@ import java.util.List;
 import java.util.Optional;
 
 public interface BodegaTransitoRepository extends JpaRepository<BodegaTransito, Integer> {
+
+    /** Busca una bodega de tránsito por el ID de su inventario asociado. */
     Optional<BodegaTransito> findByInventario_IdInventario(Integer idInventario);
 
 
-    /**
-     * Consulta para listar bodega de tránsito por nombre o descripción.
-     * Filtra SOLO por el estado activo de la bodega de tránsito, ignorando si el producto o inventario fueron dados de baja.
-     */
+    /** Lista paginada de bodega de tránsito filtrada por nombre o descripción del producto. */
     @Query(value = """
         SELECT 
             p.nombre_producto,
@@ -53,9 +52,7 @@ public interface BodegaTransitoRepository extends JpaRepository<BodegaTransito, 
                 @Param("offset") int offset
     );
 
-    /**
-     * Consulta de conteo para la paginación de bodega de tránsito por nombre o descripción.
-     */
+    /** Cuenta el total de registros de bodega de tránsito filtrados por nombre o descripción para calcular la paginación. */
     @Query(value = """
         SELECT COUNT(*)
         FROM bodega_transito b
@@ -70,10 +67,7 @@ public interface BodegaTransitoRepository extends JpaRepository<BodegaTransito, 
     long countSearchTransitWarehouse(@Param("searchTerm") String searchTerm);
 
 
-    /**
-     * Búsqueda en tránsito por código de producto.
-     * Mantiene los 13 atributos requeridos para el mapeo a WarehousePageDTO.
-     */
+    /** Lista paginada de bodega de tránsito filtrada por código de producto. */
     @Query(value = """
         SELECT 
             p.nombre_producto, p.cod_producto, p.descripcion_producto,
@@ -97,9 +91,7 @@ public interface BodegaTransitoRepository extends JpaRepository<BodegaTransito, 
             @Param("offset") int offset
     );
 
-    /**
-     * Conteo para paginación de búsqueda por código.
-     */
+    /** Cuenta el total de registros de bodega de tránsito filtrados por código de producto para calcular la paginación. */
     @Query(value = """
         SELECT COUNT(*)
         FROM bodega_transito b
@@ -110,10 +102,7 @@ public interface BodegaTransitoRepository extends JpaRepository<BodegaTransito, 
     """, nativeQuery = true)
     long countSearchWarehouseByCodProduct(@Param("codProducto") String codProducto);
 
-    /**
-     * Consulta para listar bodega de tránsito con consulta dinámica según filtros.
-     * Filtra SOLO por el estado activo de la bodega de tránsito.
-     */
+    /** Lista paginada de bodega de tránsito con filtros dinámicos: categorías, unidades, stock bajo y agotados. */
     @Query(value = """
         SELECT
             p.nombre_producto,
@@ -170,10 +159,7 @@ public interface BodegaTransitoRepository extends JpaRepository<BodegaTransito, 
     );
 
 
-    /**
-     * Consulta para contar y calcular el total de páginas de la bodega de tránsito
-     * con consulta dinámica según filtros.
-     */
+    /** Cuenta el total de registros de bodega de tránsito según filtros dinámicos para calcular la paginación. */
     @Query(value = """
         SELECT COUNT(*)
         FROM bodega_transito b
@@ -208,34 +194,35 @@ public interface BodegaTransitoRepository extends JpaRepository<BodegaTransito, 
     );
 
     /**
-     * Busca un único registro de tránsito devolviendo los 13 campos exactos
-     * para el mapeo a WarehousePageDTO.
+     * Retorna el detalle completo de un registro de tránsito específico mapeado por índice de columna.
+     * Usado para sincronizar la vista del frontend cuando otro usuario actualizó en paralelo.
      */
     @Query(value = """
         SELECT 
-            p.nombre_producto,      -- 0
-            p.cod_producto,         -- 1
-            p.descripcion_producto, -- 2
-            c.nombre_categoria,     -- 3
-            b.stock,                -- 4
-            b.stock_limit,          -- 5
-            u.nombre_unidad,        -- 6
-            u.es_fraccionario,      -- 7
-            b.id_bodega_transito,   -- 8
-            i.id_inventario,        -- 9
-            p.id_producto,          -- 10
-            c.id_categoria,         -- 11
-            u.id_unidad             -- 12
+            p.nombre_producto,
+            p.cod_producto,
+            p.descripcion_producto,
+            c.nombre_categoria, 
+            b.stock, 
+            b.stock_limit, 
+            u.nombre_unidad,
+            u.es_fraccionario,
+            b.id_bodega_transito, 
+            i.id_inventario, 
+            p.id_producto, 
+            c.id_categoria, 
+            u.id_unidad
         FROM bodega_transito b
         JOIN inventario i ON i.id_inventario = b.id_inventario
         JOIN producto p ON p.id_producto = i.id_producto
         JOIN categoria c ON c.id_categoria = p.id_categoria
         JOIN unidad_medida u ON u.id_unidad = p.id_unidad
-        WHERE b.id_bodega_transito = :id
+        WHERE b.id_bodega_transito = :idBodegaTransito
     """, nativeQuery = true)
-    Optional<Object[]> findSingleTransitById(@Param("id") Integer id);
+    Optional<Object[]> findSingleTransitById(@Param("idBodegaTransito") Integer idBodegaTransito);
 
 
+    // ─── MODIFICACIONES ──────────────────────────────────────────────────────────
 
     /**Metodo para sumar stock en transito afin de evitar procesos en paralelo*/
     @Modifying
@@ -245,9 +232,13 @@ public interface BodegaTransitoRepository extends JpaRepository<BodegaTransito, 
     int addStockInTransit(@Param("idInventario") Integer idInventario,
                              @Param("cantidad") java.math.BigDecimal cantidad);
 
-    /**Validaciones boleanas*/
+    // ─── BOOLEANOS ───────────────────────────────────────────────────────────────
+
+    /** Verifica si existe una bodega de tránsito asociada al ID de inventario indicado. */
     boolean existsBodegaTransitosByInventario_IdInventario(Integer inventarioIdInventario);
+    /** Verifica si existe una bodega de tránsito con el ID y estado activo indicados. */
     boolean existsByIdBodegaTransitoAndActivo(Integer id, boolean activo);
+    /** Verifica si existe una bodega de tránsito con el ID y stock indicados. */
     boolean existsByIdBodegaTransitoAndStock(Integer id, BigDecimal stock);
 
 }

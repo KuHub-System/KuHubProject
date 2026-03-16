@@ -44,10 +44,8 @@ import {
   buscarProductosService,
   buscarProductosPorCodigoService,
   transformarPageItemAProducto,
-  softDeleteInventarioService,
-  validateStockBeforeUpdatingService
+  softDeleteInventarioService
 } from '../services/producto-service';
-import { IValidateStockConflictResponse } from '../types/producto.types';
 import { useToast, useConfirm } from '../hooks/useToast';
 import { logger } from '../utils/logger';
 import { useAuth } from '../contexts/auth-context';
@@ -57,20 +55,21 @@ import GestionUnidadesModal from '../components/modals/GestionUnidadesModal';
 import { obtenerCategoriasActivasService } from '../services/categoria-service';
 import { obtenerUnidadesActivasService } from '../services/unidad-medida-service';
 import { IUnidadMedida } from '../types/inventario.types';
-import { actualizarBodegaTransitoConProductoService, WarehouseWithProductUpdateDTO } from '../services/bodega-transito-service';
+import { actualizarBodegaTransitoConProductoService, WarehouseWithProductUpdateDTO, IBodegaStockSyncWarning, IBodegaStockInsuficiente } from '../services/bodega-transito-service';
 import {
   obtenerBulkProductoInventoryListingService,
   IBulkProductoInventoryListing,
-  validateBulkInventoryStockService,
-  bulkUpdateInventoryStockService
+  bulkUpdateInventoryStockService,
+  IBulkProcessResult,
+  IStockSyncWarning,
+  IStockInsuficiente
 } from '../services/inventario-service';
 
 interface ItemPedidoMasivo {
   id: string;
   producto: IBulkProductoInventoryListing;
-  stockNuevo: number;
+  delta: number;
   motivo: string;
-  diferenciaCalculada?: number;
 }
 
 /**
@@ -98,6 +97,7 @@ const InventarioPage: React.FC = () => {
   const [currentPage, setCurrentPage] = React.useState<number>(1);
   const [selectedFilters, setSelectedFilters] = React.useState<Set<string>>(new Set(['todas']));
   const filtersRef = React.useRef<Set<string>>(new Set(['todas']));
+  const filterDebounceRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const searchTermRef = React.useRef<string>('');
 
   const [searchCode, setSearchCode] = React.useState<string>('');
@@ -110,7 +110,9 @@ const InventarioPage: React.FC = () => {
   const { isOpen, onOpen, onOpenChange } = useDisclosure();
   const { isOpen: isPedidoMasivoOpen, onOpen: onPedidoMasivoOpen, onOpenChange: onPedidoMasivoOpenChange } = useDisclosure();
   const { isOpen: isResultModalOpen, onOpen: onResultModalOpen, onOpenChange: onResultModalOpenChange } = useDisclosure();
-  const [bulkResult, setBulkResult] = React.useState<{ success: number, conflict: number, gone: number } | null>(null);
+  const [bulkResult, setBulkResult] = React.useState<IBulkProcessResult | null>(null);
+  const [bulkRetryItems, setBulkRetryItems] = React.useState<ItemPedidoMasivo[]>([]);
+  const [bulkModalKey, setBulkModalKey] = React.useState(0);
   const { isOpen: isCategoriasOpen, onOpen: onCategoriasOpen, onOpenChange: onCategoriasOpenChange } = useDisclosure();
   const { isOpen: isUnidadesOpen, onOpen: onUnidadesOpen, onOpenChange: onUnidadesOpenChange } = useDisclosure();
   const [productoSeleccionado, setProductoSeleccionado] = React.useState<IProducto | null>(null);
@@ -326,6 +328,20 @@ const InventarioPage: React.FC = () => {
       isLoadingRef.current = false;
     }
   }, [toast, prefetchSiguientePagina, productos.length]);
+
+  /**
+   * Debounce 2.5s para filtros: cancela el timer anterior antes de iniciar uno nuevo,
+   * dando tiempo al usuario a terminar de seleccionar categorías, unidades y checkboxes.
+   */
+  const scheduleFilterRequest = React.useCallback(() => {
+    if (filterDebounceRef.current) clearTimeout(filterDebounceRef.current);
+    filterDebounceRef.current = setTimeout(() => {
+      cacheRef.current = {};
+      setCache({});
+      setCurrentPage(1);
+      cargarProductosPaginados(1, true);
+    }, 2500);
+  }, [cargarProductosPaginados]);
 
   const checkpointPaginationScroll = React.useCallback((apiPage: number) => {
     // Si saltamos a una página lejana vía paginación, limpiamos y cargamos desde ahí
@@ -620,7 +636,7 @@ const InventarioPage: React.FC = () => {
             startContent={<Icon icon="lucide:arrow-right-left" width={18} />}
             onPress={onPedidoMasivoOpen}
           >
-            Control de Inventario
+            Control Masivo
           </Button>
           <Button
             color="primary"
@@ -698,10 +714,7 @@ const InventarioPage: React.FC = () => {
                       if (checked) newSet.add('stock-bajo'); else newSet.delete('stock-bajo');
                       setSelectedFilters(newSet);
                       filtersRef.current = newSet;
-                      cacheRef.current = {};
-                      setCache({});
-                      setCurrentPage(1);
-                      cargarProductosPaginados(1, true);
+                      scheduleFilterRequest();
                     }}
                     color="warning"
                     size="sm"
@@ -718,10 +731,7 @@ const InventarioPage: React.FC = () => {
                       if (checked) newSet.add('ocultar-cero'); else newSet.delete('ocultar-cero');
                       setSelectedFilters(newSet);
                       filtersRef.current = newSet;
-                      cacheRef.current = {};
-                      setCache({});
-                      setCurrentPage(1);
-                      cargarProductosPaginados(1, true);
+                      scheduleFilterRequest();
                     }}
                     size="sm"
                   >
@@ -730,12 +740,7 @@ const InventarioPage: React.FC = () => {
                 </div>
 
                 <Dropdown onOpenChange={(isOpen) => {
-                  if (!isOpen) {
-                    cacheRef.current = {};
-                    setCache({});
-                    setCurrentPage(1);
-                    cargarProductosPaginados(1, true);
-                  }
+                  if (!isOpen) scheduleFilterRequest();
                 }}>
                   <DropdownTrigger>
                     <Button
@@ -807,12 +812,7 @@ const InventarioPage: React.FC = () => {
 
                 {/* Dropdown de Unidades */}
                 <Dropdown onOpenChange={(isOpen) => {
-                  if (!isOpen) {
-                    cacheRef.current = {};
-                    setCache({});
-                    setCurrentPage(1);
-                    cargarProductosPaginados(1, true);
-                  }
+                  if (!isOpen) scheduleFilterRequest();
                 }}>
                   <DropdownTrigger>
                     <Button
@@ -1044,15 +1044,17 @@ const InventarioPage: React.FC = () => {
           </ModalContent>
         </Modal>
 
-        <Modal isOpen={isPedidoMasivoOpen} onOpenChange={onPedidoMasivoOpenChange} size="4xl" backdrop="blur" scrollBehavior="inside" radius="lg" classNames={{ base: 'rounded-2xl overflow-hidden' }}>
+        <Modal key={bulkModalKey} isOpen={isPedidoMasivoOpen} onOpenChange={onPedidoMasivoOpenChange} size="2xl" backdrop="blur" scrollBehavior="inside" radius="lg" classNames={{ base: 'rounded-2xl', body: 'min-h-[520px]' }}>
           <ModalContent>
             {(onClose) => (
               <PedidoMasivoModal
                 productos={productos}
                 onClose={onClose}
                 onNuevoProducto={handleNuevoProducto}
-                onProcessComplete={(data) => {
+                initialItems={bulkRetryItems}
+                onProcessComplete={(data, retryItems) => {
                   setBulkResult(data);
+                  setBulkRetryItems(retryItems);
                   onResultModalOpen();
                 }}
               />
@@ -1065,6 +1067,7 @@ const InventarioPage: React.FC = () => {
           isOpen={isResultModalOpen}
           onOpenChange={onResultModalOpenChange}
           size="md"
+          scrollBehavior="inside"
           classNames={{
             backdrop: "bg-background/50 backdrop-blur-sm",
             base: "bg-background dark:bg-content1 shadow-xl border border-default-200 dark:border-default-100",
@@ -1074,26 +1077,49 @@ const InventarioPage: React.FC = () => {
             {(onClose) => (
               <>
                 <ModalBody>
-                  <div className="flex flex-col items-center justify-center p-8 text-center gap-4 animate-appearance-in">
-                    <Icon icon="lucide:check-circle" className="text-success w-20 h-20" />
+                  <div className="flex flex-col items-center justify-center px-6 pt-8 pb-4 text-center gap-4 animate-appearance-in w-full">
+                    <Icon icon="lucide:check-circle" className="text-success w-16 h-16" />
                     <h3 className="text-2xl font-bold">Proceso Completado</h3>
                     <p className="text-default-600 text-lg">
-                      {bulkResult?.success} {bulkResult?.success === 1 ? 'producto procesado' : 'productos procesados'} con éxito.
+                      {((bulkResult?.exitosos.length ?? 0) + (bulkResult?.advertencias.length ?? 0))} {((bulkResult?.exitosos.length ?? 0) + (bulkResult?.advertencias.length ?? 0)) === 1 ? 'producto procesado' : 'productos procesados'} con éxito.
                     </p>
 
-                    {bulkResult && bulkResult.conflict > 0 && (
-                      <div className="p-4 bg-warning/10 dark:bg-warning/20 border border-warning/20 rounded-lg mt-2 flex flex-col items-center gap-2">
-                        <Icon icon="lucide:refresh-cw" className="text-warning-600 dark:text-warning-400 w-8 h-8" />
-                        <span className="text-warning-600 dark:text-warning-400 font-semibold text-medium">
-                          {bulkResult.conflict} sincronizados automáticamente por procesos en paralelo.
-                        </span>
+                    {bulkResult && bulkResult.advertencias.length > 0 && (
+                      <div className="w-full p-3 bg-warning/10 dark:bg-warning/20 border border-warning/20 rounded-xl flex flex-col gap-2 text-left">
+                        <div className="flex items-center gap-2">
+                          <Icon icon="lucide:refresh-cw" className="text-warning-600 dark:text-warning-400 w-5 h-5 shrink-0" />
+                          <span className="text-warning-600 dark:text-warning-400 font-semibold text-sm">
+                            {bulkResult.advertencias.length} sincronizado{bulkResult.advertencias.length !== 1 ? 's' : ''} automáticamente
+                          </span>
+                        </div>
+                        <ul className="flex flex-col gap-1 pl-1">
+                          {bulkResult.advertencias.map((item, i) => (
+                            <li key={i} className="text-xs text-warning-700 dark:text-warning-400 flex items-start gap-1.5">
+                              <span className="mt-0.5 shrink-0">•</span>
+                              <span><span className="font-semibold">{item.producto}</span> — {item.mensaje}</span>
+                            </li>
+                          ))}
+                        </ul>
                       </div>
                     )}
 
-                    {bulkResult && bulkResult.gone > 0 && (
-                      <p className="text-danger mt-2 font-medium">
-                        {bulkResult.gone} ignorados (producto eliminado).
-                      </p>
+                    {bulkResult && bulkResult.errores.length > 0 && (
+                      <div className="w-full p-3 bg-danger/10 dark:bg-danger/20 border border-danger/20 rounded-xl flex flex-col gap-2 text-left">
+                        <div className="flex items-center gap-2">
+                          <Icon icon="lucide:x-circle" className="text-danger w-5 h-5 shrink-0" />
+                          <span className="text-danger font-semibold text-sm">
+                            {bulkResult.errores.length} con error
+                          </span>
+                        </div>
+                        <ul className="flex flex-col gap-1 pl-1">
+                          {bulkResult.errores.map((item, i) => (
+                            <li key={i} className="text-xs text-danger flex items-start gap-1.5">
+                              <span className="mt-0.5 shrink-0">•</span>
+                              <span><span className="font-semibold">{item.producto}</span> — {item.mensaje}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
                     )}
                   </div>
                 </ModalBody>
@@ -1102,23 +1128,30 @@ const InventarioPage: React.FC = () => {
                     color="primary"
                     size="lg"
                     className="font-bold px-10"
-                    startContent={<Icon icon="lucide:thumbs-up" width={18} />}
+                    startContent={<Icon icon={bulkRetryItems.length > 0 ? 'lucide:rotate-ccw' : 'lucide:thumbs-up'} width={18} />}
                     onPress={() => {
                       onClose();
-                      setSearchTerm('');
-                      setDebouncedSearchTerm('');
-                      setSearchCode('');
-                      setDebouncedSearchCode('');
-                      searchTermRef.current = '';
-                      searchCodeRef.current = '';
-                      const defaultFilters = new Set(['todas']);
-                      setSelectedFilters(defaultFilters);
-                      filtersRef.current = defaultFilters;
-                      setCurrentPage(1);
-                      cargarProductosPaginados(1, true); // Recargar la tabla como la primera vez
+                      if (bulkRetryItems.length > 0) {
+                        // Reabrir modal masivo con los ítems fallidos pre-cargados
+                        setBulkModalKey(k => k + 1);
+                        onPedidoMasivoOpen();
+                      } else {
+                        setBulkRetryItems([]);
+                        setSearchTerm('');
+                        setDebouncedSearchTerm('');
+                        setSearchCode('');
+                        setDebouncedSearchCode('');
+                        searchTermRef.current = '';
+                        searchCodeRef.current = '';
+                        const defaultFilters = new Set(['todas']);
+                        setSelectedFilters(defaultFilters);
+                        filtersRef.current = defaultFilters;
+                        setCurrentPage(1);
+                        cargarProductosPaginados(1, true);
+                      }
                     }}
                   >
-                    Entendido
+                    {bulkRetryItems.length > 0 ? 'Corregir errores' : 'Entendido'}
                   </Button>
                 </ModalFooter>
               </>
@@ -1248,6 +1281,7 @@ export const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto
   const [stock, setStock] = React.useState(producto?.stock?.toString() || '0');
   const [stockMinimo, setStockMinimo] = React.useState(producto?.stockMinimo?.toString() || '0');
   const [tipoMovimiento, setTipoMovimiento] = React.useState('');
+  const [deltaInput, setDeltaInput] = React.useState('');
   const [isLoading, setIsLoading] = React.useState(false);
   const [mostrarAbreviatura, setMostrarAbreviatura] = React.useState(false);
   const [editandoDatosBasicos, setEditandoDatosBasicos] = React.useState(mode === 'crear');
@@ -1275,6 +1309,15 @@ export const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto
       if (newStockMin !== stockMinimo) setStockMinimo(newStockMin);
     }
   }, [esUnidadFraccionaria, stock, stockMinimo]);
+
+  // Reset delta when motivo changes; for AJUSTE pre-fill with current stock
+  React.useEffect(() => {
+    if (tipoMovimiento === 'AJUSTE_INVENTARIO') {
+      setDeltaInput(producto?.stock?.toString() || '0');
+    } else {
+      setDeltaInput('');
+    }
+  }, [tipoMovimiento, producto?.stock]);
 
   // Estado local para el producto de referencia (usado para validaciones de stock y cambios)
   // Se inicializa con el prop 'producto' pero puede actualizarse en caso de conflicto (409)
@@ -1346,27 +1389,71 @@ export const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto
         const stockCambiado = (producto?.stock ?? 0) !== stockActualizado;
 
         if (origenContext === 'bodega') {
-          // --- NUEVA LÓGICA PARA BODEGA ---
+          // --- LÓGICA BODEGA: PATCH con delta (igual que inventario) ---
+          const originalStockRef = parseFloat(productoReferencia?.stock?.toString() || '0');
+          const deltaInputVal = parseFloat(deltaInput);
           const datosBodega: WarehouseWithProductUpdateDTO = {
             idBodegaTransito: (producto as any)._idBodegaTransito || 0,
             idInventario: producto._idInventario || 0,
             idProducto: parseInt(producto.id),
-            tipoMovimiento: tipoMovimiento || 'Ajuste',
+            tipoMovimiento: tipoMovimiento,
             nombreProducto: nombre.trim(),
             codigoProducto: codProducto.trim() || undefined,
             descripcionProducto: descripcion.trim(),
             idCategoria: parseInt(idCategoria),
             idUnidadMedida: parseInt(idUnidadMedida),
-            stock: stockActualizado,
+            stock: originalStockRef,
             stockLimit: parseFloat(stockMinimo) || 0,
+            delta: deltaInputVal,
+            stockEnVista: originalStockRef,
           };
-          await actualizarBodegaTransitoConProductoService(datosBodega);
-          toast.success('Cambios guardados exitosamente en la bodega');
+
+          const resultadoBodega = await actualizarBodegaTransitoConProductoService(datosBodega);
+
+          // 422: stock insuficiente — NO cerrar, actualizar stock en modal
+          if ((resultadoBodega as IBodegaStockInsuficiente).insuficiente === true) {
+            const insuf = resultadoBodega as IBodegaStockInsuficiente;
+            toast.error(insuf.warning);
+            const realStock = insuf.item.stock;
+            setProductoReferencia(prev => prev ? { ...prev, stock: realStock } : prev);
+            if (onConflictSync) {
+              onConflictSync({ ...producto, stock: realStock } as IProducto);
+            }
+            setDeltaInput('');
+            return;
+          }
+
+          // 409: desincronizado pero guardado — cerrar + toast warning
+          if ((resultadoBodega as IBodegaStockSyncWarning).desync === true) {
+            const sync = resultadoBodega as IBodegaStockSyncWarning;
+            if (onConflictSync) {
+              onConflictSync({ ...producto, stock: sync.item.stock } as IProducto);
+            }
+            toast.warning(sync.warning, { duration: 20000 });
+          } else {
+            toast.success('Cambios guardados exitosamente en la bodega');
+          }
         } else {
-          // --- LÓGICA EXISTENTE PARA INVENTARIO ---
+          // --- LÓGICA INVENTARIO: PATCH con delta ---
+          const originalStockRef = parseFloat(productoReferencia?.stock?.toString() || '0');
+          const isAjusteMode = tipoMovimiento === 'AJUSTE_INVENTARIO';
+          const deltaInputVal = parseFloat(deltaInput);
+
+          let deltaFinal = 0;
+          let ajustePositivoVal: boolean | null = null;
+
+          if (tipoMovimiento) {
+            if (isAjusteMode) {
+              deltaFinal = Math.abs(deltaInputVal - originalStockRef);
+              ajustePositivoVal = deltaInputVal > originalStockRef;
+            } else {
+              deltaFinal = deltaInputVal;
+            }
+          }
+
           const datosActualizacion = {
             id: producto.id,
-            idInventario: producto._idInventario || 0, // Fallback safe
+            idInventario: producto._idInventario || 0,
             nombre: nombre.trim(),
             codProducto: codProducto.trim() || undefined,
             descripcion: descripcion.trim(),
@@ -1374,65 +1461,62 @@ export const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto
             unidadMedida: uniNombre,
             idCategoria: parseInt(idCategoria),
             idUnidadMedida: parseInt(idUnidadMedida),
-            stock: stockActualizado,
+            stock: originalStockRef,
             stockMinimo: parseFloat(stockMinimo) || 0,
-            tipoMovimiento: tipoMovimiento || 'Ajuste',
+            tipoMovimiento: tipoMovimiento,
+            stockEnVista: originalStockRef,
+            delta: deltaFinal,
+            ajustePositivo: ajustePositivoVal,
           };
 
-          // --- NUEVA VALIDACIÓN ANTES DEL PATCH ---
-          const validationResult = await validateStockBeforeUpdatingService({
-            idInventario: datosActualizacion.idInventario,
-            validateStock: productoReferencia?.stock ?? 0 // Enviamos el stock original que teníamos al abrir/sync
-          });
+          const resultado = await actualizarProductoService(datosActualizacion);
 
-          if (validationResult === true) {
-            // OK: Proceder con el PATCH
-            await actualizarProductoService(datosActualizacion);
-            if (stockCambiado) {
-              toast.success('Actualizacion realizada con exito, movimiento de ajuste realizado');
-            } else {
-              toast.success('Actualizacion realizada con exito');
+          // 422: stock insuficiente con desync — mostrar error, actualizar stock en modal, NO cerrar
+          if ((resultado as IStockInsuficiente).insuficiente === true) {
+            const insuf = resultado as IStockInsuficiente;
+            toast.error(insuf.warning);
+            const realStock = insuf.item.stockActual ?? (insuf.item as any).stock;
+            setProductoReferencia(prev => prev ? { ...prev, stock: realStock } : prev);
+            if (onConflictSync && realStock !== undefined) {
+              onConflictSync({
+                ...producto,
+                stock: realStock,
+                stockMinimo: insuf.item.stockMinimo ?? (insuf.item as any).stockLimit ?? producto.stockMinimo,
+                _idInventario: insuf.item.idInventario ?? (producto as any)._idInventario,
+              } as IProducto);
             }
-          } else {
-            // CONFLICTO (409): Otro usuario cambió los datos
-            const conflictData = validationResult as IValidateStockConflictResponse;
-            toast.warning('Peticiones simultáneas, sincronizando datos antes de actualizar...', {
-              title: 'Sincronizando...',
-              animate: true
-            });
+            setDeltaInput('');
+            return;
+          }
 
-            // Sincronizar campos del formulario con los nuevos datos
-            setNombre(conflictData.nombreProducto);
-            setCodProducto(conflictData.codProducto || '');
-            setDescripcion(conflictData.descripcionProducto || '');
-            setIdCategoria(conflictData.idCategoria.toString());
-            setIdUnidadMedida(conflictData.idUnidad.toString());
-            setStock(conflictData.stock.toString());
-            setStockMinimo(conflictData.stockLimit.toString());
+          // Determinar si fue desync (409 operativo) o éxito limpio (200)
+          const isDesync = (resultado as IStockSyncWarning).desync === true;
+          const itemActualizado = isDesync
+            ? (resultado as IStockSyncWarning).item
+            : (resultado as any);
 
-            // --- NUEVO: Sincronizar también el producto de referencia para las validaciones visuales ---
-            const productoActualizado: IProducto = {
-              id: conflictData.idProducto.toString(),
-              nombre: conflictData.nombreProducto,
-              descripcion: conflictData.descripcionProducto || '',
-              codProducto: conflictData.codProducto || undefined,
-              categoria: conflictData.nombreCategoria,
-              unidadMedida: conflictData.nombreUnidad,
-              stock: conflictData.stock,
-              stockMinimo: conflictData.stockLimit,
+          // Sync the item in the parent list
+          if (onConflictSync && itemActualizado) {
+            const syncedProducto: IProducto = {
+              id: itemActualizado.producto?.idProducto?.toString() ?? producto.id,
+              nombre: itemActualizado.producto?.nombre ?? nombre.trim(),
+              descripcion: itemActualizado.producto?.descripcionProducto ?? '',
+              codProducto: itemActualizado.producto?.codProducto,
+              categoria: itemActualizado.producto?.categoria?.nombre ?? catNombre,
+              unidadMedida: itemActualizado.producto?.unidad?.nombre ?? uniNombre,
+              stock: itemActualizado.stockActual ?? (itemActualizado as any).stock ?? originalStockRef,
+              stockMinimo: itemActualizado.stockMinimo ?? (parseFloat(stockMinimo) || 0),
               fechaCreacion: new Date().toISOString(),
               fechaActualizacion: new Date().toISOString(),
-              _idInventario: conflictData.idInventario
-            };
-            setProductoReferencia(productoActualizado);
+              _idInventario: itemActualizado.idInventario,
+            } as IProducto;
+            onConflictSync(syncedProducto);
+          }
 
-            // Sincronizar también con el padre para que la lista en segundo plano se vea actualizada
-            if (onConflictSync) {
-              onConflictSync(productoActualizado);
-            }
-
-            // No llamamos al Patch, permitimos que el usuario revise
-            return;
+          if (isDesync) {
+            toast.warning((resultado as IStockSyncWarning).warning, { duration: 20000 });
+          } else {
+            toast.success('Cambios guardados exitosamente');
           }
         }
       }
@@ -1473,65 +1557,76 @@ export const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto
       descripcion.trim() !== originalDescripcion ||
       idCategoria !== originalCategoria ||
       idUnidadMedida !== originalUnidad ||
-      stock.trim() !== originalStock ||
+      (mode === 'crear' ? stock.trim() !== originalStock : (tipoMovimiento !== '' && deltaInput !== '')) ||
       stockMinimo.trim() !== originalStockMinimo
     );
-  }, [mode, productoReferencia, nombre, codProducto, descripcion, idCategoria, idUnidadMedida, stock, stockMinimo, categorias, unidades]);
+  }, [mode, productoReferencia, nombre, codProducto, descripcion, idCategoria, idUnidadMedida, stock, stockMinimo, tipoMovimiento, deltaInput, categorias, unidades]);
 
   // Validaciones de lógica de Stock vs Motivo
   const originalStockVal = parseFloat(productoReferencia?.stock?.toString() || '0');
-  const currentStockVal = parseFloat(stock);
+  const currentStockVal = parseFloat(stock); // used in create mode
+
+  // Delta-based logic for edit mode (inventario + bodega)
+  const isAjusteEdit = tipoMovimiento === 'AJUSTE_INVENTARIO' || tipoMovimiento === 'AJUSTE_BODEGA';
+  const esSalidaEdit = ['SALIDA_INVENTARIO', 'TRASLADO', 'MERMA_INVENTARIO', 'SALIDA_BODEGA', 'MERMA_BODEGA', 'DEVOLUCION'].includes(tipoMovimiento);
+  const deltaVal = parseFloat(deltaInput);
+  const stockFinal = isAjusteEdit
+    ? (deltaInput === '' ? originalStockVal : deltaVal)
+    : esSalidaEdit
+      ? originalStockVal - (isNaN(deltaVal) ? 0 : deltaVal)
+      : originalStockVal + (isNaN(deltaVal) ? 0 : deltaVal);
+
+  let deltaError = '';
+  if (mode === 'editar' && tipoMovimiento && deltaInput !== '') {
+    if (isAjusteEdit) {
+      if (isNaN(deltaVal) || deltaVal < 0) deltaError = 'El nuevo stock no puede ser negativo';
+      else if (deltaVal === originalStockVal) deltaError = 'El nuevo stock es igual al actual, sin cambios';
+    } else {
+      if (isNaN(deltaVal) || deltaVal <= 0) deltaError = 'La cantidad debe ser mayor a 0';
+      else if (esSalidaEdit && stockFinal < 0) deltaError = `Stock insuficiente (actual: ${originalStockVal})`;
+    }
+  }
 
   let stockError = '';
   let diffText = '';
 
   const motivoDescripcion = React.useMemo(() => {
     switch (tipoMovimiento) {
-      case 'Entrada': return "Registrando ingreso de mercadería al sistema del Inventario";
-      case 'Salida Inventario':
-      case 'Salida Bodega':
+      case 'ENTRADA_INVENTARIO': return "Registrando ingreso de mercadería al sistema del Inventario";
+      case 'ENTRADA_BODEGA': return "Registrando ingreso de mercadería a la Bodega de Tránsito";
+      case 'SALIDA_INVENTARIO':
+      case 'SALIDA_BODEGA':
         return origenContext === 'bodega'
           ? "Registrando la salida de insumos para el desarrollo de clases, talleres o procesos académicos."
           : "Registrando retiro o consumo de productos al sistema del Inventario";
-      case 'Traslado':
-      case 'Devolución':
+      case 'TRASLADO':
+      case 'DEVOLUCION':
         return origenContext === 'bodega'
           ? "Registrando el reingreso de productos no utilizados al inventario principal."
           : "Iniciando movimiento a Bodega de Transito";
-      case 'Ajuste': return "Corrigiendo saldo para sincronizar con stock físico";
-      case 'Merma': return "Reportar Pérdida o Producto Dañado";
+      case 'AJUSTE_INVENTARIO':
+      case 'AJUSTE_BODEGA': return "Corrigiendo saldo para sincronizar con stock físico";
+      case 'MERMA_INVENTARIO':
+      case 'MERMA_BODEGA': return "Reportar Pérdida o Producto Dañado";
       default: return "";
     }
   }, [tipoMovimiento, origenContext]);
 
-  if (mode === 'editar' && tipoMovimiento && stock.trim() !== '') {
-    if (tipoMovimiento === 'Entrada') {
-      if (currentStockVal <= originalStockVal) {
-        stockError = 'Para Entrada, el stock debe ser mayor al actual';
-      }
-      diffText = currentStockVal > originalStockVal ? `+${(currentStockVal - originalStockVal).toFixed(3)}` : '';
-    } else if (tipoMovimiento === 'Salida Inventario' || tipoMovimiento === 'Salida Bodega' || tipoMovimiento === 'Traslado' || tipoMovimiento === 'Devolución' || tipoMovimiento === 'Merma') {
-      if (currentStockVal >= originalStockVal) {
-        const actionName = tipoMovimiento;
-        stockError = `Para ${actionName}, el stock debe ser menor al actual`;
-      }
-      diffText = currentStockVal < originalStockVal ? `${(currentStockVal - originalStockVal).toFixed(3)}` : '';
-    } else if (tipoMovimiento === 'Ajuste') {
-      const diff = currentStockVal - originalStockVal;
-      diffText = diff > 0 ? `+${diff.toFixed(3)}` : diff < 0 ? `${diff.toFixed(3)}` : '0.000';
-    }
-  }
+  const motivoLabel: Record<string, string> = {
+    ENTRADA_INVENTARIO: 'Entrada', ENTRADA_BODEGA: 'Entrada',
+    SALIDA_INVENTARIO: 'Salida', SALIDA_BODEGA: 'Salida',
+    TRASLADO: 'Traslado', DEVOLUCION: 'Devolución',
+    AJUSTE_INVENTARIO: 'Ajuste', AJUSTE_BODEGA: 'Ajuste',
+    MERMA_INVENTARIO: 'Merma', MERMA_BODEGA: 'Merma',
+  };
 
   const isFormInvalid =
     !nombre.trim() ||
     !idCategoria ||
     !idUnidadMedida ||
-    !stock.trim() ||
-    isNaN(parseFloat(stock)) ||
-    parseFloat(stock) < 0 ||
-    !!stockError ||
+    (mode === 'crear' && (!stock.trim() || isNaN(parseFloat(stock)) || parseFloat(stock) < 0)) ||
+    (mode === 'editar' && tipoMovimiento !== '' && (deltaInput === '' || !!deltaError)) ||
     (stockMinimo.trim() !== '' && (isNaN(parseFloat(stockMinimo)) || parseFloat(stockMinimo) < 0)) ||
-    (mode === 'editar' && !tipoMovimiento && currentStockVal !== originalStockVal) ||
     !hasChanges;
 
   return (
@@ -1682,36 +1777,57 @@ export const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto
         </div>
       )}
 
+      {mode === 'editar' && (
+        <p className="text-xs text-default-500 px-0.5 mb-1">
+          Stock Actual: <span className="font-semibold text-secondary">{originalStockVal}</span>
+        </p>
+      )}
+
       <div className={`grid grid-cols-1 ${mode === 'editar' ? 'md:grid-cols-3' : 'md:grid-cols-2'} gap-4`}>
-        <Input
-          type="number"
-          label="Stock"
-          placeholder="Stock actual"
-          value={stock}
-          onValueChange={(val) => {
-            if (val === '') {
-              setStock('');
-              return;
+        {mode === 'editar' ? (
+          <Input
+            type="number"
+            label={isAjusteEdit ? 'Nuevo Stock' : 'Cantidad'}
+            placeholder={isAjusteEdit ? `Actual: ${originalStockVal}` : 'Ingrese la cantidad...'}
+            value={deltaInput}
+            onValueChange={(val) => {
+              if (val === '') { setDeltaInput(''); return; }
+              const regex = esUnidadFraccionaria ? /^\d{0,7}(\.\d{0,3})?$/ : /^\d{0,7}$/;
+              if (regex.test(val)) setDeltaInput(val);
+            }}
+            min={isAjusteEdit ? '0' : '0.001'}
+            step={esUnidadFraccionaria ? '0.001' : '1'}
+            isRequired={!!tipoMovimiento}
+            isDisabled={!tipoMovimiento}
+            isInvalid={!!deltaError}
+            errorMessage={deltaError}
+            description={
+              deltaInput !== '' && !isNaN(deltaVal) && !deltaError
+                ? `Stock Final: ${esUnidadFraccionaria ? parseFloat(stockFinal.toFixed(3)) : Math.round(stockFinal)}`
+                : tipoMovimiento ? 'Seleccione la cantidad a mover' : undefined
             }
-
-            // Regex dinámico según si es fraccionario o no
-            const regex = esUnidadFraccionaria
-              ? /^\d{0,7}(\.\d{0,3})?$/
-              : /^\d{0,7}$/;
-
-            if (regex.test(val)) {
-              setStock(val);
-            }
-          }}
-          min="0"
-          max="9999999.999"
-          step={esUnidadFraccionaria ? "0.001" : "1"}
-          isRequired
-          isDisabled={mode === 'editar' && !tipoMovimiento}
-          description={stockError || diffText}
-          variant="bordered"
-          classNames={{ inputWrapper: "bg-white dark:bg-default-100/50" }}
-        />
+            variant="bordered"
+            classNames={{ inputWrapper: 'bg-white dark:bg-default-100/50' }}
+          />
+        ) : (
+          <Input
+            type="number"
+            label="Stock"
+            placeholder="Stock actual"
+            value={stock}
+            onValueChange={(val) => {
+              if (val === '') { setStock(''); return; }
+              const regex = esUnidadFraccionaria ? /^\d{0,7}(\.\d{0,3})?$/ : /^\d{0,7}$/;
+              if (regex.test(val)) setStock(val);
+            }}
+            min="0"
+            max="9999999.999"
+            step={esUnidadFraccionaria ? "0.001" : "1"}
+            isRequired
+            variant="bordered"
+            classNames={{ inputWrapper: "bg-white dark:bg-default-100/50" }}
+          />
+        )}
 
         <Input
           type="number"
@@ -1741,13 +1857,21 @@ export const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto
         />
 
         {mode === 'editar' && (() => {
-          const opcionesMotivo = [
-            ...(origenContext === 'inventario' ? [{ key: 'Entrada', label: 'Entrada' }] : []),
-            { key: origenContext === 'bodega' ? 'Devolución' : 'Traslado', label: origenContext === 'bodega' ? 'Devolución' : 'Traslado' },
-            { key: 'Ajuste', label: 'Ajuste' },
-            { key: origenContext === 'bodega' ? 'Salida Bodega' : 'Salida Inventario', label: origenContext === 'bodega' ? 'Salida Bodega' : 'Salida Inventario' },
-            { key: 'Merma', label: 'Merma' }
-          ];
+          const opcionesMotivo = origenContext === 'bodega'
+            ? [
+                { key: 'ENTRADA_BODEGA', label: 'Entrada' },
+                { key: 'DEVOLUCION', label: 'Devolución' },
+                { key: 'AJUSTE_BODEGA', label: 'Ajuste' },
+                { key: 'SALIDA_BODEGA', label: 'Salida' },
+                { key: 'MERMA_BODEGA', label: 'Merma' },
+              ]
+            : [
+                { key: 'ENTRADA_INVENTARIO', label: 'Entrada' },
+                { key: 'TRASLADO', label: 'Traslado' },
+                { key: 'AJUSTE_INVENTARIO', label: 'Ajuste' },
+                { key: 'SALIDA_INVENTARIO', label: 'Salida' },
+                { key: 'MERMA_INVENTARIO', label: 'Merma' },
+              ];
 
           return (
             <Select
@@ -1761,7 +1885,7 @@ export const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto
             >
               {opcionesMotivo.map(opcion => (
                 <SelectItem key={opcion.key} textValue={opcion.label}>
-                  <Tooltip content={opcion.label} placement="right" closeDelay={0} isDisabled={opcion.key !== 'Salida Inventario' && opcion.key !== 'Traslado' && opcion.key !== 'Salida Bodega' && opcion.key !== 'Devolución'}>
+                  <Tooltip content={opcion.label} placement="right" closeDelay={0} isDisabled={opcion.key !== 'SALIDA_INVENTARIO' && opcion.key !== 'TRASLADO' && opcion.key !== 'SALIDA_BODEGA' && opcion.key !== 'DEVOLUCION'}>
                     <span className="w-full inline-block">{opcion.label}</span>
                   </Tooltip>
                 </SelectItem>
@@ -1798,15 +1922,16 @@ interface PedidoMasivoModalProps {
   productos: IProducto[];
   onClose: () => void;
   onNuevoProducto?: () => void;
-  onProcessComplete?: (data: { success: number, conflict: number, gone: number }) => void;
+  initialItems?: ItemPedidoMasivo[];
+  onProcessComplete?: (data: IBulkProcessResult, retryItems: ItemPedidoMasivo[]) => void;
 }
 
 /**
  * Modal para realizar pedidos masivos hacia bodega de tránsito
  */
-const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoProducto, onProcessComplete }) => {
+const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoProducto, onProcessComplete, initialItems }) => {
   const toast = useToast();
-  const [itemsPedido, setItemsPedido] = React.useState<ItemPedidoMasivo[]>([]);
+  const [itemsPedido, setItemsPedido] = React.useState<ItemPedidoMasivo[]>(initialItems ?? []);
   const [productoSeleccionado, setProductoSeleccionado] = React.useState<string>('');
   const [stockInput, setStockInput] = React.useState<string>('');
   const [motivo, setMotivo] = React.useState<string>('');
@@ -1830,7 +1955,7 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoP
         setIsLoadingBulk(true);
         console.log(`[BULK-FETCH] Iniciando petición página=${pageBulk}, searchTerm="${searchTermBulk}", isLoadMore=${isLoadMore}`);
         const data = await obtenerBulkProductoInventoryListingService({
-          searchTerm: searchTermBulk,
+          term: searchTermBulk,
           page: pageBulk
         });
 
@@ -1877,7 +2002,16 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoP
   const dropdownRef = React.useRef<HTMLDivElement>(null);
   const inputWrapperRef = React.useRef<HTMLDivElement>(null);
   const [inputDisplayBulk, setInputDisplayBulk] = React.useState('');
+  const [dropdownPos, setDropdownPos] = React.useState<{ top: number; left: number; width: number } | null>(null);
+
+  const updateDropdownPos = () => {
+    if (inputWrapperRef.current) {
+      const rect = inputWrapperRef.current.getBoundingClientRect();
+      setDropdownPos({ top: rect.bottom + 6, left: rect.left, width: rect.width });
+    }
+  };
   const [processState, setProcessState] = React.useState<'idle' | 'procesando' | 'sincronizando'>('idle');
+  const [listadoExpandido, setListadoExpandido] = React.useState(false);
 
   // Cerrar dropdown al hacer click fuera
   React.useEffect(() => {
@@ -1921,83 +2055,91 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoP
     setPageBulk(1);
     setBulkProductos([]);
     hasMoreBulkRef.current = true;
+    updateDropdownPos();
     if (!isDropdownOpen) setIsDropdownOpen(true);
   };
 
   const productoActual = bulkProductos.find(p => p.idProducto.toString() === productoSeleccionado);
 
-  // Efecto para resetear el stock al original cuando cambia el motivo
-  React.useEffect(() => {
-    if (productoSeleccionado && productoActual) {
-      setStockInput(productoActual.stock.toString());
-    }
-  }, [motivo, productoSeleccionado, productoActual]);
-
   const originalStock = productoActual ? productoActual.stock : 0;
   const esFraccionario = productoActual ? productoActual.esFraccionario : false;
-  const currentStockVal = parseFloat(stockInput);
+  const isAjusteBulk = motivo === 'AJUSTE_INVENTARIO' || motivo === 'AJUSTE_BODEGA';
+  const esSalidaBulk = ['SALIDA_INVENTARIO', 'TRASLADO', 'MERMA_INVENTARIO', 'MERMA_BODEGA', 'SALIDA_BODEGA', 'DEVOLUCION'].includes(motivo);
 
-  let stockError = '';
-  const isStockModified = stockInput !== originalStock.toString();
-  // Solo mostramos error visual si hay motivo Y si el stock fue modificado
-  if (motivo && stockInput.trim() !== '' && isStockModified && !isNaN(currentStockVal)) {
-    if (motivo === 'Entrada') {
-      if (currentStockVal <= originalStock) stockError = `Para Entrada, el stock debe ser mayor a ${originalStock}`;
-    } else if (motivo === 'Salida Inventario' || motivo === 'Traslado' || motivo === 'Merma' || motivo === 'Salida Bodega' || motivo === 'Devolución') {
-      if (currentStockVal >= originalStock) stockError = `Para Salida/Merma, el stock debe ser menor a ${originalStock}`;
+  // Efecto: al cambiar motivo o producto, pre-llenar para ajuste o limpiar
+  React.useEffect(() => {
+    if (!productoSeleccionado) return;
+    if (isAjusteBulk && productoActual) {
+      setStockInput(productoActual.stock.toString());
+    } else {
+      setStockInput('');
+    }
+  }, [motivo, productoSeleccionado]);
+
+  const currentStockVal = parseFloat(stockInput);
+  const formatStock = (n: number) => esFraccionario ? parseFloat(n.toFixed(3)) : Math.round(n);
+  const existingItemInList = itemsPedido.find(
+    i => i.producto.idProducto === productoActual?.idProducto && i.motivo === motivo
+  );
+  const accumulatedDelta = existingItemInList?.delta ?? 0;
+  const newDeltaVal = isNaN(currentStockVal) ? 0 : currentStockVal;
+  const totalDelta = accumulatedDelta + newDeltaVal;
+
+  const stockFinal = isAjusteBulk
+    ? currentStockVal
+    : esSalidaBulk
+      ? originalStock - totalDelta
+      : originalStock + totalDelta;
+
+  let deltaError = '';
+  if (motivo && stockInput.trim() !== '' && !isNaN(currentStockVal)) {
+    if (isAjusteBulk) {
+      if (currentStockVal < 0) deltaError = 'El nuevo stock no puede ser negativo';
+      else if (currentStockVal === originalStock) deltaError = 'El nuevo stock es igual al actual';
+    } else {
+      if (currentStockVal <= 0) deltaError = 'La cantidad debe ser mayor a 0';
+      else if (esSalidaBulk && totalDelta > originalStock) deltaError = `Stock insuficiente (actual: ${originalStock})`;
     }
   }
 
-  // Texto amigable para el flujo de stock (igual que en edición normal)
   let diffText = '';
-  if (productoSeleccionado && motivo && stockInput.trim() !== '' && !isNaN(currentStockVal) && isStockModified) {
-    const diff = currentStockVal - originalStock;
-    // Función para formatear: hasta 3 decimales, pero sin ceros a la derecha innecesarios
-    const formatDiff = (num: number) => esFraccionario ? parseFloat(num.toFixed(3)).toString() : num.toString();
-
-    if (motivo === 'Entrada') {
-      diffText = `Aumentará ${diff > 0 ? formatDiff(diff) : 0} al inventario`;
-    } else if (motivo === 'Traslado') {
-      // Usamos Math.abs para quitar el signo negativo y mostramos el destino interactivo
-      diffText = `Se disminuirá ${diff < 0 ? formatDiff(Math.abs(diff)) : 0} del inventario hacia la ${stockInput} a la bodega`;
-    } else if (motivo === 'Salida Inventario') {
-      diffText = `Salida directa del inventario ${diff < 0 ? formatDiff(Math.abs(diff)) : 0}`;
-    } else if (motivo === 'Merma') {
-      diffText = `Se disminuirá ${diff < 0 ? formatDiff(Math.abs(diff)) : 0} de inventario`;
-    } else if (motivo === 'Salida Bodega' || motivo === 'Devolución') {
-      // Usamos Math.abs para que no diga "Disminuirá en -11"
-      diffText = `Disminuirá en ${diff < 0 ? formatDiff(Math.abs(diff)) : 0}`;
-    } else if (motivo === 'Ajuste') {
-      diffText = `Se ajustará de ${originalStock} a ${stockInput}`;
-    }
+  if (productoSeleccionado && motivo && stockInput !== '' && !isNaN(currentStockVal) && !deltaError) {
+    diffText = accumulatedDelta > 0 && !isAjusteBulk
+      ? `Stock Final: ${formatStock(stockFinal)} (acumulado: ${formatStock(accumulatedDelta + newDeltaVal)})`
+      : `Stock Final: ${formatStock(stockFinal)}`;
+  } else if (productoSeleccionado && motivo) {
+    diffText = isAjusteBulk ? `Stock actual: ${originalStock}` : 'Ingrese la cantidad a mover';
   } else if (productoSeleccionado && !motivo) {
     diffText = 'Seleccione un motivo primero';
   }
 
-  // Para la validación del formulario (deshabilitar botón), comprobamos la lógica estricta siempre
-  let isStrictlyValid = true;
-  if (!motivo) isStrictlyValid = false;
-  if (motivo === 'Entrada' && currentStockVal <= originalStock) isStrictlyValid = false;
-  if ((motivo === 'Salida Inventario' || motivo === 'Traslado' || motivo === 'Merma' || motivo === 'Salida Bodega' || motivo === 'Devolución') && currentStockVal >= originalStock) isStrictlyValid = false;
-  if (motivo === 'Ajuste' && isNaN(currentStockVal)) isStrictlyValid = false;
-
-  const isFormValid = productoSeleccionado && stockInput !== '' && !isNaN(currentStockVal) && currentStockVal >= 0 && motivo && isStrictlyValid;
+  const isFormValid = !!(productoSeleccionado && motivo && stockInput !== '' && !isNaN(currentStockVal) && currentStockVal >= 0 && !deltaError);
 
   const agregarProducto = () => {
     if (isFormValid && productoActual) {
-      const diff = currentStockVal - originalStock;
+      const delta = currentStockVal;
       const nuevoItem: ItemPedidoMasivo = {
         id: Date.now().toString(),
         producto: productoActual,
-        stockNuevo: currentStockVal,
-        motivo: motivo,
-        diferenciaCalculada: diff
+        delta,
+        motivo,
       };
 
-      setItemsPedido([...itemsPedido, nuevoItem]);
+      const existingIdx = itemsPedido.findIndex(
+        i => i.producto.idProducto === productoActual.idProducto && i.motivo === motivo
+      );
+      if (existingIdx >= 0) {
+        const updated = [...itemsPedido];
+        updated[existingIdx] = isAjusteBulk
+          ? { ...updated[existingIdx], delta }
+          : { ...updated[existingIdx], delta: updated[existingIdx].delta + delta };
+        setItemsPedido(updated);
+      } else {
+        setItemsPedido([...itemsPedido, nuevoItem]);
+      }
+
       setProductoSeleccionado('');
       setStockInput('');
-      setMotivo(motivo);
       setInputDisplayBulk('');
       setSearchTermBulk('');
       setPageBulk(1);
@@ -2013,128 +2155,119 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoP
   };
 
   const procesarPedido = async () => {
-    if (itemsPedido.length > 0) {
-      setProcessState('procesando');
-      console.log('----------------------------------------------------');
-      console.log(`[PROCESO MASIVO] Iniciando con ${itemsPedido.length} productos...`);
-      console.log('----------------------------------------------------');
+    if (itemsPedido.length === 0) return;
 
-      try {
-        let successCount = 0;
-        let conflictCount = 0;
-        let goneCount = 0;
+    setProcessState('procesando');
+    try {
+      const motivoProcesarOrder: Record<string, number> = {
+        ENTRADA_INVENTARIO: 0, ENTRADA_BODEGA: 0,
+        AJUSTE_INVENTARIO: 1, AJUSTE_BODEGA: 1,
+        TRASLADO: 2,
+        SALIDA_INVENTARIO: 3, SALIDA_BODEGA: 3,
+        DEVOLUCION: 4,
+        MERMA_INVENTARIO: 5, MERMA_BODEGA: 5,
+      };
 
-        for (const item of itemsPedido) {
-          console.log(`[PROCESO MASIVO] Producto: ${item.producto.nombreProducto} (ID Inventario: ${item.producto.idInventario})`);
-          console.log(`[PROCESO MASIVO]   -- Motivo: ${item.motivo}`);
-          console.log(`[PROCESO MASIVO]   -- Stock UI original: ${item.producto.stock}`);
-          console.log(`[PROCESO MASIVO]   -- Diferencia calculada UI: ${item.diferenciaCalculada}`);
-          console.log(`[PROCESO MASIVO]   -- Nuevo stock pretendido: ${item.stockNuevo}`);
+      const payload = [...itemsPedido]
+        .sort((a, b) => (motivoProcesarOrder[a.motivo] ?? 99) - (motivoProcesarOrder[b.motivo] ?? 99))
+        .map(item => ({
+          idInventario: item.producto.idInventario,
+          delta: item.delta,
+          stockEnVista: item.producto.stock,
+          tipoMovimiento: item.motivo,
+        }));
 
-          const validateReq = {
-            idInventario: item.producto.idInventario,
-            validateStock: item.producto.stock
+      const result: IBulkProcessResult = await bulkUpdateInventoryStockService(payload);
+
+      // Build retry items for recoverable errors (product exists, stock insufficient)
+      const retryItems: ItemPedidoMasivo[] = result.errores
+        .filter(err => err.stockResultante > 0)
+        .map(err => {
+          const original = itemsPedido.find(i => i.producto.idInventario === err.idInventario);
+          if (!original) return null;
+          return {
+            id: `retry-${err.idInventario}-${Date.now()}`,
+            producto: { ...original.producto, stock: err.stockResultante },
+            delta: err.stockResultante,
+            motivo: original.motivo,
           };
+        })
+        .filter((i): i is ItemPedidoMasivo => i !== null);
 
-          const validation = await validateBulkInventoryStockService(validateReq);
-
-          if (validation.success || validation.errorType === 'CONFLICT') {
-            let finalStock = item.stockNuevo;
-
-            if (validation.errorType === 'CONFLICT' && validation.data) {
-              console.warn(`[PROCESO MASIVO]   ⚠️  CONFLICTO 409 detectado.`);
-              setProcessState('sincronizando');
-
-              // Pausa de 1.5s para permitir que el usuario vea la animación de sincronizando
-              await new Promise(r => setTimeout(r, 1500));
-
-              const currentRealStock = validation.data.stock;
-              console.log(`[PROCESO MASIVO]   -- Stock real en BD: ${currentRealStock}`);
-
-              finalStock = currentRealStock + (item.diferenciaCalculada || 0);
-              if (finalStock < 0) finalStock = 0;
-
-              console.log(`[PROCESO MASIVO]   -- Stock real recalculado para enviar: ${finalStock}`);
-
-              conflictCount++;
-              setProcessState('procesando'); // Volver a procesando tras la sincronización
-            }
-
-            console.log(`[PROCESO MASIVO]   >> Procesando actualización a BD con stock final ${finalStock}...`);
-            await bulkUpdateInventoryStockService({
-              idInventario: item.producto.idInventario,
-              stock: finalStock,
-              tipoMovimiento: item.motivo
-            });
-            console.log(`[PROCESO MASIVO]   ✅ OK`);
-            successCount++;
-          } else if (validation.errorType === 'GONE') {
-            console.error(`[PROCESO MASIVO]   ❌ ERROR: Producto Eliminado (GONE 410)`);
-            goneCount++;
-          }
-        }
-
-        console.log('----------------------------------------------------');
-        if (onProcessComplete) {
-          onProcessComplete({ success: successCount, conflict: conflictCount, gone: goneCount });
-        } else {
-          let mensaje = `Pedido procesado. ${successCount} actualizados.`;
-          if (conflictCount > 0) mensaje += ` (${conflictCount} resincronizados automáticamente).`;
-          if (goneCount > 0) mensaje += ` (${goneCount} ignorados, producto eliminado).`;
-          toast.success(mensaje);
-        }
-        console.log(`[PROCESO MASIVO] FIN DEL PROCESO`);
-        console.log('----------------------------------------------------');
-
-        onClose();
-        // Opcional: trigger a refresh call if needed by the parent component, 
-        // pero la recarga se manejará al cerrar el modal si está configurada así.
-      } catch (error: any) {
-        toast.error(error.message || 'Ocurrió un error al procesar el pedido masivo.');
-        console.error('[PROCESO MASIVO] Error crítico:', error);
-      } finally {
-        setProcessState('idle');
+      if (onProcessComplete) {
+        onProcessComplete(result, retryItems);
+      } else {
+        toast.success(`Proceso completado. ${result.exitosos.length} actualizados.`);
       }
+
+      onClose();
+    } catch (error: any) {
+      toast.error(error.message || 'Ocurrió un error al procesar el pedido masivo.');
+    } finally {
+      setProcessState('idle');
     }
   };
 
   const opcionesMotivoMap: Record<string, string[]> = {
-    'bodega': ['Entrada', 'Ajuste', 'Salida Bodega', 'Devolución', 'Merma'],
-    'inventario': ['Entrada', 'Ajuste', 'Salida Inventario', 'Traslado', 'Merma']
+    'bodega': ['ENTRADA_BODEGA', 'DEVOLUCION', 'AJUSTE_BODEGA', 'SALIDA_BODEGA', 'MERMA_BODEGA'],
+    'inventario': ['ENTRADA_INVENTARIO', 'TRASLADO', 'AJUSTE_INVENTARIO', 'SALIDA_INVENTARIO', 'MERMA_INVENTARIO']
+  };
+  const motivoBulkLabel: Record<string, string> = {
+    ENTRADA_INVENTARIO: 'Entrada', ENTRADA_BODEGA: 'Entrada',
+    SALIDA_INVENTARIO: 'Salida', SALIDA_BODEGA: 'Salida',
+    TRASLADO: 'Traslado', DEVOLUCION: 'Devolución',
+    AJUSTE_INVENTARIO: 'Ajuste', AJUSTE_BODEGA: 'Ajuste',
+    MERMA_INVENTARIO: 'Merma', MERMA_BODEGA: 'Merma',
   };
 
   const context = window.location.pathname.includes('bodega') ? 'bodega' : 'inventario';
   const opcionesMotivoList = opcionesMotivoMap[context];
 
   return (
-    <div className="flex flex-col w-full">
+    <div className="flex flex-col w-full overflow-hidden rounded-2xl">
       <ModalHeader className="flex flex-col gap-1 border-b border-default-100 dark:border-default-50 bg-white dark:bg-content2 px-6 py-4">
-        <h2 className="text-xl font-bold text-secondary dark:text-foreground">Realizar procesos masivos</h2>
+        <h2 className="text-xl font-bold text-secondary dark:text-foreground">Control de Stock Masivo</h2>
         <p className="text-sm font-medium text-default-500">
-          Envíe múltiples productos hacia la bodega, registre entradas, salidas, mermas o ajustes de forma estructurada.
+          Registre entradas, salidas, mermas, ajustes o traslados de múltiples productos de forma estructurada.
         </p>
       </ModalHeader>
-      <ModalBody className="min-h-[400px]">
-        <div className="space-y-6 py-4">
+      <ModalBody className="px-4 py-3 space-y-3">
+          <AnimatePresence initial={false}>
+            {!listadoExpandido && (
+              <motion.div
+                key="form-masivo"
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                className="overflow-hidden"
+                transition={{ duration: 0.25 }}
+              >
           {/* Sección para agregar productos */}
-          <div className="p-4 border border-default-200 dark:border-default-100 rounded-xl bg-default-50 dark:bg-content2">
-            <div className="grid grid-cols-1 md:grid-cols-[2fr_1fr_1fr_auto] gap-4 items-start">
+          <div className="p-3 border border-default-200 dark:border-default-100 rounded-xl bg-default-50 dark:bg-content2">
+            {productoActual && (
+              <p className="text-xs text-default-500 px-0.5 mb-1.5">
+                Stock Actual: <span className="font-semibold text-secondary">{originalStock}</span>
+              </p>
+            )}
+            <div className="grid grid-cols-1 md:grid-cols-[2fr_1fr_1fr_auto] gap-3 items-start">
+              {/* Buscador de producto */}
               <div className="relative" ref={inputWrapperRef}>
                 <Input
                   label="Nombre Producto"
-                  placeholder="Buscar producto"
+                  placeholder="Buscar por nombre o código"
                   value={inputDisplayBulk}
                   onValueChange={handleInputChange}
-                  onFocus={() => setIsDropdownOpen(true)}
+                  onFocus={() => { updateDropdownPos(); setIsDropdownOpen(true); }}
                   variant="bordered"
                   isRequired
                   className="w-full"
                   endContent={isLoadingBulk ? <Spinner size="sm" /> : null}
                 />
-                {isDropdownOpen && (
+                {isDropdownOpen && dropdownPos && (
                   <div
                     ref={dropdownRef}
-                    className="absolute z-50 w-full mt-1.5 bg-white dark:bg-content1 border border-default-200 dark:border-default-100 rounded-xl shadow-lg max-h-[220px] overflow-y-auto py-1"
+                    className="fixed z-[9999] bg-white dark:bg-content1 border border-default-200 dark:border-default-100 rounded-xl shadow-lg max-h-[220px] overflow-y-auto py-1"
+                    style={{ top: dropdownPos.top, left: dropdownPos.left, width: dropdownPos.width }}
                     onScroll={handleDropdownScroll}
                   >
                     {bulkProductos.length === 0 && !isLoadingBulk && (
@@ -2142,92 +2275,78 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoP
                         No se encontraron productos
                       </div>
                     )}
-                    {bulkProductos.map((producto) => {
-                      const nombreCorto = producto.nombreProducto.length > 50
-                        ? producto.nombreProducto.substring(0, 50) + '...'
-                        : producto.nombreProducto;
-                      return (
-                        <div
-                          key={producto.idProducto}
-                          className="px-4 py-2.5 mx-1 my-0.5 hover:bg-default-100 dark:hover:bg-default-50 cursor-pointer transition-colors rounded-lg"
-                          onClick={() => handleSelectProduct(producto)}
-                          title={producto.nombreProducto}
-                        >
-                          <span className="text-small font-semibold block leading-snug">{nombreCorto}</span>
-                          <span className="text-tiny text-default-400 block leading-snug mt-0.5">{producto.detalles}</span>
-                        </div>
-                      );
-                    })}
-                    {isLoadingBulk && (
-                      <div className="flex justify-center py-3">
-                        <Spinner size="sm" />
+                    {bulkProductos.map((prod) => (
+                      <div
+                        key={prod.idProducto}
+                        className="px-4 py-2.5 mx-1 my-0.5 hover:bg-default-100 dark:hover:bg-default-50 cursor-pointer transition-colors rounded-lg"
+                        onClick={() => handleSelectProduct(prod)}
+                        title={prod.nombreProducto}
+                      >
+                        <span className="text-small font-semibold block leading-snug">
+                          {prod.nombreProducto.length > 50 ? prod.nombreProducto.substring(0, 50) + '...' : prod.nombreProducto}
+                        </span>
+                        <span className="text-tiny text-default-400 block leading-snug mt-0.5">{prod.detalles}</span>
                       </div>
+                    ))}
+                    {isLoadingBulk && (
+                      <div className="flex justify-center py-3"><Spinner size="sm" /></div>
                     )}
                   </div>
                 )}
               </div>
 
-              <div>
-                <Select
-                  label="Acción"
-                  placeholder="Seleccione..."
-                  selectedKeys={motivo ? [motivo] : []}
-                  onChange={(e: any) => setMotivo(e.target.value)}
-                  isRequired
-                  variant="bordered"
-                  classNames={{ trigger: "bg-white dark:bg-default-100/50" }}
-                >
-                  <SelectItem key="Entrada" textValue="Entrada">Entrada</SelectItem>
-                  <SelectItem key="Traslado" textValue="Traslado">Traslado</SelectItem>
-                  <SelectItem key="Ajuste" textValue="Ajuste">Ajuste</SelectItem>
-                  <SelectItem key="Salida Inventario" textValue="Salida Inventario">Salida Inventario</SelectItem>
-                  <SelectItem key="Merma" textValue="Merma">Merma</SelectItem>
-                </Select>
-              </div>
+              {/* Selector de motivo */}
+              <Select
+                label="Acción"
+                placeholder="Seleccione..."
+                selectedKeys={motivo ? [motivo] : []}
+                onChange={(e: any) => setMotivo(e.target.value)}
+                isRequired
+                variant="bordered"
+                classNames={{ trigger: "bg-white dark:bg-default-100/50" }}
+              >
+                {opcionesMotivoList.map(key => (
+                  <SelectItem key={key} textValue={motivoBulkLabel[key] ?? key}>
+                    {motivoBulkLabel[key] ?? key}
+                  </SelectItem>
+                ))}
+              </Select>
 
-              <div>
-                <Input
-                  type="number"
-                  label="Stock Actual"
-                  placeholder="Stock Final"
-                  value={stockInput}
-                  onValueChange={(val) => {
-                    if (val === '') {
-                      setStockInput('');
-                      return;
-                    }
-                    const regex = esFraccionario ? /^\d{0,7}(\.\d{0,3})?$/ : /^\d{0,7}$/;
-                    if (regex.test(val)) {
-                      setStockInput(val);
-                    }
-                  }}
-                  min="0"
-                  step={esFraccionario ? "0.001" : "1"}
-                  variant="bordered"
-                  isDisabled={!productoSeleccionado || !motivo}
-                  isInvalid={!!stockError}
-                  errorMessage={stockError}
-                  description={diffText}
-                  isRequired
-                />
-              </div>
+              {/* Delta input */}
+              <Input
+                type="number"
+                label={isAjusteBulk ? 'Nuevo Stock' : 'Cantidad'}
+                placeholder={isAjusteBulk ? `Actual: ${originalStock}` : 'Ingrese cantidad...'}
+                value={stockInput}
+                onValueChange={(val) => {
+                  if (val === '') { setStockInput(''); return; }
+                  const regex = esFraccionario ? /^\d{0,7}(\.\d{0,3})?$/ : /^\d{0,7}$/;
+                  if (regex.test(val)) setStockInput(val);
+                }}
+                min="0"
+                step={esFraccionario ? "0.001" : "1"}
+                variant="bordered"
+                isDisabled={!productoSeleccionado || !motivo}
+                isInvalid={!!deltaError}
+                errorMessage={deltaError}
+                description={diffText || undefined}
+                isRequired
+              />
 
-              <div className="flex items-end pb-2">
-                <Button
-                  isIconOnly
-                  color="warning"
-                  variant="solid"
-                  radius="full"
-                  size="lg"
-                  onPress={agregarProducto}
-                  isDisabled={!isFormValid}
-                  title="Agregar producto al pedido"
-                  className="shadow-md"
-                >
-                  <Icon icon="lucide:plus" width={22} />
-                </Button>
-              </div>
-
+              {/* Botón agregar */}
+              <Button
+                isIconOnly
+                color="warning"
+                variant="solid"
+                radius="full"
+                size="lg"
+                onPress={agregarProducto}
+                isDisabled={!isFormValid}
+                title="Agregar al listado"
+                className="shadow-md"
+              >
+                <Icon icon="lucide:plus" width={22} />
+              </Button>
             </div>
           </div>
 
@@ -2244,13 +2363,16 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoP
                     <Icon icon="lucide:info" width={16} className="text-secondary shrink-0" />
                     {(() => {
                       switch (motivo) {
-                        case 'Entrada': return 'Registrando ingreso de mercadería al sistema del Inventario';
-                        case 'Salida Bodega': return 'Iniciando movimiento a Destino Externo'; // Asumiendo de contexto 
-                        case 'Traslado': return 'Iniciando movimiento a Bodega de Transito';
-                        case 'Ajuste': return 'Corrigiendo saldo para sincronizar con stock físico';
-                        case 'Salida Inventario': return 'Registrando retiro o consumo de productos al sistema del Inventario';
-                        case 'Merma': return 'Reportar Pérdida o Producto Dañado';
-                        case 'Devolución': return 'Registrando el reingreso de productos devueltos'; // Asumiendo de contexto
+                        case 'ENTRADA_INVENTARIO': return 'Registrando ingreso de mercadería al sistema del Inventario';
+                        case 'ENTRADA_BODEGA': return 'Registrando ingreso de mercadería a la Bodega de Tránsito';
+                        case 'SALIDA_BODEGA': return 'Registrando la salida de insumos para el desarrollo de clases o procesos académicos';
+                        case 'TRASLADO': return 'Iniciando movimiento a Bodega de Transito';
+                        case 'AJUSTE_INVENTARIO':
+                        case 'AJUSTE_BODEGA': return 'Corrigiendo saldo para sincronizar con stock físico';
+                        case 'SALIDA_INVENTARIO': return 'Registrando retiro o consumo de productos al sistema del Inventario';
+                        case 'MERMA_INVENTARIO':
+                        case 'MERMA_BODEGA': return 'Reportar Pérdida o Producto Dañado';
+                        case 'DEVOLUCION': return 'Registrando el reingreso de productos devueltos';
                         default: return 'Seleccione un motivo para ver detalles de la operación.';
                       }
                     })()}
@@ -2259,58 +2381,118 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoP
               </motion.div>
             )}
           </AnimatePresence>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
-          {/* Lista de productos agregados */}
-          {itemsPedido.length > 0 && (
-            <div>
-              <h3 className="font-bold text-secondary mb-4 flex items-center gap-2">
-                <Icon icon="lucide:list" width={18} />
-                Productos en el Pedido ({itemsPedido.length})
-              </h3>
-              <div className="space-y-2 max-h-64 overflow-y-auto px-1">
-                {itemsPedido.map((item) => (
-                  <div key={item.id} className="flex items-center justify-between p-3 border border-default-200 rounded-lg bg-white shadow-sm">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="font-semibold text-secondary">{item.producto.nombreProducto}</span>
-                        <Chip size="sm" color="primary" variant="flat" className="text-xs">
-                          {item.stockNuevo}
-                        </Chip>
+          {/* Lista agrupada por motivo */}
+          {itemsPedido.length > 0 && (() => {
+            const motivoGroupColor: Record<string, string> = {
+              ENTRADA_INVENTARIO: 'bg-success-50 text-success-700 border-success-200',
+              ENTRADA_BODEGA: 'bg-success-50 text-success-700 border-success-200',
+              TRASLADO: 'bg-warning-50 text-warning-700 border-warning-200',
+              AJUSTE_INVENTARIO: 'bg-primary-50 text-primary-700 border-primary-200',
+              AJUSTE_BODEGA: 'bg-primary-50 text-primary-700 border-primary-200',
+              SALIDA_INVENTARIO: 'bg-danger-50 text-danger-700 border-danger-200',
+              SALIDA_BODEGA: 'bg-danger-50 text-danger-700 border-danger-200',
+              MERMA_INVENTARIO: 'bg-danger-50 text-danger-700 border-danger-200',
+              MERMA_BODEGA: 'bg-danger-50 text-danger-700 border-danger-200',
+              DEVOLUCION: 'bg-secondary-50 text-secondary-700 border-secondary-200',
+            };
+            const chipColor: Record<string, 'success' | 'warning' | 'primary' | 'danger' | 'secondary'> = {
+              ENTRADA_INVENTARIO: 'success', ENTRADA_BODEGA: 'success',
+              TRASLADO: 'warning',
+              AJUSTE_INVENTARIO: 'primary', AJUSTE_BODEGA: 'primary',
+              SALIDA_INVENTARIO: 'danger', SALIDA_BODEGA: 'danger',
+              MERMA_INVENTARIO: 'danger', MERMA_BODEGA: 'danger',
+              DEVOLUCION: 'secondary',
+            };
+            // Fixed display/processing order: Entrada → Ajuste → Traslado → Salida → Devolución → Merma
+            const motivoOrder: Record<string, number> = {
+              ENTRADA_INVENTARIO: 0, ENTRADA_BODEGA: 0,
+              AJUSTE_INVENTARIO: 1, AJUSTE_BODEGA: 1,
+              TRASLADO: 2,
+              SALIDA_INVENTARIO: 3, SALIDA_BODEGA: 3,
+              DEVOLUCION: 4,
+              MERMA_INVENTARIO: 5, MERMA_BODEGA: 5,
+            };
+            const seen: Record<string, ItemPedidoMasivo[]> = {};
+            for (const item of itemsPedido) {
+              if (!seen[item.motivo]) seen[item.motivo] = [];
+              seen[item.motivo].push(item);
+            }
+            const groups: [string, ItemPedidoMasivo[]][] = Object.entries(seen)
+              .sort(([a], [b]) => (motivoOrder[a] ?? 99) - (motivoOrder[b] ?? 99));
+            return (
+              <div className="space-y-3">
+                <button
+                  type="button"
+                  className="w-full flex items-center gap-2 font-bold text-secondary hover:text-secondary/80 transition-colors cursor-pointer"
+                  onClick={() => setListadoExpandido(v => !v)}
+                >
+                  <Icon icon="lucide:list" width={18} />
+                  Listado ({itemsPedido.length} producto{itemsPedido.length !== 1 ? 's' : ''})
+                  <Icon
+                    icon={listadoExpandido ? 'lucide:chevron-up' : 'lucide:chevron-down'}
+                    width={16}
+                    className="ml-auto text-default-400"
+                  />
+                </button>
+                <div className={`space-y-3 overflow-y-auto pr-1 transition-all duration-300 ${listadoExpandido ? 'max-h-[65vh]' : 'max-h-52'}`}>
+                  {groups.map(([motivoKey, items]) => (
+                    <div key={motivoKey} className={`rounded-xl border overflow-hidden ${motivoGroupColor[motivoKey] ?? 'bg-default-50 border-default-200 text-default-700'}`}>
+                      {/* Group header */}
+                      <div className="px-3 py-1.5 flex items-center gap-2 font-semibold text-xs uppercase tracking-wide border-b border-current/10">
+                        <Icon icon="lucide:layers" width={13} />
+                        {motivoBulkLabel[motivoKey] ?? motivoKey}
+                        <span className="ml-auto font-bold">{items.length}</span>
                       </div>
-                      {item.motivo && (
-                        <p className="text-sm text-default-500 mt-1 italic">T. Movimiento: {item.motivo}</p>
-                      )}
+                      {/* Items */}
+                      <div className="divide-y divide-current/10">
+                        {items.map((item) => {
+                          const isSalidaItem = ['SALIDA_INVENTARIO', 'TRASLADO', 'MERMA_INVENTARIO', 'MERMA_BODEGA', 'SALIDA_BODEGA', 'DEVOLUCION'].includes(item.motivo);
+                          const isAjusteItem = item.motivo.includes('AJUSTE');
+                          const projStock = isAjusteItem
+                            ? item.delta
+                            : isSalidaItem
+                              ? item.producto.stock - item.delta
+                              : item.producto.stock + item.delta;
+                          const projFormatted = item.producto.esFraccionario ? parseFloat(projStock.toFixed(3)) : Math.round(projStock);
+                          return (
+                            <div key={item.id} className="flex items-center justify-between px-3 py-2 bg-white/60 dark:bg-black/10">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <span className="font-medium text-sm truncate text-default-800">{item.producto.nombreProducto}</span>
+                                <div className="flex items-center gap-1 shrink-0">
+                                  <Chip size="sm" color={chipColor[item.motivo] ?? 'default'} variant="flat" className="text-xs">
+                                    {isSalidaItem ? '-' : isAjusteItem ? '=' : '+'}{item.delta}
+                                  </Chip>
+                                  <span className="text-default-400 text-xs">→</span>
+                                  <span className="text-xs font-semibold text-default-600">{projFormatted}</span>
+                                </div>
+                              </div>
+                              <Button
+                                isIconOnly variant="light" color="danger" size="sm"
+                                onPress={() => eliminarItem(item.id)}
+                                className="shrink-0 text-danger-400 hover:text-danger"
+                              >
+                                <Icon icon="lucide:trash-2" width={15} />
+                              </Button>
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
-                    <Button
-                      isIconOnly
-                      variant="light"
-                      color="danger"
-                      size="sm"
-                      onPress={() => eliminarItem(item.id)}
-                      className="text-danger-400 hover:text-danger hover:bg-danger-50"
-                    >
-                      <Icon icon="lucide:trash-2" width={18} />
-                    </Button>
-                  </div>
-                ))}
+                  ))}
+                </div>
+                <div className="flex justify-between items-center px-1 pt-1">
+                  <span className="text-sm text-default-500">Total de productos:</span>
+                  <span className="font-bold text-secondary">{itemsPedido.length}</span>
+                </div>
               </div>
-            </div>
-          )}
-
-          {/* Resumen */}
-          {itemsPedido.length > 0 && (
-            <div className="p-4 bg-default-50 dark:bg-default-100 rounded-lg">
-              <div className="flex justify-between items-center">
-                <span className="font-medium">Total de productos:</span>
-                <span className="text-lg font-bold text-primary">{itemsPedido.length}</span>
-              </div>
-              <p className="text-sm text-default-500 mt-2">
-                Los productos se moverán del inventario principal a la bodega de tránsito
-              </p>
-            </div>
-          )}
-        </div>
+            );
+          })()}
       </ModalBody>
+
       <ModalFooter className="bg-default-50 border-t border-default-100 flex justify-end items-center w-full gap-2">
         <div className="flex gap-2">
           <Button variant="ghost" onPress={onClose} className="font-medium">
@@ -2323,7 +2505,7 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoP
             isLoading={processState !== 'idle'}
             startContent={processState === 'idle' && <Icon icon="lucide:send" width={18} />}
           >
-            {processState === 'idle' ? `Procesar (${itemsPedido.length})`
+            {processState === 'idle' ? `Ctrl. Masivo (${itemsPedido.length})`
               : processState === 'sincronizando' ? 'Sincronizando...'
                 : 'Procesando...'}
           </Button>

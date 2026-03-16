@@ -51,7 +51,7 @@ const isHoy = (iso: string) => iso === new Date().toISOString().slice(0, 10);
 // ─────────────────────────────────────────────────────────────────────────────
 
 const GestionPedidosPage: React.FC = () => {
-  usePageTitle('Gestión de Pedidos', 'Vista consolidada de todos los productos de solicitudes aceptadas.');
+  usePageTitle('Gestión de Pedidos', 'Genera el pedido semanal consolidado a partir de las solicitudes aceptadas, agrupando todos los productos requeridos por sección.');
   const toast = useToast();
   const confirmarModal = useDisclosure();
 

@@ -1,13 +1,13 @@
 package KuHub.modules.gestion_solicitud.controller;
 
-import KuHub.modules.gestion_solicitud.dtos.request.record.ChangeSolicitationStatusRequest;
-import KuHub.modules.gestion_solicitud.dtos.request.record.MassiveSolicitationRequest;
-import KuHub.modules.gestion_solicitud.dtos.respose.record.CourseForSolicitationResponse;
-import KuHub.modules.gestion_solicitud.dtos.respose.record.DashboardConsolidadoResponse;
+import KuHub.modules.gestion_solicitud.dtos.request.record.ChangeSolicitationStatus;
+import KuHub.modules.gestion_solicitud.dtos.request.record.MassiveSolicitation;
+import KuHub.modules.gestion_solicitud.dtos.respose.record.CourseForSolicitation;
+import KuHub.modules.gestion_solicitud.dtos.respose.record.DashboardConsolidado;
 import KuHub.modules.gestion_solicitud.dtos.request.*;
 import KuHub.modules.gestion_solicitud.dtos.respose.projection.ResultsMassSolicitationView;
-import KuHub.modules.gestion_solicitud.dtos.respose.record.RecipeSolicitationResponse;
-import KuHub.modules.gestion_solicitud.dtos.respose.record.SolicitationManagementResponse;
+import KuHub.modules.gestion_solicitud.dtos.respose.record.RecipeSolicitation;
+import KuHub.modules.gestion_solicitud.dtos.respose.record.SolicitationManagement;
 import KuHub.modules.gestion_solicitud.service.SolicitudService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,7 +28,7 @@ public class SolicitudController {
     /**Carga todas las asignaturar con todas las secciones,con al menos una seccion activa con horarios reservados a una sala
      * ✅✅ En uso: Endpoint consumido por el frontend.*/
     @GetMapping("/curses-by-solicitation")
-    public ResponseEntity<List<CourseForSolicitationResponse>> findCourseWithSectionsAndBlocksActive(){
+    public ResponseEntity<List<CourseForSolicitation>> findCourseWithSectionsAndBlocksActive(){
         return ResponseEntity
                 .status(200)
                 .body(solicitudService.findCourseWithSectionsAndBlocksRaw());
@@ -37,7 +37,7 @@ public class SolicitudController {
     /**
      * ✅✅ En uso: Endpoint consumido por el frontend.*/
     @GetMapping("/recipes-with-details-by-solicitation")
-    public ResponseEntity<List<RecipeSolicitationResponse>> findActiveRecipesWithDetails(){
+    public ResponseEntity<List<RecipeSolicitation>> findActiveRecipesWithDetails(){
         return ResponseEntity
                 .status(200)
                 .body(solicitudService.findActiveRecipesWithDetailsRaw());
@@ -50,7 +50,7 @@ public class SolicitudController {
      * ✅✅ En uso: Endpoint consumido por el frontend para cargar la vista semanal de solicitudes.
      */
     @PostMapping("/find-solicitations-per-week")
-    public ResponseEntity<List<SolicitationManagementResponse>> findSolicitationsPerWeek(
+    public ResponseEntity<List<SolicitationManagement>> findSolicitationsPerWeek(
             @Valid @RequestBody DateRangeDTO request) {
         return ResponseEntity
                 .status(200)
@@ -61,7 +61,7 @@ public class SolicitudController {
             */
     @PostMapping("/generate-mass-solicitions")
     public ResponseEntity<ResultsMassSolicitationView> generarSolicitudesMasivas(
-            @Validated @RequestBody List<MassiveSolicitationRequest> payloadList) {
+            @Validated @RequestBody List<MassiveSolicitation> payloadList) {
 
         if (payloadList == null || payloadList.isEmpty()) {
             return ResponseEntity.badRequest().build();
@@ -74,7 +74,7 @@ public class SolicitudController {
     /** ✅✅ En uso: Endpoint consumido por el frontend para cargar la vista semanal de solicitudes.
      */
     @PostMapping("/order-for-consolidation")
-    public ResponseEntity<DashboardConsolidadoResponse> obtenerDashboard(
+    public ResponseEntity<DashboardConsolidado> obtenerDashboard(
             @Validated @RequestBody DateRangeDTO request){
         return ResponseEntity
                 .status(200)
@@ -85,7 +85,7 @@ public class SolicitudController {
      */
     @PatchMapping("/change-massive-status")
     public ResponseEntity<Boolean> changeMassiveStatus(
-            @Validated @RequestBody ChangeSolicitationStatusRequest request){
+            @Validated @RequestBody ChangeSolicitationStatus request){
         return ResponseEntity
                 .status(200)
                 .body(solicitudService.changeMassiveStatus(request));

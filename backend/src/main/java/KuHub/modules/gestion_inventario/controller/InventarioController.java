@@ -1,22 +1,25 @@
 package KuHub.modules.gestion_inventario.controller;
 
-import KuHub.modules.gestion_inventario.dtos.request.dto.*;
-import KuHub.modules.gestion_inventario.dtos.response.BulkInventoriesPageDTO;
-import KuHub.modules.gestion_inventario.dtos.response.InventoriesPageDTO;
-import KuHub.modules.gestion_inventario.dtos.response.InventoryFiltersDTO;
-import KuHub.modules.gestion_inventario.dtos.response.InventoryPageDTO;
-import KuHub.modules.gestion_inventario.dtos.response.proyeccion.ProductInventoryBulkView;
+import KuHub.modules.gestion_inventario.dtos.request.FilterInventoryPageDTO;
+import KuHub.modules.gestion_inventario.dtos.request.InventoryWithProductCreateDTO;
+import KuHub.modules.gestion_inventario.dtos.request.InventoryWithProductUpdateDTO;
+import KuHub.modules.gestion_inventario.dtos.request.SearchDTO;
+import KuHub.modules.gestion_inventario.dtos.response.dto.StockSyncWarningDTO;
+import KuHub.modules.gestion_inventario.dtos.response.record.BulkInventoriesPage;
+import KuHub.modules.gestion_inventario.dtos.response.record.BulkInventoryProcess;
+import KuHub.modules.gestion_inventario.dtos.response.record.InventoriesPage;
+import KuHub.modules.gestion_inventario.dtos.response.record.InventoryFilters;
+import KuHub.modules.gestion_inventario.exceptions.StockDesincronizadoException;
+import KuHub.modules.gestion_inventario.exceptions.StockInsuficienteException;
 import KuHub.modules.gestion_inventario.services.InventarioService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-//Porto du Phonk ahora 8080
 @RestController
 @Validated
 @RequestMapping("/api/v1/inventario")
@@ -26,73 +29,73 @@ public class InventarioController {
     private InventarioService inventarioService;
 
     /**
-     * 🔹 Combos de filtros (categorías + unidades)
-     * Usado al cargar la página de inventario
-    * ✅ En uso: Endpoint consumido por el frontend.*/
+     * Retorna los combos de filtros disponibles (categorías y unidades de medida)
+     * usados al cargar la página de inventario.
+     * ✅ En uso: Endpoint consumido por el frontend.
+     */
     @GetMapping("/filters")
-    public ResponseEntity<InventoryFiltersDTO> getFiltersInventory() {
+    public ResponseEntity<InventoryFilters> findFiltersInventory() {
         return ResponseEntity
                 .status(200)
-                .body(inventarioService.getFiltersInventory());
+                .body(inventarioService.findFiltersInventory());
     }
 
     /**
-     * 🔍 Búsqueda de producto de inventario para cargar option y detalles logicos de contro de producto masivo
-     ✅ En uso: Endpoint consumido por el frontend.*/
-    @PostMapping("/bulk-producto-inventory-listing")
-    public ResponseEntity<BulkInventoriesPageDTO> bulkProductInventoryListing(
-            @RequestBody BulkInventoryRequestDTO request){
+     * Lista paginada de productos con stock formateado para cargar opciones
+     * y detalles lógicos del control de producto masivo.
+     * ✅ En uso: Endpoint consumido por el frontend.
+     */
+    @PostMapping("/massive-producto-inventory-listing")
+    public ResponseEntity<BulkInventoriesPage> massiveProductInventoryListing(
+            @RequestBody SearchDTO request){
         return ResponseEntity
                 .status(200)
-                .body(inventarioService.getBulkInventoryPaginated(request));
+                .body(inventarioService.findByMassiveInventoryPaginated(request));
     }
 
     /**
-     * 🔍 Búsqueda de inventario
-       ✅ En uso: Endpoint consumido por el frontend.*/
+     * Busca inventario paginado por nombre o descripción del producto.
+     * ✅ En uso: Endpoint consumido por el frontend.
+     */
     @PostMapping("/search-inventory")
-    public ResponseEntity<InventoriesPageDTO> searchInventory(
+    public ResponseEntity<InventoriesPage> searchInventory(
             @RequestBody SearchDTO request
     ) {
         return ResponseEntity
                 .status(200)
-                .body(inventarioService.searchInventory(
-                        request.getTerm(),
-                        request.getPage()
-            )
+                .body(inventarioService.searchInventory(request)
         );
     }
 
     /**
-     * 📦 Inventario paginado con filtros
-       ✅ En uso: Endpoint consumido por el frontend.*/
+     * Lista el inventario paginado aplicando filtros dinámicos opcionales.
+     * ✅ En uso: Endpoint consumido por el frontend.
+     */
     @PostMapping("/paged-inventory")
-    public ResponseEntity<InventoriesPageDTO> getPagedInventory(
+    public ResponseEntity<InventoriesPage> findPagedInventory(
             @RequestBody FilterInventoryPageDTO request
     ) {
         return ResponseEntity.status(200)
-                .body(inventarioService.getPagedInventory(request));
+                .body(inventarioService.findPagedInventory(request));
     }
 
     /**
-     * 🔍 Búsqueda de inventario por código de producto
-       ✅ En uso: Endpoint consumido por el frontend.*/
+     * Busca inventario paginado por código de producto.
+     * ✅ En uso: Endpoint consumido por el frontend.
+     */
     @PostMapping("/search-inventory-by-code")
-    public ResponseEntity<InventoriesPageDTO> searchInventoryByCodProducto(
+    public ResponseEntity<InventoriesPage> searchInventoryByCodProducto(
             @RequestBody SearchDTO request
     ){
         return ResponseEntity
-            .status(201)
-            .body(
-            inventarioService.searchInventoryByCodProducto(
-                    request.getTerm(), // acá el term es el código
-                    request.getPage()
-            )
-        );
+            .status(200)
+            .body(inventarioService.searchInventoryByCodProducto(request));
     }
 
-    /** Crear inventario para el FrontEnd
-     * ✅ En uso: Endpoint consumido por el frontend.*/
+    /**
+     * Crea un producto con su inventario asociado.
+     * ✅ En uso: Endpoint consumido por el frontend.
+     */
      @PostMapping("/create-inventory-with-product")
         public ResponseEntity<Boolean> saveInventoryWithProduct(
          @Valid @RequestBody
@@ -102,65 +105,59 @@ public class InventarioController {
                  .body(inventarioService.saveInventoryWithProduct(request));
      }
 
-    @PostMapping("/validate-bulk-inventory-stock-before-updating")
-    public ResponseEntity<?> validateBulkInventoryStockBeforeUpdating(
-            @Validated @RequestBody ValidateInventoryStockDTO request) {
 
-        Object result = inventarioService.validateBulkInventoryStockBeforeUpdating(request);
-
-        /**
-         * ✅ Cambiado: Ahora validamos contra ProductInventoryBulkView
-         * para el flujo de procesos masivos.
-         */
-        if (result instanceof ProductInventoryBulkView) {
-            return ResponseEntity.status(HttpStatus.CONFLICT).body(result);
-        }
-
-        return ResponseEntity.ok(result);
-    }
-
-    /** Metodo que realiza en el btn de guarda en editar inventario, donde realiza esta petion y en seguida el patch
-     *  Metodo hibrido de control antes de update, verefica si el inventario a actulizar no fue eliminado en paralelo,
-     *  verefica si el stock de inventario fue actualizado por otro usuario en paralelo retornando el objeto en caso de que esta alterado,
-     *  el frontend actualiza el formulario de editar y el iten de la lista en caso de que cierre el modal y vea los cambios.
-     *  si no se cumple las validaciones es porque no actualizan en paralo podiendo proceder con el patch de actualizar
-     *  ✅ En uso: Endpoint consumido por el frontend.*/
-    @PostMapping("/validate-stock-before-updating")
-    public ResponseEntity<?> validateStockBeforeUpdating(
-            @Validated @RequestBody ValidateInventoryStockDTO request) {
-        Object result = inventarioService.validateStockBeforeUpdating(request);
-
-        /**Si nos retorna un inventario es porque hubo un conflicto de update en paralelo,
-         * Retornamos con 409 y el objeto para actualizar la vista*/
-        if (result instanceof InventoryPageDTO) {
-            return ResponseEntity.status(HttpStatus.CONFLICT).body(result);
-        }
-        return ResponseEntity.ok(result);
-    }
-
-    /**Actualiza inventario con producto, creando movimiento segun tipo, una vez validado
-     * ✅ En uso: Endpoint consumido por el frontend.*/
+    /**
+     * Actualiza inventario con producto, registrando el movimiento según tipo.
+     * Maneja desincronización de stock y stock insuficiente retornando respuestas diferenciadas.
+     * ✅ En uso: Endpoint consumido por el frontend.
+     */
      @PatchMapping("/update-inventory-with-product")
-        public ResponseEntity<Boolean> updateInventoryWithProduct(
+        public ResponseEntity<?> updateInventoryWithProduct(
              @Validated @RequestBody InventoryWithProductUpdateDTO request){
-         return ResponseEntity
+        try {
+            Object result = inventarioService.updateInventoryWithProduct(request);
+            return ResponseEntity
                      .status(200)
-                     .body(inventarioService.updateInventoryWithProduct(request));
+                     .body(result);
+        } catch (StockDesincronizadoException ex) {
+            // Instanciamos tu nuevo DTO pasándole el mensaje y el item
+            StockSyncWarningDTO responseBody = new StockSyncWarningDTO(
+                    ex.getMessage(),
+                    ex.getInventoryItem()
+            );
+            // Devolvemos la respuesta usando el status de la excepción (409)
+            return ResponseEntity
+                    .status(ex.getStatus())
+                    .body(responseBody);
+        }catch(StockInsuficienteException ex) {
+             // 3. Caso 422: Stock insuficiente (NO SE GUARDÓ EN BD - Rollback)
+             StockSyncWarningDTO responseBody = new StockSyncWarningDTO(
+                     ex.getMessage(),
+                     ex.getInventoryItem()
+             );
+             return ResponseEntity.status(ex.getStatus()).body(responseBody);
+         }
      }
 
     /**
-     * 🛠️ Actualización unitaria de stock para procesos masivos.
+     * Procesa la actualización masiva de stock para una lista de inventarios,
+     * retornando el resultado clasificado por exitosos, advertencias y errores.
      * ✅ En uso: Consumido por el bucle del modal de procesos masivos en el frontend.
      */
     @PatchMapping("/bulk-update-inventory-stock")
-    public ResponseEntity<Boolean> updateBulkInventoryStock(
-            @Validated @RequestBody BulkInventoryUpdateDTO request) {
+    public ResponseEntity<BulkInventoryProcess> updateBulkInventoryStock(
+            @Validated @RequestBody List<BulkInventoryProcess.ItemRequest> request) {
+        BulkInventoryProcess result = inventarioService.processBulkInventoryUpdate(request);
+
         return ResponseEntity
-                .ok(inventarioService.updateBulkInventoryStock(request));
+                .status(200)
+                .body(result);
     }
 
-     /**Desactiva el estado actvio si el stock es 0
-      * ✅ En uso: Endpoint consumido por el frontend.*/
+    /**
+     * Realiza la eliminación lógica del inventario y su producto si el stock es cero.
+     * ✅ En uso: Endpoint consumido por el frontend.
+     */
     @DeleteMapping("/soft-delete-inventory-with-product/{idInventario}")
         public ResponseEntity<Boolean> softDeleteInventoryWithProduct(
                 @PathVariable Integer idInventario){
@@ -169,75 +166,5 @@ public class InventarioController {
                  .body(inventarioService.softDeleteByInventoryWithProduct(idInventario));
     }
 
-
-    /**
-    @GetMapping("/{id}")
-    public ResponseEntity<Inventario> findById(@PathVariable Integer id){
-        return ResponseEntity
-                .status(200)
-                .body(inventarioService.findById(id));
-    }
-
-    @GetMapping("/id-activo/{id}/{activo}")
-    public ResponseEntity<Inventario>findByIdInventoryWithProductActive(
-            @PathVariable Integer id,
-            @PathVariable Boolean activo){
-        return ResponseEntity
-                .status(200)
-                .body(inventarioService.findByIdInventoryWithProductActive(
-                        id, activo)
-                );
-    }
-
-    @GetMapping
-    public ResponseEntity<List<Inventario>> findAll(){
-        return ResponseEntity
-                .status(200)
-                .body(inventarioService.findAll());
-    }
-
-    @GetMapping("/activo/{activo}")
-    public ResponseEntity<List<Inventario>> findInventoriesWithProductsActive(@PathVariable Boolean activo ){
-        return ResponseEntity
-                .status(200)
-                .body(inventarioService.findInventoriesWithProductsActive(activo));
-    }
-
-    @GetMapping("/find-all-inventories-active/")
-    public ResponseEntity<List<InventoryWithProductResponseAnswerUpdateDTO>> findAllActiveInventoryOrderedByName(){
-        return ResponseEntity
-                .status(200)
-                .body(inventarioService.findAllActiveInventoryOrderedByName());
-    }
-
-
-
-
-    /**actualizar inventario para el FrontEnd
-    @PutMapping("/update-inventory-with-product/")
-    public ResponseEntity<InventoryWithProductResponseAnswerUpdateDTO> updateInventoryWithProduct(
-            @RequestBody InventoryWithProductResponseAnswerUpdateDTO inventarioRequest){
-
-        if (inventarioRequest.getIdInventario() == null) {
-            // Lanza un error 400 (Bad Request)
-            throw new IllegalArgumentException("El ID de Inventario es requerido para la actualización.");
-        }
-
-        return ResponseEntity
-                .status(200)
-                .body(inventarioService.updateInventoryWithProduct(inventarioRequest));
-    }
-
-    /**actualizar el valor activo a false para realizar la eliminacion logica
-    @PutMapping("/update-active-value-product-false/{id_inventario}")
-    public ResponseEntity<Void> updateActiveValueProductFalse(
-            @PathVariable Integer id_inventario){
-
-            inventarioService.updateActiveValueProductFalse(id_inventario);
-
-            return  ResponseEntity.status(200).build();
-    }
-
-    */
 
 }

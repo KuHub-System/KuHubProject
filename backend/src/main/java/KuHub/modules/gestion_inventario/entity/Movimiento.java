@@ -53,12 +53,15 @@ public class Movimiento {
     private String observacion;
 
     public enum TipoMovimiento {
-        ENTRADA,
+        ENTRADA_INVENTARIO,
+        ENTRADA_BODEGA,
         SALIDA_INVENTARIO,
         SALIDA_BODEGA,
         DEVOLUCION,
-        MERMA,
-        AJUSTE,
+        MERMA_INVENTARIO,
+        MERMA_BODEGA,
+        AJUSTE_INVENTARIO,
+        AJUSTE_BODEGA,
         TRASLADO
     }
 

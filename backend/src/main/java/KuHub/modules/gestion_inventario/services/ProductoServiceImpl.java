@@ -2,7 +2,7 @@ package KuHub.modules.gestion_inventario.services;
 
 import KuHub.modules.gestion_inventario.dtos.response.proyeccion.ProductRecipeView;
 import KuHub.modules.gestion_inventario.entity.Producto;
-import KuHub.modules.gestion_inventario.exceptions.*;
+import KuHub.modules.gestion_inventario.exceptions.GestionInventarioException;
 import KuHub.modules.gestion_inventario.repository.ProductoRepository;
 import KuHub.utils.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -102,22 +102,26 @@ public class ProductoServiceImpl implements ProductoService {
 
         //validar que no exista producto con ese nombre
         if (productoRepository.findByNombreProducto(nombreProductoCap).isPresent()){
-            throw new ProductoExistenteException(nombreProductoCap);
+            throw new GestionInventarioException("Ya existe un producto con este nombre"
+                ,HttpStatus.NOT_FOUND);
         }
         //validar que no exista producto activo en TRUE con el mismo código
         if (producto.getCodProducto() != null) {
             if (productoRepository.existsBycodProductoAndActivo(producto.getCodProducto(), true)) {
-                throw new ProductoException("El código del producto " + producto.getCodProducto() + " ya existe");
+                throw new GestionInventarioException("El código del producto " + producto.getCodProducto() + " ya existe"
+                    ,HttpStatus.CONFLICT);
             }
         }
         if (producto.getCategoria() != null) {
             if (!categoriaService.existsByIdCategoria(producto.getCategoria().getIdCategoria())){
-                throw new InventarioException("La categoria no existe!! contacte el adminitrador");
+                throw new GestionInventarioException("La categoria no existe!! contacte el adminitrador"
+                    ,HttpStatus.CONFLICT);
             }
         }
         if (producto.getUnidadMedida() != null) {
             if(!unidadMedidaService.existsByIdUnidadMedida(producto.getUnidadMedida().getIdUnidad())){
-                throw new InventarioException("La unidad de medida no existe!! contacte el adminitrador");
+                throw new GestionInventarioException("La unidad de medida no existe!! contacte el adminitrador"
+                    ,HttpStatus.CONFLICT);
             }
         }
 
@@ -150,7 +154,8 @@ public class ProductoServiceImpl implements ProductoService {
     @Override// ❌ Sin uso: Implementado por contrato del servicio y buenas prácticas; actualmente no es invocado por ningún controlador.
     public void deleteById(Integer id)  {
         Producto producto = productoRepository.findById(id).orElseThrow(
-                () -> new ProductoNotFoundException(id));
+                () -> new GestionInventarioException("El producto con el id " + id + " no encontrado"
+                    ,HttpStatus.NOT_FOUND));
 
         //eliminar de maneira logica
         producto.setActivo(false);

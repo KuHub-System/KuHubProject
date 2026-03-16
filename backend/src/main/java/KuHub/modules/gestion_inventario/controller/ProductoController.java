@@ -2,7 +2,7 @@ package KuHub.modules.gestion_inventario.controller;
 
 import KuHub.modules.gestion_inventario.dtos.response.proyeccion.ProductRecipeView;
 import KuHub.modules.gestion_inventario.entity.Producto;
-import KuHub.modules.gestion_inventario.exceptions.ProductoException;
+import KuHub.modules.gestion_inventario.exceptions.GestionInventarioException;
 import KuHub.modules.gestion_inventario.services.ProductoService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -101,7 +101,7 @@ public class ProductoController {
         try {
             productoService.deleteByName(nombreProducto);
             return ResponseEntity.noContent().build(); // 204 No Content
-        } catch (ProductoException e) {
+        } catch (GestionInventarioException e) {
             return ResponseEntity.status(HttpStatus.CONFLICT).body(e.getMessage());
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error inesperado: " + e.getMessage());
@@ -115,7 +115,7 @@ public class ProductoController {
         try {
             productoService.deleteById(id);
             return ResponseEntity.noContent().build(); // 204 No Content
-        } catch (ProductoException e) {
+        } catch (GestionInventarioException e) {
             return ResponseEntity.status(HttpStatus.CONFLICT).body(e.getMessage());
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error inesperado: " + e.getMessage());

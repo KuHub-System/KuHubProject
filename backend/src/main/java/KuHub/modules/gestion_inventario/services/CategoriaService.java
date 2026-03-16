@@ -1,8 +1,8 @@
 package KuHub.modules.gestion_inventario.services;
 
-import KuHub.modules.gestion_inventario.dtos.request.dto.ChangeProductsToAnotherCategoryDTO;
-import KuHub.modules.gestion_inventario.dtos.request.dto.ChangeStatusActiveCategoriaDTO;
-import KuHub.modules.gestion_inventario.dtos.request.dto.CreateCategoriaDTO;
+import KuHub.modules.gestion_inventario.dtos.request.ChangeProductsToAnotherCategoryDTO;
+import KuHub.modules.gestion_inventario.dtos.request.ChangeStatusActiveCategoriaDTO;
+import KuHub.modules.gestion_inventario.dtos.request.CreateCategoriaDTO;
 import KuHub.modules.gestion_inventario.dtos.request.UpdateCategoriaDTO;
 import KuHub.modules.gestion_inventario.dtos.response.proyeccion.CategoriaView;
 import KuHub.modules.gestion_inventario.entity.Categoria;
