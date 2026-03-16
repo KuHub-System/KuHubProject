@@ -1,10 +1,10 @@
 package KuHub.modules.gestion_receta.controller;
 
 import KuHub.modules.gestion_inventario.dtos.request.SearchDTO;
-import KuHub.modules.gestion_receta.dtos.RecipeWithDetailsCreateDTO;
+import KuHub.modules.gestion_receta.dtos.request.dto.RecipeWithDetailsCreateDTO;
 import KuHub.modules.gestion_receta.dtos.projection.CountRecipesAndStatusView;
-import KuHub.modules.gestion_receta.dtos.respose.RecipePagedDTO;
-import KuHub.modules.gestion_receta.dtos.respose.request.RecipeWithDetailsUpdateDTO;
+import KuHub.modules.gestion_receta.dtos.respose.record.RecipesPage;
+import KuHub.modules.gestion_receta.dtos.request.RecipeWithDetailsUpdateDTO;
 import KuHub.modules.gestion_receta.services.RecetaService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -34,7 +34,7 @@ public class RecetaController {
      * llama todas las recetas paginas
      * ✅ FUNCIONAL IMPLEMENTADO EN EL FRONT*/
     @PostMapping("/find-all-recipes-pagined/{page}")
-    public ResponseEntity<RecipePagedDTO> findAllRecipesPaginated(
+    public ResponseEntity<RecipesPage> findAllRecipesPaginated(
             @PathVariable Integer page
     ){
         return ResponseEntity
@@ -46,7 +46,7 @@ public class RecetaController {
      * Llama las recetas por el nombre o descripcion similares paginada
      * ✅ FUNCIONAL IMPLEMENTADO EN EL FRONT*/
     @PostMapping("/search-recipes")
-    public ResponseEntity<RecipePagedDTO> findAllWithDetailsAndSearchPaging(
+    public ResponseEntity<RecipesPage> findAllWithDetailsAndSearchPaging(
             @RequestBody SearchDTO searchDto
     ){
         return ResponseEntity

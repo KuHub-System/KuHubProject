@@ -1,4 +1,4 @@
-package KuHub.modules.gestion_receta.dtos.respose;
+package KuHub.modules.gestion_receta.dtos.request.dto;
 
 import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.NotNull;
