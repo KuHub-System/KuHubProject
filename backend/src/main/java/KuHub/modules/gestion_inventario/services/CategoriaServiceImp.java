@@ -1,16 +1,17 @@
 package KuHub.modules.gestion_inventario.services;
 
-import KuHub.modules.gestion_inventario.dtos.request.dto.ChangeProductsToAnotherCategoryDTO;
-import KuHub.modules.gestion_inventario.dtos.request.dto.ChangeStatusActiveCategoriaDTO;
-import KuHub.modules.gestion_inventario.dtos.request.dto.CreateCategoriaDTO;
+import KuHub.modules.gestion_inventario.dtos.request.ChangeProductsToAnotherCategoryDTO;
+import KuHub.modules.gestion_inventario.dtos.request.ChangeStatusActiveCategoriaDTO;
+import KuHub.modules.gestion_inventario.dtos.request.CreateCategoriaDTO;
 import KuHub.modules.gestion_inventario.dtos.request.UpdateCategoriaDTO;
 import KuHub.modules.gestion_inventario.dtos.response.proyeccion.CategoriaView;
 import KuHub.modules.gestion_inventario.entity.Categoria;
-import KuHub.modules.gestion_inventario.exceptions.InventarioException;
+import KuHub.modules.gestion_inventario.exceptions.GestionInventarioException;
 import KuHub.modules.gestion_inventario.repository.CategoriaRepository;
 import KuHub.modules.gestion_inventario.repository.ProductoRepository;
 import KuHub.utils.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -54,7 +55,8 @@ public class CategoriaServiceImp implements CategoriaService{
     @Transactional(readOnly = true)
     public Categoria findById (Short idcategoria){
         return categoriaRepository.findById(idcategoria).orElseThrow(
-                ()-> new InventarioException("No existe la categoria con el id: " + idcategoria)
+                ()-> new GestionInventarioException("No existe la categoria con el id: " + idcategoria
+                    , HttpStatus.NOT_FOUND)
         );
     }
 
@@ -62,12 +64,14 @@ public class CategoriaServiceImp implements CategoriaService{
     @Transactional
     public boolean createCategoria (CreateCategoriaDTO newCat){
         if (newCat.getNombreCategoria() == null || newCat.getNombreCategoria().isBlank()) {
-            throw new InventarioException("El nombre de la categoría es obligatorio");
+            throw new GestionInventarioException("El nombre de la categoría es obligatorio"
+                    ,HttpStatus.NOT_ACCEPTABLE);
         }
 
         String capNombre = StringUtils.capitalizarPalabras(newCat.getNombreCategoria());
         if(categoriaRepository.existsByNombreCategoria(capNombre)){
-            throw new InventarioException("Ya existe una categoria con el nombre: " + capNombre);
+            throw new GestionInventarioException("Ya existe una categoria con el nombre: " + capNombre
+                    ,HttpStatus.CONFLICT);
         }
         Categoria newCategoria = new Categoria();
         newCategoria.setNombreCategoria(capNombre);
@@ -83,7 +87,8 @@ public class CategoriaServiceImp implements CategoriaService{
         if (categoriaRepository.existsByNombreCategoriaIgnoreCaseAndIdCategoriaNot(
                 capNombre, updateCat.getIdCategoria())) {
 
-            throw new InventarioException("Ya existe una categoria con el nombre: " + capNombre);
+            throw new GestionInventarioException("Ya existe una categoria con el nombre: " + capNombre
+                    ,HttpStatus.CONFLICT);
         }
         Categoria oldCat = findById(updateCat.getIdCategoria());
 
@@ -135,7 +140,8 @@ public class CategoriaServiceImp implements CategoriaService{
     public boolean deleteCategoria(Short idCategoria){
         Categoria categoria = findById(idCategoria);
         if (productoRepository.existsByCategoria_IdCategoria(idCategoria)){
-            throw new InventarioException("No se puede eliminar la categoria porque tiene productos asociados");
+            throw new GestionInventarioException("No se puede eliminar la categoria porque tiene productos asociados"
+                ,HttpStatus.NOT_ACCEPTABLE);
         }else {
             categoriaRepository.deleteById(idCategoria);
             return true;

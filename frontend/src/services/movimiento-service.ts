@@ -12,7 +12,7 @@ export interface IMotionFilterRequest {
     page: number;
     nombreProducto: string;
     nombreResponsable: string;
-    tipoMovimiento: 'ENTRADA' | 'SALIDA_INVENTARIO' | 'SALIDA_BODEGA' | 'TRASLADO' | 'MERMA' | 'AJUSTE' | 'DEVOLUCION' | 'TODOS';
+    tipoMovimiento: 'ENTRADA_INVENTARIO' | 'ENTRADA_BODEGA' | 'SALIDA_INVENTARIO' | 'SALIDA_BODEGA' | 'TRASLADO' | 'MERMA_INVENTARIO' | 'MERMA_BODEGA' | 'AJUSTE_INVENTARIO' | 'AJUSTE_BODEGA' | 'DEVOLUCION' | 'TODOS';
     orden: 'MAS_RECIENTES' | 'MAS_ANTIGUOS' | 'MENOR_CANTIDAD' | 'MAYOR_CANTIDAD';
     fechaInicio: string | null;
     fechaFin: string | null;

@@ -1,16 +1,17 @@
 package KuHub.modules.gestion_inventario.services;
 
-import KuHub.modules.gestion_inventario.dtos.request.dto.ChangeStatusActiveUnidadDTO;
-import KuHub.modules.gestion_inventario.dtos.request.dto.ChangeProductsToAnotherUnidadMedidaDTO;
-import KuHub.modules.gestion_inventario.dtos.request.dto.CreateUnidadDTO;
-import KuHub.modules.gestion_inventario.dtos.request.dto.UpdateUnidadDTO;
+import KuHub.modules.gestion_inventario.dtos.request.ChangeStatusActiveUnidadDTO;
+import KuHub.modules.gestion_inventario.dtos.request.ChangeProductsToAnotherUnidadMedidaDTO;
+import KuHub.modules.gestion_inventario.dtos.request.CreateUnidadDTO;
+import KuHub.modules.gestion_inventario.dtos.request.UpdateUnidadDTO;
 import KuHub.modules.gestion_inventario.dtos.response.proyeccion.UnidadMedidaView;
 import KuHub.modules.gestion_inventario.entity.UnidadMedida;
-import KuHub.modules.gestion_inventario.exceptions.InventarioException;
+import KuHub.modules.gestion_inventario.exceptions.GestionInventarioException;
 import KuHub.modules.gestion_inventario.repository.ProductoRepository;
 import KuHub.modules.gestion_inventario.repository.UnidadaMedidaRepository;
 import KuHub.utils.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,7 +36,8 @@ public class UnidadMedidaServiceImp implements UnidadMedidaService{
     @Transactional(readOnly = true)
     public UnidadMedida findById(Short idUnidadMedida){
         return unidadaMedidaRepository.findById(idUnidadMedida).orElseThrow(
-                ()-> new InventarioException("No existe la unidad de medida con el id: " + idUnidadMedida)
+                ()-> new GestionInventarioException("No existe la unidad de medida con el id: " + idUnidadMedida
+                    , HttpStatus.NOT_FOUND)
         );
     }
 
@@ -65,10 +67,12 @@ public class UnidadMedidaServiceImp implements UnidadMedidaService{
         dto.setNombreUnidad(StringUtils.capitalizarPalabras(dto.getNombreUnidad()));
         dto.setAbreviatura(StringUtils.normalizeSpaces(dto.getAbreviatura()));
         if(unidadaMedidaRepository.existsByNombreUnidad(dto.getNombreUnidad())){
-            throw new InventarioException("Ya existe una unidad de medida con ese nombre");
+            throw new GestionInventarioException("Ya existe una unidad de medida con ese nombre"
+                ,HttpStatus.CONFLICT);
         }
         if (unidadaMedidaRepository.existsByAbreviaturaIgnoreCase(dto.getAbreviatura())) {
-            throw new InventarioException("Ya existe una unidad de medida con esa abreviatura");
+            throw new GestionInventarioException("Ya existe una unidad de medida con esa abreviatura"
+                ,HttpStatus.CONFLICT);
         }
         UnidadMedida nuevaUnidad = new UnidadMedida();
         nuevaUnidad.setNombreUnidad(dto.getNombreUnidad());
@@ -89,7 +93,8 @@ public class UnidadMedidaServiceImp implements UnidadMedidaService{
                 if (unidadaMedidaRepository
                         .existsByNombreUnidadIgnoreCaseAndIdUnidadNot(
                                 capNombre, dto.getIdUnidadMedida())) {
-                    throw new InventarioException("Ya existe una unidad de medida con ese nombre");
+                    throw new GestionInventarioException("Ya existe una unidad de medida con ese nombre"
+                            ,HttpStatus.CONFLICT);
                 }
                 upUni.setNombreUnidad(capNombre);
             }
@@ -104,7 +109,8 @@ public class UnidadMedidaServiceImp implements UnidadMedidaService{
                 if (unidadaMedidaRepository
                         .existsByAbreviaturaIgnoreCaseAndIdUnidadNot(
                                 capAbrev, dto.getIdUnidadMedida())) {
-                    throw new InventarioException("Ya existe una unidad de medida con esa abreviatura");
+                    throw new GestionInventarioException("Ya existe una unidad de medida con esa abreviatura"
+                            ,HttpStatus.CONFLICT);
                 }
                 upUni.setAbreviatura(capAbrev);
             }
@@ -154,10 +160,12 @@ public class UnidadMedidaServiceImp implements UnidadMedidaService{
     @Transactional
     public void deleteUnidad(Short idUnidad){
         if (!existsByIdUnidadMedida(idUnidad)){
-            throw new InventarioException("No existe la unidad de medida con el id: " + idUnidad);
+            throw new GestionInventarioException("No existe la unidad de medida con el id: " + idUnidad
+                    ,HttpStatus.CONFLICT);
         }
         if (productoRepository.existsByUnidadMedida_IdUnidad(idUnidad)){
-            throw new InventarioException("No se puede eliminar la unidad de medida porque tiene productos asociados");
+            throw new GestionInventarioException("No se puede eliminar la unidad de medida porque tiene productos asociados"
+                    ,HttpStatus.CONFLICT);
         }
         unidadaMedidaRepository.deleteById(idUnidad);
     }

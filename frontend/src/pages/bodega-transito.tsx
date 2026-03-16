@@ -155,6 +155,7 @@ const BodegaTransitoPage: React.FC = () => {
   const scrollerRef = React.useRef<HTMLDivElement>(null);
   const mainScrollerRef = React.useRef<HTMLDivElement>(null);
   const filtersRef = React.useRef(selectedFilters);
+  const filterDebounceRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [categoriasFull, setCategoriasFull] = React.useState<{ id: number, nombre: string }[]>([]);
   const [unidadesFull, setUnidadesFull] = React.useState<IUnidadMedida[]>([]);
@@ -258,6 +259,19 @@ const BodegaTransitoPage: React.FC = () => {
 
   React.useEffect(() => { loadData(); cargarFiltros(); cargarProductosPaginados(1, true); }, [cargarFiltros, cargarProductosPaginados]);
   React.useEffect(() => { filtersRef.current = selectedFilters; }, [selectedFilters]);
+
+  /**
+   * Debounce 2.5s para filtros: cancela el timer anterior antes de iniciar uno nuevo,
+   * dando tiempo al usuario a terminar de seleccionar categorías, unidades y checkboxes.
+   */
+  const scheduleFilterRequest = React.useCallback(() => {
+    if (filterDebounceRef.current) clearTimeout(filterDebounceRef.current);
+    filterDebounceRef.current = setTimeout(() => {
+      cacheRef.current = {};
+      setCurrentPage(1);
+      cargarProductosPaginados(1, true);
+    }, 2500);
+  }, [cargarProductosPaginados]);
 
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
     const scroller = e.currentTarget;
@@ -437,9 +451,7 @@ const BodegaTransitoPage: React.FC = () => {
                             if (checked) newSet.add('stock-bajo'); else newSet.delete('stock-bajo');
                             setSelectedFilters(newSet);
                             filtersRef.current = newSet;
-                            cacheRef.current = {};
-                            setCurrentPage(1);
-                            cargarProductosPaginados(1, true);
+                            scheduleFilterRequest();
                           }}
                           color="warning"
                           size="sm"
@@ -456,9 +468,7 @@ const BodegaTransitoPage: React.FC = () => {
                             if (checked) newSet.add('ocultar-cero'); else newSet.delete('ocultar-cero');
                             setSelectedFilters(newSet);
                             filtersRef.current = newSet;
-                            cacheRef.current = {};
-                            setCurrentPage(1);
-                            cargarProductosPaginados(1, true);
+                            scheduleFilterRequest();
                           }}
                           size="sm"
                         >
@@ -468,11 +478,7 @@ const BodegaTransitoPage: React.FC = () => {
 
                       {/* Dropdown Categorías */}
                       <Dropdown onOpenChange={(isOpen) => {
-                        if (!isOpen) {
-                          cacheRef.current = {};
-                          setCurrentPage(1);
-                          cargarProductosPaginados(1, true);
-                        }
+                        if (!isOpen) scheduleFilterRequest();
                       }}>
                         <DropdownTrigger>
                           <Button
@@ -541,11 +547,7 @@ const BodegaTransitoPage: React.FC = () => {
 
                       {/* Dropdown Unidades */}
                       <Dropdown onOpenChange={(isOpen) => {
-                        if (!isOpen) {
-                          cacheRef.current = {};
-                          setCurrentPage(1);
-                          cargarProductosPaginados(1, true);
-                        }
+                        if (!isOpen) scheduleFilterRequest();
                       }}>
                         <DropdownTrigger>
                           <Button

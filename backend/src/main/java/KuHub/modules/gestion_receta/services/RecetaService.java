@@ -1,6 +1,6 @@
 package KuHub.modules.gestion_receta.services;
 
-import KuHub.modules.gestion_inventario.dtos.request.dto.SearchDTO;
+import KuHub.modules.gestion_inventario.dtos.request.SearchDTO;
 import KuHub.modules.gestion_receta.dtos.RecipeWithDetailsCreateDTO;
 import KuHub.modules.gestion_receta.dtos.projection.CountRecipesAndStatusView;
 import KuHub.modules.gestion_receta.dtos.respose.RecipePagedDTO;

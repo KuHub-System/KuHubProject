@@ -1,6 +1,5 @@
 package KuHub.modules.gestion_academica.controller;
 
-import KuHub.modules.gestion_academica.dtos.YearFilterRequestDTO;
 import KuHub.modules.gestion_academica.dtos.request.WeekGeneratorDTO;
 import KuHub.modules.gestion_academica.dtos.request.WeeklyFilterForSolicitationDTO;
 import KuHub.modules.gestion_academica.dtos.response.YearWithSemestersDTO;
@@ -72,13 +71,6 @@ public class SemanaController {
                 .body(semanaService.generateSemesterCalendar(request));
     }
 
-    @GetMapping( "/find-week-active-for-year/")
-    public ResponseEntity<List<Semana>> findWeekActiveForYear(
-            @RequestBody YearFilterRequestDTO yearEnd
-    ){
-        return ResponseEntity
-                .status(200)
-                .body(semanaService.findWeekActiveForYear(yearEnd));
-    }
+
 
 }

@@ -1,9 +1,9 @@
 package KuHub.modules.gestion_inventario.services;
 
-import KuHub.modules.gestion_inventario.dtos.request.dto.ChangeStatusActiveUnidadDTO;
-import KuHub.modules.gestion_inventario.dtos.request.dto.ChangeProductsToAnotherUnidadMedidaDTO;
-import KuHub.modules.gestion_inventario.dtos.request.dto.CreateUnidadDTO;
-import KuHub.modules.gestion_inventario.dtos.request.dto.UpdateUnidadDTO;
+import KuHub.modules.gestion_inventario.dtos.request.ChangeStatusActiveUnidadDTO;
+import KuHub.modules.gestion_inventario.dtos.request.ChangeProductsToAnotherUnidadMedidaDTO;
+import KuHub.modules.gestion_inventario.dtos.request.CreateUnidadDTO;
+import KuHub.modules.gestion_inventario.dtos.request.UpdateUnidadDTO;
 import KuHub.modules.gestion_inventario.dtos.response.proyeccion.UnidadMedidaView;
 import KuHub.modules.gestion_inventario.entity.UnidadMedida;
 

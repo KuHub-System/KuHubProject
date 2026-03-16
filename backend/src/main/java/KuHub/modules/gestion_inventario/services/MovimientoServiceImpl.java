@@ -1,14 +1,13 @@
 package KuHub.modules.gestion_inventario.services;
 
-import KuHub.modules.gestion_inventario.dtos.MotionCreateDTO;
-import KuHub.modules.gestion_inventario.dtos.MotionFilterRequestDTO;
-import KuHub.modules.gestion_inventario.dtos.response.MotionAnswerDTO;
-import KuHub.modules.gestion_inventario.dtos.response.PaginatedMotionDTO;
+import KuHub.modules.gestion_inventario.dtos.response.dto.MotionFilterRequestDTO;
+import KuHub.modules.gestion_inventario.dtos.response.dto.MotionAnswerDTO;
+import KuHub.modules.gestion_inventario.dtos.response.dto.PaginatedMotionDTO;
+import KuHub.modules.gestion_inventario.dtos.response.record.BulkMovementResult;
 import KuHub.modules.gestion_inventario.entity.BodegaTransito;
 import KuHub.modules.gestion_inventario.exceptions.GestionInventarioException;
 import KuHub.modules.gestion_inventario.repository.BodegaTransitoRepository;
 import KuHub.modules.gestion_usuario.entity.Usuario;
-import KuHub.modules.gestion_usuario.exceptions.GestionUsuarioException;
 import KuHub.modules.gestion_usuario.service.UsuarioService;
 import KuHub.modules.gestion_inventario.entity.Inventario;
 import KuHub.modules.gestion_inventario.entity.Movimiento;
@@ -21,7 +20,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -45,7 +43,7 @@ public class MovimientoServiceImpl implements MovimientoService {
     @Autowired
     private BodegaTransitoRepository bodegaTransitoRepository;
 
-    /**METODO para realizar una consulta dinamica de los filtros del frontend con formato parseado para mejor experiencia usuario*/
+    /** Lista paginada de movimientos con filtros dinámicos: fecha, producto, tipo, orden y responsable. */
     @Transactional(readOnly = true)
     @Override
     public PaginatedMotionDTO findAllMotionWithFilter(MotionFilterRequestDTO request) {
@@ -130,151 +128,125 @@ public class MovimientoServiceImpl implements MovimientoService {
         return new PaginatedMotionDTO(contenido, paging);
     }
 
-    /**
-     * Save crudo usado en inventario al crear un producto con inventario
-     */
+
+    /** Persiste un movimiento crudo, usado al crear un producto con inventario inicial. */
     @Transactional
     @Override
     public void save(Movimiento m) {
         movimientoRepository.save(m);
     }
 
-    //NO USADO 26/02 - SE VA!
-    //LA IDEA ES USAR DE MANDERA HIBRIDA, PERO AHORA CREA MOVIMIENTO EN INVENTARIO EN LA CREACCION PRODUCTO CON INVENTARIO
-    @Transactional
-    @Override
-    public boolean saveMotion(MotionCreateDTO m, Inventario inventario) {
-        log.info("📦 Iniciando registro de movimiento para Inventario ID: {}", m.getIdInventario());
-
-        // 1. Obtener el username desde el token JWT
-        String username = org.springframework.security.core.context.SecurityContextHolder
-                .getContext().getAuthentication().getName();
-        log.debug("🔑 Usuario extraído del token: [{}]", username);
-
-
-        // 2. Buscar al usuario
-        Usuario u = usuarioService.findUserByUsernameOrEmail(username);
-        if (u == null) {
-            log.error("❌ No se encontró el usuario con username: {}", username);
-            throw new GestionUsuarioException("Usuario no autenticado o no encontrado en el sistema", HttpStatus.NOT_FOUND);
-        }
-        String nombreUsuario = usuarioService.formatearNombreCompleto(u);
-        log.debug("👤 Operación realizada por: {}", nombreUsuario);
-
-
-        Inventario i;
-        if (inventario != null) {
-            log.debug("🆕 Usando inventario recién creado para producto nuevo");
-            i = inventario;
-        } else {
-            log.debug("🔍 Buscando inventario existente ID: {}", m.getIdInventario());
-            i = inventarioRepository.findById(m.getIdInventario())
-                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Inventario no encontrado"));
-        }
-
-        // 4. Validar el Tipo de Movimiento
-        Movimiento.TipoMovimiento tipoEnum;
-        try {
-            // Limpieza robusta del string
-            String tipoLimpio = m.getTipoMovimiento().trim().toUpperCase().replace(" ", "_");
-            tipoEnum = Movimiento.TipoMovimiento.valueOf(tipoLimpio);
-            log.info("✅ Tipo de movimiento validado: {}", tipoEnum);
-        } catch (IllegalArgumentException e) {
-            log.error("🚫 Error de validación: '{}' no es un TipoMovimiento válido", m.getTipoMovimiento());
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "Tipo de movimiento inválido: " + m.getTipoMovimiento());
-        }
-
-        //Guerdar movimiento Entity
-        Movimiento newMovimiento = new Movimiento();
-        newMovimiento.setUsuario(u);
-        newMovimiento.setInventario(i);
-        newMovimiento.setStockMovimiento(m.getStockMovimiento());
-        newMovimiento.setTipoMovimiento(tipoEnum);
-        newMovimiento.setObservacion(m.getObservacion());
-        movimientoRepository.save(newMovimiento);
-
-        log.info("💾 Movimiento guardado exitosamente por {}", username);
-        return true;
-    }
 
     /**
-     * METODO DE VALIDACION DE MOVIMIENTO PARA LA PAGE DE INVENTARIO, IMPLEMENADO PARA CUANDO SE ACTUALIZA UN PRODUCTO EN EL INVENTARIO
-     * REALIZAR MOVIMIENTO, EN CASO DE TRASLADO SE REALIZAR LA SUMA SI EXISTE EL ITEN DE LA BODEGA EN LA BBDD PARA EVITAR PROCESOS PARALELO
-     * O CREA UN NUEVO ITEM A BODEGA SI NO EXISTE
+     * Genera y registra el movimiento correspondiente al actualizar un inventario.
+     * En caso de traslado, suma al stock en tránsito de forma atómica o crea la bodega si no existe.
      */
     @Transactional
     @Override
-    public boolean motionInUpdateInventory(Inventario oldInventory, BigDecimal newStock, String typeMotion) {
+    public boolean motionInUpdateInventory(
+            Inventario oldInventory,
+            BigDecimal delta,
+            String typeMotion,
+            Boolean ajustePositivo   // null para todos los tipos excepto AJUSTE_INVENTARIO
+    ) {
         String tipoKey = StringUtils.normalizeToEnumKey(typeMotion);
-        BigDecimal calculatedAmount = BigDecimal.ZERO;
-        String description = "";
+        BigDecimal stockActual = oldInventory.getStock();
+        BigDecimal nuevoStock;
+        BigDecimal calculatedAmount;
+        String description;
 
         switch (tipoKey) {
-            case "ENTRADA":
-                if (newStock.compareTo(oldInventory.getStock()) < 0) {
-                    throw new GestionInventarioException("La entrada no puede resultar en un stock menor al actual del producto -> " +
-                            oldInventory.getProducto().getNombreProducto(), HttpStatus.BAD_REQUEST);
-                }
-                calculatedAmount = newStock.subtract(oldInventory.getStock());
-                description = "Entrada en inventario del producto " + oldInventory.getProducto().getNombreProducto();
-                break;
 
-            case "SALIDA_INVENTARIO":
-            case "MERMA":
-                // Lógica corregida: Si el stock nuevo es mayor al antiguo, es un error.
-                if (newStock.compareTo(oldInventory.getStock()) > 0) {
-                    throw new GestionInventarioException("La salida no puede resultar en un stock mayor al actual del producto -> " +
-                            oldInventory.getProducto().getNombreProducto(), HttpStatus.BAD_REQUEST);
-                }
-                // Para salida, restamos el nuevo del antiguo para que la cantidad calculada sea positiva
-                calculatedAmount = oldInventory.getStock().subtract(newStock);
-                description = tipoKey.equals("SALIDA_INVENTARIO") ? "Salida por uso/consumo: " + oldInventory.getProducto().getNombreProducto()
-                                                                  : "Baja por merma/daño: " + oldInventory.getProducto().getNombreProducto();
-                break;
+            case "ENTRADA_INVENTARIO" -> {
+                nuevoStock        = stockActual.add(delta);
+                calculatedAmount  = delta;
+                description       = "Entrada en inventario del producto "
+                        + oldInventory.getProducto().getNombreProducto();
+            }
 
-            case "AJUSTE":
-                // Si el stock nuevo es MAYOR que el antiguo = Ajuste Positivo
-                if (newStock.compareTo(oldInventory.getStock()) > 0) {
-                    calculatedAmount = newStock.subtract(oldInventory.getStock());
-                    description = "Ajuste positivo de inventario del producto " + oldInventory.getProducto().getNombreProducto();
+            case "SALIDA_INVENTARIO" -> {
+                nuevoStock = stockActual.subtract(delta);
+                if (nuevoStock.compareTo(BigDecimal.ZERO) < 0) {
+                    throw new GestionInventarioException(
+                            "La salida no puede resultar en stock negativo -> "
+                                    + oldInventory.getProducto().getNombreProducto(),
+                            HttpStatus.BAD_REQUEST);
                 }
-                // Si el stock nuevo es MENOR que el antiguo = Ajuste Negativo
-                else if (newStock.compareTo(oldInventory.getStock()) < 0) {
-                    calculatedAmount = oldInventory.getStock().subtract(newStock);
-                    description = "Ajuste negativo de inventario del producto " + oldInventory.getProducto().getNombreProducto();
-                }
-                description = (newStock.compareTo(oldInventory.getStock()) > 0 ? "Ajuste positivo: "
-                                                                               : "Ajuste negativo: ") + oldInventory.getProducto().getNombreProducto();
-                break;
+                calculatedAmount = delta;
+                description      = "Salida por uso/consumo: "
+                        + oldInventory.getProducto().getNombreProducto();
+            }
 
-            case "TRASLADO":
-                /**calcular diferencia*/
-                calculatedAmount = newStock.subtract(oldInventory.getStock()).abs();
-                if (newStock.compareTo(oldInventory.getStock()) > 0) {
-                    throw new GestionInventarioException("Para un traslado a tránsito, el nuevo stock debe ser menor al actual.",
+            case "MERMA_INVENTARIO" -> {
+                nuevoStock = stockActual.subtract(delta);
+                if (nuevoStock.compareTo(BigDecimal.ZERO) < 0) {
+                    throw new GestionInventarioException(
+                            "La merma no puede resultar en stock negativo -> "
+                                    + oldInventory.getProducto().getNombreProducto(),
+                            HttpStatus.BAD_REQUEST);
+                }
+                calculatedAmount = delta;
+                description      = "Baja por merma/daño: "
+                        + oldInventory.getProducto().getNombreProducto();
+            }
+
+            case "AJUSTE_INVENTARIO" -> {
+                if (ajustePositivo == null) {
+                    throw new GestionInventarioException(
+                            "El campo ajustePositivo es obligatorio para AJUSTE_INVENTARIO",
+                            HttpStatus.BAD_REQUEST);
+                }
+                if (Boolean.TRUE.equals(ajustePositivo)) {
+                    nuevoStock   = stockActual.add(delta);
+                    description  = "Ajuste positivo: "
+                            + oldInventory.getProducto().getNombreProducto();
+                } else {
+                    nuevoStock = stockActual.subtract(delta);
+                    if (nuevoStock.compareTo(BigDecimal.ZERO) < 0) {
+                        throw new GestionInventarioException(
+                                "El ajuste negativo no puede resultar en stock negativo -> "
+                                        + oldInventory.getProducto().getNombreProducto(),
+                                HttpStatus.BAD_REQUEST);
+                    }
+                    description = "Ajuste negativo: "
+                            + oldInventory.getProducto().getNombreProducto();
+                }
+                calculatedAmount = delta;
+            }
+
+            case "TRASLADO" -> {
+                nuevoStock = stockActual.subtract(delta);
+                if (nuevoStock.compareTo(BigDecimal.ZERO) < 0) {
+                    throw new GestionInventarioException(
+                            "El traslado no puede resultar en stock negativo -> "
+                                    + oldInventory.getProducto().getNombreProducto(),
                             HttpStatus.BAD_REQUEST);
                 }
 
-                int rowsaffected = bodegaTransitoRepository.addStockInTransit(
-                        oldInventory.getIdInventario(), calculatedAmount);
+                int rowsAffected = bodegaTransitoRepository.addStockInTransit(
+                        oldInventory.getIdInventario(), delta);
 
-                if (rowsaffected == 0) {
+                if (rowsAffected == 0) {
                     BodegaTransito newWarehouse = new BodegaTransito();
                     newWarehouse.setInventario(oldInventory);
-                    newWarehouse.setStock(calculatedAmount);
+                    newWarehouse.setStock(delta);
                     newWarehouse.setStockLimit(oldInventory.getStockLimit());
                     bodegaTransitoRepository.save(newWarehouse);
                 }
 
-                description = "Traslado a bodega de tránsito: " + oldInventory.getProducto().getNombreProducto();
-                break;
+                calculatedAmount = delta;
+                description      = "Traslado a bodega de tránsito: "
+                        + oldInventory.getProducto().getNombreProducto();
+            }
 
-            default:
-                throw new GestionInventarioException("Tipo de movimiento no válido: " + tipoKey, HttpStatus.BAD_REQUEST);
+            default -> throw new GestionInventarioException(
+                    "Tipo de movimiento no válido: " + tipoKey, HttpStatus.BAD_REQUEST);
         }
 
-        //CREAR MOVIMIENTO ASIGNANDO EL INVENTARIO
+        // Actualizar stock en la entidad
+        oldInventory.setStock(nuevoStock);
+
+        // Crear movimiento
         Movimiento newMotion = new Movimiento();
         newMotion.setUsuario(usuarioService.findUserByToken());
         newMotion.setInventario(oldInventory);
@@ -285,69 +257,145 @@ public class MovimientoServiceImpl implements MovimientoService {
         return true;
     }
 
-    /***/
-
+    /**
+     * Construye el objeto movimiento para una actualización masiva sin persistirlo.
+     * Retorna un BulkMovementResult con el movimiento listo o el error ocurrido.
+     */
     @Transactional
     @Override
-    public boolean motionInUpdateTransitWarehouse(BodegaTransito oldTransit, BigDecimal newStock, String typeMotion) {
+    public BulkMovementResult buildMovementForBulkUpdate(
+            Inventario oldInventory,
+            BigDecimal delta,
+            String typeMotion,
+            Usuario currentUser
+    ) {
         String tipoKey = StringUtils.normalizeToEnumKey(typeMotion);
-        BigDecimal calculatedAmount = BigDecimal.ZERO;
-        String description = "";
+        BigDecimal stockActual = oldInventory.getStock();
+        BigDecimal nuevoStock;
+        String description;
+        // Variable clave para saber cuánto registrar en el historial de Movimientos
+        BigDecimal cantidadMovimiento = delta;
+
+        // Lógica de cálculo (Extraída de tu switch original)
+        switch (tipoKey) {
+            case "ENTRADA_INVENTARIO" -> {
+                nuevoStock = stockActual.add(delta);
+                description = "Entrada masiva: " + oldInventory.getProducto().getNombreProducto();
+            }
+            case "SALIDA_INVENTARIO", "MERMA_INVENTARIO" -> {
+                nuevoStock = stockActual.subtract(delta);
+                if (nuevoStock.compareTo(BigDecimal.ZERO) < 0) {
+                    return BulkMovementResult.error("Stock insuficiente para " + tipoKey);
+                }
+                description = tipoKey + " masiva: " + oldInventory.getProducto().getNombreProducto();
+            }
+            case "AJUSTE_INVENTARIO" -> {
+                // ¡NUEVO ENFOQUE! En ajustes, 'delta' es el STOCK TOTAL FINAL DESEADO
+                nuevoStock = delta;
+
+                if (nuevoStock.compareTo(BigDecimal.ZERO) < 0) {
+                    return BulkMovementResult.error("El stock ajustado no puede ser negativo");
+                }
+
+                // Calculamos la diferencia matemática para saber qué pasó realmente
+                BigDecimal diferenciaReal = nuevoStock.subtract(stockActual);
+
+                if (diferenciaReal.compareTo(BigDecimal.ZERO) > 0) {
+                    // Faltaba stock físico (Ajuste Positivo)
+                    description = "Ajuste masivo (+): " + oldInventory.getProducto().getNombreProducto();
+                    cantidadMovimiento = diferenciaReal;
+
+                } else if (diferenciaReal.compareTo(BigDecimal.ZERO) < 0) {
+                    // Sobraba stock físico (Ajuste Negativo)
+                    description = "Ajuste masivo (-): " + oldInventory.getProducto().getNombreProducto();
+                    cantidadMovimiento = diferenciaReal.abs(); // Guardamos el valor en positivo para el historial
+
+                } else {
+                    // El usuario mandó el mismo stock que ya había en la Base de Datos
+                    return BulkMovementResult.error("El ajuste no generó cambios. El stock real ya era " + stockActual);
+                }
+            }
+            case "TRASLADO" -> {
+                nuevoStock = stockActual.subtract(delta);
+                if (nuevoStock.compareTo(BigDecimal.ZERO) < 0) return BulkMovementResult.error("Stock insuficiente para traslado");
+
+                // Lógica de Bodega de Tránsito (Se mantiene igual)
+                bodegaTransitoRepository.addStockInTransit(oldInventory.getIdInventario(), delta);
+                // Nota: Aquí podrías querer manejar el caso de 'rowsAffected == 0' como hacías antes
+
+                description = "Traslado masivo: " + oldInventory.getProducto().getNombreProducto();
+            }
+            default -> { return BulkMovementResult.error("Tipo de movimiento inválido"); }
+        }
+
+        // 1. Actualizamos la entidad Inventario que recibimos (en memoria)
+        oldInventory.setStock(nuevoStock);
+
+        // 2. Construimos el objeto Movimiento
+        Movimiento mov = new Movimiento();
+        mov.setUsuario(currentUser);
+        mov.setInventario(oldInventory);
+        mov.setStockMovimiento(delta);
+        mov.setTipoMovimiento(Movimiento.TipoMovimiento.valueOf(tipoKey));
+        mov.setObservacion(description);
+
+        return BulkMovementResult.success(mov);
+    }
+
+    /**
+     * Genera y registra el movimiento correspondiente al actualizar la bodega de tránsito.
+     * En caso de devolución, actualiza el stock principal de forma atómica.
+     */
+    @Transactional
+    @Override
+    public boolean motionInUpdateTransitWarehouse(BodegaTransito oldTransit, BigDecimal delta, String typeMotion) {
+        String tipoKey = StringUtils.normalizeToEnumKey(typeMotion);
+        BigDecimal stockActual = oldTransit.getStock();
+        BigDecimal nuevoStock;
+        BigDecimal calculatedAmount = delta; // Por defecto es el delta, excepto en Ajuste
+        String description;
         Inventario mainInventory = oldTransit.getInventario();
 
         switch (tipoKey) {
-            case "SALIDA_BODEGA":
-            case "MERMA":
-                // Salidas desde tránsito (consumo en clases o daño de insumos en espera)
-                if (newStock.compareTo(oldTransit.getStock()) > 0) {
-                    throw new GestionInventarioException("La " + tipoKey.toLowerCase() + " no puede resultar en un stock mayor al actual en tránsito."
-                            , HttpStatus.BAD_REQUEST);
-                }
-                calculatedAmount = oldTransit.getStock().subtract(newStock);
-                description = (tipoKey.equals("SALIDA_BODEGA") ? "Salida de bodega de tránsito para procesos/clases: "
-                        : "Baja por merma en bodega de tránsito: ") + mainInventory.getProducto().getNombreProducto();
-                break;
-
-            case "DEVOLUCION":
-                // Lógica corregida: Lo que sale de tránsito vuelve al Inventario Principal
-                if (newStock.compareTo(oldTransit.getStock()) > 0) {
-                    throw new GestionInventarioException("La devolución no puede ser mayor al stock actual en tránsito."
-                            , HttpStatus.BAD_REQUEST);
-                }
-                calculatedAmount = oldTransit.getStock().subtract(newStock);
-
+            case "ENTRADA_BODEGA" -> {
+                nuevoStock = stockActual.add(delta);
+                description = "Entrada en bodega de tránsito: " + mainInventory.getProducto().getNombreProducto();
+            }
+            case "SALIDA_BODEGA", "MERMA_BODEGA" -> {
+                nuevoStock = stockActual.subtract(delta);
+                description = (tipoKey.equals("SALIDA_BODEGA") ? "Salida para procesos/clases: " : "Baja por merma: ")
+                        + mainInventory.getProducto().getNombreProducto();
+            }
+            case "DEVOLUCION" -> {
+                nuevoStock = stockActual.subtract(delta);
                 // ACTUALIZACIÓN ATÓMICA: La base de datos manda
-                int rowsAffected = inventarioRepository.addStockToInventory(
-                        mainInventory.getIdInventario(),
-                        calculatedAmount
-                );
-
+                int rowsAffected = inventarioRepository.addStockToInventory(mainInventory.getIdInventario(), delta);
                 if (rowsAffected == 0) {
-                    throw new GestionInventarioException("No se pudo actualizar el stock principal. El inventario podría estar inactivo."
-                            , HttpStatus.CONFLICT);
+                    throw new GestionInventarioException("No se pudo actualizar el stock principal. El inventario podría estar inactivo.", HttpStatus.CONFLICT);
                 }
+                description = "Devolución al inventario principal: " + mainInventory.getProducto().getNombreProducto();
+            }
+            case "AJUSTE_BODEGA" -> {
+                nuevoStock = delta; // ¡Ajuste Absoluto! (Delta = Stock Final Deseado)
+                BigDecimal diferenciaReal = nuevoStock.subtract(stockActual);
 
-                description = "Devolución de stock de tránsito al inventario principal: " + mainInventory.getProducto().getNombreProducto();
-                break;
-
-            case "AJUSTE":
-                // Sincronización manual del stock físico en tránsito
-                if (newStock.compareTo(oldTransit.getStock()) > 0) {
-                    calculatedAmount = newStock.subtract(oldTransit.getStock());
-                    description = "Ajuste positivo en stock de tránsito: ";
-                } else if (newStock.compareTo(oldTransit.getStock()) < 0) {
-                    calculatedAmount = oldTransit.getStock().subtract(newStock);
-                    description = "Ajuste negativo en stock de tránsito: ";
+                if (diferenciaReal.compareTo(BigDecimal.ZERO) > 0) {
+                    description = "Ajuste positivo en tránsito: " + mainInventory.getProducto().getNombreProducto();
+                    calculatedAmount = diferenciaReal;
+                } else if (diferenciaReal.compareTo(BigDecimal.ZERO) < 0) {
+                    description = "Ajuste negativo en tránsito: " + mainInventory.getProducto().getNombreProducto();
+                    calculatedAmount = diferenciaReal.abs();
+                } else {
+                    return true; // No hubo cambio real
                 }
-                description += mainInventory.getProducto().getNombreProducto();
-                break;
-
-            default:
-                throw new GestionInventarioException("Tipo de movimiento no válido para Bodega de Tránsito: " + tipoKey
-                        ,HttpStatus.BAD_REQUEST);
+            }
+            default -> throw new GestionInventarioException("Tipo de movimiento no válido: " + tipoKey, HttpStatus.BAD_REQUEST);
         }
 
-        //CREAR MOVIMIENTO ASIGNADO INVENTARIO Y BODEGA
+        // Actualizar stock en la entidad
+        oldTransit.setStock(nuevoStock);
+
+        // Crear movimiento (Asignando tanto Inventario como Bodega Transito)
         Movimiento newMotion = new Movimiento();
         newMotion.setUsuario(usuarioService.findUserByToken());
         newMotion.setInventario(oldTransit.getInventario());
@@ -355,13 +403,12 @@ public class MovimientoServiceImpl implements MovimientoService {
         newMotion.setStockMovimiento(calculatedAmount);
         newMotion.setTipoMovimiento(Movimiento.TipoMovimiento.valueOf(tipoKey));
         newMotion.setObservacion(description);
+
         movimientoRepository.save(newMotion);
         return true;
     }
 
-    /**
-     * Mapea la consulta dinamica aplicado en historioles de movimiento
-     */
+    /** Mapea una fila de la consulta dinámica al DTO de historial de movimientos. */
     private MotionAnswerDTO mapToMotionAnswerDTO(Object[] row) {
         return new MotionAnswerDTO(
                 (String) row[0],                                 // nombre_producto
@@ -375,79 +422,3 @@ public class MovimientoServiceImpl implements MovimientoService {
     }
 
 }
-
-
-
-        /** 5. Actualizar stock mínimo
-         if (m.getStockLimitMin() != null) {
-         i.setStockLimit(m.getStockLimitMin());
-         }
-
-         // 6. Lógica de stock
-         String mensajeAjuste = actualizarStockInventario(i, m.getStockMovimiento(), tipoEnum);
-
-         String observacionFinal = m.getObservacion();
-         if (mensajeAjuste != null) {
-         observacionFinal = (observacionFinal != null) ? observacionFinal + " - " + mensajeAjuste : mensajeAjuste;
-         }
-
-         // 7. Guardar el movimiento
-         // Asegúrate de que el constructor de Movimiento acepte estos parámetros
-         Movimiento mv = movimientoRepository.save(new Movimiento(
-         null, u, i, , tipoEnum, null, observacionFinal
-         ));
-
-         return new MotionAnswerDTO(
-         mv.getIdMovimiento(),
-         i.getProducto().getNombreProducto(),
-         i.getProducto().getCategoria().getNombreCategoria(),
-         m.getTipoMovimiento(),
-         m.getStockMovimiento(),
-         mv.getFechaMovimiento(),
-         nombreUsuario,
-         mv.getObservacion()
-         );
-         }
-
-
-
-
-
-    private String actualizarStockInventario(Inventario i, Double stockMovimiento, Movimiento.TipoMovimiento tipo){
-
-        Double stockActual = 0.0;//i.getStock();
-        String mensajeAjuste = null;
-        /**
-        switch (tipo) {
-            case ENTRADA:
-                stockActual += stockMovimiento;
-                i.setStock(stockActual);
-                break;
-            case DEVOLUCION:
-                stockActual += stockMovimiento;
-                i.setStock(stockActual);
-                break;
-            case SALIDA:
-                if (stockActual < stockMovimiento) throw new InventarioException("No hay suficiente stock en el inventario");
-                stockActual -= stockMovimiento;
-                i.setStock(stockActual);
-                break;
-            case MERMA:
-                if (stockActual < stockMovimiento) throw new InventarioException("No hay suficiente stock en el inventario");
-                stockActual -= stockMovimiento;
-                i.setStock(stockActual);
-                break;
-            case AJUSTE:
-                Double diferencia = stockMovimiento - stockActual;
-                // Forzamos la actualización del stock al valor que viene en el DTO
-                i.setStock(stockMovimiento);
-
-                if (diferencia > 0) {
-                    mensajeAjuste = String.format("[Auto] Ajuste incrementado: +%.2f unidades.", diferencia);
-                } else if (diferencia < 0) {
-                    mensajeAjuste = String.format("[Auto] Ajuste decrementado: %.2f unidades.", diferencia);
-                } else {
-                    mensajeAjuste = "[Auto] Ajuste: Stock verificado, se mantiene igual.";
-                }
-                break;
-        }*/

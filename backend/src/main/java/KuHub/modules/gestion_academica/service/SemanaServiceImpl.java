@@ -3,7 +3,6 @@ package KuHub.modules.gestion_academica.service;
 import KuHub.modules.gestion_academica.dtos.request.WeeklyFilterForSolicitationDTO;
 import KuHub.modules.gestion_academica.dtos.response.YearWithSemestersDTO;
 import KuHub.modules.gestion_academica.exceptions.GestionAcademicaException;
-import KuHub.modules.gestion_academica.dtos.YearFilterRequestDTO;
 import KuHub.modules.gestion_academica.dtos.request.WeekGeneratorDTO;
 import KuHub.modules.gestion_academica.entity.Semana;
 import KuHub.modules.gestion_academica.repository.SemanaRepository;
@@ -128,26 +127,5 @@ public class SemanaServiceImpl implements SemanaService {
         return true;
     }
 
-
-
-
-
-
-
-
-
-
-
-    @Transactional(readOnly = true)
-    @Override
-    public List<Semana> findWeekActiveForYear(YearFilterRequestDTO y){
-        // 1. Si el DTO es null o el campo anioFin es null, usamos el año actual
-        Integer anioFinal = (y == null || y.getAnioFin() == null)
-                ? java.time.LocalDate.now().getYear()
-                : y.getAnioFin();
-
-        // 2. Llamada al repositorio con el año garantizado
-        return semanaRepository.findWeekActiveForYear(anioFinal);
-    }
 
 }

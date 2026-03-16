@@ -12,6 +12,7 @@ import java.util.List;
 @Repository
 public interface MovimientoRepository extends JpaRepository<Movimiento, Integer> {
 
+    /** Lista paginada de movimientos con filtros dinámicos: fecha, producto, tipo, orden y responsable. */
     @Query(value = "SELECT " +
             "    p.nombre_producto, " +
             "    c.nombre_categoria, " +
@@ -47,7 +48,8 @@ public interface MovimientoRepository extends JpaRepository<Movimiento, Integer>
             @Param("offset") int offset
     );
 
-    /**Metodo usado para calcular la paginacion con los mismos parametros del filtro dinamico*/
+
+    /** Cuenta el total de movimientos según los mismos filtros dinámicos para calcular la paginación. */
     @Query(value = "SELECT COUNT(*) FROM movimiento m " +
             "JOIN inventario i ON i.id_inventario = m.id_inventario " +
             "JOIN producto p ON p.id_producto = i.id_producto " +

@@ -1,8 +1,8 @@
 package KuHub.modules.gestion_inventario.controller;
 
-import KuHub.modules.gestion_inventario.dtos.request.dto.ChangeProductsToAnotherCategoryDTO;
-import KuHub.modules.gestion_inventario.dtos.request.dto.ChangeStatusActiveCategoriaDTO;
-import KuHub.modules.gestion_inventario.dtos.request.dto.CreateCategoriaDTO;
+import KuHub.modules.gestion_inventario.dtos.request.ChangeProductsToAnotherCategoryDTO;
+import KuHub.modules.gestion_inventario.dtos.request.ChangeStatusActiveCategoriaDTO;
+import KuHub.modules.gestion_inventario.dtos.request.CreateCategoriaDTO;
 import KuHub.modules.gestion_inventario.dtos.request.UpdateCategoriaDTO;
 import KuHub.modules.gestion_inventario.dtos.response.proyeccion.CategoriaView;
 import KuHub.modules.gestion_inventario.entity.Categoria;
@@ -50,36 +50,36 @@ public class CategoriaController {
     /**✅ FUNCIONAL IMPLEMENTADO EN EL FRONT*/
     @PostMapping()
     public ResponseEntity<Boolean> createCategoria(
-            @Valid @RequestBody CreateCategoriaDTO categoria){
+            @Valid @RequestBody CreateCategoriaDTO request){
         return ResponseEntity
                 .status(201)
-                .body(categoriaService.createCategoria(categoria));
+                .body(categoriaService.createCategoria(request));
     }
 
     /**✅ FUNCIONAL IMPLEMENTADO EN EL FRONT*/
     @PatchMapping
     public ResponseEntity<Boolean> updateCategoria(
-            @Valid @RequestBody UpdateCategoriaDTO categoria){
+            @Valid @RequestBody UpdateCategoriaDTO request){
         return ResponseEntity
                 .status(200)
-                .body(categoriaService.updateCategoria(categoria));
+                .body(categoriaService.updateCategoria(request));
     }
 
     /**✅ FUNCIONAL IMPLEMENTADO EN EL FRONT*/
     @PatchMapping("/change-status")
     public ResponseEntity<Void> changeStatus(
-            @Valid @RequestBody  ChangeStatusActiveCategoriaDTO dto) {
-        categoriaService.changeStatusCategoria(dto);
+            @Valid @RequestBody  ChangeStatusActiveCategoriaDTO request) {
+        categoriaService.changeStatusCategoria(request);
         return ResponseEntity.noContent().build();
     }
 
     /**✅ FUNCIONAL IMPLEMENTADO EN EL FRONT*/
     @PutMapping("/change-products-to-another-category")
     public ResponseEntity<String> changeProductsToAnotherCategory(
-            @RequestBody ChangeProductsToAnotherCategoryDTO dto){
+            @RequestBody ChangeProductsToAnotherCategoryDTO request){
         return ResponseEntity
                 .status(200)
-                .body(categoriaService.changeProductsToAnotherCategory(dto));
+                .body(categoriaService.changeProductsToAnotherCategory(request));
     }
 
     /**✅ FUNCIONAL IMPLEMENTADO EN EL FRONT*/

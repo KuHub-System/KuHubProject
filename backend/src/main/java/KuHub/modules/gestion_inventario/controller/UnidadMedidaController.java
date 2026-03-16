@@ -1,9 +1,9 @@
 package KuHub.modules.gestion_inventario.controller;
 
-import KuHub.modules.gestion_inventario.dtos.request.dto.ChangeStatusActiveUnidadDTO;
-import KuHub.modules.gestion_inventario.dtos.request.dto.ChangeProductsToAnotherUnidadMedidaDTO;
-import KuHub.modules.gestion_inventario.dtos.request.dto.CreateUnidadDTO;
-import KuHub.modules.gestion_inventario.dtos.request.dto.UpdateUnidadDTO;
+import KuHub.modules.gestion_inventario.dtos.request.ChangeStatusActiveUnidadDTO;
+import KuHub.modules.gestion_inventario.dtos.request.ChangeProductsToAnotherUnidadMedidaDTO;
+import KuHub.modules.gestion_inventario.dtos.request.CreateUnidadDTO;
+import KuHub.modules.gestion_inventario.dtos.request.UpdateUnidadDTO;
 import KuHub.modules.gestion_inventario.dtos.response.proyeccion.UnidadMedidaView;
 import KuHub.modules.gestion_inventario.entity.UnidadMedida;
 import KuHub.modules.gestion_inventario.services.UnidadMedidaServiceImp;
@@ -49,37 +49,37 @@ public class UnidadMedidaController {
     /**✅ FUNCIONAL IMPLEMENTADO EN EL FRONT*/
     @PostMapping()
     public ResponseEntity<Boolean> create
-            (@Validated @RequestBody CreateUnidadDTO dto){
+            (@Validated @RequestBody CreateUnidadDTO request){
         return ResponseEntity
                 .status(201)
-                .body(unidadMedidaService.createUnidad(dto));
+                .body(unidadMedidaService.createUnidad(request));
     }
 
     /**✅ FUNCIONAL IMPLEMENTADO EN EL FRONT*/
     @PatchMapping()
     public ResponseEntity<Boolean> update
-            (@Validated @RequestBody UpdateUnidadDTO dto){
+            (@Validated @RequestBody UpdateUnidadDTO request){
         return ResponseEntity
                 .status(200)
-                .body(unidadMedidaService.updateUnidad(dto));
+                .body(unidadMedidaService.updateUnidad(request));
     }
 
     /**✅ FUNCIONAL IMPLEMENTADO EN EL FRONT*/
     @PatchMapping("/update-unidad-status")
     public ResponseEntity<Void> updateUnidadStatus(
-            @Validated @RequestBody ChangeStatusActiveUnidadDTO dto
+            @Validated @RequestBody ChangeStatusActiveUnidadDTO request
             ){
-        unidadMedidaService.changeStatusEnable(dto);
+        unidadMedidaService.changeStatusEnable(request);
         return ResponseEntity.noContent().build();
     }
 
     /**✅ FUNCIONAL IMPLEMENTADO EN EL FRONT*/
     @PutMapping()
     public ResponseEntity<String> changeProductsToAnotherUnidadMedida(
-            @Validated @RequestBody ChangeProductsToAnotherUnidadMedidaDTO dto){
+            @Validated @RequestBody ChangeProductsToAnotherUnidadMedidaDTO request){
         return ResponseEntity
                 .status(200)
-                .body(unidadMedidaService.changeProductsToAnotherUnidadMedida(dto));
+                .body(unidadMedidaService.changeProductsToAnotherUnidadMedida(request));
     }
 
     /**✅ FUNCIONAL IMPLEMENTADO EN EL FRONT*/

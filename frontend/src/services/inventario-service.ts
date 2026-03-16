@@ -79,7 +79,9 @@ interface InventoryWithProductUpdateDTO {
     stock: number;
     stockLimit: number;
     tipoMovimiento: string;
-    esFraccionario?: boolean;
+    stockEnVista: number;
+    delta: number;
+    ajustePositivo?: boolean | null;
 }
 
 /**
@@ -262,19 +264,22 @@ export const crearProductoService = async (productoData: ICrearProducto): Promis
     }
 };
 
+export interface IStockSyncWarning {
+    desync: true;
+    warning: string;
+    item: IInventoryPageItem;
+}
+
+export interface IStockInsuficiente {
+    insuficiente: true;
+    warning: string;
+    item: IInventoryPageItem;
+}
+
 /**
  * Actualiza un producto existente
  */
-export const actualizarProductoService = async (productoData: IActualizarProducto): Promise<IProducto> => {
-
-    // Validaciones
-    if (productoData.stock !== undefined && productoData.stock < 0) {
-        throw new Error('El stock no puede ser negativo');
-    }
-
-    if (productoData.stockMinimo !== undefined && productoData.stockMinimo < 0) {
-        throw new Error('El stock mínimo no puede ser negativo');
-    }
+export const actualizarProductoService = async (productoData: IActualizarProducto): Promise<IInventoryPageItem | IStockSyncWarning | IStockInsuficiente> => {
 
     try {
         const idProductoNumerico = parseInt(productoData.id);
@@ -284,6 +289,9 @@ export const actualizarProductoService = async (productoData: IActualizarProduct
             throw new Error('No se proporcionó el ID de inventario del producto');
         }
 
+        const stockEnVista = productoData.stockEnVista ?? productoData.stock ?? 0;
+        const delta = productoData.delta ?? 0;
+
         const backendDTO: InventoryWithProductUpdateDTO = {
             idInventario: idInventario,
             idProducto: idProductoNumerico,
@@ -292,56 +300,59 @@ export const actualizarProductoService = async (productoData: IActualizarProduct
             descripcionProducto: productoData.descripcion?.trim() || '',
             idCategoria: productoData.idCategoria,
             idUnidadMedida: productoData.idUnidadMedida,
-            stock: productoData.stock ?? 0,
+            stock: stockEnVista,
             stockLimit: productoData.stockMinimo ?? 0,
             tipoMovimiento: productoData.tipoMovimiento,
+            stockEnVista,
+            delta,
+            ajustePositivo: productoData.ajustePositivo ?? null,
         };
 
-        const response = await api.patch<boolean>(
+        const response = await api.patch<IInventoryPageItem>(
             '/inventario/update-inventory-with-product',
             backendDTO
         );
 
-        if (!response.data) {
-            throw new Error('El backend indicó que no se actualizó el producto');
-        }
-
-        const productoActualizado: IProducto = {
-            id: productoData.id,
-            nombre: backendDTO.nombreProducto,
-            descripcion: backendDTO.descripcionProducto,
-            codProducto: backendDTO.codigoProducto,
-            stock: backendDTO.stock,
-            stockMinimo: backendDTO.stockLimit,
-            categoria: productoData.categoria || '',
-            unidadMedida: productoData.unidadMedida || '',
-            fechaCreacion: new Date().toISOString(),
-            fechaActualizacion: new Date().toISOString(),
-            _idInventario: idInventario
-        };
-
-        return productoActualizado;
+        return response.data;
 
     } catch (error: any) {
+
+        // 409 desync: operación exitosa pero stock estaba desactualizado → { warning, item }
+        if (error.response?.status === 409 && error.response.data?.warning) {
+            const body = error.response.data;
+            return { desync: true, warning: body.warning, item: body.item } as IStockSyncWarning;
+        }
+
+        // 409 conflict: nombre o código duplicado
+        if (error.response?.status === 409) {
+            throw new Error(
+                error.response.data?.message ||
+                'El nombre o código del producto ya está en uso'
+            );
+        }
+
+        if (error.response?.status === 410 || error.response?.status === 404) {
+            const goneError = new Error(
+                error.response.data?.message ||
+                'El inventario fue eliminado antes de procesar la petición.'
+            );
+            (goneError as any).status = 410;
+            throw goneError;
+        }
+
+        if (error.response?.status === 422) {
+            const body = error.response.data;
+            if (body?.item) {
+                return { insuficiente: true, warning: body.warning || body.message || 'Stock insuficiente', item: body.item } as IStockInsuficiente;
+            }
+            throw new Error(body?.message || body?.warning || 'Stock insuficiente para realizar la operación');
+        }
 
         if (error.response?.status === 400) {
             throw new Error(
                 error.response.data?.message ||
                 'Datos inválidos para actualizar el producto'
             );
-        }
-
-        if (error.response?.status === 404) {
-            throw new Error(`Producto con ID ${productoData.id} no encontrado`);
-        }
-
-        if (error.response?.status === 410) {
-            const goneError = new Error(
-                error.response.data?.message ||
-                'El inventario fue eliminado por otro usuario antes de procesar la petición.'
-            );
-            (goneError as any).status = 410;
-            throw goneError;
         }
 
         throw new Error(
@@ -566,7 +577,7 @@ export interface IBulkProductoInventoryListing {
 }
 
 export interface BulkInventoryRequestDTO {
-    searchTerm?: string;
+    term?: string;
     page: number;
 }
 
@@ -583,7 +594,7 @@ export interface IBulkInventoryResponse {
  */
 export const obtenerBulkProductoInventoryListingService = async (request: BulkInventoryRequestDTO): Promise<IBulkInventoryResponse> => {
     try {
-        const response = await api.post<IBulkInventoryResponse>('/inventario/bulk-producto-inventory-listing', request);
+        const response = await api.post<IBulkInventoryResponse>('/inventario/massive-producto-inventory-listing', request);
         return response.data;
     } catch (error: any) {
         throw new Error(
@@ -593,52 +604,36 @@ export const obtenerBulkProductoInventoryListingService = async (request: BulkIn
     }
 };
 
-export interface IBulkValidateRequest {
-    idInventario: number;
-    validateStock: number;
-}
-
 export interface IBulkUpdateStockRequest {
     idInventario: number;
-    stock: number;
+    delta: number;
+    stockEnVista: number;
     tipoMovimiento: string;
 }
 
-/**
- * Valida el stock antes de realizar una actualización masiva.
- * Maneja internamente los códigos 409 (Conflict) y 410 (Gone).
- */
-export const validateBulkInventoryStockService = async (request: IBulkValidateRequest): Promise<{ success: boolean; data?: any; errorType?: 'GONE' | 'CONFLICT' }> => {
-    try {
-        const response = await api.post('/inventario/validate-bulk-inventory-stock-before-updating', request);
-        return { success: true, data: response.data };
-    } catch (error: any) {
-        if (error.response?.status === 410) {
-            return { success: false, errorType: 'GONE' };
-        }
-        if (error.response?.status === 409) {
-            // error.response.data debe contener el ProductInventoryBulkView actualizado
-            return { success: false, errorType: 'CONFLICT', data: error.response.data };
-        }
-        let errorMsg = 'Error al validar stock masivo';
-        if (typeof error.response?.data === 'string') {
-            errorMsg = error.response.data;
-        } else if (error.response?.data?.message) {
-            errorMsg = error.response.data.message;
-        }
-        throw new Error(errorMsg);
-    }
-};
+export interface IBulkItemResult {
+    idInventario: number;
+    producto: string;
+    stockResultante: number;
+    mensaje: string;
+}
+
+export interface IBulkProcessResult {
+    exitosos: IBulkItemResult[];
+    advertencias: IBulkItemResult[];
+    errores: IBulkItemResult[];
+}
 
 /**
- * Actualiza el stock de un ítem en procesos masivos.
+ * Envía la lista completa de ítems al backend para procesamiento masivo atómico.
+ * El backend maneja la validación, desincronización y errores internamente.
  */
-export const bulkUpdateInventoryStockService = async (request: IBulkUpdateStockRequest): Promise<boolean> => {
+export const bulkUpdateInventoryStockService = async (requests: IBulkUpdateStockRequest[]): Promise<IBulkProcessResult> => {
     try {
-        const response = await api.patch<boolean>('/inventario/bulk-update-inventory-stock', request);
+        const response = await api.patch<IBulkProcessResult>('/inventario/bulk-update-inventory-stock', requests);
         return response.data;
     } catch (error: any) {
-        let errorMsg = 'Error al actualizar stock masivo';
+        let errorMsg = 'Error al procesar el stock masivo';
         if (typeof error.response?.data === 'string') {
             errorMsg = error.response.data;
         } else if (error.response?.data?.message) {
