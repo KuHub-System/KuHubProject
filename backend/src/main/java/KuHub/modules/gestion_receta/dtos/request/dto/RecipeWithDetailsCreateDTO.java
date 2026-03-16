@@ -1,6 +1,5 @@
-package KuHub.modules.gestion_receta.dtos;
+package KuHub.modules.gestion_receta.dtos.request.dto;
 
-import KuHub.modules.gestion_receta.dtos.respose.RecipeItemDTO;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;

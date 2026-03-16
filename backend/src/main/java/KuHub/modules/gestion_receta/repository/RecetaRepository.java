@@ -17,12 +17,13 @@ import java.util.Optional;
 @Repository
 public interface RecetaRepository extends JpaRepository<Receta,Integer> {
 
-    /**
-     * Consulta para traer receta con detalle, para listar y lo necesario para actualizar, con paginacion.
-     * La consulta usa LEFT JOIN para traer datos relacionados de otras tablas, COUNT() para contar los ingredientes de cada
-     * receta y jsonb_agg() para agrupar esos ingredientes en un JSON dentro del mismo resultado. Luego GROUP BY agrupa los
-     * registros por receta. En Java se usa Map<String, Object> porque el resultado incluye un campo JSON dinámico (detallesJson),
-     * y el Map permite recibir esos datos sin necesidad de crear un DTO específico.*/
+    /** Busca una receta activa por ID. */
+    Optional<Receta> findByIdRecetaAndActivoRecetaIsTrue(Integer idReceta);
+
+    /** Lista todas las recetas activas sin paginación. */
+    List<Receta> findAllByActivoRecetaTrue();
+
+    /** Lista paginada de recetas activas con sus detalles e ingredientes agrupados en JSON. */
     @Query(value = """
         SELECT
             r.id_receta AS "idReceta",
@@ -53,10 +54,11 @@ public interface RecetaRepository extends JpaRepository<Receta,Integer> {
     List<RecipeWithDetailsView> findAllWithDetailsPaging(
             @Param("limit") int limit,
             @Param("offset") int offset);
-    /**Contar recetas activas para la paginacion*/
+
+    /** Cuenta el total de recetas activas para calcular la paginación. */
     long countByActivoRecetaTrue();
 
-    /**Permite filtrar recetas por nombre o descripcion para la paginacion*/
+    /** Lista paginada de recetas activas filtradas por nombre o descripción con detalles en JSON. */
     @Query(value = """
         SELECT
             r.id_receta AS "idReceta",
@@ -90,7 +92,7 @@ public interface RecetaRepository extends JpaRepository<Receta,Integer> {
             @Param("limit") int limit,
             @Param("offset") int offset);
 
-    /** Contar recetas activas filtradas por búsqueda para la paginación */
+    /** Cuenta el total de recetas activas filtradas por búsqueda para calcular la paginación. */
     @Query(value = """
         SELECT COUNT(*) FROM receta 
         WHERE activo = true 
@@ -98,7 +100,7 @@ public interface RecetaRepository extends JpaRepository<Receta,Integer> {
         """, nativeQuery = true)
     long countWithSearch(@Param("term") String term);
 
-    /**Contar recetar para listar en el frontend al entrar en la page*/
+    /** Retorna el conteo de recetas agrupado por estado para mostrar en el dashboard. */
     @Query(value = """
         SELECT
             count(*) AS totalReceta,
@@ -109,7 +111,7 @@ public interface RecetaRepository extends JpaRepository<Receta,Integer> {
         """, nativeQuery = true)
     CountRecipesAndStatusView countRecipesAndStatus();
 
-    /**Modificar esta estaco actual por reverso, con query para evitar consultar extras, devolve filas afectas*/
+    /** Invierte el estado de la receta entre ACTIVO e INACTIVO directamente en BD, retorna filas afectadas. */
     @Modifying
     @Query(value = """
         UPDATE receta 
@@ -124,7 +126,7 @@ public interface RecetaRepository extends JpaRepository<Receta,Integer> {
     int toggleRecipeStatus(@Param("idReceta") Integer idReceta);
 
 
-    /** Metodo para desactivar (borrado lógico) una receta por su ID */
+    /** Realiza el borrado lógico de una receta por su ID. */
     @Modifying
     @Query("""
        UPDATE Receta r
@@ -135,15 +137,13 @@ public interface RecetaRepository extends JpaRepository<Receta,Integer> {
 
 
 
-    /***/
+    // ─── BOOLEANOS ───────────────────────────────────────────────────────────────
 
+    /** Verifica si existe una receta activa con el nombre indicado. */
     boolean existsByNombreRecetaAndActivoRecetaTrue(String nombreReceta);
-
+    /** Verifica si existe una receta con el ID indicado. */
     boolean existsById(Integer id);
 
-    Optional<Receta> findByIdRecetaAndActivoRecetaIsTrue(Integer idReceta);
-
-    List<Receta> findAllByActivoRecetaTrue();
 
 
 
