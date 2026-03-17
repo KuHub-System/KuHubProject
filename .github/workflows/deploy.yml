@@ -3,7 +3,7 @@ name: KUHUB Deploy
 on:
   push:
     tags:
-      - 'v*.*.*'
+      - 'K*.*.*'
 
 jobs:
   build-and-deploy:
@@ -25,14 +25,14 @@ jobs:
       - name: Build & Push Backend
         uses: docker/build-push-action@v5
         with:
-          context: ./Backend
+          context: ./backend
           push: true
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/kuhub-app:backend-${{ steps.vars.outputs.tag }}
 
       - name: Build & Push Frontend
         uses: docker/build-push-action@v5
         with:
-          context: ./Frontend
+          context: ./frontend
           push: true
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/kuhub-app:frontend-${{ steps.vars.outputs.tag }}
           build-args: VITE_API_URL=${{ secrets.VITE_API_URL }}
