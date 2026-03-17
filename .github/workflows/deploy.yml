@@ -39,7 +39,7 @@ jobs:
           build-args: VITE_API_URL=${{ secrets.VITE_API_URL }}
 
       - name: Deploy to AWS
-        uses: appleboy/ssh-action@master
+        uses: appleboy/ssh-action@v1.0.3   # <--- ¡AQUÍ ESTÁ EL CAMBIO MÁGICO! Pasamos de @master a @v1.0.3
         with:
           host: ${{ secrets.AWS_REMOTE_HOST }}
           username: ${{ secrets.AWS_REMOTE_USER }}
