@@ -175,19 +175,6 @@ const LoginPage: React.FC = () => {
               </motion.div>
             )}
 
-            {selectedDemo && (
-              <motion.div
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                className="bg-primary-50 dark:bg-primary-50/10 border border-primary-200 dark:border-primary-100/20 text-primary-900 dark:text-primary-400 p-3 rounded-lg flex items-start gap-2"
-              >
-                <Icon icon="lucide:info" className="text-xl flex-shrink-0 mt-0.5" />
-                <div className="text-sm">
-                  <span className="font-bold">Cuenta demo seleccionada:</span>{' '}
-                  {DEMO_USERS.find(u => u.key === selectedDemo)?.nombre}
-                </div>
-              </motion.div>
-            )}
 
             <form onSubmit={handleSubmit} className="space-y-5">
               <Input
@@ -269,60 +256,6 @@ const LoginPage: React.FC = () => {
               </Button>
             </form>
 
-            <Divider className="my-6" />
-
-            <div className="space-y-4">
-              <div className="text-center">
-                <p className="text-sm font-bold text-default-700 dark:text-default-300 mb-1 uppercase tracking-wider text-xs">
-                  Accesos Rápidos (Demo)
-                </p>
-                <p className="text-[10px] text-default-400">
-                  Selecciona un rol para probar el sistema
-                </p>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                {DEMO_USERS.map((demoUser) => (
-                  <Button
-                    key={demoUser.key}
-                    variant={selectedDemo === demoUser.key ? "solid" : "bordered"}
-                    color={selectedDemo === demoUser.key ? "primary" : "default"}
-                    onPress={() => handleDemoSelect(demoUser.key)}
-                    isDisabled={isLoading}
-                    className={`h-auto py-3 px-3 justify-start ${selectedDemo === demoUser.key ? 'text-secondary font-bold' : 'text-default-600 dark:text-default-300 border-default-200 dark:border-default-100'}`}
-                  >
-                    <div className="flex items-center gap-3 w-full">
-                      <div className={`p-1.5 rounded-lg ${selectedDemo === demoUser.key ? 'bg-secondary/20' : 'bg-default-100 dark:bg-default-100/10'}`}>
-                        <Icon
-                          icon={demoUser.icono}
-                          className="text-lg"
-                        />
-                      </div>
-                      <div className="flex flex-col items-start text-left overflow-hidden">
-                        <span className="text-xs font-bold truncate w-full">
-                          {demoUser.nombre}
-                        </span>
-                        <span className="text-[10px] opacity-70 truncate w-full">
-                          {demoUser.descripcion}
-                        </span>
-                      </div>
-                    </div>
-                  </Button>
-                ))}
-              </div>
-
-              <div className="bg-warning-50 dark:bg-warning-50/5 border border-warning-200 dark:border-warning-100/20 rounded-lg p-3 mt-4">
-                <div className="flex items-start gap-2">
-                  <Icon
-                    icon="lucide:lightbulb"
-                    className="text-warning-600 text-lg flex-shrink-0 mt-0.5"
-                  />
-                  <p className="text-[10px] text-warning-800 dark:text-warning-300 leading-relaxed font-medium">
-                    <strong>Tip:</strong> Entorno de demostración. Las contraseñas son autocompletadas para facilitar las pruebas.
-                  </p>
-                </div>
-              </div>
-            </div>
           </CardBody>
         </Card>
 

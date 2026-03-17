@@ -79,10 +79,16 @@ public class SpringSecurityConfig {
         // ========================================
         // ⚠️ DESARROLLO: localhost:5173
         configuration.setAllowedOrigins(Arrays.asList(
+                // ⚠️ DESARROLLO (Tu PC)
                 "http://localhost:5173",
                 "http://localhost:3000",
                 "http://127.0.0.1:5173",
-                "http://127.0.0.1:3000"
+                "http://127.0.0.1:3000",
+
+                // 🚀 PRODUCCIÓN (AWS Lightsail)
+                "http://52.5.222.79",          // IP estática (Puerto 80 por defecto en React)
+                "http://52.5.222.79:80",
+                "http://52.5.222.79:8080"      // Por si acaso, la IP con el puerto de Spring
         ));
 
         // ⚠️ PRODUCCIÓN: Cambiar a la URL de tu frontend en AWS
