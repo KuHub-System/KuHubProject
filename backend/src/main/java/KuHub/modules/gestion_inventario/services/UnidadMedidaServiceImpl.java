@@ -18,7 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 
 @Service
-public class UnidadMedidaServiceImp implements UnidadMedidaService{
+public class UnidadMedidaServiceImpl implements UnidadMedidaService{
 
     @Autowired
     private ProductoRepository productoRepository;

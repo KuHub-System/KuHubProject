@@ -71,7 +71,8 @@ const ESTADO_MAP: Record<string, EstadoSolicitud> = {
   PENDIENTE: 'Pendiente',
   ACEPTADA:  'Aceptada',
   RECHAZADA: 'Rechazada',
-  PROCESADA: 'Procesada',
+  PROCESADA: 'Procesada', // por si el backend devuelve con A
+  PROCESADO: 'Procesada', // el enum real de la BD es PROCESADO (sin A)
 };
 
 const fmtHora = (hms: string) => hms?.slice(0, 5) ?? ''; // "HH:mm:ss" → "HH:mm"

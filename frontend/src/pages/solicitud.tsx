@@ -1055,27 +1055,53 @@ const SolicitudPage: React.FC = () => {
       </motion.div>
 
       {/* ── Modal de resultado ── */}
-      <Modal isOpen={sendResult !== null} onClose={() => setSendResult(null)} size="sm">
-        <ModalContent>
-          <ModalHeader className="flex items-center gap-2 text-success">
-            <Icon icon="lucide:check-circle-2" width={20} />
-            Solicitudes creadas exitosamente
-          </ModalHeader>
-          <ModalBody>
-            <div className="flex gap-4 justify-center py-2">
-              <div className="flex flex-col items-center gap-1 px-5 py-3 rounded-xl bg-success-50 border border-success-200 min-w-[110px]">
-                <span className="text-3xl font-bold text-success">{sendResult?.totalSolicitudes}</span>
-                <span className="text-xs text-success-600 font-medium text-center">Solicitudes<br/>creadas</span>
+      <Modal isOpen={sendResult !== null} onClose={() => setSendResult(null)} size="md" hideCloseButton>
+        <ModalContent className="overflow-hidden">
+          {/* Banner de éxito */}
+          <div className="bg-gradient-to-br from-success-400 to-success-600 px-6 py-8 flex flex-col items-center gap-3">
+            <div className="bg-white/20 rounded-full p-4">
+              <Icon icon="lucide:check" width={36} className="text-white" />
+            </div>
+            <h2 className="text-xl font-bold text-white">¡Solicitudes creadas!</h2>
+            <p className="text-sm text-white/80 text-center max-w-[260px]">
+              Las solicitudes de insumos fueron generadas exitosamente.
+            </p>
+          </div>
+
+          <ModalBody className="py-6 px-6">
+            {/* Stats */}
+            <div className="flex gap-3">
+              <div className="flex-1 flex flex-col items-center gap-2 py-5 rounded-2xl bg-success-50 border border-success-200">
+                <Icon icon="lucide:file-check-2" className="text-success-600" width={26} />
+                <span className="text-4xl font-bold text-success-700">{sendResult?.totalSolicitudes}</span>
+                <span className="text-xs text-success-600 font-semibold text-center uppercase tracking-wide leading-tight">
+                  Solicitudes<br/>Creadas
+                </span>
               </div>
-              <div className="flex flex-col items-center gap-1 px-5 py-3 rounded-xl bg-primary-50 border border-primary-200 min-w-[110px]">
-                <span className="text-3xl font-bold text-primary">{sendResult?.totalDetalles}</span>
-                <span className="text-xs text-primary-600 font-medium text-center">Detalles<br/>generados</span>
+              <div className="flex-1 flex flex-col items-center gap-2 py-5 rounded-2xl bg-warning-50 border border-warning-200">
+                <Icon icon="lucide:package" className="text-warning-600" width={26} />
+                <span className="text-4xl font-bold text-warning-700">{sendResult?.totalDetalles}</span>
+                <span className="text-xs text-warning-600 font-semibold text-center uppercase tracking-wide leading-tight">
+                  Productos<br/>Calculados
+                </span>
               </div>
             </div>
+
+            {/* Explicación */}
+            <div className="mt-4 flex items-start gap-2 bg-default-50 border border-default-200 rounded-xl px-4 py-3">
+              <Icon icon="lucide:info" width={16} className="text-default-400 mt-0.5 shrink-0" />
+              <p className="text-xs text-default-500 leading-relaxed">
+                Cada producto fue multiplicado según la receta y la cantidad de alumnos inscritos por sección.
+              </p>
+            </div>
           </ModalBody>
-          <ModalFooter>
-            <Button color="success" fullWidth onPress={() => setSendResult(null)}>
-              Aceptar
+
+          <ModalFooter className="pt-0 px-6 pb-5">
+            <Button color="success" fullWidth size="lg" onPress={() => setSendResult(null)}
+              className="font-semibold"
+              startContent={<Icon icon="lucide:thumbs-up" width={18} />}
+            >
+              Entendido
             </Button>
           </ModalFooter>
         </ModalContent>

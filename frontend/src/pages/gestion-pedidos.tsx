@@ -29,6 +29,7 @@ import {
   ISolicitudConsolidacionItem,
   IProductoConsolidadoResponse,
   obtenerOrdenConsolidacionService,
+  consolidarPedidoService,
 } from '../services/solicitud-service';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -45,6 +46,13 @@ const fmtFechaCorta = (iso: string) => {
 };
 
 const isHoy = (iso: string) => iso === new Date().toISOString().slice(0, 10);
+
+/** Formatea una cantidad numérica: elimina trailing zeros pero nunca oculta valores distintos de 0.
+ *  0.003 → "0.003"  |  0.030 → "0.03"  |  7.142 → "7.142"  |  880.6 → "880.6"  |  0 → "0" */
+const fmtCantidad = (n: number): string => {
+  if (n === 0) return '0';
+  return parseFloat(n.toPrecision(6)).toString();
+};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // PAGE
@@ -179,16 +187,34 @@ const GestionPedidosPage: React.FC = () => {
     setExpandidos(prev => { const n = new Set(prev); n.has(key) ? n.delete(key) : n.add(key); return n; });
   };
 
+  // Semana actualmente seleccionada en el dropdown (puede ser cualquier semana, no necesariamente la actual)
+  const semanaSeleccionada = semanas.find(s => String(s.idSemana) === semanaId) ?? null;
+
   const handleConsolidar = async () => {
+    if (!semanaSeleccionada) return;
     setIsConsolidando(true);
-    await new Promise(r => setTimeout(r, 800)); // TODO: llamar endpoint de consolidación
-    setConsolidado(true);
-    setIsConsolidando(false);
-    confirmarModal.onClose();
-    toast.success('Pedido consolidado. Las particiones por sección quedan programadas para sus fechas correspondientes.');
+    try {
+      await consolidarPedidoService({
+        fechaInicio: semanaSeleccionada.fechaInicio,
+        fechaFin: semanaSeleccionada.fechaFin,
+        solicitudes: solicitudes.map(s => ({ idSolicitud: s.idSolicitud, fechaSolicitada: s.fechaSolicitada })),
+        detalles: consolidadoData.map(p => ({ idProducto: p.idProducto, cantidadTotal: p.cantidadTotal })),
+      });
+      setConsolidado(true);
+      setSolicitudes([]);
+      setConsolidadoData([]);
+      cache.current.delete(semanaId);
+      confirmarModal.onClose();
+      toast.success('Pedido consolidado. El sistema programará automáticamente cada sección según la fecha de su clase.');
+    } catch {
+      toast.error('Error al consolidar el pedido. Intente nuevamente.');
+    } finally {
+      setIsConsolidando(false);
+    }
   };
 
-  const semanaActual = semanas.find(s => String(s.idSemana) === semanaId) ?? null;
+  // Alias para compatibilidad con el JSX existente
+  const semanaActual = semanaSeleccionada;
   const periodosDisponibles = periodos.length > 0 ? periodos : [{ anio: new Date().getFullYear(), semestres: [1, 2] }];
 
   return (
@@ -288,7 +314,7 @@ const GestionPedidosPage: React.FC = () => {
           <Icon icon="lucide:check-circle-2" width={20} className="shrink-0 text-success-600" />
           <div>
             <p className="font-semibold text-sm">Pedido consolidado</p>
-            <p className="text-xs">Las particiones por sección quedan programadas para ejecutarse en las fechas correspondientes de cada clase.</p>
+            <p className="text-xs">El sistema programará automáticamente cada sección según la fecha de su clase.</p>
           </div>
         </div>
       )}
@@ -373,7 +399,7 @@ const GestionPedidosPage: React.FC = () => {
 
                       <div className="flex items-center gap-3 mr-2">
                         <div className="text-right">
-                          <p className="text-lg font-bold text-primary leading-none">{prod.cantidadTotal}</p>
+                          <p className="text-lg font-bold text-primary leading-none">{fmtCantidad(prod.cantidadTotal)}</p>
                           <p className="text-[10px] text-default-400">{prod.unidad} total</p>
                         </div>
                         <Chip size="sm" color="default" variant="flat">
@@ -421,7 +447,7 @@ const GestionPedidosPage: React.FC = () => {
 
                               {/* Cantidad para esta sección */}
                               <div className="shrink-0 text-right">
-                                <p className="text-base font-bold text-default-700">{det.cantidad} <span className="text-xs font-normal text-default-400">{prod.unidad}</span></p>
+                                <p className="text-base font-bold text-default-700">{fmtCantidad(det.cantidad)} <span className="text-xs font-normal text-default-400">{prod.unidad}</span></p>
                                 <p className="text-[10px] text-default-400">esta sección</p>
                               </div>
                             </div>
@@ -431,7 +457,7 @@ const GestionPedidosPage: React.FC = () => {
                         {/* Total fila */}
                         <div className="flex items-center justify-end gap-2 px-4 py-2 bg-default-50 border-t border-default-200">
                           <span className="text-xs text-default-500 font-medium">Total a comprar:</span>
-                          <span className="text-sm font-bold text-primary">{prod.cantidadTotal} {prod.unidad}</span>
+                          <span className="text-sm font-bold text-primary">{fmtCantidad(prod.cantidadTotal)} {prod.unidad}</span>
                         </div>
                       </div>
                     )}
@@ -514,7 +540,7 @@ const GestionPedidosPage: React.FC = () => {
                                 {seccion.productos_solicitados.map((p, i) => (
                                   <div key={i} className="grid grid-cols-3 px-3 py-2 text-sm border-t border-default-100 hover:bg-default-50/50">
                                     <span className="text-default-700">{p.nombreProducto}</span>
-                                    <span className="text-right font-mono font-semibold text-primary">{p.cantidad}</span>
+                                    <span className="text-right font-mono font-semibold text-primary">{fmtCantidad(p.cantidad)}</span>
                                     <span className="text-center text-default-500">{p.unidad_abreviada}</span>
                                   </div>
                                 ))}
@@ -548,7 +574,7 @@ const GestionPedidosPage: React.FC = () => {
                   </p>
                   <p>
                     Se consolidarán <strong>{contadores.solicitudes} solicitudes</strong> con <strong>{contadores.productosUnicos} productos únicos</strong>.
-                    Las particiones por sección quedarán programadas para ejecutarse automáticamente en las fechas de cada clase.
+                    El sistema programará automáticamente cada sección según la fecha de su clase.
                   </p>
                 </div>
                 {semanaActual && (

@@ -6,7 +6,7 @@ import KuHub.modules.gestion_inventario.dtos.request.CreateUnidadDTO;
 import KuHub.modules.gestion_inventario.dtos.request.UpdateUnidadDTO;
 import KuHub.modules.gestion_inventario.dtos.response.proyeccion.UnidadMedidaView;
 import KuHub.modules.gestion_inventario.entity.UnidadMedida;
-import KuHub.modules.gestion_inventario.services.UnidadMedidaServiceImp;
+import KuHub.modules.gestion_inventario.services.UnidadMedidaServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
@@ -20,7 +20,7 @@ import java.util.List;
 public class UnidadMedidaController {
 
     @Autowired
-    private UnidadMedidaServiceImp unidadMedidaService;
+    private UnidadMedidaServiceImpl unidadMedidaService;
 
     /**✅ FUNCIONAL IMPLEMENTADO EN EL FRONT*/
     @GetMapping("/find-all-view")
