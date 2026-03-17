@@ -17,19 +17,17 @@ import java.util.List;
 
 @Entity
 @Table(name = "solicitud")
-@IdClass(SolicitudId.class)
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 public class Solicitud {
 
-    @Id // Parte 1 de la PK
+    @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id_solicitud")
     private Integer idSolicitud;
 
-    @Id // Parte 2 de la PK (Clave de partición)
     @Column(name = "fecha_solicitada", nullable = false)
     private LocalDate fechaSolicitada;
 
@@ -52,7 +50,7 @@ public class Solicitud {
     @Column(name = "fecha_registro", insertable = false, updatable = false)
     private LocalDateTime fechaRegistro;
 
-    @Column(length = 600)
+    @Column(columnDefinition = "TEXT")
     private String observaciones;
 
     @Enumerated(EnumType.STRING)

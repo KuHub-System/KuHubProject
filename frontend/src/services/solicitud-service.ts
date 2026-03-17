@@ -97,10 +97,12 @@ export interface ISectionCreateSolicitationDTO {
 export interface IModifiedDetailSolicitationDTO {
   idDetalleReceta: number;
   cantProducto: number;
+  observacion?: string;
 }
 export interface INewProductSolicitationDTO {
   idProducto: number;
   cantProducto: number;
+  observacion?: string;
 }
 export interface IDeltasSolicitationDTO {
   eliminados: number[];
@@ -145,6 +147,7 @@ export interface IProductoSolicitudResponse {
   nombreProducto: string;
   cantidad: number;
   unidad: string;
+  observacion?: string | null;
 }
 
 export interface ISolicitudPorSemanaResponse {
@@ -204,6 +207,7 @@ export interface IProductoSolicitadoItem {
   nombreProducto: string;
   cantidad: number;
   unidad_abreviada: string;
+  observacion?: string | null;
 }
 
 export interface IHorarioConsolidacion {
@@ -243,6 +247,7 @@ export interface IDetalleConsolidadoItem {
   nombreAsignatura: string;
   nombreDocente: string;
   cantidad: number;
+  observacion?: string | null;
   alumnos: number;
   nombreSala: string;
   rangoHoras: string;

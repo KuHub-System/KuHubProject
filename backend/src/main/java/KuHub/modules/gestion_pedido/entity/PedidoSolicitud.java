@@ -23,12 +23,8 @@ public class PedidoSolicitud {
     @JoinColumn(name = "id_pedido", nullable = false)
     private Pedido pedido;
 
-    // Mapeo de la FK compuesta hacia Solicitud
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumns({
-            @JoinColumn(name = "id_solicitud", referencedColumnName = "id_solicitud"),
-            @JoinColumn(name = "fecha_solicitada", referencedColumnName = "fecha_solicitada")
-    })
+    @JoinColumn(name = "id_solicitud", nullable = false)
     private Solicitud solicitud;
 
     @Column(name = "fecha_union_registro", insertable = false, updatable = false)

@@ -42,6 +42,7 @@ interface ItemSolicitud {
   id: string; nombre: string; cantidadBase: number; cantidad: number; unidad: string;
   esExtra: boolean; esFraccionario: boolean; activoProducto: boolean;
   idProducto?: number; // set for extra (nuevos) items
+  observacion?: string;
 }
 
 interface AsigConfig {
@@ -334,7 +335,7 @@ const AsigCard: React.FC<AsigCardProps> = ({
     }`}>
       {/* Header */}
       <button type="button" onClick={onToggleExpand}
-        className="w-full flex items-center gap-3 px-5 py-4 text-left hover:bg-default-50 transition-colors rounded-t-xl"
+        className="w-full flex items-center gap-3 px-5 py-4 text-left hover:bg-default-50 transition-colors rounded-t-xl cursor-pointer"
       >
         {statusDot}
         <span className="font-semibold text-sm flex-1 min-w-0 truncate">{asig.nombreAsignatura}</span>
@@ -380,7 +381,10 @@ const AsigCard: React.FC<AsigCardProps> = ({
                               <Checkbox isSelected={secAllSel} isIndeterminate={secIndeterm} size="sm" className="pointer-events-none shrink-0" />
                               <span className="font-bold text-sm">{sec.nombre_seccion}</span>
                               <span className="text-[11px] text-default-400 truncate flex-1">{sec.nombre_docente}</span>
-                              <span className="text-[11px] text-default-300 shrink-0">{sec.cant_inscritos}/{sec.capacidad_max}</span>
+                              <span className="text-[11px] shrink-0">
+                <span className="text-default-600 font-semibold">{sec.cant_inscritos}</span>
+                <span className="text-default-300">/{sec.capacidad_max}</span>
+              </span>
                             </div>
                             {/* Bloques individuales */}
                             {horariosAgrupados.map((h, i) => {
@@ -440,9 +444,9 @@ const AsigCard: React.FC<AsigCardProps> = ({
                           if (v) onUpdate(prev => ({ ...prev, semanaId: v }));
                         }}
                         variant="bordered" size="sm" placeholder="Seleccione semana"
-                        classNames={{ trigger: 'bg-default-50', popoverContent: 'dark:bg-content1' }}
+                        classNames={{ trigger: 'bg-default-50 cursor-pointer', popoverContent: 'dark:bg-content1' }}
                       >
-                        {semanas.map(s => (
+                        {semanas.filter(s => s.fechaFin >= new Date().toISOString().slice(0, 10)).map(s => (
                           <SelectItem key={String(s.idSemana)} textValue={fmtSemanaLabel(s)}>
                             <div className="flex items-center gap-2">
                               <span className="font-medium">{s.nombreSemana}</span>
@@ -508,31 +512,33 @@ const AsigCard: React.FC<AsigCardProps> = ({
                     </span>
                   </div>
                 )}
-                <Select
-                  selectedKeys={config.recetaId ? new Set([config.recetaId]) : new Set()}
-                  onSelectionChange={keys => handleSelectReceta(Array.from(keys as Set<string>)[0] ?? '')}
-                  variant="bordered" size="sm" placeholder="Seleccione una receta..."
-                  classNames={{ trigger: 'bg-default-50', popoverContent: 'dark:bg-content1' }}
+                <Autocomplete
+                  selectedKey={config.recetaId || null}
+                  onSelectionChange={key => handleSelectReceta(String(key ?? ''))}
+                  variant="bordered" size="sm" placeholder="Buscar receta por nombre..."
+                  defaultItems={recetas}
+                  classNames={{ base: 'w-full', popoverContent: 'dark:bg-content1' }}
+                  inputProps={{ classNames: { inputWrapper: 'bg-default-50' } }}
+                  startContent={<Icon icon="lucide:book-open" width={13} className="text-default-400 shrink-0" />}
                 >
-                  {recetas.map(r => (
-                    <SelectItem key={String(r.idReceta)} textValue={r.nombreReceta}>
+                  {(r) => (
+                    <AutocompleteItem key={String(r.idReceta)} textValue={r.nombreReceta}>
                       <div className="flex items-center gap-2">
-                        <Icon icon="lucide:book-open" width={13} className="text-default-400" />
                         <span>{r.nombreReceta}</span>
                         <span className="text-default-400 text-xs ml-auto">{r.detalles.length} items</span>
                       </div>
-                    </SelectItem>
-                  ))}
-                </Select>
+                    </AutocompleteItem>
+                  )}
+                </Autocomplete>
 
                 {config.items.length > 0 && (
                   <div className="mt-3 space-y-1">
-                    <div className="grid grid-cols-[1fr_90px_60px_30px] gap-1.5 px-2 text-[10px] font-bold text-default-400 uppercase tracking-wider border-b border-default-200 pb-1">
-                      <span>Producto</span><span className="text-center">Cantidad</span><span className="text-center">Unidad</span><span />
+                    <div className="grid grid-cols-[1fr_1fr_90px_60px_30px] gap-1.5 px-2 text-[10px] font-bold text-default-400 uppercase tracking-wider border-b border-default-200 pb-1">
+                      <span className="text-center">Producto</span><span className="text-center">Observación</span><span className="text-center">Cantidad</span><span className="text-center">Unidad</span><span />
                     </div>
                     {config.items.map(item => (
                       <div key={item.id}
-                        className={`grid grid-cols-[1fr_90px_60px_30px] gap-1.5 items-center px-2 py-1.5 rounded-lg ${
+                        className={`grid grid-cols-[1fr_1fr_90px_60px_30px] gap-1.5 items-center px-2 py-1.5 rounded-lg ${
                           !item.activoProducto ? 'bg-default-100/50 opacity-60' :
                           item.esExtra ? 'bg-warning-50 dark:bg-warning-900/10' : 'bg-default-50 dark:bg-default-100/10'
                         }`}
@@ -546,6 +552,12 @@ const AsigCard: React.FC<AsigCardProps> = ({
                             <span className="text-[9px] text-danger font-medium shrink-0 ml-1">no disponible</span>
                           )}
                         </div>
+                        <Input size="sm" value={item.observacion ?? ''}
+                          onValueChange={v => onUpdate(prev => ({ ...prev, items: prev.items.map(i => i.id === item.id ? { ...i, observacion: v.slice(0, 100) } : i) }))}
+                          placeholder="Opcional..."
+                          isDisabled={!item.activoProducto}
+                          variant="bordered"
+                          classNames={{ inputWrapper: 'h-7 bg-white dark:bg-content1 min-h-7', input: 'text-xs' }} />
                         <Input type="number" size="sm" value={String(item.cantidad)}
                           onValueChange={v => actualizarCantidad(item.id, v, item.esFraccionario)}
                           isDisabled={!item.activoProducto}
@@ -824,7 +836,7 @@ const SolicitudPage: React.FC = () => {
         const mult = totalIns > 0 ? totalIns / 20 : 1;
 
         // ── deltas ──────────────────────────────────────────────────────────
-        let deltas: { eliminados: number[]; modificados: { idDetalleReceta: number; cantProducto: number }[]; nuevos: { idProducto: number; cantProducto: number }[] } | undefined;
+        let deltas: { eliminados: number[]; modificados: { idDetalleReceta: number; cantProducto: number; observacion?: string }[]; nuevos: { idProducto: number; cantProducto: number; observacion: string }[] } | undefined;
         if (receta) {
           const originalIds = new Set(receta.detalles.map(d => String(d.idDetalleReceta)));
           const currentRecipeIds = new Set(cfg.items.filter(i => !i.esExtra).map(i => i.id));
@@ -837,11 +849,14 @@ const SolicitudPage: React.FC = () => {
             .filter(i => !i.esExtra && originalIds.has(i.id))
             .filter(i => {
               const orig = receta.detalles.find(d => String(d.idDetalleReceta) === i.id);
-              return orig && Math.abs(i.cantidad / mult - i.cantidadBase) > 0.0001;
+              const cantidadCambiada = orig && Math.abs(i.cantidad / mult - i.cantidadBase) > 0.0001;
+              const observacionCambiada = !!i.observacion;
+              return cantidadCambiada || observacionCambiada;
             })
             .map(i => ({
               idDetalleReceta: parseInt(i.id),
               cantProducto: parseFloat((i.cantidad / mult).toFixed(3)),
+              ...(i.observacion ? { observacion: i.observacion } : {}),
             }));
 
           const nuevos = cfg.items
@@ -849,6 +864,7 @@ const SolicitudPage: React.FC = () => {
             .map(i => ({
               idProducto: i.idProducto!,
               cantProducto: i.cantidadBase,
+              observacion: i.observacion ? `[ADICIONAL] ${i.observacion}` : '[ADICIONAL]',
             }));
 
           if (eliminados.length > 0 || modificados.length > 0 || nuevos.length > 0) {

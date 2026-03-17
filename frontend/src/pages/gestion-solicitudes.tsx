@@ -41,6 +41,7 @@ interface IDetalleSolicitud {
   nombreProducto: string;
   cantidad: number;
   unidad: string;
+  observacion?: string | null;
 }
 
 interface ISolicitudGestion {
@@ -104,6 +105,7 @@ const mapSolicitud = (r: ISolicitudPorSemanaResponse): ISolicitudGestion => {
       nombreProducto:  p.nombreProducto,
       cantidad:        p.cantidad,
       unidad:          p.unidad,
+      observacion:     p.observacion,
     })),
   };
 };
@@ -360,6 +362,51 @@ const GestionSolicitudesPage: React.FC = () => {
 
   const abrirDetalle = (sol: ISolicitudGestion) => { setSelSol(sol); detalle.onOpen(); };
 
+  const handleImprimir = (sol: ISolicitudGestion) => {
+    const filas = sol.detalles.map(d =>
+      `<tr><td>${d.nombreProducto}</td><td style="font-style:italic;color:#666">${d.observacion ?? '—'}</td><td style="text-align:center">${d.cantidad}</td><td style="text-align:center">${d.unidad}</td></tr>`
+    ).join('');
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Vista previa para Consolidado — Detalle Solicitud</title>
+    <style>
+      body { font-family: Arial, sans-serif; padding: 32px; font-size: 13px; color: #111; }
+      h2 { margin: 0 0 4px; font-size: 18px; }
+      .sub { color: #666; margin-bottom: 20px; font-size: 13px; text-align: center; }
+      .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 24px; margin-bottom: 20px; text-align: center; }
+      .field label { display: block; font-size: 11px; color: #888; text-transform: uppercase; }
+      .field span { font-weight: 600; }
+      .obs { background: #f5f5f5; border: 1px solid #ddd; border-radius: 6px; padding: 8px 12px; margin-bottom: 20px; font-style: italic; }
+      h3 { font-size: 12px; text-transform: uppercase; color: #888; letter-spacing: 0.05em; margin-bottom: 8px; }
+      table { width: 100%; border-collapse: collapse; }
+      th { background: #f0f0f0; font-size: 11px; text-transform: uppercase; padding: 6px 10px; text-align: left; border-bottom: 2px solid #ddd; }
+      th:not(:first-child) { text-align: center; }
+      td { padding: 6px 10px; border-bottom: 1px solid #eee; }
+      @page { size: A4 portrait; margin: 20mm 18mm; }
+      @media print { body { padding: 0; margin: 0; } }
+    </style></head><body>
+    <h2 style="text-align:center">Vista previa para Consolidado — Detalle Solicitud</h2>
+    <p class="sub">${sol.nombreAsignatura} · §${sol.nombreSeccion} · ${new Date(sol.fechaClase + 'T00:00:00').toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
+    <div class="grid">
+      <div class="field"><label>Receta</label><span>${sol.nombreReceta}</span></div>
+      <div class="field"><label>Docente</label><span>${sol.nombreDocente}</span></div>
+      <div class="field"><label>Horario</label><span>${sol.horaInicio} – ${sol.horaFin}</span></div>
+      <div class="field"><label>Sala</label><span>${sol.nombreSala}</span></div>
+      <div class="field"><label>Alumnos</label><span>${sol.cantInscritos}</span></div>
+      <div class="field"><label>Estado</label><span>${sol.estado}</span></div>
+    </div>
+    ${sol.observacion ? `<div class="obs">${sol.observacion}</div>` : ''}
+    <h3>Productos solicitados</h3>
+    <table><colgroup><col style="width:30%"><col style="width:40%"><col style="width:17%"><col style="width:13%"></colgroup>
+    <thead><tr><th>Producto</th><th>Observación</th><th>Cantidad</th><th>Unidad</th></tr></thead>
+    <tbody>${filas}</tbody></table>
+    </body></html>`;
+    const w = window.open('', '_blank');
+    if (!w) return;
+    w.document.write(html);
+    w.document.close();
+    w.focus();
+    w.print();
+  };
+
   const abrirRevertir = (sol: ISolicitudGestion, accion: 'pendiente' | 'rechazar' | 'aceptar', desde: 'Aceptada' | 'Rechazada' = 'Aceptada') => {
     setSelSol(sol); setRevertirAccion(accion); setRevertirDesde(desde); setRevertirConfirm(''); setRevertirMotivo('');
     revertir.onOpen();
@@ -406,7 +453,7 @@ const GestionSolicitudesPage: React.FC = () => {
                   const isActive = semanas.length > 0 && semanas[0].anio === p.anio && semanas[0].semestre === s;
                   return (
                     <button key={`${p.anio}-${s}`} onClick={() => handlePeriodoChange(p.anio, s)}
-                      className={`px-3 py-1 rounded-full text-xs font-bold border transition-all ${
+                      className={`px-3 py-1 rounded-full text-xs font-bold border transition-all cursor-pointer ${
                         isActive ? 'bg-warning text-white border-warning' : 'bg-default-100 text-default-600 border-default-200 hover:bg-default-200'
                       }`}
                     >
@@ -429,20 +476,22 @@ const GestionSolicitudesPage: React.FC = () => {
                   selectedKeys={semanaId ? new Set([semanaId]) : new Set()}
                   onSelectionChange={keys => { const v = Array.from(keys as Set<string>)[0]; if (v) setSemanaId(v); }}
                   placeholder="Seleccione una semana"
-                  classNames={{ trigger: 'bg-default-50', base: 'max-w-xs' }}
+                  classNames={{ trigger: 'bg-default-50 cursor-pointer', base: 'max-w-xs' }}
                   startContent={<Icon icon="lucide:calendar" width={14} className="text-default-400 shrink-0" />}
                 >
                   {semanas.map(s => (
                     <SelectItem key={String(s.idSemana)} textValue={s.nombreSemana}>
-                      <span className="font-semibold">{s.nombreSemana}</span>
-                      <span className="text-default-400 ml-2 text-xs">
-                        {new Date(s.fechaInicio + 'T00:00:00').toLocaleDateString('es-CL', { day: 'numeric', month: 'short' })}
-                        {' – '}
-                        {new Date(s.fechaFin + 'T00:00:00').toLocaleDateString('es-CL', { day: 'numeric', month: 'short' })}
-                      </span>
-                      {String(s.idSemana) === defaultSemanaId && defaultSemanaId && (
-                        <Chip size="sm" color="success" variant="flat" className="ml-auto shrink-0">Actual</Chip>
-                      )}
+                      <div className="flex items-center w-full gap-2">
+                        <span className="font-semibold">{s.nombreSemana}</span>
+                        <span className="text-default-400 text-xs">
+                          {new Date(s.fechaInicio + 'T00:00:00').toLocaleDateString('es-CL', { day: 'numeric', month: 'short' })}
+                          {' – '}
+                          {new Date(s.fechaFin + 'T00:00:00').toLocaleDateString('es-CL', { day: 'numeric', month: 'short' })}
+                        </span>
+                        {String(s.idSemana) === defaultSemanaId && defaultSemanaId && (
+                          <Chip size="sm" color="success" variant="flat" className="ml-auto shrink-0">Actual</Chip>
+                        )}
+                      </div>
                     </SelectItem>
                   ))}
                 </Select>
@@ -496,7 +545,7 @@ const GestionSolicitudesPage: React.FC = () => {
           <div className="flex items-center gap-1.5 flex-wrap">
             {(['Todas', 'Pendiente', 'Aceptada', 'Rechazada', 'Procesada'] as const).map(e => (
               <button key={e} onClick={() => { setFiltroEstado(e); setSeleccionados(new Set()); }}
-                className={`px-3 py-1 rounded-full text-xs font-semibold border transition-all ${
+                className={`px-3 py-1 rounded-full text-xs font-semibold border transition-all cursor-pointer ${
                   filtroEstado === e ? 'bg-primary text-white border-primary' : 'bg-default-100 text-default-600 border-default-200 hover:bg-default-200'
                 }`}
               >
@@ -539,7 +588,7 @@ const GestionSolicitudesPage: React.FC = () => {
               {filtroEstado === 'Pendiente' && <span>Al llegar la fecha solicitada y no aceptan la solicitud, pasará al estado rechazado automáticamente.</span>}
               {filtroEstado === 'Aceptada' && <span>La solicitud aceptada está incluida automáticamente al conglomerado de pedidos.</span>}
               {filtroEstado === 'Rechazada' && <span>La solicitud rechazada no está disponible para restaurar su estado si la fecha solicitada es anterior a la actual.</span>}
-              {filtroEstado === 'Procesada' && <span>Historial de solicitudes que ya fueron consolidadas y entregadas.</span>}
+              {filtroEstado === 'Procesada' && <span>Historial de solicitudes que ya fueron consolidadas.</span>}
             </div>
           </div>
         )}
@@ -643,17 +692,17 @@ const GestionSolicitudesPage: React.FC = () => {
 
                           {/* Info */}
                           <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 flex-wrap">
+                            <div className="flex items-center gap-3 flex-wrap">
                               <span className="font-semibold text-sm">§{sol.nombreSeccion}</span>
                               <span className="text-xs text-default-400">·</span>
                               <span className="text-sm text-default-600">{sol.nombreDocente}</span>
                             </div>
-                            <div className="flex items-center gap-3 mt-0.5 text-xs text-default-400 flex-wrap">
-                              <span className="flex items-center gap-1"><Icon icon="lucide:book-open" width={11} />{sol.nombreReceta}</span>
-                              <span className="flex items-center gap-1"><Icon icon="lucide:clock" width={11} />{sol.horaInicio}–{sol.horaFin}</span>
-                              <span className="flex items-center gap-1"><Icon icon="lucide:door-open" width={11} />{sol.nombreSala}</span>
-                              <span className="flex items-center gap-1"><Icon icon="lucide:users" width={11} />{sol.cantInscritos} alumnos</span>
-                              <span className="flex items-center gap-1"><Icon icon="lucide:package" width={11} />{sol.detalles.length} productos</span>
+                            <div className="flex items-center gap-5 mt-1.5 text-xs text-default-500 flex-wrap">
+                              <span className="flex items-center gap-1.5"><Icon icon="lucide:book-open" width={12} />{sol.nombreReceta}</span>
+                              <span className="flex items-center gap-1.5"><Icon icon="lucide:clock" width={12} />{sol.horaInicio}–{sol.horaFin}</span>
+                              <span className="flex items-center gap-1.5"><Icon icon="lucide:door-open" width={12} />{sol.nombreSala}</span>
+                              <span className="flex items-center gap-1.5"><Icon icon="lucide:users" width={12} />{sol.cantInscritos} alumnos</span>
+                              <span className="flex items-center gap-1.5"><Icon icon="lucide:package" width={12} />{sol.detalles.length} productos</span>
                             </div>
                             {sol.motivoRechazo && <MotivoTexto texto={sol.motivoRechazo} />}
                             {sol.observacion && (
@@ -732,7 +781,7 @@ const GestionSolicitudesPage: React.FC = () => {
       </Card>
 
       {/* ── Modal Detalle ── */}
-      <Modal isOpen={detalle.isOpen} onOpenChange={detalle.onOpenChange} size="lg" scrollBehavior="inside">
+      <Modal isOpen={detalle.isOpen} onOpenChange={detalle.onOpenChange} size="3xl" scrollBehavior="inside">
         <ModalContent>
           {onClose => selSol && (
             <>
@@ -740,11 +789,11 @@ const GestionSolicitudesPage: React.FC = () => {
                 <div className="flex items-center gap-2">
                   <Icon icon="lucide:file-text" width={18} className="text-primary" />
                   <span>Detalle de Solicitud</span>
-                  <Chip size="sm" color={ESTADO_CFG[selSol.estado].color} variant="flat" className="ml-auto">
+                  <Chip size="sm" color={ESTADO_CFG[selSol.estado].color} variant="flat" className="ml-auto mr-6">
                     {ESTADO_CFG[selSol.estado].label}
                   </Chip>
                 </div>
-                <p className="text-sm font-normal text-default-500">
+                <p className="text-sm font-normal text-default-500 text-center">
                   {selSol.nombreAsignatura} · §{selSol.nombreSeccion} · {fmtFecha(selSol.fechaClase)}
                 </p>
               </ModalHeader>
@@ -758,12 +807,10 @@ const GestionSolicitudesPage: React.FC = () => {
                     { icon: 'lucide:users',       label: 'Alumnos',   val: String(selSol.cantInscritos) },
                     { icon: 'lucide:package',     label: 'Productos', val: `${selSol.detalles.length} ítems` },
                   ].map(r => (
-                    <div key={r.label} className="flex items-start gap-2">
-                      <Icon icon={r.icon} width={14} className="text-default-400 mt-0.5 shrink-0" />
-                      <div>
-                        <p className="text-xs text-default-400">{r.label}</p>
-                        <p className="font-medium">{r.val}</p>
-                      </div>
+                    <div key={r.label} className="flex flex-col items-center text-center gap-0.5">
+                      <Icon icon={r.icon} width={14} className="text-default-400 shrink-0" />
+                      <p className="text-xs text-default-400">{r.label}</p>
+                      <p className="font-medium">{r.val}</p>
                     </div>
                   ))}
                 </div>
@@ -782,23 +829,39 @@ const GestionSolicitudesPage: React.FC = () => {
                   </div>
                 )}
 
-                <Divider />
-
                 <div>
-                  <p className="text-xs font-bold text-default-500 uppercase tracking-wider mb-2">Productos solicitados</p>
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="flex-1 h-px bg-default-200" />
+                    <p className="text-xs font-bold text-default-500 uppercase tracking-wider shrink-0">Productos solicitados</p>
+                    <div className="flex-1 h-px bg-default-200" />
+                  </div>
                   <Table removeWrapper aria-label="Productos"
-                    classNames={{ th: 'bg-default-50 text-xs', td: 'text-sm py-2' }}>
+                    classNames={{ th: 'bg-default-50 text-xs text-center', td: 'text-sm py-2' }}>
                     <TableHeader>
-                      <TableColumn>PRODUCTO</TableColumn>
-                      <TableColumn className="text-right">CANTIDAD</TableColumn>
-                      <TableColumn>UNIDAD</TableColumn>
+                      <TableColumn className="text-center">PRODUCTO</TableColumn>
+                      <TableColumn className="text-center">OBSERVACIÓN</TableColumn>
+                      <TableColumn className="text-center">CANTIDAD</TableColumn>
+                      <TableColumn className="text-center">UNIDAD</TableColumn>
                     </TableHeader>
                     <TableBody>
                       {selSol.detalles.map(d => (
                         <TableRow key={d.idProducto}>
-                          <TableCell>{d.nombreProducto}</TableCell>
-                          <TableCell className="text-right font-mono">{d.cantidad}</TableCell>
-                          <TableCell className="text-default-500">{d.unidad}</TableCell>
+                          <TableCell>
+                            <Tooltip content={d.nombreProducto} delay={500} placement="top-start">
+                               <div className="max-w-[150px] truncate cursor-default block">
+                                   {d.nombreProducto}
+                               </div>
+                            </Tooltip>
+                          </TableCell>
+                          <TableCell className="text-xs text-default-400 italic">
+                             <Tooltip content={d.observacion || 'Sin observación'} placement="top" delay={500} isDisabled={!d.observacion}>
+                                <div className="max-w-[200px] truncate cursor-default block">
+                                    {d.observacion ?? '—'}
+                                </div>
+                             </Tooltip>
+                          </TableCell>
+                          <TableCell className="text-center font-mono">{d.cantidad}</TableCell>
+                          <TableCell className="text-center text-default-500">{d.unidad}</TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
@@ -848,6 +911,10 @@ const GestionSolicitudesPage: React.FC = () => {
                   </Button>
                   </>
                 )}
+                <Button variant="flat" onPress={() => handleImprimir(selSol)}
+                  startContent={<Icon icon="lucide:printer" width={14} />}>
+                  Imprimir
+                </Button>
                 <Button variant="light" onPress={onClose}>Cerrar</Button>
               </ModalFooter>
             </>

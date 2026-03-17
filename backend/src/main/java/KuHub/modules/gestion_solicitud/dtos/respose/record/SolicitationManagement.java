@@ -79,9 +79,10 @@ public record SolicitationManagement(
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record ProductDetailDTO(
-            String nombreProducto,
-            BigDecimal cantidad,
-            String unidad
+            @JsonProperty("nombreProducto") String nombreProducto,
+            @JsonProperty("cantidad") BigDecimal cantidad,
+            @JsonProperty("unidad") String unidad,
+            @JsonProperty("observacion") String observacion // <--- ¡AQUÍ ESTÁ AGREGADA!
     ) {}
 }
 

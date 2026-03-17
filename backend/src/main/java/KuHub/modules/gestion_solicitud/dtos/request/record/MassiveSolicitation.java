@@ -88,7 +88,9 @@ public record MassiveSolicitation(
             Integer idDetalleReceta,
 
             @NotNull(message = "La cantidad del producto a modificar es obligatoria")
-            BigDecimal cantProducto
+            BigDecimal cantProducto,
+
+            String observacion
     ) {}
 
     // ============================================================================
@@ -100,6 +102,8 @@ public record MassiveSolicitation(
             Integer idProducto,
 
             @NotNull(message = "La cantidad del nuevo producto es obligatoria")
-            BigDecimal cantProducto
+            BigDecimal cantProducto,
+
+            String observacion
     ) {}
 }

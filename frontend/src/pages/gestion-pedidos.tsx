@@ -9,7 +9,7 @@ import React from 'react';
 import {
   Card, CardBody, CardHeader,
   Button, Input, Chip,
-  Select, SelectItem,
+  Select, SelectItem, Tooltip,
   Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, useDisclosure,
   Divider, Spinner,
 } from '@heroui/react';
@@ -213,6 +213,51 @@ const GestionPedidosPage: React.FC = () => {
     }
   };
 
+  const handleImprimirSolicitud = (sol: ISolicitudConsolidacionItem) => {
+    const { seccion } = sol.asignaturaDetalle;
+    const filas = seccion.productos_solicitados.map(p =>
+      `<tr><td>${p.nombreProducto}</td><td style="font-style:italic;color:#666">${p.observacion ?? '—'}</td><td style="text-align:center">${fmtCantidad(p.cantidad)}</td><td style="text-align:center">${p.unidad_abreviada}</td></tr>`
+    ).join('');
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Vista previa para Consolidado — Detalle Solicitud</title>
+    <style>
+      body { font-family: Arial, sans-serif; padding: 32px; font-size: 13px; color: #111; }
+      h2 { margin: 0 0 4px; font-size: 18px; }
+      .sub { color: #666; margin-bottom: 20px; font-size: 13px; text-align: center; }
+      .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 24px; margin-bottom: 20px; text-align: center; }
+      .field label { display: block; font-size: 11px; color: #888; text-transform: uppercase; }
+      .field span { font-weight: 600; }
+      .obs { background: #f5f5f5; border: 1px solid #ddd; border-radius: 6px; padding: 8px 12px; margin-bottom: 20px; font-style: italic; }
+      h3 { font-size: 12px; text-transform: uppercase; color: #888; letter-spacing: 0.05em; margin-bottom: 8px; }
+      table { width: 100%; border-collapse: collapse; }
+      th { background: #f0f0f0; font-size: 11px; text-transform: uppercase; padding: 6px 10px; text-align: left; border-bottom: 2px solid #ddd; }
+      th:not(:first-child) { text-align: center; }
+      td { padding: 6px 10px; border-bottom: 1px solid #eee; }
+      @page { size: A4 portrait; margin: 20mm 18mm; }
+      @media print { body { padding: 0; margin: 0; } }
+    </style></head><body>
+    <h2 style="text-align:center">Vista previa para Consolidado — Detalle Solicitud</h2>
+    <p class="sub">${sol.asignaturaDetalle.nombre_asignatura} · §${seccion.nombre_seccion} · ${new Date(sol.fechaSolicitada + 'T00:00:00').toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
+    <div class="grid">
+      <div class="field"><label>Receta</label><span>${sol.nombreReceta}</span></div>
+      <div class="field"><label>Docente</label><span>${seccion.nombre_docente}</span></div>
+      <div class="field"><label>Horario</label><span>${seccion.horarios.rangoHoras}</span></div>
+      <div class="field"><label>Sala</label><span>${seccion.horarios.nombreSala}</span></div>
+      <div class="field"><label>Alumnos</label><span>${seccion.cant_inscritos}</span></div>
+    </div>
+    ${sol.observaciones ? `<div class="obs">${sol.observaciones}</div>` : ''}
+    <h3>Productos solicitados</h3>
+    <table><colgroup><col style="width:30%"><col style="width:40%"><col style="width:17%"><col style="width:13%"></colgroup>
+    <thead><tr><th>Producto</th><th>Observación</th><th>Cantidad</th><th>Unidad</th></tr></thead>
+    <tbody>${filas}</tbody></table>
+    </body></html>`;
+    const w = window.open('', '_blank');
+    if (!w) return;
+    w.document.write(html);
+    w.document.close();
+    w.focus();
+    w.print();
+  };
+
   // Alias para compatibilidad con el JSX existente
   const semanaActual = semanaSeleccionada;
   const periodosDisponibles = periodos.length > 0 ? periodos : [{ anio: new Date().getFullYear(), semestres: [1, 2] }];
@@ -257,17 +302,21 @@ const GestionPedidosPage: React.FC = () => {
                   classNames={{ trigger: 'bg-default-50', base: 'max-w-xs' }}
                   startContent={<Icon icon="lucide:calendar" width={14} className="text-default-400 shrink-0" />}
                 >
-                  {semanas.map(s => (
+                  {semanas
+                    .filter(s => s.fechaFin >= new Date().toISOString().slice(0, 10))
+                    .map(s => (
                     <SelectItem key={String(s.idSemana)} textValue={s.nombreSemana}>
-                      <span className="font-semibold">{s.nombreSemana}</span>
-                      <span className="text-default-400 ml-2 text-xs">
-                        {new Date(s.fechaInicio + 'T00:00:00').toLocaleDateString('es-CL', { day: 'numeric', month: 'short' })}
-                        {' – '}
-                        {new Date(s.fechaFin + 'T00:00:00').toLocaleDateString('es-CL', { day: 'numeric', month: 'short' })}
-                      </span>
-                      {String(s.idSemana) === defaultSemanaId && defaultSemanaId && (
-                        <Chip size="sm" color="success" variant="flat" className="ml-auto shrink-0">Actual</Chip>
-                      )}
+                      <div className="flex items-center w-full gap-2">
+                        <span className="font-semibold">{s.nombreSemana}</span>
+                        <span className="text-default-400 text-xs">
+                          {new Date(s.fechaInicio + 'T00:00:00').toLocaleDateString('es-CL', { day: 'numeric', month: 'short' })}
+                          {' – '}
+                          {new Date(s.fechaFin + 'T00:00:00').toLocaleDateString('es-CL', { day: 'numeric', month: 'short' })}
+                        </span>
+                        {String(s.idSemana) === defaultSemanaId && defaultSemanaId && (
+                          <Chip size="sm" color="success" variant="flat" className="ml-auto shrink-0">Actual</Chip>
+                        )}
+                      </div>
                     </SelectItem>
                   ))}
                 </Select>
@@ -443,6 +492,12 @@ const GestionPedidosPage: React.FC = () => {
                                   <span className="flex items-center gap-1"><Icon icon="lucide:door-open" width={11} />{det.nombreSala}</span>
                                   <span className="flex items-center gap-1"><Icon icon="lucide:users" width={11} />{det.alumnos} alumnos</span>
                                 </div>
+                                {det.observacion && (
+                                  <div className="flex items-start gap-1 mt-1 text-xs text-default-500 italic">
+                                    <Icon icon="lucide:message-circle" width={11} className="mt-px shrink-0" />
+                                    <span>{det.observacion}</span>
+                                  </div>
+                                )}
                               </div>
 
                               {/* Cantidad para esta sección */}
@@ -505,20 +560,20 @@ const GestionPedidosPage: React.FC = () => {
 
                             {/* Info */}
                             <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 flex-wrap">
+                              <div className="flex items-center gap-3 flex-wrap">
                                 <span className="font-semibold text-sm">§{seccion.nombre_seccion}</span>
                                 <span className="text-xs text-default-400">·</span>
                                 <span className="text-sm text-default-600">{seccion.nombre_docente}</span>
                               </div>
-                              <div className="flex items-center gap-3 mt-0.5 text-xs text-default-400 flex-wrap">
-                                <span className="flex items-center gap-1"><Icon icon="lucide:book-open" width={11} />{sol.nombreReceta}</span>
-                                <span className="flex items-center gap-1"><Icon icon="lucide:clock" width={11} />{seccion.horarios.rangoHoras}</span>
-                                <span className="flex items-center gap-1"><Icon icon="lucide:door-open" width={11} />{seccion.horarios.nombreSala}</span>
-                                <span className="flex items-center gap-1"><Icon icon="lucide:users" width={11} />{seccion.cant_inscritos} alumnos</span>
-                                <span className="flex items-center gap-1"><Icon icon="lucide:package" width={11} />{seccion.cant_productos} productos</span>
+                              <div className="flex items-center gap-5 mt-1.5 text-xs text-default-500 flex-wrap">
+                                <span className="flex items-center gap-1.5"><Icon icon="lucide:book-open" width={12} />{sol.nombreReceta}</span>
+                                <span className="flex items-center gap-1.5"><Icon icon="lucide:clock" width={12} />{seccion.horarios.rangoHoras}</span>
+                                <span className="flex items-center gap-1.5"><Icon icon="lucide:door-open" width={12} />{seccion.horarios.nombreSala}</span>
+                                <span className="flex items-center gap-1.5"><Icon icon="lucide:users" width={12} />{seccion.cant_inscritos} alumnos</span>
+                                <span className="flex items-center gap-1.5"><Icon icon="lucide:package" width={12} />{seccion.cant_productos} productos</span>
                               </div>
                               {sol.observaciones && (
-                                <p className="mt-0.5 text-xs text-default-500 italic">Obs: {sol.observaciones}</p>
+                                <p className="mt-1.5 text-xs text-default-500 italic">Obs: {sol.observaciones}</p>
                               )}
                             </div>
 
@@ -534,16 +589,27 @@ const GestionPedidosPage: React.FC = () => {
                           {abierto && (
                             <div className="px-4 pb-3">
                               <div className="rounded-lg border border-default-100 overflow-hidden">
-                                <div className="grid grid-cols-3 px-3 py-1.5 bg-default-50 text-[10px] font-bold text-default-500 uppercase tracking-wider">
-                                  <span>Producto</span><span className="text-right">Cantidad</span><span className="text-center">Unidad</span>
+                                <div className="grid grid-cols-[0.8fr_0.8fr_0.5fr_0.5fr] px-3 py-1.5 bg-default-50 text-[10px] font-bold text-default-500 uppercase tracking-wider text-center">
+                                  <span className="text-left">Producto</span><span>Observación</span><span>Cantidad</span><span>Unidad</span>
                                 </div>
                                 {seccion.productos_solicitados.map((p, i) => (
-                                  <div key={i} className="grid grid-cols-3 px-3 py-2 text-sm border-t border-default-100 hover:bg-default-50/50">
-                                    <span className="text-default-700">{p.nombreProducto}</span>
-                                    <span className="text-right font-mono font-semibold text-primary">{fmtCantidad(p.cantidad)}</span>
-                                    <span className="text-center text-default-500">{p.unidad_abreviada}</span>
+                                  <div key={i} className="grid grid-cols-[0.8fr_0.8fr_0.5fr_0.5fr] px-3 py-2 text-sm border-t border-default-100 hover:bg-default-50/50 items-center text-center">
+                                    <Tooltip content={p.nombreProducto} placement="top-start" delay={500}>
+                                      <span className="text-default-700 text-left truncate cursor-default block pr-2">{p.nombreProducto}</span>
+                                    </Tooltip>
+                                    <Tooltip content={p.observacion || 'Sin observación'} placement="top" delay={500} isDisabled={!p.observacion}>
+                                      <span className="text-xs text-default-400 italic truncate px-2 cursor-default block">{p.observacion ?? '—'}</span>
+                                    </Tooltip>
+                                    <span className="font-mono font-semibold text-default-700">{fmtCantidad(p.cantidad)}</span>
+                                    <span className="text-default-500">{p.unidad_abreviada}</span>
                                   </div>
                                 ))}
+                              </div>
+                              <div className="flex justify-end mt-2">
+                                <Button size="sm" variant="light" onPress={() => handleImprimirSolicitud(sol)}
+                                  startContent={<Icon icon="lucide:printer" width={14} />}>
+                                  Imprimir
+                                </Button>
                               </div>
                             </div>
                           )}
