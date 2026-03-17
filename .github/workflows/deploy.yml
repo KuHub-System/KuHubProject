@@ -40,7 +40,7 @@ jobs:
 
       - name: Deploy to AWS
         run: |
-          echo "${{ secrets.KUHUB_MASTER_KEY }}" > key.pem
+          echo "${{ secrets.KUHUB_MASTER_KEY }}" | base64 -d > key.pem
           chmod 600 key.pem
           ssh -i key.pem -o StrictHostKeyChecking=no ${{ secrets.AWS_REMOTE_USER }}@${{ secrets.AWS_REMOTE_HOST }} << 'EOF'
             cd ~/kuhub-app
