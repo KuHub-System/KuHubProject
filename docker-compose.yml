@@ -1,0 +1,57 @@
+version: '3.8'
+
+services:
+  # Base de Datos
+  postgres-db:
+    image: postgres:16-alpine
+    container_name: kuhub-db
+    restart: always
+    environment:
+      POSTGRES_DB: ${CLOVER_DB_NAME}
+      POSTGRES_USER: ${CLOVER_DB_USER}
+      POSTGRES_PASSWORD: ${CLOVER_DB_PASSWORD}
+    ports:
+      - "${CLOVER_DB_PORT}:5432"
+    volumes:
+      - ./db-data:/var/lib/postgresql/data
+    deploy:
+      resources:
+        limits:
+          memory: 400M
+        reservations:
+          memory: 200M
+
+  # Backend (Spring Boot)
+  backend:
+    image: ${DOCKER_USERNAME_PROD}/kuhub-app:backend-${TAG}
+    container_name: kuhub-backend
+    restart: always
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-db:5432/${CLOVER_DB_NAME}
+      - SPRING_DATASOURCE_USERNAME=${CLOVER_DB_USER}
+      - SPRING_DATASOURCE_PASSWORD=${CLOVER_DB_PASSWORD}
+      - SPRING_PROFILES_ACTIVE=prod
+    depends_on:
+      - postgres-db
+    deploy:
+      resources:
+        limits:
+          memory: 1024M
+        reservations:
+          memory: 768M
+
+  # Frontend (React + Nginx)
+  frontend:
+    image: ${DOCKER_USERNAME_PROD}/kuhub-app:frontend-${TAG}
+    container_name: kuhub-frontend
+    restart: always
+    ports:
+      - "80:80"
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+        reservations:
+          memory: 64M
