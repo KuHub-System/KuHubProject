@@ -20,13 +20,16 @@ const SESION_KEY = 'sesion_actual';
  */
 export const iniciarSesionService = async (correo: string, contrasena: string): Promise<ISesion> => {
   try {
+    const endpoint = '/auth/login';
+    console.log(`[AUTH] POST ${(api.defaults.baseURL ?? '')}${endpoint}`);
+    console.log(`[AUTH] Payload →`, { email: correo, contrasena: '***' });
 
-    // Axios usará baseURL (http://localhost:8080/api/v1) + /auth/login
-    const response = await api.post('/auth/login', {
+    const response = await api.post(endpoint, {
       email: correo,
       contrasena: contrasena
     });
 
+    console.log(`[AUTH] ✅ ${response.status} OK →`, response.data);
     const { usuario, token } = response.data;
 
     const usuarioFrontend: IUsuarioAuth = {
@@ -48,6 +51,11 @@ export const iniciarSesionService = async (correo: string, contrasena: string): 
     localStorage.setItem(SESION_KEY, JSON.stringify(sesion));
     return sesion;
   } catch (error: any) {
+    console.error(`[AUTH] ❌ Error en login:`);
+    console.error(`  → Status:  `, error.response?.status ?? 'SIN RESPUESTA (red/timeout)');
+    console.error(`  → URL:     `, error.config?.url);
+    console.error(`  → BaseURL: `, error.config?.baseURL);
+    console.error(`  → Message: `, error.response?.data ?? error.message);
     throw new Error(error.response?.data?.message || 'Error al iniciar sesión');
   }
 };
