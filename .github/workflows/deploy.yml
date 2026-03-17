@@ -1,0 +1,52 @@
+name: KUHUB Deploy
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Get Version
+        id: vars
+        run: echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build & Push Backend
+        uses: docker/build-push-action@v5
+        with:
+          context: ./Backend
+          push: true
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/kuhub-app:backend-${{ steps.vars.outputs.tag }}
+
+      - name: Build & Push Frontend
+        uses: docker/build-push-action@v5
+        with:
+          context: ./Frontend
+          push: true
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/kuhub-app:frontend-${{ steps.vars.outputs.tag }}
+          build-args: VITE_API_URL=${{ secrets.VITE_API_URL }}
+
+      - name: Deploy to AWS
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.AWS_REMOTE_HOST }}
+          username: ${{ secrets.AWS_REMOTE_USER }}
+          key: ${{ secrets.AWS_SSH_KEY }}
+          script: |
+            cd ~/kuhub-app
+            # Actualizamos la variable TAG en el .env del servidor con la nueva versión
+            sed -i "s/^TAG=.*/TAG=${{ steps.vars.outputs.tag }}/" .env
+            docker compose pull
+            docker compose up -d --remove-orphans
+            docker image prune -af
