@@ -76,7 +76,8 @@ public record DashboardConsolidado(
     public record ProductoSolicitadoDTO(
             @JsonProperty("nombreProducto") String nombreProducto,
             @JsonProperty("cantidad") BigDecimal cantidad,
-            @JsonProperty("unidad_abreviada") String unidadAbreviada
+            @JsonProperty("unidad_abreviada") String unidadAbreviada,
+            @JsonProperty("observacion") String observacion
     ) {}
 
     /**
@@ -127,6 +128,7 @@ public record DashboardConsolidado(
             @JsonProperty("nombreAsignatura") String nombreAsignatura,
             @JsonProperty("nombreDocente") String nombreDocente,
             @JsonProperty("cantidad") BigDecimal cantidad,
+            @JsonProperty("observacion") String observacion,
             @JsonProperty("alumnos") Integer alumnos,
             @JsonProperty("nombreSala") String nombreSala,
             @JsonProperty("rangoHoras") String rangoHoras

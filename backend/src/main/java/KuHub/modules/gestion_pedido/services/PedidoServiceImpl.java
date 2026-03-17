@@ -4,18 +4,26 @@ import KuHub.modules.gestion_pedido.entity.DetallePedido;
 import KuHub.modules.gestion_pedido.entity.Pedido;
 import KuHub.modules.gestion_pedido.entity.PedidoSolicitud;
 import KuHub.modules.gestion_pedido.record.CreateOrder;
+import KuHub.modules.gestion_pedido.record.PedidoDashboardRecords;
 import KuHub.modules.gestion_pedido.repository.DetallePedidoRepository;
 import KuHub.modules.gestion_pedido.repository.PedidoRepository;
 import KuHub.modules.gestion_pedido.repository.PedidoSolicitudRepository;
+import KuHub.modules.gestion_solicitud.dtos.request.DateRangeDTO;
 import KuHub.modules.gestion_solicitud.repository.SolicitudRepository;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class PedidoServiceImpl implements PedidoService{
@@ -28,6 +36,59 @@ public class PedidoServiceImpl implements PedidoService{
     private PedidoSolicitudRepository pedidoSolicitudRepository;
     @Autowired
     private SolicitudRepository solicitudRepository;
+    @Autowired
+    private ObjectMapper objectMapper;
+
+
+    /**
+     * Único método público que ejecuta las 3 consultas
+     * y ensambla el PedidoDashboardResponse completo.
+     *
+     * Las consultas están separadas en el repository para
+     * mejor mantención — cada una se puede ajustar sin
+     * afectar a las otras.
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public PedidoDashboardRecords.PedidoDashboardResponse obtenerDashboardPedidos(DateRangeDTO request) {
+
+        // Consulta 1: Pedidos completos con detalles y solicitudes vinculadas
+        List<PedidoDashboardRecords.PedidoCompletoJson> pedidosCompletos = deserializarLista(
+                pedidoRepository.findPedidoConDetallesJson(
+                        request.getFechaInicio(),
+                        request.getFechaFin()
+                ),
+                new TypeReference<List<PedidoDashboardRecords.PedidoCompletoJson>>() {},
+                "findPedidoConDetallesJson"
+        );
+
+        // Consulta 2: Pedidos con productos consolidados
+        List<PedidoDashboardRecords.PedidoResumenListaJson> pedidosResumen = deserializarLista(
+                pedidoRepository.findPedidosPorRangoJson(
+                        request.getFechaInicio(),
+                        request.getFechaFin()
+                ),
+                new TypeReference<List<PedidoDashboardRecords.PedidoResumenListaJson>>() {},
+                "findPedidosPorRangoJson"
+        );
+
+        // Consulta 3: Pedidos con resumen de aprobación y stock
+        List<PedidoDashboardRecords.PedidoAprobacionJson> pedidosAprobacion = deserializarLista(
+                pedidoRepository.findPedidoResumenAprobacionJson(
+                        request.getFechaInicio(),
+                        request.getFechaFin()
+                ),
+                new TypeReference<List<PedidoDashboardRecords.PedidoAprobacionJson>>() {},
+                "findPedidoResumenAprobacionJson"
+        );
+
+        return new PedidoDashboardRecords.PedidoDashboardResponse(
+                pedidosCompletos,
+                pedidosResumen,
+                pedidosAprobacion
+        );
+    }
+
 
 
     @Override
@@ -79,6 +140,24 @@ public class PedidoServiceImpl implements PedidoService{
         } catch (Exception e) {
             // Log del error (puedes usar un logger aquí)
             return false;
+        }
+    }
+
+    // =====================================================
+    // MÉTODO GENÉRICO DE DESERIALIZACIÓN
+    // Un solo método para las 3 consultas (todas son List<>)
+    // =====================================================
+
+    private <T> List<T> deserializarLista(String json, TypeReference<List<T>> typeRef, String queryName) {
+        if (json == null || json.isBlank() || "[]".equals(json.trim())) {
+            log.info("{} retornó vacío", queryName);
+            return Collections.emptyList();
+        }
+        try {
+            return objectMapper.readValue(json, typeRef);
+        } catch (JsonProcessingException e) {
+            log.error("Error deserializando {}: {}", queryName, e.getMessage(), e);
+            throw new RuntimeException("Error al procesar " + queryName, e);
         }
     }
 

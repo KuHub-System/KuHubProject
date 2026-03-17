@@ -23,13 +23,10 @@ public class MotivoRechazoSolicitud {
     private Integer idMotivo;
 
     @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumns({
-            @JoinColumn(name = "id_solicitud", referencedColumnName = "id_solicitud", nullable = false),
-            @JoinColumn(name = "fecha_solicitada", referencedColumnName = "fecha_solicitada", nullable = false)
-    })
+    @JoinColumn(name = "id_solicitud", nullable = false)
     private Solicitud solicitud;
 
-    @Column(name = "motivo", nullable = false, length = 200)
+    @Column(name = "motivo", nullable = false, columnDefinition = "TEXT")
     private String motivo;
 
     @Column(name = "fecha_rechazo")
@@ -38,11 +35,10 @@ public class MotivoRechazoSolicitud {
 
     // ----------- Métodos Helper para asignación por ID -----------
 
-    public void setIdSolicitudRechazada(Integer id, LocalDate fecha) {
-        if (id != null && fecha != null) {
+    public void setIdSolicitudRechazada(Integer id) {
+        if (id != null) {
             this.solicitud = new Solicitud();
             this.solicitud.setIdSolicitud(id);
-            this.solicitud.setFechaSolicitada(fecha);
         }
     }
 }

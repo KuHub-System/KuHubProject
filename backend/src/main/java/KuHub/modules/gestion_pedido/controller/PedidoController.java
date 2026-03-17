@@ -1,7 +1,9 @@
 package KuHub.modules.gestion_pedido.controller;
 
 import KuHub.modules.gestion_pedido.record.CreateOrder;
+import KuHub.modules.gestion_pedido.record.PedidoDashboardRecords;
 import KuHub.modules.gestion_pedido.services.PedidoService;
+import KuHub.modules.gestion_solicitud.dtos.request.DateRangeDTO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -19,6 +21,14 @@ public class PedidoController {
 
     @Autowired
     private PedidoService pedidoService;
+
+    @PostMapping()
+    public ResponseEntity<PedidoDashboardRecords.PedidoDashboardResponse> consultaGOD(
+            @Validated @RequestBody DateRangeDTO request){
+        return ResponseEntity
+                .status(200)
+                .body(pedidoService.obtenerDashboardPedidos(request));
+    }
 
     @PostMapping("/consolidate-order")
     public ResponseEntity<Boolean> consolidateOrder(

@@ -56,13 +56,13 @@ public interface SolicitudRepository extends JpaRepository<Solicitud, Integer> {
                         ),
                          'solicitudes', ( 
                              SELECT COALESCE(
-                                 json_agg(f.fecha_solicitada),\s
+                                 json_agg(f.fecha_solicitada),
                                  '[]'::json
                              )
                              FROM (
-                                 SELECT DISTINCT fecha_solicitada\s
-                                 FROM solicitud\s
-                                 WHERE id_seccion = s.id_seccion\s
+                                 SELECT DISTINCT fecha_solicitada
+                                 FROM solicitud
+                                 WHERE id_seccion = s.id_seccion
                                  ORDER BY fecha_solicitada DESC
                              ) f
                          )
@@ -145,7 +145,8 @@ public interface SolicitudRepository extends JpaRepository<Solicitud, Integer> {
                        json_build_object(
                            'nombreProducto', p.nombre_producto,
                            'cantidad', ds.cant_producto_solicitud,
-                           'unidad', u.nombre_unidad
+                           'unidad', u.nombre_unidad,
+                           'observacion', ds.observacion
                        )
                    ),
                    '[]'::json
@@ -153,8 +154,7 @@ public interface SolicitudRepository extends JpaRepository<Solicitud, Integer> {
                FROM detalle_solicitud ds
                JOIN producto p ON p.id_producto = ds.id_producto
                JOIN unidad_medida u ON u.id_unidad = p.id_unidad
-               WHERE ds.id_solicitud = so.id_solicitud
-                 AND ds.fecha_solicitada = so.fecha_solicitada
+               WHERE ds.id_solicitud = so.id_solicitud 
            ) AS productos_solicitados,
             JSON_BUILD_OBJECT(
                 'nombre_asignatura', a.nombre_asignatura,
@@ -245,8 +245,7 @@ public interface SolicitudRepository extends JpaRepository<Solicitud, Integer> {
                     'cant_productos', (
                         SELECT COUNT(ds_count.id_producto)
                         FROM detalle_solicitud ds_count
-                        WHERE ds_count.id_solicitud = sol.id_solicitud
-                          AND ds_count.fecha_solicitada = sol.fecha_solicitada
+                        WHERE ds_count.id_solicitud = sol.id_solicitud 
                     ),
         
                     -- Lista de productos de la solicitud
@@ -256,7 +255,8 @@ public interface SolicitudRepository extends JpaRepository<Solicitud, Integer> {
                                 json_build_object(
                                     'nombreProducto', prod.nombre_producto,
                                     'cantidad', det_sol.cant_producto_solicitud,
-                                    'unidad_abreviada', uni.abreviatura
+                                    'unidad_abreviada', uni.abreviatura,
+                                    'observacion', det_sol.observacion
                                 ) ORDER BY prod.nombre_producto ASC
                             ),
                             '[]'::json
@@ -264,8 +264,7 @@ public interface SolicitudRepository extends JpaRepository<Solicitud, Integer> {
                         FROM detalle_solicitud det_sol
                         JOIN producto prod ON prod.id_producto = det_sol.id_producto
                         JOIN unidad_medida uni ON uni.id_unidad = prod.id_unidad
-                        WHERE det_sol.id_solicitud = sol.id_solicitud
-                          AND det_sol.fecha_solicitada = sol.fecha_solicitada
+                        WHERE det_sol.id_solicitud = sol.id_solicitud 
                     ),
         
                     -- Horarios con lógica de "Huecos e Islas"
@@ -348,6 +347,7 @@ public interface SolicitudRepository extends JpaRepository<Solicitud, Integer> {
                         'nombreAsignatura', asig.nombre_asignatura,
                         'nombreDocente', CONCAT_WS(' ', NULLIF(TRIM(usr.p_nombre), ''), NULLIF(TRIM(usr.app_paterno), '')),
                         'cantidad', det_sol.cant_producto_solicitud,
+                        'observacion', det_sol.observacion,
                         'alumnos', sec.cant_inscritos,
                         'nombreSala', (
                             SELECT sala.nombre_sala
@@ -379,8 +379,7 @@ public interface SolicitudRepository extends JpaRepository<Solicitud, Integer> {
                 ) AS detalles_secciones
         
             FROM solicitud sol
-            JOIN detalle_solicitud det_sol ON det_sol.id_solicitud = sol.id_solicitud
-                AND det_sol.fecha_solicitada = sol.fecha_solicitada
+            JOIN detalle_solicitud det_sol ON det_sol.id_solicitud = sol.id_solicitud 
             JOIN producto prod ON prod.id_producto = det_sol.id_producto
             JOIN unidad_medida uni ON uni.id_unidad = prod.id_unidad
             JOIN seccion sec ON sec.id_seccion = sol.id_seccion
