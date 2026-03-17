@@ -2,14 +2,16 @@ import axios, { AxiosInstance, AxiosError, InternalAxiosRequestConfig } from 'ax
 import { obtenerSesionActualService } from '../services/auth-service';
 
 // ========================================================================
-// ¡LA MAGIA DE VITE!
-// Lee la variable inyectada por GitHub Actions (AWS) o tu .env local
+// Detección automática de entorno:
+// - Cloud (GitHub Actions / AWS): usa VITE_API_URL inyectada en el build
+// - Local: detecta hostname y apunta a localhost:8080
 // ========================================================================
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
+const isLocal = typeof window !== 'undefined' && window.location.hostname === 'localhost';
+const API_URL = import.meta.env.VITE_API_URL || (isLocal ? 'http://localhost:8080/api/v1' : '/api/v1');
 
 const api: AxiosInstance = axios.create({
     baseURL: API_URL, // <--- Aplicamos la variable aquí
-    timeout: 5000,
+    timeout: 15000,
     headers: { 'Content-Type': 'application/json' },
 });
 
