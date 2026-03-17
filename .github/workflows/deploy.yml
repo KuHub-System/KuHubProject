@@ -54,10 +54,10 @@ jobs:
           host: ${{ secrets.AWS_REMOTE_HOST }}
           username: ${{ secrets.AWS_REMOTE_USER }}
           key: ${{ secrets.KUHUB_MASTER_KEY }}
+          key_format: base64
           port: 22
           script: |
             cd ~/kuhub-app
-            # Sincronizamos la versión del tag con el entorno del servidor
             sed -i "s/^TAG=.*/TAG=${{ steps.vars.outputs.tag }}/" .env
             docker compose pull
             docker compose up -d --remove-orphans
