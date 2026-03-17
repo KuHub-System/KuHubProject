@@ -1,25 +1,23 @@
 import axios, { AxiosInstance, AxiosError, InternalAxiosRequestConfig } from 'axios';
 import { obtenerSesionActualService } from '../services/auth-service';
 
-const CLOUD_URL = 'http://3.94.161.1/api/v1';
-const LOCAL_URL = 'http://localhost:8080/api/v1';
+// ========================================================================
+// ¡LA MAGIA DE VITE!
+// Lee la variable inyectada por GitHub Actions (AWS) o tu .env local
+// ========================================================================
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
 
-// Instancia base (empezamos intentando la nube)
 const api: AxiosInstance = axios.create({
-    baseURL: CLOUD_URL,
+    baseURL: API_URL, // <--- Aplicamos la variable aquí
     timeout: 5000,
     headers: { 'Content-Type': 'application/json' },
 });
 
-// Variable para saber si ya cambiamos a modo local
-let isLocalMode = false;
-
 api.interceptors.request.use(
     (config: InternalAxiosRequestConfig) => {
-        // Establecer la base actual según el modo
-        config.baseURL = isLocalMode ? LOCAL_URL : CLOUD_URL;
-
         const sesion = obtenerSesionActualService();
+
+        // Agregar el token si existe y no es la ruta de login
         if (sesion?.token && config.headers && !config.url?.includes('/auth/login')) {
             config.headers.Authorization = `Bearer ${sesion.token}`;
         }
@@ -48,21 +46,13 @@ api.interceptors.response.use(
                     // Disparar evento para reiniciar el contador de inactividad
                     window.dispatchEvent(new Event('api-request'));
                 } catch (e) {
+                    console.error("Error al actualizar la sesión", e);
                 }
             }
         }
         return response;
     },
     async (error: AxiosError) => {
-        const originalRequest = error.config;
-
-        // Si falla la nube y no estamos en local, reintentar en local
-        if (!error.response && !isLocalMode && originalRequest) {
-            isLocalMode = true;
-            originalRequest.baseURL = LOCAL_URL;
-            return api(originalRequest);
-        }
-
         // Handle 401 Unauthorized (Token expires or invalid)
         if (error.response?.status === 401) {
             localStorage.removeItem('sesion_actual');
