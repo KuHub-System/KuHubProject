@@ -54,7 +54,6 @@ jobs:
           host: ${{ secrets.AWS_REMOTE_HOST }}
           username: ${{ secrets.AWS_REMOTE_USER }}
           key: ${{ secrets.KUHUB_MASTER_KEY }}
-          key_format: base64
           port: 22
           script: |
             cd ~/kuhub-app
