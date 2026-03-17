@@ -176,7 +176,7 @@ const LoginPage: React.FC = () => {
             )}
 
 
-            <form onSubmit={handleSubmit} className="space-y-5">
+            <form onSubmit={handleSubmit} className="space-y-5" autoComplete="off">
               <Input
                 label="Correo Electrónico"
                 type="email"
