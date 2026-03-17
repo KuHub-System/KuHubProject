@@ -6,10 +6,11 @@
 
 import React from 'react';
 import {
+  Button,
   Card, CardBody, CardHeader,
   Input, Chip,
   Select, SelectItem,
-  Divider, Spinner,
+  Divider, Spinner, Tooltip
 } from '@heroui/react';
 import { Icon } from '@iconify/react';
 import { usePageTitle } from '../hooks/usePageTitle';
@@ -22,178 +23,20 @@ import {
   detectarPeriodoActual,
   encontrarSemanaActual,
 } from '../services/semana-service';
-import { ISolicitudPorSemanaResponse } from '../services/solicitud-service';
-
-// ─────────────────────────────────────────────────────────────────────────────
-// MOCK — solicitudes PROCESADAS (reemplazar con endpoint real cuando esté listo)
-// ─────────────────────────────────────────────────────────────────────────────
-
-const SEMANA_ACTUAL = new Date();
-const lunes = new Date(SEMANA_ACTUAL);
-lunes.setDate(SEMANA_ACTUAL.getDate() - ((SEMANA_ACTUAL.getDay() + 6) % 7));
-const fmt = (d: Date) => d.toISOString().slice(0, 10);
-const addDays = (d: Date, n: number) => { const r = new Date(d); r.setDate(r.getDate() + n); return r; };
-
-const MOCK_PROCESADAS: ISolicitudPorSemanaResponse[] = [
-  {
-    idSolicitud: 2001, idReservaSala: 201, idReceta: 10,
-    nombreReceta: 'Pasta Carbonara', fechaSolicitada: fmt(lunes),
-    estadoSolicitud: 'PROCESADA', observaciones: 'Clase práctica de pastas italianas',
-    productos: [
-      { nombreProducto: 'Spaghetti',      cantidad: 2,   unidad: 'kg' },
-      { nombreProducto: 'Huevos',          cantidad: 12,  unidad: 'un' },
-      { nombreProducto: 'Tocino ahumado',  cantidad: 300, unidad: 'g'  },
-      { nombreProducto: 'Queso parmesano', cantidad: 200, unidad: 'g'  },
-    ],
-    asignaturaDetalle: {
-      id_asignatura: 1, nombre_asignatura: 'Cocina Internacional',
-      seccion: {
-        id_seccion: 11, nombre_seccion: '001-2', id_usuario: 201,
-        nombre_docente: 'Carlos Méndez', cant_inscritos: 20, capacidad_max: 25,
-        horarios: [
-          { numeroBloque: 1, horaInicio: '08:01:00', horaFin: '08:40:00', nombreSala: 'Lab. Cocina A' },
-          { numeroBloque: 2, horaInicio: '08:41:00', horaFin: '09:20:00', nombreSala: 'Lab. Cocina A' },
-        ],
-      },
-    },
-  },
-  {
-    idSolicitud: 2002, idReservaSala: 202, idReceta: 11,
-    nombreReceta: 'Risotto de Champiñones', fechaSolicitada: fmt(lunes),
-    estadoSolicitud: 'PROCESADA',
-    productos: [
-      { nombreProducto: 'Arroz arborio',       cantidad: 1.5, unidad: 'kg' },
-      { nombreProducto: 'Champiñones frescos', cantidad: 500, unidad: 'g'  },
-      { nombreProducto: 'Caldo de verduras',   cantidad: 1.5, unidad: 'L'  },
-      { nombreProducto: 'Queso parmesano',      cantidad: 150, unidad: 'g'  },
-    ],
-    asignaturaDetalle: {
-      id_asignatura: 2, nombre_asignatura: 'Técnicas de Cocina Italiana',
-      seccion: {
-        id_seccion: 21, nombre_seccion: '001-4', id_usuario: 203,
-        nombre_docente: 'Roberto Silva', cant_inscritos: 18, capacidad_max: 20,
-        horarios: [
-          { numeroBloque: 5, horaInicio: '14:01:00', horaFin: '14:40:00', nombreSala: 'Lab. Cocina C' },
-          { numeroBloque: 6, horaInicio: '14:41:00', horaFin: '15:20:00', nombreSala: 'Lab. Cocina C' },
-        ],
-      },
-    },
-  },
-  {
-    idSolicitud: 2003, idReservaSala: 203, idReceta: 10,
-    nombreReceta: 'Pasta Carbonara', fechaSolicitada: fmt(addDays(lunes, 1)),
-    estadoSolicitud: 'PROCESADA',
-    productos: [
-      { nombreProducto: 'Spaghetti',      cantidad: 2.5, unidad: 'kg' },
-      { nombreProducto: 'Huevos',          cantidad: 15,  unidad: 'un' },
-      { nombreProducto: 'Tocino ahumado',  cantidad: 400, unidad: 'g'  },
-      { nombreProducto: 'Queso parmesano', cantidad: 250, unidad: 'g'  },
-    ],
-    asignaturaDetalle: {
-      id_asignatura: 1, nombre_asignatura: 'Cocina Internacional',
-      seccion: {
-        id_seccion: 12, nombre_seccion: '002-2', id_usuario: 202,
-        nombre_docente: 'Ana Flores', cant_inscritos: 25, capacidad_max: 25,
-        horarios: [
-          { numeroBloque: 3, horaInicio: '09:21:00', horaFin: '10:00:00', nombreSala: 'Lab. Cocina B' },
-          { numeroBloque: 4, horaInicio: '10:01:00', horaFin: '10:40:00', nombreSala: 'Lab. Cocina B' },
-        ],
-      },
-    },
-  },
-  {
-    idSolicitud: 2004, idReservaSala: 204, idReceta: 12,
-    nombreReceta: 'Crema Catalana', fechaSolicitada: fmt(addDays(lunes, 2)),
-    estadoSolicitud: 'PROCESADA', observaciones: 'Requiere soplete de cocina',
-    productos: [
-      { nombreProducto: 'Leche entera',  cantidad: 1,   unidad: 'L'  },
-      { nombreProducto: 'Huevos',         cantidad: 8,   unidad: 'un' },
-      { nombreProducto: 'Azúcar',         cantidad: 200, unidad: 'g'  },
-      { nombreProducto: 'Canela en rama', cantidad: 2,   unidad: 'un' },
-    ],
-    asignaturaDetalle: {
-      id_asignatura: 3, nombre_asignatura: 'Repostería y Pastelería',
-      seccion: {
-        id_seccion: 31, nombre_seccion: '001-6', id_usuario: 204,
-        nombre_docente: 'María Gutiérrez', cant_inscritos: 22, capacidad_max: 25,
-        horarios: [
-          { numeroBloque: 1, horaInicio: '08:01:00', horaFin: '08:40:00', nombreSala: 'Lab. Pastelería' },
-          { numeroBloque: 2, horaInicio: '08:41:00', horaFin: '09:20:00', nombreSala: 'Lab. Pastelería' },
-          { numeroBloque: 3, horaInicio: '09:21:00', horaFin: '10:00:00', nombreSala: 'Lab. Pastelería' },
-        ],
-      },
-    },
-  },
-  {
-    idSolicitud: 2005, idReservaSala: 205, idReceta: 11,
-    nombreReceta: 'Risotto de Champiñones', fechaSolicitada: fmt(addDays(lunes, 3)),
-    estadoSolicitud: 'PROCESADA',
-    productos: [
-      { nombreProducto: 'Arroz arborio',       cantidad: 1,   unidad: 'kg' },
-      { nombreProducto: 'Champiñones frescos', cantidad: 400, unidad: 'g'  },
-      { nombreProducto: 'Caldo de verduras',   cantidad: 1,   unidad: 'L'  },
-      { nombreProducto: 'Queso parmesano',      cantidad: 100, unidad: 'g'  },
-    ],
-    asignaturaDetalle: {
-      id_asignatura: 2, nombre_asignatura: 'Técnicas de Cocina Italiana',
-      seccion: {
-        id_seccion: 22, nombre_seccion: '002-4', id_usuario: 205,
-        nombre_docente: 'Laura Pérez', cant_inscritos: 16, capacidad_max: 20,
-        horarios: [
-          { numeroBloque: 7, horaInicio: '15:21:00', horaFin: '16:00:00', nombreSala: 'Lab. Cocina C' },
-          { numeroBloque: 8, horaInicio: '16:01:00', horaFin: '16:40:00', nombreSala: 'Lab. Cocina C' },
-        ],
-      },
-    },
-  },
-  {
-    idSolicitud: 2006, idReservaSala: 206, idReceta: 13,
-    nombreReceta: 'Tarta de Manzana', fechaSolicitada: fmt(addDays(lunes, 4)),
-    estadoSolicitud: 'PROCESADA',
-    productos: [
-      { nombreProducto: 'Manzanas',   cantidad: 6,   unidad: 'un' },
-      { nombreProducto: 'Harina',      cantidad: 300, unidad: 'g'  },
-      { nombreProducto: 'Azúcar',      cantidad: 150, unidad: 'g'  },
-      { nombreProducto: 'Huevos',      cantidad: 3,   unidad: 'un' },
-    ],
-    asignaturaDetalle: {
-      id_asignatura: 3, nombre_asignatura: 'Repostería y Pastelería',
-      seccion: {
-        id_seccion: 32, nombre_seccion: '002-6', id_usuario: 206,
-        nombre_docente: 'Jorge Ramos', cant_inscritos: 19, capacidad_max: 25,
-        horarios: [
-          { numeroBloque: 5, horaInicio: '14:01:00', horaFin: '14:40:00', nombreSala: 'Lab. Pastelería' },
-          { numeroBloque: 6, horaInicio: '14:41:00', horaFin: '15:20:00', nombreSala: 'Lab. Pastelería' },
-        ],
-      },
-    },
-  },
-];
+import {
+  IConsolidatePedidoResponse,
+  ISolicitudVinculada,
+  consolidatePedidoQueryService,
+} from '../services/solicitud-service';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TIPOS INTERNOS
 // ─────────────────────────────────────────────────────────────────────────────
 
 interface IGrupoDia {
-  fecha: string;           // "YYYY-MM-DD"
-  diaSemana: number;       // 0=Dom … 6=Sáb
-  solicitudes: ISolicitudPorSemanaResponse[];
-}
-
-interface IProductoTotal {
-  nombreProducto: string;
-  unidad: string;
-  cantidadTotal: number;
-  distribuciones: {
-    idSolicitud: number;
-    fecha: string;
-    nombreSeccion: string;
-    nombreDocente: string;
-    cantidad: number;
-    horaInicio: string;
-    horaFin: string;
-    nombreSala: string;
-  }[];
+  fecha: string;
+  diaSemana: number;
+  solicitudes: ISolicitudVinculada[];
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -214,8 +57,6 @@ const DIA_CONFIG: Record<number, { nombre: string; header: string; badge: string
 // HELPERS
 // ─────────────────────────────────────────────────────────────────────────────
 
-const fmtHora = (hms: string) => hms?.slice(0, 5) ?? '';
-
 const fmtFechaLarga = (iso: string) =>
   new Date(iso + 'T00:00:00').toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long' });
 
@@ -226,35 +67,17 @@ const isHoy = (iso: string) => iso === new Date().toISOString().slice(0, 10);
 
 const getDiaSemana = (iso: string) => new Date(iso + 'T00:00:00').getDay();
 
-const consolidarProductosTotales = (solicitudes: ISolicitudPorSemanaResponse[]): IProductoTotal[] => {
-  const mapa = new Map<string, IProductoTotal>();
-  for (const sol of solicitudes) {
-    const { seccion } = sol.asignaturaDetalle;
-    const horarios = seccion.horarios ?? [];
-    const primerH = horarios[0];
-    const ultimoH = horarios[horarios.length - 1];
-    for (const p of sol.productos) {
-      const key = `${p.nombreProducto.trim()}||${p.unidad.trim()}`;
-      const dist = {
-        idSolicitud: sol.idSolicitud,
-        fecha: sol.fechaSolicitada,
-        nombreSeccion: seccion.nombre_seccion,
-        nombreDocente: seccion.nombre_docente,
-        cantidad: p.cantidad,
-        horaInicio: fmtHora(primerH?.horaInicio ?? ''),
-        horaFin: fmtHora(ultimoH?.horaFin ?? ''),
-        nombreSala: primerH?.nombreSala ?? '',
-      };
-      if (mapa.has(key)) {
-        const e = mapa.get(key)!;
-        e.cantidadTotal += p.cantidad;
-        e.distribuciones.push(dist);
-      } else {
-        mapa.set(key, { nombreProducto: p.nombreProducto, unidad: p.unidad, cantidadTotal: p.cantidad, distribuciones: [dist] });
-      }
-    }
-  }
-  return Array.from(mapa.values()).sort((a, b) => a.nombreProducto.localeCompare(b.nombreProducto));
+/** Parses "08:01-09:20" or "08:01 - 09:20" → { inicio, fin } */
+const parseRango = (rango: string) => {
+  const m = rango.match(/^(\d{2}:\d{2})\s*[-–]\s*(\d{2}:\d{2})/);
+  if (m) return { inicio: m[1], fin: m[2] };
+  return { inicio: rango, fin: '' };
+};
+
+/** Formats a numeric quantity trimming trailing zeros */
+const fmtCant = (n: number) => {
+  if (n === Math.floor(n)) return String(Math.floor(n));
+  return n.toFixed(3).replace(/\.?0+$/, '');
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -273,16 +96,16 @@ const ConglomeradoPedidosPage: React.FC = () => {
   const [isLoadingSem,    setIsLoadingSem]    = React.useState(true);
 
   // ── Datos ──
-  const [solicitudes,    setSolicitudes]    = React.useState<ISolicitudPorSemanaResponse[]>([]);
-  const [isLoadingDatos, setIsLoadingDatos] = React.useState(false);
+  const [consolidateData, setConsolidateData] = React.useState<IConsolidatePedidoResponse | null>(null);
+  const [isLoadingDatos,  setIsLoadingDatos]  = React.useState(false);
 
   // ── Cache por semanaId ──
-  const cache = React.useRef<Map<string, ISolicitudPorSemanaResponse[]>>(new Map());
+  const cache = React.useRef<Map<string, IConsolidatePedidoResponse>>(new Map());
 
   // ── UI ──
   const [busqueda,    setBusqueda]    = React.useState('');
   const [expandidos,  setExpandidos]  = React.useState<Set<string>>(new Set());
-  const [vistaActiva, setVistaActiva] = React.useState<'cronograma' | 'totales'>('cronograma');
+  const [vistaActiva, setVistaActiva] = React.useState<'cronograma' | 'totales' | 'aprobacion'>('cronograma');
 
   // ── Carga inicial de semanas ──
   React.useEffect(() => {
@@ -313,7 +136,7 @@ const ConglomeradoPedidosPage: React.FC = () => {
   }, []);
 
   const handlePeriodoChange = async (anio: number, semestre: number) => {
-    setIsLoadingSem(true); setSolicitudes([]); setSemanaId('');
+    setIsLoadingSem(true); setConsolidateData(null); setSemanaId('');
     try {
       const data = await obtenerSemanasPorPeriodoService(anio, semestre);
       setSemanas(data);
@@ -326,10 +149,10 @@ const ConglomeradoPedidosPage: React.FC = () => {
 
   // ── Carga de datos al cambiar semana (con cache) ──
   React.useEffect(() => {
-    if (!semanaId) { setSolicitudes([]); return; }
+    if (!semanaId) { setConsolidateData(null); return; }
 
     if (cache.current.has(semanaId)) {
-      setSolicitudes(cache.current.get(semanaId)!);
+      setConsolidateData(cache.current.get(semanaId)!);
       setExpandidos(new Set());
       setBusqueda('');
       return;
@@ -342,19 +165,24 @@ const ConglomeradoPedidosPage: React.FC = () => {
     setExpandidos(new Set());
     setBusqueda('');
 
-    // TODO: reemplazar con endpoint real cuando esté disponible
-    const t = setTimeout(() => {
-      cache.current.set(semanaId, MOCK_PROCESADAS);
-      setSolicitudes(MOCK_PROCESADAS);
-      setIsLoadingDatos(false);
-    }, 500);
-    return () => clearTimeout(t);
+    consolidatePedidoQueryService({ fechaInicio: semana.fechaInicio, fechaFin: semana.fechaFin })
+      .then(data => {
+        cache.current.set(semanaId, data);
+        setConsolidateData(data);
+      })
+      .catch(() => toast.error('Error al cargar el conglomerado de pedidos'))
+      .finally(() => setIsLoadingDatos(false));
   }, [semanaId, semanas]);
 
   // ── Derivados ──
+  const todasSolicitudes = React.useMemo(
+    () => consolidateData?.pedidosCompletos.flatMap(p => p.solicitudesVinculadas) ?? [],
+    [consolidateData]
+  );
+
   const gruposDia = React.useMemo((): IGrupoDia[] => {
-    const mapa = new Map<string, ISolicitudPorSemanaResponse[]>();
-    for (const sol of solicitudes) {
+    const mapa = new Map<string, ISolicitudVinculada[]>();
+    for (const sol of todasSolicitudes) {
       if (!mapa.has(sol.fechaSolicitada)) mapa.set(sol.fechaSolicitada, []);
       mapa.get(sol.fechaSolicitada)!.push(sol);
     }
@@ -362,32 +190,56 @@ const ConglomeradoPedidosPage: React.FC = () => {
       .map(([fecha, sols]) => ({
         fecha,
         diaSemana: getDiaSemana(fecha),
-        solicitudes: sols.sort((a, b) => {
-          const ha = a.asignaturaDetalle.seccion.horarios[0]?.horaInicio ?? '';
-          const hb = b.asignaturaDetalle.seccion.horarios[0]?.horaInicio ?? '';
-          return ha.localeCompare(hb);
-        }),
+        solicitudes: sols.sort((a, b) => a.horarios.rangoHoras.localeCompare(b.horarios.rangoHoras)),
       }))
       .sort((a, b) => a.fecha.localeCompare(b.fecha));
-  }, [solicitudes]);
+  }, [todasSolicitudes]);
 
-  const productosTotales = React.useMemo(() => consolidarProductosTotales(solicitudes), [solicitudes]);
+  // Merge products across multiple pedidos (same product may appear in different pedidos)
+  const productosResumen = React.useMemo(() => {
+    const mapa = new Map<string, import('../services/solicitud-service').IProductoResumen>();
+    for (const pedido of (consolidateData?.pedidosResumen ?? [])) {
+      for (const prod of pedido.productosConsolidados) {
+        const key = `${prod.nombreProducto}||${prod.abreviatura}`;
+        if (mapa.has(key)) {
+          const e = mapa.get(key)!;
+          e.cantidadTotal += prod.cantidadTotal;
+          e.totalSecciones += prod.totalSecciones;
+          e.detalles = [...e.detalles, ...prod.detalles];
+        } else {
+          mapa.set(key, { ...prod, detalles: [...prod.detalles] });
+        }
+      }
+    }
+    return Array.from(mapa.values()).sort((a, b) => a.nombreProducto.localeCompare(b.nombreProducto));
+  }, [consolidateData]);
 
   const productosFiltrados = React.useMemo(() => {
-    if (!busqueda.trim()) return productosTotales;
+    if (!busqueda.trim()) return productosResumen;
     const q = busqueda.toLowerCase();
-    return productosTotales.filter(p => p.nombreProducto.toLowerCase().includes(q));
-  }, [productosTotales, busqueda]);
+    return productosResumen.filter(p => p.nombreProducto.toLowerCase().includes(q));
+  }, [productosResumen, busqueda]);
 
   const contadores = React.useMemo(() => ({
-    procesadas: solicitudes.length,
-    productosUnicos: productosTotales.length,
-    secciones: new Set(solicitudes.map(s => s.asignaturaDetalle.seccion.id_seccion)).size,
-    dias: gruposDia.length,
-  }), [solicitudes, productosTotales, gruposDia]);
+    procesadas:      todasSolicitudes.length,
+    productosUnicos: productosResumen.length,
+    secciones:       new Set(todasSolicitudes.map(s => s.seccion.nombreSeccion)).size,
+    dias:            gruposDia.length,
+  }), [todasSolicitudes, productosResumen, gruposDia]);
 
   const toggleExpandido = (key: string) => {
     setExpandidos(prev => { const n = new Set(prev); n.has(key) ? n.delete(key) : n.add(key); return n; });
+  };
+
+  const hayDatos = !!consolidateData && (
+    consolidateData.pedidosCompletos.length > 0 ||
+    consolidateData.pedidosResumen.length > 0 ||
+    consolidateData.pedidosAprobacion.length > 0
+  );
+
+  const handleAprobarPedido = (_idPedido: number) => {
+    // TODO: call approve endpoint
+    toast.success('Funcionalidad de aprobación en desarrollo');
   };
 
   const semanaActual = semanas.find(s => String(s.idSemana) === semanaId) ?? null;
@@ -430,7 +282,7 @@ const ConglomeradoPedidosPage: React.FC = () => {
                   selectedKeys={semanaId ? new Set([semanaId]) : new Set()}
                   onSelectionChange={keys => { const v = Array.from(keys as Set<string>)[0]; if (v) setSemanaId(v); }}
                   placeholder="Seleccione una semana"
-                  classNames={{ trigger: 'bg-default-50', base: 'max-w-xs' }}
+                  classNames={{ trigger: 'bg-default-50 cursor-pointer', base: 'max-w-xs' }}
                   startContent={<Icon icon="lucide:calendar" width={14} className="text-default-400 shrink-0" />}
                 >
                   {semanas.map(s => (
@@ -470,9 +322,9 @@ const ConglomeradoPedidosPage: React.FC = () => {
         <div>
           <p className="font-semibold text-sm">Pedido consolidado → Bodega de Tránsito</p>
           <p className="text-xs mt-0.5 text-secondary-700">
-            Las solicitudes en estado <strong>PROCESADA</strong> ya fueron consolidadas.
-            Cada bloque indica el día, la hora y la sala exacta donde deben entregarse los insumos.
-            Use la vista de Totales para facilitar el descuento en bodega.
+            Los pedidos en estado <strong>Pendiente</strong> agrupan solicitudes aprobadas.
+            Al aprobarse, pasan a <strong>Procesado</strong> y quedan disponibles en bodega de tránsito para su retiro.
+            El descuento se realiza automáticamente en la bodega de tránsito una vez que el asistente de bodega confirma la verificación de los productos.
           </p>
         </div>
       </div>
@@ -502,15 +354,14 @@ const ConglomeradoPedidosPage: React.FC = () => {
         <CardHeader className="px-5 py-4 flex flex-col sm:flex-row gap-3 items-start sm:items-center">
           {/* Tabs */}
           <div className="flex items-center gap-1 bg-default-100 rounded-lg p-1">
-            {(['cronograma', 'totales'] as const).map(v => (
-              <button key={v} onClick={() => setVistaActiva(v)}
-                className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
+            {(['cronograma', 'totales', 'aprobacion'] as const).map(v => (
+              <button key={v} onClick={() => { setVistaActiva(v); setExpandidos(new Set()); }}
+                className={`px-3 py-1.5 rounded-md text-xs font-semibold cursor-pointer transition-all ${
                   vistaActiva === v ? 'bg-white shadow-sm text-primary' : 'text-default-500 hover:text-default-700'
                 }`}>
-                {v === 'cronograma'
-                  ? <span className="flex items-center gap-1.5"><Icon icon="lucide:calendar-range" width={12} />Cronograma Semanal</span>
-                  : <span className="flex items-center gap-1.5"><Icon icon="lucide:package-check" width={12} />Totales del Pedido</span>
-                }
+                {v === 'cronograma'  && <span className="flex items-center gap-1.5"><Icon icon="lucide:calendar-range"  width={12} />Cronograma Semanal</span>}
+                {v === 'totales'     && <span className="flex items-center gap-1.5"><Icon icon="lucide:package-check"   width={12} />Totales del Pedido</span>}
+                {v === 'aprobacion'  && <span className="flex items-center gap-1.5"><Icon icon="lucide:shield-check"    width={12} />Aprobación de Pedidos</span>}
               </button>
             ))}
           </div>
@@ -537,11 +388,11 @@ const ConglomeradoPedidosPage: React.FC = () => {
               <Icon icon="lucide:calendar-search" width={48} className="opacity-40" />
               <p className="text-sm">Seleccione una semana para ver el pedido consolidado.</p>
             </div>
-          ) : solicitudes.length === 0 ? (
+          ) : !hayDatos ? (
             <div className="py-16 flex flex-col items-center gap-3 text-default-400">
               <Icon icon="lucide:inbox" width={48} className="opacity-40" />
-              <p className="text-sm">No hay solicitudes procesadas para esta semana.</p>
-              <p className="text-xs">Las solicitudes deben estar en estado <strong>PROCESADA</strong> para aparecer aquí.</p>
+              <p className="text-sm">No hay pedidos consolidados para esta semana.</p>
+              <p className="text-xs">Los pedidos deben estar generados para aparecer aquí.</p>
             </div>
           ) : vistaActiva === 'cronograma' ? (
 
@@ -549,11 +400,16 @@ const ConglomeradoPedidosPage: React.FC = () => {
                VISTA CRONOGRAMA SEMANAL
             ════════════════════════════════════════ */
             <div className="space-y-5">
-              {gruposDia.map(grupo => {
+              {gruposDia.length === 0 ? (
+                <div className="py-10 flex flex-col items-center gap-3 text-default-400">
+                  <Icon icon="lucide:calendar-x" width={36} className="opacity-40" />
+                  <p className="text-sm">Sin solicitudes vinculadas para esta semana.</p>
+                </div>
+              ) : gruposDia.map(grupo => {
                 const cfg = DIA_CONFIG[grupo.diaSemana] ?? DIA_CONFIG[1];
                 const hoy = isHoy(grupo.fecha);
                 const productosDelDia = new Set<string>();
-                grupo.solicitudes.forEach(s => s.productos.forEach(p => productosDelDia.add(p.nombreProducto)));
+                grupo.solicitudes.forEach(s => s.productosSolicitados.forEach(p => productosDelDia.add(p.nombreProducto)));
 
                 return (
                   <div key={grupo.fecha} className={`rounded-2xl border ${hoy ? 'border-warning-300 ring-2 ring-warning-200' : cfg.border} overflow-hidden`}>
@@ -596,25 +452,23 @@ const ConglomeradoPedidosPage: React.FC = () => {
 
                     {/* Solicitudes del día */}
                     <div className="divide-y divide-default-100 bg-white">
-                      {grupo.solicitudes.map((sol, idx) => {
-                        const { seccion } = sol.asignaturaDetalle;
-                        const horarios = seccion.horarios ?? [];
-                        const primerH  = horarios[0];
-                        const ultimoH  = horarios[horarios.length - 1];
-                        const solKey   = String(sol.idSolicitud);
-                        const abierto  = expandidos.has(solKey);
+                      {grupo.solicitudes.map(sol => {
+                        const { seccion, horarios } = sol;
+                        const rango   = parseRango(horarios.rangoHoras);
+                        const solKey  = String(sol.idSolicitud);
+                        const abierto = expandidos.has(solKey);
 
                         return (
                           <div key={sol.idSolicitud}>
                             <button
-                              className="w-full flex flex-col sm:flex-row sm:items-stretch gap-0 hover:bg-default-50/70 transition-colors text-left"
+                              className="w-full flex flex-col sm:flex-row sm:items-stretch gap-0 hover:bg-default-50/70 cursor-pointer transition-colors text-left"
                               onClick={() => toggleExpandido(solKey)}
                             >
                               {/* Barra de hora lateral */}
                               <div className={`hidden sm:flex flex-col items-center justify-center px-3 py-3 min-w-[80px] border-r ${cfg.border} ${cfg.header}`}>
-                                <span className={`text-xs font-bold ${cfg.text}`}>{fmtHora(primerH?.horaInicio ?? '')}</span>
+                                <span className={`text-xs font-bold ${cfg.text}`}>{rango.inicio}</span>
                                 <div className={`w-px flex-1 my-1 min-h-[20px] ${cfg.border} border-l-2 border-dashed`} />
-                                <span className={`text-xs font-bold ${cfg.text}`}>{fmtHora(ultimoH?.horaFin ?? '')}</span>
+                                <span className={`text-xs font-bold ${cfg.text}`}>{rango.fin}</span>
                               </div>
 
                               {/* Contenido */}
@@ -623,17 +477,17 @@ const ConglomeradoPedidosPage: React.FC = () => {
                                 {/* Bloque móvil: hora */}
                                 <div className={`sm:hidden flex items-center gap-2 text-xs ${cfg.text} font-bold`}>
                                   <Icon icon="lucide:clock" width={12} />
-                                  {fmtHora(primerH?.horaInicio ?? '')} – {fmtHora(ultimoH?.horaFin ?? '')}
+                                  {rango.inicio} – {rango.fin}
                                 </div>
 
                                 {/* Info principal */}
                                 <div className="flex-1 min-w-0">
                                   <div className="flex items-center gap-2 flex-wrap">
-                                    <span className="font-bold text-sm text-default-800">§{seccion.nombre_seccion}</span>
+                                    <span className="font-bold text-sm text-default-800">§{seccion.nombreSeccion}</span>
                                     <span className="text-xs text-default-400">·</span>
-                                    <span className="text-sm text-default-600">{seccion.nombre_docente}</span>
+                                    <span className="text-sm text-default-600">{seccion.nombreDocente}</span>
                                     <span className="text-xs text-default-400">·</span>
-                                    <span className="text-xs text-default-500">{sol.asignaturaDetalle.nombre_asignatura}</span>
+                                    <span className="text-xs text-default-500">{seccion.nombreAsignatura}</span>
                                   </div>
                                   <div className="flex items-center gap-3 mt-0.5 flex-wrap text-xs text-default-400">
                                     <span className="flex items-center gap-1">
@@ -642,15 +496,15 @@ const ConglomeradoPedidosPage: React.FC = () => {
                                     </span>
                                     <span className="flex items-center gap-1">
                                       <Icon icon="lucide:door-open" width={10} />
-                                      {primerH?.nombreSala ?? '—'}
+                                      {horarios.nombreSala}
                                     </span>
                                     <span className="flex items-center gap-1">
                                       <Icon icon="lucide:users" width={10} />
-                                      {seccion.cant_inscritos} alumnos
+                                      {seccion.cantInscritos} alumnos
                                     </span>
                                     <span className="flex items-center gap-1">
                                       <Icon icon="lucide:layers" width={10} />
-                                      {horarios.length} bloque{horarios.length > 1 ? 's' : ''}
+                                      {sol.cantProductos} producto{sol.cantProductos > 1 ? 's' : ''}
                                     </span>
                                   </div>
                                   {sol.observaciones && (
@@ -663,15 +517,15 @@ const ConglomeradoPedidosPage: React.FC = () => {
 
                                 {/* Productos pills (preview) */}
                                 <div className="flex flex-wrap gap-1.5 shrink-0 max-w-xs">
-                                  {sol.productos.slice(0, 3).map((p, i) => (
+                                  {sol.productosSolicitados.slice(0, 3).map((p, i) => (
                                     <span key={i}
                                       className="px-2 py-0.5 rounded-full bg-default-100 text-default-600 text-[11px] font-medium whitespace-nowrap">
-                                      {p.cantidad} {p.unidad} {p.nombreProducto}
+                                      {fmtCant(p.cantidad)} {p.unidadAbreviada} {p.nombreProducto}
                                     </span>
                                   ))}
-                                  {sol.productos.length > 3 && (
+                                  {sol.productosSolicitados.length > 3 && (
                                     <span className="px-2 py-0.5 rounded-full bg-primary-50 text-primary-600 text-[11px] font-medium">
-                                      +{sol.productos.length - 3} más
+                                      +{sol.productosSolicitados.length - 3} más
                                     </span>
                                   )}
                                 </div>
@@ -687,47 +541,43 @@ const ConglomeradoPedidosPage: React.FC = () => {
                               </div>
                             </button>
 
-                            {/* Detalle expandido: bloques horarios + productos completos */}
+                            {/* Detalle expandido */}
                             {abierto && (
                               <div className="mx-4 mb-3 rounded-xl border border-default-100 overflow-hidden">
-                                {/* Bloques horarios */}
+                                {/* Horario y sala */}
                                 <div className={`flex items-center gap-2 px-4 py-2 ${cfg.header} border-b ${cfg.border}`}>
                                   <Icon icon="lucide:clock" width={12} className={cfg.text} />
-                                  <span className={`text-xs font-bold ${cfg.text} uppercase tracking-wide`}>Bloques horarios</span>
+                                  <span className={`text-xs font-bold ${cfg.text} uppercase tracking-wide`}>Horario y Sala</span>
                                 </div>
                                 <div className="flex flex-wrap gap-2 px-4 py-2.5 bg-default-50">
-                                  {horarios.map((h, i) => (
-                                    <div key={i}
-                                      className="flex items-center gap-2 px-3 py-1.5 bg-white rounded-lg border border-default-200 text-xs">
-                                      <span className={`font-bold text-[10px] px-1.5 py-0.5 rounded ${cfg.badge} ${cfg.text}`}>
-                                        B{h.numeroBloque}
-                                      </span>
-                                      <span className="font-mono text-default-700">{fmtHora(h.horaInicio)}–{fmtHora(h.horaFin)}</span>
-                                      <span className="text-default-400">·</span>
-                                      <span className="text-default-500">{h.nombreSala}</span>
-                                    </div>
-                                  ))}
+                                  <div className="flex items-center gap-2 px-3 py-1.5 bg-white rounded-lg border border-default-200 text-xs">
+                                    <Icon icon="lucide:clock" width={12} className={cfg.text} />
+                                    <span className="font-mono text-default-700">{rango.inicio} – {rango.fin}</span>
+                                    <span className="text-default-400">·</span>
+                                    <Icon icon="lucide:door-open" width={12} className="text-default-400" />
+                                    <span className="text-default-500">{horarios.nombreSala}</span>
+                                  </div>
                                 </div>
 
                                 {/* Tabla de productos */}
                                 <div className={`flex items-center gap-2 px-4 py-2 border-t border-b ${cfg.border}`}>
                                   <Icon icon="lucide:package" width={12} className={cfg.text} />
                                   <span className={`text-xs font-bold ${cfg.text} uppercase tracking-wide`}>
-                                    Productos requeridos · {sol.productos.length} ítem{sol.productos.length > 1 ? 's' : ''}
+                                    Productos requeridos · {sol.productosSolicitados.length} ítem{sol.productosSolicitados.length > 1 ? 's' : ''}
                                   </span>
                                 </div>
                                 <div>
-                                  <div className="grid grid-cols-3 px-4 py-1.5 bg-default-50 text-[10px] font-bold text-default-500 uppercase tracking-wider">
+                                  <div className="grid grid-cols-[1fr_0.4fr_0.25fr] px-4 py-1.5 bg-default-50 text-[10px] font-bold text-default-500 uppercase tracking-wider">
                                     <span>Producto</span>
-                                    <span className="text-right">Cantidad</span>
+                                    <span className="text-center">Cantidad</span>
                                     <span className="text-center">Unidad</span>
                                   </div>
-                                  {sol.productos.map((p, i) => (
+                                  {sol.productosSolicitados.map((p, i) => (
                                     <div key={i}
-                                      className="grid grid-cols-3 px-4 py-2 text-sm border-t border-default-50 hover:bg-default-50/60">
+                                      className="grid grid-cols-[1fr_0.4fr_0.25fr] px-4 py-2 text-sm border-t border-default-50 hover:bg-default-50/60">
                                       <span className="text-default-700 font-medium">{p.nombreProducto}</span>
-                                      <span className="text-right font-mono font-bold text-primary">{p.cantidad}</span>
-                                      <span className="text-center text-default-500">{p.unidad}</span>
+                                      <span className="text-center font-mono font-bold text-primary">{fmtCant(p.cantidad)}</span>
+                                      <span className="text-center text-default-500">{p.unidadAbreviada}</span>
                                     </div>
                                   ))}
                                 </div>
@@ -742,7 +592,7 @@ const ConglomeradoPedidosPage: React.FC = () => {
               })}
             </div>
 
-          ) : (
+          ) : vistaActiva === 'totales' ? (
 
             /* ════════════════════════════════════════
                VISTA TOTALES DEL PEDIDO
@@ -751,17 +601,17 @@ const ConglomeradoPedidosPage: React.FC = () => {
               {productosFiltrados.length === 0 ? (
                 <div className="py-10 flex flex-col items-center gap-3 text-default-400">
                   <Icon icon="lucide:search-x" width={36} className="opacity-40" />
-                  <p className="text-sm">Sin resultados para "{busqueda}"</p>
+                  <p className="text-sm">{busqueda ? `Sin resultados para "${busqueda}"` : 'Sin productos en el período.'}</p>
                 </div>
               ) : productosFiltrados.map(prod => {
-                const key = `${prod.nombreProducto}||${prod.unidad}`;
+                const key = `${prod.nombreProducto}||${prod.abreviatura}`;
                 const abierto = expandidos.has(key);
                 return (
                   <div key={key} className="border border-default-200 rounded-xl overflow-hidden">
 
                     {/* Cabecera producto */}
                     <button
-                      className="w-full flex items-center gap-3 px-4 py-3 bg-default-50 hover:bg-default-100 transition-colors text-left"
+                      className="w-full flex items-center gap-3 px-4 py-3 bg-default-50 hover:bg-default-100 cursor-pointer transition-colors text-left"
                       onClick={() => toggleExpandido(key)}
                     >
                       <Icon icon="lucide:package" width={15} className="text-secondary shrink-0" />
@@ -769,11 +619,11 @@ const ConglomeradoPedidosPage: React.FC = () => {
 
                       <div className="flex items-center gap-3 mr-2">
                         <div className="text-right">
-                          <p className="text-lg font-bold text-secondary leading-none">{prod.cantidadTotal}</p>
-                          <p className="text-[10px] text-default-400">{prod.unidad} total</p>
+                          <p className="text-lg font-bold text-secondary leading-none">{fmtCant(prod.cantidadTotal)}</p>
+                          <p className="text-[10px] text-default-400">{prod.abreviatura} total</p>
                         </div>
                         <Chip size="sm" color="default" variant="flat">
-                          {prod.distribuciones.length} sección{prod.distribuciones.length !== 1 ? 'es' : ''}
+                          {prod.totalSecciones} sección{prod.totalSecciones !== 1 ? 'es' : ''}
                         </Chip>
                       </div>
 
@@ -783,12 +633,13 @@ const ConglomeradoPedidosPage: React.FC = () => {
                     {/* Distribuciones */}
                     {abierto && (
                       <div className="divide-y divide-default-100">
-                        {prod.distribuciones.map((dist, distIdx) => {
-                          const dia = getDiaSemana(dist.fecha);
+                        {prod.detalles.map((det, detIdx) => {
+                          const dia = getDiaSemana(det.fechaSolicitada);
                           const cfg = DIA_CONFIG[dia] ?? DIA_CONFIG[1];
-                          const hoy = isHoy(dist.fecha);
+                          const hoy = isHoy(det.fechaSolicitada);
+                          const rango = parseRango(det.rangoHoras);
                           return (
-                            <div key={`${dist.idSolicitud}-${distIdx}`}
+                            <div key={`${det.idSolicitud}-${detIdx}`}
                               className="flex flex-col sm:flex-row sm:items-center gap-3 px-4 py-2.5 bg-white hover:bg-default-50/50">
 
                               {/* Badge fecha */}
@@ -797,7 +648,7 @@ const ConglomeradoPedidosPage: React.FC = () => {
                                   {DIA_CONFIG[dia]?.nombre.slice(0, 3).toUpperCase() ?? ''}
                                 </span>
                                 <span className={`text-sm font-black leading-tight ${hoy ? 'text-warning-700' : cfg.text}`}>
-                                  {fmtFechaCorta(dist.fecha)}
+                                  {fmtFechaCorta(det.fechaSolicitada)}
                                 </span>
                                 {hoy && <span className="text-[9px] font-bold text-warning-600">HOY</span>}
                               </div>
@@ -805,20 +656,25 @@ const ConglomeradoPedidosPage: React.FC = () => {
                               {/* Info */}
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2 flex-wrap">
-                                  <span className="font-bold text-sm text-default-800">§{dist.nombreSeccion}</span>
+                                  <span className="font-bold text-sm text-default-800">§{det.nombreSeccion}</span>
                                   <span className="text-xs text-default-400">·</span>
-                                  <span className="text-sm text-default-600">{dist.nombreDocente}</span>
+                                  <span className="text-sm text-default-600">{det.nombreDocente}</span>
                                 </div>
                                 <div className="flex items-center gap-3 mt-0.5 text-xs text-default-400 flex-wrap">
-                                  <span className="flex items-center gap-1"><Icon icon="lucide:clock" width={11} />{dist.horaInicio}–{dist.horaFin}</span>
-                                  <span className="flex items-center gap-1"><Icon icon="lucide:door-open" width={11} />{dist.nombreSala}</span>
+                                  <span className="flex items-center gap-1"><Icon icon="lucide:clock" width={11} />{rango.inicio}–{rango.fin}</span>
+                                  <span className="flex items-center gap-1"><Icon icon="lucide:door-open" width={11} />{det.nombreSala}</span>
+                                  {det.observacion && (
+                                    <span className="flex items-center gap-1 italic">
+                                      <Icon icon="lucide:message-square" width={11} />{det.observacion}
+                                    </span>
+                                  )}
                                 </div>
                               </div>
 
                               {/* Cantidad sección */}
                               <div className="shrink-0 text-right">
                                 <p className="text-base font-bold text-default-700">
-                                  {dist.cantidad} <span className="text-xs font-normal text-default-400">{prod.unidad}</span>
+                                  {fmtCant(det.cantidad)} <span className="text-xs font-normal text-default-400">{prod.abreviatura}</span>
                                 </p>
                                 <p className="text-[10px] text-default-400">esta sección</p>
                               </div>
@@ -832,8 +688,145 @@ const ConglomeradoPedidosPage: React.FC = () => {
                             <Icon icon="lucide:truck" width={13} className="text-secondary-500" />
                             <span className="text-xs text-secondary-700 font-semibold">Total a despachar desde Bodega de Tránsito:</span>
                           </div>
-                          <span className="text-sm font-bold text-secondary">{prod.cantidadTotal} {prod.unidad}</span>
+                          <span className="text-sm font-bold text-secondary">{fmtCant(prod.cantidadTotal)} {prod.abreviatura}</span>
                         </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+          ) : (
+
+            /* ════════════════════════════════════════
+               VISTA APROBACIÓN DE PEDIDOS
+            ════════════════════════════════════════ */
+            <div className="space-y-4">
+              {(consolidateData?.pedidosAprobacion ?? []).length === 0 ? (
+                <div className="py-10 flex flex-col items-center gap-3 text-default-400">
+                  <Icon icon="lucide:shield-off" width={36} className="opacity-40" />
+                  <p className="text-sm">Sin pedidos para aprobar esta semana.</p>
+                </div>
+              ) : (consolidateData?.pedidosAprobacion ?? []).map(ped => {
+                const isPendiente = ped.estadoPedido === 'PENDIENTE';
+                const isAprobado  = ped.estadoPedido === 'APROVADO';
+                const hayFaltante = ped.productos.some(p => p.diferenciaTransito < 0);
+
+                return (
+                  <div key={ped.idPedido} className="border border-default-200 rounded-2xl overflow-hidden">
+
+                    {/* Cabecera pedido */}
+                    <div className={`flex flex-col sm:flex-row sm:items-center gap-3 px-5 py-3 ${
+                      isAprobado ? 'bg-success-50 border-b border-success-200' : 'bg-default-50 border-b border-default-200'
+                    }`}>
+                      <div className="flex items-center gap-3 flex-1">
+                        <Icon icon="lucide:file-text" width={18} className={isAprobado ? 'text-success-600' : 'text-default-500'} />
+                        <div>
+                          <p className="font-bold text-sm text-default-800">Pedido #{ped.idPedido}</p>
+                          <p className="text-xs text-default-400">
+                            {ped.productos.length} producto{ped.productos.length !== 1 ? 's' : ''}
+                            {hayFaltante && <span className="text-danger ml-2 font-medium">· Faltantes detectados</span>}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <Chip
+                          size="sm"
+                          color={isAprobado ? 'success' : isPendiente ? 'warning' : 'danger'}
+                          variant="flat"
+                          startContent={<Icon icon={isAprobado ? 'lucide:check-circle-2' : isPendiente ? 'lucide:clock' : 'lucide:x-circle'} width={10} />}
+                        >
+                          {ped.estadoPedido}
+                        </Chip>
+
+                        {isPendiente && (
+                          <Button
+                            size="sm"
+                            color="success"
+                            variant="flat"
+                            onPress={() => handleAprobarPedido(ped.idPedido)}
+                            startContent={<Icon icon="lucide:check" width={12} />}
+                          >
+                            Aprobar pedido
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Tabla de productos con stock */}
+                    <div>
+                      {/* Encabezado tabla */}
+                      <div className="grid grid-cols-12 px-4 py-2 bg-default-50 border-b border-default-100 text-[10px] font-bold text-default-500 uppercase tracking-wider">
+                        <span className="col-span-4">Producto</span>
+                        <span className="col-span-2 text-center">Pedido</span>
+                        <span className="col-span-2 text-center">Stock Tránsito</span>
+                        <span className="col-span-2 text-center">Diferencia</span>
+                        <span className="col-span-2 text-center">Inv. Principal</span>
+                      </div>
+
+                      {/* Filas */}
+                      {ped.productos.map((p, i) => {
+                        const ok = p.diferenciaTransito >= 0;
+                        return (
+                          <div key={i}
+                            className={`grid grid-cols-12 px-4 py-2.5 text-sm border-b border-default-50 last:border-0 hover:bg-default-50/50 ${
+                              ok ? '' : 'bg-danger-50/30'
+                            }`}
+                          >
+                            {/* Nombre */}
+                            <div className="col-span-4 flex items-center gap-2 min-w-0">
+                              <Icon
+                                icon={ok ? 'lucide:check-circle' : 'lucide:alert-circle'}
+                                width={14}
+                                className={ok ? 'text-success-500 shrink-0' : 'text-danger-500 shrink-0'}
+                              />
+                              <div className="min-w-0">
+                                <Tooltip content={p.nombreProducto} placement="top-start" delay={500}>
+                                  <p className="font-medium text-default-800 truncate cursor-default block pr-2">{p.nombreProducto}</p>
+                                </Tooltip>
+                                {p.categoria && <p className="text-[10px] text-default-400">{p.categoria}</p>}
+                              </div>
+                            </div>
+
+                            {/* Pedido */}
+                            <div className="col-span-2 text-center self-center">
+                              <span className="font-mono font-semibold text-default-700">{fmtCant(p.cantidadPedido)}</span>
+                              <span className="text-xs text-default-400 ml-1">{p.abreviatura}</span>
+                            </div>
+
+                            {/* Stock tránsito */}
+                            <div className="col-span-2 text-center self-center">
+                              <span className="font-mono text-default-600">{fmtCant(p.stockBodegaTransito)}</span>
+                              <span className="text-xs text-default-400 ml-1">{p.abreviatura}</span>
+                            </div>
+
+                            {/* Diferencia */}
+                            <div className="col-span-2 text-center self-center">
+                              <span className={`font-mono font-bold ${ok ? 'text-success-600' : 'text-danger-600'}`}>
+                                {ok ? '+' : ''}{fmtCant(p.diferenciaTransito)}
+                              </span>
+                              <span className="text-xs text-default-400 ml-1">{p.abreviatura}</span>
+                            </div>
+
+                            {/* Inv. principal */}
+                            <div className="col-span-2 text-center self-center">
+                              <span className="font-mono text-default-600">{fmtCant(p.stockInventarioPrincipal)}</span>
+                              <span className="text-xs text-default-400 ml-1">{p.abreviatura}</span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Footer resumen */}
+                    {hayFaltante && (
+                      <div className="flex items-center gap-2 px-4 py-2.5 bg-danger-50 border-t border-danger-200">
+                        <Icon icon="lucide:alert-triangle" width={13} className="text-danger-500" />
+                        <span className="text-xs text-danger-700 font-medium">
+                          Hay productos con stock insuficiente en Bodega de Tránsito. Revise el Inventario Principal antes de aprobar.
+                        </span>
                       </div>
                     )}
                   </div>
