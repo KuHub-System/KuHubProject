@@ -303,6 +303,120 @@ export const consolidarPedidoService = async (
   return response.data;
 };
 
+// ── POST /v1/pedido/consolidate ───────────────────────────────────────────────
+
+export interface IDetallePorSolicitudCompleto {
+  idSolicitud: number;
+  fechaSolicitada: string;      // "YYYY-MM-DD"
+  nombreSeccion: string;
+  nombreAsignatura: string;
+  nombreDocente: string;
+  cantidad: number;
+  unidadAbreviada: string;
+  observacion?: string | null;
+  alumnos: number;
+  nombreReceta: string;
+  nombreSala: string;
+  rangoHoras: string;           // "08:01-09:20"
+}
+
+export interface IProductoCompleto {
+  idProducto: number;
+  nombreProducto: string;
+  cantidadTotalPedido: number;
+  unidad: string;
+  abreviatura: string;
+  totalSecciones: number;
+  detallesPorSolicitud: IDetallePorSolicitudCompleto[];
+}
+
+export interface IProductoSolicitadoVinculado {
+  nombreProducto: string;
+  cantidad: number;
+  unidadAbreviada: string;
+  observacion?: string | null;
+}
+
+export interface ISeccionVinculada {
+  idSeccion: number;
+  nombreSeccion: string;
+  nombreAsignatura: string;
+  nombreDocente: string;
+  cantInscritos: number;
+}
+
+export interface IHorariosVinculados {
+  nombreSala: string;
+  rangoHoras: string;           // "08:01 - 09:20"
+}
+
+export interface ISolicitudVinculada {
+  idSolicitud: number;
+  fechaSolicitada: string;
+  estadoSolicitud: string;
+  nombreReceta: string;
+  observaciones?: string | null;
+  seccion: ISeccionVinculada;
+  cantProductos: number;
+  productosSolicitados: IProductoSolicitadoVinculado[];
+  horarios: IHorariosVinculados;
+}
+
+export interface IPedidoCompleto {
+  idPedido: number;
+  fechaInicioPedido: string;
+  fechaFinPedido: string;
+  fechaRegistro?: string;
+  estadoPedido: string;
+  totalSolicitudes: number;
+  totalProductos: number;
+  productos: IProductoCompleto[];
+  solicitudesVinculadas: ISolicitudVinculada[];
+}
+
+export interface IProductoResumen {
+  nombreProducto: string;
+  cantidadTotal: number;
+  abreviatura: string;
+  totalSecciones: number;
+  detalles: IDetalleConsolidadoItem[];
+}
+
+export interface IPedidoResumen {
+  idPedido: number;
+  totalProductosDistintos: number;
+  productosConsolidados: IProductoResumen[];
+}
+
+export interface IProductoAprobacion {
+  nombreProducto: string;
+  cantidadPedido: number;
+  abreviatura: string;
+  categoria?: string;
+  stockBodegaTransito: number;
+  stockInventarioPrincipal: number;
+  diferenciaTransito: number;
+}
+
+export interface IPedidoAprobacion {
+  idPedido: number;
+  estadoPedido: string;         // "PENDIENTE" | "APROVADO" | "RECHAZADO"
+  productos: IProductoAprobacion[];
+}
+
+export interface IConsolidatePedidoResponse {
+  pedidosCompletos: IPedidoCompleto[];
+  pedidosResumen: IPedidoResumen[];
+  pedidosAprobacion: IPedidoAprobacion[];
+}
+
+export const consolidatePedidoQueryService = async (
+  dto: IDateRangeDTO
+): Promise<IConsolidatePedidoResponse> => {
+  const response = await api.post<IConsolidatePedidoResponse>('/pedido/consolidate', dto);
+  return response.data;
+};
+
 const API_BASE_URL = 'http://localhost:8083/api/v1';
 const ENDPOINTS = {
   SOLICITUDES_DETALLES: `${API_BASE_URL}/solicituddocente/detalles`

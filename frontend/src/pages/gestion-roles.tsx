@@ -90,7 +90,12 @@ const cargarRolesDelAlmacenamiento = (): IRole[] => {
  * Página de gestión de roles mejorada.
  * Ahora notifica cambios para sincronización en tiempo real
  */
+const MODAL_KEY_ROLES = 'roles_maintenance_dismissed';
+
 const GestionRolesPage: React.FC = () => {
+  const [avisoAbierto, setAvisoAbierto] = React.useState(() => !sessionStorage.getItem(MODAL_KEY_ROLES));
+  const cerrarAviso = () => { sessionStorage.setItem(MODAL_KEY_ROLES, '1'); setAvisoAbierto(false); };
+
   // ESTADO DEL COMPONENTE
   const [roles, setRoles] = React.useState<IRole[]>(() => cargarRolesDelAlmacenamiento());
   const [rolSeleccionado, setRolSeleccionado] = React.useState<IRole | null>(null);
@@ -162,6 +167,37 @@ const GestionRolesPage: React.FC = () => {
   };
 
   return (
+    <>
+      <Modal isOpen={avisoAbierto} onClose={cerrarAviso} size="md" isDismissable={false} hideCloseButton>
+        <ModalContent>
+          <ModalHeader className="flex items-center gap-2 pb-1">
+            <Icon icon="lucide:construction" width={20} className="text-warning-500 shrink-0" />
+            <span>Vista en desarrollo</span>
+          </ModalHeader>
+          <ModalBody className="py-3">
+            <div className="flex flex-col gap-3">
+              <p className="text-sm text-default-600">
+                La página de <strong>Gestión de Roles</strong> es una versión preliminar.
+                Actualmente se encuentra en mantenimiento activo y está sujeta a cambios y mejoras continuas.
+              </p>
+              <p className="text-sm text-default-500">
+                Es posible que algunos datos o funcionalidades no reflejen el comportamiento definitivo del sistema.
+                Agradecemos tu comprensión mientras seguimos mejorando la plataforma.
+              </p>
+              <div className="flex items-center gap-2 px-3 py-2 bg-warning-50 border border-warning-200 rounded-lg text-xs text-warning-800">
+                <Icon icon="lucide:info" width={13} className="shrink-0" />
+                Este aviso se muestra una vez por sesión.
+              </div>
+            </div>
+          </ModalBody>
+          <ModalFooter>
+            <Button color="primary" onPress={cerrarAviso} startContent={<Icon icon="lucide:thumbs-up" width={14} />}>
+              ¡Gracias, entendido!
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+
     <div className="container mx-auto px-4">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
@@ -320,6 +356,7 @@ const GestionRolesPage: React.FC = () => {
         </ModalContent>
       </Modal>
     </div>
+    </>
   );
 };
 

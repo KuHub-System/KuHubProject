@@ -22,7 +22,7 @@ public class PedidoController {
     @Autowired
     private PedidoService pedidoService;
 
-    @PostMapping()
+    @PostMapping("/consolidate")
     public ResponseEntity<PedidoDashboardRecords.PedidoDashboardResponse> consultaGOD(
             @Validated @RequestBody DateRangeDTO request){
         return ResponseEntity

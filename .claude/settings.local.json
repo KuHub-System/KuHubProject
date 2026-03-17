@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Bash(xargs grep -l \"enum TipoMovimiento\")"
+      "Bash(xargs grep -l \"enum TipoMovimiento\")",
+      "Bash(python -c \":*)"
     ]
   }
 }
