@@ -18,7 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 
 @Service
-public class CategoriaServiceImp implements CategoriaService{
+public class CategoriaServiceImpl implements CategoriaService{
 
     @Autowired
     private CategoriaRepository categoriaRepository;

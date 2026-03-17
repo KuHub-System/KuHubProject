@@ -403,6 +403,44 @@ public class SpringSecurityConfig {
                         .hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR")
 
                         // ========================================
+                        // ENDPOINTS DE GESTIÓN DE PEDIDOS (NUEVO)
+                        // ========================================
+
+                        // 1. LECTURA (GET): Ver historial de pedidos y sus detalles
+                        .requestMatchers(HttpMethod.GET,
+                        "/api/v*/pedido/**",
+                        "/api/v*/detalle-pedido/**",
+                        "/api/v*/pedido-solicitud/**"
+                        ).hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR", "GESTOR_PEDIDOS")
+
+                        // 2. CREACIÓN (POST): Consolidar nuevos pedidos masivos
+                        .requestMatchers(HttpMethod.POST,
+                        "/api/v*/pedido/**",
+                        "/api/v*/detalle-pedido/**",
+                        "/api/v*/pedido-solicitud/**"
+                        ).hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR", "GESTOR_PEDIDOS")
+
+                        // 3. EDICIÓN (PUT / PATCH): Modificar estados o corregir cantidades
+                        .requestMatchers(HttpMethod.PUT,
+                        "/api/v*/pedido/**",
+                        "/api/v*/detalle-pedido/**",
+                        "/api/v*/pedido-solicitud/**"
+                        ).hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR", "GESTOR_PEDIDOS")
+
+                        .requestMatchers(HttpMethod.PATCH,
+                        "/api/v*/pedido/**",
+                        "/api/v*/detalle-pedido/**",
+                        "/api/v*/pedido-solicitud/**"
+                        ).hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR", "GESTOR_PEDIDOS")
+
+                        // 4. ELIMINACIÓN (DELETE): Solo jerarquía administrativa alta
+                        .requestMatchers(HttpMethod.DELETE,
+                        "/api/v*/pedido/**",
+                        "/api/v*/detalle-pedido/**",
+                        "/api/v*/pedido-solicitud/**"
+                        ).hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR")
+
+                        // ========================================
                         // RESTO DE ENDPOINTS
                         // ========================================
                         // Cualquier otra petición requiere autenticación (sin importar el rol)

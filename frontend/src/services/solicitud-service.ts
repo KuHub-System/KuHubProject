@@ -153,7 +153,7 @@ export interface ISolicitudPorSemanaResponse {
   idReceta: number;
   nombreReceta: string;
   fechaSolicitada: string;    // "YYYY-MM-DD"
-  estadoSolicitud: string;    // "PENDIENTE" | "ACEPTADA" | "RECHAZADA" | "PROCESADA"
+  estadoSolicitud: string;    // "PENDIENTE" | "ACEPTADA" | "RECHAZADA" | "PROCESADO"
   motivoRechazo?: string;
   observaciones?: string;
   productos: IProductoSolicitudResponse[];
@@ -269,6 +269,32 @@ export const obtenerOrdenConsolidacionService = async (
     '/solicitud/order-for-consolidation',
     dto
   );
+  return response.data;
+};
+
+// ── Consolidar pedido semanal ─────────────────────────────────────────────────
+
+export interface ISolicitudItemRequest {
+  idSolicitud: number;
+  fechaSolicitada: string; // "YYYY-MM-DD"
+}
+
+export interface IDetalleItemRequest {
+  idProducto: number;
+  cantidadTotal: number;
+}
+
+export interface ICreateOrderRequest {
+  fechaInicio: string; // "YYYY-MM-DD"
+  fechaFin: string;    // "YYYY-MM-DD"
+  solicitudes: ISolicitudItemRequest[];
+  detalles: IDetalleItemRequest[];
+}
+
+export const consolidarPedidoService = async (
+  payload: ICreateOrderRequest
+): Promise<boolean> => {
+  const response = await api.post<boolean>('/pedido/consolidate-order', payload);
   return response.data;
 };
 
