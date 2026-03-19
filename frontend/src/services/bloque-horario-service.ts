@@ -16,6 +16,11 @@ export interface IBloqueDisponible {
  * Filtrar bloques disponibles por sala y día de la semana
  * POST /v1/bloque-horario/filter-by-day-week-and-id-room
  */
+// Normaliza el día eliminando tildes para que coincida con el enum del backend
+// "Miércoles" → "Miercoles", "Sábado" → "Sabado"
+const normalizarDia = (dia: string): string =>
+    dia.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
 export const filtrarBloquesPorSalaYDiaService = async (
     idSala: number,
     diaSemana: string
@@ -23,7 +28,7 @@ export const filtrarBloquesPorSalaYDiaService = async (
     try {
         const response = await api.post<IBloqueDisponible[]>('/bloque-horario/filter-by-day-week-and-id-room', {
             idSala,
-            diaSemana
+            diaSemana: normalizarDia(diaSemana)
         });
         return response.data;
     } catch (error: any) {
