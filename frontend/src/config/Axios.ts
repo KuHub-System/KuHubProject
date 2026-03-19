@@ -8,6 +8,7 @@ import { obtenerSesionActualService } from '../services/auth-service';
 // ========================================================================
 const isLocal = typeof window !== 'undefined' && window.location.hostname === 'localhost';
 const API_URL = import.meta.env.VITE_API_URL || (isLocal ? 'http://localhost:8080/api/v1' : '/api/v1');
+console.log(`[AXIOS] BaseURL → ${API_URL}`);
 
 const api: AxiosInstance = axios.create({
     baseURL: API_URL, // <--- Aplicamos la variable aquí
