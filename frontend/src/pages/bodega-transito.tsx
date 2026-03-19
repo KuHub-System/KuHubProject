@@ -1,4 +1,5 @@
 import React from 'react';
+import { fmtCL } from '../utils/format-numbers';
 import {
   Card, CardBody, CardHeader, Button, Chip,
   Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, useDisclosure,
@@ -725,13 +726,13 @@ const BodegaTransitoPage: React.FC = () => {
                       <TableCell className="text-center">
                         <Tooltip content="Control Bodega" color="primary" delay={100} closeDelay={0}>
                           <span className={`font-bold block text-center ${item.stock <= 0 ? 'text-danger' : (item.stockLimit && item.stock > item.stockLimit) ? 'text-warning' : 'text-default-700 dark:text-default-300'}`}>
-                            {item.stock}
+                            {fmtCL(item.stock)}
                           </span>
                         </Tooltip>
                       </TableCell>
                       <TableCell className="text-center">
                         <Tooltip content="Control Bodega" color="primary" delay={100} closeDelay={0}>
-                          <span className="block text-center">{item.stockLimit || '-'}</span>
+                          <span className="block text-center">{item.stockLimit ? fmtCL(item.stockLimit) : '-'}</span>
                         </Tooltip>
                       </TableCell>
                       <TableCell className="text-center">
@@ -925,7 +926,7 @@ const BodegaTransitoPage: React.FC = () => {
                       <thead><tr className="bg-default-50"><th>Producto</th><th className="text-right">Cant.</th><th>Unidad</th><th>Origen</th></tr></thead>
                       <tbody>
                         {selectedSolicitud.items.map((it, i) => (
-                          <tr key={i} className="border-b"><td className="py-2">{it.productoNombre}</td><td className="text-right">{it.cantidad}</td><td>{it.unidadMedida}</td><td>{it.esAdicional ? 'Extra' : 'Receta'}</td></tr>
+                          <tr key={i} className="border-b"><td className="py-2">{it.productoNombre}</td><td className="text-right">{fmtCL(it.cantidad)}</td><td>{it.unidadMedida}</td><td>{it.esAdicional ? 'Extra' : 'Receta'}</td></tr>
                         ))}
                       </tbody>
                     </table>

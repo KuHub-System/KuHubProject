@@ -47,11 +47,11 @@ const fmtFechaCorta = (iso: string) => {
 
 const isHoy = (iso: string) => iso === new Date().toISOString().slice(0, 10);
 
-/** Formatea una cantidad numérica: elimina trailing zeros pero nunca oculta valores distintos de 0.
- *  0.003 → "0.003"  |  0.030 → "0.03"  |  7.142 → "7.142"  |  880.6 → "880.6"  |  0 → "0" */
+/** Formatea una cantidad numérica con locale chileno (es-CL): separador decimal coma, miles punto.
+ *  1234.5 → "1.234,5"  |  0.003 → "0,003"  |  1234 → "1.234"  |  0 → "0" */
 const fmtCantidad = (n: number): string => {
-  if (n === 0) return '0';
-  return parseFloat(n.toPrecision(6)).toString();
+  if (n === null || n === undefined || isNaN(n)) return '0';
+  return new Intl.NumberFormat('es-CL', { minimumFractionDigits: 0, maximumFractionDigits: 3 }).format(n);
 };
 
 // ─────────────────────────────────────────────────────────────────────────────

@@ -74,10 +74,10 @@ const parseRango = (rango: string) => {
   return { inicio: rango, fin: '' };
 };
 
-/** Formats a numeric quantity trimming trailing zeros */
-const fmtCant = (n: number) => {
-  if (n === Math.floor(n)) return String(Math.floor(n));
-  return n.toFixed(3).replace(/\.?0+$/, '');
+/** Formatea una cantidad numérica con locale chileno (es-CL): separador decimal coma, miles punto. */
+const fmtCant = (n: number): string => {
+  if (n === null || n === undefined || isNaN(n)) return '0';
+  return new Intl.NumberFormat('es-CL', { minimumFractionDigits: 0, maximumFractionDigits: 3 }).format(n);
 };
 
 // ─────────────────────────────────────────────────────────────────────────────

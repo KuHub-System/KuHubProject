@@ -5,6 +5,7 @@
  */
 
 import React from 'react';
+import { fmtCL } from '../utils/format-numbers';
 import {
   Card, CardBody, CardHeader,
   Button, Input, Chip,
@@ -364,7 +365,7 @@ const GestionSolicitudesPage: React.FC = () => {
 
   const handleImprimir = (sol: ISolicitudGestion) => {
     const filas = sol.detalles.map(d =>
-      `<tr><td>${d.nombreProducto}</td><td style="font-style:italic;color:#666">${d.observacion ?? '—'}</td><td style="text-align:center">${d.cantidad}</td><td style="text-align:center">${d.unidad}</td></tr>`
+      `<tr><td>${d.nombreProducto}</td><td style="font-style:italic;color:#666">${d.observacion ?? '—'}</td><td style="text-align:center">${fmtCL(d.cantidad)}</td><td style="text-align:center">${d.unidad}</td></tr>`
     ).join('');
     const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Vista previa para Consolidado — Detalle Solicitud</title>
     <style>
@@ -860,7 +861,7 @@ const GestionSolicitudesPage: React.FC = () => {
                                 </div>
                              </Tooltip>
                           </TableCell>
-                          <TableCell className="text-center font-mono">{d.cantidad}</TableCell>
+                          <TableCell className="text-center font-mono">{fmtCL(d.cantidad)}</TableCell>
                           <TableCell className="text-center text-default-500">{d.unidad}</TableCell>
                         </TableRow>
                       ))}
