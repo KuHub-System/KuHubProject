@@ -1592,22 +1592,23 @@ export const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto
 
   const motivoDescripcion = React.useMemo(() => {
     switch (tipoMovimiento) {
-      case 'ENTRADA_INVENTARIO': return "Registrando ingreso de mercadería al sistema del Inventario";
-      case 'ENTRADA_BODEGA': return "Registrando ingreso de mercadería a la Bodega de Tránsito";
+      case 'ENTRADA_INVENTARIO': return "Entrada de insumos al inventario";
+      case 'ENTRADA_BODEGA': return "Entrada de insumos a la bodega de tránsito";
       case 'SALIDA_INVENTARIO':
       case 'SALIDA_BODEGA':
         return origenContext === 'bodega'
-          ? "Registrando la salida de insumos para el desarrollo de clases, talleres o procesos académicos."
-          : "Registrando retiro o consumo de productos al sistema del Inventario";
+          ? "Salida de insumos de la bodega de tránsito"
+          : "Salida de insumos del inventario";
       case 'TRASLADO':
-      case 'DEVOLUCION':
         return origenContext === 'bodega'
-          ? "Registrando el reingreso de productos no utilizados al inventario principal."
-          : "Iniciando movimiento a Bodega de Transito";
+          ? "Mover de regreso al inventario principal"
+          : "Mover hacia la bodega de tránsito";
+      case 'DEVOLUCION':
+        return "Registrar devolución de insumos al inventario";
       case 'AJUSTE_INVENTARIO':
-      case 'AJUSTE_BODEGA': return "Corrigiendo saldo para sincronizar con stock físico";
+      case 'AJUSTE_BODEGA': return "Ajustar stock actual";
       case 'MERMA_INVENTARIO':
-      case 'MERMA_BODEGA': return "Reportar Pérdida o Producto Dañado";
+      case 'MERMA_BODEGA': return "Salida de insumos por daño/pérdida";
       default: return "";
     }
   }, [tipoMovimiento, origenContext]);
@@ -1784,6 +1785,45 @@ export const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto
       )}
 
       <div className={`grid grid-cols-1 ${mode === 'editar' ? 'md:grid-cols-3' : 'md:grid-cols-2'} gap-4`}>
+
+        {mode === 'editar' && (() => {
+          const opcionesMotivo = origenContext === 'bodega'
+            ? [
+                { key: 'ENTRADA_BODEGA', label: 'Entrada' },
+                { key: 'DEVOLUCION', label: 'Devolución' },
+                { key: 'AJUSTE_BODEGA', label: 'Ajuste' },
+                { key: 'SALIDA_BODEGA', label: 'Salida' },
+                { key: 'MERMA_BODEGA', label: 'Merma' },
+              ]
+            : [
+                { key: 'ENTRADA_INVENTARIO', label: 'Entrada' },
+                { key: 'TRASLADO', label: 'Traslado' },
+                { key: 'AJUSTE_INVENTARIO', label: 'Ajuste' },
+                { key: 'SALIDA_INVENTARIO', label: 'Salida' },
+                { key: 'MERMA_INVENTARIO', label: 'Merma' },
+              ];
+
+          return (
+            <Select
+              label="Motivo"
+              placeholder="Seleccione..."
+              selectedKeys={tipoMovimiento ? [tipoMovimiento] : []}
+              onChange={(e: any) => setTipoMovimiento(e.target.value)}
+              isRequired
+              variant="bordered"
+              classNames={{ trigger: "bg-white dark:bg-default-100/50" }}
+            >
+              {opcionesMotivo.map(opcion => (
+                <SelectItem key={opcion.key} textValue={opcion.label}>
+                  <Tooltip content={opcion.label} placement="right" closeDelay={0} isDisabled={opcion.key !== 'SALIDA_INVENTARIO' && opcion.key !== 'TRASLADO' && opcion.key !== 'SALIDA_BODEGA' && opcion.key !== 'DEVOLUCION'}>
+                    <span className="w-full inline-block">{opcion.label}</span>
+                  </Tooltip>
+                </SelectItem>
+              ))}
+            </Select>
+          );
+        })()}
+
         {mode === 'editar' ? (
           <Input
             type="number"
@@ -1804,7 +1844,7 @@ export const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto
             description={
               deltaInput !== '' && !isNaN(deltaVal) && !deltaError
                 ? `Stock Final: ${esUnidadFraccionaria ? parseFloat(stockFinal.toFixed(3)) : Math.round(stockFinal)}`
-                : tipoMovimiento ? 'Seleccione la cantidad a mover' : undefined
+                : undefined
             }
             variant="bordered"
             classNames={{ inputWrapper: 'bg-white dark:bg-default-100/50' }}
@@ -1856,43 +1896,6 @@ export const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto
           classNames={{ inputWrapper: "bg-white dark:bg-default-100/50" }}
         />
 
-        {mode === 'editar' && (() => {
-          const opcionesMotivo = origenContext === 'bodega'
-            ? [
-                { key: 'ENTRADA_BODEGA', label: 'Entrada' },
-                { key: 'DEVOLUCION', label: 'Devolución' },
-                { key: 'AJUSTE_BODEGA', label: 'Ajuste' },
-                { key: 'SALIDA_BODEGA', label: 'Salida' },
-                { key: 'MERMA_BODEGA', label: 'Merma' },
-              ]
-            : [
-                { key: 'ENTRADA_INVENTARIO', label: 'Entrada' },
-                { key: 'TRASLADO', label: 'Traslado' },
-                { key: 'AJUSTE_INVENTARIO', label: 'Ajuste' },
-                { key: 'SALIDA_INVENTARIO', label: 'Salida' },
-                { key: 'MERMA_INVENTARIO', label: 'Merma' },
-              ];
-
-          return (
-            <Select
-              label="Motivo"
-              placeholder="Seleccione..."
-              selectedKeys={tipoMovimiento ? [tipoMovimiento] : []}
-              onChange={(e: any) => setTipoMovimiento(e.target.value)}
-              isRequired
-              variant="bordered"
-              classNames={{ trigger: "bg-white dark:bg-default-100/50" }}
-            >
-              {opcionesMotivo.map(opcion => (
-                <SelectItem key={opcion.key} textValue={opcion.label}>
-                  <Tooltip content={opcion.label} placement="right" closeDelay={0} isDisabled={opcion.key !== 'SALIDA_INVENTARIO' && opcion.key !== 'TRASLADO' && opcion.key !== 'SALIDA_BODEGA' && opcion.key !== 'DEVOLUCION'}>
-                    <span className="w-full inline-block">{opcion.label}</span>
-                  </Tooltip>
-                </SelectItem>
-              ))}
-            </Select>
-          );
-        })()}
       </div>
 
       <div className="flex justify-end gap-2 pt-4 border-t border-default-100 mt-4">
@@ -2108,7 +2111,7 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoP
       ? `Stock Final: ${formatStock(stockFinal)} (acumulado: ${formatStock(accumulatedDelta + newDeltaVal)})`
       : `Stock Final: ${formatStock(stockFinal)}`;
   } else if (productoSeleccionado && motivo) {
-    diffText = isAjusteBulk ? `Stock actual: ${originalStock}` : 'Ingrese la cantidad a mover';
+    diffText = isAjusteBulk ? `Stock actual: ${originalStock}` : '';
   } else if (productoSeleccionado && !motivo) {
     diffText = 'Seleccione un motivo primero';
   }
@@ -2363,16 +2366,16 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoP
                     <Icon icon="lucide:info" width={16} className="text-secondary shrink-0" />
                     {(() => {
                       switch (motivo) {
-                        case 'ENTRADA_INVENTARIO': return 'Registrando ingreso de mercadería al sistema del Inventario';
-                        case 'ENTRADA_BODEGA': return 'Registrando ingreso de mercadería a la Bodega de Tránsito';
-                        case 'SALIDA_BODEGA': return 'Registrando la salida de insumos para el desarrollo de clases o procesos académicos';
-                        case 'TRASLADO': return 'Iniciando movimiento a Bodega de Transito';
+                        case 'ENTRADA_INVENTARIO': return 'Entrada de insumos al inventario';
+                        case 'ENTRADA_BODEGA': return 'Entrada de insumos a la bodega de tránsito';
+                        case 'SALIDA_INVENTARIO': return 'Salida de insumos del inventario';
+                        case 'SALIDA_BODEGA': return 'Salida de insumos de la bodega de tránsito';
+                        case 'TRASLADO': return 'Mover hacia la bodega de tránsito';
                         case 'AJUSTE_INVENTARIO':
-                        case 'AJUSTE_BODEGA': return 'Corrigiendo saldo para sincronizar con stock físico';
-                        case 'SALIDA_INVENTARIO': return 'Registrando retiro o consumo de productos al sistema del Inventario';
+                        case 'AJUSTE_BODEGA': return 'Ajustar stock actual';
                         case 'MERMA_INVENTARIO':
-                        case 'MERMA_BODEGA': return 'Reportar Pérdida o Producto Dañado';
-                        case 'DEVOLUCION': return 'Registrando el reingreso de productos devueltos';
+                        case 'MERMA_BODEGA': return 'Salida de insumos por daño/pérdida';
+                        case 'DEVOLUCION': return 'Registrar devolución de insumos al inventario';
                         default: return 'Seleccione un motivo para ver detalles de la operación.';
                       }
                     })()}

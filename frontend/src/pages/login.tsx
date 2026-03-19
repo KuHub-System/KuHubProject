@@ -30,44 +30,54 @@ const DEMO_USERS: DemoUser[] = [
   {
     key: 'coadmin',
     nombre: 'Co-Admin',
-    email: 'ma.delarahash@kubhub.cl',
-    password: 'matheusmago',
+    email: 'coadminhash@kubhub.cl',
+    password: 'admin123',
     icono: 'lucide:shield-check',
-    descripcion: 'Casi todos los permisos'
+    descripcion: 'Casi todo'
   },
   {
     key: 'gestor',
     nombre: 'Gestor',
     email: 'gestorhash@kuhub.cl',
-    password: 'gestor123',
+    password: 'admin123',
     icono: 'lucide:shopping-cart',
-    descripcion: 'Gestión de pedidos'
+    descripcion: 'Pedidos'
   },
   {
     key: 'profesor',
-    nombre: 'Profesor',
-    email: 'profesorhash@kuhub.cl',
-    password: 'profesor123',
-    icono: 'lucide:book',
+    nombre: 'Prof. a Cargo',
+    email: 'profesorcargohash@kuhub.cl',
+    password: 'admin123',
+    icono: 'lucide:book-open',
+    descripcion: 'Académico'
+  },
+  {
+    key: 'docente',
+    nombre: 'Docente',
+    email: 'docentehash@kuhub.cl',
+    password: 'admin123',
+    icono: 'lucide:graduation-cap',
     descripcion: 'Solicitudes'
   },
   {
     key: 'bodega',
-    nombre: 'Bodega',
+    nombre: 'Enc. Bodega',
     email: 'bodegahash@kuhub.cl',
-    password: 'bodega123',
+    password: 'admin123',
     icono: 'lucide:package',
     descripcion: 'Inventario'
   },
   {
     key: 'asistente',
-    nombre: 'Asistente',
-    email: 'asistentehash@kuhub.cl',
-    password: 'asistente123',
+    nombre: 'Asist. Bodega',
+    email: 'asisbodegahash@kuhub.cl',
+    password: 'admin123',
     icono: 'lucide:warehouse',
     descripcion: 'Tránsito'
   }
 ];
+
+const IS_LOCAL = typeof window !== 'undefined' && window.location.hostname === 'localhost';
 
 const LoginPage: React.FC = () => {
   const [email, setEmail] = React.useState<string>('');
@@ -255,6 +265,40 @@ const LoginPage: React.FC = () => {
                 {isLoading ? 'Iniciando sesión...' : 'Iniciar Sesión'}
               </Button>
             </form>
+
+            {IS_LOCAL && (
+              <>
+                <Divider />
+                <div className="space-y-3">
+                  <p className="text-xs font-semibold text-default-400 uppercase tracking-wider text-center">
+                    Accesos Rápidos (Demo)
+                  </p>
+                  <div className="flex flex-wrap justify-center gap-2">
+                    {DEMO_USERS.map((user) => (
+                      <Button
+                        key={user.key}
+                        variant={selectedDemo === user.key ? 'solid' : 'flat'}
+                        color={selectedDemo === user.key ? 'primary' : 'default'}
+                        size="sm"
+                        className="flex flex-col h-auto py-2 gap-1 w-[calc(25%-6px)] min-w-0"
+                        onPress={() => handleDemoSelect(user.key)}
+                        isDisabled={isLoading}
+                      >
+                        <Icon icon={user.icono} className="text-lg" />
+                        <span className="text-[11px] font-medium leading-tight text-center break-words whitespace-normal w-full">{user.nombre}</span>
+                        <span className="text-[10px] opacity-70 text-center w-full">{user.descripcion}</span>
+                      </Button>
+                    ))}
+                  </div>
+                  <div className="flex items-center gap-2 p-2 bg-warning-50 dark:bg-warning-50/10 rounded-lg">
+                    <Icon icon="lucide:info" className="text-warning-600 dark:text-warning-400 text-sm flex-shrink-0" />
+                    <p className="text-xs text-warning-700 dark:text-warning-400">
+                      Solo visible en localhost. En producción no aparece.
+                    </p>
+                  </div>
+                </div>
+              </>
+            )}
 
           </CardBody>
         </Card>
