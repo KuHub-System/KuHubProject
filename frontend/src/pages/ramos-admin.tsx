@@ -703,9 +703,14 @@ const CrearSeccionModal: React.FC<CrearSeccionModalProps> = ({ asignatura, onClo
     const cargarBloques = async () => {
       try {
         setIsLoadingBloques(true);
+        console.log(`[BLOQUES] Cargando sala=${salaId} día=${dia}`);
         const data = await filtrarBloquesPorSalaYDiaService(parseInt(salaId), dia);
+        console.log(`[BLOQUES] ✅ ${data.length} bloques recibidos`);
         setBloquesDisponibles(data);
-      } catch { /* silencioso */ } finally {
+      } catch (err: any) {
+        console.error(`[BLOQUES] ❌ Error:`, err?.response?.status, err?.response?.data ?? err?.message);
+        console.error(`[BLOQUES]    URL:`, err?.config?.baseURL, err?.config?.url);
+      } finally {
         setIsLoadingBloques(false);
       }
     };
