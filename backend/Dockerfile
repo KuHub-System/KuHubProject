@@ -18,4 +18,6 @@ WORKDIR /app
 # Ojo aquí: como compilamos desde la raíz, el JAR está dentro de /app/backend/target/
 COPY --from=build /app/backend/target/*.jar app.jar
 EXPOSE 8080
-ENTRYPOINT ["java", "-Xmx768m", "-Xms512m", "-jar", "app.jar"]
+
+# Configuración JVM optimizada para 1.4GB de RAM disponible
+ENTRYPOINT ["java", "-Xmx1024m", "-Xms768m", "-jar", "app.jar"]
