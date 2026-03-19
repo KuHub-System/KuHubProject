@@ -103,9 +103,12 @@ const ConglomeradoPedidosPage: React.FC = () => {
   const cache = React.useRef<Map<string, IConsolidatePedidoResponse>>(new Map());
 
   // ── UI ──
-  const [busqueda,    setBusqueda]    = React.useState('');
-  const [expandidos,  setExpandidos]  = React.useState<Set<string>>(new Set());
-  const [vistaActiva, setVistaActiva] = React.useState<'cronograma' | 'totales' | 'aprobacion'>('cronograma');
+  const [busqueda,      setBusqueda]      = React.useState('');
+  const [busquedaCrono, setBusquedaCrono] = React.useState('');
+  const [busquedaAprob, setBusquedaAprob] = React.useState('');
+  const [expandidos,    setExpandidos]    = React.useState<Set<string>>(new Set());
+  const [vistaActiva,   setVistaActiva]   = React.useState<'cronograma' | 'totales' | 'aprobacion'>('cronograma');
+  const [aprobVista,    setAprobVista]    = React.useState<'unificado' | 'individual'>('unificado');
 
   // ── Carga inicial de semanas ──
   React.useEffect(() => {
@@ -164,6 +167,8 @@ const ConglomeradoPedidosPage: React.FC = () => {
     setIsLoadingDatos(true);
     setExpandidos(new Set());
     setBusqueda('');
+    setBusquedaCrono('');
+    setBusquedaAprob('');
 
     consolidatePedidoQueryService({ fechaInicio: semana.fechaInicio, fechaFin: semana.fechaFin })
       .then(data => {
@@ -219,6 +224,53 @@ const ConglomeradoPedidosPage: React.FC = () => {
     const q = busqueda.toLowerCase();
     return productosResumen.filter(p => p.nombreProducto.toLowerCase().includes(q));
   }, [productosResumen, busqueda]);
+
+  const gruposDiaFiltrados = React.useMemo(() => {
+    if (!busquedaCrono.trim()) return gruposDia;
+    const q = busquedaCrono.toLowerCase();
+    return gruposDia.map(g => ({
+      ...g,
+      solicitudes: g.solicitudes.filter(s =>
+        s.nombreReceta.toLowerCase().includes(q) ||
+        (s.seccion.nombreDocente ?? '').toLowerCase().includes(q) ||
+        (s.seccion.nombreSeccion ?? '').toLowerCase().includes(q) ||
+        s.productosSolicitados.some(p => p.nombreProducto.toLowerCase().includes(q))
+      ),
+    })).filter(g => g.solicitudes.length > 0);
+  }, [gruposDia, busquedaCrono]);
+
+  const pedidosAprobFiltrados = React.useMemo(() => {
+    if (!busquedaAprob.trim()) return consolidateData?.pedidosAprobacion ?? [];
+    const q = busquedaAprob.toLowerCase();
+    return (consolidateData?.pedidosAprobacion ?? [])
+      .map(ped => ({ ...ped, productos: ped.productos.filter(p => p.nombreProducto.toLowerCase().includes(q)) }))
+      .filter(ped => ped.productos.length > 0);
+  }, [consolidateData, busquedaAprob]);
+
+  // Productos unificados a través de todos los pedidos de aprobación
+  const productosUnificadosAprob = React.useMemo(() => {
+    interface ProdUnif { nombreProducto: string; abreviatura: string; categoria?: string; cantidadTotal: number; stockBodegaTransito: number; stockInventarioPrincipal: number; }
+    const mapa = new Map<string, ProdUnif>();
+    for (const ped of (consolidateData?.pedidosAprobacion ?? [])) {
+      for (const p of ped.productos) {
+        const key = p.nombreProducto;
+        if (mapa.has(key)) {
+          mapa.get(key)!.cantidadTotal += p.cantidadPedido;
+        } else {
+          mapa.set(key, { nombreProducto: p.nombreProducto, abreviatura: p.abreviatura, categoria: p.categoria, cantidadTotal: p.cantidadPedido, stockBodegaTransito: p.stockBodegaTransito, stockInventarioPrincipal: p.stockInventarioPrincipal });
+        }
+      }
+    }
+    return Array.from(mapa.values())
+      .map(p => ({ ...p, diferenciaTransito: p.stockBodegaTransito - p.cantidadTotal }))
+      .sort((a, b) => a.nombreProducto.localeCompare(b.nombreProducto));
+  }, [consolidateData]);
+
+  const productosUnificadosFiltrados = React.useMemo(() => {
+    if (!busquedaAprob.trim()) return productosUnificadosAprob;
+    const q = busquedaAprob.toLowerCase();
+    return productosUnificadosAprob.filter(p => p.nombreProducto.toLowerCase().includes(q));
+  }, [productosUnificadosAprob, busquedaAprob]);
 
   const contadores = React.useMemo(() => ({
     procesadas:      todasSolicitudes.length,
@@ -351,9 +403,9 @@ const ConglomeradoPedidosPage: React.FC = () => {
 
       {/* ── Contenido principal ── */}
       <Card className="shadow-sm">
-        <CardHeader className="px-5 py-4 flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+        <CardHeader className="px-5 py-4 flex flex-col sm:flex-row gap-3 items-start sm:items-center flex-wrap">
           {/* Tabs */}
-          <div className="flex items-center gap-1 bg-default-100 rounded-lg p-1">
+          <div className="flex items-center gap-1 bg-default-100 rounded-lg p-1 flex-wrap">
             {(['cronograma', 'totales', 'aprobacion'] as const).map(v => (
               <button key={v} onClick={() => { setVistaActiva(v); setExpandidos(new Set()); }}
                 className={`px-3 py-1.5 rounded-md text-xs font-semibold cursor-pointer transition-all ${
@@ -369,6 +421,20 @@ const ConglomeradoPedidosPage: React.FC = () => {
           {vistaActiva === 'totales' && (
             <Input size="sm" variant="bordered" placeholder="Buscar producto..."
               value={busqueda} onValueChange={setBusqueda}
+              startContent={<Icon icon="lucide:search" className="text-default-400" width={14} />}
+              classNames={{ base: 'max-w-xs', inputWrapper: 'bg-default-50' }}
+            />
+          )}
+          {vistaActiva === 'cronograma' && (
+            <Input size="sm" variant="bordered" placeholder="Buscar receta, docente, producto..."
+              value={busquedaCrono} onValueChange={setBusquedaCrono}
+              startContent={<Icon icon="lucide:search" className="text-default-400" width={14} />}
+              classNames={{ base: 'max-w-xs', inputWrapper: 'bg-default-50' }}
+            />
+          )}
+          {vistaActiva === 'aprobacion' && (
+            <Input size="sm" variant="bordered" placeholder="Buscar producto..."
+              value={busquedaAprob} onValueChange={setBusquedaAprob}
               startContent={<Icon icon="lucide:search" className="text-default-400" width={14} />}
               classNames={{ base: 'max-w-xs', inputWrapper: 'bg-default-50' }}
             />
@@ -400,12 +466,12 @@ const ConglomeradoPedidosPage: React.FC = () => {
                VISTA CRONOGRAMA SEMANAL
             ════════════════════════════════════════ */
             <div className="space-y-5">
-              {gruposDia.length === 0 ? (
+              {gruposDiaFiltrados.length === 0 ? (
                 <div className="py-10 flex flex-col items-center gap-3 text-default-400">
                   <Icon icon="lucide:calendar-x" width={36} className="opacity-40" />
-                  <p className="text-sm">Sin solicitudes vinculadas para esta semana.</p>
+                  <p className="text-sm">{busquedaCrono ? `Sin resultados para "${busquedaCrono}"` : 'Sin solicitudes vinculadas para esta semana.'}</p>
                 </div>
-              ) : gruposDia.map(grupo => {
+              ) : gruposDiaFiltrados.map(grupo => {
                 const cfg = DIA_CONFIG[grupo.diaSemana] ?? DIA_CONFIG[1];
                 const hoy = isHoy(grupo.fecha);
                 const productosDelDia = new Set<string>();
@@ -703,20 +769,122 @@ const ConglomeradoPedidosPage: React.FC = () => {
                VISTA APROBACIÓN DE PEDIDOS
             ════════════════════════════════════════ */
             <div className="space-y-4">
-              {(consolidateData?.pedidosAprobacion ?? []).length === 0 ? (
+
+              {/* Sub-toggle Unificado / Por Pedido */}
+              <div className="flex items-center gap-3 flex-wrap">
+                <div className="flex items-center gap-1 bg-default-100 rounded-lg p-1">
+                  {(['unificado', 'individual'] as const).map(v => (
+                    <button key={v} onClick={() => setAprobVista(v)}
+                      className={`px-3 py-1.5 rounded-md text-xs font-semibold cursor-pointer transition-all ${
+                        aprobVista === v ? 'bg-white shadow-sm text-primary' : 'text-default-500 hover:text-default-700'
+                      }`}>
+                      {v === 'unificado'
+                        ? <span className="flex items-center gap-1.5"><Icon icon="lucide:layers" width={12} />Vista Unificada</span>
+                        : <span className="flex items-center gap-1.5"><Icon icon="lucide:files" width={12} />Por Pedido</span>}
+                    </button>
+                  ))}
+                </div>
+                <span className="text-xs text-default-400">
+                  {aprobVista === 'unificado'
+                    ? `${productosUnificadosFiltrados.length} producto${productosUnificadosFiltrados.length !== 1 ? 's' : ''} totales`
+                    : `${pedidosAprobFiltrados.length} pedido${pedidosAprobFiltrados.length !== 1 ? 's' : ''}`}
+                </span>
+              </div>
+
+              {/* ── VISTA UNIFICADA: todos los productos combinados ── */}
+              {aprobVista === 'unificado' ? (
+                productosUnificadosFiltrados.length === 0 ? (
+                  <div className="py-10 flex flex-col items-center gap-3 text-default-400">
+                    <Icon icon="lucide:shield-off" width={36} className="opacity-40" />
+                    <p className="text-sm">{busquedaAprob ? `Sin resultados para "${busquedaAprob}"` : 'Sin pedidos para esta semana.'}</p>
+                  </div>
+                ) : (
+                  <div className="border border-default-200 rounded-2xl overflow-hidden">
+                    {/* Cabecera resumen */}
+                    <div className="flex items-center gap-3 px-5 py-3 bg-primary-50 border-b border-primary-100">
+                      <Icon icon="lucide:layers" width={18} className="text-primary" />
+                      <div className="flex-1">
+                        <p className="font-bold text-sm text-primary">Resumen Unificado de la Semana</p>
+                        <p className="text-xs text-default-500">
+                          {consolidateData?.pedidosAprobacion.length ?? 0} pedido{(consolidateData?.pedidosAprobacion.length ?? 0) !== 1 ? 's' : ''} combinados · {productosUnificadosFiltrados.length} productos
+                          {productosUnificadosFiltrados.some(p => p.diferenciaTransito < 0) && (
+                            <span className="text-danger ml-2 font-medium">· Faltantes detectados</span>
+                          )}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Tabla encabezado */}
+                    <div className="grid grid-cols-12 px-4 py-2 bg-default-50 border-b border-default-100 text-[10px] font-bold text-default-500 uppercase tracking-wider">
+                      <span className="col-span-4">Producto</span>
+                      <span className="col-span-2 text-center">Total Pedido</span>
+                      <span className="col-span-2 text-center">Stock Tránsito</span>
+                      <span className="col-span-2 text-center">Diferencia</span>
+                      <span className="col-span-2 text-center">Inv. Principal</span>
+                    </div>
+
+                    {/* Filas */}
+                    {productosUnificadosFiltrados.map((p, i) => {
+                      const ok = p.diferenciaTransito >= 0;
+                      return (
+                        <div key={i} className={`grid grid-cols-12 px-4 py-2.5 text-sm border-b border-default-50 last:border-0 hover:bg-default-50/50 ${ok ? '' : 'bg-danger-50/30'}`}>
+                          <div className="col-span-4 flex items-center gap-2 min-w-0">
+                            <Icon icon={ok ? 'lucide:check-circle' : 'lucide:alert-circle'} width={14} className={ok ? 'text-success-500 shrink-0' : 'text-danger-500 shrink-0'} />
+                            <div className="min-w-0">
+                              <Tooltip content={p.nombreProducto} placement="top-start" delay={500}>
+                                <p className="font-medium text-default-800 truncate cursor-default block pr-2">{p.nombreProducto}</p>
+                              </Tooltip>
+                              {p.categoria && <p className="text-[10px] text-default-400">{p.categoria}</p>}
+                            </div>
+                          </div>
+                          <div className="col-span-2 text-center self-center">
+                            <span className="font-mono font-semibold text-default-700">{fmtCant(p.cantidadTotal)}</span>
+                            <span className="text-xs text-default-400 ml-1">{p.abreviatura}</span>
+                          </div>
+                          <div className="col-span-2 text-center self-center">
+                            <span className="font-mono text-default-600">{fmtCant(p.stockBodegaTransito)}</span>
+                            <span className="text-xs text-default-400 ml-1">{p.abreviatura}</span>
+                          </div>
+                          <div className="col-span-2 text-center self-center">
+                            <span className={`font-mono font-bold ${ok ? 'text-success-600' : 'text-danger-600'}`}>
+                              {ok ? '+' : ''}{fmtCant(p.diferenciaTransito)}
+                            </span>
+                            <span className="text-xs text-default-400 ml-1">{p.abreviatura}</span>
+                          </div>
+                          <div className="col-span-2 text-center self-center">
+                            <span className="font-mono text-default-600">{fmtCant(p.stockInventarioPrincipal)}</span>
+                            <span className="text-xs text-default-400 ml-1">{p.abreviatura}</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+
+                    {/* Footer */}
+                    {productosUnificadosFiltrados.some(p => p.diferenciaTransito < 0) && (
+                      <div className="flex items-center gap-2 px-4 py-2.5 bg-danger-50 border-t border-danger-200">
+                        <Icon icon="lucide:alert-triangle" width={13} className="text-danger-500" />
+                        <span className="text-xs text-danger-700 font-medium">
+                          Hay productos con stock insuficiente en Bodega de Tránsito considerando todos los pedidos de la semana.
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                )
+              ) : (
+
+              /* ── VISTA POR PEDIDO: individual ── */
+              pedidosAprobFiltrados.length === 0 ? (
                 <div className="py-10 flex flex-col items-center gap-3 text-default-400">
                   <Icon icon="lucide:shield-off" width={36} className="opacity-40" />
-                  <p className="text-sm">Sin pedidos para aprobar esta semana.</p>
+                  <p className="text-sm">{busquedaAprob ? `Sin resultados para "${busquedaAprob}"` : 'Sin pedidos para aprobar esta semana.'}</p>
                 </div>
-              ) : (consolidateData?.pedidosAprobacion ?? []).map(ped => {
+              ) : <div className="space-y-4">{pedidosAprobFiltrados.map(ped => {
                 const isPendiente = ped.estadoPedido === 'PENDIENTE';
                 const isAprobado  = ped.estadoPedido === 'APROVADO';
                 const hayFaltante = ped.productos.some(p => p.diferenciaTransito < 0);
 
                 return (
                   <div key={ped.idPedido} className="border border-default-200 rounded-2xl overflow-hidden">
-
-                    {/* Cabecera pedido */}
                     <div className={`flex flex-col sm:flex-row sm:items-center gap-3 px-5 py-3 ${
                       isAprobado ? 'bg-success-50 border-b border-success-200' : 'bg-default-50 border-b border-default-200'
                     }`}>
@@ -730,34 +898,21 @@ const ConglomeradoPedidosPage: React.FC = () => {
                           </p>
                         </div>
                       </div>
-
                       <div className="flex items-center gap-2">
-                        <Chip
-                          size="sm"
-                          color={isAprobado ? 'success' : isPendiente ? 'warning' : 'danger'}
-                          variant="flat"
-                          startContent={<Icon icon={isAprobado ? 'lucide:check-circle-2' : isPendiente ? 'lucide:clock' : 'lucide:x-circle'} width={10} />}
-                        >
+                        <Chip size="sm" color={isAprobado ? 'success' : isPendiente ? 'warning' : 'danger'} variant="flat"
+                          startContent={<Icon icon={isAprobado ? 'lucide:check-circle-2' : isPendiente ? 'lucide:clock' : 'lucide:x-circle'} width={10} />}>
                           {ped.estadoPedido}
                         </Chip>
-
                         {isPendiente && (
-                          <Button
-                            size="sm"
-                            color="success"
-                            variant="flat"
-                            onPress={() => handleAprobarPedido(ped.idPedido)}
-                            startContent={<Icon icon="lucide:check" width={12} />}
-                          >
+                          <Button size="sm" color="success" variant="flat" onPress={() => handleAprobarPedido(ped.idPedido)}
+                            startContent={<Icon icon="lucide:check" width={12} />}>
                             Aprobar pedido
                           </Button>
                         )}
                       </div>
                     </div>
 
-                    {/* Tabla de productos con stock */}
                     <div>
-                      {/* Encabezado tabla */}
                       <div className="grid grid-cols-12 px-4 py-2 bg-default-50 border-b border-default-100 text-[10px] font-bold text-default-500 uppercase tracking-wider">
                         <span className="col-span-4">Producto</span>
                         <span className="col-span-2 text-center">Pedido</span>
@@ -765,23 +920,12 @@ const ConglomeradoPedidosPage: React.FC = () => {
                         <span className="col-span-2 text-center">Diferencia</span>
                         <span className="col-span-2 text-center">Inv. Principal</span>
                       </div>
-
-                      {/* Filas */}
                       {ped.productos.map((p, i) => {
                         const ok = p.diferenciaTransito >= 0;
                         return (
-                          <div key={i}
-                            className={`grid grid-cols-12 px-4 py-2.5 text-sm border-b border-default-50 last:border-0 hover:bg-default-50/50 ${
-                              ok ? '' : 'bg-danger-50/30'
-                            }`}
-                          >
-                            {/* Nombre */}
+                          <div key={i} className={`grid grid-cols-12 px-4 py-2.5 text-sm border-b border-default-50 last:border-0 hover:bg-default-50/50 ${ok ? '' : 'bg-danger-50/30'}`}>
                             <div className="col-span-4 flex items-center gap-2 min-w-0">
-                              <Icon
-                                icon={ok ? 'lucide:check-circle' : 'lucide:alert-circle'}
-                                width={14}
-                                className={ok ? 'text-success-500 shrink-0' : 'text-danger-500 shrink-0'}
-                              />
+                              <Icon icon={ok ? 'lucide:check-circle' : 'lucide:alert-circle'} width={14} className={ok ? 'text-success-500 shrink-0' : 'text-danger-500 shrink-0'} />
                               <div className="min-w-0">
                                 <Tooltip content={p.nombreProducto} placement="top-start" delay={500}>
                                   <p className="font-medium text-default-800 truncate cursor-default block pr-2">{p.nombreProducto}</p>
@@ -789,28 +933,20 @@ const ConglomeradoPedidosPage: React.FC = () => {
                                 {p.categoria && <p className="text-[10px] text-default-400">{p.categoria}</p>}
                               </div>
                             </div>
-
-                            {/* Pedido */}
                             <div className="col-span-2 text-center self-center">
                               <span className="font-mono font-semibold text-default-700">{fmtCant(p.cantidadPedido)}</span>
                               <span className="text-xs text-default-400 ml-1">{p.abreviatura}</span>
                             </div>
-
-                            {/* Stock tránsito */}
                             <div className="col-span-2 text-center self-center">
                               <span className="font-mono text-default-600">{fmtCant(p.stockBodegaTransito)}</span>
                               <span className="text-xs text-default-400 ml-1">{p.abreviatura}</span>
                             </div>
-
-                            {/* Diferencia */}
                             <div className="col-span-2 text-center self-center">
                               <span className={`font-mono font-bold ${ok ? 'text-success-600' : 'text-danger-600'}`}>
                                 {ok ? '+' : ''}{fmtCant(p.diferenciaTransito)}
                               </span>
                               <span className="text-xs text-default-400 ml-1">{p.abreviatura}</span>
                             </div>
-
-                            {/* Inv. principal */}
                             <div className="col-span-2 text-center self-center">
                               <span className="font-mono text-default-600">{fmtCant(p.stockInventarioPrincipal)}</span>
                               <span className="text-xs text-default-400 ml-1">{p.abreviatura}</span>
@@ -820,7 +956,6 @@ const ConglomeradoPedidosPage: React.FC = () => {
                       })}
                     </div>
 
-                    {/* Footer resumen */}
                     {hayFaltante && (
                       <div className="flex items-center gap-2 px-4 py-2.5 bg-danger-50 border-t border-danger-200">
                         <Icon icon="lucide:alert-triangle" width={13} className="text-danger-500" />
@@ -831,7 +966,9 @@ const ConglomeradoPedidosPage: React.FC = () => {
                     )}
                   </div>
                 );
-              })}
+              })}</div>
+              )}
+
             </div>
           )}
         </CardBody>
