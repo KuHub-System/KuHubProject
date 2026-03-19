@@ -1,4 +1,5 @@
 import React from 'react';
+import { fmtCL } from '../utils/format-numbers';
 import {
   Table,
   TableHeader,
@@ -964,13 +965,13 @@ const InventarioPage: React.FC = () => {
                 <TableCell className="text-center">
                   <Tooltip content="Control de Inventario" color="primary" delay={100} closeDelay={0}>
                     <span className={`font-bold block text-center ${producto.stock <= producto.stockMinimo ? 'text-danger' : 'text-default-700 dark:text-default-300'}`}>
-                      {producto.stock}
+                      {fmtCL(producto.stock)}
                     </span>
                   </Tooltip>
                 </TableCell>
                 <TableCell className="text-center">
                   <Tooltip content="Control de Inventario" color="primary" delay={100} closeDelay={0}>
-                    <span className="block text-center">{producto.stockMinimo}</span>
+                    <span className="block text-center">{fmtCL(producto.stockMinimo)}</span>
                   </Tooltip>
                 </TableCell>
                 <TableCell className="text-center">
@@ -1183,7 +1184,7 @@ const InventarioPage: React.FC = () => {
                 </ModalHeader>
                 <ModalBody className="text-center pb-6">
                   <p className="text-default-600 text-justify px-4">
-                    El inventario <strong>"{productoParaEliminar?.nombre}"</strong> no puede ser eliminado porque aún tiene stock disponible (<strong>{productoParaEliminar?.stock}</strong>).
+                    El inventario <strong>"{productoParaEliminar?.nombre}"</strong> no puede ser eliminado porque aún tiene stock disponible (<strong>{fmtCL(productoParaEliminar?.stock)}</strong>).
                   </p>
                   <div className="flex justify-center mt-4">
                     <Button color="primary" variant="flat" onPress={onClose} className="font-bold">Entendido</Button>
@@ -1583,7 +1584,7 @@ export const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto
       else if (deltaVal === originalStockVal) deltaError = 'El nuevo stock es igual al actual, sin cambios';
     } else {
       if (isNaN(deltaVal) || deltaVal <= 0) deltaError = 'La cantidad debe ser mayor a 0';
-      else if (esSalidaEdit && stockFinal < 0) deltaError = `Stock insuficiente (actual: ${originalStockVal})`;
+      else if (esSalidaEdit && stockFinal < 0) deltaError = `Stock insuficiente (actual: ${fmtCL(originalStockVal)})`;
     }
   }
 
@@ -1780,7 +1781,7 @@ export const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto
 
       {mode === 'editar' && (
         <p className="text-xs text-default-500 px-0.5 mb-1">
-          Stock Actual: <span className="font-semibold text-secondary">{originalStockVal}</span>
+          Stock Actual: <span className="font-semibold text-secondary">{fmtCL(originalStockVal)}</span>
         </p>
       )}
 
@@ -1828,7 +1829,7 @@ export const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto
           <Input
             type="number"
             label={isAjusteEdit ? 'Nuevo Stock' : 'Cantidad'}
-            placeholder={isAjusteEdit ? `Actual: ${originalStockVal}` : 'Ingrese la cantidad...'}
+            placeholder={isAjusteEdit ? `Actual: ${fmtCL(originalStockVal)}` : 'Ingrese la cantidad...'}
             value={deltaInput}
             onValueChange={(val) => {
               if (val === '') { setDeltaInput(''); return; }
@@ -1843,7 +1844,7 @@ export const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto
             errorMessage={deltaError}
             description={
               deltaInput !== '' && !isNaN(deltaVal) && !deltaError
-                ? `Stock Final: ${esUnidadFraccionaria ? parseFloat(stockFinal.toFixed(3)) : Math.round(stockFinal)}`
+                ? `Stock Final: ${fmtCL(stockFinal)}`
                 : undefined
             }
             variant="bordered"
@@ -2080,7 +2081,7 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoP
   }, [motivo, productoSeleccionado]);
 
   const currentStockVal = parseFloat(stockInput);
-  const formatStock = (n: number) => esFraccionario ? parseFloat(n.toFixed(3)) : Math.round(n);
+  const formatStock = (n: number) => fmtCL(n);
   const existingItemInList = itemsPedido.find(
     i => i.producto.idProducto === productoActual?.idProducto && i.motivo === motivo
   );
@@ -2101,7 +2102,7 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoP
       else if (currentStockVal === originalStock) deltaError = 'El nuevo stock es igual al actual';
     } else {
       if (currentStockVal <= 0) deltaError = 'La cantidad debe ser mayor a 0';
-      else if (esSalidaBulk && totalDelta > originalStock) deltaError = `Stock insuficiente (actual: ${originalStock})`;
+      else if (esSalidaBulk && totalDelta > originalStock) deltaError = `Stock insuficiente (actual: ${fmtCL(originalStock)})`;
     }
   }
 
@@ -2111,7 +2112,7 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoP
       ? `Stock Final: ${formatStock(stockFinal)} (acumulado: ${formatStock(accumulatedDelta + newDeltaVal)})`
       : `Stock Final: ${formatStock(stockFinal)}`;
   } else if (productoSeleccionado && motivo) {
-    diffText = isAjusteBulk ? `Stock actual: ${originalStock}` : '';
+    diffText = isAjusteBulk ? `Stock actual: ${fmtCL(originalStock)}` : '';
   } else if (productoSeleccionado && !motivo) {
     diffText = 'Seleccione un motivo primero';
   }
@@ -2249,7 +2250,7 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoP
           <div className="p-3 border border-default-200 dark:border-default-100 rounded-xl bg-default-50 dark:bg-content2">
             {productoActual && (
               <p className="text-xs text-default-500 px-0.5 mb-1.5">
-                Stock Actual: <span className="font-semibold text-secondary">{originalStock}</span>
+                Stock Actual: <span className="font-semibold text-secondary">{fmtCL(originalStock)}</span>
               </p>
             )}
             <div className="grid grid-cols-1 md:grid-cols-[2fr_1fr_1fr_auto] gap-3 items-start">
@@ -2319,7 +2320,7 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoP
               <Input
                 type="number"
                 label={isAjusteBulk ? 'Nuevo Stock' : 'Cantidad'}
-                placeholder={isAjusteBulk ? `Actual: ${originalStock}` : 'Ingrese cantidad...'}
+                placeholder={isAjusteBulk ? `Actual: ${fmtCL(originalStock)}` : 'Ingrese cantidad...'}
                 value={stockInput}
                 onValueChange={(val) => {
                   if (val === '') { setStockInput(''); return; }
@@ -2460,14 +2461,14 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoP
                             : isSalidaItem
                               ? item.producto.stock - item.delta
                               : item.producto.stock + item.delta;
-                          const projFormatted = item.producto.esFraccionario ? parseFloat(projStock.toFixed(3)) : Math.round(projStock);
+                          const projFormatted = fmtCL(projStock);
                           return (
                             <div key={item.id} className="flex items-center justify-between px-3 py-2 bg-white/60 dark:bg-black/10">
                               <div className="flex items-center gap-2 min-w-0">
                                 <span className="font-medium text-sm truncate text-default-800">{item.producto.nombreProducto}</span>
                                 <div className="flex items-center gap-1 shrink-0">
                                   <Chip size="sm" color={chipColor[item.motivo] ?? 'default'} variant="flat" className="text-xs">
-                                    {isSalidaItem ? '-' : isAjusteItem ? '=' : '+'}{item.delta}
+                                    {isSalidaItem ? '-' : isAjusteItem ? '=' : '+'}{fmtCL(item.delta)}
                                   </Chip>
                                   <span className="text-default-400 text-xs">→</span>
                                   <span className="text-xs font-semibold text-default-600">{projFormatted}</span>
