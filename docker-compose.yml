@@ -1,50 +1,27 @@
-version: '3.8'
-
 services:
-  # Base de Datos
-  postgres-db:
-    image: postgres:16-alpine
-    container_name: kuhub-db
-    restart: always
-    environment:
-      POSTGRES_DB: ${CLOVER_DB_NAME}
-      POSTGRES_USER: ${CLOVER_DB_USER}
-      POSTGRES_PASSWORD: ${CLOVER_DB_PASSWORD}
-    ports:
-      - "${CLOVER_DB_PORT}:5432"
-    volumes:
-      - ./db-data:/var/lib/postgresql/data
-    deploy:
-      resources:
-        limits:
-          memory: 400M
-        reservations:
-          memory: 200M
-
-  # Backend (Spring Boot)
+  # Backend (Spring Boot) - Conecta a AWS RDS PostgreSQL
   backend:
-    image: ${DOCKER_USERNAME_PROD}/kuhub-app:backend-${TAG}
+    image: ${DOCKER_USERNAME}/kuhub-app:backend-${TAG}
     container_name: kuhub-backend
     restart: always
     ports:
       - "8080:8080"
     environment:
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-db:5432/${CLOVER_DB_NAME}
-      - SPRING_DATASOURCE_USERNAME=${CLOVER_DB_USER}
-      - SPRING_DATASOURCE_PASSWORD=${CLOVER_DB_PASSWORD}
+      - SPRING_DATASOURCE_URL=${KU_AWS_AC_DB_URL}
+      - SPRING_DATASOURCE_USERNAME=${KU_AWS_AC_DB_USER}
+      - SPRING_DATASOURCE_PASSWORD=${KU_AWS_AC_DB_PASS}
       - SPRING_PROFILES_ACTIVE=prod
-    depends_on:
-      - postgres-db
+      - JAVA_OPTS=-Xmx1024m -Xms768m
     deploy:
       resources:
         limits:
-          memory: 1024M
+          memory: 1400M
         reservations:
-          memory: 768M
+          memory: 1024M
 
   # Frontend (React + Nginx)
   frontend:
-    image: ${DOCKER_USERNAME_PROD}/kuhub-app:frontend-${TAG}
+    image: ${DOCKER_USERNAME}/kuhub-app:frontend-${TAG}
     container_name: kuhub-frontend
     restart: always
     ports:
@@ -52,6 +29,6 @@ services:
     deploy:
       resources:
         limits:
-          memory: 128M
+          memory: 200M
         reservations:
-          memory: 64M
+          memory: 100M
