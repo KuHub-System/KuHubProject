@@ -36,7 +36,6 @@ jobs:
           context: ./frontend
           push: true
           tags: ${{ secrets.DOCKER_AWS_AC_USERNAME }}/kuhub-app:frontend-${{ steps.vars.outputs.tag }}
-          build-args: VITE_API_URL=${{ secrets.VITE_API_URL }}
 
       - name: Deploy to AWS Lightsail
         run: |
