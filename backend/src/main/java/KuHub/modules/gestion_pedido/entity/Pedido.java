@@ -38,11 +38,11 @@ public class Pedido {
     @OneToMany(mappedBy = "pedido", cascade = CascadeType.ALL)
     private List<DetallePedido> detalles;
 
-    // ─── ENUM DE ESTADO ──────────────────────────────────────────────────────
+    // ─── ENUM DE ESTADO (debe coincidir con estado_pedido_type en PostgreSQL) ──
     public enum EstadoPedidoType {
         PENDIENTE,
-        PROCESADO,
-        CANCELADO
+        APROVADO,
+        RECHAZADO
     }
 
 

@@ -40,7 +40,7 @@ public class PedidoController {
     /** ✅✅ En uso: Cambia el estado de uno o varios pedidos de forma masiva.
      *  Retorna true si al menos una fila fue afectada, junto con las filas modificadas.
      *  Ejemplo: PATCH /api/v1/pedido/change-massive-status
-     *  Body: { "idsPedidos": [1, 2], "estado": "PROCESADO" }
+     *  Body: { "idsPedidos": [1, 2], "estado": "APROVADO" }
      */
     @PatchMapping("/change-massive-status")
     public ResponseEntity<Boolean> changeMassiveStatus(
