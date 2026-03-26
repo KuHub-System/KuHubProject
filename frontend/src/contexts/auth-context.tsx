@@ -118,9 +118,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // 🆕 Efecto mejorado: Espera a que TANTO el usuario COMO los roles estén cargados
   React.useEffect(() => {
     if (user && rolesLoaded && availableRoles.length > 0) {
+      console.log(`[AUTH] Intentando matchear rol para: "${user.rol}" de ${availableRoles.length} roles disponibles`);
 
-      // 🆕 Matching súper robusto para evitar problemas con guiones/guiones bajos/mayúsculas
       const rolActualizado = availableRoles.find(rol => {
+        if (!user.rol || !rol.nombre) return false;
         const normalizar = (s: string) => s.toLowerCase()
           .replace(/[_-]/g, ' ')
           .trim();
@@ -129,6 +130,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
 
       if (rolActualizado) {
+        console.log('[AUTH] Rol matcheado exitosamente:', rolActualizado.nombre);
         if (JSON.stringify(userRole?.permisos) !== JSON.stringify(rolActualizado.permisos)) {
           setUserRole(rolActualizado);
         }
@@ -141,6 +143,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [user, availableRoles, rolesLoaded]);
 
   // 🆕 Efecto mejorado: Solo marca como "no loading" cuando TODO esté listo
+  React.useEffect(() => {
+    // console.log('[AUTH] Sync check:', { rolesLoaded, user: !!user, hasRole: !!userRole });
+    
+    if (rolesLoaded) {
+      if (user) {
+        // Si hay usuario, esperamos a que el rol se resuelva (success o fail)
+        // El matching de rol ocurre en el efecto anterior.
+        // Si ya tenemos userRole O si availableRoles ya se procesaron, liberamos.
+        if (userRole !== null || (availableRoles.length > 0 && rolesLoaded)) {
+           // console.log('[AUTH] Liberando loading...');
+           setIsLoading(false);
+        }
+      } else {
+        setIsLoading(false);
+      }
+    }
+  }, [rolesLoaded, user, userRole, availableRoles.length]);
+
   React.useEffect(() => {
     const checkAuth = () => {
       try {
@@ -174,16 +194,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // 🆕 Nuevo efecto: Solo marca isLoading=false cuando TODO esté listo
   React.useEffect(() => {
+    console.log('[AUTH] Estado de Sincronización:', { isAuthenticated: !!user, hasRole: !!userRole, rolesLoaded, isLoading });
     if (rolesLoaded) {
-      // Si hay usuario, esperamos un poco a que el efecto de arriba intente matchear el rol.
-      // Pero si rolesLoaded es true, ya podemos liberar el loading screen para que SmartRedirect actúe.
       if (user) {
-        // Marcamos como listo si ya se intentó cargar el rol (incluso si no se encontró)
         if (availableRoles.length > 0) {
+          console.log('[AUTH] Listo para terminar carga (User + Roles presentes)');
           setIsLoading(false);
         }
       } else {
-        // Si no hay usuario, no hay nada más que esperar
+        console.log('[AUTH] No hay usuario, deteniendo carga.');
         setIsLoading(false);
       }
     }

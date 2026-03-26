@@ -53,6 +53,7 @@ const SmartRedirect: React.FC = () => {
 
   // 🔥 CRÍTICO: Esperar a que se carguen TANTO el usuario COMO el rol
   if (isLoading || (isAuthenticated && !userRole)) {
+    console.log('[App] SmartRedirect bloqueado por carga...', { isLoading, isAuthenticated, hasRole: !!userRole });
     return (
       <div className="flex items-center justify-center h-screen">
         <div className="text-center">
@@ -63,8 +64,11 @@ const SmartRedirect: React.FC = () => {
     );
   }
 
+  console.log('[App] SmartRedirect evaluando...', { isAuthenticated, userRoleName: userRole?.nombre });
+
   // Si no está autenticado, ir a login
   if (!isAuthenticated) {
+    console.log('[App] SmartRedirect: No autenticado. Redirigiendo a /login');
     return <Redirect to="/login" />;
   }
 
