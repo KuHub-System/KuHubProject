@@ -119,9 +119,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   React.useEffect(() => {
     if (user && rolesLoaded && availableRoles.length > 0) {
 
-      const rolActualizado = availableRoles.find(rol =>
-        rol.nombre === user.rol || rol.nombre.toLowerCase() === user.rol.toLowerCase()
-      );
+      // 🆕 Matching súper robusto para evitar problemas con guiones/guiones bajos/mayúsculas
+      const rolActualizado = availableRoles.find(rol => {
+        const normalizar = (s: string) => s.toLowerCase()
+          .replace(/[_-]/g, ' ')
+          .trim();
+        
+        return normalizar(rol.nombre) === normalizar(user.rol);
+      });
 
       if (rolActualizado) {
         if (JSON.stringify(userRole?.permisos) !== JSON.stringify(rolActualizado.permisos)) {
@@ -170,17 +175,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // 🆕 Nuevo efecto: Solo marca isLoading=false cuando TODO esté listo
   React.useEffect(() => {
     if (rolesLoaded) {
-      // Si hay usuario, espera a que userRole esté listo
+      // Si hay usuario, esperamos un poco a que el efecto de arriba intente matchear el rol.
+      // Pero si rolesLoaded es true, ya podemos liberar el loading screen para que SmartRedirect actúe.
       if (user) {
-        if (userRole !== null || availableRoles.length === 0) {
+        // Marcamos como listo si ya se intentó cargar el rol (incluso si no se encontró)
+        if (availableRoles.length > 0) {
           setIsLoading(false);
         }
       } else {
-        // Si no hay usuario, puede dejar de cargar inmediatamente
+        // Si no hay usuario, no hay nada más que esperar
         setIsLoading(false);
       }
     }
-  }, [rolesLoaded, user, userRole, availableRoles]);
+  }, [rolesLoaded, user, userRole, availableRoles.length]);
 
   const hasPermission = (requiredRoles: string[]): boolean => {
     if (!user) return false;
