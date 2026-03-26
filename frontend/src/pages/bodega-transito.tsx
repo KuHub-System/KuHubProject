@@ -164,16 +164,17 @@ const EntregaSalaCard: React.FC<{ sala: ISalaEntrega; onPreparar: (sol: ISolicit
       <CardBody className="p-0 divide-y divide-default-100">
         {sala.solicitudes.map(sol => {
           const abierto = expandidos.has(sol.idSolicitud);
+          const esProcesado = sol.estadoSolicitud === 'PROCESADO';
           return (
-            <div key={sol.idSolicitud}>
+            <div key={sol.idSolicitud} className={esProcesado ? 'opacity-75' : ''}>
               <button
-                className="w-full flex items-center gap-3 px-4 py-3 hover:bg-default-50/50 dark:hover:bg-default-100/20 transition-colors text-left"
+                className={`w-full flex items-center gap-3 px-4 py-3 hover:bg-default-50/50 dark:hover:bg-default-100/20 transition-colors text-left ${esProcesado ? 'bg-success-50/30 dark:bg-success-50/10' : ''}`}
                 onClick={() => toggle(sol.idSolicitud)}
               >
                 {/* Badge de horario */}
-                <div className="shrink-0 flex flex-col items-center justify-center rounded-lg px-2.5 py-1.5 min-w-[72px] text-center bg-primary-50 border border-primary-100">
-                  <span className="text-[9px] font-bold text-primary-400 uppercase leading-none">Horario</span>
-                  <span className="text-xs font-bold text-primary leading-tight mt-0.5">{sol.rangoHoras}</span>
+                <div className={`shrink-0 flex flex-col items-center justify-center rounded-lg px-2.5 py-1.5 min-w-[72px] text-center ${esProcesado ? 'bg-success-50 border border-success-200' : 'bg-primary-50 border border-primary-100'}`}>
+                  <span className={`text-[9px] font-bold uppercase leading-none ${esProcesado ? 'text-success-400' : 'text-primary-400'}`}>Horario</span>
+                  <span className={`text-xs font-bold leading-tight mt-0.5 ${esProcesado ? 'text-success-600' : 'text-primary'}`}>{sol.rangoHoras}</span>
                 </div>
 
                 {/* Info sección */}
@@ -182,6 +183,17 @@ const EntregaSalaCard: React.FC<{ sala: ISalaEntrega; onPreparar: (sol: ISolicit
                     <span className="font-semibold text-sm text-default-800 dark:text-foreground">§{sol.nombreSeccion}</span>
                     <span className="text-xs text-default-400">·</span>
                     <span className="text-sm text-default-600">{sol.nombreDocente}</span>
+                    {esProcesado && (
+                      <Chip
+                        size="sm"
+                        color="success"
+                        variant="flat"
+                        className="h-5 text-[10px]"
+                        startContent={<Icon icon="lucide:clipboard-check" width={11} />}
+                      >
+                        Entregado
+                      </Chip>
+                    )}
                   </div>
                   <div className="flex items-center gap-3 mt-0.5 text-xs text-default-400 flex-wrap">
                     <span className="flex items-center gap-1">
@@ -207,40 +219,69 @@ const EntregaSalaCard: React.FC<{ sala: ISalaEntrega; onPreparar: (sol: ISolicit
               {abierto && (
                 <div className="px-4 pb-3 pt-1">
                   <div className="rounded-lg border border-default-100 overflow-hidden">
-                    <div className="grid grid-cols-[1fr_0.4fr_0.3fr_0.45fr_0.45fr] px-3 py-1.5 bg-default-50 dark:bg-default-100/30 text-[10px] font-bold text-default-500 uppercase tracking-wider">
-                      <span>Producto</span>
-                      <span className="text-center">Cantidad</span>
-                      <span className="text-center">Unidad</span>
-                      <span className="text-center">Stock Tránsito</span>
-                      <span className="text-center">Diferencia</span>
-                    </div>
-                    {sol.productos.map((p, i) => {
-                      const dif = p.diferencia ?? null;
-                      const difColor = dif === null ? 'text-default-400' : dif >= 0 ? 'text-success-600' : 'text-danger-500';
-                      return (
-                      <div
-                        key={i}
-                        className="grid grid-cols-[1fr_0.4fr_0.3fr_0.45fr_0.45fr] px-3 py-2 text-sm border-t border-default-100 hover:bg-default-50/50 items-center"
-                      >
-                        <span className="text-default-700 dark:text-default-300">
-                          {p.nombreProducto}
-                          {p.observacion && (
-                            <span className="text-xs text-default-400 italic ml-1.5">({p.observacion})</span>
-                          )}
-                        </span>
-                        <span className="font-mono font-semibold text-center text-default-700 dark:text-default-300">
-                          {fmtCantidadEntrega(p.cantidad)}
-                        </span>
-                        <span className="text-default-500 text-center">{p.unidadAbreviada}</span>
-                        <span className="font-mono text-center text-default-600">
-                          {p.stockTransito != null ? fmtCantidadEntrega(p.stockTransito) : '—'} <span className="text-default-400">{p.unidadAbreviada}</span>
-                        </span>
-                        <span className={`font-mono font-semibold text-center ${difColor}`}>
-                          {dif !== null ? (dif >= 0 ? '+' : '') + fmtCantidadEntrega(dif) : '—'} <span className="text-[10px]">{p.unidadAbreviada}</span>
-                        </span>
-                      </div>
-                      );
-                    })}
+                    {esProcesado ? (
+                      <>
+                        <div className="grid grid-cols-[1fr_0.4fr_0.3fr] px-3 py-1.5 bg-success-50/50 dark:bg-success-50/10 text-[10px] font-bold text-default-500 uppercase tracking-wider">
+                          <span>Producto</span>
+                          <span className="text-center">Entregado</span>
+                          <span className="text-center">Unidad</span>
+                        </div>
+                        {sol.productos.map((p, i) => (
+                          <div
+                            key={i}
+                            className="grid grid-cols-[1fr_0.4fr_0.3fr] px-3 py-2 text-sm border-t border-default-100 hover:bg-default-50/50 items-center"
+                          >
+                            <span className="text-default-700 dark:text-default-300">
+                              {p.nombreProducto}
+                              {p.observacion && (
+                                <span className="text-xs text-default-400 italic ml-1.5">({p.observacion})</span>
+                              )}
+                            </span>
+                            <span className="font-mono font-semibold text-center text-success-600">
+                              {fmtCantidadEntrega(p.cantidad)}
+                            </span>
+                            <span className="text-default-500 text-center">{p.unidadAbreviada}</span>
+                          </div>
+                        ))}
+                      </>
+                    ) : (
+                      <>
+                        <div className="grid grid-cols-[1fr_0.4fr_0.3fr_0.45fr_0.45fr] px-3 py-1.5 bg-default-50 dark:bg-default-100/30 text-[10px] font-bold text-default-500 uppercase tracking-wider">
+                          <span>Producto</span>
+                          <span className="text-center">Cantidad</span>
+                          <span className="text-center">Unidad</span>
+                          <span className="text-center">Stock Tránsito</span>
+                          <span className="text-center">Diferencia</span>
+                        </div>
+                        {sol.productos.map((p, i) => {
+                          const dif = p.diferencia ?? null;
+                          const difColor = dif === null ? 'text-default-400' : dif >= 0 ? 'text-success-600' : 'text-danger-500';
+                          return (
+                            <div
+                              key={i}
+                              className="grid grid-cols-[1fr_0.4fr_0.3fr_0.45fr_0.45fr] px-3 py-2 text-sm border-t border-default-100 hover:bg-default-50/50 items-center"
+                            >
+                              <span className="text-default-700 dark:text-default-300">
+                                {p.nombreProducto}
+                                {p.observacion && (
+                                  <span className="text-xs text-default-400 italic ml-1.5">({p.observacion})</span>
+                                )}
+                              </span>
+                              <span className="font-mono font-semibold text-center text-default-700 dark:text-default-300">
+                                {fmtCantidadEntrega(p.cantidad)}
+                              </span>
+                              <span className="text-default-500 text-center">{p.unidadAbreviada}</span>
+                              <span className="font-mono text-center text-default-600">
+                                {p.stockTransito != null ? fmtCantidadEntrega(p.stockTransito) : '—'} <span className="text-default-400">{p.unidadAbreviada}</span>
+                              </span>
+                              <span className={`font-mono font-semibold text-center ${difColor}`}>
+                                {dif !== null ? (dif >= 0 ? '+' : '') + fmtCantidadEntrega(dif) : '—'} <span className="text-[10px]">{p.unidadAbreviada}</span>
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </>
+                    )}
                   </div>
                   {sol.observaciones && (
                     <div className="flex items-start gap-1.5 mt-2 text-xs text-default-500 italic px-1">
@@ -248,17 +289,19 @@ const EntregaSalaCard: React.FC<{ sala: ISalaEntrega; onPreparar: (sol: ISolicit
                       <span>{sol.observaciones}</span>
                     </div>
                   )}
-                  <div className="flex justify-end mt-3">
-                    <Button
-                      size="sm"
-                      color="secondary"
-                      variant="flat"
-                      startContent={<Icon icon="lucide:package-check" width={14} />}
-                      onPress={() => onPreparar(sol)}
-                    >
-                      Preparar Entrega
-                    </Button>
-                  </div>
+                  {!esProcesado && (
+                    <div className="flex justify-end mt-3">
+                      <Button
+                        size="sm"
+                        color="secondary"
+                        variant="flat"
+                        startContent={<Icon icon="lucide:package-check" width={14} />}
+                        onPress={() => onPreparar(sol)}
+                      >
+                        Preparar Entrega
+                      </Button>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
