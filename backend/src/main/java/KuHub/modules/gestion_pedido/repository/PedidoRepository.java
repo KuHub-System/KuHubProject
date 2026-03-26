@@ -531,7 +531,7 @@ public interface PedidoRepository extends JpaRepository<Pedido, Integer> {
                             ),
                             '[]'::json
                         )
-                        FROM (
+                        FROM LATERAL (
                             SELECT DISTINCT s.id_sala, s.nombre_sala, s.cod_sala
                             FROM pedido            p_s
                             JOIN pedido_solicitud  ps_s  ON ps_s.id_pedido      = p_s.id_pedido
