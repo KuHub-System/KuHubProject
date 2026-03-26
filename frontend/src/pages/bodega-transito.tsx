@@ -207,15 +207,20 @@ const EntregaSalaCard: React.FC<{ sala: ISalaEntrega }> = ({ sala }) => {
               {abierto && (
                 <div className="px-4 pb-3 pt-1">
                   <div className="rounded-lg border border-default-100 overflow-hidden">
-                    <div className="grid grid-cols-[1fr_0.45fr_0.35fr] px-3 py-1.5 bg-default-50 dark:bg-default-100/30 text-[10px] font-bold text-default-500 uppercase tracking-wider">
+                    <div className="grid grid-cols-[1fr_0.4fr_0.3fr_0.45fr_0.45fr] px-3 py-1.5 bg-default-50 dark:bg-default-100/30 text-[10px] font-bold text-default-500 uppercase tracking-wider">
                       <span>Producto</span>
                       <span className="text-center">Cantidad</span>
                       <span className="text-center">Unidad</span>
+                      <span className="text-center">Stock Tránsito</span>
+                      <span className="text-center">Diferencia</span>
                     </div>
-                    {sol.productos.map((p, i) => (
+                    {sol.productos.map((p, i) => {
+                      const dif = p.diferencia ?? null;
+                      const difColor = dif === null ? 'text-default-400' : dif >= 0 ? 'text-success-600' : 'text-danger-500';
+                      return (
                       <div
                         key={i}
-                        className="grid grid-cols-[1fr_0.45fr_0.35fr] px-3 py-2 text-sm border-t border-default-100 hover:bg-default-50/50 items-center"
+                        className="grid grid-cols-[1fr_0.4fr_0.3fr_0.45fr_0.45fr] px-3 py-2 text-sm border-t border-default-100 hover:bg-default-50/50 items-center"
                       >
                         <span className="text-default-700 dark:text-default-300">
                           {p.nombreProducto}
@@ -227,8 +232,15 @@ const EntregaSalaCard: React.FC<{ sala: ISalaEntrega }> = ({ sala }) => {
                           {fmtCantidadEntrega(p.cantidad)}
                         </span>
                         <span className="text-default-500 text-center">{p.unidadAbreviada}</span>
+                        <span className="font-mono text-center text-default-600">
+                          {p.stockTransito != null ? fmtCantidadEntrega(p.stockTransito) : '—'} <span className="text-default-400">{p.unidadAbreviada}</span>
+                        </span>
+                        <span className={`font-mono font-semibold text-center ${difColor}`}>
+                          {dif !== null ? (dif >= 0 ? '+' : '') + fmtCantidadEntrega(dif) : '—'} <span className="text-[10px]">{p.unidadAbreviada}</span>
+                        </span>
                       </div>
-                    ))}
+                      );
+                    })}
                   </div>
                   {sol.observaciones && (
                     <div className="flex items-start gap-1.5 mt-2 text-xs text-default-500 italic px-1">
