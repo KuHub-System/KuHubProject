@@ -443,6 +443,7 @@ export interface IProductoEntrega {
 
 export interface ISolicitudEntrega {
   idSolicitud: number;
+  estadoSolicitud: string;  // "ACEPTADA" | "PROCESADO"
   horaInicio: string;       // "HH:MM" — usado para ordenar en UI
   rangoHoras: string;       // "HH:MM - HH:MM" — para mostrar
   nombreSeccion: string;

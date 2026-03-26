@@ -455,6 +455,7 @@ public interface PedidoRepository extends JpaRepository<Pedido, Integer> {
                                             json_agg(
                                                 json_build_object(
                                                     'idSolicitud',     sol_e.id_solicitud,
+                                                    'estadoSolicitud', sol_e.estado_solicitud,
                                                     'horaInicio',      to_char(bh_e.hora_inicio, 'HH24:MI'),
                                                     'rangoHoras', (
                                                         SELECT string_agg(rango, ' / ' ORDER BY min_inicio)
@@ -527,7 +528,7 @@ public interface PedidoRepository extends JpaRepository<Pedido, Integer> {
                                         JOIN usuario            usr_e  ON usr_e.id_usuario     = doc_e.id_usuario
                                         LEFT JOIN receta        rec_e  ON rec_e.id_receta      = sol_e.id_receta
                                         WHERE ped_e.estado_pedido    = 'APROVADO'
-                                          AND sol_e.estado_solicitud = 'ACEPTADA'
+                                          AND sol_e.estado_solicitud IN ('ACEPTADA', 'PROCESADO')
                                           AND sol_e.id_reserva_sala  IS NOT NULL
                                           AND sol_e.fecha_solicitada = dia.fecha_solicitada
                                           AND rs_e.id_sala           = sal.id_sala
@@ -544,7 +545,7 @@ public interface PedidoRepository extends JpaRepository<Pedido, Integer> {
                             JOIN reserva_sala      rs_s  ON rs_s.id_reserva_sala = sol_s.id_reserva_sala
                             JOIN sala              s     ON s.id_sala            = rs_s.id_sala
                             WHERE p_s.estado_pedido     = 'APROVADO'
-                              AND sol_s.estado_solicitud = 'ACEPTADA'
+                              AND sol_s.estado_solicitud IN ('ACEPTADA', 'PROCESADO')
                               AND sol_s.id_reserva_sala  IS NOT NULL
                               AND sol_s.fecha_solicitada = dia.fecha_solicitada
                         ) sal
@@ -561,7 +562,7 @@ public interface PedidoRepository extends JpaRepository<Pedido, Integer> {
             JOIN pedido_solicitud  ps  ON ps.id_pedido     = ped.id_pedido
             JOIN solicitud         sol ON sol.id_solicitud = ps.id_solicitud
             WHERE ped.estado_pedido    = 'APROVADO'
-              AND sol.estado_solicitud = 'ACEPTADA'
+              AND sol.estado_solicitud IN ('ACEPTADA', 'PROCESADO')
               AND sol.id_reserva_sala  IS NOT NULL
               AND sol.fecha_solicitada BETWEEN :fechaInicio AND :fechaFin
             GROUP BY sol.fecha_solicitada
