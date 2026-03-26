@@ -12,6 +12,13 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+/**
+ * Controller REST para gestión de Semanas Académicas
+ * Endpoints: /api/v1/semanas
+ * ✅ En uso: Este controlador gestiona la definición de las semanas académicas del semestre, 
+ * permitiendo la generación automática del calendario y el filtrado por año y periodo.
+ * Consumido por semana-service.ts en el frontend.
+ */
 @RestController
 @RequestMapping("/api/v1/semanas")
 public class SemanaController {
@@ -20,8 +27,10 @@ public class SemanaController {
     private SemanaService semanaService;
 
 
-    /** Obtiene los anios disponible del anio actual hace adelante para filtro
-     *  ✅ En uso: Endpoint consumido por el frontend.*/
+    /**
+     * Obtiene los años disponibles (del actual en adelante) para el filtro de semanas.
+     * ✅ En uso: Consumido por obtenerAniosFiltroService en semana-service.ts.
+     */
     @GetMapping("/years-for-filter-week")
     public ResponseEntity<List<Short>> yearsForFilterWeek(){
         return ResponseEntity
@@ -29,8 +38,10 @@ public class SemanaController {
                 .body(semanaService.yearsForFilterWeek());
     }
 
-    /** Obtiene los periodos del anio y semestre existentes para cargar options
-     *  ✅ En uso: Endpoint consumido por el frontend.*/
+    /**
+     * Obtiene los periodos académicos existentes (año y semestres) para cargar opciones.
+     * ✅ En uso: Consumido por obtenerPeriodosAcademicosService en semana-service.ts.
+     */
     @GetMapping("/find-grouped-perions-academic")
     public ResponseEntity<List<YearWithSemestersDTO>> findGroupedPeriodsAcademic(){
         return ResponseEntity
@@ -38,8 +49,10 @@ public class SemanaController {
                 .body(semanaService.findGroupedPeriodsAcademic());
     }
 
-    /** Busca semanas por filtro
-     *  ✅ En uso: Endpoint consumido por el frontend.*/
+    /**
+     * Obtiene el listado completo de semanas filtradas por un año específico.
+     * ✅ En uso: Consumido por obtenerSemanasService en semana-service.ts.
+     */
     @PostMapping("/find-all-by-year/{year}")
     public ResponseEntity<List<Semana>> findAllByYear(
             @PathVariable Short year
@@ -50,8 +63,10 @@ public class SemanaController {
     }
 
 
-    /** Obtiene los las semanas por filtro de anio y semestre para el option de solicitud
-     *  ✅ En uso: Endpoint consumido por el frontend.*/
+    /**
+     * Obtiene las semanas filtradas por año y semestre para la creación de solicitudes.
+     * ✅ En uso: Consumido por obtenerSemanasPorPeriodoService en semana-service.ts.
+     */
     @PostMapping("/find-by-weekly-for-solicitation")
     public ResponseEntity<List<Semana>> findByWeeklyFilterForSolicitation(
             @Validated @RequestBody WeeklyFilterForSolicitationDTO request){
@@ -61,8 +76,10 @@ public class SemanaController {
     }
 
 
-    /** Crear 18 semanas en cascada con una unica fecha Lunes para la consistencia
-     *  ✅ En uso: Endpoint consumido por el frontend.*/
+    /**
+     * Genera automáticamente las 18 semanas de un semestre académico a partir de una fecha inicial.
+     * ✅ En uso: Consumido por generarCalendarioService en semana-service.ts.
+     */
     @PostMapping("/generate-semester-calendar")
     public ResponseEntity<Boolean> generateSemesterCalendar(
             @Validated @RequestBody WeekGeneratorDTO request){

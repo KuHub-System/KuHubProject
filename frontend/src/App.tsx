@@ -1,6 +1,7 @@
 import React, { lazy, Suspense } from 'react';
 import { Switch, Route, Redirect } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/auth-context';
+import { PermissionProvider } from './contexts/permission-context';
 import { ThemeProvider } from './contexts/theme-context';
 import { PageTitleProvider } from './contexts/PageTitleContext';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -122,6 +123,7 @@ const App: React.FC = () => {
         <NotificationProvider>
           <PageTitleProvider>
             <AuthProvider>
+              <PermissionProvider>
               <Suspense fallback={<PageLoader />}>
                 <Switch>
                   {/* Rutas de autenticación */}
@@ -270,6 +272,7 @@ const App: React.FC = () => {
                   </Route>
                 </Switch>
               </Suspense>
+              </PermissionProvider>
             </AuthProvider>
           </PageTitleProvider>
         </NotificationProvider>

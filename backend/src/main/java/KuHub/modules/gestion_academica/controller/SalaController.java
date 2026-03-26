@@ -9,6 +9,13 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+/**
+ * Controller REST para gestión de Salas
+ * Endpoints: /api/v1/sala
+ * ✅ En uso: Este controlador permite listar las salas activas para la asignación de horarios 
+ * a las secciones.
+ * Consumido por sala-service.ts y ramos-admin.tsx en el frontend.
+ */
 @RestController
 @RequestMapping("/api/v1/sala")
 public class SalaController {
@@ -16,8 +23,10 @@ public class SalaController {
     @Autowired
     private SalaService salaService;
 
-    /** Listar salas activas usando en crear seccion y editar
-     *  ✅✅ En uso: Endpoint consumido por el frontend.*/
+    /**
+     * Obtiene el listado de todas las salas que se encuentran activas en el sistema.
+     * ✅ En uso: Consumido por el frontend para la asignación de salas a bloques horarios.
+     */
     @GetMapping( "/find-all-active")
     public ResponseEntity<List<Sala>> findAllActiveRoomsTrue(){
         return ResponseEntity
@@ -42,6 +51,10 @@ public class SalaController {
 
 
 
+    /**
+     * Obtiene la información detallada de una sala específica por su ID.
+     * ⚠️ Sin uso aparente en el frontend actual.
+     */
     @GetMapping( "/find-by-id/{id}")
     public ResponseEntity<Sala> findById(
             @PathVariable Integer id
@@ -53,6 +66,10 @@ public class SalaController {
 
 
 
+    /**
+     * Registra una nueva sala en el sistema.
+     * ⚠️ Sin uso aparente en el frontend actual (gestión interna).
+     */
     @PostMapping("/create-sala/")
     public ResponseEntity<Sala> save(@RequestBody Sala sala){
         return ResponseEntity
@@ -60,6 +77,10 @@ public class SalaController {
                 .body(salaService.save(sala));
     }
 
+    /**
+     * Actualiza la información de una sala existente.
+     * ⚠️ Sin uso aparente en el frontend actual.
+     */
     @PutMapping("/update-sala/")
     public ResponseEntity<Sala> updateRoom(@RequestBody Sala sala){
         return ResponseEntity
@@ -67,6 +88,10 @@ public class SalaController {
                 .body(salaService.updateRoom(sala));
     }
 
+    /**
+     * Realiza una eliminación lógica (soft delete) de una sala.
+     * ⚠️ Sin uso aparente en el frontend actual.
+     */
     @PutMapping("/soft-delete/{id}")
     public ResponseEntity<?> softDelete(
             @PathVariable Integer id

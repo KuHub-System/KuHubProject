@@ -7,6 +7,11 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+/**
+ * Controller REST para gestión de Detalles de Pedidos
+ * Endpoints: /api/v1/detalle-pedido
+ * ⚠️ Sin endpoints definidos actualmente.
+ */
 @RestController
 @AllArgsConstructor
 @Validated

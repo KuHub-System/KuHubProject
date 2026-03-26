@@ -14,6 +14,13 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
+/**
+ * Controller REST para gestión de Bodega de Tránsito
+ * Endpoints: /api/v1/bodega-transito
+ * ✅ En uso: Este controlador gestiona la vista y actualización del stock en la bodega de tránsito, 
+ * incluyendo búsquedas paginadas por nombre y código.
+ * Consumido por bodega-transito-service.ts en el frontend.
+ */
 @RestController
 @RequiredArgsConstructor
 @Validated
@@ -24,8 +31,8 @@ public class BodegaTransitoController {
     private BodegaTransitoService bodegaTransitoService;
 
     /**
-     * Busca bodega de tránsito paginada por nombre o descripción del producto.
-     * ✅ En uso: Consumido por el buscador general del frontend.
+     * Busca productos en la bodega de tránsito que coincidan con un término en nombre o descripción.
+     * ✅ En uso: Consumido por buscarBodegaTransitoService en bodega-transito-service.ts.
      */
     @PostMapping("/search-bodega")
     public ResponseEntity<WarehousesPage> searchTransitWarehousePage(
@@ -37,8 +44,8 @@ public class BodegaTransitoController {
     }
 
     /**
-     * Busca bodega de tránsito paginada por código de producto.
-     * ✅ En uso: Consumido por el input "Buscar código..." en el frontend.
+     * Busca productos en la bodega de tránsito por su código específico.
+     * ✅ En uso: Consumido por buscarBodegaTransitoPorCodigoService en bodega-transito-service.ts.
      */
     @PostMapping("/search-by-cod-producto")
     public ResponseEntity<WarehousesPage> searchWarehouseByCodProduct(
@@ -50,8 +57,8 @@ public class BodegaTransitoController {
     }
 
     /**
-     * Lista la bodega de tránsito paginada aplicando filtros dinámicos opcionales.
-     * ✅ En uso: Carga inicial de la página y filtros avanzados.
+     * Obtiene una lista paginada de productos en la bodega de tránsito con filtros dinámicos.
+     * ✅ En uso: Consumido por obtenerBodegaPaginadaService en bodega-transito-service.ts.
      */
     @PostMapping("/paged-bodega")
     public ResponseEntity<WarehousesPage> findPagedTransitWarehouse(
@@ -63,9 +70,8 @@ public class BodegaTransitoController {
     }
 
     /**
-     * Actualiza la bodega de tránsito con producto, registrando el movimiento según tipo.
-     * Maneja desincronización de stock y stock insuficiente retornando respuestas diferenciadas.
-     * ✅ En uso: Endpoint consumido por el frontend.
+     * Actualiza un producto en la bodega de tránsito y ajusta su stock, manejando validaciones.
+     * ✅ En uso: Consumido por actualizarBodegaTransitoConProductoService en bodega-transito-service.ts.
      */
     @PatchMapping("/update-warehouse-with-product")
         public ResponseEntity<?> updateTransitWarehouseWithProduct(

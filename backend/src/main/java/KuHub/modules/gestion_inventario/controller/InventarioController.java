@@ -20,6 +20,13 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+/**
+ * Controller REST para gestión de Inventario
+ * Endpoints: /api/v1/inventario
+ * ✅ En uso: Este controlador es central para la gestión del inventario, manejando 
+ * la creación de productos con stock, actualizaciones masivas, filtrado paginado y validación de stock.
+ * Consumido por inventario-service.ts en el frontend.
+ */
 @RestController
 @Validated
 @RequestMapping("/api/v1/inventario")
@@ -29,9 +36,8 @@ public class InventarioController {
     private InventarioService inventarioService;
 
     /**
-     * Retorna los combos de filtros disponibles (categorías y unidades de medida)
-     * usados al cargar la página de inventario.
-     * ✅ En uso: Endpoint consumido por el frontend.
+     * Obtiene los conjuntos de datos para filtros (Categorías y Unidades de Medida).
+     * ✅ En uso: Consumido por obtenerFiltrosInventarioService en inventario-service.ts.
      */
     @GetMapping("/filters")
     public ResponseEntity<InventoryFilters> findFiltersInventory() {
@@ -41,9 +47,8 @@ public class InventarioController {
     }
 
     /**
-     * Lista paginada de productos con stock formateado para cargar opciones
-     * y detalles lógicos del control de producto masivo.
-     * ✅ En uso: Endpoint consumido por el frontend.
+     * Lista productos con stock procesado para el flujo de actualización masiva.
+     * ✅ En uso: Consumido por obtenerBulkProductoInventoryListingService en inventario-service.ts.
      */
     @PostMapping("/massive-producto-inventory-listing")
     public ResponseEntity<BulkInventoriesPage> massiveProductInventoryListing(
@@ -54,8 +59,8 @@ public class InventarioController {
     }
 
     /**
-     * Busca inventario paginado por nombre o descripción del producto.
-     * ✅ En uso: Endpoint consumido por el frontend.
+     * Busca en el inventario productos que coincidan con un término en nombre o descripción.
+     * ✅ En uso: Consumido por buscarProductosService en inventario-service.ts.
      */
     @PostMapping("/search-inventory")
     public ResponseEntity<InventoriesPage> searchInventory(
@@ -68,8 +73,8 @@ public class InventarioController {
     }
 
     /**
-     * Lista el inventario paginado aplicando filtros dinámicos opcionales.
-     * ✅ En uso: Endpoint consumido por el frontend.
+     * Obtiene una lista paginada de productos del inventario con filtros dinámicos.
+     * ✅ En uso: Consumido por obtenerProductosPaginadosService en inventario-service.ts.
      */
     @PostMapping("/paged-inventory")
     public ResponseEntity<InventoriesPage> findPagedInventory(
@@ -80,8 +85,8 @@ public class InventarioController {
     }
 
     /**
-     * Busca inventario paginado por código de producto.
-     * ✅ En uso: Endpoint consumido por el frontend.
+     * Busca productos en el inventario por su código específico.
+     * ✅ En uso: Consumido por buscarProductosPorCodigoService en inventario-service.ts.
      */
     @PostMapping("/search-inventory-by-code")
     public ResponseEntity<InventoriesPage> searchInventoryByCodProducto(
@@ -93,10 +98,10 @@ public class InventarioController {
     }
 
     /**
-     * Crea un producto con su inventario asociado.
-     * ✅ En uso: Endpoint consumido por el frontend.
+     * Registra un nuevo producto y su entrada inicial al inventario simultáneamente.
+     * ✅ En uso: Consumido por crearProductoService en inventario-service.ts.
      */
-     @PostMapping("/create-inventory-with-product")
+    @PostMapping("/create-inventory-with-product")
         public ResponseEntity<Boolean> saveInventoryWithProduct(
          @Valid @RequestBody
          InventoryWithProductCreateDTO request){
@@ -107,9 +112,8 @@ public class InventarioController {
 
 
     /**
-     * Actualiza inventario con producto, registrando el movimiento según tipo.
-     * Maneja desincronización de stock y stock insuficiente retornando respuestas diferenciadas.
-     * ✅ En uso: Endpoint consumido por el frontend.
+     * Actualiza un producto y ajusta su stock, manejando validaciones de sincronía.
+     * ✅ En uso: Consumido por actualizarProductoService en inventario-service.ts.
      */
      @PatchMapping("/update-inventory-with-product")
         public ResponseEntity<?> updateInventoryWithProduct(
@@ -140,9 +144,8 @@ public class InventarioController {
      }
 
     /**
-     * Procesa la actualización masiva de stock para una lista de inventarios,
-     * retornando el resultado clasificado por exitosos, advertencias y errores.
-     * ✅ En uso: Consumido por el bucle del modal de procesos masivos en el frontend.
+     * Procesa actualizaciones de stock para múltiples productos de forma atómica.
+     * ✅ En uso: Consumido por bulkUpdateInventoryStockService en inventario-service.ts.
      */
     @PatchMapping("/bulk-update-inventory-stock")
     public ResponseEntity<BulkInventoryProcess> updateBulkInventoryStock(
@@ -155,8 +158,8 @@ public class InventarioController {
     }
 
     /**
-     * Realiza la eliminación lógica del inventario y su producto si el stock es cero.
-     * ✅ En uso: Endpoint consumido por el frontend.
+     * Elimina lógicamente un producto del inventario (si el stock lo permite).
+     * ✅ En uso: Consumido por softDeleteInventarioService en inventario-service.ts.
      */
     @DeleteMapping("/soft-delete-inventory-with-product/{idInventario}")
         public ResponseEntity<Boolean> softDeleteInventoryWithProduct(

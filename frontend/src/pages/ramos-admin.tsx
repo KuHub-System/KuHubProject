@@ -23,6 +23,7 @@ import { useToast } from '../hooks/useToast';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { logger } from '../utils/logger';
 import { useNotifications } from '../utils/notifications';
+import { useModulePermission } from '../contexts/permission-context';
 
 // Importar tipos y servicios actualizados
 import { IAsignatura, ISeccion, IBloqueHorario, EstadoSeccion } from '../types/asignatura.types';
@@ -110,6 +111,7 @@ const GestionAsignaturasPage: React.FC = () => {
   usePageTitle('Gestión de Asignaturas', 'Administre asignaturas, secciones y asignaciones de gestores. Las recetas se multiplicarán por el total de alumnos activos.');
   const toast = useToast();
   const { showConfirm } = useNotifications();
+  const { canCreate: ramos_Crear, canUpdate: ramos_Editar, canDelete: ramos_Eliminar } = useModulePermission('RAMOS_ADMIN');
   const [asignaturas, setAsignaturas] = React.useState<IAsignatura[]>([]);
   const [profesores, setProfesores] = React.useState<IUsuario[]>([]);
   const [searchTerm, setSearchTerm] = React.useState<string>('');
@@ -384,6 +386,7 @@ const GestionAsignaturasPage: React.FC = () => {
             startContent={<Icon icon="lucide:search" className="text-default-400" />}
             className="w-full md:w-96"
           />
+          {ramos_Crear && (
           <Button
             color="primary"
             startContent={<Icon icon="lucide:plus" />}
@@ -394,6 +397,7 @@ const GestionAsignaturasPage: React.FC = () => {
           >
             Nueva Asignatura
           </Button>
+          )}
         </div>
 
         {/* Cards de asignaturas */}
@@ -455,6 +459,7 @@ const GestionAsignaturasPage: React.FC = () => {
                           {asignatura.secciones.filter((s: ISeccion) => s.estado === 'ACTIVA').length} activas
                         </Chip>
                         <div className="flex gap-2">
+                          {ramos_Editar && (
                           <Button
                             isIconOnly
                             variant="light"
@@ -463,6 +468,8 @@ const GestionAsignaturasPage: React.FC = () => {
                           >
                             <Icon icon="lucide:edit" width={18} className="text-primary" />
                           </Button>
+                          )}
+                          {ramos_Eliminar && (
                           <Button
                             isIconOnly
                             variant="light"
@@ -472,6 +479,7 @@ const GestionAsignaturasPage: React.FC = () => {
                           >
                             <Icon icon="lucide:trash-2" width={18} />
                           </Button>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -534,12 +542,16 @@ const GestionAsignaturasPage: React.FC = () => {
                                       <div className="mt-1">{renderEstadoSeccion(seccion.estado)}</div>
                                     </div>
                                     <div className="py-2.5 border-b border-default-100 flex gap-1 justify-center items-start">
+                                      {ramos_Editar && (
                                       <Button isIconOnly variant="light" size="md" onPress={() => editarSeccion(asignatura, seccion)}>
                                         <Icon icon="lucide:edit" width={18} className="text-primary" />
                                       </Button>
+                                      )}
+                                      {ramos_Eliminar && (
                                       <Button isIconOnly variant="light" size="md" color="danger" onPress={() => eliminarSeccion(asignatura.id, seccion.id, seccion.numeroSeccion)}>
                                         <Icon icon="lucide:trash-2" width={18} />
                                       </Button>
+                                      )}
                                     </div>
                                   </React.Fragment>
                                 ))}
@@ -547,6 +559,7 @@ const GestionAsignaturasPage: React.FC = () => {
                             )}
 
                             {/* Botón para agregar nueva sección */}
+                            {ramos_Crear && (
                             <button
                               type="button"
                               onClick={() => abrirCrearSeccion(asignatura)}
@@ -562,6 +575,7 @@ const GestionAsignaturasPage: React.FC = () => {
                                 Haz clic aquí para crear una sección para <span className="font-medium text-default-500">{asignatura.nombre}</span>
                               </p>
                             </button>
+                            )}
                           </div>
                         </motion.div>
                       )}

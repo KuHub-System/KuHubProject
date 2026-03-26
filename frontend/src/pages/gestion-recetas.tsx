@@ -32,6 +32,7 @@ import { motion } from 'framer-motion';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useToast, useConfirm } from '../hooks/useToast';
 import { useAuth } from '../contexts/auth-context';
+import { useModulePermission } from '../contexts/permission-context';
 
 // IMPORTAR TIPOS Y SERVICIOS
 import { IReceta, IIngrediente, IRecipeWithDetailsUpdateDTO } from '../types/receta.types';
@@ -59,6 +60,7 @@ const GestionRecetasPage: React.FC = () => {
   const toast = useToast();
   const confirm = useConfirm();
   const { user } = useAuth();
+  const { canCreate: rec_Crear, canUpdate: rec_Editar, canDelete: rec_Eliminar } = useModulePermission('GESTION_RECETAS');
   const esSoloLectura = user?.rol === 'Profesor';
   const esAdministrador = user?.rol === 'Administrador';
 
@@ -363,7 +365,7 @@ const GestionRecetasPage: React.FC = () => {
               />
 
               <div className="flex items-center gap-2">
-                {!esSoloLectura && (
+                {!esSoloLectura && rec_Crear && (
                   <Button
                     color="primary"
                     variant="solid"
@@ -463,6 +465,7 @@ const GestionRecetasPage: React.FC = () => {
                       <div className="flex justify-center gap-1">
                         {!esSoloLectura && (
                           <>
+                            {rec_Editar && (
                             <Tooltip content="Editar receta" delay={0}>
                               <Button
                                 isIconOnly
@@ -475,7 +478,9 @@ const GestionRecetasPage: React.FC = () => {
                                 <Icon icon="lucide:edit" width={18} />
                               </Button>
                             </Tooltip>
+                            )}
 
+                            {rec_Editar && (
                             <Tooltip content={receta.estadoReceta === 'Activo' ? 'Inactivar receta' : 'Activar receta'} delay={0}>
                               <Button
                                 isIconOnly
@@ -491,7 +496,8 @@ const GestionRecetasPage: React.FC = () => {
                                 />
                               </Button>
                             </Tooltip>
-                            {esAdministrador && (
+                            )}
+                            {esAdministrador && rec_Eliminar && (
                               <Tooltip content="Eliminar receta" delay={0}>
                                 <Button
                                   isIconOnly

@@ -14,6 +14,13 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+/**
+ * Controller REST para gestión de Unidades de Medida
+ * Endpoints: /api/v1/unidad-medida
+ * ✅ En uso: Este controlador gestiona el CRUD de unidades de medida, incluyendo la validación 
+ * de productos asociados y la transferencia de productos entre unidades.
+ * Consumido por unidad-medida-service.ts en el frontend.
+ */
 @RestController
 @RequestMapping("/api/v1/unidad-medida")
 @Validated
@@ -22,7 +29,10 @@ public class UnidadMedidaController {
     @Autowired
     private UnidadMedidaServiceImpl unidadMedidaService;
 
-    /**✅ FUNCIONAL IMPLEMENTADO EN EL FRONT*/
+    /**
+     * Obtiene todas las unidades de medida incluyendo el conteo de productos asociados.
+     * ✅ En uso: Consumido por obtenerUnidadesService en unidad-medida-service.ts.
+     */
     @GetMapping("/find-all-view")
     public ResponseEntity<List<UnidadMedidaView>> findAllView(){
         return ResponseEntity
@@ -30,7 +40,10 @@ public class UnidadMedidaController {
                 .body(unidadMedidaService.findAllWithAsociados());
     }
 
-    /**❌FUNCIONAL PERO NO IMPLEMENTADO EN EL FRONT*/
+    /**
+     * Obtiene el listado básico de todas las unidades de medida.
+     * ⚠️ Sin uso aparente: El frontend utiliza find-all-view para obtener datos adicionales.
+     */
     @GetMapping()
     public ResponseEntity<List<UnidadMedida>> findAll(){
         return ResponseEntity
@@ -38,7 +51,10 @@ public class UnidadMedidaController {
                 .body(unidadMedidaService.findAll());
     }
 
-    /**✅ FUNCIONAL IMPLEMENTADO EN EL FRONT*/
+    /**
+     * Obtiene la lista de unidades de medida que se encuentran activas.
+     * ✅ En uso: Consumido por obtenerUnidadesActivasService en unidad-medida-service.ts.
+     */
     @GetMapping("/find-all-active-true")
     public ResponseEntity<List<UnidadMedida>> findAllActiveTrue(){
         return ResponseEntity
@@ -46,7 +62,10 @@ public class UnidadMedidaController {
                 .body(unidadMedidaService.findAllActiveTrue());
     }
 
-    /**✅ FUNCIONAL IMPLEMENTADO EN EL FRONT*/
+    /**
+     * Crea una nueva unidad de medida en el sistema.
+     * ✅ En uso: Consumido por crearUnidadService en unidad-medida-service.ts.
+     */
     @PostMapping()
     public ResponseEntity<Boolean> create
             (@Validated @RequestBody CreateUnidadDTO request){
@@ -55,7 +74,10 @@ public class UnidadMedidaController {
                 .body(unidadMedidaService.createUnidad(request));
     }
 
-    /**✅ FUNCIONAL IMPLEMENTADO EN EL FRONT*/
+    /**
+     * Actualiza la información de una unidad de medida existente.
+     * ✅ En uso: Consumido por actualizarUnidadService en unidad-medida-service.ts.
+     */
     @PatchMapping()
     public ResponseEntity<Boolean> update
             (@Validated @RequestBody UpdateUnidadDTO request){
@@ -64,7 +86,10 @@ public class UnidadMedidaController {
                 .body(unidadMedidaService.updateUnidad(request));
     }
 
-    /**✅ FUNCIONAL IMPLEMENTADO EN EL FRONT*/
+    /**
+     * Alterna el estado de activación de una unidad de medida.
+     * ✅ En uso: Consumido por cambiarEstadoUnidadService en unidad-medida-service.ts.
+     */
     @PatchMapping("/update-unidad-status")
     public ResponseEntity<Void> updateUnidadStatus(
             @Validated @RequestBody ChangeStatusActiveUnidadDTO request
@@ -73,7 +98,10 @@ public class UnidadMedidaController {
         return ResponseEntity.noContent().build();
     }
 
-    /**✅ FUNCIONAL IMPLEMENTADO EN EL FRONT*/
+    /**
+     * Reasocia todos los productos de una unidad de medida a otra unidad de destino.
+     * ✅ En uso: Consumido por transferirProductosUnidadService en unidad-medida-service.ts.
+     */
     @PutMapping()
     public ResponseEntity<String> changeProductsToAnotherUnidadMedida(
             @Validated @RequestBody ChangeProductsToAnotherUnidadMedidaDTO request){
@@ -82,7 +110,10 @@ public class UnidadMedidaController {
                 .body(unidadMedidaService.changeProductsToAnotherUnidadMedida(request));
     }
 
-    /**✅ FUNCIONAL IMPLEMENTADO EN EL FRONT*/
+    /**
+     * Elimina una unidad de medida del sistema por su ID.
+     * ✅ En uso: Consumido por eliminarUnidadService en unidad-medida-service.ts.
+     */
     @DeleteMapping("/{idUnidadMedida}")
     public ResponseEntity<Void> deleteByIdUnidadMedida(
             @PathVariable Short idUnidadMedida){

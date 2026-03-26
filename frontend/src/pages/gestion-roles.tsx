@@ -1,576 +1,415 @@
+/**
+ * PÁGINA: GESTIÓN DE ROLES Y PERMISOS
+ *
+ * Matriz interactiva: Módulos (filas) × Roles (columnas)
+ * Cada celda tiene un selector de nivel de acceso: Sin Acceso / Solo Lectura / Escritura
+ *
+ * - Solo el Administrador puede acceder y editar.
+ * - El rol Administrador está bloqueado en "Escritura" (no editable).
+ * - Los cambios se persisten en la base de datos vía API.
+ * - Colores corporativos de KuHub (amarillo #FFB800 / negro #1A1A1A).
+ */
+
 import React from 'react';
 import {
-  Table,
-  TableHeader,
-  TableColumn,
-  TableBody,
-  TableRow,
-  TableCell,
   Button,
   Card,
   CardBody,
-  Input,
-  Checkbox,
-  Modal,
-  ModalContent,
-  ModalHeader,
-  ModalBody,
-  ModalFooter,
-  useDisclosure,
-  Chip
+  CardHeader,
+  Chip,
+  Spinner,
 } from '@heroui/react';
 import { Icon } from '@iconify/react';
 import { motion } from 'framer-motion';
-import { IRole } from '../types/user.types';
-// 🔥 IMPORTAR EL HELPER DE ROLES
-import { guardarRoles, obtenerRoles } from '../services/roles-helper';
+import { usePermission } from '../contexts/permission-context';
+import { permissionService } from '../services/permission-service';
+import {
+  AccessLevel,
+  ModuleKey,
+  MODULE_LABELS,
+  MODULE_ICONS,
+  RolePermission,
+} from '../types/permissions.types';
 
-/**
- * Datos de ejemplo para los roles.
- * Estos son los roles por defecto que aparecen la primera vez
- */
-const rolesIniciales: IRole[] = [
-  {
-    id: '1',
-    nombre: 'Administrador',
-    permisos: ['dashboard', 'inventario', 'solicitud', 'gestion-pedidos', 'conglomerado-pedidos', 'gestion-proveedores', 'bodega-transito', 'gestion-recetas', 'ramos-admin', 'gestion-roles', 'gestion-usuarios']
-  },
-  {
-    id: '2',
-    nombre: 'Co-Administrador',
-    permisos: ['dashboard', 'inventario', 'solicitud', 'gestion-pedidos', 'conglomerado-pedidos', 'gestion-proveedores', 'bodega-transito', 'gestion-recetas', 'ramos-admin']
-  },
-  {
-    id: '3',
-    nombre: 'Gestor de Pedidos',
-    permisos: ['dashboard', 'gestion-pedidos', 'conglomerado-pedidos']
-  },
-  {
-    id: '4',
-    nombre: 'Profesor a Cargo',
-    permisos: ['dashboard', 'solicitud']
-  },
-  {
-    id: '5',
-    nombre: 'Encargado de Bodega',
-    permisos: ['dashboard', 'inventario']
-  },
-  {
-    id: '6',
-    nombre: 'Asistente de Bodega',
-    permisos: ['dashboard', 'bodega-transito']
-  }
+// ── Opciones de nivel de acceso ───────────────────────────────────────────────
+
+const ACCESS_OPTIONS: { value: AccessLevel; label: string; chipColor: 'default' | 'warning' | 'success'; icon: string }[] = [
+  { value: 'none',  label: 'Sin Acceso',    chipColor: 'default', icon: 'lucide:lock' },
+  { value: 'read',  label: 'Solo Lectura',  chipColor: 'warning', icon: 'lucide:eye' },
+  { value: 'write', label: 'Escritura',     chipColor: 'success', icon: 'lucide:pencil' },
 ];
 
-/**
- * Lista de páginas disponibles en el sistema.
- */
-const paginasDisponibles = [
-  { id: 'dashboard', nombre: 'Dashboard', descripcion: 'Panel principal con estadísticas' },
-  { id: 'inventario', nombre: 'Inventario', descripcion: 'Gestión de productos' },
-  { id: 'solicitud', nombre: 'Solicitud', descripcion: 'Creación de solicitudes de insumos' },
-  { id: 'gestion-pedidos', nombre: 'Gestión de Pedidos', descripcion: 'Administración de pedidos' },
-  { id: 'conglomerado-pedidos', nombre: 'Conglomerado de Pedidos', descripcion: 'Agrupación de pedidos' },
-  { id: 'gestion-proveedores', nombre: 'Gestión de Proveedores', descripcion: 'Administración de proveedores' },
-  { id: 'bodega-transito', nombre: 'Bodega de Tránsito', descripcion: 'Control de productos en tránsito' },
-  { id: 'gestion-recetas', nombre: 'Gestión de Recetas', descripcion: 'Administración de recetas' },
-  { id: 'ramos-admin', nombre: 'Ramos Admin', descripcion: 'Administración de asignaturas' },
-  { id: 'gestion-roles', nombre: 'Gestión de Roles', descripcion: 'Administración de roles y permisos' }
+// ── Orden de módulos (debe coincidir con orden_modulo en BD) ─────────────────
+
+const MODULE_ORDER: ModuleKey[] = [
+  'DASHBOARD',
+  'INVENTARIO',
+  'SOLICITUD',
+  'GESTION_PEDIDOS',
+  'GESTION_SOLICITUDES',
+  'CONGLOMERADO_PEDIDOS',
+  'GESTION_PROVEEDORES',
+  'BODEGA_TRANSITO',
+  'GESTION_RECETAS',
+  'RAMOS_ADMIN',
+  'GESTION_ROLES',
+  'GESTION_USUARIOS',
+  'ADMIN_SISTEMA',
 ];
 
-/**
- * 🔥 FUNCIÓN MEJORADA: Cargar roles usando el helper
- */
-const cargarRolesDelAlmacenamiento = (): IRole[] => {
-  const roles = obtenerRoles();
-  return roles.length > 0 ? roles : rolesIniciales;
+// ── Componente chip de nivel de acceso ────────────────────────────────────────
+
+const AccessChip: React.FC<{ level: AccessLevel }> = ({ level }) => {
+  const opt = ACCESS_OPTIONS.find((o) => o.value === level) ?? ACCESS_OPTIONS[0];
+  return (
+    <Chip
+      size="sm"
+      color={opt.chipColor}
+      variant="flat"
+      startContent={<Icon icon={opt.icon} width={12} />}
+    >
+      {opt.label}
+    </Chip>
+  );
 };
 
-/**
- * Página de gestión de roles mejorada.
- * Ahora notifica cambios para sincronización en tiempo real
- */
-const MODAL_KEY_ROLES = 'roles_maintenance_dismissed';
+// ── Selector de nivel de acceso ───────────────────────────────────────────────
 
-const GestionRolesPage: React.FC = () => {
-  const [avisoAbierto, setAvisoAbierto] = React.useState(() => !sessionStorage.getItem(MODAL_KEY_ROLES));
-  const cerrarAviso = () => { sessionStorage.setItem(MODAL_KEY_ROLES, '1'); setAvisoAbierto(false); };
+interface AccessSelectorProps {
+  value:    AccessLevel;
+  disabled: boolean;
+  locked:   boolean;
+  onChange: (v: AccessLevel) => void;
+}
 
-  // ESTADO DEL COMPONENTE
-  const [roles, setRoles] = React.useState<IRole[]>(() => cargarRolesDelAlmacenamiento());
-  const [rolSeleccionado, setRolSeleccionado] = React.useState<IRole | null>(null);
-  const [modalMode, setModalMode] = React.useState<'crear' | 'editar'>('crear');
-  const [loading, setLoading] = React.useState<boolean>(false);
+const AccessSelector: React.FC<AccessSelectorProps> = ({ value, disabled, locked, onChange }) => {
+  const display = locked ? 'write' : value;
+  const opt = ACCESS_OPTIONS.find((o) => o.value === display) ?? ACCESS_OPTIONS[0];
 
-  const { isOpen, onOpen, onOpenChange } = useDisclosure();
+  const bgClass =
+    display === 'write' ? 'bg-success-50 border-success-200 text-success-700 dark:bg-success-50/10 dark:text-success-400' :
+    display === 'read'  ? 'bg-warning-50 border-warning-200 text-warning-700 dark:bg-warning-50/10 dark:text-warning-400' :
+                          'bg-default-100 border-default-200 text-default-500 dark:bg-default-50/10';
 
-  /**
-   * 🔥 EFECTO MEJORADO: Guardar y notificar cambios
-   * Ahora usa guardarRoles() que automáticamente notifica a todos los usuarios
-   */
-  React.useEffect(() => {
-    guardarRoles(roles); // Usa la función del helper que notifica automáticamente
-  }, [roles]);
-
-  /**
-   * Abre el modal para crear un nuevo rol.
-   */
-  const handleNuevoRol = () => {
-    setModalMode('crear');
-    setRolSeleccionado(null);
-    onOpen();
-  };
-
-  /**
-   * Abre el modal para editar un rol existente.
-   */
-  const handleEditarRol = (rol: IRole) => {
-    setModalMode('editar');
-    setRolSeleccionado(rol);
-    onOpen();
-  };
-
-  /**
-   * Elimina un rol del sistema.
-   */
-  const handleEliminarRol = (id: string) => {
-    const rolAEliminar = roles.find(rol => rol.id === id);
-
-    if (rolAEliminar?.nombre === 'Admin') {
-      alert('No se puede eliminar el rol de Administrador');
-      return;
-    }
-
-    if (window.confirm('¿Está seguro de que desea eliminar este rol?')) {
-      setLoading(true);
-
-      setTimeout(() => {
-        const nuevosRoles = roles.filter(rol => rol.id !== id);
-        setRoles(nuevosRoles);
-        setLoading(false);
-      }, 300);
-    }
-  };
-
-  /**
-   * Resetea los roles a su configuración inicial
-   */
-  const resetearRoles = () => {
-    if (window.confirm('¿Está seguro de que desea resetear todos los roles a su configuración inicial?')) {
-      setLoading(true);
-
-      setTimeout(() => {
-        setRoles(rolesIniciales);
-        setLoading(false);
-      }, 500);
-    }
-  };
+  if (locked) {
+    return (
+      <div className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg border text-xs font-semibold opacity-80 ${bgClass}`}>
+        <Icon icon="lucide:shield-check" width={12} />
+        Escritura
+      </div>
+    );
+  }
 
   return (
-    <>
-      <Modal isOpen={avisoAbierto} onClose={cerrarAviso} size="md" isDismissable={false} hideCloseButton>
-        <ModalContent>
-          <ModalHeader className="flex items-center gap-2 pb-1">
-            <Icon icon="lucide:construction" width={20} className="text-warning-500 shrink-0" />
-            <span>Vista en desarrollo</span>
-          </ModalHeader>
-          <ModalBody className="py-3">
-            <div className="flex flex-col gap-3">
-              <p className="text-sm text-default-600">
-                La página de <strong>Gestión de Roles</strong> es una versión preliminar.
-                Actualmente se encuentra en mantenimiento activo y está sujeta a cambios y mejoras continuas.
-              </p>
-              <p className="text-sm text-default-500">
-                Es posible que algunos datos o funcionalidades no reflejen el comportamiento definitivo del sistema.
-                Agradecemos tu comprensión mientras seguimos mejorando la plataforma.
-              </p>
-              <div className="flex items-center gap-2 px-3 py-2 bg-warning-50 border border-warning-200 rounded-lg text-xs text-warning-800">
-                <Icon icon="lucide:info" width={13} className="shrink-0" />
-                Este aviso se muestra una vez por sesión.
-              </div>
-            </div>
-          </ModalBody>
-          <ModalFooter>
-            <Button color="primary" onPress={cerrarAviso} startContent={<Icon icon="lucide:thumbs-up" width={14} />}>
-              ¡Gracias, entendido!
-            </Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
+    <select
+      value={display}
+      disabled={disabled}
+      onChange={(e) => onChange(e.target.value as AccessLevel)}
+      className={`
+        text-xs font-medium px-2 py-1.5 rounded-lg border cursor-pointer
+        focus:outline-none focus:ring-2 focus:ring-[#FFB800]/40
+        transition-colors duration-150
+        ${bgClass}
+        ${disabled ? 'opacity-50 cursor-not-allowed' : 'hover:opacity-90'}
+      `}
+    >
+      {ACCESS_OPTIONS.map((o) => (
+        <option key={o.value} value={o.value}>
+          {o.label}
+        </option>
+      ))}
+    </select>
+  );
+};
 
-    <div className="container mx-auto px-4">
+// ── Página principal ──────────────────────────────────────────────────────────
+
+const GestionRolesPage: React.FC = () => {
+  const { isAdmin, isLoading: permLoading, refreshPermissions, allPermissions } = usePermission();
+
+  const [localPermissions, setLocalPermissions] = React.useState<RolePermission[]>([]);
+  const [isSaving,         setIsSaving]         = React.useState(false);
+  const [isLoading,        setIsLoading]         = React.useState(false);
+  const [message,          setMessage]           = React.useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [errorState,       setErrorState]        = React.useState<{ is403: boolean; message: string } | null>(null);
+
+  // ── Cargar la matriz desde el backend ───────────────────────────────────────
+
+  const loadMatrix = React.useCallback(async () => {
+    setIsLoading(true);
+    setErrorState(null);
+    setMessage(null);
+    try {
+      const data = await permissionService.getPermissions();
+      setLocalPermissions(data);
+    } catch (err: any) {
+      if (err?.response?.status === 403) {
+        setErrorState({ is403: true, message: 'No tienes permisos para ver la matriz de permisos.' });
+      } else {
+        setMessage({ type: 'error', text: 'Error al cargar los permisos. Verifica que el servidor esté activo.' });
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  React.useEffect(() => {
+    loadMatrix();
+  }, [loadMatrix]);
+
+  // ── Cambiar un nivel de acceso en el estado local ───────────────────────────
+
+  const handlePermissionChange = (roleIndex: number, moduleKey: ModuleKey, newValue: AccessLevel) => {
+    setLocalPermissions((prev) => {
+      const updated = [...prev];
+      updated[roleIndex] = {
+        ...updated[roleIndex],
+        permissions: {
+          ...updated[roleIndex].permissions,
+          [moduleKey]: newValue,
+        },
+      };
+      return updated;
+    });
+    setMessage(null);
+  };
+
+  // ── Guardar cambios ─────────────────────────────────────────────────────────
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    setMessage(null);
+    try {
+      await permissionService.savePermissions(localPermissions);
+      await refreshPermissions(); // invalidar cache del contexto
+      await loadMatrix();         // recargar matriz local
+      setMessage({ type: 'success', text: '¡Permisos actualizados correctamente!' });
+    } catch (err) {
+      console.error(err);
+      setMessage({ type: 'error', text: 'Error al guardar los permisos.' });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // ── Guard: solo Administrador ───────────────────────────────────────────────
+
+  if (!permLoading && !isAdmin) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full py-20 text-center gap-4">
+        <div className="w-20 h-20 rounded-full bg-danger-50 flex items-center justify-center">
+          <Icon icon="lucide:shield-off" width={40} className="text-danger-500" />
+        </div>
+        <h2 className="text-2xl font-bold text-danger-600">Acceso Denegado</h2>
+        <p className="text-default-500 max-w-sm">
+          Solo el Administrador puede gestionar roles y permisos del sistema.
+        </p>
+      </div>
+    );
+  }
+
+  // ── Render ──────────────────────────────────────────────────────────────────
+
+  return (
+    <div className="container mx-auto px-4 pb-8">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4 }}
+        transition={{ duration: 0.35 }}
         className="space-y-6"
       >
-        {/* Encabezado */}
+
+        {/* ── Encabezado ── */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold mb-2">Gestión de Roles</h1>
-            <p className="text-default-500">
-              Administre los roles y permisos del sistema. Los cambios se aplican inmediatamente.
-            </p>
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-[#FFB800]/10 flex items-center justify-center">
+              <Icon icon="lucide:shield" width={22} className="text-[#FFB800]" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold">Gestión de Roles y Permisos</h1>
+              <p className="text-default-500 text-sm">
+                Configura qué puede ver o editar cada rol en el sistema.
+              </p>
+            </div>
           </div>
 
           <div className="flex gap-2">
             <Button
-              color="warning"
               variant="flat"
-              startContent={<Icon icon="lucide:refresh-cw" />}
-              onPress={resetearRoles}
-              isLoading={loading}
+              color="default"
+              startContent={<Icon icon="lucide:refresh-cw" width={16} />}
+              onPress={loadMatrix}
+              isLoading={isLoading}
+              isDisabled={isSaving}
+              size="sm"
             >
-              Resetear
+              Recargar
             </Button>
             <Button
-              color="primary"
-              startContent={<Icon icon="lucide:plus" />}
-              onPress={handleNuevoRol}
-              isDisabled={loading}
+              style={{ backgroundColor: '#FFB800', color: '#1A1A1A' }}
+              startContent={!isSaving && <Icon icon="lucide:save" width={16} />}
+              onPress={handleSave}
+              isLoading={isSaving}
+              isDisabled={isLoading || !!errorState}
+              size="sm"
+              className="font-semibold"
             >
-              Nuevo Rol
+              Guardar Cambios
             </Button>
           </div>
         </div>
 
-        {/* 🔥 INDICADOR MEJORADO */}
-        {roles.length > 0 && (
-          <div className="bg-success-50 dark:bg-success-50/10 border border-success-200 dark:border-success-100 text-success-700 dark:text-success-400 p-3 rounded-lg">
-            <div className="flex items-start gap-2">
-              <Icon icon="lucide:check-circle" className="text-xl flex-shrink-0 mt-0.5" />
-              <div className="text-sm">
-                <strong>Sistema sincronizado:</strong> {roles.length} roles configurados.
-                Los cambios se aplican automáticamente a todos los usuarios activos.
-              </div>
+        {/* ── Leyenda de niveles de acceso ── */}
+        <div className="flex flex-wrap gap-3 items-center">
+          <span className="text-xs text-default-400 font-medium">Niveles:</span>
+          {ACCESS_OPTIONS.map((o) => (
+            <div key={o.value} className="flex items-center gap-1.5 text-xs">
+              <AccessChip level={o.value} />
             </div>
+          ))}
+          <div className="flex items-center gap-1.5 text-xs text-default-400 ml-2">
+            <Icon icon="lucide:lock" width={12} />
+            <span>El Administrador siempre tiene Escritura total (no editable)</span>
+          </div>
+        </div>
+
+        {/* ── Mensajes de estado ── */}
+        {message && (
+          <div className={`p-3 rounded-xl flex items-center gap-2 text-sm ${
+            message.type === 'success'
+              ? 'bg-success-50 border border-success-200 text-success-700 dark:bg-success-50/10 dark:text-success-400'
+              : 'bg-danger-50 border border-danger-200 text-danger-700 dark:bg-danger-50/10 dark:text-danger-400'
+          }`}>
+            <Icon icon={message.type === 'success' ? 'lucide:check-circle' : 'lucide:alert-circle'} width={16} />
+            {message.text}
           </div>
         )}
 
-        {/* Tabla de roles */}
-        <Card className="shadow-sm bg-white dark:bg-content1">
+        {/* ── Matriz de permisos ── */}
+        <Card className="shadow-sm">
+          <CardHeader className="px-6 py-4 border-b border-divider">
+            <div className="flex items-center gap-2">
+              <Icon icon="lucide:grid" width={16} className="text-[#FFB800]" />
+              <span className="font-semibold text-sm">
+                Módulos ({MODULE_ORDER.length}) × Roles ({localPermissions.length})
+              </span>
+            </div>
+          </CardHeader>
           <CardBody className="p-0">
-            <Table
-              aria-label="Tabla de roles del sistema"
-              removeWrapper
-            >
-              <TableHeader>
-                <TableColumn>NOMBRE DEL ROL</TableColumn>
-                <TableColumn>PERMISOS ASIGNADOS</TableColumn>
-                <TableColumn>ACCIONES</TableColumn>
-              </TableHeader>
-              <TableBody>
-                {roles.map((rol) => (
-                  <TableRow key={rol.id}>
-                    <TableCell>
-                      <div className="font-medium text-lg">{rol.nombre}</div>
-                      <div className="text-sm text-default-500">
-                        ID: {rol.id} • {rol.permisos.length} permisos
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex flex-wrap gap-1">
-                        {rol.permisos.length > 0 ? (
-                          rol.permisos.map((permiso) => {
-                            const pagina = paginasDisponibles.find(p => p.id === permiso);
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-max">
+
+                {/* ── Cabecera: nombre de los roles ── */}
+                <thead>
+                  <tr className="bg-default-50 dark:bg-default-100/5 border-b border-divider">
+                    {/* Columna fija: Módulo */}
+                    <th className="sticky left-0 z-10 bg-default-50 dark:bg-content1 px-5 py-3 text-left text-xs font-semibold text-default-500 uppercase tracking-wider min-w-[200px] border-r border-divider">
+                      Módulo
+                    </th>
+                    {isLoading ? null : localPermissions.map((rp) => (
+                      <th
+                        key={rp.role}
+                        className="px-4 py-3 text-center text-xs font-bold text-default-700 uppercase tracking-wider min-w-[160px]"
+                      >
+                        <div className="flex flex-col items-center gap-1">
+                          <div className="w-7 h-7 rounded-full bg-[#FFB800]/10 flex items-center justify-center">
+                            <Icon icon="lucide:user" width={14} className="text-[#FFB800]" />
+                          </div>
+                          <span className="text-[11px] leading-tight text-center">{rp.role}</span>
+                          {rp.role === 'Administrador' && (
+                            <span className="text-[9px] text-default-400 font-normal">(Control Total)</span>
+                          )}
+                        </div>
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+
+                {/* ── Cuerpo: módulos × selectores ── */}
+                <tbody className="divide-y divide-divider">
+                  {isLoading ? (
+                    <tr>
+                      <td colSpan={(localPermissions.length || 1) + 1} className="py-16 text-center">
+                        <div className="flex flex-col items-center gap-3">
+                          <Spinner size="lg" color="warning" />
+                          <span className="text-default-400 text-sm">Cargando permisos...</span>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : errorState ? (
+                    <tr>
+                      <td colSpan={(localPermissions.length || 1) + 1} className="py-16 text-center">
+                        <div className="flex flex-col items-center gap-3">
+                          <Icon icon="lucide:shield-off" width={48} className="text-danger-300" />
+                          <p className="font-semibold text-danger-600">{errorState.message}</p>
+                          {errorState.is403 && (
+                            <p className="text-sm text-default-400">Contacta al administrador del sistema.</p>
+                          )}
+                          <Button size="sm" variant="flat" onPress={loadMatrix}>
+                            Reintentar
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : (
+                    MODULE_ORDER.map((moduleKey) => {
+                      const label = MODULE_LABELS[moduleKey];
+                      const icon  = MODULE_ICONS[moduleKey];
+
+                      return (
+                        <tr key={moduleKey} className="hover:bg-default-50/50 dark:hover:bg-default-100/5 transition-colors">
+                          {/* Columna fija: nombre del módulo */}
+                          <td className="sticky left-0 z-10 bg-white dark:bg-content1 px-5 py-3 border-r border-divider">
+                            <div className="flex items-center gap-2">
+                              <div className="w-7 h-7 rounded-lg bg-[#FFB800]/10 flex items-center justify-center shrink-0">
+                                <Icon icon={icon} width={14} className="text-[#FFB800]" />
+                              </div>
+                              <span className="text-sm font-medium text-default-800 dark:text-default-200 whitespace-nowrap">
+                                {label}
+                              </span>
+                            </div>
+                          </td>
+
+                          {/* Celdas: selector por rol */}
+                          {localPermissions.map((rp, roleIdx) => {
+                            const currentAccess = rp.permissions[moduleKey] ?? 'none';
+                            const isLocked      = rp.role === 'Administrador';
+
                             return (
-                              <Chip
-                                key={permiso}
-                                size="sm"
-                                variant="flat"
-                                color="primary"
+                              <td
+                                key={`${rp.role}-${moduleKey}`}
+                                className="px-4 py-3 text-center"
                               >
-                                {pagina?.nombre || permiso}
-                              </Chip>
+                                <AccessSelector
+                                  value={currentAccess}
+                                  locked={isLocked}
+                                  disabled={isLocked || isSaving}
+                                  onChange={(v) => handlePermissionChange(roleIdx, moduleKey, v)}
+                                />
+                              </td>
                             );
-                          })
-                        ) : (
-                          <span className="text-danger text-sm">Sin permisos asignados</span>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex gap-2">
-                        <Button
-                          isIconOnly
-                          variant="light"
-                          size="sm"
-                          onPress={() => handleEditarRol(rol)}
-                          isDisabled={loading}
-                          title="Editar rol"
-                        >
-                          <Icon icon="lucide:edit" className="text-primary" />
-                        </Button>
-                        <Button
-                          isIconOnly
-                          variant="light"
-                          size="sm"
-                          onPress={() => handleEliminarRol(rol.id)}
-                          isDisabled={loading || rol.nombre === 'Admin'}
-                          title={rol.nombre === 'Admin' ? 'No se puede eliminar el rol Admin' : 'Eliminar rol'}
-                        >
-                          <Icon
-                            icon="lucide:trash"
-                            className={rol.nombre === 'Admin' ? 'text-default-300' : 'text-danger'}
-                          />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                          })}
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
           </CardBody>
         </Card>
+
+        {/* ── Nota informativa ── */}
+        <div className="flex items-start gap-2 text-xs text-default-400 bg-default-50 dark:bg-default-100/5 rounded-xl p-3 border border-divider">
+          <Icon icon="lucide:info" width={14} className="shrink-0 mt-0.5 text-[#FFB800]" />
+          <p>
+            Los cambios se aplican a todos los usuarios de ese rol inmediatamente después de guardar.
+            El Administrador siempre mantiene acceso total y no puede ser restringido.
+          </p>
+        </div>
+
       </motion.div>
-
-      {/* Modal para crear/editar rol */}
-      <Modal isOpen={isOpen} onOpenChange={onOpenChange} size="3xl">
-        <ModalContent>
-          {(onClose) => (
-            <FormularioRol
-              rol={rolSeleccionado}
-              mode={modalMode}
-              rolesExistentes={roles}
-              onClose={onClose}
-              onSave={(nuevoRol) => {
-                setLoading(true);
-
-                setTimeout(() => {
-                  if (modalMode === 'crear') {
-                    const rolConId = {
-                      ...nuevoRol,
-                      id: Date.now().toString()
-                    };
-                    setRoles([...roles, rolConId]);
-                  } else {
-                    setRoles(roles.map(r => r.id === nuevoRol.id ? nuevoRol : r));
-                  }
-                  setLoading(false);
-                  onClose();
-                }, 300);
-              }}
-            />
-          )}
-        </ModalContent>
-      </Modal>
     </div>
-    </>
-  );
-};
-
-/**
- * Interfaz para las propiedades del componente FormularioRol.
- */
-interface FormularioRolProps {
-  rol: IRole | null;
-  mode: 'crear' | 'editar';
-  rolesExistentes: IRole[];
-  onClose: () => void;
-  onSave: (rol: IRole) => void;
-}
-
-/**
- * Componente de formulario para crear o editar un rol.
- */
-const FormularioRol: React.FC<FormularioRolProps> = ({
-  rol,
-  mode,
-  rolesExistentes,
-  onClose,
-  onSave
-}) => {
-  const [nombre, setNombre] = React.useState<string>(rol?.nombre || '');
-  const [permisos, setPermisos] = React.useState<string[]>(rol?.permisos || []);
-  const [errores, setErrores] = React.useState<string[]>([]);
-  const [guardando, setGuardando] = React.useState<boolean>(false);
-
-  const handlePermisoChange = (permisoId: string, isChecked: boolean) => {
-    if (isChecked) {
-      if (!permisos.includes(permisoId)) {
-        setPermisos([...permisos, permisoId]);
-      }
-    } else {
-      setPermisos(permisos.filter(p => p !== permisoId));
-    }
-
-    if (errores.length > 0) {
-      setErrores([]);
-    }
-  };
-
-  const validarFormulario = (): boolean => {
-    const nuevosErrores: string[] = [];
-
-    if (!nombre.trim()) {
-      nuevosErrores.push('El nombre del rol es obligatorio');
-    } else if (nombre.trim().length < 3) {
-      nuevosErrores.push('El nombre del rol debe tener al menos 3 caracteres');
-    }
-
-    if (mode === 'crear' || (rol && rol.nombre !== nombre.trim())) {
-      const rolExistente = rolesExistentes.find(r =>
-        r.nombre.toLowerCase() === nombre.trim().toLowerCase()
-      );
-      if (rolExistente) {
-        nuevosErrores.push('Ya existe un rol con ese nombre');
-      }
-    }
-
-    if (permisos.length === 0) {
-      nuevosErrores.push('Debe seleccionar al menos un permiso');
-    }
-
-    setErrores(nuevosErrores);
-    return nuevosErrores.length === 0;
-  };
-
-  const handleSubmit = () => {
-    if (!validarFormulario()) {
-      return;
-    }
-
-    setGuardando(true);
-
-    setTimeout(() => {
-      const rolAGuardar: IRole = {
-        id: rol?.id || '',
-        nombre: nombre.trim(),
-        permisos: [...permisos]
-      };
-
-      onSave(rolAGuardar);
-      setGuardando(false);
-    }, 500);
-  };
-
-  const toggleTodosLosPermisos = () => {
-    if (permisos.length === paginasDisponibles.length) {
-      setPermisos([]);
-    } else {
-      setPermisos(paginasDisponibles.map(p => p.id));
-    }
-  };
-
-  const todosMarcados = permisos.length === paginasDisponibles.length;
-
-  return (
-    <>
-      <ModalHeader>
-        <div className="flex items-center gap-2">
-          <Icon
-            icon={mode === 'crear' ? 'lucide:plus-circle' : 'lucide:edit'}
-            className="text-primary"
-          />
-          {mode === 'crear' ? 'Crear Nuevo Rol' : `Editar Rol: ${rol?.nombre}`}
-        </div>
-      </ModalHeader>
-
-      <ModalBody>
-        <div className="space-y-6">
-          {errores.length > 0 && (
-            <Card className="bg-danger-50 dark:bg-danger-50/10 border-danger-200 dark:border-danger-100">
-              <CardBody className="p-4">
-                <div className="flex items-start gap-2">
-                  <Icon icon="lucide:alert-circle" className="text-danger mt-0.5" />
-                  <div>
-                    <p className="text-danger font-medium mb-1">Errores en el formulario:</p>
-                    <ul className="text-danger text-sm space-y-1">
-                      {errores.map((error, index) => (
-                        <li key={index}>• {error}</li>
-                      ))}
-                    </ul>
-                  </div>
-                </div>
-              </CardBody>
-            </Card>
-          )}
-
-          <Input
-            label="Nombre del Rol"
-            placeholder="Ej: Supervisor de Inventario"
-            value={nombre}
-            onValueChange={setNombre}
-            isDisabled={guardando || (mode === 'editar' && rol?.nombre === 'Admin')}
-            description="El nombre debe ser único y descriptivo"
-            isInvalid={errores.some(e => e.includes('nombre'))}
-          />
-
-          <div>
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <p className="text-sm font-medium">Permisos del Sistema</p>
-                <p className="text-xs text-default-500">
-                  Seleccione las páginas a las que este rol tendrá acceso
-                </p>
-              </div>
-
-              <Button
-                size="sm"
-                variant="flat"
-                color={todosMarcados ? "warning" : "primary"}
-                onPress={toggleTodosLosPermisos}
-                isDisabled={guardando || (mode === 'editar' && rol?.nombre === 'Admin')}
-              >
-                {todosMarcados ? 'Desmarcar Todos' : 'Marcar Todos'}
-              </Button>
-            </div>
-
-            <Card>
-              <CardBody className="p-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {paginasDisponibles.map((pagina) => (
-                    <Checkbox
-                      key={pagina.id}
-                      isSelected={permisos.includes(pagina.id)}
-                      onValueChange={(isSelected) => handlePermisoChange(pagina.id, isSelected)}
-                      isDisabled={guardando || (mode === 'editar' && rol?.nombre === 'Admin')}
-                    >
-                      <div>
-                        <p className="font-medium text-sm">{pagina.nombre}</p>
-                        <p className="text-xs text-default-500">{pagina.descripcion}</p>
-                      </div>
-                    </Checkbox>
-                  ))}
-                </div>
-
-                <div className="mt-4 pt-4 border-t">
-                  <p className="text-sm text-default-600">
-                    <Icon icon="lucide:info" className="inline mr-1" />
-                    {permisos.length} de {paginasDisponibles.length} permisos seleccionados
-                  </p>
-                </div>
-              </CardBody>
-            </Card>
-          </div>
-        </div>
-      </ModalBody>
-
-      <ModalFooter>
-        <Button
-          variant="flat"
-          onPress={onClose}
-          isDisabled={guardando}
-        >
-          Cancelar
-        </Button>
-        <Button
-          color="primary"
-          onPress={handleSubmit}
-          isDisabled={guardando || (mode === 'editar' && rol?.nombre === 'Admin')}
-          isLoading={guardando}
-          startContent={!guardando && <Icon icon="lucide:save" />}
-        >
-          {guardando
-            ? 'Guardando...'
-            : mode === 'crear'
-              ? 'Crear Rol'
-              : 'Guardar Cambios'
-          }
-        </Button>
-      </ModalFooter>
-    </>
   );
 };
 

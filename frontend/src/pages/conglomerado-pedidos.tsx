@@ -29,6 +29,7 @@ import {
   consolidatePedidoQueryService,
   aprobarPedidosService,
 } from '../services/solicitud-service';
+import { useModulePermission } from '../contexts/permission-context';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TIPOS INTERNOS
@@ -88,6 +89,7 @@ const fmtCant = (n: number): string => {
 const ConglomeradoPedidosPage: React.FC = () => {
   usePageTitle('Conglomerado de Pedidos', 'Seguimiento y estado de los pedidos semanales generados a partir de solicitudes aceptadas.');
   const toast = useToast();
+  const { canCreate: cong_Crear, canUpdate: cong_Editar, canDelete: cong_Eliminar } = useModulePermission('CONGLOMERADO_PEDIDOS');
 
   // ── Semanas ──
   const [periodos,        setPeriodos]        = React.useState<IPeriodoAcademico[]>([]);
@@ -825,7 +827,7 @@ const ConglomeradoPedidosPage: React.FC = () => {
                     ? `${productosUnificadosFiltrados.length} producto${productosUnificadosFiltrados.length !== 1 ? 's' : ''} totales`
                     : `${pedidosAprobFiltrados.length} pedido${pedidosAprobFiltrados.length !== 1 ? 's' : ''}`}
                 </span>
-                {pedidosPendientes.length > 0 && (
+                {cong_Editar && pedidosPendientes.length > 0 && (
                   <Button size="sm" color="success" variant="flat" isLoading={isAprobando}
                     onPress={handleAprobarTodos}
                     className="ml-auto"
@@ -947,7 +949,7 @@ const ConglomeradoPedidosPage: React.FC = () => {
                           startContent={<Icon icon={isAprobado ? 'lucide:check-circle-2' : isPendiente ? 'lucide:clock' : 'lucide:x-circle'} width={10} />}>
                           {ped.estadoPedido}
                         </Chip>
-                        {isPendiente && (
+                        {cong_Editar && isPendiente && (
                           <Button size="sm" color="success" variant="flat"
                             isLoading={isAprobando}
                             onPress={() => handleAprobarPedido(ped.idPedido)}
