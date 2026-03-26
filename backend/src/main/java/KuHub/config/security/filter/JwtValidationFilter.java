@@ -34,12 +34,11 @@ public class JwtValidationFilter extends BasicAuthenticationFilter {
     private final ObjectMapper objectMapper;
 
     /**
-     * Constructor que recibe el AuthenticationManager
+     * Constructor que recibe el AuthenticationManager y ObjectMapper
      */
-    public JwtValidationFilter(AuthenticationManager authenticationManager) {
+    public JwtValidationFilter(AuthenticationManager authenticationManager, ObjectMapper objectMapper) {
         super(authenticationManager);
-        // Usamos un solo ObjectMapper configurado para todo el ciclo de vida del filtro
-        this.objectMapper = new ObjectMapper().addMixIn(SimpleGrantedAuthority.class, SimpleGrantedAuthorityJsonCreator.class);
+        this.objectMapper = objectMapper;
     }
 
     /**

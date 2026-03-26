@@ -137,6 +137,7 @@ public class JwtAuthenticationFilter extends UsernamePasswordAuthenticationFilte
             Map<String, Object> usuarioLimpio = new HashMap<>();
 
             // 1. Mapeamos SOLO los campos que quiere el Frontend
+            usuarioLimpio.put("idUsuario", usuario.getIdUsuario());
             usuarioLimpio.put("nombreCompleto", usuario.getNombreCompleto());
             usuarioLimpio.put("email", usuario.getEmail());
 
