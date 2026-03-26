@@ -9,6 +9,8 @@
 export type ModuleKey =
   | 'DASHBOARD'
   | 'INVENTARIO'
+  | 'GESTION_CATEGORIAS'
+  | 'GESTION_UNIDADES'
   | 'SOLICITUD'
   | 'GESTION_PEDIDOS'
   | 'GESTION_SOLICITUDES'
@@ -75,6 +77,8 @@ export interface PermisoRolRequestDTO {
 export const MODULE_LABELS: Record<ModuleKey, string> = {
   DASHBOARD:            'Dashboard',
   INVENTARIO:           'Inventario',
+  GESTION_CATEGORIAS:   'Gestión de Categorías',
+  GESTION_UNIDADES:     'Gestión de Unidades',
   SOLICITUD:            'Solicitudes',
   GESTION_PEDIDOS:      'Gestión de Pedidos',
   GESTION_SOLICITUDES:  'Gestión de Solicitudes',
@@ -92,6 +96,8 @@ export const MODULE_LABELS: Record<ModuleKey, string> = {
 export const MODULE_ICONS: Record<ModuleKey, string> = {
   DASHBOARD:            'lucide:layout-dashboard',
   INVENTARIO:           'lucide:package',
+  GESTION_CATEGORIAS:   'lucide:tags',
+  GESTION_UNIDADES:     'lucide:scale',
   SOLICITUD:            'lucide:file-text',
   GESTION_PEDIDOS:      'lucide:shopping-cart',
   GESTION_SOLICITUDES:  'lucide:clipboard-list',

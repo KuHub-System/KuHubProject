@@ -87,6 +87,8 @@ const InventarioPage: React.FC = () => {
   const esAdministrador = user?.rol === 'Administrador';
   // ── Permisos granulares del módulo INVENTARIO ──
   const { canCreate: invPuedeCrear, canUpdate: invPuedeEditar, canDelete: invPuedeEliminar } = useModulePermission('INVENTARIO');
+  const { canCreate: catPuedeCrear } = useModulePermission('GESTION_CATEGORIAS');
+  const { canCreate: uniPuedeCrear } = useModulePermission('GESTION_UNIDADES');
   const [productos, setProductos] = React.useState<IProducto[]>([]);
   const [filteredProductos, setFilteredProductos] = React.useState<IProducto[]>([]);
   const [categoriasFull, setCategoriasFull] = React.useState<{ id: number, nombre: string }[]>([]);
@@ -654,6 +656,7 @@ const InventarioPage: React.FC = () => {
             Nuevo
           </Button>
           )}
+          {catPuedeCrear && (
           <Button
             isIconOnly
             variant="flat"
@@ -664,6 +667,8 @@ const InventarioPage: React.FC = () => {
           >
             <Icon icon="lucide:tags" className="text-default-600" width={20} />
           </Button>
+          )}
+          {uniPuedeCrear && (
           <Button
             isIconOnly
             variant="flat"
@@ -674,6 +679,7 @@ const InventarioPage: React.FC = () => {
           >
             <Icon icon="lucide:scale" className="text-default-600" width={20} />
           </Button>
+          )}
         </div>
 
         {/* Barra de herramientas */}
