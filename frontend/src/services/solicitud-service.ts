@@ -437,6 +437,8 @@ export interface IProductoEntrega {
   cantidad: number;
   unidadAbreviada: string;
   observacion: string | null;
+  stockTransito: number;
+  diferencia: number;
 }
 
 export interface ISolicitudEntrega {
