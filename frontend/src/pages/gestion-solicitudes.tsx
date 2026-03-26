@@ -30,6 +30,7 @@ import {
   ISolicitudPorSemanaResponse,
   cambiarEstadoMasivoService,
 } from '../services/solicitud-service';
+import { useModulePermission } from '../contexts/permission-context';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TIPOS
@@ -155,6 +156,7 @@ const MotivoTexto: React.FC<{ texto: string }> = ({ texto }) => {
 const GestionSolicitudesPage: React.FC = () => {
   usePageTitle('Gestión de Solicitudes', 'Administre las solicitudes de insumos realizadas por los docentes.');
   const toast = useToast();
+  const { canCreate: sol_Crear, canUpdate: sol_Editar, canDelete: sol_Eliminar } = useModulePermission('GESTION_SOLICITUDES');
 
   // ── Semanas ──
   const [periodos,       setPeriodos]       = React.useState<IPeriodoAcademico[]>([]);
@@ -562,7 +564,7 @@ const GestionSolicitudesPage: React.FC = () => {
 
           <div className="sm:ml-auto flex items-center gap-2 shrink-0">
             {/* Acción masiva sobre seleccionados */}
-            {haySeleccionados && (
+            {sol_Editar && haySeleccionados && (
               <Button size="sm" color="success" variant="flat" isLoading={isSaving}
                 onPress={aceptarSeleccionados}
                 startContent={!isSaving && <Icon icon="lucide:check-check" width={14} />}
@@ -571,7 +573,7 @@ const GestionSolicitudesPage: React.FC = () => {
               </Button>
             )}
             {/* Aceptar todas pendientes */}
-            {!haySeleccionados && contadores.pendientes > 0 && (
+            {sol_Editar && !haySeleccionados && contadores.pendientes > 0 && (
               <Button size="sm" color="success" variant="flat" isLoading={isSaving}
                 onPress={aceptarTodasPendientes}
                 startContent={!isSaving && <Icon icon="lucide:check-check" width={14} />}
@@ -639,7 +641,7 @@ const GestionSolicitudesPage: React.FC = () => {
                     <span className="font-bold text-sm text-default-700">{grupo.nombre}</span>
                     <div className="ml-auto flex items-center gap-2">
                       {/* Acción rápida aceptar pendientes del grupo */}
-                      {pendGrupo.length > 0 && (
+                      {sol_Editar && pendGrupo.length > 0 && (
                         <Button size="sm" variant="flat" color="success"
                           className="text-xs h-6 px-2 min-w-0"
                           isLoading={isSaving}
@@ -719,7 +721,7 @@ const GestionSolicitudesPage: React.FC = () => {
                               {cfg.label}
                             </Chip>
 
-                            {esPend && (
+                            {sol_Editar && esPend && (
                               <>
                                 <Tooltip content="Aceptar">
                                   <Button isIconOnly size="sm" color="success" variant="flat"
@@ -736,7 +738,7 @@ const GestionSolicitudesPage: React.FC = () => {
                               </>
                             )}
 
-                            {sol.estado === 'Aceptada' && (
+                            {sol_Editar && sol.estado === 'Aceptada' && (
                               <>
                                 <Tooltip content="Revertir a Pendiente">
                                   <Button isIconOnly size="sm" color="warning" variant="flat"
@@ -753,7 +755,7 @@ const GestionSolicitudesPage: React.FC = () => {
                               </>
                             )}
 
-                            {sol.estado === 'Rechazada' && (
+                            {sol_Editar && sol.estado === 'Rechazada' && (
                               <>
                               <Tooltip content="Aceptar solicitud">
                                 <Button isIconOnly size="sm" color="success" variant="flat"

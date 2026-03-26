@@ -12,6 +12,13 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
+/**
+ * Controller REST para gestión de Recetas
+ * Endpoints: /api/v1/receta
+ * ✅ En uso: Este controlador gestiona la creación, actualización, búsqueda paginada 
+ * y cambio de estado de recetas con sus detalles.
+ * Consumido por receta-service.ts en el frontend.
+ */
 @RestController
 @RequestMapping("/api/v1/receta")
 @Validated
@@ -21,8 +28,9 @@ public class RecetaController {
     private RecetaService recetaService;
 
     /**
-     * Conta total de recetas, activas, inactivas
-     * ✅ FUNCIONAL IMPLEMENTADO EN EL FRONT*/
+     * Obtiene el conteo total de recetas, discriminando entre activas e inactivas.
+     * ✅ En uso: Consumido por obtenerRecetasCountService en receta-service.ts.
+     */
     @GetMapping("/count-recipes")
     public ResponseEntity<CountRecipesAndStatusView> countRecipesAndStatus(){
         return ResponseEntity
@@ -31,8 +39,9 @@ public class RecetaController {
     }
 
     /**
-     * llama todas las recetas paginas
-     * ✅ FUNCIONAL IMPLEMENTADO EN EL FRONT*/
+     * Obtiene el listado de recetas con paginación.
+     * ✅ En uso: Consumido por obtenerRecetasPaginadasService en receta-service.ts.
+     */
     @PostMapping("/find-all-recipes-pagined/{page}")
     public ResponseEntity<RecipesPage> findAllRecipesPaginated(
             @PathVariable Integer page
@@ -43,8 +52,9 @@ public class RecetaController {
     }
 
     /**
-     * Llama las recetas por el nombre o descripcion similares paginada
-     * ✅ FUNCIONAL IMPLEMENTADO EN EL FRONT*/
+     * Busca recetas que coincidan con un término en nombre o descripción, con paginación.
+     * ✅ En uso: Consumido por buscarRecetasPaginadasService en receta-service.ts.
+     */
     @PostMapping("/search-recipes")
     public ResponseEntity<RecipesPage> findAllWithDetailsAndSearchPaging(
             @RequestBody SearchDTO searchDto
@@ -54,8 +64,10 @@ public class RecetaController {
                 .body(recetaService.findAllWithDetailsAndSearchPaging(searchDto));
     }
 
-    /**Crea la receta con detalles
-     * ✅ FUNCIONAL IMPLEMENTADO EN EL FRONT*/
+    /**
+     * Crea una nueva receta incluyendo todos sus ingredientes detallados.
+     * ✅ En uso: Consumido por crearRecetaConDetallesService en receta-service.ts.
+     */
     @PostMapping("/create-recipe-with-details")
     public ResponseEntity<Boolean> saveRecipeWithDetails(
             @RequestBody @Valid RecipeWithDetailsCreateDTO request) {
@@ -64,8 +76,10 @@ public class RecetaController {
                 .body(recetaService.saveRecipeWithDetails(request));
     }
 
-    /**Actualiza el estado de la receta del tipo enum manejada para usar la receta en solicitudes
-     * ✅ FUNCIONAL IMPLEMENTADO EN EL FRONT*/
+    /**
+     * Cambia el estado de una receta (Activo/Inactivo).
+     * ✅ En uso: Consumido por cambiarEstadoRecetaService en receta-service.ts.
+     */
     @PatchMapping("/change-status/{idReceta}")
     public ResponseEntity<Boolean> changeStatus(
             @PathVariable Integer idReceta
@@ -75,6 +89,10 @@ public class RecetaController {
                 .body(recetaService.changeStatus(idReceta));
     }
 
+    /**
+     * Actualiza la información y los ingredientes de una receta existente.
+     * ✅ En uso: Consumido por actualizarRecetaConDetallesService en receta-service.ts.
+     */
     @PatchMapping("/update-recipe-with-details")
     public ResponseEntity<Boolean> updateRecipeWithDetails(
             @RequestBody RecipeWithDetailsUpdateDTO request ){
@@ -83,6 +101,10 @@ public class RecetaController {
                 .body(recetaService.updateRecipeWithDetails(request));
     }
 
+    /**
+     * Realiza una eliminación lógica (soft delete) de una receta.
+     * ✅ En uso: Consumido por softDeleteRecetaService en receta-service.ts.
+     */
     @DeleteMapping("/soft-delete-receta/{idReceta}")
     public ResponseEntity<Boolean> softDeleteRecipeWithDetails(
         @PathVariable Integer idReceta){

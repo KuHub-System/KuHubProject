@@ -18,6 +18,13 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 
+/**
+ * Controller REST para gestión de Pedidos
+ * Endpoints: /api/v1/pedido
+ * ✅ En uso: Este controlador gestiona la consolidación de pedidos, entregas diarias 
+ * para bodega de tránsito y cambios de estado masivos.
+ * Consumido por solicitud-service.ts en el frontend.
+ */
 @RestController
 @RequiredArgsConstructor
 @Validated
@@ -27,6 +34,10 @@ public class PedidoController {
     @Autowired
     private PedidoService pedidoService;
 
+    /**
+     * Realiza una consulta consolidada de pedidos (GOD view) para un rango de fechas.
+     * ✅ En uso: Consumido por consolidatePedidoQueryService en solicitud-service.ts.
+     */
     @PostMapping("/consolidate")
     public ResponseEntity<PedidoDashboardRecords.PedidoDashboardResponse> consultaGOD(
             @Validated @RequestBody DateRangeDTO request){
@@ -35,6 +46,10 @@ public class PedidoController {
                 .body(pedidoService.obtenerDashboardPedidos(request));
     }
 
+    /**
+     * Consolida múltiples solicitudes en un nuevo pedido.
+     * ✅ En uso: Consumido por consolidarPedidoService en solicitud-service.ts.
+     */
     @PostMapping("/consolidate-order")
     public ResponseEntity<Boolean> consolidateOrder(
             @Validated @RequestBody CreateOrder request){
@@ -43,10 +58,9 @@ public class PedidoController {
                 .body(pedidoService.consolidateOrder(request));
     }
 
-    /** ✅✅ En uso: Entregas diarias para Bodega de Tránsito.
-     *  Solicitudes PROCESADO en pedidos APROVADO, agrupadas por fecha → sala → horario.
-     *  Ejemplo: POST /api/v1/pedido/entregas-diarias
-     *  Body: { "fechaInicio": "2026-03-24", "fechaFin": "2026-03-28" }
+    /**
+     * Obtiene el listado de entregas diarias para la Bodega de Tránsito, agrupado por sala y horario.
+     * ✅ En uso: Consumido por obtenerEntregasDiariasService en solicitud-service.ts.
      */
     @PostMapping("/entregas-diarias")
     public ResponseEntity<List<PedidoDashboardRecords.EntregaDiariaBodegaJson>> obtenerEntregasDiarias(
@@ -57,17 +71,9 @@ public class PedidoController {
     }
 
     /**
-     * Prepara la entrega de una solicitud ACEPTADA:
-     * descuenta los productos de bodega de tránsito (SALIDA_BODEGA) y marca
-     * la solicitud como PROCESADO.
-     *
-     * Respuestas:
-     *  200 OK      → entrega preparada correctamente
-     *  409 CONFLICT → entrega realizada pero con stock desincronizado (frontend debe refrescar)
-     *  422 UNPROCESSABLE_ENTITY → stock insuficiente, no se realizó ningún cambio
-     *
-     * Ejemplo: POST /api/v1/pedido/preparar-entrega
-     * Body: { "idSolicitud": 5, "productos": [{ "idProducto": 3, "stockEnVista": 6.2, "cantidadAEntregar": 0.153 }] }
+     * Procesa la entrega de una solicitud, descontando stock de la Bodega de Tránsito 
+     * y actualizando el estado de la solicitud.
+     * ✅ En uso: Consumido por prepararEntregaService en solicitud-service.ts.
      */
     @PostMapping("/preparar-entrega")
     public ResponseEntity<?> prepararEntrega(@Validated @RequestBody PrepararEntregaDTO request) {
@@ -85,10 +91,9 @@ public class PedidoController {
         }
     }
 
-    /** ✅✅ En uso: Cambia el estado de uno o varios pedidos de forma masiva.
-     *  Retorna true si al menos una fila fue afectada, junto con las filas modificadas.
-     *  Ejemplo: PATCH /api/v1/pedido/change-massive-status
-     *  Body: { "idsPedidos": [1, 2], "estado": "APROVADO" }
+    /**
+     * Actualiza el estado de múltiples pedidos de forma masiva (Aprobación/Cancelación).
+     * ✅ En uso: Consumido por aprobarPedidosService en solicitud-service.ts.
      */
     @PatchMapping("/change-massive-status")
     public ResponseEntity<Boolean> changeMassiveStatus(

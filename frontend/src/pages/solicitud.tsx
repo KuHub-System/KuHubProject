@@ -16,6 +16,7 @@ import { Icon } from '@iconify/react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useToast } from '../hooks/useToast';
+import { useModulePermission } from '../contexts/permission-context';
 import { ISemana } from '../types/semana.types';
 import {
   IPeriodoAcademico,
@@ -669,6 +670,7 @@ const AsigCard: React.FC<AsigCardProps> = ({
 const SolicitudPage: React.FC = () => {
   usePageTitle('Solicitud de Insumos', 'Cree solicitudes masivas de insumos para sus clases prácticas.');
   const toast = useToast();
+  const { canCreate: soli_Crear, canUpdate: soli_Editar, canDelete: soli_Eliminar } = useModulePermission('SOLICITUD');
 
   // ── semanas state ──
   const [semanas,          setSemanas]          = React.useState<ISemana[]>([]);
@@ -1049,6 +1051,7 @@ const SolicitudPage: React.FC = () => {
                 )}
               </CardBody>
               <CardFooter className="flex flex-col gap-2 px-5 pb-5 pt-0 border-t border-default-100">
+                {soli_Crear && (
                 <Button color="primary" size="lg" fullWidth isLoading={isSubmitting}
                   isDisabled={!isFormValid || isSubmitting} onPress={enviar}
                   endContent={!isSubmitting && <Icon icon="lucide:send" width={16} />}
@@ -1059,7 +1062,8 @@ const SolicitudPage: React.FC = () => {
                     : 'Configure una asignatura'
                   }
                 </Button>
-                {isFormValid && (
+                )}
+                {soli_Crear && isFormValid && (
                   <Button variant="flat" color="danger" size="sm" fullWidth onPress={limpiar}>
                     Limpiar todo
                   </Button>

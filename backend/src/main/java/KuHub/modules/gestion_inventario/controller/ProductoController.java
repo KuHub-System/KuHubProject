@@ -12,6 +12,13 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+/**
+ * Controller REST para gestión de Productos
+ * Endpoints: /api/v1/producto
+ * ✅ En uso parcial: La mayoría de las funciones de inventario se gestionan a través de InventarioController.
+ * Este controlador se usa principalmente para obtener la lista de productos activos para selección en recetas
+ * (endpoint /find-all-product-active-for-option).
+ */
 @RestController
 @RequestMapping("/api/v1/producto")
 @Validated
@@ -20,8 +27,10 @@ public class ProductoController {
     @Autowired
     private ProductoService productoService;
 
-    /**Listar todos los productos independente de los valores activo TRUE/FALSE */
-    // ❌ Sin uso: Endpoint disponible pero actualmente no es consumido por el frontend.
+    /**
+     * Obtiene el listado de todos los productos, sin filtrar por estado de activación.
+     * ⚠️ Sin uso aparente en el frontend actual.
+     */
     @GetMapping
     public ResponseEntity<List<Producto>> findAllProducts(){
         return ResponseEntity
@@ -29,8 +38,10 @@ public class ProductoController {
                 .body(productoService.findAll());
     }
 
-    /** Usado en option para crear receta
-     *  ✅ En uso: Endpoint consumido por el frontend.*/
+    /**
+     * Obtiene la lista de productos activos optimizada para selección en la creación de recetas.
+     * ✅ En uso: Consumido por obtenerProductosOpcionService en solicitud-service.ts.
+     */
     @GetMapping("/find-all-product-active-for-option")
     public ResponseEntity<List<ProductRecipeView>> findAllActiveForRecipe() {
         return ResponseEntity
@@ -38,8 +49,10 @@ public class ProductoController {
                 .body(productoService.findAllActiveForRecipe());
     }
 
-    // ❌ Sin uso: Endpoint disponible pero actualmente no es consumido por el frontend.
-    /**Listar todos los productos segun el valor activo TRUE/FALSE */
+    /**
+     * Filtra productos según su estado de activación (Activo/Inactivo).
+     * ⚠️ Sin uso aparente en el frontend actual.
+     */
     @GetMapping("/all-value-active/{activo}")
     public ResponseEntity<List<Producto>> findByActive(@PathVariable Boolean activo){
         return ResponseEntity
@@ -47,8 +60,10 @@ public class ProductoController {
                 .body(productoService.findByActivo(activo));
     }
 
-    // ❌ Sin uso: Endpoint disponible pero actualmente no es consumido por el frontend.
-    /**Lista producto independente del valor activo TRUE/FALSE*/
+    /**
+     * Obtiene un producto específico mediante su ID.
+     * ⚠️ Sin uso aparente en el frontend actual.
+     */
     @GetMapping("/id/{id}")
     public ResponseEntity<Producto> findProductById(@PathVariable Integer id){
         return ResponseEntity
@@ -56,8 +71,10 @@ public class ProductoController {
                 .body(productoService.findById(id));
     }
 
-    // ❌ Sin uso: Endpoint disponible pero actualmente no es consumido por el frontend.
-    /**Lista producto segun el valor activo TRUE/FALSE*/
+    /**
+     * Obtiene un producto por su ID solo si se encuentra activo.
+     * ⚠️ Sin uso aparente en el frontend actual.
+     */
     @GetMapping("/find-product-by-id-active/{id_producto}")
     public ResponseEntity<Producto> findProductByIdAndActive(
             @PathVariable Integer id_producto) {
@@ -66,8 +83,10 @@ public class ProductoController {
                 .body(productoService.findByIdProductoAndActivoTrue(id_producto));
     }
 
-    // ❌ Sin uso: Endpoint disponible pero actualmente no es consumido por el frontend.
-    /**Lista producto por nombre independente del valor activo TRUE/FALSE*/
+    /**
+     * Busca un producto por su nombre exacto.
+     * ⚠️ Sin uso aparente en el frontend actual.
+     */
     @GetMapping("/nombre/{nombreProducto}")
     public ResponseEntity<Producto> findProductoByName(@PathVariable String nombreProducto){
         return ResponseEntity
@@ -75,8 +94,10 @@ public class ProductoController {
                 .body(productoService.findByNombreProducto(nombreProducto));
     }
 
-    // ❌ Sin uso: Endpoint disponible pero actualmente no es consumido por el frontend.
-    /**Lista producto por nombre segun del valor activo TRUE/FALSE*/
+    /**
+     * Busca un producto por nombre y estado de activación.
+     * ⚠️ Sin uso aparente en el frontend actual.
+     */
     @GetMapping("/nombre-activo/{nombreProducto}/{activo}")
     public ResponseEntity<Producto> findProductoByNameAndActivo(
             @PathVariable String nombreProducto,
@@ -86,7 +107,10 @@ public class ProductoController {
                 .body(productoService.findByNombreProductoAndActivo(nombreProducto, activo));
     }
 
-    // ❌ Sin uso: Endpoint disponible pero actualmente no es consumido por el frontend.
+    /**
+     * Crea un nuevo producto en el sistema.
+     * ⚠️ Sin uso aparente en el frontend actual.
+     */
     @PostMapping
     public ResponseEntity<Producto> save(@RequestBody Producto producto){
         return ResponseEntity
@@ -94,8 +118,10 @@ public class ProductoController {
                 .body(productoService.save(producto));
     }
 
-    // ❌ Sin uso: Endpoint disponible pero actualmente no es consumido por el frontend.
-    /**Eliminacion logica por nombre producto actualizando el producto activo a FALSE*/
+    /**
+     * Realiza una eliminación lógica de un producto buscando por su nombre.
+     * ⚠️ Sin uso aparente en el frontend actual.
+     */
     @PutMapping("soft-delete/nombre-producto/{nombreProducto}")
     public ResponseEntity<String> deleteProductoByName(@PathVariable String nombreProducto){
         try {
@@ -108,8 +134,10 @@ public class ProductoController {
         }
     }
 
-    // ❌ Sin uso: Endpoint disponible pero actualmente no es consumido por el frontend.
-    /**Eliminacion logica por id producto actualizando el producto activo a FALSE*/
+    /**
+     * Realiza una eliminación lógica de un producto buscando por su ID.
+     * ⚠️ Sin uso aparente en el frontend actual.
+     */
     @PutMapping("soft-delete/id/{id}")
     public ResponseEntity<String> deleteProductoById(@PathVariable Integer id){
         try {

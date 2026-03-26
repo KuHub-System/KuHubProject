@@ -31,6 +31,7 @@ import {
   obtenerOrdenConsolidacionService,
   consolidarPedidoService,
 } from '../services/solicitud-service';
+import { useModulePermission } from '../contexts/permission-context';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // HELPERS
@@ -61,6 +62,7 @@ const fmtCantidad = (n: number): string => {
 const GestionPedidosPage: React.FC = () => {
   usePageTitle('Gestión de Pedidos', 'Genera el pedido semanal consolidado a partir de las solicitudes aceptadas, agrupando todos los productos requeridos por sección.');
   const toast = useToast();
+  const { canCreate: ped_Crear, canUpdate: ped_Editar, canDelete: ped_Eliminar } = useModulePermission('GESTION_PEDIDOS');
   const confirmarModal = useDisclosure();
 
   // ── Semanas ──
@@ -393,11 +395,13 @@ const GestionPedidosPage: React.FC = () => {
 
           <div className="sm:ml-auto shrink-0">
             {!consolidado ? (
+              ped_Crear && (
               <Button color="primary" isDisabled={solicitudes.length === 0 || isLoadingDatos}
                 onPress={() => { setConfirmarTexto(''); confirmarModal.onOpen(); }}
                 startContent={<Icon icon="lucide:layers" width={15} />}>
                 Consolidar Pedido
               </Button>
+              )
             ) : (
               <Chip color="success" variant="flat" startContent={<Icon icon="lucide:check" width={12} />} className="px-3 py-4">
                 Consolidado

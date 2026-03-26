@@ -13,6 +13,13 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+/**
+ * Controller REST para gestión de Detalles de Recetas
+ * Endpoints: /api/v1/detalle-receta
+ * ⚠️ No está en uso directamente por el frontend actualmente.
+ * El frontend gestiona los detalles de las recetas a través de los endpoints de RecetaController
+ * (ver src/services/receta-service.ts).
+ */
 @RestController
 @RequestMapping("/api/v1/detalle-receta")
 @Validated
@@ -43,6 +50,10 @@ public class DetalleRecetaController {
 
 
 
+    /**
+     * Obtiene los detalles de un registro específico de detalle de receta por su ID.
+     * ⚠️ Sin uso aparente en el frontend actual (se gestiona vía RecetaController).
+     */
     @GetMapping("/find-by-id/{id}")
     public ResponseEntity<DetalleReceta> findById(@PathVariable Integer id){
         return ResponseEntity
@@ -50,6 +61,10 @@ public class DetalleRecetaController {
                 .body(detalleRecetaService.findById(id));
     }
 
+    /**
+     * Obtiene todos los registros de detalles de recetas del sistema.
+     * ⚠️ Sin uso aparente en el frontend actual.
+     */
     @GetMapping("/find-all/")
     public ResponseEntity<Iterable<DetalleReceta>> findAll(){
         return ResponseEntity
@@ -57,6 +72,10 @@ public class DetalleRecetaController {
                 .body(detalleRecetaService.findAll());
     }
 
+    /**
+     * Crea un nuevo registro de detalle de receta.
+     * ⚠️ Sin uso aparente: El frontend usa los endpoints masivos en RecetaController.
+     */
     @PostMapping("/create-details-recipe/")
     public ResponseEntity<DetalleReceta> save(@RequestBody DetalleReceta detalleReceta){
         return ResponseEntity
@@ -67,6 +86,10 @@ public class DetalleRecetaController {
 
 
 
+    /**
+     * Elimina un registro de detalle de receta por su ID.
+     * ⚠️ Sin uso aparente en el frontend actual.
+     */
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteById(@PathVariable @NotNull Integer id) {
         try {

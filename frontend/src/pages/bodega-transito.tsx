@@ -17,6 +17,7 @@ import { obtenerRecetaPorIdService } from '../services/receta-service';
 import { obtenerFiltrosInventarioService } from '../services/producto-service';
 import { buscarBodegaTransitoService, buscarBodegaTransitoPorCodigoService, obtenerBodegaPaginadaService, IBodegaTransitoItem } from '../services/bodega-transito-service';
 import { useToast } from '../hooks/useToast';
+import { useModulePermission } from '../contexts/permission-context';
 import { IProducto } from '../types/producto.types';
 import { IUnidadMedida } from '../types/inventario.types';
 import { FormularioProducto } from './inventario';
@@ -313,6 +314,7 @@ const EntregaSalaCard: React.FC<{ sala: ISalaEntrega; onPreparar: (sol: ISolicit
 };
 
 const BodegaTransitoPage: React.FC = () => {
+  const { canCreate: bod_Crear, canUpdate: bod_Editar, canDelete: bod_Eliminar } = useModulePermission('BODEGA_TRANSITO');
 
   const toast = useToast();
   const history = useHistory();
@@ -1188,7 +1190,7 @@ const BodegaTransitoPage: React.FC = () => {
                   <Input label="Unidad" value={extraUnidad} onValueChange={setExtraUnidad} variant="bordered" labelPlacement="outside" />
                 </div>
               </ModalBody>
-              <ModalFooter><Button variant="light" onPress={onClose}>Cancelar</Button><Button className="bg-gastronomia text-white" onPress={handleSaveExtra}>Guardar</Button></ModalFooter>
+              <ModalFooter><Button variant="light" onPress={onClose}>Cancelar</Button>{bod_Crear && <Button className="bg-gastronomia text-white" onPress={handleSaveExtra}>Guardar</Button>}</ModalFooter>
             </>
           )}
         </ModalContent>

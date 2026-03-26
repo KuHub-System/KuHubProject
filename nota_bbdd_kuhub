@@ -1664,10 +1664,249 @@ END;
 $$ LANGUAGE plpgsql;
 
 
+-- ================================================================
+-- SISTEMA DE PERMISOS GRANULARES (CRUD por Rol × Módulo)
+-- Basado en la arquitectura de Clover, adaptado a KuHub.
+--
+-- ORDEN DE EJECUCIÓN:
+--   1. Crear tablas (modulo, permiso_rol)
+--   2. Insertar módulos del sistema
+--   3. Insertar permisos iniciales por rol
+--
+-- NOTA: Las tablas modulo y permiso_rol son creadas automáticamente
+-- por Hibernate (ddl-auto=update) al iniciar el backend.
+-- Este script es necesario SOLO para insertar los datos iniciales.
+-- Ejecutar DESPUÉS de haber iniciado el backend al menos una vez
+-- para que las tablas ya existan.
+-- ================================================================
 
 
+-- ================================================================
+-- PASO 1 (OPCIONAL): Crear las tablas manualmente si Hibernate no
+-- las creó aún (se pueden omitir si el backend ya las creó)
+-- ================================================================
+
+CREATE TABLE IF NOT EXISTS modulo (
+    id_modulo                   INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    codigo_modulo               VARCHAR(50)  NOT NULL UNIQUE,
+    nombre_modulo               VARCHAR(100) NOT NULL,
+    descripcion_modulo          TEXT,
+    icono_modulo                VARCHAR(100),
+    orden_modulo                INTEGER      NOT NULL DEFAULT 0,
+    fecha_creacion_modulo       TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    fecha_actualizacion_modulo  TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    enabled                     BOOLEAN      NOT NULL DEFAULT TRUE
+);
+
+CREATE TABLE IF NOT EXISTS permiso_rol (
+    id_permiso_rol                  BIGINT    GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    id_rol                          INTEGER   NOT NULL REFERENCES rol(id_rol),
+    id_modulo                       INTEGER   NOT NULL REFERENCES modulo(id_modulo),
+    puede_leer                      BOOLEAN   NOT NULL DEFAULT FALSE,
+    puede_crear                     BOOLEAN   NOT NULL DEFAULT FALSE,
+    puede_actualizar                BOOLEAN   NOT NULL DEFAULT FALSE,
+    puede_eliminar                  BOOLEAN   NOT NULL DEFAULT FALSE,
+    fecha_creacion_permiso_rol      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    fecha_actualizacion_permiso_rol TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    enabled                         BOOLEAN   NOT NULL DEFAULT TRUE,
+    CONSTRAINT uk_permiso_rol_modulo UNIQUE (id_rol, id_modulo)
+);
 
 
+-- ================================================================
+-- PASO 2: Insertar los módulos del sistema
+-- (Los códigos deben coincidir exactamente con los ModuleKey
+--  definidos en frontend/src/types/permissions.types.ts)
+-- ================================================================
+
+INSERT INTO modulo (codigo_modulo, nombre_modulo, descripcion_modulo, icono_modulo, orden_modulo)
+VALUES
+    ('DASHBOARD',            'Dashboard',                    'Panel principal con estadísticas y métricas',         'lucide:layout-dashboard', 1),
+    ('INVENTARIO',           'Inventario',                   'Gestión de productos e inventario del sistema',       'lucide:package',          2),
+    ('SOLICITUD',            'Solicitudes',                  'Creación y seguimiento de solicitudes de insumos',    'lucide:file-text',        3),
+    ('GESTION_PEDIDOS',      'Gestión de Pedidos',           'Administración y seguimiento de pedidos',             'lucide:shopping-cart',    4),
+    ('GESTION_SOLICITUDES',  'Gestión de Solicitudes',       'Administración de solicitudes del sistema',           'lucide:clipboard-list',   5),
+    ('CONGLOMERADO_PEDIDOS', 'Conglomerado de Pedidos',      'Agrupación y consolidación de pedidos masivos',       'lucide:layers',           6),
+    ('GESTION_PROVEEDORES',  'Gestión de Proveedores',       'Administración de proveedores del sistema',           'lucide:truck',            7),
+    ('BODEGA_TRANSITO',      'Bodega de Tránsito',           'Control de productos en tránsito y despacho',        'lucide:warehouse',        8),
+    ('GESTION_RECETAS',      'Gestión de Recetas',           'Administración de recetas y preparaciones culinarias','lucide:chef-hat',         9),
+    ('RAMOS_ADMIN',          'Ramos Académicos',             'Administración de asignaturas y secciones',           'lucide:book-open',        10),
+    ('GESTION_ROLES',        'Gestión de Roles',             'Administración de roles y permisos del sistema',      'lucide:shield',           11),
+    ('GESTION_USUARIOS',     'Gestión de Usuarios',          'Administración de usuarios del sistema',              'lucide:users',            12),
+    ('ADMIN_SISTEMA',        'Administración del Sistema',   'Centro de control: horarios, semanas y salas',        'lucide:settings',         13)
+ON CONFLICT (codigo_modulo) DO NOTHING;
 
 
+-- ================================================================
+-- PASO 3: Insertar permisos iniciales por rol
+--
+-- Nomenclatura de roles (nombre_rol en la tabla rol):
+--   Administrador, Co-Administrador, Gestor de Pedidos,
+--   Profesor a Cargo, Docente, Encargado de Bodega, Asistente de Bodega
+-- ================================================================
 
+-- ----------------------------------------------------------------
+-- ADMINISTRADOR → Acceso total a todo
+-- ----------------------------------------------------------------
+INSERT INTO permiso_rol (id_rol, id_modulo, puede_leer, puede_crear, puede_actualizar, puede_eliminar)
+SELECT
+    (SELECT id_rol FROM rol WHERE nombre_rol = 'ADMINISTRADOR' LIMIT 1), -- Cambiado a mayúsculas
+    id_modulo,
+    TRUE, TRUE, TRUE, TRUE
+FROM modulo
+WHERE enabled = TRUE
+ON CONFLICT (id_rol, id_modulo) DO UPDATE
+    SET puede_leer = TRUE, puede_crear = TRUE, puede_actualizar = TRUE, puede_eliminar = TRUE;
+
+-- 2. CO-ADMINISTRADOR
+INSERT INTO permiso_rol (id_rol, id_modulo, puede_leer, puede_crear, puede_actualizar, puede_eliminar)
+SELECT
+    (SELECT id_rol FROM rol WHERE nombre_rol = 'CO_ADMINISTRADOR' LIMIT 1), -- Cambiado a match exacto
+    m.id_modulo,
+    CASE WHEN m.codigo_modulo IN ('GESTION_ROLES','ADMIN_SISTEMA') THEN FALSE ELSE TRUE END,
+    CASE WHEN m.codigo_modulo IN ('GESTION_ROLES','ADMIN_SISTEMA') THEN FALSE ELSE TRUE END,
+    CASE WHEN m.codigo_modulo IN ('GESTION_ROLES','ADMIN_SISTEMA') THEN FALSE ELSE TRUE END,
+    CASE WHEN m.codigo_modulo IN ('GESTION_ROLES','ADMIN_SISTEMA','GESTION_USUARIOS') THEN FALSE ELSE TRUE END
+FROM modulo m
+WHERE m.enabled = TRUE
+ON CONFLICT (id_rol, id_modulo) DO UPDATE
+    SET puede_leer = EXCLUDED.puede_leer, puede_crear = EXCLUDED.puede_crear, puede_actualizar = EXCLUDED.puede_actualizar, puede_eliminar = EXCLUDED.puede_eliminar;
+
+-- ----------------------------------------------------------------
+-- CO-ADMINISTRADOR → Todo excepto Gestión de Roles y Admin del Sistema
+-- ----------------------------------------------------------------
+INSERT INTO permiso_rol (id_rol, id_modulo, puede_leer, puede_crear, puede_actualizar, puede_eliminar)
+SELECT
+    -- CORRECCIÓN: Debe ser 'CO_ADMINISTRADOR' (Todo mayúsculas y con guion bajo)
+    (SELECT id_rol FROM rol WHERE nombre_rol = 'CO_ADMINISTRADOR' LIMIT 1),
+    m.id_modulo,
+    CASE WHEN m.codigo_modulo IN ('GESTION_ROLES','ADMIN_SISTEMA') THEN FALSE ELSE TRUE END,
+    CASE WHEN m.codigo_modulo IN ('GESTION_ROLES','ADMIN_SISTEMA') THEN FALSE ELSE TRUE END,
+    CASE WHEN m.codigo_modulo IN ('GESTION_ROLES','ADMIN_SISTEMA') THEN FALSE ELSE TRUE END,
+    CASE WHEN m.codigo_modulo IN ('GESTION_ROLES','ADMIN_SISTEMA','GESTION_USUARIOS') THEN FALSE ELSE TRUE END
+FROM modulo m
+WHERE m.enabled = TRUE
+ON CONFLICT (id_rol, id_modulo) DO UPDATE
+    SET puede_leer       = EXCLUDED.puede_leer,
+        puede_crear      = EXCLUDED.puede_crear,
+        puede_actualizar = EXCLUDED.puede_actualizar,
+        puede_eliminar   = EXCLUDED.puede_eliminar;
+
+-- ----------------------------------------------------------------
+-- GESTOR DE PEDIDOS → Dashboard + pedidos + solicitudes + conglomerado
+-- ----------------------------------------------------------------
+INSERT INTO permiso_rol (id_rol, id_modulo, puede_leer, puede_crear, puede_actualizar, puede_eliminar)
+SELECT
+    (SELECT id_rol FROM rol WHERE nombre_rol = 'GESTOR_PEDIDOS' LIMIT 1), -- Cambiado
+    m.id_modulo,
+    CASE WHEN m.codigo_modulo IN ('DASHBOARD','GESTION_PEDIDOS','GESTION_SOLICITUDES','CONGLOMERADO_PEDIDOS') THEN TRUE ELSE FALSE END,
+    CASE WHEN m.codigo_modulo IN ('GESTION_PEDIDOS','GESTION_SOLICITUDES','CONGLOMERADO_PEDIDOS') THEN TRUE ELSE FALSE END,
+    CASE WHEN m.codigo_modulo IN ('GESTION_PEDIDOS','GESTION_SOLICITUDES','CONGLOMERADO_PEDIDOS') THEN TRUE ELSE FALSE END,
+    FALSE
+FROM modulo m
+WHERE m.enabled = TRUE
+ON CONFLICT (id_rol, id_modulo) DO UPDATE
+    SET puede_leer = EXCLUDED.puede_leer, puede_crear = EXCLUDED.puede_crear, puede_actualizar = EXCLUDED.puede_actualizar, puede_eliminar = EXCLUDED.puede_eliminar;
+
+-- ----------------------------------------------------------------
+-- PROFESOR A CARGO → Dashboard + Solicitud (crear) + Recetas (lectura)
+-- ----------------------------------------------------------------
+INSERT INTO permiso_rol (id_rol, id_modulo, puede_leer, puede_crear, puede_actualizar, puede_eliminar)
+SELECT
+    (SELECT id_rol FROM rol WHERE nombre_rol = 'PROFESOR_A_CARGO' LIMIT 1), -- Cambiado
+    m.id_modulo,
+    CASE WHEN m.codigo_modulo IN ('DASHBOARD','SOLICITUD','GESTION_RECETAS') THEN TRUE ELSE FALSE END,
+    CASE WHEN m.codigo_modulo IN ('SOLICITUD') THEN TRUE ELSE FALSE END,
+    CASE WHEN m.codigo_modulo IN ('SOLICITUD') THEN TRUE ELSE FALSE END,
+    FALSE
+FROM modulo m
+WHERE m.enabled = TRUE
+ON CONFLICT (id_rol, id_modulo) DO UPDATE
+    SET puede_leer = EXCLUDED.puede_leer, puede_crear = EXCLUDED.puede_crear, puede_actualizar = EXCLUDED.puede_actualizar, puede_eliminar = EXCLUDED.puede_eliminar;
+-- ----------------------------------------------------------------
+-- DOCENTE → Dashboard + Solicitud (solo lectura) + Recetas (lectura)
+-- ----------------------------------------------------------------
+INSERT INTO permiso_rol (id_rol, id_modulo, puede_leer, puede_crear, puede_actualizar, puede_eliminar)
+SELECT
+    (SELECT id_rol FROM rol WHERE nombre_rol = 'DOCENTE' LIMIT 1), -- Cambiado
+    m.id_modulo,
+    CASE WHEN m.codigo_modulo IN ('DASHBOARD','SOLICITUD','GESTION_RECETAS') THEN TRUE ELSE FALSE END,
+    FALSE, FALSE, FALSE
+FROM modulo m
+WHERE m.enabled = TRUE
+ON CONFLICT (id_rol, id_modulo) DO UPDATE
+    SET puede_leer = EXCLUDED.puede_leer, puede_crear = FALSE, puede_actualizar = FALSE, puede_eliminar = FALSE;
+
+-- ----------------------------------------------------------------
+-- ENCARGADO DE BODEGA → Dashboard + Inventario (CRUD)
+-- ----------------------------------------------------------------
+INSERT INTO permiso_rol (id_rol, id_modulo, puede_leer, puede_crear, puede_actualizar, puede_eliminar)
+SELECT
+    (SELECT id_rol FROM rol WHERE nombre_rol = 'ENCARGADO_BODEGA' LIMIT 1), -- Cambiado
+    m.id_modulo,
+    CASE WHEN m.codigo_modulo IN ('DASHBOARD','INVENTARIO') THEN TRUE ELSE FALSE END,
+    CASE WHEN m.codigo_modulo IN ('INVENTARIO') THEN TRUE ELSE FALSE END,
+    CASE WHEN m.codigo_modulo IN ('INVENTARIO') THEN TRUE ELSE FALSE END,
+    FALSE
+FROM modulo m
+WHERE m.enabled = TRUE
+ON CONFLICT (id_rol, id_modulo) DO UPDATE
+    SET puede_leer = EXCLUDED.puede_leer, puede_crear = EXCLUDED.puede_crear, puede_actualizar = EXCLUDED.puede_actualizar, puede_eliminar = EXCLUDED.puede_eliminar;
+
+
+-- ----------------------------------------------------------------
+-- ASISTENTE DE BODEGA → Dashboard + Bodega de Tránsito (lectura + crear)
+-- ----------------------------------------------------------------
+INSERT INTO permiso_rol (id_rol, id_modulo, puede_leer, puede_crear, puede_actualizar, puede_eliminar)
+SELECT
+    (SELECT id_rol FROM rol WHERE nombre_rol = 'ASISTENTE_BODEGA' LIMIT 1), -- Cambiado
+    m.id_modulo,
+    CASE WHEN m.codigo_modulo IN ('DASHBOARD','BODEGA_TRANSITO') THEN TRUE ELSE FALSE END,
+    CASE WHEN m.codigo_modulo IN ('BODEGA_TRANSITO') THEN TRUE ELSE FALSE END,
+    FALSE, FALSE
+FROM modulo m
+WHERE m.enabled = TRUE
+ON CONFLICT (id_rol, id_modulo) DO UPDATE
+    SET puede_leer = EXCLUDED.puede_leer, puede_crear = EXCLUDED.puede_crear, puede_actualizar = FALSE, puede_eliminar = FALSE;
+
+
+-- ================================================================
+-- VERIFICACIÓN: Consultar la matriz completa de permisos
+-- (Útil para confirmar que los datos se insertaron correctamente)
+-- ================================================================
+
+/*
+SELECT
+    r.nombre_rol,
+    m.codigo_modulo,
+    m.nombre_modulo,
+    COALESCE(pr.puede_leer,       FALSE) AS leer,
+    COALESCE(pr.puede_crear,      FALSE) AS crear,
+    COALESCE(pr.puede_actualizar, FALSE) AS actualizar,
+    COALESCE(pr.puede_eliminar,   FALSE) AS eliminar,
+    CASE
+        WHEN COALESCE(pr.puede_crear,FALSE) OR COALESCE(pr.puede_actualizar,FALSE) OR COALESCE(pr.puede_eliminar,FALSE) THEN 'ESCRITURA'
+        WHEN COALESCE(pr.puede_leer,FALSE) THEN 'LECTURA'
+        ELSE 'SIN_ACCESO'
+    END AS nivel_acceso
+FROM rol r
+CROSS JOIN modulo m
+LEFT JOIN permiso_rol pr
+    ON pr.id_rol    = r.id_rol
+   AND pr.id_modulo = m.id_modulo
+   AND pr.enabled   = TRUE
+WHERE r.activo   = TRUE
+  AND m.enabled  = TRUE
+ORDER BY m.orden_modulo, r.id_rol;
+*/
+
+
+-- ================================================================
+-- ROLLBACK (si necesitas deshacer los inserts de permisos):
+-- ================================================================
+
+/*
+DELETE FROM permiso_rol;
+DELETE FROM modulo;
+-- (Las tablas quedan vacías pero intactas para re-insertar)
+*/

@@ -9,6 +9,13 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+/**
+ * Controller REST para gestión de Bloques Horarios
+ * Endpoints: /api/v1/bloque-horario
+ * ✅ En uso: Este controlador permite listar todos los bloques horarios y filtrar 
+ * aquellos disponibles (no reservados) para una sala y día específicos.
+ * Consumido por bloque-horario-service.ts y ramos-admin.tsx en el frontend.
+ */
 @RestController
 @RequestMapping("/api/v1/bloque-horario")
 public class BloqueHorarioController {
@@ -17,9 +24,9 @@ public class BloqueHorarioController {
     private BloqueHorarioService bloqueHorarioService;
 
     /**
-     * ultilizado en crear y editar seccion
-     *
-     ✅ En uso: Endpoint consumido por el frontend.*/
+     * Obtiene el listado de todos los bloques horarios configurados en el sistema.
+     * ✅ En uso: Consumido por el frontend para mostrar las opciones de horario.
+     */
     @GetMapping( "/find-all")
     public ResponseEntity<List<BloqueHorario>> findAll(){
         return ResponseEntity
@@ -28,10 +35,10 @@ public class BloqueHorarioController {
     }
 
     /**
-     * ultilizado en crear y editar seccion para obtener los bloques de horarios
-     * que estan disponibles que no esta reservados con el activo true de ReservaSala
-     *
-     ✅ En uso: Endpoint consumido por el frontend.*/
+     * Filtra los bloques horarios disponibles para una sala y día de la semana específicos, 
+     * excluyendo aquellos que ya tienen reservas activas.
+     * ✅ En uso: Consumido por el frontend al asignar horarios a una sección.
+     */
     @PostMapping( "/filter-by-day-week-and-id-room")
     public ResponseEntity<List<BloqueHorario>> filterBlocksDayWeekAndIdRoom(
             @RequestBody FilterTimeBlockDTO request
@@ -55,6 +62,10 @@ public class BloqueHorarioController {
 
 
 
+    /**
+     * Obtiene la información de un bloque horario específico por su ID.
+     * ⚠️ Sin uso aparente en el frontend actual.
+     */
     @GetMapping("/find-by-id/{id}")
     public ResponseEntity<BloqueHorario> findById(
             @PathVariable Integer id
@@ -67,6 +78,10 @@ public class BloqueHorarioController {
 
 
 
+    /**
+     * Filtra bloques horarios basándose en una lista de números de bloques.
+     * ⚠️ Sin uso aparente en el frontend actual.
+     */
     @GetMapping( "/filter-by-numbers-blocks/{numbersBlocksFilter}")
     public ResponseEntity<List<BloqueHorario>> filterBlocksByNumbersBlocks(
             @PathVariable List<Integer> numbersBlocksFilter
