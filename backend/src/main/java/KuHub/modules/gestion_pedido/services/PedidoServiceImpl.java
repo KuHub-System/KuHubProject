@@ -3,6 +3,7 @@ package KuHub.modules.gestion_pedido.services;
 import KuHub.modules.gestion_pedido.entity.DetallePedido;
 import KuHub.modules.gestion_pedido.entity.Pedido;
 import KuHub.modules.gestion_pedido.entity.PedidoSolicitud;
+import KuHub.modules.gestion_pedido.record.ChangePedidoStatusDTO;
 import KuHub.modules.gestion_pedido.record.CreateOrder;
 import KuHub.modules.gestion_pedido.record.PedidoDashboardRecords;
 import KuHub.modules.gestion_pedido.repository.DetallePedidoRepository;
@@ -141,6 +142,13 @@ public class PedidoServiceImpl implements PedidoService{
             // Log del error (puedes usar un logger aquí)
             return false;
         }
+    }
+
+    @Override
+    @Transactional
+    public boolean changeMassiveStatus(ChangePedidoStatusDTO request) {
+        int filasAfectadas = pedidoRepository.updateMassiveStatePedido(request.idsPedidos(), request.estado());
+        return filasAfectadas > 0;
     }
 
     // =====================================================

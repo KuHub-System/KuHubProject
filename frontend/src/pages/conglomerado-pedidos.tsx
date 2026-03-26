@@ -27,6 +27,7 @@ import {
   IConsolidatePedidoResponse,
   ISolicitudVinculada,
   consolidatePedidoQueryService,
+  aprobarPedidosService,
 } from '../services/solicitud-service';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -109,6 +110,7 @@ const ConglomeradoPedidosPage: React.FC = () => {
   const [expandidos,    setExpandidos]    = React.useState<Set<string>>(new Set());
   const [vistaActiva,   setVistaActiva]   = React.useState<'cronograma' | 'totales' | 'aprobacion'>('cronograma');
   const [aprobVista,    setAprobVista]    = React.useState<'unificado' | 'individual'>('unificado');
+  const [isAprobando,   setIsAprobando]   = React.useState(false);
 
   // ── Carga inicial de semanas ──
   React.useEffect(() => {
@@ -272,6 +274,11 @@ const ConglomeradoPedidosPage: React.FC = () => {
     return productosUnificadosAprob.filter(p => p.nombreProducto.toLowerCase().includes(q));
   }, [productosUnificadosAprob, busquedaAprob]);
 
+  const pedidosPendientes = React.useMemo(
+    () => (consolidateData?.pedidosAprobacion ?? []).filter(p => p.estadoPedido === 'PENDIENTE'),
+    [consolidateData]
+  );
+
   const contadores = React.useMemo(() => ({
     procesadas:      todasSolicitudes.length,
     productosUnicos: productosResumen.length,
@@ -289,9 +296,42 @@ const ConglomeradoPedidosPage: React.FC = () => {
     consolidateData.pedidosAprobacion.length > 0
   );
 
-  const handleAprobarPedido = (_idPedido: number) => {
-    // TODO: call approve endpoint
-    toast.success('Funcionalidad de aprobación en desarrollo');
+  const recargarDatos = React.useCallback(async () => {
+    if (!semanaId) return;
+    const semana = semanas.find(s => String(s.idSemana) === semanaId);
+    if (!semana) return;
+    cache.current.delete(semanaId);
+    setIsLoadingDatos(true);
+    try {
+      const data = await consolidatePedidoQueryService({ fechaInicio: semana.fechaInicio, fechaFin: semana.fechaFin });
+      cache.current.set(semanaId, data);
+      setConsolidateData(data);
+    } catch { toast.error('Error al recargar datos'); }
+    finally { setIsLoadingDatos(false); }
+  }, [semanaId, semanas]);
+
+  const handleAprobarPedido = async (idPedido: number) => {
+    setIsAprobando(true);
+    try {
+      await aprobarPedidosService({ idsPedidos: [idPedido], estado: 'PROCESADO' });
+      toast.success('Pedido aprobado correctamente');
+      await recargarDatos();
+    } catch { toast.error('Error al aprobar el pedido'); }
+    finally { setIsAprobando(false); }
+  };
+
+  const handleAprobarTodos = async () => {
+    const pendientes = (consolidateData?.pedidosAprobacion ?? [])
+      .filter(p => p.estadoPedido === 'PENDIENTE')
+      .map(p => p.idPedido);
+    if (pendientes.length === 0) return;
+    setIsAprobando(true);
+    try {
+      await aprobarPedidosService({ idsPedidos: pendientes, estado: 'PROCESADO' });
+      toast.success(`${pendientes.length} pedido${pendientes.length > 1 ? 's' : ''} aprobado${pendientes.length > 1 ? 's' : ''} correctamente`);
+      await recargarDatos();
+    } catch { toast.error('Error al aprobar los pedidos'); }
+    finally { setIsAprobando(false); }
   };
 
   const semanaActual = semanas.find(s => String(s.idSemana) === semanaId) ?? null;
@@ -596,12 +636,8 @@ const ConglomeradoPedidosPage: React.FC = () => {
                                   )}
                                 </div>
 
-                                {/* Estado + chevron */}
+                                {/* Chevron */}
                                 <div className="flex items-center gap-2 shrink-0">
-                                  <Chip size="sm" color="secondary" variant="flat"
-                                    startContent={<Icon icon="lucide:check-circle-2" width={10} />}>
-                                    Procesada
-                                  </Chip>
                                   <Icon icon={abierto ? 'lucide:chevron-up' : 'lucide:chevron-down'} width={16} className="text-default-400" />
                                 </div>
                               </div>
@@ -789,6 +825,14 @@ const ConglomeradoPedidosPage: React.FC = () => {
                     ? `${productosUnificadosFiltrados.length} producto${productosUnificadosFiltrados.length !== 1 ? 's' : ''} totales`
                     : `${pedidosAprobFiltrados.length} pedido${pedidosAprobFiltrados.length !== 1 ? 's' : ''}`}
                 </span>
+                {pedidosPendientes.length > 0 && (
+                  <Button size="sm" color="success" variant="flat" isLoading={isAprobando}
+                    onPress={handleAprobarTodos}
+                    className="ml-auto"
+                    startContent={!isAprobando && <Icon icon="lucide:check-circle" width={14} />}>
+                    Aprobar {pedidosPendientes.length} pendiente{pedidosPendientes.length > 1 ? 's' : ''}
+                  </Button>
+                )}
               </div>
 
               {/* ── VISTA UNIFICADA: todos los productos combinados ── */}
@@ -880,7 +924,7 @@ const ConglomeradoPedidosPage: React.FC = () => {
                 </div>
               ) : <div className="space-y-4">{pedidosAprobFiltrados.map(ped => {
                 const isPendiente = ped.estadoPedido === 'PENDIENTE';
-                const isAprobado  = ped.estadoPedido === 'APROVADO';
+                const isAprobado  = ped.estadoPedido === 'PROCESADO';
                 const hayFaltante = ped.productos.some(p => p.diferenciaTransito < 0);
 
                 return (
@@ -904,8 +948,10 @@ const ConglomeradoPedidosPage: React.FC = () => {
                           {ped.estadoPedido}
                         </Chip>
                         {isPendiente && (
-                          <Button size="sm" color="success" variant="flat" onPress={() => handleAprobarPedido(ped.idPedido)}
-                            startContent={<Icon icon="lucide:check" width={12} />}>
+                          <Button size="sm" color="success" variant="flat"
+                            isLoading={isAprobando}
+                            onPress={() => handleAprobarPedido(ped.idPedido)}
+                            startContent={!isAprobando && <Icon icon="lucide:check" width={12} />}>
                             Aprobar pedido
                           </Button>
                         )}
