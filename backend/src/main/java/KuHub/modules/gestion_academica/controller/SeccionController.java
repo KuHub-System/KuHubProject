@@ -15,6 +15,13 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+/**
+ * Controller REST para gestión de Secciones de Asignaturas
+ * Endpoints: /api/v1/seccion
+ * ✅ En uso: Este controlador permite la creación, actualización por delta (incluyendo bloques horarios) 
+ * y eliminación lógica de secciones asociadas a una asignatura.
+ * Consumido por asignatura-service.ts en el frontend.
+ */
 @RestController
 @RequestMapping("/api/v1/seccion")
 public class SeccionController {
@@ -24,8 +31,9 @@ public class SeccionController {
 
 
     /**
-     *  Usado apra crear secciones
-     ✅ En uso: Endpoint consumido por el frontend.*/
+     * Crea una nueva sección asociada a una asignatura.
+     * ✅ En uso: Consumido por crearSeccionService en asignatura-service.ts.
+     */
     @PostMapping( "/create-section")
     public ResponseEntity<Boolean> createSectionFrontend(
             @Validated @RequestBody SectionCreateDTO request
@@ -36,8 +44,8 @@ public class SeccionController {
     }
 
     /**
-     * Usado para actualizar la información, deltas y horarios de una sección
-     * ✅ En uso: Endpoint consumido por el frontend.
+     * Actualiza la información, bloques horarios e ingredientes de una sección mediante deltas.
+     * ✅ En uso: Consumido por actualizarSeccionService en asignatura-service.ts.
      */
     @PatchMapping("/update-section")
     public ResponseEntity<Boolean> updateSectionFrontend(
@@ -49,8 +57,8 @@ public class SeccionController {
     }
 
     /**
-     * Usado para eliminar logicamente actualizando el estado activo a false
-     * ✅ En uso: Endpoint consumido por el frontend.
+     * Realiza la eliminación lógica (soft delete) de una sección.
+     * ✅ En uso: Consumido por eliminarSeccionService en asignatura-service.ts.
      */
     @DeleteMapping("/soft-delete/{idSeccion}")
     public ResponseEntity<Boolean> softDelete(

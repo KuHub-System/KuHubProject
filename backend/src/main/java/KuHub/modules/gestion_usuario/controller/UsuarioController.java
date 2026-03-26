@@ -21,6 +21,10 @@ import java.util.List;
 /**
  * Controller REST para gestión de Usuarios
  * Endpoints: /api/v1/usuarios
+ * ✅ En uso: Este controlador es fundamental para la gestión de usuarios,
+ * consumido principalmente por usuario-service.ts y auth-service.ts en el frontend.
+ * Maneja operaciones de listado paginado, búsqueda por filtros, creación, actualización,
+ * eliminación y cambio de contraseña.
  */
 @RestController
 @RequestMapping("/api/v1/usuarios")
@@ -30,8 +34,8 @@ public class UsuarioController {
     private UsuarioService usuarioService;
 
     /**
-     * Endpoint para listar usuarios en option de crear nueva asignatura
-     * ✅ En uso: Endpoint consumido por el frontend.
+     * Obtiene la lista de usuarios habilitados para gestionar asignaturas.
+     * ✅ En uso: Consumido por obtenerUsuariosGestoresAsignaturaService en usuario-service.ts.
      */
     @GetMapping( "/users-to-manager-course")
     public ResponseEntity<List<UsersToManageCourseOrSectionView>> usersToManageCourse(){
@@ -41,8 +45,8 @@ public class UsuarioController {
     }
 
     /**
-     * Endpoint para listar usuarios en option de crear nueva seccion y editar
-     * ✅ En uso: Endpoint consumido por el frontend.
+     * Obtiene la lista de usuarios habilitados para ser asignados a una sección.
+     * ✅ En uso: Consumido por obtenerUsuariosAsignadosSeccionService en usuario-service.ts.
      */
     @GetMapping("/users-assigned-to-section")
     public  ResponseEntity<List<UsersToManageCourseOrSectionView>>  usersAssignedToSection(){
@@ -53,8 +57,8 @@ public class UsuarioController {
     }
 
     /**
-     * Endpoint para listar usuarios con el formato requerido por el frontend.
-     * ✅ En uso: Endpoint consumido por el frontend.
+     * Obtiene todos los usuarios con paginación optimizada para el formato del frontend.
+     * ✅ En uso: Consumido por obtenerUsuariosPaginadosService en usuario-service.ts.
      */
     @PostMapping("/find-all-users-with-pagination")
     public ResponseEntity<PaginatedUsersDTO> findAllUsersWithPagination(@RequestBody(required = false) Integer page) {
@@ -64,9 +68,8 @@ public class UsuarioController {
     }
 
     /**
-     * Busca usuarios filtrados por nombre o email con paginación asimétrica.
-     * @param request Objeto con el término de búsqueda y la página solicitada.
-     * ✅ En uso: Endpoint consumido por el frontend.
+     * Busca usuarios filtrados por nombre o email con paginación.
+     * ✅ En uso: Consumido por buscarUsuariosService en usuario-service.ts.
      */
     @PostMapping("/find-users-by-filter")
     public ResponseEntity<PaginatedUsersDTO> findUsersByFilter(
@@ -77,8 +80,8 @@ public class UsuarioController {
     }
 
     /**
-     * Endpoint para creacion del usuario formato frontend
-     * ✅ En uso: Endpoint consumido por el frontend.
+     * Crea un nuevo usuario en el sistema.
+     * ✅ En uso: Consumido por crearUsuarioService en usuario-service.ts.
      */
     @PostMapping("/create-user")
     public ResponseEntity<Boolean> createUser (
@@ -89,8 +92,8 @@ public class UsuarioController {
     }
 
     /**
-     * Endpoint para actualizacion del usuario formato frontend
-     * ✅ En uso: Endpoint consumido por el frontend.
+     * Actualiza la información de un usuario existente buscando por su email actual.
+     * ✅ En uso: Consumido por actualizarUsuarioService en usuario-service.ts.
      */
     @PatchMapping("/update-user/{currentEmail}")
     public ResponseEntity<Boolean> updateUser (
@@ -102,8 +105,8 @@ public class UsuarioController {
     }
 
     /**
-     * Endpoint para delectar del usuario con el email unico evitando uso de id para formato frontend
-     * ✅ En uso: Endpoint consumido por el frontend.
+     * Desactiva un usuario del sistema buscando por su email único.
+     * ✅ En uso: Consumido por eliminarUsuarioService en usuario-service.ts.
      */
     @DeleteMapping("/delete-user/{email}")
     public ResponseEntity<Boolean> deleteUser (
@@ -130,8 +133,8 @@ public class UsuarioController {
 
 
     /**
-     * GET /api/v1/usuarios
-     * Obtiene todos los usuarios
+     * Obtiene todos los usuarios del sistema.
+     * ⚠️ Sin uso aparente: El frontend utiliza preferentemente la versión paginada.
      */
     @GetMapping
     public ResponseEntity<List<UsuarioResponseDTO>> obtenerTodos() {
@@ -140,8 +143,8 @@ public class UsuarioController {
     }
 
     /**
-     * GET /api/v1/usuarios/activos
-     * Obtiene solo los usuarios activos
+     * Obtiene solo los usuarios que están activos.
+     * ⚠️ Sin uso aparente en el frontend actual.
      */
     @GetMapping("/activos")
     public ResponseEntity<List<UsuarioResponseDTO>> obtenerActivos() {
@@ -150,8 +153,8 @@ public class UsuarioController {
     }
 
     /**
-     * GET /api/v1/usuarios/{id}
-     * Obtiene un usuario por su ID
+     * Obtiene los detalles de un usuario específico por su ID.
+     * ⚠️ Sin uso aparente en el frontend actual.
      */
     @GetMapping("/{id}")
     public ResponseEntity<UsuarioResponseDTO> obtenerPorId(@PathVariable Integer id) {
@@ -160,8 +163,8 @@ public class UsuarioController {
     }
 
     /**
-     * GET /api/v1/usuarios/email/{email}
-     * Obtiene un usuario por su email
+     * Obtiene un usuario buscando por su dirección de correo electrónico.
+     * ⚠️ Sin uso aparente en el frontend actual.
      */
     @GetMapping("/email/{email}")
     public ResponseEntity<UsuarioResponseDTO> obtenerPorEmail(@PathVariable String email) {
@@ -170,8 +173,8 @@ public class UsuarioController {
     }
 
     /**
-     * GET /api/v1/usuarios/buscar?q=termino
-     * Busca usuarios por nombre o email
+     * Busca usuarios filtrando por nombre o email (vía query param).
+     * ⚠️ Sin uso aparente: El frontend utiliza find-users-by-filter.
      */
     @GetMapping("/buscar")
     public ResponseEntity<List<UsuarioResponseDTO>> buscar(@RequestParam String q) {
@@ -180,8 +183,8 @@ public class UsuarioController {
     }
 
     /**
-     * GET /api/v1/usuarios/rol/{idRol}
-     * Obtiene usuarios por rol
+     * Obtiene la lista de usuarios que poseen un rol determinado.
+     * ⚠️ Sin uso aparente en el frontend actual.
      */
     @GetMapping("/rol/{idRol}")
     public ResponseEntity<List<UsuarioResponseDTO>> obtenerPorRol(@PathVariable Integer idRol) {
@@ -194,8 +197,8 @@ public class UsuarioController {
 
 
     /**
-     * POST /api/v1/usuarios
-     * Crea un nuevo usuario
+     * Crea un nuevo usuario (método estándar).
+     * ⚠️ Sin uso aparente: El frontend utiliza /create-user.
      */
     @PostMapping
     public ResponseEntity<UsuarioResponseDTO> crear(@Valid @RequestBody UsuarioRequestDTO usuarioRequestDTO) {
@@ -204,8 +207,8 @@ public class UsuarioController {
     }
 
     /**
-     * PUT /api/v1/usuarios/{id}
-     * Actualiza un usuario existente
+     * Actualiza un usuario existente por su ID.
+     * ⚠️ Sin uso aparente: El frontend utiliza /update-user/{currentEmail}.
      */
     @PutMapping("/{id}")
     public ResponseEntity<UsuarioResponseDTO> actualizar(
@@ -216,8 +219,8 @@ public class UsuarioController {
     }
 
     /**
-     * PATCH /api/v1/usuarios/{id}/desactivar
-     * Desactiva un usuario
+     * Cambia el estado de un usuario a inactivo por su ID.
+     * ⚠️ Sin uso aparente: El frontend utiliza /delete-user/{email}.
      */
     @PatchMapping("/{id}/desactivar")
     public ResponseEntity<Void> desactivar(@PathVariable Integer id) {
@@ -226,8 +229,8 @@ public class UsuarioController {
     }
 
     /**
-     * PATCH /api/v1/usuarios/{id}/activar
-     * Activa un usuario
+     * Cambia el estado de un usuario a activo por su ID.
+     * ⚠️ Sin uso aparente en el frontend actual.
      */
     @PatchMapping("/{id}/activar")
     public ResponseEntity<Void> activar(@PathVariable Integer id) {
@@ -236,8 +239,8 @@ public class UsuarioController {
     }
 
     /**
-     * DELETE /api/v1/usuarios/{id}
-     * Elimina un usuario permanentemente
+     * Elimina permanentemente un usuario del sistema.
+     * ⚠️ Sin uso aparente en el frontend actual.
      */
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> eliminar(@PathVariable Integer id) {
@@ -246,7 +249,8 @@ public class UsuarioController {
     }
 
     /**
-     * Cambia la contraseña de un usuario
+     * Permite al usuario autenticado cambiar su propia contraseña.
+     * ✅ En uso: Consumido por cambiarPasswordService en auth-service.ts.
      */
     @PatchMapping("/cambiar-contrasena")
     public ResponseEntity<Void> cambiarContrasena(
@@ -289,8 +293,9 @@ public class UsuarioController {
     }
 
     /**
-     * PUT /api/v1/usuarios/{id}/foto
-     * Actualiza la foto de perfil de un usuario
+     * Actualiza la foto de perfil del usuario autenticado.
+     * ⚠️ Discrepancia: El frontend (auth-service.ts) busca "/foto-perfil" (PATCH), 
+     * mientras que este endpoint es "/perfil/foto" (PUT).
      */
     @PutMapping("/perfil/foto")
     public ResponseEntity<?> actualizarFotoPerfil(@RequestParam("foto") MultipartFile foto) {
@@ -307,8 +312,8 @@ public class UsuarioController {
     }
 
     /**
-     * GET /api/v1/usuarios/estadisticas
-     * Obtiene estadísticas de usuarios
+     * Obtiene métricas generales sobre los usuarios del sistema.
+     * ⚠️ Sin uso aparente en el frontend actual.
      */
     @GetMapping("/estadisticas")
     public ResponseEntity<UsuarioEstadisticasDTO> obtenerEstadisticas() {

@@ -33,6 +33,7 @@ import { Icon } from '@iconify/react';
 import { motion } from 'framer-motion';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useToast } from '../hooks/useToast';
+import { useModulePermission } from '../contexts/permission-context';
 
 // ─── TIPOS Y SERVICIOS ───────────────────────────────────────────────────────
 import { IBloqueHorario } from '../types/bloque-horario.types';
@@ -100,6 +101,7 @@ const formatDate = (dateStr: string): string => {
 const AdminSistemaPage: React.FC = () => {
   usePageTitle('Administración del Sistema', 'Centro de control: horarios, semanas académicas y salas');
   const toast = useToast();
+  const { canCreate: admin_Crear, canUpdate: admin_Editar, canDelete: admin_Eliminar } = useModulePermission('ADMIN_SISTEMA');
 
   const [activeTab, setActiveTab] = React.useState<string>('horarios');
   const [bloques, setBloques] = React.useState<IBloqueHorario[]>([]);
@@ -289,6 +291,7 @@ const SeccionBloques: React.FC<SeccionBloquesProps> = ({ bloques, isLoading }) =
               <Chip key={label} color={style.chip} size="sm" variant="flat">{label}</Chip>
             ))}
           </div>
+          {admin_Crear && (
           <Button
             color="primary"
             variant="solid"
@@ -299,6 +302,7 @@ const SeccionBloques: React.FC<SeccionBloquesProps> = ({ bloques, isLoading }) =
           >
             Nuevo Bloque
           </Button>
+          )}
         </CardHeader>
         <Divider />
         <CardBody className="p-0">
@@ -344,6 +348,7 @@ const SeccionBloques: React.FC<SeccionBloquesProps> = ({ bloques, isLoading }) =
                     </TableCell>
                     <TableCell>
                       <div className="flex justify-center gap-1">
+                        {admin_Editar && (
                         <Tooltip content="Editar horario">
                           <Button
                             isIconOnly size="sm" variant="light"
@@ -353,6 +358,8 @@ const SeccionBloques: React.FC<SeccionBloquesProps> = ({ bloques, isLoading }) =
                             <Icon icon="lucide:edit" width={16} />
                           </Button>
                         </Tooltip>
+                        )}
+                        {admin_Eliminar && (
                         <Tooltip content="Eliminar bloque" color="danger">
                           <Button
                             isIconOnly size="sm" variant="light"
@@ -362,6 +369,7 @@ const SeccionBloques: React.FC<SeccionBloquesProps> = ({ bloques, isLoading }) =
                             <Icon icon="lucide:trash" width={16} />
                           </Button>
                         </Tooltip>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>

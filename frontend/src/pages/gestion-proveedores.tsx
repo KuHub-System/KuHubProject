@@ -21,6 +21,7 @@ import {
 } from '@heroui/react';
 import { Icon } from '@iconify/react';
 import { usePageTitle } from '../hooks/usePageTitle';
+import { useModulePermission } from '../contexts/permission-context';
 import { motion, AnimatePresence } from 'framer-motion';
 
 /**
@@ -152,6 +153,7 @@ const renderDisponibilidad = (disponible: boolean) => {
  * Página de gestión de proveedores.
  */
 const GestionProveedoresPage: React.FC = () => {
+  const { canCreate: prov_Crear, canUpdate: prov_Editar, canDelete: prov_Eliminar } = useModulePermission('GESTION_PROVEEDORES');
 
   const [proveedores, setProveedores] = React.useState<Proveedor[]>(proveedoresIniciales);
   const [filteredProveedores, setFilteredProveedores] = React.useState<Proveedor[]>(proveedoresIniciales);
@@ -257,6 +259,7 @@ const GestionProveedoresPage: React.FC = () => {
       >
         {/* Encabezado */}
         <div className="flex flex-col md:flex-row justify-end items-start md:items-center gap-4 border-b border-default-200 dark:border-default-100 pb-4">
+          {prov_Crear && (
           <Button
             color="primary"
             variant="solid"
@@ -266,6 +269,7 @@ const GestionProveedoresPage: React.FC = () => {
           >
             Nuevo Proveedor
           </Button>
+          )}
         </div>
 
         {/* Filtros */}
@@ -333,6 +337,7 @@ const GestionProveedoresPage: React.FC = () => {
                         <Icon icon="lucide:eye" className="text-primary" />
 
                       </Button>
+                      {prov_Editar && (
                       <Button
                         isIconOnly
                         variant="light"
@@ -342,6 +347,8 @@ const GestionProveedoresPage: React.FC = () => {
                       >
                         <Icon icon="lucide:edit" width={18} />
                       </Button>
+                      )}
+                      {prov_Editar && (
                       <Button
                         isIconOnly
                         variant="light"
@@ -357,6 +364,7 @@ const GestionProveedoresPage: React.FC = () => {
                           width={18}
                         />
                       </Button>
+                      )}
                     </div>
                   </div>
                 </div>

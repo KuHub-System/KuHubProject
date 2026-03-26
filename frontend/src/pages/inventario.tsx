@@ -50,6 +50,7 @@ import {
 import { useToast, useConfirm } from '../hooks/useToast';
 import { logger } from '../utils/logger';
 import { useAuth } from '../contexts/auth-context';
+import { useModulePermission } from '../contexts/permission-context';
 import { obtenerCategorias, obtenerUnidades } from '../services/storage-service';
 import GestionCategoriasModal from '../components/modals/GestionCategoriasModal';
 import GestionUnidadesModal from '../components/modals/GestionUnidadesModal';
@@ -84,6 +85,8 @@ const InventarioPage: React.FC = () => {
   const confirm = useConfirm();
   const { user } = useAuth();
   const esAdministrador = user?.rol === 'Administrador';
+  // ── Permisos granulares del módulo INVENTARIO ──
+  const { canCreate: invPuedeCrear, canUpdate: invPuedeEditar, canDelete: invPuedeEliminar } = useModulePermission('INVENTARIO');
   const [productos, setProductos] = React.useState<IProducto[]>([]);
   const [filteredProductos, setFilteredProductos] = React.useState<IProducto[]>([]);
   const [categoriasFull, setCategoriasFull] = React.useState<{ id: number, nombre: string }[]>([]);
@@ -639,6 +642,7 @@ const InventarioPage: React.FC = () => {
           >
             Control Masivo
           </Button>
+          {invPuedeCrear && (
           <Button
             color="primary"
             variant="solid"
@@ -649,6 +653,7 @@ const InventarioPage: React.FC = () => {
           >
             Nuevo
           </Button>
+          )}
           <Button
             isIconOnly
             variant="flat"
@@ -941,7 +946,7 @@ const InventarioPage: React.FC = () => {
                   contentVisibility: 'auto',
                   containIntrinsicSize: '70px 70px'
                 } as any}
-                onClick={() => handleEditarProducto(producto)}
+                onClick={() => invPuedeEditar && handleEditarProducto(producto)}
               >
                 <TableCell>
                   <Tooltip content="Control de Inventario" color="primary" delay={100} closeDelay={0}>
@@ -998,7 +1003,7 @@ const InventarioPage: React.FC = () => {
                       </Button>
                     </Tooltip>
 
-                    {esAdministrador && (
+                    {invPuedeEliminar && (
                       <Tooltip content="Eliminar" color="danger" delay={100} closeDelay={0}>
                         <Button
                           isIconOnly

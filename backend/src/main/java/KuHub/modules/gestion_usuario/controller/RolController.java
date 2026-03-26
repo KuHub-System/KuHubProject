@@ -13,6 +13,9 @@ import java.util.List;
 /**
  * Controller REST para gestión de Roles
  * Endpoints: /api/v1/roles
+ * ⚠️ No está en uso actualmente: El frontend gestiona los roles y permisos de forma local 
+ * (ver src/pages/gestion-roles.tsx y src/services/roles-helper.ts en el frontend).
+ * Este controlador proporciona operaciones CRUD para roles que podrían ser integradas en el futuro.
  */
 @RestController
 @RequestMapping("/api/v1/roles")
@@ -23,8 +26,8 @@ public class RolController {
     private RolService rolService;
 
     /**
-     * GET /api/v1/roles
-     * Obtiene todos los roles
+     * Obtiene todos los roles registrados en el sistema.
+     * ⚠️ Sin uso aparente en el frontend actual (se gestionan localmente).
      */
     @GetMapping
     public ResponseEntity<List<RolResponseDTO>> obtenerTodos() {
@@ -33,8 +36,8 @@ public class RolController {
     }
 
     /**
-     * GET /api/v1/roles/activos
-     * Obtiene solo los roles activos
+     * Obtiene solo la lista de roles que están activos.
+     * ⚠️ Sin uso aparente en el frontend actual.
      */
     @GetMapping("/activos")
     public ResponseEntity<List<RolResponseDTO>> obtenerActivos() {
@@ -43,8 +46,8 @@ public class RolController {
     }
 
     /**
-     * GET /api/v1/roles/{id}
-     * Obtiene un rol por su ID
+     * Obtiene los detalles de un rol específico por su ID.
+     * ⚠️ Sin uso aparente en el frontend actual.
      */
     @GetMapping("/{id}")
     public ResponseEntity<RolResponseDTO> obtenerPorId(@PathVariable Integer id) {
@@ -53,8 +56,8 @@ public class RolController {
     }
 
     /**
-     * GET /api/v1/roles/nombre/{nombre}
-     * Obtiene un rol por su nombre
+     * Obtiene un rol buscando por su nombre exacto.
+     * ⚠️ Sin uso aparente en el frontend actual.
      */
     @GetMapping("/nombre/{nombre}")
     public ResponseEntity<RolResponseDTO> obtenerPorNombre(@PathVariable String nombre) {
@@ -63,8 +66,8 @@ public class RolController {
     }
 
     /**
-     * POST /api/v1/roles
-     * Crea un nuevo rol
+     * Registra un nuevo rol en el sistema.
+     * ⚠️ Sin uso aparente en el frontend actual.
      */
     @PostMapping
     public ResponseEntity<RolResponseDTO> crear(@Valid @RequestBody RolRequestDTO rolRequestDTO) {
@@ -73,8 +76,8 @@ public class RolController {
     }
 
     /**
-     * PUT /api/v1/roles/{id}
-     * Actualiza un rol existente
+     * Actualiza la información de un rol existente por su ID.
+     * ⚠️ Sin uso aparente en el frontend actual.
      */
     @PutMapping("/{id}")
     public ResponseEntity<RolResponseDTO> actualizar(
@@ -85,8 +88,8 @@ public class RolController {
     }
 
     /**
-     * PATCH /api/v1/roles/{id}/desactivar
-     * Desactiva un rol
+     * Cambia el estado de un rol a inactivo por su ID.
+     * ⚠️ Sin uso aparente en el frontend actual.
      */
     @PatchMapping("/{id}/desactivar")
     public ResponseEntity<Void> desactivar(@PathVariable Integer id) {
@@ -95,8 +98,8 @@ public class RolController {
     }
 
     /**
-     * PATCH /api/v1/roles/{id}/activar
-     * Activa un rol
+     * Cambia el estado de un rol a activo por su ID.
+     * ⚠️ Sin uso aparente en el frontend actual.
      */
     @PatchMapping("/{id}/activar")
     public ResponseEntity<Void> activar(@PathVariable Integer id) {
@@ -105,8 +108,8 @@ public class RolController {
     }
 
     /**
-     * DELETE /api/v1/roles/{id}
-     * Elimina un rol permanentemente
+     * Elimina permanentemente un rol del sistema por su ID.
+     * ⚠️ Sin uso aparente en el frontend actual.
      */
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> eliminar(@PathVariable Integer id) {
@@ -115,8 +118,8 @@ public class RolController {
     }
 
     /**
-     * GET /api/v1/roles/existe/{nombre}
-     * Verifica si existe un rol con ese nombre
+     * Verifica la existencia de un rol mediante su nombre.
+     * ⚠️ Sin uso aparente en el frontend actual.
      */
     @GetMapping("/existe/{nombre}")
     public ResponseEntity<Boolean> existePorNombre(@PathVariable String nombre) {

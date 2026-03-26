@@ -17,6 +17,13 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+/**
+ * Controller REST para gestión de Solicitudes
+ * Endpoints: /api/v1/solicitud
+ * ✅ En uso: Este controlador maneja la lógica de solicitudes masivas, carga de cursos/recetas 
+ * para solicitudes y vista semanal consolidada.
+ * Es consumido por solicitud-service.ts en el frontend.
+ */
 @RestController
 @RequestMapping("/api/v1/solicitud")
 @Validated
@@ -25,8 +32,10 @@ public class SolicitudController {
     @Autowired
     private SolicitudService solicitudService;
 
-    /**Carga todas las asignaturar con todas las secciones,con al menos una seccion activa con horarios reservados a una sala
-     * ✅✅ En uso: Endpoint consumido por el frontend.*/
+    /**
+     * Obtiene todas las asignaturas con sus secciones y bloques horarios activos (con reserva de sala).
+     * ✅ En uso: Consumido por obtenerCursosParaSolicitudService en solicitud-service.ts.
+     */
     @GetMapping("/curses-by-solicitation")
     public ResponseEntity<List<CourseForSolicitation>> findCourseWithSectionsAndBlocksActive(){
         return ResponseEntity
@@ -35,7 +44,9 @@ public class SolicitudController {
     }
 
     /**
-     * ✅✅ En uso: Endpoint consumido por el frontend.*/
+     * Obtiene la lista de recetas activas incluyendo el detalle de sus insumos.
+     * ✅ En uso: Consumido por obtenerRecetasSolicitudService en solicitud-service.ts.
+     */
     @GetMapping("/recipes-with-details-by-solicitation")
     public ResponseEntity<List<RecipeSolicitation>> findActiveRecipesWithDetails(){
         return ResponseEntity
@@ -44,10 +55,9 @@ public class SolicitudController {
     }
 
     /**
-     * Obtiene el listado completo de solicitudes con su jerarquía anidada
-     * (Asignatura -> Sección -> Horarios) filtrando por un rango de fechas.
-     * * DETALLES!!
-     * ✅✅ En uso: Endpoint consumido por el frontend para cargar la vista semanal de solicitudes.
+     * Obtiene el listado de solicitudes para un rango de fechas (vista semanal), 
+     * incluyendo jerarquía de asignatura, sección y horarios.
+     * ✅ En uso: Consumido por obtenerSolicitudesPorSemanaService en solicitud-service.ts.
      */
     @PostMapping("/find-solicitations-per-week")
     public ResponseEntity<List<SolicitationManagement>> findSolicitationsPerWeek(
@@ -57,8 +67,10 @@ public class SolicitudController {
                 .body(solicitudService.findSolicitationsPerWeekRaw(request));
     }
 
-    /** ✅✅ En uso: Endpoint consumido por el frontend para cargar la vista semanal de solicitudes.
-            */
+    /**
+     * Procesa la creación masiva de solicitudes para múltiples secciones y horarios.
+     * ✅ En uso: Consumido por generarSolicitudesMasivasService en solicitud-service.ts.
+     */
     @PostMapping("/generate-mass-solicitions")
     public ResponseEntity<ResultsMassSolicitationView> generarSolicitudesMasivas(
             @Validated @RequestBody List<MassiveSolicitation> payloadList) {
@@ -71,7 +83,9 @@ public class SolicitudController {
                 .body(solicitudService.saveMass(payloadList));
     }
 
-    /** ✅✅ En uso: Endpoint consumido por el frontend para cargar la vista semanal de solicitudes.
+    /**
+     * Obtiene los datos consolidados de solicitudes (dashboard) para un rango de fechas.
+     * ✅ En uso: Consumido por obtenerOrdenConsolidationService en solicitud-service.ts.
      */
     @PostMapping("/order-for-consolidation")
     public ResponseEntity<DashboardConsolidado> obtenerDashboard(
@@ -81,7 +95,9 @@ public class SolicitudController {
                 .body(solicitudService.obtenerDashboard(request));
     }
 
-    /** ✅✅ En uso: Endpoint consumido por el frontend para cargar la vista semanal de solicitudes.
+    /**
+     * Realiza el cambio de estado masivo para un conjunto de solicitudes (Aceptar/Rechazar).
+     * ✅ En uso: Consumido por cambiarEstadoMasivoService en solicitud-service.ts.
      */
     @PatchMapping("/change-massive-status")
     public ResponseEntity<Boolean> changeMassiveStatus(

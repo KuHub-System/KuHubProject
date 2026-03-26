@@ -188,6 +188,17 @@ public class SpringSecurityConfig {
                         // .requestMatchers("/swagger-ui/**").hasRole("ADMINISTRADOR")
 
                         // ========================================
+                        // ENDPOINTS DE PERMISOS (CRUD por Rol × Módulo)
+                        // ========================================
+                        // Matriz de permisos: solo ADMINISTRADOR puede verla y editarla
+                        .requestMatchers(HttpMethod.GET, "/api/v1/permisos/matrix").hasRole("ADMINISTRADOR")
+                        // Permisos de un rol: cualquier usuario autenticado (carga sus propios permisos)
+                        .requestMatchers(HttpMethod.GET, "/api/v1/permisos/rol/**").authenticated()
+                        // Crear / actualizar permisos: solo ADMINISTRADOR
+                        .requestMatchers(HttpMethod.POST, "/api/v1/permisos/**").hasRole("ADMINISTRADOR")
+                        .requestMatchers(HttpMethod.PUT,  "/api/v1/permisos/**").hasRole("ADMINISTRADOR")
+
+                        // ========================================
                         // ENDPOINTS DE ROLES
                         // ========================================
                         // Endpoints de roles v1 (lectura pública)

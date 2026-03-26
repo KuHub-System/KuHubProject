@@ -17,6 +17,7 @@ import {
   buscarUsuariosService
 } from '../services/usuario-service';
 import { useAuth } from '../contexts/auth-context';
+import { useModulePermission } from '../contexts/permission-context';
 import { useToast, useConfirm } from '../hooks/useToast';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { logger } from '../utils/logger';
@@ -39,6 +40,7 @@ const GestionUsuariosPage: React.FC = () => {
   const confirm = useConfirm();
   const opcionesRol = ['Todos los roles', ...ROLES];
   const { user: usuarioActual, hasSpecificPermission } = useAuth();
+  const { canCreate: usuPuedeCrear, canUpdate: usuPuedeEditar, canDelete: usuPuedeEliminar } = useModulePermission('GESTION_USUARIOS');
   const [usuarios, setUsuarios] = useState<IUsuario[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [filtro, setFiltro] = useState('');
@@ -433,6 +435,7 @@ const GestionUsuariosPage: React.FC = () => {
                 {/* Filtro por rol removido */}
               </div>
 
+              {usuPuedeCrear && (
               <Button
                 color="primary"
                 variant="solid"
@@ -442,6 +445,7 @@ const GestionUsuariosPage: React.FC = () => {
               >
                 Nuevo Usuario
               </Button>
+              )}
             </div>
           </CardBody>
         </Card>
@@ -536,6 +540,7 @@ const GestionUsuariosPage: React.FC = () => {
                     </TableCell>
                     <TableCell>
                       <div className="flex justify-center gap-1">
+                        {usuPuedeEditar && (
                         <Tooltip content="Editar">
                           <Button
                             isIconOnly
@@ -547,8 +552,9 @@ const GestionUsuariosPage: React.FC = () => {
                             <Icon icon="lucide:edit" width={18} />
                           </Button>
                         </Tooltip>
+                        )}
 
-                        {usuario.activo && (
+                        {usuario.activo && usuPuedeEliminar && (
                           <Tooltip content="Desactivar">
                             <Button
                               isIconOnly
@@ -557,8 +563,7 @@ const GestionUsuariosPage: React.FC = () => {
                               onPress={() => handleEliminar(usuario)}
                               isDisabled={
                                 usuario.id === usuarioActual?.id ||
-                                usuario.nombreCompleto === usuarioActual?.nombre ||
-                                usuarioActual?.rol !== 'Administrador'
+                                usuario.nombreCompleto === usuarioActual?.nombre
                               }
                               className="text-default-400 hover:text-danger"
                             >
