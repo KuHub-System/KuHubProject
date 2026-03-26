@@ -60,15 +60,24 @@ api.interceptors.response.use(
     async (error: AxiosError) => {
         // Handle 401 Unauthorized (Token expires or invalid)
         if (error.response?.status === 401) {
+            const url = error.config?.url ?? '';
             logger.error('❌ 401 UNAUTHORIZED detectado en interceptor Axios');
-            logger.error(`  → URL: ${error.config?.url}`);
+            logger.error(`  → URL: ${url}`);
             logger.error(`  → Response:`, error.response?.data);
             
             // Si el error de 401 es en el login, no redirigimos (el servicio maneja su error)
-            if (error.config?.url?.includes('/auth/login')) {
+            if (url.includes('/auth/login')) {
                 return Promise.reject(error);
             }
 
+            // Si el error de 401 es en permisos, no redirigimos al login.
+            // El PermissionContext maneja su propio error sin necesidad de logout.
+            if (url.includes('/permisos/')) {
+                logger.error('  → Error de permisos ignorado por interceptor (no logout)');
+                return Promise.reject(error);
+            }
+
+            // Para cualquier otra 401: el token venció → forzar logout
             localStorage.removeItem('sesion_actual');
             window.location.href = '/login';
         }
