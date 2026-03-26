@@ -3,6 +3,7 @@ package KuHub.modules.gestion_pedido.controller;
 import KuHub.modules.gestion_pedido.record.ChangePedidoStatusDTO;
 import KuHub.modules.gestion_pedido.record.CreateOrder;
 import KuHub.modules.gestion_pedido.record.PedidoDashboardRecords;
+import java.util.List;
 import KuHub.modules.gestion_pedido.services.PedidoService;
 import KuHub.modules.gestion_solicitud.dtos.request.DateRangeDTO;
 import lombok.RequiredArgsConstructor;
@@ -35,6 +36,19 @@ public class PedidoController {
         return ResponseEntity
                 .status(201)
                 .body(pedidoService.consolidateOrder(request));
+    }
+
+    /** ✅✅ En uso: Entregas diarias para Bodega de Tránsito.
+     *  Solicitudes PROCESADO en pedidos APROVADO, agrupadas por fecha → sala → horario.
+     *  Ejemplo: POST /api/v1/pedido/entregas-diarias
+     *  Body: { "fechaInicio": "2026-03-24", "fechaFin": "2026-03-28" }
+     */
+    @PostMapping("/entregas-diarias")
+    public ResponseEntity<List<PedidoDashboardRecords.EntregaDiariaJson>> obtenerEntregasDiarias(
+            @Validated @RequestBody DateRangeDTO request) {
+        return ResponseEntity
+                .status(200)
+                .body(pedidoService.obtenerEntregasDiarias(request));
     }
 
     /** ✅✅ En uso: Cambia el estado de uno o varios pedidos de forma masiva.

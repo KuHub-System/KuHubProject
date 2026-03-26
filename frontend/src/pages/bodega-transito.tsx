@@ -12,7 +12,7 @@ import { usePageTitle } from '../hooks/usePageTitle';
 import { useHistory } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ISolicitud, IItemSolicitud } from '../types/solicitud.types';
-import { obtenerTodasSolicitudesService, actualizarEstadoBodegaService } from '../services/solicitud-service';
+import { actualizarEstadoBodegaService, obtenerEntregasDiariasService, IEntregaDiaria, ISalaEntrega } from '../services/solicitud-service';
 import { obtenerRecetaPorIdService } from '../services/receta-service';
 import { obtenerFiltrosInventarioService } from '../services/producto-service';
 import { buscarBodegaTransitoService, buscarBodegaTransitoPorCodigoService, obtenerBodegaPaginadaService, IBodegaTransitoItem } from '../services/bodega-transito-service';
@@ -111,6 +111,141 @@ const RequestCard: React.FC<RequestCardProps> = ({ solicitud, onUpdate, onAddExt
   );
 };
 
+// ─────────────────────────────────────────────────────────────────────────────
+// HELPERS DE SEMANA
+// ─────────────────────────────────────────────────────────────────────────────
+
+const getWeekKey = (date: Date): string => {
+  const d = new Date(date);
+  const day = d.getDay();
+  const monday = new Date(d);
+  monday.setDate(d.getDate() - (day === 0 ? 6 : day - 1));
+  return monday.toISOString().slice(0, 10);
+};
+
+const getWeekRange = (date: Date): { fechaInicio: string; fechaFin: string } => {
+  const day = date.getDay();
+  const monday = new Date(date);
+  monday.setDate(date.getDate() - (day === 0 ? 6 : day - 1));
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+  return {
+    fechaInicio: monday.toISOString().slice(0, 10),
+    fechaFin:    sunday.toISOString().slice(0, 10),
+  };
+};
+
+const fmtCantidadEntrega = (n: number): string =>
+  new Intl.NumberFormat('es-CL', { minimumFractionDigits: 0, maximumFractionDigits: 3 }).format(n);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// COMPONENTE EntregaSalaCard — muestra una sala con sus entregas del día
+// ─────────────────────────────────────────────────────────────────────────────
+
+const EntregaSalaCard: React.FC<{ sala: ISalaEntrega }> = ({ sala }) => {
+  const [expandidos, setExpandidos] = React.useState<Set<number>>(new Set());
+  const toggle = (id: number) =>
+    setExpandidos(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+
+  return (
+    <Card className="border border-default-200 shadow-sm bg-white dark:bg-content1">
+      <CardHeader className="px-4 py-3 bg-default-50 dark:bg-default-100/30 border-b border-default-200">
+        <div className="flex items-center gap-2 w-full">
+          <Icon icon="lucide:door-open" className="text-secondary" width={16} />
+          <span className="font-bold text-secondary dark:text-foreground">{sala.nombreSala}</span>
+          {sala.codSala && (
+            <Chip size="sm" variant="flat" color="default" className="text-[10px] h-5">{sala.codSala}</Chip>
+          )}
+          <span className="ml-auto text-xs text-default-400">
+            {sala.solicitudes.length} entrega{sala.solicitudes.length !== 1 ? 's' : ''}
+          </span>
+        </div>
+      </CardHeader>
+      <CardBody className="p-0 divide-y divide-default-100">
+        {sala.solicitudes.map(sol => {
+          const abierto = expandidos.has(sol.idSolicitud);
+          return (
+            <div key={sol.idSolicitud}>
+              <button
+                className="w-full flex items-center gap-3 px-4 py-3 hover:bg-default-50/50 dark:hover:bg-default-100/20 transition-colors text-left"
+                onClick={() => toggle(sol.idSolicitud)}
+              >
+                {/* Badge de horario */}
+                <div className="shrink-0 flex flex-col items-center justify-center rounded-lg px-2.5 py-1.5 min-w-[72px] text-center bg-primary-50 border border-primary-100">
+                  <span className="text-[9px] font-bold text-primary-400 uppercase leading-none">Horario</span>
+                  <span className="text-xs font-bold text-primary leading-tight mt-0.5">{sol.rangoHoras}</span>
+                </div>
+
+                {/* Info sección */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-semibold text-sm text-default-800 dark:text-foreground">§{sol.nombreSeccion}</span>
+                    <span className="text-xs text-default-400">·</span>
+                    <span className="text-sm text-default-600">{sol.nombreDocente}</span>
+                  </div>
+                  <div className="flex items-center gap-3 mt-0.5 text-xs text-default-400 flex-wrap">
+                    <span className="flex items-center gap-1">
+                      <Icon icon="lucide:book-open" width={11} />{sol.nombreReceta}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Icon icon="lucide:users" width={11} />{sol.cantInscritos} alumnos
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Icon icon="lucide:package" width={11} />{sol.productos.length} producto{sol.productos.length !== 1 ? 's' : ''}
+                    </span>
+                  </div>
+                </div>
+
+                <Icon
+                  icon={abierto ? 'lucide:chevron-up' : 'lucide:chevron-down'}
+                  width={16}
+                  className="text-default-400 shrink-0"
+                />
+              </button>
+
+              {/* Lista de productos */}
+              {abierto && (
+                <div className="px-4 pb-3 pt-1">
+                  <div className="rounded-lg border border-default-100 overflow-hidden">
+                    <div className="grid grid-cols-[1fr_0.45fr_0.35fr] px-3 py-1.5 bg-default-50 dark:bg-default-100/30 text-[10px] font-bold text-default-500 uppercase tracking-wider">
+                      <span>Producto</span>
+                      <span className="text-center">Cantidad</span>
+                      <span className="text-center">Unidad</span>
+                    </div>
+                    {sol.productos.map((p, i) => (
+                      <div
+                        key={i}
+                        className="grid grid-cols-[1fr_0.45fr_0.35fr] px-3 py-2 text-sm border-t border-default-100 hover:bg-default-50/50 items-center"
+                      >
+                        <span className="text-default-700 dark:text-default-300">
+                          {p.nombreProducto}
+                          {p.observacion && (
+                            <span className="text-xs text-default-400 italic ml-1.5">({p.observacion})</span>
+                          )}
+                        </span>
+                        <span className="font-mono font-semibold text-center text-default-700 dark:text-default-300">
+                          {fmtCantidadEntrega(p.cantidad)}
+                        </span>
+                        <span className="text-default-500 text-center">{p.unidadAbreviada}</span>
+                      </div>
+                    ))}
+                  </div>
+                  {sol.observaciones && (
+                    <div className="flex items-start gap-1.5 mt-2 text-xs text-default-500 italic px-1">
+                      <Icon icon="lucide:message-circle" width={11} className="mt-px shrink-0" />
+                      <span>{sol.observaciones}</span>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </CardBody>
+    </Card>
+  );
+};
+
 const MODAL_KEY_BODEGA_PEDIDOS = 'bodega_pedidos_maintenance_dismissed';
 
 const BodegaTransitoPage: React.FC = () => {
@@ -122,6 +257,11 @@ const BodegaTransitoPage: React.FC = () => {
   const [solicitudes, setSolicitudes] = React.useState<ISolicitud[]>([]);
   const [selectedDate, setSelectedDate] = React.useState<Date>(new Date());
   const [currentView, setCurrentView] = React.useState<'inventario' | 'pedidos'>('inventario');
+
+  // ── Entregas diarias ──
+  const [entregasData,       setEntregasData]       = React.useState<IEntregaDiaria[]>([]);
+  const [isLoadingEntregas,  setIsLoadingEntregas]  = React.useState(false);
+  const entregasCache = React.useRef<Map<string, IEntregaDiaria[]>>(new Map());
 
   const memoizedTitle = React.useMemo(() => (
     <div className="flex items-center gap-2">
@@ -188,10 +328,7 @@ const BodegaTransitoPage: React.FC = () => {
   }, [productos]);
 
   const loadData = React.useCallback(async () => {
-    try {
-      const data = await obtenerTodasSolicitudesService();
-      setSolicitudes(data.filter(s => s.estado === 'Aceptada' || s.estado === 'AceptadaModificada'));
-    } catch (error) { }
+    // Funcionalidad legacy — solicitudes ahora se cargan vía obtenerEntregasDiariasService
   }, []);
 
   const cargarProductosPaginados = React.useCallback(async (uiPage: number, forceFetch = false) => {
@@ -263,7 +400,26 @@ const BodegaTransitoPage: React.FC = () => {
     } catch (error) { }
   }, []);
 
-  React.useEffect(() => { loadData(); cargarFiltros(); cargarProductosPaginados(1, true); }, [cargarFiltros, cargarProductosPaginados]);
+  React.useEffect(() => { cargarFiltros(); cargarProductosPaginados(1, true); }, [cargarFiltros, cargarProductosPaginados]);
+
+  // ── Carga de entregas al cambiar semana o al abrir la vista pedidos ──
+  React.useEffect(() => {
+    if (currentView !== 'pedidos') return;
+    const weekKey = getWeekKey(selectedDate);
+    if (entregasCache.current.has(weekKey)) {
+      setEntregasData(entregasCache.current.get(weekKey)!);
+      return;
+    }
+    const range = getWeekRange(selectedDate);
+    setIsLoadingEntregas(true);
+    obtenerEntregasDiariasService(range)
+      .then(data => {
+        entregasCache.current.set(weekKey, data);
+        setEntregasData(data);
+      })
+      .catch(() => toast.error('Error al cargar los pedidos del día'))
+      .finally(() => setIsLoadingEntregas(false));
+  }, [selectedDate, currentView]);
   React.useEffect(() => { filtersRef.current = selectedFilters; }, [selectedFilters]);
 
   /**
@@ -402,6 +558,16 @@ const BodegaTransitoPage: React.FC = () => {
   const dateCol1 = new Date(selectedDate);
   const dateCol2 = new Date(selectedDate);
   dateCol2.setDate(selectedDate.getDate() + 1);
+
+  const entregasHoy = React.useMemo(() => {
+    const dateStr = dateCol1.toISOString().slice(0, 10);
+    return entregasData.find(e => e.fecha === dateStr) ?? null;
+  }, [entregasData, dateCol1]);
+
+  const entregasManana = React.useMemo(() => {
+    const dateStr = dateCol2.toISOString().slice(0, 10);
+    return entregasData.find(e => e.fecha === dateStr) ?? null;
+  }, [entregasData, dateCol2]);
 
   return (
     <>
@@ -791,7 +957,7 @@ const BodegaTransitoPage: React.FC = () => {
                   key="gestion-pedidos"
                   aria-label="Pedidos"
                   title={<span className="font-bold text-lg">Pedidos Activos</span>}
-                  subtitle={`${getRequestsForDate(dateCol1).length} solicitudes para hoy`}
+                  subtitle={`${entregasHoy?.totalSolicitudes ?? 0} solicitudes para hoy`}
                   classNames={{
                     base: "shadow-md border border-default-200 dark:border-default-100 rounded-2xl overflow-hidden bg-white dark:bg-content1 p-0",
                     title: "font-bold text-secondary",
@@ -799,7 +965,7 @@ const BodegaTransitoPage: React.FC = () => {
                     content: "px-6 pb-6 pt-2"
                   }}
                 >
-                  <div className="space-y-8">
+                  <div className="space-y-6">
                     {/* Controles de Fecha */}
                     <div className="flex items-center gap-2 bg-default-50 dark:bg-default-100/30 rounded-full p-1 border border-default-200 dark:border-default-100 shadow-sm max-w-md mx-auto">
                       <Button variant="flat" onPress={handleToday} size="sm" className="flex-grow h-8 font-bold capitalize bg-white dark:bg-default-100/50 text-secondary dark:text-foreground rounded-full" startContent={<Icon icon="lucide:calendar" className="text-primary" width={14} />}>
@@ -811,41 +977,59 @@ const BodegaTransitoPage: React.FC = () => {
                       </div>
                     </div>
 
-                    <div className="space-y-6">
-                      <div className="space-y-4">
-                        <div className="flex items-center gap-2 px-1">
-                          <span className="text-xs font-bold text-default-400 uppercase tracking-widest">{formatDate(dateCol1)}</span>
-                          <div className="flex-grow border-t border-default-100 border-dashed"></div>
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          {getRequestsForDate(dateCol1).length > 0 ? getRequestsForDate(dateCol1).map(s => (
-                            <RequestCard key={s.id} solicitud={s} onUpdate={loadData} onAddExtra={handleOpenExtra} onViewDetail={handleOpenDetail} />
-                          )) : (
-                            <div className="col-span-full py-12 text-center border-2 border-dashed border-default-100 rounded-2xl">
+                    {isLoadingEntregas ? (
+                      <div className="flex flex-col items-center gap-3 py-16 text-default-400">
+                        <Spinner size="lg" />
+                        <p className="text-sm">Cargando pedidos del día...</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-6">
+                        {/* HOY */}
+                        <div className="space-y-3">
+                          <div className="flex items-center gap-2 px-1">
+                            <span className="text-xs font-bold text-default-400 uppercase tracking-widest">{formatDate(dateCol1)}</span>
+                            <div className="flex-grow border-t border-default-100 border-dashed" />
+                            {entregasHoy && (
+                              <Chip size="sm" variant="flat" color="success" className="text-[10px] h-5 border-none">
+                                {entregasHoy.totalSolicitudes} entrega{entregasHoy.totalSolicitudes !== 1 ? 's' : ''}
+                              </Chip>
+                            )}
+                          </div>
+                          {!entregasHoy || entregasHoy.salas.length === 0 ? (
+                            <div className="py-12 text-center border-2 border-dashed border-default-100 rounded-2xl">
                               <Icon icon="lucide:calendar-x" className="mx-auto mb-2 text-default-200" width={48} />
                               <p className="text-default-400 font-bold">No hay pedidos registrados para este día</p>
                             </div>
+                          ) : (
+                            <div className="space-y-3">
+                              {entregasHoy.salas.map(sala => (
+                                <EntregaSalaCard key={sala.idSala} sala={sala} />
+                              ))}
+                            </div>
                           )}
                         </div>
-                      </div>
 
-                      <div className="pt-2">
-                        <div className="flex items-center gap-2 px-1 mb-4">
-                          <span className="text-xs font-bold text-default-400 uppercase tracking-widest">{formatDate(dateCol2)}</span>
-                          <div className="flex-grow border-t border-default-100 border-dashed"></div>
-                          <Chip size="sm" variant="dot" color="primary" className="border-none text-[10px] h-5">Próxima Jornada</Chip>
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 opacity-80">
-                          {getRequestsForDate(dateCol2).length > 0 ? getRequestsForDate(dateCol2).map(s => (
-                            <RequestCard key={s.id} solicitud={s} onUpdate={loadData} onAddExtra={handleOpenExtra} onViewDetail={handleOpenDetail} />
-                          )) : (
-                            <div className="col-span-full py-8 text-center border-2 border-dashed border-default-50 rounded-2xl">
+                        {/* MAÑANA */}
+                        <div className="pt-2">
+                          <div className="flex items-center gap-2 px-1 mb-3">
+                            <span className="text-xs font-bold text-default-400 uppercase tracking-widest">{formatDate(dateCol2)}</span>
+                            <div className="flex-grow border-t border-default-100 border-dashed" />
+                            <Chip size="sm" variant="dot" color="primary" className="border-none text-[10px] h-5">Próxima Jornada</Chip>
+                          </div>
+                          {!entregasManana || entregasManana.salas.length === 0 ? (
+                            <div className="py-8 text-center border-2 border-dashed border-default-50 rounded-2xl">
                               <p className="text-xs text-default-300 italic">No hay pedidos anticipados</p>
+                            </div>
+                          ) : (
+                            <div className="space-y-3 opacity-80">
+                              {entregasManana.salas.map(sala => (
+                                <EntregaSalaCard key={sala.idSala} sala={sala} />
+                              ))}
                             </div>
                           )}
                         </div>
                       </div>
-                    </div>
+                    )}
                   </div>
                 </AccordionItem>
               </Accordion>

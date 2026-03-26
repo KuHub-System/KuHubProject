@@ -204,5 +204,61 @@ public class PedidoDashboardRecords {
             List<PedidoResumenListaJson> pedidosResumen,
             List<PedidoAprobacionJson> pedidosAprobacion
     ) {}
+
+    // =====================================================
+    // RECORDS PARA CONSULTA 4: Entregas Diarias (Bodega)
+    // findEntregasDiariasJson → organizado por fecha → sala → horario
+    // =====================================================
+
+    /**
+     * Producto individual dentro de una solicitud de entrega.
+     */
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record ProductoEntregaJson(
+            @JsonProperty("idProducto")      Integer    idProducto,
+            @JsonProperty("nombreProducto")  String     nombreProducto,
+            @JsonProperty("cantidad")        BigDecimal cantidad,
+            @JsonProperty("unidadAbreviada") String     unidadAbreviada,
+            @JsonProperty("observacion")     String     observacion
+    ) {}
+
+    /**
+     * Solicitud PROCESADA vinculada a un pedido APROVADO,
+     * con horario y lista de productos a entregar.
+     */
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record SolicitudEntregaJson(
+            @JsonProperty("idSolicitud")      Integer    idSolicitud,
+            @JsonProperty("horaInicio")       String     horaInicio,
+            @JsonProperty("rangoHoras")       String     rangoHoras,
+            @JsonProperty("nombreSeccion")    String     nombreSeccion,
+            @JsonProperty("nombreAsignatura") String     nombreAsignatura,
+            @JsonProperty("nombreDocente")    String     nombreDocente,
+            @JsonProperty("cantInscritos")    Integer    cantInscritos,
+            @JsonProperty("nombreReceta")     String     nombreReceta,
+            @JsonProperty("observaciones")    String     observaciones,
+            @JsonProperty("productos")        List<ProductoEntregaJson> productos
+    ) {}
+
+    /**
+     * Sala con sus solicitudes para un día específico, ordenadas por horario.
+     */
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record SalaEntregaJson(
+            @JsonProperty("idSala")      Integer idSala,
+            @JsonProperty("nombreSala")  String  nombreSala,
+            @JsonProperty("codSala")     String  codSala,
+            @JsonProperty("solicitudes") List<SolicitudEntregaJson> solicitudes
+    ) {}
+
+    /**
+     * Registro de entregas para un día: fecha + salas con sus solicitudes.
+     */
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record EntregaDiariaJson(
+            @JsonProperty("fecha")             LocalDate           fecha,
+            @JsonProperty("totalSolicitudes")  Integer             totalSolicitudes,
+            @JsonProperty("salas")             List<SalaEntregaJson> salas
+    ) {}
 }
 
