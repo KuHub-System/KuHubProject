@@ -46,6 +46,9 @@ public class SpringSecurityConfig {
         this.usuarioRepository = usuarioRepository;
         this.objectMapper = objectMapper;
         this.rateLimitFilter = rateLimitFilter;
+
+        // Configuración centralizada de ObjectMapper para JWT
+        this.objectMapper.addMixIn(SimpleGrantedAuthority.class, SimpleGrantedAuthorityJsonCreator.class);
     }
 
     /**
@@ -466,7 +469,7 @@ public class SpringSecurityConfig {
                 .addFilterBefore(rateLimitFilter, JwtAuthenticationFilter.class)
                 // Agregar filtros JWT EN ORDEN - inyectando ObjectMapper configurado
                 .addFilter(new JwtAuthenticationFilter(authenticationManager(), usuarioRepository, objectMapper))
-                .addFilterBefore(new JwtValidationFilter(authenticationManager()), UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(new JwtValidationFilter(authenticationManager(), objectMapper), UsernamePasswordAuthenticationFilter.class)
 
                 // Desactivar CSRF (no necesario con JWT)
                 .csrf(config -> config.disable())

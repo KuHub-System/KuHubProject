@@ -5,6 +5,7 @@
 
 import api from '../config/Axios';
 import { RolUsuario, IUsuarioAuth } from '../types/usuario.types';
+import { logger } from '../utils/logger';
 
 // Actualizamos la definición de Sesión para usar la nueva interfaz
 export interface ISesion {
@@ -51,11 +52,11 @@ export const iniciarSesionService = async (correo: string, contrasena: string): 
     localStorage.setItem(SESION_KEY, JSON.stringify(sesion));
     return sesion;
   } catch (error: any) {
-    console.error(`[AUTH] ❌ Error en login:`);
-    console.error(`  → Status:  `, error.response?.status ?? 'SIN RESPUESTA (red/timeout)');
-    console.error(`  → URL:     `, error.config?.url);
-    console.error(`  → BaseURL: `, error.config?.baseURL);
-    console.error(`  → Message: `, error.response?.data ?? error.message);
+    logger.error(`[AUTH] ❌ Error en login:`);
+    logger.error(`  → Status:  `, error.response?.status ?? 'SIN RESPUESTA (red/timeout)');
+    logger.error(`  → URL:     `, error.config?.url);
+    logger.error(`  → BaseURL: `, error.config?.baseURL);
+    logger.error(`  → Message: `, error.response?.data ?? error.message);
     throw new Error(error.response?.data?.message || 'Error al iniciar sesión');
   }
 };
