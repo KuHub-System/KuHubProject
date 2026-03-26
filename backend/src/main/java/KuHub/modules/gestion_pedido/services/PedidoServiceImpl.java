@@ -1,11 +1,18 @@
 package KuHub.modules.gestion_pedido.services;
 
+import KuHub.modules.gestion_inventario.entity.BodegaTransito;
+import KuHub.modules.gestion_inventario.exceptions.GestionInventarioException;
+import KuHub.modules.gestion_inventario.exceptions.StockDesincronizadoException;
+import KuHub.modules.gestion_inventario.exceptions.StockInsuficienteException;
+import KuHub.modules.gestion_inventario.repository.BodegaTransitoRepository;
+import KuHub.modules.gestion_inventario.services.MovimientoService;
 import KuHub.modules.gestion_pedido.entity.DetallePedido;
 import KuHub.modules.gestion_pedido.entity.Pedido;
 import KuHub.modules.gestion_pedido.entity.PedidoSolicitud;
 import KuHub.modules.gestion_pedido.record.ChangePedidoStatusDTO;
 import KuHub.modules.gestion_pedido.record.CreateOrder;
 import KuHub.modules.gestion_pedido.record.PedidoDashboardRecords;
+import KuHub.modules.gestion_pedido.record.PrepararEntregaDTO;
 import KuHub.modules.gestion_pedido.repository.DetallePedidoRepository;
 import KuHub.modules.gestion_pedido.repository.PedidoRepository;
 import KuHub.modules.gestion_pedido.repository.PedidoSolicitudRepository;
@@ -17,9 +24,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -37,6 +46,10 @@ public class PedidoServiceImpl implements PedidoService{
     private PedidoSolicitudRepository pedidoSolicitudRepository;
     @Autowired
     private SolicitudRepository solicitudRepository;
+    @Autowired
+    private BodegaTransitoRepository bodegaTransitoRepository;
+    @Autowired
+    private MovimientoService movimientoService;
     @Autowired
     private ObjectMapper objectMapper;
 
@@ -162,6 +175,63 @@ public class PedidoServiceImpl implements PedidoService{
                 new TypeReference<List<PedidoDashboardRecords.EntregaDiariaBodegaJson>>() {},
                 "findEntregasDiariasJson"
         );
+    }
+
+    // =====================================================
+    // PREPARAR ENTREGA: descuento bodega de tránsito + PROCESADO
+    // =====================================================
+
+    @Override
+    @Transactional(noRollbackFor = StockDesincronizadoException.class)
+    public String prepararEntrega(PrepararEntregaDTO request) {
+        List<String> desincronizados = new ArrayList<>();
+
+        for (PrepararEntregaDTO.ProductoPreparadoDTO item : request.productos()) {
+            BodegaTransito bt = bodegaTransitoRepository
+                    .findActiveByProductoId(item.idProducto())
+                    .orElseThrow(() -> new GestionInventarioException(
+                            "Sin bodega de tránsito activa para el producto ID " + item.idProducto(),
+                            HttpStatus.NOT_FOUND));
+
+            BigDecimal stockReal = bt.getStock();
+
+            // ❌ Stock insuficiente → rollback automático
+            if (stockReal.compareTo(item.cantidadAEntregar()) < 0) {
+                throw new StockInsuficienteException(
+                        "Stock insuficiente en bodega de tránsito para '" +
+                        bt.getInventario().getProducto().getNombreProducto() +
+                        "'. Disponible: " + stockReal + " | A entregar: " + item.cantidadAEntregar(),
+                        null
+                );
+            }
+
+            // ⚠️ Desincronización detectada → registrar pero continuar
+            if (stockReal.compareTo(item.stockEnVista()) != 0) {
+                desincronizados.add(bt.getInventario().getProducto().getNombreProducto());
+                log.warn("Desincronización al preparar entrega. Producto: '{}' | Vista: {} | Real: {}",
+                        bt.getInventario().getProducto().getNombreProducto(),
+                        item.stockEnVista(), stockReal);
+            }
+
+            // ✅ Registrar SALIDA_BODEGA y descontar stock
+            movimientoService.motionInUpdateTransitWarehouse(bt, item.cantidadAEntregar(), "SALIDA_BODEGA");
+        }
+
+        // Cambiar estado de la solicitud a PROCESADO
+        solicitudRepository.updateMassiveStateSolicitation(List.of(request.idSolicitud()), "PROCESADO");
+        log.info("Solicitud {} marcada como PROCESADO tras preparar entrega.", request.idSolicitud());
+
+        // ⚠️ Si hubo desincronización → 409 (transacción YA committed)
+        if (!desincronizados.isEmpty()) {
+            throw new StockDesincronizadoException(
+                    "Entrega preparada con éxito usando el stock real. El stock de los siguientes productos " +
+                    "cambió mientras abrías el modal: " + String.join(", ", desincronizados),
+                    null,
+                    HttpStatus.CONFLICT
+            );
+        }
+
+        return "Entrega preparada y solicitud procesada correctamente.";
     }
 
     // =====================================================
