@@ -20,7 +20,8 @@ public interface PedidoService {
 
     /**
      * Retorna las entregas diarias para Bodega de Tránsito:
-     * solicitudes PROCESADO de pedidos APROVADO, agrupadas por fecha → sala → horario.
+     * solicitudes ACEPTADA de pedidos APROVADO, agrupadas por fecha → sala → horario.
+     * Incluye stockTransito y diferencia por producto.
      */
-    List<PedidoDashboardRecords.EntregaDiariaJson> obtenerEntregasDiarias(DateRangeDTO request);
+    List<PedidoDashboardRecords.EntregaDiariaBodegaJson> obtenerEntregasDiarias(DateRangeDTO request);
 }

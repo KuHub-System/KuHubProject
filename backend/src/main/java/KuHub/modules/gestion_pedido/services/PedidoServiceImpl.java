@@ -153,13 +153,13 @@ public class PedidoServiceImpl implements PedidoService{
 
     @Override
     @Transactional(readOnly = true)
-    public List<PedidoDashboardRecords.EntregaDiariaJson> obtenerEntregasDiarias(DateRangeDTO request) {
+    public List<PedidoDashboardRecords.EntregaDiariaBodegaJson> obtenerEntregasDiarias(DateRangeDTO request) {
         return deserializarLista(
                 pedidoRepository.findEntregasDiariasJson(
                         request.getFechaInicio(),
                         request.getFechaFin()
                 ),
-                new TypeReference<List<PedidoDashboardRecords.EntregaDiariaJson>>() {},
+                new TypeReference<List<PedidoDashboardRecords.EntregaDiariaBodegaJson>>() {},
                 "findEntregasDiariasJson"
         );
     }

@@ -44,7 +44,7 @@ public class PedidoController {
      *  Body: { "fechaInicio": "2026-03-24", "fechaFin": "2026-03-28" }
      */
     @PostMapping("/entregas-diarias")
-    public ResponseEntity<List<PedidoDashboardRecords.EntregaDiariaJson>> obtenerEntregasDiarias(
+    public ResponseEntity<List<PedidoDashboardRecords.EntregaDiariaBodegaJson>> obtenerEntregasDiarias(
             @Validated @RequestBody DateRangeDTO request) {
         return ResponseEntity
                 .status(200)
