@@ -1,0 +1,1673 @@
+-- =====================================================
+-- ELIMINAR FUNCIONES Y TRIGGERS
+-- =====================================================
+--DROP FUNCTION IF EXISTS validar_asignacion_docente() CASCADE;
+--DROP FUNCTION IF EXISTS validar_cambio_rol_docente() CASCADE;
+
+-- =====================================================
+-- ELIMINAR TABLAS HISTORICAS PRIMERO (sin FKs entrantes)
+-- =====================================================
+
+DROP TABLE IF EXISTS movimiento_historial CASCADE;
+DROP TABLE IF EXISTS pedido_detalle_procesado CASCADE;
+DROP TABLE IF EXISTS pedido_procesado CASCADE;
+DROP TABLE IF EXISTS detalle_solicitud_procesada CASCADE;
+DROP TABLE IF EXISTS solicitud_procesada CASCADE;
+
+-- =====================================================
+-- ELIMINAR TABLAS OPERATIVAS (orden inverso a creacion)
+-- =====================================================
+
+-- Tablas de pedidos y solicitudes
+DROP TABLE IF EXISTS pedido_solicitud CASCADE;
+DROP TABLE IF EXISTS motivo_rechazo_solicitud CASCADE; -- CAMBIADO: Agregado
+DROP TABLE IF EXISTS detalle_solicitud CASCADE;
+DROP TABLE IF EXISTS solicitud CASCADE;
+DROP TABLE IF EXISTS detalle_pedido CASCADE; -- <--- CORREGIDO (era pedido_detalle)
+DROP TABLE IF EXISTS pedido CASCADE;
+DROP TABLE IF EXISTS semanas CASCADE; -- CAMBIADO: Agregado
+
+-- Tablas de recetas
+DROP TABLE IF EXISTS detalle_receta CASCADE;
+DROP TABLE IF EXISTS receta CASCADE;
+
+-- Tablas de bodega y proveedores
+DROP TABLE IF EXISTS bodega_transito CASCADE;
+DROP TABLE IF EXISTS provedor CASCADE;
+
+-- Tablas de inventario
+DROP TABLE IF EXISTS movimiento CASCADE;
+DROP TABLE IF EXISTS inventario CASCADE;
+DROP TABLE IF EXISTS producto CASCADE;
+DROP TABLE IF EXISTS categoria CASCADE;
+DROP TABLE IF EXISTS unidad_medida CASCADE;
+
+-- Tablas academicas
+DROP TABLE IF EXISTS asignatura_profesor_cargo CASCADE;
+DROP TABLE IF EXISTS docente_seccion CASCADE;
+DROP TABLE IF EXISTS reserva_sala CASCADE;
+DROP TABLE IF EXISTS seccion CASCADE;
+DROP TABLE IF EXISTS sala CASCADE;
+DROP TABLE IF EXISTS asignatura CASCADE;
+DROP TABLE IF EXISTS bloque_horario CASCADE;
+
+-- Tablas de usuarios
+DROP TABLE IF EXISTS usuario CASCADE;
+DROP TABLE IF EXISTS rol CASCADE;
+
+-- =====================================================
+-- ELIMINAR TIPOS ENUM (al final)
+-- =====================================================
+DROP TYPE IF EXISTS estado_bodega_transito_type CASCADE;
+DROP TYPE IF EXISTS estado_provedor_type CASCADE;
+DROP TYPE IF EXISTS estado_receta_type CASCADE;
+DROP TYPE IF EXISTS estado_solicitud_type CASCADE;
+DROP TYPE IF EXISTS estado_pedido_type CASCADE;
+DROP TYPE IF EXISTS tipo_movimiento_type CASCADE;
+DROP TYPE IF EXISTS dia_semana_type CASCADE;
+DROP TYPE IF EXISTS tipo_rol_type CASCADE;
+DROP TYPE IF EXISTS estado_seccion_type CASCADE;
+
+-- =====================================================
+-- EXTENSIONES DE BASE DE DATOS
+-- =====================================================
+
+-- Habilita la extensión UNACCENT en PostgreSQL si aún no existe.
+-- Esta extensión permite quitar acentos (á, é, í, ó, ú, ñ, etc.)
+-- y facilita comparaciones insensibles a tildes.
+CREATE EXTENSION IF NOT EXISTS unaccent;
+
+-- =====================================================
+-- TIPOS ENUM
+-- =====================================================
+
+CREATE TYPE tipo_rol_type AS ENUM (
+    'ADMINISTRADOR',
+    'CO_ADMINISTRADOR',
+    'GESTOR_PEDIDOS',
+    'PROFESOR_A_CARGO',
+    'DOCENTE',
+    'ENCARGADO_BODEGA',
+    'ASISTENTE_BODEGA'
+);
+
+CREATE TYPE dia_semana_type AS ENUM (
+    'LUNES',
+    'MARTES',
+    'MIERCOLES',
+    'JUEVES',
+    'VIERNES',
+    'SABADO',
+    'DOMINGO'
+);
+
+CREATE TYPE tipo_movimiento_type AS ENUM (
+    'ENTRADA_INVENTARIO',
+    'ENTRADA_BODEGA',
+    'SALIDA_INVENTARIO',
+    'SALIDA_BODEGA',
+    'DEVOLUCION',
+    'MERMA_INVENTARIO',
+    'MERMA_BODEGA',
+    'AJUSTE_INVENTARIO',
+    'AJUSTE_BODEGA',
+    'TRASLADO'
+);
+
+CREATE TYPE estado_receta_type AS ENUM(
+    'ACTIVO',
+    'INACTIVO'
+);
+
+CREATE TYPE estado_seccion_type AS ENUM(
+    'ACTIVA',
+    'INACTIVA',
+    'SUSPENDIDA'
+);
+
+CREATE TYPE estado_provedor_type AS ENUM(
+    'DISPONIBLE',
+    'NO_DISPONIBLE'
+);
+
+CREATE TYPE estado_bodega_transito_type AS ENUM(
+    'EN_TRANSITO',
+    'RECIBIDO',
+    'PROCESADO',
+    'CANCELADO'
+);
+
+CREATE TYPE estado_solicitud_type AS ENUM (
+	'PENDIENTE',
+    'ACEPTADA',
+    'PROCESADO',
+    'RECHAZADA'
+);
+
+CREATE TYPE estado_pedido_type AS ENUM (
+    'PENDIENTE',
+    'APROVADO',
+    'RECHAZADO'
+);
+
+-- =====================================================
+-- CREAR CASTS (DESPUÉS DE CREAR LOS ENUM)
+-- =====================================================
+
+CREATE CAST (varchar AS dia_semana_type) WITH INOUT AS IMPLICIT;
+CREATE CAST (character varying AS tipo_movimiento_type) WITH INOUT AS IMPLICIT;
+CREATE CAST (varchar AS estado_receta_type) WITH INOUT AS IMPLICIT;
+CREATE CAST (varchar AS estado_solicitud_type) WITH INOUT AS IMPLICIT;
+CREATE CAST (varchar AS estado_seccion_type) WITH INOUT AS IMPLICIT;
+CREATE CAST (varchar AS estado_pedido_type) WITH INOUT AS IMPLICIT;
+
+-- =====================================================
+-- TABLAS PRINCIPALES
+-- =====================================================
+
+-- Tabla rol
+CREATE TABLE rol (
+    id_rol SERIAL PRIMARY KEY,
+    nombre_rol tipo_rol_type NOT NULL,
+    activo BOOLEAN DEFAULT TRUE --soft delete
+);
+
+-- Tabla usuario
+CREATE TABLE usuario (
+    id_usuario INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    id_rol INTEGER NOT NULL REFERENCES rol(id_rol),
+    -- Ajuste de nombres a 50 caracteres
+    p_nombre VARCHAR(50),
+    s_nombre VARCHAR(50),
+    app_paterno VARCHAR(50),
+    app_materno VARCHAR(50),
+    -- Ajuste de email a 75 (uso interno)
+    email VARCHAR(75) NOT NULL,
+    username VARCHAR(50) NOT NULL, -- Asumo que el username también baja a 50
+    -- Ajuste CRÍTICO para Bcrypt (Mínimo 60)
+    contrasena VARCHAR(60) NOT NULL,
+    url_foto_perfil BYTEA, -- SE CAMBIARA EN UN FUTURO A URL
+    activo BOOLEAN DEFAULT true,
+    fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    ultimo_acceso TIMESTAMP
+);
+CREATE UNIQUE INDEX idx_usuario_email_activo ON usuario(email) WHERE (activo = true);
+CREATE UNIQUE INDEX idx_usuario_username_activo ON usuario(username) WHERE (activo = true);
+
+-- Tabla bloque_horario
+
+CREATE TABLE bloque_horario (
+	id_bloque INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+	numero_bloque INTEGER UNIQUE NOT NULL,
+	hora_inicio TIME NOT NULL,
+	hora_fin TIME NOT NULL
+
+	CONSTRAINT check_horario_valido CHECK (hora_inicio < hora_fin)
+);
+
+-- Tabla asignatura
+CREATE TABLE asignatura (
+    id_asignatura INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    cod_asignatura VARCHAR(50) UNIQUE NOT NULL,
+    nombre_asignatura VARCHAR(100) NOT NULL,
+    activo BOOLEAN DEFAULT TRUE,             -- soft delete
+	descripcion VARCHAR(250)              	 -- nueva columna
+);
+
+-- Tabla sala
+CREATE TABLE sala (
+    id_sala INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    cod_sala VARCHAR(50) UNIQUE,
+    nombre_sala VARCHAR(100),
+    activo BOOLEAN DEFAULT TRUE -- soft delete
+);
+
+-- Tabla seccion
+CREATE TABLE seccion (
+	id_seccion INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+	id_asignatura INTEGER NOT NULL,
+	nombre_seccion VARCHAR(100) NOT NULL,
+	capacidad_max SMALLINT NOT NULL,
+	cant_inscritos SMALLINT NOT NULL,
+	activo BOOLEAN DEFAULT TRUE, -- soft delete
+	estado_seccion estado_seccion_type NOT NULL DEFAULT 'ACTIVA',
+	CONSTRAINT fk_asignatura
+		FOREIGN KEY (id_asignatura)
+		REFERENCES asignatura(id_asignatura)
+);
+
+-- Tabla reserva_sala
+CREATE TABLE reserva_sala (
+    id_reserva_sala INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    id_seccion INTEGER NOT NULL,
+    id_sala INTEGER NOT NULL,
+    dia_semana dia_semana_type NOT NULL,
+    id_bloque INTEGER NOT NULL,
+	activo BOOLEAN DEFAULT TRUE,
+    CONSTRAINT fk_reserva_sala_seccion
+        FOREIGN KEY (id_seccion)
+        REFERENCES seccion(id_seccion)
+        ON DELETE CASCADE,
+    CONSTRAINT fk_reserva_sala_sala
+        FOREIGN KEY (id_sala)
+        REFERENCES sala(id_sala),
+    CONSTRAINT fk_reserva_sala_bloque
+        FOREIGN KEY (id_bloque)
+        REFERENCES bloque_horario(id_bloque)
+);
+
+-- Tabla docente_seccion
+CREATE TABLE docente_seccion (
+	id_docente_seccion INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+	id_usuario         INTEGER NOT NULL,
+	id_seccion         INTEGER NOT NULL,
+	fecha_asignacion   DATE DEFAULT CURRENT_DATE,
+	CONSTRAINT uq_docente_seccion_usuario_seccion
+		UNIQUE (id_usuario, id_seccion),
+	CONSTRAINT fk_docente_seccion_usuario
+		FOREIGN KEY (id_usuario)
+		REFERENCES usuario(id_usuario),
+	CONSTRAINT fk_docente_seccion_seccion
+		FOREIGN KEY (id_seccion)
+		REFERENCES seccion(id_seccion)
+);
+
+-- Tabla asignatura_profesor_cargo
+CREATE TABLE asignatura_profesor_cargo (
+    id_asignatura_profesor_cargo INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    id_asignatura INTEGER NOT NULL,
+    id_usuario INTEGER NOT NULL,
+    fecha_asignacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    -- Constraint UNIQUE para que cada asignatura tenga solo un profesor
+    CONSTRAINT uq_asignatura UNIQUE (id_asignatura),
+    -- Foreign Keys
+    CONSTRAINT fk_asignatura_profesor_asignatura
+        FOREIGN KEY (id_asignatura) REFERENCES asignatura(id_asignatura),
+    CONSTRAINT fk_asignatura_profesor_usuario
+        FOREIGN KEY (id_usuario) REFERENCES usuario(id_usuario)
+);
+
+-- =====================================================
+-- TABLAS DE INVENTARIO Y PRODUCTOS
+-- =====================================================
+CREATE TABLE unidad_medida (
+    id_unidad SMALLINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    nombre_unidad VARCHAR(30) NOT NULL UNIQUE,
+    abreviatura VARCHAR(10) NOT NULL UNIQUE,
+	es_fraccionario BOOLEAN NOT NULL,
+    activo BOOLEAN DEFAULT TRUE
+);
+
+-- Tabla categoria (Máxima optimización de espacio)
+CREATE TABLE categoria (
+    -- SMALLINT ocupa solo 2 bytes (rango hasta 32,767)
+    id_categoria SMALLINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    nombre_categoria VARCHAR(50) NOT NULL UNIQUE,
+    activo BOOLEAN DEFAULT TRUE
+);
+
+
+-- Tabla producto
+CREATE TABLE producto (
+    id_producto INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    -- Opcional (admite NULL) pero no permite repetidos si tiene valor
+    cod_producto VARCHAR(25),
+	-- Usando TEXT para máxima flexibilidad y eficiencia
+    descripcion_producto TEXT,
+    nombre_producto VARCHAR(100) NOT NULL UNIQUE,
+    activo BOOLEAN DEFAULT TRUE,
+    -- Relaciones (SMALLINT para compatibilidad)
+    id_categoria SMALLINT NOT NULL,
+    id_unidad SMALLINT NOT NULL,
+
+	---------------------------------------------------------
+    -- RESTRICCIONES DE UNICIDAD (UNIQUE CONSTRAINTS)
+    ---------------------------------------------------------
+    -- El nombre siempre debe ser único
+    CONSTRAINT uk_producto_nombre UNIQUE (nombre_producto),
+
+    -- El código es opcional pero único si se ingresa
+    CONSTRAINT uk_producto_codigo UNIQUE (cod_producto),
+
+    ---------------------------------------------------------
+    -- LLAVES FORÁNEAS (FOREIGN KEYS)
+    ---------------------------------------------------------
+    CONSTRAINT fk_categoria_producto
+        FOREIGN KEY (id_categoria)
+        REFERENCES categoria (id_categoria)
+        ON UPDATE CASCADE ON DELETE RESTRICT,
+
+    CONSTRAINT fk_unidad_producto
+        FOREIGN KEY (id_unidad)
+        REFERENCES unidad_medida (id_unidad)
+        ON UPDATE CASCADE ON DELETE RESTRICT
+);
+
+-- Tabla inventario
+CREATE TABLE inventario (
+    id_inventario INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    id_producto INTEGER NOT NULL,
+    stock NUMERIC(10, 3) NOT NULL CHECK (stock >= 0),
+    stock_limit NUMERIC(10, 3) CHECK (stock_limit IS NULL OR stock_limit >= 0),
+    activo BOOLEAN NOT NULL DEFAULT TRUE,
+    CONSTRAINT fk_inventario_producto
+        FOREIGN KEY (id_producto) REFERENCES producto(id_producto)
+        ON UPDATE CASCADE ON DELETE RESTRICT,
+    UNIQUE (id_producto)
+);
+
+-- =====================================================
+-- TABLAS DE BODEGA DE TRANSITO (Estructura espejo para movimientos temporales)
+-- =====================================================
+
+-- Tabla bodega_transito (Estructura espejo para movimientos temporales)
+CREATE TABLE bodega_transito (
+    id_bodega_transito INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    -- Relación con el registro de inventario
+    id_inventario INTEGER NOT NULL,
+    -- Mismo formato para mantener precisión decimal
+    stock NUMERIC(10, 3) NOT NULL CHECK (stock >= 0),
+    -- Límite opcional para alertas en tránsito
+    stock_limit NUMERIC(10, 3) CHECK (stock_limit IS NULL OR stock_limit >= 0),
+    activo BOOLEAN NOT NULL DEFAULT TRUE,
+
+    ---------------------------------------------------------
+    -- RESTRICCIONES Y LLAVES FORÁNEAS
+    ---------------------------------------------------------
+    -- Un inventario principal solo tiene un registro de tránsito
+    CONSTRAINT uk_transito_inventario UNIQUE (id_inventario),
+
+    CONSTRAINT fk_bodega_transito_inventario
+        FOREIGN KEY (id_inventario) REFERENCES inventario(id_inventario)
+        ON UPDATE CASCADE ON DELETE RESTRICT
+);
+
+-- Tabla movimiento
+CREATE TABLE movimiento (
+    id_movimiento INTEGER GENERATED ALWAYS AS IDENTITY,
+    id_usuario INTEGER NOT NULL,
+    id_inventario INTEGER NOT NULL,
+	id_bodega_transito INTEGER,
+    stock_movimiento NUMERIC(10, 3) NOT NULL,
+    tipo_movimiento tipo_movimiento_type NOT NULL,
+    fecha_movimiento TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    -- Usando TEXT para máxima flexibilidad y eficiencia
+    observacion TEXT,
+
+    -- La PK debe ser compuesta: ID + FECHA (Obligatorio en particiones)
+    PRIMARY KEY (id_movimiento, fecha_movimiento),
+    CONSTRAINT fk_usuario_movimiento
+        FOREIGN KEY (id_usuario) REFERENCES usuario(id_usuario)
+        ON UPDATE CASCADE ON DELETE RESTRICT,
+    CONSTRAINT fk_inventario_movimiento
+        FOREIGN KEY (id_inventario) REFERENCES inventario(id_inventario)
+        ON UPDATE CASCADE ON DELETE RESTRICT,
+	CONSTRAINT fk_bodega_movimiento
+	FOREIGN KEY (id_bodega_transito) REFERENCES bodega_transito(id_bodega_transito)
+	ON UPDATE CASCADE ON DELETE RESTRICT
+) PARTITION BY RANGE (fecha_movimiento);
+
+-- Crear Particiones Semestrales (Semestre = 6 meses)
+-- 2026 Semestre 1 (Enero - Junio)
+CREATE TABLE movimiento_2026_s1 PARTITION OF movimiento
+    FOR VALUES FROM ('2026-01-01') TO ('2026-07-01');
+
+-- 2026 Semestre 2 (Julio - Diciembre)
+CREATE TABLE movimiento_2026_s2 PARTITION OF movimiento
+    FOR VALUES FROM ('2026-07-01') TO ('2027-01-01');
+
+-- 2027 Semestre 1 (Futuro)
+CREATE TABLE movimiento_2027_s1 PARTITION OF movimiento
+    FOR VALUES FROM ('2027-01-01') TO ('2027-07-01');
+
+-- 2027 Semestre 2 (Futuro)
+CREATE TABLE movimiento_2027_s2 PARTITION OF movimiento
+    FOR VALUES FROM ('2027-07-01') TO ('2028-01-01');
+
+-- Partición por defecto (Para evitar errores si llega una fecha fuera de rango, ej: 2025 o 2028)
+CREATE TABLE movimiento_default PARTITION OF movimiento DEFAULT;
+
+-- =====================================================
+-- TABLAS DE PROVEEDORES
+-- =====================================================
+/**
+CREATE TABLE provedor (
+    id_provedor SERIAL PRIMARY KEY,
+    id_producto INTEGER NOT NULL,
+    rut_provedor VARCHAR(13),
+    nombre_distribuidora VARCHAR(100) NOT NULL,
+    nombre_provedor VARCHAR(100) NOT NULL,
+    telefono_provedor VARCHAR(20) NOT NULL,
+    precio_producto DOUBLE PRECISION NOT NULL,
+    estado_provedor estado_provedor_type NOT NULL,
+    fecha_actualizacion DATE,
+    FOREIGN KEY (id_producto) REFERENCES producto(id_producto)
+); */
+
+-- =====================================================
+-- TABLAS DE RECETAS
+-- =====================================================
+
+-- Tabla receta
+CREATE TABLE receta (
+    id_receta INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,--ASUMINDO QUE LA RECETA ESTA DISENADA PARA 20 PERSONAS
+    nombre_receta VARCHAR(100) NOT NULL,
+    descripcion_receta TEXT,
+    instrucciones TEXT,
+    activo BOOLEAN NOT NULL DEFAULT TRUE,
+    estado_receta estado_receta_type NOT NULL
+);
+
+-- Tabla detalle_receta
+CREATE TABLE detalle_receta (
+    id_detalle_receta INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    id_receta INTEGER NOT NULL,
+    id_producto INTEGER NOT NULL,
+    cant_producto NUMERIC(10, 3) NOT NULL CHECK (cant_producto >= 0),
+    FOREIGN KEY (id_receta) REFERENCES receta(id_receta) ON DELETE CASCADE,
+    FOREIGN KEY (id_producto) REFERENCES producto(id_producto),
+    UNIQUE(id_receta, id_producto)
+);
+
+-- =====================================================
+-- TABLAS DE PEDIDOS Y SOLICITUDES
+-- =====================================================
+
+CREATE TABLE semanas (
+    id_semana INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    nombre_semana VARCHAR(50) NOT NULL,
+    fecha_inicio DATE NOT NULL,
+    fecha_fin DATE NOT NULL,
+    anio SMALLINT GENERATED ALWAYS AS (EXTRACT(YEAR FROM fecha_inicio)) STORED,
+    semestre SMALLINT NOT NULL,
+
+    CONSTRAINT uk_semana_periodo UNIQUE (nombre_semana, anio, semestre),
+    CONSTRAINT uk_fecha_inicio UNIQUE (fecha_inicio)
+);
+
+
+-- Tabla solicitud
+CREATE TABLE solicitud (
+    id_solicitud INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY, -- <--- PK Simple
+    id_usuario_gestor_solicitud INTEGER NOT NULL,
+    id_seccion INTEGER NOT NULL,
+    id_receta INTEGER,
+    id_reserva_sala INTEGER,
+    fecha_solicitada DATE NOT NULL,
+    fecha_registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    observaciones TEXT,
+    estado_solicitud estado_solicitud_type DEFAULT 'PENDIENTE',
+
+    CONSTRAINT fk_solicitud_usuario FOREIGN KEY (id_usuario_gestor_solicitud) REFERENCES usuario(id_usuario),
+    CONSTRAINT fk_solicitud_seccion FOREIGN KEY (id_seccion) REFERENCES seccion(id_seccion),
+    CONSTRAINT fk_solicitud_receta FOREIGN KEY (id_receta) REFERENCES receta(id_receta) ON DELETE SET NULL,
+    CONSTRAINT fk_solicitud_reserva FOREIGN KEY (id_reserva_sala) REFERENCES reserva_sala(id_reserva_sala) ON DELETE SET NULL
+);
+
+-- Tabla detalle_solicitud
+CREATE TABLE detalle_solicitud (
+    id_detalle_solicitud INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    id_solicitud INTEGER NOT NULL,
+    id_producto INTEGER NOT NULL,
+    cant_producto_solicitud NUMERIC(10, 3) NOT NULL,
+    observacion TEXT, -- <--- Cambiado a TEXT
+
+    -- La FK ahora apunta solo al ID simple de la cabecera
+    CONSTRAINT fk_detalle_solicitud_padre
+        FOREIGN KEY (id_solicitud)
+        REFERENCES solicitud(id_solicitud) ON DELETE CASCADE,
+    CONSTRAINT fk_detalle_solicitud_producto
+        FOREIGN KEY (id_producto) REFERENCES producto(id_producto)
+);
+
+-- Tabla motivo reahazo solicitud
+CREATE TABLE motivo_rechazo_solicitud (
+    id_motivo INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    id_solicitud INT NOT NULL,
+    motivo TEXT NOT NULL,
+    fecha_rechazo TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_solicitud_rechazo
+        FOREIGN KEY (id_solicitud)
+        REFERENCES solicitud(id_solicitud) ON DELETE CASCADE,
+
+    -- Un rechazo por solicitud, llave única simplificada
+    CONSTRAINT uk_solicitud_rechazo UNIQUE (id_solicitud)
+);
+
+-- Tabla pedido
+CREATE TABLE pedido (
+    id_pedido INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    fecha_inicio_pedido DATE NOT NULL,
+    fecha_fin_pedido DATE NOT NULL,
+    fecha_registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    estado_pedido estado_pedido_type NOT NULL
+);
+
+-- Tabla pedido_detalle
+CREATE TABLE detalle_pedido (
+    id_pedido_detalle INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    id_pedido INTEGER NOT NULL,
+    id_producto INTEGER NOT NULL,
+    cant_producto_pedido NUMERIC(10, 3) NOT NULL,
+    CONSTRAINT fk_pd_pedido FOREIGN KEY (id_pedido) REFERENCES pedido(id_pedido),
+    CONSTRAINT fk_pd_producto FOREIGN KEY (id_producto) REFERENCES producto(id_producto)
+);
+
+-- Tabla pedido_solicitud
+CREATE TABLE pedido_solicitud (
+    id_pedido_solicitud INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    id_pedido INTEGER NOT NULL,
+    id_solicitud INTEGER NOT NULL,
+    fecha_union_registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_ps_pedido FOREIGN KEY (id_pedido) REFERENCES pedido(id_pedido),
+    CONSTRAINT fk_ps_solicitud
+        FOREIGN KEY (id_solicitud)
+        REFERENCES solicitud(id_solicitud)
+);
+
+
+-- =====================================================
+-- INDICES PARA OPTIMIZACION DE RENDIMIENTO
+-- =====================================================
+
+-- Indices en usuario
+CREATE INDEX idx_usuario_rol ON usuario(id_rol);
+CREATE INDEX idx_usuario_email ON usuario(email);
+CREATE INDEX idx_usuario_username ON usuario(username);
+
+-- Indices en bloques horarios
+CREATE INDEX idx_bloque_numero ON bloque_horario(numero_bloque);
+
+-- Indices en secciones y asignaturas
+CREATE INDEX idx_seccion_asignatura ON seccion(id_asignatura);
+CREATE INDEX idx_asignatura_codigo ON asignatura(cod_asignatura);
+
+-- Indices en sala
+CREATE INDEX idx_sala_codigo ON sala(cod_sala);
+
+-- Indices en reserva_sala
+CREATE INDEX idx_reserva_seccion ON reserva_sala(id_seccion);
+CREATE INDEX idx_reserva_sala_sala ON reserva_sala(id_sala);
+CREATE INDEX idx_reserva_bloque ON reserva_sala(id_bloque);
+CREATE INDEX idx_reserva_dia_bloque ON reserva_sala(dia_semana, id_bloque);
+CREATE INDEX idx_reserva_seccion_activa ON reserva_sala(id_seccion, activo);
+-- Creamos un índice que solo actúa sobre los activos
+CREATE UNIQUE INDEX uk_reserva_activa
+ON reserva_sala (id_sala, dia_semana, id_bloque)
+WHERE (activo = true);
+CREATE UNIQUE INDEX uk_seccion_dia_bloque_activa
+ON reserva_sala (id_seccion, dia_semana, id_bloque)
+WHERE (activo = true);
+
+-- Indices en docente_seccion
+CREATE INDEX idx_docente_seccion_usuario ON docente_seccion(id_usuario);
+CREATE INDEX idx_docente_seccion_seccion ON docente_seccion(id_seccion);
+CREATE INDEX idx_docente_seccion_fecha ON docente_seccion(fecha_asignacion);
+
+-- Indices en asignatura_profesor_cargo
+CREATE INDEX idx_apc_id_asignatura ON asignatura_profesor_cargo(id_asignatura);
+CREATE INDEX idx_apc_id_usuario ON asignatura_profesor_cargo(id_usuario);
+CREATE UNIQUE INDEX idx_apc_unico_asignatura_usuario ON asignatura_profesor_cargo(id_asignatura, id_usuario);
+
+-- Indices en asignatura
+CREATE INDEX idx_asignatura_activo ON asignatura(activo);
+
+-- Indices en seccion
+CREATE INDEX idx_seccion_estado_activo ON seccion(estado_seccion, activo);
+
+-- Indices en inventario , productos , categorias y unidad
+CREATE INDEX idx_inventario_producto ON inventario(id_producto);
+CREATE INDEX idx_producto_codigo ON producto(cod_producto);
+CREATE INDEX idx_inventario_activo ON inventario(activo);
+CREATE INDEX idx_producto_categoria ON producto(id_categoria);
+CREATE INDEX idx_producto_unidad ON producto(id_unidad);
+
+-- Indices en movimientos
+CREATE INDEX idx_movimiento_usuario ON movimiento(id_usuario);
+CREATE INDEX idx_movimiento_fecha ON movimiento(fecha_movimiento);
+CREATE INDEX idx_movimiento_tipo ON movimiento(tipo_movimiento);
+CREATE INDEX idx_movimiento_inventario ON movimiento (id_inventario);
+
+-- Indices en proveedores
+--CREATE INDEX idx_provedor_producto ON provedor(id_producto);
+--CREATE INDEX idx_provedor_estado ON provedor(estado_provedor);
+
+-- Indices en bodega_transito
+--CREATE INDEX idx_bodega_transito_producto ON bodega_transito(id_producto);
+--CREATE INDEX idx_bodega_transito_provedor ON bodega_transito(id_provedor);
+--CREATE INDEX idx_bodega_transito_estado ON bodega_transito(estado_bodega_transito);
+CREATE INDEX idx_bodega_transito_inventario ON bodega_transito(id_inventario);
+CREATE INDEX idx_bodega_transito_activo ON bodega_transito(activo);
+
+-- Indices en recetas
+CREATE INDEX idx_receta_estado ON receta(estado_receta);
+CREATE INDEX idx_detalle_receta_receta ON detalle_receta(id_receta);
+CREATE INDEX idx_detalle_receta_producto ON detalle_receta(id_producto);
+
+-- Índices en pedidos
+CREATE INDEX idx_pedido_estado ON pedido(estado_pedido);
+CREATE INDEX idx_pedido_fecha_inicio ON pedido(fecha_inicio_pedido);
+CREATE INDEX idx_pedido_fecha_registro ON pedido(fecha_registro);
+CREATE INDEX idx_detalle_pedido_fk ON detalle_pedido(id_pedido);
+CREATE INDEX idx_detalle_pedido_prod ON detalle_pedido(id_producto);
+
+-- Índices en solicitudes
+CREATE INDEX idx_solicitud_gestor ON solicitud(id_usuario_gestor_solicitud);
+CREATE INDEX idx_solicitud_seccion ON solicitud(id_seccion);
+CREATE INDEX idx_solicitud_fecha ON solicitud(fecha_solicitada);
+
+-- Índices en detalle_solicitud (Simplificado)
+CREATE INDEX idx_detalle_solicitud_fk_solicitud ON detalle_solicitud(id_solicitud);
+CREATE INDEX idx_detalle_solicitud_producto ON detalle_solicitud(id_producto);
+
+-- Índices en pedido_solicitud (Simplificado)
+CREATE INDEX idx_pedido_solicitud_pedido ON pedido_solicitud(id_pedido);
+CREATE INDEX idx_pedido_solicitud_fk_solicitud ON pedido_solicitud(id_solicitud);
+CREATE INDEX idx_pedido_solicitud_fecha ON pedido_solicitud(fecha_union_registro);
+
+-- =====================================================
+-- FIN DEL SCRIPT CREACION TABLAS
+-- =====================================================
+
+
+-- =====================================================
+-- SCRIPT DE INSERCIONES INICIALES - KubHub
+-- =====================================================
+-- Este script debe ejecutarse DESPUÉS de crear la estructura de la base de datos
+-- =====================================================
+
+-- =====================================================
+-- 1. INSERTAR ROLES
+-- =====================================================
+INSERT INTO rol (id_rol, nombre_rol) VALUES
+(1, 'ADMINISTRADOR'),
+(2, 'CO_ADMINISTRADOR'),
+(3, 'GESTOR_PEDIDOS'),
+(4, 'PROFESOR_A_CARGO'),
+(5, 'DOCENTE'),
+(6, 'ENCARGADO_BODEGA'),
+(7, 'ASISTENTE_BODEGA');
+
+/*
+-- =====================================================
+-- 2. INSERTAR USUARIOS SE CREA EN SWAGGER LOS DATOS, DEBIDO AL PASS INCRIPTADO
+-- =====================================================
+*/
+
+-- Asegúrate de que la extensión esté activa
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
+INSERT INTO usuario (id_rol, p_nombre, s_nombre, app_paterno, app_materno, email, username, contrasena, url_foto_perfil, activo, fecha_creacion, ultimo_acceso)
+VALUES
+-- 1. Administrador (De la imagen: adminhash@kuhub.cl / admin123)
+(1, 'Administrador', 'Sistema', 'KubHub', 'Admin', 'adminhash@kuhub.cl', 'adminhash@kuhub.cl',
+ crypt('admin123', gen_salt('bf', 10)), NULL, true, CURRENT_TIMESTAMP, NULL),
+
+-- 2. Co-Administrador (De la imagen: coadminhash@kuhub.cl / coadmin1234)
+(2, 'Co-Administrador', 'Sistema', 'KubHub', 'CoAdmin', 'coadminhash@kubhub.cl', 'coadminhash@kubhub.cl',
+ crypt('admin123', gen_salt('bf', 10)), NULL, true, CURRENT_TIMESTAMP, NULL),
+
+-- 3. Gestor de Pedidos (De la imagen: gestorhash@kuhub.cl / gestor1234)
+(3, 'Gestor', 'Pedidos', 'KubHub', 'Operaciones', 'gestorhash@kuhub.cl', 'gestorhash@kuhub.cl',
+ crypt('admin123', gen_salt('bf', 10)), NULL, true, CURRENT_TIMESTAMP, NULL),
+
+-- 4. Profesor a Cargo (De la imagen: profesorcargohash@kuhub.cl / profe1234)
+(4, 'Profesor', 'Encargado', 'KubHub', 'Academico', 'profesorcargohash@kuhub.cl', 'profesorcargohash@kuhub.cl',
+ crypt('admin123', gen_salt('bf', 10)), NULL, true, CURRENT_TIMESTAMP, NULL),
+
+-- 5. Docente General (De la imagen: docentehash@kuhub.cl / docente1234)
+(5, 'Docente', 'General', 'KubHub', 'Academico', 'docentehash@kuhub.cl', 'docentehash@kuhub.cl',
+ crypt('admin123', gen_salt('bf', 10)), NULL, true, CURRENT_TIMESTAMP, NULL),
+
+-- 6. Encargado de Bodega (De la imagen: bodegahash@kuhub.cl / dega1234)
+(6, 'Bodeguero', 'Encargado', 'KubHub', 'Inventario', 'bodegahash@kuhub.cl', 'bodegahash@kuhub.cl',
+ crypt('admin123', gen_salt('bf', 10)), NULL, true, CURRENT_TIMESTAMP, NULL),
+
+-- 7. Asistente de Bodega (De la imagen: asisbodegahash@kuhub.cl / asisbo1234) -- OJO: corregí el dominio a kuhub.cl según patrón
+(7, 'Asistente', 'Bodega', 'KubHub', 'Apoyo', 'asisbodegahash@kuhub.cl', 'asisbodegahash@kuhub.cl',
+ crypt('admin123', gen_salt('bf', 10)), NULL, true, CURRENT_TIMESTAMP, NULL),
+
+(1, 'Fabio', 'Test', 'KubHub', 'FabioUser', 'fabiotest@kuhub.cl', 'fabiotest@kuhub.cl',
+crypt('fbi123', gen_salt('bf', 10)), NULL, true, CURRENT_TIMESTAMP, NULL)
+
+-- 8. Sofia Morales (Usa clave docente1234)
+,(5, 'Sofia', 'Elena', 'Morales', 'Rojas', 'sofia.moraleshash@kuhub.cl', 's.moraleshash',
+crypt('admin123', gen_salt('bf', 10)), NULL, true, CURRENT_TIMESTAMP, NULL),
+
+-- 9. Javier Fuentes (Usa clave docente1234)
+(5, 'Javier', 'Andres', 'Fuentes', 'Ortega', 'javier.fuenteshash@kuhub.cl', 'j.fuenteshash',
+crypt('admin123', gen_salt('bf', 10)), NULL, true, CURRENT_TIMESTAMP, NULL),
+
+-- 10. Carmen Jimenez (Usa clave docente1234)
+(5, 'Carmen', 'Rosa', 'Jimenez', 'Navarro', 'carmen.jimenezhash@kuhub.cl', 'c.jimenezhash',
+crypt('admin123', gen_salt('bf', 10)), NULL, true, CURRENT_TIMESTAMP, NULL);
+
+INSERT INTO usuario (id_rol, p_nombre, s_nombre, app_paterno, app_materno, email, username, contrasena, url_foto_perfil, activo, fecha_creacion, ultimo_acceso)
+VALUES
+-- 11-20: Docentes Adicionales (Rol 5)
+(5, 'Ricardo', 'Antonio', 'Vargas', 'Pinto', 'ricardo.vargas@kuhub.cl', 'r.vargas', crypt('admin123', gen_salt('bf', 10)), NULL, true, CURRENT_TIMESTAMP, NULL),
+(5, 'Valentina', 'Paz', 'Castro', 'Soto', 'valentina.castro@kuhub.cl', 'v.castro', crypt('admin123', gen_salt('bf', 10)), NULL, true, CURRENT_TIMESTAMP, NULL),
+(5, 'Mauricio', 'Ignacio', 'Tapia', 'Lara', 'mauricio.tapia@kuhub.cl', 'm.tapia', crypt('admin123', gen_salt('bf', 10)), NULL, true, CURRENT_TIMESTAMP, NULL),
+(5, 'Beatriz', 'Isabel', 'Sepulveda', 'Duran', 'beatriz.sepulveda@kuhub.cl', 'b.sepulveda', crypt('admin123', gen_salt('bf', 10)), NULL, true, CURRENT_TIMESTAMP, NULL),
+(5, 'Gonzalo', 'Andres', 'Reyes', 'Torres', 'gonzalo.reyes@kuhub.cl', 'g.reyes', crypt('admin123', gen_salt('bf', 10)), NULL, true, CURRENT_TIMESTAMP, NULL),
+(5, 'Natalia', 'Andrea', 'Munoz', 'Silva', 'natalia.munoz@kuhub.cl', 'n.munoz', crypt('admin123', gen_salt('bf', 10)), NULL, true, CURRENT_TIMESTAMP, NULL),
+(5, 'Fernando', 'Jose', 'Perez', 'Herrera', 'fernando.perez@kuhub.cl', 'f.perez', crypt('admin123', gen_salt('bf', 10)), NULL, true, CURRENT_TIMESTAMP, NULL),
+(5, 'Camila', 'Fernanda', 'Araya', 'Diaz', 'camila.araya@kuhub.cl', 'c.araya', crypt('admin123', gen_salt('bf', 10)), NULL, true, CURRENT_TIMESTAMP, NULL),
+(5, 'Hugo', 'Patricio', 'Contreras', 'Vivanco', 'hugo.contreras@kuhub.cl', 'h.contreras', crypt('admin123', gen_salt('bf', 10)), NULL, true, CURRENT_TIMESTAMP, NULL),
+(5, 'Loreto', 'Alejandra', 'Salinas', 'Gomez', 'loreto.salinas@kuhub.cl', 'l.salinas', crypt('admin123', gen_salt('bf', 10)), NULL, true, CURRENT_TIMESTAMP, NULL),
+
+-- 21-30: Asistentes de Bodega (Rol 7)
+(7, 'Esteban', 'Manuel', 'Toledo', 'Riquelme', 'esteban.toledo@kuhub.cl', 'e.toledo', crypt('admin123', gen_salt('bf', 10)), NULL, true, CURRENT_TIMESTAMP, NULL),
+(7, 'Maria', 'Jose', 'Villalobos', 'Pena', 'maria.villalobos@kuhub.cl', 'm.villalobos', crypt('admin123', gen_salt('bf', 10)), NULL, true, CURRENT_TIMESTAMP, NULL),
+(7, 'Cristian', 'Eduardo', 'Valenzuela', 'Caceres', 'cristian.valenzuela@kuhub.cl', 'c.valenzuela', crypt('admin123', gen_salt('bf', 10)), NULL, true, CURRENT_TIMESTAMP, NULL),
+(7, 'Daniela', 'Ignacia', 'Espinoza', 'Bravo', 'daniela.espinoza@kuhub.cl', 'd.espinoza', crypt('admin123', gen_salt('bf', 10)), NULL, true, CURRENT_TIMESTAMP, NULL),
+(7, 'Jorge', 'Luis', 'Santibanez', 'Alarcon', 'jorge.santibanez@kuhub.cl', 'j.santibanez', crypt('admin123', gen_salt('bf', 10)), NULL, true, CURRENT_TIMESTAMP, NULL),
+(7, 'Paula', 'Ximena', 'Maturana', 'Ossa', 'paula.maturana@kuhub.cl', 'p.maturana', crypt('admin123', gen_salt('bf', 10)), NULL, true, CURRENT_TIMESTAMP, NULL),
+(7, 'Rodrigo', 'Alexis', 'Sandoval', 'Bustos', 'rodrigo.sandoval@kuhub.cl', 'r.sandoval', crypt('admin123', gen_salt('bf', 10)), NULL, true, CURRENT_TIMESTAMP, NULL),
+(7, 'Andrea', 'Carolina', 'Godoy', 'Riveros', 'andrea.godoy@kuhub.cl', 'a.godoy', crypt('admin123', gen_salt('bf', 10)), NULL, true, CURRENT_TIMESTAMP, NULL),
+(7, 'Marcelo', 'Fabian', 'Gajardo', 'Zuniga', 'marcelo.gajardo@kuhub.cl', 'm.gajardo', crypt('admin123', gen_salt('bf', 10)), NULL, true, CURRENT_TIMESTAMP, NULL),
+(7, 'Francisca', 'Javiera', 'Correa', 'Figueroa', 'francisca.correa@kuhub.cl', 'f.correa', crypt('admin123', gen_salt('bf', 10)), NULL, true, CURRENT_TIMESTAMP, NULL),
+
+-- 31-40: Profesores a Cargo (Rol 4) y Docentes (Rol 5)
+(4, 'Alvaro', 'Sebastian', 'Leiva', 'Gallegos', 'alvaro.leiva@kuhub.cl', 'a.leiva', crypt('admin123', gen_salt('bf', 10)), NULL, true, CURRENT_TIMESTAMP, NULL),
+(4, 'Monica', 'Elizabeth', 'Farias', 'Donoso', 'monica.farias@kuhub.cl', 'm.farias', crypt('admin123', gen_salt('bf', 10)), NULL, true, CURRENT_TIMESTAMP, NULL),
+(4, 'Patricio', 'Ivan', 'Vidal', 'Urrutia', 'patricio.vidal@kuhub.cl', 'p.vidal', crypt('admin123', gen_salt('bf', 10)), NULL, true, CURRENT_TIMESTAMP, NULL),
+(5, 'Susana', 'del Carmen', 'Aguilar', 'Poblete', 'susana.aguilar@kuhub.cl', 's.aguilar', crypt('admin123', gen_salt('bf', 10)), NULL, true, CURRENT_TIMESTAMP, NULL),
+(5, 'Gabriel', 'Enrique', 'Miranda', 'Escobar', 'gabriel.miranda@kuhub.cl', 'g.miranda', crypt('admin123', gen_salt('bf', 10)), NULL, true, CURRENT_TIMESTAMP, NULL),
+(5, 'Rosa', 'Elvira', 'Maldonado', 'Olivares', 'rosa.maldonado@kuhub.cl', 'r.maldonado', crypt('admin123', gen_salt('bf', 10)), NULL, true, CURRENT_TIMESTAMP, NULL),
+(5, 'Felipe', 'Andres', 'Soto', 'Meza', 'felipe.soto@kuhub.cl', 'f.soto', crypt('admin123', gen_salt('bf', 10)), NULL, true, CURRENT_TIMESTAMP, NULL),
+(5, 'Claudia', 'Patricia', 'Palma', 'Rojas', 'claudia.palma@kuhub.cl', 'c.palma', crypt('admin123', gen_salt('bf', 10)), NULL, true, CURRENT_TIMESTAMP, NULL),
+(5, 'Victor', 'Hugo', 'Vergara', 'Nunez', 'victor.vergara@kuhub.cl', 'v.vergara', crypt('admin123', gen_salt('bf', 10)), NULL, true, CURRENT_TIMESTAMP, NULL),
+(5, 'Elena', 'Victoria', 'Cid', 'Loyola', 'elena.cid@kuhub.cl', 'e.cid', crypt('admin123', gen_salt('bf', 10)), NULL, true, CURRENT_TIMESTAMP, NULL),
+
+-- 41-50: Gestores (Rol 3) y Co-Admins (Rol 2)
+(3, 'Luis', 'Alberto', 'Guzman', 'Lorca', 'luis.guzman@kuhub.cl', 'l.guzman', crypt('admin123', gen_salt('bf', 10)), NULL, true, CURRENT_TIMESTAMP, NULL),
+(3, 'Teresa', 'Angélica', 'Orellana', 'Salas', 'teresa.orellana@kuhub.cl', 't.orellana', crypt('admin123', gen_salt('bf', 10)), NULL, true, CURRENT_TIMESTAMP, NULL),
+(3, 'Raul', 'Segundo', 'Vera', 'Beltran', 'raul.vera@kuhub.cl', 'r.vera', crypt('admin123', gen_salt('bf', 10)), NULL, true, CURRENT_TIMESTAMP, NULL),
+(2, 'Isabel', 'Margarita', 'Zamora', 'Villarroel', 'isabel.zamora@kuhub.cl', 'i.zamora', crypt('admin123', gen_salt('bf', 10)), NULL, true, CURRENT_TIMESTAMP, NULL),
+(2, 'Hernan', 'Felipe', 'Uribe', 'Saavedra', 'hernan.uribe@kuhub.cl', 'h.uribe', crypt('admin123', gen_salt('bf', 10)), NULL, true, CURRENT_TIMESTAMP, NULL),
+(5, 'Cecilia', 'Lorena', 'Gallardo', 'Acuna', 'cecilia.gallardo@kuhub.cl', 'c.gallardo', crypt('admin123', gen_salt('bf', 10)), NULL, true, CURRENT_TIMESTAMP, NULL),
+(5, 'Oscar', 'Andres', 'Parra', 'Mendoza', 'oscar.parra@kuhub.cl', 'o.parra', crypt('admin123', gen_salt('bf', 10)), NULL, true, CURRENT_TIMESTAMP, NULL),
+(5, 'Silvia', 'Adriana', 'Cortes', 'Flores', 'silvia.cortes@kuhub.cl', 's.cortes', crypt('admin123', gen_salt('bf', 10)), NULL, true, CURRENT_TIMESTAMP, NULL),
+(7, 'Andres', 'Eduardo', 'Medina', 'Prado', 'andres.medina@kuhub.cl', 'a.medina', crypt('admin123', gen_salt('bf', 10)), NULL, true, CURRENT_TIMESTAMP, NULL),
+(7, 'Gloria', 'Esther', 'Bernal', 'Cifuentes', 'gloria.bernal@kuhub.cl', 'g.bernal', crypt('admin123', gen_salt('bf', 10)), NULL, true, CURRENT_TIMESTAMP, NULL);
+
+
+-- =====================================================
+-- 2. INSERTAR BLOQUES HORARIOS (Basado en imagen proporcionada)
+-- =====================================================
+INSERT INTO bloque_horario (numero_bloque, hora_inicio, hora_fin) VALUES
+(1, '08:01:00', '08:40:00'),
+(2, '08:41:00', '09:20:00'),
+(3, '09:31:00', '10:10:00'),
+(4, '10:11:00', '10:50:00'),
+(5, '11:01:00', '11:40:00'),
+(6, '11:41:00', '12:20:00'),
+(7, '12:31:00', '13:10:00'),
+(8, '13:11:00', '13:50:00'),
+(9, '14:01:00', '14:40:00'),
+(10, '14:41:00', '15:20:00'),
+(11, '15:31:00', '16:10:00'),
+(12, '16:11:00', '16:50:00'),
+(13, '17:01:00', '17:40:00'),
+(14, '17:41:00', '18:20:00'),
+(15, '18:21:00', '19:00:00'),
+(16, '19:01:00', '19:40:00'),
+(17, '19:41:00', '20:20:00'),
+(18, '20:21:00', '21:00:00'),
+(19, '21:01:00', '21:40:00'),
+(20, '21:41:00', '22:10:00');
+
+-- =====================================================
+-- 3. INSERTAR ASIGNATURAS
+-- =====================================================
+INSERT INTO asignatura (cod_asignatura, nombre_asignatura, activo) VALUES
+('BMD-01', 'Bollería y Masas Dulces', true),
+('CPC-01', 'Cocina para Casino', true),
+('PES-01', 'Panadería Especializada', true),
+('TGA-01', 'Tendencias Gastronómicas', true),
+('PMA-01', 'Pastelería de Masas de Azúcar', true),
+('CCS-01', 'Cocina Chilena y Servicio Comedor Avanzado', true),
+('SCA-01', 'Salón Comedor Avanzado y Cocina Chilena', true),
+('TAS-01', 'Técnicas Avanzadas de Servicio', true);
+
+-- =====================================================
+-- 4. INSERTAR asignatura_profesor_cargo
+-- =====================================================
+INSERT INTO asignatura_profesor_cargo (id_asignatura, id_usuario)
+VALUES
+(1, 4),  -- Bollería y Masas Dulces
+(2, 4),  -- Cocina para Casino
+(3, 4),  -- Panadería Especializada
+(4, 5),  -- Tendencias Gastronómicas
+(5, 5),  -- Pastelería de Masas de Azúcar
+(6, 5);  -- Cocina Chilena y Servicio Comedor Avanzado
+
+-- =====================================================
+-- 5. INSERTAR SALAS
+-- =====================================================
+INSERT INTO sala (cod_sala, nombre_sala, activo) VALUES
+('LG1', '402', true),
+('LG2', '403', true),
+('LG3', '404', true),
+('LG4', '405', true),
+('406', '406', true),
+('LG5', '308', true),
+('RST', '401', true),
+('SALON GASTRONOMIA', 'GASTRONOMIA', true),
+('SALON TURISMO', 'TURISMO', true),
+('CATA', 'CATA', true);
+
+-- =====================================================
+-- 6. INSERTAR SECCIONES
+-- =====================================================
+INSERT INTO seccion ( id_asignatura, nombre_seccion, capacidad_max, cant_inscritos)VALUES
+( 1, '001', 30, 25),
+( 1, '002', 30, 28),
+( 1, '003', 30, 22),
+( 2, '001', 25, 20),
+( 2, '002', 25, 18),
+( 3, '001', 35, 30),
+( 3, '002', 35, 32),
+( 4, '001', 30, 26),
+( 4, '002', 30, 24);
+
+-- =====================================================
+-- 7. INSERTAR RESERVAS DE SALA
+-- =====================================================
+INSERT INTO reserva_sala ( id_seccion, id_sala, dia_semana, id_bloque) VALUES
+( 1, 1, 'LUNES', 1),
+( 1, 1, 'LUNES', 2),
+( 1, 1, 'MIERCOLES', 3),
+( 2, 2, 'MARTES', 5),
+( 2, 2, 'JUEVES', 5),
+( 3, 3, 'VIERNES', 10),
+( 4, 1, 'LUNES', 7),
+( 4, 1, 'MIERCOLES', 7),
+( 5, 4, 'MARTES', 12),
+( 6, 5, 'LUNES', 15),
+( 6, 5, 'MIERCOLES', 15),
+( 7, 3, 'JUEVES', 18),
+( 8, 2, 'MARTES', 9),
+( 9, 4, 'VIERNES', 14);
+
+-- =====================================================
+-- 8. INSERTAR ASIGNACIONES DOCENTE-SECCION
+-- =====================================================
+INSERT INTO docente_seccion ( id_usuario, id_seccion)VALUES
+(8, 1),
+(8, 4),
+(9, 2),
+(9, 6),
+(10, 3),
+(10, 8);
+
+-- =====================================================
+-- 9. INSERTAR PRODUCTOS (Desde documento proporcionado)
+-- =====================================================
+
+INSERT INTO categoria (nombre_categoria) VALUES
+('Verduras'),       -- ID 1 (Supuesto)
+('Congelados'),     -- ID 2
+('Abarrotes'),      -- ID 3
+('Carnes'),         -- ID 4
+('Pescados'),       -- ID 5
+('Licores'),        -- ID 6
+('Descartables');   -- ID 7
+
+INSERT INTO unidad_medida (nombre_unidad, abreviatura, es_fraccionario, activo) VALUES
+('Unidad',  'un',  false, true),
+('Kilo',    'kg',  true,  true),
+('Litro',   'l',   true,  true),
+('Paquete', 'paq', false, true),
+('Bandeja', 'bdj', false, true),
+('Mata',    'mat', false, true),
+('Cajas',   'cj',  false, true),
+('Rollo',   'rll', false, true);
+
+-- CATEGORIA: Verduras
+-- 2. INSERTAR PRODUCTOS (Usando los IDs de referencia)
+
+-- CATEGORIA: Verduras (id_categoria = 1)
+INSERT INTO producto (nombre_producto, id_categoria, id_unidad, activo) VALUES
+('Acelga', 1, 1, true),
+('Aji Rojo Fresco', 1, 1, true),
+('Ajo Cabeza', 1, 1, true),
+('Albahaca', 1, 1, true),
+('Apio', 1, 6, true), -- MATA
+('Berenjena', 1, 1, true),
+('Berros', 1, 2, true), -- KILO
+('Betarraga', 1, 1, true),
+('Brocoli', 1, 1, true),
+('Brote Alfalfa 70 Gr', 1, 5, true), -- BANDEJA
+('Cebolla Blanca', 1, 2, true),
+('Cebolla Blanca Unidad', 1, 1, true),
+('Cebolla Morada', 1, 2, true),
+('Cebollin X3', 1, 4, true), -- PAQUETE
+('Champiñon Ostra', 1, 2, true),
+('Champiñon Paris', 1, 2, true),
+('Champiñon Portobello', 1, 2, true),
+('Cilantro', 1, 1, true),
+('Diente De Dragon 250 Gr', 1, 5, true), -- BANDEJA
+('Espinaca', 1, 4, true), -- PAQUETE
+('Jengibre', 1, 2, true),
+('Kiwi', 1, 2, true),
+('Lechuga Lollo Rosso', 1, 1, true),
+('Lechuga Lollo Verde', 1, 1, true),
+('Lechuga Tatsoi', 1, 1, true),
+('Limón', 1, 2, true),
+('Limón De Pica', 1, 2, true),
+('Limón Sutil', 1, 2, true),
+('Manzana Verde', 1, 2, true),
+('Menta', 1, 2, true),
+('Mizuna Morada', 1, 2, true),
+('Mizuna Verde', 1, 2, true),
+('Naranja', 1, 2, true),
+('Palta Hass', 1, 2, true),
+('Pan Molde Guagua Rebanada', 1, 1, true),
+('Papa', 1, 2, true),
+('Papa Amarilla Peruana', 1, 2, true),
+('Pepino Ensalada', 1, 1, true),
+('Perejil', 1, 1, true),
+('Pimenton Amarillo', 1, 1, true),
+('Pimenton Rojo', 1, 1, true),
+('Pimenton Verde', 1, 1, true),
+('Piña', 1, 1, true),
+('Puerro', 1, 1, true),
+('Rabanito', 1, 4, true), -- PAQUETE
+('Repollo Verde', 1, 1, true),
+('Rocoto', 1, 1, true),
+('Romero', 1, 2, true),
+('Rucula', 1, 2, true),
+('Tomate', 1, 2, true),
+('Tomate Cherry', 1, 2, true),
+('Tomate Pera', 1, 1, true),
+('Tomillo Fresco', 1, 2, true),
+('Zanahoria', 1, 2, true),
+('Zapallo Camote', 1, 2, true),
+('Zapallo Italiano', 1, 1, true),
+('Zarzaparrilla', 1, 2, true);
+
+-- CATEGORIA: Congelados (id_categoria = 2)
+INSERT INTO producto (nombre_producto, id_categoria, id_unidad, activo) VALUES
+('Arándano', 2, 2, true), ('Arvejas', 2, 2, true), ('Choclo En Grano', 2, 2, true),
+('Frambuesa', 2, 2, true), ('Frutilla', 2, 2, true), ('Mora', 2, 2, true),
+('Pastelera De Choclo', 2, 2, true), ('Porotos Verdes', 2, 2, true),
+('Pulpa Frambuesa', 2, 2, true), ('Pulpa Mango', 2, 2, true),
+('Pulpa Maracuya S/pepas', 2, 2, true), ('Pulpa Piña', 2, 2, true);
+
+-- CATEGORIA: Abarrotes (id_categoria = 3)
+INSERT INTO producto (nombre_producto, id_categoria, id_unidad, activo) VALUES
+('Aceite De Maravilla', 3, 3, true), -- LITRO
+('Aceite De Oliva', 3, 3, true),
+('Aceite De Sésamo', 3, 3, true),
+('Aceite Vegetal', 3, 3, true),
+('Aceituna Negra Sin Carozo', 3, 2, true),
+('Aceituna Verde Sin Carozo', 3, 2, true),
+('Aceto Balsamico', 3, 3, true),
+('Agar Agar', 3, 2, true),
+('Ají Nomoto', 3, 2, true),
+('Ají Panca Pasta Amarillo', 3, 1, true),
+('Albumina', 3, 2, true),
+('Alcaparras', 3, 2, true),
+('Almendras Enteras', 3, 2, true),
+('Almidon De Maiz / Maicena', 3, 2, true),
+('Almidon De Mandioca', 3, 2, true),
+('Arroz Arboreo / Risotto', 3, 2, true),
+('Arroz Grado 1', 3, 2, true),
+('Azúcar En Cubos', 3, 1, true),
+('Azúcar Flor Iansa', 3, 2, true),
+('Azúcar Granulada Blanca Iansa', 3, 2, true),
+('Azucar Invertida', 3, 3, true),
+('Azúcar Rubia Iansa', 3, 2, true),
+('Cacao Amargo Polvo', 3, 2, true),
+('Café En Grano', 3, 2, true),
+('Café Nescafé Instantaneo', 3, 1, true),
+('Canela En Polvo', 3, 2, true),
+('Canela En Rama', 3, 2, true),
+('Caviar Rojo Lumpfish', 3, 1, true),
+('Chips Chocolate Gold Callebaut', 3, 2, true),
+('Chocolate Belcolade Bitter 55%', 3, 2, true),
+('Chocolate Belcolade Blanco', 3, 2, true),
+('Chocolate Belcolade Leche', 3, 2, true),
+('Clavo De Olor Entero', 3, 2, true),
+('Cobertura Bitter Ambrosoli', 3, 2, true),
+('Cobertura Bitter Neucober', 3, 2, true),
+('Cobertura Blanca Neucober', 3, 2, true),
+('Cobertura Leche Ambrosoli', 3, 2, true),
+('Coco Crema (coco Lopez)', 3, 1, true),
+('Coco Rallado', 3, 2, true),
+('Colapez', 3, 1, true),
+('Comino En Polvo', 3, 2, true),
+('Concentrado De Tomate', 3, 2, true),
+('Crema De Leche Colun', 3, 3, true),
+('Crema Líquida', 3, 3, true),
+('Endulzante Sachet', 3, 1, true),
+('Esencia De Vainilla', 3, 3, true),
+('Fideos Fetuccini De Arroz', 3, 1, true),
+('Fideos Spaghetti N°5', 3, 1, true),
+('Fondo Alcachofa', 3, 2, true),
+('Galletas Criollitas', 3, 1, true),
+('Galletas De Vino', 3, 1, true),
+('Glucosa', 3, 2, true),
+('Harina Blanca Mont Blanc', 3, 2, true),
+('Harina De Almendras', 3, 2, true),
+('Harina De Centeno', 3, 2, true),
+('Harina De Fuerza', 3, 2, true),
+('Harina Integral', 3, 2, true),
+('Harina Sarraceno', 3, 2, true),
+('Hoja Alga Nori', 3, 1, true),
+('Hojas De Arroz', 3, 1, true),
+('Huevo Primera', 3, 7, true), -- CAJAS
+('Huevo Primera Kilo', 3, 2, true),
+('Huevo Primera Unidad', 3, 1, true),
+('Huevos De Codorniz', 3, 5, true), -- BANDEJA
+('Huevos De Codorniz Unidad', 3, 1, true),
+('Laurel', 3, 2, true),
+('Leche Entera En Polvo Colún', 3, 2, true),
+('Leche Entera Liquida', 3, 3, true),
+('Leche Evaporada', 3, 1, true),
+('Levadura Fresca', 3, 2, true),
+('Levadura Instantanea', 3, 2, true),
+('Lychee En Conserva', 3, 1, true),
+('Maní Sin Sal', 3, 2, true),
+('Manjar Nestle', 3, 2, true),
+('Manteca De Cacao', 3, 2, true),
+('Mantequilla Con Sal', 3, 2, true),
+('Mantequilla Sin Sal', 3, 2, true),
+('Margarina De Horneo', 3, 2, true),
+('Marrasquino Rojo', 3, 1, true),
+('Mayonesa Deli', 3, 2, true),
+('Mayonesa Hellmans', 3, 2, true),
+('Miel De Abeja', 3, 2, true),
+('Mostacilla Chocolate', 3, 2, true),
+('Mostacilla Colores', 3, 2, true),
+('Mostaza Antigua Bornier Frasco', 3, 1, true),
+('Mostaza Dijon Bornier Frasco', 3, 1, true),
+('Nueces Mariposa', 3, 2, true),
+('Palmitos En Tarro', 3, 1, true),
+('Pan Rallado', 3, 2, true),
+('Panko', 3, 2, true),
+('Pistachos Sin Sal (sin Cascara)', 3, 2, true),
+('Pistachos Sin Sal', 3, 2, true),
+('Porotos Pallar', 3, 2, true),
+('Praliné Avellanas', 3, 2, true),
+('Queso Crema Reny G1', 3, 2, true),
+('Queso De Cabra', 3, 2, true),
+('Queso De Cabra Unidad', 3, 1, true),
+('Queso Emmenthal', 3, 2, true),
+('Queso Gauda Laminado', 3, 1, true),
+('Queso Granapadano', 3, 1, true),
+('Queso Mantecoso Trozo', 3, 2, true),
+('Queso Parmesano', 3, 2, true),
+('Queso Ricotta', 3, 1, true),
+('Sal De Mar Gruesa Cahuil', 3, 2, true),
+('Sal Fina De Mesa', 3, 2, true),
+('Salsa De Ostras', 3, 1, true),
+('Salsa De Pescado', 3, 1, true),
+('Salsa De Soya Kikoman', 3, 3, true),
+('Salsa De Tamarindo Frasco', 3, 1, true),
+('Semilla De Maravilla', 3, 2, true),
+('Semilla De Mostaza Blanca', 3, 2, true),
+('Semilla De Zapallo', 3, 2, true),
+('Sesamo Blanco', 3, 2, true),
+('Sesamo Tostado', 3, 2, true),
+('Té Dilmah Bolsa', 3, 1, true),
+('Té Matcha En Polvo', 3, 2, true),
+('Tinta De Sepia / Jibia / Calamar Tarro', 3, 1, true),
+('Tofu Firme', 3, 1, true),
+('Tomate Deshidratado', 3, 2, true),
+('Tomate Salsa', 3, 1, true),
+('Vinagre Blanco', 3, 3, true),
+('Vinagre De Arroz', 3, 3, true),
+('Vinagre De Vino Tinto', 3, 3, true),
+('Vinagre Frambuesa', 3, 3, true),
+('Yogurt Natural', 3, 1, true);
+
+-- CATEGORIA: Carnes (id_categoria = 4)
+INSERT INTO producto (nombre_producto, id_categoria, id_unidad, activo) VALUES
+('Cerdo Lomo', 4, 2, true), ('Jamon Sandwich Laminado', 4, 1, true),
+('Pollo Pechuga Entera', 4, 1, true), ('Pollo Suprema', 4, 1, true),
+('Tocino Ahumado', 4, 2, true), ('Vacuno Carne Molida', 4, 2, true),
+('Vacuno Huesos', 4, 2, true), ('Vacuno Lomo Liso', 4, 2, true), ('Vacuno Sobrecostilla', 4, 2, true);
+
+-- CATEGORIA: Pescados (id_categoria = 5)
+INSERT INTO producto (nombre_producto, id_categoria, id_unidad, activo) VALUES
+('Almejas Frescas', 5, 2, true), ('Calamar Vaina', 5, 2, true),
+('Camaron (ecuatoriano)', 5, 2, true), ('Macha Sin Concha Congelada', 5, 2, true),
+('Machas Con Concha Fresca', 5, 2, true), ('Ostiones Sin Coral Congelado', 5, 2, true),
+('Pulpo', 5, 1, true), ('Salmon Ahumado Interfoliado', 5, 2, true),
+('Salmon Entero Fresco', 5, 1, true), ('Salmon Filete Congelado', 5, 2, true);
+
+-- CATEGORIA: Licores (id_categoria = 6)
+-- Todos son UNIDAD (ID 1)
+INSERT INTO producto (nombre_producto, id_categoria, id_unidad, activo) VALUES
+('Agua Mineral Con Gas', 6, 1, true), ('Agua Tónica', 6, 1, true), ('Amaretto Mitjans', 6, 1, true),
+('Amargo Angostura', 6, 1, true), ('Bailey´s 17°', 6, 1, true), ('Bebida Ginger Ale', 6, 1, true),
+('Brandy Torres 10', 6, 1, true), ('Campari 28°', 6, 1, true), ('Chicha 11,5°', 6, 1, true),
+('Espumante Brut Misiones De Rengo', 6, 1, true), ('Gin Beefeater 40°', 6, 1, true),
+('Granadina', 6, 1, true), ('Hielo', 6, 1, true), ('Jarabe De Goma', 6, 1, true),
+('Jugo Watt´s Arandanos Caja', 6, 1, true), ('Jugo Watt´s Naranja', 6, 1, true),
+('Jugo Watt´s Piña', 6, 1, true), ('Martini Extra Dry 18°', 6, 1, true),
+('Martini Rosso 16°', 6, 1, true), ('Pisco 35° Alto Del Carmen', 6, 1, true),
+('Pisco 35° Mistral Especial', 6, 1, true), ('Ron Blanco Bacardi 40°', 6, 1, true),
+('Ron Dorado Abuelo Añejo', 6, 1, true), ('Sake Botella', 6, 1, true),
+('Sake Botellin', 6, 1, true), ('Tequila 38° Blanco Sombrero Negro', 6, 1, true),
+('Triple Sec Mitjans 20°', 6, 1, true), ('Vino Blanco Caja Gato', 6, 1, true),
+('Vino Blanco Chardonnay Casas Del Bosque', 6, 1, true),
+('Vino Blanco Chardonnay Reserva Misiones De Rengo', 6, 1, true),
+('Vino Pinot Noir Quintay', 6, 1, true), ('Vino Tinto Cabernet Sauvignon Koyle', 6, 1, true),
+('Vino Tinto Caja Gato', 6, 1, true), ('Vodka Absolut', 6, 1, true),
+('Whisky Red Lebel Johnnie Walker', 6, 1, true);
+
+-- CATEGORIA: Descartables (id_categoria = 7)
+INSERT INTO producto (nombre_producto, id_categoria, id_unidad, activo) VALUES
+('Bolsa De Vacio Grande', 7, 1, true), ('Bolsa Prepicada Grande', 7, 1, true),
+('Bombillas Not Plastic', 7, 1, true), ('Colorante Chocolateria Pavoni (liposoluble) Azul', 7, 1, true),
+('Colorante Chocolateria Pavoni (liposoluble) Naranja', 7, 1, true),
+('Colorante Chocolateria Pavoni (liposoluble) Rosado', 7, 1, true),
+('Colorante Chocolateria Sevarome (liposoluble) Verde', 7, 1, true),
+('Colorante Gel Rojo', 7, 1, true), ('Colorante Gel Verde', 7, 1, true),
+('Colorante Liposoluble Amarillo', 7, 1, true), ('Colorante Liposoluble Negro', 7, 1, true),
+('Desmoldante En Spray', 7, 1, true), ('Fosforos', 7, 1, true), ('Guantes', 7, 1, true),
+('Micas', 7, 1, true), ('Mondadiente', 7, 1, true), ('Palos Bambu Con Nudo', 7, 1, true),
+('Papel De Aluminio', 7, 8, true), -- ROLLO
+('Papel De Horneo En Rollo', 7, 1, true),
+('Papel Film (alusa)', 7, 8, true), -- ROLLO
+('Pirotines Medianos', 7, 1, true), ('Recarga Sifon', 7, 1, true), ('Transfers', 7, 1, true);
+
+
+-- CREACION INVENTARIO POBLADO CON MOVIMIENTO
+DO $$
+DECLARE
+    r_prod RECORD;
+    v_stock_min NUMERIC(10,3);
+    v_stock_max NUMERIC(10,3);
+    v_stock_actual NUMERIC(10,3);
+
+    v_id_reciente INTEGER;
+BEGIN
+    -- Iteramos sobre productos sin inventario
+    FOR r_prod IN SELECT id_producto FROM producto WHERE id_producto NOT IN (SELECT id_producto FROM inventario) LOOP
+
+        -- 1. Cálculos aleatorios
+        -- Generamos min y max solo para calcular el stock actual coherente
+        v_stock_min := CAST(FLOOR(RANDOM() * 15 + 5) AS NUMERIC);
+        v_stock_max := CAST(FLOOR(RANDOM() * 51 + 50) AS NUMERIC);
+        v_stock_actual := CAST(FLOOR(RANDOM() * (v_stock_max - v_stock_min + 1) + v_stock_min) AS NUMERIC);
+
+        -- 2. Insertamos en inventario y obtenemos el ID
+        -- Usamos v_stock_min para llenar el campo stock_limit
+        INSERT INTO inventario (id_producto, stock, stock_limit)
+        VALUES (r_prod.id_producto, v_stock_actual, v_stock_min)
+        RETURNING id_inventario INTO v_id_reciente;
+
+        -- 3. Crear el registro espejo en MOVIMIENTO
+        INSERT INTO movimiento (
+            id_usuario,
+            id_inventario,
+            stock_movimiento,
+            tipo_movimiento,
+            fecha_movimiento,
+            observacion
+        )
+        VALUES (
+            1,                  -- ID del Admin
+            v_id_reciente,      -- El ID que acabamos de capturar
+            v_stock_actual,     -- El mismo stock que pusimos en inventario
+            'ENTRADA_INVENTARIO', -- ¡ACTUALIZADO! Valor específico del ENUM
+            NOW(),              -- Fecha y hora exacta actual
+            'Carga inicial - Pruebas ' || TO_CHAR(NOW(), 'DD/MM/YYYY')
+        );
+
+    END LOOP;
+
+    RAISE NOTICE 'Carga de inventario y movimientos iniciales completada.';
+END $$;
+
+--CREACION DE MOVIMIENTO TRASLADO + BODEGA TRANSITO
+DO $$
+DECLARE
+    r_inv RECORD;
+    v_cantidad NUMERIC(10,3);
+BEGIN
+
+    -- 🔁 Recorrer TODOS los inventarios con stock disponible
+    FOR r_inv IN
+        SELECT id_inventario, stock
+        FROM inventario
+        WHERE stock > 0
+        FOR UPDATE
+    LOOP
+
+        -- Definir cantidad a trasladar (20% del stock actual)
+        v_cantidad := ROUND(r_inv.stock * 0.2, 3);
+
+        -- Evitar traslados en cero
+        IF v_cantidad <= 0 THEN
+            CONTINUE;
+        END IF;
+
+        -- 📉 Descontar inventario
+        UPDATE inventario
+        SET stock = stock - v_cantidad
+        WHERE id_inventario = r_inv.id_inventario;
+
+        -- 📝 Crear movimiento
+        INSERT INTO movimiento (
+            id_usuario,
+            id_inventario,
+            stock_movimiento,
+            tipo_movimiento,
+            fecha_movimiento,
+            observacion
+        )
+        VALUES (
+            1,
+            r_inv.id_inventario,
+            v_cantidad,
+            'TRASLADO',
+            NOW(),
+            'Traslado masivo automático a bodega tránsito'
+        );
+
+        -- 🚚 SIEMPRE insertar en tránsito
+        INSERT INTO bodega_transito (
+            id_inventario,
+            stock,
+            stock_limit,
+            activo
+        )
+        VALUES (
+            r_inv.id_inventario,
+            v_cantidad,
+            0,
+            TRUE
+        );
+
+    END LOOP;
+
+    RAISE NOTICE 'Traslado masivo completado para todos los inventarios.';
+
+END $$;
+
+--BLOQUE CARGA MASIVA 50 RECETAS Y DETALLES
+DO $$
+DECLARE
+    -- Lista de nombres para las recetas (50 nombres variados)
+    v_nombres TEXT[] := ARRAY[
+        'Pizza Margarita Clasica', 'Lasaña Boloñesa Tradicional', 'Risotto de Champiñones', 'Ceviche de Reineta',
+        'Tacos al Pastor', 'Ensalada Cesar con Pollo', 'Sopa de Cebolla Francesa', 'Pasta Carbonara Original',
+        'Hamburguesa Gourmet KuHub', 'Sushi Rolls Variados', 'Paella Valenciana', 'Gnocchi de Papa al Pesto',
+        'Pollo al Curry con Coco', 'Salmón a la Plancha', 'Ratatouille de Verduras', 'Quiche de Espinacas',
+        'Tarta de Manzana Casera', 'Mousse de Chocolate Amargo', 'Cazuela de Vacuno', 'Empanadas de Pino',
+        'Hummus Tradicional', 'Falafel con Salsa Tahini', 'Pad Thai de Camarones', 'Tiramisu Italiano',
+        'Brownie de Chocolate y Nueces', 'Crepes Suzette', 'Sopaipillas Pasadas', 'Chupe de Locos',
+        'Pastel de Choclo', 'Pescado frito con Ensalada', 'Cordero al Palo', 'Costillar de Cerdo BBQ',
+        'Ensalada de Quinoa', 'Burritos de Pollo', 'Gazpacho Andaluz', 'Crema de Zapallo Camote',
+        'Aji de Gallina', 'Lomo Saltado Peruano', 'Arepas Reina Pepiada', 'Pabellon Criollo',
+        'Feijoada Completa', 'Tortilla Española', 'Baguette Parisina', 'Focaccia con Romero',
+        'Muffin de Arandanos', 'Galletas de Avena', 'Cheesecake de Frutos Rojos', 'Couscous Marroqui',
+        'Poke Bowl de Atun', 'Ramen de Cerdo Tonkotsu'
+    ];
+
+    v_nombre_actual TEXT;
+    v_id_receta INTEGER;
+    v_num_ingredientes INTEGER;
+    v_id_producto INTEGER;
+    v_cant NUMERIC(10,3);
+BEGIN
+    -- Limpiamos datos previos si es necesario (Opcional)
+    -- DELETE FROM detalle_receta; DELETE FROM receta;
+
+    -- Iteramos sobre los 50 nombres
+    FOR i IN 1..50 LOOP
+        v_nombre_actual := v_nombres[i];
+
+        -- 1. Insertar Cabecera de Receta
+        INSERT INTO receta (
+            nombre_receta,
+            descripcion_receta,
+            instrucciones,
+            activo,
+            estado_receta
+        )
+        VALUES (
+            v_nombre_actual,
+            'Descripcion automatica para ' || v_nombre_actual || '. Ideal para pruebas de paginacion en KuHub.',
+            '1. Preparar ingredientes. 2. Cocinar a fuego lento. 3. Servir caliente.',
+            TRUE,
+            'ACTIVO' -- Valor del enum definido en tu entidad Java
+        )
+        RETURNING id_receta INTO v_id_receta;
+
+        -- 2. Definir cantidad aleatoria de ingredientes (entre 3 y 7)
+        v_num_ingredientes := FLOOR(RANDOM() * 5 + 3);
+
+        -- 3. Insertar Detalles (Ingredientes)
+        -- Usamos un bucle interno para evitar productos duplicados en la misma receta
+        FOR j IN 1..v_num_ingredientes LOOP
+
+            -- Seleccionamos un producto aleatorio que exista en la DB
+            SELECT id_producto INTO v_id_producto
+            FROM producto
+            ORDER BY RANDOM()
+            LIMIT 1;
+
+            -- Cantidad aleatoria entre 0.100 y 2.500
+            v_cant := ROUND(CAST(RANDOM() * 2.4 + 0.1 AS NUMERIC), 3);
+
+            -- Insertar detalle (usando INSERT IGNORE lógico con ON CONFLICT para no romper el script)
+            INSERT INTO detalle_receta (id_receta, id_producto, cant_producto)
+            VALUES (v_id_receta, v_id_producto, v_cant)
+            ON CONFLICT DO NOTHING;
+        END LOOP;
+    END LOOP;
+
+    RAISE NOTICE 'Se han creado 50 recetas con sus respectivos detalles exitosamente.';
+END $$;
+
+-- =====================================================
+-- FIN DEL SCRIPT DE INSERCIONES INICIALES
+-- =====================================================
+
+
+--------------------------------------------------------------------------------
+-- FUNCIONES Y TRIGGERS PARA GESTIÓN DE DISPONIBILIDAD Y RESERVAS DE SALAS
+--------------------------------------------------------------------------------
+/* * CONTEXTO:
+ * Este sistema utiliza un modelo de "Borrado Lógico" (soft delete) basado en
+ * la columna 'activo'. Para evitar choques de horarios, existe un Índice Único
+ * Parcial (uk_reserva_activa) que solo evalúa los registros donde activo = true.
+ * * PROPÓSITO DE ESTOS TRIGGERS:
+ * Cuando una entidad padre (Sección o Sala) es "eliminada" lógicamente (pasa a false),
+ * necesitamos que sus reservas (hijos) también pasen a false automáticamente.
+ * Esto "apaga" el Índice Único para esos registros, liberando inmediatamente
+ * la sala y el bloque horario para que puedan ser usados por otras secciones,
+ * sin perder el historial de ocupación en la base de datos.
+ */
+
+-- ==============================================================================
+-- LIMPIEZA PREVIA (DROPS)
+-- Ejecutar antes de crear para permitir la re-ejecución limpia del script (F5)
+-- ==============================================================================
+DROP TRIGGER IF EXISTS tr_seccion_limpieza_horarios ON seccion;
+DROP TRIGGER IF EXISTS tr_sala_inactiva ON sala;
+
+DROP FUNCTION IF EXISTS fn_limpiar_horarios_seccion();
+DROP FUNCTION IF EXISTS fn_limpiar_por_sala_inactiva();
+
+
+
+-- ==============================================================================
+-- LÓGICA DE LIBERACIÓN POR SECCIÓN ELIMINADA (INACTIVA)
+-- ==============================================================================
+/*
+ * Función: fn_limpiar_horarios_seccion()
+ * Descripción: Monitorea las actualizaciones en la tabla 'seccion'. Si detecta que
+ * una sección ha sido eliminada lógicamente (cambio de activo de TRUE a FALSE),
+ * busca todas las reservas de sala asociadas a esta sección y las desactiva.
+ * Resultado: Los bloques horarios que ocupaba esta sección vuelven a estar
+ * disponibles para el resto de la universidad.
+ */
+CREATE OR REPLACE FUNCTION fn_limpiar_horarios_seccion()
+RETURNS TRIGGER AS $$
+BEGIN
+    -- 1. Solo actuamos cuando la sección pase de activa (TRUE) a inactiva (FALSE)
+    -- 2. Ignoramos los Enums (estado_seccion) como pediste.
+    IF (OLD.activo = TRUE AND NEW.activo = FALSE) THEN
+
+        -- En lugar de DELETE, hacemos un UPDATE (Borrado Lógico)
+        UPDATE reserva_sala
+        SET activo = FALSE
+        WHERE id_seccion = NEW.id_seccion
+          AND activo = TRUE; -- Solo desactivamos las que aún estén activas
+
+        RAISE NOTICE '[AUDITORÍA] Horarios liberados automáticamente por eliminación de la sección ID: %', NEW.id_seccion;
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Trigger que adjunta la función fn_limpiar_horarios_seccion a la tabla 'seccion'
+CREATE TRIGGER tr_seccion_limpieza_horarios
+AFTER UPDATE ON seccion
+FOR EACH ROW
+EXECUTE FUNCTION fn_limpiar_horarios_seccion();
+
+
+-- ==============================================================================
+-- LÓGICA DE LIBERACIÓN POR SALA INACTIVA (MANTENIMIENTO/ELIMINACIÓN)
+-- ==============================================================================
+
+/*
+ * Función: fn_limpiar_por_sala_inactiva()
+ * Descripción: Monitorea la tabla 'sala'. Si una sala se deshabilita lógicamente
+ * (por ejemplo, entra en remodelación, clausura o se borra del sistema), esta
+ * función busca todas las reservas futuras activas que la involucraban y las
+ * pasa a false.
+ * Resultado: Previene que el sistema mantenga "bloqueos fantasma" en horarios
+ * de una sala que ya no está operativa.
+ */
+CREATE OR REPLACE FUNCTION fn_limpiar_por_sala_inactiva()
+RETURNS TRIGGER AS $$
+BEGIN
+    -- Detectamos el cambio de activo: de TRUE a FALSE
+    IF (OLD.activo = TRUE AND NEW.activo = FALSE) THEN
+
+        -- Cambiamos el estado de las reservas vinculadas a esta sala
+        UPDATE reserva_sala
+        SET activo = FALSE
+        WHERE id_sala = NEW.id_sala
+          AND activo = TRUE; -- Solo las que aún estén vigentes
+
+        RAISE NOTICE '[AUDITORÍA] Reservas canceladas lógicamente debido a la inhabilitación de la sala ID: %', NEW.id_sala;
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Trigger que adjunta la función fn_limpiar_por_sala_inactiva a la tabla 'sala'
+CREATE TRIGGER tr_sala_inactiva
+AFTER UPDATE ON sala
+FOR EACH ROW
+EXECUTE FUNCTION fn_limpiar_por_sala_inactiva();
+
+
+
+
+/* ====================================================================================
+ * FUNCION: generar_solicitudes_masivas
+ * DESCRIPCION:
+ * Procesa un payload JSON masivo para crear múltiples solicitudes y sus respectivos
+ * detalles de insumos de forma transaccional y optimizada.
+ * * LOGICA DE NEGOCIO ("El Súper Cálculo"):
+ * 1. Multiplicador: Calcula la proporción basada en (cant_inscritos / 20).
+ * 2. Deltas:
+ * - Ignora los productos listados en el array 'eliminados'.
+ * - Sobreescribe las cantidades base de los productos 'modificados'.
+ * - Agrega los productos 'nuevos' definidos por el usuario.
+ * 3. Reglas de Fracción y Redondeo:
+ * - Si el producto admite fracciones (es_fraccionario = true): Guarda hasta 3 decimales.
+ * - Si NO admite fracciones (es_fraccionario = false): Aplica CEIL() para redondear hacia arriba.
+ * 4. Seguridad: Filtra y omite automáticamente productos con estado inactivo (activo = false).
+ * * ESTRUCTURA ESPERADA DEL JSONB (Array de Objetos):
+ * [
+ * {
+ * "idAsignatura": 1, "idSemana": 2, "idReceta": 5, "observacion": "...",
+ * "secciones": [
+ * { "idSeccion": 101, "idUsuario": 55, "cantInscritos": 25, "horarios": [{...}] }
+ * ],
+ * "deltas": {
+ * "eliminados": [12, 15],
+ * "modificados": [{ "idDetalleReceta": 8, "cantProducto": 3.5 }],
+ * "nuevos": [{ "idProducto": 42, "cantProducto": 1.0 }]
+ * }
+ * }
+ * ]
+ * * RETORNO:
+ * - total_solicitudes (OUT): Cantidad de cabeceras insertadas.
+ * - total_detalles (OUT): Cantidad total de productos procesados e insertados.
+ * ==================================================================================== */
+
+
+CREATE OR REPLACE FUNCTION generar_solicitudes_masivas(
+    p_payload JSONB,
+    OUT total_solicitudes INTEGER,
+    OUT total_detalles INTEGER
+)
+AS $$
+DECLARE
+    -- Variables para el Loop Externo (Lista de MassiveSolicitationDTO)
+    v_solicitud_masiva JSONB;
+    v_id_receta INTEGER;
+    v_observacion_general TEXT; -- <---(solicitud)
+
+    -- Variables para el Loop Interno (Lista de secciones)
+    v_seccion JSONB;
+    v_id_seccion INTEGER;
+    v_id_usuario INTEGER;
+    v_cant_inscritos INTEGER;
+    v_fecha_solicitada DATE;
+    v_id_reserva_sala INTEGER;
+    v_multiplicador NUMERIC(10, 4);
+
+    v_id_solicitud INTEGER;
+    v_filas_insertadas INTEGER;
+BEGIN
+    -- Inicializamos los contadores de salida
+    total_solicitudes := 0;
+    total_detalles := 0;
+
+    -- =========================================================================
+    -- LOOP EXTERNO: Recorremos el Array de MassiveSolicitationDTO
+    -- =========================================================================
+    FOR v_solicitud_masiva IN SELECT * FROM jsonb_array_elements(p_payload)
+    LOOP
+        -- Extraemos los datos generales de ESTA asignatura/receta específica
+        v_id_receta := (v_solicitud_masiva->>'idReceta')::INTEGER;
+        -- Extraemos la observación general para toda la solicitud
+        v_observacion_general := v_solicitud_masiva->>'observacionesGenerales';
+
+        -- =========================================================================
+        -- LOOP INTERNO: Recorremos las secciones de ESTA solicitud masiva
+        -- =========================================================================
+        FOR v_seccion IN SELECT * FROM jsonb_array_elements(v_solicitud_masiva->'secciones')
+        LOOP
+            v_id_seccion := (v_seccion->>'idSeccion')::INTEGER;
+            v_id_usuario := (v_seccion->>'idUsuario')::INTEGER;
+            v_cant_inscritos := (v_seccion->>'cantInscritos')::INTEGER;
+
+            -- Tomamos la fecha del primer horario de esta sección
+            v_fecha_solicitada := (v_seccion->'horarios'->0->>'fechaSolicitadaCalculada')::DATE;
+
+            --  Extraemos el id de la reserva del primer horario enviado en el JSON
+            v_id_reserva_sala := (v_seccion->'horarios'->0->>'idReservaSala')::INTEGER;
+
+            -- CÁLCULO #1: El Multiplicador
+            v_multiplicador := v_cant_inscritos / 20.0;
+
+            -- Insertamos la Cabecera de la Solicitud
+            INSERT INTO solicitud (
+                id_usuario_gestor_solicitud,
+                id_seccion,
+                id_receta,
+                id_reserva_sala,
+                fecha_solicitada,
+                observaciones,
+                estado_solicitud
+            ) VALUES (
+                v_id_usuario,
+                v_id_seccion,
+                v_id_receta,
+                v_id_reserva_sala,
+                v_fecha_solicitada,
+                v_observacion_general,
+                'PENDIENTE'
+            ) RETURNING id_solicitud INTO v_id_solicitud;
+
+            -- Sumamos 1 al contador de solicitudes
+            total_solicitudes := total_solicitudes + 1;
+
+            -- INSERTAMOS LOS DETALLES (Productos), Filtros, Fracciones y Redondeo
+            INSERT INTO detalle_solicitud (
+                id_solicitud,
+                id_producto,
+                cant_producto_solicitud,
+                observacion
+            )
+            SELECT
+                v_id_solicitud,
+                fp.id_producto,
+                -- REDONDEO SEGÚN EL TIPO DE UNIDAD
+                CASE
+                    WHEN u.es_fraccionario = true THEN
+                        (fp.cant_base * v_multiplicador)::NUMERIC(10,3)
+                    ELSE
+                        CEIL(fp.cant_base * v_multiplicador)::NUMERIC(10,3)
+                END,
+				fp.observacion --<--- Variable extraída por cada producto
+            FROM (
+                -- BLOQUE A: Base intacta
+                SELECT
+					dr.id_producto,
+					dr.cant_producto AS cant_base,
+					NULL::TEXT AS observacion
+                FROM detalle_receta dr
+                WHERE v_id_receta IS NOT NULL
+                  AND dr.id_receta = v_id_receta
+                  AND NOT EXISTS (
+                      SELECT 1 FROM jsonb_array_elements_text(COALESCE(v_solicitud_masiva->'deltas'->'eliminados', '[]'::jsonb)) e
+                      WHERE e::INTEGER = dr.id_detalle_receta
+                  )
+                  AND NOT EXISTS (
+                      SELECT 1 FROM jsonb_array_elements(COALESCE(v_solicitud_masiva->'deltas'->'modificados', '[]'::jsonb)) m
+                      WHERE (m->>'idDetalleReceta')::INTEGER = dr.id_detalle_receta
+                  )
+
+                UNION ALL
+
+                -- BLOQUE B: Modificados
+                SELECT
+					 dr.id_producto,
+					(m->>'cantProducto')::NUMERIC AS cant_base,
+					 m->>'observacion' AS observacion
+                FROM jsonb_array_elements(COALESCE(v_solicitud_masiva->'deltas'->'modificados', '[]'::jsonb)) m
+                JOIN detalle_receta dr ON dr.id_detalle_receta = (m->>'idDetalleReceta')::INTEGER
+                WHERE v_id_receta IS NOT NULL
+
+                UNION ALL
+
+                -- BLOQUE C: Nuevos
+                SELECT
+					(n->>'idProducto')::INTEGER,
+					(n->>'cantProducto')::NUMERIC AS cant_base,
+					 n->>'observacion' AS observacion
+                FROM jsonb_array_elements(COALESCE(v_solicitud_masiva->'deltas'->'nuevos', '[]'::jsonb)) n
+
+            ) AS fp
+            JOIN producto p ON p.id_producto = fp.id_producto
+            JOIN unidad_medida u ON u.id_unidad = p.id_unidad
+            WHERE p.activo = true;
+
+            -- Obtenemos cuántos detalles reales se insertaron en este ciclo y sumamos al total
+            GET DIAGNOSTICS v_filas_insertadas = ROW_COUNT;
+            total_detalles := total_detalles + v_filas_insertadas;
+
+        END LOOP; -- Fin Loop Interno (Secciones)
+    END LOOP; -- Fin Loop Externo (Asignaturas/Recetas)
+END;
+$$ LANGUAGE plpgsql;
+
+
+
+
+
+
+
+
+
