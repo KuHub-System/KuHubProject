@@ -429,6 +429,49 @@ export const aprobarPedidosService = async (dto: IChangePedidoStatusDTO): Promis
   return response.data;
 };
 
+// ── Entregas diarias Bodega de Tránsito (POST /pedido/entregas-diarias) ────────
+
+export interface IProductoEntrega {
+  idProducto: number;
+  nombreProducto: string;
+  cantidad: number;
+  unidadAbreviada: string;
+  observacion: string | null;
+}
+
+export interface ISolicitudEntrega {
+  idSolicitud: number;
+  horaInicio: string;       // "HH:MM" — usado para ordenar en UI
+  rangoHoras: string;       // "HH:MM - HH:MM" — para mostrar
+  nombreSeccion: string;
+  nombreAsignatura: string;
+  nombreDocente: string;
+  cantInscritos: number;
+  nombreReceta: string;
+  observaciones: string | null;
+  productos: IProductoEntrega[];
+}
+
+export interface ISalaEntrega {
+  idSala: number;
+  nombreSala: string;
+  codSala: string;
+  solicitudes: ISolicitudEntrega[];
+}
+
+export interface IEntregaDiaria {
+  fecha: string;              // "YYYY-MM-DD"
+  totalSolicitudes: number;
+  salas: ISalaEntrega[];
+}
+
+export const obtenerEntregasDiariasService = async (
+  dto: IDateRangeDTO
+): Promise<IEntregaDiaria[]> => {
+  const response = await api.post<IEntregaDiaria[]>('/pedido/entregas-diarias', dto);
+  return response.data;
+};
+
 const API_BASE_URL = 'http://localhost:8083/api/v1';
 const ENDPOINTS = {
   SOLICITUDES_DETALLES: `${API_BASE_URL}/solicituddocente/detalles`
