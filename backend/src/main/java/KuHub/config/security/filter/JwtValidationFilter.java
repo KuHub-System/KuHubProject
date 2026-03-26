@@ -97,7 +97,10 @@ public class JwtValidationFilter extends BasicAuthenticationFilter {
             SecurityContextHolder.getContext().setAuthentication(authenticationToken);
             chain.doFilter(request, response);
 
-        } catch (JwtException e) {
+        } catch (JwtException | IOException e) {
+            System.err.println("❌ [JWT ERROR] " + e.getMessage());
+            e.printStackTrace();
+            
             Map<String, String> body = new HashMap<>();
             body.put("message", "El token ha expirado o es inválido");
             body.put("error", e.getMessage());
