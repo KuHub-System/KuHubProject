@@ -382,8 +382,12 @@ public class SpringSecurityConfig {
                         // 1. Lectura pública: Para que todos puedan ver el calendario del semestre
                         .requestMatchers(HttpMethod.GET, "/api/v*/semanas/**").permitAll()
 
-                        // 2. Gestión (Crear, Editar, Borrar, Generar): Solo roles administrativos
-                        .requestMatchers(HttpMethod.POST, "/api/v*/semanas/**").hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR")
+                        // 2. POST en semanas: incluye endpoints de búsqueda/consulta (ej: find-by-weekly-for-solicitation)
+                        //    que son necesarios en casi todas las páginas del sistema.
+                        //    La gestión real (crear/modificar semanas) la hacen solo ADMIN/CO_ADMIN con PUT/PATCH/DELETE.
+                        .requestMatchers(HttpMethod.POST, "/api/v*/semanas/**").authenticated()
+
+                        // 3. Modificación y eliminación: Solo roles administrativos
                         .requestMatchers(HttpMethod.PUT, "/api/v*/semanas/**").hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR")
                         .requestMatchers(HttpMethod.PATCH, "/api/v*/semanas/**").hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR")
                         .requestMatchers(HttpMethod.DELETE, "/api/v*/semanas/**").hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR")

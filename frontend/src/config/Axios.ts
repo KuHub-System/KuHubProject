@@ -64,16 +64,17 @@ api.interceptors.response.use(
             logger.error('❌ 401 UNAUTHORIZED detectado en interceptor Axios');
             logger.error(`  → URL: ${url}`);
             logger.error(`  → Response:`, error.response?.data);
-            
-            // Si el error de 401 es en el login, no redirigimos (el servicio maneja su error)
-            if (url.includes('/auth/login')) {
-                return Promise.reject(error);
-            }
 
-            // Si el error de 401 es en permisos, no redirigimos al login.
-            // El PermissionContext maneja su propio error sin necesidad de logout.
-            if (url.includes('/permisos/')) {
-                logger.error('  → Error de permisos ignorado por interceptor (no logout)');
+            // Lista de prefijos cuyas rutas de "lectura-via-POST" no deben forzar logout.
+            // Un 401 aquí indica falta de permisos de rol, no un token inválido.
+            const noLogoutPrefixes = [
+                '/auth/login',   // El servicio de login maneja su propio error
+                '/permisos/',    // La PermissionContext maneja su propio error
+                '/semanas/',     // Búsquedas de semana usadas en todas las páginas
+            ];
+
+            if (noLogoutPrefixes.some(prefix => url.includes(prefix))) {
+                logger.error('  → Error ignorado por interceptor (no logout):', url);
                 return Promise.reject(error);
             }
 
