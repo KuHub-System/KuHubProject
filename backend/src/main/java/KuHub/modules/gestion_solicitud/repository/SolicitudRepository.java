@@ -312,7 +312,8 @@ public interface SolicitudRepository extends JpaRepository<Solicitud, Integer> {
         JOIN usuario usr ON usr.id_usuario = doc_sec.id_usuario
         WHERE sol.fecha_solicitada BETWEEN :fechaInicio AND :fechaFin
           AND sol.estado_solicitud = 'ACEPTADA'
-        ORDER BY sol.fecha_solicitada ASC; 
+          AND sol.id_solicitud NOT IN (SELECT id_solicitud FROM pedido_solicitud)
+        ORDER BY sol.fecha_solicitada ASC;
     """, nativeQuery = true)
     List<Object[]> findSolicitudesParaDashboard(@Param("fechaInicio") LocalDate fechaInicio, @Param("fechaFin") LocalDate fechaFin);
 
@@ -389,6 +390,7 @@ public interface SolicitudRepository extends JpaRepository<Solicitud, Integer> {
         
             WHERE sol.fecha_solicitada BETWEEN :fechaInicio AND :fechaFin
               AND sol.estado_solicitud = 'ACEPTADA'
+              AND sol.id_solicitud NOT IN (SELECT id_solicitud FROM pedido_solicitud)
             GROUP BY prod.id_producto, prod.nombre_producto, uni.nombre_unidad
         ) agg;
         """, nativeQuery = true)

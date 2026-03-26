@@ -246,11 +246,7 @@ const EntregaSalaCard: React.FC<{ sala: ISalaEntrega }> = ({ sala }) => {
   );
 };
 
-const MODAL_KEY_BODEGA_PEDIDOS = 'bodega_pedidos_maintenance_dismissed';
-
 const BodegaTransitoPage: React.FC = () => {
-  const [avisoAbierto, setAvisoAbierto] = React.useState(false);
-  const cerrarAviso = () => { sessionStorage.setItem(MODAL_KEY_BODEGA_PEDIDOS, '1'); setAvisoAbierto(false); };
 
   const toast = useToast();
   const history = useHistory();
@@ -571,36 +567,6 @@ const BodegaTransitoPage: React.FC = () => {
 
   return (
     <>
-      <Modal isOpen={avisoAbierto} onClose={cerrarAviso} size="md" isDismissable={false} hideCloseButton>
-        <ModalContent>
-          <ModalHeader className="flex items-center gap-2 pb-1">
-            <Icon icon="lucide:construction" width={20} className="text-warning-500 shrink-0" />
-            <span>Vista en desarrollo</span>
-          </ModalHeader>
-          <ModalBody className="py-3">
-            <div className="flex flex-col gap-3">
-              <p className="text-sm text-default-600">
-                La página de <strong>Bodega de Tránsito</strong> es una versión preliminar.
-                Actualmente se encuentra en mantenimiento activo y está sujeta a cambios y mejoras continuas.
-              </p>
-              <p className="text-sm text-default-500">
-                Es posible que algunos datos o funcionalidades no reflejen el comportamiento definitivo del sistema.
-                Agradecemos tu comprensión mientras seguimos mejorando la plataforma.
-              </p>
-              <div className="flex items-center gap-2 px-3 py-2 bg-warning-50 border border-warning-200 rounded-lg text-xs text-warning-800">
-                <Icon icon="lucide:info" width={13} className="shrink-0" />
-                Este aviso se muestra una vez por sesión.
-              </div>
-            </div>
-          </ModalBody>
-          <ModalFooter>
-            <Button color="primary" onPress={cerrarAviso} startContent={<Icon icon="lucide:thumbs-up" width={14} />}>
-              ¡Gracias, entendido!
-            </Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
-
     <div className="flex h-[calc(100vh-100px)] overflow-hidden font-sans relative">
       {/* Área de Contenido Principal */}
       <div ref={mainScrollerRef} onScroll={handleScroll} className="flex-grow overflow-y-auto bg-default-50/50 dark:bg-background scrollbar-hide pb-20">
@@ -1058,7 +1024,6 @@ const BodegaTransitoPage: React.FC = () => {
             variant={currentView === 'pedidos' ? 'solid' : 'light'}
             color={currentView === 'pedidos' ? 'secondary' : 'default'}
             onPress={() => {
-              if (!sessionStorage.getItem(MODAL_KEY_BODEGA_PEDIDOS)) setAvisoAbierto(true);
               setCurrentView('pedidos');
             }}
             className={`w-12 h-12 rounded-2xl transition-all duration-300 ${currentView === 'pedidos' ? 'shadow-lg shadow-secondary/30' : 'text-default-400 hover:bg-default-100'}`}
