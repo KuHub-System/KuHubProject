@@ -1,6 +1,8 @@
 import axios, { AxiosInstance, AxiosError, InternalAxiosRequestConfig } from 'axios';
 import { obtenerSesionActualService } from '../services/auth-service';
 
+import { logger } from '../utils/logger';
+
 // ========================================================================
 // Detección automática de entorno:
 // - Cloud (GitHub Actions / AWS): usa VITE_API_URL inyectada en el build
@@ -8,7 +10,7 @@ import { obtenerSesionActualService } from '../services/auth-service';
 // ========================================================================
 const isLocal = typeof window !== 'undefined' && window.location.hostname === 'localhost';
 const API_URL = import.meta.env.VITE_API_URL || (isLocal ? 'http://localhost:8080/api/v1' : '/api/v1');
-console.log(`[AXIOS] BaseURL → ${API_URL}`);
+logger.log(`[AXIOS] BaseURL → ${API_URL}`);
 
 const api: AxiosInstance = axios.create({
     baseURL: API_URL, // <--- Aplicamos la variable aquí
@@ -49,7 +51,7 @@ api.interceptors.response.use(
                     // Disparar evento para reiniciar el contador de inactividad
                     window.dispatchEvent(new Event('api-request'));
                 } catch (e) {
-                    console.error("Error al actualizar la sesión", e);
+                    logger.error("Error al actualizar la sesión", e);
                 }
             }
         }
@@ -58,6 +60,15 @@ api.interceptors.response.use(
     async (error: AxiosError) => {
         // Handle 401 Unauthorized (Token expires or invalid)
         if (error.response?.status === 401) {
+            logger.error('❌ 401 UNAUTHORIZED detectado en interceptor Axios');
+            logger.error(`  → URL: ${error.config?.url}`);
+            logger.error(`  → Response:`, error.response?.data);
+            
+            // Si el error de 401 es en el login, no redirigimos (el servicio maneja su error)
+            if (error.config?.url?.includes('/auth/login')) {
+                return Promise.reject(error);
+            }
+
             localStorage.removeItem('sesion_actual');
             window.location.href = '/login';
         }
