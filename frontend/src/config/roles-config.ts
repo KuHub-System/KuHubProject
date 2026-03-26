@@ -74,7 +74,8 @@ export const ROLES_SISTEMA: IRole[] = [
     nombre: 'Profesor a Cargo',
     permisos: [
       'dashboard',
-      'solicitud'
+      'solicitud',
+      'gestion-recetas'
     ]
   },
   {
@@ -82,7 +83,8 @@ export const ROLES_SISTEMA: IRole[] = [
     nombre: 'Docente',
     permisos: [
       'dashboard',
-      'solicitud'  // Solo lectura de solicitudes
+      'solicitud',
+      'gestion-recetas'
     ]
   },
   {
