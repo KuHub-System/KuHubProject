@@ -459,9 +459,9 @@ public interface PedidoRepository extends JpaRepository<Pedido, Integer> {
                                                         SELECT string_agg(rango, ' / ' ORDER BY min_inicio)
                                                         FROM (
                                                             SELECT
-                                                                MIN(bh_r.hora_inicio) AS min_inicio,
-                                                                to_char(MIN(bh_r.hora_inicio), 'HH24:MI') || ' - ' ||
-                                                                to_char(MAX(bh_r.hora_fin),    'HH24:MI') AS rango
+                                                                MIN(hora_inicio) AS min_inicio,
+                                                                to_char(MIN(hora_inicio), 'HH24:MI') || ' - ' ||
+                                                                to_char(MAX(hora_fin),    'HH24:MI') AS rango
                                                             FROM (
                                                                 SELECT
                                                                     bh_r.hora_inicio,
