@@ -134,7 +134,7 @@ public class PedidoServiceImpl implements PedidoService{
 
             // 5. Actualizar el estado de las solicitudes originales a 'PROCESADA'
             // Usamos el query nativo que proporcionaste
-            solicitudRepository.updateMassiveStateSolicitation(idsSolicitudes, "PROCESADO");
+            //solicitudRepository.updateMassiveStateSolicitation(idsSolicitudes, "PROCESADO");
 
             return true;
 

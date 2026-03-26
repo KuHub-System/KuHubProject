@@ -81,7 +81,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
         { title: 'Inventario', path: '/inventario', icon: 'lucide:package', pageId: 'inventario' },
         { title: 'Historial / Movimientos ', path: '/movimientos', icon: 'lucide:history', pageId: 'inventario' },
         { title: 'Bodega de Tránsito', path: '/bodega-transito', icon: 'lucide:warehouse', pageId: 'bodega-transito' },
-        { title: 'Gestión de Proveedores', path: '/gestion-proveedores', icon: 'lucide:truck', pageId: 'gestion-proveedores' }
+        // { title: 'Gestión de Proveedores', path: '/gestion-proveedores', icon: 'lucide:truck', pageId: 'gestion-proveedores' }
       ]
     },
     {
