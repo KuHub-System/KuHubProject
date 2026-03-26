@@ -431,6 +431,144 @@ public interface PedidoRepository extends JpaRepository<Pedido, Integer> {
 
 
     // =====================================================
+    // CONSULTA 4: Entregas diarias para Bodega de Tránsito
+    // Solicitudes PROCESADO vinculadas a pedidos APROVADO,
+    // agrupadas por fecha → sala → horario (ASC)
+    // Retorna: String → deserializar a List<EntregaDiariaJson>
+    // =====================================================
+    @Query(value = """
+        SELECT COALESCE(
+            json_agg(
+                json_build_object(
+                    'fecha',            dia.fecha_solicitada,
+                    'totalSolicitudes', dia.total_sol,
+                    'salas', (
+                        SELECT COALESCE(
+                            json_agg(
+                                json_build_object(
+                                    'idSala',    sal.id_sala,
+                                    'nombreSala', sal.nombre_sala,
+                                    'codSala',   sal.cod_sala,
+                                    'solicitudes', (
+                                        SELECT COALESCE(
+                                            json_agg(
+                                                json_build_object(
+                                                    'idSolicitud',     sol_e.id_solicitud,
+                                                    'horaInicio',      to_char(bh_e.hora_inicio, 'HH24:MI'),
+                                                    'rangoHoras', (
+                                                        SELECT string_agg(rango, ' / ' ORDER BY min_inicio)
+                                                        FROM (
+                                                            SELECT
+                                                                MIN(bh_r.hora_inicio) AS min_inicio,
+                                                                to_char(MIN(bh_r.hora_inicio), 'HH24:MI') || ' - ' ||
+                                                                to_char(MAX(bh_r.hora_fin),    'HH24:MI') AS rango
+                                                            FROM (
+                                                                SELECT
+                                                                    bh_r.hora_inicio,
+                                                                    bh_r.hora_fin,
+                                                                    bh_r.id_bloque - CAST(ROW_NUMBER() OVER (ORDER BY bh_r.id_bloque ASC) AS INT) AS grp
+                                                                FROM reserva_sala rs_r
+                                                                INNER JOIN reserva_sala rs_ref
+                                                                    ON rs_ref.id_reserva_sala = sol_e.id_reserva_sala
+                                                                INNER JOIN bloque_horario bh_r
+                                                                    ON bh_r.id_bloque = rs_r.id_bloque
+                                                                WHERE rs_r.id_seccion = rs_ref.id_seccion
+                                                                  AND rs_r.id_sala    = rs_ref.id_sala
+                                                                  AND rs_r.dia_semana = rs_ref.dia_semana
+                                                                  AND rs_r.activo     = true
+                                                            ) islas_r
+                                                            GROUP BY grp
+                                                        ) rangos_r
+                                                    ),
+                                                    'nombreSeccion',    sec_e.nombre_seccion,
+                                                    'nombreAsignatura',  asig_e.nombre_asignatura,
+                                                    'nombreDocente',    CONCAT_WS(' ',
+                                                        NULLIF(TRIM(usr_e.p_nombre),    ''),
+                                                        NULLIF(TRIM(usr_e.app_paterno), '')
+                                                    ),
+                                                    'cantInscritos',  sec_e.cant_inscritos,
+                                                    'nombreReceta',   COALESCE(rec_e.nombre_receta, 'Sin receta'),
+                                                    'observaciones',  sol_e.observaciones,
+                                                    'productos', (
+                                                        SELECT COALESCE(
+                                                            json_agg(
+                                                                json_build_object(
+                                                                    'idProducto',      prod_e.id_producto,
+                                                                    'nombreProducto',  prod_e.nombre_producto,
+                                                                    'cantidad',        ds_e.cant_producto_solicitud,
+                                                                    'unidadAbreviada', uni_e.abreviatura,
+                                                                    'observacion',     ds_e.observacion
+                                                                ) ORDER BY prod_e.nombre_producto ASC
+                                                            ),
+                                                            '[]'::json
+                                                        )
+                                                        FROM detalle_solicitud ds_e
+                                                        JOIN producto       prod_e ON prod_e.id_producto = ds_e.id_producto
+                                                        JOIN unidad_medida  uni_e  ON uni_e.id_unidad    = prod_e.id_unidad
+                                                        WHERE ds_e.id_solicitud = sol_e.id_solicitud
+                                                    )
+                                                ) ORDER BY bh_e.hora_inicio ASC
+                                            ),
+                                            '[]'::json
+                                        )
+                                        FROM pedido             ped_e
+                                        JOIN pedido_solicitud   ps_e   ON ps_e.id_pedido      = ped_e.id_pedido
+                                        JOIN solicitud          sol_e  ON sol_e.id_solicitud  = ps_e.id_solicitud
+                                        JOIN reserva_sala       rs_e   ON rs_e.id_reserva_sala = sol_e.id_reserva_sala
+                                        JOIN bloque_horario     bh_e   ON bh_e.id_bloque      = rs_e.id_bloque
+                                        JOIN seccion            sec_e  ON sec_e.id_seccion     = sol_e.id_seccion
+                                        JOIN asignatura         asig_e ON asig_e.id_asignatura = sec_e.id_asignatura
+                                        JOIN docente_seccion    doc_e  ON doc_e.id_seccion     = sec_e.id_seccion
+                                        JOIN usuario            usr_e  ON usr_e.id_usuario     = doc_e.id_usuario
+                                        LEFT JOIN receta        rec_e  ON rec_e.id_receta      = sol_e.id_receta
+                                        WHERE ped_e.estado_pedido    = 'APROVADO'
+                                          AND sol_e.estado_solicitud = 'PROCESADO'
+                                          AND sol_e.id_reserva_sala  IS NOT NULL
+                                          AND sol_e.fecha_solicitada = dia.fecha_solicitada
+                                          AND rs_e.id_sala           = sal.id_sala
+                                    )
+                                ) ORDER BY sal.nombre_sala ASC
+                            ),
+                            '[]'::json
+                        )
+                        FROM (
+                            SELECT DISTINCT s.id_sala, s.nombre_sala, s.cod_sala
+                            FROM pedido            p_s
+                            JOIN pedido_solicitud  ps_s  ON ps_s.id_pedido      = p_s.id_pedido
+                            JOIN solicitud         sol_s ON sol_s.id_solicitud  = ps_s.id_solicitud
+                            JOIN reserva_sala      rs_s  ON rs_s.id_reserva_sala = sol_s.id_reserva_sala
+                            JOIN sala              s     ON s.id_sala            = rs_s.id_sala
+                            WHERE p_s.estado_pedido     = 'APROVADO'
+                              AND sol_s.estado_solicitud = 'PROCESADO'
+                              AND sol_s.id_reserva_sala  IS NOT NULL
+                              AND sol_s.fecha_solicitada = dia.fecha_solicitada
+                        ) sal
+                    )
+                ) ORDER BY dia.fecha_solicitada ASC
+            ),
+            '[]'::json
+        ) AS entregas_diarias_json
+        FROM (
+            SELECT
+                sol.fecha_solicitada,
+                COUNT(DISTINCT sol.id_solicitud) AS total_sol
+            FROM pedido            ped
+            JOIN pedido_solicitud  ps  ON ps.id_pedido     = ped.id_pedido
+            JOIN solicitud         sol ON sol.id_solicitud = ps.id_solicitud
+            WHERE ped.estado_pedido    = 'APROVADO'
+              AND sol.estado_solicitud = 'PROCESADO'
+              AND sol.id_reserva_sala  IS NOT NULL
+              AND sol.fecha_solicitada BETWEEN :fechaInicio AND :fechaFin
+            GROUP BY sol.fecha_solicitada
+        ) dia
+        """, nativeQuery = true)
+    String findEntregasDiariasJson(
+            @Param("fechaInicio") LocalDate fechaInicio,
+            @Param("fechaFin")   LocalDate fechaFin
+    );
+
+
+    // =====================================================
     // UPDATE MASIVO: cambia el estado de N pedidos a la vez
     // Retorna número de filas afectadas
     // =====================================================

@@ -151,6 +151,19 @@ public class PedidoServiceImpl implements PedidoService{
         return filasAfectadas > 0;
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public List<PedidoDashboardRecords.EntregaDiariaJson> obtenerEntregasDiarias(DateRangeDTO request) {
+        return deserializarLista(
+                pedidoRepository.findEntregasDiariasJson(
+                        request.getFechaInicio(),
+                        request.getFechaFin()
+                ),
+                new TypeReference<List<PedidoDashboardRecords.EntregaDiariaJson>>() {},
+                "findEntregasDiariasJson"
+        );
+    }
+
     // =====================================================
     // MÉTODO GENÉRICO DE DESERIALIZACIÓN
     // Un solo método para las 3 consultas (todas son List<>)

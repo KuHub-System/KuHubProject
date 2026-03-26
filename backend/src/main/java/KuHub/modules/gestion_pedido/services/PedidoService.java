@@ -5,6 +5,8 @@ import KuHub.modules.gestion_pedido.record.CreateOrder;
 import KuHub.modules.gestion_pedido.record.PedidoDashboardRecords;
 import KuHub.modules.gestion_solicitud.dtos.request.DateRangeDTO;
 
+import java.util.List;
+
 public interface PedidoService {
 
     PedidoDashboardRecords.PedidoDashboardResponse obtenerDashboardPedidos(DateRangeDTO request);
@@ -15,4 +17,10 @@ public interface PedidoService {
      * Retorna true si al menos una fila fue afectada.
      */
     boolean changeMassiveStatus(ChangePedidoStatusDTO request);
+
+    /**
+     * Retorna las entregas diarias para Bodega de Tránsito:
+     * solicitudes PROCESADO de pedidos APROVADO, agrupadas por fecha → sala → horario.
+     */
+    List<PedidoDashboardRecords.EntregaDiariaJson> obtenerEntregasDiarias(DateRangeDTO request);
 }
