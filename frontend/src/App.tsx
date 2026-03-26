@@ -51,9 +51,11 @@ const PageLoader: React.FC = () => (
 const SmartRedirect: React.FC = () => {
   const { isAuthenticated, getUserPermissions, isLoading, userRole } = useAuth();
 
-  // 🔥 CRÍTICO: Esperar a que se carguen TANTO el usuario COMO el rol
-  if (isLoading || (isAuthenticated && !userRole)) {
-    console.log('[App] SmartRedirect bloqueado por carga...', { isLoading, isAuthenticated, hasRole: !!userRole });
+  // 🔥 CRÍTICO: Solo esperamos a que isLoading sea false.
+  // El efecto unificado en AuthContext garantiza que isLoading=false
+  // implica que el rol ya fue procesado (match o no match).
+  if (isLoading) {
+    console.log('[App] SmartRedirect: isLoading=true, esperando...', { isAuthenticated, hasRole: !!userRole });
     return (
       <div className="flex items-center justify-center h-screen">
         <div className="text-center">
@@ -64,7 +66,7 @@ const SmartRedirect: React.FC = () => {
     );
   }
 
-  console.log('[App] SmartRedirect evaluando...', { isAuthenticated, userRoleName: userRole?.nombre });
+  console.log('[App] SmartRedirect evaluando...', { isAuthenticated, userRoleName: userRole?.nombre, permisos: userRole?.permisos });
 
   // Si no está autenticado, ir a login
   if (!isAuthenticated) {
