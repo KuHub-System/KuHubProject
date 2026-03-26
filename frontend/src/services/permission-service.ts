@@ -22,6 +22,35 @@ import {
 // ── Cache en memoria para la matriz (evita llamadas repetidas) ────────────────
 let matrixCache: Record<string, PermisoMatrizDTO[]> | null = null;
 
+// ── Mapeo ENUM-DB → nombre de display del frontend ───────────────────────────
+// El backend almacena nombre_rol en formato ENUM (GESTOR_PEDIDOS),
+// pero el frontend usa el nombre de display (Gestor de Pedidos).
+// Esta tabla garantiza que siempre coincidan sin importar cómo esté guardado en la BD.
+const DB_TO_DISPLAY_ROLE: Record<string, string> = {
+  // Formato ENUM (mayúsculas con guión bajo)
+  'ADMINISTRADOR':    'Administrador',
+  'CO_ADMINISTRADOR': 'Co-Administrador',
+  'GESTOR_PEDIDOS':   'Gestor de Pedidos',
+  'PROFESOR_A_CARGO': 'Profesor a Cargo',
+  'DOCENTE':          'Docente',
+  'ENCARGADO_BODEGA': 'Encargado de Bodega',
+  'ASISTENTE_BODEGA': 'Asistente de Bodega',
+  // Formato display directo (si la BD ya guarda los nombres con tildes/espacios)
+  'Administrador':      'Administrador',
+  'Co-Administrador':   'Co-Administrador',
+  'Gestor de Pedidos':  'Gestor de Pedidos',
+  'Profesor a Cargo':   'Profesor a Cargo',
+  'Docente':            'Docente',
+  'Encargado de Bodega':'Encargado de Bodega',
+  'Asistente de Bodega':'Asistente de Bodega',
+};
+
+/**
+ * Normaliza el nombre de rol del backend al nombre de display del frontend.
+ * Si no está en el mapa, devuelve el mismo valor (fallback seguro).
+ */
+const normalizeRoleName = (name: string): string => DB_TO_DISPLAY_ROLE[name] ?? name;
+
 // ── Helpers de mapeo ──────────────────────────────────────────────────────────
 
 /**
@@ -56,7 +85,7 @@ export const permissionService = {
     const roleGroups: Record<string, RolePermission> = {};
 
     Object.values(matrixCache).flat().forEach((dto) => {
-      const roleKey = dto.nombreRol;
+      const roleKey = normalizeRoleName(dto.nombreRol);
       const pageKey = toModuleKey(dto.codigoModulo);
 
       if (!roleGroups[roleKey]) {
@@ -85,7 +114,7 @@ export const permissionService = {
     // Construir mapa de cache: "nombreRol-codigoModulo" → DTO
     const cacheMap = new Map<string, PermisoMatrizDTO>();
     Object.values(matrixCache!).flat().forEach((dto) => {
-      cacheMap.set(`${dto.nombreRol}-${dto.codigoModulo}`, dto);
+      cacheMap.set(`${normalizeRoleName(dto.nombreRol)}-${dto.codigoModulo}`, dto);
     });
 
     const promises: Promise<any>[] = [];
