@@ -12,7 +12,7 @@ import { usePageTitle } from '../hooks/usePageTitle';
 import { useHistory } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ISolicitud, IItemSolicitud } from '../types/solicitud.types';
-import { actualizarEstadoBodegaService, obtenerEntregasDiariasService, IEntregaDiaria, ISalaEntrega } from '../services/solicitud-service';
+import { actualizarEstadoBodegaService, obtenerEntregasDiariasService, prepararEntregaService, IEntregaDiaria, ISalaEntrega, ISolicitudEntrega } from '../services/solicitud-service';
 import { obtenerRecetaPorIdService } from '../services/receta-service';
 import { obtenerFiltrosInventarioService } from '../services/producto-service';
 import { buscarBodegaTransitoService, buscarBodegaTransitoPorCodigoService, obtenerBodegaPaginadaService, IBodegaTransitoItem } from '../services/bodega-transito-service';
@@ -142,7 +142,7 @@ const fmtCantidadEntrega = (n: number): string =>
 // COMPONENTE EntregaSalaCard — muestra una sala con sus entregas del día
 // ─────────────────────────────────────────────────────────────────────────────
 
-const EntregaSalaCard: React.FC<{ sala: ISalaEntrega }> = ({ sala }) => {
+const EntregaSalaCard: React.FC<{ sala: ISalaEntrega; onPreparar: (sol: ISolicitudEntrega) => void }> = ({ sala, onPreparar }) => {
   const [expandidos, setExpandidos] = React.useState<Set<number>>(new Set());
   const toggle = (id: number) =>
     setExpandidos(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
@@ -248,6 +248,17 @@ const EntregaSalaCard: React.FC<{ sala: ISalaEntrega }> = ({ sala }) => {
                       <span>{sol.observaciones}</span>
                     </div>
                   )}
+                  <div className="flex justify-end mt-3">
+                    <Button
+                      size="sm"
+                      color="secondary"
+                      variant="flat"
+                      startContent={<Icon icon="lucide:package-check" width={14} />}
+                      onPress={() => onPreparar(sol)}
+                    >
+                      Preparar Entrega
+                    </Button>
+                  </div>
                 </div>
               )}
             </div>
@@ -270,6 +281,78 @@ const BodegaTransitoPage: React.FC = () => {
   const [entregasData,       setEntregasData]       = React.useState<IEntregaDiaria[]>([]);
   const [isLoadingEntregas,  setIsLoadingEntregas]  = React.useState(false);
   const entregasCache = React.useRef<Map<string, IEntregaDiaria[]>>(new Map());
+
+  // ── Preparar Entrega ──
+  type ProductoEdit = {
+    idProducto: number;
+    nombreProducto: string;
+    unidadAbreviada: string;
+    stockTransito: number;
+    cantidadSolicitada: number;
+    cantidadAEntregar: number;
+  };
+  const [preparandoSolicitud, setPreparandoSolicitud] = React.useState<ISolicitudEntrega | null>(null);
+  const [productosEdit,       setProductosEdit]       = React.useState<ProductoEdit[]>([]);
+  const [isConfirmando,       setIsConfirmando]       = React.useState(false);
+  const [preparaError,        setPreparaError]        = React.useState<string | null>(null);
+
+  const abrirPreparar = React.useCallback((sol: ISolicitudEntrega) => {
+    setPreparandoSolicitud(sol);
+    setProductosEdit(sol.productos.map(p => ({
+      idProducto:        p.idProducto,
+      nombreProducto:    p.nombreProducto,
+      unidadAbreviada:   p.unidadAbreviada,
+      stockTransito:     p.stockTransito ?? 0,
+      cantidadSolicitada: p.cantidad,
+      cantidadAEntregar:  p.cantidad,
+    })));
+    setPreparaError(null);
+  }, []);
+
+  const confirmarEntrega = React.useCallback(async () => {
+    if (!preparandoSolicitud) return;
+    setIsConfirmando(true);
+    setPreparaError(null);
+    try {
+      await prepararEntregaService({
+        idSolicitud: preparandoSolicitud.idSolicitud,
+        productos: productosEdit.map(p => ({
+          idProducto:        p.idProducto,
+          stockEnVista:      p.stockTransito,
+          cantidadAEntregar: p.cantidadAEntregar,
+        })),
+      });
+      toast.success('Entrega preparada y solicitud procesada correctamente.');
+      setPreparandoSolicitud(null);
+      // Invalidar caché y recargar la semana actual
+      entregasCache.current.clear();
+      const range = getWeekRange(selectedDate);
+      setIsLoadingEntregas(true);
+      obtenerEntregasDiariasService(range)
+        .then(data => { entregasCache.current.set(getWeekKey(selectedDate), data); setEntregasData(data); })
+        .catch(() => toast.error('Error al recargar los pedidos'))
+        .finally(() => setIsLoadingEntregas(false));
+    } catch (err: any) {
+      if (err.response?.status === 409) {
+        // Operación exitosa pero con desincronización
+        toast.warning(err.response.data?.mensaje ?? 'Entrega preparada. El stock estaba desincronizado.');
+        setPreparandoSolicitud(null);
+        entregasCache.current.clear();
+        const range = getWeekRange(selectedDate);
+        setIsLoadingEntregas(true);
+        obtenerEntregasDiariasService(range)
+          .then(data => { entregasCache.current.set(getWeekKey(selectedDate), data); setEntregasData(data); })
+          .catch(() => toast.error('Error al recargar los pedidos'))
+          .finally(() => setIsLoadingEntregas(false));
+      } else if (err.response?.status === 422) {
+        setPreparaError(err.response.data?.mensaje ?? 'Stock insuficiente para uno o más productos.');
+      } else {
+        setPreparaError('Ocurrió un error inesperado. Intenta nuevamente.');
+      }
+    } finally {
+      setIsConfirmando(false);
+    }
+  }, [preparandoSolicitud, productosEdit, selectedDate, toast]);
 
   const memoizedTitle = React.useMemo(() => (
     <div className="flex items-center gap-2">
@@ -981,7 +1064,7 @@ const BodegaTransitoPage: React.FC = () => {
                           ) : (
                             <div className="space-y-3">
                               {entregasHoy.salas.map(sala => (
-                                <EntregaSalaCard key={sala.idSala} sala={sala} />
+                                <EntregaSalaCard key={sala.idSala} sala={sala} onPreparar={abrirPreparar} />
                               ))}
                             </div>
                           )}
@@ -1001,7 +1084,7 @@ const BodegaTransitoPage: React.FC = () => {
                           ) : (
                             <div className="space-y-3 opacity-80">
                               {entregasManana.salas.map(sala => (
-                                <EntregaSalaCard key={sala.idSala} sala={sala} />
+                                <EntregaSalaCard key={sala.idSala} sala={sala} onPreparar={abrirPreparar} />
                               ))}
                             </div>
                           )}
@@ -1140,6 +1223,117 @@ const BodegaTransitoPage: React.FC = () => {
         }
       `}</style>
     </div>
+
+    {/* ── Modal Preparar Entrega ── */}
+    <Modal
+      isOpen={!!preparandoSolicitud}
+      onClose={() => { if (!isConfirmando) setPreparandoSolicitud(null); }}
+      size="2xl"
+      isDismissable={!isConfirmando}
+      hideCloseButton={isConfirmando}
+      scrollBehavior="inside"
+    >
+      <ModalContent>
+        <ModalHeader className="flex flex-col gap-0.5 pb-1">
+          <div className="flex items-center gap-2">
+            <Icon icon="lucide:package-check" width={18} className="text-secondary shrink-0" />
+            <span className="text-base font-bold">Preparar Entrega</span>
+          </div>
+          {preparandoSolicitud && (
+            <p className="text-xs text-default-500 font-normal pl-6">
+              §{preparandoSolicitud.nombreSeccion} · {preparandoSolicitud.nombreDocente} · {preparandoSolicitud.rangoHoras}
+            </p>
+          )}
+        </ModalHeader>
+
+        <ModalBody className="py-2 px-4">
+          <p className="text-xs text-default-500 mb-2">
+            Ajusta las cantidades a entregar si es necesario. Solo se permite entregar hasta el stock disponible en bodega de tránsito.
+          </p>
+
+          {/* Tabla editable */}
+          <div className="rounded-lg border border-default-200 overflow-hidden">
+            <div className="grid grid-cols-[1fr_0.45fr_0.45fr_0.55fr_0.45fr] px-3 py-2 bg-default-50 text-[10px] font-bold text-default-500 uppercase tracking-wider border-b border-default-200">
+              <span>Producto</span>
+              <span className="text-center">Solicitado</span>
+              <span className="text-center">Stock Tránsito</span>
+              <span className="text-center">A Entregar</span>
+              <span className="text-center">Diferencia</span>
+            </div>
+            {productosEdit.map((p, i) => {
+              const dif = p.stockTransito - p.cantidadAEntregar;
+              const insuficiente = dif < 0;
+              return (
+                <div
+                  key={p.idProducto}
+                  className={`grid grid-cols-[1fr_0.45fr_0.45fr_0.55fr_0.45fr] px-3 py-2 text-sm border-t border-default-100 items-center ${insuficiente ? 'bg-danger-50/40' : ''}`}
+                >
+                  <span className="text-default-700 text-xs">{p.nombreProducto}</span>
+                  <span className="font-mono text-center text-default-500 text-xs">
+                    {fmtCantidadEntrega(p.cantidadSolicitada)} {p.unidadAbreviada}
+                  </span>
+                  <span className="font-mono text-center text-default-600 text-xs">
+                    {fmtCantidadEntrega(p.stockTransito)} {p.unidadAbreviada}
+                  </span>
+                  <div className="flex justify-center">
+                    <Input
+                      size="sm"
+                      type="number"
+                      min={0.001}
+                      step={0.001}
+                      value={String(p.cantidadAEntregar)}
+                      onValueChange={val => {
+                        const parsed = parseFloat(val);
+                        if (!isNaN(parsed) && parsed > 0) {
+                          setProductosEdit(prev => prev.map((item, idx) => idx === i ? { ...item, cantidadAEntregar: parsed } : item));
+                        }
+                      }}
+                      className="w-20"
+                      classNames={{ input: 'text-center text-xs font-mono', inputWrapper: insuficiente ? 'border-danger' : '' }}
+                      endContent={<span className="text-[10px] text-default-400">{p.unidadAbreviada}</span>}
+                    />
+                  </div>
+                  <span className={`font-mono font-semibold text-center text-xs ${insuficiente ? 'text-danger-500' : 'text-success-600'}`}>
+                    {dif >= 0 ? '+' : ''}{fmtCantidadEntrega(dif)}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Advertencia stock insuficiente */}
+          {productosEdit.some(p => p.stockTransito - p.cantidadAEntregar < 0) && (
+            <div className="flex items-center gap-2 px-3 py-2 mt-2 bg-danger-50 border border-danger-200 rounded-lg text-xs text-danger-700">
+              <Icon icon="lucide:alert-triangle" width={13} className="shrink-0" />
+              Stock insuficiente en bodega de tránsito para uno o más productos. Reduce las cantidades a entregar.
+            </div>
+          )}
+
+          {/* Error del backend */}
+          {preparaError && (
+            <div className="flex items-start gap-2 px-3 py-2 mt-2 bg-danger-50 border border-danger-200 rounded-lg text-xs text-danger-700">
+              <Icon icon="lucide:x-circle" width={13} className="mt-px shrink-0" />
+              {preparaError}
+            </div>
+          )}
+        </ModalBody>
+
+        <ModalFooter>
+          <Button variant="light" onPress={() => setPreparandoSolicitud(null)} isDisabled={isConfirmando}>
+            Cancelar
+          </Button>
+          <Button
+            color="secondary"
+            onPress={confirmarEntrega}
+            isLoading={isConfirmando}
+            isDisabled={isConfirmando || productosEdit.some(p => p.stockTransito - p.cantidadAEntregar < 0)}
+            startContent={!isConfirmando ? <Icon icon="lucide:check" width={14} /> : undefined}
+          >
+            Confirmar Entrega
+          </Button>
+        </ModalFooter>
+      </ModalContent>
+    </Modal>
     </>
   );
 };

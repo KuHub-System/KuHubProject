@@ -232,6 +232,13 @@ public interface BodegaTransitoRepository extends JpaRepository<BodegaTransito, 
     int addStockInTransit(@Param("idInventario") Integer idInventario,
                              @Param("cantidad") java.math.BigDecimal cantidad);
 
+    /**
+     * Busca el registro activo de bodega de tránsito a partir del ID del producto.
+     * Útil para preparar entregas sin necesitar el id_bodega_transito en el frontend.
+     */
+    @Query("SELECT bt FROM BodegaTransito bt WHERE bt.inventario.producto.idProducto = :idProducto AND bt.activo = true")
+    Optional<BodegaTransito> findActiveByProductoId(@Param("idProducto") Integer idProducto);
+
     // ─── BOOLEANOS ───────────────────────────────────────────────────────────────
 
     /** Verifica si existe una bodega de tránsito asociada al ID de inventario indicado. */
