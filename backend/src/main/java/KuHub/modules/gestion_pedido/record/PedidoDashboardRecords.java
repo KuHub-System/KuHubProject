@@ -234,6 +234,7 @@ public class PedidoDashboardRecords {
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record SolicitudEntregaBodegaJson(
             @JsonProperty("idSolicitud")      Integer    idSolicitud,
+            @JsonProperty("estadoSolicitud")  String     estadoSolicitud,
             @JsonProperty("horaInicio")       String     horaInicio,
             @JsonProperty("rangoHoras")       String     rangoHoras,
             @JsonProperty("nombreSeccion")    String     nombreSeccion,
