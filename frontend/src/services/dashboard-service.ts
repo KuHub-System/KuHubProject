@@ -3,11 +3,6 @@
  * Funciones compartidas para todos los tipos de dashboard
  */
 
-import { 
-  obtenerTodasSolicitudesService,
-  obtenerMisSolicitudesService,
-  obtenerConteoSolicitudesService,
-} from './solicitud-service';
 import { obtenerProductos } from './storage-service';
 import { IProducto } from '../types/producto.types';
 import { ISolicitud } from '../types/solicitud.types';
@@ -70,21 +65,23 @@ export const calcularDiasRestantesProceso = (): number => {
 
 /**
  * Cargar datos del dashboard para administradores
+ * NOTA: Los datos reales se cargan en el componente DashboardAdmin 
+ * directamente desde los servicios correspondientes.
  */
 export const cargarDashboardAdmin = async (): Promise<DashboardData> => {
-  const [solicitudesData, conteo] = await Promise.all([
-    obtenerTodasSolicitudesService(),
-    obtenerConteoSolicitudesService(),
-  ]);
-  
   const productosData = obtenerProductos();
   const bajoStock = productosData.filter(p => p.stock <= p.stockMinimo);
   
   return {
-    solicitudes: solicitudesData,
+    solicitudes: [],
     productos: productosData,
     productosBajoStock: bajoStock,
-    conteoSolicitudes: conteo,
+    conteoSolicitudes: {
+      pendientes: 0,
+      aceptadas: 0,
+      rechazadas: 0,
+      total: 0,
+    },
   };
 };
 
@@ -92,28 +89,19 @@ export const cargarDashboardAdmin = async (): Promise<DashboardData> => {
  * Cargar datos del dashboard para profesores
  */
 export const cargarDashboardProfesor = async (): Promise<DashboardData> => {
-  // obtenerMisSolicitudesService ya filtra por el usuario actual
-  const [solicitudesData, conteo] = await Promise.all([
-    obtenerMisSolicitudesService(),
-    obtenerConteoSolicitudesService(),
-  ]);
-  
-  // Filtrar conteo para mostrar solo las del profesor
-  const conteoProfesor = {
-    pendientes: solicitudesData.filter(s => s.estado === 'Pendiente').length,
-    aceptadas: solicitudesData.filter(s => s.estado === 'Aceptada' || s.estado === 'AceptadaModificada').length,
-    rechazadas: solicitudesData.filter(s => s.estado === 'Rechazada').length,
-    total: solicitudesData.length,
-  };
-  
   const productosData = obtenerProductos();
   const bajoStock = productosData.filter(p => p.stock <= p.stockMinimo);
   
   return {
-    solicitudes: solicitudesData,
+    solicitudes: [],
     productos: productosData,
     productosBajoStock: bajoStock,
-    conteoSolicitudes: conteoProfesor,
+    conteoSolicitudes: {
+      pendientes: 0,
+      aceptadas: 0,
+      rechazadas: 0,
+      total: 0,
+    },
   };
 };
 
@@ -137,4 +125,3 @@ export const cargarDashboardBodega = async (): Promise<DashboardData> => {
     },
   };
 };
-
