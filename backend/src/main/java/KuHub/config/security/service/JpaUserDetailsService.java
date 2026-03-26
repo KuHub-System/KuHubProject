@@ -39,7 +39,10 @@ public class JpaUserDetailsService implements UserDetailsService {
 
         // Construimos la lista de autoridades basada en el String nombreRol de la proyección
         List<GrantedAuthority> grantedAuthorities = new ArrayList<>();
-        String nombreRolConPrefijo = "ROLE_" + data.getNombreRol().toUpperCase();
+        // Normalizamos el nombre del rol: Mayúsculas y reemplaza guiones por guiones bajos
+        // para que coincida con los hasRole("CO_ADMINISTRADOR") de SpringSecurityConfig
+        String nombreRolLimpio = data.getNombreRol().toUpperCase().replace("-", "_").replace(" ", "_");
+        String nombreRolConPrefijo = "ROLE_" + nombreRolLimpio;
         grantedAuthorities.add(new SimpleGrantedAuthority(nombreRolConPrefijo));
 
         // Retornamos el usuario estándar de Spring usando los datos de tu proyección
