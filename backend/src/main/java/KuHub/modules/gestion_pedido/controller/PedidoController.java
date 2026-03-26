@@ -1,13 +1,18 @@
 package KuHub.modules.gestion_pedido.controller;
 
+import KuHub.modules.gestion_inventario.exceptions.StockDesincronizadoException;
+import KuHub.modules.gestion_inventario.exceptions.StockInsuficienteException;
 import KuHub.modules.gestion_pedido.record.ChangePedidoStatusDTO;
 import KuHub.modules.gestion_pedido.record.CreateOrder;
 import KuHub.modules.gestion_pedido.record.PedidoDashboardRecords;
+import KuHub.modules.gestion_pedido.record.PrepararEntregaDTO;
 import java.util.List;
+import java.util.Map;
 import KuHub.modules.gestion_pedido.services.PedidoService;
 import KuHub.modules.gestion_solicitud.dtos.request.DateRangeDTO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
@@ -49,6 +54,35 @@ public class PedidoController {
         return ResponseEntity
                 .status(200)
                 .body(pedidoService.obtenerEntregasDiarias(request));
+    }
+
+    /**
+     * Prepara la entrega de una solicitud ACEPTADA:
+     * descuenta los productos de bodega de tránsito (SALIDA_BODEGA) y marca
+     * la solicitud como PROCESADO.
+     *
+     * Respuestas:
+     *  200 OK      → entrega preparada correctamente
+     *  409 CONFLICT → entrega realizada pero con stock desincronizado (frontend debe refrescar)
+     *  422 UNPROCESSABLE_ENTITY → stock insuficiente, no se realizó ningún cambio
+     *
+     * Ejemplo: POST /api/v1/pedido/preparar-entrega
+     * Body: { "idSolicitud": 5, "productos": [{ "idProducto": 3, "stockEnVista": 6.2, "cantidadAEntregar": 0.153 }] }
+     */
+    @PostMapping("/preparar-entrega")
+    public ResponseEntity<?> prepararEntrega(@Validated @RequestBody PrepararEntregaDTO request) {
+        try {
+            String msg = pedidoService.prepararEntrega(request);
+            return ResponseEntity.ok(Map.of("mensaje", msg, "exito", true));
+        } catch (StockDesincronizadoException ex) {
+            // La entrega SÍ se realizó, pero el stock estaba desincronizado
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(Map.of("mensaje", ex.getMessage(), "exito", true, "desincronizado", true));
+        } catch (StockInsuficienteException ex) {
+            // No se realizó ningún cambio → el frontend muestra el error en el modal
+            return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
+                    .body(Map.of("mensaje", ex.getMessage(), "exito", false));
+        }
     }
 
     /** ✅✅ En uso: Cambia el estado de uno o varios pedidos de forma masiva.

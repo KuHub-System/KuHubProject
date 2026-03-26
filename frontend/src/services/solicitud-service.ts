@@ -474,6 +474,32 @@ export const obtenerEntregasDiariasService = async (
   return response.data;
 };
 
+// ── Preparar Entrega (POST /pedido/preparar-entrega) ──────────────────────────
+
+export interface IPrepararEntregaItem {
+  idProducto: number;
+  stockEnVista: number;
+  cantidadAEntregar: number;
+}
+
+export interface IPrepararEntregaDTO {
+  idSolicitud: number;
+  productos: IPrepararEntregaItem[];
+}
+
+export interface IPrepararEntregaResult {
+  mensaje: string;
+  exito: boolean;
+  desincronizado?: boolean;
+}
+
+export const prepararEntregaService = async (
+  dto: IPrepararEntregaDTO
+): Promise<IPrepararEntregaResult> => {
+  const response = await api.post<IPrepararEntregaResult>('/pedido/preparar-entrega', dto);
+  return response.data;
+};
+
 const API_BASE_URL = 'http://localhost:8083/api/v1';
 const ENDPOINTS = {
   SOLICITUDES_DETALLES: `${API_BASE_URL}/solicituddocente/detalles`
