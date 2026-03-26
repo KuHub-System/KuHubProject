@@ -208,26 +208,31 @@ public class PedidoDashboardRecords {
     // =====================================================
     // RECORDS PARA CONSULTA 4: Entregas Diarias (Bodega)
     // findEntregasDiariasJson → organizado por fecha → sala → horario
+    // Incluye stockTransito y diferencia por producto
     // =====================================================
 
     /**
-     * Producto individual dentro de una solicitud de entrega.
+     * Producto individual con stock de bodega de tránsito y diferencia.
+     * Exclusivo de CONSULTA 4 (findEntregasDiariasJson).
      */
     @JsonIgnoreProperties(ignoreUnknown = true)
-    public record ProductoEntregaJson(
+    public record ProductoEntregaBodegaJson(
             @JsonProperty("idProducto")      Integer    idProducto,
             @JsonProperty("nombreProducto")  String     nombreProducto,
             @JsonProperty("cantidad")        BigDecimal cantidad,
             @JsonProperty("unidadAbreviada") String     unidadAbreviada,
-            @JsonProperty("observacion")     String     observacion
+            @JsonProperty("observacion")     String     observacion,
+            @JsonProperty("stockTransito")   BigDecimal stockTransito,
+            @JsonProperty("diferencia")      BigDecimal diferencia
     ) {}
 
     /**
-     * Solicitud PROCESADA vinculada a un pedido APROVADO,
-     * con horario y lista de productos a entregar.
+     * Solicitud ACEPTADA vinculada a un pedido APROVADO,
+     * con horario y lista de productos con info de stock.
+     * Exclusivo de CONSULTA 4.
      */
     @JsonIgnoreProperties(ignoreUnknown = true)
-    public record SolicitudEntregaJson(
+    public record SolicitudEntregaBodegaJson(
             @JsonProperty("idSolicitud")      Integer    idSolicitud,
             @JsonProperty("horaInicio")       String     horaInicio,
             @JsonProperty("rangoHoras")       String     rangoHoras,
@@ -237,28 +242,30 @@ public class PedidoDashboardRecords {
             @JsonProperty("cantInscritos")    Integer    cantInscritos,
             @JsonProperty("nombreReceta")     String     nombreReceta,
             @JsonProperty("observaciones")    String     observaciones,
-            @JsonProperty("productos")        List<ProductoEntregaJson> productos
+            @JsonProperty("productos")        List<ProductoEntregaBodegaJson> productos
     ) {}
 
     /**
-     * Sala con sus solicitudes para un día específico, ordenadas por horario.
+     * Sala con sus solicitudes para un día específico.
+     * Exclusivo de CONSULTA 4.
      */
     @JsonIgnoreProperties(ignoreUnknown = true)
-    public record SalaEntregaJson(
+    public record SalaEntregaBodegaJson(
             @JsonProperty("idSala")      Integer idSala,
             @JsonProperty("nombreSala")  String  nombreSala,
             @JsonProperty("codSala")     String  codSala,
-            @JsonProperty("solicitudes") List<SolicitudEntregaJson> solicitudes
+            @JsonProperty("solicitudes") List<SolicitudEntregaBodegaJson> solicitudes
     ) {}
 
     /**
-     * Registro de entregas para un día: fecha + salas con sus solicitudes.
+     * Registro maestro de entregas para un día: fecha + salas + stock.
+     * Exclusivo de CONSULTA 4 (findEntregasDiariasJson).
      */
     @JsonIgnoreProperties(ignoreUnknown = true)
-    public record EntregaDiariaJson(
-            @JsonProperty("fecha")             LocalDate           fecha,
-            @JsonProperty("totalSolicitudes")  Integer             totalSolicitudes,
-            @JsonProperty("salas")             List<SalaEntregaJson> salas
+    public record EntregaDiariaBodegaJson(
+            @JsonProperty("fecha")            LocalDate                fecha,
+            @JsonProperty("totalSolicitudes") Integer                  totalSolicitudes,
+            @JsonProperty("salas")            List<SalaEntregaBodegaJson> salas
     ) {}
 }
 
