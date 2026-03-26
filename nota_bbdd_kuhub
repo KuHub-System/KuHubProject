@@ -1902,6 +1902,64 @@ ORDER BY m.orden_modulo, r.id_rol;
 
 
 -- ================================================================
+-- NUEVOS MÓDULOS: GESTION_CATEGORIAS y GESTION_UNIDADES
+-- (Ejecutar después del bloque inicial de INSERT INTO modulo)
+-- Controla los botones de icono Tags / Scale en la página Inventario
+-- ================================================================
+
+-- Paso A: Insertar los dos nuevos módulos
+-- orden 2.1 y 2.2 → van después de INVENTARIO (orden 2), antes de SOLICITUD (orden 3)
+-- Usamos orden 14 y 15 para no romper los existentes; ajustar si se desea intercalar
+INSERT INTO modulo (codigo_modulo, nombre_modulo, descripcion_modulo, icono_modulo, orden_modulo)
+VALUES
+    ('GESTION_CATEGORIAS', 'Gestión de Categorías', 'Administración de categorías de productos del inventario', 'lucide:tags',  14),
+    ('GESTION_UNIDADES',   'Gestión de Unidades',   'Administración de unidades de medida del inventario',     'lucide:scale', 15)
+ON CONFLICT (codigo_modulo) DO NOTHING;
+
+-- Paso B: Permisos de los nuevos módulos por rol
+-- (Lógica: solo roles que gestionan inventario tienen acceso a crear/editar categorías y unidades)
+
+-- ADMINISTRADOR → acceso total
+INSERT INTO permiso_rol (id_rol, id_modulo, puede_leer, puede_crear, puede_actualizar, puede_eliminar)
+SELECT (SELECT id_rol FROM rol WHERE nombre_rol = 'ADMINISTRADOR' LIMIT 1), id_modulo, TRUE, TRUE, TRUE, TRUE
+FROM modulo WHERE codigo_modulo IN ('GESTION_CATEGORIAS','GESTION_UNIDADES') AND enabled = TRUE
+ON CONFLICT (id_rol, id_modulo) DO UPDATE
+    SET puede_leer = TRUE, puede_crear = TRUE, puede_actualizar = TRUE, puede_eliminar = TRUE;
+
+-- CO-ADMINISTRADOR → acceso total
+INSERT INTO permiso_rol (id_rol, id_modulo, puede_leer, puede_crear, puede_actualizar, puede_eliminar)
+SELECT (SELECT id_rol FROM rol WHERE nombre_rol = 'CO_ADMINISTRADOR' LIMIT 1), id_modulo, TRUE, TRUE, TRUE, TRUE
+FROM modulo WHERE codigo_modulo IN ('GESTION_CATEGORIAS','GESTION_UNIDADES') AND enabled = TRUE
+ON CONFLICT (id_rol, id_modulo) DO UPDATE
+    SET puede_leer = TRUE, puede_crear = TRUE, puede_actualizar = TRUE, puede_eliminar = TRUE;
+
+-- ENCARGADO DE BODEGA → puede crear/editar categorías y unidades (gestiona inventario)
+INSERT INTO permiso_rol (id_rol, id_modulo, puede_leer, puede_crear, puede_actualizar, puede_eliminar)
+SELECT (SELECT id_rol FROM rol WHERE nombre_rol = 'ENCARGADO_BODEGA' LIMIT 1), id_modulo, TRUE, TRUE, TRUE, FALSE
+FROM modulo WHERE codigo_modulo IN ('GESTION_CATEGORIAS','GESTION_UNIDADES') AND enabled = TRUE
+ON CONFLICT (id_rol, id_modulo) DO UPDATE
+    SET puede_leer = TRUE, puede_crear = TRUE, puede_actualizar = TRUE, puede_eliminar = FALSE;
+
+-- ASISTENTE DE BODEGA → solo lectura (ve las categorías/unidades pero no las modifica)
+INSERT INTO permiso_rol (id_rol, id_modulo, puede_leer, puede_crear, puede_actualizar, puede_eliminar)
+SELECT (SELECT id_rol FROM rol WHERE nombre_rol = 'ASISTENTE_BODEGA' LIMIT 1), id_modulo, TRUE, FALSE, FALSE, FALSE
+FROM modulo WHERE codigo_modulo IN ('GESTION_CATEGORIAS','GESTION_UNIDADES') AND enabled = TRUE
+ON CONFLICT (id_rol, id_modulo) DO UPDATE
+    SET puede_leer = TRUE, puede_crear = FALSE, puede_actualizar = FALSE, puede_eliminar = FALSE;
+
+-- GESTOR DE PEDIDOS, PROFESOR A CARGO, DOCENTE → sin acceso
+INSERT INTO permiso_rol (id_rol, id_modulo, puede_leer, puede_crear, puede_actualizar, puede_eliminar)
+SELECT r.id_rol, m.id_modulo, FALSE, FALSE, FALSE, FALSE
+FROM rol r
+CROSS JOIN modulo m
+WHERE r.nombre_rol IN ('GESTOR_PEDIDOS','PROFESOR_A_CARGO','DOCENTE')
+  AND m.codigo_modulo IN ('GESTION_CATEGORIAS','GESTION_UNIDADES')
+  AND m.enabled = TRUE
+ON CONFLICT (id_rol, id_modulo) DO UPDATE
+    SET puede_leer = FALSE, puede_crear = FALSE, puede_actualizar = FALSE, puede_eliminar = FALSE;
+
+
+-- ================================================================
 -- ROLLBACK (si necesitas deshacer los inserts de permisos):
 -- ================================================================
 
