@@ -83,18 +83,20 @@ export const PermissionProvider: React.FC<{ children: ReactNode }> = ({ children
       const all = await permissionService.getPermissions();
       setAllPermissions(all);
 
-      // Buscar los permisos del rol del usuario actual
+      // Normalizar para comparar: "PROFESOR_A_CARGO" ↔ "Profesor a Cargo"
+      const normalizar = (s: string) =>
+        (s ?? '').toLowerCase().replace(/[_-]/g, ' ').trim();
+
+      const userRolNorm = normalizar(user.rol ?? '');
+
+      // Buscar los permisos del rol del usuario actual usando normalización
       const myRolePerms = all.find((p) =>
-        p.role.toLowerCase() === user.rol?.toLowerCase()
+        normalizar(p.role) === userRolNorm
       )?.permissions ?? null;
 
       setUserPermissions(myRolePerms);
 
-      // Reconstruir cache CRUD desde la matriz (más granular)
-      // La matriz del backend tiene los booleans exactos; los necesitamos para
-      // canRead/canCreate/canUpdate/canDelete individuales
-      // Los reconstruimos del AccessLevel como aproximación conservadora:
-      //  write → {r,c,u,d} = true; read → {r} = true; none → todos false
+      // Reconstruir cache CRUD desde la matriz
       const newCache = new Map<ModuleKey, { r: boolean; c: boolean; u: boolean; d: boolean }>();
       if (myRolePerms) {
         for (const [key, level] of Object.entries(myRolePerms)) {
