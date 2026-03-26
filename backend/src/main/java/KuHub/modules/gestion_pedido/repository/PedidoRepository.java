@@ -2,11 +2,13 @@ package KuHub.modules.gestion_pedido.repository;
 
 import KuHub.modules.gestion_pedido.entity.Pedido;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
+import java.util.List;
 
 @Repository
 public interface PedidoRepository extends JpaRepository<Pedido, Integer> {
@@ -426,5 +428,18 @@ public interface PedidoRepository extends JpaRepository<Pedido, Integer> {
             @Param("fechaInicio") LocalDate fechaInicio,
             @Param("fechaFin") LocalDate fechaFin
     );
+
+
+    // =====================================================
+    // UPDATE MASIVO: cambia el estado de N pedidos a la vez
+    // Retorna número de filas afectadas
+    // =====================================================
+    @Modifying
+    @Query(value = """
+        UPDATE pedido
+        SET estado_pedido = CAST(:estado AS estado_pedido_type)
+        WHERE id_pedido IN (:ids)
+        """, nativeQuery = true)
+    int updateMassiveStatePedido(@Param("ids") List<Integer> ids, @Param("estado") String estado);
 
 }

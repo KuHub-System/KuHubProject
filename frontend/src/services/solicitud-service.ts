@@ -417,6 +417,18 @@ export const consolidatePedidoQueryService = async (
   return response.data;
 };
 
+// ── Aprobar pedidos (PATCH /pedido/change-massive-status) ─────────────────────
+
+export interface IChangePedidoStatusDTO {
+  idsPedidos: number[];
+  estado: string; // "PROCESADO" | "CANCELADO"
+}
+
+export const aprobarPedidosService = async (dto: IChangePedidoStatusDTO): Promise<boolean> => {
+  const response = await api.patch<boolean>('/pedido/change-massive-status', dto);
+  return response.data;
+};
+
 const API_BASE_URL = 'http://localhost:8083/api/v1';
 const ENDPOINTS = {
   SOLICITUDES_DETALLES: `${API_BASE_URL}/solicituddocente/detalles`

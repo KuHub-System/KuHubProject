@@ -1,5 +1,6 @@
 package KuHub.modules.gestion_pedido.controller;
 
+import KuHub.modules.gestion_pedido.record.ChangePedidoStatusDTO;
 import KuHub.modules.gestion_pedido.record.CreateOrder;
 import KuHub.modules.gestion_pedido.record.PedidoDashboardRecords;
 import KuHub.modules.gestion_pedido.services.PedidoService;
@@ -8,10 +9,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+
 
 @RestController
 @RequiredArgsConstructor
@@ -36,5 +35,18 @@ public class PedidoController {
         return ResponseEntity
                 .status(201)
                 .body(pedidoService.consolidateOrder(request));
+    }
+
+    /** ✅✅ En uso: Cambia el estado de uno o varios pedidos de forma masiva.
+     *  Retorna true si al menos una fila fue afectada, junto con las filas modificadas.
+     *  Ejemplo: PATCH /api/v1/pedido/change-massive-status
+     *  Body: { "idsPedidos": [1, 2], "estado": "PROCESADO" }
+     */
+    @PatchMapping("/change-massive-status")
+    public ResponseEntity<Boolean> changeMassiveStatus(
+            @Validated @RequestBody ChangePedidoStatusDTO request){
+        return ResponseEntity
+                .status(200)
+                .body(pedidoService.changeMassiveStatus(request));
     }
 }
