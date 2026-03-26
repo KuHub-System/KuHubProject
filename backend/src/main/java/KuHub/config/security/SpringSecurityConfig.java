@@ -194,8 +194,9 @@ public class SpringSecurityConfig {
                         // ========================================
                         // ENDPOINTS DE PERMISOS (CRUD por Rol × Módulo)
                         // ========================================
-                        // Matriz de permisos: solo ADMINISTRADOR puede verla y editarla
-                        .requestMatchers(HttpMethod.GET, "/api/v1/permisos/matrix").hasRole("ADMINISTRADOR")
+                        // Matriz de permisos: cualquier usuario autenticado puede leerla
+                        // (cada usuario necesita su fila para saber qué páginas puede ver)
+                        .requestMatchers(HttpMethod.GET, "/api/v1/permisos/matrix").authenticated()
                         // Permisos de un rol: cualquier usuario autenticado (carga sus propios permisos)
                         .requestMatchers(HttpMethod.GET, "/api/v1/permisos/rol/**").authenticated()
                         // Crear / actualizar permisos: solo ADMINISTRADOR
