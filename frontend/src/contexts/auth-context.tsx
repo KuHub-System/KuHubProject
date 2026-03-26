@@ -115,52 +115,52 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, [reloadRoles]);
 
-  // 🆕 Efecto mejorado: Espera a que TANTO el usuario COMO los roles estén cargados
+  // ===================================================================
+  // EFECTO ÚNICO: Matchear rol + controlar isLoading de forma atómica
+  // Elimina la race condition de los efectos anteriores (duplicados)
+  // ===================================================================
   React.useEffect(() => {
-    if (user && rolesLoaded && availableRoles.length > 0) {
-      console.log(`[AUTH] Intentando matchear rol para: "${user.rol}" de ${availableRoles.length} roles disponibles`);
+    // 1️⃣ Si no hay usuario → no hay nada que matchear
+    if (!user) {
+      setUserRole(null);
+      setIsLoading(false);
+      console.log('[AUTH] No hay usuario, deteniendo carga.');
+      return;
+    }
 
-      const rolActualizado = availableRoles.find(rol => {
-        if (!user.rol || !rol.nombre) return false;
-        const normalizar = (s: string) => s.toLowerCase()
-          .replace(/[_-]/g, ' ')
-          .trim();
-        
-        return normalizar(rol.nombre) === normalizar(user.rol);
-      });
+    // 2️⃣ Si los roles aún no están cargados → seguimos esperando
+    if (!rolesLoaded || availableRoles.length === 0) {
+      console.log('[AUTH] Esperando carga de roles...');
+      return; // isLoading sigue en true
+    }
 
-      if (rolActualizado) {
-        console.log('[AUTH] Rol matcheado exitosamente:', rolActualizado.nombre);
-        if (JSON.stringify(userRole?.permisos) !== JSON.stringify(rolActualizado.permisos)) {
-          setUserRole(rolActualizado);
-        }
-      } else {
-        setUserRole(null);
-      }
-    } else if (!user) {
+    // 3️⃣ Intentar matchear el rol del usuario
+    console.log(`[AUTH] Intentando matchear rol para: "${user.rol}" de ${availableRoles.length} roles disponibles`);
+
+    const normalizar = (s: string) => s.toLowerCase().replace(/[_-]/g, ' ').trim();
+
+    const rolMatcheado = availableRoles.find(rol => {
+      if (!user.rol || !rol.nombre) return false;
+      return normalizar(rol.nombre) === normalizar(user.rol);
+    });
+
+    if (rolMatcheado) {
+      console.log('[AUTH] ✅ Rol matcheado exitosamente:', rolMatcheado.nombre, '→ Permisos:', rolMatcheado.permisos);
+      setUserRole(rolMatcheado);
+    } else {
+      console.warn(`[AUTH] ⚠️ Rol "${user.rol}" NO matcheó con ningún rol disponible:`, availableRoles.map(r => r.nombre));
       setUserRole(null);
     }
+
+    // 4️⃣ Ya procesamos todo → liberar la carga
+    setIsLoading(false);
+    console.log('[AUTH] Estado de Sincronización:', { isAuthenticated: true, hasRole: !!rolMatcheado, rolesLoaded, isLoading: false });
+
   }, [user, availableRoles, rolesLoaded]);
 
-  // 🆕 Efecto mejorado: Solo marca como "no loading" cuando TODO esté listo
-  React.useEffect(() => {
-    // console.log('[AUTH] Sync check:', { rolesLoaded, user: !!user, hasRole: !!userRole });
-    
-    if (rolesLoaded) {
-      if (user) {
-        // Si hay usuario, esperamos a que el rol se resuelva (success o fail)
-        // El matching de rol ocurre en el efecto anterior.
-        // Si ya tenemos userRole O si availableRoles ya se procesaron, liberamos.
-        if (userRole !== null || (availableRoles.length > 0 && rolesLoaded)) {
-           // console.log('[AUTH] Liberando loading...');
-           setIsLoading(false);
-        }
-      } else {
-        setIsLoading(false);
-      }
-    }
-  }, [rolesLoaded, user, userRole, availableRoles.length]);
-
+  // ===================================================================
+  // EFECTO DE INICIALIZACIÓN: Cargar usuario de localStorage al montar
+  // ===================================================================
   React.useEffect(() => {
     const checkAuth = () => {
       try {
@@ -178,9 +178,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           };
 
           setUser(userData);
+          // isLoading se resolverá en el efecto unificado de arriba
         } else {
           setUser(null);
-          // Si no hay usuario, podemos marcar como "no loading" inmediatamente
           setIsLoading(false);
         }
       } catch (error: any) {
@@ -192,41 +192,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     checkAuth();
   }, []);
 
-  // 🆕 Nuevo efecto: Solo marca isLoading=false cuando TODO esté listo
-  React.useEffect(() => {
-    console.log('[AUTH] Estado de Sincronización:', { isAuthenticated: !!user, hasRole: !!userRole, rolesLoaded, isLoading });
-    if (rolesLoaded) {
-      if (user) {
-        if (availableRoles.length > 0) {
-          console.log('[AUTH] Listo para terminar carga (User + Roles presentes)');
-          setIsLoading(false);
-        }
-      } else {
-        console.log('[AUTH] No hay usuario, deteniendo carga.');
-        setIsLoading(false);
-      }
-    }
-  }, [rolesLoaded, user, userRole, availableRoles.length]);
-
   const hasPermission = (requiredRoles: string[]): boolean => {
     if (!user) return false;
     if (!requiredRoles || requiredRoles.length === 0) return true;
-    return requiredRoles.includes(user.rol);
+
+    // Normalizar para comparar
+    const normalizar = (s: string) => s.toLowerCase().replace(/[_-]/g, ' ').trim();
+    const rolNormalizado = normalizar(user.rol);
+    return requiredRoles.some(r => normalizar(r) === rolNormalizado);
   };
 
   const hasSpecificPermission = (permission: string): boolean => {
-    // 🆕 Si todavía está cargando, retorna false
-    if (isLoading) {
-      return false;
-    }
-
     if (!user || !userRole) {
       return false;
     }
 
-    const tienePermiso = userRole.permisos.includes(permission);
-
-    return tienePermiso;
+    return userRole.permisos.includes(permission);
   };
 
   const getUserPermissions = (): string[] => {
@@ -257,15 +238,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       };
 
       setUser(userData);
-
+      // El efecto unificado se encargará de matchear el rol y luego poner isLoading en false
 
       return true;
     } catch (error) {
       setIsLoading(false);
       return false;
-    } finally {
-      // Nota: Si success, el efecto se encarga de setIsLoading(false)
-      // pero si hay error, debemos asegurarnos de que no se quede en true
     }
   };
 
