@@ -3,6 +3,8 @@ import { NavLink, useLocation, useHistory } from 'react-router-dom';
 import { Button, Divider } from '@heroui/react';
 import { Icon } from '@iconify/react';
 import { useAuth } from '../contexts/auth-context';
+import { usePermission } from '../contexts/permission-context';
+import { PAGE_TO_MODULE } from '../types/permissions.types';
 import { motion } from 'framer-motion';
 
 const LOGO_URL = new URL('./assets/KuHubLogoWBG.png', import.meta.url).href;
@@ -34,8 +36,8 @@ interface MenuItem {
  * @returns {JSX.Element} El componente Sidebar.
  */
 const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
-  // 🔥 Ahora usamos canAccessPage para verificar permisos dinámicos
   const { user, canAccessPage, logout } = useAuth();
+  const { canAccess, isAdmin } = usePermission();
   const location = useLocation();
   const history = useHistory();
 
@@ -100,7 +102,12 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
     ...category,
     items: category.items.filter(item => {
       if (!user) return false;
-      return canAccessPage(item.pageId);
+      if (isAdmin) return true;
+      // Acceso estático (roles-config.ts) O acceso dinámico (BD via permission-context)
+      const staticAccess  = canAccessPage(item.pageId);
+      const moduleKey     = PAGE_TO_MODULE[item.pageId];
+      const dynamicAccess = moduleKey ? canAccess(moduleKey, 'read') : false;
+      return staticAccess || dynamicAccess;
     })
   })).filter(category => category.items.length > 0);
 
