@@ -233,6 +233,14 @@ public class SpringSecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/v*/usuarios/**")
                         .hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR", "GESTOR_PEDIDOS", "PROFESOR_A_CARGO")
 
+                        // 2b. POST de LECTURA para usuarios (paginación/búsqueda): mismos roles que GET
+                        .requestMatchers(HttpMethod.POST,
+                                "/api/v*/usuario/find-all-users-with-pagination",
+                                "/api/v*/usuario/find-users-by-filter",
+                                "/api/v*/usuarios/find-all-users-with-pagination",
+                                "/api/v*/usuarios/find-users-by-filter"
+                        ).hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR", "GESTOR_PEDIDOS", "PROFESOR_A_CARGO")
+
                         // 3. GESTIÓN ADMINISTRATIVA (Crear/Editar otros usuarios)
                         .requestMatchers(HttpMethod.POST, "/api/v*/usuarios").hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR")
                         .requestMatchers(HttpMethod.PUT, "/api/v*/usuarios/**").hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR")
@@ -303,7 +311,19 @@ public class SpringSecurityConfig {
                         // 1. Lectura: Permitida para todos (Público o Autenticados)
                         .requestMatchers(HttpMethod.GET, "/api/v*/inventario/**").permitAll()
 
-                        // 2. Creación (POST): Administradores, Co-Admins, Gestores y Encargados de Bodega
+                        // 2a. POST de LECTURA (paginación/búsqueda): cualquier usuario autenticado puede consultar
+                        //     Necesario para roles que ven el inventario en otras páginas (ej: al crear recetas)
+                        .requestMatchers(HttpMethod.POST,
+                                "/api/v*/inventario/paged-inventory",
+                                "/api/v*/inventario/search-inventory",
+                                "/api/v*/inventario/search-inventory-by-code",
+                                "/api/v*/inventario/massive-producto-inventory-listing",
+                                "/api/v*/inventario/search-bodega",
+                                "/api/v*/inventario/search-by-cod-producto",
+                                "/api/v*/inventario/paged-bodega"
+                        ).authenticated()
+
+                        // 2b. Creación/modificación (POST): Administradores, Co-Admins, Gestores y Encargados de Bodega
                         .requestMatchers(HttpMethod.POST, "/api/v*/inventario/**")
                         .hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR", "GESTOR_PEDIDOS", "ENCARGADO_BODEGA")
 
@@ -322,7 +342,11 @@ public class SpringSecurityConfig {
                         // ENDPOINTS DE MOVIMIENTOS DE INVENTARIO
                         // ========================================
 
-                        // Centraliza la seguridad solo para las peticiones POST de movimientos
+                        // POST de lectura/filtro: incluye roles que necesitan ver movimientos
+                        .requestMatchers(HttpMethod.POST, "/api/v1/movimiento/find-all-motion-with-filter")
+                        .hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR", "GESTOR_PEDIDOS", "ENCARGADO_BODEGA", "ASISTENTE_BODEGA")
+
+                        // POST de creación/registro de movimiento
                         .requestMatchers(HttpMethod.POST, "/api/v1/movimiento/**")
                         .hasAnyRole("ADMINISTRADOR", "GESTOR_PEDIDOS", "ENCARGADO_BODEGA", "ASISTENTE_BODEGA")
 
@@ -347,7 +371,14 @@ public class SpringSecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/v*/receta/**", "/api/v*/detalle-receta/**")
                         .hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR", "GESTOR_PEDIDOS", "PROFESOR_A_CARGO", "DOCENTE")
 
-                        // 2. CREACIÓN (POST): Solo quienes diseñan el programa académico
+                        // 2a. POST de LECTURA (paginación/búsqueda): accesible para roles con acceso de lectura
+                        //     Estos endpoints usan POST solo para enviar filtros en el body, no para crear datos
+                        .requestMatchers(HttpMethod.POST,
+                                "/api/v*/receta/find-all-recipes-pagined/**",
+                                "/api/v*/receta/search-recipes"
+                        ).hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR", "PROFESOR_A_CARGO", "DOCENTE")
+
+                        // 2b. CREACIÓN (POST): Solo quienes diseñan el programa académico
                         .requestMatchers(HttpMethod.POST, "/api/v*/receta/**", "/api/v*/detalle-receta/**")
                         .hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR", "PROFESOR_A_CARGO")
 
@@ -413,7 +444,16 @@ public class SpringSecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/v*/solicitudes/**", "/api/v*/solicitud/**")
                         .hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR", "GESTOR_PEDIDOS", "PROFESOR_A_CARGO", "DOCENTE")
 
-                        // 2. CREACIÓN (POST): Roles operativos que pueden solicitar insumos
+                        // 2a. POST de LECTURA (consulta semanal/consolidada): roles con acceso de lectura
+                        //     Estos endpoints usan POST para enviar filtros de fecha, no para crear solicitudes
+                        .requestMatchers(HttpMethod.POST,
+                                "/api/v*/solicitud/find-solicitations-per-week",
+                                "/api/v*/solicitudes/find-solicitations-per-week",
+                                "/api/v*/solicitud/order-for-consolidation",
+                                "/api/v*/solicitudes/order-for-consolidation"
+                        ).hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR", "GESTOR_PEDIDOS", "PROFESOR_A_CARGO", "DOCENTE", "ENCARGADO_BODEGA", "ASISTENTE_BODEGA")
+
+                        // 2b. CREACIÓN (POST): Roles operativos que pueden solicitar insumos
                         .requestMatchers(HttpMethod.POST, "/api/v*/solicitudes/**", "/api/v*/solicitud/**")
                         .hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR", "GESTOR_PEDIDOS", "PROFESOR_A_CARGO")
 
