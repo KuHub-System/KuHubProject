@@ -480,7 +480,15 @@ public class SpringSecurityConfig {
                         "/api/v*/pedido-solicitud/**"
                         ).hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR", "GESTOR_PEDIDOS")
 
-                        // 2. CREACIÓN (POST): Consolidar nuevos pedidos masivos
+                        // 2a. Endpoints de Gestión de Pedidos Diarios (vista bodega):
+                        //     ENCARGADO y ASISTENTE necesitan consultar entregas y preparar despacho
+                        .requestMatchers(HttpMethod.POST,
+                        "/api/v*/pedido/entregas-diarias",
+                        "/api/v*/pedido/preparar-entrega"
+                        ).hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR", "GESTOR_PEDIDOS",
+                                     "ENCARGADO_BODEGA", "ASISTENTE_BODEGA")
+
+                        // 2b. CREACIÓN (POST): Consolidar nuevos pedidos masivos (resto de operaciones)
                         .requestMatchers(HttpMethod.POST,
                         "/api/v*/pedido/**",
                         "/api/v*/detalle-pedido/**",
