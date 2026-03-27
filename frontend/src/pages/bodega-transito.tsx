@@ -143,7 +143,7 @@ const fmtCantidadEntrega = (n: number): string =>
 // COMPONENTE EntregaSalaCard — muestra una sala con sus entregas del día
 // ─────────────────────────────────────────────────────────────────────────────
 
-const EntregaSalaCard: React.FC<{ sala: ISalaEntrega; onPreparar: (sol: ISolicitudEntrega) => void }> = ({ sala, onPreparar }) => {
+const EntregaSalaCard: React.FC<{ sala: ISalaEntrega; onPreparar: (sol: ISolicitudEntrega) => void; canPreparar: boolean }> = ({ sala, onPreparar, canPreparar }) => {
   const [expandidos, setExpandidos] = React.useState<Set<number>>(new Set());
   const toggle = (id: number) =>
     setExpandidos(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
@@ -290,7 +290,7 @@ const EntregaSalaCard: React.FC<{ sala: ISalaEntrega; onPreparar: (sol: ISolicit
                       <span>{sol.observaciones}</span>
                     </div>
                   )}
-                  {!esProcesado && (
+                  {!esProcesado && canPreparar && (
                     <div className="flex justify-end mt-3">
                       <Button
                         size="sm"
@@ -315,7 +315,7 @@ const EntregaSalaCard: React.FC<{ sala: ISalaEntrega; onPreparar: (sol: ISolicit
 
 const BodegaTransitoPage: React.FC = () => {
   const { canCreate: bod_Crear, canUpdate: bod_Editar, canDelete: bod_Eliminar } = useModulePermission('BODEGA_TRANSITO');
-  const { canRead: ped_Leer } = useModulePermission('GESTION_PEDIDOS_DIARIOS');
+  const { canRead: ped_Leer, canCreate: ped_Crear } = useModulePermission('GESTION_PEDIDOS_DIARIOS');
 
   const toast = useToast();
   const history = useHistory();
@@ -1115,7 +1115,7 @@ const BodegaTransitoPage: React.FC = () => {
                           ) : (
                             <div className="space-y-3">
                               {entregasHoy.salas.map(sala => (
-                                <EntregaSalaCard key={sala.idSala} sala={sala} onPreparar={abrirPreparar} />
+                                <EntregaSalaCard key={sala.idSala} sala={sala} onPreparar={abrirPreparar} canPreparar={ped_Crear} />
                               ))}
                             </div>
                           )}
@@ -1135,7 +1135,7 @@ const BodegaTransitoPage: React.FC = () => {
                           ) : (
                             <div className="space-y-3 opacity-80">
                               {entregasManana.salas.map(sala => (
-                                <EntregaSalaCard key={sala.idSala} sala={sala} onPreparar={abrirPreparar} />
+                                <EntregaSalaCard key={sala.idSala} sala={sala} onPreparar={abrirPreparar} canPreparar={ped_Crear} />
                               ))}
                             </div>
                           )}
