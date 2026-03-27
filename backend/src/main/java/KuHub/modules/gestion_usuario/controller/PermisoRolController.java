@@ -8,6 +8,7 @@ import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -16,12 +17,16 @@ import java.util.Map;
 /**
  * Controller REST para gestión de permisos por rol.
  *
+ * La autorización de escritura es DINÁMICA: se verifica contra la tabla permiso_rol
+ * en tiempo de ejecución via DynamicPermissionService (@permSvc).
+ * El rol ADMINISTRADOR siempre tiene acceso; otros roles según lo que el admin haya configurado.
+ *
  * Endpoints:
- *  GET  /api/v1/permisos/matrix        → Matriz completa de permisos (solo ADMINISTRADOR)
- *  GET  /api/v1/permisos/rol/{idRol}   → Permisos de un rol concreto (autenticado)
- *  POST /api/v1/permisos               → Crear permiso             (solo ADMINISTRADOR)
- *  PUT  /api/v1/permisos/{id}          → Actualizar permiso         (solo ADMINISTRADOR)
- *  POST /api/v1/permisos/upsert        → Crear o actualizar permiso (solo ADMINISTRADOR)
+ *  GET  /api/v1/permisos/matrix        → Matriz completa (autenticado)
+ *  GET  /api/v1/permisos/rol/{idRol}   → Permisos de un rol (autenticado)
+ *  POST /api/v1/permisos               → Crear permiso (requiere GESTION_ROLES write)
+ *  PUT  /api/v1/permisos/{id}          → Actualizar permiso (requiere GESTION_ROLES write)
+ *  POST /api/v1/permisos/upsert        → Crear o actualizar (requiere GESTION_ROLES write)
  */
 @RestController
 @RequestMapping("/api/v1/permisos")
@@ -54,18 +59,20 @@ public class PermisoRolController {
 
     /**
      * Crea un nuevo permiso para un Rol × Módulo.
-     * Solo ADMINISTRADOR.
+     * Requiere permiso de escritura sobre GESTION_ROLES (verificado dinámicamente en BD).
      */
     @PostMapping
+    @PreAuthorize("@permSvc.check(authentication, 'GESTION_ROLES', 'write')")
     public ResponseEntity<PermisoRolResponseDTO> crear(@Valid @RequestBody PermisoRolRequestDTO request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(permisoRolService.crearPermiso(request));
     }
 
     /**
      * Actualiza un permiso existente por su ID.
-     * Solo ADMINISTRADOR.
+     * Requiere permiso de escritura sobre GESTION_ROLES (verificado dinámicamente en BD).
      */
     @PutMapping("/{id}")
+    @PreAuthorize("@permSvc.check(authentication, 'GESTION_ROLES', 'write')")
     public ResponseEntity<PermisoRolResponseDTO> actualizar(
             @PathVariable Long id,
             @Valid @RequestBody PermisoRolRequestDTO request) {
@@ -74,9 +81,10 @@ public class PermisoRolController {
 
     /**
      * Crea o actualiza (upsert) el permiso para un Rol × Módulo.
-     * Solo ADMINISTRADOR.
+     * Requiere permiso de escritura sobre GESTION_ROLES (verificado dinámicamente en BD).
      */
     @PostMapping("/upsert")
+    @PreAuthorize("@permSvc.check(authentication, 'GESTION_ROLES', 'write')")
     public ResponseEntity<PermisoRolResponseDTO> upsert(@Valid @RequestBody PermisoRolRequestDTO request) {
         return ResponseEntity.ok(permisoRolService.upsertPermiso(request));
     }

@@ -3,6 +3,7 @@ package KuHub.modules.gestion_usuario.repository;
 import KuHub.modules.gestion_usuario.entity.PermisoRol;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -14,6 +15,14 @@ public interface PermisoRolRepository extends JpaRepository<PermisoRol, Long> {
     Optional<PermisoRol> findByRol_IdRolAndModulo_IdModulo(Integer idRol, Integer idModulo);
 
     List<PermisoRol> findByRol_IdRolAndEnabledTrue(Integer idRol);
+
+    /**
+     * Busca el permiso activo de un rol (por ID) sobre un módulo (por código).
+     * Usado por DynamicPermissionService para evaluar permisos dinámicamente.
+     */
+    @Query("SELECT pr FROM PermisoRol pr WHERE pr.rol.idRol = :idRol AND pr.modulo.codigoModulo = :moduleCode AND pr.enabled = true")
+    Optional<PermisoRol> findByRolIdAndModuleCode(@Param("idRol") Integer idRol,
+                                                   @Param("moduleCode") String moduleCode);
 
     /**
      * Consulta nativa que devuelve la MATRIZ COMPLETA de permisos:

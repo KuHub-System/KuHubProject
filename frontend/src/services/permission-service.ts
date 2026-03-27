@@ -120,6 +120,9 @@ export const permissionService = {
     const promises: Promise<any>[] = [];
 
     for (const rp of updatedPermissions) {
+      // Administrador siempre tiene control total — nunca se modifica vía esta función
+      if (rp.role === 'Administrador') continue;
+
       for (const [pageKey, access] of Object.entries(rp.permissions)) {
         const cachedDTO = cacheMap.get(`${rp.role}-${pageKey}`);
         if (!cachedDTO) continue; // módulo no existe en BD → ignorar
@@ -145,11 +148,8 @@ export const permissionService = {
           puedeEliminar:   intendedWrite,
         };
 
-        if (cachedDTO.idPermisoRol) {
-          promises.push(api.put(`/permisos/${cachedDTO.idPermisoRol}`, payload));
-        } else {
-          promises.push(api.post('/permisos', payload));
-        }
+        // Usar siempre el endpoint upsert (POST) para evitar problemas con PUT en proxies
+        promises.push(api.post('/permisos/upsert', payload));
       }
     }
 
