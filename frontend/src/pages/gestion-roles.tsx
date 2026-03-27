@@ -53,6 +53,7 @@ const MODULE_ORDER: ModuleKey[] = [
   'CONGLOMERADO_PEDIDOS',
   // 'GESTION_PROVEEDORES', // En cuarentena — no mostrar hasta confirmar si entra al sistema
   'BODEGA_TRANSITO',
+  'GESTION_PEDIDOS_DIARIOS',
   'GESTION_RECETAS',
   'RAMOS_ADMIN',
   'GESTION_ROLES',

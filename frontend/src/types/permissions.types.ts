@@ -18,6 +18,7 @@ export type ModuleKey =
   | 'CONGLOMERADO_PEDIDOS'
   | 'GESTION_PROVEEDORES'
   | 'BODEGA_TRANSITO'
+  | 'GESTION_PEDIDOS_DIARIOS'
   | 'GESTION_RECETAS'
   | 'RAMOS_ADMIN'
   | 'GESTION_ROLES'
@@ -86,8 +87,9 @@ export const MODULE_LABELS: Record<ModuleKey, string> = {
   GESTION_SOLICITUDES:  'Gestión de Solicitudes',
   CONGLOMERADO_PEDIDOS: 'Conglomerado de Pedidos',
   GESTION_PROVEEDORES:  'Gestión de Proveedores',
-  BODEGA_TRANSITO:      'Bodega de Tránsito',
-  GESTION_RECETAS:      'Gestión de Recetas',
+  BODEGA_TRANSITO:           'Bodega de Tránsito',
+  GESTION_PEDIDOS_DIARIOS:   'Gestión de Pedidos Diarios',
+  GESTION_RECETAS:           'Gestión de Recetas',
   RAMOS_ADMIN:          'Ramos Académicos',
   GESTION_ROLES:        'Gestión de Roles',
   GESTION_USUARIOS:     'Gestión de Usuarios',
@@ -106,8 +108,9 @@ export const MODULE_ICONS: Record<ModuleKey, string> = {
   GESTION_SOLICITUDES:  'lucide:clipboard-list',
   CONGLOMERADO_PEDIDOS: 'lucide:layers',
   GESTION_PROVEEDORES:  'lucide:truck',
-  BODEGA_TRANSITO:      'lucide:warehouse',
-  GESTION_RECETAS:      'lucide:chef-hat',
+  BODEGA_TRANSITO:           'lucide:warehouse',
+  GESTION_PEDIDOS_DIARIOS:   'lucide:shopping-cart',
+  GESTION_RECETAS:           'lucide:chef-hat',
   RAMOS_ADMIN:          'lucide:book-open',
   GESTION_ROLES:        'lucide:shield',
   GESTION_USUARIOS:     'lucide:users',
