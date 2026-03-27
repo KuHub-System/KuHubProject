@@ -634,6 +634,7 @@ const InventarioPage: React.FC = () => {
         className="space-y-6"
       >
         <div className="flex flex-wrap items-center gap-3 px-4 mt-8 mb-4">
+          {invPuedeCrear && (
           <Button
             color="secondary"
             variant="solid"
@@ -644,6 +645,7 @@ const InventarioPage: React.FC = () => {
           >
             Control Masivo
           </Button>
+          )}
           {invPuedeCrear && (
           <Button
             color="primary"
@@ -947,7 +949,7 @@ const InventarioPage: React.FC = () => {
             {paginatedProductos.map((producto) => (
               <TableRow
                 key={producto.id}
-                className="cursor-pointer hover:bg-default-50 dark:hover:bg-default-100/50 transition-colors duration-200 border-b border-default-50 dark:border-default-50/10"
+                className={`${invPuedeEditar ? 'cursor-pointer' : 'cursor-default'} hover:bg-default-50 dark:hover:bg-default-100/50 transition-colors duration-200 border-b border-default-50 dark:border-default-50/10`}
                 style={{
                   contentVisibility: 'auto',
                   containIntrinsicSize: '70px 70px'
@@ -955,7 +957,7 @@ const InventarioPage: React.FC = () => {
                 onClick={() => invPuedeEditar && handleEditarProducto(producto)}
               >
                 <TableCell>
-                  <Tooltip content="Control de Inventario" color="primary" delay={100} closeDelay={0}>
+                  <Tooltip content={invPuedeEditar ? "Control de Inventario" : undefined} isDisabled={!invPuedeEditar} color="primary" delay={100} closeDelay={0}>
                     <div className="w-full overflow-hidden text-center flex flex-col items-center">
                       <span className="font-semibold text-secondary dark:text-foreground block truncate w-full">{producto.nombre}</span>
                       {producto.descripcion && (
@@ -965,7 +967,7 @@ const InventarioPage: React.FC = () => {
                   </Tooltip>
                 </TableCell>
                 <TableCell className="text-center">
-                  <Tooltip content="Control de Inventario" color="primary" delay={100} closeDelay={0}>
+                  <Tooltip content={invPuedeEditar ? "Control de Inventario" : undefined} isDisabled={!invPuedeEditar} color="primary" delay={100} closeDelay={0}>
                     <div className="flex justify-center w-full">
                       <Chip size="sm" variant="flat" className="bg-default-100 dark:bg-default-100/50 text-default-600 dark:text-default-300">
                         {producto.categoria}
@@ -974,24 +976,24 @@ const InventarioPage: React.FC = () => {
                   </Tooltip>
                 </TableCell>
                 <TableCell className="text-center">
-                  <Tooltip content="Control de Inventario" color="primary" delay={100} closeDelay={0}>
+                  <Tooltip content={invPuedeEditar ? "Control de Inventario" : undefined} isDisabled={!invPuedeEditar} color="primary" delay={100} closeDelay={0}>
                     <span className={`font-bold block text-center ${producto.stock <= producto.stockMinimo ? 'text-danger' : 'text-default-700 dark:text-default-300'}`}>
                       {fmtCL(producto.stock)}
                     </span>
                   </Tooltip>
                 </TableCell>
                 <TableCell className="text-center">
-                  <Tooltip content="Control de Inventario" color="primary" delay={100} closeDelay={0}>
+                  <Tooltip content={invPuedeEditar ? "Control de Inventario" : undefined} isDisabled={!invPuedeEditar} color="primary" delay={100} closeDelay={0}>
                     <span className="block text-center">{fmtCL(producto.stockMinimo)}</span>
                   </Tooltip>
                 </TableCell>
                 <TableCell className="text-center">
-                  <Tooltip content="Control de Inventario" color="primary" delay={100} closeDelay={0}>
+                  <Tooltip content={invPuedeEditar ? "Control de Inventario" : undefined} isDisabled={!invPuedeEditar} color="primary" delay={100} closeDelay={0}>
                     <span className="text-default-500 block text-center">{producto.unidadMedida}</span>
                   </Tooltip>
                 </TableCell>
                 <TableCell>
-                  <Tooltip content="Control de Inventario" color="primary" delay={100} closeDelay={0} className="w-full">
+                  <Tooltip content={invPuedeEditar ? "Control de Inventario" : undefined} isDisabled={!invPuedeEditar} color="primary" delay={100} closeDelay={0} className="w-full">
                     <div className="w-full h-full text-center flex justify-center">{renderStockStatus(producto)}</div>
                   </Tooltip>
                 </TableCell>
