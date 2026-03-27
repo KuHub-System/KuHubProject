@@ -12,6 +12,25 @@ const isLocal = typeof window !== 'undefined' && window.location.hostname === 'l
 const API_URL = import.meta.env.VITE_API_URL || (isLocal ? 'http://localhost:8080/api/v1' : '/api/v1');
 logger.log(`[AXIOS] BaseURL → ${API_URL}`);
 
+// ── Mostrar errores persistidos de sesiones anteriores ────────────────────────
+// Los errores que causaron un redirect a /login quedan guardados en localStorage.
+// Se muestran al cargar la app para poder depurar qué endpoint falló.
+if (typeof window !== 'undefined') {
+    const savedErrors = localStorage.getItem('__api_errors');
+    if (savedErrors) {
+        try {
+            const errors = JSON.parse(savedErrors);
+            if (errors.length > 0) {
+                console.group('%c[AXIOS] Errores de sesión anterior (antes del último redirect a /login)', 'color:orange;font-weight:bold');
+                errors.forEach((e: any) => console.error(`  ${e.ts} | HTTP ${e.status} | ${e.method} ${e.url}`, e.data));
+                console.groupEnd();
+                // Limpiar después de mostrar para no acumular indefinidamente
+                localStorage.removeItem('__api_errors');
+            }
+        } catch (_) { /* ignore */ }
+    }
+}
+
 const api: AxiosInstance = axios.create({
     baseURL: API_URL, // <--- Aplicamos la variable aquí
     timeout: 15000,
@@ -58,19 +77,38 @@ api.interceptors.response.use(
         return response;
     },
     async (error: AxiosError) => {
-        // Handle 401 Unauthorized (Token expires or invalid)
-        if (error.response?.status === 401) {
-            const url = error.config?.url ?? '';
-            logger.error('❌ 401 UNAUTHORIZED detectado en interceptor Axios');
-            logger.error(`  → URL: ${url}`);
-            logger.error(`  → Response:`, error.response?.data);
+        const status = error.response?.status;
+        const url    = error.config?.url ?? '';
 
-            // Lista de prefijos cuyas rutas de "lectura-via-POST" no deben forzar logout.
-            // Un 401 aquí indica falta de permisos de rol, no un token inválido.
+        // ── Persistir error en localStorage ANTES de cualquier redirect ──────
+        // Así el error sobrevive la recarga y puede leerse en la próxima sesión.
+        if (status === 401 || status === 403) {
+            try {
+                const errorEntry = {
+                    ts:     new Date().toISOString(),
+                    status,
+                    url,
+                    data:   error.response?.data,
+                    method: error.config?.method?.toUpperCase(),
+                };
+                const prev = JSON.parse(localStorage.getItem('__api_errors') ?? '[]');
+                prev.push(errorEntry);
+                // Guardar solo los últimos 20 errores
+                localStorage.setItem('__api_errors', JSON.stringify(prev.slice(-20)));
+                logger.error(`❌ HTTP ${status} en ${error.config?.method?.toUpperCase()} ${url}`, error.response?.data);
+            } catch (_) { /* ignore storage errors */ }
+        }
+
+        // Handle 401 Unauthorized (Token expires or invalid)
+        if (status === 401) {
+            // Lista de prefijos cuyas rutas no deben forzar logout.
+            // Un 401 aquí puede indicar permisos de rol, no un token inválido.
             const noLogoutPrefixes = [
-                '/auth/login',   // El servicio de login maneja su propio error
-                '/permisos/',    // La PermissionContext maneja su propio error
-                '/semanas/',     // Búsquedas de semana usadas en todas las páginas
+                '/auth/login',        // El servicio de login maneja su propio error
+                '/permisos/',         // La PermissionContext maneja su propio error
+                '/semanas/',          // Búsquedas de semana usadas en todas las páginas
+                '/pedido/entregas-diarias',  // Gestión de Pedidos Diarios (bodega)
+                '/pedido/preparar-entrega',  // Preparar entrega (bodega)
             ];
 
             if (noLogoutPrefixes.some(prefix => url.includes(prefix))) {
