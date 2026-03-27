@@ -9,6 +9,7 @@
 export type ModuleKey =
   | 'DASHBOARD'
   | 'INVENTARIO'
+  | 'HISTORIAL_MOVIMIENTOS'
   | 'GESTION_CATEGORIAS'
   | 'GESTION_UNIDADES'
   | 'SOLICITUD'
@@ -75,10 +76,11 @@ export interface PermisoRolRequestDTO {
 
 // ── Mapeo de código de módulo (backend) → etiqueta legible (frontend) ────────
 export const MODULE_LABELS: Record<ModuleKey, string> = {
-  DASHBOARD:            'Dashboard',
-  INVENTARIO:           'Inventario',
-  GESTION_CATEGORIAS:   'Gestión de Categorías',
-  GESTION_UNIDADES:     'Gestión de Unidades',
+  DASHBOARD:             'Dashboard',
+  INVENTARIO:            'Inventario',
+  HISTORIAL_MOVIMIENTOS: 'Historial / Movimientos',
+  GESTION_CATEGORIAS:    'Gestión de Categorías',
+  GESTION_UNIDADES:      'Gestión de Unidades',
   SOLICITUD:            'Solicitudes',
   GESTION_PEDIDOS:      'Gestión de Pedidos',
   GESTION_SOLICITUDES:  'Gestión de Solicitudes',
@@ -94,10 +96,11 @@ export const MODULE_LABELS: Record<ModuleKey, string> = {
 
 // ── Icono sugerido por módulo (iconify/lucide) ────────────────────────────────
 export const MODULE_ICONS: Record<ModuleKey, string> = {
-  DASHBOARD:            'lucide:layout-dashboard',
-  INVENTARIO:           'lucide:package',
-  GESTION_CATEGORIAS:   'lucide:tags',
-  GESTION_UNIDADES:     'lucide:scale',
+  DASHBOARD:             'lucide:layout-dashboard',
+  INVENTARIO:            'lucide:package',
+  HISTORIAL_MOVIMIENTOS: 'lucide:history',
+  GESTION_CATEGORIAS:    'lucide:tags',
+  GESTION_UNIDADES:      'lucide:scale',
   SOLICITUD:            'lucide:file-text',
   GESTION_PEDIDOS:      'lucide:shopping-cart',
   GESTION_SOLICITUDES:  'lucide:clipboard-list',
@@ -114,9 +117,10 @@ export const MODULE_ICONS: Record<ModuleKey, string> = {
 // ── Mapeo pageId (URL / roles-config) → ModuleKey (BD) ───────────────────────
 // Permite que ProtectedRoute verifique el acceso contra la BD además del archivo estático.
 export const PAGE_TO_MODULE: Record<string, ModuleKey> = {
-  'dashboard':            'DASHBOARD',
-  'inventario':           'INVENTARIO',
-  'solicitud':            'SOLICITUD',
+  'dashboard':              'DASHBOARD',
+  'inventario':             'INVENTARIO',
+  'historial-movimientos':  'HISTORIAL_MOVIMIENTOS',
+  'solicitud':              'SOLICITUD',
   'gestion-pedidos':      'GESTION_PEDIDOS',
   'gestion-solicitudes':  'GESTION_SOLICITUDES',
   'conglomerado-pedidos': 'CONGLOMERADO_PEDIDOS',

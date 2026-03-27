@@ -30,6 +30,7 @@ export const ROLES_SISTEMA: IRole[] = [
     permisos: [
       'dashboard',
       'inventario',
+      'historial-movimientos',
       'solicitud',
       'gestion-pedidos',
       'gestion-solicitudes',
@@ -49,6 +50,7 @@ export const ROLES_SISTEMA: IRole[] = [
     permisos: [
       'dashboard',
       'inventario',
+      'historial-movimientos',
       'solicitud',
       'gestion-pedidos',
       'gestion-solicitudes',
@@ -92,7 +94,8 @@ export const ROLES_SISTEMA: IRole[] = [
     nombre: 'Encargado de Bodega',
     permisos: [
       'dashboard',
-      'inventario'
+      'inventario',
+      'historial-movimientos'
     ]
   },
   {
@@ -100,7 +103,8 @@ export const ROLES_SISTEMA: IRole[] = [
     nombre: 'Asistente de Bodega',
     permisos: [
       'dashboard',
-      'bodega-transito'
+      'bodega-transito',
+      'historial-movimientos'
     ]
   }
 

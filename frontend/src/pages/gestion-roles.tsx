@@ -44,11 +44,14 @@ const ACCESS_OPTIONS: { value: AccessLevel; label: string; chipColor: 'default' 
 const MODULE_ORDER: ModuleKey[] = [
   'DASHBOARD',
   'INVENTARIO',
+  'HISTORIAL_MOVIMIENTOS',
+  'GESTION_CATEGORIAS',
+  'GESTION_UNIDADES',
   'SOLICITUD',
   'GESTION_PEDIDOS',
   'GESTION_SOLICITUDES',
   'CONGLOMERADO_PEDIDOS',
-  'GESTION_PROVEEDORES',
+  // 'GESTION_PROVEEDORES', // En cuarentena — no mostrar hasta confirmar si entra al sistema
   'BODEGA_TRANSITO',
   'GESTION_RECETAS',
   'RAMOS_ADMIN',
