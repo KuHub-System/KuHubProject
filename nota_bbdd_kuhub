@@ -2005,8 +2005,31 @@ ON CONFLICT (id_rol, id_modulo) DO UPDATE SET puede_leer=FALSE, puede_crear=FALS
 
 
 -- ================================================================
--- ENCARGADO DE BODEGA → acceso a Bodega de Tránsito (Gestión de Pedidos Diarios)
--- Agregar permiso de escritura para que pueda gestionar los pedidos diarios
+-- MÓDULO: GESTION_PEDIDOS_DIARIOS
+-- Sub-sección dentro de Bodega de Tránsito (vista 'pedidos' en bodega-transito.tsx)
+-- ================================================================
+
+INSERT INTO modulo (codigo_modulo, nombre_modulo, descripcion_modulo, icono_modulo, orden_modulo)
+VALUES ('GESTION_PEDIDOS_DIARIOS', 'Gestión de Pedidos Diarios',
+        'Planificación y seguimiento de armado de carros para clases',
+        'lucide:shopping-cart', 10)
+ON CONFLICT (codigo_modulo) DO NOTHING;
+
+-- ENCARGADO DE BODEGA → escritura
+INSERT INTO permiso_rol (id_rol, id_modulo, puede_leer, puede_crear, puede_actualizar, puede_eliminar)
+SELECT (SELECT id_rol FROM rol WHERE nombre_rol = 'ENCARGADO_BODEGA' LIMIT 1), id_modulo, TRUE, TRUE, TRUE, FALSE
+FROM modulo WHERE codigo_modulo = 'GESTION_PEDIDOS_DIARIOS' AND enabled = TRUE
+ON CONFLICT (id_rol, id_modulo) DO UPDATE SET puede_leer=TRUE, puede_crear=TRUE, puede_actualizar=TRUE, puede_eliminar=FALSE;
+
+-- ASISTENTE DE BODEGA → escritura
+INSERT INTO permiso_rol (id_rol, id_modulo, puede_leer, puede_crear, puede_actualizar, puede_eliminar)
+SELECT (SELECT id_rol FROM rol WHERE nombre_rol = 'ASISTENTE_BODEGA' LIMIT 1), id_modulo, TRUE, TRUE, TRUE, FALSE
+FROM modulo WHERE codigo_modulo = 'GESTION_PEDIDOS_DIARIOS' AND enabled = TRUE
+ON CONFLICT (id_rol, id_modulo) DO UPDATE SET puede_leer=TRUE, puede_crear=TRUE, puede_actualizar=TRUE, puede_eliminar=FALSE;
+
+
+-- ================================================================
+-- ENCARGADO DE BODEGA → acceso a Bodega de Tránsito (vista de inventario de bodega)
 -- ================================================================
 
 INSERT INTO permiso_rol (id_rol, id_modulo, puede_leer, puede_crear, puede_actualizar, puede_eliminar)

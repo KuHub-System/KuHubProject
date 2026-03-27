@@ -315,6 +315,7 @@ const EntregaSalaCard: React.FC<{ sala: ISalaEntrega; onPreparar: (sol: ISolicit
 
 const BodegaTransitoPage: React.FC = () => {
   const { canCreate: bod_Crear, canUpdate: bod_Editar, canDelete: bod_Eliminar } = useModulePermission('BODEGA_TRANSITO');
+  const { canRead: ped_Leer } = useModulePermission('GESTION_PEDIDOS_DIARIOS');
 
   const toast = useToast();
   const history = useHistory();
@@ -1039,6 +1040,11 @@ const BodegaTransitoPage: React.FC = () => {
                 </TableBody>
               </Table>
             </motion.div>
+          ) : !ped_Leer ? (
+            <motion.div key="sin-acceso-pedidos" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col items-center justify-center h-full py-24 gap-4 text-center">
+              <Icon icon="lucide:lock" width={48} className="text-default-300" />
+              <p className="text-default-500 font-semibold">No tienes permiso para ver Gestión de Pedidos Diarios</p>
+            </motion.div>
           ) : (
             <motion.div
               key="pedidos"
@@ -1158,19 +1164,19 @@ const BodegaTransitoPage: React.FC = () => {
           </Button>
         </Tooltip>
 
-        <Tooltip content="Gestión de Pedidos" placement="left">
-          <Button
-            isIconOnly
-            variant={currentView === 'pedidos' ? 'solid' : 'light'}
-            color={currentView === 'pedidos' ? 'secondary' : 'default'}
-            onPress={() => {
-              setCurrentView('pedidos');
-            }}
-            className={`w-12 h-12 rounded-2xl transition-all duration-300 ${currentView === 'pedidos' ? 'shadow-lg shadow-secondary/30' : 'text-default-400 hover:bg-default-100'}`}
-          >
-            <Icon icon="lucide:clipboard-list" width={24} />
-          </Button>
-        </Tooltip>
+        {ped_Leer && (
+          <Tooltip content="Gestión de Pedidos Diarios" placement="left">
+            <Button
+              isIconOnly
+              variant={currentView === 'pedidos' ? 'solid' : 'light'}
+              color={currentView === 'pedidos' ? 'secondary' : 'default'}
+              onPress={() => setCurrentView('pedidos')}
+              className={`w-12 h-12 rounded-2xl transition-all duration-300 ${currentView === 'pedidos' ? 'shadow-lg shadow-secondary/30' : 'text-default-400 hover:bg-default-100'}`}
+            >
+              <Icon icon="lucide:clipboard-list" width={24} />
+            </Button>
+          </Tooltip>
+        )}
 
         <div className="mt-auto border-t border-default-100 w-8 pt-4 flex flex-col gap-4">
           {/* Refresh icon removed as requested */}
