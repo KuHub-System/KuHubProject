@@ -1960,6 +1960,51 @@ ON CONFLICT (id_rol, id_modulo) DO UPDATE
 
 
 -- ================================================================
+-- NUEVO MÓDULO: HISTORIAL_MOVIMIENTOS
+-- (Ejecutar después de los bloques anteriores)
+-- Controla la página "Historial / Movimientos" del sidebar bajo Inventario
+-- ================================================================
+
+-- Paso A: Insertar el módulo
+INSERT INTO modulo (codigo_modulo, nombre_modulo, descripcion_modulo, icono_modulo, orden_modulo)
+VALUES ('HISTORIAL_MOVIMIENTOS', 'Historial / Movimientos', 'Historial de movimientos de inventario y stock', 'lucide:history', 16)
+ON CONFLICT (codigo_modulo) DO NOTHING;
+
+-- Paso B: Permisos por rol
+-- ADMINISTRADOR → acceso total
+INSERT INTO permiso_rol (id_rol, id_modulo, puede_leer, puede_crear, puede_actualizar, puede_eliminar)
+SELECT (SELECT id_rol FROM rol WHERE nombre_rol = 'ADMINISTRADOR' LIMIT 1), id_modulo, TRUE, TRUE, TRUE, TRUE
+FROM modulo WHERE codigo_modulo = 'HISTORIAL_MOVIMIENTOS' AND enabled = TRUE
+ON CONFLICT (id_rol, id_modulo) DO UPDATE SET puede_leer=TRUE, puede_crear=TRUE, puede_actualizar=TRUE, puede_eliminar=TRUE;
+
+-- CO-ADMINISTRADOR → acceso total
+INSERT INTO permiso_rol (id_rol, id_modulo, puede_leer, puede_crear, puede_actualizar, puede_eliminar)
+SELECT (SELECT id_rol FROM rol WHERE nombre_rol = 'CO_ADMINISTRADOR' LIMIT 1), id_modulo, TRUE, TRUE, TRUE, TRUE
+FROM modulo WHERE codigo_modulo = 'HISTORIAL_MOVIMIENTOS' AND enabled = TRUE
+ON CONFLICT (id_rol, id_modulo) DO UPDATE SET puede_leer=TRUE, puede_crear=TRUE, puede_actualizar=TRUE, puede_eliminar=TRUE;
+
+-- ENCARGADO DE BODEGA → escritura (registra y ve movimientos)
+INSERT INTO permiso_rol (id_rol, id_modulo, puede_leer, puede_crear, puede_actualizar, puede_eliminar)
+SELECT (SELECT id_rol FROM rol WHERE nombre_rol = 'ENCARGADO_BODEGA' LIMIT 1), id_modulo, TRUE, TRUE, TRUE, FALSE
+FROM modulo WHERE codigo_modulo = 'HISTORIAL_MOVIMIENTOS' AND enabled = TRUE
+ON CONFLICT (id_rol, id_modulo) DO UPDATE SET puede_leer=TRUE, puede_crear=TRUE, puede_actualizar=TRUE, puede_eliminar=FALSE;
+
+-- ASISTENTE DE BODEGA → solo lectura (consulta historial)
+INSERT INTO permiso_rol (id_rol, id_modulo, puede_leer, puede_crear, puede_actualizar, puede_eliminar)
+SELECT (SELECT id_rol FROM rol WHERE nombre_rol = 'ASISTENTE_BODEGA' LIMIT 1), id_modulo, TRUE, FALSE, FALSE, FALSE
+FROM modulo WHERE codigo_modulo = 'HISTORIAL_MOVIMIENTOS' AND enabled = TRUE
+ON CONFLICT (id_rol, id_modulo) DO UPDATE SET puede_leer=TRUE, puede_crear=FALSE, puede_actualizar=FALSE, puede_eliminar=FALSE;
+
+-- GESTOR_PEDIDOS, PROFESOR_A_CARGO, DOCENTE → sin acceso
+INSERT INTO permiso_rol (id_rol, id_modulo, puede_leer, puede_crear, puede_actualizar, puede_eliminar)
+SELECT r.id_rol, m.id_modulo, FALSE, FALSE, FALSE, FALSE
+FROM rol r CROSS JOIN modulo m
+WHERE r.nombre_rol IN ('GESTOR_PEDIDOS','PROFESOR_A_CARGO','DOCENTE')
+  AND m.codigo_modulo = 'HISTORIAL_MOVIMIENTOS' AND m.enabled = TRUE
+ON CONFLICT (id_rol, id_modulo) DO UPDATE SET puede_leer=FALSE, puede_crear=FALSE, puede_actualizar=FALSE, puede_eliminar=FALSE;
+
+
+-- ================================================================
 -- ROLLBACK (si necesitas deshacer los inserts de permisos):
 -- ================================================================
 
