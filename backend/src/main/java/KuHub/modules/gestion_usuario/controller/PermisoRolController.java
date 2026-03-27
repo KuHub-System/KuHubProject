@@ -1,5 +1,6 @@
 package KuHub.modules.gestion_usuario.controller;
 
+import KuHub.config.security.service.DynamicPermissionService;
 import KuHub.modules.gestion_usuario.dtos.PermisoMatrizDTO;
 import KuHub.modules.gestion_usuario.dtos.PermisoRolRequestDTO;
 import KuHub.modules.gestion_usuario.dtos.PermisoRolResponseDTO;
@@ -8,7 +9,7 @@ import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -18,8 +19,8 @@ import java.util.Map;
  * Controller REST para gestión de permisos por rol.
  *
  * La autorización de escritura es DINÁMICA: se verifica contra la tabla permiso_rol
- * en tiempo de ejecución via DynamicPermissionService (@permSvc).
- * El rol ADMINISTRADOR siempre tiene acceso; otros roles según lo que el admin haya configurado.
+ * en tiempo de ejecución via DynamicPermissionService (inyectado, sin @PreAuthorize
+ * para evitar problemas de proxy AOP con @EnableMethodSecurity).
  *
  * Endpoints:
  *  GET  /api/v1/permisos/matrix        → Matriz completa (autenticado)
@@ -33,10 +34,18 @@ import java.util.Map;
 public class PermisoRolController {
 
     private final PermisoRolService permisoRolService;
+    private final DynamicPermissionService dynamicPermissionService;
 
     @Autowired
-    public PermisoRolController(PermisoRolService permisoRolService) {
+    public PermisoRolController(PermisoRolService permisoRolService,
+                                DynamicPermissionService dynamicPermissionService) {
         this.permisoRolService = permisoRolService;
+        this.dynamicPermissionService = dynamicPermissionService;
+    }
+
+    /** Retorna 403 si el usuario no tiene acceso de escritura sobre GESTION_ROLES. */
+    private ResponseEntity<PermisoRolResponseDTO> forbidden() {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
     }
 
     /**
@@ -62,8 +71,10 @@ public class PermisoRolController {
      * Requiere permiso de escritura sobre GESTION_ROLES (verificado dinámicamente en BD).
      */
     @PostMapping
-    @PreAuthorize("@permSvc.check(authentication, 'GESTION_ROLES', 'write')")
-    public ResponseEntity<PermisoRolResponseDTO> crear(@Valid @RequestBody PermisoRolRequestDTO request) {
+    public ResponseEntity<PermisoRolResponseDTO> crear(
+            @Valid @RequestBody PermisoRolRequestDTO request,
+            Authentication authentication) {
+        if (!dynamicPermissionService.check(authentication, "GESTION_ROLES", "write")) return forbidden();
         return ResponseEntity.status(HttpStatus.CREATED).body(permisoRolService.crearPermiso(request));
     }
 
@@ -72,10 +83,11 @@ public class PermisoRolController {
      * Requiere permiso de escritura sobre GESTION_ROLES (verificado dinámicamente en BD).
      */
     @PutMapping("/{id}")
-    @PreAuthorize("@permSvc.check(authentication, 'GESTION_ROLES', 'write')")
     public ResponseEntity<PermisoRolResponseDTO> actualizar(
             @PathVariable Long id,
-            @Valid @RequestBody PermisoRolRequestDTO request) {
+            @Valid @RequestBody PermisoRolRequestDTO request,
+            Authentication authentication) {
+        if (!dynamicPermissionService.check(authentication, "GESTION_ROLES", "write")) return forbidden();
         return ResponseEntity.ok(permisoRolService.actualizarPermiso(id, request));
     }
 
@@ -84,8 +96,10 @@ public class PermisoRolController {
      * Requiere permiso de escritura sobre GESTION_ROLES (verificado dinámicamente en BD).
      */
     @PostMapping("/upsert")
-    @PreAuthorize("@permSvc.check(authentication, 'GESTION_ROLES', 'write')")
-    public ResponseEntity<PermisoRolResponseDTO> upsert(@Valid @RequestBody PermisoRolRequestDTO request) {
+    public ResponseEntity<PermisoRolResponseDTO> upsert(
+            @Valid @RequestBody PermisoRolRequestDTO request,
+            Authentication authentication) {
+        if (!dynamicPermissionService.check(authentication, "GESTION_ROLES", "write")) return forbidden();
         return ResponseEntity.ok(permisoRolService.upsertPermiso(request));
     }
 }
