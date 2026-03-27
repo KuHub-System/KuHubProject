@@ -95,7 +95,8 @@ export const ROLES_SISTEMA: IRole[] = [
     permisos: [
       'dashboard',
       'inventario',
-      'historial-movimientos'
+      'historial-movimientos',
+      'bodega-transito'
     ]
   },
   {
