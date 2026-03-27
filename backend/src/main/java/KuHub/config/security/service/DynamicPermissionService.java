@@ -43,29 +43,34 @@ public class DynamicPermissionService {
      */
     @Transactional(readOnly = true)
     public boolean check(Authentication authentication, String moduleCode, String level) {
-        if (authentication == null || !authentication.isAuthenticated()) return false;
+        try {
+            if (authentication == null || !authentication.isAuthenticated()) return false;
 
-        // ADMINISTRADOR siempre tiene acceso total sin consultar la BD
-        boolean isAdmin = authentication.getAuthorities().stream()
-                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMINISTRADOR"));
-        if (isAdmin) return true;
+            // ADMINISTRADOR siempre tiene acceso total sin consultar la BD
+            boolean isAdmin = authentication.getAuthorities().stream()
+                    .anyMatch(a -> a.getAuthority().equals("ROLE_ADMINISTRADOR"));
+            if (isAdmin) return true;
 
-        // Extraer nombre del rol desde la authority del JWT
-        // Ej: "ROLE_GESTOR_PEDIDOS" → "GESTOR_PEDIDOS"
-        String roleName = authentication.getAuthorities().stream()
-                .findFirst()
-                .map(a -> a.getAuthority().replace("ROLE_", ""))
-                .orElse(null);
+            // Extraer nombre del rol desde la authority del JWT
+            // Ej: "ROLE_GESTOR_PEDIDOS" → "GESTOR_PEDIDOS"
+            String roleName = authentication.getAuthorities().stream()
+                    .findFirst()
+                    .map(a -> a.getAuthority().replace("ROLE_", ""))
+                    .orElse(null);
 
-        if (roleName == null) return false;
+            if (roleName == null) return false;
 
-        // Buscar el rol en BD (insensible a mayúsculas)
-        // La BD almacena nombres de rol en formato ENUM (ej: "GESTOR_PEDIDOS")
-        return rolRepository.findByNombreRolIgnoreCase(roleName)
-                .flatMap(rol -> permisoRolRepository.findByRolIdAndModuleCode(
-                        rol.getIdRol(), moduleCode))
-                .map(permiso -> evaluateLevel(permiso, level))
-                .orElse(false);
+            // Buscar el rol en BD (insensible a mayúsculas)
+            // La BD almacena nombres de rol en formato ENUM (ej: "GESTOR_PEDIDOS")
+            return rolRepository.findByNombreRolIgnoreCase(roleName)
+                    .flatMap(rol -> permisoRolRepository.findByRolIdAndModuleCode(
+                            rol.getIdRol(), moduleCode))
+                    .map(permiso -> evaluateLevel(permiso, level))
+                    .orElse(false);
+        } catch (Exception e) {
+            // Si ocurre cualquier error inesperado, denegar acceso sin propagar un 500
+            return false;
+        }
     }
 
     private boolean evaluateLevel(PermisoRol permiso, String level) {
