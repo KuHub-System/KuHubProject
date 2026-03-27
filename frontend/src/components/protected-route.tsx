@@ -1,14 +1,11 @@
 import React from 'react';
 import { Route, Redirect, RouteProps } from 'react-router-dom';
 import { useAuth } from '../contexts/auth-context';
+import { usePermission } from '../contexts/permission-context';
 import { Spinner } from '@heroui/react';
 import { logger } from '../utils/logger';
+import { PAGE_TO_MODULE } from '../types/permissions.types';
 
-/**
- * 🔥 INTERFAZ ACTUALIZADA
- * Ahora usa pageId (opcional) para verificar permisos dinámicos
- * Mantiene roles para compatibilidad con código existente
- */
 interface ProtectedRouteProps extends RouteProps {
   roles?: string[]; // Roles permitidos (DEPRECADO - usar pageId)
   pageId?: string;  // ID de página para verificar permisos dinámicos
@@ -17,19 +14,14 @@ interface ProtectedRouteProps extends RouteProps {
 
 /**
  * Componente que protege rutas basado en autenticación y permisos.
- * 
- * MODOS DE USO:
- * 1. Con pageId (RECOMENDADO - usa permisos dinámicos):
- *    <ProtectedRoute path="/inventario" pageId="inventario">
- * 
- * 2. Con roles (DEPRECADO - mantiene compatibilidad):
- *    <ProtectedRoute path="/inventario" roles={['Admin', 'Bodega']}>
- * 
- * 3. Sin restricciones (solo requiere login):
- *    <ProtectedRoute path="/perfil">
- * 
- * @param {ProtectedRouteProps} props - Propiedades del componente.
- * @returns {JSX.Element} Componente Route protegido.
+ *
+ * Verifica acceso en DOS capas:
+ *  - Capa 1 (estática): roles-config.ts — permisos hardcodeados por rol
+ *  - Capa 2 (dinámica): PermissionContext — matriz de permisos desde la BD
+ *
+ * El acceso se concede si CUALQUIERA de las dos capas lo autoriza.
+ * Esto garantiza que los cambios hechos en Gestión de Roles (BD) tomen
+ * efecto en la navegación sin necesidad de tocar roles-config.ts.
  */
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   roles = [],
@@ -37,37 +29,40 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   children,
   ...rest
 }) => {
-  const { isAuthenticated, isLoading, hasPermission, canAccessPage } = useAuth();
+  const { isAuthenticated, isLoading: authLoading, hasPermission, canAccessPage } = useAuth();
+  const { canAccess, isLoading: permLoading, isAdmin } = usePermission();
 
-  /**
-   * 🔥 FUNCIÓN MEJORADA: Verifica permisos
-   * Prioriza pageId (dinámico) sobre roles (estático)
-   */
+  // Esperar a que AMBAS capas terminen de cargar
+  const isLoading = authLoading || permLoading;
+
   const hasAccess = (): boolean => {
-    // Si no está autenticado, no tiene acceso
     if (!isAuthenticated) return false;
 
-    // Si tiene pageId, usar verificación dinámica (NUEVO)
+    // Administrador siempre tiene acceso total
+    if (isAdmin) return true;
+
     if (pageId) {
-      const access = canAccessPage(pageId);
+      // Capa 1: verificación estática (roles-config.ts)
+      const staticAccess = canAccessPage(pageId);
+
+      // Capa 2: verificación dinámica (BD)
+      const moduleKey = PAGE_TO_MODULE[pageId];
+      const dynamicAccess = moduleKey ? canAccess(moduleKey, 'read') : false;
+
+      const access = staticAccess || dynamicAccess;
+      logger.log(`[ProtectedRoute] pageId="${pageId}" static=${staticAccess} dynamic=${dynamicAccess} → ${access}`);
       return access;
     }
 
-    // Si tiene roles, usar verificación estática (DEPRECADO)
     if (roles.length > 0) {
-      const access = hasPermission(roles);
-      return access;
+      return hasPermission(roles);
     }
 
-    // Si no tiene restricciones, permitir acceso (solo requiere login)
+    // Sin restricciones → solo requiere login
     return true;
   };
 
-  /**
-   * Renderiza el contenido según el estado de autenticación y permisos.
-   */
   const renderContent = () => {
-    // Mientras carga, muestra spinner
     if (isLoading) {
       return (
         <div className="flex items-center justify-center h-screen">
@@ -76,19 +71,16 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
       );
     }
 
-    // Si no está autenticado, redirige a login
     if (!isAuthenticated) {
       logger.log('❌ No autenticado, redirigiendo a /login');
       return <Redirect to="/login" />;
     }
 
-    // Si no tiene permisos, redirige a página de sin acceso
     if (!hasAccess()) {
-      logger.log('❌ Sin permisos, redirigiendo a /sin-acceso');
+      logger.log(`❌ Sin permisos para "${pageId}", redirigiendo a /sin-acceso`);
       return <Redirect to="/sin-acceso" />;
     }
 
-    // Si está autenticado y tiene permisos, muestra el contenido
     return children;
   };
 
