@@ -144,7 +144,8 @@ const GestionRolesPage: React.FC = () => {
     setMessage(null);
     try {
       const data = await permissionService.getPermissions();
-      setLocalPermissions(data);
+      // El Administrador siempre tiene control total — no se muestra en la matriz editable
+      setLocalPermissions(data.filter(rp => rp.role !== 'Administrador'));
     } catch (err: any) {
       if (err?.response?.status === 403) {
         setErrorState({ is403: true, message: 'No tienes permisos para ver la matriz de permisos.' });
@@ -271,8 +272,8 @@ const GestionRolesPage: React.FC = () => {
             </div>
           ))}
           <div className="flex items-center gap-1.5 text-xs text-default-400 ml-2">
-            <Icon icon="lucide:lock" width={12} />
-            <span>El Administrador siempre tiene Escritura total (no editable)</span>
+            <Icon icon="lucide:shield-check" width={12} />
+            <span>El Administrador siempre tiene Escritura total (columna oculta)</span>
           </div>
         </div>
 
@@ -319,9 +320,6 @@ const GestionRolesPage: React.FC = () => {
                             <Icon icon="lucide:user" width={14} className="text-[#FFB800]" />
                           </div>
                           <span className="text-[11px] leading-tight text-center">{rp.role}</span>
-                          {rp.role === 'Administrador' && (
-                            <span className="text-[9px] text-default-400 font-normal">(Control Total)</span>
-                          )}
                         </div>
                       </th>
                     ))}
@@ -373,10 +371,9 @@ const GestionRolesPage: React.FC = () => {
                             </div>
                           </td>
 
-                          {/* Celdas: selector por rol */}
+                          {/* Celdas: selector por rol (sin Administrador) */}
                           {localPermissions.map((rp, roleIdx) => {
                             const currentAccess = rp.permissions[moduleKey] ?? 'none';
-                            const isLocked      = rp.role === 'Administrador';
 
                             return (
                               <td
@@ -385,8 +382,8 @@ const GestionRolesPage: React.FC = () => {
                               >
                                 <AccessSelector
                                   value={currentAccess}
-                                  locked={isLocked}
-                                  disabled={isLocked || isSaving}
+                                  locked={false}
+                                  disabled={isSaving}
                                   onChange={(v) => handlePermissionChange(roleIdx, moduleKey, v)}
                                 />
                               </td>

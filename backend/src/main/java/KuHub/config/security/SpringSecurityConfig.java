@@ -8,6 +8,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
@@ -31,6 +32,7 @@ import java.util.Arrays;
  * ✅ Swagger UI habilitado para desarrollo
  */
 @Configuration
+@EnableMethodSecurity(prePostEnabled = true)
 public class SpringSecurityConfig {
 
     private final AuthenticationConfiguration authenticationConfiguration;
@@ -195,13 +197,14 @@ public class SpringSecurityConfig {
                         // ENDPOINTS DE PERMISOS (CRUD por Rol × Módulo)
                         // ========================================
                         // Matriz de permisos: cualquier usuario autenticado puede leerla
-                        // (cada usuario necesita su fila para saber qué páginas puede ver)
                         .requestMatchers(HttpMethod.GET, "/api/v1/permisos/matrix").authenticated()
                         // Permisos de un rol: cualquier usuario autenticado (carga sus propios permisos)
                         .requestMatchers(HttpMethod.GET, "/api/v1/permisos/rol/**").authenticated()
-                        // Crear / actualizar permisos: solo ADMINISTRADOR
-                        .requestMatchers(HttpMethod.POST, "/api/v1/permisos/**").hasRole("ADMINISTRADOR")
-                        .requestMatchers(HttpMethod.PUT,  "/api/v1/permisos/**").hasRole("ADMINISTRADOR")
+                        // Crear / actualizar permisos: requiere autenticación mínima.
+                        // La autorización real se realiza dinámicamente con @PreAuthorize
+                        // en PermisoRolController usando DynamicPermissionService (GESTION_ROLES write).
+                        .requestMatchers(HttpMethod.POST, "/api/v1/permisos/**").authenticated()
+                        .requestMatchers(HttpMethod.PUT,  "/api/v1/permisos/**").authenticated()
 
                         // ========================================
                         // ENDPOINTS DE ROLES
