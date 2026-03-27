@@ -156,14 +156,14 @@ const App: React.FC = () => {
                   </ProtectedRoute>
 
                   {/* 🔥 NUEVA RUTA GENERICA DE MOVIMIENTOS */}
-                  <ProtectedRoute exact path="/movimientos" pageId="inventario">
+                  <ProtectedRoute exact path="/movimientos" pageId="historial-movimientos">
                     <MainLayout>
                       <MovimientosProductoPage />
                     </MainLayout>
                   </ProtectedRoute>
 
                   {/* Mantenemos la ruta anterior por compatibilidad, pero ahora es opcional */}
-                  <ProtectedRoute path="/movimientos-producto/:id" pageId="inventario">
+                  <ProtectedRoute path="/movimientos-producto/:id" pageId="historial-movimientos">
                     <MainLayout>
                       <MovimientosProductoPage />
                     </MainLayout>
