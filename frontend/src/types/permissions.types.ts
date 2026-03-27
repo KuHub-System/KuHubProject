@@ -110,3 +110,21 @@ export const MODULE_ICONS: Record<ModuleKey, string> = {
   GESTION_USUARIOS:     'lucide:users',
   ADMIN_SISTEMA:        'lucide:settings',
 };
+
+// ── Mapeo pageId (URL / roles-config) → ModuleKey (BD) ───────────────────────
+// Permite que ProtectedRoute verifique el acceso contra la BD además del archivo estático.
+export const PAGE_TO_MODULE: Record<string, ModuleKey> = {
+  'dashboard':            'DASHBOARD',
+  'inventario':           'INVENTARIO',
+  'solicitud':            'SOLICITUD',
+  'gestion-pedidos':      'GESTION_PEDIDOS',
+  'gestion-solicitudes':  'GESTION_SOLICITUDES',
+  'conglomerado-pedidos': 'CONGLOMERADO_PEDIDOS',
+  'gestion-proveedores':  'GESTION_PROVEEDORES',
+  'bodega-transito':      'BODEGA_TRANSITO',
+  'gestion-recetas':      'GESTION_RECETAS',
+  'ramos-admin':          'RAMOS_ADMIN',
+  'gestion-roles':        'GESTION_ROLES',
+  'gestion-usuarios':     'GESTION_USUARIOS',
+  'admin-sistema':        'ADMIN_SISTEMA',
+};
