@@ -1,28 +1,173 @@
 /**
  * DASHBOARD PRINCIPAL
- * Componente que detecta el rol del usuario y muestra el dashboard apropiado
+ * Detecta el rol del usuario y muestra el dashboard apropiado con routing basado en roles.
  */
 
 import React from 'react';
-import { Spinner, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Button } from '@heroui/react';
+import { Spinner, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Button, Tabs, Tab } from '@heroui/react';
 import { Icon } from '@iconify/react';
 import { useAuth } from '../contexts/auth-context';
-import { DashboardAdmin } from '../components/dashboard/DashboardAdmin';
+
+// Dashboards existentes
+import { DashboardAdmin }   from '../components/dashboard/DashboardAdmin';
 import { DashboardProfesor } from '../components/dashboard/DashboardProfesor';
-import { DashboardBodega } from '../components/dashboard/DashboardBodega';
+
+// Nuevos dashboards de analytics
+import { DashboardGeneral }        from '../components/dashboard/DashboardGeneral';
+import { DashboardInventarioView } from '../components/dashboard/DashboardInventarioView';
+import { DashboardGestor }         from '../components/dashboard/DashboardGestor';
+import { DashboardRecetasView }    from '../components/dashboard/DashboardRecetasView';
 
 // Exportar funciones para compatibilidad con otros componentes
-export { 
-  puedenCrearseSolicitudes, 
-  obtenerEstadoProceso, 
-  calcularDiasRestantesProceso 
+export {
+  puedenCrearseSolicitudes,
+  obtenerEstadoProceso,
+  calcularDiasRestantesProceso,
 } from '../services/dashboard-service';
 
-/**
- * Dashboard Principal
- * Detecta el rol del usuario y muestra el dashboard apropiado
- */
+// ─── Maintenance modal key ────────────────────────────────────────────────────
+
 const MODAL_KEY = 'dashboard_maintenance_dismissed';
+
+// ─── Admin Tabbed Layout ──────────────────────────────────────────────────────
+
+const DashboardAdminTabs: React.FC = () => (
+  <div className="container mx-auto px-4 py-6 space-y-4">
+    {/* Header */}
+    <div className="flex items-center gap-3 mb-2">
+      <div className="w-10 h-10 rounded-xl bg-[#FFB800]/10 flex items-center justify-center">
+        <Icon icon="lucide:layout-dashboard" width={22} className="text-[#FFB800]" />
+      </div>
+      <div>
+        <h1 className="text-2xl font-bold">Dashboard</h1>
+        <p className="text-default-500 text-sm">Panel de control ejecutivo</p>
+      </div>
+    </div>
+
+    {/* Tabs */}
+    <Tabs
+      aria-label="Dashboard views"
+      color="warning"
+      variant="underlined"
+      classNames={{
+        tabList: 'border-b border-divider',
+        cursor: 'bg-[#FFB800]',
+      }}
+    >
+      <Tab
+        key="general"
+        title={
+          <span className="flex items-center gap-1.5">
+            <Icon icon="lucide:bar-chart-2" width={14} />
+            General
+          </span>
+        }
+      >
+        <DashboardGeneral />
+      </Tab>
+
+      <Tab
+        key="inventario"
+        title={
+          <span className="flex items-center gap-1.5">
+            <Icon icon="lucide:package" width={14} />
+            Inventario
+          </span>
+        }
+      >
+        <DashboardInventarioView />
+      </Tab>
+
+      <Tab
+        key="solicitudes"
+        title={
+          <span className="flex items-center gap-1.5">
+            <Icon icon="lucide:clipboard-list" width={14} />
+            Solicitudes
+          </span>
+        }
+      >
+        <DashboardGestor />
+      </Tab>
+
+      <Tab
+        key="recetas"
+        title={
+          <span className="flex items-center gap-1.5">
+            <Icon icon="lucide:chef-hat" width={14} />
+            Recetas
+          </span>
+        }
+      >
+        <DashboardRecetasView />
+      </Tab>
+
+      <Tab
+        key="gestion"
+        title={
+          <span className="flex items-center gap-1.5">
+            <Icon icon="lucide:settings-2" width={14} />
+            Gestión
+          </span>
+        }
+      >
+        <DashboardAdmin />
+      </Tab>
+    </Tabs>
+  </div>
+);
+
+// ─── Profesor Tabbed Layout ───────────────────────────────────────────────────
+
+const DashboardProfesorTabs: React.FC = () => (
+  <div className="container mx-auto px-4 py-6 space-y-4">
+    <div className="flex items-center gap-3 mb-2">
+      <div className="w-10 h-10 rounded-xl bg-[#FFB800]/10 flex items-center justify-center">
+        <Icon icon="lucide:layout-dashboard" width={22} className="text-[#FFB800]" />
+      </div>
+      <div>
+        <h1 className="text-2xl font-bold">Dashboard</h1>
+        <p className="text-default-500 text-sm">Panel de control</p>
+      </div>
+    </div>
+
+    <Tabs
+      aria-label="Dashboard profesor"
+      color="warning"
+      variant="underlined"
+      classNames={{
+        tabList: 'border-b border-divider',
+        cursor: 'bg-[#FFB800]',
+      }}
+    >
+      <Tab
+        key="mis-solicitudes"
+        title={
+          <span className="flex items-center gap-1.5">
+            <Icon icon="lucide:file-text" width={14} />
+            Mis Solicitudes
+          </span>
+        }
+      >
+        <DashboardProfesor />
+      </Tab>
+
+      <Tab
+        key="recetas"
+        title={
+          <span className="flex items-center gap-1.5">
+            <Icon icon="lucide:chef-hat" width={14} />
+            Recetas
+          </span>
+        }
+      >
+        <DashboardRecetasView />
+      </Tab>
+    </Tabs>
+  </div>
+);
+
+// ─── Main Page ────────────────────────────────────────────────────────────────
 
 const DashboardPage: React.FC = () => {
   const { user, userRole, isLoading: authLoading, hasSpecificPermission } = useAuth();
@@ -33,7 +178,7 @@ const DashboardPage: React.FC = () => {
     setModalAbierto(false);
   };
 
-  // Mostrar loading mientras se carga la autenticación
+  // Loading state
   if (authLoading || !user || !userRole) {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -45,12 +190,13 @@ const DashboardPage: React.FC = () => {
     );
   }
 
-  // Determinar qué dashboard mostrar según permisos
+  // Role detection
+  const isAdmin           = user?.rol === 'Administrador' || user?.rol === 'Co-Administrador';
   const puedeGestionarPedidos = hasSpecificPermission('gestion-pedidos');
-  const puedeVerInventario = hasSpecificPermission('inventario');
+  const puedeVerInventario    = hasSpecificPermission('inventario');
   const puedeCrearSolicitudes = hasSpecificPermission('solicitud');
 
-  // Modal de aviso (se muestra una vez por sesión)
+  // Maintenance modal (shown once per session, only for non-new dashboards)
   const avisoModal = (
     <Modal isOpen={modalAbierto} onClose={cerrarModal} size="md" isDismissable={false} hideCloseButton>
       <ModalContent>
@@ -83,27 +229,69 @@ const DashboardPage: React.FC = () => {
     </Modal>
   );
 
-  // Dashboard para administradores y gestores de pedidos
+  // ── ADMIN / CO_ADMIN: tabbed multi-analytics view ──
+  if (isAdmin) {
+    return (
+      <>
+        {avisoModal}
+        <DashboardAdminTabs />
+      </>
+    );
+  }
+
+  // ── GESTOR_PEDIDOS (non-admin): gestor analytics only ──
   if (puedeGestionarPedidos) {
-    return <>{avisoModal}<DashboardAdmin /></>;
+    return (
+      <>
+        {avisoModal}
+        <div className="container mx-auto px-4 py-6">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-10 h-10 rounded-xl bg-[#FFB800]/10 flex items-center justify-center">
+              <Icon icon="lucide:clipboard-list" width={22} className="text-[#FFB800]" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold">Dashboard — Gestor de Pedidos</h1>
+              <p className="text-default-500 text-sm">Resumen de solicitudes y flujo de pedidos</p>
+            </div>
+          </div>
+          <DashboardGestor />
+        </div>
+      </>
+    );
   }
 
-  // Dashboard para profesores (pueden crear solicitudes)
-  if (puedeCrearSolicitudes && !puedeVerInventario) {
-    return <>{avisoModal}<DashboardProfesor /></>;
-  }
-
-  // Dashboard para bodega (pueden ver inventario pero no gestionar pedidos)
+  // ── ENCARGADO_BODEGA / ASISTENTE_BODEGA: inventario analytics ──
   if (puedeVerInventario && !puedeCrearSolicitudes && !puedeGestionarPedidos) {
-    return <>{avisoModal}<DashboardBodega /></>;
+    return (
+      <>
+        {avisoModal}
+        <div className="container mx-auto px-4 py-6">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-10 h-10 rounded-xl bg-[#FFB800]/10 flex items-center justify-center">
+              <Icon icon="lucide:package" width={22} className="text-[#FFB800]" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold">Dashboard — Inventario</h1>
+              <p className="text-default-500 text-sm">Estado del stock y movimientos</p>
+            </div>
+          </div>
+          <DashboardInventarioView />
+        </div>
+      </>
+    );
   }
 
-  // Dashboard por defecto (profesor si tiene permiso de solicitud)
+  // ── PROFESOR_A_CARGO / DOCENTE: mis solicitudes + recetas ──
   if (puedeCrearSolicitudes) {
-    return <>{avisoModal}<DashboardProfesor /></>;
+    return (
+      <>
+        {avisoModal}
+        <DashboardProfesorTabs />
+      </>
+    );
   }
 
-  // Si no tiene permisos específicos, mostrar dashboard básico
+  // ── Fallback: sin permisos específicos ──
   return (
     <>
       {avisoModal}

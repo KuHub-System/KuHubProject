@@ -192,6 +192,11 @@ public class SpringSecurityConfig {
                         // .requestMatchers("/swagger-ui/**").hasRole("ADMINISTRADOR")
 
                         // ========================================
+                        // ENDPOINTS DE DASHBOARD (analytics por rol)
+                        // ========================================
+                        .requestMatchers(HttpMethod.GET, "/api/v1/dashboard/**").authenticated()
+
+                        // ========================================
                         // ENDPOINTS DE PERMISOS (CRUD por Rol × Módulo)
                         // ========================================
                         // Matriz de permisos: cualquier usuario autenticado puede leerla
