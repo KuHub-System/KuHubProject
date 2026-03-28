@@ -10,7 +10,6 @@ import { useAuth } from '../contexts/auth-context';
 
 // Dashboards existentes
 import { DashboardAdmin }   from '../components/dashboard/DashboardAdmin';
-import { DashboardProfesor } from '../components/dashboard/DashboardProfesor';
 
 // Nuevos dashboards de analytics
 import { DashboardInventarioView } from '../components/dashboard/DashboardInventarioView';
@@ -104,53 +103,20 @@ const DashboardAdminTabs: React.FC = () => (
   </div>
 );
 
-// ─── Profesor Tabbed Layout ───────────────────────────────────────────────────
+// ─── Profesor Layout ──────────────────────────────────────────────────────────
 
-const DashboardProfesorTabs: React.FC = () => (
+const DashboardProfesorView: React.FC = () => (
   <div className="container mx-auto px-4 py-6 space-y-4">
     <div className="flex items-center gap-3 mb-2">
       <div className="w-10 h-10 rounded-xl bg-[#FFB800]/10 flex items-center justify-center">
-        <Icon icon="lucide:layout-dashboard" width={22} className="text-[#FFB800]" />
+        <Icon icon="lucide:chef-hat" width={22} className="text-[#FFB800]" />
       </div>
       <div>
         <h1 className="text-2xl font-bold">Dashboard</h1>
         <p className="text-default-500 text-sm">Panel de control</p>
       </div>
     </div>
-
-    <Tabs
-      aria-label="Dashboard profesor"
-      color="warning"
-      variant="underlined"
-      classNames={{
-        tabList: 'border-b border-divider',
-        cursor: 'bg-[#FFB800]',
-      }}
-    >
-      <Tab
-        key="mis-solicitudes"
-        title={
-          <span className="flex items-center gap-1.5">
-            <Icon icon="lucide:file-text" width={14} />
-            Mis Solicitudes
-          </span>
-        }
-      >
-        <DashboardProfesor />
-      </Tab>
-
-      <Tab
-        key="recetas"
-        title={
-          <span className="flex items-center gap-1.5">
-            <Icon icon="lucide:chef-hat" width={14} />
-            Recetas
-          </span>
-        }
-      >
-        <DashboardRecetasView />
-      </Tab>
-    </Tabs>
+    <DashboardRecetasView />
   </div>
 );
 
@@ -273,7 +239,7 @@ const DashboardPage: React.FC = () => {
     return (
       <>
         {avisoModal}
-        <DashboardProfesorTabs />
+        <DashboardProfesorView />
       </>
     );
   }
