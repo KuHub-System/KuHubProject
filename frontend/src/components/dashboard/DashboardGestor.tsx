@@ -8,11 +8,13 @@ import React from 'react';
 import { Card, CardBody, CardHeader, Spinner, Chip } from '@heroui/react';
 import { Icon } from '@iconify/react';
 import { motion } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import {
   BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from 'recharts';
 import { getDashboardGestor, DashboardGestorData, SolicitudRechazada } from '../../services/api-dashboard';
+import { useAuth } from '../../contexts/auth-context';
 
 // ─── KPI Card ────────────────────────────────────────────────────────────────
 
@@ -90,6 +92,9 @@ export const DashboardGestor: React.FC = () => {
   const [data, setData] = React.useState<DashboardGestorData | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState(false);
+  const navigate = useNavigate();
+  const { hasSpecificPermission } = useAuth();
+  const puedeVerGestionSolicitudes = hasSpecificPermission('gestion-solicitudes');
 
   React.useEffect(() => {
     getDashboardGestor()
@@ -181,9 +186,18 @@ export const DashboardGestor: React.FC = () => {
       {/* ── Charts: Pie + Bar Horizontal ── */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Pie: Distribución por Estado */}
-        <Card className="shadow-sm border border-divider">
-          <CardHeader className="pb-0 pt-4 px-5">
+        <Card
+          className={`shadow-sm border border-divider transition-shadow ${puedeVerGestionSolicitudes ? 'cursor-pointer hover:shadow-md hover:border-warning-300' : ''}`}
+          onClick={puedeVerGestionSolicitudes ? () => navigate('/gestion-solicitudes') : undefined}
+        >
+          <CardHeader className="pb-0 pt-4 px-5 flex items-center justify-between">
             <h3 className="text-sm font-semibold text-default-700">Distribución por Estado</h3>
+            {puedeVerGestionSolicitudes && (
+              <span className="text-xs text-default-400 flex items-center gap-1">
+                <Icon icon="lucide:external-link" width={12} />
+                Ver gestión
+              </span>
+            )}
           </CardHeader>
           <CardBody className="p-4">
             {pieData.length === 0 ? (
