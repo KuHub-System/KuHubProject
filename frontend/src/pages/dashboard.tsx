@@ -13,7 +13,6 @@ import { DashboardAdmin }   from '../components/dashboard/DashboardAdmin';
 import { DashboardProfesor } from '../components/dashboard/DashboardProfesor';
 
 // Nuevos dashboards de analytics
-import { DashboardGeneral }        from '../components/dashboard/DashboardGeneral';
 import { DashboardInventarioView } from '../components/dashboard/DashboardInventarioView';
 import { DashboardGestor }         from '../components/dashboard/DashboardGestor';
 import { DashboardRecetasView }    from '../components/dashboard/DashboardRecetasView';
@@ -54,18 +53,6 @@ const DashboardAdminTabs: React.FC = () => (
         cursor: 'bg-[#FFB800]',
       }}
     >
-      <Tab
-        key="general"
-        title={
-          <span className="flex items-center gap-1.5">
-            <Icon icon="lucide:bar-chart-2" width={14} />
-            General
-          </span>
-        }
-      >
-        <DashboardGeneral />
-      </Tab>
-
       <Tab
         key="inventario"
         title={
