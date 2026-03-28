@@ -71,7 +71,7 @@ public class DashboardRepository {
     public List<Object[]> getPedidosPorSemana() {
         return em.createNativeQuery(
             "SELECT s.nombre_semana, COUNT(p.id_pedido) AS total " +
-            "FROM semana s " +
+            "FROM semanas s " +
             "LEFT JOIN pedido p ON p.fecha_inicio_pedido >= s.fecha_inicio AND p.fecha_fin_pedido <= s.fecha_fin " +
             "WHERE s.anio = EXTRACT(YEAR FROM CURRENT_DATE)::INTEGER " +
             "GROUP BY s.id_semana, s.nombre_semana, s.fecha_inicio " +
@@ -103,7 +103,7 @@ public class DashboardRepository {
             "FROM inventario i " +
             "JOIN producto p ON p.id_producto = i.id_producto " +
             "JOIN categoria c ON c.id_categoria = p.id_categoria " +
-            "JOIN unidad_medida u ON u.id_unidad_medida = p.id_unidad_medida " +
+            "JOIN unidad_medida u ON u.id_unidad = p.id_unidad " +
             "WHERE i.stock < i.stock_limit AND i.stock_limit IS NOT NULL AND i.activo = true " +
             "ORDER BY (i.stock / NULLIF(i.stock_limit, 0)) ASC " +
             "LIMIT 10"
@@ -187,7 +187,7 @@ public class DashboardRepository {
     @SuppressWarnings("unchecked")
     public List<Object[]> getSolicitudesRechazadas() {
         return em.createNativeQuery(
-            "SELECT s.id_solicitud, COALESCE(mr.descripcion_motivo, 'Sin motivo registrado'), " +
+            "SELECT s.id_solicitud, COALESCE(mr.motivo, 'Sin motivo registrado'), " +
             "TO_CHAR(s.fecha_solicitada, 'DD/MM/YYYY') " +
             "FROM solicitud s " +
             "LEFT JOIN motivo_rechazo_solicitud mr ON mr.id_solicitud = s.id_solicitud " +
