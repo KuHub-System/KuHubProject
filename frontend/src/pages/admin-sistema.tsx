@@ -101,7 +101,6 @@ const formatDate = (dateStr: string): string => {
 const AdminSistemaPage: React.FC = () => {
   usePageTitle('Administración del Sistema', 'Centro de control: horarios, semanas académicas y salas');
   const toast = useToast();
-  const { canCreate: admin_Crear, canUpdate: admin_Editar, canDelete: admin_Eliminar } = useModulePermission('ADMIN_SISTEMA');
 
   const [activeTab, setActiveTab] = React.useState<string>('horarios');
   const [bloques, setBloques] = React.useState<IBloqueHorario[]>([]);
@@ -235,6 +234,7 @@ interface SeccionBloquesProps {
 
 const SeccionBloques: React.FC<SeccionBloquesProps> = ({ bloques, isLoading }) => {
   const { isOpen, onOpen, onOpenChange } = useDisclosure();
+  const { canCreate: admin_Crear, canUpdate: admin_Editar, canDelete: admin_Eliminar } = useModulePermission('ADMIN_SISTEMA');
   const [modalMode, setModalMode] = React.useState<'crear' | 'editar' | 'mantenimiento'>('crear');
 
   // Identificar bloques con "recreo" (gap > 1 min entre bloques consecutivos)
