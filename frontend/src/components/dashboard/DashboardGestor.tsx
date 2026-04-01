@@ -8,7 +8,7 @@ import React from 'react';
 import { Card, CardBody, CardHeader, Spinner, Chip } from '@heroui/react';
 import { Icon } from '@iconify/react';
 import { motion } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
+import { useHistory } from 'react-router-dom';
 import {
   BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
@@ -92,7 +92,7 @@ export const DashboardGestor: React.FC = () => {
   const [data, setData] = React.useState<DashboardGestorData | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState(false);
-  const navigate = useNavigate();
+  const history = useHistory();
   const { hasSpecificPermission } = useAuth();
   const puedeVerGestionSolicitudes = hasSpecificPermission('gestion-solicitudes');
 
@@ -188,7 +188,7 @@ export const DashboardGestor: React.FC = () => {
         {/* Pie: Distribución por Estado */}
         <Card
           className={`shadow-sm border border-divider transition-shadow ${puedeVerGestionSolicitudes ? 'cursor-pointer hover:shadow-md hover:border-warning-300' : ''}`}
-          onClick={puedeVerGestionSolicitudes ? () => navigate('/gestion-solicitudes') : undefined}
+          onClick={puedeVerGestionSolicitudes ? () => history.push('/gestion-solicitudes') : undefined}
         >
           <CardHeader className="pb-0 pt-4 px-5 flex items-center justify-between">
             <h3 className="text-sm font-semibold text-default-700">Distribución por Estado</h3>
