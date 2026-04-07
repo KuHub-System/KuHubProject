@@ -333,6 +333,7 @@ const BodegaTransitoPage: React.FC = () => {
     idProducto: number;
     nombreProducto: string;
     unidadAbreviada: string;
+    esFraccionario: boolean;
     stockTransito: number;
     cantidadSolicitada: number;
     cantidadAEntregar: number;
@@ -345,10 +346,11 @@ const BodegaTransitoPage: React.FC = () => {
   const abrirPreparar = React.useCallback((sol: ISolicitudEntrega) => {
     setPreparandoSolicitud(sol);
     setProductosEdit(sol.productos.map(p => ({
-      idProducto:        p.idProducto,
-      nombreProducto:    p.nombreProducto,
-      unidadAbreviada:   p.unidadAbreviada,
-      stockTransito:     p.stockTransito ?? 0,
+      idProducto:         p.idProducto,
+      nombreProducto:     p.nombreProducto,
+      unidadAbreviada:    p.unidadAbreviada,
+      esFraccionario:     p.esFraccionario ?? false,
+      stockTransito:      p.stockTransito ?? 0,
       cantidadSolicitada: p.cantidad,
       cantidadAEntregar:  p.cantidad,
     })));
@@ -1330,11 +1332,13 @@ const BodegaTransitoPage: React.FC = () => {
                     <Input
                       size="sm"
                       type="number"
-                      min={0.001}
-                      step={0.001}
+                      min={p.esFraccionario ? 0.001 : 1}
+                      step={p.esFraccionario ? 0.001 : 1}
                       value={String(p.cantidadAEntregar)}
                       onValueChange={val => {
-                        const parsed = parseFloat(val);
+                        const parsed = p.esFraccionario
+                          ? parseFloat(parseFloat(val).toFixed(3))
+                          : parseInt(val, 10);
                         if (!isNaN(parsed) && parsed > 0) {
                           setProductosEdit(prev => prev.map((item, idx) => idx === i ? { ...item, cantidadAEntregar: parsed } : item));
                         }

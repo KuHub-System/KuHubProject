@@ -221,6 +221,7 @@ public class PedidoDashboardRecords {
             @JsonProperty("nombreProducto")  String     nombreProducto,
             @JsonProperty("cantidad")        BigDecimal cantidad,
             @JsonProperty("unidadAbreviada") String     unidadAbreviada,
+            @JsonProperty("esFraccionario")  Boolean    esFraccionario,
             @JsonProperty("observacion")     String     observacion,
             @JsonProperty("stockTransito")   BigDecimal stockTransito,
             @JsonProperty("diferencia")      BigDecimal diferencia

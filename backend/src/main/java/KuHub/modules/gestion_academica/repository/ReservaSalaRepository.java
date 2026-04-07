@@ -36,7 +36,7 @@ public interface ReservaSalaRepository extends JpaRepository<ReservaSala, Intege
             WHERE r.id_sala = :idSala
               AND s.activo = TRUE
               AND r.activo = TRUE
-              AND r.dia_semana = cast(:diaSemana AS dia_semana_type)
+              AND r.dia_semana::text = :diaSemana
     """, nativeQuery = true)
     List<NumberBlockProjection> findDistinctRersevaActivoTrueBySalaIdSalaAndSalaActivoTrueAndDiaSemana(
             @Param("idSala") Integer idSala,
@@ -56,7 +56,7 @@ public interface ReservaSalaRepository extends JpaRepository<ReservaSala, Intege
         SELECT CASE WHEN COUNT(rs.id_reserva_sala) > 0 THEN true ELSE false END 
         FROM reserva_sala rs 
         WHERE rs.id_sala = :idSala 
-          AND rs.dia_semana = CAST(:diaSemana AS dia_semana_type) 
+          AND rs.dia_semana::text = :diaSemana
           AND rs.id_bloque = :idBloque 
           AND rs.activo = true
     """, nativeQuery = true)
