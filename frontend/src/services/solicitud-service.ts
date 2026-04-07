@@ -436,6 +436,7 @@ export interface IProductoEntrega {
   nombreProducto: string;
   cantidad: number;
   unidadAbreviada: string;
+  esFraccionario: boolean;
   observacion: string | null;
   stockTransito: number;
   diferencia: number;
