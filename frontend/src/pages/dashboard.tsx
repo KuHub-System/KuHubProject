@@ -4,7 +4,7 @@
  */
 
 import React from 'react';
-import { Spinner, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Button, Tabs, Tab } from '@heroui/react';
+import { Spinner, Tabs, Tab } from '@heroui/react';
 import { Icon } from '@iconify/react';
 import { useAuth } from '../contexts/auth-context';
 
@@ -22,10 +22,6 @@ export {
   obtenerEstadoProceso,
   calcularDiasRestantesProceso,
 } from '../services/dashboard-service';
-
-// ─── Maintenance modal key ────────────────────────────────────────────────────
-
-const MODAL_KEY = 'dashboard_maintenance_dismissed';
 
 // ─── Admin Tabbed Layout ──────────────────────────────────────────────────────
 
@@ -124,12 +120,6 @@ const DashboardProfesorView: React.FC = () => (
 
 const DashboardPage: React.FC = () => {
   const { user, userRole, isLoading: authLoading, hasSpecificPermission } = useAuth();
-  const [modalAbierto, setModalAbierto] = React.useState(() => !sessionStorage.getItem(MODAL_KEY));
-
-  const cerrarModal = () => {
-    sessionStorage.setItem(MODAL_KEY, '1');
-    setModalAbierto(false);
-  };
 
   // Loading state
   if (authLoading || !user || !userRole) {
@@ -149,106 +139,55 @@ const DashboardPage: React.FC = () => {
   const puedeVerInventario    = hasSpecificPermission('inventario');
   const puedeCrearSolicitudes = hasSpecificPermission('solicitud');
 
-  // Maintenance modal (shown once per session, only for non-new dashboards)
-  const avisoModal = (
-    <Modal isOpen={modalAbierto} onClose={cerrarModal} size="md" isDismissable={false} hideCloseButton>
-      <ModalContent>
-        <ModalHeader className="flex items-center gap-2 pb-1">
-          <Icon icon="lucide:construction" width={20} className="text-warning-500 shrink-0" />
-          <span>Vista en desarrollo</span>
-        </ModalHeader>
-        <ModalBody className="py-3">
-          <div className="flex flex-col gap-3">
-            <p className="text-sm text-default-600">
-              El <strong>Dashboard</strong> que estás viendo es una versión preliminar.
-              Actualmente se encuentra en mantenimiento activo y está sujeto a cambios y mejoras continuas.
-            </p>
-            <p className="text-sm text-default-500">
-              Es posible que algunos datos, métricas o secciones no reflejen información definitiva.
-              Agradecemos tu comprensión mientras seguimos mejorando la plataforma.
-            </p>
-            <div className="flex items-center gap-2 px-3 py-2 bg-warning-50 border border-warning-200 rounded-lg text-xs text-warning-800">
-              <Icon icon="lucide:info" width={13} className="shrink-0" />
-              Este aviso se muestra una vez por sesión.
-            </div>
-          </div>
-        </ModalBody>
-        <ModalFooter>
-          <Button color="primary" onPress={cerrarModal} startContent={<Icon icon="lucide:thumbs-up" width={14} />}>
-            ¡Gracias, entendido!
-          </Button>
-        </ModalFooter>
-      </ModalContent>
-    </Modal>
-  );
-
   // ── ADMIN / CO_ADMIN: tabbed multi-analytics view ──
   if (isAdmin) {
-    return (
-      <>
-        {avisoModal}
-        <DashboardAdminTabs />
-      </>
-    );
+    return <DashboardAdminTabs />;
   }
 
   // ── GESTOR_PEDIDOS (non-admin): gestor analytics only ──
   if (puedeGestionarPedidos) {
     return (
-      <>
-        {avisoModal}
-        <div className="container mx-auto px-4 py-6">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="w-10 h-10 rounded-xl bg-[#FFB800]/10 flex items-center justify-center">
-              <Icon icon="lucide:clipboard-list" width={22} className="text-[#FFB800]" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold">Dashboard — Gestor de Pedidos</h1>
-              <p className="text-default-500 text-sm">Resumen de solicitudes y flujo de pedidos</p>
-            </div>
+      <div className="container mx-auto px-4 py-6">
+        <div className="flex items-center gap-3 mb-6">
+          <div className="w-10 h-10 rounded-xl bg-[#FFB800]/10 flex items-center justify-center">
+            <Icon icon="lucide:clipboard-list" width={22} className="text-[#FFB800]" />
           </div>
-          <DashboardGestor />
+          <div>
+            <h1 className="text-2xl font-bold">Dashboard — Gestor de Pedidos</h1>
+            <p className="text-default-500 text-sm">Resumen de solicitudes y flujo de pedidos</p>
+          </div>
         </div>
-      </>
+        <DashboardGestor />
+      </div>
     );
   }
 
   // ── ENCARGADO_BODEGA / ASISTENTE_BODEGA: inventario analytics ──
   if (puedeVerInventario && !puedeCrearSolicitudes && !puedeGestionarPedidos) {
     return (
-      <>
-        {avisoModal}
-        <div className="container mx-auto px-4 py-6">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="w-10 h-10 rounded-xl bg-[#FFB800]/10 flex items-center justify-center">
-              <Icon icon="lucide:package" width={22} className="text-[#FFB800]" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold">Dashboard — Inventario</h1>
-              <p className="text-default-500 text-sm">Estado del stock y movimientos</p>
-            </div>
+      <div className="container mx-auto px-4 py-6">
+        <div className="flex items-center gap-3 mb-6">
+          <div className="w-10 h-10 rounded-xl bg-[#FFB800]/10 flex items-center justify-center">
+            <Icon icon="lucide:package" width={22} className="text-[#FFB800]" />
           </div>
-          <DashboardInventarioView />
+          <div>
+            <h1 className="text-2xl font-bold">Dashboard — Inventario</h1>
+            <p className="text-default-500 text-sm">Estado del stock y movimientos</p>
+          </div>
         </div>
-      </>
+        <DashboardInventarioView />
+      </div>
     );
   }
 
   // ── PROFESOR_A_CARGO / DOCENTE: mis solicitudes + recetas ──
   if (puedeCrearSolicitudes) {
-    return (
-      <>
-        {avisoModal}
-        <DashboardProfesorView />
-      </>
-    );
+    return <DashboardProfesorView />;
   }
 
   // ── Fallback: sin permisos específicos ──
   return (
-    <>
-      {avisoModal}
-      <div className="bg-gray-50 dark:bg-zinc-900 min-h-screen py-8">
+    <div className="bg-gray-50 dark:bg-zinc-900 min-h-screen py-8">
         <div className="container mx-auto px-4">
           <div className="text-center py-12">
             <Icon icon="lucide:alert-circle" className="text-6xl text-default-400 mx-auto mb-4" />
@@ -259,7 +198,6 @@ const DashboardPage: React.FC = () => {
           </div>
         </div>
       </div>
-    </>
   );
 };
 

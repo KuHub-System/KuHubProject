@@ -899,7 +899,7 @@ const CrearSeccionModal: React.FC<CrearSeccionModalProps> = ({ asignatura, onClo
                 label="Sala"
                 placeholder={isLoadingSalas ? 'Cargando salas...' : 'Seleccione una sala'}
                 selectedKeys={salaId ? [salaId] : []}
-                onSelectionChange={keys => setSalaId(Array.from(keys)[0] as string)}
+                onSelectionChange={keys => { const v = Array.from(keys as Set<string>)[0]; if (v) setSalaId(v); }}
                 isLoading={isLoadingSalas}
               >
                 {salas.map(s => (
@@ -912,10 +912,10 @@ const CrearSeccionModal: React.FC<CrearSeccionModalProps> = ({ asignatura, onClo
                 label="Día de la semana"
                 placeholder="Seleccione un día"
                 selectedKeys={dia ? [dia] : []}
-                onSelectionChange={keys => setDia(Array.from(keys)[0] as string)}
+                onSelectionChange={keys => { const v = Array.from(keys as Set<string>)[0]; if (v) setDia(v); }}
               >
                 {DIAS_SEMANA_OPTIONS.map(d => (
-                  <SelectItem key={d.value}>{d.label}</SelectItem>
+                  <SelectItem key={d.value} textValue={d.label}>{d.label}</SelectItem>
                 ))}
               </Select>
             </div>
@@ -1326,7 +1326,7 @@ const EditarSeccionModal: React.FC<EditarSeccionModalProps> = ({ seccionData, on
                 label="Sala"
                 placeholder={isLoadingSalas ? 'Cargando salas...' : 'Seleccione una sala'}
                 selectedKeys={salaId ? [salaId] : []}
-                onSelectionChange={keys => setSalaId(Array.from(keys)[0] as string)}
+                onSelectionChange={keys => { const v = Array.from(keys as Set<string>)[0]; if (v) setSalaId(v); }}
                 isLoading={isLoadingSalas}
               >
                 {salas.map(s => (
@@ -1339,10 +1339,10 @@ const EditarSeccionModal: React.FC<EditarSeccionModalProps> = ({ seccionData, on
                 label="Día de la semana"
                 placeholder="Seleccione un día"
                 selectedKeys={dia ? [dia] : []}
-                onSelectionChange={keys => setDia(Array.from(keys)[0] as string)}
+                onSelectionChange={keys => { const v = Array.from(keys as Set<string>)[0]; if (v) setDia(v); }}
               >
                 {DIAS_SEMANA_OPTIONS.map(d => (
-                  <SelectItem key={d.value}>{d.label}</SelectItem>
+                  <SelectItem key={d.value} textValue={d.label}>{d.label}</SelectItem>
                 ))}
               </Select>
             </div>
