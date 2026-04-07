@@ -90,9 +90,11 @@ public class SpringSecurityConfig {
                 "http://127.0.0.1:3000",
 
                 // 🚀 PRODUCCIÓN (AWS Lightsail)
-                "http://52.5.222.79",          // IP estática (Puerto 80 por defecto en React)
+                "http://52.5.222.79",
                 "http://52.5.222.79:80",
-                "http://52.5.222.79:8080"      // Por si acaso, la IP con el puerto de Spring
+                "http://52.5.222.79:8080",
+                "https://52.5.222.79",         // HTTPS habilitado
+                "https://52.5.222.79:443"
         ));
 
         // ⚠️ PRODUCCIÓN: Cambiar a la URL de tu frontend en AWS
