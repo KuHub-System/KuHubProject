@@ -110,9 +110,11 @@ const ConglomeradoPedidosPage: React.FC = () => {
   const [busquedaCrono, setBusquedaCrono] = React.useState('');
   const [busquedaAprob, setBusquedaAprob] = React.useState('');
   const [expandidos,    setExpandidos]    = React.useState<Set<string>>(new Set());
-  const [vistaActiva,   setVistaActiva]   = React.useState<'cronograma' | 'totales' | 'aprobacion'>('cronograma');
+  const [vistaActiva,   setVistaActiva]   = React.useState<'categorias' | 'cronograma' | 'totales' | 'aprobacion'>('cronograma');
   const [aprobVista,    setAprobVista]    = React.useState<'unificado' | 'individual'>('unificado');
   const [isAprobando,   setIsAprobando]   = React.useState(false);
+  const [diaCategoria,  setDiaCategoria]  = React.useState<number | 'completa'>(1);
+  const [conColores,    setConColores]    = React.useState(true);
 
   // ── Carga inicial de semanas ──
   React.useEffect(() => {
@@ -275,6 +277,123 @@ const ConglomeradoPedidosPage: React.FC = () => {
     const q = busquedaAprob.toLowerCase();
     return productosUnificadosAprob.filter(p => p.nombreProducto.toLowerCase().includes(q));
   }, [productosUnificadosAprob, busquedaAprob]);
+
+  // ── Paleta de colores para secciones (vista categorías) ──
+  const SECCION_COLORS = ['#dbeafe','#dcfce7','#fef9c3','#fce7f3','#f3e8ff','#ffedd5','#ccfbf1','#cffafe','#ecfccb','#ffe4e6','#e0e7ff','#fef2f2'];
+
+  const productosParaCategorias = React.useMemo(() => {
+    interface ProdCat {
+      idProducto: number;
+      nombreProducto: string;
+      idCategoria: number;
+      nombreCategoria: string;
+      abreviatura: string;
+      detalles: Array<{ diaSemana: number; nombreSeccion: string; cantidad: number; }>;
+    }
+    const prodMap = new Map<number, ProdCat>();
+    for (const pedido of (consolidateData?.pedidosCompletos ?? [])) {
+      for (const prod of pedido.productos) {
+        if (!prodMap.has(prod.idProducto)) {
+          prodMap.set(prod.idProducto, {
+            idProducto: prod.idProducto,
+            nombreProducto: prod.nombreProducto,
+            idCategoria: prod.idCategoria ?? 0,
+            nombreCategoria: prod.nombreCategoria ?? 'Sin categoría',
+            abreviatura: prod.abreviatura,
+            detalles: [],
+          });
+        }
+        const entry = prodMap.get(prod.idProducto)!;
+        for (const det of prod.detallesPorSolicitud) {
+          entry.detalles.push({
+            diaSemana: getDiaSemana(det.fechaSolicitada),
+            nombreSeccion: det.nombreSeccion,
+            cantidad: det.cantidad,
+          });
+        }
+      }
+    }
+    return Array.from(prodMap.values()).sort((a, b) => {
+      const c = a.nombreCategoria.localeCompare(b.nombreCategoria);
+      return c !== 0 ? c : a.nombreProducto.localeCompare(b.nombreProducto);
+    });
+  }, [consolidateData]);
+
+  const seccionColorMap = React.useMemo(() => {
+    const sections = new Set<string>();
+    for (const p of productosParaCategorias) {
+      for (const d of p.detalles) sections.add(d.nombreSeccion);
+    }
+    const map = new Map<string, string>();
+    Array.from(sections).sort().forEach((sec, i) => {
+      map.set(sec, SECCION_COLORS[i % SECCION_COLORS.length]);
+    });
+    return map;
+  }, [productosParaCategorias]);
+
+  // Categorías únicas con sus productos (usadas en ambas sub-vistas)
+  const categoriasPorDia = React.useMemo(() => {
+    interface ProdFiltrado {
+      idProducto: number;
+      nombreProducto: string;
+      abreviatura: string;
+      detallesFiltrados: Array<{ nombreSeccion: string; cantidad: number; }>;
+      totalDia: number;
+    }
+    interface CatGroup { idCategoria: number; nombreCategoria: string; productos: ProdFiltrado[]; }
+
+    const catMap = new Map<number, CatGroup>();
+    for (const prod of productosParaCategorias) {
+      const detallesFiltrados = diaCategoria === 'completa'
+        ? prod.detalles.map(d => ({ nombreSeccion: d.nombreSeccion, cantidad: d.cantidad }))
+        : prod.detalles.filter(d => d.diaSemana === diaCategoria).map(d => ({ nombreSeccion: d.nombreSeccion, cantidad: d.cantidad }));
+      if (detallesFiltrados.length === 0) continue;
+      const totalDia = detallesFiltrados.reduce((s, d) => s + d.cantidad, 0);
+      if (!catMap.has(prod.idCategoria)) {
+        catMap.set(prod.idCategoria, { idCategoria: prod.idCategoria, nombreCategoria: prod.nombreCategoria, productos: [] });
+      }
+      catMap.get(prod.idCategoria)!.productos.push({ idProducto: prod.idProducto, nombreProducto: prod.nombreProducto, abreviatura: prod.abreviatura, detallesFiltrados, totalDia });
+    }
+    return Array.from(catMap.values()).sort((a, b) => a.nombreCategoria.localeCompare(b.nombreCategoria));
+  }, [productosParaCategorias, diaCategoria]);
+
+  // Para Vista Completa: matriz [idProducto][diaSemana] → { total, secciones[] }
+  const matrizCompleta = React.useMemo(() => {
+    const dias = [1, 2, 3, 4, 5, 6, 0]; // Lun → Dom
+    interface CellData { total: number; secciones: Array<{ nombre: string; cantidad: number; }>; }
+    interface FilaMatrix {
+      idProducto: number;
+      nombreProducto: string;
+      idCategoria: number;
+      nombreCategoria: string;
+      abreviatura: string;
+      diasData: Record<number, CellData>;
+      totalSemana: number;
+    }
+    const rows: FilaMatrix[] = productosParaCategorias.map(prod => {
+      const diasData: Record<number, CellData> = {};
+      for (const dia of dias) {
+        const detallesDia = prod.detalles.filter(d => d.diaSemana === dia);
+        if (detallesDia.length > 0) {
+          const secMap = new Map<string, number>();
+          for (const d of detallesDia) secMap.set(d.nombreSeccion, (secMap.get(d.nombreSeccion) ?? 0) + d.cantidad);
+          diasData[dia] = {
+            total: detallesDia.reduce((s, d) => s + d.cantidad, 0),
+            secciones: Array.from(secMap.entries()).map(([nombre, cantidad]) => ({ nombre, cantidad })),
+          };
+        }
+      }
+      const totalSemana = prod.detalles.reduce((s, d) => s + d.cantidad, 0);
+      return { idProducto: prod.idProducto, nombreProducto: prod.nombreProducto, idCategoria: prod.idCategoria, nombreCategoria: prod.nombreCategoria, abreviatura: prod.abreviatura, diasData, totalSemana };
+    }).filter(r => r.totalSemana > 0);
+    // agrupar por categoría
+    const catMap = new Map<number, { nombre: string; filas: FilaMatrix[] }>();
+    for (const row of rows) {
+      if (!catMap.has(row.idCategoria)) catMap.set(row.idCategoria, { nombre: row.nombreCategoria, filas: [] });
+      catMap.get(row.idCategoria)!.filas.push(row);
+    }
+    return Array.from(catMap.values()).sort((a, b) => a.nombre.localeCompare(b.nombre));
+  }, [productosParaCategorias]);
 
   const pedidosPendientes = React.useMemo(
     () => (consolidateData?.pedidosAprobacion ?? []).filter(p => p.estadoPedido === 'PENDIENTE'),
@@ -448,17 +567,51 @@ const ConglomeradoPedidosPage: React.FC = () => {
         <CardHeader className="px-5 py-4 flex flex-col sm:flex-row gap-3 items-start sm:items-center flex-wrap">
           {/* Tabs */}
           <div className="flex items-center gap-1 bg-default-100 rounded-lg p-1 flex-wrap">
-            {(['cronograma', 'totales', 'aprobacion'] as const).map(v => (
+            {(['categorias', 'cronograma', 'totales', 'aprobacion'] as const).map(v => (
               <button key={v} onClick={() => { setVistaActiva(v); setExpandidos(new Set()); }}
                 className={`px-3 py-1.5 rounded-md text-xs font-semibold cursor-pointer transition-all ${
                   vistaActiva === v ? 'bg-white shadow-sm text-primary' : 'text-default-500 hover:text-default-700'
                 }`}>
+                {v === 'categorias'  && <span className="flex items-center gap-1.5"><Icon icon="lucide:tag"             width={12} />Por Categoría</span>}
                 {v === 'cronograma'  && <span className="flex items-center gap-1.5"><Icon icon="lucide:calendar-range"  width={12} />Cronograma Semanal</span>}
                 {v === 'totales'     && <span className="flex items-center gap-1.5"><Icon icon="lucide:package-check"   width={12} />Totales del Pedido</span>}
                 {v === 'aprobacion'  && <span className="flex items-center gap-1.5"><Icon icon="lucide:shield-check"    width={12} />Aprobación de Pedidos</span>}
               </button>
             ))}
           </div>
+
+          {vistaActiva === 'categorias' && (
+            <div className="flex items-center gap-2 flex-wrap">
+              {/* Selector día */}
+              <div className="flex items-center gap-1 bg-default-100 rounded-lg p-1 flex-wrap">
+                {([
+                  { val: 1,          label: 'Lunes'         },
+                  { val: 2,          label: 'Martes'        },
+                  { val: 3,          label: 'Miércoles'     },
+                  { val: 4,          label: 'Jueves'        },
+                  { val: 5,          label: 'Viernes'       },
+                  { val: 6,          label: 'Sábado'        },
+                  { val: 0,          label: 'Domingo'       },
+                  { val: 'completa', label: 'Vista Completa'},
+                ] as const).map(d => (
+                  <button key={String(d.val)} onClick={() => setDiaCategoria(d.val as number | 'completa')}
+                    className={`px-2.5 py-1 rounded-md text-xs font-semibold cursor-pointer transition-all ${
+                      diaCategoria === d.val ? 'bg-white shadow-sm text-primary' : 'text-default-500 hover:text-default-700'
+                    }`}>
+                    {d.label}
+                  </button>
+                ))}
+              </div>
+              {/* Toggle colores */}
+              <button onClick={() => setConColores(c => !c)}
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold border transition-all ${
+                  conColores ? 'bg-primary-50 border-primary-200 text-primary-700' : 'bg-default-100 border-default-200 text-default-500'
+                }`}>
+                <Icon icon={conColores ? 'lucide:palette' : 'lucide:palette'} width={12} />
+                {conColores ? 'Con colores' : 'Sin colores'}
+              </button>
+            </div>
+          )}
 
           {vistaActiva === 'totales' && (
             <Input size="sm" variant="bordered" placeholder="Buscar producto..."
@@ -502,6 +655,190 @@ const ConglomeradoPedidosPage: React.FC = () => {
               <p className="text-sm">No hay pedidos consolidados para esta semana.</p>
               <p className="text-xs">Los pedidos deben estar generados para aparecer aquí.</p>
             </div>
+          ) : vistaActiva === 'categorias' ? (
+
+            /* ════════════════════════════════════════
+               VISTA POR CATEGORÍA
+            ════════════════════════════════════════ */
+            diaCategoria === 'completa' ? (
+
+              /* ── VISTA COMPLETA: tabla cruzada ── */
+              <div className="overflow-x-auto">
+                {matrizCompleta.length === 0 ? (
+                  <div className="py-10 flex flex-col items-center gap-3 text-default-400">
+                    <Icon icon="lucide:tag" width={36} className="opacity-40" />
+                    <p className="text-sm">Sin productos para esta semana.</p>
+                  </div>
+                ) : (
+                  <table className="w-full text-sm border-collapse">
+                    <thead>
+                      <tr className="bg-default-50 border-b border-default-200">
+                        <th className="text-left px-3 py-2 text-[10px] font-bold text-default-500 uppercase tracking-wider min-w-[200px]">Categoría / Producto</th>
+                        {['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'].map(d => (
+                          <th key={d} className="text-center px-2 py-2 text-[10px] font-bold text-default-500 uppercase tracking-wider min-w-[70px]">{d}</th>
+                        ))}
+                        <th className="text-center px-2 py-2 text-[10px] font-bold text-default-500 uppercase tracking-wider min-w-[70px]">Total</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {matrizCompleta.map(cat => (
+                        <React.Fragment key={cat.nombre}>
+                          {/* Fila cabecera categoría */}
+                          <tr className="bg-default-100 border-t-2 border-default-300">
+                            <td colSpan={9} className="px-3 py-1.5">
+                              <span className="text-xs font-bold text-default-700 uppercase tracking-wider flex items-center gap-1.5">
+                                <Icon icon="lucide:tag" width={11} className="text-default-500" />
+                                {cat.nombre}
+                              </span>
+                            </td>
+                          </tr>
+                          {/* Filas de productos */}
+                          {cat.filas.map(row => (
+                            <tr key={row.idProducto} className="border-b border-default-100 hover:bg-default-50/50">
+                              <td className="px-3 py-2 text-default-700 font-medium pl-7">{row.nombreProducto}</td>
+                              {[1,2,3,4,5,6,0].map(dia => {
+                                const cell = row.diasData[dia];
+                                if (!cell) return <td key={dia} className="text-center px-2 py-2 text-default-300">—</td>;
+                                const bgColor = conColores && cell.secciones.length === 1
+                                  ? seccionColorMap.get(cell.secciones[0].nombre) ?? 'transparent'
+                                  : 'transparent';
+                                return (
+                                  <td key={dia} className="text-center px-2 py-2">
+                                    <div className="inline-flex flex-col items-center gap-0.5">
+                                      {conColores && cell.secciones.length > 1
+                                        ? cell.secciones.map((sec, si) => (
+                                            <span key={si} className="text-[11px] font-mono font-semibold px-1.5 py-0.5 rounded"
+                                              style={{ backgroundColor: seccionColorMap.get(sec.nombre) ?? '#f4f4f5' }}>
+                                              {fmtCant(sec.cantidad)}
+                                              <span className="text-[9px] text-default-500 ml-0.5">{row.abreviatura}</span>
+                                            </span>
+                                          ))
+                                        : (
+                                          <span className="text-[11px] font-mono font-semibold px-1.5 py-0.5 rounded"
+                                            style={{ backgroundColor: bgColor }}>
+                                            {fmtCant(cell.total)}
+                                            <span className="text-[9px] text-default-500 ml-0.5">{row.abreviatura}</span>
+                                          </span>
+                                        )
+                                      }
+                                    </div>
+                                  </td>
+                                );
+                              })}
+                              <td className="text-center px-2 py-2">
+                                <span className="text-xs font-bold text-secondary font-mono">
+                                  {fmtCant(row.totalSemana)}
+                                  <span className="text-[9px] text-default-400 ml-0.5">{row.abreviatura}</span>
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </React.Fragment>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+
+                {/* Leyenda secciones */}
+                {conColores && seccionColorMap.size > 0 && (
+                  <div className="mt-4 p-3 bg-default-50 rounded-xl border border-default-200">
+                    <p className="text-[10px] font-bold text-default-500 uppercase tracking-wider mb-2">Leyenda de secciones</p>
+                    <div className="flex flex-wrap gap-2">
+                      {Array.from(seccionColorMap.entries()).map(([sec, color]) => (
+                        <span key={sec} className="flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium text-default-700 border border-default-200"
+                          style={{ backgroundColor: color }}>
+                          §{sec}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+            ) : (
+
+              /* ── VISTA POR DÍA: agrupada por categoría ── */
+              <div className="space-y-4">
+                {categoriasPorDia.length === 0 ? (
+                  <div className="py-10 flex flex-col items-center gap-3 text-default-400">
+                    <Icon icon="lucide:tag" width={36} className="opacity-40" />
+                    <p className="text-sm">Sin productos para el {DIA_CONFIG[diaCategoria as number]?.nombre ?? 'día seleccionado'}.</p>
+                  </div>
+                ) : (
+                  <>
+                    {categoriasPorDia.map(cat => (
+                      <div key={cat.idCategoria} className="border border-default-200 rounded-xl overflow-hidden">
+                        {/* Cabecera categoría */}
+                        <div className="flex items-center gap-2 px-4 py-2 bg-default-100 border-b border-default-200">
+                          <Icon icon="lucide:tag" width={13} className="text-default-500" />
+                          <span className="text-xs font-bold text-default-700 uppercase tracking-wider">{cat.nombreCategoria}</span>
+                          <span className="ml-auto text-[10px] text-default-400">{cat.productos.length} producto{cat.productos.length !== 1 ? 's' : ''}</span>
+                        </div>
+
+                        {/* Encabezado tabla */}
+                        <div className="grid grid-cols-[1fr_auto] px-4 py-1.5 bg-default-50 border-b border-default-100 text-[10px] font-bold text-default-500 uppercase tracking-wider">
+                          <span>Producto</span>
+                          <span className="text-right">Cantidad por Sección</span>
+                        </div>
+
+                        {/* Filas de productos */}
+                        {cat.productos.map(prod => {
+                          // Agrupar detalles por sección
+                          const seccionMap = new Map<string, number>();
+                          for (const d of prod.detallesFiltrados) {
+                            seccionMap.set(d.nombreSeccion, (seccionMap.get(d.nombreSeccion) ?? 0) + d.cantidad);
+                          }
+                          return (
+                            <div key={prod.idProducto}
+                              className="grid grid-cols-[1fr_auto] items-center gap-3 px-4 py-2.5 border-b border-default-50 last:border-0 hover:bg-default-50/50">
+                              <div className="min-w-0">
+                                <p className="font-medium text-sm text-default-800 truncate">{prod.nombreProducto}</p>
+                                <p className="text-[10px] text-default-400 font-mono">
+                                  Total: {fmtCant(prod.totalDia)} {prod.abreviatura}
+                                </p>
+                              </div>
+                              <div className="flex flex-wrap gap-1 justify-end">
+                                {Array.from(seccionMap.entries()).map(([sec, cant]) => (
+                                  <span key={sec}
+                                    className="px-2 py-1 rounded-lg text-xs font-semibold border border-default-200 text-default-700 font-mono"
+                                    style={{ backgroundColor: conColores ? (seccionColorMap.get(sec) ?? '#f4f4f5') : 'white' }}>
+                                    §{sec} · {fmtCant(cant)} {prod.abreviatura}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          );
+                        })}
+
+                        {/* Total categoría */}
+                        <div className="flex items-center justify-between px-4 py-2 bg-default-50 border-t border-default-200">
+                          <span className="text-[11px] text-default-500 font-medium">Total categoría</span>
+                          <span className="text-xs font-bold text-primary font-mono">
+                            {fmtCant(cat.productos.reduce((s, p) => s + p.totalDia, 0))} und.
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+
+                    {/* Leyenda */}
+                    {conColores && seccionColorMap.size > 0 && (
+                      <div className="p-3 bg-default-50 rounded-xl border border-default-200">
+                        <p className="text-[10px] font-bold text-default-500 uppercase tracking-wider mb-2">Leyenda de secciones</p>
+                        <div className="flex flex-wrap gap-2">
+                          {Array.from(seccionColorMap.entries()).map(([sec, color]) => (
+                            <span key={sec} className="flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium text-default-700 border border-default-200"
+                              style={{ backgroundColor: color }}>
+                              §{sec}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            )
+
           ) : vistaActiva === 'cronograma' ? (
 
             /* ════════════════════════════════════════

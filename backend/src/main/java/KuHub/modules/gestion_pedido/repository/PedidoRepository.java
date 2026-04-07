@@ -46,6 +46,8 @@ public interface PedidoRepository extends JpaRepository<Pedido, Integer> {
                                 json_build_object(
                                     'idProducto', agg.id_producto,
                                     'nombreProducto', agg.nombre_producto,
+                                    'idCategoria', agg.id_categoria,
+                                    'nombreCategoria', agg.nombre_categoria,
                                     'cantidadTotalPedido', agg.cant_producto_pedido,
                                     'unidad', agg.nombre_unidad,
                                     'abreviatura', agg.abreviatura,
@@ -59,6 +61,8 @@ public interface PedidoRepository extends JpaRepository<Pedido, Integer> {
                             SELECT
                                 dp.id_producto,
                                 prod.nombre_producto,
+                                cat.id_categoria,
+                                cat.nombre_categoria,
                                 dp.cant_producto_pedido,
                                 uni.nombre_unidad,
                                 uni.abreviatura,
@@ -135,6 +139,7 @@ public interface PedidoRepository extends JpaRepository<Pedido, Integer> {
                             FROM detalle_pedido dp
                             JOIN producto prod ON prod.id_producto = dp.id_producto
                             JOIN unidad_medida uni ON uni.id_unidad = prod.id_unidad
+                            JOIN categoria cat ON cat.id_categoria = prod.id_categoria
                             WHERE dp.id_pedido = ped.id_pedido
                         ) agg
                     ),
