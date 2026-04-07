@@ -90,6 +90,8 @@ public class PedidoDashboardRecords {
     public record ProductoPedidoJson(
             @JsonProperty("idProducto") Integer idProducto,
             @JsonProperty("nombreProducto") String nombreProducto,
+            @JsonProperty("idCategoria") Integer idCategoria,
+            @JsonProperty("nombreCategoria") String nombreCategoria,
             @JsonProperty("cantidadTotalPedido") BigDecimal cantidadTotalPedido,
             @JsonProperty("unidad") String unidad,
             @JsonProperty("abreviatura") String abreviatura,

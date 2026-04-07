@@ -323,6 +323,8 @@ export interface IDetallePorSolicitudCompleto {
 export interface IProductoCompleto {
   idProducto: number;
   nombreProducto: string;
+  idCategoria: number;
+  nombreCategoria: string;
   cantidadTotalPedido: number;
   unidad: string;
   abreviatura: string;
