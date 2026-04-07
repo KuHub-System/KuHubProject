@@ -499,6 +499,7 @@ public interface PedidoRepository extends JpaRepository<Pedido, Integer> {
                                                                     'nombreProducto',  prod_e.nombre_producto,
                                                                     'cantidad',        ds_e.cant_producto_solicitud,
                                                                     'unidadAbreviada', uni_e.abreviatura,
+                                                                    'esFraccionario',  uni_e.es_fraccionario,
                                                                     'observacion',     ds_e.observacion,
                                                                     'stockTransito',   COALESCE(bt_e.stock, 0),
                                                                     'diferencia',      COALESCE(bt_e.stock, 0) - ds_e.cant_producto_solicitud
