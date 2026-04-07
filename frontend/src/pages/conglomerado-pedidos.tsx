@@ -5,6 +5,7 @@
  */
 
 import React from 'react';
+import * as XLSX from 'xlsx';
 import {
   Button,
   Card, CardBody, CardHeader,
@@ -455,6 +456,95 @@ const ConglomeradoPedidosPage: React.FC = () => {
     finally { setIsAprobando(false); }
   };
 
+  // ── Descarga Excel: vista por día ──
+  const descargarExcelDia = () => {
+    const nombreDia = DIA_CONFIG[diaCategoria as number]?.nombre ?? 'Día';
+    const semNombre = semanaActual?.nombreSemana ?? '';
+
+    // Todas las secciones únicas que aparecen en este día
+    const todasSecciones = new Set<string>();
+    for (const cat of categoriasPorDia) {
+      for (const prod of cat.productos) {
+        for (const det of prod.detallesFiltrados) todasSecciones.add(det.nombreSeccion);
+      }
+    }
+    const secciones = Array.from(todasSecciones).sort();
+
+    const rows: (string | number | null)[][] = [
+      [`Por Categoría - ${nombreDia} - ${semNombre}`],
+      [],
+      ['Categoría', 'Producto', 'Unidad', ...secciones.map(s => `§${s}`), 'Total Día'],
+    ];
+
+    for (const cat of categoriasPorDia) {
+      for (const prod of cat.productos) {
+        const secMap = new Map<string, number>();
+        for (const d of prod.detallesFiltrados) secMap.set(d.nombreSeccion, (secMap.get(d.nombreSeccion) ?? 0) + d.cantidad);
+        rows.push([
+          cat.nombreCategoria,
+          prod.nombreProducto,
+          prod.abreviatura,
+          ...secciones.map(s => secMap.get(s) ?? null),
+          prod.totalDia,
+        ]);
+      }
+      // fila subtotal de categoría
+      rows.push([
+        `TOTAL ${cat.nombreCategoria}`,
+        '',
+        '',
+        ...secciones.map(() => null),
+        cat.productos.reduce((s, p) => s + p.totalDia, 0),
+      ]);
+      rows.push([]);
+    }
+
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+    // Ancho de columnas
+    ws['!cols'] = [{ wch: 22 }, { wch: 35 }, { wch: 8 }, ...secciones.map(() => ({ wch: 12 })), { wch: 12 }];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, nombreDia.slice(0, 31));
+    XLSX.writeFile(wb, `categorias_${nombreDia.toLowerCase()}_${semNombre.replace(/\s+/g, '_')}.xlsx`);
+  };
+
+  // ── Descarga Excel: vista completa (todos los días) ──
+  const descargarExcelCompleta = () => {
+    const semNombre = semanaActual?.nombreSemana ?? '';
+    const diasOrden = [1, 2, 3, 4, 5, 6, 0];
+    const diasNombres = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+
+    const rows: (string | number | null)[][] = [
+      [`Vista Completa por Categoría - ${semNombre}`],
+      [],
+      ['Categoría', 'Producto', 'Unidad', ...diasNombres, 'Total Semana'],
+    ];
+
+    for (const cat of matrizCompleta) {
+      for (const row of cat.filas) {
+        rows.push([
+          cat.nombre,
+          row.nombreProducto,
+          row.abreviatura,
+          ...diasOrden.map(dia => row.diasData[dia]?.total ?? null),
+          row.totalSemana,
+        ]);
+      }
+      // fila subtotal de categoría
+      const totalesPorDia = diasOrden.map(dia =>
+        cat.filas.reduce((s, r) => s + (r.diasData[dia]?.total ?? 0), 0)
+      );
+      const totalCat = cat.filas.reduce((s, r) => s + r.totalSemana, 0);
+      rows.push([`TOTAL ${cat.nombre}`, '', '', ...totalesPorDia.map(t => t || null), totalCat]);
+      rows.push([]);
+    }
+
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+    ws['!cols'] = [{ wch: 22 }, { wch: 35 }, { wch: 8 }, ...diasNombres.map(() => ({ wch: 12 })), { wch: 14 }];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Vista Completa');
+    XLSX.writeFile(wb, `categorias_completo_${semNombre.replace(/\s+/g, '_')}.xlsx`);
+  };
+
   const semanaActual = semanas.find(s => String(s.idSemana) === semanaId) ?? null;
   const periodosDisponibles = periodos.length > 0 ? periodos : [{ anio: new Date().getFullYear(), semestres: [1, 2] }];
 
@@ -607,9 +697,18 @@ const ConglomeradoPedidosPage: React.FC = () => {
                 className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold border transition-all ${
                   conColores ? 'bg-primary-50 border-primary-200 text-primary-700' : 'bg-default-100 border-default-200 text-default-500'
                 }`}>
-                <Icon icon={conColores ? 'lucide:palette' : 'lucide:palette'} width={12} />
+                <Icon icon="lucide:palette" width={12} />
                 {conColores ? 'Con colores' : 'Sin colores'}
               </button>
+              {/* Botón descarga Excel */}
+              {hayDatos && (
+                <button
+                  onClick={diaCategoria === 'completa' ? descargarExcelCompleta : descargarExcelDia}
+                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold border border-success-300 bg-success-50 text-success-700 hover:bg-success-100 transition-all">
+                  <Icon icon="lucide:download" width={12} />
+                  Descargar Excel
+                </button>
+              )}
             </div>
           )}
 
