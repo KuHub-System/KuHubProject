@@ -402,15 +402,8 @@ const BodegaTransitoPage: React.FC = () => {
     }
   }, [preparandoSolicitud, productosEdit, selectedDate, toast]);
 
-  const memoizedTitle = React.useMemo(() => (
-    <div className="flex items-center gap-2">
-      <Icon icon="lucide:container" className="text-secondary" width={24} />
-      <span>Bodega de Tránsito</span>
-    </div>
-  ), []);
-
   usePageTitle(
-    memoizedTitle as unknown as string,
+    'Bodega de Tránsito',
     'Gestión de armado de carros diarios',
     'lucide:warehouse'
   );
