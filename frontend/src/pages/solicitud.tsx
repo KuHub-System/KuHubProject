@@ -182,6 +182,7 @@ interface AsigCardProps {
   semanas: ISemana[];
   defaultSemanaId: string;
   isLoadingSemanas: boolean;
+  sinPeriodos: boolean;
   recetas: IReceta[];
   productos: IProductoOpcion[];
   onToggleExpand: () => void;
@@ -189,8 +190,10 @@ interface AsigCardProps {
 }
 
 const AsigCard: React.FC<AsigCardProps> = ({
-  asig, config, isExpanded, semanas, defaultSemanaId, isLoadingSemanas, recetas, productos, onToggleExpand, onUpdate,
+  asig, config, isExpanded, semanas, defaultSemanaId, isLoadingSemanas, sinPeriodos, recetas, productos, onToggleExpand, onUpdate,
 }) => {
+  const { isAdmin: isAdminCard } = usePermission();
+  const historyCard = useHistory();
   const semana = semanas.find(s => String(s.idSemana) === config.semanaId) ?? null;
 
   // ── derivados de bloquesIds ──
@@ -218,9 +221,10 @@ const AsigCard: React.FC<AsigCardProps> = ({
     return result.sort((a, b) => a.fecha.getTime() - b.fecha.getTime());
   }, [semana, config.bloquesIds, selCount, asig.secciones]);
 
-  const blkCount  = config.bloquesIds.size;
-  const isValid   = selCount > 0 && config.recetaId !== '' && config.semanaId !== '';
-  const isPartial = selCount > 0 && (!config.recetaId || !config.semanaId);
+  const blkCount      = config.bloquesIds.size;
+  const tieneItems    = config.items.length > 0;
+  const isValid       = selCount > 0 && config.semanaId !== '' && (config.recetaId !== '' || tieneItems);
+  const isPartial     = selCount > 0 && !isValid;
 
   const reapplyMultiplier = (items: ItemSolicitud[], newMult: number) =>
     items.map((item: ItemSolicitud) => {
@@ -436,6 +440,21 @@ const AsigCard: React.FC<AsigCardProps> = ({
                       <div className="flex items-center gap-2 text-sm text-default-400 py-2">
                         <Spinner size="sm" /> Cargando semanas...
                       </div>
+                    ) : sinPeriodos && !isAdminCard ? (
+                      <p className="text-sm text-warning-600 dark:text-warning-400 flex items-center gap-1.5 py-2">
+                        <Icon icon="lucide:alert-triangle" width={14} />
+                        Contacte el Administrador para que genere los periodos académicos en el sistema.
+                      </p>
+                    ) : sinPeriodos && isAdminCard ? (
+                      <button
+                        type="button"
+                        className="flex items-center gap-1.5 text-sm text-primary hover:text-primary-600 underline underline-offset-2 cursor-pointer transition-colors py-2"
+                        onClick={() => historyCard.push('/admin-sistema?tab=semanas')}
+                      >
+                        <Icon icon="lucide:calendar-plus" width={14} />
+                        Para realizar una solicitud, genere el período académico
+                        <Icon icon="lucide:arrow-right" width={12} />
+                      </button>
                     ) : semanas.length === 0 ? (
                       <p className="text-sm text-default-400 py-2">Sin semanas disponibles para este período.</p>
                     ) : (
@@ -506,7 +525,7 @@ const AsigCard: React.FC<AsigCardProps> = ({
               {/* RECETA */}
               <div>
                 <p className="text-xs font-bold text-default-500 uppercase tracking-wider mb-2">Receta Base</p>
-                {selCount > 0 && (
+                {selCount > 0 && recetas.length > 0 && (
                   <div className="mb-3 flex items-center gap-2 px-3 py-2 rounded-lg bg-secondary-50 dark:bg-secondary-900/20 border border-secondary-200 text-xs">
                     <Icon icon="lucide:calculator" className="text-secondary shrink-0" width={14} />
                     <span className="text-secondary-700 dark:text-secondary-300">
@@ -514,24 +533,43 @@ const AsigCard: React.FC<AsigCardProps> = ({
                     </span>
                   </div>
                 )}
-                <Autocomplete
-                  selectedKey={config.recetaId || null}
-                  onSelectionChange={key => handleSelectReceta(String(key ?? ''))}
-                  variant="bordered" size="sm" placeholder="Buscar receta por nombre..."
-                  defaultItems={recetas}
-                  classNames={{ base: 'w-full', popoverContent: 'dark:bg-content1' }}
-                  inputProps={{ classNames: { inputWrapper: 'bg-default-50' } }}
-                  startContent={<Icon icon="lucide:book-open" width={13} className="text-default-400 shrink-0" />}
-                >
-                  {(r) => (
-                    <AutocompleteItem key={String(r.idReceta)} textValue={r.nombreReceta}>
-                      <div className="flex items-center gap-2">
-                        <span>{r.nombreReceta}</span>
-                        <span className="text-default-400 text-xs ml-auto">{r.detalles.length} items</span>
-                      </div>
-                    </AutocompleteItem>
-                  )}
-                </Autocomplete>
+                {recetas.length === 0 ? (
+                  isAdminCard ? (
+                    <button
+                      type="button"
+                      className="flex items-center gap-1.5 text-sm text-primary hover:text-primary-600 underline underline-offset-2 cursor-pointer transition-colors"
+                      onClick={() => historyCard.push('/gestion-recetas')}
+                    >
+                      <Icon icon="lucide:book-plus" width={14} />
+                      No hay recetas disponibles. Ir a Gestión de Recetas para crear una.
+                      <Icon icon="lucide:arrow-right" width={12} />
+                    </button>
+                  ) : (
+                    <p className="text-sm text-warning-600 dark:text-warning-400 flex items-center gap-1.5">
+                      <Icon icon="lucide:alert-triangle" width={14} />
+                      Contacte el administrador para crear Recetas Base.
+                    </p>
+                  )
+                ) : (
+                  <Autocomplete
+                    selectedKey={config.recetaId || null}
+                    onSelectionChange={key => handleSelectReceta(String(key ?? ''))}
+                    variant="bordered" size="sm" placeholder="Buscar receta por nombre..."
+                    defaultItems={recetas}
+                    classNames={{ base: 'w-full', popoverContent: 'dark:bg-content1' }}
+                    inputProps={{ classNames: { inputWrapper: 'bg-default-50' } }}
+                    startContent={<Icon icon="lucide:book-open" width={13} className="text-default-400 shrink-0" />}
+                  >
+                    {(r) => (
+                      <AutocompleteItem key={String(r.idReceta)} textValue={r.nombreReceta}>
+                        <div className="flex items-center gap-2">
+                          <span>{r.nombreReceta}</span>
+                          <span className="text-default-400 text-xs ml-auto">{r.detalles.length} items</span>
+                        </div>
+                      </AutocompleteItem>
+                    )}
+                  </Autocomplete>
+                )}
 
                 {config.items.length > 0 && (
                   <div className="mt-3 space-y-1">
@@ -572,23 +610,26 @@ const AsigCard: React.FC<AsigCardProps> = ({
                         </Button>
                       </div>
                     ))}
-                    {/* Agregar extra */}
-                    <div className="mt-2 pt-2 border-t border-dashed border-default-200 space-y-2">
-                      {/* Info */}
-                      <div className="flex items-start gap-1.5 px-2 py-1.5 rounded-lg bg-warning-50 dark:bg-warning-900/10 border border-warning-200 text-[10px] text-warning-700">
-                        <Icon icon="lucide:info" width={11} className="shrink-0 mt-0.5" />
-                        <span>La cantidad ingresada corresponde a <strong>20 porciones base</strong>. El sistema calculará automáticamente la cantidad proporcional según los alumnos inscritos por sección.</span>
-                      </div>
-                      <div className="grid grid-cols-[1fr_90px_50px_auto] gap-1.5 items-end">
-                        <Autocomplete size="sm" placeholder="Buscar producto..."
-                          selectedKey={config.extraProductoId || null}
-                          onSelectionChange={key => {
-                            const id = key ? String(key) : '';
-                            onUpdate(p => ({ ...p, extraProductoId: id, extraCantidad: '' }));
-                          }}
-                          variant="bordered"
-                          classNames={{ 
-                            base: 'min-w-[150px] w-full',
+                  </div>
+                )}
+
+                {/* Agregar producto adicional — siempre visible */}
+                <div className="mt-3 pt-2 border-t border-dashed border-default-200 space-y-2">
+                  {/* Info */}
+                  <div className="flex items-start gap-1.5 px-2 py-1.5 rounded-lg bg-warning-50 dark:bg-warning-900/10 border border-warning-200 text-[10px] text-warning-700">
+                    <Icon icon="lucide:info" width={11} className="shrink-0 mt-0.5" />
+                    <span>La cantidad ingresada corresponde a <strong>20 porciones base</strong>. El sistema calculará automáticamente la cantidad proporcional según los alumnos inscritos por sección.</span>
+                  </div>
+                  <div className="grid grid-cols-[1fr_90px_50px_auto] gap-1.5 items-end">
+                    <Autocomplete size="sm" placeholder="Buscar producto..."
+                      selectedKey={config.extraProductoId || null}
+                      onSelectionChange={key => {
+                        const id = key ? String(key) : '';
+                        onUpdate(p => ({ ...p, extraProductoId: id, extraCantidad: '' }));
+                      }}
+                      variant="bordered"
+                      classNames={{
+                        base: 'min-w-[150px] w-full',
                             popoverContent: 'dark:bg-content1'
                           }}
                           inputProps={{
@@ -620,9 +661,7 @@ const AsigCard: React.FC<AsigCardProps> = ({
                           Agregar
                         </Button>
                       </div>
-                    </div>
                   </div>
-                )}
               </div>
 
               <Divider />
@@ -808,7 +847,7 @@ const SolicitudPage: React.FC = () => {
       const cfg      = getConfig(String(asig.idAsignatura));
       const secSel   = seccionesSeleccionadas(asig.secciones, cfg.bloquesIds);
       const blkCount = cfg.bloquesIds.size; // one solicitud per selected block (day×room)
-      if (secSel.length > 0 && cfg.recetaId && cfg.semanaId) {
+      if (secSel.length > 0 && cfg.semanaId && (cfg.recetaId || cfg.items.length > 0)) {
         totalSolicitudes += blkCount;
         // sum students × number of blocks selected for each section
         totalAlumnos += secSel.reduce((sum, sec) => {
@@ -871,6 +910,18 @@ const SolicitudPage: React.FC = () => {
 
           if (eliminados.length > 0 || modificados.length > 0 || nuevos.length > 0) {
             deltas = { eliminados, modificados, nuevos };
+          }
+        } else {
+          // Sin receta base: incluir solo los productos ingresados manualmente como nuevos
+          const nuevosManuales = cfg.items
+            .filter(i => i.esExtra && i.idProducto != null)
+            .map(i => ({
+              idProducto: i.idProducto!,
+              cantProducto: i.cantidadBase,
+              observacion: i.observacion ? `[ADICIONAL] ${i.observacion}` : '[ADICIONAL]',
+            }));
+          if (nuevosManuales.length > 0) {
+            deltas = { eliminados: [], modificados: [], nuevos: nuevosManuales };
           }
         }
 
@@ -1020,6 +1071,7 @@ const SolicitudPage: React.FC = () => {
                 semanas={semanas}
                 defaultSemanaId={defaultSemanaId}
                 isLoadingSemanas={isLoadingSemanas}
+                sinPeriodos={sinPeriodos}
                 recetas={recetas}
                 productos={productos}
                 onToggleExpand={() => toggleExpand(String(asig.idAsignatura))}

@@ -32,5 +32,26 @@ academicos" en caso de que sea el administrador del id_rol 1 debe tener un icono
 la page Administracion del Sistema en la vista que dice Gestion de Semanas para que el usuario cree las semanas del sistema. Lo mismo sucede con las page
 Gestion de Pedidos y Conglomerado de Pedidos.
 
+7- BAJA - En Bodega de Transito esta el icono que agregaste correctamente, pero esta tambien el antiguo
+"ICONO NUEVO, ICONO ANTIGUO Bodega de Transito" necesito que remova el icono antiguo.
+
+8- BAJA - En la Page de Gestion de Roles falta realizar un reemplado, actualmente esta un titulo "Gestión de Roles y Permisos"
+con la descripcion "Configura qué puede ver o editar cada rol en el sistema." Esta mensaje tiene que estar
+con el titulo semejante al lo que esta en las otras pages, hay que usar el icono del alcodeon no el escudo que esta ahora!
+
+9- BAJA - En la page de solicitud una vez que exista asignaturas y sessiones se permite seleccionar
+la solicitud hasta este punto bien, pero hay que realizar el mismo mensaje que dice en el punto 2 que esta actualmente con la mensaje "
+Para realizar una solicitud, genere el período académico" y en caso de que no sea rol otro mensaje bien, necesito que implemente el mismo mensaje y logica
+en caso de que despligue para seleccionar la seccion al lado donde aparece un selector cuando hay un periodo academico el usuario selecciona la opcion pero
+en el mismo caso en que no existe un periodo debemos dejar el mensaje en este punto tambien.
+
+10-BAJA - Actualmente en la page de Solicitud esta el selector de RECETA BASE cuando no existe una receta para seleccionar aparece el mensaje "
+No results found." Si no existe debemos indicar al usuario conectado que no es administrador "Contacte el administrador para crear Recetas Base" en caso
+de que sea el administrador conectado y no existe debemos tener un clicable para que lo lleve a la page de Gestion de Recetas para que cree una receta que
+pueda ultilizar para el proceso de solicitud. Tambien note un error, por mas que no exista una receta disponible para uso, debe permitir que se ingrese los
+productos buscado por el selector de productos que usamos como adicional, funcionara de la misma manera pero que no dependa de una receta existente, en
+caso de que el usuario decida seleccionar todo manualmente.
+
+
 
 
