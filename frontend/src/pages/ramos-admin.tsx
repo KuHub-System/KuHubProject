@@ -23,7 +23,8 @@ import { useToast } from '../hooks/useToast';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { logger } from '../utils/logger';
 import { useNotifications } from '../utils/notifications';
-import { useModulePermission } from '../contexts/permission-context';
+import { useModulePermission, usePermission } from '../contexts/permission-context';
+import { useHistory } from 'react-router-dom';
 
 // Importar tipos y servicios actualizados
 import { IAsignatura, ISeccion, IBloqueHorario, EstadoSeccion } from '../types/asignatura.types';
@@ -108,7 +109,7 @@ const renderEstadoSeccion = (estado: EstadoSeccion) => {
  * Página de gestión de asignaturas con secciones
  */
 const GestionAsignaturasPage: React.FC = () => {
-  usePageTitle('Gestión de Asignaturas', 'Administre asignaturas, secciones y asignaciones de gestores. Las recetas se multiplicarán por el total de alumnos activos.');
+  usePageTitle('Gestión de Asignaturas', 'Administre asignaturas, secciones y asignaciones de gestores. Las recetas se multiplicarán por el total de alumnos activos.', 'lucide:graduation-cap');
   const toast = useToast();
   const { showConfirm } = useNotifications();
   const { canCreate: ramos_Crear, canUpdate: ramos_Editar, canDelete: ramos_Eliminar } = useModulePermission('RAMOS_ADMIN');
@@ -669,6 +670,8 @@ interface CrearSeccionModalProps {
 }
 
 const CrearSeccionModal: React.FC<CrearSeccionModalProps> = ({ asignatura, onClose, onCreated }) => {
+  const { isAdmin: isAdminCrear } = usePermission();
+  const historyCrear = useHistory();
   const [nombreSeccion, setNombreSeccion] = React.useState('');
   const [docenteId, setDocenteId] = React.useState('');
   const [estado, setEstado] = React.useState<EstadoSeccion>('ACTIVA');
@@ -859,6 +862,24 @@ const CrearSeccionModal: React.FC<CrearSeccionModalProps> = ({ asignatura, onClo
               </SelectItem>
             ))}
           </Select>
+          {docentes.length === 0 && !isLoadingDocentes && (
+            isAdminCrear ? (
+              <button
+                type="button"
+                className="flex items-center gap-1.5 text-sm text-primary hover:text-primary-600 underline underline-offset-2 cursor-pointer transition-colors"
+                onClick={() => historyCrear.push('/gestion-usuarios')}
+              >
+                <Icon icon="lucide:user-plus" width={14} />
+                No hay docentes. Ir a Gestión de Usuarios para agregar uno.
+                <Icon icon="lucide:arrow-right" width={12} />
+              </button>
+            ) : (
+              <p className="text-sm text-warning-600 dark:text-warning-400 flex items-center gap-1.5">
+                <Icon icon="lucide:alert-triangle" width={13} />
+                Contacte el administrador para agregar un Docente al sistema.
+              </p>
+            )
+          )}
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Input
@@ -1061,6 +1082,8 @@ type BloqueNuevo = {
 };
 
 const EditarSeccionModal: React.FC<EditarSeccionModalProps> = ({ seccionData, onClose, onSave }) => {
+  const { isAdmin: isAdminEditar } = usePermission();
+  const historyEditar = useHistory();
   const [numeroSeccion, setNumeroSeccion] = React.useState('');
   const [docenteId, setDocenteId] = React.useState('');
   const [estado, setEstado] = React.useState<EstadoSeccion>('ACTIVA');
@@ -1290,6 +1313,24 @@ const EditarSeccionModal: React.FC<EditarSeccionModalProps> = ({ seccionData, on
               </SelectItem>
             ))}
           </Select>
+          {docentes.length === 0 && !isLoadingDocentes && (
+            isAdminEditar ? (
+              <button
+                type="button"
+                className="flex items-center gap-1.5 text-sm text-primary hover:text-primary-600 underline underline-offset-2 cursor-pointer transition-colors"
+                onClick={() => historyEditar.push('/gestion-usuarios')}
+              >
+                <Icon icon="lucide:user-plus" width={14} />
+                No hay docentes. Ir a Gestión de Usuarios para agregar uno.
+                <Icon icon="lucide:arrow-right" width={12} />
+              </button>
+            ) : (
+              <p className="text-sm text-warning-600 dark:text-warning-400 flex items-center gap-1.5">
+                <Icon icon="lucide:alert-triangle" width={13} />
+                Contacte el administrador para agregar un Docente al sistema.
+              </p>
+            )
+          )}
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Input

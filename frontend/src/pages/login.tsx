@@ -82,6 +82,7 @@ const IS_LOCAL = typeof window !== 'undefined' && window.location.hostname === '
 const LoginPage: React.FC = () => {
   const [email, setEmail] = React.useState<string>('');
   const [password, setPassword] = React.useState<string>('');
+  const [showPassword, setShowPassword] = React.useState<boolean>(false);
   const [recordar, setRecordar] = React.useState<boolean>(false);
   const [isLoading, setIsLoading] = React.useState<boolean>(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -211,7 +212,7 @@ const LoginPage: React.FC = () => {
 
               <Input
                 label="Contraseña"
-                type="password"
+                type={showPassword ? 'text' : 'password'}
                 value={password}
                 onValueChange={(value) => {
                   setPassword(value);
@@ -220,6 +221,17 @@ const LoginPage: React.FC = () => {
                 placeholder="••••••••"
                 startContent={
                   <Icon icon="lucide:lock" className="text-default-400 text-lg" />
+                }
+                endContent={
+                  <button
+                    type="button"
+                    tabIndex={-1}
+                    className="text-default-400 hover:text-default-600 dark:hover:text-default-300 transition-colors focus:outline-none"
+                    onClick={() => setShowPassword(prev => !prev)}
+                    aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                  >
+                    <Icon icon={showPassword ? 'lucide:eye-off' : 'lucide:eye'} className="text-lg" />
+                  </button>
                 }
                 isRequired
                 isDisabled={isLoading}

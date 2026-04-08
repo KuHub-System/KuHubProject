@@ -16,7 +16,8 @@ import { Icon } from '@iconify/react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useToast } from '../hooks/useToast';
-import { useModulePermission } from '../contexts/permission-context';
+import { useModulePermission, usePermission } from '../contexts/permission-context';
+import { useHistory } from 'react-router-dom';
 import { ISemana } from '../types/semana.types';
 import {
   IPeriodoAcademico,
@@ -668,9 +669,11 @@ const AsigCard: React.FC<AsigCardProps> = ({
 // ─────────────────────────────────────────────────────────────────────────────
 
 const SolicitudPage: React.FC = () => {
-  usePageTitle('Solicitud de Insumos', 'Cree solicitudes masivas de insumos para sus clases prácticas.');
+  usePageTitle('Solicitud de Insumos', 'Cree solicitudes masivas de insumos para sus clases prácticas.', 'lucide:clipboard-list');
   const toast = useToast();
   const { canCreate: soli_Crear, canUpdate: soli_Editar, canDelete: soli_Eliminar } = useModulePermission('SOLICITUD');
+  const { isAdmin } = usePermission();
+  const history = useHistory();
 
   // ── semanas state ──
   const [semanas,          setSemanas]          = React.useState<ISemana[]>([]);
@@ -793,11 +796,8 @@ const SolicitudPage: React.FC = () => {
     init();
   }, []);
 
-  // ── periodos para mostrar (API o fallback año actual) ──
-  const periodosDisponibles = React.useMemo<IPeriodoAcademico[]>(() => {
-    if (periodos.length > 0) return periodos;
-    return [{ anio: new Date().getFullYear(), semestres: [1, 2] }];
-  }, [periodos]);
+  // ── ¿hay periodos creados en la BD? ──
+  const sinPeriodos = periodos.length === 0 && !isLoadingSemanas;
 
   // ── totales globales ──
   const resumen = React.useMemo(() => {
@@ -928,7 +928,28 @@ const SolicitudPage: React.FC = () => {
               Período académico
             </div>
 
-            {periodosDisponibles.flatMap(p =>
+            {isLoadingSemanas && <Spinner size="sm" color="primary" />}
+
+            {sinPeriodos && !isAdmin && (
+              <p className="text-sm text-warning-600 dark:text-warning-400 flex items-center gap-2">
+                <Icon icon="lucide:alert-triangle" width={14} />
+                Contacte el Administrador para que genere los periodos académicos en el sistema.
+              </p>
+            )}
+
+            {sinPeriodos && isAdmin && (
+              <button
+                type="button"
+                className="flex items-center gap-2 text-sm text-primary hover:text-primary-600 underline underline-offset-2 cursor-pointer transition-colors"
+                onClick={() => history.push('/admin-sistema?tab=semanas')}
+              >
+                <Icon icon="lucide:calendar-plus" width={16} />
+                Para realizar una solicitud, genere el período académico
+                <Icon icon="lucide:arrow-right" width={14} />
+              </button>
+            )}
+
+            {!sinPeriodos && periodos.flatMap(p =>
               p.semestres.map(s => {
                 const isActive = currentPeriodo?.anio === p.anio && currentPeriodo?.semestre === s;
                 return (
@@ -945,8 +966,6 @@ const SolicitudPage: React.FC = () => {
                 );
               })
             )}
-
-            {isLoadingSemanas && <Spinner size="sm" color="primary" />}
 
             {currentPeriodo && !isLoadingSemanas && (
               <div className="ml-auto flex items-center gap-1.5 text-xs text-default-400">
@@ -981,6 +1000,17 @@ const SolicitudPage: React.FC = () => {
             <div className="text-center py-12 text-default-400">
               <Icon icon="lucide:book-x" width={32} className="mx-auto mb-2" />
               <p className="text-sm">No hay asignaturas disponibles</p>
+              {isAdmin && (
+                <button
+                  type="button"
+                  className="mt-3 inline-flex items-center gap-1.5 text-sm text-primary hover:text-primary-600 underline underline-offset-2 cursor-pointer transition-colors"
+                  onClick={() => history.push('/ramos-admin')}
+                >
+                  <Icon icon="lucide:graduation-cap" width={14} />
+                  Ir a Gestión de Asignaturas
+                  <Icon icon="lucide:arrow-right" width={12} />
+                </button>
+              )}
             </div>
           ) : (
             asignaturas.map(asig => (
