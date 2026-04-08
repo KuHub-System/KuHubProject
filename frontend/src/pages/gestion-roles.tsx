@@ -22,6 +22,7 @@ import {
 import { Icon } from '@iconify/react';
 import { motion } from 'framer-motion';
 import { usePermission } from '../contexts/permission-context';
+import { usePageTitle } from '../hooks/usePageTitle';
 import { permissionService } from '../services/permission-service';
 import {
   AccessLevel,
@@ -129,6 +130,7 @@ const AccessSelector: React.FC<AccessSelectorProps> = ({ value, disabled, locked
 // ── Página principal ──────────────────────────────────────────────────────────
 
 const GestionRolesPage: React.FC = () => {
+  usePageTitle('Gestión de Roles', 'Configura qué puede ver o editar cada rol en el sistema.', 'lucide:users');
   const { isAdmin, isLoading: permLoading, refreshPermissions, allPermissions } = usePermission();
 
   const [localPermissions, setLocalPermissions] = React.useState<RolePermission[]>([]);
@@ -228,7 +230,7 @@ const GestionRolesPage: React.FC = () => {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-[#FFB800]/10 flex items-center justify-center">
-              <Icon icon="lucide:shield" width={22} className="text-[#FFB800]" />
+              <Icon icon="lucide:users" width={22} className="text-[#FFB800]" />
             </div>
             <div>
               <h1 className="text-2xl font-bold">Gestión de Roles y Permisos</h1>
