@@ -30,7 +30,8 @@ import {
   consolidatePedidoQueryService,
   aprobarPedidosService,
 } from '../services/solicitud-service';
-import { useModulePermission } from '../contexts/permission-context';
+import { useModulePermission, usePermission } from '../contexts/permission-context';
+import { useHistory } from 'react-router-dom';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TIPOS INTERNOS
@@ -88,9 +89,11 @@ const fmtCant = (n: number): string => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 const ConglomeradoPedidosPage: React.FC = () => {
-  usePageTitle('Conglomerado de Pedidos', 'Seguimiento y estado de los pedidos semanales generados a partir de solicitudes aceptadas.');
+  usePageTitle('Conglomerado de Pedidos', 'Seguimiento y estado de los pedidos semanales generados a partir de solicitudes aceptadas.', 'lucide:layers');
   const toast = useToast();
   const { canCreate: cong_Crear, canUpdate: cong_Editar, canDelete: cong_Eliminar } = useModulePermission('CONGLOMERADO_PEDIDOS');
+  const { isAdmin } = usePermission();
+  const history = useHistory();
 
   // ── Semanas ──
   const [periodos,        setPeriodos]        = React.useState<IPeriodoAcademico[]>([]);
@@ -546,7 +549,7 @@ const ConglomeradoPedidosPage: React.FC = () => {
   };
 
   const semanaActual = semanas.find(s => String(s.idSemana) === semanaId) ?? null;
-  const periodosDisponibles = periodos.length > 0 ? periodos : [{ anio: new Date().getFullYear(), semestres: [1, 2] }];
+  const sinPeriodos = periodos.length === 0 && !isLoadingSem;
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-6 space-y-5">
@@ -555,10 +558,27 @@ const ConglomeradoPedidosPage: React.FC = () => {
       <Card className="shadow-sm">
         <CardBody className="px-5 py-4">
           <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-            <div className="flex items-center gap-2 shrink-0">
+            <div className="flex items-center gap-2 shrink-0 flex-wrap">
               <Icon icon="lucide:calendar-days" className="text-default-400" width={16} />
               <span className="text-xs font-bold text-default-500 uppercase tracking-wider">Período</span>
-              {periodosDisponibles.map(p =>
+              {sinPeriodos && !isAdmin && (
+                <p className="text-sm text-warning-600 dark:text-warning-400 flex items-center gap-1.5">
+                  <Icon icon="lucide:alert-triangle" width={13} />
+                  Contacte el administrador para generar los periodos académicos.
+                </p>
+              )}
+              {sinPeriodos && isAdmin && (
+                <button
+                  type="button"
+                  className="flex items-center gap-1.5 text-sm text-primary hover:text-primary-600 underline underline-offset-2 cursor-pointer transition-colors"
+                  onClick={() => history.push('/admin-sistema?tab=semanas')}
+                >
+                  <Icon icon="lucide:calendar-plus" width={14} />
+                  Genere el período académico
+                  <Icon icon="lucide:arrow-right" width={12} />
+                </button>
+              )}
+              {!sinPeriodos && periodos.map(p =>
                 p.semestres.map(s => {
                   const isActive = semanas.length > 0 && semanas[0].anio === p.anio && semanas[0].semestre === s;
                   return (

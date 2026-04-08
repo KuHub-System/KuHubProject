@@ -411,7 +411,8 @@ const BodegaTransitoPage: React.FC = () => {
 
   usePageTitle(
     memoizedTitle as unknown as string,
-    'Gestión de armado de carros diarios'
+    'Gestión de armado de carros diarios',
+    'lucide:warehouse'
   );
 
   const { isOpen: isExtraOpen, onOpen: onExtraOpen, onOpenChange: onExtraOpenChange } = useDisclosure();

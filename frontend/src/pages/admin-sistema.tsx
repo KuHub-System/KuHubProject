@@ -29,6 +29,7 @@ import {
 } from '@heroui/react';
 import { type DateValue } from '@internationalized/date';
 import { I18nProvider } from '@react-aria/i18n';
+import { useLocation } from 'react-router-dom';
 import { Icon } from '@iconify/react';
 import { motion } from 'framer-motion';
 import { usePageTitle } from '../hooks/usePageTitle';
@@ -99,10 +100,21 @@ const formatDate = (dateStr: string): string => {
 // ─── COMPONENTE PRINCIPAL ─────────────────────────────────────────────────────
 
 const AdminSistemaPage: React.FC = () => {
-  usePageTitle('Administración del Sistema', 'Centro de control: horarios, semanas académicas y salas');
+  usePageTitle('Administración del Sistema', 'Centro de control: horarios, semanas académicas y salas', 'lucide:settings-2');
   const toast = useToast();
+  const location = useLocation();
 
-  const [activeTab, setActiveTab] = React.useState<string>('horarios');
+  const tabFromUrl = React.useMemo(() => {
+    const params = new URLSearchParams(location.search);
+    const t = params.get('tab');
+    return t === 'semanas' || t === 'horarios' || t === 'reservas' ? t : 'horarios';
+  }, [location.search]);
+
+  const [activeTab, setActiveTab] = React.useState<string>(tabFromUrl);
+
+  React.useEffect(() => {
+    setActiveTab(tabFromUrl);
+  }, [tabFromUrl]);
   const [bloques, setBloques] = React.useState<IBloqueHorario[]>([]);
   const [isLoadingBloques, setIsLoadingBloques] = React.useState(true);
 
