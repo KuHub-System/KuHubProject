@@ -7,6 +7,7 @@ import React from 'react';
 import { Spinner, Tabs, Tab } from '@heroui/react';
 import { Icon } from '@iconify/react';
 import { useAuth } from '../contexts/auth-context';
+import { usePageTitle } from '../hooks/usePageTitle';
 
 // Dashboards existentes
 import { DashboardAdmin }   from '../components/dashboard/DashboardAdmin';
@@ -27,17 +28,6 @@ export {
 
 const DashboardAdminTabs: React.FC = () => (
   <div className="container mx-auto px-4 py-6 space-y-4">
-    {/* Header */}
-    <div className="flex items-center gap-3 mb-2">
-      <div className="w-10 h-10 rounded-xl bg-[#FFB800]/10 flex items-center justify-center">
-        <Icon icon="lucide:layout-dashboard" width={22} className="text-[#FFB800]" />
-      </div>
-      <div>
-        <h1 className="text-2xl font-bold">Dashboard</h1>
-        <p className="text-default-500 text-sm">Panel de control ejecutivo</p>
-      </div>
-    </div>
-
     {/* Tabs */}
     <Tabs
       aria-label="Dashboard views"
@@ -103,15 +93,6 @@ const DashboardAdminTabs: React.FC = () => (
 
 const DashboardProfesorView: React.FC = () => (
   <div className="container mx-auto px-4 py-6 space-y-4">
-    <div className="flex items-center gap-3 mb-2">
-      <div className="w-10 h-10 rounded-xl bg-[#FFB800]/10 flex items-center justify-center">
-        <Icon icon="lucide:chef-hat" width={22} className="text-[#FFB800]" />
-      </div>
-      <div>
-        <h1 className="text-2xl font-bold">Dashboard</h1>
-        <p className="text-default-500 text-sm">Panel de control</p>
-      </div>
-    </div>
     <DashboardRecetasView />
   </div>
 );
@@ -120,6 +101,8 @@ const DashboardProfesorView: React.FC = () => (
 
 const DashboardPage: React.FC = () => {
   const { user, userRole, isLoading: authLoading, hasSpecificPermission } = useAuth();
+
+  usePageTitle('Dashboard', 'Panel de control del sistema', 'lucide:layout-dashboard');
 
   // Loading state
   if (authLoading || !user || !userRole) {
@@ -148,15 +131,6 @@ const DashboardPage: React.FC = () => {
   if (puedeGestionarPedidos) {
     return (
       <div className="container mx-auto px-4 py-6">
-        <div className="flex items-center gap-3 mb-6">
-          <div className="w-10 h-10 rounded-xl bg-[#FFB800]/10 flex items-center justify-center">
-            <Icon icon="lucide:clipboard-list" width={22} className="text-[#FFB800]" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold">Dashboard — Gestor de Pedidos</h1>
-            <p className="text-default-500 text-sm">Resumen de solicitudes y flujo de pedidos</p>
-          </div>
-        </div>
         <DashboardGestor />
       </div>
     );
@@ -166,15 +140,6 @@ const DashboardPage: React.FC = () => {
   if (puedeVerInventario && !puedeCrearSolicitudes && !puedeGestionarPedidos) {
     return (
       <div className="container mx-auto px-4 py-6">
-        <div className="flex items-center gap-3 mb-6">
-          <div className="w-10 h-10 rounded-xl bg-[#FFB800]/10 flex items-center justify-center">
-            <Icon icon="lucide:package" width={22} className="text-[#FFB800]" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold">Dashboard — Inventario</h1>
-            <p className="text-default-500 text-sm">Estado del stock y movimientos</p>
-          </div>
-        </div>
         <DashboardInventarioView />
       </div>
     );
