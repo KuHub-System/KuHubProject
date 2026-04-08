@@ -471,7 +471,13 @@ const ConglomeradoPedidosPage: React.FC = () => {
   const styleNumAlt  = { font: { sz: 10 }, fill: { fgColor: { rgb: 'F7FAFC' } }, alignment: { horizontal: 'right', vertical: 'center' }, border: { top: { style: 'thin', color: { rgb: 'E2E8F0' } }, bottom: { style: 'thin', color: { rgb: 'E2E8F0' } }, left: { style: 'thin', color: { rgb: 'E2E8F0' } }, right: { style: 'thin', color: { rgb: 'E2E8F0' } } }, numFmt: '#,##0.###' };
   const styleNumHL   = { font: { bold: true, sz: 10, color: { rgb: '276749' } }, fill: { fgColor: { rgb: 'C6F6D5' } }, alignment: { horizontal: 'right', vertical: 'center' }, border: { top: { style: 'thin', color: { rgb: '9AE6B4' } }, bottom: { style: 'thin', color: { rgb: '9AE6B4' } }, left: { style: 'thin', color: { rgb: '9AE6B4' } }, right: { style: 'thin', color: { rgb: '9AE6B4' } } }, numFmt: '#,##0.###' };
 
-  const sc = (v: string | number | null, s: object) => ({ v: v ?? '', t: typeof v === 'number' ? 'n' : 's', s });
+  const NUM_FMT = '#,##0.###';
+  const sc = (v: string | number | null, s: object) => {
+    const isNum = typeof v === 'number';
+    const cell: any = { v: isNum ? v : (v ?? ''), t: isNum ? 'n' : 's', s };
+    if (isNum) cell.z = NUM_FMT;
+    return cell;
+  };
   // Convierte índice de columna (0-based) a letra(s) Excel: 0→A, 25→Z, 26→AA …
   const cl = (c: number): string => {
     let s = ''; let n = c + 1;
@@ -479,7 +485,7 @@ const ConglomeradoPedidosPage: React.FC = () => {
     return s;
   };
   // Celda con fórmula SUM (valor pre-calculado + fórmula para recálculo en Excel)
-  const sf = (formula: string, v: number, s: object) => ({ t: 'n', f: formula, v, s });
+  const sf = (formula: string, v: number, s: object) => ({ t: 'n', f: formula, v, z: NUM_FMT, s });
 
   const autoColWidth = (data: (string | number | null)[][], startRow: number) =>
     data[startRow]?.map((_, ci) => ({
