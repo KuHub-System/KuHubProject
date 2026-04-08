@@ -133,7 +133,7 @@ const InventarioPage: React.FC = () => {
   const isLoadingRef = React.useRef(false);
   const nextPageRef = React.useRef(1); // Tracker para carga secuencial
 
-  usePageTitle('Inventario', 'Gestione los productos del inventario, vea movimientos y actualice existencias.');
+  usePageTitle('Inventario', 'Gestione los productos del inventario, vea movimientos y actualice existencias.', 'lucide:package');
 
   /**
    * Carga los filtros (categorías y unidades) desde el backend.

@@ -24,7 +24,7 @@ interface HeaderProps {
 const Header: React.FC<HeaderProps> = ({ toggleSidebar }) => {
   const { user, logout } = useAuth();
   const { theme, toggleTheme } = useThemeContext();
-  const { title, subtitle } = usePageTitleContext();
+  const { title, subtitle, icon } = usePageTitleContext();
   const history = useHistory();
 
   /**
@@ -64,7 +64,10 @@ const Header: React.FC<HeaderProps> = ({ toggleSidebar }) => {
 
         {/* Título dinámico (visible en desktop) */}
         <div className="hidden md:flex flex-col ml-4">
-          <h1 className="text-xl font-bold text-secondary dark:text-foreground leading-tight">{title || 'KüHub'}</h1>
+          <h1 className="text-xl font-bold text-secondary dark:text-foreground leading-tight flex items-center gap-2">
+            {icon && <Icon icon={icon} width={20} className="text-primary shrink-0" />}
+            {title || 'KüHub'}
+          </h1>
           {subtitle && <p className="text-xs text-default-500">{subtitle}</p>}
         </div>
 

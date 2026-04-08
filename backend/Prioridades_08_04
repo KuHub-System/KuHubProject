@@ -1,0 +1,36 @@
+lista de procesos para mejorar en el sistema de kuhub
+
+nivel proceso BAJA/MEDIA/ALTA
+
+1-BAJA - Actualmente en el login al ingresa la contrasena en el campo del formulario el valor de la clave siempre esta oculto, debe tener un icono
+en el formulario que permita precionar el ojo para que se pueda ver o ocultar segun queira el usuario.
+
+2-MEDIA - Actualmente en la page de Solicitud hay un contenerdor donde esta la informacion " PERIODO ACADEMICO " donde aparecen btn correspondiente al anio y
+semestre creado por el administrador del sistema, lo que ocurre es que en los casos en que el administrador no creo es porque en la base de datos no existe
+o los que existe en la bbdd esta fuera del periodo academico atual por ejemplo 2025 segundo semestre, en caso que no exista o no esta en
+ un periodo academico debe aparecer un mensaje "Contacte el Administrador para que genere los periodos academicos en el sistema" este mensaje es para los que no son administradores del rol 1.
+ En caso de que el usuario conectado sea Administrador que tiene la id Rol 1 tiene que tener la seguinte mensaje "Para realizar una solicitude genere el
+  periono academico" debe tener un icono o algo que indique que es cliclable para que al presionar el usuario que es administrador lo lleve a
+   la page Administracion del Sistema en la vista que dice Gestion de Semanas para que el usuario cree las semanas del sistema eso solamente cuando
+    no se muestre los btn correspondiente al anio y semestre en solicitud porque se entiende que no fue creado. Cuando existe el periodo todo funciona normalmente
+
+
+3-BAJA - Actualmente tambien en la page de Solicitud cuando no hay asignaturas disponibles aparece solamente el mensaje, debe haber un cliclabe para que
+lleve el usuario a la page de Gestion de Asignatura esto solamente cuando el usuario es Administrador del id_rol 1
+
+4-BAJA - Actualemente el titulo en la page de solicitud esta "Solicitud de Insumos" quiero que se agregue el mismo icono de Portapapeles que esta en alcoden
+en el titulo "ICONO Solicitud de Insumos" pero quiero que revise los alcodeosnes y agrege los mismos iconos a todos los titulos de cada page, sin cambiar el
+nombre del titulo
+
+5- MEDIA - Actualmente al crear una seccion y si no existe en el sistema un Docente Asignado muesta "No items." en caso de que el usuario conectado
+no sea un Administrador del id_rol 1 debe mostrar un mensaje "Contacte el administrador para agregar un Docente al sistema". En caso de que sea un Administrador
+del id_rol debemos dar la opcion con un cliclabe llevarlo a la page de Gestion de Usuario para crear un Docente.
+
+6- BAJA - Actualmente en Gestion de solicitudes tambin se muestra un periodo y btn seleccionables del anio y semestre, pero si no existe el periodo
+no debemos mostrar pero el mensaja en caso de que el usuario conectado no sea administrador del id_rol 1, "Contacte el administrador para generar los periodos
+academicos" en caso de que sea el administrador del id_rol 1 debe tener un icono o algo que indique que es cliclable para que al presionar el usuario que es administrador lo lleve a
+la page Administracion del Sistema en la vista que dice Gestion de Semanas para que el usuario cree las semanas del sistema. Lo mismo sucede con las page
+Gestion de Pedidos y Conglomerado de Pedidos.
+
+
+

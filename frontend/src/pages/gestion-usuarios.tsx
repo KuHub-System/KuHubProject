@@ -53,7 +53,7 @@ const GestionUsuariosPage: React.FC = () => {
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const scrollEnabledRef = React.useRef<boolean>(false);
 
-  usePageTitle('Gestión de Usuarios', 'Administra los usuarios del sistema y sus permisos');
+  usePageTitle('Gestión de Usuarios', 'Administra los usuarios del sistema y sus permisos', 'lucide:user-cog');
 
   // Modal de crear/editar
   const { isOpen, onOpen, onOpenChange } = useDisclosure();
