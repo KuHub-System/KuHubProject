@@ -464,14 +464,22 @@ const ConglomeradoPedidosPage: React.FC = () => {
   const styleHeader  = { font: { bold: true, sz: 11, color: { rgb: 'FFFFFF' } }, fill: { fgColor: { rgb: '2D3748' } }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true }, border: { top: { style: 'thin', color: { rgb: 'FFFFFF' } }, bottom: { style: 'thin', color: { rgb: 'FFFFFF' } }, left: { style: 'thin', color: { rgb: 'FFFFFF' } }, right: { style: 'thin', color: { rgb: 'FFFFFF' } } } };
   const styleCat     = { font: { bold: true, sz: 11, color: { rgb: '1A1A1A' } }, fill: { fgColor: { rgb: 'FFF3CD' } }, alignment: { horizontal: 'left', vertical: 'center' }, border: { top: { style: 'thin', color: { rgb: 'E2C97E' } }, bottom: { style: 'thin', color: { rgb: 'E2C97E' } }, left: { style: 'thin', color: { rgb: 'E2C97E' } }, right: { style: 'thin', color: { rgb: 'E2C97E' } } } };
   const styleTotal   = { font: { bold: true, sz: 10, color: { rgb: 'FFFFFF' } }, fill: { fgColor: { rgb: '4A5568' } }, alignment: { horizontal: 'center', vertical: 'center' }, border: { top: { style: 'thin', color: { rgb: '718096' } }, bottom: { style: 'thin', color: { rgb: '718096' } }, left: { style: 'thin', color: { rgb: '718096' } }, right: { style: 'thin', color: { rgb: '718096' } } } };
-  const styleTotalN  = { font: { bold: true, sz: 10, color: { rgb: 'FFFFFF' } }, fill: { fgColor: { rgb: '4A5568' } }, alignment: { horizontal: 'right', vertical: 'center' }, border: { top: { style: 'thin', color: { rgb: '718096' } }, bottom: { style: 'thin', color: { rgb: '718096' } }, left: { style: 'thin', color: { rgb: '718096' } }, right: { style: 'thin', color: { rgb: '718096' } } } };
+  const styleTotalN  = { font: { bold: true, sz: 10, color: { rgb: 'FFFFFF' } }, fill: { fgColor: { rgb: '4A5568' } }, alignment: { horizontal: 'right', vertical: 'center' }, border: { top: { style: 'thin', color: { rgb: '718096' } }, bottom: { style: 'thin', color: { rgb: '718096' } }, left: { style: 'thin', color: { rgb: '718096' } }, right: { style: 'thin', color: { rgb: '718096' } } }, numFmt: '#,##0' };
   const styleData    = { font: { sz: 10 }, fill: { fgColor: { rgb: 'FFFFFF' } }, alignment: { horizontal: 'left', vertical: 'center', wrapText: true }, border: { top: { style: 'thin', color: { rgb: 'E2E8F0' } }, bottom: { style: 'thin', color: { rgb: 'E2E8F0' } }, left: { style: 'thin', color: { rgb: 'E2E8F0' } }, right: { style: 'thin', color: { rgb: 'E2E8F0' } } } };
   const styleDataAlt = { font: { sz: 10 }, fill: { fgColor: { rgb: 'F7FAFC' } }, alignment: { horizontal: 'left', vertical: 'center', wrapText: true }, border: { top: { style: 'thin', color: { rgb: 'E2E8F0' } }, bottom: { style: 'thin', color: { rgb: 'E2E8F0' } }, left: { style: 'thin', color: { rgb: 'E2E8F0' } }, right: { style: 'thin', color: { rgb: 'E2E8F0' } } } };
-  const styleNum     = { font: { sz: 10 }, fill: { fgColor: { rgb: 'FFFFFF' } }, alignment: { horizontal: 'right', vertical: 'center' }, border: { top: { style: 'thin', color: { rgb: 'E2E8F0' } }, bottom: { style: 'thin', color: { rgb: 'E2E8F0' } }, left: { style: 'thin', color: { rgb: 'E2E8F0' } }, right: { style: 'thin', color: { rgb: 'E2E8F0' } } } };
-  const styleNumAlt  = { font: { sz: 10 }, fill: { fgColor: { rgb: 'F7FAFC' } }, alignment: { horizontal: 'right', vertical: 'center' }, border: { top: { style: 'thin', color: { rgb: 'E2E8F0' } }, bottom: { style: 'thin', color: { rgb: 'E2E8F0' } }, left: { style: 'thin', color: { rgb: 'E2E8F0' } }, right: { style: 'thin', color: { rgb: 'E2E8F0' } } } };
-  const styleNumHL   = { font: { bold: true, sz: 10, color: { rgb: '276749' } }, fill: { fgColor: { rgb: 'C6F6D5' } }, alignment: { horizontal: 'right', vertical: 'center' }, border: { top: { style: 'thin', color: { rgb: '9AE6B4' } }, bottom: { style: 'thin', color: { rgb: '9AE6B4' } }, left: { style: 'thin', color: { rgb: '9AE6B4' } }, right: { style: 'thin', color: { rgb: '9AE6B4' } } } };
+  const styleNum     = { font: { sz: 10 }, fill: { fgColor: { rgb: 'FFFFFF' } }, alignment: { horizontal: 'right', vertical: 'center' }, border: { top: { style: 'thin', color: { rgb: 'E2E8F0' } }, bottom: { style: 'thin', color: { rgb: 'E2E8F0' } }, left: { style: 'thin', color: { rgb: 'E2E8F0' } }, right: { style: 'thin', color: { rgb: 'E2E8F0' } } }, numFmt: '#,##0' };
+  const styleNumAlt  = { font: { sz: 10 }, fill: { fgColor: { rgb: 'F7FAFC' } }, alignment: { horizontal: 'right', vertical: 'center' }, border: { top: { style: 'thin', color: { rgb: 'E2E8F0' } }, bottom: { style: 'thin', color: { rgb: 'E2E8F0' } }, left: { style: 'thin', color: { rgb: 'E2E8F0' } }, right: { style: 'thin', color: { rgb: 'E2E8F0' } } }, numFmt: '#,##0' };
+  const styleNumHL   = { font: { bold: true, sz: 10, color: { rgb: '276749' } }, fill: { fgColor: { rgb: 'C6F6D5' } }, alignment: { horizontal: 'right', vertical: 'center' }, border: { top: { style: 'thin', color: { rgb: '9AE6B4' } }, bottom: { style: 'thin', color: { rgb: '9AE6B4' } }, left: { style: 'thin', color: { rgb: '9AE6B4' } }, right: { style: 'thin', color: { rgb: '9AE6B4' } } }, numFmt: '#,##0' };
 
   const sc = (v: string | number | null, s: object) => ({ v: v ?? '', t: typeof v === 'number' ? 'n' : 's', s });
+  // Convierte índice de columna (0-based) a letra(s) Excel: 0→A, 25→Z, 26→AA …
+  const cl = (c: number): string => {
+    let s = ''; let n = c + 1;
+    while (n > 0) { n--; s = String.fromCharCode(65 + (n % 26)) + s; n = Math.floor(n / 26); }
+    return s;
+  };
+  // Celda con fórmula SUM (valor pre-calculado + fórmula para recálculo en Excel)
+  const sf = (formula: string, v: number, s: object) => ({ t: 'n', f: formula, v, s });
 
   const autoColWidth = (data: (string | number | null)[][], startRow: number) =>
     data[startRow]?.map((_, ci) => ({
@@ -537,6 +545,7 @@ const ConglomeradoPedidosPage: React.FC = () => {
       R++;
 
       alt = false;
+      const firstProdRDia = R;
       for (const prod of cat.productos) {
         const secMap = new Map<string, number>();
         for (const d of prod.detallesFiltrados) secMap.set(d.nombreSeccion, (secMap.get(d.nombreSeccion) ?? 0) + d.cantidad);
@@ -546,18 +555,28 @@ const ConglomeradoPedidosPage: React.FC = () => {
         ws[XLSXStyle.utils.encode_cell({ r: R, c: 1 })] = sc(prod.nombreProducto, sd);
         ws[XLSXStyle.utils.encode_cell({ r: R, c: 2 })] = sc(prod.abreviatura, { ...sn, alignment: { horizontal: 'center', vertical: 'center' } });
         secciones.forEach((s, i) => { ws[XLSXStyle.utils.encode_cell({ r: R, c: 3 + i })] = sc(secMap.get(s) ?? 0, sn); });
-        ws[XLSXStyle.utils.encode_cell({ r: R, c: nCols - 1 })] = sc(prod.totalDia, styleNumHL);
+        // Fórmula: suma todas las columnas de sección para esta fila
+        ws[XLSXStyle.utils.encode_cell({ r: R, c: nCols - 1 })] = sf(
+          `SUM(${cl(3)}${R + 1}:${cl(2 + secciones.length)}${R + 1})`,
+          prod.totalDia,
+          styleNumHL
+        );
         R++;
         alt = !alt;
       }
+      const lastProdRDia = R - 1;
 
-      // Subtotal categoría
+      // Subtotal categoría — fórmula suma la columna Total de los productos
       const totalCat = cat.productos.reduce((s, p) => s + p.totalDia, 0);
       ws[XLSXStyle.utils.encode_cell({ r: R, c: 0 })] = sc(`SUBTOTAL ${cat.nombreCategoria}`, styleTotal);
       ws[XLSXStyle.utils.encode_cell({ r: R, c: 1 })] = sc('', styleTotal);
       ws[XLSXStyle.utils.encode_cell({ r: R, c: 2 })] = sc('', styleTotal);
       secciones.forEach((_, i) => { ws[XLSXStyle.utils.encode_cell({ r: R, c: 3 + i })] = sc('', styleTotal); });
-      ws[XLSXStyle.utils.encode_cell({ r: R, c: nCols - 1 })] = sc(totalCat, styleTotalN);
+      ws[XLSXStyle.utils.encode_cell({ r: R, c: nCols - 1 })] = sf(
+        `SUM(${cl(nCols - 1)}${firstProdRDia + 1}:${cl(nCols - 1)}${lastProdRDia + 1})`,
+        totalCat,
+        styleTotalN
+      );
       R++;
 
       // Fila separadora
@@ -619,6 +638,7 @@ const ConglomeradoPedidosPage: React.FC = () => {
       R++;
 
       alt = false;
+      const firstProdRComp = R;
       for (const row of cat.filas) {
         const sd = alt ? styleDataAlt : styleData;
         const sn = alt ? styleNumAlt : styleNum;
@@ -626,19 +646,35 @@ const ConglomeradoPedidosPage: React.FC = () => {
         ws[XLSXStyle.utils.encode_cell({ r: R, c: 1 })] = sc(row.nombreProducto, sd);
         ws[XLSXStyle.utils.encode_cell({ r: R, c: 2 })] = sc(row.abreviatura, { ...sn, alignment: { horizontal: 'center', vertical: 'center' } });
         diasOrden.forEach((dia, i) => { ws[XLSXStyle.utils.encode_cell({ r: R, c: 3 + i })] = sc(row.diasData[dia]?.total ?? 0, sn); });
-        ws[XLSXStyle.utils.encode_cell({ r: R, c: nCols - 1 })] = sc(row.totalSemana, styleNumHL);
+        // Fórmula: suma las 7 columnas de días para esta fila
+        ws[XLSXStyle.utils.encode_cell({ r: R, c: nCols - 1 })] = sf(
+          `SUM(${cl(3)}${R + 1}:${cl(3 + diasOrden.length - 1)}${R + 1})`,
+          row.totalSemana,
+          styleNumHL
+        );
         R++;
         alt = !alt;
       }
+      const lastProdRComp = R - 1;
 
-      // Subtotal
+      // Subtotal — fórmulas por columna de día y por columna total
       const totalesDia = diasOrden.map(dia => cat.filas.reduce((s, r) => s + (r.diasData[dia]?.total ?? 0), 0));
       const totalCat = cat.filas.reduce((s, r) => s + r.totalSemana, 0);
       ws[XLSXStyle.utils.encode_cell({ r: R, c: 0 })] = sc(`SUBTOTAL ${cat.nombre}`, styleTotal);
       ws[XLSXStyle.utils.encode_cell({ r: R, c: 1 })] = sc('', styleTotal);
       ws[XLSXStyle.utils.encode_cell({ r: R, c: 2 })] = sc('', styleTotal);
-      totalesDia.forEach((t, i) => { ws[XLSXStyle.utils.encode_cell({ r: R, c: 3 + i })] = sc(t || 0, styleTotalN); });
-      ws[XLSXStyle.utils.encode_cell({ r: R, c: nCols - 1 })] = sc(totalCat, styleTotalN);
+      totalesDia.forEach((t, i) => {
+        ws[XLSXStyle.utils.encode_cell({ r: R, c: 3 + i })] = sf(
+          `SUM(${cl(3 + i)}${firstProdRComp + 1}:${cl(3 + i)}${lastProdRComp + 1})`,
+          t || 0,
+          styleTotalN
+        );
+      });
+      ws[XLSXStyle.utils.encode_cell({ r: R, c: nCols - 1 })] = sf(
+        `SUM(${cl(nCols - 1)}${firstProdRComp + 1}:${cl(nCols - 1)}${lastProdRComp + 1})`,
+        totalCat,
+        styleTotalN
+      );
       R++;
 
       for (let C = 0; C < nCols; C++) ws[XLSXStyle.utils.encode_cell({ r: R, c: C })] = sc(null, { fill: { fgColor: { rgb: 'EDF2F7' } } });
