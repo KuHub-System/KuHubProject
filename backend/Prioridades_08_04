@@ -62,3 +62,5 @@ sus propriedades de tamanon, color etc porque se ve bonito!
 demasiado simples, necesito que esta mas ordenado para en una tabla se adapte al texto, algo como una tabla dinamica.
 
 
+se ve bonita la tabla, pero es necesario que tenga coma , no punto y que esten las funciones de suma implicita en el excel si es posible si no esta bien
+solamente los valores debido que calculamos en el codigo, pero para que en caso que el usuario la descargue y altere un valor se sume el el total de ciertas partes de la tabla
