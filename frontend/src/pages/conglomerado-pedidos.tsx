@@ -5,7 +5,7 @@
  */
 
 import React from 'react';
-import * as XLSX from 'xlsx';
+import XLSXStyle from 'xlsx-js-style';
 import {
   Button,
   Card, CardBody, CardHeader,
@@ -459,55 +459,121 @@ const ConglomeradoPedidosPage: React.FC = () => {
     finally { setIsAprobando(false); }
   };
 
+  // ── Helpers de estilo Excel ──
+  const styleTitle   = { font: { bold: true, sz: 14, color: { rgb: '1A1A1A' } }, fill: { fgColor: { rgb: 'FFB800' } }, alignment: { horizontal: 'center', vertical: 'center', wrapText: false } };
+  const styleHeader  = { font: { bold: true, sz: 11, color: { rgb: 'FFFFFF' } }, fill: { fgColor: { rgb: '2D3748' } }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true }, border: { top: { style: 'thin', color: { rgb: 'FFFFFF' } }, bottom: { style: 'thin', color: { rgb: 'FFFFFF' } }, left: { style: 'thin', color: { rgb: 'FFFFFF' } }, right: { style: 'thin', color: { rgb: 'FFFFFF' } } } };
+  const styleCat     = { font: { bold: true, sz: 11, color: { rgb: '1A1A1A' } }, fill: { fgColor: { rgb: 'FFF3CD' } }, alignment: { horizontal: 'left', vertical: 'center' }, border: { top: { style: 'thin', color: { rgb: 'E2C97E' } }, bottom: { style: 'thin', color: { rgb: 'E2C97E' } }, left: { style: 'thin', color: { rgb: 'E2C97E' } }, right: { style: 'thin', color: { rgb: 'E2C97E' } } } };
+  const styleTotal   = { font: { bold: true, sz: 10, color: { rgb: 'FFFFFF' } }, fill: { fgColor: { rgb: '4A5568' } }, alignment: { horizontal: 'center', vertical: 'center' }, border: { top: { style: 'thin', color: { rgb: '718096' } }, bottom: { style: 'thin', color: { rgb: '718096' } }, left: { style: 'thin', color: { rgb: '718096' } }, right: { style: 'thin', color: { rgb: '718096' } } } };
+  const styleTotalN  = { font: { bold: true, sz: 10, color: { rgb: 'FFFFFF' } }, fill: { fgColor: { rgb: '4A5568' } }, alignment: { horizontal: 'right', vertical: 'center' }, border: { top: { style: 'thin', color: { rgb: '718096' } }, bottom: { style: 'thin', color: { rgb: '718096' } }, left: { style: 'thin', color: { rgb: '718096' } }, right: { style: 'thin', color: { rgb: '718096' } } } };
+  const styleData    = { font: { sz: 10 }, fill: { fgColor: { rgb: 'FFFFFF' } }, alignment: { horizontal: 'left', vertical: 'center', wrapText: true }, border: { top: { style: 'thin', color: { rgb: 'E2E8F0' } }, bottom: { style: 'thin', color: { rgb: 'E2E8F0' } }, left: { style: 'thin', color: { rgb: 'E2E8F0' } }, right: { style: 'thin', color: { rgb: 'E2E8F0' } } } };
+  const styleDataAlt = { font: { sz: 10 }, fill: { fgColor: { rgb: 'F7FAFC' } }, alignment: { horizontal: 'left', vertical: 'center', wrapText: true }, border: { top: { style: 'thin', color: { rgb: 'E2E8F0' } }, bottom: { style: 'thin', color: { rgb: 'E2E8F0' } }, left: { style: 'thin', color: { rgb: 'E2E8F0' } }, right: { style: 'thin', color: { rgb: 'E2E8F0' } } } };
+  const styleNum     = { font: { sz: 10 }, fill: { fgColor: { rgb: 'FFFFFF' } }, alignment: { horizontal: 'right', vertical: 'center' }, border: { top: { style: 'thin', color: { rgb: 'E2E8F0' } }, bottom: { style: 'thin', color: { rgb: 'E2E8F0' } }, left: { style: 'thin', color: { rgb: 'E2E8F0' } }, right: { style: 'thin', color: { rgb: 'E2E8F0' } } } };
+  const styleNumAlt  = { font: { sz: 10 }, fill: { fgColor: { rgb: 'F7FAFC' } }, alignment: { horizontal: 'right', vertical: 'center' }, border: { top: { style: 'thin', color: { rgb: 'E2E8F0' } }, bottom: { style: 'thin', color: { rgb: 'E2E8F0' } }, left: { style: 'thin', color: { rgb: 'E2E8F0' } }, right: { style: 'thin', color: { rgb: 'E2E8F0' } } } };
+  const styleNumHL   = { font: { bold: true, sz: 10, color: { rgb: '276749' } }, fill: { fgColor: { rgb: 'C6F6D5' } }, alignment: { horizontal: 'right', vertical: 'center' }, border: { top: { style: 'thin', color: { rgb: '9AE6B4' } }, bottom: { style: 'thin', color: { rgb: '9AE6B4' } }, left: { style: 'thin', color: { rgb: '9AE6B4' } }, right: { style: 'thin', color: { rgb: '9AE6B4' } } } };
+
+  const sc = (v: string | number | null, s: object) => ({ v: v ?? '', t: typeof v === 'number' ? 'n' : 's', s });
+
+  const autoColWidth = (data: (string | number | null)[][], startRow: number) =>
+    data[startRow]?.map((_, ci) => ({
+      wch: Math.min(40, Math.max(8, ...data.map(row => String(row[ci] ?? '').length + 2)))
+    })) ?? [];
+
   // ── Descarga Excel: vista por día ──
   const descargarExcelDia = () => {
     const nombreDia = DIA_CONFIG[diaCategoria as number]?.nombre ?? 'Día';
     const semNombre = semanaActual?.nombreSemana ?? '';
 
-    // Todas las secciones únicas que aparecen en este día
     const todasSecciones = new Set<string>();
-    for (const cat of categoriasPorDia) {
-      for (const prod of cat.productos) {
+    for (const cat of categoriasPorDia)
+      for (const prod of cat.productos)
         for (const det of prod.detallesFiltrados) todasSecciones.add(det.nombreSeccion);
-      }
-    }
     const secciones = Array.from(todasSecciones).sort();
+    const nCols = 3 + secciones.length + 1; // cat + prod + unidad + secciones + total
 
-    const rows: (string | number | null)[][] = [
-      [`Por Categoría - ${nombreDia} - ${semNombre}`],
-      [],
-      ['Categoría', 'Producto', 'Unidad', ...secciones.map(s => `§${s}`), 'Total Día'],
-    ];
+    // ── Construir filas como arrays de valores (para autoColWidth) ──
+    const rawRows: (string | number | null)[][] = [];
+    rawRows.push([`Por Categoría — ${nombreDia} — ${semNombre}`, ...Array(nCols - 1).fill(null)]);
+    rawRows.push(Array(nCols).fill(null));
+    rawRows.push(['Categoría', 'Producto', 'Unidad', ...secciones.map(s => `§${s}`), 'Total Día']);
 
+    let rowIndex = 0;
     for (const cat of categoriasPorDia) {
+      rawRows.push([cat.nombreCategoria, ...Array(nCols - 1).fill(null)]);
       for (const prod of cat.productos) {
         const secMap = new Map<string, number>();
         for (const d of prod.detallesFiltrados) secMap.set(d.nombreSeccion, (secMap.get(d.nombreSeccion) ?? 0) + d.cantidad);
-        rows.push([
-          cat.nombreCategoria,
-          prod.nombreProducto,
-          prod.abreviatura,
-          ...secciones.map(s => secMap.get(s) ?? null),
-          prod.totalDia,
-        ]);
+        rawRows.push([cat.nombreCategoria, prod.nombreProducto, prod.abreviatura, ...secciones.map(s => secMap.get(s) ?? 0), prod.totalDia]);
+        rowIndex++;
       }
-      // fila subtotal de categoría
-      rows.push([
-        `TOTAL ${cat.nombreCategoria}`,
-        '',
-        '',
-        ...secciones.map(() => null),
-        cat.productos.reduce((s, p) => s + p.totalDia, 0),
-      ]);
-      rows.push([]);
+      rawRows.push([`SUBTOTAL ${cat.nombreCategoria}`, '', '', ...secciones.map(() => null), cat.productos.reduce((s, p) => s + p.totalDia, 0)]);
+      rawRows.push(Array(nCols).fill(null));
     }
 
-    const ws = XLSX.utils.aoa_to_sheet(rows);
-    // Ancho de columnas
-    ws['!cols'] = [{ wch: 22 }, { wch: 35 }, { wch: 8 }, ...secciones.map(() => ({ wch: 12 })), { wch: 12 }];
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, nombreDia.slice(0, 31));
-    XLSX.writeFile(wb, `categorias_${nombreDia.toLowerCase()}_${semNombre.replace(/\s+/g, '_')}.xlsx`);
+    // ── Construir worksheet con estilos ──
+    const ws: Record<string, any> = {};
+    const merges: any[] = [];
+    let R = 0;
+
+    // Fila título (fusionada)
+    merges.push({ s: { r: 0, c: 0 }, e: { r: 0, c: nCols - 1 } });
+    ws[XLSXStyle.utils.encode_cell({ r: 0, c: 0 })] = sc(`Por Categoría — ${nombreDia} — ${semNombre}`, styleTitle);
+    for (let C = 1; C < nCols; C++) ws[XLSXStyle.utils.encode_cell({ r: 0, c: C })] = sc(null, styleTitle);
+    R = 1;
+
+    // Fila vacía
+    R = 2;
+
+    // Fila encabezados
+    const headers = ['Categoría', 'Producto', 'Unidad', ...secciones.map(s => `§${s}`), 'Total Día'];
+    headers.forEach((h, C) => { ws[XLSXStyle.utils.encode_cell({ r: R, c: C })] = sc(h, styleHeader); });
+    R++;
+
+    let alt = false;
+    for (const cat of categoriasPorDia) {
+      // Fila nombre categoría (fusionada)
+      merges.push({ s: { r: R, c: 0 }, e: { r: R, c: nCols - 1 } });
+      ws[XLSXStyle.utils.encode_cell({ r: R, c: 0 })] = sc(cat.nombreCategoria, styleCat);
+      for (let C = 1; C < nCols; C++) ws[XLSXStyle.utils.encode_cell({ r: R, c: C })] = sc(null, styleCat);
+      R++;
+
+      alt = false;
+      for (const prod of cat.productos) {
+        const secMap = new Map<string, number>();
+        for (const d of prod.detallesFiltrados) secMap.set(d.nombreSeccion, (secMap.get(d.nombreSeccion) ?? 0) + d.cantidad);
+        const sd = alt ? styleDataAlt : styleData;
+        const sn = alt ? styleNumAlt : styleNum;
+        ws[XLSXStyle.utils.encode_cell({ r: R, c: 0 })] = sc(cat.nombreCategoria, sd);
+        ws[XLSXStyle.utils.encode_cell({ r: R, c: 1 })] = sc(prod.nombreProducto, sd);
+        ws[XLSXStyle.utils.encode_cell({ r: R, c: 2 })] = sc(prod.abreviatura, { ...sn, alignment: { horizontal: 'center', vertical: 'center' } });
+        secciones.forEach((s, i) => { ws[XLSXStyle.utils.encode_cell({ r: R, c: 3 + i })] = sc(secMap.get(s) ?? 0, sn); });
+        ws[XLSXStyle.utils.encode_cell({ r: R, c: nCols - 1 })] = sc(prod.totalDia, styleNumHL);
+        R++;
+        alt = !alt;
+      }
+
+      // Subtotal categoría
+      const totalCat = cat.productos.reduce((s, p) => s + p.totalDia, 0);
+      ws[XLSXStyle.utils.encode_cell({ r: R, c: 0 })] = sc(`SUBTOTAL ${cat.nombreCategoria}`, styleTotal);
+      ws[XLSXStyle.utils.encode_cell({ r: R, c: 1 })] = sc('', styleTotal);
+      ws[XLSXStyle.utils.encode_cell({ r: R, c: 2 })] = sc('', styleTotal);
+      secciones.forEach((_, i) => { ws[XLSXStyle.utils.encode_cell({ r: R, c: 3 + i })] = sc('', styleTotal); });
+      ws[XLSXStyle.utils.encode_cell({ r: R, c: nCols - 1 })] = sc(totalCat, styleTotalN);
+      R++;
+
+      // Fila separadora
+      for (let C = 0; C < nCols; C++) ws[XLSXStyle.utils.encode_cell({ r: R, c: C })] = sc(null, { fill: { fgColor: { rgb: 'EDF2F7' } } });
+      R++;
+    }
+
+    ws['!ref'] = XLSXStyle.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: R - 1, c: nCols - 1 } });
+    ws['!merges'] = merges;
+    ws['!cols'] = autoColWidth(rawRows, 2);
+    ws['!rows'] = [{ hpt: 28 }, {}, { hpt: 22 }];
+    ws['!freeze'] = { xSplit: 0, ySplit: 3 };
+
+    const wb = XLSXStyle.utils.book_new();
+    XLSXStyle.utils.book_append_sheet(wb, ws, nombreDia.slice(0, 31));
+    XLSXStyle.writeFile(wb, `categorias_${nombreDia.toLowerCase()}_${semNombre.replace(/\s+/g, '_')}.xlsx`);
   };
 
   // ── Descarga Excel: vista completa (todos los días) ──
@@ -515,37 +581,79 @@ const ConglomeradoPedidosPage: React.FC = () => {
     const semNombre = semanaActual?.nombreSemana ?? '';
     const diasOrden = [1, 2, 3, 4, 5, 6, 0];
     const diasNombres = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+    const nCols = 3 + diasNombres.length + 1;
 
-    const rows: (string | number | null)[][] = [
-      [`Vista Completa por Categoría - ${semNombre}`],
-      [],
-      ['Categoría', 'Producto', 'Unidad', ...diasNombres, 'Total Semana'],
-    ];
-
+    const rawRows: (string | number | null)[][] = [];
+    rawRows.push([`Vista Completa por Categoría — ${semNombre}`, ...Array(nCols - 1).fill(null)]);
+    rawRows.push(Array(nCols).fill(null));
+    rawRows.push(['Categoría', 'Producto', 'Unidad', ...diasNombres, 'Total Semana']);
     for (const cat of matrizCompleta) {
-      for (const row of cat.filas) {
-        rows.push([
-          cat.nombre,
-          row.nombreProducto,
-          row.abreviatura,
-          ...diasOrden.map(dia => row.diasData[dia]?.total ?? null),
-          row.totalSemana,
-        ]);
-      }
-      // fila subtotal de categoría
-      const totalesPorDia = diasOrden.map(dia =>
-        cat.filas.reduce((s, r) => s + (r.diasData[dia]?.total ?? 0), 0)
-      );
-      const totalCat = cat.filas.reduce((s, r) => s + r.totalSemana, 0);
-      rows.push([`TOTAL ${cat.nombre}`, '', '', ...totalesPorDia.map(t => t || null), totalCat]);
-      rows.push([]);
+      rawRows.push([cat.nombre, ...Array(nCols - 1).fill(null)]);
+      for (const row of cat.filas)
+        rawRows.push([cat.nombre, row.nombreProducto, row.abreviatura, ...diasOrden.map(dia => row.diasData[dia]?.total ?? 0), row.totalSemana]);
+      rawRows.push([`SUBTOTAL ${cat.nombre}`, '', '', ...diasOrden.map(dia => cat.filas.reduce((s, r) => s + (r.diasData[dia]?.total ?? 0), 0)), cat.filas.reduce((s, r) => s + r.totalSemana, 0)]);
+      rawRows.push(Array(nCols).fill(null));
     }
 
-    const ws = XLSX.utils.aoa_to_sheet(rows);
-    ws['!cols'] = [{ wch: 22 }, { wch: 35 }, { wch: 8 }, ...diasNombres.map(() => ({ wch: 12 })), { wch: 14 }];
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Vista Completa');
-    XLSX.writeFile(wb, `categorias_completo_${semNombre.replace(/\s+/g, '_')}.xlsx`);
+    const ws: Record<string, any> = {};
+    const merges: any[] = [];
+    let R = 0;
+
+    // Título fusionado
+    merges.push({ s: { r: 0, c: 0 }, e: { r: 0, c: nCols - 1 } });
+    ws[XLSXStyle.utils.encode_cell({ r: 0, c: 0 })] = sc(`Vista Completa por Categoría — ${semNombre}`, styleTitle);
+    for (let C = 1; C < nCols; C++) ws[XLSXStyle.utils.encode_cell({ r: 0, c: C })] = sc(null, styleTitle);
+    R = 2;
+
+    // Encabezados
+    const headers = ['Categoría', 'Producto', 'Unidad', ...diasNombres, 'Total Semana'];
+    headers.forEach((h, C) => { ws[XLSXStyle.utils.encode_cell({ r: R, c: C })] = sc(h, styleHeader); });
+    R++;
+
+    let alt = false;
+    for (const cat of matrizCompleta) {
+      // Fila nombre categoría fusionada
+      merges.push({ s: { r: R, c: 0 }, e: { r: R, c: nCols - 1 } });
+      ws[XLSXStyle.utils.encode_cell({ r: R, c: 0 })] = sc(cat.nombre, styleCat);
+      for (let C = 1; C < nCols; C++) ws[XLSXStyle.utils.encode_cell({ r: R, c: C })] = sc(null, styleCat);
+      R++;
+
+      alt = false;
+      for (const row of cat.filas) {
+        const sd = alt ? styleDataAlt : styleData;
+        const sn = alt ? styleNumAlt : styleNum;
+        ws[XLSXStyle.utils.encode_cell({ r: R, c: 0 })] = sc(cat.nombre, sd);
+        ws[XLSXStyle.utils.encode_cell({ r: R, c: 1 })] = sc(row.nombreProducto, sd);
+        ws[XLSXStyle.utils.encode_cell({ r: R, c: 2 })] = sc(row.abreviatura, { ...sn, alignment: { horizontal: 'center', vertical: 'center' } });
+        diasOrden.forEach((dia, i) => { ws[XLSXStyle.utils.encode_cell({ r: R, c: 3 + i })] = sc(row.diasData[dia]?.total ?? 0, sn); });
+        ws[XLSXStyle.utils.encode_cell({ r: R, c: nCols - 1 })] = sc(row.totalSemana, styleNumHL);
+        R++;
+        alt = !alt;
+      }
+
+      // Subtotal
+      const totalesDia = diasOrden.map(dia => cat.filas.reduce((s, r) => s + (r.diasData[dia]?.total ?? 0), 0));
+      const totalCat = cat.filas.reduce((s, r) => s + r.totalSemana, 0);
+      ws[XLSXStyle.utils.encode_cell({ r: R, c: 0 })] = sc(`SUBTOTAL ${cat.nombre}`, styleTotal);
+      ws[XLSXStyle.utils.encode_cell({ r: R, c: 1 })] = sc('', styleTotal);
+      ws[XLSXStyle.utils.encode_cell({ r: R, c: 2 })] = sc('', styleTotal);
+      totalesDia.forEach((t, i) => { ws[XLSXStyle.utils.encode_cell({ r: R, c: 3 + i })] = sc(t || 0, styleTotalN); });
+      ws[XLSXStyle.utils.encode_cell({ r: R, c: nCols - 1 })] = sc(totalCat, styleTotalN);
+      R++;
+
+      for (let C = 0; C < nCols; C++) ws[XLSXStyle.utils.encode_cell({ r: R, c: C })] = sc(null, { fill: { fgColor: { rgb: 'EDF2F7' } } });
+      R++;
+    }
+
+    ws['!ref'] = XLSXStyle.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: R - 1, c: nCols - 1 } });
+    ws['!merges'] = merges;
+    ws['!cols'] = autoColWidth(rawRows, 2);
+    ws['!rows'] = [{ hpt: 28 }, {}, { hpt: 22 }];
+    ws['!freeze'] = { xSplit: 0, ySplit: 3 };
+
+    const wb = XLSXStyle.utils.book_new();
+    XLSXStyle.utils.book_append_sheet(wb, ws, 'Vista Completa');
+    XLSXStyle.writeFile(wb, `categorias_completo_${semNombre.replace(/\s+/g, '_')}.xlsx`);
   };
 
   const semanaActual = semanas.find(s => String(s.idSemana) === semanaId) ?? null;
