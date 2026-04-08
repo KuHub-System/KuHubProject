@@ -464,28 +464,31 @@ const ConglomeradoPedidosPage: React.FC = () => {
   const styleHeader  = { font: { bold: true, sz: 11, color: { rgb: 'FFFFFF' } }, fill: { fgColor: { rgb: '2D3748' } }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true }, border: { top: { style: 'thin', color: { rgb: 'FFFFFF' } }, bottom: { style: 'thin', color: { rgb: 'FFFFFF' } }, left: { style: 'thin', color: { rgb: 'FFFFFF' } }, right: { style: 'thin', color: { rgb: 'FFFFFF' } } } };
   const styleCat     = { font: { bold: true, sz: 11, color: { rgb: '1A1A1A' } }, fill: { fgColor: { rgb: 'FFF3CD' } }, alignment: { horizontal: 'left', vertical: 'center' }, border: { top: { style: 'thin', color: { rgb: 'E2C97E' } }, bottom: { style: 'thin', color: { rgb: 'E2C97E' } }, left: { style: 'thin', color: { rgb: 'E2C97E' } }, right: { style: 'thin', color: { rgb: 'E2C97E' } } } };
   const styleTotal   = { font: { bold: true, sz: 10, color: { rgb: 'FFFFFF' } }, fill: { fgColor: { rgb: '4A5568' } }, alignment: { horizontal: 'center', vertical: 'center' }, border: { top: { style: 'thin', color: { rgb: '718096' } }, bottom: { style: 'thin', color: { rgb: '718096' } }, left: { style: 'thin', color: { rgb: '718096' } }, right: { style: 'thin', color: { rgb: '718096' } } } };
-  const styleTotalN  = { font: { bold: true, sz: 10, color: { rgb: 'FFFFFF' } }, fill: { fgColor: { rgb: '4A5568' } }, alignment: { horizontal: 'right', vertical: 'center' }, border: { top: { style: 'thin', color: { rgb: '718096' } }, bottom: { style: 'thin', color: { rgb: '718096' } }, left: { style: 'thin', color: { rgb: '718096' } }, right: { style: 'thin', color: { rgb: '718096' } } }, numFmt: '#,##0.###' };
+  const styleTotalN  = { font: { bold: true, sz: 10, color: { rgb: 'FFFFFF' } }, fill: { fgColor: { rgb: '4A5568' } }, alignment: { horizontal: 'right', vertical: 'center' }, border: { top: { style: 'thin', color: { rgb: '718096' } }, bottom: { style: 'thin', color: { rgb: '718096' } }, left: { style: 'thin', color: { rgb: '718096' } }, right: { style: 'thin', color: { rgb: '718096' } } } };
   const styleData    = { font: { sz: 10 }, fill: { fgColor: { rgb: 'FFFFFF' } }, alignment: { horizontal: 'left', vertical: 'center', wrapText: true }, border: { top: { style: 'thin', color: { rgb: 'E2E8F0' } }, bottom: { style: 'thin', color: { rgb: 'E2E8F0' } }, left: { style: 'thin', color: { rgb: 'E2E8F0' } }, right: { style: 'thin', color: { rgb: 'E2E8F0' } } } };
   const styleDataAlt = { font: { sz: 10 }, fill: { fgColor: { rgb: 'F7FAFC' } }, alignment: { horizontal: 'left', vertical: 'center', wrapText: true }, border: { top: { style: 'thin', color: { rgb: 'E2E8F0' } }, bottom: { style: 'thin', color: { rgb: 'E2E8F0' } }, left: { style: 'thin', color: { rgb: 'E2E8F0' } }, right: { style: 'thin', color: { rgb: 'E2E8F0' } } } };
-  const styleNum     = { font: { sz: 10 }, fill: { fgColor: { rgb: 'FFFFFF' } }, alignment: { horizontal: 'right', vertical: 'center' }, border: { top: { style: 'thin', color: { rgb: 'E2E8F0' } }, bottom: { style: 'thin', color: { rgb: 'E2E8F0' } }, left: { style: 'thin', color: { rgb: 'E2E8F0' } }, right: { style: 'thin', color: { rgb: 'E2E8F0' } } }, numFmt: '#,##0.###' };
-  const styleNumAlt  = { font: { sz: 10 }, fill: { fgColor: { rgb: 'F7FAFC' } }, alignment: { horizontal: 'right', vertical: 'center' }, border: { top: { style: 'thin', color: { rgb: 'E2E8F0' } }, bottom: { style: 'thin', color: { rgb: 'E2E8F0' } }, left: { style: 'thin', color: { rgb: 'E2E8F0' } }, right: { style: 'thin', color: { rgb: 'E2E8F0' } } }, numFmt: '#,##0.###' };
-  const styleNumHL   = { font: { bold: true, sz: 10, color: { rgb: '276749' } }, fill: { fgColor: { rgb: 'C6F6D5' } }, alignment: { horizontal: 'right', vertical: 'center' }, border: { top: { style: 'thin', color: { rgb: '9AE6B4' } }, bottom: { style: 'thin', color: { rgb: '9AE6B4' } }, left: { style: 'thin', color: { rgb: '9AE6B4' } }, right: { style: 'thin', color: { rgb: '9AE6B4' } } }, numFmt: '#,##0.###' };
+  const styleNum     = { font: { sz: 10 }, fill: { fgColor: { rgb: 'FFFFFF' } }, alignment: { horizontal: 'right', vertical: 'center' }, border: { top: { style: 'thin', color: { rgb: 'E2E8F0' } }, bottom: { style: 'thin', color: { rgb: 'E2E8F0' } }, left: { style: 'thin', color: { rgb: 'E2E8F0' } }, right: { style: 'thin', color: { rgb: 'E2E8F0' } } } };
+  const styleNumAlt  = { font: { sz: 10 }, fill: { fgColor: { rgb: 'F7FAFC' } }, alignment: { horizontal: 'right', vertical: 'center' }, border: { top: { style: 'thin', color: { rgb: 'E2E8F0' } }, bottom: { style: 'thin', color: { rgb: 'E2E8F0' } }, left: { style: 'thin', color: { rgb: 'E2E8F0' } }, right: { style: 'thin', color: { rgb: 'E2E8F0' } } } };
+  const styleNumHL   = { font: { bold: true, sz: 10, color: { rgb: '276749' } }, fill: { fgColor: { rgb: 'C6F6D5' } }, alignment: { horizontal: 'right', vertical: 'center' }, border: { top: { style: 'thin', color: { rgb: '9AE6B4' } }, bottom: { style: 'thin', color: { rgb: '9AE6B4' } }, left: { style: 'thin', color: { rgb: '9AE6B4' } }, right: { style: 'thin', color: { rgb: '9AE6B4' } } } };
 
-  const NUM_FMT = '#,##0.###';
-  const sc = (v: string | number | null, s: object) => {
-    const isNum = typeof v === 'number';
-    const cell: any = { v: isNum ? v : (v ?? ''), t: isNum ? 'n' : 's', s };
-    if (isNum) cell.z = NUM_FMT;
-    return cell;
-  };
+  // Formatea número con locale chileno: miles con punto, decimal con coma, máx 3 decimales
+  const fmtN = (v: number): string =>
+    v.toLocaleString('es-CL', { maximumFractionDigits: 3 });
+  // Celda texto (garantiza coma decimal sin depender del locale del Excel del usuario)
+  const sc = (v: string | number | null, s: object) => ({
+    v: typeof v === 'number' ? fmtN(v) : (v ?? ''),
+    t: 's',
+    s,
+  });
   // Convierte índice de columna (0-based) a letra(s) Excel: 0→A, 25→Z, 26→AA …
   const cl = (c: number): string => {
     let s = ''; let n = c + 1;
     while (n > 0) { n--; s = String.fromCharCode(65 + (n % 26)) + s; n = Math.floor(n / 26); }
     return s;
   };
-  // Celda con fórmula SUM (valor pre-calculado + fórmula para recálculo en Excel)
-  const sf = (formula: string, v: number, s: object) => ({ t: 'n', f: formula, v, z: NUM_FMT, s });
+  // Celda de total: escribe el valor pre-calculado como texto formateado (sin fórmula live,
+  // ya que SUM no opera sobre celdas texto; se mantiene cl() por si se reactiva en futuro)
+  const sf = (_formula: string, v: number, s: object) => ({ v: fmtN(v), t: 's', s });
 
   const autoColWidth = (data: (string | number | null)[][], startRow: number) =>
     data[startRow]?.map((_, ci) => ({
