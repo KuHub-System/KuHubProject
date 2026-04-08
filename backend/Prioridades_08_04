@@ -52,6 +52,12 @@ pueda ultilizar para el proceso de solicitud. Tambien note un error, por mas que
 productos buscado por el selector de productos que usamos como adicional, funcionara de la misma manera pero que no dependa de una receta existente, en
 caso de que el usuario decida seleccionar todo manualmente.
 
+11- BAJA me di cuenta de una duplicacion de descripciones, el titulo de gestion de roles esta correcto el primero superior, pero el segundo esta reduldante,
+hay que sacarlo, y los btns recargar y guardar cambios tiene que estar en el mismo contenedor donde esta escrito niveles, pero al movelo al contenedor no cambie
+sus propriedades de tamanon, color etc porque se ve bonito!
+
+12- BAJA - falto agregar el titulo de Dashboard implementa manteniendo el icono del modal y removendo la reduldancia que aparece abajo.
+
 
 
 

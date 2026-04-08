@@ -226,21 +226,19 @@ const GestionRolesPage: React.FC = () => {
         className="space-y-6"
       >
 
-        {/* ── Encabezado ── */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-[#FFB800]/10 flex items-center justify-center">
-              <Icon icon="lucide:users" width={22} className="text-[#FFB800]" />
+        {/* ── Leyenda de niveles + botones de acción ── */}
+        <div className="flex flex-wrap gap-3 items-center">
+          <span className="text-xs text-default-400 font-medium">Niveles:</span>
+          {ACCESS_OPTIONS.map((o) => (
+            <div key={o.value} className="flex items-center gap-1.5 text-xs">
+              <AccessChip level={o.value} />
             </div>
-            <div>
-              <h1 className="text-2xl font-bold">Gestión de Roles y Permisos</h1>
-              <p className="text-default-500 text-sm">
-                Configura qué puede ver o editar cada rol en el sistema.
-              </p>
-            </div>
+          ))}
+          <div className="flex items-center gap-1.5 text-xs text-default-400 ml-2">
+            <Icon icon="lucide:shield-check" width={12} />
+            <span>El Administrador siempre tiene Escritura total (columna oculta)</span>
           </div>
-
-          <div className="flex gap-2">
+          <div className="flex gap-2 ml-auto">
             <Button
               variant="flat"
               color="default"
@@ -263,20 +261,6 @@ const GestionRolesPage: React.FC = () => {
             >
               Guardar Cambios
             </Button>
-          </div>
-        </div>
-
-        {/* ── Leyenda de niveles de acceso ── */}
-        <div className="flex flex-wrap gap-3 items-center">
-          <span className="text-xs text-default-400 font-medium">Niveles:</span>
-          {ACCESS_OPTIONS.map((o) => (
-            <div key={o.value} className="flex items-center gap-1.5 text-xs">
-              <AccessChip level={o.value} />
-            </div>
-          ))}
-          <div className="flex items-center gap-1.5 text-xs text-default-400 ml-2">
-            <Icon icon="lucide:shield-check" width={12} />
-            <span>El Administrador siempre tiene Escritura total (columna oculta)</span>
           </div>
         </div>
 
