@@ -7,15 +7,42 @@
     <title>KuHub - App</title>
     <script>
       (function () {
-        var saved = localStorage.getItem('heroui-theme') || localStorage.getItem('theme');
-        if (saved === 'dark') {
-          document.documentElement.classList.add('dark');
-        } else {
-          document.documentElement.classList.remove('dark');
-          if (!saved) {
-            localStorage.setItem('heroui-theme', 'light');
+        function applyTheme(t) {
+          if (t === 'dark') {
+            document.documentElement.classList.remove('light');
+            document.documentElement.classList.add('dark');
+          } else {
+            document.documentElement.classList.remove('dark');
+            document.documentElement.classList.add('light');
           }
         }
+
+        // Leer preferencia guardada; si no hay ninguna → default LIGHT
+        var saved = localStorage.getItem('heroui-theme') || localStorage.getItem('theme');
+        if (!saved) {
+          localStorage.setItem('heroui-theme', 'light');
+          saved = 'light';
+        }
+        applyTheme(saved);
+
+        // Guardian: vigila cambios en las clases del <html> y los corrige
+        // si no coinciden con la preferencia guardada en localStorage.
+        // Esto neutraliza scripts externos (ej. heroui-chat-script) que puedan
+        // sobreescribir el tema sin pasar por localStorage.
+        // Nota: HeroUI actualiza localStorage ANTES de tocar el DOM, por lo que
+        // los cambios legítimos del usuario siempre serán respetados.
+        var guarding = false;
+        new MutationObserver(function () {
+          if (guarding) return;
+          var desired = localStorage.getItem('heroui-theme') || 'light';
+          var hasDark  = document.documentElement.classList.contains('dark');
+          var hasLight = document.documentElement.classList.contains('light');
+          if ((desired === 'dark') !== hasDark || (!hasDark && !hasLight)) {
+            guarding = true;
+            applyTheme(desired);
+            guarding = false;
+          }
+        }).observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
       })();
     </script>
     <script type="module" crossorigin src="/assets/index-BQZJNsvR.js"></script>
@@ -26,7 +53,6 @@
   </head>
   <body class="h-full min-h-screen">
     <div id="root"></div>
-    <!-- Scripts externos movidos al final y con defer para no bloquear el renderizado -->
     <script defer src="https://cdn.jsdelivr.net/npm/heroui-chat-script@0/dist/index.min.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/heroui-chat-script@beta/dist/select-and-edit-utils.global.js"></script>
   </body>
