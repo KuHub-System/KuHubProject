@@ -5,6 +5,19 @@
     <link rel="icon" type="image/svg+xml" href="/assets/QuestWeb_IsoLogo_W_BG-BZLN2BB1.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>KuHub - App</title>
+    <script>
+      (function () {
+        var saved = localStorage.getItem('heroui-theme') || localStorage.getItem('theme');
+        if (saved === 'dark') {
+          document.documentElement.classList.add('dark');
+        } else {
+          document.documentElement.classList.remove('dark');
+          if (!saved) {
+            localStorage.setItem('heroui-theme', 'light');
+          }
+        }
+      })();
+    </script>
     <script type="module" crossorigin src="/assets/index-BQZJNsvR.js"></script>
     <link rel="modulepreload" crossorigin href="/assets/react-vendor-B3id0Gw4.js">
     <link rel="modulepreload" crossorigin href="/assets/utils-vendor-B3KMIK66.js">
@@ -12,7 +25,7 @@
     <link rel="stylesheet" crossorigin href="/assets/index--cmcxXP_.css">
   </head>
   <body class="h-full min-h-screen">
-    <div id="root"></div>
+    <div id="root"></div>
     <!-- Scripts externos movidos al final y con defer para no bloquear el renderizado -->
     <script defer src="https://cdn.jsdelivr.net/npm/heroui-chat-script@0/dist/index.min.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/heroui-chat-script@beta/dist/select-and-edit-utils.global.js"></script>
