@@ -9,6 +9,12 @@ import './index.css';
 // Inicializar sistema antes de renderizar
 inicializarApp();
 
+// Establecer tema claro como predeterminado si el usuario no tiene preferencia guardada.
+// Se hace de forma sincrónica antes del primer render para evitar el flash de tema oscuro.
+if (!localStorage.getItem('heroui-theme') && !localStorage.getItem('theme')) {
+  localStorage.setItem('heroui-theme', 'light');
+}
+
 /**
  * Punto de entrada principal de la aplicación.
  * Configura los proveedores necesarios:
@@ -19,7 +25,7 @@ inicializarApp();
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <HeroUIProvider>
+    <HeroUIProvider defaultTheme="light">
       <ToastProvider />
       <Router>
         <App />
