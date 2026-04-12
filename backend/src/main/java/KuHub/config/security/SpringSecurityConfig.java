@@ -89,12 +89,16 @@ public class SpringSecurityConfig {
                 "http://127.0.0.1:5173",
                 "http://127.0.0.1:3000",
 
-                // 🚀 PRODUCCIÓN (AWS Lightsail)
+                // 🚀 PRODUCCIÓN (AWS Lightsail - IP directa)
                 "http://52.5.222.79",
                 "http://52.5.222.79:80",
                 "http://52.5.222.79:8080",
-                "https://52.5.222.79",         // HTTPS habilitado
-                "https://52.5.222.79:443"
+                "https://52.5.222.79",
+                "https://52.5.222.79:443",
+
+                // 🌐 PRODUCCIÓN (Subdominio QuestWeb)
+                "https://appkuhub.questweb.cl",
+                "http://appkuhub.questweb.cl"
         ));
 
         // ⚠️ PRODUCCIÓN: Cambiar a la URL de tu frontend en AWS
