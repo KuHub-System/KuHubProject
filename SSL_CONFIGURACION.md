@@ -168,7 +168,17 @@ curl -sI https://appkuhub.questweb.cl/login
 
 | Campo                   | Valor |
 |-------------------------|---|
-| Sub Dominio             | `appkuhub.questweb.cl` |
+| Sub # 1. Guardar y subir los cambios del workflow
+git add .
+git commit -m "Sub dominio implementado y tema claro por defecto"
+git push
+# 2. Borrar posibles tags viejos o erróneos
+git tag -d K1.0.5
+git push origin --delete K1.0.5
+# 3. Crear el nuevo Tag con el formato K
+git tag K1.0.5
+# 4. ¡FUEGO!
+git push origin K1.0.5Dominio             | `appkuhub.questweb.cl` |
 | Emisor                  | Let's Encrypt (ISRG Root X1) |
 | Tipo                    | DV (Domain Validated) |
 | Válido desde            | 2026-04-11 |
