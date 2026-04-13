@@ -39,6 +39,12 @@ public interface SemanaRepository extends JpaRepository<Semana, Integer> {
     List<Object[]> findAniosAndSemestresRaw();
 
 
+    /** Busca la semana ancla "Semana 1" de un período académico (uk: nombre+anio+semestre) */
+    Optional<Semana> findByNombreSemanaAndAnioAndSemestre(String nombreSemana, Short anio, Short semestre);
+
+    /** Obtiene semanas de un semestre a partir de un id_semana dado, ordenadas por id */
+    List<Semana> findBySemestreAndIdSemanaGreaterThanEqualOrderByIdSemanaAsc(Short semestre, Integer idSemanaMin);
+
     /**Validaciones boleanas*/
     boolean existsBySemestreAndAnio(Short semestre, Short anio);
     boolean existsByFechaInicio(LocalDate fechaInicio);
