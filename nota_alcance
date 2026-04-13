@@ -805,6 +805,14 @@ PENDIENTE DE IMPLEMENTAR O DEFINIR:
       confirmación por texto "CONFIRMAR" + advertencia de impacto en secciones/reservas).
       Pendiente: endpoints backend PUT /bloque-horario/reasignar y
       POST /bloque-horario/restaurar-default (ver CLAUDE.md sección 9)
+  [F] Reasignación de semanas académicas desde UI — Frontend implementado (modal con
+      selector de año y semestre, DatePicker solo lunes, vista previa de las 18 semanas
+      calculadas, advertencia de impacto en solicitudes y conglomerados de pedido,
+      confirmación por texto "CONFIRMAR"). Callback actualiza semanas y filtro de año
+      automáticamente al confirmar.
+      Pendiente: endpoint backend PUT /semanas/reasignar-semester-calendar
+      (dto: { anio, semestre, nuevaFechaInicio }, retorna ISemana[])
+      (ver CLAUDE.md sección 9)
   [ ] Gestión de proveedores (vista existe en frontend, sin backend)
   [ ] Tabla LOTE activable en sistema (estructura ya en BD)
   [ ] Adjuntar archivos a recetas (requiere AWS S3)
