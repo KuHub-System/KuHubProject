@@ -53,19 +53,6 @@ public class BloqueHorarioController {
     }
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
     /**
      * Obtiene la información de un bloque horario específico por su ID.
      * ⚠️ Sin uso aparente en el frontend actual.
@@ -78,8 +65,6 @@ public class BloqueHorarioController {
                 .status(200)
                 .body(bloqueHorarioService.findById(id));
     }
-
-
 
 
     /**
