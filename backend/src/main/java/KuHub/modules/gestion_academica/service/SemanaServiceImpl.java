@@ -149,27 +149,41 @@ public class SemanaServiceImpl implements SemanaService {
             );
         }
 
-        // Buscar semanas existentes del período
-        List<Semana> semanas = semanaRepository.findByAnioAndSemestreOrderByFechaInicioAsc(
-                request.getAnio(), request.getSemestre());
+        // 1. Anclar en "Semana 1" del período — garantiza que solo tocamos este semestre
+        Semana anchor = semanaRepository
+                .findByNombreSemanaAndAnioAndSemestre("Semana 1", request.getAnio(), request.getSemestre())
+                .orElseThrow(() -> {
+                    log.warn("No existe 'Semana 1' para anio={} semestre={}", request.getAnio(), request.getSemestre());
+                    return new GestionAcademicaException(
+                            "No existen semanas registradas para el " + request.getSemestre() +
+                            "° semestre del año " + request.getAnio() + ". Genere el calendario primero.",
+                            HttpStatus.CONFLICT
+                    );
+                });
 
-        if (semanas.isEmpty()) {
-            log.warn("No se encontraron semanas para anio={} semestre={}", request.getAnio(), request.getSemestre());
-            throw new GestionAcademicaException(
-                    "No existen semanas registradas para el " + request.getSemestre() +
-                    "° semestre del año " + request.getAnio() + ". Genere el calendario primero.",
-                    HttpStatus.CONFLICT
-            );
+        log.info("Ancla encontrada: id_semana={}, fechaInicio={}, semestre={}",
+                anchor.getIdSemana(), anchor.getFechaInicio(), anchor.getSemestre());
+
+        // 2. Obtener exactamente las 18 semanas de ESTE semestre a partir del id ancla
+        //    — filtra por semestre y id >= ancla para no cruzar con otro semestre
+        List<Semana> semanas = semanaRepository
+                .findBySemestreAndIdSemanaGreaterThanEqualOrderByIdSemanaAsc(
+                        request.getSemestre(), anchor.getIdSemana());
+
+        if (semanas.size() > 18) {
+            semanas = semanas.subList(0, 18);
         }
 
-        log.info("Se encontraron {} semanas para reasignar.", semanas.size());
+        log.info("Semanas a reasignar: {} (semestre={}, id_semana >= {})",
+                semanas.size(), request.getSemestre(), anchor.getIdSemana());
 
-        // Recalcular fechas manteniendo el nombre y el semestre
+        // 3. Recalcular fechas manteniendo nombre y semestre intactos
         LocalDate cursor = request.getNuevaFechaInicio();
         for (Semana semana : semanas) {
-            log.info("Reasignando '{}': {} -> {} (antes: {} - {})",
-                    semana.getNombreSemana(), cursor, cursor.plusDays(6),
-                    semana.getFechaInicio(), semana.getFechaFin());
+            log.info("Reasignando id={} '{}': {} - {} → {} - {}",
+                    semana.getIdSemana(), semana.getNombreSemana(),
+                    semana.getFechaInicio(), semana.getFechaFin(),
+                    cursor, cursor.plusDays(6));
             semana.setFechaInicio(cursor);
             semana.setFechaFin(cursor.plusDays(6));
             cursor = cursor.plusWeeks(1);
@@ -178,13 +192,14 @@ public class SemanaServiceImpl implements SemanaService {
         semanaRepository.saveAll(semanas);
         semanaRepository.flush();
 
-        // Retornar el período actualizado ordenado
-        List<Semana> resultado = semanaRepository.findByAnioAndSemestreOrderByFechaInicioAsc(
-                request.getAnio(), request.getSemestre());
-        log.info("Reasignacion completada. {} semanas actualizadas. Nuevo rango: {} - {}",
-                resultado.size(),
-                resultado.get(0).getFechaInicio(),
-                resultado.get(resultado.size() - 1).getFechaFin());
+        // 4. Retornar TODAS las semanas del año de la nueva fecha (no solo el semestre reasignado)
+        //    para que el frontend pueda refrescar el estado completo del año sin perder el otro semestre
+        Short anioNuevo = (short) request.getNuevaFechaInicio().getYear();
+        List<Semana> resultado = semanaRepository.findByAnioOrderByFechaInicioAsc(anioNuevo);
+        log.info("Reasignacion completada. Retornando {} semanas del año {}. Rango reasignado: {} - {}",
+                resultado.size(), anioNuevo,
+                semanas.get(0).getFechaInicio(),
+                semanas.get(semanas.size() - 1).getFechaFin());
         return resultado;
     }
 
