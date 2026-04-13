@@ -470,3 +470,4 @@ Antes de dar por terminada cualquier implementación, verificar:
 - [ ] La eliminación usa `softDelete` (`activo = false`) y el controller devuelve `status(204)`
 - [ ] Se usó `@Transactional(readOnly = true)` en los métodos de solo lectura
 - [ ] Los métodos privados del service están al final de la clase
+- [ ] **`nota_alcance` fue actualizado** con la descripción de lo implementado (sección 5 IMPLEMENTADO y sección 6 NOTAS)
