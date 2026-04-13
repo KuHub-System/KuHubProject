@@ -1,10 +1,13 @@
 package KuHub.modules.gestion_academica.controller;
 
 import KuHub.modules.gestion_academica.dtos.request.FilterTimeBlockDTO;
+import KuHub.modules.gestion_academica.dtos.request.ReasignarBloqueDTO;
 import KuHub.modules.gestion_academica.entity.BloqueHorario;
 import KuHub.modules.gestion_academica.service.BloqueHorarioService;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -16,6 +19,7 @@ import java.util.List;
  * aquellos disponibles (no reservados) para una sala y día específicos.
  * Consumido por bloque-horario-service.ts y ramos-admin.tsx en el frontend.
  */
+@Slf4j
 @RestController
 @RequestMapping("/api/v1/bloque-horario")
 public class BloqueHorarioController {
@@ -91,5 +95,31 @@ public class BloqueHorarioController {
                 .body(bloqueHorarioService.filterBlocksByNumbersBlocks(numbersBlocksFilter));
     }
 
+    /**
+     * Reasigna la lista completa de bloques horarios del sistema.
+     * Elimina los bloques actuales y persiste la nueva lista. Valida conflictos de horario.
+     * ✅ En uso: Consumido por reasignarBloquesService en bloque-horario-service.ts.
+     */
+    @PutMapping("/reasignar")
+    public ResponseEntity<List<BloqueHorario>> reasignarBloques(
+            @Validated @RequestBody List<ReasignarBloqueDTO> bloques
+    ) {
+        log.info("PUT /reasignar - Solicitud recibida con {} bloques", bloques != null ? bloques.size() : 0);
+        return ResponseEntity
+                .status(200)
+                .body(bloqueHorarioService.reasignarBloques(bloques));
+    }
+
+    /**
+     * Restaura los 20 bloques horarios predeterminados del sistema.
+     * ✅ En uso: Consumido por restaurarBloquesDefaultService en bloque-horario-service.ts.
+     */
+    @PostMapping("/restaurar-default")
+    public ResponseEntity<List<BloqueHorario>> restaurarBloquesDefault() {
+        log.info("POST /restaurar-default - Solicitud de restauracion de bloques predeterminados");
+        return ResponseEntity
+                .status(200)
+                .body(bloqueHorarioService.restaurarBloquesDefault());
+    }
 
 }

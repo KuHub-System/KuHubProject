@@ -800,11 +800,13 @@ PENDIENTE DE IMPLEMENTAR O DEFINIR:
           de las solicitudes a PROCESADO tras consolidarse en pedido
   [ ] Completar MotivoRechazo: service, endpoint, integración al rechazo,
       notificación a Profesor a Cargo y Docente
-  [F] Edición de bloques horarios desde UI — Frontend implementado (Reasignar Bloques +
-      Restaurar predeterminados + validación de conflictos mín. 1 min entre bloques +
-      confirmación por texto "CONFIRMAR" + advertencia de impacto en secciones/reservas).
-      Pendiente: endpoints backend PUT /bloque-horario/reasignar y
-      POST /bloque-horario/restaurar-default (ver CLAUDE.md sección 9)
+  [✓] Edición de bloques horarios desde UI — Frontend + Backend implementados.
+      Frontend: Reasignar Bloques + Restaurar predeterminados + validación de conflictos
+      mín. 1 min entre bloques + confirmación por texto "CONFIRMAR" + advertencia impacto.
+      Backend: PUT /bloque-horario/reasignar (update-in-place, preserva FK con reserva_sala,
+      valida conflictos de horario, lanza 422 si hay superposición) +
+      POST /bloque-horario/restaurar-default (20 bloques predeterminados, actualiza in-place).
+      Logs @Slf4j en controller y service para diagnóstico operacional.
   [F] Reasignación de semanas académicas desde UI — Frontend implementado (modal con
       selector de año y semestre, DatePicker solo lunes, vista previa de las 18 semanas
       calculadas, advertencia de impacto en solicitudes y conglomerados de pedido,
