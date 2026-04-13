@@ -1429,6 +1429,9 @@ const SeccionReservas: React.FC = () => {
 
 // ─── SECCIÓN: GESTIÓN SALAS ───────────────────────────────────────────────────
 
+const MAX_COD  = 50;
+const MAX_NOMBRE = 100;
+
 const SeccionGestionSalas: React.FC = () => {
   const toast = useToast();
   const { isOpen: isCreateOpen, onOpen: onCreateOpen, onOpenChange: onCreateOpenChange } = useDisclosure();
@@ -1442,6 +1445,7 @@ const SeccionGestionSalas: React.FC = () => {
   const [formNombre, setFormNombre] = React.useState('');
   const [editId, setEditId] = React.useState<number | null>(null);
   const [deleteTarget, setDeleteTarget] = React.useState<ISala | null>(null);
+  const [confirmarDesactivar, setConfirmarDesactivar] = React.useState('');
   const [isSubmitting, setIsSubmitting] = React.useState(false);
 
   React.useEffect(() => {
@@ -1473,6 +1477,7 @@ const SeccionGestionSalas: React.FC = () => {
 
   const openDelete = (sala: ISala) => {
     setDeleteTarget(sala);
+    setConfirmarDesactivar('');
     onDeleteOpen();
   };
 
@@ -1523,38 +1528,13 @@ const SeccionGestionSalas: React.FC = () => {
   };
 
   const canSubmitForm = formCod.trim().length > 0 && formNombre.trim().length > 0;
+  const canConfirmarDesactivar = confirmarDesactivar.trim().toUpperCase() === 'CONFIRMAR';
 
   return (
     <div className="space-y-4">
-      {/* Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <Card className="shadow-sm border border-default-200 dark:border-default-100 bg-white dark:bg-content1">
-          <CardBody className="flex flex-row items-center justify-between p-4 gap-3">
-            <div>
-              <p className="text-xs font-semibold text-default-400 uppercase tracking-wide">Total Salas Activas</p>
-              <p className="text-2xl font-bold text-secondary mt-0.5">{salas.length}</p>
-            </div>
-            <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-warning-100 dark:bg-warning-900/30 text-warning shrink-0">
-              <Icon icon="lucide:door-open" width={20} />
-            </div>
-          </CardBody>
-        </Card>
-        <Card className="shadow-sm border border-default-200 dark:border-default-100 bg-white dark:bg-content1">
-          <CardBody className="flex flex-row items-center justify-between p-4 gap-3">
-            <div>
-              <p className="text-xs font-semibold text-default-400 uppercase tracking-wide">Mostrando</p>
-              <p className="text-2xl font-bold text-secondary mt-0.5">{salasFiltradas.length}</p>
-            </div>
-            <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-primary-100 dark:bg-primary-900/30 text-primary shrink-0">
-              <Icon icon="lucide:filter" width={20} />
-            </div>
-          </CardBody>
-        </Card>
-      </div>
-
-      {/* Tabla */}
+      {/* Tabla compacta */}
       <Card className="shadow-sm border border-default-200 dark:border-default-100 bg-white dark:bg-content1">
-        <CardHeader className="px-6 pt-5 pb-3 flex flex-col gap-4">
+        <CardHeader className="px-6 pt-5 pb-3 flex flex-col gap-3">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-lg bg-warning-100 dark:bg-warning-900/30 text-warning">
               <Icon icon="lucide:building-2" width={20} />
@@ -1562,7 +1542,7 @@ const SeccionGestionSalas: React.FC = () => {
             <div>
               <h3 className="font-bold text-base text-secondary dark:text-foreground">Salas Activas</h3>
               <p className="text-xs text-default-400">
-                {salasFiltradas.length} de {salas.length} salas
+                {salasFiltradas.length} de {salas.length} salas registradas
               </p>
             </div>
             <Button
@@ -1582,6 +1562,7 @@ const SeccionGestionSalas: React.FC = () => {
             onValueChange={setFiltroSala}
             variant="bordered"
             size="sm"
+            className="max-w-xs"
             startContent={<Icon icon="lucide:search" className="text-default-400" width={16} />}
             isClearable
             onClear={() => setFiltroSala('')}
@@ -1594,66 +1575,53 @@ const SeccionGestionSalas: React.FC = () => {
               <Spinner size="lg" color="primary" />
             </div>
           ) : (
-            <Table
-              aria-label="Gestión de Salas"
-              removeWrapper
-              layout="fixed"
-              classNames={{
-                th: 'bg-default-100 dark:bg-default-50/20 text-default-500 font-bold uppercase text-xs h-10',
-                td: 'py-2.5 border-b border-default-50 dark:border-default-50/10 group-data-[last=true]:border-none px-4',
-              }}
-            >
-              <TableHeader>
-                <TableColumn width="20%">COD SALA</TableColumn>
-                <TableColumn width="60%">NOMBRE SALA</TableColumn>
-                <TableColumn width="20%" align="center">ACCIONES</TableColumn>
-              </TableHeader>
-              <TableBody
-                emptyContent={
-                  <div className="py-10 text-center text-default-400">
-                    <Icon icon="lucide:building-2" width={32} className="mx-auto mb-2 opacity-50" />
-                    <p className="text-sm">No hay salas registradas</p>
-                  </div>
-                }
+            <div className="max-w-2xl">
+              <Table
+                aria-label="Gestión de Salas"
+                removeWrapper
+                classNames={{
+                  th: 'bg-default-100 dark:bg-default-50/20 text-default-500 font-bold uppercase text-xs h-10',
+                  td: 'py-2 border-b border-default-50 dark:border-default-50/10 group-data-[last=true]:border-none px-4',
+                }}
               >
-                {salasFiltradas.map((sala) => (
-                  <TableRow key={sala.idSala} className="hover:bg-default-50 dark:hover:bg-default-50/10 transition-colors">
-                    <TableCell>
-                      <Chip size="sm" variant="flat" color="primary" className="font-mono font-bold text-xs">
-                        {sala.codSala}
-                      </Chip>
-                    </TableCell>
-                    <TableCell>
-                      <span className="text-sm text-default-700">{sala.nombreSala}</span>
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <div className="flex items-center justify-center gap-1">
-                        <Button
-                          isIconOnly
-                          size="sm"
-                          variant="flat"
-                          color="primary"
-                          onPress={() => openEdit(sala)}
-                          aria-label="Editar sala"
-                        >
-                          <Icon icon="lucide:pencil" width={15} />
-                        </Button>
-                        <Button
-                          isIconOnly
-                          size="sm"
-                          variant="flat"
-                          color="danger"
-                          onPress={() => openDelete(sala)}
-                          aria-label="Desactivar sala"
-                        >
-                          <Icon icon="lucide:trash-2" width={15} />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                <TableHeader>
+                  <TableColumn>COD SALA</TableColumn>
+                  <TableColumn>NOMBRE SALA</TableColumn>
+                  <TableColumn align="center">ACCIONES</TableColumn>
+                </TableHeader>
+                <TableBody
+                  emptyContent={
+                    <div className="py-10 text-center text-default-400">
+                      <Icon icon="lucide:building-2" width={32} className="mx-auto mb-2 opacity-50" />
+                      <p className="text-sm">No hay salas registradas</p>
+                    </div>
+                  }
+                >
+                  {salasFiltradas.map((sala) => (
+                    <TableRow key={sala.idSala} className="hover:bg-default-50 dark:hover:bg-default-50/10 transition-colors">
+                      <TableCell>
+                        <Chip size="sm" variant="flat" color="primary" className="font-mono font-bold text-xs">
+                          {sala.codSala}
+                        </Chip>
+                      </TableCell>
+                      <TableCell>
+                        <span className="text-sm text-default-700">{sala.nombreSala}</span>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center justify-center gap-1">
+                          <Button isIconOnly size="sm" variant="flat" color="primary" onPress={() => openEdit(sala)} aria-label="Editar">
+                            <Icon icon="lucide:pencil" width={14} />
+                          </Button>
+                          <Button isIconOnly size="sm" variant="flat" color="danger" onPress={() => openDelete(sala)} aria-label="Desactivar">
+                            <Icon icon="lucide:trash-2" width={14} />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           )}
         </CardBody>
       </Card>
@@ -1675,7 +1643,8 @@ const SeccionGestionSalas: React.FC = () => {
                   placeholder="Ej: LG1, AULA-01"
                   variant="bordered"
                   value={formCod}
-                  onValueChange={setFormCod}
+                  onValueChange={(v) => { if (v.length <= MAX_COD) setFormCod(v); }}
+                  description={`${formCod.length}/${MAX_COD} caracteres`}
                   startContent={<Icon icon="lucide:hash" className="text-default-400" width={16} />}
                 />
                 <Input
@@ -1683,22 +1652,14 @@ const SeccionGestionSalas: React.FC = () => {
                   placeholder="Ej: Laboratorio de Gastronomía"
                   variant="bordered"
                   value={formNombre}
-                  onValueChange={setFormNombre}
+                  onValueChange={(v) => { if (v.length <= MAX_NOMBRE) setFormNombre(v); }}
+                  description={`${formNombre.length}/${MAX_NOMBRE} caracteres`}
                   startContent={<Icon icon="lucide:building-2" className="text-default-400" width={16} />}
                 />
               </ModalBody>
               <ModalFooter>
-                <Button variant="light" className="font-medium" onPress={onClose} isDisabled={isSubmitting}>
-                  Cancelar
-                </Button>
-                <Button
-                  color="warning"
-                  variant="solid"
-                  className="font-bold text-white"
-                  isDisabled={!canSubmitForm || isSubmitting}
-                  isLoading={isSubmitting}
-                  onPress={() => handleCreate(onClose)}
-                >
+                <Button variant="light" className="font-medium" onPress={onClose} isDisabled={isSubmitting}>Cancelar</Button>
+                <Button color="warning" variant="solid" className="font-bold text-white" isDisabled={!canSubmitForm || isSubmitting} isLoading={isSubmitting} onPress={() => handleCreate(onClose)}>
                   Crear Sala
                 </Button>
               </ModalFooter>
@@ -1723,29 +1684,22 @@ const SeccionGestionSalas: React.FC = () => {
                   label="Código de sala"
                   variant="bordered"
                   value={formCod}
-                  onValueChange={setFormCod}
+                  onValueChange={(v) => { if (v.length <= MAX_COD) setFormCod(v); }}
+                  description={`${formCod.length}/${MAX_COD} caracteres`}
                   startContent={<Icon icon="lucide:hash" className="text-default-400" width={16} />}
                 />
                 <Input
                   label="Nombre de sala"
                   variant="bordered"
                   value={formNombre}
-                  onValueChange={setFormNombre}
+                  onValueChange={(v) => { if (v.length <= MAX_NOMBRE) setFormNombre(v); }}
+                  description={`${formNombre.length}/${MAX_NOMBRE} caracteres`}
                   startContent={<Icon icon="lucide:building-2" className="text-default-400" width={16} />}
                 />
               </ModalBody>
               <ModalFooter>
-                <Button variant="light" className="font-medium" onPress={onClose} isDisabled={isSubmitting}>
-                  Cancelar
-                </Button>
-                <Button
-                  color="primary"
-                  variant="solid"
-                  className="font-bold"
-                  isDisabled={!canSubmitForm || isSubmitting}
-                  isLoading={isSubmitting}
-                  onPress={() => handleEdit(onClose)}
-                >
+                <Button variant="light" className="font-medium" onPress={onClose} isDisabled={isSubmitting}>Cancelar</Button>
+                <Button color="primary" variant="solid" className="font-bold" isDisabled={!canSubmitForm || isSubmitting} isLoading={isSubmitting} onPress={() => handleEdit(onClose)}>
                   Guardar Cambios
                 </Button>
               </ModalFooter>
@@ -1765,33 +1719,33 @@ const SeccionGestionSalas: React.FC = () => {
                 </div>
                 <span className="font-bold text-secondary dark:text-white">Desactivar Sala</span>
               </ModalHeader>
-              <ModalBody className="py-4">
+              <ModalBody className="py-4 flex flex-col gap-3">
                 <p className="text-sm text-default-600">
-                  ¿Estás seguro de que deseas desactivar la sala{' '}
+                  Vas a desactivar{' '}
                   <span className="font-bold text-secondary dark:text-foreground">
                     {deleteTarget?.codSala} — {deleteTarget?.nombreSala}
                   </span>
-                  ?
+                  . Solo se permite si la sala no tiene reservas activas.
                 </p>
-                <div className="mt-3 flex items-start gap-2 px-3 py-2.5 rounded-lg bg-danger-50 dark:bg-danger-900/20 border border-danger-200 dark:border-danger-800">
+                <div className="flex items-start gap-2 px-3 py-2.5 rounded-lg bg-danger-50 dark:bg-danger-900/20 border border-danger-200 dark:border-danger-800">
                   <Icon icon="lucide:info" className="text-danger-500 shrink-0 mt-0.5" width={15} />
                   <p className="text-xs text-danger-700 dark:text-danger-400">
-                    Solo es posible si la sala no tiene reservas activas. Si tiene reservas vinculadas, la operación será rechazada.
+                    Si la sala tiene reservas vinculadas, el sistema rechazará la operación automáticamente.
                   </p>
                 </div>
+                <Input
+                  label='Escriba "CONFIRMAR" para continuar'
+                  placeholder="CONFIRMAR"
+                  variant="bordered"
+                  value={confirmarDesactivar}
+                  onValueChange={setConfirmarDesactivar}
+                  color={canConfirmarDesactivar ? 'success' : 'default'}
+                  endContent={canConfirmarDesactivar ? <Icon icon="lucide:check-circle" width={16} className="text-success" /> : null}
+                />
               </ModalBody>
               <ModalFooter>
-                <Button variant="light" className="font-medium" onPress={onClose} isDisabled={isSubmitting}>
-                  Cancelar
-                </Button>
-                <Button
-                  color="danger"
-                  variant="solid"
-                  className="font-bold"
-                  isLoading={isSubmitting}
-                  isDisabled={isSubmitting}
-                  onPress={() => handleDelete(onClose)}
-                >
+                <Button variant="light" className="font-medium" onPress={onClose} isDisabled={isSubmitting}>Cancelar</Button>
+                <Button color="danger" variant="solid" className="font-bold" isLoading={isSubmitting} isDisabled={!canConfirmarDesactivar || isSubmitting} onPress={() => handleDelete(onClose)}>
                   Desactivar
                 </Button>
               </ModalFooter>
@@ -1810,28 +1764,30 @@ const SeccionGestionSalaYReservas: React.FC = () => {
 
   return (
     <div className="space-y-4">
-      {/* Toggle de vista */}
-      <div className="flex items-center gap-2 p-1 rounded-xl bg-default-100 dark:bg-default-50/20 w-fit border border-default-200 dark:border-default-100">
-        <Button
-          size="sm"
-          variant={vista === 'reservas' ? 'solid' : 'flat'}
-          color={vista === 'reservas' ? 'primary' : 'default'}
-          className="font-semibold"
-          startContent={<Icon icon="lucide:calendar-clock" width={15} />}
-          onPress={() => setVista('reservas')}
+      {/* Toggle estilo conglomerado */}
+      <div className="flex items-center gap-1 bg-default-100 rounded-lg p-1 w-fit">
+        <button
+          onClick={() => setVista('reservas')}
+          className={`px-3 py-1.5 rounded-md text-xs font-semibold cursor-pointer transition-all ${
+            vista === 'reservas' ? 'bg-white shadow-sm text-primary dark:bg-content2 dark:text-primary' : 'text-default-500 hover:text-default-700'
+          }`}
         >
-          Reservas Registradas
-        </Button>
-        <Button
-          size="sm"
-          variant={vista === 'salas' ? 'solid' : 'flat'}
-          color={vista === 'salas' ? 'warning' : 'default'}
-          className="font-semibold"
-          startContent={<Icon icon="lucide:building-2" width={15} />}
-          onPress={() => setVista('salas')}
+          <span className="flex items-center gap-1.5">
+            <Icon icon="lucide:calendar-clock" width={12} />
+            Reservas Registradas
+          </span>
+        </button>
+        <button
+          onClick={() => setVista('salas')}
+          className={`px-3 py-1.5 rounded-md text-xs font-semibold cursor-pointer transition-all ${
+            vista === 'salas' ? 'bg-white shadow-sm text-warning dark:bg-content2 dark:text-warning' : 'text-default-500 hover:text-default-700'
+          }`}
         >
-          Gestión Salas
-        </Button>
+          <span className="flex items-center gap-1.5">
+            <Icon icon="lucide:building-2" width={12} />
+            Gestión Salas
+          </span>
+        </button>
       </div>
 
       {vista === 'reservas' ? <SeccionReservas /> : <SeccionGestionSalas />}
