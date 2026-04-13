@@ -814,14 +814,16 @@ PENDIENTE DE IMPLEMENTAR O DEFINIR:
       nuevaFechaInicio). Valida lunes (422), valida que existan semanas (409). Actualiza
       fechaInicio y fechaFin in-place preservando nombre y semestre. Logs @Slf4j completos.
   [✓] Vista Gestión Sala y Reservas (tab "Gestión Sala y Reservas" en Administración del sistema).
-      Muestra todas las reservas de sala activas (reserva_sala.activo = TRUE) con datos
-      desnormalizados: asignatura, sección, sala (código + nombre), día de la semana,
-      número de bloque y horario (hora_inicio – hora_fin). Ordenadas por hora_inicio ASC.
-      Filtros: por día de la semana (chips) y por sala (búsqueda libre por código o nombre).
-      Stats: total reservas, salas en uso (distintas por codSala), secciones activas (distintas).
-      Backend: GET /reserva-sala/find-all-active — consulta nativa con json_build_object,
-      JOINs a seccion, asignatura, sala, bloque_horario. Ruta protegida: authenticated().
-      Responde con List<ReservaActivaView> (record Java con @JsonProperty).
+      Tiene dos sub-vistas accesibles por toggle:
+      (a) Reservas Registradas: lista todas las reservas activas (reserva_sala.activo = TRUE)
+          con datos desnormalizados: asignatura, sección, sala (código + nombre), día, bloque/horario.
+          Filtros por día (chips) y búsqueda libre por sala. Backend: GET /reserva-sala/find-all-active.
+      (b) Gestión Salas: lista todas las salas activas. Permite crear nueva sala (cod_sala + nombre_sala),
+          editar nombre y código de una sala existente, y desactivar (soft delete) una sala
+          únicamente si no tiene reservas activas — si tiene reservas, el backend rechaza con 409.
+          Backend: POST /sala/create (SalaCreateDTO), PATCH /sala/update/{id} (SalaUpdateDTO),
+          DELETE /sala/soft-delete/{id} (valida hasActiveReservas en SalaRepository antes de desactivar).
+          Frontend: modales de creación, edición y confirmación de desactivación con aviso de impacto.
   [ ] Gestión de proveedores (vista existe en frontend, sin backend)
   [ ] Tabla LOTE activable en sistema (estructura ya en BD)
   [ ] Adjuntar archivos a recetas (requiere AWS S3)
@@ -924,12 +926,14 @@ PENDIENTE DE IMPLEMENTAR O DEFINIR:
   el día exacto de las entregas de las solicitudes, además sirve para agrupar los
   pedidos realizado para la semana.
 
-- Gestión de Salas/Salas reservadas: permite crear las salas en el sistema además de
-  ver las que están ocupadas/reservadas en el periodo académico.
-  La vista "Gestión Sala y Reservas" (tab en Administración del sistema) lista todas las
-  reservas activas con asignatura, sección, sala (código + nombre), día y bloque/horario.
-  Filtros por día (chips) y búsqueda por sala. Backend: GET /reserva-sala/find-all-active
-  con consulta nativa json_build_object, requiere autenticación, ordenado por hora_inicio.
+- Gestión de Salas/Salas reservadas: El tab "Gestión Sala y Reservas" en Administración del
+  sistema tiene dos sub-vistas accesibles por toggle de botones:
+  (a) Reservas Registradas: todas las reservas activas con asignatura, sección, sala, día, bloque.
+  (b) Gestión Salas: CRUD de salas — crear (cod_sala + nombre_sala), editar (cod y nombre),
+      desactivar (solo si sin reservas activas; 409 si las tiene).
+  Backend completo: GET /reserva-sala/find-all-active, POST /sala/create, PATCH /sala/update/{id},
+  DELETE /sala/soft-delete/{id} con validación de reservas activas (hasActiveReservas en repo).
+  Trigger de BD: desactivar una sala cancela automáticamente todas sus reservas activas.
 
 - Creación de receta: se crea una receta para asociar a una solicitud esto permite
   traspasar la cantidad exacta de productos a una solicitud, que al futuro se podría
