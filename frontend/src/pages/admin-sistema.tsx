@@ -1217,15 +1217,21 @@ const SeccionSemanas: React.FC<SeccionSemanasProps> = ({ toast }) => {
 // ─── SECCIÓN: GESTIÓN SALA Y RESERVAS ────────────────────────────────────────
 
 const SeccionReservas: React.FC = () => {
+  const toast = useToast();
   const [reservas, setReservas] = React.useState<IReservaActiva[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
+  const [errorMsg, setErrorMsg] = React.useState<string | null>(null);
   const [filtroDia, setFiltroDia] = React.useState<DiaSemana | 'Todos'>('Todos');
   const [filtroSala, setFiltroSala] = React.useState('');
 
   React.useEffect(() => {
     obtenerReservasActivasService()
       .then(setReservas)
-      .catch(() => {/* silencio: tabla vacía muestra emptyContent */})
+      .catch((err: Error) => {
+        const msg = err.message || 'Error al cargar las reservas';
+        setErrorMsg(msg);
+        toast.error(msg);
+      })
       .finally(() => setIsLoading(false));
   }, []);
 
@@ -1350,6 +1356,11 @@ const SeccionReservas: React.FC = () => {
           {isLoading ? (
             <div className="flex justify-center items-center py-16">
               <Spinner size="lg" color="primary" />
+            </div>
+          ) : errorMsg ? (
+            <div className="flex flex-col items-center py-16 gap-3 text-danger">
+              <Icon icon="lucide:alert-triangle" width={32} className="opacity-70" />
+              <p className="text-sm font-medium">{errorMsg}</p>
             </div>
           ) : (
             <Table
