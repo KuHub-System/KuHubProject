@@ -807,14 +807,12 @@ PENDIENTE DE IMPLEMENTAR O DEFINIR:
       valida conflictos de horario, lanza 422 si hay superposición) +
       POST /bloque-horario/restaurar-default (20 bloques predeterminados, actualiza in-place).
       Logs @Slf4j en controller y service para diagnóstico operacional.
-  [F] Reasignación de semanas académicas desde UI — Frontend implementado (modal con
-      selector de año y semestre, DatePicker solo lunes, vista previa de las 18 semanas
-      calculadas, advertencia de impacto en solicitudes y conglomerados de pedido,
-      confirmación por texto "CONFIRMAR"). Callback actualiza semanas y filtro de año
-      automáticamente al confirmar.
-      Pendiente: endpoint backend PUT /semanas/reasignar-semester-calendar
-      (dto: { anio, semestre, nuevaFechaInicio }, retorna ISemana[])
-      (ver CLAUDE.md sección 9)
+  [✓] Reasignación de semanas académicas desde UI — Frontend + Backend implementados.
+      Frontend: modal con selector de año y semestre, DatePicker solo lunes, vista previa
+      de 18 semanas calculadas, advertencia de impacto, confirmación por texto "CONFIRMAR".
+      Backend: PUT /semanas/reasignar-semester-calendar (WeekReasignDTO: anio, semestre,
+      nuevaFechaInicio). Valida lunes (422), valida que existan semanas (409). Actualiza
+      fechaInicio y fechaFin in-place preservando nombre y semestre. Logs @Slf4j completos.
   [ ] Gestión de proveedores (vista existe en frontend, sin backend)
   [ ] Tabla LOTE activable en sistema (estructura ya en BD)
   [ ] Adjuntar archivos a recetas (requiere AWS S3)
