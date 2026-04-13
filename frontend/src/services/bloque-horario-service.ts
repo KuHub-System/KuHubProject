@@ -47,3 +47,38 @@ export const obtenerBloquesHorarioService = async (): Promise<IBloqueHorario[]> 
         throw new Error(error.response?.data?.message || 'Error al obtener los bloques horarios');
     }
 };
+
+export interface IBloqueReasignar {
+    idBloque?: number;
+    numeroBloque: number;
+    horaInicio: string; // HH:mm:ss
+    horaFin: string;    // HH:mm:ss
+}
+
+/**
+ * Reasignar todos los bloques horarios del sistema.
+ * ⬜ Sin uso frontend aún — endpoint pendiente de implementación en backend.
+ * PUT /bloque-horario/reasignar
+ */
+export const reasignarBloquesService = async (bloques: IBloqueReasignar[]): Promise<IBloqueHorario[]> => {
+    try {
+        const response = await api.put<IBloqueHorario[]>('/bloque-horario/reasignar', bloques);
+        return response.data;
+    } catch (error: any) {
+        throw new Error(error.response?.data?.message || 'Error al reasignar los bloques horarios');
+    }
+};
+
+/**
+ * Restaurar los bloques horarios a los valores predeterminados originales del sistema.
+ * ⬜ Sin uso frontend aún — endpoint pendiente de implementación en backend.
+ * POST /bloque-horario/restaurar-default
+ */
+export const restaurarBloquesDefaultService = async (): Promise<IBloqueHorario[]> => {
+    try {
+        const response = await api.post<IBloqueHorario[]>('/bloque-horario/restaurar-default');
+        return response.data;
+    } catch (error: any) {
+        throw new Error(error.response?.data?.message || 'Error al restaurar los bloques predeterminados');
+    }
+};

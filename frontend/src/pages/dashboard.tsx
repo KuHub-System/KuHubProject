@@ -9,10 +9,7 @@ import { Icon } from '@iconify/react';
 import { useAuth } from '../contexts/auth-context';
 import { usePageTitle } from '../hooks/usePageTitle';
 
-// Dashboards existentes
-import { DashboardAdmin }   from '../components/dashboard/DashboardAdmin';
-
-// Nuevos dashboards de analytics
+// Dashboards de analytics
 import { DashboardInventarioView } from '../components/dashboard/DashboardInventarioView';
 import { DashboardGestor }         from '../components/dashboard/DashboardGestor';
 import { DashboardRecetasView }    from '../components/dashboard/DashboardRecetasView';
@@ -72,18 +69,6 @@ const DashboardAdminTabs: React.FC = () => (
         }
       >
         <DashboardRecetasView />
-      </Tab>
-
-      <Tab
-        key="gestion"
-        title={
-          <span className="flex items-center gap-1.5">
-            <Icon icon="lucide:settings-2" width={14} />
-            Gestión
-          </span>
-        }
-      >
-        <DashboardAdmin />
       </Tab>
     </Tabs>
   </div>
