@@ -332,7 +332,7 @@ const ReasignarBloquesModal: React.FC<ReasignarBloquesModalProps> = ({
   }, [bloques]);
 
   const hasErrors = validationErrors.some((e) => e !== null);
-  const canSubmit = !hasErrors && confirmarTexto === 'CONFIRMAR' && bloques.length > 0;
+  const canSubmit = !hasErrors && confirmarTexto.trim().toUpperCase() === 'CONFIRMAR' && bloques.length > 0;
 
   const handleAdd = () => {
     const last = bloques[bloques.length - 1];
@@ -471,20 +471,16 @@ const ReasignarBloquesModal: React.FC<ReasignarBloquesModalProps> = ({
               </div>
 
               {/* ── Confirmación ── */}
-              <div className="space-y-1.5">
-                <p className="text-sm text-default-600">
-                  Escribe <code className="font-mono font-bold text-secondary dark:text-foreground bg-default-100 dark:bg-default-50/30 px-1.5 py-0.5 rounded text-xs">CONFIRMAR</code> para habilitar el guardado:
-                </p>
                 <Input
+                  label='Escriba "CONFIRMAR" para continuar'
                   placeholder="CONFIRMAR"
                   value={confirmarTexto}
                   onValueChange={setConfirmarTexto}
                   variant="bordered"
-                  size="sm"
-                  color={confirmarTexto === 'CONFIRMAR' ? 'success' : confirmarTexto.length > 0 ? 'danger' : 'default'}
-                  classNames={{ input: 'font-mono font-semibold tracking-widest' }}
+                  color={confirmarTexto.trim().toUpperCase() === 'CONFIRMAR' ? 'success' : 'default'}
+                  endContent={confirmarTexto.trim().toUpperCase() === 'CONFIRMAR'
+                    ? <Icon icon="lucide:check-circle" width={16} className="text-success" /> : null}
                 />
-              </div>
             </ModalBody>
 
             <ModalFooter>
@@ -748,7 +744,7 @@ const ReasignarSemanasModal: React.FC<ReasignarSemanasModalProps> = ({
     });
   }, [fechaSeleccionada]);
 
-  const canSubmit = anioSeleccionado !== '' && fechaSeleccionada !== null && confirmarTexto === 'CONFIRMAR';
+  const canSubmit = anioSeleccionado !== '' && fechaSeleccionada !== null && confirmarTexto.trim().toUpperCase() === 'CONFIRMAR';
 
   const handleSubmit = async () => {
     if (!canSubmit || !fechaSeleccionada) return;
@@ -905,20 +901,16 @@ const ReasignarSemanasModal: React.FC<ReasignarSemanasModalProps> = ({
               </div>
 
               {/* ── Confirmación ── */}
-              <div className="space-y-1.5">
-                <p className="text-sm text-default-600">
-                  Escribe <code className="font-mono font-bold text-secondary dark:text-foreground bg-default-100 dark:bg-default-50/30 px-1.5 py-0.5 rounded text-xs">CONFIRMAR</code> para habilitar la reasignación:
-                </p>
                 <Input
+                  label='Escriba "CONFIRMAR" para continuar'
                   placeholder="CONFIRMAR"
                   value={confirmarTexto}
                   onValueChange={setConfirmarTexto}
                   variant="bordered"
-                  size="sm"
-                  color={confirmarTexto === 'CONFIRMAR' ? 'success' : confirmarTexto.length > 0 ? 'danger' : 'default'}
-                  classNames={{ input: 'font-mono font-semibold tracking-widest' }}
+                  color={confirmarTexto.trim().toUpperCase() === 'CONFIRMAR' ? 'success' : 'default'}
+                  endContent={confirmarTexto.trim().toUpperCase() === 'CONFIRMAR'
+                    ? <Icon icon="lucide:check-circle" width={16} className="text-success" /> : null}
                 />
-              </div>
             </ModalBody>
 
             <ModalFooter>
