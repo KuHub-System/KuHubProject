@@ -4,6 +4,7 @@ import KuHub.modules.gestion_academica.dtos.request.WeeklyFilterForSolicitationD
 import KuHub.modules.gestion_academica.dtos.response.YearWithSemestersDTO;
 import KuHub.modules.gestion_academica.exceptions.GestionAcademicaException;
 import KuHub.modules.gestion_academica.dtos.request.WeekGeneratorDTO;
+import KuHub.modules.gestion_academica.dtos.request.WeekReasignDTO;
 import KuHub.modules.gestion_academica.entity.Semana;
 import KuHub.modules.gestion_academica.repository.SemanaRepository;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -127,5 +128,64 @@ public class SemanaServiceImpl implements SemanaService {
         return true;
     }
 
+    /**
+     * Reasigna las fechas de las 18 semanas de un período académico existente
+     * a partir de una nueva fecha de inicio (debe ser lunes).
+     * Mantiene nombre y semestre de cada semana; solo actualiza fechaInicio y fechaFin.
+     * ✅ En uso: Consumido por reasignarCalendarioService en semana-service.ts.
+     */
+    @Transactional
+    @Override
+    public List<Semana> reasignarSemesterCalendar(WeekReasignDTO request) {
+        log.info("Iniciando reasignacion de calendario. Anio: {}, Semestre: {}, NuevaFechaInicio: {}",
+                request.getAnio(), request.getSemestre(), request.getNuevaFechaInicio());
+
+        // Validar que la fecha sea lunes
+        if (request.getNuevaFechaInicio().getDayOfWeek().getValue() != 1) {
+            log.warn("Fecha de inicio no es lunes: {}", request.getNuevaFechaInicio());
+            throw new GestionAcademicaException(
+                    "La nueva fecha de inicio debe ser un lunes. Fecha recibida: " + request.getNuevaFechaInicio(),
+                    HttpStatus.UNPROCESSABLE_ENTITY
+            );
+        }
+
+        // Buscar semanas existentes del período
+        List<Semana> semanas = semanaRepository.findByAnioAndSemestreOrderByFechaInicioAsc(
+                request.getAnio(), request.getSemestre());
+
+        if (semanas.isEmpty()) {
+            log.warn("No se encontraron semanas para anio={} semestre={}", request.getAnio(), request.getSemestre());
+            throw new GestionAcademicaException(
+                    "No existen semanas registradas para el " + request.getSemestre() +
+                    "° semestre del año " + request.getAnio() + ". Genere el calendario primero.",
+                    HttpStatus.CONFLICT
+            );
+        }
+
+        log.info("Se encontraron {} semanas para reasignar.", semanas.size());
+
+        // Recalcular fechas manteniendo el nombre y el semestre
+        LocalDate cursor = request.getNuevaFechaInicio();
+        for (Semana semana : semanas) {
+            log.info("Reasignando '{}': {} -> {} (antes: {} - {})",
+                    semana.getNombreSemana(), cursor, cursor.plusDays(6),
+                    semana.getFechaInicio(), semana.getFechaFin());
+            semana.setFechaInicio(cursor);
+            semana.setFechaFin(cursor.plusDays(6));
+            cursor = cursor.plusWeeks(1);
+        }
+
+        semanaRepository.saveAll(semanas);
+        semanaRepository.flush();
+
+        // Retornar el período actualizado ordenado
+        List<Semana> resultado = semanaRepository.findByAnioAndSemestreOrderByFechaInicioAsc(
+                request.getAnio(), request.getSemestre());
+        log.info("Reasignacion completada. {} semanas actualizadas. Nuevo rango: {} - {}",
+                resultado.size(),
+                resultado.get(0).getFechaInicio(),
+                resultado.get(resultado.size() - 1).getFechaFin());
+        return resultado;
+    }
 
 }
