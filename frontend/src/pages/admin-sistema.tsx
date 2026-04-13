@@ -519,6 +519,7 @@ const SeccionBloques: React.FC<SeccionBloquesProps> = ({ bloques, isLoading, onB
   const { isOpen: isRestaurarOpen, onOpen: onRestaurarOpen, onOpenChange: onRestaurarOpenChange } = useDisclosure();
   const { canCreate: admin_Crear } = useModulePermission('ADMIN_SISTEMA');
   const [isRestaurando, setIsRestaurando] = React.useState(false);
+  const [confirmarRestaurar, setConfirmarRestaurar] = React.useState('');
 
   const getBloqueGroup = (bloque: IBloqueHorario): string => {
     const num = bloque.numeroBloque;
@@ -575,7 +576,7 @@ const SeccionBloques: React.FC<SeccionBloquesProps> = ({ bloques, isLoading, onB
                 size="sm"
                 className="font-semibold"
                 startContent={<Icon icon="lucide:rotate-ccw" width={15} />}
-                onPress={onRestaurarOpen}
+                onPress={() => { setConfirmarRestaurar(''); onRestaurarOpen(); }}
               >
                 Restaurar predeterminados
               </Button>
@@ -669,7 +670,16 @@ const SeccionBloques: React.FC<SeccionBloquesProps> = ({ bloques, isLoading, onB
                     Los <strong>{bloques.length} bloques actuales</strong> serán reemplazados por los <strong>20 bloques predeterminados</strong> originales del sistema. Los cambios afectarán todas las secciones y reservas asociadas.
                   </p>
                 </div>
-                <p className="text-sm text-default-500 text-center">¿Confirmas la restauración?</p>
+                <Input
+                  label='Escriba "CONFIRMAR" para continuar'
+                  placeholder="CONFIRMAR"
+                  value={confirmarRestaurar}
+                  onValueChange={setConfirmarRestaurar}
+                  variant="bordered"
+                  color={confirmarRestaurar.trim().toUpperCase() === 'CONFIRMAR' ? 'success' : 'default'}
+                  endContent={confirmarRestaurar.trim().toUpperCase() === 'CONFIRMAR'
+                    ? <Icon icon="lucide:check-circle" width={16} className="text-success" /> : null}
+                />
               </ModalBody>
               <ModalFooter>
                 <Button variant="light" onPress={onClose} isDisabled={isRestaurando}>
@@ -680,6 +690,7 @@ const SeccionBloques: React.FC<SeccionBloquesProps> = ({ bloques, isLoading, onB
                   variant="solid"
                   className="font-bold text-white"
                   isLoading={isRestaurando}
+                  isDisabled={confirmarRestaurar.trim().toUpperCase() !== 'CONFIRMAR'}
                   onPress={handleRestaurar}
                 >
                   Restaurar
