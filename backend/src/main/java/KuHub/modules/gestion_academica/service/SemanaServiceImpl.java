@@ -18,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -177,20 +178,56 @@ public class SemanaServiceImpl implements SemanaService {
         log.info("Semanas a reasignar: {} (semestre={}, id_semana >= {})",
                 semanas.size(), request.getSemestre(), anchor.getIdSemana());
 
-        // 3. Recalcular fechas manteniendo nombre y semestre intactos
-        LocalDate cursor = request.getNuevaFechaInicio();
-        for (Semana semana : semanas) {
-            log.info("Reasignando id={} '{}': {} - {} → {} - {}",
-                    semana.getIdSemana(), semana.getNombreSemana(),
-                    semana.getFechaInicio(), semana.getFechaFin(),
-                    cursor, cursor.plusDays(6));
-            semana.setFechaInicio(cursor);
-            semana.setFechaFin(cursor.plusDays(6));
-            cursor = cursor.plusWeeks(1);
+        // 3. Validar que el nuevo rango no solape con OTROS períodos (excluir los ids del período actual)
+        LocalDate nuevoRangoFin = request.getNuevaFechaInicio().plusWeeks(semanas.size()).minusDays(1);
+        List<Integer> idsActuales = semanas.stream().map(Semana::getIdSemana).collect(Collectors.toList());
+
+        if (semanaRepository.existeTraslapeDeFechasExcluyendo(
+                request.getNuevaFechaInicio(), nuevoRangoFin, idsActuales)) {
+            log.warn("Traslape con otro periodo: rango {} - {} solapa con semanas existentes de otro semestre",
+                    request.getNuevaFechaInicio(), nuevoRangoFin);
+            throw new GestionAcademicaException(
+                    "El nuevo rango de fechas (" + request.getNuevaFechaInicio() + " al " + nuevoRangoFin +
+                    ") se cruza con otro período académico ya registrado.",
+                    HttpStatus.CONFLICT
+            );
         }
 
-        semanaRepository.saveAll(semanas);
-        semanaRepository.flush();
+        // 4. Calcular las nuevas fechas para cada semana
+        List<LocalDate> nuevasFehas = new ArrayList<>();
+        for (int i = 0; i < semanas.size(); i++) {
+            nuevasFehas.add(request.getNuevaFechaInicio().plusWeeks(i));
+        }
+
+        // 5. Determinar el orden de actualización para evitar violaciones de uk_fecha_inicio:
+        //    - Moviendo hacia adelante (nueva > actual): actualizar de S18 → S1
+        //      (libera las fechas futuras antes de pisarlas con los nuevos valores)
+        //    - Moviendo hacia atrás (nueva < actual): actualizar de S1 → S18
+        boolean movingForward = request.getNuevaFechaInicio().isAfter(anchor.getFechaInicio());
+        log.info("Movimiento {} (ancla actual: {}, nueva: {}). Orden: {}",
+                movingForward ? "hacia adelante" : "hacia atrás",
+                anchor.getFechaInicio(), request.getNuevaFechaInicio(),
+                movingForward ? "S18→S1" : "S1→S18");
+
+        if (movingForward) {
+            for (int i = semanas.size() - 1; i >= 0; i--) {
+                Semana s = semanas.get(i);
+                log.info("Actualizando id={} '{}': {} → {}", s.getIdSemana(), s.getNombreSemana(),
+                        s.getFechaInicio(), nuevasFehas.get(i));
+                s.setFechaInicio(nuevasFehas.get(i));
+                s.setFechaFin(nuevasFehas.get(i).plusDays(6));
+                semanaRepository.saveAndFlush(s);
+            }
+        } else {
+            for (int i = 0; i < semanas.size(); i++) {
+                Semana s = semanas.get(i);
+                log.info("Actualizando id={} '{}': {} → {}", s.getIdSemana(), s.getNombreSemana(),
+                        s.getFechaInicio(), nuevasFehas.get(i));
+                s.setFechaInicio(nuevasFehas.get(i));
+                s.setFechaFin(nuevasFehas.get(i).plusDays(6));
+                semanaRepository.saveAndFlush(s);
+            }
+        }
 
         // 4. Retornar TODAS las semanas del año de la nueva fecha (no solo el semestre reasignado)
         //    para que el frontend pueda refrescar el estado completo del año sin perder el otro semestre
