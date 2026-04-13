@@ -397,8 +397,8 @@ Al implementarlos, seguir las convenciones de este documento y registrarlos en `
 
 | Método | Ruta | Descripción | Estado |
 |--------|------|-------------|--------|
-| `PUT` | `/reasignar` | Recibe lista de bloques (`IBloqueReasignar[]`) con `idBloque?`, `numeroBloque`, `horaInicio`, `horaFin` (HH:mm:ss). Elimina los bloques actuales y persiste la nueva lista. Retorna `IBloqueHorario[]` actualizado. | ⬜ Pendiente |
-| `POST` | `/restaurar-default` | Sin body. Restaura los 20 bloques horarios predeterminados hardcodeados en el INSERT original del cliente. Retorna `IBloqueHorario[]`. | ⬜ Pendiente |
+| `PUT` | `/reasignar` | Recibe lista de bloques (`ReasignarBloqueDTO[]`) con `idBloque?`, `numeroBloque`, `horaInicio`, `horaFin` (HH:mm:ss). Actualiza in-place (preserva FK con reserva_sala), inserta nuevos, elimina los no incluidos si no tienen referencias. Valida conflictos de horario. Retorna `BloqueHorario[]` actualizado. | ✅ Implementado |
+| `POST` | `/restaurar-default` | Sin body. Restaura los 20 bloques horarios predeterminados actualizando in-place. Retorna `BloqueHorario[]`. | ✅ Implementado |
 
 **Valores predeterminados para `/restaurar-default`** (INSERT original del cliente):
 ```sql
