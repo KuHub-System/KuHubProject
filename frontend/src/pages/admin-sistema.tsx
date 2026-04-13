@@ -21,7 +21,6 @@ import {
   Divider,
   Tabs,
   Tab,
-  Tooltip,
   Spinner,
   DatePicker,
   Select,
@@ -38,7 +37,7 @@ import { useModulePermission } from '../contexts/permission-context';
 
 // ─── TIPOS Y SERVICIOS ───────────────────────────────────────────────────────
 import { IBloqueHorario } from '../types/bloque-horario.types';
-import { obtenerBloquesHorarioService } from '../services/bloque-horario-service';
+import { obtenerBloquesHorarioService, reasignarBloquesService, restaurarBloquesDefaultService, IBloqueReasignar } from '../services/bloque-horario-service';
 import { ISemana } from '../types/semana.types';
 import { obtenerSemanasService, generarCalendarioService, obtenerAniosFiltroService, invalidarCacheSemanas } from '../services/semana-service';
 
@@ -226,6 +225,7 @@ const AdminSistemaPage: React.FC = () => {
               <SeccionBloques
                 bloques={bloques}
                 isLoading={isLoadingBloques}
+                onBloquesChange={setBloques}
               />
             )}
             {activeTab === 'semanas' && <SeccionSemanas toast={toast} />}
@@ -237,19 +237,293 @@ const AdminSistemaPage: React.FC = () => {
   );
 };
 
+// ─── CONSTANTES: BLOQUES PREDETERMINADOS ─────────────────────────────────────
+
+const BLOQUES_DEFAULT_TIMES = [
+  { horaInicio: '08:01', horaFin: '08:40' },
+  { horaInicio: '08:41', horaFin: '09:20' },
+  { horaInicio: '09:31', horaFin: '10:10' },
+  { horaInicio: '10:11', horaFin: '10:50' },
+  { horaInicio: '11:01', horaFin: '11:40' },
+  { horaInicio: '11:41', horaFin: '12:20' },
+  { horaInicio: '12:31', horaFin: '13:10' },
+  { horaInicio: '13:11', horaFin: '13:50' },
+  { horaInicio: '14:01', horaFin: '14:40' },
+  { horaInicio: '14:41', horaFin: '15:20' },
+  { horaInicio: '15:31', horaFin: '16:10' },
+  { horaInicio: '16:11', horaFin: '16:50' },
+  { horaInicio: '17:01', horaFin: '17:40' },
+  { horaInicio: '17:41', horaFin: '18:20' },
+  { horaInicio: '18:21', horaFin: '19:00' },
+  { horaInicio: '19:01', horaFin: '19:40' },
+  { horaInicio: '19:41', horaFin: '20:20' },
+  { horaInicio: '20:21', horaFin: '21:00' },
+  { horaInicio: '21:01', horaFin: '21:40' },
+  { horaInicio: '21:41', horaFin: '22:10' },
+];
+
+// ─── HELPERS: TIEMPO ──────────────────────────────────────────────────────────
+
+const timeToMinutes = (hhmm: string): number => {
+  const [h, m] = hhmm.split(':').map(Number);
+  return h * 60 + (m || 0);
+};
+
+const minutesToHHmm = (mins: number): string => {
+  const clamped = Math.max(0, Math.min(mins, 23 * 60 + 59));
+  return `${Math.floor(clamped / 60).toString().padStart(2, '0')}:${(clamped % 60).toString().padStart(2, '0')}`;
+};
+
+// ─── MODAL: REASIGNAR BLOQUES ─────────────────────────────────────────────────
+
+interface EditableBloque {
+  key: number;
+  idBloque?: number;
+  horaInicio: string; // HH:mm
+  horaFin: string;    // HH:mm
+}
+
+interface ReasignarBloquesModalProps {
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
+  bloquesActuales: IBloqueHorario[];
+  onSuccess: (bloques: IBloqueHorario[]) => void;
+}
+
+const ReasignarBloquesModal: React.FC<ReasignarBloquesModalProps> = ({
+  isOpen, onOpenChange, bloquesActuales, onSuccess,
+}) => {
+  const toast = useToast();
+  const nextKey = React.useRef(0);
+  const [bloques, setBloques] = React.useState<EditableBloque[]>([]);
+  const [confirmarTexto, setConfirmarTexto] = React.useState('');
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
+
+  React.useEffect(() => {
+    if (isOpen) {
+      setBloques(
+        bloquesActuales.map((b) => ({
+          key: nextKey.current++,
+          idBloque: b.idBloque,
+          horaInicio: b.horaInicio.substring(0, 5),
+          horaFin: b.horaFin.substring(0, 5),
+        }))
+      );
+      setConfirmarTexto('');
+    }
+  }, [isOpen, bloquesActuales]);
+
+  // Por cada bloque: null si válido, string con el error si hay conflicto
+  const validationErrors = React.useMemo((): (string | null)[] => {
+    return bloques.map((b, i) => {
+      const inicioMins = timeToMinutes(b.horaInicio);
+      const finMins = timeToMinutes(b.horaFin);
+      if (finMins <= inicioMins) {
+        return 'La hora de fin debe ser posterior a la hora de inicio';
+      }
+      if (i > 0) {
+        const prevFin = timeToMinutes(bloques[i - 1].horaFin);
+        if (inicioMins <= prevFin) {
+          return `Debe iniciar al menos 1 min después del bloque anterior (mín. ${minutesToHHmm(prevFin + 1)})`;
+        }
+      }
+      return null;
+    });
+  }, [bloques]);
+
+  const hasErrors = validationErrors.some((e) => e !== null);
+  const canSubmit = !hasErrors && confirmarTexto === 'CONFIRMAR' && bloques.length > 0;
+
+  const handleAdd = () => {
+    const last = bloques[bloques.length - 1];
+    const baseMin = last ? timeToMinutes(last.horaFin) : timeToMinutes('08:00');
+    setBloques((prev) => [
+      ...prev,
+      { key: nextKey.current++, horaInicio: minutesToHHmm(baseMin + 1), horaFin: minutesToHHmm(baseMin + 40) },
+    ]);
+  };
+
+  const handleRemove = (key: number) => {
+    setBloques((prev) => prev.filter((b) => b.key !== key));
+  };
+
+  const handleUpdate = (key: number, field: 'horaInicio' | 'horaFin', value: string) => {
+    setBloques((prev) => prev.map((b) => (b.key === key ? { ...b, [field]: value } : b)));
+  };
+
+  const handleSubmit = async () => {
+    if (!canSubmit) return;
+    setIsSubmitting(true);
+    try {
+      const payload: IBloqueReasignar[] = bloques.map((b, i) => ({
+        idBloque: b.idBloque,
+        numeroBloque: i + 1,
+        horaInicio: b.horaInicio + ':00',
+        horaFin: b.horaFin + ':00',
+      }));
+      const updated = await reasignarBloquesService(payload);
+      onSuccess(updated);
+      toast.success(`${updated.length} bloques horarios actualizados correctamente`);
+      onOpenChange(false);
+    } catch (error: any) {
+      toast.error(error.message || 'Error al reasignar los bloques');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <Modal isOpen={isOpen} onOpenChange={onOpenChange} size="2xl" placement="center" scrollBehavior="inside">
+      <ModalContent>
+        {(onClose) => (
+          <>
+            <ModalHeader className="flex items-center gap-2 border-b border-default-100 pb-3">
+              <div className="p-1.5 rounded-lg bg-primary-100 dark:bg-primary-900/30 text-primary">
+                <Icon icon="lucide:clock-4" width={18} />
+              </div>
+              <span className="font-bold text-secondary dark:text-foreground">Reasignar Bloques Horarios</span>
+              <Chip size="sm" variant="flat" color="default" className="ml-1">{bloques.length} bloques</Chip>
+            </ModalHeader>
+
+            <ModalBody className="px-5 py-4 space-y-4">
+              {/* ── Lista editable ── */}
+              <div className="space-y-2">
+                {/* Encabezado de columnas */}
+                <div className="grid grid-cols-[40px_1fr_1fr_32px] gap-2 px-1.5">
+                  <span className="text-[11px] font-bold text-default-400 uppercase tracking-wide text-center">Nº</span>
+                  <span className="text-[11px] font-bold text-default-400 uppercase tracking-wide text-center">Hora Inicio</span>
+                  <span className="text-[11px] font-bold text-default-400 uppercase tracking-wide text-center">Hora Fin</span>
+                  <span />
+                </div>
+                <Divider />
+                {/* Filas */}
+                <div className="space-y-1.5 max-h-[340px] overflow-y-auto pr-1">
+                  {bloques.map((bloque, idx) => {
+                    const error = validationErrors[idx];
+                    return (
+                      <div key={bloque.key} className="space-y-0.5">
+                        <div className={`grid grid-cols-[40px_1fr_1fr_32px] gap-2 items-center p-1.5 rounded-lg transition-colors ${error ? 'bg-danger-50 dark:bg-danger-900/10' : 'hover:bg-default-50 dark:hover:bg-default-50/5'}`}>
+                          <div className="flex justify-center">
+                            <Chip size="sm" variant="flat" color={error ? 'danger' : 'default'} className="font-bold text-xs min-w-[30px]">
+                              {idx + 1}
+                            </Chip>
+                          </div>
+                          <Input
+                            type="time"
+                            size="sm"
+                            variant="bordered"
+                            value={bloque.horaInicio}
+                            onChange={(e) => handleUpdate(bloque.key, 'horaInicio', e.target.value)}
+                            color={error ? 'danger' : 'default'}
+                            classNames={{ input: 'text-center font-mono font-semibold' }}
+                          />
+                          <Input
+                            type="time"
+                            size="sm"
+                            variant="bordered"
+                            value={bloque.horaFin}
+                            onChange={(e) => handleUpdate(bloque.key, 'horaFin', e.target.value)}
+                            color={error ? 'danger' : 'default'}
+                            classNames={{ input: 'text-center font-mono font-semibold' }}
+                          />
+                          <Button
+                            isIconOnly size="sm" variant="light"
+                            className="text-default-300 hover:text-danger"
+                            isDisabled={bloques.length <= 1}
+                            onPress={() => handleRemove(bloque.key)}
+                          >
+                            <Icon icon="lucide:x" width={14} />
+                          </Button>
+                        </div>
+                        {error && (
+                          <p className="text-danger text-xs pl-12 flex items-center gap-1 pb-0.5">
+                            <Icon icon="lucide:alert-circle" width={11} />
+                            {error}
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+                <Button
+                  size="sm"
+                  variant="flat"
+                  color="primary"
+                  className="font-semibold w-full mt-1"
+                  startContent={<Icon icon="lucide:plus" width={14} />}
+                  onPress={handleAdd}
+                >
+                  Agregar Bloque
+                </Button>
+              </div>
+
+              <Divider />
+
+              {/* ── Advertencia ── */}
+              <div className="flex gap-3 p-4 rounded-xl bg-warning-50 dark:bg-warning-900/15 border border-warning-200 dark:border-warning-800">
+                <Icon icon="lucide:alert-triangle" className="text-warning-600 dark:text-warning-400 shrink-0 mt-0.5" width={18} />
+                <div className="space-y-1">
+                  <p className="font-bold text-sm text-warning-800 dark:text-warning-300">Advertencia: Impacto en el sistema</p>
+                  <p className="text-sm text-warning-700 dark:text-warning-300 leading-relaxed">
+                    Los cambios se reflejarán en <strong>todas las secciones y reservas de sala</strong> que estén asociadas a estos bloques. Esta acción no puede deshacerse automáticamente.
+                  </p>
+                </div>
+              </div>
+
+              {/* ── Confirmación ── */}
+              <div className="space-y-1.5">
+                <p className="text-sm text-default-600">
+                  Escribe <code className="font-mono font-bold text-secondary dark:text-foreground bg-default-100 dark:bg-default-50/30 px-1.5 py-0.5 rounded text-xs">CONFIRMAR</code> para habilitar el guardado:
+                </p>
+                <Input
+                  placeholder="CONFIRMAR"
+                  value={confirmarTexto}
+                  onValueChange={setConfirmarTexto}
+                  variant="bordered"
+                  size="sm"
+                  color={confirmarTexto === 'CONFIRMAR' ? 'success' : confirmarTexto.length > 0 ? 'danger' : 'default'}
+                  classNames={{ input: 'font-mono font-semibold tracking-widest' }}
+                />
+              </div>
+            </ModalBody>
+
+            <ModalFooter>
+              <Button variant="light" onPress={onClose} isDisabled={isSubmitting}>
+                Cancelar
+              </Button>
+              <Button
+                color="primary"
+                variant="solid"
+                className="font-bold text-secondary"
+                isDisabled={!canSubmit}
+                isLoading={isSubmitting}
+                onPress={handleSubmit}
+              >
+                Guardar Bloques
+              </Button>
+            </ModalFooter>
+          </>
+        )}
+      </ModalContent>
+    </Modal>
+  );
+};
+
 // ─── SECCIÓN: BLOQUES HORARIOS ────────────────────────────────────────────────
 
 interface SeccionBloquesProps {
   bloques: IBloqueHorario[];
   isLoading: boolean;
+  onBloquesChange: (bloques: IBloqueHorario[]) => void;
 }
 
-const SeccionBloques: React.FC<SeccionBloquesProps> = ({ bloques, isLoading }) => {
-  const { isOpen, onOpen, onOpenChange } = useDisclosure();
-  const { canCreate: admin_Crear, canUpdate: admin_Editar, canDelete: admin_Eliminar } = useModulePermission('ADMIN_SISTEMA');
-  const [modalMode, setModalMode] = React.useState<'crear' | 'editar' | 'mantenimiento'>('crear');
+const SeccionBloques: React.FC<SeccionBloquesProps> = ({ bloques, isLoading, onBloquesChange }) => {
+  const toast = useToast();
+  const { isOpen: isReasignarOpen, onOpen: onReasignarOpen, onOpenChange: onReasignarOpenChange } = useDisclosure();
+  const { isOpen: isRestaurarOpen, onOpen: onRestaurarOpen, onOpenChange: onRestaurarOpenChange } = useDisclosure();
+  const { canCreate: admin_Crear } = useModulePermission('ADMIN_SISTEMA');
+  const [isRestaurando, setIsRestaurando] = React.useState(false);
 
-  // Identificar bloques con "recreo" (gap > 1 min entre bloques consecutivos)
   const getBloqueGroup = (bloque: IBloqueHorario): string => {
     const num = bloque.numeroBloque;
     if (num <= 6) return 'Mañana';
@@ -258,39 +532,33 @@ const SeccionBloques: React.FC<SeccionBloquesProps> = ({ bloques, isLoading }) =
     return 'Nocturno';
   };
 
-  const groupColors: Record<string, { bg: string; text: string; chip: 'primary' | 'warning' | 'secondary' | 'danger' }> = {
-    'Mañana': { bg: 'bg-primary-50', text: 'text-primary-600', chip: 'primary' },
-    'Tarde': { bg: 'bg-warning-50', text: 'text-warning-600', chip: 'warning' },
-    'Vespertino': { bg: 'bg-secondary-50', text: 'text-secondary-600', chip: 'secondary' },
-    'Nocturno': { bg: 'bg-danger-50', text: 'text-danger-600', chip: 'danger' },
+  const groupColors: Record<string, { chip: 'primary' | 'warning' | 'secondary' | 'danger' }> = {
+    'Mañana':     { chip: 'primary' },
+    'Tarde':      { chip: 'warning' },
+    'Vespertino': { chip: 'secondary' },
+    'Nocturno':   { chip: 'danger' },
   };
 
-  /** Formatea HH:mm:ss a HH:mm */
-  const formatTime = (time: string) => {
-    if (!time) return '';
-    return time.substring(0, 5);
-  };
+  const formatTime = (time: string) => (time ? time.substring(0, 5) : '');
 
-  const handleNuevoBloque = () => {
-    setModalMode('mantenimiento');
-    onOpen();
+  const handleRestaurar = async () => {
+    setIsRestaurando(true);
+    try {
+      const restaurados = await restaurarBloquesDefaultService();
+      onBloquesChange(restaurados);
+      toast.success('Bloques restaurados a los valores predeterminados');
+      onRestaurarOpenChange(false);
+    } catch (error: any) {
+      toast.error(error.message || 'Error al restaurar los bloques predeterminados');
+    } finally {
+      setIsRestaurando(false);
+    }
   };
-
-  const handleEditarBloque = (_bloque: IBloqueHorario) => {
-    setModalMode('mantenimiento');
-    onOpen();
-  };
-
-  const handleEliminar = async (_bloque: IBloqueHorario) => {
-    setModalMode('mantenimiento');
-    onOpen();
-  };
-
 
   return (
     <div className="space-y-4">
       <Card className="shadow-sm border border-default-200 dark:border-default-100 bg-white dark:bg-content1 mx-4">
-        <CardHeader className="px-6 pt-5 pb-3 flex items-center gap-3">
+        <CardHeader className="px-6 pt-5 pb-3 flex items-center gap-3 flex-wrap">
           <div className="p-2 rounded-lg bg-primary-100 dark:bg-primary-900/30 text-primary">
             <Icon icon="lucide:clock" width={20} />
           </div>
@@ -304,16 +572,28 @@ const SeccionBloques: React.FC<SeccionBloquesProps> = ({ bloques, isLoading }) =
             ))}
           </div>
           {admin_Crear && (
-          <Button
-            color="primary"
-            variant="solid"
-            size="sm"
-            className="ml-auto font-bold text-secondary"
-            startContent={<Icon icon="lucide:plus" width={16} />}
-            onPress={handleNuevoBloque}
-          >
-            Nuevo Bloque
-          </Button>
+            <div className="ml-auto flex gap-2 flex-wrap justify-end">
+              <Button
+                color="default"
+                variant="flat"
+                size="sm"
+                className="font-semibold"
+                startContent={<Icon icon="lucide:rotate-ccw" width={15} />}
+                onPress={onRestaurarOpen}
+              >
+                Restaurar predeterminados
+              </Button>
+              <Button
+                color="primary"
+                variant="solid"
+                size="sm"
+                className="font-bold text-secondary"
+                startContent={<Icon icon="lucide:sliders-horizontal" width={15} />}
+                onPress={onReasignarOpen}
+              >
+                Reasignar Bloques
+              </Button>
+            </div>
           )}
         </CardHeader>
         <Divider />
@@ -323,65 +603,42 @@ const SeccionBloques: React.FC<SeccionBloquesProps> = ({ bloques, isLoading }) =
             removeWrapper
             layout="fixed"
             classNames={{
-              th: 'bg-default-100 dark:bg-default-50/20 text-default-500 font-bold uppercase text-xs h-10',
-              td: 'py-2.5 border-b border-default-50 dark:border-default-50/10 group-data-[last=true]:border-none px-4',
+              th: 'bg-default-100 dark:bg-default-50/20 text-default-500 font-bold uppercase text-xs h-10 text-center',
+              td: 'py-2.5 border-b border-default-50 dark:border-default-50/10 group-data-[last=true]:border-none px-4 text-center',
             }}
           >
             <TableHeader>
-              <TableColumn width="15%" align="center">BLOQUE</TableColumn>
-              <TableColumn width="25%" align="center">HORA INICIO</TableColumn>
-              <TableColumn width="25%" align="center">HORA FIN</TableColumn>
+              <TableColumn width="20%" align="center">BLOQUE</TableColumn>
+              <TableColumn width="30%" align="center">HORA INICIO</TableColumn>
+              <TableColumn width="30%" align="center">HORA FIN</TableColumn>
               <TableColumn width="20%" align="center">TURNO</TableColumn>
-              <TableColumn width="15%" align="center">ACCIONES</TableColumn>
             </TableHeader>
             <TableBody
               isLoading={isLoading}
               loadingContent={<Spinner label="Cargando bloques..." />}
-              emptyContent={!isLoading && bloques.length === 0 && "No hay bloques horarios configurados"}
+              emptyContent={!isLoading && bloques.length === 0 ? 'No hay bloques horarios configurados' : ' '}
             >
               {bloques.map((bloque) => {
                 const group = getBloqueGroup(bloque);
                 const style = groupColors[group];
                 return (
                   <TableRow key={bloque.idBloque || bloque.numeroBloque} className="hover:bg-default-50 dark:hover:bg-default-50/10 transition-colors">
-                    <TableCell className="text-center">
-                      <Chip size="sm" variant="flat" color="default" className="font-bold">
-                        {bloque.numeroBloque}
-                      </Chip>
+                    <TableCell>
+                      <div className="flex justify-center">
+                        <Chip size="sm" variant="flat" color="default" className="font-bold">
+                          {bloque.numeroBloque}
+                        </Chip>
+                      </div>
                     </TableCell>
-                    <TableCell className="text-center font-mono text-sm font-semibold text-secondary dark:text-foreground">
+                    <TableCell className="font-mono text-sm font-semibold text-secondary dark:text-foreground">
                       {formatTime(bloque.horaInicio)}
                     </TableCell>
-                    <TableCell className="text-center font-mono text-sm font-semibold text-secondary dark:text-foreground">
+                    <TableCell className="font-mono text-sm font-semibold text-secondary dark:text-foreground">
                       {formatTime(bloque.horaFin)}
                     </TableCell>
-                    <TableCell className="text-center">
-                      <Chip size="sm" variant="flat" color={style.chip}>{group}</Chip>
-                    </TableCell>
                     <TableCell>
-                      <div className="flex justify-center gap-1">
-                        {admin_Editar && (
-                        <Tooltip content="Editar horario">
-                          <Button
-                            isIconOnly size="sm" variant="light"
-                            className="text-default-400 hover:text-secondary"
-                            onPress={() => handleEditarBloque(bloque)}
-                          >
-                            <Icon icon="lucide:edit" width={16} />
-                          </Button>
-                        </Tooltip>
-                        )}
-                        {admin_Eliminar && (
-                        <Tooltip content="Eliminar bloque" color="danger">
-                          <Button
-                            isIconOnly size="sm" variant="light"
-                            className="text-default-400 hover:text-danger"
-                            onPress={() => handleEliminar(bloque)}
-                          >
-                            <Icon icon="lucide:trash" width={16} />
-                          </Button>
-                        </Tooltip>
-                        )}
+                      <div className="flex justify-center">
+                        <Chip size="sm" variant="flat" color={style.chip}>{group}</Chip>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -392,38 +649,44 @@ const SeccionBloques: React.FC<SeccionBloquesProps> = ({ bloques, isLoading }) =
         </CardBody>
       </Card>
 
-      <Modal isOpen={isOpen} onOpenChange={onOpenChange} size="sm" placement="center">
+      {/* Modal: Reasignar Bloques */}
+      <ReasignarBloquesModal
+        isOpen={isReasignarOpen}
+        onOpenChange={onReasignarOpenChange}
+        bloquesActuales={bloques}
+        onSuccess={onBloquesChange}
+      />
+
+      {/* Modal: Confirmar restaurar */}
+      <Modal isOpen={isRestaurarOpen} onOpenChange={onRestaurarOpenChange} size="sm" placement="center">
         <ModalContent>
           {(onClose) => (
             <>
-              <ModalHeader>
-                <div className="flex items-center gap-2">
-                  <Icon
-                    icon={modalMode === 'mantenimiento' ? 'lucide:alert-triangle' : (modalMode === 'crear' ? 'lucide:plus-circle' : 'lucide:edit-3')}
-                    className={modalMode === 'mantenimiento' ? 'text-warning' : 'text-primary'}
-                    width={22}
-                  />
-                  <span className="font-bold">
-                    {modalMode === 'mantenimiento' ? 'Función no disponible' : (modalMode === 'crear' ? 'Nuevo Bloque' : 'Editar Bloque')}
-                  </span>
-                </div>
+              <ModalHeader className="flex items-center gap-2">
+                <Icon icon="lucide:rotate-ccw" className="text-warning" width={20} />
+                <span className="font-bold">Restaurar Bloques Predeterminados</span>
               </ModalHeader>
-              <ModalBody className={`space-y-4 ${modalMode === 'mantenimiento' ? 'py-8 text-center' : ''}`}>
-                <div className="flex flex-col items-center gap-4">
-                  <div className="p-4 rounded-full bg-warning-50 dark:bg-warning-900/20 text-warning-500">
-                    <Icon icon="lucide:construction" width={48} />
-                  </div>
-                  <div className="space-y-2">
-                    <p className="font-bold text-lg text-secondary dark:text-foreground">Módulo en Mantenimiento</p>
-                    <p className="text-default-500 text-sm leading-relaxed px-2">
-                      Las acciones de gestión de bloques horarios están temporalmente deshabilitadas por actualizaciones técnicas.
-                    </p>
-                  </div>
+              <ModalBody className="space-y-3 py-4">
+                <div className="flex gap-3 p-3 rounded-xl bg-warning-50 dark:bg-warning-900/15 border border-warning-200 dark:border-warning-800">
+                  <Icon icon="lucide:alert-triangle" className="text-warning-600 dark:text-warning-400 shrink-0 mt-0.5" width={16} />
+                  <p className="text-sm text-warning-700 dark:text-warning-300 leading-relaxed">
+                    Los <strong>{bloques.length} bloques actuales</strong> serán reemplazados por los <strong>20 bloques predeterminados</strong> originales del sistema. Los cambios afectarán todas las secciones y reservas asociadas.
+                  </p>
                 </div>
+                <p className="text-sm text-default-500 text-center">¿Confirmas la restauración?</p>
               </ModalBody>
               <ModalFooter>
-                <Button variant="light" onPress={onClose}>
-                  Entendido
+                <Button variant="light" onPress={onClose} isDisabled={isRestaurando}>
+                  Cancelar
+                </Button>
+                <Button
+                  color="warning"
+                  variant="solid"
+                  className="font-bold text-white"
+                  isLoading={isRestaurando}
+                  onPress={handleRestaurar}
+                >
+                  Restaurar
                 </Button>
               </ModalFooter>
             </>
