@@ -436,6 +436,13 @@ public class SpringSecurityConfig {
                         .requestMatchers(HttpMethod.DELETE, "/api/v*/semanas/**").hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR")
 
                         // ========================================
+                        // ENDPOINTS DE RESERVA SALA
+                        // ========================================
+
+                        // 1. Lectura autenticada: solo usuarios con sesión activa pueden ver las reservas
+                        .requestMatchers(HttpMethod.GET, "/api/v*/reserva-sala/**").authenticated()
+
+                        // ========================================
                         // ENDPOINTS DE SALAS
                         // ========================================
 
