@@ -1,8 +1,10 @@
 package KuHub.modules.gestion_academica.controller;
 
 import KuHub.modules.gestion_academica.dtos.dtoentity.ReservaSalaEntityResponseDTO;
+import KuHub.modules.gestion_academica.dtos.record.ReservaActivaView;
 import KuHub.modules.gestion_academica.entity.ReservaSala;
 import KuHub.modules.gestion_academica.service.ReservaSalaService;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -12,15 +14,26 @@ import java.util.List;
 /**
  * Controller REST para gestión de Reservas de Salas
  * Endpoints: /api/v1/reserva-sala
- * ⚠️ No está en uso directamente por el frontend actualmente.
- * El frontend gestiona las reservas y la disponibilidad a través de BloqueHorarioController.
  */
+@Slf4j
 @RestController
 @RequestMapping("/api/v1/reserva-sala")
 public class ReservaSalaController {
 
     @Autowired
     private ReservaSalaService reservaSalaService;
+
+    /**
+     * Obtiene todas las reservas de sala activas con datos desnormalizados.
+     * ✅ En uso: Consumido por obtenerReservasActivasService en reserva-sala-service.ts (SeccionReservas).
+     */
+    @GetMapping("/find-all-active")
+    public ResponseEntity<List<ReservaActivaView>> findAllActive() {
+        log.info("GET /reserva-sala/find-all-active");
+        return ResponseEntity
+                .status(200)
+                .body(reservaSalaService.findAllReservasActivas());
+    }
 
     /**
      * Obtiene una reserva específica por su ID.
