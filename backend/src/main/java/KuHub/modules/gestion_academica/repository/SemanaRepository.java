@@ -56,6 +56,15 @@ public interface SemanaRepository extends JpaRepository<Semana, Integer> {
     boolean existeTraslapeDeFechas(@Param("fechaInicio") LocalDate fechaInicio,
                                    @Param("fechaFin") LocalDate fechaFin);
 
+    /** Verifica traslape de fechas excluyendo los ids del período que se está reasignando */
+    @Query("SELECT COUNT(s) > 0 FROM Semana s " +
+            "WHERE s.idSemana NOT IN :idsExcluir " +
+            "AND (s.fechaInicio <= :fechaFin AND s.fechaFin >= :fechaInicio)")
+    boolean existeTraslapeDeFechasExcluyendo(
+            @Param("fechaInicio") LocalDate fechaInicio,
+            @Param("fechaFin") LocalDate fechaFin,
+            @Param("idsExcluir") List<Integer> idsExcluir);
+
 
 
 }
