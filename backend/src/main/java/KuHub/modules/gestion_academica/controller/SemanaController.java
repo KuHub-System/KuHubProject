@@ -1,10 +1,12 @@
 package KuHub.modules.gestion_academica.controller;
 
 import KuHub.modules.gestion_academica.dtos.request.WeekGeneratorDTO;
+import KuHub.modules.gestion_academica.dtos.request.WeekReasignDTO;
 import KuHub.modules.gestion_academica.dtos.request.WeeklyFilterForSolicitationDTO;
 import KuHub.modules.gestion_academica.dtos.response.YearWithSemestersDTO;
 import KuHub.modules.gestion_academica.entity.Semana;
 import KuHub.modules.gestion_academica.service.SemanaService;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
@@ -19,6 +21,7 @@ import java.util.List;
  * permitiendo la generación automática del calendario y el filtrado por año y periodo.
  * Consumido por semana-service.ts en el frontend.
  */
+@Slf4j
 @RestController
 @RequestMapping("/api/v1/semanas")
 public class SemanaController {
@@ -88,6 +91,19 @@ public class SemanaController {
                 .body(semanaService.generateSemesterCalendar(request));
     }
 
-
+    /**
+     * Reasigna las fechas de un período académico existente a partir de una nueva fecha de inicio.
+     * Recalcula las 18 semanas manteniendo nombres y semestre. La fecha debe ser lunes.
+     * ✅ En uso: Consumido por reasignarCalendarioService en semana-service.ts.
+     */
+    @PutMapping("/reasignar-semester-calendar")
+    public ResponseEntity<List<Semana>> reasignarSemesterCalendar(
+            @Validated @RequestBody WeekReasignDTO request) {
+        log.info("PUT /reasignar-semester-calendar - Anio: {}, Semestre: {}, NuevaFechaInicio: {}",
+                request.getAnio(), request.getSemestre(), request.getNuevaFechaInicio());
+        return ResponseEntity
+                .status(200)
+                .body(semanaService.reasignarSemesterCalendar(request));
+    }
 
 }
