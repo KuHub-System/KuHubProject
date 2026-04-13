@@ -39,7 +39,7 @@ import { useModulePermission } from '../contexts/permission-context';
 import { IBloqueHorario } from '../types/bloque-horario.types';
 import { obtenerBloquesHorarioService, reasignarBloquesService, restaurarBloquesDefaultService, IBloqueReasignar } from '../services/bloque-horario-service';
 import { ISemana } from '../types/semana.types';
-import { obtenerSemanasService, generarCalendarioService, obtenerAniosFiltroService, invalidarCacheSemanas } from '../services/semana-service';
+import { obtenerSemanasService, generarCalendarioService, obtenerAniosFiltroService, invalidarCacheSemanas, reasignarCalendarioService } from '../services/semana-service';
 
 // ISala importada desde sala-service
 
@@ -697,6 +697,252 @@ const SeccionBloques: React.FC<SeccionBloquesProps> = ({ bloques, isLoading, onB
   );
 };
 
+// ─── MODAL: REASIGNAR SEMANAS ─────────────────────────────────────────────────
+
+interface ReasignarSemanasModalProps {
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
+  aniosDisponibles: string[];
+  filtroAnioActual: string;
+  onSuccess: (anio: string, semanas: ISemana[]) => void;
+}
+
+const ReasignarSemanasModal: React.FC<ReasignarSemanasModalProps> = ({
+  isOpen, onOpenChange, aniosDisponibles, filtroAnioActual, onSuccess,
+}) => {
+  const toast = useToast();
+  const [anioSeleccionado, setAnioSeleccionado] = React.useState<string>('');
+  const [semestre, setSemestre] = React.useState<1 | 2>(1);
+  const [fechaSeleccionada, setFechaSeleccionada] = React.useState<DateValue | null>(null);
+  const [confirmarTexto, setConfirmarTexto] = React.useState('');
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
+
+  // Inicializar estado al abrir el modal
+  React.useEffect(() => {
+    if (isOpen) {
+      const anioDefault = filtroAnioActual || aniosDisponibles[0] || new Date().getFullYear().toString();
+      setAnioSeleccionado(anioDefault);
+      setSemestre(new Date().getMonth() + 1 <= 6 ? 1 : 2);
+      setFechaSeleccionada(null);
+      setConfirmarTexto('');
+    }
+  }, [isOpen, filtroAnioActual, aniosDisponibles]);
+
+  // Solo lunes disponibles en el DatePicker
+  const esDiaNoLunes = (date: DateValue) => {
+    const jsDate = new Date(date.year, date.month - 1, date.day);
+    return jsDate.getDay() !== 1;
+  };
+
+  // Preview de las 18 semanas calculadas desde la fecha seleccionada
+  const previewSemanas = React.useMemo(() => {
+    if (!fechaSeleccionada) return [];
+    const base = new Date(fechaSeleccionada.year, fechaSeleccionada.month - 1, fechaSeleccionada.day);
+    return Array.from({ length: 18 }, (_, i) => {
+      const inicio = new Date(base);
+      inicio.setDate(base.getDate() + i * 7);
+      const fin = new Date(inicio);
+      fin.setDate(inicio.getDate() + 6);
+      const toStr = (d: Date) => d.toISOString().split('T')[0];
+      return { num: i + 1, inicio: toStr(inicio), fin: toStr(fin) };
+    });
+  }, [fechaSeleccionada]);
+
+  const canSubmit = anioSeleccionado !== '' && fechaSeleccionada !== null && confirmarTexto === 'CONFIRMAR';
+
+  const handleSubmit = async () => {
+    if (!canSubmit || !fechaSeleccionada) return;
+    setIsSubmitting(true);
+    try {
+      const nuevaFechaInicio = `${fechaSeleccionada.year}-${String(fechaSeleccionada.month).padStart(2, '0')}-${String(fechaSeleccionada.day).padStart(2, '0')}`;
+      const updatedSemanas = await reasignarCalendarioService({
+        anio: parseInt(anioSeleccionado),
+        semestre,
+        nuevaFechaInicio,
+      });
+      onSuccess(anioSeleccionado, updatedSemanas);
+      toast.success(`18 semanas del ${semestre}° semestre ${anioSeleccionado} reasignadas correctamente`);
+      onOpenChange(false);
+    } catch (error: any) {
+      toast.error(error.message || 'Error al reasignar el calendario semestral');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Lista de años para el selector: siempre incluir al menos el año actual
+  const aniosParaSelector = React.useMemo(() => {
+    const currentYear = new Date().getFullYear().toString();
+    return aniosDisponibles.includes(currentYear) ? aniosDisponibles : [...aniosDisponibles, currentYear].sort((a, b) => parseInt(b) - parseInt(a));
+  }, [aniosDisponibles]);
+
+  return (
+    <Modal isOpen={isOpen} onOpenChange={onOpenChange} size="2xl" placement="center" scrollBehavior="inside">
+      <ModalContent>
+        {(onClose) => (
+          <>
+            <ModalHeader className="flex items-center gap-2 border-b border-default-100 pb-3">
+              <div className="p-1.5 rounded-lg bg-warning-100 dark:bg-warning-900/30 text-warning-600">
+                <Icon icon="lucide:calendar-clock" width={18} />
+              </div>
+              <span className="font-bold text-secondary dark:text-foreground">Reasignar Semanas Académicas</span>
+            </ModalHeader>
+
+            <ModalBody className="px-5 py-4 space-y-5">
+
+              {/* ── Período a reasignar ── */}
+              <div className="space-y-3">
+                <p className="text-sm font-semibold text-default-700">Período a reasignar</p>
+                <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-end">
+                  {/* Selector de año */}
+                  <div className="w-36">
+                    <Select
+                      label="Año"
+                      size="sm"
+                      variant="bordered"
+                      selectedKeys={anioSeleccionado ? [anioSeleccionado] : []}
+                      onSelectionChange={(keys: any) => {
+                        const val = Array.from(keys)[0] as string;
+                        if (val) { setAnioSeleccionado(val); setFechaSeleccionada(null); }
+                      }}
+                      disallowEmptySelection
+                    >
+                      {aniosParaSelector.map((anio) => (
+                        <SelectItem key={anio} textValue={anio}>{anio}</SelectItem>
+                      ))}
+                    </Select>
+                  </div>
+                  {/* Selector de semestre */}
+                  <div className="flex gap-2">
+                    <Button
+                      variant={semestre === 1 ? 'solid' : 'bordered'}
+                      color={semestre === 1 ? 'warning' : 'default'}
+                      size="sm"
+                      onPress={() => { setSemestre(1); setFechaSeleccionada(null); }}
+                      className={semestre === 1 ? 'font-bold text-white' : 'font-medium'}
+                    >
+                      1° Semestre
+                    </Button>
+                    <Button
+                      variant={semestre === 2 ? 'solid' : 'bordered'}
+                      color={semestre === 2 ? 'warning' : 'default'}
+                      size="sm"
+                      onPress={() => { setSemestre(2); setFechaSeleccionada(null); }}
+                      className={semestre === 2 ? 'font-bold text-white' : 'font-medium'}
+                    >
+                      2° Semestre
+                    </Button>
+                  </div>
+                </div>
+                {anioSeleccionado && (
+                  <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-default-100 dark:bg-default-50/20">
+                    <Icon icon="lucide:info" className="text-default-400" width={13} />
+                    <span className="text-xs text-default-500">
+                      Reasignando: <strong className="text-secondary dark:text-foreground">{semestre}° Semestre {anioSeleccionado}</strong>
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              <Divider />
+
+              {/* ── Nueva fecha de inicio ── */}
+              <div className="space-y-2">
+                <p className="text-sm font-semibold text-default-700">Nueva fecha de inicio</p>
+                <p className="text-xs text-default-400">Solo los lunes están disponibles. Las 18 semanas se calcularán automáticamente.</p>
+                <I18nProvider locale="es-CL">
+                  <DatePicker
+                    label="Fecha de inicio (lunes)"
+                    value={fechaSeleccionada}
+                    onChange={setFechaSeleccionada}
+                    isDateUnavailable={esDiaNoLunes}
+                    variant="bordered"
+                    className="max-w-xs"
+                    showMonthAndYearPickers
+                  />
+                </I18nProvider>
+              </div>
+
+              {/* ── Vista previa de semanas ── */}
+              {previewSemanas.length > 0 && (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-semibold text-default-700">Vista previa — 18 semanas a generar</p>
+                    <Chip size="sm" variant="flat" color="warning">18 semanas</Chip>
+                  </div>
+                  <div className="border border-default-200 dark:border-default-100 rounded-xl overflow-hidden">
+                    {/* Cabecera */}
+                    <div className="grid grid-cols-3 bg-default-100 dark:bg-default-50/20 px-4 py-2">
+                      <span className="text-[11px] font-bold text-default-500 uppercase tracking-wide text-center">Semana</span>
+                      <span className="text-[11px] font-bold text-default-500 uppercase tracking-wide text-center">Inicio</span>
+                      <span className="text-[11px] font-bold text-default-500 uppercase tracking-wide text-center">Fin</span>
+                    </div>
+                    {/* Filas */}
+                    <div className="max-h-[200px] overflow-y-auto divide-y divide-default-50 dark:divide-default-50/10">
+                      {previewSemanas.map((s) => (
+                        <div key={s.num} className="grid grid-cols-3 px-4 py-1.5 hover:bg-default-50 dark:hover:bg-default-50/5 transition-colors">
+                          <span className="text-center text-xs font-bold text-default-700">S{s.num}</span>
+                          <span className="text-center text-xs font-mono text-default-600">{formatDate(s.inicio)}</span>
+                          <span className="text-center text-xs font-mono text-default-600">{formatDate(s.fin)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <Divider />
+
+              {/* ── Advertencia ── */}
+              <div className="flex gap-3 p-4 rounded-xl bg-warning-50 dark:bg-warning-900/15 border border-warning-200 dark:border-warning-800">
+                <Icon icon="lucide:alert-triangle" className="text-warning-600 dark:text-warning-400 shrink-0 mt-0.5" width={18} />
+                <div className="space-y-1">
+                  <p className="font-bold text-sm text-warning-800 dark:text-warning-300">Advertencia: Impacto en todo el sistema</p>
+                  <p className="text-sm text-warning-700 dark:text-warning-300 leading-relaxed">
+                    Alterar las semanas del período académico se reflejará en <strong>todo el sistema</strong> donde la semana estaba previamente asociada, incluyendo <strong>solicitudes</strong> y <strong>conglomerados de pedido</strong>. Esta acción no puede deshacerse automáticamente.
+                  </p>
+                </div>
+              </div>
+
+              {/* ── Confirmación ── */}
+              <div className="space-y-1.5">
+                <p className="text-sm text-default-600">
+                  Escribe <code className="font-mono font-bold text-secondary dark:text-foreground bg-default-100 dark:bg-default-50/30 px-1.5 py-0.5 rounded text-xs">CONFIRMAR</code> para habilitar la reasignación:
+                </p>
+                <Input
+                  placeholder="CONFIRMAR"
+                  value={confirmarTexto}
+                  onValueChange={setConfirmarTexto}
+                  variant="bordered"
+                  size="sm"
+                  color={confirmarTexto === 'CONFIRMAR' ? 'success' : confirmarTexto.length > 0 ? 'danger' : 'default'}
+                  classNames={{ input: 'font-mono font-semibold tracking-widest' }}
+                />
+              </div>
+            </ModalBody>
+
+            <ModalFooter>
+              <Button variant="light" onPress={onClose} isDisabled={isSubmitting}>
+                Cancelar
+              </Button>
+              <Button
+                color="warning"
+                variant="solid"
+                className="font-bold text-white"
+                isDisabled={!canSubmit}
+                isLoading={isSubmitting}
+                onPress={handleSubmit}
+              >
+                Reasignar Semanas
+              </Button>
+            </ModalFooter>
+          </>
+        )}
+      </ModalContent>
+    </Modal>
+  );
+};
+
 // ─── SECCIÓN: GESTIÓN DE SEMANAS ──────────────────────────────────────────────
 
 interface SeccionSemanasProps {
@@ -767,6 +1013,13 @@ const SeccionSemanas: React.FC<SeccionSemanasProps> = ({ toast }) => {
     };
     fetchSemanas();
   }, [toast, filtroAnio]);
+
+  // Callback llamado por ReasignarSemanasModal tras éxito
+  const handleReasignarSuccess = (anio: string, updatedSemanas: ISemana[]) => {
+    invalidarCacheSemanas(parseInt(anio));
+    setFiltroAnio(anio);
+    setSemanas(updatedSemanas);
+  };
 
   const handleGenerar = async () => {
     if (!fechaSeleccionada) {
@@ -975,39 +1228,14 @@ const SeccionSemanas: React.FC<SeccionSemanasProps> = ({ toast }) => {
         </div>
       )}
 
-      {/* Modal de Mantenimiento para Reasignar */}
-      <Modal isOpen={isOpen} onOpenChange={onOpenChange} size="sm" placement="center">
-        <ModalContent>
-          {(onClose) => (
-            <>
-              <ModalHeader className="flex flex-col gap-1">
-                <div className="flex items-center gap-2">
-                  <Icon icon="lucide:construction" className="text-warning" width={22} />
-                  <span className="font-bold">Función no disponible</span>
-                </div>
-              </ModalHeader>
-              <ModalBody className="py-8 text-center">
-                <div className="flex flex-col items-center gap-4">
-                  <div className="p-4 rounded-full bg-warning-50 dark:bg-warning-900/20 text-warning-500">
-                    <Icon icon="lucide:construction" width={48} />
-                  </div>
-                  <div className="space-y-2">
-                    <p className="font-bold text-lg text-secondary dark:text-foreground">Módulo en Mantenimiento</p>
-                    <p className="text-default-500 text-sm leading-relaxed px-2">
-                      La reasignación de semanas está temporalmente deshabilitada por actualizaciones técnicas.
-                    </p>
-                  </div>
-                </div>
-              </ModalBody>
-              <ModalFooter>
-                <Button variant="light" onPress={onClose}>
-                  Entendido
-                </Button>
-              </ModalFooter>
-            </>
-          )}
-        </ModalContent>
-      </Modal>
+      {/* Modal: Reasignar Semanas */}
+      <ReasignarSemanasModal
+        isOpen={isOpen}
+        onOpenChange={onOpenChange}
+        aniosDisponibles={aniosDisponibles}
+        filtroAnioActual={filtroAnio}
+        onSuccess={handleReasignarSuccess}
+      />
     </div>
   );
 };

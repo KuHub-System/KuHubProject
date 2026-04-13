@@ -411,6 +411,14 @@ Al implementarlos, seguir las convenciones de este documento y registrarlos en `
 
 **Nota de negocio:** El frontend valida que entre bloques consecutivos haya al menos 1 minuto de diferencia (hora_inicio[n+1] > hora_fin[n]). El backend debe validar lo mismo y lanzar excepción con `HttpStatus.UNPROCESSABLE_ENTITY` si hay conflicto.
 
+### `SemanasController` — rutas base `/api/v1/semanas`
+
+| Método | Ruta | Descripción | Estado |
+|--------|------|-------------|--------|
+| `PUT` | `/reasignar-semester-calendar` | Recibe `{ anio: int, semestre: int, nuevaFechaInicio: String (YYYY-MM-DD, debe ser lunes) }`. Busca las 18 semanas del año/semestre indicado y actualiza sus fechas a partir de la nueva fecha de inicio, manteniendo la estructura de nombres. Retorna `ISemana[]` actualizado. Lanzar `CONFLICT` si no existen semanas para ese año/semestre, `UNPROCESSABLE_ENTITY` si la fecha no es lunes. | ⬜ Pendiente |
+
+**Nota de negocio:** El frontend calcula el preview de 18 semanas en tiempo real (base + i*7 días). El backend debe recalcular con la misma lógica y persistir. El impacto es en `solicitudes` y `conglomerados de pedido` que referencian las semanas afectadas — el equipo debe definir si se actualizan automáticamente las referencias o se notifica al usuario.
+
 ---
 
 ## 10. Checklist para nueva implementación
