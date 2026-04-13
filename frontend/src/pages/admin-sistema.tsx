@@ -1018,9 +1018,15 @@ const SeccionSemanas: React.FC<SeccionSemanasProps> = ({ toast }) => {
   }, [toast, filtroAnio]);
 
   // Callback llamado por ReasignarSemanasModal tras éxito
-  const handleReasignarSuccess = (anio: string, updatedSemanas: ISemana[]) => {
-    invalidarCacheSemanas(parseInt(anio));
-    setFiltroAnio(anio);
+  // updatedSemanas contiene TODAS las semanas del año de la nueva fecha (backend devuelve año completo)
+  const handleReasignarSuccess = (anioSolicitado: string, updatedSemanas: ISemana[]) => {
+    // Determinar el año real de los datos devueltos (puede diferir si la nueva fecha es otro año)
+    const anioReal = updatedSemanas.length > 0
+      ? updatedSemanas[0].anio.toString()
+      : anioSolicitado;
+    invalidarCacheSemanas(parseInt(anioSolicitado));
+    if (anioReal !== anioSolicitado) invalidarCacheSemanas(parseInt(anioReal));
+    setFiltroAnio(anioReal);
     setSemanas(updatedSemanas);
   };
 
