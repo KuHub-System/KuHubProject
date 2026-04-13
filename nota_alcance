@@ -800,7 +800,11 @@ PENDIENTE DE IMPLEMENTAR O DEFINIR:
           de las solicitudes a PROCESADO tras consolidarse en pedido
   [ ] Completar MotivoRechazo: service, endpoint, integración al rechazo,
       notificación a Profesor a Cargo y Docente
-  [ ] Edición de bloques horarios desde UI (actualmente solo desde BD)
+  [F] Edición de bloques horarios desde UI — Frontend implementado (Reasignar Bloques +
+      Restaurar predeterminados + validación de conflictos mín. 1 min entre bloques +
+      confirmación por texto "CONFIRMAR" + advertencia de impacto en secciones/reservas).
+      Pendiente: endpoints backend PUT /bloque-horario/reasignar y
+      POST /bloque-horario/restaurar-default (ver CLAUDE.md sección 9)
   [ ] Gestión de proveedores (vista existe en frontend, sin backend)
   [ ] Tabla LOTE activable en sistema (estructura ya en BD)
   [ ] Adjuntar archivos a recetas (requiere AWS S3)
@@ -889,10 +893,14 @@ PENDIENTE DE IMPLEMENTAR O DEFINIR:
   ajuste_inventario. MOVIMIENTO: id_movimiento, type tipo_movimiento*, fk id_usuario,
   fk id_producto, cantidad_producto*, observacion.
 
-- Administración del sistema: Bloque de horarios actualmente insertado desde la base
-  de datos requiere una solución para editar los horarios en un futuro, se planea
-  realizar una reinserción en caso de no encontrar una medida eficiente, se permitirá
-  editar informando al usuario que la acción refleja a todos horarios asociados.
+- Administración del sistema: La edición de bloques horarios fue implementada en el
+  frontend (2026-04-13). La vista de Bloques Horarios ahora tiene dos acciones:
+  "Reasignar Bloques" (modal con todos los bloques editables, permite agregar más de 20,
+  valida mínimo 1 minuto de diferencia entre bloques consecutivos, requiere escribir
+  "CONFIRMAR" y muestra advertencia de impacto en secciones/reservas) y "Restaurar
+  predeterminados" (reinicia a los 20 bloques del INSERT original del cliente).
+  Además se eliminó la columna ACCIONES de la tabla de bloques. Pendiente: implementar
+  los dos endpoints en el backend (ver CLAUDE.md sección 9).
 
 - Periodo Académico permite crear 18 semanas a partir de una fecha necesariamente
   Lunes donde se generan las semanas, esto permitirá calcular de manera automática
