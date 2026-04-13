@@ -286,6 +286,34 @@ Documentar el índice de cada columna con comentarios en el SQL:
 List<Object[]> findByIdToInventoryPage(@Param("idInventario") Integer idInventario);
 ```
 
+### 5.4 Convención: `json_build_object` y `jsonb_agg`
+
+- **Consultas nativas simples (filas planas):** usar `json_build_object(...)` como única expresión SELECT.
+  - Retorna `List<Object[]>` donde `row[0]` es el JSON (PGobject → `.toString()` da el valor).
+  - En el service, deserializar con `objectMapper.readValue(row[0].toString(), MiRecord.class)`.
+  - El record de response lleva `@JsonProperty` en cada campo para mapeo correcto con Jackson.
+
+- **Subconsultas / agregaciones:** usar `jsonb_agg(json_build_object(...))` para construir arrays JSON.
+  - Igual que arriba: `row[n].toString()` da el JSON del arreglo; deserializar con `TypeReference<List<...>>`.
+
+```java
+// Ejemplo — consulta nativa con json_build_object
+@Query(value = """
+    SELECT json_build_object(          -- [0] JSON plano por fila
+        'campo1', t.columna1,
+        'campo2', t.columna2
+    )
+    FROM mi_tabla t
+    WHERE t.activo = TRUE
+""", nativeQuery = true)
+List<Object[]> findMiConsultaRaw();
+
+// En el service:
+rows.stream()
+    .map(row -> objectMapper.readValue(row[0].toString(), MiRecord.class))
+    .toList();
+```
+
 ---
 
 ## 6. Services (`services/`)
@@ -418,6 +446,12 @@ Al implementarlos, seguir las convenciones de este documento y registrarlos en `
 | `PUT` | `/reasignar-semester-calendar` | Recibe `WeekReasignDTO { anio, semestre, nuevaFechaInicio (YYYY-MM-DD, lunes) }`. Actualiza fechaInicio/fechaFin de las 18 semanas del período in-place. Lanza 422 si no es lunes, 409 si no existen semanas para ese período. Retorna `Semana[]` actualizado. | ✅ Implementado |
 
 **Nota de negocio:** El frontend calcula el preview de 18 semanas en tiempo real (base + i*7 días). El backend debe recalcular con la misma lógica y persistir. El impacto es en `solicitudes` y `conglomerados de pedido` que referencian las semanas afectadas — el equipo debe definir si se actualizan automáticamente las referencias o se notifica al usuario.
+
+### `ReservaSalaController` — rutas base `/api/v1/reserva-sala`
+
+| Método | Ruta | Descripción | Estado |
+|--------|------|-------------|--------|
+| `GET` | `/find-all-active` | Sin parámetros. Retorna todas las reservas con `activo = TRUE`, incluyendo datos desnormalizados de asignatura, sección, sala y bloque, usando `json_build_object`. Ordenado por `hora_inicio` ASC. | ✅ Implementado |
 
 ---
 

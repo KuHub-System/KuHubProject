@@ -40,46 +40,11 @@ import { IBloqueHorario } from '../types/bloque-horario.types';
 import { obtenerBloquesHorarioService, reasignarBloquesService, restaurarBloquesDefaultService, IBloqueReasignar } from '../services/bloque-horario-service';
 import { ISemana } from '../types/semana.types';
 import { obtenerSemanasService, generarCalendarioService, obtenerAniosFiltroService, invalidarCacheSemanas, reasignarCalendarioService } from '../services/semana-service';
-
-// ISala importada desde sala-service
+import { IReservaActiva, DIA_DISPLAY, obtenerReservasActivasService } from '../services/reserva-sala-service';
 
 type DiaSemana = 'Lunes' | 'Martes' | 'Miércoles' | 'Jueves' | 'Viernes' | 'Sábado' | 'Domingo';
 
-interface ReservaSala {
-  idReservaSala: number;
-  idSeccion: number;
-  nombreSeccion: string;
-  idSala: number;
-  codSala: string;
-  nombreSala: string;
-  diaSemana: DiaSemana;
-  idBloque: number;
-  numeroBloque: number;
-  horaInicio: string;
-  horaFin: string;
-}
-
 const DIAS_SEMANA: DiaSemana[] = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
-
-const MOCK_RESERVAS: ReservaSala[] = [
-  { idReservaSala: 1, idSeccion: 1, nombreSeccion: 'Gastronomía Internacional - 1A', idSala: 1, codSala: 'AULA-01', nombreSala: 'Aula 01 - Cocina Principal', diaSemana: 'Lunes', idBloque: 1, numeroBloque: 1, horaInicio: '08:01', horaFin: '08:40' },
-  { idReservaSala: 2, idSeccion: 1, nombreSeccion: 'Gastronomía Internacional - 1A', idSala: 1, codSala: 'AULA-01', nombreSala: 'Aula 01 - Cocina Principal', diaSemana: 'Lunes', idBloque: 2, numeroBloque: 2, horaInicio: '08:41', horaFin: '09:20' },
-  { idReservaSala: 3, idSeccion: 2, nombreSeccion: 'Pastelería Artesanal - 2B', idSala: 2, codSala: 'AULA-02', nombreSala: 'Aula 02 - Pastelería', diaSemana: 'Lunes', idBloque: 5, numeroBloque: 5, horaInicio: '11:01', horaFin: '11:40' },
-  { idReservaSala: 4, idSeccion: 2, nombreSeccion: 'Pastelería Artesanal - 2B', idSala: 2, codSala: 'AULA-02', nombreSala: 'Aula 02 - Pastelería', diaSemana: 'Lunes', idBloque: 6, numeroBloque: 6, horaInicio: '11:41', horaFin: '12:20' },
-  { idReservaSala: 5, idSeccion: 3, nombreSeccion: 'Técnicas Culinarias - 3C', idSala: 3, codSala: 'LAB-01', nombreSala: 'Laboratorio de Gastronomía', diaSemana: 'Martes', idBloque: 3, numeroBloque: 3, horaInicio: '09:31', horaFin: '10:10' },
-  { idReservaSala: 6, idSeccion: 3, nombreSeccion: 'Técnicas Culinarias - 3C', idSala: 3, codSala: 'LAB-01', nombreSala: 'Laboratorio de Gastronomía', diaSemana: 'Martes', idBloque: 4, numeroBloque: 4, horaInicio: '10:11', horaFin: '10:50' },
-  { idReservaSala: 7, idSeccion: 1, nombreSeccion: 'Gastronomía Internacional - 1A', idSala: 1, codSala: 'AULA-01', nombreSala: 'Aula 01 - Cocina Principal', diaSemana: 'Miércoles', idBloque: 7, numeroBloque: 7, horaInicio: '12:31', horaFin: '13:10' },
-  { idReservaSala: 8, idSeccion: 4, nombreSeccion: 'Repostería Avanzada - 4A', idSala: 2, codSala: 'AULA-02', nombreSala: 'Aula 02 - Pastelería', diaSemana: 'Miércoles', idBloque: 9, numeroBloque: 9, horaInicio: '14:01', horaFin: '14:40' },
-  { idReservaSala: 9, idSeccion: 4, nombreSeccion: 'Repostería Avanzada - 4A', idSala: 2, codSala: 'AULA-02', nombreSala: 'Aula 02 - Pastelería', diaSemana: 'Miércoles', idBloque: 10, numeroBloque: 10, horaInicio: '14:41', horaFin: '15:20' },
-  { idReservaSala: 10, idSeccion: 2, nombreSeccion: 'Pastelería Artesanal - 2B', idSala: 3, codSala: 'LAB-01', nombreSala: 'Laboratorio de Gastronomía', diaSemana: 'Jueves', idBloque: 1, numeroBloque: 1, horaInicio: '08:01', horaFin: '08:40' },
-  { idReservaSala: 11, idSeccion: 5, nombreSeccion: 'Enología y Maridaje - 5B', idSala: 1, codSala: 'AULA-01', nombreSala: 'Aula 01 - Cocina Principal', diaSemana: 'Jueves', idBloque: 13, numeroBloque: 13, horaInicio: '17:01', horaFin: '17:40' },
-  { idReservaSala: 12, idSeccion: 5, nombreSeccion: 'Enología y Maridaje - 5B', idSala: 1, codSala: 'AULA-01', nombreSala: 'Aula 01 - Cocina Principal', diaSemana: 'Jueves', idBloque: 14, numeroBloque: 14, horaInicio: '17:41', horaFin: '18:20' },
-  { idReservaSala: 13, idSeccion: 3, nombreSeccion: 'Técnicas Culinarias - 3C', idSala: 3, codSala: 'LAB-01', nombreSala: 'Laboratorio de Gastronomía', diaSemana: 'Viernes', idBloque: 5, numeroBloque: 5, horaInicio: '11:01', horaFin: '11:40' },
-  { idReservaSala: 14, idSeccion: 6, nombreSeccion: 'Cocina Chilena - 6A', idSala: 1, codSala: 'AULA-01', nombreSala: 'Aula 01 - Cocina Principal', diaSemana: 'Viernes', idBloque: 16, numeroBloque: 16, horaInicio: '19:01', horaFin: '19:40' },
-  { idReservaSala: 15, idSeccion: 6, nombreSeccion: 'Cocina Chilena - 6A', idSala: 1, codSala: 'AULA-01', nombreSala: 'Aula 01 - Cocina Principal', diaSemana: 'Viernes', idBloque: 17, numeroBloque: 17, horaInicio: '19:41', horaFin: '20:20' },
-];
-
-// DATOS MOCK REMOVIDOS - Se obtienen del backend
 
 // ─── HELPERS ──────────────────────────────────────────────────────────────────
 
@@ -214,7 +179,7 @@ const AdminSistemaPage: React.FC = () => {
               title={
                 <div className="flex items-center gap-2">
                   <Icon icon="lucide:calendar-clock" width={18} />
-                  <span>Reservas de Salas por Sección</span>
+                  <span>Gestión Sala y Reservas</span>
                 </div>
               }
             />
@@ -1249,22 +1214,34 @@ const SeccionSemanas: React.FC<SeccionSemanasProps> = ({ toast }) => {
   );
 };
 
-// ─── SECCIÓN: RESERVAS DE SALAS POR SECCIÓN ──────────────────────────────────
+// ─── SECCIÓN: GESTIÓN SALA Y RESERVAS ────────────────────────────────────────
 
 const SeccionReservas: React.FC = () => {
-  const { isOpen: isModalOpen, onOpen: onModalOpen, onOpenChange: onModalOpenChange } = useDisclosure();
+  const [reservas, setReservas] = React.useState<IReservaActiva[]>([]);
+  const [isLoading, setIsLoading] = React.useState(true);
   const [filtroDia, setFiltroDia] = React.useState<DiaSemana | 'Todos'>('Todos');
   const [filtroSala, setFiltroSala] = React.useState('');
 
-  const reservasFiltradas = MOCK_RESERVAS.filter((r) => {
-    const matchDia = filtroDia === 'Todos' || r.diaSemana === filtroDia;
-    const matchSala = filtroSala.trim() === '' || r.codSala.toLowerCase().includes(filtroSala.toLowerCase()) || r.nombreSala.toLowerCase().includes(filtroSala.toLowerCase());
+  React.useEffect(() => {
+    obtenerReservasActivasService()
+      .then(setReservas)
+      .catch(() => {/* silencio: tabla vacía muestra emptyContent */})
+      .finally(() => setIsLoading(false));
+  }, []);
+
+  const reservasFiltradas = reservas.filter((r) => {
+    const diaDisplay = DIA_DISPLAY[r.diaSemana] ?? r.diaSemana;
+    const matchDia = filtroDia === 'Todos' || diaDisplay === filtroDia;
+    const matchSala =
+      filtroSala.trim() === '' ||
+      r.codSala.toLowerCase().includes(filtroSala.toLowerCase()) ||
+      r.nombreSala.toLowerCase().includes(filtroSala.toLowerCase());
     return matchDia && matchSala;
   });
 
-  const totalReservas = MOCK_RESERVAS.length;
-  const salasUsadas = new Set(MOCK_RESERVAS.map((r) => r.idSala)).size;
-  const seccionesUsadas = new Set(MOCK_RESERVAS.map((r) => r.idSeccion)).size;
+  const totalReservas = reservas.length;
+  const salasUsadas = new Set(reservas.map((r) => r.codSala)).size;
+  const seccionesUsadas = new Set(reservas.map((r) => r.nombreSeccion)).size;
 
   const diaColors: Record<DiaSemana, 'default' | 'primary' | 'secondary' | 'success' | 'warning' | 'danger'> = {
     Lunes: 'primary',
@@ -1328,16 +1305,6 @@ const SeccionReservas: React.FC = () => {
                 Mostrando {reservasFiltradas.length} de {totalReservas} reservas
               </p>
             </div>
-            <Button
-              size="sm"
-              color="warning"
-              variant="solid"
-              className="ml-auto font-bold text-white shadow-sm"
-              startContent={<Icon icon="lucide:plus" width={16} />}
-              onPress={onModalOpen}
-            >
-              Nueva Sala
-            </Button>
           </div>
 
           {/* Filtros */}
@@ -1380,127 +1347,70 @@ const SeccionReservas: React.FC = () => {
         </CardHeader>
         <Divider />
         <CardBody className="p-0">
-          <Table
-            aria-label="Reservas de salas por sección"
-            removeWrapper
-            layout="fixed"
-            classNames={{
-              th: 'bg-default-100 dark:bg-default-50/20 text-default-500 font-bold uppercase text-xs h-10',
-              td: 'py-2.5 border-b border-default-50 dark:border-default-50/10 group-data-[last=true]:border-none px-4',
-            }}
-          >
-            <TableHeader>
-              <TableColumn width="6%" align="center">ID</TableColumn>
-              <TableColumn width="28%">SECCIÓN</TableColumn>
-              <TableColumn width="22%">SALA</TableColumn>
-              <TableColumn width="13%" align="center">DÍA</TableColumn>
-              <TableColumn width="9%" align="center">BLOQUE</TableColumn>
-              <TableColumn width="11%" align="center">INICIO</TableColumn>
-              <TableColumn width="11%" align="center">FIN</TableColumn>
-            </TableHeader>
-            <TableBody emptyContent={
-              <div className="py-10 text-center text-default-400">
-                <Icon icon="lucide:calendar-x" width={32} className="mx-auto mb-2 opacity-50" />
-                <p className="text-sm">No hay reservas para el filtro seleccionado</p>
-              </div>
-            }>
-              {reservasFiltradas.map((reserva) => (
-                <TableRow key={reserva.idReservaSala} className="hover:bg-default-50 dark:hover:bg-default-50/10 transition-colors">
-                  <TableCell className="text-center">
-                    <Chip size="sm" variant="flat" color="default" className="font-bold text-xs">
-                      #{reserva.idReservaSala}
-                    </Chip>
-                  </TableCell>
-                  <TableCell>
-                    <p className="font-semibold text-sm text-secondary dark:text-foreground leading-tight">
-                      {reserva.nombreSeccion}
-                    </p>
-                    <p className="text-xs text-default-400">ID: {reserva.idSeccion}</p>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <Chip size="sm" variant="flat" color="primary" className="font-mono font-bold text-xs shrink-0">
-                        {reserva.codSala}
-                      </Chip>
-                      <span className="text-sm text-default-600 truncate">{reserva.nombreSala}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-center">
-                    <Chip size="sm" variant="flat" color={diaColors[reserva.diaSemana]} className="font-medium text-xs">
-                      {reserva.diaSemana}
-                    </Chip>
-                  </TableCell>
-                  <TableCell className="text-center">
-                    <span className="text-sm font-bold text-default-700">B{reserva.numeroBloque}</span>
-                  </TableCell>
-                  <TableCell className="text-center">
-                    <span className="text-sm font-mono text-default-600">{reserva.horaInicio}</span>
-                  </TableCell>
-                  <TableCell className="text-center">
-                    <span className="text-sm font-mono text-default-600">{reserva.horaFin}</span>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          {isLoading ? (
+            <div className="flex justify-center items-center py-16">
+              <Spinner size="lg" color="primary" />
+            </div>
+          ) : (
+            <Table
+              aria-label="Gestión Sala y Reservas"
+              removeWrapper
+              layout="fixed"
+              classNames={{
+                th: 'bg-default-100 dark:bg-default-50/20 text-default-500 font-bold uppercase text-xs h-10',
+                td: 'py-2.5 border-b border-default-50 dark:border-default-50/10 group-data-[last=true]:border-none px-4',
+              }}
+            >
+              <TableHeader>
+                <TableColumn width="22%">ASIGNATURA</TableColumn>
+                <TableColumn width="24%">SECCIÓN</TableColumn>
+                <TableColumn width="20%">SALA</TableColumn>
+                <TableColumn width="13%" align="center">DÍA</TableColumn>
+                <TableColumn width="21%" align="center">BLOQUE / HORARIO</TableColumn>
+              </TableHeader>
+              <TableBody emptyContent={
+                <div className="py-10 text-center text-default-400">
+                  <Icon icon="lucide:calendar-x" width={32} className="mx-auto mb-2 opacity-50" />
+                  <p className="text-sm">No hay reservas para el filtro seleccionado</p>
+                </div>
+              }>
+                {reservasFiltradas.map((reserva, idx) => {
+                  const diaDisplay = (DIA_DISPLAY[reserva.diaSemana] ?? reserva.diaSemana) as DiaSemana;
+                  return (
+                    <TableRow key={idx} className="hover:bg-default-50 dark:hover:bg-default-50/10 transition-colors">
+                      <TableCell>
+                        <p className="font-semibold text-sm text-secondary dark:text-foreground leading-tight truncate">
+                          {reserva.nombreAsignatura}
+                        </p>
+                      </TableCell>
+                      <TableCell>
+                        <p className="text-sm text-default-700 leading-tight truncate">{reserva.nombreSeccion}</p>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <Chip size="sm" variant="flat" color="primary" className="font-mono font-bold text-xs shrink-0">
+                            {reserva.codSala}
+                          </Chip>
+                          <span className="text-sm text-default-600 truncate">{reserva.nombreSala}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <Chip size="sm" variant="flat" color={diaColors[diaDisplay]} className="font-medium text-xs">
+                          {diaDisplay}
+                        </Chip>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <span className="text-sm font-bold text-default-700 mr-1">B{reserva.numeroBloque}</span>
+                        <span className="text-xs font-mono text-default-500">{reserva.horaInicio} – {reserva.horaFin}</span>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          )}
         </CardBody>
       </Card>
-
-      {/* Badge de datos mock */}
-      <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-default-100 dark:bg-default-50/20 border border-default-200 dark:border-default-100 w-fit">
-        <Icon icon="lucide:database" className="text-default-400" width={16} />
-        <p className="text-xs text-default-500">
-          Datos de ejemplo — pendiente de conexión con backend (<code className="font-mono">reserva_sala</code>)
-        </p>
-      </div>
-
-      {/* Modal: Nueva Sala */}
-      <Modal isOpen={isModalOpen} onOpenChange={onModalOpenChange} size="sm" placement="center">
-        <ModalContent>
-          {(onClose) => (
-            <>
-              <ModalHeader className="flex items-center gap-2">
-                <div className="p-1.5 rounded-lg bg-warning-100 text-warning-600">
-                  <Icon icon="lucide:door-open" width={18} />
-                </div>
-                <span className="font-bold text-secondary dark:text-white">Nueva Sala</span>
-              </ModalHeader>
-              <ModalBody className="py-6">
-                <div className="flex flex-col gap-3">
-                  <Input
-                    label="Código de sala"
-                    placeholder="Ej: LG1, AULA-01"
-                    variant="bordered"
-                    size="sm"
-                    startContent={<Icon icon="lucide:hash" className="text-default-400" width={16} />}
-                  />
-                  <Input
-                    label="Nombre de sala"
-                    placeholder="Ej: Laboratorio de Gastronomía"
-                    variant="bordered"
-                    size="sm"
-                    startContent={<Icon icon="lucide:school" className="text-default-400" width={16} />}
-                  />
-                </div>
-                <div className="mt-4 flex items-center gap-2 px-3 py-2.5 rounded-lg bg-warning-50 dark:bg-warning-900/20 border border-warning-200 dark:border-warning-800">
-                  <Icon icon="lucide:construction" className="text-warning-500 shrink-0" width={16} />
-                  <p className="text-xs text-warning-700 dark:text-warning-400">
-                    Creación de salas pendiente de integración con backend.
-                  </p>
-                </div>
-              </ModalBody>
-              <ModalFooter>
-                <Button variant="light" className="font-medium" onPress={onClose}>
-                  Cancelar
-                </Button>
-                <Button color="warning" variant="solid" className="font-bold text-white" isDisabled onPress={onClose}>
-                  Crear Sala
-                </Button>
-              </ModalFooter>
-            </>
-          )}
-        </ModalContent>
-      </Modal>
     </div>
   );
 };

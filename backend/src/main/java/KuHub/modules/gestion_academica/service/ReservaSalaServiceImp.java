@@ -2,12 +2,14 @@ package KuHub.modules.gestion_academica.service;
 
 import KuHub.modules.gestion_academica.dtos.dtoentity.ReservaSalaEntityResponseDTO;
 import KuHub.modules.gestion_academica.dtos.record.CheckAvailability;
+import KuHub.modules.gestion_academica.dtos.record.ReservaActivaView;
 import KuHub.modules.gestion_academica.dtos.request.projection.NumberBlockProjection;
 import KuHub.modules.gestion_academica.entity.ReservaSala;
 import KuHub.modules.gestion_academica.exceptions.GestionAcademicaException;
 import KuHub.modules.gestion_academica.repository.ReservaSalaRepository;
 import KuHub.modules.gestion_receta.exceptions.GestionRecetaException;
 import KuHub.utils.StringUtils;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -18,8 +20,28 @@ import java.util.List;
 @Service
 public class ReservaSalaServiceImp implements ReservaSalaService{
 
+    /**Repositories*/
     @Autowired
     private ReservaSalaRepository reservaSalaRepository;
+
+    /**Others*/
+    @Autowired
+    private ObjectMapper objectMapper;
+
+    @Transactional(readOnly = true)
+    @Override
+    public List<ReservaActivaView> findAllReservasActivas() {
+        List<Object[]> rows = reservaSalaRepository.findAllReservasActivasRaw();
+        return rows.stream()
+                .map(row -> {
+                    try {
+                        return objectMapper.readValue(row[0].toString(), ReservaActivaView.class);
+                    } catch (Exception e) {
+                        throw new RuntimeException("Error al mapear ReservaActivaView desde JSON: " + row[0], e);
+                    }
+                })
+                .toList();
+    }
 
     /**Metodo ultilizado para obtener los */
     @Transactional(readOnly = true)

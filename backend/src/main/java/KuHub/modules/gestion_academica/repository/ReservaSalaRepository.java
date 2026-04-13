@@ -80,5 +80,31 @@ public interface ReservaSalaRepository extends JpaRepository<ReservaSala, Intege
 
     List<ReservaSala> findBySeccion_IdSeccion(Integer idSeccion);
 
+    /**
+     * Obtiene todas las reservas activas como JSON usando json_build_object.
+     * Resultado: List<Object[]> donde row[0] es el JSON de la reserva.
+     * Ordenado por hora_inicio del bloque para mostrar en orden cronológico.
+     */
+    @Query(value = """
+        SELECT json_build_object(            -- [0] JSON con todos los atributos de la reserva
+            'nombreAsignatura', a.nombre_asignatura,
+            'nombreSeccion',    s.nombre_seccion,
+            'nombreSala',       sl.nombre_sala,
+            'codSala',          sl.cod_sala,
+            'diaSemana',        rs.dia_semana::text,
+            'numeroBloque',     bh.numero_bloque,
+            'horaInicio',       TO_CHAR(bh.hora_inicio, 'HH24:MI'),
+            'horaFin',          TO_CHAR(bh.hora_fin, 'HH24:MI')
+        )
+        FROM reserva_sala rs
+        JOIN seccion s    ON s.id_seccion   = rs.id_seccion
+        JOIN asignatura a ON a.id_asignatura = s.id_asignatura
+        JOIN sala sl      ON sl.id_sala      = rs.id_sala
+        JOIN bloque_horario bh ON bh.id_bloque = rs.id_bloque
+        WHERE rs.activo = TRUE
+        ORDER BY bh.hora_inicio ASC
+    """, nativeQuery = true)
+    List<Object[]> findAllReservasActivasRaw();
+
 
 }
