@@ -150,5 +150,18 @@ public class SalaServiceImp implements SalaService {
         salaRepository.save(sala);
     }
 
+    @Transactional
+    @Override
+    public void softDeleteWithValidation(Integer idSala) {
+        if (salaRepository.hasActiveReservas(idSala)) {
+            throw new GestionAcademicaException(
+                "No se puede desactivar la sala: tiene reservas activas asociadas. " +
+                "Desactive primero las secciones vinculadas o espere a que se liberen los horarios.",
+                HttpStatus.CONFLICT
+            );
+        }
+        softDelete(idSala);
+    }
+
 
 }
