@@ -1217,33 +1217,64 @@ const SeccionSemanas: React.FC<SeccionSemanasProps> = ({ toast }) => {
 
 // ─── SECCIÓN: GESTIÓN SALA Y RESERVAS ────────────────────────────────────────
 
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutos
+
+const formatCacheCountdown = (s: number): string => {
+  const m = Math.floor(s / 60);
+  const sec = s % 60;
+  return `${m}:${sec.toString().padStart(2, '0')}`;
+};
+
+let _reservasCache: { data: IReservaActiva[]; ts: number } | null = null;
+let _salasCache: { data: ISala[]; ts: number } | null = null;
+
 const SeccionReservas: React.FC = () => {
   const toast = useToast();
   const [reservas, setReservas] = React.useState<IReservaActiva[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [errorMsg, setErrorMsg] = React.useState<string | null>(null);
   const [filtroDia, setFiltroDia] = React.useState<DiaSemana | 'Todos'>('Todos');
-  const [filtroSala, setFiltroSala] = React.useState('');
+  const [filtroTexto, setFiltroTexto] = React.useState('');
+  const [secondsLeft, setSecondsLeft] = React.useState(0);
 
   React.useEffect(() => {
-    obtenerReservasActivasService()
-      .then(setReservas)
-      .catch((err: Error) => {
-        const msg = err.message || 'Error al cargar las reservas';
-        setErrorMsg(msg);
-        toast.error(msg);
-      })
-      .finally(() => setIsLoading(false));
+    const now = Date.now();
+    if (_reservasCache && now - _reservasCache.ts < CACHE_TTL_MS) {
+      setReservas(_reservasCache.data);
+      setIsLoading(false);
+      setSecondsLeft(Math.round((CACHE_TTL_MS - (now - _reservasCache.ts)) / 1000));
+    } else {
+      obtenerReservasActivasService()
+        .then((data) => {
+          _reservasCache = { data, ts: Date.now() };
+          setReservas(data);
+          setSecondsLeft(CACHE_TTL_MS / 1000);
+        })
+        .catch((err: Error) => {
+          const msg = err.message || 'Error al cargar las reservas';
+          setErrorMsg(msg);
+          toast.error(msg);
+        })
+        .finally(() => setIsLoading(false));
+    }
+  }, []);
+
+  React.useEffect(() => {
+    const id = setInterval(() => setSecondsLeft((s) => Math.max(0, s - 1)), 1000);
+    return () => clearInterval(id);
   }, []);
 
   const reservasFiltradas = reservas.filter((r) => {
     const diaDisplay = DIA_DISPLAY[r.diaSemana] ?? r.diaSemana;
     const matchDia = filtroDia === 'Todos' || diaDisplay === filtroDia;
-    const matchSala =
-      filtroSala.trim() === '' ||
-      r.codSala.toLowerCase().includes(filtroSala.toLowerCase()) ||
-      r.nombreSala.toLowerCase().includes(filtroSala.toLowerCase());
-    return matchDia && matchSala;
+    const q = filtroTexto.trim().toLowerCase();
+    const matchTexto =
+      q === '' ||
+      r.nombreAsignatura.toLowerCase().includes(q) ||
+      r.nombreSeccion.toLowerCase().includes(q) ||
+      r.codSala.toLowerCase().includes(q) ||
+      r.nombreSala.toLowerCase().includes(q);
+    return matchDia && matchTexto;
   });
 
   const totalReservas = reservas.length;
@@ -1312,6 +1343,12 @@ const SeccionReservas: React.FC = () => {
                 Mostrando {reservasFiltradas.length} de {totalReservas} reservas
               </p>
             </div>
+            {secondsLeft > 0 && (
+              <div className="ml-auto flex items-center gap-1 text-xs text-default-400 bg-default-100 dark:bg-default-50/20 px-2 py-1 rounded-lg">
+                <Icon icon="lucide:clock" width={12} />
+                <span>Caché · {formatCacheCountdown(secondsLeft)}</span>
+              </div>
+            )}
           </div>
 
           {/* Filtros */}
@@ -1338,17 +1375,17 @@ const SeccionReservas: React.FC = () => {
                 </Chip>
               ))}
             </div>
-            {/* Filtro por sala */}
+            {/* Buscador asignatura / sección / sala */}
             <Input
-              placeholder="Buscar sala..."
-              value={filtroSala}
-              onValueChange={setFiltroSala}
+              placeholder="Buscar asignatura, sección o sala..."
+              value={filtroTexto}
+              onValueChange={setFiltroTexto}
               variant="bordered"
               size="sm"
-              className="sm:w-52 ml-auto"
+              className="sm:w-64 ml-auto"
               startContent={<Icon icon="lucide:search" className="text-default-400" width={16} />}
               isClearable
-              onClear={() => setFiltroSala('')}
+              onClear={() => setFiltroTexto('')}
             />
           </div>
         </CardHeader>
@@ -1447,12 +1484,29 @@ const SeccionGestionSalas: React.FC = () => {
   const [deleteTarget, setDeleteTarget] = React.useState<ISala | null>(null);
   const [confirmarDesactivar, setConfirmarDesactivar] = React.useState('');
   const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const [secondsLeft, setSecondsLeft] = React.useState(0);
 
   React.useEffect(() => {
-    obtenerSalasActivasService()
-      .then(setSalas)
-      .catch((err: Error) => toast.error(err.message))
-      .finally(() => setIsLoading(false));
+    const now = Date.now();
+    if (_salasCache && now - _salasCache.ts < CACHE_TTL_MS) {
+      setSalas(_salasCache.data);
+      setIsLoading(false);
+      setSecondsLeft(Math.round((CACHE_TTL_MS - (now - _salasCache.ts)) / 1000));
+    } else {
+      obtenerSalasActivasService()
+        .then((data) => {
+          _salasCache = { data, ts: Date.now() };
+          setSalas(data);
+          setSecondsLeft(CACHE_TTL_MS / 1000);
+        })
+        .catch((err: Error) => toast.error(err.message))
+        .finally(() => setIsLoading(false));
+    }
+  }, []);
+
+  React.useEffect(() => {
+    const id = setInterval(() => setSecondsLeft((s) => Math.max(0, s - 1)), 1000);
+    return () => clearInterval(id);
   }, []);
 
   const salasFiltradas = salas.filter(
@@ -1486,7 +1540,12 @@ const SeccionGestionSalas: React.FC = () => {
     setIsSubmitting(true);
     try {
       const nueva = await crearSalaService({ codSala: formCod, nombreSala: formNombre });
-      setSalas((prev) => [...prev, nueva]);
+      setSalas((prev) => {
+        const next = [...prev, nueva];
+        _salasCache = { data: next, ts: Date.now() };
+        return next;
+      });
+      setSecondsLeft(CACHE_TTL_MS / 1000);
       toast.success('Sala creada correctamente');
       onClose();
     } catch (err: any) {
@@ -1501,7 +1560,12 @@ const SeccionGestionSalas: React.FC = () => {
     setIsSubmitting(true);
     try {
       const updated = await actualizarSalaService(editId, { codSala: formCod, nombreSala: formNombre });
-      setSalas((prev) => prev.map((s) => (s.idSala === editId ? updated : s)));
+      setSalas((prev) => {
+        const next = prev.map((s) => (s.idSala === editId ? updated : s));
+        _salasCache = { data: next, ts: Date.now() };
+        return next;
+      });
+      setSecondsLeft(CACHE_TTL_MS / 1000);
       toast.success('Sala actualizada correctamente');
       onClose();
     } catch (err: any) {
@@ -1516,7 +1580,12 @@ const SeccionGestionSalas: React.FC = () => {
     setIsSubmitting(true);
     try {
       await eliminarSalaService(deleteTarget.idSala);
-      setSalas((prev) => prev.filter((s) => s.idSala !== deleteTarget.idSala));
+      setSalas((prev) => {
+        const next = prev.filter((s) => s.idSala !== deleteTarget.idSala);
+        _salasCache = { data: next, ts: Date.now() };
+        return next;
+      });
+      setSecondsLeft(CACHE_TTL_MS / 1000);
       toast.success('Sala desactivada correctamente');
       onClose();
     } catch (err: any) {
@@ -1545,6 +1614,12 @@ const SeccionGestionSalas: React.FC = () => {
                 {salasFiltradas.length} de {salas.length} salas registradas
               </p>
             </div>
+            {secondsLeft > 0 && (
+              <div className="flex items-center gap-1 text-xs text-default-400 bg-default-100 dark:bg-default-50/20 px-2 py-1 rounded-lg">
+                <Icon icon="lucide:clock" width={12} />
+                <span>Caché · {formatCacheCountdown(secondsLeft)}</span>
+              </div>
+            )}
             <Button
               size="sm"
               color="warning"
@@ -1575,7 +1650,7 @@ const SeccionGestionSalas: React.FC = () => {
               <Spinner size="lg" color="primary" />
             </div>
           ) : (
-            <div className="max-w-2xl">
+            <div className="max-w-2xl mx-auto">
               <Table
                 aria-label="Gestión de Salas"
                 removeWrapper
