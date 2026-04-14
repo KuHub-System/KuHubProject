@@ -47,14 +47,22 @@ interface IGrupoDia {
 // CONSTANTES UI
 // ─────────────────────────────────────────────────────────────────────────────
 
-const DIA_CONFIG: Record<number, { nombre: string; header: string; badge: string; text: string; border: string }> = {
-  0: { nombre: 'Domingo',   header: 'bg-default-100',   badge: 'bg-default-200',   text: 'text-default-700',   border: 'border-default-300'   },
-  1: { nombre: 'Lunes',     header: 'bg-primary-50',    badge: 'bg-primary-100',   text: 'text-primary-700',   border: 'border-primary-200'   },
-  2: { nombre: 'Martes',    header: 'bg-secondary-50',  badge: 'bg-secondary-100', text: 'text-secondary-700', border: 'border-secondary-200' },
-  3: { nombre: 'Miércoles', header: 'bg-success-50',    badge: 'bg-success-100',   text: 'text-success-700',   border: 'border-success-200'   },
-  4: { nombre: 'Jueves',    header: 'bg-warning-50',    badge: 'bg-warning-100',   text: 'text-warning-700',   border: 'border-warning-200'   },
-  5: { nombre: 'Viernes',   header: 'bg-danger-50',     badge: 'bg-danger-100',    text: 'text-danger-600',    border: 'border-danger-200'    },
-  6: { nombre: 'Sábado',    header: 'bg-default-100',   badge: 'bg-default-200',   text: 'text-default-700',   border: 'border-default-300'   },
+// bgHeader / bgBadge / border / textColor → colores CSS explícitos para garantizar
+// distinción visual real entre días consecutivos, independiente del tema HeroUI.
+const DIA_CONFIG: Record<number, {
+  nombre: string;
+  bgHeader: string;
+  bgBadge: string;
+  border: string;       // color CSS (hex) para borderColor inline
+  textColor: string;    // color CSS para texto
+}> = {
+  0: { nombre: 'Domingo',   bgHeader: '#f8fafc', bgBadge: '#e2e8f0', border: '#94a3b8', textColor: '#475569' }, // slate
+  1: { nombre: 'Lunes',     bgHeader: '#eff6ff', bgBadge: '#bfdbfe', border: '#3b82f6', textColor: '#1d4ed8' }, // blue
+  2: { nombre: 'Martes',    bgHeader: '#fffbeb', bgBadge: '#fde68a', border: '#f59e0b', textColor: '#b45309' }, // amber
+  3: { nombre: 'Miércoles', bgHeader: '#ecfdf5', bgBadge: '#a7f3d0', border: '#10b981', textColor: '#065f46' }, // emerald
+  4: { nombre: 'Jueves',    bgHeader: '#f5f3ff', bgBadge: '#ddd6fe', border: '#7c3aed', textColor: '#5b21b6' }, // violet
+  5: { nombre: 'Viernes',   bgHeader: '#fff1f2', bgBadge: '#fecdd3', border: '#e11d48', textColor: '#be123c' }, // rose
+  6: { nombre: 'Sábado',    bgHeader: '#f0fdfa', bgBadge: '#99f6e4', border: '#0d9488', textColor: '#0f766e' }, // teal
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1206,22 +1214,29 @@ const ConglomeradoPedidosPage: React.FC = () => {
                 grupo.solicitudes.forEach(s => s.productosSolicitados.forEach(p => productosDelDia.add(p.nombreProducto)));
 
                 return (
-                  <div key={grupo.fecha} className={`rounded-2xl border ${hoy ? 'border-warning-300 ring-2 ring-warning-200' : cfg.border} overflow-hidden`}>
+                  <div key={grupo.fecha}
+                    className={`rounded-2xl border-2 overflow-hidden shadow-sm`}
+                    style={{ borderColor: hoy ? '#d97706' : cfg.border, boxShadow: `0 2px 8px 0 ${cfg.border}30` }}>
 
                     {/* Cabecera del día */}
-                    <div className={`flex flex-col sm:flex-row sm:items-center gap-2 px-5 py-3 ${hoy ? 'bg-warning-50' : cfg.header}`}>
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 px-5 py-3"
+                      style={{ backgroundColor: hoy ? '#fffbeb' : cfg.bgHeader }}>
                       <div className="flex items-center gap-3 flex-1">
-                        <div className={`flex flex-col items-center justify-center rounded-xl px-3 py-1.5 min-w-[56px] text-center ${hoy ? 'bg-warning-200' : cfg.badge}`}>
-                          <span className={`text-[11px] font-black uppercase tracking-wide ${hoy ? 'text-warning-700' : cfg.text}`}>
+                        <div className="flex flex-col items-center justify-center rounded-xl px-3 py-1.5 min-w-[56px] text-center"
+                          style={{ backgroundColor: hoy ? '#fde68a' : cfg.bgBadge }}>
+                          <span className="text-[11px] font-black uppercase tracking-wide"
+                            style={{ color: hoy ? '#92400e' : cfg.textColor }}>
                             {cfg.nombre.slice(0, 3).toUpperCase()}
                           </span>
-                          <span className={`text-xl font-black leading-tight ${hoy ? 'text-warning-800' : cfg.text}`}>
+                          <span className="text-xl font-black leading-tight"
+                            style={{ color: hoy ? '#92400e' : cfg.textColor }}>
                             {new Date(grupo.fecha + 'T00:00:00').getDate()}
                           </span>
                           {hoy && <span className="text-[9px] font-bold text-warning-600 leading-none">HOY</span>}
                         </div>
                         <div>
-                          <p className={`font-bold text-sm capitalize ${hoy ? 'text-warning-800' : cfg.text}`}>
+                          <p className="font-bold text-sm capitalize"
+                            style={{ color: hoy ? '#92400e' : cfg.textColor }}>
                             {fmtFechaLarga(grupo.fecha)}
                           </p>
                           <div className="flex items-center gap-2 mt-0.5 flex-wrap">
@@ -1259,17 +1274,18 @@ const ConglomeradoPedidosPage: React.FC = () => {
                               onClick={() => toggleExpandido(solKey)}
                             >
                               {/* Barra de hora lateral */}
-                              <div className={`hidden sm:flex flex-col items-center justify-center px-3 py-3 min-w-[80px] border-r ${cfg.border} ${cfg.header}`}>
-                                <span className={`text-xs font-bold ${cfg.text}`}>{rango.inicio}</span>
-                                <div className={`w-px flex-1 my-1 min-h-[20px] ${cfg.border} border-l-2 border-dashed`} />
-                                <span className={`text-xs font-bold ${cfg.text}`}>{rango.fin}</span>
+                              <div className="hidden sm:flex flex-col items-center justify-center px-3 py-3 min-w-[80px] border-r"
+                                style={{ backgroundColor: cfg.bgHeader, borderColor: cfg.border }}>
+                                <span className="text-xs font-bold" style={{ color: cfg.textColor }}>{rango.inicio}</span>
+                                <div className="w-px flex-1 my-1 min-h-[20px] border-l-2 border-dashed" style={{ borderColor: cfg.border }} />
+                                <span className="text-xs font-bold" style={{ color: cfg.textColor }}>{rango.fin}</span>
                               </div>
 
                               {/* Contenido */}
                               <div className="flex-1 flex flex-col sm:flex-row sm:items-center gap-3 px-4 py-3">
 
                                 {/* Bloque móvil: hora */}
-                                <div className={`sm:hidden flex items-center gap-2 text-xs ${cfg.text} font-bold`}>
+                                <div className="sm:hidden flex items-center gap-2 text-xs font-bold" style={{ color: cfg.textColor }}>
                                   <Icon icon="lucide:clock" width={12} />
                                   {rango.inicio} – {rango.fin}
                                 </div>
@@ -1335,13 +1351,14 @@ const ConglomeradoPedidosPage: React.FC = () => {
                             {abierto && (
                               <div className="mx-4 mb-3 rounded-xl border border-default-100 overflow-hidden">
                                 {/* Horario y sala */}
-                                <div className={`flex items-center gap-2 px-4 py-2 ${cfg.header} border-b ${cfg.border}`}>
-                                  <Icon icon="lucide:clock" width={12} className={cfg.text} />
-                                  <span className={`text-xs font-bold ${cfg.text} uppercase tracking-wide`}>Horario y Sala</span>
+                                <div className="flex items-center gap-2 px-4 py-2 border-b"
+                                  style={{ backgroundColor: cfg.bgHeader, borderColor: cfg.border }}>
+                                  <Icon icon="lucide:clock" width={12} style={{ color: cfg.textColor }} />
+                                  <span className="text-xs font-bold uppercase tracking-wide" style={{ color: cfg.textColor }}>Horario y Sala</span>
                                 </div>
                                 <div className="flex flex-wrap gap-2 px-4 py-2.5 bg-default-50">
                                   <div className="flex items-center gap-2 px-3 py-1.5 bg-white rounded-lg border border-default-200 text-xs">
-                                    <Icon icon="lucide:clock" width={12} className={cfg.text} />
+                                    <Icon icon="lucide:clock" width={12} style={{ color: cfg.textColor }} />
                                     <span className="font-mono text-default-700">{rango.inicio} – {rango.fin}</span>
                                     <span className="text-default-400">·</span>
                                     <Icon icon="lucide:door-open" width={12} className="text-default-400" />
@@ -1350,9 +1367,10 @@ const ConglomeradoPedidosPage: React.FC = () => {
                                 </div>
 
                                 {/* Tabla de productos */}
-                                <div className={`flex items-center gap-2 px-4 py-2 border-t border-b ${cfg.border}`}>
-                                  <Icon icon="lucide:package" width={12} className={cfg.text} />
-                                  <span className={`text-xs font-bold ${cfg.text} uppercase tracking-wide`}>
+                                <div className="flex items-center gap-2 px-4 py-2 border-t border-b"
+                                  style={{ borderColor: cfg.border }}>
+                                  <Icon icon="lucide:package" width={12} style={{ color: cfg.textColor }} />
+                                  <span className="text-xs font-bold uppercase tracking-wide" style={{ color: cfg.textColor }}>
                                     Productos requeridos · {sol.productosSolicitados.length} ítem{sol.productosSolicitados.length > 1 ? 's' : ''}
                                   </span>
                                 </div>
@@ -1433,11 +1451,14 @@ const ConglomeradoPedidosPage: React.FC = () => {
                               className="flex flex-col sm:flex-row sm:items-center gap-3 px-4 py-2.5 bg-white hover:bg-default-50/50">
 
                               {/* Badge fecha */}
-                              <div className={`shrink-0 flex flex-col items-center justify-center rounded-xl px-2.5 py-1.5 min-w-[56px] text-center border ${hoy ? 'bg-warning-50 border-warning-200' : cfg.header + ' ' + cfg.border}`}>
-                                <span className={`text-[10px] font-black uppercase leading-none ${hoy ? 'text-warning-600' : cfg.text}`}>
+                              <div className="shrink-0 flex flex-col items-center justify-center rounded-xl px-2.5 py-1.5 min-w-[56px] text-center border"
+                                style={{ backgroundColor: hoy ? '#fffbeb' : cfg.bgHeader, borderColor: hoy ? '#fbbf24' : cfg.border }}>
+                                <span className="text-[10px] font-black uppercase leading-none"
+                                  style={{ color: hoy ? '#d97706' : cfg.textColor }}>
                                   {DIA_CONFIG[dia]?.nombre.slice(0, 3).toUpperCase() ?? ''}
                                 </span>
-                                <span className={`text-sm font-black leading-tight ${hoy ? 'text-warning-700' : cfg.text}`}>
+                                <span className="text-sm font-black leading-tight"
+                                  style={{ color: hoy ? '#b45309' : cfg.textColor }}>
                                   {fmtFechaCorta(det.fechaSolicitada)}
                                 </span>
                                 {hoy && <span className="text-[9px] font-bold text-warning-600">HOY</span>}
