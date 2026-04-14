@@ -586,15 +586,29 @@ Técnico:
   - Por cada categoría:
       · Fila de nombre de categoría (fusionada, fondo amarillo claro).
       · Filas de productos: Categoría | Producto | Unidad | cantidad por sección
-        | Total Día (fórmula SUM activa que suma las columnas de sección).
-      · Fila SUBTOTAL: totales por columna de sección (fórmulas SUM) y total
-        general (fórmula SUM de la columna Total Día).
+        | Total Día (suma pre-calculada desde el frontend).
+      · Fila SUBTOTAL: totales por columna de sección y total general
+        (valores pre-calculados desde el frontend).
       · Fila separadora (fondo gris claro).
-  - Todas las celdas numéricas son tipo 'n' con formato '#,##0.###' — permiten
-    que el usuario edite valores y los totales/subtotales se recalculen
-    automáticamente gracias a las fórmulas SUM activas.
+  - Todas las celdas numéricas se almacenan como texto (tipo 't: s') usando
+    toLocaleString('es-CL') — garantiza formato chileno (punto miles, coma
+    decimal) sin depender del locale de Windows del usuario.
   - Ancho de columnas calculado automáticamente (autoColWidth).
   - Filas congeladas (freeze panes): 3 filas y 3 columnas fijas al hacer scroll.
+
+  FACTOR LIMITANTE — Fórmulas SUM vs. formato chileno en Excel:
+  No es posible tener simultáneamente fórmulas SUM activas (recalculables al
+  editar) Y formato numérico chileno garantizado en el mismo archivo xlsx.
+  Razón técnica: los separadores de miles y decimales en Excel (punto/coma) son
+  siempre controlados por la configuración regional de Windows del usuario; no
+  existe código de formato xlsx (incluyendo especificadores de locale como
+  [$-2C0A] o [$-es-CL]) que fuerce los separadores independientemente del locale.
+  Si se usan celdas numéricas (t: 'n') para activar fórmulas, en una instalación
+  de Excel en inglés los números se muestran con coma miles y punto decimal
+  (formato anglosajón), que es incorrecto para el contexto chileno.
+  Decisión tomada: prioridad al formato chileno. Los valores se almacenan como
+  texto pre-calculado; si el usuario edita una celda, los totales NO se
+  actualizan automáticamente.
 
 Para no técnicos:
   Una vez que las solicitudes de la semana están aprobadas, el responsable las
