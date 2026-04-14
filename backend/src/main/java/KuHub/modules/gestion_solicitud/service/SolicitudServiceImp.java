@@ -4,6 +4,7 @@ import KuHub.modules.gestion_academica.repository.AsignaturaRepository;
 import KuHub.modules.gestion_receta.services.DetalleRecetaService;
 import KuHub.modules.gestion_solicitud.dtos.request.record.ChangeSolicitationStatus;
 import KuHub.modules.gestion_solicitud.dtos.request.record.MassiveSolicitation;
+import KuHub.modules.gestion_solicitud.exception.GestionSolicitudException;
 import KuHub.modules.gestion_solicitud.dtos.respose.record.CourseForSolicitation;
 import KuHub.modules.gestion_solicitud.dtos.respose.record.DashboardConsolidado;
 import KuHub.modules.gestion_solicitud.dtos.request.*;
@@ -201,6 +202,18 @@ public class SolicitudServiceImp implements SolicitudService{
     @Override
     @Transactional
     public boolean changeMassiveStatus(ChangeSolicitationStatus request) {
+
+        // 0. Validar que ninguna solicitud esté en estado EN_PEDIDO (ya fue confirmada en un pedido)
+        List<Integer> todosLosIds = request.estadosSolicitudes().stream()
+                .map(ChangeSolicitationStatus.StatusItemDTO::idSolicitud)
+                .toList();
+
+        if (solicitudRepository.existsByIdSolicitudInAndEstadoSolicitud(todosLosIds, Solicitud.EstadoSolicitud.EN_PEDIDO)) {
+            throw new GestionSolicitudException(
+                    "No es posible cambiar el estado de solicitudes en estado EN_PEDIDO. " +
+                    "Estas solicitudes ya fueron confirmadas en un pedido."
+            );
+        }
 
         // 1. Sabemos exactamente cuántas solicitudes deberíamos actualizar
         int totalEsperados = request.estadosSolicitudes().size();

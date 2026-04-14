@@ -1219,11 +1219,6 @@ const SeccionSemanas: React.FC<SeccionSemanasProps> = ({ toast }) => {
 
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutos
 
-const formatCacheCountdown = (s: number): string => {
-  const m = Math.floor(s / 60);
-  const sec = s % 60;
-  return `${m}:${sec.toString().padStart(2, '0')}`;
-};
 
 let _reservasCache: { data: IReservaActiva[]; ts: number } | null = null;
 let _salasCache: { data: ISala[]; ts: number } | null = null;
@@ -1235,20 +1230,16 @@ const SeccionReservas: React.FC = () => {
   const [errorMsg, setErrorMsg] = React.useState<string | null>(null);
   const [filtroDia, setFiltroDia] = React.useState<DiaSemana | 'Todos'>('Todos');
   const [filtroTexto, setFiltroTexto] = React.useState('');
-  const [secondsLeft, setSecondsLeft] = React.useState(0);
-
   React.useEffect(() => {
     const now = Date.now();
     if (_reservasCache && now - _reservasCache.ts < CACHE_TTL_MS) {
       setReservas(_reservasCache.data);
       setIsLoading(false);
-      setSecondsLeft(Math.round((CACHE_TTL_MS - (now - _reservasCache.ts)) / 1000));
     } else {
       obtenerReservasActivasService()
         .then((data) => {
           _reservasCache = { data, ts: Date.now() };
           setReservas(data);
-          setSecondsLeft(CACHE_TTL_MS / 1000);
         })
         .catch((err: Error) => {
           const msg = err.message || 'Error al cargar las reservas';
@@ -1257,11 +1248,6 @@ const SeccionReservas: React.FC = () => {
         })
         .finally(() => setIsLoading(false));
     }
-  }, []);
-
-  React.useEffect(() => {
-    const id = setInterval(() => setSecondsLeft((s) => Math.max(0, s - 1)), 1000);
-    return () => clearInterval(id);
   }, []);
 
   const reservasFiltradas = reservas.filter((r) => {
@@ -1343,12 +1329,6 @@ const SeccionReservas: React.FC = () => {
                 Mostrando {reservasFiltradas.length} de {totalReservas} reservas
               </p>
             </div>
-            {secondsLeft > 0 && (
-              <div className="ml-auto flex items-center gap-1 text-xs text-default-400 bg-default-100 dark:bg-default-50/20 px-2 py-1 rounded-lg">
-                <Icon icon="lucide:clock" width={12} />
-                <span>Caché · {formatCacheCountdown(secondsLeft)}</span>
-              </div>
-            )}
           </div>
 
           {/* Filtros */}
