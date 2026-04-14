@@ -573,8 +573,28 @@ Técnico:
   - Vista agrupada por día de la semana con colores diferenciados por día
     (lunes azul, martes morado, miércoles verde, jueves amarillo, viernes rojo).
   - Destacado visual del día de hoy.
+  - Toggle "Con colores / Sin colores" para colorear celdas por sección en
+    la vista Por Categoría.
   - Exportación a Excel con formato (librería xlsx-js-style).
   - Permite aprobar pedidos desde la misma vista.
+
+  Estructura del Excel exportado — Vista Por Categoría (descargarExcelDia):
+  - Fila 1: Título fusionado "Por Categoría — {Día} — {Semana}" (fondo amarillo).
+  - Fila 2: Vacía (separador visual).
+  - Fila 3: Encabezados: Categoría | Producto | Unidad | §Sección—Asignatura (1 col
+    por combinación única) | Total Día (fondo oscuro).
+  - Por cada categoría:
+      · Fila de nombre de categoría (fusionada, fondo amarillo claro).
+      · Filas de productos: Categoría | Producto | Unidad | cantidad por sección
+        | Total Día (fórmula SUM activa que suma las columnas de sección).
+      · Fila SUBTOTAL: totales por columna de sección (fórmulas SUM) y total
+        general (fórmula SUM de la columna Total Día).
+      · Fila separadora (fondo gris claro).
+  - Todas las celdas numéricas son tipo 'n' con formato '#,##0.###' — permiten
+    que el usuario edite valores y los totales/subtotales se recalculen
+    automáticamente gracias a las fórmulas SUM activas.
+  - Ancho de columnas calculado automáticamente (autoColWidth).
+  - Filas congeladas (freeze panes): 3 filas y 3 columnas fijas al hacer scroll.
 
 Para no técnicos:
   Una vez que las solicitudes de la semana están aprobadas, el responsable las
