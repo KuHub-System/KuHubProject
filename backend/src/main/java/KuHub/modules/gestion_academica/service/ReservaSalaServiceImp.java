@@ -9,7 +9,7 @@ import KuHub.modules.gestion_academica.exceptions.GestionAcademicaException;
 import KuHub.modules.gestion_academica.repository.ReservaSalaRepository;
 import KuHub.modules.gestion_receta.exceptions.GestionRecetaException;
 import KuHub.utils.StringUtils;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -17,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
+@Slf4j
 @Service
 public class ReservaSalaServiceImp implements ReservaSalaService{
 
@@ -24,23 +25,16 @@ public class ReservaSalaServiceImp implements ReservaSalaService{
     @Autowired
     private ReservaSalaRepository reservaSalaRepository;
 
-    /**Others*/
-    @Autowired
-    private ObjectMapper objectMapper;
-
     @Transactional(readOnly = true)
     @Override
     public List<ReservaActivaView> findAllReservasActivas() {
         List<Object[]> rows = reservaSalaRepository.findAllReservasActivasRaw();
-        return rows.stream()
-                .map(row -> {
-                    try {
-                        return objectMapper.readValue(row[0].toString(), ReservaActivaView.class);
-                    } catch (Exception e) {
-                        throw new RuntimeException("Error al mapear ReservaActivaView desde JSON: " + row[0], e);
-                    }
-                })
+        log.info("findAllReservasActivas — filas crudas obtenidas: {}", rows.size());
+        List<ReservaActivaView> result = rows.stream()
+                .map(ReservaActivaView::fromRow)
                 .toList();
+        log.info("findAllReservasActivas — reservas mapeadas: {}", result.size());
+        return result;
     }
 
     /**Metodo ultilizado para obtener los */
