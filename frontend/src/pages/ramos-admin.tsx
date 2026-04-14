@@ -672,6 +672,7 @@ interface CrearSeccionModalProps {
 const CrearSeccionModal: React.FC<CrearSeccionModalProps> = ({ asignatura, onClose, onCreated }) => {
   const { isAdmin: isAdminCrear } = usePermission();
   const historyCrear = useHistory();
+  const toast = useToast();
   const [nombreSeccion, setNombreSeccion] = React.useState('');
   const [docenteId, setDocenteId] = React.useState('');
   const [estado, setEstado] = React.useState<EstadoSeccion>('ACTIVA');
@@ -799,6 +800,8 @@ const CrearSeccionModal: React.FC<CrearSeccionModalProps> = ({ asignatura, onClo
         })),
       });
       onCreated();
+    } catch (error: any) {
+      toast.error(error.message || 'Error al crear la sección');
     } finally {
       setIsSaving(false);
     }
