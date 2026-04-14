@@ -1382,7 +1382,7 @@ const SeccionReservas: React.FC = () => {
               onValueChange={setFiltroTexto}
               variant="bordered"
               size="sm"
-              className="sm:w-64 ml-auto"
+              className="sm:w-80 ml-auto"
               startContent={<Icon icon="lucide:search" className="text-default-400" width={16} />}
               isClearable
               onClear={() => setFiltroTexto('')}
