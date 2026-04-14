@@ -299,7 +299,7 @@ const GestionPedidosPage: React.FC = () => {
                   const isActive = semanas.length > 0 && semanas[0].anio === p.anio && semanas[0].semestre === s;
                   return (
                     <button key={`${p.anio}-${s}`} onClick={() => handlePeriodoChange(p.anio, s)}
-                      className={`px-3 py-1 rounded-full text-xs font-bold border transition-all ${
+                      className={`px-3 py-1 rounded-full text-xs font-bold border transition-all cursor-pointer ${
                         isActive ? 'bg-warning text-white border-warning' : 'bg-default-100 text-default-600 border-default-200 hover:bg-default-200'
                       }`}>
                       {p.anio} S{s}
