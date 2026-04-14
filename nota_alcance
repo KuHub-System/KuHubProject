@@ -402,8 +402,8 @@ Técnico:
   - POST /order-for-consolidation: dashboard consolidado de solicitudes para la semana.
   - PATCH /change-massive-status: cambio masivo de estado (IDs + nuevo estado + motivo).
 
-  Estados de solicitud — DEFINICIÓN PENDIENTE DE CIERRE:
-  Estado definido en ENUM: PENDIENTE → ACEPTADA → RECHAZADA → PROCESADO
+  Estados de solicitud:
+  Estado definido en ENUM: PENDIENTE → ACEPTADA → EN_PEDIDO → PROCESADO | RECHAZADA
 
   Puntos que requieren definición y/o implementación:
 
@@ -416,12 +416,18 @@ Técnico:
       Cambiar de RECHAZADA a PENDIENTE o ACEPTADA solo si fecha_solicitada > hoy.
       Lógica de validación en el service al recibir el cambio de estado.
 
-  (c) Estado EN_PROCESO (evaluación pendiente):
-      Se evalúa agregar este estado entre ACEPTADA y PROCESADO para indicar que
-      la solicitud fue incluida en un conglomerado de pedido. Permitiría:
-      - Ocultar en la vista de gestión solicitudes las que ya están en proceso.
-      - Pasar a PROCESADO solo al completarse la entrega en bodega de tránsito.
-      Decisión: definir con el cliente si es necesario.
+  (c) Estado EN_PEDIDO (IMPLEMENTADO 2026-04-14):
+      Nuevo estado entre ACEPTADA y PROCESADO que indica que la solicitud fue
+      confirmada al consolidar un pedido.
+      - Al presionar CONFIRMAR en Gestión de Pedidos, todas las solicitudes
+        ACEPTADAS del pedido se actualizan automáticamente a EN_PEDIDO.
+      - En la vista Gestión de Solicitudes, las solicitudes EN_PEDIDO se muestran
+        como solo lectura: no es posible cambiar su estado (backend lanza
+        GestionSolicitudException si se intenta). Frontend muestra el filtro
+        "En Pedido" con chip color secondary (icono shopping-cart).
+      - Java enum actualizado: Solicitud.EstadoSolicitud.EN_PEDIDO.
+      - SolicitudRepository: método JPA derivado
+        existsByIdSolicitudInAndEstadoSolicitud para validar en service.
 
   (d) MotivoRechazo pendiente de completar:
       La tabla motivo_rechazo_solicitud existe en BD y la clase Java existe con
@@ -543,11 +549,8 @@ Técnico:
     1. Crea la cabecera Pedido con estado PENDIENTE.
     2. Guarda todos los DetallePedido (totales por producto).
     3. Guarda todos los PedidoSolicitud (vínculos pedido ↔ solicitud).
-    4. NOTA TÉCNICA: la actualización de estado de las solicitudes a PROCESADO
-       tras la consolidación está comentada en el código actual:
-       // solicitudRepository.updateMassiveStateSolicitation(idsSolicitudes, "PROCESADO")
-       Esto significa que actualmente las solicitudes permanecen en ACEPTADA
-       después de consolidarse. Este paso debe definirse y activarse.
+    4. Actualiza todas las solicitudes vinculadas al pedido de ACEPTADA → EN_PEDIDO.
+       Esto bloquea el cambio de estado desde la vista Gestión de Solicitudes.
 
   Vista del conglomerado (POST /api/v1/pedido/consolidate — "GOD view"):
   Retorna PedidoDashboardResponse con 3 consultas JSON nativas simultáneas:
@@ -751,7 +754,7 @@ MANEJO DE EXCEPCIONES:
 TIPOS ENUM EN BASE DE DATOS (PostgreSQL ENUM nativo):
   Definidos como tipos en PostgreSQL, mapeados manualmente en Java:
   - dia_semana_type: LUNES, MARTES, MIERCOLES, JUEVES, VIERNES, SABADO, DOMINGO
-  - estado_solicitud_type: PENDIENTE, ACEPTADA, PROCESADO, RECHAZADA
+  - estado_solicitud_type: PENDIENTE, ACEPTADA, EN_PEDIDO, PROCESADO, RECHAZADA
   - estado_receta_type: ACTIVO, INACTIVO
   - estado_seccion_type: ACTIVA, INACTIVA, SUSPENDIDA
   - estado_pedido_type: PENDIENTE, APROVADO, RECHAZADO
@@ -792,12 +795,12 @@ IMPLEMENTADO Y FUNCIONAL:
   [✓] Compresión gzip en nginx, build multi-stage Docker
 
 PENDIENTE DE IMPLEMENTAR O DEFINIR:
-  [ ] Flujo completo de estados de solicitud:
+  [✓] Estado EN_PEDIDO implementado (2026-04-14):
+      Solicitudes ACEPTADAS pasan a EN_PEDIDO al confirmar consolidación de pedido.
+      Vista Gestión de Solicitudes muestra el estado y bloquea cualquier cambio.
+  [ ] Flujo pendiente de estados de solicitud:
       (a) Scheduler de rechazo automático por fecha vencida
       (b) Lógica de recuperación de solicitud rechazada
-      (c) Decisión sobre estado EN_PROCESO (definir con cliente)
-      (d) Activar la línea comentada en consolidateOrder() que actualiza el estado
-          de las solicitudes a PROCESADO tras consolidarse en pedido
   [ ] Completar MotivoRechazo: service, endpoint, integración al rechazo,
       notificación a Profesor a Cargo y Docente
   [✓] Edición de bloques horarios desde UI — Frontend + Backend implementados.
