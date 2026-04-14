@@ -203,15 +203,14 @@ public class SolicitudServiceImp implements SolicitudService{
     @Transactional
     public boolean changeMassiveStatus(ChangeSolicitationStatus request) {
 
-        // 0. Validar que ninguna solicitud esté en estado EN_PEDIDO (ya fue confirmada en un pedido)
+        // 0. Validar que ninguna solicitud esté en estado inmutable (EN_PEDIDO o PROCESADO)
         List<Integer> todosLosIds = request.estadosSolicitudes().stream()
                 .map(ChangeSolicitationStatus.StatusItemDTO::idSolicitud)
                 .toList();
 
-        if (solicitudRepository.existsByIdSolicitudInAndEstadoSolicitud(todosLosIds, Solicitud.EstadoSolicitud.EN_PEDIDO)) {
+        if (solicitudRepository.existsByIdSolicitudInAndEstadoInmutable(todosLosIds)) {
             throw new GestionSolicitudException(
-                    "No es posible cambiar el estado de solicitudes en estado EN_PEDIDO. " +
-                    "Estas solicitudes ya fueron confirmadas en un pedido."
+                    "No es posible cambiar el estado de solicitudes en estado EN_PEDIDO o PROCESADO."
             );
         }
 
