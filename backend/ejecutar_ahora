@@ -1,17 +1,3 @@
-para cada dia uso una tag, la de hoy es 1.0.7 asi que tiene que hacer el deploy ante cada modificacion o implementacion este es el modelo
-# 1. Guardar y subir los cambios del workflow
-git add .
-git commit -m "Nuevo estado Solicitud"
-git push
-# 2. Borrar posibles tags viejos o erróneos
-git tag -d K1.0.7
-git push origin --delete K1.0.7
-# 3. Crear el nuevo Tag con el formato K
-git tag K1.0.7
-# 4. ¡FUEGO!
-git push origin K1.0.7
+guarde en la memoria que no quiero que los nombre del los seguintes commit salga con fix, aquiero que salga solamete con una descripcion breve de lo implementado, nada mas.
 
 
-no agregaste nada en nota_alcance al paracer! Que te passa que te pido algo y no lo hace.
-
-no agregaste nada en el frontend al parecer, en gestion solicitud tiene aparecer tambien las solicitudes que tiene el estado en pedido para la visualizacion, como se puede indentificar en esta vista estan todas los estados para ver separadadamente o completo
