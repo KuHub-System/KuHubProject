@@ -1004,16 +1004,15 @@ const SolicitudPage: React.FC = () => {
               p.semestres.map(s => {
                 const isActive = currentPeriodo?.anio === p.anio && currentPeriodo?.semestre === s;
                 return (
-                  <Button key={`${p.anio}-${s}`} size="sm"
-                    color={isActive ? 'primary' : 'default'}
-                    variant={isActive ? 'solid' : 'flat'}
-                    onPress={() => !isActive && cargarSemanasParaPeriodo(p.anio, s)}
-                    isDisabled={isLoadingSemanas}
-                    className="h-7 min-w-0 px-3 font-bold text-xs"
+                  <button key={`${p.anio}-${s}`}
+                    onClick={() => !isActive && !isLoadingSemanas && cargarSemanasParaPeriodo(p.anio, s)}
+                    disabled={isLoadingSemanas}
+                    className={`px-3 py-1 rounded-full text-xs font-bold border transition-all cursor-pointer ${
+                      isActive ? 'bg-warning text-white border-warning' : 'bg-default-100 text-default-600 border-default-200 hover:bg-default-200'
+                    }`}
                   >
                     {p.anio} S{s}
-                    {isActive && <Icon icon="lucide:check" width={12} className="ml-1" />}
-                  </Button>
+                  </button>
                 );
               })
             )}
