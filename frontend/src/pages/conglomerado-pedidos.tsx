@@ -292,7 +292,7 @@ const ConglomeradoPedidosPage: React.FC = () => {
       idCategoria: number;
       nombreCategoria: string;
       abreviatura: string;
-      detalles: Array<{ diaSemana: number; nombreSeccion: string; cantidad: number; }>;
+      detalles: Array<{ diaSemana: number; nombreSeccion: string; nombreAsignatura: string; cantidad: number; }>;
     }
     const prodMap = new Map<number, ProdCat>();
     for (const pedido of (consolidateData?.pedidosCompletos ?? [])) {
@@ -312,6 +312,7 @@ const ConglomeradoPedidosPage: React.FC = () => {
           entry.detalles.push({
             diaSemana: getDiaSemana(det.fechaSolicitada),
             nombreSeccion: det.nombreSeccion,
+            nombreAsignatura: det.nombreAsignatura,
             cantidad: det.cantidad,
           });
         }
@@ -323,14 +324,15 @@ const ConglomeradoPedidosPage: React.FC = () => {
     });
   }, [consolidateData]);
 
+  // clave: "nombreAsignatura::nombreSeccion" → color único por asignatura+sección
   const seccionColorMap = React.useMemo(() => {
-    const sections = new Set<string>();
+    const keys = new Set<string>();
     for (const p of productosParaCategorias) {
-      for (const d of p.detalles) sections.add(d.nombreSeccion);
+      for (const d of p.detalles) keys.add(`${d.nombreAsignatura}::${d.nombreSeccion}`);
     }
     const map = new Map<string, string>();
-    Array.from(sections).sort().forEach((sec, i) => {
-      map.set(sec, SECCION_COLORS[i % SECCION_COLORS.length]);
+    Array.from(keys).sort().forEach((key, i) => {
+      map.set(key, SECCION_COLORS[i % SECCION_COLORS.length]);
     });
     return map;
   }, [productosParaCategorias]);
@@ -341,7 +343,7 @@ const ConglomeradoPedidosPage: React.FC = () => {
       idProducto: number;
       nombreProducto: string;
       abreviatura: string;
-      detallesFiltrados: Array<{ nombreSeccion: string; cantidad: number; }>;
+      detallesFiltrados: Array<{ nombreSeccion: string; nombreAsignatura: string; cantidad: number; }>;
       totalDia: number;
     }
     interface CatGroup { idCategoria: number; nombreCategoria: string; productos: ProdFiltrado[]; }
@@ -349,8 +351,8 @@ const ConglomeradoPedidosPage: React.FC = () => {
     const catMap = new Map<number, CatGroup>();
     for (const prod of productosParaCategorias) {
       const detallesFiltrados = diaCategoria === 'completa'
-        ? prod.detalles.map(d => ({ nombreSeccion: d.nombreSeccion, cantidad: d.cantidad }))
-        : prod.detalles.filter(d => d.diaSemana === diaCategoria).map(d => ({ nombreSeccion: d.nombreSeccion, cantidad: d.cantidad }));
+        ? prod.detalles.map(d => ({ nombreSeccion: d.nombreSeccion, nombreAsignatura: d.nombreAsignatura, cantidad: d.cantidad }))
+        : prod.detalles.filter(d => d.diaSemana === diaCategoria).map(d => ({ nombreSeccion: d.nombreSeccion, nombreAsignatura: d.nombreAsignatura, cantidad: d.cantidad }));
       if (detallesFiltrados.length === 0) continue;
       const totalDia = detallesFiltrados.reduce((s, d) => s + d.cantidad, 0);
       if (!catMap.has(prod.idCategoria)) {
@@ -364,7 +366,7 @@ const ConglomeradoPedidosPage: React.FC = () => {
   // Para Vista Completa: matriz [idProducto][diaSemana] → { total, secciones[] }
   const matrizCompleta = React.useMemo(() => {
     const dias = [1, 2, 3, 4, 5, 6, 0]; // Lun → Dom
-    interface CellData { total: number; secciones: Array<{ nombre: string; cantidad: number; }>; }
+    interface CellData { total: number; secciones: Array<{ compositeKey: string; nombre: string; cantidad: number; }>; }
     interface FilaMatrix {
       idProducto: number;
       nombreProducto: string;
@@ -380,10 +382,17 @@ const ConglomeradoPedidosPage: React.FC = () => {
         const detallesDia = prod.detalles.filter(d => d.diaSemana === dia);
         if (detallesDia.length > 0) {
           const secMap = new Map<string, number>();
-          for (const d of detallesDia) secMap.set(d.nombreSeccion, (secMap.get(d.nombreSeccion) ?? 0) + d.cantidad);
+          for (const d of detallesDia) {
+            const key = `${d.nombreAsignatura}::${d.nombreSeccion}`;
+            secMap.set(key, (secMap.get(key) ?? 0) + d.cantidad);
+          }
           diasData[dia] = {
             total: detallesDia.reduce((s, d) => s + d.cantidad, 0),
-            secciones: Array.from(secMap.entries()).map(([nombre, cantidad]) => ({ nombre, cantidad })),
+            secciones: Array.from(secMap.entries()).map(([compositeKey, cantidad]) => ({
+              compositeKey,
+              nombre: compositeKey.split('::')[1],
+              cantidad,
+            })),
           };
         }
       }
@@ -972,7 +981,7 @@ const ConglomeradoPedidosPage: React.FC = () => {
                                 const cell = row.diasData[dia];
                                 if (!cell) return <td key={dia} className="text-center px-2 py-2 text-default-300">—</td>;
                                 const bgColor = conColores && cell.secciones.length === 1
-                                  ? seccionColorMap.get(cell.secciones[0].nombre) ?? 'transparent'
+                                  ? seccionColorMap.get(cell.secciones[0].compositeKey) ?? 'transparent'
                                   : 'transparent';
                                 return (
                                   <td key={dia} className="text-center px-2 py-2">
@@ -980,7 +989,7 @@ const ConglomeradoPedidosPage: React.FC = () => {
                                       {conColores && cell.secciones.length > 1
                                         ? cell.secciones.map((sec, si) => (
                                             <span key={si} className="text-[11px] font-mono font-semibold px-1.5 py-0.5 rounded"
-                                              style={{ backgroundColor: seccionColorMap.get(sec.nombre) ?? '#f4f4f5' }}>
+                                              style={{ backgroundColor: seccionColorMap.get(sec.compositeKey) ?? '#f4f4f5' }}>
                                               {fmtCant(sec.cantidad)}
                                               <span className="text-[9px] text-default-500 ml-0.5">{row.abreviatura}</span>
                                             </span>
@@ -1013,15 +1022,25 @@ const ConglomeradoPedidosPage: React.FC = () => {
 
                 {/* Leyenda secciones */}
                 {conColores && seccionColorMap.size > 0 && (
-                  <div className="mt-4 p-3 bg-default-50 rounded-xl border border-default-200">
-                    <p className="text-[10px] font-bold text-default-500 uppercase tracking-wider mb-2">Leyenda de secciones</p>
+                  <div className="mt-4 p-4 bg-default-50 rounded-xl border border-default-200">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Icon icon="lucide:palette" width={13} className="text-default-500" />
+                      <p className="text-[10px] font-bold text-default-500 uppercase tracking-wider">Leyenda de secciones</p>
+                      <span className="ml-auto text-[10px] text-default-400">{seccionColorMap.size} sección{seccionColorMap.size !== 1 ? 'es' : ''}</span>
+                    </div>
                     <div className="flex flex-wrap gap-2">
-                      {Array.from(seccionColorMap.entries()).map(([sec, color]) => (
-                        <span key={sec} className="flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium text-default-700 border border-default-200"
-                          style={{ backgroundColor: color }}>
-                          §{sec}
-                        </span>
-                      ))}
+                      {Array.from(seccionColorMap.entries()).map(([key, color]) => {
+                        const [asignatura, seccion] = key.split('::');
+                        return (
+                          <div key={key}
+                            className="flex items-center gap-1.5 pl-2 pr-3 py-1 rounded-lg border border-default-200 text-default-700"
+                            style={{ backgroundColor: color }}>
+                            <span className="font-mono font-bold text-xs">§{seccion}</span>
+                            <span className="text-default-400 text-[10px]">·</span>
+                            <span className="text-[11px] font-medium truncate max-w-[120px]" title={asignatura}>{asignatura}</span>
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 )}
@@ -1055,10 +1074,16 @@ const ConglomeradoPedidosPage: React.FC = () => {
 
                         {/* Filas de productos */}
                         {cat.productos.map(prod => {
-                          // Agrupar detalles por sección
-                          const seccionMap = new Map<string, number>();
+                          // Agrupar por clave compuesta asignatura::seccion para no mezclar secciones homónimas
+                          const seccionMap = new Map<string, { cantidad: number; nombreSeccion: string; nombreAsignatura: string }>();
                           for (const d of prod.detallesFiltrados) {
-                            seccionMap.set(d.nombreSeccion, (seccionMap.get(d.nombreSeccion) ?? 0) + d.cantidad);
+                            const key = `${d.nombreAsignatura}::${d.nombreSeccion}`;
+                            const prev = seccionMap.get(key);
+                            seccionMap.set(key, {
+                              cantidad: (prev?.cantidad ?? 0) + d.cantidad,
+                              nombreSeccion: d.nombreSeccion,
+                              nombreAsignatura: d.nombreAsignatura,
+                            });
                           }
                           return (
                             <div key={prod.idProducto}
@@ -1070,11 +1095,11 @@ const ConglomeradoPedidosPage: React.FC = () => {
                                 </p>
                               </div>
                               <div className="flex flex-wrap gap-1 justify-end">
-                                {Array.from(seccionMap.entries()).map(([sec, cant]) => (
-                                  <span key={sec}
+                                {Array.from(seccionMap.entries()).map(([key, { cantidad, nombreSeccion }]) => (
+                                  <span key={key}
                                     className="px-2 py-1 rounded-lg text-xs font-semibold border border-default-200 text-default-700 font-mono"
-                                    style={{ backgroundColor: conColores ? (seccionColorMap.get(sec) ?? '#f4f4f5') : 'white' }}>
-                                    §{sec} · {fmtCant(cant)} {prod.abreviatura}
+                                    style={{ backgroundColor: conColores ? (seccionColorMap.get(key) ?? '#f4f4f5') : 'white' }}>
+                                    §{nombreSeccion} · {fmtCant(cantidad)} {prod.abreviatura}
                                   </span>
                                 ))}
                               </div>
@@ -1094,15 +1119,25 @@ const ConglomeradoPedidosPage: React.FC = () => {
 
                     {/* Leyenda */}
                     {conColores && seccionColorMap.size > 0 && (
-                      <div className="p-3 bg-default-50 rounded-xl border border-default-200">
-                        <p className="text-[10px] font-bold text-default-500 uppercase tracking-wider mb-2">Leyenda de secciones</p>
+                      <div className="p-4 bg-default-50 rounded-xl border border-default-200">
+                        <div className="flex items-center gap-2 mb-3">
+                          <Icon icon="lucide:palette" width={13} className="text-default-500" />
+                          <p className="text-[10px] font-bold text-default-500 uppercase tracking-wider">Leyenda de secciones</p>
+                          <span className="ml-auto text-[10px] text-default-400">{seccionColorMap.size} sección{seccionColorMap.size !== 1 ? 'es' : ''}</span>
+                        </div>
                         <div className="flex flex-wrap gap-2">
-                          {Array.from(seccionColorMap.entries()).map(([sec, color]) => (
-                            <span key={sec} className="flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium text-default-700 border border-default-200"
-                              style={{ backgroundColor: color }}>
-                              §{sec}
-                            </span>
-                          ))}
+                          {Array.from(seccionColorMap.entries()).map(([key, color]) => {
+                            const [asignatura, seccion] = key.split('::');
+                            return (
+                              <div key={key}
+                                className="flex items-center gap-1.5 pl-2 pr-3 py-1 rounded-lg border border-default-200 text-default-700"
+                                style={{ backgroundColor: color }}>
+                                <span className="font-mono font-bold text-xs">§{seccion}</span>
+                                <span className="text-default-400 text-[10px]">·</span>
+                                <span className="text-[11px] font-medium truncate max-w-[120px]" title={asignatura}>{asignatura}</span>
+                              </div>
+                            );
+                          })}
                         </div>
                       </div>
                     )}
