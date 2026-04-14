@@ -217,8 +217,15 @@ public interface SolicitudRepository extends JpaRepository<Solicitud, Integer> {
             """, nativeQuery = true)
     int updateMassiveStateSolicitation(@Param("ids") List<Integer> ids, @Param("estado") String estado);
 
-    /** Verifica si alguna de las solicitudes indicadas tiene estado EN_PEDIDO. */
-    boolean existsByIdSolicitudInAndEstadoSolicitud(List<Integer> idsSolicitud, Solicitud.EstadoSolicitud estadoSolicitud);
+    /** Verifica si alguna de las solicitudes indicadas tiene estado EN_PEDIDO o PROCESADO (inmutables). */
+    @Query(value = """
+            SELECT EXISTS (
+                SELECT 1 FROM solicitud
+                WHERE id_solicitud IN (:ids)
+                  AND estado_solicitud IN ('EN_PEDIDO', 'PROCESADO')
+            )
+            """, nativeQuery = true)
+    boolean existsByIdSolicitudInAndEstadoInmutable(@Param("ids") List<Integer> ids);
 
 
 
