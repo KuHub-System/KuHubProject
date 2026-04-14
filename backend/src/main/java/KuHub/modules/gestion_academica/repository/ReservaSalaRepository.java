@@ -81,23 +81,22 @@ public interface ReservaSalaRepository extends JpaRepository<ReservaSala, Intege
     List<ReservaSala> findBySeccion_IdSeccion(Integer idSeccion);
 
     /**
-     * Obtiene todas las reservas activas como JSON usando json_build_object.
-     * Resultado: List<Object[]> donde row[0] es el JSON de la reserva.
+     * Obtiene todas las reservas activas como columnas individuales.
      * Ordenado por hora_inicio del bloque para mostrar en orden cronológico.
+     * Mapear con ReservaActivaView.fromRow(row).
      */
     @Query(value = """
-        SELECT json_build_object(            -- [0] JSON con todos los atributos de la reserva
-            'nombreAsignatura', a.nombre_asignatura,
-            'nombreSeccion',    s.nombre_seccion,
-            'nombreSala',       sl.nombre_sala,
-            'codSala',          sl.cod_sala,
-            'diaSemana',        rs.dia_semana::text,
-            'numeroBloque',     bh.numero_bloque,
-            'horaInicio',       TO_CHAR(bh.hora_inicio, 'HH24:MI'),
-            'horaFin',          TO_CHAR(bh.hora_fin, 'HH24:MI')
-        )
+        SELECT
+            a.nombre_asignatura,                 -- [0]
+            s.nombre_seccion,                    -- [1]
+            sl.nombre_sala,                      -- [2]
+            sl.cod_sala,                         -- [3]
+            rs.dia_semana::text,                 -- [4]
+            bh.numero_bloque,                    -- [5]
+            TO_CHAR(bh.hora_inicio, 'HH24:MI'),  -- [6]
+            TO_CHAR(bh.hora_fin,    'HH24:MI')   -- [7]
         FROM reserva_sala rs
-        JOIN seccion s    ON s.id_seccion   = rs.id_seccion
+        JOIN seccion s    ON s.id_seccion    = rs.id_seccion
         JOIN asignatura a ON a.id_asignatura = s.id_asignatura
         JOIN sala sl      ON sl.id_sala      = rs.id_sala
         JOIN bloque_horario bh ON bh.id_bloque = rs.id_bloque
