@@ -1484,29 +1484,21 @@ const SeccionGestionSalas: React.FC = () => {
   const [deleteTarget, setDeleteTarget] = React.useState<ISala | null>(null);
   const [confirmarDesactivar, setConfirmarDesactivar] = React.useState('');
   const [isSubmitting, setIsSubmitting] = React.useState(false);
-  const [secondsLeft, setSecondsLeft] = React.useState(0);
 
   React.useEffect(() => {
     const now = Date.now();
     if (_salasCache && now - _salasCache.ts < CACHE_TTL_MS) {
       setSalas(_salasCache.data);
       setIsLoading(false);
-      setSecondsLeft(Math.round((CACHE_TTL_MS - (now - _salasCache.ts)) / 1000));
     } else {
       obtenerSalasActivasService()
         .then((data) => {
           _salasCache = { data, ts: Date.now() };
           setSalas(data);
-          setSecondsLeft(CACHE_TTL_MS / 1000);
         })
         .catch((err: Error) => toast.error(err.message))
         .finally(() => setIsLoading(false));
     }
-  }, []);
-
-  React.useEffect(() => {
-    const id = setInterval(() => setSecondsLeft((s) => Math.max(0, s - 1)), 1000);
-    return () => clearInterval(id);
   }, []);
 
   const salasFiltradas = salas.filter(
@@ -1545,7 +1537,6 @@ const SeccionGestionSalas: React.FC = () => {
         _salasCache = { data: next, ts: Date.now() };
         return next;
       });
-      setSecondsLeft(CACHE_TTL_MS / 1000);
       toast.success('Sala creada correctamente');
       onClose();
     } catch (err: any) {
@@ -1565,7 +1556,6 @@ const SeccionGestionSalas: React.FC = () => {
         _salasCache = { data: next, ts: Date.now() };
         return next;
       });
-      setSecondsLeft(CACHE_TTL_MS / 1000);
       toast.success('Sala actualizada correctamente');
       onClose();
     } catch (err: any) {
@@ -1585,7 +1575,6 @@ const SeccionGestionSalas: React.FC = () => {
         _salasCache = { data: next, ts: Date.now() };
         return next;
       });
-      setSecondsLeft(CACHE_TTL_MS / 1000);
       toast.success('Sala desactivada correctamente');
       onClose();
     } catch (err: any) {
@@ -1601,105 +1590,119 @@ const SeccionGestionSalas: React.FC = () => {
 
   return (
     <div className="space-y-4">
-      {/* Tabla compacta */}
-      <Card className="shadow-sm border border-default-200 dark:border-default-100 bg-white dark:bg-content1">
-        <CardHeader className="px-6 pt-5 pb-3 flex flex-col gap-3">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-warning-100 dark:bg-warning-900/30 text-warning">
-              <Icon icon="lucide:building-2" width={20} />
-            </div>
-            <div>
-              <h3 className="font-bold text-base text-secondary dark:text-foreground">Salas Activas</h3>
-              <p className="text-xs text-default-400">
-                {salasFiltradas.length} de {salas.length} salas registradas
-              </p>
-            </div>
-            {secondsLeft > 0 && (
-              <div className="flex items-center gap-1 text-xs text-default-400 bg-default-100 dark:bg-default-50/20 px-2 py-1 rounded-lg">
-                <Icon icon="lucide:clock" width={12} />
-                <span>Caché · {formatCacheCountdown(secondsLeft)}</span>
-              </div>
-            )}
-            <Button
-              size="sm"
-              color="warning"
-              variant="solid"
-              className="ml-auto font-bold text-white shadow-sm"
-              startContent={<Icon icon="lucide:plus" width={16} />}
-              onPress={openCreate}
-            >
-              Nueva Sala
-            </Button>
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+        <div className="flex items-center gap-3 flex-1">
+          <div className="p-2.5 rounded-xl bg-warning-100 dark:bg-warning-900/30 text-warning-600 dark:text-warning-400">
+            <Icon icon="lucide:building-2" width={22} />
           </div>
+          <div>
+            <h3 className="font-bold text-base text-secondary dark:text-foreground leading-tight">Salas Activas</h3>
+            <p className="text-xs text-default-400">
+              {filtroSala.trim() !== '' && salasFiltradas.length !== salas.length
+                ? `${salasFiltradas.length} resultado${salasFiltradas.length !== 1 ? 's' : ''} · ${salas.length} totales`
+                : `${salas.length} sala${salas.length !== 1 ? 's' : ''} registrada${salas.length !== 1 ? 's' : ''}`}
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
           <Input
-            placeholder="Buscar por código o nombre..."
+            placeholder="Buscar sala..."
             value={filtroSala}
             onValueChange={setFiltroSala}
             variant="bordered"
             size="sm"
-            className="max-w-xs"
-            startContent={<Icon icon="lucide:search" className="text-default-400" width={16} />}
+            className="w-48"
+            startContent={<Icon icon="lucide:search" className="text-default-400" width={15} />}
             isClearable
             onClear={() => setFiltroSala('')}
           />
-        </CardHeader>
-        <Divider />
-        <CardBody className="p-0">
-          {isLoading ? (
-            <div className="flex justify-center items-center py-16">
-              <Spinner size="lg" color="primary" />
-            </div>
-          ) : (
-            <div className="max-w-2xl mx-auto">
-              <Table
-                aria-label="Gestión de Salas"
-                removeWrapper
-                classNames={{
-                  th: 'bg-default-100 dark:bg-default-50/20 text-default-500 font-bold uppercase text-xs h-10',
-                  td: 'py-2 border-b border-default-50 dark:border-default-50/10 group-data-[last=true]:border-none px-4',
-                }}
-              >
-                <TableHeader>
-                  <TableColumn>COD SALA</TableColumn>
-                  <TableColumn>NOMBRE SALA</TableColumn>
-                  <TableColumn align="center">ACCIONES</TableColumn>
-                </TableHeader>
-                <TableBody
-                  emptyContent={
-                    <div className="py-10 text-center text-default-400">
-                      <Icon icon="lucide:building-2" width={32} className="mx-auto mb-2 opacity-50" />
-                      <p className="text-sm">No hay salas registradas</p>
-                    </div>
-                  }
-                >
-                  {salasFiltradas.map((sala) => (
-                    <TableRow key={sala.idSala} className="hover:bg-default-50 dark:hover:bg-default-50/10 transition-colors">
-                      <TableCell>
-                        <Chip size="sm" variant="flat" color="primary" className="font-mono font-bold text-xs">
-                          {sala.codSala}
-                        </Chip>
-                      </TableCell>
-                      <TableCell>
-                        <span className="text-sm text-default-700">{sala.nombreSala}</span>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center justify-center gap-1">
-                          <Button isIconOnly size="sm" variant="flat" color="primary" onPress={() => openEdit(sala)} aria-label="Editar">
-                            <Icon icon="lucide:pencil" width={14} />
-                          </Button>
-                          <Button isIconOnly size="sm" variant="flat" color="danger" onPress={() => openDelete(sala)} aria-label="Desactivar">
-                            <Icon icon="lucide:trash-2" width={14} />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+          <Button
+            size="sm"
+            color="warning"
+            variant="solid"
+            className="font-bold text-white shadow-sm shrink-0"
+            startContent={<Icon icon="lucide:plus" width={16} />}
+            onPress={openCreate}
+          >
+            Nueva Sala
+          </Button>
+        </div>
+      </div>
+
+      {/* Grid de salas */}
+      {isLoading ? (
+        <div className="flex justify-center items-center py-20">
+          <Spinner size="lg" color="warning" />
+        </div>
+      ) : salasFiltradas.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-16 text-default-400">
+          <div className="p-4 rounded-2xl bg-default-100 dark:bg-default-50/10 mb-3">
+            <Icon icon="lucide:building-2" width={36} className="opacity-40" />
+          </div>
+          <p className="text-sm font-medium">
+            {filtroSala.trim() !== '' ? 'Sin resultados para esa búsqueda' : 'No hay salas registradas'}
+          </p>
+          {filtroSala.trim() !== '' && (
+            <button onClick={() => setFiltroSala('')} className="mt-1 text-xs text-warning-500 hover:underline cursor-pointer">
+              Limpiar búsqueda
+            </button>
           )}
-        </CardBody>
-      </Card>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+          {salasFiltradas.map((sala) => (
+            <Card
+              key={sala.idSala}
+              className="shadow-sm border border-default-200 dark:border-default-100 bg-white dark:bg-content1 hover:shadow-md transition-shadow"
+            >
+              <CardBody className="p-4">
+                <div className="flex items-start justify-between gap-2 mb-3">
+                  <div className="p-2 rounded-lg bg-warning-50 dark:bg-warning-900/20 text-warning-500">
+                    <Icon icon="lucide:door-open" width={18} />
+                  </div>
+                  <Chip
+                    size="sm"
+                    variant="flat"
+                    color="warning"
+                    className="font-mono font-bold text-xs max-w-[120px] truncate"
+                  >
+                    {sala.codSala}
+                  </Chip>
+                </div>
+                <p
+                  className="text-sm font-semibold text-default-700 dark:text-default-300 truncate mb-3"
+                  title={sala.nombreSala}
+                >
+                  {sala.nombreSala}
+                </p>
+                <div className="flex items-center gap-1.5">
+                  <Button
+                    size="sm"
+                    variant="flat"
+                    color="primary"
+                    className="flex-1 font-medium text-xs"
+                    startContent={<Icon icon="lucide:pencil" width={13} />}
+                    onPress={() => openEdit(sala)}
+                  >
+                    Editar
+                  </Button>
+                  <Button
+                    isIconOnly
+                    size="sm"
+                    variant="flat"
+                    color="danger"
+                    onPress={() => openDelete(sala)}
+                    aria-label="Desactivar"
+                  >
+                    <Icon icon="lucide:trash-2" width={14} />
+                  </Button>
+                </div>
+              </CardBody>
+            </Card>
+          ))}
+        </div>
+      )}
 
       {/* Modal: Nueva Sala */}
       <Modal isOpen={isCreateOpen} onOpenChange={onCreateOpenChange} size="sm" placement="center">
