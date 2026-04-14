@@ -483,21 +483,20 @@ const ConglomeradoPedidosPage: React.FC = () => {
   // Formatea número con locale chileno: miles con punto, decimal con coma, máx 3 decimales
   const fmtN = (v: number): string =>
     v.toLocaleString('es-CL', { maximumFractionDigits: 3 });
-  // Formato numérico: #,##0.### — en locale chileno Excel muestra punto miles y coma decimal
-  const NUM_FMT = '#,##0.###';
-  // Celda con valor: texto → tipo 's', número → tipo 'n' con numFmt en el estilo (permite fórmulas SUM)
-  const sc = (v: string | number | null, s: object) =>
-    typeof v === 'number'
-      ? { v, t: 'n', s: { ...(s as object), numFmt: NUM_FMT } }
-      : { v: v ?? '', t: 's', s };
+  // Celda texto — garantiza formato chileno (punto miles, coma decimal) sin depender del locale de Excel
+  const sc = (v: string | number | null, s: object) => ({
+    v: typeof v === 'number' ? fmtN(v) : (v ?? ''),
+    t: 's',
+    s,
+  });
   // Convierte índice de columna (0-based) a letra(s) Excel: 0→A, 25→Z, 26→AA …
   const cl = (c: number): string => {
     let s = ''; let n = c + 1;
     while (n > 0) { n--; s = String.fromCharCode(65 + (n % 26)) + s; n = Math.floor(n / 26); }
     return s;
   };
-  // Celda con fórmula activa: tipo 'n' + fórmula SUM + numFmt — recalcula al editar
-  const sf = (formula: string, v: number, s: object) => ({ v, t: 'n', f: formula, s: { ...(s as object), numFmt: NUM_FMT } });
+  // Celda de total: valor pre-calculado como texto chileno (fórmulas SUM no operan sobre celdas texto)
+  const sf = (_formula: string, v: number, s: object) => ({ v: fmtN(v), t: 's', s });
 
   const autoColWidth = (data: (string | number | null)[][], startRow: number) =>
     data[startRow]?.map((_, ci) => ({
