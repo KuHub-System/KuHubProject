@@ -145,9 +145,10 @@ public class PedidoServiceImpl implements PedidoService{
             }
             pedidoSolicitudRepository.saveAll(vinculacionesParaGuardar);
 
-            // 5. Actualizar el estado de las solicitudes originales a 'PROCESADA'
-            // Usamos el query nativo que proporcionaste
-            //solicitudRepository.updateMassiveStateSolicitation(idsSolicitudes, "PROCESADO");
+            // 5. Actualizar el estado de las solicitudes ACEPTADAS vinculadas al pedido a EN_PEDIDO
+            solicitudRepository.updateMassiveStateSolicitation(idsSolicitudes, "EN_PEDIDO");
+            log.info("Pedido {} creado. {} solicitudes actualizadas a EN_PEDIDO.",
+                    savedPedido.getIdPedido(), idsSolicitudes.size());
 
             return true;
 

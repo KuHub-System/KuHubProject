@@ -99,7 +99,8 @@ public class Solicitud {
         PENDIENTE,
         ACEPTADA,
         PROCESADO,
-        RECHAZADA
+        RECHAZADA,
+        EN_PEDIDO
     }
 }
 

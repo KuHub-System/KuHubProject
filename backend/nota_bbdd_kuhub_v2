@@ -138,8 +138,9 @@ CREATE TYPE estado_bodega_transito_type AS ENUM(
 );
 
 CREATE TYPE estado_solicitud_type AS ENUM (
-	'PENDIENTE',
+    'PENDIENTE',
     'ACEPTADA',
+    'EN_PEDIDO',
     'PROCESADO',
     'RECHAZADA'
 );
