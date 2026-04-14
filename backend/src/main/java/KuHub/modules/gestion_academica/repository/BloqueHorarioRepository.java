@@ -16,6 +16,7 @@ public interface BloqueHorarioRepository extends JpaRepository <BloqueHorario, I
 
     List<BloqueHorario> findAllByOrderByNumeroBloqueAsc();
     List<BloqueHorario> findByNumeroBloqueNotIn(List<Integer> numbersBlocksFilter);
+    List<BloqueHorario> findByNumeroBloqueNotInOrderByNumeroBloqueAsc(List<Integer> numbersBlocksFilter);
 
 
 

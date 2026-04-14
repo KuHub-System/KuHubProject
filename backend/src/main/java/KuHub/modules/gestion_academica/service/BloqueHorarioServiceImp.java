@@ -51,9 +51,9 @@ public class BloqueHorarioServiceImp implements BloqueHorarioService {
     @Override
     public List<BloqueHorario> filterBlocksByNumbersBlocks(List<Integer> numbersBlocksFilter) {
         if (numbersBlocksFilter == null || numbersBlocksFilter.isEmpty()) {
-            return bloqueHorarioRepository.findAll();
+            return bloqueHorarioRepository.findAllByOrderByNumeroBloqueAsc();
         }
-        return bloqueHorarioRepository.findByNumeroBloqueNotIn(numbersBlocksFilter);
+        return bloqueHorarioRepository.findByNumeroBloqueNotInOrderByNumeroBloqueAsc(numbersBlocksFilter);
     }
 
     /** Busca un bloque horario por su ID. */
