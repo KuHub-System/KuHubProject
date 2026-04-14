@@ -1369,14 +1369,14 @@ const SeccionReservas: React.FC = () => {
               removeWrapper
               layout="fixed"
               classNames={{
-                th: 'bg-default-100 dark:bg-default-50/20 text-default-500 font-bold uppercase text-xs h-10',
-                td: 'py-2.5 border-b border-default-50 dark:border-default-50/10 group-data-[last=true]:border-none px-4',
+                th: 'bg-default-100 dark:bg-default-50/20 text-default-500 font-bold uppercase text-xs h-10 text-center',
+                td: 'py-2.5 border-b border-default-50 dark:border-default-50/10 group-data-[last=true]:border-none px-4 text-center',
               }}
             >
               <TableHeader>
-                <TableColumn width="22%">ASIGNATURA</TableColumn>
-                <TableColumn width="24%">SECCIÓN</TableColumn>
-                <TableColumn width="20%">SALA</TableColumn>
+                <TableColumn width="22%" align="center">ASIGNATURA</TableColumn>
+                <TableColumn width="24%" align="center">SECCIÓN</TableColumn>
+                <TableColumn width="20%" align="center">SALA</TableColumn>
                 <TableColumn width="13%" align="center">DÍA</TableColumn>
                 <TableColumn width="21%" align="center">BLOQUE / HORARIO</TableColumn>
               </TableHeader>
@@ -1391,19 +1391,19 @@ const SeccionReservas: React.FC = () => {
                   return (
                     <TableRow key={idx} className="hover:bg-default-50 dark:hover:bg-default-50/10 transition-colors">
                       <TableCell>
-                        <p className="font-semibold text-sm text-secondary dark:text-foreground leading-tight truncate">
+                        <p className="font-semibold text-sm text-secondary dark:text-foreground leading-tight truncate" title={reserva.nombreAsignatura}>
                           {reserva.nombreAsignatura}
                         </p>
                       </TableCell>
                       <TableCell>
-                        <p className="text-sm text-default-700 leading-tight truncate">{reserva.nombreSeccion}</p>
+                        <p className="text-sm text-default-700 leading-tight truncate" title={reserva.nombreSeccion}>{reserva.nombreSeccion}</p>
                       </TableCell>
                       <TableCell>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 justify-center">
                           <Chip size="sm" variant="flat" color="primary" className="font-mono font-bold text-xs shrink-0">
                             {reserva.codSala}
                           </Chip>
-                          <span className="text-sm text-default-600 truncate">{reserva.nombreSala}</span>
+                          <span className="text-sm text-default-600 truncate" title={reserva.nombreSala}>{reserva.nombreSala}</span>
                         </div>
                       </TableCell>
                       <TableCell className="text-center">
