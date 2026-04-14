@@ -483,10 +483,12 @@ const ConglomeradoPedidosPage: React.FC = () => {
   // Formatea número con locale chileno: miles con punto, decimal con coma, máx 3 decimales
   const fmtN = (v: number): string =>
     v.toLocaleString('es-CL', { maximumFractionDigits: 3 });
-  // Celda con valor: texto → tipo 's', número → tipo 'n' con formato estándar (permite fórmulas SUM)
+  // Formato numérico chileno: miles con punto, decimal con coma — prefijo [$-es-CL] fuerza el locale
+  const NUM_FMT = '[$-es-CL]#.##0,###';
+  // Celda con valor: texto → tipo 's', número → tipo 'n' con numFmt en el estilo (permite fórmulas SUM)
   const sc = (v: string | number | null, s: object) =>
     typeof v === 'number'
-      ? { v, t: 'n', z: '#,##0.###', s }
+      ? { v, t: 'n', s: { ...(s as object), numFmt: NUM_FMT } }
       : { v: v ?? '', t: 's', s };
   // Convierte índice de columna (0-based) a letra(s) Excel: 0→A, 25→Z, 26→AA …
   const cl = (c: number): string => {
@@ -494,8 +496,8 @@ const ConglomeradoPedidosPage: React.FC = () => {
     while (n > 0) { n--; s = String.fromCharCode(65 + (n % 26)) + s; n = Math.floor(n / 26); }
     return s;
   };
-  // Celda con fórmula activa: tipo 'n' + fórmula SUM — recalcula si el usuario edita valores
-  const sf = (formula: string, v: number, s: object) => ({ v, t: 'n', f: formula, z: '#,##0.###', s });
+  // Celda con fórmula activa: tipo 'n' + fórmula SUM + numFmt — recalcula al editar
+  const sf = (formula: string, v: number, s: object) => ({ v, t: 'n', f: formula, s: { ...(s as object), numFmt: NUM_FMT } });
 
   const autoColWidth = (data: (string | number | null)[][], startRow: number) =>
     data[startRow]?.map((_, ci) => ({
