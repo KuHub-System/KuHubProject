@@ -1,9 +1,17 @@
-Me veo obligado a crear otro estado para solicitud EN_PEDIDO que ya agregue en la base de datos y en nota_bbdd_kuhub_v2.
+para cada dia uso una tag, la de hoy es 1.0.7 asi que tiene que hacer el deploy ante cada modificacion o implementacion este es el modelo
+# 1. Guardar y subir los cambios del workflow
+git add .
+git commit -m "Nuevo estado Solicitud"
+git push
+# 2. Borrar posibles tags viejos o erróneos
+git tag -d K1.0.7
+git push origin --delete K1.0.7
+# 3. Crear el nuevo Tag con el formato K
+git tag K1.0.7
+# 4. ¡FUEGO!
+git push origin K1.0.7
 
-TODO LO QUE SE HAGA HAY QUE REFLETIR EN LA NOTA_ALCANCE
 
-1.En la vista de Gestion de Solicitudes, sebe tener otra vista para el estado EN_PEDIDO para este estado no puede ser posible cambiar el estado para ACEPTADA, PENDIENTE, RECHAZADA o ningun otro, esto se debe que la solicitud fue confirmada en la vista de GESTION DE PEDIDOS.
+no agregaste nada en nota_alcance al paracer! Que te passa que te pido algo y no lo hace.
 
-2.En La vista de Gestion de Pedidos al usuario incresar CONFIRMAR al momento de Consolidar Pedido, en paralelo se debe actualizar los estados de las solicitudes que en esta vista se muestran solamente las ACEPTADAs, asi que ademas de crear el pedido que ya lo hace tambien se debe Actualizar el estados para EN_PEDIDO.
-
-vamos con estes procesos primero que va a requierer revisar el repositorio de SolicitudRepository los metodos que esta siendo ultilizado para la consulta del proceso 1 indicado, y el repositorio de PedidoRepository, esta la nota_bbdd_kuhub_v2 para revisar los atributos para que no tenga falencia, como tambien va a requerir cambio en serviceimplemetado segun corresponda.
+no agregaste nada en el frontend al parecer, en gestion solicitud tiene aparecer tambien las solicitudes que tiene el estado en pedido para la visualizacion, como se puede indentificar en esta vista estan todas los estados para ver separadadamente o completo

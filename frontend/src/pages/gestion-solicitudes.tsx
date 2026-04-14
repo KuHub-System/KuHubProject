@@ -37,7 +37,7 @@ import { useHistory } from 'react-router-dom';
 // TIPOS
 // ─────────────────────────────────────────────────────────────────────────────
 
-type EstadoSolicitud = 'Pendiente' | 'Aceptada' | 'Rechazada' | 'Procesada';
+type EstadoSolicitud = 'Pendiente' | 'Aceptada' | 'Rechazada' | 'Procesada' | 'En Pedido';
 
 interface IDetalleSolicitud {
   idProducto: number;
@@ -72,11 +72,12 @@ interface ISolicitudGestion {
 // ─────────────────────────────────────────────────────────────────────────────
 
 const ESTADO_MAP: Record<string, EstadoSolicitud> = {
-  PENDIENTE: 'Pendiente',
-  ACEPTADA:  'Aceptada',
-  RECHAZADA: 'Rechazada',
-  PROCESADA: 'Procesada', // por si el backend devuelve con A
-  PROCESADO: 'Procesada', // el enum real de la BD es PROCESADO (sin A)
+  PENDIENTE:  'Pendiente',
+  ACEPTADA:   'Aceptada',
+  RECHAZADA:  'Rechazada',
+  PROCESADA:  'Procesada', // por si el backend devuelve con A
+  PROCESADO:  'Procesada', // el enum real de la BD es PROCESADO (sin A)
+  EN_PEDIDO:  'En Pedido',
 };
 
 const fmtHora = (hms: string) => hms?.slice(0, 5) ?? ''; // "HH:mm:ss" → "HH:mm"
@@ -126,11 +127,12 @@ const fmtFechaCorta = (iso: string) => {
   return { dia, fecha: `${d.getDate()}/${d.getMonth() + 1}` };
 };
 
-const ESTADO_CFG: Record<EstadoSolicitud, { color: 'warning' | 'success' | 'danger' | 'default'; icon: string; label: string }> = {
-  Pendiente: { color: 'warning', icon: 'lucide:clock',        label: 'Pendiente' },
-  Aceptada:  { color: 'success', icon: 'lucide:check-circle', label: 'Aceptada'  },
-  Rechazada: { color: 'danger',  icon: 'lucide:x-circle',     label: 'Rechazada' },
-  Procesada: { color: 'default', icon: 'lucide:archive',      label: 'Procesada' },
+const ESTADO_CFG: Record<EstadoSolicitud, { color: 'warning' | 'success' | 'danger' | 'default' | 'primary' | 'secondary'; icon: string; label: string }> = {
+  Pendiente:  { color: 'warning',   icon: 'lucide:clock',          label: 'Pendiente'  },
+  Aceptada:   { color: 'success',   icon: 'lucide:check-circle',   label: 'Aceptada'   },
+  Rechazada:  { color: 'danger',    icon: 'lucide:x-circle',       label: 'Rechazada'  },
+  Procesada:  { color: 'default',   icon: 'lucide:archive',        label: 'Procesada'  },
+  'En Pedido':{ color: 'secondary', icon: 'lucide:shopping-cart',  label: 'En Pedido'  },
 };
 
 const MOTIVO_MAX = 90;
@@ -250,6 +252,7 @@ const GestionSolicitudesPage: React.FC = () => {
     aceptadas:  solicitudes.filter(s => s.estado === 'Aceptada').length,
     rechazadas: solicitudes.filter(s => s.estado === 'Rechazada').length,
     procesadas: solicitudes.filter(s => s.estado === 'Procesada').length,
+    enPedido:   solicitudes.filter(s => s.estado === 'En Pedido').length,
   }), [solicitudes]);
 
   // ── Filtrado ──
@@ -536,12 +539,13 @@ const GestionSolicitudesPage: React.FC = () => {
       </Card>
 
       {/* ── Tarjetas de conteo ── */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
         {([
-          { label: 'Total',      val: contadores.total,      color: 'border-default-200', icon: 'lucide:list',         text: 'text-default-700' },
-          { label: 'Pendientes', val: contadores.pendientes, color: 'border-warning-200', icon: 'lucide:clock',        text: 'text-warning-700' },
-          { label: 'Aceptadas',  val: contadores.aceptadas,  color: 'border-success-200', icon: 'lucide:check-circle', text: 'text-success-700' },
-          { label: 'Rechazadas', val: contadores.rechazadas, color: 'border-danger-200',  icon: 'lucide:x-circle',     text: 'text-danger-700'  },
+          { label: 'Total',      val: contadores.total,      color: 'border-default-200',   icon: 'lucide:list',           text: 'text-default-700'   },
+          { label: 'Pendientes', val: contadores.pendientes, color: 'border-warning-200',   icon: 'lucide:clock',          text: 'text-warning-700'   },
+          { label: 'Aceptadas',  val: contadores.aceptadas,  color: 'border-success-200',   icon: 'lucide:check-circle',   text: 'text-success-700'   },
+          { label: 'En Pedido',  val: contadores.enPedido,   color: 'border-secondary-200', icon: 'lucide:shopping-cart',  text: 'text-secondary-700' },
+          { label: 'Rechazadas', val: contadores.rechazadas, color: 'border-danger-200',    icon: 'lucide:x-circle',       text: 'text-danger-700'    },
         ] as const).map(c => (
           <Card key={c.label} className={`shadow-sm border ${c.color}`}>
             <CardBody className="px-4 py-3 flex flex-row items-center gap-3">
@@ -566,7 +570,7 @@ const GestionSolicitudesPage: React.FC = () => {
 
           {/* Pills estado */}
           <div className="flex items-center gap-1.5 flex-wrap">
-            {(['Todas', 'Pendiente', 'Aceptada', 'Rechazada', 'Procesada'] as const).map(e => (
+            {(['Todas', 'Pendiente', 'Aceptada', 'En Pedido', 'Rechazada', 'Procesada'] as const).map(e => (
               <button key={e} onClick={() => { setFiltroEstado(e); setSeleccionados(new Set()); }}
                 className={`px-3 py-1 rounded-full text-xs font-semibold border transition-all cursor-pointer ${
                   filtroEstado === e ? 'bg-primary text-white border-primary' : 'bg-default-100 text-default-600 border-default-200 hover:bg-default-200'
@@ -575,7 +579,7 @@ const GestionSolicitudesPage: React.FC = () => {
                 {e}
                 {e !== 'Todas' && (
                   <span className="ml-1 opacity-70">
-                    ({e === 'Pendiente' ? contadores.pendientes : e === 'Aceptada' ? contadores.aceptadas : e === 'Rechazada' ? contadores.rechazadas : contadores.procesadas})
+                    ({e === 'Pendiente' ? contadores.pendientes : e === 'Aceptada' ? contadores.aceptadas : e === 'En Pedido' ? contadores.enPedido : e === 'Rechazada' ? contadores.rechazadas : contadores.procesadas})
                   </span>
                 )}
               </button>
@@ -604,14 +608,15 @@ const GestionSolicitudesPage: React.FC = () => {
           </div>
         </CardHeader>
 
-        {['Pendiente', 'Aceptada', 'Rechazada', 'Procesada'].includes(filtroEstado) && (
+        {['Pendiente', 'Aceptada', 'En Pedido', 'Rechazada', 'Procesada'].includes(filtroEstado) && (
           <div className="px-5 pb-4">
             <div className="flex items-center gap-2 px-3 py-2 bg-default-100/50 border border-default-200 rounded-lg text-sm text-default-600">
               <Icon icon="lucide:info" width={18} className="shrink-0 text-default-500" />
-              {filtroEstado === 'Pendiente' && <span>Al llegar la fecha solicitada y no aceptan la solicitud, pasará al estado rechazado automáticamente.</span>}
-              {filtroEstado === 'Aceptada' && <span>La solicitud aceptada está incluida automáticamente al conglomerado de pedidos.</span>}
-              {filtroEstado === 'Rechazada' && <span>La solicitud rechazada no está disponible para restaurar su estado si la fecha solicitada es anterior a la actual.</span>}
-              {filtroEstado === 'Procesada' && <span>Historial de solicitudes que ya fueron consolidadas.</span>}
+              {filtroEstado === 'Pendiente'  && <span>Al llegar la fecha solicitada y no aceptan la solicitud, pasará al estado rechazado automáticamente.</span>}
+              {filtroEstado === 'Aceptada'   && <span>La solicitud aceptada está incluida automáticamente al conglomerado de pedidos.</span>}
+              {filtroEstado === 'En Pedido'  && <span>Solicitudes confirmadas en un pedido. Su estado es de solo lectura y no puede modificarse.</span>}
+              {filtroEstado === 'Rechazada'  && <span>La solicitud rechazada no está disponible para restaurar su estado si la fecha solicitada es anterior a la actual.</span>}
+              {filtroEstado === 'Procesada'  && <span>Historial de solicitudes que ya fueron consolidadas.</span>}
             </div>
           </div>
         )}
