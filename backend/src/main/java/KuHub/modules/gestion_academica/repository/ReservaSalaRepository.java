@@ -67,17 +67,6 @@ public interface ReservaSalaRepository extends JpaRepository<ReservaSala, Intege
     );
 
 
-
-
-
-
-
-
-
-
-
-
-
     List<ReservaSala> findBySeccion_IdSeccion(Integer idSeccion);
 
     /**
