@@ -483,8 +483,8 @@ const ConglomeradoPedidosPage: React.FC = () => {
   // Formatea número con locale chileno: miles con punto, decimal con coma, máx 3 decimales
   const fmtN = (v: number): string =>
     v.toLocaleString('es-CL', { maximumFractionDigits: 3 });
-  // Formato numérico chileno: miles con punto, decimal con coma — prefijo [$-es-CL] fuerza el locale
-  const NUM_FMT = '[$-es-CL]#.##0,###';
+  // Formato numérico: #,##0.### — en locale chileno Excel muestra punto miles y coma decimal
+  const NUM_FMT = '#,##0.###';
   // Celda con valor: texto → tipo 's', número → tipo 'n' con numFmt en el estilo (permite fórmulas SUM)
   const sc = (v: string | number | null, s: object) =>
     typeof v === 'number'
