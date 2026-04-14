@@ -286,33 +286,42 @@ Documentar el índice de cada columna con comentarios en el SQL:
 List<Object[]> findByIdToInventoryPage(@Param("idInventario") Integer idInventario);
 ```
 
-### 5.4 Convención: `json_build_object` y `jsonb_agg`
+### 5.4 Convención: consultas nativas con múltiples columnas
 
-- **Consultas nativas simples (filas planas):** usar `json_build_object(...)` como única expresión SELECT.
-  - Retorna `List<Object[]>` donde `row[0]` es el JSON (PGobject → `.toString()` da el valor).
-  - En el service, deserializar con `objectMapper.readValue(row[0].toString(), MiRecord.class)`.
-  - El record de response lleva `@JsonProperty` en cada campo para mapeo correcto con Jackson.
+**⚠️ PROBLEMA CONOCIDO con `json_build_object`:** `PGobject.toString()` puede retornar una cadena JSON truncada (~29 chars) en algunas combinaciones de driver JDBC / Hibernate, lo que causa `JsonEOFException` en Jackson al intentar deserializar. **No usar `json_build_object` para registros planos.**
 
-- **Subconsultas / agregaciones:** usar `jsonb_agg(json_build_object(...))` para construir arrays JSON.
-  - Igual que arriba: `row[n].toString()` da el JSON del arreglo; deserializar con `TypeReference<List<...>>`.
+**Patrón correcto para filas planas — columnas individuales + `fromRow`:**
 
 ```java
-// Ejemplo — consulta nativa con json_build_object
+// En el repositorio: SELECT con columnas individuales, comentadas por índice
 @Query(value = """
-    SELECT json_build_object(          -- [0] JSON plano por fila
-        'campo1', t.columna1,
-        'campo2', t.columna2
-    )
+    SELECT
+        t.columna1,   -- [0]
+        t.columna2,   -- [1]
+        t.columna3    -- [2]
     FROM mi_tabla t
     WHERE t.activo = TRUE
 """, nativeQuery = true)
 List<Object[]> findMiConsultaRaw();
 
-// En el service:
+// En el record de response: factory method estático fromRow
+public record MiRecord(String campo1, String campo2, Integer campo3) {
+    public static MiRecord fromRow(Object[] row) {
+        return new MiRecord(
+                (String) row[0],
+                (String) row[1],
+                ((Number) row[2]).intValue()
+        );
+    }
+}
+
+// En el service: sin ObjectMapper
 rows.stream()
-    .map(row -> objectMapper.readValue(row[0].toString(), MiRecord.class))
+    .map(MiRecord::fromRow)
     .toList();
 ```
+
+- **Subconsultas / agregaciones:** usar `jsonb_agg(json_build_object(...))` **solo** cuando se necesita un array JSON anidado dentro de otra consulta. En ese caso: `row[n].toString()` da el JSON del arreglo; deserializar con `TypeReference<List<...>>`. Verificar que no esté truncado antes de usar.
 
 ---
 

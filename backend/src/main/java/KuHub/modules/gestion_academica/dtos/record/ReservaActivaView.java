@@ -1,19 +1,30 @@
 package KuHub.modules.gestion_academica.dtos.record;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
-
 /**
  * Vista de una reserva de sala activa.
- * Construida desde json_build_object en consulta nativa (ver ReservaSalaRepository).
- * Deserializada con ObjectMapper en ReservaSalaServiceImp.
+ * Construida desde consulta nativa con columnas individuales (ver ReservaSalaRepository).
+ * Mapeada con fromRow(Object[] row) en ReservaSalaServiceImp — sin ObjectMapper.
  */
 public record ReservaActivaView(
-        @JsonProperty("nombreAsignatura") String nombreAsignatura,
-        @JsonProperty("nombreSeccion")    String nombreSeccion,
-        @JsonProperty("nombreSala")       String nombreSala,
-        @JsonProperty("codSala")          String codSala,
-        @JsonProperty("diaSemana")        String diaSemana,
-        @JsonProperty("numeroBloque")     Integer numeroBloque,
-        @JsonProperty("horaInicio")       String horaInicio,
-        @JsonProperty("horaFin")          String horaFin
-) {}
+        String nombreAsignatura,  // row[0]
+        String nombreSeccion,     // row[1]
+        String nombreSala,        // row[2]
+        String codSala,           // row[3]
+        String diaSemana,         // row[4]
+        Integer numeroBloque,     // row[5]
+        String horaInicio,        // row[6]
+        String horaFin            // row[7]
+) {
+    public static ReservaActivaView fromRow(Object[] row) {
+        return new ReservaActivaView(
+                (String) row[0],
+                (String) row[1],
+                (String) row[2],
+                (String) row[3],
+                (String) row[4],
+                ((Number) row[5]).intValue(),
+                row[6].toString(),
+                row[7].toString()
+        );
+    }
+}
