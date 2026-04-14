@@ -483,21 +483,19 @@ const ConglomeradoPedidosPage: React.FC = () => {
   // Formatea número con locale chileno: miles con punto, decimal con coma, máx 3 decimales
   const fmtN = (v: number): string =>
     v.toLocaleString('es-CL', { maximumFractionDigits: 3 });
-  // Celda texto (garantiza coma decimal sin depender del locale del Excel del usuario)
-  const sc = (v: string | number | null, s: object) => ({
-    v: typeof v === 'number' ? fmtN(v) : (v ?? ''),
-    t: 's',
-    s,
-  });
+  // Celda con valor: texto → tipo 's', número → tipo 'n' con formato estándar (permite fórmulas SUM)
+  const sc = (v: string | number | null, s: object) =>
+    typeof v === 'number'
+      ? { v, t: 'n', z: '#,##0.###', s }
+      : { v: v ?? '', t: 's', s };
   // Convierte índice de columna (0-based) a letra(s) Excel: 0→A, 25→Z, 26→AA …
   const cl = (c: number): string => {
     let s = ''; let n = c + 1;
     while (n > 0) { n--; s = String.fromCharCode(65 + (n % 26)) + s; n = Math.floor(n / 26); }
     return s;
   };
-  // Celda de total: escribe el valor pre-calculado como texto formateado (sin fórmula live,
-  // ya que SUM no opera sobre celdas texto; se mantiene cl() por si se reactiva en futuro)
-  const sf = (_formula: string, v: number, s: object) => ({ v: fmtN(v), t: 's', s });
+  // Celda con fórmula activa: tipo 'n' + fórmula SUM — recalcula si el usuario edita valores
+  const sf = (formula: string, v: number, s: object) => ({ v, t: 'n', f: formula, z: '#,##0.###', s });
 
   const autoColWidth = (data: (string | number | null)[][], startRow: number) =>
     data[startRow]?.map((_, ci) => ({
@@ -788,7 +786,7 @@ const ConglomeradoPedidosPage: React.FC = () => {
                   const isActive = semanas.length > 0 && semanas[0].anio === p.anio && semanas[0].semestre === s;
                   return (
                     <button key={`${p.anio}-${s}`} onClick={() => handlePeriodoChange(p.anio, s)}
-                      className={`px-3 py-1 rounded-full text-xs font-bold border transition-all ${
+                      className={`px-3 py-1 rounded-full text-xs font-bold border transition-all cursor-pointer ${
                         isActive ? 'bg-warning text-white border-warning' : 'bg-default-100 text-default-600 border-default-200 hover:bg-default-200'
                       }`}>
                       {p.anio} S{s}
@@ -919,7 +917,7 @@ const ConglomeradoPedidosPage: React.FC = () => {
               </div>
               {/* Toggle colores */}
               <button onClick={() => setConColores(c => !c)}
-                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold border transition-all ${
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${
                   conColores ? 'bg-primary-50 border-primary-200 text-primary-700' : 'bg-default-100 border-default-200 text-default-500'
                 }`}>
                 <Icon icon="lucide:palette" width={12} />
