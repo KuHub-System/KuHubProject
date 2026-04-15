@@ -329,9 +329,9 @@ const LoginPage: React.FC = () => {
       <AnimatePresence>
         {irisOpen && (
           <>
-            {/* 1. Barrido dorado que cubre toda la pantalla de abajo hacia arriba */}
+            {/* 1. Barrido dorado desde esquina inferior izquierda expandiéndose hacia arriba-derecha */}
             <motion.div
-              initial={{ clipPath: 'polygon(0% 100%, 100% 100%, 100% 100%, 0% 100%)' }}
+              initial={{ clipPath: 'polygon(0% 100%, 0% 100%, 0% 100%, 0% 100%)' }}
               animate={{ clipPath: 'polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%)' }}
               transition={{ duration: 0.8, ease: [0.76, 0, 0.24, 1] }}
               style={{
@@ -355,7 +355,7 @@ const LoginPage: React.FC = () => {
               <img
                 src="/nrelogoo-Photoroom.png"
                 alt="KuHub"
-                style={{ width: 160, height: 160, objectFit: 'contain' }}
+                style={{ width: 220, height: 220, objectFit: 'contain' }}
               />
             </motion.div>
 
