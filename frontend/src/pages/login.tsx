@@ -145,14 +145,17 @@ const LoginPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen w-full relative flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 font-sans overflow-hidden">
-      {/* Imagen de fondo — absolute respecto al contenedor w-full min-h-screen */}
-      <img
-        src="/bg-cousino-960x600.jpg"
-        alt=""
-        aria-hidden="true"
-        className="absolute inset-0 w-full h-full object-cover opacity-25 dark:opacity-10 pointer-events-none select-none"
-      />
+    <div
+      className="min-h-screen w-screen relative flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 font-sans"
+      style={{
+        backgroundImage: 'url(/bg-cousino-960x600.jpg)',
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat',
+      }}
+    >
+      {/* Overlay blanco al 75% → imagen visible al 25% */}
+      <div className="absolute inset-0 bg-white/75 dark:bg-black/90" />
 
       {/* Contenido — por encima del fondo */}
       <motion.div
@@ -173,9 +176,9 @@ const LoginPage: React.FC = () => {
             {/* ── Logo y título ── */}
             <div className="text-center mb-5">
               <img
-                src="/logo2-removebg-preview.png"
+                src="/nrelogoo-removebg-preview.png"
                 alt="KuHub"
-                className="mx-auto h-20 w-20 mb-3 drop-shadow-md"
+                className="mx-auto h-24 w-24 mb-3 drop-shadow-md"
               />
               <h2 className="text-3xl font-extrabold text-secondary dark:text-foreground tracking-tight">
                 KuHub
