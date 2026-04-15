@@ -31,7 +31,7 @@ const AuthLayout: React.FC<AuthLayoutProps> = ({ children }) => {
       }}
     >
       {/* Botón de cambio de tema */}
-      <div className="absolute top-4 right-4">
+      <div className="absolute top-4 right-4 z-20">
         <Button
           isIconOnly
           variant="light"
