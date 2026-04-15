@@ -3,7 +3,7 @@ import { useHistory } from 'react-router-dom';
 import { Card, CardBody, Input, Button, Checkbox, Divider } from '@heroui/react';
 import { Icon } from '@iconify/react';
 import { useAuth } from '../contexts/auth-context';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 
 /**
  * CONFIGURACIÓN DE USUARIOS DEMO - ACTUALIZADOS
@@ -87,6 +87,7 @@ const LoginPage: React.FC = () => {
   const [isLoading, setIsLoading] = React.useState<boolean>(false);
   const [error, setError] = React.useState<string | null>(null);
   const [selectedDemo, setSelectedDemo] = React.useState<string | null>(null);
+  const [irisOpen,     setIrisOpen]     = React.useState<boolean>(false);
 
   const { login } = useAuth();
   const history = useHistory();
@@ -114,8 +115,8 @@ const LoginPage: React.FC = () => {
       const success = await login(email, password);
 
       if (success) {
-        console.log('✅ Login exitoso, redirigiendo...');
-        history.push('/');
+        console.log('✅ Login exitoso, iniciando transición...');
+        setIrisOpen(true);
       } else {
         setError('Email o contraseña incorrectos');
         console.log('❌ Credenciales inválidas');
@@ -323,6 +324,57 @@ const LoginPage: React.FC = () => {
           </CardBody>
         </Card>
       </motion.div>
+
+      {/* ── Animación de transición al entrar al sistema ── */}
+      <AnimatePresence>
+        {irisOpen && (
+          <>
+            {/* 1. Barrido dorado que cubre toda la pantalla de abajo hacia arriba */}
+            <motion.div
+              initial={{ clipPath: 'polygon(0% 100%, 100% 100%, 100% 100%, 0% 100%)' }}
+              animate={{ clipPath: 'polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%)' }}
+              transition={{ duration: 0.8, ease: [0.76, 0, 0.24, 1] }}
+              style={{
+                position: 'fixed', inset: 0, zIndex: 98,
+                background: 'linear-gradient(135deg, #FFB800 0%, #e09500 100%)',
+                pointerEvents: 'none',
+              }}
+            />
+
+            {/* 2. Logo KuHub aparece en el centro con pop elástico */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.4, x: '-50%', y: '-50%' }}
+              animate={{ opacity: 1, scale: 1.1, x: '-50%', y: '-50%' }}
+              transition={{ duration: 0.7, ease: [0.34, 1.56, 0.64, 1], delay: 0.3 }}
+              style={{
+                position: 'fixed', top: '48%', left: '50%',
+                zIndex: 99,
+                pointerEvents: 'none',
+              }}
+            >
+              <img
+                src="/nrelogoo-Photoroom.png"
+                alt="KuHub"
+                style={{ width: 160, height: 160, objectFit: 'contain' }}
+              />
+            </motion.div>
+
+            {/* 3. Fade a blanco → dispara la navegación al terminar */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.4, ease: 'easeOut', delay: 1.1 }}
+              onAnimationComplete={() => history.push('/')}
+              style={{
+                position: 'fixed', inset: 0, zIndex: 100,
+                background: '#fff',
+                pointerEvents: 'none',
+              }}
+            />
+          </>
+        )}
+      </AnimatePresence>
+
     </div>
   );
 };
