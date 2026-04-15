@@ -23,16 +23,14 @@ public class InventoryWithProductUpdateDTO extends InventoryWithProductCreateDTO
     @NotNull(message = "El id del producto es obligatorio")
     private Integer idProducto;
 
-    @NotNull(message = "El tipo de movimiento es obligatorio")
-    private String tipoMovimiento;
+    private String tipoMovimiento;          // null si solo se actualiza metadata / stockLimit
 
     @NotNull(message = "El stock en vista es obligatorio")
-    private BigDecimal stockEnVista;   // stock que el usuario teniene en pantalla
+    private BigDecimal stockEnVista;        // stock que el usuario tiene en pantalla
 
-    @NotNull(message = "El delta es obligatorio")
     @DecimalMin(value = "0.001", message = "El delta debe ser mayor a cero")
     @Digits(integer = 7, fraction = 3)
-    private BigDecimal delta;
+    private BigDecimal delta;               // null si no hay movimiento de stock
 
     private Boolean ajustePositivo;         // solo requerido cuando tipo es AJUSTE_INVENTARIO
 
