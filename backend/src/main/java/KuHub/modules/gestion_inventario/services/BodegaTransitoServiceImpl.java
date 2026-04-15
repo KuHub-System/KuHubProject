@@ -205,58 +205,58 @@ public class BodegaTransitoServiceImpl implements BodegaTransitoService{
             oldProducto.setUnidadMedidaId(request.getIdUnidadMedida());
         }
 
-        // ── Validar Stock en Tránsito con control de concurrencia ───────────────────────────
+        // ── Validar y aplicar movimiento de stock (solo si se envió delta) ──────────────────
         BigDecimal stockReal = oldTransit.getStock();
-        boolean desincronizado = stockReal.compareTo(request.getStockEnVista()) != 0;
+        boolean desincronizado = false;
 
-        String tipoKey = StringUtils.normalizeToEnumKey(request.getTipoMovimiento());
-        boolean esSalida = tipoKey.equals("SALIDA_BODEGA") || tipoKey.equals("MERMA_BODEGA") || tipoKey.equals("DEVOLUCION");
+        if (request.getDelta() != null && request.getTipoMovimiento() != null && !request.getTipoMovimiento().isBlank()) {
+            desincronizado = stockReal.compareTo(request.getStockEnVista()) != 0;
 
-        // Predecimos el nuevo stock según la regla de Ajuste Absoluto o Delta
-        BigDecimal nuevoStock;
-        if (tipoKey.equals("AJUSTE_BODEGA")) {
-            nuevoStock = request.getDelta(); // Ajuste absoluto: el delta es el valor final deseado
-        } else {
-            nuevoStock = esSalida
-                    ? stockReal.subtract(request.getDelta())
-                    : stockReal.add(request.getDelta());
-        }
+            String tipoKey = StringUtils.normalizeToEnumKey(request.getTipoMovimiento());
+            boolean esSalida = tipoKey.equals("SALIDA_BODEGA") || tipoKey.equals("MERMA_BODEGA") || tipoKey.equals("DEVOLUCION");
 
-        // ❌ Stock insuficiente — Rollback automático y envía objeto para el modal
-        if (nuevoStock.compareTo(BigDecimal.ZERO) < 0) {
-            // Nota: Reemplaza este método por tu consulta real que devuelve la vista de la bodega
-            Object item = findSingleWarehouseById(request.getIdBodegaTransito());
-            String msg = desincronizado
-                    ? "El stock en tránsito cambió. El stock real (" + stockReal + ") es insuficiente para la operación."
-                    : "El stock actual en tránsito (" + stockReal + ") es insuficiente para la operación.";
+            BigDecimal nuevoStock;
+            if (tipoKey.equals("AJUSTE_BODEGA")) {
+                nuevoStock = request.getDelta(); // Ajuste absoluto: el delta es el valor final deseado
+            } else {
+                nuevoStock = esSalida
+                        ? stockReal.subtract(request.getDelta())
+                        : stockReal.add(request.getDelta());
+            }
 
-            throw new StockInsuficienteException(msg, item);
-        }
+            // ❌ Stock insuficiente — Rollback automático y envía objeto para el modal
+            if (nuevoStock.compareTo(BigDecimal.ZERO) < 0) {
+                Object item = findSingleWarehouseById(request.getIdBodegaTransito());
+                String msg = desincronizado
+                        ? "El stock en tránsito cambió. El stock real (" + stockReal + ") es insuficiente para la operación."
+                        : "El stock actual en tránsito (" + stockReal + ") es insuficiente para la operación.";
+                throw new StockInsuficienteException(msg, item);
+            }
 
-        // ⚠️ Desincronizado pero operable — Log interno
-        if (desincronizado) {
-            log.warn("Desincronización en Tránsito. Stock vista: {} | Stock real: {} | Producto: {}",
-                    request.getStockEnVista(), stockReal, oldProducto.getNombreProducto());
-        }
+            // ⚠️ Desincronizado pero operable — Log interno
+            if (desincronizado) {
+                log.warn("Desincronización en Tránsito. Stock vista: {} | Stock real: {} | Producto: {}",
+                        request.getStockEnVista(), stockReal, oldProducto.getNombreProducto());
+            }
 
-        // Generar movimiento y actualizar stock (solo si hubo un cambio real)
-        if (stockReal.compareTo(nuevoStock) != 0) {
-            boolean validar = movimientoService.motionInUpdateTransitWarehouse(
-                    oldTransit,
-                    request.getDelta(),
-                    request.getTipoMovimiento()
-            );
-
-            if (validar) {
-                log.info("Bodega de Tránsito actualizada y movimiento de [{}] registrado. Producto: '{}' | Stock: {} → {}",
-                        request.getTipoMovimiento().toUpperCase(),
-                        oldProducto.getNombreProducto(),
-                        stockReal,
-                        oldTransit.getStock()); // oldTransit ya fue actualizado dentro de motionInUpdate...
+            // Generar movimiento y actualizar stock (solo si hubo un cambio real)
+            if (stockReal.compareTo(nuevoStock) != 0) {
+                boolean validar = movimientoService.motionInUpdateTransitWarehouse(
+                        oldTransit,
+                        request.getDelta(),
+                        request.getTipoMovimiento()
+                );
+                if (validar) {
+                    log.info("Bodega de Tránsito actualizada y movimiento de [{}] registrado. Producto: '{}' | Stock: {} → {}",
+                            request.getTipoMovimiento().toUpperCase(),
+                            oldProducto.getNombreProducto(),
+                            stockReal,
+                            oldTransit.getStock());
+                }
             }
         }
 
-        if (!oldTransit.getStockLimit().equals(request.getStockLimit())) {
+        if (!java.util.Objects.equals(oldTransit.getStockLimit(), request.getStockLimit())) {
             oldTransit.setStockLimit(request.getStockLimit());
         }
 
