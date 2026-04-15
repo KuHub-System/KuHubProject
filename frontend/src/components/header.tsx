@@ -13,6 +13,7 @@ const LOGO_URL = new URL('./assets/KuHubLogoWBG.png', import.meta.url).href;
  */
 interface HeaderProps {
   toggleSidebar: () => void;
+  onLogout?: () => void;
 }
 
 /**
@@ -21,7 +22,7 @@ interface HeaderProps {
  * @param {HeaderProps} props - Propiedades del componente.
  * @returns {JSX.Element} El componente Header.
  */
-const Header: React.FC<HeaderProps> = ({ toggleSidebar }) => {
+const Header: React.FC<HeaderProps> = ({ toggleSidebar, onLogout }) => {
   const { user, logout } = useAuth();
   const { theme, toggleTheme } = useThemeContext();
   const { title, subtitle, icon } = usePageTitleContext();
@@ -31,8 +32,12 @@ const Header: React.FC<HeaderProps> = ({ toggleSidebar }) => {
    * Maneja el cierre de sesión.
    */
   const handleLogout = () => {
-    logout();
-    history.push('/login');
+    if (onLogout) {
+      onLogout();
+    } else {
+      logout();
+      history.push('/login');
+    }
   };
 
   /**
