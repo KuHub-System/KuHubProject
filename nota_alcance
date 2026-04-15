@@ -569,46 +569,141 @@ Técnico:
   - Actualiza estado de múltiples pedidos en una sola operación.
 
   Frontend (conglomerado-pedidos.tsx):
-  - Selector de período académico con detección automática del período actual.
-  - Vista agrupada por día de la semana con colores diferenciados por día
-    (lunes azul, martes morado, miércoles verde, jueves amarillo, viernes rojo).
-  - Destacado visual del día de hoy.
-  - Toggle "Con colores / Sin colores" para colorear celdas por sección en
-    la vista Por Categoría.
-  - Exportación a Excel con formato (librería xlsx-js-style).
-  - Permite aprobar pedidos desde la misma vista.
+  La página tiene un selector de período académico + semana en la parte superior
+  (con detección automática del período y semana actuales) y 4 vistas que se
+  seleccionan mediante tabs: Por Categoría, Cronograma Semanal, Totales del
+  Pedido y Aprobación de Pedidos. Encima de los tabs se muestran 4 tarjetas de
+  métricas: Solicitudes procesadas, Productos únicos, Secciones y Días con clases.
 
-  Estructura del Excel exportado — Vista Por Categoría (descargarExcelDia):
-  - Fila 1: Título fusionado "Por Categoría — {Día} — {Semana}" (fondo amarillo).
-  - Fila 2: Vacía (separador visual).
-  - Fila 3: Encabezados: Categoría | Producto | Unidad | §Sección—Asignatura (1 col
-    por combinación única) | Total Día (fondo oscuro).
-  - Por cada categoría:
-      · Fila de nombre de categoría (fusionada, fondo amarillo claro).
-      · Filas de productos: Categoría | Producto | Unidad | cantidad por sección
-        | Total Día (suma pre-calculada desde el frontend).
-      · Fila SUBTOTAL: totales por columna de sección y total general
-        (valores pre-calculados desde el frontend).
-      · Fila separadora (fondo gris claro).
-  - Todas las celdas numéricas se almacenan como texto (tipo 't: s') usando
-    toLocaleString('es-CL') — garantiza formato chileno (punto miles, coma
-    decimal) sin depender del locale de Windows del usuario.
-  - Ancho de columnas calculado automáticamente (autoColWidth).
-  - Filas congeladas (freeze panes): 3 filas y 3 columnas fijas al hacer scroll.
+  ── VISTA 1: POR CATEGORÍA ──────────────────────────────────────────────────
+  Muestra los productos del pedido consolidado organizados por categoría de
+  insumo. Tiene un sub-selector de día (Lunes a Domingo + Vista Completa),
+  un toggle "Con colores / Sin colores" y un botón "Descargar Excel".
+
+  Sub-vista Por Día (selector Lunes → Domingo):
+    Muestra solo los productos con actividad en el día seleccionado, agrupados
+    por categoría. Por cada categoría hay un bloque con:
+      - Cabecera: nombre de categoría + conteo de productos.
+      - Filas de producto: nombre, cantidad total del día en número grande,
+        y chips de sección (formato §SeccionNombre · X.XXX abreviatura).
+        Con colores activos, cada chip tiene el color asignado a esa
+        combinación asignatura+sección. Sin colores, los chips son blancos.
+      - Pie de bloque: "Total categoría: X und."
+    Al pie de la página aparece la Leyenda de Secciones: grilla de chips con
+    el color de cada combinación asignatura+sección presente en la semana.
+
+  Sub-vista Vista Completa (selector "Vista Completa"):
+    Tabla cruzada donde las filas son los productos y las columnas son los
+    días de la semana (Lun, Mar, Mié, Jue, Vie, Sáb, Dom + Total Semana),
+    agrupados por categoría. Cada celda muestra la cantidad del producto para
+    ese día. Con colores activos y el producto compartido entre varias
+    secciones, la celda muestra chips individuales por sección con su color.
+    Con colores activos y una única sección, la celda muestra la cantidad con
+    el color de fondo de esa sección. Sin colores, la celda muestra solo el
+    número. Al pie aparece la Leyenda de Secciones.
+
+  Exportación Excel — Vista Por Día (descargarExcelDia):
+    Columnas: Categoría | Producto | Unidad | §Sección—Asignatura (1 columna
+    por cada combinación única de asignatura+sección presente en ese día) |
+    Total Día.
+    Filas:
+      - Fila 1: Título fusionado "Por Categoría — {Día} — {Semana}" (amarillo).
+      - Fila 2: Vacía (separador visual).
+      - Fila 3: Encabezados (fondo oscuro, texto blanco).
+      - Por cada categoría:
+          · Fila nombre categoría (fusionada, fondo amarillo claro).
+          · Filas de producto: datos + cantidad por sección + total día.
+          · Fila SUBTOTAL {Categoría}: totales por columna de sección y total.
+          · Fila separadora (fondo gris claro).
+    Formato: celdas texto ('t: s') con toLocaleString('es-CL') — garantiza
+    formato chileno (punto miles, coma decimal). 3 filas y 3 columnas
+    congeladas. Ancho de columnas automático.
+
+  Exportación Excel — Vista Completa (descargarExcelCompleta):
+    Columnas: Categoría | Producto | Sección | Unidad | Lunes … Domingo |
+    Total Semana.
+    Filas:
+      - Fila 1: Título fusionado "Vista Completa por Categoría — {Semana}".
+      - Fila 2: Vacía.
+      - Fila 3: Encabezados.
+      - Por cada categoría:
+          · Fila nombre categoría (fusionada).
+          · Por cada producto: 1 fila por combinación asignatura+sección
+            (cursiva, fondo gris claro), con las cantidades por día.
+            Si el producto tiene más de 1 sección: fila adicional "TOTAL
+            PRODUCTO" en azul claro con la suma de todas las secciones.
+          · Fila SUBTOTAL {Categoría} con totales por día y total semana.
+          · Fila separadora.
+    Formato idéntico al Excel por día (texto chileno, sin fórmulas activas).
+    4 columnas y 3 filas congeladas. Ancho automático.
 
   FACTOR LIMITANTE — Fórmulas SUM vs. formato chileno en Excel:
   No es posible tener simultáneamente fórmulas SUM activas (recalculables al
   editar) Y formato numérico chileno garantizado en el mismo archivo xlsx.
-  Razón técnica: los separadores de miles y decimales en Excel (punto/coma) son
-  siempre controlados por la configuración regional de Windows del usuario; no
-  existe código de formato xlsx (incluyendo especificadores de locale como
-  [$-2C0A] o [$-es-CL]) que fuerce los separadores independientemente del locale.
-  Si se usan celdas numéricas (t: 'n') para activar fórmulas, en una instalación
-  de Excel en inglés los números se muestran con coma miles y punto decimal
-  (formato anglosajón), que es incorrecto para el contexto chileno.
-  Decisión tomada: prioridad al formato chileno. Los valores se almacenan como
-  texto pre-calculado; si el usuario edita una celda, los totales NO se
-  actualizan automáticamente.
+  Razón técnica: los separadores de miles y decimales en Excel son controlados
+  por la configuración regional de Windows del usuario; no existe código de
+  formato xlsx (incluyendo [$-2C0A] o [$-es-CL]) que los fuerce. Si se usan
+  celdas numéricas (t: 'n'), en Excel en inglés los números se muestran con
+  coma miles y punto decimal (incorrecto para contexto chileno). Decisión:
+  prioridad al formato chileno. Totales pre-calculados en el frontend como
+  texto; si el usuario edita una celda, los totales NO se actualizan.
+
+  ── VISTA 2: CRONOGRAMA SEMANAL ─────────────────────────────────────────────
+  Muestra las solicitudes vinculadas al pedido organizadas por día, en orden
+  cronológico. Tiene buscador por receta, docente, nombre de sección o producto.
+
+  Por cada día con clases se muestra una tarjeta con:
+    - Cabecera de color único por día (esquema fijo: Lunes=azul, Martes=naranja,
+      Miércoles=verde esmeralda, Jueves=violeta, Viernes=rosa, Sábado=teal,
+      Domingo=pizarra). El día actual se marca en ámbar con badge "HOY · En curso".
+    - Indicadores: número de clases del día + cantidad de productos distintos.
+    - Lista de solicitudes del día, ordenadas por hora de inicio, expandibles.
+      Cada fila de solicitud (colapsada) muestra:
+        §Sección · Docente · Asignatura | Receta · Sala · Alumnos · N productos
+        | Preview de hasta 3 productos como chips (+ "N más" si hay más).
+      Al expandir aparece:
+        - Bloque "Horario y Sala": hora inicio–fin + nombre de sala.
+        - Tabla "Productos requeridos (N ítems)": Producto | Cantidad | Unidad.
+      La barra lateral izquierda de cada solicitud muestra la hora de inicio
+      y fin de la clase con línea discontinua (visible en pantalla ancha).
+      Separador negro grueso entre solicitudes del mismo día.
+
+  ── VISTA 3: TOTALES DEL PEDIDO ─────────────────────────────────────────────
+  Lista consolidada de todos los productos únicos del pedido con su cantidad
+  total a despachar desde Bodega de Tránsito. Tiene buscador por nombre de
+  producto.
+
+  Por cada producto:
+    - Cabecera (colapsada): nombre, cantidad total grande, chip "N secciones".
+    - Al expandir: lista de distribuciones por sección, donde cada fila muestra:
+        Badge de día (con color del día de la semana + indicador HOY) | Sección
+        + Docente | Hora + Sala + Observación | Cantidad de esa sección.
+    - Pie expandido: "Total a despachar desde Bodega de Tránsito: X abreviatura"
+      en fondo secondary (morado claro).
+
+  ── VISTA 4: APROBACIÓN DE PEDIDOS ──────────────────────────────────────────
+  Permite revisar el stock disponible y aprobar los pedidos de la semana. Tiene
+  buscador por nombre de producto y sub-toggle Vista Unificada / Por Pedido.
+  Si hay pedidos PENDIENTE y el usuario tiene permiso de edición, aparece el
+  botón "Aprobar N pendientes" (aprobación masiva).
+
+  Sub-vista Vista Unificada:
+    Tabla con todos los productos combinados de TODOS los pedidos de la semana.
+    Columnas: Producto (con icono ✓ verde o ⚠ rojo) | Total Pedido | Stock
+    Bodega Tránsito | Diferencia (Tránsito − Pedido, verde si ≥0, rojo si <0)
+    | Inventario Principal.
+    Si algún producto tiene diferencia negativa: fila con fondo rojo claro +
+    banner de alerta al pie "Hay productos con stock insuficiente en Bodega de
+    Tránsito considerando todos los pedidos de la semana."
+
+  Sub-vista Por Pedido:
+    Cada pedido individual en una tarjeta con:
+    - Cabecera: Pedido #ID + N productos + chip de estado (PENDIENTE=ámbar /
+      APROVADO=verde). Si hay faltantes: "· Faltantes detectados" en rojo.
+    - Si el pedido está PENDIENTE y el usuario tiene permiso: botón individual
+      "Aprobar pedido".
+    - Tabla idéntica a Vista Unificada pero solo con los productos del pedido.
+    - Banner rojo al pie si hay faltantes en ese pedido.
 
 Para no técnicos:
   Una vez que las solicitudes de la semana están aprobadas, el responsable las
