@@ -15,6 +15,7 @@ const LOGO_URL = new URL('./assets/KuHubLogoWBG.png', import.meta.url).href;
 interface SidebarProps {
   isOpen: boolean;
   toggleSidebar: () => void;
+  onLogout?: () => void;
 }
 
 /**
@@ -35,15 +36,19 @@ interface MenuItem {
  * @param {SidebarProps} props - Propiedades del componente.
  * @returns {JSX.Element} El componente Sidebar.
  */
-const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
+const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar, onLogout }) => {
   const { user, canAccessPage, logout } = useAuth();
   const { canAccess, isAdmin } = usePermission();
   const location = useLocation();
   const history = useHistory();
 
   const handleLogout = () => {
-    logout();
-    history.push('/login');
+    if (onLogout) {
+      onLogout();
+    } else {
+      logout();
+      history.push('/login');
+    }
   };
 
   /**
