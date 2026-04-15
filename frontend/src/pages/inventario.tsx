@@ -1406,11 +1406,12 @@ export const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto
           // --- LÓGICA BODEGA: PATCH con delta (igual que inventario) ---
           const originalStockRef = parseFloat(productoReferencia?.stock?.toString() || '0');
           const deltaInputVal = parseFloat(deltaInput);
+          const hayMovBodega = tipoMovimiento && !isNaN(deltaInputVal) && deltaInputVal > 0;
           const datosBodega: WarehouseWithProductUpdateDTO = {
             idBodegaTransito: (producto as any)._idBodegaTransito || 0,
             idInventario: producto._idInventario || 0,
             idProducto: parseInt(producto.id),
-            tipoMovimiento: tipoMovimiento,
+            tipoMovimiento: hayMovBodega ? tipoMovimiento : null,
             nombreProducto: nombre.trim(),
             codigoProducto: codProducto.trim() || undefined,
             descripcionProducto: descripcion.trim(),
@@ -1418,7 +1419,7 @@ export const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto
             idUnidadMedida: parseInt(idUnidadMedida),
             stock: originalStockRef,
             stockLimit: parseFloat(stockMinimo) || 0,
-            delta: deltaInputVal,
+            delta: hayMovBodega ? deltaInputVal : null,
             stockEnVista: originalStockRef,
           };
 
