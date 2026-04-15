@@ -145,14 +145,13 @@ const LoginPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen relative flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 font-sans">
-      {/* Fondo blanco base */}
-      <div className="absolute inset-0 bg-white dark:bg-black" />
-
-      {/* Imagen de fondo al 25% de opacidad */}
-      <div
-        className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-25 dark:opacity-10"
-        style={{ backgroundImage: 'url(/bg-cousino-960x600.jpg)' }}
+    <div className="min-h-screen relative flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 font-sans overflow-hidden">
+      {/* Imagen de fondo — cubre todo el espacio lateral, no afecta al card */}
+      <img
+        src="/bg-cousino-960x600.jpg"
+        alt=""
+        aria-hidden="true"
+        className="absolute inset-0 w-full h-full object-cover opacity-25 dark:opacity-10 pointer-events-none select-none"
       />
 
       {/* Contenido — por encima del fondo */}
