@@ -49,6 +49,8 @@ interface IGrupoDia {
 
 // bgHeader / bgBadge / border / textColor → colores CSS explícitos para garantizar
 // distinción visual real entre días consecutivos, independiente del tema HeroUI.
+// Fondos en nivel -100 (más saturados que -50) para mayor separación visual.
+// Martes usa naranja (NO amber) para no confundirse con el indicador HOY (amber).
 const DIA_CONFIG: Record<number, {
   nombre: string;
   bgHeader: string;
@@ -56,13 +58,13 @@ const DIA_CONFIG: Record<number, {
   border: string;       // color CSS (hex) para borderColor inline
   textColor: string;    // color CSS para texto
 }> = {
-  0: { nombre: 'Domingo',   bgHeader: '#f8fafc', bgBadge: '#e2e8f0', border: '#94a3b8', textColor: '#475569' }, // slate
-  1: { nombre: 'Lunes',     bgHeader: '#eff6ff', bgBadge: '#bfdbfe', border: '#3b82f6', textColor: '#1d4ed8' }, // blue
-  2: { nombre: 'Martes',    bgHeader: '#fffbeb', bgBadge: '#fde68a', border: '#f59e0b', textColor: '#b45309' }, // amber
-  3: { nombre: 'Miércoles', bgHeader: '#ecfdf5', bgBadge: '#a7f3d0', border: '#10b981', textColor: '#065f46' }, // emerald
-  4: { nombre: 'Jueves',    bgHeader: '#f5f3ff', bgBadge: '#ddd6fe', border: '#7c3aed', textColor: '#5b21b6' }, // violet
-  5: { nombre: 'Viernes',   bgHeader: '#fff1f2', bgBadge: '#fecdd3', border: '#e11d48', textColor: '#be123c' }, // rose
-  6: { nombre: 'Sábado',    bgHeader: '#f0fdfa', bgBadge: '#99f6e4', border: '#0d9488', textColor: '#0f766e' }, // teal
+  0: { nombre: 'Domingo',   bgHeader: '#f1f5f9', bgBadge: '#cbd5e1', border: '#64748b', textColor: '#334155' }, // slate
+  1: { nombre: 'Lunes',     bgHeader: '#dbeafe', bgBadge: '#93c5fd', border: '#2563eb', textColor: '#1e3a8a' }, // blue
+  2: { nombre: 'Martes',    bgHeader: '#ffedd5', bgBadge: '#fdba74', border: '#ea580c', textColor: '#7c2d12' }, // orange (≠ amber HOY)
+  3: { nombre: 'Miércoles', bgHeader: '#d1fae5', bgBadge: '#6ee7b7', border: '#059669', textColor: '#064e3b' }, // emerald
+  4: { nombre: 'Jueves',    bgHeader: '#ede9fe', bgBadge: '#c4b5fd', border: '#7c3aed', textColor: '#3b0764' }, // violet
+  5: { nombre: 'Viernes',   bgHeader: '#ffe4e6', bgBadge: '#fda4af', border: '#e11d48', textColor: '#881337' }, // rose
+  6: { nombre: 'Sábado',    bgHeader: '#ccfbf1', bgBadge: '#5eead4', border: '#0d9488', textColor: '#134e4a' }, // teal
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -424,7 +426,7 @@ const ConglomeradoPedidosPage: React.FC = () => {
   const contadores = React.useMemo(() => ({
     procesadas:      todasSolicitudes.length,
     productosUnicos: productosResumen.length,
-    secciones:       new Set(todasSolicitudes.map(s => s.seccion.nombreSeccion)).size,
+    secciones:       new Set(todasSolicitudes.map(s => `${s.seccion.nombreAsignatura}::${s.seccion.nombreSeccion}`)).size,
     dias:            gruposDia.length,
   }), [todasSolicitudes, productosResumen, gruposDia]);
 
@@ -1140,8 +1142,9 @@ const ConglomeradoPedidosPage: React.FC = () => {
                               className="grid grid-cols-[1fr_auto] items-center gap-3 px-4 py-2.5 border-b border-default-50 last:border-0 hover:bg-default-50/50">
                               <div className="min-w-0">
                                 <p className="font-medium text-sm text-default-800 truncate">{prod.nombreProducto}</p>
-                                <p className="text-[10px] text-default-400 font-mono">
-                                  Total: {fmtCant(prod.totalDia)} {prod.abreviatura}
+                                <p className="text-sm font-bold font-mono" style={{ color: '#374151' }}>
+                                  {fmtCant(prod.totalDia)}
+                                  <span className="text-xs font-normal text-default-400 ml-1">{prod.abreviatura} total</span>
                                 </p>
                               </div>
                               <div className="flex flex-wrap gap-1 justify-end">
@@ -1216,27 +1219,27 @@ const ConglomeradoPedidosPage: React.FC = () => {
                 return (
                   <div key={grupo.fecha}
                     className={`rounded-2xl border-2 overflow-hidden shadow-sm`}
-                    style={{ borderColor: hoy ? '#d97706' : cfg.border, boxShadow: `0 2px 8px 0 ${cfg.border}30` }}>
+                    style={{ borderColor: hoy ? '#B45309' : cfg.border, boxShadow: `0 2px 8px 0 ${hoy ? '#B4530940' : cfg.border + '30'}` }}>
 
                     {/* Cabecera del día */}
                     <div className="flex flex-col sm:flex-row sm:items-center gap-2 px-5 py-3"
-                      style={{ backgroundColor: hoy ? '#fffbeb' : cfg.bgHeader }}>
+                      style={{ backgroundColor: hoy ? '#FEF3C7' : cfg.bgHeader }}>
                       <div className="flex items-center gap-3 flex-1">
                         <div className="flex flex-col items-center justify-center rounded-xl px-3 py-1.5 min-w-[56px] text-center"
-                          style={{ backgroundColor: hoy ? '#fde68a' : cfg.bgBadge }}>
+                          style={{ backgroundColor: hoy ? '#FCD34D' : cfg.bgBadge }}>
                           <span className="text-[11px] font-black uppercase tracking-wide"
-                            style={{ color: hoy ? '#92400e' : cfg.textColor }}>
+                            style={{ color: hoy ? '#78350F' : cfg.textColor }}>
                             {cfg.nombre.slice(0, 3).toUpperCase()}
                           </span>
                           <span className="text-xl font-black leading-tight"
-                            style={{ color: hoy ? '#92400e' : cfg.textColor }}>
+                            style={{ color: hoy ? '#78350F' : cfg.textColor }}>
                             {new Date(grupo.fecha + 'T00:00:00').getDate()}
                           </span>
-                          {hoy && <span className="text-[9px] font-bold text-warning-600 leading-none">HOY</span>}
+                          {hoy && <span className="text-[9px] font-black leading-none" style={{ color: '#92400E' }}>HOY</span>}
                         </div>
                         <div>
                           <p className="font-bold text-sm capitalize"
-                            style={{ color: hoy ? '#92400e' : cfg.textColor }}>
+                            style={{ color: hoy ? '#78350F' : cfg.textColor }}>
                             {fmtFechaLarga(grupo.fecha)}
                           </p>
                           <div className="flex items-center gap-2 mt-0.5 flex-wrap">
@@ -1452,13 +1455,13 @@ const ConglomeradoPedidosPage: React.FC = () => {
 
                               {/* Badge fecha */}
                               <div className="shrink-0 flex flex-col items-center justify-center rounded-xl px-2.5 py-1.5 min-w-[56px] text-center border"
-                                style={{ backgroundColor: hoy ? '#fffbeb' : cfg.bgHeader, borderColor: hoy ? '#fbbf24' : cfg.border }}>
+                                style={{ backgroundColor: hoy ? '#FEF3C7' : cfg.bgHeader, borderColor: hoy ? '#B45309' : cfg.border }}>
                                 <span className="text-[10px] font-black uppercase leading-none"
-                                  style={{ color: hoy ? '#d97706' : cfg.textColor }}>
+                                  style={{ color: hoy ? '#78350F' : cfg.textColor }}>
                                   {DIA_CONFIG[dia]?.nombre.slice(0, 3).toUpperCase() ?? ''}
                                 </span>
                                 <span className="text-sm font-black leading-tight"
-                                  style={{ color: hoy ? '#b45309' : cfg.textColor }}>
+                                  style={{ color: hoy ? '#78350F' : cfg.textColor }}>
                                   {fmtFechaCorta(det.fechaSolicitada)}
                                 </span>
                                 {hoy && <span className="text-[9px] font-bold text-warning-600">HOY</span>}
