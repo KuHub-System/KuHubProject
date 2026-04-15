@@ -22,6 +22,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -111,18 +112,24 @@ public class SolicitudServiceImp implements SolicitudService{
     }
 
 
-    @Transactional(readOnly = true)
+    @Transactional
     @Override
     public List<SolicitationManagement> findSolicitationsPerWeekRaw(DateRangeDTO request) {
 
-        // 1. Ejecutamos la "Súper Consulta" usando las fechas que vienen en el DTO
+        // 1. Auto-rechazar solicitudes con fecha vencida antes de retornar
+        int vencidas = solicitudRepository.rechazarSolicitudesVencidas();
+        if (vencidas > 0) {
+            log.info("Auto-rechazo por fecha vencida: {} solicitud(es) rechazada(s) automáticamente.", vencidas);
+        }
+
+        // 2. Ejecutamos la "Súper Consulta" usando las fechas que vienen en el DTO
         List<Object[]> rawResults = solicitudRepository.findSolicitationsPerWeekRaw(
                 request.getFechaInicio(),
                 request.getFechaFin()
         );
         List<SolicitationManagement> responseList = new ArrayList<>();
 
-        // 2. Iteramos y mapeamos los resultados
+        // 3. Iteramos y mapeamos los resultados
         for (Object[] row : rawResults) {
             // row[7] -> productos_solicitados
             List<SolicitationManagement.ProductDetailDTO> productos;
@@ -147,15 +154,16 @@ public class SolicitudServiceImp implements SolicitudService{
                 throw new RuntimeException("Error crítico al mapear asignatura_detalle: " + row[8], e);
             }
             responseList.add(new SolicitationManagement(
-                    ((java.sql.Date) row[0]).toLocalDate(),   // fechaSolicitada
-                    (String) row[1],                          // nombreReceta
-                    (Integer) row[2],                         // idSolicitud
+                    ((java.sql.Date) row[0]).toLocalDate(),              // fechaSolicitada
+                    (String) row[1],                                      // nombreReceta
+                    (Integer) row[2],                                     // idSolicitud
                     row[3] != null ? ((Number) row[3]).intValue() : null, // idReceta
                     row[4] != null ? ((Number) row[4]).intValue() : null, // idReservaSala
-                    row[5].toString(),                        // estadoSolicitud
-                    row[6] != null ? row[6].toString() : "", // observaciones
+                    row[5].toString(),                                    // estadoSolicitud
+                    row[6] != null ? row[6].toString() : "",             // observaciones
                     productos,
-                    courseDetails
+                    courseDetails,
+                    row[9] != null ? row[9].toString() : null            // motivoRechazo
             ));
         }
         return responseList;
@@ -249,8 +257,27 @@ public class SolicitudServiceImp implements SolicitudService{
                     + totalEsperados + " solicitudes, pero se encontraron " + totalActualizados);
         }
 
+        // 5. Guardar motivos para las solicitudes que pasaron a RECHAZADA
+        for (ChangeSolicitationStatus.StatusItemDTO item : request.estadosSolicitudes()) {
+            if ("RECHAZADA".equals(StringUtils.normalizeToEnumKey(item.estado()))
+                    && item.motivo() != null && !item.motivo().isBlank()) {
+                motivoRechazoRepository.upsertMotivo(item.idSolicitud(), item.motivo().trim());
+                log.info("Motivo de rechazo guardado para solicitud ID {}.", item.idSolicitud());
+            }
+        }
+
         log.info("Actualización masiva exitosa. Se actualizaron {} solicitudes correctamente.", totalActualizados);
         return true;
+    }
+
+    /** Rechaza automáticamente solicitudes PENDIENTES con fecha vencida. Se ejecuta diariamente a las 03:00 AM. */
+    @Scheduled(cron = "0 0 3 * * *")
+    @Transactional
+    public void rechazarVencidasScheduled() {
+        int rechazadas = solicitudRepository.rechazarSolicitudesVencidas();
+        if (rechazadas > 0) {
+            log.info("[Scheduler] Auto-rechazo nocturno: {} solicitud(es) vencida(s) rechazada(s).", rechazadas);
+        }
     }
 
     @Transactional(readOnly = true)

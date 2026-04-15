@@ -333,7 +333,7 @@ const GestionSolicitudesPage: React.FC = () => {
     if (!selSol || !motivoRechazo.trim()) return;
     setIsSaving(true);
     try {
-      await cambiarEstadoMasivoService({ estadosSolicitudes: [{ idSolicitud: selSol.id, estado: 'RECHAZADA' }] });
+      await cambiarEstadoMasivoService({ estadosSolicitudes: [{ idSolicitud: selSol.id, estado: 'RECHAZADA', motivo: motivoRechazo.trim() }] });
       setSolicitudes(prev => prev.map(s => s.id === selSol.id ? { ...s, estado: 'Rechazada', motivoRechazo: motivoRechazo.trim() } : s));
       setSeleccionados(prev => { const n = new Set(prev); n.delete(selSol.id); return n; });
       toast.warning(`Solicitud §${selSol.nombreSeccion} rechazada`);
@@ -427,7 +427,8 @@ const GestionSolicitudesPage: React.FC = () => {
     setIsSaving(true);
     try {
       const nuevoEstado = revertirAccion === 'pendiente' ? 'PENDIENTE' : revertirAccion === 'aceptar' ? 'ACEPTADA' : 'RECHAZADA';
-      await cambiarEstadoMasivoService({ estadosSolicitudes: [{ idSolicitud: selSol.id, estado: nuevoEstado }] });
+      const motivoPayload = revertirAccion === 'rechazar' ? revertirMotivo.trim() : undefined;
+      await cambiarEstadoMasivoService({ estadosSolicitudes: [{ idSolicitud: selSol.id, estado: nuevoEstado, motivo: motivoPayload }] });
       if (revertirAccion === 'pendiente') {
         setSolicitudes(prev => prev.map(s => s.id === selSol.id ? { ...s, estado: 'Pendiente', motivoRechazo: undefined } : s));
         toast.warning(`Solicitud §${selSol.nombreSeccion} revertida a Pendiente`);

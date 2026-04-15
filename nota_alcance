@@ -429,14 +429,16 @@ Técnico:
       - SolicitudRepository: método JPA derivado
         existsByIdSolicitudInAndEstadoSolicitud para validar en service.
 
-  (d) MotivoRechazo pendiente de completar:
-      La tabla motivo_rechazo_solicitud existe en BD y la clase Java existe con
-      patrón Builder, pero falta:
-      - Completar el service para guardar el motivo al rechazar.
-      - Endpoint para consultar el motivo de una solicitud rechazada.
-      - En la vista de gestión de solicitudes: campo de motivo al rechazar.
-      - Identificar y notificar al Profesor a Cargo de la asignatura y al Docente
-        de la sección rechazada (notificación in-app o email — pendiente definir canal).
+  (d) MotivoRechazo implementado (2026-04-15):
+      - changeMassiveStatus guarda el motivo en motivo_rechazo_solicitud al rechazar (upsert).
+      - findSolicitationsPerWeekRaw incluye motivoRechazo (row[9]) via LEFT JOIN, solo cuando RECHAZADA.
+      - SolicitationManagement record incluye campo motivoRechazo (nullable).
+      - Trigger trg_limpiar_motivo_rechazo elimina el motivo automáticamente cuando el estado
+        cambia DESDE RECHAZADA a cualquier otro (PENDIENTE, ACEPTADA, etc.).
+      - Scheduler @Scheduled(cron "0 0 3 * * *") auto-rechaza solicitudes PENDIENTES vencidas.
+      - rechazarSolicitudesVencidas() también se llama al cargar la vista semanal.
+      - Frontend: motivo se envía al backend al rechazar (confirmarRechazo y confirmarRevertir).
+      - PENDIENTE: notificación a Profesor a Cargo y Docente (canal sin definir).
 
   (e) Una vez que la solicitud fue consolidada en pedido, su estado es inmutable.
       La vista solo la mostrará con estado PROCESADO como información histórica.
@@ -927,11 +929,12 @@ PENDIENTE DE IMPLEMENTAR O DEFINIR:
   [✓] Estado EN_PEDIDO implementado (2026-04-14):
       Solicitudes ACEPTADAS pasan a EN_PEDIDO al confirmar consolidación de pedido.
       Vista Gestión de Solicitudes muestra el estado y bloquea cualquier cambio.
-  [ ] Flujo pendiente de estados de solicitud:
-      (a) Scheduler de rechazo automático por fecha vencida
-      (b) Lógica de recuperación de solicitud rechazada
-  [ ] Completar MotivoRechazo: service, endpoint, integración al rechazo,
-      notificación a Profesor a Cargo y Docente
+  [✓] Flujo de estados de solicitud (2026-04-15):
+      (a) Scheduler de rechazo automático por fecha vencida — implementado (@Scheduled 3 AM + lazy en carga)
+      (b) Lógica de recuperación de solicitud rechazada — trigger BD limpia motivo al cambiar estado
+  [✓] MotivoRechazo completado (2026-04-15): service guarda/upsert motivo, query incluye motivo
+      en consulta semanal, trigger limpia motivo al revertir estado, frontend envía motivo al backend.
+      PENDIENTE: notificación a Profesor a Cargo y Docente (canal sin definir)
   [✓] Edición de bloques horarios desde UI — Frontend + Backend implementados.
       Frontend: Reasignar Bloques + Restaurar predeterminados + validación de conflictos
       mín. 1 min entre bloques + confirmación por texto "CONFIRMAR" + advertencia impacto.
