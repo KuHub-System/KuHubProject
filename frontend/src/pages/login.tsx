@@ -165,7 +165,7 @@ const LoginPage: React.FC = () => {
             {/* ── Logo y título ── */}
             <div className="text-center mb-5">
               <img
-                src="/nrelogoo-removebg-preview.png"
+                src="/nrelogoo-Photoroom.png"
                 alt="KuHub"
                 className="mx-auto h-32 w-32 mb-3 drop-shadow-md"
               />
