@@ -1352,43 +1352,66 @@ const ConglomeradoPedidosPage: React.FC = () => {
 
                             {/* Detalle expandido */}
                             {abierto && (
-                              <div className="mx-4 mb-3 rounded-xl border border-default-100 overflow-hidden">
-                                {/* Horario y sala */}
+                              <div className="mx-4 mb-3 rounded-xl overflow-hidden border-2"
+                                style={{ borderColor: hoy ? '#FCD34D' : cfg.border }}>
+                                {/* Horario y sala — cabecera */}
                                 <div className="flex items-center gap-2 px-4 py-2 border-b"
-                                  style={{ backgroundColor: cfg.bgHeader, borderColor: cfg.border }}>
-                                  <Icon icon="lucide:clock" width={12} style={{ color: cfg.textColor }} />
-                                  <span className="text-xs font-bold uppercase tracking-wide" style={{ color: cfg.textColor }}>Horario y Sala</span>
+                                  style={{
+                                    backgroundColor: hoy ? '#FEF3C7' : cfg.bgHeader,
+                                    borderColor: hoy ? '#FCD34D' : cfg.border,
+                                  }}>
+                                  <Icon icon="lucide:clock" width={12} style={{ color: hoy ? '#B45309' : cfg.textColor }} />
+                                  <span className="text-xs font-bold uppercase tracking-wide"
+                                    style={{ color: hoy ? '#B45309' : cfg.textColor }}>Horario y Sala</span>
                                 </div>
-                                <div className="flex flex-wrap gap-2 px-4 py-2.5 bg-default-50">
-                                  <div className="flex items-center gap-2 px-3 py-1.5 bg-white rounded-lg border border-default-200 text-xs">
-                                    <Icon icon="lucide:clock" width={12} style={{ color: cfg.textColor }} />
-                                    <span className="font-mono text-default-700">{rango.inicio} – {rango.fin}</span>
-                                    <span className="text-default-400">·</span>
-                                    <Icon icon="lucide:door-open" width={12} className="text-default-400" />
-                                    <span className="text-default-500">{horarios.nombreSala}</span>
+                                {/* Horario y sala — contenido */}
+                                <div className="flex flex-wrap gap-2 px-4 py-2.5"
+                                  style={{ backgroundColor: hoy ? '#FFFBEB' : '#f9fafb' }}>
+                                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs"
+                                    style={{
+                                      backgroundColor: hoy ? '#FEF9C3' : '#ffffff',
+                                      borderColor: hoy ? '#FDE68A' : '#e5e7eb',
+                                    }}>
+                                    <Icon icon="lucide:clock" width={12} style={{ color: hoy ? '#B45309' : cfg.textColor }} />
+                                    <span className="font-mono" style={{ color: hoy ? '#78350F' : '#374151' }}>{rango.inicio} – {rango.fin}</span>
+                                    <span style={{ color: hoy ? '#D97706' : '#9ca3af' }}>·</span>
+                                    <Icon icon="lucide:door-open" width={12} style={{ color: hoy ? '#B45309' : '#9ca3af' }} />
+                                    <span style={{ color: hoy ? '#78350F' : '#6b7280' }}>{horarios.nombreSala}</span>
                                   </div>
                                 </div>
 
-                                {/* Tabla de productos */}
+                                {/* Tabla de productos — cabecera */}
                                 <div className="flex items-center gap-2 px-4 py-2 border-t border-b"
-                                  style={{ borderColor: cfg.border }}>
-                                  <Icon icon="lucide:package" width={12} style={{ color: cfg.textColor }} />
-                                  <span className="text-xs font-bold uppercase tracking-wide" style={{ color: cfg.textColor }}>
+                                  style={{ borderColor: hoy ? '#FCD34D' : cfg.border }}>
+                                  <Icon icon="lucide:package" width={12} style={{ color: hoy ? '#B45309' : cfg.textColor }} />
+                                  <span className="text-xs font-bold uppercase tracking-wide"
+                                    style={{ color: hoy ? '#B45309' : cfg.textColor }}>
                                     Productos requeridos · {sol.productosSolicitados.length} ítem{sol.productosSolicitados.length > 1 ? 's' : ''}
                                   </span>
                                 </div>
+                                {/* Tabla de productos — filas */}
                                 <div>
-                                  <div className="grid grid-cols-[1fr_0.4fr_0.25fr] px-4 py-1.5 bg-default-50 text-[10px] font-bold text-default-500 uppercase tracking-wider">
+                                  <div className="grid grid-cols-[1fr_0.4fr_0.25fr] px-4 py-1.5 text-[10px] font-bold uppercase tracking-wider"
+                                    style={{
+                                      backgroundColor: hoy ? '#FEF3C7' : '#f9fafb',
+                                      color: hoy ? '#B45309' : '#6b7280',
+                                    }}>
                                     <span>Producto</span>
                                     <span className="text-center">Cantidad</span>
                                     <span className="text-center">Unidad</span>
                                   </div>
                                   {sol.productosSolicitados.map((p, i) => (
                                     <div key={i}
-                                      className="grid grid-cols-[1fr_0.4fr_0.25fr] px-4 py-2 text-sm border-t border-default-50 hover:bg-default-50/60">
-                                      <span className="text-default-700 font-medium">{p.nombreProducto}</span>
-                                      <span className="text-center font-mono font-bold text-primary">{fmtCant(p.cantidad)}</span>
-                                      <span className="text-center text-default-500">{p.unidadAbreviada}</span>
+                                      className="grid grid-cols-[1fr_0.4fr_0.25fr] px-4 py-2 text-sm border-t transition-colors"
+                                      style={{
+                                        borderColor: hoy ? '#FDE68A' : '#f3f4f6',
+                                        backgroundColor: 'transparent',
+                                      }}
+                                      onMouseEnter={e => (e.currentTarget.style.backgroundColor = hoy ? '#FFFBEB' : '#f9fafb')}
+                                      onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}>
+                                      <span className="font-medium" style={{ color: hoy ? '#78350F' : '#374151' }}>{p.nombreProducto}</span>
+                                      <span className={`text-center font-mono font-bold${!hoy ? ' text-primary' : ''}`} style={{ color: hoy ? '#D97706' : undefined }}>{fmtCant(p.cantidad)}</span>
+                                      <span className="text-center" style={{ color: hoy ? '#B45309' : '#6b7280' }}>{p.unidadAbreviada}</span>
                                     </div>
                                   ))}
                                 </div>
