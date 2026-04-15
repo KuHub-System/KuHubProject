@@ -1,12 +1,15 @@
 package KuHub.config.security.filter;
 
+import KuHub.modules.gestion_usuario.entity.RefreshToken;
 import KuHub.modules.gestion_usuario.entity.Usuario;
 import KuHub.modules.gestion_usuario.repository.UsuarioRepository;
+import KuHub.modules.gestion_usuario.service.RefreshTokenService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -26,28 +29,33 @@ import java.util.Map;
 import static KuHub.config.security.TokenJwtConfig.*;
 
 /**
- * Filtro que maneja el proceso de autenticación (login)
- * ✅ VERSIÓN CON OBJECTMAPPER INYECTADO
- * ✅ Actualiza ultimoAcceso automáticamente en el backend
+ * Filtro que maneja el proceso de autenticación (login).
+ * Soporta "Recordar sesión": si recordarSesion=true en el body,
+ * genera un Access Token de 15 min + Refresh Token de 30 días (cookie HttpOnly).
+ * Sin recordarSesion: Access Token de 1 hora (comportamiento anterior).
  */
 public class JwtAuthenticationFilter extends UsernamePasswordAuthenticationFilter {
+
+    private static final String REFRESH_COOKIE_NAME = "kuhub_refresh";
+    private static final long ACCESS_TOKEN_CORTO_MS  = 15 * 60 * 1000L;   // 15 minutos
+    private static final long ACCESS_TOKEN_NORMAL_MS = 60 * 60 * 1000L;   // 1 hora
+    private static final int  REFRESH_COOKIE_DIAS    = 30;
 
     private final AuthenticationManager authenticationManager;
     private final UsuarioRepository usuarioRepository;
     private final ObjectMapper objectMapper;
+    private final RefreshTokenService refreshTokenService;
 
-    /**
-     * Constructor que recibe ObjectMapper configurado
-     */
     public JwtAuthenticationFilter(
             AuthenticationManager authenticationManager,
             UsuarioRepository usuarioRepository,
-            ObjectMapper objectMapper) {
+            ObjectMapper objectMapper,
+            RefreshTokenService refreshTokenService) {
         this.authenticationManager = authenticationManager;
         this.usuarioRepository = usuarioRepository;
         this.objectMapper = objectMapper;
+        this.refreshTokenService = refreshTokenService;
         setFilterProcessesUrl("/api/v1/auth/login");
-        System.out.println("✅ JwtAuthenticationFilter inicializado con ObjectMapper configurado");
     }
 
     @Override
@@ -58,38 +66,21 @@ public class JwtAuthenticationFilter extends UsernamePasswordAuthenticationFilte
         String contrasena = null;
 
         try {
-            System.out.println("🔍 [1] Leyendo credenciales del request...");
+            Map<String, Object> credentials = objectMapper.readValue(request.getInputStream(), Map.class);
+            email = (String) credentials.get("email");
+            contrasena = (String) credentials.get("contrasena");
 
-            Map<String, String> credentials = objectMapper.readValue(
-                    request.getInputStream(),
-                    Map.class
-            );
-
-            email = credentials.get("email");
-            contrasena = credentials.get("contrasena");
-
-            System.out.println("🔍 [2] Email recibido: " + email);
-            System.out.println("🔍 [3] Contraseña recibida: " + (contrasena != null ? "***" : "null"));
+            // Guardar recordarSesion como atributo del request para usarlo en successfulAuthentication
+            Object recordar = credentials.get("recordarSesion");
+            request.setAttribute("recordarSesion", Boolean.TRUE.equals(recordar));
 
         } catch (IOException e) {
-            System.err.println("❌ [ERROR] Error al leer credenciales: " + e.getMessage());
-            e.printStackTrace();
             throw new RuntimeException("Error al leer las credenciales del request", e);
         }
 
-        System.out.println("🔍 [4] Creando token de autenticación...");
         UsernamePasswordAuthenticationToken authenticationToken =
                 new UsernamePasswordAuthenticationToken(email, contrasena);
-
-        System.out.println("🔍 [5] Intentando autenticar con AuthenticationManager...");
-        try {
-            Authentication result = authenticationManager.authenticate(authenticationToken);
-            System.out.println("✅ [6] Autenticación exitosa!");
-            return result;
-        } catch (Exception e) {
-            System.err.println("❌ [ERROR] Autenticación fallida: " + e.getMessage());
-            throw e;
-        }
+        return authenticationManager.authenticate(authenticationToken);
     }
 
     @Override
@@ -100,15 +91,17 @@ public class JwtAuthenticationFilter extends UsernamePasswordAuthenticationFilte
             Authentication authResult) throws IOException, ServletException {
 
         try {
-            System.out.println(" Entrando a successfulAuthentication...");
-
             org.springframework.security.core.userdetails.User user =
                     (org.springframework.security.core.userdetails.User) authResult.getPrincipal();
 
             String username = user.getUsername();
             Collection<? extends GrantedAuthority> roles = authResult.getAuthorities();
 
-            // Generar Token (Igual que antes)
+            boolean recordarSesion = Boolean.TRUE.equals(request.getAttribute("recordarSesion"));
+
+            // Determinar duración del Access Token
+            long duracionMs = recordarSesion ? ACCESS_TOKEN_CORTO_MS : ACCESS_TOKEN_NORMAL_MS;
+
             Claims claims = Jwts.claims()
                     .add("authorities", objectMapper.writeValueAsString(roles))
                     .add("username", username)
@@ -117,51 +110,48 @@ public class JwtAuthenticationFilter extends UsernamePasswordAuthenticationFilte
             String token = Jwts.builder()
                     .subject(username)
                     .claims(claims)
-                    .expiration(new Date(System.currentTimeMillis() + 3600000)) // 1 Hora
+                    .expiration(new Date(System.currentTimeMillis() + duracionMs))
                     .issuedAt(new Date())
                     .signWith(SECRET_KEY)
                     .compact();
 
-            // Buscar usuario en BD
+            // Buscar usuario y actualizar ultimoAcceso
             Usuario usuario = usuarioRepository.findByEmailIgnoreCaseAndActivoTrue(username)
                     .orElseThrow(() -> new RuntimeException("Usuario activo no encontrado"));
 
-            // Actualizar ultimoAcceso
             LocalDateTime ahora = LocalDateTime.now();
             usuario.setUltimoAcceso(ahora);
             usuarioRepository.save(usuario);
 
-            // ==========================================
-            // ⚠️ AQUÍ ESTÁ EL CAMBIO PARA LIMPIAR EL JSON
-            // ==========================================
-            Map<String, Object> usuarioLimpio = new HashMap<>();
+            // Si "Recordar sesión" → generar Refresh Token y enviarlo como cookie HttpOnly
+            if (recordarSesion) {
+                RefreshToken rt = refreshTokenService.crearRefreshToken(usuario);
 
-            // 1. Mapeamos SOLO los campos que quiere el Frontend
+                Cookie refreshCookie = new Cookie(REFRESH_COOKIE_NAME, rt.getToken());
+                refreshCookie.setHttpOnly(true);
+                // setSecure(true) cuando haya HTTPS en producción
+                // refreshCookie.setSecure(true);
+                refreshCookie.setPath("/api/v1/auth");
+                refreshCookie.setMaxAge(REFRESH_COOKIE_DIAS * 24 * 60 * 60);
+                response.addCookie(refreshCookie);
+            }
+
+            // Construir respuesta con datos del usuario
+            Map<String, Object> usuarioLimpio = new HashMap<>();
             usuarioLimpio.put("idUsuario", usuario.getIdUsuario());
             usuarioLimpio.put("nombreCompleto", usuario.getNombreCompleto());
             usuarioLimpio.put("email", usuario.getEmail());
-
-            // Convertimos el rol a formato legible
-            String nombreRol = convertirNombreRolEnumALegible(usuario.getRol().getNombreRol());
-            usuarioLimpio.put("nombreRol", nombreRol);
-
-            usuarioLimpio.put("urlFotoPerfil", usuario.getUrlFotoPerfil()); // Ojo: asegúrate que en frontend se lea este key
+            usuarioLimpio.put("nombreRol", convertirNombreRolEnumALegible(usuario.getRol().getNombreRol()));
+            usuarioLimpio.put("urlFotoPerfil", usuario.getUrlFotoPerfil());
             usuarioLimpio.put("ultimoAcceso", ahora);
 
-            // ❌ ELIMINAMOS LO QUE NO QUIERES:
-            // usuarioData.put("idUsuario", ...);  <- ELIMINADO
-            // usuarioData.put("activo", ...);     <- ELIMINADO
-            // usuarioData.put("fechaCreacion", ...); <- ELIMINADO
-
-            // Agregando token al header
             response.addHeader(HEADER_STRING, JWT_TOKEN_PREFIX + token);
 
-            // Creando body final de respuesta
             Map<String, Object> body = new HashMap<>();
-            body.put("usuario", usuarioLimpio); // Aquí va el objeto limpio
+            body.put("usuario", usuarioLimpio);
             body.put("token", token);
+            body.put("recordarSesion", recordarSesion);
 
-            // Escribiendo respuesta
             response.getWriter().write(objectMapper.writeValueAsString(body));
             response.setContentType(CONTENT_TYPE);
             response.setStatus(HttpServletResponse.SC_OK);
@@ -181,8 +171,6 @@ public class JwtAuthenticationFilter extends UsernamePasswordAuthenticationFilte
             HttpServletResponse response,
             AuthenticationException failed) throws IOException, ServletException {
 
-        System.err.println("❌ [AUTH FAILED] Autenticación fallida: " + failed.getMessage());
-
         Map<String, String> body = new HashMap<>();
         body.put("message", "Autenticación fallida, email o contraseña inválidos");
         body.put("error", failed.getMessage());
@@ -194,22 +182,14 @@ public class JwtAuthenticationFilter extends UsernamePasswordAuthenticationFilte
 
     private String convertirNombreRolEnumALegible(String nombreEnum) {
         switch (nombreEnum.toUpperCase()) {
-            case "ADMINISTRADOR":
-                return "Administrador";
-            case "CO_ADMINISTRADOR":
-                return "Co-Administrador";
-            case "GESTOR_PEDIDOS":
-                return "Gestor de Pedidos";
-            case "PROFESOR_A_CARGO":
-                return "Profesor a Cargo";
-            case "DOCENTE":
-                return "Docente";
-            case "ENCARGADO_BODEGA":
-                return "Encargado de Bodega";
-            case "ASISTENTE_BODEGA":
-                return "Asistente de Bodega";
-            default:
-                return nombreEnum;
+            case "ADMINISTRADOR":    return "Administrador";
+            case "CO_ADMINISTRADOR": return "Co-Administrador";
+            case "GESTOR_PEDIDOS":   return "Gestor de Pedidos";
+            case "PROFESOR_A_CARGO": return "Profesor a Cargo";
+            case "DOCENTE":          return "Docente";
+            case "ENCARGADO_BODEGA": return "Encargado de Bodega";
+            case "ASISTENTE_BODEGA": return "Asistente de Bodega";
+            default:                 return nombreEnum;
         }
     }
 }

@@ -4,6 +4,7 @@ import KuHub.config.security.filter.JwtAuthenticationFilter;
 import KuHub.config.security.filter.JwtValidationFilter;
 import KuHub.config.security.rate_limiting.RateLimitFilter;
 import KuHub.modules.gestion_usuario.repository.UsuarioRepository;
+import KuHub.modules.gestion_usuario.service.RefreshTokenService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
@@ -37,16 +38,19 @@ public class SpringSecurityConfig {
     private final UsuarioRepository usuarioRepository;
     private final ObjectMapper objectMapper;
     private final RateLimitFilter rateLimitFilter;
+    private final RefreshTokenService refreshTokenService;
 
     @Autowired
     public SpringSecurityConfig(AuthenticationConfiguration authenticationConfiguration,
                                 UsuarioRepository usuarioRepository,
                                 ObjectMapper objectMapper,
-                                RateLimitFilter rateLimitFilter) {
+                                RateLimitFilter rateLimitFilter,
+                                RefreshTokenService refreshTokenService) {
         this.authenticationConfiguration = authenticationConfiguration;
         this.usuarioRepository = usuarioRepository;
         this.objectMapper = objectMapper;
         this.rateLimitFilter = rateLimitFilter;
+        this.refreshTokenService = refreshTokenService;
 
         // Configuración centralizada de ObjectMapper para JWT
         this.objectMapper.addMixIn(SimpleGrantedAuthority.class, SimpleGrantedAuthorityJsonCreator.class);
@@ -174,6 +178,8 @@ public class SpringSecurityConfig {
                         // ========================================
                         // Login - manejado por JwtAuthenticationFilter
                         .requestMatchers(HttpMethod.POST, "/api/v1/auth/login").permitAll()
+                        // Refresh token: no requiere Access Token (justamente sirve para obtener uno nuevo)
+                        .requestMatchers(HttpMethod.POST, "/api/v1/auth/refresh").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/auth/logout").permitAll()
                         // Preflight requests de CORS (OPTIONS)
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
@@ -541,7 +547,7 @@ public class SpringSecurityConfig {
                 )
                 .addFilterBefore(rateLimitFilter, JwtAuthenticationFilter.class)
                 // Agregar filtros JWT EN ORDEN - inyectando ObjectMapper configurado
-                .addFilter(new JwtAuthenticationFilter(authenticationManager(), usuarioRepository, objectMapper))
+                .addFilter(new JwtAuthenticationFilter(authenticationManager(), usuarioRepository, objectMapper, refreshTokenService))
                 .addFilterBefore(new JwtValidationFilter(authenticationManager(), objectMapper), UsernamePasswordAuthenticationFilter.class)
 
                 // Desactivar CSRF (no necesario con JWT)

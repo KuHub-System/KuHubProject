@@ -112,7 +112,7 @@ const LoginPage: React.FC = () => {
 
       console.log('🔐 Intentando login con:', email);
 
-      const success = await login(email, password);
+      const success = await login(email, password, recordar);
 
       if (success) {
         console.log('✅ Login exitoso, iniciando transición...');
