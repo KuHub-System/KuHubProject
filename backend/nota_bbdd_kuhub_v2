@@ -150,7 +150,7 @@ CREATE TYPE estado_solicitud_type AS ENUM (
 
 CREATE TYPE estado_pedido_type AS ENUM (
     'PENDIENTE',
-    'APROVADO',
+    'APROBADO',
     'RECHAZADO'
 );
 
