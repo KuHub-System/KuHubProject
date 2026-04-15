@@ -457,7 +457,7 @@ const ConglomeradoPedidosPage: React.FC = () => {
   const handleAprobarPedido = async (idPedido: number) => {
     setIsAprobando(true);
     try {
-      await aprobarPedidosService({ idsPedidos: [idPedido], estado: 'APROVADO' });
+      await aprobarPedidosService({ idsPedidos: [idPedido], estado: 'APROBADO' });
       toast.success('Pedido aprobado correctamente');
       await recargarDatos();
     } catch { toast.error('Error al aprobar el pedido'); }
@@ -471,7 +471,7 @@ const ConglomeradoPedidosPage: React.FC = () => {
     if (pendientes.length === 0) return;
     setIsAprobando(true);
     try {
-      await aprobarPedidosService({ idsPedidos: pendientes, estado: 'APROVADO' });
+      await aprobarPedidosService({ idsPedidos: pendientes, estado: 'APROBADO' });
       toast.success(`${pendientes.length} pedido${pendientes.length > 1 ? 's' : ''} aprobado${pendientes.length > 1 ? 's' : ''} correctamente`);
       await recargarDatos();
     } catch { toast.error('Error al aprobar los pedidos'); }
@@ -1660,7 +1660,7 @@ const ConglomeradoPedidosPage: React.FC = () => {
                 </div>
               ) : <div className="space-y-4">{pedidosAprobFiltrados.map(ped => {
                 const isPendiente = ped.estadoPedido === 'PENDIENTE';
-                const isAprobado  = ped.estadoPedido === 'APROVADO';
+                const isAprobado  = ped.estadoPedido === 'APROBADO';
                 const hayFaltante = ped.productos.some(p => p.diferenciaTransito < 0);
 
                 return (
