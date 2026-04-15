@@ -1,6 +1,6 @@
 import React from 'react';
 import { IUser, IRole } from '../types/user.types';
-import { iniciarSesionService, cerrarSesionService, obtenerUsuarioActualService } from '../services/auth-service';
+import { iniciarSesionService, cerrarSesionService, obtenerUsuarioActualService, renovarSesionService } from '../services/auth-service';
 import { ROLES_STORAGE_KEY, ROLES_SISTEMA, cargarRoles as cargarRolesConfig } from '../config/roles-config';
 import { useInactivityTimeout } from '../hooks/useInactivityTimeout';
 import InactivityWarningModal from '../components/modals/InactivityWarningModal';
@@ -18,7 +18,7 @@ interface IAuthContext {
   user: IUser | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (email: string, password: string) => Promise<boolean>;
+  login: (email: string, password: string, recordarSesion?: boolean) => Promise<boolean>;
   logout: () => void;
   hasPermission: (requiredRoles: string[]) => boolean;
   hasSpecificPermission: (permission: string) => boolean;
@@ -159,12 +159,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [user, availableRoles, rolesLoaded]);
 
   // ===================================================================
-  // EFECTO DE INICIALIZACIÓN: Cargar usuario de localStorage al montar
+  // EFECTO DE INICIALIZACIÓN: Cargar usuario de localStorage al montar.
+  // Si no hay sesión local pero existe el Refresh Token (cookie HttpOnly),
+  // se intenta renovar el Access Token silenciosamente.
   // ===================================================================
   React.useEffect(() => {
-    const checkAuth = () => {
+    const checkAuth = async () => {
       try {
-        const usuarioActual = obtenerUsuarioActualService();
+        let usuarioActual = obtenerUsuarioActualService();
+
+        // Sin sesión local → intentar renovar via refresh token (cookie)
+        if (!usuarioActual) {
+          const nuevoToken = await renovarSesionService();
+          if (nuevoToken) {
+            usuarioActual = obtenerUsuarioActualService();
+          }
+        }
 
         if (usuarioActual) {
           const userData: IUser = {
@@ -219,13 +229,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return hasSpecificPermission(pageId);
   };
 
-  const login = async (email: string, password: string): Promise<boolean> => {
+  const login = async (email: string, password: string, recordarSesion = false): Promise<boolean> => {
     try {
       setIsLoading(true);
 
       reloadRoles();
 
-      const sesion = await iniciarSesionService(email, password);
+      const sesion = await iniciarSesionService(email, password, recordarSesion);
 
       const userData: IUser = {
         id: sesion.usuario.id,
