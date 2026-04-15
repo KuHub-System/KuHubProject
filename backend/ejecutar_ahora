@@ -1,3 +1,56 @@
-En la vista de Conglomerado de Pedidos, en la vista de Por Categoria donde esta el btn Con colores, que tiene que estar escrito Con Colores, es necesario que al passar el curson salga la manito los demas ya esta implementado, so mismo sucede con el btn donde esta el periodo academico, tiene que aparecer la manito al passar el cursor, esto sucede para las vistas de Conglomerado de Pedidos, Gestion de Pedidos, Gestion de Solicitudes, Solicitud (para solicitud requiere el cambio de btn de periodo academico para que sea igual a las 3 otras vistas mensionadas para que el sistema sea harmonico) es necesario que al passar el cursor aparesca la manito para que el usuario entienda que es cliclable.
+Necesito que agregues informacion sobre el login en nota alcance si no esta.
 
-Sobre otro proceso en En la vista de Conglomerado de Pedidos, en la vista de Por Categoria, Necesito que el excel generado que esta perfecto la visualizacion al descargar nesito que si el usuario edita los valores en alguna parte de las filas se sumen el sub total y el total si es posible hacer esto en el codigo si no hay que dejar como esta y informar como factor limitante en nota_alcance, hay que detallar la vista del excel en el nota_alcance de como se visualizan los contenidos. 
+
+vamos implementar el reconrdar sesion del login para esto inventigue estes detalles
+
+El estándar de la industria (Refresh Tokens)
+Si KuHub va a manejar información delicada de inventario y quieres la máxima seguridad, esta es la forma profesional que se usa en producción, aunque requiere más trabajo en ambos lados.
+
+En lugar de crear un solo JWT que dure 30 días (lo cual es inseguro si te lo roban), el backend devuelve dos cosas:
+
+Access Token: Un JWT de vida muy corta (15 minutos).
+
+Refresh Token: Un token de vida larga (30 días).
+
+basada en Refresh Tokens, es el estándar de seguridad para aplicaciones de producción. Permite que la sesión de KuHub sea persistente (que el usuario no tenga que loguearse cada hora) sin sacrificar la seguridad de los datos de inventario.
+
+Aquí tienes el detalle técnico de cómo funciona este sistema y cómo se implementa en tu stack.
+
+1. El Concepto: Dos Llaves para una Puerta
+En lugar de tener un solo token que dure mucho tiempo, dividimos las responsabilidades en dos tipos de tokens:
+
+Access Token (JWT): Es la llave que el frontend envía en cada petición (Authorization: Bearer ...). Para que sea seguro, debe ser de vida corta (ej. 15 minutos). Si alguien lo roba, solo tendrá 15 minutos de acceso.
+
+Refresh Token: Es una llave especial que solo sirve para pedir un nuevo Access Token. Tiene una vida larga (ej. 30 días). Este token no se usa para acceder a datos, solo para renovar la sesión.
+
+2. El Flujo de Trabajo (Paso a Paso)
+Inicio de Sesión: El usuario envía sus credenciales. Si son correctas y marcó "Recordar sesión", el backend de Spring Boot genera ambos tokens.
+
+Almacenamiento Seguro: * El Access Token se guarda en la memoria de React (un estado de Context o Redux).
+
+El Refresh Token se envía al navegador preferiblemente en una Cookie HttpOnly. Esto es vital: las cookies HttpOnly no pueden ser leídas por JavaScript, lo que protege a KuHub de ataques XSS.
+
+Uso Normal: React usa el Access Token para cargar productos, movimientos de bodega, etc.
+
+Expiración del Access Token: Eventualmente, el Access Token vence y Spring Boot devuelve un error 401 Unauthorized.
+
+Renovación Silenciosa: Un "Interceptor" en el frontend (usando Axios) detecta el error 401, detiene la petición y hace una llamada automática a un endpoint como /api/auth/refresh.
+
+Validación en Backend: Spring Boot recibe el Refresh Token de la cookie, verifica que sea válido en la base de datos PostgreSQL y devuelve un nuevo Access Token.
+
+Reintento: El interceptor de Axios toma el nuevo token y vuelve a lanzar la petición original. El usuario nunca se enteró de que su sesión expiró y fue renovada.
+
+3. Implementación Técnica
+En el Backend (Spring Boot)
+Base de Datos: Necesitas una tabla refresh_tokens vinculada al user_id para poder invalidar sesiones de forma remota (por ejemplo, si el usuario cambia su contraseña).
+
+Configuración de Cookie: Al generar el Refresh Token, configúralo con setHttpOnly(true) y setSecure(true) (esto último requiere que tu servidor en AWS Lightsail ya tenga configurado el SSL que mencionaste).
+
+En el Frontend (React)
+Axios Interceptors: Es la parte más importante. Debes configurar un interceptor de respuesta que "escuche" los errores 401. Si el error ocurre, refresca el token y reintenta.
+
+
+
+SI LOGRAS EJECUTAR EL PROCESO HAY QUE DETALLARLO EN NOTA ALCANCE.
+
+SI O SI EN NOTA ALCANCE MARCAR COMO PENDIENTE EL F2A AUTENTICADOR DEBIDO QUE REQUIERE CORREOS REALES PARA PRUEBA, ADEMAS DE COMENTAR SOBRE OLVODO SU CONTRASENA PARA MARCAR COMO PENDIENTE .

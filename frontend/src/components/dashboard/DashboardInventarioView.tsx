@@ -58,17 +58,28 @@ const ProductosCriticosTable: React.FC<{ productos: ProductoCritico[] }> = ({ pr
     );
   }
 
+  const thClass = "py-2 px-3 text-center text-xs font-semibold text-default-500 uppercase tracking-wider";
+  const tdBase  = "py-2 px-3 text-center max-w-0";
+
   return (
     <div className="overflow-x-auto">
-      <table className="w-full text-sm">
+      <table className="w-full text-sm table-fixed">
+        <colgroup>
+          <col className="w-[28%]" />
+          <col className="w-[22%]" />
+          <col className="w-[12%]" />
+          <col className="w-[12%]" />
+          <col className="w-[13%]" />
+          <col className="w-[13%]" />
+        </colgroup>
         <thead>
           <tr className="border-b border-divider">
-            <th className="text-left py-2 px-3 text-xs font-semibold text-default-500 uppercase tracking-wider">Producto</th>
-            <th className="text-left py-2 px-3 text-xs font-semibold text-default-500 uppercase tracking-wider">Categoría</th>
-            <th className="text-right py-2 px-3 text-xs font-semibold text-default-500 uppercase tracking-wider">Stock</th>
-            <th className="text-right py-2 px-3 text-xs font-semibold text-default-500 uppercase tracking-wider">Stock Mín</th>
-            <th className="text-left py-2 px-3 text-xs font-semibold text-default-500 uppercase tracking-wider">Unidad</th>
-            <th className="text-right py-2 px-3 text-xs font-semibold text-default-500 uppercase tracking-wider">%</th>
+            <th className={thClass}>Producto</th>
+            <th className={thClass}>Categoría</th>
+            <th className={thClass}>Stock</th>
+            <th className={thClass}>Stock Mín</th>
+            <th className={thClass}>Unidad</th>
+            <th className={thClass}>%</th>
           </tr>
         </thead>
         <tbody>
@@ -77,23 +88,27 @@ const ProductosCriticosTable: React.FC<{ productos: ProductoCritico[] }> = ({ pr
             const isCritical = ratio < 0.5;
             return (
               <tr key={i} className="border-b border-divider/50 hover:bg-default-50 transition-colors">
-                <td className={`py-2 px-3 font-medium ${isCritical ? 'text-danger-600' : 'text-default-800'}`}>
-                  {p.nombreProducto}
+                <td className={`${tdBase} font-medium ${isCritical ? 'text-danger-600' : 'text-default-800'}`}>
+                  <span className="block truncate" title={p.nombreProducto}>{p.nombreProducto}</span>
                 </td>
-                <td className="py-2 px-3 text-default-500">{p.categoria}</td>
-                <td className={`py-2 px-3 text-right font-semibold ${isCritical ? 'text-danger-600' : 'text-default-800'}`}>
+                <td className={`${tdBase} text-default-500`}>
+                  <span className="block truncate" title={p.categoria}>{p.categoria}</span>
+                </td>
+                <td className={`${tdBase} font-semibold ${isCritical ? 'text-danger-600' : 'text-default-800'}`}>
                   {p.stock.toFixed(1)}
                 </td>
-                <td className="py-2 px-3 text-right text-default-500">{p.stockLimit.toFixed(1)}</td>
-                <td className="py-2 px-3 text-default-500">{p.unidad}</td>
-                <td className="py-2 px-3 text-right">
-                  <Chip
-                    size="sm"
-                    color={isCritical ? 'danger' : 'warning'}
-                    variant="flat"
-                  >
-                    {p.stockLimit > 0 ? `${((p.stock / p.stockLimit) * 100).toFixed(0)}%` : 'N/A'}
-                  </Chip>
+                <td className={`${tdBase} text-default-500`}>
+                  {p.stockLimit.toFixed(1)}
+                </td>
+                <td className={`${tdBase} text-default-500`}>
+                  <span className="block truncate" title={p.unidad}>{p.unidad}</span>
+                </td>
+                <td className={tdBase}>
+                  <div className="flex justify-center">
+                    <Chip size="sm" color={isCritical ? 'danger' : 'warning'} variant="flat">
+                      {p.stockLimit > 0 ? `${((p.stock / p.stockLimit) * 100).toFixed(0)}%` : 'N/A'}
+                    </Chip>
+                  </div>
                 </td>
               </tr>
             );

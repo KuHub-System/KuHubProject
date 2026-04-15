@@ -1886,8 +1886,8 @@ export const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto
 
         <Input
           type="number"
-          label={<span className="whitespace-nowrap truncate max-w-full">Stock Mín. (Opcional)</span>}
-          placeholder="Stock mínimo"
+          label={<span className="whitespace-nowrap truncate max-w-full">{origenContext === 'bodega' ? 'Stock Máx. (Opcional)' : 'Stock Mín. (Opcional)'}</span>}
+          placeholder={origenContext === 'bodega' ? 'Stock máximo' : 'Stock mínimo'}
           value={stockMinimo}
           onValueChange={(val) => {
             if (val === '') {

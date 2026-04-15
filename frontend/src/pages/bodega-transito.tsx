@@ -1237,7 +1237,7 @@ const BodegaTransitoPage: React.FC = () => {
               <ModalHeader className="border-b border-default-100 dark:border-default-50 bg-white dark:bg-content2">
                 <div className="flex items-center gap-2">
                   <Icon icon="lucide:package-check" className="text-primary" width={24} />
-                  <span className="font-bold text-lg text-secondary dark:text-foreground">Control Bodega</span>
+                  <span className="font-bold text-lg text-secondary dark:text-foreground">Control de Bodega</span>
                 </div>
               </ModalHeader>
               <ModalBody className="py-6">
