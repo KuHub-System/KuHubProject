@@ -230,7 +230,7 @@ public class PedidoDashboardRecords {
     ) {}
 
     /**
-     * Solicitud ACEPTADA vinculada a un pedido APROVADO,
+     * Solicitud ACEPTADA vinculada a un pedido APROBADO,
      * con horario y lista de productos con info de stock.
      * Exclusivo de CONSULTA 4.
      */
