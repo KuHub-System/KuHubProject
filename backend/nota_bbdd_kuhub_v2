@@ -3,6 +3,9 @@
 -- =====================================================
 --DROP FUNCTION IF EXISTS validar_asignacion_docente() CASCADE;
 --DROP FUNCTION IF EXISTS validar_cambio_rol_docente() CASCADE;
+DROP TRIGGER IF EXISTS trg_limpiar_motivo_rechazo ON solicitud;
+DROP FUNCTION IF EXISTS fn_limpiar_motivo_al_cambiar_estado() CASCADE;
+DROP FUNCTION IF EXISTS rechazar_solicitudes_vencidas() CASCADE;
 
 -- =====================================================
 -- ELIMINAR TABLAS HISTORICAS PRIMERO (sin FKs entrantes)
@@ -3094,5 +3097,58 @@ BEGIN
 
         END LOOP; -- Fin Loop Interno (Secciones)
     END LOOP; -- Fin Loop Externo (Asignaturas/Recetas)
+END;
+$$ LANGUAGE plpgsql;
+
+-- =====================================================
+-- TRIGGER: Limpieza automática de motivo_rechazo_solicitud
+-- al cambiar estado desde RECHAZADA a cualquier otro estado
+-- =====================================================
+
+-- Función del trigger
+CREATE OR REPLACE FUNCTION fn_limpiar_motivo_al_cambiar_estado()
+RETURNS TRIGGER AS $$
+BEGIN
+    -- Si la solicitud cambia DESDE RECHAZADA hacia cualquier otro estado,
+    -- eliminar el motivo de rechazo vinculado
+    IF OLD.estado_solicitud = 'RECHAZADA' AND NEW.estado_solicitud != 'RECHAZADA' THEN
+        DELETE FROM motivo_rechazo_solicitud WHERE id_solicitud = NEW.id_solicitud;
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Trigger asociado a la tabla solicitud
+CREATE TRIGGER trg_limpiar_motivo_rechazo
+AFTER UPDATE OF estado_solicitud ON solicitud
+FOR EACH ROW
+EXECUTE FUNCTION fn_limpiar_motivo_al_cambiar_estado();
+
+
+-- =====================================================
+-- FUNCIÓN: Rechazo automático de solicitudes con fecha vencida
+-- Llamar desde el backend (scheduler diario a las 3 AM) o
+-- ejecutar manualmente para forzar el proceso.
+-- =====================================================
+
+CREATE OR REPLACE FUNCTION rechazar_solicitudes_vencidas()
+RETURNS INTEGER AS $$
+DECLARE
+    filas_rechazadas INTEGER;
+BEGIN
+    WITH rechazadas AS (
+        UPDATE solicitud
+        SET estado_solicitud = 'RECHAZADA'::estado_solicitud_type
+        WHERE estado_solicitud = 'PENDIENTE'::estado_solicitud_type
+          AND fecha_solicitada < CURRENT_DATE
+        RETURNING id_solicitud
+    )
+    INSERT INTO motivo_rechazo_solicitud (id_solicitud, motivo)
+    SELECT r.id_solicitud, 'Solicitud rechazada automáticamente: la fecha de la clase ha expirado.'
+    FROM rechazadas r
+    ON CONFLICT (id_solicitud) DO NOTHING;
+
+    GET DIAGNOSTICS filas_rechazadas = ROW_COUNT;
+    RETURN filas_rechazadas;
 END;
 $$ LANGUAGE plpgsql;

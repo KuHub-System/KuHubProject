@@ -27,7 +27,8 @@ public record SolicitationManagement(
         String estadoSolicitud,
         String observaciones,
         List<ProductDetailDTO> productos,
-        CourseDetailsDTO asignaturaDetalle
+        CourseDetailsDTO asignaturaDetalle,
+        String motivoRechazo
 ) {
 
     // ============================================================================
