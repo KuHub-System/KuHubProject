@@ -1263,32 +1263,33 @@ const ConglomeradoPedidosPage: React.FC = () => {
                     </div>
 
                     {/* Solicitudes del día */}
-                    <div className="divide-y divide-default-100 bg-white">
-                      {grupo.solicitudes.map(sol => {
+                    <div className="bg-white">
+                      {grupo.solicitudes.map((sol, solIdx) => {
                         const { seccion, horarios } = sol;
                         const rango   = parseRango(horarios.rangoHoras);
                         const solKey  = String(sol.idSolicitud);
                         const abierto = expandidos.has(solKey);
 
                         return (
-                          <div key={sol.idSolicitud}>
+                          <div key={sol.idSolicitud}
+                            style={solIdx > 0 ? { borderTop: '2px solid #1a1a1a' } : undefined}>
                             <button
                               className="w-full flex flex-col sm:flex-row sm:items-stretch gap-0 hover:bg-default-50/70 cursor-pointer transition-colors text-left"
                               onClick={() => toggleExpandido(solKey)}
                             >
                               {/* Barra de hora lateral */}
                               <div className="hidden sm:flex flex-col items-center justify-center px-3 py-3 min-w-[80px] border-r"
-                                style={{ backgroundColor: cfg.bgHeader, borderColor: cfg.border }}>
-                                <span className="text-xs font-bold" style={{ color: cfg.textColor }}>{rango.inicio}</span>
-                                <div className="w-px flex-1 my-1 min-h-[20px] border-l-2 border-dashed" style={{ borderColor: cfg.border }} />
-                                <span className="text-xs font-bold" style={{ color: cfg.textColor }}>{rango.fin}</span>
+                                style={{ backgroundColor: hoy ? '#FEF3C7' : cfg.bgHeader, borderColor: hoy ? '#FCD34D' : cfg.border }}>
+                                <span className="text-xs font-bold" style={{ color: hoy ? '#78350F' : cfg.textColor }}>{rango.inicio}</span>
+                                <div className="w-px flex-1 my-1 min-h-[20px] border-l-2 border-dashed" style={{ borderColor: hoy ? '#FCD34D' : cfg.border }} />
+                                <span className="text-xs font-bold" style={{ color: hoy ? '#78350F' : cfg.textColor }}>{rango.fin}</span>
                               </div>
 
                               {/* Contenido */}
                               <div className="flex-1 flex flex-col sm:flex-row sm:items-center gap-3 px-4 py-3">
 
                                 {/* Bloque móvil: hora */}
-                                <div className="sm:hidden flex items-center gap-2 text-xs font-bold" style={{ color: cfg.textColor }}>
+                                <div className="sm:hidden flex items-center gap-2 text-xs font-bold" style={{ color: hoy ? '#78350F' : cfg.textColor }}>
                                   <Icon icon="lucide:clock" width={12} />
                                   {rango.inicio} – {rango.fin}
                                 </div>
