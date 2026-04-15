@@ -145,13 +145,13 @@ const LoginPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen relative flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 font-sans">
-      {/* Imagen de fondo — fixed para cubrir 100% del viewport siempre */}
+    <div className="min-h-screen w-full relative flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 font-sans overflow-hidden">
+      {/* Imagen de fondo — absolute respecto al contenedor w-full min-h-screen */}
       <img
         src="/bg-cousino-960x600.jpg"
         alt=""
         aria-hidden="true"
-        className="fixed inset-0 w-screen h-screen object-cover opacity-25 dark:opacity-10 pointer-events-none select-none -z-10"
+        className="absolute inset-0 w-full h-full object-cover opacity-25 dark:opacity-10 pointer-events-none select-none"
       />
 
       {/* Contenido — por encima del fondo */}
