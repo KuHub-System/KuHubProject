@@ -69,10 +69,9 @@ Para no técnicos:
 3.1  AUTENTICACIÓN Y SEGURIDAD
 ------------------------------------------------------------------------
 Técnico:
-  - Login en POST /api/v1/auth/login recibe { email, contrasena } en JSON.
+  - Login en POST /api/v1/auth/login recibe { email, contrasena, recordarSesion } en JSON.
   - JWT generado con algoritmo HS256, clave secreta leída de variable de entorno
-    (fallback fijo en código). Tokens son válidos por 1 hora.
-  - Como la clave es fija, los tokens siguen siendo válidos tras reinicios del backend.
+    (fallback fijo en código). Los tokens siguen siendo válidos tras reinicios del backend.
   - Contraseñas almacenadas con BCrypt (campo VARCHAR 60 — mínimo requerido por BCrypt).
   - Rate limiting: máximo 80 peticiones por minuto por IP (RateLimitFilter).
   - CORS configurado: permite localhost:5173/3000 (desarrollo) y appkuhub.questweb.cl
@@ -83,10 +82,37 @@ Técnico:
   - Swagger UI disponible en /swagger-ui.html para documentación de API
     (actualmente público, recomendable restringir en producción).
 
+  Sistema "Recordar sesión" — Refresh Tokens (implementado 2026-04-15):
+  - Si recordarSesion=false (default): Access Token de 1 hora. Sin cookie. Comportamiento anterior.
+  - Si recordarSesion=true: Access Token de 15 minutos + Refresh Token de 30 días.
+  - El Refresh Token se envía como cookie HttpOnly (nombre: kuhub_refresh, path: /api/v1/auth).
+    Las cookies HttpOnly son inaccesibles por JavaScript → protección contra XSS.
+  - POST /api/v1/auth/refresh: el frontend envía la cookie automáticamente, el backend
+    valida el Refresh Token en BD y devuelve un nuevo Access Token (sin requerir contraseña).
+  - POST /api/v1/auth/logout: revoca el Refresh Token en BD y limpia la cookie.
+  - El interceptor Axios detecta errores 401, llama a /auth/refresh en silencio,
+    actualiza el token en localStorage y reintenta la petición original. El usuario
+    nunca nota la expiración del Access Token mientras el Refresh Token sea válido.
+  - Al cargar la aplicación sin sesión local, se intenta renovar vía cookie (sesión persistente).
+  - Tabla: refresh_token (id_refresh_token, id_usuario FK, token UUID único, expires_at,
+    activo, creado_en). Soft-revocación: activo=false al hacer logout o cambiar contraseña.
+
+  PENDIENTE — F2A (Segundo Factor de Autenticación):
+  - Requiere correos reales para envío de OTP/código.
+  - No implementado: se necesita servicio de email (SMTP/SendGrid) y flujo de verificación.
+  - Marcar como pendiente hasta tener infraestructura de email configurada.
+
+  PENDIENTE — "Olvidé mi contraseña":
+  - Requiere correo real del usuario para enviar enlace de restablecimiento.
+  - Necesita: tabla reset_password_token, endpoint /auth/forgot-password, email de recuperación.
+  - Marcar como pendiente hasta tener infraestructura de email configurada.
+
 Para no técnicos:
-  Cada usuario ingresa con email y contraseña. El sistema entrega un "pase digital"
-  válido por 1 hora. Las contraseñas nunca se almacenan tal como son — el sistema
-  las convierte a un código irreversible antes de guardarlas.
+  Cada usuario ingresa con email y contraseña. Si marca "Recordar sesión", el sistema
+  le entrega dos "pases": uno de corta duración (15 min) para acceder, y otro de larga
+  duración (30 días) guardado de forma segura en el navegador. El pase de 15 min se
+  renueva automáticamente en segundo plano sin que el usuario lo note. Las contraseñas
+  nunca se almacenan tal como son — el sistema las convierte a un código irreversible.
 
 ------------------------------------------------------------------------
 3.2  GESTIÓN DE USUARIOS Y ROLES
