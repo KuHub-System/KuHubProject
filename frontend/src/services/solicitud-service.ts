@@ -403,7 +403,7 @@ export interface IProductoAprobacion {
 
 export interface IPedidoAprobacion {
   idPedido: number;
-  estadoPedido: string;         // "PENDIENTE" | "APROVADO" | "RECHAZADO"
+  estadoPedido: string;         // "PENDIENTE" | "APROBADO" | "RECHAZADO"
   productos: IProductoAprobacion[];
 }
 

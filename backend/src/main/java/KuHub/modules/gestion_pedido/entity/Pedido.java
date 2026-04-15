@@ -41,7 +41,7 @@ public class Pedido {
     // ─── ENUM DE ESTADO (debe coincidir con estado_pedido_type en PostgreSQL) ──
     public enum EstadoPedidoType {
         PENDIENTE,
-        APROVADO,
+        APROBADO,
         RECHAZADO
     }
 
