@@ -145,24 +145,13 @@ const LoginPage: React.FC = () => {
   };
 
   return (
-    <div
-      className="min-h-screen relative flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 font-sans"
-      style={{
-        backgroundImage: 'url(/bg-cousino-960x600.jpg)',
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-        backgroundRepeat: 'no-repeat',
-      }}
-    >
-      {/* Overlay blanco al 75% → imagen visible al 25% */}
-      <div className="absolute inset-0 bg-white/75 dark:bg-black/90" />
-
-      {/* Contenido — por encima del fondo */}
+    <div className="font-sans w-full">
+      {/* Contenido */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="relative z-10 w-full max-w-md"
+        className="w-full max-w-md"
       >
         <Card
           className="shadow-xl border-t-4 border-primary"
