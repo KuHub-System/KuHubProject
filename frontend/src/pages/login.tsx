@@ -145,28 +145,36 @@ const LoginPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-default-50 dark:bg-black py-12 px-4 sm:px-6 lg:px-8 font-sans transition-colors duration-200">
+    <div className="min-h-screen flex items-center justify-center bg-default-100 dark:bg-black py-12 px-4 sm:px-6 lg:px-8 font-sans transition-colors duration-200">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="w-full max-w-md space-y-8"
+        className="w-full max-w-md"
       >
-        <div className="text-center">
-          <div className="mx-auto h-16 w-16 bg-secondary dark:bg-content1 text-primary rounded-xl flex items-center justify-center mb-4 shadow-lg">
-            <Icon icon="lucide:package-open" width={32} height={32} />
-          </div>
-          <h2 className="text-3xl font-extrabold text-secondary dark:text-foreground tracking-tight">
-            KuHub
-          </h2>
-          <p className="mt-2 text-sm text-default-500">
-            Gestión de Bodega e Inventario <span className="font-bold text-primary-600 dark:text-primary">DuocUC</span>
-          </p>
-        </div>
-
-        <Card className="shadow-xl border-t-4 border-primary bg-white dark:bg-content1">
+        <Card
+          className="shadow-xl border-t-4 border-primary"
+          classNames={{ base: "bg-white dark:bg-content1" }}
+        >
           <CardBody className="p-8 space-y-6">
-            <div className="text-center mb-4">
+
+            {/* ── Logo y título ── */}
+            <div className="text-center">
+              <div className="mx-auto h-16 w-16 bg-secondary dark:bg-content1 text-primary rounded-xl flex items-center justify-center mb-4 shadow-lg">
+                <Icon icon="lucide:package-open" width={32} height={32} />
+              </div>
+              <h2 className="text-3xl font-extrabold text-secondary dark:text-foreground tracking-tight">
+                KuHub
+              </h2>
+              <p className="mt-1 text-sm text-default-500">
+                Gestión de Bodega e Inventario <span className="font-bold text-primary-600 dark:text-primary">DuocUC</span>
+              </p>
+            </div>
+
+            <Divider />
+
+            {/* ── Subtítulo del form ── */}
+            <div className="text-center -mb-2">
               <h1 className="text-xl font-bold text-secondary dark:text-foreground">
                 Iniciar Sesión
               </h1>
@@ -185,7 +193,6 @@ const LoginPage: React.FC = () => {
                 <span className="text-sm font-medium">{error}</span>
               </motion.div>
             )}
-
 
             <form onSubmit={handleSubmit} className="space-y-5" autoComplete="off">
               <Input
@@ -312,12 +319,14 @@ const LoginPage: React.FC = () => {
               </>
             )}
 
+            {/* ── Copyright dentro del card ── */}
+            <Divider />
+            <p className="text-center text-xs text-default-400">
+              © {new Date().getFullYear()} KuHub · Sistema de Gestión Gastronómica DuocUC
+            </p>
+
           </CardBody>
         </Card>
-
-        <p className="text-center text-xs text-default-400">
-          © {new Date().getFullYear()} KuHub - Sistema de Gestión Gastronómica DuocUC
-        </p>
       </motion.div>
     </div>
   );
