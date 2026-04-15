@@ -146,7 +146,7 @@ const LoginPage: React.FC = () => {
 
   return (
     <div
-      className="min-h-screen w-screen relative flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 font-sans"
+      className="min-h-screen relative flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 font-sans"
       style={{
         backgroundImage: 'url(/bg-cousino-960x600.jpg)',
         backgroundSize: 'cover',
