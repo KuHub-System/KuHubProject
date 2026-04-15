@@ -164,13 +164,11 @@ const LoginPage: React.FC = () => {
 
             {/* ── Logo y título ── */}
             <div className="text-center mb-5">
-              <div className="mx-auto mb-4 flex items-center justify-center w-28 h-28 rounded-full bg-gradient-to-b from-amber-50 to-yellow-100 border-2 border-yellow-400/60 shadow-lg shadow-yellow-200/50 dark:from-yellow-900/30 dark:to-amber-900/20 dark:border-yellow-500/40 dark:shadow-yellow-900/20">
-                <img
-                  src="/nrelogoo-removebg-preview.png"
-                  alt="KuHub"
-                  className="h-20 w-20 drop-shadow-sm"
-                />
-              </div>
+              <img
+                src="/nrelogoo-removebg-preview.png"
+                alt="KuHub"
+                className="mx-auto h-32 w-32 mb-3 drop-shadow-md"
+              />
               <h2 className="text-3xl font-extrabold text-secondary dark:text-foreground tracking-tight">
                 KuHub
               </h2>
