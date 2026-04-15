@@ -1662,6 +1662,7 @@ const ConglomeradoPedidosPage: React.FC = () => {
                 const isPendiente = ped.estadoPedido === 'PENDIENTE';
                 const isAprobado  = ped.estadoPedido === 'APROBADO';
                 const hayFaltante = ped.productos.some(p => p.diferenciaTransito < 0);
+                const labelEstado: Record<string, string> = { PENDIENTE: 'Pendiente', APROBADO: 'Aprobado', RECHAZADO: 'Rechazado' };
 
                 return (
                   <div key={ped.idPedido} className="border border-default-200 rounded-2xl overflow-hidden">
@@ -1681,7 +1682,7 @@ const ConglomeradoPedidosPage: React.FC = () => {
                       <div className="flex items-center gap-2">
                         <Chip size="sm" color={isAprobado ? 'success' : isPendiente ? 'warning' : 'danger'} variant="flat"
                           startContent={<Icon icon={isAprobado ? 'lucide:check-circle-2' : isPendiente ? 'lucide:clock' : 'lucide:x-circle'} width={10} />}>
-                          {ped.estadoPedido}
+                          {labelEstado[ped.estadoPedido] ?? ped.estadoPedido}
                         </Chip>
                         {cong_Editar && isPendiente && (
                           <Button size="sm" color="success" variant="flat"
