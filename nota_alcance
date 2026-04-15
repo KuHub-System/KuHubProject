@@ -525,8 +525,7 @@ Técnico:
 
   Entidad Pedido:
   - fecha_inicio_pedido, fecha_fin_pedido (rango de la semana).
-  - estado_pedido (ENUM: PENDIENTE, APROVADO, RECHAZADO).
-    Nota: "APROVADO" tiene typo en el ENUM de BD — evaluar corrección.
+  - estado_pedido (ENUM: PENDIENTE, APROBADO, RECHAZADO).
   - fecha_registro (TIMESTAMP, automático, readonly).
 
   Entidad DetallePedido:
@@ -701,7 +700,7 @@ Técnico:
   Sub-vista Por Pedido:
     Cada pedido individual en una tarjeta con:
     - Cabecera: Pedido #ID + N productos + chip de estado (PENDIENTE=ámbar /
-      APROVADO=verde). Si hay faltantes: "· Faltantes detectados" en rojo.
+      APROBADO=verde). Si hay faltantes: "· Faltantes detectados" en rojo.
     - Si el pedido está PENDIENTE y el usuario tiene permiso: botón individual
       "Aprobar pedido".
     - Tabla idéntica a Vista Unificada pero solo con los productos del pedido.
@@ -739,7 +738,7 @@ Técnico:
   en bodega para completar la entrega de esa solicitud específica.
 
   Solo aparecen solicitudes con estado ACEPTADA vinculadas a pedidos con
-  estado APROVADO.
+  estado APROBADO.
 
   Preparar entrega (POST /api/v1/pedido/preparar-entrega):
   Recibe PrepararEntregaDTO:
@@ -888,8 +887,7 @@ TIPOS ENUM EN BASE DE DATOS (PostgreSQL ENUM nativo):
   - estado_solicitud_type: PENDIENTE, ACEPTADA, EN_PEDIDO, PROCESADO, RECHAZADA
   - estado_receta_type: ACTIVO, INACTIVO
   - estado_seccion_type: ACTIVA, INACTIVA, SUSPENDIDA
-  - estado_pedido_type: PENDIENTE, APROVADO, RECHAZADO
-    (nota: "APROVADO" tiene typo en BD — falta la 'B', evaluar corrección)
+  - estado_pedido_type: PENDIENTE, APROBADO, RECHAZADO
 
 CARGA DE RELACIONES (ORM):
   - EAGER (carga inmediata con el objeto): Rol de Usuario, Categoria y UnidadMedida
@@ -964,7 +962,7 @@ PENDIENTE DE IMPLEMENTAR O DEFINIR:
   [ ] Adjuntar archivos a recetas (requiere AWS S3)
   [ ] Historial de cantidad real entregada vs. cantidad solicitada (definir con cliente)
   [ ] Restringir acceso a Swagger en producción (actualmente público)
-  [ ] Corrección del typo "APROVADO" en ENUM estado_pedido_type
+  [x] Corrección del typo "APROVADO" → "APROBADO" en ENUM estado_pedido_type (2026-04-15)
 
 ================================================================================
   6. NOTAS ORIGINALES DE TRABAJO (referencia interna)
