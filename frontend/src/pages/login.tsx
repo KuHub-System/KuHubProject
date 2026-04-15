@@ -145,13 +145,13 @@ const LoginPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen relative flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 font-sans overflow-hidden">
-      {/* Imagen de fondo — cubre todo el espacio lateral, no afecta al card */}
+    <div className="min-h-screen relative flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 font-sans">
+      {/* Imagen de fondo — fixed para cubrir 100% del viewport siempre */}
       <img
         src="/bg-cousino-960x600.jpg"
         alt=""
         aria-hidden="true"
-        className="absolute inset-0 w-full h-full object-cover opacity-25 dark:opacity-10 pointer-events-none select-none"
+        className="fixed inset-0 w-screen h-screen object-cover opacity-25 dark:opacity-10 pointer-events-none select-none -z-10"
       />
 
       {/* Contenido — por encima del fondo */}
@@ -172,9 +172,11 @@ const LoginPage: React.FC = () => {
 
             {/* ── Logo y título ── */}
             <div className="text-center mb-5">
-              <div className="mx-auto h-16 w-16 bg-secondary dark:bg-content1 text-primary rounded-xl flex items-center justify-center mb-4 shadow-lg">
-                <Icon icon="lucide:package-open" width={32} height={32} />
-              </div>
+              <img
+                src="/logo2-removebg-preview.png"
+                alt="KuHub"
+                className="mx-auto h-20 w-20 mb-3 drop-shadow-md"
+              />
               <h2 className="text-3xl font-extrabold text-secondary dark:text-foreground tracking-tight">
                 KuHub
               </h2>
