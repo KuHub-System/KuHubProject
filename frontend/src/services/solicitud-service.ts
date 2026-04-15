@@ -188,6 +188,7 @@ export const obtenerSolicitudesPorSemanaService = async (
 export interface ISolicitationStatusItemDTO {
   idSolicitud: number;
   estado: string; // "PENDIENTE" | "ACEPTADA" | "RECHAZADA"
+  motivo?: string; // Solo cuando estado === "RECHAZADA"
 }
 
 export interface IChangeMassiveStatusDTO {

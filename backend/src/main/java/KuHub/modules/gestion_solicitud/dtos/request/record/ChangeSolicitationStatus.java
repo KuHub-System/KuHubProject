@@ -27,7 +27,9 @@ public record ChangeSolicitationStatus(
             Integer idSolicitud,
 
             @NotBlank(message = "El estado es obligatorio")
-            String estado
+            String estado,
+
+            String motivo
     ) {}
 }
 
