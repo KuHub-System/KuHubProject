@@ -88,16 +88,16 @@ export interface WarehouseWithProductUpdateDTO {
     idBodegaTransito: number;
     idInventario: number;
     idProducto: number;
-    tipoMovimiento: string;
+    tipoMovimiento: string | null;  // null si solo se actualiza metadata / stockLimit
     nombreProducto: string;
     codigoProducto?: string;
     descripcionProducto?: string;
     idCategoria: number;
     idUnidadMedida: number;
-    stock: number;       // stock en vista (requerido por validación del backend)
+    stock: number;
     stockLimit: number;
-    delta: number;       // para AJUSTE_BODEGA: nuevo stock absoluto; para otros: cantidad a mover
-    stockEnVista: number; // stock actual que el usuario ve (para detección de desync)
+    delta: number | null;           // null si no hay movimiento de stock
+    stockEnVista: number;
 }
 
 export interface IBodegaStockSyncWarning {
