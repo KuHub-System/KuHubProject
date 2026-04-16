@@ -167,13 +167,8 @@ public class PedidoServiceImpl implements PedidoService{
     }
 
     @Override
-    @Transactional
+    @Transactional(readOnly = true)
     public List<PedidoDashboardRecords.EntregaDiariaBodegaJson> obtenerEntregasDiarias(DateRangeDTO request) {
-        // Auto-transición lazy: pedidos APROBADOS con fecha_fin_pedido vencida → ENTREGADO
-        int actualizados = pedidoRepository.marcarPedidosEntregadosPorFecha();
-        if (actualizados > 0) {
-            log.info("Auto-entregado lazy: {} pedido(s) transitados a ENTREGADO por fecha vencida.", actualizados);
-        }
         return deserializarLista(
                 pedidoRepository.findEntregasDiariasJson(
                         request.getFechaInicio(),
