@@ -58,7 +58,8 @@ export const ROLES_SISTEMA: IRole[] = [
       'gestion-proveedores',
       'bodega-transito',
       'gestion-recetas',
-      'ramos-admin'
+      'ramos-admin',
+      'gestion-usuarios'
     ]
   },
   {
