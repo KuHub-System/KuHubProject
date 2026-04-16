@@ -25,6 +25,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -166,8 +167,13 @@ public class PedidoServiceImpl implements PedidoService{
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     public List<PedidoDashboardRecords.EntregaDiariaBodegaJson> obtenerEntregasDiarias(DateRangeDTO request) {
+        // Auto-transición lazy: pedidos APROBADOS con fecha_fin_pedido vencida → ENTREGADO
+        int actualizados = pedidoRepository.marcarPedidosEntregadosPorFecha();
+        if (actualizados > 0) {
+            log.info("Auto-entregado lazy: {} pedido(s) transitados a ENTREGADO por fecha vencida.", actualizados);
+        }
         return deserializarLista(
                 pedidoRepository.findEntregasDiariasJson(
                         request.getFechaInicio(),
@@ -176,6 +182,16 @@ public class PedidoServiceImpl implements PedidoService{
                 new TypeReference<List<PedidoDashboardRecords.EntregaDiariaBodegaJson>>() {},
                 "findEntregasDiariasJson"
         );
+    }
+
+    /** Transiciona a ENTREGADO los pedidos APROBADOS cuya semana ya finalizó. Se ejecuta diariamente a las 03:00 AM. */
+    @Scheduled(cron = "0 0 3 * * *")
+    @Transactional
+    public void marcarPedidosEntregadosScheduled() {
+        int actualizados = pedidoRepository.marcarPedidosEntregadosPorFecha();
+        if (actualizados > 0) {
+            log.info("[Scheduler] Auto-entregado nocturno: {} pedido(s) transitados a ENTREGADO por fecha_fin_pedido vencida.", actualizados);
+        }
     }
 
     // =====================================================
@@ -218,15 +234,9 @@ public class PedidoServiceImpl implements PedidoService{
             movimientoService.motionInUpdateTransitWarehouse(bt, item.cantidadAEntregar(), "SALIDA_BODEGA");
         }
 
-        // Cambiar estado de la solicitud a PROCESADO
+        // Cambiar estado de la solicitud a PROCESADO (único cambio de estado al preparar)
         solicitudRepository.updateMassiveStateSolicitation(List.of(request.idSolicitud()), "PROCESADO");
         log.info("Solicitud {} marcada como PROCESADO tras preparar entrega.", request.idSolicitud());
-
-        // Transicionar el pedido a ENTREGADO al confirmar la entrega
-        pedidoSolicitudRepository.findIdPedidoByIdSolicitud(request.idSolicitud()).ifPresent(idPedido -> {
-            pedidoRepository.updateMassiveStatePedido(List.of(idPedido), "ENTREGADO");
-            log.info("Pedido {} transitado a ENTREGADO.", idPedido);
-        });
 
         // ⚠️ Si hubo desincronización → 409 (transacción YA committed)
         if (!desincronizados.isEmpty()) {

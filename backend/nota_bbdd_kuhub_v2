@@ -6,6 +6,7 @@
 DROP TRIGGER IF EXISTS trg_limpiar_motivo_rechazo ON solicitud;
 DROP FUNCTION IF EXISTS fn_limpiar_motivo_al_cambiar_estado() CASCADE;
 DROP FUNCTION IF EXISTS rechazar_solicitudes_vencidas() CASCADE;
+DROP FUNCTION IF EXISTS marcar_pedidos_entregados_por_fecha() CASCADE;
 
 -- =====================================================
 -- ELIMINAR TABLAS HISTORICAS PRIMERO (sin FKs entrantes)
@@ -3151,5 +3152,33 @@ BEGIN
 
     GET DIAGNOSTICS filas_rechazadas = ROW_COUNT;
     RETURN filas_rechazadas;
+END;
+$$ LANGUAGE plpgsql;
+
+-- =====================================================
+-- FUNCIÓN: marcar_pedidos_entregados_por_fecha
+-- Transiciona a ENTREGADO los pedidos APROBADOS cuya
+-- fecha_fin_pedido ya pasó (semana finalizada).
+-- No toca los estados de las solicitudes vinculadas.
+-- Invocada por el backend: lazy al cargar entregas diarias
+-- + @Scheduled diario a las 03:00 AM.
+-- PENDIENTE: trigger de auto-RECHAZADO del pedido
+--   (requiere definición de lógica de negocio).
+-- =====================================================
+
+DROP FUNCTION IF EXISTS marcar_pedidos_entregados_por_fecha() CASCADE;
+
+CREATE OR REPLACE FUNCTION marcar_pedidos_entregados_por_fecha()
+RETURNS INTEGER AS $$
+DECLARE
+    filas_actualizadas INTEGER;
+BEGIN
+    UPDATE pedido
+    SET estado_pedido = 'ENTREGADO'::estado_pedido_type
+    WHERE estado_pedido = 'APROBADO'::estado_pedido_type
+      AND fecha_fin_pedido < CURRENT_DATE;
+
+    GET DIAGNOSTICS filas_actualizadas = ROW_COUNT;
+    RETURN filas_actualizadas;
 END;
 $$ LANGUAGE plpgsql;
