@@ -1128,7 +1128,10 @@ VALUES
  crypt('admin123', gen_salt('bf', 10)), NULL, true, CURRENT_TIMESTAMP, NULL),
 
 (1, 'Fabio', 'Test', 'KubHub', 'FabioUser', 'fabiotest@kuhub.cl', 'fabiotest@kuhub.cl',
-crypt('fbi123', gen_salt('bf', 10)), NULL, true, CURRENT_TIMESTAMP, NULL);
+crypt('fbi123', gen_salt('bf', 10)), NULL, true, CURRENT_TIMESTAMP, NULL)
+
+(1, 'Darwin', '', 'Morales', '', 'dmorales@duoc.cl', 'dmorales@duoc.cl',
+crypt('admin123', gen_salt('bf', 10)), NULL, true, CURRENT_TIMESTAMP, NULL);
 
 /*
 -- 8. Sofia Morales (Usa clave docente1234)
