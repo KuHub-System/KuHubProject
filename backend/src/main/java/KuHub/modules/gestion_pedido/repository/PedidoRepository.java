@@ -437,9 +437,11 @@ public interface PedidoRepository extends JpaRepository<Pedido, Integer> {
 
     // =====================================================
     // CONSULTA 4: Entregas diarias para Bodega de Tránsito
-    // Retorna dos grupos de solicitudes por fecha → sala → horario (ASC):
+    // Retorna tres combinaciones de estados:
     //   1) pedido APROBADO  + solicitud EN_PEDIDO  → habilita btn "Preparar Entrega"
-    //   2) pedido ENTREGADO + solicitud PROCESADO  → entregadas (historial)
+    //   2) pedido APROBADO  + solicitud PROCESADO  → entregadas parcialmente (pedido aún APROBADO)
+    //   3) pedido ENTREGADO + solicitud PROCESADO  → entregadas completas (pedido ya ENTREGADO)
+    // El frontend distingue acción vs historial por estadoSolicitud (EN_PEDIDO o PROCESADO)
     // Incluye stockTransito y diferencia por producto
     // Retorna: String → deserializar a List<EntregaDiariaJson>
     // =====================================================
@@ -536,7 +538,7 @@ public interface PedidoRepository extends JpaRepository<Pedido, Integer> {
                                         LEFT JOIN receta        rec_e  ON rec_e.id_receta      = sol_e.id_receta
                                         WHERE (
                                                   (ped_e.estado_pedido = 'APROBADO'  AND sol_e.estado_solicitud = 'EN_PEDIDO')
-                                               OR (ped_e.estado_pedido = 'ENTREGADO' AND sol_e.estado_solicitud = 'PROCESADO')
+                                               OR (ped_e.estado_pedido IN ('APROBADO', 'ENTREGADO') AND sol_e.estado_solicitud = 'PROCESADO')
                                               )
                                           AND sol_e.id_reserva_sala  IS NOT NULL
                                           AND sol_e.fecha_solicitada = dia.fecha_solicitada
@@ -555,7 +557,7 @@ public interface PedidoRepository extends JpaRepository<Pedido, Integer> {
                             JOIN sala              s     ON s.id_sala            = rs_s.id_sala
                             WHERE (
                                       (p_s.estado_pedido = 'APROBADO'  AND sol_s.estado_solicitud = 'EN_PEDIDO')
-                                   OR (p_s.estado_pedido = 'ENTREGADO' AND sol_s.estado_solicitud = 'PROCESADO')
+                                   OR (p_s.estado_pedido IN ('APROBADO', 'ENTREGADO') AND sol_s.estado_solicitud = 'PROCESADO')
                                   )
                               AND sol_s.id_reserva_sala  IS NOT NULL
                               AND sol_s.fecha_solicitada = dia.fecha_solicitada
@@ -574,7 +576,7 @@ public interface PedidoRepository extends JpaRepository<Pedido, Integer> {
             JOIN solicitud         sol ON sol.id_solicitud = ps.id_solicitud
             WHERE (
                       (ped.estado_pedido = 'APROBADO'  AND sol.estado_solicitud = 'EN_PEDIDO')
-                   OR (ped.estado_pedido = 'ENTREGADO' AND sol.estado_solicitud = 'PROCESADO')
+                   OR (ped.estado_pedido IN ('APROBADO', 'ENTREGADO') AND sol.estado_solicitud = 'PROCESADO')
                   )
               AND sol.id_reserva_sala  IS NOT NULL
               AND sol.fecha_solicitada BETWEEN :fechaInicio AND :fechaFin
