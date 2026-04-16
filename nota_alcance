@@ -791,6 +791,21 @@ Técnico:
       - cantidadAEntregar: cantidad real confirmada a entregar (puede ser menor
         a la solicitada si sobran productos en sala).
 
+  Confirmación de entrega (modal bodega-transito.tsx):
+  El modal exige que el encargado escriba el texto "CONFIRMAR" antes de habilitar
+  el botón. Se muestra un banner de advertencia indicando que la acción es
+  irreversible y que se realizarán descuentos en bodega de tránsito. El input
+  cambia a color success y muestra ícono de check cuando el texto es correcto.
+  Patrón idéntico al modal "Consolidar Pedido" de conglomerado-pedidos.tsx.
+
+  Auto-transición del pedido a ENTREGADO (PedidoServiceImpl):
+  Tras marcar una solicitud como PROCESADO (en prepararEntrega), el backend
+  consulta cuántas solicitudes del mismo pedido tienen estado distinto a PROCESADO
+  (PedidoSolicitudRepository.countSolicitudesNoProcesadas). Si el conteo es 0,
+  el pedido se actualiza automáticamente a ENTREGADO. Esto hace que el pedido
+  aparezca en la consulta CONSULTA 4 (grupo ENTREGADO+PROCESADO) y se visualice
+  como historial en Gestión Pedidos Diarios.
+
   Lógica de seguridad en la entrega (3 escenarios):
     1. Stock insuficiente (stockReal < cantidadAEntregar):
        → Lanza StockInsuficienteException → rollback automático de toda la
@@ -808,6 +823,8 @@ Técnico:
     3. Todo correcto:
        → Registra movimiento SALIDA_BODEGA y descuenta stock en bodega de tránsito.
        → Actualiza estado de la solicitud a PROCESADO.
+       → Verifica si todas las solicitudes del pedido están PROCESADO; si sí,
+         actualiza el pedido a ENTREGADO automáticamente.
        → HTTP 200 con { exito: true, mensaje }.
 
   El campo cantidadAEntregar permite al encargado disminuir la cantidad si
@@ -1015,6 +1032,18 @@ PENDIENTE DE IMPLEMENTAR O DEFINIR:
         - pedido APROBADO  + solicitud EN_PEDIDO  → habilita btn "Preparar Entrega"
         - pedido ENTREGADO + solicitud PROCESADO  → historial de entregadas
       Bodega de Tránsito → Gestión Pedidos Diarios consume este resultado.
+  [✓] Confirmación CONFIRMAR en modal Preparar Entrega (2026-04-16):
+      bodega-transito.tsx: modal de preparación de entrega ahora requiere que el
+      encargado escriba "CONFIRMAR" antes de habilitar el botón. Banner de advertencia
+      indica que la acción es irreversible y descuenta stock de bodega de tránsito.
+      Patrón idéntico al modal Consolidar Pedido de conglomerado-pedidos.tsx.
+  [✓] Auto-transición de pedido a ENTREGADO (2026-04-16):
+      PedidoServiceImpl.prepararEntrega: después de marcar la solicitud como PROCESADO,
+      consulta cuántas solicitudes del pedido aún no son PROCESADO
+      (PedidoSolicitudRepository.countSolicitudesNoProcesadas). Si todas están
+      procesadas, el pedido se actualiza automáticamente a ENTREGADO via
+      pedidoRepository.updateMassiveStatePedido. Esto activa el grupo
+      ENTREGADO+PROCESADO de CONSULTA 4 y las entregas aparecen como historial.
 
 ================================================================================
   6. NOTAS ORIGINALES DE TRABAJO (referencia interna)
