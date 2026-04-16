@@ -437,11 +437,11 @@ public interface PedidoRepository extends JpaRepository<Pedido, Integer> {
 
     // =====================================================
     // CONSULTA 4: Entregas diarias para Bodega de Tránsito
-    // Retorna tres combinaciones de estados:
-    //   1) pedido APROBADO  + solicitud EN_PEDIDO  → habilita btn "Preparar Entrega"
-    //   2) pedido APROBADO  + solicitud PROCESADO  → entregadas parcialmente (pedido aún APROBADO)
-    //   3) pedido ENTREGADO + solicitud PROCESADO  → entregadas completas (pedido ya ENTREGADO)
-    // El frontend distingue acción vs historial por estadoSolicitud (EN_PEDIDO o PROCESADO)
+    // Retorna todas las combinaciones relevantes de APROBADO/ENTREGADO × EN_PEDIDO/PROCESADO:
+    //   - pedido IN (APROBADO, ENTREGADO) + solicitud EN_PEDIDO  → habilita btn "Preparar Entrega"
+    //   - pedido IN (APROBADO, ENTREGADO) + solicitud PROCESADO  → historial de entregadas
+    // Al confirmar prepararEntrega: solicitud → PROCESADO y pedido → ENTREGADO de inmediato.
+    // El frontend distingue acción vs historial por estadoSolicitud (EN_PEDIDO o PROCESADO).
     // Incluye stockTransito y diferencia por producto
     // Retorna: String → deserializar a List<EntregaDiariaJson>
     // =====================================================
@@ -536,10 +536,8 @@ public interface PedidoRepository extends JpaRepository<Pedido, Integer> {
                                         JOIN docente_seccion    doc_e  ON doc_e.id_seccion     = sec_e.id_seccion
                                         JOIN usuario            usr_e  ON usr_e.id_usuario     = doc_e.id_usuario
                                         LEFT JOIN receta        rec_e  ON rec_e.id_receta      = sol_e.id_receta
-                                        WHERE (
-                                                  (ped_e.estado_pedido = 'APROBADO'  AND sol_e.estado_solicitud = 'EN_PEDIDO')
-                                               OR (ped_e.estado_pedido IN ('APROBADO', 'ENTREGADO') AND sol_e.estado_solicitud = 'PROCESADO')
-                                              )
+                                        WHERE ped_e.estado_pedido IN ('APROBADO', 'ENTREGADO')
+                                          AND sol_e.estado_solicitud IN ('EN_PEDIDO', 'PROCESADO')
                                           AND sol_e.id_reserva_sala  IS NOT NULL
                                           AND sol_e.fecha_solicitada = dia.fecha_solicitada
                                           AND rs_e.id_sala           = sal.id_sala
@@ -555,10 +553,8 @@ public interface PedidoRepository extends JpaRepository<Pedido, Integer> {
                             JOIN solicitud         sol_s ON sol_s.id_solicitud  = ps_s.id_solicitud
                             JOIN reserva_sala      rs_s  ON rs_s.id_reserva_sala = sol_s.id_reserva_sala
                             JOIN sala              s     ON s.id_sala            = rs_s.id_sala
-                            WHERE (
-                                      (p_s.estado_pedido = 'APROBADO'  AND sol_s.estado_solicitud = 'EN_PEDIDO')
-                                   OR (p_s.estado_pedido IN ('APROBADO', 'ENTREGADO') AND sol_s.estado_solicitud = 'PROCESADO')
-                                  )
+                            WHERE p_s.estado_pedido IN ('APROBADO', 'ENTREGADO')
+                              AND sol_s.estado_solicitud IN ('EN_PEDIDO', 'PROCESADO')
                               AND sol_s.id_reserva_sala  IS NOT NULL
                               AND sol_s.fecha_solicitada = dia.fecha_solicitada
                         ) sal
@@ -574,10 +570,8 @@ public interface PedidoRepository extends JpaRepository<Pedido, Integer> {
             FROM pedido            ped
             JOIN pedido_solicitud  ps  ON ps.id_pedido     = ped.id_pedido
             JOIN solicitud         sol ON sol.id_solicitud = ps.id_solicitud
-            WHERE (
-                      (ped.estado_pedido = 'APROBADO'  AND sol.estado_solicitud = 'EN_PEDIDO')
-                   OR (ped.estado_pedido IN ('APROBADO', 'ENTREGADO') AND sol.estado_solicitud = 'PROCESADO')
-                  )
+            WHERE ped.estado_pedido IN ('APROBADO', 'ENTREGADO')
+              AND sol.estado_solicitud IN ('EN_PEDIDO', 'PROCESADO')
               AND sol.id_reserva_sala  IS NOT NULL
               AND sol.fecha_solicitada BETWEEN :fechaInicio AND :fechaFin
             GROUP BY sol.fecha_solicitada
