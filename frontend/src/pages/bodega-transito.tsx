@@ -431,7 +431,11 @@ const BodegaTransitoPage: React.FC = () => {
       } else if (err.response?.status === 422) {
         setPreparaError(err.response.data?.mensaje ?? 'Stock insuficiente para uno o más productos.');
       } else {
-        setPreparaError('Ocurrió un error inesperado. Intenta nuevamente.');
+        const errData = err.response?.data;
+        const msg = errData?.mensaje
+          || errData?.message
+          || (errData?.errors ? Object.values(errData.errors as Record<string, string>).join('. ') : null);
+        setPreparaError(msg || 'Ocurrió un error inesperado. Intenta nuevamente.');
       }
     } finally {
       setIsConfirmando(false);
@@ -1508,7 +1512,7 @@ const BodegaTransitoPage: React.FC = () => {
             color="secondary"
             onPress={confirmarEntrega}
             isLoading={isConfirmando}
-            isDisabled={isConfirmando || productosEdit.some(p => p.stockTransito - p.cantidadAEntregar < 0) || confirmarTextoEntrega.trim().toUpperCase() !== 'CONFIRMAR'}
+            isDisabled={isConfirmando || productosEdit.length === 0 || productosEdit.some(p => !p.cantidadAEntregar || p.cantidadAEntregar <= 0 || p.stockTransito - p.cantidadAEntregar < 0) || confirmarTextoEntrega.trim().toUpperCase() !== 'CONFIRMAR'}
             startContent={!isConfirmando ? <Icon icon="lucide:check" width={14} /> : undefined}
           >
             Confirmar Entrega
