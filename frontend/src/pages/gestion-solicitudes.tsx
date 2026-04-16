@@ -781,7 +781,7 @@ const GestionSolicitudesPage: React.FC = () => {
                               </>
                             )}
 
-                            {sol_Editar && sol.estado === 'Rechazada' && (
+                            {sol_Editar && sol.estado === 'Rechazada' && !sol.motivoRechazo?.includes('automáticamente') && (
                               <>
                               <Tooltip content="Aceptar solicitud">
                                 <Button isIconOnly size="sm" color="success" variant="flat"
@@ -983,7 +983,7 @@ const GestionSolicitudesPage: React.FC = () => {
                     </Button>
                   </>
                 )}
-                {selSol.estado === 'Rechazada' && (
+                {selSol.estado === 'Rechazada' && !selSol.motivoRechazo?.includes('automáticamente') && (
                   <>
                   <Button color="success" variant="flat"
                     onPress={() => { onClose(); abrirRevertir(selSol, 'aceptar', 'Rechazada'); }}

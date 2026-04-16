@@ -187,10 +187,23 @@ public class DashboardRepository {
     @SuppressWarnings("unchecked")
     public List<Object[]> getSolicitudesRechazadas() {
         return em.createNativeQuery(
-            "SELECT s.id_solicitud, COALESCE(mr.motivo, 'Sin motivo registrado'), " +
-            "TO_CHAR(s.fecha_solicitada, 'DD/MM/YYYY') " +
+            "SELECT " +
+            "  s.id_solicitud,                                        " + // [0]
+            "  COALESCE(mr.motivo, 'Sin motivo registrado'),          " + // [1]
+            "  TO_CHAR(s.fecha_solicitada, 'DD/MM/YYYY'),             " + // [2]
+            "  COALESCE(r.nombre_receta, '—'),                        " + // [3]
+            "  COALESCE(a.nombre_asignatura, '—'),                    " + // [4]
+            "  COALESCE(sec.nombre_seccion, '—'),                     " + // [5]
+            "  COALESCE(                                               " + // [6]
+            "    (SELECT TRIM(u2.p_nombre || ' ' || COALESCE(u2.app_paterno,''))" +
+            "     FROM docente_seccion ds2                            " +
+            "     JOIN usuario u2 ON u2.id_usuario = ds2.id_usuario   " +
+            "     WHERE ds2.id_seccion = s.id_seccion LIMIT 1), '—')  " +
             "FROM solicitud s " +
             "LEFT JOIN motivo_rechazo_solicitud mr ON mr.id_solicitud = s.id_solicitud " +
+            "LEFT JOIN receta r   ON r.id_receta  = s.id_receta " +
+            "LEFT JOIN seccion sec ON sec.id_seccion = s.id_seccion " +
+            "LEFT JOIN asignatura a ON a.id_asignatura = sec.id_asignatura " +
             "WHERE s.estado_solicitud = 'RECHAZADA' " +
             "ORDER BY s.fecha_solicitada DESC LIMIT 10"
         ).getResultList();

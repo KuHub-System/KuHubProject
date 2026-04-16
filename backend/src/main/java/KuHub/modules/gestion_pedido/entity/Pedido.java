@@ -42,6 +42,7 @@ public class Pedido {
     public enum EstadoPedidoType {
         PENDIENTE,
         APROBADO,
+        ENTREGADO,
         RECHAZADO
     }
 

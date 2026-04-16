@@ -1,56 +1,23 @@
-Necesito que agregues informacion sobre el login en nota alcance si no esta.
+Si el usuario decide hacer clic proactivamente en el botón de "Cerrar sesión", el objetivo es destruir ambos tokens por completo. En este sistema de alta seguridad, no basta con limpiar la pantalla del navegador; hay que hacer una limpieza profunda en el servidor.
 
+Este es el flujo exacto que debe ocurrir para cerrar la sesión correctamente:
 
-vamos implementar el reconrdar sesion del login para esto inventigue estes detalles
+1. La petición de despedida (React)
+Al hacer clic en "Cerrar sesión", React no borra la información de inmediato. Primero, hace una última petición a tu backend (por ejemplo, a un endpoint llamado /api/auth/logout).
 
-El estándar de la industria (Refresh Tokens)
-Si KuHub va a manejar información delicada de inventario y quieres la máxima seguridad, esta es la forma profesional que se usa en producción, aunque requiere más trabajo en ambos lados.
+2. Limpieza en la Base de Datos (Spring Boot y PostgreSQL)
+Tu backend recibe la petición, lee el Refresh Token que viene en la cookie y lo busca en tu base de datos. Luego, lo elimina o lo marca como revocado en la tabla.
 
-En lugar de crear un solo JWT que dure 30 días (lo cual es inseguro si te lo roban), el backend devuelve dos cosas:
+¿Por qué es vital esto? Porque si alguien logró interceptar ese Refresh Token de larga duración, al borrarlo de PostgreSQL te aseguras de que sea inservible. Si el atacante intenta usarlo para pedir un nuevo Access Token, Spring Boot dirá: "Este token ya no existe en la base de datos, acceso denegado".
 
-Access Token: Un JWT de vida muy corta (15 minutos).
+3. Destrucción de la Cookie (Spring Boot)
+En la respuesta a esa misma petición de logout, Spring Boot le envía una orden al navegador para que destruya la cookie HttpOnly que contenía el Refresh Token. Lo hace enviando un header especial (Set-Cookie) con un valor vacío y una fecha de caducidad en el pasado. El navegador automáticamente elimina el rastro.
 
-Refresh Token: Un token de vida larga (30 días).
+4. Limpieza final (React)
+Una vez que el backend responde confirmando que todo se borró con éxito, tu frontend hace el trabajo final:
 
-basada en Refresh Tokens, es el estándar de seguridad para aplicaciones de producción. Permite que la sesión de KuHub sea persistente (que el usuario no tenga que loguearse cada hora) sin sacrificar la seguridad de los datos de inventario.
+Borra el Access Token de la memoria de React (tu estado, Context o Zustand/Redux).
 
-Aquí tienes el detalle técnico de cómo funciona este sistema y cómo se implementa en tu stack.
+Redirige al usuario de vuelta a la pantalla de login de KuHub que me mostraste.
 
-1. El Concepto: Dos Llaves para una Puerta
-En lugar de tener un solo token que dure mucho tiempo, dividimos las responsabilidades en dos tipos de tokens:
-
-Access Token (JWT): Es la llave que el frontend envía en cada petición (Authorization: Bearer ...). Para que sea seguro, debe ser de vida corta (ej. 15 minutos). Si alguien lo roba, solo tendrá 15 minutos de acceso.
-
-Refresh Token: Es una llave especial que solo sirve para pedir un nuevo Access Token. Tiene una vida larga (ej. 30 días). Este token no se usa para acceder a datos, solo para renovar la sesión.
-
-2. El Flujo de Trabajo (Paso a Paso)
-Inicio de Sesión: El usuario envía sus credenciales. Si son correctas y marcó "Recordar sesión", el backend de Spring Boot genera ambos tokens.
-
-Almacenamiento Seguro: * El Access Token se guarda en la memoria de React (un estado de Context o Redux).
-
-El Refresh Token se envía al navegador preferiblemente en una Cookie HttpOnly. Esto es vital: las cookies HttpOnly no pueden ser leídas por JavaScript, lo que protege a KuHub de ataques XSS.
-
-Uso Normal: React usa el Access Token para cargar productos, movimientos de bodega, etc.
-
-Expiración del Access Token: Eventualmente, el Access Token vence y Spring Boot devuelve un error 401 Unauthorized.
-
-Renovación Silenciosa: Un "Interceptor" en el frontend (usando Axios) detecta el error 401, detiene la petición y hace una llamada automática a un endpoint como /api/auth/refresh.
-
-Validación en Backend: Spring Boot recibe el Refresh Token de la cookie, verifica que sea válido en la base de datos PostgreSQL y devuelve un nuevo Access Token.
-
-Reintento: El interceptor de Axios toma el nuevo token y vuelve a lanzar la petición original. El usuario nunca se enteró de que su sesión expiró y fue renovada.
-
-3. Implementación Técnica
-En el Backend (Spring Boot)
-Base de Datos: Necesitas una tabla refresh_tokens vinculada al user_id para poder invalidar sesiones de forma remota (por ejemplo, si el usuario cambia su contraseña).
-
-Configuración de Cookie: Al generar el Refresh Token, configúralo con setHttpOnly(true) y setSecure(true) (esto último requiere que tu servidor en AWS Lightsail ya tenga configurado el SSL que mencionaste).
-
-En el Frontend (React)
-Axios Interceptors: Es la parte más importante. Debes configurar un interceptor de respuesta que "escuche" los errores 401. Si el error ocurre, refresca el token y reintenta.
-
-
-
-SI LOGRAS EJECUTAR EL PROCESO HAY QUE DETALLARLO EN NOTA ALCANCE.
-
-SI O SI EN NOTA ALCANCE MARCAR COMO PENDIENTE EL F2A AUTENTICADOR DEBIDO QUE REQUIERE CORREOS REALES PARA PRUEBA, ADEMAS DE COMENTAR SOBRE OLVODO SU CONTRASENA PARA MARCAR COMO PENDIENTE .
+En resumen, cerrar sesión es un trabajo en equipo: el frontend limpia la llave rápida de 15 minutos, y el backend "quema" la llave maestra de 30 días para garantizar que esa sesión en particular jamás pueda volver a abrirse.
