@@ -533,28 +533,28 @@ const GestionUsuariosPage: React.FC = () => {
                     </TableCell>
                     <TableCell>
                       <div className="flex justify-center gap-1">
-                        {usuPuedeEditar && (
-                        <Tooltip content="Editar">
+                        <Tooltip content={usuPuedeEditar ? "Editar" : "Sin permiso de edición"}>
                           <Button
                             isIconOnly
                             size="sm"
                             variant="light"
                             onPress={() => abrirModalEditar(usuario)}
+                            isDisabled={!usuPuedeEditar}
                             className="text-default-400 hover:text-primary"
                           >
                             <Icon icon="lucide:edit" width={18} />
                           </Button>
                         </Tooltip>
-                        )}
 
-                        {usuario.activo && usuPuedeEliminar && (
-                          <Tooltip content="Desactivar">
+                        {usuario.activo && (
+                          <Tooltip content={!usuPuedeEliminar ? "Sin permiso de desactivación" : "Desactivar"}>
                             <Button
                               isIconOnly
                               size="sm"
                               variant="light"
                               onPress={() => handleEliminar(usuario)}
                               isDisabled={
+                                !usuPuedeEliminar ||
                                 usuario.id === usuarioActual?.id ||
                                 usuario.nombreCompleto === usuarioActual?.nombre
                               }
