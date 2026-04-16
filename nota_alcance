@@ -776,13 +776,28 @@ Técnico:
   La diferencia permite al encargado ver inmediatamente si hay suficiente stock
   en bodega para completar la entrega de esa solicitud específica.
 
-  La consulta filtra: pedido IN (APROBADO, ENTREGADO) × solicitud IN (EN_PEDIDO, PROCESADO).
+  La consulta filtra dos grupos:
+    1) pedido APROBADO  + solicitud EN_PEDIDO   → habilita btn "Preparar Entrega".
+    2) pedido APROBADO  + solicitud PROCESADO   → historial (semana aún activa).
+    3) pedido ENTREGADO + solicitud PROCESADO   → historial (semana finalizada).
   El frontend distingue acción vs historial por estadoSolicitud:
     EN_PEDIDO → muestra botón "Preparar Entrega".
     PROCESADO → solo lectura histórica (chip "Entregado").
-  Al confirmar prepararEntrega: solicitud → PROCESADO y pedido → ENTREGADO de inmediato.
-  Las solicitudes restantes del pedido (aún EN_PEDIDO) siguen apareciendo porque
-  el pedido ENTREGADO + solicitud EN_PEDIDO también está dentro del filtro.
+
+  Al confirmar prepararEntrega: SOLO la solicitud cambia a PROCESADO. El pedido
+  no cambia de estado en ese momento.
+
+  Transición automática del pedido a ENTREGADO:
+  Un método `marcarPedidosEntregadosPorFecha` en PedidoRepository ejecuta:
+    UPDATE pedido SET estado_pedido = 'ENTREGADO' WHERE estado_pedido = 'APROBADO'
+    AND fecha_fin_pedido < CURRENT_DATE
+  Se invoca:
+    - Lazy: al cargar entregas diarias (obtenerEntregasDiarias en PedidoServiceImpl)
+    - Scheduled: @Scheduled(cron "0 0 3 * * *") en PedidoServiceImpl
+  No toca los estados de las solicitudes vinculadas.
+  Equivalente SQL: función marcar_pedidos_entregados_por_fecha() en nota_bbdd_kuhub_v2.
+
+  PENDIENTE: trigger/scheduler de auto-RECHAZADO de pedido (requiere definición de lógica).
 
   Preparar entrega (POST /api/v1/pedido/preparar-entrega):
   Recibe PrepararEntregaDTO:
@@ -1034,11 +1049,13 @@ PENDIENTE DE IMPLEMENTAR O DEFINIR:
       Al confirmar prepararEntrega, el pedido pasa a ENTREGADO inmediatamente.
       Las solicitudes EN_PEDIDO del pedido ya ENTREGADO siguen visibles con el botón.
       Las solicitudes PROCESADO aparecen como historial de solo lectura.
-  [✓] Auto-transición pedido a ENTREGADO al confirmar prepararEntrega (2026-04-16):
-      PedidoServiceImpl: al confirmar la entrega, solicitud → PROCESADO y pedido → ENTREGADO
-      de inmediato (sin esperar a que todas las solicitudes del pedido estén procesadas).
-      PedidoSolicitudRepository.findIdPedidoByIdSolicitud obtiene el idPedido para la
-      transición. El método countSolicitudesNoProcesadas ya no se usa para este flujo.
+  [✓] Auto-ENTREGADO de pedidos por fecha vencida (2026-04-16):
+      prepararEntrega solo cambia solicitud → PROCESADO (el pedido no cambia en ese momento).
+      PedidoRepository.marcarPedidosEntregadosPorFecha: UPDATE pedido APROBADO → ENTREGADO
+      cuando fecha_fin_pedido < CURRENT_DATE. Invocado lazy en obtenerEntregasDiarias +
+      @Scheduled diario a las 03:00 AM. No toca estados de solicitudes.
+      SQL equivalente: fn marcar_pedidos_entregados_por_fecha() en nota_bbdd_kuhub_v2.
+  [ ] PENDIENTE: auto-RECHAZADO de pedidos (requiere definición de lógica de negocio).
   [✓] Confirmación CONFIRMAR en modal Preparar Entrega (2026-04-16):
       bodega-transito.tsx: modal de preparación de entrega ahora requiere que el
       encargado escriba "CONFIRMAR" antes de habilitar el botón. Banner de advertencia
