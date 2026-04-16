@@ -39,7 +39,7 @@ const GestionUsuariosPage: React.FC = () => {
   const toast = useToast();
   const confirm = useConfirm();
   const opcionesRol = ['Todos los roles', ...ROLES];
-  const { user: usuarioActual, hasSpecificPermission } = useAuth();
+  const { user: usuarioActual } = useAuth();
   const { canCreate: usuPuedeCrear, canUpdate: usuPuedeEditar, canDelete: usuPuedeEliminar } = useModulePermission('GESTION_USUARIOS');
   const [usuarios, setUsuarios] = useState<IUsuario[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -77,13 +77,6 @@ const GestionUsuariosPage: React.FC = () => {
   const [archivoFoto, setArchivoFoto] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [initialFormData, setInitialFormData] = useState<IUsuarioCreacion | null>(null);
-
-  // Verificar permisos
-  useEffect(() => {
-    if (!hasSpecificPermission('gestion-usuarios')) {
-      window.location.href = '/';
-    }
-  }, [hasSpecificPermission]);
 
   // Cargar usuarios al iniciar y cuando cambie el debounced search
   const [debouncedSearch, setDebouncedSearch] = useState('');
