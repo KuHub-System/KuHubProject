@@ -97,6 +97,18 @@ Técnico:
   - Tabla: refresh_token (id_refresh_token, id_usuario FK, token UUID único, expires_at,
     activo, creado_en). Soft-revocación: activo=false al hacer logout o cambiar contraseña.
 
+  Flujo de Cierre de Sesión (implementado 2026-04-15):
+  1. El usuario hace clic en "Cerrar sesión" → React llama cerrarSesionService().
+  2. Frontend hace POST /api/v1/auth/logout con credenciales (envía cookie automáticamente).
+  3. Backend lee la cookie kuhub_refresh, busca el Refresh Token en la tabla refresh_token
+     y lo marca como revocado (activo=false). Si el token ya era inválido, igual continúa.
+  4. Backend responde con Set-Cookie: kuhub_refresh=; MaxAge=0 → el navegador destruye
+     la cookie. Aunque alguien hubiera interceptado el token, ya no sirve en la BD.
+  5. Frontend elimina sesion_actual de localStorage (borra Access Token y datos de usuario).
+  6. React pone user=null en el contexto → ProtectedRoute redirige automáticamente a /login.
+  - El logout de inactividad (25 min sin actividad) sigue el mismo flujo completo.
+  - Si el backend falla, el finally del frontend limpia localStorage de todas formas.
+
   PENDIENTE — F2A (Segundo Factor de Autenticación):
   - Requiere correos reales para envío de OTP/código.
   - No implementado: se necesita servicio de email (SMTP/SendGrid) y flujo de verificación.
