@@ -1659,18 +1659,22 @@ const ConglomeradoPedidosPage: React.FC = () => {
                   <p className="text-sm">{busquedaAprob ? `Sin resultados para "${busquedaAprob}"` : 'Sin pedidos para aprobar esta semana.'}</p>
                 </div>
               ) : <div className="space-y-4">{pedidosAprobFiltrados.map(ped => {
-                const isPendiente = ped.estadoPedido === 'PENDIENTE';
-                const isAprobado  = ped.estadoPedido === 'APROBADO';
-                const hayFaltante = ped.productos.some(p => p.diferenciaTransito < 0);
-                const labelEstado: Record<string, string> = { PENDIENTE: 'Pendiente', APROBADO: 'Aprobado', RECHAZADO: 'Rechazado' };
+                const isPendiente  = ped.estadoPedido === 'PENDIENTE';
+                const isAprobado   = ped.estadoPedido === 'APROBADO';
+                const isEntregado  = ped.estadoPedido === 'ENTREGADO';
+                const isExitoso    = isAprobado || isEntregado;
+                const hayFaltante  = ped.productos.some(p => p.diferenciaTransito < 0);
+                const labelEstado: Record<string, string> = { PENDIENTE: 'Pendiente', APROBADO: 'Aprobado', ENTREGADO: 'Entregado', RECHAZADO: 'Rechazado' };
+                const chipColor    = isEntregado ? 'success' : isAprobado ? 'success' : isPendiente ? 'warning' : 'danger';
+                const chipIcon     = isEntregado ? 'lucide:package-check' : isAprobado ? 'lucide:check-circle-2' : isPendiente ? 'lucide:clock' : 'lucide:x-circle';
 
                 return (
                   <div key={ped.idPedido} className="border border-default-200 rounded-2xl overflow-hidden">
                     <div className={`flex flex-col sm:flex-row sm:items-center gap-3 px-5 py-3 ${
-                      isAprobado ? 'bg-success-50 border-b border-success-200' : 'bg-default-50 border-b border-default-200'
+                      isExitoso ? 'bg-success-50 border-b border-success-200' : 'bg-default-50 border-b border-default-200'
                     }`}>
                       <div className="flex items-center gap-3 flex-1">
-                        <Icon icon="lucide:file-text" width={18} className={isAprobado ? 'text-success-600' : 'text-default-500'} />
+                        <Icon icon="lucide:file-text" width={18} className={isExitoso ? 'text-success-600' : 'text-default-500'} />
                         <div>
                           <p className="font-bold text-sm text-default-800">Pedido #{ped.idPedido}</p>
                           <p className="text-xs text-default-400">
@@ -1680,8 +1684,8 @@ const ConglomeradoPedidosPage: React.FC = () => {
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Chip size="sm" color={isAprobado ? 'success' : isPendiente ? 'warning' : 'danger'} variant="flat"
-                          startContent={<Icon icon={isAprobado ? 'lucide:check-circle-2' : isPendiente ? 'lucide:clock' : 'lucide:x-circle'} width={10} />}>
+                        <Chip size="sm" color={chipColor} variant="flat"
+                          startContent={<Icon icon={chipIcon} width={10} />}>
                           {labelEstado[ped.estadoPedido] ?? ped.estadoPedido}
                         </Chip>
                         {cong_Editar && isPendiente && (
