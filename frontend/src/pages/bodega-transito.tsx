@@ -342,6 +342,7 @@ const BodegaTransitoPage: React.FC = () => {
   const [productosEdit,       setProductosEdit]       = React.useState<ProductoEdit[]>([]);
   const [isConfirmando,       setIsConfirmando]       = React.useState(false);
   const [preparaError,        setPreparaError]        = React.useState<string | null>(null);
+  const [confirmarTextoEntrega, setConfirmarTextoEntrega] = React.useState('');
 
   const abrirPreparar = React.useCallback((sol: ISolicitudEntrega) => {
     setPreparandoSolicitud(sol);
@@ -355,6 +356,7 @@ const BodegaTransitoPage: React.FC = () => {
       cantidadAEntregar:  p.cantidad,
     })));
     setPreparaError(null);
+    setConfirmarTextoEntrega('');
   }, []);
 
   const confirmarEntrega = React.useCallback(async () => {
@@ -372,6 +374,7 @@ const BodegaTransitoPage: React.FC = () => {
       });
       toast.success('Entrega preparada y solicitud procesada correctamente.');
       setPreparandoSolicitud(null);
+      setConfirmarTextoEntrega('');
       // Invalidar caché y recargar la semana actual
       entregasCache.current.clear();
       const range = getWeekRange(selectedDate);
@@ -385,6 +388,7 @@ const BodegaTransitoPage: React.FC = () => {
         // Operación exitosa pero con desincronización
         toast.warning(err.response.data?.mensaje ?? 'Entrega preparada. El stock estaba desincronizado.');
         setPreparandoSolicitud(null);
+        setConfirmarTextoEntrega('');
         entregasCache.current.clear();
         const range = getWeekRange(selectedDate);
         setIsLoadingEntregas(true);
@@ -1274,7 +1278,7 @@ const BodegaTransitoPage: React.FC = () => {
     {/* ── Modal Preparar Entrega ── */}
     <Modal
       isOpen={!!preparandoSolicitud}
-      onClose={() => { if (!isConfirmando) setPreparandoSolicitud(null); }}
+      onClose={() => { if (!isConfirmando) { setPreparandoSolicitud(null); setConfirmarTextoEntrega(''); } }}
       size="2xl"
       isDismissable={!isConfirmando}
       hideCloseButton={isConfirmando}
@@ -1365,17 +1369,37 @@ const BodegaTransitoPage: React.FC = () => {
               {preparaError}
             </div>
           )}
+
+          {/* Advertencia acción irreversible */}
+          <div className="flex items-start gap-2 px-3 py-2 mt-2 bg-warning-50 border border-warning-200 rounded-lg text-xs text-warning-800">
+            <Icon icon="lucide:alert-triangle" width={13} className="mt-px shrink-0 text-warning-600" />
+            <span>Esta acción es <strong>irreversible</strong>. Se realizarán los descuentos correspondientes en la bodega de tránsito.</span>
+          </div>
+
+          {/* Input de confirmación */}
+          <div className="mt-3">
+            <Input
+              label='Escriba "CONFIRMAR" para continuar'
+              placeholder="CONFIRMAR"
+              value={confirmarTextoEntrega}
+              onValueChange={setConfirmarTextoEntrega}
+              variant="bordered"
+              color={confirmarTextoEntrega.trim().toUpperCase() === 'CONFIRMAR' ? 'success' : 'default'}
+              endContent={confirmarTextoEntrega.trim().toUpperCase() === 'CONFIRMAR'
+                ? <Icon icon="lucide:check-circle" width={16} className="text-success" /> : null}
+            />
+          </div>
         </ModalBody>
 
         <ModalFooter>
-          <Button variant="light" onPress={() => setPreparandoSolicitud(null)} isDisabled={isConfirmando}>
+          <Button variant="light" onPress={() => { setPreparandoSolicitud(null); setConfirmarTextoEntrega(''); }} isDisabled={isConfirmando}>
             Cancelar
           </Button>
           <Button
             color="secondary"
             onPress={confirmarEntrega}
             isLoading={isConfirmando}
-            isDisabled={isConfirmando || productosEdit.some(p => p.stockTransito - p.cantidadAEntregar < 0)}
+            isDisabled={isConfirmando || productosEdit.some(p => p.stockTransito - p.cantidadAEntregar < 0) || confirmarTextoEntrega.trim().toUpperCase() !== 'CONFIRMAR'}
             startContent={!isConfirmando ? <Icon icon="lucide:check" width={14} /> : undefined}
           >
             Confirmar Entrega
