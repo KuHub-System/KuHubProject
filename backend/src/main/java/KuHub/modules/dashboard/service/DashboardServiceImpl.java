@@ -21,10 +21,11 @@ public class DashboardServiceImpl implements DashboardService {
 
     private List<PieSliceDTO> buildEstadoPie(Map<String, Long> estadoMap) {
         String[][] estados = {
-            {"PENDIENTE", "#FFB800"},
-            {"ACEPTADA",  "#22C55E"},
-            {"PROCESADO", "#3B82F6"},
-            {"RECHAZADA", "#EF4444"}
+            {"PENDIENTE",  "#FFB800"},
+            {"ACEPTADA",   "#22C55E"},
+            {"PROCESADO",  "#3B82F6"},
+            {"EN_PEDIDO",  "#8B5CF6"},
+            {"RECHAZADA",  "#EF4444"}
         };
         List<PieSliceDTO> result = new ArrayList<>();
         for (String[] e : estados) {
@@ -147,11 +148,12 @@ public class DashboardServiceImpl implements DashboardService {
                 r -> ((Number) r[1]).longValue()
             ));
 
-        long pendientes  = estadoMap.getOrDefault("PENDIENTE", 0L);
-        long aceptadas   = estadoMap.getOrDefault("ACEPTADA",  0L);
-        long procesadas  = estadoMap.getOrDefault("PROCESADO", 0L);
-        long rechazadas  = estadoMap.getOrDefault("RECHAZADA", 0L);
-        long total       = pendientes + aceptadas + procesadas + rechazadas;
+        long pendientes  = estadoMap.getOrDefault("PENDIENTE",  0L);
+        long aceptadas   = estadoMap.getOrDefault("ACEPTADA",   0L);
+        long procesadas  = estadoMap.getOrDefault("PROCESADO",  0L);
+        long rechazadas  = estadoMap.getOrDefault("RECHAZADA",  0L);
+        long enPedido    = estadoMap.getOrDefault("EN_PEDIDO",  0L);
+        long total       = pendientes + aceptadas + procesadas + rechazadas + enPedido;
 
         double tiempoPromedioHoras = dashboardRepository.getTiempoPromedioHoras();
 
@@ -165,7 +167,11 @@ public class DashboardServiceImpl implements DashboardService {
             .map(r -> new SolicitudRechazadaDTO(
                 ((Number) r[0]).intValue(),
                 (String) r[1],
-                (String) r[2]
+                (String) r[2],
+                (String) r[3],
+                (String) r[4],
+                (String) r[5],
+                (String) r[6]
             ))
             .collect(Collectors.toList());
 
@@ -175,6 +181,7 @@ public class DashboardServiceImpl implements DashboardService {
             aceptadas,
             procesadas,
             rechazadas,
+            enPedido,
             tiempoPromedioHoras,
             solicitudesPorAsignatura,
             solicitudesPorEstado,

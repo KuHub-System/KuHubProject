@@ -480,3 +480,36 @@ Antes de dar por terminada cualquier implementación, verificar:
 - [ ] Se usó `@Transactional(readOnly = true)` en los métodos de solo lectura
 - [ ] Los métodos privados del service están al final de la clase
 - [ ] **`nota_alcance` fue actualizado** con la descripción de lo implementado (sección 5 IMPLEMENTADO y sección 6 NOTAS)
+
+---
+
+## 11. Regla obligatoria — Actualización de `nota_alcance`
+
+**`nota_alcance` es el documento central del proyecto. Es OBLIGATORIO actualizarlo en CADA cambio, sin excepción.**
+
+### Qué actualizar según el tipo de cambio
+
+| Tipo de cambio | Secciones a actualizar |
+|---|---|
+| Nuevo endpoint / módulo | Sección técnica del módulo (3.X) + Sección 5 IMPLEMENTADO |
+| Nuevo estado de ENUM en BD | Entidad en sección 3.X + Sección 4 TIPOS ENUM + Sección 5 |
+| Cambio de lógica de consulta | Descripción de la consulta en sección 3.X + Sección 5 |
+| Corrección de bug estructural | Sección 5 con fecha y descripción |
+| Cambio en flujo de estados | Diagrama de estados en sección 3.X correspondiente |
+
+### Formato de entrada en Sección 5
+
+```
+[✓] Título del cambio (YYYY-MM-DD):
+    Descripción técnica de qué se implementó/corrigió.
+    Archivos afectados, lógica nueva, restricciones.
+```
+
+### Regla para Claude
+
+Antes de considerar una tarea terminada, verificar que `nota_alcance` refleje:
+1. El estado actualizado del ENUM en sección 4 (si se modificó).
+2. La descripción técnica actualizada en la sección 3.X del módulo.
+3. Una entrada fechada en Sección 5 con el cambio realizado.
+
+**No terminar ninguna implementación sin actualizar `nota_alcance`.**
