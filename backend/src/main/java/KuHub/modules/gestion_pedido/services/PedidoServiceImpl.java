@@ -222,6 +222,15 @@ public class PedidoServiceImpl implements PedidoService{
         solicitudRepository.updateMassiveStateSolicitation(List.of(request.idSolicitud()), "PROCESADO");
         log.info("Solicitud {} marcada como PROCESADO tras preparar entrega.", request.idSolicitud());
 
+        // Auto-transición del pedido a ENTREGADO si todas sus solicitudes fueron procesadas
+        pedidoSolicitudRepository.findIdPedidoByIdSolicitud(request.idSolicitud()).ifPresent(idPedido -> {
+            long pendientes = pedidoSolicitudRepository.countSolicitudesNoProcesadas(idPedido);
+            if (pendientes == 0) {
+                pedidoRepository.updateMassiveStatePedido(List.of(idPedido), "ENTREGADO");
+                log.info("Pedido {} transitado a ENTREGADO (todas las solicitudes procesadas).", idPedido);
+            }
+        });
+
         // ⚠️ Si hubo desincronización → 409 (transacción YA committed)
         if (!desincronizados.isEmpty()) {
             throw new StockDesincronizadoException(
