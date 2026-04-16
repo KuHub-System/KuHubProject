@@ -3,13 +3,12 @@
   Sistema de Gestión de Inventario, Solicitudes y Pedidos — DuocUC
 ================================================================================
 
-[PENDIENTES TÉCNICOS INMEDIATOS]
-- La entidad MotivoRechazo existe en BD y tiene clase Java, pero la lógica de
-  negocio (service + endpoint + integración al flujo de rechazo) NO está completa.
-- El flujo completo de estados de solicitud requiere cierre de definición
-  (ver sección 3.7).
-- Estado PROCESADO está escrito con typo en el ENUM de BD: "PROCESADO" (sin tilde),
-  considerar si es consistente con la presentación en frontend.
+[NOTAS DE REVISIÓN DEL DOCUMENTO]
+- Documento actualizado al 2026-04-16. El flujo de estados de solicitud está
+  implementado en su totalidad (ver sección 5).
+- stock_limit tiene semántica diferente según módulo: en Inventario principal
+  equivale al stock mínimo (umbral de alerta), en Bodega de Tránsito equivale
+  al límite físico de espacio disponible (tope máximo).
 
 ================================================================================
   1. PROBLEMA — POR QUÉ EXISTE ESTE SISTEMA
@@ -120,11 +119,35 @@ Técnico:
   - Marcar como pendiente hasta tener infraestructura de email configurada.
 
 Para no técnicos:
-  Cada usuario ingresa con email y contraseña. Si marca "Recordar sesión", el sistema
-  le entrega dos "pases": uno de corta duración (15 min) para acceder, y otro de larga
-  duración (30 días) guardado de forma segura en el navegador. El pase de 15 min se
-  renueva automáticamente en segundo plano sin que el usuario lo note. Las contraseñas
-  nunca se almacenan tal como son — el sistema las convierte a un código irreversible.
+  Cada usuario ingresa con email y contraseña. El sistema no guarda la sesión en el
+  servidor: en cambio, al iniciar sesión correctamente, el servidor entrega al
+  navegador un "pase digital" firmado (token) que el usuario presenta en cada
+  acción que realiza, como si fuera un gafete de acceso temporal.
+
+  Sin "Recordar sesión" (comportamiento por defecto):
+    El pase tiene una duración de 1 hora. Al cerrarse el navegador o pasar ese
+    tiempo sin actividad, el usuario deberá volver a ingresar su contraseña.
+
+  Con "Recordar sesión" activado:
+    El sistema entrega dos pases:
+      - Pase de acceso (15 min): se usa para operar en el sistema. Caduca rápido
+        por seguridad, pero se renueva automáticamente en segundo plano sin que
+        el usuario lo note ni tenga que volver a ingresar su contraseña.
+      - Pase de renovación (30 días): guardado de forma segura en el navegador,
+        inaccesible por cualquier script o extensión maliciosa. Su único propósito
+        es solicitar un nuevo pase de acceso cuando el anterior vence.
+    Mientras el pase de 30 días sea válido, el usuario permanece conectado aunque
+    cierre el navegador o apague el equipo.
+
+  Al cerrar sesión:
+    El pase de renovación es anulado inmediatamente en el servidor, de modo que
+    aunque alguien lo hubiera interceptado, ya no sirve para nada. El navegador
+    también lo elimina. El usuario queda completamente desconectado.
+
+  Seguridad de contraseñas:
+    Las contraseñas nunca se guardan tal como son. El sistema las convierte a un
+    código irreversible mediante un algoritmo de cifrado. Ni el equipo de desarrollo
+    puede leer la contraseña original: si el usuario la olvida, debe restablecerla.
 
 ------------------------------------------------------------------------
 3.2  GESTIÓN DE USUARIOS Y ROLES
@@ -277,8 +300,12 @@ Técnico:
   Entidad Receta:
   - nombre_receta (NOT NULL), descripcion_receta (TEXT), instrucciones (TEXT),
     activo (NOT NULL).
-  - estado_receta (ENUM: ACTIVO, INACTIVO) — dos campos de control separados:
+  - estado_receta (ENUM: ACTIVO, INACTIVO, SUSPENDIDA) — dos campos de control separados:
     activo (borrado lógico) y estado_receta (visibilidad en solicitudes).
+  - INACTIVO: receta desactivada permanentemente por el administrador.
+  - SUSPENDIDA: receta omitida temporalmente por decisión del usuario (ej. ingrediente
+    no disponible en temporada). Ambos estados excluyen la receta del listado al crear
+    solicitudes; la diferencia es semántica e indica el origen de la omisión.
   - Solo las recetas con estado ACTIVO aparecen en el listado al crear solicitudes.
   - CascadeType en relación con DetalleReceta.
 
@@ -388,7 +415,7 @@ Para no técnicos:
 Técnico:
   Entidad Solicitud:
   - fecha_solicitada (NOT NULL, calculada), observaciones (TEXT).
-  - estado_solicitud (ENUM: PENDIENTE, ACEPTADA, PROCESADO, RECHAZADA).
+  - estado_solicitud (ENUM: PENDIENTE, ACEPTADA, EN_PEDIDO, PROCESADO, RECHAZADA).
   - fecha_registro (TIMESTAMP, automático, readonly — momento de creación).
   - FK → Usuario (gestor que la creó), Seccion, Receta (nullable),
     ReservaSala (nullable).
@@ -555,7 +582,7 @@ Para no técnicos:
   gestor de pedidos ve el estado de las solicitudes.
 
 ------------------------------------------------------------------------
-3.9  CONGLOMERADO DE PEDIDOS
+3.10  CONGLOMERADO DE PEDIDOS
 ------------------------------------------------------------------------
 Técnico:
   Propósito: Vista que consolida todas las solicitudes ACEPTADAS de una semana
@@ -754,7 +781,7 @@ Para no técnicos:
   La vista puede exportarse a Excel para compartir o imprimir.
 
 ------------------------------------------------------------------------
-3.10  PEDIDOS DIARIOS Y PREPARACIÓN DE ENTREGAS
+3.11  PEDIDOS DIARIOS Y PREPARACIÓN DE ENTREGAS
 ------------------------------------------------------------------------
 Técnico:
   Propósito: Una vez que el pedido está consolidado y aprobado, el encargado de
@@ -867,7 +894,7 @@ Para no técnicos:
   la diferencia y avisa al usuario mostrando el valor real actualizado.
 
 ------------------------------------------------------------------------
-3.11  GESTIÓN DE PROVEEDORES  [PENDIENTE]
+3.12  GESTIÓN DE PROVEEDORES  [PENDIENTE]
 ------------------------------------------------------------------------
   - Vista gestion-proveedores.tsx existe en el frontend.
   - Funcionalidad de backend no implementada en el alcance actual.
@@ -961,7 +988,7 @@ TIPOS ENUM EN BASE DE DATOS (PostgreSQL ENUM nativo):
   Definidos como tipos en PostgreSQL, mapeados manualmente en Java:
   - dia_semana_type: LUNES, MARTES, MIERCOLES, JUEVES, VIERNES, SABADO, DOMINGO
   - estado_solicitud_type: PENDIENTE, ACEPTADA, EN_PEDIDO, PROCESADO, RECHAZADA
-  - estado_receta_type: ACTIVO, INACTIVO
+  - estado_receta_type: ACTIVO, INACTIVO, SUSPENDIDA
   - estado_seccion_type: ACTIVA, INACTIVA, SUSPENDIDA
   - estado_pedido_type: PENDIENTE, APROBADO, ENTREGADO, RECHAZADO
 
@@ -992,7 +1019,7 @@ IMPLEMENTADO Y FUNCIONAL:
   [✓] Triggers en BD para liberación automática de horarios
   [✓] Creación de solicitudes (individual y masiva vía función PostgreSQL)
   [✓] Gestión de solicitudes (aprobación/rechazo individual y masivo)
-  [✓] Clase MotivoRechazo con Builder (falta integración completa)
+  [✓] Clase MotivoRechazo con Builder e integración completa (2026-04-15)
   [✓] Dashboard con analítica por rol (4 perfiles: admin, inventario, gestor, recetas)
   [✓] Perfil de usuario (cambio de contraseña, foto de perfil)
   [✓] Documentación API Swagger en /swagger-ui.html
@@ -1073,7 +1100,8 @@ PENDIENTE DE IMPLEMENTAR O DEFINIR:
   6. NOTAS ORIGINALES DE TRABAJO (referencia interna)
 ================================================================================
 
-- La entidad de motivo rechazo no esta implementada.
+- La entidad de motivo rechazo fue implementada y completada (2026-04-15).
+  Ver sección 3.7 (d) para detalle del flujo.
 
 - Alcance del proyecto: el problema actualmente la gestión de inventario y
   realización de pedidos semanales subdivididos por pedido diarios requiere mucho
@@ -1120,7 +1148,7 @@ PENDIENTE DE IMPLEMENTAR O DEFINIR:
 
 - Optimización: el sistema realiza compresión de json, debido que el servidor en la
   nube el mas costoso es la transferencia de salida, del backend donde esta el servidor
-  hace al cliente el frontend, se implementa que los json que sobrepasan 2000kb se
+  hace al cliente el frontend, se implementa que los json que sobrepasan 2.000 bytes se
   comprimen, haciendo con que el peso reduzca en 80%, además aumenta un poco la
   velocidad, por el mínimo consumo casi insignificante de la cpu, donde el json se
   descomprime en el frontend.
@@ -1189,7 +1217,7 @@ PENDIENTE DE IMPLEMENTAR O DEFINIR:
 
 - SOLICITUD: pk id_solicitud, fk id_receta{opcional}, fecha_solicitada calculada en el
   frontend e implementar también en el backend por seguridad, type estado_solicitud,
-  observacion_solicitud. Estados: Pendiente, Aceptada, Rechazada, Procesada.
+  observacion_solicitud. Estados: Pendiente, Aceptada, En Pedido, Rechazada, Procesada.
   DETALLE_SOLICITUD: pk id_detalle_solicitud, fk id_solicitud, fk id_producto,
   cantidad_producto*, observacion_producto. El frontend maneja deltas: de una receta
   se puede eliminar productos como adicionar productos. La receta base es para 20
