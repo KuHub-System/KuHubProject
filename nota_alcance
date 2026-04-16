@@ -563,7 +563,7 @@ Técnico:
 
   Entidad Pedido:
   - fecha_inicio_pedido, fecha_fin_pedido (rango de la semana).
-  - estado_pedido (ENUM: PENDIENTE, APROBADO, RECHAZADO).
+  - estado_pedido (ENUM: PENDIENTE, APROBADO, ENTREGADO, RECHAZADO).
   - fecha_registro (TIMESTAMP, automático, readonly).
 
   Entidad DetallePedido:
@@ -738,7 +738,8 @@ Técnico:
   Sub-vista Por Pedido:
     Cada pedido individual en una tarjeta con:
     - Cabecera: Pedido #ID + N productos + chip de estado (PENDIENTE=ámbar /
-      APROBADO=verde). Si hay faltantes: "· Faltantes detectados" en rojo.
+      APROBADO=verde / ENTREGADO=verde / RECHAZADO=rojo).
+      Si hay faltantes: "· Faltantes detectados" en rojo.
     - Si el pedido está PENDIENTE y el usuario tiene permiso: botón individual
       "Aprobar pedido".
     - Tabla idéntica a Vista Unificada pero solo con los productos del pedido.
@@ -775,8 +776,11 @@ Técnico:
   La diferencia permite al encargado ver inmediatamente si hay suficiente stock
   en bodega para completar la entrega de esa solicitud específica.
 
-  Solo aparecen solicitudes con estado ACEPTADA vinculadas a pedidos con
-  estado APROBADO.
+  La consulta retorna DOS grupos de solicitudes combinados:
+    1) pedido APROBADO  + solicitud EN_PEDIDO  → habilita el botón "Preparar Entrega".
+    2) pedido ENTREGADO + solicitud PROCESADO  → entregadas (historial del día).
+  El campo estadoSolicitud en cada ítem permite al frontend distinguir qué
+  solicitudes permiten acción y cuáles son solo lectura histórica.
 
   Preparar entrega (POST /api/v1/pedido/preparar-entrega):
   Recibe PrepararEntregaDTO:
@@ -925,7 +929,7 @@ TIPOS ENUM EN BASE DE DATOS (PostgreSQL ENUM nativo):
   - estado_solicitud_type: PENDIENTE, ACEPTADA, EN_PEDIDO, PROCESADO, RECHAZADA
   - estado_receta_type: ACTIVO, INACTIVO
   - estado_seccion_type: ACTIVA, INACTIVA, SUSPENDIDA
-  - estado_pedido_type: PENDIENTE, APROBADO, RECHAZADO
+  - estado_pedido_type: PENDIENTE, APROBADO, ENTREGADO, RECHAZADO
 
 CARGA DE RELACIONES (ORM):
   - EAGER (carga inmediata con el objeto): Rol de Usuario, Categoria y UnidadMedida
@@ -1000,7 +1004,17 @@ PENDIENTE DE IMPLEMENTAR O DEFINIR:
   [ ] Adjuntar archivos a recetas (requiere AWS S3)
   [ ] Historial de cantidad real entregada vs. cantidad solicitada (definir con cliente)
   [ ] Restringir acceso a Swagger en producción (actualmente público)
-  [x] Corrección del typo "APROVADO" → "APROBADO" en ENUM estado_pedido_type (2026-04-15)
+  [✓] Corrección del typo "APROVADO" → "APROBADO" en ENUM estado_pedido_type (2026-04-15).
+      ALTER TYPE ejecutado en BD. Entity, queries nativas y frontend actualizados.
+  [✓] Nuevo estado ENTREGADO en estado_pedido_type (2026-04-16):
+      ALTER TYPE estado_pedido_type ADD VALUE 'ENTREGADO' AFTER 'APROBADO'.
+      Entity Pedido.EstadoPedidoType, nota_bbdd_kuhub_v2 y CONSULTA 4 actualizados.
+      Flujo: PENDIENTE → APROBADO → ENTREGADO | RECHAZADO.
+  [✓] CONSULTA 4 (findEntregasDiariasJson) actualizada (2026-04-16):
+      Retorna dos grupos combinados:
+        - pedido APROBADO  + solicitud EN_PEDIDO  → habilita btn "Preparar Entrega"
+        - pedido ENTREGADO + solicitud PROCESADO  → historial de entregadas
+      Bodega de Tránsito → Gestión Pedidos Diarios consume este resultado.
 
 ================================================================================
   6. NOTAS ORIGINALES DE TRABAJO (referencia interna)
