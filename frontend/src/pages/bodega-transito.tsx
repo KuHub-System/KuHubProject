@@ -45,6 +45,9 @@ interface RequestCardProps {
   onViewDetail: (solicitud: ISolicitud) => void;
 }
 
+// Callback que EntregaSalaCard notifica al padre cuando un item cambia de estado abierto/cerrado
+type ExpandChangeCallback = (idSolicitud: number, isOpen: boolean, esProcesado: boolean) => void;
+
 const RequestCard: React.FC<RequestCardProps> = ({ solicitud, onUpdate, onAddExtra, onViewDetail }) => {
   const isArmado = solicitud.estadoBodega === 'Armado';
 
@@ -143,10 +146,31 @@ const fmtCantidadEntrega = (n: number): string =>
 // COMPONENTE EntregaSalaCard — muestra una sala con sus entregas del día
 // ─────────────────────────────────────────────────────────────────────────────
 
-const EntregaSalaCard: React.FC<{ sala: ISalaEntrega; onPreparar: (sol: ISolicitudEntrega) => void; canPreparar: boolean }> = ({ sala, onPreparar, canPreparar }) => {
+const EntregaSalaCard: React.FC<{
+  sala: ISalaEntrega;
+  onPreparar: (sol: ISolicitudEntrega) => void;
+  canPreparar: boolean;
+  onExpandChange: ExpandChangeCallback;
+}> = ({ sala, onPreparar, canPreparar, onExpandChange }) => {
   const [expandidos, setExpandidos] = React.useState<Set<number>>(new Set());
-  const toggle = (id: number) =>
+
+  // Ref para poder acceder al estado actual en el cleanup de unmount
+  const expandidosRef = React.useRef(expandidos);
+  expandidosRef.current = expandidos;
+
+  // Al desmontar, notifica al padre que todos los elementos se cerraron
+  React.useEffect(() => {
+    return () => {
+      expandidosRef.current.forEach(id => onExpandChange(id, false, false));
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const toggle = (id: number, esProcesado: boolean) => {
+    const nowOpen = !expandidos.has(id);
     setExpandidos(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+    onExpandChange(id, nowOpen, esProcesado);
+  };
 
   return (
     <Card className="border border-default-200 shadow-sm bg-white dark:bg-content1">
@@ -170,7 +194,7 @@ const EntregaSalaCard: React.FC<{ sala: ISalaEntrega; onPreparar: (sol: ISolicit
             <div key={sol.idSolicitud} className={esProcesado ? 'opacity-75' : ''}>
               <button
                 className={`w-full flex items-center gap-3 px-4 py-3 hover:bg-default-50/50 dark:hover:bg-default-100/20 transition-colors text-left ${esProcesado ? 'bg-success-50/30 dark:bg-success-50/10' : ''}`}
-                onClick={() => toggle(sol.idSolicitud)}
+                onClick={() => toggle(sol.idSolicitud, esProcesado)}
               >
                 {/* Badge de horario */}
                 <div className={`shrink-0 flex flex-col items-center justify-center rounded-lg px-2.5 py-1.5 min-w-[72px] text-center ${esProcesado ? 'bg-success-50 border border-success-200' : 'bg-primary-50 border border-primary-100'}`}>
@@ -327,6 +351,14 @@ const BodegaTransitoPage: React.FC = () => {
   const [entregasData,       setEntregasData]       = React.useState<IEntregaDiaria[]>([]);
   const [isLoadingEntregas,  setIsLoadingEntregas]  = React.useState(false);
   const entregasCache = React.useRef<Map<string, IEntregaDiaria[]>>(new Map());
+
+  // ── Polling de stock para solicitudes expandidas ──
+  // Contiene los idSolicitud de los items actualmente desplegados y no-PROCESADO
+  const [expandidosSolIds, setExpandidosSolIds] = React.useState<Set<number>>(new Set());
+  // Ref espejo para acceso síncrono dentro del interval
+  const expandidosSolIdsRef = React.useRef<Set<number>>(new Set());
+  expandidosSolIdsRef.current = expandidosSolIds;
+  const pollingIntervalRef = React.useRef<ReturnType<typeof setInterval> | null>(null);
 
   // ── Preparar Entrega ──
   type ProductoEdit = {
@@ -558,6 +590,83 @@ const BodegaTransitoPage: React.FC = () => {
       .finally(() => setIsLoadingEntregas(false));
   }, [selectedDate, currentView]);
   React.useEffect(() => { filtersRef.current = selectedFilters; }, [selectedFilters]);
+
+  // ── Refresco quirúrgico: fetch completo pero merge solo en solicitudes expandidas ──
+  // No muestra indicador al usuario — corre silencioso en background.
+  const refrescarExpandidos = React.useCallback(async (ids: Set<number>) => {
+    if (ids.size === 0) return;
+    const range = getWeekRange(selectedDate);
+    try {
+      const dataNueva = await obtenerEntregasDiariasService(range);
+      // Actualizar cache con datos frescos
+      entregasCache.current.set(getWeekKey(selectedDate), dataNueva);
+      // Merge quirúrgico: solo toca los productos de las solicitudes expandidas
+      setEntregasData(prev => prev.map(dia => ({
+        ...dia,
+        salas: dia.salas.map(sala => ({
+          ...sala,
+          solicitudes: sala.solicitudes.map(sol => {
+            // Solo actualizar si está expandida y no es histórico PROCESADO
+            if (!ids.has(sol.idSolicitud) || sol.estadoSolicitud === 'PROCESADO') return sol;
+            const solFresca = dataNueva
+              .flatMap(d => d.salas)
+              .flatMap(s => s.solicitudes)
+              .find(s => s.idSolicitud === sol.idSolicitud);
+            if (!solFresca) return sol;
+            // Actualiza stockTransito, diferencia y estadoSolicitud preservando el resto
+            return { ...sol, productos: solFresca.productos, estadoSolicitud: solFresca.estadoSolicitud };
+          })
+        }))
+      })));
+    } catch {
+      // Silencioso — fallo de polling no interrumpe al usuario
+    }
+  }, [selectedDate]);
+
+  // ── Callback que EntregaSalaCard llama al abrir/cerrar un item ──
+  const handleExpandChange = React.useCallback<ExpandChangeCallback>((idSolicitud, isOpen, esProcesado) => {
+    if (esProcesado) return; // Histórico: nunca se refresca
+    setExpandidosSolIds(prev => {
+      const next = new Set(prev);
+      if (isOpen) {
+        next.add(idSolicitud);
+      } else {
+        next.delete(idSolicitud);
+      }
+      return next;
+    });
+    // Refresh inmediato al abrir (no esperar el intervalo de 30s)
+    if (isOpen) {
+      refrescarExpandidos(new Set([idSolicitud]));
+    }
+  }, [refrescarExpandidos]);
+
+  // ── Polling: activo solo si hay solicitudes expandidas no-PROCESADO ──
+  React.useEffect(() => {
+    if (expandidosSolIds.size === 0) {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+        pollingIntervalRef.current = null;
+      }
+      return;
+    }
+    // Reiniciar interval con los IDs actuales capturados via ref
+    if (pollingIntervalRef.current) clearInterval(pollingIntervalRef.current);
+    pollingIntervalRef.current = setInterval(() => {
+      refrescarExpandidos(expandidosSolIdsRef.current);
+    }, 30_000);
+    return () => {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+        pollingIntervalRef.current = null;
+      }
+    };
+  }, [expandidosSolIds, refrescarExpandidos]);
+
+  // ── Limpiar expandidos al cambiar fecha o salir de la vista pedidos ──
+  React.useEffect(() => {
+    setExpandidosSolIds(new Set());
+  }, [selectedDate, currentView]);
 
   /**
    * Debounce 2.5s para filtros: cancela el timer anterior antes de iniciar uno nuevo,
@@ -1115,7 +1224,7 @@ const BodegaTransitoPage: React.FC = () => {
                           ) : (
                             <div className="space-y-3">
                               {entregasHoy.salas.map(sala => (
-                                <EntregaSalaCard key={sala.idSala} sala={sala} onPreparar={abrirPreparar} canPreparar={ped_Crear} />
+                                <EntregaSalaCard key={sala.idSala} sala={sala} onPreparar={abrirPreparar} canPreparar={ped_Crear} onExpandChange={handleExpandChange} />
                               ))}
                             </div>
                           )}
@@ -1135,7 +1244,7 @@ const BodegaTransitoPage: React.FC = () => {
                           ) : (
                             <div className="space-y-3 opacity-80">
                               {entregasManana.salas.map(sala => (
-                                <EntregaSalaCard key={sala.idSala} sala={sala} onPreparar={abrirPreparar} canPreparar={ped_Crear} />
+                                <EntregaSalaCard key={sala.idSala} sala={sala} onPreparar={abrirPreparar} canPreparar={ped_Crear} onExpandChange={handleExpandChange} />
                               ))}
                             </div>
                           )}
