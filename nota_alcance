@@ -776,11 +776,14 @@ Técnico:
   La diferencia permite al encargado ver inmediatamente si hay suficiente stock
   en bodega para completar la entrega de esa solicitud específica.
 
-  La consulta retorna DOS grupos de solicitudes combinados:
+  La consulta retorna tres combinaciones de estados:
     1) pedido APROBADO  + solicitud EN_PEDIDO  → habilita el botón "Preparar Entrega".
-    2) pedido ENTREGADO + solicitud PROCESADO  → entregadas (historial del día).
-  El campo estadoSolicitud en cada ítem permite al frontend distinguir qué
-  solicitudes permiten acción y cuáles son solo lectura histórica.
+    2) pedido APROBADO  + solicitud PROCESADO  → entregadas parcialmente (pedido aún APROBADO).
+    3) pedido ENTREGADO + solicitud PROCESADO  → entregadas completas (pedido ya ENTREGADO).
+  El campo estadoSolicitud permite al frontend distinguir acción vs historial:
+  EN_PEDIDO → muestra botón "Preparar Entrega"; PROCESADO → solo lectura histórica.
+  Esta lógica garantiza que solicitudes PROCESADO sean visibles en todo momento,
+  independientemente de si el pedido ya transitó a ENTREGADO o no.
 
   Preparar entrega (POST /api/v1/pedido/preparar-entrega):
   Recibe PrepararEntregaDTO:
@@ -1028,9 +1031,12 @@ PENDIENTE DE IMPLEMENTAR O DEFINIR:
       Entity Pedido.EstadoPedidoType, nota_bbdd_kuhub_v2 y CONSULTA 4 actualizados.
       Flujo: PENDIENTE → APROBADO → ENTREGADO | RECHAZADO.
   [✓] CONSULTA 4 (findEntregasDiariasJson) actualizada (2026-04-16):
-      Retorna dos grupos combinados:
+      Retorna tres combinaciones de estados:
         - pedido APROBADO  + solicitud EN_PEDIDO  → habilita btn "Preparar Entrega"
-        - pedido ENTREGADO + solicitud PROCESADO  → historial de entregadas
+        - pedido APROBADO  + solicitud PROCESADO  → historial parcial (pedido aún APROBADO)
+        - pedido ENTREGADO + solicitud PROCESADO  → historial completo (pedido ENTREGADO)
+      Corrección: el caso APROBADO+PROCESADO fue agregado para que las solicitudes
+      entregadas aparezcan aunque el pedido aún no haya transitado a ENTREGADO.
       Bodega de Tránsito → Gestión Pedidos Diarios consume este resultado.
   [✓] Confirmación CONFIRMAR en modal Preparar Entrega (2026-04-16):
       bodega-transito.tsx: modal de preparación de entrega ahora requiere que el
