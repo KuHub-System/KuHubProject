@@ -16,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -116,7 +117,92 @@ public class PermisoRolServiceImpl implements PermisoRolService {
                 .orElseGet(() -> crearPermiso(request));
     }
 
-    // ── Helper ──────────────────────────────────────────────────────────────
+    @Override
+    @Transactional
+    public void restaurarPredeterminado() {
+        List<Rol>    roles   = rolRepository.findByActivoTrue();
+        List<Modulo> modulos = moduloRepository.findByEnabledTrueOrderByOrdenModuloAsc();
+
+        for (Rol rol : roles) {
+            for (Modulo modulo : modulos) {
+                boolean[] p = defaultPermisos(rol.getNombreRol(), modulo.getCodigoModulo());
+                PermisoRolRequestDTO dto = new PermisoRolRequestDTO();
+                dto.setIdRol(rol.getIdRol());
+                dto.setIdModulo(modulo.getIdModulo());
+                dto.setPuedeLeer(p[0]);
+                dto.setPuedeCrear(p[1]);
+                dto.setPuedeActualizar(p[2]);
+                dto.setPuedeEliminar(p[3]);
+                upsertPermiso(dto);
+            }
+        }
+    }
+
+    // ── Helpers ─────────────────────────────────────────────────────────────
+
+    private boolean[] defaultPermisos(String rol, String modulo) {
+        return switch (rol) {
+            case "ADMINISTRADOR"    -> new boolean[]{true, true, true, true};
+            case "CO_ADMINISTRADOR" -> defaultCoAdmin(modulo);
+            case "GESTOR_PEDIDOS"   -> defaultGestorPedidos(modulo);
+            case "PROFESOR_A_CARGO" -> defaultProfesorACargo(modulo);
+            case "DOCENTE"          -> defaultDocente(modulo);
+            case "ENCARGADO_BODEGA" -> defaultEncargadoBodega(modulo);
+            case "ASISTENTE_BODEGA" -> defaultAsistenteBodega(modulo);
+            default -> new boolean[]{false, false, false, false};
+        };
+    }
+
+    private boolean[] defaultCoAdmin(String m) {
+        if (Set.of("GESTION_ROLES", "ADMIN_SISTEMA").contains(m))
+            return new boolean[]{false, false, false, false};
+        if ("GESTION_USUARIOS".equals(m))
+            return new boolean[]{true, true, true, false};
+        return new boolean[]{true, true, true, true};
+    }
+
+    private boolean[] defaultGestorPedidos(String m) {
+        if ("DASHBOARD".equals(m))
+            return new boolean[]{true, false, false, false};
+        if (Set.of("GESTION_PEDIDOS", "GESTION_SOLICITUDES", "CONGLOMERADO_PEDIDOS").contains(m))
+            return new boolean[]{true, true, true, false};
+        return new boolean[]{false, false, false, false};
+    }
+
+    private boolean[] defaultProfesorACargo(String m) {
+        if (Set.of("DASHBOARD", "GESTION_RECETAS").contains(m))
+            return new boolean[]{true, false, false, false};
+        if ("SOLICITUD".equals(m))
+            return new boolean[]{true, true, true, false};
+        return new boolean[]{false, false, false, false};
+    }
+
+    private boolean[] defaultDocente(String m) {
+        if (Set.of("DASHBOARD", "SOLICITUD", "GESTION_RECETAS").contains(m))
+            return new boolean[]{true, false, false, false};
+        return new boolean[]{false, false, false, false};
+    }
+
+    private boolean[] defaultEncargadoBodega(String m) {
+        if ("DASHBOARD".equals(m))
+            return new boolean[]{true, false, false, false};
+        if (Set.of("INVENTARIO", "GESTION_CATEGORIAS", "GESTION_UNIDADES",
+                   "HISTORIAL_MOVIMIENTOS", "GESTION_PEDIDOS_DIARIOS", "BODEGA_TRANSITO").contains(m))
+            return new boolean[]{true, true, true, false};
+        return new boolean[]{false, false, false, false};
+    }
+
+    private boolean[] defaultAsistenteBodega(String m) {
+        if ("DASHBOARD".equals(m))
+            return new boolean[]{true, false, false, false};
+        if ("BODEGA_TRANSITO".equals(m))
+            return new boolean[]{true, true, false, false};
+        if (Set.of("GESTION_CATEGORIAS", "GESTION_UNIDADES", "HISTORIAL_MOVIMIENTOS").contains(m))
+            return new boolean[]{true, false, false, false};
+        if ("GESTION_PEDIDOS_DIARIOS".equals(m))
+            return new boolean[]{true, true, true, false};
+        return new boolean[]{false, false, false, false};
+    }
 
     private PermisoRolResponseDTO toResponseDTO(PermisoRol p) {
         return new PermisoRolResponseDTO(

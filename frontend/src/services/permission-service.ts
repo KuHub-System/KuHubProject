@@ -169,6 +169,12 @@ export const permissionService = {
     return found?.permissions ?? ({} as Record<ModuleKey, AccessLevel>);
   },
 
+  /** Restaura todos los permisos a los valores predeterminados del sistema. */
+  restaurarPredeterminado: async (): Promise<void> => {
+    await api.post('/permisos/restaurar-predeterminado');
+    matrixCache = null;
+  },
+
   /** Invalida el cache (útil tras guardar cambios). */
   invalidateCache: (): void => {
     matrixCache = null;
