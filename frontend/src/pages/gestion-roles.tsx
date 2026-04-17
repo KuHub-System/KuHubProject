@@ -61,12 +61,12 @@ const MODULE_ORDER: ModuleKey[] = [
   'GESTION_PEDIDOS_DIARIOS',
   'HISTORIAL_MOVIMIENTOS',
   'GESTION_RECETAS',
+  'GESTION_ACADEMICA',
   'SOLICITUD',
   'GESTION_SOLICITUDES',
   'GESTION_PEDIDOS',
   'CONGLOMERADO_PEDIDOS',
   // 'GESTION_PROVEEDORES', // En cuarentena — no mostrar hasta confirmar si entra al sistema
-  'RAMOS_ADMIN',
 ];
 
 // ── Componente chip de nivel de acceso ────────────────────────────────────────
