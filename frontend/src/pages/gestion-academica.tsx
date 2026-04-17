@@ -109,10 +109,10 @@ const renderEstadoSeccion = (estado: EstadoSeccion) => {
  * Página de gestión de asignaturas con secciones
  */
 const GestionAsignaturasPage: React.FC = () => {
-  usePageTitle('Gestión de Asignaturas', 'Administre asignaturas, secciones y asignaciones de gestores. Las recetas se multiplicarán por el total de alumnos activos.', 'lucide:graduation-cap');
+  usePageTitle('Gestión Académica', 'Administre asignaturas, secciones y asignaciones de gestores. Las recetas se multiplicarán por el total de alumnos activos.', 'lucide:graduation-cap');
   const toast = useToast();
   const { showConfirm } = useNotifications();
-  const { canCreate: ramos_Crear, canUpdate: ramos_Editar, canDelete: ramos_Eliminar } = useModulePermission('RAMOS_ADMIN');
+  const { canCreate: ramos_Crear, canUpdate: ramos_Editar, canDelete: ramos_Eliminar } = useModulePermission('GESTION_ACADEMICA');
   const [asignaturas, setAsignaturas] = React.useState<IAsignatura[]>([]);
   const [profesores, setProfesores] = React.useState<IUsuario[]>([]);
   const [searchTerm, setSearchTerm] = React.useState<string>('');
