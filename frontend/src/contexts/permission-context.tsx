@@ -65,7 +65,7 @@ export const PermissionProvider: React.FC<{ children: ReactNode }> = ({ children
   // Cache CRUD granular del usuario actual
   const [crudCache,          setCrudCache]           = useState<Map<ModuleKey, { r: boolean; c: boolean; u: boolean; d: boolean }>>(new Map());
 
-  const isAdmin = user?.rol === 'Administrador';
+  const isAdmin = user?.rol === 'Administrador' || user?.rol === 'Co-Administrador';
 
   // ── Carga de permisos ──────────────────────────────────────────────────────
 
