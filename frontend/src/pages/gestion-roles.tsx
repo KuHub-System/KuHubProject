@@ -50,23 +50,23 @@ const ACCESS_OPTIONS: { value: AccessLevel; label: string; chipColor: 'default' 
 // ── Orden de módulos (debe coincidir con orden_modulo en BD) ─────────────────
 
 const MODULE_ORDER: ModuleKey[] = [
+  'ADMIN_SISTEMA',
   'DASHBOARD',
-  'INVENTARIO',
-  'HISTORIAL_MOVIMIENTOS',
-  'GESTION_CATEGORIAS',
-  'GESTION_UNIDADES',
-  'SOLICITUD',
-  'GESTION_PEDIDOS',
-  'GESTION_SOLICITUDES',
-  'CONGLOMERADO_PEDIDOS',
-  // 'GESTION_PROVEEDORES', // En cuarentena — no mostrar hasta confirmar si entra al sistema
-  'BODEGA_TRANSITO',
-  'GESTION_PEDIDOS_DIARIOS',
-  'GESTION_RECETAS',
-  'RAMOS_ADMIN',
   'GESTION_ROLES',
   'GESTION_USUARIOS',
-  'ADMIN_SISTEMA',
+  'INVENTARIO',
+  'GESTION_CATEGORIAS',
+  'GESTION_UNIDADES',
+  'BODEGA_TRANSITO',
+  'GESTION_PEDIDOS_DIARIOS',
+  'HISTORIAL_MOVIMIENTOS',
+  'GESTION_RECETAS',
+  'SOLICITUD',
+  'GESTION_SOLICITUDES',
+  'GESTION_PEDIDOS',
+  'CONGLOMERADO_PEDIDOS',
+  // 'GESTION_PROVEEDORES', // En cuarentena — no mostrar hasta confirmar si entra al sistema
+  'RAMOS_ADMIN',
 ];
 
 // ── Componente chip de nivel de acceso ────────────────────────────────────────
