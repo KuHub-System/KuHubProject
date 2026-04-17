@@ -1054,7 +1054,7 @@ const SolicitudPage: React.FC = () => {
                 <button
                   type="button"
                   className="mt-3 inline-flex items-center gap-1.5 text-sm text-primary hover:text-primary-600 underline underline-offset-2 cursor-pointer transition-colors"
-                  onClick={() => history.push('/ramos-admin')}
+                  onClick={() => history.push('/gestion-academica')}
                 >
                   <Icon icon="lucide:graduation-cap" width={14} />
                   Ir a Gestión de Asignaturas
