@@ -17,7 +17,14 @@ import {
   CardBody,
   CardHeader,
   Chip,
+  Input,
+  Modal,
+  ModalBody,
+  ModalContent,
+  ModalFooter,
+  ModalHeader,
   Spinner,
+  useDisclosure,
 } from '@heroui/react';
 import { Icon } from '@iconify/react';
 import { motion } from 'framer-motion';
@@ -133,11 +140,15 @@ const GestionRolesPage: React.FC = () => {
   usePageTitle('Gestión de Roles', 'Configura qué puede ver o editar cada rol en el sistema.', 'lucide:users');
   const { isAdmin, isLoading: permLoading, refreshPermissions, allPermissions } = usePermission();
 
-  const [localPermissions, setLocalPermissions] = React.useState<RolePermission[]>([]);
-  const [isSaving,         setIsSaving]         = React.useState(false);
-  const [isLoading,        setIsLoading]         = React.useState(false);
-  const [message,          setMessage]           = React.useState<{ type: 'success' | 'error'; text: string } | null>(null);
-  const [errorState,       setErrorState]        = React.useState<{ is403: boolean; message: string } | null>(null);
+  const restaurarModal = useDisclosure();
+
+  const [localPermissions,  setLocalPermissions]  = React.useState<RolePermission[]>([]);
+  const [isSaving,          setIsSaving]          = React.useState(false);
+  const [isLoading,         setIsLoading]         = React.useState(false);
+  const [isRestoring,       setIsRestoring]       = React.useState(false);
+  const [confirmarTexto,    setConfirmarTexto]     = React.useState('');
+  const [message,           setMessage]           = React.useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [errorState,        setErrorState]        = React.useState<{ is403: boolean; message: string } | null>(null);
 
   // ── Cargar la matriz desde el backend ───────────────────────────────────────
 
@@ -199,6 +210,24 @@ const GestionRolesPage: React.FC = () => {
     }
   };
 
+  // ── Restaurar permisos predeterminados ─────────────────────────────────────
+
+  const handleRestaurar = async () => {
+    setIsRestoring(true);
+    try {
+      await permissionService.restaurarPredeterminado();
+      await refreshPermissions();
+      await loadMatrix();
+      restaurarModal.onClose();
+      setMessage({ type: 'success', text: '¡Permisos restaurados a los valores predeterminados!' });
+    } catch (err) {
+      console.error(err);
+      setMessage({ type: 'error', text: 'Error al restaurar los permisos predeterminados.' });
+    } finally {
+      setIsRestoring(false);
+    }
+  };
+
   // ── Guard: solo Administrador ───────────────────────────────────────────────
 
   if (!permLoading && !isAdmin) {
@@ -245,17 +274,27 @@ const GestionRolesPage: React.FC = () => {
               startContent={<Icon icon="lucide:refresh-cw" width={16} />}
               onPress={loadMatrix}
               isLoading={isLoading}
-              isDisabled={isSaving}
+              isDisabled={isSaving || isRestoring}
               size="sm"
             >
               Recargar
+            </Button>
+            <Button
+              variant="flat"
+              color="danger"
+              startContent={<Icon icon="lucide:rotate-ccw" width={16} />}
+              onPress={() => { setConfirmarTexto(''); restaurarModal.onOpen(); }}
+              isDisabled={isLoading || isSaving || isRestoring || !!errorState}
+              size="sm"
+            >
+              Restaurar Predeterminado
             </Button>
             <Button
               style={{ backgroundColor: '#FFB800', color: '#1A1A1A' }}
               startContent={!isSaving && <Icon icon="lucide:save" width={16} />}
               onPress={handleSave}
               isLoading={isSaving}
-              isDisabled={isLoading || !!errorState}
+              isDisabled={isLoading || isRestoring || !!errorState}
               size="sm"
               className="font-semibold"
             >
@@ -396,6 +435,54 @@ const GestionRolesPage: React.FC = () => {
         </div>
 
       </motion.div>
+
+      {/* ── Modal Restaurar Predeterminado ── */}
+      <Modal isOpen={restaurarModal.isOpen} onOpenChange={restaurarModal.onOpenChange} size="sm">
+        <ModalContent>
+          {onClose => (
+            <>
+              <ModalHeader className="flex items-center gap-2 text-danger">
+                <Icon icon="lucide:rotate-ccw" width={18} />
+                Restaurar Permisos Predeterminados
+              </ModalHeader>
+              <ModalBody className="space-y-3">
+                <div className="bg-danger-50 border border-danger-200 rounded-lg px-3 py-2.5 text-sm text-danger-800 space-y-1">
+                  <p className="font-semibold flex items-center gap-1.5">
+                    <Icon icon="lucide:alert-triangle" width={14} /> Advertencia
+                  </p>
+                  <p>
+                    Esta acción sobreescribirá <strong>todos los permisos</strong> de todos los roles
+                    con los valores predeterminados del sistema. Los cambios personalizados se perderán.
+                  </p>
+                </div>
+                <Input
+                  label='Escriba "CONFIRMAR" para continuar'
+                  placeholder="CONFIRMAR"
+                  value={confirmarTexto}
+                  onValueChange={setConfirmarTexto}
+                  variant="bordered"
+                  color={confirmarTexto.trim().toUpperCase() === 'CONFIRMAR' ? 'success' : 'default'}
+                  endContent={confirmarTexto.trim().toUpperCase() === 'CONFIRMAR'
+                    ? <Icon icon="lucide:check-circle" width={16} className="text-success" /> : null}
+                />
+              </ModalBody>
+              <ModalFooter>
+                <Button variant="light" onPress={onClose} isDisabled={isRestoring}>Cancelar</Button>
+                <Button
+                  color="danger"
+                  isLoading={isRestoring}
+                  isDisabled={confirmarTexto.trim().toUpperCase() !== 'CONFIRMAR'}
+                  onPress={handleRestaurar}
+                  startContent={!isRestoring && <Icon icon="lucide:rotate-ccw" width={14} />}
+                >
+                  Restaurar
+                </Button>
+              </ModalFooter>
+            </>
+          )}
+        </ModalContent>
+      </Modal>
+
     </div>
   );
 };
