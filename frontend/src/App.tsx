@@ -20,7 +20,7 @@ const MovimientosProductoPage = lazy(() => import('./pages/movimientos-producto'
 const PerfilUsuarioPage = lazy(() => import('./pages/perfil-usuario'));
 const GestionRolesPage = lazy(() => import('./pages/gestion-roles'));
 const SolicitudPage = lazy(() => import('./pages/solicitud'));
-const RamosAdminPage = lazy(() => import('./pages/ramos-admin'));
+const GestionAcademicaPage = lazy(() => import('./pages/gestion-academica'));
 const GestionPedidosPage = lazy(() => import('./pages/gestion-pedidos'));
 const ConglomeradoPedidosPage = lazy(() => import('./pages/conglomerado-pedidos'));
 const GestionProveedoresPage = lazy(() => import('./pages/gestion-proveedores'));
@@ -87,7 +87,7 @@ const SmartRedirect: React.FC = () => {
     'gestion-proveedores': '/gestion-proveedores',
     'bodega-transito': '/bodega-transito',
     'gestion-recetas': '/gestion-recetas',
-    'ramos-admin': '/ramos-admin',
+    'gestion-academica': '/gestion-academica',
     'gestion-roles': '/gestion-roles',
     'gestion-usuarios': '/gestion-usuarios', // 🔥 NUEVO
     'gestion-solicitudes': '/gestion-solicitudes', // 🔥 NUEVO
@@ -200,9 +200,9 @@ const App: React.FC = () => {
                     </MainLayout>
                   </ProtectedRoute>
 
-                  <ProtectedRoute path="/ramos-admin" pageId="ramos-admin">
+                  <ProtectedRoute path="/gestion-academica" pageId="gestion-academica">
                     <MainLayout>
-                      <RamosAdminPage />
+                      <GestionAcademicaPage />
                     </MainLayout>
                   </ProtectedRoute>
 
