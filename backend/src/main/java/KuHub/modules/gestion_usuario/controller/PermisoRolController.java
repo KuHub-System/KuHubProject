@@ -102,4 +102,18 @@ public class PermisoRolController {
         if (!dynamicPermissionService.check(authentication, "GESTION_ROLES", "write")) return forbidden();
         return ResponseEntity.ok(permisoRolService.upsertPermiso(request));
     }
+
+    /**
+     * Restaura todos los permisos a los valores predeterminados del sistema.
+     * Requiere permiso de escritura sobre GESTION_ROLES (verificado dinámicamente en BD).
+     * ✅ En uso: Consumido por permissionService.restaurarPredeterminado en permission-service.ts.
+     */
+    @PostMapping("/restaurar-predeterminado")
+    public ResponseEntity<Void> restaurarPredeterminado(Authentication authentication) {
+        if (!dynamicPermissionService.check(authentication, "GESTION_ROLES", "write")) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+        permisoRolService.restaurarPredeterminado();
+        return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
+    }
 }
