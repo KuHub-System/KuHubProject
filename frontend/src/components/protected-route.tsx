@@ -29,7 +29,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   children,
   ...rest
 }) => {
-  const { isAuthenticated, isLoading: authLoading, hasPermission, canAccessPage } = useAuth();
+  const { isAuthenticated, isLoading: authLoading, hasPermission } = useAuth();
   const { canAccess, isLoading: permLoading, isAdmin } = usePermission();
 
   // Esperar a que AMBAS capas terminen de cargar
@@ -42,16 +42,10 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     if (isAdmin) return true;
 
     if (pageId) {
-      // Capa 1: verificación estática (roles-config.ts)
-      const staticAccess = canAccessPage(pageId);
-
-      // Capa 2: verificación dinámica (BD)
-      const moduleKey = PAGE_TO_MODULE[pageId];
+      const moduleKey     = PAGE_TO_MODULE[pageId];
       const dynamicAccess = moduleKey ? canAccess(moduleKey, 'read') : false;
-
-      const access = staticAccess || dynamicAccess;
-      logger.log(`[ProtectedRoute] pageId="${pageId}" static=${staticAccess} dynamic=${dynamicAccess} → ${access}`);
-      return access;
+      logger.log(`[ProtectedRoute] pageId="${pageId}" dynamic=${dynamicAccess}`);
+      return dynamicAccess;
     }
 
     if (roles.length > 0) {
