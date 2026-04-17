@@ -7,6 +7,7 @@ import React from 'react';
 import { Spinner, Tabs, Tab } from '@heroui/react';
 import { Icon } from '@iconify/react';
 import { useAuth } from '../contexts/auth-context';
+import { usePermission } from '../contexts/permission-context';
 import { usePageTitle } from '../hooks/usePageTitle';
 
 // Dashboards de analytics
@@ -85,12 +86,12 @@ const DashboardProfesorView: React.FC = () => (
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 const DashboardPage: React.FC = () => {
-  const { user, userRole, isLoading: authLoading, hasSpecificPermission } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
+  const { isAdmin, canRead, canCreate, isLoading: permLoading } = usePermission();
 
   usePageTitle('Dashboard', 'Panel de control del sistema', 'lucide:layout-dashboard');
 
-  // Loading state
-  if (authLoading || !user || !userRole) {
+  if (authLoading || permLoading || !user) {
     return (
       <div className="flex items-center justify-center h-screen">
         <div className="text-center">
@@ -101,19 +102,13 @@ const DashboardPage: React.FC = () => {
     );
   }
 
-  // Role detection
-  const isAdmin           = user?.rol === 'Administrador' || user?.rol === 'Co-Administrador';
-  const puedeGestionarPedidos = hasSpecificPermission('gestion-pedidos');
-  const puedeVerInventario    = hasSpecificPermission('inventario');
-  const puedeCrearSolicitudes = hasSpecificPermission('solicitud');
-
-  // ── ADMIN / CO_ADMIN: tabbed multi-analytics view ──
-  if (isAdmin) {
+  // ── Administrador / Co-Administrador: vista con tabs ──
+  if (isAdmin || canRead('ADMIN_SISTEMA')) {
     return <DashboardAdminTabs />;
   }
 
-  // ── GESTOR_PEDIDOS (non-admin): gestor analytics only ──
-  if (puedeGestionarPedidos) {
+  // ── Gestor de Pedidos: analítica de gestión ──
+  if (canRead('GESTION_PEDIDOS')) {
     return (
       <div className="container mx-auto px-4 py-6">
         <DashboardGestor />
@@ -121,8 +116,8 @@ const DashboardPage: React.FC = () => {
     );
   }
 
-  // ── ENCARGADO_BODEGA / ASISTENTE_BODEGA: inventario analytics ──
-  if (puedeVerInventario && !puedeCrearSolicitudes && !puedeGestionarPedidos) {
+  // ── Encargado / Asistente de Bodega: inventario ──
+  if (canRead('INVENTARIO') || canRead('BODEGA_TRANSITO')) {
     return (
       <div className="container mx-auto px-4 py-6">
         <DashboardInventarioView />
@@ -130,24 +125,24 @@ const DashboardPage: React.FC = () => {
     );
   }
 
-  // ── PROFESOR_A_CARGO / DOCENTE: mis solicitudes + recetas ──
-  if (puedeCrearSolicitudes) {
+  // ── Profesor a Cargo / Docente: solicitudes + recetas ──
+  if (canRead('SOLICITUD') || canCreate('SOLICITUD')) {
     return <DashboardProfesorView />;
   }
 
-  // ── Fallback: sin permisos específicos ──
+  // ── Fallback ──
   return (
     <div className="bg-gray-50 dark:bg-zinc-900 min-h-screen py-8">
-        <div className="container mx-auto px-4">
-          <div className="text-center py-12">
-            <Icon icon="lucide:alert-circle" className="text-6xl text-default-400 mx-auto mb-4" />
-            <h2 className="text-2xl font-bold mb-2">Sin Permisos para Dashboard</h2>
-            <p className="text-default-500">
-              Tu rol no tiene acceso a ninguna vista del dashboard.
-            </p>
-          </div>
+      <div className="container mx-auto px-4">
+        <div className="text-center py-12">
+          <Icon icon="lucide:alert-circle" className="text-6xl text-default-400 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold mb-2">Sin Permisos para Dashboard</h2>
+          <p className="text-default-500">
+            Tu rol no tiene acceso a ninguna vista del dashboard.
+          </p>
         </div>
       </div>
+    </div>
   );
 };
 

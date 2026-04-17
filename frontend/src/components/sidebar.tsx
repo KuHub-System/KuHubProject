@@ -37,7 +37,7 @@ interface MenuItem {
  * @returns {JSX.Element} El componente Sidebar.
  */
 const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar, onLogout }) => {
-  const { user, canAccessPage, logout } = useAuth();
+  const { user, logout } = useAuth();
   const { canAccess, isAdmin } = usePermission();
   const location = useLocation();
   const history = useHistory();
@@ -108,11 +108,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar, onLogout }) =>
     items: category.items.filter(item => {
       if (!user) return false;
       if (isAdmin) return true;
-      // Acceso estático (roles-config.ts) O acceso dinámico (BD via permission-context)
-      const staticAccess  = canAccessPage(item.pageId);
-      const moduleKey     = PAGE_TO_MODULE[item.pageId];
-      const dynamicAccess = moduleKey ? canAccess(moduleKey, 'read') : false;
-      return staticAccess || dynamicAccess;
+      const moduleKey = PAGE_TO_MODULE[item.pageId];
+      return moduleKey ? canAccess(moduleKey, 'read') : false;
     })
   })).filter(category => category.items.length > 0);
 
