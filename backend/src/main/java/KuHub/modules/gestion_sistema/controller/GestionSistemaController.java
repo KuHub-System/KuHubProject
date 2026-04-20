@@ -7,10 +7,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/gestion-sistema")
+@RequestMapping("/api/v1/gestion-sistema")
 @RequiredArgsConstructor
 public class GestionSistemaController {
-
     private final GestionSistemaService gestionSistemaService;
 
     /**
