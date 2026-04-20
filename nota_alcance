@@ -1108,6 +1108,37 @@ PENDIENTE DE IMPLEMENTAR O DEFINIR:
       se muestran en rojo (danger) y los de profesor en amarillo (warning), con mensajes
       descriptivos debajo del grid de bloques.
 
+  [✓] Módulo GestionSistema — configuración global (2026-04-20):
+      Tabla gestion_sistema con 2 filas fijas (id=1 default, id=2 activa).
+      Campo solicitudesEnPedido (BOOLEAN): cuando true, al aceptar solicitudes
+      en gestion-solicitud se crean/actualizan automáticamente el pedido de la semana
+      y los detalles, pasando el estado directamente a EN_PEDIDO sin paso manual.
+      Cuando false: el estado queda en ACEPTADA y sigue el flujo de gestión-pedido.
+      Backend: entidad GestionSistema, GestionSistemaRepository, GestionSistemaService,
+      GestionSistemaController (GET /api/gestion-sistema/configuracion,
+      PATCH /api/gestion-sistema/configuracion, POST /api/gestion-sistema/restaurar).
+      Frontend: vista "Gestión del Sistema" en admin-sistema.tsx.
+
+  [✓] Flujo automático solicitud → pedido sin trigger (2026-04-20):
+      Trigger fn_solicitud_a_pedido eliminado de la BD (tenía columnas incorrectas:
+      fecha_inicio_semana, fecha_fin_semana, id_semana, tabla producto_solicitud,
+      columna cantidad, enums 'Cancelado'/'EnCurso' inexistentes).
+      Lógica migrada al servicio Java: SolicitudServiceImp.changeMassiveStatus.
+      El frontend envía idSemana en el request PATCH /change-massive-status.
+      Cuando solicitudesEnPedido=true y estado destino es ACEPTADA:
+        1. Busca semana por idSemana → obtiene fechaInicio y fechaFin.
+        2. Busca pedido activo (no RECHAZADO ni ENTREGADO) en ese rango.
+        3. Si no existe: crea Pedido con estado PENDIENTE.
+        4. Para cada solicitud: inserta en pedido_solicitud (ON CONFLICT DO NOTHING)
+           y hace UPSERT en detalle_pedido sumando cantidades (cant_producto_pedido).
+        5. Actualiza estado de solicitudes a EN_PEDIDO.
+      Archivos modificados: ChangeSolicitationStatus (+ idSemana),
+      PedidoRepository (+ findIdPedidoActivoEnRango), DetallePedidoRepository
+      (+ upsertDetallesFromSolicitud), PedidoSolicitudRepository (+ insertIfNotExists),
+      SolicitudServiceImp (changeMassiveStatus + procesarPedidoDesdeAceptadas).
+      SQL para ejecutar en BD: DROP TRIGGER IF EXISTS trg_solicitud_a_pedido ON solicitud;
+                               DROP FUNCTION IF EXISTS fn_solicitud_a_pedido();
+
   [✓] Permisos dinámicos en Bodega de Tránsito PATCH (2026-04-17):
       BodegaTransitoController.updateTransitWarehouseWithProduct: reemplazado el
       hasAnyRole hardcodeado en SpringSecurityConfig por verificación dinámica via

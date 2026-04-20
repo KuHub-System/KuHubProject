@@ -593,6 +593,20 @@ public interface PedidoRepository extends JpaRepository<Pedido, Integer> {
 
 
     // =====================================================
+    // BÚSQUEDA: pedido activo en rango de fechas de semana
+    // Excluye RECHAZADO y ENTREGADO
+    // =====================================================
+    /** Busca el id del pedido activo (no RECHAZADO ni ENTREGADO) en el rango de fechas dado. */
+    @Query(value = """
+        SELECT id_pedido FROM pedido
+        WHERE fecha_inicio_pedido = :fechaInicio
+          AND fecha_fin_pedido    = :fechaFin
+          AND estado_pedido NOT IN ('RECHAZADO', 'ENTREGADO')
+        LIMIT 1
+        """, nativeQuery = true)
+    Optional<Integer> findIdPedidoActivoEnRango(@Param("fechaInicio") LocalDate fechaInicio, @Param("fechaFin") LocalDate fechaFin);
+
+    // =====================================================
     // UPDATE MASIVO: cambia el estado de N pedidos a la vez
     // Retorna número de filas afectadas
     // =====================================================
