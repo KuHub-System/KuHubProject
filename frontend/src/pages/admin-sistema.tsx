@@ -25,6 +25,7 @@ import {
   DatePicker,
   Select,
   SelectItem,
+  Checkbox,
 } from '@heroui/react';
 import { type DateValue } from '@internationalized/date';
 import { I18nProvider } from '@react-aria/i18n';
@@ -72,7 +73,7 @@ const AdminSistemaPage: React.FC = () => {
   const tabFromUrl = React.useMemo(() => {
     const params = new URLSearchParams(location.search);
     const t = params.get('tab');
-    return t === 'semanas' || t === 'horarios' || t === 'reservas' ? t : 'horarios';
+    return t === 'semanas' || t === 'horarios' || t === 'reservas' || t === 'gestion' ? t : 'horarios';
   }, [location.search]);
 
   const [activeTab, setActiveTab] = React.useState<string>(tabFromUrl);
@@ -184,6 +185,15 @@ const AdminSistemaPage: React.FC = () => {
                 </div>
               }
             />
+            <Tab
+              key="gestion"
+              title={
+                <div className="flex items-center gap-2">
+                  <Icon icon="lucide:sliders-horizontal" width={18} />
+                  <span>Gestion del Sistema</span>
+                </div>
+              }
+            />
           </Tabs>
 
           <div className="mt-6">
@@ -196,6 +206,7 @@ const AdminSistemaPage: React.FC = () => {
             )}
             {activeTab === 'semanas' && <SeccionSemanas toast={toast} />}
             {activeTab === 'reservas' && <SeccionGestionSalaYReservas />}
+            {activeTab === 'gestion' && <SeccionGestionDelSistema />}
           </div>
         </div>
       </motion.div>
@@ -1850,6 +1861,115 @@ const SeccionGestionSalaYReservas: React.FC = () => {
 
       {vista === 'reservas' ? <SeccionReservas /> : <SeccionGestionSalas />}
     </div>
+  );
+};
+
+// ─── SECCIÓN: GESTION DEL SISTEMA ────────────────────────────────────────────
+
+const SeccionGestionDelSistema: React.FC = () => {
+  const toast = useToast();
+  const [incluirSolicitudesAutomaticas, setIncluirSolicitudesAutomaticas] = React.useState(false);
+  const [isSaving, setIsSaving] = React.useState(false);
+
+  const handleGuardar = async () => {
+    setIsSaving(true);
+    try {
+      await new Promise(resolve => setTimeout(resolve, 500));
+      toast.success('Configuración guardada correctamente');
+    } catch (error: any) {
+      toast.error(error.message || 'Error al guardar la configuración');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4 }}
+      className="space-y-6"
+    >
+      {/* Card Principal */}
+      <Card className="shadow-sm border border-default-200 dark:border-default-100 bg-white dark:bg-content1">
+        <CardHeader className="px-6 pt-5 pb-3 flex items-center gap-3 flex-wrap">
+          <div className="p-2 rounded-lg bg-primary-100 dark:bg-primary-900/30 text-primary">
+            <Icon icon="lucide:sliders-horizontal" width={20} />
+          </div>
+          <div>
+            <h3 className="font-bold text-base text-secondary dark:text-foreground">Configuración del Sistema</h3>
+            <p className="text-xs text-default-400">Parámetros globales que afectan el funcionamiento del sistema</p>
+          </div>
+        </CardHeader>
+        <Divider />
+        <CardBody className="p-6 space-y-6">
+          {/* Sección 1: Configuración de Solicitudes */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <div className="p-1.5 rounded-lg bg-warning-50 dark:bg-warning-900/20 text-warning-600">
+                <Icon icon="lucide:receipt" width={16} />
+              </div>
+              <h4 className="font-semibold text-sm text-secondary dark:text-foreground">Procesamiento de Solicitudes</h4>
+            </div>
+
+            {/* Checkbox */}
+            <div className="flex items-start gap-3 px-4 py-3 rounded-lg bg-default-50 dark:bg-default-50/50 border border-default-100 dark:border-default-100/50 hover:bg-default-100 dark:hover:bg-default-50 transition-colors">
+              <Checkbox
+                isSelected={incluirSolicitudesAutomaticas}
+                onChange={(e) => setIncluirSolicitudesAutomaticas(e.target.checked)}
+                classNames={{
+                  wrapper: 'mt-0.5',
+                }}
+              />
+              <div className="flex-1 space-y-1">
+                <label className="text-sm font-semibold text-secondary dark:text-foreground cursor-pointer">
+                  Incluir automáticamente todas las solicitudes aceptadas a un pedido en la semana correspondiente
+                </label>
+                <p className="text-xs text-default-500 leading-relaxed">
+                  Si está activado, cuando una solicitud sea aceptada, se incluirá automáticamente en el pedido de la semana correspondiente, omitiendo pasos manuales de configuración.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <Divider />
+
+          {/* Info Box */}
+          <div className="flex gap-3 p-4 rounded-xl bg-info-50 dark:bg-blue-900/15 border border-blue-200 dark:border-blue-800">
+            <Icon icon="lucide:info" className="text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" width={18} />
+            <div className="space-y-1">
+              <p className="text-xs font-semibold text-blue-900 dark:text-blue-300">Nota de implementación</p>
+              <p className="text-xs text-blue-800 dark:text-blue-400 leading-relaxed">
+                Con el tiempo se podrán agregar más configuraciones que reflejarán cambios en todo el sistema, controladas exclusivamente por el administrador.
+              </p>
+            </div>
+          </div>
+        </CardBody>
+
+        <Divider />
+
+        <CardBody className="px-6 py-4 flex flex-row gap-3 justify-end">
+          <Button
+            variant="light"
+            onPress={() => setIncluirSolicitudesAutomaticas(false)}
+            isDisabled={!incluirSolicitudesAutomaticas || isSaving}
+            className="font-medium"
+          >
+            Restablecer
+          </Button>
+          <Button
+            color="primary"
+            variant="solid"
+            className="font-bold text-secondary"
+            isLoading={isSaving}
+            onPress={handleGuardar}
+            startContent={!isSaving && <Icon icon="lucide:save" width={16} />}
+          >
+            Guardar Cambios
+          </Button>
+        </CardBody>
+      </Card>
+    </motion.div>
   );
 };
 
