@@ -1,6 +1,4 @@
-import axios from 'axios';
-
-const BASE_URL = '/gestion-sistema';
+import api from '../config/Axios';
 
 export interface IGestionSistemaConfig {
   solicitudesEnPedido: boolean;
@@ -10,7 +8,7 @@ export interface IGestionSistemaConfig {
  * Obtiene la configuración activa del sistema (id=2).
  */
 export async function getConfiguracionSistema(): Promise<IGestionSistemaConfig> {
-  const response = await axios.get<IGestionSistemaConfig>(`${BASE_URL}/configuracion`);
+  const response = await api.get<IGestionSistemaConfig>('/gestion-sistema/configuracion');
   return response.data;
 }
 
@@ -21,8 +19,8 @@ export async function getConfiguracionSistema(): Promise<IGestionSistemaConfig> 
 export async function patchConfiguracionSistema(
   data: Partial<IGestionSistemaConfig>
 ): Promise<IGestionSistemaConfig> {
-  const response = await axios.patch<IGestionSistemaConfig>(
-    `${BASE_URL}/configuracion`,
+  const response = await api.patch<IGestionSistemaConfig>(
+    '/gestion-sistema/configuracion',
     data
   );
   return response.data;
@@ -32,6 +30,6 @@ export async function patchConfiguracionSistema(
  * Restaura la configuración activa a los valores predeterminados (id=1).
  */
 export async function restaurarConfiguracionSistema(): Promise<IGestionSistemaConfig> {
-  const response = await axios.post<IGestionSistemaConfig>(`${BASE_URL}/restaurar`);
+  const response = await api.post<IGestionSistemaConfig>('/gestion-sistema/restaurar');
   return response.data;
 }
