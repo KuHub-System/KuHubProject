@@ -57,6 +57,11 @@ api.interceptors.request.use(
         // Agregar el token si existe y no es la ruta de login
         if (sesion?.token && config.headers && !config.url?.includes('/auth/login')) {
             config.headers.Authorization = `Bearer ${sesion.token}`;
+            logger.log(`[AXIOS] Token añadido a ${config.url}`);
+        } else {
+            if (!sesion?.token) {
+                logger.warn(`[AXIOS] ⚠️ No hay token para ${config.url} - sesión: ${sesion ? 'existe' : 'NO'}`);
+            }
         }
 
         // Notificar actividad de API para reiniciar el timeout de inactividad
