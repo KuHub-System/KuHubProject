@@ -131,7 +131,7 @@ public class JwtAuthenticationFilter extends UsernamePasswordAuthenticationFilte
                 refreshCookie.setHttpOnly(true);
                 // setSecure(true) cuando haya HTTPS en producción
                 // refreshCookie.setSecure(true);
-                refreshCookie.setPath("/api/v1/auth");
+                refreshCookie.setPath("/");
                 refreshCookie.setMaxAge(REFRESH_COOKIE_DIAS * 24 * 60 * 60);
                 response.addCookie(refreshCookie);
             }

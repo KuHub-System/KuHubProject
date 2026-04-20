@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const BASE_URL = '/api/v1/gestion-sistema';
+const BASE_URL = '/gestion-sistema';
 
 export interface IGestionSistemaConfig {
   solicitudesEnPedido: boolean;
