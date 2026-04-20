@@ -1,7 +1,14 @@
 package KuHub.modules.gestion_solicitud.service;
 
+import KuHub.modules.gestion_academica.entity.Semana;
 import KuHub.modules.gestion_academica.repository.AsignaturaRepository;
+import KuHub.modules.gestion_pedido.entity.Pedido;
+import KuHub.modules.gestion_pedido.repository.DetallePedidoRepository;
+import KuHub.modules.gestion_pedido.repository.PedidoRepository;
+import KuHub.modules.gestion_pedido.repository.PedidoSolicitudRepository;
 import KuHub.modules.gestion_receta.services.DetalleRecetaService;
+import KuHub.modules.gestion_sistema.entity.GestionSistema;
+import KuHub.modules.gestion_sistema.repository.GestionSistemaRepository;
 import KuHub.modules.gestion_solicitud.dtos.request.record.ChangeSolicitationStatus;
 import KuHub.modules.gestion_solicitud.dtos.request.record.MassiveSolicitation;
 import KuHub.modules.gestion_solicitud.exception.GestionSolicitudException;
@@ -33,18 +40,31 @@ import java.util.stream.Collectors;
 @Service
 public class SolicitudServiceImp implements SolicitudService{
 
+    /**Repositories*/
     @Autowired
     private SolicitudRepository solicitudRepository;
-    @Autowired
-    private DetalleRecetaService detalleRecetaService;
-    @Autowired
-    private UsuarioService usuarioService;
     @Autowired
     private SemanaRepository semanaRepository;
     @Autowired
     private AsignaturaRepository asignaturaRepository;
     @Autowired
     private MotivoRechazoRepository motivoRechazoRepository;
+    @Autowired
+    private PedidoRepository pedidoRepository;
+    @Autowired
+    private DetallePedidoRepository detallePedidoRepository;
+    @Autowired
+    private PedidoSolicitudRepository pedidoSolicitudRepository;
+    @Autowired
+    private GestionSistemaRepository gestionSistemaRepository;
+
+    /**Services*/
+    @Autowired
+    private DetalleRecetaService detalleRecetaService;
+    @Autowired
+    private UsuarioService usuarioService;
+
+    /**Others*/
     @Autowired
     private ObjectMapper objectMapper;
 
@@ -211,7 +231,7 @@ public class SolicitudServiceImp implements SolicitudService{
     @Transactional
     public boolean changeMassiveStatus(ChangeSolicitationStatus request) {
 
-        // 0. Validar que ninguna solicitud esté en estado inmutable (EN_PEDIDO o PROCESADO)
+        // 0. Validar estados inmutables
         List<Integer> todosLosIds = request.estadosSolicitudes().stream()
                 .map(ChangeSolicitationStatus.StatusItemDTO::idSolicitud)
                 .toList();
@@ -222,28 +242,47 @@ public class SolicitudServiceImp implements SolicitudService{
             );
         }
 
-        // 1. Sabemos exactamente cuántas solicitudes deberíamos actualizar
         int totalEsperados = request.estadosSolicitudes().size();
         int totalActualizados = 0;
 
-        // 2. Agrupamos los IDs por estado
-        Map<String, List<Integer>> idsPorEstado = request.estadosSolicitudes().stream()
+        // 1. Separar ACEPTADAS del resto
+        List<Integer> idsAceptadas = request.estadosSolicitudes().stream()
+                .filter(i -> "ACEPTADA".equals(StringUtils.normalizeToEnumKey(i.estado())))
+                .map(ChangeSolicitationStatus.StatusItemDTO::idSolicitud)
+                .toList();
+
+        List<ChangeSolicitationStatus.StatusItemDTO> otrosEstados = request.estadosSolicitudes().stream()
+                .filter(i -> !"ACEPTADA".equals(StringUtils.normalizeToEnumKey(i.estado())))
+                .toList();
+
+        // 2. Procesar ACEPTADAS según configuración del sistema
+        if (!idsAceptadas.isEmpty()) {
+            GestionSistema config = gestionSistemaRepository.findById(2)
+                    .orElseThrow(() -> new RuntimeException("Configuración del sistema no encontrada."));
+
+            if (Boolean.TRUE.equals(config.getSolicitudesEnPedido())) {
+                // Con boolean activo: incorporar al pedido y pasar a EN_PEDIDO
+                Integer idPedido = procesarPedidoDesdeAceptadas(idsAceptadas, request.idSemana());
+                totalActualizados += solicitudRepository.updateMassiveStateSolicitation(idsAceptadas, "EN_PEDIDO");
+                log.info("Solicitudes {} incorporadas al pedido {} con estado EN_PEDIDO.", idsAceptadas, idPedido);
+            } else {
+                // Sin boolean: flujo normal → ACEPTADA, pendiente de gestión de pedido
+                totalActualizados += solicitudRepository.updateMassiveStateSolicitation(idsAceptadas, "ACEPTADA");
+            }
+        }
+
+        // 3. Procesar otros estados (RECHAZADA, etc.)
+        Map<String, List<Integer>> idsPorEstado = otrosEstados.stream()
                 .collect(Collectors.groupingBy(
                         item -> StringUtils.normalizeToEnumKey(item.estado()),
-                        Collectors.mapping(
-                                ChangeSolicitationStatus.StatusItemDTO::idSolicitud,
-                                Collectors.toList()
-                        )
+                        Collectors.mapping(ChangeSolicitationStatus.StatusItemDTO::idSolicitud, Collectors.toList())
                 ));
 
-        // 3. Ejecutamos los UPDATES masivos y sumamos las filas afectadas
         for (Map.Entry<String, List<Integer>> entry : idsPorEstado.entrySet()) {
             String estadoNormalizado = entry.getKey();
             List<Integer> listaIds = entry.getValue();
-
             if (estadoNormalizado != null && !estadoNormalizado.isEmpty() && !listaIds.isEmpty()) {
-                int filasAfectadas = solicitudRepository.updateMassiveStateSolicitation(listaIds, estadoNormalizado);
-                totalActualizados += filasAfectadas;
+                totalActualizados += solicitudRepository.updateMassiveStateSolicitation(listaIds, estadoNormalizado);
             } else {
                 throw new IllegalArgumentException("Se detectó un estado inválido en la petición masiva.");
             }
@@ -251,13 +290,12 @@ public class SolicitudServiceImp implements SolicitudService{
 
         // 4. Validación de integridad
         if (totalActualizados != totalEsperados) {
-            log.error("ROLLBACK ACTIVADO - Inconsistencia de datos. Se esperaban actualizar {} solicitudes, pero la BD reportó" +
-                    " {}", totalEsperados, totalActualizados);
+            log.error("ROLLBACK ACTIVADO — Se esperaban {} actualizaciones, BD reportó {}.", totalEsperados, totalActualizados);
             throw new RuntimeException("Inconsistencia de datos: Se esperaba actualizar "
                     + totalEsperados + " solicitudes, pero se encontraron " + totalActualizados);
         }
 
-        // 5. Guardar motivos para las solicitudes que pasaron a RECHAZADA
+        // 5. Guardar motivos para RECHAZADA
         for (ChangeSolicitationStatus.StatusItemDTO item : request.estadosSolicitudes()) {
             if ("RECHAZADA".equals(StringUtils.normalizeToEnumKey(item.estado()))
                     && item.motivo() != null && !item.motivo().isBlank()) {
@@ -266,8 +304,38 @@ public class SolicitudServiceImp implements SolicitudService{
             }
         }
 
-        log.info("Actualización masiva exitosa. Se actualizaron {} solicitudes correctamente.", totalActualizados);
+        log.info("Actualización masiva exitosa. {} solicitudes actualizadas.", totalActualizados);
         return true;
+    }
+
+    private Integer procesarPedidoDesdeAceptadas(List<Integer> idsAceptadas, Integer idSemana) {
+        if (idSemana == null) {
+            throw new GestionSolicitudException(
+                    "Se requiere idSemana cuando solicitudesEnPedido está activado.");
+        }
+
+        Semana semana = semanaRepository.findById(idSemana)
+                .orElseThrow(() -> new GestionSolicitudException(
+                        "Semana con ID " + idSemana + " no encontrada."));
+
+        // Buscar pedido activo en el rango de la semana o crear uno nuevo
+        Integer idPedido = pedidoRepository
+                .findIdPedidoActivoEnRango(semana.getFechaInicio(), semana.getFechaFin())
+                .orElseGet(() -> {
+                    Pedido nuevo = new Pedido();
+                    nuevo.setFechaInicioPedido(semana.getFechaInicio());
+                    nuevo.setFechaFinPedido(semana.getFechaFin());
+                    nuevo.setEstadoPedido(Pedido.EstadoPedidoType.PENDIENTE);
+                    return pedidoRepository.save(nuevo).getIdPedido();
+                });
+
+        // Vincular cada solicitud al pedido y agregar sus productos
+        for (Integer idSolicitud : idsAceptadas) {
+            pedidoSolicitudRepository.insertIfNotExists(idPedido, idSolicitud);
+            detallePedidoRepository.upsertDetallesFromSolicitud(idPedido, idSolicitud);
+        }
+
+        return idPedido;
     }
 
     /** Rechaza automáticamente solicitudes PENDIENTES con fecha vencida. Se ejecuta diariamente a las 03:00 AM. */
