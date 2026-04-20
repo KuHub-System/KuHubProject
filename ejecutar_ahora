@@ -1,6 +1,30 @@
-Vamos preparar visualmente tan solamente una vista en el frontend para la Page Administracion del sistema, se crear una nueva vista, Gestion del sistema.
-en Esta vista sera la configuracion del sistema que podere agregar funcionalidades para que las operacines sea mas rapidas omitindo o permitindo configurar el sistema eso claramente el administrador tendra el acceso.
-agrega un check box que dira "Incluir automaticamente todas las solicitudes aceptada a un pedido en la semana correspondiente" con el tiempo se podra agregar otras configuraciones que reflejara en todo el sistema dicido por el administrador.
+ideas base de la estructura
+ BACKEND
 
+  Nuevo paquete a crear: backend/src/main/java/KuHub/modules/gestion_sistema/
 
-tiene que agrega una vista en la page admin-sistema.tsx al lado de GESTIÓN SALA Y RESERVAS, dentro tiene que crear la vista, considerar el claude.md del frontend
+  Archivos dentro:
+  - entity/GestionSistema.java
+  - controller/GestionSistemaController.java
+  - service/GestionSistemaService.java
+  - repository/GestionSistemaRepository.java
+  - dtos/GestionSistemaDTO.java
+
+  Archivo a modificar:
+  - backend/src/main/java/KuHub/modules/gestion_solicitud/service/GestionSolicitudService.java (agregar lógica de crear/actualizar pedido automático)
+
+  Documento (no código):
+  - backend/nota_bbdd_kuhub_v2 (crear tabla gestion_sistema con booleano, default false)
+                                                                                                                                                                                                                                               ---
+  FRONTEND
+  Archivo a modificar:
+  - frontend/src/pages/admin-sistema.tsx (agregar lógica del checkbox y PATCH)
+
+  Nuevo archivo a crear:
+  - frontend/src/services/gestionSistemaService.ts (peticiones PATCH y GET)
+
+-La implementacion requiere ler claude.md de frontend y backend.
+-crear la tabla de la bbdd gestion_sistema tiene que contener el un insert que tiene que ver con la configuracion default, y la nueva se seria que crearia en caso de que el usuario cambie donde siempre se modificaria la nueva que seria el insert 2
+-se crea la tabla el atributo booleen solicitudes_en_pedido (el default que es el 1 se inicia con false) luego es sistema siempre apustara al insert 2 que es la que el usuario modifica en el sistema donde siempre realizara las modificacion alla el 1 es para restaurar al predeterminado
+-una vez que el atrubuto solicitudes_en_pedido sea true sera posible hacer que siempre que el usuario cambie la solicitud de pendidente a aceptada en Gestion de Solicitudes, se enviara en la peticion tambein el id de la semana, esto permitira vereficar si existe pedido en el rango de la semana (revisar nota_bbdd_kuhub_v2) inicio y fin para ver si existe un pedido en esta semana, en caso que no exista se creea el pedido insertando los productos relacionados existentes en la solicitud, en caso que exista entonce se modifica agregando los detalles correspondientes al pedido, para no hacer en el backend hay que crear una funcion en la bbdd un trigger o algo para que se pueda ejecutar la insersion al pedido, sumando la cantidad por el id producto en caso de que existe debido que puede haber el id del producto vinculado como no. Una vez agregado se cambia en estado de la solicitud a EN_PEDIDO.
+-se mantiene la logica las solicitudes con la fecha anterios la actual se rechaza automaticamente.
