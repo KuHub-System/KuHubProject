@@ -1,5 +1,6 @@
 package KuHub.modules.gestion_academica.controller;
 
+import KuHub.modules.gestion_academica.dtos.request.FilterBlocksByTeacherDTO;
 import KuHub.modules.gestion_academica.dtos.request.FilterTimeBlockDTO;
 import KuHub.modules.gestion_academica.dtos.request.ReasignarBloqueDTO;
 import KuHub.modules.gestion_academica.entity.BloqueHorario;
@@ -39,7 +40,21 @@ public class BloqueHorarioController {
     }
 
     /**
-     * Filtra los bloques horarios disponibles para una sala y día de la semana específicos, 
+     * Retorna los números de bloque ya reservados por un docente en un día dado.
+     * Consulta todas las secciones vinculadas al docente via docente_seccion.
+     * ✅ En uso: Consumido por el frontend para detectar conflictos de docente al asignar horarios.
+     */
+    @PostMapping("/blocks-reserved-by-teacher")
+    public ResponseEntity<List<Integer>> getBlocksReservedByTeacher(
+            @RequestBody FilterBlocksByTeacherDTO request
+    ) {
+        return ResponseEntity
+                .status(200)
+                .body(bloqueHorarioService.getBlockNumbersReservedByTeacher(request));
+    }
+
+    /**
+     * Filtra los bloques horarios disponibles para una sala y día de la semana específicos,
      * excluyendo aquellos que ya tienen reservas activas.
      * ✅ En uso: Consumido por el frontend al asignar horarios a una sección.
      */

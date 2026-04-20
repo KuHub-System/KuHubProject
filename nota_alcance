@@ -1095,6 +1095,27 @@ PENDIENTE DE IMPLEMENTAR O DEFINIR:
       procesadas, el pedido se actualiza automáticamente a ENTREGADO via
       pedidoRepository.updateMassiveStatePedido. Esto activa el grupo
       ENTREGADO+PROCESADO de CONSULTA 4 y las entregas aparecen como historial.
+  [✓] Detección de conflicto de docente en asignación de bloques horarios (2026-04-20):
+      Nuevo endpoint POST /api/v1/bloque-horario/blocks-reserved-by-teacher que recibe
+      { idUsuario, diaSemana } y retorna List<Integer> con los numero_bloque ya reservados
+      por el docente en ese día (via JOIN docente_seccion → reserva_sala → bloque_horario).
+      Nuevo DTO FilterBlocksByTeacherDTO. Nuevo método en ReservaSalaRepository,
+      ReservaSalaService, BloqueHorarioService y BloqueHorarioController.
+      Frontend: nueva función obtenerBloquesReservadosPorDocenteService en
+      bloque-horario-service.ts. Ambos modales (CrearSeccionModal y EditarSeccionModal)
+      en gestion-academica.tsx actualizados: estado bloquesOcupadosDocente, useEffect
+      reactivo a docenteId+dia, función tieneConflictoDocente. Los conflictos de sección
+      se muestran en rojo (danger) y los de profesor en amarillo (warning), con mensajes
+      descriptivos debajo del grid de bloques.
+
+  [✓] Permisos dinámicos en Bodega de Tránsito PATCH (2026-04-17):
+      BodegaTransitoController.updateTransitWarehouseWithProduct: reemplazado el
+      hasAnyRole hardcodeado en SpringSecurityConfig por verificación dinámica via
+      DynamicPermissionService.check(auth, "BODEGA_TRANSITO", "write"). La regla en
+      SpringSecurityConfig ahora es .authenticated() — cualquier usuario autenticado
+      puede llegar al controller, donde se verifica el permiso contra la tabla
+      permiso_rol en tiempo de ejecución. DynamicPermissionService extendido para
+      reconocer CO_ADMINISTRADOR como admin (acceso total sin consulta a BD).
 
 ================================================================================
   6. NOTAS ORIGINALES DE TRABAJO (referencia interna)

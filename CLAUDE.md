@@ -52,3 +52,15 @@ no esté en producción oficial. Cuando el cliente pase a producción, reemplaza
 
 El copyright **dentro** de la tarjeta del formulario (`login.tsx`, línea del `CardBody`)
 usa `new Date().getFullYear()` y no requiere cambio manual. No modificar ese texto.
+
+---
+
+## 4. Sincronización de documentos de alcance
+
+Cada vez que se agrega o modifica algo en `nota_alcance`, marcar el ítem con la etiqueta
+**(MODIFICAR INFORME)** al final de la línea o bloque modificado.
+
+Esta etiqueta es el recordatorio para actualizar manualmente el DOCX formal del cliente:
+`E:\Dev_Codes\K\DOCS\Informes\informe_alcance_kuhub_v1.0.3.docx`
+
+Herramienta disponible: `python-docx` (instalado).

@@ -376,7 +376,7 @@ public class SpringSecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/v*/bodega-transito/**").permitAll()
 
                         .requestMatchers(HttpMethod.PATCH, "/api/v*/bodega-transito/**")
-                        .hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR", "GESTOR_PEDIDOS", "ENCARGADO_BODEGA")
+                        .authenticated() // Permiso granular verificado dinámicamente en BodegaTransitoController
 
                         .requestMatchers(HttpMethod.DELETE, "/api/v*/bodega-transito/**")
                         .hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR")

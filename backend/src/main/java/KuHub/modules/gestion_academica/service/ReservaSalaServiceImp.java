@@ -37,6 +37,16 @@ public class ReservaSalaServiceImp implements ReservaSalaService{
         return result;
     }
 
+    @Transactional(readOnly = true)
+    @Override
+    public List<Integer> findReservedBlocksByTeacherAndDayWeek(Integer idUsuario, String diaSemana) {
+        ReservaSala.DiaSemana enumDia = ReservaSala.DiaSemana.valueOf(diaSemana.toUpperCase());
+        return reservaSalaRepository.findReservedBlocksByTeacherAndDayWeek(idUsuario, enumDia.name())
+                .stream()
+                .map(NumberBlockProjection::getBloqueHorarioNumeroBloque)
+                .toList();
+    }
+
     /**Metodo ultilizado para obtener los */
     @Transactional(readOnly = true)
     @Override

@@ -679,7 +679,7 @@ VALUES
     ('GESTION_PROVEEDORES',  'Gestión de Proveedores',       'Administración de proveedores del sistema',           'lucide:truck',            7),
     ('BODEGA_TRANSITO',      'Bodega de Tránsito',           'Control de productos en tránsito y despacho',        'lucide:warehouse',        8),
     ('GESTION_RECETAS',      'Gestión de Recetas',           'Administración de recetas y preparaciones culinarias','lucide:chef-hat',         9),
-    ('RAMOS_ADMIN',          'Ramos Académicos',             'Administración de asignaturas y secciones',           'lucide:book-open',        10),
+    ('GESTION_ACADEMICA',    'Gestión Académica',            'Administración de asignaturas y secciones',           'lucide:book-open',        10),
     ('GESTION_ROLES',        'Gestión de Roles',             'Administración de roles y permisos del sistema',      'lucide:shield',           11),
     ('GESTION_USUARIOS',     'Gestión de Usuarios',          'Administración de usuarios del sistema',              'lucide:users',            12),
     ('ADMIN_SISTEMA',        'Administración del Sistema',   'Centro de control: horarios, semanas y salas',        'lucide:settings',         13)
