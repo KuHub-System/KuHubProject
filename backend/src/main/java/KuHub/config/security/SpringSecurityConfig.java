@@ -496,6 +496,19 @@ public class SpringSecurityConfig {
                         // ========================================
                         // ENDPOINTS DE GESTIÓN DE PEDIDOS (NUEVO)
                         // ========================================
+                        // 1. LECTURA (GET): Ver historial de pedidos y sus detalles
+                        .requestMatchers(HttpMethod.GET,
+                        "/api/v*/pedido/**",
+                        "/api/v*/detalle-pedido/**",
+                        "/api/v*/pedido-solicitud/**"
+                        ).hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR", "GESTOR_PEDIDOS")
+                
+                        // Agregar el controlador de /api/v1/gestion-sistema
+                        .requestMatchers(HttpMethod.GET, "/api/v1/gestion-sistema/**").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/gestion-sistema/**").authenticated()
+                        .requestMatchers(HttpMethod.PUT, "/api/v1/gestion-sistema/**").authenticated()
+                        .requestMatchers(HttpMethod.PATCH, "/api/v1/gestion-sistema/**").authenticated()
+                        .requestMatchers(HttpMethod.DELETE, "/api/v1/gestion-sistema/**").authenticated()
 
                         // 1. LECTURA (GET): Ver historial de pedidos y sus detalles
                         .requestMatchers(HttpMethod.GET,
