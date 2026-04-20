@@ -3196,6 +3196,9 @@ $$ LANGUAGE plpgsql;
 -- ============================================================
 
 -- Función que maneja la lógica de inserción/actualización de pedido
+-- CORRECCIÓN: Se calificaron todas las tablas con schema "public." para evitar
+-- el error "relation does not exist" cuando el search_path del trigger
+-- no incluye el schema por defecto.
 CREATE OR REPLACE FUNCTION fn_solicitud_a_pedido()
 RETURNS TRIGGER AS $$
 DECLARE
@@ -3213,7 +3216,7 @@ BEGIN
     -- Leer configuración activa (id=2)
     SELECT solicitudes_en_pedido
     INTO v_solicitudes_en_pedido
-    FROM gestion_sistema
+    FROM public.gestion_sistema
     WHERE id = 2;
 
     -- Si la funcionalidad está desactivada, no hacer nada
@@ -3222,16 +3225,17 @@ BEGIN
     END IF;
 
     -- Obtener la semana asociada a la solicitud (via reserva_sala → semana)
+    -- CORRECCIÓN: Se califica public.reserva_sala y public.semana explícitamente
     SELECT s.id_semana, s.fecha_inicio, s.fecha_fin
     INTO v_id_semana, v_semana_inicio, v_semana_fin
-    FROM reserva_sala rs
-    JOIN semana s ON s.id_semana = rs.id_semana
+    FROM public.reserva_sala rs
+    JOIN public.semana s ON s.id_semana = rs.id_semana
     WHERE rs.id_reserva_sala = NEW.id_reserva_sala;
 
     -- Buscar si ya existe un pedido en el rango de esa semana
     SELECT p.id_pedido
     INTO v_pedido_id
-    FROM pedido p
+    FROM public.pedido p
     WHERE p.fecha_inicio_semana = v_semana_inicio
       AND p.fecha_fin_semana    = v_semana_fin
       AND p.estado_pedido NOT IN ('Cancelado')
@@ -3239,18 +3243,18 @@ BEGIN
 
     -- Si NO existe pedido → crear uno nuevo
     IF v_pedido_id IS NULL THEN
-        INSERT INTO pedido (fecha_inicio_semana, fecha_fin_semana, id_semana, estado_pedido)
+        INSERT INTO public.pedido (fecha_inicio_semana, fecha_fin_semana, id_semana, estado_pedido)
         VALUES (v_semana_inicio, v_semana_fin, v_id_semana, 'EnCurso')
         RETURNING id_pedido INTO v_pedido_id;
     END IF;
 
     -- Insertar o sumar productos de la solicitud al pedido
-    INSERT INTO detalle_pedido (id_pedido, id_producto, cantidad)
+    INSERT INTO public.detalle_pedido (id_pedido, id_producto, cantidad)
     SELECT
         v_pedido_id,
         ps.id_producto,
         ps.cantidad
-    FROM producto_solicitud ps
+    FROM public.producto_solicitud ps
     WHERE ps.id_solicitud = NEW.id_solicitud
     ON CONFLICT (id_pedido, id_producto)
     DO UPDATE SET cantidad = detalle_pedido.cantidad + EXCLUDED.cantidad;
@@ -3263,9 +3267,9 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Trigger que se ejecuta BEFORE UPDATE en solicitud
-DROP TRIGGER IF EXISTS trg_solicitud_a_pedido ON solicitud;
+DROP TRIGGER IF EXISTS trg_solicitud_a_pedido ON public.solicitud;
 
 CREATE TRIGGER trg_solicitud_a_pedido
-    BEFORE UPDATE ON solicitud
+    BEFORE UPDATE ON public.solicitud
     FOR EACH ROW
     EXECUTE FUNCTION fn_solicitud_a_pedido();

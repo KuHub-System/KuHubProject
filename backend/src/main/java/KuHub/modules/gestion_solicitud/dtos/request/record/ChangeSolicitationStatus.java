@@ -20,7 +20,9 @@ import java.util.List;
 public record ChangeSolicitationStatus(
         @Valid
         @NotEmpty(message = "La lista de solicitudes no puede estar vacía")
-        List<StatusItemDTO> estadosSolicitudes
+        List<StatusItemDTO> estadosSolicitudes,
+
+        Integer idSemana
 ) {
     public record StatusItemDTO(
             @NotNull(message = "El idSolicitud es obligatorio")
