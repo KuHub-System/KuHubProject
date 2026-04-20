@@ -313,14 +313,29 @@ const GestionSolicitudesPage: React.FC = () => {
     return sel.length > 0 && sel.length < pend.length;
   };
 
+  // ── Recarga solicitudes desde el servidor ──
+  const recargarSolicitudes = React.useCallback(() => {
+    if (!semanaId) return;
+    const semana = semanas.find(s => String(s.idSemana) === semanaId);
+    if (!semana) return;
+    setIsLoadingSol(true);
+    obtenerSolicitudesPorSemanaService({ fechaInicio: semana.fechaInicio, fechaFin: semana.fechaFin })
+      .then(data => setSolicitudes(data.map(mapSolicitud)))
+      .catch(() => toast.error('Error al recargar las solicitudes'))
+      .finally(() => setIsLoadingSol(false));
+  }, [semanaId, semanas]);
+
   // ── Acciones de estado ──
   const aceptar = async (sol: ISolicitudGestion) => {
     setIsSaving(true);
     try {
-      await cambiarEstadoMasivoService({ estadosSolicitudes: [{ idSolicitud: sol.id, estado: 'ACEPTADA' }] });
-      setSolicitudes(prev => prev.map(s => s.id === sol.id ? { ...s, estado: 'Aceptada' } : s));
+      await cambiarEstadoMasivoService({
+        estadosSolicitudes: [{ idSolicitud: sol.id, estado: 'ACEPTADA' }],
+        idSemana: semanaId ? Number(semanaId) : undefined,
+      });
       setSeleccionados(prev => { const n = new Set(prev); n.delete(sol.id); return n; });
       toast.success(`Solicitud §${sol.nombreSeccion} aceptada`);
+      recargarSolicitudes();
     } catch { toast.error('Error al aceptar la solicitud'); }
     setIsSaving(false);
   };
@@ -347,10 +362,13 @@ const GestionSolicitudesPage: React.FC = () => {
     if (ids.length === 0) return;
     setIsSaving(true);
     try {
-      await cambiarEstadoMasivoService({ estadosSolicitudes: ids.map(id => ({ idSolicitud: id, estado: 'ACEPTADA' })) });
-      setSolicitudes(prev => prev.map(s => ids.includes(s.id) && s.estado === 'Pendiente' ? { ...s, estado: 'Aceptada' } : s));
+      await cambiarEstadoMasivoService({
+        estadosSolicitudes: ids.map(id => ({ idSolicitud: id, estado: 'ACEPTADA' })),
+        idSemana: semanaId ? Number(semanaId) : undefined,
+      });
       setSeleccionados(new Set());
       toast.success(`${ids.length} solicitud${ids.length > 1 ? 'es' : ''} aceptada${ids.length > 1 ? 's' : ''}`);
+      recargarSolicitudes();
     } catch { toast.error('Error al aceptar las solicitudes'); }
     setIsSaving(false);
   };
@@ -360,11 +378,13 @@ const GestionSolicitudesPage: React.FC = () => {
     if (pend.length === 0) return;
     setIsSaving(true);
     try {
-      await cambiarEstadoMasivoService({ estadosSolicitudes: pend.map(s => ({ idSolicitud: s.id, estado: 'ACEPTADA' })) });
-      const ids = new Set(pend.map(s => s.id));
-      setSolicitudes(prev => prev.map(s => ids.has(s.id) ? { ...s, estado: 'Aceptada' } : s));
+      await cambiarEstadoMasivoService({
+        estadosSolicitudes: pend.map(s => ({ idSolicitud: s.id, estado: 'ACEPTADA' })),
+        idSemana: semanaId ? Number(semanaId) : undefined,
+      });
       setSeleccionados(new Set());
       toast.success(`${pend.length} solicitud${pend.length > 1 ? 'es' : ''} aceptada${pend.length > 1 ? 's' : ''}`);
+      recargarSolicitudes();
     } catch { toast.error('Error al aceptar las solicitudes'); }
     setIsSaving(false);
   };

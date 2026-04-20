@@ -193,6 +193,7 @@ export interface ISolicitationStatusItemDTO {
 
 export interface IChangeMassiveStatusDTO {
   estadosSolicitudes: ISolicitationStatusItemDTO[];
+  idSemana?: number;
 }
 
 export const cambiarEstadoMasivoService = async (
