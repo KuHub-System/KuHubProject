@@ -94,5 +94,22 @@ public interface ReservaSalaRepository extends JpaRepository<ReservaSala, Intege
     """, nativeQuery = true)
     List<Object[]> findAllReservasActivasRaw();
 
+    /**
+     * Obtiene los números de bloque reservados por un docente en un día dado,
+     * buscando todas las secciones vinculadas al docente via docente_seccion.
+     */
+    @Query(value = """
+        SELECT DISTINCT b.numero_bloque AS bloqueHorarioNumeroBloque
+        FROM reserva_sala r
+        JOIN docente_seccion ds ON ds.id_seccion = r.id_seccion
+        JOIN bloque_horario b  ON b.id_bloque   = r.id_bloque
+        WHERE ds.id_usuario    = :idUsuario
+          AND r.activo         = TRUE
+          AND r.dia_semana::text = :diaSemana
+    """, nativeQuery = true)
+    List<NumberBlockProjection> findReservedBlocksByTeacherAndDayWeek(
+            @Param("idUsuario") Integer idUsuario,
+            @Param("diaSemana") String diaSemana
+    );
 
 }

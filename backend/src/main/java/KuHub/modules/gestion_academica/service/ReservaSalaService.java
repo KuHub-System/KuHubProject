@@ -13,6 +13,7 @@ public interface ReservaSalaService {
     List<ReservaActivaView> findAllReservasActivas();
 
     List<Integer> findReservedBlocksByIdSalaAndDayWeek(Integer idSala, String diaSemana);
+    List<Integer> findReservedBlocksByTeacherAndDayWeek(Integer idUsuario, String diaSemana);
     CheckAvailability validatedThatTheBlockIsNotReserved
             (Integer idSala, String diaSemanaRaw, Integer numeroBloque);
 

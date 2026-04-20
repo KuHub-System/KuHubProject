@@ -1,5 +1,6 @@
 package KuHub.modules.gestion_academica.service;
 
+import KuHub.modules.gestion_academica.dtos.request.FilterBlocksByTeacherDTO;
 import KuHub.modules.gestion_academica.dtos.request.FilterTimeBlockDTO;
 import KuHub.modules.gestion_academica.dtos.request.ReasignarBloqueDTO;
 import KuHub.modules.gestion_academica.entity.BloqueHorario;
@@ -32,6 +33,17 @@ public class BloqueHorarioServiceImp implements BloqueHorarioService {
     @Override
     public List<BloqueHorario> findAll() {
         return bloqueHorarioRepository.findAllByOrderByNumeroBloqueAsc();
+    }
+
+    /**
+     * Retorna los números de bloque ya reservados por un docente en un día dado,
+     * considerando todas las secciones a las que está vinculado.
+     */
+    @Transactional(readOnly = true)
+    @Override
+    public List<Integer> getBlockNumbersReservedByTeacher(FilterBlocksByTeacherDTO request) {
+        return reservaSalaService.findReservedBlocksByTeacherAndDayWeek(
+                request.getIdUsuario(), request.getDiaSemana());
     }
 
     /**

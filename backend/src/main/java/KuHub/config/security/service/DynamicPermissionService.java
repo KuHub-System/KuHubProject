@@ -48,7 +48,8 @@ public class DynamicPermissionService {
 
             // ADMINISTRADOR siempre tiene acceso total sin consultar la BD
             boolean isAdmin = authentication.getAuthorities().stream()
-                    .anyMatch(a -> a.getAuthority().equals("ROLE_ADMINISTRADOR"));
+                    .anyMatch(a -> a.getAuthority().equals("ROLE_ADMINISTRADOR")
+                               || a.getAuthority().equals("ROLE_CO_ADMINISTRADOR"));
             if (isAdmin) return true;
 
             // Extraer nombre del rol desde la authority del JWT
