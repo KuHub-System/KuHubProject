@@ -70,6 +70,25 @@ export const reasignarBloquesService = async (bloques: IBloqueReasignar[]): Prom
 };
 
 /**
+ * Obtener los números de bloque ya reservados por un docente en un día dado.
+ * POST /bloque-horario/blocks-reserved-by-teacher
+ */
+export const obtenerBloquesReservadosPorDocenteService = async (
+    idUsuario: number,
+    diaSemana: string
+): Promise<number[]> => {
+    try {
+        const response = await api.post<number[]>('/bloque-horario/blocks-reserved-by-teacher', {
+            idUsuario,
+            diaSemana: normalizarDia(diaSemana)
+        });
+        return response.data;
+    } catch (error: any) {
+        throw new Error(error.response?.data?.message || 'Error al obtener bloques reservados del docente');
+    }
+};
+
+/**
  * Restaurar los bloques horarios a los valores predeterminados originales del sistema.
  * ⬜ Sin uso frontend aún — endpoint pendiente de implementación en backend.
  * POST /bloque-horario/restaurar-default

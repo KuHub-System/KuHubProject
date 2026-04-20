@@ -39,7 +39,7 @@ import {
   crearSeccionNuevaService,
 } from '../services/asignatura-service';
 import { obtenerSalasActivasService, ISala } from '../services/sala-service';
-import { filtrarBloquesPorSalaYDiaService, IBloqueDisponible } from '../services/bloque-horario-service';
+import { filtrarBloquesPorSalaYDiaService, IBloqueDisponible, obtenerBloquesReservadosPorDocenteService } from '../services/bloque-horario-service';
 import { obtenerUsuariosService, obtenerUsuariosGestoresAsignaturaService, obtenerUsuariosAsignadosSeccionService } from '../services/usuario-service';
 
 const DIAS_ABREV: Record<string, string> = {
@@ -692,6 +692,7 @@ const CrearSeccionModal: React.FC<CrearSeccionModalProps> = ({ asignatura, onClo
   const [bloquesDisponibles, setBloquesDisponibles] = React.useState<IBloqueDisponible[]>([]);
   const [isLoadingBloques, setIsLoadingBloques] = React.useState(false);
   const [bloquesSeleccionados, setBloquesSeleccionados] = React.useState<{ idBloque: number; numeroBloque: number; horaInicio: string; horaFin: string; diaSemana: string; idSala: number; codSala: string }[]>([]);
+  const [bloquesOcupadosDocente, setBloquesOcupadosDocente] = React.useState<number[]>([]);
 
   React.useEffect(() => {
     const cargarInicial = async () => {
@@ -711,6 +712,14 @@ const CrearSeccionModal: React.FC<CrearSeccionModalProps> = ({ asignatura, onClo
     };
     cargarInicial();
   }, []);
+
+  // Carga bloques ocupados por el docente cuando docente Y día están seleccionados
+  React.useEffect(() => {
+    if (!docenteId || !dia) { setBloquesOcupadosDocente([]); return; }
+    obtenerBloquesReservadosPorDocenteService(parseInt(docenteId), dia)
+      .then(setBloquesOcupadosDocente)
+      .catch(() => setBloquesOcupadosDocente([]));
+  }, [docenteId, dia]);
 
   // Carga bloques disponibles cuando sala Y día están seleccionados
   React.useEffect(() => {
@@ -745,11 +754,15 @@ const CrearSeccionModal: React.FC<CrearSeccionModalProps> = ({ asignatura, onClo
       b => b.idBloque === bloque.idBloque && b.idSala === currentSalaId && b.diaSemana === dia
     );
 
-  // Conflicto: la sección ya tiene ese numeroBloque+diaSemana en OTRA sala
-  const tieneConflicto = (bloque: IBloqueDisponible) =>
+  // Conflicto de sección: ya tiene ese bloque en OTRA sala el mismo día
+  const tieneConflictoSeccion = (bloque: IBloqueDisponible) =>
     bloquesSeleccionados.some(
       b => b.numeroBloque === bloque.numeroBloque && b.diaSemana === dia && b.idSala !== currentSalaId
     );
+
+  // Conflicto de docente: el profesor ya tiene ese bloque reservado en otra sección
+  const tieneConflictoDocente = (bloque: IBloqueDisponible) =>
+    bloquesOcupadosDocente.includes(bloque.numeroBloque);
 
   const toggleBloque = (bloque: IBloqueDisponible) => {
     setBloquesSeleccionados(prev => {
@@ -974,43 +987,65 @@ const CrearSeccionModal: React.FC<CrearSeccionModalProps> = ({ asignatura, onClo
                     <p className="text-sm">No hay bloques disponibles para esta combinación</p>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    {bloquesDisponibles.map(bloque => {
-                      const seleccionado = estaSeleccionado(bloque);
-                      const conflicto    = !seleccionado && tieneConflicto(bloque);
-                      return (
-                        <button
-                          key={bloque.idBloque}
-                          type="button"
-                          disabled={conflicto}
-                          onClick={() => !conflicto && toggleBloque(bloque)}
-                          className={`flex items-center justify-between px-3 py-2.5 rounded-lg border transition-colors text-left ${
-                            conflicto
-                              ? 'bg-danger-50 dark:bg-danger-900/20 border-danger-200 cursor-not-allowed opacity-80'
-                              : seleccionado
-                              ? 'bg-primary-50 dark:bg-primary-900/30 border-primary-300 dark:border-primary-700'
-                              : 'bg-white dark:bg-default-100/20 border-default-200 hover:border-primary-200 hover:bg-primary-50/30'
-                          }`}
-                        >
-                          <div className="flex items-center gap-2">
-                            <Chip size="sm"
-                              color={conflicto ? 'danger' : seleccionado ? 'primary' : 'default'}
-                              variant="flat" className="font-bold min-w-[36px]">
-                              B{bloque.numeroBloque}
-                            </Chip>
-                            <span className={`text-xs ${conflicto ? 'text-danger-600 dark:text-danger-400 font-medium' : 'text-default-600 dark:text-default-400'}`}>
-                              {conflicto ? 'Conflicto' : `${bloque.horaInicio.slice(0, 5)} – ${bloque.horaFin.slice(0, 5)}`}
-                            </span>
-                          </div>
-                          <Icon
-                            icon={conflicto ? 'lucide:alert-circle' : seleccionado ? 'lucide:check-circle-2' : 'lucide:circle'}
-                            width={16}
-                            className={conflicto ? 'text-danger-400' : seleccionado ? 'text-primary' : 'text-default-300'}
-                          />
-                        </button>
-                      );
-                    })}
-                  </div>
+                  <>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {bloquesDisponibles.map(bloque => {
+                        const seleccionado      = estaSeleccionado(bloque);
+                        const conflictoSeccion  = !seleccionado && tieneConflictoSeccion(bloque);
+                        const conflictoDocente  = !seleccionado && !conflictoSeccion && tieneConflictoDocente(bloque);
+                        const hayConflicto      = conflictoSeccion || conflictoDocente;
+                        return (
+                          <button
+                            key={bloque.idBloque}
+                            type="button"
+                            disabled={hayConflicto}
+                            onClick={() => !hayConflicto && toggleBloque(bloque)}
+                            className={`flex items-center justify-between px-3 py-2.5 rounded-lg border transition-colors text-left ${
+                              conflictoSeccion
+                                ? 'bg-danger-50 dark:bg-danger-900/20 border-danger-200 cursor-not-allowed opacity-80'
+                                : conflictoDocente
+                                ? 'bg-warning-50 dark:bg-warning-900/20 border-warning-200 cursor-not-allowed opacity-80'
+                                : seleccionado
+                                ? 'bg-primary-50 dark:bg-primary-900/30 border-primary-300 dark:border-primary-700'
+                                : 'bg-white dark:bg-default-100/20 border-default-200 hover:border-primary-200 hover:bg-primary-50/30'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2">
+                              <Chip size="sm"
+                                color={conflictoSeccion ? 'danger' : conflictoDocente ? 'warning' : seleccionado ? 'primary' : 'default'}
+                                variant="flat" className="font-bold min-w-[36px]">
+                                B{bloque.numeroBloque}
+                              </Chip>
+                              <span className={`text-xs ${conflictoSeccion ? 'text-danger-600 dark:text-danger-400 font-medium' : conflictoDocente ? 'text-warning-600 dark:text-warning-400 font-medium' : 'text-default-600 dark:text-default-400'}`}>
+                                {conflictoSeccion ? 'Conflicto sección' : conflictoDocente ? 'Conflicto profesor' : `${bloque.horaInicio.slice(0, 5)} – ${bloque.horaFin.slice(0, 5)}`}
+                              </span>
+                            </div>
+                            <Icon
+                              icon={hayConflicto ? 'lucide:alert-circle' : seleccionado ? 'lucide:check-circle-2' : 'lucide:circle'}
+                              width={16}
+                              className={conflictoSeccion ? 'text-danger-400' : conflictoDocente ? 'text-warning-400' : seleccionado ? 'text-primary' : 'text-default-300'}
+                            />
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {bloquesDisponibles.some(b => !estaSeleccionado(b) && (tieneConflictoSeccion(b) || tieneConflictoDocente(b))) && (
+                      <div className="mt-2 flex flex-col gap-1">
+                        {bloquesDisponibles.some(b => !estaSeleccionado(b) && tieneConflictoSeccion(b)) && (
+                          <p className="text-xs text-danger-600 dark:text-danger-400 flex items-center gap-1.5">
+                            <Icon icon="lucide:alert-circle" width={12} />
+                            La sección ya tiene un horario en otra sala para este día y hora.
+                          </p>
+                        )}
+                        {bloquesDisponibles.some(b => !estaSeleccionado(b) && tieneConflictoDocente(b)) && (
+                          <p className="text-xs text-warning-600 dark:text-warning-400 flex items-center gap-1.5">
+                            <Icon icon="lucide:alert-triangle" width={12} />
+                            El profesor ya tiene una clase asignada en este mismo horario.
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </>
                 )}
 
               </div>
@@ -1108,6 +1143,7 @@ const EditarSeccionModal: React.FC<EditarSeccionModalProps> = ({ seccionData, on
   const [idsEliminados, setIdsEliminados] = React.useState<Set<number>>(new Set());
   // Bloques nuevos añadidos en esta sesión de edición
   const [bloquesNuevos, setBloquesNuevos] = React.useState<BloqueNuevo[]>([]);
+  const [bloquesOcupadosDocente, setBloquesOcupadosDocente] = React.useState<number[]>([]);
 
   React.useEffect(() => {
     if (!seccionData?.seccion) return;
@@ -1177,6 +1213,13 @@ const EditarSeccionModal: React.FC<EditarSeccionModalProps> = ({ seccionData, on
     cargar();
   }, [salaId, dia]);
 
+  React.useEffect(() => {
+    if (!docenteId || !dia) { setBloquesOcupadosDocente([]); return; }
+    obtenerBloquesReservadosPorDocenteService(parseInt(docenteId), dia)
+      .then(setBloquesOcupadosDocente)
+      .catch(() => setBloquesOcupadosDocente([]));
+  }, [docenteId, dia]);
+
   const salaSeleccionada = salas.find(s => s.idSala.toString() === salaId);
   const currentSalaId = parseInt(salaId);
 
@@ -1190,8 +1233,8 @@ const EditarSeccionModal: React.FC<EditarSeccionModalProps> = ({ seccionData, on
     return enPreCargados || enNuevos;
   };
 
-  // Conflicto: la sección ya tiene ese numeroBloque+diaSemana activo en OTRA sala
-  const tieneConflicto = (bloque: IBloqueDisponible) => {
+  // Conflicto de sección: ya tiene ese bloque en OTRA sala el mismo día
+  const tieneConflictoSeccion = (bloque: IBloqueDisponible) => {
     const enPreCargadosOtraSala = bloquesPreCargados.some(
       b => b.numeroBloque === bloque.numeroBloque && b.diaSemana === dia && b.idSala !== currentSalaId && !idsEliminados.has(b.idReservaSala)
     );
@@ -1200,6 +1243,10 @@ const EditarSeccionModal: React.FC<EditarSeccionModalProps> = ({ seccionData, on
     );
     return enPreCargadosOtraSala || enNuevosOtraSala;
   };
+
+  // Conflicto de docente: el profesor ya tiene ese bloque reservado en otra sección
+  const tieneConflictoDocente = (bloque: IBloqueDisponible) =>
+    bloquesOcupadosDocente.includes(bloque.numeroBloque);
 
   const toggleBloque = (bloque: IBloqueDisponible) => {
     const preExiste = bloquesPreCargados.find(
@@ -1417,40 +1464,62 @@ const EditarSeccionModal: React.FC<EditarSeccionModalProps> = ({ seccionData, on
                     <p className="text-sm">No hay bloques disponibles para esta combinación</p>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    {bloquesDisponibles.map(bloque => {
-                      const seleccionado = estaSeleccionado(bloque);
-                      const conflicto    = !seleccionado && tieneConflicto(bloque);
-                      return (
-                        <button
-                          key={bloque.idBloque}
-                          type="button"
-                          disabled={conflicto}
-                          onClick={() => !conflicto && toggleBloque(bloque)}
-                          className={`flex items-center justify-between px-3 py-2.5 rounded-lg border transition-colors text-left ${
-                            conflicto
-                              ? 'bg-danger-50 dark:bg-danger-900/20 border-danger-200 cursor-not-allowed opacity-80'
-                              : seleccionado
-                              ? 'bg-primary-50 dark:bg-primary-900/30 border-primary-300 dark:border-primary-700'
-                              : 'bg-white dark:bg-default-100/20 border-default-200 hover:border-primary-200 hover:bg-primary-50/30'
-                          }`}
-                        >
-                          <div className="flex items-center gap-2">
-                            <Chip size="sm"
-                              color={conflicto ? 'danger' : seleccionado ? 'primary' : 'default'}
-                              variant="flat" className="font-bold min-w-[36px]">
-                              B{bloque.numeroBloque}
-                            </Chip>
-                            <span className={`text-xs ${conflicto ? 'text-danger-600 dark:text-danger-400 font-medium' : 'text-default-600 dark:text-default-400'}`}>
-                              {conflicto ? 'Conflicto' : `${bloque.horaInicio.slice(0, 5)} – ${bloque.horaFin.slice(0, 5)}`}
-                            </span>
-                          </div>
-                          <Icon icon={conflicto ? 'lucide:alert-circle' : seleccionado ? 'lucide:check-circle-2' : 'lucide:circle'} width={16}
-                            className={conflicto ? 'text-danger-400' : seleccionado ? 'text-primary' : 'text-default-300'} />
-                        </button>
-                      );
-                    })}
-                  </div>
+                  <>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {bloquesDisponibles.map(bloque => {
+                        const seleccionado      = estaSeleccionado(bloque);
+                        const conflictoSeccion  = !seleccionado && tieneConflictoSeccion(bloque);
+                        const conflictoDocente  = !seleccionado && !conflictoSeccion && tieneConflictoDocente(bloque);
+                        const hayConflicto      = conflictoSeccion || conflictoDocente;
+                        return (
+                          <button
+                            key={bloque.idBloque}
+                            type="button"
+                            disabled={hayConflicto}
+                            onClick={() => !hayConflicto && toggleBloque(bloque)}
+                            className={`flex items-center justify-between px-3 py-2.5 rounded-lg border transition-colors text-left ${
+                              conflictoSeccion
+                                ? 'bg-danger-50 dark:bg-danger-900/20 border-danger-200 cursor-not-allowed opacity-80'
+                                : conflictoDocente
+                                ? 'bg-warning-50 dark:bg-warning-900/20 border-warning-200 cursor-not-allowed opacity-80'
+                                : seleccionado
+                                ? 'bg-primary-50 dark:bg-primary-900/30 border-primary-300 dark:border-primary-700'
+                                : 'bg-white dark:bg-default-100/20 border-default-200 hover:border-primary-200 hover:bg-primary-50/30'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2">
+                              <Chip size="sm"
+                                color={conflictoSeccion ? 'danger' : conflictoDocente ? 'warning' : seleccionado ? 'primary' : 'default'}
+                                variant="flat" className="font-bold min-w-[36px]">
+                                B{bloque.numeroBloque}
+                              </Chip>
+                              <span className={`text-xs ${conflictoSeccion ? 'text-danger-600 dark:text-danger-400 font-medium' : conflictoDocente ? 'text-warning-600 dark:text-warning-400 font-medium' : 'text-default-600 dark:text-default-400'}`}>
+                                {conflictoSeccion ? 'Conflicto sección' : conflictoDocente ? 'Conflicto profesor' : `${bloque.horaInicio.slice(0, 5)} – ${bloque.horaFin.slice(0, 5)}`}
+                              </span>
+                            </div>
+                            <Icon icon={hayConflicto ? 'lucide:alert-circle' : seleccionado ? 'lucide:check-circle-2' : 'lucide:circle'} width={16}
+                              className={conflictoSeccion ? 'text-danger-400' : conflictoDocente ? 'text-warning-400' : seleccionado ? 'text-primary' : 'text-default-300'} />
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {bloquesDisponibles.some(b => !estaSeleccionado(b) && (tieneConflictoSeccion(b) || tieneConflictoDocente(b))) && (
+                      <div className="mt-2 flex flex-col gap-1">
+                        {bloquesDisponibles.some(b => !estaSeleccionado(b) && tieneConflictoSeccion(b)) && (
+                          <p className="text-xs text-danger-600 dark:text-danger-400 flex items-center gap-1.5">
+                            <Icon icon="lucide:alert-circle" width={12} />
+                            La sección ya tiene un horario en otra sala para este día y hora.
+                          </p>
+                        )}
+                        {bloquesDisponibles.some(b => !estaSeleccionado(b) && tieneConflictoDocente(b)) && (
+                          <p className="text-xs text-warning-600 dark:text-warning-400 flex items-center gap-1.5">
+                            <Icon icon="lucide:alert-triangle" width={12} />
+                            El profesor ya tiene una clase asignada en este mismo horario.
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
             )}

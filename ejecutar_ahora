@@ -1,0 +1,24 @@
+Requerimieto
+Identificamos un conflicto en el sistema actual, específicamente en la página de Gestión Académica y su lógica. Consideramos que una sección no puede estar en dos lugares al mismo tiempo, por lo que se genera un error cuando, por ejemplo, al reservar un horario para una sección en Bloques Horarios, al seleccionar la sala y el día de la semana, se muestra un conflicto si la sección ya tiene una reserva en otra sala.
+Por ejemplo, si una sección está reservada el lunes de 8 a 10 horas, esto significa que, aunque exista disponibilidad de sala, hay un conflicto, ya que la sección no puede estar en dos lugares al mismo tiempo en el mismo día y horario. Este proceso ya está implementado.
+Sin embargo, ahora encontramos otro problema: el docente asignado tampoco puede estar en dos lugares al mismo tiempo en un mismo horario, pudiendo tener varios conflictos en el mismo día, independiente de la sala. Por lo tanto, se debe identificar este conflicto y no permitir, desde el frontend, la reserva de horarios que presenten este problema, los cuales pueden ser algunos o varios dependiendo de los horarios ya reservados por el docente.
+Como lógica, se debe realizar una consulta en paralelo a la que ya está implementada, donde actualmente se listan los horarios disponibles ocultando los reservados. Se debe crear otro método o un condicional (if) para verificar, utilizando el ID del usuario y el día de la semana seleccionado en el frontend, mediante una consulta adicional.
+A partir del ID del usuario, se pueden obtener todas las secciones a las que el docente está vinculado mediante la tabla docente_seccion. Luego, con esas secciones, se pueden buscar los horarios reservados en la tabla reserva_sala, filtrando por el día de la semana. Esto permitirá obtener los id_bloque que ya están reservados.
+Con estos IDs, se podrá identificar y mostrar el conflicto, incluso cuando la consulta principal esté mostrando únicamente los horarios disponibles.
+Además, debemos considerar que, si se selecciona otro profesor, se debe realizar la consulta correspondiente para ese profesor actualizado. De igual forma, si se cambia el día o la sala, se ejecuta la consulta principal y, en paralelo, la consulta que verifica si el profesor tiene horarios reservados, tal como se indicó anteriormente.
+Asimismo, es necesario agregar descripciones para los dos tipos de conflictos en el frontend, de modo que el usuario pueda entenderlos claramente.
+Si se produce un conflicto porque la sección ya está reservada en otro horario, se debe indicar algo como:
+Conflicto de sección:
+"La sección ya tiene un horario en otra sala para este día y hora."
+Si el docente está asignado a otra sección con un horario ya reservado, se debe indicar:
+Conflicto de profesor:
+"El profesor ya tiene una clase asignada en este mismo horario."
+--
+En el controller esta al cambiar debe agrega el cambio en la descripcion
+/**
+     * Filtra los bloques horarios disponibles para una sala y día de la semana específicos,
+     * excluyendo aquellos que ya tienen reservas activas.
+     * ✅ En uso: Consumido por el frontend al asignar horarios a una sección.
+     */
+    @PostMapping( "/filter-by-day-week-and-id-room")
+y sera necesario revisar el metodo en BloqueHorarioServiceImp Ademas de la page de Gestion academica justamente para los modales de Crear seccion y la de icono Editar ambos son importantes para el proceso!
