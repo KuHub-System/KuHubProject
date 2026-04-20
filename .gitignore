@@ -34,3 +34,4 @@ build/
 
 ### Local Configuration ###
 application-mat.properties
+.aider*
