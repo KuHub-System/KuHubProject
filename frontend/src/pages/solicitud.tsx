@@ -707,7 +707,7 @@ const SolicitudPage: React.FC = () => {
   const { isAdmin } = usePermission();
   const history = useHistory();
 
-  const { periodos, semanas, defaultSemanaId, isLoading: isLoadingSemanas } = usePeriodoSemana();
+  const { periodos, semanas, periodo, defaultSemanaId, isLoading: isLoadingSemanas, seleccionarPeriodo } = usePeriodoSemana();
 
   // ── asignaturas state ──
   const [asignaturas,      setAsignaturas]       = React.useState<IAsignaturaCurso[]>([]);
@@ -924,10 +924,10 @@ const SolicitudPage: React.FC = () => {
 
             {!sinPeriodos && periodos.flatMap(p =>
               p.semestres.map(s => {
-                const isActive = currentPeriodo?.anio === p.anio && currentPeriodo?.semestre === s;
+                const isActive = periodo?.anio === p.anio && periodo?.semestre === s;
                 return (
                   <button key={`${p.anio}-${s}`}
-                    onClick={() => !isActive && !isLoadingSemanas && cargarSemanasParaPeriodo(p.anio, s)}
+                    onClick={() => !isActive && !isLoadingSemanas && seleccionarPeriodo(p.anio, s)}
                     disabled={isLoadingSemanas}
                     className={`px-3 py-1 rounded-full text-xs font-bold border transition-all cursor-pointer ${
                       isActive ? 'bg-warning text-white border-warning' : 'bg-default-100 text-default-600 border-default-200 hover:bg-default-200'
@@ -939,7 +939,7 @@ const SolicitudPage: React.FC = () => {
               })
             )}
 
-            {currentPeriodo && !isLoadingSemanas && (
+            {periodo && !isLoadingSemanas && (
               <div className="ml-auto flex items-center gap-1.5 text-xs text-default-400">
                 <Icon icon="lucide:info" width={12} />
                 {semanas.length} semanas cargadas
