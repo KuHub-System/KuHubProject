@@ -1,10 +1,32 @@
 REQUIRIMENTO
 PROBLEMATICA
-1-En la page de solicitud no esta enviando correctamente la fecha solicitada correctamente, al seleccionar o al estar seleccionado la semana se calcula la fecha para enviar en el json que se ocupara para crear la solicitud masiva, actualemte lo que passa es que esta registrando en otra fecha, porque se implemento el cache que hace con que si selecciono una semana el selector esta semana sigue siendo la misma si cambio a otra page, esta es una tentativa de hacer con que el usuario no este seleccionando la semana multiplas veces, pero resulto que la fecha al parecer esta sinde inviada incorrectamente porque si creo una solictud para la semana 10 me esta indo la semana actual y me de error en gestion solicitud.
-NECESITO QUE VEREFIQUE EL VERDADERO PROBLEMA PARA QUE MANDEMOS A SONNET DEL AIDER QUE TU TIENE QUE SUPERVISIONAR LAS MODIFICACION QUE EL HACE, ADEMAS TIENE QUE INCLUIR /ADD EN NOMRE DEL ARCHIVO QUE VA MODIFICAR, EL ADD DE ejecutar_ahora DONDO TIENE QUE AGREGE LOS FIX PARA QUE REALZICE, Y SI NECESARIO LEER ALGUNA PARTE TIENE QUE USAR /read-only PERO SI APLICA read-only a un archivo que tiene que editar da un erro t aider intenta crear un nuevo por esto tiene que tener claro cuales son para editar y leer.
-necesito que sea el superfivisor de aider, solo funciona por powershell como indicado mas abajo.
-necesito que entre al powershell para entrar en aider
-cd C:\Users\Matheus\IdeaProjects\KuHubProject
+AGREGAR ACA!
+
+═══════════════════════════════════════════════════════════════
+ANÁLISIS COMPLETADO — INSTRUCCIONES PARA AIDER
+═══════════════════════════════════════════════════════════════
+
+CAUSA RAÍZ DEL BUG:
+En SolicitudRepository.java, la query nativa usa CAST(:estado AS estado_solicitud_type)
+con PreparedStatement de JDBC. PostgreSQL no puede resolver el tipo ENUM personalizado
+a través de CAST() estándar SQL cuando el parámetro viene como PreparedStatement binding.
+El fix es usar la sintaxis de cast nativa de PostgreSQL: :estado::estado_solicitud_type
+
+ARCHIVOS AIDER:
+/add backend/src/main/java/KuHub/modules/gestion_solicitud/repository/SolicitudRepository.java
+/read-only backend/src/main/java/KuHub/modules/gestion_solicitud/service/SolicitudServiceImp.java
+
+PROMPT PARA AIDER:
+En backend/src/main/java/KuHub/modules/gestion_solicitud/repository/SolicitudRepository.java
+hay un bug en el método updateMassiveStateSolicitation() (línea ~239).
+
+CAMBIO ÚNICO — Línea 239: cambiar el CAST de SQL estándar a sintaxis PostgreSQL nativa.
+Cambiar:
+    SET estado_solicitud = CAST(:estado AS estado_solicitud_type)
+Por:
+    SET estado_solicitud = :estado::estado_solicitud_type
+
+Solo ese cambio, nada más. No tocar ningún otro archivo ni método.
 
 para acceder AIDER
 # 1. Ruta de Aider
@@ -16,43 +38,3 @@ $env:AWS_SECRET_ACCESS_KEY="REDACTED_AWS_SECRET"
 $env:AWS_REGION="us-east-1"
 
 aider --model bedrock/global.anthropic.claude-sonnet-4-6 --no-auto-commit
-
-═══════════════════════════════════════════════════════════════
-ANÁLISIS COMPLETADO — INSTRUCCIONES PARA AIDER
-═══════════════════════════════════════════════════════════════
-
-CAUSA RAÍZ DEL BUG:
-En solicitud.tsx, la función getConfig() inicializa configs nuevas con
-defaultSemanaId (semana actual del sistema), ignorando el semanaId del
-cache global (la semana seleccionada por el usuario en otra página).
-
-El hook usePeriodoSemana() expone dos valores distintos:
-  - semanaId      = semana cacheada/seleccionada globalmente (el correcto)
-  - defaultSemanaId = semana actual del sistema (el que se usaba erróneamente)
-
-ARCHIVOS AIDER:
-/add frontend/src/pages/solicitud.tsx
-/read-only frontend/src/contexts/periodo-semana-context.tsx
-
-PROMPT PARA AIDER:
-En frontend/src/pages/solicitud.tsx hay un bug en la función getConfig().
-
-CAMBIO 1 — Línea ~710: agregar semanaId al destructuring del hook usePeriodoSemana().
-Cambiar:
-  const { periodos, semanas, periodo, defaultSemanaId, isLoading: isLoadingSemanas, seleccionarPeriodo, seleccionarSemana, recargarPeriodos } = usePeriodoSemana();
-Por:
-  const { periodos, semanas, periodo, semanaId, defaultSemanaId, isLoading: isLoadingSemanas, seleccionarPeriodo, seleccionarSemana, recargarPeriodos } = usePeriodoSemana();
-
-CAMBIO 2 — Línea ~727-729: usar semanaId como fuente de verdad en getConfig().
-Cambiar:
-  const getConfig = React.useCallback(
-    (id: string): AsigConfig => configs.get(id) ?? makeEmptyConfig(defaultSemanaId),
-    [configs, defaultSemanaId]
-  );
-Por:
-  const getConfig = React.useCallback(
-    (id: string): AsigConfig => configs.get(id) ?? makeEmptyConfig(semanaId || defaultSemanaId),
-    [configs, semanaId, defaultSemanaId]
-  );
-
-Solo esos dos cambios, nada más. No tocar ningún otro archivo.
