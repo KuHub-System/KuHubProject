@@ -1,9 +1,22 @@
-necesito que revise los archivos indicado para entender mejor el contexto, crea un .md para facilitar el proceso, el proceso principal es entender como hacer, pero no es para hacer ahora solamente entender el contexto de como hacer.
-la idea es que si el usuario selecciona el periodo de la semana se quede guardado el valor seleccionado por mas que el nevague en otra page, debido que este selector se repite muchas veces en el sistema
-se repite en las pages de
--solicitud
--gestion solicitud
--gestion de pedido
--conglomerado de pedidos
+cambie la base de datos ahora apunta el servidor de lightsail, debemos cambiar la variable en los file de deploy
+KU_AWS_AC_DB_URL=jdbc:postgresql://kuhub-devs.cx624oeuwwkg.us-east-1.rds.amazonaws.com:5432/kuhub_devs para SPRING_DATASOURCE_URL=jdbc:postgresql://172.26.12.228:5432/kuhub_devs
+en esta caso puse el valor que contiene la variables pero no vamos agregar asi, vamos reemplazar solamente las variables KU_AWS_AC_DB_URL por SPRING_DATASOURCE_URL
 
-necesito que entendas en contexto me explicando en la nota ejecutar_ahora.md que esta vacia.
+hay que revisar en el env para realizar el cambio correctamente, tengo un ejemplo modelo de como se poderia ver, pero tiene que asegurar que esta la variable correctamente eliminado a que dice KU_AWS_AC_DB_URL
+# En tu docker-compose.yml debería verse así:
+environment:
+  - SPRING_DATASOURCE_URL=${SPRING_DATASOURCE_URL}
+  - SPRING_DATASOURCE_USERNAME=${KU_AWS_AC_DB_USER}
+  - SPRING_DATASOURCE_PASSWORD=${KU_AWS_AC_DB_PASS}
+
+en el servidor esta el nano esta exactamente asi
+GNU nano 7.2
+.env *
+TAG=K1.0.11
+DOCKER_USERNAME=martorias
+KU_AWS_AC_DB_USER=kuhub_devs
+KU_AWS_AC_DB_PASS=kuhub2025
+SPRING_DATASOURCE_URL=jdbc:postgresql://172.26.12.228:5432/kuhub_devs
+
+entre por pg admin y todo funciona perfectamente estan todas las tablas y insersiones iniciales, falta cambiar el en codigo para ver el proceso!
+revisar applicacion.properties para que se llame la variable correcta
