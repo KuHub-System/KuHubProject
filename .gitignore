@@ -35,3 +35,10 @@ build/
 ### Local Configuration ###
 application-mat.properties
 .aider*
+
+### Secrets & Credentials ###
+secrets.md
+secrets.json
+.env.local
+credentials.json
+aws-credentials.txt
