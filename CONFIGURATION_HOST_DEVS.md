@@ -24,40 +24,40 @@ KuHub es un **sistema de gestión gastronómica** desplegado en **AWS Lightsail*
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │  AWS Lightsail — Instancia A (Aplicación)                   │
-│  IP Pública: 52.5.222.79 — Virginia — Zona A               │
+│  IP Pública: 52.5.222.79 — Virginia — Zona A                │
 │  Recursos: 2 GB RAM, 2 vCPU, 60 GB SSD                      │
 │                                                             │
 │  ┌────────────────────────────────────────────────────────┐ │
 │  │  HOST OS: Ubuntu 20.04 LTS                             │ │
-│  │                                                         │ │
+│  │                                                        │ │
 │  │  ┌─────────────────────────────────────────────────┐   │ │
-│  │  │ NGINX (Reverse Proxy - Puerto :80 y :443)      │   │ │
-│  │  │                                                  │   │ │
+│  │  │ NGINX (Reverse Proxy - Puerto :80 y :443)       │   │ │
+│  │  │                                                 │   │ │
 │  │  │ • SSL/TLS: Let's Encrypt (fullchain.pem)        │   │ │
 │  │  │ • Redirige HTTP → HTTPS                         │   │ │
 │  │  │ • Proxy a localhost:3000 (frontend)             │   │ │
 │  │  │ • Headers X-Forwarded-* para CORS               │   │ │
 │  │  └─────────────────────────────────────────────────┘   │ │
-│  │            ↓                                            │ │
+│  │            ↓                                           │ │
 │  │  ┌─────────────────────────────────────────────────┐   │ │
 │  │  │ Docker Network (kuhub-app)                      │   │ │
-│  │  │                                                  │   │ │
+│  │  │                                                 │   │ │
 │  │  │ Container 1: kuhub-frontend                     │   │ │
-│  │  │   • Imagen: martorias/kuhub-app:frontend-*     │   │ │
-│  │  │   • Puerto: 127.0.0.1:3000:80 (interno)        │   │ │
+│  │  │   • Imagen: martorias/kuhub-app:frontend-*      │   │ │
+│  │  │   • Puerto: 127.0.0.1:3000:80 (interno)         │   │ │
 │  │  │   • NGINX dentro del container                  │   │ │
 │  │  │   • Proxy /api/* → backend:8080                 │   │ │
 │  │  │   • Límite RAM: 200 MB                          │   │ │
-│  │  │                                                  │   │ │
+│  │  │                                                 │   │ │
 │  │  │ Container 2: kuhub-backend (Spring Boot)        │   │ │
-│  │  │   • Imagen: martorias/kuhub-app:backend-*      │   │ │
-│  │  │   • Puerto: 127.0.0.1:8080 (interno)           │   │ │
+│  │  │   • Imagen: martorias/kuhub-app:backend-*       │   │ │
+│  │  │   • Puerto: 127.0.0.1:8080 (interno)            │   │ │
 │  │  │   • Spring Security + JWT auth                  │   │ │
 │  │  │   • Límite RAM: 1024 MB (1 GB)                  │   │ │
-│  │  │   • JVM Heap: -Xmx1024m -Xms768m               │   │ │
+│  │  │   • JVM Heap: -Xmx1024m -Xms768m                │   │ │
 │  │  └─────────────────────────────────────────────────┘   │ │
-│  │                                                         │ │
-│  │  Estado: Activo ✓                                       │ │
+│  │                                                        │ │
+│  │  Estado: Activo ✓                                      │ │
 │  │  Uptime: Contenedores con restart: always              │ │
 │  └────────────────────────────────────────────────────────┘ │
 └─────────────────────────────────────────────────────────────┘
@@ -68,12 +68,12 @@ KuHub es un **sistema de gestión gastronómica** desplegado en **AWS Lightsail*
                            ↓
 ┌─────────────────────────────────────────────────────────────┐
 │  AWS Lightsail — Instancia B (Base de Datos)                │
-│  IP Pública: 13.218.253.211 — Virginia — Zona A            │
+│  IP Pública: 13.218.253.211 — Virginia — Zona A             │
 │  Recursos: 512 MB RAM, 2 vCPU, 20 GB SSD                    │
 │                                                             │
 │  ┌────────────────────────────────────────────────────────┐ │
 │  │  HOST OS: Ubuntu 24.04 LTS                             │ │
-│  │                                                         │ │
+│  │                                                        │ │
 │  │  Sistema de Archivos y Memoria:                        │ │
 │  │  • RAM Total: 414 MB                                   │ │
 │  │  • RAM Usada: ~232 MB                                  │ │
@@ -81,7 +81,7 @@ KuHub es un **sistema de gestión gastronómica** desplegado en **AWS Lightsail*
 │  │  • Swap Total: 1.5 GB                                  │ │
 │  │  • Swap Usado: 41 MB                                   │ │
 │  │  • SSD: 20 GB (partición principal)                    │ │
-│  │                                                         │ │
+│  │                                                        │ │
 │  │  ┌─────────────────────────────────────────────────┐   │ │
 │  │  │ PostgreSQL 16.13                                │   │ │
 │  │  │ • Database: kuhub_devs                          │   │ │
@@ -89,13 +89,13 @@ KuHub es un **sistema de gestión gastronómica** desplegado en **AWS Lightsail*
 │  │  │ • Puerto: 5432 (escucha en *)                   │   │ │
 │  │  │ • shared_buffers: 128 MB                        │   │ │
 │  │  │ • max_connections: 100                          │   │ │
-│  │  │ • Hostname Privado: 172.26.12.228 (VPC)        │   │ │
-│  │  │ • Hostname Externo: 13.218.253.211 (SSH/pgA)   │   │ │
+│  │  │ • Hostname Privado: 172.26.12.228 (VPC)         │   │ │
+│  │  │ • Hostname Externo: 13.218.253.211 (SSH/pgA)    │   │ │
 │  │  │ • Acceso: VPC Peering desde Instancia A         │   │ │
 │  │  │ • Configurado con pgcrypto para hashes          │   │ │
 │  │  └─────────────────────────────────────────────────┘   │ │
-│  │                                                         │ │
-│  │  Estado: Activo ✓                                       │ │
+│  │                                                        │ │
+│  │  Estado: Activo ✓                                      │ │
 │  │  Backups: Configurados en AWS Lightsail Management     │ │
 │  └────────────────────────────────────────────────────────┘ │
 └─────────────────────────────────────────────────────────────┘
@@ -253,8 +253,8 @@ add_header Referrer-Policy "strict-origin-when-cross-origin" always;
 │ https://appkuhub.questweb.cl/login      │
 └──────────────┬──────────────────────────┘
                │ POST /api/v1/auth/login
-               │ email: dmorales@duoc.cl
-               │ contrasena: admin123
+               │ email: ejemple@kuhub.cl
+               │ contrasena: user123
                ↓
 ┌─────────────────────────────────────────┐
 │ NGINX (Proxy reverso) — :443 HTTPS      │
@@ -283,15 +283,15 @@ add_header Referrer-Policy "strict-origin-when-cross-origin" always;
 │ • Busca usuario en BD por email         │
 │ • Valida contraseña (BCryptPasswordEn-  │
 │   coder, hash $2a$ generado con Python) │
-│ • Si OK → Genera JWT token               │
+│ • Si OK → Genera JWT token              │
 │ • Retorna: { token, user }              │
 └──────────────┬──────────────────────────┘
                │ Response 200 + JWT
                ↓
 ┌─────────────────────────────────────────┐
-│ Frontend guarda JWT en localStorage      │
-│ Futuras peticiones envían:               │
-│   Authorization: Bearer <JWT>            │
+│ Frontend guarda JWT en localStorage     │
+│ Futuras peticiones envían:              │
+│   Authorization: Bearer <JWT>           │
 └─────────────────────────────────────────┘
 ```
 
@@ -607,8 +607,6 @@ SELECT query, calls, mean_time FROM pg_stat_statements ORDER BY mean_time DESC L
 | **CLAUDE.md** (Global) | `/KuHubProject/CLAUDE.md` | Convenciones de versionado y deploy |
 | **CLAUDE.md** (Backend) | `/backend/CLAUDE.md` | Estructura de código, módulos, DTOs |
 | **CLAUDE.md** (Frontend) | `/frontend/CLAUDE.md` | Tech stack, componentes, hooks |
-| **SSL_CONFIGURACION.md** | `/KuHubProject/SSL_CONFIGURACION.md` | Detalles SSL técnicos (certificado auto-firmado antiguo) |
-| **HTTPS_SSL_CONFIG.md** | `/frontend/HTTPS_SSL_CONFIG.md` | Setup de Let's Encrypt (actual) |
 | **nota_alcance** | `/KuHubProject/nota_alcance.md` | Alcance funcional del proyecto |
 
 ---
