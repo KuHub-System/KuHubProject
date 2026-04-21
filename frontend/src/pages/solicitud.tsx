@@ -707,7 +707,7 @@ const SolicitudPage: React.FC = () => {
   const { isAdmin } = usePermission();
   const history = useHistory();
 
-  const { periodos, semanas, periodo, defaultSemanaId, isLoading: isLoadingSemanas, seleccionarPeriodo } = usePeriodoSemana();
+  const { periodos, semanas, periodo, defaultSemanaId, isLoading: isLoadingSemanas, seleccionarPeriodo, seleccionarSemana } = usePeriodoSemana();
 
   // ── asignaturas state ──
   const [asignaturas,      setAsignaturas]       = React.useState<IAsignaturaCurso[]>([]);
@@ -937,6 +937,43 @@ const SolicitudPage: React.FC = () => {
                   </button>
                 );
               })
+            )}
+          </div>
+
+          {/* Selector de semana */}
+          <div className="mt-4 flex items-center gap-3">
+            <div className="flex items-center gap-2 text-xs font-bold text-default-500 uppercase tracking-wider shrink-0">
+              <Icon icon="lucide:calendar" width={14} className="text-secondary" />
+              Semana
+            </div>
+            {isLoadingSemanas ? (
+              <div className="flex items-center gap-2 text-sm text-default-400"><Spinner size="sm" /> Cargando semanas...</div>
+            ) : semanas.length === 0 ? (
+              <p className="text-sm text-default-400">Sin semanas disponibles para este período.</p>
+            ) : (
+              <Select size="sm" variant="bordered"
+                selectedKeys={defaultSemanaId ? new Set([defaultSemanaId]) : new Set()}
+                onSelectionChange={keys => { const v = Array.from(keys as Set<string>)[0]; if (v) seleccionarSemana(v); }}
+                placeholder="Seleccione semana"
+                classNames={{ trigger: 'bg-default-50 cursor-pointer', base: 'max-w-xs' }}
+                startContent={<Icon icon="lucide:calendar" width={14} className="text-default-400 shrink-0" />}
+              >
+                {semanas.map(s => (
+                  <SelectItem key={String(s.idSemana)} textValue={s.nombreSemana}>
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-sm">{s.nombreSemana}</span>
+                      <span className="text-default-400 text-xs">
+                        {new Date(s.fechaInicio + 'T00:00:00').toLocaleDateString('es-CL', { day: 'numeric', month: 'short' })}
+                        {' – '}
+                        {new Date(s.fechaFin + 'T00:00:00').toLocaleDateString('es-CL', { day: 'numeric', month: 'short' })}
+                      </span>
+                      {String(s.idSemana) === defaultSemanaId && (
+                        <Chip size="sm" color="success" variant="flat" className="ml-auto shrink-0 text-[10px]">Actual</Chip>
+                      )}
+                    </div>
+                  </SelectItem>
+                ))}
+              </Select>
             )}
 
             {periodo && !isLoadingSemanas && (
