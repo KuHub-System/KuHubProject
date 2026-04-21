@@ -17,15 +17,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useToast } from '../hooks/useToast';
 import { useModulePermission, usePermission } from '../contexts/permission-context';
+import { usePeriodoSemana } from '../contexts/periodo-semana-context';
 import { useHistory } from 'react-router-dom';
-import { ISemana } from '../types/semana.types';
-import {
-  IPeriodoAcademico,
-  obtenerPeriodosAcademicosService,
-  obtenerSemanasPorPeriodoService,
-  detectarPeriodoActual,
-  encontrarSemanaActual,
-} from '../services/semana-service';
 import {
   IAsignaturaCurso, ISeccionCurso, IHorarioCurso,
   IReceta, IProductoOpcion,
@@ -714,12 +707,7 @@ const SolicitudPage: React.FC = () => {
   const { isAdmin } = usePermission();
   const history = useHistory();
 
-  // ── semanas state ──
-  const [semanas,          setSemanas]          = React.useState<ISemana[]>([]);
-  const [periodos,         setPeriodos]          = React.useState<IPeriodoAcademico[]>([]);
-  const [currentPeriodo,   setCurrentPeriodo]    = React.useState<{ anio: number; semestre: number } | null>(null);
-  const [defaultSemanaId,  setDefaultSemanaId]   = React.useState<string>('');
-  const [isLoadingSemanas, setIsLoadingSemanas]  = React.useState(true);
+  const { periodos, semanas, defaultSemanaId, isLoading: isLoadingSemanas } = usePeriodoSemana();
 
   // ── asignaturas state ──
   const [asignaturas,      setAsignaturas]       = React.useState<IAsignaturaCurso[]>([]);
@@ -767,72 +755,6 @@ const SolicitudPage: React.FC = () => {
       }
     };
     load();
-  }, []);
-
-  // ── cargar semanas para un periodo concreto ──
-  const cargarSemanasParaPeriodo = React.useCallback(async (anio: number, semestre: number) => {
-    setIsLoadingSemanas(true);
-    try {
-      const data = await obtenerSemanasPorPeriodoService(anio, semestre);
-      setSemanas(data);
-      setCurrentPeriodo({ anio, semestre });
-      const actual = encontrarSemanaActual(data);
-      setDefaultSemanaId(actual ? String(actual.idSemana) : '');
-    } catch {
-      toast.error('Error al cargar las semanas del período seleccionado');
-    } finally {
-      setIsLoadingSemanas(false);
-    }
-  }, [toast]);
-
-  // ── carga inicial de semanas ──
-  React.useEffect(() => {
-    const init = async () => {
-      setIsLoadingSemanas(true);
-      try {
-        const periodosData = await obtenerPeriodosAcademicosService();
-        setPeriodos(periodosData);
-
-        const { anio, semestre } = detectarPeriodoActual();
-        const intentos = [
-          { anio, semestre },
-          { anio, semestre: semestre === 1 ? 2 : 1 },
-        ];
-
-        let resolved = false;
-        for (const intento of intentos) {
-          const existe = periodosData.some(
-            p => p.anio === intento.anio && p.semestres.includes(intento.semestre)
-          );
-          if (!existe) continue;
-          try {
-            const data = await obtenerSemanasPorPeriodoService(intento.anio, intento.semestre);
-            const actual = encontrarSemanaActual(data);
-            setSemanas(data);
-            setCurrentPeriodo(intento);
-            setDefaultSemanaId(actual ? String(actual.idSemana) : '');
-            resolved = true;
-            if (actual) break;
-          } catch { /* sigue al siguiente intento */ }
-        }
-
-        if (!resolved && periodosData.length > 0) {
-          const p = periodosData[0];
-          const s = p.semestres[0];
-          try {
-            const data = await obtenerSemanasPorPeriodoService(p.anio, s);
-            setSemanas(data);
-            setCurrentPeriodo({ anio: p.anio, semestre: s });
-            setDefaultSemanaId('');
-          } catch { setCurrentPeriodo({ anio: p.anio, semestre: s }); }
-        }
-      } catch {
-        // API de periodos falló — usar chips por defecto
-      } finally {
-        setIsLoadingSemanas(false);
-      }
-    };
-    init();
   }, []);
 
   // ── ¿hay periodos creados en la BD? ──

@@ -19,18 +19,12 @@ import { usePageTitle } from '../hooks/usePageTitle';
 import { useToast } from '../hooks/useToast';
 import { ISemana } from '../types/semana.types';
 import {
-  IPeriodoAcademico,
-  obtenerPeriodosAcademicosService,
-  obtenerSemanasPorPeriodoService,
-  detectarPeriodoActual,
-  encontrarSemanaActual,
-} from '../services/semana-service';
-import {
   obtenerSolicitudesPorSemanaService,
   ISolicitudPorSemanaResponse,
   cambiarEstadoMasivoService,
 } from '../services/solicitud-service';
 import { useModulePermission, usePermission } from '../contexts/permission-context';
+import { usePeriodoSemana } from '../contexts/periodo-semana-context';
 import { useHistory } from 'react-router-dom';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -163,12 +157,7 @@ const GestionSolicitudesPage: React.FC = () => {
   const { isAdmin } = usePermission();
   const history = useHistory();
 
-  // ── Semanas ──
-  const [periodos,       setPeriodos]       = React.useState<IPeriodoAcademico[]>([]);
-  const [semanas,        setSemanas]        = React.useState<ISemana[]>([]);
-  const [semanaId,       setSemanaId]       = React.useState<string>('');
-  const [defaultSemanaId, setDefaultSemanaId] = React.useState<string>('');
-  const [isLoadingSem, setIsLoadingSem] = React.useState(true);
+  const { periodos, semanas, semanaId, defaultSemanaId, isLoading: isLoadingSem, seleccionarPeriodo, seleccionarSemana } = usePeriodoSemana();
 
   // ── Solicitudes ──
   const [solicitudes,  setSolicitudes]  = React.useState<ISolicitudGestion[]>([]);
@@ -193,49 +182,8 @@ const GestionSolicitudesPage: React.FC = () => {
   const [revertirMotivo,    setRevertirMotivo]     = React.useState('');
   const [isSaving,          setIsSaving]           = React.useState(false);
 
-  // ── Carga inicial de semanas ──
   React.useEffect(() => {
-    const init = async () => {
-      setIsLoadingSem(true);
-      try {
-        const periodosData = await obtenerPeriodosAcademicosService();
-        setPeriodos(periodosData);
-        const { anio, semestre } = detectarPeriodoActual();
-        const intentos = [{ anio, semestre }, { anio, semestre: semestre === 1 ? 2 : 1 }];
-        let cargadas: ISemana[] = [];
-        for (const intento of intentos) {
-          if (!periodosData.some(p => p.anio === intento.anio && p.semestres.includes(intento.semestre))) continue;
-          try { cargadas = await obtenerSemanasPorPeriodoService(intento.anio, intento.semestre); if (cargadas.length > 0) break; } catch { /* */ }
-        }
-        if (cargadas.length === 0 && periodosData.length > 0) {
-          const p = periodosData[0];
-          cargadas = await obtenerSemanasPorPeriodoService(p.anio, p.semestres[0]).catch(() => []);
-        }
-        setSemanas(cargadas);
-        const actual = encontrarSemanaActual(cargadas);
-        setDefaultSemanaId(actual ? String(actual.idSemana) : '');
-        setSemanaId(actual ? String(actual.idSemana) : cargadas.length > 0 ? String(cargadas[0].idSemana) : '');
-      } catch { toast.error('Error al cargar las semanas'); }
-      finally { setIsLoadingSem(false); }
-    };
-    init();
-  }, []);
-
-  const handlePeriodoChange = async (anio: number, semestre: number) => {
-    setIsLoadingSem(true); setSolicitudes([]); setSemanaId(''); setSeleccionados(new Set());
-    try {
-      const data = await obtenerSemanasPorPeriodoService(anio, semestre);
-      setSemanas(data);
-      const actual = encontrarSemanaActual(data);
-      setDefaultSemanaId(actual ? String(actual.idSemana) : '');
-      if (data.length > 0) setSemanaId(actual ? String(actual.idSemana) : String(data[0].idSemana));
-    } catch { toast.error('Error al cargar semanas del período'); }
-    finally { setIsLoadingSem(false); }
-  };
-
-  // ── Carga solicitudes al cambiar semana ──
-  React.useEffect(() => {
-    if (!semanaId) { setSolicitudes([]); return; }
+    if (!semanaId) { setSolicitudes([]); setSeleccionados(new Set()); return; }
     const semana = semanas.find(s => String(s.idSemana) === semanaId);
     if (!semana) return;
     setIsLoadingSol(true); setSeleccionados(new Set());
@@ -499,7 +447,7 @@ const GestionSolicitudesPage: React.FC = () => {
                 p.semestres.map(s => {
                   const isActive = semanas.length > 0 && semanas[0].anio === p.anio && semanas[0].semestre === s;
                   return (
-                    <button key={`${p.anio}-${s}`} onClick={() => handlePeriodoChange(p.anio, s)}
+                    <button key={`${p.anio}-${s}`} onClick={() => { seleccionarPeriodo(p.anio, s); setSolicitudes([]); setSeleccionados(new Set()); }}
                       className={`px-3 py-1 rounded-full text-xs font-bold border transition-all cursor-pointer ${
                         isActive ? 'bg-warning text-white border-warning' : 'bg-default-100 text-default-600 border-default-200 hover:bg-default-200'
                       }`}
@@ -521,7 +469,7 @@ const GestionSolicitudesPage: React.FC = () => {
               ) : (
                 <Select size="sm" variant="bordered"
                   selectedKeys={semanaId ? new Set([semanaId]) : new Set()}
-                  onSelectionChange={keys => { const v = Array.from(keys as Set<string>)[0]; if (v) setSemanaId(v); }}
+                  onSelectionChange={keys => { const v = Array.from(keys as Set<string>)[0]; if (v) seleccionarSemana(v); }}
                   placeholder="Seleccione una semana"
                   classNames={{ trigger: 'bg-default-50 cursor-pointer', base: 'max-w-xs' }}
                   startContent={<Icon icon="lucide:calendar" width={14} className="text-default-400 shrink-0" />}
