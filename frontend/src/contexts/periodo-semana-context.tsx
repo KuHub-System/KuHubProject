@@ -20,6 +20,7 @@ interface PeriodoSemanaContextType extends PeriodoSemanaState {
   seleccionarPeriodo: (anio: number, semestre: number) => Promise<void>;
   seleccionarSemana: (semanaId: string) => void;
   recargarSemanas: () => Promise<void>;
+  recargarPeriodos: () => Promise<void>;
 }
 
 const PeriodoSemanaContext = React.createContext<PeriodoSemanaContextType | undefined>(undefined);
@@ -126,6 +127,15 @@ export const PeriodoSemanaProvider: React.FC<{ children: React.ReactNode }> = ({
     sessionStorage.setItem('kuhub_semana_id', id);
   }, []);
 
+  const recargarPeriodos = React.useCallback(async () => {
+    try {
+      const periodosData = await obtenerPeriodosAcademicosService();
+      setPeriodos(periodosData);
+    } catch (err) {
+      console.error('Error recargando períodos:', err);
+    }
+  }, [obtenerPeriodosAcademicosService]);
+
   const recargarSemanas = React.useCallback(async () => {
     if (!periodo) return;
     try {
@@ -150,6 +160,7 @@ export const PeriodoSemanaProvider: React.FC<{ children: React.ReactNode }> = ({
     seleccionarPeriodo,
     seleccionarSemana,
     recargarSemanas,
+    recargarPeriodos,
   };
 
   return (
