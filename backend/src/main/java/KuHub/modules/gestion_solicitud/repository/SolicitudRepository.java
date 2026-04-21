@@ -236,7 +236,7 @@ public interface SolicitudRepository extends JpaRepository<Solicitud, Integer> {
     @Modifying
     @Query(value = """
             UPDATE solicitud
-            SET estado_solicitud = CAST(:estado AS estado_solicitud_type)
+            SET estado_solicitud = :estado::estado_solicitud_type
             WHERE id_solicitud IN (:ids)
             """, nativeQuery = true)
     int updateMassiveStateSolicitation(@Param("ids") List<Integer> ids, @Param("estado") String estado);
@@ -429,9 +429,5 @@ public interface SolicitudRepository extends JpaRepository<Solicitud, Integer> {
         ) agg;
         """, nativeQuery = true)
     String findConsolidadoGlobalJson(@Param("fechaInicio") LocalDate fechaInicio, @Param("fechaFin") LocalDate fechaFin);
-
-
-
-
 
 }
