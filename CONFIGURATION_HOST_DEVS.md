@@ -399,23 +399,33 @@ backend:
 
 ## 8. Base de Datos — PostgreSQL
 
+### Versión y Configuración
+
+| Parámetro | Valor |
+|---|---|
+| **PostgreSQL** | 16.13 (Ubuntu 16.13-0ubuntu0.24.04.1) |
+| **Puerto** | `5432` |
+| **shared_buffers** | 128 MB |
+| **max_connections** | 100 |
+| **listen_addresses** | `*` (Escucha en todas las interfaces) |
+
 ### Conexión
 
 | Parámetro | Valor |
 |---|---|
-| **Host** | `13.218.253.211` (dirección pública, pero con firewall) |
-| **Host privado** | `172.26.12.228` (VPC Peering desde instancia A) |
+| **Host (Externo)** | `13.218.253.211` (Solo para SSH y pgAdmin) |
+| **Host (Privado)** | `172.26.12.228` (VPC Peering — **Usar siempre en Backend**) |
 | **Puerto** | `5432` |
-| **Database** | `Kuhub_mat_local` |
-| **Usuario** | `postgres` |
-| **Contraseña** | Proporcionada en variables de entorno (CI/CD secrets) |
+| **Database** | `kuhub_devs` |
+| **Usuario** | `kuhub_devs` |
+| **Contraseña** | Almacenada en CI/CD secrets (variables de entorno) |
 
 ### String de conexión (Backend)
 
 ```properties
-# Desde instancia A (Docker), usa dirección privada para menor latencia
-spring.datasource.url=jdbc:postgresql://172.26.12.228:5432/Kuhub_mat_local
-spring.datasource.username=postgres
+# IMPORTANTE: Desde instancia A (Docker), SIEMPRE usar dirección privada (menor latencia, sin metraje)
+spring.datasource.url=jdbc:postgresql://172.26.12.228:5432/kuhub_devs
+spring.datasource.username=kuhub_devs
 spring.datasource.password=${SPRING_DATASOURCE_PASSWORD}
 ```
 
@@ -433,13 +443,13 @@ SELECT * FROM pg_extension WHERE extname = 'pgcrypto';
 
 ```bash
 # Backup local (en instancia B)
-pg_dump -U postgres Kuhub_mat_local > kuhub_backup_$(date +%Y%m%d).sql
+pg_dump -U kuhub_devs kuhub_devs > kuhub_backup_$(date +%Y%m%d).sql
 
-# Backup remoto (desde instancia A)
-pg_dump -h 172.26.12.228 -U postgres Kuhub_mat_local > kuhub_backup.sql
+# Backup remoto (desde instancia A, usa host privado)
+pg_dump -h 172.26.12.228 -U kuhub_devs kuhub_devs > kuhub_backup.sql
 
-# Restauración
-psql -h 172.26.12.228 -U postgres < kuhub_backup.sql
+# Restauración (desde instancia A)
+psql -h 172.26.12.228 -U kuhub_devs kuhub_devs < kuhub_backup.sql
 ```
 
 ---
@@ -509,14 +519,19 @@ sudo tail -f /var/log/nginx/access.log # Tráfico web
 ```bash
 ssh -i /ruta/a/key.pem ubuntu@13.218.253.211
 
-# Dentro del servidor
-psql -U postgres Kuhub_mat_local       # Conectar a BD
-\dt                                    # Listar tablas
-\l                                     # Listar bases de datos
+# Dentro del servidor (usar host privado 172.26.12.228 desde instancia A)
+psql -h 172.26.12.228 -U kuhub_devs kuhub_devs  # Conectar a BD (desde instancia A)
+\dt                                              # Listar tablas
+\l                                               # Listar bases de datos
 
 # Verificar memoria
 free -h                                # Estado de RAM y Swap
 df -h                                  # Uso de disco
+
+# Verificar configuración PostgreSQL
+psql -U kuhub_devs kuhub_devs -c "SHOW listen_addresses;"
+psql -U kuhub_devs kuhub_devs -c "SHOW shared_buffers;"
+psql -U kuhub_devs kuhub_devs -c "SHOW max_connections;"
 ```
 
 ---
@@ -570,9 +585,13 @@ top -p $(docker inspect -f '{{.State.Pid}}' kuhub-backend)  # CPU/RAM del backen
 
 **En Instancia B (Base de Datos):**
 ```bash
-# Ver consultas lentas
-psql -U postgres Kuhub_mat_local
-SELECT * FROM pg_stat_statements ORDER BY mean_time DESC LIMIT 10;
+# Ver consultas lentas (conectar desde instancia A usando host privado)
+psql -h 172.26.12.228 -U kuhub_devs kuhub_devs -c "SELECT * FROM pg_stat_statements ORDER BY mean_time DESC LIMIT 10;"
+
+# O iniciar sesión interactiva
+psql -h 172.26.12.228 -U kuhub_devs kuhub_devs
+\x  # Expandir salida
+SELECT query, calls, mean_time FROM pg_stat_statements ORDER BY mean_time DESC LIMIT 5;
 ```
 
 ---
@@ -616,7 +635,7 @@ SELECT * FROM pg_stat_statements ORDER BY mean_time DESC LIMIT 10;
 |---|---|
 | Reiniciar Docker | `docker-compose restart` |
 | Ver logs del backend | `docker logs -f kuhub-backend` |
-| Conectar a BD directamente | `psql -h 172.26.12.228 -U postgres Kuhub_mat_local` |
+| Conectar a BD directamente | `psql -h 172.26.12.228 -U kuhub_devs kuhub_devs` |
 | Recargar certificado SSL | `sudo certbot renew && sudo systemctl reload nginx` |
 
 ---
