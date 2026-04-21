@@ -1,1 +1,9 @@
-me di cuenta que la crear los rangos de periodo academico no se refresca el cache donde se almacena estos periodos, necesito que revise a donde esta el file que tengo que considera hay uno que reflete a todos las 4 pege donde esta mostrada es una.
+REQUERIEMETO
+Solicitud : Al querer calcular los ingredientes de la receta luego de seleccionar todas las secciones. La receta debe mostrar los ingredientes para la cantidad 20 que está diseñada, no con el cálculo total.
+
+actualmente al seleccionar n cantidad de solicitudes, esta mostrando el calculo estimado, cuando deberia mostrar la receta base normal, debido que el calculo se realiza en la funcion en la bbdd, dado esto se entiende que lo mostrado es meramente representativo pero como esta actualmente confunde el usuario, para esto mostraremos la receta con su ingriente respectivo para que el usuario siempre entienda que todo lo mostrado es la base se calculara para 20 personas que ya hace la funcion en la bbdd, como esta na nota_bbdd_kuhub_v2 al final de todo.
+
+PORA EJECUTAR
+ver FLUJO_TRABAJO_HAIKU_SONNET.md
+
+al finalizar lo que se hize por aider, revisar que todo esta bien simpre con el modelo haiku de clade pro

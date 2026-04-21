@@ -200,7 +200,6 @@ const AsigCard: React.FC<AsigCardProps> = ({
   const indeterminate  = !allSel && allBlkKeys.some(k => config.bloquesIds.has(k));
 
   const totalInscritos = secSel.reduce((sum, s) => sum + s.cant_inscritos, 0);
-  const multiplicador  = totalInscritos > 0 ? totalInscritos / 20 : 1;
 
   /** Clases calculadas: solo bloques seleccionados, ordenadas por fecha */
   const clases = React.useMemo(() => {
@@ -220,13 +219,6 @@ const AsigCard: React.FC<AsigCardProps> = ({
   const isValid       = selCount > 0 && config.semanaId !== '' && (config.recetaId !== '' || tieneItems);
   const isPartial     = selCount > 0 && !isValid;
 
-  const reapplyMultiplier = (items: ItemSolicitud[], newMult: number) =>
-    items.map((item: ItemSolicitud) => {
-      if (item.esExtra) return item;
-      const raw = item.cantidadBase * newMult;
-      return { ...item, cantidad: item.esFraccionario ? parseFloat(raw.toFixed(3)) : Math.round(raw) };
-    });
-
   const recomputeIns = (next: Set<string>) =>
     seccionesSeleccionadas(asig.secciones, next).reduce((s, sec) => s + sec.cant_inscritos, 0);
 
@@ -235,8 +227,8 @@ const AsigCard: React.FC<AsigCardProps> = ({
     const key  = mkBlkKey(secId, dia, idSala);
     const next = new Set(prev.bloquesIds);
     next.has(key) ? next.delete(key) : next.add(key);
-    const ins = recomputeIns(next);
-    return { ...prev, bloquesIds: next, items: reapplyMultiplier(prev.items, ins > 0 ? ins / 20 : 1) };
+    // Solo actualizamos bloquesIds; las cantidades base NO cambian
+    return { ...prev, bloquesIds: next };
   });
 
   /** Alterna todos los bloques de una sección (select si alguno falta, deselect si todos están) */
@@ -245,8 +237,8 @@ const AsigCard: React.FC<AsigCardProps> = ({
     const allSelec = keys.every(k => prev.bloquesIds.has(k));
     const next     = new Set(prev.bloquesIds);
     keys.forEach(k => allSelec ? next.delete(k) : next.add(k));
-    const ins = recomputeIns(next);
-    return { ...prev, bloquesIds: next, items: reapplyMultiplier(prev.items, ins > 0 ? ins / 20 : 1) };
+    // Solo actualizamos bloquesIds; las cantidades base NO cambian
+    return { ...prev, bloquesIds: next };
   });
 
   /** Alterna todos los bloques de todas las secciones */
@@ -254,8 +246,8 @@ const AsigCard: React.FC<AsigCardProps> = ({
     const next = new Set(prev.bloquesIds);
     if (allSel) { allBlkKeys.forEach(k => next.delete(k)); }
     else        { allBlkKeys.forEach(k => next.add(k));    }
-    const ins = recomputeIns(next);
-    return { ...prev, bloquesIds: next, items: reapplyMultiplier(prev.items, ins > 0 ? ins / 20 : 1) };
+    // Solo actualizamos bloquesIds; las cantidades base NO cambian
+    return { ...prev, bloquesIds: next };
   });
 
   const handleSelectReceta = (recetaId: string) => {
@@ -263,13 +255,13 @@ const AsigCard: React.FC<AsigCardProps> = ({
     if (!receta) return;
     onUpdate(prev => ({
       ...prev, recetaId,
+      // Las cantidades se guardan tal como vienen de la receta (base 20 porciones)
+      // El backend escala según los alumnos inscritos por sección
       items: receta.detalles.map(d => ({
         id: String(d.idDetalleReceta),
         nombre: d.nombreProducto,
         cantidadBase: d.cantProducto,
-        cantidad: d.esFraccionario
-          ? parseFloat((d.cantProducto * multiplicador).toFixed(3))
-          : Math.round(d.cantProducto * multiplicador),
+        cantidad: d.cantProducto, // Se muestra la cantidad base sin multiplicar
         unidad: d.abreviatura,
         esExtra: false,
         esFraccionario: d.esFraccionario,
@@ -282,7 +274,8 @@ const AsigCard: React.FC<AsigCardProps> = ({
     let n = parseFloat(val);
     if (isNaN(n) || n < 0) return;
     n = esFraccionario ? parseFloat(n.toFixed(3)) : Math.round(n);
-    onUpdate(prev => ({ ...prev, items: prev.items.map(i => i.id === itemId ? { ...i, cantidad: n } : i) }));
+    // Al editar manualmente, actualizamos tanto cantidad como cantidadBase
+    onUpdate(prev => ({ ...prev, items: prev.items.map(i => i.id === itemId ? { ...i, cantidad: n, cantidadBase: n } : i) }));
   };
 
   const extraProducto = productos.find(p => String(p.idProducto) === config.extraProductoId) ?? null;
@@ -421,7 +414,7 @@ const AsigCard: React.FC<AsigCardProps> = ({
                   {selCount > 0 && (
                     <div className="mt-2 flex items-center gap-1.5 text-xs text-primary-600 font-medium">
                       <Icon icon="lucide:users" width={12} />
-                      {totalInscritos} alumnos · ×{multiplicador.toFixed(2)}
+                      {totalInscritos} alumnos seleccionados
                     </div>
                   )}
                 </div>
@@ -519,14 +512,16 @@ const AsigCard: React.FC<AsigCardProps> = ({
               {/* RECETA */}
               <div>
                 <p className="text-xs font-bold text-default-500 uppercase tracking-wider mb-2">Receta Base</p>
-                {selCount > 0 && recetas.length > 0 && (
-                  <div className="mb-3 flex items-center gap-2 px-3 py-2 rounded-lg bg-secondary-50 dark:bg-secondary-900/20 border border-secondary-200 text-xs">
-                    <Icon icon="lucide:calculator" className="text-secondary shrink-0" width={14} />
-                    <span className="text-secondary-700 dark:text-secondary-300">
-                      Receta base 20 porciones → <strong>×{multiplicador.toFixed(2)}</strong> para {totalInscritos} alumnos
-                    </span>
-                  </div>
-                )}
+
+                {/* Banner informativo: cantidades base */}
+                <div className="mb-3 flex items-center gap-2 px-3 py-2 rounded-lg bg-secondary-50 dark:bg-secondary-900/20 border border-secondary-200 text-xs">
+                  <Icon icon="lucide:info" className="text-secondary shrink-0" width={14} />
+                  <span className="text-secondary-700 dark:text-secondary-300">
+                    Las cantidades mostradas corresponden a la <strong>receta base (20 porciones)</strong>.
+                    El sistema calculará automáticamente la cantidad proporcional según los alumnos inscritos por sección al momento de enviar.
+                  </span>
+                </div>
+
                 {recetas.length === 0 ? (
                   isAdminCard ? (
                     <button
@@ -568,7 +563,11 @@ const AsigCard: React.FC<AsigCardProps> = ({
                 {config.items.length > 0 && (
                   <div className="mt-3 space-y-1">
                     <div className="grid grid-cols-[1fr_1fr_90px_60px_30px] gap-1.5 px-2 text-[10px] font-bold text-default-400 uppercase tracking-wider border-b border-default-200 pb-1">
-                      <span className="text-center">Producto</span><span className="text-center">Observación</span><span className="text-center">Cantidad</span><span className="text-center">Unidad</span><span />
+                      <span className="text-center">Producto</span>
+                      <span className="text-center">Observación</span>
+                      <span className="text-center">Cant. base</span>
+                      <span className="text-center">Unidad</span>
+                      <span />
                     </div>
                     {config.items.map(item => (
                       <div key={item.id}
@@ -796,10 +795,10 @@ const SolicitudPage: React.FC = () => {
       const payload = resumen.asigConfiguradas.map(({ asig, cfg, secSel }) => {
         const semana = semanas.find(s => String(s.idSemana) === cfg.semanaId)!;
         const receta = cfg.recetaId ? recetas.find((r: IReceta) => String(r.idReceta) === cfg.recetaId) : null;
-        const totalIns = secSel.reduce((sum, s) => sum + s.cant_inscritos, 0);
-        const mult = totalIns > 0 ? totalIns / 20 : 1;
 
         // ── deltas ──────────────────────────────────────────────────────────
+        // Las cantidades se envían tal como están (base 20 porciones).
+        // El backend es responsable de escalar por sección según cant_inscritos.
         let deltas: { eliminados: number[]; modificados: { idDetalleReceta: number; cantProducto: number; observacion?: string }[]; nuevos: { idProducto: number; cantProducto: number; observacion: string }[] } | undefined;
         if (receta) {
           const originalIds = new Set(receta.detalles.map(d => String(d.idDetalleReceta)));
@@ -813,13 +812,14 @@ const SolicitudPage: React.FC = () => {
             .filter(i => !i.esExtra && originalIds.has(i.id))
             .filter(i => {
               const orig = receta.detalles.find(d => String(d.idDetalleReceta) === i.id);
-              const cantidadCambiada = orig && Math.abs(i.cantidad / mult - i.cantidadBase) > 0.0001;
+              // Comparamos directamente con cantidadBase (sin multiplicar)
+              const cantidadCambiada = orig && Math.abs(i.cantidad - orig.cantProducto) > 0.0001;
               const observacionCambiada = !!i.observacion;
               return cantidadCambiada || observacionCambiada;
             })
             .map(i => ({
               idDetalleReceta: parseInt(i.id),
-              cantProducto: parseFloat((i.cantidad / mult).toFixed(3)),
+              cantProducto: i.cantidad, // Se envía la cantidad base sin multiplicar
               ...(i.observacion ? { observacion: i.observacion } : {}),
             }));
 
@@ -827,7 +827,7 @@ const SolicitudPage: React.FC = () => {
             .filter(i => i.esExtra && i.idProducto != null)
             .map(i => ({
               idProducto: i.idProducto!,
-              cantProducto: i.cantidadBase,
+              cantProducto: i.cantidadBase, // Cantidad base para 20 porciones
               observacion: i.observacion ? `[ADICIONAL] ${i.observacion}` : '[ADICIONAL]',
             }));
 
