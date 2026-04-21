@@ -976,7 +976,7 @@ const SolicitudPage: React.FC = () => {
               <p className="text-sm text-default-400">Sin semanas disponibles para este período.</p>
             ) : (
               <Select size="sm" variant="bordered"
-                selectedKeys={defaultSemanaId ? new Set([defaultSemanaId]) : new Set()}
+                selectedKeys={semanaId ? new Set([semanaId]) : new Set()}
                 onSelectionChange={keys => { const v = Array.from(keys as Set<string>)[0]; if (v) seleccionarSemana(v); }}
                 placeholder="Seleccione semana"
                 classNames={{ trigger: 'bg-default-50 cursor-pointer', base: 'max-w-xs' }}
