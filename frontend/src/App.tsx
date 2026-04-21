@@ -2,6 +2,7 @@ import React, { lazy, Suspense } from 'react';
 import { Switch, Route, Redirect } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/auth-context';
 import { PermissionProvider } from './contexts/permission-context';
+import { PeriodoSemanaProvider } from './contexts/periodo-semana-context';
 import { ThemeProvider } from './contexts/theme-context';
 import { PageTitleProvider } from './contexts/PageTitleContext';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -130,7 +131,8 @@ const App: React.FC = () => {
           <PageTitleProvider>
             <AuthProvider>
               <PermissionProvider>
-              <Suspense fallback={<PageLoader />}>
+                <PeriodoSemanaProvider>
+                  <Suspense fallback={<PageLoader />}>
                 <Switch>
                   {/* Rutas de autenticación */}
                   <Route path="/login">
@@ -277,7 +279,8 @@ const App: React.FC = () => {
                     <Redirect to="/404" />
                   </Route>
                 </Switch>
-              </Suspense>
+                  </Suspense>
+                </PeriodoSemanaProvider>
               </PermissionProvider>
             </AuthProvider>
           </PageTitleProvider>
