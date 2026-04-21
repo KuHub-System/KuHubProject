@@ -72,7 +72,7 @@ KuHub es un **sistema de gestión gastronómica** desplegado en **AWS Lightsail*
 │  Recursos: 512 MB RAM, 2 vCPU, 20 GB SSD                    │
 │                                                             │
 │  ┌────────────────────────────────────────────────────────┐ │
-│  │  HOST OS: Ubuntu 20.04 LTS                             │ │
+│  │  HOST OS: Ubuntu 24.04 LTS                             │ │
 │  │                                                         │ │
 │  │  Sistema de Archivos y Memoria:                        │ │
 │  │  • RAM Total: 414 MB                                   │ │
@@ -83,11 +83,15 @@ KuHub es un **sistema de gestión gastronómica** desplegado en **AWS Lightsail*
 │  │  • SSD: 20 GB (partición principal)                    │ │
 │  │                                                         │ │
 │  │  ┌─────────────────────────────────────────────────┐   │ │
-│  │  │ PostgreSQL 14                                    │   │ │
-│  │  │ • Database: Kuhub_mat_local                     │   │ │
-│  │  │ • Puerto: 5432 (escucha en 0.0.0.0)             │   │ │
-│  │  │ • Acceso: Solo desde Instancia A (firewall)     │   │ │
-│  │  │ • Usuario: postgres (credenciales en env)       │   │ │
+│  │  │ PostgreSQL 16.13                                │   │ │
+│  │  │ • Database: kuhub_devs                          │   │ │
+│  │  │ • Usuario: kuhub_devs                           │   │ │
+│  │  │ • Puerto: 5432 (escucha en *)                   │   │ │
+│  │  │ • shared_buffers: 128 MB                        │   │ │
+│  │  │ • max_connections: 100                          │   │ │
+│  │  │ • Hostname Privado: 172.26.12.228 (VPC)        │   │ │
+│  │  │ • Hostname Externo: 13.218.253.211 (SSH/pgA)   │   │ │
+│  │  │ • Acceso: VPC Peering desde Instancia A         │   │ │
 │  │  │ • Configurado con pgcrypto para hashes          │   │ │
 │  │  └─────────────────────────────────────────────────┘   │ │
 │  │                                                         │ │
