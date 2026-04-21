@@ -12,6 +12,8 @@ services:
       - SPRING_DATASOURCE_PASSWORD=${KU_AWS_AC_DB_PASS}
       - SPRING_PROFILES_ACTIVE=prod
       - JAVA_OPTS=-Xmx1024m -Xms768m
+      - LOGGING_LEVEL_ORG_HIBERNATE_SQL=DEBUG
+      - LOGGING_LEVEL_ORG_HIBERNATE_ORM_JDBC_BIND=TRACE
     deploy:
       resources:
         limits:
