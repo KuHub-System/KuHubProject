@@ -1,9 +1,58 @@
-REQUERIEMETO
-Solicitud : Al querer calcular los ingredientes de la receta luego de seleccionar todas las secciones. La receta debe mostrar los ingredientes para la cantidad 20 que está diseñada, no con el cálculo total.
+REQUIRIMENTO
+PROBLEMATICA
+1-En la page de solicitud no esta enviando correctamente la fecha solicitada correctamente, al seleccionar o al estar seleccionado la semana se calcula la fecha para enviar en el json que se ocupara para crear la solicitud masiva, actualemte lo que passa es que esta registrando en otra fecha, porque se implemento el cache que hace con que si selecciono una semana el selector esta semana sigue siendo la misma si cambio a otra page, esta es una tentativa de hacer con que el usuario no este seleccionando la semana multiplas veces, pero resulto que la fecha al parecer esta sinde inviada incorrectamente porque si creo una solictud para la semana 10 me esta indo la semana actual y me de error en gestion solicitud.
+NECESITO QUE VEREFIQUE EL VERDADERO PROBLEMA PARA QUE MANDEMOS A SONNET DEL AIDER QUE TU TIENE QUE SUPERVISIONAR LAS MODIFICACION QUE EL HACE, ADEMAS TIENE QUE INCLUIR /ADD EN NOMRE DEL ARCHIVO QUE VA MODIFICAR, EL ADD DE ejecutar_ahora DONDO TIENE QUE AGREGE LOS FIX PARA QUE REALZICE, Y SI NECESARIO LEER ALGUNA PARTE TIENE QUE USAR /read-only PERO SI APLICA read-only a un archivo que tiene que editar da un erro t aider intenta crear un nuevo por esto tiene que tener claro cuales son para editar y leer.
+necesito que sea el superfivisor de aider, solo funciona por powershell como indicado mas abajo.
+necesito que entre al powershell para entrar en aider
+cd C:\Users\Matheus\IdeaProjects\KuHubProject
 
-actualmente al seleccionar n cantidad de solicitudes, esta mostrando el calculo estimado, cuando deberia mostrar la receta base normal, debido que el calculo se realiza en la funcion en la bbdd, dado esto se entiende que lo mostrado es meramente representativo pero como esta actualmente confunde el usuario, para esto mostraremos la receta con su ingriente respectivo para que el usuario siempre entienda que todo lo mostrado es la base se calculara para 20 personas que ya hace la funcion en la bbdd, como esta na nota_bbdd_kuhub_v2 al final de todo.
+para acceder AIDER
+# 1. Ruta de Aider
+$env:Path += ";C:\Users\Matheus\AppData\Roaming\Python\Python312\Scripts"
 
-PORA EJECUTAR
-ver FLUJO_TRABAJO_HAIKU_SONNET.md
+# 2. Llaves de AWS (Desbloquea todos los Claude y Llama en Bedrock)
+$env:AWS_ACCESS_KEY_ID="AKIAWUWVQ7MYVLKB7BNM"
+$env:AWS_SECRET_ACCESS_KEY="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"
+$env:AWS_REGION="us-east-1"
 
-al finalizar lo que se hize por aider, revisar que todo esta bien simpre con el modelo haiku de clade pro
+aider --model bedrock/global.anthropic.claude-sonnet-4-6 --no-auto-commit
+
+═══════════════════════════════════════════════════════════════
+ANÁLISIS COMPLETADO — INSTRUCCIONES PARA AIDER
+═══════════════════════════════════════════════════════════════
+
+CAUSA RAÍZ DEL BUG:
+En solicitud.tsx, la función getConfig() inicializa configs nuevas con
+defaultSemanaId (semana actual del sistema), ignorando el semanaId del
+cache global (la semana seleccionada por el usuario en otra página).
+
+El hook usePeriodoSemana() expone dos valores distintos:
+  - semanaId      = semana cacheada/seleccionada globalmente (el correcto)
+  - defaultSemanaId = semana actual del sistema (el que se usaba erróneamente)
+
+ARCHIVOS AIDER:
+/add frontend/src/pages/solicitud.tsx
+/read-only frontend/src/contexts/periodo-semana-context.tsx
+
+PROMPT PARA AIDER:
+En frontend/src/pages/solicitud.tsx hay un bug en la función getConfig().
+
+CAMBIO 1 — Línea ~710: agregar semanaId al destructuring del hook usePeriodoSemana().
+Cambiar:
+  const { periodos, semanas, periodo, defaultSemanaId, isLoading: isLoadingSemanas, seleccionarPeriodo, seleccionarSemana, recargarPeriodos } = usePeriodoSemana();
+Por:
+  const { periodos, semanas, periodo, semanaId, defaultSemanaId, isLoading: isLoadingSemanas, seleccionarPeriodo, seleccionarSemana, recargarPeriodos } = usePeriodoSemana();
+
+CAMBIO 2 — Línea ~727-729: usar semanaId como fuente de verdad en getConfig().
+Cambiar:
+  const getConfig = React.useCallback(
+    (id: string): AsigConfig => configs.get(id) ?? makeEmptyConfig(defaultSemanaId),
+    [configs, defaultSemanaId]
+  );
+Por:
+  const getConfig = React.useCallback(
+    (id: string): AsigConfig => configs.get(id) ?? makeEmptyConfig(semanaId || defaultSemanaId),
+    [configs, semanaId, defaultSemanaId]
+  );
+
+Solo esos dos cambios, nada más. No tocar ningún otro archivo.
