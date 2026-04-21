@@ -28,6 +28,7 @@ import {
   obtenerProductosOpcionService,
   generarSolicitudesMasivasService,
 } from '../services/solicitud-service';
+import {ISemana} from "../types/semana.types.ts";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TIPOS LOCALES
@@ -758,7 +759,7 @@ const SolicitudPage: React.FC = () => {
   }, []);
 
   // ── ¿hay periodos creados en la BD? ──
-  const sinPeriodos = periodos.length === 0 && !isLoadingSemanas;
+  const sinPeriodos = (!periodos || periodos.length === 0) && !isLoadingSemanas;
 
   // ── totales globales ──
   const resumen = React.useMemo(() => {
@@ -922,7 +923,7 @@ const SolicitudPage: React.FC = () => {
               </button>
             )}
 
-            {!sinPeriodos && periodos.flatMap(p =>
+            {!sinPeriodos && periodos && periodos.map(p =>
               p.semestres.map(s => {
                 const isActive = periodo?.anio === p.anio && periodo?.semestre === s;
                 return (
