@@ -708,7 +708,7 @@ const SolicitudPage: React.FC = () => {
   const { isAdmin } = usePermission();
   const history = useHistory();
 
-  const { periodos, semanas, periodo, defaultSemanaId, isLoading: isLoadingSemanas, seleccionarPeriodo, seleccionarSemana } = usePeriodoSemana();
+  const { periodos, semanas, periodo, defaultSemanaId, isLoading: isLoadingSemanas, seleccionarPeriodo, seleccionarSemana, recargarPeriodos } = usePeriodoSemana();
 
   // ── asignaturas state ──
   const [asignaturas,      setAsignaturas]       = React.useState<IAsignaturaCurso[]>([]);
@@ -924,20 +924,41 @@ const SolicitudPage: React.FC = () => {
             )}
 
             {!sinPeriodos && periodos && periodos.map(p =>
-              p.semestres.map(s => {
-                const isActive = periodo?.anio === p.anio && periodo?.semestre === s;
-                return (
-                  <button key={`${p.anio}-${s}`}
-                    onClick={() => !isActive && !isLoadingSemanas && seleccionarPeriodo(p.anio, s)}
-                    disabled={isLoadingSemanas}
-                    className={`px-3 py-1 rounded-full text-xs font-bold border transition-all cursor-pointer ${
-                      isActive ? 'bg-warning text-white border-warning' : 'bg-default-100 text-default-600 border-default-200 hover:bg-default-200'
-                    }`}
-                  >
-                    {p.anio} S{s}
-                  </button>
-                );
-              })
+              p.semestres.map((s: number) => (
+                <button key={`${p.anio}-${s}`}
+                  onClick={() => {
+                    const isActive = periodo?.anio === p.anio && periodo?.semestre === s;
+                    if (!isActive && !isLoadingSemanas) {
+                      seleccionarPeriodo(p.anio, s);
+                    }
+                  }}
+                  disabled={isLoadingSemanas}
+                  className={`px-3 py-1 rounded-full text-xs font-bold border transition-all cursor-pointer ${
+                    periodo?.anio === p.anio && periodo?.semestre === s
+                      ? 'bg-warning text-white border-warning'
+                      : 'bg-default-100 text-default-600 border-default-200 hover:bg-default-200'
+                  }`}
+                >
+                  {p.anio} S{s}
+                </button>
+              ))
+            )}
+            {/* Botón para recargar períodos académicos */}
+            {!sinPeriodos && periodo && (
+              <button
+                type="button"
+                onClick={() => {
+                  if (!isLoadingSemanas) {
+                    recargarPeriodos();
+                  }
+                }}
+                disabled={isLoadingSemanas}
+                className="ml-auto flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border border-default-300 bg-default-100 text-default-600 hover:bg-default-200 transition-colors cursor-pointer"
+                title="Recargar períodos académicos"
+              >
+                <Icon icon="lucide:refresh-cw" width={12} />
+                Recargar
+              </button>
             )}
           </div>
 
