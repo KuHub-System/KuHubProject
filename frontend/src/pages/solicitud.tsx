@@ -707,7 +707,8 @@ const SolicitudPage: React.FC = () => {
   const { isAdmin } = usePermission();
   const history = useHistory();
 
-  const { periodos, semanas, periodo, defaultSemanaId, isLoading: isLoadingSemanas, seleccionarPeriodo, seleccionarSemana, recargarPeriodos } = usePeriodoSemana();
+  // CAMBIO 1: se agrega semanaId al destructuring
+  const { periodos, semanas, periodo, semanaId, defaultSemanaId, isLoading: isLoadingSemanas, seleccionarPeriodo, seleccionarSemana, recargarPeriodos } = usePeriodoSemana();
 
   // ── asignaturas state ──
   const [asignaturas,      setAsignaturas]       = React.useState<IAsignaturaCurso[]>([]);
@@ -724,9 +725,10 @@ const SolicitudPage: React.FC = () => {
   const [sendResult,       setSendResult]        = React.useState<IResultsMassSolicitation | null>(null);
 
   // ── helpers ──
+  // CAMBIO 2: usar semanaId como fuente de verdad en getConfig()
   const getConfig = React.useCallback(
-    (id: string): AsigConfig => configs.get(id) ?? makeEmptyConfig(defaultSemanaId),
-    [configs, defaultSemanaId]
+    (id: string): AsigConfig => configs.get(id) ?? makeEmptyConfig(semanaId || defaultSemanaId),
+    [configs, semanaId, defaultSemanaId]
   );
 
   const updateConfig = (asigId: string, fn: (prev: AsigConfig) => AsigConfig) =>
