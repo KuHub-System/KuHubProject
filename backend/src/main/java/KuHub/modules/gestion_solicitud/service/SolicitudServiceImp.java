@@ -263,11 +263,11 @@ public class SolicitudServiceImp implements SolicitudService{
             if (Boolean.TRUE.equals(config.getSolicitudesEnPedido())) {
                 // Con boolean activo: incorporar al pedido y pasar a EN_PEDIDO
                 Integer idPedido = procesarPedidoDesdeAceptadas(idsAceptadas, request.idSemana());
-                totalActualizados += solicitudRepository.updateMassiveStateSolicitation(idsAceptadas, "EN_PEDIDO");
+                totalActualizados += solicitudRepository.updateMassiveStateSolicitation(idsAceptadas, Solicitud.EstadoSolicitud.EN_PEDIDO);
                 log.info("Solicitudes {} incorporadas al pedido {} con estado EN_PEDIDO.", idsAceptadas, idPedido);
             } else {
                 // Sin boolean: flujo normal → ACEPTADA, pendiente de gestión de pedido
-                totalActualizados += solicitudRepository.updateMassiveStateSolicitation(idsAceptadas, "ACEPTADA");
+                totalActualizados += solicitudRepository.updateMassiveStateSolicitation(idsAceptadas, Solicitud.EstadoSolicitud.ACEPTADA);
             }
         }
 
@@ -282,7 +282,7 @@ public class SolicitudServiceImp implements SolicitudService{
             String estadoNormalizado = entry.getKey();
             List<Integer> listaIds = entry.getValue();
             if (estadoNormalizado != null && !estadoNormalizado.isEmpty() && !listaIds.isEmpty()) {
-                totalActualizados += solicitudRepository.updateMassiveStateSolicitation(listaIds, estadoNormalizado);
+                totalActualizados += solicitudRepository.updateMassiveStateSolicitation(listaIds, Solicitud.EstadoSolicitud.valueOf(estadoNormalizado));
             } else {
                 throw new IllegalArgumentException("Se detectó un estado inválido en la petición masiva.");
             }

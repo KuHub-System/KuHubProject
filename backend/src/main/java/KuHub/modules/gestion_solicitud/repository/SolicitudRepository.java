@@ -234,12 +234,8 @@ public interface SolicitudRepository extends JpaRepository<Solicitud, Integer> {
 
 
     @Modifying
-    @Query(value = """
-            UPDATE solicitud
-            SET estado_solicitud = :estado::estado_solicitud_type
-            WHERE id_solicitud IN (:ids)
-            """, nativeQuery = true)
-    int updateMassiveStateSolicitation(@Param("ids") List<Integer> ids, @Param("estado") String estado);
+    @Query("UPDATE Solicitud s SET s.estadoSolicitud = :estado WHERE s.idSolicitud IN (:ids)")
+    int updateMassiveStateSolicitation(@Param("ids") List<Integer> ids, @Param("estado") Solicitud.EstadoSolicitud estado);
 
     /** Verifica si alguna de las solicitudes indicadas tiene estado EN_PEDIDO o PROCESADO (inmutables). */
     @Query(value = """
