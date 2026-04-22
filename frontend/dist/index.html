@@ -5,6 +5,17 @@
     <link rel="icon" type="image/svg+xml" href="/assets/QuestWeb_IsoLogo_W_BG-BZLN2BB1.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>KuHub - App</title>
+    <!--
+      Script sincrónico de inicialización de tema.
+      DEBE estar aquí (inline, sin defer/async) para ejecutarse ANTES de que
+      el navegador pinte el primer frame y ANTES de que cualquier módulo JS cargue.
+      Esto evita el flash de tema oscuro (FOUC) cuando el OS está en dark mode
+      pero la app debe mostrar light por defecto.
+
+      Lógica:
+        - Si el usuario guardó preferencia → respetarla
+        - Si no hay preferencia → forzar light (ignorar prefers-color-scheme del OS)
+    -->
     <script>
       (function () {
         function applyTheme(t) {
@@ -45,14 +56,14 @@
         }).observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
       })();
     </script>
-    <script type="module" crossorigin src="/assets/index-BQZJNsvR.js"></script>
-    <link rel="modulepreload" crossorigin href="/assets/react-vendor-B3id0Gw4.js">
-    <link rel="modulepreload" crossorigin href="/assets/utils-vendor-B3KMIK66.js">
-    <link rel="modulepreload" crossorigin href="/assets/ui-vendor-CbjfZr2t.js">
-    <link rel="stylesheet" crossorigin href="/assets/index--cmcxXP_.css">
+    <script type="module" crossorigin src="/assets/index-U4x2tUoC.js"></script>
+    <link rel="modulepreload" crossorigin href="/assets/react-vendor-BxMPNXTO.js">
+    <link rel="modulepreload" crossorigin href="/assets/utils-vendor-CkGtaPQr.js">
+    <link rel="modulepreload" crossorigin href="/assets/ui-vendor-CtDyRhL-.js">
+    <link rel="stylesheet" crossorigin href="/assets/index-CKr5OARI.css">
   </head>
   <body class="h-full min-h-screen">
-    <div id="root"></div>
+    <div id="root"></div>
     <script defer src="https://cdn.jsdelivr.net/npm/heroui-chat-script@0/dist/index.min.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/heroui-chat-script@beta/dist/select-and-edit-utils.global.js"></script>
   </body>

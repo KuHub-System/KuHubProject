@@ -1,0 +1,41 @@
+/add frontend/src/pages/inventario.tsx
+/add frontend/src/types/inventario.types.ts
+/add frontend/CLAUDE.md
+Refactoriza el componente PedidoMasivoModal (dentro de inventario.tsx, línea 1956-2688) para mejorar "Control de Stock Masivo":
+
+## REQUERIMIENTOS CRÍTICOS:
+
+### 1. Carga desde "Abastecimiento por Pedido" — FIX CRÍTICO
+- Línea 2214: cambiar `stock: 0` a `stock: <stock_actual_del_producto>`
+- El stock actual debe venir de la búsqueda en bulkProductos
+- Esto permite calcular correctamente: stock_final = stock_actual + cantidad_entrada
+
+### 2. Gestión de cantidades EDITABLE en la lista
+- Cada item en la lista debe permitir:
+  - Botón "-" para disminuir cantidad
+  - Input numérico de cantidad
+  - Botón "+" para aumentar cantidad
+  - Validar es_fraccionario: false → solo enteros, true → decimales
+  - Al cambiar → recalcular stock_final en tiempo real
+
+### 3. Mejor visualización en la lista
+- Cambiar renderizado (línea 2498-2602) a tabla clara:
+  | Producto | Stock Actual | Cantidad | Stock Final | Acción |
+
+- Colores por tipo de movimiento:
+  - Entradas: verde (#17c964)
+  - Salidas/Mermas: rojo (#f31260)
+  - Ajustes: primary (#FFB800)
+  - Traslados: warning (#f5a524)
+
+- Símbolos: + (entrada) | - (salida) | = (ajuste) | → (traslado)
+
+### 4. Validaciones al editar
+- Si es salida y cantidad > stock_actual → error
+- Si es ajuste y cantidad < 0 → error
+- Si es_fraccionario=false y hay decimales → error
+
+### ARCHIVOS A MODIFICAR:
+- PedidoMasivoModal (inventario.tsx, línea 1956-2688)
+  - cargarProyeccionAbastecimiento (línea 2183-2244)
+  - renderizado lista (línea 2498-2602)

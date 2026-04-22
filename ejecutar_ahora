@@ -1,753 +1,84 @@
-utils-vendor-CkGtaPQr.js:11 
- POST https://appkuhub.questweb.cl/api/v1/solicitud/proyeccion-abastecimiento 500 (Internal Server Error)
-(anonymous)	@	utils-vendor-CkGtaPQr.js:11
-xhr	@	utils-vendor-CkGtaPQr.js:11
-wo	@	utils-vendor-CkGtaPQr.js:13
-Promise.then		
-_request	@	utils-vendor-CkGtaPQr.js:14
-request	@	utils-vendor-CkGtaPQr.js:13
-(anonymous)	@	utils-vendor-CkGtaPQr.js:14
-(anonymous)	@	utils-vendor-CkGtaPQr.js:9
-B	@	solicitud-service-CmxLYBv0.js:1
-ga	@	inventario-DRi3FgFp.js:1
-(anonymous)	@	ui-vendor-CtDyRhL-.js:10
-(anonymous)	@	ui-vendor-CtDyRhL-.js:10
-(anonymous)	@	ui-vendor-CtDyRhL-.js:10
-onClick	@	ui-vendor-CtDyRhL-.js:10
-Kc	@	react-vendor-BxMPNXTO.js:29
-Xc	@	react-vendor-BxMPNXTO.js:29
-Gc	@	react-vendor-BxMPNXTO.js:29
-ya	@	react-vendor-BxMPNXTO.js:29
-ga	@	react-vendor-BxMPNXTO.js:29
-(anonymous)	@	react-vendor-BxMPNXTO.js:29
-Ri	@	react-vendor-BxMPNXTO.js:32
-Cu	@	react-vendor-BxMPNXTO.js:29
-Ro	@	react-vendor-BxMPNXTO.js:29
-so	@	react-vendor-BxMPNXTO.js:29
-df	@	react-vendor-BxMPNXTO.js:29
+tiene que leer y ejecutar FLUJO_TRABAJO_HAIKU_SONNET.md
+ademas de secrets.md
+TIENE QUE ENTRAR AL AIDER POR POWERSHEL COMO ADMISTRADOR Y REALIZAR LOS COMANDOS /ADD /READ-ONLY LO QUE SEA NECESARIO PARA FUNCIONAR ADEMAS DE MONITOREAR HASTE QUE TERMINE ASEGURAR QUE LOS CAMBIOS REFLETEN EN EL CODIGO, TIENE ACESSO PARA REALZAR TODO LO NECESARIO TIENE QUE HACER TU NO YO.
 
-index.min.js:1 Error al cargar proyección:
-C {message: 'Request failed with status code 500', name: 'AxiosError', code: 'ERR_BAD_RESPONSE', config: {…}, request: XMLHttpRequest, …}
-(anonymous)	@	index.min.js:1
-ga	@	inventario-DRi3FgFp.js:1
-await in ga
-(anonymous)	@	ui-vendor-CtDyRhL-.js:10
-(anonymous)	@	ui-vendor-CtDyRhL-.js:10
-(anonymous)	@	ui-vendor-CtDyRhL-.js:10
-onClick	@	ui-vendor-CtDyRhL-.js:10
-Kc	@	react-vendor-BxMPNXTO.js:29
-Xc	@	react-vendor-BxMPNXTO.js:29
-Gc	@	react-vendor-BxMPNXTO.js:29
-ya	@	react-vendor-BxMPNXTO.js:29
-ga	@	react-vendor-BxMPNXTO.js:29
-(anonymous)	@	react-vendor-BxMPNXTO.js:29
-Ri	@	react-vendor-BxMPNXTO.js:32
-Cu	@	react-vendor-BxMPNXTO.js:29
-Ro	@	react-vendor-BxMPNXTO.js:29
-so	@	react-vendor-BxMPNXTO.js:29
-df	@	react-vendor-BxMPNXTO.js:29
 
- Petición 3 de 80
-2026-04-22T16:57:34.165Z DEBUG 1 --- [nio-8080-exec-1] org.hibernate.SQL                        :
-    SELECT
-        anio,
-        JSON_AGG(DISTINCT semestre
-    ORDER BY
-        semestre ASC) AS semestres
-    FROM
-        semanas
-    GROUP BY
-        anio
-    ORDER BY
-        anio ASC
-Hibernate:
-    SELECT
-        anio,
-        JSON_AGG(DISTINCT semestre
-    ORDER BY
-        semestre ASC) AS semestres
-    FROM
-        semanas
-    GROUP BY
-        anio
-    ORDER BY
-        anio ASC
-2026-04-22T16:57:34.321Z  INFO 1 --- [nio-8080-exec-4] K.c.s.rate_limiting.RateLimitFilter      : 📍 IP: 186.78.184.242 | Petición 4 de 80
-2026-04-22T16:57:34.330Z DEBUG 1 --- [nio-8080-exec-4] org.hibernate.SQL                        :
-    SELECT
-        r.id_rol          AS idRol,
-        r.nombre_rol      AS nombreRol,
-        m.id_modulo       AS idModulo,
-        m.codigo_modulo   AS codigoModulo,
-        m.nombre_modulo   AS nombreModulo,
-        m.orden_modulo    AS ordenModulo,
-        pr.id_permiso_rol AS idPermisoRol,
-        COALESCE(pr.puede_leer,       false) AS puedeLeer,
-        COALESCE(pr.puede_crear,      false) AS puedeCrear,
-        COALESCE(pr.puede_actualizar, false) AS puedeActualizar,
-        COALESCE(pr.puede_eliminar,   false) AS puedeEliminar
-    FROM
-        rol r
-    CROSS JOIN
-        modulo m
-    LEFT JOIN
-        permiso_rol pr
-            ON pr.id_rol = r.id_rol
-            AND pr.id_modulo = m.id_modulo
-            AND pr.enabled = true
-    WHERE
-        r.activo = true
-        AND m.enabled = true
-    ORDER BY
-        m.orden_modulo,
-        r.id_rol
-Hibernate:
-    SELECT
-        r.id_rol          AS idRol,
-        r.nombre_rol      AS nombreRol,
-        m.id_modulo       AS idModulo,
-        m.codigo_modulo   AS codigoModulo,
-        m.nombre_modulo   AS nombreModulo,
-        m.orden_modulo    AS ordenModulo,
-        pr.id_permiso_rol AS idPermisoRol,
-        COALESCE(pr.puede_leer,       false) AS puedeLeer,
-        COALESCE(pr.puede_crear,      false) AS puedeCrear,
-        COALESCE(pr.puede_actualizar, false) AS puedeActualizar,
-        COALESCE(pr.puede_eliminar,   false) AS puedeEliminar
-    FROM
-        rol r
-    CROSS JOIN
-        modulo m
-    LEFT JOIN
-        permiso_rol pr
-            ON pr.id_rol = r.id_rol
-            AND pr.id_modulo = m.id_modulo
-            AND pr.enabled = true
-    WHERE
-        r.activo = true
-        AND m.enabled = true
-    ORDER BY
-        m.orden_modulo,
-        r.id_rol
-2026-04-22T16:57:35.679Z  INFO 1 --- [nio-8080-exec-5] K.c.s.rate_limiting.RateLimitFilter      : 📍 IP: 186.78.184.242 | Petición 5 de 80
-2026-04-22T16:57:35.687Z  INFO 1 --- [nio-8080-exec-5] K.m.d.service.DashboardServiceImpl       : Fetching inventario dashboard data
-2026-04-22T16:57:35.688Z DEBUG 1 --- [nio-8080-exec-5] org.hibernate.SQL                        :
-    SELECT
-        COUNT(*),
-        COALESCE(SUM(stock), 0),
-        COUNT(*) FILTER (
-    WHERE
-        stock < stock_limit
-        AND stock_limit IS NOT NULL)
-    FROM
-        inventario
-    WHERE
-        activo = true
-Hibernate:
-    SELECT
-        COUNT(*),
-        COALESCE(SUM(stock), 0),
-        COUNT(*) FILTER (
-    WHERE
-        stock < stock_limit
-        AND stock_limit IS NOT NULL)
-    FROM
-        inventario
-    WHERE
-        activo = true
-2026-04-22T16:57:35.691Z DEBUG 1 --- [nio-8080-exec-5] org.hibernate.SQL                        :
-    SELECT
-        COUNT(*)
-    FROM
-        movimiento
-    WHERE
-        DATE(fecha_movimiento) = CURRENT_DATE
-Hibernate:
-    SELECT
-        COUNT(*)
-    FROM
-        movimiento
-    WHERE
-        DATE(fecha_movimiento) = CURRENT_DATE
-2026-04-22T16:57:35.694Z DEBUG 1 --- [nio-8080-exec-5] org.hibernate.SQL                        :
-    SELECT
-        p.nombre_producto,
-        i.stock,
-        i.stock_limit,
-        c.nombre_categoria,
-        u.nombre_unidad
-    FROM
-        inventario i
-    JOIN
-        producto p
-            ON p.id_producto = i.id_producto
-    JOIN
-        categoria c
-            ON c.id_categoria = p.id_categoria
-    JOIN
-        unidad_medida u
-            ON u.id_unidad = p.id_unidad
-    WHERE
-        i.stock < i.stock_limit
-        AND i.stock_limit IS NOT NULL
-        AND i.activo = true
-    ORDER BY
-        (i.stock / NULLIF(i.stock_limit, 0)) ASC
-    LIMIT
-        10
-Hibernate:
-    SELECT
-        p.nombre_producto,
-        i.stock,
-        i.stock_limit,
-        c.nombre_categoria,
-        u.nombre_unidad
-    FROM
-        inventario i
-    JOIN
-        producto p
-            ON p.id_producto = i.id_producto
-    JOIN
-        categoria c
-            ON c.id_categoria = p.id_categoria
-    JOIN
-        unidad_medida u
-            ON u.id_unidad = p.id_unidad
-    WHERE
-        i.stock < i.stock_limit
-        AND i.stock_limit IS NOT NULL
-        AND i.activo = true
-    ORDER BY
-        (i.stock / NULLIF(i.stock_limit, 0)) ASC
-    LIMIT
-        10
-2026-04-22T16:57:35.705Z DEBUG 1 --- [nio-8080-exec-5] org.hibernate.SQL                        :
-    SELECT
-        c.nombre_categoria,
-        COALESCE(SUM(i.stock), 0) AS total
-    FROM
-        inventario i
-    JOIN
-        producto p
-            ON p.id_producto = i.id_producto
-    JOIN
-        categoria c
-            ON c.id_categoria = p.id_categoria
-    WHERE
-        i.activo = true
-    GROUP BY
-        c.id_categoria,
-        c.nombre_categoria
-    ORDER BY
-        total DESC
-Hibernate:
-    SELECT
-        c.nombre_categoria,
-        COALESCE(SUM(i.stock), 0) AS total
-    FROM
-        inventario i
-    JOIN
-        producto p
-            ON p.id_producto = i.id_producto
-    JOIN
-        categoria c
-            ON c.id_categoria = p.id_categoria
-    WHERE
-        i.activo = true
-    GROUP BY
-        c.id_categoria,
-        c.nombre_categoria
-    ORDER BY
-        total DESC
-2026-04-22T16:57:35.711Z DEBUG 1 --- [nio-8080-exec-5] org.hibernate.SQL                        :
-    SELECT
-        TO_CHAR(DATE(fecha_movimiento), 'DD/MM') AS fecha,
-        COUNT(*) AS total
-    FROM
-        movimiento
-    WHERE
-        fecha_movimiento >= CURRENT_DATE - INTERVAL '14 days'
-    GROUP BY
-        DATE(fecha_movimiento),
-        TO_CHAR(DATE(fecha_movimiento), 'DD/MM')
-    ORDER BY
-        DATE(fecha_movimiento)
-Hibernate:
-    SELECT
-        TO_CHAR(DATE(fecha_movimiento), 'DD/MM') AS fecha,
-        COUNT(*) AS total
-    FROM
-        movimiento
-    WHERE
-        fecha_movimiento >= CURRENT_DATE - INTERVAL '14 days'
-    GROUP BY
-        DATE(fecha_movimiento),
-        TO_CHAR(DATE(fecha_movimiento), 'DD/MM')
-    ORDER BY
-        DATE(fecha_movimiento)
-2026-04-22T16:57:35.719Z DEBUG 1 --- [nio-8080-exec-5] org.hibernate.SQL                        :
-    SELECT
-        p.nombre_producto,
-        SUM(m.stock_movimiento) AS total
-    FROM
-        movimiento m
-    JOIN
-        inventario i
-            ON i.id_inventario = m.id_inventario
-    JOIN
-        producto p
-            ON p.id_producto = i.id_producto
-    WHERE
-        m.tipo_movimiento IN ('SALIDA_INVENTARIO', 'SALIDA_BODEGA')
-        AND m.fecha_movimiento >= CURRENT_DATE - INTERVAL '30 days'
-    GROUP BY
-        p.id_producto,
-        p.nombre_producto
-    ORDER BY
-        total DESC
-    LIMIT
-        5
-Hibernate:
-    SELECT
-        p.nombre_producto,
-        SUM(m.stock_movimiento) AS total
-    FROM
-        movimiento m
-    JOIN
-        inventario i
-            ON i.id_inventario = m.id_inventario
-    JOIN
-        producto p
-            ON p.id_producto = i.id_producto
-    WHERE
-        m.tipo_movimiento IN ('SALIDA_INVENTARIO', 'SALIDA_BODEGA')
-        AND m.fecha_movimiento >= CURRENT_DATE - INTERVAL '30 days'
-    GROUP BY
-        p.id_producto,
-        p.nombre_producto
-    ORDER BY
-        total DESC
-    LIMIT
-        5
-2026-04-22T16:57:35.724Z DEBUG 1 --- [nio-8080-exec-5] org.hibernate.SQL                        :
-    SELECT
-        p.nombre_producto,
-        SUM(m.stock_movimiento) AS total
-    FROM
-        movimiento m
-    JOIN
-        inventario i
-            ON i.id_inventario = m.id_inventario
-    JOIN
-        producto p
-            ON p.id_producto = i.id_producto
-    WHERE
-        m.tipo_movimiento IN ('MERMA_INVENTARIO', 'MERMA_BODEGA')
-        AND m.fecha_movimiento >= CURRENT_DATE - INTERVAL '30 days'
-    GROUP BY
-        p.id_producto,
-        p.nombre_producto
-    ORDER BY
-        total DESC
-    LIMIT
-        5
-Hibernate:
-    SELECT
-        p.nombre_producto,
-        SUM(m.stock_movimiento) AS total
-    FROM
-        movimiento m
-    JOIN
-        inventario i
-            ON i.id_inventario = m.id_inventario
-    JOIN
-        producto p
-            ON p.id_producto = i.id_producto
-    WHERE
-        m.tipo_movimiento IN ('MERMA_INVENTARIO', 'MERMA_BODEGA')
-        AND m.fecha_movimiento >= CURRENT_DATE - INTERVAL '30 days'
-    GROUP BY
-        p.id_producto,
-        p.nombre_producto
-    ORDER BY
-        total DESC
-    LIMIT
-        5
-2026-04-22T16:58:14.022Z  INFO 1 --- [nio-8080-exec-6] K.c.s.rate_limiting.RateLimitFilter      : 📍 IP: 186.78.184.242 | Petición 6 de 80
-2026-04-22T16:58:14.028Z  INFO 1 --- [nio-8080-exec-7] K.c.s.rate_limiting.RateLimitFilter      : 📍 IP: 186.78.184.242 | Petición 7 de 80
-2026-04-22T16:58:14.061Z DEBUG 1 --- [nio-8080-exec-6] org.hibernate.SQL                        :
-    SELECT
-        json_build_object(         'categorias',         (             SELECT
-            json_agg(                 json_build_object(                     'id', c.id_categoria,                     'nombre', c.nombre_categoria                 )             )
-        FROM
-            categoria c
-        WHERE
-            c.activo = TRUE         ),         'unidades',         (             SELECT
-            json_agg(                 json_build_object(                     'id', u.id_unidad,                     'nombre', u.nombre_unidad                 )             )
-        FROM
-            unidad_medida u
-        WHERE
-            u.activo = TRUE         )     )
-Hibernate:
-    SELECT
-        json_build_object(         'categorias',         (             SELECT
-            json_agg(                 json_build_object(                     'id', c.id_categoria,                     'nombre', c.nombre_categoria                 )             )
-        FROM
-            categoria c
-        WHERE
-            c.activo = TRUE         ),         'unidades',         (             SELECT
-            json_agg(                 json_build_object(                     'id', u.id_unidad,                     'nombre', u.nombre_unidad                 )             )
-        FROM
-            unidad_medida u
-        WHERE
-            u.activo = TRUE         )     )
-2026-04-22T16:58:14.063Z DEBUG 1 --- [nio-8080-exec-7] org.hibernate.SQL                        :
-    select
-        c1_0.id_categoria,
-        c1_0.activo,
-        c1_0.nombre_categoria
-    from
-        categoria c1_0
-    where
-        c1_0.activo=?
-Hibernate:
-    select
-        c1_0.id_categoria,
-        c1_0.activo,
-        c1_0.nombre_categoria
-    from
-        categoria c1_0
-    where
-        c1_0.activo=?
-2026-04-22T16:58:14.065Z TRACE 1 --- [nio-8080-exec-7] org.hibernate.orm.jdbc.bind              : binding parameter (1:BOOLEAN) <- [true]
-2026-04-22T16:58:14.211Z  INFO 1 --- [nio-8080-exec-8] K.c.s.rate_limiting.RateLimitFilter      : 📍 IP: 186.78.184.242 | Petición 8 de 80
-2026-04-22T16:58:14.223Z DEBUG 1 --- [nio-8080-exec-8] org.hibernate.SQL                        :
-    select
-        um1_0.id_unidad,
-        um1_0.abreviatura,
-        um1_0.activo,
-        um1_0.es_fraccionario,
-        um1_0.nombre_unidad
-    from
-        unidad_medida um1_0
-    where
-        um1_0.activo=?
-Hibernate:
-    select
-        um1_0.id_unidad,
-        um1_0.abreviatura,
-        um1_0.activo,
-        um1_0.es_fraccionario,
-        um1_0.nombre_unidad
-    from
-        unidad_medida um1_0
-    where
-        um1_0.activo=?
-2026-04-22T16:58:14.224Z TRACE 1 --- [nio-8080-exec-8] org.hibernate.orm.jdbc.bind              : binding parameter (1:BOOLEAN) <- [true]
-2026-04-22T16:58:14.228Z  INFO 1 --- [nio-8080-exec-9] K.c.s.rate_limiting.RateLimitFilter      : 📍 IP: 186.78.184.242 | Petición 9 de 80
-2026-04-22T16:58:14.259Z DEBUG 1 --- [nio-8080-exec-9] org.hibernate.SQL                        :
-    SELECT
-        COUNT(*)
-    FROM
-        inventario i
-    JOIN
-        producto p
-            ON p.id_producto = i.id_producto
-    WHERE
-        i.activo = TRUE
-        AND p.activo = TRUE
-        AND (
-            ? = FALSE
-            OR p.id_categoria = ANY(CAST(? AS INTEGER[]))
-        )
-        AND (
-            ? = FALSE
-            OR p.id_unidad = ANY(CAST(? AS INTEGER[]))
-        )
-        AND (
-            ? = FALSE
-            OR i.stock <= i.stock_limit
-        )
-        AND (
-            ? = FALSE
-            OR i.stock > 0
-        )
-Hibernate:
-    SELECT
-        COUNT(*)
-    FROM
-        inventario i
-    JOIN
-        producto p
-            ON p.id_producto = i.id_producto
-    WHERE
-        i.activo = TRUE
-        AND p.activo = TRUE
-        AND (
-            ? = FALSE
-            OR p.id_categoria = ANY(CAST(? AS INTEGER[]))
-        )
-        AND (
-            ? = FALSE
-            OR p.id_unidad = ANY(CAST(? AS INTEGER[]))
-        )
-        AND (
-            ? = FALSE
-            OR i.stock <= i.stock_limit
-        )
-        AND (
-            ? = FALSE
-            OR i.stock > 0
-        )
-2026-04-22T16:58:14.260Z TRACE 1 --- [nio-8080-exec-9] org.hibernate.orm.jdbc.bind              : binding parameter (1:BOOLEAN) <- [false]
-2026-04-22T16:58:14.260Z TRACE 1 --- [nio-8080-exec-9] org.hibernate.orm.jdbc.bind              : binding parameter (2:JAVA_OBJECT) <- [null]
-2026-04-22T16:58:14.263Z TRACE 1 --- [nio-8080-exec-9] org.hibernate.orm.jdbc.bind              : binding parameter (3:BOOLEAN) <- [false]
-2026-04-22T16:58:14.265Z TRACE 1 --- [nio-8080-exec-9] org.hibernate.orm.jdbc.bind              : binding parameter (4:JAVA_OBJECT) <- [null]
-2026-04-22T16:58:14.267Z TRACE 1 --- [nio-8080-exec-9] org.hibernate.orm.jdbc.bind              : binding parameter (5:BOOLEAN) <- [false]
-2026-04-22T16:58:14.268Z TRACE 1 --- [nio-8080-exec-9] org.hibernate.orm.jdbc.bind              : binding parameter (6:BOOLEAN) <- [false]
-2026-04-22T16:58:14.278Z DEBUG 1 --- [nio-8080-exec-9] org.hibernate.SQL                        :
-    SELECT
-        p.nombre_producto,
-        p.cod_producto,
-        p.descripcion_producto,
-        c.nombre_categoria,
-        i.stock,
-        i.stock_limit,
-        u.nombre_unidad,
-        u.es_fraccionario,
-        i.id_inventario,
-        p.id_producto,
-        c.id_categoria,
-        u.id_unidad
-    FROM
-        inventario i
-    JOIN
-        producto p
-            ON p.id_producto = i.id_producto
-    JOIN
-        categoria c
-            ON c.id_categoria = p.id_categoria
-    JOIN
-        unidad_medida u
-            ON u.id_unidad = p.id_unidad
-    WHERE
-        i.activo = TRUE
-        AND p.activo = TRUE
-        AND (
-            ? = FALSE
-            OR c.id_categoria = ANY(CAST(? AS INTEGER[]))
-        )
-        AND (
-            ? = FALSE
-            OR u.id_unidad = ANY(CAST(? AS INTEGER[]))
-        )
-        AND (
-            ? = FALSE
-            OR i.stock <= i.stock_limit
-        )
-        AND (
-            ? = FALSE
-            OR i.stock > 0
-        )
-    ORDER BY
-        CASE
-            WHEN ? = TRUE
-                THEN p.nombre_producto
-        END ASC,
-        CASE
-            WHEN ? = FALSE
-                THEN p.nombre_producto
-        END DESC
-    LIMIT
-        ?
-    OFFSET
-        ?
-Hibernate:
-    SELECT
-        p.nombre_producto,
-        p.cod_producto,
-        p.descripcion_producto,
-        c.nombre_categoria,
-        i.stock,
-        i.stock_limit,
-        u.nombre_unidad,
-        u.es_fraccionario,
-        i.id_inventario,
-        p.id_producto,
-        c.id_categoria,
-        u.id_unidad
-    FROM
-        inventario i
-    JOIN
-        producto p
-            ON p.id_producto = i.id_producto
-    JOIN
-        categoria c
-            ON c.id_categoria = p.id_categoria
-    JOIN
-        unidad_medida u
-            ON u.id_unidad = p.id_unidad
-    WHERE
-        i.activo = TRUE
-        AND p.activo = TRUE
-        AND (
-            ? = FALSE
-            OR c.id_categoria = ANY(CAST(? AS INTEGER[]))
-        )
-        AND (
-            ? = FALSE
-            OR u.id_unidad = ANY(CAST(? AS INTEGER[]))
-        )
-        AND (
-            ? = FALSE
-            OR i.stock <= i.stock_limit
-        )
-        AND (
-            ? = FALSE
-            OR i.stock > 0
-        )
-    ORDER BY
-        CASE
-            WHEN ? = TRUE
-                THEN p.nombre_producto
-        END ASC,
-        CASE
-            WHEN ? = FALSE
-                THEN p.nombre_producto
-        END DESC
-    LIMIT
-        ?
-    OFFSET
-        ?
-2026-04-22T16:58:14.282Z TRACE 1 --- [nio-8080-exec-9] org.hibernate.orm.jdbc.bind              : binding parameter (1:BOOLEAN) <- [false]
-2026-04-22T16:58:14.282Z TRACE 1 --- [nio-8080-exec-9] org.hibernate.orm.jdbc.bind              : binding parameter (2:JAVA_OBJECT) <- [null]
-2026-04-22T16:58:14.284Z TRACE 1 --- [nio-8080-exec-9] org.hibernate.orm.jdbc.bind              : binding parameter (3:BOOLEAN) <- [false]
-2026-04-22T16:58:14.285Z TRACE 1 --- [nio-8080-exec-9] org.hibernate.orm.jdbc.bind              : binding parameter (4:JAVA_OBJECT) <- [null]
-2026-04-22T16:58:14.287Z TRACE 1 --- [nio-8080-exec-9] org.hibernate.orm.jdbc.bind              : binding parameter (5:BOOLEAN) <- [false]
-2026-04-22T16:58:14.288Z TRACE 1 --- [nio-8080-exec-9] org.hibernate.orm.jdbc.bind              : binding parameter (6:BOOLEAN) <- [false]
-2026-04-22T16:58:14.288Z TRACE 1 --- [nio-8080-exec-9] org.hibernate.orm.jdbc.bind              : binding parameter (7:BOOLEAN) <- [true]
-2026-04-22T16:58:14.288Z TRACE 1 --- [nio-8080-exec-9] org.hibernate.orm.jdbc.bind              : binding parameter (8:BOOLEAN) <- [true]
-2026-04-22T16:58:14.289Z TRACE 1 --- [nio-8080-exec-9] org.hibernate.orm.jdbc.bind              : binding parameter (9:INTEGER) <- [20]
-2026-04-22T16:58:14.289Z TRACE 1 --- [nio-8080-exec-9] org.hibernate.orm.jdbc.bind              : binding parameter (10:INTEGER) <- [0]
-2026-04-22T16:58:16.809Z  INFO 1 --- [io-8080-exec-10] K.c.s.rate_limiting.RateLimitFilter      : 📍 IP: 186.78.184.242 | Petición 10 de 80
-2026-04-22T16:58:16.820Z DEBUG 1 --- [io-8080-exec-10] org.hibernate.SQL                        :
-    SELECT
-        COUNT(*)
-    FROM
-        inventario i
-    JOIN
-        producto p
-            ON p.id_producto = i.id_producto
-    WHERE
-        i.activo = true
-        AND (
-            ? = ''
-            OR LOWER(p.nombre_producto) LIKE LOWER(CONCAT('%', ?, '%'))
-            OR LOWER(p.cod_producto) LIKE LOWER(CONCAT('%', ?, '%'))
-        )
-Hibernate:
-    SELECT
-        COUNT(*)
-    FROM
-        inventario i
-    JOIN
-        producto p
-            ON p.id_producto = i.id_producto
-    WHERE
-        i.activo = true
-        AND (
-            ? = ''
-            OR LOWER(p.nombre_producto) LIKE LOWER(CONCAT('%', ?, '%'))
-            OR LOWER(p.cod_producto) LIKE LOWER(CONCAT('%', ?, '%'))
-        )
-2026-04-22T16:58:16.820Z TRACE 1 --- [io-8080-exec-10] org.hibernate.orm.jdbc.bind              : binding parameter (1:VARCHAR) <- []
-2026-04-22T16:58:16.821Z TRACE 1 --- [io-8080-exec-10] org.hibernate.orm.jdbc.bind              : binding parameter (2:VARCHAR) <- []
-2026-04-22T16:58:16.821Z TRACE 1 --- [io-8080-exec-10] org.hibernate.orm.jdbc.bind              : binding parameter (3:VARCHAR) <- []
-2026-04-22T16:58:16.825Z DEBUG 1 --- [io-8080-exec-10] org.hibernate.SQL                        :
-    SELECT
-        p.nombre_producto AS nombreProducto,
-        'Stock: ' || trim(trailing '.' from to_char(i.stock, 'FM9999990.999')) || ' ' || u.nombre_unidad AS detalles,
-        i.stock AS stock,
-        u.es_fraccionario AS esFraccionario,
-        i.id_inventario AS idInventario,
-        p.id_producto AS idProducto
-    FROM
-        inventario i
-    JOIN
-        producto p
-            ON i.id_producto = p.id_producto
-    JOIN
-        unidad_medida u
-            ON u.id_unidad = p.id_unidad
-    WHERE
-        i.activo = true
-        AND (
-            ? = ''
-            OR LOWER(p.nombre_producto) LIKE LOWER(CONCAT('%', ?, '%'))
-            OR LOWER(p.cod_producto) LIKE LOWER(CONCAT('%', ?, '%'))
-        )
-    ORDER BY
-        p.nombre_producto
-    LIMIT
-        ?
-    OFFSET
-        ?
-Hibernate:
-    SELECT
-        p.nombre_producto AS nombreProducto,
-        'Stock: ' || trim(trailing '.' from to_char(i.stock, 'FM9999990.999')) || ' ' || u.nombre_unidad AS detalles,
-        i.stock AS stock,
-        u.es_fraccionario AS esFraccionario,
-        i.id_inventario AS idInventario,
-        p.id_producto AS idProducto
-    FROM
-        inventario i
-    JOIN
-        producto p
-            ON i.id_producto = p.id_producto
-    JOIN
-        unidad_medida u
-            ON u.id_unidad = p.id_unidad
-    WHERE
-        i.activo = true
-        AND (
-            ? = ''
-            OR LOWER(p.nombre_producto) LIKE LOWER(CONCAT('%', ?, '%'))
-            OR LOWER(p.cod_producto) LIKE LOWER(CONCAT('%', ?, '%'))
-        )
-    ORDER BY
-        p.nombre_producto
-    LIMIT
-        ?
-    OFFSET
-        ?
-2026-04-22T16:58:16.826Z TRACE 1 --- [io-8080-exec-10] org.hibernate.orm.jdbc.bind              : binding parameter (1:VARCHAR) <- []
-2026-04-22T16:58:16.826Z TRACE 1 --- [io-8080-exec-10] org.hibernate.orm.jdbc.bind              : binding parameter (2:VARCHAR) <- []
-2026-04-22T16:58:16.826Z TRACE 1 --- [io-8080-exec-10] org.hibernate.orm.jdbc.bind              : binding parameter (3:VARCHAR) <- []
-2026-04-22T16:58:16.826Z TRACE 1 --- [io-8080-exec-10] org.hibernate.orm.jdbc.bind              : binding parameter (4:INTEGER) <- [20]
-2026-04-22T16:58:16.826Z TRACE 1 --- [io-8080-exec-10] org.hibernate.orm.jdbc.bind              : binding parameter (5:INTEGER) <- [0]
-2026-04-22T16:58:25.206Z  INFO 1 --- [nio-8080-exec-2] K.c.s.rate_limiting.RateLimitFilter      : 🔄 Minuto reiniciado para la IP: 186.78.184.242
-2026-04-22T16:58:25.207Z  INFO 1 --- [nio-8080-exec-2] K.c.s.rate_limiting.RateLimitFilter      : 📍 IP: 186.78.184.242 | Petición 1 de 80
-2026-04-22T16:58:25.259Z DEBUG 1 --- [nio-8080-exec-2] org.hibernate.SQL                        :
-    select
-        r1_0.id_rol,
-        r1_0.activo,
-        r1_0.nombre_rol
-    from
-        public.rol r1_0
-    where
-        upper(r1_0.nombre_rol)=upper(?)
-Hibernate:
-    select
-        r1_0.id_rol,
-        r1_0.activo,
-        r1_0.nombre_rol
-    from
-        public.rol r1_0
-    where
-        upper(r1_0.nombre_rol)=upper(?)
-2026-04-22T16:58:25.259Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (1:VARCHAR) <- [ENCARGADO_BODEGA]
-2026-04-22T16:58:25.269Z  WARN 1 --- [nio-8080-exec-2] o.h.engine.jdbc.spi.SqlExceptionHelper   : SQL Error: 0, SQLState: 42883
-2026-04-22T16:58:25.269Z ERROR 1 --- [nio-8080-exec-2] o.h.engine.jdbc.spi.SqlExceptionHelper   : ERROR: function upper(tipo_rol_type) does not exist
-  Hint: No function matches the given name and argument types. You might need to add explicit type casts.
-  Position: 75
+Contexto:
+Debes mejorar la funcionalidad y la UI del modal "Control de Stock Masivo", siguiendo las directrices definidas en frontend/CLAUDE.md.
+
+Objetivo:
+Corregir el comportamiento de cantidades, asegurar la correcta carga desde "Abastecimiento por Pedido" y rediseñar la UI del modal con estándares de calidad de un frontend senior.
+
+Requerimientos funcionales:
+
+Gestión de cantidades en la lista
+Cuando el usuario selecciona:
+Producto
+Tipo
+Cantidad
+Debe ser posible:
+Aumentar o disminuir la cantidad directamente en la lista de productos agregados.
+Validación:
+Respetar el valor booleano es_fraccionario:
+false → solo permitir valores enteros
+true → permitir valores decimales
+Corrección de carga desde "Abastecimiento por Pedido"
+Al cargar productos desde esta funcionalidad:
+Se debe registrar correctamente como Acción: Entrada
+Actualmente NO se está registrando correctamente la entrada → corregir
+Cálculo de stock final (CRÍTICO)
+Al cargar datos desde "Abastecimiento por Pedido":
+Debe mostrarse correctamente:
+Stock actual
+Cantidad de entrada
+Stock final proyectado
+Problema actual:
+No se está reflejando la cantidad final actual del inventario → corregir lógica
+Resultado esperado:
+stock_final = stock_actual + cantidad_entrada
+Consistencia de datos
+Asegurar que los datos cargados automáticamente:
+Sean editables
+Mantengan coherencia con las reglas de negocio
+No requieran ingreso manual inicial
+
+Mejoras de UI/UX (Frontend Senior Level):
+
+Diseño del modal
+Rediseñar completamente el modal para mejorar:
+Jerarquía visual
+Espaciado
+Legibilidad
+Aplicar diseño limpio y moderno (no básico)
+Tabla/Listado de productos
+Mejorar visualización de:
+Producto
+Tipo (Entrada/Salida)
+Cantidad
+Stock actual
+Stock final proyectado
+Destacar visualmente:
+Entradas (positivo)
+Cambios en stock
+Interacción de cantidades
+Usar:
+Inputs numéricos claros
+Controles tipo stepper (+ / -)
+Feedback inmediato al cambiar valores
+Feedback visual
+Mostrar:
+Estados de carga
+Validaciones
+Errores claros
+Evitar silencios en la UI
+Consistencia con CLAUDE.md
+Reutilizar componentes existentes
+Mantener lineamientos de diseño del proyecto
+Aplicar buenas prácticas (DRY, separación de responsabilidades)
+
+Consideraciones técnicas:
+
+Validar lógica tanto en frontend como backend.
+Evitar duplicación de productos en la lista.
+Asegurar que los cálculos sean reactivos (estado actualizado en tiempo real).
+Mantener escalabilidad y mantenibilidad del código.
