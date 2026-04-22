@@ -10,9 +10,12 @@ import KuHub.modules.gestion_solicitud.dtos.respose.projection.ResultsMassSolici
 import KuHub.modules.gestion_solicitud.dtos.respose.record.RecipeSolicitation;
 import KuHub.modules.gestion_solicitud.dtos.respose.record.SolicitationManagement;
 import KuHub.modules.gestion_solicitud.service.SolicitudService;
+import KuHub.config.security.service.DynamicPermissionService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -32,6 +35,9 @@ public class SolicitudController {
 
     @Autowired
     private SolicitudService solicitudService;
+
+    @Autowired
+    private DynamicPermissionService dynamicPermissionService;
 
     /**
      * Obtiene todas las asignaturas con sus secciones y bloques horarios activos (con reserva de sala).
@@ -112,11 +118,18 @@ public class SolicitudController {
      * Obtiene la proyección de abastecimiento consolidada de productos cuyas solicitudes
      * tienen estado EN_PEDIDO, filtradas por rango de fechas.
      * Agrupa por categoría y nombre de producto, sumando cantidades totales solicitadas.
-     * ⬜ Sin uso frontend aún.
+     * ✅ En uso: Consumido por cargarProyeccionAbastecimiento en inventario.tsx (Abastecimiento por Pedido).
+     * Requiere permiso de LECTURA en el módulo INVENTARIO.
      */
     @PostMapping("/proyeccion-abastecimiento")
     public ResponseEntity<ProyeccionAbastecimiento> findProyeccionAbastecimiento(
-            @Validated @RequestBody DateRangeDTO request) {
+            @Validated @RequestBody DateRangeDTO request,
+            Authentication authentication) {
+        // Validación dinámica de permisos: requiere lectura en INVENTARIO
+        if (!dynamicPermissionService.check(authentication, "INVENTARIO", "read")) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+
         return ResponseEntity
                 .status(200)
                 .body(solicitudService.findProyeccionAbastecimiento(request));

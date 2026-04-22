@@ -90,7 +90,7 @@ const InventarioPage: React.FC = () => {
   const { user } = useAuth();
   const esAdministrador = user?.rol === 'Administrador';
   // ── Permisos granulares del módulo INVENTARIO ──
-  const { canCreate: invPuedeCrear, canUpdate: invPuedeEditar, canDelete: invPuedeEliminar } = useModulePermission('INVENTARIO');
+  const { canRead: invPuedeLeer, canCreate: invPuedeCrear, canUpdate: invPuedeEditar, canDelete: invPuedeEliminar } = useModulePermission('INVENTARIO');
   const { canCreate: catPuedeCrear } = useModulePermission('GESTION_CATEGORIAS');
   const { canCreate: uniPuedeCrear } = useModulePermission('GESTION_UNIDADES');
   const [productos, setProductos] = React.useState<IProducto[]>([]);
@@ -1070,6 +1070,7 @@ const InventarioPage: React.FC = () => {
                 onClose={onClose}
                 onNuevoProducto={handleNuevoProducto}
                 initialItems={bulkRetryItems}
+                puedeAccederAbastecimiento={invPuedeLeer}
                 onProcessComplete={(data, retryItems) => {
                   setBulkResult(data);
                   setBulkRetryItems(retryItems);
@@ -1946,12 +1947,13 @@ interface PedidoMasivoModalProps {
   onNuevoProducto?: () => void;
   initialItems?: ItemPedidoMasivo[];
   onProcessComplete?: (data: IBulkProcessResult, retryItems: ItemPedidoMasivo[]) => void;
+  puedeAccederAbastecimiento?: boolean;
 }
 
 /**
  * Modal para realizar pedidos masivos hacia bodega de tránsito
  */
-const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoProducto, onProcessComplete, initialItems }) => {
+const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoProducto, onProcessComplete, initialItems, puedeAccederAbastecimiento = false }) => {
   const toast = useToast();
   const [itemsPedido, setItemsPedido] = React.useState<ItemPedidoMasivo[]>(initialItems ?? []);
   const [productoSeleccionado, setProductoSeleccionado] = React.useState<string>('');
@@ -2229,9 +2231,13 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoP
       onProyeccionOpenChange();
       setFechaInicioProy('');
       setFechaFinProy('');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error al cargar proyección:', error);
-      toast.error('Error al cargar la proyección de abastecimiento');
+      if (error.response?.status === 403) {
+        toast.error('No tiene permisos para acceder a esta funcionalidad');
+      } else {
+        toast.error('Error al cargar la proyección de abastecimiento');
+      }
     } finally {
       setLoadingProy(false);
     }
@@ -2326,7 +2332,8 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoP
             color="primary"
             size="lg"
             onPress={onProyeccionOpen}
-            title="Cargar proyección de abastecimiento por pedido"
+            isDisabled={!puedeAccederAbastecimiento}
+            title={puedeAccederAbastecimiento ? "Cargar proyección de abastecimiento por pedido" : "No tiene permisos para acceder a esta funcionalidad"}
             className="shrink-0"
           >
             <Icon icon="lucide:package-plus" width={22} />
