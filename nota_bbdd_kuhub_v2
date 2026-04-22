@@ -167,6 +167,7 @@ CREATE TYPE estado_pedido_type AS ENUM (
 CREATE CAST (varchar AS dia_semana_type) WITH INOUT AS IMPLICIT;
 CREATE CAST (character varying AS tipo_movimiento_type) WITH INOUT AS IMPLICIT;
 CREATE CAST (varchar AS estado_receta_type) WITH INOUT AS IMPLICIT;
+CREATE CAST (varchar AS estado_provedor_type) WITH INOUT AS IMPLICIT;
 CREATE CAST (varchar AS estado_solicitud_type) WITH INOUT AS IMPLICIT;
 CREATE CAST (varchar AS estado_seccion_type) WITH INOUT AS IMPLICIT;
 CREATE CAST (varchar AS estado_pedido_type) WITH INOUT AS IMPLICIT;
@@ -491,7 +492,7 @@ CREATE TABLE proveedor (
     nombre_proveedor      VARCHAR(100) NOT NULL,
     telefono_proveedor    VARCHAR(20)  NOT NULL,
     email_proveedor       VARCHAR(150),
-    estado_proveedor      VARCHAR(20)  NOT NULL DEFAULT 'DISPONIBLE',
+    estado_proveedor      estado_provedor_type NOT NULL DEFAULT 'DISPONIBLE',
     activo                BOOLEAN      NOT NULL DEFAULT TRUE,
     fecha_creacion        TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
