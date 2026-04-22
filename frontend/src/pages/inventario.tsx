@@ -66,6 +66,10 @@ import {
   IStockSyncWarning,
   IStockInsuficiente
 } from '../services/inventario-service';
+import {
+  obtenerProyeccionAbastecimientoService,
+  IProyeccionAbastecimiento
+} from '../services/solicitud-service';
 
 interface ItemPedidoMasivo {
   id: string;
@@ -1954,6 +1958,12 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoP
   const [stockInput, setStockInput] = React.useState<string>('');
   const [motivo, setMotivo] = React.useState<string>('');
 
+  // Estados para modal de proyección de abastecimiento
+  const { isOpen: isProyeccionOpen, onOpen: onProyeccionOpen, onOpenChange: onProyeccionOpenChange } = useDisclosure();
+  const [fechaInicioProy, setFechaInicioProy] = React.useState<string>('');
+  const [fechaFinProy, setFechaFinProy] = React.useState<string>('');
+  const [loadingProy, setLoadingProy] = React.useState(false);
+
   // States para la paginación y búsqueda
   const [bulkProductos, setBulkProductos] = React.useState<IBulkProductoInventoryListing[]>([]);
   const [isLoadingBulk, setIsLoadingBulk] = React.useState(false);
@@ -2168,6 +2178,65 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoP
     setItemsPedido(itemsPedido.filter(item => item.id !== id));
   };
 
+  const cargarProyeccionAbastecimiento = async () => {
+    if (!fechaInicioProy || !fechaFinProy) {
+      toast.error('Debe seleccionar un rango de fechas válido');
+      return;
+    }
+
+    const dateInicio = new Date(fechaInicioProy);
+    const dateFin = new Date(fechaFinProy);
+    if (dateInicio > dateFin) {
+      toast.error('La fecha de inicio no puede ser posterior a la fecha de fin');
+      return;
+    }
+
+    try {
+      setLoadingProy(true);
+      const proyeccion = await obtenerProyeccionAbastecimientoService(fechaInicioProy, fechaFinProy);
+
+      if (!proyeccion.proyeccionAbastecimiento || proyeccion.proyeccionAbastecimiento.length === 0) {
+        toast.warning('No hay datos de proyección para el rango de fechas seleccionado');
+        return;
+      }
+
+      // Convertir los productos de la proyección a ItemPedidoMasivo
+      // Todos se agregan con motivo "ENTRADA_INVENTARIO" (acción por defecto)
+      const nuevosMotivoEntrante = 'ENTRADA_INVENTARIO';
+      const nuevosItems: ItemPedidoMasivo[] = proyeccion.proyeccionAbastecimiento.map((producto) => {
+        // Crear un objeto IBulkProductoInventoryListing simulado
+        const bulkProducto: IBulkProductoInventoryListing = {
+          idProducto: producto.idProducto,
+          nombreProducto: producto.nombreProducto,
+          detalles: `${producto.nombreUnidad} (${producto.abreviatura})`,
+          stock: 0, // Stock actual (no viene en la proyección)
+          esFraccionario: producto.esFraccionario,
+        };
+
+        return {
+          id: Date.now().toString() + Math.random(),
+          producto: bulkProducto,
+          delta: producto.cantidadTotalSolicitada,
+          motivo: nuevosMotivoEntrante,
+        };
+      });
+
+      // Agregar a la lista existente
+      setItemsPedido([...itemsPedido, ...nuevosItems]);
+      toast.success(`${nuevosItems.length} producto(s) cargado(s) desde la proyección`);
+
+      // Cerrar el modal y limpiar campos
+      onProyeccionOpenChange();
+      setFechaInicioProy('');
+      setFechaFinProy('');
+    } catch (error) {
+      console.error('Error al cargar proyección:', error);
+      toast.error('Error al cargar la proyección de abastecimiento');
+    } finally {
+      setLoadingProy(false);
+    }
+  };
+
   const vaciarLista = () => {
     setItemsPedido([]);
   };
@@ -2243,11 +2312,26 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoP
 
   return (
     <div className="flex flex-col w-full overflow-hidden rounded-2xl">
-      <ModalHeader className="flex flex-col gap-1 border-b border-default-100 dark:border-default-50 bg-white dark:bg-content2 px-6 py-4">
-        <h2 className="text-xl font-bold text-secondary dark:text-foreground">Control de Stock Masivo</h2>
-        <p className="text-sm font-medium text-default-500">
-          Registre entradas, salidas, mermas, ajustes o traslados de múltiples productos de forma estructurada.
-        </p>
+      <ModalHeader className="flex flex-col gap-3 border-b border-default-100 dark:border-default-50 bg-white dark:bg-content2 px-6 py-4">
+        <div className="flex items-center justify-between">
+          <div className="flex-1">
+            <h2 className="text-xl font-bold text-secondary dark:text-foreground">Control de Stock Masivo</h2>
+            <p className="text-sm font-medium text-default-500 mt-1">
+              Registre entradas, salidas, mermas, ajustes o traslados de múltiples productos de forma estructurada.
+            </p>
+          </div>
+          <Button
+            isIconOnly
+            variant="light"
+            color="primary"
+            size="lg"
+            onPress={onProyeccionOpen}
+            title="Cargar proyección de abastecimiento por pedido"
+            className="shrink-0"
+          >
+            <Icon icon="lucide:package-plus" width={22} />
+          </Button>
+        </div>
       </ModalHeader>
       <ModalBody className="px-4 py-3 space-y-3">
           <AnimatePresence initial={false}>
@@ -2529,6 +2613,69 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoP
           </Button>
         </div>
       </ModalFooter>
+
+      {/* Modal de Proyección de Abastecimiento */}
+      <Modal isOpen={isProyeccionOpen} onOpenChange={onProyeccionOpenChange} size="md" backdrop="blur" radius="lg">
+        <ModalContent>
+          {(onProyeccionClose) => (
+            <>
+              <ModalHeader className="flex flex-col gap-1">
+                <h2 className="text-lg font-bold text-secondary dark:text-foreground">Abastecimiento por Pedido</h2>
+              </ModalHeader>
+              <ModalBody className="space-y-4">
+                <div className="p-3 bg-primary/10 rounded-lg border border-primary/20">
+                  <p className="text-sm text-secondary dark:text-foreground">
+                    Esta es una proyección de lo que se espera recibir de las mercancías solicitadas por pedido.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-sm font-semibold text-secondary mb-2 block">Fecha Inicio</label>
+                    <Input
+                      type="date"
+                      value={fechaInicioProy}
+                      onValueChange={setFechaInicioProy}
+                      placeholder="Seleccionar fecha"
+                      variant="bordered"
+                      isRequired
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-semibold text-secondary mb-2 block">Fecha Fin</label>
+                    <Input
+                      type="date"
+                      value={fechaFinProy}
+                      onValueChange={setFechaFinProy}
+                      placeholder="Seleccionar fecha"
+                      variant="bordered"
+                      isRequired
+                    />
+                  </div>
+                </div>
+              </ModalBody>
+              <ModalFooter>
+                <Button
+                  variant="ghost"
+                  onPress={onProyeccionClose}
+                  className="font-medium"
+                  isDisabled={loadingProy}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  color="primary"
+                  onPress={cargarProyeccionAbastecimiento}
+                  isLoading={loadingProy}
+                  startContent={!loadingProy && <Icon icon="lucide:download" width={18} />}
+                >
+                  Cargar Datos
+                </Button>
+              </ModalFooter>
+            </>
+          )}
+        </ModalContent>
+      </Modal>
     </div>
   );
 };
