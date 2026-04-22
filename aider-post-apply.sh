@@ -1,50 +1,58 @@
 #!/bin/bash
-# Script que ejecuta Aider después de aplicar cambios
-# Valida tanto frontend como backend
 
-echo "🔍 Validando cambios aplicados..."
+# Banderas iniciales
+run_frontend=false
+run_backend=false
 
-# Detectar qué archivos fueron modificados
-# Si hay cambios en frontend/, ejecutar validación de TypeScript
-if git diff --name-only | grep -q "^frontend/"; then
-  echo "📱 Detectado cambio en frontend..."
+# Aider pasa los archivos modificados como argumentos ($1, $2, etc.)
+# Iteramos sobre ellos para detectar dónde hubo cambios
+for file in "$@"; do
+  # Usamos comodines (*) para que soporte barras invertidas (\) de Windows
+  if [[ "$file" == *"frontend"* ]]; then
+    run_frontend=true
+  elif [[ "$file" == *"backend"* ]]; then
+    run_backend=true
+  fi
+done
+
+# ==========================================
+# 1. VALIDACIÓN DEL FRONTEND (TypeScript)
+# ==========================================
+if [ "$run_frontend" = true ]; then
+  echo "🔍 [Aider] Cambios detectados en el FRONTEND. Ejecutando type-check..."
   cd frontend
-  echo "  ✓ Ejecutando verificación TypeScript..."
-  npx tsc --noEmit
+  npm run type-check
   FRONTEND_STATUS=$?
   cd ..
+
   if [ $FRONTEND_STATUS -ne 0 ]; then
-    echo "  ❌ Error en TypeScript frontend"
-  else
-    echo "  ✅ Frontend OK"
+    echo "❌ [Aider] Error en el Frontend. Aider intentará arreglarlo."
+    exit $FRONTEND_STATUS
   fi
-else
-  FRONTEND_STATUS=0
+  echo "✅ [Aider] Frontend validado correctamente."
 fi
 
-# Si hay cambios en backend/, ejecutar validación Maven
-if git diff --name-only | grep -q "^backend/\|^pom.xml\|^src/"; then
-  echo "🔧 Detectado cambio en backend..."
-  cd backend
-  echo "  ✓ Ejecutando compilación Maven..."
-  mvn clean compile -q
+# ==========================================
+# 2. VALIDACIÓN DEL BACKEND (Java/Spring Boot)
+# ==========================================
+if [ "$run_backend" = true ]; then
+  echo "☕ [Aider] Cambios detectados en el BACKEND. Compilando..."
+
+  # Asumiendo que tu Maven wrapper está en la raíz según tu captura
+  # Puedes cambiar "compile" por "test" si quieres que corra las pruebas
+  ./mvnw clean compile
   BACKEND_STATUS=$?
-  cd ..
+
   if [ $BACKEND_STATUS -ne 0 ]; then
-    echo "  ❌ Error en compilación backend"
-  else
-    echo "  ✅ Backend OK"
+    echo "❌ [Aider] Error de compilación en el Backend. Aider intentará arreglarlo."
+    exit $BACKEND_STATUS
   fi
-else
-  BACKEND_STATUS=0
+  echo "✅ [Aider] Backend compilado correctamente."
 fi
 
-# Resumen final
-echo ""
-if [ $FRONTEND_STATUS -eq 0 ] && [ $BACKEND_STATUS -eq 0 ]; then
-  echo "✅ Todos los cambios son válidos"
-  exit 0
-else
-  echo "❌ Hay errores de validación. Revisa arriba."
-  exit 1
+# Si no detectó ni frontend ni backend (o si no se pasaron argumentos)
+if [ "$run_frontend" = false ] && [ "$run_backend" = false ]; then
+  echo "⚠️ [Aider] No se detectaron archivos de Frontend o Backend. Omitiendo validaciones."
 fi
+
+exit 0
