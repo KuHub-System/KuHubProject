@@ -947,6 +947,7 @@ export interface IProductoAbastecimientoItem {
   esFraccionario: boolean;
   nombreCategoria: string;
   cantidadTotalSolicitada: number;
+  idInventario: number;
 }
 
 export interface IProyeccionAbastecimiento {
