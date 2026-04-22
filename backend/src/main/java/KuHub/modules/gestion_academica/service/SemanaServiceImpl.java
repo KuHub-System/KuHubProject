@@ -4,6 +4,7 @@ import KuHub.modules.gestion_academica.dtos.request.WeeklyFilterForSolicitationD
 import KuHub.modules.gestion_academica.dtos.response.YearWithSemestersDTO;
 import KuHub.modules.gestion_academica.exceptions.GestionAcademicaException;
 import KuHub.modules.gestion_academica.dtos.request.WeekGeneratorDTO;
+import KuHub.modules.gestion_academica.dtos.request.WeekReasignDTO;
 import KuHub.modules.gestion_academica.entity.Semana;
 import KuHub.modules.gestion_academica.repository.SemanaRepository;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -17,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -127,5 +129,115 @@ public class SemanaServiceImpl implements SemanaService {
         return true;
     }
 
+    /**
+     * Reasigna las fechas de las 18 semanas de un período académico existente
+     * a partir de una nueva fecha de inicio (debe ser lunes).
+     * Mantiene nombre y semestre de cada semana; solo actualiza fechaInicio y fechaFin.
+     * ✅ En uso: Consumido por reasignarCalendarioService en semana-service.ts.
+     */
+    @Transactional
+    @Override
+    public List<Semana> reasignarSemesterCalendar(WeekReasignDTO request) {
+        log.info("Iniciando reasignacion de calendario. Anio: {}, Semestre: {}, NuevaFechaInicio: {}",
+                request.getAnio(), request.getSemestre(), request.getNuevaFechaInicio());
+
+        // Validar que la fecha sea lunes
+        if (request.getNuevaFechaInicio().getDayOfWeek().getValue() != 1) {
+            log.warn("Fecha de inicio no es lunes: {}", request.getNuevaFechaInicio());
+            throw new GestionAcademicaException(
+                    "La nueva fecha de inicio debe ser un lunes. Fecha recibida: " + request.getNuevaFechaInicio(),
+                    HttpStatus.UNPROCESSABLE_ENTITY
+            );
+        }
+
+        // 1. Anclar en "Semana 1" del período — garantiza que solo tocamos este semestre
+        Semana anchor = semanaRepository
+                .findByNombreSemanaAndAnioAndSemestre("Semana 1", request.getAnio(), request.getSemestre())
+                .orElseThrow(() -> {
+                    log.warn("No existe 'Semana 1' para anio={} semestre={}", request.getAnio(), request.getSemestre());
+                    return new GestionAcademicaException(
+                            "No existen semanas registradas para el " + request.getSemestre() +
+                            "° semestre del año " + request.getAnio() + ". Genere el calendario primero.",
+                            HttpStatus.CONFLICT
+                    );
+                });
+
+        log.info("Ancla encontrada: id_semana={}, fechaInicio={}, semestre={}",
+                anchor.getIdSemana(), anchor.getFechaInicio(), anchor.getSemestre());
+
+        // 2. Obtener exactamente las 18 semanas de ESTE semestre a partir del id ancla
+        //    — filtra por semestre y id >= ancla para no cruzar con otro semestre
+        List<Semana> semanas = semanaRepository
+                .findBySemestreAndIdSemanaGreaterThanEqualOrderByIdSemanaAsc(
+                        request.getSemestre(), anchor.getIdSemana());
+
+        if (semanas.size() > 18) {
+            semanas = semanas.subList(0, 18);
+        }
+
+        log.info("Semanas a reasignar: {} (semestre={}, id_semana >= {})",
+                semanas.size(), request.getSemestre(), anchor.getIdSemana());
+
+        // 3. Validar que el nuevo rango no solape con OTROS períodos (excluir los ids del período actual)
+        LocalDate nuevoRangoFin = request.getNuevaFechaInicio().plusWeeks(semanas.size()).minusDays(1);
+        List<Integer> idsActuales = semanas.stream().map(Semana::getIdSemana).collect(Collectors.toList());
+
+        if (semanaRepository.existeTraslapeDeFechasExcluyendo(
+                request.getNuevaFechaInicio(), nuevoRangoFin, idsActuales)) {
+            log.warn("Traslape con otro periodo: rango {} - {} solapa con semanas existentes de otro semestre",
+                    request.getNuevaFechaInicio(), nuevoRangoFin);
+            throw new GestionAcademicaException(
+                    "El nuevo rango de fechas (" + request.getNuevaFechaInicio() + " al " + nuevoRangoFin +
+                    ") se cruza con otro período académico ya registrado.",
+                    HttpStatus.CONFLICT
+            );
+        }
+
+        // 4. Calcular las nuevas fechas para cada semana
+        List<LocalDate> nuevasFehas = new ArrayList<>();
+        for (int i = 0; i < semanas.size(); i++) {
+            nuevasFehas.add(request.getNuevaFechaInicio().plusWeeks(i));
+        }
+
+        // 5. Determinar el orden de actualización para evitar violaciones de uk_fecha_inicio:
+        //    - Moviendo hacia adelante (nueva > actual): actualizar de S18 → S1
+        //      (libera las fechas futuras antes de pisarlas con los nuevos valores)
+        //    - Moviendo hacia atrás (nueva < actual): actualizar de S1 → S18
+        boolean movingForward = request.getNuevaFechaInicio().isAfter(anchor.getFechaInicio());
+        log.info("Movimiento {} (ancla actual: {}, nueva: {}). Orden: {}",
+                movingForward ? "hacia adelante" : "hacia atrás",
+                anchor.getFechaInicio(), request.getNuevaFechaInicio(),
+                movingForward ? "S18→S1" : "S1→S18");
+
+        if (movingForward) {
+            for (int i = semanas.size() - 1; i >= 0; i--) {
+                Semana s = semanas.get(i);
+                log.info("Actualizando id={} '{}': {} → {}", s.getIdSemana(), s.getNombreSemana(),
+                        s.getFechaInicio(), nuevasFehas.get(i));
+                s.setFechaInicio(nuevasFehas.get(i));
+                s.setFechaFin(nuevasFehas.get(i).plusDays(6));
+                semanaRepository.saveAndFlush(s);
+            }
+        } else {
+            for (int i = 0; i < semanas.size(); i++) {
+                Semana s = semanas.get(i);
+                log.info("Actualizando id={} '{}': {} → {}", s.getIdSemana(), s.getNombreSemana(),
+                        s.getFechaInicio(), nuevasFehas.get(i));
+                s.setFechaInicio(nuevasFehas.get(i));
+                s.setFechaFin(nuevasFehas.get(i).plusDays(6));
+                semanaRepository.saveAndFlush(s);
+            }
+        }
+
+        // 4. Retornar TODAS las semanas del año de la nueva fecha (no solo el semestre reasignado)
+        //    para que el frontend pueda refrescar el estado completo del año sin perder el otro semestre
+        Short anioNuevo = (short) request.getNuevaFechaInicio().getYear();
+        List<Semana> resultado = semanaRepository.findByAnioOrderByFechaInicioAsc(anioNuevo);
+        log.info("Reasignacion completada. Retornando {} semanas del año {}. Rango reasignado: {} - {}",
+                resultado.size(), anioNuevo,
+                semanas.get(0).getFechaInicio(),
+                semanas.get(semanas.size() - 1).getFechaFin());
+        return resultado;
+    }
 
 }

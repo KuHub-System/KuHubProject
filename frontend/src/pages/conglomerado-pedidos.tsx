@@ -5,7 +5,7 @@
  */
 
 import React from 'react';
-import * as XLSX from 'xlsx';
+import XLSXStyle from 'xlsx-js-style';
 import {
   Button,
   Card, CardBody, CardHeader,
@@ -16,21 +16,15 @@ import {
 import { Icon } from '@iconify/react';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useToast } from '../hooks/useToast';
-import { ISemana } from '../types/semana.types';
-import {
-  IPeriodoAcademico,
-  obtenerPeriodosAcademicosService,
-  obtenerSemanasPorPeriodoService,
-  detectarPeriodoActual,
-  encontrarSemanaActual,
-} from '../services/semana-service';
 import {
   IConsolidatePedidoResponse,
   ISolicitudVinculada,
   consolidatePedidoQueryService,
   aprobarPedidosService,
 } from '../services/solicitud-service';
-import { useModulePermission } from '../contexts/permission-context';
+import { useModulePermission, usePermission } from '../contexts/permission-context';
+import { usePeriodoSemana } from '../contexts/periodo-semana-context';
+import { useHistory } from 'react-router-dom';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TIPOS INTERNOS
@@ -46,14 +40,24 @@ interface IGrupoDia {
 // CONSTANTES UI
 // ─────────────────────────────────────────────────────────────────────────────
 
-const DIA_CONFIG: Record<number, { nombre: string; header: string; badge: string; text: string; border: string }> = {
-  0: { nombre: 'Domingo',   header: 'bg-default-100',   badge: 'bg-default-200',   text: 'text-default-700',   border: 'border-default-300'   },
-  1: { nombre: 'Lunes',     header: 'bg-primary-50',    badge: 'bg-primary-100',   text: 'text-primary-700',   border: 'border-primary-200'   },
-  2: { nombre: 'Martes',    header: 'bg-secondary-50',  badge: 'bg-secondary-100', text: 'text-secondary-700', border: 'border-secondary-200' },
-  3: { nombre: 'Miércoles', header: 'bg-success-50',    badge: 'bg-success-100',   text: 'text-success-700',   border: 'border-success-200'   },
-  4: { nombre: 'Jueves',    header: 'bg-warning-50',    badge: 'bg-warning-100',   text: 'text-warning-700',   border: 'border-warning-200'   },
-  5: { nombre: 'Viernes',   header: 'bg-danger-50',     badge: 'bg-danger-100',    text: 'text-danger-600',    border: 'border-danger-200'    },
-  6: { nombre: 'Sábado',    header: 'bg-default-100',   badge: 'bg-default-200',   text: 'text-default-700',   border: 'border-default-300'   },
+// bgHeader / bgBadge / border / textColor → colores CSS explícitos para garantizar
+// distinción visual real entre días consecutivos, independiente del tema HeroUI.
+// Fondos en nivel -100 (más saturados que -50) para mayor separación visual.
+// Martes usa naranja (NO amber) para no confundirse con el indicador HOY (amber).
+const DIA_CONFIG: Record<number, {
+  nombre: string;
+  bgHeader: string;
+  bgBadge: string;
+  border: string;       // color CSS (hex) para borderColor inline
+  textColor: string;    // color CSS para texto
+}> = {
+  0: { nombre: 'Domingo',   bgHeader: '#f1f5f9', bgBadge: '#cbd5e1', border: '#64748b', textColor: '#334155' }, // slate
+  1: { nombre: 'Lunes',     bgHeader: '#dbeafe', bgBadge: '#93c5fd', border: '#2563eb', textColor: '#1e3a8a' }, // blue
+  2: { nombre: 'Martes',    bgHeader: '#ffedd5', bgBadge: '#fdba74', border: '#ea580c', textColor: '#7c2d12' }, // orange (≠ amber HOY)
+  3: { nombre: 'Miércoles', bgHeader: '#d1fae5', bgBadge: '#6ee7b7', border: '#059669', textColor: '#064e3b' }, // emerald
+  4: { nombre: 'Jueves',    bgHeader: '#ede9fe', bgBadge: '#c4b5fd', border: '#7c3aed', textColor: '#3b0764' }, // violet
+  5: { nombre: 'Viernes',   bgHeader: '#ffe4e6', bgBadge: '#fda4af', border: '#e11d48', textColor: '#881337' }, // rose
+  6: { nombre: 'Sábado',    bgHeader: '#ccfbf1', bgBadge: '#5eead4', border: '#0d9488', textColor: '#134e4a' }, // teal
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -88,16 +92,13 @@ const fmtCant = (n: number): string => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 const ConglomeradoPedidosPage: React.FC = () => {
-  usePageTitle('Conglomerado de Pedidos', 'Seguimiento y estado de los pedidos semanales generados a partir de solicitudes aceptadas.');
+  usePageTitle('Conglomerado de Pedidos', 'Seguimiento y estado de los pedidos semanales generados a partir de solicitudes aceptadas.', 'lucide:layers');
   const toast = useToast();
   const { canCreate: cong_Crear, canUpdate: cong_Editar, canDelete: cong_Eliminar } = useModulePermission('CONGLOMERADO_PEDIDOS');
+  const { isAdmin } = usePermission();
+  const history = useHistory();
 
-  // ── Semanas ──
-  const [periodos,        setPeriodos]        = React.useState<IPeriodoAcademico[]>([]);
-  const [semanas,         setSemanas]         = React.useState<ISemana[]>([]);
-  const [semanaId,        setSemanaId]        = React.useState<string>('');
-  const [defaultSemanaId, setDefaultSemanaId] = React.useState<string>('');
-  const [isLoadingSem,    setIsLoadingSem]    = React.useState(true);
+  const { periodos, semanas, semanaId, defaultSemanaId, isLoading: isLoadingSem, seleccionarPeriodo, seleccionarSemana } = usePeriodoSemana();
 
   // ── Datos ──
   const [consolidateData, setConsolidateData] = React.useState<IConsolidatePedidoResponse | null>(null);
@@ -116,46 +117,6 @@ const ConglomeradoPedidosPage: React.FC = () => {
   const [isAprobando,   setIsAprobando]   = React.useState(false);
   const [diaCategoria,  setDiaCategoria]  = React.useState<number | 'completa'>(1);
   const [conColores,    setConColores]    = React.useState(true);
-
-  // ── Carga inicial de semanas ──
-  React.useEffect(() => {
-    const init = async () => {
-      setIsLoadingSem(true);
-      try {
-        const periodosData = await obtenerPeriodosAcademicosService();
-        setPeriodos(periodosData);
-        const { anio, semestre } = detectarPeriodoActual();
-        const intentos = [{ anio, semestre }, { anio, semestre: semestre === 1 ? 2 : 1 }];
-        let cargadas: ISemana[] = [];
-        for (const intento of intentos) {
-          if (!periodosData.some(p => p.anio === intento.anio && p.semestres.includes(intento.semestre))) continue;
-          try { cargadas = await obtenerSemanasPorPeriodoService(intento.anio, intento.semestre); if (cargadas.length > 0) break; } catch { /* */ }
-        }
-        if (cargadas.length === 0 && periodosData.length > 0) {
-          const p = periodosData[0];
-          cargadas = await obtenerSemanasPorPeriodoService(p.anio, p.semestres[0]).catch(() => []);
-        }
-        setSemanas(cargadas);
-        const actual = encontrarSemanaActual(cargadas);
-        setDefaultSemanaId(actual ? String(actual.idSemana) : '');
-        setSemanaId(actual ? String(actual.idSemana) : cargadas.length > 0 ? String(cargadas[0].idSemana) : '');
-      } catch { toast.error('Error al cargar las semanas'); }
-      finally { setIsLoadingSem(false); }
-    };
-    init();
-  }, []);
-
-  const handlePeriodoChange = async (anio: number, semestre: number) => {
-    setIsLoadingSem(true); setConsolidateData(null); setSemanaId('');
-    try {
-      const data = await obtenerSemanasPorPeriodoService(anio, semestre);
-      setSemanas(data);
-      const actual = encontrarSemanaActual(data);
-      setDefaultSemanaId(actual ? String(actual.idSemana) : '');
-      if (data.length > 0) setSemanaId(actual ? String(actual.idSemana) : String(data[0].idSemana));
-    } catch { toast.error('Error al cargar semanas del período'); }
-    finally { setIsLoadingSem(false); }
-  };
 
   // ── Carga de datos al cambiar semana (con cache) ──
   React.useEffect(() => {
@@ -289,7 +250,7 @@ const ConglomeradoPedidosPage: React.FC = () => {
       idCategoria: number;
       nombreCategoria: string;
       abreviatura: string;
-      detalles: Array<{ diaSemana: number; nombreSeccion: string; cantidad: number; }>;
+      detalles: Array<{ diaSemana: number; nombreSeccion: string; nombreAsignatura: string; cantidad: number; }>;
     }
     const prodMap = new Map<number, ProdCat>();
     for (const pedido of (consolidateData?.pedidosCompletos ?? [])) {
@@ -309,6 +270,7 @@ const ConglomeradoPedidosPage: React.FC = () => {
           entry.detalles.push({
             diaSemana: getDiaSemana(det.fechaSolicitada),
             nombreSeccion: det.nombreSeccion,
+            nombreAsignatura: det.nombreAsignatura,
             cantidad: det.cantidad,
           });
         }
@@ -320,14 +282,15 @@ const ConglomeradoPedidosPage: React.FC = () => {
     });
   }, [consolidateData]);
 
+  // clave: "nombreAsignatura::nombreSeccion" → color único por asignatura+sección
   const seccionColorMap = React.useMemo(() => {
-    const sections = new Set<string>();
+    const keys = new Set<string>();
     for (const p of productosParaCategorias) {
-      for (const d of p.detalles) sections.add(d.nombreSeccion);
+      for (const d of p.detalles) keys.add(`${d.nombreAsignatura}::${d.nombreSeccion}`);
     }
     const map = new Map<string, string>();
-    Array.from(sections).sort().forEach((sec, i) => {
-      map.set(sec, SECCION_COLORS[i % SECCION_COLORS.length]);
+    Array.from(keys).sort().forEach((key, i) => {
+      map.set(key, SECCION_COLORS[i % SECCION_COLORS.length]);
     });
     return map;
   }, [productosParaCategorias]);
@@ -338,7 +301,7 @@ const ConglomeradoPedidosPage: React.FC = () => {
       idProducto: number;
       nombreProducto: string;
       abreviatura: string;
-      detallesFiltrados: Array<{ nombreSeccion: string; cantidad: number; }>;
+      detallesFiltrados: Array<{ nombreSeccion: string; nombreAsignatura: string; cantidad: number; }>;
       totalDia: number;
     }
     interface CatGroup { idCategoria: number; nombreCategoria: string; productos: ProdFiltrado[]; }
@@ -346,8 +309,8 @@ const ConglomeradoPedidosPage: React.FC = () => {
     const catMap = new Map<number, CatGroup>();
     for (const prod of productosParaCategorias) {
       const detallesFiltrados = diaCategoria === 'completa'
-        ? prod.detalles.map(d => ({ nombreSeccion: d.nombreSeccion, cantidad: d.cantidad }))
-        : prod.detalles.filter(d => d.diaSemana === diaCategoria).map(d => ({ nombreSeccion: d.nombreSeccion, cantidad: d.cantidad }));
+        ? prod.detalles.map(d => ({ nombreSeccion: d.nombreSeccion, nombreAsignatura: d.nombreAsignatura, cantidad: d.cantidad }))
+        : prod.detalles.filter(d => d.diaSemana === diaCategoria).map(d => ({ nombreSeccion: d.nombreSeccion, nombreAsignatura: d.nombreAsignatura, cantidad: d.cantidad }));
       if (detallesFiltrados.length === 0) continue;
       const totalDia = detallesFiltrados.reduce((s, d) => s + d.cantidad, 0);
       if (!catMap.has(prod.idCategoria)) {
@@ -361,7 +324,7 @@ const ConglomeradoPedidosPage: React.FC = () => {
   // Para Vista Completa: matriz [idProducto][diaSemana] → { total, secciones[] }
   const matrizCompleta = React.useMemo(() => {
     const dias = [1, 2, 3, 4, 5, 6, 0]; // Lun → Dom
-    interface CellData { total: number; secciones: Array<{ nombre: string; cantidad: number; }>; }
+    interface CellData { total: number; secciones: Array<{ compositeKey: string; nombre: string; cantidad: number; }>; }
     interface FilaMatrix {
       idProducto: number;
       nombreProducto: string;
@@ -377,10 +340,17 @@ const ConglomeradoPedidosPage: React.FC = () => {
         const detallesDia = prod.detalles.filter(d => d.diaSemana === dia);
         if (detallesDia.length > 0) {
           const secMap = new Map<string, number>();
-          for (const d of detallesDia) secMap.set(d.nombreSeccion, (secMap.get(d.nombreSeccion) ?? 0) + d.cantidad);
+          for (const d of detallesDia) {
+            const key = `${d.nombreAsignatura}::${d.nombreSeccion}`;
+            secMap.set(key, (secMap.get(key) ?? 0) + d.cantidad);
+          }
           diasData[dia] = {
             total: detallesDia.reduce((s, d) => s + d.cantidad, 0),
-            secciones: Array.from(secMap.entries()).map(([nombre, cantidad]) => ({ nombre, cantidad })),
+            secciones: Array.from(secMap.entries()).map(([compositeKey, cantidad]) => ({
+              compositeKey,
+              nombre: compositeKey.split('::')[1],
+              cantidad,
+            })),
           };
         }
       }
@@ -404,7 +374,7 @@ const ConglomeradoPedidosPage: React.FC = () => {
   const contadores = React.useMemo(() => ({
     procesadas:      todasSolicitudes.length,
     productosUnicos: productosResumen.length,
-    secciones:       new Set(todasSolicitudes.map(s => s.seccion.nombreSeccion)).size,
+    secciones:       new Set(todasSolicitudes.map(s => `${s.seccion.nombreAsignatura}::${s.seccion.nombreSeccion}`)).size,
     dias:            gruposDia.length,
   }), [todasSolicitudes, productosResumen, gruposDia]);
 
@@ -435,7 +405,7 @@ const ConglomeradoPedidosPage: React.FC = () => {
   const handleAprobarPedido = async (idPedido: number) => {
     setIsAprobando(true);
     try {
-      await aprobarPedidosService({ idsPedidos: [idPedido], estado: 'APROVADO' });
+      await aprobarPedidosService({ idsPedidos: [idPedido], estado: 'APROBADO' });
       toast.success('Pedido aprobado correctamente');
       await recargarDatos();
     } catch { toast.error('Error al aprobar el pedido'); }
@@ -449,62 +419,168 @@ const ConglomeradoPedidosPage: React.FC = () => {
     if (pendientes.length === 0) return;
     setIsAprobando(true);
     try {
-      await aprobarPedidosService({ idsPedidos: pendientes, estado: 'APROVADO' });
+      await aprobarPedidosService({ idsPedidos: pendientes, estado: 'APROBADO' });
       toast.success(`${pendientes.length} pedido${pendientes.length > 1 ? 's' : ''} aprobado${pendientes.length > 1 ? 's' : ''} correctamente`);
       await recargarDatos();
     } catch { toast.error('Error al aprobar los pedidos'); }
     finally { setIsAprobando(false); }
   };
 
+  // ── Helpers de estilo Excel ──
+  const styleTitle   = { font: { bold: true, sz: 14, color: { rgb: '1A1A1A' } }, fill: { fgColor: { rgb: 'FFB800' } }, alignment: { horizontal: 'center', vertical: 'center', wrapText: false } };
+  const styleHeader  = { font: { bold: true, sz: 11, color: { rgb: 'FFFFFF' } }, fill: { fgColor: { rgb: '2D3748' } }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true }, border: { top: { style: 'thin', color: { rgb: 'FFFFFF' } }, bottom: { style: 'thin', color: { rgb: 'FFFFFF' } }, left: { style: 'thin', color: { rgb: 'FFFFFF' } }, right: { style: 'thin', color: { rgb: 'FFFFFF' } } } };
+  const styleCat     = { font: { bold: true, sz: 11, color: { rgb: '1A1A1A' } }, fill: { fgColor: { rgb: 'FFF3CD' } }, alignment: { horizontal: 'left', vertical: 'center' }, border: { top: { style: 'thin', color: { rgb: 'E2C97E' } }, bottom: { style: 'thin', color: { rgb: 'E2C97E' } }, left: { style: 'thin', color: { rgb: 'E2C97E' } }, right: { style: 'thin', color: { rgb: 'E2C97E' } } } };
+  const styleTotal   = { font: { bold: true, sz: 10, color: { rgb: 'FFFFFF' } }, fill: { fgColor: { rgb: '4A5568' } }, alignment: { horizontal: 'center', vertical: 'center' }, border: { top: { style: 'thin', color: { rgb: '718096' } }, bottom: { style: 'thin', color: { rgb: '718096' } }, left: { style: 'thin', color: { rgb: '718096' } }, right: { style: 'thin', color: { rgb: '718096' } } } };
+  const styleTotalN  = { font: { bold: true, sz: 10, color: { rgb: 'FFFFFF' } }, fill: { fgColor: { rgb: '4A5568' } }, alignment: { horizontal: 'right', vertical: 'center' }, border: { top: { style: 'thin', color: { rgb: '718096' } }, bottom: { style: 'thin', color: { rgb: '718096' } }, left: { style: 'thin', color: { rgb: '718096' } }, right: { style: 'thin', color: { rgb: '718096' } } } };
+  const styleData    = { font: { sz: 10 }, fill: { fgColor: { rgb: 'FFFFFF' } }, alignment: { horizontal: 'left', vertical: 'center', wrapText: true }, border: { top: { style: 'thin', color: { rgb: 'E2E8F0' } }, bottom: { style: 'thin', color: { rgb: 'E2E8F0' } }, left: { style: 'thin', color: { rgb: 'E2E8F0' } }, right: { style: 'thin', color: { rgb: 'E2E8F0' } } } };
+  const styleDataAlt = { font: { sz: 10 }, fill: { fgColor: { rgb: 'F7FAFC' } }, alignment: { horizontal: 'left', vertical: 'center', wrapText: true }, border: { top: { style: 'thin', color: { rgb: 'E2E8F0' } }, bottom: { style: 'thin', color: { rgb: 'E2E8F0' } }, left: { style: 'thin', color: { rgb: 'E2E8F0' } }, right: { style: 'thin', color: { rgb: 'E2E8F0' } } } };
+  const styleNum     = { font: { sz: 10 }, fill: { fgColor: { rgb: 'FFFFFF' } }, alignment: { horizontal: 'right', vertical: 'center' }, border: { top: { style: 'thin', color: { rgb: 'E2E8F0' } }, bottom: { style: 'thin', color: { rgb: 'E2E8F0' } }, left: { style: 'thin', color: { rgb: 'E2E8F0' } }, right: { style: 'thin', color: { rgb: 'E2E8F0' } } } };
+  const styleNumAlt  = { font: { sz: 10 }, fill: { fgColor: { rgb: 'F7FAFC' } }, alignment: { horizontal: 'right', vertical: 'center' }, border: { top: { style: 'thin', color: { rgb: 'E2E8F0' } }, bottom: { style: 'thin', color: { rgb: 'E2E8F0' } }, left: { style: 'thin', color: { rgb: 'E2E8F0' } }, right: { style: 'thin', color: { rgb: 'E2E8F0' } } } };
+  const styleNumHL   = { font: { bold: true, sz: 10, color: { rgb: '276749' } }, fill: { fgColor: { rgb: 'C6F6D5' } }, alignment: { horizontal: 'right', vertical: 'center' }, border: { top: { style: 'thin', color: { rgb: '9AE6B4' } }, bottom: { style: 'thin', color: { rgb: '9AE6B4' } }, left: { style: 'thin', color: { rgb: '9AE6B4' } }, right: { style: 'thin', color: { rgb: '9AE6B4' } } } };
+
+  // Formatea número con locale chileno: miles con punto, decimal con coma, máx 3 decimales
+  const fmtN = (v: number): string =>
+    v.toLocaleString('es-CL', { maximumFractionDigits: 3 });
+  // Celda texto — garantiza formato chileno (punto miles, coma decimal) sin depender del locale de Excel
+  const sc = (v: string | number | null, s: object) => ({
+    v: typeof v === 'number' ? fmtN(v) : (v ?? ''),
+    t: 's',
+    s,
+  });
+  // Convierte índice de columna (0-based) a letra(s) Excel: 0→A, 25→Z, 26→AA …
+  const cl = (c: number): string => {
+    let s = ''; let n = c + 1;
+    while (n > 0) { n--; s = String.fromCharCode(65 + (n % 26)) + s; n = Math.floor(n / 26); }
+    return s;
+  };
+  // Celda de total: valor pre-calculado como texto chileno (fórmulas SUM no operan sobre celdas texto)
+  const sf = (_formula: string, v: number, s: object) => ({ v: fmtN(v), t: 's', s });
+
+  const autoColWidth = (data: (string | number | null)[][], startRow: number) =>
+    data[startRow]?.map((_, ci) => ({
+      wch: Math.min(40, Math.max(8, ...data.map(row => String(row[ci] ?? '').length + 2)))
+    })) ?? [];
+
   // ── Descarga Excel: vista por día ──
   const descargarExcelDia = () => {
     const nombreDia = DIA_CONFIG[diaCategoria as number]?.nombre ?? 'Día';
     const semNombre = semanaActual?.nombreSemana ?? '';
 
-    // Todas las secciones únicas que aparecen en este día
+    // Clave compuesta "asignatura::seccion" → columna única por asignatura+sección
     const todasSecciones = new Set<string>();
-    for (const cat of categoriasPorDia) {
-      for (const prod of cat.productos) {
-        for (const det of prod.detallesFiltrados) todasSecciones.add(det.nombreSeccion);
-      }
-    }
+    for (const cat of categoriasPorDia)
+      for (const prod of cat.productos)
+        for (const det of prod.detallesFiltrados)
+          todasSecciones.add(`${det.nombreAsignatura}::${det.nombreSeccion}`);
     const secciones = Array.from(todasSecciones).sort();
+    const secLabel = (key: string) => { const [a, s] = key.split('::'); return `§${s} — ${a}`; };
+    const nCols = 3 + secciones.length + 1; // cat + prod + unidad + secciones + total
 
-    const rows: (string | number | null)[][] = [
-      [`Por Categoría - ${nombreDia} - ${semNombre}`],
-      [],
-      ['Categoría', 'Producto', 'Unidad', ...secciones.map(s => `§${s}`), 'Total Día'],
-    ];
-
-    for (const cat of categoriasPorDia) {
-      for (const prod of cat.productos) {
-        const secMap = new Map<string, number>();
-        for (const d of prod.detallesFiltrados) secMap.set(d.nombreSeccion, (secMap.get(d.nombreSeccion) ?? 0) + d.cantidad);
-        rows.push([
-          cat.nombreCategoria,
-          prod.nombreProducto,
-          prod.abreviatura,
-          ...secciones.map(s => secMap.get(s) ?? null),
-          prod.totalDia,
-        ]);
+    // Helper: construye secMap con clave compuesta para un producto
+    const buildSecMap = (detallesFiltrados: Array<{ nombreAsignatura: string; nombreSeccion: string; cantidad: number }>) => {
+      const m = new Map<string, number>();
+      for (const d of detallesFiltrados) {
+        const k = `${d.nombreAsignatura}::${d.nombreSeccion}`;
+        m.set(k, (m.get(k) ?? 0) + d.cantidad);
       }
-      // fila subtotal de categoría
-      rows.push([
-        `TOTAL ${cat.nombreCategoria}`,
-        '',
-        '',
-        ...secciones.map(() => null),
-        cat.productos.reduce((s, p) => s + p.totalDia, 0),
-      ]);
-      rows.push([]);
+      return m;
+    };
+
+    // ── Construir filas como arrays de valores (para autoColWidth) ──
+    const rawRows: (string | number | null)[][] = [];
+    rawRows.push([`Por Categoría — ${nombreDia} — ${semNombre}`, ...Array(nCols - 1).fill(null)]);
+    rawRows.push(Array(nCols).fill(null));
+    rawRows.push(['Categoría', 'Producto', 'Unidad', ...secciones.map(secLabel), 'Total Día']);
+    for (const cat of categoriasPorDia) {
+      rawRows.push([cat.nombreCategoria, ...Array(nCols - 1).fill(null)]);
+      for (const prod of cat.productos) {
+        const sm = buildSecMap(prod.detallesFiltrados);
+        rawRows.push([cat.nombreCategoria, prod.nombreProducto, prod.abreviatura, ...secciones.map(k => sm.get(k) ?? 0), prod.totalDia]);
+      }
+      // Subtotal row con valores por sección
+      const secSubtotals = secciones.map(k => cat.productos.reduce((sum, p) => sum + (buildSecMap(p.detallesFiltrados).get(k) ?? 0), 0));
+      rawRows.push([`SUBTOTAL ${cat.nombreCategoria}`, '', '', ...secSubtotals, cat.productos.reduce((s, p) => s + p.totalDia, 0)]);
+      rawRows.push(Array(nCols).fill(null));
     }
 
-    const ws = XLSX.utils.aoa_to_sheet(rows);
-    // Ancho de columnas
-    ws['!cols'] = [{ wch: 22 }, { wch: 35 }, { wch: 8 }, ...secciones.map(() => ({ wch: 12 })), { wch: 12 }];
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, nombreDia.slice(0, 31));
-    XLSX.writeFile(wb, `categorias_${nombreDia.toLowerCase()}_${semNombre.replace(/\s+/g, '_')}.xlsx`);
+    // ── Construir worksheet con estilos ──
+    const ws: Record<string, any> = {};
+    const merges: any[] = [];
+    let R = 0;
+
+    // Fila título (fusionada)
+    merges.push({ s: { r: 0, c: 0 }, e: { r: 0, c: nCols - 1 } });
+    ws[XLSXStyle.utils.encode_cell({ r: 0, c: 0 })] = sc(`Por Categoría — ${nombreDia} — ${semNombre}`, styleTitle);
+    for (let C = 1; C < nCols; C++) ws[XLSXStyle.utils.encode_cell({ r: 0, c: C })] = sc(null, styleTitle);
+    R = 2;
+
+    // Fila encabezados
+    const headers = ['Categoría', 'Producto', 'Unidad', ...secciones.map(secLabel), 'Total Día'];
+    headers.forEach((h, C) => { ws[XLSXStyle.utils.encode_cell({ r: R, c: C })] = sc(h, styleHeader); });
+    R++;
+
+    let alt = false;
+    for (const cat of categoriasPorDia) {
+      // Fila nombre categoría (fusionada)
+      merges.push({ s: { r: R, c: 0 }, e: { r: R, c: nCols - 1 } });
+      ws[XLSXStyle.utils.encode_cell({ r: R, c: 0 })] = sc(cat.nombreCategoria, styleCat);
+      for (let C = 1; C < nCols; C++) ws[XLSXStyle.utils.encode_cell({ r: R, c: C })] = sc(null, styleCat);
+      R++;
+
+      alt = false;
+      const firstProdRDia = R;
+      for (const prod of cat.productos) {
+        const sm = buildSecMap(prod.detallesFiltrados);
+        const sd = alt ? styleDataAlt : styleData;
+        const sn = alt ? styleNumAlt : styleNum;
+        ws[XLSXStyle.utils.encode_cell({ r: R, c: 0 })] = sc(cat.nombreCategoria, sd);
+        ws[XLSXStyle.utils.encode_cell({ r: R, c: 1 })] = sc(prod.nombreProducto, sd);
+        ws[XLSXStyle.utils.encode_cell({ r: R, c: 2 })] = sc(prod.abreviatura, { ...sn, alignment: { horizontal: 'center', vertical: 'center' } });
+        secciones.forEach((k, i) => { ws[XLSXStyle.utils.encode_cell({ r: R, c: 3 + i })] = sc(sm.get(k) ?? 0, sn); });
+        ws[XLSXStyle.utils.encode_cell({ r: R, c: nCols - 1 })] = sf(
+          `SUM(${cl(3)}${R + 1}:${cl(2 + secciones.length)}${R + 1})`,
+          prod.totalDia,
+          styleNumHL
+        );
+        R++;
+        alt = !alt;
+      }
+      const lastProdRDia = R - 1;
+
+      // Subtotal categoría — con subtotales por columna de sección
+      const totalCat = cat.productos.reduce((s, p) => s + p.totalDia, 0);
+      ws[XLSXStyle.utils.encode_cell({ r: R, c: 0 })] = sc(`SUBTOTAL ${cat.nombreCategoria}`, styleTotal);
+      ws[XLSXStyle.utils.encode_cell({ r: R, c: 1 })] = sc('', styleTotal);
+      ws[XLSXStyle.utils.encode_cell({ r: R, c: 2 })] = sc('', styleTotal);
+      secciones.forEach((k, i) => {
+        const secTotal = cat.productos.reduce((sum, p) => sum + (buildSecMap(p.detallesFiltrados).get(k) ?? 0), 0);
+        ws[XLSXStyle.utils.encode_cell({ r: R, c: 3 + i })] = sf(
+          `SUM(${cl(3 + i)}${firstProdRDia + 1}:${cl(3 + i)}${lastProdRDia + 1})`,
+          secTotal,
+          styleTotalN
+        );
+      });
+      ws[XLSXStyle.utils.encode_cell({ r: R, c: nCols - 1 })] = sf(
+        `SUM(${cl(nCols - 1)}${firstProdRDia + 1}:${cl(nCols - 1)}${lastProdRDia + 1})`,
+        totalCat,
+        styleTotalN
+      );
+      R++;
+
+      // Fila separadora
+      for (let C = 0; C < nCols; C++) ws[XLSXStyle.utils.encode_cell({ r: R, c: C })] = sc(null, { fill: { fgColor: { rgb: 'EDF2F7' } } });
+      R++;
+    }
+
+    ws['!ref'] = XLSXStyle.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: R - 1, c: nCols - 1 } });
+    ws['!merges'] = merges;
+    ws['!cols'] = autoColWidth(rawRows, 2);
+    ws['!rows'] = [{ hpt: 28 }, {}, { hpt: 22 }];
+    ws['!freeze'] = { xSplit: 3, ySplit: 3 };
+
+    const wb = XLSXStyle.utils.book_new();
+    XLSXStyle.utils.book_append_sheet(wb, ws, nombreDia.slice(0, 31));
+    XLSXStyle.writeFile(wb, `categorias_${nombreDia.toLowerCase()}_${semNombre.replace(/\s+/g, '_')}.xlsx`);
   };
 
   // ── Descarga Excel: vista completa (todos los días) ──
@@ -512,41 +588,130 @@ const ConglomeradoPedidosPage: React.FC = () => {
     const semNombre = semanaActual?.nombreSemana ?? '';
     const diasOrden = [1, 2, 3, 4, 5, 6, 0];
     const diasNombres = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+    // Cols: Categoría | Producto | Sección | Unidad | Lun…Dom | Total Semana
+    const nCols = 4 + diasNombres.length + 1;
 
-    const rows: (string | number | null)[][] = [
-      [`Vista Completa por Categoría - ${semNombre}`],
-      [],
-      ['Categoría', 'Producto', 'Unidad', ...diasNombres, 'Total Semana'],
-    ];
-
-    for (const cat of matrizCompleta) {
-      for (const row of cat.filas) {
-        rows.push([
-          cat.nombre,
-          row.nombreProducto,
-          row.abreviatura,
-          ...diasOrden.map(dia => row.diasData[dia]?.total ?? null),
-          row.totalSemana,
-        ]);
+    // Mapa idProducto → secciones (clave compuesta → datos por día)
+    const prodSecMap = new Map<number, Map<string, { label: string; days: Record<number, number>; total: number }>>();
+    for (const prod of productosParaCategorias) {
+      const sm = new Map<string, { label: string; days: Record<number, number>; total: number }>();
+      for (const d of prod.detalles) {
+        const key = `${d.nombreAsignatura}::${d.nombreSeccion}`;
+        if (!sm.has(key)) sm.set(key, { label: `§${d.nombreSeccion} — ${d.nombreAsignatura}`, days: {}, total: 0 });
+        const e = sm.get(key)!;
+        e.days[d.diaSemana] = (e.days[d.diaSemana] ?? 0) + d.cantidad;
+        e.total += d.cantidad;
       }
-      // fila subtotal de categoría
-      const totalesPorDia = diasOrden.map(dia =>
-        cat.filas.reduce((s, r) => s + (r.diasData[dia]?.total ?? 0), 0)
-      );
-      const totalCat = cat.filas.reduce((s, r) => s + r.totalSemana, 0);
-      rows.push([`TOTAL ${cat.nombre}`, '', '', ...totalesPorDia.map(t => t || null), totalCat]);
-      rows.push([]);
+      prodSecMap.set(prod.idProducto, sm);
     }
 
-    const ws = XLSX.utils.aoa_to_sheet(rows);
-    ws['!cols'] = [{ wch: 22 }, { wch: 35 }, { wch: 8 }, ...diasNombres.map(() => ({ wch: 12 })), { wch: 14 }];
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Vista Completa');
-    XLSX.writeFile(wb, `categorias_completo_${semNombre.replace(/\s+/g, '_')}.xlsx`);
+    const styleSecRow = { font: { sz: 10, italic: true, color: { rgb: '4A5568' } }, fill: { fgColor: { rgb: 'F7FAFC' } }, alignment: { horizontal: 'left', vertical: 'center' }, border: { top: { style: 'thin', color: { rgb: 'E2E8F0' } }, bottom: { style: 'thin', color: { rgb: 'E2E8F0' } }, left: { style: 'thin', color: { rgb: 'E2E8F0' } }, right: { style: 'thin', color: { rgb: 'E2E8F0' } } } };
+    const styleSecNum = { font: { sz: 10, italic: true }, fill: { fgColor: { rgb: 'F7FAFC' } }, alignment: { horizontal: 'right', vertical: 'center' }, border: { top: { style: 'thin', color: { rgb: 'E2E8F0' } }, bottom: { style: 'thin', color: { rgb: 'E2E8F0' } }, left: { style: 'thin', color: { rgb: 'E2E8F0' } }, right: { style: 'thin', color: { rgb: 'E2E8F0' } } } };
+    const styleProdTotal = { font: { bold: true, sz: 10 }, fill: { fgColor: { rgb: 'EBF8FF' } }, alignment: { horizontal: 'right', vertical: 'center' }, border: { top: { style: 'thin', color: { rgb: 'BEE3F8' } }, bottom: { style: 'thin', color: { rgb: 'BEE3F8' } }, left: { style: 'thin', color: { rgb: 'BEE3F8' } }, right: { style: 'thin', color: { rgb: 'BEE3F8' } } } };
+    const styleProdTotalLabel = { font: { bold: true, sz: 10 }, fill: { fgColor: { rgb: 'EBF8FF' } }, alignment: { horizontal: 'left', vertical: 'center' }, border: { top: { style: 'thin', color: { rgb: 'BEE3F8' } }, bottom: { style: 'thin', color: { rgb: 'BEE3F8' } }, left: { style: 'thin', color: { rgb: 'BEE3F8' } }, right: { style: 'thin', color: { rgb: 'BEE3F8' } } } };
+
+    // ── rawRows para autoColWidth ──
+    const rawRows: (string | number | null)[][] = [];
+    rawRows.push([`Vista Completa por Categoría — ${semNombre}`, ...Array(nCols - 1).fill(null)]);
+    rawRows.push(Array(nCols).fill(null));
+    rawRows.push(['Categoría', 'Producto', 'Sección', 'Unidad', ...diasNombres, 'Total Semana']);
+    for (const cat of matrizCompleta) {
+      rawRows.push([cat.nombre, ...Array(nCols - 1).fill(null)]);
+      for (const row of cat.filas) {
+        const secciones = Array.from(prodSecMap.get(row.idProducto)?.entries() ?? []).sort(([a], [b]) => a.localeCompare(b));
+        for (const [, sec] of secciones)
+          rawRows.push([cat.nombre, row.nombreProducto, sec.label, row.abreviatura, ...diasOrden.map(d => sec.days[d] ?? 0), sec.total]);
+        if (secciones.length > 1)
+          rawRows.push([cat.nombre, row.nombreProducto, 'TOTAL', row.abreviatura, ...diasOrden.map(d => row.diasData[d]?.total ?? 0), row.totalSemana]);
+      }
+      rawRows.push([`SUBTOTAL ${cat.nombre}`, '', '', '', ...diasOrden.map(d => cat.filas.reduce((s, r) => s + (r.diasData[d]?.total ?? 0), 0)), cat.filas.reduce((s, r) => s + r.totalSemana, 0)]);
+      rawRows.push(Array(nCols).fill(null));
+    }
+
+    const ws: Record<string, any> = {};
+    const merges: any[] = [];
+    let R = 0;
+
+    // Título fusionado
+    merges.push({ s: { r: 0, c: 0 }, e: { r: 0, c: nCols - 1 } });
+    ws[XLSXStyle.utils.encode_cell({ r: 0, c: 0 })] = sc(`Vista Completa por Categoría — ${semNombre}`, styleTitle);
+    for (let C = 1; C < nCols; C++) ws[XLSXStyle.utils.encode_cell({ r: 0, c: C })] = sc(null, styleTitle);
+    R = 2;
+
+    // Encabezados
+    const headers = ['Categoría', 'Producto', 'Sección', 'Unidad', ...diasNombres, 'Total Semana'];
+    headers.forEach((h, C) => { ws[XLSXStyle.utils.encode_cell({ r: R, c: C })] = sc(h, styleHeader); });
+    R++;
+
+    for (const cat of matrizCompleta) {
+      // Fila nombre categoría fusionada
+      merges.push({ s: { r: R, c: 0 }, e: { r: R, c: nCols - 1 } });
+      ws[XLSXStyle.utils.encode_cell({ r: R, c: 0 })] = sc(cat.nombre, styleCat);
+      for (let C = 1; C < nCols; C++) ws[XLSXStyle.utils.encode_cell({ r: R, c: C })] = sc(null, styleCat);
+      R++;
+
+      const firstCatR = R;
+      for (const row of cat.filas) {
+        const secciones = Array.from(prodSecMap.get(row.idProducto)?.entries() ?? []).sort(([a], [b]) => a.localeCompare(b));
+        const hasManySecs = secciones.length > 1;
+
+        for (const [, sec] of secciones) {
+          ws[XLSXStyle.utils.encode_cell({ r: R, c: 0 })] = sc(cat.nombre, styleSecRow);
+          ws[XLSXStyle.utils.encode_cell({ r: R, c: 1 })] = sc(row.nombreProducto, styleSecRow);
+          ws[XLSXStyle.utils.encode_cell({ r: R, c: 2 })] = sc(sec.label, styleSecRow);
+          ws[XLSXStyle.utils.encode_cell({ r: R, c: 3 })] = sc(row.abreviatura, { ...styleSecNum, alignment: { horizontal: 'center', vertical: 'center' } });
+          diasOrden.forEach((dia, i) => { ws[XLSXStyle.utils.encode_cell({ r: R, c: 4 + i })] = sc(sec.days[dia] ?? 0, styleSecNum); });
+          ws[XLSXStyle.utils.encode_cell({ r: R, c: nCols - 1 })] = sf(`SUM(${cl(4)}${R+1}:${cl(4+diasOrden.length-1)}${R+1})`, sec.total, styleNumHL);
+          R++;
+        }
+
+        if (hasManySecs) {
+          // Subtotal del producto
+          ws[XLSXStyle.utils.encode_cell({ r: R, c: 0 })] = sc(cat.nombre, styleProdTotalLabel);
+          ws[XLSXStyle.utils.encode_cell({ r: R, c: 1 })] = sc(row.nombreProducto, styleProdTotalLabel);
+          ws[XLSXStyle.utils.encode_cell({ r: R, c: 2 })] = sc('TOTAL PRODUCTO', styleProdTotalLabel);
+          ws[XLSXStyle.utils.encode_cell({ r: R, c: 3 })] = sc(row.abreviatura, { ...styleProdTotal, alignment: { horizontal: 'center', vertical: 'center' } });
+          diasOrden.forEach((dia, i) => { ws[XLSXStyle.utils.encode_cell({ r: R, c: 4 + i })] = sc(row.diasData[dia]?.total ?? 0, styleProdTotal); });
+          ws[XLSXStyle.utils.encode_cell({ r: R, c: nCols - 1 })] = sf(`SUM(${cl(4)}${R+1}:${cl(4+diasOrden.length-1)}${R+1})`, row.totalSemana, styleNumHL);
+          R++;
+        }
+      }
+      const lastCatR = R - 1;
+
+      // Subtotal categoría
+      const totalesDia = diasOrden.map(dia => cat.filas.reduce((s, r) => s + (r.diasData[dia]?.total ?? 0), 0));
+      const totalCat = cat.filas.reduce((s, r) => s + r.totalSemana, 0);
+      ws[XLSXStyle.utils.encode_cell({ r: R, c: 0 })] = sc(`SUBTOTAL ${cat.nombre}`, styleTotal);
+      ws[XLSXStyle.utils.encode_cell({ r: R, c: 1 })] = sc('', styleTotal);
+      ws[XLSXStyle.utils.encode_cell({ r: R, c: 2 })] = sc('', styleTotal);
+      ws[XLSXStyle.utils.encode_cell({ r: R, c: 3 })] = sc('', styleTotal);
+      totalesDia.forEach((t, i) => {
+        ws[XLSXStyle.utils.encode_cell({ r: R, c: 4 + i })] = sf(
+          `SUM(${cl(4+i)}${firstCatR+1}:${cl(4+i)}${lastCatR+1})`, t || 0, styleTotalN
+        );
+      });
+      ws[XLSXStyle.utils.encode_cell({ r: R, c: nCols - 1 })] = sf(
+        `SUM(${cl(nCols-1)}${firstCatR+1}:${cl(nCols-1)}${lastCatR+1})`, totalCat, styleTotalN
+      );
+      R++;
+
+      for (let C = 0; C < nCols; C++) ws[XLSXStyle.utils.encode_cell({ r: R, c: C })] = sc(null, { fill: { fgColor: { rgb: 'EDF2F7' } } });
+      R++;
+    }
+
+    ws['!ref'] = XLSXStyle.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: R - 1, c: nCols - 1 } });
+    ws['!merges'] = merges;
+    ws['!cols'] = autoColWidth(rawRows, 2);
+    ws['!rows'] = [{ hpt: 28 }, {}, { hpt: 22 }];
+    ws['!freeze'] = { xSplit: 4, ySplit: 3 };
+
+    const wb = XLSXStyle.utils.book_new();
+    XLSXStyle.utils.book_append_sheet(wb, ws, 'Vista Completa');
+    XLSXStyle.writeFile(wb, `categorias_completo_${semNombre.replace(/\s+/g, '_')}.xlsx`);
   };
 
   const semanaActual = semanas.find(s => String(s.idSemana) === semanaId) ?? null;
-  const periodosDisponibles = periodos.length > 0 ? periodos : [{ anio: new Date().getFullYear(), semestres: [1, 2] }];
+  const sinPeriodos = periodos.length === 0 && !isLoadingSem;
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-6 space-y-5">
@@ -555,15 +720,32 @@ const ConglomeradoPedidosPage: React.FC = () => {
       <Card className="shadow-sm">
         <CardBody className="px-5 py-4">
           <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-            <div className="flex items-center gap-2 shrink-0">
+            <div className="flex items-center gap-2 shrink-0 flex-wrap">
               <Icon icon="lucide:calendar-days" className="text-default-400" width={16} />
               <span className="text-xs font-bold text-default-500 uppercase tracking-wider">Período</span>
-              {periodosDisponibles.map(p =>
+              {sinPeriodos && !isAdmin && (
+                <p className="text-sm text-warning-600 dark:text-warning-400 flex items-center gap-1.5">
+                  <Icon icon="lucide:alert-triangle" width={13} />
+                  Contacte el administrador para generar los periodos académicos.
+                </p>
+              )}
+              {sinPeriodos && isAdmin && (
+                <button
+                  type="button"
+                  className="flex items-center gap-1.5 text-sm text-primary hover:text-primary-600 underline underline-offset-2 cursor-pointer transition-colors"
+                  onClick={() => history.push('/admin-sistema?tab=semanas')}
+                >
+                  <Icon icon="lucide:calendar-plus" width={14} />
+                  Genere el período académico
+                  <Icon icon="lucide:arrow-right" width={12} />
+                </button>
+              )}
+              {!sinPeriodos && periodos.map(p =>
                 p.semestres.map(s => {
                   const isActive = semanas.length > 0 && semanas[0].anio === p.anio && semanas[0].semestre === s;
                   return (
-                    <button key={`${p.anio}-${s}`} onClick={() => handlePeriodoChange(p.anio, s)}
-                      className={`px-3 py-1 rounded-full text-xs font-bold border transition-all ${
+                    <button key={`${p.anio}-${s}`} onClick={() => { seleccionarPeriodo(p.anio, s); setConsolidateData(null); }}
+                      className={`px-3 py-1 rounded-full text-xs font-bold border transition-all cursor-pointer ${
                         isActive ? 'bg-warning text-white border-warning' : 'bg-default-100 text-default-600 border-default-200 hover:bg-default-200'
                       }`}>
                       {p.anio} S{s}
@@ -583,7 +765,7 @@ const ConglomeradoPedidosPage: React.FC = () => {
               ) : (
                 <Select size="sm" variant="bordered"
                   selectedKeys={semanaId ? new Set([semanaId]) : new Set()}
-                  onSelectionChange={keys => { const v = Array.from(keys as Set<string>)[0]; if (v) setSemanaId(v); }}
+                  onSelectionChange={keys => { const v = Array.from(keys as Set<string>)[0]; if (v) seleccionarSemana(v); }}
                   placeholder="Seleccione una semana"
                   classNames={{ trigger: 'bg-default-50 cursor-pointer', base: 'max-w-xs' }}
                   startContent={<Icon icon="lucide:calendar" width={14} className="text-default-400 shrink-0" />}
@@ -694,7 +876,7 @@ const ConglomeradoPedidosPage: React.FC = () => {
               </div>
               {/* Toggle colores */}
               <button onClick={() => setConColores(c => !c)}
-                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold border transition-all ${
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${
                   conColores ? 'bg-primary-50 border-primary-200 text-primary-700' : 'bg-default-100 border-default-200 text-default-500'
                 }`}>
                 <Icon icon="lucide:palette" width={12} />
@@ -704,7 +886,7 @@ const ConglomeradoPedidosPage: React.FC = () => {
               {hayDatos && (
                 <button
                   onClick={diaCategoria === 'completa' ? descargarExcelCompleta : descargarExcelDia}
-                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold border border-success-300 bg-success-50 text-success-700 hover:bg-success-100 transition-all">
+                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold border border-success-300 bg-success-50 text-success-700 hover:bg-success-100 transition-all cursor-pointer">
                   <Icon icon="lucide:download" width={12} />
                   Descargar Excel
                 </button>
@@ -799,7 +981,7 @@ const ConglomeradoPedidosPage: React.FC = () => {
                                 const cell = row.diasData[dia];
                                 if (!cell) return <td key={dia} className="text-center px-2 py-2 text-default-300">—</td>;
                                 const bgColor = conColores && cell.secciones.length === 1
-                                  ? seccionColorMap.get(cell.secciones[0].nombre) ?? 'transparent'
+                                  ? seccionColorMap.get(cell.secciones[0].compositeKey) ?? 'transparent'
                                   : 'transparent';
                                 return (
                                   <td key={dia} className="text-center px-2 py-2">
@@ -807,7 +989,7 @@ const ConglomeradoPedidosPage: React.FC = () => {
                                       {conColores && cell.secciones.length > 1
                                         ? cell.secciones.map((sec, si) => (
                                             <span key={si} className="text-[11px] font-mono font-semibold px-1.5 py-0.5 rounded"
-                                              style={{ backgroundColor: seccionColorMap.get(sec.nombre) ?? '#f4f4f5' }}>
+                                              style={{ backgroundColor: seccionColorMap.get(sec.compositeKey) ?? '#f4f4f5' }}>
                                               {fmtCant(sec.cantidad)}
                                               <span className="text-[9px] text-default-500 ml-0.5">{row.abreviatura}</span>
                                             </span>
@@ -840,15 +1022,25 @@ const ConglomeradoPedidosPage: React.FC = () => {
 
                 {/* Leyenda secciones */}
                 {conColores && seccionColorMap.size > 0 && (
-                  <div className="mt-4 p-3 bg-default-50 rounded-xl border border-default-200">
-                    <p className="text-[10px] font-bold text-default-500 uppercase tracking-wider mb-2">Leyenda de secciones</p>
+                  <div className="mt-4 p-4 bg-default-50 rounded-xl border border-default-200">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Icon icon="lucide:palette" width={13} className="text-default-500" />
+                      <p className="text-[10px] font-bold text-default-500 uppercase tracking-wider">Leyenda de secciones</p>
+                      <span className="ml-auto text-[10px] text-default-400">{seccionColorMap.size} sección{seccionColorMap.size !== 1 ? 'es' : ''}</span>
+                    </div>
                     <div className="flex flex-wrap gap-2">
-                      {Array.from(seccionColorMap.entries()).map(([sec, color]) => (
-                        <span key={sec} className="flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium text-default-700 border border-default-200"
-                          style={{ backgroundColor: color }}>
-                          §{sec}
-                        </span>
-                      ))}
+                      {Array.from(seccionColorMap.entries()).map(([key, color]) => {
+                        const [asignatura, seccion] = key.split('::');
+                        return (
+                          <div key={key}
+                            className="flex items-center gap-1.5 pl-2 pr-3 py-1 rounded-lg border border-default-200 text-default-700"
+                            style={{ backgroundColor: color }}>
+                            <span className="font-mono font-bold text-xs">§{seccion}</span>
+                            <span className="text-default-400 text-[10px]">·</span>
+                            <span className="text-[11px] font-medium truncate max-w-[120px]" title={asignatura}>{asignatura}</span>
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 )}
@@ -882,26 +1074,33 @@ const ConglomeradoPedidosPage: React.FC = () => {
 
                         {/* Filas de productos */}
                         {cat.productos.map(prod => {
-                          // Agrupar detalles por sección
-                          const seccionMap = new Map<string, number>();
+                          // Agrupar por clave compuesta asignatura::seccion para no mezclar secciones homónimas
+                          const seccionMap = new Map<string, { cantidad: number; nombreSeccion: string; nombreAsignatura: string }>();
                           for (const d of prod.detallesFiltrados) {
-                            seccionMap.set(d.nombreSeccion, (seccionMap.get(d.nombreSeccion) ?? 0) + d.cantidad);
+                            const key = `${d.nombreAsignatura}::${d.nombreSeccion}`;
+                            const prev = seccionMap.get(key);
+                            seccionMap.set(key, {
+                              cantidad: (prev?.cantidad ?? 0) + d.cantidad,
+                              nombreSeccion: d.nombreSeccion,
+                              nombreAsignatura: d.nombreAsignatura,
+                            });
                           }
                           return (
                             <div key={prod.idProducto}
                               className="grid grid-cols-[1fr_auto] items-center gap-3 px-4 py-2.5 border-b border-default-50 last:border-0 hover:bg-default-50/50">
                               <div className="min-w-0">
                                 <p className="font-medium text-sm text-default-800 truncate">{prod.nombreProducto}</p>
-                                <p className="text-[10px] text-default-400 font-mono">
-                                  Total: {fmtCant(prod.totalDia)} {prod.abreviatura}
+                                <p className="text-sm font-bold font-mono" style={{ color: '#374151' }}>
+                                  {fmtCant(prod.totalDia)}
+                                  <span className="text-xs font-normal text-default-400 ml-1">{prod.abreviatura} total</span>
                                 </p>
                               </div>
                               <div className="flex flex-wrap gap-1 justify-end">
-                                {Array.from(seccionMap.entries()).map(([sec, cant]) => (
-                                  <span key={sec}
+                                {Array.from(seccionMap.entries()).map(([key, { cantidad, nombreSeccion }]) => (
+                                  <span key={key}
                                     className="px-2 py-1 rounded-lg text-xs font-semibold border border-default-200 text-default-700 font-mono"
-                                    style={{ backgroundColor: conColores ? (seccionColorMap.get(sec) ?? '#f4f4f5') : 'white' }}>
-                                    §{sec} · {fmtCant(cant)} {prod.abreviatura}
+                                    style={{ backgroundColor: conColores ? (seccionColorMap.get(key) ?? '#f4f4f5') : 'white' }}>
+                                    §{nombreSeccion} · {fmtCant(cantidad)} {prod.abreviatura}
                                   </span>
                                 ))}
                               </div>
@@ -921,15 +1120,25 @@ const ConglomeradoPedidosPage: React.FC = () => {
 
                     {/* Leyenda */}
                     {conColores && seccionColorMap.size > 0 && (
-                      <div className="p-3 bg-default-50 rounded-xl border border-default-200">
-                        <p className="text-[10px] font-bold text-default-500 uppercase tracking-wider mb-2">Leyenda de secciones</p>
+                      <div className="p-4 bg-default-50 rounded-xl border border-default-200">
+                        <div className="flex items-center gap-2 mb-3">
+                          <Icon icon="lucide:palette" width={13} className="text-default-500" />
+                          <p className="text-[10px] font-bold text-default-500 uppercase tracking-wider">Leyenda de secciones</p>
+                          <span className="ml-auto text-[10px] text-default-400">{seccionColorMap.size} sección{seccionColorMap.size !== 1 ? 'es' : ''}</span>
+                        </div>
                         <div className="flex flex-wrap gap-2">
-                          {Array.from(seccionColorMap.entries()).map(([sec, color]) => (
-                            <span key={sec} className="flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium text-default-700 border border-default-200"
-                              style={{ backgroundColor: color }}>
-                              §{sec}
-                            </span>
-                          ))}
+                          {Array.from(seccionColorMap.entries()).map(([key, color]) => {
+                            const [asignatura, seccion] = key.split('::');
+                            return (
+                              <div key={key}
+                                className="flex items-center gap-1.5 pl-2 pr-3 py-1 rounded-lg border border-default-200 text-default-700"
+                                style={{ backgroundColor: color }}>
+                                <span className="font-mono font-bold text-xs">§{seccion}</span>
+                                <span className="text-default-400 text-[10px]">·</span>
+                                <span className="text-[11px] font-medium truncate max-w-[120px]" title={asignatura}>{asignatura}</span>
+                              </div>
+                            );
+                          })}
                         </div>
                       </div>
                     )}
@@ -956,22 +1165,29 @@ const ConglomeradoPedidosPage: React.FC = () => {
                 grupo.solicitudes.forEach(s => s.productosSolicitados.forEach(p => productosDelDia.add(p.nombreProducto)));
 
                 return (
-                  <div key={grupo.fecha} className={`rounded-2xl border ${hoy ? 'border-warning-300 ring-2 ring-warning-200' : cfg.border} overflow-hidden`}>
+                  <div key={grupo.fecha}
+                    className={`rounded-2xl border-2 overflow-hidden shadow-sm`}
+                    style={{ borderColor: hoy ? '#B45309' : cfg.border, boxShadow: `0 2px 8px 0 ${hoy ? '#B4530940' : cfg.border + '30'}` }}>
 
                     {/* Cabecera del día */}
-                    <div className={`flex flex-col sm:flex-row sm:items-center gap-2 px-5 py-3 ${hoy ? 'bg-warning-50' : cfg.header}`}>
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 px-5 py-3"
+                      style={{ backgroundColor: hoy ? '#FEF3C7' : cfg.bgHeader }}>
                       <div className="flex items-center gap-3 flex-1">
-                        <div className={`flex flex-col items-center justify-center rounded-xl px-3 py-1.5 min-w-[56px] text-center ${hoy ? 'bg-warning-200' : cfg.badge}`}>
-                          <span className={`text-[11px] font-black uppercase tracking-wide ${hoy ? 'text-warning-700' : cfg.text}`}>
+                        <div className="flex flex-col items-center justify-center rounded-xl px-3 py-1.5 min-w-[56px] text-center"
+                          style={{ backgroundColor: hoy ? '#FCD34D' : cfg.bgBadge }}>
+                          <span className="text-[11px] font-black uppercase tracking-wide"
+                            style={{ color: hoy ? '#78350F' : cfg.textColor }}>
                             {cfg.nombre.slice(0, 3).toUpperCase()}
                           </span>
-                          <span className={`text-xl font-black leading-tight ${hoy ? 'text-warning-800' : cfg.text}`}>
+                          <span className="text-xl font-black leading-tight"
+                            style={{ color: hoy ? '#78350F' : cfg.textColor }}>
                             {new Date(grupo.fecha + 'T00:00:00').getDate()}
                           </span>
-                          {hoy && <span className="text-[9px] font-bold text-warning-600 leading-none">HOY</span>}
+                          {hoy && <span className="text-[9px] font-black leading-none" style={{ color: '#92400E' }}>HOY</span>}
                         </div>
                         <div>
-                          <p className={`font-bold text-sm capitalize ${hoy ? 'text-warning-800' : cfg.text}`}>
+                          <p className="font-bold text-sm capitalize"
+                            style={{ color: hoy ? '#78350F' : cfg.textColor }}>
                             {fmtFechaLarga(grupo.fecha)}
                           </p>
                           <div className="flex items-center gap-2 mt-0.5 flex-wrap">
@@ -995,31 +1211,33 @@ const ConglomeradoPedidosPage: React.FC = () => {
                     </div>
 
                     {/* Solicitudes del día */}
-                    <div className="divide-y divide-default-100 bg-white">
-                      {grupo.solicitudes.map(sol => {
+                    <div className="bg-white">
+                      {grupo.solicitudes.map((sol, solIdx) => {
                         const { seccion, horarios } = sol;
                         const rango   = parseRango(horarios.rangoHoras);
                         const solKey  = String(sol.idSolicitud);
                         const abierto = expandidos.has(solKey);
 
                         return (
-                          <div key={sol.idSolicitud}>
+                          <div key={sol.idSolicitud}
+                            style={solIdx > 0 ? { borderTop: '2px solid #1a1a1a' } : undefined}>
                             <button
                               className="w-full flex flex-col sm:flex-row sm:items-stretch gap-0 hover:bg-default-50/70 cursor-pointer transition-colors text-left"
                               onClick={() => toggleExpandido(solKey)}
                             >
                               {/* Barra de hora lateral */}
-                              <div className={`hidden sm:flex flex-col items-center justify-center px-3 py-3 min-w-[80px] border-r ${cfg.border} ${cfg.header}`}>
-                                <span className={`text-xs font-bold ${cfg.text}`}>{rango.inicio}</span>
-                                <div className={`w-px flex-1 my-1 min-h-[20px] ${cfg.border} border-l-2 border-dashed`} />
-                                <span className={`text-xs font-bold ${cfg.text}`}>{rango.fin}</span>
+                              <div className="hidden sm:flex flex-col items-center justify-center px-3 py-3 min-w-[80px] border-r"
+                                style={{ backgroundColor: hoy ? '#FEF3C7' : cfg.bgHeader, borderColor: hoy ? '#FCD34D' : cfg.border }}>
+                                <span className="text-xs font-bold" style={{ color: hoy ? '#78350F' : cfg.textColor }}>{rango.inicio}</span>
+                                <div className="w-px flex-1 my-1 min-h-[20px] border-l-2 border-dashed" style={{ borderColor: hoy ? '#FCD34D' : cfg.border }} />
+                                <span className="text-xs font-bold" style={{ color: hoy ? '#78350F' : cfg.textColor }}>{rango.fin}</span>
                               </div>
 
                               {/* Contenido */}
                               <div className="flex-1 flex flex-col sm:flex-row sm:items-center gap-3 px-4 py-3">
 
                                 {/* Bloque móvil: hora */}
-                                <div className={`sm:hidden flex items-center gap-2 text-xs ${cfg.text} font-bold`}>
+                                <div className="sm:hidden flex items-center gap-2 text-xs font-bold" style={{ color: hoy ? '#78350F' : cfg.textColor }}>
                                   <Icon icon="lucide:clock" width={12} />
                                   {rango.inicio} – {rango.fin}
                                 </div>
@@ -1083,41 +1301,66 @@ const ConglomeradoPedidosPage: React.FC = () => {
 
                             {/* Detalle expandido */}
                             {abierto && (
-                              <div className="mx-4 mb-3 rounded-xl border border-default-100 overflow-hidden">
-                                {/* Horario y sala */}
-                                <div className={`flex items-center gap-2 px-4 py-2 ${cfg.header} border-b ${cfg.border}`}>
-                                  <Icon icon="lucide:clock" width={12} className={cfg.text} />
-                                  <span className={`text-xs font-bold ${cfg.text} uppercase tracking-wide`}>Horario y Sala</span>
+                              <div className="mx-4 mb-3 rounded-xl overflow-hidden border-2"
+                                style={{ borderColor: hoy ? '#FCD34D' : cfg.border }}>
+                                {/* Horario y sala — cabecera */}
+                                <div className="flex items-center gap-2 px-4 py-2 border-b"
+                                  style={{
+                                    backgroundColor: hoy ? '#FEF3C7' : cfg.bgHeader,
+                                    borderColor: hoy ? '#FCD34D' : cfg.border,
+                                  }}>
+                                  <Icon icon="lucide:clock" width={12} style={{ color: hoy ? '#B45309' : cfg.textColor }} />
+                                  <span className="text-xs font-bold uppercase tracking-wide"
+                                    style={{ color: hoy ? '#B45309' : cfg.textColor }}>Horario y Sala</span>
                                 </div>
-                                <div className="flex flex-wrap gap-2 px-4 py-2.5 bg-default-50">
-                                  <div className="flex items-center gap-2 px-3 py-1.5 bg-white rounded-lg border border-default-200 text-xs">
-                                    <Icon icon="lucide:clock" width={12} className={cfg.text} />
-                                    <span className="font-mono text-default-700">{rango.inicio} – {rango.fin}</span>
-                                    <span className="text-default-400">·</span>
-                                    <Icon icon="lucide:door-open" width={12} className="text-default-400" />
-                                    <span className="text-default-500">{horarios.nombreSala}</span>
+                                {/* Horario y sala — contenido */}
+                                <div className="flex flex-wrap gap-2 px-4 py-2.5"
+                                  style={{ backgroundColor: hoy ? '#FFFBEB' : '#f9fafb' }}>
+                                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs"
+                                    style={{
+                                      backgroundColor: hoy ? '#FEF9C3' : '#ffffff',
+                                      borderColor: hoy ? '#FDE68A' : '#e5e7eb',
+                                    }}>
+                                    <Icon icon="lucide:clock" width={12} style={{ color: hoy ? '#B45309' : cfg.textColor }} />
+                                    <span className="font-mono" style={{ color: hoy ? '#78350F' : '#374151' }}>{rango.inicio} – {rango.fin}</span>
+                                    <span style={{ color: hoy ? '#D97706' : '#9ca3af' }}>·</span>
+                                    <Icon icon="lucide:door-open" width={12} style={{ color: hoy ? '#B45309' : '#9ca3af' }} />
+                                    <span style={{ color: hoy ? '#78350F' : '#6b7280' }}>{horarios.nombreSala}</span>
                                   </div>
                                 </div>
 
-                                {/* Tabla de productos */}
-                                <div className={`flex items-center gap-2 px-4 py-2 border-t border-b ${cfg.border}`}>
-                                  <Icon icon="lucide:package" width={12} className={cfg.text} />
-                                  <span className={`text-xs font-bold ${cfg.text} uppercase tracking-wide`}>
+                                {/* Tabla de productos — cabecera */}
+                                <div className="flex items-center gap-2 px-4 py-2 border-t border-b"
+                                  style={{ borderColor: hoy ? '#FCD34D' : cfg.border }}>
+                                  <Icon icon="lucide:package" width={12} style={{ color: hoy ? '#B45309' : cfg.textColor }} />
+                                  <span className="text-xs font-bold uppercase tracking-wide"
+                                    style={{ color: hoy ? '#B45309' : cfg.textColor }}>
                                     Productos requeridos · {sol.productosSolicitados.length} ítem{sol.productosSolicitados.length > 1 ? 's' : ''}
                                   </span>
                                 </div>
+                                {/* Tabla de productos — filas */}
                                 <div>
-                                  <div className="grid grid-cols-[1fr_0.4fr_0.25fr] px-4 py-1.5 bg-default-50 text-[10px] font-bold text-default-500 uppercase tracking-wider">
+                                  <div className="grid grid-cols-[1fr_0.4fr_0.25fr] px-4 py-1.5 text-[10px] font-bold uppercase tracking-wider"
+                                    style={{
+                                      backgroundColor: hoy ? '#FEF3C7' : '#f9fafb',
+                                      color: hoy ? '#B45309' : '#6b7280',
+                                    }}>
                                     <span>Producto</span>
                                     <span className="text-center">Cantidad</span>
                                     <span className="text-center">Unidad</span>
                                   </div>
                                   {sol.productosSolicitados.map((p, i) => (
                                     <div key={i}
-                                      className="grid grid-cols-[1fr_0.4fr_0.25fr] px-4 py-2 text-sm border-t border-default-50 hover:bg-default-50/60">
-                                      <span className="text-default-700 font-medium">{p.nombreProducto}</span>
-                                      <span className="text-center font-mono font-bold text-primary">{fmtCant(p.cantidad)}</span>
-                                      <span className="text-center text-default-500">{p.unidadAbreviada}</span>
+                                      className="grid grid-cols-[1fr_0.4fr_0.25fr] px-4 py-2 text-sm border-t transition-colors"
+                                      style={{
+                                        borderColor: hoy ? '#FDE68A' : '#f3f4f6',
+                                        backgroundColor: 'transparent',
+                                      }}
+                                      onMouseEnter={e => (e.currentTarget.style.backgroundColor = hoy ? '#FFFBEB' : '#f9fafb')}
+                                      onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}>
+                                      <span className="font-medium" style={{ color: hoy ? '#78350F' : '#374151' }}>{p.nombreProducto}</span>
+                                      <span className={`text-center font-mono font-bold${!hoy ? ' text-primary' : ''}`} style={{ color: hoy ? '#D97706' : undefined }}>{fmtCant(p.cantidad)}</span>
+                                      <span className="text-center" style={{ color: hoy ? '#B45309' : '#6b7280' }}>{p.unidadAbreviada}</span>
                                     </div>
                                   ))}
                                 </div>
@@ -1183,11 +1426,14 @@ const ConglomeradoPedidosPage: React.FC = () => {
                               className="flex flex-col sm:flex-row sm:items-center gap-3 px-4 py-2.5 bg-white hover:bg-default-50/50">
 
                               {/* Badge fecha */}
-                              <div className={`shrink-0 flex flex-col items-center justify-center rounded-xl px-2.5 py-1.5 min-w-[56px] text-center border ${hoy ? 'bg-warning-50 border-warning-200' : cfg.header + ' ' + cfg.border}`}>
-                                <span className={`text-[10px] font-black uppercase leading-none ${hoy ? 'text-warning-600' : cfg.text}`}>
+                              <div className="shrink-0 flex flex-col items-center justify-center rounded-xl px-2.5 py-1.5 min-w-[56px] text-center border"
+                                style={{ backgroundColor: hoy ? '#FEF3C7' : cfg.bgHeader, borderColor: hoy ? '#B45309' : cfg.border }}>
+                                <span className="text-[10px] font-black uppercase leading-none"
+                                  style={{ color: hoy ? '#78350F' : cfg.textColor }}>
                                   {DIA_CONFIG[dia]?.nombre.slice(0, 3).toUpperCase() ?? ''}
                                 </span>
-                                <span className={`text-sm font-black leading-tight ${hoy ? 'text-warning-700' : cfg.text}`}>
+                                <span className="text-sm font-black leading-tight"
+                                  style={{ color: hoy ? '#78350F' : cfg.textColor }}>
                                   {fmtFechaCorta(det.fechaSolicitada)}
                                 </span>
                                 {hoy && <span className="text-[9px] font-bold text-warning-600">HOY</span>}
@@ -1361,17 +1607,22 @@ const ConglomeradoPedidosPage: React.FC = () => {
                   <p className="text-sm">{busquedaAprob ? `Sin resultados para "${busquedaAprob}"` : 'Sin pedidos para aprobar esta semana.'}</p>
                 </div>
               ) : <div className="space-y-4">{pedidosAprobFiltrados.map(ped => {
-                const isPendiente = ped.estadoPedido === 'PENDIENTE';
-                const isAprobado  = ped.estadoPedido === 'APROVADO';
-                const hayFaltante = ped.productos.some(p => p.diferenciaTransito < 0);
+                const isPendiente  = ped.estadoPedido === 'PENDIENTE';
+                const isAprobado   = ped.estadoPedido === 'APROBADO';
+                const isEntregado  = ped.estadoPedido === 'ENTREGADO';
+                const isExitoso    = isAprobado || isEntregado;
+                const hayFaltante  = ped.productos.some(p => p.diferenciaTransito < 0);
+                const labelEstado: Record<string, string> = { PENDIENTE: 'Pendiente', APROBADO: 'Aprobado', ENTREGADO: 'Entregado', RECHAZADO: 'Rechazado' };
+                const chipColor    = isEntregado ? 'success' : isAprobado ? 'success' : isPendiente ? 'warning' : 'danger';
+                const chipIcon     = isEntregado ? 'lucide:package-check' : isAprobado ? 'lucide:check-circle-2' : isPendiente ? 'lucide:clock' : 'lucide:x-circle';
 
                 return (
                   <div key={ped.idPedido} className="border border-default-200 rounded-2xl overflow-hidden">
                     <div className={`flex flex-col sm:flex-row sm:items-center gap-3 px-5 py-3 ${
-                      isAprobado ? 'bg-success-50 border-b border-success-200' : 'bg-default-50 border-b border-default-200'
+                      isExitoso ? 'bg-success-50 border-b border-success-200' : 'bg-default-50 border-b border-default-200'
                     }`}>
                       <div className="flex items-center gap-3 flex-1">
-                        <Icon icon="lucide:file-text" width={18} className={isAprobado ? 'text-success-600' : 'text-default-500'} />
+                        <Icon icon="lucide:file-text" width={18} className={isExitoso ? 'text-success-600' : 'text-default-500'} />
                         <div>
                           <p className="font-bold text-sm text-default-800">Pedido #{ped.idPedido}</p>
                           <p className="text-xs text-default-400">
@@ -1381,9 +1632,9 @@ const ConglomeradoPedidosPage: React.FC = () => {
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Chip size="sm" color={isAprobado ? 'success' : isPendiente ? 'warning' : 'danger'} variant="flat"
-                          startContent={<Icon icon={isAprobado ? 'lucide:check-circle-2' : isPendiente ? 'lucide:clock' : 'lucide:x-circle'} width={10} />}>
-                          {ped.estadoPedido}
+                        <Chip size="sm" color={chipColor} variant="flat"
+                          startContent={<Icon icon={chipIcon} width={10} />}>
+                          {labelEstado[ped.estadoPedido] ?? ped.estadoPedido}
                         </Chip>
                         {cong_Editar && isPendiente && (
                           <Button size="sm" color="success" variant="flat"

@@ -166,7 +166,7 @@ const GestionProveedoresPage: React.FC = () => {
   const { isOpen, onOpen, onOpenChange } = useDisclosure();
   const rowsPerPage = 5;
 
-  usePageTitle('Gestión de Proveedores', 'Administre los proveedores y sus productos con precios actualizados.');
+  usePageTitle('Gestión de Proveedores', 'Administre los proveedores y sus productos con precios actualizados.', 'lucide:truck');
 
   /**
    * Filtra los proveedores según los criterios de búsqueda.

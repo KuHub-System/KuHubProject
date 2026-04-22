@@ -20,4 +20,7 @@ public class LoginRequestDTO {
 
     @NotBlank(message = "La contraseña es obligatoria")
     private String contrasena;
+
+    /** Si es true, el backend genera un Refresh Token de 30 días (cookie HttpOnly). */
+    private boolean recordarSesion = false;
 }

@@ -1,5 +1,6 @@
 package KuHub.modules.gestion_inventario.controller;
 
+import KuHub.config.security.service.DynamicPermissionService;
 import KuHub.modules.gestion_inventario.dtos.request.FilterInventoryPageDTO;
 import KuHub.modules.gestion_inventario.dtos.request.SearchDTO;
 import KuHub.modules.gestion_inventario.dtos.request.WarehouseWithProductUpdateDTO;
@@ -10,7 +11,9 @@ import KuHub.modules.gestion_inventario.exceptions.StockInsuficienteException;
 import KuHub.modules.gestion_inventario.services.BodegaTransitoService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -29,6 +32,9 @@ public class BodegaTransitoController {
 
     @Autowired
     private BodegaTransitoService bodegaTransitoService;
+
+    @Autowired
+    private DynamicPermissionService dynamicPermissionService;
 
     /**
      * Busca productos en la bodega de tránsito que coincidan con un término en nombre o descripción.
@@ -72,10 +78,15 @@ public class BodegaTransitoController {
     /**
      * Actualiza un producto en la bodega de tránsito y ajusta su stock, manejando validaciones.
      * ✅ En uso: Consumido por actualizarBodegaTransitoConProductoService en bodega-transito-service.ts.
+     * Acceso dinámico: verificado contra permiso_rol (BODEGA_TRANSITO write).
      */
     @PatchMapping("/update-warehouse-with-product")
         public ResponseEntity<?> updateTransitWarehouseWithProduct(
-            @Validated @RequestBody WarehouseWithProductUpdateDTO request){
+            @Validated @RequestBody WarehouseWithProductUpdateDTO request,
+            Authentication authentication){
+        if (!dynamicPermissionService.check(authentication, "BODEGA_TRANSITO", "write")) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
         try {
             Object result = bodegaTransitoService.updateTransitWarehouseWithProduct(request);
             return ResponseEntity

@@ -46,3 +46,11 @@ application-mat.properties
 /informe_ep1/07_planificacion.md
 /informe_ep1/08_conceptualizacion.md
 /CLAUDE.md
+.aider*
+
+### Secrets & Credentials ###
+secrets.md
+secrets.json
+.env.local
+credentials.json
+aws-credentials.txt

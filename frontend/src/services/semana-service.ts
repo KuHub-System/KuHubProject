@@ -3,7 +3,7 @@
  */
 
 import api from '../config/Axios';
-import { ISemana, IWeekGeneratorDTO } from '../types/semana.types';
+import { ISemana, IWeekGeneratorDTO, IWeekReasignDTO } from '../types/semana.types';
 
 export interface IPeriodoAcademico {
   anio: number;
@@ -126,5 +126,20 @@ export const generarCalendarioService = async (dto: IWeekGeneratorDTO): Promise<
     return true;
   } catch (error: any) {
     throw new Error(error.response?.data?.message || 'Error al generar el calendario semestral');
+  }
+};
+
+/**
+ * Reasignar el calendario semestral existente a una nueva fecha de inicio.
+ * Actualiza las 18 semanas del año/semestre indicado conservando su estructura.
+ * ⬜ Sin uso frontend aún — endpoint pendiente de implementación en backend.
+ * PUT /v1/semanas/reasignar-semester-calendar
+ */
+export const reasignarCalendarioService = async (dto: IWeekReasignDTO): Promise<ISemana[]> => {
+  try {
+    const response = await api.put<ISemana[]>('/semanas/reasignar-semester-calendar', dto);
+    return response.data;
+  } catch (error: any) {
+    throw new Error(error.response?.data?.message || 'Error al reasignar el calendario semestral');
   }
 };

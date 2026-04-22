@@ -17,5 +17,7 @@ public interface SalaService {
     Boolean existsByCodSala(String codSala);
     Sala save (Sala sala);
     void softDelete(Integer id);
+    /** Elimina lógicamente la sala solo si no tiene reservas activas; lanza 409 si las tiene. */
+    void softDeleteWithValidation(Integer idSala);
     Sala updateRoom( Sala salaActualizada);
 }
