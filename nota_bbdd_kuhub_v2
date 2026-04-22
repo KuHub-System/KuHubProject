@@ -35,7 +35,11 @@ DROP TABLE IF EXISTS semanas CASCADE; -- CAMBIADO: Agregado
 DROP TABLE IF EXISTS detalle_receta CASCADE;
 DROP TABLE IF EXISTS receta CASCADE;
 
--- Tablas de bodega y proveedores
+-- Tablas de proveedores
+DROP TABLE IF EXISTS proveedor_producto CASCADE;
+DROP TABLE IF EXISTS proveedor CASCADE;
+
+-- Tablas de bodega y proveedores (legacy)
 DROP TABLE IF EXISTS bodega_transito CASCADE;
 DROP TABLE IF EXISTS provedor CASCADE;
 
@@ -476,19 +480,36 @@ CREATE TABLE movimiento_default PARTITION OF movimiento DEFAULT;
 -- =====================================================
 -- TABLAS DE PROVEEDORES
 -- =====================================================
-/**
-CREATE TABLE provedor (
-    id_provedor SERIAL PRIMARY KEY,
-    id_producto INTEGER NOT NULL,
-    rut_provedor VARCHAR(13),
-    nombre_distribuidora VARCHAR(100) NOT NULL,
-    nombre_provedor VARCHAR(100) NOT NULL,
-    telefono_provedor VARCHAR(20) NOT NULL,
-    precio_producto DOUBLE PRECISION NOT NULL,
-    estado_provedor estado_provedor_type NOT NULL,
-    fecha_actualizacion DATE,
-    FOREIGN KEY (id_producto) REFERENCES producto(id_producto)
-); */
+
+-- Tabla proveedor
+-- Nota: estado_proveedor se almacena como VARCHAR (no ENUM nativo PostgreSQL).
+-- El enum Java EstadoProveedor (DISPONIBLE / NO_DISPONIBLE) mapea directamente.
+CREATE TABLE proveedor (
+    id_proveedor        INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    nombre_proveedor    VARCHAR(100) NOT NULL,
+    rut_proveedor       VARCHAR(12)  NOT NULL UNIQUE,
+    email_proveedor     VARCHAR(100) NOT NULL UNIQUE,
+    telefono_proveedor  VARCHAR(20),
+    direccion_proveedor TEXT,
+    estado_proveedor    VARCHAR(20)  NOT NULL DEFAULT 'DISPONIBLE',
+    activo              BOOLEAN      NOT NULL DEFAULT TRUE
+);
+
+-- Tabla proveedor_producto
+-- Relaciona un proveedor con los productos que suministra y su precio acordado.
+-- UNIQUE(id_proveedor, id_producto): un producto no puede estar dos veces en el mismo proveedor.
+CREATE TABLE proveedor_producto (
+    id_proveedor_producto INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    id_proveedor          INTEGER        NOT NULL,
+    id_producto           INTEGER        NOT NULL,
+    precio                NUMERIC(10, 2) NOT NULL,
+    activo                BOOLEAN        NOT NULL DEFAULT TRUE,
+    CONSTRAINT uk_proveedor_producto UNIQUE (id_proveedor, id_producto),
+    CONSTRAINT fk_pp_proveedor FOREIGN KEY (id_proveedor)
+        REFERENCES proveedor (id_proveedor) ON UPDATE CASCADE ON DELETE RESTRICT,
+    CONSTRAINT fk_pp_producto FOREIGN KEY (id_producto)
+        REFERENCES producto (id_producto) ON UPDATE CASCADE ON DELETE RESTRICT
+);
 
 -- =====================================================
 -- TABLAS DE RECETAS
@@ -1041,13 +1062,13 @@ CREATE INDEX idx_movimiento_tipo ON movimiento(tipo_movimiento);
 CREATE INDEX idx_movimiento_inventario ON movimiento (id_inventario);
 
 -- Indices en proveedores
---CREATE INDEX idx_provedor_producto ON provedor(id_producto);
---CREATE INDEX idx_provedor_estado ON provedor(estado_provedor);
+CREATE INDEX idx_proveedor_estado ON proveedor(estado_proveedor);
+CREATE INDEX idx_proveedor_activo ON proveedor(activo);
+CREATE INDEX idx_proveedor_producto_proveedor ON proveedor_producto(id_proveedor);
+CREATE INDEX idx_proveedor_producto_producto ON proveedor_producto(id_producto);
+CREATE INDEX idx_proveedor_producto_activo ON proveedor_producto(activo);
 
 -- Indices en bodega_transito
---CREATE INDEX idx_bodega_transito_producto ON bodega_transito(id_producto);
---CREATE INDEX idx_bodega_transito_provedor ON bodega_transito(id_provedor);
---CREATE INDEX idx_bodega_transito_estado ON bodega_transito(estado_bodega_transito);
 CREATE INDEX idx_bodega_transito_inventario ON bodega_transito(id_inventario);
 CREATE INDEX idx_bodega_transito_activo ON bodega_transito(activo);
 

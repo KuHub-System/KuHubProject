@@ -1,0 +1,319 @@
+package KuHub.modules.gestion_proveedor.service;
+
+import KuHub.modules.gestion_proveedor.dtos.request.ProveedorCreateDTO;
+import KuHub.modules.gestion_proveedor.dtos.request.ProveedorProductoAddDTO;
+import KuHub.modules.gestion_proveedor.dtos.request.ProveedorProductoUpdateDTO;
+import KuHub.modules.gestion_proveedor.dtos.request.ProveedorUpdateDTO;
+import KuHub.modules.gestion_proveedor.dtos.response.ProductoConPrecioDTO;
+import KuHub.modules.gestion_proveedor.dtos.response.ProveedorDetalleDTO;
+import KuHub.modules.gestion_proveedor.dtos.response.ProveedorListDTO;
+import KuHub.modules.gestion_proveedor.entity.Proveedor;
+import KuHub.modules.gestion_proveedor.entity.ProveedorProducto;
+import KuHub.modules.gestion_proveedor.enums.EstadoProveedor;
+import KuHub.modules.gestion_proveedor.exceptions.GestionProveedorException;
+import KuHub.modules.gestion_proveedor.repository.ProveedorProductoRepository;
+import KuHub.modules.gestion_proveedor.repository.ProveedorRepository;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+@Slf4j
+@Service
+@RequiredArgsConstructor
+public class ProveedorServiceImpl implements ProveedorService {
+
+    /**Repositories*/
+    @Autowired
+    private ProveedorRepository proveedorRepository;
+
+    @Autowired
+    private ProveedorProductoRepository proveedorProductoRepository;
+
+    // ══════════════════════════════════════════════════════════════
+    // 1. MÉTODOS DE BÚSQUEDA POR ID
+    // ══════════════════════════════════════════════════════════════
+
+    @Override
+    @Transactional(readOnly = true)
+    public Proveedor findById(Integer idProveedor) {
+        return proveedorRepository.findById(idProveedor)
+                .filter(p -> Boolean.TRUE.equals(p.getActivo()))
+                .orElseThrow(() -> new GestionProveedorException(
+                        "Proveedor con ID " + idProveedor + " no encontrado o inactivo.",
+                        HttpStatus.NOT_FOUND
+                ));
+    }
+
+    // ══════════════════════════════════════════════════════════════
+    // 2. MÉTODOS DE LISTADO / BÚSQUEDA
+    // ══════════════════════════════════════════════════════════════
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ProveedorListDTO> findConFiltros(String estado, String busqueda) {
+        List<Object[]> rows = proveedorRepository.findProveedoresConFiltros(estado, busqueda);
+        return rows.stream()
+                .map(ProveedorListDTO::fromRow)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ProveedorDetalleDTO obtenerDetalle(Integer idProveedor) {
+        Proveedor proveedor = findById(idProveedor);
+
+        List<Object[]> rows = proveedorRepository.findProductosPorProveedor(idProveedor);
+        List<ProductoConPrecioDTO> productos = rows.stream()
+                .map(ProductoConPrecioDTO::fromRow)
+                .collect(Collectors.toList());
+
+        Map<String, List<ProductoConPrecioDTO>> porCategoria = productos.stream()
+                .collect(Collectors.groupingBy(
+                        ProductoConPrecioDTO::nombreCategoria,
+                        LinkedHashMap::new,
+                        Collectors.toList()
+                ));
+
+        long cantActivos = productos.stream()
+                .filter(p -> Boolean.TRUE.equals(p.activo()))
+                .count();
+
+        return new ProveedorDetalleDTO(
+                proveedor.getIdProveedor(),
+                proveedor.getRutProveedor(),
+                proveedor.getNombreDistribuidora(),
+                proveedor.getNombreProveedor(),
+                proveedor.getTelefonoProveedor(),
+                proveedor.getEmailProveedor(),
+                proveedor.getEstadoProveedor() != null ? proveedor.getEstadoProveedor().name() : null,
+                proveedor.getActivo(),
+                proveedor.getFechaCreacion() != null ? proveedor.getFechaCreacion().toString() : null,
+                cantActivos,
+                porCategoria
+        );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ProveedorListDTO> findProveedoresPorProducto(Integer idProducto) {
+        List<Object[]> rows = proveedorRepository.findProveedoresPorProducto(idProducto);
+        return rows.stream()
+                .map(row -> new ProveedorListDTO(
+                        ((Number) row[0]).intValue(),
+                        (String) row[1],
+                        (String) row[2],
+                        (String) row[3],
+                        (String) row[4],
+                        (String) row[5],
+                        (String) row[6],
+                        true,
+                        null,
+                        null
+                ))
+                .collect(Collectors.toList());
+    }
+
+    // ══════════════════════════════════════════════════════════════
+    // 3. MÉTODOS DE CREACIÓN
+    // ══════════════════════════════════════════════════════════════
+
+    @Override
+    @Transactional
+    public Proveedor create(ProveedorCreateDTO dto) {
+        if (dto.getRutProveedor() != null && !dto.getRutProveedor().isBlank()) {
+            if (proveedorRepository.existsByRutProveedorIgnoreCase(dto.getRutProveedor())) {
+                throw new GestionProveedorException(
+                        "Ya existe un proveedor con el RUT: " + dto.getRutProveedor(),
+                        HttpStatus.CONFLICT
+                );
+            }
+        }
+
+        Proveedor proveedor = new Proveedor();
+        proveedor.setRutProveedor(dto.getRutProveedor());
+        proveedor.setNombreDistribuidora(dto.getNombreDistribuidora());
+        proveedor.setNombreProveedor(dto.getNombreProveedor());
+        proveedor.setTelefonoProveedor(dto.getTelefonoProveedor());
+        proveedor.setEmailProveedor(dto.getEmailProveedor());
+        proveedor.setActivo(true);
+
+        if (dto.getEstadoProveedor() != null && !dto.getEstadoProveedor().isBlank()) {
+            try {
+                proveedor.setEstadoProveedor(EstadoProveedor.valueOf(dto.getEstadoProveedor().toUpperCase()));
+            } catch (IllegalArgumentException e) {
+                throw new GestionProveedorException(
+                        "Estado de proveedor inválido: " + dto.getEstadoProveedor() + ". Use DISPONIBLE o NO_DISPONIBLE.",
+                        HttpStatus.BAD_REQUEST
+                );
+            }
+        } else {
+            proveedor.setEstadoProveedor(EstadoProveedor.DISPONIBLE);
+        }
+
+        Proveedor saved = proveedorRepository.save(proveedor);
+        log.info("Proveedor creado: ID={} | Distribuidora={}", saved.getIdProveedor(), saved.getNombreDistribuidora());
+        return saved;
+    }
+
+    // ══════════════════════════════════════════════════════════════
+    // 4. MÉTODOS DE ACTUALIZACIÓN
+    // ══════════════════════════════════════════════════════════════
+
+    @Override
+    @Transactional
+    public Proveedor update(Integer idProveedor, ProveedorUpdateDTO dto) {
+        Proveedor proveedor = findById(idProveedor);
+
+        if (dto.getRutProveedor() != null && !dto.getRutProveedor().isBlank()) {
+            if (proveedorRepository.existsByRutProveedorIgnoreCaseAndIdProveedorNot(
+                    dto.getRutProveedor(), idProveedor)) {
+                throw new GestionProveedorException(
+                        "Ya existe otro proveedor con el RUT: " + dto.getRutProveedor(),
+                        HttpStatus.CONFLICT
+                );
+            }
+            if (!dto.getRutProveedor().equals(proveedor.getRutProveedor())) {
+                proveedor.setRutProveedor(dto.getRutProveedor());
+            }
+        }
+
+        if (!dto.getNombreDistribuidora().equals(proveedor.getNombreDistribuidora())) {
+            proveedor.setNombreDistribuidora(dto.getNombreDistribuidora());
+        }
+        if (!dto.getNombreProveedor().equals(proveedor.getNombreProveedor())) {
+            proveedor.setNombreProveedor(dto.getNombreProveedor());
+        }
+        if (!dto.getTelefonoProveedor().equals(proveedor.getTelefonoProveedor())) {
+            proveedor.setTelefonoProveedor(dto.getTelefonoProveedor());
+        }
+
+        String emailNuevo = dto.getEmailProveedor();
+        String emailActual = proveedor.getEmailProveedor();
+        if (emailNuevo != null && !emailNuevo.equals(emailActual)) {
+            proveedor.setEmailProveedor(emailNuevo);
+        } else if (emailNuevo == null && emailActual != null) {
+            proveedor.setEmailProveedor(null);
+        }
+
+        if (dto.getEstadoProveedor() != null && !dto.getEstadoProveedor().isBlank()) {
+            try {
+                EstadoProveedor nuevoEstado = EstadoProveedor.valueOf(dto.getEstadoProveedor().toUpperCase());
+                if (!nuevoEstado.equals(proveedor.getEstadoProveedor())) {
+                    proveedor.setEstadoProveedor(nuevoEstado);
+                }
+            } catch (IllegalArgumentException e) {
+                throw new GestionProveedorException(
+                        "Estado de proveedor inválido: " + dto.getEstadoProveedor() + ". Use DISPONIBLE o NO_DISPONIBLE.",
+                        HttpStatus.BAD_REQUEST
+                );
+            }
+        }
+
+        Proveedor updated = proveedorRepository.save(proveedor);
+        log.info("Proveedor actualizado: ID={} | Distribuidora={}", updated.getIdProveedor(), updated.getNombreDistribuidora());
+        return updated;
+    }
+
+    @Override
+    @Transactional
+    public void actualizarPrecio(Integer idProveedor, Integer idProducto, ProveedorProductoUpdateDTO dto) {
+        ProveedorProducto relacion = proveedorProductoRepository
+                .findByProveedor_IdProveedorAndProducto_IdProducto(idProveedor, idProducto)
+                .orElseThrow(() -> new GestionProveedorException(
+                        "No existe relación entre el proveedor ID=" + idProveedor + " y el producto ID=" + idProducto,
+                        HttpStatus.NOT_FOUND
+                ));
+
+        if (!dto.getPrecioProducto().equals(relacion.getPrecioProducto())) {
+            relacion.setPrecioProducto(dto.getPrecioProducto());
+            relacion.setFechaActualizacion(LocalDateTime.now());
+            proveedorProductoRepository.save(relacion);
+            log.info("Precio actualizado: Proveedor ID={} | Producto ID={} | Nuevo precio={}",
+                    idProveedor, idProducto, dto.getPrecioProducto());
+        }
+    }
+
+    @Override
+    @Transactional
+    public void agregarProducto(Integer idProveedor, ProveedorProductoAddDTO dto) {
+        findById(idProveedor);
+
+        if (proveedorProductoRepository.existsByProveedor_IdProveedorAndProducto_IdProductoAndActivoTrue(
+                idProveedor, dto.getIdProducto())) {
+            throw new GestionProveedorException(
+                    "El producto ID=" + dto.getIdProducto() + " ya está asignado al proveedor ID=" + idProveedor,
+                    HttpStatus.CONFLICT
+            );
+        }
+
+        proveedorProductoRepository
+                .findByProveedor_IdProveedorAndProducto_IdProducto(idProveedor, dto.getIdProducto())
+                .ifPresentOrElse(
+                        relacion -> {
+                            relacion.setActivo(true);
+                            relacion.setPrecioProducto(dto.getPrecioProducto());
+                            relacion.setFechaActualizacion(LocalDateTime.now());
+                            proveedorProductoRepository.save(relacion);
+                            log.info("Relación reactivada: Proveedor ID={} | Producto ID={}", idProveedor, dto.getIdProducto());
+                        },
+                        () -> {
+                            ProveedorProducto nueva = new ProveedorProducto();
+                            nueva.setIdProveedor(idProveedor);
+                            nueva.setIdProducto(dto.getIdProducto());
+                            nueva.setPrecioProducto(dto.getPrecioProducto());
+                            nueva.setActivo(true);
+                            nueva.setFechaActualizacion(LocalDateTime.now());
+                            proveedorProductoRepository.save(nueva);
+                            log.info("Producto asignado: Proveedor ID={} | Producto ID={} | Precio={}",
+                                    idProveedor, dto.getIdProducto(), dto.getPrecioProducto());
+                        }
+                );
+    }
+
+    // ══════════════════════════════════════════════════════════════
+    // 5. MÉTODOS DE ELIMINACIÓN LÓGICA
+    // ══════════════════════════════════════════════════════════════
+
+    @Override
+    @Transactional
+    public boolean softDelete(Integer idProveedor) {
+        Proveedor proveedor = findById(idProveedor);
+
+        long productosActivos = proveedorProductoRepository.countByProveedor_IdProveedorAndActivoTrue(idProveedor);
+        if (productosActivos > 0) {
+            throw new GestionProveedorException(
+                    "No se puede eliminar el proveedor ID=" + idProveedor +
+                            " porque tiene " + productosActivos + " producto(s) activo(s) asignado(s). " +
+                            "Quite los productos primero.",
+                    HttpStatus.UNPROCESSABLE_ENTITY
+            );
+        }
+
+        proveedor.setActivo(false);
+        proveedorRepository.save(proveedor);
+        log.info("Proveedor eliminado (soft-delete): ID={} | Distribuidora={}", idProveedor, proveedor.getNombreDistribuidora());
+        return true;
+    }
+
+    @Override
+    @Transactional
+    public void quitarProducto(Integer idProveedor, Integer idProducto) {
+        int filas = proveedorProductoRepository.softDeleteByProveedorAndProducto(idProveedor, idProducto);
+        if (filas == 0) {
+            throw new GestionProveedorException(
+                    "No existe relación activa entre el proveedor ID=" + idProveedor + " y el producto ID=" + idProducto,
+                    HttpStatus.NOT_FOUND
+            );
+        }
+        log.info("Producto quitado del proveedor (soft-delete): Proveedor ID={} | Producto ID={}", idProveedor, idProducto);
+    }
+}
