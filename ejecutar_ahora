@@ -1,77 +1,83 @@
-Progress (1): 114/122 kB
-Progress (1): 122 kB
+9 extracting sha256:4feea04c154301db6f4a496efa397b3db96603b1c009c797cfdde77bea8b3287 0.4s
+#9 extracting sha256:4feea04c154301db6f4a496efa397b3db96603b1c009c797cfdde77bea8b3287 1.4s done
+#9 extracting sha256:b2cbbfe903b0821005780EME9M9cSy9FvfHvcx2gMPkp1H5Dj4YaKufPRsAyon8Tf
+#9 extracting sha256:b2cbbfe903b0821005780EME9M9cSy9FvfHvcx2gMPkp1H5Dj4YaKufPRsAyon8Tf 0.0s done
+#9 extracting sha256:fff4e2c1b189bf87d63ad8bd07f7f4eb288d6f2b6a07a8bb44c60e8c075d2096 done
+#9 DONE 3.1s
 
-Downloaded from central: https://repo.maven.apache.org/maven2/org/springframework/boot/spring-boot-configuration-processor/3.2.0/spring-boot-configuration-processor-3.2.0.jar (122 kB at 3.1 MB/s)
-#14 24.78 [INFO] Changes detected - recompiling the module! :source
-release 21] to target/classes
-#14 34.85 [INFO] /app/backend/src/main/java/KuHub/config/security/filter/JwtAuthenticationFilter.java: /app/backend/src/main/java/KuHub/config/security/filter/JwtAuthenticationFilter.java uses unchecked or unsafe operations.
-#14 34.85 [INFO] /app/backend/src/main/java/KuHub/config/security/filter/JwtAuthenticationFilter.java: Recompile with -Xlint:unchecked for details.
-#14 34.85 [INFO] -------------------------------------------------------------
-#14 34.85 [WARNING] COMPILATION WARNING :
-#14 34.85 [INFO] -------------------------------------------------------------
-#14 34.85 [WARNING] /app/backend/src/main/java/KuHub/modules/gestion_inventario/dtos/response/dto/MotionFilterRequestDTO.java:[30,20] @Builder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
-#14 34.85 [INFO] 1 warning
-#14 34.85 [INFO] -------------------------------------------------------------
-#14 34.85 [INFO] -------------------------------------------------------------
-#14 34.85 [ERROR] COMPILATION ERROR :
-#14 34.85 [INFO] -------------------------------------------------------------
-#14 34.85 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_proveedor/service/ProveedorServiceImpl.java:[99,26] cannot find symbol
-#14 34.85   symbol:   method getFechaCreacion()
-#14 34.85   location: variable proveedor of type KuHub.modules.gestion_proveedor.entity.Proveedor
-#14 34.85 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_proveedor/service/ProveedorServiceImpl.java:[99,65] cannot find symbol
-#14 34.85   symbol:   method getFechaCreacion()
-#14 34.85   location: variable proveedor of type KuHub.modules.gestion_proveedor.entity.Proveedor
-#14 34.85 [INFO] 2 errors
-#14 34.85 [INFO] -------------------------------------------------------------
-#14 34.86 [INFO] ------------------------------------------------------------------------
-#14 34.86 [INFO] Reactor Summary for KuHub Monolitico Project 1.0-SNAPSHOT:
-#14 34.86 [INFO]
-#14 34.86 [INFO] KuHub Monolitico Project ........................... SUCCESS [  0.557 s]
-#14 34.86 [INFO] backend ............................................ FAILURE [ 27.977 s]
-#14 34.86 [INFO] ------------------------------------------------------------------------
-#14 34.86 [INFO] BUILD FAILURE
-#14 34.86 [INFO] ------------------------------------------------------------------------
-#14 34.86 [INFO] Total time:  33.160 s
-#14 34.86 [INFO] Finished at: 2026-04-22T20:51:24Z
-#14 34.86 [INFO] ------------------------------------------------------------------------
-#14 34.86 [ERROR] Failed to execute goal org.apache.maven.plugins:maven-compiler-plugin:3.11.0:compile (default-compile) on project backend: Compilation failure: Compilation failure:
-#14 34.86 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_proveedor/service/ProveedorServiceImpl.java:[99,26] cannot find symbol
-#14 34.86 [ERROR]   symbol:   method getFechaCreacion()
-#14 34.86 [ERROR]   location: variable proveedor of type KuHub.modules.gestion_proveedor.entity.Proveedor
-#14 34.86 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_proveedor/service/ProveedorServiceImpl.java:[99,65] cannot find symbol
-#14 34.86 [ERROR]   symbol:   method getFechaCreacion()
-#14 34.86 [ERROR]   location: variable proveedor of type KuHub.modules.gestion_proveedor.entity.Proveedor
-#14 34.86 [ERROR] -> [Help 1]
-#14 34.86 [ERROR]
-#14 34.86 [ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
-#14 34.86 [ERROR] Re-run Maven using the -X switch to enable full debug logging.
-#14 34.86 [ERROR]
-#14 34.86 [ERROR] For more information about the errors and possible solutions, please read the following articles:
-#14 34.87 [ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoFailureException
-#14 34.87 [ERROR]
-#14 34.87 [ERROR] After correcting the problems, you can resume the build with the command
-#14 34.87 [ERROR]   mvn <args> -rf :backend
-#14 ERROR: process "/bin/sh -c mvn clean package -pl backend -am -DskipTests" did not complete successfully: exit code: 1
+#10 [build 2/6] WORKDIR /app
+#10 DONE 0.0s
+
+#11 [build 3/6] COPY package*.json ./
+#11 DONE 0.0s
+
+#12 [build 4/6] RUN npm ci
+#12 13.04
+#12 13.04 added 539 packages, and audited 540 packages in 13s
+#12 13.04
+#12 13.04 48 packages are looking for funding
+#12 13.04   run `npm fund` for details
+#12 13.07
+#12 13.07 12 vulnerabilities (2 moderate, 8 high, 2 critical)
+#12 13.07
+#12 13.07 To address issues that do not require attention, run:
+#12 13.07   npm audit fix
+#12 13.07
+#12 13.07 To address all issues possible (including breaking changes), run:
+#12 13.07   npm audit fix --force
+#12 13.07
+#12 13.07 Some issues need review, and may require choosing
+#12 13.07 a different dependency.
+#12 13.07
+#12 13.07 Run `npm audit` for details.
+#12 13.07 npm notice
+#12 13.07 npm notice New major version of npm available! 10.8.2 -> 11.13.0
+#12 13.07 npm notice Changelog: https://github.com/npm/cli/releases/tag/v11.13.0
+#12 13.07 npm notice To update run: npm install -g npm@11.13.0
+#12 13.07 npm notice
+#12 DONE 14.7s
+
+#13 [build 5/6] COPY . .
+#13 DONE 0.1s
+
+#14 [build 6/6] RUN npm run build
+#14 0.289
+#14 0.289 > kuhub-system@0.1.0 build
+#14 0.289 > tsc --noCheck && vite build
+#14 0.289
+#14 4.863 vite v6.4.1 building for production...
+#14 5.085 [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+#14 5.249 transforming...
+#14 9.674 ✓ 1111 modules transformed.
+#14 9.679 ✗ Build failed in 4.79s
+#14 9.679 error during build:
+#14 9.679 Could not resolve "../config/axios" from "src/services/proveedor-service.ts"
+#14 9.679 file: /app/src/services/proveedor-service.ts
+#14 9.679     at getRollupError (file:///app/node_modules/rollup/dist/es/shared/parseAst.js:401:41)
+#14 9.679     at error (file:///app/node_modules/rollup/dist/es/shared/parseAst.js:397:42)
+#14 9.679     at ModuleLoader.handleInvalidResolvedId (file:///app/node_modules/rollup/dist/es/shared/node-entry.js:21576:24)
+#14 9.679     at file:///app/node_modules/rollup/dist/es/shared/node-entry.js:21536:26
+#14 ERROR: process "/bin/sh -c npm run build" did not complete successfully: exit code: 1
 ------
- > [build 5/5] RUN mvn clean package -pl backend -am -DskipTests:
-Error: ERROR] -> [Help 1]
-Error: ERROR]
-Error: ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
-Error: ERROR] Re-run Maven using the -X switch to enable full debug logging.
-Error: ERROR]
-Error: ERROR] For more information about the errors and possible solutions, please read the following articles:
-Error: ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoFailureException
-Error: ERROR]
-Error: ERROR] After correcting the problems, you can resume the build with the command
-Error: ERROR]   mvn <args> -rf :backend
+ > [build 6/6] RUN npm run build:
+5.249 transforming...
+9.674 ✓ 1111 modules transformed.
+9.679 ✗ Build failed in 4.79s
+9.679 error during build:
+9.679 Could not resolve "../config/axios" from "src/services/proveedor-service.ts"
+9.679 file: /app/src/services/proveedor-service.ts
+9.679     at getRollupError (file:///app/node_modules/rollup/dist/es/shared/parseAst.js:401:41)
+9.679     at error (file:///app/node_modules/rollup/dist/es/shared/parseAst.js:397:42)
+9.679     at ModuleLoader.handleInvalidResolvedId (file:///app/node_modules/rollup/dist/es/shared/node-entry.js:21576:24)
+9.679     at file:///app/node_modules/rollup/dist/es/shared/node-entry.js:21536:26
 ------
-Dockerfile:12
+Dockerfile:6
 --------------------
-  10 |
-  11 |     # 3. Construimos solo el backend, pero con acceso al padre
-  12 | >>> RUN mvn clean package -pl backend -am -DskipTests
-  13 |
-  14 |     # ETAPA 2: Run
+   4 |     RUN npm ci
+   5 |     COPY . .
+   6 | >>> RUN npm run build
+   7 |
+   8 |     FROM nginx:1.25-alpine
 --------------------
-ERROR: failed to build: failed to solve: process "/bin/sh -c mvn clean package -pl backend -am -DskipTests" did not complete successfully: exit code: 1
-Error: buildx failed with: ERROR: failed to build: failed to solve: process "/bin/sh -c mvn clean package -pl backend -am -DskipTests" did not complete successfully: exit code: 1
+ERROR: failed to build: failed to solve: process "/bin/sh -c npm run build" did not complete successfully: exit code: 1
+Error: buildx failed with: ERROR: failed to build: failed to solve: process "/bin/sh -c npm run build" did not complete successfully: exit code: 1
