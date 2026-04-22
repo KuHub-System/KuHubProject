@@ -34,6 +34,18 @@ build/
 
 ### Local Configuration ###
 application-mat.properties
+/frontend/src/config/AxiosANTIGUO.ts
+/.claude/worktrees/determined-mirzakhani/
+/informe_ep1/00_portada.md
+/informe_ep1/01_indice.md
+/informe_ep1/02_introduccion.md
+/informe_ep1/03_contexto_proyecto.md
+/informe_ep1/04_problema_oportunidad.md
+/informe_ep1/05_objetivos.md
+/informe_ep1/06_alcance.md
+/informe_ep1/07_planificacion.md
+/informe_ep1/08_conceptualizacion.md
+/CLAUDE.md
 .aider*
 
 ### Secrets & Credentials ###
