@@ -441,7 +441,8 @@ public interface SolicitudRepository extends JpaRepository<Solicitud, Integer> {
                 'esFraccionario',          um.es_fraccionario,
                 'nombreCategoria',         c.nombre_categoria,
                 'cantidadTotalSolicitada', sub_total.total_solicitado,
-                'idInventario',            inv.id_inventario
+                'idInventario',            inv.id_inventario,
+                'stock',                   inv.stock
             ) ORDER BY c.nombre_categoria ASC, p.nombre_producto ASC
         ) AS proyeccion_abastecimiento
         FROM (
