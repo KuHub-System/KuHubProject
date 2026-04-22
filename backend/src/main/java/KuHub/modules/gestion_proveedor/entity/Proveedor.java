@@ -4,6 +4,7 @@ import KuHub.modules.gestion_proveedor.enums.EstadoProveedor;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -43,6 +44,9 @@ public class Proveedor {
 
     @Column(name = "activo", nullable = false)
     private Boolean activo = true;
+
+    @Column(name = "fecha_creacion", nullable = false, updatable = false, columnDefinition = "TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
+    private LocalDateTime fechaCreacion = LocalDateTime.now();
 
     @OneToMany(mappedBy = "proveedor", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = false)
     private List<ProveedorProducto> productos = new ArrayList<>();
