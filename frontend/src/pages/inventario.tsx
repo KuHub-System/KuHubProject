@@ -2180,6 +2180,37 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoP
     setItemsPedido(itemsPedido.filter(item => item.id !== id));
   };
 
+  const actualizarDeltaItem = (id: string, nuevoDelta: number) => {
+    setItemsPedido(itemsPedido.map(item => {
+      if (item.id !== id) return item;
+
+      // Validaciones
+      const isSalida = ['SALIDA_INVENTARIO', 'TRASLADO', 'MERMA_INVENTARIO', 'MERMA_BODEGA', 'SALIDA_BODEGA', 'DEVOLUCION'].includes(item.motivo);
+      const isAjuste = item.motivo.includes('AJUSTE');
+
+      if (isAjuste && nuevoDelta < 0) return item; // Ajuste no puede ser negativo
+      if (isSalida && nuevoDelta > item.producto.stock) return item; // Stock insuficiente
+      if (!item.producto.esFraccionario && !Number.isInteger(nuevoDelta)) return item; // Solo enteros si no fraccionario
+
+      return { ...item, delta: nuevoDelta };
+    }));
+  };
+
+  const incrementarDelta = (id: string) => {
+    const item = itemsPedido.find(i => i.id === id);
+    if (!item) return;
+    const step = item.producto.esFraccionario ? 0.5 : 1;
+    actualizarDeltaItem(id, item.delta + step);
+  };
+
+  const decrementarDelta = (id: string) => {
+    const item = itemsPedido.find(i => i.id === id);
+    if (!item) return;
+    const step = item.producto.esFraccionario ? 0.5 : 1;
+    const newDelta = Math.max(0, item.delta - step);
+    actualizarDeltaItem(id, newDelta);
+  };
+
   const cargarProyeccionAbastecimiento = async () => {
     if (!fechaInicioProy || !fechaFinProy) {
       toast.error('Debe seleccionar un rango de fechas válido');
@@ -2206,12 +2237,15 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoP
       // Todos se agregan con motivo "ENTRADA_INVENTARIO" (acción por defecto)
       const nuevosMotivoEntrante = 'ENTRADA_INVENTARIO';
       const nuevosItems: ItemPedidoMasivo[] = proyeccion.proyeccionAbastecimiento.map((producto) => {
-        // Crear un objeto IBulkProductoInventoryListing simulado
+        // Obtener stock actual del producto desde bulkProductos
+        const productoActualizado = bulkProductos.find(p => p.idProducto === producto.idProducto);
+        const stockActual = productoActualizado?.stock ?? 0;
+
         const bulkProducto: IBulkProductoInventoryListing = {
           idProducto: producto.idProducto,
           nombreProducto: producto.nombreProducto,
           detalles: `${producto.nombreUnidad} (${producto.abreviatura})`,
-          stock: 0, // Stock actual (no viene en la proyección)
+          stock: stockActual,
           esFraccionario: producto.esFraccionario,
         };
 
@@ -2494,112 +2528,143 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoP
             )}
           </AnimatePresence>
 
-          {/* Lista agrupada por motivo */}
-          {itemsPedido.length > 0 && (() => {
-            const motivoGroupColor: Record<string, string> = {
-              ENTRADA_INVENTARIO: 'bg-success-50 text-success-700 border-success-200',
-              ENTRADA_BODEGA: 'bg-success-50 text-success-700 border-success-200',
-              TRASLADO: 'bg-warning-50 text-warning-700 border-warning-200',
-              AJUSTE_INVENTARIO: 'bg-primary-50 text-primary-700 border-primary-200',
-              AJUSTE_BODEGA: 'bg-primary-50 text-primary-700 border-primary-200',
-              SALIDA_INVENTARIO: 'bg-danger-50 text-danger-700 border-danger-200',
-              SALIDA_BODEGA: 'bg-danger-50 text-danger-700 border-danger-200',
-              MERMA_INVENTARIO: 'bg-danger-50 text-danger-700 border-danger-200',
-              MERMA_BODEGA: 'bg-danger-50 text-danger-700 border-danger-200',
-              DEVOLUCION: 'bg-secondary-50 text-secondary-700 border-secondary-200',
-            };
-            const chipColor: Record<string, 'success' | 'warning' | 'primary' | 'danger' | 'secondary'> = {
-              ENTRADA_INVENTARIO: 'success', ENTRADA_BODEGA: 'success',
-              TRASLADO: 'warning',
-              AJUSTE_INVENTARIO: 'primary', AJUSTE_BODEGA: 'primary',
-              SALIDA_INVENTARIO: 'danger', SALIDA_BODEGA: 'danger',
-              MERMA_INVENTARIO: 'danger', MERMA_BODEGA: 'danger',
-              DEVOLUCION: 'secondary',
-            };
-            // Fixed display/processing order: Entrada → Ajuste → Traslado → Salida → Devolución → Merma
-            const motivoOrder: Record<string, number> = {
-              ENTRADA_INVENTARIO: 0, ENTRADA_BODEGA: 0,
-              AJUSTE_INVENTARIO: 1, AJUSTE_BODEGA: 1,
-              TRASLADO: 2,
-              SALIDA_INVENTARIO: 3, SALIDA_BODEGA: 3,
-              DEVOLUCION: 4,
-              MERMA_INVENTARIO: 5, MERMA_BODEGA: 5,
-            };
-            const seen: Record<string, ItemPedidoMasivo[]> = {};
-            for (const item of itemsPedido) {
-              if (!seen[item.motivo]) seen[item.motivo] = [];
-              seen[item.motivo].push(item);
-            }
-            const groups: [string, ItemPedidoMasivo[]][] = Object.entries(seen)
-              .sort(([a], [b]) => (motivoOrder[a] ?? 99) - (motivoOrder[b] ?? 99));
-            return (
-              <div className="space-y-3">
-                <button
-                  type="button"
-                  className="w-full flex items-center gap-2 font-bold text-secondary hover:text-secondary/80 transition-colors cursor-pointer"
-                  onClick={() => setListadoExpandido(v => !v)}
-                >
-                  <Icon icon="lucide:list" width={18} />
-                  Listado ({itemsPedido.length} producto{itemsPedido.length !== 1 ? 's' : ''})
-                  <Icon
-                    icon={listadoExpandido ? 'lucide:chevron-up' : 'lucide:chevron-down'}
-                    width={16}
-                    className="ml-auto text-default-400"
-                  />
-                </button>
-                <div className={`space-y-3 overflow-y-auto pr-1 transition-all duration-300 ${listadoExpandido ? 'max-h-[65vh]' : 'max-h-52'}`}>
-                  {groups.map(([motivoKey, items]) => (
-                    <div key={motivoKey} className={`rounded-xl border overflow-hidden ${motivoGroupColor[motivoKey] ?? 'bg-default-50 border-default-200 text-default-700'}`}>
-                      {/* Group header */}
-                      <div className="px-3 py-1.5 flex items-center gap-2 font-semibold text-xs uppercase tracking-wide border-b border-current/10">
-                        <Icon icon="lucide:layers" width={13} />
-                        {motivoBulkLabel[motivoKey] ?? motivoKey}
-                        <span className="ml-auto font-bold">{items.length}</span>
-                      </div>
-                      {/* Items */}
-                      <div className="divide-y divide-current/10">
-                        {items.map((item) => {
-                          const isSalidaItem = ['SALIDA_INVENTARIO', 'TRASLADO', 'MERMA_INVENTARIO', 'MERMA_BODEGA', 'SALIDA_BODEGA', 'DEVOLUCION'].includes(item.motivo);
-                          const isAjusteItem = item.motivo.includes('AJUSTE');
-                          const projStock = isAjusteItem
-                            ? item.delta
-                            : isSalidaItem
-                              ? item.producto.stock - item.delta
-                              : item.producto.stock + item.delta;
-                          const projFormatted = fmtCL(projStock);
-                          return (
-                            <div key={item.id} className="flex items-center justify-between px-3 py-2 bg-white/60 dark:bg-black/10">
-                              <div className="flex items-center gap-2 min-w-0">
-                                <span className="font-medium text-sm truncate text-default-800">{item.producto.nombreProducto}</span>
-                                <div className="flex items-center gap-1 shrink-0">
-                                  <Chip size="sm" color={chipColor[item.motivo] ?? 'default'} variant="flat" className="text-xs">
-                                    {isSalidaItem ? '-' : isAjusteItem ? '=' : '+'}{fmtCL(item.delta)}
-                                  </Chip>
-                                  <span className="text-default-400 text-xs">→</span>
-                                  <span className="text-xs font-semibold text-default-600">{projFormatted}</span>
-                                </div>
-                              </div>
-                              <Button
-                                isIconOnly variant="light" color="danger" size="sm"
-                                onPress={() => eliminarItem(item.id)}
-                                className="shrink-0 text-danger-400 hover:text-danger"
-                              >
-                                <Icon icon="lucide:trash-2" width={15} />
-                              </Button>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                <div className="flex justify-between items-center px-1 pt-1">
-                  <span className="text-sm text-default-500">Total de productos:</span>
-                  <span className="font-bold text-secondary">{itemsPedido.length}</span>
+          {/* Lista en tabla editable */}
+          {itemsPedido.length > 0 && (
+            <div className="space-y-3">
+              <button
+                type="button"
+                className="w-full flex items-center gap-2 font-bold text-secondary hover:text-secondary/80 transition-colors cursor-pointer"
+                onClick={() => setListadoExpandido(v => !v)}
+              >
+                <Icon icon="lucide:list" width={18} />
+                Listado ({itemsPedido.length} producto{itemsPedido.length !== 1 ? 's' : ''})
+                <Icon
+                  icon={listadoExpandido ? 'lucide:chevron-up' : 'lucide:chevron-down'}
+                  width={16}
+                  className="ml-auto text-default-400"
+                />
+              </button>
+
+              <div className={`transition-all duration-300 ${listadoExpandido ? 'max-h-[65vh]' : 'max-h-52'} overflow-y-auto`}>
+                <div className="border border-default-200 dark:border-default-100 rounded-xl overflow-hidden bg-white dark:bg-content2">
+                  {/* Encabezados */}
+                  <div className="grid grid-cols-[2fr_1fr_1fr_1fr_auto] gap-3 px-4 py-3 bg-default-100 dark:bg-default-50 font-semibold text-sm text-default-600 border-b border-default-200 dark:border-default-100">
+                    <div>Producto</div>
+                    <div className="text-center">Stock Actual</div>
+                    <div className="text-center">Cantidad</div>
+                    <div className="text-center">Stock Final</div>
+                    <div className="text-center">Acción</div>
+                  </div>
+
+                  {/* Filas */}
+                  <div className="divide-y divide-default-100 dark:divide-default-50">
+                    {itemsPedido.map((item) => {
+                      const isSalida = ['SALIDA_INVENTARIO', 'TRASLADO', 'MERMA_INVENTARIO', 'MERMA_BODEGA', 'SALIDA_BODEGA', 'DEVOLUCION'].includes(item.motivo);
+                      const isAjuste = item.motivo.includes('AJUSTE');
+                      const stockFinal = isAjuste
+                        ? item.delta
+                        : isSalida
+                          ? item.producto.stock - item.delta
+                          : item.producto.stock + item.delta;
+
+                      const chipColorMap: Record<string, 'success' | 'warning' | 'primary' | 'danger' | 'secondary'> = {
+                        ENTRADA_INVENTARIO: 'success', ENTRADA_BODEGA: 'success',
+                        TRASLADO: 'warning',
+                        AJUSTE_INVENTARIO: 'primary', AJUSTE_BODEGA: 'primary',
+                        SALIDA_INVENTARIO: 'danger', SALIDA_BODEGA: 'danger',
+                        MERMA_INVENTARIO: 'danger', MERMA_BODEGA: 'danger',
+                        DEVOLUCION: 'secondary',
+                      };
+
+                      const simbolo = isSalida ? '-' : isAjuste ? '=' : '+';
+                      const chipColor = chipColorMap[item.motivo] ?? 'default';
+
+                      return (
+                        <div key={item.id} className="grid grid-cols-[2fr_1fr_1fr_1fr_auto] gap-3 px-4 py-3 items-center hover:bg-default-50 dark:hover:bg-default-100/50 transition-colors">
+                          {/* Producto */}
+                          <div className="min-w-0">
+                            <p className="font-medium text-sm text-default-800 dark:text-foreground truncate">{item.producto.nombreProducto}</p>
+                            <p className="text-xs text-default-400">{item.producto.detalles}</p>
+                          </div>
+
+                          {/* Stock Actual */}
+                          <div className="text-center">
+                            <span className="font-semibold text-sm">{fmtCL(item.producto.stock)}</span>
+                          </div>
+
+                          {/* Cantidad Editable con +/- */}
+                          <div className="flex items-center justify-center gap-1">
+                            <Button
+                              isIconOnly
+                              variant="light"
+                              size="sm"
+                              onPress={() => decrementarDelta(item.id)}
+                              className="h-6 w-6 min-w-6"
+                            >
+                              <Icon icon="lucide:minus" width={14} />
+                            </Button>
+                            <Input
+                              type="number"
+                              value={item.delta.toString()}
+                              onValueChange={(val) => {
+                                const num = parseFloat(val);
+                                if (!isNaN(num)) actualizarDeltaItem(item.id, num);
+                              }}
+                              step={item.producto.esFraccionario ? "0.5" : "1"}
+                              className="w-16 text-center"
+                              size="sm"
+                              variant="bordered"
+                              classNames={{ input: "text-center text-xs h-6" }}
+                            />
+                            <Button
+                              isIconOnly
+                              variant="light"
+                              size="sm"
+                              onPress={() => incrementarDelta(item.id)}
+                              className="h-6 w-6 min-w-6"
+                            >
+                              <Icon icon="lucide:plus" width={14} />
+                            </Button>
+                          </div>
+
+                          {/* Stock Final */}
+                          <div className="text-center">
+                            <Chip
+                              size="sm"
+                              color={chipColor}
+                              variant="flat"
+                              className="text-xs"
+                            >
+                              {simbolo}{fmtCL(item.delta)} → {fmtCL(stockFinal)}
+                            </Chip>
+                          </div>
+
+                          {/* Eliminar */}
+                          <div className="text-center">
+                            <Button
+                              isIconOnly
+                              variant="light"
+                              color="danger"
+                              size="sm"
+                              onPress={() => eliminarItem(item.id)}
+                              className="text-danger-400 hover:text-danger"
+                            >
+                              <Icon icon="lucide:trash-2" width={16} />
+                            </Button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
-            );
-          })()}
+
+              <div className="flex justify-between items-center px-1">
+                <span className="text-sm text-default-500">Total de productos:</span>
+                <span className="font-bold text-secondary">{itemsPedido.length}</span>
+              </div>
+            </div>
+          )}
       </ModalBody>
 
       <ModalFooter className="bg-default-50 border-t border-default-100 flex justify-end items-center w-full gap-2">
