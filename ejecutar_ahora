@@ -1,369 +1,129 @@
-https://appkuhub.questweb.cl/api/v1/proveedor 400 (Bad Request)
-(anonymous) @ utils-vendor-CkGtaPQr.js:11
-xhr @ utils-vendor-CkGtaPQr.js:11
-wo @ utils-vendor-CkGtaPQr.js:13
-Promise.then
-_request @ utils-vendor-CkGtaPQr.js:14
-request @ utils-vendor-CkGtaPQr.js:13
-(anonymous) @ utils-vendor-CkGtaPQr.js:14
-(anonymous) @ utils-vendor-CkGtaPQr.js:9
-Ze @ gestion-proveedores-DQCe45zJ.js:1
-Fe @ gestion-proveedores-DQCe45zJ.js:1
-onSave @ gestion-proveedores-DQCe45zJ.js:1
-V @ gestion-proveedores-DQCe45zJ.js:1
-(anonymous) @ ui-vendor-CtDyRhL-.js:10
-(anonymous) @ ui-vendor-CtDyRhL-.js:10
-(anonymous) @ ui-vendor-CtDyRhL-.js:10
-onClick @ ui-vendor-CtDyRhL-.js:10
-Kc @ react-vendor-BxMPNXTO.js:29
-Xc @ react-vendor-BxMPNXTO.js:29
-Gc @ react-vendor-BxMPNXTO.js:29
-ya @ react-vendor-BxMPNXTO.js:29
-ga @ react-vendor-BxMPNXTO.js:29
-(anonymous) @ react-vendor-BxMPNXTO.js:29
-Ri @ react-vendor-BxMPNXTO.js:32
-Cu @ react-vendor-BxMPNXTO.js:29
-Ro @ react-vendor-BxMPNXTO.js:29
-so @ react-vendor-BxMPNXTO.js:29
-df @ react-vendor-BxMPNXTO.js:29
+utils-vendor-CkGtaPQr.js:11 
+ POST https://appkuhub.questweb.cl/api/v1/proveedor 500 (Internal Server Error)
+(anonymous)	@	utils-vendor-CkGtaPQr.js:11
+xhr	@	utils-vendor-CkGtaPQr.js:11
+wo	@	utils-vendor-CkGtaPQr.js:13
+Promise.then		
+_request	@	utils-vendor-CkGtaPQr.js:14
+request	@	utils-vendor-CkGtaPQr.js:13
+(anonymous)	@	utils-vendor-CkGtaPQr.js:14
+(anonymous)	@	utils-vendor-CkGtaPQr.js:9
+Ze	@	gestion-proveedores-BVulJBND.js:1
+Fe	@	gestion-proveedores-BVulJBND.js:1
+onSave	@	gestion-proveedores-BVulJBND.js:1
+V	@	gestion-proveedores-BVulJBND.js:1
+(anonymous)	@	ui-vendor-CtDyRhL-.js:10
+(anonymous)	@	ui-vendor-CtDyRhL-.js:10
+(anonymous)	@	ui-vendor-CtDyRhL-.js:10
+onClick	@	ui-vendor-CtDyRhL-.js:10
+Kc	@	react-vendor-BxMPNXTO.js:29
+Xc	@	react-vendor-BxMPNXTO.js:29
+Gc	@	react-vendor-BxMPNXTO.js:29
+ya	@	react-vendor-BxMPNXTO.js:29
+ga	@	react-vendor-BxMPNXTO.js:29
+(anonymous)	@	react-vendor-BxMPNXTO.js:29
+Ri	@	react-vendor-BxMPNXTO.js:32
+Cu	@	react-vendor-BxMPNXTO.js:29
+Ro	@	react-vendor-BxMPNXTO.js:29
+so	@	react-vendor-BxMPNXTO.js:29
 
-    WHERE
-        i.stock < i.stock_limit
-        AND i.stock_limit IS NOT NULL
-        AND i.activo = true
-    ORDER BY
-        (i.stock / NULLIF(i.stock_limit, 0)) ASC
-    LIMIT
-        10
-2026-04-22T21:17:41.409Z DEBUG 1 --- [nio-8080-exec-5] org.hibernate.SQL                        :
-    SELECT
-        c.nombre_categoria,
-        COALESCE(SUM(i.stock), 0) AS total
-    FROM
-        inventario i
-    JOIN
-        producto p
-            ON p.id_producto = i.id_producto
-    JOIN
-        categoria c
-            ON c.id_categoria = p.id_categoria
-    WHERE
-        i.activo = true
-    GROUP BY
-        c.id_categoria,
-        c.nombre_categoria
-    ORDER BY
-        total DESC
-Hibernate:
-    SELECT
-        c.nombre_categoria,
-        COALESCE(SUM(i.stock), 0) AS total
-    FROM
-        inventario i
-    JOIN
-        producto p
-            ON p.id_producto = i.id_producto
-    JOIN
-        categoria c
-            ON c.id_categoria = p.id_categoria
-    WHERE
-        i.activo = true
-    GROUP BY
-        c.id_categoria,
-        c.nombre_categoria
-    ORDER BY
-        total DESC
-2026-04-22T21:17:41.413Z DEBUG 1 --- [nio-8080-exec-5] org.hibernate.SQL                        :
-    SELECT
-        TO_CHAR(DATE(fecha_movimiento), 'DD/MM') AS fecha,
-        COUNT(*) AS total
-    FROM
-        movimiento
-    WHERE
-        fecha_movimiento >= CURRENT_DATE - INTERVAL '14 days'
-    GROUP BY
-        DATE(fecha_movimiento),
-        TO_CHAR(DATE(fecha_movimiento), 'DD/MM')
-    ORDER BY
-        DATE(fecha_movimiento)
-Hibernate:
-    SELECT
-        TO_CHAR(DATE(fecha_movimiento), 'DD/MM') AS fecha,
-        COUNT(*) AS total
-    FROM
-        movimiento
-    WHERE
-        fecha_movimiento >= CURRENT_DATE - INTERVAL '14 days'
-    GROUP BY
-        DATE(fecha_movimiento),
-        TO_CHAR(DATE(fecha_movimiento), 'DD/MM')
-    ORDER BY
-        DATE(fecha_movimiento)
-2026-04-22T21:17:41.419Z DEBUG 1 --- [nio-8080-exec-5] org.hibernate.SQL                        :
-    SELECT
-        p.nombre_producto,
-        SUM(m.stock_movimiento) AS total
-    FROM
-        movimiento m
-    JOIN
-        inventario i
-            ON i.id_inventario = m.id_inventario
-    JOIN
-        producto p
-            ON p.id_producto = i.id_producto
-    WHERE
-        m.tipo_movimiento IN ('SALIDA_INVENTARIO', 'SALIDA_BODEGA')
-        AND m.fecha_movimiento >= CURRENT_DATE - INTERVAL '30 days'
-    GROUP BY
-        p.id_producto,
-        p.nombre_producto
-    ORDER BY
-        total DESC
-    LIMIT
-        5
-Hibernate:
-    SELECT
-        p.nombre_producto,
-        SUM(m.stock_movimiento) AS total
-    FROM
-        movimiento m
-    JOIN
-        inventario i
-            ON i.id_inventario = m.id_inventario
-    JOIN
-        producto p
-            ON p.id_producto = i.id_producto
-    WHERE
-        m.tipo_movimiento IN ('SALIDA_INVENTARIO', 'SALIDA_BODEGA')
-        AND m.fecha_movimiento >= CURRENT_DATE - INTERVAL '30 days'
-    GROUP BY
-        p.id_producto,
-        p.nombre_producto
-    ORDER BY
-        total DESC
-    LIMIT
-        5
-2026-04-22T21:17:41.423Z DEBUG 1 --- [nio-8080-exec-5] org.hibernate.SQL                        :
-    SELECT
-        p.nombre_producto,
-        SUM(m.stock_movimiento) AS total
-    FROM
-        movimiento m
-    JOIN
-        inventario i
-            ON i.id_inventario = m.id_inventario
-    JOIN
-        producto p
-            ON p.id_producto = i.id_producto
-    WHERE
-        m.tipo_movimiento IN ('MERMA_INVENTARIO', 'MERMA_BODEGA')
-        AND m.fecha_movimiento >= CURRENT_DATE - INTERVAL '30 days'
-    GROUP BY
-        p.id_producto,
-        p.nombre_producto
-    ORDER BY
-        total DESC
-    LIMIT
-        5
-Hibernate:
-    SELECT
-        p.nombre_producto,
-        SUM(m.stock_movimiento) AS total
-    FROM
-        movimiento m
-    JOIN
-        inventario i
-            ON i.id_inventario = m.id_inventario
-    JOIN
-        producto p
-            ON p.id_producto = i.id_producto
-    WHERE
-        m.tipo_movimiento IN ('MERMA_INVENTARIO', 'MERMA_BODEGA')
-        AND m.fecha_movimiento >= CURRENT_DATE - INTERVAL '30 days'
-    GROUP BY
-        p.id_producto,
-        p.nombre_producto
-    ORDER BY
-        total DESC
-    LIMIT
-        5
-2026-04-22T21:17:41.439Z DEBUG 1 --- [nio-8080-exec-5] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/yaml]
-2026-04-22T21:17:41.462Z DEBUG 1 --- [nio-8080-exec-5] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Writing [DashboardInventarioDTO[totalProductos=271, stockTotal=9336.8, productosBajoStock=17, movimientosHoy= (truncated)...]
-2026-04-22T21:17:41.468Z DEBUG 1 --- [nio-8080-exec-5] o.s.web.servlet.DispatcherServlet        : Completed 200 OK
-2026-04-22T21:17:49.076Z DEBUG 1 --- [nio-8080-exec-6] o.s.security.web.FilterChainProxy        : Securing GET /api/v1/proveedor
-2026-04-22T21:17:49.077Z  INFO 1 --- [nio-8080-exec-6] K.c.s.rate_limiting.RateLimitFilter      : 📍 IP: 186.78.184.242 | Petición 6 de 80
-2026-04-22T21:17:49.086Z DEBUG 1 --- [nio-8080-exec-6] o.s.security.web.FilterChainProxy        : Secured GET /api/v1/proveedor
-2026-04-22T21:17:49.086Z DEBUG 1 --- [nio-8080-exec-6] o.s.web.servlet.DispatcherServlet        : GET "/api/v1/proveedor", parameters={}
-2026-04-22T21:17:49.087Z DEBUG 1 --- [nio-8080-exec-6] s.w.s.m.m.a.RequestMappingHandlerMapping : Mapped to KuHub.modules.gestion_proveedor.controller.ProveedorController#findAll(String, String)
-2026-04-22T21:17:49.126Z DEBUG 1 --- [nio-8080-exec-6] org.hibernate.SQL                        :
-    SELECT
-        p.id_proveedor,
-        -- [0]     p.rut_proveedor,
-        -- [1]     p.nombre_distribuidora,
-        -- [2]     p.nombre_proveedor,
-        -- [3]     p.telefono_proveedor,
-        -- [4]     p.email_proveedor,
-        -- [5]     CAST(p.estado_proveedor AS TEXT),
-        -- [6]     p.activo,
-        -- [7]     p.fecha_creacion,
-        -- [8]     COUNT(pp.id_proveedor_producto) FILTER (
-    WHERE
-        pp.activo = TRUE) AS cantidad_productos_activos -- [9]
-    FROM
-        proveedor p
-    LEFT JOIN
-        proveedor_producto pp
-            ON pp.id_proveedor = p.id_proveedor
-    WHERE
-        p.activo = TRUE
-        AND (
-            ? IS NULL
-            OR CAST(p.estado_proveedor AS TEXT) = ?
-        )
-        AND (
-            ? IS NULL
-            OR ? = ''
-            OR LOWER(p.nombre_distribuidora) LIKE LOWER(CONCAT('%', ?, '%'))
-            OR LOWER(p.nombre_proveedor) LIKE LOWER(CONCAT('%', ?, '%'))
-            OR LOWER(COALESCE(p.rut_proveedor, '')) LIKE LOWER(CONCAT('%', ?, '%'))
-        )
-    GROUP BY
-        p.id_proveedor
-    ORDER BY
-        p.nombre_distribuidora ASC
-Hibernate:
-    SELECT
-        p.id_proveedor,
-        -- [0]     p.rut_proveedor,
-        -- [1]     p.nombre_distribuidora,
-        -- [2]     p.nombre_proveedor,
-        -- [3]     p.telefono_proveedor,
-        -- [4]     p.email_proveedor,
-        -- [5]     CAST(p.estado_proveedor AS TEXT),
-        -- [6]     p.activo,
-        -- [7]     p.fecha_creacion,
-        -- [8]     COUNT(pp.id_proveedor_producto) FILTER (
-    WHERE
-        pp.activo = TRUE) AS cantidad_productos_activos -- [9]
-    FROM
-        proveedor p
-    LEFT JOIN
-        proveedor_producto pp
-            ON pp.id_proveedor = p.id_proveedor
-    WHERE
-        p.activo = TRUE
-        AND (
-            ? IS NULL
-            OR CAST(p.estado_proveedor AS TEXT) = ?
-        )
-        AND (
-            ? IS NULL
-            OR ? = ''
-            OR LOWER(p.nombre_distribuidora) LIKE LOWER(CONCAT('%', ?, '%'))
-            OR LOWER(p.nombre_proveedor) LIKE LOWER(CONCAT('%', ?, '%'))
-            OR LOWER(COALESCE(p.rut_proveedor, '')) LIKE LOWER(CONCAT('%', ?, '%'))
-        )
-    GROUP BY
-        p.id_proveedor
-    ORDER BY
-        p.nombre_distribuidora ASC
-2026-04-22T21:17:49.127Z TRACE 1 --- [nio-8080-exec-6] org.hibernate.orm.jdbc.bind              : binding parameter (1:VARCHAR) <- [null]
-2026-04-22T21:17:49.127Z TRACE 1 --- [nio-8080-exec-6] org.hibernate.orm.jdbc.bind              : binding parameter (2:VARCHAR) <- [null]
-2026-04-22T21:17:49.128Z TRACE 1 --- [nio-8080-exec-6] org.hibernate.orm.jdbc.bind              : binding parameter (3:VARCHAR) <- [null]
-2026-04-22T21:17:49.128Z TRACE 1 --- [nio-8080-exec-6] org.hibernate.orm.jdbc.bind              : binding parameter (4:VARCHAR) <- [null]
-2026-04-22T21:17:49.128Z TRACE 1 --- [nio-8080-exec-6] org.hibernate.orm.jdbc.bind              : binding parameter (5:VARCHAR) <- [null]
-2026-04-22T21:17:49.128Z TRACE 1 --- [nio-8080-exec-6] org.hibernate.orm.jdbc.bind              : binding parameter (6:VARCHAR) <- [null]
-2026-04-22T21:17:49.128Z TRACE 1 --- [nio-8080-exec-6] org.hibernate.orm.jdbc.bind              : binding parameter (7:VARCHAR) <- [null]
-2026-04-22T21:17:49.146Z DEBUG 1 --- [nio-8080-exec-6] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/yaml]
-2026-04-22T21:17:49.146Z DEBUG 1 --- [nio-8080-exec-6] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Writing [[]]
-2026-04-22T21:17:49.156Z DEBUG 1 --- [nio-8080-exec-6] o.s.web.servlet.DispatcherServlet        : Completed 200 OK
-2026-04-22T21:18:30.286Z DEBUG 1 --- [nio-8080-exec-7] o.s.security.web.FilterChainProxy        : Securing POST /api/v1/proveedor
-2026-04-22T21:18:30.288Z  INFO 1 --- [nio-8080-exec-7] K.c.s.rate_limiting.RateLimitFilter      : 🔄 Minuto reiniciado para la IP: 186.78.184.242
-2026-04-22T21:18:30.290Z  INFO 1 --- [nio-8080-exec-7] K.c.s.rate_limiting.RateLimitFilter      : 📍 IP: 186.78.184.242 | Petición 1 de 80
-2026-04-22T21:18:30.299Z DEBUG 1 --- [nio-8080-exec-7] o.s.security.web.FilterChainProxy        : Secured POST /api/v1/proveedor
-2026-04-22T21:18:30.301Z DEBUG 1 --- [nio-8080-exec-7] o.s.web.servlet.DispatcherServlet        : POST "/api/v1/proveedor", parameters={}
-2026-04-22T21:18:30.302Z DEBUG 1 --- [nio-8080-exec-7] s.w.s.m.m.a.RequestMappingHandlerMapping : Mapped to KuHub.modules.gestion_proveedor.controller.ProveedorController#create(ProveedorCreateDTO)
-2026-04-22T21:18:30.318Z DEBUG 1 --- [nio-8080-exec-7] m.m.a.RMh4hfsi84LdbS4uS3jaSaNccc8kartkDJ : Read "application/json;charset=UTF-8" to [ProveedorCreateDTO(rutProveedor=1234556789, nombreDistribuidora=testeando, nombreProveedor=XD, telef (truncated)...]
-2026-04-22T21:18:30.403Z DEBUG 1 --- [nio-8080-exec-7] .m.m.a.ExceptionHandlerExceptionResolver : Using @ExceptionHandler KuHub.config.GlobalExceptionHandler#handleValidationExceptions(MethodArgumentNotValidException)
-2026-04-22T21:18:30.406Z DEBUG 1 --- [nio-8080-exec-7] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/yaml]
-2026-04-22T21:18:30.407Z DEBUG 1 --- [nio-8080-exec-7] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Writing [{error=Error de validación, errors={rutProveedor=El RUT debe tener formato válido chileno (ej: 12.34 (truncated)...]
-2026-04-22T21:18:30.411Z DEBUG 1 --- [nio-8080-exec-7] .m.m.a.ExceptionHandlerExceptionResolver : Resolved [org.springframework.web.bind.MethodArgumentNotValidException: Validation failed for argument [0] in public org.springframework.http.ResponseEntity<KuHub.modules.gestion_proveedor.entity.Proveedor> KuHub.modules.gestion_proveedor.controller.ProveedorController.create(KuHub.modules.gestion_proveedor.dtos.request.ProveedorCreateDTO): [Field error in object 'proveedorCreateDTO' on field 'rutProveedor': rejected value [1234556789]; codes [Pattern.proveedorCreateDTO.rutProveedor,Pattern.rutProveedor,Pattern.java.lang.String,Pattern]; arguments [org.springframework.context.support.DefaultMessageSourceResolvable: codes [proveedorCreateDTO.rutProveedor,rutProveedor]; arguments []; default message [rutProveedor],[Ljakarta.validation.constraints.Pattern$Flag;@58d0d5ac,^(\d{1,2}\.\d{3}\.\d{3}-[\dkK]|\d{7,8}-[\dkK])?$]; default message [El RUT debe tener formato válido chileno (ej: 12.345.678-9 o 12345678-9)]] ]
-2026-04-22T21:18:30.412Z DEBUG 1 --- [nio-8080-exec-7] o.s.web.servlet.DispatcherServlet        : Completed 400 BAD_REQUEST
-2026-04-22T21:18:43.764Z DEBUG 1 --- [nio-8080-exec-8] o.s.security.web.FilterChainProxy        : Securing POST /api/v1/proveedor
-2026-04-22T21:18:43.766Z  INFO 1 --- [nio-8080-exec-8] K.c.s.rate_limiting.RateLimitFilter      : 📍 IP: 186.78.184.242 | Petición 2 de 80
-2026-04-22T21:18:43.770Z DEBUG 1 --- [nio-8080-exec-8] o.s.security.web.FilterChainProxy        : Secured POST /api/v1/proveedor
-2026-04-22T21:18:43.771Z DEBUG 1 --- [nio-8080-exec-8] o.s.web.servlet.DispatcherServlet        : POST "/api/v1/proveedor", parameters={}
-2026-04-22T21:18:43.771Z DEBUG 1 --- [nio-8080-exec-8] s.w.s.m.m.a.RequestMappingHandlerMapping : Mapped to KuHub.modules.gestion_proveedor.controller.ProveedorController#create(ProveedorCreateDTO)
-2026-04-22T21:18:43.773Z DEBUG 1 --- [nio-8080-exec-8] m.m.a.RMh4hfsi84LdbS4uS3jaSaNccc8kartkDJ : Read "application/json;charset=UTF-8" to [ProveedorCreateDTO(rutProveedor=1234556789, nombreDistribuidora=testeando, nombreProveedor=XD, telef (truncated)...]
-2026-04-22T21:18:43.775Z DEBUG 1 --- [nio-8080-exec-8] .m.m.a.ExceptionHandlerExceptionResolver : Using @ExceptionHandler KuHub.config.GlobalExceptionHandler#handleValidationExceptions(MethodArgumentNotValidException)
-2026-04-22T21:18:43.776Z DEBUG 1 --- [nio-8080-exec-8] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/yaml]
-2026-04-22T21:18:43.776Z DEBUG 1 --- [nio-8080-exec-8] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Writing [{error=Error de validación, errors={rutProveedor=El RUT debe tener formato válido chileno (ej: 12.34 (truncated)...]
-2026-04-22T21:18:43.777Z DEBUG 1 --- [nio-8080-exec-8] .m.m.a.ExceptionHandlerExceptionResolver : Resolved [org.springframework.web.bind.MethodArgumentNotValidException: Validation failed for argument [0] in public org.springframework.http.ResponseEntity<KuHub.modules.gestion_proveedor.entity.Proveedor> KuHub.modules.gestion_proveedor.controller.ProveedorController.create(KuHub.modules.gestion_proveedor.dtos.request.ProveedorCreateDTO): [Field error in object 'proveedorCreateDTO' on field 'rutProveedor': rejected value [1234556789]; codes [Pattern.proveedorCreateDTO.rutProveedor,Pattern.rutProveedor,Pattern.java.lang.String,Pattern]; arguments [org.springframework.context.support.DefaultMessageSourceResolvable: codes [proveedorCreateDTO.rutProveedor,rutProveedor]; arguments []; default message [rutProveedor],[Ljakarta.validation.constraints.Pattern$Flag;@58d0d5ac,^(\d{1,2}\.\d{3}\.\d{3}-[\dkK]|\d{7,8}-[\dkK])?$]; default message [El RUT debe tener formato válido chileno (ej: 12.345.678-9 o 12345678-9)]] ]
-2026-04-22T21:18:43.778Z DEBUG 1 --- [nio-8080-exec-8] o.s.web.servlet.DispatcherServlet        : Completed 400 BAD_REQUEST
-2026-04-22T21:18:48.189Z DEBUG 1 --- [nio-8080-exec-9] o.s.security.web.FilterChainProxy        : Securing POST /api/v1/proveedor
-2026-04-22T21:18:48.193Z  INFO 1 --- [nio-8080-exec-9] K.c.s.rate_limiting.RateLimitFilter      : 📍 IP: 186.78.184.242 | Petición 3 de 80
-2026-04-22T21:18:48.201Z DEBUG 1 --- [nio-8080-exec-9] o.s.security.web.FilterChainProxy        : Secured POST /api/v1/proveedor
-2026-04-22T21:18:48.202Z DEBUG 1 --- [nio-8080-exec-9] o.s.web.servlet.DispatcherServlet        : POST "/api/v1/proveedor", parameters={}
-2026-04-22T21:18:48.203Z DEBUG 1 --- [nio-8080-exec-9] s.w.s.m.m.a.RequestMappingHandlerMapping : Mapped to KuHub.modules.gestion_proveedor.controller.ProveedorController#create(ProveedorCreateDTO)
-2026-04-22T21:18:48.205Z DEBUG 1 --- [nio-8080-exec-9] m.m.a.RMh4hfsi84LdbS4uS3jaSaNccc8kartkDJ : Read "application/json;charset=UTF-8" to [ProveedorCreateDTO(rutProveedor=1234556789, nombreDistribuidora=testeando, nombreProveedor=XD, telef (truncated)...]
-2026-04-22T21:18:48.206Z DEBUG 1 --- [nio-8080-exec-9] .m.m.a.ExceptionHandlerExceptionResolver : Using @ExceptionHandler KuHub.config.GlobalExceptionHandler#handleValidationExceptions(MethodArgumentNotValidException)
-2026-04-22T21:18:48.207Z DEBUG 1 --- [nio-8080-exec-9] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/yaml]
-2026-04-22T21:18:48.207Z DEBUG 1 --- [nio-8080-exec-9] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Writing [{error=Error de validación, errors={rutProveedor=El RUT debe tener formato válido chileno (ej: 12.34 (truncated)...]
-2026-04-22T21:18:48.208Z DEBUG 1 --- [nio-8080-exec-9] .m.m.a.ExceptionHandlerExceptionResolver : Resolved [org.springframework.web.bind.MethodArgumentNotValidException: Validation failed for argument [0] in public org.springframework.http.ResponseEntity<KuHub.modules.gestion_proveedor.entity.Proveedor> KuHub.modules.gestion_proveedor.controller.ProveedorController.create(KuHub.modules.gestion_proveedor.dtos.request.ProveedorCreateDTO): [Field error in object 'proveedorCreateDTO' on field 'rutProveedor': rejected value [1234556789]; codes [Pattern.proveedorCreateDTO.rutProveedor,Pattern.rutProveedor,Pattern.java.lang.String,Pattern]; arguments [org.springframework.context.support.DefaultMessageSourceResolvable: codes [proveedorCreateDTO.rutProveedor,rutProveedor]; arguments []; default message [rutProveedor],[Ljakarta.validation.constraints.Pattern$Flag;@58d0d5ac,^(\d{1,2}\.\d{3}\.\d{3}-[\dkK]|\d{7,8}-[\dkK])?$]; default message [El RUT debe tener formato válido chileno (ej: 12.345.678-9 o 12345678-9)]] ]
-2026-04-22T21:18:48.209Z DEBUG 1 --- [nio-8080-exec-9] o.s.web.servlet.DispatcherServlet        : Completed 400 BAD_REQUEST
-2026-04-22T21:18:59.035Z DEBUG 1 --- [io-8080-exec-10] o.s.security.web.FilterChainProxy        : Securing POST /api/v1/proveedor
-2026-04-22T21:18:59.037Z  INFO 1 --- [io-8080-exec-10] K.c.s.rate_limiting.RateLimitFilter      : 📍 IP: 186.78.184.242 | Petición 4 de 80
-2026-04-22T21:18:59.041Z DEBUG 1 --- [io-8080-exec-10] o.s.security.web.FilterChainProxy        : Secured POST /api/v1/proveedor
-2026-04-22T21:18:59.042Z DEBUG 1 --- [io-8080-exec-10] o.s.web.servlet.DispatcherServlet        : POST "/api/v1/proveedor", parameters={}
-2026-04-22T21:18:59.042Z DEBUG 1 --- [io-8080-exec-10] s.w.s.m.m.a.RequestMappingHandlerMapping : Mapped to KuHub.modules.gestion_proveedor.controller.ProveedorController#create(ProveedorCreateDTO)
-2026-04-22T21:18:59.045Z DEBUG 1 --- [io-8080-exec-10] m.m.a.RMh4hfsi84LdbS4uS3jaSaNccc8kartkDJ : Read "application/json;charset=UTF-8" to [ProveedorCreateDTO(rutProveedor=1234556789, nombreDistribuidora=testeando, nombreProveedor=Matheus d (truncated)...]
-2026-04-22T21:18:59.047Z DEBUG 1 --- [io-8080-exec-10] .m.m.a.ExceptionHandlerExceptionResolver : Using @ExceptionHandler KuHub.config.GlobalExceptionHandler#handleValidationExceptions(MethodArgumentNotValidException)
-2026-04-22T21:18:59.048Z DEBUG 1 --- [io-8080-exec-10] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/yaml]
-2026-04-22T21:18:59.048Z DEBUG 1 --- [io-8080-exec-10] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Writing [{error=Error de validación, errors={rutProveedor=El RUT debe tener formato válido chileno (ej: 12.34 (truncated)...]
-2026-04-22T21:18:59.051Z DEBUG 1 --- [io-8080-exec-10] .m.m.a.ExceptionHandlerExceptionResolver : Resolved [org.springframework.web.bind.MethodArgumentNotValidException: Validation failed for argument [0] in public org.springframework.http.ResponseEntity<KuHub.modules.gestion_proveedor.entity.Proveedor> KuHub.modules.gestion_proveedor.controller.ProveedorController.create(KuHub.modules.gestion_proveedor.dtos.request.ProveedorCreateDTO): [Field error in object 'proveedorCreateDTO' on field 'rutProveedor': rejected value [1234556789]; codes [Pattern.proveedorCreateDTO.rutProveedor,Pattern.rutProveedor,Pattern.java.lang.String,Pattern]; arguments [org.springframework.context.support.DefaultMessageSourceResolvable: codes [proveedorCreateDTO.rutProveedor,rutProveedor]; arguments []; default message [rutProveedor],[Ljakarta.validation.constraints.Pattern$Flag;@58d0d5ac,^(\d{1,2}\.\d{3}\.\d{3}-[\dkK]|\d{7,8}-[\dkK])?$]; default message [El RUT debe tener formato válido chileno (ej: 12.345.678-9 o 12345678-9)]] ]
-2026-04-22T21:18:59.051Z DEBUG 1 --- [io-8080-exec-10] o.s.web.servlet.DispatcherServlet        : Completed 400 BAD_REQUEST
-2026-04-22T21:19:06.579Z DEBUG 1 --- [nio-8080-exec-2] o.s.security.web.FilterChainProxy        : Securing POST /api/v1/proveedor
-2026-04-22T21:19:06.581Z  INFO 1 --- [nio-8080-exec-2] K.c.s.rate_limiting.RateLimitFilter      : 📍 IP: 186.78.184.242 | Petición 5 de 80
-2026-04-22T21:19:06.584Z DEBUG 1 --- [nio-8080-exec-2] o.s.security.web.FilterChainProxy        : Secured POST /api/v1/proveedor
-2026-04-22T21:19:06.584Z DEBUG 1 --- [nio-8080-exec-2] o.s.web.servlet.DispatcherServlet        : POST "/api/v1/proveedor", parameters={}
-2026-04-22T21:19:06.585Z DEBUG 1 --- [nio-8080-exec-2] s.w.s.m.m.a.RequestMappingHandlerMapping : Mapped to KuHub.modules.gestion_proveedor.controller.ProveedorController#create(ProveedorCreateDTO)
-2026-04-22T21:19:06.586Z DEBUG 1 --- [nio-8080-exec-2] m.m.a.RMh4hfsi84LdbS4uS3jaSaNccc8kartkDJ : Read "application/json;charset=UTF-8" to [ProveedorCreateDTO(rutProveedor=1234556789, nombreDistribuidora=testeando, nombreProveedor=Matheus d (truncated)...]
-2026-04-22T21:19:06.587Z DEBUG 1 --- [nio-8080-exec-2] .m.m.a.ExceptionHandlerExceptionResolver : Using @ExceptionHandler KuHub.config.GlobalExceptionHandler#handleValidationExceptions(MethodArgumentNotValidException)
-2026-04-22T21:19:06.588Z DEBUG 1 --- [nio-8080-exec-2] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/yaml]
-2026-04-22T21:19:06.588Z DEBUG 1 --- [nio-8080-exec-2] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Writing [{error=Error de validación, errors={rutProveedor=El RUT debe tener formato válido chileno (ej: 12.34 (truncated)...]
-2026-04-22T21:19:06.589Z DEBUG 1 --- [nio-8080-exec-2] .m.m.a.ExceptionHandlerExceptionResolver : Resolved [org.springframework.web.bind.MethodArgumentNotValidException: Validation failed for argument [0] in public org.springframework.http.ResponseEntity<KuHub.modules.gestion_proveedor.entity.Proveedor> KuHub.modules.gestion_proveedor.controller.ProveedorController.create(KuHub.modules.gestion_proveedor.dtos.request.ProveedorCreateDTO): [Field error in object 'proveedorCreateDTO' on field 'rutProveedor': rejected value [1234556789]; codes [Pattern.proveedorCreateDTO.rutProveedor,Pattern.rutProveedor,Pattern.java.lang.String,Pattern]; arguments [org.springframework.context.support.DefaultMessageSourceResolvable: codes [proveedorCreateDTO.rutProveedor,rutProveedor]; arguments []; default message [rutProveedor],[Ljakarta.validation.constraints.Pattern$Flag;@58d0d5ac,^(\d{1,2}\.\d{3}\.\d{3}-[\dkK]|\d{7,8}-[\dkK])?$]; default message [El RUT debe tener formato válido chileno (ej: 12.345.678-9 o 12345678-9)]] ]
-2026-04-22T21:19:06.590Z DEBUG 1 --- [nio-8080-exec-2] o.s.web.servlet.DispatcherServlet        : Completed 400 BAD_REQUEST
-2026-04-22T21:19:54.821Z DEBUG 1 --- [nio-8080-exec-1] o.s.security.web.FilterChainProxy        : Securing POST /api/v1/proveedor
-2026-04-22T21:19:54.822Z  INFO 1 --- [nio-8080-exec-1] K.c.s.rate_limiting.RateLimitFilter      : 🔄 Minuto reiniciado para la IP: 186.78.184.242
-2026-04-22T21:19:54.823Z  INFO 1 --- [nio-8080-exec-1] K.c.s.rate_limiting.RateLimitFilter      : 📍 IP: 186.78.184.242 | Petición 1 de 80
-2026-04-22T21:19:54.826Z DEBUG 1 --- [nio-8080-exec-1] o.s.security.web.FilterChainProxy        : Secured POST /api/v1/proveedor
-2026-04-22T21:19:54.826Z DEBUG 1 --- [nio-8080-exec-1] o.s.web.servlet.DispatcherServlet        : POST "/api/v1/proveedor", parameters={}
-2026-04-22T21:19:54.827Z DEBUG 1 --- [nio-8080-exec-1] s.w.s.m.m.a.RequestMappingHandlerMapping : Mapped to KuHub.modules.gestion_proveedor.controller.ProveedorController#create(ProveedorCreateDTO)
-2026-04-22T21:19:54.828Z DEBUG 1 --- [nio-8080-exec-1] m.m.a.RMh4hfsi84LdbS4uS3jaSaNccc8kartkDJ : Read "application/json;charset=UTF-8" to [ProveedorCreateDTO(rutProveedor=279948167, nombreDistribuidora=testeando, nombreProveedor=Matheus de (truncated)...]
-2026-04-22T21:19:54.830Z DEBUG 1 --- [nio-8080-exec-1] .m.m.a.ExceptionHandlerExceptionResolver : Using @ExceptionHandler KuHub.config.GlobalExceptionHandler#handleValidationExceptions(MethodArgumentNotValidException)
-2026-04-22T21:19:54.830Z DEBUG 1 --- [nio-8080-exec-1] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/yaml]
-2026-04-22T21:19:54.831Z DEBUG 1 --- [nio-8080-exec-1] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Writing [{error=Error de validación, errors={rutProveedor=El RUT debe tener formato válido chileno (ej: 12.34 (truncated)...]
-2026-04-22T21:19:54.832Z DEBUG 1 --- [nio-8080-exec-1] .m.m.a.ExceptionHandlerExceptionResolver : Resolved [org.springframework.web.bind.MethodArgumentNotValidException: Validation failed for argument [0] in public org.springframework.http.ResponseEntity<KuHub.modules.gestion_proveedor.entity.Proveedor> KuHub.modules.gestion_proveedor.controller.ProveedorController.create(KuHub.modules.gestion_proveedor.dtos.request.ProveedorCreateDTO): [Field error in object 'proveedorCreateDTO' on field 'rutProveedor': rejected value [279948167]; codes [Pattern.proveedorCreateDTO.rutProveedor,Pattern.rutProveedor,Pattern.java.lang.String,Pattern]; arguments [org.springframework.context.support.DefaultMessageSourceResolvable: codes [proveedorCreateDTO.rutProveedor,rutProveedor]; arguments []; default message [rutProveedor],[Ljakarta.validation.constraints.Pattern$Flag;@58d0d5ac,^(\d{1,2}\.\d{3}\.\d{3}-[\dkK]|\d{7,8}-[\dkK])?$]; default message [El RUT debe tener formato válido chileno (ej: 12.345.678-9 o 12345678-9)]] ]
-2026-04-22T21:19:54.833Z DEBUG 1 --- [nio-8080-exec-1] o.s.web.servlet.DispatcherServlet        : Completed 400 BAD_REQUEST
-2026-04-22T21:20:12.039Z DEBUG 1 --- [nio-8080-exec-3] o.s.security.web.FilterChainProxy        : Securing POST /api/v1/proveedor
-2026-04-22T21:20:12.041Z  INFO 1 --- [nio-8080-exec-3] K.c.s.rate_limiting.RateLimitFilter      : 📍 IP: 186.78.184.242 | Petición 2 de 80
-2026-04-22T21:20:12.045Z DEBUG 1 --- [nio-8080-exec-3] o.s.security.web.FilterChainProxy        : Secured POST /api/v1/proveedor
-2026-04-22T21:20:12.046Z DEBUG 1 --- [nio-8080-exec-3] o.s.web.servlet.DispatcherServlet        : POST "/api/v1/proveedor", parameters={}
-2026-04-22T21:20:12.047Z DEBUG 1 --- [nio-8080-exec-3] s.w.s.m.m.a.RequestMappingHandlerMapping : Mapped to KuHub.modules.gestion_proveedor.controller.ProveedorController#create(ProveedorCreateDTO)
-2026-04-22T21:20:12.048Z DEBUG 1 --- [nio-8080-exec-3] m.m.a.RMh4hfsi84LdbS4uS3jaSaNccc8kartkDJ : Read "application/json;charset=UTF-8" to [ProveedorCreateDTO(rutProveedor=279948167, nombreDistribuidora=testeando, nombreProveedor=Matheus de (truncated)...]
-2026-04-22T21:20:12.050Z DEBUG 1 --- [nio-8080-exec-3] .m.m.a.ExceptionHandlerExceptionResolver : Using @ExceptionHandler KuHub.config.GlobalExceptionHandler#handleValidationExceptions(MethodArgumentNotValidException)
-2026-04-22T21:20:12.050Z DEBUG 1 --- [nio-8080-exec-3] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/yaml]
-2026-04-22T21:20:12.050Z DEBUG 1 --- [nio-8080-exec-3] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Writing [{error=Error de validación, errors={rutProveedor=El RUT debe tener formato válido chileno (ej: 12.34 (truncated)...]
-2026-04-22T21:20:12.051Z DEBUG 1 --- [nio-8080-exec-3] .m.m.a.ExceptionHandlerExceptionResolver : Resolved [org.springframework.web.bind.MethodArgumentNotValidException: Validation failed for argument [0] in public org.springframework.http.ResponseEntity<KuHub.modules.gestion_proveedor.entity.Proveedor> KuHub.modules.gestion_proveedor.controller.ProveedorController.create(KuHub.modules.gestion_proveedor.dtos.request.ProveedorCreateDTO): [Field error in object 'proveedorCreateDTO' on field 'rutProveedor': rejected value [279948167]; codes [Pattern.proveedorCreateDTO.rutProveedor,Pattern.rutProveedor,Pattern.java.lang.String,Pattern]; arguments [org.springframework.context.support.DefaultMessageSourceResolvable: codes [proveedorCreateDTO.rutProveedor,rutProveedor]; arguments []; default message [rutProveedor],[Ljakarta.validation.constraints.Pattern$Flag;@58d0d5ac,^(\d{1,2}\.\d{3}\.\d{3}-[\dkK]|\d{7,8}-[\dkK])?$]; default message [El RUT debe tener formato válido chileno (ej: 12.345.678-9 o 12345678-9)]] ]
-2026-04-22T21:20:12.052Z DEBUG 1 --- [nio-8080-exec-3] o.s.web.servlet.DispatcherServlet        : Completed 400 BAD_REQUEST
-2026-04-22T21:20:18.678Z DEBUG 1 --- [nio-8080-exec-4] o.s.security.web.FilterChainProxy        : Securing POST /api/v1/proveedor
-2026-04-22T21:20:18.679Z  INFO 1 --- [nio-8080-exec-4] K.c.s.rate_limiting.RateLimitFilter      : 📍 IP: 186.78.184.242 | Petición 3 de 80
-2026-04-22T21:20:18.683Z DEBUG 1 --- [nio-8080-exec-4] o.s.security.web.FilterChainProxy        : Secured POST /api/v1/proveedor
-2026-04-22T21:20:18.683Z DEBUG 1 --- [nio-8080-exec-4] o.s.web.servlet.DispatcherServlet        : POST "/api/v1/proveedor", parameters={}
-2026-04-22T21:20:18.684Z DEBUG 1 --- [nio-8080-exec-4] s.w.s.m.m.a.RequestMappingHandlerMapping : Mapped to KuHub.modules.gestion_proveedor.controller.ProveedorController#create(ProveedorCreateDTO)
-2026-04-22T21:20:18.685Z DEBUG 1 --- [nio-8080-exec-4] m.m.a.RMh4hfsi84LdbS4uS3jaSaNccc8kartkDJ : Read "application/json;charset=UTF-8" to [ProveedorCreateDTO(rutProveedor=279948167, nombreDistribuidora=Probar, nombreProveedor=Matheus de, t (truncated)...]
-2026-04-22T21:20:18.686Z DEBUG 1 --- [nio-8080-exec-4] .m.m.a.ExceptionHandlerExceptionResolver : Using @ExceptionHandler KuHub.config.GlobalExceptionHandler#handleValidationExceptions(MethodArgumentNotValidException)
-2026-04-22T21:20:18.687Z DEBUG 1 --- [nio-8080-exec-4] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/yaml]
-2026-04-22T21:20:18.687Z DEBUG 1 --- [nio-8080-exec-4] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Writing [{error=Error de validación, errors={rutProveedor=El RUT debe tener formato válido chileno (ej: 12.34 (truncated)...]
-2026-04-22T21:20:18.688Z DEBUG 1 --- [nio-8080-exec-4] .m.m.a.ExceptionHandlerExceptionResolver : Resolved [org.springframework.web.bind.MethodArgumentNotValidException: Validation failed for argument [0] in public org.springframework.http.ResponseEntity<KuHub.modules.gestion_proveedor.entity.Proveedor> KuHub.modules.gestion_proveedor.controller.ProveedorController.create(KuHub.modules.gestion_proveedor.dtos.request.ProveedorCreateDTO): [Field error in object 'proveedorCreateDTO' on field 'rutProveedor': rejected value [279948167]; codes [Pattern.proveedorCreateDTO.rutProveedor,Pattern.rutProveedor,Pattern.java.lang.String,Pattern]; arguments [org.springframework.context.support.DefaultMessageSourceResolvable: codes [proveedorCreateDTO.rutProveedor,rutProveedor]; arguments []; default message [rutProveedor],[Ljakarta.validation.constraints.Pattern$Flag;@58d0d5ac,^(\d{1,2}\.\d{3}\.\d{3}-[\dkK]|\d{7,8}-[\dkK])?$]; default message [El RUT debe tener formato válido chileno (ej: 12.345.678-9 o 12345678-9)]] ]
-2026-04-22T21:20:18.689Z DEBUG 1 --- [nio-8080-exec-4] o.s.web.servlet.DispatcherServlet        : Completed 400 BAD_REQUEST
+        at org.springframework.web.filter.ServerHttpObservationFilter.doFilterInternal(ServerHttpObservationFilter.java:114)
+        at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116)
+        at org.apache.catalina.core.ApplicationFilterChain.internalDoFilter(ApplicationFilterChain.java:164)
+        at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:140)
+        at org.springframework.web.filter.CharacterEncodingFilter.doFilterInternal(CharacterEncodingFilter.java:201)
+        at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116)
+        at org.apache.catalina.core.ApplicationFilterChain.internalDoFilter(ApplicationFilterChain.java:164)
+        at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:140)
+        at org.apache.catalina.core.StandardWrapperValve.invoke(StandardWrapperValve.java:167)
+        at org.apache.catalina.core.StandardContextValve.invoke(StandardContextValve.java:90)
+        at org.apache.catalina.authenticator.AuthenticatorBase.invoke(AuthenticatorBase.java:483)
+        at org.apache.catalina.core.StandardHostValve.invoke(StandardHostValve.java:115)
+        at org.apache.catalina.valves.ErrorReportValve.invoke(ErrorReportValve.java:93)
+        at org.apache.catalina.core.StandardEngineValve.invoke(StandardEngineValve.java:74)
+        at org.apache.catalina.connector.CoyoteAdapter.service(CoyoteAdapter.java:344)
+        at org.apache.coyote.http11.Http11Processor.service(Http11Processor.java:397)
+        at org.apache.coyote.AbstractProcessorLight.process(AbstractProcessorLight.java:63)
+        at org.apache.coyote.AbstractProtocol$ConnectionHandler.process(AbstractProtocol.java:905)
+        at org.apache.tomcat.util.net.NioEndpoint$SocketProcessor.doRun(NioEndpoint.java:1743)
+        at org.apache.tomcat.util.net.SocketProcessorBase.run(SocketProcessorBase.java:52)
+        at org.apache.tomcat.util.threads.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1190)
+        at org.apache.tomcat.util.threads.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:659)
+        at org.apache.tomcat.util.threads.TaskThread$WrappingRunnable.run(TaskThread.java:63)
+        at java.base/java.lang.Thread.run(Unknown Source)
+Caused by: org.hibernate.exception.SQLGrammarException: could not execute statement [ERROR: column "estado_proveedor" is of type estado_provedor_type but expression is of type character varying
+  Hint: You will need to rewrite or cast the expression.
+  Position: 165] [insert into proveedor (activo,email_proveedor,estado_proveedor,fecha_creacion,nombre_distribuidora,nombre_proveedor,rut_proveedor,telefono_proveedor) values (?,?,?,?,?,?,?,?)]
+        at org.hibernate.exception.internal.SQLStateConversionDelegate.convert(SQLStateConversionDelegate.java:91)
+        at org.hibernate.exception.internal.StandardSQLExceptionConverter.convert(StandardSQLExceptionConverter.java:58)
+        at org.hibernate.engine.jdbc.spi.SqlExceptionHelper.convert(SqlExceptionHelper.java:108)
+        at org.hibernate.engine.jdbc.internal.ResultSetReturnImpl.executeUpdate(ResultSetReturnImpl.java:197)
+        at org.hibernate.id.insert.GetGeneratedKeysDelegate.performMutation(GetGeneratedKeysDelegate.java:116)
+        at org.hibernate.engine.jdbc.mutation.internal.MutationExecutorSingleNonBatched.performNonBatchedOperations(MutationExecutorSingleNonBatched.java:47)
+        at org.hibernate.engine.jdbc.mutation.internal.AbstractMutationExecutor.execute(AbstractMutationExecutor.java:55)
+        at org.hibernate.persister.entity.mutation.InsertCoordinatorStandard.doStaticInserts(InsertCoordinatorStandard.java:194)
+        at org.hibernate.persister.entity.mutation.InsertCoordinatorStandard.coordinateInsert(InsertCoordinatorStandard.java:132)
+        at org.hibernate.persister.entity.mutation.InsertCoordinatorStandard.insert(InsertCoordinatorStandard.java:95)
+        at org.hibernate.action.internal.EntityIdentityInsertAction.execute(EntityIdentityInsertAction.java:85)
+        at org.hibernate.engine.spi.ActionQueue.execute(ActionQueue.java:682)
+        at org.hibernate.engine.spi.ActionQueue.addResolvedEntityInsertAction(ActionQueue.java:293)
+        at org.hibernate.engine.spi.ActionQueue.addInsertAction(ActionQueue.java:274)
+        at org.hibernate.engine.spi.ActionQueue.addAction(ActionQueue.java:324)
+        at org.hibernate.event.internal.AbstractSaveEventListener.addInsertAction(AbstractSaveEventListener.java:393)
+        at org.hibernate.event.internal.AbstractSaveEventListener.performSaveOrReplicate(AbstractSaveEventListener.java:307)
+        at org.hibernate.event.internal.AbstractSaveEventListener.performSave(AbstractSaveEventListener.java:223)
+        at org.hibernate.event.internal.AbstractSaveEventListener.saveWithGeneratedId(AbstractSaveEventListener.java:136)
+        at org.hibernate.event.internal.DefaultPersistEventListener.entityIsTransient(DefaultPersistEventListener.java:177)
+        at org.hibernate.event.internal.DefaultPersistEventListener.persist(DefaultPersistEventListener.java:95)
+        at org.hibernate.event.internal.DefaultPersistEventListener.onPersist(DefaultPersistEventListener.java:79)
+        at org.hibernate.event.internal.DefaultPersistEventListener.onPersist(DefaultPersistEventListener.java:55)
+        at org.hibernate.event.service.internal.EventListenerGroupImpl.fireEventOnEachListener(EventListenerGroupImpl.java:127)
+        at org.hibernate.internal.SessionImpl.firePersist(SessionImpl.java:761)
+        at org.hibernate.internal.SessionImpl.persist(SessionImpl.java:745)
+        at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(Unknown Source)
+        at java.base/java.lang.reflect.Method.invoke(Unknown Source)
+        at org.springframework.orm.jpa.ExtendedEntityManagerCreator$ExtendedEntityManagerInvocationHandler.invoke(ExtendedEntityManagerCreator.java:364)
+        at jdk.proxy2/jdk.proxy2.$Proxy175.persist(Unknown Source)
+        at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(Unknown Source)
+        at java.base/java.lang.reflect.Method.invoke(Unknown Source)
+        at org.springframework.orm.jpa.SharedEntityManagerCreator$SharedEntityManagerInvocationHandler.invoke(SharedEntityManagerCreator.java:320)
+        at jdk.proxy2/jdk.proxy2.$Proxy175.persist(Unknown Source)
+        at org.springframework.data.jpa.repository.support.SimpleJpaRepository.save(SimpleJpaRepository.java:636)
+        at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(Unknown Source)
+        at java.base/java.lang.reflect.Method.invoke(Unknown Source)
+        at org.springframework.aop.support.AopUtils.invokeJoinpointUsingReflection(AopUtils.java:359)
+        at org.springframework.data.repository.core.support.RepositoryMethodInvoker$RepositoryFragmentMethodInvoker.lambda$new$0(RepositoryMethodInvoker.java:277)
+        at org.springframework.data.repository.core.support.RepositoryMethodInvoker.doInvoke(RepositoryMethodInvoker.java:170)
+        at org.springframework.data.repository.core.support.RepositoryMethodInvoker.invoke(RepositoryMethodInvoker.java:158)
+        at org.springframework.data.repository.core.support.RepositoryComposition$RepositoryFragments.invoke(RepositoryComposition.java:515)
+        at org.springframework.data.repository.core.support.RepositoryComposition.invoke(RepositoryComposition.java:284)
+        at org.springframework.data.repository.core.support.RepositoryFactorySupport$ImplementationMethodExecutionInterceptor.invoke(RepositoryFactorySupport.java:752)
+        at org.springframework.aop.framework.ReflectiveMethodInvocation.proceed(ReflectiveMethodInvocation.java:184)
+        at org.springframework.data.repository.core.support.QueryExecutorMethodInterceptor.doInvoke(QueryExecutorMethodInterceptor.java:174)
+        at org.springframework.data.repository.core.support.QueryExecutorMethodInterceptor.invoke(QueryExecutorMethodInterceptor.java:149)
+        at org.springframework.aop.framework.ReflectiveMethodInvocation.proceed(ReflectiveMethodInvocation.java:184)
+        at org.springframework.data.projection.DefaultMethodInvokingMethodInterceptor.invoke(DefaultMethodInvokingMethodInterceptor.java:69)
+        at org.springframework.aop.framework.ReflectiveMethodInvocation.proceed(ReflectiveMethodInvocation.java:184)
+        at org.springframework.transaction.interceptor.TransactionAspectSupport.invokeWithinTransaction(TransactionAspectSupport.java:380)
+        at org.springframework.transaction.interceptor.TransactionInterceptor.invoke(TransactionInterceptor.java:119)
+        at org.springframework.aop.framework.ReflectiveMethodInvocation.proceed(ReflectiveMethodInvocation.java:184)
+        at org.springframework.dao.support.PersistenceExceptionTranslationInterceptor.invoke(PersistenceExceptionTranslationInterceptor.java:138)
+        ... 171 more
+Caused by: org.postgresql.util.PSQLException: ERROR: column "estado_proveedor" is of type estado_provedor_type but expression is of type character varying
+  Hint: You will need to rewrite or cast the expression.
+  Position: 165
+        at org.postgresql.core.v3.QueryExecutorImpl.receiveErrorResponse(QueryExecutorImpl.java:2725)
+        at org.postgresql.core.v3.QueryExecutorImpl.processResults(QueryExecutorImpl.java:2412)
+        at org.postgresql.core.v3.QueryExecutorImpl.execute(QueryExecutorImpl.java:371)
+        at org.postgresql.jdbc.PgStatement.executeInternal(PgStatement.java:502)
+        at org.postgresql.jdbc.PgStatement.execute(PgStatement.java:419)
+        at org.postgresql.jdbc.PgPreparedStatement.executeWithFlags(PgPreparedStatement.java:194)
+        at org.postgresql.jdbc.PgPreparedStatement.executeUpdate(PgPreparedStatement.java:155)
+        at com.zaxxer.hikari.pool.ProxyPreparedStatement.executeUpdate(ProxyPreparedStatement.java:61)
+        at com.zaxxer.hikari.pool.HikariProxyPreparedStatement.executeUpdate(HikariProxyPreparedStatement.java)
+        at org.hibernate.engine.jdbc.internal.ResultSetReturnImpl.executeUpdate(ResultSetReturnImpl.java:194)
+        ... 221 more
+2026-04-22T21:33:45.900Z DEBUG 1 --- [nio-8080-exec-5] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/yaml]
+2026-04-22T21:33:45.900Z DEBUG 1 --- [nio-8080-exec-5] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Writing [{error=Error interno del servidor, message=Ha ocurrido un error inesperado. Por favor contacte al ad (truncated)...]
+2026-04-22T21:33:45.903Z DEBUG 1 --- [nio-8080-exec-5] .m.m.a.ExceptionHandlerExceptionResolver : Resolved [org.springframework.dao.InvalidDataAccessResourceUsageException: could not execute statement [ERROR: column "estado_proveedor" is of type estado_provedor_type but expression is of type character varying<EOL>  Hint: You will need to rewrite or cast the expression.<EOL>  Position: 165] [insert into proveedor (activo,email_proveedor,estado_proveedor,fecha_creacion,nombre_distribuidora,nombre_proveedor,rut_proveedor,telefono_proveedor) values (?,?,?,?,?,?,?,?)]; SQL [insert into proveedor (activo,email_proveedor,estado_proveedor,fecha_creacion,nombre_distribuidora,nombre_proveedor,rut_proveedor,telefono_proveedor) values (?,?,?,?,?,?,?,?)]]
+2026-04-22T21:33:45.904Z DEBUG 1 --- [nio-8080-exec-5] o.s.web.servlet.DispatcherServlet        : Completed 500 INTERNAL_SERVER_ERROR
