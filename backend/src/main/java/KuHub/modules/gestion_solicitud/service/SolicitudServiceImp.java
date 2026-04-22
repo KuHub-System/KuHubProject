@@ -405,7 +405,6 @@ public class SolicitudServiceImp implements SolicitudService {
      * @return {@link ProyeccionAbastecimiento} con la lista de productos consolidados.
      */
     @Transactional(readOnly = true)
-    @Transactional(readOnly = true)
     @Override
     public ProyeccionAbastecimiento findProyeccionAbastecimiento(DateRangeDTO request) {
 
