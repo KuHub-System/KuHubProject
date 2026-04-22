@@ -4,6 +4,7 @@ import KuHub.modules.gestion_solicitud.dtos.request.record.ChangeSolicitationSta
 import KuHub.modules.gestion_solicitud.dtos.request.record.MassiveSolicitation;
 import KuHub.modules.gestion_solicitud.dtos.respose.record.CourseForSolicitation;
 import KuHub.modules.gestion_solicitud.dtos.respose.record.DashboardConsolidado;
+import KuHub.modules.gestion_solicitud.dtos.respose.record.ProyeccionAbastecimiento;
 import KuHub.modules.gestion_solicitud.dtos.request.*;
 import KuHub.modules.gestion_solicitud.dtos.respose.projection.ResultsMassSolicitationView;
 import KuHub.modules.gestion_solicitud.dtos.respose.record.RecipeSolicitation;
@@ -20,7 +21,7 @@ import java.util.List;
 /**
  * Controller REST para gestión de Solicitudes
  * Endpoints: /api/v1/solicitud
- * ✅ En uso: Este controlador maneja la lógica de solicitudes masivas, carga de cursos/recetas 
+ * ✅ En uso: Este controlador maneja la lógica de solicitudes masivas, carga de cursos/recetas
  * para solicitudes y vista semanal consolidada.
  * Es consumido por solicitud-service.ts en el frontend.
  */
@@ -37,7 +38,7 @@ public class SolicitudController {
      * ✅ En uso: Consumido por obtenerCursosParaSolicitudService en solicitud-service.ts.
      */
     @GetMapping("/curses-by-solicitation")
-    public ResponseEntity<List<CourseForSolicitation>> findCourseWithSectionsAndBlocksActive(){
+    public ResponseEntity<List<CourseForSolicitation>> findCourseWithSectionsAndBlocksActive() {
         return ResponseEntity
                 .status(200)
                 .body(solicitudService.findCourseWithSectionsAndBlocksRaw());
@@ -48,14 +49,14 @@ public class SolicitudController {
      * ✅ En uso: Consumido por obtenerRecetasSolicitudService en solicitud-service.ts.
      */
     @GetMapping("/recipes-with-details-by-solicitation")
-    public ResponseEntity<List<RecipeSolicitation>> findActiveRecipesWithDetails(){
+    public ResponseEntity<List<RecipeSolicitation>> findActiveRecipesWithDetails() {
         return ResponseEntity
                 .status(200)
                 .body(solicitudService.findActiveRecipesWithDetailsRaw());
     }
 
     /**
-     * Obtiene el listado de solicitudes para un rango de fechas (vista semanal), 
+     * Obtiene el listado de solicitudes para un rango de fechas (vista semanal),
      * incluyendo jerarquía de asignatura, sección y horarios.
      * ✅ En uso: Consumido por obtenerSolicitudesPorSemanaService en solicitud-service.ts.
      */
@@ -89,7 +90,7 @@ public class SolicitudController {
      */
     @PostMapping("/order-for-consolidation")
     public ResponseEntity<DashboardConsolidado> obtenerDashboard(
-            @Validated @RequestBody DateRangeDTO request){
+            @Validated @RequestBody DateRangeDTO request) {
         return ResponseEntity
                 .status(200)
                 .body(solicitudService.obtenerDashboard(request));
@@ -101,12 +102,24 @@ public class SolicitudController {
      */
     @PatchMapping("/change-massive-status")
     public ResponseEntity<Boolean> changeMassiveStatus(
-            @Validated @RequestBody ChangeSolicitationStatus request){
+            @Validated @RequestBody ChangeSolicitationStatus request) {
         return ResponseEntity
                 .status(200)
                 .body(solicitudService.changeMassiveStatus(request));
     }
 
-
+    /**
+     * Obtiene la proyección de abastecimiento consolidada de productos cuyas solicitudes
+     * tienen estado EN_PEDIDO, filtradas por rango de fechas.
+     * Agrupa por categoría y nombre de producto, sumando cantidades totales solicitadas.
+     * ⬜ Sin uso frontend aún.
+     */
+    @PostMapping("/proyeccion-abastecimiento")
+    public ResponseEntity<ProyeccionAbastecimiento> findProyeccionAbastecimiento(
+            @Validated @RequestBody DateRangeDTO request) {
+        return ResponseEntity
+                .status(200)
+                .body(solicitudService.findProyeccionAbastecimiento(request));
+    }
 
 }

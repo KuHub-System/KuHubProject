@@ -1,184 +1,47 @@
-REQUIRIMENTO
-PROBLEMATICA
--lo debe passar en gestion solicitud es, indetificar si la configuracion de gestion_sistema tiene el valor true de la tabla
-CREATE TABLE IF NOT EXISTS gestion_sistema (
- id                      SERIAL PRIMARY KEY,
- solicitudes_en_pedido   BOOLEAN NOT NULL DEFAULT FALSE,
- descripcion             VARCHAR(255)
-);
-si el valor del atributo solicitudes_en_pedido, significa que todas las solictudes que se aceptan se passar al estado EN_PEDIDO ademas de se vincular a una pedido existente o si no encuentra uno que puede haber mas de uno, se crea un pedido vinculado los valores del los productos al pedido por eso la funcion que esta en resulse
--- ============================================================
--- NOTA BASE DE DATOS - KuHub v2
--- Tabla: gestion_sistema
--- Descripción: Tabla de configuración global del sistema.
---              Siempre existirán exactamente 2 filas:
---              - id=1: configuración DEFAULT (no se modifica, sirve para restaurar)
---              - id=2: configuración ACTIVA (la que el sistema lee y el usuario modifica)
--- ============================================================
+Contexto:
+Debes implementar una nueva funcionalidad en el frontend siguiendo las directrices definidas en frontend/CLAUDE.md.
 
-CREATE TABLE IF NOT EXISTS gestion_sistema (
-    id                      SERIAL PRIMARY KEY,
-    solicitudes_en_pedido   BOOLEAN NOT NULL DEFAULT FALSE,
-    descripcion             VARCHAR(255)
-);
+Objetivo:
+Agregar la funcionalidad "Abastecimiento por Pedido" dentro del modal "Control de Stock Masivo" del inventario.
 
--- INSERT 1: Configuración predeterminada (NO SE MODIFICA NUNCA)
-INSERT INTO gestion_sistema (id, solicitudes_en_pedido, descripcion)
-VALUES (1, FALSE, 'Configuración predeterminada del sistema - NO MODIFICAR');
+Requerimientos funcionales:
 
--- INSERT 2: Configuración activa (la que el usuario puede cambiar desde el panel)
-INSERT INTO gestion_sistema (id, solicitudes_en_pedido, descripcion)
-VALUES (2, FALSE, 'Configuración activa del sistema');
+Nuevo botón
+Agregar un botón dentro de "Control de Stock Masivo".
+Texto del botón: "Abastecimiento por Pedido".
+Acción: abrir un modal.
+Modal de selección de fechas
+Debe permitir seleccionar un rango de fechas.
+Reutilizar el mismo componente/formato usado en "Historial/Movimientos".
 
--- ============================================================
--- FUNCIÓN + TRIGGER: Manejo automático de pedidos al aceptar solicitud
--- Cuando solicitudes_en_pedido = TRUE y se acepta una solicitud,
--- se verifica si existe un pedido en el rango de la semana.
--- Si NO existe → se crea el pedido con los productos de la solicitud.
--- Si SÍ existe → se agregan/suman los productos al pedido existente.
--- Finalmente se cambia el estado de la solicitud a 'EN_PEDIDO'.
--- ============================================================
+Mostrar el siguiente mensaje informativo dentro del modal:
 
--- Función que maneja la lógica de inserción/actualización de pedido
-CREATE OR REPLACE FUNCTION fn_solicitud_a_pedido()
-RETURNS TRIGGER AS $$
-DECLARE
-    v_solicitudes_en_pedido BOOLEAN;
-    v_pedido_id             INTEGER;
-    v_semana_inicio         DATE;
-    v_semana_fin            DATE;
-    v_id_semana             INTEGER;
-BEGIN
-    -- Solo actuar cuando el estado cambia a 'ACEPTADA'
-    IF NEW.estado_solicitud <> 'ACEPTADA' OR OLD.estado_solicitud = 'ACEPTADA' THEN
-        RETURN NEW;
-    END IF;
+"Esta es una proyección de lo que se espera recibir de las mercancías solicitadas por pedido".
 
-    -- Leer configuración activa (id=2)
-    SELECT solicitudes_en_pedido
-    INTO v_solicitudes_en_pedido
-    FROM gestion_sistema
-    WHERE id = 2;
+Integración con backend
+Al confirmar el rango de fechas, realizar una petición al endpoint:
+@PostMapping("/proyeccion-abastecimiento")
+public ResponseEntity<ProyeccionAbastecimiento> findProyeccionAbastecimiento(
+        @Validated @RequestBody DateRangeDTO request) {
+    return ResponseEntity
+            .status(200)
+            .body(solicitudService.findProyeccionAbastecimiento(request));
+}
+Enviar el DateRangeDTO con las fechas seleccionadas.
+Carga de datos en UI
+Al recibir la respuesta:
+Cerrar el modal.
+Poblar automáticamente la tabla/formulario de "Control de Stock Masivo" con:
+Nombre del producto
+Acción: "Entrada" (valor fijo)
+Cantidad (según respuesta del backend)
+Edición posterior
+Los datos cargados deben ser editables por el usuario después de la carga automática.
+El objetivo es evitar la ingresión manual inicial, pero permitir ajustes.
 
-    -- Si la funcionalidad está desactivada, no hacer nada
-    IF v_solicitudes_en_pedido IS FALSE OR v_solicitudes_en_pedido IS NULL THEN
-        RETURN NEW;
-    END IF;
+Consideraciones técnicas:
 
-    -- Obtener la semana asociada a la solicitud (via reserva_sala → semana)
-    SELECT s.id_semana, s.fecha_inicio, s.fecha_fin
-    INTO v_id_semana, v_semana_inicio, v_semana_fin
-    FROM reserva_sala rs
-    JOIN semana s ON s.id_semana = rs.id_semana
-    WHERE rs.id_reserva_sala = NEW.id_reserva_sala;
-
-    -- Buscar si ya existe un pedido en el rango de esa semana
-    SELECT p.id_pedido
-    INTO v_pedido_id
-    FROM pedido p
-    WHERE p.fecha_inicio_semana = v_semana_inicio
-      AND p.fecha_fin_semana    = v_semana_fin
-      AND p.estado_pedido NOT IN ('Cancelado')
-    LIMIT 1;
-
-    -- Si NO existe pedido → crear uno nuevo
-    IF v_pedido_id IS NULL THEN
-        INSERT INTO pedido (fecha_inicio_semana, fecha_fin_semana, id_semana, estado_pedido)
-        VALUES (v_semana_inicio, v_semana_fin, v_id_semana, 'EnCurso')
-        RETURNING id_pedido INTO v_pedido_id;
-    END IF;
-
-    -- Insertar o sumar productos de la solicitud al pedido
-    INSERT INTO detalle_pedido (id_pedido, id_producto, cantidad)
-    SELECT
-        v_pedido_id,
-        ps.id_producto,
-        ps.cantidad
-    FROM producto_solicitud ps
-    WHERE ps.id_solicitud = NEW.id_solicitud
-    ON CONFLICT (id_pedido, id_producto)
-    DO UPDATE SET cantidad = detalle_pedido.cantidad + EXCLUDED.cantidad;
-
-    -- Cambiar estado de la solicitud a EN_PEDIDO
-    NEW.estado_solicitud := 'EN_PEDIDO';
-
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
--- Trigger que se ejecuta BEFORE UPDATE en solicitud
-DROP TRIGGER IF EXISTS trg_solicitud_a_pedido ON solicitud;
-
-CREATE TRIGGER trg_solicitud_a_pedido
-    BEFORE UPDATE ON solicitud
-    FOR EACH ROW
-    EXECUTE FUNCTION fn_solicitud_a_pedido();
-
--- ============================================================
--- NOTA IMPORTANTE:
--- Los nombres de tablas y columnas (pedido, detalle_pedido,
--- reserva_sala, semana, producto_solicitud, solicitud) deben
--- coincidir con los nombres reales en la base de datos.
--- Ajustar si difieren.
--- ============================================================
-
-═══════════════════════════════════════════════════════════════
-ANÁLISIS COMPLETADO — INSTRUCCIONES PARA AIDER
-═══════════════════════════════════════════════════════════════
-
-CAUSA RAÍZ DEL BUG:
-Hibernate tiene un bug conocido con native queries y el operador :: de PostgreSQL.
-Al procesar `:estado::estado_solicitud_type`, Hibernate puede interpretar
-`::estado_solicitud_type` como un segundo parámetro, corrompiendo el PreparedStatement.
-Ni CAST() ni :: funcionan en native queries de Hibernate con PostgreSQL ENUMs dinámicos.
-
-SOBRE EL TRIGGER (trg_solicitud_a_pedido):
-El trigger NO es el causante del 500. El trigger solo actúa cuando estado cambia
-A 'ACEPTADA'. Cuando solicitudesEnPedido=TRUE, el servicio cambia directo a
-'EN_PEDIDO' (no a ACEPTADA), entonces el trigger retorna inmediatamente sin ejecutar
-su lógica compleja. No hay conflicto entre el trigger y el servicio.
-
-SOLUCIÓN: cambiar a JPQL en SolicitudRepository.
-Con JPQL + @Enumerated(EnumType.STRING), Hibernate serializa el enum directamente
-sin necesidad de casting SQL. El método recibe Solicitud.EstadoSolicitud en vez de String.
-
-ARCHIVOS A MODIFICAR:
-/add backend/src/main/java/KuHub/modules/gestion_solicitud/repository/SolicitudRepository.java
-/add backend/src/main/java/KuHub/modules/gestion_solicitud/service/SolicitudServiceImp.java
-/add backend/src/main/java/KuHub/modules/gestion_pedido/services/PedidoServiceImpl.java
-/read-only backend/src/main/java/KuHub/modules/gestion_solicitud/entity/Solicitud.java
-
-CAMBIO 1 — SolicitudRepository.java (lineas ~236-242):
-ANTES:
-    @Modifying
-    @Query(value = """
-            UPDATE solicitud
-            SET estado_solicitud = :estado::estado_solicitud_type
-            WHERE id_solicitud IN (:ids)
-            """, nativeQuery = true)
-    int updateMassiveStateSolicitation(@Param("ids") List<Integer> ids, @Param("estado") String estado);
-DESPUES:
-    @Modifying
-    @Query("UPDATE Solicitud s SET s.estadoSolicitud = :estado WHERE s.idSolicitud IN (:ids)")
-    int updateMassiveStateSolicitation(@Param("ids") List<Integer> ids, @Param("estado") Solicitud.EstadoSolicitud estado);
-
-CAMBIO 2 — SolicitudServiceImp.java (3 llamadas):
-  Linea ~266: "EN_PEDIDO" → Solicitud.EstadoSolicitud.EN_PEDIDO
-  Linea ~270: "ACEPTADA"  → Solicitud.EstadoSolicitud.ACEPTADA
-  Linea ~285: estadoNormalizado → Solicitud.EstadoSolicitud.valueOf(estadoNormalizado)
-
-CAMBIO 3 — PedidoServiceImpl.java (2 llamadas):
-  Linea ~150: "EN_PEDIDO"  → Solicitud.EstadoSolicitud.EN_PEDIDO
-  Linea ~233: "PROCESADO"  → Solicitud.EstadoSolicitud.PROCESADO
-  (verificar que el import de Solicitud esté presente)
-
-para acceder AIDER
-# 1. Ruta de Aider
-$env:Path += ";C:\Users\Matheus\AppData\Roaming\Python\Python312\Scripts"
-
-# 2. Llaves de AWS (Desbloquea todos los Claude y Llama en Bedrock)
-$env:AWS_ACCESS_KEY_ID="AKIAWUWVQ7MYVLKB7BNM"
-$env:AWS_SECRET_ACCESS_KEY="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"
-$env:AWS_REGION="us-east-1"
-
-aider --model bedrock/global.anthropic.claude-sonnet-4-6 --no-auto-commit
+Mantener consistencia con los componentes existentes.
+Reutilizar lógica y estilos ya implementados (DRY).
+Validar correctamente el rango de fechas antes de enviar la solicitud.
+Manejar estados de carga y errores (loading, error feedback).

@@ -1119,6 +1119,16 @@ PENDIENTE DE IMPLEMENTAR O DEFINIR:
       PATCH /api/gestion-sistema/configuracion, POST /api/gestion-sistema/restaurar).
       Frontend: vista "Gestión del Sistema" en admin-sistema.tsx.
 
+  [✓] Proyección de abastecimiento (2026-04-21):
+      Nuevo endpoint POST /api/v1/solicitud/proyeccion-abastecimiento que retorna
+      consolidación de productos cuyas solicitudes tienen estado EN_PEDIDO.
+      Record ProyeccionAbastecimiento con estructura anidada (ProductoAbastecimientoItem).
+      Consulta nativa agrupa por categoría y nombre, sumando cantidades totales solicitadas.
+      Mapeo ObjectMapper descompone jsonb_agg a List<ProductoAbastecimientoItem>.
+      Archivos: SolicitudRepository (findProyeccionAbastecimientoJson), SolicitudService
+      (interfaz + impl), SolicitudController (POST endpoint), DTO ProyeccionAbastecimiento.
+      Documentación: ⬜ Sin uso frontend aún.
+
   [✓] Flujo automático solicitud → pedido sin trigger (2026-04-20):
       Trigger fn_solicitud_a_pedido eliminado de la BD (tenía columnas incorrectas:
       fecha_inicio_semana, fecha_fin_semana, id_semana, tabla producto_solicitud,
