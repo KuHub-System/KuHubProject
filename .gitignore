@@ -42,3 +42,7 @@ secrets.json
 .env.local
 credentials.json
 aws-credentials.txt
+
+### Notas Locales y Aider ###
+FLUJO_TRABAJO_HAIKU_SONNET.md
+ejecutar_ahora.md
