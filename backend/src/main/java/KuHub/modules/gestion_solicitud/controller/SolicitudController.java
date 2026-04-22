@@ -119,14 +119,15 @@ public class SolicitudController {
      * tienen estado EN_PEDIDO, filtradas por rango de fechas.
      * Agrupa por categoría y nombre de producto, sumando cantidades totales solicitadas.
      * ✅ En uso: Consumido por cargarProyeccionAbastecimiento en inventario.tsx (Abastecimiento por Pedido).
-     * Requiere permiso de LECTURA en el módulo INVENTARIO.
+     * Requiere permiso de LECTURA o ESCRITURA en el módulo INVENTARIO.
      */
     @PostMapping("/proyeccion-abastecimiento")
     public ResponseEntity<ProyeccionAbastecimiento> findProyeccionAbastecimiento(
             @Validated @RequestBody DateRangeDTO request,
             Authentication authentication) {
-        // Validación dinámica de permisos: requiere lectura en INVENTARIO
-        if (!dynamicPermissionService.check(authentication, "INVENTARIO", "read")) {
+        // Validación dinámica de permisos: requiere lectura o escritura en INVENTARIO
+        if (!dynamicPermissionService.check(authentication, "INVENTARIO", "read") &&
+            !dynamicPermissionService.check(authentication, "INVENTARIO", "write")) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
 
