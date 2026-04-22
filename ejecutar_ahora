@@ -1,24 +1,23 @@
-index-BYpKbEuB.js:2 [AXIOS] ⚠️ No hay token para /semanas/find-by-weekly-for-solicitation - sesión: NO
-warn	@	index-BYpKbEuB.js:2
-(anonymous)	@	index-BYpKbEuB.js:2
-Promise.then		
+[AXIOS] ⚠️ No hay token para /auth/refresh - sesión: NO
+warn	@	index-wrVSCIJO.js:2
+(anonymous)	@	index-wrVSCIJO.js:2
+Promise.then
 _request	@	utils-vendor-CkGtaPQr.js:14
 request	@	utils-vendor-CkGtaPQr.js:13
 (anonymous)	@	utils-vendor-CkGtaPQr.js:14
 (anonymous)	@	utils-vendor-CkGtaPQr.js:9
-H	@	index-BYpKbEuB.js:2
-(anonymous)	@	index-BYpKbEuB.js:2
-await in (anonymous)		
-(anonymous)	@	index-BYpKbEuB.js:2
+lt	@	index-wrVSCIJO.js:2
+(anonymous)	@	index-wrVSCIJO.js:2
+(anonymous)	@	index-wrVSCIJO.js:2
 El	@	react-vendor-BxMPNXTO.js:32
 $n	@	react-vendor-BxMPNXTO.js:32
 (anonymous)	@	react-vendor-BxMPNXTO.js:32
 m	@	react-vendor-BxMPNXTO.js:17
 re	@	react-vendor-BxMPNXTO.js:17
-postMessage		
+postMessage
 fe	@	react-vendor-BxMPNXTO.js:17
 re	@	react-vendor-BxMPNXTO.js:17
-postMessage		
+postMessage
 fe	@	react-vendor-BxMPNXTO.js:17
 Te	@	react-vendor-BxMPNXTO.js:17
 Wd.u.unstable_scheduleCallback	@	react-vendor-BxMPNXTO.js:17
@@ -27,10 +26,10 @@ be	@	react-vendor-BxMPNXTO.js:32
 wt	@	react-vendor-BxMPNXTO.js:32
 Ml	@	react-vendor-BxMPNXTO.js:32
 Qd.Dl.render.ji.render	@	react-vendor-BxMPNXTO.js:32
-(anonymous)	@	index-BYpKbEuB.js:9
+(anonymous)	@	index-wrVSCIJO.js:9
 
 utils-vendor-CkGtaPQr.js:11
- POST https://appkuhub.questweb.cl/api/v1/semanas/find-by-weekly-for-solicitation 401 (Unauthorized)
+ POST https://appkuhub.questweb.cl/api/v1/auth/refresh 401 (Unauthorized)
 (anonymous)	@	utils-vendor-CkGtaPQr.js:11
 xhr	@	utils-vendor-CkGtaPQr.js:11
 wo	@	utils-vendor-CkGtaPQr.js:13
@@ -39,10 +38,9 @@ _request	@	utils-vendor-CkGtaPQr.js:14
 request	@	utils-vendor-CkGtaPQr.js:13
 (anonymous)	@	utils-vendor-CkGtaPQr.js:14
 (anonymous)	@	utils-vendor-CkGtaPQr.js:9
-H	@	index-BYpKbEuB.js:2
-(anonymous)	@	index-BYpKbEuB.js:2
-await in (anonymous)
-(anonymous)	@	index-BYpKbEuB.js:2
+lt	@	index-wrVSCIJO.js:2
+(anonymous)	@	index-wrVSCIJO.js:2
+(anonymous)	@	index-wrVSCIJO.js:2
 El	@	react-vendor-BxMPNXTO.js:32
 $n	@	react-vendor-BxMPNXTO.js:32
 (anonymous)	@	react-vendor-BxMPNXTO.js:32
@@ -60,21 +58,21 @@ be	@	react-vendor-BxMPNXTO.js:32
 wt	@	react-vendor-BxMPNXTO.js:32
 Ml	@	react-vendor-BxMPNXTO.js:32
 Qd.Dl.render.ji.render	@	react-vendor-BxMPNXTO.js:32
-(anonymous)	@	index-BYpKbEuB.js:9
-index.min.js:1 ❌ HTTP 401 en POST /semanas/find-by-weekly-for-solicitation
-{error: 'No autorizado', message: 'Full authentication is required to access this resource'}
+(anonymous)	@	index-wrVSCIJO.js:9
+
+❌ HTTP 401 en POST /auth/refresh
+{message: 'No hay refresh token'}
 (anonymous)	@	index.min.js:1
-error	@	index-BYpKbEuB.js:2
-(anonymous)	@	index-BYpKbEuB.js:2
+error	@	index-wrVSCIJO.js:2
+(anonymous)	@	index-wrVSCIJO.js:2
 Promise.then
 _request	@	utils-vendor-CkGtaPQr.js:14
 request	@	utils-vendor-CkGtaPQr.js:13
 (anonymous)	@	utils-vendor-CkGtaPQr.js:14
 (anonymous)	@	utils-vendor-CkGtaPQr.js:9
-H	@	index-BYpKbEuB.js:2
-(anonymous)	@	index-BYpKbEuB.js:2
-await in (anonymous)
-(anonymous)	@	index-BYpKbEuB.js:2
+lt	@	index-wrVSCIJO.js:2
+(anonymous)	@	index-wrVSCIJO.js:2
+(anonymous)	@	index-wrVSCIJO.js:2
 El	@	react-vendor-BxMPNXTO.js:32
 $n	@	react-vendor-BxMPNXTO.js:32
 (anonymous)	@	react-vendor-BxMPNXTO.js:32
@@ -92,5 +90,35 @@ be	@	react-vendor-BxMPNXTO.js:32
 wt	@	react-vendor-BxMPNXTO.js:32
 Ml	@	react-vendor-BxMPNXTO.js:32
 Qd.Dl.render.ji.render	@	react-vendor-BxMPNXTO.js:32
-(anonymous)	@	index-BYpKbEuB.js:9
-→ Error ignorado por interceptor (no logout): /semanas/find-by-weekly-for-solicitation
+(anonymous)	@	index-wrVSCIJO.js:9
+
+ → Error ignorado por interceptor (no logout): /auth/refresh
+(anonymous)	@	index.min.js:1
+error	@	index-wrVSCIJO.js:2
+(anonymous)	@	index-wrVSCIJO.js:2
+Promise.then
+_request	@	utils-vendor-CkGtaPQr.js:14
+request	@	utils-vendor-CkGtaPQr.js:13
+(anonymous)	@	utils-vendor-CkGtaPQr.js:14
+(anonymous)	@	utils-vendor-CkGtaPQr.js:9
+lt	@	index-wrVSCIJO.js:2
+(anonymous)	@	index-wrVSCIJO.js:2
+(anonymous)	@	index-wrVSCIJO.js:2
+El	@	react-vendor-BxMPNXTO.js:32
+$n	@	react-vendor-BxMPNXTO.js:32
+(anonymous)	@	react-vendor-BxMPNXTO.js:32
+m	@	react-vendor-BxMPNXTO.js:17
+re	@	react-vendor-BxMPNXTO.js:17
+postMessage
+fe	@	react-vendor-BxMPNXTO.js:17
+re	@	react-vendor-BxMPNXTO.js:17
+postMessage
+fe	@	react-vendor-BxMPNXTO.js:17
+Te	@	react-vendor-BxMPNXTO.js:17
+Wd.u.unstable_scheduleCallback	@	react-vendor-BxMPNXTO.js:17
+qs	@	react-vendor-BxMPNXTO.js:32
+be	@	react-vendor-BxMPNXTO.js:32
+wt	@	react-vendor-BxMPNXTO.js:32
+Ml	@	react-vendor-BxMPNXTO.js:32
+Qd.Dl.render.ji.render	@	react-vendor-BxMPNXTO.js:32
+(anonymous)	@	index-wrVSCIJO.js:9
