@@ -6,6 +6,7 @@ import {
   detectarPeriodoActual,
   encontrarSemanaActual,
 } from '../services/semana-service';
+import { useAuth } from './auth-context';
 
 interface PeriodoSemanaState {
   periodos: IPeriodoAcademico[];
@@ -32,6 +33,7 @@ export const usePeriodoSemana = () => {
 };
 
 export const PeriodoSemanaProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { isLoading: authIsLoading, isAuthenticated } = useAuth();
   const [periodos, setPeriodos] = React.useState<IPeriodoAcademico[]>([]);
   const [semanas, setSemanas] = React.useState<ISemana[]>([]);
   const [periodo, setPeriodo] = React.useState<{ anio: number; semestre: number } | null>(null);
@@ -147,8 +149,20 @@ export const PeriodoSemanaProvider: React.FC<{ children: React.ReactNode }> = ({
   }, [periodo, obtenerSemanasPorPeriodoService]);
 
   React.useEffect(() => {
+    if (authIsLoading) {
+      console.log('[PeriodoSemana] Esperando a que AuthContext termine de cargar...');
+      return;
+    }
+
+    if (!isAuthenticated) {
+      console.log('[PeriodoSemana] Usuario no autenticado, no cargando semanas.');
+      setIsLoading(false);
+      return;
+    }
+
+    console.log('[PeriodoSemana] Auth completada, inicializando datos de períodos y semanas.');
     inicializarDatos();
-  }, [inicializarDatos]);
+  }, [authIsLoading, isAuthenticated, inicializarDatos]);
 
   const value: PeriodoSemanaContextType = {
     periodos,
