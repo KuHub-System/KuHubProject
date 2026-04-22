@@ -2,7 +2,6 @@ package KuHub.modules.gestion_proveedor.dtos.request;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.*;
 
@@ -17,10 +16,6 @@ import lombok.*;
 @AllArgsConstructor
 public class ProveedorUpdateDTO {
 
-    @Pattern(
-            regexp = "^(\\d{1,2}\\.\\d{3}\\.\\d{3}-[\\dkK]|\\d{7,8}-[\\dkK])?$",
-            message = "El RUT debe tener formato válido chileno (ej: 12.345.678-9 o 12345678-9)"
-    )
     @Size(max = 13, message = "El RUT no puede exceder 13 caracteres")
     private String rutProveedor;
 

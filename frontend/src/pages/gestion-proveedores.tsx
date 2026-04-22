@@ -1010,14 +1010,18 @@ const FormularioProveedor: React.FC<FormularioProveedorProps> = ({
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <Input
-            label="RUT (opcional)"
-            placeholder="Ej: 12.345.678-9"
-            value={rutProveedor}
-            onValueChange={setRutProveedor}
-            isReadOnly={isReadOnly}
-            variant="bordered"
-          />
+          <div className="space-y-1">
+            <Input
+              label="RUT (opcional)"
+              placeholder="Ej: 12.345.678-9"
+              value={rutProveedor}
+              onValueChange={setRutProveedor}
+              isReadOnly={isReadOnly}
+              variant="bordered"
+              maxLength={13}
+            />
+            <p className="text-xs text-default-400 text-right">{rutProveedor.length}/13</p>
+          </div>
           <Input
             label="Email (opcional)"
             placeholder="Ej: contacto@empresa.cl"
