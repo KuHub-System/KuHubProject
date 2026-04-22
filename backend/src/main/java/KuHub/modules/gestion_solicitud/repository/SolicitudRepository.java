@@ -440,7 +440,8 @@ public interface SolicitudRepository extends JpaRepository<Solicitud, Integer> {
                 'abreviatura',             um.abreviatura,
                 'esFraccionario',          um.es_fraccionario,
                 'nombreCategoria',         c.nombre_categoria,
-                'cantidadTotalSolicitada', sub_total.total_solicitado
+                'cantidadTotalSolicitada', sub_total.total_solicitado,
+                'idInventario',            inv.id_inventario
             ) ORDER BY c.nombre_categoria ASC, p.nombre_producto ASC
         ) AS proyeccion_abastecimiento
         FROM (
@@ -455,6 +456,7 @@ public interface SolicitudRepository extends JpaRepository<Solicitud, Integer> {
         INNER JOIN producto      p  ON p.id_producto  = sub_total.id_producto AND p.activo = TRUE
         INNER JOIN unidad_medida um ON um.id_unidad    = p.id_unidad
         INNER JOIN categoria     c  ON c.id_categoria  = p.id_categoria
+        INNER JOIN inventario    inv ON inv.id_producto = p.id_producto AND inv.activo = TRUE
         """, nativeQuery = true)
     String findProyeccionAbastecimientoJson(@Param("fechaInicio") LocalDate fechaInicio,
                                             @Param("fechaFin") LocalDate fechaFin);
