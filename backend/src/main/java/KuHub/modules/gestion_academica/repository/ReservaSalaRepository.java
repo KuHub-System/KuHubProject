@@ -67,18 +67,49 @@ public interface ReservaSalaRepository extends JpaRepository<ReservaSala, Intege
     );
 
 
-
-
-
-
-
-
-
-
-
-
-
     List<ReservaSala> findBySeccion_IdSeccion(Integer idSeccion);
 
+    /**
+     * Obtiene todas las reservas activas como columnas individuales.
+     * Ordenado por hora_inicio del bloque para mostrar en orden cronológico.
+     * Mapear con ReservaActivaView.fromRow(row).
+     */
+    @Query(value = """
+        SELECT
+            a.nombre_asignatura,                 -- [0]
+            s.nombre_seccion,                    -- [1]
+            sl.nombre_sala,                      -- [2]
+            sl.cod_sala,                         -- [3]
+            rs.dia_semana::text,                 -- [4]
+            bh.numero_bloque,                    -- [5]
+            TO_CHAR(bh.hora_inicio, 'HH24:MI'),  -- [6]
+            TO_CHAR(bh.hora_fin,    'HH24:MI')   -- [7]
+        FROM reserva_sala rs
+        JOIN seccion s    ON s.id_seccion    = rs.id_seccion
+        JOIN asignatura a ON a.id_asignatura = s.id_asignatura
+        JOIN sala sl      ON sl.id_sala      = rs.id_sala
+        JOIN bloque_horario bh ON bh.id_bloque = rs.id_bloque
+        WHERE rs.activo = TRUE
+        ORDER BY bh.hora_inicio ASC
+    """, nativeQuery = true)
+    List<Object[]> findAllReservasActivasRaw();
+
+    /**
+     * Obtiene los números de bloque reservados por un docente en un día dado,
+     * buscando todas las secciones vinculadas al docente via docente_seccion.
+     */
+    @Query(value = """
+        SELECT DISTINCT b.numero_bloque AS bloqueHorarioNumeroBloque
+        FROM reserva_sala r
+        JOIN docente_seccion ds ON ds.id_seccion = r.id_seccion
+        JOIN bloque_horario b  ON b.id_bloque   = r.id_bloque
+        WHERE ds.id_usuario    = :idUsuario
+          AND r.activo         = TRUE
+          AND r.dia_semana::text = :diaSemana
+    """, nativeQuery = true)
+    List<NumberBlockProjection> findReservedBlocksByTeacherAndDayWeek(
+            @Param("idUsuario") Integer idUsuario,
+            @Param("diaSemana") String diaSemana
+    );
 
 }

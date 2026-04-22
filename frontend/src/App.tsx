@@ -2,6 +2,7 @@ import React, { lazy, Suspense } from 'react';
 import { Switch, Route, Redirect } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/auth-context';
 import { PermissionProvider } from './contexts/permission-context';
+import { PeriodoSemanaProvider } from './contexts/periodo-semana-context';
 import { ThemeProvider } from './contexts/theme-context';
 import { PageTitleProvider } from './contexts/PageTitleContext';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -20,7 +21,7 @@ const MovimientosProductoPage = lazy(() => import('./pages/movimientos-producto'
 const PerfilUsuarioPage = lazy(() => import('./pages/perfil-usuario'));
 const GestionRolesPage = lazy(() => import('./pages/gestion-roles'));
 const SolicitudPage = lazy(() => import('./pages/solicitud'));
-const RamosAdminPage = lazy(() => import('./pages/ramos-admin'));
+const GestionAcademicaPage = lazy(() => import('./pages/gestion-academica'));
 const GestionPedidosPage = lazy(() => import('./pages/gestion-pedidos'));
 const ConglomeradoPedidosPage = lazy(() => import('./pages/conglomerado-pedidos'));
 const GestionProveedoresPage = lazy(() => import('./pages/gestion-proveedores'));
@@ -87,7 +88,7 @@ const SmartRedirect: React.FC = () => {
     'gestion-proveedores': '/gestion-proveedores',
     'bodega-transito': '/bodega-transito',
     'gestion-recetas': '/gestion-recetas',
-    'ramos-admin': '/ramos-admin',
+    'gestion-academica': '/gestion-academica',
     'gestion-roles': '/gestion-roles',
     'gestion-usuarios': '/gestion-usuarios', // 🔥 NUEVO
     'gestion-solicitudes': '/gestion-solicitudes', // 🔥 NUEVO
@@ -130,7 +131,8 @@ const App: React.FC = () => {
           <PageTitleProvider>
             <AuthProvider>
               <PermissionProvider>
-              <Suspense fallback={<PageLoader />}>
+                <PeriodoSemanaProvider>
+                  <Suspense fallback={<PageLoader />}>
                 <Switch>
                   {/* Rutas de autenticación */}
                   <Route path="/login">
@@ -200,9 +202,9 @@ const App: React.FC = () => {
                     </MainLayout>
                   </ProtectedRoute>
 
-                  <ProtectedRoute path="/ramos-admin" pageId="ramos-admin">
+                  <ProtectedRoute path="/gestion-academica" pageId="gestion-academica">
                     <MainLayout>
-                      <RamosAdminPage />
+                      <GestionAcademicaPage />
                     </MainLayout>
                   </ProtectedRoute>
 
@@ -277,7 +279,8 @@ const App: React.FC = () => {
                     <Redirect to="/404" />
                   </Route>
                 </Switch>
-              </Suspense>
+                  </Suspense>
+                </PeriodoSemanaProvider>
               </PermissionProvider>
             </AuthProvider>
           </PageTitleProvider>

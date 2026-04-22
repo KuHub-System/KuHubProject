@@ -1,0 +1,47 @@
+Hay 3 cambios en 3 archivos para resolver un bug de tipos ENUM con Hibernate native queries.
+El problema: Hibernate no puede asignar un parametro String a una columna PostgreSQL ENUM (estado_solicitud_type) en native queries.
+La solucion: cambiar a JPQL con el tipo enum de Java que Hibernate si sabe manejar.
+
+CAMBIO 1: SolicitudRepository.java (lineas ~236-242)
+Quitar nativeQuery=true, cambiar la query a JPQL, cambiar el tipo del parametro de String a Solicitud.EstadoSolicitud.
+
+ANTES:
+    @Modifying
+    @Query(value = """
+            UPDATE solicitud
+            SET estado_solicitud = :estado::estado_solicitud_type
+            WHERE id_solicitud IN (:ids)
+            """, nativeQuery = true)
+    int updateMassiveStateSolicitation(@Param("ids") List<Integer> ids, @Param("estado") String estado);
+
+DESPUES:
+    @Modifying
+    @Query("UPDATE Solicitud s SET s.estadoSolicitud = :estado WHERE s.idSolicitud IN (:ids)")
+    int updateMassiveStateSolicitation(@Param("ids") List<Integer> ids, @Param("estado") Solicitud.EstadoSolicitud estado);
+
+CAMBIO 2: SolicitudServiceImp.java - actualizar las 3 llamadas al metodo para pasar enum en lugar de String.
+
+Linea ~266:
+ANTES:  solicitudRepository.updateMassiveStateSolicitation(idsAceptadas, "EN_PEDIDO");
+DESPUES: solicitudRepository.updateMassiveStateSolicitation(idsAceptadas, Solicitud.EstadoSolicitud.EN_PEDIDO);
+
+Linea ~270:
+ANTES:  solicitudRepository.updateMassiveStateSolicitation(idsAceptadas, "ACEPTADA");
+DESPUES: solicitudRepository.updateMassiveStateSolicitation(idsAceptadas, Solicitud.EstadoSolicitud.ACEPTADA);
+
+Linea ~285:
+ANTES:  totalActualizados += solicitudRepository.updateMassiveStateSolicitation(listaIds, estadoNormalizado);
+DESPUES: totalActualizados += solicitudRepository.updateMassiveStateSolicitation(listaIds, Solicitud.EstadoSolicitud.valueOf(estadoNormalizado));
+
+CAMBIO 3: PedidoServiceImpl.java - actualizar las 2 llamadas para pasar enum en lugar de String.
+
+Linea ~150:
+ANTES:  solicitudRepository.updateMassiveStateSolicitation(idsSolicitudes, "EN_PEDIDO");
+DESPUES: solicitudRepository.updateMassiveStateSolicitation(idsSolicitudes, Solicitud.EstadoSolicitud.EN_PEDIDO);
+
+Linea ~233:
+ANTES:  solicitudRepository.updateMassiveStateSolicitation(List.of(request.idSolicitud()), "PROCESADO");
+DESPUES: solicitudRepository.updateMassiveStateSolicitation(List.of(request.idSolicitud()), Solicitud.EstadoSolicitud.PROCESADO);
+
+Asegurar que el import de Solicitud este presente en PedidoServiceImpl.java.
+Solo esos cambios, nada mas.

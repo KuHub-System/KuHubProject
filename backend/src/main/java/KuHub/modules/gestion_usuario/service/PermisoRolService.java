@@ -37,4 +37,9 @@ public interface PermisoRolService {
      * Crea o actualiza (upsert) el permiso para un Rol × Módulo dado.
      */
     PermisoRolResponseDTO upsertPermiso(PermisoRolRequestDTO request);
+
+    /**
+     * Restaura todos los permisos de la matriz a los valores predeterminados del sistema.
+     */
+    void restaurarPredeterminado();
 }

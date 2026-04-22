@@ -1,0 +1,205 @@
+================================================================================
+  KUHUB — REQUISITOS DE HARDWARE E INFRAESTRUCTURA PARA PRODUCCIÓN
+  Referencia para presupuesto  — DuocUC
+================================================================================
+
+================================================================================
+  RESUMEN EJECUTIVO — MÍNIMO PARA OPERAR EN PRODUCCIÓN
+================================================================================
+
+El sistema KuHub puede ejecutarse completamente en producción con un único plan
+de AWS Lightsail de $24 USD al mes. Este es el costo base sin ningún adicional,
+suficiente para un sistema de uso institucional de escala normal.
+
+No se requiere infraestructura adicional para la operación principal del sistema:
+gestión de inventario, solicitudes, pedidos, recetas y usuarios.
+
+================================================================================
+  1. ARQUITECTURA DEL SISTEMA
+================================================================================
+
+KuHub está compuesto por tres capas que conviven en una sola instancia de servidor:
+
+  FRONTEND    → Aplicación web React 18 + TypeScript, servida por nginx.
+                Interfaz de usuario accesible desde cualquier navegador.
+
+  BACKEND     → API REST Java 21 / Spring Boot 3.4.3, ejecutado en contenedor
+                Docker. Gestiona toda la lógica de negocio y seguridad.
+
+  BASE DE DATOS → PostgreSQL (base de datos relacional), ejecutada también en
+                  contenedor Docker dentro de la misma instancia Lightsail.
+
+Las tres capas corren sobre contenedores Docker orquestados con
+docker-compose, lo que simplifica el despliegue, el reinicio automático
+y el mantenimiento sin necesidad de configuración manual compleja.
+
+OPTIMIZACIÓN DE TRANSFERENCIA DE DATOS:
+  Una característica técnica crítica del sistema es que las consultas más
+  complejas retornan directamente JSON nativo desde PostgreSQL, sin pasar
+  por el ORM de Hibernate. Esto produce velocidades superiores en más de
+  un 50% respecto a consultas ORM equivalentes.
+
+  Adicionalmente, todas las respuestas JSON que superan 2.000 bytes son
+  comprimidas automáticamente antes de ser enviadas al frontend, logrando
+  una reducción de peso de hasta el 80%. El frontend descomprime de forma
+  transparente.
+
+  Esto es relevante para el presupuesto porque en servidores en la nube
+  el costo de red se calcula sobre los datos de salida (del servidor hacia
+  el cliente). La compresión reduce ese volumen en 80%, haciendo que el
+  plan de transferencia incluido en Lightsail sea más que suficiente para
+  un uso institucional normal. La transferencia de entrada (del cliente
+  al servidor) no tiene costo en Lightsail.
+
+================================================================================
+  2. INSTANCIA AWS LIGHTSAIL — PLANES RECOMENDADOS
+================================================================================
+
+Toda la infraestructura del sistema (frontend, backend y base de datos)
+reside en una única instancia AWS Lightsail con Ubuntu y Docker.
+
+------------------------------------------------------------------------
+  PLAN RECOMENDADO — $24 USD / mes
+------------------------------------------------------------------------
+  Tipo de uso      : General
+  Memoria RAM      : 4 GB
+  Procesador       : 2 vCPU
+  Almacenamiento   : SSD 80 GB
+  Transferencia    : 4 TB mensuales
+  Pila de red      : Doble (IPv4 + IPv6)
+
+  Este plan cubre sin problema el uso institucional actual del sistema.
+  La memoria asignada a los contenedores es: 1.4 GB para el backend
+  (JVM: -Xmx1024m -Xms768m), 200 MB para el frontend (nginx), y el
+  resto disponible para PostgreSQL y el sistema operativo.
+
+------------------------------------------------------------------------
+  PLAN SOBREDIMENSIONADO — $44 USD / mes
+------------------------------------------------------------------------
+  Tipo de uso      : General
+  Memoria RAM      : 8 GB
+  Procesador       : 2 vCPU
+  Almacenamiento   : SSD 160 GB
+  Transferencia    : 5 TB mensuales
+  Pila de red      : Doble (IPv4 + IPv6)
+
+  Recomendado si se prevé un crecimiento significativo de usuarios,
+  múltiples sedes operando simultáneamente, o la activación de módulos
+  futuros de mayor demanda (lotes, S3, notificaciones, proveedores).
+  Cubre cualquier implementación futura dentro del alcance del proyecto.
+
+================================================================================
+  3. IP ESTÁTICA Y DOMINIO
+================================================================================
+
+  IP ESTÁTICA:
+  - AWS Lightsail asigna una IP estática de forma gratuita mientras esté
+    asociada a una instancia activa.
+  - Si la instancia se detiene o la IP se desasocia, puede generarse un
+    pequeño cargo. Durante operación normal el costo es $0 USD.
+
+  DOMINIO / SUBDOMINIO:
+  - Para acceder al sistema desde una URL amigable (en lugar de la IP
+    directa), se requiere asociar la IP estática a un nombre de dominio.
+  - Se recomienda usar un subdominio del dominio institucional o personal
+    del cliente (ejemplo: sistema.institución.cl o kuhub.dominio.cl),
+    lo que evita el costo de contratar un dominio nuevo.
+  - SI LA INSTITUCIÓN OTORGA UN SUBDOMINIO, ESTE ES TOTALMENTE GRATUITO,
+    YA QUE AL PAGAR POR UN DOMINIO SE PUEDEN CREAR INFINITOS SUBDOMINIOS
+    APUNTANDO AL SERVIDOR MEDIANTE LA IP ESTÁTICA.
+  - Si se requiere un dominio nuevo, el costo habitual es de $10–15 USD
+    anuales dependiendo del registrador y la extensión (.cl, .com, etc.).
+  - La configuración DNS es un registro tipo A que apunta el subdominio
+    a la IP estática del servidor.
+
+  HTTPS Y CERTIFICADO SSL:
+  - El sistema ya está configurado con HTTPS en producción.
+  - El certificado SSL fue implementado por el equipo de desarrollo
+    utilizando Let's Encrypt (certificadora gratuita y reconocida).
+  - La renovación del certificado es automática, sin intervención manual
+    ni costo adicional.
+  - El cliente no necesita contratar un certificado SSL de terceros.
+
+================================================================================
+  4. ESTIMACIÓN DE TRANSFERENCIA DE DATOS
+================================================================================
+
+  Volumen de salida comprimido hacia el cliente (frontend) : ~20 GB / mes
+  Volumen equivalente sin comprimir (interno, backend)     : ~100 GB / mes
+  Tasa de compresión aplicada                              : ~80 % de reducción
+  Costo de los 20 GB de transferencia de salida            : $0 USD
+    → Cubiertos totalmente por la cuota incluida en el plan Lightsail
+      ($24: 4 TB incluidos / $44: 5 TB incluidos).
+
+  La transferencia de entrada (usuarios enviando datos al servidor)
+  no tiene costo en Lightsail.
+
+================================================================================
+  5. SERVICIOS ADICIONALES — OPCIONALES
+================================================================================
+
+  Los servicios de esta sección no son necesarios para la operación base
+  del sistema. Son complementos que agregan valor y pueden contratarse de
+  forma independiente si el cliente lo requiere en el futuro.
+
+------------------------------------------------------------------------
+  5.1  ALMACENAMIENTO DE ARCHIVOS — AWS S3
+------------------------------------------------------------------------
+  Costo de transferencia S3 → Lightsail (misma región N. Virginia): $0 USD
+
+  S3 (Simple Storage Service) es el servicio de almacenamiento de
+  archivos de AWS. Su integración al sistema permitiría:
+
+    - Subir y visualizar fotos de perfil de usuario (actualmente las
+      fotos no se almacenan).
+    - Adjuntar documentos PDF e imágenes a recetas (instrucciones,
+      fotografías del plato preparado).
+    - Adjuntar documentos a solicitudes (comprobantes, fichas técnicas).
+    - Escalar a cualquier otro tipo de archivo que el cliente requiera
+      en el futuro sin cambios estructurales en el sistema.
+
+  El costo de S3 depende del volumen almacenado (con una tarifa estándar
+  de $0.023 USD por GB al mes) y de las solicitudes realizadas. Para uso
+  institucional moderado (documentos de texto, imágenes de recetas) el
+  costo estimado es bajo, generalmente inferior a $5 USD/mes según el
+  volumen de archivos
+
+  La transferencia de datos entre S3 y la instancia Lightsail dentro
+  de la misma región (N. Virginia) no genera costo adicional: $0 USD.
+
+------------------------------------------------------------------------
+  5.2  ENVÍO DE CORREOS ELECTRÓNICOS — AMAZON SES
+------------------------------------------------------------------------
+  Costo base          : $0.10 USD por cada 1.000 correos enviados.
+  Costo de datos      : $0.12 USD por GB (1 GB ≈ 20.000 correos de texto).
+
+  Dimensionamiento de costos por tipo de mensaje:
+    - Mensaje de texto puro (OTP/Notificación ~50 KB): $0.000106 USD total.
+    - Mensaje con documento PDF (Receta/Reporte ~500 KB): $0.00016 USD total.
+    - Mensaje pesado con imágenes (Instructivo ~2 MB): $0.00034 USD total.
+
+  Amazon SES (Simple Email Service) permitiría al sistema enviar
+  correos electrónicos desde la plataforma. Los casos de uso son:
+
+    - Notificaciones a Docente y Profesor a Cargo al rechazar o
+      aprobar una solicitud (pendiente de implementar).
+    - Envío del código OTP para segundo factor de autenticación F2A
+      (pendiente de implementar).
+    - Recuperación de contraseña mediante enlace de restablecimiento
+      (pendiente de implementar).
+    - Vista de Gestión de Proveedores: envío automatizado de correos
+      a proveedores con el detalle consolidado de productos requeridos
+      para la semana, generado directamente desde el sistema.
+    - Escalado de funcionalidad.
+
+  REQUISITO PREVIO:
+  Para enviar correos a cualquier destinatario externo (no solo
+  direcciones controladas de prueba), la cuenta de Amazon SES debe
+  encontrarse fuera del entorno de pruebas (sandbox). Esto requiere
+  completar el proceso de verificación de identidad del dominio o
+  correo remitente ante AWS, proceso que el equipo de desarrollo
+  puede gestionar sin costo adicional de licenciamiento.
+
+================================================================================
+  FIN DEL DOCUMENTO
+================================================================================

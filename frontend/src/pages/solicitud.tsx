@@ -16,15 +16,9 @@ import { Icon } from '@iconify/react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useToast } from '../hooks/useToast';
-import { useModulePermission } from '../contexts/permission-context';
-import { ISemana } from '../types/semana.types';
-import {
-  IPeriodoAcademico,
-  obtenerPeriodosAcademicosService,
-  obtenerSemanasPorPeriodoService,
-  detectarPeriodoActual,
-  encontrarSemanaActual,
-} from '../services/semana-service';
+import { useModulePermission, usePermission } from '../contexts/permission-context';
+import { usePeriodoSemana } from '../contexts/periodo-semana-context';
+import { useHistory } from 'react-router-dom';
 import {
   IAsignaturaCurso, ISeccionCurso, IHorarioCurso,
   IReceta, IProductoOpcion,
@@ -34,6 +28,7 @@ import {
   obtenerProductosOpcionService,
   generarSolicitudesMasivasService,
 } from '../services/solicitud-service';
+import {ISemana} from "../types/semana.types.ts";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TIPOS LOCALES
@@ -181,6 +176,7 @@ interface AsigCardProps {
   semanas: ISemana[];
   defaultSemanaId: string;
   isLoadingSemanas: boolean;
+  sinPeriodos: boolean;
   recetas: IReceta[];
   productos: IProductoOpcion[];
   onToggleExpand: () => void;
@@ -188,8 +184,10 @@ interface AsigCardProps {
 }
 
 const AsigCard: React.FC<AsigCardProps> = ({
-  asig, config, isExpanded, semanas, defaultSemanaId, isLoadingSemanas, recetas, productos, onToggleExpand, onUpdate,
+  asig, config, isExpanded, semanas, defaultSemanaId, isLoadingSemanas, sinPeriodos, recetas, productos, onToggleExpand, onUpdate,
 }) => {
+  const { isAdmin: isAdminCard } = usePermission();
+  const historyCard = useHistory();
   const semana = semanas.find(s => String(s.idSemana) === config.semanaId) ?? null;
 
   // ── derivados de bloquesIds ──
@@ -202,7 +200,6 @@ const AsigCard: React.FC<AsigCardProps> = ({
   const indeterminate  = !allSel && allBlkKeys.some(k => config.bloquesIds.has(k));
 
   const totalInscritos = secSel.reduce((sum, s) => sum + s.cant_inscritos, 0);
-  const multiplicador  = totalInscritos > 0 ? totalInscritos / 20 : 1;
 
   /** Clases calculadas: solo bloques seleccionados, ordenadas por fecha */
   const clases = React.useMemo(() => {
@@ -217,16 +214,10 @@ const AsigCard: React.FC<AsigCardProps> = ({
     return result.sort((a, b) => a.fecha.getTime() - b.fecha.getTime());
   }, [semana, config.bloquesIds, selCount, asig.secciones]);
 
-  const blkCount  = config.bloquesIds.size;
-  const isValid   = selCount > 0 && config.recetaId !== '' && config.semanaId !== '';
-  const isPartial = selCount > 0 && (!config.recetaId || !config.semanaId);
-
-  const reapplyMultiplier = (items: ItemSolicitud[], newMult: number) =>
-    items.map((item: ItemSolicitud) => {
-      if (item.esExtra) return item;
-      const raw = item.cantidadBase * newMult;
-      return { ...item, cantidad: item.esFraccionario ? parseFloat(raw.toFixed(3)) : Math.round(raw) };
-    });
+  const blkCount      = config.bloquesIds.size;
+  const tieneItems    = config.items.length > 0;
+  const isValid       = selCount > 0 && config.semanaId !== '' && (config.recetaId !== '' || tieneItems);
+  const isPartial     = selCount > 0 && !isValid;
 
   const recomputeIns = (next: Set<string>) =>
     seccionesSeleccionadas(asig.secciones, next).reduce((s, sec) => s + sec.cant_inscritos, 0);
@@ -236,8 +227,8 @@ const AsigCard: React.FC<AsigCardProps> = ({
     const key  = mkBlkKey(secId, dia, idSala);
     const next = new Set(prev.bloquesIds);
     next.has(key) ? next.delete(key) : next.add(key);
-    const ins = recomputeIns(next);
-    return { ...prev, bloquesIds: next, items: reapplyMultiplier(prev.items, ins > 0 ? ins / 20 : 1) };
+    // Solo actualizamos bloquesIds; las cantidades base NO cambian
+    return { ...prev, bloquesIds: next };
   });
 
   /** Alterna todos los bloques de una sección (select si alguno falta, deselect si todos están) */
@@ -246,8 +237,8 @@ const AsigCard: React.FC<AsigCardProps> = ({
     const allSelec = keys.every(k => prev.bloquesIds.has(k));
     const next     = new Set(prev.bloquesIds);
     keys.forEach(k => allSelec ? next.delete(k) : next.add(k));
-    const ins = recomputeIns(next);
-    return { ...prev, bloquesIds: next, items: reapplyMultiplier(prev.items, ins > 0 ? ins / 20 : 1) };
+    // Solo actualizamos bloquesIds; las cantidades base NO cambian
+    return { ...prev, bloquesIds: next };
   });
 
   /** Alterna todos los bloques de todas las secciones */
@@ -255,8 +246,8 @@ const AsigCard: React.FC<AsigCardProps> = ({
     const next = new Set(prev.bloquesIds);
     if (allSel) { allBlkKeys.forEach(k => next.delete(k)); }
     else        { allBlkKeys.forEach(k => next.add(k));    }
-    const ins = recomputeIns(next);
-    return { ...prev, bloquesIds: next, items: reapplyMultiplier(prev.items, ins > 0 ? ins / 20 : 1) };
+    // Solo actualizamos bloquesIds; las cantidades base NO cambian
+    return { ...prev, bloquesIds: next };
   });
 
   const handleSelectReceta = (recetaId: string) => {
@@ -264,13 +255,13 @@ const AsigCard: React.FC<AsigCardProps> = ({
     if (!receta) return;
     onUpdate(prev => ({
       ...prev, recetaId,
+      // Las cantidades se guardan tal como vienen de la receta (base 20 porciones)
+      // El backend escala según los alumnos inscritos por sección
       items: receta.detalles.map(d => ({
         id: String(d.idDetalleReceta),
         nombre: d.nombreProducto,
         cantidadBase: d.cantProducto,
-        cantidad: d.esFraccionario
-          ? parseFloat((d.cantProducto * multiplicador).toFixed(3))
-          : Math.round(d.cantProducto * multiplicador),
+        cantidad: d.cantProducto, // Se muestra la cantidad base sin multiplicar
         unidad: d.abreviatura,
         esExtra: false,
         esFraccionario: d.esFraccionario,
@@ -283,7 +274,8 @@ const AsigCard: React.FC<AsigCardProps> = ({
     let n = parseFloat(val);
     if (isNaN(n) || n < 0) return;
     n = esFraccionario ? parseFloat(n.toFixed(3)) : Math.round(n);
-    onUpdate(prev => ({ ...prev, items: prev.items.map(i => i.id === itemId ? { ...i, cantidad: n } : i) }));
+    // Al editar manualmente, actualizamos tanto cantidad como cantidadBase
+    onUpdate(prev => ({ ...prev, items: prev.items.map(i => i.id === itemId ? { ...i, cantidad: n, cantidadBase: n } : i) }));
   };
 
   const extraProducto = productos.find(p => String(p.idProducto) === config.extraProductoId) ?? null;
@@ -422,7 +414,7 @@ const AsigCard: React.FC<AsigCardProps> = ({
                   {selCount > 0 && (
                     <div className="mt-2 flex items-center gap-1.5 text-xs text-primary-600 font-medium">
                       <Icon icon="lucide:users" width={12} />
-                      {totalInscritos} alumnos · ×{multiplicador.toFixed(2)}
+                      {totalInscritos} alumnos seleccionados
                     </div>
                   )}
                 </div>
@@ -435,6 +427,21 @@ const AsigCard: React.FC<AsigCardProps> = ({
                       <div className="flex items-center gap-2 text-sm text-default-400 py-2">
                         <Spinner size="sm" /> Cargando semanas...
                       </div>
+                    ) : sinPeriodos && !isAdminCard ? (
+                      <p className="text-sm text-warning-600 dark:text-warning-400 flex items-center gap-1.5 py-2">
+                        <Icon icon="lucide:alert-triangle" width={14} />
+                        Contacte el Administrador para que genere los periodos académicos en el sistema.
+                      </p>
+                    ) : sinPeriodos && isAdminCard ? (
+                      <button
+                        type="button"
+                        className="flex items-center gap-1.5 text-sm text-primary hover:text-primary-600 underline underline-offset-2 cursor-pointer transition-colors py-2"
+                        onClick={() => historyCard.push('/admin-sistema?tab=semanas')}
+                      >
+                        <Icon icon="lucide:calendar-plus" width={14} />
+                        Para realizar una solicitud, genere el período académico
+                        <Icon icon="lucide:arrow-right" width={12} />
+                      </button>
                     ) : semanas.length === 0 ? (
                       <p className="text-sm text-default-400 py-2">Sin semanas disponibles para este período.</p>
                     ) : (
@@ -505,37 +512,62 @@ const AsigCard: React.FC<AsigCardProps> = ({
               {/* RECETA */}
               <div>
                 <p className="text-xs font-bold text-default-500 uppercase tracking-wider mb-2">Receta Base</p>
-                {selCount > 0 && (
-                  <div className="mb-3 flex items-center gap-2 px-3 py-2 rounded-lg bg-secondary-50 dark:bg-secondary-900/20 border border-secondary-200 text-xs">
-                    <Icon icon="lucide:calculator" className="text-secondary shrink-0" width={14} />
-                    <span className="text-secondary-700 dark:text-secondary-300">
-                      Receta base 20 porciones → <strong>×{multiplicador.toFixed(2)}</strong> para {totalInscritos} alumnos
-                    </span>
-                  </div>
+
+                {/* Banner informativo: cantidades base */}
+                <div className="mb-3 flex items-center gap-2 px-3 py-2 rounded-lg bg-secondary-50 dark:bg-secondary-900/20 border border-secondary-200 text-xs">
+                  <Icon icon="lucide:info" className="text-secondary shrink-0" width={14} />
+                  <span className="text-secondary-700 dark:text-secondary-300">
+                    Las cantidades mostradas corresponden a la <strong>receta base (20 porciones)</strong>.
+                    El sistema calculará automáticamente la cantidad proporcional según los alumnos inscritos por sección al momento de enviar.
+                  </span>
+                </div>
+
+                {recetas.length === 0 ? (
+                  isAdminCard ? (
+                    <button
+                      type="button"
+                      className="flex items-center gap-1.5 text-sm text-primary hover:text-primary-600 underline underline-offset-2 cursor-pointer transition-colors"
+                      onClick={() => historyCard.push('/gestion-recetas')}
+                    >
+                      <Icon icon="lucide:book-plus" width={14} />
+                      No hay recetas disponibles. Ir a Gestión de Recetas para crear una.
+                      <Icon icon="lucide:arrow-right" width={12} />
+                    </button>
+                  ) : (
+                    <p className="text-sm text-warning-600 dark:text-warning-400 flex items-center gap-1.5">
+                      <Icon icon="lucide:alert-triangle" width={14} />
+                      Contacte el administrador para crear Recetas Base.
+                    </p>
+                  )
+                ) : (
+                  <Autocomplete
+                    selectedKey={config.recetaId || null}
+                    onSelectionChange={key => handleSelectReceta(String(key ?? ''))}
+                    variant="bordered" size="sm" placeholder="Buscar receta por nombre..."
+                    defaultItems={recetas}
+                    classNames={{ base: 'w-full', popoverContent: 'dark:bg-content1' }}
+                    inputProps={{ classNames: { inputWrapper: 'bg-default-50' } }}
+                    startContent={<Icon icon="lucide:book-open" width={13} className="text-default-400 shrink-0" />}
+                  >
+                    {(r) => (
+                      <AutocompleteItem key={String(r.idReceta)} textValue={r.nombreReceta}>
+                        <div className="flex items-center gap-2">
+                          <span>{r.nombreReceta}</span>
+                          <span className="text-default-400 text-xs ml-auto">{r.detalles.length} items</span>
+                        </div>
+                      </AutocompleteItem>
+                    )}
+                  </Autocomplete>
                 )}
-                <Autocomplete
-                  selectedKey={config.recetaId || null}
-                  onSelectionChange={key => handleSelectReceta(String(key ?? ''))}
-                  variant="bordered" size="sm" placeholder="Buscar receta por nombre..."
-                  defaultItems={recetas}
-                  classNames={{ base: 'w-full', popoverContent: 'dark:bg-content1' }}
-                  inputProps={{ classNames: { inputWrapper: 'bg-default-50' } }}
-                  startContent={<Icon icon="lucide:book-open" width={13} className="text-default-400 shrink-0" />}
-                >
-                  {(r) => (
-                    <AutocompleteItem key={String(r.idReceta)} textValue={r.nombreReceta}>
-                      <div className="flex items-center gap-2">
-                        <span>{r.nombreReceta}</span>
-                        <span className="text-default-400 text-xs ml-auto">{r.detalles.length} items</span>
-                      </div>
-                    </AutocompleteItem>
-                  )}
-                </Autocomplete>
 
                 {config.items.length > 0 && (
                   <div className="mt-3 space-y-1">
                     <div className="grid grid-cols-[1fr_1fr_90px_60px_30px] gap-1.5 px-2 text-[10px] font-bold text-default-400 uppercase tracking-wider border-b border-default-200 pb-1">
-                      <span className="text-center">Producto</span><span className="text-center">Observación</span><span className="text-center">Cantidad</span><span className="text-center">Unidad</span><span />
+                      <span className="text-center">Producto</span>
+                      <span className="text-center">Observación</span>
+                      <span className="text-center">Cant. base</span>
+                      <span className="text-center">Unidad</span>
+                      <span />
                     </div>
                     {config.items.map(item => (
                       <div key={item.id}
@@ -571,23 +603,26 @@ const AsigCard: React.FC<AsigCardProps> = ({
                         </Button>
                       </div>
                     ))}
-                    {/* Agregar extra */}
-                    <div className="mt-2 pt-2 border-t border-dashed border-default-200 space-y-2">
-                      {/* Info */}
-                      <div className="flex items-start gap-1.5 px-2 py-1.5 rounded-lg bg-warning-50 dark:bg-warning-900/10 border border-warning-200 text-[10px] text-warning-700">
-                        <Icon icon="lucide:info" width={11} className="shrink-0 mt-0.5" />
-                        <span>La cantidad ingresada corresponde a <strong>20 porciones base</strong>. El sistema calculará automáticamente la cantidad proporcional según los alumnos inscritos por sección.</span>
-                      </div>
-                      <div className="grid grid-cols-[1fr_90px_50px_auto] gap-1.5 items-end">
-                        <Autocomplete size="sm" placeholder="Buscar producto..."
-                          selectedKey={config.extraProductoId || null}
-                          onSelectionChange={key => {
-                            const id = key ? String(key) : '';
-                            onUpdate(p => ({ ...p, extraProductoId: id, extraCantidad: '' }));
-                          }}
-                          variant="bordered"
-                          classNames={{ 
-                            base: 'min-w-[150px] w-full',
+                  </div>
+                )}
+
+                {/* Agregar producto adicional — siempre visible */}
+                <div className="mt-3 pt-2 border-t border-dashed border-default-200 space-y-2">
+                  {/* Info */}
+                  <div className="flex items-start gap-1.5 px-2 py-1.5 rounded-lg bg-warning-50 dark:bg-warning-900/10 border border-warning-200 text-[10px] text-warning-700">
+                    <Icon icon="lucide:info" width={11} className="shrink-0 mt-0.5" />
+                    <span>La cantidad ingresada corresponde a <strong>20 porciones base</strong>. El sistema calculará automáticamente la cantidad proporcional según los alumnos inscritos por sección.</span>
+                  </div>
+                  <div className="grid grid-cols-[1fr_90px_50px_auto] gap-1.5 items-end">
+                    <Autocomplete size="sm" placeholder="Buscar producto..."
+                      selectedKey={config.extraProductoId || null}
+                      onSelectionChange={key => {
+                        const id = key ? String(key) : '';
+                        onUpdate(p => ({ ...p, extraProductoId: id, extraCantidad: '' }));
+                      }}
+                      variant="bordered"
+                      classNames={{
+                        base: 'min-w-[150px] w-full',
                             popoverContent: 'dark:bg-content1'
                           }}
                           inputProps={{
@@ -619,9 +654,7 @@ const AsigCard: React.FC<AsigCardProps> = ({
                           Agregar
                         </Button>
                       </div>
-                    </div>
                   </div>
-                )}
               </div>
 
               <Divider />
@@ -668,16 +701,14 @@ const AsigCard: React.FC<AsigCardProps> = ({
 // ─────────────────────────────────────────────────────────────────────────────
 
 const SolicitudPage: React.FC = () => {
-  usePageTitle('Solicitud de Insumos', 'Cree solicitudes masivas de insumos para sus clases prácticas.');
+  usePageTitle('Solicitud de Insumos', 'Cree solicitudes masivas de insumos para sus clases prácticas.', 'lucide:clipboard-list');
   const toast = useToast();
   const { canCreate: soli_Crear, canUpdate: soli_Editar, canDelete: soli_Eliminar } = useModulePermission('SOLICITUD');
+  const { isAdmin } = usePermission();
+  const history = useHistory();
 
-  // ── semanas state ──
-  const [semanas,          setSemanas]          = React.useState<ISemana[]>([]);
-  const [periodos,         setPeriodos]          = React.useState<IPeriodoAcademico[]>([]);
-  const [currentPeriodo,   setCurrentPeriodo]    = React.useState<{ anio: number; semestre: number } | null>(null);
-  const [defaultSemanaId,  setDefaultSemanaId]   = React.useState<string>('');
-  const [isLoadingSemanas, setIsLoadingSemanas]  = React.useState(true);
+  // CAMBIO 1: se agrega semanaId al destructuring
+  const { periodos, semanas, periodo, semanaId, defaultSemanaId, isLoading: isLoadingSemanas, seleccionarPeriodo, seleccionarSemana, recargarPeriodos } = usePeriodoSemana();
 
   // ── asignaturas state ──
   const [asignaturas,      setAsignaturas]       = React.useState<IAsignaturaCurso[]>([]);
@@ -694,9 +725,10 @@ const SolicitudPage: React.FC = () => {
   const [sendResult,       setSendResult]        = React.useState<IResultsMassSolicitation | null>(null);
 
   // ── helpers ──
+  // CAMBIO 2: usar semanaId como fuente de verdad en getConfig()
   const getConfig = React.useCallback(
-    (id: string): AsigConfig => configs.get(id) ?? makeEmptyConfig(defaultSemanaId),
-    [configs, defaultSemanaId]
+    (id: string): AsigConfig => configs.get(id) ?? makeEmptyConfig(semanaId || defaultSemanaId),
+    [configs, semanaId, defaultSemanaId]
   );
 
   const updateConfig = (asigId: string, fn: (prev: AsigConfig) => AsigConfig) =>
@@ -727,77 +759,8 @@ const SolicitudPage: React.FC = () => {
     load();
   }, []);
 
-  // ── cargar semanas para un periodo concreto ──
-  const cargarSemanasParaPeriodo = React.useCallback(async (anio: number, semestre: number) => {
-    setIsLoadingSemanas(true);
-    try {
-      const data = await obtenerSemanasPorPeriodoService(anio, semestre);
-      setSemanas(data);
-      setCurrentPeriodo({ anio, semestre });
-      const actual = encontrarSemanaActual(data);
-      setDefaultSemanaId(actual ? String(actual.idSemana) : '');
-    } catch {
-      toast.error('Error al cargar las semanas del período seleccionado');
-    } finally {
-      setIsLoadingSemanas(false);
-    }
-  }, [toast]);
-
-  // ── carga inicial de semanas ──
-  React.useEffect(() => {
-    const init = async () => {
-      setIsLoadingSemanas(true);
-      try {
-        const periodosData = await obtenerPeriodosAcademicosService();
-        setPeriodos(periodosData);
-
-        const { anio, semestre } = detectarPeriodoActual();
-        const intentos = [
-          { anio, semestre },
-          { anio, semestre: semestre === 1 ? 2 : 1 },
-        ];
-
-        let resolved = false;
-        for (const intento of intentos) {
-          const existe = periodosData.some(
-            p => p.anio === intento.anio && p.semestres.includes(intento.semestre)
-          );
-          if (!existe) continue;
-          try {
-            const data = await obtenerSemanasPorPeriodoService(intento.anio, intento.semestre);
-            const actual = encontrarSemanaActual(data);
-            setSemanas(data);
-            setCurrentPeriodo(intento);
-            setDefaultSemanaId(actual ? String(actual.idSemana) : '');
-            resolved = true;
-            if (actual) break;
-          } catch { /* sigue al siguiente intento */ }
-        }
-
-        if (!resolved && periodosData.length > 0) {
-          const p = periodosData[0];
-          const s = p.semestres[0];
-          try {
-            const data = await obtenerSemanasPorPeriodoService(p.anio, s);
-            setSemanas(data);
-            setCurrentPeriodo({ anio: p.anio, semestre: s });
-            setDefaultSemanaId('');
-          } catch { setCurrentPeriodo({ anio: p.anio, semestre: s }); }
-        }
-      } catch {
-        // API de periodos falló — usar chips por defecto
-      } finally {
-        setIsLoadingSemanas(false);
-      }
-    };
-    init();
-  }, []);
-
-  // ── periodos para mostrar (API o fallback año actual) ──
-  const periodosDisponibles = React.useMemo<IPeriodoAcademico[]>(() => {
-    if (periodos.length > 0) return periodos;
-    return [{ anio: new Date().getFullYear(), semestres: [1, 2] }];
-  }, [periodos]);
+  // ── ¿hay periodos creados en la BD? ──
+  const sinPeriodos = (!periodos || periodos.length === 0) && !isLoadingSemanas;
 
   // ── totales globales ──
   const resumen = React.useMemo(() => {
@@ -808,7 +771,7 @@ const SolicitudPage: React.FC = () => {
       const cfg      = getConfig(String(asig.idAsignatura));
       const secSel   = seccionesSeleccionadas(asig.secciones, cfg.bloquesIds);
       const blkCount = cfg.bloquesIds.size; // one solicitud per selected block (day×room)
-      if (secSel.length > 0 && cfg.recetaId && cfg.semanaId) {
+      if (secSel.length > 0 && cfg.semanaId && (cfg.recetaId || cfg.items.length > 0)) {
         totalSolicitudes += blkCount;
         // sum students × number of blocks selected for each section
         totalAlumnos += secSel.reduce((sum, sec) => {
@@ -834,10 +797,10 @@ const SolicitudPage: React.FC = () => {
       const payload = resumen.asigConfiguradas.map(({ asig, cfg, secSel }) => {
         const semana = semanas.find(s => String(s.idSemana) === cfg.semanaId)!;
         const receta = cfg.recetaId ? recetas.find((r: IReceta) => String(r.idReceta) === cfg.recetaId) : null;
-        const totalIns = secSel.reduce((sum, s) => sum + s.cant_inscritos, 0);
-        const mult = totalIns > 0 ? totalIns / 20 : 1;
 
         // ── deltas ──────────────────────────────────────────────────────────
+        // Las cantidades se envían tal como están (base 20 porciones).
+        // El backend es responsable de escalar por sección según cant_inscritos.
         let deltas: { eliminados: number[]; modificados: { idDetalleReceta: number; cantProducto: number; observacion?: string }[]; nuevos: { idProducto: number; cantProducto: number; observacion: string }[] } | undefined;
         if (receta) {
           const originalIds = new Set(receta.detalles.map(d => String(d.idDetalleReceta)));
@@ -851,13 +814,14 @@ const SolicitudPage: React.FC = () => {
             .filter(i => !i.esExtra && originalIds.has(i.id))
             .filter(i => {
               const orig = receta.detalles.find(d => String(d.idDetalleReceta) === i.id);
-              const cantidadCambiada = orig && Math.abs(i.cantidad / mult - i.cantidadBase) > 0.0001;
+              // Comparamos directamente con cantidadBase (sin multiplicar)
+              const cantidadCambiada = orig && Math.abs(i.cantidad - orig.cantProducto) > 0.0001;
               const observacionCambiada = !!i.observacion;
               return cantidadCambiada || observacionCambiada;
             })
             .map(i => ({
               idDetalleReceta: parseInt(i.id),
-              cantProducto: parseFloat((i.cantidad / mult).toFixed(3)),
+              cantProducto: i.cantidad, // Se envía la cantidad base sin multiplicar
               ...(i.observacion ? { observacion: i.observacion } : {}),
             }));
 
@@ -865,12 +829,24 @@ const SolicitudPage: React.FC = () => {
             .filter(i => i.esExtra && i.idProducto != null)
             .map(i => ({
               idProducto: i.idProducto!,
-              cantProducto: i.cantidadBase,
+              cantProducto: i.cantidadBase, // Cantidad base para 20 porciones
               observacion: i.observacion ? `[ADICIONAL] ${i.observacion}` : '[ADICIONAL]',
             }));
 
           if (eliminados.length > 0 || modificados.length > 0 || nuevos.length > 0) {
             deltas = { eliminados, modificados, nuevos };
+          }
+        } else {
+          // Sin receta base: incluir solo los productos ingresados manualmente como nuevos
+          const nuevosManuales = cfg.items
+            .filter(i => i.esExtra && i.idProducto != null)
+            .map(i => ({
+              idProducto: i.idProducto!,
+              cantProducto: i.cantidadBase,
+              observacion: i.observacion ? `[ADICIONAL] ${i.observacion}` : '[ADICIONAL]',
+            }));
+          if (nuevosManuales.length > 0) {
+            deltas = { eliminados: [], modificados: [], nuevos: nuevosManuales };
           }
         }
 
@@ -928,27 +904,103 @@ const SolicitudPage: React.FC = () => {
               Período académico
             </div>
 
-            {periodosDisponibles.flatMap(p =>
-              p.semestres.map(s => {
-                const isActive = currentPeriodo?.anio === p.anio && currentPeriodo?.semestre === s;
-                return (
-                  <Button key={`${p.anio}-${s}`} size="sm"
-                    color={isActive ? 'primary' : 'default'}
-                    variant={isActive ? 'solid' : 'flat'}
-                    onPress={() => !isActive && cargarSemanasParaPeriodo(p.anio, s)}
-                    isDisabled={isLoadingSemanas}
-                    className="h-7 min-w-0 px-3 font-bold text-xs"
-                  >
-                    {p.anio} S{s}
-                    {isActive && <Icon icon="lucide:check" width={12} className="ml-1" />}
-                  </Button>
-                );
-              })
-            )}
-
             {isLoadingSemanas && <Spinner size="sm" color="primary" />}
 
-            {currentPeriodo && !isLoadingSemanas && (
+            {sinPeriodos && !isAdmin && (
+              <p className="text-sm text-warning-600 dark:text-warning-400 flex items-center gap-2">
+                <Icon icon="lucide:alert-triangle" width={14} />
+                Contacte el Administrador para que genere los periodos académicos en el sistema.
+              </p>
+            )}
+
+            {sinPeriodos && isAdmin && (
+              <button
+                type="button"
+                className="flex items-center gap-2 text-sm text-primary hover:text-primary-600 underline underline-offset-2 cursor-pointer transition-colors"
+                onClick={() => history.push('/admin-sistema?tab=semanas')}
+              >
+                <Icon icon="lucide:calendar-plus" width={16} />
+                Para realizar una solicitud, genere el período académico
+                <Icon icon="lucide:arrow-right" width={14} />
+              </button>
+            )}
+
+            {!sinPeriodos && periodos && periodos.map(p =>
+              p.semestres.map((s: number) => (
+                <button key={`${p.anio}-${s}`}
+                  onClick={() => {
+                    const isActive = periodo?.anio === p.anio && periodo?.semestre === s;
+                    if (!isActive && !isLoadingSemanas) {
+                      seleccionarPeriodo(p.anio, s);
+                    }
+                  }}
+                  disabled={isLoadingSemanas}
+                  className={`px-3 py-1 rounded-full text-xs font-bold border transition-all cursor-pointer ${
+                    periodo?.anio === p.anio && periodo?.semestre === s
+                      ? 'bg-warning text-white border-warning'
+                      : 'bg-default-100 text-default-600 border-default-200 hover:bg-default-200'
+                  }`}
+                >
+                  {p.anio} S{s}
+                </button>
+              ))
+            )}
+            {/* Botón para recargar períodos académicos */}
+            {!sinPeriodos && periodo && (
+              <button
+                type="button"
+                onClick={() => {
+                  if (!isLoadingSemanas) {
+                    recargarPeriodos();
+                  }
+                }}
+                disabled={isLoadingSemanas}
+                className="ml-auto flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border border-default-300 bg-default-100 text-default-600 hover:bg-default-200 transition-colors cursor-pointer"
+                title="Recargar períodos académicos"
+              >
+                <Icon icon="lucide:refresh-cw" width={12} />
+                Recargar
+              </button>
+            )}
+          </div>
+
+          {/* Selector de semana */}
+          <div className="mt-4 flex items-center gap-3">
+            <div className="flex items-center gap-2 text-xs font-bold text-default-500 uppercase tracking-wider shrink-0">
+              <Icon icon="lucide:calendar" width={14} className="text-secondary" />
+              Semana
+            </div>
+            {isLoadingSemanas ? (
+              <div className="flex items-center gap-2 text-sm text-default-400"><Spinner size="sm" /> Cargando semanas...</div>
+            ) : semanas.length === 0 ? (
+              <p className="text-sm text-default-400">Sin semanas disponibles para este período.</p>
+            ) : (
+              <Select size="sm" variant="bordered"
+                selectedKeys={semanaId ? new Set([semanaId]) : new Set()}
+                onSelectionChange={keys => { const v = Array.from(keys as Set<string>)[0]; if (v) seleccionarSemana(v); }}
+                placeholder="Seleccione semana"
+                classNames={{ trigger: 'bg-default-50 cursor-pointer', base: 'max-w-xs' }}
+                startContent={<Icon icon="lucide:calendar" width={14} className="text-default-400 shrink-0" />}
+              >
+                {semanas.map(s => (
+                  <SelectItem key={String(s.idSemana)} textValue={s.nombreSemana}>
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-sm">{s.nombreSemana}</span>
+                      <span className="text-default-400 text-xs">
+                        {new Date(s.fechaInicio + 'T00:00:00').toLocaleDateString('es-CL', { day: 'numeric', month: 'short' })}
+                        {' – '}
+                        {new Date(s.fechaFin + 'T00:00:00').toLocaleDateString('es-CL', { day: 'numeric', month: 'short' })}
+                      </span>
+                      {String(s.idSemana) === defaultSemanaId && (
+                        <Chip size="sm" color="success" variant="flat" className="ml-auto shrink-0 text-[10px]">Actual</Chip>
+                      )}
+                    </div>
+                  </SelectItem>
+                ))}
+              </Select>
+            )}
+
+            {periodo && !isLoadingSemanas && (
               <div className="ml-auto flex items-center gap-1.5 text-xs text-default-400">
                 <Icon icon="lucide:info" width={12} />
                 {semanas.length} semanas cargadas
@@ -981,6 +1033,17 @@ const SolicitudPage: React.FC = () => {
             <div className="text-center py-12 text-default-400">
               <Icon icon="lucide:book-x" width={32} className="mx-auto mb-2" />
               <p className="text-sm">No hay asignaturas disponibles</p>
+              {isAdmin && (
+                <button
+                  type="button"
+                  className="mt-3 inline-flex items-center gap-1.5 text-sm text-primary hover:text-primary-600 underline underline-offset-2 cursor-pointer transition-colors"
+                  onClick={() => history.push('/gestion-academica')}
+                >
+                  <Icon icon="lucide:graduation-cap" width={14} />
+                  Ir a Gestión de Asignaturas
+                  <Icon icon="lucide:arrow-right" width={12} />
+                </button>
+              )}
             </div>
           ) : (
             asignaturas.map(asig => (
@@ -990,6 +1053,7 @@ const SolicitudPage: React.FC = () => {
                 semanas={semanas}
                 defaultSemanaId={defaultSemanaId}
                 isLoadingSemanas={isLoadingSemanas}
+                sinPeriodos={sinPeriodos}
                 recetas={recetas}
                 productos={productos}
                 onToggleExpand={() => toggleExpand(String(asig.idAsignatura))}

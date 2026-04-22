@@ -21,14 +21,15 @@ import {
   Divider,
   Tabs,
   Tab,
-  Tooltip,
   Spinner,
   DatePicker,
   Select,
   SelectItem,
+  Checkbox,
 } from '@heroui/react';
 import { type DateValue } from '@internationalized/date';
 import { I18nProvider } from '@react-aria/i18n';
+import { useLocation } from 'react-router-dom';
 import { Icon } from '@iconify/react';
 import { motion } from 'framer-motion';
 import { usePageTitle } from '../hooks/usePageTitle';
@@ -37,49 +38,20 @@ import { useModulePermission } from '../contexts/permission-context';
 
 // ─── TIPOS Y SERVICIOS ───────────────────────────────────────────────────────
 import { IBloqueHorario } from '../types/bloque-horario.types';
-import { obtenerBloquesHorarioService } from '../services/bloque-horario-service';
+import { obtenerBloquesHorarioService, reasignarBloquesService, restaurarBloquesDefaultService, IBloqueReasignar } from '../services/bloque-horario-service';
 import { ISemana } from '../types/semana.types';
-import { obtenerSemanasService, generarCalendarioService, obtenerAniosFiltroService, invalidarCacheSemanas } from '../services/semana-service';
-
-// ISala importada desde sala-service
+import { obtenerSemanasService, generarCalendarioService, obtenerAniosFiltroService, invalidarCacheSemanas, reasignarCalendarioService } from '../services/semana-service';
+import { IReservaActiva, DIA_DISPLAY, obtenerReservasActivasService } from '../services/reserva-sala-service';
+import { ISala, obtenerSalasActivasService, crearSalaService, actualizarSalaService, eliminarSalaService } from '../services/sala-service';
+import {
+  getConfiguracionSistema,
+  patchConfiguracionSistema,
+  restaurarConfiguracionSistema,
+} from '../services/gestionSistemaService';
 
 type DiaSemana = 'Lunes' | 'Martes' | 'Miércoles' | 'Jueves' | 'Viernes' | 'Sábado' | 'Domingo';
 
-interface ReservaSala {
-  idReservaSala: number;
-  idSeccion: number;
-  nombreSeccion: string;
-  idSala: number;
-  codSala: string;
-  nombreSala: string;
-  diaSemana: DiaSemana;
-  idBloque: number;
-  numeroBloque: number;
-  horaInicio: string;
-  horaFin: string;
-}
-
 const DIAS_SEMANA: DiaSemana[] = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
-
-const MOCK_RESERVAS: ReservaSala[] = [
-  { idReservaSala: 1, idSeccion: 1, nombreSeccion: 'Gastronomía Internacional - 1A', idSala: 1, codSala: 'AULA-01', nombreSala: 'Aula 01 - Cocina Principal', diaSemana: 'Lunes', idBloque: 1, numeroBloque: 1, horaInicio: '08:01', horaFin: '08:40' },
-  { idReservaSala: 2, idSeccion: 1, nombreSeccion: 'Gastronomía Internacional - 1A', idSala: 1, codSala: 'AULA-01', nombreSala: 'Aula 01 - Cocina Principal', diaSemana: 'Lunes', idBloque: 2, numeroBloque: 2, horaInicio: '08:41', horaFin: '09:20' },
-  { idReservaSala: 3, idSeccion: 2, nombreSeccion: 'Pastelería Artesanal - 2B', idSala: 2, codSala: 'AULA-02', nombreSala: 'Aula 02 - Pastelería', diaSemana: 'Lunes', idBloque: 5, numeroBloque: 5, horaInicio: '11:01', horaFin: '11:40' },
-  { idReservaSala: 4, idSeccion: 2, nombreSeccion: 'Pastelería Artesanal - 2B', idSala: 2, codSala: 'AULA-02', nombreSala: 'Aula 02 - Pastelería', diaSemana: 'Lunes', idBloque: 6, numeroBloque: 6, horaInicio: '11:41', horaFin: '12:20' },
-  { idReservaSala: 5, idSeccion: 3, nombreSeccion: 'Técnicas Culinarias - 3C', idSala: 3, codSala: 'LAB-01', nombreSala: 'Laboratorio de Gastronomía', diaSemana: 'Martes', idBloque: 3, numeroBloque: 3, horaInicio: '09:31', horaFin: '10:10' },
-  { idReservaSala: 6, idSeccion: 3, nombreSeccion: 'Técnicas Culinarias - 3C', idSala: 3, codSala: 'LAB-01', nombreSala: 'Laboratorio de Gastronomía', diaSemana: 'Martes', idBloque: 4, numeroBloque: 4, horaInicio: '10:11', horaFin: '10:50' },
-  { idReservaSala: 7, idSeccion: 1, nombreSeccion: 'Gastronomía Internacional - 1A', idSala: 1, codSala: 'AULA-01', nombreSala: 'Aula 01 - Cocina Principal', diaSemana: 'Miércoles', idBloque: 7, numeroBloque: 7, horaInicio: '12:31', horaFin: '13:10' },
-  { idReservaSala: 8, idSeccion: 4, nombreSeccion: 'Repostería Avanzada - 4A', idSala: 2, codSala: 'AULA-02', nombreSala: 'Aula 02 - Pastelería', diaSemana: 'Miércoles', idBloque: 9, numeroBloque: 9, horaInicio: '14:01', horaFin: '14:40' },
-  { idReservaSala: 9, idSeccion: 4, nombreSeccion: 'Repostería Avanzada - 4A', idSala: 2, codSala: 'AULA-02', nombreSala: 'Aula 02 - Pastelería', diaSemana: 'Miércoles', idBloque: 10, numeroBloque: 10, horaInicio: '14:41', horaFin: '15:20' },
-  { idReservaSala: 10, idSeccion: 2, nombreSeccion: 'Pastelería Artesanal - 2B', idSala: 3, codSala: 'LAB-01', nombreSala: 'Laboratorio de Gastronomía', diaSemana: 'Jueves', idBloque: 1, numeroBloque: 1, horaInicio: '08:01', horaFin: '08:40' },
-  { idReservaSala: 11, idSeccion: 5, nombreSeccion: 'Enología y Maridaje - 5B', idSala: 1, codSala: 'AULA-01', nombreSala: 'Aula 01 - Cocina Principal', diaSemana: 'Jueves', idBloque: 13, numeroBloque: 13, horaInicio: '17:01', horaFin: '17:40' },
-  { idReservaSala: 12, idSeccion: 5, nombreSeccion: 'Enología y Maridaje - 5B', idSala: 1, codSala: 'AULA-01', nombreSala: 'Aula 01 - Cocina Principal', diaSemana: 'Jueves', idBloque: 14, numeroBloque: 14, horaInicio: '17:41', horaFin: '18:20' },
-  { idReservaSala: 13, idSeccion: 3, nombreSeccion: 'Técnicas Culinarias - 3C', idSala: 3, codSala: 'LAB-01', nombreSala: 'Laboratorio de Gastronomía', diaSemana: 'Viernes', idBloque: 5, numeroBloque: 5, horaInicio: '11:01', horaFin: '11:40' },
-  { idReservaSala: 14, idSeccion: 6, nombreSeccion: 'Cocina Chilena - 6A', idSala: 1, codSala: 'AULA-01', nombreSala: 'Aula 01 - Cocina Principal', diaSemana: 'Viernes', idBloque: 16, numeroBloque: 16, horaInicio: '19:01', horaFin: '19:40' },
-  { idReservaSala: 15, idSeccion: 6, nombreSeccion: 'Cocina Chilena - 6A', idSala: 1, codSala: 'AULA-01', nombreSala: 'Aula 01 - Cocina Principal', diaSemana: 'Viernes', idBloque: 17, numeroBloque: 17, horaInicio: '19:41', horaFin: '20:20' },
-];
-
-// DATOS MOCK REMOVIDOS - Se obtienen del backend
 
 // ─── HELPERS ──────────────────────────────────────────────────────────────────
 
@@ -99,10 +71,21 @@ const formatDate = (dateStr: string): string => {
 // ─── COMPONENTE PRINCIPAL ─────────────────────────────────────────────────────
 
 const AdminSistemaPage: React.FC = () => {
-  usePageTitle('Administración del Sistema', 'Centro de control: horarios, semanas académicas y salas');
+  usePageTitle('Administración del Sistema', 'Centro de control: horarios, semanas académicas y salas', 'lucide:settings-2');
   const toast = useToast();
+  const location = useLocation();
 
-  const [activeTab, setActiveTab] = React.useState<string>('horarios');
+  const tabFromUrl = React.useMemo(() => {
+    const params = new URLSearchParams(location.search);
+    const t = params.get('tab');
+    return t === 'semanas' || t === 'horarios' || t === 'reservas' || t === 'gestion' ? t : 'horarios';
+  }, [location.search]);
+
+  const [activeTab, setActiveTab] = React.useState<string>(tabFromUrl);
+
+  React.useEffect(() => {
+    setActiveTab(tabFromUrl);
+  }, [tabFromUrl]);
   const [bloques, setBloques] = React.useState<IBloqueHorario[]>([]);
   const [isLoadingBloques, setIsLoadingBloques] = React.useState(true);
 
@@ -203,7 +186,16 @@ const AdminSistemaPage: React.FC = () => {
               title={
                 <div className="flex items-center gap-2">
                   <Icon icon="lucide:calendar-clock" width={18} />
-                  <span>Reservas de Salas por Sección</span>
+                  <span>Gestión Sala y Reservas</span>
+                </div>
+              }
+            />
+            <Tab
+              key="gestion"
+              title={
+                <div className="flex items-center gap-2">
+                  <Icon icon="lucide:sliders-horizontal" width={18} />
+                  <span>Gestion del Sistema</span>
                 </div>
               }
             />
@@ -214,14 +206,284 @@ const AdminSistemaPage: React.FC = () => {
               <SeccionBloques
                 bloques={bloques}
                 isLoading={isLoadingBloques}
+                onBloquesChange={setBloques}
               />
             )}
             {activeTab === 'semanas' && <SeccionSemanas toast={toast} />}
-            {activeTab === 'reservas' && <SeccionReservas />}
+            {activeTab === 'reservas' && <SeccionGestionSalaYReservas />}
+            {activeTab === 'gestion' && <SeccionGestionDelSistema />}
           </div>
         </div>
       </motion.div>
     </div>
+  );
+};
+
+// ─── CONSTANTES: BLOQUES PREDETERMINADOS ─────────────────────────────────────
+
+const BLOQUES_DEFAULT_TIMES = [
+  { horaInicio: '08:01', horaFin: '08:40' },
+  { horaInicio: '08:41', horaFin: '09:20' },
+  { horaInicio: '09:31', horaFin: '10:10' },
+  { horaInicio: '10:11', horaFin: '10:50' },
+  { horaInicio: '11:01', horaFin: '11:40' },
+  { horaInicio: '11:41', horaFin: '12:20' },
+  { horaInicio: '12:31', horaFin: '13:10' },
+  { horaInicio: '13:11', horaFin: '13:50' },
+  { horaInicio: '14:01', horaFin: '14:40' },
+  { horaInicio: '14:41', horaFin: '15:20' },
+  { horaInicio: '15:31', horaFin: '16:10' },
+  { horaInicio: '16:11', horaFin: '16:50' },
+  { horaInicio: '17:01', horaFin: '17:40' },
+  { horaInicio: '17:41', horaFin: '18:20' },
+  { horaInicio: '18:21', horaFin: '19:00' },
+  { horaInicio: '19:01', horaFin: '19:40' },
+  { horaInicio: '19:41', horaFin: '20:20' },
+  { horaInicio: '20:21', horaFin: '21:00' },
+  { horaInicio: '21:01', horaFin: '21:40' },
+  { horaInicio: '21:41', horaFin: '22:10' },
+];
+
+// ─── HELPERS: TIEMPO ──────────────────────────────────────────────────────────
+
+const timeToMinutes = (hhmm: string): number => {
+  const [h, m] = hhmm.split(':').map(Number);
+  return h * 60 + (m || 0);
+};
+
+const minutesToHHmm = (mins: number): string => {
+  const clamped = Math.max(0, Math.min(mins, 23 * 60 + 59));
+  return `${Math.floor(clamped / 60).toString().padStart(2, '0')}:${(clamped % 60).toString().padStart(2, '0')}`;
+};
+
+// ─── MODAL: REASIGNAR BLOQUES ─────────────────────────────────────────────────
+
+interface EditableBloque {
+  key: number;
+  idBloque?: number;
+  horaInicio: string; // HH:mm
+  horaFin: string;    // HH:mm
+}
+
+interface ReasignarBloquesModalProps {
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
+  bloquesActuales: IBloqueHorario[];
+  onSuccess: (bloques: IBloqueHorario[]) => void;
+}
+
+const ReasignarBloquesModal: React.FC<ReasignarBloquesModalProps> = ({
+  isOpen, onOpenChange, bloquesActuales, onSuccess,
+}) => {
+  const toast = useToast();
+  const nextKey = React.useRef(0);
+  const [bloques, setBloques] = React.useState<EditableBloque[]>([]);
+  const [confirmarTexto, setConfirmarTexto] = React.useState('');
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
+
+  React.useEffect(() => {
+    if (isOpen) {
+      setBloques(
+        bloquesActuales.map((b) => ({
+          key: nextKey.current++,
+          idBloque: b.idBloque,
+          horaInicio: b.horaInicio.substring(0, 5),
+          horaFin: b.horaFin.substring(0, 5),
+        }))
+      );
+      setConfirmarTexto('');
+    }
+  }, [isOpen, bloquesActuales]);
+
+  // Por cada bloque: null si válido, string con el error si hay conflicto
+  const validationErrors = React.useMemo((): (string | null)[] => {
+    return bloques.map((b, i) => {
+      const inicioMins = timeToMinutes(b.horaInicio);
+      const finMins = timeToMinutes(b.horaFin);
+      if (finMins <= inicioMins) {
+        return 'La hora de fin debe ser posterior a la hora de inicio';
+      }
+      if (i > 0) {
+        const prevFin = timeToMinutes(bloques[i - 1].horaFin);
+        if (inicioMins <= prevFin) {
+          return `Debe iniciar al menos 1 min después del bloque anterior (mín. ${minutesToHHmm(prevFin + 1)})`;
+        }
+      }
+      return null;
+    });
+  }, [bloques]);
+
+  const hasErrors = validationErrors.some((e) => e !== null);
+  const canSubmit = !hasErrors && confirmarTexto.trim().toUpperCase() === 'CONFIRMAR' && bloques.length > 0;
+
+  const handleAdd = () => {
+    const last = bloques[bloques.length - 1];
+    const baseMin = last ? timeToMinutes(last.horaFin) : timeToMinutes('08:00');
+    setBloques((prev) => [
+      ...prev,
+      { key: nextKey.current++, horaInicio: minutesToHHmm(baseMin + 1), horaFin: minutesToHHmm(baseMin + 40) },
+    ]);
+  };
+
+  const handleRemove = (key: number) => {
+    setBloques((prev) => prev.filter((b) => b.key !== key));
+  };
+
+  const handleUpdate = (key: number, field: 'horaInicio' | 'horaFin', value: string) => {
+    setBloques((prev) => prev.map((b) => (b.key === key ? { ...b, [field]: value } : b)));
+  };
+
+  const handleSubmit = async () => {
+    if (!canSubmit) return;
+    setIsSubmitting(true);
+    try {
+      const payload: IBloqueReasignar[] = bloques.map((b, i) => ({
+        idBloque: b.idBloque,
+        numeroBloque: i + 1,
+        horaInicio: b.horaInicio + ':00',
+        horaFin: b.horaFin + ':00',
+      }));
+      const updated = await reasignarBloquesService(payload);
+      onSuccess(updated);
+      toast.success(`${updated.length} bloques horarios actualizados correctamente`);
+      onOpenChange(false);
+    } catch (error: any) {
+      toast.error(error.message || 'Error al reasignar los bloques');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <Modal isOpen={isOpen} onOpenChange={onOpenChange} size="2xl" placement="center" scrollBehavior="inside">
+      <ModalContent>
+        {(onClose) => (
+          <>
+            <ModalHeader className="flex items-center gap-2 border-b border-default-100 pb-3">
+              <div className="p-1.5 rounded-lg bg-primary-100 dark:bg-primary-900/30 text-primary">
+                <Icon icon="lucide:clock-4" width={18} />
+              </div>
+              <span className="font-bold text-secondary dark:text-foreground">Reasignar Bloques Horarios</span>
+              <Chip size="sm" variant="flat" color="default" className="ml-1">{bloques.length} bloques</Chip>
+            </ModalHeader>
+
+            <ModalBody className="px-5 py-4 space-y-4">
+              {/* ── Lista editable ── */}
+              <div className="space-y-2">
+                {/* Encabezado de columnas */}
+                <div className="grid grid-cols-[40px_1fr_1fr_32px] gap-2 px-1.5">
+                  <span className="text-[11px] font-bold text-default-400 uppercase tracking-wide text-center">Nº</span>
+                  <span className="text-[11px] font-bold text-default-400 uppercase tracking-wide text-center">Hora Inicio</span>
+                  <span className="text-[11px] font-bold text-default-400 uppercase tracking-wide text-center">Hora Fin</span>
+                  <span />
+                </div>
+                <Divider />
+                {/* Filas */}
+                <div className="space-y-1.5 max-h-[340px] overflow-y-auto pr-1">
+                  {bloques.map((bloque, idx) => {
+                    const error = validationErrors[idx];
+                    return (
+                      <div key={bloque.key} className="space-y-0.5">
+                        <div className={`grid grid-cols-[40px_1fr_1fr_32px] gap-2 items-center p-1.5 rounded-lg transition-colors ${error ? 'bg-danger-50 dark:bg-danger-900/10' : 'hover:bg-default-50 dark:hover:bg-default-50/5'}`}>
+                          <div className="flex justify-center">
+                            <Chip size="sm" variant="flat" color={error ? 'danger' : 'default'} className="font-bold text-xs min-w-[30px]">
+                              {idx + 1}
+                            </Chip>
+                          </div>
+                          <Input
+                            type="time"
+                            size="sm"
+                            variant="bordered"
+                            value={bloque.horaInicio}
+                            onChange={(e) => handleUpdate(bloque.key, 'horaInicio', e.target.value)}
+                            color={error ? 'danger' : 'default'}
+                            classNames={{ input: 'text-center font-mono font-semibold' }}
+                          />
+                          <Input
+                            type="time"
+                            size="sm"
+                            variant="bordered"
+                            value={bloque.horaFin}
+                            onChange={(e) => handleUpdate(bloque.key, 'horaFin', e.target.value)}
+                            color={error ? 'danger' : 'default'}
+                            classNames={{ input: 'text-center font-mono font-semibold' }}
+                          />
+                          <Button
+                            isIconOnly size="sm" variant="light"
+                            className="text-default-300 hover:text-danger"
+                            isDisabled={bloques.length <= 1}
+                            onPress={() => handleRemove(bloque.key)}
+                          >
+                            <Icon icon="lucide:x" width={14} />
+                          </Button>
+                        </div>
+                        {error && (
+                          <p className="text-danger text-xs pl-12 flex items-center gap-1 pb-0.5">
+                            <Icon icon="lucide:alert-circle" width={11} />
+                            {error}
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+                <Button
+                  size="sm"
+                  variant="flat"
+                  color="primary"
+                  className="font-semibold w-full mt-1"
+                  startContent={<Icon icon="lucide:plus" width={14} />}
+                  onPress={handleAdd}
+                >
+                  Agregar Bloque
+                </Button>
+              </div>
+
+              <Divider />
+
+              {/* ── Advertencia ── */}
+              <div className="flex gap-3 p-4 rounded-xl bg-warning-50 dark:bg-warning-900/15 border border-warning-200 dark:border-warning-800">
+                <Icon icon="lucide:alert-triangle" className="text-warning-600 dark:text-warning-400 shrink-0 mt-0.5" width={18} />
+                <div className="space-y-1">
+                  <p className="font-bold text-sm text-warning-800 dark:text-warning-300">Advertencia: Impacto en el sistema</p>
+                  <p className="text-sm text-warning-700 dark:text-warning-300 leading-relaxed">
+                    Los cambios se reflejarán en <strong>todas las secciones y reservas de sala</strong> que estén asociadas a estos bloques. Esta acción no puede deshacerse automáticamente.
+                  </p>
+                </div>
+              </div>
+
+              {/* ── Confirmación ── */}
+              <Input
+                label='Escriba "CONFIRMAR" para continuar'
+                placeholder="CONFIRMAR"
+                value={confirmarTexto}
+                onValueChange={setConfirmarTexto}
+                variant="bordered"
+                color={confirmarTexto.trim().toUpperCase() === 'CONFIRMAR' ? 'success' : 'default'}
+                endContent={confirmarTexto.trim().toUpperCase() === 'CONFIRMAR'
+                  ? <Icon icon="lucide:check-circle" width={16} className="text-success" /> : null}
+              />
+            </ModalBody>
+
+            <ModalFooter>
+              <Button variant="light" onPress={onClose} isDisabled={isSubmitting}>
+                Cancelar
+              </Button>
+              <Button
+                color="primary"
+                variant="solid"
+                className="font-bold text-secondary"
+                isDisabled={!canSubmit}
+                isLoading={isSubmitting}
+                onPress={handleSubmit}
+              >
+                Guardar Bloques
+              </Button>
+            </ModalFooter>
+          </>
+        )}
+      </ModalContent>
+    </Modal>
   );
 };
 
@@ -230,14 +492,17 @@ const AdminSistemaPage: React.FC = () => {
 interface SeccionBloquesProps {
   bloques: IBloqueHorario[];
   isLoading: boolean;
+  onBloquesChange: (bloques: IBloqueHorario[]) => void;
 }
 
-const SeccionBloques: React.FC<SeccionBloquesProps> = ({ bloques, isLoading }) => {
-  const { isOpen, onOpen, onOpenChange } = useDisclosure();
-  const { canCreate: admin_Crear, canUpdate: admin_Editar, canDelete: admin_Eliminar } = useModulePermission('ADMIN_SISTEMA');
-  const [modalMode, setModalMode] = React.useState<'crear' | 'editar' | 'mantenimiento'>('crear');
+const SeccionBloques: React.FC<SeccionBloquesProps> = ({ bloques, isLoading, onBloquesChange }) => {
+  const toast = useToast();
+  const { isOpen: isReasignarOpen, onOpen: onReasignarOpen, onOpenChange: onReasignarOpenChange } = useDisclosure();
+  const { isOpen: isRestaurarOpen, onOpen: onRestaurarOpen, onOpenChange: onRestaurarOpenChange } = useDisclosure();
+  const { canCreate: admin_Crear } = useModulePermission('ADMIN_SISTEMA');
+  const [isRestaurando, setIsRestaurando] = React.useState(false);
+  const [confirmarRestaurar, setConfirmarRestaurar] = React.useState('');
 
-  // Identificar bloques con "recreo" (gap > 1 min entre bloques consecutivos)
   const getBloqueGroup = (bloque: IBloqueHorario): string => {
     const num = bloque.numeroBloque;
     if (num <= 6) return 'Mañana';
@@ -246,39 +511,33 @@ const SeccionBloques: React.FC<SeccionBloquesProps> = ({ bloques, isLoading }) =
     return 'Nocturno';
   };
 
-  const groupColors: Record<string, { bg: string; text: string; chip: 'primary' | 'warning' | 'secondary' | 'danger' }> = {
-    'Mañana': { bg: 'bg-primary-50', text: 'text-primary-600', chip: 'primary' },
-    'Tarde': { bg: 'bg-warning-50', text: 'text-warning-600', chip: 'warning' },
-    'Vespertino': { bg: 'bg-secondary-50', text: 'text-secondary-600', chip: 'secondary' },
-    'Nocturno': { bg: 'bg-danger-50', text: 'text-danger-600', chip: 'danger' },
+  const groupColors: Record<string, { chip: 'primary' | 'warning' | 'secondary' | 'danger' }> = {
+    'Mañana': { chip: 'primary' },
+    'Tarde': { chip: 'warning' },
+    'Vespertino': { chip: 'secondary' },
+    'Nocturno': { chip: 'danger' },
   };
 
-  /** Formatea HH:mm:ss a HH:mm */
-  const formatTime = (time: string) => {
-    if (!time) return '';
-    return time.substring(0, 5);
-  };
+  const formatTime = (time: string) => (time ? time.substring(0, 5) : '');
 
-  const handleNuevoBloque = () => {
-    setModalMode('mantenimiento');
-    onOpen();
-  };
+  const handleRestaurar = async () => {
+    setIsRestaurando(true);
+    try {
+      const restaurados = await restaurarBloquesDefaultService();
+      onBloquesChange(restaurados);
+      toast.success('Bloques restaurados a los valores predeterminados');
 
-  const handleEditarBloque = (_bloque: IBloqueHorario) => {
-    setModalMode('mantenimiento');
-    onOpen();
+    } catch (error: any) {
+      toast.error(error.message || 'Error al restaurar los bloques predeterminados');
+    } finally {
+      setIsRestaurando(false);
+    }
   };
-
-  const handleEliminar = async (_bloque: IBloqueHorario) => {
-    setModalMode('mantenimiento');
-    onOpen();
-  };
-
 
   return (
     <div className="space-y-4">
       <Card className="shadow-sm border border-default-200 dark:border-default-100 bg-white dark:bg-content1 mx-4">
-        <CardHeader className="px-6 pt-5 pb-3 flex items-center gap-3">
+        <CardHeader className="px-6 pt-5 pb-3 flex items-center gap-3 flex-wrap">
           <div className="p-2 rounded-lg bg-primary-100 dark:bg-primary-900/30 text-primary">
             <Icon icon="lucide:clock" width={20} />
           </div>
@@ -292,16 +551,28 @@ const SeccionBloques: React.FC<SeccionBloquesProps> = ({ bloques, isLoading }) =
             ))}
           </div>
           {admin_Crear && (
-          <Button
-            color="primary"
-            variant="solid"
-            size="sm"
-            className="ml-auto font-bold text-secondary"
-            startContent={<Icon icon="lucide:plus" width={16} />}
-            onPress={handleNuevoBloque}
-          >
-            Nuevo Bloque
-          </Button>
+            <div className="ml-auto flex gap-2 flex-wrap justify-end">
+              <Button
+                color="default"
+                variant="flat"
+                size="sm"
+                className="font-semibold"
+                startContent={<Icon icon="lucide:rotate-ccw" width={15} />}
+                onPress={() => { setConfirmarRestaurar(''); onRestaurarOpen(); }}
+              >
+                Restaurar predeterminados
+              </Button>
+              <Button
+                color="primary"
+                variant="solid"
+                size="sm"
+                className="font-bold text-secondary"
+                startContent={<Icon icon="lucide:sliders-horizontal" width={15} />}
+                onPress={onReasignarOpen}
+              >
+                Reasignar Bloques
+              </Button>
+            </div>
           )}
         </CardHeader>
         <Divider />
@@ -311,65 +582,42 @@ const SeccionBloques: React.FC<SeccionBloquesProps> = ({ bloques, isLoading }) =
             removeWrapper
             layout="fixed"
             classNames={{
-              th: 'bg-default-100 dark:bg-default-50/20 text-default-500 font-bold uppercase text-xs h-10',
-              td: 'py-2.5 border-b border-default-50 dark:border-default-50/10 group-data-[last=true]:border-none px-4',
+              th: 'bg-default-100 dark:bg-default-50/20 text-default-500 font-bold uppercase text-xs h-10 text-center',
+              td: 'py-2.5 border-b border-default-50 dark:border-default-50/10 group-data-[last=true]:border-none px-4 text-center',
             }}
           >
             <TableHeader>
-              <TableColumn width="15%" align="center">BLOQUE</TableColumn>
-              <TableColumn width="25%" align="center">HORA INICIO</TableColumn>
-              <TableColumn width="25%" align="center">HORA FIN</TableColumn>
+              <TableColumn width="20%" align="center">BLOQUE</TableColumn>
+              <TableColumn width="30%" align="center">HORA INICIO</TableColumn>
+              <TableColumn width="30%" align="center">HORA FIN</TableColumn>
               <TableColumn width="20%" align="center">TURNO</TableColumn>
-              <TableColumn width="15%" align="center">ACCIONES</TableColumn>
             </TableHeader>
             <TableBody
               isLoading={isLoading}
               loadingContent={<Spinner label="Cargando bloques..." />}
-              emptyContent={!isLoading && bloques.length === 0 && "No hay bloques horarios configurados"}
+              emptyContent={!isLoading && bloques.length === 0 ? 'No hay bloques horarios configurados' : ' '}
             >
               {bloques.map((bloque) => {
                 const group = getBloqueGroup(bloque);
                 const style = groupColors[group];
                 return (
                   <TableRow key={bloque.idBloque || bloque.numeroBloque} className="hover:bg-default-50 dark:hover:bg-default-50/10 transition-colors">
-                    <TableCell className="text-center">
-                      <Chip size="sm" variant="flat" color="default" className="font-bold">
-                        {bloque.numeroBloque}
-                      </Chip>
+                    <TableCell>
+                      <div className="flex justify-center">
+                        <Chip size="sm" variant="flat" color="default" className="font-bold">
+                          {bloque.numeroBloque}
+                        </Chip>
+                      </div>
                     </TableCell>
-                    <TableCell className="text-center font-mono text-sm font-semibold text-secondary dark:text-foreground">
+                    <TableCell className="font-mono text-sm font-semibold text-secondary dark:text-foreground">
                       {formatTime(bloque.horaInicio)}
                     </TableCell>
-                    <TableCell className="text-center font-mono text-sm font-semibold text-secondary dark:text-foreground">
+                    <TableCell className="font-mono text-sm font-semibold text-secondary dark:text-foreground">
                       {formatTime(bloque.horaFin)}
                     </TableCell>
-                    <TableCell className="text-center">
-                      <Chip size="sm" variant="flat" color={style.chip}>{group}</Chip>
-                    </TableCell>
                     <TableCell>
-                      <div className="flex justify-center gap-1">
-                        {admin_Editar && (
-                        <Tooltip content="Editar horario">
-                          <Button
-                            isIconOnly size="sm" variant="light"
-                            className="text-default-400 hover:text-secondary"
-                            onPress={() => handleEditarBloque(bloque)}
-                          >
-                            <Icon icon="lucide:edit" width={16} />
-                          </Button>
-                        </Tooltip>
-                        )}
-                        {admin_Eliminar && (
-                        <Tooltip content="Eliminar bloque" color="danger">
-                          <Button
-                            isIconOnly size="sm" variant="light"
-                            className="text-default-400 hover:text-danger"
-                            onPress={() => handleEliminar(bloque)}
-                          >
-                            <Icon icon="lucide:trash" width={16} />
-                          </Button>
-                        </Tooltip>
-                        )}
+                      <div className="flex justify-center">
+                        <Chip size="sm" variant="flat" color={style.chip}>{group}</Chip>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -380,38 +628,54 @@ const SeccionBloques: React.FC<SeccionBloquesProps> = ({ bloques, isLoading }) =
         </CardBody>
       </Card>
 
-      <Modal isOpen={isOpen} onOpenChange={onOpenChange} size="sm" placement="center">
+      {/* Modal: Reasignar Bloques */}
+      <ReasignarBloquesModal
+        isOpen={isReasignarOpen}
+        onOpenChange={onReasignarOpenChange}
+        bloquesActuales={bloques}
+        onSuccess={onBloquesChange}
+      />
+
+      {/* Modal: Confirmar restaurar */}
+      <Modal isOpen={isRestaurarOpen} onOpenChange={onRestaurarOpenChange} size="sm" placement="center">
         <ModalContent>
           {(onClose) => (
             <>
-              <ModalHeader>
-                <div className="flex items-center gap-2">
-                  <Icon
-                    icon={modalMode === 'mantenimiento' ? 'lucide:alert-triangle' : (modalMode === 'crear' ? 'lucide:plus-circle' : 'lucide:edit-3')}
-                    className={modalMode === 'mantenimiento' ? 'text-warning' : 'text-primary'}
-                    width={22}
-                  />
-                  <span className="font-bold">
-                    {modalMode === 'mantenimiento' ? 'Función no disponible' : (modalMode === 'crear' ? 'Nuevo Bloque' : 'Editar Bloque')}
-                  </span>
-                </div>
+              <ModalHeader className="flex items-center gap-2">
+                <Icon icon="lucide:rotate-ccw" className="text-warning" width={20} />
+                <span className="font-bold">Restaurar Bloques Predeterminados</span>
               </ModalHeader>
-              <ModalBody className={`space-y-4 ${modalMode === 'mantenimiento' ? 'py-8 text-center' : ''}`}>
-                <div className="flex flex-col items-center gap-4">
-                  <div className="p-4 rounded-full bg-warning-50 dark:bg-warning-900/20 text-warning-500">
-                    <Icon icon="lucide:construction" width={48} />
-                  </div>
-                  <div className="space-y-2">
-                    <p className="font-bold text-lg text-secondary dark:text-foreground">Módulo en Mantenimiento</p>
-                    <p className="text-default-500 text-sm leading-relaxed px-2">
-                      Las acciones de gestión de bloques horarios están temporalmente deshabilitadas por actualizaciones técnicas.
-                    </p>
-                  </div>
+              <ModalBody className="space-y-3 py-4">
+                <div className="flex gap-3 p-3 rounded-xl bg-warning-50 dark:bg-warning-900/15 border border-warning-200 dark:border-warning-800">
+                  <Icon icon="lucide:alert-triangle" className="text-warning-600 dark:text-warning-400 shrink-0 mt-0.5" width={16} />
+                  <p className="text-sm text-warning-700 dark:text-warning-300 leading-relaxed">
+                    Los <strong>{bloques.length} bloques actuales</strong> serán reemplazados por los <strong>20 bloques predeterminados</strong> originales del sistema. Los cambios afectarán todas las secciones y reservas asociadas.
+                  </p>
                 </div>
+                <Input
+                  label='Escriba "CONFIRMAR" para continuar'
+                  placeholder="CONFIRMAR"
+                  value={confirmarRestaurar}
+                  onValueChange={setConfirmarRestaurar}
+                  variant="bordered"
+                  color={confirmarRestaurar.trim().toUpperCase() === 'CONFIRMAR' ? 'success' : 'default'}
+                  endContent={confirmarRestaurar.trim().toUpperCase() === 'CONFIRMAR'
+                    ? <Icon icon="lucide:check-circle" width={16} className="text-success" /> : null}
+                />
               </ModalBody>
               <ModalFooter>
-                <Button variant="light" onPress={onClose}>
-                  Entendido
+                <Button variant="light" onPress={onClose} isDisabled={isRestaurando}>
+                  Cancelar
+                </Button>
+                <Button
+                  color="warning"
+                  variant="solid"
+                  className="font-bold text-white"
+                  isLoading={isRestaurando}
+                  isDisabled={confirmarRestaurar.trim().toUpperCase() !== 'CONFIRMAR'}
+                  onPress={handleRestaurar}
+                >
+                  Restaurar
                 </Button>
               </ModalFooter>
             </>
@@ -419,6 +683,248 @@ const SeccionBloques: React.FC<SeccionBloquesProps> = ({ bloques, isLoading }) =
         </ModalContent>
       </Modal>
     </div>
+  );
+};
+
+// ─── MODAL: REASIGNAR SEMANAS ─────────────────────────────────────────────────
+
+interface ReasignarSemanasModalProps {
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
+  aniosDisponibles: string[];
+  filtroAnioActual: string;
+  onSuccess: (anio: string, semanas: ISemana[]) => void;
+}
+
+const ReasignarSemanasModal: React.FC<ReasignarSemanasModalProps> = ({
+  isOpen, onOpenChange, aniosDisponibles, filtroAnioActual, onSuccess,
+}) => {
+  const toast = useToast();
+  const [anioSeleccionado, setAnioSeleccionado] = React.useState<string>('');
+  const [semestre, setSemestre] = React.useState<1 | 2>(1);
+  const [fechaSeleccionada, setFechaSeleccionada] = React.useState<DateValue | null>(null);
+  const [confirmarTexto, setConfirmarTexto] = React.useState('');
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
+
+  // Inicializar estado al abrir el modal
+  React.useEffect(() => {
+    if (isOpen) {
+      const anioDefault = filtroAnioActual || aniosDisponibles[0] || new Date().getFullYear().toString();
+      setAnioSeleccionado(anioDefault);
+      setSemestre(new Date().getMonth() + 1 <= 6 ? 1 : 2);
+      setFechaSeleccionada(null);
+      setConfirmarTexto('');
+    }
+  }, [isOpen, filtroAnioActual, aniosDisponibles]);
+
+  // Solo lunes disponibles en el DatePicker
+  const esDiaNoLunes = (date: DateValue) => {
+    const jsDate = new Date(date.year, date.month - 1, date.day);
+    return jsDate.getDay() !== 1;
+  };
+
+  // Preview de las 18 semanas calculadas desde la fecha seleccionada
+  const previewSemanas = React.useMemo(() => {
+    if (!fechaSeleccionada) return [];
+    const base = new Date(fechaSeleccionada.year, fechaSeleccionada.month - 1, fechaSeleccionada.day);
+    return Array.from({ length: 18 }, (_, i) => {
+      const inicio = new Date(base);
+      inicio.setDate(base.getDate() + i * 7);
+      const fin = new Date(inicio);
+      fin.setDate(inicio.getDate() + 6);
+      const toStr = (d: Date) => d.toISOString().split('T')[0];
+      return { num: i + 1, inicio: toStr(inicio), fin: toStr(fin) };
+    });
+  }, [fechaSeleccionada]);
+
+  const canSubmit = anioSeleccionado !== '' && fechaSeleccionada !== null && confirmarTexto.trim().toUpperCase() === 'CONFIRMAR';
+
+  const handleSubmit = async () => {
+    if (!canSubmit || !fechaSeleccionada) return;
+    setIsSubmitting(true);
+    try {
+      const nuevaFechaInicio = `${fechaSeleccionada.year}-${String(fechaSeleccionada.month).padStart(2, '0')}-${String(fechaSeleccionada.day).padStart(2, '0')}`;
+      const updatedSemanas = await reasignarCalendarioService({
+        anio: parseInt(anioSeleccionado),
+        semestre,
+        nuevaFechaInicio,
+      });
+      onSuccess(anioSeleccionado, updatedSemanas);
+      toast.success(`18 semanas del ${semestre}° semestre ${anioSeleccionado} reasignadas correctamente`);
+      onOpenChange(false);
+    } catch (error: any) {
+      toast.error(error.message || 'Error al reasignar el calendario semestral');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Lista de años para el selector: siempre incluir al menos el año actual
+  const aniosParaSelector = React.useMemo(() => {
+    const currentYear = new Date().getFullYear().toString();
+    return aniosDisponibles.includes(currentYear) ? aniosDisponibles : [...aniosDisponibles, currentYear].sort((a, b) => parseInt(b) - parseInt(a));
+  }, [aniosDisponibles]);
+
+  return (
+    <Modal isOpen={isOpen} onOpenChange={onOpenChange} size="2xl" placement="center" scrollBehavior="inside">
+      <ModalContent>
+        {(onClose) => (
+          <>
+            <ModalHeader className="flex items-center gap-2 border-b border-default-100 pb-3">
+              <div className="p-1.5 rounded-lg bg-warning-100 dark:bg-warning-900/30 text-warning-600">
+                <Icon icon="lucide:calendar-clock" width={18} />
+              </div>
+              <span className="font-bold text-secondary dark:text-foreground">Reasignar Semanas Académicas</span>
+            </ModalHeader>
+
+            <ModalBody className="px-5 py-4 space-y-5">
+
+              {/* ── Período a reasignar ── */}
+              <div className="space-y-3">
+                <p className="text-sm font-semibold text-default-700">Período a reasignar</p>
+                <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-end">
+                  {/* Selector de año */}
+                  <div className="w-36">
+                    <Select
+                      label="Año"
+                      size="sm"
+                      variant="bordered"
+                      selectedKeys={anioSeleccionado ? [anioSeleccionado] : []}
+                      onSelectionChange={(keys: any) => {
+                        const val = Array.from(keys)[0] as string;
+                        if (val) { setAnioSeleccionado(val); setFechaSeleccionada(null); }
+                      }}
+                      disallowEmptySelection
+                    >
+                      {aniosParaSelector.map((anio) => (
+                        <SelectItem key={anio} textValue={anio}>{anio}</SelectItem>
+                      ))}
+                    </Select>
+                  </div>
+                  {/* Selector de semestre */}
+                  <div className="flex gap-2">
+                    <Button
+                      variant={semestre === 1 ? 'solid' : 'bordered'}
+                      color={semestre === 1 ? 'warning' : 'default'}
+                      size="sm"
+                      onPress={() => { setSemestre(1); setFechaSeleccionada(null); }}
+                      className={semestre === 1 ? 'font-bold text-white' : 'font-medium'}
+                    >
+                      1° Semestre
+                    </Button>
+                    <Button
+                      variant={semestre === 2 ? 'solid' : 'bordered'}
+                      color={semestre === 2 ? 'warning' : 'default'}
+                      size="sm"
+                      onPress={() => { setSemestre(2); setFechaSeleccionada(null); }}
+                      className={semestre === 2 ? 'font-bold text-white' : 'font-medium'}
+                    >
+                      2° Semestre
+                    </Button>
+                  </div>
+                </div>
+                {anioSeleccionado && (
+                  <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-default-100 dark:bg-default-50/20">
+                    <Icon icon="lucide:info" className="text-default-400" width={13} />
+                    <span className="text-xs text-default-500">
+                      Reasignando: <strong className="text-secondary dark:text-foreground">{semestre}° Semestre {anioSeleccionado}</strong>
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              <Divider />
+
+              {/* ── Nueva fecha de inicio ── */}
+              <div className="space-y-2">
+                <p className="text-sm font-semibold text-default-700">Nueva fecha de inicio</p>
+                <p className="text-xs text-default-400">Solo los lunes están disponibles. Las 18 semanas se calcularán automáticamente.</p>
+                <I18nProvider locale="es-CL">
+                  <DatePicker
+                    label="Fecha de inicio (lunes)"
+                    value={fechaSeleccionada}
+                    onChange={setFechaSeleccionada}
+                    isDateUnavailable={esDiaNoLunes}
+                    variant="bordered"
+                    className="max-w-xs"
+                    showMonthAndYearPickers
+                  />
+                </I18nProvider>
+              </div>
+
+              {/* ── Vista previa de semanas ── */}
+              {previewSemanas.length > 0 && (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-semibold text-default-700">Vista previa — 18 semanas a generar</p>
+                    <Chip size="sm" variant="flat" color="warning">18 semanas</Chip>
+                  </div>
+                  <div className="border border-default-200 dark:border-default-100 rounded-xl overflow-hidden">
+                    {/* Cabecera */}
+                    <div className="grid grid-cols-3 bg-default-100 dark:bg-default-50/20 px-4 py-2">
+                      <span className="text-[11px] font-bold text-default-500 uppercase tracking-wide text-center">Semana</span>
+                      <span className="text-[11px] font-bold text-default-500 uppercase tracking-wide text-center">Inicio</span>
+                      <span className="text-[11px] font-bold text-default-500 uppercase tracking-wide text-center">Fin</span>
+                    </div>
+                    {/* Filas */}
+                    <div className="max-h-[200px] overflow-y-auto divide-y divide-default-50 dark:divide-default-50/10">
+                      {previewSemanas.map((s) => (
+                        <div key={s.num} className="grid grid-cols-3 px-4 py-1.5 hover:bg-default-50 dark:hover:bg-default-50/5 transition-colors">
+                          <span className="text-center text-xs font-bold text-default-700">S{s.num}</span>
+                          <span className="text-center text-xs font-mono text-default-600">{formatDate(s.inicio)}</span>
+                          <span className="text-center text-xs font-mono text-default-600">{formatDate(s.fin)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <Divider />
+
+              {/* ── Advertencia ── */}
+              <div className="flex gap-3 p-4 rounded-xl bg-warning-50 dark:bg-warning-900/15 border border-warning-200 dark:border-warning-800">
+                <Icon icon="lucide:alert-triangle" className="text-warning-600 dark:text-warning-400 shrink-0 mt-0.5" width={18} />
+                <div className="space-y-1">
+                  <p className="font-bold text-sm text-warning-800 dark:text-warning-300">Advertencia: Impacto en todo el sistema</p>
+                  <p className="text-sm text-warning-700 dark:text-warning-300 leading-relaxed">
+                    Alterar las semanas del período académico se reflejará en <strong>todo el sistema</strong> donde la semana estaba previamente asociada, incluyendo <strong>solicitudes</strong> y <strong>conglomerados de pedido</strong>. Esta acción no puede deshacerse automáticamente.
+                  </p>
+                </div>
+              </div>
+
+              {/* ── Confirmación ── */}
+              <Input
+                label='Escriba "CONFIRMAR" para continuar'
+                placeholder="CONFIRMAR"
+                value={confirmarTexto}
+                onValueChange={setConfirmarTexto}
+                variant="bordered"
+                color={confirmarTexto.trim().toUpperCase() === 'CONFIRMAR' ? 'success' : 'default'}
+                endContent={confirmarTexto.trim().toUpperCase() === 'CONFIRMAR'
+                  ? <Icon icon="lucide:check-circle" width={16} className="text-success" /> : null}
+              />
+            </ModalBody>
+
+            <ModalFooter>
+              <Button variant="light" onPress={onClose} isDisabled={isSubmitting}>
+                Cancelar
+              </Button>
+              <Button
+                color="warning"
+                variant="solid"
+                className="font-bold text-white"
+                isDisabled={!canSubmit}
+                isLoading={isSubmitting}
+                onPress={handleSubmit}
+              >
+                Reasignar Semanas
+              </Button>
+            </ModalFooter>
+          </>
+        )}
+      </ModalContent>
+    </Modal>
   );
 };
 
@@ -492,6 +998,19 @@ const SeccionSemanas: React.FC<SeccionSemanasProps> = ({ toast }) => {
     };
     fetchSemanas();
   }, [toast, filtroAnio]);
+
+  // Callback llamado por ReasignarSemanasModal tras éxito
+  // updatedSemanas contiene TODAS las semanas del año de la nueva fecha (backend devuelve año completo)
+  const handleReasignarSuccess = (anioSolicitado: string, updatedSemanas: ISemana[]) => {
+    // Determinar el año real de los datos devueltos (puede diferir si la nueva fecha es otro año)
+    const anioReal = updatedSemanas.length > 0
+      ? updatedSemanas[0].anio.toString()
+      : anioSolicitado;
+    invalidarCacheSemanas(parseInt(anioSolicitado));
+    if (anioReal !== anioSolicitado) invalidarCacheSemanas(parseInt(anioReal));
+    setFiltroAnio(anioReal);
+    setSemanas(updatedSemanas);
+  };
 
   const handleGenerar = async () => {
     if (!fechaSeleccionada) {
@@ -700,59 +1219,69 @@ const SeccionSemanas: React.FC<SeccionSemanasProps> = ({ toast }) => {
         </div>
       )}
 
-      {/* Modal de Mantenimiento para Reasignar */}
-      <Modal isOpen={isOpen} onOpenChange={onOpenChange} size="sm" placement="center">
-        <ModalContent>
-          {(onClose) => (
-            <>
-              <ModalHeader className="flex flex-col gap-1">
-                <div className="flex items-center gap-2">
-                  <Icon icon="lucide:construction" className="text-warning" width={22} />
-                  <span className="font-bold">Función no disponible</span>
-                </div>
-              </ModalHeader>
-              <ModalBody className="py-8 text-center">
-                <div className="flex flex-col items-center gap-4">
-                  <div className="p-4 rounded-full bg-warning-50 dark:bg-warning-900/20 text-warning-500">
-                    <Icon icon="lucide:construction" width={48} />
-                  </div>
-                  <div className="space-y-2">
-                    <p className="font-bold text-lg text-secondary dark:text-foreground">Módulo en Mantenimiento</p>
-                    <p className="text-default-500 text-sm leading-relaxed px-2">
-                      La reasignación de semanas está temporalmente deshabilitada por actualizaciones técnicas.
-                    </p>
-                  </div>
-                </div>
-              </ModalBody>
-              <ModalFooter>
-                <Button variant="light" onPress={onClose}>
-                  Entendido
-                </Button>
-              </ModalFooter>
-            </>
-          )}
-        </ModalContent>
-      </Modal>
+      {/* Modal: Reasignar Semanas */}
+      <ReasignarSemanasModal
+        isOpen={isOpen}
+        onOpenChange={onOpenChange}
+        aniosDisponibles={aniosDisponibles}
+        filtroAnioActual={filtroAnio}
+        onSuccess={handleReasignarSuccess}
+      />
     </div>
   );
 };
 
-// ─── SECCIÓN: RESERVAS DE SALAS POR SECCIÓN ──────────────────────────────────
+// ─── SECCIÓN: GESTIÓN SALA Y RESERVAS ────────────────────────────────────────
+
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutos
+
+
+let _reservasCache: { data: IReservaActiva[]; ts: number } | null = null;
+let _salasCache: { data: ISala[]; ts: number } | null = null;
 
 const SeccionReservas: React.FC = () => {
-  const { isOpen: isModalOpen, onOpen: onModalOpen, onOpenChange: onModalOpenChange } = useDisclosure();
+  const toast = useToast();
+  const [reservas, setReservas] = React.useState<IReservaActiva[]>([]);
+  const [isLoading, setIsLoading] = React.useState(true);
+  const [errorMsg, setErrorMsg] = React.useState<string | null>(null);
   const [filtroDia, setFiltroDia] = React.useState<DiaSemana | 'Todos'>('Todos');
-  const [filtroSala, setFiltroSala] = React.useState('');
+  const [filtroTexto, setFiltroTexto] = React.useState('');
+  React.useEffect(() => {
+    const now = Date.now();
+    if (_reservasCache && now - _reservasCache.ts < CACHE_TTL_MS) {
+      setReservas(_reservasCache.data);
+      setIsLoading(false);
+    } else {
+      obtenerReservasActivasService()
+        .then((data) => {
+          _reservasCache = { data, ts: Date.now() };
+          setReservas(data);
+        })
+        .catch((err: Error) => {
+          const msg = err.message || 'Error al cargar las reservas';
+          setErrorMsg(msg);
+          toast.error(msg);
+        })
+        .finally(() => setIsLoading(false));
+    }
+  }, []);
 
-  const reservasFiltradas = MOCK_RESERVAS.filter((r) => {
-    const matchDia = filtroDia === 'Todos' || r.diaSemana === filtroDia;
-    const matchSala = filtroSala.trim() === '' || r.codSala.toLowerCase().includes(filtroSala.toLowerCase()) || r.nombreSala.toLowerCase().includes(filtroSala.toLowerCase());
-    return matchDia && matchSala;
+  const reservasFiltradas = reservas.filter((r) => {
+    const diaDisplay = DIA_DISPLAY[r.diaSemana] ?? r.diaSemana;
+    const matchDia = filtroDia === 'Todos' || diaDisplay === filtroDia;
+    const q = filtroTexto.trim().toLowerCase();
+    const matchTexto =
+      q === '' ||
+      r.nombreAsignatura.toLowerCase().includes(q) ||
+      r.nombreSeccion.toLowerCase().includes(q) ||
+      r.codSala.toLowerCase().includes(q) ||
+      r.nombreSala.toLowerCase().includes(q);
+    return matchDia && matchTexto;
   });
 
-  const totalReservas = MOCK_RESERVAS.length;
-  const salasUsadas = new Set(MOCK_RESERVAS.map((r) => r.idSala)).size;
-  const seccionesUsadas = new Set(MOCK_RESERVAS.map((r) => r.idSeccion)).size;
+  const totalReservas = reservas.length;
+  const salasUsadas = new Set(reservas.map((r) => r.codSala)).size;
+  const seccionesUsadas = new Set(reservas.map((r) => r.nombreSeccion)).size;
 
   const diaColors: Record<DiaSemana, 'default' | 'primary' | 'secondary' | 'success' | 'warning' | 'danger'> = {
     Lunes: 'primary',
@@ -816,16 +1345,6 @@ const SeccionReservas: React.FC = () => {
                 Mostrando {reservasFiltradas.length} de {totalReservas} reservas
               </p>
             </div>
-            <Button
-              size="sm"
-              color="warning"
-              variant="solid"
-              className="ml-auto font-bold text-white shadow-sm"
-              startContent={<Icon icon="lucide:plus" width={16} />}
-              onPress={onModalOpen}
-            >
-              Nueva Sala
-            </Button>
           </div>
 
           {/* Filtros */}
@@ -852,136 +1371,369 @@ const SeccionReservas: React.FC = () => {
                 </Chip>
               ))}
             </div>
-            {/* Filtro por sala */}
+            {/* Buscador asignatura / sección / sala */}
             <Input
-              placeholder="Buscar sala..."
-              value={filtroSala}
-              onValueChange={setFiltroSala}
+              placeholder="Buscar asignatura, sección o sala..."
+              value={filtroTexto}
+              onValueChange={setFiltroTexto}
               variant="bordered"
               size="sm"
-              className="sm:w-52 ml-auto"
+              className="sm:w-80 ml-auto"
               startContent={<Icon icon="lucide:search" className="text-default-400" width={16} />}
               isClearable
-              onClear={() => setFiltroSala('')}
+              onClear={() => setFiltroTexto('')}
             />
           </div>
         </CardHeader>
         <Divider />
         <CardBody className="p-0">
-          <Table
-            aria-label="Reservas de salas por sección"
-            removeWrapper
-            layout="fixed"
-            classNames={{
-              th: 'bg-default-100 dark:bg-default-50/20 text-default-500 font-bold uppercase text-xs h-10',
-              td: 'py-2.5 border-b border-default-50 dark:border-default-50/10 group-data-[last=true]:border-none px-4',
-            }}
-          >
-            <TableHeader>
-              <TableColumn width="6%" align="center">ID</TableColumn>
-              <TableColumn width="28%">SECCIÓN</TableColumn>
-              <TableColumn width="22%">SALA</TableColumn>
-              <TableColumn width="13%" align="center">DÍA</TableColumn>
-              <TableColumn width="9%" align="center">BLOQUE</TableColumn>
-              <TableColumn width="11%" align="center">INICIO</TableColumn>
-              <TableColumn width="11%" align="center">FIN</TableColumn>
-            </TableHeader>
-            <TableBody emptyContent={
-              <div className="py-10 text-center text-default-400">
-                <Icon icon="lucide:calendar-x" width={32} className="mx-auto mb-2 opacity-50" />
-                <p className="text-sm">No hay reservas para el filtro seleccionado</p>
-              </div>
-            }>
-              {reservasFiltradas.map((reserva) => (
-                <TableRow key={reserva.idReservaSala} className="hover:bg-default-50 dark:hover:bg-default-50/10 transition-colors">
-                  <TableCell className="text-center">
-                    <Chip size="sm" variant="flat" color="default" className="font-bold text-xs">
-                      #{reserva.idReservaSala}
-                    </Chip>
-                  </TableCell>
-                  <TableCell>
-                    <p className="font-semibold text-sm text-secondary dark:text-foreground leading-tight">
-                      {reserva.nombreSeccion}
-                    </p>
-                    <p className="text-xs text-default-400">ID: {reserva.idSeccion}</p>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <Chip size="sm" variant="flat" color="primary" className="font-mono font-bold text-xs shrink-0">
-                        {reserva.codSala}
-                      </Chip>
-                      <span className="text-sm text-default-600 truncate">{reserva.nombreSala}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-center">
-                    <Chip size="sm" variant="flat" color={diaColors[reserva.diaSemana]} className="font-medium text-xs">
-                      {reserva.diaSemana}
-                    </Chip>
-                  </TableCell>
-                  <TableCell className="text-center">
-                    <span className="text-sm font-bold text-default-700">B{reserva.numeroBloque}</span>
-                  </TableCell>
-                  <TableCell className="text-center">
-                    <span className="text-sm font-mono text-default-600">{reserva.horaInicio}</span>
-                  </TableCell>
-                  <TableCell className="text-center">
-                    <span className="text-sm font-mono text-default-600">{reserva.horaFin}</span>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          {isLoading ? (
+            <div className="flex justify-center items-center py-16">
+              <Spinner size="lg" color="primary" />
+            </div>
+          ) : errorMsg ? (
+            <div className="flex flex-col items-center py-16 gap-3 text-danger">
+              <Icon icon="lucide:alert-triangle" width={32} className="opacity-70" />
+              <p className="text-sm font-medium">{errorMsg}</p>
+            </div>
+          ) : (
+            <Table
+              aria-label="Gestión Sala y Reservas"
+              removeWrapper
+              layout="fixed"
+              classNames={{
+                th: 'bg-default-100 dark:bg-default-50/20 text-default-500 font-bold uppercase text-xs h-10 text-center',
+                td: 'py-2.5 border-b border-default-50 dark:border-default-50/10 group-data-[last=true]:border-none px-4 text-center',
+              }}
+            >
+              <TableHeader>
+                <TableColumn width="22%" align="center">ASIGNATURA</TableColumn>
+                <TableColumn width="24%" align="center">SECCIÓN</TableColumn>
+                <TableColumn width="20%" align="center">SALA</TableColumn>
+                <TableColumn width="13%" align="center">DÍA</TableColumn>
+                <TableColumn width="21%" align="center">BLOQUE / HORARIO</TableColumn>
+              </TableHeader>
+              <TableBody emptyContent={
+                <div className="py-10 text-center text-default-400">
+                  <Icon icon="lucide:calendar-x" width={32} className="mx-auto mb-2 opacity-50" />
+                  <p className="text-sm">No hay reservas para el filtro seleccionado</p>
+                </div>
+              }>
+                {reservasFiltradas.map((reserva, idx) => {
+                  const diaDisplay = (DIA_DISPLAY[reserva.diaSemana] ?? reserva.diaSemana) as DiaSemana;
+                  return (
+                    <TableRow key={idx} className="hover:bg-default-50 dark:hover:bg-default-50/10 transition-colors">
+                      <TableCell>
+                        <p className="font-semibold text-sm text-secondary dark:text-foreground leading-tight truncate" title={reserva.nombreAsignatura}>
+                          {reserva.nombreAsignatura}
+                        </p>
+                      </TableCell>
+                      <TableCell>
+                        <p className="text-sm text-default-700 leading-tight truncate" title={reserva.nombreSeccion}>{reserva.nombreSeccion}</p>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2 justify-center">
+                          <Chip size="sm" variant="flat" color="primary" className="font-mono font-bold text-xs shrink-0">
+                            {reserva.codSala}
+                          </Chip>
+                          <span className="text-sm text-default-600 truncate" title={reserva.nombreSala}>{reserva.nombreSala}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <Chip size="sm" variant="flat" color={diaColors[diaDisplay]} className="font-medium text-xs">
+                          {diaDisplay}
+                        </Chip>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <span className="text-sm font-bold text-default-700 mr-1">B{reserva.numeroBloque}</span>
+                        <span className="text-xs font-mono text-default-500">{reserva.horaInicio} – {reserva.horaFin}</span>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          )}
         </CardBody>
       </Card>
+    </div>
+  );
+};
 
-      {/* Badge de datos mock */}
-      <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-default-100 dark:bg-default-50/20 border border-default-200 dark:border-default-100 w-fit">
-        <Icon icon="lucide:database" className="text-default-400" width={16} />
-        <p className="text-xs text-default-500">
-          Datos de ejemplo — pendiente de conexión con backend (<code className="font-mono">reserva_sala</code>)
-        </p>
+// ─── SECCIÓN: GESTIÓN SALAS ───────────────────────────────────────────────────
+
+const MAX_COD = 50;
+const MAX_NOMBRE = 100;
+
+const SeccionGestionSalas: React.FC = () => {
+  const toast = useToast();
+  const { isOpen: isCreateOpen, onOpen: onCreateOpen, onOpenChange: onCreateOpenChange } = useDisclosure();
+  const { isOpen: isEditOpen, onOpen: onEditOpen, onOpenChange: onEditOpenChange } = useDisclosure();
+  const { isOpen: isDeleteOpen, onOpen: onDeleteOpen, onOpenChange: onDeleteOpenChange } = useDisclosure();
+
+  const [salas, setSalas] = React.useState<ISala[]>([]);
+  const [isLoading, setIsLoading] = React.useState(true);
+  const [filtroSala, setFiltroSala] = React.useState('');
+  const [formCod, setFormCod] = React.useState('');
+  const [formNombre, setFormNombre] = React.useState('');
+  const [editId, setEditId] = React.useState<number | null>(null);
+  const [deleteTarget, setDeleteTarget] = React.useState<ISala | null>(null);
+  const [confirmarDesactivar, setConfirmarDesactivar] = React.useState('');
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
+
+  React.useEffect(() => {
+    const now = Date.now();
+    if (_salasCache && now - _salasCache.ts < CACHE_TTL_MS) {
+      setSalas(_salasCache.data);
+      setIsLoading(false);
+    } else {
+      obtenerSalasActivasService()
+        .then((data) => {
+          _salasCache = { data, ts: Date.now() };
+          setSalas(data);
+        })
+        .catch((err: Error) => toast.error(err.message))
+        .finally(() => setIsLoading(false));
+    }
+  }, []);
+
+  const salasFiltradas = salas.filter(
+    (s) =>
+      filtroSala.trim() === '' ||
+      s.codSala.toLowerCase().includes(filtroSala.toLowerCase()) ||
+      s.nombreSala.toLowerCase().includes(filtroSala.toLowerCase())
+  );
+
+  const openCreate = () => {
+    setFormCod('');
+    setFormNombre('');
+    onCreateOpen();
+  };
+
+  const openEdit = (sala: ISala) => {
+    setEditId(sala.idSala);
+    setFormCod(sala.codSala);
+    setFormNombre(sala.nombreSala);
+    onEditOpen();
+  };
+
+  const openDelete = (sala: ISala) => {
+    setDeleteTarget(sala);
+    setConfirmarDesactivar('');
+    onDeleteOpen();
+  };
+
+  const handleCreate = async (onClose: () => void) => {
+    if (!formCod.trim() || !formNombre.trim()) return;
+    setIsSubmitting(true);
+    try {
+      const nueva = await crearSalaService({ codSala: formCod, nombreSala: formNombre });
+      setSalas((prev) => {
+        const next = [...prev, nueva];
+        _salasCache = { data: next, ts: Date.now() };
+        return next;
+      });
+      toast.success('Sala creada correctamente');
+      onClose();
+    } catch (err: any) {
+      toast.error(err.message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleEdit = async (onClose: () => void) => {
+    if (!editId || !formCod.trim() || !formNombre.trim()) return;
+    setIsSubmitting(true);
+    try {
+      const updated = await actualizarSalaService(editId, { codSala: formCod, nombreSala: formNombre });
+      setSalas((prev) => {
+        const next = prev.map((s) => (s.idSala === editId ? updated : s));
+        _salasCache = { data: next, ts: Date.now() };
+        return next;
+      });
+      toast.success('Sala actualizada correctamente');
+      onClose();
+    } catch (err: any) {
+      toast.error(err.message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleDelete = async (onClose: () => void) => {
+    if (!deleteTarget) return;
+    setIsSubmitting(true);
+    try {
+      await eliminarSalaService(deleteTarget.idSala);
+      setSalas((prev) => {
+        const next = prev.filter((s) => s.idSala !== deleteTarget.idSala);
+        _salasCache = { data: next, ts: Date.now() };
+        return next;
+      });
+      toast.success('Sala desactivada correctamente');
+      onClose();
+    } catch (err: any) {
+      toast.error(err.message);
+      onClose();
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const canSubmitForm = formCod.trim().length > 0 && formNombre.trim().length > 0;
+  const canConfirmarDesactivar = confirmarDesactivar.trim().toUpperCase() === 'CONFIRMAR';
+
+  return (
+    <div className="space-y-4">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+        <div className="flex items-center gap-3 flex-1">
+          <div className="p-2.5 rounded-xl bg-warning-100 dark:bg-warning-900/30 text-warning-600 dark:text-warning-400">
+            <Icon icon="lucide:building-2" width={22} />
+          </div>
+          <div>
+            <h3 className="font-bold text-base text-secondary dark:text-foreground leading-tight">Salas Activas</h3>
+            <p className="text-xs text-default-400">
+              {filtroSala.trim() !== '' && salasFiltradas.length !== salas.length
+                ? `${salasFiltradas.length} resultado${salasFiltradas.length !== 1 ? 's' : ''} · ${salas.length} totales`
+                : `${salas.length} sala${salas.length !== 1 ? 's' : ''} registrada${salas.length !== 1 ? 's' : ''}`}
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <Input
+            placeholder="Buscar sala..."
+            value={filtroSala}
+            onValueChange={setFiltroSala}
+            variant="bordered"
+            size="sm"
+            className="w-48"
+            startContent={<Icon icon="lucide:search" className="text-default-400" width={15} />}
+            isClearable
+            onClear={() => setFiltroSala('')}
+          />
+          <Button
+            size="sm"
+            color="warning"
+            variant="solid"
+            className="font-bold text-white shadow-sm shrink-0"
+            startContent={<Icon icon="lucide:plus" width={16} />}
+            onPress={openCreate}
+          >
+            Nueva Sala
+          </Button>
+        </div>
       </div>
 
+      {/* Grid de salas */}
+      {isLoading ? (
+        <div className="flex justify-center items-center py-20">
+          <Spinner size="lg" color="warning" />
+        </div>
+      ) : salasFiltradas.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-16 text-default-400">
+          <div className="p-4 rounded-2xl bg-default-100 dark:bg-default-50/10 mb-3">
+            <Icon icon="lucide:building-2" width={36} className="opacity-40" />
+          </div>
+          <p className="text-sm font-medium">
+            {filtroSala.trim() !== '' ? 'Sin resultados para esa búsqueda' : 'No hay salas registradas'}
+          </p>
+          {filtroSala.trim() !== '' && (
+            <button onClick={() => setFiltroSala('')} className="mt-1 text-xs text-warning-500 hover:underline cursor-pointer">
+              Limpiar búsqueda
+            </button>
+          )}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+          {salasFiltradas.map((sala) => (
+            <Card
+              key={sala.idSala}
+              className="shadow-sm border border-default-200 dark:border-default-100 bg-white dark:bg-content1 hover:shadow-md transition-shadow"
+            >
+              <CardBody className="p-4">
+                <div className="flex items-start justify-between gap-2 mb-3">
+                  <div className="p-2 rounded-lg bg-warning-50 dark:bg-warning-900/20 text-warning-500">
+                    <Icon icon="lucide:door-open" width={18} />
+                  </div>
+                  <Chip
+                    size="sm"
+                    variant="flat"
+                    color="warning"
+                    className="font-mono font-bold text-xs max-w-[120px] truncate"
+                  >
+                    {sala.codSala}
+                  </Chip>
+                </div>
+                <p
+                  className="text-sm font-semibold text-default-700 dark:text-default-300 truncate mb-3"
+                  title={sala.nombreSala}
+                >
+                  {sala.nombreSala}
+                </p>
+                <div className="flex items-center gap-1.5">
+                  <Button
+                    size="sm"
+                    variant="flat"
+                    color="primary"
+                    className="flex-1 font-medium text-xs"
+                    startContent={<Icon icon="lucide:pencil" width={13} />}
+                    onPress={() => openEdit(sala)}
+                  >
+                    Editar
+                  </Button>
+                  <Button
+                    isIconOnly
+                    size="sm"
+                    variant="flat"
+                    color="danger"
+                    onPress={() => openDelete(sala)}
+                    aria-label="Desactivar"
+                  >
+                    <Icon icon="lucide:trash-2" width={14} />
+                  </Button>
+                </div>
+              </CardBody>
+            </Card>
+          ))}
+        </div>
+      )}
+
       {/* Modal: Nueva Sala */}
-      <Modal isOpen={isModalOpen} onOpenChange={onModalOpenChange} size="sm" placement="center">
+      <Modal isOpen={isCreateOpen} onOpenChange={onCreateOpenChange} size="sm" placement="center">
         <ModalContent>
           {(onClose) => (
             <>
               <ModalHeader className="flex items-center gap-2">
                 <div className="p-1.5 rounded-lg bg-warning-100 text-warning-600">
-                  <Icon icon="lucide:door-open" width={18} />
+                  <Icon icon="lucide:plus-circle" width={18} />
                 </div>
                 <span className="font-bold text-secondary dark:text-white">Nueva Sala</span>
               </ModalHeader>
-              <ModalBody className="py-6">
-                <div className="flex flex-col gap-3">
-                  <Input
-                    label="Código de sala"
-                    placeholder="Ej: LG1, AULA-01"
-                    variant="bordered"
-                    size="sm"
-                    startContent={<Icon icon="lucide:hash" className="text-default-400" width={16} />}
-                  />
-                  <Input
-                    label="Nombre de sala"
-                    placeholder="Ej: Laboratorio de Gastronomía"
-                    variant="bordered"
-                    size="sm"
-                    startContent={<Icon icon="lucide:school" className="text-default-400" width={16} />}
-                  />
-                </div>
-                <div className="mt-4 flex items-center gap-2 px-3 py-2.5 rounded-lg bg-warning-50 dark:bg-warning-900/20 border border-warning-200 dark:border-warning-800">
-                  <Icon icon="lucide:construction" className="text-warning-500 shrink-0" width={16} />
-                  <p className="text-xs text-warning-700 dark:text-warning-400">
-                    Creación de salas pendiente de integración con backend.
-                  </p>
-                </div>
+              <ModalBody className="py-4 flex flex-col gap-3">
+                <Input
+                  label="Código de sala"
+                  placeholder="Ej: LG1, AULA-01"
+                  variant="bordered"
+                  value={formCod}
+                  onValueChange={(v) => { if (v.length <= MAX_COD) setFormCod(v); }}
+                  description={`${formCod.length}/${MAX_COD} caracteres`}
+                  startContent={<Icon icon="lucide:hash" className="text-default-400" width={16} />}
+                />
+                <Input
+                  label="Nombre de sala"
+                  placeholder="Ej: Laboratorio de Gastronomía"
+                  variant="bordered"
+                  value={formNombre}
+                  onValueChange={(v) => { if (v.length <= MAX_NOMBRE) setFormNombre(v); }}
+                  description={`${formNombre.length}/${MAX_NOMBRE} caracteres`}
+                  startContent={<Icon icon="lucide:building-2" className="text-default-400" width={16} />}
+                />
               </ModalBody>
               <ModalFooter>
-                <Button variant="light" className="font-medium" onPress={onClose}>
-                  Cancelar
-                </Button>
-                <Button color="warning" variant="solid" className="font-bold text-white" isDisabled onPress={onClose}>
+                <Button variant="light" className="font-medium" onPress={onClose} isDisabled={isSubmitting}>Cancelar</Button>
+                <Button color="warning" variant="solid" className="font-bold text-white" isDisabled={!canSubmitForm || isSubmitting} isLoading={isSubmitting} onPress={() => handleCreate(onClose)}>
                   Crear Sala
                 </Button>
               </ModalFooter>
@@ -989,7 +1741,333 @@ const SeccionReservas: React.FC = () => {
           )}
         </ModalContent>
       </Modal>
+
+      {/* Modal: Editar Sala */}
+      <Modal isOpen={isEditOpen} onOpenChange={onEditOpenChange} size="sm" placement="center">
+        <ModalContent>
+          {(onClose) => (
+            <>
+              <ModalHeader className="flex items-center gap-2">
+                <div className="p-1.5 rounded-lg bg-primary-100 text-primary-600">
+                  <Icon icon="lucide:pencil" width={18} />
+                </div>
+                <span className="font-bold text-secondary dark:text-white">Editar Sala</span>
+              </ModalHeader>
+              <ModalBody className="py-4 flex flex-col gap-3">
+                <Input
+                  label="Código de sala"
+                  variant="bordered"
+                  value={formCod}
+                  onValueChange={(v) => { if (v.length <= MAX_COD) setFormCod(v); }}
+                  description={`${formCod.length}/${MAX_COD} caracteres`}
+                  startContent={<Icon icon="lucide:hash" className="text-default-400" width={16} />}
+                />
+                <Input
+                  label="Nombre de sala"
+                  variant="bordered"
+                  value={formNombre}
+                  onValueChange={(v) => { if (v.length <= MAX_NOMBRE) setFormNombre(v); }}
+                  description={`${formNombre.length}/${MAX_NOMBRE} caracteres`}
+                  startContent={<Icon icon="lucide:building-2" className="text-default-400" width={16} />}
+                />
+              </ModalBody>
+              <ModalFooter>
+                <Button variant="light" className="font-medium" onPress={onClose} isDisabled={isSubmitting}>Cancelar</Button>
+                <Button color="primary" variant="solid" className="font-bold" isDisabled={!canSubmitForm || isSubmitting} isLoading={isSubmitting} onPress={() => handleEdit(onClose)}>
+                  Guardar Cambios
+                </Button>
+              </ModalFooter>
+            </>
+          )}
+        </ModalContent>
+      </Modal>
+
+      {/* Modal: Confirmar Desactivar */}
+      <Modal isOpen={isDeleteOpen} onOpenChange={onDeleteOpenChange} size="sm" placement="center">
+        <ModalContent>
+          {(onClose) => (
+            <>
+              <ModalHeader className="flex items-center gap-2">
+                <div className="p-1.5 rounded-lg bg-danger-100 text-danger-600">
+                  <Icon icon="lucide:alert-triangle" width={18} />
+                </div>
+                <span className="font-bold text-secondary dark:text-white">Desactivar Sala</span>
+              </ModalHeader>
+              <ModalBody className="py-4 flex flex-col gap-3">
+                <p className="text-sm text-default-600">
+                  Vas a desactivar{' '}
+                  <span className="font-bold text-secondary dark:text-foreground">
+                    {deleteTarget?.codSala} — {deleteTarget?.nombreSala}
+                  </span>
+                  . Solo se permite si la sala no tiene reservas activas.
+                </p>
+                <div className="flex items-start gap-2 px-3 py-2.5 rounded-lg bg-danger-50 dark:bg-danger-900/20 border border-danger-200 dark:border-danger-800">
+                  <Icon icon="lucide:info" className="text-danger-500 shrink-0 mt-0.5" width={15} />
+                  <p className="text-xs text-danger-700 dark:text-danger-400">
+                    Si la sala tiene reservas vinculadas, el sistema rechazará la operación automáticamente.
+                  </p>
+                </div>
+                <Input
+                  label='Escriba "CONFIRMAR" para continuar'
+                  placeholder="CONFIRMAR"
+                  variant="bordered"
+                  value={confirmarDesactivar}
+                  onValueChange={setConfirmarDesactivar}
+                  color={canConfirmarDesactivar ? 'success' : 'default'}
+                  endContent={canConfirmarDesactivar ? <Icon icon="lucide:check-circle" width={16} className="text-success" /> : null}
+                />
+              </ModalBody>
+              <ModalFooter>
+                <Button variant="light" className="font-medium" onPress={onClose} isDisabled={isSubmitting}>Cancelar</Button>
+                <Button color="danger" variant="solid" className="font-bold" isLoading={isSubmitting} isDisabled={!canConfirmarDesactivar || isSubmitting} onPress={() => handleDelete(onClose)}>
+                  Desactivar
+                </Button>
+              </ModalFooter>
+            </>
+          )}
+        </ModalContent>
+      </Modal>
     </div>
+  );
+};
+
+// ─── WRAPPER: TOGGLE RESERVAS / GESTIÓN SALAS ────────────────────────────────
+
+const SeccionGestionSalaYReservas: React.FC = () => {
+  const [vista, setVista] = React.useState<'reservas' | 'salas'>('reservas');
+
+  return (
+    <div className="space-y-4">
+      {/* Toggle estilo conglomerado */}
+      <div className="flex items-center gap-1 bg-default-100 rounded-lg p-1 w-fit">
+        <button
+          onClick={() => setVista('reservas')}
+          className={`px-3 py-1.5 rounded-md text-xs font-semibold cursor-pointer transition-all ${vista === 'reservas' ? 'bg-white shadow-sm text-primary dark:bg-content2 dark:text-primary' : 'text-default-500 hover:text-default-700'
+            }`}
+        >
+          <span className="flex items-center gap-1.5">
+            <Icon icon="lucide:calendar-clock" width={12} />
+            Reservas Registradas
+          </span>
+        </button>
+        <button
+          onClick={() => setVista('salas')}
+          className={`px-3 py-1.5 rounded-md text-xs font-semibold cursor-pointer transition-all ${vista === 'salas' ? 'bg-white shadow-sm text-warning dark:bg-content2 dark:text-warning' : 'text-default-500 hover:text-default-700'
+            }`}
+        >
+          <span className="flex items-center gap-1.5">
+            <Icon icon="lucide:building-2" width={12} />
+            Gestión Salas
+          </span>
+        </button>
+      </div>
+
+      {vista === 'reservas' ? <SeccionReservas /> : <SeccionGestionSalas />}
+    </div>
+  );
+};
+
+// ─── SECCIÓN: GESTION DEL SISTEMA ────────────────────────────────────────────
+
+const SeccionGestionDelSistema: React.FC = () => {
+  const toast = useToast();
+
+  // ── Estado de la configuración ──
+  const [solicitudesEnPedido, setSolicitudesEnPedido] = React.useState(false);
+  // Valor guardado en BD para detectar cambios sin guardar
+  const [solicitudesEnPedidoGuardado, setSolicitudesEnPedidoGuardado] = React.useState(false);
+
+  const [isLoadingConfig, setIsLoadingConfig] = React.useState(true);
+  const [isSaving, setIsSaving] = React.useState(false);
+  const [isRestoring, setIsRestoring] = React.useState(false);
+
+  // ── Cargar configuración al montar ──
+  React.useEffect(() => {
+    const fetchConfig = async () => {
+      try {
+        setIsLoadingConfig(true);
+        const config = await getConfiguracionSistema();
+        setSolicitudesEnPedido(config.solicitudesEnPedido);
+        setSolicitudesEnPedidoGuardado(config.solicitudesEnPedido);
+      } catch (error: any) {
+        toast.error(error?.response?.data?.message || error.message || 'Error al cargar la configuración del sistema');
+      } finally {
+        setIsLoadingConfig(false);
+      }
+    };
+    fetchConfig();
+  }, []);
+
+  // ── Detectar cambios sin guardar ──
+  const hayCambiosSinGuardar = solicitudesEnPedido !== solicitudesEnPedidoGuardado;
+
+  // ── Guardar cambios (PATCH) ──
+  const handleGuardar = async () => {
+    setIsSaving(true);
+    try {
+      const updated = await patchConfiguracionSistema({
+        solicitudesEnPedido,
+      });
+      setSolicitudesEnPedido(updated.solicitudesEnPedido);
+      setSolicitudesEnPedidoGuardado(updated.solicitudesEnPedido);
+      toast.success('Configuración guardada correctamente');
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || error.message || 'Error al guardar la configuración');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // ── Restaurar a predeterminados (POST /restaurar) ──
+  const handleRestablecer = async () => {
+    setIsRestoring(true);
+    try {
+      const restored = await restaurarConfiguracionSistema();
+      setSolicitudesEnPedido(restored.solicitudesEnPedido);
+      setSolicitudesEnPedidoGuardado(restored.solicitudesEnPedido);
+      toast.success('Configuración restablecida a los valores predeterminados');
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || error.message || 'Error al restablecer la configuración');
+    } finally {
+      setIsRestoring(false);
+    }
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4 }}
+      className="space-y-6"
+    >
+      {/* Card Principal */}
+      <Card className="shadow-sm border border-default-200 dark:border-default-100 bg-white dark:bg-content1">
+        <CardHeader className="px-6 pt-5 pb-3 flex items-center gap-3 flex-wrap">
+          <div className="p-2 rounded-lg bg-primary-100 dark:bg-primary-900/30 text-primary">
+            <Icon icon="lucide:sliders-horizontal" width={20} />
+          </div>
+          <div>
+            <h3 className="font-bold text-base text-secondary dark:text-foreground">Configuración del Sistema</h3>
+            <p className="text-xs text-default-400">Parámetros globales que afectan el funcionamiento del sistema</p>
+          </div>
+          {/* Indicador de cambios sin guardar */}
+          {hayCambiosSinGuardar && !isLoadingConfig && (
+            <div className="ml-auto flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-warning-50 dark:bg-warning-900/20 border border-warning-200 dark:border-warning-700">
+              <div className="w-1.5 h-1.5 rounded-full bg-warning-500 animate-pulse" />
+              <span className="text-xs font-semibold text-warning-700 dark:text-warning-400">Cambios sin guardar</span>
+            </div>
+          )}
+        </CardHeader>
+        <Divider />
+        <CardBody className="p-6 space-y-6">
+          {isLoadingConfig ? (
+            /* ── Skeleton de carga ── */
+            <div className="flex flex-col gap-4">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-default-100 dark:bg-default-50/20 animate-pulse" />
+                <div className="h-4 w-48 rounded bg-default-100 dark:bg-default-50/20 animate-pulse" />
+              </div>
+              <div className="h-16 rounded-lg bg-default-100 dark:bg-default-50/20 animate-pulse" />
+            </div>
+          ) : (
+            <>
+              {/* Sección 1: Configuración de Solicitudes */}
+              <div className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <div className="p-1.5 rounded-lg bg-warning-50 dark:bg-warning-900/20 text-warning-600">
+                    <Icon icon="lucide:receipt" width={16} />
+                  </div>
+                  <h4 className="font-semibold text-sm text-secondary dark:text-foreground">Procesamiento de Solicitudes</h4>
+                </div>
+
+                {/* Checkbox */}
+                <div
+                  className={`flex items-start gap-3 px-4 py-3 rounded-lg border transition-colors cursor-pointer ${solicitudesEnPedido
+                    ? 'bg-success-50 dark:bg-success-900/15 border-success-200 dark:border-success-700 hover:bg-success-100 dark:hover:bg-success-900/25'
+                    : 'bg-default-50 dark:bg-default-50/50 border-default-100 dark:border-default-100/50 hover:bg-default-100 dark:hover:bg-default-50'
+                    }`}
+                  onClick={() => setSolicitudesEnPedido((prev) => !prev)}
+                >
+                  <Checkbox
+                    isSelected={solicitudesEnPedido}
+                    onChange={(e) => setSolicitudesEnPedido(e.target.checked)}
+                    color="success"
+                    classNames={{ wrapper: 'mt-0.5' }}
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                  <div className="flex-1 space-y-1">
+                    <label className="text-sm font-semibold text-secondary dark:text-foreground cursor-pointer select-none">
+                      Incluir automáticamente todas las solicitudes aceptadas a un pedido en la semana correspondiente
+                    </label>
+                    <p className="text-xs text-default-500 leading-relaxed">
+                      Si está activado, cuando una solicitud sea aceptada, se incluirá automáticamente en el pedido de la semana correspondiente, omitiendo pasos manuales de configuración.
+                    </p>
+                    {/* Badge de estado actual */}
+                    <div className="pt-1">
+                      <Chip
+                        size="sm"
+                        variant="flat"
+                        color={solicitudesEnPedido ? 'success' : 'default'}
+                        startContent={
+                          <Icon
+                            icon={solicitudesEnPedido ? 'lucide:check-circle' : 'lucide:circle'}
+                            width={12}
+                          />
+                        }
+                      >
+                        {solicitudesEnPedido ? 'Activado' : 'Desactivado'}
+                      </Chip>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <Divider />
+
+              {/* Info Box */}
+              <div className="flex gap-3 p-4 rounded-xl bg-blue-50 dark:bg-blue-900/15 border border-blue-200 dark:border-blue-800">
+                <Icon icon="lucide:info" className="text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" width={18} />
+                <div className="space-y-1">
+                  <p className="text-xs font-semibold text-blue-900 dark:text-blue-300">Nota de implementación</p>
+                  <p className="text-xs text-blue-800 dark:text-blue-400 leading-relaxed">
+                    Con el tiempo se podrán agregar más configuraciones que reflejarán cambios en todo el sistema, controladas exclusivamente por el administrador.
+                  </p>
+                </div>
+              </div>
+            </>
+          )}
+        </CardBody>
+
+        <Divider />
+
+        <CardBody className="px-6 py-4 flex flex-row gap-3 justify-end">
+          {/* Botón Restablecer: llama al endpoint POST /restaurar */}
+          <Button
+            variant="flat"
+            color="default"
+            onPress={handleRestablecer}
+            isDisabled={isLoadingConfig || isSaving || isRestoring}
+            isLoading={isRestoring}
+            startContent={!isRestoring && <Icon icon="lucide:rotate-ccw" width={15} />}
+            className="font-medium"
+          >
+            Restablecer predeterminados
+          </Button>
+          {/* Botón Guardar: llama al endpoint PATCH /configuracion */}
+          <Button
+            color="primary"
+            variant="solid"
+            className="font-bold text-secondary"
+            isLoading={isSaving}
+            isDisabled={isLoadingConfig || isSaving || isRestoring || !hayCambiosSinGuardar}
+            onPress={handleGuardar}
+            startContent={!isSaving && <Icon icon="lucide:save" width={16} />}
+          >
+            Guardar Cambios
+          </Button>
+        </CardBody>
+      </Card>
+    </motion.div>
   );
 };
 

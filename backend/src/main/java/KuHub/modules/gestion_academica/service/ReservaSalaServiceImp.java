@@ -2,12 +2,14 @@ package KuHub.modules.gestion_academica.service;
 
 import KuHub.modules.gestion_academica.dtos.dtoentity.ReservaSalaEntityResponseDTO;
 import KuHub.modules.gestion_academica.dtos.record.CheckAvailability;
+import KuHub.modules.gestion_academica.dtos.record.ReservaActivaView;
 import KuHub.modules.gestion_academica.dtos.request.projection.NumberBlockProjection;
 import KuHub.modules.gestion_academica.entity.ReservaSala;
 import KuHub.modules.gestion_academica.exceptions.GestionAcademicaException;
 import KuHub.modules.gestion_academica.repository.ReservaSalaRepository;
 import KuHub.modules.gestion_receta.exceptions.GestionRecetaException;
 import KuHub.utils.StringUtils;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -15,11 +17,35 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
+@Slf4j
 @Service
 public class ReservaSalaServiceImp implements ReservaSalaService{
 
+    /**Repositories*/
     @Autowired
     private ReservaSalaRepository reservaSalaRepository;
+
+    @Transactional(readOnly = true)
+    @Override
+    public List<ReservaActivaView> findAllReservasActivas() {
+        List<Object[]> rows = reservaSalaRepository.findAllReservasActivasRaw();
+        log.info("findAllReservasActivas — filas crudas obtenidas: {}", rows.size());
+        List<ReservaActivaView> result = rows.stream()
+                .map(ReservaActivaView::fromRow)
+                .toList();
+        log.info("findAllReservasActivas — reservas mapeadas: {}", result.size());
+        return result;
+    }
+
+    @Transactional(readOnly = true)
+    @Override
+    public List<Integer> findReservedBlocksByTeacherAndDayWeek(Integer idUsuario, String diaSemana) {
+        ReservaSala.DiaSemana enumDia = ReservaSala.DiaSemana.valueOf(diaSemana.toUpperCase());
+        return reservaSalaRepository.findReservedBlocksByTeacherAndDayWeek(idUsuario, enumDia.name())
+                .stream()
+                .map(NumberBlockProjection::getBloqueHorarioNumeroBloque)
+                .toList();
+    }
 
     /**Metodo ultilizado para obtener los */
     @Transactional(readOnly = true)

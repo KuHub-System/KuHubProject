@@ -188,10 +188,12 @@ export const obtenerSolicitudesPorSemanaService = async (
 export interface ISolicitationStatusItemDTO {
   idSolicitud: number;
   estado: string; // "PENDIENTE" | "ACEPTADA" | "RECHAZADA"
+  motivo?: string; // Solo cuando estado === "RECHAZADA"
 }
 
 export interface IChangeMassiveStatusDTO {
   estadosSolicitudes: ISolicitationStatusItemDTO[];
+  idSemana?: number;
 }
 
 export const cambiarEstadoMasivoService = async (
@@ -402,7 +404,7 @@ export interface IProductoAprobacion {
 
 export interface IPedidoAprobacion {
   idPedido: number;
-  estadoPedido: string;         // "PENDIENTE" | "APROVADO" | "RECHAZADO"
+  estadoPedido: string;         // "PENDIENTE" | "APROBADO" | "RECHAZADO"
   productos: IProductoAprobacion[];
 }
 
@@ -934,4 +936,35 @@ export const actualizarEstadoBodegaService = (
       }
     }, 100);
   });
+};
+
+// ── Proyección de Abastecimiento ──────────────────────────────────────────────
+export interface IProductoAbastecimientoItem {
+  idProducto: number;
+  nombreProducto: string;
+  nombreUnidad: string;
+  abreviatura: string;
+  esFraccionario: boolean;
+  nombreCategoria: string;
+  cantidadTotalSolicitada: number;
+}
+
+export interface IProyeccionAbastecimiento {
+  proyeccionAbastecimiento: IProductoAbastecimientoItem[];
+}
+
+export interface IDateRangeDTO {
+  fechaInicio: string; // "YYYY-MM-DD"
+  fechaFin: string;    // "YYYY-MM-DD"
+}
+
+export const obtenerProyeccionAbastecimientoService = async (
+  fechaInicio: string,
+  fechaFin: string
+): Promise<IProyeccionAbastecimiento> => {
+  const response = await api.post<IProyeccionAbastecimiento>(
+    '/solicitud/proyeccion-abastecimiento',
+    { fechaInicio, fechaFin } as IDateRangeDTO
+  );
+  return response.data;
 };

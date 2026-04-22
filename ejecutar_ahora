@@ -1,0 +1,58 @@
+Contexto:
+Debes implementar la gestión de permisos para la nueva funcionalidad "Abastecimiento por Pedido", respetando estrictamente lo definido en GESTION_PERMISO.md.
+
+Objetivo:
+Aplicar correctamente el sistema de roles y permisos para el botón y funcionalidad de carga de proyección de abastecimiento por pedido, asegurando control total desde base de datos y comportamiento dinámico en frontend.
+
+Requerimientos funcionales:
+
+Definición de permisos
+Se deben crear y/o utilizar permisos bajo las siguientes categorías:
+Lectura (leer)
+Escritura (crear, editar, borrar, leer)
+Sin permiso
+Estos permisos deben estar asociados a la funcionalidad:
+"Abastecimiento por Pedido"
+Regla obligatoria
+Todo debe funcionar dinámicamente desde la base de datos.
+No debe existir lógica hardcodeada en ningún nivel.
+Cumplir estrictamente con lo definido en GESTION_PERMISO.md.
+Inserción de permisos
+Si el permiso no existe:
+Generar el INSERT SQL correspondiente.
+Asociarlo correctamente a la funcionalidad del botón.
+Integración con Gestión de Roles
+En la página "Gestión de Roles":
+Agregar el permiso correspondiente a esta funcionalidad.
+Ubicarlo dentro del módulo:
+Inventario
+Posición: entre Inventario y Gestión de Categorías
+Debe ser configurable por rol.
+Comportamiento en frontend
+Validar permisos antes de renderizar la funcionalidad.
+Si tiene permiso de lectura:
+Puede visualizar el botón/modal.
+Puede ejecutar consultas necesarias (GET / POST de lectura).
+No puede modificar datos manualmente fuera del flujo permitido.
+Si tiene permiso de escritura:
+Acceso completo a la funcionalidad.
+Puede ejecutar todas las acciones sin restricción.
+Si no tiene permiso:
+No se debe renderizar el botón ni la funcionalidad, o
+En casos específicos, deshabilitar el botón (según estándar del sistema).
+Restricción especial
+El rol ADMINISTRADOR:
+Tiene acceso total sin restricciones.
+Debe poder visualizar y ejecutar todas las funcionalidades.
+Renderizado condicionado
+La UI debe:
+Validar permisos antes de renderizar componentes.
+Evitar cualquier acceso visual o funcional si no corresponde.
+
+Consideraciones técnicas:
+
+Reutilizar lógica existente de validación de permisos.
+Mantener consistencia con la arquitectura actual.
+Aplicar principios DRY.
+Asegurar escalabilidad para futuras funcionalidades.
+Toda validación crítica también debe existir en backend.

@@ -78,9 +78,9 @@ interface InventoryWithProductUpdateDTO {
     idUnidadMedida: number;
     stock: number;
     stockLimit: number;
-    tipoMovimiento: string;
+    tipoMovimiento: string | null;
     stockEnVista: number;
-    delta: number;
+    delta: number | null;
     ajustePositivo?: boolean | null;
 }
 
@@ -290,7 +290,10 @@ export const actualizarProductoService = async (productoData: IActualizarProduct
         }
 
         const stockEnVista = productoData.stockEnVista ?? productoData.stock ?? 0;
-        const delta = productoData.delta ?? 0;
+        // delta null = sin movimiento de stock (solo actualiza metadata / stockLimit)
+        const hayMovimiento = productoData.tipoMovimiento && (productoData.delta ?? 0) > 0;
+        const delta = hayMovimiento ? (productoData.delta ?? null) : null;
+        const tipoMovimiento = hayMovimiento ? productoData.tipoMovimiento : null;
 
         const backendDTO: InventoryWithProductUpdateDTO = {
             idInventario: idInventario,
@@ -302,7 +305,7 @@ export const actualizarProductoService = async (productoData: IActualizarProduct
             idUnidadMedida: productoData.idUnidadMedida,
             stock: stockEnVista,
             stockLimit: productoData.stockMinimo ?? 0,
-            tipoMovimiento: productoData.tipoMovimiento,
+            tipoMovimiento,
             stockEnVista,
             delta,
             ajustePositivo: productoData.ajustePositivo ?? null,

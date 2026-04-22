@@ -1,7 +1,20 @@
 import axios, { AxiosInstance, AxiosError, InternalAxiosRequestConfig } from 'axios';
-import { obtenerSesionActualService } from '../services/auth-service';
+import { obtenerSesionActualService, renovarSesionService } from '../services/auth-service';
 
 import { logger } from '../utils/logger';
+
+// Flag para evitar múltiples llamadas simultáneas a /auth/refresh
+let isRefreshing = false;
+let refreshSubscribers: Array<(token: string) => void> = [];
+
+const subscribeTokenRefresh = (cb: (token: string) => void) => {
+    refreshSubscribers.push(cb);
+};
+
+const onTokenRefreshed = (token: string) => {
+    refreshSubscribers.forEach(cb => cb(token));
+    refreshSubscribers = [];
+};
 
 // ========================================================================
 // Detección automática de entorno:
@@ -44,6 +57,11 @@ api.interceptors.request.use(
         // Agregar el token si existe y no es la ruta de login
         if (sesion?.token && config.headers && !config.url?.includes('/auth/login')) {
             config.headers.Authorization = `Bearer ${sesion.token}`;
+            logger.log(`[AXIOS] Token añadido a ${config.url}`);
+        } else {
+            if (!sesion?.token) {
+                logger.warn(`[AXIOS] ⚠️ No hay token para ${config.url} - sesión: ${sesion ? 'existe' : 'NO'}`);
+            }
         }
 
         // Notificar actividad de API para reiniciar el timeout de inactividad
@@ -101,12 +119,13 @@ api.interceptors.response.use(
 
         // Handle 401 Unauthorized (Token expires or invalid)
         if (status === 401) {
-            // Lista de prefijos cuyas rutas no deben forzar logout.
-            // Un 401 aquí puede indicar permisos de rol, no un token inválido.
+            // Lista de prefijos cuyas rutas no deben intentar renovar ni forzar logout.
             const noLogoutPrefixes = [
-                '/auth/login',        // El servicio de login maneja su propio error
-                '/permisos/',         // La PermissionContext maneja su propio error
-                '/semanas/',          // Búsquedas de semana usadas en todas las páginas
+                '/auth/login',               // El servicio de login maneja su propio error
+                '/auth/refresh',             // Si el refresh falla, no reintentar
+                '/auth/logout',              // Logout no debe redirigir
+                '/permisos/',                // La PermissionContext maneja su propio error
+                '/semanas/',                 // Búsquedas de semana usadas en todas las páginas
                 '/pedido/entregas-diarias',  // Gestión de Pedidos Diarios (bodega)
                 '/pedido/preparar-entrega',  // Preparar entrega (bodega)
             ];
@@ -116,9 +135,40 @@ api.interceptors.response.use(
                 return Promise.reject(error);
             }
 
-            // Para cualquier otra 401: el token venció → forzar logout
-            localStorage.removeItem('sesion_actual');
-            window.location.href = '/login';
+            // Intentar renovar el token usando el Refresh Token (cookie HttpOnly)
+            const originalRequest = error.config!;
+
+            if (!isRefreshing) {
+                isRefreshing = true;
+                renovarSesionService()
+                    .then(newToken => {
+                        isRefreshing = false;
+                        if (newToken) {
+                            onTokenRefreshed(newToken);
+                        } else {
+                            // No hay refresh token válido → logout
+                            refreshSubscribers = [];
+                            localStorage.removeItem('sesion_actual');
+                            window.location.href = '/login';
+                        }
+                    })
+                    .catch(() => {
+                        isRefreshing = false;
+                        refreshSubscribers = [];
+                        localStorage.removeItem('sesion_actual');
+                        window.location.href = '/login';
+                    });
+            }
+
+            // Encolar la petición original para reintentarla cuando llegue el nuevo token
+            return new Promise(resolve => {
+                subscribeTokenRefresh((token: string) => {
+                    if (originalRequest.headers) {
+                        originalRequest.headers.Authorization = `Bearer ${token}`;
+                    }
+                    resolve(api(originalRequest));
+                });
+            });
         }
 
         return Promise.reject(error);

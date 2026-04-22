@@ -1,10 +1,14 @@
 package KuHub.modules.gestion_academica.controller;
 
+import KuHub.modules.gestion_academica.dtos.request.SalaCreateDTO;
+import KuHub.modules.gestion_academica.dtos.request.SalaUpdateDTO;
 import KuHub.modules.gestion_academica.entity.Sala;
 import KuHub.modules.gestion_academica.exceptions.GestionAcademicaException;
 import KuHub.modules.gestion_academica.service.SalaService;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -12,10 +16,9 @@ import java.util.List;
 /**
  * Controller REST para gestión de Salas
  * Endpoints: /api/v1/sala
- * ✅ En uso: Este controlador permite listar las salas activas para la asignación de horarios 
- * a las secciones.
- * Consumido por sala-service.ts y ramos-admin.tsx en el frontend.
+ * ✅ En uso: Consumido por sala-service.ts (listado activas) y admin-sistema.tsx (CRUD).
  */
+@Slf4j
 @RestController
 @RequestMapping("/api/v1/sala")
 public class SalaController {
@@ -78,6 +81,19 @@ public class SalaController {
     }
 
     /**
+     * Registra una nueva sala validando los campos con DTO.
+     * ✅ En uso: Consumido por crearSalaService en sala-service.ts (SeccionGestionSalas).
+     */
+    @PostMapping("/create")
+    public ResponseEntity<Sala> create(@Validated @RequestBody SalaCreateDTO dto) {
+        log.info("POST /sala/create — codSala: {}", dto.getCodSala());
+        Sala nueva = new Sala();
+        nueva.setCodSala(dto.getCodSala());
+        nueva.setNombreSala(dto.getNombreSala());
+        return ResponseEntity.status(201).body(salaService.save(nueva));
+    }
+
+    /**
      * Actualiza la información de una sala existente.
      * ⚠️ Sin uso aparente en el frontend actual.
      */
@@ -89,7 +105,21 @@ public class SalaController {
     }
 
     /**
-     * Realiza una eliminación lógica (soft delete) de una sala.
+     * Actualiza cod_sala y nombre_sala de una sala existente por su ID.
+     * ✅ En uso: Consumido por actualizarSalaService en sala-service.ts (SeccionGestionSalas).
+     */
+    @PatchMapping("/update/{id}")
+    public ResponseEntity<Sala> update(@PathVariable Integer id, @Validated @RequestBody SalaUpdateDTO dto) {
+        log.info("PATCH /sala/update/{} — codSala: {}", id, dto.getCodSala());
+        Sala s = new Sala();
+        s.setIdSala(id);
+        s.setCodSala(dto.getCodSala());
+        s.setNombreSala(dto.getNombreSala());
+        return ResponseEntity.status(200).body(salaService.updateRoom(s));
+    }
+
+    /**
+     * Realiza una eliminación lógica (soft delete) de una sala sin validar reservas.
      * ⚠️ Sin uso aparente en el frontend actual.
      */
     @PutMapping("/soft-delete/{id}")
@@ -99,14 +129,21 @@ public class SalaController {
         try {
             salaService.softDelete(id);
             return ResponseEntity.noContent().build();
-
         } catch (GestionAcademicaException e) {
-            return ResponseEntity.status(400)
-                    .body("Error: " + e.getMessage());
-
+            return ResponseEntity.status(400).body("Error: " + e.getMessage());
         } catch (Exception e) {
-            return ResponseEntity.status(500)
-                    .body("Error interno al intentar eliminar la sala: " + e.getMessage());
+            return ResponseEntity.status(500).body("Error interno: " + e.getMessage());
         }
+    }
+
+    /**
+     * Eliminación lógica de sala con validación: falla con 409 si tiene reservas activas.
+     * ✅ En uso: Consumido por eliminarSalaService en sala-service.ts (SeccionGestionSalas).
+     */
+    @DeleteMapping("/soft-delete/{id}")
+    public ResponseEntity<?> softDeleteWithValidation(@PathVariable Integer id) {
+        log.info("DELETE /sala/soft-delete/{}", id);
+        salaService.softDeleteWithValidation(id);
+        return ResponseEntity.status(204).build();
     }
 }
