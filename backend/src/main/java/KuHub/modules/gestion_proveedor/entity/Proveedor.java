@@ -39,7 +39,7 @@ public class Proveedor {
     private String telefonoProveedor;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "estado_proveedor", nullable = false, columnDefinition = "VARCHAR(20)")
+    @Column(name = "estado_proveedor", nullable = false, columnDefinition = "estado_provedor_type")
     private EstadoProveedor estadoProveedor = EstadoProveedor.DISPONIBLE;
 
     @Column(name = "activo", nullable = false)
