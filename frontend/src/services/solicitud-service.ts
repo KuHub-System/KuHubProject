@@ -948,6 +948,7 @@ export interface IProductoAbastecimientoItem {
   nombreCategoria: string;
   cantidadTotalSolicitada: number;
   idInventario: number;
+  stock: number;
 }
 
 export interface IProyeccionAbastecimiento {

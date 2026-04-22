@@ -1158,18 +1158,19 @@ PENDIENTE DE IMPLEMENTAR O DEFINIR:
       permiso_rol en tiempo de ejecución. DynamicPermissionService extendido para
       reconocer CO_ADMINISTRADOR como admin (acceso total sin consulta a BD).
 
-  [✓] idInventario en proyección de abastecimiento (2026-04-22):
+  [✓] idInventario y stock en proyección de abastecimiento (2026-04-22):
       Corregido el issue donde "Control de Stock Masivo" recibía null para idInventario
-      en productos cargados desde "Abastecimiento por Pedido". Backend:
+      y stock desincronizado en productos cargados desde "Abastecimiento por Pedido". Backend:
       - SolicitudRepository.findProyeccionAbastecimientoJson(): agregado
         INNER JOIN inventario inv ON inv.id_producto = p.id_producto AND inv.activo = TRUE
-      - jsonb_build_object: agregado 'idInventario', inv.id_inventario
-      - ProyeccionAbastecimiento.ProductoAbastecimientoItem record: agregado campo
-        @JsonProperty("idInventario") Integer idInventario
+      - jsonb_build_object: agregado 'idInventario', inv.id_inventario y 'stock', inv.stock
+      - ProyeccionAbastecimiento.ProductoAbastecimientoItem record: agregados campos
+        @JsonProperty("idInventario") Integer idInventario y @JsonProperty("stock") BigDecimal stock
       Frontend:
-      - solicitud-service.ts: agregado idInventario a IProductoAbastecimientoItem
+      - solicitud-service.ts: agregados idInventario y stock a IProductoAbastecimientoItem
       - inventario.tsx (PedidoMasivoModal): actualizada cargarProyeccionAbastecimiento()
-        para usar idInventario de la proyección en lugar de buscarlo en bulkProductos
+        para usar idInventario y stock directamente de la proyección en lugar de
+        buscar fallback en bulkProductos. Esto evita desincronización al hacer bulk update
 
 ================================================================================
   6. NOTAS ORIGINALES DE TRABAJO (referencia interna)
