@@ -1,84 +1,188 @@
-tiene que leer y ejecutar FLUJO_TRABAJO_HAIKU_SONNET.md
-ademas de secrets.md
-TIENE QUE ENTRAR AL AIDER POR POWERSHEL COMO ADMISTRADOR Y REALIZAR LOS COMANDOS /ADD /READ-ONLY LO QUE SEA NECESARIO PARA FUNCIONAR ADEMAS DE MONITOREAR HASTE QUE TERMINE ASEGURAR QUE LOS CAMBIOS REFLETEN EN EL CODIGO, TIENE ACESSO PARA REALZAR TODO LO NECESARIO TIENE QUE HACER TU NO YO.
-
-
-Contexto:
-Debes mejorar la funcionalidad y la UI del modal "Control de Stock Masivo", siguiendo las directrices definidas en frontend/CLAUDE.md.
-
-Objetivo:
-Corregir el comportamiento de cantidades, asegurar la correcta carga desde "Abastecimiento por Pedido" y rediseñar la UI del modal con estándares de calidad de un frontend senior.
-
-Requerimientos funcionales:
-
-Gestión de cantidades en la lista
-Cuando el usuario selecciona:
-Producto
-Tipo
-Cantidad
-Debe ser posible:
-Aumentar o disminuir la cantidad directamente en la lista de productos agregados.
-Validación:
-Respetar el valor booleano es_fraccionario:
-false → solo permitir valores enteros
-true → permitir valores decimales
-Corrección de carga desde "Abastecimiento por Pedido"
-Al cargar productos desde esta funcionalidad:
-Se debe registrar correctamente como Acción: Entrada
-Actualmente NO se está registrando correctamente la entrada → corregir
-Cálculo de stock final (CRÍTICO)
-Al cargar datos desde "Abastecimiento por Pedido":
-Debe mostrarse correctamente:
-Stock actual
-Cantidad de entrada
-Stock final proyectado
-Problema actual:
-No se está reflejando la cantidad final actual del inventario → corregir lógica
-Resultado esperado:
-stock_final = stock_actual + cantidad_entrada
-Consistencia de datos
-Asegurar que los datos cargados automáticamente:
-Sean editables
-Mantengan coherencia con las reglas de negocio
-No requieran ingreso manual inicial
-
-Mejoras de UI/UX (Frontend Senior Level):
-
-Diseño del modal
-Rediseñar completamente el modal para mejorar:
-Jerarquía visual
-Espaciado
-Legibilidad
-Aplicar diseño limpio y moderno (no básico)
-Tabla/Listado de productos
-Mejorar visualización de:
-Producto
-Tipo (Entrada/Salida)
-Cantidad
-Stock actual
-Stock final proyectado
-Destacar visualmente:
-Entradas (positivo)
-Cambios en stock
-Interacción de cantidades
-Usar:
-Inputs numéricos claros
-Controles tipo stepper (+ / -)
-Feedback inmediato al cambiar valores
-Feedback visual
-Mostrar:
-Estados de carga
-Validaciones
-Errores claros
-Evitar silencios en la UI
-Consistencia con CLAUDE.md
-Reutilizar componentes existentes
-Mantener lineamientos de diseño del proyecto
-Aplicar buenas prácticas (DRY, separación de responsabilidades)
-
-Consideraciones técnicas:
-
-Validar lógica tanto en frontend como backend.
-Evitar duplicación de productos en la lista.
-Asegurar que los cálculos sean reactivos (estado actualizado en tiempo real).
-Mantener escalabilidad y mantenibilidad del código.
+2026-04-22T18:05:26.366Z DEBUG 1 --- [nio-8080-exec-8] org.hibernate.SQL                        :
+    SELECT
+        jsonb_agg(     jsonb_build_object(         'idProducto',              p.id_producto,         'nombreProducto',          p.nombre_producto,         'nombreUnidad',            um.nombre_unidad,         'abreviatura',             um.abreviatura,         'esFraccionario',          um.es_fraccionario,         'nombreCategoria',         c.nombre_categoria,         'cantidadTotalSolicitada', sub_total.total_solicitado     )
+    ORDER BY
+        c.nombre_categoria ASC, p.nombre_producto ASC ) AS proyeccion_abastecimiento
+    FROM
+        (     SELECT
+            ds.id_producto,
+            SUM(ds.cant_producto_solicitud) AS total_solicitado
+        FROM
+            detalle_solicitud ds
+        INNER JOIN
+            solicitud s
+                ON s.id_solicitud = ds.id_solicitud
+        WHERE
+            s.estado_solicitud = 'EN_PEDIDO'
+            AND s.fecha_solicitada BETWEEN ? AND ?
+        GROUP BY
+            ds.id_producto ) sub_total
+    INNER JOIN
+        producto      p
+            ON p.id_producto  = sub_total.id_producto
+            AND p.activo = TRUE
+    INNER JOIN
+        unidad_medida um
+            ON um.id_unidad    = p.id_unidad
+    INNER JOIN
+        categoria     c
+            ON c.id_categoria  = p.id_categoria
+Hibernate:
+    SELECT
+        jsonb_agg(     jsonb_build_object(         'idProducto',              p.id_producto,         'nombreProducto',          p.nombre_producto,         'nombreUnidad',            um.nombre_unidad,         'abreviatura',             um.abreviatura,         'esFraccionario',          um.es_fraccionario,         'nombreCategoria',         c.nombre_categoria,         'cantidadTotalSolicitada', sub_total.total_solicitado     )
+    ORDER BY
+        c.nombre_categoria ASC, p.nombre_producto ASC ) AS proyeccion_abastecimiento
+    FROM
+        (     SELECT
+            ds.id_producto,
+            SUM(ds.cant_producto_solicitud) AS total_solicitado
+        FROM
+            detalle_solicitud ds
+        INNER JOIN
+            solicitud s
+                ON s.id_solicitud = ds.id_solicitud
+        WHERE
+            s.estado_solicitud = 'EN_PEDIDO'
+            AND s.fecha_solicitada BETWEEN ? AND ?
+        GROUP BY
+            ds.id_producto ) sub_total
+    INNER JOIN
+        producto      p
+            ON p.id_producto  = sub_total.id_producto
+            AND p.activo = TRUE
+    INNER JOIN
+        unidad_medida um
+            ON um.id_unidad    = p.id_unidad
+    INNER JOIN
+        categoria     c
+            ON c.id_categoria  = p.id_categoria
+2026-04-22T18:05:26.367Z TRACE 1 --- [nio-8080-exec-8] org.hibernate.orm.jdbc.bind              : binding parameter (1:DATE) <- [2026-04-26]
+2026-04-22T18:05:26.367Z TRACE 1 --- [nio-8080-exec-8] org.hibernate.orm.jdbc.bind              : binding parameter (2:DATE) <- [2026-05-02]
+2026-04-22T18:05:26.374Z  INFO 1 --- [nio-8080-exec-8] K.m.g.service.SolicitudServiceImp        : Consulta proyección abastecimiento completada. Resultado nulo: false
+2026-04-22T18:05:26.376Z  INFO 1 --- [nio-8080-exec-8] K.m.g.service.SolicitudServiceImp        : Proyección abastecimiento parseada: 10 productos
+2026-04-22T18:05:26.377Z DEBUG 1 --- [nio-8080-exec-8] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/yaml]
+2026-04-22T18:05:26.378Z DEBUG 1 --- [nio-8080-exec-8] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Writing [ProyeccionAbastecimiento[proyeccionAbastecimiento=[ProductoAbastecimientoItem[idProducto=75, nombreP (truncated)...]
+2026-04-22T18:05:26.379Z DEBUG 1 --- [nio-8080-exec-8] o.s.web.servlet.DispatcherServlet        : Completed 200 OK
+2026-04-22T18:05:57.109Z DEBUG 1 --- [nio-8080-exec-9] o.s.security.web.FilterChainProxy        : Securing PATCH /api/v1/inventario/bulk-update-inventory-stock
+2026-04-22T18:05:57.110Z  INFO 1 --- [nio-8080-exec-9] K.c.s.rate_limiting.RateLimitFilter      : 🔄 Minuto reiniciado para la IP: 186.78.184.242
+2026-04-22T18:05:57.111Z  INFO 1 --- [nio-8080-exec-9] K.c.s.rate_limiting.RateLimitFilter      : 📍 IP: 186.78.184.242 | Petición 1 de 80
+2026-04-22T18:05:57.114Z DEBUG 1 --- [nio-8080-exec-9] o.s.security.web.FilterChainProxy        : Secured PATCH /api/v1/inventario/bulk-update-inventory-stock
+2026-04-22T18:05:57.114Z DEBUG 1 --- [nio-8080-exec-9] o.s.web.servlet.DispatcherServlet        : PATCH "/api/v1/inventario/bulk-update-inventory-stock", parameters={}
+2026-04-22T18:05:57.114Z DEBUG 1 --- [nio-8080-exec-9] s.w.s.m.m.a.RequestMappingHandlerMapping : Mapped to KuHub.modules.gestion_inventario.controller.InventarioController#updateBulkInventoryStock(List)
+2026-04-22T18:05:57.116Z DEBUG 1 --- [nio-8080-exec-9] m.m.a.RMh4hfsi84LdbS4uS3jaSaNccc8kartkDJ : Read "application/json;charset=UTF-8" to [[ItemRequest[idInventario=null, delta=7.566, stockEnVista=60, tipoMovimiento=ENTRADA_INVENTARIO], It (truncated)...]
+2026-04-22T18:05:57.120Z DEBUG 1 --- [nio-8080-exec-9] org.hibernate.SQL                        :
+    select
+        i1_0.id_inventario,
+        i1_0.activo,
+        i1_0.id_producto,
+        p1_0.id_producto,
+        p1_0.activo,
+        p1_0.id_categoria,
+        p1_0.cod_producto,
+        p1_0.descripcion_producto,
+        p1_0.nombre_producto,
+        p1_0.id_unidad,
+        i1_0.stock,
+        i1_0.stock_limit
+    from
+        inventario i1_0
+    join
+        producto p1_0
+            on p1_0.id_producto=i1_0.id_producto
+    where
+        i1_0.id_inventario in (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        and i1_0.activo=true
+Hibernate:
+    select
+        i1_0.id_inventario,
+        i1_0.activo,
+        i1_0.id_producto,
+        p1_0.id_producto,
+        p1_0.activo,
+        p1_0.id_categoria,
+        p1_0.cod_producto,
+        p1_0.descripcion_producto,
+        p1_0.nombre_producto,
+        p1_0.id_unidad,
+        i1_0.stock,
+        i1_0.stock_limit
+    from
+        inventario i1_0
+    join
+        producto p1_0
+            on p1_0.id_producto=i1_0.id_producto
+    where
+        i1_0.id_inventario in (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        and i1_0.activo=true
+2026-04-22T18:05:57.121Z TRACE 1 --- [nio-8080-exec-9] org.hibernate.orm.jdbc.bind              : binding parameter (1:INTEGER) <- [null]
+2026-04-22T18:05:57.121Z TRACE 1 --- [nio-8080-exec-9] org.hibernate.orm.jdbc.bind              : binding parameter (2:INTEGER) <- [null]
+2026-04-22T18:05:57.121Z TRACE 1 --- [nio-8080-exec-9] org.hibernate.orm.jdbc.bind              : binding parameter (3:INTEGER) <- [null]
+2026-04-22T18:05:57.121Z TRACE 1 --- [nio-8080-exec-9] org.hibernate.orm.jdbc.bind              : binding parameter (4:INTEGER) <- [null]
+2026-04-22T18:05:57.121Z TRACE 1 --- [nio-8080-exec-9] org.hibernate.orm.jdbc.bind              : binding parameter (5:INTEGER) <- [null]
+2026-04-22T18:05:57.121Z TRACE 1 --- [nio-8080-exec-9] org.hibernate.orm.jdbc.bind              : binding parameter (6:INTEGER) <- [null]
+2026-04-22T18:05:57.121Z TRACE 1 --- [nio-8080-exec-9] org.hibernate.orm.jdbc.bind              : binding parameter (7:INTEGER) <- [null]
+2026-04-22T18:05:57.121Z TRACE 1 --- [nio-8080-exec-9] org.hibernate.orm.jdbc.bind              : binding parameter (8:INTEGER) <- [null]
+2026-04-22T18:05:57.121Z TRACE 1 --- [nio-8080-exec-9] org.hibernate.orm.jdbc.bind              : binding parameter (9:INTEGER) <- [null]
+2026-04-22T18:05:57.121Z TRACE 1 --- [nio-8080-exec-9] org.hibernate.orm.jdbc.bind              : binding parameter (10:INTEGER) <- [null]
+2026-04-22T18:05:57.126Z DEBUG 1 --- [nio-8080-exec-9] org.hibernate.SQL                        :
+    select
+        u1_0.id_usuario,
+        u1_0.activo,
+        u1_0.app_materno,
+        u1_0.app_paterno,
+        u1_0.contrasena,
+        u1_0.email,
+        u1_0.fecha_creacion,
+        u1_0.p_nombre,
+        u1_0.id_rol,
+        u1_0.s_nombre,
+        u1_0.ultimo_acceso,
+        u1_0.url_foto_perfil,
+        u1_0.username
+    from
+        public.usuario u1_0
+    where
+        upper(u1_0.email)=upper(?)
+Hibernate:
+    select
+        u1_0.id_usuario,
+        u1_0.activo,
+        u1_0.app_materno,
+        u1_0.app_paterno,
+        u1_0.contrasena,
+        u1_0.email,
+        u1_0.fecha_creacion,
+        u1_0.p_nombre,
+        u1_0.id_rol,
+        u1_0.s_nombre,
+        u1_0.ultimo_acceso,
+        u1_0.url_foto_perfil,
+        u1_0.username
+    from
+        public.usuario u1_0
+    where
+        upper(u1_0.email)=upper(?)
+2026-04-22T18:05:57.126Z TRACE 1 --- [nio-8080-exec-9] org.hibernate.orm.jdbc.bind              : binding parameter (1:VARCHAR) <- [adminhash@kuhub.cl]
+2026-04-22T18:05:57.128Z DEBUG 1 --- [nio-8080-exec-9] org.hibernate.SQL                        :
+    select
+        r1_0.id_rol,
+        r1_0.activo,
+        r1_0.nombre_rol
+    from
+        public.rol r1_0
+    where
+        r1_0.id_rol=?
+Hibernate:
+    select
+        r1_0.id_rol,
+        r1_0.activo,
+        r1_0.nombre_rol
+    from
+        public.rol r1_0
+    where
+        r1_0.id_rol=?
+2026-04-22T18:05:57.129Z TRACE 1 --- [nio-8080-exec-9] org.hibernate.orm.jdbc.bind              : binding parameter (1:INTEGER) <- [1]
+2026-04-22T18:05:57.132Z DEBUG 1 --- [nio-8080-exec-9] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/yaml]
+2026-04-22T18:05:57.132Z DEBUG 1 --- [nio-8080-exec-9] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Writing [BulkInventoryProcess[exitosos=[], advertencias=[], errores=[ItemResult[idInventario=null, producto=N (truncated)...]
+2026-04-22T18:05:57.134Z DEBUG 1 --- [nio-8080-exec-9] o.s.web.servlet.DispatcherServlet        : Completed 200 OK
+ubuntu@ip-172-26-1-143:~$
