@@ -32,7 +32,7 @@ import {
   Checkbox,
   DateRangePicker
 } from '@heroui/react';
-import { CalendarDate, today, getLocalTimeZone } from '@internationalized/date';
+import { CalendarDate } from '@internationalized/date';
 import { Icon } from '@iconify/react';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useHistory } from 'react-router-dom';
@@ -2701,7 +2701,6 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoP
                 <DateRangePicker
                   label="Rango de fechas"
                   variant="bordered"
-                  maxValue={today(getLocalTimeZone())}
                   value={dateRangeProyeccion}
                   onChange={setDateRangeProyeccion}
                 />
