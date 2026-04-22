@@ -13,6 +13,7 @@ const LOGO_URL = new URL('./assets/KuHubLogoWBG.png', import.meta.url).href;
  */
 interface HeaderProps {
   toggleSidebar: () => void;
+  onLogout?: () => void;
 }
 
 /**
@@ -21,18 +22,22 @@ interface HeaderProps {
  * @param {HeaderProps} props - Propiedades del componente.
  * @returns {JSX.Element} El componente Header.
  */
-const Header: React.FC<HeaderProps> = ({ toggleSidebar }) => {
+const Header: React.FC<HeaderProps> = ({ toggleSidebar, onLogout }) => {
   const { user, logout } = useAuth();
   const { theme, toggleTheme } = useThemeContext();
-  const { title, subtitle } = usePageTitleContext();
+  const { title, subtitle, icon } = usePageTitleContext();
   const history = useHistory();
 
   /**
    * Maneja el cierre de sesión.
    */
   const handleLogout = () => {
-    logout();
-    history.push('/login');
+    if (onLogout) {
+      onLogout();
+    } else {
+      logout();
+      history.push('/login');
+    }
   };
 
   /**
@@ -64,7 +69,10 @@ const Header: React.FC<HeaderProps> = ({ toggleSidebar }) => {
 
         {/* Título dinámico (visible en desktop) */}
         <div className="hidden md:flex flex-col ml-4">
-          <h1 className="text-xl font-bold text-secondary dark:text-foreground leading-tight">{title || 'KüHub'}</h1>
+          <h1 className="text-xl font-bold text-secondary dark:text-foreground leading-tight flex items-center gap-2">
+            {icon && <Icon icon={icon} width={20} className="text-primary shrink-0" />}
+            {title || 'KüHub'}
+          </h1>
           {subtitle && <p className="text-xs text-default-500">{subtitle}</p>}
         </div>
 

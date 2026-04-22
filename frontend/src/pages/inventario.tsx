@@ -66,6 +66,10 @@ import {
   IStockSyncWarning,
   IStockInsuficiente
 } from '../services/inventario-service';
+import {
+  obtenerProyeccionAbastecimientoService,
+  IProyeccionAbastecimiento
+} from '../services/solicitud-service';
 
 interface ItemPedidoMasivo {
   id: string;
@@ -86,7 +90,7 @@ const InventarioPage: React.FC = () => {
   const { user } = useAuth();
   const esAdministrador = user?.rol === 'Administrador';
   // ── Permisos granulares del módulo INVENTARIO ──
-  const { canCreate: invPuedeCrear, canUpdate: invPuedeEditar, canDelete: invPuedeEliminar } = useModulePermission('INVENTARIO');
+  const { canRead: invPuedeLeer, canCreate: invPuedeCrear, canUpdate: invPuedeEditar, canDelete: invPuedeEliminar } = useModulePermission('INVENTARIO');
   const { canCreate: catPuedeCrear } = useModulePermission('GESTION_CATEGORIAS');
   const { canCreate: uniPuedeCrear } = useModulePermission('GESTION_UNIDADES');
   const [productos, setProductos] = React.useState<IProducto[]>([]);
@@ -133,7 +137,7 @@ const InventarioPage: React.FC = () => {
   const isLoadingRef = React.useRef(false);
   const nextPageRef = React.useRef(1); // Tracker para carga secuencial
 
-  usePageTitle('Inventario', 'Gestione los productos del inventario, vea movimientos y actualice existencias.');
+  usePageTitle('Inventario', 'Gestione los productos del inventario, vea movimientos y actualice existencias.', 'lucide:package');
 
   /**
    * Carga los filtros (categorías y unidades) desde el backend.
@@ -1066,6 +1070,7 @@ const InventarioPage: React.FC = () => {
                 onClose={onClose}
                 onNuevoProducto={handleNuevoProducto}
                 initialItems={bulkRetryItems}
+                puedeAccederAbastecimiento={invPuedeLeer}
                 onProcessComplete={(data, retryItems) => {
                   setBulkResult(data);
                   setBulkRetryItems(retryItems);
@@ -1406,11 +1411,12 @@ export const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto
           // --- LÓGICA BODEGA: PATCH con delta (igual que inventario) ---
           const originalStockRef = parseFloat(productoReferencia?.stock?.toString() || '0');
           const deltaInputVal = parseFloat(deltaInput);
+          const hayMovBodega = tipoMovimiento && !isNaN(deltaInputVal) && deltaInputVal > 0;
           const datosBodega: WarehouseWithProductUpdateDTO = {
             idBodegaTransito: (producto as any)._idBodegaTransito || 0,
             idInventario: producto._idInventario || 0,
             idProducto: parseInt(producto.id),
-            tipoMovimiento: tipoMovimiento,
+            tipoMovimiento: hayMovBodega ? tipoMovimiento : null,
             nombreProducto: nombre.trim(),
             codigoProducto: codProducto.trim() || undefined,
             descripcionProducto: descripcion.trim(),
@@ -1418,7 +1424,7 @@ export const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto
             idUnidadMedida: parseInt(idUnidadMedida),
             stock: originalStockRef,
             stockLimit: parseFloat(stockMinimo) || 0,
-            delta: deltaInputVal,
+            delta: hayMovBodega ? deltaInputVal : null,
             stockEnVista: originalStockRef,
           };
 
@@ -1885,8 +1891,8 @@ export const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto
 
         <Input
           type="number"
-          label={<span className="whitespace-nowrap truncate max-w-full">Stock Mín. (Opcional)</span>}
-          placeholder="Stock mínimo"
+          label={<span className="whitespace-nowrap truncate max-w-full">{origenContext === 'bodega' ? 'Stock Máx. (Opcional)' : 'Stock Mín. (Opcional)'}</span>}
+          placeholder={origenContext === 'bodega' ? 'Stock máximo' : 'Stock mínimo'}
           value={stockMinimo}
           onValueChange={(val) => {
             if (val === '') {
@@ -1941,17 +1947,24 @@ interface PedidoMasivoModalProps {
   onNuevoProducto?: () => void;
   initialItems?: ItemPedidoMasivo[];
   onProcessComplete?: (data: IBulkProcessResult, retryItems: ItemPedidoMasivo[]) => void;
+  puedeAccederAbastecimiento?: boolean;
 }
 
 /**
  * Modal para realizar pedidos masivos hacia bodega de tránsito
  */
-const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoProducto, onProcessComplete, initialItems }) => {
+const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoProducto, onProcessComplete, initialItems, puedeAccederAbastecimiento = false }) => {
   const toast = useToast();
   const [itemsPedido, setItemsPedido] = React.useState<ItemPedidoMasivo[]>(initialItems ?? []);
   const [productoSeleccionado, setProductoSeleccionado] = React.useState<string>('');
   const [stockInput, setStockInput] = React.useState<string>('');
   const [motivo, setMotivo] = React.useState<string>('');
+
+  // Estados para modal de proyección de abastecimiento
+  const { isOpen: isProyeccionOpen, onOpen: onProyeccionOpen, onOpenChange: onProyeccionOpenChange } = useDisclosure();
+  const [fechaInicioProy, setFechaInicioProy] = React.useState<string>('');
+  const [fechaFinProy, setFechaFinProy] = React.useState<string>('');
+  const [loadingProy, setLoadingProy] = React.useState(false);
 
   // States para la paginación y búsqueda
   const [bulkProductos, setBulkProductos] = React.useState<IBulkProductoInventoryListing[]>([]);
@@ -2167,6 +2180,69 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoP
     setItemsPedido(itemsPedido.filter(item => item.id !== id));
   };
 
+  const cargarProyeccionAbastecimiento = async () => {
+    if (!fechaInicioProy || !fechaFinProy) {
+      toast.error('Debe seleccionar un rango de fechas válido');
+      return;
+    }
+
+    const dateInicio = new Date(fechaInicioProy);
+    const dateFin = new Date(fechaFinProy);
+    if (dateInicio > dateFin) {
+      toast.error('La fecha de inicio no puede ser posterior a la fecha de fin');
+      return;
+    }
+
+    try {
+      setLoadingProy(true);
+      const proyeccion = await obtenerProyeccionAbastecimientoService(fechaInicioProy, fechaFinProy);
+
+      if (!proyeccion.proyeccionAbastecimiento || proyeccion.proyeccionAbastecimiento.length === 0) {
+        toast.warning('No hay datos de proyección para el rango de fechas seleccionado');
+        return;
+      }
+
+      // Convertir los productos de la proyección a ItemPedidoMasivo
+      // Todos se agregan con motivo "ENTRADA_INVENTARIO" (acción por defecto)
+      const nuevosMotivoEntrante = 'ENTRADA_INVENTARIO';
+      const nuevosItems: ItemPedidoMasivo[] = proyeccion.proyeccionAbastecimiento.map((producto) => {
+        // Crear un objeto IBulkProductoInventoryListing simulado
+        const bulkProducto: IBulkProductoInventoryListing = {
+          idProducto: producto.idProducto,
+          nombreProducto: producto.nombreProducto,
+          detalles: `${producto.nombreUnidad} (${producto.abreviatura})`,
+          stock: 0, // Stock actual (no viene en la proyección)
+          esFraccionario: producto.esFraccionario,
+        };
+
+        return {
+          id: Date.now().toString() + Math.random(),
+          producto: bulkProducto,
+          delta: producto.cantidadTotalSolicitada,
+          motivo: nuevosMotivoEntrante,
+        };
+      });
+
+      // Agregar a la lista existente
+      setItemsPedido([...itemsPedido, ...nuevosItems]);
+      toast.success(`${nuevosItems.length} producto(s) cargado(s) desde la proyección`);
+
+      // Cerrar el modal y limpiar campos
+      onProyeccionOpenChange();
+      setFechaInicioProy('');
+      setFechaFinProy('');
+    } catch (error: any) {
+      console.error('Error al cargar proyección:', error);
+      if (error.response?.status === 403) {
+        toast.error('No tiene permisos para acceder a esta funcionalidad');
+      } else {
+        toast.error('Error al cargar la proyección de abastecimiento');
+      }
+    } finally {
+      setLoadingProy(false);
+    }
+  };
+
   const vaciarLista = () => {
     setItemsPedido([]);
   };
@@ -2242,11 +2318,27 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoP
 
   return (
     <div className="flex flex-col w-full overflow-hidden rounded-2xl">
-      <ModalHeader className="flex flex-col gap-1 border-b border-default-100 dark:border-default-50 bg-white dark:bg-content2 px-6 py-4">
-        <h2 className="text-xl font-bold text-secondary dark:text-foreground">Control de Stock Masivo</h2>
-        <p className="text-sm font-medium text-default-500">
-          Registre entradas, salidas, mermas, ajustes o traslados de múltiples productos de forma estructurada.
-        </p>
+      <ModalHeader className="flex flex-col gap-3 border-b border-default-100 dark:border-default-50 bg-white dark:bg-content2 px-6 py-4">
+        <div className="flex items-center justify-between">
+          <div className="flex-1">
+            <h2 className="text-xl font-bold text-secondary dark:text-foreground">Control de Stock Masivo</h2>
+            <p className="text-sm font-medium text-default-500 mt-1">
+              Registre entradas, salidas, mermas, ajustes o traslados de múltiples productos de forma estructurada.
+            </p>
+          </div>
+          <Button
+            isIconOnly
+            variant="light"
+            color="primary"
+            size="lg"
+            onPress={onProyeccionOpen}
+            isDisabled={!puedeAccederAbastecimiento}
+            title={puedeAccederAbastecimiento ? "Cargar proyección de abastecimiento por pedido" : "No tiene permisos para acceder a esta funcionalidad"}
+            className="shrink-0"
+          >
+            <Icon icon="lucide:package-plus" width={22} />
+          </Button>
+        </div>
       </ModalHeader>
       <ModalBody className="px-4 py-3 space-y-3">
           <AnimatePresence initial={false}>
@@ -2528,6 +2620,69 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoP
           </Button>
         </div>
       </ModalFooter>
+
+      {/* Modal de Proyección de Abastecimiento */}
+      <Modal isOpen={isProyeccionOpen} onOpenChange={onProyeccionOpenChange} size="md" backdrop="blur" radius="lg">
+        <ModalContent>
+          {(onProyeccionClose) => (
+            <>
+              <ModalHeader className="flex flex-col gap-1">
+                <h2 className="text-lg font-bold text-secondary dark:text-foreground">Abastecimiento por Pedido</h2>
+              </ModalHeader>
+              <ModalBody className="space-y-4">
+                <div className="p-3 bg-primary/10 rounded-lg border border-primary/20">
+                  <p className="text-sm text-secondary dark:text-foreground">
+                    Esta es una proyección de lo que se espera recibir de las mercancías solicitadas por pedido.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-sm font-semibold text-secondary mb-2 block">Fecha Inicio</label>
+                    <Input
+                      type="date"
+                      value={fechaInicioProy}
+                      onValueChange={setFechaInicioProy}
+                      placeholder="Seleccionar fecha"
+                      variant="bordered"
+                      isRequired
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-semibold text-secondary mb-2 block">Fecha Fin</label>
+                    <Input
+                      type="date"
+                      value={fechaFinProy}
+                      onValueChange={setFechaFinProy}
+                      placeholder="Seleccionar fecha"
+                      variant="bordered"
+                      isRequired
+                    />
+                  </div>
+                </div>
+              </ModalBody>
+              <ModalFooter>
+                <Button
+                  variant="ghost"
+                  onPress={onProyeccionClose}
+                  className="font-medium"
+                  isDisabled={loadingProy}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  color="primary"
+                  onPress={cargarProyeccionAbastecimiento}
+                  isLoading={loadingProy}
+                  startContent={!loadingProy && <Icon icon="lucide:download" width={18} />}
+                >
+                  Cargar Datos
+                </Button>
+              </ModalFooter>
+            </>
+          )}
+        </ModalContent>
+      </Modal>
     </div>
   );
 };

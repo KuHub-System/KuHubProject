@@ -20,7 +20,7 @@ export type ModuleKey =
   | 'BODEGA_TRANSITO'
   | 'GESTION_PEDIDOS_DIARIOS'
   | 'GESTION_RECETAS'
-  | 'RAMOS_ADMIN'
+  | 'GESTION_ACADEMICA'
   | 'GESTION_ROLES'
   | 'GESTION_USUARIOS'
   | 'ADMIN_SISTEMA';
@@ -90,7 +90,7 @@ export const MODULE_LABELS: Record<ModuleKey, string> = {
   BODEGA_TRANSITO:           'Bodega de Tránsito',
   GESTION_PEDIDOS_DIARIOS:   'Gestión de Pedidos Diarios',
   GESTION_RECETAS:           'Gestión de Recetas',
-  RAMOS_ADMIN:          'Ramos Académicos',
+  GESTION_ACADEMICA:    'Gestión Académica',
   GESTION_ROLES:        'Gestión de Roles',
   GESTION_USUARIOS:     'Gestión de Usuarios',
   ADMIN_SISTEMA:        'Administración del Sistema',
@@ -111,7 +111,7 @@ export const MODULE_ICONS: Record<ModuleKey, string> = {
   BODEGA_TRANSITO:           'lucide:warehouse',
   GESTION_PEDIDOS_DIARIOS:   'lucide:shopping-cart',
   GESTION_RECETAS:           'lucide:chef-hat',
-  RAMOS_ADMIN:          'lucide:book-open',
+  GESTION_ACADEMICA:    'lucide:book-open',
   GESTION_ROLES:        'lucide:shield',
   GESTION_USUARIOS:     'lucide:users',
   ADMIN_SISTEMA:        'lucide:settings',
@@ -130,7 +130,7 @@ export const PAGE_TO_MODULE: Record<string, ModuleKey> = {
   'gestion-proveedores':  'GESTION_PROVEEDORES',
   'bodega-transito':      'BODEGA_TRANSITO',
   'gestion-recetas':      'GESTION_RECETAS',
-  'ramos-admin':          'RAMOS_ADMIN',
+  'gestion-academica':    'GESTION_ACADEMICA',
   'gestion-roles':        'GESTION_ROLES',
   'gestion-usuarios':     'GESTION_USUARIOS',
   'admin-sistema':        'ADMIN_SISTEMA',

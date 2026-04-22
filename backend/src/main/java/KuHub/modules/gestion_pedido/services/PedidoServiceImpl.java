@@ -17,6 +17,7 @@ import KuHub.modules.gestion_pedido.repository.DetallePedidoRepository;
 import KuHub.modules.gestion_pedido.repository.PedidoRepository;
 import KuHub.modules.gestion_pedido.repository.PedidoSolicitudRepository;
 import KuHub.modules.gestion_solicitud.dtos.request.DateRangeDTO;
+import KuHub.modules.gestion_solicitud.entity.Solicitud;
 import KuHub.modules.gestion_solicitud.repository.SolicitudRepository;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -25,6 +26,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -145,9 +147,10 @@ public class PedidoServiceImpl implements PedidoService{
             }
             pedidoSolicitudRepository.saveAll(vinculacionesParaGuardar);
 
-            // 5. Actualizar el estado de las solicitudes originales a 'PROCESADA'
-            // Usamos el query nativo que proporcionaste
-            //solicitudRepository.updateMassiveStateSolicitation(idsSolicitudes, "PROCESADO");
+            // 5. Actualizar el estado de las solicitudes ACEPTADAS vinculadas al pedido a EN_PEDIDO
+            solicitudRepository.updateMassiveStateSolicitation(idsSolicitudes, Solicitud.EstadoSolicitud.EN_PEDIDO);
+            log.info("Pedido {} creado. {} solicitudes actualizadas a EN_PEDIDO.",
+                    savedPedido.getIdPedido(), idsSolicitudes.size());
 
             return true;
 
@@ -175,6 +178,16 @@ public class PedidoServiceImpl implements PedidoService{
                 new TypeReference<List<PedidoDashboardRecords.EntregaDiariaBodegaJson>>() {},
                 "findEntregasDiariasJson"
         );
+    }
+
+    /** Transiciona a ENTREGADO los pedidos APROBADOS cuya semana ya finalizó. Se ejecuta diariamente a las 03:00 AM. */
+    @Scheduled(cron = "0 0 3 * * *")
+    @Transactional
+    public void marcarPedidosEntregadosScheduled() {
+        int actualizados = pedidoRepository.marcarPedidosEntregadosPorFecha();
+        if (actualizados > 0) {
+            log.info("[Scheduler] Auto-entregado nocturno: {} pedido(s) transitados a ENTREGADO por fecha_fin_pedido vencida.", actualizados);
+        }
     }
 
     // =====================================================
@@ -217,8 +230,8 @@ public class PedidoServiceImpl implements PedidoService{
             movimientoService.motionInUpdateTransitWarehouse(bt, item.cantidadAEntregar(), "SALIDA_BODEGA");
         }
 
-        // Cambiar estado de la solicitud a PROCESADO
-        solicitudRepository.updateMassiveStateSolicitation(List.of(request.idSolicitud()), "PROCESADO");
+        // Cambiar estado de la solicitud a PROCESADO (único cambio de estado al preparar)
+        solicitudRepository.updateMassiveStateSolicitation(List.of(request.idSolicitud()), Solicitud.EstadoSolicitud.PROCESADO);
         log.info("Solicitud {} marcada como PROCESADO tras preparar entrega.", request.idSolicitud());
 
         // ⚠️ Si hubo desincronización → 409 (transacción YA committed)

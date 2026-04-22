@@ -40,11 +40,15 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   // Utiliza el hook useTheme de HeroUI para gestionar el tema
   const { theme, setTheme } = useTheme();
 
-  // Si no hay preferencia guardada, forzar tema claro como predeterminado
+  // Si no hay preferencia guardada, forzar tema claro como predeterminado.
+  // También se manipula la clase del DOM directamente para neutralizar cualquier
+  // sobreescritura que next-themes (usado por HeroUI) haga desde prefers-color-scheme del OS.
   React.useEffect(() => {
     const saved = localStorage.getItem('heroui-theme') ?? localStorage.getItem('theme');
     if (!saved) {
+      localStorage.setItem('heroui-theme', 'light');
       setTheme('light');
+      document.documentElement.classList.remove('dark');
     }
   }, []);
 

@@ -296,66 +296,65 @@ public class InventarioServiceImpl implements InventarioService {
             oldProducto.setUnidadMedidaId(request.getIdUnidadMedida());
         }
 
-        // ── Validar stock con delta ───────────────────────────────────────
+        // ── Validar y aplicar movimiento de stock (solo si se envió delta) ──────
         BigDecimal stockReal  = oldInventario.getStock();
-        boolean desincronizado = stockReal.compareTo(request.getStockEnVista()) != 0;
+        boolean desincronizado = false;
 
-        String tipoKey = StringUtils.normalizeToEnumKey(request.getTipoMovimiento());
-        boolean esSalida = tipoKey.equals("SALIDA_INVENTARIO") || tipoKey.equals("MERMA_INVENTARIO");
+        if (request.getDelta() != null && request.getTipoMovimiento() != null && !request.getTipoMovimiento().isBlank()) {
+            desincronizado = stockReal.compareTo(request.getStockEnVista()) != 0;
 
-        BigDecimal nuevoStock = esSalida
-                ? stockReal.subtract(request.getDelta())
-                : stockReal.add(request.getDelta());
+            String tipoKey = StringUtils.normalizeToEnumKey(request.getTipoMovimiento());
+            boolean esSalida = tipoKey.equals("SALIDA_INVENTARIO") || tipoKey.equals("MERMA_INVENTARIO");
 
-        // ❌ Stock insuficiente — retorna objeto para recargar el modal
-        if (nuevoStock.compareTo(BigDecimal.ZERO) < 0) {
-            InventoriesPage.InventoryItem item = findSingleInventoryById(request.getIdInventario());
-            String msg = desincronizado
-                    ? "El stock cambió mientras realizabas la operación. El stock disponible actual (" + stockReal + ") no es suficiente para realizar la acción requerida."
-                    : "El stock disponible (" + stockReal + ") no es suficiente para realizar la acción requerida.";
+            BigDecimal nuevoStock = esSalida
+                    ? stockReal.subtract(request.getDelta())
+                    : stockReal.add(request.getDelta());
 
-            // ¡Aquí usamos la nueva excepción!
-            throw new StockInsuficienteException(msg, item);
-        }
+            // ❌ Stock insuficiente — retorna objeto para recargar el modal
+            if (nuevoStock.compareTo(BigDecimal.ZERO) < 0) {
+                InventoriesPage.InventoryItem item = findSingleInventoryById(request.getIdInventario());
+                String msg = desincronizado
+                        ? "El stock cambió mientras realizabas la operación. El stock disponible actual (" + stockReal + ") no es suficiente para realizar la acción requerida."
+                        : "El stock disponible (" + stockReal + ") no es suficiente para realizar la acción requerida.";
+                throw new StockInsuficienteException(msg, item);
+            }
 
-        // ⚠️ Desincronizado pero operable — ejecutamos con stock real
-        if (desincronizado) {
-            log.warn("Desincronización detectada. Stock en vista: {} | Stock real: {} | Producto: {}",
-                    request.getStockEnVista(), stockReal,
-                    oldInventario.getProducto().getNombreProducto());
-        }
+            // ⚠️ Desincronizado pero operable — ejecutamos con stock real
+            if (desincronizado) {
+                log.warn("Desincronización detectada. Stock en vista: {} | Stock real: {} | Producto: {}",
+                        request.getStockEnVista(), stockReal,
+                        oldInventario.getProducto().getNombreProducto());
+            }
 
-        if (stockReal.compareTo(BigDecimal.ZERO) != 0 || request.getDelta().compareTo(BigDecimal.ZERO) != 0) {
             boolean validar = movimientoService.motionInUpdateInventory(
                     oldInventario,
                     request.getDelta(),
                     request.getTipoMovimiento(),
-                    request.getAjustePositivo()   // null si no es ajuste
+                    request.getAjustePositivo()
             );
             if (validar) {
                 log.info("Movimiento [{}] registrado. Producto: '{}' | Stock: {} → {}",
                         request.getTipoMovimiento().toUpperCase(),
                         oldInventario.getProducto().getNombreProducto(),
                         stockReal,
-                        oldInventario.getStock()); // ya fue seteado dentro del método
+                        oldInventario.getStock());
             }
         }
 
-        if (!oldInventario.getStockLimit().equals(request.getStockLimit())) {
+        if (!java.util.Objects.equals(oldInventario.getStockLimit(), request.getStockLimit())) {
             oldInventario.setStockLimit(request.getStockLimit());
         }
 
         inventarioRepository.save(oldInventario);
 
         InventoriesPage.InventoryItem updatedItem = findSingleInventoryById(request.getIdInventario());
-        // Si estaba desincronizado, devolvemos un Map con el item y un mensaje de advertencia
+        // Si estaba desincronizado, devolvemos el item con advertencia
         if (desincronizado) {
             String msg = String.format(
                     "El stock cambió mientras realizabas la operación. El valor que veías (%s) ya no era el actual. La operación se realizó correctamente usando el stock actualizado (%s).",
                     request.getStockEnVista(),
                     stockReal
             );
-
             throw new StockDesincronizadoException(msg, updatedItem, HttpStatus.CONFLICT);
         }
 

@@ -205,7 +205,13 @@ public class AsignaturaServiceImp implements AsignaturaService{
 
         Asignatura savedCourse = asignaturaRepository.save(newCourse);
 
-        /** Asigna el profesor a la asignatura */
+        /**
+         * Asigna el profesor a cargo de la asignatura.
+         * REGLA DE NEGOCIO: solo 1 profesor a cargo por asignatura.
+         * La tabla asignatura_profesor_cargo es M:M por diseño (escalabilidad futura),
+         * pero el servicio restringe la creación a una única asignación por asignatura.
+         * La BD refuerza esto con UNIQUE(id_asignatura).
+         */
         AsignaturaProfesorCargo newCourserUser = new AsignaturaProfesorCargo();
         newCourserUser.setAsignatura(savedCourse);
         newCourserUser.setIdUsuario(request.getIdUsuarioGestorAsignatura());
@@ -254,7 +260,12 @@ public class AsignaturaServiceImp implements AsignaturaService{
             oldCourse.setDescripcion(descRaw);
         }
 
-        /** Obtener el registro profesor–asignatura para validar si hubo cambio*/
+        /**
+         * Obtener la asignación actual profesor–asignatura y actualizar si cambió.
+         * REGLA DE NEGOCIO: 1 solo profesor a cargo por asignatura (M:M en BD, 1:1 en negocio).
+         * Se actualiza el registro existente en lugar de crear uno nuevo para mantener
+         * la restricción UNIQUE(id_asignatura) de la BD y el historial de la asignación.
+         */
         AsignaturaProfesorCargo apc = asignaturaProfesorCargoRepository
             .findByAsignatura_IdAsignatura(request.getIdAsignatura())
             .orElseThrow(() -> new GestionAcademicaException("Relación asignatura-profesor no encontrada", HttpStatus.NOT_FOUND));

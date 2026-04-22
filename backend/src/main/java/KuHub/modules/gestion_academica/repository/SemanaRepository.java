@@ -8,6 +8,7 @@ import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface SemanaRepository extends JpaRepository<Semana, Integer> {
@@ -39,6 +40,12 @@ public interface SemanaRepository extends JpaRepository<Semana, Integer> {
     List<Object[]> findAniosAndSemestresRaw();
 
 
+    /** Busca la semana ancla "Semana 1" de un período académico (uk: nombre+anio+semestre) */
+    Optional<Semana> findByNombreSemanaAndAnioAndSemestre(String nombreSemana, Short anio, Short semestre);
+
+    /** Obtiene semanas de un semestre a partir de un id_semana dado, ordenadas por id */
+    List<Semana> findBySemestreAndIdSemanaGreaterThanEqualOrderByIdSemanaAsc(Short semestre, Integer idSemanaMin);
+
     /**Validaciones boleanas*/
     boolean existsBySemestreAndAnio(Short semestre, Short anio);
     boolean existsByFechaInicio(LocalDate fechaInicio);
@@ -48,6 +55,15 @@ public interface SemanaRepository extends JpaRepository<Semana, Integer> {
             "WHERE (s.fechaInicio <= :fechaFin AND s.fechaFin >= :fechaInicio)")
     boolean existeTraslapeDeFechas(@Param("fechaInicio") LocalDate fechaInicio,
                                    @Param("fechaFin") LocalDate fechaFin);
+
+    /** Verifica traslape de fechas excluyendo los ids del período que se está reasignando */
+    @Query("SELECT COUNT(s) > 0 FROM Semana s " +
+            "WHERE s.idSemana NOT IN :idsExcluir " +
+            "AND (s.fechaInicio <= :fechaFin AND s.fechaFin >= :fechaInicio)")
+    boolean existeTraslapeDeFechasExcluyendo(
+            @Param("fechaInicio") LocalDate fechaInicio,
+            @Param("fechaFin") LocalDate fechaFin,
+            @Param("idsExcluir") List<Integer> idsExcluir);
 
 
 

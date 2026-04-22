@@ -28,6 +28,10 @@ export interface SolicitudRechazada {
   idSolicitud: number;
   motivo: string;
   fechaSolicitada: string;
+  nombreReceta: string;
+  nombreAsignatura: string;
+  nombreSeccion: string;
+  nombreDocente: string;
 }
 
 export interface DashboardAdminData {
@@ -61,6 +65,7 @@ export interface DashboardGestorData {
   aceptadas: number;
   procesadas: number;
   rechazadas: number;
+  enPedido: number;
   tiempoPromedioHoras: number;
   solicitudesPorAsignatura: ChartPoint[];
   solicitudesPorEstado: PieSlice[];

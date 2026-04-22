@@ -8,6 +8,7 @@ public record DashboardGestorDTO(
     long aceptadas,
     long procesadas,
     long rechazadas,
+    long enPedido,
     double tiempoPromedioHoras,
     List<ChartPointDTO> solicitudesPorAsignatura,
     List<PieSliceDTO> solicitudesPorEstado,

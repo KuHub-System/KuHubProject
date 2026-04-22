@@ -7,11 +7,13 @@ services:
     ports:
       - "8080:8080"
     environment:
-      - SPRING_DATASOURCE_URL=${KU_AWS_AC_DB_URL}
+      - SPRING_DATASOURCE_URL=${SPRING_DATASOURCE_URL}
       - SPRING_DATASOURCE_USERNAME=${KU_AWS_AC_DB_USER}
       - SPRING_DATASOURCE_PASSWORD=${KU_AWS_AC_DB_PASS}
       - SPRING_PROFILES_ACTIVE=prod
       - JAVA_OPTS=-Xmx1024m -Xms768m
+      - LOGGING_LEVEL_ORG_HIBERNATE_SQL=DEBUG
+      - LOGGING_LEVEL_ORG_HIBERNATE_ORM_JDBC_BIND=TRACE
     deploy:
       resources:
         limits:
@@ -25,7 +27,7 @@ services:
     container_name: kuhub-frontend
     restart: always
     ports:
-      - "80:80"
+      - "127.0.0.1:3000:80"
     deploy:
       resources:
         limits:

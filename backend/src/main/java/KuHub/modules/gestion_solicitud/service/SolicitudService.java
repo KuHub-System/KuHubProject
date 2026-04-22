@@ -4,6 +4,7 @@ import KuHub.modules.gestion_solicitud.dtos.request.record.ChangeSolicitationSta
 import KuHub.modules.gestion_solicitud.dtos.request.record.MassiveSolicitation;
 import KuHub.modules.gestion_solicitud.dtos.respose.record.CourseForSolicitation;
 import KuHub.modules.gestion_solicitud.dtos.respose.record.DashboardConsolidado;
+import KuHub.modules.gestion_solicitud.dtos.respose.record.ProyeccionAbastecimiento;
 import KuHub.modules.gestion_solicitud.dtos.request.*;
 import KuHub.modules.gestion_solicitud.dtos.respose.projection.ResultsMassSolicitationView;
 import KuHub.modules.gestion_solicitud.dtos.respose.record.RecipeSolicitation;
@@ -15,10 +16,10 @@ import java.util.List;
 public interface SolicitudService {
     Solicitud findById(Integer idSolicitud);
     List<CourseForSolicitation> findCourseWithSectionsAndBlocksRaw();
-    List<RecipeSolicitation> findActiveRecipesWithDetailsRaw();;
+    List<RecipeSolicitation> findActiveRecipesWithDetailsRaw();
     ResultsMassSolicitationView saveMass(List<MassiveSolicitation> payloadList);
     List<SolicitationManagement> findSolicitationsPerWeekRaw(DateRangeDTO request);
     DashboardConsolidado obtenerDashboard(DateRangeDTO request);
     boolean changeMassiveStatus(ChangeSolicitationStatus request);
-
+    ProyeccionAbastecimiento findProyeccionAbastecimiento(DateRangeDTO request);
 }

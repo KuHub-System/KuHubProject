@@ -39,7 +39,7 @@ const GestionUsuariosPage: React.FC = () => {
   const toast = useToast();
   const confirm = useConfirm();
   const opcionesRol = ['Todos los roles', ...ROLES];
-  const { user: usuarioActual, hasSpecificPermission } = useAuth();
+  const { user: usuarioActual } = useAuth();
   const { canCreate: usuPuedeCrear, canUpdate: usuPuedeEditar, canDelete: usuPuedeEliminar } = useModulePermission('GESTION_USUARIOS');
   const [usuarios, setUsuarios] = useState<IUsuario[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -53,7 +53,7 @@ const GestionUsuariosPage: React.FC = () => {
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const scrollEnabledRef = React.useRef<boolean>(false);
 
-  usePageTitle('Gestión de Usuarios', 'Administra los usuarios del sistema y sus permisos');
+  usePageTitle('Gestión de Usuarios', 'Administra los usuarios del sistema y sus permisos', 'lucide:user-cog');
 
   // Modal de crear/editar
   const { isOpen, onOpen, onOpenChange } = useDisclosure();
@@ -77,13 +77,6 @@ const GestionUsuariosPage: React.FC = () => {
   const [archivoFoto, setArchivoFoto] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [initialFormData, setInitialFormData] = useState<IUsuarioCreacion | null>(null);
-
-  // Verificar permisos
-  useEffect(() => {
-    if (!hasSpecificPermission('gestion-usuarios')) {
-      window.location.href = '/';
-    }
-  }, [hasSpecificPermission]);
 
   // Cargar usuarios al iniciar y cuando cambie el debounced search
   const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -540,28 +533,28 @@ const GestionUsuariosPage: React.FC = () => {
                     </TableCell>
                     <TableCell>
                       <div className="flex justify-center gap-1">
-                        {usuPuedeEditar && (
-                        <Tooltip content="Editar">
+                        <Tooltip content={usuPuedeEditar ? "Editar" : "Sin permiso de edición"}>
                           <Button
                             isIconOnly
                             size="sm"
                             variant="light"
                             onPress={() => abrirModalEditar(usuario)}
+                            isDisabled={!usuPuedeEditar}
                             className="text-default-400 hover:text-primary"
                           >
                             <Icon icon="lucide:edit" width={18} />
                           </Button>
                         </Tooltip>
-                        )}
 
-                        {usuario.activo && usuPuedeEliminar && (
-                          <Tooltip content="Desactivar">
+                        {usuario.activo && (
+                          <Tooltip content={!usuPuedeEliminar ? "Sin permiso de desactivación" : "Desactivar"}>
                             <Button
                               isIconOnly
                               size="sm"
                               variant="light"
                               onPress={() => handleEliminar(usuario)}
                               isDisabled={
+                                !usuPuedeEliminar ||
                                 usuario.id === usuarioActual?.id ||
                                 usuario.nombreCompleto === usuarioActual?.nombre
                               }

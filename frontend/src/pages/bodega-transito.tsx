@@ -45,6 +45,9 @@ interface RequestCardProps {
   onViewDetail: (solicitud: ISolicitud) => void;
 }
 
+// Callback que EntregaSalaCard notifica al padre cuando un item cambia de estado abierto/cerrado
+type ExpandChangeCallback = (idSolicitud: number, isOpen: boolean, esProcesado: boolean) => void;
+
 const RequestCard: React.FC<RequestCardProps> = ({ solicitud, onUpdate, onAddExtra, onViewDetail }) => {
   const isArmado = solicitud.estadoBodega === 'Armado';
 
@@ -143,10 +146,31 @@ const fmtCantidadEntrega = (n: number): string =>
 // COMPONENTE EntregaSalaCard — muestra una sala con sus entregas del día
 // ─────────────────────────────────────────────────────────────────────────────
 
-const EntregaSalaCard: React.FC<{ sala: ISalaEntrega; onPreparar: (sol: ISolicitudEntrega) => void; canPreparar: boolean }> = ({ sala, onPreparar, canPreparar }) => {
+const EntregaSalaCard: React.FC<{
+  sala: ISalaEntrega;
+  onPreparar: (sol: ISolicitudEntrega) => void;
+  canPreparar: boolean;
+  onExpandChange: ExpandChangeCallback;
+}> = ({ sala, onPreparar, canPreparar, onExpandChange }) => {
   const [expandidos, setExpandidos] = React.useState<Set<number>>(new Set());
-  const toggle = (id: number) =>
+
+  // Ref para poder acceder al estado actual en el cleanup de unmount
+  const expandidosRef = React.useRef(expandidos);
+  expandidosRef.current = expandidos;
+
+  // Al desmontar, notifica al padre que todos los elementos se cerraron
+  React.useEffect(() => {
+    return () => {
+      expandidosRef.current.forEach(id => onExpandChange(id, false, false));
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const toggle = (id: number, esProcesado: boolean) => {
+    const nowOpen = !expandidos.has(id);
     setExpandidos(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+    onExpandChange(id, nowOpen, esProcesado);
+  };
 
   return (
     <Card className="border border-default-200 shadow-sm bg-white dark:bg-content1">
@@ -170,7 +194,7 @@ const EntregaSalaCard: React.FC<{ sala: ISalaEntrega; onPreparar: (sol: ISolicit
             <div key={sol.idSolicitud} className={esProcesado ? 'opacity-75' : ''}>
               <button
                 className={`w-full flex items-center gap-3 px-4 py-3 hover:bg-default-50/50 dark:hover:bg-default-100/20 transition-colors text-left ${esProcesado ? 'bg-success-50/30 dark:bg-success-50/10' : ''}`}
-                onClick={() => toggle(sol.idSolicitud)}
+                onClick={() => toggle(sol.idSolicitud, esProcesado)}
               >
                 {/* Badge de horario */}
                 <div className={`shrink-0 flex flex-col items-center justify-center rounded-lg px-2.5 py-1.5 min-w-[72px] text-center ${esProcesado ? 'bg-success-50 border border-success-200' : 'bg-primary-50 border border-primary-100'}`}>
@@ -328,6 +352,14 @@ const BodegaTransitoPage: React.FC = () => {
   const [isLoadingEntregas,  setIsLoadingEntregas]  = React.useState(false);
   const entregasCache = React.useRef<Map<string, IEntregaDiaria[]>>(new Map());
 
+  // ── Polling de stock para solicitudes expandidas ──
+  // Contiene los idSolicitud de los items actualmente desplegados y no-PROCESADO
+  const [expandidosSolIds, setExpandidosSolIds] = React.useState<Set<number>>(new Set());
+  // Ref espejo para acceso síncrono dentro del interval
+  const expandidosSolIdsRef = React.useRef<Set<number>>(new Set());
+  expandidosSolIdsRef.current = expandidosSolIds;
+  const pollingIntervalRef = React.useRef<ReturnType<typeof setInterval> | null>(null);
+
   // ── Preparar Entrega ──
   type ProductoEdit = {
     idProducto: number;
@@ -342,6 +374,7 @@ const BodegaTransitoPage: React.FC = () => {
   const [productosEdit,       setProductosEdit]       = React.useState<ProductoEdit[]>([]);
   const [isConfirmando,       setIsConfirmando]       = React.useState(false);
   const [preparaError,        setPreparaError]        = React.useState<string | null>(null);
+  const [confirmarTextoEntrega, setConfirmarTextoEntrega] = React.useState('');
 
   const abrirPreparar = React.useCallback((sol: ISolicitudEntrega) => {
     setPreparandoSolicitud(sol);
@@ -355,6 +388,7 @@ const BodegaTransitoPage: React.FC = () => {
       cantidadAEntregar:  p.cantidad,
     })));
     setPreparaError(null);
+    setConfirmarTextoEntrega('');
   }, []);
 
   const confirmarEntrega = React.useCallback(async () => {
@@ -372,6 +406,7 @@ const BodegaTransitoPage: React.FC = () => {
       });
       toast.success('Entrega preparada y solicitud procesada correctamente.');
       setPreparandoSolicitud(null);
+      setConfirmarTextoEntrega('');
       // Invalidar caché y recargar la semana actual
       entregasCache.current.clear();
       const range = getWeekRange(selectedDate);
@@ -385,6 +420,7 @@ const BodegaTransitoPage: React.FC = () => {
         // Operación exitosa pero con desincronización
         toast.warning(err.response.data?.mensaje ?? 'Entrega preparada. El stock estaba desincronizado.');
         setPreparandoSolicitud(null);
+        setConfirmarTextoEntrega('');
         entregasCache.current.clear();
         const range = getWeekRange(selectedDate);
         setIsLoadingEntregas(true);
@@ -395,23 +431,21 @@ const BodegaTransitoPage: React.FC = () => {
       } else if (err.response?.status === 422) {
         setPreparaError(err.response.data?.mensaje ?? 'Stock insuficiente para uno o más productos.');
       } else {
-        setPreparaError('Ocurrió un error inesperado. Intenta nuevamente.');
+        const errData = err.response?.data;
+        const msg = errData?.mensaje
+          || errData?.message
+          || (errData?.errors ? Object.values(errData.errors as Record<string, string>).join('. ') : null);
+        setPreparaError(msg || 'Ocurrió un error inesperado. Intenta nuevamente.');
       }
     } finally {
       setIsConfirmando(false);
     }
   }, [preparandoSolicitud, productosEdit, selectedDate, toast]);
 
-  const memoizedTitle = React.useMemo(() => (
-    <div className="flex items-center gap-2">
-      <Icon icon="lucide:container" className="text-secondary" width={24} />
-      <span>Bodega de Tránsito</span>
-    </div>
-  ), []);
-
   usePageTitle(
-    memoizedTitle as unknown as string,
-    'Gestión de armado de carros diarios'
+    'Bodega de Tránsito',
+    'Gestión de armado de carros diarios',
+    'lucide:warehouse'
   );
 
   const { isOpen: isExtraOpen, onOpen: onExtraOpen, onOpenChange: onExtraOpenChange } = useDisclosure();
@@ -560,6 +594,83 @@ const BodegaTransitoPage: React.FC = () => {
       .finally(() => setIsLoadingEntregas(false));
   }, [selectedDate, currentView]);
   React.useEffect(() => { filtersRef.current = selectedFilters; }, [selectedFilters]);
+
+  // ── Refresco quirúrgico: fetch completo pero merge solo en solicitudes expandidas ──
+  // No muestra indicador al usuario — corre silencioso en background.
+  const refrescarExpandidos = React.useCallback(async (ids: Set<number>) => {
+    if (ids.size === 0) return;
+    const range = getWeekRange(selectedDate);
+    try {
+      const dataNueva = await obtenerEntregasDiariasService(range);
+      // Actualizar cache con datos frescos
+      entregasCache.current.set(getWeekKey(selectedDate), dataNueva);
+      // Merge quirúrgico: solo toca los productos de las solicitudes expandidas
+      setEntregasData(prev => prev.map(dia => ({
+        ...dia,
+        salas: dia.salas.map(sala => ({
+          ...sala,
+          solicitudes: sala.solicitudes.map(sol => {
+            // Solo actualizar si está expandida y no es histórico PROCESADO
+            if (!ids.has(sol.idSolicitud) || sol.estadoSolicitud === 'PROCESADO') return sol;
+            const solFresca = dataNueva
+              .flatMap(d => d.salas)
+              .flatMap(s => s.solicitudes)
+              .find(s => s.idSolicitud === sol.idSolicitud);
+            if (!solFresca) return sol;
+            // Actualiza stockTransito, diferencia y estadoSolicitud preservando el resto
+            return { ...sol, productos: solFresca.productos, estadoSolicitud: solFresca.estadoSolicitud };
+          })
+        }))
+      })));
+    } catch {
+      // Silencioso — fallo de polling no interrumpe al usuario
+    }
+  }, [selectedDate]);
+
+  // ── Callback que EntregaSalaCard llama al abrir/cerrar un item ──
+  const handleExpandChange = React.useCallback<ExpandChangeCallback>((idSolicitud, isOpen, esProcesado) => {
+    if (esProcesado) return; // Histórico: nunca se refresca
+    setExpandidosSolIds(prev => {
+      const next = new Set(prev);
+      if (isOpen) {
+        next.add(idSolicitud);
+      } else {
+        next.delete(idSolicitud);
+      }
+      return next;
+    });
+    // Refresh inmediato al abrir (no esperar el intervalo de 30s)
+    if (isOpen) {
+      refrescarExpandidos(new Set([idSolicitud]));
+    }
+  }, [refrescarExpandidos]);
+
+  // ── Polling: activo solo si hay solicitudes expandidas no-PROCESADO ──
+  React.useEffect(() => {
+    if (expandidosSolIds.size === 0) {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+        pollingIntervalRef.current = null;
+      }
+      return;
+    }
+    // Reiniciar interval con los IDs actuales capturados via ref
+    if (pollingIntervalRef.current) clearInterval(pollingIntervalRef.current);
+    pollingIntervalRef.current = setInterval(() => {
+      refrescarExpandidos(expandidosSolIdsRef.current);
+    }, 30_000);
+    return () => {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+        pollingIntervalRef.current = null;
+      }
+    };
+  }, [expandidosSolIds, refrescarExpandidos]);
+
+  // ── Limpiar expandidos al cambiar fecha o salir de la vista pedidos ──
+  React.useEffect(() => {
+    setExpandidosSolIds(new Set());
+  }, [selectedDate, currentView]);
 
   /**
    * Debounce 2.5s para filtros: cancela el timer anterior antes de iniciar uno nuevo,
@@ -1117,7 +1228,7 @@ const BodegaTransitoPage: React.FC = () => {
                           ) : (
                             <div className="space-y-3">
                               {entregasHoy.salas.map(sala => (
-                                <EntregaSalaCard key={sala.idSala} sala={sala} onPreparar={abrirPreparar} canPreparar={ped_Crear} />
+                                <EntregaSalaCard key={sala.idSala} sala={sala} onPreparar={abrirPreparar} canPreparar={ped_Crear} onExpandChange={handleExpandChange} />
                               ))}
                             </div>
                           )}
@@ -1137,7 +1248,7 @@ const BodegaTransitoPage: React.FC = () => {
                           ) : (
                             <div className="space-y-3 opacity-80">
                               {entregasManana.salas.map(sala => (
-                                <EntregaSalaCard key={sala.idSala} sala={sala} onPreparar={abrirPreparar} canPreparar={ped_Crear} />
+                                <EntregaSalaCard key={sala.idSala} sala={sala} onPreparar={abrirPreparar} canPreparar={ped_Crear} onExpandChange={handleExpandChange} />
                               ))}
                             </div>
                           )}
@@ -1243,7 +1354,7 @@ const BodegaTransitoPage: React.FC = () => {
               <ModalHeader className="border-b border-default-100 dark:border-default-50 bg-white dark:bg-content2">
                 <div className="flex items-center gap-2">
                   <Icon icon="lucide:package-check" className="text-primary" width={24} />
-                  <span className="font-bold text-lg text-secondary dark:text-foreground">Control Bodega</span>
+                  <span className="font-bold text-lg text-secondary dark:text-foreground">Control de Bodega</span>
                 </div>
               </ModalHeader>
               <ModalBody className="py-6">
@@ -1280,7 +1391,7 @@ const BodegaTransitoPage: React.FC = () => {
     {/* ── Modal Preparar Entrega ── */}
     <Modal
       isOpen={!!preparandoSolicitud}
-      onClose={() => { if (!isConfirmando) setPreparandoSolicitud(null); }}
+      onClose={() => { if (!isConfirmando) { setPreparandoSolicitud(null); setConfirmarTextoEntrega(''); } }}
       size="2xl"
       isDismissable={!isConfirmando}
       hideCloseButton={isConfirmando}
@@ -1371,17 +1482,37 @@ const BodegaTransitoPage: React.FC = () => {
               {preparaError}
             </div>
           )}
+
+          {/* Advertencia acción irreversible */}
+          <div className="flex items-start gap-2 px-3 py-2 mt-2 bg-warning-50 border border-warning-200 rounded-lg text-xs text-warning-800">
+            <Icon icon="lucide:alert-triangle" width={13} className="mt-px shrink-0 text-warning-600" />
+            <span>Esta acción es <strong>irreversible</strong>. Se realizarán los descuentos correspondientes en la bodega de tránsito.</span>
+          </div>
+
+          {/* Input de confirmación */}
+          <div className="mt-3">
+            <Input
+              label='Escriba "CONFIRMAR" para continuar'
+              placeholder="CONFIRMAR"
+              value={confirmarTextoEntrega}
+              onValueChange={setConfirmarTextoEntrega}
+              variant="bordered"
+              color={confirmarTextoEntrega.trim().toUpperCase() === 'CONFIRMAR' ? 'success' : 'default'}
+              endContent={confirmarTextoEntrega.trim().toUpperCase() === 'CONFIRMAR'
+                ? <Icon icon="lucide:check-circle" width={16} className="text-success" /> : null}
+            />
+          </div>
         </ModalBody>
 
         <ModalFooter>
-          <Button variant="light" onPress={() => setPreparandoSolicitud(null)} isDisabled={isConfirmando}>
+          <Button variant="light" onPress={() => { setPreparandoSolicitud(null); setConfirmarTextoEntrega(''); }} isDisabled={isConfirmando}>
             Cancelar
           </Button>
           <Button
             color="secondary"
             onPress={confirmarEntrega}
             isLoading={isConfirmando}
-            isDisabled={isConfirmando || productosEdit.some(p => p.stockTransito - p.cantidadAEntregar < 0)}
+            isDisabled={isConfirmando || productosEdit.length === 0 || productosEdit.some(p => !p.cantidadAEntregar || p.cantidadAEntregar <= 0 || p.stockTransito - p.cantidadAEntregar < 0) || confirmarTextoEntrega.trim().toUpperCase() !== 'CONFIRMAR'}
             startContent={!isConfirmando ? <Icon icon="lucide:check" width={14} /> : undefined}
           >
             Confirmar Entrega

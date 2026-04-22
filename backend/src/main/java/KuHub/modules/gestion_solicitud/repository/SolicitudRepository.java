@@ -131,14 +131,14 @@ public interface SolicitudRepository extends JpaRepository<Solicitud, Integer> {
 
 
     @Query(value = """
-        SELECT 
-            so.fecha_solicitada,
-            COALESCE(rc.nombre_receta, 'Sin receta') AS nombre_receta,
-            so.id_solicitud,
-            so.id_receta,
-            so.id_reserva_sala, -- Agregamos el ID para el DTO
-            so.estado_solicitud,
-            so.observaciones,  
+        SELECT
+            so.fecha_solicitada,                                          -- [0]
+            COALESCE(rc.nombre_receta, 'Sin receta') AS nombre_receta,   -- [1]
+            so.id_solicitud,                                              -- [2]
+            so.id_receta,                                                 -- [3]
+            so.id_reserva_sala,                                           -- [4]
+            so.estado_solicitud,                                          -- [5]
+            so.observaciones,                                             -- [6]
            (
                SELECT COALESCE(
                    json_agg(
@@ -154,19 +154,19 @@ public interface SolicitudRepository extends JpaRepository<Solicitud, Integer> {
                FROM detalle_solicitud ds
                JOIN producto p ON p.id_producto = ds.id_producto
                JOIN unidad_medida u ON u.id_unidad = p.id_unidad
-               WHERE ds.id_solicitud = so.id_solicitud 
-           ) AS productos_solicitados,
+               WHERE ds.id_solicitud = so.id_solicitud
+           ) AS productos_solicitados,                                    -- [7]
             JSON_BUILD_OBJECT(
                 'nombre_asignatura', a.nombre_asignatura,
                 'id_asignatura', a.id_asignatura,
                 'seccion', JSON_BUILD_OBJECT(
-                    'id_seccion', s.id_seccion, 
+                    'id_seccion', s.id_seccion,
                     'nombre_seccion', s.nombre_seccion,
                     'id_usuario', u.id_usuario,
-                    'nombre_docente', CONCAT_WS(' ', 
-                        NULLIF(TRIM(u.p_nombre), ''), 
-                        NULLIF(TRIM(u.s_nombre), ''), 
-                        NULLIF(TRIM(u.app_paterno), ''), 
+                    'nombre_docente', CONCAT_WS(' ',
+                        NULLIF(TRIM(u.p_nombre), ''),
+                        NULLIF(TRIM(u.s_nombre), ''),
+                        NULLIF(TRIM(u.app_paterno), ''),
                         NULLIF(TRIM(u.app_materno), '')
                     ),
                     'cant_inscritos', s.cant_inscritos,
@@ -184,11 +184,9 @@ public interface SolicitudRepository extends JpaRepository<Solicitud, Integer> {
                             '[]'::json
                         )
                         FROM reserva_sala rs_detail
-                        -- Buscamos los datos de la reserva original vinculada a la solicitud
                         INNER JOIN reserva_sala rs_ref ON rs_ref.id_reserva_sala = so.id_reserva_sala
                         INNER JOIN bloque_horario b ON b.id_bloque = rs_detail.id_bloque
                         INNER JOIN sala sa ON sa.id_sala = rs_detail.id_sala
-                        -- Filtramos para traer TODOS los bloques de esa misma clase (misma sala, día y sección)
                         WHERE rs_detail.id_seccion = rs_ref.id_seccion
                           AND rs_detail.id_sala = rs_ref.id_sala
                           AND rs_detail.dia_semana = rs_ref.dia_semana
@@ -196,26 +194,58 @@ public interface SolicitudRepository extends JpaRepository<Solicitud, Integer> {
                           AND sa.activo = true
                     )
                 )
-            ) AS asignatura_detalle
+            ) AS asignatura_detalle,                                      -- [8]
+            CASE WHEN so.estado_solicitud = 'RECHAZADA'
+                 THEN mrs.motivo
+                 ELSE NULL
+            END AS motivo_rechazo                                         -- [9]
         FROM solicitud so
         LEFT JOIN receta rc ON rc.id_receta = so.id_receta
+        LEFT JOIN motivo_rechazo_solicitud mrs ON mrs.id_solicitud = so.id_solicitud
         JOIN seccion s ON s.id_seccion = so.id_seccion
         JOIN asignatura a ON a.id_asignatura = s.id_asignatura
         JOIN docente_seccion dc ON dc.id_seccion = s.id_seccion
-        JOIN usuario u ON u.id_usuario = dc.id_usuario 
+        JOIN usuario u ON u.id_usuario = dc.id_usuario
         WHERE so.fecha_solicitada BETWEEN :fechaInicio AND :fechaFin
         ORDER BY so.fecha_solicitada ASC, so.estado_solicitud ASC;
         """, nativeQuery = true)
     List<Object[]> findSolicitationsPerWeekRaw(@Param("fechaInicio") LocalDate fechaInicio, @Param("fechaFin") LocalDate fechaFin);
 
-
+    /**
+     * Rechaza automáticamente las solicitudes PENDIENTES con fecha vencida
+     * e inserta el motivo de rechazo correspondiente en un solo paso.
+     * Devuelve el número de filas rechazadas.
+     */
     @Modifying
     @Query(value = """
-            UPDATE solicitud 
-            SET estado_solicitud = CAST(:estado AS estado_solicitud_type) 
-            WHERE id_solicitud IN (:ids)
+        WITH rechazadas AS (
+            UPDATE solicitud
+            SET estado_solicitud = 'RECHAZADA'::estado_solicitud_type
+            WHERE estado_solicitud = 'PENDIENTE'::estado_solicitud_type
+              AND fecha_solicitada < CURRENT_DATE
+            RETURNING id_solicitud
+        )
+        INSERT INTO motivo_rechazo_solicitud (id_solicitud, motivo)
+        SELECT r.id_solicitud, 'Solicitud rechazada automáticamente: la fecha de la clase ha expirado.'
+        FROM rechazadas r
+        ON CONFLICT (id_solicitud) DO NOTHING
+    """, nativeQuery = true)
+    int rechazarSolicitudesVencidas();
+
+
+    @Modifying
+    @Query("UPDATE Solicitud s SET s.estadoSolicitud = :estado WHERE s.idSolicitud IN (:ids)")
+    int updateMassiveStateSolicitation(@Param("ids") List<Integer> ids, @Param("estado") Solicitud.EstadoSolicitud estado);
+
+    /** Verifica si alguna de las solicitudes indicadas tiene estado EN_PEDIDO o PROCESADO (inmutables). */
+    @Query(value = """
+            SELECT EXISTS (
+                SELECT 1 FROM solicitud
+                WHERE id_solicitud IN (:ids)
+                  AND estado_solicitud IN ('EN_PEDIDO', 'PROCESADO')
+            )
             """, nativeQuery = true)
-    int updateMassiveStateSolicitation(@Param("ids") List<Integer> ids, @Param("estado") String estado);
+    boolean existsByIdSolicitudInAndEstadoInmutable(@Param("ids") List<Integer> ids);
 
 
 
@@ -396,8 +426,37 @@ public interface SolicitudRepository extends JpaRepository<Solicitud, Integer> {
         """, nativeQuery = true)
     String findConsolidadoGlobalJson(@Param("fechaInicio") LocalDate fechaInicio, @Param("fechaFin") LocalDate fechaFin);
 
-
-
-
+    /**
+     * Obtiene la proyección de abastecimiento consolidada de productos cuyas solicitudes
+     * tienen estado EN_PEDIDO, filtradas por rango de fechas (fecha_solicitada).
+     * Retorna un único JSON con el arreglo de productos agrupados por categoría y nombre.
+     */
+    @Query(value = """
+        SELECT jsonb_agg(
+            jsonb_build_object(
+                'idProducto',              p.id_producto,
+                'nombreProducto',          p.nombre_producto,
+                'nombreUnidad',            um.nombre_unidad,
+                'abreviatura',             um.abreviatura,
+                'esFraccionario',          um.es_fraccionario,
+                'nombreCategoria',         c.nombre_categoria,
+                'cantidadTotalSolicitada', sub_total.total_solicitado
+            ) ORDER BY c.nombre_categoria ASC, p.nombre_producto ASC
+        ) AS proyeccion_abastecimiento
+        FROM (
+            SELECT ds.id_producto,
+                   SUM(ds.cant_producto_solicitud) AS total_solicitado
+            FROM detalle_solicitud ds
+            INNER JOIN solicitud s ON s.id_solicitud = ds.id_solicitud
+            WHERE s.estado_solicitud = 'EN_PEDIDO'
+              AND s.fecha_solicitada BETWEEN :fechaInicio AND :fechaFin
+            GROUP BY ds.id_producto
+        ) sub_total
+        INNER JOIN producto      p  ON p.id_producto  = sub_total.id_producto AND p.activo = TRUE
+        INNER JOIN unidad_medida um ON um.id_unidad    = p.id_unidad
+        INNER JOIN categoria     c  ON c.id_categoria  = p.id_categoria
+        """, nativeQuery = true)
+    String findProyeccionAbastecimientoJson(@Param("fechaInicio") LocalDate fechaInicio,
+                                            @Param("fechaFin") LocalDate fechaFin);
 
 }

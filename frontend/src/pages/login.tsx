@@ -3,7 +3,7 @@ import { useHistory } from 'react-router-dom';
 import { Card, CardBody, Input, Button, Checkbox, Divider } from '@heroui/react';
 import { Icon } from '@iconify/react';
 import { useAuth } from '../contexts/auth-context';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 
 /**
  * CONFIGURACIÓN DE USUARIOS DEMO - ACTUALIZADOS
@@ -82,10 +82,12 @@ const IS_LOCAL = typeof window !== 'undefined' && window.location.hostname === '
 const LoginPage: React.FC = () => {
   const [email, setEmail] = React.useState<string>('');
   const [password, setPassword] = React.useState<string>('');
+  const [showPassword, setShowPassword] = React.useState<boolean>(false);
   const [recordar, setRecordar] = React.useState<boolean>(false);
   const [isLoading, setIsLoading] = React.useState<boolean>(false);
   const [error, setError] = React.useState<string | null>(null);
   const [selectedDemo, setSelectedDemo] = React.useState<string | null>(null);
+  const [irisOpen,     setIrisOpen]     = React.useState<boolean>(false);
 
   const { login } = useAuth();
   const history = useHistory();
@@ -110,11 +112,11 @@ const LoginPage: React.FC = () => {
 
       console.log('🔐 Intentando login con:', email);
 
-      const success = await login(email, password);
+      const success = await login(email, password, recordar);
 
       if (success) {
-        console.log('✅ Login exitoso, redirigiendo...');
-        history.push('/');
+        console.log('✅ Login exitoso, iniciando transición...');
+        setIrisOpen(true);
       } else {
         setError('Email o contraseña incorrectos');
         console.log('❌ Credenciales inválidas');
@@ -144,32 +146,47 @@ const LoginPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-default-50 dark:bg-black py-12 px-4 sm:px-6 lg:px-8 font-sans transition-colors duration-200">
+    <div className="font-sans w-full">
+      {/* Contenido */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="w-full max-w-md space-y-8"
+        className="w-full max-w-md"
       >
-        <div className="text-center">
-          <div className="mx-auto h-16 w-16 bg-secondary dark:bg-content1 text-primary rounded-xl flex items-center justify-center mb-4 shadow-lg">
-            <Icon icon="lucide:package-open" width={32} height={32} />
-          </div>
-          <h2 className="text-3xl font-extrabold text-secondary dark:text-foreground tracking-tight">
-            KuHub
-          </h2>
-          <p className="mt-2 text-sm text-default-500">
-            Gestión de Bodega e Inventario <span className="font-bold text-primary-600 dark:text-primary">DuocUC</span>
-          </p>
-        </div>
+        <Card
+          className="shadow-xl border-t-4 border-primary"
+          classNames={{
+            base: "bg-white dark:bg-content1",
+            body: "bg-white dark:bg-content1",
+          }}
+        >
+          <CardBody className="px-8 pt-8 pb-6">
 
-        <Card className="shadow-xl border-t-4 border-primary bg-white dark:bg-content1">
-          <CardBody className="p-8 space-y-6">
+            {/* ── Logo y título ── */}
+            <div className="text-center mb-5">
+              <img
+                src="/nrelogoo-Photoroom.png"
+                alt="KuHub"
+                className="mx-auto h-32 w-32 mb-3 drop-shadow-md"
+              />
+              <h2 className="text-3xl font-extrabold text-secondary dark:text-foreground tracking-tight">
+                KuHub
+              </h2>
+              <p className="mt-1 text-sm text-default-500">
+                Gestión de Bodega e Inventario{' '}
+                <span className="font-bold text-primary-600 dark:text-primary">DuocUC</span>
+              </p>
+            </div>
+
+            <Divider className="mb-5" />
+
+            {/* ── Subtítulo del form ── */}
             <div className="text-center mb-4">
               <h1 className="text-xl font-bold text-secondary dark:text-foreground">
                 Iniciar Sesión
               </h1>
-              <p className="text-sm text-default-500">
+              <p className="text-sm text-default-500 mt-0.5">
                 Ingrese sus credenciales para acceder al sistema
               </p>
             </div>
@@ -178,27 +195,21 @@ const LoginPage: React.FC = () => {
               <motion.div
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
-                className="bg-danger-50 dark:bg-danger-50/10 border border-danger-200 dark:border-danger-100/20 text-danger-700 dark:text-danger-400 p-3 rounded-lg flex items-start gap-2"
+                className="mb-4 bg-danger-50 dark:bg-danger-50/10 border border-danger-200 dark:border-danger-100/20 text-danger-700 dark:text-danger-400 p-3 rounded-lg flex items-start gap-2"
               >
                 <Icon icon="lucide:alert-circle" className="text-xl flex-shrink-0 mt-0.5" />
                 <span className="text-sm font-medium">{error}</span>
               </motion.div>
             )}
 
-
-            <form onSubmit={handleSubmit} className="space-y-5" autoComplete="off">
+            <form onSubmit={handleSubmit} className="space-y-4" autoComplete="off">
               <Input
                 label="Correo Electrónico"
                 type="email"
                 value={email}
-                onValueChange={(value) => {
-                  setEmail(value);
-                  handleManualInput();
-                }}
+                onValueChange={(value) => { setEmail(value); handleManualInput(); }}
                 placeholder="correo@duoc.cl"
-                startContent={
-                  <Icon icon="lucide:mail" className="text-default-400 text-lg" />
-                }
+                startContent={<Icon icon="lucide:mail" className="text-default-400 text-lg" />}
                 isRequired
                 isDisabled={isLoading}
                 variant="bordered"
@@ -211,15 +222,21 @@ const LoginPage: React.FC = () => {
 
               <Input
                 label="Contraseña"
-                type="password"
+                type={showPassword ? 'text' : 'password'}
                 value={password}
-                onValueChange={(value) => {
-                  setPassword(value);
-                  handleManualInput();
-                }}
+                onValueChange={(value) => { setPassword(value); handleManualInput(); }}
                 placeholder="••••••••"
-                startContent={
-                  <Icon icon="lucide:lock" className="text-default-400 text-lg" />
+                startContent={<Icon icon="lucide:lock" className="text-default-400 text-lg" />}
+                endContent={
+                  <button
+                    type="button"
+                    tabIndex={-1}
+                    className="text-default-400 hover:text-default-600 dark:hover:text-default-300 transition-colors focus:outline-none"
+                    onClick={() => setShowPassword(prev => !prev)}
+                    aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                  >
+                    <Icon icon={showPassword ? 'lucide:eye-off' : 'lucide:eye'} className="text-lg" />
+                  </button>
                 }
                 isRequired
                 isDisabled={isLoading}
@@ -231,15 +248,13 @@ const LoginPage: React.FC = () => {
                 }}
               />
 
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between pt-1">
                 <Checkbox
                   isSelected={recordar}
                   onValueChange={setRecordar}
                   isDisabled={isLoading}
                   size="sm"
-                  classNames={{
-                    label: "text-sm text-default-500"
-                  }}
+                  classNames={{ label: "text-sm text-default-500" }}
                 >
                   Recordar sesión
                 </Checkbox>
@@ -256,7 +271,7 @@ const LoginPage: React.FC = () => {
               <Button
                 type="submit"
                 color="primary"
-                className="w-full font-bold text-secondary shadow-md transform hover:scale-[1.02] transition-transform"
+                className="w-full font-bold text-secondary shadow-md transform hover:scale-[1.02] transition-transform mt-1"
                 size="lg"
                 isLoading={isLoading}
                 isDisabled={isLoading}
@@ -268,7 +283,7 @@ const LoginPage: React.FC = () => {
 
             {IS_LOCAL && (
               <>
-                <Divider />
+                <Divider className="my-5" />
                 <div className="space-y-3">
                   <p className="text-xs font-semibold text-default-400 uppercase tracking-wider text-center">
                     Accesos Rápidos (Demo)
@@ -300,13 +315,66 @@ const LoginPage: React.FC = () => {
               </>
             )}
 
+            {/* ── Copyright ── */}
+            <Divider className="mt-5 mb-3" />
+            <p className="text-center text-xs text-default-400">
+              © {new Date().getFullYear()} KuHub · Sistema de Gestión Gastronómica DuocUC
+            </p>
+
           </CardBody>
         </Card>
-
-        <p className="text-center text-xs text-default-400">
-          © {new Date().getFullYear()} KuHub - Sistema de Gestión Gastronómica DuocUC
-        </p>
       </motion.div>
+
+      {/* ── Animación de transición al entrar al sistema ── */}
+      <AnimatePresence>
+        {irisOpen && (
+          <>
+            {/* 1. Barrido dorado desde esquina inferior izquierda expandiéndose hacia arriba-derecha */}
+            <motion.div
+              initial={{ clipPath: 'polygon(0% 100%, 0% 100%, 0% 100%, 0% 100%)' }}
+              animate={{ clipPath: 'polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%)' }}
+              transition={{ duration: 0.8, ease: [0.76, 0, 0.24, 1] }}
+              style={{
+                position: 'fixed', inset: 0, zIndex: 98,
+                background: 'linear-gradient(135deg, #FFB800 0%, #e09500 100%)',
+                pointerEvents: 'none',
+              }}
+            />
+
+            {/* 2. Logo KuHub aparece en el centro con pop elástico */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.4, x: '-50%', y: '-50%' }}
+              animate={{ opacity: 1, scale: 1.1, x: '-50%', y: '-50%' }}
+              transition={{ duration: 0.7, ease: [0.34, 1.56, 0.64, 1], delay: 0.3 }}
+              style={{
+                position: 'fixed', top: '48%', left: '50%',
+                zIndex: 99,
+                pointerEvents: 'none',
+              }}
+            >
+              <img
+                src="/nrelogoo-Photoroom.png"
+                alt="KuHub"
+                style={{ width: 220, height: 220, objectFit: 'contain' }}
+              />
+            </motion.div>
+
+            {/* 3. Fade a blanco → dispara la navegación al terminar */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.4, ease: 'easeOut', delay: 1.1 }}
+              onAnimationComplete={() => history.push('/')}
+              style={{
+                position: 'fixed', inset: 0, zIndex: 100,
+                background: '#fff',
+                pointerEvents: 'none',
+              }}
+            />
+          </>
+        )}
+      </AnimatePresence>
+
     </div>
   );
 };

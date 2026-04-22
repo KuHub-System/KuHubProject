@@ -23,6 +23,4 @@ public interface InventarioService {
     Object updateInventoryWithProduct (InventoryWithProductUpdateDTO request);
     BulkInventoryProcess processBulkInventoryUpdate(List<BulkInventoryProcess.ItemRequest> requests);
     boolean softDeleteByInventoryWithProduct(Integer idInventario);
-
-
 }
