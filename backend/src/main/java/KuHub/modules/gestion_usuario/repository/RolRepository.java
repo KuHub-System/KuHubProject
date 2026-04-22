@@ -2,6 +2,8 @@ package KuHub.modules.gestion_usuario.repository;
 
 import KuHub.modules.gestion_usuario.entity.Rol;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import java.util.Optional;
 import java.util.List;
@@ -34,9 +36,10 @@ public interface RolRepository extends JpaRepository<Rol, Integer> {
     Optional<Rol> findByNombreRol(String nombreRol);
 
     /**
-     * Busca un rol por su nombre ignorando mayúsculas/minúsculas
+     * Busca un rol por su nombre ignorando mayúsculas/minúsculas (ENUM cast to text)
      */
-    Optional<Rol> findByNombreRolIgnoreCase(String nombreRol);
+    @Query(value = "SELECT r1_0.id_rol, r1_0.activo, r1_0.nombre_rol FROM public.rol r1_0 WHERE UPPER(r1_0.nombre_rol::text) = UPPER(:nombreRol)", nativeQuery = true)
+    Optional<Rol> findByNombreRolIgnoreCase(@Param("nombreRol") String nombreRol);
 
     /**
      * Verifica si existe un rol con ese nombre

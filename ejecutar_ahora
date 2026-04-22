@@ -1,670 +1,753 @@
-Downloaded from central: https://repo.maven.apache.org/maven2/org/codehaus/plexus/plexus-utils/3.5.0/plexus-utils-3.5.0.jar (267 kB at 2.9 MB/s)
-#14 25.07 Downloading from central: https://repo.maven.apache.org/maven2/org/springframework/boot/spring-boot-configuration-processor/3.2.0/spring-boot-configuration-processor-3.2.0.pom
-#14 25.11 Progress (1): 1.0 kB
-Progress (1): 1.9 kB
-                    
-Downloaded from central: https://repo.maven.apache.org/maven2/org/springframework/boot/spring-boot-configuration-processor/3.2.0/spring-boot-configuration-processor-3.2.0.pom (1.9 kB at 45 kB/s)
-#14 25.11 Downloading from central: https://repo.maven.apache.org/maven2/org/springframework/boot/spring-boot-configuration-processor/3.2.0/spring-boot-configuration-processor-3.2.0.jar
-#14 25.15 Progress (1): 7.7/122 kB
-Progress (1): 16/122 kB 
-Progress (1): 24/122 kB
-Progress (1): 40/122 kB
-Progress (1): 57/122 kB
-Progress (1): 73/122 kB
-Progress (1): 90/122 kB
-Progress (1): 106/122 kB
-Progress (1): 122 kB    
-                    
-Downloaded from central: https://repo.maven.apache.org/maven2/org/springframework/boot/spring-boot-configuration-processor/3.2.0/spring-boot-configuration-processor-3.2.0.jar (122 kB at 2.8 MB/s)
-#14 25.20 [INFO] Changes detected - recompiling the module! :source
-release 21] to target/classes
-#14 30.06 [INFO] /app/backend/src/main/java/KuHub/config/security/filter/JwtAuthenticationFilter.java: /app/backend/src/main/java/KuHub/config/security/filter/JwtAuthenticationFilter.java uses unchecked or unsafe operations.
-#14 30.06 [INFO] /app/backend/src/main/java/KuHub/config/security/filter/JwtAuthenticationFilter.java: Recompile with -Xlint:unchecked for details.
-#14 30.06 [INFO] Some messages have been simplified; recompile with -Xdiags:verbose to get full output
-#14 30.06 [INFO] -------------------------------------------------------------
-#14 30.06 [ERROR] COMPILATION ERROR : 
-#14 30.06 [INFO] -------------------------------------------------------------
-#14 30.06 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_solicitud/service/SolicitudServiceImp.java:[408,5] org.springframework.transaction.annotation.Transactional is not a repeatable annotation interface
-#14 30.06 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/entity/Inventario.java:[51,26] cannot find symbol
-#14 30.06   symbol:   method setIdProducto(java.lang.Integer)
-#14 30.06   location: variable producto of type @jakarta.validation.constraints.NotNull(message="El producto es obligatorio") KuHub.modules.gestion_inventario.entity.Producto
-#14 30.06 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/entity/Producto.java:[52,27] cannot find symbol
-#14 30.06   symbol:   method setIdCategoria(java.lang.Short)
-#14 30.06   location: variable categoria of type KuHub.modules.gestion_inventario.entity.Categoria
-#14 30.06 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/entity/Producto.java:[62,30] cannot find symbol
-#14 30.06   symbol:   method setIdUnidad(java.lang.Short)
-#14 30.06   location: variable unidadMedida of type KuHub.modules.gestion_inventario.entity.UnidadMedida
-#14 30.06 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_receta/entity/DetalleReceta.java:[43,20] cannot find symbol
-#14 30.06   symbol:   method setIdReceta(java.lang.Integer)
-#14 30.06   location: variable receta of type KuHub.modules.gestion_receta.entity.Receta
-#14 30.06 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_receta/entity/DetalleReceta.java:[51,22] cannot find symbol
-#14 30.06   symbol:   method setIdProducto(java.lang.Integer)
-#14 30.06   location: variable producto of type KuHub.modules.gestion_inventario.entity.Producto
-#14 30.06 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_pedido/entity/DetallePedido.java:[37,24] cannot find symbol
-#14 30.06   symbol:   method setIdPedido(java.lang.Integer)
-#14 30.06   location: variable pedido of type KuHub.modules.gestion_pedido.entity.Pedido
-#14 30.06 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_pedido/entity/DetallePedido.java:[44,26] cannot find symbol
-#14 30.06   symbol:   method setIdProducto(java.lang.Integer)
-#14 30.06   location: variable producto of type KuHub.modules.gestion_inventario.entity.Producto
-#14 30.06 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_usuario/entity/Usuario.java:[82,14] cannot find symbol
-#14 30.06   symbol:   method setIdRol(java.lang.Integer)
-#14 30.06   location: variable r of type KuHub.modules.gestion_usuario.entity.Rol
-#14 30.06 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_academica/entity/AsignaturaProfesorCargo.java:[51,28] cannot find symbol
-#14 30.06   symbol:   method setIdAsignatura(java.lang.Integer)
-#14 30.06   location: variable asignatura of type KuHub.modules.gestion_academica.entity.Asignatura
-#14 30.06 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_academica/entity/AsignaturaProfesorCargo.java:[62,25] cannot find symbol
-#14 30.06   symbol:   method setIdUsuario(java.lang.Integer)
-#14 30.06   location: variable usuario of type KuHub.modules.gestion_usuario.entity.Usuario
-#14 30.06 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_academica/entity/Seccion.java:[46,28] cannot find symbol
-#14 30.06   symbol:   method setIdAsignatura(java.lang.Integer)
-#14 30.06   location: variable asignatura of type KuHub.modules.gestion_academica.entity.Asignatura
-#14 30.06 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_academica/entity/ReservaSala.java:[64,25] cannot find symbol
-#14 30.06   symbol:   method setIdSeccion(java.lang.Integer)
-#14 30.06   location: variable seccion of type KuHub.modules.gestion_academica.entity.Seccion
-#14 30.06 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_academica/entity/ReservaSala.java:[74,22] cannot find symbol
-#14 30.06   symbol:   method setIdSala(java.lang.Integer)
-#14 30.06   location: variable sala of type KuHub.modules.gestion_academica.entity.Sala
-#14 30.06 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_academica/entity/ReservaSala.java:[84,31] cannot find symbol
-#14 30.06   symbol:   method setIdBloque(java.lang.Integer)
-#14 30.06   location: variable bloqueHorario of type KuHub.modules.gestion_academica.entity.BloqueHorario
-#14 30.06 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_solicitud/entity/Solicitud.java:[68,31] cannot find symbol
-#14 30.06   symbol:   method setIdUsuario(java.lang.Integer)
-#14 30.06   location: variable usuarioGestor of type KuHub.modules.gestion_usuario.entity.Usuario
-#14 30.06 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_solicitud/entity/Solicitud.java:[75,25] cannot find symbol
-#14 30.06   symbol:   method setIdSeccion(java.lang.Integer)
-#14 30.06   location: variable seccion of type KuHub.modules.gestion_academica.entity.Seccion
-#14 30.06 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_solicitud/entity/Solicitud.java:[82,24] cannot find symbol
-#14 30.06   symbol:   method setIdReceta(java.lang.Integer)
-#14 30.06   location: variable receta of type KuHub.modules.gestion_receta.entity.Receta
-#14 30.06 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_solicitud/entity/Solicitud.java:[89,29] cannot find symbol
-#14 30.06   symbol:   method setIdReservaSala(java.lang.Integer)
-#14 30.06   location: variable reservaSala of type KuHub.modules.gestion_academica.entity.ReservaSala
-#14 30.06 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_solicitud/entity/Solicitud.java:[95,16] cannot find symbol
-#14 30.06   symbol:   method setSolicitud(KuHub.modules.gestion_solicitud.entity.Solicitud)
-#14 30.06   location: variable detalle of type KuHub.modules.gestion_solicitud.entity.DetalleSolicitud
-#14 30.06 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_solicitud/entity/DetalleSolicitud.java:[44,26] cannot find symbol
-#14 30.06   symbol:   method setIdProducto(java.lang.Integer)
-#14 30.06   location: variable producto of type KuHub.modules.gestion_inventario.entity.Producto
-#14 30.06 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_usuario/assemblers/RolModelAssembler.java:[18,75] cannot find symbol
-#14 30.06   symbol:   method getIdRol()
-#14 30.06   location: variable entity of type KuHub.modules.gestion_usuario.dtos.RolResponseDTO
-#14 30.06 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_usuario/assemblers/RolModelAssembler.java:[21,79] cannot find symbol
-#14 30.06   symbol:   method getNombreRol()
-#14 30.06   location: variable entity of type KuHub.modules.gestion_usuario.dtos.RolResponseDTO
-#14 30.06 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_academica/service/AsignaturaProfesorCargoServiceImp.java:[40,74] cannot find symbol
-#14 30.06   symbol:   method getUsuario()
-#14 30.06   location: variable asignaturaProfesorCargo of type KuHub.modules.gestion_academica.entity.AsignaturaProfesorCargo
-#14 30.06 [ERROR] /app/backend/src/main/java/KuHub/config/GlobalExceptionHandler.java:[204,40] cannot find symbol
-#14 30.06   symbol:   method getStatus()
-#14 30.06   location: variable ex of type KuHub.modules.gestion_inventario.exceptions.GestionInventarioException
-#14 30.06 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_academica/controller/SalaController.java:[89,9] cannot find symbol
-#14 30.06   symbol:   variable log
-#14 30.06   location: class KuHub.modules.gestion_academica.controller.SalaController
-#14 30.06 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_academica/controller/SalaController.java:[89,56] cannot find symbol
-#14 30.06   symbol:   method getCodSala()
-#14 30.06   location: variable dto of type KuHub.modules.gestion_academica.dtos.request.SalaCreateDTO
-#14 30.06 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_academica/controller/SalaController.java:[91,29] cannot find symbol
-#14 30.06   symbol:   method getCodSala()
-#14 30.06   location: variable dto of type KuHub.modules.gestion_academica.dtos.request.SalaCreateDTO
-#14 30.06 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_academica/controller/SalaController.java:[92,32] cannot find symbol
-#14 30.06   symbol:   method getNombreSala()
-#14 30.06   location: variable dto of type KuHub.modules.gestion_academica.dtos.request.SalaCreateDTO
-#14 30.06 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_academica/controller/SalaController.java:[113,9] cannot find symbol
-#14 30.06   symbol:   variable log
-#14 30.06   location: class KuHub.modules.gestion_academica.controller.SalaController
-#14 30.06 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_academica/controller/SalaController.java:[113,64] cannot find symbol
-#14 30.06   symbol:   method getCodSala()
-#14 30.06   location: variable dto of type KuHub.modules.gestion_academica.dtos.request.SalaUpdateDTO
-#14 30.06 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_academica/controller/SalaController.java:[115,10] cannot find symbol
-#14 30.06   symbol:   method setIdSala(java.lang.Integer)
-#14 30.06   location: variable s of type KuHub.modules.gestion_academica.entity.Sala
-#14 30.06 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_academica/controller/SalaController.java:[116,25] cannot find symbol
-#14 30.06   symbol:   method getCodSala()
-#14 30.06   location: variable dto of type KuHub.modules.gestion_academica.dtos.request.SalaUpdateDTO
-#14 30.06 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_academica/controller/SalaController.java:[117,28] cannot find symbol
-#14 30.06   symbol:   method getNombreSala()
-#14 30.06   location: variable dto of type KuHub.modules.gestion_academica.dtos.request.SalaUpdateDTO
-#14 30.06 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_academica/controller/SalaController.java:[145,9] cannot find symbol
-#14 30.06   symbol:   variable log
-#14 30.06   location: class KuHub.modules.gestion_academica.controller.SalaController
-#14 30.06 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_academica/assemblers/ReservaSalaModelAssembler.java:[18,79] cannot find symbol
-#14 30.06   symbol:   method getIdReservaSala()
-#14 30.06   location: variable entity of type KuHub.modules.gestion_academica.dtos.dtoentity.ReservaSalaEntityResponseDTO
-#14 30.06 [ERROR] /app/backend/src/main/java/KuHub/config/security/filter/JwtAuthenticationFilter.java:[123,20] cannot find symbol
-#14 30.06   symbol:   method setUltimoAcceso(java.time.LocalDateTime)
-#14 30.06   location: variable usuario of type KuHub.modules.gestion_usuario.entity.Usuario
-#14 30.06 [ERROR] /app/backend/src/main/java/KuHub/config/security/filter/JwtAuthenticationFilter.java:[130,70] cannot find symbol
-#14 30.06   symbol:   method getToken()
-#14 30.06   location: variable rt of type KuHub.modules.gestion_usuario.entity.RefreshToken
-#14 30.06 [ERROR] /app/backend/src/main/java/KuHub/config/security/filter/JwtAuthenticationFilter.java:[140,51] cannot find symbol
-#14 30.06   symbol:   method getIdUsuario()
-#14 30.06   location: variable usuario of type KuHub.modules.gestion_usuario.entity.Usuario
-#14 30.06 [ERROR] /app/backend/src/main/java/KuHub/config/security/filter/JwtAuthenticationFilter.java:[142,47] cannot find symbol
-#14 30.06   symbol:   method getEmail()
-#14 30.06   location: variable usuario of type KuHub.modules.gestion_usuario.entity.Usuario
-#14 30.06 [ERROR] /app/backend/src/main/java/KuHub/config/security/filter/JwtAuthenticationFilter.java:[143,82] cannot find symbol
-#14 30.06   symbol:   method getRol()
-#14 30.06   location: variable usuario of type KuHub.modules.gestion_usuario.entity.Usuario
-#14 30.06 [ERROR] /app/backend/src/main/java/KuHub/config/security/filter/JwtAuthenticationFilter.java:[144,55] cannot find symbol
-#14 30.06   symbol:   method getUrlFotoPerfil()
-#14 30.06   location: variable usuario of type KuHub.modules.gestion_usuario.entity.Usuario
-#14 30.06 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_academica/assemblers/BloqueHorarioModelAssembler.java:[18,81] cannot find symbol
-#14 30.06   symbol:   method getIdBloque()
-#14 30.06   location: variable entity of type KuHub.modules.gestion_academica.entity.BloqueHorario
-#14 30.06 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/controller/InventarioController.java:[130,23] cannot find symbol
-#14 30.06   symbol:   method getInventoryItem()
-#14 30.06   location: variable ex of type KuHub.modules.gestion_inventario.exceptions.StockDesincronizadoException
-#14 30.06 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/controller/InventarioController.java:[134,31] cannot find symbol
-#14 30.06   symbol:   method getStatus()
-#14 30.06   location: variable ex of type KuHub.modules.gestion_inventario.exceptions.StockDesincronizadoException
-#14 30.06 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/controller/InventarioController.java:[140,24] cannot find symbol
-#14 30.06   symbol:   method getInventoryItem()
-#14 30.06   location: variable ex of type KuHub.modules.gestion_inventario.exceptions.StockInsuficienteException
-#14 30.06 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/controller/InventarioController.java:[142,45] cannot find symbol
-#14 30.06   symbol:   method getStatus()
-#14 30.06   location: variable ex of type KuHub.modules.gestion_inventario.exceptions.StockInsuficienteException
-#14 30.06 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/entity/Movimiento.java:[76,25] cannot find symbol
-#14 30.06   symbol:   method setIdUsuario(java.lang.Integer)
-#14 30.06   location: variable usuario of type KuHub.modules.gestion_usuario.entity.Usuario
-#14 30.06 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/entity/Movimiento.java:[86,28] cannot find symbol
-#14 30.06   symbol:   method setIdInventario(java.lang.Integer)
-#14 30.06   location: variable inventario of type KuHub.modules.gestion_inventario.entity.Inventario
-#14 30.06 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/entity/Movimiento.java:[96,32] cannot find symbol
-#14 30.06   symbol:   method setIdBodegaTransito(java.lang.Integer)
-#14 30.06   location: variable bodegaTransito of type KuHub.modules.gestion_inventario.entity.BodegaTransito
-#14 30.06 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/entity/BodegaTransito.java:[47,28] cannot find symbol
-#14 30.06   symbol:   method setIdInventario(java.lang.Integer)
-#14 30.06   location: variable inventario of type KuHub.modules.gestion_inventario.entity.Inventario
-#14 30.06 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_usuario/service/RefreshTokenServiceImpl.java:[32,62] cannot find symbol
-#14 30.06   symbol:   method getIdUsuario()
-#14 30.06   location: variable usuario of type KuHub.modules.gestion_usuario.entity.Usuario
-#14 30.06 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_usuario/service/RefreshTokenServiceImpl.java:[35,11] cannot find symbol
-#14 30.06   symbol:   method setUsuario(KuHub.modules.gestion_usuario.entity.Usuario)
-#14 30.06   location: variable rt of type KuHub.modules.gestion_usuario.entity.RefreshToken
-#14 30.06 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_usuario/service/RefreshTokenServiceImpl.java:[36,11] cannot find symbol
-#14 30.06   symbol:   method setToken(java.lang.String)
-#14 30.06   location: variable rt of type KuHub.modules.gestion_usuario.entity.RefreshToken
-#14 30.06 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_usuario/service/RefreshTokenServiceImpl.java:[37,11] cannot find symbol
-#14 30.06   symbol:   method setExpiresAt(java.time.LocalDateTime)
-#14 30.06   location: variable rt of type KuHub.modules.gestion_usuario.entity.RefreshToken
-#14 30.06 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_usuario/service/RefreshTokenServiceImpl.java:[38,11] cannot find symbol
-#14 30.06   symbol:   method setActivo(boolean)
-#14 30.06   location: variable rt of type KuHub.modules.gestion_usuario.entity.RefreshToken
-#14 30.06 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_usuario/service/RefreshTokenServiceImpl.java:[41,9] cannot find symbol
-#14 30.06   symbol:   variable log
-#14 30.06   location: class KuHub.modules.gestion_usuario.service.RefreshTokenServiceImpl
-#14 30.06 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_usuario/service/RefreshTokenServiceImpl.java:[41,68] cannot find symbol
-#14 30.06   symbol:   method getIdUsuario()
-#14 30.06   location: variable usuario of type KuHub.modules.gestion_usuario.entity.Usuario
-#14 30.06 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_usuario/service/RefreshTokenServiceImpl.java:[52,15] cannot find symbol
-#14 30.06   symbol:   method getExpiresAt()
-#14 30.06   location: variable rt of type KuHub.modules.gestion_usuario.entity.RefreshToken
-#14 30.06 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_usuario/service/RefreshTokenServiceImpl.java:[53,13] cannot find symbol
-#14 30.06   symbol:   variable log
-#14 30.06   location: class KuHub.modules.gestion_usuario.service.RefreshTokenServiceImpl
-#14 30.06 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_usuario/service/RefreshTokenServiceImpl.java:[53,69] cannot find symbol
-#14 30.06   symbol:   method getUsuario()
-#14 30.06   location: variable rt of type KuHub.modules.gestion_usuario.entity.RefreshToken
-#14 30.06 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_usuario/service/RefreshTokenServiceImpl.java:[64,9] cannot find symbol
-#14 30.06   symbol:   variable log
-#14 30.06   location: class KuHub.modules.gestion_usuario.service.RefreshTokenServiceImpl
-#14 30.06 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/services/UnidadMedidaServiceImpl.java:[67,64] cannot find symbol
-#14 30.06   symbol:   method getNombreUnidad()
-#14 30.06   location: variable dto of type KuHub.modules.gestion_inventario.dtos.request.CreateUnidadDTO
-#14 30.06 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/services/UnidadMedidaServiceImpl.java:[68,59] cannot find symbol
-#14 30.06   symbol:   method getAbreviatura()
-#14 30.06   location: variable dto of type KuHub.modules.gestion_inventario.dtos.request.CreateUnidadDTO
-#14 30.06 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/services/UnidadMedidaServiceImpl.java:[69,60] cannot find symbol
-#14 30.06   symbol:   method getNombreUnidad()
-#14 30.06   location: variable dto of type KuHub.modules.gestion_inventario.dtos.request.CreateUnidadDTO
-#14 30.06 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/services/UnidadMedidaServiceImpl.java:[73,70] cannot find symbol
-#14 30.06   symbol:   method getAbreviatura()
-#14 30.06   location: variable dto of type KuHub.modules.gestion_inventario.dtos.request.CreateUnidadDTO
-#14 30.06 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/services/UnidadMedidaServiceImpl.java:[78,40] cannot find symbol
-#14 30.06   symbol:   method getNombreUnidad()
-#14 30.06   location: variable dto of type KuHub.modules.gestion_inventario.dtos.request.CreateUnidadDTO
-#14 30.06 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/services/UnidadMedidaServiceImpl.java:[79,39] cannot find symbol
-#14 30.06   symbol:   method getAbreviatura()
-#14 30.06   location: variable dto of type KuHub.modules.gestion_inventario.dtos.request.CreateUnidadDTO
-#14 30.06 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/services/UnidadMedidaServiceImpl.java:[80,42] cannot find symbol
-#14 30.06   symbol:   method getEsFraccionario()
-#14 30.06   location: variable dto of type KuHub.modules.gestion_inventario.dtos.request.CreateUnidadDTO
-#14 30.06 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/services/UnidadMedidaServiceImpl.java:[88,42] cannot find symbol
-#14 30.06   symbol:   method getIdUnidadMedida()
-#14 30.06   location: variable dto of type KuHub.modules.gestion_inventario.dtos.request.UpdateUnidadDTO
-#14 30.06 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/services/UnidadMedidaServiceImpl.java:[90,16] cannot find symbol
-#14 30.06   symbol:   method getNombreUnidad()
-#14 30.06   location: variable dto of type KuHub.modules.gestion_inventario.dtos.request.UpdateUnidadDTO
-#14 30.06 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/services/UnidadMedidaServiceImpl.java:[91,67] cannot find symbol
-#14 30.06   symbol:   method getNombreUnidad()
-#14 30.06   location: variable dto of type KuHub.modules.gestion_inventario.dtos.request.UpdateUnidadDTO
-#14 30.06 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/services/UnidadMedidaServiceImpl.java:[92,23] cannot find symbol
-#14 30.06   symbol:   method getNombreUnidad()
-#14 30.06   location: variable upUni of type KuHub.modules.gestion_inventario.entity.UnidadMedida
-#14 30.06 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/services/UnidadMedidaServiceImpl.java:[95,47] cannot find symbol
-#14 30.06   symbol:   method getIdUnidadMedida()
-#14 30.06   location: variable dto of type KuHub.modules.gestion_inventario.dtos.request.UpdateUnidadDTO
-#14 30.06 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/services/UnidadMedidaServiceImpl.java:[99,22] cannot find symbol
-#14 30.06   symbol:   method setNombreUnidad(java.lang.String)
-#14 30.06   location: variable upUni of type KuHub.modules.gestion_inventario.entity.UnidadMedida
-#14 30.06 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/services/UnidadMedidaServiceImpl.java:[102,19] cannot find symbol
-#14 30.06   symbol:   method getEsFraccionario()
-#14 30.06   location: variable upUni of type KuHub.modules.gestion_inventario.entity.UnidadMedida
-#14 30.06 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/services/UnidadMedidaServiceImpl.java:[102,50] cannot find symbol
-#14 30.06   symbol:   method getEsFraccionario()
-#14 30.06   location: variable dto of type KuHub.modules.gestion_inventario.dtos.request.UpdateUnidadDTO
-#14 30.06 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/services/UnidadMedidaServiceImpl.java:[103,40] cannot find symbol
-#14 30.06   symbol:   method getEsFraccionario()
-#14 30.06   location: variable dto of type KuHub.modules.gestion_inventario.dtos.request.UpdateUnidadDTO
-#14 30.06 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/services/UnidadMedidaServiceImpl.java:[106,16] cannot find symbol
-#14 30.06   symbol:   method getAbreviatura()
-#14 30.06   location: variable dto of type KuHub.modules.gestion_inventario.dtos.request.UpdateUnidadDTO
-#14 30.06 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/services/UnidadMedidaServiceImpl.java:[107,62] cannot find symbol
-#14 30.06   symbol:   method getAbreviatura()
-#14 30.06   location: variable dto of type KuHub.modules.gestion_inventario.dtos.request.UpdateUnidadDTO
-#14 30.06 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/services/UnidadMedidaServiceImpl.java:[108,23] cannot find symbol
-#14 30.06   symbol:   method getAbreviatura()
-#14 30.06   location: variable upUni of type KuHub.modules.gestion_inventario.entity.UnidadMedida
-#14 30.06 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/services/UnidadMedidaServiceImpl.java:[111,46] cannot find symbol
-#14 30.06   symbol:   method getIdUnidadMedida()
-#14 30.06   location: variable dto of type KuHub.modules.gestion_inventario.dtos.request.UpdateUnidadDTO
-#14 30.07 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/services/UnidadMedidaServiceImpl.java:[115,22] cannot find symbol
-#14 30.07   symbol:   method setAbreviatura(java.lang.String)
-#14 30.07   location: variable upUni of type KuHub.modules.gestion_inventario.entity.UnidadMedida
-#14 30.07 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/services/UnidadMedidaServiceImpl.java:[128,46] cannot find symbol
-#14 30.07   symbol:   method getOldIdUnidadMedida()
-#14 30.07   location: variable dto of type KuHub.modules.gestion_inventario.dtos.request.ChangeProductsToAnotherUnidadMedidaDTO
-#14 30.07 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/services/UnidadMedidaServiceImpl.java:[129,46] cannot find symbol
-#14 30.07   symbol:   method getNewIdUnidadMedida()
-#14 30.07   location: variable dto of type KuHub.modules.gestion_inventario.dtos.request.ChangeProductsToAnotherUnidadMedidaDTO
-#14 30.07 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/services/UnidadMedidaServiceImpl.java:[131,22] cannot find symbol
-#14 30.07   symbol:   method getIdUnidad()
-#14 30.07   location: variable oldUnidad of type KuHub.modules.gestion_inventario.entity.UnidadMedida
-#14 30.07 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/services/UnidadMedidaServiceImpl.java:[131,53] cannot find symbol
-#14 30.07   symbol:   method getIdUnidad()
-#14 30.07   location: variable newUnidad of type KuHub.modules.gestion_inventario.entity.UnidadMedida
-#14 30.07 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/services/UnidadMedidaServiceImpl.java:[136,26] cannot find symbol
-#14 30.07   symbol:   method getIdUnidad()
-#14 30.07   location: variable oldUnidad of type KuHub.modules.gestion_inventario.entity.UnidadMedida
-#14 30.07 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/services/UnidadMedidaServiceImpl.java:[137,26] cannot find symbol
-#14 30.07   symbol:   method getIdUnidad()
-#14 30.07   location: variable newUnidad of type KuHub.modules.gestion_inventario.entity.UnidadMedida
-#14 30.07 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/services/UnidadMedidaServiceImpl.java:[142,32] cannot find symbol
-#14 30.07   symbol:   method getNombreUnidad()
-#14 30.07   location: variable oldUnidad of type KuHub.modules.gestion_inventario.entity.UnidadMedida
-#14 30.07 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/services/UnidadMedidaServiceImpl.java:[145,28] cannot find symbol
-#14 30.07   symbol:   method getNombreUnidad()
-#14 30.07   location: variable oldUnidad of type KuHub.modules.gestion_inventario.entity.UnidadMedida
-#14 30.07 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/services/UnidadMedidaServiceImpl.java:[146,28] cannot find symbol
-#14 30.07   symbol:   method getNombreUnidad()
-#14 30.07   location: variable newUnidad of type KuHub.modules.gestion_inventario.entity.UnidadMedida
-#14 30.07 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/services/UnidadMedidaServiceImpl.java:[153,43] cannot find symbol
-#14 30.07   symbol:   method getIdUnidadMedida()
-#14 30.07   location: variable dto of type KuHub.modules.gestion_inventario.dtos.request.ChangeStatusActiveUnidadDTO
-#14 30.07 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/services/UnidadMedidaServiceImpl.java:[154,29] cannot find symbol
-#14 30.07   symbol:   method getEnable()
-#14 30.07   location: variable dto of type KuHub.modules.gestion_inventario.dtos.request.ChangeStatusActiveUnidadDTO
-#14 30.07 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_solicitud/service/SolicitudServiceImp.java:[143,13] cannot find symbol
-#14 30.07   symbol:   variable log
-#14 30.07   location: class KuHub.modules.gestion_solicitud.service.SolicitudServiceImp
-#14 30.07 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_solicitud/service/SolicitudServiceImp.java:[148,24] cannot find symbol
-#14 30.07   symbol:   method getFechaInicio()
-#14 30.07   location: variable request of type KuHub.modules.gestion_solicitud.dtos.request.DateRangeDTO
-#14 30.07 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_solicitud/service/SolicitudServiceImp.java:[149,24] cannot find symbol
-#14 30.07   symbol:   method getFechaFin()
-#14 30.07   location: variable request of type KuHub.modules.gestion_solicitud.dtos.request.DateRangeDTO
-#14 30.07 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_solicitud/service/SolicitudServiceImp.java:[264,43] cannot find symbol
-#14 30.07   symbol:   method getSolicitudesEnPedido()
-#14 30.07   location: variable config of type KuHub.modules.gestion_sistema.entity.GestionSistema
-#14 30.07 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_solicitud/service/SolicitudServiceImp.java:[268,17] cannot find symbol
-#14 30.07   symbol:   variable log
-#14 30.07   location: class KuHub.modules.gestion_solicitud.service.SolicitudServiceImp
-#14 30.07 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_solicitud/service/SolicitudServiceImp.java:[294,13] cannot find symbol
-#14 30.07   symbol:   variable log
-#14 30.07   location: class KuHub.modules.gestion_solicitud.service.SolicitudServiceImp
-#14 30.07 [INFO] 100 errors 
-#14 30.07 [INFO] -------------------------------------------------------------
-#14 30.07 [INFO] ------------------------------------------------------------------------
-#14 30.07 [INFO] Reactor Summary for KuHub Monolitico Project 1.0-SNAPSHOT:
-#14 30.07 [INFO] 
-#14 30.07 [INFO] KuHub Monolitico Project ........................... SUCCESS [  0.573 s]
-#14 30.07 [INFO] backend ............................................ FAILURE [ 22.860 s]
-#14 30.07 [INFO] ------------------------------------------------------------------------
-#14 30.07 [INFO] BUILD FAILURE
-#14 30.07 [INFO] ------------------------------------------------------------------------
-#14 30.07 [INFO] Total time:  28.245 s
-#14 30.07 [INFO] Finished at: 2026-04-22T16:50:21Z
-#14 30.07 [INFO] ------------------------------------------------------------------------
-#14 30.08 [ERROR] Failed to execute goal org.apache.maven.plugins:maven-compiler-plugin:3.11.0:compile (default-compile) on project backend: Compilation failure: Compilation failure: 
-#14 30.08 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_solicitud/service/SolicitudServiceImp.java:[408,5] org.springframework.transaction.annotation.Transactional is not a repeatable annotation interface
-#14 30.08 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/entity/Inventario.java:[51,26] cannot find symbol
-#14 30.08 [ERROR]   symbol:   method setIdProducto(java.lang.Integer)
-#14 30.08 [ERROR]   location: variable producto of type @jakarta.validation.constraints.NotNull(message="El producto es obligatorio") KuHub.modules.gestion_inventario.entity.Producto
-#14 30.08 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/entity/Producto.java:[52,27] cannot find symbol
-#14 30.08 [ERROR]   symbol:   method setIdCategoria(java.lang.Short)
-#14 30.08 [ERROR]   location: variable categoria of type KuHub.modules.gestion_inventario.entity.Categoria
-#14 30.08 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/entity/Producto.java:[62,30] cannot find symbol
-#14 30.08 [ERROR]   symbol:   method setIdUnidad(java.lang.Short)
-#14 30.08 [ERROR]   location: variable unidadMedida of type KuHub.modules.gestion_inventario.entity.UnidadMedida
-#14 30.08 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_receta/entity/DetalleReceta.java:[43,20] cannot find symbol
-#14 30.08 [ERROR]   symbol:   method setIdReceta(java.lang.Integer)
-#14 30.08 [ERROR]   location: variable receta of type KuHub.modules.gestion_receta.entity.Receta
-#14 30.08 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_receta/entity/DetalleReceta.java:[51,22] cannot find symbol
-#14 30.08 [ERROR]   symbol:   method setIdProducto(java.lang.Integer)
-#14 30.08 [ERROR]   location: variable producto of type KuHub.modules.gestion_inventario.entity.Producto
-#14 30.08 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_pedido/entity/DetallePedido.java:[37,24] cannot find symbol
-#14 30.08 [ERROR]   symbol:   method setIdPedido(java.lang.Integer)
-#14 30.08 [ERROR]   location: variable pedido of type KuHub.modules.gestion_pedido.entity.Pedido
-#14 30.08 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_pedido/entity/DetallePedido.java:[44,26] cannot find symbol
-#14 30.08 [ERROR]   symbol:   method setIdProducto(java.lang.Integer)
-#14 30.08 [ERROR]   location: variable producto of type KuHub.modules.gestion_inventario.entity.Producto
-#14 30.08 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_usuario/entity/Usuario.java:[82,14] cannot find symbol
-#14 30.08 [ERROR]   symbol:   method setIdRol(java.lang.Integer)
-#14 30.08 [ERROR]   location: variable r of type KuHub.modules.gestion_usuario.entity.Rol
-#14 30.08 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_academica/entity/AsignaturaProfesorCargo.java:[51,28] cannot find symbol
-#14 30.08 [ERROR]   symbol:   method setIdAsignatura(java.lang.Integer)
-#14 30.08 [ERROR]   location: variable asignatura of type KuHub.modules.gestion_academica.entity.Asignatura
-#14 30.08 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_academica/entity/AsignaturaProfesorCargo.java:[62,25] cannot find symbol
-#14 30.08 [ERROR]   symbol:   method setIdUsuario(java.lang.Integer)
-#14 30.08 [ERROR]   location: variable usuario of type KuHub.modules.gestion_usuario.entity.Usuario
-#14 30.08 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_academica/entity/Seccion.java:[46,28] cannot find symbol
-#14 30.08 [ERROR]   symbol:   method setIdAsignatura(java.lang.Integer)
-#14 30.08 [ERROR]   location: variable asignatura of type KuHub.modules.gestion_academica.entity.Asignatura
-#14 30.08 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_academica/entity/ReservaSala.java:[64,25] cannot find symbol
-#14 30.08 [ERROR]   symbol:   method setIdSeccion(java.lang.Integer)
-#14 30.08 [ERROR]   location: variable seccion of type KuHub.modules.gestion_academica.entity.Seccion
-#14 30.08 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_academica/entity/ReservaSala.java:[74,22] cannot find symbol
-#14 30.08 [ERROR]   symbol:   method setIdSala(java.lang.Integer)
-#14 30.08 [ERROR]   location: variable sala of type KuHub.modules.gestion_academica.entity.Sala
-#14 30.08 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_academica/entity/ReservaSala.java:[84,31] cannot find symbol
-#14 30.08 [ERROR]   symbol:   method setIdBloque(java.lang.Integer)
-#14 30.08 [ERROR]   location: variable bloqueHorario of type KuHub.modules.gestion_academica.entity.BloqueHorario
-#14 30.08 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_solicitud/entity/Solicitud.java:[68,31] cannot find symbol
-#14 30.08 [ERROR]   symbol:   method setIdUsuario(java.lang.Integer)
-#14 30.08 [ERROR]   location: variable usuarioGestor of type KuHub.modules.gestion_usuario.entity.Usuario
-#14 30.08 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_solicitud/entity/Solicitud.java:[75,25] cannot find symbol
-#14 30.08 [ERROR]   symbol:   method setIdSeccion(java.lang.Integer)
-#14 30.08 [ERROR]   location: variable seccion of type KuHub.modules.gestion_academica.entity.Seccion
-#14 30.08 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_solicitud/entity/Solicitud.java:[82,24] cannot find symbol
-#14 30.08 [ERROR]   symbol:   method setIdReceta(java.lang.Integer)
-#14 30.08 [ERROR]   location: variable receta of type KuHub.modules.gestion_receta.entity.Receta
-#14 30.08 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_solicitud/entity/Solicitud.java:[89,29] cannot find symbol
-#14 30.08 [ERROR]   symbol:   method setIdReservaSala(java.lang.Integer)
-#14 30.08 [ERROR]   location: variable reservaSala of type KuHub.modules.gestion_academica.entity.ReservaSala
-#14 30.08 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_solicitud/entity/Solicitud.java:[95,16] cannot find symbol
-#14 30.08 [ERROR]   symbol:   method setSolicitud(KuHub.modules.gestion_solicitud.entity.Solicitud)
-#14 30.08 [ERROR]   location: variable detalle of type KuHub.modules.gestion_solicitud.entity.DetalleSolicitud
-#14 30.08 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_solicitud/entity/DetalleSolicitud.java:[44,26] cannot find symbol
-#14 30.08 [ERROR]   symbol:   method setIdProducto(java.lang.Integer)
-#14 30.08 [ERROR]   location: variable producto of type KuHub.modules.gestion_inventario.entity.Producto
-#14 30.08 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_usuario/assemblers/RolModelAssembler.java:[18,75] cannot find symbol
-#14 30.08 [ERROR]   symbol:   method getIdRol()
-#14 30.08 [ERROR]   location: variable entity of type KuHub.modules.gestion_usuario.dtos.RolResponseDTO
-#14 30.08 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_usuario/assemblers/RolModelAssembler.java:[21,79] cannot find symbol
-#14 30.08 [ERROR]   symbol:   method getNombreRol()
-#14 30.08 [ERROR]   location: variable entity of type KuHub.modules.gestion_usuario.dtos.RolResponseDTO
-#14 30.08 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_academica/service/AsignaturaProfesorCargoServiceImp.java:[40,74] cannot find symbol
-#14 30.08 [ERROR]   symbol:   method getUsuario()
-#14 30.08 [ERROR]   location: variable asignaturaProfesorCargo of type KuHub.modules.gestion_academica.entity.AsignaturaProfesorCargo
-#14 30.08 [ERROR] /app/backend/src/main/java/KuHub/config/GlobalExceptionHandler.java:[204,40] cannot find symbol
-#14 30.08 [ERROR]   symbol:   method getStatus()
-#14 30.08 [ERROR]   location: variable ex of type KuHub.modules.gestion_inventario.exceptions.GestionInventarioException
-#14 30.08 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_academica/controller/SalaController.java:[89,9] cannot find symbol
-#14 30.08 [ERROR]   symbol:   variable log
-#14 30.08 [ERROR]   location: class KuHub.modules.gestion_academica.controller.SalaController
-#14 30.08 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_academica/controller/SalaController.java:[89,56] cannot find symbol
-#14 30.08 [ERROR]   symbol:   method getCodSala()
-#14 30.08 [ERROR]   location: variable dto of type KuHub.modules.gestion_academica.dtos.request.SalaCreateDTO
-#14 30.08 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_academica/controller/SalaController.java:[91,29] cannot find symbol
-#14 30.08 [ERROR]   symbol:   method getCodSala()
-#14 30.08 [ERROR]   location: variable dto of type KuHub.modules.gestion_academica.dtos.request.SalaCreateDTO
-#14 30.08 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_academica/controller/SalaController.java:[92,32] cannot find symbol
-#14 30.08 [ERROR]   symbol:   method getNombreSala()
-#14 30.08 [ERROR]   location: variable dto of type KuHub.modules.gestion_academica.dtos.request.SalaCreateDTO
-#14 30.08 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_academica/controller/SalaController.java:[113,9] cannot find symbol
-#14 30.08 [ERROR]   symbol:   variable log
-#14 30.08 [ERROR]   location: class KuHub.modules.gestion_academica.controller.SalaController
-#14 30.08 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_academica/controller/SalaController.java:[113,64] cannot find symbol
-#14 30.08 [ERROR]   symbol:   method getCodSala()
-#14 30.08 [ERROR]   location: variable dto of type KuHub.modules.gestion_academica.dtos.request.SalaUpdateDTO
-#14 30.08 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_academica/controller/SalaController.java:[115,10] cannot find symbol
-#14 30.08 [ERROR]   symbol:   method setIdSala(java.lang.Integer)
-#14 30.09 [ERROR]   location: variable s of type KuHub.modules.gestion_academica.entity.Sala
-#14 30.09 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_academica/controller/SalaController.java:[116,25] cannot find symbol
-#14 30.09 [ERROR]   symbol:   method getCodSala()
-#14 30.09 [ERROR]   location: variable dto of type KuHub.modules.gestion_academica.dtos.request.SalaUpdateDTO
-#14 30.09 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_academica/controller/SalaController.java:[117,28] cannot find symbol
-#14 30.09 [ERROR]   symbol:   method getNombreSala()
-#14 30.09 [ERROR]   location: variable dto of type KuHub.modules.gestion_academica.dtos.request.SalaUpdateDTO
-#14 30.09 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_academica/controller/SalaController.java:[145,9] cannot find symbol
-#14 30.09 [ERROR]   symbol:   variable log
-#14 30.09 [ERROR]   location: class KuHub.modules.gestion_academica.controller.SalaController
-#14 30.09 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_academica/assemblers/ReservaSalaModelAssembler.java:[18,79] cannot find symbol
-#14 30.09 [ERROR]   symbol:   method getIdReservaSala()
-#14 30.09 [ERROR]   location: variable entity of type KuHub.modules.gestion_academica.dtos.dtoentity.ReservaSalaEntityResponseDTO
-#14 30.09 [ERROR] /app/backend/src/main/java/KuHub/config/security/filter/JwtAuthenticationFilter.java:[123,20] cannot find symbol
-#14 30.09 [ERROR]   symbol:   method setUltimoAcceso(java.time.LocalDateTime)
-#14 30.09 [ERROR]   location: variable usuario of type KuHub.modules.gestion_usuario.entity.Usuario
-#14 30.09 [ERROR] /app/backend/src/main/java/KuHub/config/security/filter/JwtAuthenticationFilter.java:[130,70] cannot find symbol
-#14 30.09 [ERROR]   symbol:   method getToken()
-#14 30.09 [ERROR]   location: variable rt of type KuHub.modules.gestion_usuario.entity.RefreshToken
-#14 30.09 [ERROR] /app/backend/src/main/java/KuHub/config/security/filter/JwtAuthenticationFilter.java:[140,51] cannot find symbol
-#14 30.09 [ERROR]   symbol:   method getIdUsuario()
-#14 30.09 [ERROR]   location: variable usuario of type KuHub.modules.gestion_usuario.entity.Usuario
-#14 30.09 [ERROR] /app/backend/src/main/java/KuHub/config/security/filter/JwtAuthenticationFilter.java:[142,47] cannot find symbol
-#14 30.09 [ERROR]   symbol:   method getEmail()
-#14 30.09 [ERROR]   location: variable usuario of type KuHub.modules.gestion_usuario.entity.Usuario
-#14 30.09 [ERROR] /app/backend/src/main/java/KuHub/config/security/filter/JwtAuthenticationFilter.java:[143,82] cannot find symbol
-#14 30.09 [ERROR]   symbol:   method getRol()
-#14 30.09 [ERROR]   location: variable usuario of type KuHub.modules.gestion_usuario.entity.Usuario
-#14 30.09 [ERROR] /app/backend/src/main/java/KuHub/config/security/filter/JwtAuthenticationFilter.java:[144,55] cannot find symbol
-#14 30.09 [ERROR]   symbol:   method getUrlFotoPerfil()
-#14 30.09 [ERROR]   location: variable usuario of type KuHub.modules.gestion_usuario.entity.Usuario
-#14 30.09 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_academica/assemblers/BloqueHorarioModelAssembler.java:[18,81] cannot find symbol
-#14 30.09 [ERROR]   symbol:   method getIdBloque()
-#14 30.09 [ERROR]   location: variable entity of type KuHub.modules.gestion_academica.entity.BloqueHorario
-#14 30.09 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/controller/InventarioController.java:[130,23] cannot find symbol
-#14 30.09 [ERROR]   symbol:   method getInventoryItem()
-#14 30.09 [ERROR]   location: variable ex of type KuHub.modules.gestion_inventario.exceptions.StockDesincronizadoException
-#14 30.09 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/controller/InventarioController.java:[134,31] cannot find symbol
-#14 30.09 [ERROR]   symbol:   method getStatus()
-#14 30.09 [ERROR]   location: variable ex of type KuHub.modules.gestion_inventario.exceptions.StockDesincronizadoException
-#14 30.09 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/controller/InventarioController.java:[140,24] cannot find symbol
-#14 30.09 [ERROR]   symbol:   method getInventoryItem()
-#14 30.09 [ERROR]   location: variable ex of type KuHub.modules.gestion_inventario.exceptions.StockInsuficienteException
-#14 30.09 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/controller/InventarioController.java:[142,45] cannot find symbol
-#14 30.09 [ERROR]   symbol:   method getStatus()
-#14 30.09 [ERROR]   location: variable ex of type KuHub.modules.gestion_inventario.exceptions.StockInsuficienteException
-#14 30.09 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/entity/Movimiento.java:[76,25] cannot find symbol
-#14 30.09 [ERROR]   symbol:   method setIdUsuario(java.lang.Integer)
-#14 30.09 [ERROR]   location: variable usuario of type KuHub.modules.gestion_usuario.entity.Usuario
-#14 30.09 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/entity/Movimiento.java:[86,28] cannot find symbol
-#14 30.09 [ERROR]   symbol:   method setIdInventario(java.lang.Integer)
-#14 30.09 [ERROR]   location: variable inventario of type KuHub.modules.gestion_inventario.entity.Inventario
-#14 30.09 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/entity/Movimiento.java:[96,32] cannot find symbol
-#14 30.09 [ERROR]   symbol:   method setIdBodegaTransito(java.lang.Integer)
-#14 30.09 [ERROR]   location: variable bodegaTransito of type KuHub.modules.gestion_inventario.entity.BodegaTransito
-#14 30.09 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/entity/BodegaTransito.java:[47,28] cannot find symbol
-#14 30.09 [ERROR]   symbol:   method setIdInventario(java.lang.Integer)
-#14 30.09 [ERROR]   location: variable inventario of type KuHub.modules.gestion_inventario.entity.Inventario
-#14 30.09 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_usuario/service/RefreshTokenServiceImpl.java:[32,62] cannot find symbol
-#14 30.09 [ERROR]   symbol:   method getIdUsuario()
-#14 30.09 [ERROR]   location: variable usuario of type KuHub.modules.gestion_usuario.entity.Usuario
-#14 30.09 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_usuario/service/RefreshTokenServiceImpl.java:[35,11] cannot find symbol
-#14 30.09 [ERROR]   symbol:   method setUsuario(KuHub.modules.gestion_usuario.entity.Usuario)
-#14 30.09 [ERROR]   location: variable rt of type KuHub.modules.gestion_usuario.entity.RefreshToken
-#14 30.09 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_usuario/service/RefreshTokenServiceImpl.java:[36,11] cannot find symbol
-#14 30.09 [ERROR]   symbol:   method setToken(java.lang.String)
-#14 30.09 [ERROR]   location: variable rt of type KuHub.modules.gestion_usuario.entity.RefreshToken
-#14 30.09 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_usuario/service/RefreshTokenServiceImpl.java:[37,11] cannot find symbol
-#14 30.09 [ERROR]   symbol:   method setExpiresAt(java.time.LocalDateTime)
-#14 30.09 [ERROR]   location: variable rt of type KuHub.modules.gestion_usuario.entity.RefreshToken
-#14 30.09 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_usuario/service/RefreshTokenServiceImpl.java:[38,11] cannot find symbol
-#14 30.09 [ERROR]   symbol:   method setActivo(boolean)
-#14 30.09 [ERROR]   location: variable rt of type KuHub.modules.gestion_usuario.entity.RefreshToken
-#14 30.09 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_usuario/service/RefreshTokenServiceImpl.java:[41,9] cannot find symbol
-#14 30.09 [ERROR]   symbol:   variable log
-#14 30.09 [ERROR]   location: class KuHub.modules.gestion_usuario.service.RefreshTokenServiceImpl
-#14 30.09 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_usuario/service/RefreshTokenServiceImpl.java:[41,68] cannot find symbol
-#14 30.09 [ERROR]   symbol:   method getIdUsuario()
-#14 30.09 [ERROR]   location: variable usuario of type KuHub.modules.gestion_usuario.entity.Usuario
-#14 30.09 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_usuario/service/RefreshTokenServiceImpl.java:[52,15] cannot find symbol
-#14 30.09 [ERROR]   symbol:   method getExpiresAt()
-#14 30.09 [ERROR]   location: variable rt of type KuHub.modules.gestion_usuario.entity.RefreshToken
-#14 30.09 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_usuario/service/RefreshTokenServiceImpl.java:[53,13] cannot find symbol
-#14 30.09 [ERROR]   symbol:   variable log
-#14 30.09 [ERROR]   location: class KuHub.modules.gestion_usuario.service.RefreshTokenServiceImpl
-#14 30.09 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_usuario/service/RefreshTokenServiceImpl.java:[53,69] cannot find symbol
-#14 30.09 [ERROR]   symbol:   method getUsuario()
-#14 30.09 [ERROR]   location: variable rt of type KuHub.modules.gestion_usuario.entity.RefreshToken
-#14 30.09 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_usuario/service/RefreshTokenServiceImpl.java:[64,9] cannot find symbol
-#14 30.09 [ERROR]   symbol:   variable log
-#14 30.09 [ERROR]   location: class KuHub.modules.gestion_usuario.service.RefreshTokenServiceImpl
-#14 30.09 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/services/UnidadMedidaServiceImpl.java:[67,64] cannot find symbol
-#14 30.09 [ERROR]   symbol:   method getNombreUnidad()
-#14 30.09 [ERROR]   location: variable dto of type KuHub.modules.gestion_inventario.dtos.request.CreateUnidadDTO
-#14 30.09 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/services/UnidadMedidaServiceImpl.java:[68,59] cannot find symbol
-#14 30.09 [ERROR]   symbol:   method getAbreviatura()
-#14 30.09 [ERROR]   location: variable dto of type KuHub.modules.gestion_inventario.dtos.request.CreateUnidadDTO
-#14 30.09 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/services/UnidadMedidaServiceImpl.java:[69,60] cannot find symbol
-#14 30.09 [ERROR]   symbol:   method getNombreUnidad()
-#14 30.09 [ERROR]   location: variable dto of type KuHub.modules.gestion_inventario.dtos.request.CreateUnidadDTO
-#14 30.09 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/services/UnidadMedidaServiceImpl.java:[73,70] cannot find symbol
-#14 30.09 [ERROR]   symbol:   method getAbreviatura()
-#14 30.09 [ERROR]   location: variable dto of type KuHub.modules.gestion_inventario.dtos.request.CreateUnidadDTO
-#14 30.09 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/services/UnidadMedidaServiceImpl.java:[78,40] cannot find symbol
-#14 30.09 [ERROR]   symbol:   method getNombreUnidad()
-#14 30.09 [ERROR]   location: variable dto of type KuHub.modules.gestion_inventario.dtos.request.CreateUnidadDTO
-#14 30.09 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/services/UnidadMedidaServiceImpl.java:[79,39] cannot find symbol
-#14 30.09 [ERROR]   symbol:   method getAbreviatura()
-#14 30.09 [ERROR]   location: variable dto of type KuHub.modules.gestion_inventario.dtos.request.CreateUnidadDTO
-#14 30.09 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/services/UnidadMedidaServiceImpl.java:[80,42] cannot find symbol
-#14 30.09 [ERROR]   symbol:   method getEsFraccionario()
-#14 30.09 [ERROR]   location: variable dto of type KuHub.modules.gestion_inventario.dtos.request.CreateUnidadDTO
-#14 30.09 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/services/UnidadMedidaServiceImpl.java:[88,42] cannot find symbol
-#14 30.09 [ERROR]   symbol:   method getIdUnidadMedida()
-#14 30.09 [ERROR]   location: variable dto of type KuHub.modules.gestion_inventario.dtos.request.UpdateUnidadDTO
-#14 30.09 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/services/UnidadMedidaServiceImpl.java:[90,16] cannot find symbol
-#14 30.09 [ERROR]   symbol:   method getNombreUnidad()
-#14 30.09 [ERROR]   location: variable dto of type KuHub.modules.gestion_inventario.dtos.request.UpdateUnidadDTO
-#14 30.09 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/services/UnidadMedidaServiceImpl.java:[91,67] cannot find symbol
-#14 30.09 [ERROR]   symbol:   method getNombreUnidad()
-#14 30.09 [ERROR]   location: variable dto of type KuHub.modules.gestion_inventario.dtos.request.UpdateUnidadDTO
-#14 30.09 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/services/UnidadMedidaServiceImpl.java:[92,23] cannot find symbol
-#14 30.09 [ERROR]   symbol:   method getNombreUnidad()
-#14 30.09 [ERROR]   location: variable upUni of type KuHub.modules.gestion_inventario.entity.UnidadMedida
-#14 30.09 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/services/UnidadMedidaServiceImpl.java:[95,47] cannot find symbol
-#14 30.09 [ERROR]   symbol:   method getIdUnidadMedida()
-#14 30.09 [ERROR]   location: variable dto of type KuHub.modules.gestion_inventario.dtos.request.UpdateUnidadDTO
-#14 30.09 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/services/UnidadMedidaServiceImpl.java:[99,22] cannot find symbol
-#14 30.09 [ERROR]   symbol:   method setNombreUnidad(java.lang.String)
-#14 30.09 [ERROR]   location: variable upUni of type KuHub.modules.gestion_inventario.entity.UnidadMedida
-#14 30.09 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/services/UnidadMedidaServiceImpl.java:[102,19] cannot find symbol
-#14 30.09 [ERROR]   symbol:   method getEsFraccionario()
-#14 30.09 [ERROR]   location: variable upUni of type KuHub.modules.gestion_inventario.entity.UnidadMedida
-#14 30.09 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/services/UnidadMedidaServiceImpl.java:[102,50] cannot find symbol
-#14 30.09 [ERROR]   symbol:   method getEsFraccionario()
-#14 30.09 [ERROR]   location: variable dto of type KuHub.modules.gestion_inventario.dtos.request.UpdateUnidadDTO
-#14 30.09 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/services/UnidadMedidaServiceImpl.java:[103,40] cannot find symbol
-#14 30.09 [ERROR]   symbol:   method getEsFraccionario()
-#14 30.09 [ERROR]   location: variable dto of type KuHub.modules.gestion_inventario.dtos.request.UpdateUnidadDTO
-#14 30.09 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/services/UnidadMedidaServiceImpl.java:[106,16] cannot find symbol
-#14 30.09 [ERROR]   symbol:   method getAbreviatura()
-#14 30.09 [ERROR]   location: variable dto of type KuHub.modules.gestion_inventario.dtos.request.UpdateUnidadDTO
-#14 30.09 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/services/UnidadMedidaServiceImpl.java:[107,62] cannot find symbol
-#14 30.09 [ERROR]   symbol:   method getAbreviatura()
-#14 30.09 [ERROR]   location: variable dto of type KuHub.modules.gestion_inventario.dtos.request.UpdateUnidadDTO
-#14 30.09 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/services/UnidadMedidaServiceImpl.java:[108,23] cannot find symbol
-#14 30.09 [ERROR]   symbol:   method getAbreviatura()
-#14 30.09 [ERROR]   location: variable upUni of type KuHub.modules.gestion_inventario.entity.UnidadMedida
-#14 30.09 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/services/UnidadMedidaServiceImpl.java:[111,46] cannot find symbol
-#14 30.09 [ERROR]   symbol:   method getIdUnidadMedida()
-#14 30.09 [ERROR]   location: variable dto of type KuHub.modules.gestion_inventario.dtos.request.UpdateUnidadDTO
-#14 30.09 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/services/UnidadMedidaServiceImpl.java:[115,22] cannot find symbol
-#14 30.09 [ERROR]   symbol:   method setAbreviatura(java.lang.String)
-#14 30.09 [ERROR]   location: variable upUni of type KuHub.modules.gestion_inventario.entity.UnidadMedida
-#14 30.09 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/services/UnidadMedidaServiceImpl.java:[128,46] cannot find symbol
-#14 30.09 [ERROR]   symbol:   method getOldIdUnidadMedida()
-#14 30.09 [ERROR]   location: variable dto of type KuHub.modules.gestion_inventario.dtos.request.ChangeProductsToAnotherUnidadMedidaDTO
-#14 30.09 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/services/UnidadMedidaServiceImpl.java:[129,46] cannot find symbol
-#14 30.09 [ERROR]   symbol:   method getNewIdUnidadMedida()
-#14 30.09 [ERROR]   location: variable dto of type KuHub.modules.gestion_inventario.dtos.request.ChangeProductsToAnotherUnidadMedidaDTO
-#14 30.09 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/services/UnidadMedidaServiceImpl.java:[131,22] cannot find symbol
-#14 30.09 [ERROR]   symbol:   method getIdUnidad()
-#14 30.09 [ERROR]   location: variable oldUnidad of type KuHub.modules.gestion_inventario.entity.UnidadMedida
-#14 30.09 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/services/UnidadMedidaServiceImpl.java:[131,53] cannot find symbol
-#14 30.09 [ERROR]   symbol:   method getIdUnidad()
-#14 30.09 [ERROR]   location: variable newUnidad of type KuHub.modules.gestion_inventario.entity.UnidadMedida
-#14 30.09 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/services/UnidadMedidaServiceImpl.java:[136,26] cannot find symbol
-#14 30.09 [ERROR]   symbol:   method getIdUnidad()
-#14 30.09 [ERROR]   location: variable oldUnidad of type KuHub.modules.gestion_inventario.entity.UnidadMedida
-#14 30.09 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/services/UnidadMedidaServiceImpl.java:[137,26] cannot find symbol
-#14 30.09 [ERROR]   symbol:   method getIdUnidad()
-#14 30.09 [ERROR]   location: variable newUnidad of type KuHub.modules.gestion_inventario.entity.UnidadMedida
-#14 30.09 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/services/UnidadMedidaServiceImpl.java:[142,32] cannot find symbol
-#14 30.09 [ERROR]   symbol:   method getNombreUnidad()
-#14 30.09 [ERROR]   location: variable oldUnidad of type KuHub.modules.gestion_inventario.entity.UnidadMedida
-#14 30.09 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/services/UnidadMedidaServiceImpl.java:[145,28] cannot find symbol
-#14 30.09 [ERROR]   symbol:   method getNombreUnidad()
-#14 30.09 [ERROR]   location: variable oldUnidad of type KuHub.modules.gestion_inventario.entity.UnidadMedida
-#14 30.09 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/services/UnidadMedidaServiceImpl.java:[146,28] cannot find symbol
-#14 30.09 [ERROR]   symbol:   method getNombreUnidad()
-#14 30.09 [ERROR]   location: variable newUnidad of type KuHub.modules.gestion_inventario.entity.UnidadMedida
-#14 30.09 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/services/UnidadMedidaServiceImpl.java:[153,43] cannot find symbol
-#14 30.09 [ERROR]   symbol:   method getIdUnidadMedida()
-#14 30.09 [ERROR]   location: variable dto of type KuHub.modules.gestion_inventario.dtos.request.ChangeStatusActiveUnidadDTO
-#14 30.09 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/services/UnidadMedidaServiceImpl.java:[154,29] cannot find symbol
-#14 30.09 [ERROR]   symbol:   method getEnable()
-#14 30.09 [ERROR]   location: variable dto of type KuHub.modules.gestion_inventario.dtos.request.ChangeStatusActiveUnidadDTO
-#14 30.09 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_solicitud/service/SolicitudServiceImp.java:[143,13] cannot find symbol
-#14 30.09 [ERROR]   symbol:   variable log
-#14 30.09 [ERROR]   location: class KuHub.modules.gestion_solicitud.service.SolicitudServiceImp
-#14 30.09 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_solicitud/service/SolicitudServiceImp.java:[148,24] cannot find symbol
-#14 30.09 [ERROR]   symbol:   method getFechaInicio()
-#14 30.09 [ERROR]   location: variable request of type KuHub.modules.gestion_solicitud.dtos.request.DateRangeDTO
-#14 30.09 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_solicitud/service/SolicitudServiceImp.java:[149,24] cannot find symbol
-#14 30.09 [ERROR]   symbol:   method getFechaFin()
-#14 30.09 [ERROR]   location: variable request of type KuHub.modules.gestion_solicitud.dtos.request.DateRangeDTO
-#14 30.09 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_solicitud/service/SolicitudServiceImp.java:[264,43] cannot find symbol
-#14 30.09 [ERROR]   symbol:   method getSolicitudesEnPedido()
-#14 30.09 [ERROR]   location: variable config of type KuHub.modules.gestion_sistema.entity.GestionSistema
-#14 30.09 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_solicitud/service/SolicitudServiceImp.java:[268,17] cannot find symbol
-#14 30.09 [ERROR]   symbol:   variable log
-#14 30.09 [ERROR]   location: class KuHub.modules.gestion_solicitud.service.SolicitudServiceImp
-#14 30.09 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_solicitud/service/SolicitudServiceImp.java:[294,13] cannot find symbol
-#14 30.09 [ERROR]   symbol:   variable log
-#14 30.09 [ERROR]   location: class KuHub.modules.gestion_solicitud.service.SolicitudServiceImp
-#14 30.09 [ERROR] -> [Help 1]
-#14 30.09 [ERROR] 
-#14 30.09 [ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
-#14 30.09 [ERROR] Re-run Maven using the -X switch to enable full debug logging.
-#14 30.09 [ERROR] 
-#14 30.09 [ERROR] For more information about the errors and possible solutions, please read the following articles:
-#14 30.10 [ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoFailureException
-#14 30.10 [ERROR] 
-#14 30.10 [ERROR] After correcting the problems, you can resume the build with the command
-#14 30.10 [ERROR]   mvn <args> -rf :backend
-#14 ERROR: process "/bin/sh -c mvn clean package -pl backend -am -DskipTests" did not complete successfully: exit code: 1
-------
- > [build 5/5] RUN mvn clean package -pl backend -am -DskipTests:
-Error: ERROR] -> [Help 1]
-Error: ERROR] 
-Error: ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
-Error: ERROR] Re-run Maven using the -X switch to enable full debug logging.
-Error: ERROR] 
-Error: ERROR] For more information about the errors and possible solutions, please read the following articles:
-Error: ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoFailureException
-Error: ERROR] 
-Error: ERROR] After correcting the problems, you can resume the build with the command
-Error: ERROR]   mvn <args> -rf :backend
-------
-Dockerfile:12
---------------------
-  10 |     
-  11 |     # 3. Construimos solo el backend, pero con acceso al padre
-  12 | >>> RUN mvn clean package -pl backend -am -DskipTests
-  13 |     
-  14 |     # ETAPA 2: Run
---------------------
-ERROR: failed to build: failed to solve: process "/bin/sh -c mvn clean package -pl backend -am -DskipTests" did not complete successfully: exit code: 1
-Error: buildx failed with: ERROR: failed to build: failed to solve: process "/bin/sh -c mvn clean package -pl backend -am -DskipTests" did not complete successfully: exit code: 1
+utils-vendor-CkGtaPQr.js:11 
+ POST https://appkuhub.questweb.cl/api/v1/solicitud/proyeccion-abastecimiento 500 (Internal Server Error)
+(anonymous)	@	utils-vendor-CkGtaPQr.js:11
+xhr	@	utils-vendor-CkGtaPQr.js:11
+wo	@	utils-vendor-CkGtaPQr.js:13
+Promise.then		
+_request	@	utils-vendor-CkGtaPQr.js:14
+request	@	utils-vendor-CkGtaPQr.js:13
+(anonymous)	@	utils-vendor-CkGtaPQr.js:14
+(anonymous)	@	utils-vendor-CkGtaPQr.js:9
+B	@	solicitud-service-CmxLYBv0.js:1
+ga	@	inventario-DRi3FgFp.js:1
+(anonymous)	@	ui-vendor-CtDyRhL-.js:10
+(anonymous)	@	ui-vendor-CtDyRhL-.js:10
+(anonymous)	@	ui-vendor-CtDyRhL-.js:10
+onClick	@	ui-vendor-CtDyRhL-.js:10
+Kc	@	react-vendor-BxMPNXTO.js:29
+Xc	@	react-vendor-BxMPNXTO.js:29
+Gc	@	react-vendor-BxMPNXTO.js:29
+ya	@	react-vendor-BxMPNXTO.js:29
+ga	@	react-vendor-BxMPNXTO.js:29
+(anonymous)	@	react-vendor-BxMPNXTO.js:29
+Ri	@	react-vendor-BxMPNXTO.js:32
+Cu	@	react-vendor-BxMPNXTO.js:29
+Ro	@	react-vendor-BxMPNXTO.js:29
+so	@	react-vendor-BxMPNXTO.js:29
+df	@	react-vendor-BxMPNXTO.js:29
+
+index.min.js:1 Error al cargar proyección:
+C {message: 'Request failed with status code 500', name: 'AxiosError', code: 'ERR_BAD_RESPONSE', config: {…}, request: XMLHttpRequest, …}
+(anonymous)	@	index.min.js:1
+ga	@	inventario-DRi3FgFp.js:1
+await in ga
+(anonymous)	@	ui-vendor-CtDyRhL-.js:10
+(anonymous)	@	ui-vendor-CtDyRhL-.js:10
+(anonymous)	@	ui-vendor-CtDyRhL-.js:10
+onClick	@	ui-vendor-CtDyRhL-.js:10
+Kc	@	react-vendor-BxMPNXTO.js:29
+Xc	@	react-vendor-BxMPNXTO.js:29
+Gc	@	react-vendor-BxMPNXTO.js:29
+ya	@	react-vendor-BxMPNXTO.js:29
+ga	@	react-vendor-BxMPNXTO.js:29
+(anonymous)	@	react-vendor-BxMPNXTO.js:29
+Ri	@	react-vendor-BxMPNXTO.js:32
+Cu	@	react-vendor-BxMPNXTO.js:29
+Ro	@	react-vendor-BxMPNXTO.js:29
+so	@	react-vendor-BxMPNXTO.js:29
+df	@	react-vendor-BxMPNXTO.js:29
+
+ Petición 3 de 80
+2026-04-22T16:57:34.165Z DEBUG 1 --- [nio-8080-exec-1] org.hibernate.SQL                        :
+    SELECT
+        anio,
+        JSON_AGG(DISTINCT semestre
+    ORDER BY
+        semestre ASC) AS semestres
+    FROM
+        semanas
+    GROUP BY
+        anio
+    ORDER BY
+        anio ASC
+Hibernate:
+    SELECT
+        anio,
+        JSON_AGG(DISTINCT semestre
+    ORDER BY
+        semestre ASC) AS semestres
+    FROM
+        semanas
+    GROUP BY
+        anio
+    ORDER BY
+        anio ASC
+2026-04-22T16:57:34.321Z  INFO 1 --- [nio-8080-exec-4] K.c.s.rate_limiting.RateLimitFilter      : 📍 IP: 186.78.184.242 | Petición 4 de 80
+2026-04-22T16:57:34.330Z DEBUG 1 --- [nio-8080-exec-4] org.hibernate.SQL                        :
+    SELECT
+        r.id_rol          AS idRol,
+        r.nombre_rol      AS nombreRol,
+        m.id_modulo       AS idModulo,
+        m.codigo_modulo   AS codigoModulo,
+        m.nombre_modulo   AS nombreModulo,
+        m.orden_modulo    AS ordenModulo,
+        pr.id_permiso_rol AS idPermisoRol,
+        COALESCE(pr.puede_leer,       false) AS puedeLeer,
+        COALESCE(pr.puede_crear,      false) AS puedeCrear,
+        COALESCE(pr.puede_actualizar, false) AS puedeActualizar,
+        COALESCE(pr.puede_eliminar,   false) AS puedeEliminar
+    FROM
+        rol r
+    CROSS JOIN
+        modulo m
+    LEFT JOIN
+        permiso_rol pr
+            ON pr.id_rol = r.id_rol
+            AND pr.id_modulo = m.id_modulo
+            AND pr.enabled = true
+    WHERE
+        r.activo = true
+        AND m.enabled = true
+    ORDER BY
+        m.orden_modulo,
+        r.id_rol
+Hibernate:
+    SELECT
+        r.id_rol          AS idRol,
+        r.nombre_rol      AS nombreRol,
+        m.id_modulo       AS idModulo,
+        m.codigo_modulo   AS codigoModulo,
+        m.nombre_modulo   AS nombreModulo,
+        m.orden_modulo    AS ordenModulo,
+        pr.id_permiso_rol AS idPermisoRol,
+        COALESCE(pr.puede_leer,       false) AS puedeLeer,
+        COALESCE(pr.puede_crear,      false) AS puedeCrear,
+        COALESCE(pr.puede_actualizar, false) AS puedeActualizar,
+        COALESCE(pr.puede_eliminar,   false) AS puedeEliminar
+    FROM
+        rol r
+    CROSS JOIN
+        modulo m
+    LEFT JOIN
+        permiso_rol pr
+            ON pr.id_rol = r.id_rol
+            AND pr.id_modulo = m.id_modulo
+            AND pr.enabled = true
+    WHERE
+        r.activo = true
+        AND m.enabled = true
+    ORDER BY
+        m.orden_modulo,
+        r.id_rol
+2026-04-22T16:57:35.679Z  INFO 1 --- [nio-8080-exec-5] K.c.s.rate_limiting.RateLimitFilter      : 📍 IP: 186.78.184.242 | Petición 5 de 80
+2026-04-22T16:57:35.687Z  INFO 1 --- [nio-8080-exec-5] K.m.d.service.DashboardServiceImpl       : Fetching inventario dashboard data
+2026-04-22T16:57:35.688Z DEBUG 1 --- [nio-8080-exec-5] org.hibernate.SQL                        :
+    SELECT
+        COUNT(*),
+        COALESCE(SUM(stock), 0),
+        COUNT(*) FILTER (
+    WHERE
+        stock < stock_limit
+        AND stock_limit IS NOT NULL)
+    FROM
+        inventario
+    WHERE
+        activo = true
+Hibernate:
+    SELECT
+        COUNT(*),
+        COALESCE(SUM(stock), 0),
+        COUNT(*) FILTER (
+    WHERE
+        stock < stock_limit
+        AND stock_limit IS NOT NULL)
+    FROM
+        inventario
+    WHERE
+        activo = true
+2026-04-22T16:57:35.691Z DEBUG 1 --- [nio-8080-exec-5] org.hibernate.SQL                        :
+    SELECT
+        COUNT(*)
+    FROM
+        movimiento
+    WHERE
+        DATE(fecha_movimiento) = CURRENT_DATE
+Hibernate:
+    SELECT
+        COUNT(*)
+    FROM
+        movimiento
+    WHERE
+        DATE(fecha_movimiento) = CURRENT_DATE
+2026-04-22T16:57:35.694Z DEBUG 1 --- [nio-8080-exec-5] org.hibernate.SQL                        :
+    SELECT
+        p.nombre_producto,
+        i.stock,
+        i.stock_limit,
+        c.nombre_categoria,
+        u.nombre_unidad
+    FROM
+        inventario i
+    JOIN
+        producto p
+            ON p.id_producto = i.id_producto
+    JOIN
+        categoria c
+            ON c.id_categoria = p.id_categoria
+    JOIN
+        unidad_medida u
+            ON u.id_unidad = p.id_unidad
+    WHERE
+        i.stock < i.stock_limit
+        AND i.stock_limit IS NOT NULL
+        AND i.activo = true
+    ORDER BY
+        (i.stock / NULLIF(i.stock_limit, 0)) ASC
+    LIMIT
+        10
+Hibernate:
+    SELECT
+        p.nombre_producto,
+        i.stock,
+        i.stock_limit,
+        c.nombre_categoria,
+        u.nombre_unidad
+    FROM
+        inventario i
+    JOIN
+        producto p
+            ON p.id_producto = i.id_producto
+    JOIN
+        categoria c
+            ON c.id_categoria = p.id_categoria
+    JOIN
+        unidad_medida u
+            ON u.id_unidad = p.id_unidad
+    WHERE
+        i.stock < i.stock_limit
+        AND i.stock_limit IS NOT NULL
+        AND i.activo = true
+    ORDER BY
+        (i.stock / NULLIF(i.stock_limit, 0)) ASC
+    LIMIT
+        10
+2026-04-22T16:57:35.705Z DEBUG 1 --- [nio-8080-exec-5] org.hibernate.SQL                        :
+    SELECT
+        c.nombre_categoria,
+        COALESCE(SUM(i.stock), 0) AS total
+    FROM
+        inventario i
+    JOIN
+        producto p
+            ON p.id_producto = i.id_producto
+    JOIN
+        categoria c
+            ON c.id_categoria = p.id_categoria
+    WHERE
+        i.activo = true
+    GROUP BY
+        c.id_categoria,
+        c.nombre_categoria
+    ORDER BY
+        total DESC
+Hibernate:
+    SELECT
+        c.nombre_categoria,
+        COALESCE(SUM(i.stock), 0) AS total
+    FROM
+        inventario i
+    JOIN
+        producto p
+            ON p.id_producto = i.id_producto
+    JOIN
+        categoria c
+            ON c.id_categoria = p.id_categoria
+    WHERE
+        i.activo = true
+    GROUP BY
+        c.id_categoria,
+        c.nombre_categoria
+    ORDER BY
+        total DESC
+2026-04-22T16:57:35.711Z DEBUG 1 --- [nio-8080-exec-5] org.hibernate.SQL                        :
+    SELECT
+        TO_CHAR(DATE(fecha_movimiento), 'DD/MM') AS fecha,
+        COUNT(*) AS total
+    FROM
+        movimiento
+    WHERE
+        fecha_movimiento >= CURRENT_DATE - INTERVAL '14 days'
+    GROUP BY
+        DATE(fecha_movimiento),
+        TO_CHAR(DATE(fecha_movimiento), 'DD/MM')
+    ORDER BY
+        DATE(fecha_movimiento)
+Hibernate:
+    SELECT
+        TO_CHAR(DATE(fecha_movimiento), 'DD/MM') AS fecha,
+        COUNT(*) AS total
+    FROM
+        movimiento
+    WHERE
+        fecha_movimiento >= CURRENT_DATE - INTERVAL '14 days'
+    GROUP BY
+        DATE(fecha_movimiento),
+        TO_CHAR(DATE(fecha_movimiento), 'DD/MM')
+    ORDER BY
+        DATE(fecha_movimiento)
+2026-04-22T16:57:35.719Z DEBUG 1 --- [nio-8080-exec-5] org.hibernate.SQL                        :
+    SELECT
+        p.nombre_producto,
+        SUM(m.stock_movimiento) AS total
+    FROM
+        movimiento m
+    JOIN
+        inventario i
+            ON i.id_inventario = m.id_inventario
+    JOIN
+        producto p
+            ON p.id_producto = i.id_producto
+    WHERE
+        m.tipo_movimiento IN ('SALIDA_INVENTARIO', 'SALIDA_BODEGA')
+        AND m.fecha_movimiento >= CURRENT_DATE - INTERVAL '30 days'
+    GROUP BY
+        p.id_producto,
+        p.nombre_producto
+    ORDER BY
+        total DESC
+    LIMIT
+        5
+Hibernate:
+    SELECT
+        p.nombre_producto,
+        SUM(m.stock_movimiento) AS total
+    FROM
+        movimiento m
+    JOIN
+        inventario i
+            ON i.id_inventario = m.id_inventario
+    JOIN
+        producto p
+            ON p.id_producto = i.id_producto
+    WHERE
+        m.tipo_movimiento IN ('SALIDA_INVENTARIO', 'SALIDA_BODEGA')
+        AND m.fecha_movimiento >= CURRENT_DATE - INTERVAL '30 days'
+    GROUP BY
+        p.id_producto,
+        p.nombre_producto
+    ORDER BY
+        total DESC
+    LIMIT
+        5
+2026-04-22T16:57:35.724Z DEBUG 1 --- [nio-8080-exec-5] org.hibernate.SQL                        :
+    SELECT
+        p.nombre_producto,
+        SUM(m.stock_movimiento) AS total
+    FROM
+        movimiento m
+    JOIN
+        inventario i
+            ON i.id_inventario = m.id_inventario
+    JOIN
+        producto p
+            ON p.id_producto = i.id_producto
+    WHERE
+        m.tipo_movimiento IN ('MERMA_INVENTARIO', 'MERMA_BODEGA')
+        AND m.fecha_movimiento >= CURRENT_DATE - INTERVAL '30 days'
+    GROUP BY
+        p.id_producto,
+        p.nombre_producto
+    ORDER BY
+        total DESC
+    LIMIT
+        5
+Hibernate:
+    SELECT
+        p.nombre_producto,
+        SUM(m.stock_movimiento) AS total
+    FROM
+        movimiento m
+    JOIN
+        inventario i
+            ON i.id_inventario = m.id_inventario
+    JOIN
+        producto p
+            ON p.id_producto = i.id_producto
+    WHERE
+        m.tipo_movimiento IN ('MERMA_INVENTARIO', 'MERMA_BODEGA')
+        AND m.fecha_movimiento >= CURRENT_DATE - INTERVAL '30 days'
+    GROUP BY
+        p.id_producto,
+        p.nombre_producto
+    ORDER BY
+        total DESC
+    LIMIT
+        5
+2026-04-22T16:58:14.022Z  INFO 1 --- [nio-8080-exec-6] K.c.s.rate_limiting.RateLimitFilter      : 📍 IP: 186.78.184.242 | Petición 6 de 80
+2026-04-22T16:58:14.028Z  INFO 1 --- [nio-8080-exec-7] K.c.s.rate_limiting.RateLimitFilter      : 📍 IP: 186.78.184.242 | Petición 7 de 80
+2026-04-22T16:58:14.061Z DEBUG 1 --- [nio-8080-exec-6] org.hibernate.SQL                        :
+    SELECT
+        json_build_object(         'categorias',         (             SELECT
+            json_agg(                 json_build_object(                     'id', c.id_categoria,                     'nombre', c.nombre_categoria                 )             )
+        FROM
+            categoria c
+        WHERE
+            c.activo = TRUE         ),         'unidades',         (             SELECT
+            json_agg(                 json_build_object(                     'id', u.id_unidad,                     'nombre', u.nombre_unidad                 )             )
+        FROM
+            unidad_medida u
+        WHERE
+            u.activo = TRUE         )     )
+Hibernate:
+    SELECT
+        json_build_object(         'categorias',         (             SELECT
+            json_agg(                 json_build_object(                     'id', c.id_categoria,                     'nombre', c.nombre_categoria                 )             )
+        FROM
+            categoria c
+        WHERE
+            c.activo = TRUE         ),         'unidades',         (             SELECT
+            json_agg(                 json_build_object(                     'id', u.id_unidad,                     'nombre', u.nombre_unidad                 )             )
+        FROM
+            unidad_medida u
+        WHERE
+            u.activo = TRUE         )     )
+2026-04-22T16:58:14.063Z DEBUG 1 --- [nio-8080-exec-7] org.hibernate.SQL                        :
+    select
+        c1_0.id_categoria,
+        c1_0.activo,
+        c1_0.nombre_categoria
+    from
+        categoria c1_0
+    where
+        c1_0.activo=?
+Hibernate:
+    select
+        c1_0.id_categoria,
+        c1_0.activo,
+        c1_0.nombre_categoria
+    from
+        categoria c1_0
+    where
+        c1_0.activo=?
+2026-04-22T16:58:14.065Z TRACE 1 --- [nio-8080-exec-7] org.hibernate.orm.jdbc.bind              : binding parameter (1:BOOLEAN) <- [true]
+2026-04-22T16:58:14.211Z  INFO 1 --- [nio-8080-exec-8] K.c.s.rate_limiting.RateLimitFilter      : 📍 IP: 186.78.184.242 | Petición 8 de 80
+2026-04-22T16:58:14.223Z DEBUG 1 --- [nio-8080-exec-8] org.hibernate.SQL                        :
+    select
+        um1_0.id_unidad,
+        um1_0.abreviatura,
+        um1_0.activo,
+        um1_0.es_fraccionario,
+        um1_0.nombre_unidad
+    from
+        unidad_medida um1_0
+    where
+        um1_0.activo=?
+Hibernate:
+    select
+        um1_0.id_unidad,
+        um1_0.abreviatura,
+        um1_0.activo,
+        um1_0.es_fraccionario,
+        um1_0.nombre_unidad
+    from
+        unidad_medida um1_0
+    where
+        um1_0.activo=?
+2026-04-22T16:58:14.224Z TRACE 1 --- [nio-8080-exec-8] org.hibernate.orm.jdbc.bind              : binding parameter (1:BOOLEAN) <- [true]
+2026-04-22T16:58:14.228Z  INFO 1 --- [nio-8080-exec-9] K.c.s.rate_limiting.RateLimitFilter      : 📍 IP: 186.78.184.242 | Petición 9 de 80
+2026-04-22T16:58:14.259Z DEBUG 1 --- [nio-8080-exec-9] org.hibernate.SQL                        :
+    SELECT
+        COUNT(*)
+    FROM
+        inventario i
+    JOIN
+        producto p
+            ON p.id_producto = i.id_producto
+    WHERE
+        i.activo = TRUE
+        AND p.activo = TRUE
+        AND (
+            ? = FALSE
+            OR p.id_categoria = ANY(CAST(? AS INTEGER[]))
+        )
+        AND (
+            ? = FALSE
+            OR p.id_unidad = ANY(CAST(? AS INTEGER[]))
+        )
+        AND (
+            ? = FALSE
+            OR i.stock <= i.stock_limit
+        )
+        AND (
+            ? = FALSE
+            OR i.stock > 0
+        )
+Hibernate:
+    SELECT
+        COUNT(*)
+    FROM
+        inventario i
+    JOIN
+        producto p
+            ON p.id_producto = i.id_producto
+    WHERE
+        i.activo = TRUE
+        AND p.activo = TRUE
+        AND (
+            ? = FALSE
+            OR p.id_categoria = ANY(CAST(? AS INTEGER[]))
+        )
+        AND (
+            ? = FALSE
+            OR p.id_unidad = ANY(CAST(? AS INTEGER[]))
+        )
+        AND (
+            ? = FALSE
+            OR i.stock <= i.stock_limit
+        )
+        AND (
+            ? = FALSE
+            OR i.stock > 0
+        )
+2026-04-22T16:58:14.260Z TRACE 1 --- [nio-8080-exec-9] org.hibernate.orm.jdbc.bind              : binding parameter (1:BOOLEAN) <- [false]
+2026-04-22T16:58:14.260Z TRACE 1 --- [nio-8080-exec-9] org.hibernate.orm.jdbc.bind              : binding parameter (2:JAVA_OBJECT) <- [null]
+2026-04-22T16:58:14.263Z TRACE 1 --- [nio-8080-exec-9] org.hibernate.orm.jdbc.bind              : binding parameter (3:BOOLEAN) <- [false]
+2026-04-22T16:58:14.265Z TRACE 1 --- [nio-8080-exec-9] org.hibernate.orm.jdbc.bind              : binding parameter (4:JAVA_OBJECT) <- [null]
+2026-04-22T16:58:14.267Z TRACE 1 --- [nio-8080-exec-9] org.hibernate.orm.jdbc.bind              : binding parameter (5:BOOLEAN) <- [false]
+2026-04-22T16:58:14.268Z TRACE 1 --- [nio-8080-exec-9] org.hibernate.orm.jdbc.bind              : binding parameter (6:BOOLEAN) <- [false]
+2026-04-22T16:58:14.278Z DEBUG 1 --- [nio-8080-exec-9] org.hibernate.SQL                        :
+    SELECT
+        p.nombre_producto,
+        p.cod_producto,
+        p.descripcion_producto,
+        c.nombre_categoria,
+        i.stock,
+        i.stock_limit,
+        u.nombre_unidad,
+        u.es_fraccionario,
+        i.id_inventario,
+        p.id_producto,
+        c.id_categoria,
+        u.id_unidad
+    FROM
+        inventario i
+    JOIN
+        producto p
+            ON p.id_producto = i.id_producto
+    JOIN
+        categoria c
+            ON c.id_categoria = p.id_categoria
+    JOIN
+        unidad_medida u
+            ON u.id_unidad = p.id_unidad
+    WHERE
+        i.activo = TRUE
+        AND p.activo = TRUE
+        AND (
+            ? = FALSE
+            OR c.id_categoria = ANY(CAST(? AS INTEGER[]))
+        )
+        AND (
+            ? = FALSE
+            OR u.id_unidad = ANY(CAST(? AS INTEGER[]))
+        )
+        AND (
+            ? = FALSE
+            OR i.stock <= i.stock_limit
+        )
+        AND (
+            ? = FALSE
+            OR i.stock > 0
+        )
+    ORDER BY
+        CASE
+            WHEN ? = TRUE
+                THEN p.nombre_producto
+        END ASC,
+        CASE
+            WHEN ? = FALSE
+                THEN p.nombre_producto
+        END DESC
+    LIMIT
+        ?
+    OFFSET
+        ?
+Hibernate:
+    SELECT
+        p.nombre_producto,
+        p.cod_producto,
+        p.descripcion_producto,
+        c.nombre_categoria,
+        i.stock,
+        i.stock_limit,
+        u.nombre_unidad,
+        u.es_fraccionario,
+        i.id_inventario,
+        p.id_producto,
+        c.id_categoria,
+        u.id_unidad
+    FROM
+        inventario i
+    JOIN
+        producto p
+            ON p.id_producto = i.id_producto
+    JOIN
+        categoria c
+            ON c.id_categoria = p.id_categoria
+    JOIN
+        unidad_medida u
+            ON u.id_unidad = p.id_unidad
+    WHERE
+        i.activo = TRUE
+        AND p.activo = TRUE
+        AND (
+            ? = FALSE
+            OR c.id_categoria = ANY(CAST(? AS INTEGER[]))
+        )
+        AND (
+            ? = FALSE
+            OR u.id_unidad = ANY(CAST(? AS INTEGER[]))
+        )
+        AND (
+            ? = FALSE
+            OR i.stock <= i.stock_limit
+        )
+        AND (
+            ? = FALSE
+            OR i.stock > 0
+        )
+    ORDER BY
+        CASE
+            WHEN ? = TRUE
+                THEN p.nombre_producto
+        END ASC,
+        CASE
+            WHEN ? = FALSE
+                THEN p.nombre_producto
+        END DESC
+    LIMIT
+        ?
+    OFFSET
+        ?
+2026-04-22T16:58:14.282Z TRACE 1 --- [nio-8080-exec-9] org.hibernate.orm.jdbc.bind              : binding parameter (1:BOOLEAN) <- [false]
+2026-04-22T16:58:14.282Z TRACE 1 --- [nio-8080-exec-9] org.hibernate.orm.jdbc.bind              : binding parameter (2:JAVA_OBJECT) <- [null]
+2026-04-22T16:58:14.284Z TRACE 1 --- [nio-8080-exec-9] org.hibernate.orm.jdbc.bind              : binding parameter (3:BOOLEAN) <- [false]
+2026-04-22T16:58:14.285Z TRACE 1 --- [nio-8080-exec-9] org.hibernate.orm.jdbc.bind              : binding parameter (4:JAVA_OBJECT) <- [null]
+2026-04-22T16:58:14.287Z TRACE 1 --- [nio-8080-exec-9] org.hibernate.orm.jdbc.bind              : binding parameter (5:BOOLEAN) <- [false]
+2026-04-22T16:58:14.288Z TRACE 1 --- [nio-8080-exec-9] org.hibernate.orm.jdbc.bind              : binding parameter (6:BOOLEAN) <- [false]
+2026-04-22T16:58:14.288Z TRACE 1 --- [nio-8080-exec-9] org.hibernate.orm.jdbc.bind              : binding parameter (7:BOOLEAN) <- [true]
+2026-04-22T16:58:14.288Z TRACE 1 --- [nio-8080-exec-9] org.hibernate.orm.jdbc.bind              : binding parameter (8:BOOLEAN) <- [true]
+2026-04-22T16:58:14.289Z TRACE 1 --- [nio-8080-exec-9] org.hibernate.orm.jdbc.bind              : binding parameter (9:INTEGER) <- [20]
+2026-04-22T16:58:14.289Z TRACE 1 --- [nio-8080-exec-9] org.hibernate.orm.jdbc.bind              : binding parameter (10:INTEGER) <- [0]
+2026-04-22T16:58:16.809Z  INFO 1 --- [io-8080-exec-10] K.c.s.rate_limiting.RateLimitFilter      : 📍 IP: 186.78.184.242 | Petición 10 de 80
+2026-04-22T16:58:16.820Z DEBUG 1 --- [io-8080-exec-10] org.hibernate.SQL                        :
+    SELECT
+        COUNT(*)
+    FROM
+        inventario i
+    JOIN
+        producto p
+            ON p.id_producto = i.id_producto
+    WHERE
+        i.activo = true
+        AND (
+            ? = ''
+            OR LOWER(p.nombre_producto) LIKE LOWER(CONCAT('%', ?, '%'))
+            OR LOWER(p.cod_producto) LIKE LOWER(CONCAT('%', ?, '%'))
+        )
+Hibernate:
+    SELECT
+        COUNT(*)
+    FROM
+        inventario i
+    JOIN
+        producto p
+            ON p.id_producto = i.id_producto
+    WHERE
+        i.activo = true
+        AND (
+            ? = ''
+            OR LOWER(p.nombre_producto) LIKE LOWER(CONCAT('%', ?, '%'))
+            OR LOWER(p.cod_producto) LIKE LOWER(CONCAT('%', ?, '%'))
+        )
+2026-04-22T16:58:16.820Z TRACE 1 --- [io-8080-exec-10] org.hibernate.orm.jdbc.bind              : binding parameter (1:VARCHAR) <- []
+2026-04-22T16:58:16.821Z TRACE 1 --- [io-8080-exec-10] org.hibernate.orm.jdbc.bind              : binding parameter (2:VARCHAR) <- []
+2026-04-22T16:58:16.821Z TRACE 1 --- [io-8080-exec-10] org.hibernate.orm.jdbc.bind              : binding parameter (3:VARCHAR) <- []
+2026-04-22T16:58:16.825Z DEBUG 1 --- [io-8080-exec-10] org.hibernate.SQL                        :
+    SELECT
+        p.nombre_producto AS nombreProducto,
+        'Stock: ' || trim(trailing '.' from to_char(i.stock, 'FM9999990.999')) || ' ' || u.nombre_unidad AS detalles,
+        i.stock AS stock,
+        u.es_fraccionario AS esFraccionario,
+        i.id_inventario AS idInventario,
+        p.id_producto AS idProducto
+    FROM
+        inventario i
+    JOIN
+        producto p
+            ON i.id_producto = p.id_producto
+    JOIN
+        unidad_medida u
+            ON u.id_unidad = p.id_unidad
+    WHERE
+        i.activo = true
+        AND (
+            ? = ''
+            OR LOWER(p.nombre_producto) LIKE LOWER(CONCAT('%', ?, '%'))
+            OR LOWER(p.cod_producto) LIKE LOWER(CONCAT('%', ?, '%'))
+        )
+    ORDER BY
+        p.nombre_producto
+    LIMIT
+        ?
+    OFFSET
+        ?
+Hibernate:
+    SELECT
+        p.nombre_producto AS nombreProducto,
+        'Stock: ' || trim(trailing '.' from to_char(i.stock, 'FM9999990.999')) || ' ' || u.nombre_unidad AS detalles,
+        i.stock AS stock,
+        u.es_fraccionario AS esFraccionario,
+        i.id_inventario AS idInventario,
+        p.id_producto AS idProducto
+    FROM
+        inventario i
+    JOIN
+        producto p
+            ON i.id_producto = p.id_producto
+    JOIN
+        unidad_medida u
+            ON u.id_unidad = p.id_unidad
+    WHERE
+        i.activo = true
+        AND (
+            ? = ''
+            OR LOWER(p.nombre_producto) LIKE LOWER(CONCAT('%', ?, '%'))
+            OR LOWER(p.cod_producto) LIKE LOWER(CONCAT('%', ?, '%'))
+        )
+    ORDER BY
+        p.nombre_producto
+    LIMIT
+        ?
+    OFFSET
+        ?
+2026-04-22T16:58:16.826Z TRACE 1 --- [io-8080-exec-10] org.hibernate.orm.jdbc.bind              : binding parameter (1:VARCHAR) <- []
+2026-04-22T16:58:16.826Z TRACE 1 --- [io-8080-exec-10] org.hibernate.orm.jdbc.bind              : binding parameter (2:VARCHAR) <- []
+2026-04-22T16:58:16.826Z TRACE 1 --- [io-8080-exec-10] org.hibernate.orm.jdbc.bind              : binding parameter (3:VARCHAR) <- []
+2026-04-22T16:58:16.826Z TRACE 1 --- [io-8080-exec-10] org.hibernate.orm.jdbc.bind              : binding parameter (4:INTEGER) <- [20]
+2026-04-22T16:58:16.826Z TRACE 1 --- [io-8080-exec-10] org.hibernate.orm.jdbc.bind              : binding parameter (5:INTEGER) <- [0]
+2026-04-22T16:58:25.206Z  INFO 1 --- [nio-8080-exec-2] K.c.s.rate_limiting.RateLimitFilter      : 🔄 Minuto reiniciado para la IP: 186.78.184.242
+2026-04-22T16:58:25.207Z  INFO 1 --- [nio-8080-exec-2] K.c.s.rate_limiting.RateLimitFilter      : 📍 IP: 186.78.184.242 | Petición 1 de 80
+2026-04-22T16:58:25.259Z DEBUG 1 --- [nio-8080-exec-2] org.hibernate.SQL                        :
+    select
+        r1_0.id_rol,
+        r1_0.activo,
+        r1_0.nombre_rol
+    from
+        public.rol r1_0
+    where
+        upper(r1_0.nombre_rol)=upper(?)
+Hibernate:
+    select
+        r1_0.id_rol,
+        r1_0.activo,
+        r1_0.nombre_rol
+    from
+        public.rol r1_0
+    where
+        upper(r1_0.nombre_rol)=upper(?)
+2026-04-22T16:58:25.259Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (1:VARCHAR) <- [ENCARGADO_BODEGA]
+2026-04-22T16:58:25.269Z  WARN 1 --- [nio-8080-exec-2] o.h.engine.jdbc.spi.SqlExceptionHelper   : SQL Error: 0, SQLState: 42883
+2026-04-22T16:58:25.269Z ERROR 1 --- [nio-8080-exec-2] o.h.engine.jdbc.spi.SqlExceptionHelper   : ERROR: function upper(tipo_rol_type) does not exist
+  Hint: No function matches the given name and argument types. You might need to add explicit type casts.
+  Position: 75
