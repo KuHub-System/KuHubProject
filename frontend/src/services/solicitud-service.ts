@@ -937,3 +937,34 @@ export const actualizarEstadoBodegaService = (
     }, 100);
   });
 };
+
+// ── Proyección de Abastecimiento ──────────────────────────────────────────────
+export interface IProductoAbastecimientoItem {
+  idProducto: number;
+  nombreProducto: string;
+  nombreUnidad: string;
+  abreviatura: string;
+  esFraccionario: boolean;
+  nombreCategoria: string;
+  cantidadTotalSolicitada: number;
+}
+
+export interface IProyeccionAbastecimiento {
+  proyeccionAbastecimiento: IProductoAbastecimientoItem[];
+}
+
+export interface IDateRangeDTO {
+  fechaInicio: string; // "YYYY-MM-DD"
+  fechaFin: string;    // "YYYY-MM-DD"
+}
+
+export const obtenerProyeccionAbastecimientoService = async (
+  fechaInicio: string,
+  fechaFin: string
+): Promise<IProyeccionAbastecimiento> => {
+  const response = await api.post<IProyeccionAbastecimiento>(
+    '/solicitud/proyeccion-abastecimiento',
+    { fechaInicio, fechaFin } as IDateRangeDTO
+  );
+  return response.data;
+};
