@@ -46,7 +46,7 @@ public record ProyeccionAbastecimiento(
 
             "abreviatura", "esFraccionario", "nombreCategoria",
 
-            "cantidadTotalSolicitada"
+            "cantidadTotalSolicitada", "idInventario"
 
     })
 
@@ -90,7 +90,11 @@ public record ProyeccionAbastecimiento(
 
             @JsonProperty("cantidadTotalSolicitada")
 
-            BigDecimal cantidadTotalSolicitada
+            BigDecimal cantidadTotalSolicitada,
+
+            @JsonProperty("idInventario")
+
+            Integer idInventario
 
     ) {}
 

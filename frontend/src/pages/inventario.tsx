@@ -2237,10 +2237,10 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoP
       // Todos se agregan con motivo "ENTRADA_INVENTARIO" (acción por defecto)
       const nuevosMotivoEntrante = 'ENTRADA_INVENTARIO';
       const nuevosItems: ItemPedidoMasivo[] = proyeccion.proyeccionAbastecimiento.map((producto) => {
-        // Obtener stock actual e idInventario del producto desde bulkProductos
+        // Obtener stock actual de bulkProductos e idInventario de la proyección
         const productoActualizado = bulkProductos.find(p => p.idProducto === producto.idProducto);
         const stockActual = productoActualizado?.stock ?? 0;
-        const idInventarioActual = productoActualizado?.idInventario ?? 0;
+        const idInventarioActual = producto.idInventario;
 
         const bulkProducto: IBulkProductoInventoryListing = {
           idProducto: producto.idProducto,
