@@ -21,9 +21,17 @@ const AuthLayout: React.FC<AuthLayoutProps> = ({ children }) => {
   const { theme, toggleTheme } = useThemeContext();
 
   return (
-    <div className="min-h-screen flex flex-col bg-background">
+    <div
+      className="min-h-screen flex flex-col"
+      style={{
+        backgroundImage: 'url(/bg-cousino-960x600.jpg)',
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat',
+      }}
+    >
       {/* Botón de cambio de tema */}
-      <div className="absolute top-4 right-4">
+      <div className="absolute top-4 right-4 z-20">
         <Button
           isIconOnly
           variant="light"
@@ -37,8 +45,11 @@ const AuthLayout: React.FC<AuthLayoutProps> = ({ children }) => {
         </Button>
       </div>
 
+      {/* Overlay sobre el fondo */}
+      <div className="absolute inset-0 bg-white/75 dark:bg-black/90" />
+
       {/* Contenido centrado */}
-      <div className="flex-grow flex items-center justify-center p-4">
+      <div className="relative z-10 flex-grow flex items-center justify-center p-4">
         <div className="w-full max-w-md">
 
 
@@ -48,8 +59,8 @@ const AuthLayout: React.FC<AuthLayoutProps> = ({ children }) => {
       </div>
 
       {/* Footer */}
-      <footer className="py-4 text-center text-sm text-default-500">
-        <p>© 2025 KuHub System | Version 0.1</p>
+      <footer className="relative z-10 py-4 text-center text-sm text-default-500">
+        <p>© {new Date().getFullYear()} KuHub · Entorno de Pruebas | v1.0.14</p>
       </footer>
     </div>
   );

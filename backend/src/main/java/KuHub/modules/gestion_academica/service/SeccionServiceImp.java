@@ -116,7 +116,12 @@ public class SeccionServiceImp implements SeccionService{
             reservaSalaService.save(newReservation);
         }
 
-        /**Asiganar el usuario docente a seccion*/
+        /**
+         * Asignar el usuario docente a la sección.
+         * REGLA DE NEGOCIO: solo 1 docente por sección (controlado en capa de aplicación).
+         * La tabla docente_seccion es M:M por diseño para escalabilidad futura,
+         * pero el servicio restringe la creación a una única asignación por sección.
+         */
         DocenteSeccion newTeaching = new DocenteSeccion();
         newTeaching.setSeccion(savedSection);
         newTeaching.setIdUsuario(request.getIdUsuarioDocente());
@@ -242,6 +247,34 @@ public class SeccionServiceImp implements SeccionService{
                 }
             }
         }
+        // ==========================================================
+        // ACTUALIZAR DOCENTE A CARGO DE LA SECCIÓN
+        // REGLA DE NEGOCIO: solo 1 docente por sección.
+        // La tabla docente_seccion es M:M por diseño (escalabilidad futura),
+        // pero aquí se controla a nivel de aplicación que solo exista una asignación.
+        // ==========================================================
+        if (request.getIdUsuarioDocente() != null) {
+            Optional<DocenteSeccion> asignacionExistente =
+                    docenteSeccionRepository.findBySeccion_IdSeccion(oldSeccion.getIdSeccion());
+
+            if (asignacionExistente.isPresent()) {
+                DocenteSeccion asignacion = asignacionExistente.get();
+                Integer docenteActualId = asignacion.getUsuario() != null
+                        ? asignacion.getUsuario().getIdUsuario()
+                        : null;
+                if (!request.getIdUsuarioDocente().equals(docenteActualId)) {
+                    asignacion.setIdUsuario(request.getIdUsuarioDocente());
+                    docenteSeccionRepository.save(asignacion);
+                }
+            } else {
+                // La sección no tenía docente asignado: crear la asignación
+                DocenteSeccion nuevaAsignacion = new DocenteSeccion();
+                nuevaAsignacion.setSeccion(oldSeccion);
+                nuevaAsignacion.setIdUsuario(request.getIdUsuarioDocente());
+                docenteSeccionRepository.save(nuevaAsignacion);
+            }
+        }
+
         return true;
     }
 

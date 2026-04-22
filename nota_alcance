@@ -1,0 +1,1297 @@
+================================================================================
+  KUHUB — DOCUMENTO DE ALCANCE Y ESTADO DEL PROYECTO
+  Sistema de Gestión de Inventario, Solicitudes y Pedidos — DuocUC
+================================================================================
+
+[NOTAS DE REVISIÓN DEL DOCUMENTO]
+- Documento actualizado al 2026-04-16. El flujo de estados de solicitud está
+  implementado en su totalidad (ver sección 5).
+- stock_limit tiene semántica diferente según módulo: en Inventario principal
+  equivale al stock mínimo (umbral de alerta), en Bodega de Tránsito equivale
+  al límite físico de espacio disponible (tope máximo).
+
+================================================================================
+  1. PROBLEMA — POR QUÉ EXISTE ESTE SISTEMA
+================================================================================
+
+La gestión actual de inventario y pedidos de insumos de cocina en DuocUC se realiza
+completamente en Excel. Esto implica:
+
+  - Listas largas de entrada y salida de productos actualizadas manualmente.
+  - Pedidos semanales organizados en planillas sin trazabilidad histórica confiable.
+  - Solicitudes de productos para clases calculadas a mano según la cantidad de
+    alumnos inscritos por sección.
+  - Planificación con proveedores sin datos consolidados, lo que impide negociar
+    mejores precios por volumen o frecuencia.
+  - Espacio físico de almacenamiento limitado que obliga a fraccionar los pedidos
+    por día de entrega, añadiendo complejidad manual.
+
+Por qué implementar un sistema si el proceso ya funciona:
+  El análisis del caso determina que, más allá de reducir tiempo, el sistema genera
+  valor estratégico: mantiene un historial permanente y seguro que con Excel se pierde
+  o se hace difícil de consultar, y entrega datos consolidados por semestre o año
+  que permiten negociar con proveedores con información real de consumo anticipado,
+  logrando mejores precios y acuerdos de abastecimiento.
+
+================================================================================
+  2. QUÉ ES KUHUB Y CÓMO ESTÁ CONSTRUIDO
+================================================================================
+
+KuHub es un sistema web que automatiza y centraliza todo el proceso descrito,
+desde la creación de recetas de cocina hasta la entrega física de insumos en bodega.
+
+CAPAS DEL SISTEMA:
+  FRONTEND  → Aplicación web React 18 + TypeScript (interfaz de usuario en el navegador)
+  BACKEND   → API REST Java 21 / Spring Boot 3.4.3 (lógica de negocio y seguridad)
+  BASE DE DATOS → PostgreSQL en AWS RDS (almacenamiento persistente y seguro)
+
+INFRAESTRUCTURA:
+  - Servidor: AWS Lightsail (Ubuntu), contenedores Docker
+  - Memoria asignada: Backend 1.4 GB, Frontend 200 MB
+  - JVM: -Xmx1024m -Xms768m (límites de memoria Java)
+  - URL producción: https://appkuhub.questweb.cl
+  - Backend: puerto 8080 (interno), Frontend: puerto 80 (nginx)
+  - Imágenes Docker: build en dos etapas (compilación separada de ejecución)
+    para reducir tamaño final de las imágenes
+
+Para no técnicos:
+  El sistema tiene tres partes. La que el usuario ve en el navegador (frontend),
+  la que procesa las reglas del negocio y seguridad (backend), y la base de datos
+  donde se guardan todos los datos de forma permanente. Las tres corren en servidores
+  de Amazon Web Services (AWS) en la nube.
+
+================================================================================
+  3. MÓDULOS DEL SISTEMA
+================================================================================
+
+------------------------------------------------------------------------
+3.1  AUTENTICACIÓN Y SEGURIDAD
+------------------------------------------------------------------------
+Técnico:
+  - Login en POST /api/v1/auth/login recibe { email, contrasena, recordarSesion } en JSON.
+  - JWT generado con algoritmo HS256, clave secreta leída de variable de entorno
+    (fallback fijo en código). Los tokens siguen siendo válidos tras reinicios del backend.
+  - Contraseñas almacenadas con BCrypt (campo VARCHAR 60 — mínimo requerido por BCrypt).
+  - Rate limiting: máximo 80 peticiones por minuto por IP (RateLimitFilter).
+  - CORS configurado: permite localhost:5173/3000 (desarrollo) y appkuhub.questweb.cl
+    (producción). La IP 52.5.222.79 también está en la lista (servidor antiguo).
+  - Sesión stateless: el servidor no guarda sesiones, cada petición lleva el token.
+  - Al hacer login exitoso, el campo ultimo_acceso del usuario se actualiza
+    automáticamente en la base de datos.
+  - Swagger UI disponible en /swagger-ui.html para documentación de API
+    (actualmente público, recomendable restringir en producción).
+
+  Sistema "Recordar sesión" — Refresh Tokens (implementado 2026-04-15):
+  - Si recordarSesion=false (default): Access Token de 1 hora. Sin cookie. Comportamiento anterior.
+  - Si recordarSesion=true: Access Token de 15 minutos + Refresh Token de 30 días.
+  - El Refresh Token se envía como cookie HttpOnly (nombre: kuhub_refresh, path: /api/v1/auth).
+    Las cookies HttpOnly son inaccesibles por JavaScript → protección contra XSS.
+  - POST /api/v1/auth/refresh: el frontend envía la cookie automáticamente, el backend
+    valida el Refresh Token en BD y devuelve un nuevo Access Token (sin requerir contraseña).
+  - POST /api/v1/auth/logout: revoca el Refresh Token en BD y limpia la cookie.
+  - El interceptor Axios detecta errores 401, llama a /auth/refresh en silencio,
+    actualiza el token en localStorage y reintenta la petición original. El usuario
+    nunca nota la expiración del Access Token mientras el Refresh Token sea válido.
+  - Al cargar la aplicación sin sesión local, se intenta renovar vía cookie (sesión persistente).
+  - Tabla: refresh_token (id_refresh_token, id_usuario FK, token UUID único, expires_at,
+    activo, creado_en). Soft-revocación: activo=false al hacer logout o cambiar contraseña.
+
+  Flujo de Cierre de Sesión (implementado 2026-04-15):
+  1. El usuario hace clic en "Cerrar sesión" → React llama cerrarSesionService().
+  2. Frontend hace POST /api/v1/auth/logout con credenciales (envía cookie automáticamente).
+  3. Backend lee la cookie kuhub_refresh, busca el Refresh Token en la tabla refresh_token
+     y lo marca como revocado (activo=false). Si el token ya era inválido, igual continúa.
+  4. Backend responde con Set-Cookie: kuhub_refresh=; MaxAge=0 → el navegador destruye
+     la cookie. Aunque alguien hubiera interceptado el token, ya no sirve en la BD.
+  5. Frontend elimina sesion_actual de localStorage (borra Access Token y datos de usuario).
+  6. React pone user=null en el contexto → ProtectedRoute redirige automáticamente a /login.
+  - El logout de inactividad (25 min sin actividad) sigue el mismo flujo completo.
+  - Si el backend falla, el finally del frontend limpia localStorage de todas formas.
+
+  PENDIENTE — F2A (Segundo Factor de Autenticación):
+  - Requiere correos reales para envío de OTP/código.
+  - No implementado: se necesita servicio de email (SMTP/SendGrid) y flujo de verificación.
+  - Marcar como pendiente hasta tener infraestructura de email configurada.
+
+  PENDIENTE — "Olvidé mi contraseña":
+  - Requiere correo real del usuario para enviar enlace de restablecimiento.
+  - Necesita: tabla reset_password_token, endpoint /auth/forgot-password, email de recuperación.
+  - Marcar como pendiente hasta tener infraestructura de email configurada.
+
+Para no técnicos:
+  Cada usuario ingresa con email y contraseña. El sistema no guarda la sesión en el
+  servidor: en cambio, al iniciar sesión correctamente, el servidor entrega al
+  navegador un "pase digital" firmado (token) que el usuario presenta en cada
+  acción que realiza, como si fuera un gafete de acceso temporal.
+
+  Sin "Recordar sesión" (comportamiento por defecto):
+    El pase tiene una duración de 1 hora. Al cerrarse el navegador o pasar ese
+    tiempo sin actividad, el usuario deberá volver a ingresar su contraseña.
+
+  Con "Recordar sesión" activado:
+    El sistema entrega dos pases:
+      - Pase de acceso (15 min): se usa para operar en el sistema. Caduca rápido
+        por seguridad, pero se renueva automáticamente en segundo plano sin que
+        el usuario lo note ni tenga que volver a ingresar su contraseña.
+      - Pase de renovación (30 días): guardado de forma segura en el navegador,
+        inaccesible por cualquier script o extensión maliciosa. Su único propósito
+        es solicitar un nuevo pase de acceso cuando el anterior vence.
+    Mientras el pase de 30 días sea válido, el usuario permanece conectado aunque
+    cierre el navegador o apague el equipo.
+
+  Al cerrar sesión:
+    El pase de renovación es anulado inmediatamente en el servidor, de modo que
+    aunque alguien lo hubiera interceptado, ya no sirve para nada. El navegador
+    también lo elimina. El usuario queda completamente desconectado.
+
+  Seguridad de contraseñas:
+    Las contraseñas nunca se guardan tal como son. El sistema las convierte a un
+    código irreversible mediante un algoritmo de cifrado. Ni el equipo de desarrollo
+    puede leer la contraseña original: si el usuario la olvida, debe restablecerla.
+
+------------------------------------------------------------------------
+3.2  GESTIÓN DE USUARIOS Y ROLES
+------------------------------------------------------------------------
+Técnico:
+  Entidad Usuario:
+  - Campos: p_nombre, s_nombre, app_paterno, app_materno (hasta 50 caracteres c/u),
+    email (hasta 75 caracteres, único), username (único), contrasena (BCrypt, 60 chars),
+    url_foto_perfil (BYTEA — imagen guardada en BD, no en disco), activo,
+    fecha_creacion (automática), ultimo_acceso (nullable).
+  - @PrePersist: fecha_creacion y activo=true se asignan automáticamente al crear.
+  - getNombreCompleto(): método que retorna el nombre formateado ignorando campos nulos.
+  - Soft delete: desactivar usuario (activo=false), nunca se elimina físicamente.
+
+  Roles disponibles (7 roles predefinidos):
+  - ADMINISTRADOR, CO_ADMINISTRADOR, GESTOR_PEDIDOS
+  - ENCARGADO_BODEGA, ASISTENTE_BODEGA, PROFESOR_A_CARGO, DOCENTE
+
+  Módulos del sistema (entidad Modulo):
+  - Cada módulo tiene: codigo_modulo (único), nombre, descripción, icono, orden.
+  - Ejemplos: INVENTARIO, GESTION_PEDIDOS, GESTION_SOLICITUDES, GESTION_RECETAS,
+    GESTION_USUARIOS, GESTION_ROLES, GESTION_CATEGORIAS, GESTION_UNIDADES, DASHBOARD.
+
+  Sistema de Permisos Dinámico (PermisoRol):
+  - Tabla PermisoRol: Rol × Módulo con 4 flags booleanos:
+    puede_leer, puede_crear, puede_actualizar, puede_eliminar.
+  - Constraint UNIQUE(id_rol, id_modulo): un registro de permiso por combinación.
+  - Verificación en tiempo de ejecución por DynamicPermissionService
+    (no usa @PreAuthorize para evitar problemas de proxy AOP en Spring).
+  - El administrador configura los permisos desde la UI sin tocar código.
+  - Endpoint /api/v1/permisos/upsert: crear o actualizar permiso en una sola operación.
+
+  Endpoints de usuario:
+  - /users-to-manager-course: lista usuarios con rol DOCENTE o PROFESOR_A_CARGO
+  - /users-assigned-to-section: docentes disponibles para asignar
+  - Paginación asimétrica: primera consulta 20 registros, siguientes 10 en 10
+  - Excluye usuarios del sistema (IDs 1-7) de los listados de gestión
+  - Búsqueda flexible por nombre o email
+
+Para no técnicos:
+  El administrador crea los usuarios y les asigna un rol. Según el rol, el usuario
+  verá distintas secciones del sistema. El administrador puede ajustar desde la UI
+  qué puede hacer cada rol (leer, crear, editar, eliminar) sin necesidad de
+  un programador. Las fotos de perfil se guardan directamente en la base de datos.
+
+------------------------------------------------------------------------
+3.3  GESTIÓN DE INVENTARIO
+------------------------------------------------------------------------
+Técnico:
+  Entidad Categoria:
+  - id_categoria (SMALLINT), nombre_categoria (único, obligatorio), activo.
+
+  Entidad UnidadMedida:
+  - id_unidad (SMALLINT), nombre_unidad (único), abreviatura (única),
+    es_fraccionario (boolean — controla si admite decimales), activo.
+  - Máximo 3 decimales en campos NUMERIC 10,3.
+
+  Entidad Producto:
+  - cod_producto (único, nullable — preparado para lector de código de barras).
+  - nombre_producto (único, NOT NULL), descripcion_producto (TEXT), activo.
+  - FK → Categoria (EAGER: siempre se carga junto con el producto),
+    UnidadMedida (EAGER).
+  - Relación 1:1 con Inventario.
+  - Setters por ID: setCategoriaId(), setUnidadMedidaId() — evitan consultas N+1.
+
+  Entidad Inventario:
+  - stock (NUMERIC 10,3, >= 0), stock_limit (NUMERIC 10,3, nullable, >= 0).
+  - CHECK en BD: stock >= 0 (protección en base de datos).
+  - Alerta automática si stock < stock_limit.
+  - El campo stock_limit equivale al stock mínimo (nombre diferente al mencionado
+    en las notas originales, importante para consistencia).
+
+  Entidad BodegaTransito:
+  - Relación OneToOne con Inventario (única).
+  - stock, stock_limit (NUMERIC 10,3).
+  - Se crea automáticamente durante un traslado si no existe.
+
+  Entidad Movimiento:
+  - stock_movimiento (NUMERIC 10,3), fecha_movimiento (TIMESTAMP automático),
+    tipo_movimiento (ENUM), observacion (TEXT).
+  - FK → Usuario (quién hizo el movimiento, obtenido del token JWT),
+    Inventario, BodegaTransito (nullable, solo para movimientos de bodega).
+  - Setters por ID: setUsuarioId(), setInventarioId(), setIdBodegaTransito().
+
+  Tipos de movimiento (ENUM en Java y PostgreSQL):
+    ENTRADA_INVENTARIO    — Ingreso de producto al inventario principal
+    ENTRADA_BODEGA        — Ingreso directo a bodega de tránsito
+    SALIDA_INVENTARIO     — Salida del inventario principal
+    SALIDA_BODEGA         — Salida de la bodega de tránsito
+    DEVOLUCION            — Retorno de bodega hacia inventario
+    TRASLADO              — Del inventario principal a bodega de tránsito
+    MERMA_INVENTARIO      — Pérdida o descarte en inventario principal
+    MERMA_BODEGA          — Pérdida o descarte en bodega de tránsito
+    AJUSTE_INVENTARIO     — Corrección manual de stock (requiere flag ajustePositivo)
+    AJUSTE_BODEGA         — Corrección manual en bodega de tránsito
+
+  Lógica especial:
+  - motionInUpdateInventory(): registra movimiento y actualiza stock en una sola
+    operación @Transactional.
+  - buildMovementForBulkUpdate(): construye el objeto movimiento para traslados
+    masivos hacia bodega.
+  - Filtros dinámicos en consulta de movimientos: fecha, producto, tipo, responsable,
+    cantidad. Ordenamiento: MAS_RECIENTES, MAS_ANTIGUOS, MENOR_CANTIDAD, MAYOR_CANTIDAD.
+
+  Inventario frontend (página inventario.tsx):
+  - Tabla paginada con búsqueda por nombre y código.
+  - Filtros por categoría.
+  - Actualización masiva de stock (bulk update).
+  - Gestión de categorías y unidades de medida en modales integrados.
+  - Warnings visuales de stock bajo.
+  - bulkUpdateInventoryStockService() retorna resultado con listado de warnings.
+
+  Lote (tabla en BD, no expuesta en sistema):
+  - Diseñada para rastreo FIFO/FEFO (primero en entrar/primero en vencer).
+  - Campos: numero_lote, ubicacion, fecha_fabricacion, fecha_caducidad, id_producto,
+    cantidad_producto.
+  - Al activarse en el futuro, el sistema podrá alertar sobre productos próximos
+    a vencer y priorizar el retiro de los lotes más antiguos.
+
+Para no técnicos:
+  El sistema controla cuánto hay de cada producto. Cada vez que entra o sale algo
+  del almacén queda un registro permanente de quién lo hizo, cuánto, de qué tipo y
+  cuándo. El sistema avisa cuando un producto cae por debajo del mínimo definido.
+  Está preparado para funcionar con lector de código de barras en el futuro.
+
+------------------------------------------------------------------------
+3.4  BODEGA DE TRÁNSITO
+------------------------------------------------------------------------
+Técnico:
+  - Entidad BodegaTransito vinculada 1:1 a Inventario.
+  - Representa un segundo almacén de distribución.
+  - Los productos pasan del inventario principal a bodega de tránsito
+    mediante el tipo de movimiento TRASLADO.
+  - Si no existe entrada de bodega_transito para un producto, se crea
+    automáticamente durante el primer traslado.
+  - stock_limit en bodega controla el límite físico de espacio disponible.
+  - Operaciones: ENTRADA_BODEGA, SALIDA_BODEGA, MERMA_BODEGA, AJUSTE_BODEGA,
+    DEVOLUCION (devuelve de bodega al inventario principal).
+
+Para no técnicos:
+  Es un almacén intermedio. Los productos asignados a las clases de la semana
+  se separan del inventario principal y quedan en la bodega de tránsito listos
+  para entrega. Esto permite gestionar el espacio físico limitado sin mezclar
+  lo que ya fue asignado con el stock general.
+
+------------------------------------------------------------------------
+3.5  GESTIÓN DE RECETAS
+------------------------------------------------------------------------
+Técnico:
+  Entidad Receta:
+  - nombre_receta (NOT NULL), descripcion_receta (TEXT), instrucciones (TEXT),
+    activo (NOT NULL).
+  - estado_receta (ENUM: ACTIVO, INACTIVO, SUSPENDIDA) — dos campos de control separados:
+    activo (borrado lógico) y estado_receta (visibilidad en solicitudes).
+  - INACTIVO: receta desactivada permanentemente por el administrador.
+  - SUSPENDIDA: receta omitida temporalmente por decisión del usuario (ej. ingrediente
+    no disponible en temporada). Ambos estados excluyen la receta del listado al crear
+    solicitudes; la diferencia es semántica e indica el origen de la omisión.
+  - Solo las recetas con estado ACTIVO aparecen en el listado al crear solicitudes.
+  - CascadeType en relación con DetalleReceta.
+
+  Entidad DetalleReceta:
+  - cant_producto (NUMERIC 10,3, NOT NULL).
+  - UNIQUE(id_receta, id_producto): un producto no puede estar dos veces en la
+    misma receta.
+  - FK → Receta (LAZY), Producto (LAZY).
+
+  Base estándar: 20 personas. Al crear solicitud se aplica multiplicador:
+    multiplicador = cant_inscritos / 20.0
+
+  Reglas de redondeo según es_fraccionario de la unidad del producto:
+  - es_fraccionario = true  → Guarda hasta 3 decimales exactos.
+  - es_fraccionario = false → Aplica CEIL() (redondeo hacia arriba), nunca quedan
+    fracciones de productos no fraccionables.
+
+  Frontend (gestion-recetas.tsx):
+  - Scroll infinito (paginación continua).
+  - CRUD completo con modal de creación/edición.
+  - Autocompletado de productos al agregar ingredientes.
+  - Contadores de recetas activas/inactivas.
+  - Búsqueda dinámica.
+
+  Pendiente: adjuntar archivos PDF/imágenes vía AWS S3 (mencionado como mejora futura).
+
+Para no técnicos:
+  Una receta es la lista de ingredientes necesarios para preparar un plato para
+  20 personas. Al crear una solicitud, el sistema calcula automáticamente cuánto
+  necesita para la cantidad real de alumnos inscritos, respetando si el producto
+  puede o no dividirse en fracciones.
+
+------------------------------------------------------------------------
+3.6  GESTIÓN ACADÉMICA
+------------------------------------------------------------------------
+Técnico:
+  Entidad Asignatura:
+  - cod_asignatura (único), nombre_asignatura, activo (soft delete).
+
+  Entidad AsignaturaProfesorCargo (tabla intermedia):
+  - fecha_asignacion (TIMESTAMP, default NOW).
+  - UNIQUE(id_asignatura): actualmente un profesor por asignatura.
+  - FK → Asignatura, Usuario (con validación de rol PROFESOR_A_CARGO o ADMINISTRADOR).
+  - Diseñada para M:M en el futuro sin rediseñar BD.
+
+  Entidad Seccion:
+  - nombre_seccion, capacidad_max (SMALLINT), cant_inscritos (SMALLINT), activo.
+  - estado_seccion (ENUM: ACTIVA, INACTIVA, SUSPENDIDA).
+  - Solo secciones con estado ACTIVA y activo=true aparecen para solicitudes.
+
+  Entidad SeccionDocente (tabla intermedia):
+  - fecha_asignacion (TIMESTAMP, default NOW).
+  - UNIQUE(id_usuario, id_seccion): un docente por sección.
+  - FK → Seccion, Usuario (con validación de rol DOCENTE o PROFESOR_A_CARGO).
+  - Diseñada para M:M en el futuro.
+
+  Entidad BloqueHorario:
+  - numero_bloque (único), hora_inicio (TIME), hora_fin (TIME).
+  - Actualmente insertado directamente en BD (sin UI de gestión).
+  - Pendiente: UI para editar bloques, con aviso de que el cambio afecta todos
+    los horarios asociados.
+
+  Entidad Sala:
+  - cod_sala (único), nombre_sala, activo.
+
+  Entidad ReservaSala:
+  - dia_semana (ENUM: LUNES, MARTES, MIERCOLES, JUEVES, VIERNES, SABADO, DOMINGO).
+  - activo (soft delete).
+  - FK → Seccion, Sala, BloqueHorario.
+  - Índice único parcial (uk_reserva_activa): solo evalúa registros activo=true,
+    permitiendo que registros desactivados liberen el horario sin eliminar historial.
+
+  Entidad Semana (Período académico):
+  - nombre_semana, fecha_inicio, fecha_fin.
+  - anio (campo calculado automáticamente, no insertable por código).
+  - semestre (SMALLINT).
+  - UNIQUE(nombre_semana, anio, semestre), UNIQUE(fecha_inicio).
+  - Se generan 18 semanas a partir de un lunes inicial.
+  - El día de clase de la sección (reserva_sala.dia_semana) + semana seleccionada
+    = fecha exacta de la solicitud (elimina error humano en cálculo de fechas).
+
+  Triggers en BD:
+  - tr_seccion_limpieza_horarios: al desactivar una sección (activo TRUE→FALSE),
+    desactiva automáticamente todas sus reservas de sala activas.
+    Libera los bloques para otras secciones sin perder historial.
+  - tr_sala_inactiva: al desactivar una sala, cancela lógicamente todas sus
+    reservas activas. Previene "bloqueos fantasma" en horarios de salas
+    fuera de servicio.
+
+  Frontend (ramos-admin.tsx):
+  - CRUD de asignaturas y secciones.
+  - Asignación de docentes a secciones.
+  - Gestión de reservas de sala con validación de conflictos de horario.
+  - Creación de períodos académicos (genera 18 semanas desde un lunes inicial).
+  - Gestión de salas.
+
+Para no técnicos:
+  El sistema organiza asignaturas, secciones, docentes y salas. Cada sección tiene
+  un día fijo de clases en una sala. Al seleccionar la semana del semestre, el
+  sistema calcula automáticamente la fecha exacta de entrega sin que el usuario
+  calcule nada. Si una sala entra en remodelación o una sección se desactiva,
+  el sistema libera los horarios automáticamente.
+
+------------------------------------------------------------------------
+3.7  SOLICITUDES
+------------------------------------------------------------------------
+Técnico:
+  Entidad Solicitud:
+  - fecha_solicitada (NOT NULL, calculada), observaciones (TEXT).
+  - estado_solicitud (ENUM: PENDIENTE, ACEPTADA, EN_PEDIDO, PROCESADO, RECHAZADA).
+  - fecha_registro (TIMESTAMP, automático, readonly — momento de creación).
+  - FK → Usuario (gestor que la creó), Seccion, Receta (nullable),
+    ReservaSala (nullable).
+  - CascadeType + orphanRemoval=true en relación con DetalleSolicitud:
+    al modificar los detalles, los huérfanos se eliminan automáticamente.
+  - Método addDetalle() para añadir detalle manteniendo la integridad.
+
+  Entidad DetalleSolicitud:
+  - cant_producto_solicitud (NUMERIC 10,3, NOT NULL), observacion (TEXT).
+  - FK → Solicitud, Producto (LAZY).
+
+  Entidad MotivoRechazoSolicitud:
+  - motivo (TEXT, NOT NULL), fecha_rechazo (TIMESTAMP, default NOW).
+  - OneToOne → Solicitud.
+  - Clase Java con patrón Builder (@Builder).
+  - Estado: clase existe, integración en flujo pendiente de completar.
+
+  Creación masiva — Función PostgreSQL generar_solicitudes_masivas(jsonb):
+  La función recibe un array JSON con múltiples asignaturas y secciones y
+  procesa todo en una sola transacción de base de datos. Por cada sección:
+    1. Calcula multiplicador = cant_inscritos / 20.0
+    2. Aplica deltas:
+       - eliminados: lista de id_detalle_receta a excluir
+       - modificados: lista de { idDetalleReceta, cantProducto, observacion }
+       - nuevos: lista de { idProducto, cantProducto, observacion }
+    3. Aplica regla de redondeo según es_fraccionario de cada producto.
+    4. Filtra productos con activo=false (nunca los incluye).
+    5. Inserta la cabecera (solicitud) y el detalle en la misma transacción.
+  Retorna: total_solicitudes y total_detalles insertados para feedback en frontend.
+
+  Backend también valida la fecha_solicitada (no confiar solo en el frontend):
+  la calcula con la misma lógica semana + día de reserva.
+
+  Consultas principales del repositorio (JSON nativo PostgreSQL):
+  - findCourseWithSectionsAndBlocksRaw(): JSON_AGG anidado — retorna la jerarquía
+    Asignatura → Secciones (con docentes, capacidades, horarios).
+  - findActiveRecipesWithDetailsRaw(): JSONB_AGG — retorna recetas activas con
+    todos sus ingredientes (nombre, cantidad, unidad, es_fraccionario).
+    Usa COALESCE(..., '[]'::jsonb) para recetas sin ingredientes.
+  - findSolicitationsPerWeekRaw(): JSON_BUILD_OBJECT anidado — jerarquía completa
+    Solicitud → Asignatura → Sección → Horarios (todos los bloques de la clase).
+  - ejecutarSolicitudMasivaRaw(): CAST(:payload AS jsonb) para llamar la función SQL.
+
+  Endpoints disponibles:
+  - GET /curses-by-solicitation: asignaturas + secciones + horarios con reservas activas.
+  - GET /recipes-with-details-by-solicitation: recetas activas con detalle completo.
+  - POST /find-solicitations-per-week: solicitudes filtradas por rango de fechas.
+  - POST /generate-mass-solicitions: creación masiva, llama función PostgreSQL.
+  - POST /order-for-consolidation: dashboard consolidado de solicitudes para la semana.
+  - PATCH /change-massive-status: cambio masivo de estado (IDs + nuevo estado + motivo).
+
+  Estados de solicitud:
+  Estado definido en ENUM: PENDIENTE → ACEPTADA → EN_PEDIDO → PROCESADO | RECHAZADA
+
+  Puntos que requieren definición y/o implementación:
+
+  (a) Rechazo automático por fecha vencida:
+      El sistema debe rechazar automáticamente las solicitudes PENDIENTE cuya
+      fecha_solicitada ya pasó. Requiere un Spring @Scheduled (tarea programada)
+      que corra diariamente. Media-baja complejidad.
+
+  (b) Recuperación de solicitud rechazada:
+      Cambiar de RECHAZADA a PENDIENTE o ACEPTADA solo si fecha_solicitada > hoy.
+      Lógica de validación en el service al recibir el cambio de estado.
+
+  (c) Estado EN_PEDIDO (IMPLEMENTADO 2026-04-14):
+      Nuevo estado entre ACEPTADA y PROCESADO que indica que la solicitud fue
+      confirmada al consolidar un pedido.
+      - Al presionar CONFIRMAR en Gestión de Pedidos, todas las solicitudes
+        ACEPTADAS del pedido se actualizan automáticamente a EN_PEDIDO.
+      - En la vista Gestión de Solicitudes, las solicitudes EN_PEDIDO se muestran
+        como solo lectura: no es posible cambiar su estado (backend lanza
+        GestionSolicitudException si se intenta). Frontend muestra el filtro
+        "En Pedido" con chip color secondary (icono shopping-cart).
+      - Java enum actualizado: Solicitud.EstadoSolicitud.EN_PEDIDO.
+      - SolicitudRepository: método JPA derivado
+        existsByIdSolicitudInAndEstadoSolicitud para validar en service.
+
+  (d) MotivoRechazo implementado (2026-04-15):
+      - changeMassiveStatus guarda el motivo en motivo_rechazo_solicitud al rechazar (upsert).
+      - findSolicitationsPerWeekRaw incluye motivoRechazo (row[9]) via LEFT JOIN, solo cuando RECHAZADA.
+      - SolicitationManagement record incluye campo motivoRechazo (nullable).
+      - Trigger trg_limpiar_motivo_rechazo elimina el motivo automáticamente cuando el estado
+        cambia DESDE RECHAZADA a cualquier otro (PENDIENTE, ACEPTADA, etc.).
+      - Scheduler @Scheduled(cron "0 0 3 * * *") auto-rechaza solicitudes PENDIENTES vencidas.
+      - rechazarSolicitudesVencidas() también se llama al cargar la vista semanal.
+      - Frontend: motivo se envía al backend al rechazar (confirmarRechazo y confirmarRevertir).
+      - PENDIENTE: notificación a Profesor a Cargo y Docente (canal sin definir).
+
+  (e) Una vez que la solicitud fue consolidada en pedido, su estado es inmutable.
+      La vista solo la mostrará con estado PROCESADO como información histórica.
+
+  Estimación de complejidad pendiente: media-baja.
+  El ENUM ya existe. Falta: lógica de transición en service, scheduler,
+  completar MotivoRechazo, y ajuste de vistas en frontend.
+
+Para no técnicos:
+  Un docente o profesor crea una solicitud de ingredientes para sus clases.
+  Puede crear muchas a la vez para distintas secciones: el sistema calcula
+  automáticamente las cantidades según los alumnos inscritos. Cada solicitud
+  pasa por aprobación. Si se rechaza, queda registrado el motivo. Las solicitudes
+  cuya fecha ya pasó son rechazadas automáticamente por el sistema.
+
+------------------------------------------------------------------------
+3.8  GESTIÓN DE SOLICITUDES (APROBACIÓN/RECHAZO)
+------------------------------------------------------------------------
+Técnico:
+  - Acceso: Administrador, Co-Administrador, Gestor de Pedidos, Profesor a Cargo
+    (este último restringido a las asignaturas que le corresponden).
+  - Vista semanal agrupada por asignatura.
+  - Selector de período académico para navegar entre semanas.
+  - Tabla detallada con los productos de cada solicitud.
+  - Aprobación individual o masiva mediante checkbox.
+  - Modal de rechazo con campo de motivo (pendiente completar integración backend).
+  - Cambio masivo de estado via PATCH /change-massive-status: lista de IDs + estado.
+  - Permite impresión de información.
+  - Recuperar solicitud rechazada: posible solo si fecha_solicitada > hoy.
+
+Para no técnicos:
+  El responsable revisa las solicitudes pendientes y las aprueba o rechaza.
+  Puede hacer múltiples aprobaciones a la vez con un solo clic. Si rechaza,
+  debe indicar el motivo que queda registrado en el sistema. Las solicitudes
+  ya procesadas como pedido son de solo lectura.
+
+------------------------------------------------------------------------
+3.9  DASHBOARD
+------------------------------------------------------------------------
+Técnico:
+  - Módulo dedicado con 4 vistas especializadas por rol.
+
+  Dashboard Admin (/api/v1/dashboard/admin):
+  - KPIs: solicitudes hoy / semana / mes, total pedidos, productos bajo stock,
+    usuarios activos, movimientos hoy.
+  - Gráficos: solicitudes por día (30 días), pedidos por semana (8 semanas),
+    solicitudes por estado.
+  - Tablas: productos críticos (ordenados por ratio stock/límite ascendente).
+
+  Dashboard Inventario (/api/v1/dashboard/inventario):
+  - KPIs de stock: productos bajo stock_limit, total en inventario.
+  - Stock por categoría (SUM agrupado).
+  - Movimientos por día (últimos 14 días).
+  - Top 5 productos más usados (SALIDA_INVENTARIO + SALIDA_BODEGA últimos 30 días).
+  - Top 5 productos con más merma (MERMA_INVENTARIO + MERMA_BODEGA últimos 30 días).
+  - Lista de productos críticos: nombre, stock actual, stock_limit, categoría, unidad.
+
+  Dashboard Gestor (/api/v1/dashboard/gestor):
+  - Solicitudes por estado (conteos).
+  - Tiempo promedio de procesamiento en horas (calculado como diferencia entre
+    fecha_registro y fecha_solicitada).
+  - Top 10 solicitudes rechazadas recientes.
+
+  Dashboard Recetas (/api/v1/dashboard/recetas):
+  - Recetas activas vs. inactivas.
+  - Top ingredientes más usados en recetas.
+
+  Tipos de respuesta: ChartPointDTO (label, value), PieSliceDTO (label, value, color),
+  ProductoCriticoDTO (nombre, stock, stock_limit, categoría, unidad).
+  Todas las consultas usan SQL nativo con EntityManager para máxima velocidad.
+
+Para no técnicos:
+  Cada tipo de usuario ve una pantalla de inicio con los resúmenes más relevantes
+  para su función: el administrador ve el estado general del sistema, el encargado
+  de bodega ve qué productos necesitan reposición y qué se ha movido más, el
+  gestor de pedidos ve el estado de las solicitudes.
+
+------------------------------------------------------------------------
+3.10  CONGLOMERADO DE PEDIDOS
+------------------------------------------------------------------------
+Técnico:
+  Propósito: Vista que consolida todas las solicitudes ACEPTADAS de una semana
+  en un único pedido con los totales de productos agrupados por día y sala.
+
+  Entidad Pedido:
+  - fecha_inicio_pedido, fecha_fin_pedido (rango de la semana).
+  - estado_pedido (ENUM: PENDIENTE, APROBADO, ENTREGADO, RECHAZADO).
+  - fecha_registro (TIMESTAMP, automático, readonly).
+
+  Entidad DetallePedido:
+  - cant_producto_pedido (NUMERIC 10,3, NOT NULL).
+  - FK → Pedido, Producto (LAZY). Cada fila es la suma total de un producto
+    a lo largo de todas las solicitudes de la semana consolidada.
+
+  Entidad PedidoSolicitud (tabla de vínculo):
+  - fecha_union_registro (TIMESTAMP, automático).
+  - FK → Pedido, Solicitud. Registra qué solicitudes forman parte de qué pedido.
+  - Permite trazabilidad completa: de un pedido se puede llegar a cada solicitud
+    individual y desde ahí al docente, sección, receta y productos originales.
+
+  Flujo de consolidación (POST /api/v1/pedido/consolidate-order):
+  El frontend envía un objeto CreateOrder con:
+    - fechaInicio / fechaFin: rango de la semana.
+    - solicitudes: lista de { idSolicitud, fechaSolicitada } de todas las
+      solicitudes ACEPTADAS seleccionadas.
+    - detalles: lista de { idProducto, cantidadTotal } — suma consolidada de
+      cada producto a través de todas las solicitudes.
+  El backend:
+    1. Crea la cabecera Pedido con estado PENDIENTE.
+    2. Guarda todos los DetallePedido (totales por producto).
+    3. Guarda todos los PedidoSolicitud (vínculos pedido ↔ solicitud).
+    4. Actualiza todas las solicitudes vinculadas al pedido de ACEPTADA → EN_PEDIDO.
+       Esto bloquea el cambio de estado desde la vista Gestión de Solicitudes.
+
+  Vista del conglomerado (POST /api/v1/pedido/consolidate — "GOD view"):
+  Retorna PedidoDashboardResponse con 3 consultas JSON nativas simultáneas:
+    - PedidoCompletoJson: pedido completo con lista de productos del pedido y
+      solicitudes vinculadas (cada solicitud con sección, docente, horario, sala,
+      cantidad de inscritos, receta y lista detallada de productos solicitados).
+    - PedidoResumenListaJson: lista resumida de pedidos del rango, con productos
+      consolidados y desglose por solicitud (útil para vista de listado).
+    - PedidoAprobacionJson: resumen orientado a aprobación, incluye por producto:
+      stockBodegaTransito actual, stockInventarioPrincipal, diferenciaTransito
+      (diferencia entre cantidad pedida y stock disponible en bodega).
+      Permite al usuario ver de un vistazo si hay stock suficiente antes de aprobar.
+
+  Aprobación masiva de pedidos (PATCH /api/v1/pedido/change-massive-status):
+  - Recibe lista de idsPedidos + nuevo estado.
+  - Actualiza estado de múltiples pedidos en una sola operación.
+
+  Frontend (conglomerado-pedidos.tsx):
+  La página tiene un selector de período académico + semana en la parte superior
+  (con detección automática del período y semana actuales) y 4 vistas que se
+  seleccionan mediante tabs: Por Categoría, Cronograma Semanal, Totales del
+  Pedido y Aprobación de Pedidos. Encima de los tabs se muestran 4 tarjetas de
+  métricas: Solicitudes procesadas, Productos únicos, Secciones y Días con clases.
+
+  ── VISTA 1: POR CATEGORÍA ──────────────────────────────────────────────────
+  Muestra los productos del pedido consolidado organizados por categoría de
+  insumo. Tiene un sub-selector de día (Lunes a Domingo + Vista Completa),
+  un toggle "Con colores / Sin colores" y un botón "Descargar Excel".
+
+  Sub-vista Por Día (selector Lunes → Domingo):
+    Muestra solo los productos con actividad en el día seleccionado, agrupados
+    por categoría. Por cada categoría hay un bloque con:
+      - Cabecera: nombre de categoría + conteo de productos.
+      - Filas de producto: nombre, cantidad total del día en número grande,
+        y chips de sección (formato §SeccionNombre · X.XXX abreviatura).
+        Con colores activos, cada chip tiene el color asignado a esa
+        combinación asignatura+sección. Sin colores, los chips son blancos.
+      - Pie de bloque: "Total categoría: X und."
+    Al pie de la página aparece la Leyenda de Secciones: grilla de chips con
+    el color de cada combinación asignatura+sección presente en la semana.
+
+  Sub-vista Vista Completa (selector "Vista Completa"):
+    Tabla cruzada donde las filas son los productos y las columnas son los
+    días de la semana (Lun, Mar, Mié, Jue, Vie, Sáb, Dom + Total Semana),
+    agrupados por categoría. Cada celda muestra la cantidad del producto para
+    ese día. Con colores activos y el producto compartido entre varias
+    secciones, la celda muestra chips individuales por sección con su color.
+    Con colores activos y una única sección, la celda muestra la cantidad con
+    el color de fondo de esa sección. Sin colores, la celda muestra solo el
+    número. Al pie aparece la Leyenda de Secciones.
+
+  Exportación Excel — Vista Por Día (descargarExcelDia):
+    Columnas: Categoría | Producto | Unidad | §Sección—Asignatura (1 columna
+    por cada combinación única de asignatura+sección presente en ese día) |
+    Total Día.
+    Filas:
+      - Fila 1: Título fusionado "Por Categoría — {Día} — {Semana}" (amarillo).
+      - Fila 2: Vacía (separador visual).
+      - Fila 3: Encabezados (fondo oscuro, texto blanco).
+      - Por cada categoría:
+          · Fila nombre categoría (fusionada, fondo amarillo claro).
+          · Filas de producto: datos + cantidad por sección + total día.
+          · Fila SUBTOTAL {Categoría}: totales por columna de sección y total.
+          · Fila separadora (fondo gris claro).
+    Formato: celdas texto ('t: s') con toLocaleString('es-CL') — garantiza
+    formato chileno (punto miles, coma decimal). 3 filas y 3 columnas
+    congeladas. Ancho de columnas automático.
+
+  Exportación Excel — Vista Completa (descargarExcelCompleta):
+    Columnas: Categoría | Producto | Sección | Unidad | Lunes … Domingo |
+    Total Semana.
+    Filas:
+      - Fila 1: Título fusionado "Vista Completa por Categoría — {Semana}".
+      - Fila 2: Vacía.
+      - Fila 3: Encabezados.
+      - Por cada categoría:
+          · Fila nombre categoría (fusionada).
+          · Por cada producto: 1 fila por combinación asignatura+sección
+            (cursiva, fondo gris claro), con las cantidades por día.
+            Si el producto tiene más de 1 sección: fila adicional "TOTAL
+            PRODUCTO" en azul claro con la suma de todas las secciones.
+          · Fila SUBTOTAL {Categoría} con totales por día y total semana.
+          · Fila separadora.
+    Formato idéntico al Excel por día (texto chileno, sin fórmulas activas).
+    4 columnas y 3 filas congeladas. Ancho automático.
+
+  FACTOR LIMITANTE — Fórmulas SUM vs. formato chileno en Excel:
+  No es posible tener simultáneamente fórmulas SUM activas (recalculables al
+  editar) Y formato numérico chileno garantizado en el mismo archivo xlsx.
+  Razón técnica: los separadores de miles y decimales en Excel son controlados
+  por la configuración regional de Windows del usuario; no existe código de
+  formato xlsx (incluyendo [$-2C0A] o [$-es-CL]) que los fuerce. Si se usan
+  celdas numéricas (t: 'n'), en Excel en inglés los números se muestran con
+  coma miles y punto decimal (incorrecto para contexto chileno). Decisión:
+  prioridad al formato chileno. Totales pre-calculados en el frontend como
+  texto; si el usuario edita una celda, los totales NO se actualizan.
+
+  ── VISTA 2: CRONOGRAMA SEMANAL ─────────────────────────────────────────────
+  Muestra las solicitudes vinculadas al pedido organizadas por día, en orden
+  cronológico. Tiene buscador por receta, docente, nombre de sección o producto.
+
+  Por cada día con clases se muestra una tarjeta con:
+    - Cabecera de color único por día (esquema fijo: Lunes=azul, Martes=naranja,
+      Miércoles=verde esmeralda, Jueves=violeta, Viernes=rosa, Sábado=teal,
+      Domingo=pizarra). El día actual se marca en ámbar con badge "HOY · En curso".
+    - Indicadores: número de clases del día + cantidad de productos distintos.
+    - Lista de solicitudes del día, ordenadas por hora de inicio, expandibles.
+      Cada fila de solicitud (colapsada) muestra:
+        §Sección · Docente · Asignatura | Receta · Sala · Alumnos · N productos
+        | Preview de hasta 3 productos como chips (+ "N más" si hay más).
+      Al expandir aparece:
+        - Bloque "Horario y Sala": hora inicio–fin + nombre de sala.
+        - Tabla "Productos requeridos (N ítems)": Producto | Cantidad | Unidad.
+      La barra lateral izquierda de cada solicitud muestra la hora de inicio
+      y fin de la clase con línea discontinua (visible en pantalla ancha).
+      Separador negro grueso entre solicitudes del mismo día.
+
+  ── VISTA 3: TOTALES DEL PEDIDO ─────────────────────────────────────────────
+  Lista consolidada de todos los productos únicos del pedido con su cantidad
+  total a despachar desde Bodega de Tránsito. Tiene buscador por nombre de
+  producto.
+
+  Por cada producto:
+    - Cabecera (colapsada): nombre, cantidad total grande, chip "N secciones".
+    - Al expandir: lista de distribuciones por sección, donde cada fila muestra:
+        Badge de día (con color del día de la semana + indicador HOY) | Sección
+        + Docente | Hora + Sala + Observación | Cantidad de esa sección.
+    - Pie expandido: "Total a despachar desde Bodega de Tránsito: X abreviatura"
+      en fondo secondary (morado claro).
+
+  ── VISTA 4: APROBACIÓN DE PEDIDOS ──────────────────────────────────────────
+  Permite revisar el stock disponible y aprobar los pedidos de la semana. Tiene
+  buscador por nombre de producto y sub-toggle Vista Unificada / Por Pedido.
+  Si hay pedidos PENDIENTE y el usuario tiene permiso de edición, aparece el
+  botón "Aprobar N pendientes" (aprobación masiva).
+
+  Sub-vista Vista Unificada:
+    Tabla con todos los productos combinados de TODOS los pedidos de la semana.
+    Columnas: Producto (con icono ✓ verde o ⚠ rojo) | Total Pedido | Stock
+    Bodega Tránsito | Diferencia (Tránsito − Pedido, verde si ≥0, rojo si <0)
+    | Inventario Principal.
+    Si algún producto tiene diferencia negativa: fila con fondo rojo claro +
+    banner de alerta al pie "Hay productos con stock insuficiente en Bodega de
+    Tránsito considerando todos los pedidos de la semana."
+
+  Sub-vista Por Pedido:
+    Cada pedido individual en una tarjeta con:
+    - Cabecera: Pedido #ID + N productos + chip de estado (PENDIENTE=ámbar /
+      APROBADO=verde / ENTREGADO=verde / RECHAZADO=rojo).
+      Si hay faltantes: "· Faltantes detectados" en rojo.
+    - Si el pedido está PENDIENTE y el usuario tiene permiso: botón individual
+      "Aprobar pedido".
+    - Tabla idéntica a Vista Unificada pero solo con los productos del pedido.
+    - Banner rojo al pie si hay faltantes en ese pedido.
+
+Para no técnicos:
+  Una vez que las solicitudes de la semana están aprobadas, el responsable las
+  consolida en un único pedido. El sistema suma automáticamente todos los
+  ingredientes de todas las secciones, mostrando por ejemplo cuántos kilos de
+  harina se necesitan en total para la semana. También muestra si hay suficiente
+  stock disponible en bodega para cumplir el pedido antes de aprobarlo.
+  La vista puede exportarse a Excel para compartir o imprimir.
+
+------------------------------------------------------------------------
+3.11  PEDIDOS DIARIOS Y PREPARACIÓN DE ENTREGAS
+------------------------------------------------------------------------
+Técnico:
+  Propósito: Una vez que el pedido está consolidado y aprobado, el encargado de
+  bodega de tránsito visualiza las entregas organizadas por día, sala y horario,
+  y ejecuta la entrega descontando el stock de bodega de tránsito.
+
+  Vista de entregas diarias (POST /api/v1/pedido/entregas-diarias):
+  Recibe DateRangeDTO (fecha_inicio, fecha_fin) y retorna la estructura
+  EntregaDiariaBodegaJson, organizada en tres niveles:
+    - Por fecha (EntregaDiariaBodegaJson): fecha del día + total de solicitudes.
+      - Por sala (SalaEntregaBodegaJson): id, nombre y código de sala.
+        - Por solicitud (SolicitudEntregaBodegaJson): id, estado, hora de inicio,
+          rango de horas, sección, asignatura, docente, alumnos inscritos, receta,
+          observaciones, y lista de productos.
+          - Por producto (ProductoEntregaBodegaJson): nombre, cantidad solicitada,
+            unidad, es_fraccionario, observación, stockTransito (actual en bodega)
+            y diferencia (stockTransito − cantidad solicitada).
+
+  La diferencia permite al encargado ver inmediatamente si hay suficiente stock
+  en bodega para completar la entrega de esa solicitud específica.
+
+  La consulta filtra dos grupos:
+    1) pedido APROBADO  + solicitud EN_PEDIDO   → habilita btn "Preparar Entrega".
+    2) pedido APROBADO  + solicitud PROCESADO   → historial (semana aún activa).
+    3) pedido ENTREGADO + solicitud PROCESADO   → historial (semana finalizada).
+  El frontend distingue acción vs historial por estadoSolicitud:
+    EN_PEDIDO → muestra botón "Preparar Entrega".
+    PROCESADO → solo lectura histórica (chip "Entregado").
+
+  Al confirmar prepararEntrega: SOLO la solicitud cambia a PROCESADO. El pedido
+  no cambia de estado en ese momento.
+
+  Transición automática del pedido a ENTREGADO:
+  Un método `marcarPedidosEntregadosPorFecha` en PedidoRepository ejecuta:
+    UPDATE pedido SET estado_pedido = 'ENTREGADO' WHERE estado_pedido = 'APROBADO'
+    AND fecha_fin_pedido < CURRENT_DATE
+  Se invoca:
+    - Lazy: al cargar entregas diarias (obtenerEntregasDiarias en PedidoServiceImpl)
+    - Scheduled: @Scheduled(cron "0 0 3 * * *") en PedidoServiceImpl
+  No toca los estados de las solicitudes vinculadas.
+  Equivalente SQL: función marcar_pedidos_entregados_por_fecha() en nota_bbdd_kuhub_v2.
+
+  PENDIENTE: trigger/scheduler de auto-RECHAZADO de pedido (requiere definición de lógica).
+
+  Preparar entrega (POST /api/v1/pedido/preparar-entrega):
+  Recibe PrepararEntregaDTO:
+    - idSolicitud: solicitud que se está entregando.
+    - productos: lista de { idProducto, stockEnVista, cantidadAEntregar }.
+      - stockEnVista: stock que el usuario veía al abrir el modal (para detectar
+        si el stock cambió mientras el modal estaba abierto).
+      - cantidadAEntregar: cantidad real confirmada a entregar (puede ser menor
+        a la solicitada si sobran productos en sala).
+
+  Confirmación de entrega (modal bodega-transito.tsx):
+  El modal exige que el encargado escriba el texto "CONFIRMAR" antes de habilitar
+  el botón. Se muestra un banner de advertencia indicando que la acción es
+  irreversible y que se realizarán descuentos en bodega de tránsito. El input
+  cambia a color success y muestra ícono de check cuando el texto es correcto.
+  Patrón idéntico al modal "Consolidar Pedido" de conglomerado-pedidos.tsx.
+
+  Auto-transición del pedido a ENTREGADO (PedidoServiceImpl):
+  Tras marcar una solicitud como PROCESADO (en prepararEntrega), el backend
+  consulta cuántas solicitudes del mismo pedido tienen estado distinto a PROCESADO
+  (PedidoSolicitudRepository.countSolicitudesNoProcesadas). Si el conteo es 0,
+  el pedido se actualiza automáticamente a ENTREGADO. Esto hace que el pedido
+  aparezca en la consulta CONSULTA 4 (grupo ENTREGADO+PROCESADO) y se visualice
+  como historial en Gestión Pedidos Diarios.
+
+  Lógica de seguridad en la entrega (3 escenarios):
+    1. Stock insuficiente (stockReal < cantidadAEntregar):
+       → Lanza StockInsuficienteException → rollback automático de toda la
+         transacción → HTTP 422 → frontend muestra error en el modal.
+         No se realiza ningún cambio.
+
+    2. Desincronización detectada (stockEnVista ≠ stockReal) pero stock suficiente:
+       → La entrega SE REALIZA con el stock real.
+       → Lanza StockDesincronizadoException → HTTP 409 con { exito: true,
+         desincronizado: true, mensaje } → frontend avisa al usuario que el stock
+         cambió mientras el modal estaba abierto, pero la entrega fue exitosa.
+       → Usa @Transactional(noRollbackFor = StockDesincronizadoException.class)
+         para que la transacción no haga rollback a pesar de la excepción.
+
+    3. Todo correcto:
+       → Registra movimiento SALIDA_BODEGA y descuenta stock en bodega de tránsito.
+       → Actualiza estado de la solicitud a PROCESADO.
+       → Verifica si todas las solicitudes del pedido están PROCESADO; si sí,
+         actualiza el pedido a ENTREGADO automáticamente.
+       → HTTP 200 con { exito: true, mensaje }.
+
+  El campo cantidadAEntregar permite al encargado disminuir la cantidad si
+  sobran productos en sala (no se puede entregar más de lo disponible en bodega).
+
+  Restricción implícita: el sistema no permite entregar más de lo que hay en
+  bodega de tránsito (StockInsuficienteException). El límite superior está dado
+  por el stock real, no por la cantidad solicitada.
+
+  Punto abierto a definir:
+  Si la cantidad entregada es menor a la solicitada, ¿se registra la diferencia
+  como historial? Actualmente solo se registra SALIDA_BODEGA con la cantidad
+  real entregada en el movimiento, pero no hay comparación explícita contra la
+  cantidad original de la solicitud. Decisión pendiente del cliente.
+
+Para no técnicos:
+  El encargado de bodega ve una lista organizada por día y sala de todas las
+  entregas que debe hacer. Para cada clase ve exactamente qué productos debe
+  entregar, cuánto hay disponible y si es suficiente. Al confirmar la entrega,
+  el sistema descuenta automáticamente el stock de bodega y marca la solicitud
+  como completada. Si el stock cambia mientras el encargado prepara la entrega
+  (por ejemplo, otro usuario también movió ese producto), el sistema detecta
+  la diferencia y avisa al usuario mostrando el valor real actualizado.
+
+------------------------------------------------------------------------
+3.12  GESTIÓN DE PROVEEDORES  [PENDIENTE]
+------------------------------------------------------------------------
+  - Vista gestion-proveedores.tsx existe en el frontend.
+  - Funcionalidad de backend no implementada en el alcance actual.
+  - La estructura de datos está preparada: Producto puede vincularse a Proveedor
+    con precio y stock acordado (id_proveedor, precio_producto).
+  - Valor estratégico: con historial de consumo por semestre, permite mostrar
+    al proveedor datos reales de uso para negociar precios por volumen.
+
+================================================================================
+  4. DECISIONES TÉCNICAS DEL SISTEMA
+================================================================================
+
+ESTANDARIZACIÓN DE TEXTO (utilidades propias en backend):
+  Antes de guardar cualquier campo de texto en BD, pasa por:
+  - capitalizarPalabras(): "arroz cocido" → "Arroz Cocido".
+  - normalizeSpaces(): elimina espacios múltiples y al inicio/fin.
+  - removeAccents(): "Más Recientes" → "Mas Recientes" (para comparaciones seguras).
+  - normalizeToEnumKey(): "Más Recientes" → "MAS_RECIENTES" (para ENUM lookup).
+  - enumToHumanText(): "SALIDA_INVENTARIO" → "Salida Inventario" (para UI).
+  Esto evita duplicados por diferencias de mayúsculas o espacios.
+
+PAGINACIÓN ASIMÉTRICA (PaginationUtils):
+  Record Java: PagingResult(page, limit, offset, totalPages).
+  Primera consulta: 20 registros. Siguientes: 10 en 10.
+  El cliente frontend debe respetar esta asimetría al construir las peticiones.
+  El frontend aplica caché para reducir peticiones repetidas.
+
+CONSULTAS OPTIMIZADAS (JSON nativo PostgreSQL):
+  Las consultas más complejas usan funciones nativas de PostgreSQL
+  (JSON_AGG, JSONB_AGG, JSON_BUILD_OBJECT) con EntityManager directamente,
+  sin pasar por el ORM de Hibernate para la parte de ensamblado del JSON.
+  Esto genera velocidades más de 50% superiores a consultas ORM equivalentes.
+  Se usa un "Record Maestro" en Java para agrupar múltiples DTOs de respuesta,
+  manteniendo orden cuando hay más de 30 atributos distintos o arrays anidados.
+
+COMPRESIÓN DE RESPUESTAS:
+  El mayor costo en servidores cloud es la transferencia de datos de salida.
+  El sistema comprime automáticamente las respuestas JSON que superan 2.000 bytes,
+  reduciendo el peso hasta un 80%. El frontend descomprime transparentemente.
+  Configurado en nginx con gzip_min_length 2048 y gzip_comp_level 5.
+  Tipos comprimidos: text/plain, text/css, application/json, application/javascript.
+
+BORRADO LÓGICO (Soft Delete):
+  Ningún dato se elimina físicamente. Todo usa campo activo (true/false).
+  Entidades con soft delete: Usuario, Producto, Inventario, BodegaTransito,
+  Movimiento, Seccion, ReservaSala, Asignatura, Sala, Bloque, Pedido, Receta,
+  Solicitud, DetalleSolicitud.
+  Todas las consultas deben filtrar por activo=true. Los índices únicos parciales
+  permiten reusar valores únicos (nombre, email) después de un soft delete.
+
+ESCALABILIDAD DE BASE DE DATOS:
+  Las tablas intermedias (AsignaturaProfesorCargo, SeccionDocente) están diseñadas
+  para relaciones M:M aunque actualmente el backend controla 1:1.
+  Cuando el cliente requiera múltiples docentes por sección, solo se ajusta backend
+  y frontend sin tocar la estructura de la base de datos.
+
+TRIGGERS AUTOMÁTICOS EN BD:
+  Garantizan consistencia sin intervención manual:
+  - Desactivar sección → libera automáticamente sus reservas de sala.
+  - Desactivar sala → cancela automáticamente sus reservas futuras.
+  El índice único parcial uk_reserva_activa garantiza que no haya conflictos de
+  horario solo entre reservas activas, permitiendo que el historial conviva sin
+  restricciones.
+
+FUNCIÓN MASIVA EN BD (generar_solicitudes_masivas):
+  La creación masiva de solicitudes se ejecuta como función nativa en PostgreSQL,
+  no en ciclos del backend Java. Garantiza:
+  - Velocidad: sin ciclos de ida y vuelta entre backend y BD.
+  - Atomicidad: o todo se crea correctamente o nada se guarda (rollback automático).
+  - Retorno informativo: devuelve total_solicitudes y total_detalles para feedback.
+
+AUDIT TRAIL (trazabilidad de datos):
+  - fecha_creacion: automático al crear un Usuario (@PrePersist).
+  - ultimo_acceso: actualizado en cada login exitoso.
+  - fecha_asignacion: en DocenteSeccion y AsignaturaProfesorCargo.
+  - fecha_movimiento: automático en cada Movimiento.
+  - fecha_registro: automático al crear Solicitud y Pedido (readonly).
+
+MANEJO DE EXCEPCIONES:
+  GlobalExceptionHandler centraliza todos los errores.
+  Retorna ErrorDTO con: status HTTP, fecha, y mapa de errores detallado.
+  Excepciones específicas por módulo:
+  - GestionInventarioException, StockInsuficienteException,
+    StockDesincronizadoException (inventario)
+  - GestionSolicitudException (solicitudes)
+  - GestionUsuarioException (usuarios)
+  - GestionAcademicaException (académica)
+  - GestionRecetaException (recetas)
+
+TIPOS ENUM EN BASE DE DATOS (PostgreSQL ENUM nativo):
+  Definidos como tipos en PostgreSQL, mapeados manualmente en Java:
+  - dia_semana_type: LUNES, MARTES, MIERCOLES, JUEVES, VIERNES, SABADO, DOMINGO
+  - estado_solicitud_type: PENDIENTE, ACEPTADA, EN_PEDIDO, PROCESADO, RECHAZADA
+  - estado_receta_type: ACTIVO, INACTIVO, SUSPENDIDA
+  - estado_seccion_type: ACTIVA, INACTIVA, SUSPENDIDA
+  - estado_pedido_type: PENDIENTE, APROBADO, ENTREGADO, RECHAZADO
+
+CARGA DE RELACIONES (ORM):
+  - EAGER (carga inmediata con el objeto): Rol de Usuario, Categoria y UnidadMedida
+    de Producto, Modulo de PermisoRol.
+  - LAZY (carga bajo demanda): Relaciones de Movimiento, Solicitud, DetalleSolicitud,
+    DetallePedido. Evita traer datos innecesarios en consultas masivas.
+
+================================================================================
+  5. ESTADO ACTUAL DEL SISTEMA — IMPLEMENTADO vs. PENDIENTE
+================================================================================
+
+IMPLEMENTADO Y FUNCIONAL:
+  [✓] Autenticación JWT, sesión stateless, BCrypt, rate limiting
+  [✓] Roles predefinidos (7 roles), módulos y permisos dinámicos configurables
+  [✓] CRUD de usuarios con paginación asimétrica y búsqueda flexible
+  [✓] Foto de perfil de usuario (almacenada como BYTEA en BD)
+  [✓] Gestión de categorías y unidades de medida
+  [✓] CRUD de productos con código (preparado para lector de barras)
+  [✓] Inventario con stock, stock_limit y alertas de mínimo
+  [✓] Bodega de tránsito con todos los tipos de movimiento (10 tipos)
+  [✓] Historial de movimientos con filtros dinámicos y paginación
+  [✓] Tabla Lote diseñada en BD (no expuesta, lista para activar)
+  [✓] CRUD de recetas con ingredientes, estados y reglas de redondeo
+  [✓] Gestión académica completa: asignaturas, secciones, salas, bloques,
+      reservas, validación de conflictos de horario, períodos académicos
+  [✓] Triggers en BD para liberación automática de horarios
+  [✓] Creación de solicitudes (individual y masiva vía función PostgreSQL)
+  [✓] Gestión de solicitudes (aprobación/rechazo individual y masivo)
+  [✓] Clase MotivoRechazo con Builder e integración completa (2026-04-15)
+  [✓] Dashboard con analítica por rol (4 perfiles: admin, inventario, gestor, recetas)
+  [✓] Perfil de usuario (cambio de contraseña, foto de perfil)
+  [✓] Documentación API Swagger en /swagger-ui.html
+  [✓] Despliegue en producción con dominio, SSL y Docker
+  [✓] Compresión gzip en nginx, build multi-stage Docker
+
+PENDIENTE DE IMPLEMENTAR O DEFINIR:
+  [✓] Estado EN_PEDIDO implementado (2026-04-14):
+      Solicitudes ACEPTADAS pasan a EN_PEDIDO al confirmar consolidación de pedido.
+      Vista Gestión de Solicitudes muestra el estado y bloquea cualquier cambio.
+  [✓] Flujo de estados de solicitud (2026-04-15):
+      (a) Scheduler de rechazo automático por fecha vencida — implementado (@Scheduled 3 AM + lazy en carga)
+      (b) Lógica de recuperación de solicitud rechazada — trigger BD limpia motivo al cambiar estado
+  [✓] MotivoRechazo completado (2026-04-15): service guarda/upsert motivo, query incluye motivo
+      en consulta semanal, trigger limpia motivo al revertir estado, frontend envía motivo al backend.
+      PENDIENTE: notificación a Profesor a Cargo y Docente (canal sin definir)
+  [✓] Edición de bloques horarios desde UI — Frontend + Backend implementados.
+      Frontend: Reasignar Bloques + Restaurar predeterminados + validación de conflictos
+      mín. 1 min entre bloques + confirmación por texto "CONFIRMAR" + advertencia impacto.
+      Backend: PUT /bloque-horario/reasignar (update-in-place, preserva FK con reserva_sala,
+      valida conflictos de horario, lanza 422 si hay superposición) +
+      POST /bloque-horario/restaurar-default (20 bloques predeterminados, actualiza in-place).
+      Logs @Slf4j en controller y service para diagnóstico operacional.
+  [✓] Reasignación de semanas académicas desde UI — Frontend + Backend implementados.
+      Frontend: modal con selector de año y semestre, DatePicker solo lunes, vista previa
+      de 18 semanas calculadas, advertencia de impacto, confirmación por texto "CONFIRMAR".
+      Backend: PUT /semanas/reasignar-semester-calendar (WeekReasignDTO: anio, semestre,
+      nuevaFechaInicio). Valida lunes (422), valida que existan semanas (409). Actualiza
+      fechaInicio y fechaFin in-place preservando nombre y semestre. Logs @Slf4j completos.
+  [✓] Vista Gestión Sala y Reservas (tab "Gestión Sala y Reservas" en Administración del sistema).
+      Tiene dos sub-vistas accesibles por toggle:
+      (a) Reservas Registradas: lista todas las reservas activas (reserva_sala.activo = TRUE)
+          con datos desnormalizados: asignatura, sección, sala (código + nombre), día, bloque/horario.
+          Filtros por día (chips) y búsqueda libre por sala. Backend: GET /reserva-sala/find-all-active.
+      (b) Gestión Salas: lista todas las salas activas. Permite crear nueva sala (cod_sala + nombre_sala),
+          editar nombre y código de una sala existente, y desactivar (soft delete) una sala
+          únicamente si no tiene reservas activas — si tiene reservas, el backend rechaza con 409.
+          Backend: POST /sala/create (SalaCreateDTO), PATCH /sala/update/{id} (SalaUpdateDTO),
+          DELETE /sala/soft-delete/{id} (valida hasActiveReservas en SalaRepository antes de desactivar).
+          Frontend: modales de creación, edición y confirmación de desactivación con aviso de impacto.
+  [ ] Gestión de proveedores (vista existe en frontend, sin backend)
+  [ ] Tabla LOTE activable en sistema (estructura ya en BD)
+  [ ] Adjuntar archivos a recetas (requiere AWS S3)
+  [ ] Historial de cantidad real entregada vs. cantidad solicitada (definir con cliente)
+  [ ] Restringir acceso a Swagger en producción (actualmente público)
+  [✓] Corrección del typo "APROVADO" → "APROBADO" en ENUM estado_pedido_type (2026-04-15).
+      ALTER TYPE ejecutado en BD. Entity, queries nativas y frontend actualizados.
+  [✓] Nuevo estado ENTREGADO en estado_pedido_type (2026-04-16):
+      ALTER TYPE estado_pedido_type ADD VALUE 'ENTREGADO' AFTER 'APROBADO'.
+      Entity Pedido.EstadoPedidoType, nota_bbdd_kuhub_v2 y CONSULTA 4 actualizados.
+      Flujo: PENDIENTE → APROBADO → ENTREGADO | RECHAZADO.
+  [✓] CONSULTA 4 (findEntregasDiariasJson) actualizada (2026-04-16):
+      Filtro simplificado: pedido IN (APROBADO, ENTREGADO) × solicitud IN (EN_PEDIDO, PROCESADO).
+      Al confirmar prepararEntrega, el pedido pasa a ENTREGADO inmediatamente.
+      Las solicitudes EN_PEDIDO del pedido ya ENTREGADO siguen visibles con el botón.
+      Las solicitudes PROCESADO aparecen como historial de solo lectura.
+  [✓] Auto-ENTREGADO de pedidos por fecha vencida (2026-04-16):
+      prepararEntrega solo cambia solicitud → PROCESADO (el pedido no cambia en ese momento).
+      PedidoRepository.marcarPedidosEntregadosPorFecha: UPDATE pedido APROBADO → ENTREGADO
+      cuando fecha_fin_pedido < CURRENT_DATE. Invocado lazy en obtenerEntregasDiarias +
+      @Scheduled diario a las 03:00 AM. No toca estados de solicitudes.
+      SQL equivalente: fn marcar_pedidos_entregados_por_fecha() en nota_bbdd_kuhub_v2.
+  [ ] PENDIENTE: auto-RECHAZADO de pedidos (requiere definición de lógica de negocio).
+  [✓] Confirmación CONFIRMAR en modal Preparar Entrega (2026-04-16):
+      bodega-transito.tsx: modal de preparación de entrega ahora requiere que el
+      encargado escriba "CONFIRMAR" antes de habilitar el botón. Banner de advertencia
+      indica que la acción es irreversible y descuenta stock de bodega de tránsito.
+      Patrón idéntico al modal Consolidar Pedido de conglomerado-pedidos.tsx.
+  [✓] Auto-transición de pedido a ENTREGADO (2026-04-16):
+      PedidoServiceImpl.prepararEntrega: después de marcar la solicitud como PROCESADO,
+      consulta cuántas solicitudes del pedido aún no son PROCESADO
+      (PedidoSolicitudRepository.countSolicitudesNoProcesadas). Si todas están
+      procesadas, el pedido se actualiza automáticamente a ENTREGADO via
+      pedidoRepository.updateMassiveStatePedido. Esto activa el grupo
+      ENTREGADO+PROCESADO de CONSULTA 4 y las entregas aparecen como historial.
+  [✓] Detección de conflicto de docente en asignación de bloques horarios (2026-04-20):
+      Nuevo endpoint POST /api/v1/bloque-horario/blocks-reserved-by-teacher que recibe
+      { idUsuario, diaSemana } y retorna List<Integer> con los numero_bloque ya reservados
+      por el docente en ese día (via JOIN docente_seccion → reserva_sala → bloque_horario).
+      Nuevo DTO FilterBlocksByTeacherDTO. Nuevo método en ReservaSalaRepository,
+      ReservaSalaService, BloqueHorarioService y BloqueHorarioController.
+      Frontend: nueva función obtenerBloquesReservadosPorDocenteService en
+      bloque-horario-service.ts. Ambos modales (CrearSeccionModal y EditarSeccionModal)
+      en gestion-academica.tsx actualizados: estado bloquesOcupadosDocente, useEffect
+      reactivo a docenteId+dia, función tieneConflictoDocente. Los conflictos de sección
+      se muestran en rojo (danger) y los de profesor en amarillo (warning), con mensajes
+      descriptivos debajo del grid de bloques.
+
+  [✓] Módulo GestionSistema — configuración global (2026-04-20):
+      Tabla gestion_sistema con 2 filas fijas (id=1 default, id=2 activa).
+      Campo solicitudesEnPedido (BOOLEAN): cuando true, al aceptar solicitudes
+      en gestion-solicitud se crean/actualizan automáticamente el pedido de la semana
+      y los detalles, pasando el estado directamente a EN_PEDIDO sin paso manual.
+      Cuando false: el estado queda en ACEPTADA y sigue el flujo de gestión-pedido.
+      Backend: entidad GestionSistema, GestionSistemaRepository, GestionSistemaService,
+      GestionSistemaController (GET /api/gestion-sistema/configuracion,
+      PATCH /api/gestion-sistema/configuracion, POST /api/gestion-sistema/restaurar).
+      Frontend: vista "Gestión del Sistema" en admin-sistema.tsx.
+
+  [✓] Proyección de abastecimiento (2026-04-21):
+      Nuevo endpoint POST /api/v1/solicitud/proyeccion-abastecimiento que retorna
+      consolidación de productos cuyas solicitudes tienen estado EN_PEDIDO.
+      Record ProyeccionAbastecimiento con estructura anidada (ProductoAbastecimientoItem).
+      Consulta nativa agrupa por categoría y nombre, sumando cantidades totales solicitadas.
+      Mapeo ObjectMapper descompone jsonb_agg a List<ProductoAbastecimientoItem>.
+      Archivos: SolicitudRepository (findProyeccionAbastecimientoJson), SolicitudService
+      (interfaz + impl), SolicitudController (POST endpoint), DTO ProyeccionAbastecimiento.
+      Documentación: ⬜ Sin uso frontend aún.
+
+  [✓] Flujo automático solicitud → pedido sin trigger (2026-04-20):
+      Trigger fn_solicitud_a_pedido eliminado de la BD (tenía columnas incorrectas:
+      fecha_inicio_semana, fecha_fin_semana, id_semana, tabla producto_solicitud,
+      columna cantidad, enums 'Cancelado'/'EnCurso' inexistentes).
+      Lógica migrada al servicio Java: SolicitudServiceImp.changeMassiveStatus.
+      El frontend envía idSemana en el request PATCH /change-massive-status.
+      Cuando solicitudesEnPedido=true y estado destino es ACEPTADA:
+        1. Busca semana por idSemana → obtiene fechaInicio y fechaFin.
+        2. Busca pedido activo (no RECHAZADO ni ENTREGADO) en ese rango.
+        3. Si no existe: crea Pedido con estado PENDIENTE.
+        4. Para cada solicitud: inserta en pedido_solicitud (ON CONFLICT DO NOTHING)
+           y hace UPSERT en detalle_pedido sumando cantidades (cant_producto_pedido).
+        5. Actualiza estado de solicitudes a EN_PEDIDO.
+      Archivos modificados: ChangeSolicitationStatus (+ idSemana),
+      PedidoRepository (+ findIdPedidoActivoEnRango), DetallePedidoRepository
+      (+ upsertDetallesFromSolicitud), PedidoSolicitudRepository (+ insertIfNotExists),
+      SolicitudServiceImp (changeMassiveStatus + procesarPedidoDesdeAceptadas).
+      SQL para ejecutar en BD: DROP TRIGGER IF EXISTS trg_solicitud_a_pedido ON solicitud;
+                               DROP FUNCTION IF EXISTS fn_solicitud_a_pedido();
+
+  [✓] Permisos dinámicos en Bodega de Tránsito PATCH (2026-04-17):
+      BodegaTransitoController.updateTransitWarehouseWithProduct: reemplazado el
+      hasAnyRole hardcodeado en SpringSecurityConfig por verificación dinámica via
+      DynamicPermissionService.check(auth, "BODEGA_TRANSITO", "write"). La regla en
+      SpringSecurityConfig ahora es .authenticated() — cualquier usuario autenticado
+      puede llegar al controller, donde se verifica el permiso contra la tabla
+      permiso_rol en tiempo de ejecución. DynamicPermissionService extendido para
+      reconocer CO_ADMINISTRADOR como admin (acceso total sin consulta a BD).
+
+================================================================================
+  6. NOTAS ORIGINALES DE TRABAJO (referencia interna)
+================================================================================
+
+- La entidad de motivo rechazo fue implementada y completada (2026-04-15).
+  Ver sección 3.7 (d) para detalle del flujo.
+
+- Alcance del proyecto: el problema actualmente la gestión de inventario y
+  realización de pedidos semanales subdivididos por pedido diarios requiere mucho
+  tiempo de planificación y ejecución que tiene como sistema Excel como inventario
+  y listas largas de movimiento de entrada y salida, como para solicitudes de
+  productos requeridos para una clase de cocina, requiere conto de productos y
+  planificación con proveedores para solicitar fracciones de productos según la
+  utilidade debido al espacio físico de almacenamiento.
+
+- Porque es necesario el sistema si el proceso funciona: La análisis del caso
+  determina que además que reduciría tiempo de proceso el sistema hará que las
+  informaciones se guarden en base de datos mas permanentes y seguras, manteniendo
+  histórico mas antiguos que se hacen difícil con el uso de Excel, además de tener
+  la información general del uso de productos por un semestre o año para realizar
+  mejores acuerdos y negociaciones con proveedores con producto en mejores precios
+  por tener dato anticipado.
+
+- Solución automatizar proceso de manera que sea escalado para que realice el
+  proceso actual con mas facilidad, para el éxito el sistema requiere muchas camadas.
+
+- Todo el sistema estará diseñado para cumplir las exigencias como procesos requerido
+  del cliente a nivel de base de datos estar proyectado para ser escalable pudiendo
+  haber atributos adicionales nulos o tablas intermedias para permitir M:M, la capa
+  del backend controla los requerimientos del cliente.
+
+- Todo el sistema para los nombres será utilizado la herramienta utils personalizada
+  de métodos en el backend para capitalizar palabras al guardar en la base de datos,
+  como parsear antes de validar duplicidad. Además que para texto se usa un método
+  que se llama normalizar espacio que valida que no tenga espacio extra al principio
+  medio y fin, usado para validación y guardado como medida de estandarización.
+
+- Todo el sistema esta estandarizado con paginación donde la consulta inicial
+  realiza 20 primeras filas y demás realizan de 10 en 10 para evitar traer toda la
+  información de la base de datos, además de usar el caché del frontend.
+
+- Todas las consultas personalizadas del sistema las mas complejas que exigen
+  subconsultas debido a la tecnología de PostgreSQL es posible que las consultas
+  se realicen en formato json crudo haciendo que la velocidad sea significativamente
+  mas de 50% mas rápido. Se utiliza un record maestro en java para tener todos los
+  atributos personalizados a la consulta, que sirve como data, el record maestro
+  permite tener un aglomerado de clases dtos, que se puede usar de manera individual
+  si necesita pero es conveniente para mantener el orden cuando principalmente en las
+  consultas que contienen mas de 30 atributos distintos y arrays.
+
+- Optimización: el sistema realiza compresión de json, debido que el servidor en la
+  nube el mas costoso es la transferencia de salida, del backend donde esta el servidor
+  hace al cliente el frontend, se implementa que los json que sobrepasan 2.000 bytes se
+  comprimen, haciendo con que el peso reduzca en 80%, además aumenta un poco la
+  velocidad, por el mínimo consumo casi insignificante de la cpu, donde el json se
+  descomprime en el frontend.
+
+- Gestión de inventario: PRODUCTO con pk id_producto, nombre_producto*, cod_producto,
+  descripcion_producto, activo*, fk id_categoria, fk id_unidad_medida. La decisión
+  de código de producto esta escalado para que se pueda usar lector para identificación
+  y búsqueda del producto no requerido por el cliente. Todo producto debe tener una
+  categoría y unidad de medida previamente creada.
+
+- INVENTARIO pk id_inventario, fk id_producto, stock*, stock_minimo. Requiere
+  implementar tabla adicional para escalado LOTE: pk id_lote, numero_lote, ubicacion,
+  fecha_fabricacion, fecha_caducidad, id_producto, cantidad_producto. De esta manera
+  se puede priorizar indicando al usuario al retirar productos del inventario o bodega
+  de transito los lotes que tiene la fecha mas antigua además de informar los que
+  están cerca del vencimiento. La decisión tomada es que sea una tabla flotante, donde
+  al realizar un registro de entrada se requerirá la información que se avisara en
+  distintas partes del sistema, debido que requiere un orden de fifo fefo por parte
+  del inventario físico.
+
+- BODEGA_TRANSITO depende que el producto exista en el inventario. pk id_bodega_transito,
+  fk id_inventario, stock*, stock_max.
+
+- Los movimientos: ingreso_inventario, ingreso_bodega, salida_inventario, salida_bodega,
+  devolución (aplica solamente al inventario de la bodega hace inventario), traslado
+  (de inventario hace bodega), merma_inventario, merma_bodega, ajuste_bodega,
+  ajuste_inventario. MOVIMIENTO: id_movimiento, type tipo_movimiento*, fk id_usuario,
+  fk id_producto, cantidad_producto*, observacion.
+
+- Administración del sistema: La edición de bloques horarios fue implementada en el
+  frontend (2026-04-13). La vista de Bloques Horarios ahora tiene dos acciones:
+  "Reasignar Bloques" (modal con todos los bloques editables, permite agregar más de 20,
+  valida mínimo 1 minuto de diferencia entre bloques consecutivos, requiere escribir
+  "CONFIRMAR" y muestra advertencia de impacto en secciones/reservas) y "Restaurar
+  predeterminados" (reinicia a los 20 bloques del INSERT original del cliente).
+  Además se eliminó la columna ACCIONES de la tabla de bloques. Pendiente: implementar
+  los dos endpoints en el backend (ver CLAUDE.md sección 9).
+
+- Periodo Académico permite crear 18 semanas a partir de una fecha necesariamente
+  Lunes donde se generan las semanas, esto permitirá calcular de manera automática
+  el día exacto de las entregas de las solicitudes, además sirve para agrupar los
+  pedidos realizado para la semana.
+
+- Gestión de Salas/Salas reservadas: El tab "Gestión Sala y Reservas" en Administración del
+  sistema tiene dos sub-vistas accesibles por toggle de botones:
+  (a) Reservas Registradas: todas las reservas activas con asignatura, sección, sala, día, bloque.
+  (b) Gestión Salas: CRUD de salas — crear (cod_sala + nombre_sala), editar (cod y nombre),
+      desactivar (solo si sin reservas activas; 409 si las tiene).
+  Backend completo: GET /reserva-sala/find-all-active, POST /sala/create, PATCH /sala/update/{id},
+  DELETE /sala/soft-delete/{id} con validación de reservas activas (hasActiveReservas en repo).
+  Trigger de BD: desactivar una sala cancela automáticamente todas sus reservas activas.
+
+- Creación de receta: se crea una receta para asociar a una solicitud esto permite
+  traspasar la cantidad exacta de productos a una solicitud, que al futuro se podría
+  implementar S3 para adjuntar archivos. RECETA: pk id_receta, nombre_receta*{único
+  si está activo}, descripción_preparo, observacion. DETALLE_RECETA: pk id_detalle_receta,
+  fk id_receta, fk id_producto, cantidad_producto*. La receta tiene estado: activa,
+  inactiva, suspendida. La receta debe estar estandarizada para el preparo de 20 personas.
+
+- La gestión académica permite crear asignaturas con docente (rol profesor a cargo),
+  y secciones asignadas a un docente. El sistema permite solamente un usuario con
+  dichos roles pero la tabla está escalada para M:M futuro. Las reservas de salas
+  validan disponibilidad y conflictos. Asignatura y sección tienen estado activo/inactivo.
+  Los días de la semana asociados a la sala permitirán realizar el cálculo del día
+  exacto de la solicitud.
+
+- SOLICITUD: pk id_solicitud, fk id_receta{opcional}, fecha_solicitada calculada en el
+  frontend e implementar también en el backend por seguridad, type estado_solicitud,
+  observacion_solicitud. Estados: Pendiente, Aceptada, En Pedido, Rechazada, Procesada.
+  DETALLE_SOLICITUD: pk id_detalle_solicitud, fk id_solicitud, fk id_producto,
+  cantidad_producto*, observacion_producto. El frontend maneja deltas: de una receta
+  se puede eliminar productos como adicionar productos. La receta base es para 20
+  personas que será calculada según la cantidad de alumnos inscritos.
+
+- Gestión Solicitud {lógica no esta 100% implementada}: Permite Aprobar, Rechazar
+  solicitudes y mostrar las solicitudes Procesadas. Todas las solicitudes al crear
+  tienen el estado de pendiente. El sistema debe rechazar automáticamente las
+  solicitudes que tienen el plazo vencido. Si por algún motivo deciden recuperar la
+  solicitud rechazada es posible solamente si la fecha solicitada no caduco. Una vez
+  que la solicitud fue consolidada no es posible cambiar su estado.
+
+================================================================================
+  FIN DEL DOCUMENTO
+================================================================================

@@ -15,6 +15,7 @@ const LOGO_URL = new URL('./assets/KuHubLogoWBG.png', import.meta.url).href;
 interface SidebarProps {
   isOpen: boolean;
   toggleSidebar: () => void;
+  onLogout?: () => void;
 }
 
 /**
@@ -35,15 +36,19 @@ interface MenuItem {
  * @param {SidebarProps} props - Propiedades del componente.
  * @returns {JSX.Element} El componente Sidebar.
  */
-const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
-  const { user, canAccessPage, logout } = useAuth();
+const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar, onLogout }) => {
+  const { user, logout } = useAuth();
   const { canAccess, isAdmin } = usePermission();
   const location = useLocation();
   const history = useHistory();
 
   const handleLogout = () => {
-    logout();
-    history.push('/login');
+    if (onLogout) {
+      onLogout();
+    } else {
+      logout();
+      history.push('/login');
+    }
   };
 
   /**
@@ -72,7 +77,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
         { title: 'Gestión de Pedidos', path: '/gestion-pedidos', icon: 'lucide:shopping-cart', pageId: 'gestion-pedidos' },
         { title: 'Gestión de Solicitudes', path: '/gestion-solicitudes', icon: 'lucide:clipboard-check', pageId: 'gestion-solicitudes' },
         { title: 'Solicitud', path: '/solicitud', icon: 'lucide:clipboard-list', pageId: 'solicitud' },
-        { title: 'Gestión de Asignaturas', path: '/ramos-admin', icon: 'lucide:graduation-cap', pageId: 'ramos-admin' },
+        { title: 'Gestión Académica', path: '/gestion-academica', icon: 'lucide:graduation-cap', pageId: 'gestion-academica' },
         { title: 'Gestión de Recetas', path: '/gestion-recetas', icon: 'lucide:book-open', pageId: 'gestion-recetas' },
         { title: 'Administración del Sistema', path: '/admin-sistema', icon: 'lucide:settings-2', pageId: 'admin-sistema' }
       ]
@@ -103,11 +108,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
     items: category.items.filter(item => {
       if (!user) return false;
       if (isAdmin) return true;
-      // Acceso estático (roles-config.ts) O acceso dinámico (BD via permission-context)
-      const staticAccess  = canAccessPage(item.pageId);
-      const moduleKey     = PAGE_TO_MODULE[item.pageId];
-      const dynamicAccess = moduleKey ? canAccess(moduleKey, 'read') : false;
-      return staticAccess || dynamicAccess;
+      const moduleKey = PAGE_TO_MODULE[item.pageId];
+      return moduleKey ? canAccess(moduleKey, 'read') : false;
     })
   })).filter(category => category.items.length > 0);
 

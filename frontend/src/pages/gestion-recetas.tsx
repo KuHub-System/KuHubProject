@@ -56,7 +56,7 @@ import { IRecetaPaginedDTO, IDetalleRecetaDTO, IPaginationMeta, IRecetaCountResp
  * Página de gestión de recetas simplificada.
  */
 const GestionRecetasPage: React.FC = () => {
-  usePageTitle('Gestión Recetas', 'Crea, edita y administra las recetas del sistema y sus formulaciones');
+  usePageTitle('Gestión Recetas', 'Crea, edita y administra las recetas del sistema y sus formulaciones', 'lucide:book-open');
   const toast = useToast();
   const confirm = useConfirm();
   const { user } = useAuth();

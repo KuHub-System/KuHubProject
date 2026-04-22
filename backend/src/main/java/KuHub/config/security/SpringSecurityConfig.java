@@ -4,6 +4,7 @@ import KuHub.config.security.filter.JwtAuthenticationFilter;
 import KuHub.config.security.filter.JwtValidationFilter;
 import KuHub.config.security.rate_limiting.RateLimitFilter;
 import KuHub.modules.gestion_usuario.repository.UsuarioRepository;
+import KuHub.modules.gestion_usuario.service.RefreshTokenService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
@@ -37,16 +38,19 @@ public class SpringSecurityConfig {
     private final UsuarioRepository usuarioRepository;
     private final ObjectMapper objectMapper;
     private final RateLimitFilter rateLimitFilter;
+    private final RefreshTokenService refreshTokenService;
 
     @Autowired
     public SpringSecurityConfig(AuthenticationConfiguration authenticationConfiguration,
                                 UsuarioRepository usuarioRepository,
                                 ObjectMapper objectMapper,
-                                RateLimitFilter rateLimitFilter) {
+                                RateLimitFilter rateLimitFilter,
+                                RefreshTokenService refreshTokenService) {
         this.authenticationConfiguration = authenticationConfiguration;
         this.usuarioRepository = usuarioRepository;
         this.objectMapper = objectMapper;
         this.rateLimitFilter = rateLimitFilter;
+        this.refreshTokenService = refreshTokenService;
 
         // Configuración centralizada de ObjectMapper para JWT
         this.objectMapper.addMixIn(SimpleGrantedAuthority.class, SimpleGrantedAuthorityJsonCreator.class);
@@ -89,12 +93,16 @@ public class SpringSecurityConfig {
                 "http://127.0.0.1:5173",
                 "http://127.0.0.1:3000",
 
-                // 🚀 PRODUCCIÓN (AWS Lightsail)
+                // 🚀 PRODUCCIÓN (AWS Lightsail - IP directa)
                 "http://52.5.222.79",
                 "http://52.5.222.79:80",
                 "http://52.5.222.79:8080",
-                "https://52.5.222.79",         // HTTPS habilitado
-                "https://52.5.222.79:443"
+                "https://52.5.222.79",
+                "https://52.5.222.79:443",
+
+                // 🌐 PRODUCCIÓN (Subdominio QuestWeb)
+                "https://appkuhub.questweb.cl",
+                "http://appkuhub.questweb.cl"
         ));
 
         // ⚠️ PRODUCCIÓN: Cambiar a la URL de tu frontend en AWS
@@ -170,6 +178,8 @@ public class SpringSecurityConfig {
                         // ========================================
                         // Login - manejado por JwtAuthenticationFilter
                         .requestMatchers(HttpMethod.POST, "/api/v1/auth/login").permitAll()
+                        // Refresh token: no requiere Access Token (justamente sirve para obtener uno nuevo)
+                        .requestMatchers(HttpMethod.POST, "/api/v1/auth/refresh").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/auth/logout").permitAll()
                         // Preflight requests de CORS (OPTIONS)
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
@@ -366,7 +376,7 @@ public class SpringSecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/v*/bodega-transito/**").permitAll()
 
                         .requestMatchers(HttpMethod.PATCH, "/api/v*/bodega-transito/**")
-                        .hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR", "GESTOR_PEDIDOS", "ENCARGADO_BODEGA")
+                        .authenticated() // Permiso granular verificado dinámicamente en BodegaTransitoController
 
                         .requestMatchers(HttpMethod.DELETE, "/api/v*/bodega-transito/**")
                         .hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR")
@@ -432,6 +442,13 @@ public class SpringSecurityConfig {
                         .requestMatchers(HttpMethod.DELETE, "/api/v*/semanas/**").hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR")
 
                         // ========================================
+                        // ENDPOINTS DE RESERVA SALA
+                        // ========================================
+
+                        // 1. Lectura autenticada: solo usuarios con sesión activa pueden ver las reservas
+                        .requestMatchers(HttpMethod.GET, "/api/v*/reserva-sala/**").authenticated()
+
+                        // ========================================
                         // ENDPOINTS DE SALAS
                         // ========================================
 
@@ -479,6 +496,19 @@ public class SpringSecurityConfig {
                         // ========================================
                         // ENDPOINTS DE GESTIÓN DE PEDIDOS (NUEVO)
                         // ========================================
+                        // 1. LECTURA (GET): Ver historial de pedidos y sus detalles
+                        .requestMatchers(HttpMethod.GET,
+                        "/api/v*/pedido/**",
+                        "/api/v*/detalle-pedido/**",
+                        "/api/v*/pedido-solicitud/**"
+                        ).hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR", "GESTOR_PEDIDOS")
+                
+                        // Agregar el controlador de /api/v1/gestion-sistema
+                        .requestMatchers(HttpMethod.GET, "/api/v1/gestion-sistema/**").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/gestion-sistema/**").authenticated()
+                        .requestMatchers(HttpMethod.PUT, "/api/v1/gestion-sistema/**").authenticated()
+                        .requestMatchers(HttpMethod.PATCH, "/api/v1/gestion-sistema/**").authenticated()
+                        .requestMatchers(HttpMethod.DELETE, "/api/v1/gestion-sistema/**").authenticated()
 
                         // 1. LECTURA (GET): Ver historial de pedidos y sus detalles
                         .requestMatchers(HttpMethod.GET,
@@ -530,7 +560,7 @@ public class SpringSecurityConfig {
                 )
                 .addFilterBefore(rateLimitFilter, JwtAuthenticationFilter.class)
                 // Agregar filtros JWT EN ORDEN - inyectando ObjectMapper configurado
-                .addFilter(new JwtAuthenticationFilter(authenticationManager(), usuarioRepository, objectMapper))
+                .addFilter(new JwtAuthenticationFilter(authenticationManager(), usuarioRepository, objectMapper, refreshTokenService))
                 .addFilterBefore(new JwtValidationFilter(authenticationManager(), objectMapper), UsernamePasswordAuthenticationFilter.class)
 
                 // Desactivar CSRF (no necesario con JWT)

@@ -67,7 +67,7 @@ const renderTipoMovimiento = (tipo: string) => {
 // ─── Page ────────────────────────────────────────────────────────────────────
 
 const MovimientosProductoPage: React.FC = () => {
-  usePageTitle('Movimientos', 'Historial de movimientos de inventario y bodega de tránsito.');
+  usePageTitle('Movimientos', 'Historial de movimientos de inventario y bodega de tránsito.', 'lucide:history');
 
   // Data state
   const [movimientos, setMovimientos] = React.useState<IMotionAnswer[]>([]);

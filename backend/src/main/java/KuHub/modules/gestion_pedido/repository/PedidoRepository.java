@@ -6,9 +6,13 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
+
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface PedidoRepository extends JpaRepository<Pedido, Integer> {
@@ -437,8 +441,12 @@ public interface PedidoRepository extends JpaRepository<Pedido, Integer> {
 
     // =====================================================
     // CONSULTA 4: Entregas diarias para Bodega de Tránsito
-    // Solicitudes ACEPTADA vinculadas a pedidos APROVADO,
-    // agrupadas por fecha → sala → horario (ASC)
+    // Dos grupos de solicitudes:
+    //   1) pedido APROBADO  + solicitud EN_PEDIDO   → habilita btn "Preparar Entrega"
+    //   2) pedido APROBADO  + solicitud PROCESADO   → historial (pedido aún en semana activa)
+    //   3) pedido ENTREGADO + solicitud PROCESADO   → historial (semana ya finalizada)
+    // El frontend distingue acción vs historial por estadoSolicitud (EN_PEDIDO o PROCESADO).
+    // Pedido pasa a ENTREGADO automáticamente cuando fecha_fin_pedido < hoy (scheduler + lazy).
     // Incluye stockTransito y diferencia por producto
     // Retorna: String → deserializar a List<EntregaDiariaJson>
     // =====================================================
@@ -533,8 +541,10 @@ public interface PedidoRepository extends JpaRepository<Pedido, Integer> {
                                         JOIN docente_seccion    doc_e  ON doc_e.id_seccion     = sec_e.id_seccion
                                         JOIN usuario            usr_e  ON usr_e.id_usuario     = doc_e.id_usuario
                                         LEFT JOIN receta        rec_e  ON rec_e.id_receta      = sol_e.id_receta
-                                        WHERE ped_e.estado_pedido    = 'APROVADO'
-                                          AND sol_e.estado_solicitud IN ('ACEPTADA', 'PROCESADO')
+                                        WHERE (
+                                                  (ped_e.estado_pedido = 'APROBADO'  AND sol_e.estado_solicitud = 'EN_PEDIDO')
+                                               OR (ped_e.estado_pedido IN ('APROBADO', 'ENTREGADO') AND sol_e.estado_solicitud = 'PROCESADO')
+                                              )
                                           AND sol_e.id_reserva_sala  IS NOT NULL
                                           AND sol_e.fecha_solicitada = dia.fecha_solicitada
                                           AND rs_e.id_sala           = sal.id_sala
@@ -550,8 +560,10 @@ public interface PedidoRepository extends JpaRepository<Pedido, Integer> {
                             JOIN solicitud         sol_s ON sol_s.id_solicitud  = ps_s.id_solicitud
                             JOIN reserva_sala      rs_s  ON rs_s.id_reserva_sala = sol_s.id_reserva_sala
                             JOIN sala              s     ON s.id_sala            = rs_s.id_sala
-                            WHERE p_s.estado_pedido     = 'APROVADO'
-                              AND sol_s.estado_solicitud IN ('ACEPTADA', 'PROCESADO')
+                            WHERE (
+                                      (p_s.estado_pedido = 'APROBADO'  AND sol_s.estado_solicitud = 'EN_PEDIDO')
+                                   OR (p_s.estado_pedido IN ('APROBADO', 'ENTREGADO') AND sol_s.estado_solicitud = 'PROCESADO')
+                                  )
                               AND sol_s.id_reserva_sala  IS NOT NULL
                               AND sol_s.fecha_solicitada = dia.fecha_solicitada
                         ) sal
@@ -567,8 +579,10 @@ public interface PedidoRepository extends JpaRepository<Pedido, Integer> {
             FROM pedido            ped
             JOIN pedido_solicitud  ps  ON ps.id_pedido     = ped.id_pedido
             JOIN solicitud         sol ON sol.id_solicitud = ps.id_solicitud
-            WHERE ped.estado_pedido    = 'APROVADO'
-              AND sol.estado_solicitud IN ('ACEPTADA', 'PROCESADO')
+            WHERE (
+                      (ped.estado_pedido = 'APROBADO'  AND sol.estado_solicitud = 'EN_PEDIDO')
+                   OR (ped.estado_pedido IN ('APROBADO', 'ENTREGADO') AND sol.estado_solicitud = 'PROCESADO')
+                  )
               AND sol.id_reserva_sala  IS NOT NULL
               AND sol.fecha_solicitada BETWEEN :fechaInicio AND :fechaFin
             GROUP BY sol.fecha_solicitada
@@ -581,6 +595,20 @@ public interface PedidoRepository extends JpaRepository<Pedido, Integer> {
 
 
     // =====================================================
+    // BÚSQUEDA: pedido activo en rango de fechas de semana
+    // Excluye RECHAZADO y ENTREGADO
+    // =====================================================
+    /** Busca el id del pedido activo (no RECHAZADO ni ENTREGADO) en el rango de fechas dado. */
+    @Query(value = """
+        SELECT id_pedido FROM pedido
+        WHERE fecha_inicio_pedido = :fechaInicio
+          AND fecha_fin_pedido    = :fechaFin
+          AND estado_pedido NOT IN ('RECHAZADO', 'ENTREGADO')
+        LIMIT 1
+        """, nativeQuery = true)
+    Optional<Integer> findIdPedidoActivoEnRango(@Param("fechaInicio") LocalDate fechaInicio, @Param("fechaFin") LocalDate fechaFin);
+
+    // =====================================================
     // UPDATE MASIVO: cambia el estado de N pedidos a la vez
     // Retorna número de filas afectadas
     // =====================================================
@@ -591,5 +619,20 @@ public interface PedidoRepository extends JpaRepository<Pedido, Integer> {
         WHERE id_pedido IN (:ids)
         """, nativeQuery = true)
     int updateMassiveStatePedido(@Param("ids") List<Integer> ids, @Param("estado") String estado);
+
+    // =====================================================
+    // AUTO-ENTREGADO: pedidos APROBADOS cuya fecha_fin_pedido ya pasó
+    // Retorna número de filas actualizadas
+    // =====================================================
+    /** Transiciona a ENTREGADO los pedidos APROBADOS cuya fecha_fin_pedido ya pasó. */
+    @Modifying
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    @Query(value = """
+        UPDATE pedido
+        SET estado_pedido = 'ENTREGADO'::estado_pedido_type
+        WHERE estado_pedido = 'APROBADO'::estado_pedido_type
+          AND fecha_fin_pedido < CURRENT_DATE
+        """, nativeQuery = true)
+    int marcarPedidosEntregadosPorFecha();
 
 }

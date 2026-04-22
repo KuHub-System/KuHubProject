@@ -16,14 +16,6 @@ import {
 import { Icon } from '@iconify/react';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useToast } from '../hooks/useToast';
-import { ISemana } from '../types/semana.types';
-import {
-  IPeriodoAcademico,
-  obtenerPeriodosAcademicosService,
-  obtenerSemanasPorPeriodoService,
-  detectarPeriodoActual,
-  encontrarSemanaActual,
-} from '../services/semana-service';
 import {
   IOrderConsolidationResponse,
   ISolicitudConsolidacionItem,
@@ -31,7 +23,9 @@ import {
   obtenerOrdenConsolidacionService,
   consolidarPedidoService,
 } from '../services/solicitud-service';
-import { useModulePermission } from '../contexts/permission-context';
+import { useModulePermission, usePermission } from '../contexts/permission-context';
+import { usePeriodoSemana } from '../contexts/periodo-semana-context';
+import { useHistory } from 'react-router-dom';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // HELPERS
@@ -60,17 +54,14 @@ const fmtCantidad = (n: number): string => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 const GestionPedidosPage: React.FC = () => {
-  usePageTitle('Gestión de Pedidos', 'Genera el pedido semanal consolidado a partir de las solicitudes aceptadas, agrupando todos los productos requeridos por sección.');
+  usePageTitle('Gestión de Pedidos', 'Genera el pedido semanal consolidado a partir de las solicitudes aceptadas, agrupando todos los productos requeridos por sección.', 'lucide:shopping-cart');
   const toast = useToast();
   const { canCreate: ped_Crear, canUpdate: ped_Editar, canDelete: ped_Eliminar } = useModulePermission('GESTION_PEDIDOS');
+  const { isAdmin } = usePermission();
+  const history = useHistory();
   const confirmarModal = useDisclosure();
 
-  // ── Semanas ──
-  const [periodos,        setPeriodos]        = React.useState<IPeriodoAcademico[]>([]);
-  const [semanas,         setSemanas]         = React.useState<ISemana[]>([]);
-  const [semanaId,        setSemanaId]        = React.useState<string>('');
-  const [defaultSemanaId, setDefaultSemanaId] = React.useState<string>('');
-  const [isLoadingSem,    setIsLoadingSem]    = React.useState(true);
+  const { periodos, semanas, semanaId, defaultSemanaId, isLoading: isLoadingSem, seleccionarPeriodo, seleccionarSemana } = usePeriodoSemana();
 
   // ── Datos ──
   const [solicitudes,    setSolicitudes]    = React.useState<ISolicitudConsolidacionItem[]>([]);
@@ -87,46 +78,6 @@ const GestionPedidosPage: React.FC = () => {
   const [busqueda,    setBusqueda]    = React.useState('');
   const [expandidos,  setExpandidos]  = React.useState<Set<string>>(new Set());
   const [vistaActiva, setVistaActiva] = React.useState<'consolidado' | 'solicitudes'>('consolidado');
-
-  // ── Carga inicial de semanas ──
-  React.useEffect(() => {
-    const init = async () => {
-      setIsLoadingSem(true);
-      try {
-        const periodosData = await obtenerPeriodosAcademicosService();
-        setPeriodos(periodosData);
-        const { anio, semestre } = detectarPeriodoActual();
-        const intentos = [{ anio, semestre }, { anio, semestre: semestre === 1 ? 2 : 1 }];
-        let cargadas: ISemana[] = [];
-        for (const intento of intentos) {
-          if (!periodosData.some(p => p.anio === intento.anio && p.semestres.includes(intento.semestre))) continue;
-          try { cargadas = await obtenerSemanasPorPeriodoService(intento.anio, intento.semestre); if (cargadas.length > 0) break; } catch { /* */ }
-        }
-        if (cargadas.length === 0 && periodosData.length > 0) {
-          const p = periodosData[0];
-          cargadas = await obtenerSemanasPorPeriodoService(p.anio, p.semestres[0]).catch(() => []);
-        }
-        setSemanas(cargadas);
-        const actual = encontrarSemanaActual(cargadas);
-        setDefaultSemanaId(actual ? String(actual.idSemana) : '');
-        setSemanaId(actual ? String(actual.idSemana) : cargadas.length > 0 ? String(cargadas[0].idSemana) : '');
-      } catch { toast.error('Error al cargar las semanas'); }
-      finally { setIsLoadingSem(false); }
-    };
-    init();
-  }, []);
-
-  const handlePeriodoChange = async (anio: number, semestre: number) => {
-    setIsLoadingSem(true); setSolicitudes([]); setConsolidadoData([]); setSemanaId(''); setConsolidado(false);
-    try {
-      const data = await obtenerSemanasPorPeriodoService(anio, semestre);
-      setSemanas(data);
-      const actual = encontrarSemanaActual(data);
-      setDefaultSemanaId(actual ? String(actual.idSemana) : '');
-      if (data.length > 0) setSemanaId(actual ? String(actual.idSemana) : String(data[0].idSemana));
-    } catch { toast.error('Error al cargar semanas del período'); }
-    finally { setIsLoadingSem(false); }
-  };
 
   // ── Carga de datos al cambiar semana (con cache) ──
   React.useEffect(() => {
@@ -262,7 +213,7 @@ const GestionPedidosPage: React.FC = () => {
 
   // Alias para compatibilidad con el JSX existente
   const semanaActual = semanaSeleccionada;
-  const periodosDisponibles = periodos.length > 0 ? periodos : [{ anio: new Date().getFullYear(), semestres: [1, 2] }];
+  const sinPeriodos = periodos.length === 0 && !isLoadingSem;
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-6 space-y-5">
@@ -271,15 +222,32 @@ const GestionPedidosPage: React.FC = () => {
       <Card className="shadow-sm">
         <CardBody className="px-5 py-4">
           <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-            <div className="flex items-center gap-2 shrink-0">
+            <div className="flex items-center gap-2 shrink-0 flex-wrap">
               <Icon icon="lucide:calendar-days" className="text-default-400" width={16} />
               <span className="text-xs font-bold text-default-500 uppercase tracking-wider">Período</span>
-              {periodosDisponibles.map(p =>
+              {sinPeriodos && !isAdmin && (
+                <p className="text-sm text-warning-600 dark:text-warning-400 flex items-center gap-1.5">
+                  <Icon icon="lucide:alert-triangle" width={13} />
+                  Contacte el administrador para generar los periodos académicos.
+                </p>
+              )}
+              {sinPeriodos && isAdmin && (
+                <button
+                  type="button"
+                  className="flex items-center gap-1.5 text-sm text-primary hover:text-primary-600 underline underline-offset-2 cursor-pointer transition-colors"
+                  onClick={() => history.push('/admin-sistema?tab=semanas')}
+                >
+                  <Icon icon="lucide:calendar-plus" width={14} />
+                  Genere el período académico
+                  <Icon icon="lucide:arrow-right" width={12} />
+                </button>
+              )}
+              {!sinPeriodos && periodos.map(p =>
                 p.semestres.map(s => {
                   const isActive = semanas.length > 0 && semanas[0].anio === p.anio && semanas[0].semestre === s;
                   return (
-                    <button key={`${p.anio}-${s}`} onClick={() => handlePeriodoChange(p.anio, s)}
-                      className={`px-3 py-1 rounded-full text-xs font-bold border transition-all ${
+                    <button key={`${p.anio}-${s}`} onClick={() => { seleccionarPeriodo(p.anio, s); setSolicitudes([]); setConsolidadoData([]); setConsolidado(false); }}
+                      className={`px-3 py-1 rounded-full text-xs font-bold border transition-all cursor-pointer ${
                         isActive ? 'bg-warning text-white border-warning' : 'bg-default-100 text-default-600 border-default-200 hover:bg-default-200'
                       }`}>
                       {p.anio} S{s}
@@ -299,7 +267,7 @@ const GestionPedidosPage: React.FC = () => {
               ) : (
                 <Select size="sm" variant="bordered"
                   selectedKeys={semanaId ? new Set([semanaId]) : new Set()}
-                  onSelectionChange={keys => { const v = Array.from(keys as Set<string>)[0]; if (v) setSemanaId(v); }}
+                  onSelectionChange={keys => { const v = Array.from(keys as Set<string>)[0]; if (v) seleccionarSemana(v); }}
                   placeholder="Seleccione una semana"
                   classNames={{ trigger: 'bg-default-50', base: 'max-w-xs' }}
                   startContent={<Icon icon="lucide:calendar" width={14} className="text-default-400 shrink-0" />}

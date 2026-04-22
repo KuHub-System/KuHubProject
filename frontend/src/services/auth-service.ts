@@ -19,15 +19,16 @@ const SESION_KEY = 'sesion_actual';
 /**
  * Iniciar sesión - ESTANDARIZADO A /api/v1/auth/login
  */
-export const iniciarSesionService = async (correo: string, contrasena: string): Promise<ISesion> => {
+export const iniciarSesionService = async (correo: string, contrasena: string, recordarSesion = false): Promise<ISesion> => {
   try {
     const endpoint = '/auth/login';
-    console.log(`[AUTH] POST ${(api.defaults.baseURL ?? '')}${endpoint}`);
-    console.log(`[AUTH] Payload →`, { email: correo, contrasena: '***' });
+    logger.log(`[AUTH] POST ${(api.defaults.baseURL ?? '')}${endpoint}`);
+    logger.log(`[AUTH] Payload →`, { email: correo, contrasena: '***', recordarSesion });
 
     const response = await api.post(endpoint, {
       email: correo,
-      contrasena: contrasena
+      contrasena: contrasena,
+      recordarSesion: recordarSesion
     });
 
     console.log(`[AUTH] ✅ ${response.status} OK →`, response.data);
@@ -62,10 +63,39 @@ export const iniciarSesionService = async (correo: string, contrasena: string): 
 };
 
 /**
- * Cerrar sesión - Solo limpieza local (JWT no requiere notificación al backend)
+ * Renovar Access Token usando el Refresh Token almacenado en cookie HttpOnly.
+ * El backend lee la cookie automáticamente.
+ * Retorna el nuevo token o null si falló.
+ */
+export const renovarSesionService = async (): Promise<string | null> => {
+  try {
+    const response = await api.post('/auth/refresh', {}, { withCredentials: true });
+    const { token } = response.data;
+
+    const sesionStr = localStorage.getItem(SESION_KEY);
+    if (sesionStr && token) {
+      const sesion: ISesion = JSON.parse(sesionStr);
+      sesion.token = token;
+      localStorage.setItem(SESION_KEY, JSON.stringify(sesion));
+    }
+
+    return token ?? null;
+  } catch {
+    return null;
+  }
+};
+
+/**
+ * Cerrar sesión - Notifica al backend para revocar el Refresh Token y limpia localStorage.
  */
 export const cerrarSesionService = async (): Promise<void> => {
-  localStorage.removeItem(SESION_KEY);
+  try {
+    await api.post('/auth/logout', {}, { withCredentials: true });
+  } catch {
+    // Aunque falle el backend, limpiamos la sesión local
+  } finally {
+    localStorage.removeItem(SESION_KEY);
+  }
 };
 
 /**
