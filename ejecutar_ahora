@@ -1,35 +1,761 @@
-2026-04-22T18:05:26.366Z DEBUG 1 --- [nio-8080-exec-8] org.hibernate.SQL                        :
+9 sincronizados automáticamente
+•
+Almidon De Maiz / Maicena — El stock cambió y la operación se realizó usando el stock actual (13.600)
+•
+Fideos Fetuccini De Arroz — El stock cambió y la operación se realizó usando el stock actual (18.400)
+•
+Palmitos En Tarro — El stock cambió y la operación se realizó usando el stock actual (15.200)
+•
+Vinagre Frambuesa — El stock cambió y la operación se realizó usando el stock actual (15.200)
+•
+Pirotines Medianos — El stock cambió y la operación se realizó usando el stock actual (42.400)
+•
+Ron Dorado Abuelo Añejo — El stock cambió y la operación se realizó usando el stock actual (7.200)
+•
+Sake Botella — El stock cambió y la operación se realizó usando el stock actual (18.400)
+•
+Vino Pinot Noir Quintay — El stock cambió y la operación se realizó usando el stock actual (42.400)
+•
+Apio — El stock cambió y la operación se realizó usando el stock actual (24.800)
+
+2026-04-22T18:31:29.217Z DEBUG 1 --- [nio-8080-exec-2] org.hibernate.SQL                        :
     SELECT
-        jsonb_agg(     jsonb_build_object(         'idProducto',              p.id_producto,         'nombreProducto',          p.nombre_producto,         'nombreUnidad',            um.nombre_unidad,         'abreviatura',             um.abreviatura,         'esFraccionario',          um.es_fraccionario,         'nombreCategoria',         c.nombre_categoria,         'cantidadTotalSolicitada', sub_total.total_solicitado     )
-    ORDER BY
-        c.nombre_categoria ASC, p.nombre_producto ASC ) AS proyeccion_abastecimiento
+        r.id_rol          AS idRol,
+        r.nombre_rol      AS nombreRol,
+        m.id_modulo       AS idModulo,
+        m.codigo_modulo   AS codigoModulo,
+        m.nombre_modulo   AS nombreModulo,
+        m.orden_modulo    AS ordenModulo,
+        pr.id_permiso_rol AS idPermisoRol,
+        COALESCE(pr.puede_leer,       false) AS puedeLeer,
+        COALESCE(pr.puede_crear,      false) AS puedeCrear,
+        COALESCE(pr.puede_actualizar, false) AS puedeActualizar,
+        COALESCE(pr.puede_eliminar,   false) AS puedeEliminar
     FROM
-        (     SELECT
-            ds.id_producto,
-            SUM(ds.cant_producto_solicitud) AS total_solicitado
-        FROM
-            detalle_solicitud ds
-        INNER JOIN
-            solicitud s
-                ON s.id_solicitud = ds.id_solicitud
-        WHERE
-            s.estado_solicitud = 'EN_PEDIDO'
-            AND s.fecha_solicitada BETWEEN ? AND ?
-        GROUP BY
-            ds.id_producto ) sub_total
-    INNER JOIN
-        producto      p
-            ON p.id_producto  = sub_total.id_producto
-            AND p.activo = TRUE
-    INNER JOIN
-        unidad_medida um
-            ON um.id_unidad    = p.id_unidad
-    INNER JOIN
-        categoria     c
-            ON c.id_categoria  = p.id_categoria
+        rol r
+    CROSS JOIN
+        modulo m
+    LEFT JOIN
+        permiso_rol pr
+            ON pr.id_rol = r.id_rol
+            AND pr.id_modulo = m.id_modulo
+            AND pr.enabled = true
+    WHERE
+        r.activo = true
+        AND m.enabled = true
+    ORDER BY
+        m.orden_modulo,
+        r.id_rol
 Hibernate:
     SELECT
-        jsonb_agg(     jsonb_build_object(         'idProducto',              p.id_producto,         'nombreProducto',          p.nombre_producto,         'nombreUnidad',            um.nombre_unidad,         'abreviatura',             um.abreviatura,         'esFraccionario',          um.es_fraccionario,         'nombreCategoria',         c.nombre_categoria,         'cantidadTotalSolicitada', sub_total.total_solicitado     )
+        r.id_rol          AS idRol,
+        r.nombre_rol      AS nombreRol,
+        m.id_modulo       AS idModulo,
+        m.codigo_modulo   AS codigoModulo,
+        m.nombre_modulo   AS nombreModulo,
+        m.orden_modulo    AS ordenModulo,
+        pr.id_permiso_rol AS idPermisoRol,
+        COALESCE(pr.puede_leer,       false) AS puedeLeer,
+        COALESCE(pr.puede_crear,      false) AS puedeCrear,
+        COALESCE(pr.puede_actualizar, false) AS puedeActualizar,
+        COALESCE(pr.puede_eliminar,   false) AS puedeEliminar
+    FROM
+        rol r
+    CROSS JOIN
+        modulo m
+    LEFT JOIN
+        permiso_rol pr
+            ON pr.id_rol = r.id_rol
+            AND pr.id_modulo = m.id_modulo
+            AND pr.enabled = true
+    WHERE
+        r.activo = true
+        AND m.enabled = true
+    ORDER BY
+        m.orden_modulo,
+        r.id_rol
+2026-04-22T18:31:29.218Z DEBUG 1 --- [nio-8080-exec-1] org.hibernate.SQL                        :
+    SELECT
+        anio,
+        JSON_AGG(DISTINCT semestre
+    ORDER BY
+        semestre ASC) AS semestres
+    FROM
+        semanas
+    GROUP BY
+        anio
+    ORDER BY
+        anio ASC
+Hibernate:
+    SELECT
+        anio,
+        JSON_AGG(DISTINCT semestre
+    ORDER BY
+        semestre ASC) AS semestres
+    FROM
+        semanas
+    GROUP BY
+        anio
+    ORDER BY
+        anio ASC
+2026-04-22T18:31:29.353Z DEBUG 1 --- [nio-8080-exec-1] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/yaml]
+2026-04-22T18:31:29.359Z DEBUG 1 --- [nio-8080-exec-1] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Writing [[YearWithSemestersDTO(anio=2026, semestres=[1])]]
+2026-04-22T18:31:29.371Z DEBUG 1 --- [nio-8080-exec-2] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/yaml]
+2026-04-22T18:31:29.378Z DEBUG 1 --- [nio-8080-exec-2] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Writing [{DASHBOARD=[PermisoMatrizDTO(idRol=1, nombreRol=ADMINISTRADOR, idModulo=1, codigoModulo=DASHBOARD, n (truncated)...]
+2026-04-22T18:31:29.413Z DEBUG 1 --- [nio-8080-exec-1] o.s.web.servlet.DispatcherServlet        : Completed 200 OK
+2026-04-22T18:31:29.414Z DEBUG 1 --- [nio-8080-exec-2] o.s.web.servlet.DispatcherServlet        : Completed 200 OK
+2026-04-22T18:31:29.610Z DEBUG 1 --- [nio-8080-exec-3] o.s.security.web.FilterChainProxy        : Securing POST /api/v1/semanas/find-by-weekly-for-solicitation
+2026-04-22T18:31:29.635Z  INFO 1 --- [nio-8080-exec-3] K.c.s.rate_limiting.RateLimitFilter      : 📍 IP: 186.78.184.242 | Petición 3 de 80
+2026-04-22T18:31:29.637Z DEBUG 1 --- [nio-8080-exec-4] o.s.security.web.FilterChainProxy        : Securing POST /api/v1/movimiento/find-all-motion-with-filter
+2026-04-22T18:31:29.641Z  INFO 1 --- [nio-8080-exec-4] K.c.s.rate_limiting.RateLimitFilter      : 📍 IP: 186.78.184.242 | Petición 4 de 80
+2026-04-22T18:31:29.644Z DEBUG 1 --- [nio-8080-exec-3] o.s.security.web.FilterChainProxy        : Secured POST /api/v1/semanas/find-by-weekly-for-solicitation
+2026-04-22T18:31:29.648Z DEBUG 1 --- [nio-8080-exec-3] o.s.web.servlet.DispatcherServlet        : POST "/api/v1/semanas/find-by-weekly-for-solicitation", parameters={}
+2026-04-22T18:31:29.648Z DEBUG 1 --- [nio-8080-exec-3] s.w.s.m.m.a.RequestMappingHandlerMapping : Mapped to KuHub.modules.gestion_academica.controller.SemanaController#findByWeeklyFilterForSolicitation(WeeklyFilterForSolicitationDTO)
+2026-04-22T18:31:29.657Z DEBUG 1 --- [nio-8080-exec-4] o.s.security.web.FilterChainProxy        : Secured POST /api/v1/movimiento/find-all-motion-with-filter
+2026-04-22T18:31:29.658Z DEBUG 1 --- [nio-8080-exec-4] o.s.web.servlet.DispatcherServlet        : POST "/api/v1/movimiento/find-all-motion-with-filter", parameters={}
+2026-04-22T18:31:29.660Z DEBUG 1 --- [nio-8080-exec-4] s.w.s.m.m.a.RequestMappingHandlerMapping : Mapped to KuHub.modules.gestion_inventario.controller.MovimientoController#findAllMotionWithFilter(MotionFilterRequestDTO)
+2026-04-22T18:31:29.671Z DEBUG 1 --- [nio-8080-exec-3] m.m.a.RMh4hfsi84LdbS4uS3jaSaNccc8kartkDJ : Read "application/json;charset=UTF-8" to [WeeklyFilterForSolicitationDTO(anio=2026, semestre=1)]
+2026-04-22T18:31:29.679Z DEBUG 1 --- [nio-8080-exec-4] m.m.a.RMh4hfsi84LdbS4uS3jaSaNccc8kartkDJ : Read "application/json;charset=UTF-8" to [MotionFilterRequestDTO(page=1, nombreProducto=, nombreResponsable=, tipoMovimiento=TODOS, orden=MAS_ (truncated)...]
+2026-04-22T18:31:29.710Z DEBUG 1 --- [nio-8080-exec-4] org.hibernate.SQL                        :
+    SELECT
+        COUNT(*)
+    FROM
+        movimiento m
+    JOIN
+        inventario i
+            ON i.id_inventario = m.id_inventario
+    JOIN
+        producto p
+            ON p.id_producto = i.id_producto
+    JOIN
+        usuario u
+            ON u.id_usuario = m.id_usuario
+    WHERE
+        m.fecha_movimiento BETWEEN ? AND ?
+        AND (
+            ? IS NULL
+            OR LOWER(p.nombre_producto) LIKE LOWER('%' || ? || '%')
+        )
+        AND (
+            ? IS NULL
+            OR CAST(m.tipo_movimiento AS TEXT) = ?
+        )
+        AND (
+            ? IS NULL
+            OR LOWER(CONCAT_WS(' ', u.p_nombre, u.s_nombre, u.app_paterno, u.app_materno)) LIKE LOWER('%' || ? || '%')
+        )
+Hibernate:
+    SELECT
+        COUNT(*)
+    FROM
+        movimiento m
+    JOIN
+        inventario i
+            ON i.id_inventario = m.id_inventario
+    JOIN
+        producto p
+            ON p.id_producto = i.id_producto
+    JOIN
+        usuario u
+            ON u.id_usuario = m.id_usuario
+    WHERE
+        m.fecha_movimiento BETWEEN ? AND ?
+        AND (
+            ? IS NULL
+            OR LOWER(p.nombre_producto) LIKE LOWER('%' || ? || '%')
+        )
+        AND (
+            ? IS NULL
+            OR CAST(m.tipo_movimiento AS TEXT) = ?
+        )
+        AND (
+            ? IS NULL
+            OR LOWER(CONCAT_WS(' ', u.p_nombre, u.s_nombre, u.app_paterno, u.app_materno)) LIKE LOWER('%' || ? || '%')
+        )
+2026-04-22T18:31:29.714Z TRACE 1 --- [nio-8080-exec-4] org.hibernate.orm.jdbc.bind              : binding parameter (1:TIMESTAMP) <- [2026-04-21T18:31:29.693553006]
+2026-04-22T18:31:29.718Z TRACE 1 --- [nio-8080-exec-4] org.hibernate.orm.jdbc.bind              : binding parameter (2:TIMESTAMP) <- [2026-04-22T18:31:29.693603800]
+2026-04-22T18:31:29.719Z TRACE 1 --- [nio-8080-exec-4] org.hibernate.orm.jdbc.bind              : binding parameter (3:VARCHAR) <- [null]
+2026-04-22T18:31:29.720Z TRACE 1 --- [nio-8080-exec-4] org.hibernate.orm.jdbc.bind              : binding parameter (4:VARCHAR) <- [null]
+2026-04-22T18:31:29.720Z TRACE 1 --- [nio-8080-exec-4] org.hibernate.orm.jdbc.bind              : binding parameter (5:VARCHAR) <- [null]
+2026-04-22T18:31:29.721Z TRACE 1 --- [nio-8080-exec-4] org.hibernate.orm.jdbc.bind              : binding parameter (6:VARCHAR) <- [null]
+2026-04-22T18:31:29.721Z TRACE 1 --- [nio-8080-exec-4] org.hibernate.orm.jdbc.bind              : binding parameter (7:VARCHAR) <- [null]
+2026-04-22T18:31:29.721Z TRACE 1 --- [nio-8080-exec-4] org.hibernate.orm.jdbc.bind              : binding parameter (8:VARCHAR) <- [null]
+2026-04-22T18:31:29.738Z DEBUG 1 --- [nio-8080-exec-4] org.hibernate.SQL                        :
+    SELECT
+        p.nombre_producto,
+        c.nombre_categoria,
+        CAST(m.tipo_movimiento AS TEXT),
+        m.stock_movimiento,
+        m.fecha_movimiento,
+        CONCAT_WS(' ', u.p_nombre, u.s_nombre, u.app_paterno, u.app_materno),
+        m.observacion
+    FROM
+        movimiento m
+    JOIN
+        inventario i
+            ON i.id_inventario = m.id_inventario
+    JOIN
+        producto p
+            ON p.id_producto = i.id_producto
+    JOIN
+        categoria c
+            ON c.id_categoria = p.id_categoria
+    JOIN
+        usuario u
+            ON u.id_usuario = m.id_usuario
+    WHERE
+        m.fecha_movimiento BETWEEN ? AND ?
+        AND (
+            ? IS NULL
+            OR ? = ''
+            OR LOWER(p.nombre_producto) LIKE LOWER('%' || ? || '%')
+        )
+        AND (
+            ? IS NULL
+            OR ? = ''
+            OR CAST(m.tipo_movimiento AS TEXT) = ?
+        )
+        AND (
+            ? IS NULL
+            OR ? = ''
+            OR LOWER(CONCAT_WS(' ', u.p_nombre, u.s_nombre, u.app_paterno, u.app_materno)) LIKE LOWER('%' || ? || '%')
+        )
+    ORDER BY
+        CASE
+            WHEN ? = 'MAS_RECIENTES'
+                THEN m.fecha_movimiento
+        END DESC,
+        CASE
+            WHEN ? = 'MAS_ANTIGUOS'
+                THEN m.fecha_movimiento
+        END ASC,
+        CASE
+            WHEN ? = 'MENOR_CANTIDAD'
+                THEN m.stock_movimiento
+        END ASC,
+        CASE
+            WHEN ? = 'MAYOR_CANTIDAD'
+                THEN m.stock_movimiento
+        END DESC
+    LIMIT
+        ?
+    OFFSET
+        ?
+Hibernate:
+    SELECT
+        p.nombre_producto,
+        c.nombre_categoria,
+        CAST(m.tipo_movimiento AS TEXT),
+        m.stock_movimiento,
+        m.fecha_movimiento,
+        CONCAT_WS(' ', u.p_nombre, u.s_nombre, u.app_paterno, u.app_materno),
+        m.observacion
+    FROM
+        movimiento m
+    JOIN
+        inventario i
+            ON i.id_inventario = m.id_inventario
+    JOIN
+        producto p
+            ON p.id_producto = i.id_producto
+    JOIN
+        categoria c
+            ON c.id_categoria = p.id_categoria
+    JOIN
+        usuario u
+            ON u.id_usuario = m.id_usuario
+    WHERE
+        m.fecha_movimiento BETWEEN ? AND ?
+        AND (
+            ? IS NULL
+            OR ? = ''
+            OR LOWER(p.nombre_producto) LIKE LOWER('%' || ? || '%')
+        )
+        AND (
+            ? IS NULL
+            OR ? = ''
+            OR CAST(m.tipo_movimiento AS TEXT) = ?
+        )
+        AND (
+            ? IS NULL
+            OR ? = ''
+            OR LOWER(CONCAT_WS(' ', u.p_nombre, u.s_nombre, u.app_paterno, u.app_materno)) LIKE LOWER('%' || ? || '%')
+        )
+    ORDER BY
+        CASE
+            WHEN ? = 'MAS_RECIENTES'
+                THEN m.fecha_movimiento
+        END DESC,
+        CASE
+            WHEN ? = 'MAS_ANTIGUOS'
+                THEN m.fecha_movimiento
+        END ASC,
+        CASE
+            WHEN ? = 'MENOR_CANTIDAD'
+                THEN m.stock_movimiento
+        END ASC,
+        CASE
+            WHEN ? = 'MAYOR_CANTIDAD'
+                THEN m.stock_movimiento
+        END DESC
+    LIMIT
+        ?
+    OFFSET
+        ?
+2026-04-22T18:31:29.741Z TRACE 1 --- [nio-8080-exec-4] org.hibernate.orm.jdbc.bind              : binding parameter (1:TIMESTAMP) <- [2026-04-21T18:31:29.693553006]
+2026-04-22T18:31:29.742Z TRACE 1 --- [nio-8080-exec-4] org.hibernate.orm.jdbc.bind              : binding parameter (2:TIMESTAMP) <- [2026-04-22T18:31:29.693603800]
+2026-04-22T18:31:29.743Z TRACE 1 --- [nio-8080-exec-4] org.hibernate.orm.jdbc.bind              : binding parameter (3:VARCHAR) <- [null]
+2026-04-22T18:31:29.745Z TRACE 1 --- [nio-8080-exec-4] org.hibernate.orm.jdbc.bind              : binding parameter (4:VARCHAR) <- [null]
+2026-04-22T18:31:29.745Z TRACE 1 --- [nio-8080-exec-4] org.hibernate.orm.jdbc.bind              : binding parameter (5:VARCHAR) <- [null]
+2026-04-22T18:31:29.746Z TRACE 1 --- [nio-8080-exec-4] org.hibernate.orm.jdbc.bind              : binding parameter (6:VARCHAR) <- [null]
+2026-04-22T18:31:29.746Z TRACE 1 --- [nio-8080-exec-4] org.hibernate.orm.jdbc.bind              : binding parameter (7:VARCHAR) <- [null]
+2026-04-22T18:31:29.746Z TRACE 1 --- [nio-8080-exec-4] org.hibernate.orm.jdbc.bind              : binding parameter (8:VARCHAR) <- [null]
+2026-04-22T18:31:29.746Z TRACE 1 --- [nio-8080-exec-4] org.hibernate.orm.jdbc.bind              : binding parameter (9:VARCHAR) <- [null]
+2026-04-22T18:31:29.746Z TRACE 1 --- [nio-8080-exec-4] org.hibernate.orm.jdbc.bind              : binding parameter (10:VARCHAR) <- [null]
+2026-04-22T18:31:29.747Z TRACE 1 --- [nio-8080-exec-4] org.hibernate.orm.jdbc.bind              : binding parameter (11:VARCHAR) <- [null]
+2026-04-22T18:31:29.747Z TRACE 1 --- [nio-8080-exec-4] org.hibernate.orm.jdbc.bind              : binding parameter (12:VARCHAR) <- [MAS_RECIENTES]
+2026-04-22T18:31:29.748Z TRACE 1 --- [nio-8080-exec-4] org.hibernate.orm.jdbc.bind              : binding parameter (13:VARCHAR) <- [MAS_RECIENTES]
+2026-04-22T18:31:29.749Z TRACE 1 --- [nio-8080-exec-4] org.hibernate.orm.jdbc.bind              : binding parameter (14:VARCHAR) <- [MAS_RECIENTES]
+2026-04-22T18:31:29.749Z TRACE 1 --- [nio-8080-exec-4] org.hibernate.orm.jdbc.bind              : binding parameter (15:VARCHAR) <- [MAS_RECIENTES]
+2026-04-22T18:31:29.750Z TRACE 1 --- [nio-8080-exec-4] org.hibernate.orm.jdbc.bind              : binding parameter (16:INTEGER) <- [20]
+2026-04-22T18:31:29.750Z TRACE 1 --- [nio-8080-exec-4] org.hibernate.orm.jdbc.bind              : binding parameter (17:INTEGER) <- [0]
+2026-04-22T18:31:29.797Z DEBUG 1 --- [nio-8080-exec-4] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/yaml]
+2026-04-22T18:31:29.804Z DEBUG 1 --- [nio-8080-exec-4] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Writing [PaginatedMotionDTO(content=[MotionAnswerDTO(nombreProducto=Aceituna Verde Sin Carozo, nombreCategori (truncated)...]
+2026-04-22T18:31:29.827Z DEBUG 1 --- [nio-8080-exec-4] o.s.web.servlet.DispatcherServlet        : Completed 200 OK
+2026-04-22T18:31:29.880Z DEBUG 1 --- [nio-8080-exec-3] org.hibernate.SQL                        :
+    select
+        s1_0.id_semana,
+        s1_0.anio,
+        s1_0.fecha_fin,
+        s1_0.fecha_inicio,
+        s1_0.nombre_semana,
+        s1_0.semestre
+    from
+        public.semanas s1_0
+    where
+        s1_0.anio=?
+        and s1_0.semestre=?
+    order by
+        s1_0.fecha_inicio
+Hibernate:
+    select
+        s1_0.id_semana,
+        s1_0.anio,
+        s1_0.fecha_fin,
+        s1_0.fecha_inicio,
+        s1_0.nombre_semana,
+        s1_0.semestre
+    from
+        public.semanas s1_0
+    where
+        s1_0.anio=?
+        and s1_0.semestre=?
+    order by
+        s1_0.fecha_inicio
+2026-04-22T18:31:29.881Z TRACE 1 --- [nio-8080-exec-3] org.hibernate.orm.jdbc.bind              : binding parameter (1:SMALLINT) <- [2026]
+2026-04-22T18:31:29.882Z TRACE 1 --- [nio-8080-exec-3] org.hibernate.orm.jdbc.bind              : binding parameter (2:SMALLINT) <- [1]
+2026-04-22T18:31:29.916Z DEBUG 1 --- [nio-8080-exec-3] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/yaml]
+2026-04-22T18:31:29.917Z DEBUG 1 --- [nio-8080-exec-3] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Writing [[Semana(idSemana=1, nombreSemana=Semana 1, fechaInicio=2026-03-02, fechaFin=2026-03-08, anio=2026, s (truncated)...]
+2026-04-22T18:31:29.925Z DEBUG 1 --- [nio-8080-exec-3] o.s.web.servlet.DispatcherServlet        : Completed 200 OK
+2026-04-22T18:31:32.310Z DEBUG 1 --- [nio-8080-exec-5] o.s.security.web.FilterChainProxy        : Securing GET /api/v1/inventario/filters
+2026-04-22T18:31:32.317Z DEBUG 1 --- [nio-8080-exec-8] o.s.security.web.FilterChainProxy        : Securing POST /api/v1/inventario/paged-inventory
+2026-04-22T18:31:32.318Z DEBUG 1 --- [nio-8080-exec-6] o.s.security.web.FilterChainProxy        : Securing GET /api/v1/unidad-medida/find-all-active-true
+2026-04-22T18:31:32.313Z  INFO 1 --- [nio-8080-exec-5] K.c.s.rate_limiting.RateLimitFilter      : 📍 IP: 186.78.184.242 | Petición 5 de 80
+2026-04-22T18:31:32.319Z DEBUG 1 --- [nio-8080-exec-7] o.s.security.web.FilterChainProxy        : Securing GET /api/v1/categoria/active-true
+2026-04-22T18:31:32.320Z  INFO 1 --- [nio-8080-exec-7] K.c.s.rate_limiting.RateLimitFilter      : 📍 IP: 186.78.184.242 | Petición 6 de 80
+2026-04-22T18:31:32.321Z  INFO 1 --- [nio-8080-exec-6] K.c.s.rate_limiting.RateLimitFilter      : 📍 IP: 186.78.184.242 | Petición 7 de 80
+2026-04-22T18:31:32.325Z  INFO 1 --- [nio-8080-exec-8] K.c.s.rate_limiting.RateLimitFilter      : 📍 IP: 186.78.184.242 | Petición 8 de 80
+2026-04-22T18:31:32.326Z DEBUG 1 --- [nio-8080-exec-5] o.s.security.web.FilterChainProxy        : Secured GET /api/v1/inventario/filters
+2026-04-22T18:31:32.329Z DEBUG 1 --- [nio-8080-exec-5] o.s.web.servlet.DispatcherServlet        : GET "/api/v1/inventario/filters", parameters={}
+2026-04-22T18:31:32.330Z DEBUG 1 --- [nio-8080-exec-7] o.s.security.web.FilterChainProxy        : Secured GET /api/v1/categoria/active-true
+2026-04-22T18:31:32.333Z DEBUG 1 --- [nio-8080-exec-7] o.s.web.servlet.DispatcherServlet        : GET "/api/v1/categoria/active-true", parameters={}
+2026-04-22T18:31:32.330Z DEBUG 1 --- [nio-8080-exec-5] s.w.s.m.m.a.RequestMappingHandlerMapping : Mapped to KuHub.modules.gestion_inventario.controller.InventarioController#findFiltersInventory()
+2026-04-22T18:31:32.333Z DEBUG 1 --- [nio-8080-exec-6] o.s.security.web.FilterChainProxy        : Secured GET /api/v1/unidad-medida/find-all-active-true
+2026-04-22T18:31:32.334Z DEBUG 1 --- [nio-8080-exec-6] o.s.web.servlet.DispatcherServlet        : GET "/api/v1/unidad-medida/find-all-active-true", parameters={}
+2026-04-22T18:31:32.334Z DEBUG 1 --- [nio-8080-exec-6] s.w.s.m.m.a.RequestMappingHandlerMapping : Mapped to KuHub.modules.gestion_inventario.controller.UnidadMedidaController#findAllActiveTrue()
+2026-04-22T18:31:32.335Z DEBUG 1 --- [nio-8080-exec-8] o.s.security.web.FilterChainProxy        : Secured POST /api/v1/inventario/paged-inventory
+2026-04-22T18:31:32.336Z DEBUG 1 --- [nio-8080-exec-8] o.s.web.servlet.DispatcherServlet        : POST "/api/v1/inventario/paged-inventory", parameters={}
+2026-04-22T18:31:32.338Z DEBUG 1 --- [nio-8080-exec-8] s.w.s.m.m.a.RequestMappingHandlerMapping : Mapped to KuHub.modules.gestion_inventario.controller.InventarioController#findPagedInventory(FilterInventoryPageDTO)
+2026-04-22T18:31:32.333Z DEBUG 1 --- [nio-8080-exec-7] s.w.s.m.m.a.RequestMappingHandlerMapping : Mapped to KuHub.modules.gestion_inventario.controller.CategoriaController#findAllActiveTrue()
+2026-04-22T18:31:32.363Z DEBUG 1 --- [nio-8080-exec-6] org.hibernate.SQL                        :
+    select
+        um1_0.id_unidad,
+        um1_0.abreviatura,
+        um1_0.activo,
+        um1_0.es_fraccionario,
+        um1_0.nombre_unidad
+    from
+        unidad_medida um1_0
+    where
+        um1_0.activo=?
+Hibernate:
+    select
+        um1_0.id_unidad,
+        um1_0.abreviatura,
+        um1_0.activo,
+        um1_0.es_fraccionario,
+        um1_0.nombre_unidad
+    from
+        unidad_medida um1_0
+    where
+        um1_0.activo=?
+2026-04-22T18:31:32.366Z TRACE 1 --- [nio-8080-exec-6] org.hibernate.orm.jdbc.bind              : binding parameter (1:BOOLEAN) <- [true]
+2026-04-22T18:31:32.368Z DEBUG 1 --- [nio-8080-exec-8] m.m.a.RMh4hfsi84LdbS4uS3jaSaNccc8kartkDJ : Read "application/json;charset=UTF-8" to [FilterInventoryPageDTO(categoriasIds=[], unidadesIds=[], soloStockBajo=false, ocultarAgotados=false, (truncated)...]
+2026-04-22T18:31:32.374Z DEBUG 1 --- [nio-8080-exec-5] org.hibernate.SQL                        :
+    SELECT
+        json_build_object(         'categorias',         (             SELECT
+            json_agg(                 json_build_object(                     'id', c.id_categoria,                     'nombre', c.nombre_categoria                 )             )
+        FROM
+            categoria c
+        WHERE
+            c.activo = TRUE         ),         'unidades',         (             SELECT
+            json_agg(                 json_build_object(                     'id', u.id_unidad,                     'nombre', u.nombre_unidad                 )             )
+        FROM
+            unidad_medida u
+        WHERE
+            u.activo = TRUE         )     )
+Hibernate:
+    SELECT
+        json_build_object(         'categorias',         (             SELECT
+            json_agg(                 json_build_object(                     'id', c.id_categoria,                     'nombre', c.nombre_categoria                 )             )
+        FROM
+            categoria c
+        WHERE
+            c.activo = TRUE         ),         'unidades',         (             SELECT
+            json_agg(                 json_build_object(                     'id', u.id_unidad,                     'nombre', u.nombre_unidad                 )             )
+        FROM
+            unidad_medida u
+        WHERE
+            u.activo = TRUE         )     )
+2026-04-22T18:31:32.374Z DEBUG 1 --- [nio-8080-exec-7] org.hibernate.SQL                        :
+    select
+        c1_0.id_categoria,
+        c1_0.activo,
+        c1_0.nombre_categoria
+    from
+        categoria c1_0
+    where
+        c1_0.activo=?
+Hibernate:
+    select
+        c1_0.id_categoria,
+        c1_0.activo,
+        c1_0.nombre_categoria
+    from
+        categoria c1_0
+    where
+        c1_0.activo=?
+2026-04-22T18:31:32.383Z DEBUG 1 --- [nio-8080-exec-8] org.hibernate.SQL                        :
+    SELECT
+        COUNT(*)
+    FROM
+        inventario i
+    JOIN
+        producto p
+            ON p.id_producto = i.id_producto
+    WHERE
+        i.activo = TRUE
+        AND p.activo = TRUE
+        AND (
+            ? = FALSE
+            OR p.id_categoria = ANY(CAST(? AS INTEGER[]))
+        )
+        AND (
+            ? = FALSE
+            OR p.id_unidad = ANY(CAST(? AS INTEGER[]))
+        )
+        AND (
+            ? = FALSE
+            OR i.stock <= i.stock_limit
+        )
+        AND (
+            ? = FALSE
+            OR i.stock > 0
+        )
+Hibernate:
+    SELECT
+        COUNT(*)
+    FROM
+        inventario i
+    JOIN
+        producto p
+            ON p.id_producto = i.id_producto
+    WHERE
+        i.activo = TRUE
+        AND p.activo = TRUE
+        AND (
+            ? = FALSE
+            OR p.id_categoria = ANY(CAST(? AS INTEGER[]))
+        )
+        AND (
+            ? = FALSE
+            OR p.id_unidad = ANY(CAST(? AS INTEGER[]))
+        )
+        AND (
+            ? = FALSE
+            OR i.stock <= i.stock_limit
+        )
+        AND (
+            ? = FALSE
+            OR i.stock > 0
+        )
+2026-04-22T18:31:32.384Z TRACE 1 --- [nio-8080-exec-8] org.hibernate.orm.jdbc.bind              : binding parameter (1:BOOLEAN) <- [false]
+2026-04-22T18:31:32.384Z TRACE 1 --- [nio-8080-exec-8] org.hibernate.orm.jdbc.bind              : binding parameter (2:JAVA_OBJECT) <- [null]
+2026-04-22T18:31:32.383Z TRACE 1 --- [nio-8080-exec-7] org.hibernate.orm.jdbc.bind              : binding parameter (1:BOOLEAN) <- [true]
+2026-04-22T18:31:32.387Z DEBUG 1 --- [nio-8080-exec-6] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/yaml]
+2026-04-22T18:31:32.391Z DEBUG 1 --- [nio-8080-exec-6] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Writing [[UnidadMedida(idUnidad=1, nombreUnidad=Unidad, abreviatura=un, esFraccionario=false, activo=true), U (truncated)...]
+2026-04-22T18:31:32.389Z TRACE 1 --- [nio-8080-exec-8] org.hibernate.orm.jdbc.bind              : binding parameter (3:BOOLEAN) <- [false]
+2026-04-22T18:31:32.395Z TRACE 1 --- [nio-8080-exec-8] org.hibernate.orm.jdbc.bind              : binding parameter (4:JAVA_OBJECT) <- [null]
+2026-04-22T18:31:32.397Z TRACE 1 --- [nio-8080-exec-8] org.hibernate.orm.jdbc.bind              : binding parameter (5:BOOLEAN) <- [false]
+2026-04-22T18:31:32.397Z TRACE 1 --- [nio-8080-exec-8] org.hibernate.orm.jdbc.bind              : binding parameter (6:BOOLEAN) <- [false]
+2026-04-22T18:31:32.398Z DEBUG 1 --- [nio-8080-exec-6] o.s.web.servlet.DispatcherServlet        : Completed 200 OK
+2026-04-22T18:31:32.404Z DEBUG 1 --- [nio-8080-exec-7] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/yaml]
+2026-04-22T18:31:32.405Z DEBUG 1 --- [nio-8080-exec-7] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Writing [[Categoria(idCategoria=1, nombreCategoria=Verduras, activo=true), Categoria(idCategoria=2, nombreCat (truncated)...]
+2026-04-22T18:31:32.407Z DEBUG 1 --- [nio-8080-exec-8] org.hibernate.SQL                        :
+    SELECT
+        p.nombre_producto,
+        p.cod_producto,
+        p.descripcion_producto,
+        c.nombre_categoria,
+        i.stock,
+        i.stock_limit,
+        u.nombre_unidad,
+        u.es_fraccionario,
+        i.id_inventario,
+        p.id_producto,
+        c.id_categoria,
+        u.id_unidad
+    FROM
+        inventario i
+    JOIN
+        producto p
+            ON p.id_producto = i.id_producto
+    JOIN
+        categoria c
+            ON c.id_categoria = p.id_categoria
+    JOIN
+        unidad_medida u
+            ON u.id_unidad = p.id_unidad
+    WHERE
+        i.activo = TRUE
+        AND p.activo = TRUE
+        AND (
+            ? = FALSE
+            OR c.id_categoria = ANY(CAST(? AS INTEGER[]))
+        )
+        AND (
+            ? = FALSE
+            OR u.id_unidad = ANY(CAST(? AS INTEGER[]))
+        )
+        AND (
+            ? = FALSE
+            OR i.stock <= i.stock_limit
+        )
+        AND (
+            ? = FALSE
+            OR i.stock > 0
+        )
+    ORDER BY
+        CASE
+            WHEN ? = TRUE
+                THEN p.nombre_producto
+        END ASC,
+        CASE
+            WHEN ? = FALSE
+                THEN p.nombre_producto
+        END DESC
+    LIMIT
+        ?
+    OFFSET
+        ?
+Hibernate:
+    SELECT
+        p.nombre_producto,
+        p.cod_producto,
+        p.descripcion_producto,
+        c.nombre_categoria,
+        i.stock,
+        i.stock_limit,
+        u.nombre_unidad,
+        u.es_fraccionario,
+        i.id_inventario,
+        p.id_producto,
+        c.id_categoria,
+        u.id_unidad
+    FROM
+        inventario i
+    JOIN
+        producto p
+            ON p.id_producto = i.id_producto
+    JOIN
+        categoria c
+            ON c.id_categoria = p.id_categoria
+    JOIN
+        unidad_medida u
+            ON u.id_unidad = p.id_unidad
+    WHERE
+        i.activo = TRUE
+        AND p.activo = TRUE
+        AND (
+            ? = FALSE
+            OR c.id_categoria = ANY(CAST(? AS INTEGER[]))
+        )
+        AND (
+            ? = FALSE
+            OR u.id_unidad = ANY(CAST(? AS INTEGER[]))
+        )
+        AND (
+            ? = FALSE
+            OR i.stock <= i.stock_limit
+        )
+        AND (
+            ? = FALSE
+            OR i.stock > 0
+        )
+    ORDER BY
+        CASE
+            WHEN ? = TRUE
+                THEN p.nombre_producto
+        END ASC,
+        CASE
+            WHEN ? = FALSE
+                THEN p.nombre_producto
+        END DESC
+    LIMIT
+        ?
+    OFFSET
+        ?
+2026-04-22T18:31:32.411Z DEBUG 1 --- [nio-8080-exec-7] o.s.web.servlet.DispatcherServlet        : Completed 200 OK
+2026-04-22T18:31:32.412Z TRACE 1 --- [nio-8080-exec-8] org.hibernate.orm.jdbc.bind              : binding parameter (1:BOOLEAN) <- [false]
+2026-04-22T18:31:32.413Z TRACE 1 --- [nio-8080-exec-8] org.hibernate.orm.jdbc.bind              : binding parameter (2:JAVA_OBJECT) <- [null]
+2026-04-22T18:31:32.416Z TRACE 1 --- [nio-8080-exec-8] org.hibernate.orm.jdbc.bind              : binding parameter (3:BOOLEAN) <- [false]
+2026-04-22T18:31:32.417Z TRACE 1 --- [nio-8080-exec-8] org.hibernate.orm.jdbc.bind              : binding parameter (4:JAVA_OBJECT) <- [null]
+2026-04-22T18:31:32.419Z TRACE 1 --- [nio-8080-exec-8] org.hibernate.orm.jdbc.bind              : binding parameter (5:BOOLEAN) <- [false]
+2026-04-22T18:31:32.420Z TRACE 1 --- [nio-8080-exec-8] org.hibernate.orm.jdbc.bind              : binding parameter (6:BOOLEAN) <- [false]
+2026-04-22T18:31:32.420Z DEBUG 1 --- [nio-8080-exec-5] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/yaml]
+2026-04-22T18:31:32.420Z TRACE 1 --- [nio-8080-exec-8] org.hibernate.orm.jdbc.bind              : binding parameter (7:BOOLEAN) <- [true]
+2026-04-22T18:31:32.421Z TRACE 1 --- [nio-8080-exec-8] org.hibernate.orm.jdbc.bind              : binding parameter (8:BOOLEAN) <- [true]
+2026-04-22T18:31:32.421Z TRACE 1 --- [nio-8080-exec-8] org.hibernate.orm.jdbc.bind              : binding parameter (9:INTEGER) <- [20]
+2026-04-22T18:31:32.421Z TRACE 1 --- [nio-8080-exec-8] org.hibernate.orm.jdbc.bind              : binding parameter (10:INTEGER) <- [0]
+2026-04-22T18:31:32.424Z DEBUG 1 --- [nio-8080-exec-5] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Writing [InventoryFilters[categorias=[SimpleFilter[id=1, nombre=Verduras], SimpleFilter[id=2, nombre=Congelad (truncated)...]
+2026-04-22T18:31:32.429Z DEBUG 1 --- [nio-8080-exec-5] o.s.web.servlet.DispatcherServlet        : Completed 200 OK
+2026-04-22T18:31:32.445Z DEBUG 1 --- [nio-8080-exec-8] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/yaml]
+2026-04-22T18:31:32.469Z DEBUG 1 --- [nio-8080-exec-8] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Writing [InventoriesPage[data=[InventoryItem[idInventario=70, idProducto=70, nombreProducto=Aceite De Maravil (truncated)...]
+2026-04-22T18:31:32.486Z DEBUG 1 --- [nio-8080-exec-8] o.s.web.servlet.DispatcherServlet        : Completed 200 OK
+2026-04-22T18:31:33.823Z DEBUG 1 --- [nio-8080-exec-9] o.s.security.web.FilterChainProxy        : Securing POST /api/v1/inventario/massive-producto-inventory-listing
+2026-04-22T18:31:33.826Z  INFO 1 --- [nio-8080-exec-9] K.c.s.rate_limiting.RateLimitFilter      : 📍 IP: 186.78.184.242 | Petición 9 de 80
+2026-04-22T18:31:33.830Z DEBUG 1 --- [nio-8080-exec-9] o.s.security.web.FilterChainProxy        : Secured POST /api/v1/inventario/massive-producto-inventory-listing
+2026-04-22T18:31:33.831Z DEBUG 1 --- [nio-8080-exec-9] o.s.web.servlet.DispatcherServlet        : POST "/api/v1/inventario/massive-producto-inventory-listing", parameters={}
+2026-04-22T18:31:33.831Z DEBUG 1 --- [nio-8080-exec-9] s.w.s.m.m.a.RequestMappingHandlerMapping : Mapped to KuHub.modules.gestion_inventario.controller.InventarioController#massiveProductInventoryListing(SearchDTO)
+2026-04-22T18:31:33.834Z DEBUG 1 --- [nio-8080-exec-9] m.m.a.RMh4hfsi84LdbS4uS3jaSaNccc8kartkDJ : Read "application/json;charset=UTF-8" to [SearchDTO(term=, page=1)]
+2026-04-22T18:31:33.838Z DEBUG 1 --- [nio-8080-exec-9] org.hibernate.SQL                        :
+    SELECT
+        COUNT(*)
+    FROM
+        inventario i
+    JOIN
+        producto p
+            ON p.id_producto = i.id_producto
+    WHERE
+        i.activo = true
+        AND (
+            ? = ''
+            OR LOWER(p.nombre_producto) LIKE LOWER(CONCAT('%', ?, '%'))
+            OR LOWER(p.cod_producto) LIKE LOWER(CONCAT('%', ?, '%'))
+        )
+Hibernate:
+    SELECT
+        COUNT(*)
+    FROM
+        inventario i
+    JOIN
+        producto p
+            ON p.id_producto = i.id_producto
+    WHERE
+        i.activo = true
+        AND (
+            ? = ''
+            OR LOWER(p.nombre_producto) LIKE LOWER(CONCAT('%', ?, '%'))
+            OR LOWER(p.cod_producto) LIKE LOWER(CONCAT('%', ?, '%'))
+        )
+2026-04-22T18:31:33.839Z TRACE 1 --- [nio-8080-exec-9] org.hibernate.orm.jdbc.bind              : binding parameter (1:VARCHAR) <- []
+2026-04-22T18:31:33.839Z TRACE 1 --- [nio-8080-exec-9] org.hibernate.orm.jdbc.bind              : binding parameter (2:VARCHAR) <- []
+2026-04-22T18:31:33.839Z TRACE 1 --- [nio-8080-exec-9] org.hibernate.orm.jdbc.bind              : binding parameter (3:VARCHAR) <- []
+2026-04-22T18:31:33.844Z DEBUG 1 --- [nio-8080-exec-9] org.hibernate.SQL                        :
+    SELECT
+        p.nombre_producto AS nombreProducto,
+        'Stock: ' || trim(trailing '.' from to_char(i.stock, 'FM9999990.999')) || ' ' || u.nombre_unidad AS detalles,
+        i.stock AS stock,
+        u.es_fraccionario AS esFraccionario,
+        i.id_inventario AS idInventario,
+        p.id_producto AS idProducto
+    FROM
+        inventario i
+    JOIN
+        producto p
+            ON i.id_producto = p.id_producto
+    JOIN
+        unidad_medida u
+            ON u.id_unidad = p.id_unidad
+    WHERE
+        i.activo = true
+        AND (
+            ? = ''
+            OR LOWER(p.nombre_producto) LIKE LOWER(CONCAT('%', ?, '%'))
+            OR LOWER(p.cod_producto) LIKE LOWER(CONCAT('%', ?, '%'))
+        )
+    ORDER BY
+        p.nombre_producto
+    LIMIT
+        ?
+    OFFSET
+        ?
+Hibernate:
+    SELECT
+        p.nombre_producto AS nombreProducto,
+        'Stock: ' || trim(trailing '.' from to_char(i.stock, 'FM9999990.999')) || ' ' || u.nombre_unidad AS detalles,
+        i.stock AS stock,
+        u.es_fraccionario AS esFraccionario,
+        i.id_inventario AS idInventario,
+        p.id_producto AS idProducto
+    FROM
+        inventario i
+    JOIN
+        producto p
+            ON i.id_producto = p.id_producto
+    JOIN
+        unidad_medida u
+            ON u.id_unidad = p.id_unidad
+    WHERE
+        i.activo = true
+        AND (
+            ? = ''
+            OR LOWER(p.nombre_producto) LIKE LOWER(CONCAT('%', ?, '%'))
+            OR LOWER(p.cod_producto) LIKE LOWER(CONCAT('%', ?, '%'))
+        )
+    ORDER BY
+        p.nombre_producto
+    LIMIT
+        ?
+    OFFSET
+        ?
+2026-04-22T18:31:33.847Z TRACE 1 --- [nio-8080-exec-9] org.hibernate.orm.jdbc.bind              : binding parameter (1:VARCHAR) <- []
+2026-04-22T18:31:33.848Z TRACE 1 --- [nio-8080-exec-9] org.hibernate.orm.jdbc.bind              : binding parameter (2:VARCHAR) <- []
+2026-04-22T18:31:33.848Z TRACE 1 --- [nio-8080-exec-9] org.hibernate.orm.jdbc.bind              : binding parameter (3:VARCHAR) <- []
+2026-04-22T18:31:33.848Z TRACE 1 --- [nio-8080-exec-9] org.hibernate.orm.jdbc.bind              : binding parameter (4:INTEGER) <- [20]
+2026-04-22T18:31:33.848Z TRACE 1 --- [nio-8080-exec-9] org.hibernate.orm.jdbc.bind              : binding parameter (5:INTEGER) <- [0]
+2026-04-22T18:31:33.871Z DEBUG 1 --- [nio-8080-exec-9] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/yaml]
+2026-04-22T18:31:33.881Z DEBUG 1 --- [nio-8080-exec-9] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Writing [BulkInventoriesPage[content=[org.springframework.data.jpa.repository.query.AbstractJpaQuery$TupleCon (truncated)...]
+2026-04-22T18:31:33.892Z DEBUG 1 --- [nio-8080-exec-9] o.s.web.servlet.DispatcherServlet        : Completed 200 OK
+2026-04-22T18:31:40.163Z DEBUG 1 --- [io-8080-exec-10] o.s.security.web.FilterChainProxy        : Securing POST /api/v1/solicitud/proyeccion-abastecimiento
+2026-04-22T18:31:40.165Z  INFO 1 --- [io-8080-exec-10] K.c.s.rate_limiting.RateLimitFilter      : 📍 IP: 186.78.184.242 | Petición 10 de 80
+2026-04-22T18:31:40.169Z DEBUG 1 --- [io-8080-exec-10] o.s.security.web.FilterChainProxy        : Secured POST /api/v1/solicitud/proyeccion-abastecimiento
+2026-04-22T18:31:40.170Z DEBUG 1 --- [io-8080-exec-10] o.s.web.servlet.DispatcherServlet        : POST "/api/v1/solicitud/proyeccion-abastecimiento", parameters={}
+2026-04-22T18:31:40.170Z DEBUG 1 --- [io-8080-exec-10] s.w.s.m.m.a.RequestMappingHandlerMapping : Mapped to KuHub.modules.gestion_solicitud.controller.SolicitudController#findProyeccionAbastecimiento(DateRangeDTO, Authentication)
+2026-04-22T18:31:40.176Z DEBUG 1 --- [io-8080-exec-10] m.m.a.RMh4hfsi84LdbS4uS3jaSaNccc8kartkDJ : Read "application/json;charset=UTF-8" to [DateRangeDTO(fechaInicio=2026-04-26, fechaFin=2026-05-02)]
+2026-04-22T18:31:40.195Z DEBUG 1 --- [io-8080-exec-10] org.hibernate.SQL                        :
+    SELECT
+        jsonb_agg(     jsonb_build_object(         'idProducto',              p.id_producto,         'nombreProducto',          p.nombre_producto,         'nombreUnidad',            um.nombre_unidad,         'abreviatura',             um.abreviatura,         'esFraccionario',          um.es_fraccionario,         'nombreCategoria',         c.nombre_categoria,         'cantidadTotalSolicitada', sub_total.total_solicitado,         'idInventario',            inv.id_inventario     )
     ORDER BY
         c.nombre_categoria ASC, p.nombre_producto ASC ) AS proyeccion_abastecimiento
     FROM
@@ -56,21 +782,57 @@ Hibernate:
     INNER JOIN
         categoria     c
             ON c.id_categoria  = p.id_categoria
-2026-04-22T18:05:26.367Z TRACE 1 --- [nio-8080-exec-8] org.hibernate.orm.jdbc.bind              : binding parameter (1:DATE) <- [2026-04-26]
-2026-04-22T18:05:26.367Z TRACE 1 --- [nio-8080-exec-8] org.hibernate.orm.jdbc.bind              : binding parameter (2:DATE) <- [2026-05-02]
-2026-04-22T18:05:26.374Z  INFO 1 --- [nio-8080-exec-8] K.m.g.service.SolicitudServiceImp        : Consulta proyección abastecimiento completada. Resultado nulo: false
-2026-04-22T18:05:26.376Z  INFO 1 --- [nio-8080-exec-8] K.m.g.service.SolicitudServiceImp        : Proyección abastecimiento parseada: 10 productos
-2026-04-22T18:05:26.377Z DEBUG 1 --- [nio-8080-exec-8] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/yaml]
-2026-04-22T18:05:26.378Z DEBUG 1 --- [nio-8080-exec-8] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Writing [ProyeccionAbastecimiento[proyeccionAbastecimiento=[ProductoAbastecimientoItem[idProducto=75, nombreP (truncated)...]
-2026-04-22T18:05:26.379Z DEBUG 1 --- [nio-8080-exec-8] o.s.web.servlet.DispatcherServlet        : Completed 200 OK
-2026-04-22T18:05:57.109Z DEBUG 1 --- [nio-8080-exec-9] o.s.security.web.FilterChainProxy        : Securing PATCH /api/v1/inventario/bulk-update-inventory-stock
-2026-04-22T18:05:57.110Z  INFO 1 --- [nio-8080-exec-9] K.c.s.rate_limiting.RateLimitFilter      : 🔄 Minuto reiniciado para la IP: 186.78.184.242
-2026-04-22T18:05:57.111Z  INFO 1 --- [nio-8080-exec-9] K.c.s.rate_limiting.RateLimitFilter      : 📍 IP: 186.78.184.242 | Petición 1 de 80
-2026-04-22T18:05:57.114Z DEBUG 1 --- [nio-8080-exec-9] o.s.security.web.FilterChainProxy        : Secured PATCH /api/v1/inventario/bulk-update-inventory-stock
-2026-04-22T18:05:57.114Z DEBUG 1 --- [nio-8080-exec-9] o.s.web.servlet.DispatcherServlet        : PATCH "/api/v1/inventario/bulk-update-inventory-stock", parameters={}
-2026-04-22T18:05:57.114Z DEBUG 1 --- [nio-8080-exec-9] s.w.s.m.m.a.RequestMappingHandlerMapping : Mapped to KuHub.modules.gestion_inventario.controller.InventarioController#updateBulkInventoryStock(List)
-2026-04-22T18:05:57.116Z DEBUG 1 --- [nio-8080-exec-9] m.m.a.RMh4hfsi84LdbS4uS3jaSaNccc8kartkDJ : Read "application/json;charset=UTF-8" to [[ItemRequest[idInventario=null, delta=7.566, stockEnVista=60, tipoMovimiento=ENTRADA_INVENTARIO], It (truncated)...]
-2026-04-22T18:05:57.120Z DEBUG 1 --- [nio-8080-exec-9] org.hibernate.SQL                        :
+    INNER JOIN
+        inventario    inv
+            ON inv.id_producto = p.id_producto
+            AND inv.activo = TRUE
+Hibernate:
+    SELECT
+        jsonb_agg(     jsonb_build_object(         'idProducto',              p.id_producto,         'nombreProducto',          p.nombre_producto,         'nombreUnidad',            um.nombre_unidad,         'abreviatura',             um.abreviatura,         'esFraccionario',          um.es_fraccionario,         'nombreCategoria',         c.nombre_categoria,         'cantidadTotalSolicitada', sub_total.total_solicitado,         'idInventario',            inv.id_inventario     )
+    ORDER BY
+        c.nombre_categoria ASC, p.nombre_producto ASC ) AS proyeccion_abastecimiento
+    FROM
+        (     SELECT
+            ds.id_producto,
+            SUM(ds.cant_producto_solicitud) AS total_solicitado
+        FROM
+            detalle_solicitud ds
+        INNER JOIN
+            solicitud s
+                ON s.id_solicitud = ds.id_solicitud
+        WHERE
+            s.estado_solicitud = 'EN_PEDIDO'
+            AND s.fecha_solicitada BETWEEN ? AND ?
+        GROUP BY
+            ds.id_producto ) sub_total
+    INNER JOIN
+        producto      p
+            ON p.id_producto  = sub_total.id_producto
+            AND p.activo = TRUE
+    INNER JOIN
+        unidad_medida um
+            ON um.id_unidad    = p.id_unidad
+    INNER JOIN
+        categoria     c
+            ON c.id_categoria  = p.id_categoria
+    INNER JOIN
+        inventario    inv
+            ON inv.id_producto = p.id_producto
+            AND inv.activo = TRUE
+2026-04-22T18:31:40.197Z TRACE 1 --- [io-8080-exec-10] org.hibernate.orm.jdbc.bind              : binding parameter (1:DATE) <- [2026-04-26]
+2026-04-22T18:31:40.199Z TRACE 1 --- [io-8080-exec-10] org.hibernate.orm.jdbc.bind              : binding parameter (2:DATE) <- [2026-05-02]
+2026-04-22T18:31:40.207Z  INFO 1 --- [io-8080-exec-10] K.m.g.service.SolicitudServiceImp        : Consulta proyección abastecimiento completada. Resultado nulo: false
+2026-04-22T18:31:40.220Z  INFO 1 --- [io-8080-exec-10] K.m.g.service.SolicitudServiceImp        : Proyección abastecimiento parseada: 10 productos
+2026-04-22T18:31:40.228Z DEBUG 1 --- [io-8080-exec-10] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/yaml]
+2026-04-22T18:31:40.235Z DEBUG 1 --- [io-8080-exec-10] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Writing [ProyeccionAbastecimiento[proyeccionAbastecimiento=[ProductoAbastecimientoItem[idProducto=75, nombreP (truncated)...]
+2026-04-22T18:31:40.242Z DEBUG 1 --- [io-8080-exec-10] o.s.web.servlet.DispatcherServlet        : Completed 200 OK
+2026-04-22T18:31:42.581Z DEBUG 1 --- [nio-8080-exec-2] o.s.security.web.FilterChainProxy        : Securing PATCH /api/v1/inventario/bulk-update-inventory-stock
+2026-04-22T18:31:42.583Z  INFO 1 --- [nio-8080-exec-2] K.c.s.rate_limiting.RateLimitFilter      : 📍 IP: 186.78.184.242 | Petición 11 de 80
+2026-04-22T18:31:42.587Z DEBUG 1 --- [nio-8080-exec-2] o.s.security.web.FilterChainProxy        : Secured PATCH /api/v1/inventario/bulk-update-inventory-stock
+2026-04-22T18:31:42.587Z DEBUG 1 --- [nio-8080-exec-2] o.s.web.servlet.DispatcherServlet        : PATCH "/api/v1/inventario/bulk-update-inventory-stock", parameters={}
+2026-04-22T18:31:42.588Z DEBUG 1 --- [nio-8080-exec-2] s.w.s.m.m.a.RequestMappingHandlerMapping : Mapped to KuHub.modules.gestion_inventario.controller.InventarioController#updateBulkInventoryStock(List)
+2026-04-22T18:31:42.597Z DEBUG 1 --- [nio-8080-exec-2] m.m.a.RMh4hfsi84LdbS4uS3jaSaNccc8kartkDJ : Read "application/json;charset=UTF-8" to [[ItemRequest[idInventario=75, delta=7.566, stockEnVista=67.566, tipoMovimiento=ENTRADA_INVENTARIO],  (truncated)...]
+2026-04-22T18:31:42.634Z DEBUG 1 --- [nio-8080-exec-2] org.hibernate.SQL                        :
     select
         i1_0.id_inventario,
         i1_0.activo,
@@ -114,17 +876,185 @@ Hibernate:
     where
         i1_0.id_inventario in (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         and i1_0.activo=true
-2026-04-22T18:05:57.121Z TRACE 1 --- [nio-8080-exec-9] org.hibernate.orm.jdbc.bind              : binding parameter (1:INTEGER) <- [null]
-2026-04-22T18:05:57.121Z TRACE 1 --- [nio-8080-exec-9] org.hibernate.orm.jdbc.bind              : binding parameter (2:INTEGER) <- [null]
-2026-04-22T18:05:57.121Z TRACE 1 --- [nio-8080-exec-9] org.hibernate.orm.jdbc.bind              : binding parameter (3:INTEGER) <- [null]
-2026-04-22T18:05:57.121Z TRACE 1 --- [nio-8080-exec-9] org.hibernate.orm.jdbc.bind              : binding parameter (4:INTEGER) <- [null]
-2026-04-22T18:05:57.121Z TRACE 1 --- [nio-8080-exec-9] org.hibernate.orm.jdbc.bind              : binding parameter (5:INTEGER) <- [null]
-2026-04-22T18:05:57.121Z TRACE 1 --- [nio-8080-exec-9] org.hibernate.orm.jdbc.bind              : binding parameter (6:INTEGER) <- [null]
-2026-04-22T18:05:57.121Z TRACE 1 --- [nio-8080-exec-9] org.hibernate.orm.jdbc.bind              : binding parameter (7:INTEGER) <- [null]
-2026-04-22T18:05:57.121Z TRACE 1 --- [nio-8080-exec-9] org.hibernate.orm.jdbc.bind              : binding parameter (8:INTEGER) <- [null]
-2026-04-22T18:05:57.121Z TRACE 1 --- [nio-8080-exec-9] org.hibernate.orm.jdbc.bind              : binding parameter (9:INTEGER) <- [null]
-2026-04-22T18:05:57.121Z TRACE 1 --- [nio-8080-exec-9] org.hibernate.orm.jdbc.bind              : binding parameter (10:INTEGER) <- [null]
-2026-04-22T18:05:57.126Z DEBUG 1 --- [nio-8080-exec-9] org.hibernate.SQL                        :
+2026-04-22T18:31:42.635Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (1:INTEGER) <- [75]
+2026-04-22T18:31:42.635Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (2:INTEGER) <- [83]
+2026-04-22T18:31:42.636Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (3:INTEGER) <- [116]
+2026-04-22T18:31:42.636Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (4:INTEGER) <- [157]
+2026-04-22T18:31:42.636Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (5:INTEGER) <- [193]
+2026-04-22T18:31:42.636Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (6:INTEGER) <- [269]
+2026-04-22T18:31:42.637Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (7:INTEGER) <- [236]
+2026-04-22T18:31:42.637Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (8:INTEGER) <- [237]
+2026-04-22T18:31:42.637Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (9:INTEGER) <- [244]
+2026-04-22T18:31:42.637Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (10:INTEGER) <- [5]
+2026-04-22T18:31:42.651Z DEBUG 1 --- [nio-8080-exec-2] org.hibernate.SQL                        :
+    select
+        c1_0.id_categoria,
+        c1_0.activo,
+        c1_0.nombre_categoria
+    from
+        categoria c1_0
+    where
+        c1_0.id_categoria=?
+Hibernate:
+    select
+        c1_0.id_categoria,
+        c1_0.activo,
+        c1_0.nombre_categoria
+    from
+        categoria c1_0
+    where
+        c1_0.id_categoria=?
+2026-04-22T18:31:42.652Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (1:SMALLINT) <- [1]
+2026-04-22T18:31:42.655Z DEBUG 1 --- [nio-8080-exec-2] org.hibernate.SQL                        :
+    select
+        um1_0.id_unidad,
+        um1_0.abreviatura,
+        um1_0.activo,
+        um1_0.es_fraccionario,
+        um1_0.nombre_unidad
+    from
+        unidad_medida um1_0
+    where
+        um1_0.id_unidad=?
+Hibernate:
+    select
+        um1_0.id_unidad,
+        um1_0.abreviatura,
+        um1_0.activo,
+        um1_0.es_fraccionario,
+        um1_0.nombre_unidad
+    from
+        unidad_medida um1_0
+    where
+        um1_0.id_unidad=?
+2026-04-22T18:31:42.655Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (1:SMALLINT) <- [6]
+2026-04-22T18:31:42.660Z DEBUG 1 --- [nio-8080-exec-2] org.hibernate.SQL                        :
+    select
+        c1_0.id_categoria,
+        c1_0.activo,
+        c1_0.nombre_categoria
+    from
+        categoria c1_0
+    where
+        c1_0.id_categoria=?
+Hibernate:
+    select
+        c1_0.id_categoria,
+        c1_0.activo,
+        c1_0.nombre_categoria
+    from
+        categoria c1_0
+    where
+        c1_0.id_categoria=?
+2026-04-22T18:31:42.661Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (1:SMALLINT) <- [3]
+2026-04-22T18:31:42.663Z DEBUG 1 --- [nio-8080-exec-2] org.hibernate.SQL                        :
+    select
+        um1_0.id_unidad,
+        um1_0.abreviatura,
+        um1_0.activo,
+        um1_0.es_fraccionario,
+        um1_0.nombre_unidad
+    from
+        unidad_medida um1_0
+    where
+        um1_0.id_unidad=?
+Hibernate:
+    select
+        um1_0.id_unidad,
+        um1_0.abreviatura,
+        um1_0.activo,
+        um1_0.es_fraccionario,
+        um1_0.nombre_unidad
+    from
+        unidad_medida um1_0
+    where
+        um1_0.id_unidad=?
+2026-04-22T18:31:42.663Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (1:SMALLINT) <- [2]
+2026-04-22T18:31:42.666Z DEBUG 1 --- [nio-8080-exec-2] org.hibernate.SQL                        :
+    select
+        um1_0.id_unidad,
+        um1_0.abreviatura,
+        um1_0.activo,
+        um1_0.es_fraccionario,
+        um1_0.nombre_unidad
+    from
+        unidad_medida um1_0
+    where
+        um1_0.id_unidad=?
+Hibernate:
+    select
+        um1_0.id_unidad,
+        um1_0.abreviatura,
+        um1_0.activo,
+        um1_0.es_fraccionario,
+        um1_0.nombre_unidad
+    from
+        unidad_medida um1_0
+    where
+        um1_0.id_unidad=?
+2026-04-22T18:31:42.667Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (1:SMALLINT) <- [1]
+2026-04-22T18:31:42.669Z DEBUG 1 --- [nio-8080-exec-2] org.hibernate.SQL                        :
+    select
+        um1_0.id_unidad,
+        um1_0.abreviatura,
+        um1_0.activo,
+        um1_0.es_fraccionario,
+        um1_0.nombre_unidad
+    from
+        unidad_medida um1_0
+    where
+        um1_0.id_unidad=?
+Hibernate:
+    select
+        um1_0.id_unidad,
+        um1_0.abreviatura,
+        um1_0.activo,
+        um1_0.es_fraccionario,
+        um1_0.nombre_unidad
+    from
+        unidad_medida um1_0
+    where
+        um1_0.id_unidad=?
+2026-04-22T18:31:42.670Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (1:SMALLINT) <- [3]
+2026-04-22T18:31:42.672Z DEBUG 1 --- [nio-8080-exec-2] org.hibernate.SQL                        :
+    select
+        c1_0.id_categoria,
+        c1_0.activo,
+        c1_0.nombre_categoria
+    from
+        categoria c1_0
+    where
+        c1_0.id_categoria=?
+Hibernate:
+    select
+        c1_0.id_categoria,
+        c1_0.activo,
+        c1_0.nombre_categoria
+    from
+        categoria c1_0
+    where
+        c1_0.id_categoria=?
+2026-04-22T18:31:42.672Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (1:SMALLINT) <- [6]
+2026-04-22T18:31:42.675Z DEBUG 1 --- [nio-8080-exec-2] org.hibernate.SQL                        :
+    select
+        c1_0.id_categoria,
+        c1_0.activo,
+        c1_0.nombre_categoria
+    from
+        categoria c1_0
+    where
+        c1_0.id_categoria=?
+Hibernate:
+    select
+        c1_0.id_categoria,
+        c1_0.activo,
+        c1_0.nombre_categoria
+    from
+        categoria c1_0
+    where
+        c1_0.id_categoria=?
+2026-04-22T18:31:42.675Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (1:SMALLINT) <- [7]
+2026-04-22T18:31:42.704Z DEBUG 1 --- [nio-8080-exec-2] org.hibernate.SQL                        :
     select
         u1_0.id_usuario,
         u1_0.activo,
@@ -162,8 +1092,8 @@ Hibernate:
         public.usuario u1_0
     where
         upper(u1_0.email)=upper(?)
-2026-04-22T18:05:57.126Z TRACE 1 --- [nio-8080-exec-9] org.hibernate.orm.jdbc.bind              : binding parameter (1:VARCHAR) <- [adminhash@kuhub.cl]
-2026-04-22T18:05:57.128Z DEBUG 1 --- [nio-8080-exec-9] org.hibernate.SQL                        :
+2026-04-22T18:31:42.706Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (1:VARCHAR) <- [adminhash@kuhub.cl]
+2026-04-22T18:31:42.708Z DEBUG 1 --- [nio-8080-exec-2] org.hibernate.SQL                        :
     select
         r1_0.id_rol,
         r1_0.activo,
@@ -181,8 +1111,467 @@ Hibernate:
         public.rol r1_0
     where
         r1_0.id_rol=?
-2026-04-22T18:05:57.129Z TRACE 1 --- [nio-8080-exec-9] org.hibernate.orm.jdbc.bind              : binding parameter (1:INTEGER) <- [1]
-2026-04-22T18:05:57.132Z DEBUG 1 --- [nio-8080-exec-9] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/yaml]
-2026-04-22T18:05:57.132Z DEBUG 1 --- [nio-8080-exec-9] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Writing [BulkInventoryProcess[exitosos=[], advertencias=[], errores=[ItemResult[idInventario=null, producto=N (truncated)...]
-2026-04-22T18:05:57.134Z DEBUG 1 --- [nio-8080-exec-9] o.s.web.servlet.DispatcherServlet        : Completed 200 OK
-ubuntu@ip-172-26-1-143:~$
+2026-04-22T18:31:42.710Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (1:INTEGER) <- [1]
+2026-04-22T18:31:42.757Z DEBUG 1 --- [nio-8080-exec-2] org.hibernate.SQL                        :
+    insert
+    into
+        movimiento
+        (id_bodega_transito, fecha_movimiento, id_inventario, observacion, stock_movimiento, tipo_movimiento, id_usuario)
+    values
+        (?, ?, ?, ?, ?, ?, ?)
+Hibernate:
+    insert
+    into
+        movimiento
+        (id_bodega_transito, fecha_movimiento, id_inventario, observacion, stock_movimiento, tipo_movimiento, id_usuario)
+    values
+        (?, ?, ?, ?, ?, ?, ?)
+2026-04-22T18:31:42.761Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (1:INTEGER) <- [null]
+2026-04-22T18:31:42.761Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (2:TIMESTAMP) <- [2026-04-22T18:31:42.749407]
+2026-04-22T18:31:42.762Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (3:INTEGER) <- [75]
+2026-04-22T18:31:42.762Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (4:VARCHAR) <- [Entrada masiva: Aceituna Verde Sin Carozo]
+2026-04-22T18:31:42.762Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (5:NUMERIC) <- [7.566]
+2026-04-22T18:31:42.764Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (6:VARCHAR) <- [ENTRADA_INVENTARIO]
+2026-04-22T18:31:42.764Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (7:INTEGER) <- [1]
+2026-04-22T18:31:42.775Z DEBUG 1 --- [nio-8080-exec-2] org.hibernate.SQL                        :
+    insert
+    into
+        movimiento
+        (id_bodega_transito, fecha_movimiento, id_inventario, observacion, stock_movimiento, tipo_movimiento, id_usuario)
+    values
+        (?, ?, ?, ?, ?, ?, ?)
+Hibernate:
+    insert
+    into
+        movimiento
+        (id_bodega_transito, fecha_movimiento, id_inventario, observacion, stock_movimiento, tipo_movimiento, id_usuario)
+    values
+        (?, ?, ?, ?, ?, ?, ?)
+2026-04-22T18:31:42.775Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (1:INTEGER) <- [null]
+2026-04-22T18:31:42.776Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (2:TIMESTAMP) <- [2026-04-22T18:31:42.774819]
+2026-04-22T18:31:42.776Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (3:INTEGER) <- [83]
+2026-04-22T18:31:42.776Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (4:VARCHAR) <- [Entrada masiva: Almidon De Maiz / Maicena]
+2026-04-22T18:31:42.777Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (5:NUMERIC) <- [6.253]
+2026-04-22T18:31:42.777Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (6:VARCHAR) <- [ENTRADA_INVENTARIO]
+2026-04-22T18:31:42.777Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (7:INTEGER) <- [1]
+2026-04-22T18:31:42.779Z DEBUG 1 --- [nio-8080-exec-2] org.hibernate.SQL                        :
+    insert
+    into
+        movimiento
+        (id_bodega_transito, fecha_movimiento, id_inventario, observacion, stock_movimiento, tipo_movimiento, id_usuario)
+    values
+        (?, ?, ?, ?, ?, ?, ?)
+Hibernate:
+    insert
+    into
+        movimiento
+        (id_bodega_transito, fecha_movimiento, id_inventario, observacion, stock_movimiento, tipo_movimiento, id_usuario)
+    values
+        (?, ?, ?, ?, ?, ?, ?)
+2026-04-22T18:31:42.780Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (1:INTEGER) <- [null]
+2026-04-22T18:31:42.780Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (2:TIMESTAMP) <- [2026-04-22T18:31:42.779600]
+2026-04-22T18:31:42.781Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (3:INTEGER) <- [116]
+2026-04-22T18:31:42.781Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (4:VARCHAR) <- [Entrada masiva: Fideos Fetuccini De Arroz]
+2026-04-22T18:31:42.782Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (5:NUMERIC) <- [12]
+2026-04-22T18:31:42.782Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (6:VARCHAR) <- [ENTRADA_INVENTARIO]
+2026-04-22T18:31:42.784Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (7:INTEGER) <- [1]
+2026-04-22T18:31:42.786Z DEBUG 1 --- [nio-8080-exec-2] org.hibernate.SQL                        :
+    insert
+    into
+        movimiento
+        (id_bodega_transito, fecha_movimiento, id_inventario, observacion, stock_movimiento, tipo_movimiento, id_usuario)
+    values
+        (?, ?, ?, ?, ?, ?, ?)
+Hibernate:
+    insert
+    into
+        movimiento
+        (id_bodega_transito, fecha_movimiento, id_inventario, observacion, stock_movimiento, tipo_movimiento, id_usuario)
+    values
+        (?, ?, ?, ?, ?, ?, ?)
+2026-04-22T18:31:42.787Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (1:INTEGER) <- [null]
+2026-04-22T18:31:42.787Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (2:TIMESTAMP) <- [2026-04-22T18:31:42.786546]
+2026-04-22T18:31:42.788Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (3:INTEGER) <- [157]
+2026-04-22T18:31:42.788Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (4:VARCHAR) <- [Entrada masiva: Palmitos En Tarro]
+2026-04-22T18:31:42.788Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (5:NUMERIC) <- [8]
+2026-04-22T18:31:42.788Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (6:VARCHAR) <- [ENTRADA_INVENTARIO]
+2026-04-22T18:31:42.788Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (7:INTEGER) <- [1]
+2026-04-22T18:31:42.791Z DEBUG 1 --- [nio-8080-exec-2] org.hibernate.SQL                        :
+    insert
+    into
+        movimiento
+        (id_bodega_transito, fecha_movimiento, id_inventario, observacion, stock_movimiento, tipo_movimiento, id_usuario)
+    values
+        (?, ?, ?, ?, ?, ?, ?)
+Hibernate:
+    insert
+    into
+        movimiento
+        (id_bodega_transito, fecha_movimiento, id_inventario, observacion, stock_movimiento, tipo_movimiento, id_usuario)
+    values
+        (?, ?, ?, ?, ?, ?, ?)
+2026-04-22T18:31:42.792Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (1:INTEGER) <- [null]
+2026-04-22T18:31:42.792Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (2:TIMESTAMP) <- [2026-04-22T18:31:42.791036]
+2026-04-22T18:31:42.793Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (3:INTEGER) <- [193]
+2026-04-22T18:31:42.793Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (4:VARCHAR) <- [Entrada masiva: Vinagre Frambuesa]
+2026-04-22T18:31:42.793Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (5:NUMERIC) <- [0.855]
+2026-04-22T18:31:42.793Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (6:VARCHAR) <- [ENTRADA_INVENTARIO]
+2026-04-22T18:31:42.793Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (7:INTEGER) <- [1]
+2026-04-22T18:31:42.796Z DEBUG 1 --- [nio-8080-exec-2] org.hibernate.SQL                        :
+    insert
+    into
+        movimiento
+        (id_bodega_transito, fecha_movimiento, id_inventario, observacion, stock_movimiento, tipo_movimiento, id_usuario)
+    values
+        (?, ?, ?, ?, ?, ?, ?)
+Hibernate:
+    insert
+    into
+        movimiento
+        (id_bodega_transito, fecha_movimiento, id_inventario, observacion, stock_movimiento, tipo_movimiento, id_usuario)
+    values
+        (?, ?, ?, ?, ?, ?, ?)
+2026-04-22T18:31:42.797Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (1:INTEGER) <- [null]
+2026-04-22T18:31:42.797Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (2:TIMESTAMP) <- [2026-04-22T18:31:42.796667]
+2026-04-22T18:31:42.797Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (3:INTEGER) <- [269]
+2026-04-22T18:31:42.797Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (4:VARCHAR) <- [Entrada masiva: Pirotines Medianos]
+2026-04-22T18:31:42.798Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (5:NUMERIC) <- [10]
+2026-04-22T18:31:42.798Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (6:VARCHAR) <- [ENTRADA_INVENTARIO]
+2026-04-22T18:31:42.798Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (7:INTEGER) <- [1]
+2026-04-22T18:31:42.800Z DEBUG 1 --- [nio-8080-exec-2] org.hibernate.SQL                        :
+    insert
+    into
+        movimiento
+        (id_bodega_transito, fecha_movimiento, id_inventario, observacion, stock_movimiento, tipo_movimiento, id_usuario)
+    values
+        (?, ?, ?, ?, ?, ?, ?)
+Hibernate:
+    insert
+    into
+        movimiento
+        (id_bodega_transito, fecha_movimiento, id_inventario, observacion, stock_movimiento, tipo_movimiento, id_usuario)
+    values
+        (?, ?, ?, ?, ?, ?, ?)
+2026-04-22T18:31:42.800Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (1:INTEGER) <- [null]
+2026-04-22T18:31:42.801Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (2:TIMESTAMP) <- [2026-04-22T18:31:42.800247]
+2026-04-22T18:31:42.801Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (3:INTEGER) <- [236]
+2026-04-22T18:31:42.801Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (4:VARCHAR) <- [Entrada masiva: Ron Dorado Abuelo Añejo]
+2026-04-22T18:31:42.801Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (5:NUMERIC) <- [12]
+2026-04-22T18:31:42.801Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (6:VARCHAR) <- [ENTRADA_INVENTARIO]
+2026-04-22T18:31:42.801Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (7:INTEGER) <- [1]
+2026-04-22T18:31:42.804Z DEBUG 1 --- [nio-8080-exec-2] org.hibernate.SQL                        :
+    insert
+    into
+        movimiento
+        (id_bodega_transito, fecha_movimiento, id_inventario, observacion, stock_movimiento, tipo_movimiento, id_usuario)
+    values
+        (?, ?, ?, ?, ?, ?, ?)
+Hibernate:
+    insert
+    into
+        movimiento
+        (id_bodega_transito, fecha_movimiento, id_inventario, observacion, stock_movimiento, tipo_movimiento, id_usuario)
+    values
+        (?, ?, ?, ?, ?, ?, ?)
+2026-04-22T18:31:42.806Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (1:INTEGER) <- [null]
+2026-04-22T18:31:42.806Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (2:TIMESTAMP) <- [2026-04-22T18:31:42.804150]
+2026-04-22T18:31:42.807Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (3:INTEGER) <- [237]
+2026-04-22T18:31:42.807Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (4:VARCHAR) <- [Entrada masiva: Sake Botella]
+2026-04-22T18:31:42.808Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (5:NUMERIC) <- [4]
+2026-04-22T18:31:42.809Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (6:VARCHAR) <- [ENTRADA_INVENTARIO]
+2026-04-22T18:31:42.809Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (7:INTEGER) <- [1]
+2026-04-22T18:31:42.812Z DEBUG 1 --- [nio-8080-exec-2] org.hibernate.SQL                        :
+    insert
+    into
+        movimiento
+        (id_bodega_transito, fecha_movimiento, id_inventario, observacion, stock_movimiento, tipo_movimiento, id_usuario)
+    values
+        (?, ?, ?, ?, ?, ?, ?)
+Hibernate:
+    insert
+    into
+        movimiento
+        (id_bodega_transito, fecha_movimiento, id_inventario, observacion, stock_movimiento, tipo_movimiento, id_usuario)
+    values
+        (?, ?, ?, ?, ?, ?, ?)
+2026-04-22T18:31:42.813Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (1:INTEGER) <- [null]
+2026-04-22T18:31:42.813Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (2:TIMESTAMP) <- [2026-04-22T18:31:42.812334]
+2026-04-22T18:31:42.813Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (3:INTEGER) <- [244]
+2026-04-22T18:31:42.814Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (4:VARCHAR) <- [Entrada masiva: Vino Pinot Noir Quintay]
+2026-04-22T18:31:42.814Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (5:NUMERIC) <- [10]
+2026-04-22T18:31:42.814Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (6:VARCHAR) <- [ENTRADA_INVENTARIO]
+2026-04-22T18:31:42.814Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (7:INTEGER) <- [1]
+2026-04-22T18:31:42.817Z DEBUG 1 --- [nio-8080-exec-2] org.hibernate.SQL                        :
+    insert
+    into
+        movimiento
+        (id_bodega_transito, fecha_movimiento, id_inventario, observacion, stock_movimiento, tipo_movimiento, id_usuario)
+    values
+        (?, ?, ?, ?, ?, ?, ?)
+Hibernate:
+    insert
+    into
+        movimiento
+        (id_bodega_transito, fecha_movimiento, id_inventario, observacion, stock_movimiento, tipo_movimiento, id_usuario)
+    values
+        (?, ?, ?, ?, ?, ?, ?)
+2026-04-22T18:31:42.819Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (1:INTEGER) <- [null]
+2026-04-22T18:31:42.819Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (2:TIMESTAMP) <- [2026-04-22T18:31:42.817608]
+2026-04-22T18:31:42.819Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (3:INTEGER) <- [5]
+2026-04-22T18:31:42.819Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (4:VARCHAR) <- [Entrada masiva: Apio]
+2026-04-22T18:31:42.820Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (5:NUMERIC) <- [12]
+2026-04-22T18:31:42.820Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (6:VARCHAR) <- [ENTRADA_INVENTARIO]
+2026-04-22T18:31:42.820Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (7:INTEGER) <- [1]
+2026-04-22T18:31:42.834Z DEBUG 1 --- [nio-8080-exec-2] org.hibernate.SQL                        :
+    update
+        inventario
+    set
+        activo=?,
+        id_producto=?,
+        stock=?,
+        stock_limit=?
+    where
+        id_inventario=?
+Hibernate:
+    update
+        inventario
+    set
+        activo=?,
+        id_producto=?,
+        stock=?,
+        stock_limit=?
+    where
+        id_inventario=?
+2026-04-22T18:31:42.835Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (1:BOOLEAN) <- [true]
+2026-04-22T18:31:42.835Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (2:INTEGER) <- [5]
+2026-04-22T18:31:42.835Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (3:NUMERIC) <- [36.800]
+2026-04-22T18:31:42.835Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (4:NUMERIC) <- [6.000]
+2026-04-22T18:31:42.836Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (5:INTEGER) <- [5]
+2026-04-22T18:31:42.839Z DEBUG 1 --- [nio-8080-exec-2] org.hibernate.SQL                        :
+    update
+        inventario
+    set
+        activo=?,
+        id_producto=?,
+        stock=?,
+        stock_limit=?
+    where
+        id_inventario=?
+Hibernate:
+    update
+        inventario
+    set
+        activo=?,
+        id_producto=?,
+        stock=?,
+        stock_limit=?
+    where
+        id_inventario=?
+2026-04-22T18:31:42.839Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (1:BOOLEAN) <- [true]
+2026-04-22T18:31:42.839Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (2:INTEGER) <- [75]
+2026-04-22T18:31:42.839Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (3:NUMERIC) <- [75.132]
+2026-04-22T18:31:42.840Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (4:NUMERIC) <- [5.000]
+2026-04-22T18:31:42.840Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (5:INTEGER) <- [75]
+2026-04-22T18:31:42.843Z DEBUG 1 --- [nio-8080-exec-2] org.hibernate.SQL                        :
+    update
+        inventario
+    set
+        activo=?,
+        id_producto=?,
+        stock=?,
+        stock_limit=?
+    where
+        id_inventario=?
+Hibernate:
+    update
+        inventario
+    set
+        activo=?,
+        id_producto=?,
+        stock=?,
+        stock_limit=?
+    where
+        id_inventario=?
+2026-04-22T18:31:42.844Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (1:BOOLEAN) <- [true]
+2026-04-22T18:31:42.845Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (2:INTEGER) <- [83]
+2026-04-22T18:31:42.845Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (3:NUMERIC) <- [19.853]
+2026-04-22T18:31:42.845Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (4:NUMERIC) <- [8.000]
+2026-04-22T18:31:42.846Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (5:INTEGER) <- [83]
+2026-04-22T18:31:42.851Z DEBUG 1 --- [nio-8080-exec-2] org.hibernate.SQL                        :
+    update
+        inventario
+    set
+        activo=?,
+        id_producto=?,
+        stock=?,
+        stock_limit=?
+    where
+        id_inventario=?
+Hibernate:
+    update
+        inventario
+    set
+        activo=?,
+        id_producto=?,
+        stock=?,
+        stock_limit=?
+    where
+        id_inventario=?
+2026-04-22T18:31:42.852Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (1:BOOLEAN) <- [true]
+2026-04-22T18:31:42.852Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (2:INTEGER) <- [116]
+2026-04-22T18:31:42.852Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (3:NUMERIC) <- [30.400]
+2026-04-22T18:31:42.852Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (4:NUMERIC) <- [13.000]
+2026-04-22T18:31:42.852Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (5:INTEGER) <- [116]
+2026-04-22T18:31:42.857Z DEBUG 1 --- [nio-8080-exec-2] org.hibernate.SQL                        :
+    update
+        inventario
+    set
+        activo=?,
+        id_producto=?,
+        stock=?,
+        stock_limit=?
+    where
+        id_inventario=?
+Hibernate:
+    update
+        inventario
+    set
+        activo=?,
+        id_producto=?,
+        stock=?,
+        stock_limit=?
+    where
+        id_inventario=?
+2026-04-22T18:31:42.858Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (1:BOOLEAN) <- [true]
+2026-04-22T18:31:42.858Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (2:INTEGER) <- [157]
+2026-04-22T18:31:42.858Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (3:NUMERIC) <- [23.200]
+2026-04-22T18:31:42.859Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (4:NUMERIC) <- [14.000]
+2026-04-22T18:31:42.859Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (5:INTEGER) <- [157]
+2026-04-22T18:31:42.861Z DEBUG 1 --- [nio-8080-exec-2] org.hibernate.SQL                        :
+    update
+        inventario
+    set
+        activo=?,
+        id_producto=?,
+        stock=?,
+        stock_limit=?
+    where
+        id_inventario=?
+Hibernate:
+    update
+        inventario
+    set
+        activo=?,
+        id_producto=?,
+        stock=?,
+        stock_limit=?
+    where
+        id_inventario=?
+2026-04-22T18:31:42.862Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (1:BOOLEAN) <- [true]
+2026-04-22T18:31:42.862Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (2:INTEGER) <- [193]
+2026-04-22T18:31:42.862Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (3:NUMERIC) <- [16.055]
+2026-04-22T18:31:42.862Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (4:NUMERIC) <- [11.000]
+2026-04-22T18:31:42.862Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (5:INTEGER) <- [193]
+2026-04-22T18:31:42.864Z DEBUG 1 --- [nio-8080-exec-2] org.hibernate.SQL                        :
+    update
+        inventario
+    set
+        activo=?,
+        id_producto=?,
+        stock=?,
+        stock_limit=?
+    where
+        id_inventario=?
+Hibernate:
+    update
+        inventario
+    set
+        activo=?,
+        id_producto=?,
+        stock=?,
+        stock_limit=?
+    where
+        id_inventario=?
+2026-04-22T18:31:42.865Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (1:BOOLEAN) <- [true]
+2026-04-22T18:31:42.865Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (2:INTEGER) <- [236]
+2026-04-22T18:31:42.865Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (3:NUMERIC) <- [19.200]
+2026-04-22T18:31:42.865Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (4:NUMERIC) <- [7.000]
+2026-04-22T18:31:42.865Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (5:INTEGER) <- [236]
+2026-04-22T18:31:42.869Z DEBUG 1 --- [nio-8080-exec-2] org.hibernate.SQL                        :
+    update
+        inventario
+    set
+        activo=?,
+        id_producto=?,
+        stock=?,
+        stock_limit=?
+    where
+        id_inventario=?
+Hibernate:
+    update
+        inventario
+    set
+        activo=?,
+        id_producto=?,
+        stock=?,
+        stock_limit=?
+    where
+        id_inventario=?
+2026-04-22T18:31:42.870Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (1:BOOLEAN) <- [true]
+2026-04-22T18:31:42.870Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (2:INTEGER) <- [237]
+2026-04-22T18:31:42.870Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (3:NUMERIC) <- [22.400]
+2026-04-22T18:31:42.870Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (4:NUMERIC) <- [15.000]
+2026-04-22T18:31:42.870Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (5:INTEGER) <- [237]
+2026-04-22T18:31:42.872Z DEBUG 1 --- [nio-8080-exec-2] org.hibernate.SQL                        :
+    update
+        inventario
+    set
+        activo=?,
+        id_producto=?,
+        stock=?,
+        stock_limit=?
+    where
+        id_inventario=?
+Hibernate:
+    update
+        inventario
+    set
+        activo=?,
+        id_producto=?,
+        stock=?,
+        stock_limit=?
+    where
+        id_inventario=?
+2026-04-22T18:31:42.873Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (1:BOOLEAN) <- [true]
+2026-04-22T18:31:42.874Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (2:INTEGER) <- [244]
+2026-04-22T18:31:42.874Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (3:NUMERIC) <- [52.400]
+2026-04-22T18:31:42.874Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (4:NUMERIC) <- [12.000]
+2026-04-22T18:31:42.874Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (5:INTEGER) <- [244]
+2026-04-22T18:31:42.876Z DEBUG 1 --- [nio-8080-exec-2] org.hibernate.SQL                        :
+    update
+        inventario
+    set
+        activo=?,
+        id_producto=?,
+        stock=?,
+        stock_limit=?
+    where
+        id_inventario=?
+Hibernate:
+    update
+        inventario
+    set
+        activo=?,
+        id_producto=?,
+        stock=?,
+        stock_limit=?
+    where
+        id_inventario=?
+2026-04-22T18:31:42.877Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (1:BOOLEAN) <- [true]
+2026-04-22T18:31:42.877Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (2:INTEGER) <- [269]
+2026-04-22T18:31:42.877Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (3:NUMERIC) <- [52.400]
+2026-04-22T18:31:42.877Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (4:NUMERIC) <- [13.000]
+2026-04-22T18:31:42.878Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (5:INTEGER) <- [269]
+2026-04-22T18:31:42.888Z DEBUG 1 --- [nio-8080-exec-2] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/yaml]
+2026-04-22T18:31:42.891Z DEBUG 1 --- [nio-8080-exec-2] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Writing [BulkInventoryProcess[exitosos=[ItemResult[idInventario=75, producto=Aceituna Verde Sin Carozo, stock (truncated)...]
+2026-04-22T18:31:42.894Z DEBUG 1 --- [nio-8080-exec-2] o.s.web.servlet.DispatcherServ
