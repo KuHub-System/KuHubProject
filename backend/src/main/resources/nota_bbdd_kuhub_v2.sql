@@ -108,7 +108,14 @@ CREATE TRIGGER trg_solicitud_a_pedido
 -- ============================================================
 -- NOTA IMPORTANTE:
 -- Los nombres de tablas y columnas (pedido, detalle_pedido,
--- reserva_sala, semana, producto_solicitud, solicitud) deben
+-- reserva_sala, semana, detalle_solicitud, solicitud) deben
 -- coincidir con los nombres reales en la base de datos.
--- Ajustar si difieren.
 -- ============================================================
+
+-- ============================================================
+-- CONSTRAINT: Unicidad de producto por pedido en detalle_pedido
+-- Requerida para que el ON CONFLICT del upsert funcione.
+-- Ejecutar una sola vez en cada entorno (ya aplicado en dev).
+-- ============================================================
+ALTER TABLE detalle_pedido
+    ADD CONSTRAINT uq_detalle_pedido_pedido_producto UNIQUE (id_pedido, id_producto);

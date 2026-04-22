@@ -11,6 +11,7 @@ import KuHub.modules.gestion_sistema.entity.GestionSistema;
 import KuHub.modules.gestion_sistema.repository.GestionSistemaRepository;
 import KuHub.modules.gestion_solicitud.dtos.request.record.ChangeSolicitationStatus;
 import KuHub.modules.gestion_solicitud.dtos.request.record.MassiveSolicitation;
+import KuHub.modules.gestion_solicitud.dtos.respose.record.ProyeccionAbastecimiento;
 import KuHub.modules.gestion_solicitud.exception.GestionSolicitudException;
 import KuHub.modules.gestion_solicitud.dtos.respose.record.CourseForSolicitation;
 import KuHub.modules.gestion_solicitud.dtos.respose.record.DashboardConsolidado;
@@ -38,7 +39,7 @@ import java.util.stream.Collectors;
 
 @Slf4j
 @Service
-public class SolicitudServiceImp implements SolicitudService{
+public class SolicitudServiceImp implements SolicitudService {
 
     /**Repositories*/
     @Autowired
@@ -70,7 +71,7 @@ public class SolicitudServiceImp implements SolicitudService{
 
     @Transactional(readOnly = true)
     @Override
-    public Solicitud findById(Integer idSolicitud){
+    public Solicitud findById(Integer idSolicitud) {
         return solicitudRepository.findById(idSolicitud).orElseThrow((
         ) -> new RuntimeException("Solicitud no encontrada"));
     }
@@ -106,7 +107,7 @@ public class SolicitudServiceImp implements SolicitudService{
 
     @Transactional(readOnly = true)
     @Override
-    public List<RecipeSolicitation> findActiveRecipesWithDetailsRaw()  {
+    public List<RecipeSolicitation> findActiveRecipesWithDetailsRaw() {
 
         List<Object[]> rawResults = solicitudRepository.findActiveRecipesWithDetailsRaw();
         List<RecipeSolicitation> responseList = new ArrayList<>();
@@ -393,6 +394,42 @@ public class SolicitudServiceImp implements SolicitudService{
 
         // 3. Empaquetar y retornar
         return new DashboardConsolidado(listaSolicitudes, listaConsolidado);
+    }
+
+    /**
+     * Obtiene la proyección de abastecimiento consolidada de productos cuyas solicitudes
+     * tienen estado EN_PEDIDO, filtradas por rango de fechas (fecha_solicitada).
+     * Agrupa por categoría y nombre de producto, sumando cantidades totales solicitadas.
+     *
+     * @param request DTO con fechaInicio y fechaFin del rango a consultar.
+     * @return {@link ProyeccionAbastecimiento} con la lista de productos consolidados.
+     */
+    @Transactional(readOnly = true)
+    @Override
+    public ProyeccionAbastecimiento findProyeccionAbastecimiento(DateRangeDTO request) {
+
+        // 1. Ejecutar la consulta nativa que retorna un único JSON string
+        String jsonRaw = solicitudRepository.findProyeccionAbastecimientoJson(
+                request.getFechaInicio(),
+                request.getFechaFin()
+        );
+
+        // 2. Si no hay datos, retornar lista vacía
+        List<ProyeccionAbastecimiento.ProductoAbastecimientoItem> items = new ArrayList<>();
+
+        try {
+            if (jsonRaw != null && !jsonRaw.isBlank()) {
+                items = objectMapper.readValue(
+                        jsonRaw,
+                        new TypeReference<List<ProyeccionAbastecimiento.ProductoAbastecimientoItem>>() {}
+                );
+            }
+        } catch (Exception e) {
+            log.error("Error parseando la proyección de abastecimiento. JSON recibido: {}", jsonRaw, e);
+        }
+
+        // 3. Empaquetar y retornar
+        return new ProyeccionAbastecimiento(items);
     }
 
 }

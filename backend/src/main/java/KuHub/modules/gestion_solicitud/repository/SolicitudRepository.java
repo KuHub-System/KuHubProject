@@ -426,4 +426,37 @@ public interface SolicitudRepository extends JpaRepository<Solicitud, Integer> {
         """, nativeQuery = true)
     String findConsolidadoGlobalJson(@Param("fechaInicio") LocalDate fechaInicio, @Param("fechaFin") LocalDate fechaFin);
 
+    /**
+     * Obtiene la proyección de abastecimiento consolidada de productos cuyas solicitudes
+     * tienen estado EN_PEDIDO, filtradas por rango de fechas (fecha_solicitada).
+     * Retorna un único JSON con el arreglo de productos agrupados por categoría y nombre.
+     */
+    @Query(value = """
+        SELECT jsonb_agg(
+            jsonb_build_object(
+                'idProducto',              p.id_producto,
+                'nombreProducto',          p.nombre_producto,
+                'nombreUnidad',            um.nombre_unidad,
+                'abreviatura',             um.abreviatura,
+                'esFraccionario',          um.es_fraccionario,
+                'nombreCategoria',         c.nombre_categoria,
+                'cantidadTotalSolicitada', sub_total.total_solicitado
+            ) ORDER BY c.nombre_categoria ASC, p.nombre_producto ASC
+        ) AS proyeccion_abastecimiento
+        FROM (
+            SELECT ds.id_producto,
+                   SUM(ds.cant_producto_solicitud) AS total_solicitado
+            FROM detalle_solicitud ds
+            INNER JOIN solicitud s ON s.id_solicitud = ds.id_solicitud
+            WHERE s.estado_solicitud = 'EN_PEDIDO'
+              AND s.fecha_solicitada BETWEEN :fechaInicio AND :fechaFin
+            GROUP BY ds.id_producto
+        ) sub_total
+        INNER JOIN producto      p  ON p.id_producto  = sub_total.id_producto AND p.activo = TRUE
+        INNER JOIN unidad_medida um ON um.id_unidad    = p.id_unidad
+        INNER JOIN categoria     c  ON c.id_categoria  = p.id_categoria
+        """, nativeQuery = true)
+    String findProyeccionAbastecimientoJson(@Param("fechaInicio") LocalDate fechaInicio,
+                                            @Param("fechaFin") LocalDate fechaFin);
+
 }
