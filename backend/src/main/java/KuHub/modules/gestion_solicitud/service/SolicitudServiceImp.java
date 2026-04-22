@@ -405,16 +405,30 @@ public class SolicitudServiceImp implements SolicitudService {
      * @return {@link ProyeccionAbastecimiento} con la lista de productos consolidados.
      */
     @Transactional(readOnly = true)
+    @Transactional(readOnly = true)
     @Override
     public ProyeccionAbastecimiento findProyeccionAbastecimiento(DateRangeDTO request) {
 
-        // 1. Ejecutar la consulta nativa que retorna un único JSON string
-        String jsonRaw = solicitudRepository.findProyeccionAbastecimientoJson(
-                request.getFechaInicio(),
-                request.getFechaFin()
-        );
+        // 1. Validar fechas
+        if (request.getFechaInicio() == null || request.getFechaFin() == null) {
+            log.warn("Fechas nulas en solicitud de proyección de abastecimiento");
+            return new ProyeccionAbastecimiento(new ArrayList<>());
+        }
 
-        // 2. Si no hay datos, retornar lista vacía
+        // 2. Ejecutar la consulta nativa que retorna un único JSON string
+        String jsonRaw = null;
+        try {
+            jsonRaw = solicitudRepository.findProyeccionAbastecimientoJson(
+                    request.getFechaInicio(),
+                    request.getFechaFin()
+            );
+            log.info("Consulta proyección abastecimiento completada. Resultado nulo: {}", jsonRaw == null);
+        } catch (Exception e) {
+            log.error("Error ejecutando consulta de proyección abastecimiento", e);
+            return new ProyeccionAbastecimiento(new ArrayList<>());
+        }
+
+        // 3. Si no hay datos, retornar lista vacía
         List<ProyeccionAbastecimiento.ProductoAbastecimientoItem> items = new ArrayList<>();
 
         try {
@@ -423,12 +437,14 @@ public class SolicitudServiceImp implements SolicitudService {
                         jsonRaw,
                         new TypeReference<List<ProyeccionAbastecimiento.ProductoAbastecimientoItem>>() {}
                 );
+                log.info("Proyección abastecimiento parseada: {} productos", items.size());
             }
-        } catch (Exception e) {
-            log.error("Error parseando la proyección de abastecimiento. JSON recibido: {}", jsonRaw, e);
+        } catch (JsonProcessingException e) {
+            log.error("Error parseando JSON de proyección. JSON recibido: {}", jsonRaw, e);
+            return new ProyeccionAbastecimiento(new ArrayList<>());
         }
 
-        // 3. Empaquetar y retornar
+        // 4. Empaquetar y retornar
         return new ProyeccionAbastecimiento(items);
     }
 
