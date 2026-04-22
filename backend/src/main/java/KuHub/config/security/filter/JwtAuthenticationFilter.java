@@ -123,18 +123,17 @@ public class JwtAuthenticationFilter extends UsernamePasswordAuthenticationFilte
             usuario.setUltimoAcceso(ahora);
             usuarioRepository.save(usuario);
 
-            // Si "Recordar sesión" → generar Refresh Token y enviarlo como cookie HttpOnly
-            if (recordarSesion) {
-                RefreshToken rt = refreshTokenService.crearRefreshToken(usuario);
+            // Generar Refresh Token SIEMPRE (para permitir renovación de tokens expirados)
+            // "Recordar sesión" solo afecta la duración del Access Token, no la cookie
+            RefreshToken rt = refreshTokenService.crearRefreshToken(usuario);
 
-                Cookie refreshCookie = new Cookie(REFRESH_COOKIE_NAME, rt.getToken());
-                refreshCookie.setHttpOnly(true);
-                // setSecure(true) cuando haya HTTPS en producción
-                // refreshCookie.setSecure(true);
-                refreshCookie.setPath("/");
-                refreshCookie.setMaxAge(REFRESH_COOKIE_DIAS * 24 * 60 * 60);
-                response.addCookie(refreshCookie);
-            }
+            Cookie refreshCookie = new Cookie(REFRESH_COOKIE_NAME, rt.getToken());
+            refreshCookie.setHttpOnly(true);
+            // setSecure(true) cuando haya HTTPS en producción
+            // refreshCookie.setSecure(true);
+            refreshCookie.setPath("/");
+            refreshCookie.setMaxAge(REFRESH_COOKIE_DIAS * 24 * 60 * 60);
+            response.addCookie(refreshCookie);
 
             // Construir respuesta con datos del usuario
             Map<String, Object> usuarioLimpio = new HashMap<>();
