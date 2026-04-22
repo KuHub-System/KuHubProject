@@ -37,4 +37,9 @@ public interface ProveedorProductoRepository extends JpaRepository<ProveedorProd
     int softDeleteByProveedorAndProducto(
             @Param("idProveedor") Integer idProveedor,
             @Param("idProducto") Integer idProducto);
+
+    /** Desactiva todos los productos activos asignados a un proveedor. */
+    @Modifying
+    @Query("UPDATE ProveedorProducto pp SET pp.activo = false WHERE pp.proveedor.idProveedor = :idProveedor AND pp.activo = true")
+    void desactivarProductosPorProveedor(@Param("idProveedor") Integer idProveedor);
 }
