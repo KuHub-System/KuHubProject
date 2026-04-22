@@ -4,7 +4,7 @@
  * Patrón: igual que inventario-service.ts (api de config/Axios con interceptor JWT)
  */
 
-import api from '../config/axios';
+import api from '../config/Axios';
 import {
   IProveedor,
   IProveedorDetalle,
