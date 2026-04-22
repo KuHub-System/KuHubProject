@@ -29,8 +29,10 @@ import {
   SelectItem,
   Tooltip,
   Spinner,
-  Checkbox
+  Checkbox,
+  DateRangePicker
 } from '@heroui/react';
+import { CalendarDate, today, getLocalTimeZone } from '@internationalized/date';
 import { Icon } from '@iconify/react';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useHistory } from 'react-router-dom';
@@ -1962,8 +1964,7 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoP
 
   // Estados para modal de proyección de abastecimiento
   const { isOpen: isProyeccionOpen, onOpen: onProyeccionOpen, onOpenChange: onProyeccionOpenChange } = useDisclosure();
-  const [fechaInicioProy, setFechaInicioProy] = React.useState<string>('');
-  const [fechaFinProy, setFechaFinProy] = React.useState<string>('');
+  const [dateRangeProyeccion, setDateRangeProyeccion] = React.useState<{ start: CalendarDate; end: CalendarDate } | null>(null);
   const [loadingProy, setLoadingProy] = React.useState(false);
 
   // States para la paginación y búsqueda
@@ -2212,17 +2213,13 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoP
   };
 
   const cargarProyeccionAbastecimiento = async () => {
-    if (!fechaInicioProy || !fechaFinProy) {
+    if (!dateRangeProyeccion || !dateRangeProyeccion.start || !dateRangeProyeccion.end) {
       toast.error('Debe seleccionar un rango de fechas válido');
       return;
     }
 
-    const dateInicio = new Date(fechaInicioProy);
-    const dateFin = new Date(fechaFinProy);
-    if (dateInicio > dateFin) {
-      toast.error('La fecha de inicio no puede ser posterior a la fecha de fin');
-      return;
-    }
+    const fechaInicioProy = `${dateRangeProyeccion.start.year}-${String(dateRangeProyeccion.start.month).padStart(2, '0')}-${String(dateRangeProyeccion.start.day).padStart(2, '0')}`;
+    const fechaFinProy = `${dateRangeProyeccion.end.year}-${String(dateRangeProyeccion.end.month).padStart(2, '0')}-${String(dateRangeProyeccion.end.day).padStart(2, '0')}`;
 
     try {
       setLoadingProy(true);
@@ -2264,8 +2261,7 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoP
 
       // Cerrar el modal y limpiar campos
       onProyeccionOpenChange();
-      setFechaInicioProy('');
-      setFechaFinProy('');
+      setDateRangeProyeccion(null);
     } catch (error: any) {
       console.error('Error al cargar proyección:', error);
       if (error.response?.status === 403) {
@@ -2702,30 +2698,13 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoP
                   </p>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-sm font-semibold text-secondary mb-2 block">Fecha Inicio</label>
-                    <Input
-                      type="date"
-                      value={fechaInicioProy}
-                      onValueChange={setFechaInicioProy}
-                      placeholder="Seleccionar fecha"
-                      variant="bordered"
-                      isRequired
-                    />
-                  </div>
-                  <div>
-                    <label className="text-sm font-semibold text-secondary mb-2 block">Fecha Fin</label>
-                    <Input
-                      type="date"
-                      value={fechaFinProy}
-                      onValueChange={setFechaFinProy}
-                      placeholder="Seleccionar fecha"
-                      variant="bordered"
-                      isRequired
-                    />
-                  </div>
-                </div>
+                <DateRangePicker
+                  label="Rango de fechas"
+                  variant="bordered"
+                  maxValue={today(getLocalTimeZone())}
+                  value={dateRangeProyeccion}
+                  onChange={setDateRangeProyeccion}
+                />
               </ModalBody>
               <ModalFooter>
                 <Button
