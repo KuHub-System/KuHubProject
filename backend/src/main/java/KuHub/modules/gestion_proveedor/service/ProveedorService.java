@@ -1,0 +1,48 @@
+package KuHub.modules.gestion_proveedor.service;
+
+import KuHub.modules.gestion_proveedor.dtos.request.ProveedorCreateDTO;
+import KuHub.modules.gestion_proveedor.dtos.request.ProveedorProductoAddDTO;
+import KuHub.modules.gestion_proveedor.dtos.request.ProveedorProductoUpdateDTO;
+import KuHub.modules.gestion_proveedor.dtos.request.ProveedorUpdateDTO;
+import KuHub.modules.gestion_proveedor.dtos.response.ProveedorDetalleDTO;
+import KuHub.modules.gestion_proveedor.dtos.response.ProveedorListDTO;
+import KuHub.modules.gestion_proveedor.entity.Proveedor;
+
+import java.util.List;
+
+/**
+ * Interfaz del servicio de gestión de proveedores.
+ * Define todos los métodos públicos disponibles para el controller.
+ */
+public interface ProveedorService {
+
+    /** Crea un nuevo proveedor. */
+    Proveedor create(ProveedorCreateDTO dto);
+
+    /** Actualiza los datos de un proveedor existente. */
+    Proveedor update(Integer idProveedor, ProveedorUpdateDTO dto);
+
+    /** Busca un proveedor activo por su ID. Lanza excepción si no existe. */
+    Proveedor findById(Integer idProveedor);
+
+    /** Lista proveedores activos con filtros opcionales de estado y búsqueda. */
+    List<ProveedorListDTO> findConFiltros(String estado, String busqueda);
+
+    /** Soft-delete de un proveedor (activo = false). */
+    boolean softDelete(Integer idProveedor);
+
+    /** Asigna un producto a un proveedor con su precio específico. */
+    void agregarProducto(Integer idProveedor, ProveedorProductoAddDTO dto);
+
+    /** Actualiza el precio de un producto asignado a un proveedor. */
+    void actualizarPrecio(Integer idProveedor, Integer idProducto, ProveedorProductoUpdateDTO dto);
+
+    /** Quita (soft-delete) un producto del proveedor. */
+    void quitarProducto(Integer idProveedor, Integer idProducto);
+
+    /** Obtiene el detalle completo de un proveedor con sus productos agrupados por categoría. */
+    ProveedorDetalleDTO obtenerDetalle(Integer idProveedor);
+
+    /** Lista los proveedores que ofrecen un producto específico (para comparar precios). */
+    List<ProveedorListDTO> findProveedoresPorProducto(Integer idProducto);
+}
