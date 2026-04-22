@@ -475,8 +475,10 @@ public class SpringSecurityConfig {
                                 "/api/v*/solicitud/find-solicitations-per-week",
                                 "/api/v*/solicitudes/find-solicitations-per-week",
                                 "/api/v*/solicitud/order-for-consolidation",
-                                "/api/v*/solicitudes/order-for-consolidation"
-                        ).hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR", "GESTOR_PEDIDOS", "PROFESOR_A_CARGO", "DOCENTE", "ENCARGADO_BODEGA", "ASISTENTE_BODEGA")
+                                "/api/v*/solicitudes/order-for-consolidation",
+                                "/api/v*/solicitud/proyeccion-abastecimiento",
+                                "/api/v*/solicitudes/proyeccion-abastecimiento"
+                        ).authenticated()
 
                         // 2b. CREACIÓN (POST): Roles operativos que pueden solicitar insumos
                         .requestMatchers(HttpMethod.POST, "/api/v*/solicitudes/**", "/api/v*/solicitud/**")
