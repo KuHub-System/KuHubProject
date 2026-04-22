@@ -290,12 +290,8 @@ public class ProveedorServiceImpl implements ProveedorService {
 
         long productosActivos = proveedorProductoRepository.countByProveedor_IdProveedorAndActivoTrue(idProveedor);
         if (productosActivos > 0) {
-            throw new GestionProveedorException(
-                    "No se puede eliminar el proveedor ID=" + idProveedor +
-                            " porque tiene " + productosActivos + " producto(s) activo(s) asignado(s). " +
-                            "Quite los productos primero.",
-                    HttpStatus.UNPROCESSABLE_ENTITY
-            );
+            proveedorProductoRepository.desactivarProductosPorProveedor(idProveedor);
+            log.info("Productos del proveedor ID={} desactivados automáticamente: {} producto(s)", idProveedor, productosActivos);
         }
 
         proveedor.setActivo(false);
