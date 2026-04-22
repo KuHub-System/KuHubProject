@@ -20,6 +20,7 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * Controller REST para gestión de Solicitudes
@@ -122,18 +123,24 @@ public class SolicitudController {
      * Requiere permiso de LECTURA o ESCRITURA en el módulo INVENTARIO.
      */
     @PostMapping("/proyeccion-abastecimiento")
-    public ResponseEntity<ProyeccionAbastecimiento> findProyeccionAbastecimiento(
+    public ResponseEntity<?> findProyeccionAbastecimiento(
             @Validated @RequestBody DateRangeDTO request,
             Authentication authentication) {
-        // Validación dinámica de permisos: requiere lectura o escritura en INVENTARIO
-        if (!dynamicPermissionService.check(authentication, "INVENTARIO", "read") &&
-            !dynamicPermissionService.check(authentication, "INVENTARIO", "write")) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-        }
+        try {
+            // Validación dinámica de permisos: requiere lectura o escritura en INVENTARIO
+            if (!dynamicPermissionService.check(authentication, "INVENTARIO", "read") &&
+                !dynamicPermissionService.check(authentication, "INVENTARIO", "write")) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(Map.of("message", "No tiene permisos para acceder a esta funcionalidad"));
+            }
 
-        return ResponseEntity
-                .status(200)
-                .body(solicitudService.findProyeccionAbastecimiento(request));
+            ProyeccionAbastecimiento resultado = solicitudService.findProyeccionAbastecimiento(request);
+            return ResponseEntity.status(200).body(resultado);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Error interno al obtener proyección de abastecimiento",
+                                 "message", e.getMessage()));
+        }
     }
 
 }
