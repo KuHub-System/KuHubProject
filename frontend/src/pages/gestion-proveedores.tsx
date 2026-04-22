@@ -463,14 +463,19 @@ const GestionProveedoresPage: React.FC = () => {
                   >
                     <CardBody className="p-0">
                       {/* Fila principal */}
-                      <div className="flex flex-col md:flex-row md:items-center justify-between p-4 gap-3">
+                      <div
+                        className="flex flex-col md:flex-row md:items-center justify-between p-4 gap-3 cursor-pointer hover:bg-default-50 dark:hover:bg-default-100/30 transition-colors"
+                        onClick={() => toggleRowExpansion(proveedor.idProveedor)}
+                        role="button"
+                        tabIndex={0}
+                      >
                         <div className="flex items-center gap-3">
-                          <Button
-                            isIconOnly
-                            variant="light"
-                            size="sm"
-                            onPress={() => toggleRowExpansion(proveedor.idProveedor)}
-                            isLoading={loadingDetalle.has(proveedor.idProveedor)}
+                          <div
+                            className="w-9 h-9 flex items-center justify-center cursor-pointer"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleRowExpansion(proveedor.idProveedor);
+                            }}
                           >
                             {!loadingDetalle.has(proveedor.idProveedor) && (
                               <Icon
@@ -478,7 +483,7 @@ const GestionProveedoresPage: React.FC = () => {
                                 className="text-default-400"
                               />
                             )}
-                          </Button>
+                          </div>
                           <div>
                             <h3 className="font-bold text-base text-secondary">
                               {proveedor.nombreDistribuidora}
@@ -776,11 +781,11 @@ const ProductosProveedor: React.FC<ProductosProveedorProps> = ({
             <table className="w-full text-xs">
               <thead className="bg-default-100 dark:bg-default-50">
                 <tr>
-                  <th className="text-left py-2 px-3 font-medium">Producto</th>
-                  <th className="text-left py-2 px-3 font-medium">Unidad</th>
-                  <th className="text-left py-2 px-3 font-medium">Precio</th>
-                  <th className="text-left py-2 px-3 font-medium">Estado</th>
-                  <th className="text-left py-2 px-3 font-medium">Actualizado</th>
+                  <th className="text-center py-2 px-3 font-medium">Producto</th>
+                  <th className="text-center py-2 px-3 font-medium">Unidad</th>
+                  <th className="text-center py-2 px-3 font-medium">Precio</th>
+                  <th className="text-center py-2 px-3 font-medium">Estado</th>
+                  <th className="text-center py-2 px-3 font-medium">Actualizado</th>
                   {canEdit && <th className="py-2 px-3 font-medium text-center">Acciones</th>}
                 </tr>
               </thead>
@@ -795,11 +800,15 @@ const ProductosProveedor: React.FC<ProductosProveedorProps> = ({
                       key={prod.idProveedorProducto}
                       className="border-t border-default-100 dark:border-default-50 hover:bg-default-50 dark:hover:bg-default-100/20"
                     >
-                      <td className="py-2 px-3 font-medium">{prod.nombreProducto}</td>
-                      <td className="py-2 px-3 text-default-500">
+                      <td className="py-2 px-3 font-medium text-center max-w-xs">
+                        <span title={prod.nombreProducto} className="truncate block">
+                          {prod.nombreProducto}
+                        </span>
+                      </td>
+                      <td className="py-2 px-3 text-default-500 text-center">
                         {prod.abreviatura || prod.nombreUnidad}
                       </td>
-                      <td className="py-2 px-3">
+                      <td className="py-2 px-3 text-center">
                         {isEditing ? (
                           <div className="flex items-center gap-1">
                             <Input
@@ -847,8 +856,8 @@ const ProductosProveedor: React.FC<ProductosProveedorProps> = ({
                           </span>
                         )}
                       </td>
-                      <td className="py-2 px-3">{renderDisponibilidad(prod.activo)}</td>
-                      <td className="py-2 px-3 text-default-400">
+                      <td className="py-2 px-3 text-center">{renderDisponibilidad(prod.activo)}</td>
+                      <td className="py-2 px-3 text-default-400 text-center">
                         {prod.fechaActualizacion
                           ? new Date(prod.fechaActualizacion).toLocaleDateString('es-CL')
                           : '—'}
