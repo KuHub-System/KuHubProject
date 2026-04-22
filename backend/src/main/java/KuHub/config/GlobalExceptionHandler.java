@@ -2,6 +2,7 @@ package KuHub.config;
 
 import KuHub.modules.gestion_academica.exceptions.GestionAcademicaException;
 import KuHub.modules.gestion_inventario.exceptions.GestionInventarioException;
+import KuHub.modules.gestion_proveedor.exceptions.GestionProveedorException;
 import KuHub.modules.gestion_solicitud.exception.GestionSolicitudException;
 import KuHub.modules.gestion_usuario.exceptions.*;
 import KuHub.modules.gestion_receta.exceptions.GestionRecetaException;
@@ -201,6 +202,11 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(GestionInventarioException.class)
     public ResponseEntity<String> handleGestionInventario(GestionInventarioException ex) {
         // Aquí usamos el HttpStatus que tú mismo definiste en tu Service
+        return ResponseEntity.status(ex.getStatus()).body(ex.getMessage());
+    }
+
+    @ExceptionHandler(GestionProveedorException.class)
+    public ResponseEntity<String> handleGestionProveedor(GestionProveedorException ex) {
         return ResponseEntity.status(ex.getStatus()).body(ex.getMessage());
     }
 
