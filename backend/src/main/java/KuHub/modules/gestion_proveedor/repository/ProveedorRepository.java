@@ -135,4 +135,146 @@ public interface ProveedorRepository extends JpaRepository<Proveedor, Integer> {
             ORDER BY pp.precio_producto ASC
             """, nativeQuery = true)
     List<Object[]> findProveedoresPorProducto(@Param("idProducto") Integer idProducto);
+
+    /**
+     * Cotización agrupada por proveedor (menor precio) con productos ordenados por categoría.
+     * Los productos sin proveedor se agrupan al final.
+     * Retorna JSON que debe deserializarse a CotizacionProveedorDTO.CotizacionResponse.
+     */
+    @Query(value = """
+WITH
+productos_solicitados AS (
+    SELECT
+        p.id_producto,
+        p.nombre_producto,
+        c.id_categoria,
+        c.nombre_categoria,
+        um.abreviatura,
+        SUM(ds.cant_producto_solicitud) AS cantidad_total
+    FROM detalle_solicitud ds
+    JOIN solicitud s ON s.id_solicitud = ds.id_solicitud
+    JOIN producto p ON p.id_producto = ds.id_producto
+    JOIN categoria c ON c.id_categoria = p.id_categoria
+    JOIN unidad_medida um ON um.id_unidad = p.id_unidad
+    WHERE s.estado_solicitud = 'EN_PEDIDO'
+      AND s.fecha_solicitada BETWEEN :fechaInicio AND :fechaFin
+    GROUP BY
+        p.id_producto,
+        p.nombre_producto,
+        c.id_categoria,
+        c.nombre_categoria,
+        um.abreviatura
+),
+
+mejor_precio AS (
+    SELECT DISTINCT ON (pp.id_producto)
+        pp.id_producto,
+        pp.id_proveedor,
+        pp.precio_producto
+    FROM proveedor_producto pp
+    JOIN proveedor pv ON pv.id_proveedor = pp.id_proveedor
+    WHERE pp.activo = TRUE
+      AND pv.activo = TRUE
+      AND pv.estado_proveedor = 'DISPONIBLE'
+    ORDER BY
+        pp.id_producto,
+        pp.precio_producto ASC
+),
+
+productos_con_proveedor AS (
+    SELECT
+        ps.id_producto,
+        ps.nombre_producto,
+        ps.id_categoria,
+        ps.nombre_categoria,
+        ps.abreviatura,
+        ps.cantidad_total,
+        mp.id_proveedor,
+        mp.precio_producto,
+        pv.nombre_distribuidora,
+        pv.nombre_proveedor,
+        pv.telefono_proveedor,
+        pv.email_proveedor
+    FROM productos_solicitados ps
+    LEFT JOIN mejor_precio mp ON mp.id_producto = ps.id_producto
+    LEFT JOIN proveedor pv ON pv.id_proveedor = mp.id_proveedor
+)
+
+SELECT jsonb_agg(
+    jsonb_build_object(
+        'idProveedor',         proveedor_grupo.id_proveedor,
+        'nombreDistribuidora', proveedor_grupo.nombre_distribuidora,
+        'nombreProveedor',     proveedor_grupo.nombre_proveedor,
+        'telefono',            proveedor_grupo.telefono_proveedor,
+        'email',               proveedor_grupo.email_proveedor,
+        'totalProductos',      proveedor_grupo.total_productos,
+        'categorias',          proveedor_grupo.categorias_json
+    )
+    ORDER BY
+        (proveedor_grupo.id_proveedor IS NULL) ASC,
+        proveedor_grupo.nombre_distribuidora ASC
+) AS cotizacion_json
+FROM (
+    SELECT
+        categoria_grupo.id_proveedor,
+        categoria_grupo.nombre_distribuidora,
+        categoria_grupo.nombre_proveedor,
+        categoria_grupo.telefono_proveedor,
+        categoria_grupo.email_proveedor,
+        SUM(categoria_grupo.conteo_productos) AS total_productos,
+        jsonb_agg(
+            jsonb_build_object(
+                'idCategoria',     categoria_grupo.id_categoria,
+                'nombreCategoria', categoria_grupo.nombre_categoria,
+                'productos',       categoria_grupo.productos_json
+            )
+            ORDER BY categoria_grupo.nombre_categoria ASC
+        ) AS categorias_json
+    FROM (
+        SELECT
+            pcp.id_proveedor,
+            pcp.nombre_distribuidora,
+            pcp.nombre_proveedor,
+            pcp.telefono_proveedor,
+            pcp.email_proveedor,
+            pcp.id_categoria,
+            pcp.nombre_categoria,
+            COUNT(pcp.id_producto) AS conteo_productos,
+            jsonb_agg(
+                jsonb_build_object(
+                    'idProducto',      pcp.id_producto,
+                    'nombreProducto',  pcp.nombre_producto,
+                    'abreviatura',     pcp.abreviatura,
+                    'cantidadTotal',   pcp.cantidad_total,
+                    'precioUnitario',  pcp.precio_producto,
+                    'subtotal',        CASE
+                                           WHEN pcp.precio_producto IS NOT NULL
+                                           THEN ROUND(pcp.precio_producto * pcp.cantidad_total, 2)
+                                           ELSE NULL
+                                       END
+                )
+                ORDER BY pcp.nombre_producto ASC
+            ) AS productos_json
+        FROM productos_con_proveedor pcp
+        GROUP BY
+            pcp.id_proveedor,
+            pcp.nombre_distribuidora,
+            pcp.nombre_proveedor,
+            pcp.telefono_proveedor,
+            pcp.email_proveedor,
+            pcp.id_categoria,
+            pcp.nombre_categoria
+    ) AS categoria_grupo
+    GROUP BY
+        categoria_grupo.id_proveedor,
+        categoria_grupo.nombre_distribuidora,
+        categoria_grupo.nombre_proveedor,
+        categoria_grupo.telefono_proveedor,
+        categoria_grupo.email_proveedor
+) AS proveedor_grupo
+            """, nativeQuery = true)
+    String findCotizacionProveedoresPorRango(
+            @Param("fechaInicio") java.time.LocalDate fechaInicio,
+            @Param("fechaFin") java.time.LocalDate fechaFin
+    );
 }

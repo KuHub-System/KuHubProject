@@ -1,7 +1,7 @@
 /**
  * PÁGINA DE GESTIÓN DE PROVEEDORES
  * Conectada con el backend /api/v1/proveedor
- * Reemplaza el mock data anterior por llamadas reales a la API.
+ * Incluye cotización por rango de fechas con exportación a Excel.
  */
 
 import React from 'react';
@@ -10,6 +10,8 @@ import {
   Card,
   CardBody,
   Chip,
+  DateRangePicker,
+  Divider,
   Input,
   Modal,
   ModalContent,
@@ -22,8 +24,10 @@ import {
   Spinner,
   useDisclosure,
 } from '@heroui/react';
+import { CalendarDate } from '@internationalized/date';
 import { Icon } from '@iconify/react';
 import { motion, AnimatePresence } from 'framer-motion';
+import XLSXStyle from 'xlsx-js-style';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useModulePermission } from '../contexts/permission-context';
 import {
@@ -35,6 +39,7 @@ import {
   agregarProductoProveedorService,
   actualizarPrecioProductoService,
   quitarProductoProveedorService,
+  obtenerCotizacionPorRangoService,
 } from '../services/proveedor-service';
 import { obtenerProductosParaRecetaService } from '../services/inventario-service';
 import type {
@@ -44,6 +49,8 @@ import type {
   IProveedorCreateDTO,
   IProveedorUpdateDTO,
   EstadoProveedor,
+  ICotizacionResponse,
+  ICotizacionProveedor,
 } from '../types/proveedor.types';
 import type { IProductoRecetaSelection } from '../types/producto.types';
 
@@ -63,6 +70,125 @@ const renderDisponibilidad = (activo: boolean) => {
 
 const formatPrecio = (precio: number) =>
   `$${precio.toLocaleString('es-CL', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
+
+// ── Helpers Excel (estándar EXCEL.MD) ─────────────────────────────────────────
+
+const fmtN = (v: number): string =>
+  v.toLocaleString('es-CL', { maximumFractionDigits: 3 });
+
+const cl = (c: number): string => {
+  let s = ''; let n = c + 1;
+  while (n > 0) { n--; s = String.fromCharCode(65 + (n % 26)) + s; n = Math.floor(n / 26); }
+  return s;
+};
+
+const sc = (v: string | number | null, s: object) => ({
+  v: typeof v === 'number' ? fmtN(v) : (v ?? ''),
+  t: 's' as const,
+  s,
+});
+
+const styleTitle = {
+  font: { bold: true, sz: 14, color: { rgb: '1A1A1A' } },
+  fill: { fgColor: { rgb: 'FFB800' } },
+  alignment: { horizontal: 'center' as const, vertical: 'center' as const, wrapText: false },
+};
+
+const styleHeader = {
+  font: { bold: true, sz: 11, color: { rgb: 'FFFFFF' } },
+  fill: { fgColor: { rgb: '2D3748' } },
+  alignment: { horizontal: 'center' as const, vertical: 'center' as const, wrapText: true },
+  border: {
+    top: { style: 'thin' as const, color: { rgb: 'FFFFFF' } },
+    bottom: { style: 'thin' as const, color: { rgb: 'FFFFFF' } },
+    left: { style: 'thin' as const, color: { rgb: 'FFFFFF' } },
+    right: { style: 'thin' as const, color: { rgb: 'FFFFFF' } },
+  },
+};
+
+const styleCat = {
+  font: { bold: true, sz: 11, color: { rgb: '1A1A1A' } },
+  fill: { fgColor: { rgb: 'FFF3CD' } },
+  alignment: { horizontal: 'left' as const, vertical: 'center' as const },
+  border: {
+    top: { style: 'thin' as const, color: { rgb: 'E2C97E' } },
+    bottom: { style: 'thin' as const, color: { rgb: 'E2C97E' } },
+    left: { style: 'thin' as const, color: { rgb: 'E2C97E' } },
+    right: { style: 'thin' as const, color: { rgb: 'E2C97E' } },
+  },
+};
+
+const styleNum = {
+  font: { sz: 10 },
+  fill: { fgColor: { rgb: 'FFFFFF' } },
+  alignment: { horizontal: 'right' as const, vertical: 'center' as const },
+  border: {
+    top: { style: 'thin' as const, color: { rgb: 'E2E8F0' } },
+    bottom: { style: 'thin' as const, color: { rgb: 'E2E8F0' } },
+    left: { style: 'thin' as const, color: { rgb: 'E2E8F0' } },
+    right: { style: 'thin' as const, color: { rgb: 'E2E8F0' } },
+  },
+};
+
+const styleText = {
+  font: { sz: 10 },
+  fill: { fgColor: { rgb: 'FFFFFF' } },
+  alignment: { horizontal: 'left' as const, vertical: 'center' as const },
+  border: {
+    top: { style: 'thin' as const, color: { rgb: 'E2E8F0' } },
+    bottom: { style: 'thin' as const, color: { rgb: 'E2E8F0' } },
+    left: { style: 'thin' as const, color: { rgb: 'E2E8F0' } },
+    right: { style: 'thin' as const, color: { rgb: 'E2E8F0' } },
+  },
+};
+
+const styleTotal = {
+  font: { bold: true, sz: 10, color: { rgb: 'FFFFFF' } },
+  fill: { fgColor: { rgb: '4A5568' } },
+  alignment: { horizontal: 'center' as const, vertical: 'center' as const },
+  border: {
+    top: { style: 'thin' as const, color: { rgb: '718096' } },
+    bottom: { style: 'thin' as const, color: { rgb: '718096' } },
+    left: { style: 'thin' as const, color: { rgb: '718096' } },
+    right: { style: 'thin' as const, color: { rgb: '718096' } },
+  },
+};
+
+const styleSinProveedor = {
+  font: { bold: true, sz: 11, color: { rgb: 'FFFFFF' } },
+  fill: { fgColor: { rgb: 'E53E3E' } },
+  alignment: { horizontal: 'left' as const, vertical: 'center' as const },
+  border: {
+    top: { style: 'thin' as const, color: { rgb: 'E53E3E' } },
+    bottom: { style: 'thin' as const, color: { rgb: 'E53E3E' } },
+    left: { style: 'thin' as const, color: { rgb: 'E53E3E' } },
+    right: { style: 'thin' as const, color: { rgb: 'E53E3E' } },
+  },
+};
+
+const styleProvHeader = {
+  font: { bold: true, sz: 11, color: { rgb: '1A1A1A' } },
+  fill: { fgColor: { rgb: 'EBF8FF' } },
+  alignment: { horizontal: 'left' as const, vertical: 'center' as const },
+  border: {
+    top: { style: 'thin' as const, color: { rgb: 'BEE3F8' } },
+    bottom: { style: 'thin' as const, color: { rgb: 'BEE3F8' } },
+    left: { style: 'thin' as const, color: { rgb: 'BEE3F8' } },
+    right: { style: 'thin' as const, color: { rgb: 'BEE3F8' } },
+  },
+};
+
+const styleTotalPositivo = {
+  font: { bold: true, sz: 10, color: { rgb: '276749' } },
+  fill: { fgColor: { rgb: 'C6F6D5' } },
+  alignment: { horizontal: 'right' as const, vertical: 'center' as const },
+  border: {
+    top: { style: 'thin' as const, color: { rgb: 'E2E8F0' } },
+    bottom: { style: 'thin' as const, color: { rgb: 'E2E8F0' } },
+    left: { style: 'thin' as const, color: { rgb: 'E2E8F0' } },
+    right: { style: 'thin' as const, color: { rgb: 'E2E8F0' } },
+  },
+};
 
 // ── Componente principal ──────────────────────────────────────────────────────
 
@@ -118,6 +244,13 @@ const GestionProveedoresPage: React.FC = () => {
   const [editingPrecio, setEditingPrecio] = React.useState<{ idProveedor: number; idProducto: number } | null>(null);
   const [precioTemp, setPrecioTemp] = React.useState('');
   const [savingPrecio, setSavingPrecio] = React.useState(false);
+
+  // ── Modal cotización ──
+  const { isOpen: isCotizModal, onOpen: openCotizModal, onOpenChange: onCotizModalChange } = useDisclosure();
+  const [dateRangeProyeccion, setDateRangeProyeccion] = React.useState<{ start: CalendarDate; end: CalendarDate } | null>(null);
+  const [cotizacionData, setCotizacionData] = React.useState<ICotizacionResponse | null>(null);
+  const [loadingCotizacion, setLoadingCotizacion] = React.useState(false);
+  const [errorCotizacion, setErrorCotizacion] = React.useState<string | null>(null);
 
   // ── Toast simple ──
   const [toast, setToast] = React.useState<{ msg: string; type: 'success' | 'error' } | null>(null);
@@ -371,24 +504,9 @@ const GestionProveedoresPage: React.FC = () => {
         transition={{ duration: 0.4 }}
         className="space-y-6"
       >
-        {/* Encabezado */}
-        <div className="flex flex-col md:flex-row justify-end items-start md:items-center gap-4 border-b border-default-200 dark:border-default-100 pb-4">
-          {prov_Crear && (
-            <Button
-              color="primary"
-              variant="solid"
-              className="font-bold text-secondary shadow-md"
-              startContent={<Icon icon="lucide:plus" width={20} />}
-              onPress={handleNuevoProveedor}
-            >
-              Nuevo Proveedor
-            </Button>
-          )}
-        </div>
-
-        {/* Filtros */}
+        {/* Filtros + Acciones */}
         <Card className="shadow-sm bg-default-50 dark:bg-content1 border border-default-200 dark:border-default-100">
-          <CardBody className="p-4">
+          <CardBody className="p-4 space-y-3">
             <div className="flex flex-col md:flex-row gap-3">
               <Input
                 placeholder="Buscar por nombre, distribuidora o RUT..."
@@ -416,6 +534,34 @@ const GestionProveedoresPage: React.FC = () => {
                 <SelectItem key="DISPONIBLE" textValue="Disponible">Disponible</SelectItem>
                 <SelectItem key="NO_DISPONIBLE" textValue="No Disponible">No Disponible</SelectItem>
               </Select>
+            </div>
+            <Divider />
+            <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+              {prov_Crear && (
+                <Button
+                  color="primary"
+                  variant="solid"
+                  className="font-bold text-secondary shadow-md cursor-pointer"
+                  startContent={<Icon icon="lucide:plus" width={20} />}
+                  onPress={handleNuevoProveedor}
+                >
+                  Nuevo Proveedor
+                </Button>
+              )}
+              <Button
+                color="secondary"
+                variant="flat"
+                className="font-bold cursor-pointer"
+                startContent={<Icon icon="lucide:file-spreadsheet" width={20} />}
+                onPress={() => {
+                  setCotizacionData(null);
+                  setDateRangeProyeccion(null);
+                  setErrorCotizacion(null);
+                  openCotizModal();
+                }}
+              >
+                Proyección Cotización
+              </Button>
             </div>
           </CardBody>
         </Card>
@@ -626,6 +772,37 @@ const GestionProveedoresPage: React.FC = () => {
           </>
         )}
       </motion.div>
+
+      {/* ── Modal Cotización por Rango ── */}
+      <CotizacionModal
+        isOpen={isCotizModal}
+        onOpenChange={onCotizModalChange}
+        dateRange={dateRangeProyeccion}
+        onDateRangeChange={setDateRangeProyeccion}
+        cotizacionData={cotizacionData}
+        loading={loadingCotizacion}
+        error={errorCotizacion}
+        onConsultar={async () => {
+          if (!dateRangeProyeccion) return;
+          setLoadingCotizacion(true);
+          setErrorCotizacion(null);
+          setCotizacionData(null);
+          try {
+            const fi = `${dateRangeProyeccion.start.year}-${String(dateRangeProyeccion.start.month).padStart(2, '0')}-${String(dateRangeProyeccion.start.day).padStart(2, '0')}`;
+            const ff = `${dateRangeProyeccion.end.year}-${String(dateRangeProyeccion.end.month).padStart(2, '0')}-${String(dateRangeProyeccion.end.day).padStart(2, '0')}`;
+            const data = await obtenerCotizacionPorRangoService(fi, ff);
+            setCotizacionData(data);
+          } catch (err: any) {
+            setErrorCotizacion(err.message || 'Error al consultar cotización');
+          } finally {
+            setLoadingCotizacion(false);
+          }
+        }}
+        onExportExcel={() => {
+          if (!cotizacionData || !dateRangeProyeccion) return;
+          exportarCotizacionExcel(cotizacionData, dateRangeProyeccion);
+        }}
+      />
 
       {/* ── Modal Crear / Editar / Ver Proveedor ── */}
       <Modal isOpen={isProvModal} onOpenChange={onProvModalChange} size="lg" scrollBehavior="inside">
@@ -1218,6 +1395,437 @@ const FormularioAsignarProducto: React.FC<FormularioAsignarProductoProps> = ({
         </Button>
       </ModalFooter>
     </>
+  );
+};
+
+// ── Función de exportación Excel (estándar EXCEL.MD) ──────────────────────────
+
+const exportarCotizacionExcel = (
+  data: ICotizacionResponse,
+  dateRange: { start: CalendarDate; end: CalendarDate }
+) => {
+  const fi = `${dateRange.start.year}-${String(dateRange.start.month).padStart(2, '0')}-${String(dateRange.start.day).padStart(2, '0')}`;
+  const ff = `${dateRange.end.year}-${String(dateRange.end.month).padStart(2, '0')}-${String(dateRange.end.day).padStart(2, '0')}`;
+
+  const nCols = 6; // Proveedor | Categoría | Producto | Unidad | Cantidad | Precio Unit. | Subtotal
+  const totalCols = 7;
+  const ws: Record<string, unknown> = {};
+  const merges: { s: { r: number; c: number }; e: { r: number; c: number } }[] = [];
+  let row = 0;
+
+  // ── Título ──
+  for (let c = 0; c < totalCols; c++) {
+    ws[XLSXStyle.utils.encode_cell({ r: row, c })] = sc(
+      c === 0 ? `Cotización Proveedores — ${fi} al ${ff}` : '',
+      styleTitle
+    );
+  }
+  merges.push({ s: { r: 0, c: 0 }, e: { r: 0, c: totalCols - 1 } });
+  row++;
+
+  // ── Encabezados ──
+  const headers = ['Proveedor', 'Categoría', 'Producto', 'Unidad', 'Cantidad', 'Precio Unit.', 'Subtotal'];
+  headers.forEach((h, c) => {
+    ws[XLSXStyle.utils.encode_cell({ r: row, c })] = sc(h, styleHeader);
+  });
+  row++;
+
+  const proveedoresConId = data.cotizacion.filter(p => p.idProveedor !== null);
+  const proveedoresSinId = data.cotizacion.filter(p => p.idProveedor === null);
+
+  // ── Proveedores con datos ──
+  for (const prov of proveedoresConId) {
+    // Fila de proveedor
+    const provLabel = `${prov.nombreDistribuidora ?? 'Sin nombre'} — ${prov.nombreProveedor ?? ''} | Tel: ${prov.telefono ?? '—'} | Email: ${prov.email ?? '—'} | Productos: ${prov.totalProductos}`;
+    for (let c = 0; c < totalCols; c++) {
+      ws[XLSXStyle.utils.encode_cell({ r: row, c })] = sc(c === 0 ? provLabel : '', styleProvHeader);
+    }
+    merges.push({ s: { r: row, c: 0 }, e: { r: row, c: totalCols - 1 } });
+    row++;
+
+    let totalProveedor = 0;
+
+    for (const cat of prov.categorias) {
+      // Fila de categoría
+      for (let c = 0; c < totalCols; c++) {
+        ws[XLSXStyle.utils.encode_cell({ r: row, c })] = sc(c === 0 ? cat.nombreCategoria : '', styleCat);
+      }
+      merges.push({ s: { r: row, c: 0 }, e: { r: row, c: totalCols - 1 } });
+      row++;
+
+      for (const prod of cat.productos) {
+        ws[XLSXStyle.utils.encode_cell({ r: row, c: 0 })] = sc('', styleText);
+        ws[XLSXStyle.utils.encode_cell({ r: row, c: 1 })] = sc(cat.nombreCategoria, styleText);
+        ws[XLSXStyle.utils.encode_cell({ r: row, c: 2 })] = sc(prod.nombreProducto, styleText);
+        ws[XLSXStyle.utils.encode_cell({ r: row, c: 3 })] = sc(prod.abreviatura, styleText);
+        ws[XLSXStyle.utils.encode_cell({ r: row, c: 4 })] = sc(prod.cantidadTotal, styleNum);
+        ws[XLSXStyle.utils.encode_cell({ r: row, c: 5 })] = sc(
+          prod.precioUnitario !== null ? prod.precioUnitario : '—',
+          styleNum
+        );
+        ws[XLSXStyle.utils.encode_cell({ r: row, c: 6 })] = sc(
+          prod.subtotal !== null ? prod.subtotal : '—',
+          styleNum
+        );
+        if (prod.subtotal !== null) totalProveedor += prod.subtotal;
+        row++;
+      }
+    }
+
+    // Subtotal proveedor
+    for (let c = 0; c < totalCols; c++) {
+      if (c < totalCols - 1) {
+        ws[XLSXStyle.utils.encode_cell({ r: row, c })] = sc(
+          c === 0 ? `Total ${prov.nombreDistribuidora ?? ''}` : '',
+          styleTotal
+        );
+      } else {
+        ws[XLSXStyle.utils.encode_cell({ r: row, c })] = sc(totalProveedor, styleTotalPositivo);
+      }
+    }
+    merges.push({ s: { r: row, c: 0 }, e: { r: row, c: totalCols - 2 } });
+    row++;
+  }
+
+  // ── Productos sin proveedor ──
+  if (proveedoresSinId.length > 0) {
+    for (const sinProv of proveedoresSinId) {
+      // Encabezado "Sin Proveedor"
+      for (let c = 0; c < totalCols; c++) {
+        ws[XLSXStyle.utils.encode_cell({ r: row, c })] = sc(
+          c === 0 ? `⚠ PRODUCTOS SIN PROVEEDOR (${sinProv.totalProductos} producto${sinProv.totalProductos !== 1 ? 's' : ''})` : '',
+          styleSinProveedor
+        );
+      }
+      merges.push({ s: { r: row, c: 0 }, e: { r: row, c: totalCols - 1 } });
+      row++;
+
+      for (const cat of sinProv.categorias) {
+        for (let c = 0; c < totalCols; c++) {
+          ws[XLSXStyle.utils.encode_cell({ r: row, c })] = sc(c === 0 ? cat.nombreCategoria : '', styleCat);
+        }
+        merges.push({ s: { r: row, c: 0 }, e: { r: row, c: totalCols - 1 } });
+        row++;
+
+        for (const prod of cat.productos) {
+          ws[XLSXStyle.utils.encode_cell({ r: row, c: 0 })] = sc('Sin proveedor', styleText);
+          ws[XLSXStyle.utils.encode_cell({ r: row, c: 1 })] = sc(cat.nombreCategoria, styleText);
+          ws[XLSXStyle.utils.encode_cell({ r: row, c: 2 })] = sc(prod.nombreProducto, styleText);
+          ws[XLSXStyle.utils.encode_cell({ r: row, c: 3 })] = sc(prod.abreviatura, styleText);
+          ws[XLSXStyle.utils.encode_cell({ r: row, c: 4 })] = sc(prod.cantidadTotal, styleNum);
+          ws[XLSXStyle.utils.encode_cell({ r: row, c: 5 })] = sc('—', styleNum);
+          ws[XLSXStyle.utils.encode_cell({ r: row, c: 6 })] = sc('—', styleNum);
+          row++;
+        }
+      }
+    }
+  }
+
+  // ── Configuración de hoja ──
+  ws['!ref'] = XLSXStyle.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: row - 1, c: totalCols - 1 } });
+  ws['!merges'] = merges;
+  ws['!cols'] = [
+    { wch: 40 }, // Proveedor
+    { wch: 18 }, // Categoría
+    { wch: 30 }, // Producto
+    { wch: 10 }, // Unidad
+    { wch: 14 }, // Cantidad
+    { wch: 14 }, // Precio Unit.
+    { wch: 14 }, // Subtotal
+  ];
+  ws['!rows'] = [{ hpt: 28 }];
+  (ws as Record<string, unknown>)['!freeze'] = { xSplit: 0, ySplit: 2 };
+
+  const wb = XLSXStyle.utils.book_new();
+  XLSXStyle.utils.book_append_sheet(wb, ws, 'Cotización');
+  XLSXStyle.writeFile(wb, `cotizacion_proveedores_${fi}_${ff}.xlsx`);
+};
+
+// ── Sub-componente: Modal de Cotización por Rango ─────────────────────────────
+
+interface CotizacionModalProps {
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
+  dateRange: { start: CalendarDate; end: CalendarDate } | null;
+  onDateRangeChange: (val: { start: CalendarDate; end: CalendarDate } | null) => void;
+  cotizacionData: ICotizacionResponse | null;
+  loading: boolean;
+  error: string | null;
+  onConsultar: () => void;
+  onExportExcel: () => void;
+}
+
+const CotizacionModal: React.FC<CotizacionModalProps> = ({
+  isOpen,
+  onOpenChange,
+  dateRange,
+  onDateRangeChange,
+  cotizacionData,
+  loading,
+  error,
+  onConsultar,
+  onExportExcel,
+}) => {
+  const proveedoresConId = cotizacionData?.cotizacion.filter(p => p.idProveedor !== null) ?? [];
+  const proveedoresSinId = cotizacionData?.cotizacion.filter(p => p.idProveedor === null) ?? [];
+
+  const calcularTotalProveedor = (prov: ICotizacionProveedor): number => {
+    let total = 0;
+    for (const cat of prov.categorias) {
+      for (const prod of cat.productos) {
+        if (prod.subtotal !== null) total += prod.subtotal;
+      }
+    }
+    return total;
+  };
+
+  return (
+    <Modal isOpen={isOpen} onOpenChange={onOpenChange} size="5xl" scrollBehavior="inside">
+      <ModalContent>
+        {(onClose) => (
+          <>
+            <ModalHeader className="border-b border-default-100 dark:border-default-50 bg-secondary-50 dark:bg-secondary-50/10">
+              <div className="flex items-center gap-2">
+                <Icon icon="lucide:file-spreadsheet" className="text-secondary dark:text-secondary-400" width={22} />
+                <span className="font-bold text-secondary dark:text-foreground">
+                  Proyección de Cotización por Rango
+                </span>
+              </div>
+            </ModalHeader>
+
+            <ModalBody className="gap-4 py-4">
+              {/* Selector de rango */}
+              <div className="flex flex-col sm:flex-row gap-3 items-end">
+                <DateRangePicker
+                  label="Rango de fechas"
+                  variant="bordered"
+                  value={dateRange}
+                  onChange={onDateRangeChange}
+                  className="w-full sm:max-w-xs"
+                />
+                <Button
+                  color="primary"
+                  variant="solid"
+                  className="font-bold text-secondary shadow-md cursor-pointer"
+                  startContent={<Icon icon="lucide:search" width={18} />}
+                  isLoading={loading}
+                  isDisabled={!dateRange}
+                  onPress={onConsultar}
+                >
+                  Consultar
+                </Button>
+              </div>
+
+              {/* Error */}
+              {error && (
+                <div className="flex items-center gap-2 bg-danger-50 dark:bg-danger-50/10 text-danger text-sm p-3 rounded-lg">
+                  <Icon icon="lucide:alert-circle" width={16} />
+                  {error}
+                </div>
+              )}
+
+              {/* Loading */}
+              {loading && (
+                <div className="flex justify-center py-10">
+                  <Spinner size="lg" color="primary" label="Consultando cotización..." />
+                </div>
+              )}
+
+              {/* Resultados */}
+              {!loading && cotizacionData && (
+                <div className="space-y-4">
+                  {cotizacionData.cotizacion.length === 0 ? (
+                    <div className="text-center py-10 text-default-400">
+                      <Icon icon="lucide:inbox" width={40} className="mx-auto mb-2" />
+                      <p>No hay productos solicitados en el rango seleccionado.</p>
+                    </div>
+                  ) : (
+                    <>
+                      {/* Proveedores con datos */}
+                      {proveedoresConId.map((prov) => {
+                        const totalProv = calcularTotalProveedor(prov);
+                        return (
+                          <Card
+                            key={prov.idProveedor}
+                            className="shadow-sm border border-default-200 dark:border-default-100"
+                          >
+                            <CardBody className="p-0">
+                              {/* Header proveedor */}
+                              <div className="bg-primary-50 dark:bg-primary-50/10 px-4 py-3 border-b border-default-100">
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                                  <div>
+                                    <h4 className="font-bold text-base text-secondary dark:text-foreground">
+                                      {prov.nombreDistribuidora}
+                                    </h4>
+                                    <div className="flex flex-wrap items-center gap-2 text-xs text-default-500 mt-0.5">
+                                      <span className="flex items-center gap-1">
+                                        <Icon icon="lucide:user" width={12} />
+                                        {prov.nombreProveedor ?? '—'}
+                                      </span>
+                                      {prov.telefono && (
+                                        <>
+                                          <span className="text-default-300">•</span>
+                                          <span className="flex items-center gap-1">
+                                            <Icon icon="lucide:phone" width={12} />
+                                            {prov.telefono}
+                                          </span>
+                                        </>
+                                      )}
+                                      {prov.email && (
+                                        <>
+                                          <span className="text-default-300">•</span>
+                                          <span className="flex items-center gap-1">
+                                            <Icon icon="lucide:mail" width={12} />
+                                            {prov.email}
+                                          </span>
+                                        </>
+                                      )}
+                                    </div>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <Chip color="primary" size="sm" variant="flat">
+                                      {prov.totalProductos} producto{prov.totalProductos !== 1 ? 's' : ''}
+                                    </Chip>
+                                    <Chip color="success" size="sm" variant="flat" className="font-bold">
+                                      Total: ${fmtN(totalProv)}
+                                    </Chip>
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Tabla de productos */}
+                              <div className="px-4 py-3">
+                                {prov.categorias.map((cat) => (
+                                  <div key={cat.idCategoria} className="mb-3 last:mb-0">
+                                    <p className="text-xs font-semibold text-default-500 uppercase tracking-wide mb-1">
+                                      {cat.nombreCategoria}
+                                    </p>
+                                    <div className="overflow-x-auto rounded-lg border border-default-200 dark:border-default-100">
+                                      <table className="w-full text-xs">
+                                        <thead className="bg-default-100 dark:bg-default-50">
+                                          <tr>
+                                            <th className="text-left py-2 px-3 font-medium">Producto</th>
+                                            <th className="text-center py-2 px-3 font-medium">Unidad</th>
+                                            <th className="text-right py-2 px-3 font-medium">Cantidad</th>
+                                            <th className="text-right py-2 px-3 font-medium">Precio Unit.</th>
+                                            <th className="text-right py-2 px-3 font-medium">Subtotal</th>
+                                          </tr>
+                                        </thead>
+                                        <tbody>
+                                          {cat.productos.map((prod) => (
+                                            <tr
+                                              key={prod.idProducto}
+                                              className="border-t border-default-100 dark:border-default-50 hover:bg-default-50 dark:hover:bg-default-100/20"
+                                            >
+                                              <td className="py-2 px-3 font-medium">{prod.nombreProducto}</td>
+                                              <td className="py-2 px-3 text-center text-default-500">{prod.abreviatura}</td>
+                                              <td className="py-2 px-3 text-right">{fmtN(prod.cantidadTotal)}</td>
+                                              <td className="py-2 px-3 text-right">
+                                                {prod.precioUnitario !== null ? `$${fmtN(prod.precioUnitario)}` : '—'}
+                                              </td>
+                                              <td className="py-2 px-3 text-right font-semibold">
+                                                {prod.subtotal !== null ? `$${fmtN(prod.subtotal)}` : '—'}
+                                              </td>
+                                            </tr>
+                                          ))}
+                                        </tbody>
+                                      </table>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </CardBody>
+                          </Card>
+                        );
+                      })}
+
+                      {/* Productos sin proveedor */}
+                      {proveedoresSinId.length > 0 && proveedoresSinId.map((sinProv, idx) => (
+                        <Card
+                          key={`sin-prov-${idx}`}
+                          className="shadow-sm border-2 border-danger-200 dark:border-danger-300"
+                        >
+                          <CardBody className="p-0">
+                            <div className="bg-danger-50 dark:bg-danger-50/10 px-4 py-3 border-b border-danger-200">
+                              <div className="flex items-center gap-2">
+                                <Icon icon="lucide:alert-triangle" className="text-danger" width={20} />
+                                <h4 className="font-bold text-base text-danger">
+                                  Productos Sin Proveedor
+                                </h4>
+                                <Chip color="danger" size="sm" variant="flat">
+                                  {sinProv.totalProductos} producto{sinProv.totalProductos !== 1 ? 's' : ''}
+                                </Chip>
+                              </div>
+                              <p className="text-xs text-danger-400 mt-1">
+                                Estos productos no tienen un proveedor asignado. No hay precio asociado.
+                              </p>
+                            </div>
+
+                            <div className="px-4 py-3">
+                              {sinProv.categorias.map((cat) => (
+                                <div key={cat.idCategoria} className="mb-3 last:mb-0">
+                                  <p className="text-xs font-semibold text-default-500 uppercase tracking-wide mb-1">
+                                    {cat.nombreCategoria}
+                                  </p>
+                                  <div className="overflow-x-auto rounded-lg border border-danger-100 dark:border-danger-200">
+                                    <table className="w-full text-xs">
+                                      <thead className="bg-danger-50/50 dark:bg-danger-50/10">
+                                        <tr>
+                                          <th className="text-left py-2 px-3 font-medium text-danger-600">Producto</th>
+                                          <th className="text-center py-2 px-3 font-medium text-danger-600">Unidad</th>
+                                          <th className="text-right py-2 px-3 font-medium text-danger-600">Cantidad</th>
+                                          <th className="text-right py-2 px-3 font-medium text-danger-600">Precio Unit.</th>
+                                          <th className="text-right py-2 px-3 font-medium text-danger-600">Subtotal</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody>
+                                        {cat.productos.map((prod) => (
+                                          <tr
+                                            key={prod.idProducto}
+                                            className="border-t border-danger-50 dark:border-danger-100 hover:bg-danger-50/30"
+                                          >
+                                            <td className="py-2 px-3 font-medium">{prod.nombreProducto}</td>
+                                            <td className="py-2 px-3 text-center text-default-500">{prod.abreviatura}</td>
+                                            <td className="py-2 px-3 text-right">{fmtN(prod.cantidadTotal)}</td>
+                                            <td className="py-2 px-3 text-right text-default-400">—</td>
+                                            <td className="py-2 px-3 text-right text-default-400">—</td>
+                                          </tr>
+                                        ))}
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </CardBody>
+                        </Card>
+                      ))}
+                    </>
+                  )}
+                </div>
+              )}
+            </ModalBody>
+
+            <ModalFooter className="bg-default-50 dark:bg-content2 border-t border-default-100 dark:border-default-50">
+              <Button variant="ghost" onPress={onClose} className="font-medium">
+                Cerrar
+              </Button>
+              {cotizacionData && cotizacionData.cotizacion.length > 0 && (
+                <Button
+                  color="success"
+                  variant="flat"
+                  className="font-bold cursor-pointer"
+                  startContent={<Icon icon="lucide:download" width={18} />}
+                  onPress={onExportExcel}
+                >
+                  Descargar Excel
+                </Button>
+              )}
+            </ModalFooter>
+          </>
+        )}
+      </ModalContent>
+    </Modal>
   );
 };
 

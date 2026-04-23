@@ -89,3 +89,51 @@ export interface IProveedorProductoAddDTO {
 export interface IProveedorProductoUpdateDTO {
   precioProducto: number;
 }
+
+// ── Cotización por rango de fechas ────────────────────────────────────────────
+
+/**
+ * Producto dentro de una categoría en la cotización.
+ * Mapea CotizacionProveedorDTO.ProductoJson del backend.
+ */
+export interface ICotizacionProducto {
+  idProducto: number;
+  nombreProducto: string;
+  abreviatura: string;
+  cantidadTotal: number;
+  precioUnitario: number | null;
+  subtotal: number | null;
+}
+
+/**
+ * Categoría agrupada dentro de un proveedor en la cotización.
+ * Mapea CotizacionProveedorDTO.CategoriaGrupo del backend.
+ */
+export interface ICotizacionCategoria {
+  idCategoria: number;
+  nombreCategoria: string;
+  productos: ICotizacionProducto[];
+}
+
+/**
+ * Proveedor agrupado con sus categorías y productos.
+ * Mapea CotizacionProveedorDTO.ProveedorGrupo del backend.
+ * Cuando idProveedor es null, son productos sin proveedor asignado.
+ */
+export interface ICotizacionProveedor {
+  idProveedor: number | null;
+  nombreDistribuidora: string | null;
+  nombreProveedor: string | null;
+  telefono: string | null;
+  email: string | null;
+  totalProductos: number;
+  categorias: ICotizacionCategoria[];
+}
+
+/**
+ * Respuesta completa de la cotización por rango.
+ * Mapea CotizacionProveedorDTO.CotizacionResponse del backend.
+ */
+export interface ICotizacionResponse {
+  cotizacion: ICotizacionProveedor[];
+}
