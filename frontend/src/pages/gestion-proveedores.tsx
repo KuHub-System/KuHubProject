@@ -806,7 +806,7 @@ const GestionProveedoresPage: React.FC = () => {
 
       {/* ── Modal Crear / Editar / Ver Proveedor ── */}
       <Modal isOpen={isProvModal} onOpenChange={onProvModalChange} size="lg" scrollBehavior="inside" radius="lg" classNames={{ base: 'rounded-2xl' }}>
-        <ModalContent>
+        <ModalContent className="rounded-2xl overflow-hidden">
           {(onClose) => (
             <FormularioProveedor
               proveedor={proveedorSeleccionado}
@@ -823,7 +823,7 @@ const GestionProveedoresPage: React.FC = () => {
 
       {/* ── Modal Asignar Producto ── */}
       <Modal isOpen={isProdModal} onOpenChange={onProdModalChange} size="md" radius="lg" classNames={{ base: 'rounded-2xl' }}>
-        <ModalContent>
+        <ModalContent className="rounded-2xl overflow-hidden">
           {(onClose) => (
             <FormularioAsignarProducto
               productos={productos}
@@ -839,7 +839,7 @@ const GestionProveedoresPage: React.FC = () => {
 
       {/* ── Modal Confirmar Eliminar Proveedor ── */}
       <Modal isOpen={isDelModal} onOpenChange={onDelModalChange} size="sm" radius="lg" classNames={{ base: 'rounded-2xl' }}>
-        <ModalContent>
+        <ModalContent className="rounded-2xl overflow-hidden">
           {(onClose) => (
             <>
               <ModalHeader className="border-b border-default-200 dark:border-default-100 bg-gradient-to-r from-danger/10 to-danger/5 dark:from-danger/20 dark:to-danger/10 px-6 py-4">
@@ -888,7 +888,7 @@ const GestionProveedoresPage: React.FC = () => {
 
       {/* ── Modal Confirmar Quitar Producto ── */}
       <Modal isOpen={isQuitarModal} onOpenChange={onQuitarModalChange} size="sm" radius="lg" classNames={{ base: 'rounded-2xl' }}>
-        <ModalContent>
+        <ModalContent className="rounded-2xl overflow-hidden">
           {(onClose) => (
             <>
               <ModalHeader className="border-b border-default-200 dark:border-default-100 bg-gradient-to-r from-warning/10 to-warning/5 dark:from-warning/20 dark:to-warning/10 px-6 py-4">
@@ -1610,7 +1610,7 @@ const CotizacionModal: React.FC<CotizacionModalProps> = ({
 
   return (
     <Modal isOpen={isOpen} onOpenChange={onOpenChange} size="5xl" scrollBehavior="inside" radius="lg" classNames={{ base: 'rounded-2xl' }}>
-      <ModalContent>
+      <ModalContent className="rounded-2xl overflow-hidden">
         {(onClose) => (
           <>
             <ModalHeader className="border-b border-default-200 dark:border-default-100 bg-gradient-to-r from-primary/10 to-primary/5 dark:from-primary/20 dark:to-primary/10 px-6 py-4">

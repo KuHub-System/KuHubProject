@@ -37,7 +37,7 @@ import { Icon } from '@iconify/react';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useHistory } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { IProducto } from '../types/producto.types';
+import {IInventoryPageItem, IProducto} from '../types/producto.types';
 import {
   crearProductoService,
   actualizarProductoService,
@@ -1433,7 +1433,7 @@ export const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto
           const resultadoBodega = await actualizarBodegaTransitoConProductoService(datosBodega);
 
           // 422: stock insuficiente — NO cerrar, actualizar stock en modal
-          if ((resultadoBodega as IBodegaStockInsuficiente).insuficiente === true) {
+          if ('insuficiente' in resultadoBodega && resultadoBodega.insuficiente === true) {
             const insuf = resultadoBodega as IBodegaStockInsuficiente;
             toast.error(insuf.warning);
             const realStock = insuf.item.stock;
@@ -1446,7 +1446,7 @@ export const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto
           }
 
           // 409: desincronizado pero guardado — cerrar + toast warning
-          if ((resultadoBodega as IBodegaStockSyncWarning).desync === true) {
+          if ('desync' in resultadoBodega && resultadoBodega.desync === true) {
             const sync = resultadoBodega as IBodegaStockSyncWarning;
             if (onConflictSync) {
               onConflictSync({ ...producto, stock: sync.item.stock } as IProducto);
@@ -1494,7 +1494,7 @@ export const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto
           const resultado = await actualizarProductoService(datosActualizacion);
 
           // 422: stock insuficiente con desync — mostrar error, actualizar stock en modal, NO cerrar
-          if ((resultado as IStockInsuficiente).insuficiente === true) {
+          if ('insuficiente' in resultado && resultado.insuficiente === true) {
             const insuf = resultado as IStockInsuficiente;
             toast.error(insuf.warning);
             const realStock = insuf.item.stockActual ?? (insuf.item as any).stock;
@@ -1512,10 +1512,10 @@ export const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto
           }
 
           // Determinar si fue desync (409 operativo) o éxito limpio (200)
-          const isDesync = (resultado as IStockSyncWarning).desync === true;
+          const isDesync = 'desync' in resultado && resultado.desync === true;
           const itemActualizado = isDesync
             ? (resultado as IStockSyncWarning).item
-            : (resultado as any);
+            : (resultado as IInventoryPageItem);
 
           // Sync the item in the parent list
           if (onConflictSync && itemActualizado) {
@@ -1535,9 +1535,9 @@ export const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto
             onConflictSync(syncedProducto);
           }
 
-          if (isDesync) {
-            toast.warning((resultado as IStockSyncWarning).warning, { duration: 20000 });
-          } else {
+          if (isDesync && 'warning' in resultado) {
+            toast.warning(resultado.warning, { duration: 20000 });
+          } else if (!isDesync) {
             toast.success('Cambios guardados exitosamente');
           }
         }
