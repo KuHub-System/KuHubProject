@@ -651,14 +651,14 @@ public interface PedidoRepository extends JpaRepository<Pedido, Integer> {
                 FROM detalle_pedido dp
                 JOIN pedido p ON p.id_pedido = dp.id_pedido
                 WHERE p.fecha_inicio_pedido BETWEEN :fechaInicio AND :fechaFin
-                  AND CAST(p.estado_pedido AS TEXT) = ANY(string_to_array(:estadosCsv, ','))
+                  AND p.estado_pedido::text = ANY(string_to_array(trim(:estadosCsv), ','))
             ),
 
             'totalPedidos', (
                 SELECT COUNT(DISTINCT p.id_pedido)
                 FROM pedido p
                 WHERE p.fecha_inicio_pedido BETWEEN :fechaInicio AND :fechaFin
-                  AND CAST(p.estado_pedido AS TEXT) = ANY(string_to_array(:estadosCsv, ','))
+                  AND p.estado_pedido::text = ANY(string_to_array(trim(:estadosCsv), ','))
             ),
 
             'productos', COALESCE((
@@ -682,7 +682,7 @@ public interface PedidoRepository extends JpaRepository<Pedido, Integer> {
                     FROM detalle_pedido dp
                     JOIN pedido p ON p.id_pedido = dp.id_pedido
                     WHERE p.fecha_inicio_pedido BETWEEN :fechaInicio AND :fechaFin
-                      AND CAST(p.estado_pedido AS TEXT) = ANY(string_to_array(:estadosCsv, ','))
+                      AND p.estado_pedido::text = ANY(string_to_array(trim(:estadosCsv), ','))
                     GROUP BY dp.id_producto
                 ) resumen
                 JOIN producto prod ON prod.id_producto = resumen.id_producto
