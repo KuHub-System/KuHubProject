@@ -172,6 +172,37 @@ Fuente: **Roboto** (300, 400, 500, 700) cargada desde Google Fonts.
 | Borde acento card | `border-l-4 border-primary` / `border-t-4 border-primary` |
 | Borde separador | `border-b border-default-200` |
 
+### Modales estándar (circulares)
+
+**Todos los modales deben usar bordes redondeados (puntas circulares).** Patrón obligatorio:
+
+```tsx
+<Modal 
+  isOpen={isOpen} 
+  onOpenChange={onOpenChange} 
+  size="lg"                              // sm, md, lg, xl, 2xl, 3xl, 4xl, 5xl
+  backdrop="blur"                         // blur, opaque (con classNames), transparent
+  radius="lg"                             // Propiedad de HeroUI para border-radius
+  classNames={{ 
+    base: 'rounded-2xl'                  // Puntas circulares (obligatorio)
+  }}
+>
+  <ModalContent>
+    {/* contenido */}
+  </ModalContent>
+</Modal>
+```
+
+**Variantes avanzadas:**
+
+| Caso | Config |
+|---|---|
+| Modal estándar | `radius="lg" classNames={{ base: 'rounded-2xl' }}` |
+| Modal con scroll | `scrollBehavior="inside" radius="lg" classNames={{ base: 'rounded-2xl', body: 'min-h-[400px]' }}` |
+| Modal con backdrop opaco | `backdrop="opaque" classNames={{ backdrop: "bg-background/50 backdrop-blur-sm", base: "bg-background dark:bg-content1 shadow-xl border border-default-200 dark:border-default-100 rounded-2xl" }}` |
+
+**Nota**: El `radius="lg"` es la propiedad de HeroUI, el `rounded-2xl` es Tailwind como fallback visual.
+
 ### Clases de utilidad personalizadas (index.css)
 
 ```css
