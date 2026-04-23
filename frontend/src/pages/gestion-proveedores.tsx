@@ -805,7 +805,7 @@ const GestionProveedoresPage: React.FC = () => {
       />
 
       {/* ── Modal Crear / Editar / Ver Proveedor ── */}
-      <Modal isOpen={isProvModal} onOpenChange={onProvModalChange} size="lg" scrollBehavior="inside">
+      <Modal isOpen={isProvModal} onOpenChange={onProvModalChange} size="lg" scrollBehavior="inside" radius="lg" classNames={{ base: 'rounded-2xl' }}>
         <ModalContent>
           {(onClose) => (
             <FormularioProveedor
@@ -822,7 +822,7 @@ const GestionProveedoresPage: React.FC = () => {
       </Modal>
 
       {/* ── Modal Asignar Producto ── */}
-      <Modal isOpen={isProdModal} onOpenChange={onProdModalChange} size="md">
+      <Modal isOpen={isProdModal} onOpenChange={onProdModalChange} size="md" radius="lg" classNames={{ base: 'rounded-2xl' }}>
         <ModalContent>
           {(onClose) => (
             <FormularioAsignarProducto
@@ -838,13 +838,19 @@ const GestionProveedoresPage: React.FC = () => {
       </Modal>
 
       {/* ── Modal Confirmar Eliminar Proveedor ── */}
-      <Modal isOpen={isDelModal} onOpenChange={onDelModalChange} size="sm">
+      <Modal isOpen={isDelModal} onOpenChange={onDelModalChange} size="sm" radius="lg" classNames={{ base: 'rounded-2xl' }}>
         <ModalContent>
           {(onClose) => (
             <>
-              <ModalHeader className="text-danger flex items-center gap-2">
-                <Icon icon="lucide:alert-triangle" width={20} />
-                Eliminar Proveedor
+              <ModalHeader className="border-b border-default-200 dark:border-default-100 bg-gradient-to-r from-danger/10 to-danger/5 dark:from-danger/20 dark:to-danger/10 px-6 py-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-danger/20 rounded-lg">
+                    <Icon icon="lucide:alert-triangle" className="text-danger" width={20} />
+                  </div>
+                  <span className="font-bold text-lg text-secondary dark:text-foreground">
+                    Eliminar Proveedor
+                  </span>
+                </div>
               </ModalHeader>
               <ModalBody>
                 <p className="text-sm text-default-600">
@@ -856,17 +862,23 @@ const GestionProveedoresPage: React.FC = () => {
                   Solo se puede eliminar si no tiene productos activos asignados.
                 </p>
               </ModalBody>
-              <ModalFooter>
-                <Button variant="ghost" onPress={onClose}>Cancelar</Button>
+              <ModalFooter className="bg-gradient-to-r from-default-50 to-default-50 dark:from-content2 dark:to-content2 border-t border-default-200 dark:border-default-100 gap-2 px-6 py-4">
+                <Button variant="ghost" onPress={onClose} className="font-medium">
+                  Cancelar
+                </Button>
                 <Button
                   color="danger"
+                  variant="solid"
                   onPress={async () => {
                     await handleEliminarProveedor();
                     onClose();
                   }}
                   isLoading={deletingId !== null}
+                  className="font-bold shadow-md cursor-pointer"
+                  startContent={!deletingId && <Icon icon="lucide:trash-2" width={16} />}
+                  size="lg"
                 >
-                  Eliminar
+                  🗑️ Eliminar
                 </Button>
               </ModalFooter>
             </>
@@ -875,13 +887,19 @@ const GestionProveedoresPage: React.FC = () => {
       </Modal>
 
       {/* ── Modal Confirmar Quitar Producto ── */}
-      <Modal isOpen={isQuitarModal} onOpenChange={onQuitarModalChange} size="sm">
+      <Modal isOpen={isQuitarModal} onOpenChange={onQuitarModalChange} size="sm" radius="lg" classNames={{ base: 'rounded-2xl' }}>
         <ModalContent>
           {(onClose) => (
             <>
-              <ModalHeader className="text-warning flex items-center gap-2">
-                <Icon icon="lucide:package-minus" width={20} />
-                Quitar Producto
+              <ModalHeader className="border-b border-default-200 dark:border-default-100 bg-gradient-to-r from-warning/10 to-warning/5 dark:from-warning/20 dark:to-warning/10 px-6 py-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-warning/20 rounded-lg">
+                    <Icon icon="lucide:package-minus" className="text-warning" width={20} />
+                  </div>
+                  <span className="font-bold text-lg text-secondary dark:text-foreground">
+                    Quitar Producto
+                  </span>
+                </div>
               </ModalHeader>
               <ModalBody>
                 <p className="text-sm text-default-600">
@@ -889,17 +907,22 @@ const GestionProveedoresPage: React.FC = () => {
                   La relación quedará inactiva pero se puede reactivar asignando el producto nuevamente.
                 </p>
               </ModalBody>
-              <ModalFooter>
-                <Button variant="ghost" onPress={onClose}>Cancelar</Button>
+              <ModalFooter className="bg-gradient-to-r from-default-50 to-default-50 dark:from-content2 dark:to-content2 border-t border-default-200 dark:border-default-100 gap-2 px-6 py-4">
+                <Button variant="ghost" onPress={onClose} className="font-medium">
+                  Cancelar
+                </Button>
                 <Button
                   color="warning"
-                  variant="flat"
+                  variant="solid"
                   onPress={async () => {
                     await handleQuitarProducto();
                     onClose();
                   }}
+                  className="font-bold shadow-md cursor-pointer"
+                  startContent={<Icon icon="lucide:package-minus" width={16} />}
+                  size="lg"
                 >
-                  Quitar
+                  ⚠️ Quitar
                 </Button>
               </ModalFooter>
             </>
@@ -1133,20 +1156,22 @@ const FormularioProveedor: React.FC<FormularioProveedorProps> = ({
 
   return (
     <>
-      <ModalHeader className="border-b border-default-100 dark:border-default-50 bg-secondary-50 dark:bg-secondary-50/10">
-        <div className="flex items-center gap-2">
-          <Icon
-            icon={
-              mode === 'crear'
-                ? 'lucide:plus-circle'
-                : mode === 'editar'
-                ? 'lucide:edit-3'
-                : 'lucide:building-2'
-            }
-            className="text-secondary dark:text-secondary-400"
-            width={22}
-          />
-          <span className="font-bold text-secondary dark:text-foreground">
+      <ModalHeader className="border-b border-default-200 dark:border-default-100 bg-gradient-to-r from-secondary/10 to-secondary/5 dark:from-secondary/20 dark:to-secondary/10 px-6 py-4">
+        <div className="flex items-center gap-3 w-full">
+          <div className={`p-2 rounded-lg ${mode === 'crear' ? 'bg-success/20' : mode === 'editar' ? 'bg-warning/20' : 'bg-secondary/20'}`}>
+            <Icon
+              icon={
+                mode === 'crear'
+                  ? 'lucide:plus-circle'
+                  : mode === 'editar'
+                  ? 'lucide:edit-3'
+                  : 'lucide:building-2'
+              }
+              className={mode === 'crear' ? 'text-success' : mode === 'editar' ? 'text-warning' : 'text-secondary'}
+              width={20}
+            />
+          </div>
+          <span className="font-bold text-lg text-secondary dark:text-foreground">
             {mode === 'crear'
               ? 'Nuevo Proveedor'
               : mode === 'editar'
@@ -1240,7 +1265,7 @@ const FormularioProveedor: React.FC<FormularioProveedorProps> = ({
         )}
       </ModalBody>
 
-      <ModalFooter className="bg-default-50 dark:bg-content2 border-t border-default-100 dark:border-default-50">
+      <ModalFooter className="bg-gradient-to-r from-default-50 to-default-50 dark:from-content2 dark:to-content2 border-t border-default-200 dark:border-default-100 gap-2 px-6 py-4">
         <Button variant="ghost" onPress={onClose} className="font-medium">
           {isReadOnly ? 'Cerrar' : 'Cancelar'}
         </Button>
@@ -1250,10 +1275,11 @@ const FormularioProveedor: React.FC<FormularioProveedorProps> = ({
             variant="solid"
             onPress={handleSubmit}
             isLoading={saving}
-            className="font-bold text-secondary shadow-md"
-            startContent={!saving && <Icon icon="lucide:save" width={16} />}
+            className="font-bold text-secondary shadow-md cursor-pointer"
+            startContent={!saving && <Icon icon={mode === 'crear' ? 'lucide:plus' : 'lucide:save'} width={16} />}
+            size="lg"
           >
-            {mode === 'crear' ? 'Crear Proveedor' : 'Guardar Cambios'}
+            {mode === 'crear' ? '✨ Crear Proveedor' : '💾 Guardar Cambios'}
           </Button>
         )}
       </ModalFooter>
@@ -1381,17 +1407,20 @@ const FormularioAsignarProducto: React.FC<FormularioAsignarProductoProps> = ({
         />
       </ModalBody>
 
-      <ModalFooter className="bg-default-50 dark:bg-content2 border-t border-default-100">
-        <Button variant="ghost" onPress={onClose}>Cancelar</Button>
+      <ModalFooter className="bg-gradient-to-r from-default-50 to-default-50 dark:from-content2 dark:to-content2 border-t border-default-200 dark:border-default-100 gap-2 px-6 py-4">
+        <Button variant="ghost" onPress={onClose} className="font-medium">
+          Cancelar
+        </Button>
         <Button
           color="success"
-          variant="flat"
+          variant="solid"
           onPress={handleSubmit}
           isLoading={saving}
           startContent={!saving && <Icon icon="lucide:plus" width={16} />}
-          className="font-bold"
+          className="font-bold text-secondary shadow-md cursor-pointer"
+          size="lg"
         >
-          Asignar Producto
+          ➕ Asignar Producto
         </Button>
       </ModalFooter>
     </>
@@ -1580,37 +1609,45 @@ const CotizacionModal: React.FC<CotizacionModalProps> = ({
   };
 
   return (
-    <Modal isOpen={isOpen} onOpenChange={onOpenChange} size="5xl" scrollBehavior="inside">
+    <Modal isOpen={isOpen} onOpenChange={onOpenChange} size="5xl" scrollBehavior="inside" radius="lg" classNames={{ base: 'rounded-2xl' }}>
       <ModalContent>
         {(onClose) => (
           <>
-            <ModalHeader className="border-b border-default-100 dark:border-default-50 bg-secondary-50 dark:bg-secondary-50/10">
-              <div className="flex items-center gap-2">
-                <Icon icon="lucide:file-spreadsheet" className="text-secondary dark:text-secondary-400" width={22} />
-                <span className="font-bold text-secondary dark:text-foreground">
-                  Proyección de Cotización por Rango
-                </span>
+            <ModalHeader className="border-b border-default-200 dark:border-default-100 bg-gradient-to-r from-primary/10 to-primary/5 dark:from-primary/20 dark:to-primary/10 px-6 py-4">
+              <div className="flex items-center gap-3 w-full">
+                <div className="p-2 bg-primary/20 rounded-lg">
+                  <Icon icon="lucide:file-spreadsheet" className="text-primary" width={20} />
+                </div>
+                <div className="flex flex-col gap-0.5">
+                  <span className="font-bold text-lg text-secondary dark:text-foreground">
+                    Cotización por Rango
+                  </span>
+                  <span className="text-xs text-default-500">Agrupe productos por proveedor (menor precio)</span>
+                </div>
               </div>
             </ModalHeader>
 
-            <ModalBody className="gap-4 py-4">
+            <ModalBody className="gap-6 py-6">
               {/* Selector de rango */}
-              <div className="flex flex-col sm:flex-row gap-3 items-end">
-                <DateRangePicker
-                  label="Rango de fechas"
-                  variant="bordered"
-                  value={dateRange}
-                  onChange={onDateRangeChange}
-                  className="w-full sm:max-w-xs"
-                />
+              <div className="flex flex-col sm:flex-row gap-3 items-end bg-default-50 dark:bg-default-100/20 rounded-xl p-4 border border-default-200 dark:border-default-100">
+                <div className="flex-1">
+                  <DateRangePicker
+                    label="Seleccione rango de fechas"
+                    variant="bordered"
+                    value={dateRange}
+                    onChange={onDateRangeChange}
+                    className="w-full"
+                  />
+                </div>
                 <Button
                   color="primary"
                   variant="solid"
-                  className="font-bold text-secondary shadow-md cursor-pointer"
+                  className="font-bold text-secondary shadow-md cursor-pointer min-w-fit"
                   startContent={<Icon icon="lucide:search" width={18} />}
                   isLoading={loading}
                   isDisabled={!dateRange}
                   onPress={onConsultar}
+                  size="lg"
                 >
                   Consultar
                 </Button>
@@ -1618,9 +1655,12 @@ const CotizacionModal: React.FC<CotizacionModalProps> = ({
 
               {/* Error */}
               {error && (
-                <div className="flex items-center gap-2 bg-danger-50 dark:bg-danger-50/10 text-danger text-sm p-3 rounded-lg">
-                  <Icon icon="lucide:alert-circle" width={16} />
-                  {error}
+                <div className="flex items-start gap-3 bg-danger-50 dark:bg-danger-50/10 border border-danger/30 text-danger text-sm p-4 rounded-xl">
+                  <Icon icon="lucide:alert-circle" width={18} className="mt-0.5 shrink-0" />
+                  <div className="flex-1">
+                    <p className="font-medium">Error en la consulta</p>
+                    <p className="text-xs text-danger/80 dark:text-danger/70 mt-0.5">{error}</p>
+                  </div>
                 </div>
               )}
 
@@ -1806,19 +1846,20 @@ const CotizacionModal: React.FC<CotizacionModalProps> = ({
               )}
             </ModalBody>
 
-            <ModalFooter className="bg-default-50 dark:bg-content2 border-t border-default-100 dark:border-default-50">
+            <ModalFooter className="bg-gradient-to-r from-default-50 to-default-50 dark:from-content2 dark:to-content2 border-t border-default-200 dark:border-default-100 gap-2 px-6 py-4">
               <Button variant="ghost" onPress={onClose} className="font-medium">
                 Cerrar
               </Button>
               {cotizacionData && cotizacionData.cotizacion.length > 0 && (
                 <Button
                   color="success"
-                  variant="flat"
-                  className="font-bold cursor-pointer"
+                  variant="solid"
+                  className="font-bold text-secondary shadow-md cursor-pointer"
                   startContent={<Icon icon="lucide:download" width={18} />}
                   onPress={onExportExcel}
+                  size="lg"
                 >
-                  Descargar Excel
+                  📊 Descargar Excel
                 </Button>
               )}
             </ModalFooter>
