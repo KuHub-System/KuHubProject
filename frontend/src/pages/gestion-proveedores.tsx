@@ -878,7 +878,7 @@ const GestionProveedoresPage: React.FC = () => {
                   startContent={!deletingId && <Icon icon="lucide:trash-2" width={16} />}
                   size="lg"
                 >
-                  🗑️ Eliminar
+                  Eliminar
                 </Button>
               </ModalFooter>
             </>
@@ -922,7 +922,7 @@ const GestionProveedoresPage: React.FC = () => {
                   startContent={<Icon icon="lucide:package-minus" width={16} />}
                   size="lg"
                 >
-                  ⚠️ Quitar
+                  Quitar
                 </Button>
               </ModalFooter>
             </>
@@ -1279,7 +1279,7 @@ const FormularioProveedor: React.FC<FormularioProveedorProps> = ({
             startContent={!saving && <Icon icon={mode === 'crear' ? 'lucide:plus' : 'lucide:save'} width={16} />}
             size="lg"
           >
-            {mode === 'crear' ? '✨ Crear Proveedor' : '💾 Guardar Cambios'}
+            {mode === 'crear' ? 'Crear Proveedor' : 'Guardar Cambios'}
           </Button>
         )}
       </ModalFooter>
@@ -1420,7 +1420,7 @@ const FormularioAsignarProducto: React.FC<FormularioAsignarProductoProps> = ({
           className="font-bold text-secondary shadow-md cursor-pointer"
           size="lg"
         >
-          ➕ Asignar Producto
+          Asignar Producto
         </Button>
       </ModalFooter>
     </>
@@ -1859,7 +1859,7 @@ const CotizacionModal: React.FC<CotizacionModalProps> = ({
                   onPress={onExportExcel}
                   size="lg"
                 >
-                  📊 Descargar Excel
+                  Descargar Excel
                 </Button>
               )}
             </ModalFooter>
