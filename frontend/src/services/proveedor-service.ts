@@ -12,6 +12,7 @@ import {
   IProveedorUpdateDTO,
   IProveedorProductoAddDTO,
   IProveedorProductoUpdateDTO,
+  ICotizacionResponse,
 } from '../types/proveedor.types';
 
 // ── Helpers de transformación ─────────────────────────────────────────────────
@@ -267,6 +268,36 @@ export const obtenerProveedoresPorProductoService = async (
     throw new Error(
       error.response?.data?.message ||
       'Error al cargar los proveedores del producto'
+    );
+  }
+};
+
+// ── Cotización por rango de fechas ────────────────────────────────────────────
+
+/**
+ * Obtiene la cotización agrupada por proveedor para un rango de fechas.
+ * POST /api/v1/proveedor/cotizacion-rango
+ */
+export const obtenerCotizacionPorRangoService = async (
+  fechaInicio: string,
+  fechaFin: string
+): Promise<ICotizacionResponse> => {
+  try {
+    const response = await api.post<ICotizacionResponse>('/proveedor/cotizacion-rango', {
+      fechaInicio,
+      fechaFin,
+    });
+    return response.data;
+  } catch (error: any) {
+    if (error.response?.status === 400) {
+      throw new Error(
+        error.response.data?.message ||
+        'Rango de fechas inválido'
+      );
+    }
+    throw new Error(
+      error.response?.data?.message ||
+      'Error al obtener la cotización por rango'
     );
   }
 };

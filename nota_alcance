@@ -1182,6 +1182,23 @@ PENDIENTE DE IMPLEMENTAR O DEFINIR:
       - inventario.tsx (PedidoMasivoModal): actualizada cargarProyeccionAbastecimiento()
         para usar idInventario y stock directamente de la proyección en lugar de
         buscar fallback en bulkProductos. Esto evita desincronización al hacer bulk update
+  [✓] Consulta de cotización agrupada por proveedor (2026-04-22):
+      Backend - Módulo gestion_proveedor:
+      - ProveedorRepository: nueva query nativa findCotizacionProveedoresPorRango() que
+        ejecuta consulta SQL con múltiples CTEs (productos_solicitados, mejor_precio,
+        productos_con_proveedor) para agrupar productos solicitados (estado EN_PEDIDO
+        en rango de fechas) por proveedor (menor precio) y ordenar por categoría.
+        Retorna JSON string serializado con json_agg y json_build_object.
+      - CotizacionProveedorDTO (nuevo): records anidados (CotizacionResponse, ProveedorGrupo,
+        CategoriaGrupo, ProductoJson) con estructura jerárquica para deserialización.
+      - ProveedorService + ProveedorServiceImpl: nuevo método obtenerCotizacionPorRango()
+        que llama al repositorio, deserializa JSON con ObjectMapper y retorna
+        CotizacionResponse. Incluye manejo de excepciones con try-catch y logging.
+      - ProveedorController: nuevo endpoint POST /api/v1/proveedor/cotizacion-rango
+        que recibe DateRangeDTO (fechaInicio, fechaFin) y retorna cotización.
+        Autorización: ya cubierta por SpringSecurityConfig (POST /api/v1/proveedor/**
+        permite GESTOR_PEDIDOS y superiores).
+      Frontend: pendiente de conexión desde solicitud-service.ts
 
 ================================================================================
   6. NOTAS ORIGINALES DE TRABAJO (referencia interna)
