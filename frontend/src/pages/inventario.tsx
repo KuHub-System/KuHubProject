@@ -1495,16 +1495,16 @@ export const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto
 
           // 422: stock insuficiente con desync — mostrar error, actualizar stock en modal, NO cerrar
           if ('insuficiente' in resultado && resultado.insuficiente === true) {
-            const insuf = resultado as IStockInsuficiente;
+            const insuf = resultado as any;
             toast.error(insuf.warning);
-            const realStock = insuf.item.stockActual ?? (insuf.item as any).stock;
+            const realStock = insuf.item.stockActual ?? ('stock' in insuf.item ? insuf.item.stock : undefined);
             setProductoReferencia(prev => prev ? { ...prev, stock: realStock } : prev);
             if (onConflictSync && realStock !== undefined) {
               onConflictSync({
                 ...producto,
                 stock: realStock,
-                stockMinimo: insuf.item.stockMinimo ?? (insuf.item as any).stockLimit ?? producto.stockMinimo,
-                _idInventario: insuf.item.idInventario ?? (producto as any)._idInventario,
+                stockMinimo: insuf.item.stockMinimo ?? ('stockLimit' in insuf.item ? insuf.item.stockLimit : producto.stockMinimo),
+                _idInventario: insuf.item.idInventario ?? ('_idInventario' in producto ? producto._idInventario : undefined),
               } as IProducto);
             }
             setDeltaInput('');
@@ -1512,10 +1512,14 @@ export const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto
           }
 
           // Determinar si fue desync (409 operativo) o éxito limpio (200)
-          const isDesync = 'desync' in resultado && resultado.desync === true;
-          const itemActualizado = isDesync
-            ? (resultado as IStockSyncWarning).item
-            : (resultado as IInventoryPageItem);
+          let itemActualizado: IInventoryPageItem;
+          if ('desync' in resultado && resultado.desync === true) {
+            itemActualizado = (resultado as any).item;
+          } else if ('insuficiente' in resultado && resultado.insuficiente === true) {
+            itemActualizado = (resultado as any).item;
+          } else {
+            itemActualizado = resultado as any;
+          }
 
           // Sync the item in the parent list
           if (onConflictSync && itemActualizado) {
@@ -1526,7 +1530,7 @@ export const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto
               codProducto: itemActualizado.producto?.codProducto,
               categoria: itemActualizado.producto?.categoria?.nombre ?? catNombre,
               unidadMedida: itemActualizado.producto?.unidad?.nombre ?? uniNombre,
-              stock: itemActualizado.stockActual ?? (itemActualizado as any).stock ?? originalStockRef,
+              stock: itemActualizado.stockActual ?? ('stock' in itemActualizado ? itemActualizado.stock : originalStockRef),
               stockMinimo: itemActualizado.stockMinimo ?? (parseFloat(stockMinimo) || 0),
               fechaCreacion: new Date().toISOString(),
               fechaActualizacion: new Date().toISOString(),
@@ -1535,9 +1539,11 @@ export const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto
             onConflictSync(syncedProducto);
           }
 
-          if (isDesync && 'warning' in resultado) {
-            toast.warning(resultado.warning, { duration: 20000 });
-          } else if (!isDesync) {
+          if ('desync' in resultado && resultado.desync === true) {
+            if ('warning' in resultado) {
+              toast.warning(((resultado as any).warning || 'Stock desincronizado'), { duration: 20000 });
+            }
+          } else {
             toast.success('Cambios guardados exitosamente');
           }
         }
@@ -1573,13 +1579,15 @@ export const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto
     const originalStock = productoReferencia.stock?.toString() || '0';
     const originalStockMinimo = productoReferencia.stockMinimo?.toString() || '0';
 
+    const stockChanged = tipoMovimiento !== '' && deltaInput !== '';
+
     return (
       nombre.trim() !== (productoReferencia.nombre || '') ||
       codProducto.trim() !== originalCodProducto ||
       descripcion.trim() !== originalDescripcion ||
       idCategoria !== originalCategoria ||
       idUnidadMedida !== originalUnidad ||
-      (mode === 'crear' ? stock.trim() !== originalStock : (tipoMovimiento !== '' && deltaInput !== '')) ||
+      stockChanged ||
       stockMinimo.trim() !== originalStockMinimo
     );
   }, [mode, productoReferencia, nombre, codProducto, descripcion, idCategoria, idUnidadMedida, stock, stockMinimo, tipoMovimiento, deltaInput, categorias, unidades]);
