@@ -1200,6 +1200,37 @@ PENDIENTE DE IMPLEMENTAR O DEFINIR:
         permite GESTOR_PEDIDOS y superiores).
       Frontend: pendiente de conexión desde solicitud-service.ts
 
+  [✓] Endpoint de resumen histórico de pedidos (2026-04-23):
+      Estructura base del módulo gestion_pedido completada con DTOs, excepciones
+      y documentación CLAUDE.md específica del módulo.
+      Backend - Implementación:
+      - PedidoRepository: nueva query nativa obtenerResumenHistoricoJSON() con
+        jsonb_build_object. Parámetros: fechaInicio, fechaFin, estadosCsv (ej:
+        "APROBADO,ENTREGADO"). Retorna JSON con estructura: fechaInicio, fechaFin,
+        estados[], totalProductosDistintos, totalPedidos, productos[] (idProducto,
+        codProducto, nombreProducto, unidadMedida, abreviatura, cantidadTotal,
+        vecesEnPedidos).
+      - DTOs:
+        * ResumenHistoricoRequestDTO (request): fechaInicio, fechaFin, estadosCsv
+          con validaciones @NotNull, @NotBlank.
+        * ResumenHistoricoResponse (record de response): estructura anidada con
+          ProductoResumenItem record. Incluye factory method of() para construcción
+          desde Object[].
+      - GestionPedidoException: nueva excepción base del módulo.
+      - PedidoService: nuevo método obtenerResumenHistorico(fechaInicio, fechaFin, estadosCsv)
+        que retorna ResumenHistoricoResponse.
+      - PedidoServiceImpl: implementación con deserialización ObjectMapper desde JSONB.
+        Manejo de respuestas vacías y excepciones JsonProcessingException con logging.
+      - PedidoController: nuevo endpoint POST /api/v1/gestion-pedido/resumen-historico
+        que recibe ResumenHistoricoRequestDTO (@Validated) y retorna ResumenHistoricoResponse
+        con status 200. JavaDoc indica ⬜ Sin uso frontend aún.
+      - CLAUDE.md del módulo: guía completa con estructura, convenciones específicas,
+        endpoints, DTOs, exceptions, repositories, services, controller, checklist
+        y regla obligatoria de actualizar nota_alcance.
+      Nota: consulta SQL y métodos implementados según especificación en archivo
+      ejecutar_ahora. No se implementaron triggers ni métodos de service adicionales,
+      solo la estructura base con endpoint funcional.
+
 ================================================================================
   6. NOTAS ORIGINALES DE TRABAJO (referencia interna)
 ================================================================================

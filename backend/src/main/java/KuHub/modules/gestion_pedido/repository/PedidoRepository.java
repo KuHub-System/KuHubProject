@@ -635,4 +635,65 @@ public interface PedidoRepository extends JpaRepository<Pedido, Integer> {
         """, nativeQuery = true)
     int marcarPedidosEntregadosPorFecha();
 
+    // =====================================================
+    // RESUMEN HISTÓRICO: Agregaciones de productos por rango de fechas y estados
+    // Usa jsonb_build_object para estructura tipada
+    // =====================================================
+    /** Obtiene resumen histórico de productos consumidos en pedidos dentro de un rango de fechas y estados. */
+    @Query(value = """
+        SELECT jsonb_build_object(
+            'fechaInicio', CAST(:fechaInicio AS TEXT),
+            'fechaFin',    CAST(:fechaFin AS TEXT),
+            'estados',     to_jsonb(string_to_array(:estadosCsv, ',')),
+
+            'totalProductosDistintos', (
+                SELECT COUNT(DISTINCT dp.id_producto)
+                FROM detalle_pedido dp
+                JOIN pedido p ON p.id_pedido = dp.id_pedido
+                WHERE p.fecha_inicio_pedido BETWEEN :fechaInicio AND :fechaFin
+                  AND CAST(p.estado_pedido AS TEXT) = ANY(string_to_array(:estadosCsv, ','))
+            ),
+
+            'totalPedidos', (
+                SELECT COUNT(DISTINCT p.id_pedido)
+                FROM pedido p
+                WHERE p.fecha_inicio_pedido BETWEEN :fechaInicio AND :fechaFin
+                  AND CAST(p.estado_pedido AS TEXT) = ANY(string_to_array(:estadosCsv, ','))
+            ),
+
+            'productos', COALESCE((
+                SELECT jsonb_agg(
+                    jsonb_build_object(
+                        'idProducto',      prod.id_producto,
+                        'codProducto',     prod.cod_producto,
+                        'nombreProducto',  prod.nombre_producto,
+                        'unidadMedida',    um.nombre_unidad,
+                        'abreviatura',     um.abreviatura,
+                        'cantidadTotal',   resumen.cantidad_total,
+                        'vecesEnPedidos',  resumen.veces_en_pedidos
+                    )
+                    ORDER BY resumen.cantidad_total DESC
+                )
+                FROM (
+                    SELECT
+                        dp.id_producto,
+                        SUM(dp.cant_producto_pedido)  AS cantidad_total,
+                        COUNT(DISTINCT dp.id_pedido)  AS veces_en_pedidos
+                    FROM detalle_pedido dp
+                    JOIN pedido p ON p.id_pedido = dp.id_pedido
+                    WHERE p.fecha_inicio_pedido BETWEEN :fechaInicio AND :fechaFin
+                      AND CAST(p.estado_pedido AS TEXT) = ANY(string_to_array(:estadosCsv, ','))
+                    GROUP BY dp.id_producto
+                ) resumen
+                JOIN producto prod ON prod.id_producto = resumen.id_producto
+                LEFT JOIN unidad_medida um ON um.id_unidad = prod.id_unidad
+            ), '[]'::jsonb)
+        ) AS resultado
+        """, nativeQuery = true)
+    String obtenerResumenHistoricoJSON(
+            @Param("fechaInicio") LocalDate fechaInicio,
+            @Param("fechaFin") LocalDate fechaFin,
+            @Param("estadosCsv") String estadosCsv
+    );
+
 }

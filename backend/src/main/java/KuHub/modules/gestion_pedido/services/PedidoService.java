@@ -1,11 +1,13 @@
 package KuHub.modules.gestion_pedido.services;
 
+import KuHub.modules.gestion_pedido.dtos.response.ResumenHistoricoResponse;
 import KuHub.modules.gestion_pedido.record.ChangePedidoStatusDTO;
 import KuHub.modules.gestion_pedido.record.CreateOrder;
 import KuHub.modules.gestion_pedido.record.PedidoDashboardRecords;
 import KuHub.modules.gestion_pedido.record.PrepararEntregaDTO;
 import KuHub.modules.gestion_solicitud.dtos.request.DateRangeDTO;
 
+import java.time.LocalDate;
 import java.util.List;
 
 public interface PedidoService {
@@ -33,4 +35,11 @@ public interface PedidoService {
      * Maneja desincronización de stock (no revierte) y stock insuficiente (revierte).
      */
     String prepararEntrega(PrepararEntregaDTO request);
+
+    /**
+     * Obtiene resumen histórico de productos consumidos en pedidos.
+     * Calcula: total de productos distintos, total de pedidos, y detalle por producto.
+     * Filtra por rango de fechas y estados de pedido (CSV).
+     */
+    ResumenHistoricoResponse obtenerResumenHistorico(LocalDate fechaInicio, LocalDate fechaFin, String estadosCsv);
 }
