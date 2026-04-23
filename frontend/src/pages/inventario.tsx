@@ -1064,7 +1064,7 @@ const InventarioPage: React.FC = () => {
           </ModalContent>
         </Modal>
 
-        <Modal key={bulkModalKey} isOpen={isPedidoMasivoOpen} onOpenChange={onPedidoMasivoOpenChange} size="2xl" backdrop="blur" scrollBehavior="inside" radius="lg" classNames={{ base: 'rounded-2xl', body: 'min-h-[520px]' }}>
+        <Modal key={bulkModalKey} isOpen={isPedidoMasivoOpen} onOpenChange={onPedidoMasivoOpenChange} size="4xl" backdrop="blur" scrollBehavior="inside" radius="lg" classNames={{ base: 'rounded-2xl', body: 'min-h-[520px]' }}>
           <ModalContent>
             {(onClose) => (
               <PedidoMasivoModal
