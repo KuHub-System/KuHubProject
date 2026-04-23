@@ -1833,16 +1833,12 @@ const CotizacionModal: React.FC<CotizacionModalProps> = ({
                                             key={prod.idProducto}
                                             className="border-t border-danger-50 dark:border-danger-100 hover:bg-danger-50/30"
                                           >
-                                            <td className="py-2 px-3 font-medium text-center max-w-[180px]">
+                                            <td className="py-2 px-3 font-medium text-center">
                                               <Tooltip content={prod.nombreProducto} color="default">
-                                                <span className="truncate block mx-auto max-w-[180px]">{prod.nombreProducto}</span>
+                                                <span className="truncate block max-w-[150px]">{prod.nombreProducto}</span>
                                               </Tooltip>
                                             </td>
-                                            <td className="py-2 px-3 text-center text-default-500 max-w-[100px]">
-                                              <Tooltip content={prod.abreviatura} color="default">
-                                                <span className="truncate block mx-auto max-w-[100px]">{prod.abreviatura}</span>
-                                              </Tooltip>
-                                            </td>
+                                            <td className="py-2 px-3 text-center text-default-500">{prod.abreviatura}</td>
                                             <td className="py-2 px-3 text-center">{fmtN(prod.cantidadTotal)}</td>
                                             <td className="py-2 px-3 text-center text-default-400">—</td>
                                             <td className="py-2 px-3 text-center text-default-400">—</td>
