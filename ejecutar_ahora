@@ -1,2 +1,47 @@
-Si cambiar nada de la logica necesito que la informacion de que despliega en las tablas de gestion-proveedores.tsx precisamente el modal que se llama "Cotización por Rango" necesito que las tabla que se despligan de cada proveedores las informaciondes sea de la cabeceira y los elementos de la filas sea justificada al centro, ademas truncada si el dato de la string es demasiado grande tiene que aprecer con los puntos ... y al passar el cursor entonce se prodra ver el nomnbre completo del dato.
-No remove o cambiar la logica, esta funcionando todo bien, solamente ajustar los indicado para mejore orientacion.
+Necesito una idea para crear una nueva vista, considerando que la informacion es para considerar los historicos de una tiempo determinado para que la organizacion sepa cuando gasto en determinado periodo de las informaciones presentes en la tabla de detalles
+
+la idea es crear en el frontend el rango de fechas ademas del filtro que puede ser por uno o mas estados existentens del pedido.
+CREATE TYPE estado_pedido_type AS ENUM (
+    'PENDIENTE',
+    'APROBADO',
+    'ENTREGADO',
+    'RECHAZADO'
+);
+-- Tabla pedido_detalle
+CREATE TABLE detalle_pedido (
+    id_pedido_detalle INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    id_pedido INTEGER NOT NULL,
+    id_producto INTEGER NOT NULL,
+    cant_producto_pedido NUMERIC(10, 3) NOT NULL,
+    CONSTRAINT fk_pd_pedido FOREIGN KEY (id_pedido) REFERENCES pedido(id_pedido),
+    CONSTRAINT fk_pd_producto FOREIGN KEY (id_producto) REFERENCES producto(id_producto)
+);
+
+ALTER TABLE detalle_pedido
+  ADD CONSTRAINT uq_detalle_pedido_pedido_producto UNIQUE (id_pedido, id_producto);
+
+-- Tabla pedido_solicitud
+CREATE TABLE pedido_solicitud (
+    id_pedido_solicitud INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    id_pedido INTEGER NOT NULL,
+    id_solicitud INTEGER NOT NULL,
+    fecha_union_registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_ps_pedido FOREIGN KEY (id_pedido) REFERENCES pedido(id_pedido),
+    CONSTRAINT fk_ps_solicitud
+        FOREIGN KEY (id_solicitud)
+        REFERENCES solicitud(id_solicitud)
+);
+
+NECESITO TENER LA CONSULTA PARA OBTENER LOS PRODUCOTS SUMADOS QUE SON IGUALES SEGUN EL RANGO INCIO Y FIN Y LOS POSIBLES ESTADOS QUE EL USUARIO SELECIONAR EN EL FRONTEND.
+LAS CONSULTAS TIENE QUE SER USADAS CON
+el formato JSON que se puede realziar en posgret. ejemplo.:
+SELECT jsonb_agg(
+    jsonb_build_object(
+        xxxxx,COALESCE((
+            SELECT jsonb_agg(
+                            jsonb_build_object(
+                            )
+                        )
+                        FROM
+             ), '[]'::jsonb)
