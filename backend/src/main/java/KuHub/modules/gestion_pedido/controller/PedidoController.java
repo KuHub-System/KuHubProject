@@ -2,6 +2,8 @@ package KuHub.modules.gestion_pedido.controller;
 
 import KuHub.modules.gestion_inventario.exceptions.StockDesincronizadoException;
 import KuHub.modules.gestion_inventario.exceptions.StockInsuficienteException;
+import KuHub.modules.gestion_pedido.dtos.request.ResumenHistoricoRequestDTO;
+import KuHub.modules.gestion_pedido.dtos.response.ResumenHistoricoResponse;
 import KuHub.modules.gestion_pedido.record.ChangePedidoStatusDTO;
 import KuHub.modules.gestion_pedido.record.CreateOrder;
 import KuHub.modules.gestion_pedido.record.PedidoDashboardRecords;
@@ -101,5 +103,23 @@ public class PedidoController {
         return ResponseEntity
                 .status(200)
                 .body(pedidoService.changeMassiveStatus(request));
+    }
+
+    /**
+     * Obtiene resumen histórico de productos consumidos en pedidos.
+     * Calcula: total de productos distintos, total de pedidos, y detalle por producto.
+     * Filtra por rango de fechas y estados de pedido (CSV: "APROBADO,ENTREGADO").
+     * ⬜ Sin uso frontend aún.
+     */
+    @PostMapping("/resumen-historico")
+    public ResponseEntity<ResumenHistoricoResponse> obtenerResumenHistorico(
+            @Validated @RequestBody ResumenHistoricoRequestDTO request) {
+        return ResponseEntity
+                .status(200)
+                .body(pedidoService.obtenerResumenHistorico(
+                        request.getFechaInicio(),
+                        request.getFechaFin(),
+                        request.getEstadosCsv()
+                ));
     }
 }
