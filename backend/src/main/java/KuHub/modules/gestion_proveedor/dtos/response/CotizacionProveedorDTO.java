@@ -1,32 +1,3 @@
-Necesito que en la gestion-proveedores.tsx el btn "+ Nuevo Proveedor" este dentro del contenedor donde esta los filtros de busca abajo.
-Ademas necesito que crees para esta vista un componente <Button> de la librería @heroui/react que al passar el cursor aparesca una manito, ademas cual el usuario precione
-tiene despliegar un modal que permitirar ingresar un rango de fechas EJEMPLO : rango de fechas es el DateRangePicker y pertenece a la librería principal que estás usando para la interfaz: @heroui/react (junto con una librería de apoyo para manejar las fechas llamada @internationalized/date).
-Necesitas importar el componente visual de HeroUI y el tipo de dato especial para las fechas: import { DateRangePicker } from '@heroui/react'; import { CalendarDate } from '@internationalized/date'; const [dateRangeProyeccion, setDateRangeProyeccion] = React.useState<{ start: CalendarDate; end: CalendarDate } | null>(null);
-<DateRangePicker
-  label="Rango de fechas"
-  variant="bordered"
-  value={dateRangeProyeccion}
-  onChange={setDateRangeProyeccion}
-/>
-ACA TERMINA EL EJEMPLO.
-cual el usuario selecione el rango de fechas tiene que realizar la peticion al service del controlador ya implementado en el backend que esta definido de esta manera
-@PostMapping("/cotizacion-rango")
-    public ResponseEntity<CotizacionProveedorDTO.CotizacionResponse> obtenerCotizacionPorRango(
-            @Validated @RequestBody DateRangeDTO request) {
-        return ResponseEntity
-                .status(200)
-                .body(proveedorService.obtenerCotizacionPorRango(request));
-    }
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
-public class DateRangeDTO {
-    @NotNull(message = "La fecha de inicio es obligatoria")
-    private LocalDate fechaInicio;
-
-    @NotNull(message = "La fecha de fin es obligatoria")
-    private LocalDate fechaFin;
-}
 package KuHub.modules.gestion_proveedor.dtos.response;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
@@ -108,32 +79,3 @@ public class CotizacionProveedorDTO {
             @JsonProperty("subtotal") BigDecimal subtotal
     ) {}
 }
-
-Necesita carga esta informacion que se obtendra del rango de fechas, tiene que crear la interfaz correspondiente y la llamada del service correcta en el proveedor-service.ts
-necesito una buena idea de como cargar esta vista para que el usuario vea, la consulta agrupa al final los productos que no tiene proveedores que llegaria el json de esta manera
-{
-  "idProveedor": null,
-  "nombreDistribuidora": null,
-  "nombreProveedor": null,
-  "telefono": null,
-  "email": null,
-  "totalProductos": 2,
-  "categorias": [
-    {
-      "idCategoria": 1,
-      "nombreCategoria": "Verduras",
-      "productos": [
-        {
-          "idProducto": 99,
-          "nombreProducto": "Papas Nativas Perdidas",
-          "abreviatura": "kg",
-          "cantidadTotal": 5.000,
-          "precioUnitario": null,
-          "subtotal": null
-        }
-      ]
-    }
-  ]
-}
-para estes tiene que esta abajo de la vista "producto sin proveedor" no hay precio asociado.
-Es necesario que al mostrar la vista tenga la opcion de descargar excel con el estandar de EXCEL.MD, hay que considerar frontend/CLAUDE.md

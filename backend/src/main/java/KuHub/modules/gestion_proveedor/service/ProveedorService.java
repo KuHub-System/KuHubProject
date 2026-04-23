@@ -4,9 +4,11 @@ import KuHub.modules.gestion_proveedor.dtos.request.ProveedorCreateDTO;
 import KuHub.modules.gestion_proveedor.dtos.request.ProveedorProductoAddDTO;
 import KuHub.modules.gestion_proveedor.dtos.request.ProveedorProductoUpdateDTO;
 import KuHub.modules.gestion_proveedor.dtos.request.ProveedorUpdateDTO;
+import KuHub.modules.gestion_proveedor.dtos.response.CotizacionProveedorDTO;
 import KuHub.modules.gestion_proveedor.dtos.response.ProveedorDetalleDTO;
 import KuHub.modules.gestion_proveedor.dtos.response.ProveedorListDTO;
 import KuHub.modules.gestion_proveedor.entity.Proveedor;
+import KuHub.modules.gestion_solicitud.dtos.request.DateRangeDTO;
 
 import java.util.List;
 
@@ -45,4 +47,7 @@ public interface ProveedorService {
 
     /** Lista los proveedores que ofrecen un producto específico (para comparar precios). */
     List<ProveedorListDTO> findProveedoresPorProducto(Integer idProducto);
+
+    /** Obtiene cotización agrupada por proveedor (menor precio) para solicitudes EN_PEDIDO en un rango de fechas. */
+    CotizacionProveedorDTO.CotizacionResponse obtenerCotizacionPorRango(DateRangeDTO request);
 }
