@@ -8,10 +8,13 @@ import KuHub.modules.gestion_pedido.record.ChangePedidoStatusDTO;
 import KuHub.modules.gestion_pedido.record.CreateOrder;
 import KuHub.modules.gestion_pedido.record.PedidoDashboardRecords;
 import KuHub.modules.gestion_pedido.record.PrepararEntregaDTO;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 import KuHub.modules.gestion_pedido.services.PedidoService;
 import KuHub.modules.gestion_solicitud.dtos.request.DateRangeDTO;
+import KuHub.utils.StringUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -109,17 +112,28 @@ public class PedidoController {
      * Obtiene resumen histórico de productos consumidos en pedidos.
      * Calcula: total de productos distintos, total de pedidos, y detalle por producto.
      * Filtra por rango de fechas y estados de pedido (CSV: "APROBADO,ENTREGADO").
-     * ⬜ Sin uso frontend aún.
+     * ✅ En uso: Consumido por obtenerResumenHistoricoService en historico-pedido-service.ts.
      */
     @PostMapping("/resumen-historico")
     public ResponseEntity<ResumenHistoricoResponse> obtenerResumenHistorico(
             @Validated @RequestBody ResumenHistoricoRequestDTO request) {
+        String estadosNormalizados = normalizarEstadosCsv(request.getEstadosCsv());
         return ResponseEntity
                 .status(200)
                 .body(pedidoService.obtenerResumenHistorico(
                         request.getFechaInicio(),
                         request.getFechaFin(),
-                        request.getEstadosCsv()
+                        estadosNormalizados
                 ));
+    }
+
+    private String normalizarEstadosCsv(String estadosCsv) {
+        if (estadosCsv == null || estadosCsv.isBlank()) {
+            return estadosCsv;
+        }
+        return Arrays.stream(estadosCsv.split(","))
+                .map(String::trim)
+                .map(StringUtils::normalizeToEnumKey)
+                .collect(Collectors.joining(","));
     }
 }
