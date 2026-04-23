@@ -1742,14 +1742,21 @@ const CotizacionModal: React.FC<CotizacionModalProps> = ({
                                       {cat.nombreCategoria}
                                     </p>
                                     <div className="overflow-x-auto rounded-lg border border-default-200 dark:border-default-100">
-                                      <table className="w-full text-xs">
+                                      <table className="w-full text-xs table-fixed">
+                                        <colgroup>
+                                          <col style={{ width: '40%' }} />
+                                          <col style={{ width: '12%' }} />
+                                          <col style={{ width: '15%' }} />
+                                          <col style={{ width: '15%' }} />
+                                          <col style={{ width: '18%' }} />
+                                        </colgroup>
                                         <thead className="bg-default-100 dark:bg-default-50">
                                           <tr>
-                                            <th className="text-center py-2 px-3 font-medium">Producto</th>
-                                            <th className="text-center py-2 px-3 font-medium">Unidad</th>
-                                            <th className="text-center py-2 px-3 font-medium">Cantidad</th>
-                                            <th className="text-center py-2 px-3 font-medium">Precio Unit.</th>
-                                            <th className="text-center py-2 px-3 font-medium">Subtotal</th>
+                                            <th className="text-center py-2 px-3 font-medium overflow-hidden">Producto</th>
+                                            <th className="text-center py-2 px-3 font-medium overflow-hidden">Unidad</th>
+                                            <th className="text-center py-2 px-3 font-medium overflow-hidden">Cantidad</th>
+                                            <th className="text-center py-2 px-3 font-medium overflow-hidden">Precio Unit.</th>
+                                            <th className="text-center py-2 px-3 font-medium overflow-hidden">Subtotal</th>
                                           </tr>
                                         </thead>
                                         <tbody>
@@ -1758,21 +1765,21 @@ const CotizacionModal: React.FC<CotizacionModalProps> = ({
                                               key={prod.idProducto}
                                               className="border-t border-default-100 dark:border-default-50 hover:bg-default-50 dark:hover:bg-default-100/20"
                                             >
-                                              <td className="py-2 px-3 font-medium text-center max-w-[180px]">
+                                              <td className="py-2 px-3 font-medium text-center overflow-hidden">
                                                 <Tooltip content={prod.nombreProducto} color="default">
-                                                  <span className="truncate block mx-auto max-w-[180px]">{prod.nombreProducto}</span>
+                                                  <span className="truncate">{prod.nombreProducto}</span>
                                                 </Tooltip>
                                               </td>
-                                              <td className="py-2 px-3 text-center text-default-500 max-w-[100px]">
+                                              <td className="py-2 px-3 text-center text-default-500 overflow-hidden">
                                                 <Tooltip content={prod.abreviatura} color="default">
-                                                  <span className="truncate block mx-auto max-w-[100px]">{prod.abreviatura}</span>
+                                                  <span className="truncate">{prod.abreviatura}</span>
                                                 </Tooltip>
                                               </td>
-                                              <td className="py-2 px-3 text-center">{fmtN(prod.cantidadTotal)}</td>
-                                              <td className="py-2 px-3 text-center">
+                                              <td className="py-2 px-3 text-center overflow-hidden">{fmtN(prod.cantidadTotal)}</td>
+                                              <td className="py-2 px-3 text-center overflow-hidden">
                                                 {prod.precioUnitario !== null ? `$${fmtN(prod.precioUnitario)}` : '—'}
                                               </td>
-                                              <td className="py-2 px-3 text-center font-semibold">
+                                              <td className="py-2 px-3 text-center font-semibold overflow-hidden">
                                                 {prod.subtotal !== null ? `$${fmtN(prod.subtotal)}` : '—'}
                                               </td>
                                             </tr>
@@ -1817,14 +1824,21 @@ const CotizacionModal: React.FC<CotizacionModalProps> = ({
                                     {cat.nombreCategoria}
                                   </p>
                                   <div className="overflow-x-auto rounded-lg border border-danger-100 dark:border-danger-200">
-                                    <table className="w-full text-xs">
+                                    <table className="w-full text-xs table-fixed">
+                                      <colgroup>
+                                        <col style={{ width: '40%' }} />
+                                        <col style={{ width: '12%' }} />
+                                        <col style={{ width: '15%' }} />
+                                        <col style={{ width: '15%' }} />
+                                        <col style={{ width: '18%' }} />
+                                      </colgroup>
                                       <thead className="bg-danger-50/50 dark:bg-danger-50/10">
                                         <tr>
-                                          <th className="text-center py-2 px-3 font-medium text-danger-600">Producto</th>
-                                          <th className="text-center py-2 px-3 font-medium text-danger-600">Unidad</th>
-                                          <th className="text-center py-2 px-3 font-medium text-danger-600">Cantidad</th>
-                                          <th className="text-center py-2 px-3 font-medium text-danger-600">Precio Unit.</th>
-                                          <th className="text-center py-2 px-3 font-medium text-danger-600">Subtotal</th>
+                                          <th className="text-center py-2 px-3 font-medium text-danger-600 overflow-hidden">Producto</th>
+                                          <th className="text-center py-2 px-3 font-medium text-danger-600 overflow-hidden">Unidad</th>
+                                          <th className="text-center py-2 px-3 font-medium text-danger-600 overflow-hidden">Cantidad</th>
+                                          <th className="text-center py-2 px-3 font-medium text-danger-600 overflow-hidden">Precio Unit.</th>
+                                          <th className="text-center py-2 px-3 font-medium text-danger-600 overflow-hidden">Subtotal</th>
                                         </tr>
                                       </thead>
                                       <tbody>
@@ -1833,15 +1847,15 @@ const CotizacionModal: React.FC<CotizacionModalProps> = ({
                                             key={prod.idProducto}
                                             className="border-t border-danger-50 dark:border-danger-100 hover:bg-danger-50/30"
                                           >
-                                            <td className="py-2 px-3 font-medium text-center">
+                                            <td className="py-2 px-3 font-medium text-center overflow-hidden">
                                               <Tooltip content={prod.nombreProducto} color="default">
-                                                <span className="truncate block max-w-[150px]">{prod.nombreProducto}</span>
+                                                <span className="truncate">{prod.nombreProducto}</span>
                                               </Tooltip>
                                             </td>
-                                            <td className="py-2 px-3 text-center text-default-500">{prod.abreviatura}</td>
-                                            <td className="py-2 px-3 text-center">{fmtN(prod.cantidadTotal)}</td>
-                                            <td className="py-2 px-3 text-center text-default-400">—</td>
-                                            <td className="py-2 px-3 text-center text-default-400">—</td>
+                                            <td className="py-2 px-3 text-center text-default-500 overflow-hidden">{prod.abreviatura}</td>
+                                            <td className="py-2 px-3 text-center overflow-hidden">{fmtN(prod.cantidadTotal)}</td>
+                                            <td className="py-2 px-3 text-center text-default-400 overflow-hidden">—</td>
+                                            <td className="py-2 px-3 text-center text-default-400 overflow-hidden">—</td>
                                           </tr>
                                         ))}
                                       </tbody>
