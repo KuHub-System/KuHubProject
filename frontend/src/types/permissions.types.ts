@@ -126,6 +126,7 @@ export const PAGE_TO_MODULE: Record<string, ModuleKey> = {
   'solicitud':              'SOLICITUD',
   'gestion-pedidos':      'GESTION_PEDIDOS',
   'gestion-solicitudes':  'GESTION_SOLICITUDES',
+  'historico-pedidos':    'GESTION_PEDIDOS',
   'conglomerado-pedidos': 'CONGLOMERADO_PEDIDOS',
   'gestion-proveedores':  'GESTION_PROVEEDORES',
   'bodega-transito':      'BODEGA_TRANSITO',
