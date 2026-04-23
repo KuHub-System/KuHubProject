@@ -11,8 +11,9 @@ import {
   Button, Input, Chip,
   Select, SelectItem, Tooltip,
   Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, useDisclosure,
-  Divider, Spinner,
+  Divider, Spinner, DateRangePicker,
 } from '@heroui/react';
+import { CalendarDate } from '@internationalized/date';
 import { Icon } from '@iconify/react';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useToast } from '../hooks/useToast';
@@ -20,8 +21,11 @@ import {
   IOrderConsolidationResponse,
   ISolicitudConsolidacionItem,
   IProductoConsolidadoResponse,
+  IResumenHistorico,
+  IProductoResumenHistorico,
   obtenerOrdenConsolidacionService,
   consolidarPedidoService,
+  obtenerResumenHistoricoService,
 } from '../services/solicitud-service';
 import { useModulePermission, usePermission } from '../contexts/permission-context';
 import { usePeriodoSemana } from '../contexts/periodo-semana-context';
@@ -77,7 +81,14 @@ const GestionPedidosPage: React.FC = () => {
   // ── UI ──
   const [busqueda,    setBusqueda]    = React.useState('');
   const [expandidos,  setExpandidos]  = React.useState<Set<string>>(new Set());
-  const [vistaActiva, setVistaActiva] = React.useState<'consolidado' | 'solicitudes'>('consolidado');
+  const [vistaActiva, setVistaActiva] = React.useState<'consolidado' | 'solicitudes' | 'historico'>('consolidado');
+
+  // ── Histórico ──
+  const [dateRangeHistorico, setDateRangeHistorico] = React.useState<{ start: CalendarDate; end: CalendarDate } | null>(null);
+  const [estadosHistorico, setEstadosHistorico]     = React.useState<Set<string>>(new Set(['APROBADO', 'ENTREGADO']));
+  const [resumenHistorico, setResumenHistorico]     = React.useState<IResumenHistorico | null>(null);
+  const [loadingHistorico, setLoadingHistorico]     = React.useState(false);
+  const [busquedaHistorico, setBusquedaHistorico]   = React.useState('');
 
   // ── Carga de datos al cambiar semana (con cache) ──
   React.useEffect(() => {
@@ -211,6 +222,44 @@ const GestionPedidosPage: React.FC = () => {
     w.print();
   };
 
+  const cargarResumenHistorico = async () => {
+    if (!dateRangeHistorico?.start || !dateRangeHistorico?.end) {
+      toast.error('Debe seleccionar un rango de fechas válido');
+      return;
+    }
+    const estadosCsv = Array.from(estadosHistorico).join(',');
+    if (!estadosCsv) {
+      toast.error('Debe seleccionar al menos un estado');
+      return;
+    }
+    setLoadingHistorico(true);
+    setResumenHistorico(null);
+    try {
+      const data = await obtenerResumenHistoricoService(
+        dateRangeHistorico.start.toString(),
+        dateRangeHistorico.end.toString(),
+        estadosCsv
+      );
+      if (!data.productos || data.productos.length === 0) {
+        toast.warning('No hay datos para el rango y estados seleccionados');
+      }
+      setResumenHistorico(data);
+    } catch {
+      toast.error('Error al cargar el resumen histórico');
+    } finally {
+      setLoadingHistorico(false);
+    }
+  };
+
+  const productosHistoricoFiltrados: IProductoResumenHistorico[] = React.useMemo(() => {
+    if (!resumenHistorico?.productos) return [];
+    if (!busquedaHistorico.trim()) return resumenHistorico.productos;
+    const q = busquedaHistorico.toLowerCase();
+    return resumenHistorico.productos.filter(p =>
+      p.nombreProducto.toLowerCase().includes(q)
+    );
+  }, [resumenHistorico, busquedaHistorico]);
+
   // Alias para compatibilidad con el JSX existente
   const semanaActual = semanaSeleccionada;
   const sinPeriodos = periodos.length === 0 && !isLoadingSem;
@@ -343,12 +392,12 @@ const GestionPedidosPage: React.FC = () => {
         <CardHeader className="px-5 py-4 flex flex-col sm:flex-row gap-3 items-start sm:items-center">
           {/* Tabs vista */}
           <div className="flex items-center gap-1 bg-default-100 rounded-lg p-1">
-            {(['consolidado', 'solicitudes'] as const).map(v => (
+            {(['consolidado', 'solicitudes', 'historico'] as const).map(v => (
               <button key={v} onClick={() => setVistaActiva(v)}
                 className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
                   vistaActiva === v ? 'bg-white shadow-sm text-primary' : 'text-default-500 hover:text-default-700'
                 }`}>
-                {v === 'consolidado' ? 'Resumen de Productos' : 'Solicitudes Aceptadas'}
+                {v === 'consolidado' ? 'Resumen de Productos' : v === 'solicitudes' ? 'Solicitudes Aceptadas' : 'Histórico'}
               </button>
             ))}
           </div>
@@ -356,6 +405,13 @@ const GestionPedidosPage: React.FC = () => {
           {vistaActiva === 'consolidado' && (
             <Input size="sm" variant="bordered" placeholder="Buscar producto..."
               value={busqueda} onValueChange={setBusqueda}
+              startContent={<Icon icon="lucide:search" className="text-default-400" width={14} />}
+              classNames={{ base: 'max-w-xs', inputWrapper: 'bg-default-50' }}
+            />
+          )}
+          {vistaActiva === 'historico' && resumenHistorico && (
+            <Input size="sm" variant="bordered" placeholder="Buscar producto..."
+              value={busquedaHistorico} onValueChange={setBusquedaHistorico}
               startContent={<Icon icon="lucide:search" className="text-default-400" width={14} />}
               classNames={{ base: 'max-w-xs', inputWrapper: 'bg-default-50' }}
             />
@@ -381,7 +437,123 @@ const GestionPedidosPage: React.FC = () => {
         <Divider />
 
         <CardBody className="p-4">
-          {isLoadingDatos ? (
+          {vistaActiva === 'historico' ? (
+
+            /* ── Vista Histórico ── */
+            <div className="space-y-5">
+              {/* Filtros */}
+              <div className="flex flex-col sm:flex-row gap-3 items-end">
+                <DateRangePicker
+                  label="Rango de fechas"
+                  variant="bordered"
+                  value={dateRangeHistorico}
+                  onChange={setDateRangeHistorico}
+                  className="max-w-sm"
+                />
+                <div className="flex flex-wrap gap-2 items-center">
+                  <span className="text-xs font-semibold text-default-500 uppercase tracking-wide">Estados:</span>
+                  {(['APROBADO', 'ENTREGADO', 'PENDIENTE', 'RECHAZADO'] as const).map(estado => (
+                    <button
+                      key={estado}
+                      onClick={() => setEstadosHistorico(prev => {
+                        const next = new Set(prev);
+                        next.has(estado) ? next.delete(estado) : next.add(estado);
+                        return next;
+                      })}
+                      className={`px-2.5 py-1 rounded-full text-xs font-semibold border transition-all ${
+                        estadosHistorico.has(estado)
+                          ? 'bg-primary text-white border-primary'
+                          : 'bg-default-50 text-default-500 border-default-200 hover:border-default-400'
+                      }`}
+                    >
+                      {estado}
+                    </button>
+                  ))}
+                </div>
+                <Button color="primary" size="sm" isLoading={loadingHistorico}
+                  isDisabled={!dateRangeHistorico || estadosHistorico.size === 0}
+                  onPress={cargarResumenHistorico}
+                  startContent={!loadingHistorico && <Icon icon="lucide:bar-chart-2" width={15} />}
+                  className="shrink-0">
+                  Consultar
+                </Button>
+              </div>
+
+              {/* Resultados */}
+              {loadingHistorico ? (
+                <div className="py-16 flex flex-col items-center gap-3 text-default-400">
+                  <Spinner size="lg" />
+                  <p className="text-sm">Consultando histórico...</p>
+                </div>
+              ) : !resumenHistorico ? (
+                <div className="py-16 flex flex-col items-center gap-3 text-default-400">
+                  <Icon icon="lucide:history" width={48} className="opacity-40" />
+                  <p className="text-sm">Seleccione un rango de fechas y consulte para ver el historial.</p>
+                </div>
+              ) : (
+                <>
+                  {/* KPIs */}
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    <div className="bg-primary-50 border border-primary-100 rounded-xl px-4 py-3">
+                      <p className="text-xs text-primary-500 font-semibold uppercase tracking-wide">Total Pedidos</p>
+                      <p className="text-2xl font-bold text-primary mt-0.5">{resumenHistorico.totalPedidos}</p>
+                    </div>
+                    <div className="bg-default-50 border border-default-200 rounded-xl px-4 py-3">
+                      <p className="text-xs text-default-500 font-semibold uppercase tracking-wide">Productos Distintos</p>
+                      <p className="text-2xl font-bold text-secondary mt-0.5">{resumenHistorico.totalProductosDistintos}</p>
+                    </div>
+                    <div className="bg-default-50 border border-default-200 rounded-xl px-4 py-3 col-span-2 sm:col-span-1">
+                      <p className="text-xs text-default-500 font-semibold uppercase tracking-wide">Estados consultados</p>
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {resumenHistorico.estados.map(e => (
+                          <Chip key={e} size="sm" color="default" variant="flat">{e}</Chip>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Tabla de productos */}
+                  {productosHistoricoFiltrados.length === 0 ? (
+                    <div className="py-10 flex flex-col items-center gap-3 text-default-400">
+                      <Icon icon="lucide:search-x" width={36} className="opacity-40" />
+                      <p className="text-sm">Sin resultados para "{busquedaHistorico}"</p>
+                    </div>
+                  ) : (
+                    <div className="rounded-xl border border-default-200 overflow-hidden">
+                      <div className="grid grid-cols-12 px-4 py-2.5 bg-default-50 border-b border-default-200 text-xs font-semibold text-default-500 uppercase tracking-wide">
+                        <span className="col-span-5">Producto</span>
+                        <span className="col-span-2 text-center">Unidad</span>
+                        <span className="col-span-3 text-right">Cantidad Total</span>
+                        <span className="col-span-2 text-right">En Pedidos</span>
+                      </div>
+                      <div className="divide-y divide-default-100">
+                        {productosHistoricoFiltrados.map((prod, idx) => (
+                          <div key={prod.idProducto}
+                            className={`grid grid-cols-12 px-4 py-3 items-center hover:bg-default-50/50 transition-colors ${idx % 2 === 0 ? '' : 'bg-default-50/30'}`}>
+                            <div className="col-span-5 flex items-center gap-2 min-w-0">
+                              <Icon icon="lucide:package" width={13} className="text-primary shrink-0" />
+                              <div className="min-w-0">
+                                <p className="font-medium text-sm text-default-800 truncate">{prod.nombreProducto}</p>
+                                {prod.codProducto && (
+                                  <p className="text-xs text-default-400">{prod.codProducto}</p>
+                                )}
+                              </div>
+                            </div>
+                            <span className="col-span-2 text-center text-xs text-default-500">{prod.abreviatura}</span>
+                            <span className="col-span-3 text-right font-bold text-primary">{fmtCantidad(prod.cantidadTotal)}</span>
+                            <span className="col-span-2 text-right">
+                              <Chip size="sm" color="default" variant="flat">{prod.vecesEnPedidos}</Chip>
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+
+          ) : isLoadingDatos ? (
             <div className="py-16 flex flex-col items-center gap-3 text-default-400">
               <Spinner size="lg" />
               <p className="text-sm">Cargando solicitudes aceptadas...</p>
