@@ -23,6 +23,7 @@ const GestionRolesPage = lazy(() => import('./pages/gestion-roles'));
 const SolicitudPage = lazy(() => import('./pages/solicitud'));
 const GestionAcademicaPage = lazy(() => import('./pages/gestion-academica'));
 const GestionPedidosPage = lazy(() => import('./pages/gestion-pedidos'));
+const HistoricoPedidosPage    = lazy(() => import('./pages/historico-pedidos'));
 const ConglomeradoPedidosPage = lazy(() => import('./pages/conglomerado-pedidos'));
 const GestionProveedoresPage = lazy(() => import('./pages/gestion-proveedores'));
 const BodegaTransitoPage = lazy(() => import('./pages/bodega-transito'));
@@ -211,6 +212,12 @@ const App: React.FC = () => {
                   <ProtectedRoute path="/gestion-pedidos" pageId="gestion-pedidos">
                     <MainLayout>
                       <GestionPedidosPage />
+                    </MainLayout>
+                  </ProtectedRoute>
+
+                  <ProtectedRoute path="/historico-pedidos" pageId="historico-pedidos">
+                    <MainLayout>
+                      <HistoricoPedidosPage />
                     </MainLayout>
                   </ProtectedRoute>
 
