@@ -1,19 +1,19 @@
-Me llega este mensaje pero si hay dato, algo no esta procesando bien.
+Sigue el problema y me llega este mensaje pero si hay dato, algo no esta procesando bien.
 No hay datos para el rango y estados seleccionados
 ubuntu@ip-172-26-1-143:~$ docker logs --tail 100 kuhub-backend
-        s1_0.fecha_inicio
-2026-04-23T20:26:03.968Z TRACE 1 --- [nio-8080-exec-1] org.hibernate.orm.jdbc.bind              : binding parameter (1:SMALLINT) <- [2026]
-2026-04-23T20:26:03.968Z TRACE 1 --- [nio-8080-exec-1] org.hibernate.orm.jdbc.bind              : binding parameter (2:SMALLINT) <- [1]
-2026-04-23T20:26:03.977Z DEBUG 1 --- [nio-8080-exec-1] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/yaml]
-2026-04-23T20:26:03.978Z DEBUG 1 --- [nio-8080-exec-1] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Writing [[Semana(idSemana=1, nombreSemana=Semana 1, fechaInicio=2026-03-02, fechaFin=2026-03-08, anio=2026, s (truncated)...]
-2026-04-23T20:26:03.979Z DEBUG 1 --- [nio-8080-exec-1] o.s.web.servlet.DispatcherServlet        : Completed 200 OK
-2026-04-23T20:26:13.594Z DEBUG 1 --- [nio-8080-exec-3] o.s.security.web.FilterChainProxy        : Securing POST /api/v1/pedido/resumen-historico
-2026-04-23T20:26:13.595Z  INFO 1 --- [nio-8080-exec-3] K.c.s.rate_limiting.RateLimitFilter      : 📍 IP: 186.78.184.242 | Petición 4 de 80
-2026-04-23T20:26:13.599Z DEBUG 1 --- [nio-8080-exec-3] o.s.security.web.FilterChainProxy        : Secured POST /api/v1/pedido/resumen-historico
-2026-04-23T20:26:13.599Z DEBUG 1 --- [nio-8080-exec-3] o.s.web.servlet.DispatcherServlet        : POST "/api/v1/pedido/resumen-historico", parameters={}
-2026-04-23T20:26:13.599Z DEBUG 1 --- [nio-8080-exec-3] s.w.s.m.m.a.RequestMappingHandlerMapping : Mapped to KuHub.modules.gestion_pedido.controller.PedidoController#obtenerResumenHistorico(ResumenHistoricoRequestDTO)
-2026-04-23T20:26:13.600Z DEBUG 1 --- [nio-8080-exec-3] m.m.a.RMh4hfsi84LdbS4uS3jaSaNccc8kartkDJ : Read "application/json;charset=UTF-8" to [ResumenHistoricoRequestDTO(fechaInicio=2026-01-01, fechaFin=2026-12-31, estadosCsv=APROBADO,ENTREGAD (truncated)...]
-2026-04-23T20:26:13.604Z DEBUG 1 --- [nio-8080-exec-3] org.hibernate.SQL                        :
+2026-04-23T20:34:54.650Z TRACE 1 --- [nio-8080-exec-4] org.hibernate.orm.jdbc.bind              : binding parameter (11:DATE) <- [2026-12-31]
+2026-04-23T20:34:54.651Z TRACE 1 --- [nio-8080-exec-4] org.hibernate.orm.jdbc.bind              : binding parameter (12:VARCHAR) <- [APROBADO,ENTREGADO]
+2026-04-23T20:34:54.682Z  WARN 1 --- [nio-8080-exec-4] K.m.g.services.PedidoServiceImpl         : obtenerResumenHistoricoJSON retornó resultado null para rango 2026-01-01-2026-12-31 con estados APROBADO,ENTREGADO
+2026-04-23T20:34:54.709Z DEBUG 1 --- [nio-8080-exec-4] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/yaml]
+2026-04-23T20:34:54.719Z DEBUG 1 --- [nio-8080-exec-4] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Writing [ResumenHistoricoResponse[fechaInicio=2026-01-01, fechaFin=2026-12-31, estados=[], totalProductosDist (truncated)...]
+2026-04-23T20:34:54.734Z DEBUG 1 --- [nio-8080-exec-4] o.s.web.servlet.DispatcherServlet        : Completed 200 OK
+2026-04-23T20:35:02.991Z DEBUG 1 --- [nio-8080-exec-6] o.s.security.web.FilterChainProxy        : Securing POST /api/v1/pedido/resumen-historico
+2026-04-23T20:35:03.013Z  INFO 1 --- [nio-8080-exec-6] K.c.s.rate_limiting.RateLimitFilter      : 📍 IP: 186.78.184.242 | Petición 5 de 80
+2026-04-23T20:35:03.029Z DEBUG 1 --- [nio-8080-exec-6] o.s.security.web.FilterChainProxy        : Secured POST /api/v1/pedido/resumen-historico
+2026-04-23T20:35:03.029Z DEBUG 1 --- [nio-8080-exec-6] o.s.web.servlet.DispatcherServlet        : POST "/api/v1/pedido/resumen-historico", parameters={}
+2026-04-23T20:35:03.030Z DEBUG 1 --- [nio-8080-exec-6] s.w.s.m.m.a.RequestMappingHandlerMapping : Mapped to KuHub.modules.gestion_pedido.controller.PedidoController#obtenerResumenHistorico(ResumenHistoricoRequestDTO)
+2026-04-23T20:35:03.044Z DEBUG 1 --- [nio-8080-exec-6] m.m.a.RMh4hfsi84LdbS4uS3jaSaNccc8kartkDJ : Read "application/json;charset=UTF-8" to [ResumenHistoricoRequestDTO(fechaInicio=2026-01-01, fechaFin=2026-12-31, estadosCsv=APROBADO,ENTREGAD (truncated)...]
+2026-04-23T20:35:03.056Z DEBUG 1 --- [nio-8080-exec-6] org.hibernate.SQL                        :
     SELECT
         jsonb_build_object(     'fechaInicio', CAST(? AS TEXT),     'fechaFin',    CAST(? AS TEXT),     'estados',     to_jsonb(string_to_array(?, ',')),      'totalProductosDistintos', (         SELECT
             COUNT(DISTINCT dp.id_producto)
@@ -85,22 +85,22 @@ Hibernate:
         LEFT JOIN
             unidad_medida um
                 ON um.id_unidad = prod.id_unidad     ), '[]'::jsonb) ) AS resultado
-2026-04-23T20:26:13.606Z TRACE 1 --- [nio-8080-exec-3] org.hibernate.orm.jdbc.bind              : binding parameter (1:DATE) <- [2026-01-01]
-2026-04-23T20:26:13.607Z TRACE 1 --- [nio-8080-exec-3] org.hibernate.orm.jdbc.bind              : binding parameter (2:DATE) <- [2026-12-31]
-2026-04-23T20:26:13.607Z TRACE 1 --- [nio-8080-exec-3] org.hibernate.orm.jdbc.bind              : binding parameter (3:VARCHAR) <- [APROBADO,ENTREGADO]
-2026-04-23T20:26:13.607Z TRACE 1 --- [nio-8080-exec-3] org.hibernate.orm.jdbc.bind              : binding parameter (4:DATE) <- [2026-01-01]
-2026-04-23T20:26:13.607Z TRACE 1 --- [nio-8080-exec-3] org.hibernate.orm.jdbc.bind              : binding parameter (5:DATE) <- [2026-12-31]
-2026-04-23T20:26:13.607Z TRACE 1 --- [nio-8080-exec-3] org.hibernate.orm.jdbc.bind              : binding parameter (6:VARCHAR) <- [APROBADO,ENTREGADO]
-2026-04-23T20:26:13.608Z TRACE 1 --- [nio-8080-exec-3] org.hibernate.orm.jdbc.bind              : binding parameter (7:DATE) <- [2026-01-01]
-2026-04-23T20:26:13.608Z TRACE 1 --- [nio-8080-exec-3] org.hibernate.orm.jdbc.bind              : binding parameter (8:DATE) <- [2026-12-31]
-2026-04-23T20:26:13.609Z TRACE 1 --- [nio-8080-exec-3] org.hibernate.orm.jdbc.bind              : binding parameter (9:VARCHAR) <- [APROBADO,ENTREGADO]
-2026-04-23T20:26:13.609Z TRACE 1 --- [nio-8080-exec-3] org.hibernate.orm.jdbc.bind              : binding parameter (10:DATE) <- [2026-01-01]
-2026-04-23T20:26:13.609Z TRACE 1 --- [nio-8080-exec-3] org.hibernate.orm.jdbc.bind              : binding parameter (11:DATE) <- [2026-12-31]
-2026-04-23T20:26:13.609Z TRACE 1 --- [nio-8080-exec-3] org.hibernate.orm.jdbc.bind              : binding parameter (12:VARCHAR) <- [APROBADO,ENTREGADO]
-2026-04-23T20:26:13.619Z  WARN 1 --- [nio-8080-exec-3] K.m.g.services.PedidoServiceImpl         : obtenerResumenHistoricoJSON retornó resultado null para rango 2026-01-01-2026-12-31 con estados APROBADO,ENTREGADO
-2026-04-23T20:26:13.623Z DEBUG 1 --- [nio-8080-exec-3] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/yaml]
-2026-04-23T20:26:13.624Z DEBUG 1 --- [nio-8080-exec-3] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Writing [ResumenHistoricoResponse[fechaInicio=2026-01-01, fechaFin=2026-12-31, estados=[], totalProductosDist (truncated)...]
-2026-04-23T20:26:13.625Z DEBUG 1 --- [nio-8080-exec-3] o.s.web.servlet.DispatcherServlet        : Completed 200 OK
+2026-04-23T20:35:03.057Z TRACE 1 --- [nio-8080-exec-6] org.hibernate.orm.jdbc.bind              : binding parameter (1:DATE) <- [2026-01-01]
+2026-04-23T20:35:03.058Z TRACE 1 --- [nio-8080-exec-6] org.hibernate.orm.jdbc.bind              : binding parameter (2:DATE) <- [2026-12-31]
+2026-04-23T20:35:03.058Z TRACE 1 --- [nio-8080-exec-6] org.hibernate.orm.jdbc.bind              : binding parameter (3:VARCHAR) <- [APROBADO,ENTREGADO]
+2026-04-23T20:35:03.058Z TRACE 1 --- [nio-8080-exec-6] org.hibernate.orm.jdbc.bind              : binding parameter (4:DATE) <- [2026-01-01]
+2026-04-23T20:35:03.058Z TRACE 1 --- [nio-8080-exec-6] org.hibernate.orm.jdbc.bind              : binding parameter (5:DATE) <- [2026-12-31]
+2026-04-23T20:35:03.059Z TRACE 1 --- [nio-8080-exec-6] org.hibernate.orm.jdbc.bind              : binding parameter (6:VARCHAR) <- [APROBADO,ENTREGADO]
+2026-04-23T20:35:03.059Z TRACE 1 --- [nio-8080-exec-6] org.hibernate.orm.jdbc.bind              : binding parameter (7:DATE) <- [2026-01-01]
+2026-04-23T20:35:03.059Z TRACE 1 --- [nio-8080-exec-6] org.hibernate.orm.jdbc.bind              : binding parameter (8:DATE) <- [2026-12-31]
+2026-04-23T20:35:03.060Z TRACE 1 --- [nio-8080-exec-6] org.hibernate.orm.jdbc.bind              : binding parameter (9:VARCHAR) <- [APROBADO,ENTREGADO]
+2026-04-23T20:35:03.060Z TRACE 1 --- [nio-8080-exec-6] org.hibernate.orm.jdbc.bind              : binding parameter (10:DATE) <- [2026-01-01]
+2026-04-23T20:35:03.060Z TRACE 1 --- [nio-8080-exec-6] org.hibernate.orm.jdbc.bind              : binding parameter (11:DATE) <- [2026-12-31]
+2026-04-23T20:35:03.074Z TRACE 1 --- [nio-8080-exec-6] org.hibernate.orm.jdbc.bind              : binding parameter (12:VARCHAR) <- [APROBADO,ENTREGADO]
+2026-04-23T20:35:03.094Z  WARN 1 --- [nio-8080-exec-6] K.m.g.services.PedidoServiceImpl         : obtenerResumenHistoricoJSON retornó resultado null para rango 2026-01-01-2026-12-31 con estados APROBADO,ENTREGADO
+2026-04-23T20:35:03.106Z DEBUG 1 --- [nio-8080-exec-6] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/yaml]
+2026-04-23T20:35:03.106Z DEBUG 1 --- [nio-8080-exec-6] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Writing [ResumenHistoricoResponse[fechaInicio=2026-01-01, fechaFin=2026-12-31, estados=[], totalProductosDist (truncated)...]
+2026-04-23T20:35:03.110Z DEBUG 1 --- [nio-8080-exec-6] o.s.web.servlet.DispatcherServlet        : Completed 200 OK
 
 esta es la consulta base para que pueda vereficar en el repositorio si corresponde! ver si la fecha esta asigana la inicio y fin correctamente!
 SELECT jsonb_build_object(
@@ -148,3 +148,129 @@ SELECT jsonb_build_object(
         LEFT JOIN unidad_medida um ON um.id_unidad = prod.id_unidad
     ), '[]'::jsonb)
 ) AS resultado;
+
+en el frontend tien la misma fecha de la consulta, si ejecuto en la bbdd me da este json
+{
+  "estados": [
+    "APROBADO",
+    "ENTREGADO"
+  ],
+  "fechaFin": "2026-12-31",
+  "productos": [
+    {
+      "idProducto": 265,
+      "abreviatura": "un",
+      "codProducto": null,
+      "unidadMedida": "Unidad",
+      "cantidadTotal": 22,
+      "nombreProducto": "Palos Bambu Con Nudo",
+      "vecesEnPedidos": 2
+    },
+    {
+      "idProducto": 249,
+      "abreviatura": "un",
+      "codProducto": null,
+      "unidadMedida": "Unidad",
+      "cantidadTotal": 15,
+      "nombreProducto": "Bolsa De Vacio Grande",
+      "vecesEnPedidos": 1
+    },
+    {
+      "idProducto": 18,
+      "abreviatura": "un",
+      "codProducto": null,
+      "unidadMedida": "Unidad",
+      "cantidadTotal": 15,
+      "nombreProducto": "Cilantro",
+      "vecesEnPedidos": 1
+    },
+    {
+      "idProducto": 131,
+      "abreviatura": "kg",
+      "codProducto": null,
+      "unidadMedida": "Kilo",
+      "cantidadTotal": 14.733,
+      "nombreProducto": "Huevo Primera Kilo",
+      "vecesEnPedidos": 2
+    },
+    {
+      "idProducto": 48,
+      "abreviatura": "kg",
+      "codProducto": null,
+      "unidadMedida": "Kilo",
+      "cantidadTotal": 14.418,
+      "nombreProducto": "Romero",
+      "vecesEnPedidos": 1
+    },
+    {
+      "idProducto": 222,
+      "abreviatura": "un",
+      "codProducto": null,
+      "unidadMedida": "Unidad",
+      "cantidadTotal": 12,
+      "nombreProducto": "Chicha 11,5°",
+      "vecesEnPedidos": 1
+    },
+    {
+      "idProducto": 266,
+      "abreviatura": "rll",
+      "codProducto": null,
+      "unidadMedida": "Rollo",
+      "cantidadTotal": 10,
+      "nombreProducto": "Papel De Aluminio",
+      "vecesEnPedidos": 1
+    },
+    {
+      "idProducto": 50,
+      "abreviatura": "kg",
+      "codProducto": null,
+      "unidadMedida": "Kilo",
+      "cantidadTotal": 9.805,
+      "nombreProducto": "Tomate",
+      "vecesEnPedidos": 1
+    },
+    {
+      "idProducto": 143,
+      "abreviatura": "kg",
+      "codProducto": null,
+      "unidadMedida": "Kilo",
+      "cantidadTotal": 9.349,
+      "nombreProducto": "Manjar Nestle",
+      "vecesEnPedidos": 1
+    },
+    {
+      "idProducto": 72,
+      "abreviatura": "l",
+      "codProducto": null,
+      "unidadMedida": "Litro",
+      "cantidadTotal": 8.949,
+      "nombreProducto": "Aceite De Sésamo",
+      "vecesEnPedidos": 1
+    },
+    {
+      "idProducto": 63,
+      "abreviatura": "kg",
+      "codProducto": null,
+      "unidadMedida": "Kilo",
+      "cantidadTotal": 7.456,
+      "nombreProducto": "Mora",
+      "vecesEnPedidos": 1
+    },
+    {
+      "idProducto": 31,
+      "abreviatura": "kg",
+      "codProducto": null,
+      "unidadMedida": "Kilo",
+      "cantidadTotal": 7.383,
+      "nombreProducto": "Mizuna Morada",
+      "vecesEnPedidos": 2
+    },
+    {
+      "idProducto": 164,
+      "abreviatura": "kg",
+      "codProducto": null,
+      "unidadMedida": "Kilo",
+      "cantidadTotal": 6.96,
+      "nombreProducto": "Queso Crema Reny G1",
+      "vecesEnPedidos": 1
+    }...
