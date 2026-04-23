@@ -264,6 +264,12 @@ public class PedidoServiceImpl implements PedidoService{
             var node = objectMapper.readTree(jsonResult);
             var resultNode = node.get("resultado");
 
+            if (resultNode == null || resultNode.isNull()) {
+                log.warn("obtenerResumenHistoricoJSON retornó resultado null para rango {}-{} con estados {}",
+                        fechaInicio, fechaFin, estadosCsv);
+                return new ResumenHistoricoResponse(fechaInicio, fechaFin, List.of(), 0, 0, List.of());
+            }
+
             var estados = objectMapper.convertValue(
                     resultNode.get("estados"),
                     new TypeReference<List<String>>() {}
