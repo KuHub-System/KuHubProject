@@ -22,6 +22,7 @@ import {
   Select,
   SelectItem,
   Spinner,
+  Tooltip,
   useDisclosure,
 } from '@heroui/react';
 import { CalendarDate } from '@internationalized/date';
@@ -1744,11 +1745,11 @@ const CotizacionModal: React.FC<CotizacionModalProps> = ({
                                       <table className="w-full text-xs">
                                         <thead className="bg-default-100 dark:bg-default-50">
                                           <tr>
-                                            <th className="text-left py-2 px-3 font-medium">Producto</th>
+                                            <th className="text-center py-2 px-3 font-medium">Producto</th>
                                             <th className="text-center py-2 px-3 font-medium">Unidad</th>
-                                            <th className="text-right py-2 px-3 font-medium">Cantidad</th>
-                                            <th className="text-right py-2 px-3 font-medium">Precio Unit.</th>
-                                            <th className="text-right py-2 px-3 font-medium">Subtotal</th>
+                                            <th className="text-center py-2 px-3 font-medium">Cantidad</th>
+                                            <th className="text-center py-2 px-3 font-medium">Precio Unit.</th>
+                                            <th className="text-center py-2 px-3 font-medium">Subtotal</th>
                                           </tr>
                                         </thead>
                                         <tbody>
@@ -1757,13 +1758,17 @@ const CotizacionModal: React.FC<CotizacionModalProps> = ({
                                               key={prod.idProducto}
                                               className="border-t border-default-100 dark:border-default-50 hover:bg-default-50 dark:hover:bg-default-100/20"
                                             >
-                                              <td className="py-2 px-3 font-medium">{prod.nombreProducto}</td>
+                                              <td className="py-2 px-3 font-medium text-center">
+                                                <Tooltip content={prod.nombreProducto} color="default">
+                                                  <span className="truncate block max-w-[150px]">{prod.nombreProducto}</span>
+                                                </Tooltip>
+                                              </td>
                                               <td className="py-2 px-3 text-center text-default-500">{prod.abreviatura}</td>
-                                              <td className="py-2 px-3 text-right">{fmtN(prod.cantidadTotal)}</td>
-                                              <td className="py-2 px-3 text-right">
+                                              <td className="py-2 px-3 text-center">{fmtN(prod.cantidadTotal)}</td>
+                                              <td className="py-2 px-3 text-center">
                                                 {prod.precioUnitario !== null ? `$${fmtN(prod.precioUnitario)}` : '—'}
                                               </td>
-                                              <td className="py-2 px-3 text-right font-semibold">
+                                              <td className="py-2 px-3 text-center font-semibold">
                                                 {prod.subtotal !== null ? `$${fmtN(prod.subtotal)}` : '—'}
                                               </td>
                                             </tr>
