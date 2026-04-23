@@ -117,23 +117,40 @@ public class PedidoController {
     @PostMapping("/resumen-historico")
     public ResponseEntity<ResumenHistoricoResponse> obtenerResumenHistorico(
             @Validated @RequestBody ResumenHistoricoRequestDTO request) {
-        String estadosNormalizados = normalizarEstadosCsv(request.getEstadosCsv());
+        String[] estadosArray = normalizarEstadosCsv(request.getEstadosCsv());
         return ResponseEntity
                 .status(200)
                 .body(pedidoService.obtenerResumenHistorico(
                         request.getFechaInicio(),
                         request.getFechaFin(),
-                        estadosNormalizados
+                        estadosArray
                 ));
     }
 
-    private String normalizarEstadosCsv(String estadosCsv) {
+    private String[] normalizarEstadosCsv(String estadosCsv) {
         if (estadosCsv == null || estadosCsv.isBlank()) {
-            return estadosCsv;
+            return new String[]{};
         }
-        return Arrays.stream(estadosCsv.split(","))
+
+        String[] estadosNormalizados = Arrays.stream(estadosCsv.split(","))
                 .map(String::trim)
                 .map(StringUtils::normalizeToEnumKey)
-                .collect(Collectors.joining(","));
+                .toArray(String[]::new);
+
+        validarEstadosValidos(estadosNormalizados);
+        return estadosNormalizados;
+    }
+
+    private void validarEstadosValidos(String[] estadosRecibidos) {
+        String[] estadosValidos = {"PENDIENTE", "APROBADO", "ENTREGADO", "RECHAZADO"};
+
+        for (String estado : estadosRecibidos) {
+            if (estado == null || estado.isBlank()) continue;
+            boolean esValido = Arrays.stream(estadosValidos).anyMatch(e -> e.equals(estado.trim()));
+            if (!esValido) {
+                throw new IllegalArgumentException("Estado inválido: '" + estado +
+                    "'. Estados válidos: PENDIENTE, APROBADO, ENTREGADO, RECHAZADO");
+            }
+        }
     }
 }
