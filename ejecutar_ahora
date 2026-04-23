@@ -1,276 +1,93 @@
-Sigue el problema y me llega este mensaje pero si hay dato, algo no esta procesando bien.
-No hay datos para el rango y estados seleccionados
-ubuntu@ip-172-26-1-143:~$ docker logs --tail 100 kuhub-backend
-2026-04-23T20:34:54.650Z TRACE 1 --- [nio-8080-exec-4] org.hibernate.orm.jdbc.bind              : binding parameter (11:DATE) <- [2026-12-31]
-2026-04-23T20:34:54.651Z TRACE 1 --- [nio-8080-exec-4] org.hibernate.orm.jdbc.bind              : binding parameter (12:VARCHAR) <- [APROBADO,ENTREGADO]
-2026-04-23T20:34:54.682Z  WARN 1 --- [nio-8080-exec-4] K.m.g.services.PedidoServiceImpl         : obtenerResumenHistoricoJSON retornó resultado null para rango 2026-01-01-2026-12-31 con estados APROBADO,ENTREGADO
-2026-04-23T20:34:54.709Z DEBUG 1 --- [nio-8080-exec-4] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/yaml]
-2026-04-23T20:34:54.719Z DEBUG 1 --- [nio-8080-exec-4] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Writing [ResumenHistoricoResponse[fechaInicio=2026-01-01, fechaFin=2026-12-31, estados=[], totalProductosDist (truncated)...]
-2026-04-23T20:34:54.734Z DEBUG 1 --- [nio-8080-exec-4] o.s.web.servlet.DispatcherServlet        : Completed 200 OK
-2026-04-23T20:35:02.991Z DEBUG 1 --- [nio-8080-exec-6] o.s.security.web.FilterChainProxy        : Securing POST /api/v1/pedido/resumen-historico
-2026-04-23T20:35:03.013Z  INFO 1 --- [nio-8080-exec-6] K.c.s.rate_limiting.RateLimitFilter      : 📍 IP: 186.78.184.242 | Petición 5 de 80
-2026-04-23T20:35:03.029Z DEBUG 1 --- [nio-8080-exec-6] o.s.security.web.FilterChainProxy        : Secured POST /api/v1/pedido/resumen-historico
-2026-04-23T20:35:03.029Z DEBUG 1 --- [nio-8080-exec-6] o.s.web.servlet.DispatcherServlet        : POST "/api/v1/pedido/resumen-historico", parameters={}
-2026-04-23T20:35:03.030Z DEBUG 1 --- [nio-8080-exec-6] s.w.s.m.m.a.RequestMappingHandlerMapping : Mapped to KuHub.modules.gestion_pedido.controller.PedidoController#obtenerResumenHistorico(ResumenHistoricoRequestDTO)
-2026-04-23T20:35:03.044Z DEBUG 1 --- [nio-8080-exec-6] m.m.a.RMh4hfsi84LdbS4uS3jaSaNccc8kartkDJ : Read "application/json;charset=UTF-8" to [ResumenHistoricoRequestDTO(fechaInicio=2026-01-01, fechaFin=2026-12-31, estadosCsv=APROBADO,ENTREGAD (truncated)...]
-2026-04-23T20:35:03.056Z DEBUG 1 --- [nio-8080-exec-6] org.hibernate.SQL                        :
-    SELECT
-        jsonb_build_object(     'fechaInicio', CAST(? AS TEXT),     'fechaFin',    CAST(? AS TEXT),     'estados',     to_jsonb(string_to_array(?, ',')),      'totalProductosDistintos', (         SELECT
-            COUNT(DISTINCT dp.id_producto)
-        FROM
-            detalle_pedido dp
-        JOIN
-            pedido p
-                ON p.id_pedido = dp.id_pedido
-        WHERE
-            p.fecha_inicio_pedido BETWEEN ? AND ?
-            AND p.estado_pedido::text = ANY(string_to_array(trim(?), ','))     ),      'totalPedidos', (         SELECT
-            COUNT(DISTINCT p.id_pedido)         FROM pedido p
-        WHERE
-            p.fecha_inicio_pedido BETWEEN ? AND ?
-            AND p.estado_pedido::text = ANY(string_to_array(trim(?), ','))     ),      'productos', COALESCE((         SELECT
-            jsonb_agg(             jsonb_build_object(                 'idProducto',      prod.id_producto,                 'codProducto',     prod.cod_producto,                 'nombreProducto',  prod.nombre_producto,                 'unidadMedida',    um.nombre_unidad,                 'abreviatura',     um.abreviatura,                 'cantidadTotal',   resumen.cantidad_total,                 'vecesEnPedidos',  resumen.veces_en_pedidos             )
-        ORDER BY
-            resumen.cantidad_total DESC         )         FROM (             SELECT
-                dp.id_producto,                 SUM(dp.cant_producto_pedido)  AS cantidad_total,                 COUNT(DISTINCT dp.id_pedido)  AS veces_en_pedidos
-            FROM
-                detalle_pedido dp
-            JOIN
-                pedido p
-                    ON p.id_pedido = dp.id_pedido
-            WHERE
-                p.fecha_inicio_pedido BETWEEN ? AND ?
-                AND p.estado_pedido::text = ANY(string_to_array(trim(?), ','))
-            GROUP BY
-                dp.id_producto         ) resumen
-        JOIN
-            producto prod
-                ON prod.id_producto = resumen.id_producto
-        LEFT JOIN
-            unidad_medida um
-                ON um.id_unidad = prod.id_unidad     ), '[]'::jsonb) ) AS resultado
-Hibernate:
-    SELECT
-        jsonb_build_object(     'fechaInicio', CAST(? AS TEXT),     'fechaFin',    CAST(? AS TEXT),     'estados',     to_jsonb(string_to_array(?, ',')),      'totalProductosDistintos', (         SELECT
-            COUNT(DISTINCT dp.id_producto)
-        FROM
-            detalle_pedido dp
-        JOIN
-            pedido p
-                ON p.id_pedido = dp.id_pedido
-        WHERE
-            p.fecha_inicio_pedido BETWEEN ? AND ?
-            AND p.estado_pedido::text = ANY(string_to_array(trim(?), ','))     ),      'totalPedidos', (         SELECT
-            COUNT(DISTINCT p.id_pedido)         FROM pedido p
-        WHERE
-            p.fecha_inicio_pedido BETWEEN ? AND ?
-            AND p.estado_pedido::text = ANY(string_to_array(trim(?), ','))     ),      'productos', COALESCE((         SELECT
-            jsonb_agg(             jsonb_build_object(                 'idProducto',      prod.id_producto,                 'codProducto',     prod.cod_producto,                 'nombreProducto',  prod.nombre_producto,                 'unidadMedida',    um.nombre_unidad,                 'abreviatura',     um.abreviatura,                 'cantidadTotal',   resumen.cantidad_total,                 'vecesEnPedidos',  resumen.veces_en_pedidos             )
-        ORDER BY
-            resumen.cantidad_total DESC         )         FROM (             SELECT
-                dp.id_producto,                 SUM(dp.cant_producto_pedido)  AS cantidad_total,                 COUNT(DISTINCT dp.id_pedido)  AS veces_en_pedidos
-            FROM
-                detalle_pedido dp
-            JOIN
-                pedido p
-                    ON p.id_pedido = dp.id_pedido
-            WHERE
-                p.fecha_inicio_pedido BETWEEN ? AND ?
-                AND p.estado_pedido::text = ANY(string_to_array(trim(?), ','))
-            GROUP BY
-                dp.id_producto         ) resumen
-        JOIN
-            producto prod
-                ON prod.id_producto = resumen.id_producto
-        LEFT JOIN
-            unidad_medida um
-                ON um.id_unidad = prod.id_unidad     ), '[]'::jsonb) ) AS resultado
-2026-04-23T20:35:03.057Z TRACE 1 --- [nio-8080-exec-6] org.hibernate.orm.jdbc.bind              : binding parameter (1:DATE) <- [2026-01-01]
-2026-04-23T20:35:03.058Z TRACE 1 --- [nio-8080-exec-6] org.hibernate.orm.jdbc.bind              : binding parameter (2:DATE) <- [2026-12-31]
-2026-04-23T20:35:03.058Z TRACE 1 --- [nio-8080-exec-6] org.hibernate.orm.jdbc.bind              : binding parameter (3:VARCHAR) <- [APROBADO,ENTREGADO]
-2026-04-23T20:35:03.058Z TRACE 1 --- [nio-8080-exec-6] org.hibernate.orm.jdbc.bind              : binding parameter (4:DATE) <- [2026-01-01]
-2026-04-23T20:35:03.058Z TRACE 1 --- [nio-8080-exec-6] org.hibernate.orm.jdbc.bind              : binding parameter (5:DATE) <- [2026-12-31]
-2026-04-23T20:35:03.059Z TRACE 1 --- [nio-8080-exec-6] org.hibernate.orm.jdbc.bind              : binding parameter (6:VARCHAR) <- [APROBADO,ENTREGADO]
-2026-04-23T20:35:03.059Z TRACE 1 --- [nio-8080-exec-6] org.hibernate.orm.jdbc.bind              : binding parameter (7:DATE) <- [2026-01-01]
-2026-04-23T20:35:03.059Z TRACE 1 --- [nio-8080-exec-6] org.hibernate.orm.jdbc.bind              : binding parameter (8:DATE) <- [2026-12-31]
-2026-04-23T20:35:03.060Z TRACE 1 --- [nio-8080-exec-6] org.hibernate.orm.jdbc.bind              : binding parameter (9:VARCHAR) <- [APROBADO,ENTREGADO]
-2026-04-23T20:35:03.060Z TRACE 1 --- [nio-8080-exec-6] org.hibernate.orm.jdbc.bind              : binding parameter (10:DATE) <- [2026-01-01]
-2026-04-23T20:35:03.060Z TRACE 1 --- [nio-8080-exec-6] org.hibernate.orm.jdbc.bind              : binding parameter (11:DATE) <- [2026-12-31]
-2026-04-23T20:35:03.074Z TRACE 1 --- [nio-8080-exec-6] org.hibernate.orm.jdbc.bind              : binding parameter (12:VARCHAR) <- [APROBADO,ENTREGADO]
-2026-04-23T20:35:03.094Z  WARN 1 --- [nio-8080-exec-6] K.m.g.services.PedidoServiceImpl         : obtenerResumenHistoricoJSON retornó resultado null para rango 2026-01-01-2026-12-31 con estados APROBADO,ENTREGADO
-2026-04-23T20:35:03.106Z DEBUG 1 --- [nio-8080-exec-6] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/yaml]
-2026-04-23T20:35:03.106Z DEBUG 1 --- [nio-8080-exec-6] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Writing [ResumenHistoricoResponse[fechaInicio=2026-01-01, fechaFin=2026-12-31, estados=[], totalProductosDist (truncated)...]
-2026-04-23T20:35:03.110Z DEBUG 1 --- [nio-8080-exec-6] o.s.web.servlet.DispatcherServlet        : Completed 200 OK
-
-esta es la consulta base para que pueda vereficar en el repositorio si corresponde! ver si la fecha esta asigana la inicio y fin correctamente!
-SELECT jsonb_build_object(
-    'fechaInicio', '2026-01-01',
-    'fechaFin',    '2026-12-31',
-    'estados',     to_jsonb(ARRAY['APROBADO', 'ENTREGADO']::text[]),
-    'totalProductosDistintos', (
-        SELECT COUNT(DISTINCT dp.id_producto)
-        FROM detalle_pedido dp
-        JOIN pedido p ON p.id_pedido = dp.id_pedido
-        WHERE p.fecha_inicio_pedido BETWEEN '2026-01-01' AND '2026-12-31'
-          AND p.estado_pedido::text = ANY(ARRAY['APROBADO', 'ENTREGADO'])
-    ),
-    'totalPedidos', (
-        SELECT COUNT(DISTINCT p.id_pedido)
-        FROM pedido p
-        WHERE p.fecha_inicio_pedido BETWEEN '2026-01-01' AND '2026-12-31'
-          AND p.estado_pedido::text = ANY(ARRAY['APROBADO', 'ENTREGADO'])
-    ),
-    'productos', COALESCE((
-        SELECT jsonb_agg(
-            jsonb_build_object(
-                'idProducto',      prod.id_producto,
-                'codProducto',     prod.cod_producto,
-                'nombreProducto',  prod.nombre_producto,
-                'unidadMedida',    um.nombre_unidad,
-                'abreviatura',     um.abreviatura,
-                'cantidadTotal',   resumen.cantidad_total,
-                'vecesEnPedidos',  resumen.veces_en_pedidos
-            )
-            ORDER BY resumen.cantidad_total DESC
-        )
-        FROM (
-            SELECT
-                dp.id_producto,
-                SUM(dp.cant_producto_pedido)  AS cantidad_total,
-                COUNT(DISTINCT dp.id_pedido)  AS veces_en_pedidos
-            FROM detalle_pedido dp
-            JOIN pedido p ON p.id_pedido = dp.id_pedido
-            WHERE p.fecha_inicio_pedido BETWEEN '2026-01-01' AND '2026-12-31'
-              AND p.estado_pedido::text = ANY(ARRAY['APROBADO', 'ENTREGADO'])
-            GROUP BY dp.id_producto
-        ) resumen
-        JOIN producto prod ON prod.id_producto = resumen.id_producto
-        LEFT JOIN unidad_medida um ON um.id_unidad = prod.id_unidad
-    ), '[]'::jsonb)
-) AS resultado;
-
-en el frontend tien la misma fecha de la consulta, si ejecuto en la bbdd me da este json
-{
-  "estados": [
-    "APROBADO",
-    "ENTREGADO"
-  ],
-  "fechaFin": "2026-12-31",
-  "productos": [
-    {
-      "idProducto": 265,
-      "abreviatura": "un",
-      "codProducto": null,
-      "unidadMedida": "Unidad",
-      "cantidadTotal": 22,
-      "nombreProducto": "Palos Bambu Con Nudo",
-      "vecesEnPedidos": 2
-    },
-    {
-      "idProducto": 249,
-      "abreviatura": "un",
-      "codProducto": null,
-      "unidadMedida": "Unidad",
-      "cantidadTotal": 15,
-      "nombreProducto": "Bolsa De Vacio Grande",
-      "vecesEnPedidos": 1
-    },
-    {
-      "idProducto": 18,
-      "abreviatura": "un",
-      "codProducto": null,
-      "unidadMedida": "Unidad",
-      "cantidadTotal": 15,
-      "nombreProducto": "Cilantro",
-      "vecesEnPedidos": 1
-    },
-    {
-      "idProducto": 131,
-      "abreviatura": "kg",
-      "codProducto": null,
-      "unidadMedida": "Kilo",
-      "cantidadTotal": 14.733,
-      "nombreProducto": "Huevo Primera Kilo",
-      "vecesEnPedidos": 2
-    },
-    {
-      "idProducto": 48,
-      "abreviatura": "kg",
-      "codProducto": null,
-      "unidadMedida": "Kilo",
-      "cantidadTotal": 14.418,
-      "nombreProducto": "Romero",
-      "vecesEnPedidos": 1
-    },
-    {
-      "idProducto": 222,
-      "abreviatura": "un",
-      "codProducto": null,
-      "unidadMedida": "Unidad",
-      "cantidadTotal": 12,
-      "nombreProducto": "Chicha 11,5°",
-      "vecesEnPedidos": 1
-    },
-    {
-      "idProducto": 266,
-      "abreviatura": "rll",
-      "codProducto": null,
-      "unidadMedida": "Rollo",
-      "cantidadTotal": 10,
-      "nombreProducto": "Papel De Aluminio",
-      "vecesEnPedidos": 1
-    },
-    {
-      "idProducto": 50,
-      "abreviatura": "kg",
-      "codProducto": null,
-      "unidadMedida": "Kilo",
-      "cantidadTotal": 9.805,
-      "nombreProducto": "Tomate",
-      "vecesEnPedidos": 1
-    },
-    {
-      "idProducto": 143,
-      "abreviatura": "kg",
-      "codProducto": null,
-      "unidadMedida": "Kilo",
-      "cantidadTotal": 9.349,
-      "nombreProducto": "Manjar Nestle",
-      "vecesEnPedidos": 1
-    },
-    {
-      "idProducto": 72,
-      "abreviatura": "l",
-      "codProducto": null,
-      "unidadMedida": "Litro",
-      "cantidadTotal": 8.949,
-      "nombreProducto": "Aceite De Sésamo",
-      "vecesEnPedidos": 1
-    },
-    {
-      "idProducto": 63,
-      "abreviatura": "kg",
-      "codProducto": null,
-      "unidadMedida": "Kilo",
-      "cantidadTotal": 7.456,
-      "nombreProducto": "Mora",
-      "vecesEnPedidos": 1
-    },
-    {
-      "idProducto": 31,
-      "abreviatura": "kg",
-      "codProducto": null,
-      "unidadMedida": "Kilo",
-      "cantidadTotal": 7.383,
-      "nombreProducto": "Mizuna Morada",
-      "vecesEnPedidos": 2
-    },
-    {
-      "idProducto": 164,
-      "abreviatura": "kg",
-      "codProducto": null,
-      "unidadMedida": "Kilo",
-      "cantidadTotal": 6.96,
-      "nombreProducto": "Queso Crema Reny G1",
-      "vecesEnPedidos": 1
-    }...
+Downloaded from central: https://repo.maven.apache.org/maven2/org/codehaus/plexus/plexus-compiler-javac/2.13.0/plexus-compiler-javac-2.13.0.jar (23 kB at 362 kB/s)
+#14 16.46 Downloading from central: https://repo.maven.apache.org/maven2/org/springframework/boot/spring-boot-configuration-processor/3.2.0/spring-boot-configuration-processor-3.2.0.pom
+#14 16.48 Progress (1): 1.0 kB
+Progress (1): 1.9 kB
+                    
+Downloaded from central: https://repo.maven.apache.org/maven2/org/springframework/boot/spring-boot-configuration-processor/3.2.0/spring-boot-configuration-processor-3.2.0.pom (1.9 kB at 94 kB/s)
+#14 16.48 Downloading from central: https://repo.maven.apache.org/maven2/org/springframework/boot/spring-boot-configuration-processor/3.2.0/spring-boot-configuration-processor-3.2.0.jar
+#14 16.50 Progress (1): 7.7/122 kB
+Progress (1): 16/122 kB 
+Progress (1): 24/122 kB
+Progress (1): 40/122 kB
+Progress (1): 57/122 kB
+Progress (1): 73/122 kB
+Progress (1): 90/122 kB
+Progress (1): 106/122 kB
+Progress (1): 122 kB    
+                    
+Downloaded from central: https://repo.maven.apache.org/maven2/org/springframework/boot/spring-boot-configuration-processor/3.2.0/spring-boot-configuration-processor-3.2.0.jar (122 kB at 7.6 MB/s)
+#14 16.55 [INFO] Changes detected - recompiling the module! :source
+release 21] to target/classes
+#14 27.42 [INFO] /app/backend/src/main/java/KuHub/config/security/filter/JwtAuthenticationFilter.java: /app/backend/src/main/java/KuHub/config/security/filter/JwtAuthenticationFilter.java uses unchecked or unsafe operations.
+#14 27.42 [INFO] /app/backend/src/main/java/KuHub/config/security/filter/JwtAuthenticationFilter.java: Recompile with -Xlint:unchecked for details.
+#14 27.42 [INFO] -------------------------------------------------------------
+#14 27.42 [WARNING] COMPILATION WARNING : 
+#14 27.42 [INFO] -------------------------------------------------------------
+#14 27.42 [WARNING] /app/backend/src/main/java/KuHub/modules/gestion_inventario/dtos/response/dto/MotionFilterRequestDTO.java:[30,20] @Builder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+#14 27.42 [INFO] 1 warning
+#14 27.42 [INFO] -------------------------------------------------------------
+#14 27.42 [INFO] -------------------------------------------------------------
+#14 27.42 [ERROR] COMPILATION ERROR : 
+#14 27.42 [INFO] -------------------------------------------------------------
+#14 27.42 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_pedido/services/PedidoServiceImpl.java:[259,44] cannot find symbol
+#14 27.42   symbol:   variable estadosCsv
+#14 27.42   location: class KuHub.modules.gestion_pedido.services.PedidoServiceImpl
+#14 27.42 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_pedido/services/PedidoServiceImpl.java:[269,48] cannot find symbol
+#14 27.42   symbol:   variable estadosCsv
+#14 27.42   location: class KuHub.modules.gestion_pedido.services.PedidoServiceImpl
+#14 27.42 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_pedido/services/PedidoServiceImpl.java:[273,17] variable estados is already defined in method obtenerResumenHistorico(java.time.LocalDate,java.time.LocalDate,java.lang.String[])
+#14 27.42 [INFO] 3 errors 
+#14 27.42 [INFO] -------------------------------------------------------------
+#14 27.43 [INFO] ------------------------------------------------------------------------
+#14 27.43 [INFO] Reactor Summary for KuHub Monolitico Project 1.0-SNAPSHOT:
+#14 27.43 [INFO] 
+#14 27.43 [INFO] KuHub Monolitico Project ........................... SUCCESS [  0.349 s]
+#14 27.43 [INFO] backend ............................................ FAILURE [ 22.424 s]
+#14 27.43 [INFO] ------------------------------------------------------------------------
+#14 27.43 [INFO] BUILD FAILURE
+#14 27.43 [INFO] ------------------------------------------------------------------------
+#14 27.43 [INFO] Total time:  25.647 s
+#14 27.43 [INFO] Finished at: 2026-04-23T20:53:10Z
+#14 27.43 [INFO] ------------------------------------------------------------------------
+#14 27.43 [ERROR] Failed to execute goal org.apache.maven.plugins:maven-compiler-plugin:3.11.0:compile (default-compile) on project backend: Compilation failure: Compilation failure: 
+#14 27.43 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_pedido/services/PedidoServiceImpl.java:[259,44] cannot find symbol
+#14 27.43 [ERROR]   symbol:   variable estadosCsv
+#14 27.43 [ERROR]   location: class KuHub.modules.gestion_pedido.services.PedidoServiceImpl
+#14 27.43 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_pedido/services/PedidoServiceImpl.java:[269,48] cannot find symbol
+#14 27.43 [ERROR]   symbol:   variable estadosCsv
+#14 27.43 [ERROR]   location: class KuHub.modules.gestion_pedido.services.PedidoServiceImpl
+#14 27.43 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_pedido/services/PedidoServiceImpl.java:[273,17] variable estados is already defined in method obtenerResumenHistorico(java.time.LocalDate,java.time.LocalDate,java.lang.String[])
+#14 27.43 [ERROR] -> [Help 1]
+#14 27.43 [ERROR] 
+#14 27.43 [ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+#14 27.43 [ERROR] Re-run Maven using the -X switch to enable full debug logging.
+#14 27.43 [ERROR] 
+#14 27.43 [ERROR] For more information about the errors and possible solutions, please read the following articles:
+#14 27.43 [ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoFailureException
+#14 27.43 [ERROR] 
+#14 27.43 [ERROR] After correcting the problems, you can resume the build with the command
+#14 27.43 [ERROR]   mvn <args> -rf :backend
+#14 ERROR: process "/bin/sh -c mvn clean package -pl backend -am -DskipTests" did not complete successfully: exit code: 1
+------
+ > [build 5/5] RUN mvn clean package -pl backend -am -DskipTests:
+Error: ERROR] -> [Help 1]
+Error: ERROR] 
+Error: ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+Error: ERROR] Re-run Maven using the -X switch to enable full debug logging.
+Error: ERROR] 
+Error: ERROR] For more information about the errors and possible solutions, please read the following articles:
+Error: ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoFailureException
+Error: ERROR] 
+Error: ERROR] After correcting the problems, you can resume the build with the command
+Error: ERROR]   mvn <args> -rf :backend
+------
+Dockerfile:12
+--------------------
+  10 |     
+  11 |     # 3. Construimos solo el backend, pero con acceso al padre
+  12 | >>> RUN mvn clean package -pl backend -am -DskipTests
+  13 |     
+  14 |     # ETAPA 2: Run
+--------------------
+ERROR: failed to build: failed to solve: process "/bin/sh -c mvn clean package -pl backend -am -DskipTests" did not complete successfully: exit code: 1
+Error: buildx failed with: ERROR: failed to build: failed to solve: process "/bin/sh -c mvn clean package -pl backend -am -DskipTests" did not complete successfully: exit code: 1

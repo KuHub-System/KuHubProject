@@ -256,7 +256,7 @@ public class PedidoServiceImpl implements PedidoService{
 
         if (jsonResult == null || jsonResult.isBlank()) {
             log.info("obtenerResumenHistoricoJSON retornó vacío para rango {}-{} con estados {}",
-                    fechaInicio, fechaFin, estadosCsv);
+                    fechaInicio, fechaFin, java.util.Arrays.toString(estados));
             return new ResumenHistoricoResponse(fechaInicio, fechaFin, List.of(), 0, 0, List.of());
         }
 
@@ -266,11 +266,11 @@ public class PedidoServiceImpl implements PedidoService{
 
             if (resultNode == null || resultNode.isNull()) {
                 log.warn("obtenerResumenHistoricoJSON retornó resultado null para rango {}-{} con estados {}",
-                        fechaInicio, fechaFin, estadosCsv);
+                        fechaInicio, fechaFin, java.util.Arrays.toString(estados));
                 return new ResumenHistoricoResponse(fechaInicio, fechaFin, List.of(), 0, 0, List.of());
             }
 
-            var estados = objectMapper.convertValue(
+            var estadosList = objectMapper.convertValue(
                     resultNode.get("estados"),
                     new TypeReference<List<String>>() {}
             );
@@ -283,7 +283,7 @@ public class PedidoServiceImpl implements PedidoService{
             return new ResumenHistoricoResponse(
                     resultNode.get("fechaInicio").asText().isEmpty() ? fechaInicio : LocalDate.parse(resultNode.get("fechaInicio").asText()),
                     resultNode.get("fechaFin").asText().isEmpty() ? fechaFin : LocalDate.parse(resultNode.get("fechaFin").asText()),
-                    estados,
+                    estadosList,
                     resultNode.get("totalProductosDistintos").asInt(),
                     resultNode.get("totalPedidos").asInt(),
                     productos
