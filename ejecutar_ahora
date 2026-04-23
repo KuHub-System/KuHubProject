@@ -1,34 +1,19 @@
-utils-vendor-CkGtaPQr.js:11 
- POST https://appkuhub.questweb.cl/api/v1/pedido/resumen-historico 500 (Internal Server Error)
-(anonymous)	@	utils-vendor-CkGtaPQr.js:11
-xhr	@	utils-vendor-CkGtaPQr.js:11
-wo	@	utils-vendor-CkGtaPQr.js:13
-Promise.then		
-_request	@	utils-vendor-CkGtaPQr.js:14
-request	@	utils-vendor-CkGtaPQr.js:13
-(anonymous)	@	utils-vendor-CkGtaPQr.js:14
-(anonymous)	@	utils-vendor-CkGtaPQr.js:9
-T	@	historico-pedidos-CcM4mlDD.js:1
-o	@	historico-pedidos-CcM4mlDD.js:1
-(anonymous)	@	ui-vendor-CtDyRhL-.js:10
-(anonymous)	@	ui-vendor-CtDyRhL-.js:10
-(anonymous)	@	ui-vendor-CtDyRhL-.js:10
-onClick	@	ui-vendor-CtDyRhL-.js:10
-Kc	@	react-vendor-BxMPNXTO.js:29
-Xc	@	react-vendor-BxMPNXTO.js:29
-Gc	@	react-vendor-BxMPNXTO.js:29
-ya	@	react-vendor-BxMPNXTO.js:29
-ga	@	react-vendor-BxMPNXTO.js:29
-(anonymous)	@	react-vendor-BxMPNXTO.js:29
-Ri	@	react-vendor-BxMPNXTO.js:32
-Cu	@	react-vendor-BxMPNXTO.js:29
-Ro	@	react-vendor-BxMPNXTO.js:29
-so	@	react-vendor-BxMPNXTO.js:29
-df	@	react-vendor-BxMPNXTO.js:29
-
-gestion_pedido.controller.PedidoController#obtenerResumenHistorico(ResumenHistoricoRequestDTO)
-2026-04-23T20:09:37.569Z DEBUG 1 --- [nio-8080-exec-8] m.m.a.RMh4hfsi84LdbS4uS3jaSaNccc8kartkDJ : Read "application/json;charset=UTF-8" to [ResumenHistoricoRequestDTO(fechaInicio=2026-01-01, fechaFin=2026-12-31, estadosCsv=APROBADO)]
-2026-04-23T20:09:37.573Z DEBUG 1 --- [nio-8080-exec-8] org.hibernate.SQL                        :
+Me llega este mensaje pero si hay dato, algo no esta procesando bien.
+No hay datos para el rango y estados seleccionados
+ubuntu@ip-172-26-1-143:~$ docker logs --tail 100 kuhub-backend
+        s1_0.fecha_inicio
+2026-04-23T20:26:03.968Z TRACE 1 --- [nio-8080-exec-1] org.hibernate.orm.jdbc.bind              : binding parameter (1:SMALLINT) <- [2026]
+2026-04-23T20:26:03.968Z TRACE 1 --- [nio-8080-exec-1] org.hibernate.orm.jdbc.bind              : binding parameter (2:SMALLINT) <- [1]
+2026-04-23T20:26:03.977Z DEBUG 1 --- [nio-8080-exec-1] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/yaml]
+2026-04-23T20:26:03.978Z DEBUG 1 --- [nio-8080-exec-1] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Writing [[Semana(idSemana=1, nombreSemana=Semana 1, fechaInicio=2026-03-02, fechaFin=2026-03-08, anio=2026, s (truncated)...]
+2026-04-23T20:26:03.979Z DEBUG 1 --- [nio-8080-exec-1] o.s.web.servlet.DispatcherServlet        : Completed 200 OK
+2026-04-23T20:26:13.594Z DEBUG 1 --- [nio-8080-exec-3] o.s.security.web.FilterChainProxy        : Securing POST /api/v1/pedido/resumen-historico
+2026-04-23T20:26:13.595Z  INFO 1 --- [nio-8080-exec-3] K.c.s.rate_limiting.RateLimitFilter      : 📍 IP: 186.78.184.242 | Petición 4 de 80
+2026-04-23T20:26:13.599Z DEBUG 1 --- [nio-8080-exec-3] o.s.security.web.FilterChainProxy        : Secured POST /api/v1/pedido/resumen-historico
+2026-04-23T20:26:13.599Z DEBUG 1 --- [nio-8080-exec-3] o.s.web.servlet.DispatcherServlet        : POST "/api/v1/pedido/resumen-historico", parameters={}
+2026-04-23T20:26:13.599Z DEBUG 1 --- [nio-8080-exec-3] s.w.s.m.m.a.RequestMappingHandlerMapping : Mapped to KuHub.modules.gestion_pedido.controller.PedidoController#obtenerResumenHistorico(ResumenHistoricoRequestDTO)
+2026-04-23T20:26:13.600Z DEBUG 1 --- [nio-8080-exec-3] m.m.a.RMh4hfsi84LdbS4uS3jaSaNccc8kartkDJ : Read "application/json;charset=UTF-8" to [ResumenHistoricoRequestDTO(fechaInicio=2026-01-01, fechaFin=2026-12-31, estadosCsv=APROBADO,ENTREGAD (truncated)...]
+2026-04-23T20:26:13.604Z DEBUG 1 --- [nio-8080-exec-3] org.hibernate.SQL                        :
     SELECT
         jsonb_build_object(     'fechaInicio', CAST(? AS TEXT),     'fechaFin',    CAST(? AS TEXT),     'estados',     to_jsonb(string_to_array(?, ',')),      'totalProductosDistintos', (         SELECT
             COUNT(DISTINCT dp.id_producto)
@@ -39,18 +24,14 @@ gestion_pedido.controller.PedidoController#obtenerResumenHistorico(ResumenHistor
                 ON p.id_pedido = dp.id_pedido
         WHERE
             p.fecha_inicio_pedido BETWEEN ? AND ?
-            AND CAST(p.estado_pedido AS TEXT) = ANY(string_to_array(?, ','))     ),      'totalPedidos', (         SELECT
-            COUNT(DISTINCT p.id_pedido)
-        FROM
-            pedido p
+            AND p.estado_pedido::text = ANY(string_to_array(trim(?), ','))     ),      'totalPedidos', (         SELECT
+            COUNT(DISTINCT p.id_pedido)         FROM pedido p
         WHERE
             p.fecha_inicio_pedido BETWEEN ? AND ?
-            AND CAST(p.estado_pedido AS TEXT) = ANY(string_to_array(?, ','))     ),      'productos', COALESCE((         SELECT
+            AND p.estado_pedido::text = ANY(string_to_array(trim(?), ','))     ),      'productos', COALESCE((         SELECT
             jsonb_agg(             jsonb_build_object(                 'idProducto',      prod.id_producto,                 'codProducto',     prod.cod_producto,                 'nombreProducto',  prod.nombre_producto,                 'unidadMedida',    um.nombre_unidad,                 'abreviatura',     um.abreviatura,                 'cantidadTotal',   resumen.cantidad_total,                 'vecesEnPedidos',  resumen.veces_en_pedidos             )
         ORDER BY
-            resumen.cantidad_total DESC         )
-        FROM
-            (             SELECT
+            resumen.cantidad_total DESC         )         FROM (             SELECT
                 dp.id_producto,                 SUM(dp.cant_producto_pedido)  AS cantidad_total,                 COUNT(DISTINCT dp.id_pedido)  AS veces_en_pedidos
             FROM
                 detalle_pedido dp
@@ -59,7 +40,7 @@ gestion_pedido.controller.PedidoController#obtenerResumenHistorico(ResumenHistor
                     ON p.id_pedido = dp.id_pedido
             WHERE
                 p.fecha_inicio_pedido BETWEEN ? AND ?
-                AND CAST(p.estado_pedido AS TEXT) = ANY(string_to_array(?, ','))
+                AND p.estado_pedido::text = ANY(string_to_array(trim(?), ','))
             GROUP BY
                 dp.id_producto         ) resumen
         JOIN
@@ -79,18 +60,14 @@ Hibernate:
                 ON p.id_pedido = dp.id_pedido
         WHERE
             p.fecha_inicio_pedido BETWEEN ? AND ?
-            AND CAST(p.estado_pedido AS TEXT) = ANY(string_to_array(?, ','))     ),      'totalPedidos', (         SELECT
-            COUNT(DISTINCT p.id_pedido)
-        FROM
-            pedido p
+            AND p.estado_pedido::text = ANY(string_to_array(trim(?), ','))     ),      'totalPedidos', (         SELECT
+            COUNT(DISTINCT p.id_pedido)         FROM pedido p
         WHERE
             p.fecha_inicio_pedido BETWEEN ? AND ?
-            AND CAST(p.estado_pedido AS TEXT) = ANY(string_to_array(?, ','))     ),      'productos', COALESCE((         SELECT
+            AND p.estado_pedido::text = ANY(string_to_array(trim(?), ','))     ),      'productos', COALESCE((         SELECT
             jsonb_agg(             jsonb_build_object(                 'idProducto',      prod.id_producto,                 'codProducto',     prod.cod_producto,                 'nombreProducto',  prod.nombre_producto,                 'unidadMedida',    um.nombre_unidad,                 'abreviatura',     um.abreviatura,                 'cantidadTotal',   resumen.cantidad_total,                 'vecesEnPedidos',  resumen.veces_en_pedidos             )
         ORDER BY
-            resumen.cantidad_total DESC         )
-        FROM
-            (             SELECT
+            resumen.cantidad_total DESC         )         FROM (             SELECT
                 dp.id_producto,                 SUM(dp.cant_producto_pedido)  AS cantidad_total,                 COUNT(DISTINCT dp.id_pedido)  AS veces_en_pedidos
             FROM
                 detalle_pedido dp
@@ -99,7 +76,7 @@ Hibernate:
                     ON p.id_pedido = dp.id_pedido
             WHERE
                 p.fecha_inicio_pedido BETWEEN ? AND ?
-                AND CAST(p.estado_pedido AS TEXT) = ANY(string_to_array(?, ','))
+                AND p.estado_pedido::text = ANY(string_to_array(trim(?), ','))
             GROUP BY
                 dp.id_producto         ) resumen
         JOIN
@@ -108,187 +85,66 @@ Hibernate:
         LEFT JOIN
             unidad_medida um
                 ON um.id_unidad = prod.id_unidad     ), '[]'::jsonb) ) AS resultado
-2026-04-23T20:09:37.574Z TRACE 1 --- [nio-8080-exec-8] org.hibernate.orm.jdbc.bind              : binding parameter (1:DATE) <- [2026-01-01]
-2026-04-23T20:09:37.574Z TRACE 1 --- [nio-8080-exec-8] org.hibernate.orm.jdbc.bind              : binding parameter (2:DATE) <- [2026-12-31]
-2026-04-23T20:09:37.575Z TRACE 1 --- [nio-8080-exec-8] org.hibernate.orm.jdbc.bind              : binding parameter (3:VARCHAR) <- [APROBADO]
-2026-04-23T20:09:37.576Z TRACE 1 --- [nio-8080-exec-8] org.hibernate.orm.jdbc.bind              : binding parameter (4:DATE) <- [2026-01-01]
-2026-04-23T20:09:37.576Z TRACE 1 --- [nio-8080-exec-8] org.hibernate.orm.jdbc.bind              : binding parameter (5:DATE) <- [2026-12-31]
-2026-04-23T20:09:37.577Z TRACE 1 --- [nio-8080-exec-8] org.hibernate.orm.jdbc.bind              : binding parameter (6:VARCHAR) <- [APROBADO]
-2026-04-23T20:09:37.577Z TRACE 1 --- [nio-8080-exec-8] org.hibernate.orm.jdbc.bind              : binding parameter (7:DATE) <- [2026-01-01]
-2026-04-23T20:09:37.577Z TRACE 1 --- [nio-8080-exec-8] org.hibernate.orm.jdbc.bind              : binding parameter (8:DATE) <- [2026-12-31]
-2026-04-23T20:09:37.578Z TRACE 1 --- [nio-8080-exec-8] org.hibernate.orm.jdbc.bind              : binding parameter (9:VARCHAR) <- [APROBADO]
-2026-04-23T20:09:37.578Z TRACE 1 --- [nio-8080-exec-8] org.hibernate.orm.jdbc.bind              : binding parameter (10:DATE) <- [2026-01-01]
-2026-04-23T20:09:37.578Z TRACE 1 --- [nio-8080-exec-8] org.hibernate.orm.jdbc.bind              : binding parameter (11:DATE) <- [2026-12-31]
-2026-04-23T20:09:37.578Z TRACE 1 --- [nio-8080-exec-8] org.hibernate.orm.jdbc.bind              : binding parameter (12:VARCHAR) <- [APROBADO]
-2026-04-23T20:09:37.594Z DEBUG 1 --- [nio-8080-exec-8] .m.m.a.ExceptionHandlerExceptionResolver : Using @ExceptionHandler KuHub.config.GlobalExceptionHandler#handleGeneralException(Exception)
-java.lang.NullPointerException: Cannot invoke "com.fasterxml.jackson.databind.JsonNode.get(String)" because "resultNode" is null
-        at KuHub.modules.gestion_pedido.services.PedidoServiceImpl.obtenerResumenHistorico(PedidoServiceImpl.java:268)
-        at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(Unknown Source)
-        at java.base/java.lang.reflect.Method.invoke(Unknown Source)
-        at org.springframework.aop.support.AopUtils.invokeJoinpointUsingReflection(AopUtils.java:359)
-        at org.springframework.aop.framework.ReflectiveMethodInvocation.invokeJoinpoint(ReflectiveMethodInvocation.java:196)
-        at org.springframework.aop.framework.ReflectiveMethodInvocation.proceed(ReflectiveMethodInvocation.java:163)
-        at org.springframework.transaction.interceptor.TransactionAspectSupport.invokeWithinTransaction(TransactionAspectSupport.java:380)
-        at org.springframework.transaction.interceptor.TransactionInterceptor.invoke(TransactionInterceptor.java:119)
-        at org.springframework.aop.framework.ReflectiveMethodInvocation.proceed(ReflectiveMethodInvocation.java:184)
-        at org.springframework.aop.framework.CglibAopProxy$DynamicAdvisedInterceptor.intercept(CglibAopProxy.java:727)
-        at KuHub.modules.gestion_pedido.services.PedidoServiceImpl$$SpringCGLIB$$0.obtenerResumenHistorico(<generated>)
-        at KuHub.modules.gestion_pedido.controller.PedidoController.obtenerResumenHistorico(PedidoController.java:119)
-        at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(Unknown Source)
-        at java.base/java.lang.reflect.Method.invoke(Unknown Source)
-        at org.springframework.aop.support.AopUtils.invokeJoinpointUsingReflection(AopUtils.java:359)
-        at org.springframework.aop.framework.ReflectiveMethodInvocation.invokeJoinpoint(ReflectiveMethodInvocation.java:196)
-        at org.springframework.aop.framework.ReflectiveMethodInvocation.proceed(ReflectiveMethodInvocation.java:163)
-        at org.springframework.validation.beanvalidation.MethodValidationInterceptor.invoke(MethodValidationInterceptor.java:174)
-        at org.springframework.aop.framework.ReflectiveMethodInvocation.proceed(ReflectiveMethodInvocation.java:184)
-        at org.springframework.aop.framework.CglibAopProxy$DynamicAdvisedInterceptor.intercept(CglibAopProxy.java:727)
-        at KuHub.modules.gestion_pedido.controller.PedidoController$$SpringCGLIB$$0.obtenerResumenHistorico(<generated>)
-        at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(Unknown Source)
-        at java.base/java.lang.reflect.Method.invoke(Unknown Source)
-        at org.springframework.web.method.support.InvocableHandlerMethod.doInvoke(InvocableHandlerMethod.java:257)
-        at org.springframework.web.method.support.InvocableHandlerMethod.invokeForRequest(InvocableHandlerMethod.java:190)
-        at org.springframework.web.servlet.mvc.method.annotation.ServletInvocableHandlerMethod.invokeAndHandle(ServletInvocableHandlerMethod.java:118)
-        at org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerAdapter.invokeHandlerMethod(RequestMappingHandlerAdapter.java:986)
-        at org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerAdapter.handleInternal(RequestMappingHandlerAdapter.java:891)
-        at org.springframework.web.servlet.mvc.method.AbstractHandlerMethodAdapter.handle(AbstractHandlerMethodAdapter.java:87)
-        at org.springframework.web.servlet.DispatcherServlet.doDispatch(DispatcherServlet.java:1088)
-        at org.springframework.web.servlet.DispatcherServlet.doService(DispatcherServlet.java:978)
-        at org.springframework.web.servlet.FrameworkServlet.processRequest(FrameworkServlet.java:1014)
-        at org.springframework.web.servlet.FrameworkServlet.doPost(FrameworkServlet.java:914)
-        at jakarta.servlet.http.HttpServlet.service(HttpServlet.java:590)
-        at org.springframework.web.servlet.FrameworkServlet.service(FrameworkServlet.java:885)
-        at jakarta.servlet.http.HttpServlet.service(HttpServlet.java:658)
-        at org.apache.catalina.core.ApplicationFilterChain.internalDoFilter(ApplicationFilterChain.java:195)
-        at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:140)
-        at org.apache.tomcat.websocket.server.WsFilter.doFilter(WsFilter.java:51)
-        at org.apache.catalina.core.ApplicationFilterChain.internalDoFilter(ApplicationFilterChain.java:164)
-        at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:140)
-        at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:110)
-        at org.apache.catalina.core.ApplicationFilterChain.internalDoFilter(ApplicationFilterChain.java:164)
-        at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:140)
-        at org.springframework.web.filter.CompositeFilter$VirtualFilterChain.doFilter(CompositeFilter.java:108)
-        at org.springframework.security.web.FilterChainProxy.lambda$doFilterInternal$3(FilterChainProxy.java:231)
-        at org.springframework.security.web.ObservationFilterChainDecorator$FilterObservation$SimpleFilterObservation.lambda$wrap$1(ObservationFilterChainDecorator.java:479)
-        at org.springframework.security.web.ObservationFilterChainDecorator$AroundFilterObservation$SimpleAroundFilterObservation.lambda$wrap$1(ObservationFilterChainDecorator.java:340)
-        at org.springframework.security.web.ObservationFilterChainDecorator.lambda$wrapSecured$0(ObservationFilterChainDecorator.java:82)
-        at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:128)
-        at org.springframework.security.web.access.intercept.AuthorizationFilter.doFilter(AuthorizationFilter.java:101)
-        at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:240)
-        at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:227)
-        at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:137)
-        at org.springframework.security.web.access.ExceptionTranslationFilter.doFilter(ExceptionTranslationFilter.java:126)
-        at org.springframework.security.web.access.ExceptionTranslationFilter.doFilter(ExceptionTranslationFilter.java:120)
-        at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:240)
-        at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:227)
-        at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:137)
-        at org.springframework.security.web.session.SessionManagementFilter.doFilter(SessionManagementFilter.java:131)
-        at org.springframework.security.web.session.SessionManagementFilter.doFilter(SessionManagementFilter.java:85)
-        at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:240)
-        at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:227)
-        at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:137)
-        at org.springframework.security.web.authentication.AnonymousAuthenticationFilter.doFilter(AnonymousAuthenticationFilter.java:100)
-        at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:240)
-        at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:227)
-        at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:137)
-        at org.springframework.security.web.servletapi.SecurityContextHolderAwareRequestFilter.doFilter(SecurityContextHolderAwareRequestFilter.java:179)
-        at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:240)
-        at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:227)
-        at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:137)
-        at org.springframework.security.web.savedrequest.RequestCacheAwareFilter.doFilter(RequestCacheAwareFilter.java:63)
-        at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:240)
-        at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:227)
-        at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:137)
-        at org.springframework.security.web.authentication.AbstractAuthenticationProcessingFilter.doFilter(AbstractAuthenticationProcessingFilter.java:227)
-        at org.springframework.security.web.authentication.AbstractAuthenticationProcessingFilter.doFilter(AbstractAuthenticationProcessingFilter.java:221)
-        at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:240)
-        at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:227)
-        at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:137)
-        at KuHub.config.security.filter.JwtValidationFilter.doFilterInternal(JwtValidationFilter.java:98)
-        at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116)
-        at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:240)
-        at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:227)
-        at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:137)
-        at KuHub.config.security.rate_limiting.RateLimitFilter.doFilterInternal(RateLimitFilter.java:66)
-        at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116)
-        at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:240)
-        at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:227)
-        at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:137)
-        at org.springframework.security.web.authentication.logout.LogoutFilter.doFilter(LogoutFilter.java:107)
-        at org.springframework.security.web.authentication.logout.LogoutFilter.doFilter(LogoutFilter.java:93)
-        at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:240)
-        at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:227)
-        at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:137)
-        at org.springframework.web.filter.CorsFilter.doFilterInternal(CorsFilter.java:91)
-        at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116)
-        at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:240)
-        at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:227)
-        at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:137)
-        at org.springframework.security.web.header.HeaderWriterFilter.doHeadersAfter(HeaderWriterFilter.java:90)
-        at org.springframework.security.web.header.HeaderWriterFilter.doFilterInternal(HeaderWriterFilter.java:75)
-        at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116)
-        at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:240)
-        at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:227)
-        at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:137)
-        at org.springframework.security.web.context.SecurityContextHolderFilter.doFilter(SecurityContextHolderFilter.java:82)
-        at org.springframework.security.web.context.SecurityContextHolderFilter.doFilter(SecurityContextHolderFilter.java:69)
-        at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:240)
-        at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:227)
-        at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:137)
-        at org.springframework.security.web.context.request.async.WebAsyncManagerIntegrationFilter.doFilterInternal(WebAsyncManagerIntegrationFilter.java:62)
-        at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116)
-        at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:240)
-        at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:227)
-        at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:137)
-        at org.springframework.security.web.session.DisableEncodeUrlFilter.doFilterInternal(DisableEncodeUrlFilter.java:42)
-        at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116)
-        at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:240)
-        at org.springframework.security.web.ObservationFilterChainDecorator$AroundFilterObservation$SimpleAroundFilterObservation.lambda$wrap$0(ObservationFilterChainDecorator.java:323)
-        at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:224)
-        at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:137)
-        at org.springframework.security.web.FilterChainProxy.doFilterInternal(FilterChainProxy.java:233)
-        at org.springframework.security.web.FilterChainProxy.doFilter(FilterChainProxy.java:191)
-        at org.springframework.web.filter.CompositeFilter$VirtualFilterChain.doFilter(CompositeFilter.java:113)
-        at org.springframework.web.servlet.handler.HandlerMappingIntrospector.lambda$createCacheFilter$3(HandlerMappingIntrospector.java:243)
-        at org.springframework.web.filter.CompositeFilter$VirtualFilterChain.doFilter(CompositeFilter.java:113)
-        at org.springframework.web.filter.CompositeFilter.doFilter(CompositeFilter.java:74)
-        at org.springframework.security.config.annotation.web.configuration.WebMvcSecurityConfiguration$CompositeFilterChainProxy.doFilter(WebMvcSecurityConfiguration.java:238)
-        at org.springframework.web.filter.DelegatingFilterProxy.invokeDelegate(DelegatingFilterProxy.java:362)
-        at org.springframework.web.filter.DelegatingFilterProxy.doFilter(DelegatingFilterProxy.java:278)
-        at org.apache.catalina.core.ApplicationFilterChain.internalDoFilter(ApplicationFilterChain.java:164)
-        at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:140)
-        at org.springframework.web.filter.RequestContextFilter.doFilterInternal(RequestContextFilter.java:100)
-        at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116)
-        at org.apache.catalina.core.ApplicationFilterChain.internalDoFilter(ApplicationFilterChain.java:164)
-        at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:140)
-        at org.springframework.web.filter.FormContentFilter.doFilterInternal(FormContentFilter.java:93)
-        at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116)
-        at org.apache.catalina.core.ApplicationFilterChain.internalDoFilter(ApplicationFilterChain.java:164)
-        at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:140)
-        at org.springframework.web.filter.ServerHttpObservationFilter.doFilterInternal(ServerHttpObservationFilter.java:114)
-        at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116)
-        at org.apache.catalina.core.ApplicationFilterChain.internalDoFilter(ApplicationFilterChain.java:164)
-        at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:140)
-        at org.springframework.web.filter.CharacterEncodingFilter.doFilterInternal(CharacterEncodingFilter.java:201)
-        at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116)
-        at org.apache.catalina.core.ApplicationFilterChain.internalDoFilter(ApplicationFilterChain.java:164)
-        at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:140)
-        at org.apache.catalina.core.StandardWrapperValve.invoke(StandardWrapperValve.java:167)
-        at org.apache.catalina.core.StandardContextValve.invoke(StandardContextValve.java:90)
-        at org.apache.catalina.authenticator.AuthenticatorBase.invoke(AuthenticatorBase.java:483)
-        at org.apache.catalina.core.StandardHostValve.invoke(StandardHostValve.java:115)
-        at org.apache.catalina.valves.ErrorReportValve.invoke(ErrorReportValve.java:93)
-        at org.apache.catalina.core.StandardEngineValve.invoke(StandardEngineValve.java:74)
-        at org.apache.catalina.connector.CoyoteAdapter.service(CoyoteAdapter.java:344)
-        at org.apache.coyote.http11.Http11Processor.service(Http11Processor.java:397)
-        at org.apache.coyote.AbstractProcessorLight.process(AbstractProcessorLight.java:63)
-        at org.apache.coyote.AbstractProtocol$ConnectionHandler.process(AbstractProtocol.java:905)
-        at org.apache.tomcat.util.net.NioEndpoint$SocketProcessor.doRun(NioEndpoint.java:1743)
-        at org.apache.tomcat.util.net.SocketProcessorBase.run(SocketProcessorBase.java:52)
-        at org.apache.tomcat.util.threads.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1190)
-        at org.apache.tomcat.util.threads.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:659)
-        at org.apache.tomcat.util.threads.TaskThread$WrappingRunnable.run(TaskThread.java:63)
-        at java.base/java.lang.Thread.run(Unknown Source)
-2026-04-23T20:09:37.608Z DEBUG 1 --- [nio-8080-exec-8] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/yaml]
-2026-04-23T20:09:37.608Z DEBUG 1 --- [nio-8080-exec-8] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Writing [{error=Error interno del servidor, message=Ha ocurrido un error inesperado. Por favor contacte al ad (truncated)...]
-2026-04-23T20:09:37.611Z DEBUG 1 --- [nio-8080-exec-8] .m.m.a.ExceptionHandlerExceptionResolver : Resolved [java.lang.NullPointerException: Cannot invoke "com.fasterxml.jackson.databind.JsonNode.get(String)" because "resultNode" is null]
-2026-04-23T20:09:37.612Z DEBUG 1 --- [nio-8080-exec-8] o.s.web.servlet.DispatcherServlet        : Completed 500 INTERNAL_SERVER_ERROR
+2026-04-23T20:26:13.606Z TRACE 1 --- [nio-8080-exec-3] org.hibernate.orm.jdbc.bind              : binding parameter (1:DATE) <- [2026-01-01]
+2026-04-23T20:26:13.607Z TRACE 1 --- [nio-8080-exec-3] org.hibernate.orm.jdbc.bind              : binding parameter (2:DATE) <- [2026-12-31]
+2026-04-23T20:26:13.607Z TRACE 1 --- [nio-8080-exec-3] org.hibernate.orm.jdbc.bind              : binding parameter (3:VARCHAR) <- [APROBADO,ENTREGADO]
+2026-04-23T20:26:13.607Z TRACE 1 --- [nio-8080-exec-3] org.hibernate.orm.jdbc.bind              : binding parameter (4:DATE) <- [2026-01-01]
+2026-04-23T20:26:13.607Z TRACE 1 --- [nio-8080-exec-3] org.hibernate.orm.jdbc.bind              : binding parameter (5:DATE) <- [2026-12-31]
+2026-04-23T20:26:13.607Z TRACE 1 --- [nio-8080-exec-3] org.hibernate.orm.jdbc.bind              : binding parameter (6:VARCHAR) <- [APROBADO,ENTREGADO]
+2026-04-23T20:26:13.608Z TRACE 1 --- [nio-8080-exec-3] org.hibernate.orm.jdbc.bind              : binding parameter (7:DATE) <- [2026-01-01]
+2026-04-23T20:26:13.608Z TRACE 1 --- [nio-8080-exec-3] org.hibernate.orm.jdbc.bind              : binding parameter (8:DATE) <- [2026-12-31]
+2026-04-23T20:26:13.609Z TRACE 1 --- [nio-8080-exec-3] org.hibernate.orm.jdbc.bind              : binding parameter (9:VARCHAR) <- [APROBADO,ENTREGADO]
+2026-04-23T20:26:13.609Z TRACE 1 --- [nio-8080-exec-3] org.hibernate.orm.jdbc.bind              : binding parameter (10:DATE) <- [2026-01-01]
+2026-04-23T20:26:13.609Z TRACE 1 --- [nio-8080-exec-3] org.hibernate.orm.jdbc.bind              : binding parameter (11:DATE) <- [2026-12-31]
+2026-04-23T20:26:13.609Z TRACE 1 --- [nio-8080-exec-3] org.hibernate.orm.jdbc.bind              : binding parameter (12:VARCHAR) <- [APROBADO,ENTREGADO]
+2026-04-23T20:26:13.619Z  WARN 1 --- [nio-8080-exec-3] K.m.g.services.PedidoServiceImpl         : obtenerResumenHistoricoJSON retornó resultado null para rango 2026-01-01-2026-12-31 con estados APROBADO,ENTREGADO
+2026-04-23T20:26:13.623Z DEBUG 1 --- [nio-8080-exec-3] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/yaml]
+2026-04-23T20:26:13.624Z DEBUG 1 --- [nio-8080-exec-3] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Writing [ResumenHistoricoResponse[fechaInicio=2026-01-01, fechaFin=2026-12-31, estados=[], totalProductosDist (truncated)...]
+2026-04-23T20:26:13.625Z DEBUG 1 --- [nio-8080-exec-3] o.s.web.servlet.DispatcherServlet        : Completed 200 OK
+
+esta es la consulta base para que pueda vereficar en el repositorio si corresponde! ver si la fecha esta asigana la inicio y fin correctamente!
+SELECT jsonb_build_object(
+    'fechaInicio', '2026-01-01',
+    'fechaFin',    '2026-12-31',
+    'estados',     to_jsonb(ARRAY['APROBADO', 'ENTREGADO']::text[]),
+    'totalProductosDistintos', (
+        SELECT COUNT(DISTINCT dp.id_producto)
+        FROM detalle_pedido dp
+        JOIN pedido p ON p.id_pedido = dp.id_pedido
+        WHERE p.fecha_inicio_pedido BETWEEN '2026-01-01' AND '2026-12-31'
+          AND p.estado_pedido::text = ANY(ARRAY['APROBADO', 'ENTREGADO'])
+    ),
+    'totalPedidos', (
+        SELECT COUNT(DISTINCT p.id_pedido)
+        FROM pedido p
+        WHERE p.fecha_inicio_pedido BETWEEN '2026-01-01' AND '2026-12-31'
+          AND p.estado_pedido::text = ANY(ARRAY['APROBADO', 'ENTREGADO'])
+    ),
+    'productos', COALESCE((
+        SELECT jsonb_agg(
+            jsonb_build_object(
+                'idProducto',      prod.id_producto,
+                'codProducto',     prod.cod_producto,
+                'nombreProducto',  prod.nombre_producto,
+                'unidadMedida',    um.nombre_unidad,
+                'abreviatura',     um.abreviatura,
+                'cantidadTotal',   resumen.cantidad_total,
+                'vecesEnPedidos',  resumen.veces_en_pedidos
+            )
+            ORDER BY resumen.cantidad_total DESC
+        )
+        FROM (
+            SELECT
+                dp.id_producto,
+                SUM(dp.cant_producto_pedido)  AS cantidad_total,
+                COUNT(DISTINCT dp.id_pedido)  AS veces_en_pedidos
+            FROM detalle_pedido dp
+            JOIN pedido p ON p.id_pedido = dp.id_pedido
+            WHERE p.fecha_inicio_pedido BETWEEN '2026-01-01' AND '2026-12-31'
+              AND p.estado_pedido::text = ANY(ARRAY['APROBADO', 'ENTREGADO'])
+            GROUP BY dp.id_producto
+        ) resumen
+        JOIN producto prod ON prod.id_producto = resumen.id_producto
+        LEFT JOIN unidad_medida um ON um.id_unidad = prod.id_unidad
+    ), '[]'::jsonb)
+) AS resultado;
