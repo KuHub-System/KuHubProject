@@ -6,6 +6,7 @@ import KuHub.modules.gestion_inventario.exceptions.StockDesincronizadoException;
 import KuHub.modules.gestion_inventario.exceptions.StockInsuficienteException;
 import KuHub.modules.gestion_inventario.repository.BodegaTransitoRepository;
 import KuHub.modules.gestion_inventario.services.MovimientoService;
+import KuHub.modules.gestion_pedido.dtos.response.ResumenHistoricoResponse;
 import KuHub.modules.gestion_pedido.entity.DetallePedido;
 import KuHub.modules.gestion_pedido.entity.Pedido;
 import KuHub.modules.gestion_pedido.entity.PedidoSolicitud;
@@ -31,6 +32,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -245,6 +247,45 @@ public class PedidoServiceImpl implements PedidoService{
         }
 
         return "Entrega preparada y solicitud procesada correctamente.";
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ResumenHistoricoResponse obtenerResumenHistorico(LocalDate fechaInicio, LocalDate fechaFin, String estadosCsv) {
+        String jsonResult = pedidoRepository.obtenerResumenHistoricoJSON(fechaInicio, fechaFin, estadosCsv);
+
+        if (jsonResult == null || jsonResult.isBlank()) {
+            log.info("obtenerResumenHistoricoJSON retornó vacío para rango {}-{} con estados {}",
+                    fechaInicio, fechaFin, estadosCsv);
+            return new ResumenHistoricoResponse(fechaInicio, fechaFin, List.of(), 0, 0, List.of());
+        }
+
+        try {
+            var node = objectMapper.readTree(jsonResult);
+            var resultNode = node.get("resultado");
+
+            var estados = objectMapper.convertValue(
+                    resultNode.get("estados"),
+                    new TypeReference<List<String>>() {}
+            );
+
+            var productos = objectMapper.convertValue(
+                    resultNode.get("productos"),
+                    new TypeReference<List<ResumenHistoricoResponse.ProductoResumenItem>>() {}
+            );
+
+            return new ResumenHistoricoResponse(
+                    resultNode.get("fechaInicio").asText().isEmpty() ? fechaInicio : LocalDate.parse(resultNode.get("fechaInicio").asText()),
+                    resultNode.get("fechaFin").asText().isEmpty() ? fechaFin : LocalDate.parse(resultNode.get("fechaFin").asText()),
+                    estados,
+                    resultNode.get("totalProductosDistintos").asInt(),
+                    resultNode.get("totalPedidos").asInt(),
+                    productos
+            );
+        } catch (JsonProcessingException e) {
+            log.error("Error deserializando obtenerResumenHistoricoJSON: {}", e.getMessage(), e);
+            throw new RuntimeException("Error al procesar resumen histórico", e);
+        }
     }
 
     // =====================================================
