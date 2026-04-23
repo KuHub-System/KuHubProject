@@ -1758,12 +1758,16 @@ const CotizacionModal: React.FC<CotizacionModalProps> = ({
                                               key={prod.idProducto}
                                               className="border-t border-default-100 dark:border-default-50 hover:bg-default-50 dark:hover:bg-default-100/20"
                                             >
-                                              <td className="py-2 px-3 font-medium text-center">
+                                              <td className="py-2 px-3 font-medium text-center max-w-[180px]">
                                                 <Tooltip content={prod.nombreProducto} color="default">
-                                                  <span className="truncate block max-w-[150px]">{prod.nombreProducto}</span>
+                                                  <span className="truncate block mx-auto max-w-[180px]">{prod.nombreProducto}</span>
                                                 </Tooltip>
                                               </td>
-                                              <td className="py-2 px-3 text-center text-default-500">{prod.abreviatura}</td>
+                                              <td className="py-2 px-3 text-center text-default-500 max-w-[100px]">
+                                                <Tooltip content={prod.abreviatura} color="default">
+                                                  <span className="truncate block mx-auto max-w-[100px]">{prod.abreviatura}</span>
+                                                </Tooltip>
+                                              </td>
                                               <td className="py-2 px-3 text-center">{fmtN(prod.cantidadTotal)}</td>
                                               <td className="py-2 px-3 text-center">
                                                 {prod.precioUnitario !== null ? `$${fmtN(prod.precioUnitario)}` : '—'}
@@ -1816,11 +1820,11 @@ const CotizacionModal: React.FC<CotizacionModalProps> = ({
                                     <table className="w-full text-xs">
                                       <thead className="bg-danger-50/50 dark:bg-danger-50/10">
                                         <tr>
-                                          <th className="text-left py-2 px-3 font-medium text-danger-600">Producto</th>
+                                          <th className="text-center py-2 px-3 font-medium text-danger-600">Producto</th>
                                           <th className="text-center py-2 px-3 font-medium text-danger-600">Unidad</th>
-                                          <th className="text-right py-2 px-3 font-medium text-danger-600">Cantidad</th>
-                                          <th className="text-right py-2 px-3 font-medium text-danger-600">Precio Unit.</th>
-                                          <th className="text-right py-2 px-3 font-medium text-danger-600">Subtotal</th>
+                                          <th className="text-center py-2 px-3 font-medium text-danger-600">Cantidad</th>
+                                          <th className="text-center py-2 px-3 font-medium text-danger-600">Precio Unit.</th>
+                                          <th className="text-center py-2 px-3 font-medium text-danger-600">Subtotal</th>
                                         </tr>
                                       </thead>
                                       <tbody>
@@ -1829,11 +1833,19 @@ const CotizacionModal: React.FC<CotizacionModalProps> = ({
                                             key={prod.idProducto}
                                             className="border-t border-danger-50 dark:border-danger-100 hover:bg-danger-50/30"
                                           >
-                                            <td className="py-2 px-3 font-medium">{prod.nombreProducto}</td>
-                                            <td className="py-2 px-3 text-center text-default-500">{prod.abreviatura}</td>
-                                            <td className="py-2 px-3 text-right">{fmtN(prod.cantidadTotal)}</td>
-                                            <td className="py-2 px-3 text-right text-default-400">—</td>
-                                            <td className="py-2 px-3 text-right text-default-400">—</td>
+                                            <td className="py-2 px-3 font-medium text-center max-w-[180px]">
+                                              <Tooltip content={prod.nombreProducto} color="default">
+                                                <span className="truncate block mx-auto max-w-[180px]">{prod.nombreProducto}</span>
+                                              </Tooltip>
+                                            </td>
+                                            <td className="py-2 px-3 text-center text-default-500 max-w-[100px]">
+                                              <Tooltip content={prod.abreviatura} color="default">
+                                                <span className="truncate block mx-auto max-w-[100px]">{prod.abreviatura}</span>
+                                              </Tooltip>
+                                            </td>
+                                            <td className="py-2 px-3 text-center">{fmtN(prod.cantidadTotal)}</td>
+                                            <td className="py-2 px-3 text-center text-default-400">—</td>
+                                            <td className="py-2 px-3 text-center text-default-400">—</td>
                                           </tr>
                                         ))}
                                       </tbody>
