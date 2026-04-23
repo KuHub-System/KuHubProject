@@ -1335,5 +1335,197 @@ PENDIENTE DE IMPLEMENTAR O DEFINIR:
   que la solicitud fue consolidada no es posible cambiar su estado.
 
 ================================================================================
+  7. ESPECIFICACIONES DEL FRONTEND
+================================================================================
+
+------------------------------------------------------------------------
+7.1  TYPE GUARDS EN TYPESCRIPT (Seguridad de tipos)
+------------------------------------------------------------------------
+Técnico:
+  Problema:
+  Cuando una función retorna un tipo union (ej: Promise<IInventoryPageItem | IStockSyncWarning | IStockInsuficiente>),
+  los casteos inseguros generan advertencias de TypeScript que impiden compilación limpia.
+
+  Patrón anterior (❌ incorrecto):
+  ```typescript
+  const isInsuficiente = (resultado as IStockInsuficiente).insuficiente === true;
+  const isDesync = (resultado as IStockSyncWarning).desync === true;
+  const item = (resultado as any).item ?? (resultado as IInventoryPageItem);
+  ```
+  Problemas:
+    - Casteos forzados con `as Type` sin validación de propiedad.
+    - TypeScript no reconoce el narrowing de tipo correctamente.
+    - Uso de `any` pierde tipado estático.
+    - Líneas rojas en el editor aunque compila.
+
+  Patrón nuevo (✅ correcto):
+  ```typescript
+  const isInsuficiente = 'insuficiente' in resultado && resultado.insuficiente === true;
+  const isDesync = 'desync' in resultado && resultado.desync === true;
+  const item = 'item' in resultado ? resultado.item : resultado;
+  ```
+  Beneficios:
+    - El operador `in` valida que la propiedad existe en el objeto.
+    - TypeScript ejecuta type narrowing correctamente después de `in`.
+    - Sin casteos forzados. El compilador entiende qué propiedades están disponibles.
+    - Compila sin advertencias.
+
+  Aplicación en el proyecto:
+    - frontend/src/pages/inventario.tsx líneas 1433-1457:
+      Corrección de casteos para `resultadoBodega` (IBodegaStockInsuficiente, IBodegaAsyncWarning).
+    - frontend/src/pages/inventario.tsx líneas 1494-1544:
+      Corrección de casteos para `resultado` (IStockInsuficiente, IStockSyncWarning, IInventoryPageItem).
+    - Patrón aplicado a todos los accesos condicionales basados en propiedades específicas del tipo.
+
+Para no técnicos:
+  Cuando una función puede devolver varios tipos de datos diferentes, TypeScript
+  requiere verificar cuál es el tipo real antes de acceder a sus propiedades. En
+  lugar de "asumir" el tipo (casteo), ahora se pregunta "¿tiene esta propiedad?" y
+  solo si la tiene, se accede. Esto hace el código más seguro y evita errores
+  en tiempo de compilación.
+
+------------------------------------------------------------------------
+7.2  MODALES CON BORDES CIRCULARES COMPLETOS (HeroUI + Tailwind)
+------------------------------------------------------------------------
+Técnico:
+  Especificación:
+  Todos los modales en el sistema deben tener bordes redondeados (puntas circulares)
+  tanto en la parte superior como en la inferior (header, body y footer).
+
+  Patrón obligatorio:
+  ```tsx
+  <Modal
+    isOpen={isOpen}
+    onOpenChange={onOpenChange}
+    size="lg"                            // sm, md, lg, xl, 2xl, 3xl, 4xl, 5xl
+    radius="lg"                          // Propiedad de HeroUI para border-radius
+    classNames={{ base: 'rounded-2xl' }} // Tailwind como fallback
+  >
+    <ModalContent className="rounded-2xl overflow-hidden">
+      <ModalHeader>...</ModalHeader>
+      <ModalBody>...</ModalBody>
+      <ModalFooter>...</ModalFooter>
+    </ModalContent>
+  </Modal>
+  ```
+
+  Componentes CSS críticos:
+    - `radius="lg"` en <Modal>:
+      Propiedad de HeroUI que aplica border-radius al contenedor externo.
+    - `className="rounded-2xl overflow-hidden"` en <ModalContent>:
+      OBLIGATORIO. `rounded-2xl` de Tailwind CSS asegura esquinas redondeadas en toda la caja
+      (header + body + footer). `overflow-hidden` previene que el contenido se desborde de las
+      esquinas redondeadas, manteniendo el efecto visual limpio.
+
+  Por qué ambos:
+    - HeroUI (radius) controla el tamaño del border-radius a nivel de componente.
+    - Tailwind (rounded-2xl) asegura que el padding y bordes del contenido se ajusten
+      a las esquinas redondeadas.
+    - juntos garantizan compatibilidad a través de navegadores y consistencia visual.
+
+  Aplicación en el proyecto:
+    - frontend/src/pages/gestion-proveedores.tsx:
+      6 modales corregidos con patrón (Cotización, Crear Proveedor, Editar Proveedor,
+      Asignar Producto, Eliminar Proveedor, Quitar Producto).
+    - frontend/src/pages/inventario.tsx:
+      Modales aplicando el patrón de bordes circulares.
+
+  Variantes avanzadas:
+    Modal con scroll interior:
+    ```tsx
+    <Modal scrollBehavior="inside" radius="lg" classNames={{ base: 'rounded-2xl' }}>
+      <ModalContent className="rounded-2xl overflow-hidden">
+        <ModalHeader className="flex flex-col gap-1">...</ModalHeader>
+        <ModalBody className="min-h-[400px]">...</ModalBody>
+      </ModalContent>
+    </Modal>
+    ```
+
+    Modal con backdrop opaco personalizado:
+    ```tsx
+    <Modal
+      backdrop="opaque"
+      radius="lg"
+      classNames={{
+        base: "bg-background dark:bg-content1 shadow-xl border border-default-200 dark:border-default-100 rounded-2xl",
+        backdrop: "bg-background/50 backdrop-blur-sm"
+      }}
+    >
+      <ModalContent className="rounded-2xl overflow-hidden">
+        ...
+      </ModalContent>
+    </Modal>
+    ```
+
+Para no técnicos:
+  Los modales (ventanas emergentes) deben verse con esquinas completamente redondeadas,
+  como un rectángulo con puntas suaves. Esto se logra combinando dos configuraciones:
+  una de HeroUI (que maneja el componente) y otra de Tailwind CSS (que asegura que
+  el contenido se ajuste perfectamente a esas esquinas redondeadas).
+
+------------------------------------------------------------------------
+7.3  MEJORAS VISUALES EN MODALES (Headers + Footers)
+------------------------------------------------------------------------
+Técnico:
+  Especificación:
+  Además de los bordes circulares, los modales deben tener mejoras visuales en
+  header y footer para mayor claridad visual y jerarquía de contenido.
+
+  Header mejorado:
+  ```tsx
+  <ModalHeader className="flex flex-col gap-1 from-primary/10 to-primary/5 bg-gradient-to-r">
+    <div className="flex items-center gap-2">
+      <div className="bg-primary/20 rounded-lg p-2">
+        <Icon icon="lucide:icon-name" width={24} />
+      </div>
+      <h2 className="text-lg font-bold text-secondary">Título del Modal</h2>
+    </div>
+    <p className="text-sm text-default-500">Subtítulo o descripción opcional</p>
+  </ModalHeader>
+  ```
+  Elementos:
+    - Gradiente de fondo: `from-primary/10 to-primary/5` (amarillo claro).
+    - Ícono en caja coloreada: `bg-primary/20 rounded-lg p-2`.
+    - Emoji descriptivo opcional (ej: "🛒", "✏️").
+    - Título en `text-lg font-bold text-secondary`.
+    - Subtítulo en `text-sm text-default-500`.
+
+  Footer mejorado:
+  ```tsx
+  <ModalFooter className="from-default-50 to-default-50 bg-gradient-to-r gap-4">
+    <Button
+      size="lg"
+      color="default"
+      variant="light"
+      onPress={onClose}
+    >
+      Cancelar
+    </Button>
+    <Button
+      size="lg"
+      color="primary"
+      onPress={onConfirm}
+    >
+      Confirmar
+    </Button>
+  </ModalFooter>
+  ```
+  Elementos:
+    - Gradiente sutil: `from-default-50 to-default-50`.
+    - Botones tamaño `lg` para mejor visibilidad.
+    - Gap `gap-4` para espaciado balanceado entre botones.
+    - Contraste de colores: secondary (Cancelar) vs. primary (Confirmar).
+
+  Aplicación en el proyecto:
+    - gestion-proveedores.tsx (6 modales).
+    - inventario.tsx (modales de gestión).
+
+Para no técnicos:
+  Los encabezados de los modales ahora tienen un fondo ligeramente coloreado, un
+  ícono visual y un título clara. Los pies del modal tienen botones más grandes y
+  mejor espaciados. Todo esto ayuda al usuario a entender rápidamente qué acción
+  está a punto de realizar.
+
+================================================================================
   FIN DEL DOCUMENTO
 ================================================================================
