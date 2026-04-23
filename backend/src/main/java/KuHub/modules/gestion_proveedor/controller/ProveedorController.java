@@ -4,10 +4,12 @@ import KuHub.modules.gestion_proveedor.dtos.request.ProveedorCreateDTO;
 import KuHub.modules.gestion_proveedor.dtos.request.ProveedorProductoAddDTO;
 import KuHub.modules.gestion_proveedor.dtos.request.ProveedorProductoUpdateDTO;
 import KuHub.modules.gestion_proveedor.dtos.request.ProveedorUpdateDTO;
+import KuHub.modules.gestion_proveedor.dtos.response.CotizacionProveedorDTO;
 import KuHub.modules.gestion_proveedor.dtos.response.ProveedorDetalleDTO;
 import KuHub.modules.gestion_proveedor.dtos.response.ProveedorListDTO;
 import KuHub.modules.gestion_proveedor.entity.Proveedor;
 import KuHub.modules.gestion_proveedor.service.ProveedorService;
+import KuHub.modules.gestion_solicitud.dtos.request.DateRangeDTO;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -190,5 +192,24 @@ public class ProveedorController {
         return ResponseEntity
                 .status(200)
                 .body(proveedorService.findProveedoresPorProducto(idProducto));
+    }
+
+    // ══════════════════════════════════════════════════════════════
+    // COTIZACIÓN AGRUPADA POR PROVEEDOR
+    // ══════════════════════════════════════════════════════════════
+
+    /**
+     * Obtiene cotización agrupada por proveedor (menor precio) para solicitudes EN_PEDIDO en un rango de fechas.
+     * Productos ordenados por categoría dentro de cada proveedor.
+     * ✅ En uso: Consumido por cotizacionProveedoresService en solicitud-service.ts.
+     *
+     * @param request Rango de fechas (fechaInicio, fechaFin) para filtrar solicitudes EN_PEDIDO
+     */
+    @PostMapping("/cotizacion-rango")
+    public ResponseEntity<CotizacionProveedorDTO.CotizacionResponse> obtenerCotizacionPorRango(
+            @Validated @RequestBody DateRangeDTO request) {
+        return ResponseEntity
+                .status(200)
+                .body(proveedorService.obtenerCotizacionPorRango(request));
     }
 }

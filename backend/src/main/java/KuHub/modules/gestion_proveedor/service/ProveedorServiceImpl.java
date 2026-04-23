@@ -4,9 +4,13 @@ import KuHub.modules.gestion_proveedor.dtos.request.ProveedorCreateDTO;
 import KuHub.modules.gestion_proveedor.dtos.request.ProveedorProductoAddDTO;
 import KuHub.modules.gestion_proveedor.dtos.request.ProveedorProductoUpdateDTO;
 import KuHub.modules.gestion_proveedor.dtos.request.ProveedorUpdateDTO;
+import KuHub.modules.gestion_proveedor.dtos.response.CotizacionProveedorDTO;
 import KuHub.modules.gestion_proveedor.dtos.response.ProductoConPrecioDTO;
 import KuHub.modules.gestion_proveedor.dtos.response.ProveedorDetalleDTO;
 import KuHub.modules.gestion_proveedor.dtos.response.ProveedorListDTO;
+import KuHub.modules.gestion_solicitud.dtos.request.DateRangeDTO;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.type.TypeFactory;
 import KuHub.modules.gestion_proveedor.entity.Proveedor;
 import KuHub.modules.gestion_proveedor.entity.ProveedorProducto;
 import KuHub.modules.gestion_proveedor.enums.EstadoProveedor;
@@ -37,6 +41,10 @@ public class ProveedorServiceImpl implements ProveedorService {
 
     @Autowired
     private ProveedorProductoRepository proveedorProductoRepository;
+
+    /**Others*/
+    @Autowired
+    private ObjectMapper objectMapper;
 
     // ══════════════════════════════════════════════════════════════
     // 1. MÉTODOS DE BÚSQUEDA POR ID
@@ -311,5 +319,36 @@ public class ProveedorServiceImpl implements ProveedorService {
             );
         }
         log.info("Producto quitado del proveedor (soft-delete): Proveedor ID={} | Producto ID={}", idProveedor, idProducto);
+    }
+
+    // ══════════════════════════════════════════════════════════════
+    // 6. CONSULTAS DE COTIZACIÓN
+    // ══════════════════════════════════════════════════════════════
+
+    @Override
+    @Transactional(readOnly = true)
+    public CotizacionProveedorDTO.CotizacionResponse obtenerCotizacionPorRango(DateRangeDTO request) {
+        String jsonStr = proveedorRepository.findCotizacionProveedoresPorRango(
+                request.getFechaInicio(),
+                request.getFechaFin()
+        );
+
+        try {
+            if (jsonStr == null || jsonStr.isBlank() || "null".equals(jsonStr)) {
+                return new CotizacionProveedorDTO.CotizacionResponse(List.of());
+            }
+
+            var typeRef = TypeFactory.defaultInstance()
+                    .constructCollectionType(List.class, CotizacionProveedorDTO.ProveedorGrupo.class);
+            List<CotizacionProveedorDTO.ProveedorGrupo> cotizacion = objectMapper.readValue(jsonStr, typeRef);
+
+            return new CotizacionProveedorDTO.CotizacionResponse(cotizacion);
+        } catch (Exception e) {
+            log.error("Error al deserializar cotización JSON. JSON={} | Error={}", jsonStr, e.getMessage());
+            throw new GestionProveedorException(
+                    "Error al procesar la cotización de proveedores.",
+                    HttpStatus.INTERNAL_SERVER_ERROR
+            );
+        }
     }
 }
