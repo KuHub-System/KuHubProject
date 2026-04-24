@@ -50,4 +50,7 @@ public class Proveedor {
 
     @OneToMany(mappedBy = "proveedor", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = false)
     private List<ProveedorProducto> productos = new ArrayList<>();
+
+    @OneToMany(mappedBy = "proveedor", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
+    private List<ProveedorDiaEntrega> diasEntrega = new ArrayList<>();
 }
