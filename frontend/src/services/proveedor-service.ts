@@ -37,6 +37,7 @@ const normalizarProveedor = (p: any): IProveedor => ({
 const normalizarDetalle = (d: any): IProveedorDetalle => ({
   ...normalizarProveedor(d),
   productosPorCategoria: d.productosPorCategoria ?? {},
+  diasEntrega: d.diasEntrega ?? [],
 });
 
 // ── Proveedor CRUD ────────────────────────────────────────────────────────────
