@@ -672,12 +672,27 @@ const GestionProveedoresPage: React.FC = () => {
   const handleQuitarProducto = async () => {
     if (!quitarTarget) return;
     try {
-      await quitarProductoProveedorService(quitarTarget.idProveedor, quitarTarget.idProducto);
-      showToast(`Producto "${quitarTarget.nombre}" quitado del proveedor`);
-      invalidarCacheProveedor(quitarTarget.idProveedor);
-      const detalle = await obtenerProveedorDetalleService(quitarTarget.idProveedor);
-      setDetalleCache(prev => ({ ...prev, [quitarTarget.idProveedor]: detalle }));
-      await cargarProveedores();
+      const resultado = await quitarProductoProveedorService(quitarTarget.idProveedor, quitarTarget.idProducto);
+
+      if (resultado) {
+        showToast(`Producto "${quitarTarget.nombre}" deshabilitado`);
+        // ✅ Actualizar en memoria SIN hacer segunda petición
+        setDetalleCache(prev => {
+          const updated = { ...prev };
+          const detalle = updated[quitarTarget.idProveedor];
+          if (detalle) {
+            Object.keys(detalle.productosPorCategoria).forEach(categoria => {
+              detalle.productosPorCategoria[categoria] = detalle.productosPorCategoria[categoria].map(p => {
+                if (p.idProducto === quitarTarget.idProducto) {
+                  return { ...p, activo: false };
+                }
+                return p;
+              });
+            });
+          }
+          return updated;
+        });
+      }
     } catch (err: any) {
       showToast(err.message || 'Error al quitar el producto', 'error');
     } finally {

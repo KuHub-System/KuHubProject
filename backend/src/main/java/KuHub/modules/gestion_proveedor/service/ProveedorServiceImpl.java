@@ -410,7 +410,7 @@ public class ProveedorServiceImpl implements ProveedorService {
 
     @Override
     @Transactional
-    public void quitarProducto(Integer idProveedor, Integer idProducto) {
+    public boolean quitarProducto(Integer idProveedor, Integer idProducto) {
         int filas = proveedorProductoRepository.softDeleteByProveedorAndProducto(idProveedor, idProducto);
         if (filas == 0) {
             throw new GestionProveedorException(
@@ -419,6 +419,7 @@ public class ProveedorServiceImpl implements ProveedorService {
             );
         }
         log.info("Producto quitado del proveedor (soft-delete): Proveedor ID={} | Producto ID={}", idProveedor, idProducto);
+        return true;
     }
 
     @Override

@@ -175,18 +175,19 @@ public class ProveedorController {
     /**
      * Quita (soft-delete) un producto del proveedor.
      * ✅ En uso: Consumido por quitarProductoProveedorService en proveedor-service.ts.
-     * Se llama desde los botones de eliminación en la tabla de productos del proveedor.
+     * Se llama desde el modal de confirmación en la tabla de productos del proveedor.
+     * [CAMBIO 2026-04-24] Ahora retorna boolean para validar cambio exitoso sin segunda petición.
      *
      * @param id  ID del proveedor
      * @param pid ID del producto a quitar
+     * @return true si se soft-deletó correctamente
      */
     @DeleteMapping("/{id}/productos/{pid}")
-    public ResponseEntity<Void> quitarProducto(
+    public ResponseEntity<Boolean> quitarProducto(
             @PathVariable Integer id,
             @PathVariable Integer pid
     ) {
-        proveedorService.quitarProducto(id, pid);
-        return ResponseEntity.status(204).build();
+        return ResponseEntity.status(200).body(proveedorService.quitarProducto(id, pid));
     }
 
     /**
