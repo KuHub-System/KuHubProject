@@ -1032,7 +1032,7 @@ const GestionProveedoresPage: React.FC = () => {
       />
 
       {/* ── Modal Crear / Editar / Ver Proveedor ── */}
-      <Modal isOpen={isProvModal} onOpenChange={onProvModalChange} size="lg" scrollBehavior="inside" radius="lg" classNames={{ base: 'rounded-2xl' }}>
+      <Modal isOpen={isProvModal} onOpenChange={onProvModalChange} size="lg" scrollBehavior="inside" radius="lg" classNames={{ base: 'rounded-2xl', closeButton: 'cursor-pointer' }}>
         <ModalContent className="rounded-2xl overflow-hidden">
           {(onClose) => (
             <FormularioProveedor
@@ -1049,7 +1049,7 @@ const GestionProveedoresPage: React.FC = () => {
       </Modal>
 
       {/* ── Modal Asignar Producto ── */}
-      <Modal isOpen={isProdModal} onOpenChange={onProdModalChange} size="md" radius="lg" classNames={{ base: 'rounded-2xl' }}>
+      <Modal isOpen={isProdModal} onOpenChange={onProdModalChange} size="md" radius="lg" classNames={{ base: 'rounded-2xl', closeButton: 'cursor-pointer' }}>
         <ModalContent className="rounded-2xl overflow-hidden">
           {(onClose) => (
             <FormularioAsignarProducto
@@ -1065,7 +1065,7 @@ const GestionProveedoresPage: React.FC = () => {
       </Modal>
 
       {/* ── Modal Confirmar Eliminar Proveedor ── */}
-      <Modal isOpen={isDelModal} onOpenChange={onDelModalChange} size="sm" radius="lg" classNames={{ base: 'rounded-2xl' }}>
+      <Modal isOpen={isDelModal} onOpenChange={onDelModalChange} size="sm" radius="lg" classNames={{ base: 'rounded-2xl', closeButton: 'cursor-pointer' }}>
         <ModalContent className="rounded-2xl overflow-hidden">
           {(onClose) => (
             <>
@@ -1114,7 +1114,7 @@ const GestionProveedoresPage: React.FC = () => {
       </Modal>
 
       {/* ── Modal Confirmar Quitar Producto ── */}
-      <Modal isOpen={isQuitarModal} onOpenChange={onQuitarModalChange} size="sm" radius="lg" classNames={{ base: 'rounded-2xl' }}>
+      <Modal isOpen={isQuitarModal} onOpenChange={onQuitarModalChange} size="sm" radius="lg" classNames={{ base: 'rounded-2xl', closeButton: 'cursor-pointer' }}>
         <ModalContent className="rounded-2xl overflow-hidden">
           {(onClose) => (
             <>
@@ -1386,6 +1386,10 @@ const FormularioProveedor: React.FC<FormularioProveedorProps> = ({
   const [error, setError] = React.useState<string | null>(null);
   const [saving, setSaving] = React.useState(false);
 
+  // ── Modal reemplazar día de entrega ──
+  const [isReemplazarModal, setIsReemplazarModal] = React.useState(false);
+  const [diaReemplazar, setDiaReemplazar] = React.useState<IDiaEntregaDTO | null>(null);
+
   const isReadOnly = mode === 'ver';
 
   React.useEffect(() => {
@@ -1452,12 +1456,6 @@ const FormularioProveedor: React.FC<FormularioProveedorProps> = ({
       return;
     }
 
-    // Validar que no exista duplicado
-    if (diasEntrega.some(d => d.diaSemana === diaSeleccionado)) {
-      setError(`El día ${diaSeleccionado} ya está agregado`);
-      return;
-    }
-
     // Validar horas si se proporcionan
     if (horaInicio && horaFin) {
       if (horaInicio >= horaFin) {
@@ -1472,10 +1470,33 @@ const FormularioProveedor: React.FC<FormularioProveedorProps> = ({
       horaFin: horaFin || undefined,
     };
 
+    // Validar que no exista duplicado
+    const diaExistente = diasEntrega.find(d => d.diaSemana === diaSeleccionado);
+    if (diaExistente) {
+      setDiaReemplazar(nuevoDia);
+      setIsReemplazarModal(true);
+      return;
+    }
+
     setDiasEntrega([...diasEntrega, nuevoDia]);
     setHoraInicio('');
     setHoraFin('');
     setError(null);
+  };
+
+  const confirmarReemplazarDia = () => {
+    if (!diaReemplazar) return;
+
+    setDiasEntrega(
+      diasEntrega.map(d =>
+        d.diaSemana === diaReemplazar.diaSemana ? diaReemplazar : d
+      )
+    );
+    setHoraInicio('');
+    setHoraFin('');
+    setError(null);
+    setIsReemplazarModal(false);
+    setDiaReemplazar(null);
   };
 
   const eliminarDiaEntrega = (index: number) => {
@@ -1680,22 +1701,23 @@ const FormularioProveedor: React.FC<FormularioProveedorProps> = ({
 
             {/* Lista de días agregados */}
             {diasEntrega.length > 0 && (
-              <div className="space-y-2">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                 {diasEntrega.map((dia, idx) => (
                   <div
                     key={idx}
                     className="flex items-center justify-between gap-2 p-2 rounded-lg bg-primary-50 dark:bg-primary-50/20 border border-primary-200 dark:border-primary-300"
                   >
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
                       <Chip
                         size="sm"
                         color="primary"
                         variant="flat"
+                        className="flex-shrink-0"
                       >
                         {DIAS_SEMANA_OPTIONS.find(d => d.value === dia.diaSemana)?.label}
                       </Chip>
                       {dia.horaInicio && dia.horaFin ? (
-                        <span className="text-xs text-default-600">
+                        <span className="text-xs text-default-600 truncate">
                           {dia.horaInicio.slice(0, 5)} – {dia.horaFin.slice(0, 5)}
                         </span>
                       ) : (
@@ -1710,6 +1732,7 @@ const FormularioProveedor: React.FC<FormularioProveedorProps> = ({
                       variant="light"
                       color="danger"
                       onPress={() => eliminarDiaEntrega(idx)}
+                      className="flex-shrink-0 cursor-pointer"
                     >
                       <Icon icon="lucide:x" width={16} />
                     </Button>
@@ -1783,6 +1806,42 @@ const FormularioProveedor: React.FC<FormularioProveedorProps> = ({
           </Button>
         )}
       </ModalFooter>
+
+      {/* Modal confirmar reemplazar día de entrega */}
+      <Modal isOpen={isReemplazarModal} onOpenChange={setIsReemplazarModal} size="sm" radius="lg" classNames={{ base: 'rounded-2xl' }}>
+        <ModalContent className="rounded-2xl overflow-hidden">
+          <ModalHeader className="border-b border-default-200 dark:border-default-100 bg-gradient-to-r from-warning/10 to-warning/5 dark:from-warning/20 dark:to-warning/10 px-6 py-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-warning/20 rounded-lg">
+                <Icon icon="lucide:alert-triangle" className="text-warning" width={20} />
+              </div>
+              <span className="font-bold text-lg text-secondary dark:text-foreground">
+                Reemplazar Día de Entrega
+              </span>
+            </div>
+          </ModalHeader>
+          <ModalBody>
+            <p className="text-sm text-default-600">
+              El día <strong>{diaReemplazar && DIAS_SEMANA_OPTIONS.find(d => d.value === diaReemplazar.diaSemana)?.label}</strong> ya tiene configurado un horario de entrega.
+              ¿Deseas reemplazarlo con los nuevos horarios?
+            </p>
+          </ModalBody>
+          <ModalFooter className="bg-gradient-to-r from-default-50 to-default-50 dark:from-content2 dark:to-content2 border-t border-default-200 dark:border-default-100 gap-2 px-6 py-4">
+            <Button variant="ghost" onPress={() => setIsReemplazarModal(false)} className="font-medium">
+              Cancelar
+            </Button>
+            <Button
+              color="warning"
+              variant="solid"
+              onPress={confirmarReemplazarDia}
+              className="font-bold shadow-md cursor-pointer"
+              startContent={<Icon icon="lucide:replace" width={16} />}
+            >
+              Reemplazar
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
     </>
   );
 };
