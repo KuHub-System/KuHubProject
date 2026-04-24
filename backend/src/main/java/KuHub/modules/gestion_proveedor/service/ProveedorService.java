@@ -38,8 +38,10 @@ public interface ProveedorService {
     /** Soft-delete de un proveedor (activo = false). */
     boolean softDelete(Integer idProveedor);
 
-    /** Asigna un producto a un proveedor con su precio específico. */
-    void agregarProducto(Integer idProveedor, ProveedorProductoAddDTO dto);
+    /** Asigna un producto a un proveedor con su precio específico.
+     *  Retorna true si se asignó correctamente, false si ya estaba asignado.
+     */
+    boolean agregarProducto(Integer idProveedor, ProveedorProductoAddDTO dto);
 
     /** Actualiza el precio de un producto asignado a un proveedor usando la PK de la relación.
      *  Retorna true si se actualizó correctamente, false si no hubo cambios.

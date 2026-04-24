@@ -216,13 +216,15 @@ export const eliminarProveedorService = async (
 /**
  * Asigna un producto a un proveedor con su precio específico.
  * POST /api/v1/proveedor/{id}/productos → 201 Created
+ * [CAMBIO 2026-04-24] Ahora retorna boolean para indicar éxito.
  */
 export const agregarProductoProveedorService = async (
   idProveedor: number,
   dto: IProveedorProductoAddDTO
-): Promise<void> => {
+): Promise<boolean> => {
   try {
-    await api.post(`/proveedor/${idProveedor}/productos`, dto);
+    const response = await api.post<boolean>(`/proveedor/${idProveedor}/productos`, dto);
+    return response.data;
   } catch (error: any) {
     if (error.response?.status === 409) {
       throw new Error(
