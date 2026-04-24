@@ -7,6 +7,7 @@ import KuHub.modules.gestion_proveedor.dtos.request.ProveedorUpdateDTO;
 import KuHub.modules.gestion_proveedor.dtos.response.CotizacionProveedorDTO;
 import KuHub.modules.gestion_proveedor.dtos.response.ProveedorDetalleDTO;
 import KuHub.modules.gestion_proveedor.dtos.response.ProveedorListDTO;
+import KuHub.modules.gestion_proveedor.dtos.response.ProveedoresPageResponse;
 import KuHub.modules.gestion_proveedor.entity.Proveedor;
 import KuHub.modules.gestion_solicitud.dtos.request.DateRangeDTO;
 
@@ -29,6 +30,9 @@ public interface ProveedorService {
 
     /** Lista proveedores activos con filtros opcionales de estado y búsqueda. */
     List<ProveedorListDTO> findConFiltros(String estado, String busqueda);
+
+    /** Lista proveedores activos con paginación asimétrica (20/10) y filtros opcionales. */
+    ProveedoresPageResponse findConFiltrosPaginado(String estado, String busqueda, Integer page);
 
     /** Soft-delete de un proveedor (activo = false). */
     boolean softDelete(Integer idProveedor);

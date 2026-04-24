@@ -69,6 +69,70 @@ public interface ProveedorRepository extends JpaRepository<Proveedor, Integer> {
     );
 
     /**
+     * Lista proveedores activos con paginación asimétrica (20/10).
+     * Soporta filtro opcional por estado y búsqueda por nombre/distribuidora/RUT.
+     * Columnas retornadas (Object[]):
+     * [0] id_proveedor
+     * [1] rut_proveedor
+     * [2] nombre_distribuidora
+     * [3] nombre_proveedor
+     * [4] telefono_proveedor
+     * [5] email_proveedor
+     * [6] estado_proveedor (cast a text)
+     * [7] activo
+     * [8] fecha_creacion
+     * [9] cantidad_productos_activos
+     */
+    @Query(value = """
+            SELECT
+                p.id_proveedor,                                          -- [0]
+                p.rut_proveedor,                                         -- [1]
+                p.nombre_distribuidora,                                  -- [2]
+                p.nombre_proveedor,                                      -- [3]
+                p.telefono_proveedor,                                    -- [4]
+                p.email_proveedor,                                       -- [5]
+                CAST(p.estado_proveedor AS TEXT),                        -- [6]
+                p.activo,                                                -- [7]
+                p.fecha_creacion,                                        -- [8]
+                COUNT(pp.id_proveedor_producto) FILTER (WHERE pp.activo = TRUE) AS cantidad_productos_activos -- [9]
+            FROM proveedor p
+            LEFT JOIN proveedor_producto pp ON pp.id_proveedor = p.id_proveedor
+            WHERE p.activo = TRUE
+              AND (:estado IS NULL OR CAST(p.estado_proveedor AS TEXT) = :estado)
+              AND (:busqueda IS NULL OR :busqueda = ''
+                   OR LOWER(p.nombre_distribuidora) LIKE LOWER(CONCAT('%', :busqueda, '%'))
+                   OR LOWER(p.nombre_proveedor) LIKE LOWER(CONCAT('%', :busqueda, '%'))
+                   OR LOWER(COALESCE(p.rut_proveedor, '')) LIKE LOWER(CONCAT('%', :busqueda, '%')))
+            GROUP BY p.id_proveedor
+            ORDER BY p.nombre_distribuidora ASC
+            LIMIT :limit OFFSET :offset
+            """, nativeQuery = true)
+    List<Object[]> findProveedoresConFiltrosPaginado(
+            @Param("estado") String estado,
+            @Param("busqueda") String busqueda,
+            @Param("limit") int limit,
+            @Param("offset") int offset
+    );
+
+    /**
+     * Cuenta el total de proveedores activos con filtros opcionales.
+     */
+    @Query(value = """
+            SELECT COUNT(DISTINCT p.id_proveedor)
+            FROM proveedor p
+            WHERE p.activo = TRUE
+              AND (:estado IS NULL OR CAST(p.estado_proveedor AS TEXT) = :estado)
+              AND (:busqueda IS NULL OR :busqueda = ''
+                   OR LOWER(p.nombre_distribuidora) LIKE LOWER(CONCAT('%', :busqueda, '%'))
+                   OR LOWER(p.nombre_proveedor) LIKE LOWER(CONCAT('%', :busqueda, '%'))
+                   OR LOWER(COALESCE(p.rut_proveedor, '')) LIKE LOWER(CONCAT('%', :busqueda, '%')))
+            """, nativeQuery = true)
+    long countProveedoresConFiltros(
+            @Param("estado") String estado,
+            @Param("busqueda") String busqueda
+    );
+
+    /**
      * Obtiene el detalle completo de un proveedor con sus productos activos e inactivos.
      * Columnas retornadas (Object[]):
      * [0] id_producto
