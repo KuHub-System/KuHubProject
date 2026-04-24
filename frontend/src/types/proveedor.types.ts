@@ -50,12 +50,25 @@ export interface IProveedorProducto {
 }
 
 /**
+ * DTO para mostrar un día de entrega del proveedor.
+ * Mapea DiaEntregaResponseDTO del backend.
+ */
+export interface IDiaEntregaResponse {
+  idDiaEntrega: number;
+  diaSemana: DiaSemana;
+  horaInicioEntrega?: string; // Formato HH:mm:ss
+  horaFinEntrega?: string;    // Formato HH:mm:ss
+}
+
+/**
  * Mapea ProveedorDetalleDTO del backend.
- * Incluye los productos agrupados por categoría.
+ * Incluye los productos agrupados por categoría y los días de entrega.
  */
 export interface IProveedorDetalle extends IProveedor {
   /** Productos agrupados por nombre de categoría */
   productosPorCategoria: Record<string, IProveedorProducto[]>;
+  /** Días y horarios de entrega configurados */
+  diasEntrega: IDiaEntregaResponse[];
 }
 
 /**

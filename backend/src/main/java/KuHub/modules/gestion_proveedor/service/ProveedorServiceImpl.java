@@ -6,6 +6,7 @@ import KuHub.modules.gestion_proveedor.dtos.request.ProveedorProductoAddDTO;
 import KuHub.modules.gestion_proveedor.dtos.request.ProveedorProductoUpdateDTO;
 import KuHub.modules.gestion_proveedor.dtos.request.ProveedorUpdateDTO;
 import KuHub.modules.gestion_proveedor.dtos.response.CotizacionProveedorDTO;
+import KuHub.modules.gestion_proveedor.dtos.response.DiaEntregaResponseDTO;
 import KuHub.modules.gestion_proveedor.dtos.response.ProductoConPrecioDTO;
 import KuHub.modules.gestion_proveedor.dtos.response.ProveedorDetalleDTO;
 import KuHub.modules.gestion_proveedor.dtos.response.ProveedorListDTO;
@@ -104,6 +105,20 @@ public class ProveedorServiceImpl implements ProveedorService {
                 .filter(p -> Boolean.TRUE.equals(p.activo()))
                 .count();
 
+        // Obtener días de entrega configurados para el proveedor
+        List<ProveedorDiaEntrega> diasEntrega = proveedorDiaEntregaRepository.findByProveedor_IdProveedor(idProveedor);
+        List<DiaEntregaResponseDTO> diasResponse = diasEntrega.stream()
+                .map(d -> new DiaEntregaResponseDTO(
+                        d.getIdDiaEntrega(),
+                        d.getDiaSemana() != null ? d.getDiaSemana().name() : null,
+                        d.getHoraInicioEntrega() != null ? d.getHoraInicioEntrega().toString() : null,
+                        d.getHoraFinEntrega() != null ? d.getHoraFinEntrega().toString() : null
+                ))
+                .collect(Collectors.toList());
+
+        log.info("obtenerDetalle: Proveedor ID={} | Productos: {} | Días entrega: {}",
+                idProveedor, productos.size(), diasResponse.size());
+
         return new ProveedorDetalleDTO(
                 proveedor.getIdProveedor(),
                 proveedor.getRutProveedor(),
@@ -115,7 +130,8 @@ public class ProveedorServiceImpl implements ProveedorService {
                 proveedor.getActivo(),
                 proveedor.getFechaCreacion() != null ? proveedor.getFechaCreacion().toString() : null,
                 cantActivos,
-                porCategoria
+                porCategoria,
+                diasResponse
         );
     }
 
