@@ -1260,6 +1260,10 @@ const ProductosProveedor: React.FC<ProductosProveedorProps> = ({
   onMostrarInactivosChange,
 }) => {
   const categorias = Object.keys(detalle.productosPorCategoria);
+  const [expandedCategories, setExpandedCategories] = React.useState<Set<string>>(
+    new Set(categorias)
+  );
+  const [searchQuery, setSearchQuery] = React.useState('');
 
   if (categorias.length === 0) {
     return (
@@ -1269,46 +1273,109 @@ const ProductosProveedor: React.FC<ProductosProveedorProps> = ({
     );
   }
 
-  // Filtrar productos según mostrarInactivos
+  // Filtrar productos según mostrarInactivos y búsqueda
   const filtrarProductos = (productos: typeof detalle.productosPorCategoria[string]) => {
-    return mostrarInactivos ? productos : productos.filter(p => p.activo);
+    let filtered = mostrarInactivos ? productos : productos.filter(p => p.activo);
+    if (searchQuery.trim()) {
+      filtered = filtered.filter(p =>
+        p.nombreProducto.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    }
+    return filtered;
+  };
+
+  const toggleCategoria = (categoria: string) => {
+    const newExpanded = new Set(expandedCategories);
+    if (newExpanded.has(categoria)) {
+      newExpanded.delete(categoria);
+    } else {
+      newExpanded.add(categoria);
+    }
+    setExpandedCategories(newExpanded);
   };
 
   return (
     <div className="space-y-3 mt-2">
-      {/* Opción para mostrar/esconder deshabilitados */}
-      {canEdit && (
-        <div className="flex items-center gap-2 px-2 pb-2">
+      {/* Controles: búsqueda y mostrar/esconder deshabilitados */}
+      <div className="space-y-2 px-2 pb-3">
+        {/* Buscador de productos */}
+        <div className="flex items-center gap-2">
+          <Icon icon="lucide:search" width={16} className="text-default-400" />
           <input
-            type="checkbox"
-            id={`esconderInactivos-${detalle.idProveedor}`}
-            checked={!mostrarInactivos}
-            onChange={(e) => onMostrarInactivosChange?.(!e.target.checked)}
-            className="w-4 h-4 rounded cursor-pointer accent-warning"
+            type="text"
+            placeholder="Buscar producto por nombre..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="flex-1 px-3 py-2 text-xs border border-default-200 dark:border-default-100 rounded-lg bg-default-50 dark:bg-default-100/30 focus:outline-none focus:border-primary transition-colors"
           />
-          <label
-            htmlFor={`esconderInactivos-${detalle.idProveedor}`}
-            className="text-xs text-default-500 cursor-pointer hover:text-default-700 transition-colors"
-          >
-            {mostrarInactivos ? 'Esconder deshabilitados' : 'Mostrar deshabilitados'}
-          </label>
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              className="text-default-400 hover:text-default-600 transition-colors"
+            >
+              <Icon icon="lucide:x" width={16} />
+            </button>
+          )}
         </div>
-      )}
-      {categorias.map((categoria) => (
-        <div key={categoria}>
-          <p className="text-xs font-semibold text-default-500 uppercase tracking-wide mb-1">
-            {categoria}
-          </p>
-          <div className="overflow-x-auto rounded-lg border border-default-200 dark:border-default-100">
-            <table className="w-full text-xs" style={{ tableLayout: 'fixed' }}>
-              <thead className="bg-default-100 dark:bg-default-50">
-                <tr>
-                  <th className="text-center py-2 px-3 font-medium w-[280px]">Producto</th>
-                  <th className="text-center py-2 px-3 font-medium">Unidad</th>
-                  <th className="text-center py-2 px-3 font-medium">Precio</th>
-                  <th className="text-center py-2 px-3 font-medium">Estado</th>
-                  <th className="text-center py-2 px-3 font-medium">Actualizado</th>
-                  {canEdit && <th className="py-2 px-3 font-medium text-center">Acciones</th>}
+
+        {/* Opción para mostrar/esconder deshabilitados */}
+        {canEdit && (
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              id={`esconderInactivos-${detalle.idProveedor}`}
+              checked={!mostrarInactivos}
+              onChange={(e) => onMostrarInactivosChange?.(!e.target.checked)}
+              className="w-4 h-4 rounded cursor-pointer accent-warning"
+            />
+            <label
+              htmlFor={`esconderInactivos-${detalle.idProveedor}`}
+              className="text-xs text-default-500 cursor-pointer hover:text-default-700 transition-colors"
+            >
+              {mostrarInactivos ? 'Esconder deshabilitados' : 'Mostrar deshabilitados'}
+            </label>
+          </div>
+        )}
+      </div>
+      {categorias.map((categoria) => {
+        const isExpanded = expandedCategories.has(categoria);
+        const productosEnCategoria = filtrarProductos(detalle.productosPorCategoria[categoria]);
+        const total = detalle.productosPorCategoria[categoria].length;
+
+        return (
+          <div key={categoria}>
+            {/* Header de categoría con toggle */}
+            <div
+              onClick={() => toggleCategoria(categoria)}
+              className="flex items-center justify-between px-3 py-2 mb-1 bg-default-50 dark:bg-default-100/20 rounded-lg border border-default-200 dark:border-default-100 cursor-pointer hover:bg-default-100 dark:hover:bg-default-100/40 transition-colors"
+            >
+              <div className="flex items-center gap-2">
+                <Icon
+                  icon={isExpanded ? 'lucide:chevron-down' : 'lucide:chevron-right'}
+                  width={18}
+                  className="text-default-500 transition-transform"
+                />
+                <p className="text-xs font-semibold text-default-600 dark:text-default-400 uppercase tracking-wide">
+                  {categoria}
+                </p>
+              </div>
+              <span className="text-xs text-default-400">
+                {productosEnCategoria.length} / {total}
+              </span>
+            </div>
+
+            {/* Tabla de productos (solo si la categoría está expandida) */}
+            {isExpanded && (
+              <div className="overflow-x-auto rounded-lg border border-default-200 dark:border-default-100">
+                <table className="w-full text-xs" style={{ tableLayout: 'fixed' }}>
+                  <thead className="bg-default-100 dark:bg-default-50">
+                    <tr>
+                      <th className="text-center py-2 px-3 font-medium w-[350px]">Producto</th>
+                      <th className="text-center py-2 px-3 font-medium w-16">Unidad</th>
+                      <th className="text-center py-2 px-3 font-medium w-20">Precio</th>
+                      <th className="text-center py-2 px-3 font-medium w-16">Estado</th>
+                      <th className="text-center py-2 px-3 font-medium w-20">Actualizado</th>
+                      {canEdit && <th className="py-2 px-3 font-medium text-center w-16">Acciones</th>}
                 </tr>
               </thead>
               <tbody>
@@ -1325,7 +1392,7 @@ const ProductosProveedor: React.FC<ProductosProveedorProps> = ({
                           : 'bg-default-50/30 dark:bg-default-100/10 opacity-60'
                       }`}
                     >
-                      <td className="py-2 px-3 font-medium text-center w-[280px] overflow-hidden">
+                      <td className="py-2 px-3 font-medium text-center w-[350px] overflow-hidden">
                         <Tooltip content={prod.nombreProducto} color="foreground" className="text-xs">
                           <span className="truncate block cursor-help whitespace-nowrap">
                             {prod.nombreProducto}
@@ -1416,9 +1483,11 @@ const ProductosProveedor: React.FC<ProductosProveedorProps> = ({
                 })}
               </tbody>
             </table>
+            </div>
+            )}
           </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 };
