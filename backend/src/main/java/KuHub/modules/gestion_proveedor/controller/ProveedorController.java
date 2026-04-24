@@ -269,6 +269,23 @@ public class ProveedorController {
     }
 
     // ══════════════════════════════════════════════════════════════
+    // FILTROS PARA MODAL DE ASIGNAR PRODUCTOS
+    // ══════════════════════════════════════════════════════════════
+
+    /**
+     * Obtiene todas las categorías activas como JSON para filtros en el modal de asignar productos.
+     * Retorna: [ { "id": 1, "nombre": "Bebidas" }, { "id": 2, "nombre": "Verduras" }, ... ]
+     * ✅ En uso: Consumido por obtenerCategoriasActivasJsonService en proveedor-service.ts (para filtrar productos disponibles).
+     */
+    @GetMapping("/categorias-activas-json")
+    public ResponseEntity<String> obtenerCategoriasActivasParaFiltrado() {
+        return ResponseEntity
+                .status(200)
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .body(proveedorService.obtenerCategoriasActivasJson());
+    }
+
+    // ══════════════════════════════════════════════════════════════
     // COTIZACIÓN AGRUPADA POR PROVEEDOR
     // ══════════════════════════════════════════════════════════════
 
