@@ -1513,35 +1513,47 @@ const FormularioProveedor: React.FC<FormularioProveedorProps> = ({
           </div>
         )}
 
-        <Input
-          label="Nombre Distribuidora"
-          placeholder="Ej: Distribuidora Central S.A."
-          value={nombreDistribuidora}
-          onValueChange={setNombreDistribuidora}
-          isReadOnly={isReadOnly}
-          variant="bordered"
-          isRequired={!isReadOnly}
-        />
+        <div className="space-y-1">
+          <Input
+            label="Nombre Distribuidora"
+            placeholder="Ej: Distribuidora Central S.A."
+            value={nombreDistribuidora}
+            onValueChange={(val) => setNombreDistribuidora(val.slice(0, 100))}
+            isReadOnly={isReadOnly}
+            variant="bordered"
+            isRequired={!isReadOnly}
+            maxLength={100}
+          />
+          <p className="text-xs text-default-400 text-right">{nombreDistribuidora.length}/100</p>
+        </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <Input
-            label="Nombre Contacto"
-            placeholder="Ej: Juan Pérez"
-            value={nombreProveedor}
-            onValueChange={setNombreProveedor}
-            isReadOnly={isReadOnly}
-            variant="bordered"
-            isRequired={!isReadOnly}
-          />
-          <Input
-            label="Teléfono"
-            placeholder="Ej: +56 9 1234 5678"
-            value={telefonoProveedor}
-            onValueChange={setTelefonoProveedor}
-            isReadOnly={isReadOnly}
-            variant="bordered"
-            isRequired={!isReadOnly}
-          />
+          <div className="space-y-1">
+            <Input
+              label="Nombre Contacto"
+              placeholder="Ej: Juan Pérez"
+              value={nombreProveedor}
+              onValueChange={(val) => setNombreProveedor(val.slice(0, 100))}
+              isReadOnly={isReadOnly}
+              variant="bordered"
+              isRequired={!isReadOnly}
+              maxLength={100}
+            />
+            <p className="text-xs text-default-400 text-right">{nombreProveedor.length}/100</p>
+          </div>
+          <div className="space-y-1">
+            <Input
+              label="Teléfono"
+              placeholder="Ej: +56 9 1234 5678"
+              value={telefonoProveedor}
+              onValueChange={(val) => setTelefonoProveedor(val.slice(0, 20))}
+              isReadOnly={isReadOnly}
+              variant="bordered"
+              isRequired={!isReadOnly}
+              maxLength={20}
+            />
+            <p className="text-xs text-default-400 text-right">{telefonoProveedor.length}/20</p>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -1550,22 +1562,26 @@ const FormularioProveedor: React.FC<FormularioProveedorProps> = ({
               label="RUT (opcional)"
               placeholder="Ej: 12.345.678-9"
               value={rutProveedor}
-              onValueChange={setRutProveedor}
+              onValueChange={(val) => setRutProveedor(val.slice(0, 13))}
               isReadOnly={isReadOnly}
               variant="bordered"
               maxLength={13}
             />
             <p className="text-xs text-default-400 text-right">{rutProveedor.length}/13</p>
           </div>
-          <Input
-            label="Email (opcional)"
-            placeholder="Ej: contacto@empresa.cl"
-            value={emailProveedor}
-            onValueChange={setEmailProveedor}
-            isReadOnly={isReadOnly}
-            variant="bordered"
-            type="email"
-          />
+          <div className="space-y-1">
+            <Input
+              label="Email (opcional)"
+              placeholder="Ej: contacto@empresa.cl"
+              value={emailProveedor}
+              onValueChange={(val) => setEmailProveedor(val.slice(0, 150))}
+              isReadOnly={isReadOnly}
+              variant="bordered"
+              type="email"
+              maxLength={150}
+            />
+            <p className="text-xs text-default-400 text-right">{emailProveedor.length}/150</p>
+          </div>
         </div>
 
         {!isReadOnly ? (
