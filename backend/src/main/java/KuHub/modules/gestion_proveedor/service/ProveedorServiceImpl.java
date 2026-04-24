@@ -400,13 +400,16 @@ public class ProveedorServiceImpl implements ProveedorService {
                 );
             }
 
-            LocalTime horaInicio = null;
-            LocalTime horaFin = null;
+            LocalTime horaInicio;
+            LocalTime horaFin;
 
-            if (dto.getHoraInicio() != null && !dto.getHoraInicio().isBlank()) {
+            boolean tieneHoraInicio = dto.getHoraInicio() != null && !dto.getHoraInicio().isBlank();
+            boolean tieneHoraFin = dto.getHoraFin() != null && !dto.getHoraFin().isBlank();
+
+            if (tieneHoraInicio) {
                 try {
                     horaInicio = LocalTime.parse(dto.getHoraInicio());
-                    log.info("Hora de inicio parseada correctamente: {} → {}", dto.getHoraInicio(), horaInicio);
+                    log.info("Hora de inicio especificada y parseada: {} → {}", dto.getHoraInicio(), horaInicio);
                 } catch (Exception e) {
                     log.warn("Formato de hora de inicio inválido: '{}' | Excepción: {}", dto.getHoraInicio(), e.getMessage());
                     throw new GestionProveedorException(
@@ -415,13 +418,14 @@ public class ProveedorServiceImpl implements ProveedorService {
                     );
                 }
             } else {
-                log.debug("Hora de inicio no proporcionada o vacía");
+                horaInicio = LocalTime.of(8, 0, 0);
+                log.info("Hora de inicio no especificada para día {} | Asignando default: {}", diaSemana, horaInicio);
             }
 
-            if (dto.getHoraFin() != null && !dto.getHoraFin().isBlank()) {
+            if (tieneHoraFin) {
                 try {
                     horaFin = LocalTime.parse(dto.getHoraFin());
-                    log.info("Hora de fin parseada correctamente: {} → {}", dto.getHoraFin(), horaFin);
+                    log.info("Hora de fin especificada y parseada: {} → {}", dto.getHoraFin(), horaFin);
                 } catch (Exception e) {
                     log.warn("Formato de hora de fin inválido: '{}' | Excepción: {}", dto.getHoraFin(), e.getMessage());
                     throw new GestionProveedorException(
@@ -430,19 +434,18 @@ public class ProveedorServiceImpl implements ProveedorService {
                     );
                 }
             } else {
-                log.debug("Hora de fin no proporcionada o vacía");
+                horaFin = LocalTime.of(20, 0, 0);
+                log.info("Hora de fin no especificada para día {} | Asignando default: {}", diaSemana, horaFin);
             }
 
-            if (horaInicio != null && horaFin != null) {
-                if (!horaInicio.isBefore(horaFin)) {
-                    log.warn("Incoherencia de horarios: inicio={} >= fin={} para día {}", horaInicio, horaFin, diaSemana);
-                    throw new GestionProveedorException(
-                            "La hora de inicio (" + horaInicio + ") debe ser anterior a la hora de fin (" + horaFin + ") para el día " + diaSemana + ".",
-                            HttpStatus.BAD_REQUEST
-                    );
-                }
-                log.info("Validación de horarios correcta: {} < {}", horaInicio, horaFin);
+            if (!horaInicio.isBefore(horaFin)) {
+                log.warn("Incoherencia de horarios: inicio={} >= fin={} para día {}", horaInicio, horaFin, diaSemana);
+                throw new GestionProveedorException(
+                        "La hora de inicio (" + horaInicio + ") debe ser anterior a la hora de fin (" + horaFin + ") para el día " + diaSemana + ".",
+                        HttpStatus.BAD_REQUEST
+                );
             }
+            log.info("Validación de horarios correcta para día {}: {} < {}", diaSemana, horaInicio, horaFin);
 
             ProveedorDiaEntrega dia = new ProveedorDiaEntrega();
             dia.setProveedor(proveedor);

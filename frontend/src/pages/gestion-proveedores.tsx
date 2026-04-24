@@ -1366,6 +1366,13 @@ const FormularioProveedor: React.FC<FormularioProveedorProps> = ({
               </span>
             </div>
 
+            <div className="flex items-start gap-2 p-3 rounded-lg bg-info-50 dark:bg-info-50/20 border border-info-200 dark:border-info-300">
+              <Icon icon="lucide:info" width={16} className="text-info flex-shrink-0 mt-0.5" />
+              <div className="text-xs text-default-600 dark:text-default-400">
+                Seleccione un día de entrega. Si no especifica horarios, se asumirá disponibilidad de 08:00 a 20:00.
+              </div>
+            </div>
+
             {/* Selector de día */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
               <Select
@@ -1432,9 +1439,13 @@ const FormularioProveedor: React.FC<FormularioProveedorProps> = ({
                       >
                         {DIAS_SEMANA_OPTIONS.find(d => d.value === dia.diaSemana)?.label}
                       </Chip>
-                      {dia.horaInicio && dia.horaFin && (
+                      {dia.horaInicio && dia.horaFin ? (
                         <span className="text-xs text-default-600">
                           {dia.horaInicio.slice(0, 5)} – {dia.horaFin.slice(0, 5)}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-default-600">
+                          08:00 – 20:00
                         </span>
                       )}
                     </div>
@@ -1478,9 +1489,13 @@ const FormularioProveedor: React.FC<FormularioProveedorProps> = ({
                     >
                       {DIAS_SEMANA_OPTIONS.find(d => d.value === dia.diaSemana)?.label}
                     </Chip>
-                    {dia.horaInicioEntrega && dia.horaFinEntrega && (
+                    {dia.horaInicioEntrega && dia.horaFinEntrega ? (
                       <span className="text-sm text-default-600">
                         {dia.horaInicioEntrega.slice(0, 5)} – {dia.horaFinEntrega.slice(0, 5)}
+                      </span>
+                    ) : (
+                      <span className="text-sm text-default-400 italic">
+                        Disponibilidad todo el día
                       </span>
                     )}
                   </div>
