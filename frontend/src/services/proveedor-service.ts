@@ -66,6 +66,42 @@ export const obtenerProveedoresService = async (
 };
 
 /**
+ * Lista proveedores activos con paginación asimétrica (20/10).
+ * GET /api/v1/proveedor/find-paginated?estado=DISPONIBLE&busqueda=texto&page=1
+ */
+export const obtenerProveedoresPaginadoService = async (
+  estado?: string,
+  busqueda?: string,
+  page: number = 1
+): Promise<{
+  data: IProveedor[];
+  page: number;
+  pageSize: number;
+  totalPaginas: number;
+  totalRegistros: number;
+}> => {
+  try {
+    const params: Record<string, any> = { page };
+    if (estado) params.estado = estado;
+    if (busqueda) params.busqueda = busqueda;
+
+    const response = await api.get<any>('/proveedor/find-paginated', { params });
+    return {
+      data: response.data.data.map(normalizarProveedor),
+      page: response.data.page,
+      pageSize: response.data.pageSize,
+      totalPaginas: response.data.totalPaginas,
+      totalRegistros: response.data.totalRegistros,
+    };
+  } catch (error: any) {
+    throw new Error(
+      error.response?.data?.message ||
+      'Error al cargar los proveedores'
+    );
+  }
+};
+
+/**
  * Obtiene el detalle completo de un proveedor con sus productos agrupados por categoría.
  * GET /api/v1/proveedor/{id}
  */

@@ -33,6 +33,7 @@ import { usePageTitle } from '../hooks/usePageTitle';
 import { useModulePermission } from '../contexts/permission-context';
 import {
   obtenerProveedoresService,
+  obtenerProveedoresPaginadoService,
   obtenerProveedorDetalleService,
   crearProveedorService,
   actualizarProveedorService,
@@ -371,6 +372,11 @@ const GestionProveedoresPage: React.FC = () => {
     return [];
   });
 
+  // ── Paginación ──
+  const [currentPage, setCurrentPage] = React.useState(1);
+  const [totalPages, setTotalPages] = React.useState(1);
+  const [totalRegistros, setTotalRegistros] = React.useState(0);
+
   // ── Modal confirmar eliminar proveedor ──
   const { isOpen: isDelModal, onOpen: openDelModal, onOpenChange: onDelModalChange } = useDisclosure();
   const [proveedorAEliminar, setProveedorAEliminar] = React.useState<IProveedor | null>(null);
@@ -404,16 +410,19 @@ const GestionProveedoresPage: React.FC = () => {
 
   // ── Carga inicial ─────────────────────────────────────────────────────────
 
-  const cargarProveedores = React.useCallback(async () => {
+  const cargarProveedores = React.useCallback(async (page: number = 1) => {
     setIsLoading(true);
     setError(null);
     try {
-      const data = await obtenerProveedoresService(
+      const response = await obtenerProveedoresPaginadoService(
         filtroEstado || undefined,
-        searchTerm || undefined
+        searchTerm || undefined,
+        page
       );
-      setProveedores(data);
-      setCurrentPage(1);
+      setProveedores(response.data);
+      setCurrentPage(response.page);
+      setTotalPages(response.totalPaginas);
+      setTotalRegistros(response.totalRegistros);
     } catch (err: any) {
       setError(err.message || 'Error al cargar proveedores');
     } finally {
@@ -423,7 +432,7 @@ const GestionProveedoresPage: React.FC = () => {
 
   React.useEffect(() => {
     const timer = setTimeout(() => {
-      cargarProveedores();
+      cargarProveedores(1);
     }, 300);
     return () => clearTimeout(timer);
   }, [cargarProveedores]);
@@ -431,11 +440,8 @@ const GestionProveedoresPage: React.FC = () => {
   // ── Paginación ────────────────────────────────────────────────────────────
 
   const paginatedProveedores = React.useMemo(() => {
-    const start = (currentPage - 1) * rowsPerPage;
-    return proveedores.slice(start, start + rowsPerPage);
-  }, [currentPage, proveedores, rowsPerPage]);
-
-  const totalPages = Math.ceil(proveedores.length / rowsPerPage);
+    return proveedores;
+  }, [proveedores]);
 
   // ── Expansión de filas ────────────────────────────────────────────────────
 
@@ -998,7 +1004,7 @@ const GestionProveedoresPage: React.FC = () => {
                 <Pagination
                   total={totalPages}
                   page={currentPage}
-                  onChange={setCurrentPage}
+                  onChange={(page) => cargarProveedores(page)}
                   showControls
                   color="primary"
                 />
