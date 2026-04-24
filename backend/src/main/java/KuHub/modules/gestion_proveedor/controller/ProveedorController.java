@@ -7,6 +7,7 @@ import KuHub.modules.gestion_proveedor.dtos.request.ProveedorUpdateDTO;
 import KuHub.modules.gestion_proveedor.dtos.response.CotizacionProveedorDTO;
 import KuHub.modules.gestion_proveedor.dtos.response.ProveedorDetalleDTO;
 import KuHub.modules.gestion_proveedor.dtos.response.ProveedorListDTO;
+import KuHub.modules.gestion_proveedor.dtos.response.ProveedoresPageResponse;
 import KuHub.modules.gestion_proveedor.entity.Proveedor;
 import KuHub.modules.gestion_proveedor.service.ProveedorService;
 import KuHub.modules.gestion_solicitud.dtos.request.DateRangeDTO;
@@ -50,6 +51,25 @@ public class ProveedorController {
         return ResponseEntity
                 .status(200)
                 .body(proveedorService.findConFiltros(estado, busqueda));
+    }
+
+    /**
+     * Lista proveedores activos con paginación asimétrica (20/10) y filtros opcionales.
+     * ✅ En uso: Consumido por obtenerProveedoresService en proveedor-service.ts (nueva versión con paginación).
+     *
+     * @param estado   Filtro por estado: DISPONIBLE o NO_DISPONIBLE (opcional)
+     * @param busqueda Búsqueda por nombre, distribuidora o RUT (opcional)
+     * @param page     Número de página (por defecto 1)
+     */
+    @GetMapping("/find-paginated")
+    public ResponseEntity<ProveedoresPageResponse> findPaginated(
+            @RequestParam(required = false) String estado,
+            @RequestParam(required = false) String busqueda,
+            @RequestParam(defaultValue = "1") Integer page
+    ) {
+        return ResponseEntity
+                .status(200)
+                .body(proveedorService.findConFiltrosPaginado(estado, busqueda, page));
     }
 
     /**
