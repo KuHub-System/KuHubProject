@@ -10,9 +10,11 @@ import KuHub.modules.gestion_proveedor.dtos.response.DiaEntregaResponseDTO;
 import KuHub.modules.gestion_proveedor.dtos.response.ProductoConPrecioDTO;
 import KuHub.modules.gestion_proveedor.dtos.response.ProveedorDetalleDTO;
 import KuHub.modules.gestion_proveedor.dtos.response.ProveedorListDTO;
+import KuHub.modules.gestion_proveedor.dtos.response.ProveedoresPageResponse;
 import KuHub.modules.gestion_solicitud.dtos.request.DateRangeDTO;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.type.TypeFactory;
+import KuHub.utils.PaginationUtils;
 import KuHub.modules.gestion_proveedor.entity.Proveedor;
 import KuHub.modules.gestion_proveedor.entity.ProveedorDiaEntrega;
 import KuHub.modules.gestion_proveedor.entity.ProveedorProducto;
@@ -82,6 +84,29 @@ public class ProveedorServiceImpl implements ProveedorService {
         return rows.stream()
                 .map(ProveedorListDTO::fromRow)
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ProveedoresPageResponse findConFiltrosPaginado(String estado, String busqueda, Integer page) {
+        long totalRegistros = proveedorRepository.countProveedoresConFiltros(estado, busqueda);
+        PaginationUtils.PagingResult paging = PaginationUtils.buildPaging(page, totalRegistros);
+
+        List<Object[]> rows = proveedorRepository.findProveedoresConFiltrosPaginado(
+                estado, busqueda, paging.limit(), paging.offset()
+        );
+
+        List<ProveedorListDTO> proveedores = rows.stream()
+                .map(ProveedorListDTO::fromRow)
+                .collect(Collectors.toList());
+
+        return new ProveedoresPageResponse(
+                proveedores,
+                paging.page(),
+                paging.limit(),
+                paging.totalPages(),
+                totalRegistros
+        );
     }
 
     @Override
