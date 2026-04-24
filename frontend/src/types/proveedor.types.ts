@@ -126,6 +126,22 @@ export interface IProveedorProductoUpdateDTO {
   precioProducto: string;
 }
 
+/**
+ * DTO para un producto disponible que puede ser asignado a un proveedor.
+ * Mapea ProductoDisponibleDTO del backend.
+ * Incluye información del producto, categoría y unidad de medida.
+ */
+export interface IProductoDisponibleDTO {
+  idProducto: number;
+  nombreProducto: string;
+  idCategoria: number;
+  nombreCategoria: string;
+  idUnidad: number;
+  nombreUnidad: string;
+  abreviatura: string;
+  esFraccionario: boolean;
+}
+
 // ── Cotización por rango de fechas ────────────────────────────────────────────
 
 /**

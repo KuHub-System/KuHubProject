@@ -201,6 +201,47 @@ public interface ProveedorRepository extends JpaRepository<Proveedor, Integer> {
     List<Object[]> findProveedoresPorProducto(@Param("idProducto") Integer idProducto);
 
     /**
+     * Lista productos disponibles para asignar a un proveedor como JSON.
+     * Incluye:
+     * - Todos los productos activos que NO están asignados (activo=true) al proveedor
+     * - Productos que ESTÁN asignados pero deshabilitados (activo=false) para reactivarlos
+     * Retorna JSON array con estructura: { id_producto, nombre_producto, id_categoria, nombre_categoria, id_unidad, nombre_unidad, abreviatura, es_fraccionario }
+     */
+    @Query(value = """
+            SELECT COALESCE(
+                json_agg(
+                    json_build_object(
+                        'id_producto', p.id_producto,
+                        'nombre_producto', p.nombre_producto,
+                        'id_categoria', c.id_categoria,
+                        'nombre_categoria', c.nombre_categoria,
+                        'id_unidad', u.id_unidad,
+                        'nombre_unidad', u.nombre_unidad,
+                        'abreviatura', u.abreviatura,
+                        'es_fraccionario', u.es_fraccionario
+                    )
+                    ORDER BY c.nombre_categoria ASC, p.nombre_producto ASC
+                ),
+            '[]'::json)
+            FROM producto p
+            JOIN categoria c ON c.id_categoria = p.id_categoria
+            JOIN unidad_medida u ON u.id_unidad = p.id_unidad
+            WHERE p.activo = TRUE
+              AND (:idCategoria IS NULL OR c.id_categoria = :idCategoria)
+              AND NOT EXISTS (
+                  SELECT 1
+                  FROM proveedor_producto pp
+                  WHERE pp.id_producto = p.id_producto
+                    AND pp.id_proveedor = :idProveedor
+                    AND pp.activo = TRUE
+              )
+            """, nativeQuery = true)
+    String findProductosDisponiblesParaProveedor(
+            @Param("idProveedor") Integer idProveedor,
+            @Param("idCategoria") Short idCategoria
+    );
+
+    /**
      * Cotización agrupada por proveedor (menor precio) con productos ordenados por categoría.
      * Los productos sin proveedor se agrupan al final.
      * Retorna JSON que debe deserializarse a CotizacionProveedorDTO.CotizacionResponse.

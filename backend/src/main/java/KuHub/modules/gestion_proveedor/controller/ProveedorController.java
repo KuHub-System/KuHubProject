@@ -5,6 +5,7 @@ import KuHub.modules.gestion_proveedor.dtos.request.ProveedorProductoAddDTO;
 import KuHub.modules.gestion_proveedor.dtos.request.ProveedorProductoUpdateDTO;
 import KuHub.modules.gestion_proveedor.dtos.request.ProveedorUpdateDTO;
 import KuHub.modules.gestion_proveedor.dtos.response.CotizacionProveedorDTO;
+import KuHub.modules.gestion_proveedor.dtos.response.ProductoDisponibleDTO;
 import KuHub.modules.gestion_proveedor.dtos.response.ProveedorDetalleDTO;
 import KuHub.modules.gestion_proveedor.dtos.response.ProveedorListDTO;
 import KuHub.modules.gestion_proveedor.dtos.response.ProveedoresPageResponse;
@@ -147,6 +148,26 @@ public class ProveedorController {
         return ResponseEntity
                 .status(200)
                 .body(proveedorService.obtenerDetalle(id));
+    }
+
+    /**
+     * Lista productos disponibles para asignar a un proveedor.
+     * ✅ En uso: Consumido por obtenerProductosDisponiblesService en proveedor-service.ts (nueva versión).
+     * Retorna todos los productos activos EXCEPTO los que están asignados con estado activo.
+     * Incluye productos con estado inactivo para poder reactivarlos.
+     *
+     * @param idProveedor ID del proveedor
+     * @param idCategoria ID de categoría para filtrar (opcional)
+     * @return Lista de productos disponibles con información de categoría y unidad
+     */
+    @GetMapping("/{idProveedor}/productos-disponibles")
+    public ResponseEntity<List<ProductoDisponibleDTO>> obtenerProductosDisponibles(
+            @PathVariable Integer idProveedor,
+            @RequestParam(required = false) Short idCategoria
+    ) {
+        return ResponseEntity
+                .status(200)
+                .body(proveedorService.obtenerProductosDisponibles(idProveedor, idCategoria));
     }
 
     /**

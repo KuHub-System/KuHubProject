@@ -8,6 +8,7 @@ import KuHub.modules.gestion_proveedor.dtos.request.ProveedorUpdateDTO;
 import KuHub.modules.gestion_proveedor.dtos.response.CotizacionProveedorDTO;
 import KuHub.modules.gestion_proveedor.dtos.response.DiaEntregaResponseDTO;
 import KuHub.modules.gestion_proveedor.dtos.response.ProductoConPrecioDTO;
+import KuHub.modules.gestion_proveedor.dtos.response.ProductoDisponibleDTO;
 import KuHub.modules.gestion_proveedor.dtos.response.ProveedorDetalleDTO;
 import KuHub.modules.gestion_proveedor.dtos.response.ProveedorListDTO;
 import KuHub.modules.gestion_proveedor.dtos.response.ProveedoresPageResponse;
@@ -580,7 +581,33 @@ public class ProveedorServiceImpl implements ProveedorService {
     }
 
     // ══════════════════════════════════════════════════════════════
-    // 6. CONSULTAS DE COTIZACIÓN
+    // 6. PRODUCTOS DISPONIBLES PARA ASIGNAR
+    // ══════════════════════════════════════════════════════════════
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ProductoDisponibleDTO> obtenerProductosDisponibles(Integer idProveedor, Short idCategoria) {
+        findById(idProveedor);
+
+        String jsonStr = proveedorRepository.findProductosDisponiblesParaProveedor(idProveedor, idCategoria);
+
+        try {
+            if (jsonStr == null || jsonStr.isBlank() || "null".equals(jsonStr) || "[]".equals(jsonStr)) {
+                return List.of();
+            }
+
+            return objectMapper.readValue(jsonStr, new com.fasterxml.jackson.databind.type.TypeReference<List<ProductoDisponibleDTO>>() {});
+        } catch (Exception e) {
+            log.error("Error deserializando productos disponibles JSON para proveedor ID={}: {}", idProveedor, e.getMessage());
+            throw new GestionProveedorException(
+                    "Error al procesar la lista de productos disponibles",
+                    HttpStatus.INTERNAL_SERVER_ERROR
+            );
+        }
+    }
+
+    // ══════════════════════════════════════════════════════════════
+    // 7. CONSULTAS DE COTIZACIÓN
     // ══════════════════════════════════════════════════════════════
 
     @Override
