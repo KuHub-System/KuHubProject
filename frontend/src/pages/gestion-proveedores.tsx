@@ -372,6 +372,9 @@ const GestionProveedoresPage: React.FC = () => {
   // ── Precio inline ──
   const [editingPrecio, setEditingPrecio] = React.useState<{ idProveedorProducto: number } | null>(null);
   const [precioTemp, setPrecioTemp] = React.useState('');
+
+  // ── Filtro mostrar inactivos ──
+  const [mostrarInactivos, setMostrarInactivos] = React.useState(true);
   const [savingPrecio, setSavingPrecio] = React.useState(false);
 
   // ── Modal cotización ──
@@ -932,6 +935,8 @@ const GestionProveedoresPage: React.FC = () => {
                                   onCancelarEditPrecio={() => setEditingPrecio(null)}
                                   onToggleProducto={handleToggleProducto}
                                   onQuitarProducto={handleConfirmarQuitarProducto}
+                                  mostrarInactivos={mostrarInactivos}
+                                  onMostrarInactivosChange={setMostrarInactivos}
                                 />
                               ) : (
                                 <div className="flex justify-center py-6">
@@ -1085,17 +1090,17 @@ const GestionProveedoresPage: React.FC = () => {
               <ModalHeader className="border-b border-default-200 dark:border-default-100 bg-gradient-to-r from-warning/10 to-warning/5 dark:from-warning/20 dark:to-warning/10 px-6 py-4">
                 <div className="flex items-center gap-3">
                   <div className="p-2 bg-warning/20 rounded-lg">
-                    <Icon icon="lucide:package-minus" className="text-warning" width={20} />
+                    <Icon icon="lucide:circle-off" className="text-warning" width={20} />
                   </div>
                   <span className="font-bold text-lg text-secondary dark:text-foreground">
-                    Quitar Producto
+                    Desabilitar Producto
                   </span>
                 </div>
               </ModalHeader>
               <ModalBody>
                 <p className="text-sm text-default-600">
-                  ¿Quitar <strong>{quitarTarget?.nombre}</strong> de este proveedor?
-                  La relación quedará inactiva pero se puede reactivar asignando el producto nuevamente.
+                  ¿Desabilitar <strong>{quitarTarget?.nombre}</strong> en este proveedor?
+                  El producto no aparecerá en cotizaciones pero se puede habilitar nuevamente en cualquier momento.
                 </p>
               </ModalBody>
               <ModalFooter className="bg-gradient-to-r from-default-50 to-default-50 dark:from-content2 dark:to-content2 border-t border-default-200 dark:border-default-100 gap-2 px-6 py-4">
@@ -1110,10 +1115,10 @@ const GestionProveedoresPage: React.FC = () => {
                     onClose();
                   }}
                   className="font-bold shadow-md cursor-pointer"
-                  startContent={<Icon icon="lucide:package-minus" width={16} />}
+                  startContent={<Icon icon="lucide:circle-off" width={16} />}
                   size="lg"
                 >
-                  Quitar
+                  Desabilitar
                 </Button>
               </ModalFooter>
             </>
@@ -1139,6 +1144,8 @@ interface ProductosProveedorProps {
   onCancelarEditPrecio: () => void;
   onToggleProducto: (idProveedor: number, prod: IProveedorProducto) => void;
   onQuitarProducto: (idProveedor: number, prod: IProveedorProducto) => void;
+  mostrarInactivos?: boolean;
+  onMostrarInactivosChange?: (mostrar: boolean) => void;
 }
 
 const ProductosProveedor: React.FC<ProductosProveedorProps> = ({
@@ -1153,6 +1160,8 @@ const ProductosProveedor: React.FC<ProductosProveedorProps> = ({
   onCancelarEditPrecio,
   onToggleProducto,
   onQuitarProducto,
+  mostrarInactivos = true,
+  onMostrarInactivosChange,
 }) => {
   const categorias = Object.keys(detalle.productosPorCategoria);
 
@@ -1164,8 +1173,31 @@ const ProductosProveedor: React.FC<ProductosProveedorProps> = ({
     );
   }
 
+  // Filtrar productos según mostrarInactivos
+  const filtrarProductos = (productos: typeof detalle.productosPorCategoria[string]) => {
+    return mostrarInactivos ? productos : productos.filter(p => p.activo);
+  };
+
   return (
     <div className="space-y-3 mt-2">
+      {/* Opción para esconder inactivos */}
+      {canEdit && (
+        <div className="flex items-center gap-2 px-2 pb-2">
+          <input
+            type="checkbox"
+            id={`esconderInactivos-${detalle.idProveedor}`}
+            checked={!mostrarInactivos}
+            onChange={(e) => onMostrarInactivosChange?.(!e.target.checked)}
+            className="w-4 h-4 rounded cursor-pointer"
+          />
+          <label
+            htmlFor={`esconderInactivos-${detalle.idProveedor}`}
+            className="text-xs text-default-500 cursor-pointer hover:text-default-700 transition-colors"
+          >
+            Esconder deshabilitados
+          </label>
+        </div>
+      )}
       {categorias.map((categoria) => (
         <div key={categoria}>
           <p className="text-xs font-semibold text-default-500 uppercase tracking-wide mb-1">
@@ -1184,14 +1216,18 @@ const ProductosProveedor: React.FC<ProductosProveedorProps> = ({
                 </tr>
               </thead>
               <tbody>
-                {detalle.productosPorCategoria[categoria].map((prod) => {
+                {filtrarProductos(detalle.productosPorCategoria[categoria]).map((prod) => {
                   const isEditing =
                     editingPrecio?.idProveedorProducto === prod.idProveedorProducto;
 
                   return (
                     <tr
                       key={prod.idProveedorProducto}
-                      className="border-t border-default-100 dark:border-default-50 hover:bg-default-50 dark:hover:bg-default-100/20"
+                      className={`border-t border-default-100 dark:border-default-50 ${
+                        prod.activo
+                          ? 'hover:bg-default-50 dark:hover:bg-default-100/20'
+                          : 'bg-default-50/30 dark:bg-default-100/10 opacity-60'
+                      }`}
                     >
                       <td className="py-2 px-3 font-medium text-center max-w-xs">
                         <span title={prod.nombreProducto} className="truncate block">
@@ -1256,29 +1292,25 @@ const ProductosProveedor: React.FC<ProductosProveedorProps> = ({
                           : '—'}
                       </td>
                       {canEdit && (
-                        <td className="py-2 px-3 text-center space-x-1">
-                          <Button
-                            isIconOnly
-                            size="sm"
-                            variant="light"
-                            title={prod.activo ? 'Deshabilitar producto' : 'Habilitar producto'}
-                            onPress={() => onToggleProducto(detalle.idProveedor, prod)}
-                            className={prod.activo ? 'text-default-400 hover:text-warning' : 'text-warning'}
-                          >
-                            <Icon
-                              icon={prod.activo ? 'lucide:eye' : 'lucide:eye-off'}
-                              width={15}
-                            />
-                          </Button>
-                          <Button
-                            isIconOnly
-                            size="sm"
-                            variant="light"
-                            title="Eliminar producto"
-                            onPress={() => onQuitarProducto(detalle.idProveedor, prod)}
-                          >
-                            <Icon icon="lucide:trash-2" className="text-default-400 hover:text-danger" width={15} />
-                          </Button>
+                        <td className="py-2 px-3 text-center">
+                          <Tooltip content={prod.activo ? 'Deshabilitar producto' : 'Habilitar producto'}>
+                            <Button
+                              isIconOnly
+                              size="sm"
+                              variant="light"
+                              onPress={() =>
+                                prod.activo
+                                  ? onQuitarProducto(detalle.idProveedor, prod)
+                                  : onToggleProducto(detalle.idProveedor, prod)
+                              }
+                              className={prod.activo ? 'text-success hover:text-danger' : 'text-warning hover:text-success'}
+                            >
+                              <Icon
+                                icon={prod.activo ? 'lucide:check-circle-2' : 'lucide:circle-x'}
+                                width={18}
+                              />
+                            </Button>
+                          </Tooltip>
                         </td>
                       )}
                     </tr>
