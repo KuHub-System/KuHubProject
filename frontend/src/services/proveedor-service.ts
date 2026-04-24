@@ -273,13 +273,15 @@ export const quitarProductoProveedorService = async (
 /**
  * Habilita/deshabilita un producto del proveedor (toggle).
  * PATCH /api/v1/proveedor/{id}/productos/{pid}/toggle → 200 OK
+ * [CAMBIO 2026-04-24] Retorna boolean para validar cambio exitoso.
  */
 export const toggleProductoProveedorService = async (
   idProveedor: number,
   idProducto: number
-): Promise<void> => {
+): Promise<boolean> => {
   try {
-    await api.patch(`/proveedor/${idProveedor}/productos/${idProducto}/toggle`);
+    const response = await api.patch<boolean>(`/proveedor/${idProveedor}/productos/${idProducto}/toggle`);
+    return response.data;
   } catch (error: any) {
     if (error.response?.status === 404) {
       throw new Error(

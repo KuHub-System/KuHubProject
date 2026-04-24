@@ -423,7 +423,7 @@ public class ProveedorServiceImpl implements ProveedorService {
 
     @Override
     @Transactional
-    public void toggleProducto(Integer idProveedor, Integer idProducto) {
+    public boolean toggleProducto(Integer idProveedor, Integer idProducto) {
         ProveedorProducto relacion = proveedorProductoRepository
                 .findByProveedor_IdProveedorAndProducto_IdProducto(idProveedor, idProducto)
                 .orElseThrow(() -> new GestionProveedorException(
@@ -438,6 +438,7 @@ public class ProveedorServiceImpl implements ProveedorService {
 
         log.info("Producto toggle: Proveedor ID={} | Producto ID={} | Nuevo estado: {}",
                 idProveedor, idProducto, nuevoEstado ? "HABILITADO" : "DESHABILITADO");
+        return true;
     }
 
     // ══════════════════════════════════════════════════════════════
