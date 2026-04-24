@@ -545,6 +545,33 @@ const GestionProveedoresPage: React.FC = () => {
     });
   }, [paginatedProveedores, globalProductSearch, detalleCache]);
 
+  // ── Cargar todos los detalles cuando hay búsqueda global (con debounce) ────────
+
+  React.useEffect(() => {
+    if (!globalProductSearch.trim()) return;
+
+    const timer = setTimeout(async () => {
+      // Cargar detalles de todos los proveedores que no estén en caché
+      const proveedoresACargar = proveedores.filter(p => !detalleCache[p.idProveedor]);
+
+      if (proveedoresACargar.length === 0) return;
+
+      for (const proveedor of proveedoresACargar) {
+        if (!detalleCache[proveedor.idProveedor]) {
+          try {
+            const detalle = await obtenerProveedorDetalleService(proveedor.idProveedor);
+            setDetalleCache(prev => ({ ...prev, [proveedor.idProveedor]: detalle }));
+          } catch (err) {
+            // Silenciosamente ignorar errores de carga individual
+            console.warn(`No se pudo cargar detalle de proveedor ${proveedor.idProveedor}`);
+          }
+        }
+      }
+    }, 500); // Debounce de 500ms
+
+    return () => clearTimeout(timer);
+  }, [globalProductSearch, proveedores, detalleCache]);
+
   // ── Auto-expandir cuando hay búsqueda global ──────────────────────────────────
 
   React.useEffect(() => {
@@ -1115,6 +1142,7 @@ const GestionProveedoresPage: React.FC = () => {
                                   onQuitarProducto={handleConfirmarQuitarProducto}
                                   mostrarInactivos={mostrarInactivos}
                                   onMostrarInactivosChange={setMostrarInactivos}
+                                  globalProductSearch={globalProductSearch}
                                 />
                               ) : (
                                 <div className="flex justify-center py-6">
@@ -1328,6 +1356,7 @@ interface ProductosProveedorProps {
   onQuitarProducto: (idProveedor: number, prod: IProveedorProducto) => void;
   mostrarInactivos?: boolean;
   onMostrarInactivosChange?: (mostrar: boolean) => void;
+  globalProductSearch?: string;
 }
 
 const ProductosProveedor: React.FC<ProductosProveedorProps> = ({
@@ -1344,12 +1373,20 @@ const ProductosProveedor: React.FC<ProductosProveedorProps> = ({
   onQuitarProducto,
   mostrarInactivos = true,
   onMostrarInactivosChange,
+  globalProductSearch = '',
 }) => {
   const categorias = Object.keys(detalle.productosPorCategoria);
   const [expandedCategories, setExpandedCategories] = React.useState<Set<string>>(
     new Set(categorias)
   );
   const [searchQuery, setSearchQuery] = React.useState('');
+
+  // Auto-establecer búsqueda local si viene búsqueda global
+  React.useEffect(() => {
+    if (globalProductSearch && !searchQuery) {
+      setSearchQuery(globalProductSearch);
+    }
+  }, [globalProductSearch]);
 
   if (categorias.length === 0) {
     return (
@@ -1359,14 +1396,24 @@ const ProductosProveedor: React.FC<ProductosProveedorProps> = ({
     );
   }
 
-  // Filtrar productos según mostrarInactivos y búsqueda
+  // Filtrar productos según mostrarInactivos, búsqueda local Y búsqueda global
   const filtrarProductos = (productos: typeof detalle.productosPorCategoria[string]) => {
     let filtered = mostrarInactivos ? productos : productos.filter(p => p.activo);
+
+    // Filtrar por búsqueda local
     if (searchQuery.trim()) {
       filtered = filtered.filter(p =>
         p.nombreProducto.toLowerCase().includes(searchQuery.toLowerCase())
       );
     }
+
+    // Filtrar por búsqueda global (si existe y es diferente a la local)
+    if (globalProductSearch && globalProductSearch !== searchQuery) {
+      filtered = filtered.filter(p =>
+        p.nombreProducto.toLowerCase().includes(globalProductSearch.toLowerCase())
+      );
+    }
+
     return filtered;
   };
 
