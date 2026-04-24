@@ -194,7 +194,7 @@ const renderEstado = (estado: EstadoProveedor) => {
 const renderDisponibilidad = (activo: boolean) => {
   return activo
     ? <Chip color="success" size="sm" variant="flat">Activo</Chip>
-    : <Chip color="warning" size="sm" variant="flat">Inactivo</Chip>;
+    : <Chip color="warning" size="sm" variant="flat">Desabilitado</Chip>;
 };
 
 const formatPrecio = (precio: number) =>
@@ -631,16 +631,32 @@ const GestionProveedoresPage: React.FC = () => {
   const handleToggleProducto = async (idProveedor: number, prod: IProveedorProducto) => {
     try {
       const nuevoEstado = !prod.activo;
-      await toggleProductoProveedorService(idProveedor, prod.idProducto);
-      showToast(
-        nuevoEstado
-          ? `Producto "${prod.nombreProducto}" habilitado`
-          : `Producto "${prod.nombreProducto}" deshabilitado`,
-        nuevoEstado ? 'success' : 'warning'
-      );
-      invalidarCacheProveedor(idProveedor);
-      const detalle = await obtenerProveedorDetalleService(idProveedor);
-      setDetalleCache(prev => ({ ...prev, [idProveedor]: detalle }));
+      const resultado = await toggleProductoProveedorService(idProveedor, prod.idProducto);
+
+      if (resultado) {
+        showToast(
+          nuevoEstado
+            ? `Producto "${prod.nombreProducto}" habilitado`
+            : `Producto "${prod.nombreProducto}" deshabilitado`,
+          nuevoEstado ? 'success' : 'warning'
+        );
+        // ✅ Actualizar en memoria sin hacer segunda petición
+        setDetalleCache(prev => {
+          const updated = { ...prev };
+          const detalle = updated[idProveedor];
+          if (detalle) {
+            Object.keys(detalle.productosPorCategoria).forEach(categoria => {
+              detalle.productosPorCategoria[categoria] = detalle.productosPorCategoria[categoria].map(p => {
+                if (p.idProducto === prod.idProducto) {
+                  return { ...p, activo: nuevoEstado };
+                }
+                return p;
+              });
+            });
+          }
+          return updated;
+        });
+      }
     } catch (err: any) {
       showToast(err.message || 'Error al cambiar el estado del producto', 'error');
     }
@@ -1180,7 +1196,7 @@ const ProductosProveedor: React.FC<ProductosProveedorProps> = ({
 
   return (
     <div className="space-y-3 mt-2">
-      {/* Opción para esconder inactivos */}
+      {/* Opción para mostrar/esconder deshabilitados */}
       {canEdit && (
         <div className="flex items-center gap-2 px-2 pb-2">
           <input
@@ -1188,13 +1204,13 @@ const ProductosProveedor: React.FC<ProductosProveedorProps> = ({
             id={`esconderInactivos-${detalle.idProveedor}`}
             checked={!mostrarInactivos}
             onChange={(e) => onMostrarInactivosChange?.(!e.target.checked)}
-            className="w-4 h-4 rounded cursor-pointer"
+            className="w-4 h-4 rounded cursor-pointer accent-warning"
           />
           <label
             htmlFor={`esconderInactivos-${detalle.idProveedor}`}
             className="text-xs text-default-500 cursor-pointer hover:text-default-700 transition-colors"
           >
-            Esconder deshabilitados
+            {mostrarInactivos ? 'Esconder deshabilitados' : 'Mostrar deshabilitados'}
           </label>
         </div>
       )}
