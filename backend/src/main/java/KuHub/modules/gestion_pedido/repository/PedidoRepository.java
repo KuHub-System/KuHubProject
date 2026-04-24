@@ -669,16 +669,14 @@ public interface PedidoRepository extends JpaRepository<Pedido, Integer> {
                         'nombreProducto',  prod.nombre_producto,
                         'unidadMedida',    um.nombre_unidad,
                         'abreviatura',     um.abreviatura,
-                        'cantidadTotal',   resumen.cantidad_total,
-                        'vecesEnPedidos',  resumen.veces_en_pedidos
+                        'cantidadTotal',   resumen.cantidad_total
                     )
                     ORDER BY resumen.cantidad_total DESC
                 )
                 FROM (
                     SELECT
                         dp.id_producto,
-                        SUM(dp.cant_producto_pedido)  AS cantidad_total,
-                        COUNT(DISTINCT dp.id_pedido)  AS veces_en_pedidos
+                        SUM(dp.cant_producto_pedido)  AS cantidad_total
                     FROM detalle_pedido dp
                     JOIN pedido p ON p.id_pedido = dp.id_pedido
                     WHERE p.fecha_inicio_pedido BETWEEN :fechaInicio AND :fechaFin

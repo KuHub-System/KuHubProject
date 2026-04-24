@@ -21,15 +21,14 @@ public record ResumenHistoricoResponse(
     /**
      * Detalle de cada producto en el resumen.
      */
-    @JsonPropertyOrder({"idProducto", "codProducto", "nombreProducto", "unidadMedida", "abreviatura", "cantidadTotal", "vecesEnPedidos"})
+    @JsonPropertyOrder({"idProducto", "codProducto", "nombreProducto", "unidadMedida", "abreviatura", "cantidadTotal"})
     public record ProductoResumenItem(
             Integer idProducto,
             String codProducto,
             String nombreProducto,
             String unidadMedida,
             String abreviatura,
-            BigDecimal cantidadTotal,
-            Integer vecesEnPedidos
+            BigDecimal cantidadTotal
     ) {
         /**
          * Factory para convertir desde Object[] de consulta nativa.
@@ -40,7 +39,6 @@ public record ResumenHistoricoResponse(
          * [3] nombre_unidad (String)
          * [4] abreviatura (String)
          * [5] cantidad_total (BigDecimal)
-         * [6] veces_en_pedidos (Integer)
          */
         public static ProductoResumenItem fromRow(Object[] row) {
             return new ProductoResumenItem(
@@ -49,8 +47,7 @@ public record ResumenHistoricoResponse(
                     (String) row[2],
                     (String) row[3],
                     (String) row[4],
-                    new BigDecimal(row[5].toString()),
-                    ((Number) row[6]).intValue()
+                    new BigDecimal(row[5].toString())
             );
         }
     }
