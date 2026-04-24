@@ -343,8 +343,6 @@ const GestionProveedoresPage: React.FC = () => {
   // ── Filtros ──
   const [searchTerm, setSearchTerm] = React.useState('');
   const [filtroEstado, setFiltroEstado] = React.useState('');
-  const [currentPage, setCurrentPage] = React.useState(1);
-  const rowsPerPage = 8;
 
   // ── Filas expandidas ──
   const [expandedRows, setExpandedRows] = React.useState<Set<number>>(new Set());
@@ -372,10 +370,11 @@ const GestionProveedoresPage: React.FC = () => {
     return [];
   });
 
-  // ── Paginación ──
+  // ── Scroll infinito ──
   const [currentPage, setCurrentPage] = React.useState(1);
-  const [totalPages, setTotalPages] = React.useState(1);
   const [totalRegistros, setTotalRegistros] = React.useState(0);
+  const nextPageRef = React.useRef(1);
+  const isLoadingRef = React.useRef(false);
 
   // ── Modal confirmar eliminar proveedor ──
   const { isOpen: isDelModal, onOpen: openDelModal, onOpenChange: onDelModalChange } = useDisclosure();
@@ -410,38 +409,81 @@ const GestionProveedoresPage: React.FC = () => {
 
   // ── Carga inicial ─────────────────────────────────────────────────────────
 
-  const cargarProveedores = React.useCallback(async (page: number = 1) => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const response = await obtenerProveedoresPaginadoService(
-        filtroEstado || undefined,
-        searchTerm || undefined,
-        page
-      );
-      setProveedores(response.data);
-      setCurrentPage(response.page);
-      setTotalPages(response.totalPaginas);
-      setTotalRegistros(response.totalRegistros);
-    } catch (err: any) {
-      setError(err.message || 'Error al cargar proveedores');
-    } finally {
-      setIsLoading(false);
-    }
-  }, [filtroEstado, searchTerm]);
+  const cargarProveedoresPaginados = React.useCallback(
+    async (page: number = 1, reset: boolean = false) => {
+      if (isLoadingRef.current) return;
+      isLoadingRef.current = true;
+      setIsLoading(true);
+
+      if (reset) {
+        setError(null);
+        setProveedores([]);
+        nextPageRef.current = 1;
+      }
+
+      try {
+        const response = await obtenerProveedoresPaginadoService(
+          filtroEstado || undefined,
+          searchTerm || undefined,
+          page
+        );
+
+        setProveedores((prev) => {
+          const existing = reset ? [] : prev;
+          const nuevosIds = new Set(existing.map((p) => p.idProveedor));
+          const nuevosProveedores = response.data.filter(
+            (p) => !nuevosIds.has(p.idProveedor)
+          );
+          return [...existing, ...nuevosProveedores];
+        });
+
+        setCurrentPage(response.page);
+        setTotalRegistros(response.totalRegistros);
+        nextPageRef.current = response.page + 1;
+      } catch (err: any) {
+        setError(err.message || 'Error al cargar proveedores');
+      } finally {
+        setIsLoading(false);
+        isLoadingRef.current = false;
+      }
+    },
+    [filtroEstado, searchTerm]
+  );
 
   React.useEffect(() => {
     const timer = setTimeout(() => {
-      cargarProveedores(1);
+      cargarProveedoresPaginados(1, true);
     }, 300);
     return () => clearTimeout(timer);
-  }, [cargarProveedores]);
+  }, [cargarProveedoresPaginados]);
 
-  // ── Paginación ────────────────────────────────────────────────────────────
+  // ── Scroll infinito ────────────────────────────────────────────────────────
 
   const paginatedProveedores = React.useMemo(() => {
     return proveedores;
   }, [proveedores]);
+
+  /** Maneja el scroll global para cargar más proveedores. */
+  React.useEffect(() => {
+    const onScroll = () => {
+      if (isLoading || isLoadingRef.current) return;
+
+      const scrollY = window.scrollY;
+      const windowHeight = window.innerHeight;
+      const fullHeight = document.documentElement.scrollHeight;
+
+      // Gatillo: cargamos cuando faltan 3000px para el final
+      if (scrollY + windowHeight > fullHeight - 3000) {
+        if (proveedores.length < totalRegistros) {
+          const pageToLoad = nextPageRef.current;
+          cargarProveedoresPaginados(pageToLoad);
+        }
+      }
+    };
+
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, [isLoading, proveedores.length, totalRegistros, cargarProveedoresPaginados]);
 
   // ── Expansión de filas ────────────────────────────────────────────────────
 
@@ -998,16 +1040,10 @@ const GestionProveedoresPage: React.FC = () => {
               </div>
             )}
 
-            {/* Paginación */}
-            {totalPages > 1 && (
-              <div className="flex w-full justify-center pt-2">
-                <Pagination
-                  total={totalPages}
-                  page={currentPage}
-                  onChange={(page) => cargarProveedores(page)}
-                  showControls
-                  color="primary"
-                />
+            {/* Indicador de carga infinita */}
+            {isLoading && proveedores.length > 0 && (
+              <div className="flex w-full justify-center py-8">
+                <Spinner size="sm" color="primary" />
               </div>
             )}
           </>
