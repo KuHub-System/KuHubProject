@@ -208,15 +208,15 @@ export const agregarProductoProveedorService = async (
 
 /**
  * Actualiza el precio de un producto asignado a un proveedor.
- * PATCH /api/v1/proveedor/{id}/productos/{pid} → 200 OK
+ * PATCH /api/v1/proveedor/productos/{idProveedorProducto} → 200 OK
+ * [CAMBIO 2026-04-24] Actualizado a usar idProveedorProducto (PK) en lugar de dos IDs separados.
  */
 export const actualizarPrecioProductoService = async (
-  idProveedor: number,
-  idProducto: number,
+  idProveedorProducto: number,
   dto: IProveedorProductoUpdateDTO
 ): Promise<void> => {
   try {
-    await api.patch(`/proveedor/${idProveedor}/productos/${idProducto}`, dto);
+    await api.patch(`/proveedor/productos/${idProveedorProducto}`, dto);
   } catch (error: any) {
     if (error.response?.status === 404) {
       throw new Error(

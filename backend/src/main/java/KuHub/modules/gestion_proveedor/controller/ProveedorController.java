@@ -116,11 +116,11 @@ public class ProveedorController {
 
     /**
      * Lista los productos asignados a un proveedor, agrupados por categoría.
-     * ✅ En uso: Este endpoint devuelve ProveedorDetalleDTO (mismo que GET /{id}) y se consume internamente
-     * cuando se expande la fila de un proveedor en la tabla de gestion-proveedores.tsx.
-     * La expansión carga productos y días de entrega para visualización en la tabla.
+     * ⬜ Sin uso frontend: Este endpoint es redundante con GET /{id} que ya trae productos.
+     * Se mantiene por compatibilidad. Prefiere usar GET /{id} directamente.
      *
      * @param id ID del proveedor
+     * @deprecated Usar GET /{id} en su lugar
      */
     @GetMapping("/{id}/productos")
     public ResponseEntity<ProveedorDetalleDTO> findProductosByProveedor(@PathVariable Integer id) {
@@ -150,18 +150,18 @@ public class ProveedorController {
      * Actualiza el precio de un producto asignado a un proveedor.
      * ✅ En uso: Consumido por actualizarPrecioProductoService en proveedor-service.ts.
      * Se llama desde la tabla de productos en el modal de detalle/edición del proveedor.
+     * [CAMBIO 2026-04-24] Endpoint actualizado a usar idProveedorProducto (PK) en lugar de dos IDs.
+     * Simplifica la consulta y evita ambigüedades con dos path parameters.
      *
-     * @param id  ID del proveedor
-     * @param pid ID del producto
-     * @param dto Nuevo precio del producto
+     * @param idProveedorProducto ID de la relación proveedor-producto (PK)
+     * @param dto Nuevo precio del producto (formato chileno: 1.234,567)
      */
-    @PatchMapping("/{id}/productos/{pid}")
+    @PatchMapping("/productos/{idProveedorProducto}")
     public ResponseEntity<Void> actualizarPrecio(
-            @PathVariable Integer id,
-            @PathVariable Integer pid,
+            @PathVariable Long idProveedorProducto,
             @Valid @RequestBody ProveedorProductoUpdateDTO dto
     ) {
-        proveedorService.actualizarPrecio(id, pid, dto);
+        proveedorService.actualizarPrecio(idProveedorProducto, dto);
         return ResponseEntity.status(200).build();
     }
 
