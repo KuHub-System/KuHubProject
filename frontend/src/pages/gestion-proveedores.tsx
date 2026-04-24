@@ -1325,10 +1325,12 @@ const ProductosProveedor: React.FC<ProductosProveedorProps> = ({
                           : 'bg-default-50/30 dark:bg-default-100/10 opacity-60'
                       }`}
                     >
-                      <td className="py-2 px-3 font-medium text-center max-w-xs">
-                        <span title={prod.nombreProducto} className="truncate block">
-                          {prod.nombreProducto}
-                        </span>
+                      <td className="py-2 px-3 font-medium text-center" style={{ maxWidth: '200px' }}>
+                        <Tooltip content={prod.nombreProducto} color="foreground" className="text-xs">
+                          <span className="truncate block cursor-help">
+                            {prod.nombreProducto}
+                          </span>
+                        </Tooltip>
                       </td>
                       <td className="py-2 px-3 text-default-500 text-center">
                         {prod.abreviatura || prod.nombreUnidad}

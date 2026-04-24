@@ -4,6 +4,7 @@
  */
 
 import React, { createContext, useContext, useState, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Modal,
   ModalContent,
@@ -172,55 +173,63 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     <NotificationContext.Provider value={{ showNotification, showConfirm }}>
       {children}
 
-      {/* Modal de Notificación */}
-      <AnimatePresence>
-        {isNotificationOpen && notification && (() => {
-          const config = getNotificationConfig(notification.type);
-          return (
-            <motion.div
-              initial={{ opacity: 0, x: 40 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, y: -16, transition: { duration: 1.0, ease: 'easeIn' } }}
-              transition={{ duration: 0.35, ease: 'easeOut' }}
-              className="fixed top-6 right-6 z-[9999]"
-              style={{ minWidth: 320, maxWidth: 420, pointerEvents: 'auto' }}
-            >
-              <div
-                className={`
-                  flex items-start gap-4 px-5 py-4 rounded-2xl shadow-xl border
-                  ${config.bgColor} ${config.borderColor}
-                  w-full
-                `}
-                style={{ minWidth: 320, maxWidth: 420, boxShadow: '0 8px 32px rgba(0,0,0,0.13)' }}
+      {/* Modal de Notificación - Renderizado en Portal para asegurar z-index correcto */}
+      {createPortal(
+        <AnimatePresence>
+          {isNotificationOpen && notification && (() => {
+            const config = getNotificationConfig(notification.type);
+            return (
+              <motion.div
+                initial={{ opacity: 0, x: 40 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, y: -16, transition: { duration: 1.0, ease: 'easeIn' } }}
+                transition={{ duration: 0.35, ease: 'easeOut' }}
+                className="fixed top-6 right-6"
+                style={{
+                  minWidth: 320,
+                  maxWidth: 420,
+                  pointerEvents: 'auto',
+                  zIndex: 999999  // ✅ Asegurar que está por encima de todo
+                }}
               >
-                <motion.div
-                  className="mt-0.5 shrink-0"
-                  animate={notification.animate ? { scale: [1, 1.18, 1], opacity: [1, 0.7, 1] } : {}}
-                  transition={notification.animate ? { duration: 1.5, repeat: Infinity, ease: 'easeInOut' } : {}}
+                <div
+                  className={`
+                    flex items-start gap-4 px-5 py-4 rounded-2xl shadow-xl border
+                    ${config.bgColor} ${config.borderColor}
+                    w-full
+                  `}
+                  style={{ minWidth: 320, maxWidth: 420, boxShadow: '0 8px 32px rgba(0,0,0,0.13)' }}
                 >
-                  <Icon icon={config.icon} className={`text-3xl ${config.textColor}`} />
-                </motion.div>
-                <div className="flex-1 min-w-0">
-                  <p className={`font-bold text-base ${config.textColor}`}>
-                    {notification.title || 'Notificación'}
-                  </p>
-                  <p className="text-default-700 text-sm mt-0.5 text-justify leading-snug">
-                    {notification.message}
-                  </p>
-                </div>
-                {notification.duration === 0 && (
-                  <button
-                    onClick={handleNotificationClose}
-                    className="shrink-0 mt-0.5 text-default-400 hover:text-default-600 transition-colors"
+                  <motion.div
+                    className="mt-0.5 shrink-0"
+                    animate={notification.animate ? { scale: [1, 1.18, 1], opacity: [1, 0.7, 1] } : {}}
+                    transition={notification.animate ? { duration: 1.5, repeat: Infinity, ease: 'easeInOut' } : {}}
                   >
-                    <Icon icon="lucide:x" width={18} />
-                  </button>
-                )}
-              </div>
-            </motion.div>
-          );
-        })()}
-      </AnimatePresence>
+                    <Icon icon={config.icon} className={`text-3xl ${config.textColor}`} />
+                  </motion.div>
+                  <div className="flex-1 min-w-0">
+                    <p className={`font-bold text-base ${config.textColor}`}>
+                      {notification.title || 'Notificación'}
+                    </p>
+                    <p className="text-default-700 text-sm mt-0.5 text-justify leading-snug">
+                      {notification.message}
+                    </p>
+                  </div>
+                  {notification.duration === 0 && (
+                    <button
+                      onClick={handleNotificationClose}
+                      className="shrink-0 mt-0.5 text-default-400 hover:text-default-600 transition-colors"
+                    >
+                      <Icon icon="lucide:x" width={18} />
+                    </button>
+                  )}
+                </div>
+              </motion.div>
+            );
+          })()}
+        </AnimatePresence>,
+        document.body  // ✅ Renderizar fuera del Modal, en el body
+      )}
 
       {/* Modal de Confirmación */}
       <Modal
