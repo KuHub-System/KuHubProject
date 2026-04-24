@@ -137,7 +137,7 @@ public class PedidoController {
         );
 
         log.info("✅ Response recibida del service: {} productos distintos, {} pedidos",
-                response.getTotalProductosDistintos(), response.getTotalPedidos());
+                response.totalProductosDistintos(), response.totalPedidos());
         log.info("=== FIN obtenerResumenHistorico ===\n");
 
         return ResponseEntity.status(200).body(response);
