@@ -1,93 +1,130 @@
-Downloaded from central: https://repo.maven.apache.org/maven2/org/codehaus/plexus/plexus-compiler-javac/2.13.0/plexus-compiler-javac-2.13.0.jar (23 kB at 362 kB/s)
-#14 16.46 Downloading from central: https://repo.maven.apache.org/maven2/org/springframework/boot/spring-boot-configuration-processor/3.2.0/spring-boot-configuration-processor-3.2.0.pom
-#14 16.48 Progress (1): 1.0 kB
-Progress (1): 1.9 kB
-                    
-Downloaded from central: https://repo.maven.apache.org/maven2/org/springframework/boot/spring-boot-configuration-processor/3.2.0/spring-boot-configuration-processor-3.2.0.pom (1.9 kB at 94 kB/s)
-#14 16.48 Downloading from central: https://repo.maven.apache.org/maven2/org/springframework/boot/spring-boot-configuration-processor/3.2.0/spring-boot-configuration-processor-3.2.0.jar
-#14 16.50 Progress (1): 7.7/122 kB
-Progress (1): 16/122 kB 
-Progress (1): 24/122 kB
-Progress (1): 40/122 kB
-Progress (1): 57/122 kB
-Progress (1): 73/122 kB
-Progress (1): 90/122 kB
-Progress (1): 106/122 kB
-Progress (1): 122 kB    
-                    
-Downloaded from central: https://repo.maven.apache.org/maven2/org/springframework/boot/spring-boot-configuration-processor/3.2.0/spring-boot-configuration-processor-3.2.0.jar (122 kB at 7.6 MB/s)
-#14 16.55 [INFO] Changes detected - recompiling the module! :source
-release 21] to target/classes
-#14 27.42 [INFO] /app/backend/src/main/java/KuHub/config/security/filter/JwtAuthenticationFilter.java: /app/backend/src/main/java/KuHub/config/security/filter/JwtAuthenticationFilter.java uses unchecked or unsafe operations.
-#14 27.42 [INFO] /app/backend/src/main/java/KuHub/config/security/filter/JwtAuthenticationFilter.java: Recompile with -Xlint:unchecked for details.
-#14 27.42 [INFO] -------------------------------------------------------------
-#14 27.42 [WARNING] COMPILATION WARNING : 
-#14 27.42 [INFO] -------------------------------------------------------------
-#14 27.42 [WARNING] /app/backend/src/main/java/KuHub/modules/gestion_inventario/dtos/response/dto/MotionFilterRequestDTO.java:[30,20] @Builder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
-#14 27.42 [INFO] 1 warning
-#14 27.42 [INFO] -------------------------------------------------------------
-#14 27.42 [INFO] -------------------------------------------------------------
-#14 27.42 [ERROR] COMPILATION ERROR : 
-#14 27.42 [INFO] -------------------------------------------------------------
-#14 27.42 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_pedido/services/PedidoServiceImpl.java:[259,44] cannot find symbol
-#14 27.42   symbol:   variable estadosCsv
-#14 27.42   location: class KuHub.modules.gestion_pedido.services.PedidoServiceImpl
-#14 27.42 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_pedido/services/PedidoServiceImpl.java:[269,48] cannot find symbol
-#14 27.42   symbol:   variable estadosCsv
-#14 27.42   location: class KuHub.modules.gestion_pedido.services.PedidoServiceImpl
-#14 27.42 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_pedido/services/PedidoServiceImpl.java:[273,17] variable estados is already defined in method obtenerResumenHistorico(java.time.LocalDate,java.time.LocalDate,java.lang.String[])
-#14 27.42 [INFO] 3 errors 
-#14 27.42 [INFO] -------------------------------------------------------------
-#14 27.43 [INFO] ------------------------------------------------------------------------
-#14 27.43 [INFO] Reactor Summary for KuHub Monolitico Project 1.0-SNAPSHOT:
-#14 27.43 [INFO] 
-#14 27.43 [INFO] KuHub Monolitico Project ........................... SUCCESS [  0.349 s]
-#14 27.43 [INFO] backend ............................................ FAILURE [ 22.424 s]
-#14 27.43 [INFO] ------------------------------------------------------------------------
-#14 27.43 [INFO] BUILD FAILURE
-#14 27.43 [INFO] ------------------------------------------------------------------------
-#14 27.43 [INFO] Total time:  25.647 s
-#14 27.43 [INFO] Finished at: 2026-04-23T20:53:10Z
-#14 27.43 [INFO] ------------------------------------------------------------------------
-#14 27.43 [ERROR] Failed to execute goal org.apache.maven.plugins:maven-compiler-plugin:3.11.0:compile (default-compile) on project backend: Compilation failure: Compilation failure: 
-#14 27.43 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_pedido/services/PedidoServiceImpl.java:[259,44] cannot find symbol
-#14 27.43 [ERROR]   symbol:   variable estadosCsv
-#14 27.43 [ERROR]   location: class KuHub.modules.gestion_pedido.services.PedidoServiceImpl
-#14 27.43 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_pedido/services/PedidoServiceImpl.java:[269,48] cannot find symbol
-#14 27.43 [ERROR]   symbol:   variable estadosCsv
-#14 27.43 [ERROR]   location: class KuHub.modules.gestion_pedido.services.PedidoServiceImpl
-#14 27.43 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_pedido/services/PedidoServiceImpl.java:[273,17] variable estados is already defined in method obtenerResumenHistorico(java.time.LocalDate,java.time.LocalDate,java.lang.String[])
-#14 27.43 [ERROR] -> [Help 1]
-#14 27.43 [ERROR] 
-#14 27.43 [ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
-#14 27.43 [ERROR] Re-run Maven using the -X switch to enable full debug logging.
-#14 27.43 [ERROR] 
-#14 27.43 [ERROR] For more information about the errors and possible solutions, please read the following articles:
-#14 27.43 [ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoFailureException
-#14 27.43 [ERROR] 
-#14 27.43 [ERROR] After correcting the problems, you can resume the build with the command
-#14 27.43 [ERROR]   mvn <args> -rf :backend
-#14 ERROR: process "/bin/sh -c mvn clean package -pl backend -am -DskipTests" did not complete successfully: exit code: 1
-------
- > [build 5/5] RUN mvn clean package -pl backend -am -DskipTests:
-Error: ERROR] -> [Help 1]
-Error: ERROR] 
-Error: ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
-Error: ERROR] Re-run Maven using the -X switch to enable full debug logging.
-Error: ERROR] 
-Error: ERROR] For more information about the errors and possible solutions, please read the following articles:
-Error: ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoFailureException
-Error: ERROR] 
-Error: ERROR] After correcting the problems, you can resume the build with the command
-Error: ERROR]   mvn <args> -rf :backend
-------
-Dockerfile:12
---------------------
-  10 |     
-  11 |     # 3. Construimos solo el backend, pero con acceso al padre
-  12 | >>> RUN mvn clean package -pl backend -am -DskipTests
-  13 |     
-  14 |     # ETAPA 2: Run
---------------------
-ERROR: failed to build: failed to solve: process "/bin/sh -c mvn clean package -pl backend -am -DskipTests" did not complete successfully: exit code: 1
-Error: buildx failed with: ERROR: failed to build: failed to solve: process "/bin/sh -c mvn clean package -pl backend -am -DskipTests" did not complete successfully: exit code: 1
+utils-vendor-CkGtaPQr.js:11
+ POST https://appkuhub.questweb.cl/api/v1/pedido/resumen-historico 500 (Internal Server Error)
+(anonymous)	@	utils-vendor-CkGtaPQr.js:11
+xhr	@	utils-vendor-CkGtaPQr.js:11
+wo	@	utils-vendor-CkGtaPQr.js:13
+Promise.then
+_request	@	utils-vendor-CkGtaPQr.js:14
+request	@	utils-vendor-CkGtaPQr.js:13
+(anonymous)	@	utils-vendor-CkGtaPQr.js:14
+(anonymous)	@	utils-vendor-CkGtaPQr.js:9
+T	@	historico-pedidos-CcM4mlDD.js:1
+o	@	historico-pedidos-CcM4mlDD.js:1
+(anonymous)	@	ui-vendor-CtDyRhL-.js:10
+(anonymous)	@	ui-vendor-CtDyRhL-.js:10
+(anonymous)	@	ui-vendor-CtDyRhL-.js:10
+onClick	@	ui-vendor-CtDyRhL-.js:10
+Kc	@	react-vendor-BxMPNXTO.js:29
+Xc	@	react-vendor-BxMPNXTO.js:29
+Gc	@	react-vendor-BxMPNXTO.js:29
+ya	@	react-vendor-BxMPNXTO.js:29
+ga	@	react-vendor-BxMPNXTO.js:29
+(anonymous)	@	react-vendor-BxMPNXTO.js:29
+Ri	@	react-vendor-BxMPNXTO.js:32
+Cu	@	react-vendor-BxMPNXTO.js:29
+Ro	@	react-vendor-BxMPNXTO.js:29
+so	@	react-vendor-BxMPNXTO.js:29
+df	@	react-vendor-BxMPNXTO.js:29
+
+
+ubuntu@ip-172-26-1-143:~$ docker logs --tail 100 kuhub-backend
+        at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:227)
+        at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:137)
+        at org.springframework.security.web.context.SecurityContextHolderFilter.doFilter(SecurityContextHolderFilter.java:82)
+        at org.springframework.security.web.context.SecurityContextHolderFilter.doFilter(SecurityContextHolderFilter.java:69)
+        at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:240)
+        at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:227)
+        at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:137)
+        at org.springframework.security.web.context.request.async.WebAsyncManagerIntegrationFilter.doFilterInternal(WebAsyncManagerIntegrationFilter.java:62)
+        at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116)
+        at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:240)
+        at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:227)
+        at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:137)
+        at org.springframework.security.web.session.DisableEncodeUrlFilter.doFilterInternal(DisableEncodeUrlFilter.java:42)
+        at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116)
+        at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:240)
+        at org.springframework.security.web.ObservationFilterChainDecorator$AroundFilterObservation$SimpleAroundFilterObservation.lambda$wrap$0(ObservationFilterChainDecorator.java:323)
+        at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:224)
+        at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:137)
+        at org.springframework.security.web.FilterChainProxy.doFilterInternal(FilterChainProxy.java:233)
+        at org.springframework.security.web.FilterChainProxy.doFilter(FilterChainProxy.java:191)
+        at org.springframework.web.filter.CompositeFilter$VirtualFilterChain.doFilter(CompositeFilter.java:113)
+        at org.springframework.web.servlet.handler.HandlerMappingIntrospector.lambda$createCacheFilter$3(HandlerMappingIntrospector.java:243)
+        at org.springframework.web.filter.CompositeFilter$VirtualFilterChain.doFilter(CompositeFilter.java:113)
+        at org.springframework.web.filter.CompositeFilter.doFilter(CompositeFilter.java:74)
+        at org.springframework.security.config.annotation.web.configuration.WebMvcSecurityConfiguration$CompositeFilterChainProxy.doFilter(WebMvcSecurityConfiguration.java:238)
+        at org.springframework.web.filter.DelegatingFilterProxy.invokeDelegate(DelegatingFilterProxy.java:362)
+        at org.springframework.web.filter.DelegatingFilterProxy.doFilter(DelegatingFilterProxy.java:278)
+        at org.apache.catalina.core.ApplicationFilterChain.internalDoFilter(ApplicationFilterChain.java:164)
+        at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:140)
+        at org.springframework.web.filter.RequestContextFilter.doFilterInternal(RequestContextFilter.java:100)
+        at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116)
+        at org.apache.catalina.core.ApplicationFilterChain.internalDoFilter(ApplicationFilterChain.java:164)
+        at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:140)
+        at org.springframework.web.filter.FormContentFilter.doFilterInternal(FormContentFilter.java:93)
+        at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116)
+        at org.apache.catalina.core.ApplicationFilterChain.internalDoFilter(ApplicationFilterChain.java:164)
+        at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:140)
+        at org.springframework.web.filter.ServerHttpObservationFilter.doFilterInternal(ServerHttpObservationFilter.java:114)
+        at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116)
+        at org.apache.catalina.core.ApplicationFilterChain.internalDoFilter(ApplicationFilterChain.java:164)
+        at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:140)
+        at org.springframework.web.filter.CharacterEncodingFilter.doFilterInternal(CharacterEncodingFilter.java:201)
+        at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116)
+        at org.apache.catalina.core.ApplicationFilterChain.internalDoFilter(ApplicationFilterChain.java:164)
+        at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:140)
+        at org.apache.catalina.core.StandardWrapperValve.invoke(StandardWrapperValve.java:167)
+        at org.apache.catalina.core.StandardContextValve.invoke(StandardContextValve.java:90)
+        at org.apache.catalina.authenticator.AuthenticatorBase.invoke(AuthenticatorBase.java:483)
+        at org.apache.catalina.core.StandardHostValve.invoke(StandardHostValve.java:115)
+        at org.apache.catalina.valves.ErrorReportValve.invoke(ErrorReportValve.java:93)
+        at org.apache.catalina.core.StandardEngineValve.invoke(StandardEngineValve.java:74)
+        at org.apache.catalina.connector.CoyoteAdapter.service(CoyoteAdapter.java:344)
+        at org.apache.coyote.http11.Http11Processor.service(Http11Processor.java:397)
+        at org.apache.coyote.AbstractProcessorLight.process(AbstractProcessorLight.java:63)
+        at org.apache.coyote.AbstractProtocol$ConnectionHandler.process(AbstractProtocol.java:905)
+        at org.apache.tomcat.util.net.NioEndpoint$SocketProcessor.doRun(NioEndpoint.java:1743)
+        at org.apache.tomcat.util.net.SocketProcessorBase.run(SocketProcessorBase.java:52)
+        at org.apache.tomcat.util.threads.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1190)
+        at org.apache.tomcat.util.threads.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:659)
+        at org.apache.tomcat.util.threads.TaskThread$WrappingRunnable.run(TaskThread.java:63)
+        at java.base/java.lang.Thread.run(Unknown Source)
+Caused by: java.lang.IllegalArgumentException: No parameter named ':estados' in query with named parameters [estados::text, fechaInicio, fechaFin]
+        at org.hibernate.query.internal.ParameterMetadataImpl.getQueryParameter(ParameterMetadataImpl.java:269)
+        at org.hibernate.query.internal.QueryParameterBindingsImpl.getBinding(QueryParameterBindingsImpl.java:170)
+        at org.hibernate.query.spi.AbstractCommonQueryContract.setParameter(AbstractCommonQueryContract.java:823)
+        at org.hibernate.query.spi.AbstractSelectionQuery.setParameter(AbstractSelectionQuery.java:602)
+        at org.hibernate.query.spi.AbstractQuery.setParameter(AbstractQuery.java:405)
+        at org.hibernate.query.sql.internal.NativeQueryImpl.setParameter(NativeQueryImpl.java:1391)
+        at org.hibernate.query.sql.internal.NativeQueryImpl.setParameter(NativeQueryImpl.java:127)
+        at org.springframework.data.jpa.repository.query.QueryParameterSetter$BindableQuery.setParameter(QueryParameterSetter.java:326)
+        at org.springframework.data.jpa.repository.query.QueryParameterSetter$NamedOrIndexedQueryParameterSetter.lambda$4(QueryParameterSetter.java:117)
+        at org.springframework.data.jpa.repository.query.QueryParameterSetter$ErrorHandling$1.execute(QueryParameterSetter.java:140)
+        at org.springframework.data.jpa.repository.query.QueryParameterSetter$NamedOrIndexedQueryParameterSetter.setParameter(QueryParameterSetter.java:117)
+        at org.springframework.data.jpa.repository.query.ParameterBinder.bind(ParameterBinder.java:86)
+        at org.springframework.data.jpa.repository.query.ParameterBinder.bind(ParameterBinder.java:78)
+        at org.springframework.data.jpa.repository.query.ParameterBinder.bindAndPrepare(ParameterBinder.java:100)
+        at org.springframework.data.jpa.repository.query.AbstractStringBasedJpaQuery.doCreateQuery(AbstractStringBasedJpaQuery.java:128)
+        at org.springframework.data.jpa.repository.query.AbstractJpaQuery.createQuery(AbstractJpaQuery.java:243)
+        at org.springframework.data.jpa.repository.query.JpaQueryExecution$SingleEntityExecution.doExecute(JpaQueryExecution.java:224)
+        at org.springframework.data.jpa.repository.query.JpaQueryExecution.execute(JpaQueryExecution.java:93)
+        at org.springframework.data.jpa.repository.query.AbstractJpaQuery.doExecute(AbstractJpaQuery.java:152)
+        at org.springframework.data.jpa.repository.query.AbstractJpaQuery.execute(AbstractJpaQuery.java:140)
+        at org.springframework.data.repository.core.support.RepositoryMethodInvoker.doInvoke(RepositoryMethodInvoker.java:170)
+        at org.springframework.data.repository.core.support.RepositoryMethodInvoker.invoke(RepositoryMethodInvoker.java:158)
+        at org.springframework.data.repository.core.support.QueryExecutorMethodInterceptor.doInvoke(QueryExecutorMethodInterceptor.java:170)
+        at org.springframework.data.repository.core.support.QueryExecutorMethodInterceptor.invoke(QueryExecutorMethodInterceptor.java:149)
+        at org.springframework.aop.framework.ReflectiveMethodInvocation.proceed(ReflectiveMethodInvocation.java:184)
+        at org.springframework.data.projection.DefaultMethodInvokingMethodInterceptor.invoke(DefaultMethodInvokingMethodInterceptor.java:69)
+        at org.springframework.aop.framework.ReflectiveMethodInvocation.proceed(ReflectiveMethodInvocation.java:184)
+        at org.springframework.transaction.interceptor.TransactionAspectSupport.invokeWithinTransaction(TransactionAspectSupport.java:380)
+        at org.springframework.transaction.interceptor.TransactionInterceptor.invoke(TransactionInterceptor.java:119)
+        at org.springframework.aop.framework.ReflectiveMethodInvocation.proceed(ReflectiveMethodInvocation.java:184)
+        at org.springframework.dao.support.PersistenceExceptionTranslationInterceptor.invoke(PersistenceExceptionTranslationInterceptor.java:138)
+        ... 171 more
+Caused by: org.hibernate.query.UnknownParameterException: No parameter named ':estados' in query with named parameters [estados::text, fechaInicio, fechaFin]
+        ... 202 more
+2026-04-24T00:01:24.835Z DEBUG 1 --- [nio-8080-exec-6] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/yaml]
+2026-04-24T00:01:24.835Z DEBUG 1 --- [nio-8080-exec-6] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Writing [{error=Error interno del servidor, message=Ha ocurrido un error inesperado. Por favor contacte al ad (truncated)...]
+2026-04-24T00:01:24.838Z DEBUG 1 --- [nio-8080-exec-6] .m.m.a.ExceptionHandlerExceptionResolver : Resolved [org.springframework.dao.InvalidDataAccessApiUsageException: No parameter named ':estados' in query with named parameters [estados::text, fechaInicio, fechaFin]]
+2026-04-24T00:01:24.838Z DEBUG 1 --- [nio-8080-exec-6] o.s.web.servlet.DispatcherServlet        : Completed 500 INTERNAL_SERVER_ERROR
