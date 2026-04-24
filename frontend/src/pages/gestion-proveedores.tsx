@@ -345,6 +345,7 @@ const GestionProveedoresPage: React.FC = () => {
   // ── Filtros ──
   const [searchTerm, setSearchTerm] = React.useState('');
   const [filtroEstado, setFiltroEstado] = React.useState('');
+  const [globalProductSearch, setGlobalProductSearch] = React.useState('');
 
   // ── Filas expandidas ──
   const [expandedRows, setExpandedRows] = React.useState<Set<number>>(new Set());
@@ -521,6 +522,49 @@ const GestionProveedoresPage: React.FC = () => {
       return next;
     });
   };
+
+  // ── Filtrado de proveedores por búsqueda global de productos ─────────────────
+
+  /** Filtra proveedores que tengan productos coincidentes con la búsqueda global */
+  const proveedoresFiltrados = React.useMemo(() => {
+    if (!globalProductSearch.trim()) {
+      return paginatedProveedores;
+    }
+
+    const searchLower = globalProductSearch.toLowerCase();
+    return paginatedProveedores.filter(proveedor => {
+      const detalle = detalleCache[proveedor.idProveedor];
+      if (!detalle) return false;
+
+      // Buscar en todas las categorías y productos
+      return Object.values(detalle.productosPorCategoria).some(productos =>
+        productos.some(prod =>
+          prod.nombreProducto.toLowerCase().includes(searchLower)
+        )
+      );
+    });
+  }, [paginatedProveedores, globalProductSearch, detalleCache]);
+
+  // ── Auto-expandir cuando hay búsqueda global ──────────────────────────────────
+
+  React.useEffect(() => {
+    if (!globalProductSearch.trim()) return;
+
+    // Expandir automáticamente proveedores con coincidencias
+    const newExpanded = new Set(expandedRows);
+    let hasChanges = false;
+
+    proveedoresFiltrados.forEach(proveedor => {
+      if (!newExpanded.has(proveedor.idProveedor)) {
+        newExpanded.add(proveedor.idProveedor);
+        hasChanges = true;
+      }
+    });
+
+    if (hasChanges) {
+      setExpandedRows(newExpanded);
+    }
+  }, [proveedoresFiltrados, globalProductSearch]);
 
   // ── Acciones de proveedor ─────────────────────────────────────────────────
 
@@ -798,6 +842,25 @@ const GestionProveedoresPage: React.FC = () => {
         {/* Filtros + Acciones */}
         <Card className="shadow-sm bg-default-50 dark:bg-content1 border border-default-200 dark:border-default-100">
           <CardBody className="p-4 space-y-3">
+            {/* Buscador Global de Productos */}
+            <div className="flex flex-col gap-2 p-3 bg-warning-50 dark:bg-warning-50/20 rounded-lg border border-warning-200 dark:border-warning-100/30">
+              <p className="text-xs font-semibold text-warning-700 dark:text-warning-500 uppercase tracking-wide">
+                🔍 Buscar Producto en Todos los Proveedores
+              </p>
+              <Input
+                placeholder="Ingresa el nombre del producto para encontrarlo en los proveedores..."
+                value={globalProductSearch}
+                onValueChange={setGlobalProductSearch}
+                startContent={<Icon icon="lucide:package-search" className="text-warning-500" />}
+                className="w-full"
+                variant="bordered"
+                classNames={{ inputWrapper: 'bg-white dark:bg-default-100/50 border-warning-300 dark:border-warning-200/50' }}
+                isClearable
+                onClear={() => setGlobalProductSearch('')}
+                description={globalProductSearch ? 'Expandiendo proveedores y categorías con coincidencias...' : 'Esta búsqueda mostrará solo proveedores que tengan el producto'}
+              />
+            </div>
+
             <div className="flex flex-col md:flex-row gap-3">
               <Input
                 placeholder="Buscar por nombre, distribuidora o RUT..."
@@ -893,7 +956,28 @@ const GestionProveedoresPage: React.FC = () => {
               </Card>
             ) : (
               <div className="space-y-3">
-                {paginatedProveedores.map((proveedor) => (
+                {globalProductSearch && proveedoresFiltrados.length === 0 ? (
+                  <Card className="border border-default-200 bg-default-50">
+                    <CardBody className="flex flex-col items-center gap-2 py-8 text-default-400">
+                      <Icon icon="lucide:package-x" width={40} />
+                      <p className="text-sm text-center">
+                        No se encontró el producto <strong>"{globalProductSearch}"</strong> en ningún proveedor
+                      </p>
+                    </CardBody>
+                  </Card>
+                ) : (
+                  <>
+                    {globalProductSearch && (
+                      <Card className="border border-warning-200 bg-warning-50 dark:bg-warning-50/20">
+                        <CardBody className="p-3 flex flex-row items-center gap-2">
+                          <Icon icon="lucide:alert-circle" className="text-warning-600" width={18} />
+                          <p className="text-xs text-warning-700 dark:text-warning-500">
+                            Se encontraron <strong>{proveedoresFiltrados.length}</strong> proveedor{proveedoresFiltrados.length !== 1 ? 'es' : ''} con el producto
+                          </p>
+                        </CardBody>
+                      </Card>
+                    )}
+                    {proveedoresFiltrados.map((proveedor) => (
                   <Card
                     key={proveedor.idProveedor}
                     className="shadow-sm border border-default-200 dark:border-default-100 bg-white dark:bg-content1"
@@ -1044,13 +1128,15 @@ const GestionProveedoresPage: React.FC = () => {
                     </CardBody>
                   </Card>
                 ))}
-              </div>
-            )}
+                  </>
+                )}
 
-            {/* Indicador de carga infinita */}
-            {isLoading && proveedores.length > 0 && (
-              <div className="flex w-full justify-center py-8">
-                <Spinner size="sm" color="primary" />
+                {/* Indicador de carga infinita */}
+                {isLoading && proveedores.length > 0 && (
+                  <div className="flex w-full justify-center py-8">
+                    <Spinner size="sm" color="primary" />
+                  </div>
+                )}
               </div>
             )}
           </>
@@ -1370,7 +1456,7 @@ const ProductosProveedor: React.FC<ProductosProveedorProps> = ({
                 <table className="w-full text-xs" style={{ tableLayout: 'fixed' }}>
                   <thead className="bg-default-100 dark:bg-default-50">
                     <tr>
-                      <th className="text-center py-2 px-3 font-medium w-[350px]">Producto</th>
+                      <th className="text-center py-2 px-3 font-medium w-[310px]">Producto</th>
                       <th className="text-center py-2 px-3 font-medium w-16">Unidad</th>
                       <th className="text-center py-2 px-3 font-medium w-20">Precio</th>
                       <th className="text-center py-2 px-3 font-medium w-16">Estado</th>
@@ -1392,7 +1478,7 @@ const ProductosProveedor: React.FC<ProductosProveedorProps> = ({
                           : 'bg-default-50/30 dark:bg-default-100/10 opacity-60'
                       }`}
                     >
-                      <td className="py-2 px-3 font-medium text-center w-[350px] overflow-hidden">
+                      <td className="py-2 px-3 font-medium text-center w-[310px] overflow-hidden">
                         <Tooltip content={prod.nombreProducto} color="foreground" className="text-xs">
                           <span className="truncate block cursor-help whitespace-nowrap">
                             {prod.nombreProducto}
