@@ -308,11 +308,11 @@ public class ProveedorServiceImpl implements ProveedorService {
             );
         }
 
-        // [CAMBIO 2026-04-24] Si el precio es igual al actual, lanzar 409 Conflict
-        // Esto advierte al usuario que el valor no cambió, sin necesidad de actualizar BD
-        if (nuevoPrecio.equals(relacion.getPrecioProducto())) {
+        // [CAMBIO 2026-04-24] Validar si el precio ya existe en la BD (detecta conflicto)
+        // Si existe una relación con el mismo precio, lanzar 409 Conflict
+        if (proveedorProductoRepository.existsByIdProveedorProductoAndPrecioProducto(idProveedorProducto, nuevoPrecio)) {
             throw new GestionProveedorException(
-                    "El precio ingresado es igual al valor actual: " + relacion.getPrecioProducto()
+                    "El precio ingresado es igual al valor actual: " + nuevoPrecio
                             + ". No hay cambios que guardar.",
                     HttpStatus.CONFLICT
             );
