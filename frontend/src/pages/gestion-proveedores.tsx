@@ -1936,7 +1936,7 @@ const FormularioAsignarProducto: React.FC<FormularioAsignarProductoProps> = ({
   const [precio, setPrecio] = React.useState('');
   const [error, setError] = React.useState<string | null>(null);
   const [saving, setSaving] = React.useState(false);
-  const [selectedCategoryId, setSelectedCategoryId] = React.useState<string>('todas');
+  const [selectedCategoryIds, setSelectedCategoryIds] = React.useState<Set<string>>(new Set());
   const [loadingProductos, setLoadingProductos] = React.useState(false);
   const [productos, setProductos] = React.useState<IProductoDisponibleDTO[]>(productosInicial || []);
   const [categorias, setCategorias] = React.useState<Array<{ id: string; nombre: string }>>([
@@ -1958,18 +1958,39 @@ const FormularioAsignarProducto: React.FC<FormularioAsignarProductoProps> = ({
     cargarCategorias();
   }, []);
 
-  // Manejar cambio de categoría con debounce de 2 segundos
-  const handleCategoryChange = React.useCallback((newCategoryId: string) => {
-    setSelectedCategoryId(newCategoryId);
+  // Manejar cambio de múltiples categorías y filtrar
+  const handleCategoryChange = React.useCallback((keys: any) => {
+    const newSelectedIds = new Set(
+      Array.from(keys).filter((key: string) => key !== 'todas') as string[]
+    );
+    setSelectedCategoryIds(newSelectedIds);
 
     if (debounceRef.current) {
       clearTimeout(debounceRef.current);
     }
 
+    // Si no hay categorías seleccionadas, mostrar todos los productos
+    if (newSelectedIds.size === 0) {
+      setLoadingProductos(true);
+      try {
+        const data = await obtenerProductosDisponiblesService(idProveedor);
+        setProductos(data);
+      } catch {
+        // Mantener los productos anteriores si hay error
+      } finally {
+        setLoadingProductos(false);
+      }
+      return;
+    }
+
+    // Con debounce de 2 segundos para múltiples selecciones
     debounceRef.current = setTimeout(async () => {
       setLoadingProductos(true);
       try {
-        const idCat = newCategoryId === 'todas' ? undefined : parseInt(newCategoryId, 10);
+        // Obtener productos para la primera categoría seleccionada
+        // (el backend filtra por una sola categoría)
+        const firstCategoryId = Array.from(newSelectedIds)[0];
+        const idCat = parseInt(firstCategoryId, 10);
         const data = await obtenerProductosDisponiblesService(idProveedor, idCat as any);
         setProductos(data);
       } catch {
@@ -1998,13 +2019,15 @@ const FormularioAsignarProducto: React.FC<FormularioAsignarProductoProps> = ({
       setError('Selecciona un producto');
       return;
     }
-    const precioNum = parseFloat(precio);
+    // Parsear precio con la función que valida formato chileno
+    const precioNum = parseChileanPrice(precio);
     if (isNaN(precioNum) || precioNum <= 0) {
-      setError('El precio debe ser un número mayor a 0');
+      setError('El precio debe ser un número mayor a 0 (ej: 1.234,56 o 1234,56)');
       return;
     }
     setSaving(true);
     try {
+      // Enviar el precio como string formateado (el backend lo parseará)
       await onSave(selectedProducto.idProducto, precioNum);
     } catch (err: any) {
       setError(err.message || 'Error al asignar el producto');
@@ -2041,16 +2064,19 @@ const FormularioAsignarProducto: React.FC<FormularioAsignarProductoProps> = ({
           onClear={() => setSearchProd('')}
         />
 
-        {/* Selector de Categoría */}
+        {/* Selector de Categorías (Múltiples) */}
         <Select
-          label="Categoría"
-          placeholder="Seleccione una categoría..."
-          selectedKeys={[selectedCategoryId]}
-          onChange={(e) => handleCategoryChange(e.target.value || 'todas')}
+          label="Categorías"
+          placeholder="Seleccione una o más categorías..."
+          selectedKeys={selectedCategoryIds}
+          onSelectionChange={handleCategoryChange}
           variant="bordered"
+          selectionMode="multiple"
+          closeOnSelect={false}
           isDisabled={loadingProductos}
           startContent={<Icon icon="lucide:tag" className="text-default-400" width={16} />}
           endContent={loadingProductos && <Spinner size="sm" color="warning" />}
+          description={selectedCategoryIds.size > 0 ? `${selectedCategoryIds.size} categoría(s) seleccionada(s)` : undefined}
         >
           {categorias.map((cat) => (
             <SelectItem key={cat.id} value={cat.id}>
@@ -2095,13 +2121,11 @@ const FormularioAsignarProducto: React.FC<FormularioAsignarProductoProps> = ({
 
         <Input
           label="Precio"
-          placeholder="0.00"
+          placeholder="Ej: 1.234,56"
           value={precio}
-          onValueChange={setPrecio}
+          onValueChange={(value) => setPrecio(smartPriceInput(value))}
           variant="bordered"
-          type="number"
-          min="0.01"
-          step="0.01"
+          type="text"
           startContent={<span className="text-default-400 text-sm">$</span>}
           isRequired
         />
