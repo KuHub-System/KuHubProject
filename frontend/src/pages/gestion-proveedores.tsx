@@ -364,15 +364,27 @@ const GestionProveedoresPage: React.FC = () => {
     openProvModal();
   };
 
-  const handleEditarProveedor = (p: IProveedor) => {
+  const handleEditarProveedor = async (p: IProveedor) => {
     setModalMode('editar');
-    setProveedorSeleccionado(p);
+    try {
+      const detalle = await obtenerProveedorDetalleService(p.idProveedor);
+      setProveedorSeleccionado(detalle as any);
+    } catch (err: any) {
+      showToast(err.message || 'Error al cargar detalles del proveedor', 'error');
+      setProveedorSeleccionado(p);
+    }
     openProvModal();
   };
 
-  const handleVerProveedor = (p: IProveedor) => {
+  const handleVerProveedor = async (p: IProveedor) => {
     setModalMode('ver');
-    setProveedorSeleccionado(p);
+    try {
+      const detalle = await obtenerProveedorDetalleService(p.idProveedor);
+      setProveedorSeleccionado(detalle as any);
+    } catch (err: any) {
+      showToast(err.message || 'Error al cargar detalles del proveedor', 'error');
+      setProveedorSeleccionado(p);
+    }
     openProvModal();
   };
 
@@ -1143,6 +1155,20 @@ const FormularioProveedor: React.FC<FormularioProveedorProps> = ({
   const [saving, setSaving] = React.useState(false);
 
   const isReadOnly = mode === 'ver';
+
+  React.useEffect(() => {
+    if (proveedor && (mode === 'editar' || mode === 'ver')) {
+      const prov = proveedor as any;
+      if (prov.diasEntrega && Array.isArray(prov.diasEntrega)) {
+        const diasConvertidos = prov.diasEntrega.map((dia: any) => ({
+          diaSemana: dia.diaSemana,
+          horaInicio: dia.horaInicioEntrega ? dia.horaInicioEntrega.slice(0, 5) : undefined,
+          horaFin: dia.horaFinEntrega ? dia.horaFinEntrega.slice(0, 5) : undefined,
+        }));
+        setDiasEntrega(diasConvertidos);
+      }
+    }
+  }, [proveedor, mode]);
 
   const handleSubmit = async () => {
     setError(null);
