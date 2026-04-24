@@ -56,6 +56,10 @@ public class ProveedorServiceImpl implements ProveedorService {
     @Autowired
     private ProveedorDiaEntregaRepository proveedorDiaEntregaRepository;
 
+    /**Services*/
+    @Autowired
+    private KuHub.modules.gestion_inventario.services.CategoriaService categoriaService;
+
     /**Others*/
     @Autowired
     private ObjectMapper objectMapper;
@@ -605,6 +609,12 @@ public class ProveedorServiceImpl implements ProveedorService {
                     HttpStatus.INTERNAL_SERVER_ERROR
             );
         }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public String obtenerCategoriasActivasJson() {
+        return categoriaService.obtenerCategoriasActivasJson();
     }
 
     // ══════════════════════════════════════════════════════════════
