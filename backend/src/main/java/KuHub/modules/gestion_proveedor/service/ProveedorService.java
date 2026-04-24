@@ -41,8 +41,10 @@ public interface ProveedorService {
      */
     boolean actualizarPrecio(Long idProveedorProducto, ProveedorProductoUpdateDTO dto);
 
-    /** Quita (soft-delete) un producto del proveedor. */
-    void quitarProducto(Integer idProveedor, Integer idProducto);
+    /** Quita (soft-delete) un producto del proveedor.
+     *  Retorna true si se soft-deletó correctamente, false si no hubo cambios.
+     */
+    boolean quitarProducto(Integer idProveedor, Integer idProducto);
 
     /** Habilita/deshabilita un producto del proveedor (toggle del campo activo).
      *  Retorna true si se toggleó correctamente, false si no hubo cambios.
