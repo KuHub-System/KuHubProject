@@ -1,4 +1,26 @@
 ubuntu@ip-172-26-1-143:~$ docker logs --tail 100 kuhub-backend
+        p1_0.fecha_creacion,
+        p1_0.nombre_distribuidora,
+        p1_0.nombre_proveedor,
+        p1_0.rut_proveedor,
+        p1_0.telefono_proveedor
+    from
+        proveedor p1_0
+    where
+        p1_0.id_proveedor=?
+2026-04-24T15:43:12.416Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (1:INTEGER) <- [1]
+2026-04-24T15:43:12.419Z DEBUG 1 --- [nio-8080-exec-2] org.hibernate.SQL                        :
+    SELECT
+        prod.id_producto,
+        -- [0]     pp.id_proveedor_producto,
+        -- [1]     prod.nombre_producto,
+        -- [2]     cat.nombre_categoria,
+        -- [3]     um.nombre_unidad,
+        -- [4]     um.abreviatura,
+        -- [5]     pp.precio_producto,
+        -- [6]     pp.activo,
+        -- [7]     pp.fecha_actualizacion                                   -- [8]
+    FROM
         proveedor_producto pp
     INNER JOIN
         producto prod
@@ -43,8 +65,8 @@ Hibernate:
     ORDER BY
         cat.nombre_categoria ASC,
         prod.nombre_producto ASC
-2026-04-24T15:24:45.380Z TRACE 1 --- [nio-8080-exec-4] org.hibernate.orm.jdbc.bind              : binding parameter (1:INTEGER) <- [1]
-2026-04-24T15:24:45.495Z DEBUG 1 --- [nio-8080-exec-4] org.hibernate.SQL                        :
+2026-04-24T15:43:12.419Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (1:INTEGER) <- [1]
+2026-04-24T15:43:12.447Z DEBUG 1 --- [nio-8080-exec-2] org.hibernate.SQL                        :
     select
         pde1_0.id_dia_entrega,
         pde1_0.dia_semana,
@@ -72,30 +94,8 @@ Hibernate:
             on p1_0.id_proveedor=pde1_0.id_proveedor
     where
         p1_0.id_proveedor=?
-2026-04-24T15:24:45.495Z TRACE 1 --- [nio-8080-exec-4] org.hibernate.orm.jdbc.bind              : binding parameter (1:INTEGER) <- [1]
-2026-04-24T15:24:45.504Z  INFO 1 --- [nio-8080-exec-4] K.m.g.service.ProveedorServiceImpl       : obtenerDetalle: Proveedor ID=1 | Productos: 271 | Días entrega: 2
-2026-04-24T15:24:45.515Z DEBUG 1 --- [nio-8080-exec-4] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/yaml]
-2026-04-24T15:24:45.538Z DEBUG 1 --- [nio-8080-exec-4] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Writing [ProveedorDetalleDTO[idProveedor=1, rutProveedor=110000001-K, nombreDistribuidora=Distribuidora A, no (truncated)...]
-2026-04-24T15:24:45.565Z DEBUG 1 --- [nio-8080-exec-4] o.s.web.servlet.DispatcherServlet        : Completed 200 OK
-2026-04-24T15:24:52.109Z DEBUG 1 --- [nio-8080-exec-5] o.s.security.web.FilterChainProxy        : Securing PATCH /api/v1/proveedor/1/productos/70
-2026-04-24T15:24:52.125Z  INFO 1 --- [nio-8080-exec-5] K.c.s.rate_limiting.RateLimitFilter      : 📍 IP: 186.78.184.242 | Petición 5 de 80
-2026-04-24T15:24:52.129Z DEBUG 1 --- [nio-8080-exec-5] o.s.security.web.FilterChainProxy        : Secured PATCH /api/v1/proveedor/1/productos/70
-2026-04-24T15:24:52.130Z DEBUG 1 --- [nio-8080-exec-5] o.s.web.servlet.DispatcherServlet        : PATCH "/api/v1/proveedor/1/productos/70", parameters={}
-2026-04-24T15:24:52.131Z DEBUG 1 --- [nio-8080-exec-5] s.w.s.m.m.a.RequestMappingHandlerMapping : Mapped to KuHub.modules.gestion_proveedor.controller.ProveedorController#actualizarPrecio(Integer, Integer, ProveedorProductoUpdateDTO)
-2026-04-24T15:24:52.145Z DEBUG 1 --- [nio-8080-exec-5] m.m.a.RequestResponseBodyMethodProcessor : Read "application/json;charset=UTF-8" to [ProveedorProductoUpdateDTO(idProveedorProducto=null, precioProducto=3000)]
-2026-04-24T15:24:52.195Z DEBUG 1 --- [nio-8080-exec-5] .m.m.a.ExceptionHandlerExceptionResolver : Using @ExceptionHandler KuHub.config.GlobalExceptionHandler#handleValidationExceptions(MethodArgumentNotValidException)
-2026-04-24T15:24:52.198Z DEBUG 1 --- [nio-8080-exec-5] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/yaml]
-2026-04-24T15:24:52.198Z DEBUG 1 --- [nio-8080-exec-5] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Writing [{error=Error de validación, errors={idProveedorProducto=El ID de la relación proveedor-producto es o (truncated)...]
-2026-04-24T15:24:52.204Z DEBUG 1 --- [nio-8080-exec-5] .m.m.a.ExceptionHandlerExceptionResolver : Resolved [org.springframework.web.bind.MethodArgumentNotValidException: Validation failed for argument [2] in public org.springframework.http.ResponseEntity<java.lang.Void> KuHub.modules.gestion_proveedor.controller.ProveedorController.actualizarPrecio(java.lang.Integer,java.lang.Integer,KuHub.modules.gestion_proveedor.dtos.request.ProveedorProductoUpdateDTO): [Field error in object 'proveedorProductoUpdateDTO' on field 'idProveedorProducto': rejected value [null]; codes [NotNull.proveedorProductoUpdateDTO.idProveedorProducto,NotNull.idProveedorProducto,NotNull.java.lang.Integer,NotNull]; arguments [org.springframework.context.support.DefaultMessageSourceResolvable: codes [proveedorProductoUpdateDTO.idProveedorProducto,idProveedorProducto]; arguments []; default message [idProveedorProducto]]; default message [El ID de la relación proveedor-producto es obligatorio]] ]
-2026-04-24T15:24:52.205Z DEBUG 1 --- [nio-8080-exec-5] o.s.web.servlet.DispatcherServlet        : Completed 400 BAD_REQUEST
-2026-04-24T15:25:03.655Z DEBUG 1 --- [nio-8080-exec-6] o.s.security.web.FilterChainProxy        : Securing PATCH /api/v1/proveedor/1/productos/70
-2026-04-24T15:25:03.658Z  INFO 1 --- [nio-8080-exec-6] K.c.s.rate_limiting.RateLimitFilter      : 📍 IP: 186.78.184.242 | Petición 6 de 80
-2026-04-24T15:25:03.662Z DEBUG 1 --- [nio-8080-exec-6] o.s.security.web.FilterChainProxy        : Secured PATCH /api/v1/proveedor/1/productos/70
-2026-04-24T15:25:03.662Z DEBUG 1 --- [nio-8080-exec-6] o.s.web.servlet.DispatcherServlet        : PATCH "/api/v1/proveedor/1/productos/70", parameters={}
-2026-04-24T15:25:03.663Z DEBUG 1 --- [nio-8080-exec-6] s.w.s.m.m.a.RequestMappingHandlerMapping : Mapped to KuHub.modules.gestion_proveedor.controller.ProveedorController#actualizarPrecio(Integer, Integer, ProveedorProductoUpdateDTO)
-2026-04-24T15:25:03.665Z DEBUG 1 --- [nio-8080-exec-6] m.m.a.RequestResponseBodyMethodProcessor : Read "application/json;charset=UTF-8" to [ProveedorProductoUpdateDTO(idProveedorProducto=null, precioProducto=3.000)]
-2026-04-24T15:25:03.667Z DEBUG 1 --- [nio-8080-exec-6] .m.m.a.ExceptionHandlerExceptionResolver : Using @ExceptionHandler KuHub.config.GlobalExceptionHandler#handleValidationExceptions(MethodArgumentNotValidException)
-2026-04-24T15:25:03.668Z DEBUG 1 --- [nio-8080-exec-6] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/yaml]
-2026-04-24T15:25:03.669Z DEBUG 1 --- [nio-8080-exec-6] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Writing [{error=Error de validación, errors={idProveedorProducto=El ID de la relación proveedor-producto es o (truncated)...]
-2026-04-24T15:25:03.670Z DEBUG 1 --- [nio-8080-exec-6] .m.m.a.ExceptionHandlerExceptionResolver : Resolved [org.springframework.web.bind.MethodArgumentNotValidException: Validation failed for argument [2] in public org.springframework.http.ResponseEntity<java.lang.Void> KuHub.modules.gestion_proveedor.controller.ProveedorController.actualizarPrecio(java.lang.Integer,java.lang.Integer,KuHub.modules.gestion_proveedor.dtos.request.ProveedorProductoUpdateDTO): [Field error in object 'proveedorProductoUpdateDTO' on field 'idProveedorProducto': rejected value [null]; codes [NotNull.proveedorProductoUpdateDTO.idProveedorProducto,NotNull.idProveedorProducto,NotNull.java.lang.Integer,NotNull]; arguments [org.springframework.context.support.DefaultMessageSourceResolvable: codes [proveedorProductoUpdateDTO.idProveedorProducto,idProveedorProducto]; arguments []; default message [idProveedorProducto]]; default message [El ID de la relación proveedor-producto es obligatorio]] ]
-2026-04-24T15:25:03.671Z DEBUG 1 --- [nio-8080-exec-6] o.s.web.servlet.DispatcherServlet        : Completed 400 BAD_REQUEST
+2026-04-24T15:43:12.448Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (1:INTEGER) <- [1]
+2026-04-24T15:43:12.453Z  INFO 1 --- [nio-8080-exec-2] K.m.g.service.ProveedorServiceImpl       : obtenerDetalle: Proveedor ID=1 | Productos: 271 | Días entrega: 2
+2026-04-24T15:43:12.456Z DEBUG 1 --- [nio-8080-exec-2] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/yaml]
+2026-04-24T15:43:12.459Z DEBUG 1 --- [nio-8080-exec-2] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Writing [ProveedorDetalleDTO[idProveedor=1, rutProveedor=110000001-K, nombreDistribuidora=Distribuidora A, no (truncated)...]
+2026-04-24T15:43:12.474Z DEBUG 1 --- [nio-8080-exec-2] o.s.web.servlet.DispatcherServlet        : Completed 200 OK

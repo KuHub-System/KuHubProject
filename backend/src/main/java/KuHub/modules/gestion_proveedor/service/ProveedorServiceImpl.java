@@ -279,7 +279,7 @@ public class ProveedorServiceImpl implements ProveedorService {
 
     @Override
     @Transactional
-    public void actualizarPrecio(Long idProveedorProducto, ProveedorProductoUpdateDTO dto) {
+    public boolean actualizarPrecio(Long idProveedorProducto, ProveedorProductoUpdateDTO dto) {
         ProveedorProducto relacion = proveedorProductoRepository
                 .findById(idProveedorProducto)
                 .orElseThrow(() -> new GestionProveedorException(
@@ -315,7 +315,9 @@ public class ProveedorServiceImpl implements ProveedorService {
             log.info("Precio actualizado: Relación ID={} | Proveedor ID={} | Producto ID={} | Nuevo precio={} (Input: '{}')",
                     idProveedorProducto, relacion.getProveedor().getIdProveedor(),
                     relacion.getProducto().getIdProducto(), nuevoPrecio, dto.getPrecioProducto());
+            return true; // Se actualizó correctamente
         }
+        return false; // No hubo cambios
     }
 
     @Override
