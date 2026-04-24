@@ -16,6 +16,7 @@ import KuHub.modules.gestion_pedido.services.PedidoService;
 import KuHub.modules.gestion_solicitud.dtos.request.DateRangeDTO;
 import KuHub.utils.StringUtils;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -26,10 +27,11 @@ import org.springframework.web.bind.annotation.*;
 /**
  * Controller REST para gestión de Pedidos
  * Endpoints: /api/v1/pedido
- * ✅ En uso: Este controlador gestiona la consolidación de pedidos, entregas diarias 
+ * ✅ En uso: Este controlador gestiona la consolidación de pedidos, entregas diarias
  * para bodega de tránsito y cambios de estado masivos.
  * Consumido por solicitud-service.ts en el frontend.
  */
+@Slf4j
 @RestController
 @RequiredArgsConstructor
 @Validated
@@ -117,14 +119,28 @@ public class PedidoController {
     @PostMapping("/resumen-historico")
     public ResponseEntity<ResumenHistoricoResponse> obtenerResumenHistorico(
             @Validated @RequestBody ResumenHistoricoRequestDTO request) {
+        log.info("=== INICIO obtenerResumenHistorico ===");
+        log.info("📅 Fecha Inicio recibida del frontend: {}", request.getFechaInicio());
+        log.info("📅 Fecha Fin recibida del frontend: {}", request.getFechaFin());
+        log.info("🏷️  Estados CSV recibido del frontend: {}", request.getEstadosCsv());
+
         String estadosValidados = normalizarEstadosCsv(request.getEstadosCsv());
-        return ResponseEntity
-                .status(200)
-                .body(pedidoService.obtenerResumenHistorico(
-                        request.getFechaInicio(),
-                        request.getFechaFin(),
-                        estadosValidados
-                ));
+
+        log.info("🏷️  Estados NORMALIZADOS después de validación: {}", estadosValidados);
+        log.info("✅ Llamando al service con: fechaInicio={}, fechaFin={}, estados={}",
+                request.getFechaInicio(), request.getFechaFin(), estadosValidados);
+
+        ResumenHistoricoResponse response = pedidoService.obtenerResumenHistorico(
+                request.getFechaInicio(),
+                request.getFechaFin(),
+                estadosValidados
+        );
+
+        log.info("✅ Response recibida del service: {} productos distintos, {} pedidos",
+                response.getTotalProductosDistintos(), response.getTotalPedidos());
+        log.info("=== FIN obtenerResumenHistorico ===\n");
+
+        return ResponseEntity.status(200).body(response);
     }
 
     private String normalizarEstadosCsv(String estadosCsv) {
@@ -132,7 +148,7 @@ public class PedidoController {
             return "";
         }
 
-        String[] estadosNormalizados = Arrays.stream(estadosCsv.split(","))
+        String[] estadosNormalizados = Arrays.stream(estadosCsv.trim().split(","))
                 .map(String::trim)
                 .map(StringUtils::normalizeToEnumKey)
                 .toArray(String[]::new);
