@@ -299,9 +299,33 @@ public class PedidoServiceImpl implements PedidoService{
             log.info("  📊 Estados encontrados: {}", estadosList);
             log.info("  📊 Productos en lista: {} items", productos.size());
 
+            String fechaInicioStr = rootNode.get("fechaInicio").asText();
+            String fechaFinStr = rootNode.get("fechaFin").asText();
+
+            LocalDate fechaInicioResponse = fechaInicio;
+            LocalDate fechaFinResponse = fechaFin;
+
+            if (!fechaInicioStr.isEmpty()) {
+                String fechaInicioClean = fechaInicioStr.substring(0, Math.min(10, fechaInicioStr.length()));
+                try {
+                    fechaInicioResponse = LocalDate.parse(fechaInicioClean);
+                } catch (Exception e) {
+                    log.warn("No se pudo parsear fechaInicio: {}", fechaInicioStr);
+                }
+            }
+
+            if (!fechaFinStr.isEmpty()) {
+                String fechaFinClean = fechaFinStr.substring(0, Math.min(10, fechaFinStr.length()));
+                try {
+                    fechaFinResponse = LocalDate.parse(fechaFinClean);
+                } catch (Exception e) {
+                    log.warn("No se pudo parsear fechaFin: {}", fechaFinStr);
+                }
+            }
+
             return new ResumenHistoricoResponse(
-                    rootNode.get("fechaInicio").asText().isEmpty() ? fechaInicio : LocalDate.parse(rootNode.get("fechaInicio").asText()),
-                    rootNode.get("fechaFin").asText().isEmpty() ? fechaFin : LocalDate.parse(rootNode.get("fechaFin").asText()),
+                    fechaInicioResponse,
+                    fechaFinResponse,
                     estadosList,
                     totalProductos,
                     totalPedidos,
