@@ -358,8 +358,16 @@ const GestionProveedoresPage: React.FC = () => {
   // ── Modal producto ──
   const { isOpen: isProdModal, onOpen: openProdModal, onOpenChange: onProdModalChange } = useDisclosure();
   const [proveedorParaProducto, setProveedorParaProducto] = React.useState<number | null>(null);
-  // ── Productos disponibles para el proveedor seleccionado ──
+  // ── Productos disponibles para el proveedor seleccionado (sin caché por sesión) ──
   const [productos, setProductos] = React.useState<IProductoDisponibleDTO[]>([]);
+
+  // Limpiar datos del modal cuando se cierra
+  React.useEffect(() => {
+    if (!isProdModal) {
+      // Reset: vaciar productos y limpiar estado interno del formulario
+      setProductos([]);
+    }
+  }, [isProdModal]);
 
   // ── Scroll infinito ──
   const [currentPage, setCurrentPage] = React.useState(1);
@@ -583,9 +591,15 @@ const GestionProveedoresPage: React.FC = () => {
 
   // ── Acciones de producto ──────────────────────────────────────────────────
 
+  /**
+   * Abre el modal de asignar producto.
+   * IMPORTANTE: Carga los productos disponibles SIN CACHÉ en cada apertura
+   * porque la lista disminuye conforme el usuario asigna productos al proveedor.
+   */
   const handleAbrirAsignarProducto = async (idProveedor: number) => {
     setProveedorParaProducto(idProveedor);
     try {
+      // Consulta fresca al backend (sin caché)
       const data = await obtenerProductosDisponiblesService(idProveedor);
       setProductos(data);
     } catch {
