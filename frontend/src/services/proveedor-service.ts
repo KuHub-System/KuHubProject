@@ -209,14 +209,17 @@ export const agregarProductoProveedorService = async (
 /**
  * Actualiza el precio de un producto asignado a un proveedor.
  * PATCH /api/v1/proveedor/productos/{idProveedorProducto} → 200 OK
+ * Retorna: true si se actualizó, false si el precio era igual.
  * [CAMBIO 2026-04-24] Actualizado a usar idProveedorProducto (PK) en lugar de dos IDs separados.
+ * Frontend optimizado: retorna boolean para evitar segunda petición al cargar detalles.
  */
 export const actualizarPrecioProductoService = async (
   idProveedorProducto: number,
   dto: IProveedorProductoUpdateDTO
-): Promise<void> => {
+): Promise<boolean> => {
   try {
-    await api.patch(`/proveedor/productos/${idProveedorProducto}`, dto);
+    const response = await api.patch<boolean>(`/proveedor/productos/${idProveedorProducto}`, dto);
+    return response.data;
   } catch (error: any) {
     if (error.response?.status === 404) {
       throw new Error(

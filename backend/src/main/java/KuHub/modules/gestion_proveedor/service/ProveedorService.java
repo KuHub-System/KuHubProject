@@ -36,8 +36,10 @@ public interface ProveedorService {
     /** Asigna un producto a un proveedor con su precio específico. */
     void agregarProducto(Integer idProveedor, ProveedorProductoAddDTO dto);
 
-    /** Actualiza el precio de un producto asignado a un proveedor usando la PK de la relación. */
-    void actualizarPrecio(Long idProveedorProducto, ProveedorProductoUpdateDTO dto);
+    /** Actualiza el precio de un producto asignado a un proveedor usando la PK de la relación.
+     *  Retorna true si se actualizó correctamente, false si no hubo cambios.
+     */
+    boolean actualizarPrecio(Long idProveedorProducto, ProveedorProductoUpdateDTO dto);
 
     /** Quita (soft-delete) un producto del proveedor. */
     void quitarProducto(Integer idProveedor, Integer idProducto);
