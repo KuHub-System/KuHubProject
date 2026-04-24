@@ -102,18 +102,28 @@ export interface IProveedorUpdateDTO {
 /**
  * DTO para asignar un producto a un proveedor.
  * Mapea ProveedorProductoAddDTO del backend.
+ *
+ * El precioProducto debe enviarse como string en formato chileno:
+ * - 1.234,567 (punto=miles, coma=decimal)
+ * - 1.234 (entero con separador de miles)
+ * - 1234,567 (sin separador de miles)
+ * - 1234.567 (formato americano)
+ * - 1234 (entero simple)
  */
 export interface IProveedorProductoAddDTO {
   idProducto: number;
-  precioProducto: number;
+  precioProducto: string;
 }
 
 /**
  * DTO para actualizar el precio de un producto en un proveedor.
  * Mapea ProveedorProductoUpdateDTO del backend.
+ *
+ * El precioProducto debe enviarse como string en formato chileno.
+ * Ver IProveedorProductoAddDTO para formatos válidos.
  */
 export interface IProveedorProductoUpdateDTO {
-  precioProducto: number;
+  precioProducto: string;
 }
 
 // ── Cotización por rango de fechas ────────────────────────────────────────────
