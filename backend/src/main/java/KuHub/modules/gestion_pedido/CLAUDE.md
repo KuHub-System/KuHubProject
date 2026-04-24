@@ -78,8 +78,7 @@ gestion_pedido/
       "nombreProducto": "Palos Bambu Con Nudo",
       "unidadMedida": "Unidad",
       "abreviatura": "un",
-      "cantidadTotal": 22.000,
-      "vecesEnPedidos": 2
+      "cantidadTotal": 22.000
     },
     ...
   ]
@@ -92,7 +91,6 @@ gestion_pedido/
   - Total de productos distintos
   - Total de pedidos
   - Cantidad total consumida por producto
-  - Veces que cada producto aparece en pedidos
 - Resultado ordenado por cantidad total DESC
 
 **Validación:**

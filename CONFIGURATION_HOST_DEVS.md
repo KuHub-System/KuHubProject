@@ -208,21 +208,21 @@ sudo journalctl -u snap.certbot.renew.service
 ```java
 @Bean
 public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-    http.cors(cors -> cors.configurationSource(request -> {
-        CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(Arrays.asList(
-            "https://appkuhub.questweb.cl",    // Producción HTTPS
-            "http://localhost:3000",            // Desarrollo local
-            "http://localhost:5173"             // Vite dev server
-        ));
-        config.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-        config.setAllowedHeaders(Arrays.asList("*"));
-        config.setAllowCredentials(true);
-        config.setMaxAge(3600L);
-        return config;
-    }));
-    // ... resto de configuración
-    return http.build();
+   http.cors(cors -> cors.configurationSource(request -> {
+      CorsConfiguration config = new CorsConfiguration();
+      config.setAllowedOrigins(Arrays.asList(
+              "https://appkuhub.questweb.cl",    // Producción HTTPS
+              "http://localhost:3000",            // Desarrollo local
+              "http://localhost:5173"             // Vite dev server
+      ));
+      config.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
+      config.setAllowedHeaders(Arrays.asList("*"));
+      config.setAllowCredentials(true);
+      config.setMaxAge(3600L);
+      return config;
+   }));
+   // ... resto de configuración
+   return http.build();
 }
 ```
 
@@ -370,28 +370,28 @@ spring.jpa.hibernate.ddl-auto=none    # ← Schema ya existe, Hibernate solo lee
 ```yaml
 # Frontend
 frontend:
-  ports:
-    - "127.0.0.1:3000:80"  # ← Solo localhost, no expone puerto en host
-  deploy:
-    resources:
-      limits:
-        memory: 200M
-      reservations:
-        memory: 100M
+   ports:
+      - "127.0.0.1:3000:80"  # ← Solo localhost, no expone puerto en host
+   deploy:
+      resources:
+         limits:
+            memory: 200M
+         reservations:
+            memory: 100M
 
 # Backend
 backend:
-  ports:
-    - "8080:8080"
-  environment:
-    - LOGGING_LEVEL_ORG_HIBERNATE_SQL=DEBUG
-    - LOGGING_LEVEL_ORG_HIBERNATE_ORM_JDBC_BIND=TRACE
-  deploy:
-    resources:
-      limits:
-        memory: 1400M
-      reservations:
-        memory: 1024M
+   ports:
+      - "8080:8080"
+   environment:
+      - LOGGING_LEVEL_ORG_HIBERNATE_SQL=DEBUG
+      - LOGGING_LEVEL_ORG_HIBERNATE_ORM_JDBC_BIND=TRACE
+   deploy:
+      resources:
+         limits:
+            memory: 1400M
+         reservations:
+            memory: 1024M
 ```
 
 **Cambios:**
@@ -572,10 +572,10 @@ psql -U kuhub_devs kuhub_devs -c "SHOW max_connections;"
 
 1. **Hash de contraseña incompatible**
    - Regenerar con Python `bcrypt` library con prefijo `$2a$`
-   
+
 2. **Proxy duplicando ruta /api//**
    - Verificar `proxy_pass` en nginx (debe ser `$backend` sin `/api/`)
-   
+
 3. **CORS rechazado**
    - Verificar headers `X-Forwarded-*` en nginx
    - Revisar allowedOrigins en SpringSecurityConfig
