@@ -279,11 +279,11 @@ public class ProveedorServiceImpl implements ProveedorService {
 
     @Override
     @Transactional
-    public void actualizarPrecio(Integer idProveedor, Integer idProducto, ProveedorProductoUpdateDTO dto) {
+    public void actualizarPrecio(Long idProveedorProducto, ProveedorProductoUpdateDTO dto) {
         ProveedorProducto relacion = proveedorProductoRepository
-                .findByProveedor_IdProveedorAndProducto_IdProducto(idProveedor, idProducto)
+                .findById(idProveedorProducto)
                 .orElseThrow(() -> new GestionProveedorException(
-                        "No existe relación entre el proveedor ID=" + idProveedor + " y el producto ID=" + idProducto,
+                        "Relación proveedor-producto ID=" + idProveedorProducto + " no encontrada",
                         HttpStatus.NOT_FOUND
                 ));
 
@@ -312,8 +312,9 @@ public class ProveedorServiceImpl implements ProveedorService {
             relacion.setPrecioProducto(nuevoPrecio);
             relacion.setFechaActualizacion(LocalDateTime.now());
             proveedorProductoRepository.save(relacion);
-            log.info("Precio actualizado: Proveedor ID={} | Producto ID={} | Nuevo precio={} (Input: '{}')",
-                    idProveedor, idProducto, nuevoPrecio, dto.getPrecioProducto());
+            log.info("Precio actualizado: Relación ID={} | Proveedor ID={} | Producto ID={} | Nuevo precio={} (Input: '{}')",
+                    idProveedorProducto, relacion.getProveedor().getIdProveedor(),
+                    relacion.getProducto().getIdProducto(), nuevoPrecio, dto.getPrecioProducto());
         }
     }
 

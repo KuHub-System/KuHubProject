@@ -16,6 +16,8 @@ import KuHub.modules.gestion_proveedor.dtos.validators.ValidChileanPrice;
  * - 1234 (entero simple)
  *
  * La conversión a BigDecimal se realiza en el service usando ChileanPriceUtils.
+ * El idProveedorProducto es la PK de la relación proveedor-producto.
+ * Se obtiene de los path parameters de la URL: PATCH /proveedor/productos/{idProveedorProducto}
  */
 @Getter
 @Setter
@@ -23,9 +25,6 @@ import KuHub.modules.gestion_proveedor.dtos.validators.ValidChileanPrice;
 @NoArgsConstructor
 @AllArgsConstructor
 public class ProveedorProductoUpdateDTO {
-
-    @NotNull(message = "El ID de la relación proveedor-producto es obligatorio")
-    private Integer idProveedorProducto;
 
     @NotNull(message = "El precio es obligatorio")
     @NotBlank(message = "El precio no puede estar en blanco")
