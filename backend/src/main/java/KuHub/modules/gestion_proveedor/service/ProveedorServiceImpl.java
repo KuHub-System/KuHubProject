@@ -15,6 +15,7 @@ import KuHub.modules.gestion_proveedor.dtos.response.ProveedoresPageResponse;
 import KuHub.modules.gestion_solicitud.dtos.request.DateRangeDTO;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.type.TypeFactory;
+import com.fasterxml.jackson.databind.type.TypeReference;
 import KuHub.utils.PaginationUtils;
 import KuHub.modules.gestion_proveedor.entity.Proveedor;
 import KuHub.modules.gestion_proveedor.entity.ProveedorDiaEntrega;
@@ -596,7 +597,7 @@ public class ProveedorServiceImpl implements ProveedorService {
                 return List.of();
             }
 
-            return objectMapper.readValue(jsonStr, new com.fasterxml.jackson.databind.type.TypeReference<List<ProductoDisponibleDTO>>() {});
+            return objectMapper.readValue(jsonStr, new TypeReference<List<ProductoDisponibleDTO>>() {});
         } catch (Exception e) {
             log.error("Error deserializando productos disponibles JSON para proveedor ID={}: {}", idProveedor, e.getMessage());
             throw new GestionProveedorException(
