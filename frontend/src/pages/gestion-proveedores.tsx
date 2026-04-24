@@ -1381,13 +1381,6 @@ const ProductosProveedor: React.FC<ProductosProveedorProps> = ({
   );
   const [searchQuery, setSearchQuery] = React.useState('');
 
-  // Auto-establecer búsqueda local si viene búsqueda global
-  React.useEffect(() => {
-    if (globalProductSearch && !searchQuery) {
-      setSearchQuery(globalProductSearch);
-    }
-  }, [globalProductSearch]);
-
   if (categorias.length === 0) {
     return (
       <p className="text-xs text-default-400 py-4 text-center">
