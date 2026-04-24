@@ -583,17 +583,36 @@ const GestionProveedoresPage: React.FC = () => {
     }
     setSavingPrecio(true);
     try {
-      // [CAMBIO 2026-04-24] Ahora usa idProveedorProducto directamente
-      await actualizarPrecioProductoService(
+      // [CAMBIO 2026-04-24] Retorna boolean: true=actualizó, false=no hubo cambios
+      const actualizado = await actualizarPrecioProductoService(
         editingPrecio.idProveedorProducto,
         { precioProducto: precioTemp }
       );
-      showToast('Precio actualizado');
-      // Recargar el proveedor actual (pero no tenemos idProveedor aquí)
-      // Solución: invalidar todo el caché de proveedores para refrescar
-      const proveedores = await obtenerProveedoresService();
-      setProveedores(proveedores);
-      setDetalleCache({}); // Limpiar caché de detalles
+
+      if (actualizado) {
+        showToast('Precio actualizado correctamente');
+        // ✅ OPTIMIZACIÓN: Actualizar el valor en memoria SIN hacer segunda petición
+        // Recorrer todos los detalles en caché y actualizar el precio del producto
+        setDetalleCache(prev => {
+          const updated = { ...prev };
+          Object.keys(updated).forEach(idProveedor => {
+            const detalle = updated[parseInt(idProveedor)];
+            if (detalle) {
+              Object.keys(detalle.productosPorCategoria).forEach(categoria => {
+                detalle.productosPorCategoria[categoria] = detalle.productosPorCategoria[categoria].map(prod => {
+                  if (prod.idProveedorProducto === editingPrecio.idProveedorProducto) {
+                    return { ...prod, precioProducto: precio };
+                  }
+                  return prod;
+                });
+              });
+            }
+          });
+          return updated;
+        });
+      } else {
+        showToast('El precio es igual al anterior, no hubo cambios', 'info');
+      }
     } catch (err: any) {
       showToast(err.message || 'Error al actualizar el precio', 'error');
     } finally {
