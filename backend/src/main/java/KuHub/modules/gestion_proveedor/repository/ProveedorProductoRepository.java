@@ -29,6 +29,9 @@ public interface ProveedorProductoRepository extends JpaRepository<ProveedorProd
     /** Cuenta cuántos productos activos tiene asignados un proveedor. */
     long countByProveedor_IdProveedorAndActivoTrue(Integer idProveedor);
 
+    /** Verifica si existe una relación con el mismo precio (para detectar conflicto de actualización). */
+    boolean existsByIdProveedorProductoAndPrecioProducto(Long idProveedorProducto, java.math.BigDecimal precioProducto);
+
     // ── 3. @Modifying + @Transactional ──
 
     /** Desactiva (soft-delete) la relación entre un proveedor y un producto. */
