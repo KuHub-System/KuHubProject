@@ -894,14 +894,51 @@ Para no técnicos:
   la diferencia y avisa al usuario mostrando el valor real actualizado.
 
 ------------------------------------------------------------------------
-3.12  GESTIÓN DE PROVEEDORES  [PENDIENTE]
+3.12  GESTIÓN DE PROVEEDORES
 ------------------------------------------------------------------------
-  - Vista gestion-proveedores.tsx existe en el frontend.
-  - Funcionalidad de backend no implementada en el alcance actual.
-  - La estructura de datos está preparada: Producto puede vincularse a Proveedor
-    con precio y stock acordado (id_proveedor, precio_producto).
-  - Valor estratégico: con historial de consumo por semestre, permite mostrar
-    al proveedor datos reales de uso para negociar precios por volumen.
+Técnico:
+  Entidad Proveedor:
+  - id_proveedor (PK, IDENTITY), rut_proveedor (VARCHAR 13, único, nullable),
+    nombre_distribuidora (VARCHAR 100, NOT NULL), nombre_proveedor (VARCHAR 100, NOT NULL),
+    telefono_proveedor (VARCHAR 20, NOT NULL), email_proveedor (VARCHAR 150, nullable),
+    estado_proveedor (ENUM: DISPONIBLE, NO_DISPONIBLE), activo (BOOLEAN), fecha_creacion (TIMESTAMP).
+
+  Entidad ProveedorProducto (tabla puente proveedor ↔ producto):
+  - id_proveedor_producto (PK), id_proveedor (FK), id_producto (FK),
+    precio_producto (NUMERIC 12,2), activo, fecha_actualizacion.
+  - UNIQUE(id_proveedor, id_producto): un proveedor solo tiene una fila por producto.
+
+  Entidad ProveedorDiaEntrega (tabla puente proveedor ↔ días de entrega):
+  - id_dia_entrega (PK, IDENTITY), id_proveedor (FK, CASCADE),
+    dia_semana (ENUM dia_semana_type: LUNES–DOMINGO),
+    hora_inicio_entrega (TIME, nullable), hora_fin_entrega (TIME, nullable).
+  - UNIQUE(id_proveedor, dia_semana): un proveedor no puede tener el mismo día duplicado.
+  - CHECK(hora_inicio_entrega < hora_fin_entrega): coherencia de horarios.
+  - Los días de entrega se gestionan como parte del flujo de crear/editar proveedor
+    (no tienen endpoints independientes). Estrategia de actualización: delete + insert
+    (reemplazo completo de los días al editar).
+
+  Endpoints base: /api/v1/proveedor
+  - GET / : lista proveedores con filtros (estado, búsqueda).
+  - GET /{id} : detalle completo con productos agrupados por categoría.
+  - POST / : crea proveedor (opcionalmente con días de entrega).
+  - PATCH /{id} : actualiza proveedor (opcionalmente reemplaza días de entrega).
+  - DELETE /{id} : soft-delete del proveedor y sus productos.
+  - POST /{id}/productos : asigna producto con precio.
+  - PATCH /{id}/productos/{pid} : actualiza precio.
+  - DELETE /{id}/productos/{pid} : quita producto (soft-delete).
+  - GET /por-producto/{idProducto} : proveedores que ofrecen un producto.
+  - POST /cotizacion-rango : cotización agrupada por proveedor (menor precio).
+
+  Valor estratégico: con historial de consumo por semestre, permite mostrar
+  al proveedor datos reales de uso para negociar precios por volumen.
+
+Para no técnicos:
+  El sistema permite registrar proveedores con sus datos de contacto, los productos
+  que ofrecen con sus precios, y los días y horarios en que realizan entregas.
+  Al crear o editar un proveedor se pueden indicar qué días de la semana entrega
+  y en qué horario. Esto permite planificar los pedidos según la disponibilidad
+  real de cada proveedor.
 
 ================================================================================
   4. DECISIONES TÉCNICAS DEL SISTEMA
@@ -1182,6 +1219,15 @@ PENDIENTE DE IMPLEMENTAR O DEFINIR:
       - inventario.tsx (PedidoMasivoModal): actualizada cargarProyeccionAbastecimiento()
         para usar idInventario y stock directamente de la proyección en lugar de
         buscar fallback en bulkProductos. Esto evita desincronización al hacer bulk update
+  [✓] Tabla proveedor_dia_entrega — Días de entrega del proveedor (2026-04-24):
+      Entity ProveedorDiaEntrega, enum DiaSemana, DTO DiaEntregaDTO, repository
+      ProveedorDiaEntregaRepository. Relación @OneToMany en Proveedor (cascade ALL,
+      orphanRemoval true). Campos diasEntrega agregados a ProveedorCreateDTO y
+      ProveedorUpdateDTO con @Valid. ServiceImpl.create() guarda días después de
+      crear proveedor. ServiceImpl.update() usa estrategia delete+insert para
+      reemplazo completo. Método privado buildDiasEntrega() valida: enum DiaSemana,
+      formato LocalTime, coherencia hora inicio < fin, y duplicados. No se requirieron
+      endpoints nuevos ni cambios en SpringSecurityConfig.
   [✓] Consulta de cotización agrupada por proveedor (2026-04-22):
       Backend - Módulo gestion_proveedor:
       - ProveedorRepository: nueva query nativa findCotizacionProveedoresPorRango() que

@@ -1,515 +1,737 @@
-utils-vendor-CkGtaPQr.js:11
- POST https://appkuhub.questweb.cl/api/v1/pedido/resumen-historico 500 (Internal Server Error)
-(anonymous)	@	utils-vendor-CkGtaPQr.js:11
-xhr	@	utils-vendor-CkGtaPQr.js:11
-wo	@	utils-vendor-CkGtaPQr.js:13
-Promise.then
-_request	@	utils-vendor-CkGtaPQr.js:14
-request	@	utils-vendor-CkGtaPQr.js:13
-(anonymous)	@	utils-vendor-CkGtaPQr.js:14
-(anonymous)	@	utils-vendor-CkGtaPQr.js:9
-T	@	historico-pedidos-CcM4mlDD.js:1
-o	@	historico-pedidos-CcM4mlDD.js:1
-(anonymous)	@	ui-vendor-CtDyRhL-.js:10
-(anonymous)	@	ui-vendor-CtDyRhL-.js:10
-(anonymous)	@	ui-vendor-CtDyRhL-.js:10
-onClick	@	ui-vendor-CtDyRhL-.js:10
-Kc	@	react-vendor-BxMPNXTO.js:29
-Xc	@	react-vendor-BxMPNXTO.js:29
-Gc	@	react-vendor-BxMPNXTO.js:29
-ya	@	react-vendor-BxMPNXTO.js:29
-ga	@	react-vendor-BxMPNXTO.js:29
-(anonymous)	@	react-vendor-BxMPNXTO.js:29
-Ri	@	react-vendor-BxMPNXTO.js:32
-Cu	@	react-vendor-BxMPNXTO.js:29
-Ro	@	react-vendor-BxMPNXTO.js:29
-so	@	react-vendor-BxMPNXTO.js:29
-df	@	react-vendor-BxMPNXTO.js:29
+Estas son las tablas que tengo, necesito determinar en la logica del negocio, el dia o dias de entregas que estar asociada al proveedor, que es mejor crear una tabla intermedia conectando este dato?
+CREATE TYPE dia_semana_type AS ENUM (
+    'LUNES',
+    'MARTES',
+    'MIERCOLES',
+    'JUEVES',
+    'VIERNES',
+    'SABADO',
+    'DOMINGO'
+);
+-- =====================================================
+-- TABLAS DE PROVEEDORES
+-- =====================================================
+CREATE TABLE proveedor (
+    id_proveedor INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    rut_proveedor         VARCHAR(13) UNIQUE,
+    nombre_distribuidora VARCHAR(100) NOT NULL,
+    nombre_proveedor VARCHAR(100) NOT NULL,
+    telefono_proveedor VARCHAR(20) NOT NULL,
+    email_proveedor VARCHAR(150),
+    estado_proveedor estado_provedor_type NOT NULL DEFAULT 'DISPONIBLE',
+    activo BOOLEAN DEFAULT TRUE,
+	fecha_creacion TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
 
-ubuntu@ip-172-26-1-143:~$ docker logs kuhub-backend
+-- Tabla puente: vincula proveedor <-> producto con precio y metadata propia
+CREATE TABLE proveedor_producto (
+    id_proveedor_producto BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    id_proveedor INTEGER NOT NULL,
+    id_producto INTEGER NOT NULL,
+    precio_producto NUMERIC(12,2) NOT NULL,
+    activo BOOLEAN DEFAULT TRUE,
+    fecha_actualizacion TIMESTAMP DEFAULT NOW(),
 
-  .   ____          _            __ _ _
- /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
-( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
- \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
-  '  |____| .__|_| |_|_| |_\__, | / / / /
- =========|_|==============|___/=/_/_/_/
+    -- Cada proveedor solo puede tener UNA fila por producto
+    CONSTRAINT uk_proveedor_producto UNIQUE (id_proveedor, id_producto),
 
- :: Spring Boot ::                (v3.4.3)
+    CONSTRAINT fk_proveedor_producto_proveedor
+        FOREIGN KEY (id_proveedor)
+        REFERENCES proveedor (id_proveedor)
+        ON UPDATE CASCADE ON DELETE CASCADE,
 
-2026-04-24T00:58:28.763Z  INFO 1 --- [           main] KuHub.BackendMonoliticoApplication       : Starting BackendMonoliticoApplication v1.0-SNAPSHOT using Java 21.0.10 with PID 1 (/app/app.jar started by root in /app)
-2026-04-24T00:58:28.770Z DEBUG 1 --- [           main] KuHub.BackendMonoliticoApplication       : Running with Spring Boot v3.4.3, Spring v6.2.3
-2026-04-24T00:58:28.774Z  INFO 1 --- [           main] KuHub.BackendMonoliticoApplication       : The following 1 profile is active: "prod"
-2026-04-24T00:58:32.276Z  INFO 1 --- [           main] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data JPA repositories in DEFAULT mode.
-2026-04-24T00:58:32.588Z  INFO 1 --- [           main] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 292 ms. Found 29 JPA repository interfaces.
-2026-04-24T00:58:33.170Z  INFO 1 --- [           main] o.s.cloud.context.scope.GenericScope     : BeanFactory id=95c5511b-47e2-3161-bec9-b021494f2cd5
-2026-04-24T00:58:34.709Z  INFO 1 --- [           main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat initialized with port 8080 (http)
-2026-04-24T00:58:34.735Z  INFO 1 --- [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
-2026-04-24T00:58:34.736Z  INFO 1 --- [           main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/10.1.36]
-2026-04-24T00:58:34.797Z  INFO 1 --- [           main] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring embedded WebApplicationContext
-2026-04-24T00:58:34.799Z  INFO 1 --- [           main] w.s.c.ServletWebServerApplicationContext : Root WebApplicationContext: initialization completed in 5900 ms
-2026-04-24T00:58:35.334Z DEBUG 1 --- [           main] o.s.w.f.ServerHttpObservationFilter      : Filter 'webMvcObservationFilter' configured for use
-2026-04-24T00:58:35.334Z DEBUG 1 --- [           main] K.c.s.rate_limiting.RateLimitFilter      : Filter 'rateLimitFilter' configured for use
-2026-04-24T00:58:35.605Z  INFO 1 --- [           main] o.hibernate.jpa.internal.util.LogHelper  : HHH000204: Processing PersistenceUnitInfo [name: default]
-2026-04-24T00:58:35.693Z  INFO 1 --- [           main] org.hibernate.Version                    : HHH000412: Hibernate ORM core version 6.6.8.Final
-2026-04-24T00:58:35.748Z  INFO 1 --- [           main] o.h.c.internal.RegionFactoryInitiator    : HHH000026: Second-level cache disabled
-2026-04-24T00:58:35.917Z  INFO 1 --- [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
-2026-04-24T00:58:36.658Z  INFO 1 --- [           main] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Added connection org.postgresql.jdbc.PgConnection@59e4a044
-2026-04-24T00:58:36.661Z  INFO 1 --- [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
-2026-04-24T00:58:36.716Z  WARN 1 --- [           main] org.hibernate.orm.deprecation            : HHH90000025: PostgreSQLDialect does not need to be specified explicitly using 'hibernate.dialect' (remove the property setting and it will be selected by default)
-2026-04-24T00:58:36.751Z  INFO 1 --- [           main] org.hibernate.orm.connections.pooling    : HHH10001005: Database info:
-        Database JDBC URL [Connecting through datasource 'HikariDataSource (HikariPool-1)']
-        Database driver: undefined/unknown
-        Database version: 16.13
-        Autocommit mode: undefined/unknown
-        Isolation level: undefined/unknown
-        Minimum pool size: undefined/unknown
-        Maximum pool size: undefined/unknown
-2026-04-24T00:58:37.277Z  INFO 1 --- [           main] o.s.o.j.p.SpringPersistenceUnitInfo      : No LoadTimeWeaver setup: ignoring JPA class transformer
-2026-04-24T00:58:40.055Z  INFO 1 --- [           main] o.h.e.t.j.p.i.JtaPlatformInitiator       : HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)
-2026-04-24T00:58:40.060Z  INFO 1 --- [           main] j.LocalContainerEntityManagerFactoryBean : Initialized JPA EntityManagerFactory for persistence unit 'default'
-2026-04-24T00:58:40.815Z  INFO 1 --- [           main] o.s.d.j.r.query.QueryEnhancerFactory     : Hibernate is in classpath; If applicable, HQL parser will be used.
-2026-04-24T00:58:46.563Z  INFO 1 --- [           main] r$InitializeUserDetailsManagerConfigurer : Global AuthenticationManager configured with UserDetailsService bean with name jpaUserDetailsService
-2026-04-24T00:58:46.776Z  WARN 1 --- [           main] JpaBaseConfiguration$JpaWebConfiguration : spring.jpa.open-in-view is enabled by default. Therefore, database queries may be performed during view rendering. Explicitly configure spring.jpa.open-in-view to disable this warning
-2026-04-24T00:58:47.365Z DEBUG 1 --- [           main] s.w.s.m.m.a.RequestMappingHandlerMapping : 201 mappings in 'requestMappingHandlerMapping'
-2026-04-24T00:58:47.601Z DEBUG 1 --- [           main] o.s.w.s.handler.SimpleUrlHandlerMapping  : Patterns [/webjars/**, /**, /swagger-ui*/*swagger-initializer.js, /swagger-ui*/**] in 'resourceHandlerMapping'
-2026-04-24T00:58:48.034Z  INFO 1 --- [           main] o.s.b.a.e.web.EndpointLinksResolver      : Exposing 1 endpoint beneath base path '/actuator'
-2026-04-24T00:58:48.651Z DEBUG 1 --- [           main] o.s.s.web.DefaultSecurityFilterChain     : Will secure any request with filters: DisableEncodeUrlFilter, WebAsyncManagerIntegrationFilter, SecurityContextHolderFilter, HeaderWriterFilter, CorsFilter, LogoutFilter, RateLimitFilter, JwtValidationFilter, JwtAuthenticationFilter, RequestCacheAwareFilter, SecurityContextHolderAwareRequestFilter, AnonymousAuthenticationFilter, SessionManagementFilter, ExceptionTranslationFilter, AuthorizationFilter
-2026-04-24T00:58:48.834Z DEBUG 1 --- [           main] s.w.s.m.m.a.RequestMappingHandlerAdapter : ControllerAdvice beans: 0 @ModelAttribute, 0 @InitBinder, 1 RequestBodyAdvice, 1 ResponseBodyAdvice
-2026-04-24T00:58:48.943Z DEBUG 1 --- [           main] .m.m.a.ExceptionHandlerExceptionResolver : ControllerAdvice beans: 2 @ExceptionHandler, 1 ResponseBodyAdvice
-2026-04-24T00:58:49.964Z  INFO 1 --- [           main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat started on port 8080 (http) with context path '/'
-2026-04-24T00:58:50.008Z  INFO 1 --- [           main] KuHub.BackendMonoliticoApplication       : Started BackendMonoliticoApplication in 22.509 seconds (process running for 23.878)
-🔍 Iniciando prueba de conexión a BD...
-✅ CONEXIÓN EXITOSA a PostgreSQL!
-📊 Base de datos: kuhub_devs
-🔗 URL: jdbc:postgresql://172.26.12.228:5432/kuhub_devs
-🏁 Prueba de conexión finalizada
-🚀 Backend Monolítico KuHub iniciado!
-2026-04-24T01:00:28.444Z  INFO 1 --- [nio-8080-exec-2] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring DispatcherServlet 'dispatcherServlet'
-2026-04-24T01:00:28.444Z  INFO 1 --- [nio-8080-exec-2] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
-2026-04-24T01:00:28.445Z DEBUG 1 --- [nio-8080-exec-2] o.s.web.servlet.DispatcherServlet        : Detected StandardServletMultipartResolver
-2026-04-24T01:00:28.445Z DEBUG 1 --- [nio-8080-exec-2] o.s.web.servlet.DispatcherServlet        : Detected AcceptHeaderLocaleResolver
-2026-04-24T01:00:28.445Z DEBUG 1 --- [nio-8080-exec-2] o.s.web.servlet.DispatcherServlet        : Detected FixedThemeResolver
-2026-04-24T01:00:28.448Z DEBUG 1 --- [nio-8080-exec-2] o.s.web.servlet.DispatcherServlet        : Detected org.springframework.web.servlet.view.DefaultRequestToViewNameTranslator@3b2ff8b6
-2026-04-24T01:00:28.450Z DEBUG 1 --- [nio-8080-exec-2] o.s.web.servlet.DispatcherServlet        : Detected org.springframework.web.servlet.support.SessionFlashMapManager@4fbc116b
-2026-04-24T01:00:28.450Z DEBUG 1 --- [nio-8080-exec-2] o.s.web.servlet.DispatcherServlet        : enableLoggingRequestDetails='false': request parameters and headers will be masked to prevent unsafe logging of potentially sensitive data
-2026-04-24T01:00:28.450Z  INFO 1 --- [nio-8080-exec-2] o.s.web.servlet.DispatcherServlet        : Completed initialization in 6 ms
-2026-04-24T01:00:28.490Z DEBUG 1 --- [nio-8080-exec-1] o.s.security.web.FilterChainProxy        : Securing GET /api/v1/permisos/matrix
-2026-04-24T01:00:28.491Z DEBUG 1 --- [nio-8080-exec-2] o.s.security.web.FilterChainProxy        : Securing GET /api/v1/semanas/find-grouped-perions-academic
-2026-04-24T01:00:28.513Z  INFO 1 --- [nio-8080-exec-1] K.c.s.rate_limiting.RateLimitFilter      : 📍 IP: 186.78.184.242 | Petición 2 de 80
-2026-04-24T01:00:28.512Z  INFO 1 --- [nio-8080-exec-2] K.c.s.rate_limiting.RateLimitFilter      : 📍 IP: 186.78.184.242 | Petición 1 de 80
-2026-04-24T01:00:29.108Z DEBUG 1 --- [nio-8080-exec-1] o.s.security.web.FilterChainProxy        : Secured GET /api/v1/permisos/matrix
-2026-04-24T01:00:29.108Z DEBUG 1 --- [nio-8080-exec-2] o.s.security.web.FilterChainProxy        : Secured GET /api/v1/semanas/find-grouped-perions-academic
-2026-04-24T01:00:29.113Z DEBUG 1 --- [nio-8080-exec-2] o.s.web.servlet.DispatcherServlet        : GET "/api/v1/semanas/find-grouped-perions-academic", parameters={}
-2026-04-24T01:00:29.117Z DEBUG 1 --- [nio-8080-exec-1] o.s.web.servlet.DispatcherServlet        : GET "/api/v1/permisos/matrix", parameters={}
-2026-04-24T01:00:29.121Z DEBUG 1 --- [nio-8080-exec-2] s.w.s.m.m.a.RequestMappingHandlerMapping : Mapped to KuHub.modules.gestion_academica.controller.SemanaController#findGroupedPeriodsAcademic()
-2026-04-24T01:00:29.121Z DEBUG 1 --- [nio-8080-exec-1] s.w.s.m.m.a.RequestMappingHandlerMapping : Mapped to KuHub.modules.gestion_usuario.controller.PermisoRolController#getPermissionMatrix()
-2026-04-24T01:00:29.239Z DEBUG 1 --- [nio-8080-exec-1] org.hibernate.SQL                        :
-    SELECT
-        r.id_rol          AS idRol,
-        r.nombre_rol      AS nombreRol,
-        m.id_modulo       AS idModulo,
-        m.codigo_modulo   AS codigoModulo,
-        m.nombre_modulo   AS nombreModulo,
-        m.orden_modulo    AS ordenModulo,
-        pr.id_permiso_rol AS idPermisoRol,
-        COALESCE(pr.puede_leer,       false) AS puedeLeer,
-        COALESCE(pr.puede_crear,      false) AS puedeCrear,
-        COALESCE(pr.puede_actualizar, false) AS puedeActualizar,
-        COALESCE(pr.puede_eliminar,   false) AS puedeEliminar
-    FROM
-        rol r
-    CROSS JOIN
-        modulo m
-    LEFT JOIN
-        permiso_rol pr
-            ON pr.id_rol = r.id_rol
-            AND pr.id_modulo = m.id_modulo
-            AND pr.enabled = true
-    WHERE
-        r.activo = true
-        AND m.enabled = true
-    ORDER BY
-        m.orden_modulo,
-        r.id_rol
-2026-04-24T01:00:29.239Z DEBUG 1 --- [nio-8080-exec-2] org.hibernate.SQL                        :
-    SELECT
-        anio,
-        JSON_AGG(DISTINCT semestre
-    ORDER BY
-        semestre ASC) AS semestres
-    FROM
-        semanas
-    GROUP BY
-        anio
-    ORDER BY
-        anio ASC
-Hibernate:
-    SELECT
-        anio,
-        JSON_AGG(DISTINCT semestre
-    ORDER BY
-        semestre ASC) AS semestres
-    FROM
-        semanas
-    GROUP BY
-        anio
-    ORDER BY
-        anio ASC
-Hibernate:
-    SELECT
-        r.id_rol          AS idRol,
-        r.nombre_rol      AS nombreRol,
-        m.id_modulo       AS idModulo,
-        m.codigo_modulo   AS codigoModulo,
-        m.nombre_modulo   AS nombreModulo,
-        m.orden_modulo    AS ordenModulo,
-        pr.id_permiso_rol AS idPermisoRol,
-        COALESCE(pr.puede_leer,       false) AS puedeLeer,
-        COALESCE(pr.puede_crear,      false) AS puedeCrear,
-        COALESCE(pr.puede_actualizar, false) AS puedeActualizar,
-        COALESCE(pr.puede_eliminar,   false) AS puedeEliminar
-    FROM
-        rol r
-    CROSS JOIN
-        modulo m
-    LEFT JOIN
-        permiso_rol pr
-            ON pr.id_rol = r.id_rol
-            AND pr.id_modulo = m.id_modulo
-            AND pr.enabled = true
-    WHERE
-        r.activo = true
-        AND m.enabled = true
-    ORDER BY
-        m.orden_modulo,
-        r.id_rol
-2026-04-24T01:00:29.380Z DEBUG 1 --- [nio-8080-exec-1] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/yaml]
-2026-04-24T01:00:29.382Z DEBUG 1 --- [nio-8080-exec-2] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/yaml]
-2026-04-24T01:00:29.386Z DEBUG 1 --- [nio-8080-exec-2] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Writing [[YearWithSemestersDTO(anio=2026, semestres=[1])]]
-2026-04-24T01:00:29.386Z DEBUG 1 --- [nio-8080-exec-1] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Writing [{DASHBOARD=[PermisoMatrizDTO(idRol=1, nombreRol=ADMINISTRADOR, idModulo=1, codigoModulo=DASHBOARD, n (truncated)...]
-2026-04-24T01:00:29.423Z DEBUG 1 --- [nio-8080-exec-2] o.s.web.servlet.DispatcherServlet        : Completed 200 OK
-2026-04-24T01:00:29.425Z DEBUG 1 --- [nio-8080-exec-1] o.s.web.servlet.DispatcherServlet        : Completed 200 OK
-2026-04-24T01:00:29.571Z DEBUG 1 --- [nio-8080-exec-3] o.s.security.web.FilterChainProxy        : Securing POST /api/v1/semanas/find-by-weekly-for-solicitation
-2026-04-24T01:00:29.597Z  INFO 1 --- [nio-8080-exec-3] K.c.s.rate_limiting.RateLimitFilter      : 📍 IP: 186.78.184.242 | Petición 3 de 80
-2026-04-24T01:00:29.606Z DEBUG 1 --- [nio-8080-exec-3] o.s.security.web.FilterChainProxy        : Secured POST /api/v1/semanas/find-by-weekly-for-solicitation
-2026-04-24T01:00:29.607Z DEBUG 1 --- [nio-8080-exec-3] o.s.web.servlet.DispatcherServlet        : POST "/api/v1/semanas/find-by-weekly-for-solicitation", parameters={}
-2026-04-24T01:00:29.609Z DEBUG 1 --- [nio-8080-exec-3] s.w.s.m.m.a.RequestMappingHandlerMapping : Mapped to KuHub.modules.gestion_academica.controller.SemanaController#findByWeeklyFilterForSolicitation(WeeklyFilterForSolicitationDTO)
-2026-04-24T01:00:29.624Z DEBUG 1 --- [nio-8080-exec-3] m.m.a.RMh4hfsi84LdbS4uS3jaSaNccc8kartkDJ : Read "application/json;charset=UTF-8" to [WeeklyFilterForSolicitationDTO(anio=2026, semestre=1)]
-2026-04-24T01:00:29.768Z DEBUG 1 --- [nio-8080-exec-3] org.hibernate.SQL                        :
-    select
-        s1_0.id_semana,
-        s1_0.anio,
-        s1_0.fecha_fin,
-        s1_0.fecha_inicio,
-        s1_0.nombre_semana,
-        s1_0.semestre
-    from
-        public.semanas s1_0
-    where
-        s1_0.anio=?
-        and s1_0.semestre=?
-    order by
-        s1_0.fecha_inicio
-Hibernate:
-    select
-        s1_0.id_semana,
-        s1_0.anio,
-        s1_0.fecha_fin,
-        s1_0.fecha_inicio,
-        s1_0.nombre_semana,
-        s1_0.semestre
-    from
-        public.semanas s1_0
-    where
-        s1_0.anio=?
-        and s1_0.semestre=?
-    order by
-        s1_0.fecha_inicio
-2026-04-24T01:00:29.771Z TRACE 1 --- [nio-8080-exec-3] org.hibernate.orm.jdbc.bind              : binding parameter (1:SMALLINT) <- [2026]
-2026-04-24T01:00:29.771Z TRACE 1 --- [nio-8080-exec-3] org.hibernate.orm.jdbc.bind              : binding parameter (2:SMALLINT) <- [1]
-2026-04-24T01:00:29.807Z DEBUG 1 --- [nio-8080-exec-3] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/yaml]
-2026-04-24T01:00:29.809Z DEBUG 1 --- [nio-8080-exec-3] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Writing [[Semana(idSemana=1, nombreSemana=Semana 1, fechaInicio=2026-03-02, fechaFin=2026-03-08, anio=2026, s (truncated)...]
-2026-04-24T01:00:29.820Z DEBUG 1 --- [nio-8080-exec-3] o.s.web.servlet.DispatcherServlet        : Completed 200 OK
-2026-04-24T01:00:44.093Z DEBUG 1 --- [nio-8080-exec-4] o.s.security.web.FilterChainProxy        : Securing POST /api/v1/pedido/resumen-historico
-2026-04-24T01:00:44.097Z  INFO 1 --- [nio-8080-exec-4] K.c.s.rate_limiting.RateLimitFilter      : 📍 IP: 186.78.184.242 | Petición 4 de 80
-2026-04-24T01:00:44.106Z DEBUG 1 --- [nio-8080-exec-4] o.s.security.web.FilterChainProxy        : Secured POST /api/v1/pedido/resumen-historico
-2026-04-24T01:00:44.106Z DEBUG 1 --- [nio-8080-exec-4] o.s.web.servlet.DispatcherServlet        : POST "/api/v1/pedido/resumen-historico", parameters={}
-2026-04-24T01:00:44.107Z DEBUG 1 --- [nio-8080-exec-4] s.w.s.m.m.a.RequestMappingHandlerMapping : Mapped to KuHub.modules.gestion_pedido.controller.PedidoController#obtenerResumenHistorico(ResumenHistoricoRequestDTO)
-2026-04-24T01:00:44.113Z DEBUG 1 --- [nio-8080-exec-4] m.m.a.RMh4hfsi84LdbS4uS3jaSaNccc8kartkDJ : Read "application/json;charset=UTF-8" to [ResumenHistoricoRequestDTO(fechaInicio=2026-01-01, fechaFin=2026-12-31, estadosCsv=APROBADO,ENTREGAD (truncated)...]
-2026-04-24T01:00:44.124Z  INFO 1 --- [nio-8080-exec-4] K.m.g.controller.PedidoController        : === INICIO obtenerResumenHistorico ===
-2026-04-24T01:00:44.124Z  INFO 1 --- [nio-8080-exec-4] K.m.g.controller.PedidoController        : 📅 Fecha Inicio recibida del frontend: 2026-01-01
-2026-04-24T01:00:44.124Z  INFO 1 --- [nio-8080-exec-4] K.m.g.controller.PedidoController        : 📅 Fecha Fin recibida del frontend: 2026-12-31
-2026-04-24T01:00:44.124Z  INFO 1 --- [nio-8080-exec-4] K.m.g.controller.PedidoController        : 🏷 ️  Estados CSV recibido del frontend: APROBADO,ENTREGADO
-2026-04-24T01:00:44.126Z  INFO 1 --- [nio-8080-exec-4] K.m.g.controller.PedidoController        : 🏷 ️  Estados NORMALIZADOS después de validación: APROBADO,ENTREGADO
-2026-04-24T01:00:44.127Z  INFO 1 --- [nio-8080-exec-4] K.m.g.controller.PedidoController        : ✅ Llamando al service con: fechaInicio=2026-01-01, fechaFin=2026-12-31, estados=APROBADO,ENTREGADO
-2026-04-24T01:00:44.129Z  INFO 1 --- [nio-8080-exec-4] K.m.g.services.PedidoServiceImpl         : 🔵 [SERVICE] obtenerResumenHistorico INICIADO
-2026-04-24T01:00:44.129Z  INFO 1 --- [nio-8080-exec-4] K.m.g.services.PedidoServiceImpl         : 📅 [SERVICE] Parámetro fechaInicio: 2026-01-01 (tipo: LocalDate)
-2026-04-24T01:00:44.130Z  INFO 1 --- [nio-8080-exec-4] K.m.g.services.PedidoServiceImpl         : 📅 [SERVICE] Parámetro fechaFin: 2026-12-31 (tipo: LocalDate)
-2026-04-24T01:00:44.130Z  INFO 1 --- [nio-8080-exec-4] K.m.g.services.PedidoServiceImpl         : 🏷 ️  [SERVICE] Parámetro estadosCsv: 'APROBADO,ENTREGADO' (longitud: 18)
-2026-04-24T01:00:44.137Z DEBUG 1 --- [nio-8080-exec-4] org.hibernate.SQL                        :
-    SELECT
-        jsonb_build_object(     'fechaInicio', CAST(? AS TEXT),     'fechaFin',    CAST(? AS TEXT),     'estados',     to_jsonb(string_to_array(trim(?), ',')::text[]),      'totalProductosDistintos', (         SELECT
-            COUNT(DISTINCT dp.id_producto)         FROM detalle_pedido dp
-        JOIN
-            pedido p
-                ON p.id_pedido = dp.id_pedido
-        WHERE
-            p.fecha_inicio_pedido BETWEEN ? AND ?
-            AND p.estado_pedido::text = ANY(string_to_array(trim(?), ',')::text[])     ),      'totalPedidos', (         SELECT
-            COUNT(DISTINCT p.id_pedido)         FROM pedido p
-        WHERE
-            p.fecha_inicio_pedido BETWEEN ? AND ?
-            AND p.estado_pedido::text = ANY(string_to_array(trim(?), ',')::text[])     ),      'productos', COALESCE((         SELECT
-            jsonb_agg(             jsonb_build_object(                 'idProducto',      prod.id_producto,                 'codProducto',     prod.cod_producto,                 'nombreProducto',  prod.nombre_producto,                 'unidadMedida',    um.nombre_unidad,                 'abreviatura',     um.abreviatura,                 'cantidadTotal',   resumen.cantidad_total,                 'vecesEnPedidos',  resumen.veces_en_pedidos             )
-        ORDER BY
-            resumen.cantidad_total DESC         )         FROM (             SELECT
-                dp.id_producto,                 SUM(dp.cant_producto_pedido)  AS cantidad_total,                 COUNT(DISTINCT dp.id_pedido)  AS veces_en_pedidos
-            FROM
-                detalle_pedido dp
-            JOIN
-                pedido p
-                    ON p.id_pedido = dp.id_pedido
-            WHERE
-                p.fecha_inicio_pedido BETWEEN ? AND ?
-                AND p.estado_pedido::text = ANY(string_to_array(trim(?), ',')::text[])
-            GROUP BY
-                dp.id_producto         ) resumen
-        JOIN
-            producto prod
-                ON prod.id_producto = resumen.id_producto
-        LEFT JOIN
-            unidad_medida um
-                ON um.id_unidad = prod.id_unidad     ), '[]'::jsonb) ) AS resultado
-Hibernate:
-    SELECT
-        jsonb_build_object(     'fechaInicio', CAST(? AS TEXT),     'fechaFin',    CAST(? AS TEXT),     'estados',     to_jsonb(string_to_array(trim(?), ',')::text[]),      'totalProductosDistintos', (         SELECT
-            COUNT(DISTINCT dp.id_producto)         FROM detalle_pedido dp
-        JOIN
-            pedido p
-                ON p.id_pedido = dp.id_pedido
-        WHERE
-            p.fecha_inicio_pedido BETWEEN ? AND ?
-            AND p.estado_pedido::text = ANY(string_to_array(trim(?), ',')::text[])     ),      'totalPedidos', (         SELECT
-            COUNT(DISTINCT p.id_pedido)         FROM pedido p
-        WHERE
-            p.fecha_inicio_pedido BETWEEN ? AND ?
-            AND p.estado_pedido::text = ANY(string_to_array(trim(?), ',')::text[])     ),      'productos', COALESCE((         SELECT
-            jsonb_agg(             jsonb_build_object(                 'idProducto',      prod.id_producto,                 'codProducto',     prod.cod_producto,                 'nombreProducto',  prod.nombre_producto,                 'unidadMedida',    um.nombre_unidad,                 'abreviatura',     um.abreviatura,                 'cantidadTotal',   resumen.cantidad_total,                 'vecesEnPedidos',  resumen.veces_en_pedidos             )
-        ORDER BY
-            resumen.cantidad_total DESC         )         FROM (             SELECT
-                dp.id_producto,                 SUM(dp.cant_producto_pedido)  AS cantidad_total,                 COUNT(DISTINCT dp.id_pedido)  AS veces_en_pedidos
-            FROM
-                detalle_pedido dp
-            JOIN
-                pedido p
-                    ON p.id_pedido = dp.id_pedido
-            WHERE
-                p.fecha_inicio_pedido BETWEEN ? AND ?
-                AND p.estado_pedido::text = ANY(string_to_array(trim(?), ',')::text[])
-            GROUP BY
-                dp.id_producto         ) resumen
-        JOIN
-            producto prod
-                ON prod.id_producto = resumen.id_producto
-        LEFT JOIN
-            unidad_medida um
-                ON um.id_unidad = prod.id_unidad     ), '[]'::jsonb) ) AS resultado
-2026-04-24T01:00:44.139Z TRACE 1 --- [nio-8080-exec-4] org.hibernate.orm.jdbc.bind              : binding parameter (1:DATE) <- [2026-01-01]
-2026-04-24T01:00:44.139Z TRACE 1 --- [nio-8080-exec-4] org.hibernate.orm.jdbc.bind              : binding parameter (2:DATE) <- [2026-12-31]
-2026-04-24T01:00:44.140Z TRACE 1 --- [nio-8080-exec-4] org.hibernate.orm.jdbc.bind              : binding parameter (3:VARCHAR) <- [APROBADO,ENTREGADO]
-2026-04-24T01:00:44.140Z TRACE 1 --- [nio-8080-exec-4] org.hibernate.orm.jdbc.bind              : binding parameter (4:DATE) <- [2026-01-01]
-2026-04-24T01:00:44.140Z TRACE 1 --- [nio-8080-exec-4] org.hibernate.orm.jdbc.bind              : binding parameter (5:DATE) <- [2026-12-31]
-2026-04-24T01:00:44.140Z TRACE 1 --- [nio-8080-exec-4] org.hibernate.orm.jdbc.bind              : binding parameter (6:VARCHAR) <- [APROBADO,ENTREGADO]
-2026-04-24T01:00:44.141Z TRACE 1 --- [nio-8080-exec-4] org.hibernate.orm.jdbc.bind              : binding parameter (7:DATE) <- [2026-01-01]
-2026-04-24T01:00:44.141Z TRACE 1 --- [nio-8080-exec-4] org.hibernate.orm.jdbc.bind              : binding parameter (8:DATE) <- [2026-12-31]
-2026-04-24T01:00:44.141Z TRACE 1 --- [nio-8080-exec-4] org.hibernate.orm.jdbc.bind              : binding parameter (9:VARCHAR) <- [APROBADO,ENTREGADO]
-2026-04-24T01:00:44.141Z TRACE 1 --- [nio-8080-exec-4] org.hibernate.orm.jdbc.bind              : binding parameter (10:DATE) <- [2026-01-01]
-2026-04-24T01:00:44.142Z TRACE 1 --- [nio-8080-exec-4] org.hibernate.orm.jdbc.bind              : binding parameter (11:DATE) <- [2026-12-31]
-2026-04-24T01:00:44.142Z TRACE 1 --- [nio-8080-exec-4] org.hibernate.orm.jdbc.bind              : binding parameter (12:VARCHAR) <- [APROBADO,ENTREGADO]
-2026-04-24T01:00:44.157Z  INFO 1 --- [nio-8080-exec-4] K.m.g.services.PedidoServiceImpl         : 📦 [SERVICE] JSON retornado del repository: 11252 caracteres
-2026-04-24T01:00:44.157Z  INFO 1 --- [nio-8080-exec-4] K.m.g.services.PedidoServiceImpl         : ✅ [SERVICE] Parseando JSON response...
-2026-04-24T01:00:44.158Z  INFO 1 --- [nio-8080-exec-4] K.m.g.services.PedidoServiceImpl         : 🔍 [SERVICE] JSON COMPLETO recibido: {"estados": ["APROBADO", "ENTREGADO"], "fechaFin": "2026-12-31 +00", "productos": [{"idProducto": 265, "abreviatura": "un", "codProducto": null, "unidadMedida": "Unidad", "cantidadTotal": 22.000, "nombreProducto": "Palos Bambu Con Nudo", "vecesEnPedidos": 2}, {"idProducto": 249, "abreviatura": "un", "codProducto": null, "unidadMedida": "Unidad", "cantidadTotal": 15.000, "nombreProducto": "Bolsa De Vacio Grande", "vecesEnPedidos": 1}, {"idProducto": 18, "abreviatura": "un", "codProducto": null, "unidadMedida": "Unidad", "cantidadTotal": 15.000, "nombreProducto": "Cilantro", "vecesEnPedidos": 1}, {"idProducto": 131, "abreviatura": "kg", "codProducto": null, "unidadMedida": "Kilo", "cantidadTotal": 14.733, "nombreProducto": "Huevo Primera Kilo", "vecesEnPedidos": 2}, {"idProducto": 48, "abreviatura": "kg", "codProducto": null, "unidadMedida": "Kilo", "cantidadTotal": 14.418, "nombreProducto": "Romero", "vecesEnPedidos": 1}, {"idProducto": 222, "abreviatura": "un", "codProducto": null, "unidadMedida": "Unidad", "cantidadTotal": 12.000, "nombreProducto": "Chicha 11,5°", "vecesEnPedidos": 1}, {"idProducto": 266, "abreviatura": "rll", "codProducto": null, "unidadMedida": "Rollo", "cantidadTotal": 10.000, "nombreProducto": "Papel De Aluminio", "vecesEnPedidos": 1}, {"idProducto": 50, "abreviatura": "kg", "codProducto": null, "unidadMedida": "Kilo", "cantidadTotal": 9.805, "nombreProducto": "Tomate", "vecesEnPedidos": 1}, {"idProducto": 143, "abreviatura": "kg", "codProducto": null, "unidadMedida": "Kilo", "cantidadTotal": 9.349, "nombreProducto": "Manjar Nestle", "vecesEnPedidos": 1}, {"idProducto": 72, "abreviatura": "l", "codProducto": null, "unidadMedida": "Litro", "cantidadTotal": 8.949, "nombreProducto": "Aceite De Sésamo", "vecesEnPedidos": 1}, {"idProducto": 63, "abreviatura": "kg", "codProducto": null, "unidadMedida": "Kilo", "cantidadTotal": 7.456, "nombreProducto": "Mora", "vecesEnPedidos": 1}, {"idProducto": 31, "abreviatura": "kg", "codProducto": null, "unidadMedida": "Kilo", "cantidadTotal": 7.383, "nombreProducto": "Mizuna Morada", "vecesEnPedidos": 2}, {"idProducto": 164, "abreviatura": "kg", "codProducto": null, "unidadMedida": "Kilo", "cantidadTotal": 6.960, "nombreProducto": "Queso Crema Reny G1", "vecesEnPedidos": 1}, {"idProducto": 140, "abreviatura": "kg", "codProducto": null, "unidadMedida": "Kilo", "cantidadTotal": 6.580, "nombreProducto": "Levadura Instantanea", "vecesEnPedidos": 1}, {"idProducto": 179, "abreviatura": "kg", "codProducto": null, "unidadMedida": "Kilo", "cantidadTotal": 6.468, "nombreProducto": "Semilla De Maravilla", "vecesEnPedidos": 1}, {"idProducto": 133, "abreviatura": "bdj", "codProducto": null, "unidadMedida": "Bandeja", "cantidadTotal": 6.000, "nombreProducto": "Huevos De Codorniz", "vecesEnPedidos": 1}, {"idProducto": 235, "abreviatura": "un", "codProducto": null, "unidadMedida": "Unidad", "cantidadTotal": 6.000, "nombreProducto": "Ron Blanco Bacardi 40°", "vecesEnPedidos": 1}, {"idProducto": 230, "abreviatura": "un", "codProducto": null, "unidadMedida": "Unidad", "cantidadTotal": 6.000, "nombreProducto": "Jugo Watt´s Piña", "vecesEnPedidos": 1}, {"idProducto": 46, "abreviatura": "un", "codProducto": null, "unidadMedida": "Unidad", "cantidadTotal": 6.000, "nombreProducto": "Repollo Verde", "vecesEnPedidos": 1}, {"idProducto": 250, "abreviatura": "un", "codProducto": null, "unidadMedida": "Unidad", "cantidadTotal": 6.000, "nombreProducto": "Bolsa Prepicada Grande", "vecesEnPedidos": 1}, {"idProducto": 219, "abreviatura": "un", "codProducto": null, "unidadMedida": "Unidad", "cantidadTotal": 6.000, "nombreProducto": "Bebida Ginger Ale", "vecesEnPedidos": 1}, {"idProducto": 216, "abreviatura": "un", "codProducto": null, "unidadMedida": "Unidad", "cantidadTotal": 6.000, "nombreProducto": "Amaretto Mitjans", "vecesEnPedidos": 1}, {"idProducto": 166, "abreviatura": "un", "codProducto": null, "unidadMedida": "Unidad", "cantidadTotal": 6.000, "nombreProducto": "Queso De Cabra Unidad", "vecesEnPedidos": 1}, {"idProducto": 182, "abreviatura": "kg", "codProducto": null, "unidadMedida": "Kilo", "cantidadTotal": 5.472, "nombreProducto": "Sesamo Blanco", "vecesEnPedidos": 1}, {"idProducto": 54, "abreviatura": "kg", "codProducto": null, "unidadMedida": "Kilo", "cantidadTotal": 4.997, "nombreProducto": "Zanahoria", "vecesEnPedidos": 1}, {"idProducto": 195, "abreviatura": "kg", "codProducto": null, "unidadMedida": "Kilo", "cantidadTotal": 4.722, "nombreProducto": "Cerdo Lomo", "vecesEnPedidos": 1}, {"idProducto": 105, "abreviatura": "kg", "codProducto": null, "unidadMedida": "Kilo", "cantidadTotal": 4.384, "nombreProducto": "Cobertura Blanca Neucober", "vecesEnPedidos": 1}, {"idProducto": 120, "abreviatura": "un", "codProducto": null, "unidadMedida": "Unidad", "cantidadTotal": 4.000, "nombreProducto": "Galletas De Vino", "vecesEnPedidos": 1}, {"idProducto": 271, "abreviatura": "un", "codProducto": null, "unidadMedida": "Unidad", "cantidadTotal": 4.000, "nombreProducto": "Transfers", "vecesEnPedidos": 1}, {"idProducto": 186, "abreviatura": "un", "codProducto": null, "unidadMedida": "Unidad", "cantidadTotal": 4.000, "nombreProducto": "Tinta De Sepia / Jibia / Calamar Tarro", "vecesEnPedidos": 1}, {"idProducto": 10, "abreviatura": "bdj", "codProducto": null, "unidadMedida": "Bandeja", "cantidadTotal": 4.000, "nombreProducto": "Brote Alfalfa 70 Gr", "vecesEnPedidos": 1}, {"idProducto": 198, "abreviatura": "un", "codProducto": null, "unidadMedida": "Unidad", "cantidadTotal": 4.000, "nombreProducto": "Pollo Suprema", "vecesEnPedidos": 1}, {"idProducto": 245, "abreviatura": "un", "codProducto": null, "unidadMedida": "Unidad", "cantidadTotal": 4.000, "nombreProducto": "Vino Tinto Cabernet Sauvignon Koyle", "vecesEnPedidos": 1}, {"idProducto": 55, "abreviatura": "kg", "codProducto": null, "unidadMedida": "Kilo", "cantidadTotal": 3.812, "nombreProducto": "Zapallo Camote", "vecesEnPedidos": 1}, {"idProducto": 125, "abreviatura": "kg", "codProducto": null, "unidadMedida": "Kilo", "cantidadTotal": 3.676, "nombreProducto": "Harina De Fuerza", "vecesEnPedidos": 1}, {"idProducto": 82, "abreviatura": "kg", "codProducto": null, "unidadMedida": "Kilo", "cantidadTotal": 3.546, "nombreProducto": "Almendras Enteras", "vecesEnPedidos": 1}, {"idProducto": 15, "abreviatura": "kg", "codProducto": null, "unidadMedida": "Kilo", "cantidadTotal": 3.468, "nombreProducto": "Champiñon Ostra", "vecesEnPedidos": 1}, {"idProducto": 268, "abreviatura": "rll", "codProducto": null, "unidadMedida": "Rollo", "cantidadTotal": 3.000, "nombreProducto": "Papel Film (alusa)", "vecesEnPedidos": 1}, {"idProducto": 181, "abreviatura": "kg", "codProducto": null, "unidadMedida": "Kilo", "cantidadTotal": 2.928, "nombreProducto": "Semilla De Zapallo", "vecesEnPedidos": 1}, {"idProducto": 153, "abreviatura": "kg", "codProducto": null, "unidadMedida": "Kilo", "cantidadTotal": 2.764, "nombreProducto": "Mostacilla Colores", "vecesEnPedidos": 1}, {"idProducto": 76, "abreviatura": "l", "codProducto": null, "unidadMedida": "Litro", "cantidadTotal": 2.730, "nombreProducto": "Aceto Balsamico", "vecesEnPedidos": 1}, {"idProducto": 7, "abreviatura": "kg", "codProducto": null, "unidadMedida": "Kilo", "cantidadTotal": 2.642, "nombreProducto": "Berros", "vecesEnPedidos": 1}, {"idProducto": 180, "abreviatura": "kg", "codProducto": null, "unidadMedida": "Kilo", "cantidadTotal": 2.550, "nombreProducto": "Semilla De Mostaza Blanca", "vecesEnPedidos": 1}, {"idProducto": 89, "abreviatura": "kg", "codProducto": null, "unidadMedida": "Kilo", "cantidadTotal": 2.296, "nombreProducto": "Azúcar Granulada Blanca Iansa", "vecesEnPedidos": 1}, {"idProducto": 85, "abreviatura": "kg", "codProducto": null, "unidadMedida": "Kilo", "cantidadTotal": 2.262, "nombreProducto": "Arroz Arboreo / Risotto", "vecesEnPedidos": 1}, {"idProducto": 58, "abreviatura": "kg", "codProducto": null, "unidadMedida": "Kilo", "cantidadTotal": 2.056, "nombreProducto": "Arándano", "vecesEnPedidos": 2}, {"idProducto": 264, "abreviatura": "un", "codProducto": null, "unidadMedida": "Unidad", "cantidadTotal": 2.000, "nombreProducto": "Mondadiente", "vecesEnPedidos": 1}, {"idProducto": 43, "abreviatura": "un", "codProducto": null, "unidadMedida": "Unidad", "cantidadTotal": 2.000, "nombreProducto": "Piña", "vecesEnPedidos": 1}, {"idProducto": 79, "abreviatura": "un", "codProducto": null, "unidadMedida": "Unidad", "cantidadTotal": 2.000, "nombreProducto": "Ají Panca Pasta Amarillo", "vecesEnPedidos": 1}, {"idProducto": 141, "abreviatura": "un", "codProducto": null, "unidadMedida": "Unidad", "cantidadTotal": 2.000, "nombreProducto": "Lychee En Conserva", "vecesEnPedidos": 1}, {"idProducto": 42, "abreviatura": "un", "codProducto": null, "unidadMedida": "Unidad", "cantidadTotal": 2.000, "nombreProducto": "Pimenton Verde", "vecesEnPedidos": 1}, {"idProducto": 262, "abreviatura": "un", "codProducto": null, "unidadMedida": "Unidad", "cantidadTotal": 2.000, "nombreProducto": "Guantes", "vecesEnPedidos": 1}, {"idProducto": 23, "abreviatura": "un", "codProducto": null, "unidadMedida": "Unidad", "cantidadTotal": 2.000, "nombreProducto": "Lechuga Lollo Rosso", "vecesEnPedidos": 1}, {"idProducto": 77, "abreviatura": "kg", "codProducto": null, "unidadMedida": "Kilo", "cantidadTotal": 1.895, "nombreProducto": "Agar Agar", "vecesEnPedidos": 2}, {"idProducto": 51, "abreviatura": "kg", "codProducto": null, "unidadMedida": "Kilo", "cantidadTotal": 1.812, "nombreProducto": "Tomate Cherry", "vecesEnPedidos": 1}, {"idProducto": 190, "abreviatura": "l", "codProducto": null, "unidadMedida": "Litro", "cantidadTotal": 1.408, "nombreProducto": "Vinagre Blanco", "vecesEnPedidos": 1}, {"idProducto": 123, "abreviatura": "kg", "codProducto": null, "unidadMedida": "Kilo", "cantidadTotal": 1.402, "nombreProducto": "Harina De Almendras", "vecesEnPedidos": 1}, {"idProducto": 126, "abreviatura": "kg", "codProducto": null, "unidadMedida": "Kilo", "cantidadTotal": 1.100, "nombreProducto": "Harina Integral", "vecesEnPedidos": 1}, {"idProducto": 16, "abreviatura": "kg", "codProducto": null, "unidadMedida": "Kilo", "cantidadTotal": 1.010, "nombreProducto": "Champiñon Paris", "vecesEnPedidos": 1}, {"idProducto": 256, "abreviatura": "un", "codProducto": null, "unidadMedida": "Unidad", "cantidadTotal": 1.000, "nombreProducto": "Colorante Gel Rojo", "vecesEnPedidos": 1}, {"idProducto": 167, "abreviatura": "kg", "codProducto": null, "unidadMedida": "Kilo", "cantidadTotal": 0.742, "nombreProducto": "Queso Emmenthal", "vecesEnPedidos": 1}, {"idProducto": 59, "abreviatura": "kg", "codProducto": null, "unidadMedida": "Kilo", "cantidadTotal": 0.616, "nombreProducto": "Arvejas", "vecesEnPedidos": 1}, {"idProducto": 86, "abreviatura": "kg", "codProducto": null, "unidadMedida": "Kilo", "cantidadTotal": 0.408, "nombreProducto": "Arroz Grado 1", "vecesEnPedidos": 1}, {"idProducto": 165, "abreviatura": "kg", "codProducto": null, "unidadMedida": "Kilo", "cantidadTotal": 0.382, "nombreProducto": "Queso De Cabra", "vecesEnPedidos": 1}, {"idProducto": 102, "abreviatura": "kg", "codProducto": null, "unidadMedida": "Kilo", "cantidadTotal": 0.300, "nombreProducto": "Clavo De Olor Entero", "vecesEnPedidos": 1}], "fechaInicio": "2026-01-01 +00", "totalPedidos": 4, "totalProductosDistintos": 65}
-2026-04-24T01:00:44.178Z  INFO 1 --- [nio-8080-exec-4] K.m.g.services.PedidoServiceImpl         : 🔍 [SERVICE] rootNode type: OBJECT
-2026-04-24T01:00:44.180Z  INFO 1 --- [nio-8080-exec-4] K.m.g.services.PedidoServiceImpl         : ✅ [SERVICE] rootNode encontrado, extrayendo datos...
-2026-04-24T01:00:44.221Z  INFO 1 --- [nio-8080-exec-4] K.m.g.services.PedidoServiceImpl         : ✅ [SERVICE] RESULTADOS FINALES:
-2026-04-24T01:00:44.221Z  INFO 1 --- [nio-8080-exec-4] K.m.g.services.PedidoServiceImpl         :   📊 Total Productos Distintos: 65
-2026-04-24T01:00:44.221Z  INFO 1 --- [nio-8080-exec-4] K.m.g.services.PedidoServiceImpl         :   📊 Total Pedidos: 4
-2026-04-24T01:00:44.221Z  INFO 1 --- [nio-8080-exec-4] K.m.g.services.PedidoServiceImpl         :   📊 Estados encontrados: [APROBADO, ENTREGADO]
-2026-04-24T01:00:44.222Z  INFO 1 --- [nio-8080-exec-4] K.m.g.services.PedidoServiceImpl         :   📊 Productos en lista: 65 items
-2026-04-24T01:00:44.228Z DEBUG 1 --- [nio-8080-exec-4] .m.m.a.ExceptionHandlerExceptionResolver : Using @ExceptionHandler KuHub.config.GlobalExceptionHandler#handleGeneralException(Exception)
-java.time.format.DateTimeParseException: Text '2026-01-01 +00' could not be parsed, unparsed text found at index 10
-        at java.base/java.time.format.DateTimeFormatter.parseResolved0(Unknown Source)
-        at java.base/java.time.format.DateTimeFormatter.parse(Unknown Source)
-        at java.base/java.time.LocalDate.parse(Unknown Source)
-        at java.base/java.time.LocalDate.parse(Unknown Source)
-        at KuHub.modules.gestion_pedido.services.PedidoServiceImpl.obtenerResumenHistorico(PedidoServiceImpl.java:303)
-        at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(Unknown Source)
-        at java.base/java.lang.reflect.Method.invoke(Unknown Source)
-        at org.springframework.aop.support.AopUtils.invokeJoinpointUsingReflection(AopUtils.java:359)
-        at org.springframework.aop.framework.ReflectiveMethodInvocation.invokeJoinpoint(ReflectiveMethodInvocation.java:196)
-        at org.springframework.aop.framework.ReflectiveMethodInvocation.proceed(ReflectiveMethodInvocation.java:163)
-        at org.springframework.transaction.interceptor.TransactionAspectSupport.invokeWithinTransaction(TransactionAspectSupport.java:380)
-        at org.springframework.transaction.interceptor.TransactionInterceptor.invoke(TransactionInterceptor.java:119)
-        at org.springframework.aop.framework.ReflectiveMethodInvocation.proceed(ReflectiveMethodInvocation.java:184)
-        at org.springframework.aop.framework.CglibAopProxy$DynamicAdvisedInterceptor.intercept(CglibAopProxy.java:727)
-        at KuHub.modules.gestion_pedido.services.PedidoServiceImpl$$SpringCGLIB$$0.obtenerResumenHistorico(<generated>)
-        at KuHub.modules.gestion_pedido.controller.PedidoController.obtenerResumenHistorico(PedidoController.java:133)
-        at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(Unknown Source)
-        at java.base/java.lang.reflect.Method.invoke(Unknown Source)
-        at org.springframework.aop.support.AopUtils.invokeJoinpointUsingReflection(AopUtils.java:359)
-        at org.springframework.aop.framework.ReflectiveMethodInvocation.invokeJoinpoint(ReflectiveMethodInvocation.java:196)
-        at org.springframework.aop.framework.ReflectiveMethodInvocation.proceed(ReflectiveMethodInvocation.java:163)
-        at org.springframework.validation.beanvalidation.MethodValidationInterceptor.invoke(MethodValidationInterceptor.java:174)
-        at org.springframework.aop.framework.ReflectiveMethodInvocation.proceed(ReflectiveMethodInvocation.java:184)
-        at org.springframework.aop.framework.CglibAopProxy$DynamicAdvisedInterceptor.intercept(CglibAopProxy.java:727)
-        at KuHub.modules.gestion_pedido.controller.PedidoController$$SpringCGLIB$$0.obtenerResumenHistorico(<generated>)
-        at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(Unknown Source)
-        at java.base/java.lang.reflect.Method.invoke(Unknown Source)
-        at org.springframework.web.method.support.InvocableHandlerMethod.doInvoke(InvocableHandlerMethod.java:257)
-        at org.springframework.web.method.support.InvocableHandlerMethod.invokeForRequest(InvocableHandlerMethod.java:190)
-        at org.springframework.web.servlet.mvc.method.annotation.ServletInvocableHandlerMethod.invokeAndHandle(ServletInvocableHandlerMethod.java:118)
-        at org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerAdapter.invokeHandlerMethod(RequestMappingHandlerAdapter.java:986)
-        at org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerAdapter.handleInternal(RequestMappingHandlerAdapter.java:891)
-        at org.springframework.web.servlet.mvc.method.AbstractHandlerMethodAdapter.handle(AbstractHandlerMethodAdapter.java:87)
-        at org.springframework.web.servlet.DispatcherServlet.doDispatch(DispatcherServlet.java:1088)
-        at org.springframework.web.servlet.DispatcherServlet.doService(DispatcherServlet.java:978)
-        at org.springframework.web.servlet.FrameworkServlet.processRequest(FrameworkServlet.java:1014)
-        at org.springframework.web.servlet.FrameworkServlet.doPost(FrameworkServlet.java:914)
-        at jakarta.servlet.http.HttpServlet.service(HttpServlet.java:590)
-        at org.springframework.web.servlet.FrameworkServlet.service(FrameworkServlet.java:885)
-        at jakarta.servlet.http.HttpServlet.service(HttpServlet.java:658)
-        at org.apache.catalina.core.ApplicationFilterChain.internalDoFilter(ApplicationFilterChain.java:195)
-        at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:140)
-        at org.apache.tomcat.websocket.server.WsFilter.doFilter(WsFilter.java:51)
-        at org.apache.catalina.core.ApplicationFilterChain.internalDoFilter(ApplicationFilterChain.java:164)
-        at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:140)
-        at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:110)
-        at org.apache.catalina.core.ApplicationFilterChain.internalDoFilter(ApplicationFilterChain.java:164)
-        at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:140)
-        at org.springframework.web.filter.CompositeFilter$VirtualFilterChain.doFilter(CompositeFilter.java:108)
-        at org.springframework.security.web.FilterChainProxy.lambda$doFilterInternal$3(FilterChainProxy.java:231)
-        at org.springframework.security.web.ObservationFilterChainDecorator$FilterObservation$SimpleFilterObservation.lambda$wrap$1(ObservationFilterChainDecorator.java:479)
-        at org.springframework.security.web.ObservationFilterChainDecorator$AroundFilterObservation$SimpleAroundFilterObservation.lambda$wrap$1(ObservationFilterChainDecorator.java:340)
-        at org.springframework.security.web.ObservationFilterChainDecorator.lambda$wrapSecured$0(ObservationFilterChainDecorator.java:82)
-        at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:128)
-        at org.springframework.security.web.access.intercept.AuthorizationFilter.doFilter(AuthorizationFilter.java:101)
-        at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:240)
-        at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:227)
-        at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:137)
-        at org.springframework.security.web.access.ExceptionTranslationFilter.doFilter(ExceptionTranslationFilter.java:126)
-        at org.springframework.security.web.access.ExceptionTranslationFilter.doFilter(ExceptionTranslationFilter.java:120)
-        at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:240)
-        at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:227)
-        at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:137)
-        at org.springframework.security.web.session.SessionManagementFilter.doFilter(SessionManagementFilter.java:131)
-        at org.springframework.security.web.session.SessionManagementFilter.doFilter(SessionManagementFilter.java:85)
-        at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:240)
-        at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:227)
-        at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:137)
-        at org.springframework.security.web.authentication.AnonymousAuthenticationFilter.doFilter(AnonymousAuthenticationFilter.java:100)
-        at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:240)
-        at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:227)
-        at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:137)
-        at org.springframework.security.web.servletapi.SecurityContextHolderAwareRequestFilter.doFilter(SecurityContextHolderAwareRequestFilter.java:179)
-        at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:240)
-        at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:227)
-        at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:137)
-        at org.springframework.security.web.savedrequest.RequestCacheAwareFilter.doFilter(RequestCacheAwareFilter.java:63)
-        at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:240)
-        at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:227)
-        at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:137)
-        at org.springframework.security.web.authentication.AbstractAuthenticationProcessingFilter.doFilter(AbstractAuthenticationProcessingFilter.java:227)
-        at org.springframework.security.web.authentication.AbstractAuthenticationProcessingFilter.doFilter(AbstractAuthenticationProcessingFilter.java:221)
-        at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:240)
-        at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:227)
-        at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:137)
-        at KuHub.config.security.filter.JwtValidationFilter.doFilterInternal(JwtValidationFilter.java:98)
-        at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116)
-        at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:240)
-        at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:227)
-        at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:137)
-        at KuHub.config.security.rate_limiting.RateLimitFilter.doFilterInternal(RateLimitFilter.java:66)
-        at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116)
-        at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:240)
-        at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:227)
-        at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:137)
-        at org.springframework.security.web.authentication.logout.LogoutFilter.doFilter(LogoutFilter.java:107)
-        at org.springframework.security.web.authentication.logout.LogoutFilter.doFilter(LogoutFilter.java:93)
-        at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:240)
-        at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:227)
-        at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:137)
-        at org.springframework.web.filter.CorsFilter.doFilterInternal(CorsFilter.java:91)
-        at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116)
-        at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:240)
-        at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:227)
-        at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:137)
-        at org.springframework.security.web.header.HeaderWriterFilter.doHeadersAfter(HeaderWriterFilter.java:90)
-        at org.springframework.security.web.header.HeaderWriterFilter.doFilterInternal(HeaderWriterFilter.java:75)
-        at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116)
-        at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:240)
-        at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:227)
-        at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:137)
-        at org.springframework.security.web.context.SecurityContextHolderFilter.doFilter(SecurityContextHolderFilter.java:82)
-        at org.springframework.security.web.context.SecurityContextHolderFilter.doFilter(SecurityContextHolderFilter.java:69)
-        at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:240)
-        at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:227)
-        at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:137)
-        at org.springframework.security.web.context.request.async.WebAsyncManagerIntegrationFilter.doFilterInternal(WebAsyncManagerIntegrationFilter.java:62)
-        at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116)
-        at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:240)
-        at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:227)
-        at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:137)
-        at org.springframework.security.web.session.DisableEncodeUrlFilter.doFilterInternal(DisableEncodeUrlFilter.java:42)
-        at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116)
-        at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:240)
-        at org.springframework.security.web.ObservationFilterChainDecorator$AroundFilterObservation$SimpleAroundFilterObservation.lambda$wrap$0(ObservationFilterChainDecorator.java:323)
-        at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:224)
-        at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:137)
-        at org.springframework.security.web.FilterChainProxy.doFilterInternal(FilterChainProxy.java:233)
-        at org.springframework.security.web.FilterChainProxy.doFilter(FilterChainProxy.java:191)
-        at org.springframework.web.filter.CompositeFilter$VirtualFilterChain.doFilter(CompositeFilter.java:113)
-        at org.springframework.web.servlet.handler.HandlerMappingIntrospector.lambda$createCacheFilter$3(HandlerMappingIntrospector.java:243)
-        at org.springframework.web.filter.CompositeFilter$VirtualFilterChain.doFilter(CompositeFilter.java:113)
-        at org.springframework.web.filter.CompositeFilter.doFilter(CompositeFilter.java:74)
-        at org.springframework.security.config.annotation.web.configuration.WebMvcSecurityConfiguration$CompositeFilterChainProxy.doFilter(WebMvcSecurityConfiguration.java:238)
-        at org.springframework.web.filter.DelegatingFilterProxy.invokeDelegate(DelegatingFilterProxy.java:362)
-        at org.springframework.web.filter.DelegatingFilterProxy.doFilter(DelegatingFilterProxy.java:278)
-        at org.apache.catalina.core.ApplicationFilterChain.internalDoFilter(ApplicationFilterChain.java:164)
-        at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:140)
-        at org.springframework.web.filter.RequestContextFilter.doFilterInternal(RequestContextFilter.java:100)
-        at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116)
-        at org.apache.catalina.core.ApplicationFilterChain.internalDoFilter(ApplicationFilterChain.java:164)
-        at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:140)
-        at org.springframework.web.filter.FormContentFilter.doFilterInternal(FormContentFilter.java:93)
-        at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116)
-        at org.apache.catalina.core.ApplicationFilterChain.internalDoFilter(ApplicationFilterChain.java:164)
-        at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:140)
-        at org.springframework.web.filter.ServerHttpObservationFilter.doFilterInternal(ServerHttpObservationFilter.java:114)
-        at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116)
-        at org.apache.catalina.core.ApplicationFilterChain.internalDoFilter(ApplicationFilterChain.java:164)
-        at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:140)
-        at org.springframework.web.filter.CharacterEncodingFilter.doFilterInternal(CharacterEncodingFilter.java:201)
-        at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116)
-        at org.apache.catalina.core.ApplicationFilterChain.internalDoFilter(ApplicationFilterChain.java:164)
-        at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:140)
-        at org.apache.catalina.core.StandardWrapperValve.invoke(StandardWrapperValve.java:167)
-        at org.apache.catalina.core.StandardContextValve.invoke(StandardContextValve.java:90)
-        at org.apache.catalina.authenticator.AuthenticatorBase.invoke(AuthenticatorBase.java:483)
-        at org.apache.catalina.core.StandardHostValve.invoke(StandardHostValve.java:115)
-        at org.apache.catalina.valves.ErrorReportValve.invoke(ErrorReportValve.java:93)
-        at org.apache.catalina.core.StandardEngineValve.invoke(StandardEngineValve.java:74)
-        at org.apache.catalina.connector.CoyoteAdapter.service(CoyoteAdapter.java:344)
-        at org.apache.coyote.http11.Http11Processor.service(Http11Processor.java:397)
-        at org.apache.coyote.AbstractProcessorLight.process(AbstractProcessorLight.java:63)
-        at org.apache.coyote.AbstractProtocol$ConnectionHandler.process(AbstractProtocol.java:905)
-        at org.apache.tomcat.util.net.NioEndpoint$SocketProcessor.doRun(NioEndpoint.java:1743)
-        at org.apache.tomcat.util.net.SocketProcessorBase.run(SocketProcessorBase.java:52)
-        at org.apache.tomcat.util.threads.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1190)
-        at org.apache.tomcat.util.threads.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:659)
-        at org.apache.tomcat.util.threads.TaskThread$WrappingRunnable.run(TaskThread.java:63)
-        at java.base/java.lang.Thread.run(Unknown Source)
-2026-04-24T01:00:44.252Z DEBUG 1 --- [nio-8080-exec-4] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/yaml]
-2026-04-24T01:00:44.254Z DEBUG 1 --- [nio-8080-exec-4] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Writing [{error=Error interno del servidor, message=Ha ocurrido un error inesperado. Por favor contacte al ad (truncated)...]
-2026-04-24T01:00:44.260Z DEBUG 1 --- [nio-8080-exec-4] .m.m.a.ExceptionHandlerExceptionResolver : Resolved [java.time.format.DateTimeParseException: Text '2026-01-01 +00' could not be parsed, unparsed text found at index 10]
-2026-04-24T01:00:44.261Z DEBUG 1 --- [nio-8080-exec-4] o.s.web.servlet.DispatcherServlet        : Completed 500 INTERNAL_SERVER_ERROR
+    CONSTRAINT fk_proveedor_producto_producto
+        FOREIGN KEY (id_producto)
+        REFERENCES producto (id_producto)
+        ON UPDATE CASCADE ON DELETE RESTRICT
+);
+creado solamente en la bbdd este script esta ejecutado en la bbdd, pero no tiene la entity en el backend del modulo de gestion_proveedor, es necesario que lea el claude.md para que con los demas archivo pueda crear lo falante respecto la nueva tabla, despues tiene que vincuar al metodo de proveedor sea para crear o editar que se llama public Proveedor create(ProveedorCreateDTO dto) y Proveedor update(Integer idProveedor, ProveedorUpdateDTO dto) de la clase ProveedorServiceImpl, despues que termine la implementacion tiene que indicar todo lo que hiciste en ejecutar_ahora.md
+CREATE TABLE proveedor_dia_entrega (
+    id_dia_entrega INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    id_proveedor INTEGER NOT NULL,
+    dia_semana dia_semana_type NOT NULL,
+
+    -- Nombres específicos para evitar confusión con otras tablas
+    hora_inicio_entrega TIME,
+    hora_fin_entrega TIME,
+
+    -- 1. Evitamos que se duplique el mismo día para el mismo proveedor
+    CONSTRAINT uk_proveedor_dia UNIQUE (id_proveedor, dia_semana),
+
+    -- 2. Validación de coherencia: La hora de inicio debe ser menor a la hora de fin
+    CONSTRAINT chk_horas_logicas_entrega CHECK (hora_inicio_entrega < hora_fin_entrega),
+
+    CONSTRAINT fk_proveedor_dia_entrega_proveedor
+        FOREIGN KEY (id_proveedor)
+        REFERENCES proveedor (id_proveedor)
+        ON UPDATE CASCADE ON DELETE CASCADE
+);
+despues de leer todo lo indicado y claude.md del backend solicitar documentos faltantes
+
+https://aider.chat/docs/troubleshooting/edit-errors.html
+Perfecto, ya tengo todo lo necesario. Voy a implementar paso a paso:
+
+Plan de implementación:
+
+ 1 Crear enum DiaSemana — mapea el dia_semana_type de PostgreSQL.
+ 2 Crear entity ProveedorDiaEntrega — mapea la tabla proveedor_dia_entrega.
+  3 Crear DTO DiaEntregaDTO — para recibir los días de entrega en create/update.
+  4 Crear repository ProveedorDiaEntregaRepository.
+  5 Agregar relación @OneToMany en Proveedor hacia ProveedorDiaEntrega.
+  6 Agregar campo diasEntrega en ProveedorCreateDTO y ProveedorUpdateDTO.
+  7 Modificar ProveedorServiceImpl.create() y update() para persistir los días.
+  8 Modificar ProveedorDetalleDTO (necesitaré ver este archivo — pero puedo agregar la lógica en el service que ya tengo).
+  9 Actualizar nota_alcance y crear ejecutar_ahora.md.
+
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+1. Enum DiaSemana
+
+backend\src\main\java\KuHub\modules\gestion_proveedor\enums\DiaSemana.java
+
+
+<<<<<<< SEARCH
+=======
+package KuHub.modules.gestion_proveedor.enums;
+
+/**
+ * Enum que mapea el tipo PostgreSQL dia_semana_type.
+ * Valores: LUNES, MARTES, MIERCOLES, JUEVES, VIERNES, SABADO, DOMINGO.
+ */
+public enum DiaSemana {
+    LUNES,
+    MARTES,
+    MIERCOLES,
+    JUEVES,
+    VIERNES,
+    SABADO,
+    DOMINGO
+}
+>>>>>>> REPLACE
+
+
+2. Entity ProveedorDiaEntrega
+
+backend\src\main\java\KuHub\modules\gestion_proveedor\entity\ProveedorDiaEntrega.java
+
+
+<<<<<<< SEARCH
+=======
+package KuHub.modules.gestion_proveedor.entity;
+
+import KuHub.modules.gestion_proveedor.enums.DiaSemana;
+import jakarta.persistence.*;
+import lombok.*;
+
+import java.time.LocalTime;
+
+/**
+ * Mapea tabla proveedor_dia_entrega.
+ * Vincula un proveedor con los días y horarios en que realiza entregas.
+ */
+@Entity
+@Table(name = "proveedor_dia_entrega",
+        uniqueConstraints = {
+                @UniqueConstraint(name = "uk_proveedor_dia", columnNames = {"id_proveedor", "dia_semana"})
+        })
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@ToString(exclude = "proveedor")
+public class ProveedorDiaEntrega {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id_dia_entrega")
+    private Integer idDiaEntrega;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_proveedor", nullable = false)
+    private Proveedor proveedor;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "dia_semana", nullable = false, columnDefinition = "dia_semana_type")
+    private DiaSemana diaSemana;
+
+    @Column(name = "hora_inicio_entrega")
+    private LocalTime horaInicioEntrega;
+
+    @Column(name = "hora_fin_entrega")
+    private LocalTime horaFinEntrega;
+}
+>>>>>>> REPLACE
+
+
+3. DTO DiaEntregaDTO (request)
+
+backend\src\main\java\KuHub\modules\gestion_proveedor\dtos\request\DiaEntregaDTO.java
+
+
+<<<<<<< SEARCH
+=======
+package KuHub.modules.gestion_proveedor.dtos.request;
+
+import jakarta.validation.constraints.NotBlank;
+import lombok.*;
+
+/**
+ * DTO para recibir un día de entrega del proveedor.
+ * Se usa como elemento de la lista diasEntrega en ProveedorCreateDTO y ProveedorUpdateDTO.
+ */
+@Getter
+@Setter
+@ToString
+@NoArgsConstructor
+@AllArgsConstructor
+public class DiaEntregaDTO {
+
+    @NotBlank(message = "El día de la semana es obligatorio")
+    private String diaSemana;
+
+    /** Hora de inicio de entrega en formato HH:mm o HH:mm:ss (opcional). */
+    private String horaInicio;
+
+    /** Hora de fin de entrega en formato HH:mm o HH:mm:ss (opcional). */
+    private String horaFin;
+}
+>>>>>>> REPLACE
+
+
+4. Repository ProveedorDiaEntregaRepository
+
+backend\src\main\java\KuHub\modules\gestion_proveedor\repository\ProveedorDiaEntregaRepository.java
+
+
+<<<<<<< SEARCH
+=======
+package KuHub.modules.gestion_proveedor.repository;
+
+import KuHub.modules.gestion_proveedor.entity.ProveedorDiaEntrega;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+
+@Repository
+public interface ProveedorDiaEntregaRepository extends JpaRepository<ProveedorDiaEntrega, Integer> {
+
+    // ── 1. Métodos JPA derivados ──
+
+    /** Lista todos los días de entrega de un proveedor. */
+    List<ProveedorDiaEntrega> findByProveedor_IdProveedor(Integer idProveedor);
+
+    // ── 3. @Modifying + @Transactional ──
+
+    /** Elimina todos los días de entrega de un proveedor (para reemplazo completo en update). */
+    @Modifying
+    @Transactional
+    @Query("DELETE FROM ProveedorDiaEntrega d WHERE d.proveedor.idProveedor = :idProveedor")
+    void deleteAllByIdProveedor(@Param("idProveedor") Integer idProveedor);
+}
+>>>>>>> REPLACE
+
+
+5. Agregar relación OneToMany en Proveedor
+
+backend\src\main\java\KuHub\modules\gestion_proveedor\entity\Proveedor.java
+
+
+<<<<<<< SEARCH
+    @OneToMany(mappedBy = "proveedor", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = false)
+    private List<ProveedorProducto> productos = new ArrayList<>();
+}
+=======
+    @OneToMany(mappedBy = "proveedor", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = false)
+    private List<ProveedorProducto> productos = new ArrayList<>();
+
+    @OneToMany(mappedBy = "proveedor", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
+    private List<ProveedorDiaEntrega> diasEntrega = new ArrayList<>();
+}
+>>>>>>> REPLACE
+
+
+6. Agregar campo diasEntrega en ProveedorCreateDTO
+
+backend\src\main\java\KuHub\modules\gestion_proveedor\dtos\request\ProveedorCreateDTO.java
+
+
+<<<<<<< SEARCH
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+import lombok.*;
+=======
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+import lombok.*;
+
+import java.util.List;
+>>>>>>> REPLACE
+
+
+backend\src\main\java\KuHub\modules\gestion_proveedor\dtos\request\ProveedorCreateDTO.java
+
+
+<<<<<<< SEARCH
+    /** Estado inicial: DISPONIBLE o NO_DISPONIBLE. Si es null, el backend asigna DISPONIBLE. */
+    private String estadoProveedor;
+}
+=======
+    /** Estado inicial: DISPONIBLE o NO_DISPONIBLE. Si es null, el backend asigna DISPONIBLE. */
+    private String estadoProveedor;
+
+    /** Lista de días de entrega del proveedor (opcional al crear). */
+    @Valid
+    private List<DiaEntregaDTO> diasEntrega;
+}
+>>>>>>> REPLACE
+
+
+7. Agregar campo diasEntrega en ProveedorUpdateDTO
+
+backend\src\main\java\KuHub\modules\gestion_proveedor\dtos\request\ProveedorUpdateDTO.java
+
+
+<<<<<<< SEARCH
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+import lombok.*;
+=======
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+import lombok.*;
+
+import java.util.List;
+>>>>>>> REPLACE
+
+
+backend\src\main\java\KuHub\modules\gestion_proveedor\dtos\request\ProveedorUpdateDTO.java
+
+
+<<<<<<< SEARCH
+    /** Estado: DISPONIBLE o NO_DISPONIBLE. */
+    private String estadoProveedor;
+}
+=======
+    /** Estado: DISPONIBLE o NO_DISPONIBLE. */
+    private String estadoProveedor;
+
+    /** Lista de días de entrega del proveedor. Si se envía, reemplaza los existentes. */
+    @Valid
+    private List<DiaEntregaDTO> diasEntrega;
+}
+>>>>>>> REPLACE
+
+
+8. Modificar ProveedorServiceImpl — imports
+
+backend\src\main\java\KuHub\modules\gestion_proveedor\service\ProveedorServiceImpl.java
+
+
+<<<<<<< SEARCH
+import KuHub.modules.gestion_proveedor.dtos.request.ProveedorCreateDTO;
+import KuHub.modules.gestion_proveedor.dtos.request.ProveedorProductoAddDTO;
+import KuHub.modules.gestion_proveedor.dtos.request.ProveedorProductoUpdateDTO;
+import KuHub.modules.gestion_proveedor.dtos.request.ProveedorUpdateDTO;
+=======
+import KuHub.modules.gestion_proveedor.dtos.request.DiaEntregaDTO;
+import KuHub.modules.gestion_proveedor.dtos.request.ProveedorCreateDTO;
+import KuHub.modules.gestion_proveedor.dtos.request.ProveedorProductoAddDTO;
+import KuHub.modules.gestion_proveedor.dtos.request.ProveedorProductoUpdateDTO;
+import KuHub.modules.gestion_proveedor.dtos.request.ProveedorUpdateDTO;
+>>>>>>> REPLACE
+
+
+backend\src\main\java\KuHub\modules\gestion_proveedor\service\ProveedorServiceImpl.java
+
+
+<<<<<<< SEARCH
+import KuHub.modules.gestion_proveedor.entity.Proveedor;
+import KuHub.modules.gestion_proveedor.entity.ProveedorProducto;
+import KuHub.modules.gestion_proveedor.enums.EstadoProveedor;
+=======
+import KuHub.modules.gestion_proveedor.entity.Proveedor;
+import KuHub.modules.gestion_proveedor.entity.ProveedorDiaEntrega;
+import KuHub.modules.gestion_proveedor.entity.ProveedorProducto;
+import KuHub.modules.gestion_proveedor.enums.DiaSemana;
+import KuHub.modules.gestion_proveedor.enums.EstadoProveedor;
+>>>>>>> REPLACE
+
+
+backend\src\main\java\KuHub\modules\gestion_proveedor\service\ProveedorServiceImpl.java
+
+
+<<<<<<< SEARCH
+import KuHub.modules.gestion_proveedor.repository.ProveedorProductoRepository;
+import KuHub.modules.gestion_proveedor.repository.ProveedorRepository;
+=======
+import KuHub.modules.gestion_proveedor.repository.ProveedorDiaEntregaRepository;
+import KuHub.modules.gestion_proveedor.repository.ProveedorProductoRepository;
+import KuHub.modules.gestion_proveedor.repository.ProveedorRepository;
+>>>>>>> REPLACE
+
+
+backend\src\main\java\KuHub\modules\gestion_proveedor\service\ProveedorServiceImpl.java
+
+
+<<<<<<< SEARCH
+import java.time.LocalDateTime;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+=======
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+>>>>>>> REPLACE
+
+
+9. Inyectar ProveedorDiaEntregaRepository en ServiceImpl
+
+backend\src\main\java\KuHub\modules\gestion_proveedor\service\ProveedorServiceImpl.java
+
+
+<<<<<<< SEARCH
+    @Autowired
+    private ProveedorProductoRepository proveedorProductoRepository;
+
+    /**Others*/
+=======
+    @Autowired
+    private ProveedorProductoRepository proveedorProductoRepository;
+
+    @Autowired
+    private ProveedorDiaEntregaRepository proveedorDiaEntregaRepository;
+
+    /**Others*/
+>>>>>>> REPLACE
+
+
+10. Modificar método create() para guardar días de entrega
+
+backend\src\main\java\KuHub\modules\gestion_proveedor\service\ProveedorServiceImpl.java
+
+
+<<<<<<< SEARCH
+        Proveedor saved = proveedorRepository.save(proveedor);
+        log.info("Proveedor creado: ID={} | Distribuidora={}", saved.getIdProveedor(), saved.getNombreDistribuidora());
+        return saved;
+    }
+=======
+        Proveedor saved = proveedorRepository.save(proveedor);
+        log.info("Proveedor creado: ID={} | Distribuidora={}", saved.getIdProveedor(), saved.getNombreDistribuidora());
+
+        // Guardar días de entrega si se proporcionaron
+        if (dto.getDiasEntrega() != null && !dto.getDiasEntrega().isEmpty()) {
+            List<ProveedorDiaEntrega> dias = buildDiasEntrega(dto.getDiasEntrega(), saved);
+            proveedorDiaEntregaRepository.saveAll(dias);
+            log.info("Días de entrega asignados al proveedor ID={}: {} día(s)", saved.getIdProveedor(), dias.size());
+        }
+
+        return saved;
+    }
+>>>>>>> REPLACE
+
+
+11. Modificar método update() para actualizar días de entrega
+
+backend\src\main\java\KuHub\modules\gestion_proveedor\service\ProveedorServiceImpl.java
+
+
+<<<<<<< SEARCH
+        Proveedor updated = proveedorRepository.save(proveedor);
+        log.info("Proveedor actualizado: ID={} | Distribuidora={}", updated.getIdProveedor(), updated.getNombreDistribuidora());
+        return updated;
+    }
+=======
+        Proveedor updated = proveedorRepository.save(proveedor);
+        log.info("Proveedor actualizado: ID={} | Distribuidora={}", updated.getIdProveedor(), updated.getNombreDistribuidora());
+
+        // Actualizar días de entrega si se proporcionaron (reemplazo completo)
+        if (dto.getDiasEntrega() != null) {
+            proveedorDiaEntregaRepository.deleteAllByIdProveedor(idProveedor);
+            if (!dto.getDiasEntrega().isEmpty()) {
+                List<ProveedorDiaEntrega> dias = buildDiasEntrega(dto.getDiasEntrega(), updated);
+                proveedorDiaEntregaRepository.saveAll(dias);
+                log.info("Días de entrega actualizados para proveedor ID={}: {} día(s)", idProveedor, dias.size());
+            } else {
+                log.info("Días de entrega eliminados para proveedor ID={}", idProveedor);
+            }
+        }
+
+        return updated;
+    }
+>>>>>>> REPLACE
+
+
+12. Agregar método privado buildDiasEntrega al final del ServiceImpl
+
+backend\src\main\java\KuHub\modules\gestion_proveedor\service\ProveedorServiceImpl.java
+
+
+<<<<<<< SEARCH
+    // ══════════════════════════════════════════════════════════════
+    // 6. CONSULTAS DE COTIZACIÓN
+    // ══════════════════════════════════════════════════════════════
+=======
+    // ══════════════════════════════════════════════════════════════
+    // ── MÉTODOS PRIVADOS ──
+    // ══════════════════════════════════════════════════════════════
+
+    /**
+     * Construye la lista de entidades ProveedorDiaEntrega a partir de los DTOs recibidos.
+     * Valida que el día de la semana sea un valor válido del enum DiaSemana.
+     * Valida coherencia de horas (inicio < fin) si ambas se proporcionan.
+     */
+    private List<ProveedorDiaEntrega> buildDiasEntrega(List<DiaEntregaDTO> dtos, Proveedor proveedor) {
+        List<ProveedorDiaEntrega> dias = new ArrayList<>();
+
+        for (DiaEntregaDTO dto : dtos) {
+            DiaSemana diaSemana;
+            try {
+                diaSemana = DiaSemana.valueOf(dto.getDiaSemana().toUpperCase().trim());
+            } catch (IllegalArgumentException e) {
+                throw new GestionProveedorException(
+                        "Día de la semana inválido: " + dto.getDiaSemana()
+                                + ". Valores válidos: LUNES, MARTES, MIERCOLES, JUEVES, VIERNES, SABADO, DOMINGO.",
+                        HttpStatus.BAD_REQUEST
+                );
+            }
+
+            LocalTime horaInicio = null;
+            LocalTime horaFin = null;
+
+            if (dto.getHoraInicio() != null && !dto.getHoraInicio().isBlank()) {
+                try {
+                    horaInicio = LocalTime.parse(dto.getHoraInicio());
+                } catch (Exception e) {
+                    throw new GestionProveedorException(
+                            "Formato de hora de inicio inválido: " + dto.getHoraInicio() + ". Use HH:mm o HH:mm:ss.",
+                            HttpStatus.BAD_REQUEST
+                    );
+                }
+            }
+
+            if (dto.getHoraFin() != null && !dto.getHoraFin().isBlank()) {
+                try {
+                    horaFin = LocalTime.parse(dto.getHoraFin());
+                } catch (Exception e) {
+                    throw new GestionProveedorException(
+                            "Formato de hora de fin inválido: " + dto.getHoraFin() + ". Use HH:mm o HH:mm:ss.",
+                            HttpStatus.BAD_REQUEST
+                    );
+                }
+            }
+
+            if (horaInicio != null && horaFin != null && !horaInicio.isBefore(horaFin)) {
+                throw new GestionProveedorException(
+                        "La hora de inicio (" + horaInicio + ") debe ser anterior a la hora de fin (" + horaFin + ") para el día " + diaSemana + ".",
+                        HttpStatus.BAD_REQUEST
+                );
+            }
+
+            ProveedorDiaEntrega dia = new ProveedorDiaEntrega();
+            dia.setProveedor(proveedor);
+            dia.setDiaSemana(diaSemana);
+            dia.setHoraInicioEntrega(horaInicio);
+            dia.setHoraFinEntrega(horaFin);
+            dias.add(dia);
+        }
+
+        // Validar que no haya días duplicados en la misma lista
+        long diasUnicos = dias.stream()
+                .map(ProveedorDiaEntrega::getDiaSemana)
+                .distinct()
+                .count();
+        if (diasUnicos < dias.size()) {
+            throw new GestionProveedorException(
+                    "No se pueden repetir días de entrega para el mismo proveedor.",
+                    HttpStatus.BAD_REQUEST
+            );
+        }
+
+        return dias;
+    }
+
+    // ══════════════════════════════════════════════════════════════
+    // 6. CONSULTAS DE COTIZACIÓN
+    // ══════════════════════════════════════════════════════════════
+>>>>>>> REPLACE
+
+
+13. Actualizar ejecutar_ahora.md con el resumen de lo implementado
+
+ejecutar_ahora.md
+
+
+<<<<<<< SEARCH
+=======
+# Implementación: Tabla `proveedor_dia_entrega` — Días de Entrega del Proveedor
+
+**Fecha:** 2026-04-24
+
+## Resumen
+
+Se implementó la entity, repository, DTO y lógica de negocio para la tabla `proveedor_dia_entrega`
+que ya existía en la base de datos. Esta tabla vincula proveedores con sus días y horarios de entrega.
+
+## Archivos creados
+
+| Archivo | Descripción |
+|---------|-------------|
+| `enums/DiaSemana.java` | Enum Java que mapea `dia_semana_type` de PostgreSQL (LUNES–DOMINGO) |
+| `entity/ProveedorDiaEntrega.java` | Entity JPA que mapea la tabla `proveedor_dia_entrega` con PK, FK a proveedor, día, hora inicio/fin |
+| `dtos/request/DiaEntregaDTO.java` | DTO de request con campos: diaSemana (obligatorio), horaInicio, horaFin (opcionales) |
+| `repository/ProveedorDiaEntregaRepository.java` | Repository con `findByProveedor_IdProveedor` y `deleteAllByIdProveedor` |
+
+## Archivos modificados
+
+| Archivo | Cambio |
+|---------|--------|
+| `entity/Proveedor.java` | Agregada relación `@OneToMany` con `ProveedorDiaEntrega` (cascade ALL, orphanRemoval true) |
+| `dtos/request/ProveedorCreateDTO.java` | Agregado campo `List<DiaEntregaDTO> diasEntrega` con `@Valid` |
+| `dtos/request/ProveedorUpdateDTO.java` | Agregado campo `List<DiaEntregaDTO> diasEntrega` con `@Valid` |
+| `service/ProveedorServiceImpl.java` | Inyectado `ProveedorDiaEntregaRepository`. Método `create()`: guarda días de entrega después de crear el proveedor. Método `update()`: elimina días existentes y los reemplaza (estrategia
+delete+insert). Nuevo método privado `buildDiasEntrega()` con validaciones de enum, formato de hora, coherencia hora inicio < fin, y duplicados |
+
+## Lógica de negocio implementada
+
+### En `create(ProveedorCreateDTO dto)`:
+- Si `dto.diasEntrega` no es null y no está vacío, construye y persiste los días de entrega asociados al proveedor recién creado.
+
+### En `update(Integer idProveedor, ProveedorUpdateDTO dto)`:
+- Si `dto.diasEntrega` no es null (incluso si está vacío), elimina todos los días existentes del proveedor y los reemplaza con los nuevos.
+- Si `dto.diasEntrega` es null, no se tocan los días existentes (actualización parcial).
+- Estrategia: **delete + insert** (reemplazo completo) para simplificar la lógica y evitar comparaciones complejas.
+
+### Método privado `buildDiasEntrega()`:
+- Valida que cada `diaSemana` sea un valor válido del enum `DiaSemana`.
+- Parsea `horaInicio` y `horaFin` como `LocalTime` (formatos HH:mm o HH:mm:ss).
+- Valida que `horaInicio < horaFin` cuando ambas se proporcionan (coherente con CHECK de BD).
+- Valida que no haya días duplicados en la misma lista.
+- Lanza `GestionProveedorException` con `HttpStatus.BAD_REQUEST` en caso de error.
+
+## Notas
+
+- La tabla `proveedor_dia_entrega` ya estaba creada en la BD con sus constraints (`uk_proveedor_dia`, `chk_horas_logicas_entrega`, FK cascade).
+- No se requirieron cambios en `SpringSecurityConfig` porque los endpoints de proveedor ya están registrados.
+- No se crearon endpoints nuevos; los días de entrega se gestionan como parte del flujo de crear/editar proveedor.
+>>>>>>> REPLACE
+
+
+14. Actualizar nota_alcance — Sección 3.12
+
+nota_alcance
+
+
+<<<<<<< SEARCH
+------------------------------------------------------------------------
+3.12  GESTIÓN DE PROVEEDORES  [PENDIENTE]
+------------------------------------------------------------------------
+  - Vista gestion-proveedores.tsx existe en el frontend.
+  - Funcionalidad de backend no implementada en el alcance actual.
+  - La estructura de datos está preparada: Producto puede vincularse a Proveedor
+    con precio y stock acordado (id_proveedor, precio_producto).
+  - Valor estratégico: con historial de consumo por semestre, permite mostrar
+    al proveedor datos reales de uso para negociar precios por volumen.
+=======
+------------------------------------------------------------------------
+3.12  GESTIÓN DE PROVEEDORES
+------------------------------------------------------------------------
+Técnico:
+  Entidad Proveedor:
+  - id_proveedor (PK, IDENTITY), rut_proveedor (VARCHAR 13, único, nullable),
+    nombre_distribuidora (VARCHAR 100, NOT NULL), nombre_proveedor (VARCHAR 100, NOT NULL),
+    telefono_proveedor (VARCHAR 20, NOT NULL), email_proveedor (VARCHAR 150, nullable),
+    estado_proveedor (ENUM: DISPONIBLE, NO_DISPONIBLE), activo (BOOLEAN), fecha_creacion (TIMESTAMP).
+
+  Entidad ProveedorProducto (tabla puente proveedor ↔ producto):
+  - id_proveedor_producto (PK), id_proveedor (FK), id_producto (FK),
+    precio_producto (NUMERIC 12,2), activo, fecha_actualizacion.
+  - UNIQUE(id_proveedor, id_producto): un proveedor solo tiene una fila por producto.
+
+  Entidad ProveedorDiaEntrega (tabla puente proveedor ↔ días de entrega):
+  - id_dia_entrega (PK, IDENTITY), id_proveedor (FK, CASCADE),
+    dia_semana (ENUM dia_semana_type: LUNES–DOMINGO),
+    hora_inicio_entrega (TIME, nullable), hora_fin_entrega (TIME, nullable).
+  - UNIQUE(id_proveedor, dia_semana): un proveedor no puede tener el mismo día duplicado.
+  - CHECK(hora_inicio_entrega < hora_fin_entrega): coherencia de horarios.
+  - Los días de entrega se gestionan como parte del flujo de crear/editar proveedor
+    (no tienen endpoints independientes). Estrategia de actualización: delete + insert
+    (reemplazo completo de los días al editar).
+
+  Endpoints base: /api/v1/proveedor
+  - GET / : lista proveedores con filtros (estado, búsqueda).
+  - GET /{id} : detalle completo con productos agrupados por categoría.
+  - POST / : crea proveedor (opcionalmente con días de entrega).
+  - PATCH /{id} : actualiza proveedor (opcionalmente reemplaza días de entrega).
+  - DELETE /{id} : soft-delete del proveedor y sus productos.
+  - POST /{id}/productos : asigna producto con precio.
+  - PATCH /{id}/productos/{pid} : actualiza precio.
+  - DELETE /{id}/productos/{pid} : quita producto (soft-delete).
+  - GET /por-producto/{idProducto} : proveedores que ofrecen un producto.
+  - POST /cotizacion-rango : cotización agrupada por proveedor (menor precio).
+
+  Valor estratégico: con historial de consumo por semestre, permite mostrar
+  al proveedor datos reales de uso para negociar precios por volumen.
+
+Para no técnicos:
+  El sistema permite registrar proveedores con sus datos de contacto, los productos
+  que ofrecen con sus precios, y los días y horarios en que realizan entregas.
+  Al crear o editar un proveedor se pueden indicar qué días de la semana entrega
+  y en qué horario. Esto permite planificar los pedidos según la disponibilidad
+  real de cada proveedor.
+>>>>>>> REPLACE
+
+
+15. Actualizar nota_alcance — Sección 5 (IMPLEMENTADO)
+
+nota_alcance
+
+
+<<<<<<< SEARCH
+  [✓] Consulta de cotización agrupada por proveedor (2026-04-22):
+=======
+  [✓] Tabla proveedor_dia_entrega — Días de entrega del proveedor (2026-04-24):
+      Entity ProveedorDiaEntrega, enum DiaSemana, DTO DiaEntregaDTO, repository
+      ProveedorDiaEntregaRepository. Relación @OneToMany en Proveedor (cascade ALL,
+      orphanRemoval true). Campos diasEntrega agregados a ProveedorCreateDTO y
+      ProveedorUpdateDTO con @Valid. ServiceImpl.create() guarda días después de
+      crear proveedor. ServiceImpl.update() usa estrategia delete+insert para
+      reemplazo completo. Método privado buildDiasEntrega() valida: enum DiaSemana,
+      formato LocalTime, coherencia hora inicio < fin, y duplicados. No se requirieron
+      endpoints nuevos ni cambios en SpringSecurityConfig.
+  [✓] Consulta de cotización agrupada por proveedor (2026-04-22):
+>>>>>>> REPLACE
+
+
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Resumen de lo implementado:
+
+ 1 DiaSemana enum — mapea dia_semana_type de PostgreSQL.
+ 2 ProveedorDiaEntrega entity — mapea la tabla con PK, FK, día, horas.
+  3 DiaEntregaDTO — DTO de request con validaciones.
+  4 ProveedorDiaEntregaRepository — con find y delete por proveedor.
+  5 Proveedor entity — nueva relación @OneToMany con diasEntrega.
+  6 ProveedorCreateDTO y ProveedorUpdateDTO — campo List<DiaEntregaDTO> con @Valid.
+  7 ProveedorServiceImpl — create() y update() ahora persisten/actualizan días de entrega. Método privado buildDiasEntrega() con todas las validaciones.
+  8 nota_alcance — sección 3.12 actualizada y entrada en sección 5.
+  9 ejecutar_ahora.md — documentación completa de lo implementado.
+
+No se requirieron cambios en SpringSecurityConfig porque los endpoints de proveedor ya estaban registrados.

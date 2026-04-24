@@ -52,8 +52,32 @@ import type {
   EstadoProveedor,
   ICotizacionResponse,
   ICotizacionProveedor,
+  IDiaEntregaDTO,
+  DiaSemana,
 } from '../types/proveedor.types';
 import type { IProductoRecetaSelection } from '../types/producto.types';
+
+// ── Constantes de días de semana ──────────────────────────────────────────────
+
+const DIAS_SEMANA_OPTIONS = [
+  { value: 'LUNES', label: 'Lunes' },
+  { value: 'MARTES', label: 'Martes' },
+  { value: 'MIERCOLES', label: 'Miércoles' },
+  { value: 'JUEVES', label: 'Jueves' },
+  { value: 'VIERNES', label: 'Viernes' },
+  { value: 'SABADO', label: 'Sábado' },
+  { value: 'DOMINGO', label: 'Domingo' },
+] as const;
+
+const DIAS_ABREV: Record<DiaSemana, string> = {
+  LUNES: 'Lun',
+  MARTES: 'Mar',
+  MIERCOLES: 'Mié',
+  JUEVES: 'Jue',
+  VIERNES: 'Vie',
+  SABADO: 'Sáb',
+  DOMINGO: 'Dom',
+};
 
 // ── Helpers de UI ─────────────────────────────────────────────────────────────
 
@@ -1111,6 +1135,10 @@ const FormularioProveedor: React.FC<FormularioProveedorProps> = ({
   const [estadoProveedor, setEstadoProveedor] = React.useState<EstadoProveedor>(
     proveedor?.estadoProveedor || 'DISPONIBLE'
   );
+  const [diasEntrega, setDiasEntrega] = React.useState<IDiaEntregaDTO[]>([]);
+  const [diaSeleccionado, setDiaSeleccionado] = React.useState<DiaSemana>('LUNES');
+  const [horaInicio, setHoraInicio] = React.useState('');
+  const [horaFin, setHoraFin] = React.useState('');
   const [error, setError] = React.useState<string | null>(null);
   const [saving, setSaving] = React.useState(false);
 
@@ -1143,6 +1171,7 @@ const FormularioProveedor: React.FC<FormularioProveedorProps> = ({
       telefonoProveedor: telefonoProveedor.trim(),
       emailProveedor: emailProveedor.trim() || undefined,
       estadoProveedor,
+      diasEntrega: diasEntrega.length > 0 ? diasEntrega : undefined,
     };
 
     setSaving(true);
@@ -1153,6 +1182,42 @@ const FormularioProveedor: React.FC<FormularioProveedorProps> = ({
     } finally {
       setSaving(false);
     }
+  };
+
+  const agregarDiaEntrega = () => {
+    if (!diaSeleccionado) {
+      setError('Selecciona un día de la semana');
+      return;
+    }
+
+    // Validar que no exista duplicado
+    if (diasEntrega.some(d => d.diaSemana === diaSeleccionado)) {
+      setError(`El día ${diaSeleccionado} ya está agregado`);
+      return;
+    }
+
+    // Validar horas si se proporcionan
+    if (horaInicio && horaFin) {
+      if (horaInicio >= horaFin) {
+        setError('La hora de inicio debe ser menor a la hora de fin');
+        return;
+      }
+    }
+
+    const nuevoDia: IDiaEntregaDTO = {
+      diaSemana: diaSeleccionado,
+      horaInicio: horaInicio || undefined,
+      horaFin: horaFin || undefined,
+    };
+
+    setDiasEntrega([...diasEntrega, nuevoDia]);
+    setHoraInicio('');
+    setHoraFin('');
+    setError(null);
+  };
+
+  const eliminarDiaEntrega = (index: number) => {
+    setDiasEntrega(diasEntrega.filter((_, i) => i !== index));
   };
 
   return (
@@ -1262,6 +1327,104 @@ const FormularioProveedor: React.FC<FormularioProveedorProps> = ({
           <div className="flex flex-col gap-1">
             <span className="text-xs text-default-500">Estado</span>
             {renderEstado(estadoProveedor)}
+          </div>
+        )}
+
+        {/* Selector de Días de Entrega */}
+        {!isReadOnly && (
+          <div className="border-t border-default-200 dark:border-default-100 pt-4 space-y-3">
+            <div className="flex items-center gap-2 mb-2">
+              <Icon icon="lucide:calendar" width={16} className="text-primary" />
+              <span className="text-sm font-semibold text-secondary dark:text-foreground">
+                Días de Entrega (Opcional)
+              </span>
+            </div>
+
+            {/* Selector de día */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+              <Select
+                label="Día de semana"
+                selectedKeys={new Set([diaSeleccionado])}
+                onSelectionChange={(keys) => {
+                  setDiaSeleccionado(Array.from(keys)[0] as DiaSemana);
+                }}
+                variant="bordered"
+                size="sm"
+              >
+                {DIAS_SEMANA_OPTIONS.map((d) => (
+                  <SelectItem key={d.value} textValue={d.label}>
+                    {d.label}
+                  </SelectItem>
+                ))}
+              </Select>
+
+              <Input
+                label="Hora inicio (HH:mm)"
+                placeholder="08:00"
+                value={horaInicio}
+                onValueChange={setHoraInicio}
+                variant="bordered"
+                size="sm"
+                type="time"
+              />
+
+              <Input
+                label="Hora fin (HH:mm)"
+                placeholder="17:00"
+                value={horaFin}
+                onValueChange={setHoraFin}
+                variant="bordered"
+                size="sm"
+                type="time"
+              />
+            </div>
+
+            <Button
+              size="sm"
+              variant="bordered"
+              color="primary"
+              onPress={agregarDiaEntrega}
+              startContent={<Icon icon="lucide:plus" width={14} />}
+              className="w-full md:w-auto"
+            >
+              Agregar Día
+            </Button>
+
+            {/* Lista de días agregados */}
+            {diasEntrega.length > 0 && (
+              <div className="space-y-2">
+                {diasEntrega.map((dia, idx) => (
+                  <div
+                    key={idx}
+                    className="flex items-center justify-between gap-2 p-2 rounded-lg bg-primary-50 dark:bg-primary-50/20 border border-primary-200 dark:border-primary-300"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Chip
+                        size="sm"
+                        color="primary"
+                        variant="flat"
+                      >
+                        {DIAS_SEMANA_OPTIONS.find(d => d.value === dia.diaSemana)?.label}
+                      </Chip>
+                      {dia.horaInicio && dia.horaFin && (
+                        <span className="text-xs text-default-600">
+                          {dia.horaInicio.slice(0, 5)} – {dia.horaFin.slice(0, 5)}
+                        </span>
+                      )}
+                    </div>
+                    <Button
+                      isIconOnly
+                      size="sm"
+                      variant="light"
+                      color="danger"
+                      onPress={() => eliminarDiaEntrega(idx)}
+                    >
+                      <Icon icon="lucide:x" width={16} />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </ModalBody>
