@@ -208,10 +208,15 @@ export const agregarProductoProveedorService = async (
 
 /**
  * Actualiza el precio de un producto asignado a un proveedor.
- * PATCH /api/v1/proveedor/productos/{idProveedorProducto} → 200 OK
- * Retorna: true si se actualizó, false si el precio era igual.
- * [CAMBIO 2026-04-24] Actualizado a usar idProveedorProducto (PK) en lugar de dos IDs separados.
- * Frontend optimizado: retorna boolean para evitar segunda petición al cargar detalles.
+ * PATCH /api/v1/proveedor/productos/{idProveedorProducto}
+ *
+ * Respuestas esperadas:
+ *   - 200 OK: Actualizado correctamente
+ *   - 400 BAD_REQUEST: Formato inválido o precio ≤ 0
+ *   - 404 NOT_FOUND: Relación no existe
+ *   - 409 CONFLICT: El precio ingresado es igual al actual (advierte sin error destructivo)
+ *
+ * [CAMBIO 2026-04-24] Usa idProveedorProducto (PK) + retorna boolean optimizado.
  */
 export const actualizarPrecioProductoService = async (
   idProveedorProducto: number,
@@ -221,6 +226,13 @@ export const actualizarPrecioProductoService = async (
     const response = await api.patch<boolean>(`/proveedor/productos/${idProveedorProducto}`, dto);
     return response.data;
   } catch (error: any) {
+    if (error.response?.status === 409) {
+      // 409 CONFLICT: El precio es igual al actual
+      throw new Error(
+        error.response.data?.message ||
+        'El precio ingresado es igual al valor actual. No hay cambios que guardar.'
+      );
+    }
     if (error.response?.status === 404) {
       throw new Error(
         error.response.data?.message ||

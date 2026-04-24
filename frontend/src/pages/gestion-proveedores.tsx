@@ -583,16 +583,14 @@ const GestionProveedoresPage: React.FC = () => {
     }
     setSavingPrecio(true);
     try {
-      // [CAMBIO 2026-04-24] Retorna boolean: true=actualizó, false=no hubo cambios
       const actualizado = await actualizarPrecioProductoService(
         editingPrecio.idProveedorProducto,
         { precioProducto: precioTemp }
       );
 
       if (actualizado) {
-        showToast('Precio actualizado correctamente');
+        showToast('Precio actualizado correctamente', 'success');
         // ✅ OPTIMIZACIÓN: Actualizar el valor en memoria SIN hacer segunda petición
-        // Recorrer todos los detalles en caché y actualizar el precio del producto
         setDetalleCache(prev => {
           const updated = { ...prev };
           Object.keys(updated).forEach(idProveedor => {
@@ -610,11 +608,14 @@ const GestionProveedoresPage: React.FC = () => {
           });
           return updated;
         });
-      } else {
-        showToast('El precio es igual al anterior, no hubo cambios', 'info');
       }
     } catch (err: any) {
-      showToast(err.message || 'Error al actualizar el precio', 'error');
+      // [CAMBIO 2026-04-24] 409 Conflict: precio igual al actual (advertencia, no error)
+      const isConflict = err.response?.status === 409;
+      showToast(
+        err.message || 'Error al actualizar el precio',
+        isConflict ? 'warning' : 'error'
+      );
     } finally {
       setSavingPrecio(false);
       setEditingPrecio(null);

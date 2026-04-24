@@ -308,16 +308,24 @@ public class ProveedorServiceImpl implements ProveedorService {
             );
         }
 
-        if (!nuevoPrecio.equals(relacion.getPrecioProducto())) {
-            relacion.setPrecioProducto(nuevoPrecio);
-            relacion.setFechaActualizacion(LocalDateTime.now());
-            proveedorProductoRepository.save(relacion);
-            log.info("Precio actualizado: Relación ID={} | Proveedor ID={} | Producto ID={} | Nuevo precio={} (Input: '{}')",
-                    idProveedorProducto, relacion.getProveedor().getIdProveedor(),
-                    relacion.getProducto().getIdProducto(), nuevoPrecio, dto.getPrecioProducto());
-            return true; // Se actualizó correctamente
+        // [CAMBIO 2026-04-24] Si el precio es igual al actual, lanzar 409 Conflict
+        // Esto advierte al usuario que el valor no cambió, sin necesidad de actualizar BD
+        if (nuevoPrecio.equals(relacion.getPrecioProducto())) {
+            throw new GestionProveedorException(
+                    "El precio ingresado es igual al valor actual: " + relacion.getPrecioProducto()
+                            + ". No hay cambios que guardar.",
+                    HttpStatus.CONFLICT
+            );
         }
-        return false; // No hubo cambios
+
+        // Actualizar el precio
+        relacion.setPrecioProducto(nuevoPrecio);
+        relacion.setFechaActualizacion(LocalDateTime.now());
+        proveedorProductoRepository.save(relacion);
+        log.info("Precio actualizado: Relación ID={} | Proveedor ID={} | Producto ID={} | Precio anterior={} → Nuevo precio={} (Input: '{}')",
+                idProveedorProducto, relacion.getProveedor().getIdProveedor(),
+                relacion.getProducto().getIdProducto(), relacion.getPrecioProducto(), nuevoPrecio, dto.getPrecioProducto());
+        return true; // Se actualizó correctamente
     }
 
     @Override
