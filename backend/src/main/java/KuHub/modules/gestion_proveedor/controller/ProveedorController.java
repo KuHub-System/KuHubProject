@@ -152,12 +152,16 @@ public class ProveedorController {
      * Se llama desde la tabla de productos en el modal de detalle/edición del proveedor.
      * [CAMBIO 2026-04-24] Endpoint actualizado a usar idProveedorProducto (PK) en lugar de dos IDs.
      * Simplifica la consulta y evita ambigüedades con dos path parameters.
-     * Retorna boolean: true si se actualizó, false si el precio era igual y no hubo cambios.
-     * Frontend NO necesita hacer segunda petición si es true — solo actualiza el valor en tabla.
+     *
+     * Respuestas:
+     *   - 200 OK: Precio actualizado correctamente (true en body)
+     *   - 400 BAD_REQUEST: Formato inválido o precio ≤ 0
+     *   - 404 NOT_FOUND: Relación proveedor-producto no existe
+     *   - 409 CONFLICT: El precio ingresado es igual al actual (advierte sin error)
      *
      * @param idProveedorProducto ID de la relación proveedor-producto (PK)
      * @param dto Nuevo precio del producto (formato chileno: 1.234,567)
-     * @return true si se actualizó, false si no hubo cambios
+     * @return true si se actualizó, excepción si hay conflicto
      */
     @PatchMapping("/productos/{idProveedorProducto}")
     public ResponseEntity<Boolean> actualizarPrecio(
