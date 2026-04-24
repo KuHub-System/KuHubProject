@@ -174,17 +174,25 @@ public class ProveedorController {
      * Asigna un producto a un proveedor con su precio específico.
      * ✅ En uso: Consumido por agregarProductoProveedorService en proveedor-service.ts.
      * Se llama desde el modal de asignación de productos en gestion-proveedores.tsx.
+     * [CAMBIO 2026-04-24] Ahora retorna boolean para indicar éxito sin cerrar el modal.
+     *
+     * Respuestas:
+     *   - 201 CREATED: Producto asignado correctamente (true en body)
+     *   - 400 BAD_REQUEST: Formato inválido o precio ≤ 0
+     *   - 404 NOT_FOUND: Proveedor o producto no encontrado
+     *   - 409 CONFLICT: El producto ya está asignado al proveedor
      *
      * @param id  ID del proveedor
      * @param dto Datos del producto a asignar (idProducto + precioProducto)
+     * @return true si se asignó correctamente
      */
     @PostMapping("/{id}/productos")
-    public ResponseEntity<Void> agregarProducto(
+    public ResponseEntity<Boolean> agregarProducto(
             @PathVariable Integer id,
             @Valid @RequestBody ProveedorProductoAddDTO dto
     ) {
-        proveedorService.agregarProducto(id, dto);
-        return ResponseEntity.status(201).build();
+        boolean resultado = proveedorService.agregarProducto(id, dto);
+        return ResponseEntity.status(201).body(resultado);
     }
 
     /**
