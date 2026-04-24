@@ -100,7 +100,7 @@ const exportarExcel = (resumen: IResumenHistorico) => {
   R++; // fila vacía
 
   // Headers
-  const headers = ['Código', 'Producto', 'Unidad', 'Cantidad Total', 'Veces en Pedidos'];
+  const headers = ['Código', 'Producto', 'Unidad', 'Cantidad Total'];
   headers.forEach((h, C) => {
     ws[ec({ r: R, c: C })] = { v: h, t: 's', s: styleHeader };
   });
@@ -112,15 +112,14 @@ const exportarExcel = (resumen: IResumenHistorico) => {
     ws[ec({ r: R, c: 1 })] = { v: prod.nombreProducto,      t: 's', s: styleData };
     ws[ec({ r: R, c: 2 })] = { v: prod.abreviatura,         t: 's', s: styleCenter };
     ws[ec({ r: R, c: 3 })] = { v: prod.cantidadTotal,       t: 'n', s: styleNum };
-    ws[ec({ r: R, c: 4 })] = { v: prod.vecesEnPedidos,      t: 'n', s: styleCenter };
     R++;
   });
 
-  ws['!ref']  = XLSXStyle.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: R - 1, c: 4 } });
-  ws['!cols'] = [{ wch: 14 }, { wch: 40 }, { wch: 10 }, { wch: 16 }, { wch: 16 }];
+  ws['!ref']  = XLSXStyle.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: R - 1, c: 3 } });
+  ws['!cols'] = [{ wch: 14 }, { wch: 40 }, { wch: 10 }, { wch: 16 }];
   ws['!merges'] = [
-    { s: { r: 0, c: 0 }, e: { r: 0, c: 4 } },
-    { s: { r: 1, c: 0 }, e: { r: 1, c: 4 } },
+    { s: { r: 0, c: 0 }, e: { r: 0, c: 3 } },
+    { s: { r: 1, c: 0 }, e: { r: 1, c: 3 } },
   ];
 
   const wb = XLSXStyle.utils.book_new();
@@ -350,10 +349,9 @@ const HistoricoPedidosPage: React.FC = () => {
                   {/* Header */}
                   <div className="grid grid-cols-12 px-5 py-2.5 bg-default-50 border-b border-default-200 text-xs font-semibold text-default-500 uppercase tracking-wide min-w-[600px]">
                     <span className="col-span-1 text-center truncate">Código</span>
-                    <span className="col-span-5 text-center truncate">Producto</span>
+                    <span className="col-span-7 text-center truncate">Producto</span>
                     <span className="col-span-2 text-center truncate">Unidad</span>
                     <span className="col-span-2 text-center truncate">Cantidad Total</span>
-                    <span className="col-span-2 text-center truncate">En Pedidos</span>
                   </div>
                   {/* Filas */}
                   <div className="divide-y divide-default-100 min-w-[600px]">
@@ -371,7 +369,7 @@ const HistoricoPedidosPage: React.FC = () => {
                         </Tooltip>
 
                         <Tooltip content={prod.nombreProducto} color="default">
-                          <div className="col-span-5 flex items-center gap-2 min-w-0 justify-center text-center">
+                          <div className="col-span-7 flex items-center gap-2 min-w-0 justify-center text-center">
                             <Icon icon="lucide:package" width={13} className="text-primary shrink-0" />
                             <p className="font-medium text-sm text-default-800 truncate">
                               {prod.nombreProducto}
@@ -390,16 +388,6 @@ const HistoricoPedidosPage: React.FC = () => {
                             {fmtCantidad(prod.cantidadTotal)}
                           </span>
                         </Tooltip>
-
-                        <div className="col-span-2 text-center">
-                          <Tooltip content={`${prod.vecesEnPedidos} veces`} color="default">
-                            <div className="flex justify-center">
-                              <Chip size="sm" color="default" variant="flat">
-                                {prod.vecesEnPedidos}
-                              </Chip>
-                            </div>
-                          </Tooltip>
-                        </div>
                       </div>
                     ))}
                   </div>
