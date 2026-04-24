@@ -26,7 +26,7 @@ export interface IProveedor {
   nombreDistribuidora: string;
   nombreProveedor: string;
   telefonoProveedor: string;
-  emailProveedor: string | null;
+  emailProveedor: string;
   estadoProveedor: EstadoProveedor;
   activo: boolean;
   fechaCreacion: string | null;
@@ -80,7 +80,7 @@ export interface IProveedorCreateDTO {
   nombreDistribuidora: string;
   nombreProveedor: string;
   telefonoProveedor: string;
-  emailProveedor?: string;
+  emailProveedor: string;
   estadoProveedor?: EstadoProveedor;
   diasEntrega?: IDiaEntregaDTO[];
 }
@@ -94,7 +94,7 @@ export interface IProveedorUpdateDTO {
   nombreDistribuidora: string;
   nombreProveedor: string;
   telefonoProveedor: string;
-  emailProveedor?: string;
+  emailProveedor: string;
   estadoProveedor?: EstadoProveedor;
   diasEntrega?: IDiaEntregaDTO[];
 }
