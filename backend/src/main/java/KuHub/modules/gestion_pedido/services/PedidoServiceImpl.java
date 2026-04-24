@@ -252,40 +252,57 @@ public class PedidoServiceImpl implements PedidoService{
     @Override
     @Transactional(readOnly = true)
     public ResumenHistoricoResponse obtenerResumenHistorico(LocalDate fechaInicio, LocalDate fechaFin, String estadosCsv) {
+        log.info("🔵 [SERVICE] obtenerResumenHistorico INICIADO");
+        log.info("📅 [SERVICE] Parámetro fechaInicio: {} (tipo: {})", fechaInicio, fechaInicio != null ? fechaInicio.getClass().getSimpleName() : "null");
+        log.info("📅 [SERVICE] Parámetro fechaFin: {} (tipo: {})", fechaFin, fechaFin != null ? fechaFin.getClass().getSimpleName() : "null");
+        log.info("🏷️  [SERVICE] Parámetro estadosCsv: '{}' (longitud: {})", estadosCsv, estadosCsv != null ? estadosCsv.length() : "null");
+
         String jsonResult = pedidoRepository.obtenerResumenHistoricoJSON(fechaInicio, fechaFin, estadosCsv);
+        log.info("📦 [SERVICE] JSON retornado del repository: {} caracteres", jsonResult != null ? jsonResult.length() : "null");
 
         if (jsonResult == null || jsonResult.isBlank()) {
-            log.info("obtenerResumenHistoricoJSON retornó vacío para rango {}-{} con estados {}",
+            log.warn("⚠️  [SERVICE] obtenerResumenHistoricoJSON retornó VACÍO para rango {}-{} con estados '{}'",
                     fechaInicio, fechaFin, estadosCsv);
             return new ResumenHistoricoResponse(fechaInicio, fechaFin, List.of(), 0, 0, List.of());
         }
 
         try {
+            log.info("✅ [SERVICE] Parseando JSON response...");
             var node = objectMapper.readTree(jsonResult);
             var resultNode = node.get("resultado");
 
             if (resultNode == null || resultNode.isNull()) {
-                log.warn("obtenerResumenHistoricoJSON retornó resultado null para rango {}-{} con estados {}",
+                log.warn("⚠️  [SERVICE] resultNode es NULL para rango {}-{} con estados '{}'",
                         fechaInicio, fechaFin, estadosCsv);
                 return new ResumenHistoricoResponse(fechaInicio, fechaFin, List.of(), 0, 0, List.of());
             }
+
+            log.info("✅ [SERVICE] resultNode encontrado, extrayendo datos...");
 
             var estadosList = objectMapper.convertValue(
                     resultNode.get("estados"),
                     new TypeReference<List<String>>() {}
             );
+            int totalProductos = resultNode.get("totalProductosDistintos").asInt();
+            int totalPedidos = resultNode.get("totalPedidos").asInt();
 
             var productos = objectMapper.convertValue(
                     resultNode.get("productos"),
                     new TypeReference<List<ResumenHistoricoResponse.ProductoResumenItem>>() {}
             );
 
+            log.info("✅ [SERVICE] RESULTADOS FINALES:");
+            log.info("  📊 Total Productos Distintos: {}", totalProductos);
+            log.info("  📊 Total Pedidos: {}", totalPedidos);
+            log.info("  📊 Estados encontrados: {}", estadosList);
+            log.info("  📊 Productos en lista: {} items", productos.size());
+
             return new ResumenHistoricoResponse(
                     resultNode.get("fechaInicio").asText().isEmpty() ? fechaInicio : LocalDate.parse(resultNode.get("fechaInicio").asText()),
                     resultNode.get("fechaFin").asText().isEmpty() ? fechaFin : LocalDate.parse(resultNode.get("fechaFin").asText()),
                     estadosList,
-                    resultNode.get("totalProductosDistintos").asInt(),
-                    resultNode.get("totalPedidos").asInt(),
+                    totalProductos,
+                    totalPedidos,
                     productos
             );
         } catch (JsonProcessingException e) {

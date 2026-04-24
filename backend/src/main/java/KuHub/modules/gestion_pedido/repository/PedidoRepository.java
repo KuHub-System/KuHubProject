@@ -644,21 +644,21 @@ public interface PedidoRepository extends JpaRepository<Pedido, Integer> {
         SELECT jsonb_build_object(
             'fechaInicio', CAST(:fechaInicio AS TEXT),
             'fechaFin',    CAST(:fechaFin AS TEXT),
-            'estados',     to_jsonb(string_to_array(:estadosCsv, ',')::text[]),
+            'estados',     to_jsonb(string_to_array(trim(:estadosCsv), ',')::text[]),
 
             'totalProductosDistintos', (
                 SELECT COUNT(DISTINCT dp.id_producto)
                 FROM detalle_pedido dp
                 JOIN pedido p ON p.id_pedido = dp.id_pedido
                 WHERE p.fecha_inicio_pedido BETWEEN :fechaInicio AND :fechaFin
-                  AND p.estado_pedido::text = ANY(string_to_array(:estadosCsv, ',')::text[])
+                  AND p.estado_pedido::text = ANY(string_to_array(trim(:estadosCsv), ',')::text[])
             ),
 
             'totalPedidos', (
                 SELECT COUNT(DISTINCT p.id_pedido)
                 FROM pedido p
                 WHERE p.fecha_inicio_pedido BETWEEN :fechaInicio AND :fechaFin
-                  AND p.estado_pedido::text = ANY(string_to_array(:estadosCsv, ',')::text[])
+                  AND p.estado_pedido::text = ANY(string_to_array(trim(:estadosCsv), ',')::text[])
             ),
 
             'productos', COALESCE((
@@ -682,7 +682,7 @@ public interface PedidoRepository extends JpaRepository<Pedido, Integer> {
                     FROM detalle_pedido dp
                     JOIN pedido p ON p.id_pedido = dp.id_pedido
                     WHERE p.fecha_inicio_pedido BETWEEN :fechaInicio AND :fechaFin
-                      AND p.estado_pedido::text = ANY(string_to_array(:estadosCsv, ',')::text[])
+                      AND p.estado_pedido::text = ANY(string_to_array(trim(:estadosCsv), ',')::text[])
                     GROUP BY dp.id_producto
                 ) resumen
                 JOIN producto prod ON prod.id_producto = resumen.id_producto
