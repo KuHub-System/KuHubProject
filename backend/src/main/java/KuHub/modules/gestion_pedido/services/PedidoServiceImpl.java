@@ -268,12 +268,16 @@ public class PedidoServiceImpl implements PedidoService{
 
         try {
             log.info("✅ [SERVICE] Parseando JSON response...");
+            log.info("🔍 [SERVICE] JSON COMPLETO recibido: {}", jsonResult);
             var node = objectMapper.readTree(jsonResult);
             var resultNode = node.get("resultado");
 
+            log.info("🔍 [SERVICE] resultNode type: {}", resultNode != null ? resultNode.getNodeType() : "null");
+
             if (resultNode == null || resultNode.isNull()) {
-                log.warn("⚠️  [SERVICE] resultNode es NULL para rango {}-{} con estados '{}'",
+                log.warn("⚠️  [SERVICE] ❌ resultNode es NULL para rango {}-{} con estados '{}'",
                         fechaInicio, fechaFin, estadosCsv);
+                log.warn("⚠️  [SERVICE] Estructura del JSON raíz: {}", node.toString());
                 return new ResumenHistoricoResponse(fechaInicio, fechaFin, List.of(), 0, 0, List.of());
             }
 
