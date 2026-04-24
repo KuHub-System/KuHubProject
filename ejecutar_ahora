@@ -9,27 +9,27 @@ ubuntu@ip-172-26-1-143:~$ docker logs kuhub-backend
 
  :: Spring Boot ::                (v3.4.3)
 
-2026-04-24T00:25:19.026Z  INFO 1 --- [           main] KuHub.BackendMonoliticoApplication       : Starting BackendMonoliticoApplication v1.0-SNAPSHOT using Java 21.0.10 with PID 1 (/app/app.jar started by root in /app)
-2026-04-24T00:25:19.032Z DEBUG 1 --- [           main] KuHub.BackendMonoliticoApplication       : Running with Spring Boot v3.4.3, Spring v6.2.3
-2026-04-24T00:25:19.033Z  INFO 1 --- [           main] KuHub.BackendMonoliticoApplication       : The following 1 profile is active: "prod"
-2026-04-24T00:25:22.535Z  INFO 1 --- [           main] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data JPA repositories in DEFAULT mode.
-2026-04-24T00:25:22.841Z  INFO 1 --- [           main] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 291 ms. Found 29 JPA repository interfaces.
-2026-04-24T00:25:23.361Z  INFO 1 --- [           main] o.s.cloud.context.scope.GenericScope     : BeanFactory id=95c5511b-47e2-3161-bec9-b021494f2cd5
-2026-04-24T00:25:24.887Z  INFO 1 --- [           main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat initialized with port 8080 (http)
-2026-04-24T00:25:24.913Z  INFO 1 --- [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
-2026-04-24T00:25:24.913Z  INFO 1 --- [           main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/10.1.36]
-2026-04-24T00:25:24.976Z  INFO 1 --- [           main] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring embedded WebApplicationContext
-2026-04-24T00:25:24.978Z  INFO 1 --- [           main] w.s.c.ServletWebServerApplicationContext : Root WebApplicationContext: initialization completed in 5793 ms
-2026-04-24T00:25:25.523Z DEBUG 1 --- [           main] o.s.w.f.ServerHttpObservationFilter      : Filter 'webMvcObservationFilter' configured for use
-2026-04-24T00:25:25.524Z DEBUG 1 --- [           main] K.c.s.rate_limiting.RateLimitFilter      : Filter 'rateLimitFilter' configured for use
-2026-04-24T00:25:25.769Z  INFO 1 --- [           main] o.hibernate.jpa.internal.util.LogHelper  : HHH000204: Processing PersistenceUnitInfo [name: default]
-2026-04-24T00:25:25.857Z  INFO 1 --- [           main] org.hibernate.Version                    : HHH000412: Hibernate ORM core version 6.6.8.Final
-2026-04-24T00:25:25.912Z  INFO 1 --- [           main] o.h.c.internal.RegionFactoryInitiator    : HHH000026: Second-level cache disabled
-2026-04-24T00:25:26.081Z  INFO 1 --- [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
-2026-04-24T00:25:26.832Z  INFO 1 --- [           main] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Added connection org.postgresql.jdbc.PgConnection@6a013bdd
-2026-04-24T00:25:26.835Z  INFO 1 --- [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
-2026-04-24T00:25:26.889Z  WARN 1 --- [           main] org.hibernate.orm.deprecation            : HHH90000025: PostgreSQLDialect does not need to be specified explicitly using 'hibernate.dialect' (remove the property setting and it will be selected by default)
-2026-04-24T00:25:26.923Z  INFO 1 --- [           main] org.hibernate.orm.connections.pooling    : HHH10001005: Database info:
+2026-04-24T00:49:13.445Z  INFO 1 --- [           main] KuHub.BackendMonoliticoApplication       : Starting BackendMonoliticoApplication v1.0-SNAPSHOT using Java 21.0.10 with PID 1 (/app/app.jar started by root in /app)
+2026-04-24T00:49:13.448Z DEBUG 1 --- [           main] KuHub.BackendMonoliticoApplication       : Running with Spring Boot v3.4.3, Spring v6.2.3
+2026-04-24T00:49:13.449Z  INFO 1 --- [           main] KuHub.BackendMonoliticoApplication       : The following 1 profile is active: "prod"
+2026-04-24T00:49:17.056Z  INFO 1 --- [           main] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+2026-04-24T00:49:17.350Z  INFO 1 --- [           main] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 279 ms. Found 29 JPA repository interfaces.
+2026-04-24T00:49:17.810Z  INFO 1 --- [           main] o.s.cloud.context.scope.GenericScope     : BeanFactory id=95c5511b-47e2-3161-bec9-b021494f2cd5
+2026-04-24T00:49:19.327Z  INFO 1 --- [           main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat initialized with port 8080 (http)
+2026-04-24T00:49:19.351Z  INFO 1 --- [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2026-04-24T00:49:19.351Z  INFO 1 --- [           main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/10.1.36]
+2026-04-24T00:49:19.398Z  INFO 1 --- [           main] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring embedded WebApplicationContext
+2026-04-24T00:49:19.399Z  INFO 1 --- [           main] w.s.c.ServletWebServerApplicationContext : Root WebApplicationContext: initialization completed in 5809 ms
+2026-04-24T00:49:19.940Z DEBUG 1 --- [           main] o.s.w.f.ServerHttpObservationFilter      : Filter 'webMvcObservationFilter' configured for use
+2026-04-24T00:49:19.941Z DEBUG 1 --- [           main] K.c.s.rate_limiting.RateLimitFilter      : Filter 'rateLimitFilter' configured for use
+2026-04-24T00:49:20.211Z  INFO 1 --- [           main] o.hibernate.jpa.internal.util.LogHelper  : HHH000204: Processing PersistenceUnitInfo [name: default]
+2026-04-24T00:49:20.300Z  INFO 1 --- [           main] org.hibernate.Version                    : HHH000412: Hibernate ORM core version 6.6.8.Final
+2026-04-24T00:49:20.356Z  INFO 1 --- [           main] o.h.c.internal.RegionFactoryInitiator    : HHH000026: Second-level cache disabled
+2026-04-24T00:49:20.535Z  INFO 1 --- [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
+2026-04-24T00:49:21.148Z  INFO 1 --- [           main] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Added connection org.postgresql.jdbc.PgConnection@52f118aa
+2026-04-24T00:49:21.152Z  INFO 1 --- [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
+2026-04-24T00:49:21.205Z  WARN 1 --- [           main] org.hibernate.orm.deprecation            : HHH90000025: PostgreSQLDialect does not need to be specified explicitly using 'hibernate.dialect' (remove the property setting and it will be selected by default)
+2026-04-24T00:49:21.239Z  INFO 1 --- [           main] org.hibernate.orm.connections.pooling    : HHH10001005: Database info:
         Database JDBC URL [Connecting through datasource 'HikariDataSource (HikariPool-1)']
         Database driver: undefined/unknown
         Database version: 16.13
@@ -37,70 +37,46 @@ ubuntu@ip-172-26-1-143:~$ docker logs kuhub-backend
         Isolation level: undefined/unknown
         Minimum pool size: undefined/unknown
         Maximum pool size: undefined/unknown
-2026-04-24T00:25:27.483Z  INFO 1 --- [           main] o.s.o.j.p.SpringPersistenceUnitInfo      : No LoadTimeWeaver setup: ignoring JPA class transformer
-2026-04-24T00:25:30.290Z  INFO 1 --- [           main] o.h.e.t.j.p.i.JtaPlatformInitiator       : HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)
-2026-04-24T00:25:30.296Z  INFO 1 --- [           main] j.LocalContainerEntityManagerFactoryBean : Initialized JPA EntityManagerFactory for persistence unit 'default'
-2026-04-24T00:25:31.030Z  INFO 1 --- [           main] o.s.d.j.r.query.QueryEnhancerFactory     : Hibernate is in classpath; If applicable, HQL parser will be used.
-2026-04-24T00:25:36.814Z  INFO 1 --- [           main] r$InitializeUserDetailsManagerConfigurer : Global AuthenticationManager configured with UserDetailsService bean with name jpaUserDetailsService
-2026-04-24T00:25:37.040Z  WARN 1 --- [           main] JpaBaseConfiguration$JpaWebConfiguration : spring.jpa.open-in-view is enabled by default. Therefore, database queries may be performed during view rendering. Explicitly configure spring.jpa.open-in-view to disable this warning
-2026-04-24T00:25:37.648Z DEBUG 1 --- [           main] s.w.s.m.m.a.RequestMappingHandlerMapping : 201 mappings in 'requestMappingHandlerMapping'
-2026-04-24T00:25:37.880Z DEBUG 1 --- [           main] o.s.w.s.handler.SimpleUrlHandlerMapping  : Patterns [/webjars/**, /**, /swagger-ui*/*swagger-initializer.js, /swagger-ui*/**] in 'resourceHandlerMapping'
-2026-04-24T00:25:38.245Z  INFO 1 --- [           main] o.s.b.a.e.web.EndpointLinksResolver      : Exposing 1 endpoint beneath base path '/actuator'
-2026-04-24T00:25:38.898Z DEBUG 1 --- [           main] o.s.s.web.DefaultSecurityFilterChain     : Will secure any request with filters: DisableEncodeUrlFilter, WebAsyncManagerIntegrationFilter, SecurityContextHolderFilter, HeaderWriterFilter, CorsFilter, LogoutFilter, RateLimitFilter, JwtValidationFilter, JwtAuthenticationFilter, RequestCacheAwareFilter, SecurityContextHolderAwareRequestFilter, AnonymousAuthenticationFilter, SessionManagementFilter, ExceptionTranslationFilter, AuthorizationFilter
-2026-04-24T00:25:39.120Z DEBUG 1 --- [           main] s.w.s.m.m.a.RequestMappingHandlerAdapter : ControllerAdvice beans: 0 @ModelAttribute, 0 @InitBinder, 1 RequestBodyAdvice, 1 ResponseBodyAdvice
-2026-04-24T00:25:39.234Z DEBUG 1 --- [           main] .m.m.a.ExceptionHandlerExceptionResolver : ControllerAdvice beans: 2 @ExceptionHandler, 1 ResponseBodyAdvice
-2026-04-24T00:25:40.366Z  INFO 1 --- [           main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat started on port 8080 (http) with context path '/'
-2026-04-24T00:25:40.411Z  INFO 1 --- [           main] KuHub.BackendMonoliticoApplication       : Started BackendMonoliticoApplication in 22.632 seconds (process running for 23.96)
+2026-04-24T00:49:21.855Z  INFO 1 --- [           main] o.s.o.j.p.SpringPersistenceUnitInfo      : No LoadTimeWeaver setup: ignoring JPA class transformer
+2026-04-24T00:49:24.556Z  INFO 1 --- [           main] o.h.e.t.j.p.i.JtaPlatformInitiator       : HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)
+2026-04-24T00:49:24.561Z  INFO 1 --- [           main] j.LocalContainerEntityManagerFactoryBean : Initialized JPA EntityManagerFactory for persistence unit 'default'
+2026-04-24T00:49:25.254Z  INFO 1 --- [           main] o.s.d.j.r.query.QueryEnhancerFactory     : Hibernate is in classpath; If applicable, HQL parser will be used.
+2026-04-24T00:49:31.519Z  INFO 1 --- [           main] r$InitializeUserDetailsManagerConfigurer : Global AuthenticationManager configured with UserDetailsService bean with name jpaUserDetailsService
+2026-04-24T00:49:31.740Z  WARN 1 --- [           main] JpaBaseConfiguration$JpaWebConfiguration : spring.jpa.open-in-view is enabled by default. Therefore, database queries may be performed during view rendering. Explicitly configure spring.jpa.open-in-view to disable this warning
+2026-04-24T00:49:32.373Z DEBUG 1 --- [           main] s.w.s.m.m.a.RequestMappingHandlerMapping : 201 mappings in 'requestMappingHandlerMapping'
+2026-04-24T00:49:32.579Z DEBUG 1 --- [           main] o.s.w.s.handler.SimpleUrlHandlerMapping  : Patterns [/webjars/**, /**, /swagger-ui*/*swagger-initializer.js, /swagger-ui*/**] in 'resourceHandlerMapping'
+2026-04-24T00:49:33.037Z  INFO 1 --- [           main] o.s.b.a.e.web.EndpointLinksResolver      : Exposing 1 endpoint beneath base path '/actuator'
+2026-04-24T00:49:33.644Z DEBUG 1 --- [           main] o.s.s.web.DefaultSecurityFilterChain     : Will secure any request with filters: DisableEncodeUrlFilter, WebAsyncManagerIntegrationFilter, SecurityContextHolderFilter, HeaderWriterFilter, CorsFilter, LogoutFilter, RateLimitFilter, JwtValidationFilter, JwtAuthenticationFilter, RequestCacheAwareFilter, SecurityContextHolderAwareRequestFilter, AnonymousAuthenticationFilter, SessionManagementFilter, ExceptionTranslationFilter, AuthorizationFilter
+2026-04-24T00:49:33.838Z DEBUG 1 --- [           main] s.w.s.m.m.a.RequestMappingHandlerAdapter : ControllerAdvice beans: 0 @ModelAttribute, 0 @InitBinder, 1 RequestBodyAdvice, 1 ResponseBodyAdvice
+2026-04-24T00:49:33.949Z DEBUG 1 --- [           main] .m.m.a.ExceptionHandlerExceptionResolver : ControllerAdvice beans: 2 @ExceptionHandler, 1 ResponseBodyAdvice
+2026-04-24T00:49:35.010Z  INFO 1 --- [           main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat started on port 8080 (http) with context path '/'
+2026-04-24T00:49:35.057Z  INFO 1 --- [           main] KuHub.BackendMonoliticoApplication       : Started BackendMonoliticoApplication in 22.837 seconds (process running for 24.175)
 🔍 Iniciando prueba de conexión a BD...
 ✅ CONEXIÓN EXITOSA a PostgreSQL!
 📊 Base de datos: kuhub_devs
 🔗 URL: jdbc:postgresql://172.26.12.228:5432/kuhub_devs
 🏁 Prueba de conexión finalizada
 🚀 Backend Monolítico KuHub iniciado!
-2026-04-24T00:36:54.819Z  INFO 1 --- [nio-8080-exec-2] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring DispatcherServlet 'dispatcherServlet'
-2026-04-24T00:36:54.819Z  INFO 1 --- [nio-8080-exec-2] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
-2026-04-24T00:36:54.820Z DEBUG 1 --- [nio-8080-exec-2] o.s.web.servlet.DispatcherServlet        : Detected StandardServletMultipartResolver
-2026-04-24T00:36:54.820Z DEBUG 1 --- [nio-8080-exec-2] o.s.web.servlet.DispatcherServlet        : Detected AcceptHeaderLocaleResolver
-2026-04-24T00:36:54.820Z DEBUG 1 --- [nio-8080-exec-2] o.s.web.servlet.DispatcherServlet        : Detected FixedThemeResolver
-2026-04-24T00:36:54.823Z DEBUG 1 --- [nio-8080-exec-2] o.s.web.servlet.DispatcherServlet        : Detected org.springframework.web.servlet.view.DefaultRequestToViewNameTranslator@75691464
-2026-04-24T00:36:54.824Z DEBUG 1 --- [nio-8080-exec-2] o.s.web.servlet.DispatcherServlet        : Detected org.springframework.web.servlet.support.SessionFlashMapManager@44259318
-2026-04-24T00:36:54.825Z DEBUG 1 --- [nio-8080-exec-2] o.s.web.servlet.DispatcherServlet        : enableLoggingRequestDetails='false': request parameters and headers will be masked to prevent unsafe logging of potentially sensitive data
-2026-04-24T00:36:54.825Z  INFO 1 --- [nio-8080-exec-2] o.s.web.servlet.DispatcherServlet        : Completed initialization in 5 ms
-2026-04-24T00:36:54.865Z DEBUG 1 --- [nio-8080-exec-2] o.s.security.web.FilterChainProxy        : Securing GET /api/v1/semanas/find-grouped-perions-academic
-2026-04-24T00:36:54.865Z DEBUG 1 --- [nio-8080-exec-3] o.s.security.web.FilterChainProxy        : Securing GET /api/v1/permisos/matrix
-2026-04-24T00:36:55.094Z  INFO 1 --- [nio-8080-exec-3] K.c.s.rate_limiting.RateLimitFilter      : 📍 IP: 186.78.184.242 | Petición 1 de 80
-2026-04-24T00:36:55.095Z  INFO 1 --- [nio-8080-exec-2] K.c.s.rate_limiting.RateLimitFilter      : 📍 IP: 186.78.184.242 | Petición 2 de 80
-2026-04-24T00:36:55.437Z DEBUG 1 --- [nio-8080-exec-2] o.s.security.web.FilterChainProxy        : Secured GET /api/v1/semanas/find-grouped-perions-academic
-2026-04-24T00:36:55.438Z DEBUG 1 --- [nio-8080-exec-3] o.s.security.web.FilterChainProxy        : Secured GET /api/v1/permisos/matrix
-2026-04-24T00:36:55.442Z DEBUG 1 --- [nio-8080-exec-3] o.s.web.servlet.DispatcherServlet        : GET "/api/v1/permisos/matrix", parameters={}
-2026-04-24T00:36:55.442Z DEBUG 1 --- [nio-8080-exec-2] o.s.web.servlet.DispatcherServlet        : GET "/api/v1/semanas/find-grouped-perions-academic", parameters={}
-2026-04-24T00:36:55.447Z DEBUG 1 --- [nio-8080-exec-3] s.w.s.m.m.a.RequestMappingHandlerMapping : Mapped to KuHub.modules.gestion_usuario.controller.PermisoRolController#getPermissionMatrix()
-2026-04-24T00:36:55.447Z DEBUG 1 --- [nio-8080-exec-2] s.w.s.m.m.a.RequestMappingHandlerMapping : Mapped to KuHub.modules.gestion_academica.controller.SemanaController#findGroupedPeriodsAcademic()
-2026-04-24T00:36:55.562Z DEBUG 1 --- [nio-8080-exec-2] org.hibernate.SQL                        :
-    SELECT
-        anio,
-        JSON_AGG(DISTINCT semestre
-    ORDER BY
-        semestre ASC) AS semestres
-    FROM
-        semanas
-    GROUP BY
-        anio
-    ORDER BY
-        anio ASC
-Hibernate:
-    SELECT
-        anio,
-        JSON_AGG(DISTINCT semestre
-    ORDER BY
-        semestre ASC) AS semestres
-    FROM
-        semanas
-    GROUP BY
-        anio
-    ORDER BY
-        anio ASC
-2026-04-24T00:36:55.563Z DEBUG 1 --- [nio-8080-exec-3] org.hibernate.SQL                        :
+2026-04-24T00:51:50.034Z  INFO 1 --- [nio-8080-exec-1] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring DispatcherServlet 'dispatcherServlet'
+2026-04-24T00:51:50.034Z  INFO 1 --- [nio-8080-exec-1] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
+2026-04-24T00:51:50.034Z DEBUG 1 --- [nio-8080-exec-1] o.s.web.servlet.DispatcherServlet        : Detected StandardServletMultipartResolver
+2026-04-24T00:51:50.034Z DEBUG 1 --- [nio-8080-exec-1] o.s.web.servlet.DispatcherServlet        : Detected AcceptHeaderLocaleResolver
+2026-04-24T00:51:50.035Z DEBUG 1 --- [nio-8080-exec-1] o.s.web.servlet.DispatcherServlet        : Detected FixedThemeResolver
+2026-04-24T00:51:50.037Z DEBUG 1 --- [nio-8080-exec-1] o.s.web.servlet.DispatcherServlet        : Detected org.springframework.web.servlet.view.DefaultRequestToViewNameTranslator@75cecab7
+2026-04-24T00:51:50.038Z DEBUG 1 --- [nio-8080-exec-1] o.s.web.servlet.DispatcherServlet        : Detected org.springframework.web.servlet.support.SessionFlashMapManager@5783939e
+2026-04-24T00:51:50.038Z DEBUG 1 --- [nio-8080-exec-1] o.s.web.servlet.DispatcherServlet        : enableLoggingRequestDetails='false': request parameters and headers will be masked to prevent unsafe logging of potentially sensitive data
+2026-04-24T00:51:50.039Z  INFO 1 --- [nio-8080-exec-1] o.s.web.servlet.DispatcherServlet        : Completed initialization in 5 ms
+2026-04-24T00:51:50.081Z DEBUG 1 --- [nio-8080-exec-1] o.s.security.web.FilterChainProxy        : Securing GET /api/v1/permisos/matrix
+2026-04-24T00:51:50.082Z DEBUG 1 --- [nio-8080-exec-2] o.s.security.web.FilterChainProxy        : Securing GET /api/v1/semanas/find-grouped-perions-academic
+2026-04-24T00:51:50.169Z  INFO 1 --- [nio-8080-exec-2] K.c.s.rate_limiting.RateLimitFilter      : 📍 IP: 186.78.184.242 | Petición 1 de 80
+2026-04-24T00:51:50.170Z  INFO 1 --- [nio-8080-exec-1] K.c.s.rate_limiting.RateLimitFilter      : 📍 IP: 186.78.184.242 | Petición 2 de 80
+2026-04-24T00:51:50.691Z DEBUG 1 --- [nio-8080-exec-2] o.s.security.web.FilterChainProxy        : Secured GET /api/v1/semanas/find-grouped-perions-academic
+2026-04-24T00:51:50.692Z DEBUG 1 --- [nio-8080-exec-1] o.s.security.web.FilterChainProxy        : Secured GET /api/v1/permisos/matrix
+2026-04-24T00:51:50.696Z DEBUG 1 --- [nio-8080-exec-2] o.s.web.servlet.DispatcherServlet        : GET "/api/v1/semanas/find-grouped-perions-academic", parameters={}
+2026-04-24T00:51:50.696Z DEBUG 1 --- [nio-8080-exec-1] o.s.web.servlet.DispatcherServlet        : GET "/api/v1/permisos/matrix", parameters={}
+2026-04-24T00:51:50.702Z DEBUG 1 --- [nio-8080-exec-2] s.w.s.m.m.a.RequestMappingHandlerMapping : Mapped to KuHub.modules.gestion_academica.controller.SemanaController#findGroupedPeriodsAcademic()
+2026-04-24T00:51:50.703Z DEBUG 1 --- [nio-8080-exec-1] s.w.s.m.m.a.RequestMappingHandlerMapping : Mapped to KuHub.modules.gestion_usuario.controller.PermisoRolController#getPermissionMatrix()
+2026-04-24T00:51:50.821Z DEBUG 1 --- [nio-8080-exec-1] org.hibernate.SQL                        :
     SELECT
         r.id_rol          AS idRol,
         r.nombre_rol      AS nombreRol,
@@ -128,6 +104,30 @@ Hibernate:
     ORDER BY
         m.orden_modulo,
         r.id_rol
+2026-04-24T00:51:50.821Z DEBUG 1 --- [nio-8080-exec-2] org.hibernate.SQL                        :
+    SELECT
+        anio,
+        JSON_AGG(DISTINCT semestre
+    ORDER BY
+        semestre ASC) AS semestres
+    FROM
+        semanas
+    GROUP BY
+        anio
+    ORDER BY
+        anio ASC
+Hibernate:
+    SELECT
+        anio,
+        JSON_AGG(DISTINCT semestre
+    ORDER BY
+        semestre ASC) AS semestres
+    FROM
+        semanas
+    GROUP BY
+        anio
+    ORDER BY
+        anio ASC
 Hibernate:
     SELECT
         r.id_rol          AS idRol,
@@ -156,19 +156,19 @@ Hibernate:
     ORDER BY
         m.orden_modulo,
         r.id_rol
-2026-04-24T00:36:55.696Z DEBUG 1 --- [nio-8080-exec-2] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/yaml]
-2026-04-24T00:36:55.701Z DEBUG 1 --- [nio-8080-exec-2] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Writing [[YearWithSemestersDTO(anio=2026, semestres=[1])]]
-2026-04-24T00:36:55.711Z DEBUG 1 --- [nio-8080-exec-3] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/yaml]
-2026-04-24T00:36:55.719Z DEBUG 1 --- [nio-8080-exec-3] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Writing [{DASHBOARD=[PermisoMatrizDTO(idRol=1, nombreRol=ADMINISTRADOR, idModulo=1, codigoModulo=DASHBOARD, n (truncated)...]
-2026-04-24T00:36:55.751Z DEBUG 1 --- [nio-8080-exec-2] o.s.web.servlet.DispatcherServlet        : Completed 200 OK
-2026-04-24T00:36:55.754Z DEBUG 1 --- [nio-8080-exec-3] o.s.web.servlet.DispatcherServlet        : Completed 200 OK
-2026-04-24T00:36:55.909Z DEBUG 1 --- [nio-8080-exec-4] o.s.security.web.FilterChainProxy        : Securing POST /api/v1/semanas/find-by-weekly-for-solicitation
-2026-04-24T00:36:55.935Z  INFO 1 --- [nio-8080-exec-4] K.c.s.rate_limiting.RateLimitFilter      : 📍 IP: 186.78.184.242 | Petición 3 de 80
-2026-04-24T00:36:55.944Z DEBUG 1 --- [nio-8080-exec-4] o.s.security.web.FilterChainProxy        : Secured POST /api/v1/semanas/find-by-weekly-for-solicitation
-2026-04-24T00:36:55.944Z DEBUG 1 --- [nio-8080-exec-4] o.s.web.servlet.DispatcherServlet        : POST "/api/v1/semanas/find-by-weekly-for-solicitation", parameters={}
-2026-04-24T00:36:55.946Z DEBUG 1 --- [nio-8080-exec-4] s.w.s.m.m.a.RequestMappingHandlerMapping : Mapped to KuHub.modules.gestion_academica.controller.SemanaController#findByWeeklyFilterForSolicitation(WeeklyFilterForSolicitationDTO)
-2026-04-24T00:36:55.967Z DEBUG 1 --- [nio-8080-exec-4] m.m.a.RMh4hfsi84LdbS4uS3jaSaNccc8kartkDJ : Read "application/json;charset=UTF-8" to [WeeklyFilterForSolicitationDTO(anio=2026, semestre=1)]
-2026-04-24T00:36:56.119Z DEBUG 1 --- [nio-8080-exec-4] org.hibernate.SQL                        :
+2026-04-24T00:51:50.947Z DEBUG 1 --- [nio-8080-exec-2] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/yaml]
+2026-04-24T00:51:50.951Z DEBUG 1 --- [nio-8080-exec-2] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Writing [[YearWithSemestersDTO(anio=2026, semestres=[1])]]
+2026-04-24T00:51:50.957Z DEBUG 1 --- [nio-8080-exec-1] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/yaml]
+2026-04-24T00:51:50.968Z DEBUG 1 --- [nio-8080-exec-1] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Writing [{DASHBOARD=[PermisoMatrizDTO(idRol=1, nombreRol=ADMINISTRADOR, idModulo=1, codigoModulo=DASHBOARD, n (truncated)...]
+2026-04-24T00:51:50.998Z DEBUG 1 --- [nio-8080-exec-1] o.s.web.servlet.DispatcherServlet        : Completed 200 OK
+2026-04-24T00:51:50.998Z DEBUG 1 --- [nio-8080-exec-2] o.s.web.servlet.DispatcherServlet        : Completed 200 OK
+2026-04-24T00:51:51.149Z DEBUG 1 --- [nio-8080-exec-3] o.s.security.web.FilterChainProxy        : Securing POST /api/v1/semanas/find-by-weekly-for-solicitation
+2026-04-24T00:51:51.171Z  INFO 1 --- [nio-8080-exec-3] K.c.s.rate_limiting.RateLimitFilter      : 📍 IP: 186.78.184.242 | Petición 3 de 80
+2026-04-24T00:51:51.177Z DEBUG 1 --- [nio-8080-exec-3] o.s.security.web.FilterChainProxy        : Secured POST /api/v1/semanas/find-by-weekly-for-solicitation
+2026-04-24T00:51:51.177Z DEBUG 1 --- [nio-8080-exec-3] o.s.web.servlet.DispatcherServlet        : POST "/api/v1/semanas/find-by-weekly-for-solicitation", parameters={}
+2026-04-24T00:51:51.178Z DEBUG 1 --- [nio-8080-exec-3] s.w.s.m.m.a.RequestMappingHandlerMapping : Mapped to KuHub.modules.gestion_academica.controller.SemanaController#findByWeeklyFilterForSolicitation(WeeklyFilterForSolicitationDTO)
+2026-04-24T00:51:51.196Z DEBUG 1 --- [nio-8080-exec-3] m.m.a.RMh4hfsi84LdbS4uS3jaSaNccc8kartkDJ : Read "application/json;charset=UTF-8" to [WeeklyFilterForSolicitationDTO(anio=2026, semestre=1)]
+2026-04-24T00:51:51.340Z DEBUG 1 --- [nio-8080-exec-3] org.hibernate.SQL                        :
     select
         s1_0.id_semana,
         s1_0.anio,
@@ -198,28 +198,28 @@ Hibernate:
         and s1_0.semestre=?
     order by
         s1_0.fecha_inicio
-2026-04-24T00:36:56.120Z TRACE 1 --- [nio-8080-exec-4] org.hibernate.orm.jdbc.bind              : binding parameter (1:SMALLINT) <- [2026]
-2026-04-24T00:36:56.121Z TRACE 1 --- [nio-8080-exec-4] org.hibernate.orm.jdbc.bind              : binding parameter (2:SMALLINT) <- [1]
-2026-04-24T00:36:56.159Z DEBUG 1 --- [nio-8080-exec-4] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/yaml]
-2026-04-24T00:36:56.162Z DEBUG 1 --- [nio-8080-exec-4] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Writing [[Semana(idSemana=1, nombreSemana=Semana 1, fechaInicio=2026-03-02, fechaFin=2026-03-08, anio=2026, s (truncated)...]
-2026-04-24T00:36:56.172Z DEBUG 1 --- [nio-8080-exec-4] o.s.web.servlet.DispatcherServlet        : Completed 200 OK
-2026-04-24T00:37:07.763Z DEBUG 1 --- [nio-8080-exec-5] o.s.security.web.FilterChainProxy        : Securing POST /api/v1/pedido/resumen-historico
-2026-04-24T00:37:07.766Z  INFO 1 --- [nio-8080-exec-5] K.c.s.rate_limiting.RateLimitFilter      : 📍 IP: 186.78.184.242 | Petición 4 de 80
-2026-04-24T00:37:07.777Z DEBUG 1 --- [nio-8080-exec-5] o.s.security.web.FilterChainProxy        : Secured POST /api/v1/pedido/resumen-historico
-2026-04-24T00:37:07.778Z DEBUG 1 --- [nio-8080-exec-5] o.s.web.servlet.DispatcherServlet        : POST "/api/v1/pedido/resumen-historico", parameters={}
-2026-04-24T00:37:07.780Z DEBUG 1 --- [nio-8080-exec-5] s.w.s.m.m.a.RequestMappingHandlerMapping : Mapped to KuHub.modules.gestion_pedido.controller.PedidoController#obtenerResumenHistorico(ResumenHistoricoRequestDTO)
-2026-04-24T00:37:07.789Z DEBUG 1 --- [nio-8080-exec-5] m.m.a.RMh4hfsi84LdbS4uS3jaSaNccc8kartkDJ : Read "application/json;charset=UTF-8" to [ResumenHistoricoRequestDTO(fechaInicio=2026-01-01, fechaFin=2026-12-31, estadosCsv=APROBADO,ENTREGAD (truncated)...]
-2026-04-24T00:37:07.805Z  INFO 1 --- [nio-8080-exec-5] K.m.g.controller.PedidoController        : === INICIO obtenerResumenHistorico ===
-2026-04-24T00:37:07.805Z  INFO 1 --- [nio-8080-exec-5] K.m.g.controller.PedidoController        : 📅 Fecha Inicio recibida del frontend: 2026-01-01
-2026-04-24T00:37:07.805Z  INFO 1 --- [nio-8080-exec-5] K.m.g.controller.PedidoController        : 📅 Fecha Fin recibida del frontend: 2026-12-31
-2026-04-24T00:37:07.806Z  INFO 1 --- [nio-8080-exec-5] K.m.g.controller.PedidoController        : 🏷 ️  Estados CSV recibido del frontend: APROBADO,ENTREGADO
-2026-04-24T00:37:07.808Z  INFO 1 --- [nio-8080-exec-5] K.m.g.controller.PedidoController        : 🏷 ️  Estados NORMALIZADOS después de validación: APROBADO,ENTREGADO
-2026-04-24T00:37:07.808Z  INFO 1 --- [nio-8080-exec-5] K.m.g.controller.PedidoController        : ✅ Llamando al service con: fechaInicio=2026-01-01, fechaFin=2026-12-31, estados=APROBADO,ENTREGADO
-2026-04-24T00:37:07.811Z  INFO 1 --- [nio-8080-exec-5] K.m.g.services.PedidoServiceImpl         : 🔵 [SERVICE] obtenerResumenHistorico INICIADO
-2026-04-24T00:37:07.812Z  INFO 1 --- [nio-8080-exec-5] K.m.g.services.PedidoServiceImpl         : 📅 [SERVICE] Parámetro fechaInicio: 2026-01-01 (tipo: LocalDate)
-2026-04-24T00:37:07.812Z  INFO 1 --- [nio-8080-exec-5] K.m.g.services.PedidoServiceImpl         : 📅 [SERVICE] Parámetro fechaFin: 2026-12-31 (tipo: LocalDate)
-2026-04-24T00:37:07.813Z  INFO 1 --- [nio-8080-exec-5] K.m.g.services.PedidoServiceImpl         : 🏷 ️  [SERVICE] Parámetro estadosCsv: 'APROBADO,ENTREGADO' (longitud: 18)
-2026-04-24T00:37:07.823Z DEBUG 1 --- [nio-8080-exec-5] org.hibernate.SQL                        :
+2026-04-24T00:51:51.341Z TRACE 1 --- [nio-8080-exec-3] org.hibernate.orm.jdbc.bind              : binding parameter (1:SMALLINT) <- [2026]
+2026-04-24T00:51:51.341Z TRACE 1 --- [nio-8080-exec-3] org.hibernate.orm.jdbc.bind              : binding parameter (2:SMALLINT) <- [1]
+2026-04-24T00:51:51.376Z DEBUG 1 --- [nio-8080-exec-3] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/yaml]
+2026-04-24T00:51:51.377Z DEBUG 1 --- [nio-8080-exec-3] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Writing [[Semana(idSemana=1, nombreSemana=Semana 1, fechaInicio=2026-03-02, fechaFin=2026-03-08, anio=2026, s (truncated)...]
+2026-04-24T00:51:51.388Z DEBUG 1 --- [nio-8080-exec-3] o.s.web.servlet.DispatcherServlet        : Completed 200 OK
+2026-04-24T00:52:03.417Z DEBUG 1 --- [nio-8080-exec-4] o.s.security.web.FilterChainProxy        : Securing POST /api/v1/pedido/resumen-historico
+2026-04-24T00:52:03.419Z  INFO 1 --- [nio-8080-exec-4] K.c.s.rate_limiting.RateLimitFilter      : 📍 IP: 186.78.184.242 | Petición 4 de 80
+2026-04-24T00:52:03.430Z DEBUG 1 --- [nio-8080-exec-4] o.s.security.web.FilterChainProxy        : Secured POST /api/v1/pedido/resumen-historico
+2026-04-24T00:52:03.430Z DEBUG 1 --- [nio-8080-exec-4] o.s.web.servlet.DispatcherServlet        : POST "/api/v1/pedido/resumen-historico", parameters={}
+2026-04-24T00:52:03.431Z DEBUG 1 --- [nio-8080-exec-4] s.w.s.m.m.a.RequestMappingHandlerMapping : Mapped to KuHub.modules.gestion_pedido.controller.PedidoController#obtenerResumenHistorico(ResumenHistoricoRequestDTO)
+2026-04-24T00:52:03.438Z DEBUG 1 --- [nio-8080-exec-4] m.m.a.RMh4hfsi84LdbS4uS3jaSaNccc8kartkDJ : Read "application/json;charset=UTF-8" to [ResumenHistoricoRequestDTO(fechaInicio=2026-01-01, fechaFin=2026-12-31, estadosCsv=APROBADO,ENTREGAD (truncated)...]
+2026-04-24T00:52:03.449Z  INFO 1 --- [nio-8080-exec-4] K.m.g.controller.PedidoController        : === INICIO obtenerResumenHistorico ===
+2026-04-24T00:52:03.449Z  INFO 1 --- [nio-8080-exec-4] K.m.g.controller.PedidoController        : 📅 Fecha Inicio recibida del frontend: 2026-01-01
+2026-04-24T00:52:03.449Z  INFO 1 --- [nio-8080-exec-4] K.m.g.controller.PedidoController        : 📅 Fecha Fin recibida del frontend: 2026-12-31
+2026-04-24T00:52:03.449Z  INFO 1 --- [nio-8080-exec-4] K.m.g.controller.PedidoController        : 🏷 ️  Estados CSV recibido del frontend: APROBADO,ENTREGADO
+2026-04-24T00:52:03.452Z  INFO 1 --- [nio-8080-exec-4] K.m.g.controller.PedidoController        : 🏷 ️  Estados NORMALIZADOS después de validación: APROBADO,ENTREGADO
+2026-04-24T00:52:03.452Z  INFO 1 --- [nio-8080-exec-4] K.m.g.controller.PedidoController        : ✅ Llamando al service con: fechaInicio=2026-01-01, fechaFin=2026-12-31, estados=APROBADO,ENTREGADO
+2026-04-24T00:52:03.457Z  INFO 1 --- [nio-8080-exec-4] K.m.g.services.PedidoServiceImpl         : 🔵 [SERVICE] obtenerResumenHistorico INICIADO
+2026-04-24T00:52:03.457Z  INFO 1 --- [nio-8080-exec-4] K.m.g.services.PedidoServiceImpl         : 📅 [SERVICE] Parámetro fechaInicio: 2026-01-01 (tipo: LocalDate)
+2026-04-24T00:52:03.458Z  INFO 1 --- [nio-8080-exec-4] K.m.g.services.PedidoServiceImpl         : 📅 [SERVICE] Parámetro fechaFin: 2026-12-31 (tipo: LocalDate)
+2026-04-24T00:52:03.459Z  INFO 1 --- [nio-8080-exec-4] K.m.g.services.PedidoServiceImpl         : 🏷 ️  [SERVICE] Parámetro estadosCsv: 'APROBADO,ENTREGADO' (longitud: 18)
+2026-04-24T00:52:03.471Z DEBUG 1 --- [nio-8080-exec-4] org.hibernate.SQL                        :
     SELECT
         jsonb_build_object(     'fechaInicio', CAST(? AS TEXT),     'fechaFin',    CAST(? AS TEXT),     'estados',     to_jsonb(string_to_array(trim(?), ',')::text[]),      'totalProductosDistintos', (         SELECT
             COUNT(DISTINCT dp.id_producto)         FROM detalle_pedido dp
@@ -287,24 +287,28 @@ Hibernate:
         LEFT JOIN
             unidad_medida um
                 ON um.id_unidad = prod.id_unidad     ), '[]'::jsonb) ) AS resultado
-2026-04-24T00:37:07.826Z TRACE 1 --- [nio-8080-exec-5] org.hibernate.orm.jdbc.bind              : binding parameter (1:DATE) <- [2026-01-01]
-2026-04-24T00:37:07.827Z TRACE 1 --- [nio-8080-exec-5] org.hibernate.orm.jdbc.bind              : binding parameter (2:DATE) <- [2026-12-31]
-2026-04-24T00:37:07.829Z TRACE 1 --- [nio-8080-exec-5] org.hibernate.orm.jdbc.bind              : binding parameter (3:VARCHAR) <- [APROBADO,ENTREGADO]
-2026-04-24T00:37:07.829Z TRACE 1 --- [nio-8080-exec-5] org.hibernate.orm.jdbc.bind              : binding parameter (4:DATE) <- [2026-01-01]
-2026-04-24T00:37:07.830Z TRACE 1 --- [nio-8080-exec-5] org.hibernate.orm.jdbc.bind              : binding parameter (5:DATE) <- [2026-12-31]
-2026-04-24T00:37:07.830Z TRACE 1 --- [nio-8080-exec-5] org.hibernate.orm.jdbc.bind              : binding parameter (6:VARCHAR) <- [APROBADO,ENTREGADO]
-2026-04-24T00:37:07.830Z TRACE 1 --- [nio-8080-exec-5] org.hibernate.orm.jdbc.bind              : binding parameter (7:DATE) <- [2026-01-01]
-2026-04-24T00:37:07.831Z TRACE 1 --- [nio-8080-exec-5] org.hibernate.orm.jdbc.bind              : binding parameter (8:DATE) <- [2026-12-31]
-2026-04-24T00:37:07.831Z TRACE 1 --- [nio-8080-exec-5] org.hibernate.orm.jdbc.bind              : binding parameter (9:VARCHAR) <- [APROBADO,ENTREGADO]
-2026-04-24T00:37:07.831Z TRACE 1 --- [nio-8080-exec-5] org.hibernate.orm.jdbc.bind              : binding parameter (10:DATE) <- [2026-01-01]
-2026-04-24T00:37:07.832Z TRACE 1 --- [nio-8080-exec-5] org.hibernate.orm.jdbc.bind              : binding parameter (11:DATE) <- [2026-12-31]
-2026-04-24T00:37:07.832Z TRACE 1 --- [nio-8080-exec-5] org.hibernate.orm.jdbc.bind              : binding parameter (12:VARCHAR) <- [APROBADO,ENTREGADO]
-2026-04-24T00:37:07.846Z  INFO 1 --- [nio-8080-exec-5] K.m.g.services.PedidoServiceImpl         : 📦 [SERVICE] JSON retornado del repository: 11252 caracteres
-2026-04-24T00:37:07.847Z  INFO 1 --- [nio-8080-exec-5] K.m.g.services.PedidoServiceImpl         : ✅ [SERVICE] Parseando JSON response...
-2026-04-24T00:37:07.864Z  WARN 1 --- [nio-8080-exec-5] K.m.g.services.PedidoServiceImpl         : ⚠️  [SERVICE] resultNode es NULL para rango 2026-01-01-2026-12-31 con estados 'APROBADO,ENTREGADO'
-2026-04-24T00:37:07.866Z  INFO 1 --- [nio-8080-exec-5] K.m.g.controller.PedidoController        : ✅ Response recibida del service: 0 productos distintos, 0 pedidos
-2026-04-24T00:37:07.867Z  INFO 1 --- [nio-8080-exec-5] K.m.g.controller.PedidoController        : === FIN obtenerResumenHistorico ===
+2026-04-24T00:52:03.473Z TRACE 1 --- [nio-8080-exec-4] org.hibernate.orm.jdbc.bind              : binding parameter (1:DATE) <- [2026-01-01]
+2026-04-24T00:52:03.475Z TRACE 1 --- [nio-8080-exec-4] org.hibernate.orm.jdbc.bind              : binding parameter (2:DATE) <- [2026-12-31]
+2026-04-24T00:52:03.475Z TRACE 1 --- [nio-8080-exec-4] org.hibernate.orm.jdbc.bind              : binding parameter (3:VARCHAR) <- [APROBADO,ENTREGADO]
+2026-04-24T00:52:03.475Z TRACE 1 --- [nio-8080-exec-4] org.hibernate.orm.jdbc.bind              : binding parameter (4:DATE) <- [2026-01-01]
+2026-04-24T00:52:03.476Z TRACE 1 --- [nio-8080-exec-4] org.hibernate.orm.jdbc.bind              : binding parameter (5:DATE) <- [2026-12-31]
+2026-04-24T00:52:03.476Z TRACE 1 --- [nio-8080-exec-4] org.hibernate.orm.jdbc.bind              : binding parameter (6:VARCHAR) <- [APROBADO,ENTREGADO]
+2026-04-24T00:52:03.476Z TRACE 1 --- [nio-8080-exec-4] org.hibernate.orm.jdbc.bind              : binding parameter (7:DATE) <- [2026-01-01]
+2026-04-24T00:52:03.477Z TRACE 1 --- [nio-8080-exec-4] org.hibernate.orm.jdbc.bind              : binding parameter (8:DATE) <- [2026-12-31]
+2026-04-24T00:52:03.477Z TRACE 1 --- [nio-8080-exec-4] org.hibernate.orm.jdbc.bind              : binding parameter (9:VARCHAR) <- [APROBADO,ENTREGADO]
+2026-04-24T00:52:03.477Z TRACE 1 --- [nio-8080-exec-4] org.hibernate.orm.jdbc.bind              : binding parameter (10:DATE) <- [2026-01-01]
+2026-04-24T00:52:03.477Z TRACE 1 --- [nio-8080-exec-4] org.hibernate.orm.jdbc.bind              : binding parameter (11:DATE) <- [2026-12-31]
+2026-04-24T00:52:03.477Z TRACE 1 --- [nio-8080-exec-4] org.hibernate.orm.jdbc.bind              : binding parameter (12:VARCHAR) <- [APROBADO,ENTREGADO]
+2026-04-24T00:52:03.494Z  INFO 1 --- [nio-8080-exec-4] K.m.g.services.PedidoServiceImpl         : 📦 [SERVICE] JSON retornado del repository: 11252 caracteres
+2026-04-24T00:52:03.494Z  INFO 1 --- [nio-8080-exec-4] K.m.g.services.PedidoServiceImpl         : ✅ [SERVICE] Parseando JSON response...
+2026-04-24T00:52:03.495Z  INFO 1 --- [nio-8080-exec-4] K.m.g.services.PedidoServiceImpl         : 🔍 [SERVICE] JSON COMPLETO recibido: {"estados": ["APROBADO", "ENTREGADO"], "fechaFin": "2026-12-31 +00", "productos": [{"idProducto": 265, "abreviatura": "un", "codProducto": null, "unidadMedida": "Unidad", "cantidadTotal": 22.000, "nombreProducto": "Palos Bambu Con Nudo", "vecesEnPedidos": 2}, {"idProducto": 249, "abreviatura": "un", "codProducto": null, "unidadMedida": "Unidad", "cantidadTotal": 15.000, "nombreProducto": "Bolsa De Vacio Grande", "vecesEnPedidos": 1}, {"idProducto": 18, "abreviatura": "un", "codProducto": null, "unidadMedida": "Unidad", "cantidadTotal": 15.000, "nombreProducto": "Cilantro", "vecesEnPedidos": 1}, {"idProducto": 131, "abreviatura": "kg", "codProducto": null, "unidadMedida": "Kilo", "cantidadTotal": 14.733, "nombreProducto": "Huevo Primera Kilo", "vecesEnPedidos": 2}, {"idProducto": 48, "abreviatura": "kg", "codProducto": null, "unidadMedida": "Kilo", "cantidadTotal": 14.418, "nombreProducto": "Romero", "vecesEnPedidos": 1}, {"idProducto": 222, "abreviatura": "un", "codProducto": null, "unidadMedida": "Unidad", "cantidadTotal": 12.000, "nombreProducto": "Chicha 11,5°", "vecesEnPedidos": 1}, {"idProducto": 266, "abreviatura": "rll", "codProducto": null, "unidadMedida": "Rollo", "cantidadTotal": 10.000, "nombreProducto": "Papel De Aluminio", "vecesEnPedidos": 1}, {"idProducto": 50, "abreviatura": "kg", "codProducto": null, "unidadMedida": "Kilo", "cantidadTotal": 9.805, "nombreProducto": "Tomate", "vecesEnPedidos": 1}, {"idProducto": 143, "abreviatura": "kg", "codProducto": null, "unidadMedida": "Kilo", "cantidadTotal": 9.349, "nombreProducto": "Manjar Nestle", "vecesEnPedidos": 1}, {"idProducto": 72, "abreviatura": "l", "codProducto": null, "unidadMedida": "Litro", "cantidadTotal": 8.949, "nombreProducto": "Aceite De Sésamo", "vecesEnPedidos": 1}, {"idProducto": 63, "abreviatura": "kg", "codProducto": null, "unidadMedida": "Kilo", "cantidadTotal": 7.456, "nombreProducto": "Mora", "vecesEnPedidos": 1}, {"idProducto": 31, "abreviatura": "kg", "codProducto": null, "unidadMedida": "Kilo", "cantidadTotal": 7.383, "nombreProducto": "Mizuna Morada", "vecesEnPedidos": 2}, {"idProducto": 164, "abreviatura": "kg", "codProducto": null, "unidadMedida": "Kilo", "cantidadTotal": 6.960, "nombreProducto": "Queso Crema Reny G1", "vecesEnPedidos": 1}, {"idProducto": 140, "abreviatura": "kg", "codProducto": null, "unidadMedida": "Kilo", "cantidadTotal": 6.580, "nombreProducto": "Levadura Instantanea", "vecesEnPedidos": 1}, {"idProducto": 179, "abreviatura": "kg", "codProducto": null, "unidadMedida": "Kilo", "cantidadTotal": 6.468, "nombreProducto": "Semilla De Maravilla", "vecesEnPedidos": 1}, {"idProducto": 133, "abreviatura": "bdj", "codProducto": null, "unidadMedida": "Bandeja", "cantidadTotal": 6.000, "nombreProducto": "Huevos De Codorniz", "vecesEnPedidos": 1}, {"idProducto": 235, "abreviatura": "un", "codProducto": null, "unidadMedida": "Unidad", "cantidadTotal": 6.000, "nombreProducto": "Ron Blanco Bacardi 40°", "vecesEnPedidos": 1}, {"idProducto": 230, "abreviatura": "un", "codProducto": null, "unidadMedida": "Unidad", "cantidadTotal": 6.000, "nombreProducto": "Jugo Watt´s Piña", "vecesEnPedidos": 1}, {"idProducto": 46, "abreviatura": "un", "codProducto": null, "unidadMedida": "Unidad", "cantidadTotal": 6.000, "nombreProducto": "Repollo Verde", "vecesEnPedidos": 1}, {"idProducto": 250, "abreviatura": "un", "codProducto": null, "unidadMedida": "Unidad", "cantidadTotal": 6.000, "nombreProducto": "Bolsa Prepicada Grande", "vecesEnPedidos": 1}, {"idProducto": 219, "abreviatura": "un", "codProducto": null, "unidadMedida": "Unidad", "cantidadTotal": 6.000, "nombreProducto": "Bebida Ginger Ale", "vecesEnPedidos": 1}, {"idProducto": 216, "abreviatura": "un", "codProducto": null, "unidadMedida": "Unidad", "cantidadTotal": 6.000, "nombreProducto": "Amaretto Mitjans", "vecesEnPedidos": 1}, {"idProducto": 166, "abreviatura": "un", "codProducto": null, "unidadMedida": "Unidad", "cantidadTotal": 6.000, "nombreProducto": "Queso De Cabra Unidad", "vecesEnPedidos": 1}, {"idProducto": 182, "abreviatura": "kg", "codProducto": null, "unidadMedida": "Kilo", "cantidadTotal": 5.472, "nombreProducto": "Sesamo Blanco", "vecesEnPedidos": 1}, {"idProducto": 54, "abreviatura": "kg", "codProducto": null, "unidadMedida": "Kilo", "cantidadTotal": 4.997, "nombreProducto": "Zanahoria", "vecesEnPedidos": 1}, {"idProducto": 195, "abreviatura": "kg", "codProducto": null, "unidadMedida": "Kilo", "cantidadTotal": 4.722, "nombreProducto": "Cerdo Lomo", "vecesEnPedidos": 1}, {"idProducto": 105, "abreviatura": "kg", "codProducto": null, "unidadMedida": "Kilo", "cantidadTotal": 4.384, "nombreProducto": "Cobertura Blanca Neucober", "vecesEnPedidos": 1}, {"idProducto": 120, "abreviatura": "un", "codProducto": null, "unidadMedida": "Unidad", "cantidadTotal": 4.000, "nombreProducto": "Galletas De Vino", "vecesEnPedidos": 1}, {"idProducto": 271, "abreviatura": "un", "codProducto": null, "unidadMedida": "Unidad", "cantidadTotal": 4.000, "nombreProducto": "Transfers", "vecesEnPedidos": 1}, {"idProducto": 186, "abreviatura": "un", "codProducto": null, "unidadMedida": "Unidad", "cantidadTotal": 4.000, "nombreProducto": "Tinta De Sepia / Jibia / Calamar Tarro", "vecesEnPedidos": 1}, {"idProducto": 10, "abreviatura": "bdj", "codProducto": null, "unidadMedida": "Bandeja", "cantidadTotal": 4.000, "nombreProducto": "Brote Alfalfa 70 Gr", "vecesEnPedidos": 1}, {"idProducto": 198, "abreviatura": "un", "codProducto": null, "unidadMedida": "Unidad", "cantidadTotal": 4.000, "nombreProducto": "Pollo Suprema", "vecesEnPedidos": 1}, {"idProducto": 245, "abreviatura": "un", "codProducto": null, "unidadMedida": "Unidad", "cantidadTotal": 4.000, "nombreProducto": "Vino Tinto Cabernet Sauvignon Koyle", "vecesEnPedidos": 1}, {"idProducto": 55, "abreviatura": "kg", "codProducto": null, "unidadMedida": "Kilo", "cantidadTotal": 3.812, "nombreProducto": "Zapallo Camote", "vecesEnPedidos": 1}, {"idProducto": 125, "abreviatura": "kg", "codProducto": null, "unidadMedida": "Kilo", "cantidadTotal": 3.676, "nombreProducto": "Harina De Fuerza", "vecesEnPedidos": 1}, {"idProducto": 82, "abreviatura": "kg", "codProducto": null, "unidadMedida": "Kilo", "cantidadTotal": 3.546, "nombreProducto": "Almendras Enteras", "vecesEnPedidos": 1}, {"idProducto": 15, "abreviatura": "kg", "codProducto": null, "unidadMedida": "Kilo", "cantidadTotal": 3.468, "nombreProducto": "Champiñon Ostra", "vecesEnPedidos": 1}, {"idProducto": 268, "abreviatura": "rll", "codProducto": null, "unidadMedida": "Rollo", "cantidadTotal": 3.000, "nombreProducto": "Papel Film (alusa)", "vecesEnPedidos": 1}, {"idProducto": 181, "abreviatura": "kg", "codProducto": null, "unidadMedida": "Kilo", "cantidadTotal": 2.928, "nombreProducto": "Semilla De Zapallo", "vecesEnPedidos": 1}, {"idProducto": 153, "abreviatura": "kg", "codProducto": null, "unidadMedida": "Kilo", "cantidadTotal": 2.764, "nombreProducto": "Mostacilla Colores", "vecesEnPedidos": 1}, {"idProducto": 76, "abreviatura": "l", "codProducto": null, "unidadMedida": "Litro", "cantidadTotal": 2.730, "nombreProducto": "Aceto Balsamico", "vecesEnPedidos": 1}, {"idProducto": 7, "abreviatura": "kg", "codProducto": null, "unidadMedida": "Kilo", "cantidadTotal": 2.642, "nombreProducto": "Berros", "vecesEnPedidos": 1}, {"idProducto": 180, "abreviatura": "kg", "codProducto": null, "unidadMedida": "Kilo", "cantidadTotal": 2.550, "nombreProducto": "Semilla De Mostaza Blanca", "vecesEnPedidos": 1}, {"idProducto": 89, "abreviatura": "kg", "codProducto": null, "unidadMedida": "Kilo", "cantidadTotal": 2.296, "nombreProducto": "Azúcar Granulada Blanca Iansa", "vecesEnPedidos": 1}, {"idProducto": 85, "abreviatura": "kg", "codProducto": null, "unidadMedida": "Kilo", "cantidadTotal": 2.262, "nombreProducto": "Arroz Arboreo / Risotto", "vecesEnPedidos": 1}, {"idProducto": 58, "abreviatura": "kg", "codProducto": null, "unidadMedida": "Kilo", "cantidadTotal": 2.056, "nombreProducto": "Arándano", "vecesEnPedidos": 2}, {"idProducto": 264, "abreviatura": "un", "codProducto": null, "unidadMedida": "Unidad", "cantidadTotal": 2.000, "nombreProducto": "Mondadiente", "vecesEnPedidos": 1}, {"idProducto": 43, "abreviatura": "un", "codProducto": null, "unidadMedida": "Unidad", "cantidadTotal": 2.000, "nombreProducto": "Piña", "vecesEnPedidos": 1}, {"idProducto": 79, "abreviatura": "un", "codProducto": null, "unidadMedida": "Unidad", "cantidadTotal": 2.000, "nombreProducto": "Ají Panca Pasta Amarillo", "vecesEnPedidos": 1}, {"idProducto": 141, "abreviatura": "un", "codProducto": null, "unidadMedida": "Unidad", "cantidadTotal": 2.000, "nombreProducto": "Lychee En Conserva", "vecesEnPedidos": 1}, {"idProducto": 42, "abreviatura": "un", "codProducto": null, "unidadMedida": "Unidad", "cantidadTotal": 2.000, "nombreProducto": "Pimenton Verde", "vecesEnPedidos": 1}, {"idProducto": 262, "abreviatura": "un", "codProducto": null, "unidadMedida": "Unidad", "cantidadTotal": 2.000, "nombreProducto": "Guantes", "vecesEnPedidos": 1}, {"idProducto": 23, "abreviatura": "un", "codProducto": null, "unidadMedida": "Unidad", "cantidadTotal": 2.000, "nombreProducto": "Lechuga Lollo Rosso", "vecesEnPedidos": 1}, {"idProducto": 77, "abreviatura": "kg", "codProducto": null, "unidadMedida": "Kilo", "cantidadTotal": 1.895, "nombreProducto": "Agar Agar", "vecesEnPedidos": 2}, {"idProducto": 51, "abreviatura": "kg", "codProducto": null, "unidadMedida": "Kilo", "cantidadTotal": 1.812, "nombreProducto": "Tomate Cherry", "vecesEnPedidos": 1}, {"idProducto": 190, "abreviatura": "l", "codProducto": null, "unidadMedida": "Litro", "cantidadTotal": 1.408, "nombreProducto": "Vinagre Blanco", "vecesEnPedidos": 1}, {"idProducto": 123, "abreviatura": "kg", "codProducto": null, "unidadMedida": "Kilo", "cantidadTotal": 1.402, "nombreProducto": "Harina De Almendras", "vecesEnPedidos": 1}, {"idProducto": 126, "abreviatura": "kg", "codProducto": null, "unidadMedida": "Kilo", "cantidadTotal": 1.100, "nombreProducto": "Harina Integral", "vecesEnPedidos": 1}, {"idProducto": 16, "abreviatura": "kg", "codProducto": null, "unidadMedida": "Kilo", "cantidadTotal": 1.010, "nombreProducto": "Champiñon Paris", "vecesEnPedidos": 1}, {"idProducto": 256, "abreviatura": "un", "codProducto": null, "unidadMedida": "Unidad", "cantidadTotal": 1.000, "nombreProducto": "Colorante Gel Rojo", "vecesEnPedidos": 1}, {"idProducto": 167, "abreviatura": "kg", "codProducto": null, "unidadMedida": "Kilo", "cantidadTotal": 0.742, "nombreProducto": "Queso Emmenthal", "vecesEnPedidos": 1}, {"idProducto": 59, "abreviatura": "kg", "codProducto": null, "unidadMedida": "Kilo", "cantidadTotal": 0.616, "nombreProducto": "Arvejas", "vecesEnPedidos": 1}, {"idProducto": 86, "abreviatura": "kg", "codProducto": null, "unidadMedida": "Kilo", "cantidadTotal": 0.408, "nombreProducto": "Arroz Grado 1", "vecesEnPedidos": 1}, {"idProducto": 165, "abreviatura": "kg", "codProducto": null, "unidadMedida": "Kilo", "cantidadTotal": 0.382, "nombreProducto": "Queso De Cabra", "vecesEnPedidos": 1}, {"idProducto": 102, "abreviatura": "kg", "codProducto": null, "unidadMedida": "Kilo", "cantidadTotal": 0.300, "nombreProducto": "Clavo De Olor Entero", "vecesEnPedidos": 1}], "fechaInicio": "2026-01-01 +00", "totalPedidos": 4, "totalProductosDistintos": 65}
+2026-04-24T00:52:03.514Z  INFO 1 --- [nio-8080-exec-4] K.m.g.services.PedidoServiceImpl         : 🔍 [SERVICE] resultNode type: null
+2026-04-24T00:52:03.514Z  WARN 1 --- [nio-8080-exec-4] K.m.g.services.PedidoServiceImpl         : ⚠️  [SERVICE] ❌ resultNode es NULL para rango 2026-01-01-2026-12-31 con estados 'APROBADO,ENTREGADO'
+2026-04-24T00:52:03.533Z  WARN 1 --- [nio-8080-exec-4] K.m.g.services.PedidoServiceImpl         : ⚠️  [SERVICE] Estructura del JSON raíz: {"estados":["APROBADO","ENTREGADO"],"fechaFin":"2026-12-31 +00","productos":[{"idProducto":265,"abreviatura":"un","codProducto":null,"unidadMedida":"Unidad","cantidadTotal":22.0,"nombreProducto":"Palos Bambu Con Nudo","vecesEnPedidos":2},{"idProducto":249,"abreviatura":"un","codProducto":null,"unidadMedida":"Unidad","cantidadTotal":15.0,"nombreProducto":"Bolsa De Vacio Grande","vecesEnPedidos":1},{"idProducto":18,"abreviatura":"un","codProducto":null,"unidadMedida":"Unidad","cantidadTotal":15.0,"nombreProducto":"Cilantro","vecesEnPedidos":1},{"idProducto":131,"abreviatura":"kg","codProducto":null,"unidadMedida":"Kilo","cantidadTotal":14.733,"nombreProducto":"Huevo Primera Kilo","vecesEnPedidos":2},{"idProducto":48,"abreviatura":"kg","codProducto":null,"unidadMedida":"Kilo","cantidadTotal":14.418,"nombreProducto":"Romero","vecesEnPedidos":1},{"idProducto":222,"abreviatura":"un","codProducto":null,"unidadMedida":"Unidad","cantidadTotal":12.0,"nombreProducto":"Chicha 11,5°","vecesEnPedidos":1},{"idProducto":266,"abreviatura":"rll","codProducto":null,"unidadMedida":"Rollo","cantidadTotal":10.0,"nombreProducto":"Papel De Aluminio","vecesEnPedidos":1},{"idProducto":50,"abreviatura":"kg","codProducto":null,"unidadMedida":"Kilo","cantidadTotal":9.805,"nombreProducto":"Tomate","vecesEnPedidos":1},{"idProducto":143,"abreviatura":"kg","codProducto":null,"unidadMedida":"Kilo","cantidadTotal":9.349,"nombreProducto":"Manjar Nestle","vecesEnPedidos":1},{"idProducto":72,"abreviatura":"l","codProducto":null,"unidadMedida":"Litro","cantidadTotal":8.949,"nombreProducto":"Aceite De Sésamo","vecesEnPedidos":1},{"idProducto":63,"abreviatura":"kg","codProducto":null,"unidadMedida":"Kilo","cantidadTotal":7.456,"nombreProducto":"Mora","vecesEnPedidos":1},{"idProducto":31,"abreviatura":"kg","codProducto":null,"unidadMedida":"Kilo","cantidadTotal":7.383,"nombreProducto":"Mizuna Morada","vecesEnPedidos":2},{"idProducto":164,"abreviatura":"kg","codProducto":null,"unidadMedida":"Kilo","cantidadTotal":6.96,"nombreProducto":"Queso Crema Reny G1","vecesEnPedidos":1},{"idProducto":140,"abreviatura":"kg","codProducto":null,"unidadMedida":"Kilo","cantidadTotal":6.58,"nombreProducto":"Levadura Instantanea","vecesEnPedidos":1},{"idProducto":179,"abreviatura":"kg","codProducto":null,"unidadMedida":"Kilo","cantidadTotal":6.468,"nombreProducto":"Semilla De Maravilla","vecesEnPedidos":1},{"idProducto":133,"abreviatura":"bdj","codProducto":null,"unidadMedida":"Bandeja","cantidadTotal":6.0,"nombreProducto":"Huevos De Codorniz","vecesEnPedidos":1},{"idProducto":235,"abreviatura":"un","codProducto":null,"unidadMedida":"Unidad","cantidadTotal":6.0,"nombreProducto":"Ron Blanco Bacardi 40°","vecesEnPedidos":1},{"idProducto":230,"abreviatura":"un","codProducto":null,"unidadMedida":"Unidad","cantidadTotal":6.0,"nombreProducto":"Jugo Watt´s Piña","vecesEnPedidos":1},{"idProducto":46,"abreviatura":"un","codProducto":null,"unidadMedida":"Unidad","cantidadTotal":6.0,"nombreProducto":"Repollo Verde","vecesEnPedidos":1},{"idProducto":250,"abreviatura":"un","codProducto":null,"unidadMedida":"Unidad","cantidadTotal":6.0,"nombreProducto":"Bolsa Prepicada Grande","vecesEnPedidos":1},{"idProducto":219,"abreviatura":"un","codProducto":null,"unidadMedida":"Unidad","cantidadTotal":6.0,"nombreProducto":"Bebida Ginger Ale","vecesEnPedidos":1},{"idProducto":216,"abreviatura":"un","codProducto":null,"unidadMedida":"Unidad","cantidadTotal":6.0,"nombreProducto":"Amaretto Mitjans","vecesEnPedidos":1},{"idProducto":166,"abreviatura":"un","codProducto":null,"unidadMedida":"Unidad","cantidadTotal":6.0,"nombreProducto":"Queso De Cabra Unidad","vecesEnPedidos":1},{"idProducto":182,"abreviatura":"kg","codProducto":null,"unidadMedida":"Kilo","cantidadTotal":5.472,"nombreProducto":"Sesamo Blanco","vecesEnPedidos":1},{"idProducto":54,"abreviatura":"kg","codProducto":null,"unidadMedida":"Kilo","cantidadTotal":4.997,"nombreProducto":"Zanahoria","vecesEnPedidos":1},{"idProducto":195,"abreviatura":"kg","codProducto":null,"unidadMedida":"Kilo","cantidadTotal":4.722,"nombreProducto":"Cerdo Lomo","vecesEnPedidos":1},{"idProducto":105,"abreviatura":"kg","codProducto":null,"unidadMedida":"Kilo","cantidadTotal":4.384,"nombreProducto":"Cobertura Blanca Neucober","vecesEnPedidos":1},{"idProducto":120,"abreviatura":"un","codProducto":null,"unidadMedida":"Unidad","cantidadTotal":4.0,"nombreProducto":"Galletas De Vino","vecesEnPedidos":1},{"idProducto":271,"abreviatura":"un","codProducto":null,"unidadMedida":"Unidad","cantidadTotal":4.0,"nombreProducto":"Transfers","vecesEnPedidos":1},{"idProducto":186,"abreviatura":"un","codProducto":null,"unidadMedida":"Unidad","cantidadTotal":4.0,"nombreProducto":"Tinta De Sepia / Jibia / Calamar Tarro","vecesEnPedidos":1},{"idProducto":10,"abreviatura":"bdj","codProducto":null,"unidadMedida":"Bandeja","cantidadTotal":4.0,"nombreProducto":"Brote Alfalfa 70 Gr","vecesEnPedidos":1},{"idProducto":198,"abreviatura":"un","codProducto":null,"unidadMedida":"Unidad","cantidadTotal":4.0,"nombreProducto":"Pollo Suprema","vecesEnPedidos":1},{"idProducto":245,"abreviatura":"un","codProducto":null,"unidadMedida":"Unidad","cantidadTotal":4.0,"nombreProducto":"Vino Tinto Cabernet Sauvignon Koyle","vecesEnPedidos":1},{"idProducto":55,"abreviatura":"kg","codProducto":null,"unidadMedida":"Kilo","cantidadTotal":3.812,"nombreProducto":"Zapallo Camote","vecesEnPedidos":1},{"idProducto":125,"abreviatura":"kg","codProducto":null,"unidadMedida":"Kilo","cantidadTotal":3.676,"nombreProducto":"Harina De Fuerza","vecesEnPedidos":1},{"idProducto":82,"abreviatura":"kg","codProducto":null,"unidadMedida":"Kilo","cantidadTotal":3.546,"nombreProducto":"Almendras Enteras","vecesEnPedidos":1},{"idProducto":15,"abreviatura":"kg","codProducto":null,"unidadMedida":"Kilo","cantidadTotal":3.468,"nombreProducto":"Champiñon Ostra","vecesEnPedidos":1},{"idProducto":268,"abreviatura":"rll","codProducto":null,"unidadMedida":"Rollo","cantidadTotal":3.0,"nombreProducto":"Papel Film (alusa)","vecesEnPedidos":1},{"idProducto":181,"abreviatura":"kg","codProducto":null,"unidadMedida":"Kilo","cantidadTotal":2.928,"nombreProducto":"Semilla De Zapallo","vecesEnPedidos":1},{"idProducto":153,"abreviatura":"kg","codProducto":null,"unidadMedida":"Kilo","cantidadTotal":2.764,"nombreProducto":"Mostacilla Colores","vecesEnPedidos":1},{"idProducto":76,"abreviatura":"l","codProducto":null,"unidadMedida":"Litro","cantidadTotal":2.73,"nombreProducto":"Aceto Balsamico","vecesEnPedidos":1},{"idProducto":7,"abreviatura":"kg","codProducto":null,"unidadMedida":"Kilo","cantidadTotal":2.642,"nombreProducto":"Berros","vecesEnPedidos":1},{"idProducto":180,"abreviatura":"kg","codProducto":null,"unidadMedida":"Kilo","cantidadTotal":2.55,"nombreProducto":"Semilla De Mostaza Blanca","vecesEnPedidos":1},{"idProducto":89,"abreviatura":"kg","codProducto":null,"unidadMedida":"Kilo","cantidadTotal":2.296,"nombreProducto":"Azúcar Granulada Blanca Iansa","vecesEnPedidos":1},{"idProducto":85,"abreviatura":"kg","codProducto":null,"unidadMedida":"Kilo","cantidadTotal":2.262,"nombreProducto":"Arroz Arboreo / Risotto","vecesEnPedidos":1},{"idProducto":58,"abreviatura":"kg","codProducto":null,"unidadMedida":"Kilo","cantidadTotal":2.056,"nombreProducto":"Arándano","vecesEnPedidos":2},{"idProducto":264,"abreviatura":"un","codProducto":null,"unidadMedida":"Unidad","cantidadTotal":2.0,"nombreProducto":"Mondadiente","vecesEnPedidos":1},{"idProducto":43,"abreviatura":"un","codProducto":null,"unidadMedida":"Unidad","cantidadTotal":2.0,"nombreProducto":"Piña","vecesEnPedidos":1},{"idProducto":79,"abreviatura":"un","codProducto":null,"unidadMedida":"Unidad","cantidadTotal":2.0,"nombreProducto":"Ají Panca Pasta Amarillo","vecesEnPedidos":1},{"idProducto":141,"abreviatura":"un","codProducto":null,"unidadMedida":"Unidad","cantidadTotal":2.0,"nombreProducto":"Lychee En Conserva","vecesEnPedidos":1},{"idProducto":42,"abreviatura":"un","codProducto":null,"unidadMedida":"Unidad","cantidadTotal":2.0,"nombreProducto":"Pimenton Verde","vecesEnPedidos":1},{"idProducto":262,"abreviatura":"un","codProducto":null,"unidadMedida":"Unidad","cantidadTotal":2.0,"nombreProducto":"Guantes","vecesEnPedidos":1},{"idProducto":23,"abreviatura":"un","codProducto":null,"unidadMedida":"Unidad","cantidadTotal":2.0,"nombreProducto":"Lechuga Lollo Rosso","vecesEnPedidos":1},{"idProducto":77,"abreviatura":"kg","codProducto":null,"unidadMedida":"Kilo","cantidadTotal":1.895,"nombreProducto":"Agar Agar","vecesEnPedidos":2},{"idProducto":51,"abreviatura":"kg","codProducto":null,"unidadMedida":"Kilo","cantidadTotal":1.812,"nombreProducto":"Tomate Cherry","vecesEnPedidos":1},{"idProducto":190,"abreviatura":"l","codProducto":null,"unidadMedida":"Litro","cantidadTotal":1.408,"nombreProducto":"Vinagre Blanco","vecesEnPedidos":1},{"idProducto":123,"abreviatura":"kg","codProducto":null,"unidadMedida":"Kilo","cantidadTotal":1.402,"nombreProducto":"Harina De Almendras","vecesEnPedidos":1},{"idProducto":126,"abreviatura":"kg","codProducto":null,"unidadMedida":"Kilo","cantidadTotal":1.1,"nombreProducto":"Harina Integral","vecesEnPedidos":1},{"idProducto":16,"abreviatura":"kg","codProducto":null,"unidadMedida":"Kilo","cantidadTotal":1.01,"nombreProducto":"Champiñon Paris","vecesEnPedidos":1},{"idProducto":256,"abreviatura":"un","codProducto":null,"unidadMedida":"Unidad","cantidadTotal":1.0,"nombreProducto":"Colorante Gel Rojo","vecesEnPedidos":1},{"idProducto":167,"abreviatura":"kg","codProducto":null,"unidadMedida":"Kilo","cantidadTotal":0.742,"nombreProducto":"Queso Emmenthal","vecesEnPedidos":1},{"idProducto":59,"abreviatura":"kg","codProducto":null,"unidadMedida":"Kilo","cantidadTotal":0.616,"nombreProducto":"Arvejas","vecesEnPedidos":1},{"idProducto":86,"abreviatura":"kg","codProducto":null,"unidadMedida":"Kilo","cantidadTotal":0.408,"nombreProducto":"Arroz Grado 1","vecesEnPedidos":1},{"idProducto":165,"abreviatura":"kg","codProducto":null,"unidadMedida":"Kilo","cantidadTotal":0.382,"nombreProducto":"Queso De Cabra","vecesEnPedidos":1},{"idProducto":102,"abreviatura":"kg","codProducto":null,"unidadMedida":"Kilo","cantidadTotal":0.3,"nombreProducto":"Clavo De Olor Entero","vecesEnPedidos":1}],"fechaInicio":"2026-01-01 +00","totalPedidos":4,"totalProductosDistintos":65}
+2026-04-24T00:52:03.536Z  INFO 1 --- [nio-8080-exec-4] K.m.g.controller.PedidoController        : ✅ Response recibida del service: 0 productos distintos, 0 pedidos
+2026-04-24T00:52:03.537Z  INFO 1 --- [nio-8080-exec-4] K.m.g.controller.PedidoController        : === FIN obtenerResumenHistorico ===
 
-2026-04-24T00:37:07.890Z DEBUG 1 --- [nio-8080-exec-5] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/yaml]
-2026-04-24T00:37:07.903Z DEBUG 1 --- [nio-8080-exec-5] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Writing [ResumenHistoricoResponse[fechaInicio=2026-01-01, fechaFin=2026-12-31, estados=[], totalProductosDist (truncated)...]
-2026-04-24T00:37:07.919Z DEBUG 1 --- [nio-8080-exec-5] o.s.web.servlet.DispatcherServlet        : Completed 200 OK
+2026-04-24T00:52:03.563Z DEBUG 1 --- [nio-8080-exec-4] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/yaml]
+2026-04-24T00:52:03.575Z DEBUG 1 --- [nio-8080-exec-4] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Writing [ResumenHistoricoResponse[fechaInicio=2026-01-01, fechaFin=2026-12-31, estados=[], totalProductosDist (truncated)...]
+2026-04-24T00:52:03.592Z DEBUG 1 --- [nio-8080-exec-4] o.s.web.servlet.DispatcherServlet        : Completed 200 OK
+ubuntu@ip-172-26-1-143:~$
