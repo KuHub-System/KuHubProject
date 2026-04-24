@@ -363,7 +363,7 @@ public class ProveedorServiceImpl implements ProveedorService {
 
     @Override
     @Transactional
-    public void agregarProducto(Integer idProveedor, ProveedorProductoAddDTO dto) {
+    public boolean agregarProducto(Integer idProveedor, ProveedorProductoAddDTO dto) {
         findById(idProveedor);
 
         // Parsear el precio desde formato chileno a BigDecimal
@@ -395,6 +395,7 @@ public class ProveedorServiceImpl implements ProveedorService {
             );
         }
 
+        final boolean[] resultado = {false};
         proveedorProductoRepository
                 .findByProveedor_IdProveedorAndProducto_IdProducto(idProveedor, dto.getIdProducto())
                 .ifPresentOrElse(
@@ -405,6 +406,7 @@ public class ProveedorServiceImpl implements ProveedorService {
                             proveedorProductoRepository.save(relacion);
                             log.info("Relación reactivada: Proveedor ID={} | Producto ID={} | Precio={} (Input: '{}')",
                                     idProveedor, dto.getIdProducto(), precioProducto, dto.getPrecioProducto());
+                            resultado[0] = true;
                         },
                         () -> {
                             ProveedorProducto nueva = new ProveedorProducto();
@@ -416,8 +418,10 @@ public class ProveedorServiceImpl implements ProveedorService {
                             proveedorProductoRepository.save(nueva);
                             log.info("Producto asignado: Proveedor ID={} | Producto ID={} | Precio={} (Input: '{}')",
                                     idProveedor, dto.getIdProducto(), precioProducto, dto.getPrecioProducto());
+                            resultado[0] = true;
                         }
                 );
+        return resultado[0];
     }
 
     // ══════════════════════════════════════════════════════════════
