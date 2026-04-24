@@ -154,6 +154,35 @@ const formatChileanPrice = (num: number): string => {
   return formattedInteger + decimalPart;
 };
 
+/**
+ * Input mask inteligente para precios chilenos.
+ * Auto-agrega puntos como separador de miles mientras el usuario escribe.
+ * El usuario DEBE digitar manualmente la coma para decimales.
+ * Ejemplo: usuario escribe "1234567" → se formatea a "1.234.567"
+ *          usuario escribe "1234567," → se formatea a "1.234.567,"
+ *          usuario escribe "1234567,89" → se formatea a "1.234.567,89"
+ */
+const smartPriceInput = (input: string): string => {
+  if (!input) return '';
+
+  // Separar por coma si existe (decimales)
+  const hasComma = input.includes(',');
+  const parts = input.split(',');
+  const integerPart = parts[0];
+  const decimalPart = hasComma ? ',' + parts[1] : '';
+
+  // Remover puntos del entero y luego re-formatear
+  const cleanInteger = integerPart.replace(/\./g, '');
+
+  // Solo permitir dígitos en la parte entera
+  const onlyDigits = cleanInteger.replace(/\D/g, '');
+
+  // Agregar puntos como separador de miles
+  const formatted = onlyDigits.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+
+  return formatted + decimalPart;
+};
+
 // ── Helpers de UI ─────────────────────────────────────────────────────────────
 
 const renderEstado = (estado: EstadoProveedor) => {
@@ -341,7 +370,7 @@ const GestionProveedoresPage: React.FC = () => {
   const [quitarTarget, setQuitarTarget] = React.useState<{ idProveedor: number; idProducto: number; nombre: string } | null>(null);
 
   // ── Precio inline ──
-  const [editingPrecio, setEditingPrecio] = React.useState<{ idProveedor: number; idProducto: number } | null>(null);
+  const [editingPrecio, setEditingPrecio] = React.useState<{ idProveedorProducto: number } | null>(null);
   const [precioTemp, setPrecioTemp] = React.useState('');
   const [savingPrecio, setSavingPrecio] = React.useState(false);
 
@@ -534,9 +563,15 @@ const GestionProveedoresPage: React.FC = () => {
 
   // ── Precio inline ─────────────────────────────────────────────────────────
 
-  const handleIniciarEditPrecio = (idProveedor: number, idProducto: number, precioActual: number) => {
-    setEditingPrecio({ idProveedor, idProducto });
+  const handleIniciarEditPrecio = (idProveedorProducto: number, precioActual: number) => {
+    setEditingPrecio({ idProveedorProducto });
     setPrecioTemp(formatChileanPrice(precioActual));
+  };
+
+  // Handler que aplica automáticamente el input mask mientras el usuario escribe
+  const handlePrecioTempChange = (value: string) => {
+    const formatted = smartPriceInput(value);
+    setPrecioTemp(formatted);
   };
 
   const handleGuardarPrecio = async () => {
@@ -548,15 +583,17 @@ const GestionProveedoresPage: React.FC = () => {
     }
     setSavingPrecio(true);
     try {
+      // [CAMBIO 2026-04-24] Ahora usa idProveedorProducto directamente
       await actualizarPrecioProductoService(
-        editingPrecio.idProveedor,
-        editingPrecio.idProducto,
+        editingPrecio.idProveedorProducto,
         { precioProducto: precioTemp }
       );
       showToast('Precio actualizado');
-      invalidarCacheProveedor(editingPrecio.idProveedor);
-      const detalle = await obtenerProveedorDetalleService(editingPrecio.idProveedor);
-      setDetalleCache(prev => ({ ...prev, [editingPrecio.idProveedor]: detalle }));
+      // Recargar el proveedor actual (pero no tenemos idProveedor aquí)
+      // Solución: invalidar todo el caché de proveedores para refrescar
+      const proveedores = await obtenerProveedoresService();
+      setProveedores(proveedores);
+      setDetalleCache({}); // Limpiar caché de detalles
     } catch (err: any) {
       showToast(err.message || 'Error al actualizar el precio', 'error');
     } finally {
@@ -870,7 +907,7 @@ const GestionProveedoresPage: React.FC = () => {
                                   precioTemp={precioTemp}
                                   savingPrecio={savingPrecio}
                                   onIniciarEditPrecio={handleIniciarEditPrecio}
-                                  onPrecioTempChange={setPrecioTemp}
+                                  onPrecioTempChange={handlePrecioTempChange}
                                   onGuardarPrecio={handleGuardarPrecio}
                                   onCancelarEditPrecio={() => setEditingPrecio(null)}
                                   onToggleProducto={handleToggleProducto}
@@ -1072,10 +1109,11 @@ const GestionProveedoresPage: React.FC = () => {
 interface ProductosProveedorProps {
   detalle: IProveedorDetalle;
   canEdit: boolean;
-  editingPrecio: { idProveedor: number; idProducto: number } | null;
+  editingPrecio: { idProveedorProducto: number } | null;
   precioTemp: string;
   savingPrecio: boolean;
-  onIniciarEditPrecio: (idProveedor: number, idProducto: number, precioActual: number) => void;
+  // [CAMBIO 2026-04-24] onIniciarEditPrecio ahora solo recibe idProveedorProducto
+  onIniciarEditPrecio: (idProveedorProducto: number, precioActual: number) => void;
   onPrecioTempChange: (val: string) => void;
   onGuardarPrecio: () => void;
   onCancelarEditPrecio: () => void;
@@ -1128,8 +1166,7 @@ const ProductosProveedor: React.FC<ProductosProveedorProps> = ({
               <tbody>
                 {detalle.productosPorCategoria[categoria].map((prod) => {
                   const isEditing =
-                    editingPrecio?.idProveedor === detalle.idProveedor &&
-                    editingPrecio?.idProducto === prod.idProducto;
+                    editingPrecio?.idProveedorProducto === prod.idProveedorProducto;
 
                   return (
                     <tr
@@ -1185,7 +1222,7 @@ const ProductosProveedor: React.FC<ProductosProveedorProps> = ({
                             title={canEdit ? 'Clic para editar precio' : undefined}
                             onClick={() =>
                               canEdit &&
-                              onIniciarEditPrecio(detalle.idProveedor, prod.idProducto, prod.precioProducto)
+                              onIniciarEditPrecio(prod.idProveedorProducto, prod.precioProducto)
                             }
                           >
                             {formatPrecio(prod.precioProducto)}

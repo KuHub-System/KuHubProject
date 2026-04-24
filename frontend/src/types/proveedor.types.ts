@@ -39,7 +39,7 @@ export interface IProveedor {
  */
 export interface IProveedorProducto {
   idProducto: number;
-  idProveedorProducto: number;
+  idProveedorProducto: number;  // PK de la relación proveedor-producto (se usa para actualizar precio)
   nombreProducto: string;
   nombreCategoria: string;
   nombreUnidad: string;
