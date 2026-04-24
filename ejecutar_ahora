@@ -1,52 +1,46 @@
-Progress (1): 106/122 kB
-Progress (1): 122 kB    
-                    
-Downloaded from central: https://repo.maven.apache.org/maven2/org/springframework/boot/spring-boot-configuration-processor/3.2.0/spring-boot-configuration-processor-3.2.0.jar (122 kB at 2.8 MB/s)
-#14 29.84 [INFO] Changes detected - recompiling the module! :source
+Downloaded from central: https://repo.maven.apache.org/maven2/org/springframework/boot/spring-boot-configuration-processor/3.2.0/spring-boot-configuration-processor-3.2.0.jar (122 kB at 3.8 MB/s)
+#14 23.51 [INFO] Changes detected - recompiling the module! :source
 release 21] to target/classes
-#14 41.64 [INFO] /app/backend/src/main/java/KuHub/config/security/filter/JwtAuthenticationFilter.java: /app/backend/src/main/java/KuHub/config/security/filter/JwtAuthenticationFilter.java uses unchecked or unsafe operations.
-#14 41.65 [INFO] /app/backend/src/main/java/KuHub/config/security/filter/JwtAuthenticationFilter.java: Recompile with -Xlint:unchecked for details.
-#14 41.65 [INFO] -------------------------------------------------------------
-#14 41.65 [WARNING] COMPILATION WARNING : 
-#14 41.65 [INFO] -------------------------------------------------------------
-#14 41.65 [WARNING] /app/backend/src/main/java/KuHub/modules/gestion_inventario/dtos/response/dto/MotionFilterRequestDTO.java:[30,20] @Builder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
-#14 41.65 [WARNING] /app/backend/src/main/java/KuHub/modules/gestion_proveedor/controller/ProveedorController.java:[147,48] deprecated item is not annotated with @Deprecated
-#14 41.65 [INFO] 2 warnings 
-#14 41.65 [INFO] -------------------------------------------------------------
-#14 41.65 [INFO] -------------------------------------------------------------
-#14 41.65 [ERROR] COMPILATION ERROR : 
-#14 41.65 [INFO] -------------------------------------------------------------
-#14 41.65 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_proveedor/service/ProveedorServiceImpl.java:[599,91] cannot find symbol
-#14 41.65   symbol:   class TypeReference
-#14 41.65   location: package com.fasterxml.jackson.databind.type
-#14 41.65 [INFO] 1 error
-#14 41.65 [INFO] -------------------------------------------------------------
-#14 41.65 [INFO] ------------------------------------------------------------------------
-#14 41.65 [INFO] Reactor Summary for KuHub Monolitico Project 1.0-SNAPSHOT:
-#14 41.65 [INFO] 
-#14 41.65 [INFO] KuHub Monolitico Project ........................... SUCCESS [  0.651 s]
-#14 41.65 [INFO] backend ............................................ FAILURE [ 30.868 s]
-#14 41.65 [INFO] ------------------------------------------------------------------------
-#14 41.65 [INFO] BUILD FAILURE
-#14 41.65 [INFO] ------------------------------------------------------------------------
-#14 41.65 [INFO] Total time:  39.804 s
-#14 41.65 [INFO] Finished at: 2026-04-24T20:31:32Z
-#14 41.65 [INFO] ------------------------------------------------------------------------
-#14 41.65 [ERROR] Failed to execute goal org.apache.maven.plugins:maven-compiler-plugin:3.11.0:compile (default-compile) on project backend: Compilation failure
-#14 41.65 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_proveedor/service/ProveedorServiceImpl.java:[599,91] cannot find symbol
-#14 41.65 [ERROR]   symbol:   class TypeReference
-#14 41.65 [ERROR]   location: package com.fasterxml.jackson.databind.type
-#14 41.65 [ERROR] 
-#14 41.65 [ERROR] -> [Help 1]
-#14 41.65 [ERROR] 
-#14 41.65 [ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
-#14 41.65 [ERROR] Re-run Maven using the -X switch to enable full debug logging.
-#14 41.65 [ERROR] 
-#14 41.65 [ERROR] For more information about the errors and possible solutions, please read the following articles:
-#14 41.65 [ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoFailureException
-#14 41.65 [ERROR] 
-#14 41.65 [ERROR] After correcting the problems, you can resume the build with the command
-#14 41.65 [ERROR]   mvn <args> -rf :backend
+#14 30.65 [INFO] -------------------------------------------------------------
+#14 30.65 [WARNING] COMPILATION WARNING : 
+#14 30.65 [INFO] -------------------------------------------------------------
+#14 30.65 [WARNING] /app/backend/src/main/java/KuHub/modules/gestion_inventario/dtos/response/dto/MotionFilterRequestDTO.java:[30,20] @Builder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+#14 30.65 [INFO] 1 warning
+#14 30.65 [INFO] -------------------------------------------------------------
+#14 30.65 [INFO] -------------------------------------------------------------
+#14 30.65 [ERROR] COMPILATION ERROR : 
+#14 30.66 [INFO] -------------------------------------------------------------
+#14 30.66 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_proveedor/service/ProveedorServiceImpl.java:[18,43] cannot find symbol
+#14 30.66   symbol:   class TypeReference
+#14 30.66   location: package com.fasterxml.jackson.databind.type
+#14 30.66 [INFO] 1 error
+#14 30.66 [INFO] -------------------------------------------------------------
+#14 30.66 [INFO] ------------------------------------------------------------------------
+#14 30.66 [INFO] Reactor Summary for KuHub Monolitico Project 1.0-SNAPSHOT:
+#14 30.66 [INFO] 
+#14 30.66 [INFO] KuHub Monolitico Project ........................... SUCCESS [  0.521 s]
+#14 30.66 [INFO] backend ............................................ FAILURE [ 23.637 s]
+#14 30.66 [INFO] ------------------------------------------------------------------------
+#14 30.66 [INFO] BUILD FAILURE
+#14 30.66 [INFO] ------------------------------------------------------------------------
+#14 30.67 [INFO] Total time:  28.906 s
+#14 30.67 [INFO] Finished at: 2026-04-24T20:35:00Z
+#14 30.67 [INFO] ------------------------------------------------------------------------
+#14 30.67 [ERROR] Failed to execute goal org.apache.maven.plugins:maven-compiler-plugin:3.11.0:compile (default-compile) on project backend: Compilation failure
+#14 30.68 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_proveedor/service/ProveedorServiceImpl.java:[18,43] cannot find symbol
+#14 30.68 [ERROR]   symbol:   class TypeReference
+#14 30.68 [ERROR]   location: package com.fasterxml.jackson.databind.type
+#14 30.68 [ERROR] 
+#14 30.69 [ERROR] -> [Help 1]
+#14 30.69 [ERROR] 
+#14 30.69 [ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+#14 30.69 [ERROR] Re-run Maven using the -X switch to enable full debug logging.
+#14 30.69 [ERROR] 
+#14 30.69 [ERROR] For more information about the errors and possible solutions, please read the following articles:
+#14 30.69 [ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoFailureException
+#14 30.69 [ERROR] 
+#14 30.69 [ERROR] After correcting the problems, you can resume the build with the command
+#14 30.69 [ERROR]   mvn <args> -rf :backend
 #14 ERROR: process "/bin/sh -c mvn clean package -pl backend -am -DskipTests" did not complete successfully: exit code: 1
 ------
  > [build 5/5] RUN mvn clean package -pl backend -am -DskipTests:
@@ -70,4 +64,4 @@ Dockerfile:12
   14 |     # ETAPA 2: Run
 --------------------
 ERROR: failed to build: failed to solve: process "/bin/sh -c mvn clean package -pl backend -am -DskipTests" did not complete successfully: exit code: 1
-Error: buildx failed with: ERROR: failed to build: failed to solve: process "/bin/sh -c mvn clean package -pl backend -am -DskipTests" did not complete successfully: exit code:
+Error: buildx failed with: ERROR: failed to build: failed to solve: process "/bin/sh -c mvn clean package -pl backend -am -DskipTests" did not complete successfully: exit code: 1
