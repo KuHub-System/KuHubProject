@@ -1624,18 +1624,29 @@ const FormularioProveedor: React.FC<FormularioProveedorProps> = ({
         </div>
 
         {!isReadOnly ? (
-          <Select
-            label="Estado"
-            selectedKeys={new Set([estadoProveedor])}
-            onSelectionChange={(keys) => {
-              const val = Array.from(keys)[0] as EstadoProveedor;
-              if (val) setEstadoProveedor(val);
-            }}
-            variant="bordered"
-          >
-            <SelectItem key="DISPONIBLE" textValue="Disponible">Disponible</SelectItem>
-            <SelectItem key="NO_DISPONIBLE" textValue="No Disponible">No Disponible</SelectItem>
-          </Select>
+          <>
+            <Select
+              label="Estado"
+              selectedKeys={new Set([estadoProveedor])}
+              onSelectionChange={(keys) => {
+                const val = Array.from(keys)[0] as EstadoProveedor;
+                if (val) setEstadoProveedor(val);
+              }}
+              variant="bordered"
+              isRequired
+            >
+              <SelectItem key="DISPONIBLE" textValue="Disponible">Disponible</SelectItem>
+              <SelectItem key="NO_DISPONIBLE" textValue="No Disponible">No Disponible</SelectItem>
+            </Select>
+            {estadoProveedor === 'NO_DISPONIBLE' && (
+              <div className="flex items-start gap-2 p-3 rounded-lg bg-warning-50 dark:bg-warning-50/20 border border-warning-200 dark:border-warning-300">
+                <Icon icon="lucide:alert-triangle" width={16} className="text-warning flex-shrink-0 mt-0.5" />
+                <div className="text-xs text-warning-700 dark:text-warning-300">
+                  Los proveedores marcados como <strong>No Disponible</strong> no entrarán en las cotizaciones.
+                </div>
+              </div>
+            )}
+          </>
         ) : (
           <div className="flex flex-col gap-1">
             <span className="text-xs text-default-500">Estado</span>
