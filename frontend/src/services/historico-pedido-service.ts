@@ -7,7 +7,6 @@ export interface IProductoResumenHistorico {
   unidadMedida:    string;
   abreviatura:     string;
   cantidadTotal:   number;
-  vecesEnPedidos:  number;
 }
 
 export interface IResumenHistorico {
