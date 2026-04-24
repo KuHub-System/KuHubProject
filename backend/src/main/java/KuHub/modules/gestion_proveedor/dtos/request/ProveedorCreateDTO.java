@@ -19,6 +19,7 @@ import java.util.List;
 @AllArgsConstructor
 public class ProveedorCreateDTO {
 
+    @NotBlank(message = "El RUT del proveedor es obligatorio")
     @Size(max = 13, message = "El RUT no puede exceder 13 caracteres")
     private String rutProveedor;
 

@@ -29,7 +29,7 @@ public class Proveedor {
     @Column(name = "nombre_distribuidora", length = 100, nullable = false)
     private String nombreDistribuidora;
 
-    @Column(name = "rut_proveedor", length = 13, unique = true)
+    @Column(name = "rut_proveedor", length = 13, unique = true, nullable = false)
     private String rutProveedor;
 
     @Column(name = "email_proveedor", length = 150)
