@@ -251,12 +251,12 @@ public class PedidoServiceImpl implements PedidoService{
 
     @Override
     @Transactional(readOnly = true)
-    public ResumenHistoricoResponse obtenerResumenHistorico(LocalDate fechaInicio, LocalDate fechaFin, String[] estados) {
-        String jsonResult = pedidoRepository.obtenerResumenHistoricoJSON(fechaInicio, fechaFin, estados);
+    public ResumenHistoricoResponse obtenerResumenHistorico(LocalDate fechaInicio, LocalDate fechaFin, String estadosCsv) {
+        String jsonResult = pedidoRepository.obtenerResumenHistoricoJSON(fechaInicio, fechaFin, estadosCsv);
 
         if (jsonResult == null || jsonResult.isBlank()) {
             log.info("obtenerResumenHistoricoJSON retornó vacío para rango {}-{} con estados {}",
-                    fechaInicio, fechaFin, java.util.Arrays.toString(estados));
+                    fechaInicio, fechaFin, estadosCsv);
             return new ResumenHistoricoResponse(fechaInicio, fechaFin, List.of(), 0, 0, List.of());
         }
 
@@ -266,7 +266,7 @@ public class PedidoServiceImpl implements PedidoService{
 
             if (resultNode == null || resultNode.isNull()) {
                 log.warn("obtenerResumenHistoricoJSON retornó resultado null para rango {}-{} con estados {}",
-                        fechaInicio, fechaFin, java.util.Arrays.toString(estados));
+                        fechaInicio, fechaFin, estadosCsv);
                 return new ResumenHistoricoResponse(fechaInicio, fechaFin, List.of(), 0, 0, List.of());
             }
 
