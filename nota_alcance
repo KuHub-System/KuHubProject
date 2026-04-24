@@ -917,18 +917,43 @@ Técnico:
   - Los días de entrega se gestionan como parte del flujo de crear/editar proveedor
     (no tienen endpoints independientes). Estrategia de actualización: delete + insert
     (reemplazo completo de los días al editar).
+  - Si horaInicio y horaFin no se especifican, el backend asigna defaults: 08:00 a 20:00.
+  - Si solo uno se especifica, lanza error: "Debe especificar ambos o ninguno".
 
   Endpoints base: /api/v1/proveedor
   - GET / : lista proveedores con filtros (estado, búsqueda).
-  - GET /{id} : detalle completo con productos agrupados por categoría.
+    ⚠️ OPTIMIZACIÓN LAZY LOAD: trae SOLO datos básicos (sin productos ni días de entrega).
+  - GET /{id} : detalle completo con productos agrupados por categoría Y días de entrega.
+    ⚠️ Se ejecuta SOLO cuando usuario expande fila en tabla (no automático para todos).
+       Frontend: detalleCache mantiene datos localmente. Reutiliza si se abre/cierra
+       misma fila dos veces. Se invalida al crear/editar/eliminar productos del proveedor.
   - POST / : crea proveedor (opcionalmente con días de entrega).
   - PATCH /{id} : actualiza proveedor (opcionalmente reemplaza días de entrega).
   - DELETE /{id} : soft-delete del proveedor y sus productos.
-  - POST /{id}/productos : asigna producto con precio.
-  - PATCH /{id}/productos/{pid} : actualiza precio.
+  - POST /{id}/productos : asigna producto con precio (formato chileno).
+  - PATCH /{id}/productos/{pid} : actualiza precio (formato chileno).
+  - PATCH /{id}/productos/{pid}/toggle : habilita/deshabilita producto sin perder datos.
   - DELETE /{id}/productos/{pid} : quita producto (soft-delete).
   - GET /por-producto/{idProducto} : proveedores que ofrecen un producto.
   - POST /cotizacion-rango : cotización agrupada por proveedor (menor precio).
+
+  Formato de Precios — Estandarización Chilena (IMPLEMENTADO 2026-04-24):
+  ⚠️ CAMBIO IMPORTANTE: Los precios se envían como STRING en formato chileno desde frontend.
+     Punto como separador de miles, coma como separador decimal.
+  - Formatos válidos aceptados: "1.234,567" | "1.234" | "1234,567" | "1234.567" | "1234"
+  - Backend:
+    * Clase ChileanPriceUtils (en utils/): parseChileanPrice() desambigua múltiples formatos.
+    * Validador @ValidChileanPrice en DTOs: valida formato antes de deserialización.
+    * Service: ChileanPriceUtils.parseChileanPrice() convierte String → BigDecimal.
+      Posterior validación: precio > 0. Logging del input original para debugging.
+  - Frontend:
+    * formatChileanPrice(número): 1234.567 → "1.234,567" (para mostrar en inputs).
+    * parseChileanPrice(string): "1.234,567" → 1234.567 (para validación cliente).
+    * Envío: precioTemp (string formateado) al backend, no número parseado.
+  - Manejo de errores: backend retorna 400 BAD_REQUEST con descripción del formato inválido.
+  - Ventaja: bidireccional (frontend valida UX, backend valida seguridad).
+    Evita ambigüedades de formato "1,234" que puede interpretarse como miles (USA)
+    o como entero con decimal (Chile). El backend desambigua usando ChileanPriceUtils.
 
   Valor estratégico: con historial de consumo por semestre, permite mostrar
   al proveedor datos reales de uso para negociar precios por volumen.
@@ -1097,18 +1122,40 @@ PENDIENTE DE IMPLEMENTAR O DEFINIR:
           Backend: POST /sala/create (SalaCreateDTO), PATCH /sala/update/{id} (SalaUpdateDTO),
           DELETE /sala/soft-delete/{id} (valida hasActiveReservas en SalaRepository antes de desactivar).
           Frontend: modales de creación, edición y confirmación de desactivación con aviso de impacto.
-  [✓] Módulo Gestión de Proveedores (2026-04-22):
+  [✓] Módulo Gestión de Proveedores (2026-04-22, actualizado 2026-04-24):
       Backend: CRUD completo de proveedores + relación muchos-a-muchos con productos
       (tabla proveedor_producto con precios específicos). Endpoints: POST/PATCH/DELETE
       /api/v1/proveedor, GET con filtros estado y búsqueda, GET detalle con productos
       agrupados por categoría, POST/PATCH/DELETE de asignación de productos.
       Soft-delete implementado, validación de RUT único, manejo de excepciones en
       GlobalExceptionHandler con HttpStatus apropiados.
-      Frontend: Página gestion-proveedores.tsx completa con tabla expandible, modales
-      de creación/edición/vista, asignación de productos con autocomplete, edición inline
-      de precios, paginación y filtros. Servicio proveedor-service.ts con todas las
+      Días de entrega: tabla ProveedorDiaEntrega con estrategia delete+insert, horarios
+      con defaults 08:00-20:00, validación de coherencia (inicio < fin).
+      Frontend: Página gestion-proveedores.tsx con tabla expandible (LAZY LOAD IMPLEMENTADO).
+      ARQUITECTURA LAZY LOAD: GET / trae solo datos básicos (sin productos).
+      GET /{id} se ejecuta SOLO cuando usuario expande fila (toggleRowExpansion).
+      Frontend mantiene detalleCache: reutiliza datos si mismo proveedor se abre/cierra
+      dos veces. Caché se invalida automáticamente al crear/editar/eliminar productos.
+      Modales de creación/edición/vista, asignación de productos con autocomplete, edición
+      inline de precios, paginación y filtros. Servicio proveedor-service.ts con todas las
       llamadas API. Tipos TypeScript: IProveedor, IProveedorDetalle, DTOs request/response.
       Sidebar: ruta habilitada. Estado: TOTALMENTE FUNCIONAL.
+
+      ACTUALIZACIÓN (2026-04-24) — Validación de Precios en Formato Chileno:
+      Implementación bidireccional (frontend + backend) para estandarizar precios
+      con formato chileno: punto=miles, coma=decimal (ej: 1.234,567).
+      Backend: Nueva clase ChileanPriceUtils (utils/) que parsea múltiples formatos
+      válidos. Validador personalizado @ValidChileanPrice en DTOs de precios.
+      DTOs ProveedorProductoAddDTO y ProveedorProductoUpdateDTO ahora reciben
+      precioProducto como String (no BigDecimal). Service.actualizarPrecio y
+      Service.agregarProducto usan ChileanPriceUtils.parseChileanPrice() +
+      validación (precio > 0). Logging: input original y BigDecimal parseado.
+      Frontend: Funciones formatChileanPrice() y parseChileanPrice() en
+      gestion-proveedores.tsx. handleGuardarPrecio() y handleGuardarProducto()
+      envían string formateado al backend (no número). TypeScript types
+      actualizadas: IProveedorProductoAddDTO e IProveedorProductoUpdateDTO
+      ahora tienen precioProducto: string. Manejo de errores: 400 BAD_REQUEST
+      con descripción del formato inválido. Validación cliente + backend.
   [ ] Tabla LOTE activable en sistema (estructura ya en BD)
   [ ] Adjuntar archivos a recetas (requiere AWS S3)
   [ ] Historial de cantidad real entregada vs. cantidad solicitada (definir con cliente)

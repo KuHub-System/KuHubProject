@@ -40,6 +40,7 @@ import {
   agregarProductoProveedorService,
   actualizarPrecioProductoService,
   quitarProductoProveedorService,
+  toggleProductoProveedorService,
   obtenerCotizacionPorRangoService,
 } from '../services/proveedor-service';
 import { obtenerProductosParaRecetaService } from '../services/inventario-service';
@@ -77,6 +78,80 @@ const DIAS_ABREV: Record<DiaSemana, string> = {
   VIERNES: 'Vie',
   SABADO: 'Sáb',
   DOMINGO: 'Dom',
+};
+
+// ── Utilidades de Precio (Peso Chileno) ──────────────────────────────────────
+
+/**
+ * Parsea un precio en formato chileno (1.234,567) o americano (1234.567).
+ * Válido: "1.234,567", "1234,567", "1234.567", "1234", etc.
+ * Retorna el número parseado o NaN si el formato es inválido.
+ */
+const parseChileanPrice = (input: string): number => {
+  if (!input || typeof input !== 'string') return NaN;
+
+  const cleaned = input.trim();
+
+  // Si tiene coma y puntos, asumir formato chileno: 1.234,567
+  if (cleaned.includes(',') && cleaned.includes('.')) {
+    const lastDot = cleaned.lastIndexOf('.');
+    const lastComma = cleaned.lastIndexOf(',');
+    if (lastComma > lastDot) {
+      // Coma es el separador decimal: 1.234,567
+      return parseFloat(cleaned.replace(/\./g, '').replace(',', '.'));
+    }
+  }
+
+  // Si solo tiene coma: 1234,567 (formato chileno sin miles)
+  if (cleaned.includes(',') && !cleaned.includes('.')) {
+    return parseFloat(cleaned.replace(',', '.'));
+  }
+
+  // Si solo tiene puntos: 1.234 (ambiguo, asumir miles) o 1234 (sin miles)
+  if (!cleaned.includes(',')) {
+    // Si el último grupo después del punto tiene 3 dígitos, es separador de miles
+    if (cleaned.match(/\.\d{3}$/)) {
+      return parseFloat(cleaned.replace(/\./g, ''));
+    }
+    // Si tiene 1-2 dígitos después del punto, es decimal: 1234.56
+    if (cleaned.match(/\.\d{1,2}$/)) {
+      return parseFloat(cleaned);
+    }
+    // Sin punto ni coma: 1234
+    return parseFloat(cleaned);
+  }
+
+  return NaN;
+};
+
+/**
+ * Formatea un número a peso chileno: 1234.567 → "1.234,567"
+ * Preserva hasta 2 decimales si los hay.
+ */
+const formatChileanPrice = (num: number): string => {
+  if (isNaN(num) || num === null || num === undefined) return '0';
+
+  // Separar enteros y decimales preservando hasta 2 decimales
+  const isInteger = Number.isInteger(num);
+  let integerPart: string;
+  let decimalPart: string = '';
+
+  if (isInteger) {
+    integerPart = Math.floor(num).toString();
+  } else {
+    // Obtener máximo 2 decimales para evitar errores de precisión
+    const rounded = Math.round(num * 100) / 100;
+    const parts = rounded.toString().split('.');
+    integerPart = parts[0];
+    if (parts[1]) {
+      decimalPart = ',' + parts[1];
+    }
+  }
+
+  // Agregar separador de miles al entero
+  const formattedInteger = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+
+  return formattedInteger + decimalPart;
 };
 
 // ── Helpers de UI ─────────────────────────────────────────────────────────────
@@ -442,7 +517,8 @@ const GestionProveedoresPage: React.FC = () => {
   const handleGuardarProducto = async (idProducto: number, precio: number) => {
     if (!proveedorParaProducto) return;
     try {
-      await agregarProductoProveedorService(proveedorParaProducto, { idProducto, precioProducto: precio });
+      const precioFormateado = formatChileanPrice(precio);
+      await agregarProductoProveedorService(proveedorParaProducto, { idProducto, precioProducto: precioFormateado });
       showToast('Producto asignado correctamente');
       invalidarCacheProveedor(proveedorParaProducto);
       // Recargar detalle si la fila está expandida
@@ -460,14 +536,14 @@ const GestionProveedoresPage: React.FC = () => {
 
   const handleIniciarEditPrecio = (idProveedor: number, idProducto: number, precioActual: number) => {
     setEditingPrecio({ idProveedor, idProducto });
-    setPrecioTemp(precioActual.toString());
+    setPrecioTemp(formatChileanPrice(precioActual));
   };
 
   const handleGuardarPrecio = async () => {
     if (!editingPrecio) return;
-    const precio = parseFloat(precioTemp);
+    const precio = parseChileanPrice(precioTemp);
     if (isNaN(precio) || precio <= 0) {
-      showToast('El precio debe ser un número mayor a 0', 'error');
+      showToast('El precio debe ser un número válido mayor a 0 (ej: 1.234,567 o 1234)', 'error');
       return;
     }
     setSavingPrecio(true);
@@ -475,7 +551,7 @@ const GestionProveedoresPage: React.FC = () => {
       await actualizarPrecioProductoService(
         editingPrecio.idProveedor,
         editingPrecio.idProducto,
-        { precioProducto: precio }
+        { precioProducto: precioTemp }
       );
       showToast('Precio actualizado');
       invalidarCacheProveedor(editingPrecio.idProveedor);
@@ -487,6 +563,26 @@ const GestionProveedoresPage: React.FC = () => {
       setSavingPrecio(false);
       setEditingPrecio(null);
       setPrecioTemp('');
+    }
+  };
+
+  // ── Toggle producto (habilitar/deshabilitar) ──────────────────────────────
+
+  const handleToggleProducto = async (idProveedor: number, prod: IProveedorProducto) => {
+    try {
+      const nuevoEstado = !prod.activo;
+      await toggleProductoProveedorService(idProveedor, prod.idProducto);
+      showToast(
+        nuevoEstado
+          ? `Producto "${prod.nombreProducto}" habilitado`
+          : `Producto "${prod.nombreProducto}" deshabilitado`,
+        nuevoEstado ? 'success' : 'warning'
+      );
+      invalidarCacheProveedor(idProveedor);
+      const detalle = await obtenerProveedorDetalleService(idProveedor);
+      setDetalleCache(prev => ({ ...prev, [idProveedor]: detalle }));
+    } catch (err: any) {
+      showToast(err.message || 'Error al cambiar el estado del producto', 'error');
     }
   };
 
@@ -777,6 +873,7 @@ const GestionProveedoresPage: React.FC = () => {
                                   onPrecioTempChange={setPrecioTemp}
                                   onGuardarPrecio={handleGuardarPrecio}
                                   onCancelarEditPrecio={() => setEditingPrecio(null)}
+                                  onToggleProducto={handleToggleProducto}
                                   onQuitarProducto={handleConfirmarQuitarProducto}
                                 />
                               ) : (
@@ -982,6 +1079,7 @@ interface ProductosProveedorProps {
   onPrecioTempChange: (val: string) => void;
   onGuardarPrecio: () => void;
   onCancelarEditPrecio: () => void;
+  onToggleProducto: (idProveedor: number, prod: IProveedorProducto) => void;
   onQuitarProducto: (idProveedor: number, prod: IProveedorProducto) => void;
 }
 
@@ -995,6 +1093,7 @@ const ProductosProveedor: React.FC<ProductosProveedorProps> = ({
   onPrecioTempChange,
   onGuardarPrecio,
   onCancelarEditPrecio,
+  onToggleProducto,
   onQuitarProducto,
 }) => {
   const categorias = Object.keys(detalle.productosPorCategoria);
@@ -1100,15 +1199,28 @@ const ProductosProveedor: React.FC<ProductosProveedorProps> = ({
                           : '—'}
                       </td>
                       {canEdit && (
-                        <td className="py-2 px-3 text-center">
+                        <td className="py-2 px-3 text-center space-x-1">
                           <Button
                             isIconOnly
                             size="sm"
                             variant="light"
-                            title="Quitar producto"
+                            title={prod.activo ? 'Deshabilitar producto' : 'Habilitar producto'}
+                            onPress={() => onToggleProducto(detalle.idProveedor, prod)}
+                            className={prod.activo ? 'text-default-400 hover:text-warning' : 'text-warning'}
+                          >
+                            <Icon
+                              icon={prod.activo ? 'lucide:eye' : 'lucide:eye-off'}
+                              width={15}
+                            />
+                          </Button>
+                          <Button
+                            isIconOnly
+                            size="sm"
+                            variant="light"
+                            title="Eliminar producto"
                             onPress={() => onQuitarProducto(detalle.idProveedor, prod)}
                           >
-                            <Icon icon="lucide:x-circle" className="text-default-400 hover:text-danger" width={15} />
+                            <Icon icon="lucide:trash-2" className="text-default-400 hover:text-danger" width={15} />
                           </Button>
                         </td>
                       )}
