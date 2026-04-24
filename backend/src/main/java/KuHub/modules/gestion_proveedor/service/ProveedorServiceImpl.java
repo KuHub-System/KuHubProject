@@ -173,10 +173,10 @@ public class ProveedorServiceImpl implements ProveedorService {
 
         Proveedor proveedor = new Proveedor();
         proveedor.setRutProveedor(dto.getRutProveedor());
-        proveedor.setNombreDistribuidora(dto.getNombreDistribuidora());
+        proveedor.setNombreDistribuidora(KuHub.utils.StringUtils.normalizeSpaces(dto.getNombreDistribuidora()));
         proveedor.setNombreProveedor(dto.getNombreProveedor());
         proveedor.setTelefonoProveedor(dto.getTelefonoProveedor());
-        proveedor.setEmailProveedor(dto.getEmailProveedor());
+        proveedor.setEmailProveedor(dto.getEmailProveedor() != null ? KuHub.utils.StringUtils.normalizeSpaces(dto.getEmailProveedor()) : null);
         proveedor.setActivo(true);
 
         if (dto.getEstadoProveedor() != null && !dto.getEstadoProveedor().isBlank()) {
@@ -227,8 +227,9 @@ public class ProveedorServiceImpl implements ProveedorService {
             }
         }
 
-        if (!dto.getNombreDistribuidora().equals(proveedor.getNombreDistribuidora())) {
-            proveedor.setNombreDistribuidora(dto.getNombreDistribuidora());
+        String nombreDistribuidoraNormalizado = KuHub.utils.StringUtils.normalizeSpaces(dto.getNombreDistribuidora());
+        if (!nombreDistribuidoraNormalizado.equals(proveedor.getNombreDistribuidora())) {
+            proveedor.setNombreDistribuidora(nombreDistribuidoraNormalizado);
         }
         if (!dto.getNombreProveedor().equals(proveedor.getNombreProveedor())) {
             proveedor.setNombreProveedor(dto.getNombreProveedor());
@@ -237,7 +238,7 @@ public class ProveedorServiceImpl implements ProveedorService {
             proveedor.setTelefonoProveedor(dto.getTelefonoProveedor());
         }
 
-        String emailNuevo = dto.getEmailProveedor();
+        String emailNuevo = dto.getEmailProveedor() != null ? KuHub.utils.StringUtils.normalizeSpaces(dto.getEmailProveedor()) : null;
         String emailActual = proveedor.getEmailProveedor();
         if (emailNuevo != null && !emailNuevo.equals(emailActual)) {
             proveedor.setEmailProveedor(emailNuevo);

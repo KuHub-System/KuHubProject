@@ -1622,7 +1622,7 @@ const FormularioProveedor: React.FC<FormularioProveedorProps> = ({
             </div>
 
             {/* Selector de día */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+            <div className="space-y-2">
               <Select
                 label="Día de semana"
                 selectedKeys={new Set([diaSeleccionado])}
@@ -1639,25 +1639,27 @@ const FormularioProveedor: React.FC<FormularioProveedorProps> = ({
                 ))}
               </Select>
 
-              <Input
-                label="Hora inicio (HH:mm)"
-                placeholder="08:00"
-                value={horaInicio}
-                onValueChange={setHoraInicio}
-                variant="bordered"
-                size="sm"
-                type="time"
-              />
+              <div className="grid grid-cols-2 gap-2">
+                <Input
+                  label="Hora inicio (HH:mm)"
+                  placeholder="08:00"
+                  value={horaInicio}
+                  onValueChange={setHoraInicio}
+                  variant="bordered"
+                  size="sm"
+                  type="time"
+                />
 
-              <Input
-                label="Hora fin (HH:mm)"
-                placeholder="17:00"
-                value={horaFin}
-                onValueChange={setHoraFin}
-                variant="bordered"
-                size="sm"
-                type="time"
-              />
+                <Input
+                  label="Hora fin (HH:mm)"
+                  placeholder="17:00"
+                  value={horaFin}
+                  onValueChange={setHoraFin}
+                  variant="bordered"
+                  size="sm"
+                  type="time"
+                />
+              </div>
             </div>
 
             <Button
