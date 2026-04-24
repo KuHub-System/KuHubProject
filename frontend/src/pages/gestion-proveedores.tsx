@@ -1475,6 +1475,11 @@ const ProductosProveedor: React.FC<ProductosProveedorProps> = ({
         const productosEnCategoria = filtrarProductos(detalle.productosPorCategoria[categoria]);
         const total = detalle.productosPorCategoria[categoria].length;
 
+        // No renderizar categoría si no hay productos coincidentes con búsqueda
+        if (productosEnCategoria.length === 0 && (searchQuery.trim() || globalProductSearch)) {
+          return null;
+        }
+
         return (
           <div key={categoria}>
             {/* Header de categoría con toggle */}
