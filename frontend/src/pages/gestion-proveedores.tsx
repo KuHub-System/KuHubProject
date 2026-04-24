@@ -1396,21 +1396,16 @@ const ProductosProveedor: React.FC<ProductosProveedorProps> = ({
     );
   }
 
-  // Filtrar productos según mostrarInactivos, búsqueda local Y búsqueda global
+  // Filtrar productos según mostrarInactivos y búsqueda (prioriza interna sobre global)
   const filtrarProductos = (productos: typeof detalle.productosPorCategoria[string]) => {
     let filtered = mostrarInactivos ? productos : productos.filter(p => p.activo);
 
-    // Filtrar por búsqueda local
-    if (searchQuery.trim()) {
-      filtered = filtered.filter(p =>
-        p.nombreProducto.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-    }
+    // Prioridad: búsqueda interna > búsqueda global
+    const queryActiva = searchQuery.trim() || globalProductSearch;
 
-    // Filtrar por búsqueda global (si existe y es diferente a la local)
-    if (globalProductSearch && globalProductSearch !== searchQuery) {
+    if (queryActiva) {
       filtered = filtered.filter(p =>
-        p.nombreProducto.toLowerCase().includes(globalProductSearch.toLowerCase())
+        p.nombreProducto.toLowerCase().includes(queryActiva.toLowerCase())
       );
     }
 
@@ -1431,27 +1426,25 @@ const ProductosProveedor: React.FC<ProductosProveedorProps> = ({
     <div className="space-y-3 mt-2">
       {/* Controles: búsqueda y mostrar/esconder deshabilitados */}
       <div className="space-y-2 px-2 pb-3">
-        {/* Buscador de productos (se oculta cuando hay búsqueda global, pero aparece si el usuario escribe) */}
-        {(!globalProductSearch || searchQuery) && (
-          <div className="flex items-center gap-2">
-            <Icon icon="lucide:search" width={16} className="text-default-400" />
-            <input
-              type="text"
-              placeholder="Buscar producto por nombre..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="flex-1 px-3 py-2 text-xs border border-default-200 dark:border-default-100 rounded-lg bg-default-50 dark:bg-default-100/30 focus:outline-none focus:border-primary transition-colors"
-            />
-            {searchQuery && (
-              <button
-                onClick={() => setSearchQuery('')}
-                className="text-default-400 hover:text-default-600 transition-colors"
-              >
-                <Icon icon="lucide:x" width={16} />
-              </button>
-            )}
-          </div>
-        )}
+        {/* Buscador de productos (siempre visible, pero se prioriza si el usuario escribe) */}
+        <div className="flex items-center gap-2">
+          <Icon icon="lucide:search" width={16} className="text-default-400" />
+          <input
+            type="text"
+            placeholder={globalProductSearch ? `Refinar búsqueda de "${globalProductSearch}"...` : 'Buscar producto por nombre...'}
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="flex-1 px-3 py-2 text-xs border border-default-200 dark:border-default-100 rounded-lg bg-default-50 dark:bg-default-100/30 focus:outline-none focus:border-primary transition-colors"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              className="text-default-400 hover:text-default-600 transition-colors"
+            >
+              <Icon icon="lucide:x" width={16} />
+            </button>
+          )}
+        </div>
 
         {/* Opción para mostrar/esconder deshabilitados */}
         {canEdit && (
