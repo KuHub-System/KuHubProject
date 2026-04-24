@@ -1303,7 +1303,7 @@ const ProductosProveedor: React.FC<ProductosProveedorProps> = ({
             <table className="w-full text-xs" style={{ tableLayout: 'fixed' }}>
               <thead className="bg-default-100 dark:bg-default-50">
                 <tr>
-                  <th className="text-center py-2 px-3 font-medium w-[200px]">Producto</th>
+                  <th className="text-center py-2 px-3 font-medium w-[280px]">Producto</th>
                   <th className="text-center py-2 px-3 font-medium">Unidad</th>
                   <th className="text-center py-2 px-3 font-medium">Precio</th>
                   <th className="text-center py-2 px-3 font-medium">Estado</th>
@@ -1325,7 +1325,7 @@ const ProductosProveedor: React.FC<ProductosProveedorProps> = ({
                           : 'bg-default-50/30 dark:bg-default-100/10 opacity-60'
                       }`}
                     >
-                      <td className="py-2 px-3 font-medium text-center w-[200px] overflow-hidden">
+                      <td className="py-2 px-3 font-medium text-center w-[280px] overflow-hidden">
                         <Tooltip content={prod.nombreProducto} color="foreground" className="text-xs">
                           <span className="truncate block cursor-help whitespace-nowrap">
                             {prod.nombreProducto}
