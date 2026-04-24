@@ -117,19 +117,19 @@ public class PedidoController {
     @PostMapping("/resumen-historico")
     public ResponseEntity<ResumenHistoricoResponse> obtenerResumenHistorico(
             @Validated @RequestBody ResumenHistoricoRequestDTO request) {
-        String[] estadosArray = normalizarEstadosCsv(request.getEstadosCsv());
+        String estadosValidados = normalizarEstadosCsv(request.getEstadosCsv());
         return ResponseEntity
                 .status(200)
                 .body(pedidoService.obtenerResumenHistorico(
                         request.getFechaInicio(),
                         request.getFechaFin(),
-                        estadosArray
+                        estadosValidados
                 ));
     }
 
-    private String[] normalizarEstadosCsv(String estadosCsv) {
+    private String normalizarEstadosCsv(String estadosCsv) {
         if (estadosCsv == null || estadosCsv.isBlank()) {
-            return new String[]{};
+            return "";
         }
 
         String[] estadosNormalizados = Arrays.stream(estadosCsv.split(","))
@@ -138,7 +138,8 @@ public class PedidoController {
                 .toArray(String[]::new);
 
         validarEstadosValidos(estadosNormalizados);
-        return estadosNormalizados;
+
+        return String.join(",", estadosNormalizados);
     }
 
     private void validarEstadosValidos(String[] estadosRecibidos) {

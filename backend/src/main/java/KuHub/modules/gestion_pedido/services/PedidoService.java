@@ -39,7 +39,7 @@ public interface PedidoService {
     /**
      * Obtiene resumen histórico de productos consumidos en pedidos.
      * Calcula: total de productos distintos, total de pedidos, y detalle por producto.
-     * Filtra por rango de fechas y estados de pedido (array de estados validados).
+     * Filtra por rango de fechas y estados de pedido (CSV validado).
      */
-    ResumenHistoricoResponse obtenerResumenHistorico(LocalDate fechaInicio, LocalDate fechaFin, String[] estados);
+    ResumenHistoricoResponse obtenerResumenHistorico(LocalDate fechaInicio, LocalDate fechaFin, String estadosCsv);
 }
