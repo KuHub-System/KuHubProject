@@ -19,6 +19,8 @@ public record ProveedorDetalleDTO(
         String fechaCreacion,
         Long cantidadProductosActivos,
         /** Productos agrupados por nombre de categoría */
-        Map<String, List<ProductoConPrecioDTO>> productosPorCategoria
+        Map<String, List<ProductoConPrecioDTO>> productosPorCategoria,
+        /** Días y horarios de entrega configurados */
+        List<DiaEntregaResponseDTO> diasEntrega
 ) {
 }

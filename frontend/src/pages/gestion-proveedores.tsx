@@ -1427,6 +1427,46 @@ const FormularioProveedor: React.FC<FormularioProveedorProps> = ({
             )}
           </div>
         )}
+
+        {/* Visualizar Días de Entrega (modo ver) */}
+        {isReadOnly && proveedor && (
+          <div className="border-t border-default-200 dark:border-default-100 pt-4 space-y-3">
+            <div className="flex items-center gap-2 mb-2">
+              <Icon icon="lucide:calendar" width={16} className="text-primary" />
+              <span className="text-sm font-semibold text-secondary dark:text-foreground">
+                Días de Entrega
+              </span>
+            </div>
+
+            {proveedor.diasEntrega && proveedor.diasEntrega.length > 0 ? (
+              <div className="space-y-2">
+                {proveedor.diasEntrega.map((dia) => (
+                  <div
+                    key={dia.idDiaEntrega}
+                    className="flex items-center gap-3 p-3 rounded-lg bg-primary-50 dark:bg-primary-50/20 border border-primary-200 dark:border-primary-300"
+                  >
+                    <Chip
+                      size="sm"
+                      color="primary"
+                      variant="flat"
+                    >
+                      {DIAS_SEMANA_OPTIONS.find(d => d.value === dia.diaSemana)?.label}
+                    </Chip>
+                    {dia.horaInicioEntrega && dia.horaFinEntrega && (
+                      <span className="text-sm text-default-600">
+                        {dia.horaInicioEntrega.slice(0, 5)} – {dia.horaFinEntrega.slice(0, 5)}
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-sm text-default-400 italic">
+                No hay días de entrega configurados
+              </div>
+            )}
+          </div>
+        )}
       </ModalBody>
 
       <ModalFooter className="bg-gradient-to-r from-default-50 to-default-50 dark:from-content2 dark:to-content2 border-t border-default-200 dark:border-default-100 gap-2 px-6 py-4">
