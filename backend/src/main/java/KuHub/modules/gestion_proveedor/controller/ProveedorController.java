@@ -194,17 +194,18 @@ public class ProveedorController {
      * ✅ En uso: Consumido por toggleProductoProveedorService en proveedor-service.ts.
      * Se llama desde el botón toggle en la tabla de productos del proveedor.
      * El producto NO se elimina, solo se cambia su estado activo/inactivo.
+     * [CAMBIO 2026-04-24] Ahora retorna boolean para validar cambio exitoso.
      *
      * @param id  ID del proveedor
      * @param pid ID del producto a habilitar/deshabilitar
+     * @return true si se toggleó correctamente, false si no hubo cambios
      */
     @PatchMapping("/{id}/productos/{pid}/toggle")
-    public ResponseEntity<Void> toggleProducto(
+    public ResponseEntity<Boolean> toggleProducto(
             @PathVariable Integer id,
             @PathVariable Integer pid
     ) {
-        proveedorService.toggleProducto(id, pid);
-        return ResponseEntity.status(200).build();
+        return ResponseEntity.status(200).body(proveedorService.toggleProducto(id, pid));
     }
 
     // ══════════════════════════════════════════════════════════════

@@ -44,8 +44,10 @@ public interface ProveedorService {
     /** Quita (soft-delete) un producto del proveedor. */
     void quitarProducto(Integer idProveedor, Integer idProducto);
 
-    /** Habilita/deshabilita un producto del proveedor (toggle del campo activo). */
-    void toggleProducto(Integer idProveedor, Integer idProducto);
+    /** Habilita/deshabilita un producto del proveedor (toggle del campo activo).
+     *  Retorna true si se toggleó correctamente, false si no hubo cambios.
+     */
+    boolean toggleProducto(Integer idProveedor, Integer idProducto);
 
     /** Obtiene el detalle completo de un proveedor con sus productos agrupados por categoría. */
     ProveedorDetalleDTO obtenerDetalle(Integer idProveedor);
