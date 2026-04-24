@@ -358,7 +358,18 @@ const GestionProveedoresPage: React.FC = () => {
   // ── Modal producto ──
   const { isOpen: isProdModal, onOpen: openProdModal, onOpenChange: onProdModalChange } = useDisclosure();
   const [proveedorParaProducto, setProveedorParaProducto] = React.useState<number | null>(null);
-  const [productos, setProductos] = React.useState<IProductoRecetaSelection[]>([]);
+  // ── Caché global de productos (persiste durante la sesión, se limpia al cerrar pestaña) ──
+  const [productos, setProductos] = React.useState<IProductoRecetaSelection[]>(() => {
+    const cached = sessionStorage.getItem('productosCache');
+    if (cached) {
+      try {
+        return JSON.parse(cached);
+      } catch {
+        return [];
+      }
+    }
+    return [];
+  });
 
   // ── Modal confirmar eliminar proveedor ──
   const { isOpen: isDelModal, onOpen: openDelModal, onOpenChange: onDelModalChange } = useDisclosure();
@@ -539,6 +550,7 @@ const GestionProveedoresPage: React.FC = () => {
       try {
         const data = await obtenerProductosParaRecetaService();
         setProductos(data);
+        sessionStorage.setItem('productosCache', JSON.stringify(data));
       } catch {
         showToast('Error al cargar la lista de productos', 'error');
       }
@@ -868,15 +880,11 @@ const GestionProveedoresPage: React.FC = () => {
                                 <Icon icon="lucide:phone" width={12} />
                                 {proveedor.telefonoProveedor}
                               </span>
-                              {proveedor.emailProveedor && (
-                                <>
-                                  <span className="text-default-300">•</span>
-                                  <span className="flex items-center gap-1">
-                                    <Icon icon="lucide:mail" width={12} />
-                                    {proveedor.emailProveedor}
-                                  </span>
-                                </>
-                              )}
+                              <span className="text-default-300">•</span>
+                              <span className="flex items-center gap-1">
+                                <Icon icon="lucide:mail" width={12} />
+                                {proveedor.emailProveedor}
+                              </span>
                               {proveedor.rutProveedor && (
                                 <>
                                   <span className="text-default-300">•</span>
@@ -1425,7 +1433,11 @@ const FormularioProveedor: React.FC<FormularioProveedorProps> = ({
       setError('El teléfono es obligatorio');
       return;
     }
-    if (emailProveedor.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailProveedor)) {
+    if (!emailProveedor.trim()) {
+      setError('El email del proveedor es obligatorio');
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailProveedor)) {
       setError('El email no tiene un formato válido');
       return;
     }
@@ -1435,7 +1447,7 @@ const FormularioProveedor: React.FC<FormularioProveedorProps> = ({
       nombreDistribuidora: nombreDistribuidora.trim(),
       nombreProveedor: nombreProveedor.trim(),
       telefonoProveedor: telefonoProveedor.trim(),
-      emailProveedor: emailProveedor.trim() || undefined,
+      emailProveedor: emailProveedor.trim(),
       estadoProveedor,
       diasEntrega: diasEntrega.length > 0 ? diasEntrega : undefined,
     };
@@ -1597,11 +1609,12 @@ const FormularioProveedor: React.FC<FormularioProveedorProps> = ({
           </div>
           <div className="space-y-1">
             <Input
-              label="Email (opcional)"
+              label="Email"
               placeholder="Ej: contacto@empresa.cl"
               value={emailProveedor}
               onValueChange={(val) => setEmailProveedor(val.slice(0, 150))}
               isReadOnly={isReadOnly}
+              isRequired={!isReadOnly}
               variant="bordered"
               type="email"
               maxLength={150}
@@ -1866,11 +1879,9 @@ const FormularioAsignarProducto: React.FC<FormularioAsignarProductoProps> = ({
   const [saving, setSaving] = React.useState(false);
 
   const productosFiltrados = React.useMemo(() => {
-    if (!searchProd.trim()) return productos.slice(0, 50);
+    if (!searchProd.trim()) return productos;
     const term = searchProd.toLowerCase();
-    return productos
-      .filter((p) => p.nombreProducto.toLowerCase().includes(term))
-      .slice(0, 50);
+    return productos.filter((p) => p.nombreProducto.toLowerCase().includes(term));
   }, [searchProd, productos]);
 
   const handleSubmit = async () => {
