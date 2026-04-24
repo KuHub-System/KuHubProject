@@ -486,15 +486,15 @@ CREATE TABLE movimiento_default PARTITION OF movimiento DEFAULT;
 -- Nota: estado_proveedor se almacena como VARCHAR (no ENUM nativo PostgreSQL).
 -- El enum Java EstadoProveedor (DISPONIBLE / NO_DISPONIBLE) mapea directamente.
 CREATE TABLE proveedor (
-    id_proveedor          INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    rut_proveedor         VARCHAR(13)  UNIQUE,
-    nombre_distribuidora  VARCHAR(100) NOT NULL,
-    nombre_proveedor      VARCHAR(100) NOT NULL,
-    telefono_proveedor    VARCHAR(20)  NOT NULL,
-    email_proveedor       VARCHAR(150),
-    estado_proveedor      estado_provedor_type NOT NULL DEFAULT 'DISPONIBLE',
-    activo                BOOLEAN      NOT NULL DEFAULT TRUE,
-    fecha_creacion        TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP
+    id_proveedor INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    rut_proveedor VARCHAR(13) NOT NULL UNIQUE,
+    nombre_distribuidora VARCHAR(100) NOT NULL,
+    nombre_proveedor VARCHAR(100) NOT NULL,
+    telefono_proveedor VARCHAR(20) NOT NULL,
+    email_proveedor VARCHAR(150),
+    estado_proveedor estado_provedor_type NOT NULL DEFAULT 'DISPONIBLE',
+    activo BOOLEAN DEFAULT TRUE,
+    fecha_creacion TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Tabla proveedor_producto

@@ -22,7 +22,7 @@ export interface IDiaEntregaDTO {
  */
 export interface IProveedor {
   idProveedor: number;
-  rutProveedor: string | null;
+  rutProveedor: string;
   nombreDistribuidora: string;
   nombreProveedor: string;
   telefonoProveedor: string;
@@ -76,7 +76,7 @@ export interface IProveedorDetalle extends IProveedor {
  * Mapea ProveedorCreateDTO del backend.
  */
 export interface IProveedorCreateDTO {
-  rutProveedor?: string;
+  rutProveedor: string;
   nombreDistribuidora: string;
   nombreProveedor: string;
   telefonoProveedor: string;
@@ -90,7 +90,7 @@ export interface IProveedorCreateDTO {
  * Mapea ProveedorUpdateDTO del backend.
  */
 export interface IProveedorUpdateDTO {
-  rutProveedor?: string;
+  rutProveedor: string;
   nombreDistribuidora: string;
   nombreProveedor: string;
   telefonoProveedor: string;
