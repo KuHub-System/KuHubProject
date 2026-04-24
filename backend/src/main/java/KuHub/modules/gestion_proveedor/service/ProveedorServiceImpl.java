@@ -287,12 +287,33 @@ public class ProveedorServiceImpl implements ProveedorService {
                         HttpStatus.NOT_FOUND
                 ));
 
-        if (!dto.getPrecioProducto().equals(relacion.getPrecioProducto())) {
-            relacion.setPrecioProducto(dto.getPrecioProducto());
+        // Parsear el precio desde formato chileno a BigDecimal
+        java.math.BigDecimal nuevoPrecio;
+        try {
+            nuevoPrecio = KuHub.utils.ChileanPriceUtils.parseChileanPrice(dto.getPrecioProducto());
+            log.debug("Precio parseado: Input='{}' → BigDecimal={}", dto.getPrecioProducto(), nuevoPrecio);
+        } catch (IllegalArgumentException e) {
+            log.warn("Error al parsear precio chileno: {} | Mensaje: {}", dto.getPrecioProducto(), e.getMessage());
+            throw new GestionProveedorException(
+                    e.getMessage(),
+                    HttpStatus.BAD_REQUEST
+            );
+        }
+
+        // Validar que el precio sea mayor a 0
+        if (nuevoPrecio.compareTo(java.math.BigDecimal.ZERO) <= 0) {
+            throw new GestionProveedorException(
+                    "El precio debe ser mayor a 0. Valor ingresado: " + nuevoPrecio,
+                    HttpStatus.BAD_REQUEST
+            );
+        }
+
+        if (!nuevoPrecio.equals(relacion.getPrecioProducto())) {
+            relacion.setPrecioProducto(nuevoPrecio);
             relacion.setFechaActualizacion(LocalDateTime.now());
             proveedorProductoRepository.save(relacion);
-            log.info("Precio actualizado: Proveedor ID={} | Producto ID={} | Nuevo precio={}",
-                    idProveedor, idProducto, dto.getPrecioProducto());
+            log.info("Precio actualizado: Proveedor ID={} | Producto ID={} | Nuevo precio={} (Input: '{}')",
+                    idProveedor, idProducto, nuevoPrecio, dto.getPrecioProducto());
         }
     }
 
@@ -300,6 +321,27 @@ public class ProveedorServiceImpl implements ProveedorService {
     @Transactional
     public void agregarProducto(Integer idProveedor, ProveedorProductoAddDTO dto) {
         findById(idProveedor);
+
+        // Parsear el precio desde formato chileno a BigDecimal
+        java.math.BigDecimal precioProducto;
+        try {
+            precioProducto = KuHub.utils.ChileanPriceUtils.parseChileanPrice(dto.getPrecioProducto());
+            log.debug("Precio parseado: Input='{}' → BigDecimal={}", dto.getPrecioProducto(), precioProducto);
+        } catch (IllegalArgumentException e) {
+            log.warn("Error al parsear precio chileno: {} | Mensaje: {}", dto.getPrecioProducto(), e.getMessage());
+            throw new GestionProveedorException(
+                    e.getMessage(),
+                    HttpStatus.BAD_REQUEST
+            );
+        }
+
+        // Validar que el precio sea mayor a 0
+        if (precioProducto.compareTo(java.math.BigDecimal.ZERO) <= 0) {
+            throw new GestionProveedorException(
+                    "El precio debe ser mayor a 0. Valor ingresado: " + precioProducto,
+                    HttpStatus.BAD_REQUEST
+            );
+        }
 
         if (proveedorProductoRepository.existsByProveedor_IdProveedorAndProducto_IdProductoAndActivoTrue(
                 idProveedor, dto.getIdProducto())) {
@@ -314,21 +356,22 @@ public class ProveedorServiceImpl implements ProveedorService {
                 .ifPresentOrElse(
                         relacion -> {
                             relacion.setActivo(true);
-                            relacion.setPrecioProducto(dto.getPrecioProducto());
+                            relacion.setPrecioProducto(precioProducto);
                             relacion.setFechaActualizacion(LocalDateTime.now());
                             proveedorProductoRepository.save(relacion);
-                            log.info("Relación reactivada: Proveedor ID={} | Producto ID={}", idProveedor, dto.getIdProducto());
+                            log.info("Relación reactivada: Proveedor ID={} | Producto ID={} | Precio={} (Input: '{}')",
+                                    idProveedor, dto.getIdProducto(), precioProducto, dto.getPrecioProducto());
                         },
                         () -> {
                             ProveedorProducto nueva = new ProveedorProducto();
                             nueva.setIdProveedor(idProveedor);
                             nueva.setIdProducto(dto.getIdProducto());
-                            nueva.setPrecioProducto(dto.getPrecioProducto());
+                            nueva.setPrecioProducto(precioProducto);
                             nueva.setActivo(true);
                             nueva.setFechaActualizacion(LocalDateTime.now());
                             proveedorProductoRepository.save(nueva);
-                            log.info("Producto asignado: Proveedor ID={} | Producto ID={} | Precio={}",
-                                    idProveedor, dto.getIdProducto(), dto.getPrecioProducto());
+                            log.info("Producto asignado: Proveedor ID={} | Producto ID={} | Precio={} (Input: '{}')",
+                                    idProveedor, dto.getIdProducto(), precioProducto, dto.getPrecioProducto());
                         }
                 );
     }
@@ -365,6 +408,25 @@ public class ProveedorServiceImpl implements ProveedorService {
             );
         }
         log.info("Producto quitado del proveedor (soft-delete): Proveedor ID={} | Producto ID={}", idProveedor, idProducto);
+    }
+
+    @Override
+    @Transactional
+    public void toggleProducto(Integer idProveedor, Integer idProducto) {
+        ProveedorProducto relacion = proveedorProductoRepository
+                .findByProveedor_IdProveedorAndProducto_IdProducto(idProveedor, idProducto)
+                .orElseThrow(() -> new GestionProveedorException(
+                        "No existe relación entre el proveedor ID=" + idProveedor + " y el producto ID=" + idProducto,
+                        HttpStatus.NOT_FOUND
+                ));
+
+        boolean nuevoEstado = !relacion.getActivo();
+        relacion.setActivo(nuevoEstado);
+        relacion.setFechaActualizacion(LocalDateTime.now());
+        proveedorProductoRepository.save(relacion);
+
+        log.info("Producto toggle: Proveedor ID={} | Producto ID={} | Nuevo estado: {}",
+                idProveedor, idProducto, nuevoEstado ? "HABILITADO" : "DESHABILITADO");
     }
 
     // ══════════════════════════════════════════════════════════════

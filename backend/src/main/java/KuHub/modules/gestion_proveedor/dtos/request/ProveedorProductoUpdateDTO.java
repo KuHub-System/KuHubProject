@@ -1,12 +1,22 @@
 package KuHub.modules.gestion_proveedor.dtos.request;
 
-import jakarta.validation.constraints.DecimalMin;
-import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.NotBlank;
 import lombok.*;
+import KuHub.modules.gestion_proveedor.dtos.validators.ValidChileanPrice;
 
-import java.math.BigDecimal;
-
+/**
+ * DTO para actualizar el precio de un producto en un proveedor.
+ *
+ * El precioProducto acepta múltiples formatos chilenos:
+ * - 1.234,567 (punto=miles, coma=decimal)
+ * - 1.234 (entero con separador de miles)
+ * - 1234,567 (sin separador de miles)
+ * - 1234.567 (formato americano)
+ * - 1234 (entero simple)
+ *
+ * La conversión a BigDecimal se realiza en el service usando ChileanPriceUtils.
+ */
 @Getter
 @Setter
 @ToString
@@ -18,7 +28,7 @@ public class ProveedorProductoUpdateDTO {
     private Integer idProveedorProducto;
 
     @NotNull(message = "El precio es obligatorio")
-    @DecimalMin(value = "0.01", message = "El precio debe ser mayor a 0")
-    @Digits(integer = 10, fraction = 2, message = "El precio debe tener máximo 10 enteros y 2 decimales")
-    private BigDecimal precioProducto;
+    @NotBlank(message = "El precio no puede estar en blanco")
+    @ValidChileanPrice(message = "Formato de precio inválido. Use: 1.234,567 | 1.234 | 1234,567 | 1234")
+    private String precioProducto;
 }
