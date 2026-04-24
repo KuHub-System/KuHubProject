@@ -256,6 +256,30 @@ export const quitarProductoProveedorService = async (
 };
 
 /**
+ * Habilita/deshabilita un producto del proveedor (toggle).
+ * PATCH /api/v1/proveedor/{id}/productos/{pid}/toggle → 200 OK
+ */
+export const toggleProductoProveedorService = async (
+  idProveedor: number,
+  idProducto: number
+): Promise<void> => {
+  try {
+    await api.patch(`/proveedor/${idProveedor}/productos/${idProducto}/toggle`);
+  } catch (error: any) {
+    if (error.response?.status === 404) {
+      throw new Error(
+        error.response.data?.message ||
+        'Relación proveedor-producto no encontrada'
+      );
+    }
+    throw new Error(
+      error.response?.data?.message ||
+      'Error al cambiar el estado del producto'
+    );
+  }
+};
+
+/**
  * Lista los proveedores que ofrecen un producto específico (para comparar precios).
  * GET /api/v1/proveedor/por-producto/{idProducto}
  */

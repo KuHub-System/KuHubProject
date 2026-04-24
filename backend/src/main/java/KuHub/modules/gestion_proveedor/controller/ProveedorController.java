@@ -21,7 +21,7 @@ import java.util.List;
 /**
  * Controller REST para gestión de Proveedores.
  * Endpoints base: /api/v1/proveedor
- * ⬜ Sin uso frontend aún — pendiente de conexión con gestion-proveedores.tsx
+ * ✅ Todos los endpoints conectados con gestion-proveedores.tsx y solicitud-service.ts
  */
 @RestController
 @Validated
@@ -37,7 +37,7 @@ public class ProveedorController {
 
     /**
      * Lista todos los proveedores activos con filtros opcionales.
-     * ⬜ Sin uso frontend aún.
+     * ✅ En uso: Consumido por obtenerProveedoresService en proveedor-service.ts.
      *
      * @param estado   Filtro por estado: DISPONIBLE o NO_DISPONIBLE (opcional)
      * @param busqueda Búsqueda por nombre, distribuidora o RUT (opcional)
@@ -53,8 +53,8 @@ public class ProveedorController {
     }
 
     /**
-     * Obtiene el detalle completo de un proveedor con sus productos agrupados por categoría.
-     * ⬜ Sin uso frontend aún.
+     * Obtiene el detalle completo de un proveedor con sus productos agrupados por categoría y días de entrega.
+     * ✅ En uso: Consumido por obtenerProveedorDetalleService en proveedor-service.ts.
      *
      * @param id ID del proveedor
      */
@@ -66,10 +66,10 @@ public class ProveedorController {
     }
 
     /**
-     * Crea un nuevo proveedor.
-     * ⬜ Sin uso frontend aún.
+     * Crea un nuevo proveedor con días de entrega opcionales.
+     * ✅ En uso: Consumido por crearProveedorService en proveedor-service.ts.
      *
-     * @param dto Datos del proveedor a crear
+     * @param dto Datos del proveedor a crear (incluye diasEntrega opcional)
      */
     @PostMapping
     public ResponseEntity<Proveedor> create(@Valid @RequestBody ProveedorCreateDTO dto) {
@@ -79,11 +79,12 @@ public class ProveedorController {
     }
 
     /**
-     * Actualiza los datos de un proveedor existente.
-     * ⬜ Sin uso frontend aún.
+     * Actualiza los datos de un proveedor existente (incluye días de entrega).
+     * ✅ En uso: Consumido por actualizarProveedorService en proveedor-service.ts.
+     * Implementa estrategia delete+insert para diasEntrega: elimina todos los días existentes e inserta los nuevos.
      *
      * @param id  ID del proveedor a actualizar
-     * @param dto Datos actualizados del proveedor
+     * @param dto Datos actualizados del proveedor (diasEntrega reemplaza completamente los existentes)
      */
     @PatchMapping("/{id}")
     public ResponseEntity<Proveedor> update(
@@ -98,7 +99,7 @@ public class ProveedorController {
     /**
      * Elimina lógicamente un proveedor (activo = false).
      * Solo permite eliminar si no tiene productos activos asignados.
-     * ⬜ Sin uso frontend aún.
+     * ✅ En uso: Consumido por eliminarProveedorService en proveedor-service.ts.
      *
      * @param id ID del proveedor a eliminar
      */
@@ -115,7 +116,9 @@ public class ProveedorController {
 
     /**
      * Lista los productos asignados a un proveedor, agrupados por categoría.
-     * ⬜ Sin uso frontend aún.
+     * ✅ En uso: Este endpoint devuelve ProveedorDetalleDTO (mismo que GET /{id}) y se consume internamente
+     * cuando se expande la fila de un proveedor en la tabla de gestion-proveedores.tsx.
+     * La expansión carga productos y días de entrega para visualización en la tabla.
      *
      * @param id ID del proveedor
      */
@@ -128,7 +131,8 @@ public class ProveedorController {
 
     /**
      * Asigna un producto a un proveedor con su precio específico.
-     * ⬜ Sin uso frontend aún.
+     * ✅ En uso: Consumido por agregarProductoProveedorService en proveedor-service.ts.
+     * Se llama desde el modal de asignación de productos en gestion-proveedores.tsx.
      *
      * @param id  ID del proveedor
      * @param dto Datos del producto a asignar (idProducto + precioProducto)
@@ -144,7 +148,8 @@ public class ProveedorController {
 
     /**
      * Actualiza el precio de un producto asignado a un proveedor.
-     * ⬜ Sin uso frontend aún.
+     * ✅ En uso: Consumido por actualizarPrecioProductoService en proveedor-service.ts.
+     * Se llama desde la tabla de productos en el modal de detalle/edición del proveedor.
      *
      * @param id  ID del proveedor
      * @param pid ID del producto
@@ -162,7 +167,8 @@ public class ProveedorController {
 
     /**
      * Quita (soft-delete) un producto del proveedor.
-     * ⬜ Sin uso frontend aún.
+     * ✅ En uso: Consumido por quitarProductoProveedorService en proveedor-service.ts.
+     * Se llama desde los botones de eliminación en la tabla de productos del proveedor.
      *
      * @param id  ID del proveedor
      * @param pid ID del producto a quitar
@@ -176,6 +182,24 @@ public class ProveedorController {
         return ResponseEntity.status(204).build();
     }
 
+    /**
+     * Habilita/deshabilita un producto del proveedor (toggle del campo activo).
+     * ✅ En uso: Consumido por toggleProductoProveedorService en proveedor-service.ts.
+     * Se llama desde el botón toggle en la tabla de productos del proveedor.
+     * El producto NO se elimina, solo se cambia su estado activo/inactivo.
+     *
+     * @param id  ID del proveedor
+     * @param pid ID del producto a habilitar/deshabilitar
+     */
+    @PatchMapping("/{id}/productos/{pid}/toggle")
+    public ResponseEntity<Void> toggleProducto(
+            @PathVariable Integer id,
+            @PathVariable Integer pid
+    ) {
+        proveedorService.toggleProducto(id, pid);
+        return ResponseEntity.status(200).build();
+    }
+
     // ══════════════════════════════════════════════════════════════
     // CONSULTA INVERSA: PROVEEDORES POR PRODUCTO
     // ══════════════════════════════════════════════════════════════
@@ -183,7 +207,7 @@ public class ProveedorController {
     /**
      * Lista todos los proveedores que ofrecen un producto específico.
      * Útil para comparar precios entre proveedores.
-     * ⬜ Sin uso frontend aún.
+     * ✅ En uso: Consumido por obtenerProveedoresPorProductoService en proveedor-service.ts.
      *
      * @param idProducto ID del producto
      */
