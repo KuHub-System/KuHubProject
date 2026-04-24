@@ -15,7 +15,7 @@ import KuHub.modules.gestion_proveedor.dtos.response.ProveedoresPageResponse;
 import KuHub.modules.gestion_solicitud.dtos.request.DateRangeDTO;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.type.TypeFactory;
-import com.fasterxml.jackson.databind.type.TypeReference;
+import com.fasterxml.jackson.core.type.TypeReference;
 import KuHub.utils.PaginationUtils;
 import KuHub.modules.gestion_proveedor.entity.Proveedor;
 import KuHub.modules.gestion_proveedor.entity.ProveedorDiaEntrega;
