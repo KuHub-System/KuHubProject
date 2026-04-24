@@ -248,14 +248,16 @@ export const actualizarPrecioProductoService = async (
 
 /**
  * Quita (soft-delete) un producto del proveedor.
- * DELETE /api/v1/proveedor/{id}/productos/{pid} → 204 No Content
+ * DELETE /api/v1/proveedor/{id}/productos/{pid} → 200 OK
+ * [CAMBIO 2026-04-24] Retorna boolean para actualizar UI sin segunda petición.
  */
 export const quitarProductoProveedorService = async (
   idProveedor: number,
   idProducto: number
-): Promise<void> => {
+): Promise<boolean> => {
   try {
-    await api.delete(`/proveedor/${idProveedor}/productos/${idProducto}`);
+    const response = await api.delete<boolean>(`/proveedor/${idProveedor}/productos/${idProducto}`);
+    return response.data;
   } catch (error: any) {
     if (error.response?.status === 404) {
       throw new Error(
