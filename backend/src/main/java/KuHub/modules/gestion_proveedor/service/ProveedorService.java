@@ -67,4 +67,7 @@ public interface ProveedorService {
 
     /** Lista productos disponibles para asignar a un proveedor, con filtro opcional por categoría. */
     List<ProductoDisponibleDTO> obtenerProductosDisponibles(Integer idProveedor, Short idCategoria);
+
+    /** Obtiene todas las categorías activas como JSON para filtros en el modal de asignar productos. */
+    String obtenerCategoriasActivasJson();
 }

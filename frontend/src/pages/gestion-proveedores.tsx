@@ -44,8 +44,8 @@ import {
   toggleProductoProveedorService,
   obtenerCotizacionPorRangoService,
   obtenerProductosDisponiblesService,
+  obtenerCategoriasActivasJsonService,
 } from '../services/proveedor-service';
-import { obtenerCategoriasActivasJsonService } from '../services/categoria-service';
 import type {
   IProveedor,
   IProveedorDetalle,
