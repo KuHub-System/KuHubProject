@@ -13,6 +13,7 @@ import {
   IProveedorProductoAddDTO,
   IProveedorProductoUpdateDTO,
   ICotizacionResponse,
+  IProductoDisponibleDTO,
 } from '../types/proveedor.types';
 
 // ── Helpers de transformación ─────────────────────────────────────────────────
@@ -348,6 +349,44 @@ export const obtenerProveedoresPorProductoService = async (
     throw new Error(
       error.response?.data?.message ||
       'Error al cargar los proveedores del producto'
+    );
+  }
+};
+
+/**
+ * Lista productos disponibles para asignar a un proveedor.
+ * Retorna todos los productos activos EXCEPTO los que están asignados con estado activo.
+ * Incluye productos con estado inactivo para poder reactivarlos.
+ * GET /api/v1/proveedor/{idProveedor}/productos-disponibles?idCategoria=X
+ *
+ * [CAMBIO 2026-04-24] Nuevo endpoint que reemplaza la lógica anterior de obtener todos
+ * los productos y filtrar en el frontend. Ahora el backend maneja la consulta optimizada.
+ */
+export const obtenerProductosDisponiblesService = async (
+  idProveedor: number,
+  idCategoria?: number
+): Promise<IProductoDisponibleDTO[]> => {
+  try {
+    const params: Record<string, any> = {};
+    if (idCategoria !== undefined) {
+      params.idCategoria = idCategoria;
+    }
+
+    const response = await api.get<any[]>(`/proveedor/${idProveedor}/productos-disponibles`, { params });
+    return response.data.map(p => ({
+      idProducto: p.idProducto,
+      nombreProducto: p.nombreProducto,
+      idCategoria: p.idCategoria,
+      nombreCategoria: p.nombreCategoria,
+      idUnidad: p.idUnidad,
+      nombreUnidad: p.nombreUnidad,
+      abreviatura: p.abreviatura,
+      esFraccionario: p.esFraccionario,
+    }));
+  } catch (error: any) {
+    throw new Error(
+      error.response?.data?.message ||
+      'Error al cargar los productos disponibles'
     );
   }
 };

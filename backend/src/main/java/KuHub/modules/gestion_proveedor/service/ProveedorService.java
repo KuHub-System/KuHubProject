@@ -5,6 +5,7 @@ import KuHub.modules.gestion_proveedor.dtos.request.ProveedorProductoAddDTO;
 import KuHub.modules.gestion_proveedor.dtos.request.ProveedorProductoUpdateDTO;
 import KuHub.modules.gestion_proveedor.dtos.request.ProveedorUpdateDTO;
 import KuHub.modules.gestion_proveedor.dtos.response.CotizacionProveedorDTO;
+import KuHub.modules.gestion_proveedor.dtos.response.ProductoDisponibleDTO;
 import KuHub.modules.gestion_proveedor.dtos.response.ProveedorDetalleDTO;
 import KuHub.modules.gestion_proveedor.dtos.response.ProveedorListDTO;
 import KuHub.modules.gestion_proveedor.dtos.response.ProveedoresPageResponse;
@@ -63,4 +64,7 @@ public interface ProveedorService {
 
     /** Obtiene cotización agrupada por proveedor (menor precio) para solicitudes EN_PEDIDO en un rango de fechas. */
     CotizacionProveedorDTO.CotizacionResponse obtenerCotizacionPorRango(DateRangeDTO request);
+
+    /** Lista productos disponibles para asignar a un proveedor, con filtro opcional por categoría. */
+    List<ProductoDisponibleDTO> obtenerProductosDisponibles(Integer idProveedor, Short idCategoria);
 }

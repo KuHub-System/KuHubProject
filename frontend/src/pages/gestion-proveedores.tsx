@@ -43,8 +43,8 @@ import {
   quitarProductoProveedorService,
   toggleProductoProveedorService,
   obtenerCotizacionPorRangoService,
+  obtenerProductosDisponiblesService,
 } from '../services/proveedor-service';
-import { obtenerProductosParaRecetaService } from '../services/inventario-service';
 import type {
   IProveedor,
   IProveedorDetalle,
@@ -56,6 +56,7 @@ import type {
   ICotizacionProveedor,
   IDiaEntregaDTO,
   DiaSemana,
+  IProductoDisponibleDTO,
 } from '../types/proveedor.types';
 import type { IProductoRecetaSelection } from '../types/producto.types';
 
@@ -357,18 +358,8 @@ const GestionProveedoresPage: React.FC = () => {
   // ── Modal producto ──
   const { isOpen: isProdModal, onOpen: openProdModal, onOpenChange: onProdModalChange } = useDisclosure();
   const [proveedorParaProducto, setProveedorParaProducto] = React.useState<number | null>(null);
-  // ── Caché global de productos (persiste durante la sesión, se limpia al cerrar pestaña) ──
-  const [productos, setProductos] = React.useState<IProductoRecetaSelection[]>(() => {
-    const cached = sessionStorage.getItem('productosCache');
-    if (cached) {
-      try {
-        return JSON.parse(cached);
-      } catch {
-        return [];
-      }
-    }
-    return [];
-  });
+  // ── Productos disponibles para el proveedor seleccionado ──
+  const [productos, setProductos] = React.useState<IProductoDisponibleDTO[]>([]);
 
   // ── Scroll infinito ──
   const [currentPage, setCurrentPage] = React.useState(1);
@@ -594,14 +585,11 @@ const GestionProveedoresPage: React.FC = () => {
 
   const handleAbrirAsignarProducto = async (idProveedor: number) => {
     setProveedorParaProducto(idProveedor);
-    if (productos.length === 0) {
-      try {
-        const data = await obtenerProductosParaRecetaService();
-        setProductos(data);
-        sessionStorage.setItem('productosCache', JSON.stringify(data));
-      } catch {
-        showToast('Error al cargar la lista de productos', 'error');
-      }
+    try {
+      const data = await obtenerProductosDisponiblesService(idProveedor);
+      setProductos(data);
+    } catch {
+      showToast('Error al cargar la lista de productos disponibles', 'error');
     }
     openProdModal();
   };
@@ -1104,6 +1092,7 @@ const GestionProveedoresPage: React.FC = () => {
           {(onClose) => (
             <FormularioAsignarProducto
               productos={productos}
+              idProveedor={proveedorParaProducto || 0}
               onClose={onClose}
               onSave={async (idProducto, precio) => {
                 await handleGuardarProducto(idProducto, precio);
@@ -1915,26 +1904,71 @@ const FormularioProveedor: React.FC<FormularioProveedorProps> = ({
 // ── Sub-componente: formulario asignar producto ───────────────────────────────
 
 interface FormularioAsignarProductoProps {
-  productos: IProductoRecetaSelection[];
+  productos: IProductoDisponibleDTO[];
+  idProveedor: number;
   onClose: () => void;
   onSave: (idProducto: number, precio: number) => Promise<void>;
 }
 
 const FormularioAsignarProducto: React.FC<FormularioAsignarProductoProps> = ({
-  productos,
+  productos: productosInicial,
+  idProveedor,
   onClose,
   onSave,
 }) => {
   const [searchProd, setSearchProd] = React.useState('');
-  const [selectedProducto, setSelectedProducto] = React.useState<IProductoRecetaSelection | null>(null);
+  const [selectedProducto, setSelectedProducto] = React.useState<IProductoDisponibleDTO | null>(null);
   const [precio, setPrecio] = React.useState('');
   const [error, setError] = React.useState<string | null>(null);
   const [saving, setSaving] = React.useState(false);
+  const [selectedCategoryId, setSelectedCategoryId] = React.useState<string>('todas');
+  const [loadingProductos, setLoadingProductos] = React.useState(false);
+  const [productos, setProductos] = React.useState<IProductoDisponibleDTO[]>(productosInicial);
+  const debounceRef = React.useRef<NodeJS.Timeout | null>(null);
+
+  // Obtener categorías únicas de los productos
+  const categorias = React.useMemo(() => {
+    const cats = Array.from(new Set(productos.map(p => p.idCategoria)))
+      .map(id => {
+        const producto = productos.find(p => p.idCategoria === id);
+        return { id: id.toString(), nombre: producto?.nombreCategoria || '' };
+      })
+      .sort((a, b) => a.nombre.localeCompare(b.nombre));
+    return [{ id: 'todas', nombre: 'Todas las categorías' }, ...cats];
+  }, [productos]);
+
+  // Manejar cambio de categoría con debounce de 2 segundos
+  const handleCategoryChange = React.useCallback((newCategoryId: string) => {
+    setSelectedCategoryId(newCategoryId);
+
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+    }
+
+    debounceRef.current = setTimeout(async () => {
+      setLoadingProductos(true);
+      try {
+        const idCat = newCategoryId === 'todas' ? undefined : parseInt(newCategoryId, 10);
+        const data = await obtenerProductosDisponiblesService(idProveedor, idCat as any);
+        setProductos(data);
+      } catch {
+        // Mantener los productos anteriores si hay error
+      } finally {
+        setLoadingProductos(false);
+      }
+    }, 2000);
+  }, [idProveedor]);
 
   const productosFiltrados = React.useMemo(() => {
-    if (!searchProd.trim()) return productos;
-    const term = searchProd.toLowerCase();
-    return productos.filter((p) => p.nombreProducto.toLowerCase().includes(term));
+    let filtered = productos;
+
+    // Filtrar por búsqueda
+    if (searchProd.trim()) {
+      const term = searchProd.toLowerCase();
+      filtered = filtered.filter((p) => p.nombreProducto.toLowerCase().includes(term));
+    }
+
+    return filtered;
   }, [searchProd, productos]);
 
   const handleSubmit = async () => {
@@ -1986,9 +2020,31 @@ const FormularioAsignarProducto: React.FC<FormularioAsignarProductoProps> = ({
           onClear={() => setSearchProd('')}
         />
 
+        {/* Selector de Categoría */}
+        <Select
+          label="Categoría"
+          placeholder="Seleccione una categoría..."
+          selectedKeys={[selectedCategoryId]}
+          onChange={(e) => handleCategoryChange(e.target.value || 'todas')}
+          variant="bordered"
+          isDisabled={loadingProductos}
+          startContent={<Icon icon="lucide:tag" className="text-default-400" width={16} />}
+          endContent={loadingProductos && <Spinner size="sm" color="warning" />}
+        >
+          {categorias.map((cat) => (
+            <SelectItem key={cat.id} value={cat.id}>
+              {cat.nombre}
+            </SelectItem>
+          ))}
+        </Select>
+
         {/* Lista de productos */}
         <div className="max-h-52 overflow-y-auto border border-default-200 rounded-lg divide-y divide-default-100">
-          {productosFiltrados.length === 0 ? (
+          {loadingProductos ? (
+            <div className="flex justify-center items-center py-8">
+              <Spinner size="sm" color="warning" label="Cargando productos..." />
+            </div>
+          ) : productosFiltrados.length === 0 ? (
             <p className="text-xs text-default-400 text-center py-6">Sin resultados</p>
           ) : (
             productosFiltrados.map((p) => (
