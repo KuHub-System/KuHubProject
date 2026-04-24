@@ -1405,6 +1405,10 @@ const FormularioProveedor: React.FC<FormularioProveedorProps> = ({
   const handleSubmit = async () => {
     setError(null);
 
+    if (!rutProveedor.trim()) {
+      setError('El RUT del proveedor es obligatorio');
+      return;
+    }
     if (!nombreDistribuidora.trim()) {
       setError('El nombre de la distribuidora es obligatorio');
       return;
@@ -1423,7 +1427,7 @@ const FormularioProveedor: React.FC<FormularioProveedorProps> = ({
     }
 
     const dto: IProveedorCreateDTO = {
-      rutProveedor: rutProveedor.trim() || undefined,
+      rutProveedor: rutProveedor.trim(),
       nombreDistribuidora: nombreDistribuidora.trim(),
       nombreProveedor: nombreProveedor.trim(),
       telefonoProveedor: telefonoProveedor.trim(),
@@ -1559,13 +1563,14 @@ const FormularioProveedor: React.FC<FormularioProveedorProps> = ({
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div className="space-y-1">
             <Input
-              label="RUT (opcional)"
+              label="RUT"
               placeholder="Ej: 12.345.678-9"
               value={rutProveedor}
               onValueChange={(val) => setRutProveedor(val.slice(0, 13))}
               isReadOnly={isReadOnly}
               variant="bordered"
               maxLength={13}
+              isRequired={!isReadOnly}
             />
             <p className="text-xs text-default-400 text-right">{rutProveedor.length}/13</p>
           </div>
@@ -1610,14 +1615,14 @@ const FormularioProveedor: React.FC<FormularioProveedorProps> = ({
             <div className="flex items-center gap-2 mb-2">
               <Icon icon="lucide:calendar" width={16} className="text-primary" />
               <span className="text-sm font-semibold text-secondary dark:text-foreground">
-                Días de Entrega (Opcional)
+                Días de Entrega
               </span>
             </div>
 
             <div className="flex items-start gap-2 p-3 rounded-lg bg-info-50 dark:bg-info-50/20 border border-info-200 dark:border-info-300">
               <Icon icon="lucide:info" width={16} className="text-info flex-shrink-0 mt-0.5" />
               <div className="text-xs text-default-600 dark:text-default-400">
-                Seleccione un día de entrega. Si no especifica horarios, se asumirá disponibilidad de 08:00 a 20:00.
+                Los días de entrega se utilizan para dividir los pedidos por día de la semana y preparar la llegada de abastecimiento. Si no especifica horarios, se asumirá disponibilidad de 08:00 a 20:00.
               </div>
             </div>
 
