@@ -1959,7 +1959,7 @@ const FormularioAsignarProducto: React.FC<FormularioAsignarProductoProps> = ({
   }, []);
 
   // Manejar cambio de múltiples categorías y filtrar
-  const handleCategoryChange = React.useCallback((keys: any) => {
+  const handleCategoryChange = React.useCallback(async (keys: any) => {
     const newSelectedIds = new Set(
       Array.from(keys).filter((key: string) => key !== 'todas') as string[]
     );
