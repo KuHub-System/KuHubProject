@@ -372,16 +372,24 @@ export const obtenerProductosDisponiblesService = async (
       params.idCategoria = idCategoria;
     }
 
-    const response = await api.get<any[]>(`/proveedor/${idProveedor}/productos-disponibles`, { params });
-    return response.data.map(p => ({
-      idProducto: p.idProducto,
-      nombreProducto: p.nombreProducto,
-      idCategoria: p.idCategoria,
-      nombreCategoria: p.nombreCategoria,
-      idUnidad: p.idUnidad,
-      nombreUnidad: p.nombreUnidad,
+    const response = await api.get<string>(`/proveedor/${idProveedor}/productos-disponibles`, { params });
+
+    // El backend retorna una cadena JSON, necesita ser parseada
+    if (!response.data || response.data === '[]' || response.data === 'null') {
+      return [];
+    }
+
+    const parsed = typeof response.data === 'string' ? JSON.parse(response.data) : response.data;
+
+    return (Array.isArray(parsed) ? parsed : []).map(p => ({
+      idProducto: p.id_producto,
+      nombreProducto: p.nombre_producto,
+      idCategoria: p.id_categoria,
+      nombreCategoria: p.nombre_categoria,
+      idUnidad: p.id_unidad,
+      nombreUnidad: p.nombre_unidad,
       abreviatura: p.abreviatura,
-      esFraccionario: p.esFraccionario,
+      esFraccionario: p.es_fraccionario,
     }));
   } catch (error: any) {
     throw new Error(
