@@ -27,4 +27,20 @@ public interface CategoriaRepository extends JpaRepository<Categoria, Short> {
         GROUP BY c.id_categoria
         """, nativeQuery = true)
     List<CategoriaView> findCategoriasCantProductoAsociados();
+
+    /**
+     * Obtiene todas las categorías activas como JSON para filtros de selección.
+     * Retorna: [ { "id": 1, "nombre": "Bebidas" }, { "id": 2, "nombre": "Verduras" }, ... ]
+     */
+    @Query(value = """
+            SELECT json_agg(
+                json_build_object(
+                    'id', c.id_categoria,
+                    'nombre', c.nombre_categoria
+                )
+            )
+            FROM categoria c
+            WHERE c.activo = TRUE
+            """, nativeQuery = true)
+    String findCategoriasActivasJson();
 }

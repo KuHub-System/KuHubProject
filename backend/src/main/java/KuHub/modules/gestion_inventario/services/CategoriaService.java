@@ -21,4 +21,6 @@ public interface CategoriaService {
     boolean updateCategoria (UpdateCategoriaDTO oldCat);
     void changeStatusCategoria (ChangeStatusActiveCategoriaDTO dto);
     boolean deleteCategoria(Short idCategoria);
+    /** Obtiene todas las categorías activas como JSON para filtros de selección. */
+    String obtenerCategoriasActivasJson();
 }

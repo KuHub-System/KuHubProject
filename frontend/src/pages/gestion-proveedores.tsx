@@ -45,6 +45,7 @@ import {
   obtenerCotizacionPorRangoService,
   obtenerProductosDisponiblesService,
 } from '../services/proveedor-service';
+import { obtenerCategoriasActivasJsonService } from '../services/categoria-service';
 import type {
   IProveedor,
   IProveedorDetalle,
@@ -1937,19 +1938,25 @@ const FormularioAsignarProducto: React.FC<FormularioAsignarProductoProps> = ({
   const [saving, setSaving] = React.useState(false);
   const [selectedCategoryId, setSelectedCategoryId] = React.useState<string>('todas');
   const [loadingProductos, setLoadingProductos] = React.useState(false);
-  const [productos, setProductos] = React.useState<IProductoDisponibleDTO[]>(productosInicial);
+  const [productos, setProductos] = React.useState<IProductoDisponibleDTO[]>(productosInicial || []);
+  const [categorias, setCategorias] = React.useState<Array<{ id: string; nombre: string }>>([
+    { id: 'todas', nombre: 'Todas las categorías' },
+  ]);
   const debounceRef = React.useRef<NodeJS.Timeout | null>(null);
 
-  // Obtener categorías únicas de los productos
-  const categorias = React.useMemo(() => {
-    const cats = Array.from(new Set(productos.map(p => p.idCategoria)))
-      .map(id => {
-        const producto = productos.find(p => p.idCategoria === id);
-        return { id: id.toString(), nombre: producto?.nombreCategoria || '' };
-      })
-      .sort((a, b) => a.nombre.localeCompare(b.nombre));
-    return [{ id: 'todas', nombre: 'Todas las categorías' }, ...cats];
-  }, [productos]);
+  // Cargar categorías activas del backend al montar el componente
+  React.useEffect(() => {
+    const cargarCategorias = async () => {
+      try {
+        const cats = await obtenerCategoriasActivasJsonService();
+        const categoriasFormato = cats.map(c => ({ id: c.id.toString(), nombre: c.nombre }));
+        setCategorias([{ id: 'todas', nombre: 'Todas las categorías' }, ...categoriasFormato]);
+      } catch {
+        // Mantener categorías por defecto si hay error
+      }
+    };
+    cargarCategorias();
+  }, []);
 
   // Manejar cambio de categoría con debounce de 2 segundos
   const handleCategoryChange = React.useCallback((newCategoryId: string) => {

@@ -148,4 +148,10 @@ public class CategoriaServiceImpl implements CategoriaService{
         }
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public String obtenerCategoriasActivasJson() {
+        return categoriaRepository.findCategoriasActivasJson();
+    }
+
 }

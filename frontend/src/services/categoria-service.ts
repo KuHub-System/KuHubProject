@@ -181,3 +181,20 @@ export const transferirProductosService = async (idOrigen: string, idDestino: st
         throw new Error(error.response?.data?.message || error.response?.data || 'Error al transferir productos');
     }
 };
+
+/**
+ * Obtiene todas las categorías activas como JSON para filtros de selección.
+ * Formato: [ { "id": 1, "nombre": "Bebidas" }, { "id": 2, "nombre": "Verduras" }, ... ]
+ * @returns Promise<Array<{ id: number; nombre: string }>>
+ */
+export const obtenerCategoriasActivasJsonService = async (): Promise<Array<{ id: number; nombre: string }>> => {
+    try {
+        const response = await api.get<string>('/categoria/activas-json');
+        if (!response.data || response.data === '[]' || response.data === 'null') {
+            return [];
+        }
+        return JSON.parse(response.data);
+    } catch (error: any) {
+        throw new Error(error.response?.data?.message || 'Error al cargar las categorías activas');
+    }
+};

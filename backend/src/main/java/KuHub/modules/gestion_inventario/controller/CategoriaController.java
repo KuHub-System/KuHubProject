@@ -122,4 +122,17 @@ public class CategoriaController {
                 .body(categoriaService.deleteCategoria(idCategoria));
     }
 
+    /**
+     * Obtiene todas las categorías activas como JSON para filtros de selección.
+     * Retorna: [ { "id": 1, "nombre": "Bebidas" }, { "id": 2, "nombre": "Verduras" }, ... ]
+     * ✅ En uso: Consumido por obtenerCategoriasActivasService en categoria-service.ts (para filtros en modales).
+     */
+    @GetMapping("/activas-json")
+    public ResponseEntity<String> obtenerCategoriasActivasJson(){
+        return ResponseEntity
+                .status(200)
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .body(categoriaService.obtenerCategoriasActivasJson());
+    }
+
 }
