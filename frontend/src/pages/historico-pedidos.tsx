@@ -1,7 +1,7 @@
 import React from 'react';
 import {
   Card, CardBody, CardHeader,
-  Button, Input, Chip, Spinner, Divider,
+  Button, Input, Chip, Spinner, Divider, Tooltip,
 } from '@heroui/react';
 import { DateRangePicker } from '@heroui/react';
 import { Icon } from '@iconify/react';
@@ -349,11 +349,11 @@ const HistoricoPedidosPage: React.FC = () => {
                 <div className="overflow-x-auto">
                   {/* Header */}
                   <div className="grid grid-cols-12 px-5 py-2.5 bg-default-50 border-b border-default-200 text-xs font-semibold text-default-500 uppercase tracking-wide min-w-[600px]">
-                    <span className="col-span-1">Código</span>
-                    <span className="col-span-5">Producto</span>
-                    <span className="col-span-2 text-center">Unidad</span>
-                    <span className="col-span-2 text-right">Cantidad Total</span>
-                    <span className="col-span-2 text-right">En Pedidos</span>
+                    <span className="col-span-1 text-center truncate">Código</span>
+                    <span className="col-span-5 text-center truncate">Producto</span>
+                    <span className="col-span-2 text-center truncate">Unidad</span>
+                    <span className="col-span-2 text-center truncate">Cantidad Total</span>
+                    <span className="col-span-2 text-center truncate">En Pedidos</span>
                   </div>
                   {/* Filas */}
                   <div className="divide-y divide-default-100 min-w-[600px]">
@@ -364,26 +364,42 @@ const HistoricoPedidosPage: React.FC = () => {
                           idx % 2 === 0 ? '' : 'bg-default-50/30'
                         }`}
                       >
-                        <span className="col-span-1 text-xs text-default-400 truncate">
-                          {prod.codProducto ?? '—'}
-                        </span>
-                        <div className="col-span-5 flex items-center gap-2 min-w-0">
-                          <Icon icon="lucide:package" width={13} className="text-primary shrink-0" />
-                          <p className="font-medium text-sm text-default-800 truncate">
-                            {prod.nombreProducto}
-                          </p>
+                        <Tooltip content={prod.codProducto ?? '—'} color="default">
+                          <span className="col-span-1 text-xs text-default-400 truncate text-center cursor-help">
+                            {prod.codProducto ?? '—'}
+                          </span>
+                        </Tooltip>
+
+                        <Tooltip content={prod.nombreProducto} color="default">
+                          <div className="col-span-5 flex items-center gap-2 min-w-0 justify-center text-center">
+                            <Icon icon="lucide:package" width={13} className="text-primary shrink-0" />
+                            <p className="font-medium text-sm text-default-800 truncate">
+                              {prod.nombreProducto}
+                            </p>
+                          </div>
+                        </Tooltip>
+
+                        <Tooltip content={prod.abreviatura} color="default">
+                          <span className="col-span-2 text-center text-xs text-default-500 truncate cursor-help">
+                            {prod.abreviatura}
+                          </span>
+                        </Tooltip>
+
+                        <Tooltip content={`${fmtCantidad(prod.cantidadTotal)}`} color="default">
+                          <span className="col-span-2 text-center font-bold text-primary truncate cursor-help">
+                            {fmtCantidad(prod.cantidadTotal)}
+                          </span>
+                        </Tooltip>
+
+                        <div className="col-span-2 text-center">
+                          <Tooltip content={`${prod.vecesEnPedidos} veces`} color="default">
+                            <div className="flex justify-center">
+                              <Chip size="sm" color="default" variant="flat">
+                                {prod.vecesEnPedidos}
+                              </Chip>
+                            </div>
+                          </Tooltip>
                         </div>
-                        <span className="col-span-2 text-center text-xs text-default-500">
-                          {prod.abreviatura}
-                        </span>
-                        <span className="col-span-2 text-right font-bold text-primary">
-                          {fmtCantidad(prod.cantidadTotal)}
-                        </span>
-                        <span className="col-span-2 text-right">
-                          <Chip size="sm" color="default" variant="flat">
-                            {prod.vecesEnPedidos}
-                          </Chip>
-                        </span>
                       </div>
                     ))}
                   </div>
