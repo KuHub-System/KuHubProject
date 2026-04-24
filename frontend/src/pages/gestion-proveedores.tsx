@@ -1754,7 +1754,7 @@ const FormularioProveedor: React.FC<FormularioProveedorProps> = ({
             </div>
 
             {proveedor.diasEntrega && proveedor.diasEntrega.length > 0 ? (
-              <div className="space-y-2">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                 {proveedor.diasEntrega.map((dia) => (
                   <div
                     key={dia.idDiaEntrega}
