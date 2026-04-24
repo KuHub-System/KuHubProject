@@ -174,7 +174,7 @@ public class ProveedorServiceImpl implements ProveedorService {
         Proveedor proveedor = new Proveedor();
         proveedor.setRutProveedor(dto.getRutProveedor());
         proveedor.setNombreDistribuidora(KuHub.utils.StringUtils.normalizeSpaces(dto.getNombreDistribuidora()));
-        proveedor.setNombreProveedor(dto.getNombreProveedor());
+        proveedor.setNombreProveedor(KuHub.utils.StringUtils.capitalizarPalabras(dto.getNombreProveedor()));
         proveedor.setTelefonoProveedor(dto.getTelefonoProveedor());
         proveedor.setEmailProveedor(dto.getEmailProveedor() != null ? KuHub.utils.StringUtils.normalizeSpaces(dto.getEmailProveedor()) : null);
         proveedor.setActivo(true);
@@ -231,8 +231,9 @@ public class ProveedorServiceImpl implements ProveedorService {
         if (!nombreDistribuidoraNormalizado.equals(proveedor.getNombreDistribuidora())) {
             proveedor.setNombreDistribuidora(nombreDistribuidoraNormalizado);
         }
-        if (!dto.getNombreProveedor().equals(proveedor.getNombreProveedor())) {
-            proveedor.setNombreProveedor(dto.getNombreProveedor());
+        String nombreProveedorCapitalizado = KuHub.utils.StringUtils.capitalizarPalabras(dto.getNombreProveedor());
+        if (!nombreProveedorCapitalizado.equals(proveedor.getNombreProveedor())) {
+            proveedor.setNombreProveedor(nombreProveedorCapitalizado);
         }
         if (!dto.getTelefonoProveedor().equals(proveedor.getTelefonoProveedor())) {
             proveedor.setTelefonoProveedor(dto.getTelefonoProveedor());

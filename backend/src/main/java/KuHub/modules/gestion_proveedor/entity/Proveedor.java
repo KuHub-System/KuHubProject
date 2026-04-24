@@ -32,7 +32,7 @@ public class Proveedor {
     @Column(name = "rut_proveedor", length = 13, unique = true, nullable = false)
     private String rutProveedor;
 
-    @Column(name = "email_proveedor", length = 150)
+    @Column(name = "email_proveedor", length = 150, nullable = false)
     private String emailProveedor;
 
     @Column(name = "telefono_proveedor", length = 20, nullable = false)
