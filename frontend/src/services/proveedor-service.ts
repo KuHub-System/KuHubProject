@@ -428,3 +428,29 @@ export const obtenerCotizacionPorRangoService = async (
     );
   }
 };
+
+/**
+ * Obtiene todas las categorías activas para filtrar productos en el modal de asignación.
+ * GET /api/v1/proveedor/categorias-activas-json → JSON string
+ * [CAMBIO 2026-04-24] Endpoint integrado en proveedor para centralizar la lógica de filtrado.
+ */
+export const obtenerCategoriasActivasJsonService = async (): Promise<{
+  id: number;
+  nombre: string;
+}[]> => {
+  try {
+    const response = await api.get<string>('/proveedor/categorias-activas-json');
+
+    if (!response.data || response.data === '[]' || response.data === 'null') {
+      return [];
+    }
+
+    const parsed = typeof response.data === 'string' ? JSON.parse(response.data) : response.data;
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (error: any) {
+    throw new Error(
+      error.response?.data?.message ||
+      'Error al cargar las categorías disponibles'
+    );
+  }
+};
