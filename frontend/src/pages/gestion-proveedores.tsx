@@ -609,19 +609,23 @@ const GestionProveedoresPage: React.FC = () => {
     openProdModal();
   };
 
-  const handleGuardarProducto = async (idProducto: number, precio: number) => {
-    if (!proveedorParaProducto) return;
+  const handleGuardarProducto = async (idProducto: number, precio: number): Promise<boolean> => {
+    if (!proveedorParaProducto) return false;
     try {
       const precioFormateado = formatChileanPrice(precio);
-      await agregarProductoProveedorService(proveedorParaProducto, { idProducto, precioProducto: precioFormateado });
-      showToast('Producto asignado correctamente');
-      invalidarCacheProveedor(proveedorParaProducto);
-      // Recargar detalle si la fila está expandida
-      if (expandedRows.has(proveedorParaProducto)) {
-        const detalle = await obtenerProveedorDetalleService(proveedorParaProducto);
-        setDetalleCache(prev => ({ ...prev, [proveedorParaProducto]: detalle }));
+      // El backend retorna true si fue exitoso
+      const exitoso = await agregarProductoProveedorService(proveedorParaProducto, { idProducto, precioProducto: precioFormateado });
+
+      if (exitoso) {
+        showToast('Producto asignado correctamente');
+        invalidarCacheProveedor(proveedorParaProducto);
+        // Recargar detalle si la fila está expandida
+        if (expandedRows.has(proveedorParaProducto)) {
+          const detalle = await obtenerProveedorDetalleService(proveedorParaProducto);
+          setDetalleCache(prev => ({ ...prev, [proveedorParaProducto]: detalle }));
+        }
       }
-      await cargarProveedores();
+      return exitoso;
     } catch (err: any) {
       throw err;
     }
@@ -1110,8 +1114,15 @@ const GestionProveedoresPage: React.FC = () => {
               idProveedor={proveedorParaProducto || 0}
               onClose={onClose}
               onSave={async (idProducto, precio) => {
-                await handleGuardarProducto(idProducto, precio);
-                onClose();
+                // Guardar el producto
+                const success = await handleGuardarProducto(idProducto, precio);
+
+                // Si fue exitoso, remover el producto del listado para evitar duplicados
+                if (success) {
+                  setProductos(prev => prev.filter(p => p.idProducto !== idProducto));
+                }
+
+                // El modal permanece abierto para permitir agregar más productos
               }}
             />
           )}
@@ -1922,7 +1933,7 @@ interface FormularioAsignarProductoProps {
   productos: IProductoDisponibleDTO[];
   idProveedor: number;
   onClose: () => void;
-  onSave: (idProducto: number, precio: number) => Promise<void>;
+  onSave: (idProducto: number, precio: number) => Promise<void | boolean>;
 }
 
 const FormularioAsignarProducto: React.FC<FormularioAsignarProductoProps> = ({
@@ -2029,6 +2040,10 @@ const FormularioAsignarProducto: React.FC<FormularioAsignarProductoProps> = ({
     try {
       // Enviar el precio como string formateado (el backend lo parseará)
       await onSave(selectedProducto.idProducto, precioNum);
+      // ✅ Si fue exitoso, limpiar el formulario para asignar otro producto
+      setSelectedProducto(null);
+      setPrecio('');
+      setSearchProd('');
     } catch (err: any) {
       setError(err.message || 'Error al asignar el producto');
     } finally {
