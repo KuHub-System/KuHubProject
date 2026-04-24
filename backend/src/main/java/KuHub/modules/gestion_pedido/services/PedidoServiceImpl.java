@@ -269,29 +269,27 @@ public class PedidoServiceImpl implements PedidoService{
         try {
             log.info("✅ [SERVICE] Parseando JSON response...");
             log.info("🔍 [SERVICE] JSON COMPLETO recibido: {}", jsonResult);
-            var node = objectMapper.readTree(jsonResult);
-            var resultNode = node.get("resultado");
+            var rootNode = objectMapper.readTree(jsonResult);
 
-            log.info("🔍 [SERVICE] resultNode type: {}", resultNode != null ? resultNode.getNodeType() : "null");
+            log.info("🔍 [SERVICE] rootNode type: {}", rootNode != null ? rootNode.getNodeType() : "null");
 
-            if (resultNode == null || resultNode.isNull()) {
-                log.warn("⚠️  [SERVICE] ❌ resultNode es NULL para rango {}-{} con estados '{}'",
+            if (rootNode == null || rootNode.isNull()) {
+                log.warn("⚠️  [SERVICE] ❌ rootNode es NULL para rango {}-{} con estados '{}'",
                         fechaInicio, fechaFin, estadosCsv);
-                log.warn("⚠️  [SERVICE] Estructura del JSON raíz: {}", node.toString());
                 return new ResumenHistoricoResponse(fechaInicio, fechaFin, List.of(), 0, 0, List.of());
             }
 
-            log.info("✅ [SERVICE] resultNode encontrado, extrayendo datos...");
+            log.info("✅ [SERVICE] rootNode encontrado, extrayendo datos...");
 
             var estadosList = objectMapper.convertValue(
-                    resultNode.get("estados"),
+                    rootNode.get("estados"),
                     new TypeReference<List<String>>() {}
             );
-            int totalProductos = resultNode.get("totalProductosDistintos").asInt();
-            int totalPedidos = resultNode.get("totalPedidos").asInt();
+            int totalProductos = rootNode.get("totalProductosDistintos").asInt();
+            int totalPedidos = rootNode.get("totalPedidos").asInt();
 
             var productos = objectMapper.convertValue(
-                    resultNode.get("productos"),
+                    rootNode.get("productos"),
                     new TypeReference<List<ResumenHistoricoResponse.ProductoResumenItem>>() {}
             );
 
@@ -302,8 +300,8 @@ public class PedidoServiceImpl implements PedidoService{
             log.info("  📊 Productos en lista: {} items", productos.size());
 
             return new ResumenHistoricoResponse(
-                    resultNode.get("fechaInicio").asText().isEmpty() ? fechaInicio : LocalDate.parse(resultNode.get("fechaInicio").asText()),
-                    resultNode.get("fechaFin").asText().isEmpty() ? fechaFin : LocalDate.parse(resultNode.get("fechaFin").asText()),
+                    rootNode.get("fechaInicio").asText().isEmpty() ? fechaInicio : LocalDate.parse(rootNode.get("fechaInicio").asText()),
+                    rootNode.get("fechaFin").asText().isEmpty() ? fechaFin : LocalDate.parse(rootNode.get("fechaFin").asText()),
                     estadosList,
                     totalProductos,
                     totalPedidos,
