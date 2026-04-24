@@ -1431,8 +1431,8 @@ const ProductosProveedor: React.FC<ProductosProveedorProps> = ({
     <div className="space-y-3 mt-2">
       {/* Controles: búsqueda y mostrar/esconder deshabilitados */}
       <div className="space-y-2 px-2 pb-3">
-        {/* Buscador de productos (se oculta cuando hay búsqueda global) */}
-        {!globalProductSearch && (
+        {/* Buscador de productos (se oculta cuando hay búsqueda global, pero aparece si el usuario escribe) */}
+        {(!globalProductSearch || searchQuery) && (
           <div className="flex items-center gap-2">
             <Icon icon="lucide:search" width={16} className="text-default-400" />
             <input
