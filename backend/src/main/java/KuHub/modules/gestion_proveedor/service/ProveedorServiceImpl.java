@@ -1,5 +1,6 @@
 package KuHub.modules.gestion_proveedor.service;
 
+import KuHub.modules.gestion_proveedor.dtos.request.DiaEntregaDTO;
 import KuHub.modules.gestion_proveedor.dtos.request.ProveedorCreateDTO;
 import KuHub.modules.gestion_proveedor.dtos.request.ProveedorProductoAddDTO;
 import KuHub.modules.gestion_proveedor.dtos.request.ProveedorProductoUpdateDTO;
@@ -12,9 +13,12 @@ import KuHub.modules.gestion_solicitud.dtos.request.DateRangeDTO;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.type.TypeFactory;
 import KuHub.modules.gestion_proveedor.entity.Proveedor;
+import KuHub.modules.gestion_proveedor.entity.ProveedorDiaEntrega;
 import KuHub.modules.gestion_proveedor.entity.ProveedorProducto;
+import KuHub.modules.gestion_proveedor.enums.DiaSemana;
 import KuHub.modules.gestion_proveedor.enums.EstadoProveedor;
 import KuHub.modules.gestion_proveedor.exceptions.GestionProveedorException;
+import KuHub.modules.gestion_proveedor.repository.ProveedorDiaEntregaRepository;
 import KuHub.modules.gestion_proveedor.repository.ProveedorProductoRepository;
 import KuHub.modules.gestion_proveedor.repository.ProveedorRepository;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +29,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -41,6 +47,9 @@ public class ProveedorServiceImpl implements ProveedorService {
 
     @Autowired
     private ProveedorProductoRepository proveedorProductoRepository;
+
+    @Autowired
+    private ProveedorDiaEntregaRepository proveedorDiaEntregaRepository;
 
     /**Others*/
     @Autowired
@@ -169,6 +178,14 @@ public class ProveedorServiceImpl implements ProveedorService {
 
         Proveedor saved = proveedorRepository.save(proveedor);
         log.info("Proveedor creado: ID={} | Distribuidora={}", saved.getIdProveedor(), saved.getNombreDistribuidora());
+
+        // Guardar días de entrega si se proporcionaron
+        if (dto.getDiasEntrega() != null && !dto.getDiasEntrega().isEmpty()) {
+            List<ProveedorDiaEntrega> dias = buildDiasEntrega(dto.getDiasEntrega(), saved);
+            proveedorDiaEntregaRepository.saveAll(dias);
+            log.info("Días de entrega asignados al proveedor ID={}: {} día(s)", saved.getIdProveedor(), dias.size());
+        }
+
         return saved;
     }
 
@@ -228,6 +245,19 @@ public class ProveedorServiceImpl implements ProveedorService {
 
         Proveedor updated = proveedorRepository.save(proveedor);
         log.info("Proveedor actualizado: ID={} | Distribuidora={}", updated.getIdProveedor(), updated.getNombreDistribuidora());
+
+        // Actualizar días de entrega si se proporcionaron (reemplazo completo)
+        if (dto.getDiasEntrega() != null) {
+            proveedorDiaEntregaRepository.deleteAllByIdProveedor(idProveedor);
+            if (!dto.getDiasEntrega().isEmpty()) {
+                List<ProveedorDiaEntrega> dias = buildDiasEntrega(dto.getDiasEntrega(), updated);
+                proveedorDiaEntregaRepository.saveAll(dias);
+                log.info("Días de entrega actualizados para proveedor ID={}: {} día(s)", idProveedor, dias.size());
+            } else {
+                log.info("Días de entrega eliminados para proveedor ID={}", idProveedor);
+            }
+        }
+
         return updated;
     }
 
@@ -319,6 +349,113 @@ public class ProveedorServiceImpl implements ProveedorService {
             );
         }
         log.info("Producto quitado del proveedor (soft-delete): Proveedor ID={} | Producto ID={}", idProveedor, idProducto);
+    }
+
+    // ══════════════════════════════════════════════════════════════
+    // ── MÉTODOS PRIVADOS ──
+    // ══════════════════════════════════════════════════════════════
+
+    /**
+     * Construye la lista de entidades ProveedorDiaEntrega a partir de los DTOs recibidos.
+     * Valida que el día de la semana sea un valor válido del enum DiaSemana.
+     * Valida coherencia de horas (inicio < fin) si ambas se proporcionan.
+     */
+    private List<ProveedorDiaEntrega> buildDiasEntrega(List<DiaEntregaDTO> dtos, Proveedor proveedor) {
+        log.info("=== INICIANDO buildDiasEntrega ===");
+        log.info("Proveedor ID={} | Total días a procesar: {}", proveedor.getIdProveedor(), dtos.size());
+
+        List<ProveedorDiaEntrega> dias = new ArrayList<>();
+
+        for (DiaEntregaDTO dto : dtos) {
+            log.debug("Procesando DTO: diaSemana={}, horaInicio={}, horaFin={}",
+                    dto.getDiaSemana(), dto.getHoraInicio(), dto.getHoraFin());
+
+            DiaSemana diaSemana;
+            try {
+                diaSemana = DiaSemana.valueOf(dto.getDiaSemana().toUpperCase().trim());
+                log.info("Día de semana validado: {} → {}", dto.getDiaSemana(), diaSemana);
+            } catch (IllegalArgumentException e) {
+                log.warn("Día de semana inválido: '{}' | Valores válidos: LUNES, MARTES, MIERCOLES, JUEVES, VIERNES, SABADO, DOMINGO",
+                        dto.getDiaSemana());
+                throw new GestionProveedorException(
+                        "Día de la semana inválido: " + dto.getDiaSemana()
+                                + ". Valores válidos: LUNES, MARTES, MIERCOLES, JUEVES, VIERNES, SABADO, DOMINGO.",
+                        HttpStatus.BAD_REQUEST
+                );
+            }
+
+            LocalTime horaInicio = null;
+            LocalTime horaFin = null;
+
+            if (dto.getHoraInicio() != null && !dto.getHoraInicio().isBlank()) {
+                try {
+                    horaInicio = LocalTime.parse(dto.getHoraInicio());
+                    log.info("Hora de inicio parseada correctamente: {} → {}", dto.getHoraInicio(), horaInicio);
+                } catch (Exception e) {
+                    log.warn("Formato de hora de inicio inválido: '{}' | Excepción: {}", dto.getHoraInicio(), e.getMessage());
+                    throw new GestionProveedorException(
+                            "Formato de hora de inicio inválido: " + dto.getHoraInicio() + ". Use HH:mm o HH:mm:ss.",
+                            HttpStatus.BAD_REQUEST
+                    );
+                }
+            } else {
+                log.debug("Hora de inicio no proporcionada o vacía");
+            }
+
+            if (dto.getHoraFin() != null && !dto.getHoraFin().isBlank()) {
+                try {
+                    horaFin = LocalTime.parse(dto.getHoraFin());
+                    log.info("Hora de fin parseada correctamente: {} → {}", dto.getHoraFin(), horaFin);
+                } catch (Exception e) {
+                    log.warn("Formato de hora de fin inválido: '{}' | Excepción: {}", dto.getHoraFin(), e.getMessage());
+                    throw new GestionProveedorException(
+                            "Formato de hora de fin inválido: " + dto.getHoraFin() + ". Use HH:mm o HH:mm:ss.",
+                            HttpStatus.BAD_REQUEST
+                    );
+                }
+            } else {
+                log.debug("Hora de fin no proporcionada o vacía");
+            }
+
+            if (horaInicio != null && horaFin != null) {
+                if (!horaInicio.isBefore(horaFin)) {
+                    log.warn("Incoherencia de horarios: inicio={} >= fin={} para día {}", horaInicio, horaFin, diaSemana);
+                    throw new GestionProveedorException(
+                            "La hora de inicio (" + horaInicio + ") debe ser anterior a la hora de fin (" + horaFin + ") para el día " + diaSemana + ".",
+                            HttpStatus.BAD_REQUEST
+                    );
+                }
+                log.info("Validación de horarios correcta: {} < {}", horaInicio, horaFin);
+            }
+
+            ProveedorDiaEntrega dia = new ProveedorDiaEntrega();
+            dia.setProveedor(proveedor);
+            dia.setDiaSemana(diaSemana);
+            dia.setHoraInicioEntrega(horaInicio);
+            dia.setHoraFinEntrega(horaFin);
+            dias.add(dia);
+        }
+
+        // Validar que no haya días duplicados en la misma lista
+        long diasUnicos = dias.stream()
+                .map(ProveedorDiaEntrega::getDiaSemana)
+                .distinct()
+                .count();
+
+        if (diasUnicos < dias.size()) {
+            log.warn("Días duplicados detectados: total={}, únicos={}", dias.size(), diasUnicos);
+            throw new GestionProveedorException(
+                    "No se pueden repetir días de entrega para el mismo proveedor.",
+                    HttpStatus.BAD_REQUEST
+            );
+        }
+
+        log.info("Validación de duplicados exitosa: {} días únicos", diasUnicos);
+        log.info("=== buildDiasEntrega COMPLETADO ===");
+        log.info("Resumen final para proveedor ID={}: {} día(s) de entrega configurado(s)",
+                proveedor.getIdProveedor(), dias.size());
+
+        return dias;
     }
 
     // ══════════════════════════════════════════════════════════════

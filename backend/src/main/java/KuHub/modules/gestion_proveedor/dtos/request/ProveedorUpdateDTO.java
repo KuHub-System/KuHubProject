@@ -1,9 +1,12 @@
 package KuHub.modules.gestion_proveedor.dtos.request;
 
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.*;
+
+import java.util.List;
 
 /**
  * DTO de request para actualizar un proveedor existente.
@@ -37,4 +40,8 @@ public class ProveedorUpdateDTO {
 
     /** Estado: DISPONIBLE o NO_DISPONIBLE. */
     private String estadoProveedor;
+
+    /** Lista de días de entrega del proveedor. Si se envía, reemplaza los existentes. */
+    @Valid
+    private List<DiaEntregaDTO> diasEntrega;
 }

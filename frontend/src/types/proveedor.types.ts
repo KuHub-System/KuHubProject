@@ -4,6 +4,17 @@
  */
 
 export type EstadoProveedor = 'DISPONIBLE' | 'NO_DISPONIBLE';
+export type DiaSemana = 'LUNES' | 'MARTES' | 'MIERCOLES' | 'JUEVES' | 'VIERNES' | 'SABADO' | 'DOMINGO';
+
+/**
+ * DTO para un día de entrega del proveedor.
+ * Mapea DiaEntregaDTO del backend.
+ */
+export interface IDiaEntregaDTO {
+  diaSemana: DiaSemana;
+  horaInicio?: string; // Formato HH:mm o HH:mm:ss
+  horaFin?: string;    // Formato HH:mm o HH:mm:ss
+}
 
 /**
  * Mapea ProveedorListDTO del backend.
@@ -58,6 +69,7 @@ export interface IProveedorCreateDTO {
   telefonoProveedor: string;
   emailProveedor?: string;
   estadoProveedor?: EstadoProveedor;
+  diasEntrega?: IDiaEntregaDTO[];
 }
 
 /**
@@ -71,6 +83,7 @@ export interface IProveedorUpdateDTO {
   telefonoProveedor: string;
   emailProveedor?: string;
   estadoProveedor?: EstadoProveedor;
+  diasEntrega?: IDiaEntregaDTO[];
 }
 
 /**
