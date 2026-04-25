@@ -614,6 +614,29 @@ const GestionProveedoresPage: React.FC = () => {
     return () => clearTimeout(timer);
   }, [globalProductSearch, proveedores, detalleCache]);
 
+  // ── Cargar todos los detalles cuando se aplica ordenamiento ───────────────────
+
+  React.useEffect(() => {
+    if (!globalSortBy) return;
+
+    const loadDetails = async () => {
+      const proveedoresACargar = proveedores.filter(p => !detalleCache[p.idProveedor]);
+
+      if (proveedoresACargar.length === 0) return;
+
+      for (const proveedor of proveedoresACargar) {
+        try {
+          const detalle = await obtenerProveedorDetalleService(proveedor.idProveedor);
+          setDetalleCache(prev => ({ ...prev, [proveedor.idProveedor]: detalle }));
+        } catch (err) {
+          console.warn(`No se pudo cargar detalle de proveedor ${proveedor.idProveedor}`);
+        }
+      }
+    };
+
+    loadDetails();
+  }, [globalSortBy, proveedores, detalleCache]);
+
   // ── Auto-expandir cuando hay búsqueda global ──────────────────────────────────
 
   React.useEffect(() => {
