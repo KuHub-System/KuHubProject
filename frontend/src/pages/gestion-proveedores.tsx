@@ -346,7 +346,7 @@ const GestionProveedoresPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = React.useState('');
   const [filtroEstado, setFiltroEstado] = React.useState('');
   const [globalProductSearch, setGlobalProductSearch] = React.useState('');
-  const [globalSortBy, setGlobalSortBy] = React.useState<'precio-asc' | 'precio-desc' | 'actualizado' | ''>('');
+  const [globalSortBy, setGlobalSortBy] = React.useState<'precio-asc' | 'precio-desc' | ''>('');
   const [globalMostrarInactivos, setGlobalMostrarInactivos] = React.useState(true);
 
   // ── Filas expandidas ──
@@ -527,25 +527,65 @@ const GestionProveedoresPage: React.FC = () => {
 
   // ── Filtrado de proveedores por búsqueda global de productos ─────────────────
 
-  /** Filtra proveedores que tengan productos coincidentes con la búsqueda global */
+  /** Filtra y ordena proveedores por búsqueda global y criterio de ordenamiento */
   const proveedoresFiltrados = React.useMemo(() => {
-    if (!globalProductSearch.trim()) {
-      return paginatedProveedores;
+    let resultado = paginatedProveedores;
+
+    // Filtrar por búsqueda global
+    if (globalProductSearch.trim()) {
+      const searchLower = globalProductSearch.toLowerCase();
+      resultado = resultado.filter(proveedor => {
+        const detalle = detalleCache[proveedor.idProveedor];
+        if (!detalle) return false;
+
+        return Object.values(detalle.productosPorCategoria).some(productos =>
+          productos.some(prod =>
+            prod.nombreProducto.toLowerCase().includes(searchLower)
+          )
+        );
+      });
     }
 
-    const searchLower = globalProductSearch.toLowerCase();
-    return paginatedProveedores.filter(proveedor => {
-      const detalle = detalleCache[proveedor.idProveedor];
-      if (!detalle) return false;
+    // Aplicar ordenamiento
+    if (globalSortBy) {
+      resultado = [...resultado].sort((a, b) => {
+        let precioA = Infinity;
+        let precioB = Infinity;
 
-      // Buscar en todas las categorías y productos
-      return Object.values(detalle.productosPorCategoria).some(productos =>
-        productos.some(prod =>
-          prod.nombreProducto.toLowerCase().includes(searchLower)
-        )
-      );
-    });
-  }, [paginatedProveedores, globalProductSearch, detalleCache]);
+        // Obtener precio mínimo del proveedor A
+        const detalleA = detalleCache[a.idProveedor];
+        if (detalleA) {
+          Object.values(detalleA.productosPorCategoria).forEach(productos => {
+            productos.forEach(prod => {
+              if (prod.precioUnitario !== null && prod.precioUnitario !== undefined) {
+                precioA = Math.min(precioA, prod.precioUnitario);
+              }
+            });
+          });
+        }
+
+        // Obtener precio mínimo del proveedor B
+        const detalleB = detalleCache[b.idProveedor];
+        if (detalleB) {
+          Object.values(detalleB.productosPorCategoria).forEach(productos => {
+            productos.forEach(prod => {
+              if (prod.precioUnitario !== null && prod.precioUnitario !== undefined) {
+                precioB = Math.min(precioB, prod.precioUnitario);
+              }
+            });
+          });
+        }
+
+        if (globalSortBy === 'precio-asc') {
+          return precioA - precioB;
+        } else {
+          return precioB - precioA;
+        }
+      });
+    }
+
+    return resultado;
+  }, [paginatedProveedores, globalProductSearch, globalSortBy, detalleCache]);
 
   // ── Cargar todos los detalles cuando hay búsqueda global (con debounce) ────────
 
@@ -906,7 +946,7 @@ const GestionProveedoresPage: React.FC = () => {
                   selectedKeys={globalSortBy ? new Set([globalSortBy]) : new Set()}
                   onSelectionChange={(keys) => {
                     const val = Array.from(keys)[0] as string;
-                    setGlobalSortBy(val as 'precio-asc' | 'precio-desc' | 'actualizado' | '');
+                    setGlobalSortBy(val as 'precio-asc' | 'precio-desc' | '');
                   }}
                   className="w-full md:w-48"
                   variant="bordered"
@@ -916,7 +956,6 @@ const GestionProveedoresPage: React.FC = () => {
                   <SelectItem key="" textValue="Sin ordenar">Sin ordenar</SelectItem>
                   <SelectItem key="precio-asc" textValue="Menor Precio">Menor Precio</SelectItem>
                   <SelectItem key="precio-desc" textValue="Mayor Precio">Mayor Precio</SelectItem>
-                  <SelectItem key="actualizado" textValue="Actualizado">Actualizado</SelectItem>
                 </Select>
               </div>
 
