@@ -346,6 +346,8 @@ const GestionProveedoresPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = React.useState('');
   const [filtroEstado, setFiltroEstado] = React.useState('');
   const [globalProductSearch, setGlobalProductSearch] = React.useState('');
+  const [globalSortBy, setGlobalSortBy] = React.useState<'precio-asc' | 'precio-desc' | 'actualizado' | ''>('');
+  const [globalMostrarInactivos, setGlobalMostrarInactivos] = React.useState(true);
 
   // ── Filas expandidas ──
   const [expandedRows, setExpandedRows] = React.useState<Set<number>>(new Set());
@@ -592,6 +594,14 @@ const GestionProveedoresPage: React.FC = () => {
       setExpandedRows(newExpanded);
     }
   }, [proveedoresFiltrados, globalProductSearch]);
+
+  // ── Minimizar proveedores cuando se limpia la búsqueda global ──────────────
+
+  React.useEffect(() => {
+    if (!globalProductSearch.trim()) {
+      setExpandedRows(new Set());
+    }
+  }, [globalProductSearch]);
 
   // ── Acciones de proveedor ─────────────────────────────────────────────────
 
@@ -870,22 +880,68 @@ const GestionProveedoresPage: React.FC = () => {
         <Card className="shadow-sm bg-default-50 dark:bg-content1 border border-default-200 dark:border-default-100">
           <CardBody className="p-4 space-y-3">
             {/* Buscador Global de Productos */}
-            <div className="flex flex-col gap-2 p-3 bg-warning-50 dark:bg-warning-50/20 rounded-lg border border-warning-200 dark:border-warning-100/30">
+            <div className="flex flex-col gap-3 p-3 bg-warning-50 dark:bg-warning-50/20 rounded-lg border border-warning-200 dark:border-warning-100/30">
               <p className="text-xs font-semibold text-warning-700 dark:text-warning-500 uppercase tracking-wide">
                 🔍 Buscar Producto en Todos los Proveedores
               </p>
-              <Input
-                placeholder="Ingresa el nombre del producto para encontrarlo en los proveedores..."
-                value={globalProductSearch}
-                onValueChange={setGlobalProductSearch}
-                startContent={<Icon icon="lucide:package-search" className="text-warning-500" />}
-                className="w-full"
-                variant="bordered"
-                classNames={{ inputWrapper: 'bg-white dark:bg-default-100/50 border-warning-300 dark:border-warning-200/50' }}
-                isClearable
-                onClear={() => setGlobalProductSearch('')}
-                description={globalProductSearch ? 'Expandiendo proveedores y categorías con coincidencias...' : 'Esta búsqueda mostrará solo proveedores que tengan el producto'}
-              />
+
+              {/* Fila: Input + Ordenamiento */}
+              <div className="flex flex-col md:flex-row gap-2 items-start md:items-end">
+                <div className="flex-1 min-w-0">
+                  <Input
+                    placeholder="Ingresa el nombre del producto..."
+                    value={globalProductSearch}
+                    onValueChange={setGlobalProductSearch}
+                    startContent={<Icon icon="lucide:package-search" className="text-warning-500" />}
+                    variant="bordered"
+                    classNames={{ inputWrapper: 'bg-white dark:bg-default-100/50 border-warning-300 dark:border-warning-200/50' }}
+                    isClearable
+                    onClear={() => setGlobalProductSearch('')}
+                    size="sm"
+                  />
+                </div>
+
+                <Select
+                  placeholder="Ordenar por..."
+                  selectedKeys={globalSortBy ? new Set([globalSortBy]) : new Set()}
+                  onSelectionChange={(keys) => {
+                    const val = Array.from(keys)[0] as string;
+                    setGlobalSortBy(val as 'precio-asc' | 'precio-desc' | 'actualizado' | '');
+                  }}
+                  className="w-full md:w-48"
+                  variant="bordered"
+                  classNames={{ trigger: 'bg-white dark:bg-default-100/50 border-warning-300 dark:border-warning-200/50' }}
+                  size="sm"
+                >
+                  <SelectItem key="" textValue="Sin ordenar">Sin ordenar</SelectItem>
+                  <SelectItem key="precio-asc" textValue="Menor Precio">Menor Precio</SelectItem>
+                  <SelectItem key="precio-desc" textValue="Mayor Precio">Mayor Precio</SelectItem>
+                  <SelectItem key="actualizado" textValue="Actualizado">Actualizado</SelectItem>
+                </Select>
+              </div>
+
+              {/* Fila: Checkbox deshabilitados */}
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="esconderInactivosGlobal"
+                  checked={!globalMostrarInactivos}
+                  onChange={(e) => setGlobalMostrarInactivos(!e.target.checked)}
+                  className="w-4 h-4 rounded cursor-pointer accent-warning"
+                />
+                <label
+                  htmlFor="esconderInactivosGlobal"
+                  className="text-xs text-warning-700 dark:text-warning-500 cursor-pointer hover:text-warning-800 transition-colors"
+                >
+                  Esconder productos deshabilitados
+                </label>
+              </div>
+
+              {globalProductSearch && (
+                <p className="text-xs text-warning-600 dark:text-warning-400">
+                  Expandiendo proveedores y categorías con coincidencias...
+                </p>
+              )}
             </div>
 
             <div className="flex flex-col md:flex-row gap-3">
@@ -1140,7 +1196,7 @@ const GestionProveedoresPage: React.FC = () => {
                                   onCancelarEditPrecio={() => setEditingPrecio(null)}
                                   onToggleProducto={handleToggleProducto}
                                   onQuitarProducto={handleConfirmarQuitarProducto}
-                                  mostrarInactivos={mostrarInactivos}
+                                  mostrarInactivos={mostrarInactivos && globalMostrarInactivos}
                                   onMostrarInactivosChange={setMostrarInactivos}
                                   globalProductSearch={globalProductSearch}
                                 />
@@ -1520,7 +1576,7 @@ const ProductosProveedor: React.FC<ProductosProveedorProps> = ({
                     >
                       <td className="py-2 px-3 font-medium text-center w-[290px] overflow-hidden">
                         <Tooltip content={prod.nombreProducto} color="foreground" className="text-xs">
-                          <span className="truncate block cursor-help whitespace-nowrap">
+                          <span className="truncate block whitespace-nowrap">
                             {prod.nombreProducto}
                           </span>
                         </Tooltip>
