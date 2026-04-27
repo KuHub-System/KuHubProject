@@ -273,12 +273,15 @@ public interface ProveedorRepository extends JpaRepository<Proveedor, Integer> {
                         (SELECT json_agg(
                             json_build_object(
                                 'idProducto', p.id_producto,
+                                'idProveedorProducto', pp.id_proveedor_producto,
                                 'codProducto', p.cod_producto,
                                 'nombreProducto', p.nombre_producto,
-                                'categoria', c.nombre_categoria,
-                                'unidad', u.abreviatura,
+                                'nombreCategoria', c.nombre_categoria,
+                                'nombreUnidad', u.nombre_unidad,
+                                'abreviatura', u.abreviatura,
                                 'precioProducto', pp.precio_producto,
-                                'activo', pp.activo
+                                'activo', pp.activo,
+                                'fechaActualizacion', pp.fecha_actualizacion
                             )
                         )
                         FROM proveedor_producto pp

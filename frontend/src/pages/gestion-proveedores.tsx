@@ -1873,47 +1873,58 @@ const BusquedaResultados: React.FC<BusquedaResultadosProps> = ({
                               </span>
                             </div>
 
-                            {/* Tabla de productos */}
+                            {/* Tabla de productos - igual estructura que vista individual */}
                             {isCategoriaExpanded && (
                               <div className="overflow-x-auto rounded-lg border border-default-200 dark:border-default-100">
                                 <table className="w-full text-xs" style={{ tableLayout: 'fixed' }}>
                                   <thead className="bg-default-100 dark:bg-default-50">
                                     <tr>
-                                      <th className="text-left py-2 px-3 font-medium">Producto</th>
-                                      <th className="text-center py-2 px-3 font-medium w-20">Código</th>
-                                      <th className="text-center py-2 px-3 font-medium w-20">Unidad</th>
-                                      <th className="text-right py-2 px-3 font-medium w-24">Precio</th>
+                                      <th className="text-center py-2 px-3 font-medium w-[230px]">Producto</th>
+                                      <th className="text-center py-2 px-3 font-medium w-16">Código</th>
+                                      <th className="text-center py-2 px-3 font-medium w-16">Unidad</th>
+                                      <th className="text-center py-2 px-3 font-medium w-20">Precio</th>
+                                      <th className="text-center py-2 px-3 font-medium w-16">Estado</th>
+                                      <th className="text-center py-2 px-3 font-medium w-20">Actualizado</th>
                                     </tr>
                                   </thead>
                                   <tbody>
                                     {productosEnCategoria.map((prod) => (
                                       <tr
-                                        key={prod.idProducto}
+                                        key={prod.idProveedorProducto}
                                         className={`border-t border-default-100 ${
                                           !prod.activo
-                                            ? 'bg-default-100/30 dark:bg-default-100/10 opacity-60'
+                                            ? 'bg-default-100/30 dark:bg-default-100/10'
                                             : 'hover:bg-default-100 dark:hover:bg-default-100/30'
                                         }`}
                                       >
                                         <td className="py-2 px-3">
-                                          <div className="flex items-center gap-2">
-                                            {prod.nombreProducto}
-                                            {!prod.activo && (
-                                              <Chip size="sm" variant="flat" color="default">
-                                                Deshabilitado
-                                              </Chip>
-                                            )}
-                                          </div>
+                                          <div className="truncate">{prod.nombreProducto}</div>
                                         </td>
-                                        <td className="py-2 px-3 text-center text-default-500">
+                                        <td className="py-2 px-3 text-center text-default-500 text-xs">
                                           {prod.codProducto}
                                         </td>
-                                        <td className="py-2 px-3 text-center">{prod.unidad}</td>
-                                        <td className="py-2 px-3 text-right font-semibold">
+                                        <td className="py-2 px-3 text-center text-xs">
+                                          {prod.abreviatura}
+                                        </td>
+                                        <td className="py-2 px-3 text-center font-semibold">
                                           ${prod.precioProducto.toLocaleString('es-CL', {
                                             minimumFractionDigits: 0,
                                             maximumFractionDigits: 2,
                                           })}
+                                        </td>
+                                        <td className="py-2 px-3 text-center">
+                                          <Chip
+                                            size="sm"
+                                            variant="flat"
+                                            color={prod.activo ? 'success' : 'default'}
+                                          >
+                                            {prod.activo ? 'Activo' : 'Inactivo'}
+                                          </Chip>
+                                        </td>
+                                        <td className="py-2 px-3 text-center text-xs text-default-500">
+                                          {prod.fechaActualizacion
+                                            ? new Date(prod.fechaActualizacion).toLocaleDateString('es-CL')
+                                            : '—'}
                                         </td>
                                       </tr>
                                     ))}

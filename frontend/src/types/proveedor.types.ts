@@ -195,15 +195,19 @@ export interface ICotizacionResponse {
 /**
  * Producto encontrado en la búsqueda global.
  * Mapea ProductoBuscadoDTO del backend.
+ * Incluye todos los campos necesarios para mostrar acciones y detalles completos.
  */
 export interface IProductoBuscado {
   idProducto: number;
+  idProveedorProducto: number;  // PK de la relación proveedor-producto (para acciones)
   codProducto: string;
   nombreProducto: string;
-  categoria: string;
-  unidad: string;
+  nombreCategoria: string;
+  nombreUnidad: string;
+  abreviatura: string;
   precioProducto: number;
   activo: boolean;
+  fechaActualizacion: string | null;
 }
 
 /**
