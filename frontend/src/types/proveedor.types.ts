@@ -189,3 +189,35 @@ export interface ICotizacionProveedor {
 export interface ICotizacionResponse {
   cotizacion: ICotizacionProveedor[];
 }
+
+// ── Búsqueda global de productos ───────────────────────────────────────────
+
+/**
+ * Producto encontrado en la búsqueda global.
+ * Mapea ProductoBuscadoDTO del backend.
+ */
+export interface IProductoBuscado {
+  idProducto: number;
+  codProducto: string;
+  nombreProducto: string;
+  categoria: string;
+  unidad: string;
+  precioProducto: number;
+  activo: boolean;
+}
+
+/**
+ * Resultado de búsqueda global agrupado por proveedor.
+ * Mapea BusquedaProductosGlobalDTO del backend.
+ */
+export interface IBusquedaProductosGlobal {
+  idProveedor: number;
+  rutProveedor: string;
+  nombreDistribuidora: string;
+  nombreProveedor: string;
+  emailProveedor: string;
+  telefonoProveedor: string;
+  estadoProveedor: EstadoProveedor;
+  cantidadProductosActivos: number;
+  productosEncontrados: IProductoBuscado[];
+}
