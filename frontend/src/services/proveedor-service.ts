@@ -14,6 +14,7 @@ import {
   IProveedorProductoUpdateDTO,
   ICotizacionResponse,
   IProductoDisponibleDTO,
+  IBusquedaProductosGlobal,
 } from '../types/proveedor.types';
 
 // ── Helpers de transformación ─────────────────────────────────────────────────
@@ -427,6 +428,36 @@ export const obtenerCotizacionPorRangoService = async (
     throw new Error(
       error.response?.data?.message ||
       'Error al obtener la cotización por rango'
+    );
+  }
+};
+
+// ── Búsqueda global de productos ──────────────────────────────────────────────
+
+/**
+ * Búsqueda global optimizada de productos por nombre, código o descripción.
+ * GET /api/v1/proveedor/buscar-productos-global?q=searchTerm
+ *
+ * Retorna lista de proveedores que tienen productos coincidentes.
+ * La búsqueda es case-insensitive en el backend.
+ */
+export const buscarProductosGlobalService = async (
+  searchTerm: string
+): Promise<IBusquedaProductosGlobal[]> => {
+  try {
+    if (!searchTerm || searchTerm.trim().length === 0) {
+      return [];
+    }
+
+    const response = await api.get<IBusquedaProductosGlobal[]>('/proveedor/buscar-productos-global', {
+      params: { q: searchTerm.trim() },
+    });
+
+    return response.data || [];
+  } catch (error: any) {
+    throw new Error(
+      error.response?.data?.message ||
+      'Error al buscar productos'
     );
   }
 };

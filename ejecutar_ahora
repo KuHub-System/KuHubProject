@@ -1,60 +1,49 @@
-#7 extracting sha256:b5f8bba899ea074bfd311ba2049f23325f87adb5cd35051127520606f519adf6
-#7 extracting sha256:b5f8bba899ea074bfd311ba2049f23325f87adb5cd35051127520606f519adf6 0.1s done
-#7 extracting sha256:ec15566577b4d26ae9fdfcd188da863ed271a1cfd26cc464c2c48615aa9312a0
-#7 extracting sha256:ec15566577b4d26ae9fdfcd188da863ed271a1cfd26cc464c2c48615aa9312a0 0.2s done
-#7 extracting sha256:540694c720cbd708e09b028767c62cb967a3d709cd90aa78e77f6b9cb0aa7382 done
-#7 extracting sha256:8ff4da6a492758889aa2cbf4afd78a0e5d4207c220fc1223ec14c18c804a85a9 done
-#7 extracting sha256:7e722d737bbd5dd4351055faf370e49f423d0a2e0a17b4c53a016e67f696f2ef
-#7 extracting sha256:7e722d737bbd5dd4351055faf370e49f423d0a2e0a17b4c53a016e67f696f2ef done
-#7 DONE 8.3s
+--CONSULTA PARA PROVEEDORES
+SELECT
+    -- Envolvemos TODO en un solo objeto JSON
+    json_build_object(
+        'id_proveedor', prov.id_proveedor,
+        'rut_proveedor', prov.rut_proveedor,
+        'nombre_distribuidora', prov.nombre_distribuidora,
+        'nombre_proveedor', prov.nombre_proveedor,
+        'email_proveedor', prov.email_proveedor,
+        'estado_proveedor', prov.estado_proveedor,
 
-#11 [build 2/5] WORKDIR /app
-#11 DONE 0.0s
+        -- El array de productos va como un atributo más dentro del objeto principal
+        'productos_encontrados', json_agg(
+            json_build_object(
+                'id_producto', p.id_producto,
+                'cod_producto', p.cod_producto,
+                'nombre_producto', p.nombre_producto,
+                'categoria', c.nombre_categoria,
+                'unidad', u.abreviatura,
+                'precio_producto', pp.precio_producto
+            )
+        )
+    ) AS proveedor_json
 
-#12 [build 3/5] COPY pom.xml .
-#12 DONE 0.0s
-
-#13 [build 4/5] COPY backend/ ./backend/
-#13 DONE 0.1s
-
-#14 [build 5/5] RUN mvn clean package -pl backend -am -DskipTests
-#14 1.983 [INFO] Scanning for projects...
-#14 2.303 Downloading from central: https://repo.maven.apache.org/maven2/org/springframework/boot/spring-boot-starter-parent/3.4.3/spring-boot-starter-parent-3.4.3.pom
-Error: 58 [ERROR] [ERROR] Some problems were encountered while processing the POMs:
-#14 2.758 [FATAL] Non-resolvable parent POM for KuHub:KuHubProject:1.0-SNAPSHOT: The following artifacts could not be resolved: org.springframework.boot:spring-boot-starter-parent:pom:3.4.3 (absent): Could not transfer artifact org.springframework.boot:spring-boot-starter-parent:pom:3.4.3 from/to central (https://repo.maven.apache.org/maven2): status code: 403, reason phrase: Forbidden (403) and 'parent.relativePath' points at no local POM @ line 7, column 10
-#14 2.758  @
-#14 2.764 [ERROR] The build could not read 1 project -> [Help 1]
-#14 2.766 [ERROR]
-#14 2.767 [ERROR]   The project KuHub:KuHubProject:1.0-SNAPSHOT (/app/pom.xml) has 1 error
-#14 2.768 [ERROR]     Non-resolvable parent POM for KuHub:KuHubProject:1.0-SNAPSHOT: The following artifacts could not be resolved: org.springframework.boot:spring-boot-starter-parent:pom:3.4.3 (absent): Could not transfer artifact org.springframework.boot:spring-boot-starter-parent:pom:3.4.3 from/to central (https://repo.maven.apache.org/maven2): status code: 403, reason phrase: Forbidden (403) and 'parent.relativePath' points at no local POM @ line 7, column 10 -> [Help 2]
-#14 2.769 [ERROR]
-#14 2.773 [ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
-#14 2.773 [ERROR] Re-run Maven using the -X switch to enable full debug logging.
-#14 2.774 [ERROR]
-#14 2.774 [ERROR] For more information about the errors and possible solutions, please read the following articles:
-#14 2.774 [ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/ProjectBuildingException
-#14 2.775 [ERROR] [Help 2] http://cwiki.apache.org/confluence/display/MAVEN/UnresolvableModelException
-#14 ERROR: process "/bin/sh -c mvn clean package -pl backend -am -DskipTests" did not complete successfully: exit code: 1
-------
- > [build 5/5] RUN mvn clean package -pl backend -am -DskipTests:
-Error: ERROR]
-Error: ERROR]   The project KuHub:KuHubProject:1.0-SNAPSHOT (/app/pom.xml) has 1 error
-Error: ERROR]     Non-resolvable parent POM for KuHub:KuHubProject:1.0-SNAPSHOT: The following artifacts could not be resolved: org.springframework.boot:spring-boot-starter-parent:pom:3.4.3 (absent): Could not transfer artifact org.springframework.boot:spring-boot-starter-parent:pom:3.4.3 from/to central (https://repo.maven.apache.org/maven2): status code: 403, reason phrase: Forbidden (403) and 'parent.relativePath' points at no local POM @ line 7, column 10 -> [Help 2]
-Error: ERROR]
-Error: ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
-Error: ERROR] Re-run Maven using the -X switch to enable full debug logging.
-Error: ERROR]
-Error: ERROR] For more information about the errors and possible solutions, please read the following articles:
-Error: ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/ProjectBuildingException
-Error: ERROR] [Help 2] http://cwiki.apache.org/confluence/display/MAVEN/UnresolvableModelException
-------
-Dockerfile:12
---------------------
-  10 |
-  11 |     # 3. Construimos solo el backend, pero con acceso al padre
-  12 | >>> RUN mvn clean package -pl backend -am -DskipTests
-  13 |
-  14 |     # ETAPA 2: Run
---------------------
-ERROR: failed to build: failed to solve: process "/bin/sh -c mvn clean package -pl backend -am -DskipTests" did not complete successfully: exit code: 1
-Error: buildx failed with: ERROR: failed to build: failed to solve: process "/bin/sh -c mvn clean package -pl backend -am -DskipTests" did not complete successfully: exit code:
+FROM proveedor prov
+INNER JOIN proveedor_producto pp ON prov.id_proveedor = pp.id_proveedor
+INNER JOIN producto p ON pp.id_producto = p.id_producto
+INNER JOIN categoria c ON p.id_categoria = c.id_categoria
+INNER JOIN unidad_medida u ON p.id_unidad = u.id_unidad
+WHERE
+    (
+        p.nombre_producto ILIKE :searchTerm
+        OR p.cod_producto ILIKE :searchTerm
+        OR p.descripcion_producto ILIKE :searchTerm
+    )
+    -- Verificaciones de estado activo en toda la cadena
+    AND prov.activo = TRUE
+    AND pp.activo = TRUE
+    AND p.activo = TRUE
+    AND c.activo = TRUE
+    AND u.activo = TRUE
+-- El GROUP BY se mantiene intacto porque seguimos usando la función de agregación json_agg
+GROUP BY
+    prov.id_proveedor,
+    prov.rut_proveedor,
+    prov.nombre_distribuidora,
+    prov.nombre_proveedor,
+    prov.email_proveedor,
+    prov.estado_proveedor;

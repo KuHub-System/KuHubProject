@@ -5,10 +5,12 @@ import KuHub.modules.gestion_proveedor.dtos.request.ProveedorCreateDTO;
 import KuHub.modules.gestion_proveedor.dtos.request.ProveedorProductoAddDTO;
 import KuHub.modules.gestion_proveedor.dtos.request.ProveedorProductoUpdateDTO;
 import KuHub.modules.gestion_proveedor.dtos.request.ProveedorUpdateDTO;
+import KuHub.modules.gestion_proveedor.dtos.response.BusquedaProductosGlobalDTO;
 import KuHub.modules.gestion_proveedor.dtos.response.CotizacionProveedorDTO;
 import KuHub.modules.gestion_proveedor.dtos.response.DiaEntregaResponseDTO;
 import KuHub.modules.gestion_proveedor.dtos.response.ProductoConPrecioDTO;
 import KuHub.modules.gestion_proveedor.dtos.response.ProductoDisponibleDTO;
+import KuHub.modules.gestion_proveedor.dtos.response.ProductoBuscadoDTO;
 import KuHub.modules.gestion_proveedor.dtos.response.ProveedorDetalleDTO;
 import KuHub.modules.gestion_proveedor.dtos.response.ProveedorListDTO;
 import KuHub.modules.gestion_proveedor.dtos.response.ProveedoresPageResponse;
@@ -647,6 +649,36 @@ public class ProveedorServiceImpl implements ProveedorService {
             log.error("Error al deserializar cotización JSON. JSON={} | Error={}", jsonStr, e.getMessage());
             throw new GestionProveedorException(
                     "Error al procesar la cotización de proveedores.",
+                    HttpStatus.INTERNAL_SERVER_ERROR
+            );
+        }
+    }
+
+    // ══════════════════════════════════════════════════════════════
+    // 8. BÚSQUEDA GLOBAL DE PRODUCTOS
+    // ══════════════════════════════════════════════════════════════
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<BusquedaProductosGlobalDTO> buscarProductosGlobal(String searchTerm) {
+        if (searchTerm == null || searchTerm.trim().isEmpty()) {
+            return List.of();
+        }
+
+        String jsonStr = proveedorRepository.buscarProductosGlobal("%" + searchTerm + "%");
+
+        try {
+            if (jsonStr == null || jsonStr.isBlank() || "null".equals(jsonStr) || "[]".equals(jsonStr)) {
+                return List.of();
+            }
+
+            var typeRef = TypeFactory.defaultInstance()
+                    .constructCollectionType(List.class, BusquedaProductosGlobalDTO.class);
+            return objectMapper.readValue(jsonStr, typeRef);
+        } catch (Exception e) {
+            log.error("Error deserializando búsqueda global JSON para searchTerm='{}': {}", searchTerm, e.getMessage());
+            throw new GestionProveedorException(
+                    "Error al procesar la búsqueda de productos.",
                     HttpStatus.INTERNAL_SERVER_ERROR
             );
         }
