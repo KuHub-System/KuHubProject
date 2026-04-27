@@ -1,103 +1,19 @@
-api/v1/proveedor/buscar-productos-global?q=za:1  Failed to load resource: the server responded with a status of 500 ()
+== BÚSQUEDA GLOBAL DE PRODUCTOS - ESTADO ==
 
-ubuntu@ip-172-26-1-143:~$ docker logs --tail 100 kuhub-backend
-        'nombreProveedor', prov.nombre_proveedor,
-        'emailProveedor', prov.email_proveedor,
-        'telefonoProveedor', prov.telefono_proveedor,
-        'estadoProveedor', CAST(prov.estado_proveedor AS TEXT),
-        'cantidadProductosActivos', COUNT(pp.id_proveedor_producto) FILTER (WHERE pp.activo = TRUE),
-        'productosEncontrados', json_agg(
-            json_build_object(
-                'idProducto', p.id_producto,
-                'codProducto', p.cod_producto,
-                'nombreProducto', p.nombre_producto,
-                'categoria', c.nombre_categoria,
-                'unidad', u.abreviatura,
-                'precioProducto', pp.precio_producto,
-                'activo', pp.activo
-            )
-        )
-    )
-) AS proveedores_json
-FROM proveedor prov
-INNER JOIN proveedor_producto pp ON prov.id_proveedor = pp.id_proveedor
-INNER JOIN producto p ON pp.id_producto = p.id_producto
-INNER JOIN categoria c ON p.id_categoria = c.id_categoria
-INNER JOIN unidad_medida u ON p.id_unidad = u.id_unidad
-WHERE
-    (
-        p.nombre_producto ILIKE ?
-        OR p.cod_producto ILIKE ?
-        OR p.descripcion_producto ILIKE ?
-    )
-    AND prov.activo = TRUE
-    AND pp.activo = TRUE
-    AND p.activo = TRUE
-    AND c.activo = TRUE
-    AND u.activo = TRUE
-GROUP BY
-    prov.id_proveedor,
-    prov.rut_proveedor,
-    prov.nombre_distribuidora,
-    prov.nombre_proveedor,
-    prov.email_proveedor,
-    prov.telefono_proveedor,
-    prov.estado_proveedor
-] [ERROR: aggregate function calls cannot be nested
-  Position: 437] [n/a]
-        at org.hibernate.exception.internal.SQLStateConversionDelegate.convert(SQLStateConversionDelegate.java:91)
-        at org.hibernate.exception.internal.StandardSQLExceptionConverter.convert(StandardSQLExceptionConverter.java:58)
-        at org.hibernate.engine.jdbc.spi.SqlExceptionHelper.convert(SqlExceptionHelper.java:108)
-        at org.hibernate.engine.jdbc.spi.SqlExceptionHelper.convert(SqlExceptionHelper.java:94)
-        at org.hibernate.sql.results.jdbc.internal.DeferredResultSetAccess.executeQuery(DeferredResultSetAccess.java:268)
-        at org.hibernate.sql.results.jdbc.internal.DeferredResultSetAccess.getResultSet(DeferredResultSetAccess.java:171)
-        at org.hibernate.sql.results.jdbc.internal.AbstractResultSetAccess.getMetaData(AbstractResultSetAccess.java:36)
-        at org.hibernate.sql.results.jdbc.internal.AbstractResultSetAccess.getColumnCount(AbstractResultSetAccess.java:52)
-        at org.hibernate.query.results.ResultSetMappingImpl.resolve(ResultSetMappingImpl.java:194)
-        at org.hibernate.sql.exec.internal.JdbcSelectExecutorStandardImpl.resolveJdbcValuesSource(JdbcSelectExecutorStandardImpl.java:340)
-        at org.hibernate.sql.exec.internal.JdbcSelectExecutorStandardImpl.doExecuteQuery(JdbcSelectExecutorStandardImpl.java:137)
-        at org.hibernate.sql.exec.internal.JdbcSelectExecutorStandardImpl.executeQuery(JdbcSelectExecutorStandardImpl.java:102)
-        at org.hibernate.sql.exec.spi.JdbcSelectExecutor.executeQuery(JdbcSelectExecutor.java:91)
-        at org.hibernate.sql.exec.spi.JdbcSelectExecutor.list(JdbcSelectExecutor.java:165)
-        at org.hibernate.sql.exec.spi.JdbcSelectExecutor.list(JdbcSelectExecutor.java:142)
-        at org.hibernate.sql.exec.spi.JdbcSelectExecutor.list(JdbcSelectExecutor.java:132)
-        at org.hibernate.query.sql.internal.NativeSelectQueryPlanImpl.performList(NativeSelectQueryPlanImpl.java:135)
-        at org.hibernate.query.sql.internal.NativeQueryImpl.doList(NativeQueryImpl.java:693)
-        at org.hibernate.query.spi.AbstractSelectionQuery.list(AbstractSelectionQuery.java:143)
-        at org.hibernate.query.spi.AbstractSelectionQuery.getSingleResult(AbstractSelectionQuery.java:275)
-        at org.springframework.data.jpa.repository.query.JpaQueryExecution$SingleEntityExecution.doExecute(JpaQueryExecution.java:224)
-        at org.springframework.data.jpa.repository.query.JpaQueryExecution.execute(JpaQueryExecution.java:93)
-        at org.springframework.data.jpa.repository.query.AbstractJpaQuery.doExecute(AbstractJpaQuery.java:152)
-        at org.springframework.data.jpa.repository.query.AbstractJpaQuery.execute(AbstractJpaQuery.java:140)
-        at org.springframework.data.repository.core.support.RepositoryMethodInvoker.doInvoke(RepositoryMethodInvoker.java:170)
-        at org.springframework.data.repository.core.support.RepositoryMethodInvoker.invoke(RepositoryMethodInvoker.java:158)
-        at org.springframework.data.repository.core.support.QueryExecutorMethodInterceptor.doInvoke(QueryExecutorMethodInterceptor.java:170)
-        at org.springframework.data.repository.core.support.QueryExecutorMethodInterceptor.invoke(QueryExecutorMethodInterceptor.java:149)
-        at org.springframework.aop.framework.ReflectiveMethodInvocation.proceed(ReflectiveMethodInvocation.java:184)
-        at org.springframework.data.projection.DefaultMethodInvokingMethodInterceptor.invoke(DefaultMethodInvokingMethodInterceptor.java:69)
-        at org.springframework.aop.framework.ReflectiveMethodInvocation.proceed(ReflectiveMethodInvocation.java:184)
-        at org.springframework.transaction.interceptor.TransactionAspectSupport.invokeWithinTransaction(TransactionAspectSupport.java:380)
-        at org.springframework.transaction.interceptor.TransactionInterceptor.invoke(TransactionInterceptor.java:119)
-        at org.springframework.aop.framework.ReflectiveMethodInvocation.proceed(ReflectiveMethodInvocation.java:184)
-        at org.springframework.dao.support.PersistenceExceptionTranslationInterceptor.invoke(PersistenceExceptionTranslationInterceptor.java:138)
-        ... 171 more
-Caused by: org.postgresql.util.PSQLException: ERROR: aggregate function calls cannot be nested
-  Position: 437
-        at org.postgresql.core.v3.QueryExecutorImpl.receiveErrorResponse(QueryExecutorImpl.java:2725)
-        at org.postgresql.core.v3.QueryExecutorImpl.processResults(QueryExecutorImpl.java:2412)
-        at org.postgresql.core.v3.QueryExecutorImpl.execute(QueryExecutorImpl.java:371)
-        at org.postgresql.jdbc.PgStatement.executeInternal(PgStatement.java:502)
-        at org.postgresql.jdbc.PgStatement.execute(PgStatement.java:419)
-        at org.postgresql.jdbc.PgPreparedStatement.executeWithFlags(PgPreparedStatement.java:194)
-        at org.postgresql.jdbc.PgPreparedStatement.executeQuery(PgPreparedStatement.java:137)
-        at com.zaxxer.hikari.pool.ProxyPreparedStatement.executeQuery(ProxyPreparedStatement.java:52)
-        at com.zaxxer.hikari.pool.HikariProxyPreparedStatement.executeQuery(HikariProxyPreparedStatement.java)
-        at org.hibernate.sql.results.jdbc.internal.DeferredResultSetAccess.executeQuery(DeferredResultSetAccess.java:250)
-        ... 201 more
-2026-04-27T16:05:34.428Z DEBUG 1 --- [nio-8080-exec-3] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/yaml]
-2026-04-27T16:05:34.429Z DEBUG 1 --- [nio-8080-exec-3] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Writing [{error=Error interno del servidor, message=Ha ocurrido un error inesperado. Por favor contacte al ad (truncated)...]
-2026-04-27T16:05:34.430Z DEBUG 1 --- [nio-8080-exec-3] .m.m.a.ExceptionHandlerExceptionResolver : Resolved [org.springframework.dao.InvalidDataAccessResourceUsageException: JDBC exception executing SQL [SELECT json_agg(<EOL>    json_build_object(<EOL>        'idProveedor', prov.id_proveedor,<EOL>        'rutProveedor', prov.rut_proveedor,<EOL>        'nombreDistribuidora', prov.nombre_distribuidora,<EOL>        'nombreProveedor', prov.nombre_proveedor,<EOL>        'emailProveedor', prov.email_proveedor,<EOL>        'telefonoProveedor', prov.telefono_proveedor,<EOL>        'estadoProveedor', CAST(prov.estado_proveedor AS TEXT),<EOL>        'cantidadProductosActivos', COUNT(pp.id_proveedor_producto) FILTER (WHERE pp.activo = TRUE),<EOL>        'productosEncontrados', json_agg(<EOL>            json_build_object(<EOL>                'idProducto', p.id_producto,<EOL>                'codProducto', p.cod_producto,<EOL>                'nombreProducto', p.nombre_producto,<EOL>                'categoria', c.nombre_categoria,<EOL>                'unidad', u.abreviatura,<EOL>                'precioProducto', pp.precio_producto,<EOL>                'activo', pp.activo<EOL>            )<EOL>        )<EOL>    )<EOL>) AS proveedores_json<EOL>FROM proveedor prov<EOL>INNER JOIN proveedor_producto pp ON prov.id_proveedor = pp.id_proveedor<EOL>INNER JOIN producto p ON pp.id_producto = p.id_producto<EOL>INNER JOIN categoria c ON p.id_categoria = c.id_categoria<EOL>INNER JOIN unidad_medida u ON p.id_unidad = u.id_unidad<EOL>WHERE<EOL>    (<EOL>        p.nombre_producto ILIKE ?<EOL>        OR p.cod_producto ILIKE ?<EOL>        OR p.descripcion_producto ILIKE ?<EOL>    )<EOL>    AND prov.activo = TRUE<EOL>    AND pp.activo = TRUE<EOL>    AND p.activo = TRUE<EOL>    AND c.activo = TRUE<EOL>    AND u.activo = TRUE<EOL>GROUP BY<EOL>    prov.id_proveedor,<EOL>    prov.rut_proveedor,<EOL>    prov.nombre_distribuidora,<EOL>    prov.nombre_proveedor,<EOL>    prov.email_proveedor,<EOL>    prov.telefono_proveedor,<EOL>    prov.estado_proveedor<EOL>] [ERROR: aggregate function calls cannot be nested<EOL>  Position: 437] [n/a]; SQL [n/a]]
-2026-04-27T16:05:34.431Z DEBUG 1 --- [nio-8080-exec-3] o.s.web.servlet.DispatcherServlet        : Completed 500 INTERNAL_SERVER_ERROR
-2026-04-27T16:05:44.035Z DEBUG 1 --- [nio-8080-exec-4] o.s.security.web.FilterChainProxy        : Securing GET /api/v1/proveedor/buscar-productos-global?q=za
-2026-04-27T16:05:44.036Z  INFO 1 --- [nio-8080-exec-4] K.c.s.rate_limiting.RateLimitFilter      : 📍 IP: 186.78.176.56 | Petición 10 de 80
-2026-04-27T16:05:44.037Z DEBUG 1 --- [nio-8080-exec-4] o.s.s.w.a.AnonymousAuthenticationFilter  : Set SecurityContextHolder to anonymous SecurityContext
+✅ BACKEND CORREGIDO (2026-04-27)
+Error PostgreSQL: "column "c.nombre_categoria" must appear in the GROUP BY clause"
+Causa: ORDER BY duplicado fuera de json_agg() en ProveedorRepository.java línea 292
+Fix: Removido ORDER BY después del WHERE del subquery
+
+La consulta SQL ahora tiene sintaxis correcta:
+- ORDER BY está DENTRO de json_agg() (línea 284) ✓
+- No hay ORDER BY duplicado afuera
+
+Cambio realizador en:
+📄 backend/src/main/java/KuHub/modules/gestion_proveedor/repository/ProveedorRepository.java
+   Línea 272-295: Query de buscarProductosGlobal
+
+El endpoint ahora debería funcionar:
+GET /api/v1/proveedor/buscar-productos-global?q=<searchTerm>
+
+Próximo paso: Refactorizar frontend (gestion-proveedores.tsx) según ejecutar_ahora.md

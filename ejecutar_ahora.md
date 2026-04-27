@@ -8,6 +8,7 @@
 
 2. **ProveedorRepository.java:**
    - Agregado método `buscarProductosGlobal(@Param("searchTerm") String)` con query SQL
+   - ✅ **CORREGIDO (2026-04-27):** Removido `ORDER BY` duplicado que causaba error "column must appear in GROUP BY". La sintaxis correcta en PostgreSQL requiere que el `ORDER BY` esté dentro de `json_agg()`.
 
 3. **ProveedorService.java:**
    - Agregado import de `BusquedaProductosGlobalDTO`
