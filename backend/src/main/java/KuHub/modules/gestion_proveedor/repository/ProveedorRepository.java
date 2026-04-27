@@ -282,14 +282,13 @@ public interface ProveedorRepository extends JpaRepository<Proveedor, Integer> {
                                 'precioProducto', pp.precio_producto,
                                 'activo', pp.activo,
                                 'fechaActualizacion', pp.fecha_actualizacion
-                            )
+                            ) ORDER BY c.nombre_categoria ASC, p.nombre_producto ASC
                         )
                         FROM proveedor_producto pp
                         INNER JOIN producto p ON pp.id_producto = p.id_producto
                         INNER JOIN categoria c ON p.id_categoria = c.id_categoria
                         INNER JOIN unidad_medida u ON p.id_unidad = u.id_unidad
                         WHERE pp.id_proveedor = prov.id_proveedor
-                        AND pp.activo = TRUE
                         AND p.activo = TRUE
                         AND c.activo = TRUE
                         AND u.activo = TRUE
@@ -320,7 +319,6 @@ public interface ProveedorRepository extends JpaRepository<Proveedor, Integer> {
                     INNER JOIN categoria c ON p.id_categoria = c.id_categoria
                     INNER JOIN unidad_medida u ON p.id_unidad = u.id_unidad
                     WHERE pp.id_proveedor = prov.id_proveedor
-                    AND pp.activo = TRUE
                     AND p.activo = TRUE
                     AND c.activo = TRUE
                     AND u.activo = TRUE
