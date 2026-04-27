@@ -409,9 +409,8 @@ const GestionProveedoresPage: React.FC = () => {
   const [loadingBusqueda, setLoadingBusqueda] = React.useState(false);
   const [errorBusqueda, setErrorBusqueda] = React.useState<string | null>(null);
 
-  // ── Filtros de búsqueda global ──
-  const [estadoProveedorFiltro, setEstadoProveedorFiltro] = React.useState<'DISPONIBLE' | 'NO_DISPONIBLE' | ''>('');
-  const [precioOrdenFiltro, setPrecioOrdenFiltro] = React.useState<'precio-asc' | 'precio-desc' | ''>('');
+  // ── Filtros de búsqueda global (multi-select consolidado) ──
+  const [selectedFilterOptions, setSelectedFilterOptions] = React.useState<Set<string>>(new Set());
 
   // ── Control de expansión en resultados de búsqueda ──
   const [expandedSearchResults, setExpandedSearchResults] = React.useState<Set<number>>(new Set());
@@ -569,17 +568,25 @@ const GestionProveedoresPage: React.FC = () => {
   const aplicarFiltrosResultados = React.useMemo(() => {
     let resultado = resultadosBusqueda;
 
-    // Filtrar por estado del proveedor
-    if (estadoProveedorFiltro) {
-      resultado = resultado.filter(r => r.estadoProveedor === estadoProveedorFiltro);
+    // Extraer filtros de estado del multiselect
+    const estadoFiltros = Array.from(selectedFilterOptions)
+      .filter(opt => opt.startsWith('estado-'))
+      .map(opt => opt.replace('estado-', '') as EstadoProveedor);
+
+    // Filtrar por estado(s) si hay seleccionados
+    if (estadoFiltros.length > 0) {
+      resultado = resultado.filter(r => estadoFiltros.includes(r.estadoProveedor));
     }
 
-    // Ordenar por precio
-    if (precioOrdenFiltro) {
+    // Extraer filtro de precio del multiselect
+    const precioFiltro = Array.from(selectedFilterOptions).find(opt => opt.startsWith('precio-'));
+
+    // Ordenar por precio si hay seleccionado
+    if (precioFiltro) {
       resultado = [...resultado].map(proveedor => ({
         ...proveedor,
         productosEncontrados: [...proveedor.productosEncontrados].sort((a, b) => {
-          const orden = precioOrdenFiltro === 'precio-asc' ? 1 : -1;
+          const orden = precioFiltro === 'precio-asc' ? 1 : -1;
           return (a.precioProducto - b.precioProducto) * orden;
         }),
       }));
@@ -594,7 +601,7 @@ const GestionProveedoresPage: React.FC = () => {
     }
 
     return resultado;
-  }, [resultadosBusqueda, estadoProveedorFiltro, precioOrdenFiltro, mostrarInactivosBusqueda]);
+  }, [resultadosBusqueda, selectedFilterOptions, mostrarInactivosBusqueda]);
 
   // ── Acciones de proveedor ─────────────────────────────────────────────────
 
@@ -935,62 +942,63 @@ const GestionProveedoresPage: React.FC = () => {
         {/* ── NUEVO: Buscador Global de Productos ── */}
         <Card className="shadow-sm bg-default-50 dark:bg-content1 border border-default-200 dark:border-default-100">
           <CardBody className="p-4 space-y-4">
-            <div className="flex flex-col gap-3 p-3 bg-success-50 dark:bg-success-50/20 rounded-lg border border-success-200 dark:border-success-100/30">
-              <p className="text-xs font-semibold text-success-700 dark:text-success-500 uppercase tracking-wide">
+            <div className="flex flex-col gap-3 p-3 bg-warning-50 dark:bg-warning-50/20 rounded-lg border border-warning-200 dark:border-warning-100/30">
+              <p className="text-xs font-semibold text-warning-700 dark:text-warning-500 uppercase tracking-wide">
                 🔍 Buscar Producto en Todos los Proveedores
               </p>
 
-              {/* Fila: Input búsqueda */}
-              <div>
-                <Input
-                  placeholder="Ingresa el nombre o código del producto..."
-                  value={busquedaGlobal}
-                  onValueChange={setBusquedaGlobal}
-                  startContent={<Icon icon="lucide:package-search" className="text-success-500" />}
-                  variant="bordered"
-                  classNames={{ inputWrapper: 'bg-white dark:bg-default-100/50 border-success-300 dark:border-success-200/50' }}
-                  isClearable
-                  onClear={() => setBusquedaGlobal('')}
-                  size="sm"
-                />
-              </div>
+              {/* Fila: Input búsqueda + Filtros consolidados */}
+              <div className="flex flex-col md:flex-row gap-3 items-start md:items-end">
+                {/* Input búsqueda */}
+                <div className="flex-1 min-w-0">
+                  <Input
+                    placeholder="Ingresa el nombre o código del producto..."
+                    value={busquedaGlobal}
+                    onValueChange={setBusquedaGlobal}
+                    startContent={<Icon icon="lucide:package-search" className="text-warning-500" />}
+                    variant="bordered"
+                    classNames={{ inputWrapper: 'bg-white dark:bg-default-100/50 border-warning-300 dark:border-warning-200/50' }}
+                    isClearable
+                    onClear={() => setBusquedaGlobal('')}
+                    size="sm"
+                  />
+                </div>
 
-              {/* Fila: Filtros */}
-              <div className="flex flex-col md:flex-row gap-2 items-start md:items-end">
-                {/* Estado Proveedor */}
+                {/* Multi-select consolidado para filtros y ordenamiento */}
                 <Select
-                  label="Estado Proveedor"
-                  selectedKeys={estadoProveedorFiltro ? new Set([estadoProveedorFiltro]) : new Set()}
-                  onSelectionChange={(keys) => {
-                    const val = Array.from(keys)[0] as string;
-                    setEstadoProveedorFiltro(val as EstadoProveedor | '');
-                  }}
-                  className="w-full md:w-48"
+                  label="Filtrar & Ordenar"
+                  placeholder="Seleccione opciones..."
+                  selectedKeys={selectedFilterOptions}
+                  onSelectionChange={(keys) => setSelectedFilterOptions(new Set(keys))}
+                  className="w-full md:w-64"
                   variant="bordered"
-                  classNames={{ trigger: 'bg-white dark:bg-default-100/50 border-success-300 dark:border-success-200/50' }}
+                  selectionMode="multiple"
+                  closeOnSelect={false}
+                  classNames={{ trigger: 'bg-white dark:bg-default-100/50 border-warning-300 dark:border-warning-200/50' }}
                   size="sm"
+                  description={selectedFilterOptions.size > 0 ? `${selectedFilterOptions.size} filtro(s) activo(s)` : undefined}
+                  startContent={<Icon icon="lucide:filter" className="text-warning-500" width={16} />}
                 >
-                  <SelectItem key="" textValue="Todos">Todos</SelectItem>
-                  <SelectItem key="DISPONIBLE" textValue="Disponible">Disponible</SelectItem>
-                  <SelectItem key="NO_DISPONIBLE" textValue="No Disponible">No Disponible</SelectItem>
-                </Select>
+                  {/* Grupo Estado */}
+                  <SelectItem key="estado-DISPONIBLE" value="estado-DISPONIBLE">
+                    Estado: Disponible
+                  </SelectItem>
+                  <SelectItem key="estado-NO_DISPONIBLE" value="estado-NO_DISPONIBLE">
+                    Estado: No Disponible
+                  </SelectItem>
 
-                {/* Ordenar por Precio */}
-                <Select
-                  label="Ordenar Precio"
-                  selectedKeys={precioOrdenFiltro ? new Set([precioOrdenFiltro]) : new Set()}
-                  onSelectionChange={(keys) => {
-                    const val = Array.from(keys)[0] as string;
-                    setPrecioOrdenFiltro(val as 'precio-asc' | 'precio-desc' | '');
-                  }}
-                  className="w-full md:w-48"
-                  variant="bordered"
-                  classNames={{ trigger: 'bg-white dark:bg-default-100/50 border-success-300 dark:border-success-200/50' }}
-                  size="sm"
-                >
-                  <SelectItem key="" textValue="Sin ordenar">Sin ordenar</SelectItem>
-                  <SelectItem key="precio-asc" textValue="Menor Precio">Menor Precio</SelectItem>
-                  <SelectItem key="precio-desc" textValue="Mayor Precio">Mayor Precio</SelectItem>
+                  {/* Separador visual */}
+                  <SelectItem key="__divider__" textValue="───" isReadOnly disabled>
+                    ───── Ordenar por Precio ─────
+                  </SelectItem>
+
+                  {/* Grupo Precio */}
+                  <SelectItem key="precio-asc" value="precio-asc">
+                    Menor Precio Primero
+                  </SelectItem>
+                  <SelectItem key="precio-desc" value="precio-desc">
+                    Mayor Precio Primero
+                  </SelectItem>
                 </Select>
               </div>
 
@@ -1001,18 +1009,18 @@ const GestionProveedoresPage: React.FC = () => {
                   id="esconderInactivosBusqueda"
                   checked={!mostrarInactivosBusqueda}
                   onChange={(e) => setMostrarInactivosBusqueda(!e.target.checked)}
-                  className="w-4 h-4 rounded cursor-pointer accent-success"
+                  className="w-4 h-4 rounded cursor-pointer accent-warning"
                 />
                 <label
                   htmlFor="esconderInactivosBusqueda"
-                  className="text-xs text-success-700 dark:text-success-500 cursor-pointer hover:text-success-800 transition-colors"
+                  className="text-xs text-warning-700 dark:text-warning-500 cursor-pointer hover:text-warning-800 transition-colors"
                 >
                   Esconder productos deshabilitados
                 </label>
               </div>
 
               {busquedaGlobal && (
-                <p className="text-xs text-success-600 dark:text-success-400">
+                <p className="text-xs text-warning-600 dark:text-warning-400">
                   {loadingBusqueda ? 'Buscando productos...' : `${aplicarFiltrosResultados.length} proveedor(es) encontrado(s)`}
                 </p>
               )}

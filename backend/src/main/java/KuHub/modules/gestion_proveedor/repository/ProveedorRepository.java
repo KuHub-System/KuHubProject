@@ -264,44 +264,70 @@ public interface ProveedorRepository extends JpaRepository<Proveedor, Integer> {
                     'emailProveedor', prov.email_proveedor,
                     'telefonoProveedor', prov.telefono_proveedor,
                     'estadoProveedor', CAST(prov.estado_proveedor AS TEXT),
-                    'cantidadProductosActivos', COUNT(pp.id_proveedor_producto) FILTER (WHERE pp.activo = TRUE),
-                    'productosEncontrados', json_agg(
-                        json_build_object(
-                            'idProducto', p.id_producto,
-                            'codProducto', p.cod_producto,
-                            'nombreProducto', p.nombre_producto,
-                            'categoria', c.nombre_categoria,
-                            'unidad', u.abreviatura,
-                            'precioProducto', pp.precio_producto,
-                            'activo', pp.activo
+                    'cantidadProductosActivos', (
+                        SELECT COUNT(*)
+                        FROM proveedor_producto pp_count
+                        WHERE pp_count.id_proveedor = prov.id_proveedor AND pp_count.activo = TRUE
+                    ),
+                    'productosEncontrados', COALESCE(
+                        (SELECT json_agg(
+                            json_build_object(
+                                'idProducto', p.id_producto,
+                                'codProducto', p.cod_producto,
+                                'nombreProducto', p.nombre_producto,
+                                'categoria', c.nombre_categoria,
+                                'unidad', u.abreviatura,
+                                'precioProducto', pp.precio_producto,
+                                'activo', pp.activo
+                            )
                         )
+                        FROM proveedor_producto pp
+                        INNER JOIN producto p ON pp.id_producto = p.id_producto
+                        INNER JOIN categoria c ON p.id_categoria = c.id_categoria
+                        INNER JOIN unidad_medida u ON p.id_unidad = u.id_unidad
+                        WHERE pp.id_proveedor = prov.id_proveedor
+                        AND pp.activo = TRUE
+                        AND p.activo = TRUE
+                        AND c.activo = TRUE
+                        AND u.activo = TRUE
+                        AND (
+                            p.nombre_producto ILIKE :searchTerm OR
+                            p.cod_producto ILIKE :searchTerm OR
+                            p.descripcion_producto ILIKE :searchTerm
+                        )),
+                        '[]'::json
                     )
                 )
             ) AS proveedores_json
-            FROM proveedor prov
-            INNER JOIN proveedor_producto pp ON prov.id_proveedor = pp.id_proveedor
-            INNER JOIN producto p ON pp.id_producto = p.id_producto
-            INNER JOIN categoria c ON p.id_categoria = c.id_categoria
-            INNER JOIN unidad_medida u ON p.id_unidad = u.id_unidad
-            WHERE
-                (
-                    p.nombre_producto ILIKE :searchTerm
-                    OR p.cod_producto ILIKE :searchTerm
-                    OR p.descripcion_producto ILIKE :searchTerm
+            FROM (
+                SELECT DISTINCT
+                    prov.id_proveedor,
+                    prov.rut_proveedor,
+                    prov.nombre_distribuidora,
+                    prov.nombre_proveedor,
+                    prov.email_proveedor,
+                    prov.telefono_proveedor,
+                    prov.estado_proveedor
+                FROM proveedor prov
+                WHERE prov.activo = TRUE
+                AND EXISTS (
+                    SELECT 1
+                    FROM proveedor_producto pp
+                    INNER JOIN producto p ON pp.id_producto = p.id_producto
+                    INNER JOIN categoria c ON p.id_categoria = c.id_categoria
+                    INNER JOIN unidad_medida u ON p.id_unidad = u.id_unidad
+                    WHERE pp.id_proveedor = prov.id_proveedor
+                    AND pp.activo = TRUE
+                    AND p.activo = TRUE
+                    AND c.activo = TRUE
+                    AND u.activo = TRUE
+                    AND (
+                        p.nombre_producto ILIKE :searchTerm OR
+                        p.cod_producto ILIKE :searchTerm OR
+                        p.descripcion_producto ILIKE :searchTerm
+                    )
                 )
-                AND prov.activo = TRUE
-                AND pp.activo = TRUE
-                AND p.activo = TRUE
-                AND c.activo = TRUE
-                AND u.activo = TRUE
-            GROUP BY
-                prov.id_proveedor,
-                prov.rut_proveedor,
-                prov.nombre_distribuidora,
-                prov.nombre_proveedor,
-                prov.email_proveedor,
-                prov.telefono_proveedor,
-                prov.estado_proveedor
+            ) prov
             """, nativeQuery = true)
     String buscarProductosGlobal(@Param("searchTerm") String searchTerm);
 
