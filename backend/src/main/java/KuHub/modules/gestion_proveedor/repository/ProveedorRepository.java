@@ -288,7 +288,12 @@ public interface ProveedorRepository extends JpaRepository<Proveedor, Integer> {
                         INNER JOIN categoria c ON p.id_categoria = c.id_categoria
                         INNER JOIN unidad_medida u ON p.id_unidad = u.id_unidad
                         WHERE pp.id_proveedor = prov.id_proveedor
-                          AND p.activo = TRUE),
+                          AND p.activo = TRUE
+                          AND (
+                              p.nombre_producto ILIKE :searchTerm OR
+                              p.cod_producto ILIKE :searchTerm OR
+                              p.descripcion_producto ILIKE :searchTerm
+                          )),
                         '[]'::json
                     )
                 )
