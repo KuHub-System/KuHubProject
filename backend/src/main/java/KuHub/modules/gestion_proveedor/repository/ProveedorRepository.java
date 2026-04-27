@@ -274,7 +274,6 @@ public interface ProveedorRepository extends JpaRepository<Proveedor, Integer> {
                             json_build_object(
                                 'idProducto', p.id_producto,
                                 'idProveedorProducto', pp.id_proveedor_producto,
-                                'codProducto', p.cod_producto,
                                 'nombreProducto', p.nombre_producto,
                                 'nombreCategoria', c.nombre_categoria,
                                 'nombreUnidad', u.nombre_unidad,
@@ -289,14 +288,8 @@ public interface ProveedorRepository extends JpaRepository<Proveedor, Integer> {
                         INNER JOIN categoria c ON p.id_categoria = c.id_categoria
                         INNER JOIN unidad_medida u ON p.id_unidad = u.id_unidad
                         WHERE pp.id_proveedor = prov.id_proveedor
-                        AND p.activo = TRUE
-                        AND c.activo = TRUE
-                        AND u.activo = TRUE
-                        AND (
-                            p.nombre_producto ILIKE :searchTerm OR
-                            p.cod_producto ILIKE :searchTerm OR
-                            p.descripcion_producto ILIKE :searchTerm
-                        )),
+                          AND p.activo = TRUE
+                        ORDER BY c.nombre_categoria ASC, p.nombre_producto ASC),
                         '[]'::json
                     )
                 )
@@ -319,14 +312,12 @@ public interface ProveedorRepository extends JpaRepository<Proveedor, Integer> {
                     INNER JOIN categoria c ON p.id_categoria = c.id_categoria
                     INNER JOIN unidad_medida u ON p.id_unidad = u.id_unidad
                     WHERE pp.id_proveedor = prov.id_proveedor
-                    AND p.activo = TRUE
-                    AND c.activo = TRUE
-                    AND u.activo = TRUE
-                    AND (
-                        p.nombre_producto ILIKE :searchTerm OR
-                        p.cod_producto ILIKE :searchTerm OR
-                        p.descripcion_producto ILIKE :searchTerm
-                    )
+                      AND p.activo = TRUE
+                      AND (
+                          p.nombre_producto ILIKE :searchTerm OR
+                          p.cod_producto ILIKE :searchTerm OR
+                          p.descripcion_producto ILIKE :searchTerm
+                      )
                 )
             ) prov
             """, nativeQuery = true)
