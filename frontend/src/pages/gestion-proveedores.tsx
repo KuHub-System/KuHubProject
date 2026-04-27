@@ -412,8 +412,7 @@ const GestionProveedoresPage: React.FC = () => {
   // ── Filtros de búsqueda global (multi-select consolidado) ──
   const [selectedFilterOptions, setSelectedFilterOptions] = React.useState<Set<string>>(new Set());
 
-  // ── Control de expansión en resultados de búsqueda ──
-  const [expandedSearchResults, setExpandedSearchResults] = React.useState<Set<number>>(new Set());
+  // ── Control para ocultar productos inactivos en búsqueda ──
   const [mostrarInactivosBusqueda, setMostrarInactivosBusqueda] = React.useState(true);
 
   // ── Toast simple ──
@@ -583,6 +582,7 @@ const GestionProveedoresPage: React.FC = () => {
 
     // Ordenar por precio si hay seleccionado
     if (precioFiltro) {
+      // Primero, ordenar los productos dentro de cada proveedor
       resultado = [...resultado].map(proveedor => ({
         ...proveedor,
         productosEncontrados: [...proveedor.productosEncontrados].sort((a, b) => {
@@ -590,6 +590,18 @@ const GestionProveedoresPage: React.FC = () => {
           return (a.precioProducto - b.precioProducto) * orden;
         }),
       }));
+
+      // Luego, ordenar los proveedores por el precio mínimo de sus productos
+      resultado.sort((provA, provB) => {
+        const precioMinA = Math.min(...provA.productosEncontrados.map(p => p.precioProducto));
+        const precioMinB = Math.min(...provB.productosEncontrados.map(p => p.precioProducto));
+
+        if (precioFiltro === 'precio-asc') {
+          return precioMinA - precioMinB;
+        } else {
+          return precioMinB - precioMinA;
+        }
+      });
     }
 
     // Filtrar productos inactivos
@@ -1067,139 +1079,12 @@ const GestionProveedoresPage: React.FC = () => {
                 {/* Mostrar resultados de búsqueda SI hay búsqueda */}
                 {busquedaGlobal.trim() ? (
                   <>
-                    {loadingBusqueda && (
-                      <div className="flex justify-center py-16">
-                        <Spinner size="lg" color="success" label="Buscando productos..." />
-                      </div>
-                    )}
-
-                    {!loadingBusqueda && errorBusqueda && (
-                      <Card className="border border-danger-200 bg-danger-50 dark:bg-danger-50/10">
-                        <CardBody className="flex flex-row items-center gap-3 p-4">
-                          <Icon icon="lucide:alert-triangle" className="text-danger" width={22} />
-                          <p className="text-danger text-sm">{errorBusqueda}</p>
-                          <Button size="sm" variant="flat" color="danger" onPress={() => setBusquedaGlobal('')}>
-                            Limpiar búsqueda
-                          </Button>
-                        </CardBody>
-                      </Card>
-                    )}
-
-                    {!loadingBusqueda && !errorBusqueda && aplicarFiltrosResultados.length === 0 && (
-                      <Card className="border border-default-200 bg-default-50">
-                        <CardBody className="flex flex-col items-center gap-2 py-8 text-default-400">
-                          <Icon icon="lucide:package-x" width={40} />
-                          <p className="text-sm text-center">
-                            No se encontró el producto <strong>"{busquedaGlobal}"</strong>
-                          </p>
-                        </CardBody>
-                      </Card>
-                    )}
-
-                    {!loadingBusqueda && !errorBusqueda && aplicarFiltrosResultados.length > 0 && (
-                      <div className="space-y-3">
-                        {aplicarFiltrosResultados.map((resultado) => (
-                          <Card key={resultado.idProveedor} className="shadow-sm border border-default-200 dark:border-default-100">
-                            <CardBody className="p-0">
-                              {/* Header de resultado */}
-                              <div
-                                className="flex flex-col md:flex-row md:items-center justify-between p-4 gap-3 cursor-pointer hover:bg-default-50 dark:hover:bg-default-100/30 transition-colors"
-                                onClick={() => {
-                                  const newExpanded = new Set(expandedSearchResults);
-                                  if (newExpanded.has(resultado.idProveedor)) {
-                                    newExpanded.delete(resultado.idProveedor);
-                                  } else {
-                                    newExpanded.add(resultado.idProveedor);
-                                  }
-                                  setExpandedSearchResults(newExpanded);
-                                }}
-                              >
-                                <div className="flex items-center gap-3">
-                                  <Icon
-                                    icon={expandedSearchResults.has(resultado.idProveedor) ? 'lucide:chevron-down' : 'lucide:chevron-right'}
-                                    className="text-default-400"
-                                    width={20}
-                                  />
-                                  <div>
-                                    <h3 className="font-bold text-base text-secondary">
-                                      {resultado.nombreDistribuidora}
-                                    </h3>
-                                    <div className="flex flex-wrap items-center gap-2 text-xs text-default-500 mt-0.5">
-                                      <span className="flex items-center gap-1">
-                                        <Icon icon="lucide:user" width={12} />
-                                        {resultado.nombreProveedor}
-                                      </span>
-                                      <span className="text-default-300">•</span>
-                                      <span className="flex items-center gap-1">
-                                        <Icon icon="lucide:phone" width={12} />
-                                        {resultado.telefonoProveedor}
-                                      </span>
-                                      <span className="text-default-300">•</span>
-                                      <span className="flex items-center gap-1">
-                                        <Icon icon="lucide:mail" width={12} />
-                                        {resultado.emailProveedor}
-                                      </span>
-                                    </div>
-                                  </div>
-                                </div>
-
-                                <div className="flex items-center gap-3 flex-wrap">
-                                  <Chip color="primary" size="sm" variant="flat">
-                                    {resultado.productosEncontrados.length} producto{resultado.productosEncontrados.length !== 1 ? 's' : ''}
-                                  </Chip>
-                                  {resultado.estadoProveedor === 'DISPONIBLE'
-                                    ? <Chip color="success" size="sm" variant="flat">Disponible</Chip>
-                                    : <Chip color="danger" size="sm" variant="flat">No Disponible</Chip>
-                                  }
-                                </div>
-                              </div>
-
-                              {/* Tabla de productos encontrados (expandible) */}
-                              <AnimatePresence>
-                                {expandedSearchResults.has(resultado.idProveedor) && (
-                                  <motion.div
-                                    initial={{ height: 0, opacity: 0 }}
-                                    animate={{ height: 'auto', opacity: 1 }}
-                                    exit={{ height: 0, opacity: 0 }}
-                                    transition={{ duration: 0.25 }}
-                                    className="overflow-hidden"
-                                  >
-                                    <div className="px-4 pb-4 pt-1 bg-default-50 dark:bg-default-100/20 border-t border-default-100">
-                                      <div className="overflow-x-auto rounded-lg border border-default-200 dark:border-default-100">
-                                        <table className="w-full text-xs">
-                                          <thead className="bg-default-100 dark:bg-default-50">
-                                            <tr>
-                                              <th className="text-left py-2 px-3 font-medium">Producto</th>
-                                              <th className="text-center py-2 px-3 font-medium">Código</th>
-                                              <th className="text-left py-2 px-3 font-medium">Categoría</th>
-                                              <th className="text-center py-2 px-3 font-medium">Unidad</th>
-                                              <th className="text-right py-2 px-3 font-medium">Precio</th>
-                                            </tr>
-                                          </thead>
-                                          <tbody>
-                                            {resultado.productosEncontrados.map((prod) => (
-                                              <tr key={prod.idProducto} className="border-t border-default-100 hover:bg-default-50 dark:hover:bg-default-100/20">
-                                                <td className="py-2 px-3">{prod.nombreProducto}</td>
-                                                <td className="py-2 px-3 text-center text-default-500">{prod.codProducto}</td>
-                                                <td className="py-2 px-3">{prod.categoria}</td>
-                                                <td className="py-2 px-3 text-center">{prod.unidad}</td>
-                                                <td className="py-2 px-3 text-right font-semibold">
-                                                  ${prod.precioProducto.toLocaleString('es-CL', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
-                                                </td>
-                                              </tr>
-                                            ))}
-                                          </tbody>
-                                        </table>
-                                      </div>
-                                    </div>
-                                  </motion.div>
-                                )}
-                              </AnimatePresence>
-                            </CardBody>
-                          </Card>
-                        ))}
-                      </div>
-                    )}
+                    <BusquedaResultados
+                      resultados={aplicarFiltrosResultados}
+                      loading={loadingBusqueda}
+                      error={errorBusqueda}
+                      searchTerm={busquedaGlobal}
+                    />
                   </>
                 ) : (
                   /* MOSTRAR LISTA NORMAL DE PROVEEDORES CUANDO NO HAY BÚSQUEDA */
@@ -1806,6 +1691,245 @@ const ProductosProveedor: React.FC<ProductosProveedorProps> = ({
             </div>
             )}
           </div>
+        );
+      })}
+    </div>
+  );
+};
+
+// ── Sub-componente: resultados de búsqueda global agrupados por proveedor ────────
+
+interface BusquedaResultadosProps {
+  resultados: IBusquedaProductosGlobal[];
+  loading: boolean;
+  error: string | null;
+  searchTerm: string;
+}
+
+const BusquedaResultados: React.FC<BusquedaResultadosProps> = ({
+  resultados,
+  loading,
+  error,
+  searchTerm,
+}) => {
+  const [expandedProveedores, setExpandedProveedores] = React.useState<Set<number>>(
+    new Set(resultados.map(r => r.idProveedor))
+  );
+  const [expandedCategorias, setExpandedCategorias] = React.useState<Set<string>>(new Set());
+
+  if (loading) {
+    return (
+      <div className="flex justify-center py-16">
+        <Spinner size="lg" color="warning" label="Buscando productos..." />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <Card className="border border-danger-200 bg-danger-50 dark:bg-danger-50/10">
+        <CardBody className="flex flex-row items-center gap-3 p-4">
+          <Icon icon="lucide:alert-triangle" className="text-danger" width={22} />
+          <p className="text-danger text-sm">{error}</p>
+        </CardBody>
+      </Card>
+    );
+  }
+
+  if (resultados.length === 0) {
+    return (
+      <Card className="border border-default-200 bg-default-50">
+        <CardBody className="flex flex-col items-center gap-2 py-8 text-default-400">
+          <Icon icon="lucide:package-x" width={40} />
+          <p className="text-sm text-center">
+            No se encontró el producto <strong>"{searchTerm}"</strong>
+          </p>
+        </CardBody>
+      </Card>
+    );
+  }
+
+  const toggleProveedor = (idProveedor: number) => {
+    const newExpanded = new Set(expandedProveedores);
+    if (newExpanded.has(idProveedor)) {
+      newExpanded.delete(idProveedor);
+    } else {
+      newExpanded.add(idProveedor);
+    }
+    setExpandedProveedores(newExpanded);
+  };
+
+  const toggleCategoria = (categoriaKey: string) => {
+    const newExpanded = new Set(expandedCategorias);
+    if (newExpanded.has(categoriaKey)) {
+      newExpanded.delete(categoriaKey);
+    } else {
+      newExpanded.add(categoriaKey);
+    }
+    setExpandedCategorias(newExpanded);
+  };
+
+  return (
+    <div className="space-y-3">
+      {resultados.map((resultado) => {
+        // Agrupar productos por categoría
+        const productosPorCategoria: Record<string, IProductoBuscado[]> = {};
+        resultado.productosEncontrados.forEach(prod => {
+          if (!productosPorCategoria[prod.categoria]) {
+            productosPorCategoria[prod.categoria] = [];
+          }
+          productosPorCategoria[prod.categoria].push(prod);
+        });
+
+        const categorias = Object.keys(productosPorCategoria).sort();
+        const isProveedorExpanded = expandedProveedores.has(resultado.idProveedor);
+
+        return (
+          <Card key={resultado.idProveedor} className="shadow-sm border border-default-200 dark:border-default-100">
+            <CardBody className="p-0">
+              {/* Header del Proveedor */}
+              <div
+                onClick={() => toggleProveedor(resultado.idProveedor)}
+                className="flex flex-col md:flex-row md:items-center justify-between p-4 gap-3 cursor-pointer hover:bg-default-50 dark:hover:bg-default-100/30 transition-colors"
+              >
+                <div className="flex items-center gap-3 flex-1">
+                  <Icon
+                    icon={isProveedorExpanded ? 'lucide:chevron-down' : 'lucide:chevron-right'}
+                    className="text-default-400"
+                    width={20}
+                  />
+                  <div>
+                    <h3 className="font-bold text-base text-secondary">
+                      {resultado.nombreDistribuidora}
+                    </h3>
+                    <div className="flex flex-wrap items-center gap-2 text-xs text-default-500 mt-0.5">
+                      <span className="flex items-center gap-1">
+                        <Icon icon="lucide:user" width={12} />
+                        {resultado.nombreProveedor}
+                      </span>
+                      <span className="text-default-300">•</span>
+                      <span className="flex items-center gap-1">
+                        <Icon icon="lucide:phone" width={12} />
+                        {resultado.telefonoProveedor}
+                      </span>
+                      <span className="text-default-300">•</span>
+                      <span className="flex items-center gap-1">
+                        <Icon icon="lucide:mail" width={12} />
+                        {resultado.emailProveedor}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3 flex-wrap">
+                  <Chip color="primary" size="sm" variant="flat">
+                    {resultado.productosEncontrados.length} producto{resultado.productosEncontrados.length !== 1 ? 's' : ''}
+                  </Chip>
+                  {resultado.estadoProveedor === 'DISPONIBLE'
+                    ? <Chip color="success" size="sm" variant="flat">Disponible</Chip>
+                    : <Chip color="danger" size="sm" variant="flat">No Disponible</Chip>
+                  }
+                </div>
+              </div>
+
+              {/* Contenido expandible: Categorías y productos */}
+              <AnimatePresence>
+                {isProveedorExpanded && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.25 }}
+                    className="overflow-hidden border-t border-default-100"
+                  >
+                    <div className="p-4 space-y-3 bg-default-50 dark:bg-default-100/20">
+                      {/* Mostrar categorías con productos agrupados */}
+                      {categorias.map((categoria) => {
+                        const productosEnCategoria = productosPorCategoria[categoria];
+                        const isCategoriaExpanded = expandedCategorias.has(
+                          `${resultado.idProveedor}-${categoria}`
+                        );
+                        const categoriaKey = `${resultado.idProveedor}-${categoria}`;
+
+                        return (
+                          <div key={categoria}>
+                            {/* Header de categoría */}
+                            <div
+                              onClick={() => toggleCategoria(categoriaKey)}
+                              className="flex items-center justify-between px-3 py-2 mb-1 bg-default-100 dark:bg-default-100/40 rounded-lg cursor-pointer hover:bg-default-200 dark:hover:bg-default-100/60 transition-colors"
+                            >
+                              <div className="flex items-center gap-2">
+                                <Icon
+                                  icon={isCategoriaExpanded ? 'lucide:chevron-down' : 'lucide:chevron-right'}
+                                  width={18}
+                                  className="text-default-500 transition-transform"
+                                />
+                                <p className="text-xs font-semibold text-default-600 dark:text-default-400 uppercase tracking-wide">
+                                  {categoria}
+                                </p>
+                              </div>
+                              <span className="text-xs text-default-400">
+                                {productosEnCategoria.length}
+                              </span>
+                            </div>
+
+                            {/* Tabla de productos */}
+                            {isCategoriaExpanded && (
+                              <div className="overflow-x-auto rounded-lg border border-default-200 dark:border-default-100">
+                                <table className="w-full text-xs" style={{ tableLayout: 'fixed' }}>
+                                  <thead className="bg-default-100 dark:bg-default-50">
+                                    <tr>
+                                      <th className="text-left py-2 px-3 font-medium">Producto</th>
+                                      <th className="text-center py-2 px-3 font-medium w-20">Código</th>
+                                      <th className="text-center py-2 px-3 font-medium w-20">Unidad</th>
+                                      <th className="text-right py-2 px-3 font-medium w-24">Precio</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {productosEnCategoria.map((prod) => (
+                                      <tr
+                                        key={prod.idProducto}
+                                        className={`border-t border-default-100 ${
+                                          !prod.activo
+                                            ? 'bg-default-100/30 dark:bg-default-100/10 opacity-60'
+                                            : 'hover:bg-default-100 dark:hover:bg-default-100/30'
+                                        }`}
+                                      >
+                                        <td className="py-2 px-3">
+                                          <div className="flex items-center gap-2">
+                                            {prod.nombreProducto}
+                                            {!prod.activo && (
+                                              <Chip size="sm" variant="flat" color="default">
+                                                Deshabilitado
+                                              </Chip>
+                                            )}
+                                          </div>
+                                        </td>
+                                        <td className="py-2 px-3 text-center text-default-500">
+                                          {prod.codProducto}
+                                        </td>
+                                        <td className="py-2 px-3 text-center">{prod.unidad}</td>
+                                        <td className="py-2 px-3 text-right font-semibold">
+                                          ${prod.precioProducto.toLocaleString('es-CL', {
+                                            minimumFractionDigits: 0,
+                                            maximumFractionDigits: 2,
+                                          })}
+                                        </td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </CardBody>
+          </Card>
         );
       })}
     </div>
