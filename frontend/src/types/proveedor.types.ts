@@ -200,7 +200,6 @@ export interface ICotizacionResponse {
 export interface IProductoBuscado {
   idProducto: number;
   idProveedorProducto: number;  // PK de la relación proveedor-producto (para acciones)
-  codProducto: string;
   nombreProducto: string;
   nombreCategoria: string;
   nombreUnidad: string;
