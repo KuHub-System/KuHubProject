@@ -1879,12 +1879,12 @@ const BusquedaResultados: React.FC<BusquedaResultadosProps> = ({
                                 <table className="w-full text-xs" style={{ tableLayout: 'fixed' }}>
                                   <thead className="bg-default-100 dark:bg-default-50">
                                     <tr>
-                                      <th className="text-center py-2 px-3 font-medium w-[230px]">Producto</th>
-                                      <th className="text-center py-2 px-3 font-medium w-16">Código</th>
+                                      <th className="text-center py-2 px-3 font-medium w-[290px]">Producto</th>
                                       <th className="text-center py-2 px-3 font-medium w-16">Unidad</th>
                                       <th className="text-center py-2 px-3 font-medium w-20">Precio</th>
                                       <th className="text-center py-2 px-3 font-medium w-16">Estado</th>
                                       <th className="text-center py-2 px-3 font-medium w-20">Actualizado</th>
+                                      <th className="py-2 px-3 font-medium text-center w-16">Acciones</th>
                                     </tr>
                                   </thead>
                                   <tbody>
@@ -1897,13 +1897,10 @@ const BusquedaResultados: React.FC<BusquedaResultadosProps> = ({
                                             : 'hover:bg-default-100 dark:hover:bg-default-100/30'
                                         }`}
                                       >
-                                        <td className="py-2 px-3">
+                                        <td className="py-2 px-3 text-center">
                                           <div className="truncate">{prod.nombreProducto}</div>
                                         </td>
-                                        <td className="py-2 px-3 text-center text-default-500 text-xs">
-                                          {prod.codProducto}
-                                        </td>
-                                        <td className="py-2 px-3 text-center text-xs">
+                                        <td className="py-2 px-3 text-center">
                                           {prod.abreviatura}
                                         </td>
                                         <td className="py-2 px-3 text-center font-semibold">
@@ -1925,6 +1922,19 @@ const BusquedaResultados: React.FC<BusquedaResultadosProps> = ({
                                           {prod.fechaActualizacion
                                             ? new Date(prod.fechaActualizacion).toLocaleDateString('es-CL')
                                             : '—'}
+                                        </td>
+                                        <td className="py-2 px-3 text-center">
+                                          <Tooltip content="Ver opciones">
+                                            <button
+                                              className="text-default-400 hover:text-primary transition-colors"
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                // Acciones placeholder
+                                              }}
+                                            >
+                                              <Icon icon="lucide:more-vertical" width={16} />
+                                            </button>
+                                          </Tooltip>
                                         </td>
                                       </tr>
                                     ))}
