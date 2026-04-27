@@ -246,6 +246,65 @@ public interface ProveedorRepository extends JpaRepository<Proveedor, Integer> {
      * Los productos sin proveedor se agrupan al final.
      * Retorna JSON que debe deserializarse a CotizacionProveedorDTO.CotizacionResponse.
      */
+    /**
+     * Búsqueda global de productos por nombre, código o descripción.
+     * Retorna lista de proveedores que tienen los productos encontrados.
+     * La búsqueda es case-insensitive usando ILIKE en PostgreSQL.
+     *
+     * Retorna JSON array que debe deserializarse a List<BusquedaProductosGlobalDTO>.
+     * Estructura: { id_proveedor, rut_proveedor, nombre_distribuidora, nombre_proveedor, email_proveedor, estado_proveedor, productos_encontrados [...] }
+     */
+    @Query(value = """
+            SELECT json_agg(
+                json_build_object(
+                    'idProveedor', prov.id_proveedor,
+                    'rutProveedor', prov.rut_proveedor,
+                    'nombreDistribuidora', prov.nombre_distribuidora,
+                    'nombreProveedor', prov.nombre_proveedor,
+                    'emailProveedor', prov.email_proveedor,
+                    'telefonoProveedor', prov.telefono_proveedor,
+                    'estadoProveedor', CAST(prov.estado_proveedor AS TEXT),
+                    'cantidadProductosActivos', COUNT(pp.id_proveedor_producto) FILTER (WHERE pp.activo = TRUE),
+                    'productosEncontrados', json_agg(
+                        json_build_object(
+                            'idProducto', p.id_producto,
+                            'codProducto', p.cod_producto,
+                            'nombreProducto', p.nombre_producto,
+                            'categoria', c.nombre_categoria,
+                            'unidad', u.abreviatura,
+                            'precioProducto', pp.precio_producto,
+                            'activo', pp.activo
+                        )
+                    )
+                )
+            ) AS proveedores_json
+            FROM proveedor prov
+            INNER JOIN proveedor_producto pp ON prov.id_proveedor = pp.id_proveedor
+            INNER JOIN producto p ON pp.id_producto = p.id_producto
+            INNER JOIN categoria c ON p.id_categoria = c.id_categoria
+            INNER JOIN unidad_medida u ON p.id_unidad = u.id_unidad
+            WHERE
+                (
+                    p.nombre_producto ILIKE :searchTerm
+                    OR p.cod_producto ILIKE :searchTerm
+                    OR p.descripcion_producto ILIKE :searchTerm
+                )
+                AND prov.activo = TRUE
+                AND pp.activo = TRUE
+                AND p.activo = TRUE
+                AND c.activo = TRUE
+                AND u.activo = TRUE
+            GROUP BY
+                prov.id_proveedor,
+                prov.rut_proveedor,
+                prov.nombre_distribuidora,
+                prov.nombre_proveedor,
+                prov.email_proveedor,
+                prov.telefono_proveedor,
+                prov.estado_proveedor
+            """, nativeQuery = true)
+    String buscarProductosGlobal(@Param("searchTerm") String searchTerm);
+
     @Query(value = """
 WITH
 productos_solicitados AS (

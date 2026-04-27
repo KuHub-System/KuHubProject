@@ -4,6 +4,7 @@ import KuHub.modules.gestion_proveedor.dtos.request.ProveedorCreateDTO;
 import KuHub.modules.gestion_proveedor.dtos.request.ProveedorProductoAddDTO;
 import KuHub.modules.gestion_proveedor.dtos.request.ProveedorProductoUpdateDTO;
 import KuHub.modules.gestion_proveedor.dtos.request.ProveedorUpdateDTO;
+import KuHub.modules.gestion_proveedor.dtos.response.BusquedaProductosGlobalDTO;
 import KuHub.modules.gestion_proveedor.dtos.response.CotizacionProveedorDTO;
 import KuHub.modules.gestion_proveedor.dtos.response.ProductoDisponibleDTO;
 import KuHub.modules.gestion_proveedor.dtos.response.ProveedorDetalleDTO;
@@ -310,5 +311,22 @@ public class ProveedorController {
         return ResponseEntity
                 .status(200)
                 .body(proveedorService.obtenerCotizacionPorRango(request));
+    }
+
+    /**
+     * Búsqueda global de productos por nombre, código o descripción.
+     * Retorna lista de proveedores que tienen los productos encontrados.
+     * La búsqueda es case-insensitive.
+     * ✅ En uso: Consumido por buscarProductosGlobalService en proveedor-service.ts (nueva búsqueda optimizada).
+     *
+     * @param searchTerm Término de búsqueda (nombre, código o descripción del producto)
+     * @return Lista de proveedores con sus productos coincidentes
+     */
+    @GetMapping("/buscar-productos-global")
+    public ResponseEntity<List<BusquedaProductosGlobalDTO>> buscarProductosGlobal(
+            @RequestParam(name = "q") String searchTerm) {
+        return ResponseEntity
+                .status(200)
+                .body(proveedorService.buscarProductosGlobal(searchTerm));
     }
 }

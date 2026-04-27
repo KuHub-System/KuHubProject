@@ -4,6 +4,7 @@ import KuHub.modules.gestion_proveedor.dtos.request.ProveedorCreateDTO;
 import KuHub.modules.gestion_proveedor.dtos.request.ProveedorProductoAddDTO;
 import KuHub.modules.gestion_proveedor.dtos.request.ProveedorProductoUpdateDTO;
 import KuHub.modules.gestion_proveedor.dtos.request.ProveedorUpdateDTO;
+import KuHub.modules.gestion_proveedor.dtos.response.BusquedaProductosGlobalDTO;
 import KuHub.modules.gestion_proveedor.dtos.response.CotizacionProveedorDTO;
 import KuHub.modules.gestion_proveedor.dtos.response.ProductoDisponibleDTO;
 import KuHub.modules.gestion_proveedor.dtos.response.ProveedorDetalleDTO;
@@ -72,4 +73,10 @@ public interface ProveedorService {
 
     /** Obtiene todas las categorías activas como JSON para filtros en el modal de asignar productos. */
     String obtenerCategoriasActivasJson();
+
+    /** Búsqueda global de productos por nombre, código o descripción.
+     *  Retorna lista de proveedores con los productos encontrados.
+     *  La búsqueda es case-insensitive (ILIKE en PostgreSQL).
+     */
+    List<BusquedaProductosGlobalDTO> buscarProductosGlobal(String searchTerm);
 }

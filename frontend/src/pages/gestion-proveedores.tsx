@@ -45,6 +45,7 @@ import {
   obtenerCotizacionPorRangoService,
   obtenerProductosDisponiblesService,
   obtenerCategoriasActivasJsonService,
+  buscarProductosGlobalService,
 } from '../services/proveedor-service';
 import type {
   IProveedor,
@@ -58,6 +59,8 @@ import type {
   IDiaEntregaDTO,
   DiaSemana,
   IProductoDisponibleDTO,
+  IBusquedaProductosGlobal,
+  IProductoBuscado,
 } from '../types/proveedor.types';
 import type { IProductoRecetaSelection } from '../types/producto.types';
 
@@ -342,12 +345,9 @@ const GestionProveedoresPage: React.FC = () => {
   const [isLoading, setIsLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
 
-  // ── Filtros ──
+  // ── Filtros básicos ──
   const [searchTerm, setSearchTerm] = React.useState('');
   const [filtroEstado, setFiltroEstado] = React.useState('');
-  const [globalProductSearch, setGlobalProductSearch] = React.useState('');
-  const [globalSortBy, setGlobalSortBy] = React.useState<'precio-asc' | 'precio-desc' | ''>('');
-  const [globalMostrarInactivos, setGlobalMostrarInactivos] = React.useState(true);
 
   // ── Filas expandidas ──
   const [expandedRows, setExpandedRows] = React.useState<Set<number>>(new Set());
@@ -402,6 +402,20 @@ const GestionProveedoresPage: React.FC = () => {
   const [cotizacionData, setCotizacionData] = React.useState<ICotizacionResponse | null>(null);
   const [loadingCotizacion, setLoadingCotizacion] = React.useState(false);
   const [errorCotizacion, setErrorCotizacion] = React.useState<string | null>(null);
+
+  // ── Búsqueda global optimizada ──
+  const [busquedaGlobal, setBusquedaGlobal] = React.useState('');
+  const [resultadosBusqueda, setResultadosBusqueda] = React.useState<IBusquedaProductosGlobal[]>([]);
+  const [loadingBusqueda, setLoadingBusqueda] = React.useState(false);
+  const [errorBusqueda, setErrorBusqueda] = React.useState<string | null>(null);
+
+  // ── Filtros de búsqueda global ──
+  const [estadoProveedorFiltro, setEstadoProveedorFiltro] = React.useState<'DISPONIBLE' | 'NO_DISPONIBLE' | ''>('');
+  const [precioOrdenFiltro, setPrecioOrdenFiltro] = React.useState<'precio-asc' | 'precio-desc' | ''>('');
+
+  // ── Control de expansión en resultados de búsqueda ──
+  const [expandedSearchResults, setExpandedSearchResults] = React.useState<Set<number>>(new Set());
+  const [mostrarInactivosBusqueda, setMostrarInactivosBusqueda] = React.useState(true);
 
   // ── Toast simple ──
   const [toast, setToast] = React.useState<{ msg: string; type: 'success' | 'error' } | null>(null);
@@ -525,146 +539,62 @@ const GestionProveedoresPage: React.FC = () => {
     });
   };
 
-  // ── Filtrado de proveedores por búsqueda global de productos ─────────────────
+  // ── Búsqueda global optimizada (con debounce) ─────────────────────────────────
 
-  /** Filtra y ordena proveedores por búsqueda global y criterio de ordenamiento */
-  const proveedoresFiltrados = React.useMemo(() => {
-    let resultado = paginatedProveedores;
-
-    // Filtrar por búsqueda global
-    if (globalProductSearch.trim()) {
-      const searchLower = globalProductSearch.toLowerCase();
-      resultado = resultado.filter(proveedor => {
-        const detalle = detalleCache[proveedor.idProveedor];
-        if (!detalle) return false;
-
-        return Object.values(detalle.productosPorCategoria).some(productos =>
-          productos.some(prod =>
-            prod.nombreProducto.toLowerCase().includes(searchLower)
-          )
-        );
-      });
+  React.useEffect(() => {
+    if (!busquedaGlobal.trim()) {
+      setResultadosBusqueda([]);
+      setErrorBusqueda(null);
+      return;
     }
 
-    // Aplicar ordenamiento
-    if (globalSortBy) {
-      resultado = [...resultado].sort((a, b) => {
-        let precioA = Infinity;
-        let precioB = Infinity;
+    const timer = setTimeout(async () => {
+      setLoadingBusqueda(true);
+      setErrorBusqueda(null);
+      try {
+        const data = await buscarProductosGlobalService(busquedaGlobal);
+        setResultadosBusqueda(data);
+      } catch (err: any) {
+        setErrorBusqueda(err.message || 'Error en la búsqueda');
+      } finally {
+        setLoadingBusqueda(false);
+      }
+    }, 500); // Debounce 500ms
 
-        // Obtener precio mínimo del proveedor A
-        const detalleA = detalleCache[a.idProveedor];
-        if (detalleA) {
-          Object.values(detalleA.productosPorCategoria).forEach(productos => {
-            productos.forEach(prod => {
-              if (prod.precioUnitario !== null && prod.precioUnitario !== undefined) {
-                precioA = Math.min(precioA, prod.precioUnitario);
-              }
-            });
-          });
-        }
+    return () => clearTimeout(timer);
+  }, [busquedaGlobal]);
 
-        // Obtener precio mínimo del proveedor B
-        const detalleB = detalleCache[b.idProveedor];
-        if (detalleB) {
-          Object.values(detalleB.productosPorCategoria).forEach(productos => {
-            productos.forEach(prod => {
-              if (prod.precioUnitario !== null && prod.precioUnitario !== undefined) {
-                precioB = Math.min(precioB, prod.precioUnitario);
-              }
-            });
-          });
-        }
+  // ── Aplicar filtros a resultados de búsqueda ────────────────────────────────
 
-        if (globalSortBy === 'precio-asc') {
-          return precioA - precioB;
-        } else {
-          return precioB - precioA;
-        }
-      });
+  const aplicarFiltrosResultados = React.useMemo(() => {
+    let resultado = resultadosBusqueda;
+
+    // Filtrar por estado del proveedor
+    if (estadoProveedorFiltro) {
+      resultado = resultado.filter(r => r.estadoProveedor === estadoProveedorFiltro);
+    }
+
+    // Ordenar por precio
+    if (precioOrdenFiltro) {
+      resultado = [...resultado].map(proveedor => ({
+        ...proveedor,
+        productosEncontrados: [...proveedor.productosEncontrados].sort((a, b) => {
+          const orden = precioOrdenFiltro === 'precio-asc' ? 1 : -1;
+          return (a.precioProducto - b.precioProducto) * orden;
+        }),
+      }));
+    }
+
+    // Filtrar productos inactivos
+    if (!mostrarInactivosBusqueda) {
+      resultado = resultado.map(proveedor => ({
+        ...proveedor,
+        productosEncontrados: proveedor.productosEncontrados.filter(p => p.activo),
+      }));
     }
 
     return resultado;
-  }, [paginatedProveedores, globalProductSearch, globalSortBy, detalleCache]);
-
-  // ── Cargar todos los detalles cuando hay búsqueda global (con debounce) ────────
-
-  React.useEffect(() => {
-    if (!globalProductSearch.trim()) return;
-
-    const timer = setTimeout(async () => {
-      // Cargar detalles de todos los proveedores que no estén en caché
-      const proveedoresACargar = proveedores.filter(p => !detalleCache[p.idProveedor]);
-
-      if (proveedoresACargar.length === 0) return;
-
-      for (const proveedor of proveedoresACargar) {
-        if (!detalleCache[proveedor.idProveedor]) {
-          try {
-            const detalle = await obtenerProveedorDetalleService(proveedor.idProveedor);
-            setDetalleCache(prev => ({ ...prev, [proveedor.idProveedor]: detalle }));
-          } catch (err) {
-            // Silenciosamente ignorar errores de carga individual
-            console.warn(`No se pudo cargar detalle de proveedor ${proveedor.idProveedor}`);
-          }
-        }
-      }
-    }, 500); // Debounce de 500ms
-
-    return () => clearTimeout(timer);
-  }, [globalProductSearch, proveedores, detalleCache]);
-
-  // ── Cargar todos los detalles cuando se aplica ordenamiento ───────────────────
-
-  React.useEffect(() => {
-    if (!globalSortBy) return;
-
-    const loadDetails = async () => {
-      const proveedoresACargar = proveedores.filter(p => !detalleCache[p.idProveedor]);
-
-      if (proveedoresACargar.length === 0) return;
-
-      for (const proveedor of proveedoresACargar) {
-        try {
-          const detalle = await obtenerProveedorDetalleService(proveedor.idProveedor);
-          setDetalleCache(prev => ({ ...prev, [proveedor.idProveedor]: detalle }));
-        } catch (err) {
-          console.warn(`No se pudo cargar detalle de proveedor ${proveedor.idProveedor}`);
-        }
-      }
-    };
-
-    loadDetails();
-  }, [globalSortBy, proveedores, detalleCache]);
-
-  // ── Auto-expandir cuando hay búsqueda global ──────────────────────────────────
-
-  React.useEffect(() => {
-    if (!globalProductSearch.trim()) return;
-
-    // Expandir automáticamente proveedores con coincidencias
-    const newExpanded = new Set(expandedRows);
-    let hasChanges = false;
-
-    proveedoresFiltrados.forEach(proveedor => {
-      if (!newExpanded.has(proveedor.idProveedor)) {
-        newExpanded.add(proveedor.idProveedor);
-        hasChanges = true;
-      }
-    });
-
-    if (hasChanges) {
-      setExpandedRows(newExpanded);
-    }
-  }, [proveedoresFiltrados, globalProductSearch]);
-
-  // ── Minimizar proveedores cuando se limpia la búsqueda global ──────────────
-
-  React.useEffect(() => {
-    if (!globalProductSearch.trim()) {
-      setExpandedRows(new Set());
-    }
-  }, [globalProductSearch]);
+  }, [resultadosBusqueda, estadoProveedorFiltro, precioOrdenFiltro, mostrarInactivosBusqueda]);
 
   // ── Acciones de proveedor ─────────────────────────────────────────────────
 
@@ -709,7 +639,7 @@ const GestionProveedoresPage: React.FC = () => {
     try {
       await eliminarProveedorService(proveedorAEliminar.idProveedor);
       showToast(`Proveedor "${proveedorAEliminar.nombreDistribuidora}" eliminado correctamente`);
-      await cargarProveedores();
+      await cargarProveedoresPaginados(1, true);
     } catch (err: any) {
       showToast(err.message || 'Error al eliminar el proveedor', 'error');
     } finally {
@@ -728,7 +658,7 @@ const GestionProveedoresPage: React.FC = () => {
         showToast('Proveedor actualizado correctamente');
         invalidarCacheProveedor(proveedorSeleccionado.idProveedor);
       }
-      await cargarProveedores();
+      await cargarProveedoresPaginados(1, true);
     } catch (err: any) {
       throw err; // El formulario lo captura y muestra el error
     }
@@ -942,70 +872,7 @@ const GestionProveedoresPage: React.FC = () => {
         {/* Filtros + Acciones */}
         <Card className="shadow-sm bg-default-50 dark:bg-content1 border border-default-200 dark:border-default-100">
           <CardBody className="p-4 space-y-3">
-            {/* Buscador Global de Productos */}
-            <div className="flex flex-col gap-3 p-3 bg-warning-50 dark:bg-warning-50/20 rounded-lg border border-warning-200 dark:border-warning-100/30">
-              <p className="text-xs font-semibold text-warning-700 dark:text-warning-500 uppercase tracking-wide">
-                🔍 Buscar Producto en Todos los Proveedores
-              </p>
-
-              {/* Fila: Input + Ordenamiento */}
-              <div className="flex flex-col md:flex-row gap-2 items-start md:items-end">
-                <div className="flex-1 min-w-0">
-                  <Input
-                    placeholder="Ingresa el nombre del producto..."
-                    value={globalProductSearch}
-                    onValueChange={setGlobalProductSearch}
-                    startContent={<Icon icon="lucide:package-search" className="text-warning-500" />}
-                    variant="bordered"
-                    classNames={{ inputWrapper: 'bg-white dark:bg-default-100/50 border-warning-300 dark:border-warning-200/50' }}
-                    isClearable
-                    onClear={() => setGlobalProductSearch('')}
-                    size="sm"
-                  />
-                </div>
-
-                <Select
-                  placeholder="Ordenar por..."
-                  selectedKeys={globalSortBy ? new Set([globalSortBy]) : new Set()}
-                  onSelectionChange={(keys) => {
-                    const val = Array.from(keys)[0] as string;
-                    setGlobalSortBy(val as 'precio-asc' | 'precio-desc' | '');
-                  }}
-                  className="w-full md:w-48"
-                  variant="bordered"
-                  classNames={{ trigger: 'bg-white dark:bg-default-100/50 border-warning-300 dark:border-warning-200/50' }}
-                  size="sm"
-                >
-                  <SelectItem key="" textValue="Sin ordenar">Sin ordenar</SelectItem>
-                  <SelectItem key="precio-asc" textValue="Menor Precio">Menor Precio</SelectItem>
-                  <SelectItem key="precio-desc" textValue="Mayor Precio">Mayor Precio</SelectItem>
-                </Select>
-              </div>
-
-              {/* Fila: Checkbox deshabilitados */}
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  id="esconderInactivosGlobal"
-                  checked={!globalMostrarInactivos}
-                  onChange={(e) => setGlobalMostrarInactivos(!e.target.checked)}
-                  className="w-4 h-4 rounded cursor-pointer accent-warning"
-                />
-                <label
-                  htmlFor="esconderInactivosGlobal"
-                  className="text-xs text-warning-700 dark:text-warning-500 cursor-pointer hover:text-warning-800 transition-colors"
-                >
-                  Esconder productos deshabilitados
-                </label>
-              </div>
-
-              {globalProductSearch && (
-                <p className="text-xs text-warning-600 dark:text-warning-400">
-                  Expandiendo proveedores y categorías con coincidencias...
-                </p>
-              )}
-            </div>
-
+            {/* Filtros básicos */}
             <div className="flex flex-col md:flex-row gap-3">
               <Input
                 placeholder="Buscar por nombre, distribuidora o RUT..."
@@ -1065,6 +932,94 @@ const GestionProveedoresPage: React.FC = () => {
           </CardBody>
         </Card>
 
+        {/* ── NUEVO: Buscador Global de Productos ── */}
+        <Card className="shadow-sm bg-default-50 dark:bg-content1 border border-default-200 dark:border-default-100">
+          <CardBody className="p-4 space-y-4">
+            <div className="flex flex-col gap-3 p-3 bg-success-50 dark:bg-success-50/20 rounded-lg border border-success-200 dark:border-success-100/30">
+              <p className="text-xs font-semibold text-success-700 dark:text-success-500 uppercase tracking-wide">
+                🔍 Buscar Producto en Todos los Proveedores
+              </p>
+
+              {/* Fila: Input búsqueda */}
+              <div>
+                <Input
+                  placeholder="Ingresa el nombre o código del producto..."
+                  value={busquedaGlobal}
+                  onValueChange={setBusquedaGlobal}
+                  startContent={<Icon icon="lucide:package-search" className="text-success-500" />}
+                  variant="bordered"
+                  classNames={{ inputWrapper: 'bg-white dark:bg-default-100/50 border-success-300 dark:border-success-200/50' }}
+                  isClearable
+                  onClear={() => setBusquedaGlobal('')}
+                  size="sm"
+                />
+              </div>
+
+              {/* Fila: Filtros */}
+              <div className="flex flex-col md:flex-row gap-2 items-start md:items-end">
+                {/* Estado Proveedor */}
+                <Select
+                  label="Estado Proveedor"
+                  selectedKeys={estadoProveedorFiltro ? new Set([estadoProveedorFiltro]) : new Set()}
+                  onSelectionChange={(keys) => {
+                    const val = Array.from(keys)[0] as string;
+                    setEstadoProveedorFiltro(val as EstadoProveedor | '');
+                  }}
+                  className="w-full md:w-48"
+                  variant="bordered"
+                  classNames={{ trigger: 'bg-white dark:bg-default-100/50 border-success-300 dark:border-success-200/50' }}
+                  size="sm"
+                >
+                  <SelectItem key="" textValue="Todos">Todos</SelectItem>
+                  <SelectItem key="DISPONIBLE" textValue="Disponible">Disponible</SelectItem>
+                  <SelectItem key="NO_DISPONIBLE" textValue="No Disponible">No Disponible</SelectItem>
+                </Select>
+
+                {/* Ordenar por Precio */}
+                <Select
+                  label="Ordenar Precio"
+                  selectedKeys={precioOrdenFiltro ? new Set([precioOrdenFiltro]) : new Set()}
+                  onSelectionChange={(keys) => {
+                    const val = Array.from(keys)[0] as string;
+                    setPrecioOrdenFiltro(val as 'precio-asc' | 'precio-desc' | '');
+                  }}
+                  className="w-full md:w-48"
+                  variant="bordered"
+                  classNames={{ trigger: 'bg-white dark:bg-default-100/50 border-success-300 dark:border-success-200/50' }}
+                  size="sm"
+                >
+                  <SelectItem key="" textValue="Sin ordenar">Sin ordenar</SelectItem>
+                  <SelectItem key="precio-asc" textValue="Menor Precio">Menor Precio</SelectItem>
+                  <SelectItem key="precio-desc" textValue="Mayor Precio">Mayor Precio</SelectItem>
+                </Select>
+              </div>
+
+              {/* Checkbox mostrar inactivos */}
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="esconderInactivosBusqueda"
+                  checked={!mostrarInactivosBusqueda}
+                  onChange={(e) => setMostrarInactivosBusqueda(!e.target.checked)}
+                  className="w-4 h-4 rounded cursor-pointer accent-success"
+                />
+                <label
+                  htmlFor="esconderInactivosBusqueda"
+                  className="text-xs text-success-700 dark:text-success-500 cursor-pointer hover:text-success-800 transition-colors"
+                >
+                  Esconder productos deshabilitados
+                </label>
+              </div>
+
+              {busquedaGlobal && (
+                <p className="text-xs text-success-600 dark:text-success-400">
+                  {loadingBusqueda ? 'Buscando productos...' : `${aplicarFiltrosResultados.length} proveedor(es) encontrado(s)`}
+                </p>
+              )}
+            </div>
+          </CardBody>
+        </Card>
+
         {/* Estado de carga / error */}
         {isLoading && (
           <div className="flex justify-center py-16">
@@ -1101,28 +1056,147 @@ const GestionProveedoresPage: React.FC = () => {
               </Card>
             ) : (
               <div className="space-y-3">
-                {globalProductSearch && proveedoresFiltrados.length === 0 ? (
-                  <Card className="border border-default-200 bg-default-50">
-                    <CardBody className="flex flex-col items-center gap-2 py-8 text-default-400">
-                      <Icon icon="lucide:package-x" width={40} />
-                      <p className="text-sm text-center">
-                        No se encontró el producto <strong>"{globalProductSearch}"</strong> en ningún proveedor
-                      </p>
-                    </CardBody>
-                  </Card>
-                ) : (
+                {/* Mostrar resultados de búsqueda SI hay búsqueda */}
+                {busquedaGlobal.trim() ? (
                   <>
-                    {globalProductSearch && (
-                      <Card className="border border-warning-200 bg-warning-50 dark:bg-warning-50/20">
-                        <CardBody className="p-3 flex flex-row items-center gap-2">
-                          <Icon icon="lucide:alert-circle" className="text-warning-600" width={18} />
-                          <p className="text-xs text-warning-700 dark:text-warning-500">
-                            Se encontraron <strong>{proveedoresFiltrados.length}</strong> proveedor{proveedoresFiltrados.length !== 1 ? 'es' : ''} con el producto
+                    {loadingBusqueda && (
+                      <div className="flex justify-center py-16">
+                        <Spinner size="lg" color="success" label="Buscando productos..." />
+                      </div>
+                    )}
+
+                    {!loadingBusqueda && errorBusqueda && (
+                      <Card className="border border-danger-200 bg-danger-50 dark:bg-danger-50/10">
+                        <CardBody className="flex flex-row items-center gap-3 p-4">
+                          <Icon icon="lucide:alert-triangle" className="text-danger" width={22} />
+                          <p className="text-danger text-sm">{errorBusqueda}</p>
+                          <Button size="sm" variant="flat" color="danger" onPress={() => setBusquedaGlobal('')}>
+                            Limpiar búsqueda
+                          </Button>
+                        </CardBody>
+                      </Card>
+                    )}
+
+                    {!loadingBusqueda && !errorBusqueda && aplicarFiltrosResultados.length === 0 && (
+                      <Card className="border border-default-200 bg-default-50">
+                        <CardBody className="flex flex-col items-center gap-2 py-8 text-default-400">
+                          <Icon icon="lucide:package-x" width={40} />
+                          <p className="text-sm text-center">
+                            No se encontró el producto <strong>"{busquedaGlobal}"</strong>
                           </p>
                         </CardBody>
                       </Card>
                     )}
-                    {proveedoresFiltrados.map((proveedor) => (
+
+                    {!loadingBusqueda && !errorBusqueda && aplicarFiltrosResultados.length > 0 && (
+                      <div className="space-y-3">
+                        {aplicarFiltrosResultados.map((resultado) => (
+                          <Card key={resultado.idProveedor} className="shadow-sm border border-default-200 dark:border-default-100">
+                            <CardBody className="p-0">
+                              {/* Header de resultado */}
+                              <div
+                                className="flex flex-col md:flex-row md:items-center justify-between p-4 gap-3 cursor-pointer hover:bg-default-50 dark:hover:bg-default-100/30 transition-colors"
+                                onClick={() => {
+                                  const newExpanded = new Set(expandedSearchResults);
+                                  if (newExpanded.has(resultado.idProveedor)) {
+                                    newExpanded.delete(resultado.idProveedor);
+                                  } else {
+                                    newExpanded.add(resultado.idProveedor);
+                                  }
+                                  setExpandedSearchResults(newExpanded);
+                                }}
+                              >
+                                <div className="flex items-center gap-3">
+                                  <Icon
+                                    icon={expandedSearchResults.has(resultado.idProveedor) ? 'lucide:chevron-down' : 'lucide:chevron-right'}
+                                    className="text-default-400"
+                                    width={20}
+                                  />
+                                  <div>
+                                    <h3 className="font-bold text-base text-secondary">
+                                      {resultado.nombreDistribuidora}
+                                    </h3>
+                                    <div className="flex flex-wrap items-center gap-2 text-xs text-default-500 mt-0.5">
+                                      <span className="flex items-center gap-1">
+                                        <Icon icon="lucide:user" width={12} />
+                                        {resultado.nombreProveedor}
+                                      </span>
+                                      <span className="text-default-300">•</span>
+                                      <span className="flex items-center gap-1">
+                                        <Icon icon="lucide:phone" width={12} />
+                                        {resultado.telefonoProveedor}
+                                      </span>
+                                      <span className="text-default-300">•</span>
+                                      <span className="flex items-center gap-1">
+                                        <Icon icon="lucide:mail" width={12} />
+                                        {resultado.emailProveedor}
+                                      </span>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <div className="flex items-center gap-3 flex-wrap">
+                                  <Chip color="primary" size="sm" variant="flat">
+                                    {resultado.productosEncontrados.length} producto{resultado.productosEncontrados.length !== 1 ? 's' : ''}
+                                  </Chip>
+                                  {resultado.estadoProveedor === 'DISPONIBLE'
+                                    ? <Chip color="success" size="sm" variant="flat">Disponible</Chip>
+                                    : <Chip color="danger" size="sm" variant="flat">No Disponible</Chip>
+                                  }
+                                </div>
+                              </div>
+
+                              {/* Tabla de productos encontrados (expandible) */}
+                              <AnimatePresence>
+                                {expandedSearchResults.has(resultado.idProveedor) && (
+                                  <motion.div
+                                    initial={{ height: 0, opacity: 0 }}
+                                    animate={{ height: 'auto', opacity: 1 }}
+                                    exit={{ height: 0, opacity: 0 }}
+                                    transition={{ duration: 0.25 }}
+                                    className="overflow-hidden"
+                                  >
+                                    <div className="px-4 pb-4 pt-1 bg-default-50 dark:bg-default-100/20 border-t border-default-100">
+                                      <div className="overflow-x-auto rounded-lg border border-default-200 dark:border-default-100">
+                                        <table className="w-full text-xs">
+                                          <thead className="bg-default-100 dark:bg-default-50">
+                                            <tr>
+                                              <th className="text-left py-2 px-3 font-medium">Producto</th>
+                                              <th className="text-center py-2 px-3 font-medium">Código</th>
+                                              <th className="text-left py-2 px-3 font-medium">Categoría</th>
+                                              <th className="text-center py-2 px-3 font-medium">Unidad</th>
+                                              <th className="text-right py-2 px-3 font-medium">Precio</th>
+                                            </tr>
+                                          </thead>
+                                          <tbody>
+                                            {resultado.productosEncontrados.map((prod) => (
+                                              <tr key={prod.idProducto} className="border-t border-default-100 hover:bg-default-50 dark:hover:bg-default-100/20">
+                                                <td className="py-2 px-3">{prod.nombreProducto}</td>
+                                                <td className="py-2 px-3 text-center text-default-500">{prod.codProducto}</td>
+                                                <td className="py-2 px-3">{prod.categoria}</td>
+                                                <td className="py-2 px-3 text-center">{prod.unidad}</td>
+                                                <td className="py-2 px-3 text-right font-semibold">
+                                                  ${prod.precioProducto.toLocaleString('es-CL', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+                                                </td>
+                                              </tr>
+                                            ))}
+                                          </tbody>
+                                        </table>
+                                      </div>
+                                    </div>
+                                  </motion.div>
+                                )}
+                              </AnimatePresence>
+                            </CardBody>
+                          </Card>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  /* MOSTRAR LISTA NORMAL DE PROVEEDORES CUANDO NO HAY BÚSQUEDA */
+                  <>
+                    {paginatedProveedores.map((proveedor) => (
                   <Card
                     key={proveedor.idProveedor}
                     className="shadow-sm border border-default-200 dark:border-default-100 bg-white dark:bg-content1"
@@ -1258,9 +1332,8 @@ const GestionProveedoresPage: React.FC = () => {
                                   onCancelarEditPrecio={() => setEditingPrecio(null)}
                                   onToggleProducto={handleToggleProducto}
                                   onQuitarProducto={handleConfirmarQuitarProducto}
-                                  mostrarInactivos={mostrarInactivos && globalMostrarInactivos}
+                                  mostrarInactivos={mostrarInactivos}
                                   onMostrarInactivosChange={setMostrarInactivos}
-                                  globalProductSearch={globalProductSearch}
                                 />
                               ) : (
                                 <div className="flex justify-center py-6">
@@ -1273,7 +1346,7 @@ const GestionProveedoresPage: React.FC = () => {
                       </AnimatePresence>
                     </CardBody>
                   </Card>
-                ))}
+                    ))}
                   </>
                 )}
 
@@ -1474,7 +1547,6 @@ interface ProductosProveedorProps {
   onQuitarProducto: (idProveedor: number, prod: IProveedorProducto) => void;
   mostrarInactivos?: boolean;
   onMostrarInactivosChange?: (mostrar: boolean) => void;
-  globalProductSearch?: string;
 }
 
 const ProductosProveedor: React.FC<ProductosProveedorProps> = ({
@@ -1491,7 +1563,6 @@ const ProductosProveedor: React.FC<ProductosProveedorProps> = ({
   onQuitarProducto,
   mostrarInactivos = true,
   onMostrarInactivosChange,
-  globalProductSearch = '',
 }) => {
   const categorias = Object.keys(detalle.productosPorCategoria);
   const [expandedCategories, setExpandedCategories] = React.useState<Set<string>>(
@@ -1507,16 +1578,13 @@ const ProductosProveedor: React.FC<ProductosProveedorProps> = ({
     );
   }
 
-  // Filtrar productos según mostrarInactivos y búsqueda (prioriza interna sobre global)
+  // Filtrar productos según mostrarInactivos y búsqueda
   const filtrarProductos = (productos: typeof detalle.productosPorCategoria[string]) => {
     let filtered = mostrarInactivos ? productos : productos.filter(p => p.activo);
 
-    // Prioridad: búsqueda interna > búsqueda global
-    const queryActiva = searchQuery.trim() || globalProductSearch;
-
-    if (queryActiva) {
+    if (searchQuery.trim()) {
       filtered = filtered.filter(p =>
-        p.nombreProducto.toLowerCase().includes(queryActiva.toLowerCase())
+        p.nombreProducto.toLowerCase().includes(searchQuery.toLowerCase())
       );
     }
 
@@ -1542,7 +1610,7 @@ const ProductosProveedor: React.FC<ProductosProveedorProps> = ({
           <Icon icon="lucide:search" width={16} className="text-default-400" />
           <input
             type="text"
-            placeholder={globalProductSearch ? `Refinar búsqueda de "${globalProductSearch}"...` : 'Buscar producto por nombre...'}
+            placeholder="Buscar producto por nombre..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="flex-1 px-3 py-2 text-xs border border-default-200 dark:border-default-100 rounded-lg bg-default-50 dark:bg-default-100/30 focus:outline-none focus:border-primary transition-colors"
@@ -1582,7 +1650,7 @@ const ProductosProveedor: React.FC<ProductosProveedorProps> = ({
         const total = detalle.productosPorCategoria[categoria].length;
 
         // No renderizar categoría si no hay productos coincidentes con búsqueda
-        if (productosEnCategoria.length === 0 && (searchQuery.trim() || globalProductSearch)) {
+        if (productosEnCategoria.length === 0 && searchQuery.trim()) {
           return null;
         }
 
