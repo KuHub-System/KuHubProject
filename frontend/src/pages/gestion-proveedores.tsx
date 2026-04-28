@@ -983,7 +983,8 @@ const GestionProveedoresPage: React.FC = () => {
                     onValueChange={setBusquedaGlobal}
                     startContent={<Icon icon="lucide:package-search" className="text-warning-500" />}
                     variant="bordered"
-                    classNames={{ inputWrapper: 'bg-white dark:bg-default-100/50 border-warning-300 dark:border-warning-200/50' }}
+                    size="md"
+                    classNames={{ inputWrapper: 'bg-white dark:bg-default-100/50 border-warning-300 dark:border-warning-200/50 h-10' }}
                     isClearable
                     onClear={() => setBusquedaGlobal('')}
                   />
