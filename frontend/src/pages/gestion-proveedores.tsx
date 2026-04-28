@@ -1723,9 +1723,19 @@ const BusquedaResultados: React.FC<BusquedaResultadosProps> = ({
   );
   const [expandedCategorias, setExpandedCategorias] = React.useState<Set<string>>(new Set());
 
-  // Actualizar proveedores expandidos cuando los resultados cambian
+  // Actualizar proveedores y categorías expandidos cuando los resultados cambian
   React.useEffect(() => {
+    // Expandir todos los proveedores
     setExpandedProveedores(new Set(resultados.map(r => r.idProveedor)));
+
+    // Expandir todas las categorías
+    const allCategoriaKeys = new Set<string>();
+    resultados.forEach(proveedor => {
+      proveedor.categorias.forEach(categoria => {
+        allCategoriaKeys.add(`${proveedor.idProveedor}-${categoria.nombreCategoria}`);
+      });
+    });
+    setExpandedCategorias(allCategoriaKeys);
   }, [resultados]);
 
   if (loading) {
