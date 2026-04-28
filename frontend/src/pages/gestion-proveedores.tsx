@@ -1717,6 +1717,11 @@ const BusquedaResultados: React.FC<BusquedaResultadosProps> = ({
   );
   const [expandedCategorias, setExpandedCategorias] = React.useState<Set<string>>(new Set());
 
+  // Actualizar proveedores expandidos cuando los resultados cambian
+  React.useEffect(() => {
+    setExpandedProveedores(new Set(resultados.map(r => r.idProveedor)));
+  }, [resultados]);
+
   if (loading) {
     return (
       <div className="flex justify-center py-16">
@@ -1775,10 +1780,10 @@ const BusquedaResultados: React.FC<BusquedaResultadosProps> = ({
         // Agrupar productos por categoría
         const productosPorCategoria: Record<string, IProductoBuscado[]> = {};
         resultado.productosEncontrados.forEach(prod => {
-          if (!productosPorCategoria[prod.categoria]) {
-            productosPorCategoria[prod.categoria] = [];
+          if (!productosPorCategoria[prod.nombreCategoria]) {
+            productosPorCategoria[prod.nombreCategoria] = [];
           }
-          productosPorCategoria[prod.categoria].push(prod);
+          productosPorCategoria[prod.nombreCategoria].push(prod);
         });
 
         const categorias = Object.keys(productosPorCategoria).sort();
