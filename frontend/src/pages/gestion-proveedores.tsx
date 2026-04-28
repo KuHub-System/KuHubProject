@@ -1013,10 +1013,11 @@ const GestionProveedoresPage: React.FC = () => {
                       setSelectedFilterOptions(newKeys);
                     }}
                     className="w-full"
+                    size="md"
                     variant="bordered"
                     selectionMode="multiple"
                     closeOnSelect={false}
-                    classNames={{ trigger: 'bg-white dark:bg-default-100/50 border-warning-300 dark:border-warning-200/50' }}
+                    classNames={{ trigger: 'bg-white dark:bg-default-100/50 border-warning-300 dark:border-warning-200/50 h-10' }}
                     startContent={<Icon icon="lucide:filter" className="text-warning-500" width={16} />}
                   >
                   {/* Grupo Estado - Mutuamente excluyentes */}
