@@ -1783,17 +1783,8 @@ const BusquedaResultados: React.FC<BusquedaResultadosProps> = ({
   return (
     <div className="space-y-3">
       {resultados.map((resultado) => {
-        // Agrupar productos por categoría
-        const productosPorCategoria: Record<string, IProductoBuscado[]> = {};
-        resultado.productosEncontrados.forEach(prod => {
-          if (!productosPorCategoria[prod.nombreCategoria]) {
-            productosPorCategoria[prod.nombreCategoria] = [];
-          }
-          productosPorCategoria[prod.nombreCategoria].push(prod);
-        });
-
-        const categorias = Object.keys(productosPorCategoria).sort();
         const isProveedorExpanded = expandedProveedores.has(resultado.idProveedor);
+        const totalProductos = resultado.categorias.reduce((sum, cat) => sum + cat.productos.length, 0);
 
         return (
           <Card key={resultado.idProveedor} className="shadow-sm border border-default-200 dark:border-default-100">
@@ -1834,7 +1825,7 @@ const BusquedaResultados: React.FC<BusquedaResultadosProps> = ({
 
                 <div className="flex items-center gap-3 flex-wrap">
                   <Chip color="primary" size="sm" variant="flat">
-                    {resultado.productosEncontrados.length} producto{resultado.productosEncontrados.length !== 1 ? 's' : ''}
+                    {totalProductos} producto{totalProductos !== 1 ? 's' : ''}
                   </Chip>
                   {resultado.estadoProveedor === 'DISPONIBLE'
                     ? <Chip color="success" size="sm" variant="flat">Disponible</Chip>
@@ -1855,15 +1846,13 @@ const BusquedaResultados: React.FC<BusquedaResultadosProps> = ({
                   >
                     <div className="p-4 space-y-3 bg-default-50 dark:bg-default-100/20">
                       {/* Mostrar categorías con productos agrupados */}
-                      {categorias.map((categoria) => {
-                        const productosEnCategoria = productosPorCategoria[categoria];
-                        const isCategoriaExpanded = expandedCategorias.has(
-                          `${resultado.idProveedor}-${categoria}`
-                        );
-                        const categoriaKey = `${resultado.idProveedor}-${categoria}`;
+                      {resultado.categorias.map((categoria) => {
+                        const productosEnCategoria = categoria.productos;
+                        const categoriaKey = `${resultado.idProveedor}-${categoria.nombreCategoria}`;
+                        const isCategoriaExpanded = expandedCategorias.has(categoriaKey);
 
                         return (
-                          <div key={categoria}>
+                          <div key={categoriaKey}>
                             {/* Header de categoría */}
                             <div
                               onClick={() => toggleCategoria(categoriaKey)}
@@ -1876,7 +1865,7 @@ const BusquedaResultados: React.FC<BusquedaResultadosProps> = ({
                                   className="text-default-500 transition-transform"
                                 />
                                 <p className="text-xs font-semibold text-default-600 dark:text-default-400 uppercase tracking-wide">
-                                  {categoria}
+                                  {categoria.nombreCategoria}
                                 </p>
                               </div>
                               <span className="text-xs text-default-400">
@@ -1890,7 +1879,8 @@ const BusquedaResultados: React.FC<BusquedaResultadosProps> = ({
                                 <table className="w-full text-xs" style={{ tableLayout: 'fixed' }}>
                                   <thead className="bg-default-100 dark:bg-default-50">
                                     <tr>
-                                      <th className="text-center py-2 px-3 font-medium w-[290px]">Producto</th>
+                                      <th className="text-center py-2 px-3 font-medium w-[200px]">Producto</th>
+                                      <th className="text-center py-2 px-3 font-medium w-16">Código</th>
                                       <th className="text-center py-2 px-3 font-medium w-16">Unidad</th>
                                       <th className="text-center py-2 px-3 font-medium w-20">Precio</th>
                                       <th className="text-center py-2 px-3 font-medium w-16">Estado</th>
@@ -1910,6 +1900,9 @@ const BusquedaResultados: React.FC<BusquedaResultadosProps> = ({
                                       >
                                         <td className="py-2 px-3 text-center">
                                           <div className="truncate">{prod.nombreProducto}</div>
+                                        </td>
+                                        <td className="py-2 px-3 text-center text-xs text-default-500">
+                                          {prod.codProducto || '—'}
                                         </td>
                                         <td className="py-2 px-3 text-center">
                                           {prod.abreviatura}

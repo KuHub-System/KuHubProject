@@ -83,3 +83,39 @@
     ) prov
     """, nativeQuery = true)
 String buscarProductosGlobal(@Param("searchTerm") String searchTerm);
+
+
+Estructura del JSON resultante
+[
+  {
+    "idProveedor": 1,
+    "rutProveedor": "12345678-9",
+    "nombreDistribuidora": "Distribuidora X",
+    "nombreProveedor": "Juan Pérez",
+    "emailProveedor": "juan@x.com",
+    "telefonoProveedor": "912345678",
+    "estadoProveedor": "ACTIVO",
+    "cantidadProductosActivos": 10,
+    "categorias": [                          // ✅ Categoría aparece UNA sola vez
+      {
+        "nombreCategoria": "Bebidas",
+        "productos": [                       // ✅ Productos anidados bajo su categoría
+          {
+            "idProducto": 1,
+            "idProveedorProducto": 5,
+            "nombreProducto": "Coca Cola",
+            "nombreUnidad": "Litro",
+            "abreviatura": "L",
+            "precioProducto": 1500,
+            "activo": true,
+            "fechaActualizacion": "2024-01-15" // ✅ Campo solicitado
+          }
+        ]
+      },
+      {
+        "nombreCategoria": "Lácteos",
+        "productos": [...]
+      }
+    ]
+  }
+]
