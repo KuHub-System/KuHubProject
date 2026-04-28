@@ -275,7 +275,7 @@ public interface ProveedorRepository extends JpaRepository<Proveedor, Integer> {
                                 'idProducto', p.id_producto,
                                 'idProveedorProducto', pp.id_proveedor_producto,
                                 'nombreProducto', p.nombre_producto,
-                                'nombreCategoria', c.nombre_categoria,
+                                'nombreCategoria', COALESCE(c.nombre_categoria, 'Sin Categoría'),
                                 'nombreUnidad', u.nombre_unidad,
                                 'abreviatura', u.abreviatura,
                                 'precioProducto', pp.precio_producto,
