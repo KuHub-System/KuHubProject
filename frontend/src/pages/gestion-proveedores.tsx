@@ -537,12 +537,13 @@ const GestionProveedoresPage: React.FC = () => {
     });
   };
 
-  // ── Búsqueda global optimizada (con debounce) ─────────────────────────────────
+  // ── Búsqueda global optimizada (con debounce de 1.5s) ────────────────────────
 
   React.useEffect(() => {
     if (!busquedaGlobal.trim()) {
       setResultadosBusqueda([]);
       setErrorBusqueda(null);
+      setExpandedRows(new Set()); // Limpiar expansión al vaciar búsqueda
       return;
     }
 
@@ -552,12 +553,17 @@ const GestionProveedoresPage: React.FC = () => {
       try {
         const data = await buscarProductosGlobalService(busquedaGlobal);
         setResultadosBusqueda(data);
+        // Expandir automáticamente todos los proveedores si hay resultados
+        if (data && data.length > 0) {
+          const allIds = new Set(data.map(p => p.idProveedor));
+          setExpandedRows(allIds);
+        }
       } catch (err: any) {
         setErrorBusqueda(err.message || 'Error en la búsqueda');
       } finally {
         setLoadingBusqueda(false);
       }
-    }, 500); // Debounce 500ms
+    }, 1500); // Debounce 1.5 segundos
 
     return () => clearTimeout(timer);
   }, [busquedaGlobal]);
