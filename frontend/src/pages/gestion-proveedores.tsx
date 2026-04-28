@@ -998,9 +998,20 @@ const GestionProveedoresPage: React.FC = () => {
                   )}
                   <Select
                     label="Filtrar & Ordenar"
-                    placeholder="Seleccione opciones..."
                     selectedKeys={selectedFilterOptions}
-                    onSelectionChange={(keys) => setSelectedFilterOptions(new Set(keys))}
+                    onSelectionChange={(keys) => {
+                      const newKeys = new Set(keys);
+                      // Hacer mutuamente excluyentes los estados
+                      if (newKeys.has('estado-DISPONIBLE') && newKeys.has('estado-NO_DISPONIBLE')) {
+                        // Si ambos están seleccionados, remover el que se acaba de agregar
+                        if (!selectedFilterOptions.has('estado-DISPONIBLE')) {
+                          newKeys.delete('estado-NO_DISPONIBLE');
+                        } else if (!selectedFilterOptions.has('estado-NO_DISPONIBLE')) {
+                          newKeys.delete('estado-DISPONIBLE');
+                        }
+                      }
+                      setSelectedFilterOptions(newKeys);
+                    }}
                     className="w-full"
                     variant="bordered"
                     selectionMode="multiple"
@@ -1008,17 +1019,12 @@ const GestionProveedoresPage: React.FC = () => {
                     classNames={{ trigger: 'bg-white dark:bg-default-100/50 border-warning-300 dark:border-warning-200/50' }}
                     startContent={<Icon icon="lucide:filter" className="text-warning-500" width={16} />}
                   >
-                  {/* Grupo Estado */}
+                  {/* Grupo Estado - Mutuamente excluyentes */}
                   <SelectItem key="estado-DISPONIBLE" value="estado-DISPONIBLE">
                     Estado: Disponible
                   </SelectItem>
                   <SelectItem key="estado-NO_DISPONIBLE" value="estado-NO_DISPONIBLE">
                     Estado: No Disponible
-                  </SelectItem>
-
-                  {/* Separador visual */}
-                  <SelectItem key="__divider__" textValue="───" isReadOnly disabled>
-                    ───── Ordenar por Precio ─────
                   </SelectItem>
 
                   {/* Grupo Precio */}
