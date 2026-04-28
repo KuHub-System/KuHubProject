@@ -898,13 +898,13 @@ const GestionProveedoresPage: React.FC = () => {
         <Card className="shadow-sm bg-default-50 dark:bg-content1 border border-default-200 dark:border-default-100">
           <CardBody className="p-4 space-y-3">
             {/* Filtros básicos */}
-            <div className="flex flex-col md:flex-row gap-3">
+            <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-3">
               <Input
                 placeholder="Buscar por nombre, distribuidora o RUT..."
                 value={searchTerm}
                 onValueChange={setSearchTerm}
                 startContent={<Icon icon="lucide:search" className="text-default-400" />}
-                className="w-full md:w-1/2"
+                className="w-full md:flex-1 md:mr-3"
                 variant="bordered"
                 classNames={{ inputWrapper: 'bg-white dark:bg-default-100/50' }}
                 isClearable
@@ -978,7 +978,6 @@ const GestionProveedoresPage: React.FC = () => {
                     classNames={{ inputWrapper: 'bg-white dark:bg-default-100/50 border-warning-300 dark:border-warning-200/50' }}
                     isClearable
                     onClear={() => setBusquedaGlobal('')}
-                    size="lg"
                   />
                 </div>
 
@@ -993,7 +992,6 @@ const GestionProveedoresPage: React.FC = () => {
                   selectionMode="multiple"
                   closeOnSelect={false}
                   classNames={{ trigger: 'bg-white dark:bg-default-100/50 border-warning-300 dark:border-warning-200/50' }}
-                  size="lg"
                   description={selectedFilterOptions.size > 0 ? `${selectedFilterOptions.size} filtro(s) activo(s)` : undefined}
                   startContent={<Icon icon="lucide:filter" className="text-warning-500" width={16} />}
                 >
