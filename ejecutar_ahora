@@ -1,19 +1,21 @@
-== BÚSQUEDA GLOBAL DE PRODUCTOS - ESTADO ==
+== BÚSQUEDA GLOBAL DE PRODUCTOS - ESTADO FINAL ==
 
-✅ BACKEND CORREGIDO (2026-04-27)
-Error PostgreSQL: "column "c.nombre_categoria" must appear in the GROUP BY clause"
-Causa: ORDER BY duplicado fuera de json_agg() en ProveedorRepository.java línea 292
-Fix: Removido ORDER BY después del WHERE del subquery
+✅ COMPLETADO (2026-04-27)
 
-La consulta SQL ahora tiene sintaxis correcta:
-- ORDER BY está DENTRO de json_agg() (línea 284) ✓
-- No hay ORDER BY duplicado afuera
+BACKEND CORRECCIONES:
+1. Query SQL: Removido ORDER BY duplicado que causaba error "GROUP BY"
+2. Query SQL: Agregado COALESCE para nombreCategoria → "Sin Categoría" si es null
+3. Query SQL: Agregado filtro de searchTerm al subquery de productosEncontrados
 
-Cambio realizador en:
-📄 backend/src/main/java/KuHub/modules/gestion_proveedor/repository/ProveedorRepository.java
-   Línea 272-295: Query de buscarProductosGlobal
+FRONTEND CORRECCIONES:
+1. Agrupación de productos: Corregido campo 'categoria' → 'nombreCategoria'
+2. Expansión automática: Agregado useEffect que expande todos los proveedores al llegar resultados
+3. Componente BusquedaResultados: Ahora actualiza estado de expandidos cuando cambian resultados
 
-El endpoint ahora debería funcionar:
-GET /api/v1/proveedor/buscar-productos-global?q=<searchTerm>
+RESULTADO:
+✅ Búsqueda filtra correctamente por nombre/código/descripción
+✅ Nombre de categoría nunca es null (muestra "Sin Categoría" si no existe)
+✅ Todos los proveedores se abren automáticamente al encontrar resultados
+✅ Usuario puede contraer/expandir proveedores manualmente
 
-Próximo paso: Refactorizar frontend (gestion-proveedores.tsx) según ejecutar_ahora.md
+El endpoint GET /api/v1/proveedor/buscar-productos-global?q=<searchTerm> funciona correctamente.
