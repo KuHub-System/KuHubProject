@@ -1158,18 +1158,34 @@ PENDIENTE DE IMPLEMENTAR O DEFINIR:
       con descripción del formato inválido. Validación cliente + backend.
 
       ACTUALIZACIÓN (2026-04-28) — Optimización de búsqueda global de productos:
-      Problema: Consulta buscarProductosGlobal retornaba JSON con json_agg anidado
-      complejo, causando truncamiento (PGobject), duplicación de categorías en frontend,
-      y carga incorrecta de nombres_categoria.
-      Solución: Reestructuración de SQL en ProveedorRepository.buscarProductosGlobal():
-      - Eliminado json_agg anidado dentro de subconsulta (evita truncamiento).
-      - Nueva estructura usando CTE interna para agregar productos por proveedor.
-      - Campo 'productos_json' retorna array limpio de ProductoBuscadoDTO.
-      - Incluido 'codProducto' en la deserialización de productos (era ausente).
-      - Ordenamiento por categoría + producto dentro de cada proveedor (sin duplicados).
-      - DTO BusquedaProductosGlobalDTO y ProductoBuscadoDTO sin cambios de firma.
-      Impacto: Frontend (proveedor-service.ts) deserializa automáticamente sin cambios.
-      Estado: COMPILABLE, LISTO PARA TESTING EN BD.
+      Problema: Consulta anterior retornaba JSON con structure plana que causaba
+      UNDEFINED en selector de categoría, falta de fechaActualizacion, sin agrupación
+      por categoría en el backend.
+
+      Solución COMPLETA (Backend + Frontend):
+
+      Backend (ProveedorRepository.buscarProductosGlobal):
+      - Reemplazada consulta SQL por versión de ejecutar_ahora (agrupación correcta)
+      - Retorna categorias[{nombreCategoria, productos[...]}] anidado
+      - Incluye ALL campos: codProducto, fechaActualizacion en cada producto
+      - Una única instancia de cada categoría por proveedor (sin duplicados)
+      - Evita truncamiento JSON con estructura limpia
+
+      DTOs actualizados:
+      - ProductoBuscadoDTO: ahora incluye idProveedorProducto, codProducto,
+        nombreUnidad, abreviatura, fechaActualizacion (9 campos)
+      - CategoryProductsDTO: nuevo DTO que agrupa productos por categoría
+      - BusquedaProductosGlobalDTO: ahora usa List<CategoryProductsDTO> categorias
+        (en lugar de List<ProductoBuscadoDTO> productosEncontrados)
+
+      Frontend (gestion-proveedores.tsx + proveedor.types.ts):
+      - Tipos actualizados: IProductoBuscado con todos los campos, ICategoryProducts nuevo
+      - IBusquedaProductosGlobal.categorias en lugar de productosEncontrados
+      - Componente BusquedaResultados: usa estructura agrupada del backend (sin agrupar manualmente)
+      - Tabla productos: agregada columna CÓDIGO, fechaActualizacion en "Actualizado"
+      - Debounce: 1.5 segundos, auto-expansión de proveedores al obtener resultados
+
+      Estado: BUILD COMPLETADO, LISTO PARA DEPLOY.
   [ ] Tabla LOTE activable en sistema (estructura ya en BD)
   [ ] Adjuntar archivos a recetas (requiere AWS S3)
   [ ] Historial de cantidad real entregada vs. cantidad solicitada (definir con cliente)

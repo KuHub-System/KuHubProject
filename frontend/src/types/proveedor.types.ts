@@ -195,13 +195,12 @@ export interface ICotizacionResponse {
 /**
  * Producto encontrado en la búsqueda global.
  * Mapea ProductoBuscadoDTO del backend.
- * Incluye todos los campos necesarios para mostrar acciones y detalles completos.
  */
 export interface IProductoBuscado {
   idProducto: number;
-  idProveedorProducto: number;  // PK de la relación proveedor-producto (para acciones)
+  idProveedorProducto: number;
+  codProducto: string;
   nombreProducto: string;
-  nombreCategoria: string;
   nombreUnidad: string;
   abreviatura: string;
   precioProducto: number;
@@ -210,7 +209,16 @@ export interface IProductoBuscado {
 }
 
 /**
- * Resultado de búsqueda global agrupado por proveedor.
+ * Productos agrupados por categoría.
+ * Mapea CategoryProductsDTO del backend.
+ */
+export interface ICategoryProducts {
+  nombreCategoria: string;
+  productos: IProductoBuscado[];
+}
+
+/**
+ * Resultado de búsqueda global agrupado por proveedor y categoría.
  * Mapea BusquedaProductosGlobalDTO del backend.
  */
 export interface IBusquedaProductosGlobal {
@@ -222,5 +230,5 @@ export interface IBusquedaProductosGlobal {
   telefonoProveedor: string;
   estadoProveedor: EstadoProveedor;
   cantidadProductosActivos: number;
-  productosEncontrados: IProductoBuscado[];
+  categorias: ICategoryProducts[];
 }
