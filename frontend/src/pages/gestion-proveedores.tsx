@@ -974,53 +974,49 @@ const GestionProveedoresPage: React.FC = () => {
               </p>
 
               {/* Fila: Input búsqueda + Filtros consolidados */}
-              <div className="flex flex-col md:flex-row gap-3 items-start md:items-end">
-                {/* Input búsqueda */}
-                <div className="flex-1 min-w-0">
-                  <Input
-                    placeholder="Ingresa el nombre o código del producto..."
-                    value={busquedaGlobal}
-                    onValueChange={setBusquedaGlobal}
-                    startContent={<Icon icon="lucide:package-search" className="text-warning-500" />}
-                    variant="bordered"
-                    size="md"
-                    classNames={{ inputWrapper: 'bg-white dark:bg-default-100/50 border-warning-300 dark:border-warning-200/50 h-10' }}
-                    isClearable
-                    onClear={() => setBusquedaGlobal('')}
-                  />
-                </div>
+              <div>
+                <div className="flex flex-col md:flex-row gap-3 items-center">
+                  {/* Input búsqueda */}
+                  <div className="flex-1 w-full md:w-auto">
+                    <Input
+                      placeholder="Ingresa el nombre o código del producto..."
+                      value={busquedaGlobal}
+                      onValueChange={setBusquedaGlobal}
+                      startContent={<Icon icon="lucide:package-search" className="text-warning-500" />}
+                      variant="bordered"
+                      size="md"
+                      classNames={{ inputWrapper: 'bg-white dark:bg-default-100/50 border-warning-300 dark:border-warning-200/50 h-10' }}
+                      isClearable
+                      onClear={() => setBusquedaGlobal('')}
+                    />
+                  </div>
 
-                {/* Multi-select consolidado para filtros y ordenamiento */}
-                <div className="w-full md:w-64 flex flex-col">
-                  {selectedFilterOptions.size > 0 && (
-                    <p className="text-xs text-warning-600 dark:text-warning-400 mb-1 font-semibold">
-                      {selectedFilterOptions.size} filtro(s) activo(s)
-                    </p>
-                  )}
-                  <Select
-                    label="Filtrar & Ordenar"
-                    selectedKeys={selectedFilterOptions}
-                    onSelectionChange={(keys) => {
-                      const newKeys = new Set(keys);
-                      // Hacer mutuamente excluyentes los estados
-                      if (newKeys.has('estado-DISPONIBLE') && newKeys.has('estado-NO_DISPONIBLE')) {
-                        // Si ambos están seleccionados, remover el que se acaba de agregar
-                        if (!selectedFilterOptions.has('estado-DISPONIBLE')) {
-                          newKeys.delete('estado-NO_DISPONIBLE');
-                        } else if (!selectedFilterOptions.has('estado-NO_DISPONIBLE')) {
-                          newKeys.delete('estado-DISPONIBLE');
+                  {/* Multi-select consolidado para filtros y ordenamiento */}
+                  <div className="w-full md:w-64">
+                    <Select
+                      placeholder="Filtrar & Ordenar"
+                      selectedKeys={selectedFilterOptions}
+                      onSelectionChange={(keys) => {
+                        const newKeys = new Set(keys);
+                        // Hacer mutuamente excluyentes los estados
+                        if (newKeys.has('estado-DISPONIBLE') && newKeys.has('estado-NO_DISPONIBLE')) {
+                          // Si ambos están seleccionados, remover el que se acaba de agregar
+                          if (!selectedFilterOptions.has('estado-DISPONIBLE')) {
+                            newKeys.delete('estado-NO_DISPONIBLE');
+                          } else if (!selectedFilterOptions.has('estado-NO_DISPONIBLE')) {
+                            newKeys.delete('estado-DISPONIBLE');
+                          }
                         }
-                      }
-                      setSelectedFilterOptions(newKeys);
-                    }}
-                    className="w-full"
-                    size="md"
-                    variant="bordered"
-                    selectionMode="multiple"
-                    closeOnSelect={false}
-                    classNames={{ trigger: 'bg-white dark:bg-default-100/50 border-warning-300 dark:border-warning-200/50 h-10' }}
-                    startContent={<Icon icon="lucide:filter" className="text-warning-500" width={16} />}
-                  >
+                        setSelectedFilterOptions(newKeys);
+                      }}
+                      className="w-full"
+                      variant="bordered"
+                      size="md"
+                      selectionMode="multiple"
+                      closeOnSelect={false}
+                      classNames={{ trigger: 'bg-white dark:bg-default-100/50 border-warning-300 dark:border-warning-200/50 h-10' }}
+                      startContent={<Icon icon="lucide:filter" className="text-warning-500" width={16} />}
+                    >
                   {/* Grupo Estado - Mutuamente excluyentes */}
                   <SelectItem key="estado-DISPONIBLE" value="estado-DISPONIBLE">
                     Estado: Disponible
@@ -1037,7 +1033,15 @@ const GestionProveedoresPage: React.FC = () => {
                     Mayor Precio Primero
                   </SelectItem>
                   </Select>
+                  </div>
                 </div>
+
+                {/* Filtros activos - fuera del Select para no afectar alineación */}
+                {selectedFilterOptions.size > 0 && (
+                  <p className="text-xs text-warning-600 dark:text-warning-400 mt-2 font-semibold">
+                    {selectedFilterOptions.size} filtro(s) activo(s)
+                  </p>
+                )}
               </div>
 
               {/* Checkbox mostrar inactivos */}
