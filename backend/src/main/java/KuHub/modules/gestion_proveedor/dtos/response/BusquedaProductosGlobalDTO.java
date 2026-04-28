@@ -4,7 +4,7 @@ import java.util.List;
 
 /**
  * Record que contiene los resultados de búsqueda global de productos.
- * Agrupa productos encontrados por proveedor con toda la información necesaria.
+ * Agrupa productos encontrados por proveedor y categoría.
  */
 public record BusquedaProductosGlobalDTO(
         Integer idProveedor,
@@ -15,6 +15,6 @@ public record BusquedaProductosGlobalDTO(
         String telefonoProveedor,
         String estadoProveedor,
         Integer cantidadProductosActivos,
-        List<ProductoBuscadoDTO> productosEncontrados
+        List<CategoryProductsDTO> categorias
 ) {
 }
