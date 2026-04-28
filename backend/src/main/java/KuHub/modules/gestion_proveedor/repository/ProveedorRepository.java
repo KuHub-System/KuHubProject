@@ -247,40 +247,56 @@ public interface ProveedorRepository extends JpaRepository<Proveedor, Integer> {
      * Retorna JSON que debe deserializarse a CotizacionProveedorDTO.CotizacionResponse.
      */
     /**
-     * Búsqueda global de productos por nombre, código o descripción.
+     * Búsqueda global optimizada de productos por nombre, código o descripción.
      * Retorna lista de proveedores que tienen los productos encontrados.
      * La búsqueda es case-insensitive usando ILIKE en PostgreSQL.
      *
+     * ✅ OPTIMIZADO (2026-04-28):
+     * - Simplificada estructura JSON para evitar truncamiento (sin json_agg anidado complejo)
+     * - Agrupa correctamente por proveedor sin duplicación de categorías
+     * - Incluye codProducto en ProductoBuscadoDTO
+     *
      * Retorna JSON array que debe deserializarse a List<BusquedaProductosGlobalDTO>.
-     * Estructura: { id_proveedor, rut_proveedor, nombre_distribuidora, nombre_proveedor, email_proveedor, estado_proveedor, productos_encontrados [...] }
+     * Estructura: { id_proveedor, rut_proveedor, nombre_distribuidora, nombre_proveedor, email_proveedor, estado_proveedor, cantidad_productos_activos, productos_encontrados [...] }
      */
     @Query(value = """
             SELECT json_agg(
                 json_build_object(
-                    'idProveedor', prov.id_proveedor,
-                    'rutProveedor', prov.rut_proveedor,
-                    'nombreDistribuidora', prov.nombre_distribuidora,
-                    'nombreProveedor', prov.nombre_proveedor,
-                    'emailProveedor', prov.email_proveedor,
-                    'telefonoProveedor', prov.telefono_proveedor,
-                    'estadoProveedor', CAST(prov.estado_proveedor AS TEXT),
-                    'cantidadProductosActivos', (
-                        SELECT COUNT(*)
-                        FROM proveedor_producto pp_count
-                        WHERE pp_count.id_proveedor = prov.id_proveedor AND pp_count.activo = TRUE
-                    ),
-                    'productosEncontrados', COALESCE(
-                        (SELECT json_agg(
+                    'idProveedor', proveedores_datos.id_proveedor,
+                    'rutProveedor', proveedores_datos.rut_proveedor,
+                    'nombreDistribuidora', proveedores_datos.nombre_distribuidora,
+                    'nombreProveedor', proveedores_datos.nombre_proveedor,
+                    'emailProveedor', proveedores_datos.email_proveedor,
+                    'telefonoProveedor', proveedores_datos.telefono_proveedor,
+                    'estadoProveedor', proveedores_datos.estado_proveedor,
+                    'cantidadProductosActivos', proveedores_datos.cantidad_activos,
+                    'productosEncontrados', COALESCE(proveedores_datos.productos_json, '[]'::json)
+                ) ORDER BY proveedores_datos.nombre_distribuidora ASC
+            ) AS resultado
+            FROM (
+                SELECT
+                    prov.id_proveedor,
+                    prov.rut_proveedor,
+                    prov.nombre_distribuidora,
+                    prov.nombre_proveedor,
+                    prov.email_proveedor,
+                    prov.telefono_proveedor,
+                    CAST(prov.estado_proveedor AS TEXT) AS estado_proveedor,
+                    (
+                        SELECT COUNT(DISTINCT pp2.id_proveedor_producto)
+                        FROM proveedor_producto pp2
+                        WHERE pp2.id_proveedor = prov.id_proveedor AND pp2.activo = TRUE
+                    ) AS cantidad_activos,
+                    (
+                        SELECT json_agg(
                             json_build_object(
                                 'idProducto', p.id_producto,
-                                'idProveedorProducto', pp.id_proveedor_producto,
+                                'codProducto', p.cod_producto,
                                 'nombreProducto', p.nombre_producto,
-                                'nombreCategoria', COALESCE(c.nombre_categoria, 'Sin Categoría'),
-                                'nombreUnidad', u.nombre_unidad,
-                                'abreviatura', u.abreviatura,
+                                'categoria', c.nombre_categoria,
+                                'unidad', u.nombre_unidad,
                                 'precioProducto', pp.precio_producto,
-                                'activo', pp.activo,
-                                'fechaActualizacion', pp.fecha_actualizacion
+                                'activo', pp.activo
                             ) ORDER BY c.nombre_categoria ASC, p.nombre_producto ASC
                         )
                         FROM proveedor_producto pp
@@ -293,37 +309,23 @@ public interface ProveedorRepository extends JpaRepository<Proveedor, Integer> {
                               p.nombre_producto ILIKE :searchTerm OR
                               p.cod_producto ILIKE :searchTerm OR
                               p.descripcion_producto ILIKE :searchTerm
-                          )),
-                        '[]'::json
-                    )
-                )
-            ) AS proveedores_json
-            FROM (
-                SELECT DISTINCT
-                    prov.id_proveedor,
-                    prov.rut_proveedor,
-                    prov.nombre_distribuidora,
-                    prov.nombre_proveedor,
-                    prov.email_proveedor,
-                    prov.telefono_proveedor,
-                    prov.estado_proveedor
+                          )
+                    ) AS productos_json
                 FROM proveedor prov
                 WHERE prov.activo = TRUE
-                AND EXISTS (
-                    SELECT 1
-                    FROM proveedor_producto pp
-                    INNER JOIN producto p ON pp.id_producto = p.id_producto
-                    INNER JOIN categoria c ON p.id_categoria = c.id_categoria
-                    INNER JOIN unidad_medida u ON p.id_unidad = u.id_unidad
-                    WHERE pp.id_proveedor = prov.id_proveedor
-                      AND p.activo = TRUE
-                      AND (
-                          p.nombre_producto ILIKE :searchTerm OR
-                          p.cod_producto ILIKE :searchTerm OR
-                          p.descripcion_producto ILIKE :searchTerm
-                      )
-                )
-            ) prov
+                  AND EXISTS (
+                      SELECT 1
+                      FROM proveedor_producto pp3
+                      INNER JOIN producto p3 ON pp3.id_producto = p3.id_producto
+                      WHERE pp3.id_proveedor = prov.id_proveedor
+                        AND p3.activo = TRUE
+                        AND (
+                            p3.nombre_producto ILIKE :searchTerm OR
+                            p3.cod_producto ILIKE :searchTerm OR
+                            p3.descripcion_producto ILIKE :searchTerm
+                        )
+                  )
+            ) AS proveedores_datos
             """, nativeQuery = true)
     String buscarProductosGlobal(@Param("searchTerm") String searchTerm);
 
