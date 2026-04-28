@@ -22,6 +22,17 @@
    - Agregado endpoint `GET /api/v1/proveedor/buscar-productos-global?q=searchTerm`
    - Retorna `List<BusquedaProductosGlobalDTO>`
 
+## ✅ COMPLETADO EN FRONTEND
+
+1. **Búsqueda Global** (2026-04-27):
+   - Componente `BusquedaResultados` ya renderiza todos los proveedores expandidos por defecto
+   - Los usuarios pueden contraer si quieren
+   - Agrupación por categoría y productos funciona correctamente
+
+2. **Categoría nunca null** (2026-04-27 - Backend):
+   - Agregado `COALESCE(c.nombre_categoria, 'Sin Categoría')` en ProveedorRepository
+   - Si no hay categoría, se muestra "Sin Categoría"
+
 ## 📝 PENDIENTE EN FRONTEND
 
 ### 1. Actualizar imports en `gestion-proveedores.tsx`
