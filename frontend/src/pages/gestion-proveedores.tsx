@@ -588,19 +588,24 @@ const GestionProveedoresPage: React.FC = () => {
 
     // Ordenar por precio si hay seleccionado
     if (precioFiltro) {
-      // Primero, ordenar los productos dentro de cada proveedor
+      // Primero, ordenar los productos dentro de cada categoría
       resultado = [...resultado].map(proveedor => ({
         ...proveedor,
-        productosEncontrados: [...proveedor.productosEncontrados].sort((a, b) => {
-          const orden = precioFiltro === 'precio-asc' ? 1 : -1;
-          return (a.precioProducto - b.precioProducto) * orden;
-        }),
+        categorias: proveedor.categorias.map(categoria => ({
+          ...categoria,
+          productos: [...categoria.productos].sort((a, b) => {
+            const orden = precioFiltro === 'precio-asc' ? 1 : -1;
+            return (a.precioProducto - b.precioProducto) * orden;
+          }),
+        })),
       }));
 
       // Luego, ordenar los proveedores por el precio mínimo de sus productos
       resultado.sort((provA, provB) => {
-        const precioMinA = Math.min(...provA.productosEncontrados.map(p => p.precioProducto));
-        const precioMinB = Math.min(...provB.productosEncontrados.map(p => p.precioProducto));
+        const preciosA = provA.categorias.flatMap(cat => cat.productos.map(p => p.precioProducto));
+        const preciosB = provB.categorias.flatMap(cat => cat.productos.map(p => p.precioProducto));
+        const precioMinA = Math.min(...preciosA);
+        const precioMinB = Math.min(...preciosB);
 
         if (precioFiltro === 'precio-asc') {
           return precioMinA - precioMinB;
@@ -614,7 +619,10 @@ const GestionProveedoresPage: React.FC = () => {
     if (!mostrarInactivosBusqueda) {
       resultado = resultado.map(proveedor => ({
         ...proveedor,
-        productosEncontrados: proveedor.productosEncontrados.filter(p => p.activo),
+        categorias: proveedor.categorias.map(categoria => ({
+          ...categoria,
+          productos: categoria.productos.filter(p => p.activo),
+        })),
       }));
     }
 
@@ -982,19 +990,24 @@ const GestionProveedoresPage: React.FC = () => {
                 </div>
 
                 {/* Multi-select consolidado para filtros y ordenamiento */}
-                <Select
-                  label="Filtrar & Ordenar"
-                  placeholder="Seleccione opciones..."
-                  selectedKeys={selectedFilterOptions}
-                  onSelectionChange={(keys) => setSelectedFilterOptions(new Set(keys))}
-                  className="w-full md:w-64"
-                  variant="bordered"
-                  selectionMode="multiple"
-                  closeOnSelect={false}
-                  classNames={{ trigger: 'bg-white dark:bg-default-100/50 border-warning-300 dark:border-warning-200/50' }}
-                  description={selectedFilterOptions.size > 0 ? `${selectedFilterOptions.size} filtro(s) activo(s)` : undefined}
-                  startContent={<Icon icon="lucide:filter" className="text-warning-500" width={16} />}
-                >
+                <div className="w-full md:w-64 flex flex-col">
+                  {selectedFilterOptions.size > 0 && (
+                    <p className="text-xs text-warning-600 dark:text-warning-400 mb-1 font-semibold">
+                      {selectedFilterOptions.size} filtro(s) activo(s)
+                    </p>
+                  )}
+                  <Select
+                    label="Filtrar & Ordenar"
+                    placeholder="Seleccione opciones..."
+                    selectedKeys={selectedFilterOptions}
+                    onSelectionChange={(keys) => setSelectedFilterOptions(new Set(keys))}
+                    className="w-full"
+                    variant="bordered"
+                    selectionMode="multiple"
+                    closeOnSelect={false}
+                    classNames={{ trigger: 'bg-white dark:bg-default-100/50 border-warning-300 dark:border-warning-200/50' }}
+                    startContent={<Icon icon="lucide:filter" className="text-warning-500" width={16} />}
+                  >
                   {/* Grupo Estado */}
                   <SelectItem key="estado-DISPONIBLE" value="estado-DISPONIBLE">
                     Estado: Disponible
@@ -1015,7 +1028,8 @@ const GestionProveedoresPage: React.FC = () => {
                   <SelectItem key="precio-desc" value="precio-desc">
                     Mayor Precio Primero
                   </SelectItem>
-                </Select>
+                  </Select>
+                </div>
               </div>
 
               {/* Checkbox mostrar inactivos */}
