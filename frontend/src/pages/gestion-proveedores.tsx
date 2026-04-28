@@ -978,7 +978,7 @@ const GestionProveedoresPage: React.FC = () => {
                     classNames={{ inputWrapper: 'bg-white dark:bg-default-100/50 border-warning-300 dark:border-warning-200/50' }}
                     isClearable
                     onClear={() => setBusquedaGlobal('')}
-                    size="sm"
+                    size="lg"
                   />
                 </div>
 
@@ -993,7 +993,7 @@ const GestionProveedoresPage: React.FC = () => {
                   selectionMode="multiple"
                   closeOnSelect={false}
                   classNames={{ trigger: 'bg-white dark:bg-default-100/50 border-warning-300 dark:border-warning-200/50' }}
-                  size="sm"
+                  size="lg"
                   description={selectedFilterOptions.size > 0 ? `${selectedFilterOptions.size} filtro(s) activo(s)` : undefined}
                   startContent={<Icon icon="lucide:filter" className="text-warning-500" width={16} />}
                 >
