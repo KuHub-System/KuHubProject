@@ -1156,6 +1156,20 @@ PENDIENTE DE IMPLEMENTAR O DEFINIR:
       actualizadas: IProveedorProductoAddDTO e IProveedorProductoUpdateDTO
       ahora tienen precioProducto: string. Manejo de errores: 400 BAD_REQUEST
       con descripción del formato inválido. Validación cliente + backend.
+
+      ACTUALIZACIÓN (2026-04-28) — Optimización de búsqueda global de productos:
+      Problema: Consulta buscarProductosGlobal retornaba JSON con json_agg anidado
+      complejo, causando truncamiento (PGobject), duplicación de categorías en frontend,
+      y carga incorrecta de nombres_categoria.
+      Solución: Reestructuración de SQL en ProveedorRepository.buscarProductosGlobal():
+      - Eliminado json_agg anidado dentro de subconsulta (evita truncamiento).
+      - Nueva estructura usando CTE interna para agregar productos por proveedor.
+      - Campo 'productos_json' retorna array limpio de ProductoBuscadoDTO.
+      - Incluido 'codProducto' en la deserialización de productos (era ausente).
+      - Ordenamiento por categoría + producto dentro de cada proveedor (sin duplicados).
+      - DTO BusquedaProductosGlobalDTO y ProductoBuscadoDTO sin cambios de firma.
+      Impacto: Frontend (proveedor-service.ts) deserializa automáticamente sin cambios.
+      Estado: COMPILABLE, LISTO PARA TESTING EN BD.
   [ ] Tabla LOTE activable en sistema (estructura ya en BD)
   [ ] Adjuntar archivos a recetas (requiere AWS S3)
   [ ] Historial de cantidad real entregada vs. cantidad solicitada (definir con cliente)
