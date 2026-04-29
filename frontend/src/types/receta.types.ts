@@ -124,6 +124,7 @@ export interface IPedidoSemanaBodegaWithDetailsCreateDTO {
   descripcionPedido: string;
   listaItems: IPedidoSemanaBodegaItemCreateDTO[];
   estadoPedido: 'Activo' | 'Inactivo';
+  idSemana?: number;
 }
 
 /**
@@ -138,6 +139,7 @@ export interface IPedidoSemanaBodegaWithDetailsUpdateDTO {
   newItems: IPedidoSemanaBodegaItemCreateDTO[];
   updateItems: IPedidoSemanaBodegaItemCreateDTO[];
   deleteItems: number[];
+  idSemana?: number;
 }
 
 /**

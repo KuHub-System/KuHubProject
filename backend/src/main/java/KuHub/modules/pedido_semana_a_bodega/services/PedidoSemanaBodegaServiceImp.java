@@ -113,6 +113,8 @@ public class PedidoSemanaBodegaServiceImp implements PedidoSemanaBodegaService{
         newReceta.setDescripcionPedido((request.getDescripcionPedido() == null || request.getDescripcionPedido().isBlank())
                 ? null : StringUtils.normalizeSpaces(request.getDescripcionPedido()));
 
+        newReceta.setIdSemana(request.getIdSemana());
+
         PedidoSemanaBodega recetaGuardada = recetaRepository.save(newReceta);
 
         Map<Integer, BigDecimal> itemsConsolidados = new HashMap<>();
@@ -184,6 +186,12 @@ public class PedidoSemanaBodegaServiceImp implements PedidoSemanaBodegaService{
         if (oldRecipe.getEstadoPedido() != nuevoEstado) {
             oldRecipe.setEstadoPedido(nuevoEstado);
         }
+
+        /** Validar y setear el idSemana (opcional) */
+        if (!Objects.equals(request.getIdSemana(), oldRecipe.getIdSemana())) {
+            oldRecipe.setIdSemana(request.getIdSemana());
+        }
+
         /**Update Recipe Head*/
         recetaRepository.save(oldRecipe);
 
