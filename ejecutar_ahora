@@ -1,28 +1,100 @@
--- Tabla pedido_semana_bodega (Antigua 'receta')
-CREATE TABLE pedido_semana_bodega (
-    id_pedido_semana_bodega INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-	nombre_pedido_semana_bodega VARCHAR(100) NOT NULL,
-    descripcion_pedido_semana_bodega TEXT, 
-    activo                  BOOLEAN NOT NULL DEFAULT TRUE,
-    estado_pedido           estado_pedido_semana_bodega NOT NULL
-);
-
--- Tabla detalle (Se mantiene igual, apuntando a la nueva PK)
-CREATE TABLE detalle_pedido_semana_bodega (
-    id_detalle_pedido_semana INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    id_pedido_semana_bodega  INTEGER NOT NULL,
-    id_producto              INTEGER NOT NULL,
-    cant_producto            NUMERIC(10, 3) NOT NULL CHECK (cant_producto >= 0),
-    observacion              TEXT, -- <--- NUEVA COLUMNA AGREGADA AQUÍ
-
-    CONSTRAINT fk_pedido_cabecera 
-        FOREIGN KEY (id_pedido_semana_bodega) 
-        REFERENCES pedido_semana_bodega(id_pedido_semana_bodega) 
-        ON DELETE CASCADE,
-        
-    CONSTRAINT fk_pedido_producto 
-        FOREIGN KEY (id_producto) 
-        REFERENCES producto(id_producto),
-        
-    UNIQUE(id_pedido_semana_bodega, id_producto)
-);
+                    
+Downloaded from central: https://repo.maven.apache.org/maven2/org/springframework/boot/spring-boot-configuration-processor/3.2.0/spring-boot-configuration-processor-3.2.0.pom (1.9 kB at 55 kB/s)
+#14 22.08 Downloading from central: https://repo.maven.apache.org/maven2/org/springframework/boot/spring-boot-configuration-processor/3.2.0/spring-boot-configuration-processor-3.2.0.jar
+#14 22.10 Progress (1): 7.7/122 kB
+Progress (1): 16/122 kB 
+Progress (1): 25/122 kB
+Progress (1): 41/122 kB
+Progress (1): 57/122 kB
+Progress (1): 74/122 kB
+Progress (1): 90/122 kB
+Progress (1): 106/122 kB
+Progress (1): 122 kB    
+                    
+Downloaded from central: https://repo.maven.apache.org/maven2/org/springframework/boot/spring-boot-configuration-processor/3.2.0/spring-boot-configuration-processor-3.2.0.jar (122 kB at 4.4 MB/s)
+#14 22.17 [INFO] Changes detected - recompiling the module! :source
+release 21] to target/classes
+#14 33.01 [INFO] /app/backend/src/main/java/KuHub/config/security/filter/JwtAuthenticationFilter.java: /app/backend/src/main/java/KuHub/config/security/filter/JwtAuthenticationFilter.java uses unchecked or unsafe operations.
+#14 33.01 [INFO] /app/backend/src/main/java/KuHub/config/security/filter/JwtAuthenticationFilter.java: Recompile with -Xlint:unchecked for details.
+#14 33.01 [INFO] -------------------------------------------------------------
+#14 33.01 [WARNING] COMPILATION WARNING : 
+#14 33.01 [INFO] -------------------------------------------------------------
+#14 33.01 [WARNING] /app/backend/src/main/java/KuHub/modules/gestion_inventario/dtos/response/dto/MotionFilterRequestDTO.java:[30,20] @Builder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+#14 33.01 [WARNING] /app/backend/src/main/java/KuHub/modules/gestion_proveedor/controller/ProveedorController.java:[148,48] deprecated item is not annotated with @Deprecated
+#14 33.01 [INFO] 2 warnings 
+#14 33.01 [INFO] -------------------------------------------------------------
+#14 33.01 [INFO] -------------------------------------------------------------
+#14 33.01 [ERROR] COMPILATION ERROR : 
+#14 33.01 [INFO] -------------------------------------------------------------
+#14 33.01 [ERROR] /app/backend/src/main/java/KuHub/modules/pedido_semana_a_bodega/dtos/respose/record/PedidoSemanaBodegasPage.java:[69,24] cannot find symbol
+#14 33.01   symbol:   method getInstrucciones()
+#14 33.01   location: variable row of type KuHub.modules.pedido_semana_a_bodega.dtos.respose.projection.PedidoSemanaBodegaWithDetailsView
+#14 33.01 [ERROR] /app/backend/src/main/java/KuHub/modules/pedido_semana_a_bodega/services/PedidoSemanaBodegaServiceImp.java:[116,18] cannot find symbol
+#14 33.01   symbol:   method setInstrucciones((request.g[...]es()))
+#14 33.01   location: variable newReceta of type KuHub.modules.pedido_semana_a_bodega.entity.PedidoSemanaBodega
+#14 33.01 [ERROR] /app/backend/src/main/java/KuHub/modules/pedido_semana_a_bodega/services/PedidoSemanaBodegaServiceImp.java:[187,52] cannot find symbol
+#14 33.01   symbol:   method getInstrucciones()
+#14 33.01   location: variable oldRecipe of type KuHub.modules.pedido_semana_a_bodega.entity.PedidoSemanaBodega
+#14 33.01 [ERROR] /app/backend/src/main/java/KuHub/modules/pedido_semana_a_bodega/services/PedidoSemanaBodegaServiceImp.java:[188,22] cannot find symbol
+#14 33.01   symbol:   method setInstrucciones(java.lang.String)
+#14 33.01   location: variable oldRecipe of type KuHub.modules.pedido_semana_a_bodega.entity.PedidoSemanaBodega
+#14 33.01 [INFO] 4 errors 
+#14 33.01 [INFO] -------------------------------------------------------------
+#14 33.01 [INFO] ------------------------------------------------------------------------
+#14 33.02 [INFO] Reactor Summary for KuHub Monolitico Project 1.0-SNAPSHOT:
+#14 33.02 [INFO] 
+#14 33.02 [INFO] KuHub Monolitico Project ........................... SUCCESS [  0.469 s]
+#14 33.02 [INFO] backend ............................................ FAILURE [ 26.810 s]
+#14 33.02 [INFO] ------------------------------------------------------------------------
+#14 33.02 [INFO] BUILD FAILURE
+#14 33.02 [INFO] ------------------------------------------------------------------------
+#14 33.02 [INFO] Total time:  31.091 s
+#14 33.02 [INFO] Finished at: 2026-04-29T19:15:22Z
+#14 33.02 [INFO] ------------------------------------------------------------------------
+#14 33.02 [ERROR] Failed to execute goal org.apache.maven.plugins:maven-compiler-plugin:3.11.0:compile (default-compile) on project backend: Compilation failure: Compilation failure: 
+#14 33.02 [ERROR] /app/backend/src/main/java/KuHub/modules/pedido_semana_a_bodega/dtos/respose/record/PedidoSemanaBodegasPage.java:[69,24] cannot find symbol
+#14 33.02 [ERROR]   symbol:   method getInstrucciones()
+#14 33.02 [ERROR]   location: variable row of type KuHub.modules.pedido_semana_a_bodega.dtos.respose.projection.PedidoSemanaBodegaWithDetailsView
+#14 33.02 [ERROR] /app/backend/src/main/java/KuHub/modules/pedido_semana_a_bodega/services/PedidoSemanaBodegaServiceImp.java:[116,18] cannot find symbol
+#14 33.02 [ERROR]   symbol:   method setInstrucciones((request.g[...]es()))
+#14 33.02 [ERROR]   location: variable newReceta of type KuHub.modules.pedido_semana_a_bodega.entity.PedidoSemanaBodega
+#14 33.02 [ERROR] /app/backend/src/main/java/KuHub/modules/pedido_semana_a_bodega/services/PedidoSemanaBodegaServiceImp.java:[187,52] cannot find symbol
+#14 33.02 [ERROR]   symbol:   method getInstrucciones()
+#14 33.02 [ERROR]   location: variable oldRecipe of type KuHub.modules.pedido_semana_a_bodega.entity.PedidoSemanaBodega
+#14 33.02 [ERROR] /app/backend/src/main/java/KuHub/modules/pedido_semana_a_bodega/services/PedidoSemanaBodegaServiceImp.java:[188,22] cannot find symbol
+#14 33.02 [ERROR]   symbol:   method setInstrucciones(java.lang.String)
+#14 33.02 [ERROR]   location: variable oldRecipe of type KuHub.modules.pedido_semana_a_bodega.entity.PedidoSemanaBodega
+#14 33.02 [ERROR] -> [Help 1]
+#14 33.02 [ERROR] 
+#14 33.02 [ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+#14 33.02 [ERROR] Re-run Maven using the -X switch to enable full debug logging.
+#14 33.02 [ERROR] 
+#14 33.02 [ERROR] For more information about the errors and possible solutions, please read the following articles:
+#14 33.02 [ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoFailureException
+#14 33.02 [ERROR] 
+#14 33.03 [ERROR] After correcting the problems, you can resume the build with the command
+#14 33.03 [ERROR]   mvn <args> -rf :backend
+#14 ERROR: process "/bin/sh -c mvn clean package -pl backend -am -DskipTests" did not complete successfully: exit code: 1
+------
+ > [build 5/5] RUN mvn clean package -pl backend -am -DskipTests:
+Error: ERROR] -> [Help 1]
+Error: ERROR] 
+Error: ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+Error: ERROR] Re-run Maven using the -X switch to enable full debug logging.
+Error: ERROR] 
+Error: ERROR] For more information about the errors and possible solutions, please read the following articles:
+Error: ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoFailureException
+Error: ERROR] 
+Error: ERROR] After correcting the problems, you can resume the build with the command
+Error: ERROR]   mvn <args> -rf :backend
+------
+Dockerfile:12
+--------------------
+  10 |     
+  11 |     # 3. Construimos solo el backend, pero con acceso al padre
+  12 | >>> RUN mvn clean package -pl backend -am -DskipTests
+  13 |     
+  14 |     # ETAPA 2: Run
+--------------------
+ERROR: failed to build: failed to solve: process "/bin/sh -c mvn clean package -pl backend -am -DskipTests" did not complete successfully: exit code: 1
+Error: buildx failed with: ERROR: failed to build: failed to solve: process "/bin/sh -c mvn clean package -pl backend -am -DskipTests" did not complete successfully: exit code: 1
