@@ -1325,7 +1325,7 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
                       </Button>
                     </div>
                     <div className="space-y-3">
-                      <div className="grid grid-cols-[1.4fr_0.375fr_1.225fr] gap-3">
+                      <div className="grid grid-cols-[1.4fr_0.62fr_0.98fr] gap-3">
                         <Autocomplete
                           label="Producto"
                           placeholder="Buscar producto..."
@@ -1358,14 +1358,22 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
                           }}
                           data-ingrediente-id={ingrediente.id}
                           type="number"
-                          label={ingrediente.unidadMedida && ingrediente.unidadMedida.length > 8 ?
-                            <>
-                              <span>Cant. </span>
-                              <Tooltip content={ingrediente.unidadMedida} color="foreground" className="text-xs">
-                                <span className="truncate max-w-[50px]">{ingrediente.unidadMedida}</span>
+                          label={
+                            ingrediente.unidadMedida && ingrediente.unidadMedida.length > 8 ? (
+                              <Tooltip
+                                content={ingrediente.unidadMedida}
+                                color="foreground"
+                                className="text-xs"
+                                placement="top"
+                              >
+                                <span className="flex items-center gap-0.5">
+                                  <span>Cant.</span>
+                                  <span className="text-xs truncate max-w-[40px]">{ingrediente.unidadMedida.substring(0, 5)}...</span>
+                                </span>
                               </Tooltip>
-                            </>
-                            : `Cant. ${ingrediente.unidadMedida || ''}`
+                            ) : (
+                              `Cant. ${ingrediente.unidadMedida || ''}`
+                            )
                           }
                           placeholder="0"
                           value={ingrediente.cantidad === 0 ? '' : ingrediente.cantidad.toString()}
