@@ -288,100 +288,100 @@ const PedidoSemanalABodegaPage: React.FC = () => {
   };
 
   // Componente de animación: Libro abierto con hojas pasándose
-  const PaginasAnimacion: React.FC = () => (
-    <div className="flex flex-col items-center justify-center gap-8">
-      {/* Libro abierto */}
-      <div className="relative w-80 h-56" style={{ perspective: '1200px' }}>
-        {/* Lomo del libro (centro) */}
-        <div className="absolute left-1/2 top-0 bottom-0 w-1 bg-primary transform -translate-x-1/2 shadow-lg rounded-full" />
-
-        {/* Página izquierda */}
-        <motion.div
-          className="absolute left-0 top-0 w-1/2 h-full bg-gradient-to-r from-primary-50 to-white dark:from-primary-900/40 dark:to-gray-800 rounded-l-lg shadow-lg border-r border-primary-100"
-          animate={{
-            rotateY: [0, -30, 0],
-          }}
-          transition={{
-            duration: 3,
-            repeat: Infinity,
-            repeatType: 'loop',
-            ease: 'easeInOut',
-          }}
-          style={{ transformOrigin: 'right center', transformStyle: 'preserve-3d' }}
-        >
-          <div className="p-6 h-full flex flex-col justify-between">
-            <div className="space-y-3">
-              <div className="h-2 bg-primary-200 dark:bg-primary-700/40 rounded w-3/4" />
-              <div className="h-2 bg-primary-100 dark:bg-primary-700/30 rounded w-full" />
-              <div className="h-2 bg-primary-100 dark:bg-primary-700/30 rounded w-5/6" />
-            </div>
-            <p className="text-xs text-primary-400 dark:text-primary-600 text-right">1</p>
+  const PaginasAnimacion: React.FC = () => {
+    const Pagina: React.FC<{ numero: number; delay: number }> = ({ numero, delay }) => (
+      <motion.div
+        className="absolute left-0 top-0 w-1/2 h-full bg-gradient-to-r from-primary-50 to-white dark:from-primary-900/40 dark:to-gray-800 rounded-l-lg shadow-lg border-r border-primary-100"
+        animate={{
+          x: [0, -280],
+          rotateY: [0, -90],
+          opacity: [1, 0],
+        }}
+        transition={{
+          duration: 2.5,
+          repeat: Infinity,
+          repeatType: 'loop',
+          ease: 'easeInOut',
+          delay: delay,
+        }}
+        style={{ transformOrigin: 'right center', transformStyle: 'preserve-3d' }}
+      >
+        <div className="p-6 h-full flex flex-col justify-between">
+          <div className="space-y-3">
+            <div className="h-2 bg-primary-200 dark:bg-primary-700/40 rounded w-3/4" />
+            <div className="h-2 bg-primary-100 dark:bg-primary-700/30 rounded w-full" />
+            <div className="h-2 bg-primary-100 dark:bg-primary-700/30 rounded w-5/6" />
+            <div className="h-2 bg-primary-100 dark:bg-primary-700/30 rounded w-4/6" />
           </div>
-        </motion.div>
+          <p className="text-xs text-primary-400 dark:text-primary-600 text-right font-semibold">{numero}</p>
+        </div>
+      </motion.div>
+    );
 
-        {/* Página derecha */}
-        <motion.div
-          className="absolute right-0 top-0 w-1/2 h-full bg-gradient-to-l from-primary-50 to-white dark:from-primary-900/40 dark:to-gray-800 rounded-r-lg shadow-lg border-l border-primary-100"
-          animate={{
-            rotateY: [0, 30, 0],
-          }}
-          transition={{
-            duration: 3,
-            repeat: Infinity,
-            repeatType: 'loop',
-            ease: 'easeInOut',
-          }}
-          style={{ transformOrigin: 'left center', transformStyle: 'preserve-3d' }}
-        >
-          <div className="p-6 h-full flex flex-col justify-between">
-            <div className="space-y-3">
-              <div className="h-2 bg-primary-200 dark:bg-primary-700/40 rounded w-3/4 ml-auto" />
-              <div className="h-2 bg-primary-100 dark:bg-primary-700/30 rounded w-full" />
-              <div className="h-2 bg-primary-100 dark:bg-primary-700/30 rounded w-5/6 ml-auto" />
-            </div>
-            <p className="text-xs text-primary-400 dark:text-primary-600 text-left">2</p>
+    const PaginaDerecha: React.FC<{ numero: number; delay: number }> = ({ numero, delay }) => (
+      <motion.div
+        className="absolute right-0 top-0 w-1/2 h-full bg-gradient-to-l from-primary-50 to-white dark:from-primary-900/40 dark:to-gray-800 rounded-r-lg shadow-lg border-l border-primary-100"
+        animate={{
+          x: [280, 0, -280],
+          rotateY: [90, 0, -90],
+          opacity: [0, 1, 0],
+        }}
+        transition={{
+          duration: 2.5,
+          repeat: Infinity,
+          repeatType: 'loop',
+          ease: 'easeInOut',
+          delay: delay,
+        }}
+        style={{ transformOrigin: 'left center', transformStyle: 'preserve-3d' }}
+      >
+        <div className="p-6 h-full flex flex-col justify-between">
+          <div className="space-y-3">
+            <div className="h-2 bg-primary-200 dark:bg-primary-700/40 rounded w-3/4 ml-auto" />
+            <div className="h-2 bg-primary-100 dark:bg-primary-700/30 rounded w-full" />
+            <div className="h-2 bg-primary-100 dark:bg-primary-700/30 rounded w-5/6 ml-auto" />
+            <div className="h-2 bg-primary-100 dark:bg-primary-700/30 rounded w-4/6 ml-auto" />
           </div>
-        </motion.div>
+          <p className="text-xs text-primary-400 dark:text-primary-600 text-left font-semibold">{numero}</p>
+        </div>
+      </motion.div>
+    );
 
-        {/* Hoja deslizándose (simulación de página siguiente) */}
-        <motion.div
-          className="absolute right-0 top-0 w-1/2 h-full bg-gradient-to-l from-primary-100 to-primary-50 dark:from-primary-800/40 dark:to-primary-900/40 rounded-r-lg shadow-md border-l border-primary-200"
-          animate={{
-            rotateY: [-30, 0, 30],
-            zIndex: [0, 10, 0],
-          }}
-          transition={{
-            duration: 3,
-            repeat: Infinity,
-            repeatType: 'loop',
-            ease: 'easeInOut',
-          }}
-          style={{ transformOrigin: 'left center', transformStyle: 'preserve-3d' }}
-        >
-          <div className="p-6 h-full flex flex-col justify-between">
-            <div className="space-y-3">
-              <div className="h-2 bg-primary-300 dark:bg-primary-700/50 rounded w-2/3 ml-auto" />
-              <div className="h-2 bg-primary-200 dark:bg-primary-700/40 rounded w-full" />
-              <div className="h-2 bg-primary-200 dark:bg-primary-700/40 rounded w-5/6 ml-auto" />
-            </div>
-            <p className="text-xs text-primary-500 dark:text-primary-500 text-left">3</p>
-          </div>
-        </motion.div>
+    return (
+      <div className="flex flex-col items-center justify-center gap-8">
+        {/* Libro abierto */}
+        <div className="relative w-96 h-64 overflow-hidden rounded-2xl" style={{ perspective: '1200px' }}>
+          {/* Lomo del libro (centro) */}
+          <div className="absolute left-1/2 top-0 bottom-0 w-1 bg-gradient-to-b from-primary-600 to-primary-400 transform -translate-x-1/2 shadow-xl rounded-full z-50" />
+
+          {/* Hojas izquierdas (se pasan hacia la izquierda) */}
+          <Pagina numero={1} delay={0} />
+          <Pagina numero={3} delay={2.5} />
+          <Pagina numero={5} delay={5} />
+
+          {/* Hojas derechas (se deslizan) */}
+          <PaginaDerecha numero={2} delay={0} />
+          <PaginaDerecha numero={4} delay={2.5} />
+          <PaginaDerecha numero={6} delay={5} />
+
+          {/* Fondo del libro */}
+          <div className="absolute inset-0 bg-gradient-to-r from-primary-900 via-primary-800 to-primary-700 opacity-20 dark:opacity-40" />
+        </div>
+
+        {/* Texto */}
+        <div className="text-center">
+          <p className="text-lg font-bold text-secondary dark:text-foreground">Cargando pedidos semanales</p>
+          <motion.p
+            className="text-sm text-default-500 mt-2"
+            animate={{ opacity: [0.5, 1] }}
+            transition={{ duration: 1, repeat: Infinity, repeatType: 'reverse' }}
+          >
+            Organizando tus formulaciones...
+          </motion.p>
+        </div>
       </div>
-
-      {/* Texto */}
-      <div className="text-center">
-        <p className="text-lg font-bold text-secondary dark:text-foreground">Cargando pedidos semanales</p>
-        <motion.p
-          className="text-sm text-default-500 mt-2"
-          animate={{ opacity: [0.5, 1] }}
-          transition={{ duration: 1, repeat: Infinity, repeatType: 'reverse' }}
-        >
-          Organizando tus formulaciones...
-        </motion.p>
-      </div>
-    </div>
-  );
+    );
+  };
 
   if (isLoading) {
     return (
