@@ -51,6 +51,20 @@ public interface DetallePedidoSemanaBodegaRepository extends JpaRepository<Detal
             @Param("cant") java.math.BigDecimal cant
     );
 
+    /** Actualiza la observación de un producto en un pedido semana bodega. */
+    @Modifying
+    @Query("""
+       UPDATE DetallePedidoSemanaBodega d
+       SET d.observacion = :observacion
+       WHERE d.pedidoSemanaBodega.idPedidoSemanaBodega = :idPedidoSemanaBodega
+       AND d.producto.idProducto = :idProducto
+       """)
+    int updateObservacionByRecipeAndProduct(
+            @Param("idPedidoSemanaBodega") Integer idPedidoSemanaBodega,
+            @Param("idProducto") Integer idProducto,
+            @Param("observacion") String observacion
+    );
+
     /**Validaciones boleanas*/
 
 

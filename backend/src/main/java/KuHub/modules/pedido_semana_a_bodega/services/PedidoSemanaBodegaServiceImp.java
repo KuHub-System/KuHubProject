@@ -117,17 +117,36 @@ public class PedidoSemanaBodegaServiceImp implements PedidoSemanaBodegaService{
 
         PedidoSemanaBodega recetaGuardada = recetaRepository.save(newReceta);
 
-        Map<Integer, BigDecimal> itemsConsolidados = new HashMap<>();
+        // Usar clase interna para mantener cantidad y observación
+        class ItemConsolidado {
+            BigDecimal cantidad;
+            String observacion;
+            ItemConsolidado(BigDecimal cant, String obs) {
+                this.cantidad = cant;
+                this.observacion = obs;
+            }
+        }
+
+        Map<Integer, ItemConsolidado> itemsConsolidados = new HashMap<>();
 
         for (PedidoSemanaBodegaItemDTO item : request.getListaItems()) {
-            // merge: Si el ID no existe, lo pone. Si existe, aplica la suma (BigDecimal::add)
-            itemsConsolidados.merge(
+            itemsConsolidados.compute(
                     item.getIdProducto(),
-                    item.getCantUnidadMedida(),
-                    BigDecimal::add
+                    (key, existing) -> {
+                        if (existing == null) {
+                            return new ItemConsolidado(item.getCantUnidadMedida(), item.getObservacion());
+                        } else {
+                            existing.cantidad = existing.cantidad.add(item.getCantUnidadMedida());
+                            // Mantener la observación del último item si existe
+                            if (item.getObservacion() != null && !item.getObservacion().isBlank()) {
+                                existing.observacion = item.getObservacion();
+                            }
+                            return existing;
+                        }
+                    }
             );
         }
-        itemsConsolidados.forEach((idProducto, cantidadTotal) -> {
+        itemsConsolidados.forEach((idProducto, itemConsolidado) -> {
             DetallePedidoSemanaBodega detalle = new DetallePedidoSemanaBodega();
 
             // Asociamos usando el objeto guardado (para el ID)
@@ -136,7 +155,8 @@ public class PedidoSemanaBodegaServiceImp implements PedidoSemanaBodegaService{
             // Usamos setProductoById para evitar un SELECT innecesario del objeto Producto
             detalle.setProductoById(idProducto);
 
-            detalle.setCantProducto(cantidadTotal);
+            detalle.setCantProducto(itemConsolidado.cantidad);
+            detalle.setObservacion(itemConsolidado.observacion);
 
             detallePedidoSemanaBodegaRepository.save(detalle);
         });
@@ -266,7 +286,7 @@ public class PedidoSemanaBodegaServiceImp implements PedidoSemanaBodegaService{
         return rowsDeleted;
     }
 
-    /** Actualiza las cantidades de ingredientes modificados, solo si el valor cambió realmente. */
+    /** Actualiza las cantidades y observaciones de ingredientes modificados, solo si el valor cambió realmente. */
     private int processUpdates(Integer idReceta, List<PedidoSemanaBodegaItemDTO> itemsToUpdate, Map<Integer, DetailsByUpdateRec> currentMap) {
         if (itemsToUpdate == null || itemsToUpdate.isEmpty()) {
             return 0;
@@ -276,13 +296,23 @@ public class PedidoSemanaBodegaServiceImp implements PedidoSemanaBodegaService{
         for (PedidoSemanaBodegaItemDTO item : itemsToUpdate) {
             // Validación: Solo actualizamos si el producto existe actualmente en la receta
             if (currentMap.containsKey(item.getIdProducto())) {
+                DetailsByUpdateRec current = currentMap.get(item.getIdProducto());
 
                 // Solo ejecutamos el SQL si la cantidad es realmente diferente a la actual en la DB
-                if (currentMap.get(item.getIdProducto()).cantidad().compareTo(item.getCantUnidadMedida()) != 0) {
+                if (current.cantidad().compareTo(item.getCantUnidadMedida()) != 0) {
                     totalUpdated += detallePedidoSemanaBodegaRepository.updateQuantityByRecipeAndProduct(
                             idReceta,
                             item.getIdProducto(),
                             item.getCantUnidadMedida()
+                    );
+                }
+
+                // Actualizar observación si fue proporcionada
+                if (item.getObservacion() != null && !item.getObservacion().isBlank()) {
+                    totalUpdated += detallePedidoSemanaBodegaRepository.updateObservacionByRecipeAndProduct(
+                            idReceta,
+                            item.getIdProducto(),
+                            item.getObservacion()
                     );
                 }
             } else {
@@ -293,7 +323,7 @@ public class PedidoSemanaBodegaServiceImp implements PedidoSemanaBodegaService{
         }
 
         if (totalUpdated > 0) {
-            log.info("✏️ Se actualizaron cantidades para {} ingredientes", totalUpdated);
+            log.info("✏️ Se actualizaron {} ingredientes", totalUpdated);
         }
 
         return totalUpdated;
@@ -308,7 +338,6 @@ public class PedidoSemanaBodegaServiceImp implements PedidoSemanaBodegaService{
         List<DetallePedidoSemanaBodega> entitiesToSave = new ArrayList<>();
 
         for (PedidoSemanaBodegaItemDTO item : newItems) {
-            /***/
             if (currentMap.containsKey(item.getIdProducto())) {
                 throw new PedidoSemanaBodegaException("El producto ID " + item.getIdProducto() + " ya existe en la receta. Use la lista de actualización.",
                         HttpStatus.BAD_REQUEST);
@@ -318,11 +347,11 @@ public class PedidoSemanaBodegaServiceImp implements PedidoSemanaBodegaService{
             nuevoDetalle.setPedidoSemanaBodegaById(idReceta);
             nuevoDetalle.setProductoById(item.getIdProducto());
             nuevoDetalle.setCantProducto(item.getCantUnidadMedida());
+            nuevoDetalle.setObservacion(item.getObservacion());
 
             entitiesToSave.add(nuevoDetalle);
         }
 
-        /***/
         if (!entitiesToSave.isEmpty()) {
             List<DetallePedidoSemanaBodega> saved = detallePedidoSemanaBodegaRepository.saveAll(entitiesToSave);
             log.info("➕ Se agregaron {} nuevos ingredientes a la receta ID {}", saved.size(), idReceta);
