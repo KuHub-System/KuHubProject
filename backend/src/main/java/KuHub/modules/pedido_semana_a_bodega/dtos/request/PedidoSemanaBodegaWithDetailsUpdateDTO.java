@@ -28,10 +28,10 @@ public class PedidoSemanaBodegaWithDetailsUpdateDTO {
     // Campos opcionales (no llevan @NotBlank ni @NotNull)
     private String descripcionPedido;
 
-    private String instrucciones;
-
     @NotBlank(message = "El estado de la receta es obligatorio")
     private String estadoPedido;
+
+    private Integer idSemana;
 
     // --- Arrays de Deltas para los Ingredientes ---
 

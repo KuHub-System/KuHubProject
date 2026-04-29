@@ -201,14 +201,35 @@ const PedidoSemanalABodegaPage: React.FC = () => {
     onOpen();
   };
 
-  const cambiarEstadoReceta = async (id: number | string) => {
+  const cambiarEstadoReceta = async (id: number | string, receta: IPedidoSemanaBodegaPaginedDTO) => {
     try {
       console.log(`🔄 Cambiando estado de receta ${id}`);
       const success = await cambiarEstadoRecetaService(id.toString());
 
       if (success) {
-        // Recargar datos para que se actualice la tabla y los contadores (TOTAL, ACTIVO, INACTIVO)
-        await cargarDatosIniciales();
+        // Actualizar el estado en la tabla sin recargar
+        const nuevoEstado = receta.estadoPedido === 'Activo' ? 'Inactivo' : 'Activo';
+        setRecetas(prevRecetas =>
+          prevRecetas.map(r =>
+            r.idPedidoSemanaBodega === receta.idPedidoSemanaBodega
+              ? { ...r, estadoPedido: nuevoEstado as 'Activo' | 'Inactivo' }
+              : r
+          )
+        );
+
+        // Actualizar contadores
+        setRecetaCounts(prev => {
+          const newCounts = { ...prev };
+          if (receta.estadoPedido === 'Activo') {
+            newCounts.total_activos--;
+            newCounts.total_inactivos++;
+          } else {
+            newCounts.total_inactivos--;
+            newCounts.total_activos++;
+          }
+          return newCounts;
+        });
+
         toast.success(`Estado de la formulación actualizado correctamente`);
       } else {
         toast.error('No se pudo cambiar el estado de la formulación');
@@ -484,7 +505,7 @@ const PedidoSemanalABodegaPage: React.FC = () => {
                                 isIconOnly
                                 variant="light"
                                 size="sm"
-                                onPress={() => cambiarEstadoReceta(receta.idReceta)}
+                                onPress={() => cambiarEstadoReceta(receta.idPedidoSemanaBodega, receta)}
                                 className={receta.estadoPedido === 'Activo' ? 'text-default-400 hover:text-danger z-10' : 'text-default-400 hover:text-success z-10'}
                                 style={{ cursor: 'pointer' }}
                               >
@@ -689,10 +710,13 @@ const VistaReceta: React.FC<VistaRecetaProps> = ({ receta }) => {
             <div>
               <h4 className="font-bold text-base text-secondary dark:text-foreground">Ingredientes de la Formulación</h4>
               <p className="text-xs text-default-400">
-                {receta.totalIngredientes} ingrediente{receta.totalIngredientes > 1 ? 's' : ''} en esta receta
+                {receta.totalDetalles} producto{receta.totalDetalles > 1 ? 's' : ''} en esta receta
               </p>
             </div>
           </div>
+          <Chip color="warning" size="sm" variant="flat">
+            Total: {receta.detalles?.length || 0} item{(receta.detalles?.length || 0) > 1 ? 's' : ''}
+          </Chip>
         </div>
 
         <div className="space-y-2">
