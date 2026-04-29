@@ -113,7 +113,7 @@ public class PedidoSemanaBodegaServiceImp implements PedidoSemanaBodegaService{
         newReceta.setDescripcionPedido((request.getDescripcionReceta() == null || request.getDescripcionReceta().isBlank())
                 ? null : StringUtils.normalizeSpaces(request.getDescripcionReceta()));
 
-        newReceta.setInstruccionesPedido((request.getInstrucciones() == null || request.getInstrucciones().isBlank())
+        newReceta.setInstrucciones((request.getInstrucciones() == null || request.getInstrucciones().isBlank())
                 ? null : StringUtils.normalizeSpaces(request.getInstrucciones()));
 
         PedidoSemanaBodega recetaGuardada = recetaRepository.save(newReceta);
@@ -184,8 +184,8 @@ public class PedidoSemanaBodegaServiceImp implements PedidoSemanaBodegaService{
         String instruciones = (request.getInstruccionesReceta() != null)
                 ? StringUtils.normalizeSpaces(request.getInstruccionesReceta())
                 : null;
-        if (!Objects.equals(instruciones, oldRecipe.getInstruccionesPedido())) {
-            oldRecipe.setInstruccionesPedido(instruciones);
+        if (!Objects.equals(instruciones, oldRecipe.getInstrucciones())) {
+            oldRecipe.setInstrucciones(instruciones);
         }
         /** Validar y setear el estado */
         String keyEstado = StringUtils.normalizeToEnumKey(request.getEstadoReceta());
