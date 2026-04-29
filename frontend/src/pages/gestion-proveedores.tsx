@@ -846,6 +846,22 @@ const GestionProveedoresPage: React.FC = () => {
           }
           return updated;
         });
+
+        // ✅ Actualizar también en resultados de búsqueda global
+        setResultadosBusqueda(prev =>
+          prev.map(proveedor => ({
+            ...proveedor,
+            categorias: proveedor.categorias.map(categoria => ({
+              ...categoria,
+              productos: categoria.productos.map(p => {
+                if (p.idProducto === prod.idProducto) {
+                  return { ...p, activo: nuevoEstado };
+                }
+                return p;
+              }),
+            })),
+          }))
+        );
       }
     } catch (err: any) {
       showToast(err.message || 'Error al cambiar el estado del producto', 'error');
@@ -882,6 +898,22 @@ const GestionProveedoresPage: React.FC = () => {
           }
           return updated;
         });
+
+        // ✅ Actualizar también en resultados de búsqueda global
+        setResultadosBusqueda(prev =>
+          prev.map(proveedor => ({
+            ...proveedor,
+            categorias: proveedor.categorias.map(categoria => ({
+              ...categoria,
+              productos: categoria.productos.map(p => {
+                if (p.idProducto === quitarTarget.idProducto) {
+                  return { ...p, activo: false };
+                }
+                return p;
+              }),
+            })),
+          }))
+        );
       }
     } catch (err: any) {
       showToast(err.message || 'Error al quitar el producto', 'error');
@@ -1145,6 +1177,8 @@ const GestionProveedoresPage: React.FC = () => {
                       onPrecioTempChange={handlePrecioTempChange}
                       onGuardarPrecio={handleGuardarPrecio}
                       onCancelarEditPrecio={() => setEditingPrecio(null)}
+                      onToggleProducto={handleToggleProducto}
+                      onQuitarProducto={handleConfirmarQuitarProducto}
                     />
                   </>
                 ) : (
@@ -1773,6 +1807,8 @@ interface BusquedaResultadosProps {
   onPrecioTempChange: (val: string) => void;
   onGuardarPrecio: () => void;
   onCancelarEditPrecio: () => void;
+  onToggleProducto: (idProveedor: number, prod: IProveedorProducto) => void;
+  onQuitarProducto: (idProveedor: number, prod: IProveedorProducto) => void;
 }
 
 const BusquedaResultados: React.FC<BusquedaResultadosProps> = ({
@@ -1788,6 +1824,8 @@ const BusquedaResultados: React.FC<BusquedaResultadosProps> = ({
   onPrecioTempChange,
   onGuardarPrecio,
   onCancelarEditPrecio,
+  onToggleProducto,
+  onQuitarProducto,
 }) => {
   const [expandedProveedores, setExpandedProveedores] = React.useState<Set<number>>(
     new Set(resultados.map(r => r.idProveedor))
@@ -2062,17 +2100,22 @@ const BusquedaResultados: React.FC<BusquedaResultadosProps> = ({
                                             : '—'}
                                         </td>
                                         <td className="py-2 px-3 text-center">
-                                          <Tooltip content="Editar precio">
+                                          <Tooltip content={prod.activo ? 'Deshabilitar producto' : 'Habilitar producto'}>
                                             <Button
                                               isIconOnly
                                               size="sm"
                                               variant="light"
-                                              className="text-default-400 hover:text-primary transition-colors"
-                                              onPress={(e) => {
-                                                canEdit && onIniciarEditPrecio(prod.idProveedorProducto, prod.precioProducto);
-                                              }}
+                                              onPress={() =>
+                                                prod.activo
+                                                  ? onQuitarProducto(resultado.idProveedor, prod)
+                                                  : onToggleProducto(resultado.idProveedor, prod)
+                                              }
+                                              className={prod.activo ? 'text-success hover:text-danger' : 'text-warning hover:text-success'}
                                             >
-                                              <Icon icon="lucide:more-vertical" width={16} />
+                                              <Icon
+                                                icon={prod.activo ? 'lucide:check-circle-2' : 'lucide:circle-x'}
+                                                width={18}
+                                              />
                                             </Button>
                                           </Tooltip>
                                         </td>
