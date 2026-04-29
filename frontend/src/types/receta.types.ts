@@ -120,23 +120,23 @@ export interface IRecipeItemCreateDTO {
  * DTO para crear una receta con detalles (Backend)
  */
 export interface IRecipeWithDetailsCreateDTO {
-  nombreReceta: string;
-  descripcionReceta: string;
+  nombrePedido: string;
+  descripcionPedido: string;
   listaItems: IRecipeItemCreateDTO[];
   instrucciones: string;
-  estadoReceta: 'Activo' | 'Inactivo';
+  estadoPedido: 'Activo' | 'Inactivo';
 }
 
 /**
  * DTO para actualizar una receta con detalles (Backend)
- * PUT /v1/receta/update-recipe-with-details
+ * PUT /v1/pedido-semana-bodega/update-recipe-with-details
  */
 export interface IRecipeWithDetailsUpdateDTO {
-  idReceta: number;
-  nombreReceta: string;
-  descripcionReceta?: string;
-  instruccionesReceta?: string;
-  estadoReceta: string;
+  idPedidoSemanaBodega: number;
+  nombrePedido: string;
+  descripcionPedido?: string;
+  instrucciones?: string;
+  estadoPedido: string;
   newItems: IRecipeItemCreateDTO[];
   updateItems: IRecipeItemCreateDTO[];
   deleteItems: number[];
@@ -146,7 +146,7 @@ export interface IRecipeWithDetailsUpdateDTO {
  * DTO para el detalle de una receta en Paginación (Backend)
  */
 export interface IDetalleRecetaDTO {
-  idDetalleReceta: number;
+  idDetallePedido: number;
   nombreProducto: string;
   cantProducto: number;
   abreviatura: string;
@@ -158,12 +158,12 @@ export interface IDetalleRecetaDTO {
  * DTO para una receta en Paginación (Backend)
  */
 export interface IRecetaPaginedDTO {
-  idReceta: number;
-  nombreReceta: string;
-  descripcionReceta: string;
-  instruccionesReceta?: string;
-  estadoReceta: 'Activo' | 'Inactivo';
-  totalIngredientes: number;
+  idPedidoSemanaBodega: number;
+  nombrePedido: string;
+  descripcionPedido: string;
+  instrucciones?: string;
+  estadoPedido: 'Activo' | 'Inactivo';
+  totalDetalles: number;
   detalles: IDetalleRecetaDTO[];
 }
 
@@ -189,7 +189,7 @@ export interface IPaginatedRecetasResponse {
  * Respuesta del conteo de recetas
  */
 export interface IRecetaCountResponse {
-  totalReceta: number;
+  totalPedidos: number;
   total_inactivos: number;
   total_activos: number;
 }
