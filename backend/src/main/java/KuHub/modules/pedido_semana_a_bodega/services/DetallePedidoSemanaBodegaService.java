@@ -8,7 +8,7 @@ import feign.Param;
 
 import java.util.List;
 
-public interface DetalleRecetaService {
+public interface DetallePedidoSemanaBodegaService {
 
     DetallePedidoSemanaBodega findById(Integer id);
 
