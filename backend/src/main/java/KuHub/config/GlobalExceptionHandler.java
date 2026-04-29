@@ -160,17 +160,17 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * Maneja RecetaException de RecetaServiceImp y DetalleRecetaServiceImp
+     * Maneja PedidoSemanaBodegaException de servicios de pedido_semana_a_bodega
      * */
-    @ExceptionHandler(GestionRecetaException.class)
-    public ResponseEntity<Map<String, Object>> handleRecetaException(GestionRecetaException ex) {
+    @ExceptionHandler(PedidoSemanaBodegaException.class)
+    public ResponseEntity<Map<String, Object>> handlePedidoSemanaBodegaException(PedidoSemanaBodegaException ex) {
         Map<String, Object> response = new HashMap<>();
         response.put("timestamp", LocalDateTime.now());
-        response.put("status", HttpStatus.NOT_FOUND.value());
-        response.put("error", "Receta no encontrada o inactiva");
+        response.put("status", ex.getStatus().value());
+        response.put("error", "Error en pedido semana bodega");
         response.put("message", ex.getMessage());
 
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+        return ResponseEntity.status(ex.getStatus()).body(response);
     }
 
 
