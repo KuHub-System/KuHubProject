@@ -1,670 +1,139 @@
-Progress (2): 328/334 kB | 65/267 kB
-Progress (2): 334 kB | 65/267 kB    
-Progress (2): 334 kB | 81/267 kB
-                                
-Downloaded from central: https://repo.maven.apache.org/maven2/com/thoughtworks/qdox/qdox/2.0.3/qdox-2.0.3.jar (334 kB at 5.8 MB/s)
-#14 17.01 Progress (1): 97/267 kB
-Progress (1): 114/267 kB
-Progress (1): 130/267 kB
-Progress (1): 147/267 kB
-Progress (1): 163/267 kB
-Progress (1): 179/267 kB
-Progress (1): 196/267 kB
-Progress (1): 209/267 kB
-Progress (1): 225/267 kB
-Progress (1): 241/267 kB
-Progress (1): 258/267 kB
-Progress (1): 267 kB    
-                    
-Downloaded from central: https://repo.maven.apache.org/maven2/org/codehaus/plexus/plexus-utils/3.5.0/plexus-utils-3.5.0.jar (267 kB at 4.2 MB/s)
-#14 17.10 Downloading from central: https://repo.maven.apache.org/maven2/org/springframework/boot/spring-boot-configuration-processor/3.2.0/spring-boot-configuration-processor-3.2.0.pom
-#14 17.13 Progress (1): 1.0 kB
-Progress (1): 1.9 kB
-                    
-Downloaded from central: https://repo.maven.apache.org/maven2/org/springframework/boot/spring-boot-configuration-processor/3.2.0/spring-boot-configuration-processor-3.2.0.pom (1.9 kB at 59 kB/s)
-#14 17.13 Downloading from central: https://repo.maven.apache.org/maven2/org/springframework/boot/spring-boot-configuration-processor/3.2.0/spring-boot-configuration-processor-3.2.0.jar
-#14 17.16 Progress (1): 7.7/122 kB
-Progress (1): 11/122 kB 
-Progress (1): 28/122 kB
-Progress (1): 44/122 kB
-Progress (1): 61/122 kB
-Progress (1): 77/122 kB
-Progress (1): 93/122 kB
-Progress (1): 110/122 kB
-Progress (1): 122 kB    
-                    
-Downloaded from central: https://repo.maven.apache.org/maven2/org/springframework/boot/spring-boot-configuration-processor/3.2.0/spring-boot-configuration-processor-3.2.0.jar (122 kB at 4.1 MB/s)
-#14 17.22 [INFO] Changes detected - recompiling the module! :source
+Downloaded from central: https://repo.maven.apache.org/maven2/org/springframework/boot/spring-boot-configuration-processor/3.2.0/spring-boot-configuration-processor-3.2.0.jar (122 kB at 2.1 MB/s)
+#13 29.09 [INFO] Changes detected - recompiling the module! :source
 release 21] to target/classes
-#14 22.14 [INFO] /app/backend/src/main/java/KuHub/config/security/filter/JwtAuthenticationFilter.java: /app/backend/src/main/java/KuHub/config/security/filter/JwtAuthenticationFilter.java uses unchecked or unsafe operations.
-#14 22.14 [INFO] /app/backend/src/main/java/KuHub/config/security/filter/JwtAuthenticationFilter.java: Recompile with -Xlint:unchecked for details.
-#14 22.14 [INFO] Some messages have been simplified; recompile with -Xdiags:verbose to get full output
-#14 22.14 [INFO] -------------------------------------------------------------
-#14 22.14 [WARNING] COMPILATION WARNING : 
-#14 22.14 [INFO] -------------------------------------------------------------
-#14 22.14 [WARNING] /app/backend/src/main/java/KuHub/modules/gestion_proveedor/controller/ProveedorController.java:[148,48] deprecated item is not annotated with @Deprecated
-#14 22.14 [INFO] 1 warning
-#14 22.14 [INFO] -------------------------------------------------------------
-#14 22.14 [INFO] -------------------------------------------------------------
-#14 22.14 [ERROR] COMPILATION ERROR : 
-#14 22.14 [INFO] -------------------------------------------------------------
-#14 22.14 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_solicitud/service/SolicitudServiceImp.java:[9,53] cannot access KuHub.modules.pedido_semana_a_bodega.services.DetallePedidoSemanaBodegaService
-#14 22.14   bad source file: /app/backend/src/main/java/KuHub/modules/pedido_semana_a_bodega/services/DetallePedidoSemanaBodegaService.java
-#14 22.14     file does not contain class KuHub.modules.pedido_semana_a_bodega.services.DetallePedidoSemanaBodegaService
-#14 22.14     Please remove or make sure it appears in the correct subdirectory of the sourcepath.
-#14 22.14 [ERROR] /app/backend/src/main/java/KuHub/modules/pedido_semana_a_bodega/controller/PedidoSemanaBodegaController.java:[8,53] cannot access KuHub.modules.pedido_semana_a_bodega.services.PedidoSemanaBodegaService
-#14 22.14   bad source file: /app/backend/src/main/java/KuHub/modules/pedido_semana_a_bodega/services/PedidoSemanaBodegaService.java
-#14 22.14     file does not contain class KuHub.modules.pedido_semana_a_bodega.services.PedidoSemanaBodegaService
-#14 22.14     Please remove or make sure it appears in the correct subdirectory of the sourcepath.
-#14 22.14 [ERROR] /app/backend/src/main/java/KuHub/modules/pedido_semana_a_bodega/services/DetallePedidoSemanaBodegaServiceImp.java:[17,8] class DetalleRecetaServiceImp is public, should be declared in a file named DetalleRecetaServiceImp.java
-#14 22.14 [ERROR] /app/backend/src/main/java/KuHub/modules/pedido_semana_a_bodega/services/DetallePedidoSemanaBodegaService.java:[11,8] interface DetalleRecetaService is public, should be declared in a file named DetalleRecetaService.java
-#14 22.14 [ERROR] /app/backend/src/main/java/KuHub/modules/pedido_semana_a_bodega/services/PedidoSemanaBodegaService.java:[10,8] interface RecetaService is public, should be declared in a file named RecetaService.java
-#14 22.14 [ERROR] /app/backend/src/main/java/KuHub/config/GlobalExceptionHandler.java:[166,70] cannot find symbol
-#14 22.14   symbol:   class GestionRecetaException
-#14 22.14   location: class KuHub.config.GlobalExceptionHandler
-#14 22.14 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_solicitud/service/SolicitudServiceImp.java:[64,13] cannot find symbol
-#14 22.14   symbol:   class DetallePedidoSemanaBodegaService
-#14 22.14   location: class KuHub.modules.gestion_solicitud.service.SolicitudServiceImp
-#14 22.14 [ERROR] /app/backend/src/main/java/KuHub/modules/pedido_semana_a_bodega/controller/PedidoSemanaBodegaController.java:[21,13] cannot find symbol
-#14 22.14   symbol:   class PedidoSemanaBodegaService
-#14 22.14   location: class KuHub.modules.pedido_semana_a_bodega.controller.PedidoSemanaBodegaController
-#14 22.14 [ERROR] /app/backend/src/main/java/KuHub/modules/pedido_semana_a_bodega/controller/DetallePedidoSemanaBodegaController.java:[3,51] cannot find symbol
-#14 22.14   symbol:   class DetalleReceta
-#14 22.14   location: package KuHub.modules.pedido_semana_a_bodega.entity
-#14 22.14 [ERROR] /app/backend/src/main/java/KuHub/modules/pedido_semana_a_bodega/controller/DetallePedidoSemanaBodegaController.java:[4,55] cannot find symbol
-#14 22.14   symbol:   class GestionRecetaException
-#14 22.14   location: package KuHub.modules.pedido_semana_a_bodega.exceptions
-#14 22.14 [ERROR] /app/backend/src/main/java/KuHub/modules/pedido_semana_a_bodega/controller/DetallePedidoSemanaBodegaController.java:[22,13] cannot find symbol
-#14 22.14   symbol:   class DetallePedidoSemanaBodegaService
-#14 22.14   location: class KuHub.modules.pedido_semana_a_bodega.controller.DetallePedidoSemanaBodegaController
-#14 22.14 [ERROR] /app/backend/src/main/java/KuHub/modules/pedido_semana_a_bodega/controller/DetallePedidoSemanaBodegaController.java:[47,27] cannot find symbol
-#14 22.14   symbol:   class DetalleReceta
-#14 22.14   location: class KuHub.modules.pedido_semana_a_bodega.controller.DetallePedidoSemanaBodegaController
-#14 22.14 [ERROR] /app/backend/src/main/java/KuHub/modules/pedido_semana_a_bodega/controller/DetallePedidoSemanaBodegaController.java:[54,36] cannot find symbol
-#14 22.14   symbol:   class DetalleReceta
-#14 22.14   location: class KuHub.modules.pedido_semana_a_bodega.controller.DetallePedidoSemanaBodegaController
-#14 22.14 [ERROR] /app/backend/src/main/java/KuHub/modules/pedido_semana_a_bodega/controller/DetallePedidoSemanaBodegaController.java:[61,60] cannot find symbol
-#14 22.14   symbol:   class DetalleReceta
-#14 22.14   location: class KuHub.modules.pedido_semana_a_bodega.controller.DetallePedidoSemanaBodegaController
-#14 22.14 [ERROR] /app/backend/src/main/java/KuHub/modules/pedido_semana_a_bodega/controller/DetallePedidoSemanaBodegaController.java:[61,27] cannot find symbol
-#14 22.14   symbol:   class DetalleReceta
-#14 22.14   location: class KuHub.modules.pedido_semana_a_bodega.controller.DetallePedidoSemanaBodegaController
-#14 22.14 [ERROR] /app/backend/src/main/java/KuHub/config/GlobalExceptionHandler.java:[165,23] cannot find symbol
-#14 22.14   symbol:   class GestionRecetaException
-#14 22.14   location: class KuHub.config.GlobalExceptionHandler
-#14 22.14 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/entity/Inventario.java:[51,26] cannot find symbol
-#14 22.14   symbol:   method setIdProducto(java.lang.Integer)
-#14 22.14   location: variable producto of type @jakarta.validation.constraints.NotNull(message="El producto es obligatorio") KuHub.modules.gestion_inventario.entity.Producto
-#14 22.14 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/entity/Producto.java:[52,27] cannot find symbol
-#14 22.14   symbol:   method setIdCategoria(java.lang.Short)
-#14 22.14   location: variable categoria of type KuHub.modules.gestion_inventario.entity.Categoria
-#14 22.14 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/entity/Producto.java:[62,30] cannot find symbol
-#14 22.14   symbol:   method setIdUnidad(java.lang.Short)
-#14 22.14   location: variable unidadMedida of type KuHub.modules.gestion_inventario.entity.UnidadMedida
-#14 22.14 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_pedido/entity/DetallePedido.java:[37,24] cannot find symbol
-#14 22.14   symbol:   method setIdPedido(java.lang.Integer)
-#14 22.14   location: variable pedido of type KuHub.modules.gestion_pedido.entity.Pedido
-#14 22.14 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_pedido/entity/DetallePedido.java:[44,26] cannot find symbol
-#14 22.14   symbol:   method setIdProducto(java.lang.Integer)
-#14 22.14   location: variable producto of type KuHub.modules.gestion_inventario.entity.Producto
-#14 22.14 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_usuario/entity/Usuario.java:[82,14] cannot find symbol
-#14 22.14   symbol:   method setIdRol(java.lang.Integer)
-#14 22.14   location: variable r of type KuHub.modules.gestion_usuario.entity.Rol
-#14 22.14 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_academica/entity/AsignaturaProfesorCargo.java:[51,28] cannot find symbol
-#14 22.14   symbol:   method setIdAsignatura(java.lang.Integer)
-#14 22.14   location: variable asignatura of type KuHub.modules.gestion_academica.entity.Asignatura
-#14 22.14 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_academica/entity/AsignaturaProfesorCargo.java:[62,25] cannot find symbol
-#14 22.14   symbol:   method setIdUsuario(java.lang.Integer)
-#14 22.14   location: variable usuario of type KuHub.modules.gestion_usuario.entity.Usuario
-#14 22.14 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_academica/entity/Seccion.java:[46,28] cannot find symbol
-#14 22.14   symbol:   method setIdAsignatura(java.lang.Integer)
-#14 22.14   location: variable asignatura of type KuHub.modules.gestion_academica.entity.Asignatura
-#14 22.14 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_academica/entity/ReservaSala.java:[64,25] cannot find symbol
-#14 22.14   symbol:   method setIdSeccion(java.lang.Integer)
-#14 22.14   location: variable seccion of type KuHub.modules.gestion_academica.entity.Seccion
-#14 22.14 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_academica/entity/ReservaSala.java:[74,22] cannot find symbol
-#14 22.14   symbol:   method setIdSala(java.lang.Integer)
-#14 22.14   location: variable sala of type KuHub.modules.gestion_academica.entity.Sala
-#14 22.14 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_academica/entity/ReservaSala.java:[84,31] cannot find symbol
-#14 22.14   symbol:   method setIdBloque(java.lang.Integer)
-#14 22.14   location: variable bloqueHorario of type KuHub.modules.gestion_academica.entity.BloqueHorario
-#14 22.14 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_solicitud/entity/Solicitud.java:[68,31] cannot find symbol
-#14 22.14   symbol:   method setIdUsuario(java.lang.Integer)
-#14 22.14   location: variable usuarioGestor of type KuHub.modules.gestion_usuario.entity.Usuario
-#14 22.14 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_solicitud/entity/Solicitud.java:[75,25] cannot find symbol
-#14 22.14   symbol:   method setIdSeccion(java.lang.Integer)
-#14 22.14   location: variable seccion of type KuHub.modules.gestion_academica.entity.Seccion
-#14 22.14 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_solicitud/entity/Solicitud.java:[82,24] cannot find symbol
-#14 22.14   symbol:   method setIdPedidoSemanaBodega(java.lang.Integer)
-#14 22.14   location: variable receta of type KuHub.modules.pedido_semana_a_bodega.entity.PedidoSemanaBodega
-#14 22.14 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_solicitud/entity/Solicitud.java:[89,29] cannot find symbol
-#14 22.14   symbol:   method setIdReservaSala(java.lang.Integer)
-#14 22.14   location: variable reservaSala of type KuHub.modules.gestion_academica.entity.ReservaSala
-#14 22.15 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_solicitud/entity/Solicitud.java:[95,16] cannot find symbol
-#14 22.15   symbol:   method setSolicitud(KuHub.modules.gestion_solicitud.entity.Solicitud)
-#14 22.15   location: variable detalle of type KuHub.modules.gestion_solicitud.entity.DetalleSolicitud
-#14 22.15 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_solicitud/entity/DetalleSolicitud.java:[44,26] cannot find symbol
-#14 22.15   symbol:   method setIdProducto(java.lang.Integer)
-#14 22.15   location: variable producto of type KuHub.modules.gestion_inventario.entity.Producto
-#14 22.15 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_usuario/assemblers/RolModelAssembler.java:[18,75] cannot find symbol
-#14 22.15   symbol:   method getIdRol()
-#14 22.15   location: variable entity of type KuHub.modules.gestion_usuario.dtos.RolResponseDTO
-#14 22.15 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_usuario/assemblers/RolModelAssembler.java:[21,79] cannot find symbol
-#14 22.15   symbol:   method getNombreRol()
-#14 22.15   location: variable entity of type KuHub.modules.gestion_usuario.dtos.RolResponseDTO
-#14 22.15 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_academica/service/AsignaturaProfesorCargoServiceImp.java:[40,74] cannot find symbol
-#14 22.15   symbol:   method getUsuario()
-#14 22.15   location: variable asignaturaProfesorCargo of type KuHub.modules.gestion_academica.entity.AsignaturaProfesorCargo
-#14 22.15 [ERROR] /app/backend/src/main/java/KuHub/config/GlobalExceptionHandler.java:[205,40] cannot find symbol
-#14 22.15   symbol:   method getStatus()
-#14 22.15   location: variable ex of type KuHub.modules.gestion_inventario.exceptions.GestionInventarioException
-#14 22.15 [ERROR] /app/backend/src/main/java/KuHub/config/GlobalExceptionHandler.java:[210,40] cannot find symbol
-#14 22.15   symbol:   method getStatus()
-#14 22.15   location: variable ex of type KuHub.modules.gestion_proveedor.exceptions.GestionProveedorException
-#14 22.15 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_academica/controller/SalaController.java:[89,9] cannot find symbol
-#14 22.15   symbol:   variable log
-#14 22.15   location: class KuHub.modules.gestion_academica.controller.SalaController
-#14 22.15 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_academica/controller/SalaController.java:[89,56] cannot find symbol
-#14 22.15   symbol:   method getCodSala()
-#14 22.15   location: variable dto of type KuHub.modules.gestion_academica.dtos.request.SalaCreateDTO
-#14 22.15 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_academica/controller/SalaController.java:[91,29] cannot find symbol
-#14 22.15   symbol:   method getCodSala()
-#14 22.15   location: variable dto of type KuHub.modules.gestion_academica.dtos.request.SalaCreateDTO
-#14 22.15 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_academica/controller/SalaController.java:[92,32] cannot find symbol
-#14 22.15   symbol:   method getNombreSala()
-#14 22.15   location: variable dto of type KuHub.modules.gestion_academica.dtos.request.SalaCreateDTO
-#14 22.15 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_academica/controller/SalaController.java:[113,9] cannot find symbol
-#14 22.15   symbol:   variable log
-#14 22.15   location: class KuHub.modules.gestion_academica.controller.SalaController
-#14 22.15 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_academica/controller/SalaController.java:[113,64] cannot find symbol
-#14 22.15   symbol:   method getCodSala()
-#14 22.15   location: variable dto of type KuHub.modules.gestion_academica.dtos.request.SalaUpdateDTO
-#14 22.15 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_academica/controller/SalaController.java:[115,10] cannot find symbol
-#14 22.15   symbol:   method setIdSala(java.lang.Integer)
-#14 22.15   location: variable s of type KuHub.modules.gestion_academica.entity.Sala
-#14 22.15 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_academica/controller/SalaController.java:[116,25] cannot find symbol
-#14 22.15   symbol:   method getCodSala()
-#14 22.15   location: variable dto of type KuHub.modules.gestion_academica.dtos.request.SalaUpdateDTO
-#14 22.15 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_academica/controller/SalaController.java:[117,28] cannot find symbol
-#14 22.15   symbol:   method getNombreSala()
-#14 22.15   location: variable dto of type KuHub.modules.gestion_academica.dtos.request.SalaUpdateDTO
-#14 22.15 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_academica/controller/SalaController.java:[145,9] cannot find symbol
-#14 22.15   symbol:   variable log
-#14 22.15   location: class KuHub.modules.gestion_academica.controller.SalaController
-#14 22.16 [ERROR] /app/backend/src/main/java/KuHub/modules/pedido_semana_a_bodega/entity/DetallePedidoSemanaBodega.java:[38,32] cannot find symbol
-#14 22.16   symbol:   method setIdPedidoSemanaBodega(java.lang.Integer)
-#14 22.16   location: variable pedidoSemanaBodega of type KuHub.modules.pedido_semana_a_bodega.entity.PedidoSemanaBodega
-#14 22.16 [ERROR] /app/backend/src/main/java/KuHub/modules/pedido_semana_a_bodega/entity/DetallePedidoSemanaBodega.java:[43,22] cannot find symbol
-#14 22.16   symbol:   method setIdProducto(java.lang.Integer)
-#14 22.16   location: variable producto of type KuHub.modules.gestion_inventario.entity.Producto
-#14 22.16 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_academica/assemblers/ReservaSalaModelAssembler.java:[18,79] cannot find symbol
-#14 22.16   symbol:   method getIdReservaSala()
-#14 22.16   location: variable entity of type KuHub.modules.gestion_academica.dtos.dtoentity.ReservaSalaEntityResponseDTO
-#14 22.16 [ERROR] /app/backend/src/main/java/KuHub/config/security/filter/JwtAuthenticationFilter.java:[123,20] cannot find symbol
-#14 22.16   symbol:   method setUltimoAcceso(java.time.LocalDateTime)
-#14 22.16   location: variable usuario of type KuHub.modules.gestion_usuario.entity.Usuario
-#14 22.16 [ERROR] /app/backend/src/main/java/KuHub/config/security/filter/JwtAuthenticationFilter.java:[130,70] cannot find symbol
-#14 22.16   symbol:   method getToken()
-#14 22.16   location: variable rt of type KuHub.modules.gestion_usuario.entity.RefreshToken
-#14 22.16 [ERROR] /app/backend/src/main/java/KuHub/config/security/filter/JwtAuthenticationFilter.java:[140,51] cannot find symbol
-#14 22.16   symbol:   method getIdUsuario()
-#14 22.16   location: variable usuario of type KuHub.modules.gestion_usuario.entity.Usuario
-#14 22.16 [ERROR] /app/backend/src/main/java/KuHub/config/security/filter/JwtAuthenticationFilter.java:[142,47] cannot find symbol
-#14 22.16   symbol:   method getEmail()
-#14 22.16   location: variable usuario of type KuHub.modules.gestion_usuario.entity.Usuario
-#14 22.16 [ERROR] /app/backend/src/main/java/KuHub/config/security/filter/JwtAuthenticationFilter.java:[143,82] cannot find symbol
-#14 22.16   symbol:   method getRol()
-#14 22.16   location: variable usuario of type KuHub.modules.gestion_usuario.entity.Usuario
-#14 22.16 [ERROR] /app/backend/src/main/java/KuHub/config/security/filter/JwtAuthenticationFilter.java:[144,55] cannot find symbol
-#14 22.16   symbol:   method getUrlFotoPerfil()
-#14 22.16   location: variable usuario of type KuHub.modules.gestion_usuario.entity.Usuario
-#14 22.16 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_academica/assemblers/BloqueHorarioModelAssembler.java:[18,81] cannot find symbol
-#14 22.16   symbol:   method getIdBloque()
-#14 22.16   location: variable entity of type KuHub.modules.gestion_academica.entity.BloqueHorario
-#14 22.16 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/controller/InventarioController.java:[130,23] cannot find symbol
-#14 22.16   symbol:   method getInventoryItem()
-#14 22.16   location: variable ex of type KuHub.modules.gestion_inventario.exceptions.StockDesincronizadoException
-#14 22.16 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/controller/InventarioController.java:[134,31] cannot find symbol
-#14 22.16   symbol:   method getStatus()
-#14 22.16   location: variable ex of type KuHub.modules.gestion_inventario.exceptions.StockDesincronizadoException
-#14 22.16 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/controller/InventarioController.java:[140,24] cannot find symbol
-#14 22.16   symbol:   method getInventoryItem()
-#14 22.16   location: variable ex of type KuHub.modules.gestion_inventario.exceptions.StockInsuficienteException
-#14 22.16 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/controller/InventarioController.java:[142,45] cannot find symbol
-#14 22.16   symbol:   method getStatus()
-#14 22.16   location: variable ex of type KuHub.modules.gestion_inventario.exceptions.StockInsuficienteException
-#14 22.16 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/entity/Movimiento.java:[76,25] cannot find symbol
-#14 22.16   symbol:   method setIdUsuario(java.lang.Integer)
-#14 22.16   location: variable usuario of type KuHub.modules.gestion_usuario.entity.Usuario
-#14 22.16 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/entity/Movimiento.java:[86,28] cannot find symbol
-#14 22.16   symbol:   method setIdInventario(java.lang.Integer)
-#14 22.16   location: variable inventario of type KuHub.modules.gestion_inventario.entity.Inventario
-#14 22.16 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/entity/Movimiento.java:[96,32] cannot find symbol
-#14 22.16   symbol:   method setIdBodegaTransito(java.lang.Integer)
-#14 22.16   location: variable bodegaTransito of type KuHub.modules.gestion_inventario.entity.BodegaTransito
-#14 22.16 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/entity/BodegaTransito.java:[47,28] cannot find symbol
-#14 22.16   symbol:   method setIdInventario(java.lang.Integer)
-#14 22.16   location: variable inventario of type KuHub.modules.gestion_inventario.entity.Inventario
-#14 22.17 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_usuario/service/RefreshTokenServiceImpl.java:[32,62] cannot find symbol
-#14 22.17   symbol:   method getIdUsuario()
-#14 22.17   location: variable usuario of type KuHub.modules.gestion_usuario.entity.Usuario
-#14 22.17 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_usuario/service/RefreshTokenServiceImpl.java:[35,11] cannot find symbol
-#14 22.17   symbol:   method setUsuario(KuHub.modules.gestion_usuario.entity.Usuario)
-#14 22.17   location: variable rt of type KuHub.modules.gestion_usuario.entity.RefreshToken
-#14 22.17 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_usuario/service/RefreshTokenServiceImpl.java:[36,11] cannot find symbol
-#14 22.17   symbol:   method setToken(java.lang.String)
-#14 22.17   location: variable rt of type KuHub.modules.gestion_usuario.entity.RefreshToken
-#14 22.17 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_usuario/service/RefreshTokenServiceImpl.java:[37,11] cannot find symbol
-#14 22.17   symbol:   method setExpiresAt(java.time.LocalDateTime)
-#14 22.17   location: variable rt of type KuHub.modules.gestion_usuario.entity.RefreshToken
-#14 22.17 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_usuario/service/RefreshTokenServiceImpl.java:[38,11] cannot find symbol
-#14 22.17   symbol:   method setActivo(boolean)
-#14 22.17   location: variable rt of type KuHub.modules.gestion_usuario.entity.RefreshToken
-#14 22.17 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_usuario/service/RefreshTokenServiceImpl.java:[41,9] cannot find symbol
-#14 22.17   symbol:   variable log
-#14 22.17   location: class KuHub.modules.gestion_usuario.service.RefreshTokenServiceImpl
-#14 22.17 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_usuario/service/RefreshTokenServiceImpl.java:[41,68] cannot find symbol
-#14 22.17   symbol:   method getIdUsuario()
-#14 22.17   location: variable usuario of type KuHub.modules.gestion_usuario.entity.Usuario
-#14 22.17 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_usuario/service/RefreshTokenServiceImpl.java:[52,15] cannot find symbol
-#14 22.17   symbol:   method getExpiresAt()
-#14 22.17   location: variable rt of type KuHub.modules.gestion_usuario.entity.RefreshToken
-#14 22.17 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_usuario/service/RefreshTokenServiceImpl.java:[53,13] cannot find symbol
-#14 22.17   symbol:   variable log
-#14 22.17   location: class KuHub.modules.gestion_usuario.service.RefreshTokenServiceImpl
-#14 22.17 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_usuario/service/RefreshTokenServiceImpl.java:[53,69] cannot find symbol
-#14 22.17   symbol:   method getUsuario()
-#14 22.17   location: variable rt of type KuHub.modules.gestion_usuario.entity.RefreshToken
-#14 22.17 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_usuario/service/RefreshTokenServiceImpl.java:[64,9] cannot find symbol
-#14 22.17   symbol:   variable log
-#14 22.17   location: class KuHub.modules.gestion_usuario.service.RefreshTokenServiceImpl
-#14 22.17 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/services/UnidadMedidaServiceImpl.java:[67,64] cannot find symbol
-#14 22.17   symbol:   method getNombreUnidad()
-#14 22.17   location: variable dto of type KuHub.modules.gestion_inventario.dtos.request.CreateUnidadDTO
-#14 22.17 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/services/UnidadMedidaServiceImpl.java:[68,59] cannot find symbol
-#14 22.17   symbol:   method getAbreviatura()
-#14 22.17   location: variable dto of type KuHub.modules.gestion_inventario.dtos.request.CreateUnidadDTO
-#14 22.17 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/services/UnidadMedidaServiceImpl.java:[69,60] cannot find symbol
-#14 22.17   symbol:   method getNombreUnidad()
-#14 22.17   location: variable dto of type KuHub.modules.gestion_inventario.dtos.request.CreateUnidadDTO
-#14 22.17 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/services/UnidadMedidaServiceImpl.java:[73,70] cannot find symbol
-#14 22.17   symbol:   method getAbreviatura()
-#14 22.17   location: variable dto of type KuHub.modules.gestion_inventario.dtos.request.CreateUnidadDTO
-#14 22.17 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/services/UnidadMedidaServiceImpl.java:[78,40] cannot find symbol
-#14 22.17   symbol:   method getNombreUnidad()
-#14 22.17   location: variable dto of type KuHub.modules.gestion_inventario.dtos.request.CreateUnidadDTO
-#14 22.18 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/services/UnidadMedidaServiceImpl.java:[79,39] cannot find symbol
-#14 22.18   symbol:   method getAbreviatura()
-#14 22.18   location: variable dto of type KuHub.modules.gestion_inventario.dtos.request.CreateUnidadDTO
-#14 22.18 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/services/UnidadMedidaServiceImpl.java:[80,42] cannot find symbol
-#14 22.18   symbol:   method getEsFraccionario()
-#14 22.18   location: variable dto of type KuHub.modules.gestion_inventario.dtos.request.CreateUnidadDTO
-#14 22.18 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/services/UnidadMedidaServiceImpl.java:[88,42] cannot find symbol
-#14 22.18   symbol:   method getIdUnidadMedida()
-#14 22.18   location: variable dto of type KuHub.modules.gestion_inventario.dtos.request.UpdateUnidadDTO
-#14 22.18 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/services/UnidadMedidaServiceImpl.java:[90,16] cannot find symbol
-#14 22.18   symbol:   method getNombreUnidad()
-#14 22.18   location: variable dto of type KuHub.modules.gestion_inventario.dtos.request.UpdateUnidadDTO
-#14 22.18 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/services/UnidadMedidaServiceImpl.java:[91,67] cannot find symbol
-#14 22.18   symbol:   method getNombreUnidad()
-#14 22.18   location: variable dto of type KuHub.modules.gestion_inventario.dtos.request.UpdateUnidadDTO
-#14 22.18 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/services/UnidadMedidaServiceImpl.java:[92,23] cannot find symbol
-#14 22.18   symbol:   method getNombreUnidad()
-#14 22.18   location: variable upUni of type KuHub.modules.gestion_inventario.entity.UnidadMedida
-#14 22.18 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/services/UnidadMedidaServiceImpl.java:[95,47] cannot find symbol
-#14 22.18   symbol:   method getIdUnidadMedida()
-#14 22.18   location: variable dto of type KuHub.modules.gestion_inventario.dtos.request.UpdateUnidadDTO
-#14 22.18 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/services/UnidadMedidaServiceImpl.java:[99,22] cannot find symbol
-#14 22.18   symbol:   method setNombreUnidad(java.lang.String)
-#14 22.18   location: variable upUni of type KuHub.modules.gestion_inventario.entity.UnidadMedida
-#14 22.18 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/services/UnidadMedidaServiceImpl.java:[102,19] cannot find symbol
-#14 22.18   symbol:   method getEsFraccionario()
-#14 22.18   location: variable upUni of type KuHub.modules.gestion_inventario.entity.UnidadMedida
-#14 22.18 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/services/UnidadMedidaServiceImpl.java:[102,50] cannot find symbol
-#14 22.18   symbol:   method getEsFraccionario()
-#14 22.18   location: variable dto of type KuHub.modules.gestion_inventario.dtos.request.UpdateUnidadDTO
-#14 22.18 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/services/UnidadMedidaServiceImpl.java:[103,40] cannot find symbol
-#14 22.18   symbol:   method getEsFraccionario()
-#14 22.18   location: variable dto of type KuHub.modules.gestion_inventario.dtos.request.UpdateUnidadDTO
-#14 22.18 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/services/UnidadMedidaServiceImpl.java:[106,16] cannot find symbol
-#14 22.18   symbol:   method getAbreviatura()
-#14 22.18   location: variable dto of type KuHub.modules.gestion_inventario.dtos.request.UpdateUnidadDTO
-#14 22.18 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/services/UnidadMedidaServiceImpl.java:[107,62] cannot find symbol
-#14 22.18   symbol:   method getAbreviatura()
-#14 22.18   location: variable dto of type KuHub.modules.gestion_inventario.dtos.request.UpdateUnidadDTO
-#14 22.18 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/services/UnidadMedidaServiceImpl.java:[108,23] cannot find symbol
-#14 22.18   symbol:   method getAbreviatura()
-#14 22.18   location: variable upUni of type KuHub.modules.gestion_inventario.entity.UnidadMedida
-#14 22.18 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/services/UnidadMedidaServiceImpl.java:[111,46] cannot find symbol
-#14 22.18   symbol:   method getIdUnidadMedida()
-#14 22.18   location: variable dto of type KuHub.modules.gestion_inventario.dtos.request.UpdateUnidadDTO
-#14 22.18 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/services/UnidadMedidaServiceImpl.java:[115,22] cannot find symbol
-#14 22.18   symbol:   method setAbreviatura(java.lang.String)
-#14 22.18   location: variable upUni of type KuHub.modules.gestion_inventario.entity.UnidadMedida
-#14 22.18 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/services/UnidadMedidaServiceImpl.java:[128,46] cannot find symbol
-#14 22.18   symbol:   method getOldIdUnidadMedida()
-#14 22.18   location: variable dto of type KuHub.modules.gestion_inventario.dtos.request.ChangeProductsToAnotherUnidadMedidaDTO
-#14 22.18 [INFO] 100 errors 
-#14 22.18 [INFO] -------------------------------------------------------------
-#14 22.19 [INFO] ------------------------------------------------------------------------
-#14 22.19 [INFO] Reactor Summary for KuHub Monolitico Project 1.0-SNAPSHOT:
-#14 22.19 [INFO] 
-#14 22.19 [INFO] KuHub Monolitico Project ........................... SUCCESS [  0.411 s]
-#14 22.19 [INFO] backend ............................................ FAILURE [ 16.994 s]
-#14 22.19 [INFO] ------------------------------------------------------------------------
-#14 22.19 [INFO] BUILD FAILURE
-#14 22.19 [INFO] ------------------------------------------------------------------------
-#14 22.19 [INFO] Total time:  20.389 s
-#14 22.19 [INFO] Finished at: 2026-04-29T17:40:11Z
-#14 22.19 [INFO] ------------------------------------------------------------------------
-#14 22.20 [ERROR] Failed to execute goal org.apache.maven.plugins:maven-compiler-plugin:3.11.0:compile (default-compile) on project backend: Compilation failure: Compilation failure: 
-#14 22.20 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_solicitud/service/SolicitudServiceImp.java:[9,53] cannot access KuHub.modules.pedido_semana_a_bodega.services.DetallePedidoSemanaBodegaService
-#14 22.20 [ERROR]   bad source file: /app/backend/src/main/java/KuHub/modules/pedido_semana_a_bodega/services/DetallePedidoSemanaBodegaService.java
-#14 22.20 [ERROR]     file does not contain class KuHub.modules.pedido_semana_a_bodega.services.DetallePedidoSemanaBodegaService
-#14 22.20 [ERROR]     Please remove or make sure it appears in the correct subdirectory of the sourcepath.
-#14 22.20 [ERROR] /app/backend/src/main/java/KuHub/modules/pedido_semana_a_bodega/controller/PedidoSemanaBodegaController.java:[8,53] cannot access KuHub.modules.pedido_semana_a_bodega.services.PedidoSemanaBodegaService
-#14 22.20 [ERROR]   bad source file: /app/backend/src/main/java/KuHub/modules/pedido_semana_a_bodega/services/PedidoSemanaBodegaService.java
-#14 22.20 [ERROR]     file does not contain class KuHub.modules.pedido_semana_a_bodega.services.PedidoSemanaBodegaService
-#14 22.20 [ERROR]     Please remove or make sure it appears in the correct subdirectory of the sourcepath.
-#14 22.20 [ERROR] /app/backend/src/main/java/KuHub/modules/pedido_semana_a_bodega/services/DetallePedidoSemanaBodegaServiceImp.java:[17,8] class DetalleRecetaServiceImp is public, should be declared in a file named DetalleRecetaServiceImp.java
-#14 22.20 [ERROR] /app/backend/src/main/java/KuHub/modules/pedido_semana_a_bodega/services/DetallePedidoSemanaBodegaService.java:[11,8] interface DetalleRecetaService is public, should be declared in a file named DetalleRecetaService.java
-#14 22.20 [ERROR] /app/backend/src/main/java/KuHub/modules/pedido_semana_a_bodega/services/PedidoSemanaBodegaService.java:[10,8] interface RecetaService is public, should be declared in a file named RecetaService.java
-#14 22.20 [ERROR] /app/backend/src/main/java/KuHub/config/GlobalExceptionHandler.java:[166,70] cannot find symbol
-#14 22.20 [ERROR]   symbol:   class GestionRecetaException
-#14 22.20 [ERROR]   location: class KuHub.config.GlobalExceptionHandler
-#14 22.20 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_solicitud/service/SolicitudServiceImp.java:[64,13] cannot find symbol
-#14 22.20 [ERROR]   symbol:   class DetallePedidoSemanaBodegaService
-#14 22.20 [ERROR]   location: class KuHub.modules.gestion_solicitud.service.SolicitudServiceImp
-#14 22.20 [ERROR] /app/backend/src/main/java/KuHub/modules/pedido_semana_a_bodega/controller/PedidoSemanaBodegaController.java:[21,13] cannot find symbol
-#14 22.20 [ERROR]   symbol:   class PedidoSemanaBodegaService
-#14 22.20 [ERROR]   location: class KuHub.modules.pedido_semana_a_bodega.controller.PedidoSemanaBodegaController
-#14 22.20 [ERROR] /app/backend/src/main/java/KuHub/modules/pedido_semana_a_bodega/controller/DetallePedidoSemanaBodegaController.java:[3,51] cannot find symbol
-#14 22.20 [ERROR]   symbol:   class DetalleReceta
-#14 22.20 [ERROR]   location: package KuHub.modules.pedido_semana_a_bodega.entity
-#14 22.20 [ERROR] /app/backend/src/main/java/KuHub/modules/pedido_semana_a_bodega/controller/DetallePedidoSemanaBodegaController.java:[4,55] cannot find symbol
-#14 22.20 [ERROR]   symbol:   class GestionRecetaException
-#14 22.20 [ERROR]   location: package KuHub.modules.pedido_semana_a_bodega.exceptions
-#14 22.20 [ERROR] /app/backend/src/main/java/KuHub/modules/pedido_semana_a_bodega/controller/DetallePedidoSemanaBodegaController.java:[22,13] cannot find symbol
-#14 22.20 [ERROR]   symbol:   class DetallePedidoSemanaBodegaService
-#14 22.20 [ERROR]   location: class KuHub.modules.pedido_semana_a_bodega.controller.DetallePedidoSemanaBodegaController
-#14 22.20 [ERROR] /app/backend/src/main/java/KuHub/modules/pedido_semana_a_bodega/controller/DetallePedidoSemanaBodegaController.java:[47,27] cannot find symbol
-#14 22.20 [ERROR]   symbol:   class DetalleReceta
-#14 22.20 [ERROR]   location: class KuHub.modules.pedido_semana_a_bodega.controller.DetallePedidoSemanaBodegaController
-#14 22.20 [ERROR] /app/backend/src/main/java/KuHub/modules/pedido_semana_a_bodega/controller/DetallePedidoSemanaBodegaController.java:[54,36] cannot find symbol
-#14 22.21 [ERROR]   symbol:   class DetalleReceta
-#14 22.21 [ERROR]   location: class KuHub.modules.pedido_semana_a_bodega.controller.DetallePedidoSemanaBodegaController
-#14 22.21 [ERROR] /app/backend/src/main/java/KuHub/modules/pedido_semana_a_bodega/controller/DetallePedidoSemanaBodegaController.java:[61,60] cannot find symbol
-#14 22.21 [ERROR]   symbol:   class DetalleReceta
-#14 22.21 [ERROR]   location: class KuHub.modules.pedido_semana_a_bodega.controller.DetallePedidoSemanaBodegaController
-#14 22.21 [ERROR] /app/backend/src/main/java/KuHub/modules/pedido_semana_a_bodega/controller/DetallePedidoSemanaBodegaController.java:[61,27] cannot find symbol
-#14 22.21 [ERROR]   symbol:   class DetalleReceta
-#14 22.21 [ERROR]   location: class KuHub.modules.pedido_semana_a_bodega.controller.DetallePedidoSemanaBodegaController
-#14 22.21 [ERROR] /app/backend/src/main/java/KuHub/config/GlobalExceptionHandler.java:[165,23] cannot find symbol
-#14 22.21 [ERROR]   symbol:   class GestionRecetaException
-#14 22.21 [ERROR]   location: class KuHub.config.GlobalExceptionHandler
-#14 22.21 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/entity/Inventario.java:[51,26] cannot find symbol
-#14 22.21 [ERROR]   symbol:   method setIdProducto(java.lang.Integer)
-#14 22.21 [ERROR]   location: variable producto of type @jakarta.validation.constraints.NotNull(message="El producto es obligatorio") KuHub.modules.gestion_inventario.entity.Producto
-#14 22.21 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/entity/Producto.java:[52,27] cannot find symbol
-#14 22.21 [ERROR]   symbol:   method setIdCategoria(java.lang.Short)
-#14 22.21 [ERROR]   location: variable categoria of type KuHub.modules.gestion_inventario.entity.Categoria
-#14 22.21 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/entity/Producto.java:[62,30] cannot find symbol
-#14 22.21 [ERROR]   symbol:   method setIdUnidad(java.lang.Short)
-#14 22.21 [ERROR]   location: variable unidadMedida of type KuHub.modules.gestion_inventario.entity.UnidadMedida
-#14 22.21 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_pedido/entity/DetallePedido.java:[37,24] cannot find symbol
-#14 22.21 [ERROR]   symbol:   method setIdPedido(java.lang.Integer)
-#14 22.21 [ERROR]   location: variable pedido of type KuHub.modules.gestion_pedido.entity.Pedido
-#14 22.21 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_pedido/entity/DetallePedido.java:[44,26] cannot find symbol
-#14 22.21 [ERROR]   symbol:   method setIdProducto(java.lang.Integer)
-#14 22.21 [ERROR]   location: variable producto of type KuHub.modules.gestion_inventario.entity.Producto
-#14 22.21 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_usuario/entity/Usuario.java:[82,14] cannot find symbol
-#14 22.21 [ERROR]   symbol:   method setIdRol(java.lang.Integer)
-#14 22.21 [ERROR]   location: variable r of type KuHub.modules.gestion_usuario.entity.Rol
-#14 22.21 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_academica/entity/AsignaturaProfesorCargo.java:[51,28] cannot find symbol
-#14 22.21 [ERROR]   symbol:   method setIdAsignatura(java.lang.Integer)
-#14 22.22 [ERROR]   location: variable asignatura of type KuHub.modules.gestion_academica.entity.Asignatura
-#14 22.22 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_academica/entity/AsignaturaProfesorCargo.java:[62,25] cannot find symbol
-#14 22.22 [ERROR]   symbol:   method setIdUsuario(java.lang.Integer)
-#14 22.22 [ERROR]   location: variable usuario of type KuHub.modules.gestion_usuario.entity.Usuario
-#14 22.22 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_academica/entity/Seccion.java:[46,28] cannot find symbol
-#14 22.22 [ERROR]   symbol:   method setIdAsignatura(java.lang.Integer)
-#14 22.22 [ERROR]   location: variable asignatura of type KuHub.modules.gestion_academica.entity.Asignatura
-#14 22.22 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_academica/entity/ReservaSala.java:[64,25] cannot find symbol
-#14 22.22 [ERROR]   symbol:   method setIdSeccion(java.lang.Integer)
-#14 22.22 [ERROR]   location: variable seccion of type KuHub.modules.gestion_academica.entity.Seccion
-#14 22.22 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_academica/entity/ReservaSala.java:[74,22] cannot find symbol
-#14 22.22 [ERROR]   symbol:   method setIdSala(java.lang.Integer)
-#14 22.22 [ERROR]   location: variable sala of type KuHub.modules.gestion_academica.entity.Sala
-#14 22.23 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_academica/entity/ReservaSala.java:[84,31] cannot find symbol
-#14 22.23 [ERROR]   symbol:   method setIdBloque(java.lang.Integer)
-#14 22.23 [ERROR]   location: variable bloqueHorario of type KuHub.modules.gestion_academica.entity.BloqueHorario
-#14 22.23 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_solicitud/entity/Solicitud.java:[68,31] cannot find symbol
-#14 22.23 [ERROR]   symbol:   method setIdUsuario(java.lang.Integer)
-#14 22.23 [ERROR]   location: variable usuarioGestor of type KuHub.modules.gestion_usuario.entity.Usuario
-#14 22.26 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_solicitud/entity/Solicitud.java:[75,25] cannot find symbol
-#14 22.26 [ERROR]   symbol:   method setIdSeccion(java.lang.Integer)
-#14 22.26 [ERROR]   location: variable seccion of type KuHub.modules.gestion_academica.entity.Seccion
-#14 22.26 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_solicitud/entity/Solicitud.java:[82,24] cannot find symbol
-#14 22.26 [ERROR]   symbol:   method setIdPedidoSemanaBodega(java.lang.Integer)
-#14 22.26 [ERROR]   location: variable receta of type KuHub.modules.pedido_semana_a_bodega.entity.PedidoSemanaBodega
-#14 22.26 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_solicitud/entity/Solicitud.java:[89,29] cannot find symbol
-#14 22.26 [ERROR]   symbol:   method setIdReservaSala(java.lang.Integer)
-#14 22.26 [ERROR]   location: variable reservaSala of type KuHub.modules.gestion_academica.entity.ReservaSala
-#14 22.26 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_solicitud/entity/Solicitud.java:[95,16] cannot find symbol
-#14 22.26 [ERROR]   symbol:   method setSolicitud(KuHub.modules.gestion_solicitud.entity.Solicitud)
-#14 22.26 [ERROR]   location: variable detalle of type KuHub.modules.gestion_solicitud.entity.DetalleSolicitud
-#14 22.26 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_solicitud/entity/DetalleSolicitud.java:[44,26] cannot find symbol
-#14 22.26 [ERROR]   symbol:   method setIdProducto(java.lang.Integer)
-#14 22.26 [ERROR]   location: variable producto of type KuHub.modules.gestion_inventario.entity.Producto
-#14 22.26 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_usuario/assemblers/RolModelAssembler.java:[18,75] cannot find symbol
-#14 22.26 [ERROR]   symbol:   method getIdRol()
-#14 22.26 [ERROR]   location: variable entity of type KuHub.modules.gestion_usuario.dtos.RolResponseDTO
-#14 22.26 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_usuario/assemblers/RolModelAssembler.java:[21,79] cannot find symbol
-#14 22.26 [ERROR]   symbol:   method getNombreRol()
-#14 22.26 [ERROR]   location: variable entity of type KuHub.modules.gestion_usuario.dtos.RolResponseDTO
-#14 22.26 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_academica/service/AsignaturaProfesorCargoServiceImp.java:[40,74] cannot find symbol
-#14 22.26 [ERROR]   symbol:   method getUsuario()
-#14 22.26 [ERROR]   location: variable asignaturaProfesorCargo of type KuHub.modules.gestion_academica.entity.AsignaturaProfesorCargo
-#14 22.26 [ERROR] /app/backend/src/main/java/KuHub/config/GlobalExceptionHandler.java:[205,40] cannot find symbol
-#14 22.26 [ERROR]   symbol:   method getStatus()
-#14 22.26 [ERROR]   location: variable ex of type KuHub.modules.gestion_inventario.exceptions.GestionInventarioException
-#14 22.26 [ERROR] /app/backend/src/main/java/KuHub/config/GlobalExceptionHandler.java:[210,40] cannot find symbol
-#14 22.26 [ERROR]   symbol:   method getStatus()
-#14 22.26 [ERROR]   location: variable ex of type KuHub.modules.gestion_proveedor.exceptions.GestionProveedorException
-#14 22.26 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_academica/controller/SalaController.java:[89,9] cannot find symbol
-#14 22.26 [ERROR]   symbol:   variable log
-#14 22.26 [ERROR]   location: class KuHub.modules.gestion_academica.controller.SalaController
-#14 22.26 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_academica/controller/SalaController.java:[89,56] cannot find symbol
-#14 22.26 [ERROR]   symbol:   method getCodSala()
-#14 22.26 [ERROR]   location: variable dto of type KuHub.modules.gestion_academica.dtos.request.SalaCreateDTO
-#14 22.26 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_academica/controller/SalaController.java:[91,29] cannot find symbol
-#14 22.26 [ERROR]   symbol:   method getCodSala()
-#14 22.26 [ERROR]   location: variable dto of type KuHub.modules.gestion_academica.dtos.request.SalaCreateDTO
-#14 22.26 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_academica/controller/SalaController.java:[92,32] cannot find symbol
-#14 22.26 [ERROR]   symbol:   method getNombreSala()
-#14 22.26 [ERROR]   location: variable dto of type KuHub.modules.gestion_academica.dtos.request.SalaCreateDTO
-#14 22.26 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_academica/controller/SalaController.java:[113,9] cannot find symbol
-#14 22.26 [ERROR]   symbol:   variable log
-#14 22.26 [ERROR]   location: class KuHub.modules.gestion_academica.controller.SalaController
-#14 22.26 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_academica/controller/SalaController.java:[113,64] cannot find symbol
-#14 22.26 [ERROR]   symbol:   method getCodSala()
-#14 22.26 [ERROR]   location: variable dto of type KuHub.modules.gestion_academica.dtos.request.SalaUpdateDTO
-#14 22.26 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_academica/controller/SalaController.java:[115,10] cannot find symbol
-#14 22.26 [ERROR]   symbol:   method setIdSala(java.lang.Integer)
-#14 22.26 [ERROR]   location: variable s of type KuHub.modules.gestion_academica.entity.Sala
-#14 22.26 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_academica/controller/SalaController.java:[116,25] cannot find symbol
-#14 22.26 [ERROR]   symbol:   method getCodSala()
-#14 22.26 [ERROR]   location: variable dto of type KuHub.modules.gestion_academica.dtos.request.SalaUpdateDTO
-#14 22.26 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_academica/controller/SalaController.java:[117,28] cannot find symbol
-#14 22.26 [ERROR]   symbol:   method getNombreSala()
-#14 22.26 [ERROR]   location: variable dto of type KuHub.modules.gestion_academica.dtos.request.SalaUpdateDTO
-#14 22.26 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_academica/controller/SalaController.java:[145,9] cannot find symbol
-#14 22.26 [ERROR]   symbol:   variable log
-#14 22.26 [ERROR]   location: class KuHub.modules.gestion_academica.controller.SalaController
-#14 22.26 [ERROR] /app/backend/src/main/java/KuHub/modules/pedido_semana_a_bodega/entity/DetallePedidoSemanaBodega.java:[38,32] cannot find symbol
-#14 22.26 [ERROR]   symbol:   method setIdPedidoSemanaBodega(java.lang.Integer)
-#14 22.26 [ERROR]   location: variable pedidoSemanaBodega of type KuHub.modules.pedido_semana_a_bodega.entity.PedidoSemanaBodega
-#14 22.26 [ERROR] /app/backend/src/main/java/KuHub/modules/pedido_semana_a_bodega/entity/DetallePedidoSemanaBodega.java:[43,22] cannot find symbol
-#14 22.26 [ERROR]   symbol:   method setIdProducto(java.lang.Integer)
-#14 22.26 [ERROR]   location: variable producto of type KuHub.modules.gestion_inventario.entity.Producto
-#14 22.26 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_academica/assemblers/ReservaSalaModelAssembler.java:[18,79] cannot find symbol
-#14 22.26 [ERROR]   symbol:   method getIdReservaSala()
-#14 22.26 [ERROR]   location: variable entity of type KuHub.modules.gestion_academica.dtos.dtoentity.ReservaSalaEntityResponseDTO
-#14 22.26 [ERROR] /app/backend/src/main/java/KuHub/config/security/filter/JwtAuthenticationFilter.java:[123,20] cannot find symbol
-#14 22.26 [ERROR]   symbol:   method setUltimoAcceso(java.time.LocalDateTime)
-#14 22.26 [ERROR]   location: variable usuario of type KuHub.modules.gestion_usuario.entity.Usuario
-#14 22.26 [ERROR] /app/backend/src/main/java/KuHub/config/security/filter/JwtAuthenticationFilter.java:[130,70] cannot find symbol
-#14 22.26 [ERROR]   symbol:   method getToken()
-#14 22.26 [ERROR]   location: variable rt of type KuHub.modules.gestion_usuario.entity.RefreshToken
-#14 22.26 [ERROR] /app/backend/src/main/java/KuHub/config/security/filter/JwtAuthenticationFilter.java:[140,51] cannot find symbol
-#14 22.26 [ERROR]   symbol:   method getIdUsuario()
-#14 22.26 [ERROR]   location: variable usuario of type KuHub.modules.gestion_usuario.entity.Usuario
-#14 22.26 [ERROR] /app/backend/src/main/java/KuHub/config/security/filter/JwtAuthenticationFilter.java:[142,47] cannot find symbol
-#14 22.26 [ERROR]   symbol:   method getEmail()
-#14 22.26 [ERROR]   location: variable usuario of type KuHub.modules.gestion_usuario.entity.Usuario
-#14 22.26 [ERROR] /app/backend/src/main/java/KuHub/config/security/filter/JwtAuthenticationFilter.java:[143,82] cannot find symbol
-#14 22.26 [ERROR]   symbol:   method getRol()
-#14 22.26 [ERROR]   location: variable usuario of type KuHub.modules.gestion_usuario.entity.Usuario
-#14 22.26 [ERROR] /app/backend/src/main/java/KuHub/config/security/filter/JwtAuthenticationFilter.java:[144,55] cannot find symbol
-#14 22.26 [ERROR]   symbol:   method getUrlFotoPerfil()
-#14 22.26 [ERROR]   location: variable usuario of type KuHub.modules.gestion_usuario.entity.Usuario
-#14 22.26 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_academica/assemblers/BloqueHorarioModelAssembler.java:[18,81] cannot find symbol
-#14 22.26 [ERROR]   symbol:   method getIdBloque()
-#14 22.26 [ERROR]   location: variable entity of type KuHub.modules.gestion_academica.entity.BloqueHorario
-#14 22.26 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/controller/InventarioController.java:[130,23] cannot find symbol
-#14 22.26 [ERROR]   symbol:   method getInventoryItem()
-#14 22.26 [ERROR]   location: variable ex of type KuHub.modules.gestion_inventario.exceptions.StockDesincronizadoException
-#14 22.26 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/controller/InventarioController.java:[134,31] cannot find symbol
-#14 22.26 [ERROR]   symbol:   method getStatus()
-#14 22.26 [ERROR]   location: variable ex of type KuHub.modules.gestion_inventario.exceptions.StockDesincronizadoException
-#14 22.26 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/controller/InventarioController.java:[140,24] cannot find symbol
-#14 22.26 [ERROR]   symbol:   method getInventoryItem()
-#14 22.26 [ERROR]   location: variable ex of type KuHub.modules.gestion_inventario.exceptions.StockInsuficienteException
-#14 22.26 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/controller/InventarioController.java:[142,45] cannot find symbol
-#14 22.26 [ERROR]   symbol:   method getStatus()
-#14 22.26 [ERROR]   location: variable ex of type KuHub.modules.gestion_inventario.exceptions.StockInsuficienteException
-#14 22.26 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/entity/Movimiento.java:[76,25] cannot find symbol
-#14 22.26 [ERROR]   symbol:   method setIdUsuario(java.lang.Integer)
-#14 22.26 [ERROR]   location: variable usuario of type KuHub.modules.gestion_usuario.entity.Usuario
-#14 22.26 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/entity/Movimiento.java:[86,28] cannot find symbol
-#14 22.26 [ERROR]   symbol:   method setIdInventario(java.lang.Integer)
-#14 22.26 [ERROR]   location: variable inventario of type KuHub.modules.gestion_inventario.entity.Inventario
-#14 22.26 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/entity/Movimiento.java:[96,32] cannot find symbol
-#14 22.26 [ERROR]   symbol:   method setIdBodegaTransito(java.lang.Integer)
-#14 22.26 [ERROR]   location: variable bodegaTransito of type KuHub.modules.gestion_inventario.entity.BodegaTransito
-#14 22.26 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/entity/BodegaTransito.java:[47,28] cannot find symbol
-#14 22.26 [ERROR]   symbol:   method setIdInventario(java.lang.Integer)
-#14 22.26 [ERROR]   location: variable inventario of type KuHub.modules.gestion_inventario.entity.Inventario
-#14 22.26 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_usuario/service/RefreshTokenServiceImpl.java:[32,62] cannot find symbol
-#14 22.26 [ERROR]   symbol:   method getIdUsuario()
-#14 22.26 [ERROR]   location: variable usuario of type KuHub.modules.gestion_usuario.entity.Usuario
-#14 22.26 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_usuario/service/RefreshTokenServiceImpl.java:[35,11] cannot find symbol
-#14 22.26 [ERROR]   symbol:   method setUsuario(KuHub.modules.gestion_usuario.entity.Usuario)
-#14 22.26 [ERROR]   location: variable rt of type KuHub.modules.gestion_usuario.entity.RefreshToken
-#14 22.26 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_usuario/service/RefreshTokenServiceImpl.java:[36,11] cannot find symbol
-#14 22.26 [ERROR]   symbol:   method setToken(java.lang.String)
-#14 22.26 [ERROR]   location: variable rt of type KuHub.modules.gestion_usuario.entity.RefreshToken
-#14 22.26 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_usuario/service/RefreshTokenServiceImpl.java:[37,11] cannot find symbol
-#14 22.26 [ERROR]   symbol:   method setExpiresAt(java.time.LocalDateTime)
-#14 22.26 [ERROR]   location: variable rt of type KuHub.modules.gestion_usuario.entity.RefreshToken
-#14 22.26 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_usuario/service/RefreshTokenServiceImpl.java:[38,11] cannot find symbol
-#14 22.26 [ERROR]   symbol:   method setActivo(boolean)
-#14 22.26 [ERROR]   location: variable rt of type KuHub.modules.gestion_usuario.entity.RefreshToken
-#14 22.26 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_usuario/service/RefreshTokenServiceImpl.java:[41,9] cannot find symbol
-#14 22.26 [ERROR]   symbol:   variable log
-#14 22.26 [ERROR]   location: class KuHub.modules.gestion_usuario.service.RefreshTokenServiceImpl
-#14 22.26 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_usuario/service/RefreshTokenServiceImpl.java:[41,68] cannot find symbol
-#14 22.26 [ERROR]   symbol:   method getIdUsuario()
-#14 22.26 [ERROR]   location: variable usuario of type KuHub.modules.gestion_usuario.entity.Usuario
-#14 22.26 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_usuario/service/RefreshTokenServiceImpl.java:[52,15] cannot find symbol
-#14 22.26 [ERROR]   symbol:   method getExpiresAt()
-#14 22.26 [ERROR]   location: variable rt of type KuHub.modules.gestion_usuario.entity.RefreshToken
-#14 22.26 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_usuario/service/RefreshTokenServiceImpl.java:[53,13] cannot find symbol
-#14 22.26 [ERROR]   symbol:   variable log
-#14 22.26 [ERROR]   location: class KuHub.modules.gestion_usuario.service.RefreshTokenServiceImpl
-#14 22.26 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_usuario/service/RefreshTokenServiceImpl.java:[53,69] cannot find symbol
-#14 22.26 [ERROR]   symbol:   method getUsuario()
-#14 22.26 [ERROR]   location: variable rt of type KuHub.modules.gestion_usuario.entity.RefreshToken
-#14 22.26 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_usuario/service/RefreshTokenServiceImpl.java:[64,9] cannot find symbol
-#14 22.26 [ERROR]   symbol:   variable log
-#14 22.26 [ERROR]   location: class KuHub.modules.gestion_usuario.service.RefreshTokenServiceImpl
-#14 22.26 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/services/UnidadMedidaServiceImpl.java:[67,64] cannot find symbol
-#14 22.26 [ERROR]   symbol:   method getNombreUnidad()
-#14 22.26 [ERROR]   location: variable dto of type KuHub.modules.gestion_inventario.dtos.request.CreateUnidadDTO
-#14 22.26 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/services/UnidadMedidaServiceImpl.java:[68,59] cannot find symbol
-#14 22.26 [ERROR]   symbol:   method getAbreviatura()
-#14 22.26 [ERROR]   location: variable dto of type KuHub.modules.gestion_inventario.dtos.request.CreateUnidadDTO
-#14 22.26 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/services/UnidadMedidaServiceImpl.java:[69,60] cannot find symbol
-#14 22.26 [ERROR]   symbol:   method getNombreUnidad()
-#14 22.26 [ERROR]   location: variable dto of type KuHub.modules.gestion_inventario.dtos.request.CreateUnidadDTO
-#14 22.26 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/services/UnidadMedidaServiceImpl.java:[73,70] cannot find symbol
-#14 22.26 [ERROR]   symbol:   method getAbreviatura()
-#14 22.26 [ERROR]   location: variable dto of type KuHub.modules.gestion_inventario.dtos.request.CreateUnidadDTO
-#14 22.26 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/services/UnidadMedidaServiceImpl.java:[78,40] cannot find symbol
-#14 22.26 [ERROR]   symbol:   method getNombreUnidad()
-#14 22.26 [ERROR]   location: variable dto of type KuHub.modules.gestion_inventario.dtos.request.CreateUnidadDTO
-#14 22.26 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/services/UnidadMedidaServiceImpl.java:[79,39] cannot find symbol
-#14 22.26 [ERROR]   symbol:   method getAbreviatura()
-#14 22.26 [ERROR]   location: variable dto of type KuHub.modules.gestion_inventario.dtos.request.CreateUnidadDTO
-#14 22.26 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/services/UnidadMedidaServiceImpl.java:[80,42] cannot find symbol
-#14 22.26 [ERROR]   symbol:   method getEsFraccionario()
-#14 22.26 [ERROR]   location: variable dto of type KuHub.modules.gestion_inventario.dtos.request.CreateUnidadDTO
-#14 22.26 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/services/UnidadMedidaServiceImpl.java:[88,42] cannot find symbol
-#14 22.26 [ERROR]   symbol:   method getIdUnidadMedida()
-#14 22.26 [ERROR]   location: variable dto of type KuHub.modules.gestion_inventario.dtos.request.UpdateUnidadDTO
-#14 22.26 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/services/UnidadMedidaServiceImpl.java:[90,16] cannot find symbol
-#14 22.26 [ERROR]   symbol:   method getNombreUnidad()
-#14 22.26 [ERROR]   location: variable dto of type KuHub.modules.gestion_inventario.dtos.request.UpdateUnidadDTO
-#14 22.26 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/services/UnidadMedidaServiceImpl.java:[91,67] cannot find symbol
-#14 22.26 [ERROR]   symbol:   method getNombreUnidad()
-#14 22.26 [ERROR]   location: variable dto of type KuHub.modules.gestion_inventario.dtos.request.UpdateUnidadDTO
-#14 22.26 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/services/UnidadMedidaServiceImpl.java:[92,23] cannot find symbol
-#14 22.26 [ERROR]   symbol:   method getNombreUnidad()
-#14 22.26 [ERROR]   location: variable upUni of type KuHub.modules.gestion_inventario.entity.UnidadMedida
-#14 22.26 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/services/UnidadMedidaServiceImpl.java:[95,47] cannot find symbol
-#14 22.26 [ERROR]   symbol:   method getIdUnidadMedida()
-#14 22.26 [ERROR]   location: variable dto of type KuHub.modules.gestion_inventario.dtos.request.UpdateUnidadDTO
-#14 22.26 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/services/UnidadMedidaServiceImpl.java:[99,22] cannot find symbol
-#14 22.26 [ERROR]   symbol:   method setNombreUnidad(java.lang.String)
-#14 22.26 [ERROR]   location: variable upUni of type KuHub.modules.gestion_inventario.entity.UnidadMedida
-#14 22.26 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/services/UnidadMedidaServiceImpl.java:[102,19] cannot find symbol
-#14 22.26 [ERROR]   symbol:   method getEsFraccionario()
-#14 22.26 [ERROR]   location: variable upUni of type KuHub.modules.gestion_inventario.entity.UnidadMedida
-#14 22.26 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/services/UnidadMedidaServiceImpl.java:[102,50] cannot find symbol
-#14 22.26 [ERROR]   symbol:   method getEsFraccionario()
-#14 22.26 [ERROR]   location: variable dto of type KuHub.modules.gestion_inventario.dtos.request.UpdateUnidadDTO
-#14 22.26 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/services/UnidadMedidaServiceImpl.java:[103,40] cannot find symbol
-#14 22.26 [ERROR]   symbol:   method getEsFraccionario()
-#14 22.26 [ERROR]   location: variable dto of type KuHub.modules.gestion_inventario.dtos.request.UpdateUnidadDTO
-#14 22.26 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/services/UnidadMedidaServiceImpl.java:[106,16] cannot find symbol
-#14 22.26 [ERROR]   symbol:   method getAbreviatura()
-#14 22.26 [ERROR]   location: variable dto of type KuHub.modules.gestion_inventario.dtos.request.UpdateUnidadDTO
-#14 22.26 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/services/UnidadMedidaServiceImpl.java:[107,62] cannot find symbol
-#14 22.26 [ERROR]   symbol:   method getAbreviatura()
-#14 22.26 [ERROR]   location: variable dto of type KuHub.modules.gestion_inventario.dtos.request.UpdateUnidadDTO
-#14 22.26 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/services/UnidadMedidaServiceImpl.java:[108,23] cannot find symbol
-#14 22.26 [ERROR]   symbol:   method getAbreviatura()
-#14 22.26 [ERROR]   location: variable upUni of type KuHub.modules.gestion_inventario.entity.UnidadMedida
-#14 22.26 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/services/UnidadMedidaServiceImpl.java:[111,46] cannot find symbol
-#14 22.26 [ERROR]   symbol:   method getIdUnidadMedida()
-#14 22.26 [ERROR]   location: variable dto of type KuHub.modules.gestion_inventario.dtos.request.UpdateUnidadDTO
-#14 22.26 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/services/UnidadMedidaServiceImpl.java:[115,22] cannot find symbol
-#14 22.26 [ERROR]   symbol:   method setAbreviatura(java.lang.String)
-#14 22.26 [ERROR]   location: variable upUni of type KuHub.modules.gestion_inventario.entity.UnidadMedida
-#14 22.26 [ERROR] /app/backend/src/main/java/KuHub/modules/gestion_inventario/services/UnidadMedidaServiceImpl.java:[128,46] cannot find symbol
-#14 22.26 [ERROR]   symbol:   method getOldIdUnidadMedida()
-#14 22.26 [ERROR]   location: variable dto of type KuHub.modules.gestion_inventario.dtos.request.ChangeProductsToAnotherUnidadMedidaDTO
-#14 22.26 [ERROR] -> [Help 1]
-#14 22.26 [ERROR] 
-#14 22.26 [ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
-#14 22.26 [ERROR] Re-run Maven using the -X switch to enable full debug logging.
-#14 22.26 [ERROR] 
-#14 22.26 [ERROR] For more information about the errors and possible solutions, please read the following articles:
-#14 22.26 [ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoFailureException
-#14 22.26 [ERROR] 
-#14 22.26 [ERROR] After correcting the problems, you can resume the build with the command
-#14 22.26 [ERROR]   mvn <args> -rf :backend
-#14 ERROR: process "/bin/sh -c mvn clean package -pl backend -am -DskipTests" did not complete successfully: exit code: 1
+#13 39.81 [INFO] /app/backend/src/main/java/KuHub/config/security/filter/JwtAuthenticationFilter.java: /app/backend/src/main/java/KuHub/config/security/filter/JwtAuthenticationFilter.java uses unchecked or unsafe operations.
+#13 39.81 [INFO] /app/backend/src/main/java/KuHub/config/security/filter/JwtAuthenticationFilter.java: Recompile with -Xlint:unchecked for details.
+#13 39.81 [INFO] -------------------------------------------------------------
+#13 39.82 [WARNING] COMPILATION WARNING :
+#13 39.82 [INFO] -------------------------------------------------------------
+#13 39.82 [WARNING] /app/backend/src/main/java/KuHub/modules/gestion_inventario/dtos/response/dto/MotionFilterRequestDTO.java:[30,20] @Builder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+#13 39.82 [WARNING] /app/backend/src/main/java/KuHub/modules/gestion_proveedor/controller/ProveedorController.java:[148,48] deprecated item is not annotated with @Deprecated
+#13 39.82 [INFO] 2 warnings
+#13 39.82 [INFO] -------------------------------------------------------------
+#13 39.82 [INFO] -------------------------------------------------------------
+#13 39.82 [ERROR] COMPILATION ERROR :
+#13 39.82 [INFO] -------------------------------------------------------------
+#13 39.82 [ERROR] /app/backend/src/main/java/KuHub/modules/pedido_semana_a_bodega/services/PedidoSemanaBodegaServiceImp.java:[66,45] cannot find symbol
+#13 39.82   symbol:   method countByActivoRecetaTrue()
+#13 39.82   location: variable recetaRepository of type KuHub.modules.pedido_semana_a_bodega.repository.PedidoSemanaBodegaRepository
+#13 39.82 [ERROR] /app/backend/src/main/java/KuHub/modules/pedido_semana_a_bodega/services/PedidoSemanaBodegaServiceImp.java:[102,29] cannot find symbol
+#13 39.82   symbol:   method existsByNombreRecetaAndActivoRecetaTrue(java.lang.String)
+#13 39.82   location: variable recetaRepository of type KuHub.modules.pedido_semana_a_bodega.repository.PedidoSemanaBodegaRepository
+#13 39.82 [ERROR] /app/backend/src/main/java/KuHub/modules/pedido_semana_a_bodega/services/PedidoSemanaBodegaServiceImp.java:[108,18] cannot find symbol
+#13 39.82   symbol:   method setNombreReceta(java.lang.String)
+#13 39.82   location: variable newReceta of type KuHub.modules.pedido_semana_a_bodega.entity.PedidoSemanaBodega
+#13 39.82 [ERROR] /app/backend/src/main/java/KuHub/modules/pedido_semana_a_bodega/services/PedidoSemanaBodegaServiceImp.java:[111,18] cannot find symbol
+#13 39.82   symbol:   method setEstadoReceta(KuHub.modules.pedido_semana_a_bodega.entity.PedidoSemanaBodega.EstadoPedidoSemana)
+#13 39.82   location: variable newReceta of type KuHub.modules.pedido_semana_a_bodega.entity.PedidoSemanaBodega
+#13 39.82 [ERROR] /app/backend/src/main/java/KuHub/modules/pedido_semana_a_bodega/services/PedidoSemanaBodegaServiceImp.java:[113,18] cannot find symbol
+#13 39.82   symbol:   method setDescripcionReceta((request.g[...]ta()))
+#13 39.82   location: variable newReceta of type KuHub.modules.pedido_semana_a_bodega.entity.PedidoSemanaBodega
+#13 39.82 [ERROR] /app/backend/src/main/java/KuHub/modules/pedido_semana_a_bodega/services/PedidoSemanaBodegaServiceImp.java:[116,18] cannot find symbol
+#13 39.82   symbol:   method setInstruccionesReceta((request.g[...]es()))
+#13 39.82   location: variable newReceta of type KuHub.modules.pedido_semana_a_bodega.entity.PedidoSemanaBodega
+#13 39.82 [ERROR] /app/backend/src/main/java/KuHub/modules/pedido_semana_a_bodega/services/PedidoSemanaBodegaServiceImp.java:[135,20] cannot find symbol
+#13 39.82   symbol:   method setReceta(KuHub.modules.pedido_semana_a_bodega.entity.PedidoSemanaBodega)
+#13 39.82   location: variable detalle of type KuHub.modules.pedido_semana_a_bodega.entity.DetallePedidoSemanaBodega
+#13 39.82 [ERROR] /app/backend/src/main/java/KuHub/modules/pedido_semana_a_bodega/services/PedidoSemanaBodegaServiceImp.java:[170,36] cannot find symbol
+#13 39.82   symbol:   method existsByNombreRecetaAndActivoRecetaTrue(java.lang.String)
+#13 39.82   location: variable recetaRepository of type KuHub.modules.pedido_semana_a_bodega.repository.PedidoSemanaBodegaRepository
+#13 39.82 [ERROR] /app/backend/src/main/java/KuHub/modules/pedido_semana_a_bodega/services/PedidoSemanaBodegaServiceImp.java:[174,22] cannot find symbol
+#13 39.82   symbol:   method setNombreReceta(java.lang.String)
+#13 39.82   location: variable oldRecipe of type KuHub.modules.pedido_semana_a_bodega.entity.PedidoSemanaBodega
+#13 39.82 [ERROR] /app/backend/src/main/java/KuHub/modules/pedido_semana_a_bodega/services/PedidoSemanaBodegaServiceImp.java:[180,51] cannot find symbol
+#13 39.82   symbol:   method getDescripcionReceta()
+#13 39.82   location: variable oldRecipe of type KuHub.modules.pedido_semana_a_bodega.entity.PedidoSemanaBodega
+#13 39.82 [ERROR] /app/backend/src/main/java/KuHub/modules/pedido_semana_a_bodega/services/PedidoSemanaBodegaServiceImp.java:[181,22] cannot find symbol
+#13 39.82   symbol:   method setDescripcionReceta(java.lang.String)
+#13 39.82   location: variable oldRecipe of type KuHub.modules.pedido_semana_a_bodega.entity.PedidoSemanaBodega
+#13 39.82 [ERROR] /app/backend/src/main/java/KuHub/modules/pedido_semana_a_bodega/services/PedidoSemanaBodegaServiceImp.java:[187,52] cannot find symbol
+#13 39.82   symbol:   method getInstruccionesReceta()
+#13 39.82   location: variable oldRecipe of type KuHub.modules.pedido_semana_a_bodega.entity.PedidoSemanaBodega
+#13 39.82 [ERROR] /app/backend/src/main/java/KuHub/modules/pedido_semana_a_bodega/services/PedidoSemanaBodegaServiceImp.java:[188,22] cannot find symbol
+#13 39.82   symbol:   method setInstruccionesReceta(java.lang.String)
+#13 39.82   location: variable oldRecipe of type KuHub.modules.pedido_semana_a_bodega.entity.PedidoSemanaBodega
+#13 39.82 [ERROR] /app/backend/src/main/java/KuHub/modules/pedido_semana_a_bodega/services/PedidoSemanaBodegaServiceImp.java:[194,22] cannot find symbol
+#13 39.82   symbol:   method getEstadoReceta()
+#13 39.82   location: variable oldRecipe of type KuHub.modules.pedido_semana_a_bodega.entity.PedidoSemanaBodega
+#13 39.82 [ERROR] /app/backend/src/main/java/KuHub/modules/pedido_semana_a_bodega/services/PedidoSemanaBodegaServiceImp.java:[195,22] cannot find symbol
+#13 39.82   symbol:   method setEstadoReceta(KuHub.modules.pedido_semana_a_bodega.entity.PedidoSemanaBodega.EstadoPedidoSemana)
+#13 39.82   location: variable oldRecipe of type KuHub.modules.pedido_semana_a_bodega.entity.PedidoSemanaBodega
+#13 39.82 [ERROR] /app/backend/src/main/java/KuHub/modules/pedido_semana_a_bodega/services/PedidoSemanaBodegaServiceImp.java:[320,25] cannot find symbol
+#13 39.82   symbol:   method setRecetaById(java.lang.Integer)
+#13 39.82   location: variable nuevoDetalle of type KuHub.modules.pedido_semana_a_bodega.entity.DetallePedidoSemanaBodega
+#13 39.82 [INFO] 16 errors
+#13 39.82 [INFO] -------------------------------------------------------------
+#13 39.82 [INFO] ------------------------------------------------------------------------
+#13 39.82 [INFO] Reactor Summary for KuHub Monolitico Project 1.0-SNAPSHOT:
+#13 39.82 [INFO]
+#13 39.82 [INFO] KuHub Monolitico Project ........................... SUCCESS [  1.008 s]
+#13 39.82 [INFO] backend ............................................ FAILURE [ 32.995 s]
+#13 39.82 [INFO] ------------------------------------------------------------------------
+#13 39.82 [INFO] BUILD FAILURE
+#13 39.82 [INFO] ------------------------------------------------------------------------
+#13 39.82 [INFO] Total time:  38.035 s
+#13 39.82 [INFO] Finished at: 2026-04-29T18:08:50Z
+#13 39.82 [INFO] ------------------------------------------------------------------------
+#13 39.82 [ERROR] Failed to execute goal org.apache.maven.plugins:maven-compiler-plugin:3.11.0:compile (default-compile) on project backend: Compilation failure: Compilation failure:
+#13 39.82 [ERROR] /app/backend/src/main/java/KuHub/modules/pedido_semana_a_bodega/services/PedidoSemanaBodegaServiceImp.java:[66,45] cannot find symbol
+#13 39.82 [ERROR]   symbol:   method countByActivoRecetaTrue()
+#13 39.82 [ERROR]   location: variable recetaRepository of type KuHub.modules.pedido_semana_a_bodega.repository.PedidoSemanaBodegaRepository
+#13 39.82 [ERROR] /app/backend/src/main/java/KuHub/modules/pedido_semana_a_bodega/services/PedidoSemanaBodegaServiceImp.java:[102,29] cannot find symbol
+#13 39.82 [ERROR]   symbol:   method existsByNombreRecetaAndActivoRecetaTrue(java.lang.String)
+#13 39.82 [ERROR]   location: variable recetaRepository of type KuHub.modules.pedido_semana_a_bodega.repository.PedidoSemanaBodegaRepository
+#13 39.82 [ERROR] /app/backend/src/main/java/KuHub/modules/pedido_semana_a_bodega/services/PedidoSemanaBodegaServiceImp.java:[108,18] cannot find symbol
+#13 39.82 [ERROR]   symbol:   method setNombreReceta(java.lang.String)
+#13 39.83 [ERROR]   location: variable newReceta of type KuHub.modules.pedido_semana_a_bodega.entity.PedidoSemanaBodega
+#13 39.83 [ERROR] /app/backend/src/main/java/KuHub/modules/pedido_semana_a_bodega/services/PedidoSemanaBodegaServiceImp.java:[111,18] cannot find symbol
+#13 39.83 [ERROR]   symbol:   method setEstadoReceta(KuHub.modules.pedido_semana_a_bodega.entity.PedidoSemanaBodega.EstadoPedidoSemana)
+#13 39.83 [ERROR]   location: variable newReceta of type KuHub.modules.pedido_semana_a_bodega.entity.PedidoSemanaBodega
+#13 39.83 [ERROR] /app/backend/src/main/java/KuHub/modules/pedido_semana_a_bodega/services/PedidoSemanaBodegaServiceImp.java:[113,18] cannot find symbol
+#13 39.83 [ERROR]   symbol:   method setDescripcionReceta((request.g[...]ta()))
+#13 39.83 [ERROR]   location: variable newReceta of type KuHub.modules.pedido_semana_a_bodega.entity.PedidoSemanaBodega
+#13 39.83 [ERROR] /app/backend/src/main/java/KuHub/modules/pedido_semana_a_bodega/services/PedidoSemanaBodegaServiceImp.java:[116,18] cannot find symbol
+#13 39.83 [ERROR]   symbol:   method setInstruccionesReceta((request.g[...]es()))
+#13 39.83 [ERROR]   location: variable newReceta of type KuHub.modules.pedido_semana_a_bodega.entity.PedidoSemanaBodega
+#13 39.83 [ERROR] /app/backend/src/main/java/KuHub/modules/pedido_semana_a_bodega/services/PedidoSemanaBodegaServiceImp.java:[135,20] cannot find symbol
+#13 39.83 [ERROR]   symbol:   method setReceta(KuHub.modules.pedido_semana_a_bodega.entity.PedidoSemanaBodega)
+#13 39.83 [ERROR]   location: variable detalle of type KuHub.modules.pedido_semana_a_bodega.entity.DetallePedidoSemanaBodega
+#13 39.83 [ERROR] /app/backend/src/main/java/KuHub/modules/pedido_semana_a_bodega/services/PedidoSemanaBodegaServiceImp.java:[170,36] cannot find symbol
+#13 39.83 [ERROR]   symbol:   method existsByNombreRecetaAndActivoRecetaTrue(java.lang.String)
+#13 39.83 [ERROR]   location: variable recetaRepository of type KuHub.modules.pedido_semana_a_bodega.repository.PedidoSemanaBodegaRepository
+#13 39.83 [ERROR] /app/backend/src/main/java/KuHub/modules/pedido_semana_a_bodega/services/PedidoSemanaBodegaServiceImp.java:[174,22] cannot find symbol
+#13 39.83 [ERROR]   symbol:   method setNombreReceta(java.lang.String)
+#13 39.83 [ERROR]   location: variable oldRecipe of type KuHub.modules.pedido_semana_a_bodega.entity.PedidoSemanaBodega
+#13 39.83 [ERROR] /app/backend/src/main/java/KuHub/modules/pedido_semana_a_bodega/services/PedidoSemanaBodegaServiceImp.java:[180,51] cannot find symbol
+#13 39.83 [ERROR]   symbol:   method getDescripcionReceta()
+#13 39.83 [ERROR]   location: variable oldRecipe of type KuHub.modules.pedido_semana_a_bodega.entity.PedidoSemanaBodega
+#13 39.83 [ERROR] /app/backend/src/main/java/KuHub/modules/pedido_semana_a_bodega/services/PedidoSemanaBodegaServiceImp.java:[181,22] cannot find symbol
+#13 39.83 [ERROR]   symbol:   method setDescripcionReceta(java.lang.String)
+#13 39.83 [ERROR]   location: variable oldRecipe of type KuHub.modules.pedido_semana_a_bodega.entity.PedidoSemanaBodega
+#13 39.83 [ERROR] /app/backend/src/main/java/KuHub/modules/pedido_semana_a_bodega/services/PedidoSemanaBodegaServiceImp.java:[187,52] cannot find symbol
+#13 39.83 [ERROR]   symbol:   method getInstruccionesReceta()
+#13 39.83 [ERROR]   location: variable oldRecipe of type KuHub.modules.pedido_semana_a_bodega.entity.PedidoSemanaBodega
+#13 39.83 [ERROR] /app/backend/src/main/java/KuHub/modules/pedido_semana_a_bodega/services/PedidoSemanaBodegaServiceImp.java:[188,22] cannot find symbol
+#13 39.83 [ERROR]   symbol:   method setInstruccionesReceta(java.lang.String)
+#13 39.83 [ERROR]   location: variable oldRecipe of type KuHub.modules.pedido_semana_a_bodega.entity.PedidoSemanaBodega
+#13 39.83 [ERROR] /app/backend/src/main/java/KuHub/modules/pedido_semana_a_bodega/services/PedidoSemanaBodegaServiceImp.java:[194,22] cannot find symbol
+#13 39.83 [ERROR]   symbol:   method getEstadoReceta()
+#13 39.83 [ERROR]   location: variable oldRecipe of type KuHub.modules.pedido_semana_a_bodega.entity.PedidoSemanaBodega
+#13 39.83 [ERROR] /app/backend/src/main/java/KuHub/modules/pedido_semana_a_bodega/services/PedidoSemanaBodegaServiceImp.java:[195,22] cannot find symbol
+#13 39.83 [ERROR]   symbol:   method setEstadoReceta(KuHub.modules.pedido_semana_a_bodega.entity.PedidoSemanaBodega.EstadoPedidoSemana)
+#13 39.83 [ERROR]   location: variable oldRecipe of type KuHub.modules.pedido_semana_a_bodega.entity.PedidoSemanaBodega
+#13 39.83 [ERROR] /app/backend/src/main/java/KuHub/modules/pedido_semana_a_bodega/services/PedidoSemanaBodegaServiceImp.java:[320,25] cannot find symbol
+#13 39.83 [ERROR]   symbol:   method setRecetaById(java.lang.Integer)
+#13 39.83 [ERROR]   location: variable nuevoDetalle of type KuHub.modules.pedido_semana_a_bodega.entity.DetallePedidoSemanaBodega
+#13 39.83 [ERROR] -> [Help 1]
+#13 39.83 [ERROR]
+#13 39.83 [ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+#13 39.83 [ERROR] Re-run Maven using the -X switch to enable full debug logging.
+#13 39.83 [ERROR]
+#13 39.83 [ERROR] For more information about the errors and possible solutions, please read the following articles:
+#13 39.83 [ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoFailureException
+#13 39.83 [ERROR]
+#13 39.83 [ERROR] After correcting the problems, you can resume the build with the command
+#13 39.83 [ERROR]   mvn <args> -rf :backend
+#13 ERROR: process "/bin/sh -c mvn clean package -pl backend -am -DskipTests" did not complete successfully: exit code: 1
 ------
  > [build 5/5] RUN mvn clean package -pl backend -am -DskipTests:
 Error: ERROR] -> [Help 1]
