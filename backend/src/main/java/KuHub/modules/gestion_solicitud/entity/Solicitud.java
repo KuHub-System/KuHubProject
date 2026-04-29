@@ -2,7 +2,7 @@ package KuHub.modules.gestion_solicitud.entity;
 
 import KuHub.modules.gestion_academica.entity.ReservaSala;
 import KuHub.modules.gestion_academica.entity.Seccion;
-import KuHub.modules.gestion_receta.entity.Receta;
+import KuHub.modules.pedido_semana_a_bodega.entity.PedidoSemanaBodega;
 import KuHub.modules.gestion_usuario.entity.Usuario;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -41,7 +41,7 @@ public class Solicitud {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_receta", nullable = true) // Es nullable = true por defecto, pero es buena práctica declararlo
-    private Receta receta;
+    private PedidoSemanaBodega receta;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_reserva_sala", nullable = true)
@@ -78,8 +78,8 @@ public class Solicitud {
 
     public void setIdReceta(Integer id) {
         if (id != null) {
-            this.receta = new Receta();
-            this.receta.setIdReceta(id);
+            this.receta = new PedidoSemanaBodega();
+            this.receta.setIdPedidoSemanaBodega(id);
         }
     }
 
