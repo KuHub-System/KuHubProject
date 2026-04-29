@@ -18,6 +18,9 @@ public interface PedidoSemanaBodegaWithDetailsView {
     @Value("#{target.totalDetalles}")
     Long getTotalDetalles();
 
+    @Value("#{target.idSemana}")
+    Integer getIdSemana();
+
     @Value("#{target.detallesJson}")
     String getDetallesJson();
 }

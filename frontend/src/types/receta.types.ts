@@ -114,6 +114,7 @@ export interface IActualizarSolicitud {
 export interface IPedidoSemanaBodegaItemCreateDTO {
   idProducto: number;
   cantUnidadMedida: number;
+  observacion?: string;
 }
 
 /**
