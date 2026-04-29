@@ -6,7 +6,7 @@ import KuHub.modules.gestion_pedido.entity.Pedido;
 import KuHub.modules.gestion_pedido.repository.DetallePedidoRepository;
 import KuHub.modules.gestion_pedido.repository.PedidoRepository;
 import KuHub.modules.gestion_pedido.repository.PedidoSolicitudRepository;
-import KuHub.modules.gestion_receta.services.DetalleRecetaService;
+import KuHub.modules.pedido_semana_a_bodega.services.DetallePedidoSemanaBodegaService;
 import KuHub.modules.gestion_sistema.entity.GestionSistema;
 import KuHub.modules.gestion_sistema.repository.GestionSistemaRepository;
 import KuHub.modules.gestion_solicitud.dtos.request.record.ChangeSolicitationStatus;
@@ -61,7 +61,7 @@ public class SolicitudServiceImp implements SolicitudService {
 
     /**Services*/
     @Autowired
-    private DetalleRecetaService detalleRecetaService;
+    private DetallePedidoSemanaBodegaService detallePedidoSemanaBodegaService;
     @Autowired
     private UsuarioService usuarioService;
 
