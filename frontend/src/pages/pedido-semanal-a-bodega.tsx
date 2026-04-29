@@ -793,13 +793,14 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
     );
 
     // REEMPLAZAR el estado y la inicialización de ingredientes en FormularioReceta
-    const [ingredientes, setIngredientes] = React.useState<IIngrediente[]>(
+    const [ingredientes, setIngredientes] = React.useState<(IIngrediente & { observacion?: string })[]>(
       (receta?.detalles || []).map(d => ({
         id: d.idDetallePedido.toString(),
         productoId: d.idProducto.toString(),
         productoNombre: d.nombreProducto,
         cantidad: d.cantProducto,
         unidadMedida: d.abreviatura,
+        observacion: d.observacion || '',
       }))
     );
 
@@ -953,17 +954,18 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
     }));
 
     const agregarIngrediente = () => {
-      const nuevoIngrediente: IIngrediente = {
+      const nuevoIngrediente: IIngrediente & { observacion?: string } = {
         id: Date.now().toString(),
         productoId: '',
         productoNombre: '',
         cantidad: 0,
-        unidadMedida: ''
+        unidadMedida: '',
+        observacion: ''
       };
       setIngredientes([...ingredientes, nuevoIngrediente]);
     };
 
-    const actualizarIngrediente = (index: number, campo: keyof IIngrediente, valor: any) => {
+    const actualizarIngrediente = (index: number, campo: keyof (IIngrediente & { observacion?: string }), valor: any) => {
       const nuevosIngredientes = [...ingredientes];
 
       if (campo === 'productoId') {
@@ -1109,35 +1111,45 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
                     ) : semanas.length === 0 ? (
                       <p className="text-sm text-default-400">Sin semanas disponibles para este período.</p>
                     ) : (
-                      <Select
-                        selectedKeys={idSemana ? new Set([idSemana]) : new Set()}
-                        onSelectionChange={(keys) => {
-                          const v = Array.from(keys as Set<string>)[0];
-                          if (v) setIdSemana(v);
-                        }}
-                        placeholder="Selecciona una semana..."
-                        variant="bordered"
-                        classNames={{ trigger: "bg-white dark:bg-default-100/50" }}
-                        startContent={<Icon icon="lucide:calendar" className="text-default-400" width={18} />}
-                      >
-                        {semanas.map((semana) => (
-                          <SelectItem key={String(semana.idSemana)} textValue={semana.nombreSemana}>
-                            <div className="flex items-center gap-2">
-                              <span className="font-medium">{semana.nombreSemana}</span>
-                              <span className="text-default-400 text-xs">
-                                {new Date(semana.fechaInicio + 'T00:00:00').toLocaleDateString('es-CL', { day: 'numeric', month: 'short' })}
-                                {' – '}
-                                {new Date(semana.fechaFin + 'T00:00:00').toLocaleDateString('es-CL', { day: 'numeric', month: 'short' })}
-                              </span>
-                              {String(semana.idSemana) === defaultSemanaId && (
-                                <Chip size="sm" color="success" variant="flat" className="ml-auto text-[10px]">
-                                  Actual
-                                </Chip>
-                              )}
-                            </div>
-                          </SelectItem>
-                        ))}
-                      </Select>
+                      <>
+                        <div className="flex items-center gap-2">
+                          <Select
+                            selectedKeys={idSemana ? new Set([idSemana]) : new Set()}
+                            onSelectionChange={(keys) => {
+                              const v = Array.from(keys as Set<string>)[0];
+                              if (v) setIdSemana(v);
+                            }}
+                            placeholder="Selecciona una semana..."
+                            variant="bordered"
+                            classNames={{ trigger: "bg-white dark:bg-default-100/50" }}
+                            startContent={<Icon icon="lucide:calendar" className="text-default-400" width={18} />}
+                            className="flex-1"
+                          >
+                            {semanas.map((semana) => (
+                              <SelectItem key={String(semana.idSemana)} textValue={semana.nombreSemana}>
+                                <div className="flex items-center gap-2">
+                                  <span className="font-medium">{semana.nombreSemana}</span>
+                                  <span className="text-default-400 text-xs">
+                                    {new Date(semana.fechaInicio + 'T00:00:00').toLocaleDateString('es-CL', { day: 'numeric', month: 'short' })}
+                                    {' – '}
+                                    {new Date(semana.fechaFin + 'T00:00:00').toLocaleDateString('es-CL', { day: 'numeric', month: 'short' })}
+                                  </span>
+                                </div>
+                              </SelectItem>
+                            ))}
+                          </Select>
+                          {defaultSemanaId && (
+                            <Chip size="sm" color="success" variant="flat" className="shrink-0 text-[10px]">
+                              Actual
+                            </Chip>
+                          )}
+                        </div>
+                        {idSemana && defaultSemanaId && idSemana === defaultSemanaId && (
+                          <p className="text-xs text-success font-medium">
+                            ✓ Semana en curso seleccionada
+                          </p>
+                        )}
+                      </>
                     )}
                   </>
                 )}
@@ -1189,62 +1201,81 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
                         <Icon icon="lucide:trash-2" width={16} />
                       </Button>
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-[2fr_1.5fr] gap-3">
-                      <Autocomplete
-                        label="Producto"
-                        placeholder="Buscar producto..."
-                        selectedKey={ingrediente.productoId || null}
-                        onSelectionChange={(key) => {
-                          if (key) actualizarIngrediente(index, 'productoId', key.toString());
-                        }}
-                        size="sm"
-                        variant="bordered"
-                        classNames={{ base: "bg-white dark:bg-default-100/50" }}
-                        isRequired
-                        defaultItems={productos}
-                        isClearable={false}
-                      >
-                        {(producto) => (
-                          <AutocompleteItem key={producto.idProducto.toString()}>
-                            {producto.nombreProducto}
-                          </AutocompleteItem>
-                        )}
-                      </Autocomplete>
+                    <div className="space-y-3">
+                      <div className="grid grid-cols-1 md:grid-cols-[1.6fr_1fr] gap-3">
+                        <Autocomplete
+                          label="Producto"
+                          placeholder="Buscar producto..."
+                          selectedKey={ingrediente.productoId || null}
+                          onSelectionChange={(key) => {
+                            if (key) actualizarIngrediente(index, 'productoId', key.toString());
+                          }}
+                          size="sm"
+                          variant="bordered"
+                          classNames={{ base: "bg-white dark:bg-default-100/50", listboxWrapper: "max-h-[200px]" }}
+                          isRequired
+                          defaultItems={productos}
+                          isClearable={false}
+                        >
+                          {(producto) => (
+                            <AutocompleteItem key={producto.idProducto.toString()}>
+                              {producto.nombreProducto}
+                            </AutocompleteItem>
+                          )}
+                        </Autocomplete>
+
+                        <Input
+                          ref={(el) => {
+                            if (el) {
+                              const nativeInput = el.querySelector('input');
+                              if (nativeInput) {
+                                qtyRefs.current[ingrediente.id] = nativeInput;
+                              }
+                            }
+                          }}
+                          data-ingrediente-id={ingrediente.id}
+                          type="number"
+                          label="Cant."
+                          placeholder="0"
+                          value={ingrediente.cantidad === 0 ? '' : ingrediente.cantidad.toString()}
+                          onValueChange={(val) => {
+                            if (!esFraccionario && val.includes('.')) {
+                              return;
+                            }
+                            if (esFraccionario && val.includes('.') && val.split('.')[1].length > 3) {
+                              return;
+                            }
+                            actualizarIngrediente(index, 'cantidad', parseFloat(val) || 0);
+                          }}
+                          size="sm"
+                          variant="bordered"
+                          min="0"
+                          step={esFraccionario ? "0.001" : "1"}
+                          isRequired
+                          classNames={{ inputWrapper: "bg-white dark:bg-default-100/50" }}
+                          endContent={
+                            <Chip size="sm" variant="flat" color="default" className="text-xs">
+                              {ingrediente.unidadMedida || 'unidad'}
+                            </Chip>
+                          }
+                        />
+                      </div>
 
                       <Input
-                        ref={(el) => {
-                          if (el) {
-                            const nativeInput = el.querySelector('input');
-                            if (nativeInput) {
-                              qtyRefs.current[ingrediente.id] = nativeInput;
-                            }
-                          }
-                        }}
-                        data-ingrediente-id={ingrediente.id}
-                        type="number"
-                        label="Cantidad"
-                        placeholder="0"
-                        value={ingrediente.cantidad === 0 ? '' : ingrediente.cantidad.toString()}
+                        label="Observación (Opcional)"
+                        placeholder="Notas o instrucciones especiales..."
+                        value={ingrediente.observacion || ''}
                         onValueChange={(val) => {
-                          if (!esFraccionario && val.includes('.')) {
-                            return;
+                          if (val.length <= 100) {
+                            actualizarIngrediente(index, 'observacion', val);
                           }
-                          if (esFraccionario && val.includes('.') && val.split('.')[1].length > 3) {
-                            return;
-                          }
-                          actualizarIngrediente(index, 'cantidad', parseFloat(val) || 0);
                         }}
                         size="sm"
                         variant="bordered"
-                        min="0"
-                        step={esFraccionario ? "0.001" : "1"}
-                        isRequired
+                        maxLength={100}
                         classNames={{ inputWrapper: "bg-white dark:bg-default-100/50" }}
-                        endContent={
-                          <Chip size="sm" variant="flat" color="default" className="text-xs">
-                            {ingrediente.unidadMedida || 'unidad'}
-                          </Chip>
-                        }
+                        startContent={<Icon icon="lucide:note" className="text-default-400" width={16} />}
+                        description={`${(ingrediente.observacion || '').length}/100 caracteres`}
                       />
                     </div>
                   </CardBody>
