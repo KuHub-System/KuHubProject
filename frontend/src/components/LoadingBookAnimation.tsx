@@ -16,28 +16,69 @@ const SIZE_CONFIG = {
   large:  { width: 560, height: 280 },
 };
 
-// ─── Líneas decorativas dentro de cada página ──────────────────────────────
+// ─── Recetas para mostrar en las páginas ──────────────────────────────────
+const RECIPES = [
+  {
+    name: '🇧🇷 Feijoada Brasileña',
+    subtitle: 'Plato típico brasileño',
+    items: [
+      '• Frijoles negros',
+      '• Carnes variadas',
+      '• Cebolla y ajo',
+      '• Laurel y comino',
+    ],
+  },
+  {
+    name: '🇨🇱 Pastel de Choclo',
+    subtitle: 'Receta chilena',
+    items: [
+      '• Maíz molido',
+      '• Carne molida',
+      '• Cebolla y huevo',
+      '• Aceitunas y pasas',
+    ],
+  },
+  {
+    name: '🇨🇱 Empanadas Chilenas',
+    subtitle: 'Comida típica',
+    items: [
+      '• Masa de harina',
+      '• Relleno de carne',
+      '• Cebolla y huevo',
+      '• Aceitunas negras',
+    ],
+  },
+  {
+    name: '🇨🇱 Cazuela Chilena',
+    subtitle: 'Plato casero',
+    items: [
+      '• Papas',
+      '• Maíz y zapallo',
+      '• Carne de res',
+      '• Caldo casero',
+    ],
+  },
+];
+
 const PageLines: React.FC<{ seed: number }> = ({ seed }) => {
-  const patterns = [
-    ['w-3/4', 'w-full', 'w-5/6', 'w-4/5', 'w-2/3'],
-    ['w-full', 'w-4/5', 'w-full', 'w-3/4', 'w-5/6'],
-    ['w-5/6', 'w-3/4', 'w-full', 'w-full', 'w-4/5'],
-    ['w-4/5', 'w-full', 'w-2/3', 'w-5/6', 'w-full'],
-  ];
-  const widths = patterns[seed % patterns.length];
+  const recipe = RECIPES[seed % RECIPES.length];
 
   return (
-    <div className="w-full space-y-3 px-6">
-      {/* Título simulado */}
-      <div className="h-4 bg-primary-400 dark:bg-primary-500/60 rounded w-2/3 mx-auto mb-6" />
-      {widths.map((w, i) => (
-        <div key={i} className={`h-3 bg-primary-200 dark:bg-primary-600/40 rounded ${w}`} />
-      ))}
-      {/* Párrafo 2 */}
-      <div className="h-3 bg-primary-300 dark:bg-primary-600/50 rounded w-full mt-6" />
-      {widths.slice(0, 3).map((w, i) => (
-        <div key={`p2-${i}`} className={`h-3 bg-primary-200 dark:bg-primary-600/40 rounded ${w}`} />
-      ))}
+    <div className="w-full h-full flex flex-col justify-center px-4 py-3">
+      {/* Título de receta */}
+      <h2 className="text-sm font-bold text-primary dark:text-primary-400 mb-1">
+        {recipe.name}
+      </h2>
+      <p className="text-xs text-default-500 dark:text-default-400 mb-3">{recipe.subtitle}</p>
+
+      {/* Ingredientes */}
+      <div className="space-y-1">
+        {recipe.items.map((item, i) => (
+          <p key={i} className="text-xs text-default-600 dark:text-default-300 leading-tight">
+            {item}
+          </p>
+        ))}
+      </div>
     </div>
   );
 };
