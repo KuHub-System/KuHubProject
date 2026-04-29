@@ -132,7 +132,7 @@ public class PedidoSemanaBodegaServiceImp implements PedidoSemanaBodegaService{
         for (PedidoSemanaBodegaItemDTO item : request.getListaItems()) {
             itemsConsolidados.compute(
                     item.getIdProducto(),
-                    (key, existing) -> {
+                    (prodKey, existing) -> {
                         if (existing == null) {
                             return new ItemConsolidado(item.getCantUnidadMedida(), item.getObservacion());
                         } else {

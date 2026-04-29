@@ -164,6 +164,7 @@ export interface IPedidoSemanaBodegaPaginedDTO {
   descripcionPedido: string;
   estadoPedido: 'Activo' | 'Inactivo';
   totalDetalles: number;
+  idSemana?: number | null;
   detalles: IDetallePedidoSemanaBodegaDTO[];
 }
 
