@@ -11,317 +11,467 @@ export interface LoadingBookAnimationProps {
 }
 
 const SIZE_CONFIG = {
-  small:  { width: 280, height: 180 },
-  medium: { width: 420, height: 280 },
-  large:  { width: 560, height: 360 },
+  small:  { width: 280, height: 180, fontSize: 'text-[10px]', titleSize: 'text-xs' },
+  medium: { width: 420, height: 260, fontSize: 'text-xs',     titleSize: 'text-sm'  },
+  large:  { width: 560, height: 340, fontSize: 'text-sm',     titleSize: 'text-base'},
 };
 
-// ─── Recetas para mostrar en las páginas ──────────────────────────────────
-const RECIPES = [
+// ─── Datos de páginas ────────────────────────────────────────────────────────
+const PAGES = [
   {
-    name: '🇧🇷 Feijoada Brasileña',
-    subtitle: 'Plato típico brasileño',
-    items: [
-      '• Frijoles negros',
-      '• Carnes variadas',
-      '• Cebolla y ajo',
-      '• Laurel y comino',
-    ],
+    emoji: '🫕',
+    title: 'Feijoada Brasileña',
+    tag: 'Brasil · Plato principal',
+    time: '⏱ 2h 30min',
+    diff: '●●●○ Intermedio',
+    ingredients: ['Frijoles negros', 'Costilla de cerdo', 'Chorizo ahumado', 'Laurel y comino'],
+    color: 'from-orange-50 to-amber-50',
+    darkColor: 'dark:from-slate-800 dark:to-slate-850',
+    accent: '#F97316',
   },
   {
-    name: '🇨🇱 Pastel de Choclo',
-    subtitle: 'Receta chilena',
-    items: [
-      '• Maíz molido',
-      '• Carne molida',
-      '• Cebolla y huevo',
-      '• Aceitunas y pasas',
-    ],
+    emoji: '🥧',
+    title: 'Pastel de Choclo',
+    tag: 'Chile · Plato típico',
+    time: '⏱ 1h 45min',
+    diff: '●●○○ Fácil',
+    ingredients: ['Maíz molido fresco', 'Pino de carne', 'Huevo duro', 'Aceitunas negras'],
+    color: 'from-yellow-50 to-lime-50',
+    darkColor: 'dark:from-slate-800 dark:to-slate-850',
+    accent: '#EAB308',
   },
   {
-    name: '🇨🇱 Empanadas Chilenas',
-    subtitle: 'Comida típica',
-    items: [
-      '• Masa de harina',
-      '• Relleno de carne',
-      '• Cebolla y huevo',
-      '• Aceitunas negras',
-    ],
+    emoji: '🥟',
+    title: 'Empanadas Chilenas',
+    tag: 'Chile · Entrada',
+    time: '⏱ 1h 20min',
+    diff: '●●○○ Fácil',
+    ingredients: ['Masa de harina', 'Carne molida', 'Cebolla pochada', 'Pasas sultanas'],
+    color: 'from-red-50 to-orange-50',
+    darkColor: 'dark:from-slate-800 dark:to-slate-850',
+    accent: '#EF4444',
   },
   {
-    name: '🇨🇱 Cazuela Chilena',
-    subtitle: 'Plato casero',
-    items: [
-      '• Papas',
-      '• Maíz y zapallo',
-      '• Carne de res',
-      '• Caldo casero',
-    ],
+    emoji: '🍲',
+    title: 'Cazuela Chilena',
+    tag: 'Chile · Sopa',
+    time: '⏱ 1h 10min',
+    diff: '●○○○ Básico',
+    ingredients: ['Papa y zapallo', 'Maíz en choclo', 'Carne de vacuno', 'Caldo casero'],
+    color: 'from-teal-50 to-cyan-50',
+    darkColor: 'dark:from-slate-800 dark:to-slate-850',
+    accent: '#14B8A6',
+  },
+  {
+    emoji: '🫔',
+    title: 'Tacos al Pastor',
+    tag: 'México · Street food',
+    time: '⏱ 50min',
+    diff: '●●○○ Fácil',
+    ingredients: ['Tortilla de maíz', 'Cerdo adobado', 'Piña natural', 'Cilantro y cebolla'],
+    color: 'from-pink-50 to-rose-50',
+    darkColor: 'dark:from-slate-800 dark:to-slate-850',
+    accent: '#EC4899',
   },
 ];
 
-const PageLines: React.FC<{ seed: number }> = ({ seed }) => {
-  const recipe = RECIPES[seed % RECIPES.length];
-
-  return (
-    <div className="w-full h-full flex flex-col justify-center px-4 py-3">
-      {/* Título de receta */}
-      <h2 className="text-sm font-bold text-primary dark:text-primary-400 mb-1">
-        {recipe.name}
-      </h2>
-      <p className="text-xs text-default-500 dark:text-default-400 mb-3">{recipe.subtitle}</p>
-
-      {/* Ingredientes */}
-      <div className="space-y-1">
-        {recipe.items.map((item, i) => (
-          <p key={i} className="text-xs text-default-600 dark:text-default-300 leading-tight">
-            {item}
-          </p>
-        ))}
-      </div>
-    </div>
-  );
-};
-
-// ─── Una sola página con volteo 3D ─────────────────────────────────────────
-const BookPage: React.FC<{
-  pageIndex: number;
-  isFlipping: boolean;
-  bookWidth: number;
-  bookHeight: number;
-}> = ({ pageIndex, isFlipping, bookWidth, bookHeight }) => {
-  const halfW = bookWidth / 2;
+// ─── Contenido de página individual ─────────────────────────────────────────
+const PageContent: React.FC<{
+  index: number;
+  side: 'left' | 'right';
+  halfW: number;
+  height: number;
+  cfg: typeof SIZE_CONFIG['medium'];
+}> = ({ index, side, halfW, height, cfg }) => {
+  const page = PAGES[index % PAGES.length];
+  const isLeft = side === 'left';
 
   return (
     <div
-      style={{
-        perspective: '1200px',
-        perspectiveOrigin: '0% 50%',
-      }}
+      style={{ width: halfW, height }}
+      className={`
+        relative flex flex-col justify-between overflow-hidden
+        bg-gradient-to-br ${page.color} ${page.darkColor}
+        ${isLeft ? 'border-r border-slate-200/80 dark:border-slate-700/50' : ''}
+      `}
     >
-      <motion.div
-        style={{
-          width: halfW,
-          height: bookHeight,
-          transformStyle: 'preserve-3d',
-          transformOrigin: '0% 50%',
-        }}
-        animate={{
-          rotateY: isFlipping ? 180 : 0,
-        }}
-        transition={{
-          duration: 0.7,
-          ease: 'easeInOut',
-        }}
+      {/* Marca de agua emoji grande */}
+      <div
+        className="absolute inset-0 flex items-center justify-center pointer-events-none select-none"
+        style={{ fontSize: Math.min(halfW, height) * 0.55, opacity: 0.06 }}
       >
-        {/* Cara FRONTAL de la página */}
-        <div
-          style={{
-            backfaceVisibility: 'hidden',
-            WebkitBackfaceVisibility: 'hidden',
-          }}
-          className="absolute w-full h-full bg-white dark:bg-gray-800 flex items-center justify-center border-r border-primary-200 dark:border-primary-700/30"
-        >
-          <PageLines seed={pageIndex} />
+        {page.emoji}
+      </div>
+
+      {/* Número de página (esquina) */}
+      <div
+        className={`
+          absolute top-2 ${isLeft ? 'left-3' : 'right-3'}
+          text-[9px] font-mono opacity-30 dark:opacity-20
+        `}
+        style={{ color: page.accent }}
+      >
+        {isLeft ? `${(index % PAGES.length) + 1}` : `${(index % PAGES.length) + 2}`}
+      </div>
+
+      {/* Contenido */}
+      <div className="relative z-10 flex flex-col h-full px-4 py-3 gap-1.5">
+        {/* Header */}
+        <div className="flex items-start gap-2">
+          <span style={{ fontSize: Math.min(halfW * 0.12, 28) }} className="leading-none mt-0.5">
+            {page.emoji}
+          </span>
+          <div className="flex-1 min-w-0">
+            <p
+              className={`${cfg.titleSize} font-bold leading-tight truncate text-slate-800 dark:text-slate-100`}
+            >
+              {page.title}
+            </p>
+            <p className={`${cfg.fontSize} opacity-60 text-slate-600 dark:text-slate-400 truncate`}>
+              {page.tag}
+            </p>
+          </div>
         </div>
 
-        {/* Cara TRASERA de la página (se ve al voltear) */}
-        <div
-          style={{
-            backfaceVisibility: 'hidden',
-            WebkitBackfaceVisibility: 'hidden',
-            transform: 'rotateY(180deg)',
-          }}
-          className="absolute w-full h-full bg-white dark:bg-gray-800 flex items-center justify-center border-r border-primary-200 dark:border-primary-700/30"
-        >
-          <PageLines seed={pageIndex + 10} />
+        {/* Divider decorativo */}
+        <div className="flex items-center gap-1.5 my-0.5">
+          <div className="h-px flex-1 bg-gradient-to-r from-transparent via-slate-300 to-transparent dark:via-slate-600 opacity-60" />
+          <div className="w-1 h-1 rounded-full opacity-40" style={{ background: page.accent }} />
+          <div className="h-px flex-1 bg-gradient-to-r from-transparent via-slate-300 to-transparent dark:via-slate-600 opacity-60" />
         </div>
-      </motion.div>
+
+        {/* Meta info */}
+        <div className="flex gap-2">
+          <span
+            className={`${cfg.fontSize} px-1.5 py-0.5 rounded-full font-medium`}
+            style={{ background: `${page.accent}18`, color: page.accent }}
+          >
+            {page.time}
+          </span>
+          <span className={`${cfg.fontSize} opacity-50 text-slate-500 dark:text-slate-400 self-center`}>
+            {page.diff}
+          </span>
+        </div>
+
+        {/* Ingredientes */}
+        <div className="flex-1 space-y-1 mt-0.5">
+          {page.ingredients.map((item, i) => (
+            <div key={i} className="flex items-center gap-1.5">
+              <div
+                className="w-1 h-1 rounded-full flex-shrink-0"
+                style={{ background: page.accent, opacity: 0.7 }}
+              />
+              <p
+                className={`${cfg.fontSize} text-slate-700 dark:text-slate-300 leading-tight truncate opacity-80`}
+              >
+                {item}
+              </p>
+            </div>
+          ))}
+        </div>
+
+        {/* Footer bar decorativo */}
+        <div className="h-0.5 rounded-full mt-1 opacity-30" style={{ background: page.accent }} />
+      </div>
+
+      {/* Sombra interior en lomo */}
+      {isLeft && (
+        <div
+          className="absolute right-0 top-0 bottom-0 w-6 pointer-events-none"
+          style={{ background: 'linear-gradient(to left, rgba(0,0,0,0.06), transparent)' }}
+        />
+      )}
+      {!isLeft && (
+        <div
+          className="absolute left-0 top-0 bottom-0 w-6 pointer-events-none"
+          style={{ background: 'linear-gradient(to right, rgba(0,0,0,0.06), transparent)' }}
+        />
+      )}
     </div>
   );
 };
 
-// ─── Sombra dinámica mientras voltea ───────────────────────────────────────
-const FlipShadow: React.FC<{ isFlipping: boolean; bookWidth: number; bookHeight: number }> = ({
-  isFlipping,
-  bookWidth,
-  bookHeight,
-}) => (
-  <AnimatePresence>
-    {isFlipping && (
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 0.3 }}
-        exit={{ opacity: 0 }}
-        style={{
-          position: 'absolute',
-          width: bookWidth / 2,
-          height: bookHeight,
-          background: 'linear-gradient(90deg, rgba(0,0,0,0.4) 0%, rgba(0,0,0,0) 100%)',
-          pointerEvents: 'none',
-          zIndex: 30,
-        }}
-      />
-    )}
-  </AnimatePresence>
-);
-
-// ─── Componente principal ──────────────────────────────────────────────────
-const LoadingBookAnimation: React.FC<LoadingBookAnimationProps> = ({
-  pageCount = 5,
-  pageChangeInterval = 1000,
-  message = 'Cargando datos',
-  subMessage = 'Por favor espera...',
-  size = 'medium',
-  showPageIndicators = true,
-}) => {
-  const [currentPage, setCurrentPage] = React.useState(0);
-  const [flippingPage, setFlippingPage] = React.useState<number | null>(null);
-
-  const { width: bookWidth, height: bookHeight } = SIZE_CONFIG[size];
-
-  React.useEffect(() => {
-    const interval = setInterval(() => {
-      setFlippingPage(currentPage);
-
-      // Después de medio flip, cambia el contenido de la página izquierda
-      const contentTimer = setTimeout(() => {
-        setCurrentPage((prev) => (prev + 1) % pageCount);
-      }, 350);
-
-      // Limpia el estado de "volteando" al terminar
-      const endTimer = setTimeout(() => {
-        setFlippingPage(null);
-      }, 700);
-
-      return () => {
-        clearTimeout(contentTimer);
-        clearTimeout(endTimer);
-      };
-    }, pageChangeInterval);
-
-    return () => clearInterval(interval);
-  }, [currentPage, pageCount, pageChangeInterval]);
-
-  const nextPage = (currentPage + 1) % pageCount;
-
-  return (
-    <div className="flex flex-col items-center justify-center gap-6 py-20">
-      {/* ── Libro ── */}
+// ─── Página con flip 3D ──────────────────────────────────────────────────────
+const FlippingPage: React.FC<{
+  frontIndex: number;
+  backIndex: number;
+  isFlipping: boolean;
+  halfW: number;
+  height: number;
+  cfg: typeof SIZE_CONFIG['medium'];
+}> = ({ frontIndex, backIndex, isFlipping, halfW, height, cfg }) => (
+  <div
+    style={{
+      position:          'absolute',
+      top:               0,
+      left:              halfW,
+      width:             halfW,
+      height,
+      perspective:       '1400px',
+      perspectiveOrigin: '0% 50%',
+      zIndex:            20,
+    }}
+  >
+    <motion.div
+      style={{
+        width:           '100%',
+        height:          '100%',
+        transformStyle:  'preserve-3d',
+        transformOrigin: '0% 50%',
+        position:        'relative',
+      }}
+      animate={{ rotateY: isFlipping ? -180 : 0 }}
+      transition={{ duration: 0.75, ease: [0.645, 0.045, 0.355, 1.0] }}
+    >
+      {/* Cara frontal */}
       <div
         style={{
-          width: bookWidth,
-          height: bookHeight,
-          perspective: '1200px',
+          position:               'absolute', inset: 0,
+          backfaceVisibility:     'hidden',
+          WebkitBackfaceVisibility: 'hidden',
         }}
-        className="relative bg-white dark:bg-gray-800 rounded-lg shadow-2xl overflow-hidden border-2 border-primary dark:border-primary-600"
       >
-        {/* Tapa / fondo del libro */}
+        <PageContent index={frontIndex} side="right" halfW={halfW} height={height} cfg={cfg} />
+        {/* Gradiente de profundidad en borde izquierdo */}
         <div
-          className="absolute inset-0 bg-gradient-to-r from-primary-50 to-primary-100 dark:from-gray-700 dark:to-gray-800"
-          style={{ zIndex: 1 }}
-        />
-
-        {/* Página izquierda (estática, ya leída) */}
-        <div
-          style={{
-            width: bookWidth / 2,
-            height: bookHeight,
-            position: 'absolute',
-            left: 0,
-            top: 0,
-            zIndex: 5,
-          }}
-        >
-          <PageLines seed={currentPage} />
-        </div>
-
-        {/* Página derecha estática (la que está "debajo" de la que voltea) */}
-        <div
-          style={{
-            width: bookWidth / 2,
-            height: bookHeight,
-            position: 'absolute',
-            right: 0,
-            top: 0,
-            zIndex: 5,
-          }}
-        >
-          <PageLines seed={nextPage} />
-        </div>
-
-        {/* Página que voltea */}
-        <div style={{ position: 'absolute', left: bookWidth / 2, top: 0, zIndex: 15 }}>
-          <BookPage
-            pageIndex={nextPage}
-            isFlipping={flippingPage === currentPage}
-            bookWidth={bookWidth}
-            bookHeight={bookHeight}
-          />
-        </div>
-
-        {/* Sombra de volteo */}
-        <FlipShadow isFlipping={flippingPage === currentPage} bookWidth={bookWidth} bookHeight={bookHeight} />
-
-        {/* Lomo central */}
-        <div
-          style={{
-            position: 'absolute',
-            left: '50%',
-            top: 0,
-            bottom: 0,
-            width: '1px',
-            background: 'linear-gradient(180deg, #FFB800 0%, #FF9800 100%)',
-            transform: 'translateX(-50%)',
-            zIndex: 20,
-          }}
-        />
-
-        {/* Sombra inferior del libro */}
-        <div
-          style={{
-            position: 'absolute',
-            bottom: 0,
-            left: 0,
-            right: 0,
-            height: '8px',
-            background: 'linear-gradient(180deg, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.3) 100%)',
-            zIndex: 2,
-          }}
+          className="absolute left-0 top-0 bottom-0 w-3 pointer-events-none"
+          style={{ background: 'linear-gradient(to right, rgba(0,0,0,0.08), transparent)' }}
         />
       </div>
 
-      {/* ── Indicadores de página ── */}
-      {showPageIndicators && (
-        <div className="flex gap-2">
-          {Array.from({ length: pageCount }).map((_, i) => (
-            <motion.div
-              key={i}
-              className={`h-2 rounded-full transition-all ${
-                i === currentPage ? 'bg-primary w-5' : 'bg-default-300 dark:bg-default-500 w-2'
-              }`}
-              animate={{
-                scale: i === currentPage ? 1.2 : 1,
-              }}
-              transition={{ duration: 0.3 }}
+      {/* Cara trasera */}
+      <div
+        style={{
+          position:               'absolute', inset: 0,
+          backfaceVisibility:     'hidden',
+          WebkitBackfaceVisibility: 'hidden',
+          transform:              'rotateY(180deg)',
+        }}
+      >
+        <PageContent index={backIndex} side="right" halfW={halfW} height={height} cfg={cfg} />
+      </div>
+    </motion.div>
+  </div>
+);
+
+// ─── Partículas flotantes ────────────────────────────────────────────────────
+const FloatingParticles: React.FC<{ accent: string }> = ({ accent }) => (
+  <>
+    {[...Array(4)].map((_, i) => (
+      <motion.div
+        key={i}
+        className="absolute w-1 h-1 rounded-full pointer-events-none"
+        style={{
+          background:  accent,
+          left:        `${25 + i * 15}%`,
+          top:         `${20 + (i % 2) * 40}%`,
+          opacity:     0,
+          zIndex:      40,
+        }}
+        animate={{
+          y:       [-0, -20, -40],
+          opacity: [0, 0.6, 0],
+          scale:   [0.5, 1, 0.3],
+        }}
+        transition={{
+          duration: 1.5,
+          delay:    i * 0.18,
+          repeat:   Infinity,
+          repeatDelay: 1.2,
+        }}
+      />
+    ))}
+  </>
+);
+
+// ─── Componente principal ────────────────────────────────────────────────────
+const LoadingBookAnimation: React.FC<LoadingBookAnimationProps> = ({
+  pageCount          = PAGES.length,
+  pageChangeInterval = 2000,
+  message            = 'Cargando recetas',
+  subMessage         = 'Preparando el menú...',
+  size               = 'medium',
+  showPageIndicators = true,
+}) => {
+  const [currentPage, setCurrentPage] = React.useState(0);
+  const [isFlipping,  setIsFlipping]  = React.useState(false);
+
+  const cfg            = SIZE_CONFIG[size];
+  const { width: bookWidth, height: bookHeight } = cfg;
+  const halfW          = bookWidth / 2;
+  const leftPageIndex  = currentPage;
+  const rightPageIndex = (currentPage + 1) % pageCount;
+  const nextPageIndex  = (currentPage + 2) % pageCount;
+  const accentColor    = PAGES[rightPageIndex % PAGES.length].accent;
+
+  React.useEffect(() => {
+    const interval = setInterval(() => {
+      setIsFlipping(true);
+      setTimeout(() => {
+        setCurrentPage((p) => (p + 1) % pageCount);
+        setIsFlipping(false);
+      }, 750);
+    }, pageChangeInterval);
+    return () => clearInterval(interval);
+  }, [pageCount, pageChangeInterval]);
+
+  return (
+    <div className="flex flex-col items-center justify-center gap-5 py-16 select-none">
+
+      {/* ── Wrapper con sombra exterior animada ── */}
+      <motion.div
+        animate={{ boxShadow: isFlipping
+          ? '0 30px 80px -10px rgba(0,0,0,0.30), 0 10px 30px -5px rgba(0,0,0,0.20)'
+          : '0 20px 60px -10px rgba(0,0,0,0.20), 0 8px 20px -5px rgba(0,0,0,0.12)',
+        }}
+        transition={{ duration: 0.4 }}
+        style={{ borderRadius: 12, position: 'relative' }}
+      >
+        {/* ── Tapa trasera del libro (profundidad) ── */}
+        <div
+          style={{
+            position:     'absolute',
+            inset:        0,
+            borderRadius: 12,
+            transform:    'translateY(4px) translateX(2px)',
+            zIndex:       -1,
+          }}
+          className="bg-slate-300 dark:bg-slate-900"
+        />
+
+        {/* ── Libro ── */}
+        <div
+          style={{ width: bookWidth, height: bookHeight, position: 'relative', overflow: 'hidden', borderRadius: 10 }}
+          className="border border-slate-200/80 dark:border-slate-700"
+        >
+          {/* Partículas */}
+          <FloatingParticles accent={accentColor} />
+
+          {/* Página izquierda estática */}
+          <div style={{ position: 'absolute', left: 0, top: 0, zIndex: 5 }}>
+            <PageContent
+              index={leftPageIndex}
+              side="left"
+              halfW={halfW}
+              height={bookHeight}
+              cfg={cfg}
             />
-          ))}
+          </div>
+
+          {/* Página derecha estática (debajo del flip) */}
+          <div style={{ position: 'absolute', left: halfW, top: 0, zIndex: 5 }}>
+            <PageContent
+              index={nextPageIndex}
+              side="right"
+              halfW={halfW}
+              height={bookHeight}
+              cfg={cfg}
+            />
+          </div>
+
+          {/* Página que voltea */}
+          <FlippingPage
+            frontIndex={rightPageIndex}
+            backIndex={nextPageIndex}
+            isFlipping={isFlipping}
+            halfW={halfW}
+            height={bookHeight}
+            cfg={cfg}
+          />
+
+          {/* ── Lomo central ── */}
+          <div
+            style={{
+              position:   'absolute',
+              left:       halfW - 1,
+              top:        0,
+              bottom:     0,
+              width:      2,
+              zIndex:     35,
+              background: 'linear-gradient(180deg, #d1a050 0%, #a0622a 40%, #d1a050 70%, #8B4513 100%)',
+              boxShadow:  '0 0 8px 1px rgba(160,98,42,0.35)',
+            }}
+          />
+
+          {/* ── Brillo superior (efecto papel) ── */}
+          <div
+            style={{
+              position:       'absolute',
+              top:            0,
+              left:           0,
+              right:          0,
+              height:         '35%',
+              background:     'linear-gradient(180deg, rgba(255,255,255,0.18) 0%, transparent 100%)',
+              zIndex:         36,
+              pointerEvents:  'none',
+              borderRadius:   '10px 10px 0 0',
+            }}
+          />
+
+          {/* ── Sombra del flip sobre página izquierda ── */}
+          <AnimatePresence>
+            {isFlipping && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.35 }}
+                style={{
+                  position:      'absolute',
+                  left:          0,
+                  top:           0,
+                  width:         halfW,
+                  height:        bookHeight,
+                  background:    'linear-gradient(to left, rgba(0,0,0,0.12) 0%, transparent 60%)',
+                  zIndex:        30,
+                  pointerEvents: 'none',
+                }}
+              />
+            )}
+          </AnimatePresence>
+        </div>
+      </motion.div>
+
+      {/* ── Indicadores ── */}
+      {showPageIndicators && (
+        <div className="flex items-center gap-2">
+          {Array.from({ length: pageCount }).map((_, i) => {
+            const pageAccent = PAGES[i % PAGES.length].accent;
+            return (
+              <motion.div
+                key={i}
+                style={{
+                  background:    i === currentPage ? pageAccent : undefined,
+                  borderRadius:  9999,
+                  height:        6,
+                }}
+                className={i !== currentPage ? 'bg-slate-300 dark:bg-slate-600' : ''}
+                animate={{ width: i === currentPage ? 22 : 6, opacity: i === currentPage ? 1 : 0.5 }}
+                transition={{ duration: 0.35, ease: 'easeOut' }}
+              />
+            );
+          })}
         </div>
       )}
 
       {/* ── Textos ── */}
-      <div className="text-center max-w-xs">
-        <p className="text-sm font-semibold text-secondary dark:text-foreground tracking-wide">
-          {message}
-        </p>
+      <div className="text-center space-y-1">
         <motion.p
-          className="text-xs text-default-500 dark:text-default-400 mt-1.5"
-          animate={{ opacity: [0.5, 1] }}
-          transition={{ duration: 1.2, repeat: Infinity, repeatType: 'reverse' }}
+          className="text-sm font-semibold tracking-wide text-slate-700 dark:text-slate-200"
+          animate={{ color: accentColor }}
+          transition={{ duration: 0.5 }}
+        >
+          {message}
+        </motion.p>
+        <motion.p
+          className="text-xs text-slate-400 dark:text-slate-500"
+          animate={{ opacity: [0.4, 1, 0.4] }}
+          transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut' }}
         >
           {subMessage}
         </motion.p>
       </div>
+
     </div>
   );
 };
