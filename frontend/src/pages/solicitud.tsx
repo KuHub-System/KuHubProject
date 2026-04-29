@@ -21,7 +21,7 @@ import { usePeriodoSemana } from '../contexts/periodo-semana-context';
 import { useHistory } from 'react-router-dom';
 import {
   IAsignaturaCurso, ISeccionCurso, IHorarioCurso,
-  IReceta, IProductoOpcion,
+  IPedidoSemanaBodegaSolicitud, IProductoOpcion,
   IResultsMassSolicitation,
   obtenerCursosParaSolicitudService,
   obtenerRecetasSolicitudService,
@@ -177,7 +177,7 @@ interface AsigCardProps {
   defaultSemanaId: string;
   isLoadingSemanas: boolean;
   sinPeriodos: boolean;
-  recetas: IReceta[];
+  recetas: IPedidoSemanaBodegaSolicitud[];
   productos: IProductoOpcion[];
   onToggleExpand: () => void;
   onUpdate: (fn: (prev: AsigConfig) => AsigConfig) => void;
@@ -715,7 +715,7 @@ const SolicitudPage: React.FC = () => {
   const [isLoadingAsig,    setIsLoadingAsig]      = React.useState(true);
 
   // ── recetas + productos state ──
-  const [recetas,          setRecetas]           = React.useState<IReceta[]>([]);
+  const [recetas,          setRecetas]           = React.useState<IPedidoSemanaBodegaSolicitud[]>([]);
   const [productos,        setProductos]         = React.useState<IProductoOpcion[]>([]);
 
   // ── form state ──
@@ -796,7 +796,7 @@ const SolicitudPage: React.FC = () => {
     try {
       const payload = resumen.asigConfiguradas.map(({ asig, cfg, secSel }) => {
         const semana = semanas.find(s => String(s.idSemana) === cfg.semanaId)!;
-        const receta = cfg.recetaId ? recetas.find((r: IReceta) => String(r.idReceta) === cfg.recetaId) : null;
+        const receta = cfg.recetaId ? recetas.find((r: IPedidoSemanaBodegaSolicitud) => String(r.idReceta) === cfg.recetaId) : null;
 
         // ── deltas ──────────────────────────────────────────────────────────
         // Las cantidades se envían tal como están (base 20 porciones).
@@ -1094,7 +1094,7 @@ const SolicitudPage: React.FC = () => {
                     <div className="space-y-3">
                       {resumen.asigConfiguradas.map(({ asig, cfg, secSel, blkCount }) => {
                         const s   = semanas.find(s => String(s.idSemana) === cfg.semanaId);
-                        const r   = recetas.find((r: IReceta) => String(r.idReceta) === cfg.recetaId);
+                        const r   = recetas.find((r: IPedidoSemanaBodegaSolicitud) => String(r.idReceta) === cfg.recetaId);
                         const ins = secSel.reduce((sum, sec) => sum + sec.cant_inscritos, 0);
                         return (
                           <div key={asig.idAsignatura} className="rounded-xl border border-default-200 p-3 space-y-1.5">

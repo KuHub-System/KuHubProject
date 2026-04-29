@@ -8,7 +8,7 @@
 import { IProducto, IMovimientoProducto } from '../types/producto.types';
 import { IUser, IRole } from '../types/user.types';
 import {
-  IReceta,
+  IPedidoSemanaBodega,
   IIngrediente,
   ISolicitud,
   IItemSolicitud,
@@ -421,17 +421,17 @@ export const actualizarRoles = (roles: IRole[]): void => {
 // GESTIÓN DE RECETAS
 // ==========================================
 
-export const obtenerRecetas = (): IReceta[] => {
+export const obtenerRecetas = (): IPedidoSemanaBodega[] => {
   const recetas = localStorage.getItem(STORAGE_KEYS.RECETAS);
   return recetas ? JSON.parse(recetas) : [];
 };
 
-export const obtenerRecetaPorId = (id: string): IReceta | null => {
+export const obtenerRecetaPorId = (id: string): IPedidoSemanaBodega | null => {
   const recetas = obtenerRecetas();
   return recetas.find(r => r.id === id) || null;
 };
 
-export const crearReceta = (recetaData: Omit<IReceta, 'id' | 'fechaCreacion' | 'fechaActualizacion'>): IReceta => {
+export const crearReceta = (recetaData: Omit<IPedidoSemanaBodega, 'id' | 'fechaCreacion' | 'fechaActualizacion'>): IPedidoSemanaBodega => {
   const recetas = obtenerRecetas();
 
   const ingredientesConId: IIngrediente[] = recetaData.ingredientes.map(ing => ({
@@ -439,7 +439,7 @@ export const crearReceta = (recetaData: Omit<IReceta, 'id' | 'fechaCreacion' | '
     id: 'id' in ing && ing.id ? ing.id : generarId()
   }));
 
-  const nuevaReceta: IReceta = {
+  const nuevaReceta: IPedidoSemanaBodega = {
     id: generarId(),
     ...recetaData,
     ingredientes: ingredientesConId,
@@ -453,7 +453,7 @@ export const crearReceta = (recetaData: Omit<IReceta, 'id' | 'fechaCreacion' | '
   return nuevaReceta;
 };
 
-export const actualizarReceta = (id: string, cambios: Partial<Omit<IReceta, 'id' | 'fechaCreacion' | 'fechaActualizacion'>>): IReceta | null => {
+export const actualizarReceta = (id: string, cambios: Partial<Omit<IPedidoSemanaBodega, 'id' | 'fechaCreacion' | 'fechaActualizacion'>>): IPedidoSemanaBodega | null => {
   const recetas = obtenerRecetas();
   const index = recetas.findIndex(r => r.id === id);
 
@@ -479,7 +479,7 @@ export const actualizarReceta = (id: string, cambios: Partial<Omit<IReceta, 'id'
   return recetas[index];
 };
 
-export const obtenerRecetasActivas = (): IReceta[] => {
+export const obtenerRecetasActivas = (): IPedidoSemanaBodega[] => {
   return obtenerRecetas().filter(r => r.estado === 'Activo' || (r.estado as any) === 'Activa');
 };
 

@@ -27,9 +27,8 @@ public interface PedidoSemanaBodegaRepository extends JpaRepository<PedidoSemana
     @Query(value = """
         SELECT
             p.id_pedido_semana_bodega AS "idPedidoSemanaBodega",
-            p.nombre_pedido AS "nombrePedido",
-            p.descripcion_pedido AS "descripcionPedido",
-            p.instrucciones AS "instrucciones",
+            p.nombre_pedido_semana_bodega AS "nombrePedido",
+            p.descripcion_pedido_semana_bodega AS "descripcionPedido",
             p.estado_pedido::text AS "estadoPedido",
             COUNT(d.id_detalle_pedido_semana) AS "totalDetalles",
             jsonb_agg(
@@ -47,8 +46,8 @@ public interface PedidoSemanaBodegaRepository extends JpaRepository<PedidoSemana
         LEFT JOIN producto pr ON d.id_producto = pr.id_producto
         LEFT JOIN unidad_medida u ON u.id_unidad = pr.id_unidad
         WHERE p.activo = true
-        GROUP BY p.id_pedido_semana_bodega, p.nombre_pedido, p.descripcion_pedido, p.instrucciones, p.estado_pedido
-        ORDER BY p.nombre_pedido ASC
+        GROUP BY p.id_pedido_semana_bodega, p.nombre_pedido_semana_bodega, p.descripcion_pedido_semana_bodega, p.estado_pedido
+        ORDER BY p.nombre_pedido_semana_bodega ASC
         LIMIT :limit OFFSET :offset
         """, nativeQuery = true)
     List<RecipeWithDetailsView> findAllWithDetailsPaging(
@@ -62,9 +61,8 @@ public interface PedidoSemanaBodegaRepository extends JpaRepository<PedidoSemana
     @Query(value = """
         SELECT
             p.id_pedido_semana_bodega AS "idPedidoSemanaBodega",
-            p.nombre_pedido AS "nombrePedido",
-            p.descripcion_pedido AS "descripcionPedido",
-            p.instrucciones AS "instrucciones",
+            p.nombre_pedido_semana_bodega AS "nombrePedido",
+            p.descripcion_pedido_semana_bodega AS "descripcionPedido",
             p.estado_pedido::text AS "estadoPedido",
             COUNT(d.id_detalle_pedido_semana) AS "totalDetalles",
             jsonb_agg(
@@ -82,9 +80,9 @@ public interface PedidoSemanaBodegaRepository extends JpaRepository<PedidoSemana
         LEFT JOIN producto pr ON d.id_producto = pr.id_producto
         LEFT JOIN unidad_medida u ON u.id_unidad = pr.id_unidad
         WHERE p.activo = true
-          AND (p.nombre_pedido ILIKE %:term% OR p.descripcion_pedido ILIKE %:term%)
-        GROUP BY p.id_pedido_semana_bodega, p.nombre_pedido, p.descripcion_pedido, p.instrucciones, p.estado_pedido
-        ORDER BY p.nombre_pedido ASC
+          AND (p.nombre_pedido_semana_bodega ILIKE %:term% OR p.descripcion_pedido_semana_bodega ILIKE %:term%)
+        GROUP BY p.id_pedido_semana_bodega, p.nombre_pedido_semana_bodega, p.descripcion_pedido_semana_bodega, p.estado_pedido
+        ORDER BY p.nombre_pedido_semana_bodega ASC
         LIMIT :limit OFFSET :offset
         """, nativeQuery = true)
     List<RecipeWithDetailsView> findAllWithDetailsAndSearch(
@@ -96,7 +94,7 @@ public interface PedidoSemanaBodegaRepository extends JpaRepository<PedidoSemana
     @Query(value = """
         SELECT COUNT(*) FROM pedido_semana_bodega
         WHERE activo = true
-          AND (nombre_pedido ILIKE %:term% OR descripcion_pedido ILIKE %:term%)
+          AND (nombre_pedido_semana_bodega ILIKE %:term% OR descripcion_pedido_semana_bodega ILIKE %:term%)
         """, nativeQuery = true)
     long countWithSearch(@Param("term") String term);
 
