@@ -286,13 +286,87 @@ const PedidoSemanalABodegaPage: React.FC = () => {
     if (estado === 'Activo') return <Chip color="success" size="sm">Activo</Chip>;
     return <Chip color="danger" size="sm">Inactivo</Chip>;
   };
+
+  // Componente de animación: Hojas pasándose
+  const PaginasAnimacion: React.FC = () => (
+    <div className="flex flex-col items-center justify-center gap-6">
+      {/* Animación de hojas */}
+      <div className="relative w-32 h-40 perspective">
+        {/* Hoja 1 */}
+        <motion.div
+          className="absolute inset-0 bg-gradient-to-br from-primary-50 to-primary-100 dark:from-primary-900/30 dark:to-primary-800/30 rounded-r-lg border-l-4 border-primary shadow-lg"
+          animate={{
+            rotateZ: [0, 15, 0],
+            x: [0, 8, 0],
+          }}
+          transition={{
+            duration: 1.5,
+            repeat: Infinity,
+            repeatType: 'loop',
+            ease: 'easeInOut',
+          }}
+        />
+
+        {/* Hoja 2 */}
+        <motion.div
+          className="absolute inset-0 bg-gradient-to-br from-primary-100 to-primary-200 dark:from-primary-900/50 dark:to-primary-800/50 rounded-r-lg border-l-4 border-primary-200 shadow-md"
+          animate={{
+            rotateZ: [0, -15, 0],
+            x: [0, -8, 0],
+          }}
+          transition={{
+            duration: 1.5,
+            repeat: Infinity,
+            repeatType: 'loop',
+            ease: 'easeInOut',
+            delay: 0.5,
+          }}
+        />
+
+        {/* Hoja 3 */}
+        <motion.div
+          className="absolute inset-0 bg-gradient-to-br from-primary-200 to-primary-300 dark:from-primary-900/70 dark:to-primary-800/70 rounded-r-lg border-l-4 border-primary-300 shadow-sm"
+          animate={{
+            rotateZ: [0, 15, 0],
+            x: [0, 8, 0],
+          }}
+          transition={{
+            duration: 1.5,
+            repeat: Infinity,
+            repeatType: 'loop',
+            ease: 'easeInOut',
+            delay: 1,
+          }}
+        />
+
+        {/* Ícono central */}
+        <motion.div
+          className="absolute inset-0 flex items-center justify-center"
+          animate={{ scale: [0.95, 1.05] }}
+          transition={{ duration: 1.5, repeat: Infinity, repeatType: 'reverse' }}
+        >
+          <Icon icon="lucide:book-open" width={48} className="text-primary" />
+        </motion.div>
+      </div>
+
+      {/* Texto */}
+      <div className="text-center">
+        <p className="text-lg font-bold text-secondary dark:text-foreground">Cargando pedidos semanales</p>
+        <motion.p
+          className="text-sm text-default-500 mt-2"
+          animate={{ opacity: [0.5, 1] }}
+          transition={{ duration: 1, repeat: Infinity, repeatType: 'reverse' }}
+        >
+          Organizando tus formulaciones...
+        </motion.p>
+      </div>
+    </div>
+  );
+
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-96">
-        <div className="text-center">
-          <Spinner size="lg" color="primary" className="mb-4" />
-          <p className="text-default-500 font-bold">Cargando recetas...</p>
-        </div>
+      <div className="flex items-center justify-center min-h-screen bg-default-50/50 dark:bg-background">
+        <PaginasAnimacion />
       </div>
     );
   }
