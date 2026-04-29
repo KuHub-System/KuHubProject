@@ -11,9 +11,9 @@ export interface LoadingBookAnimationProps {
 }
 
 const SIZE_CONFIG = {
-  small:  { width: 280, height: 140 },
-  medium: { width: 420, height: 210 },
-  large:  { width: 560, height: 280 },
+  small:  { width: 280, height: 180 },
+  medium: { width: 420, height: 280 },
+  large:  { width: 560, height: 360 },
 };
 
 // ─── Recetas para mostrar en las páginas ──────────────────────────────────
