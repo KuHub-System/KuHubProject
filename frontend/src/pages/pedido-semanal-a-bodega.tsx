@@ -1325,7 +1325,7 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
                       </Button>
                     </div>
                     <div className="space-y-3">
-                      <div className="grid grid-cols-[1.75fr_0.375fr_0.875fr] gap-3">
+                      <div className="grid grid-cols-[1.4fr_0.375fr_1.225fr] gap-3">
                         <Autocomplete
                           label="Producto"
                           placeholder="Buscar producto..."
@@ -1347,41 +1347,51 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
                           )}
                         </Autocomplete>
 
-                        <Input
-                          ref={(el) => {
-                            if (el) {
-                              const nativeInput = el.querySelector('input');
-                              if (nativeInput) {
-                                qtyRefs.current[ingrediente.id] = nativeInput;
+                        <div className="flex flex-col gap-1">
+                          <div className="flex items-center gap-1">
+                            <label className="text-xs font-medium text-default-600">Cant.</label>
+                            {ingrediente.unidadMedida && ingrediente.unidadMedida.length > 8 ? (
+                              <Tooltip content={ingrediente.unidadMedida} color="foreground" className="text-xs">
+                                <span className="text-xs text-default-500 truncate max-w-[60px]">
+                                  {ingrediente.unidadMedida}
+                                </span>
+                              </Tooltip>
+                            ) : (
+                              <span className="text-xs text-default-500">
+                                {ingrediente.unidadMedida || 'unidad'}
+                              </span>
+                            )}
+                          </div>
+                          <Input
+                            ref={(el) => {
+                              if (el) {
+                                const nativeInput = el.querySelector('input');
+                                if (nativeInput) {
+                                  qtyRefs.current[ingrediente.id] = nativeInput;
+                                }
                               }
-                            }
-                          }}
-                          data-ingrediente-id={ingrediente.id}
-                          type="number"
-                          label="Cant."
-                          placeholder="0"
-                          value={ingrediente.cantidad === 0 ? '' : ingrediente.cantidad.toString()}
-                          onValueChange={(val) => {
-                            if (!esFraccionario && val.includes('.')) {
-                              return;
-                            }
-                            if (esFraccionario && val.includes('.') && val.split('.')[1].length > 3) {
-                              return;
-                            }
-                            actualizarIngrediente(index, 'cantidad', parseFloat(val) || 0);
-                          }}
-                          size="sm"
-                          variant="bordered"
-                          min="0"
-                          step={esFraccionario ? "0.001" : "1"}
-                          isRequired
-                          classNames={{ inputWrapper: "bg-white dark:bg-default-100/50" }}
-                          endContent={
-                            <Chip size="sm" variant="flat" color="default" className="text-xs">
-                              {ingrediente.unidadMedida || 'unidad'}
-                            </Chip>
-                          }
-                        />
+                            }}
+                            data-ingrediente-id={ingrediente.id}
+                            type="number"
+                            placeholder="0"
+                            value={ingrediente.cantidad === 0 ? '' : ingrediente.cantidad.toString()}
+                            onValueChange={(val) => {
+                              if (!esFraccionario && val.includes('.')) {
+                                return;
+                              }
+                              if (esFraccionario && val.includes('.') && val.split('.')[1].length > 3) {
+                                return;
+                              }
+                              actualizarIngrediente(index, 'cantidad', parseFloat(val) || 0);
+                            }}
+                            size="sm"
+                            variant="bordered"
+                            min="0"
+                            step={esFraccionario ? "0.001" : "1"}
+                            isRequired
+                            classNames={{ inputWrapper: "bg-white dark:bg-default-100/50" }}
+                          />
+                        </div>
 
                         <Input
                           label="Observación (Opcional)"
