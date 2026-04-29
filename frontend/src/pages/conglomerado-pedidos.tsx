@@ -6,6 +6,7 @@
 
 import React from 'react';
 import XLSXStyle from 'xlsx-js-style';
+import { motion } from 'framer-motion';
 import {
   Button,
   Card, CardBody, CardHeader,
@@ -97,6 +98,82 @@ const ConglomeradoPedidosPage: React.FC = () => {
   const { canCreate: cong_Crear, canUpdate: cong_Editar, canDelete: cong_Eliminar } = useModulePermission('CONGLOMERADO_PEDIDOS');
   const { isAdmin } = usePermission();
   const history = useHistory();
+
+  // Componente de animación: Hojas pasándose
+  const PedidosAnimacion: React.FC = () => (
+    <div className="flex flex-col items-center justify-center gap-6">
+      {/* Animación de hojas */}
+      <div className="relative w-32 h-40 perspective">
+        {/* Hoja 1 */}
+        <motion.div
+          className="absolute inset-0 bg-gradient-to-br from-primary-50 to-primary-100 dark:from-primary-900/30 dark:to-primary-800/30 rounded-r-lg border-l-4 border-primary shadow-lg"
+          animate={{
+            rotateZ: [0, 15, 0],
+            x: [0, 8, 0],
+          }}
+          transition={{
+            duration: 1.5,
+            repeat: Infinity,
+            repeatType: 'loop',
+            ease: 'easeInOut',
+          }}
+        />
+
+        {/* Hoja 2 */}
+        <motion.div
+          className="absolute inset-0 bg-gradient-to-br from-primary-100 to-primary-200 dark:from-primary-900/50 dark:to-primary-800/50 rounded-r-lg border-l-4 border-primary-200 shadow-md"
+          animate={{
+            rotateZ: [0, -15, 0],
+            x: [0, -8, 0],
+          }}
+          transition={{
+            duration: 1.5,
+            repeat: Infinity,
+            repeatType: 'loop',
+            ease: 'easeInOut',
+            delay: 0.5,
+          }}
+        />
+
+        {/* Hoja 3 */}
+        <motion.div
+          className="absolute inset-0 bg-gradient-to-br from-primary-200 to-primary-300 dark:from-primary-900/70 dark:to-primary-800/70 rounded-r-lg border-l-4 border-primary-300 shadow-sm"
+          animate={{
+            rotateZ: [0, 15, 0],
+            x: [0, 8, 0],
+          }}
+          transition={{
+            duration: 1.5,
+            repeat: Infinity,
+            repeatType: 'loop',
+            ease: 'easeInOut',
+            delay: 1,
+          }}
+        />
+
+        {/* Ícono central */}
+        <motion.div
+          className="absolute inset-0 flex items-center justify-center"
+          animate={{ scale: [0.95, 1.05] }}
+          transition={{ duration: 1.5, repeat: Infinity, repeatType: 'reverse' }}
+        >
+          <Icon icon="lucide:layers" width={48} className="text-primary" />
+        </motion.div>
+      </div>
+
+      {/* Texto */}
+      <div className="text-center">
+        <p className="text-lg font-bold text-secondary dark:text-foreground">Cargando conglomerado de pedidos</p>
+        <motion.p
+          className="text-sm text-default-500 mt-2"
+          animate={{ opacity: [0.5, 1] }}
+          transition={{ duration: 1, repeat: Infinity, repeatType: 'reverse' }}
+        >
+          Organizando pedidos semanales...
+        </motion.p>
+      </div>
+    </div>
+  );
 
   const { periodos, semanas, semanaId, defaultSemanaId, isLoading: isLoadingSem, seleccionarPeriodo, seleccionarSemana } = usePeriodoSemana();
 
@@ -921,9 +998,8 @@ const ConglomeradoPedidosPage: React.FC = () => {
 
         <CardBody className="p-4">
           {isLoadingDatos ? (
-            <div className="py-16 flex flex-col items-center gap-3 text-default-400">
-              <Spinner size="lg" />
-              <p className="text-sm">Cargando conglomerado...</p>
+            <div className="py-16 flex items-center justify-center">
+              <PedidosAnimacion />
             </div>
           ) : !semanaId ? (
             <div className="py-16 flex flex-col items-center gap-3 text-default-400">
