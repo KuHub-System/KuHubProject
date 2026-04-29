@@ -1,9 +1,9 @@
 package KuHub.modules.pedido_semana_a_bodega.services;
 
-import KuHub.modules.pedido_semana_a_bodega.dtos.projection.DetalleRecetaItemProjection;
+import KuHub.modules.pedido_semana_a_bodega.dtos.projection.DetallePedidoSemanaBodegaItemProjection;
 import KuHub.modules.pedido_semana_a_bodega.entity.DetallePedidoSemanaBodega;
 import KuHub.modules.pedido_semana_a_bodega.entity.PedidoSemanaBodega;
-import KuHub.modules.pedido_semana_a_bodega.dtos.projection.DetalleRecetaIdProductoProjection;
+import KuHub.modules.pedido_semana_a_bodega.dtos.projection.DetallePedidoSemanaBodegaIdProductoProjection;
 import feign.Param;
 
 import java.util.List;
@@ -12,7 +12,7 @@ public interface DetallePedidoSemanaBodegaService {
 
     DetallePedidoSemanaBodega findById(Integer id);
 
-    List<DetalleRecetaIdProductoProjection> findAllIdProductoAndCantidadByReceta(Integer idReceta);
+    List<DetallePedidoSemanaBodegaIdProductoProjection> findAllIdProductoAndCantidadByReceta(Integer idReceta);
 
     List<DetallePedidoSemanaBodega> findAll();
 
@@ -22,7 +22,7 @@ public interface DetallePedidoSemanaBodegaService {
 
     List<Integer> findProductoIdsByRecetaId(@Param("idReceta") Integer idReceta);
 
-    List<DetalleRecetaItemProjection> findItemsByRecetaId(@Param("idReceta") Integer idReceta);
+    List<DetallePedidoSemanaBodegaItemProjection> findItemsByRecetaId(@Param("idReceta") Integer idReceta);
 
     List<DetallePedidoSemanaBodega> saveAll(List<DetallePedidoSemanaBodega> detalles);
 

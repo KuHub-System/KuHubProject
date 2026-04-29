@@ -1,10 +1,10 @@
 package KuHub.modules.pedido_semana_a_bodega.controller;
 
 import KuHub.modules.gestion_inventario.dtos.request.SearchDTO;
-import KuHub.modules.pedido_semana_a_bodega.dtos.request.dto.RecipeWithDetailsCreateDTO;
-import KuHub.modules.pedido_semana_a_bodega.dtos.projection.CountRecipesAndStatusView;
-import KuHub.modules.pedido_semana_a_bodega.dtos.respose.record.RecipesPage;
-import KuHub.modules.pedido_semana_a_bodega.dtos.request.RecipeWithDetailsUpdateDTO;
+import KuHub.modules.pedido_semana_a_bodega.dtos.request.dto.PedidoSemanaBodegaWithDetailsCreateDTO;
+import KuHub.modules.pedido_semana_a_bodega.dtos.projection.CountPedidoSemanaBodegaAndStatusView;
+import KuHub.modules.pedido_semana_a_bodega.dtos.respose.record.PedidoSemanaBodegasPage;
+import KuHub.modules.pedido_semana_a_bodega.dtos.request.PedidoSemanaBodegaWithDetailsUpdateDTO;
 import KuHub.modules.pedido_semana_a_bodega.services.PedidoSemanaBodegaService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,7 +24,7 @@ public class PedidoSemanaBodegaController {
      * Conta total de recetas, activas, inactivas
      * ✅ FUNCIONAL IMPLEMENTADO EN EL FRONT*/
     @GetMapping("/count-recipes")
-    public ResponseEntity<CountRecipesAndStatusView> countRecipesAndStatus(){
+    public ResponseEntity<CountPedidoSemanaBodegaAndStatusView> countRecipesAndStatus(){
         return ResponseEntity
                 .status(200)
                 .body(pedidoSemanaBodegaService.countRecipesAndStatus());
@@ -34,7 +34,7 @@ public class PedidoSemanaBodegaController {
      * llama todas las recetas paginas
      * ✅ FUNCIONAL IMPLEMENTADO EN EL FRONT*/
     @PostMapping("/find-all-recipes-pagined/{page}")
-    public ResponseEntity<RecipesPage> findAllRecipesPaginated(
+    public ResponseEntity<PedidoSemanaBodegasPage> findAllRecipesPaginated(
             @PathVariable Integer page
     ){
         return ResponseEntity
@@ -46,7 +46,7 @@ public class PedidoSemanaBodegaController {
      * Llama las recetas por el nombre o descripcion similares paginada
      * ✅ FUNCIONAL IMPLEMENTADO EN EL FRONT*/
     @PostMapping("/search-recipes")
-    public ResponseEntity<RecipesPage> findAllWithDetailsAndSearchPaging(
+    public ResponseEntity<PedidoSemanaBodegasPage> findAllWithDetailsAndSearchPaging(
             @RequestBody SearchDTO searchDto
     ){
         return ResponseEntity
@@ -58,7 +58,7 @@ public class PedidoSemanaBodegaController {
      * ✅ FUNCIONAL IMPLEMENTADO EN EL FRONT*/
     @PostMapping("/create-recipe-with-details")
     public ResponseEntity<Boolean> saveRecipeWithDetails(
-            @RequestBody @Valid RecipeWithDetailsCreateDTO request) {
+            @RequestBody @Valid PedidoSemanaBodegaWithDetailsCreateDTO request) {
         return ResponseEntity
                 .status(201)
                 .body(pedidoSemanaBodegaService.saveRecipeWithDetails(request));
@@ -77,7 +77,7 @@ public class PedidoSemanaBodegaController {
 
     @PatchMapping("/update-recipe-with-details")
     public ResponseEntity<Boolean> updateRecipeWithDetails(
-            @RequestBody RecipeWithDetailsUpdateDTO request ){
+            @RequestBody PedidoSemanaBodegaWithDetailsUpdateDTO request ){
         return ResponseEntity
                 .status(200)
                 .body(pedidoSemanaBodegaService.updateRecipeWithDetails(request));
