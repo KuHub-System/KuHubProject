@@ -1358,21 +1358,14 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
                           }}
                           data-ingrediente-id={ingrediente.id}
                           type="number"
-                          label={
-                            <div className="flex items-center gap-1">
-                              <span>Cant.</span>
-                              {ingrediente.unidadMedida && ingrediente.unidadMedida.length > 8 ? (
-                                <Tooltip content={ingrediente.unidadMedida} color="foreground" className="text-xs">
-                                  <span className="text-xs text-default-400 truncate max-w-[40px]">
-                                    {ingrediente.unidadMedida}
-                                  </span>
-                                </Tooltip>
-                              ) : (
-                                <span className="text-xs text-default-400">
-                                  {ingrediente.unidadMedida}
-                                </span>
-                              )}
-                            </div>
+                          label={ingrediente.unidadMedida && ingrediente.unidadMedida.length > 8 ?
+                            <>
+                              <span>Cant. </span>
+                              <Tooltip content={ingrediente.unidadMedida} color="foreground" className="text-xs">
+                                <span className="truncate max-w-[50px]">{ingrediente.unidadMedida}</span>
+                              </Tooltip>
+                            </>
+                            : `Cant. ${ingrediente.unidadMedida || ''}`
                           }
                           placeholder="0"
                           value={ingrediente.cantidad === 0 ? '' : ingrediente.cantidad.toString()}
