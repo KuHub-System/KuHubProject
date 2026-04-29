@@ -156,7 +156,12 @@ public class PedidoSemanaBodegaServiceImp implements PedidoSemanaBodegaService{
             detalle.setProductoById(idProducto);
 
             detalle.setCantProducto(itemConsolidado.cantidad);
-            detalle.setObservacion(itemConsolidado.observacion);
+
+            // Normalizar observación si existe
+            String observacionNormalizada = (itemConsolidado.observacion != null && !itemConsolidado.observacion.isBlank())
+                    ? StringUtils.normalizeSpaces(itemConsolidado.observacion)
+                    : null;
+            detalle.setObservacion(observacionNormalizada);
 
             detallePedidoSemanaBodegaRepository.save(detalle);
         });
@@ -309,10 +314,11 @@ public class PedidoSemanaBodegaServiceImp implements PedidoSemanaBodegaService{
 
                 // Actualizar observación si fue proporcionada
                 if (item.getObservacion() != null && !item.getObservacion().isBlank()) {
+                    String observacionNormalizada = StringUtils.normalizeSpaces(item.getObservacion());
                     totalUpdated += detallePedidoSemanaBodegaRepository.updateObservacionByRecipeAndProduct(
                             idReceta,
                             item.getIdProducto(),
-                            item.getObservacion()
+                            observacionNormalizada
                     );
                 }
             } else {
@@ -347,7 +353,12 @@ public class PedidoSemanaBodegaServiceImp implements PedidoSemanaBodegaService{
             nuevoDetalle.setPedidoSemanaBodegaById(idReceta);
             nuevoDetalle.setProductoById(item.getIdProducto());
             nuevoDetalle.setCantProducto(item.getCantUnidadMedida());
-            nuevoDetalle.setObservacion(item.getObservacion());
+
+            // Normalizar observación si existe
+            String observacionNormalizada = (item.getObservacion() != null && !item.getObservacion().isBlank())
+                    ? StringUtils.normalizeSpaces(item.getObservacion())
+                    : null;
+            nuevoDetalle.setObservacion(observacionNormalizada);
 
             entitiesToSave.add(nuevoDetalle);
         }

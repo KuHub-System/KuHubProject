@@ -177,7 +177,7 @@ const PedidoSemanalABodegaPage: React.FC = () => {
       } finally {
         setIsLoading(false);
       }
-    }, 2500);
+    }, 1500);
 
     return () => clearTimeout(timer);
   }, [searchTerm]);
@@ -832,40 +832,54 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
         const changedDesc = descripcion.trim() !== (receta.descripcionPedido || '');
         const changedEstado = estado !== (receta.estadoPedido || 'Activo');
 
+        // Comparar idSemana (convertir a string para comparación)
+        const currentIdSemana = idSemana && idSemana !== 'ninguno' ? Number(idSemana) : null;
+        const originalIdSemana = receta.idSemana || null;
+        const changedSemana = currentIdSemana !== originalIdSemana;
+
         // Comparar ingredientes consolidando cantidades para la comparación
-        const currentIngsMap = new Map<string, number>();
+        const currentIngsMap = new Map<string, { cantidad: number; observacion?: string }>();
         ingredientes.forEach(ing => {
           if (ing.productoId) {
-            const currentQty = currentIngsMap.get(ing.productoId) || 0;
-            currentIngsMap.set(ing.productoId, currentQty + ing.cantidad);
+            const existing = currentIngsMap.get(ing.productoId);
+            if (existing) {
+              existing.cantidad += ing.cantidad;
+            } else {
+              currentIngsMap.set(ing.productoId, {
+                cantidad: ing.cantidad,
+                observacion: ing.observacion
+              });
+            }
           }
         });
 
         const originalIngsMap = new Map(
-          (receta.detalles || []).map(d => [d.idProducto.toString(), d.cantProducto])
+          (receta.detalles || []).map(d => [d.idProducto.toString(), { cantidad: d.cantProducto, observacion: d.observacion }])
         );
 
         // ¿Diferente cantidad de productos únicos?
         let changedIngs = currentIngsMap.size !== originalIngsMap.size;
 
         if (!changedIngs) {
-          // Si tienen el mismo número de productos, verificar si los IDs y cantidades coinciden
-          for (const [prodId, qty] of currentIngsMap.entries()) {
-            const origQty = originalIngsMap.get(prodId);
-            if (origQty === undefined || Math.abs(origQty - qty) > 0.0001) {
+          // Si tienen el mismo número de productos, verificar si los IDs, cantidades y observaciones coinciden
+          for (const [prodId, current] of currentIngsMap.entries()) {
+            const original = originalIngsMap.get(prodId);
+            if (!original ||
+                Math.abs(original.cantidad - current.cantidad) > 0.0001 ||
+                (current.observacion || '') !== (original.observacion || '')) {
               changedIngs = true;
               break;
             }
           }
         }
 
-        hasChanges = changedNombre || changedDesc || changedEstado || changedIngs;
+        hasChanges = changedNombre || changedDesc || changedEstado || changedIngs || changedSemana;
       }
 
       // En modo 'crear' habilitamos si es válido. En 'editar' solo si es válido Y hubo cambios.
       const canSave = mode === 'crear' ? isValid : (isValid && hasChanges);
       onValidationChange(canSave);
-    }, [nombre, descripcion, estado, ingredientes, mode, receta, onValidationChange]);
+    }, [nombre, descripcion, estado, ingredientes, idSemana, mode, receta, onValidationChange]);
 
     React.useImperativeHandle(ref, () => ({
       submit: async () => {
