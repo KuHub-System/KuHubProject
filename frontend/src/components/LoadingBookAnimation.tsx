@@ -11,9 +11,9 @@ export interface LoadingBookAnimationProps {
 }
 
 const SIZE_CONFIG = {
-  small:  { width: 200, height: 280 },
-  medium: { width: 320, height: 420 },
-  large:  { width: 400, height: 550 },
+  small:  { width: 280, height: 140 },
+  medium: { width: 420, height: 210 },
+  large:  { width: 560, height: 280 },
 };
 
 // ─── Líneas decorativas dentro de cada página ──────────────────────────────
