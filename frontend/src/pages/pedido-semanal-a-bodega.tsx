@@ -33,6 +33,7 @@ import { usePageTitle } from '../hooks/usePageTitle';
 import { useToast, useConfirm } from '../hooks/useToast';
 import { useAuth } from '../contexts/auth-context';
 import { useModulePermission } from '../contexts/permission-context';
+import { usePeriodoSemana } from '../contexts/periodo-semana-context';
 import BookPageLoader from '../components/BookPageLoader';
 
 // IMPORTAR TIPOS Y SERVICIOS
@@ -110,7 +111,7 @@ const PedidoSemanalABodegaPage: React.FC = () => {
       setTotalPages(resRecetas.paging.totalPages);
       nextPageRef.current = 2;
     } catch (error) {
-      toast.error('Error al cargar las formulaciones');
+      toast.error('Error al cargar las pedidos semanales');
     } finally {
       setIsLoading(false);
     }
@@ -130,7 +131,7 @@ const PedidoSemanalABodegaPage: React.FC = () => {
       setRecetas(prev => [...prev, ...data.content]);
       nextPageRef.current += 1;
     } catch (error) {
-      toast.error('Error al cargar más formulaciones');
+      toast.error('Error al cargar más pedidos semanales');
     } finally {
       isLoadingMoreRef.current = false;
       setIsLoadingMore(false);
@@ -172,7 +173,7 @@ const PedidoSemanalABodegaPage: React.FC = () => {
         setTotalPages(res.paging.totalPages);
         nextPageRef.current = 2;
       } catch (error) {
-        toast.error('Error al buscar formulaciones');
+        toast.error('Error al buscar pedidos semanales');
       } finally {
         setIsLoading(false);
       }
@@ -230,17 +231,17 @@ const PedidoSemanalABodegaPage: React.FC = () => {
           return newCounts;
         });
 
-        toast.success(`Estado de la formulación actualizado correctamente`);
+        toast.success(`Estado de la pedido semanal actualizado correctamente`);
       } else {
-        toast.error('No se pudo cambiar el estado de la formulación');
+        toast.error('No se pudo cambiar el estado de la pedido semanal');
       }
     } catch (error) {
       console.error('❌ Error al cambiar estado:', error);
-      toast.error('Error al cambiar el estado de la formulación');
+      toast.error('Error al cambiar el estado de la pedido semanal');
     }
   };
 
-  const handleGuardarReceta = async (receta: IPedidoSemanaBodega, updatePayload?: IPedidoSemanaBodegaWithDetailsUpdateDTO) => {
+  const handleGuardarReceta = async (receta: any, updatePayload?: IPedidoSemanaBodegaWithDetailsUpdateDTO) => {
     try {
       if (modalMode === 'crear') {
         const success = await crearRecetaConDetallesService({
@@ -250,20 +251,21 @@ const PedidoSemanalABodegaPage: React.FC = () => {
             idProducto: parseInt(ing.productoId),
             cantUnidadMedida: ing.cantidad
           })),
-          estadoPedido: receta.estado === 'Activo' || (receta.estado as any) === 'Activa' ? 'Activo' : 'Inactivo'
+          estadoPedido: receta.estado === 'Activo' || (receta.estado as any) === 'Activa' ? 'Activo' : 'Inactivo',
+          idSemana: receta.idSemana
         });
 
         if (success) {
-          toast.success('Formulación creada correctamente');
+          toast.success('Pedido Semanal creada correctamente');
         } else {
-          toast.error('No se pudo crear la formulación');
+          toast.error('No se pudo crear la pedido semanal');
         }
       } else if (modalMode === 'editar' && updatePayload) {
         const success = await actualizarRecetaConDetallesService(updatePayload);
         if (success) {
-          toast.success('Formulación actualizada correctamente');
+          toast.success('Pedido Semanal actualizada correctamente');
         } else {
-          toast.error('No se pudo actualizar la formulación');
+          toast.error('No se pudo actualizar la pedido semanal');
         }
       }
       await cargarDatosIniciales();
@@ -275,16 +277,16 @@ const PedidoSemanalABodegaPage: React.FC = () => {
 
   const handleEliminarReceta = async (receta: IPedidoSemanaBodegaPaginedDTO | any) => {
     if (!esAdministrador) {
-      toast.warning('Solo el rol Administrador puede eliminar formulaciones.');
+      toast.warning('Solo el rol Administrador puede eliminar pedidos semanales.');
       return;
     }
 
     const confirmado = await confirm('', {
-      title: 'Eliminar formulación',
+      title: 'Eliminar pedido semanal',
       subtitle: 'Esta acción es irreversible',
       headerVariant: 'danger',
       alertTitle: 'Atención',
-      alertMessage: `Eliminarás definitivamente la formulación "${receta.nombrePedido}". Esta acción no se puede deshacer.`,
+      alertMessage: `Eliminarás definitivamente la pedido semanal "${receta.nombrePedido}". Esta acción no se puede deshacer.`,
       confirmText: 'Eliminar',
       confirmColor: 'danger',
       requireText: 'ELIMINAR',
@@ -296,7 +298,7 @@ const PedidoSemanalABodegaPage: React.FC = () => {
 
     try {
       await softDeleteRecetaService(receta.idReceta);
-      toast.success('Formulación eliminada correctamente', { title: 'Formulación eliminada' });
+      toast.success('Pedido Semanal eliminada correctamente', { title: 'Pedido Semanal eliminada' });
       await cargarDatosIniciales();
     } catch (error: any) {
       toast.error(error.message || 'Error al eliminar la receta');
@@ -311,7 +313,7 @@ const PedidoSemanalABodegaPage: React.FC = () => {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-default-50/50 dark:bg-background">
-        <BookPageLoader message="Cargando formulaciones" subMessage="Organizando tus pedidos semanales..." />
+        <BookPageLoader message="Cargando pedidos semanales" subMessage="Organizando tus pedidos semanales..." />
       </div>
     );
   }
@@ -372,7 +374,7 @@ const PedidoSemanalABodegaPage: React.FC = () => {
           <CardBody className="p-4">
             <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
               <Input
-                placeholder="Buscar formulaciones por nombre o descripción..."
+                placeholder="Buscar pedidos semanales por nombre o descripción..."
                 value={searchTerm}
                 onValueChange={setSearchTerm}
                 startContent={<Icon icon="lucide:search" className="text-default-400" />}
@@ -393,7 +395,7 @@ const PedidoSemanalABodegaPage: React.FC = () => {
                     startContent={<Icon icon="lucide:plus" width={18} />}
                     onPress={handleNuevaReceta}
                   >
-                    Nueva Formulación
+                    Nuevo Pedido Semanal
                   </Button>
                 )}
                 {esSoloLectura && (
@@ -411,7 +413,7 @@ const PedidoSemanalABodegaPage: React.FC = () => {
         <Card className="shadow-sm border border-default-200 dark:border-default-100 bg-white dark:bg-content1 mx-4">
           <CardBody className="p-0">
             <Table
-              aria-label="Tabla de formulaciones"
+              aria-label="Tabla de pedidos semanales"
               removeWrapper
               layout="fixed"
               classNames={{
@@ -427,7 +429,7 @@ const PedidoSemanalABodegaPage: React.FC = () => {
               }
             >
               <TableHeader>
-                <TableColumn width="25%" align="center">NOMBRE FORMULACIÓN</TableColumn>
+                <TableColumn width="25%" align="center">NOMBRE PEDIDO SEMANAL</TableColumn>
                 <TableColumn width="35%" align="center">DESCRIPCIÓN</TableColumn>
                 <TableColumn width="15%" align="center">INGREDIENTES</TableColumn>
                 <TableColumn width="10%" align="center">ESTADO</TableColumn>
@@ -437,7 +439,7 @@ const PedidoSemanalABodegaPage: React.FC = () => {
                 emptyContent={
                   <div className="py-12 text-center text-default-400">
                     <Icon icon="lucide:inbox" className="mx-auto mb-3 opacity-50" width={48} />
-                    <p className="text-lg font-medium">No se encontraron formulaciones</p>
+                    <p className="text-lg font-medium">No se encontraron pedidos semanales</p>
                   </div>
                 }
               >
@@ -476,7 +478,7 @@ const PedidoSemanalABodegaPage: React.FC = () => {
                     </TableCell>
                     <TableCell className="text-center">
                       <Chip size="sm" variant="flat">
-                        {receta.totalIngredientes} ingredientes
+                        {receta.detalles?.length || 0} producto{(receta.detalles?.length || 0) > 1 ? 's' : ''}
                       </Chip>
                     </TableCell>
                     <TableCell className="text-center">{renderEstado(receta.estadoPedido)}</TableCell>
@@ -485,7 +487,7 @@ const PedidoSemanalABodegaPage: React.FC = () => {
                         {!esSoloLectura && (
                           <>
                             {rec_Editar && (
-                            <Tooltip content="Editar formulación" delay={0}>
+                            <Tooltip content="Editar pedido semanal" delay={0}>
                               <Button
                                 isIconOnly
                                 variant="light"
@@ -500,7 +502,7 @@ const PedidoSemanalABodegaPage: React.FC = () => {
                             )}
 
                             {rec_Editar && (
-                            <Tooltip content={receta.estadoPedido === 'Activo' ? 'Inactivar formulación' : 'Activar formulación'} delay={0}>
+                            <Tooltip content={receta.estadoPedido === 'Activo' ? 'Inactivar pedido semanal' : 'Activar pedido semanal'} delay={0}>
                               <Button
                                 isIconOnly
                                 variant="light"
@@ -517,7 +519,7 @@ const PedidoSemanalABodegaPage: React.FC = () => {
                             </Tooltip>
                             )}
                             {esAdministrador && rec_Eliminar && (
-                              <Tooltip content="Eliminar formulación" delay={0}>
+                              <Tooltip content="Eliminar pedido semanal" delay={0}>
                                 <Button
                                   isIconOnly
                                   variant="light"
@@ -611,7 +613,7 @@ const DetalleReceta: React.FC<DetalleRecetaProps> = ({ receta, mode, productos, 
             width={24}
           />
           <span className="font-bold text-lg text-secondary dark:text-foreground">
-            {mode === 'crear' ? 'Nueva Formulación' : mode === 'editar' ? 'Editar Formulación' : 'Detalle de Formulación'}
+            {mode === 'crear' ? 'Nueva Pedido Semanal' : mode === 'editar' ? 'Editar Pedido Semanal' : 'Detalle de Pedido Semanal'}
           </span>
         </div>
       </ModalHeader>
@@ -643,7 +645,7 @@ const DetalleReceta: React.FC<DetalleRecetaProps> = ({ receta, mode, productos, 
             className="font-bold text-secondary shadow-md"
             startContent={<Icon icon="lucide:save" />}
           >
-            {mode === 'crear' ? 'Crear Formulación' : 'Guardar Cambios'}
+            {mode === 'crear' ? 'Crear Pedido Semanal' : 'Guardar Cambios'}
           </Button>
         )}
       </ModalFooter>
@@ -708,7 +710,7 @@ const VistaReceta: React.FC<VistaRecetaProps> = ({ receta }) => {
               <Icon icon="lucide:package-open" width={20} />
             </div>
             <div>
-              <h4 className="font-bold text-base text-secondary dark:text-foreground">Ingredientes de la Formulación</h4>
+              <h4 className="font-bold text-base text-secondary dark:text-foreground">Ingredientes de la Pedido Semanal</h4>
               <p className="text-xs text-default-400">
                 {receta.totalDetalles} producto{receta.totalDetalles > 1 ? 's' : ''} en esta receta
               </p>
@@ -760,9 +762,19 @@ interface FormularioRecetaProps {
 const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
   ({ receta, mode, productos, onSave, onValidationChange }, ref) => {
     const toast = useToast();
+    const { semanas } = usePeriodoSemana();
     const [nombre, setNombre] = React.useState(receta?.nombrePedido || '');
     const [descripcion, setDescripcion] = React.useState(receta?.descripcionPedido || '');
     const [estado, setEstado] = React.useState<'Activo' | 'Inactivo'>(receta?.estadoPedido || 'Activo');
+
+    // Inicializar idSemana desde sessionStorage (cache) o valor guardado en receta
+    const [idSemana, setIdSemana] = React.useState<number | undefined>(() => {
+      if (mode === 'editar' && receta?.idSemana) {
+        return receta.idSemana;
+      }
+      const stored = sessionStorage.getItem('kuhub_semana_id');
+      return stored ? Number(stored) : undefined;
+    });
 
     const qtyRefs = React.useRef<Record<string, HTMLInputElement | null>>({});
 
@@ -787,6 +799,13 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
         unidadMedida: d.abreviatura,
       }))
     );
+
+    // Guardar idSemana en sessionStorage cuando cambia
+    React.useEffect(() => {
+      if (idSemana) {
+        sessionStorage.setItem('kuhub_semana_id', idSemana.toString());
+      }
+    }, [idSemana]);
 
     React.useEffect(() => {
       // 1. Validaciones básicas de integridad
@@ -844,7 +863,7 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
       submit: async () => {
         // Validaciones iniciales
         if (!nombre.trim()) {
-          toast.warning('El nombre de la formulación es obligatorio');
+          toast.warning('El nombre de la pedido semanal es obligatorio');
           throw new Error('El nombre es requerido');
         }
         if (ingredientes.length === 0) {
@@ -879,13 +898,14 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
           }
         });
 
-        const recetaData: IPedidoSemanaBodega = {
+        const recetaData: any = {
           id: receta?.idReceta?.toString() || '',
           nombre: nombre.trim(),
           descripcion: descripcion.trim(),
           ingredientes: ingredientesConsolidados,
           instrucciones: '',
           estado,
+          idSemana,
           fechaCreacion: new Date().toISOString(),
           fechaActualizacion: new Date().toISOString(),
         };
@@ -918,6 +938,7 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
             newItems,
             updateItems,
             deleteItems: deletedProductIds, // IDs de PRODUCTOS, no de detalles
+            idSemana,
           };
 
           await onSave(recetaData, updatePayload);
@@ -1021,7 +1042,7 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
           <Card shadow="none" className="border border-default-200 dark:border-default-100">
             <CardBody className="p-4 space-y-4">
               <Input
-                label="Nombre de la Formulación"
+                label="Nombre del Pedido Semanal"
                 placeholder="Ej: Pan Amasado, Torta de Chocolate, etc."
                 value={nombre}
                 onValueChange={setNombre}
@@ -1034,13 +1055,28 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
               />
               <Textarea
                 label="Descripción (Opcional)"
-                placeholder="Descripción breve de la formulación..."
+                placeholder="Descripción breve del pedido semanal..."
                 value={descripcion}
                 onValueChange={setDescripcion}
                 variant="bordered"
                 minRows={2}
                 classNames={{ inputWrapper: "bg-white dark:bg-default-100/50" }}
               />
+              <Select
+                label="Semana (Opcional)"
+                placeholder="Selecciona una semana..."
+                value={idSemana ? idSemana.toString() : ''}
+                onChange={(e) => setIdSemana(e.target.value ? Number(e.target.value) : undefined)}
+                variant="bordered"
+                classNames={{ trigger: "bg-white dark:bg-default-100/50" }}
+                startContent={<Icon icon="lucide:calendar" className="text-default-400" width={18} />}
+              >
+                {semanas.map((semana) => (
+                  <SelectItem key={semana.idSemana} value={semana.idSemana.toString()}>
+                    {semana.nombreSemana} ({semana.fechaInicio} a {semana.fechaFin})
+                  </SelectItem>
+                ))}
+              </Select>
             </CardBody>
           </Card>
         </div>
@@ -1189,7 +1225,7 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
             <div className={`p-2 rounded-lg ${estado === 'Activo' ? 'bg-success-100 dark:bg-success-900/30 text-success' : 'bg-danger-100 dark:bg-danger-900/30 text-danger'}`}>
               <Icon icon={estado === 'Activo' ? 'lucide:check-circle' : 'lucide:x-circle'} width={20} />
             </div>
-            <h4 className="font-bold text-base text-secondary dark:text-foreground">Estado de la Formulación</h4>
+            <h4 className="font-bold text-base text-secondary dark:text-foreground">Estado de la Pedido Semanal</h4>
           </div>
           <Card shadow="none" className="border border-default-200 dark:border-default-100">
             <CardBody className="p-4">
@@ -1201,7 +1237,7 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
                 variant="bordered"
                 isRequired
                 classNames={{ trigger: "bg-white dark:bg-default-100/50" }}
-                description="Esto permite la disponibilidad de la formulación para solicitudes"
+                description="Esto permite la disponibilidad de la pedido semanal para solicitudes"
               >
                 <SelectItem key="Activo" startContent={<Icon icon="lucide:check-circle" className="text-success" width={16} />}>Activo</SelectItem>
                 <SelectItem key="Inactivo" startContent={<Icon icon="lucide:x-circle" className="text-danger" width={16} />}>Inactivo</SelectItem>
