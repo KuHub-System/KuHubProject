@@ -21,7 +21,6 @@ public record PedidoSemanaBodegasPage(
             Integer idPedidoSemanaBodega,
             String nombrePedido,
             String descripcionPedido,
-            String instrucciones,
             String estadoPedido,
             Long totalDetalles,
             List<RecipeDetail> detalles
@@ -32,17 +31,19 @@ public record PedidoSemanaBodegasPage(
             "nombreProducto",
             "cantProducto",
             "abreviatura",
-            "idDetalleReceta",
+            "idDetallePedido",
             "idProducto",
-            "idUnidad"
+            "idUnidad",
+            "observacion"
     })
     public record RecipeDetail(
             String nombreProducto,
             BigDecimal cantProducto,
             String abreviatura,
-            Integer idDetalleReceta,
+            Integer idDetallePedido,
             Integer idProducto,
-            Integer idUnidad
+            Integer idUnidad,
+            String observacion
     ) {}
 
     // ─── FACTORY ─────────────────────────────────────────────────────────────
@@ -66,7 +67,6 @@ public record PedidoSemanaBodegasPage(
                     row.getIdPedidoSemanaBodega(),
                     row.getNombrePedido(),
                     row.getDescripcionPedido(),
-                    row.getInstrucciones(),
                     StringUtils.enumToHumanText(row.getEstadoPedido()),
                     row.getTotalDetalles(),
                     detalles
