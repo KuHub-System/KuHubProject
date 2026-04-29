@@ -463,7 +463,7 @@ const PedidoSemanalABodegaPage: React.FC = () => {
                 </div>
               )}
 
-              {/* Seleccionar Semana */}
+              {/* Seleccionar Semana en Select */}
               {filterPeriodo && filterSemanas.length > 0 && (
                 <>
                   {isLoadingSemanas ? (
@@ -471,37 +471,35 @@ const PedidoSemanalABodegaPage: React.FC = () => {
                       <Spinner size="sm" /> Cargando semanas...
                     </div>
                   ) : (
-                    <div className="flex flex-wrap gap-2">
-                      <button
-                        onClick={() => setFilterIdSemana('todas')}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all cursor-pointer ${
-                          filterIdSemana === 'todas'
-                            ? 'bg-primary text-white border-primary'
-                            : 'border-default-200 dark:border-default-100 hover:border-primary'
-                        }`}
-                      >
-                        Todas
-                      </button>
+                    <Select
+                      selectedKeys={new Set([filterIdSemana])}
+                      onSelectionChange={(keys) => {
+                        const v = Array.from(keys as Set<string>)[0];
+                        setFilterIdSemana(v || 'todas');
+                      }}
+                      placeholder="Selecciona una semana..."
+                      variant="bordered"
+                      classNames={{ trigger: "bg-white dark:bg-default-100/50" }}
+                      startContent={<Icon icon="lucide:calendar" className="text-default-400" width={18} />}
+                    >
+                      <SelectItem key="todas" textValue="Todas">
+                        <span className="text-default-500">Todas</span>
+                      </SelectItem>
                       {filterSemanas.map((semana) => {
                         const fechaInicio = new Date(semana.fechaInicio + 'T00:00:00').toLocaleDateString('es-CL', { day: 'numeric', month: 'short' });
                         const fechaFin = new Date(semana.fechaFin + 'T00:00:00').toLocaleDateString('es-CL', { day: 'numeric', month: 'short' });
                         const rangoFechas = `${fechaInicio} – ${fechaFin}`;
 
                         return (
-                          <button
-                            key={String(semana.idSemana)}
-                            onClick={() => setFilterIdSemana(String(semana.idSemana))}
-                            className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all cursor-pointer ${
-                              filterIdSemana === String(semana.idSemana)
-                                ? 'bg-primary text-white border-primary'
-                                : 'border-default-200 dark:border-default-100 hover:border-primary'
-                            }`}
-                          >
-                            S{semana.nombreSemana} ({rangoFechas})
-                          </button>
+                          <SelectItem key={String(semana.idSemana)} textValue={`S${semana.nombreSemana}`}>
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium">S{semana.nombreSemana}</span>
+                              <span className="text-default-400 text-xs">{rangoFechas}</span>
+                            </div>
+                          </SelectItem>
                         );
                       })}
-                    </div>
+                    </Select>
                   )}
                 </>
               )}
