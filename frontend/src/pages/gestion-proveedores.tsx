@@ -785,6 +785,22 @@ const GestionProveedoresPage: React.FC = () => {
           });
           return updated;
         });
+
+        // ✅ Actualizar también en resultados de búsqueda global
+        setResultadosBusqueda(prev =>
+          prev.map(proveedor => ({
+            ...proveedor,
+            categorias: proveedor.categorias.map(categoria => ({
+              ...categoria,
+              productos: categoria.productos.map(prod => {
+                if (prod.idProveedorProducto === editingPrecio.idProveedorProducto) {
+                  return { ...prod, precioProducto: precio };
+                }
+                return prod;
+              }),
+            })),
+          }))
+        );
       }
     } catch (err: any) {
       // [CAMBIO 2026-04-24] 409 Conflict: precio igual al actual (advertencia, no error)
@@ -1987,8 +2003,8 @@ const BusquedaResultados: React.FC<BusquedaResultadosProps> = ({
                                                 size="sm"
                                                 value={precioTemp}
                                                 onValueChange={onPrecioTempChange}
-                                                className="w-24"
-                                                classNames={{ inputWrapper: 'h-6 min-h-6' }}
+                                                className="w-40"
+                                                classNames={{ inputWrapper: 'h-8 min-h-8' }}
                                                 startContent={<span className="text-default-400 text-xs">$</span>}
                                                 onKeyDown={(e) => {
                                                   if (e.key === 'Enter') onGuardarPrecio();
