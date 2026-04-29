@@ -1133,18 +1133,20 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
                           </SelectItem>
                           {semanas.map((semana) => {
                             const isCurrentWeek = defaultSemanaId && String(semana.idSemana) === String(defaultSemanaId);
+                            const fechaInicio = new Date(semana.fechaInicio + 'T00:00:00').toLocaleDateString('es-CL', { day: 'numeric', month: 'short' });
+                            const fechaFin = new Date(semana.fechaFin + 'T00:00:00').toLocaleDateString('es-CL', { day: 'numeric', month: 'short' });
+                            const rangoFechas = `${fechaInicio} – ${fechaFin}`;
+
                             return (
                               <SelectItem key={String(semana.idSemana)} textValue={semana.nombreSemana}>
                                 <div className="flex items-center gap-2 w-full">
                                   <span className="font-medium">{semana.nombreSemana}</span>
                                   <span className="text-default-400 text-xs">
-                                    {new Date(semana.fechaInicio + 'T00:00:00').toLocaleDateString('es-CL', { day: 'numeric', month: 'short' })}
-                                    {' – '}
-                                    {new Date(semana.fechaFin + 'T00:00:00').toLocaleDateString('es-CL', { day: 'numeric', month: 'short' })}
+                                    {rangoFechas}
                                   </span>
                                   {isCurrentWeek && (
-                                    <Chip size="sm" color="success" variant="flat" className="ml-auto text-[10px]">
-                                      Actual
+                                    <Chip size="sm" color="success" variant="flat" className="ml-auto text-[10px] font-medium">
+                                      Actual {rangoFechas}
                                     </Chip>
                                   )}
                                 </div>
