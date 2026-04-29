@@ -457,22 +457,28 @@ const PedidoSemanalABodegaPage: React.FC = () => {
                         variant="bordered"
                         size="sm"
                         className="w-64"
-                        classNames={{ trigger: "bg-white dark:bg-default-100/50 text-xs px-2", listboxWrapper: "max-w-72" }}
+                        classNames={{ trigger: "bg-default-50", base: "max-w-xs" }}
                       >
                         <SelectItem key="todas" textValue="Todas">
                           Todas
                         </SelectItem>
-                        {filterSemanas.map((semana) => {
-                          const fechaInicio = new Date(semana.fechaInicio + 'T00:00:00').toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit' });
-                          const fechaFin = new Date(semana.fechaFin + 'T00:00:00').toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit' });
-                          const rangoFechas = `${fechaInicio}–${fechaFin}`;
-
-                          return (
-                            <SelectItem key={String(semana.idSemana)} textValue={semana.nombreSemana}>
-                              <span className="text-xs whitespace-nowrap">{semana.nombreSemana} ({rangoFechas})</span>
-                            </SelectItem>
-                          );
-                        })}
+                        {filterSemanas
+                          .filter(s => s.fechaFin >= new Date().toISOString().slice(0, 10))
+                          .map((semana) => (
+                          <SelectItem key={String(semana.idSemana)} textValue={semana.nombreSemana}>
+                            <div className="flex items-center w-full gap-2">
+                              <span className="font-semibold">{semana.nombreSemana}</span>
+                              <span className="text-default-400 text-xs">
+                                {new Date(semana.fechaInicio + 'T00:00:00').toLocaleDateString('es-CL', { day: 'numeric', month: 'short' })}
+                                {' – '}
+                                {new Date(semana.fechaFin + 'T00:00:00').toLocaleDateString('es-CL', { day: 'numeric', month: 'short' })}
+                              </span>
+                              {String(semana.idSemana) === defaultSemanaId && defaultSemanaId && (
+                                <Chip size="sm" color="success" variant="flat" className="ml-auto shrink-0">Actual</Chip>
+                              )}
+                            </div>
+                          </SelectItem>
+                        ))}
                       </Select>
                     )}
                   </>
@@ -1224,43 +1230,36 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
                       <p className="text-sm text-default-400">Sin semanas disponibles para este período.</p>
                     ) : (
                       <>
-                        <Select
-                          selectedKeys={new Set([idSemana])}
+                        <Select size="sm" variant="bordered"
+                          selectedKeys={idSemana ? new Set([idSemana]) : new Set()}
                           onSelectionChange={(keys) => {
                             const v = Array.from(keys as Set<string>)[0];
                             setIdSemana(v || 'ninguno');
                           }}
-                          placeholder="Selecciona una semana..."
-                          variant="bordered"
-                          classNames={{ trigger: "bg-white dark:bg-default-100/50" }}
-                          startContent={<Icon icon="lucide:calendar" className="text-default-400" width={18} />}
-                          className="w-full"
+                          placeholder="Seleccione una semana"
+                          classNames={{ trigger: "bg-default-50", base: "max-w-xs" }}
+                          startContent={<Icon icon="lucide:calendar" width={14} className="text-default-400 shrink-0" />}
                         >
                           <SelectItem key="ninguno" textValue="Ninguno">
                             <span className="text-default-500">Ninguno</span>
                           </SelectItem>
-                          {semanas.map((semana) => {
-                            const isCurrentWeek = defaultSemanaId && String(semana.idSemana) === String(defaultSemanaId);
-                            const fechaInicio = new Date(semana.fechaInicio + 'T00:00:00').toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit' });
-                            const fechaFin = new Date(semana.fechaFin + 'T00:00:00').toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit' });
-                            const rangoFechas = `${fechaInicio}–${fechaFin}`;
-
-                            return (
-                              <SelectItem key={String(semana.idSemana)} textValue={semana.nombreSemana}>
-                                <div className="flex items-center gap-1 w-full">
-                                  <span className="font-medium text-sm">{semana.nombreSemana}</span>
-                                  <span className="text-default-400 text-xs">
-                                    ({rangoFechas})
-                                  </span>
-                                  {isCurrentWeek && (
-                                    <Chip size="sm" color="success" variant="flat" className="ml-auto text-[10px] font-medium">
-                                      Actual
-                                    </Chip>
-                                  )}
-                                </div>
-                              </SelectItem>
-                            );
-                          })}
+                          {semanas
+                            .filter(s => s.fechaFin >= new Date().toISOString().slice(0, 10))
+                            .map((semana) => (
+                            <SelectItem key={String(semana.idSemana)} textValue={semana.nombreSemana}>
+                              <div className="flex items-center w-full gap-2">
+                                <span className="font-semibold">{semana.nombreSemana}</span>
+                                <span className="text-default-400 text-xs">
+                                  {new Date(semana.fechaInicio + 'T00:00:00').toLocaleDateString('es-CL', { day: 'numeric', month: 'short' })}
+                                  {' – '}
+                                  {new Date(semana.fechaFin + 'T00:00:00').toLocaleDateString('es-CL', { day: 'numeric', month: 'short' })}
+                                </span>
+                                {String(semana.idSemana) === defaultSemanaId && defaultSemanaId && (
+                                  <Chip size="sm" color="success" variant="flat" className="ml-auto shrink-0">Actual</Chip>
+                                )}
+                              </div>
+                            </SelectItem>
+                          ))}
                         </Select>
                       </>
                     )}
