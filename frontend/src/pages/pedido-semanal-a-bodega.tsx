@@ -879,6 +879,7 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
     const [nombre, setNombre] = React.useState(receta?.nombrePedido || '');
     const [descripcion, setDescripcion] = React.useState(receta?.descripcionPedido || '');
     const [estado, setEstado] = React.useState<'Activo' | 'Inactivo'>(receta?.estadoPedido || 'Activo');
+    const [vistaTabla, setVistaTabla] = React.useState(false);
 
     // Inicializar idSemana desde sessionStorage (cache) o valor guardado en receta
     const [idSemana, setIdSemana] = React.useState<string>(() => {
@@ -1295,196 +1296,307 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
                 </p>
               </div>
             </div>
+            <Button
+              isIconOnly
+              variant="light"
+              size="sm"
+              onPress={() => setVistaTabla(!vistaTabla)}
+              className="text-warning-600 hover:bg-warning-50"
+              title={vistaTabla ? 'Ver como tarjetas' : 'Ver como tabla'}
+            >
+              <Icon icon={vistaTabla ? 'lucide:th-large' : 'lucide:table'} width={20} />
+            </Button>
           </div>
 
-          <div className="space-y-3">
-            {ingredientes.map((ingrediente, index) => {
-              const productoInfo = productos.find(p => p.idProducto.toString() === ingrediente.productoId);
-              const esFraccionario = productoInfo?.esFraccionario || false;
+          {vistaTabla ? (
+            // === VISTA TABLA ===
+            <div className="space-y-3">
+              <div className="overflow-x-auto rounded-lg border border-default-200 dark:border-default-100">
+                <table className="w-full text-sm" style={{ tableLayout: 'fixed' }}>
+                  <thead className="bg-warning-50 dark:bg-warning-900/20">
+                    <tr>
+                      <th className="text-left py-3 px-4 font-bold text-warning-700 dark:text-warning-400 w-[5%]">#</th>
+                      <th className="text-left py-3 px-4 font-bold text-warning-700 dark:text-warning-400 w-[45%]">Producto</th>
+                      <th className="text-center py-3 px-4 font-bold text-warning-700 dark:text-warning-400 w-[15%]">Cantidad</th>
+                      <th className="text-left py-3 px-4 font-bold text-warning-700 dark:text-warning-400 w-[30%]">Observación</th>
+                      <th className="text-center py-3 px-4 font-bold text-warning-700 dark:text-warning-400 w-[5%]">Acción</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {ingredientes.map((ingrediente, index) => {
+                      const productoInfo = productos.find(p => p.idProducto.toString() === ingrediente.productoId);
+                      const esFraccionario = productoInfo?.esFraccionario || false;
 
-              return (
-                <Card key={ingrediente.id || index} shadow="none" className="border border-default-200 dark:border-default-100 hover:border-primary-200 dark:hover:border-primary-400/30 transition-colors">
-                  <CardBody className="p-3">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Chip size="sm" variant="flat" color="primary" className="font-bold min-w-[28px] h-6">
-                        {index + 1}
-                      </Chip>
-                      <span className="text-xs text-default-400 font-medium">
-                        {ingrediente.productoNombre || 'Nuevo ingrediente'}
-                      </span>
-                      <div className="flex-1" />
-                      <Button
-                        isIconOnly
-                        variant="light"
-                        size="sm"
-                        color="danger"
-                        onPress={() => eliminarIngrediente(index)}
-                        className="h-8 w-8"
-                      >
-                        <Icon icon="lucide:trash-2" width={16} />
-                      </Button>
-                    </div>
-                    <div className="space-y-3">
-                      <div className="grid grid-cols-[1.4fr_0.62fr_0.98fr] gap-3">
-                        <Autocomplete
-                          label="Producto"
-                          placeholder="Buscar producto..."
-                          selectedKey={ingrediente.productoId || null}
-                          onSelectionChange={(key) => {
-                            if (key) actualizarIngrediente(index, 'productoId', key.toString());
-                          }}
+                      return (
+                        <tr key={ingrediente.id || index} className="border-b border-default-100 dark:border-default-50 hover:bg-default-50 dark:hover:bg-default-100/20">
+                          <td className="py-3 px-4 text-center">
+                            <Chip size="sm" variant="flat" color="warning" className="font-bold">
+                              {index + 1}
+                            </Chip>
+                          </td>
+                          <td className="py-3 px-4">
+                            <Autocomplete
+                              selectedKey={ingrediente.productoId || null}
+                              onSelectionChange={(key) => {
+                                if (key) actualizarIngrediente(index, 'productoId', key.toString());
+                              }}
+                              placeholder="Buscar producto..."
+                              size="sm"
+                              variant="bordered"
+                              defaultItems={productos}
+                              isClearable={false}
+                              classNames={{ base: "bg-white dark:bg-default-100/50" }}
+                            >
+                              {(producto) => (
+                                <AutocompleteItem key={producto.idProducto.toString()}>
+                                  {producto.nombreProducto}
+                                </AutocompleteItem>
+                              )}
+                            </Autocomplete>
+                          </td>
+                          <td className="py-3 px-4">
+                            <Input
+                              type="number"
+                              placeholder="0"
+                              value={ingrediente.cantidad === 0 ? '' : ingrediente.cantidad.toString()}
+                              onValueChange={(val) => {
+                                if (val.startsWith('-')) return;
+                                if (val === '') {
+                                  actualizarIngrediente(index, 'cantidad', 0);
+                                  return;
+                                }
+                                const numericValue = parseFloat(val);
+                                if (numericValue < 0) return;
+                                if (numericValue > 9999999.999) {
+                                  toast.warning('Máximo: 9,999,999.999');
+                                  return;
+                                }
+                                if (val.includes('.')) {
+                                  const decimals = val.split('.')[1];
+                                  if (decimals.length > 3) return;
+                                }
+                                const digitsOnly = val.replace('.', '');
+                                if (digitsOnly.length > 10) return;
+                                if (!esFraccionario && val.includes('.')) return;
+                                actualizarIngrediente(index, 'cantidad', numericValue || 0);
+                              }}
+                              size="sm"
+                              variant="bordered"
+                              classNames={{ inputWrapper: "bg-white dark:bg-default-100/50" }}
+                            />
+                          </td>
+                          <td className="py-3 px-4">
+                            <Input
+                              placeholder="Notas especiales..."
+                              value={ingrediente.observacion || ''}
+                              onValueChange={(val) => {
+                                if (val.length <= 100) {
+                                  actualizarIngrediente(index, 'observacion', val);
+                                }
+                              }}
+                              size="sm"
+                              variant="bordered"
+                              maxLength={100}
+                              classNames={{ inputWrapper: "bg-white dark:bg-default-100/50" }}
+                            />
+                          </td>
+                          <td className="py-3 px-4 text-center">
+                            <Button
+                              isIconOnly
+                              variant="light"
+                              size="sm"
+                              color="danger"
+                              onPress={() => eliminarIngrediente(index)}
+                            >
+                              <Icon icon="lucide:trash-2" width={16} />
+                            </Button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              <Button
+                fullWidth
+                size="lg"
+                variant="bordered"
+                onPress={agregarIngrediente}
+                className="border-dashed border-2 border-default-200 dark:border-default-100 hover:border-primary/50 hover:bg-primary/5 font-bold text-primary"
+                startContent={<Icon icon="lucide:plus" width={18} />}
+              >
+                Agregar Ingrediente
+              </Button>
+            </div>
+          ) : (
+            // === VISTA CARDS ===
+            <div className="space-y-3">
+              {ingredientes.map((ingrediente, index) => {
+                const productoInfo = productos.find(p => p.idProducto.toString() === ingrediente.productoId);
+                const esFraccionario = productoInfo?.esFraccionario || false;
+
+                return (
+                  <Card key={ingrediente.id || index} shadow="none" className="border border-default-200 dark:border-default-100 hover:border-primary-200 dark:hover:border-primary-400/30 transition-colors">
+                    <CardBody className="p-3">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Chip size="sm" variant="flat" color="primary" className="font-bold min-w-[28px] h-6">
+                          {index + 1}
+                        </Chip>
+                        <span className="text-xs text-default-400 font-medium">
+                          {ingrediente.productoNombre || 'Nuevo ingrediente'}
+                        </span>
+                        <div className="flex-1" />
+                        <Button
+                          isIconOnly
+                          variant="light"
                           size="sm"
-                          variant="bordered"
-                          classNames={{ base: "bg-white dark:bg-default-100/50", listboxWrapper: "max-h-[200px]" }}
-                          isRequired
-                          defaultItems={productos}
-                          isClearable={false}
+                          color="danger"
+                          onPress={() => eliminarIngrediente(index)}
+                          className="h-8 w-8"
                         >
-                          {(producto) => (
-                            <AutocompleteItem key={producto.idProducto.toString()}>
-                              {producto.nombreProducto}
-                            </AutocompleteItem>
-                          )}
-                        </Autocomplete>
+                          <Icon icon="lucide:trash-2" width={16} />
+                        </Button>
+                      </div>
+                      <div className="space-y-3">
+                        <div className="grid grid-cols-[1.4fr_0.62fr_0.98fr] gap-3">
+                          <Autocomplete
+                            label="Producto"
+                            placeholder="Buscar producto..."
+                            selectedKey={ingrediente.productoId || null}
+                            onSelectionChange={(key) => {
+                              if (key) actualizarIngrediente(index, 'productoId', key.toString());
+                            }}
+                            size="sm"
+                            variant="bordered"
+                            classNames={{ base: "bg-white dark:bg-default-100/50", listboxWrapper: "max-h-[200px]" }}
+                            isRequired
+                            defaultItems={productos}
+                            isClearable={false}
+                          >
+                            {(producto) => (
+                              <AutocompleteItem key={producto.idProducto.toString()}>
+                                {producto.nombreProducto}
+                              </AutocompleteItem>
+                            )}
+                          </Autocomplete>
 
-                        <Input
-                          ref={(el) => {
-                            if (el) {
-                              const nativeInput = el.querySelector('input');
-                              if (nativeInput) {
-                                qtyRefs.current[ingrediente.id] = nativeInput;
+                          <Input
+                            ref={(el) => {
+                              if (el) {
+                                const nativeInput = el.querySelector('input');
+                                if (nativeInput) {
+                                  qtyRefs.current[ingrediente.id] = nativeInput;
+                                }
                               }
+                            }}
+                            data-ingrediente-id={ingrediente.id}
+                            type="number"
+                            label={
+                              ingrediente.unidadMedida && ingrediente.unidadMedida.length > 8 ? (
+                                <Tooltip
+                                  content={ingrediente.unidadMedida}
+                                  color="foreground"
+                                  className="text-xs"
+                                  placement="top"
+                                >
+                                  <span className="flex items-center gap-0.5">
+                                    <span>Cant.</span>
+                                    <span className="text-xs truncate max-w-[40px]">{ingrediente.unidadMedida.substring(0, 5)}...</span>
+                                  </span>
+                                </Tooltip>
+                              ) : (
+                                `Cant. ${ingrediente.unidadMedida || ''}`
+                              )
                             }
-                          }}
-                          data-ingrediente-id={ingrediente.id}
-                          type="number"
-                          label={
-                            ingrediente.unidadMedida && ingrediente.unidadMedida.length > 8 ? (
-                              <Tooltip
-                                content={ingrediente.unidadMedida}
-                                color="foreground"
-                                className="text-xs"
-                                placement="top"
-                              >
-                                <span className="flex items-center gap-0.5">
-                                  <span>Cant.</span>
-                                  <span className="text-xs truncate max-w-[40px]">{ingrediente.unidadMedida.substring(0, 5)}...</span>
-                                </span>
-                              </Tooltip>
-                            ) : (
-                              `Cant. ${ingrediente.unidadMedida || ''}`
-                            )
-                          }
-                          placeholder="0"
-                          value={ingrediente.cantidad === 0 ? '' : ingrediente.cantidad.toString()}
-                          onValueChange={(val) => {
-                            // Rechazar negativos
-                            if (val.startsWith('-')) {
-                              return;
-                            }
-
-                            // Permitir vacío
-                            if (val === '') {
-                              actualizarIngrediente(index, 'cantidad', 0);
-                              return;
-                            }
-
-                            const numericValue = parseFloat(val);
-
-                            // Validar que no sea negativo
-                            if (numericValue < 0) {
-                              return;
-                            }
-
-                            // Validar NUMERIC(10, 3): máximo 9999999.999
-                            if (numericValue > 9999999.999) {
-                              toast.warning('La cantidad no puede superar 9,999,999.999');
-                              return;
-                            }
-
-                            // Validar máximo 3 decimales
-                            if (val.includes('.')) {
-                              const decimals = val.split('.')[1];
-                              if (decimals.length > 3) {
+                            placeholder="0"
+                            value={ingrediente.cantidad === 0 ? '' : ingrediente.cantidad.toString()}
+                            onValueChange={(val) => {
+                              if (val.startsWith('-')) return;
+                              if (val === '') {
+                                actualizarIngrediente(index, 'cantidad', 0);
                                 return;
                               }
-                            }
+                              const numericValue = parseFloat(val);
+                              if (numericValue < 0) return;
+                              if (numericValue > 9999999.999) {
+                                toast.warning('La cantidad no puede superar 9,999,999.999');
+                                return;
+                              }
+                              if (val.includes('.')) {
+                                const decimals = val.split('.')[1];
+                                if (decimals.length > 3) return;
+                              }
+                              const digitsOnly = val.replace('.', '');
+                              if (digitsOnly.length > 10) return;
+                              if (!esFraccionario && val.includes('.')) return;
+                              actualizarIngrediente(index, 'cantidad', numericValue || 0);
+                            }}
+                            size="sm"
+                            variant="bordered"
+                            min="0"
+                            step={esFraccionario ? "0.001" : "1"}
+                            isRequired
+                            classNames={{ inputWrapper: "bg-white dark:bg-default-100/50" }}
+                            description="Máx: 9,999,999.999"
+                          />
 
-                            // Validar máximo 10 dígitos totales (sin contar el punto decimal)
-                            const digitsOnly = val.replace('.', '');
-                            if (digitsOnly.length > 10) {
-                              return;
-                            }
-
-                            // Si no es fraccionario, rechazar decimales
-                            if (!esFraccionario && val.includes('.')) {
-                              return;
-                            }
-
-                            actualizarIngrediente(index, 'cantidad', numericValue || 0);
-                          }}
-                          size="sm"
-                          variant="bordered"
-                          min="0"
-                          step={esFraccionario ? "0.001" : "1"}
-                          isRequired
-                          classNames={{ inputWrapper: "bg-white dark:bg-default-100/50" }}
-                          description="Máx: 9,999,999.999"
-                        />
-
-                        <Input
-                          label="Observación (Opcional)"
-                          placeholder="Notas o instrucciones especiales..."
-                          value={ingrediente.observacion || ''}
-                          onValueChange={(val) => {
-                            if (val.length <= 100) {
-                              actualizarIngrediente(index, 'observacion', val);
-                            }
-                          }}
-                          size="sm"
-                          variant="bordered"
-                          maxLength={100}
-                          classNames={{ inputWrapper: "bg-white dark:bg-default-100/50" }}
-                          startContent={<Icon icon="lucide:note" className="text-default-400" width={16} />}
-                          description={`${(ingrediente.observacion || '').length}/100 caracteres`}
-                        />
+                          <Input
+                            label="Observación (Opcional)"
+                            placeholder="Notas o instrucciones especiales..."
+                            value={ingrediente.observacion || ''}
+                            onValueChange={(val) => {
+                              if (val.length <= 100) {
+                                actualizarIngrediente(index, 'observacion', val);
+                              }
+                            }}
+                            size="sm"
+                            variant="bordered"
+                            maxLength={100}
+                            classNames={{ inputWrapper: "bg-white dark:bg-default-100/50" }}
+                            startContent={<Icon icon="lucide:note" className="text-default-400" width={16} />}
+                            description={`${(ingrediente.observacion || '').length}/100 caracteres`}
+                          />
+                        </div>
                       </div>
-                    </div>
-                  </CardBody>
-                </Card>
-              );
-            })}
-          </div>
+                    </CardBody>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
 
-          <div className="mt-4">
-            <Card
-              shadow="none"
-              className={`w-full border-2 border-dashed transition-all ${ingredientes.some(ing => !ing.productoId || ing.cantidad <= 0)
-                ? 'border-default-200 dark:border-default-100 opacity-50 cursor-not-allowed'
-                : 'border-default-200 dark:border-default-100 hover:border-primary/50 hover:bg-primary/5 cursor-pointer group'
-                }`}
-              isPressable={!ingredientes.some(ing => !ing.productoId || ing.cantidad <= 0)}
-              onPress={() => {
-                if (!ingredientes.some(ing => !ing.productoId || ing.cantidad <= 0)) {
-                  agregarIngrediente();
-                }
-              }}
-            >
-              <CardBody className="p-4 flex flex-col items-center justify-center gap-2">
-                <div className="p-2 rounded-full bg-default-100 dark:bg-default-100/30 group-hover:bg-primary/10 transition-colors">
-                  <Icon icon="lucide:package-open" className="text-default-300 group-hover:text-primary transition-colors" width={24} />
-                </div>
-                <div className="text-center transition-colors">
-                  <p className="text-default-400 text-sm font-medium group-hover:text-default-500">
-                    {ingredientes.length === 0 ? 'No hay ingredientes agregados.' : '¿Necesitas añadir algo más?'}
-                  </p>
-                  <p className="text-primary font-bold">
-                    {ingredientes.length === 0 ? 'Click aquí para agregar el primero' : 'Click aquí para agregar más'}
-                  </p>
-                </div>
-              </CardBody>
-            </Card>
-          </div>
+          {!vistaTabla && (
+            <div className="mt-4">
+              <Card
+                shadow="none"
+                className={`w-full border-2 border-dashed transition-all ${ingredientes.some(ing => !ing.productoId || ing.cantidad <= 0)
+                  ? 'border-default-200 dark:border-default-100 opacity-50 cursor-not-allowed'
+                  : 'border-default-200 dark:border-default-100 hover:border-primary/50 hover:bg-primary/5 cursor-pointer group'
+                  }`}
+                isPressable={!ingredientes.some(ing => !ing.productoId || ing.cantidad <= 0)}
+                onPress={() => {
+                  if (!ingredientes.some(ing => !ing.productoId || ing.cantidad <= 0)) {
+                    agregarIngrediente();
+                  }
+                }}
+              >
+                <CardBody className="p-4 flex flex-col items-center justify-center gap-2">
+                  <div className="p-2 rounded-full bg-default-100 dark:bg-default-100/30 group-hover:bg-primary/10 transition-colors">
+                    <Icon icon="lucide:package-open" className="text-default-300 group-hover:text-primary transition-colors" width={24} />
+                  </div>
+                  <div className="text-center transition-colors">
+                    <p className="text-default-400 text-sm font-medium group-hover:text-default-500">
+                      {ingredientes.length === 0 ? 'No hay ingredientes agregados.' : '¿Necesitas añadir algo más?'}
+                    </p>
+                    <p className="text-primary font-bold">
+                      {ingredientes.length === 0 ? 'Click aquí para agregar el primero' : 'Click aquí para agregar más'}
+                    </p>
+                  </div>
+                </CardBody>
+              </Card>
+            </div>
+          )}
         </div>
 
         {/* === SECCIÓN: Estado === */}
