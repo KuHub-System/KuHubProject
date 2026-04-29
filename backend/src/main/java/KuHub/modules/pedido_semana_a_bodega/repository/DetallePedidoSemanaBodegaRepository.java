@@ -1,11 +1,11 @@
 package KuHub.modules.pedido_semana_a_bodega.repository;
 
-import KuHub.modules.pedido_semana_a_bodega.dtos.projection.DetalleRecetaItemProjection;
+import KuHub.modules.pedido_semana_a_bodega.dtos.projection.DetallePedidoSemanaBodegaItemProjection;
 import KuHub.modules.pedido_semana_a_bodega.dtos.respose.projection.DetailsByUpdateView;
 import KuHub.modules.pedido_semana_a_bodega.entity.DetallePedidoSemanaBodega;
 import KuHub.modules.pedido_semana_a_bodega.entity.PedidoSemanaBodega;
-import KuHub.modules.pedido_semana_a_bodega.dtos.projection.DetalleRecetaIdProductoProjection;
-import KuHub.modules.pedido_semana_a_bodega.dtos.projection.RecipeDetailsView;
+import KuHub.modules.pedido_semana_a_bodega.dtos.projection.DetallePedidoSemanaBodegaIdProductoProjection;
+import KuHub.modules.pedido_semana_a_bodega.dtos.projection.PedidoSemanaBodegaDetailsView;
 import feign.Param;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -73,7 +73,7 @@ public interface DetallePedidoSemanaBodegaRepository extends JpaRepository<Detal
     JOIN d.producto p
     WHERE d.pedidoSemanaBodega.idPedidoSemanaBodega = :idPedidoSemanaBodega
 """)
-    List<DetalleRecetaItemProjection> findItemsByRecetaId(@Param("idPedidoSemanaBodega") Integer idPedidoSemanaBodega);
+    List<DetallePedidoSemanaBodegaItemProjection> findItemsByRecetaId(@Param("idPedidoSemanaBodega") Integer idPedidoSemanaBodega);
 
     @Query("""
         SELECT d.producto.idProducto AS idProducto,
@@ -82,7 +82,7 @@ public interface DetallePedidoSemanaBodegaRepository extends JpaRepository<Detal
         WHERE d.pedidoSemanaBodega.idPedidoSemanaBodega = :idPedidoSemanaBodega
           AND d.producto.activo = true
     """)
-    List<DetalleRecetaIdProductoProjection> findAllIdProductoAndCantidadByReceta(
+    List<DetallePedidoSemanaBodegaIdProductoProjection> findAllIdProductoAndCantidadByReceta(
             @Param("idPedidoSemanaBodega") Integer idPedidoSemanaBodega
     );
 
@@ -96,7 +96,7 @@ public interface DetallePedidoSemanaBodegaRepository extends JpaRepository<Detal
             "FROM DetallePedidoSemanaBodega dr " +
             "WHERE dr.pedidoSemanaBodega.idPedidoSemanaBodega = :idPedidoSemanaBodega " +
             "AND dr.producto.activo = true")
-    List<RecipeDetailsView> findActiveDetailsByRecipeId(@Param("idPedidoSemanaBodega") Integer idPedidoSemanaBodega);
+    List<PedidoSemanaBodegaDetailsView> findActiveDetailsByRecipeId(@Param("idPedidoSemanaBodega") Integer idPedidoSemanaBodega);
 
 
     @Query("SELECT d.producto.idProducto FROM DetallePedidoSemanaBodega d WHERE d.pedidoSemanaBodega.idPedidoSemanaBodega = :idPedidoSemanaBodega")
