@@ -62,14 +62,15 @@ public class PedidoSemanaBodegaServiceImp implements PedidoSemanaBodegaService{
     /** Lista todas las recetas activas paginadas con sus detalles e ingredientes. */
     @Transactional(readOnly = true)
     @Override
-    public PedidoSemanaBodegasPage findAllRecipesPaginated(Integer pageRequested) {
-        long totalRecords = recetaRepository.countByActivoTrue();
+    public PedidoSemanaBodegasPage findAllRecipesPaginated(Integer pageRequested, Integer idSemana) {
+        long totalRecords = idSemana != null
+                ? recetaRepository.countByActivoTrueAndIdSemana(idSemana)
+                : recetaRepository.countByActivoTrue();
         PaginationUtils.PagingResult paging = PaginationUtils.buildPaging(pageRequested, totalRecords);
 
-        List<PedidoSemanaBodegaWithDetailsView> rows = recetaRepository.findAllWithDetailsPaging(
-                paging.limit(),
-                paging.offset()
-        );
+        List<PedidoSemanaBodegaWithDetailsView> rows = idSemana != null
+                ? recetaRepository.findAllWithDetailsPagingByIdSemana(idSemana, paging.limit(), paging.offset())
+                : recetaRepository.findAllWithDetailsPaging(paging.limit(), paging.offset());
 
         return PedidoSemanaBodegasPage.of(rows, paging, objectMapper);
     }
@@ -80,15 +81,16 @@ public class PedidoSemanaBodegaServiceImp implements PedidoSemanaBodegaService{
     public PedidoSemanaBodegasPage findAllWithDetailsAndSearchPaging(SearchDTO searchDto) {
         String term = (searchDto.getTerm() == null) ? "" : searchDto.getTerm().trim();
         int page = (searchDto.getPage() == null || searchDto.getPage() < 1) ? 1 : searchDto.getPage();
+        Integer idSemana = searchDto.getIdSemana();
 
-        long totalRecords = recetaRepository.countWithSearch(term);
+        long totalRecords = idSemana != null
+                ? recetaRepository.countWithSearchAndIdSemana(term, idSemana)
+                : recetaRepository.countWithSearch(term);
         PaginationUtils.PagingResult paging = PaginationUtils.buildPaging(page, totalRecords);
 
-        List<PedidoSemanaBodegaWithDetailsView> rows = recetaRepository.findAllWithDetailsAndSearch(
-                term,
-                paging.limit(),
-                paging.offset()
-        );
+        List<PedidoSemanaBodegaWithDetailsView> rows = idSemana != null
+                ? recetaRepository.findAllWithDetailsAndSearchByIdSemana(term, idSemana, paging.limit(), paging.offset())
+                : recetaRepository.findAllWithDetailsAndSearch(term, paging.limit(), paging.offset());
         return PedidoSemanaBodegasPage.of(rows, paging, objectMapper);
     }
 

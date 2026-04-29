@@ -10,7 +10,7 @@ import KuHub.modules.pedido_semana_a_bodega.entity.PedidoSemanaBodega;
 public interface PedidoSemanaBodegaService {
     PedidoSemanaBodega findById(Integer id);
     CountPedidoSemanaBodegaAndStatusView countRecipesAndStatus();
-    PedidoSemanaBodegasPage findAllRecipesPaginated(Integer pageRequested);
+    PedidoSemanaBodegasPage findAllRecipesPaginated(Integer pageRequested, Integer idSemana);
     PedidoSemanaBodegasPage findAllWithDetailsAndSearchPaging(SearchDTO searchDto);
     boolean saveRecipeWithDetails(PedidoSemanaBodegaWithDetailsCreateDTO dto);
     boolean updateRecipeWithDetails (PedidoSemanaBodegaWithDetailsUpdateDTO request);
