@@ -77,7 +77,7 @@ const PedidoSemanalABodegaPage: React.FC = () => {
   const isLoadingMoreRef = React.useRef<boolean>(false);
   const [isLoadingMore, setIsLoadingMore] = React.useState<boolean>(false);
   const [recetaCounts, setRecetaCounts] = React.useState<IRecetaCountResponse>({
-    totalReceta: 0,
+    totalPedidos: 0,
     total_activos: 0,
     total_inactivos: 0
   });
@@ -312,7 +312,7 @@ const PedidoSemanalABodegaPage: React.FC = () => {
             <CardBody className="flex flex-row items-center justify-between p-4 gap-4">
               <div>
                 <p className="text-sm font-semibold text-default-500 uppercase tracking-wide">Total Formulaciones</p>
-                <p className="text-3xl font-bold text-secondary mt-1">{recetaCounts.totalReceta}</p>
+                <p className="text-3xl font-bold text-secondary mt-1">{recetaCounts.totalPedidos}</p>
               </div>
               <div className="w-12 h-12 rounded-lg flex items-center justify-center bg-primary-100 dark:bg-primary-900/30 text-primary shrink-0">
                 <Icon icon="lucide:package-open" width={24} />
