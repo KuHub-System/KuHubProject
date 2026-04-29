@@ -1114,43 +1114,39 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
                       <p className="text-sm text-default-400">Sin semanas disponibles para este período.</p>
                     ) : (
                       <>
-                        <div className="flex items-center gap-2">
-                          <Select
-                            selectedKeys={idSemana ? new Set([idSemana]) : new Set()}
-                            onSelectionChange={(keys) => {
-                              const v = Array.from(keys as Set<string>)[0];
-                              if (v) setIdSemana(v);
-                            }}
-                            placeholder="Selecciona una semana..."
-                            variant="bordered"
-                            classNames={{ trigger: "bg-white dark:bg-default-100/50" }}
-                            startContent={<Icon icon="lucide:calendar" className="text-default-400" width={18} />}
-                            className="flex-1"
-                          >
-                            {semanas.map((semana) => (
+                        <Select
+                          selectedKeys={idSemana ? new Set([idSemana]) : new Set()}
+                          onSelectionChange={(keys) => {
+                            const v = Array.from(keys as Set<string>)[0];
+                            if (v) setIdSemana(v);
+                          }}
+                          placeholder="Selecciona una semana..."
+                          variant="bordered"
+                          classNames={{ trigger: "bg-white dark:bg-default-100/50" }}
+                          startContent={<Icon icon="lucide:calendar" className="text-default-400" width={18} />}
+                          className="w-full"
+                        >
+                          {semanas.map((semana) => {
+                            const isCurrentWeek = defaultSemanaId && String(semana.idSemana) === String(defaultSemanaId);
+                            return (
                               <SelectItem key={String(semana.idSemana)} textValue={semana.nombreSemana}>
-                                <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-2 w-full">
                                   <span className="font-medium">{semana.nombreSemana}</span>
                                   <span className="text-default-400 text-xs">
                                     {new Date(semana.fechaInicio + 'T00:00:00').toLocaleDateString('es-CL', { day: 'numeric', month: 'short' })}
                                     {' – '}
                                     {new Date(semana.fechaFin + 'T00:00:00').toLocaleDateString('es-CL', { day: 'numeric', month: 'short' })}
                                   </span>
+                                  {isCurrentWeek && (
+                                    <Chip size="sm" color="success" variant="flat" className="ml-auto text-[10px]">
+                                      Actual
+                                    </Chip>
+                                  )}
                                 </div>
                               </SelectItem>
-                            ))}
-                          </Select>
-                          {defaultSemanaId && (
-                            <Chip size="sm" color="success" variant="flat" className="shrink-0 text-[10px]">
-                              Actual
-                            </Chip>
-                          )}
-                        </div>
-                        {idSemana && defaultSemanaId && idSemana === defaultSemanaId && (
-                          <p className="text-xs text-success font-medium">
-                            ✓ Semana en curso seleccionada
-                          </p>
-                        )}
+                            );
+                          })}
+                        </Select>
                       </>
                     )}
                   </>
