@@ -1,81 +1,11 @@
-#14 17.07 Progress (1): 1.0 kB
-Progress (1): 1.9 kB
-                    
-Downloaded from central: https://repo.maven.apache.org/maven2/org/springframework/boot/spring-boot-configuration-processor/3.2.0/spring-boot-configuration-processor-3.2.0.pom (1.9 kB at 75 kB/s)
-#14 17.07 Downloading from central: https://repo.maven.apache.org/maven2/org/springframework/boot/spring-boot-configuration-processor/3.2.0/spring-boot-configuration-processor-3.2.0.jar
-#14 17.09 Progress (1): 7.7/122 kB
-Progress (1): 12/122 kB 
-Progress (1): 29/122 kB
-Progress (1): 45/122 kB
-Progress (1): 61/122 kB
-Progress (1): 78/122 kB
-Progress (1): 94/122 kB
-Progress (1): 111/122 kB
-Progress (1): 122 kB    
-                    
-Downloaded from central: https://repo.maven.apache.org/maven2/org/springframework/boot/spring-boot-configuration-processor/3.2.0/spring-boot-configuration-processor-3.2.0.jar (122 kB at 6.4 MB/s)
-#14 17.16 [INFO] Changes detected - recompiling the module! :source
-release 21] to target/classes
-#14 28.60 [INFO] /app/backend/src/main/java/KuHub/config/security/filter/JwtAuthenticationFilter.java: /app/backend/src/main/java/KuHub/config/security/filter/JwtAuthenticationFilter.java uses unchecked or unsafe operations.
-#14 28.60 [INFO] /app/backend/src/main/java/KuHub/config/security/filter/JwtAuthenticationFilter.java: Recompile with -Xlint:unchecked for details.
-#14 28.60 [INFO] -------------------------------------------------------------
-#14 28.60 [WARNING] COMPILATION WARNING : 
-#14 28.60 [INFO] -------------------------------------------------------------
-#14 28.60 [WARNING] /app/backend/src/main/java/KuHub/modules/gestion_inventario/dtos/response/dto/MotionFilterRequestDTO.java:[30,20] @Builder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
-#14 28.60 [WARNING] /app/backend/src/main/java/KuHub/modules/gestion_proveedor/controller/ProveedorController.java:[148,48] deprecated item is not annotated with @Deprecated
-#14 28.60 [INFO] 2 warnings 
-#14 28.60 [INFO] -------------------------------------------------------------
-#14 28.60 [INFO] -------------------------------------------------------------
-#14 28.61 [ERROR] COMPILATION ERROR : 
-#14 28.61 [INFO] -------------------------------------------------------------
-#14 28.61 [ERROR] /app/backend/src/main/java/KuHub/modules/pedido_semana_a_bodega/services/PedidoSemanaBodegaServiceImp.java:[135,22] variable key is already defined in method saveRecipeWithDetails(KuHub.modules.pedido_semana_a_bodega.dtos.request.dto.PedidoSemanaBodegaWithDetailsCreateDTO)
-#14 28.61 [INFO] 1 error
-#14 28.61 [INFO] -------------------------------------------------------------
-#14 28.61 [INFO] ------------------------------------------------------------------------
-#14 28.61 [INFO] Reactor Summary for KuHub Monolitico Project 1.0-SNAPSHOT:
-#14 28.61 [INFO] 
-#14 28.61 [INFO] KuHub Monolitico Project ........................... SUCCESS [  0.380 s]
-#14 28.61 [INFO] backend ............................................ FAILURE [ 23.224 s]
-#14 28.61 [INFO] ------------------------------------------------------------------------
-#14 28.61 [INFO] BUILD FAILURE
-#14 28.61 [INFO] ------------------------------------------------------------------------
-#14 28.61 [INFO] Total time:  26.741 s
-#14 28.61 [INFO] Finished at: 2026-04-29T20:21:34Z
-#14 28.61 [INFO] ------------------------------------------------------------------------
-#14 28.62 [ERROR] Failed to execute goal org.apache.maven.plugins:maven-compiler-plugin:3.11.0:compile (default-compile) on project backend: Compilation failure
-#14 28.62 [ERROR] /app/backend/src/main/java/KuHub/modules/pedido_semana_a_bodega/services/PedidoSemanaBodegaServiceImp.java:[135,22] variable key is already defined in method saveRecipeWithDetails(KuHub.modules.pedido_semana_a_bodega.dtos.request.dto.PedidoSemanaBodegaWithDetailsCreateDTO)
-#14 28.62 [ERROR] 
-#14 28.62 [ERROR] -> [Help 1]
-#14 28.62 [ERROR] 
-#14 28.62 [ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
-#14 28.62 [ERROR] Re-run Maven using the -X switch to enable full debug logging.
-#14 28.62 [ERROR] 
-#14 28.62 [ERROR] For more information about the errors and possible solutions, please read the following articles:
-#14 28.62 [ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoFailureException
-#14 28.62 [ERROR] 
-#14 28.62 [ERROR] After correcting the problems, you can resume the build with the command
-#14 28.62 [ERROR]   mvn <args> -rf :backend
-#14 ERROR: process "/bin/sh -c mvn clean package -pl backend -am -DskipTests" did not complete successfully: exit code: 1
-------
- > [build 5/5] RUN mvn clean package -pl backend -am -DskipTests:
-Error: ERROR] -> [Help 1]
-Error: ERROR] 
-Error: ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
-Error: ERROR] Re-run Maven using the -X switch to enable full debug logging.
-Error: ERROR] 
-Error: ERROR] For more information about the errors and possible solutions, please read the following articles:
-Error: ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoFailureException
-Error: ERROR] 
-Error: ERROR] After correcting the problems, you can resume the build with the command
-Error: ERROR]   mvn <args> -rf :backend
-------
-Dockerfile:12
---------------------
-  10 |     
-  11 |     # 3. Construimos solo el backend, pero con acceso al padre
-  12 | >>> RUN mvn clean package -pl backend -am -DskipTests
-  13 |     
-  14 |     # ETAPA 2: Run
---------------------
-ERROR: failed to build: failed to solve: process "/bin/sh -c mvn clean package -pl backend -am -DskipTests" did not complete successfully: exit code: 1
-Error: buildx failed with: ERROR: failed to build: failed to solve: process "/bin/sh -c mvn clean package -pl backend -am -DskipTests" did not complete successfully: exit code: 1
+index.min.js:1 ReferenceError: defaultSemanaId is not defined
+    at pedido-semanal-a-bodega-BxRUbvat.js:1:11186
+    at Array.map (<anonymous>)
+    at na (pedido-semanal-a-bodega-BxRUbvat.js:1:10726)
+    at ei (react-vendor-BxMPNXTO.js:30:17178)
+    at ci (react-vendor-BxMPNXTO.js:32:3158)
+    at Gs (react-vendor-BxMPNXTO.js:32:45093)
+    at Qs (react-vendor-BxMPNXTO.js:32:39986)
+    at _d (react-vendor-BxMPNXTO.js:32:39914)
+    at Ll (react-vendor-BxMPNXTO.js:32:39767)
+    at _i (react-vendor-BxMPNXTO.js:32:36096)

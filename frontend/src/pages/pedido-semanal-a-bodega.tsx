@@ -63,7 +63,7 @@ const PedidoSemanalABodegaPage: React.FC = () => {
   const confirm = useConfirm();
   const { user } = useAuth();
   const { canCreate: rec_Crear, canUpdate: rec_Editar, canDelete: rec_Eliminar } = useModulePermission('PEDIDO_SEMANAL_BODEGA');
-  const { periodos, semanas: contextSemanas, periodo: contextPeriodo, isLoading: isLoadingSemanas, seleccionarPeriodo, seleccionarSemana } = usePeriodoSemana();
+  const { periodos, semanas: contextSemanas, periodo: contextPeriodo, defaultSemanaId, isLoading: isLoadingSemanas, seleccionarPeriodo, seleccionarSemana } = usePeriodoSemana();
   const esSoloLectura = user?.rol === 'Profesor';
   const esAdministrador = user?.rol === 'Administrador';
 
