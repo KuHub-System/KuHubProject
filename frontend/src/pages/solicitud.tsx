@@ -527,10 +527,10 @@ const AsigCard: React.FC<AsigCardProps> = ({
                     <button
                       type="button"
                       className="flex items-center gap-1.5 text-sm text-primary hover:text-primary-600 underline underline-offset-2 cursor-pointer transition-colors"
-                      onClick={() => historyCard.push('/gestion-recetas')}
+                      onClick={() => historyCard.push('/pedido-semanal-a-bodega')}
                     >
                       <Icon icon="lucide:book-plus" width={14} />
-                      No hay recetas disponibles. Ir a Gestión de Recetas para crear una.
+                      No hay recetas disponibles. Ir a Pedido Semanal a Bodega para crear una.
                       <Icon icon="lucide:arrow-right" width={12} />
                     </button>
                   ) : (
