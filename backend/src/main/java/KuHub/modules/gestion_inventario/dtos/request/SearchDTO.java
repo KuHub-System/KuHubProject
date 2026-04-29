@@ -6,4 +6,5 @@ import lombok.Data;
 public class SearchDTO {
     private String term;
     private Integer page;
+    private Integer idSemana;
 }
