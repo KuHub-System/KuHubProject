@@ -20,3 +20,4 @@ A PostCSS plugin did not pass the `from` option to `postcss.parse`. This may cau
 6  |  /* Utilidad para ocultar la barra de desplazamiento pero mantener la funcionalidad */[39m
 [2m11:26:20 a.m.[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/components/BookPageLoader.tsx[22m
 [2m11:26:24 a.m.[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/components/BookPageLoader.tsx[22m
+[2m11:31:46 a.m.[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/components/BookPageLoader.tsx[22m
