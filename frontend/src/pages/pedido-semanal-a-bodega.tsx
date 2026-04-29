@@ -774,7 +774,7 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
         return receta.idSemana.toString();
       }
       const stored = sessionStorage.getItem('kuhub_semana_id');
-      return stored || '';
+      return stored || 'ninguno';
     });
 
     // Verificar si hay periodos disponibles
@@ -807,9 +807,11 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
 
     // Guardar idSemana en sessionStorage cuando cambia
     React.useEffect(() => {
-      if (idSemana) {
+      if (idSemana && idSemana !== 'ninguno') {
         sessionStorage.setItem('kuhub_semana_id', idSemana);
         seleccionarSemana(idSemana);
+      } else if (idSemana === 'ninguno') {
+        sessionStorage.removeItem('kuhub_semana_id');
       }
     }, [idSemana, seleccionarSemana]);
 
@@ -911,7 +913,7 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
           ingredientes: ingredientesConsolidados,
           instrucciones: '',
           estado,
-          idSemana: idSemana ? Number(idSemana) : undefined,
+          idSemana: idSemana && idSemana !== 'ninguno' ? Number(idSemana) : undefined,
           fechaCreacion: new Date().toISOString(),
           fechaActualizacion: new Date().toISOString(),
         };
@@ -945,7 +947,7 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
             newItems,
             updateItems,
             deleteItems: deletedProductIds, // IDs de PRODUCTOS, no de detalles
-            idSemana: idSemana ? Number(idSemana) : undefined,
+            idSemana: idSemana && idSemana !== 'ninguno' ? Number(idSemana) : undefined,
           };
 
           await onSave(recetaData, updatePayload);
@@ -1115,10 +1117,10 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
                     ) : (
                       <>
                         <Select
-                          selectedKeys={idSemana ? new Set([idSemana]) : new Set()}
+                          selectedKeys={new Set([idSemana])}
                           onSelectionChange={(keys) => {
                             const v = Array.from(keys as Set<string>)[0];
-                            if (v) setIdSemana(v);
+                            setIdSemana(v || 'ninguno');
                           }}
                           placeholder="Selecciona una semana..."
                           variant="bordered"
@@ -1126,6 +1128,9 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
                           startContent={<Icon icon="lucide:calendar" className="text-default-400" width={18} />}
                           className="w-full"
                         >
+                          <SelectItem key="ninguno" textValue="Ninguno">
+                            <span className="text-default-500">Ninguno</span>
+                          </SelectItem>
                           {semanas.map((semana) => {
                             const isCurrentWeek = defaultSemanaId && String(semana.idSemana) === String(defaultSemanaId);
                             return (
