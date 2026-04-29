@@ -762,18 +762,18 @@ interface FormularioRecetaProps {
 const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
   ({ receta, mode, productos, onSave, onValidationChange }, ref) => {
     const toast = useToast();
-    const { periodos, semanas, periodo, isLoading: isLoadingSemanas, seleccionarPeriodo } = usePeriodoSemana();
+    const { periodos, semanas, periodo, defaultSemanaId, isLoading: isLoadingSemanas, seleccionarPeriodo, seleccionarSemana } = usePeriodoSemana();
     const [nombre, setNombre] = React.useState(receta?.nombrePedido || '');
     const [descripcion, setDescripcion] = React.useState(receta?.descripcionPedido || '');
     const [estado, setEstado] = React.useState<'Activo' | 'Inactivo'>(receta?.estadoPedido || 'Activo');
 
     // Inicializar idSemana desde sessionStorage (cache) o valor guardado en receta
-    const [idSemana, setIdSemana] = React.useState<number | undefined>(() => {
+    const [idSemana, setIdSemana] = React.useState<string>(() => {
       if (mode === 'editar' && receta?.idSemana) {
-        return receta.idSemana;
+        return receta.idSemana.toString();
       }
       const stored = sessionStorage.getItem('kuhub_semana_id');
-      return stored ? Number(stored) : undefined;
+      return stored || '';
     });
 
     // Verificar si hay periodos disponibles
@@ -803,22 +803,13 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
       }))
     );
 
-    // Cargar idSemana desde cache cuando el modal se abre en modo crear
-    React.useEffect(() => {
-      if (mode === 'crear') {
-        const stored = sessionStorage.getItem('kuhub_semana_id');
-        if (stored) {
-          setIdSemana(Number(stored));
-        }
-      }
-    }, [mode]);
-
     // Guardar idSemana en sessionStorage cuando cambia
     React.useEffect(() => {
       if (idSemana) {
-        sessionStorage.setItem('kuhub_semana_id', idSemana.toString());
+        sessionStorage.setItem('kuhub_semana_id', idSemana);
+        seleccionarSemana(idSemana);
       }
-    }, [idSemana]);
+    }, [idSemana, seleccionarSemana]);
 
     React.useEffect(() => {
       // 1. Validaciones básicas de integridad
@@ -918,7 +909,7 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
           ingredientes: ingredientesConsolidados,
           instrucciones: '',
           estado,
-          idSemana,
+          idSemana: idSemana ? Number(idSemana) : undefined,
           fechaCreacion: new Date().toISOString(),
           fechaActualizacion: new Date().toISOString(),
         };
@@ -951,7 +942,7 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
             newItems,
             updateItems,
             deleteItems: deletedProductIds, // IDs de PRODUCTOS, no de detalles
-            idSemana,
+            idSemana: idSemana ? Number(idSemana) : undefined,
           };
 
           await onSave(recetaData, updatePayload);
@@ -1110,28 +1101,45 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
 
                 {/* Seleccionar Semana */}
                 {!sinPeriodos && periodo && (
-                  <Select
-                    label="Semana"
-                    placeholder={semanas.length === 0 ? "Cargando semanas..." : "Selecciona una semana..."}
-                    value={idSemana ? idSemana.toString() : ''}
-                    onChange={(e) => setIdSemana(e.target.value ? Number(e.target.value) : undefined)}
-                    variant="bordered"
-                    isDisabled={semanas.length === 0}
-                    classNames={{ trigger: "bg-white dark:bg-default-100/50" }}
-                    startContent={<Icon icon="lucide:calendar" className="text-default-400" width={18} />}
-                  >
-                    {semanas.length > 0 ? (
-                      semanas.map((semana) => (
-                        <SelectItem key={semana.idSemana} value={semana.idSemana.toString()}>
-                          {semana.nombreSemana} ({semana.fechaInicio} a {semana.fechaFin})
-                        </SelectItem>
-                      ))
+                  <>
+                    {isLoadingSemanas ? (
+                      <div className="flex items-center gap-2 text-sm text-default-500">
+                        <Spinner size="sm" /> Cargando semanas...
+                      </div>
+                    ) : semanas.length === 0 ? (
+                      <p className="text-sm text-default-400">Sin semanas disponibles para este período.</p>
                     ) : (
-                      <SelectItem isReadOnly key="no-semanas" value="" textValue="No hay semanas disponibles">
-                        No hay semanas disponibles
-                      </SelectItem>
+                      <Select
+                        selectedKeys={idSemana ? new Set([idSemana]) : new Set()}
+                        onSelectionChange={(keys) => {
+                          const v = Array.from(keys as Set<string>)[0];
+                          if (v) setIdSemana(v);
+                        }}
+                        placeholder="Selecciona una semana..."
+                        variant="bordered"
+                        classNames={{ trigger: "bg-white dark:bg-default-100/50" }}
+                        startContent={<Icon icon="lucide:calendar" className="text-default-400" width={18} />}
+                      >
+                        {semanas.map((semana) => (
+                          <SelectItem key={String(semana.idSemana)} textValue={semana.nombreSemana}>
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium">{semana.nombreSemana}</span>
+                              <span className="text-default-400 text-xs">
+                                {new Date(semana.fechaInicio + 'T00:00:00').toLocaleDateString('es-CL', { day: 'numeric', month: 'short' })}
+                                {' – '}
+                                {new Date(semana.fechaFin + 'T00:00:00').toLocaleDateString('es-CL', { day: 'numeric', month: 'short' })}
+                              </span>
+                              {String(semana.idSemana) === defaultSemanaId && (
+                                <Chip size="sm" color="success" variant="flat" className="ml-auto text-[10px]">
+                                  Actual
+                                </Chip>
+                              )}
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </Select>
                     )}
-                  </Select>
+                  </>
                 )}
               </div>
             </CardBody>
