@@ -456,8 +456,8 @@ const PedidoSemanalABodegaPage: React.FC = () => {
                         placeholder="Semana"
                         variant="bordered"
                         size="sm"
-                        className="w-32"
-                        classNames={{ trigger: "bg-white dark:bg-default-100/50 text-xs px-2", listboxWrapper: "max-w-48" }}
+                        className="w-64"
+                        classNames={{ trigger: "bg-white dark:bg-default-100/50 text-xs px-2", listboxWrapper: "max-w-72" }}
                       >
                         <SelectItem key="todas" textValue="Todas">
                           Todas
