@@ -1,7 +1,7 @@
 package KuHub.modules.pedido_semana_a_bodega.repository;
 
-import KuHub.modules.pedido_semana_a_bodega.dtos.projection.CountRecipesAndStatusView;
-import KuHub.modules.pedido_semana_a_bodega.dtos.respose.projection.RecipeWithDetailsView;
+import KuHub.modules.pedido_semana_a_bodega.dtos.projection.CountPedidoSemanaBodegaAndStatusView;
+import KuHub.modules.pedido_semana_a_bodega.dtos.respose.projection.PedidoSemanaBodegaWithDetailsView;
 import KuHub.modules.pedido_semana_a_bodega.entity.PedidoSemanaBodega;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -50,7 +50,7 @@ public interface PedidoSemanaBodegaRepository extends JpaRepository<PedidoSemana
         ORDER BY p.nombre_pedido_semana_bodega ASC
         LIMIT :limit OFFSET :offset
         """, nativeQuery = true)
-    List<RecipeWithDetailsView> findAllWithDetailsPaging(
+    List<PedidoSemanaBodegaWithDetailsView> findAllWithDetailsPaging(
             @Param("limit") int limit,
             @Param("offset") int offset);
 
@@ -85,7 +85,7 @@ public interface PedidoSemanaBodegaRepository extends JpaRepository<PedidoSemana
         ORDER BY p.nombre_pedido_semana_bodega ASC
         LIMIT :limit OFFSET :offset
         """, nativeQuery = true)
-    List<RecipeWithDetailsView> findAllWithDetailsAndSearch(
+    List<PedidoSemanaBodegaWithDetailsView> findAllWithDetailsAndSearch(
             @Param("term") String term,
             @Param("limit") int limit,
             @Param("offset") int offset);
@@ -107,7 +107,7 @@ public interface PedidoSemanaBodegaRepository extends JpaRepository<PedidoSemana
         FROM pedido_semana_bodega
         WHERE activo = true
         """, nativeQuery = true)
-    CountRecipesAndStatusView countRecipesAndStatus();
+    CountPedidoSemanaBodegaAndStatusView countRecipesAndStatus();
 
     /** Invierte el estado del pedido semana bodega entre ACTIVO e INACTIVO directamente en BD, retorna filas afectadas. */
     @Modifying

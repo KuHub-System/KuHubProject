@@ -1,9 +1,9 @@
 package KuHub.modules.pedido_semana_a_bodega.services;
-import KuHub.modules.pedido_semana_a_bodega.dtos.projection.DetalleRecetaItemProjection;
+import KuHub.modules.pedido_semana_a_bodega.dtos.projection.DetallePedidoSemanaBodegaItemProjection;
 import KuHub.modules.pedido_semana_a_bodega.entity.DetallePedidoSemanaBodega;
 import KuHub.modules.pedido_semana_a_bodega.entity.PedidoSemanaBodega;
 import KuHub.modules.pedido_semana_a_bodega.exceptions.PedidoSemanaBodegaException;
-import KuHub.modules.pedido_semana_a_bodega.dtos.projection.DetalleRecetaIdProductoProjection;
+import KuHub.modules.pedido_semana_a_bodega.dtos.projection.DetallePedidoSemanaBodegaIdProductoProjection;
 import KuHub.modules.pedido_semana_a_bodega.repository.DetallePedidoSemanaBodegaRepository;
 import feign.Param;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -57,7 +57,7 @@ public class DetallePedidoSemanaBodegaServiceImp implements DetallePedidoSemanaB
 
     @Transactional(readOnly = true)
     @Override
-    public List<DetalleRecetaItemProjection> findItemsByRecetaId(@Param("idReceta") Integer idReceta){
+    public List<DetallePedidoSemanaBodegaItemProjection> findItemsByRecetaId(@Param("idReceta") Integer idReceta){
         return detalleRecetaRepository.findItemsByRecetaId(idReceta);
     }
 
@@ -69,7 +69,7 @@ public class DetallePedidoSemanaBodegaServiceImp implements DetallePedidoSemanaB
 
     @Transactional(readOnly = true)
     @Override
-    public List<DetalleRecetaIdProductoProjection> findAllIdProductoAndCantidadByReceta(
+    public List<DetallePedidoSemanaBodegaIdProductoProjection> findAllIdProductoAndCantidadByReceta(
             Integer idReceta){
         return detalleRecetaRepository.findAllIdProductoAndCantidadByReceta(idReceta);
     }

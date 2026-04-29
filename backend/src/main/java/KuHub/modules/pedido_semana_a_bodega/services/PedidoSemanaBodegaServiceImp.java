@@ -2,14 +2,14 @@ package KuHub.modules.pedido_semana_a_bodega.services;
 
 import KuHub.modules.gestion_inventario.dtos.request.SearchDTO;
 import KuHub.modules.gestion_inventario.services.ProductoService;
-import KuHub.modules.pedido_semana_a_bodega.dtos.projection.CountRecipesAndStatusView;
-import KuHub.modules.pedido_semana_a_bodega.dtos.request.dto.RecipeItemDTO;
-import KuHub.modules.pedido_semana_a_bodega.dtos.request.dto.RecipeWithDetailsCreateDTO;
+import KuHub.modules.pedido_semana_a_bodega.dtos.projection.CountPedidoSemanaBodegaAndStatusView;
+import KuHub.modules.pedido_semana_a_bodega.dtos.request.dto.PedidoSemanaBodegaItemDTO;
+import KuHub.modules.pedido_semana_a_bodega.dtos.request.dto.PedidoSemanaBodegaWithDetailsCreateDTO;
 import KuHub.modules.pedido_semana_a_bodega.dtos.respose.projection.DetailsByUpdateView;
-import KuHub.modules.pedido_semana_a_bodega.dtos.respose.projection.RecipeWithDetailsView;
+import KuHub.modules.pedido_semana_a_bodega.dtos.respose.projection.PedidoSemanaBodegaWithDetailsView;
 import KuHub.modules.pedido_semana_a_bodega.dtos.respose.record.DetailsByUpdateRec;
-import KuHub.modules.pedido_semana_a_bodega.dtos.respose.record.RecipesPage;
-import KuHub.modules.pedido_semana_a_bodega.dtos.request.RecipeWithDetailsUpdateDTO;
+import KuHub.modules.pedido_semana_a_bodega.dtos.respose.record.PedidoSemanaBodegasPage;
+import KuHub.modules.pedido_semana_a_bodega.dtos.request.PedidoSemanaBodegaWithDetailsUpdateDTO;
 import KuHub.modules.pedido_semana_a_bodega.entity.DetallePedidoSemanaBodega;
 import KuHub.modules.pedido_semana_a_bodega.entity.PedidoSemanaBodega;
 import KuHub.modules.pedido_semana_a_bodega.exceptions.PedidoSemanaBodegaException;
@@ -55,48 +55,48 @@ public class PedidoSemanaBodegaServiceImp implements PedidoSemanaBodegaService{
     /** Retorna el conteo total de recetas agrupado por estado. */
     @Transactional(readOnly = true)
     @Override
-    public CountRecipesAndStatusView countRecipesAndStatus() {
+    public CountPedidoSemanaBodegaAndStatusView countRecipesAndStatus() {
         return recetaRepository.countRecipesAndStatus();
     }
 
     /** Lista todas las recetas activas paginadas con sus detalles e ingredientes. */
     @Transactional(readOnly = true)
     @Override
-    public RecipesPage findAllRecipesPaginated(Integer pageRequested) {
+    public PedidoSemanaBodegasPage findAllRecipesPaginated(Integer pageRequested) {
         long totalRecords = recetaRepository.countByActivoTrue();
         PaginationUtils.PagingResult paging = PaginationUtils.buildPaging(pageRequested, totalRecords);
 
-        List<RecipeWithDetailsView> rows = recetaRepository.findAllWithDetailsPaging(
+        List<PedidoSemanaBodegaWithDetailsView> rows = recetaRepository.findAllWithDetailsPaging(
                 paging.limit(),
                 paging.offset()
         );
 
-        return RecipesPage.of(rows, paging, objectMapper);
+        return PedidoSemanaBodegasPage.of(rows, paging, objectMapper);
     }
 
     /** Lista recetas paginadas filtradas por nombre o descripción. */
     @Transactional(readOnly = true)
     @Override
-    public RecipesPage findAllWithDetailsAndSearchPaging(SearchDTO searchDto) {
+    public PedidoSemanaBodegasPage findAllWithDetailsAndSearchPaging(SearchDTO searchDto) {
         String term = (searchDto.getTerm() == null) ? "" : searchDto.getTerm().trim();
         int page = (searchDto.getPage() == null || searchDto.getPage() < 1) ? 1 : searchDto.getPage();
 
         long totalRecords = recetaRepository.countWithSearch(term);
         PaginationUtils.PagingResult paging = PaginationUtils.buildPaging(page, totalRecords);
 
-        List<RecipeWithDetailsView> rows = recetaRepository.findAllWithDetailsAndSearch(
+        List<PedidoSemanaBodegaWithDetailsView> rows = recetaRepository.findAllWithDetailsAndSearch(
                 term,
                 paging.limit(),
                 paging.offset()
         );
-        return RecipesPage.of(rows, paging, objectMapper);
+        return PedidoSemanaBodegasPage.of(rows, paging, objectMapper);
     }
 
 
     /** Crea una receta con sus detalles de ingredientes, consolidando duplicados sumando cantidades. */
     @Transactional
     @Override
-    public boolean saveRecipeWithDetails(RecipeWithDetailsCreateDTO request) {
+    public boolean saveRecipeWithDetails(PedidoSemanaBodegaWithDetailsCreateDTO request) {
         String nombreReceta = StringUtils.capitalizarPalabras(request.getNombrePedido());
 
         if (recetaRepository.existsByNombrePedidoAndActivoTrue(nombreReceta)) {
@@ -120,7 +120,7 @@ public class PedidoSemanaBodegaServiceImp implements PedidoSemanaBodegaService{
 
         Map<Integer, BigDecimal> itemsConsolidados = new HashMap<>();
 
-        for (RecipeItemDTO item : request.getListaItems()) {
+        for (PedidoSemanaBodegaItemDTO item : request.getListaItems()) {
             // merge: Si el ID no existe, lo pone. Si existe, aplica la suma (BigDecimal::add)
             itemsConsolidados.merge(
                     item.getIdProducto(),
@@ -161,7 +161,7 @@ public class PedidoSemanaBodegaServiceImp implements PedidoSemanaBodegaService{
     /** Actualiza la receta y sincroniza sus detalles procesando eliminaciones, modificaciones y nuevos ingredientes. */
     @Transactional()
     @Override
-    public boolean updateRecipeWithDetails (RecipeWithDetailsUpdateDTO request) {
+    public boolean updateRecipeWithDetails (PedidoSemanaBodegaWithDetailsUpdateDTO request) {
         /**Validar existencia de la receta obtenendo el objeto*/
         PedidoSemanaBodega oldRecipe = findById(request.getIdPedidoSemanaBodega());
         /**Parsear String y validar cambios*/
@@ -269,13 +269,13 @@ public class PedidoSemanaBodegaServiceImp implements PedidoSemanaBodegaService{
     }
 
     /** Actualiza las cantidades de ingredientes modificados, solo si el valor cambió realmente. */
-    private int processUpdates(Integer idReceta, List<RecipeItemDTO> itemsToUpdate, Map<Integer, DetailsByUpdateRec> currentMap) {
+    private int processUpdates(Integer idReceta, List<PedidoSemanaBodegaItemDTO> itemsToUpdate, Map<Integer, DetailsByUpdateRec> currentMap) {
         if (itemsToUpdate == null || itemsToUpdate.isEmpty()) {
             return 0;
         }
 
         int totalUpdated = 0;
-        for (RecipeItemDTO item : itemsToUpdate) {
+        for (PedidoSemanaBodegaItemDTO item : itemsToUpdate) {
             // Validación: Solo actualizamos si el producto existe actualmente en la receta
             if (currentMap.containsKey(item.getIdProducto())) {
 
@@ -302,14 +302,14 @@ public class PedidoSemanaBodegaServiceImp implements PedidoSemanaBodegaService{
     }
 
     /** Agrega nuevos ingredientes a la receta, validando que no existan previamente. */
-    private int processNewItems(Integer idReceta, List<RecipeItemDTO> newItems, Map<Integer, DetailsByUpdateRec> currentMap) {
+    private int processNewItems(Integer idReceta, List<PedidoSemanaBodegaItemDTO> newItems, Map<Integer, DetailsByUpdateRec> currentMap) {
         if (newItems == null || newItems.isEmpty()) {
             return 0;
         }
 
         List<DetallePedidoSemanaBodega> entitiesToSave = new ArrayList<>();
 
-        for (RecipeItemDTO item : newItems) {
+        for (PedidoSemanaBodegaItemDTO item : newItems) {
             /***/
             if (currentMap.containsKey(item.getIdProducto())) {
                 throw new PedidoSemanaBodegaException("El producto ID " + item.getIdProducto() + " ya existe en la receta. Use la lista de actualización.",
