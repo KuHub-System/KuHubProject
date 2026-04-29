@@ -35,11 +35,12 @@ public class PedidoSemanaBodegaController {
      * ✅ FUNCIONAL IMPLEMENTADO EN EL FRONT*/
     @PostMapping("/find-all-recipes-pagined/{page}")
     public ResponseEntity<PedidoSemanaBodegasPage> findAllRecipesPaginated(
-            @PathVariable Integer page
+            @PathVariable Integer page,
+            @RequestParam(required = false) Integer idSemana
     ){
         return ResponseEntity
                 .status(200)
-                .body(pedidoSemanaBodegaService.findAllRecipesPaginated(page));
+                .body(pedidoSemanaBodegaService.findAllRecipesPaginated(page, idSemana));
     }
 
     /**

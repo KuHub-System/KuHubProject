@@ -63,6 +63,7 @@ const PedidoSemanalABodegaPage: React.FC = () => {
   const confirm = useConfirm();
   const { user } = useAuth();
   const { canCreate: rec_Crear, canUpdate: rec_Editar, canDelete: rec_Eliminar } = useModulePermission('PEDIDO_SEMANAL_BODEGA');
+  const { periodos, semanas: contextSemanas, periodo: contextPeriodo, isLoading: isLoadingSemanas, seleccionarPeriodo, seleccionarSemana } = usePeriodoSemana();
   const esSoloLectura = user?.rol === 'Profesor';
   const esAdministrador = user?.rol === 'Administrador';
 
@@ -71,6 +72,11 @@ const PedidoSemanalABodegaPage: React.FC = () => {
   const [recetaSeleccionada, setRecetaSeleccionada] = React.useState<IPedidoSemanaBodegaPaginedDTO | null>(null);
   const [modalMode, setModalMode] = React.useState<'crear' | 'editar' | 'ver'>('crear');
   const [searchTerm, setSearchTerm] = React.useState<string>('');
+
+  // Filtro de semana
+  const [filterIdSemana, setFilterIdSemana] = React.useState<string>('todas');
+  const [filterPeriodo, setFilterPeriodo] = React.useState<{ anio: number; semestre: number } | null>(null);
+  const [filterSemanas, setFilterSemanas] = React.useState<any[]>([]);
 
   const [isLoading, setIsLoading] = React.useState<boolean>(true);
   const [totalPages, setTotalPages] = React.useState<number>(1);
@@ -84,6 +90,16 @@ const PedidoSemanalABodegaPage: React.FC = () => {
   });
 
   const { isOpen, onOpen, onOpenChange } = useDisclosure();
+
+  // Actualizar semanas del filtro cuando cambia el período
+  React.useEffect(() => {
+    if (contextPeriodo && contextSemanas.length > 0) {
+      setFilterPeriodo(contextPeriodo);
+      setFilterSemanas(contextSemanas);
+      // Resetear filtro de semana cuando cambia período
+      setFilterIdSemana('todas');
+    }
+  }, [contextPeriodo, contextSemanas]);
 
   // Cargar recetas iniciales y productos
   React.useEffect(() => {
@@ -99,8 +115,10 @@ const PedidoSemanalABodegaPage: React.FC = () => {
         ? obtenerProductosParaRecetaService()
         : Promise.resolve(productos);
 
+      const idSemanaFilter = filterIdSemana !== 'todas' ? Number(filterIdSemana) : undefined;
+
       const [resRecetas, resProductos, resCounts] = await Promise.all([
-        obtenerRecetasPaginadasService(1),
+        obtenerRecetasPaginadasService(1, idSemanaFilter),
         productosPromise,
         obtenerRecetasCountService()
       ]);
@@ -124,9 +142,11 @@ const PedidoSemanalABodegaPage: React.FC = () => {
       isLoadingMoreRef.current = true;
       setIsLoadingMore(true);
 
+      const idSemanaFilter = filterIdSemana !== 'todas' ? Number(filterIdSemana) : undefined;
+
       const data = searchTerm
-        ? await buscarRecetasPaginadasService(searchTerm, nextPageRef.current)
-        : await obtenerRecetasPaginadasService(nextPageRef.current);
+        ? await buscarRecetasPaginadasService(searchTerm, nextPageRef.current, idSemanaFilter)
+        : await obtenerRecetasPaginadasService(nextPageRef.current, idSemanaFilter);
 
       setRecetas(prev => [...prev, ...data.content]);
       nextPageRef.current += 1;
@@ -136,7 +156,7 @@ const PedidoSemanalABodegaPage: React.FC = () => {
       isLoadingMoreRef.current = false;
       setIsLoadingMore(false);
     }
-  }, [totalPages, toast]);
+  }, [totalPages, toast, filterIdSemana, searchTerm]);
 
   React.useEffect(() => {
     const onScroll = () => {
@@ -168,7 +188,8 @@ const PedidoSemanalABodegaPage: React.FC = () => {
     const timer = setTimeout(async () => {
       try {
         setIsLoading(true);
-        const res = await buscarRecetasPaginadasService(searchTerm, 1);
+        const idSemanaFilter = filterIdSemana !== 'todas' ? Number(filterIdSemana) : undefined;
+        const res = await buscarRecetasPaginadasService(searchTerm, 1, idSemanaFilter);
         setRecetas(res.content);
         setTotalPages(res.paging.totalPages);
         nextPageRef.current = 2;
@@ -180,7 +201,7 @@ const PedidoSemanalABodegaPage: React.FC = () => {
     }, 1500);
 
     return () => clearTimeout(timer);
-  }, [searchTerm]);
+  }, [searchTerm, filterIdSemana, toast]);
 
   const recetasAMostrar = recetas;
 
@@ -372,7 +393,7 @@ const PedidoSemanalABodegaPage: React.FC = () => {
 
         {/* Filtros */}
         <Card className="shadow-sm bg-white dark:bg-content1 border border-default-200 dark:border-default-100 mx-4">
-          <CardBody className="p-4">
+          <CardBody className="p-4 space-y-4">
             <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
               <Input
                 placeholder="Buscar pedidos semanales por nombre o descripción..."
@@ -406,6 +427,84 @@ const PedidoSemanalABodegaPage: React.FC = () => {
                   </div>
                 )}
               </div>
+            </div>
+
+            {/* Filtro de Semanas */}
+            <div className="space-y-3">
+              <label className="text-sm font-medium text-default-700">Filtrar por Semana</label>
+
+              {/* Seleccionar Período */}
+              {isLoadingSemanas ? (
+                <div className="flex items-center gap-2 text-sm text-default-500">
+                  <Spinner size="sm" /> Cargando periodos...
+                </div>
+              ) : !periodos || periodos.length === 0 ? (
+                <p className="text-sm text-warning-600 dark:text-warning-400">
+                  No hay periodos académicos disponibles.
+                </p>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {periodos?.map(p =>
+                    p.semestres.map((s: number) => (
+                      <button
+                        key={`${p.anio}-${s}`}
+                        onClick={() => seleccionarPeriodo(p.anio, s)}
+                        disabled={isLoadingSemanas}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all cursor-pointer ${
+                          filterPeriodo?.anio === p.anio && filterPeriodo?.semestre === s
+                            ? 'bg-primary text-white border-primary'
+                            : 'border-default-200 dark:border-default-100 hover:border-primary'
+                        }`}
+                      >
+                        {p.anio} - S{s}
+                      </button>
+                    ))
+                  )}
+                </div>
+              )}
+
+              {/* Seleccionar Semana */}
+              {filterPeriodo && filterSemanas.length > 0 && (
+                <>
+                  {isLoadingSemanas ? (
+                    <div className="flex items-center gap-2 text-sm text-default-500">
+                      <Spinner size="sm" /> Cargando semanas...
+                    </div>
+                  ) : (
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        onClick={() => setFilterIdSemana('todas')}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all cursor-pointer ${
+                          filterIdSemana === 'todas'
+                            ? 'bg-primary text-white border-primary'
+                            : 'border-default-200 dark:border-default-100 hover:border-primary'
+                        }`}
+                      >
+                        Todas
+                      </button>
+                      {filterSemanas.map((semana) => {
+                        const fechaInicio = new Date(semana.fechaInicio + 'T00:00:00').toLocaleDateString('es-CL', { day: 'numeric', month: 'short' });
+                        const fechaFin = new Date(semana.fechaFin + 'T00:00:00').toLocaleDateString('es-CL', { day: 'numeric', month: 'short' });
+                        const rangoFechas = `${fechaInicio} – ${fechaFin}`;
+
+                        return (
+                          <button
+                            key={String(semana.idSemana)}
+                            onClick={() => setFilterIdSemana(String(semana.idSemana))}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all cursor-pointer ${
+                              filterIdSemana === String(semana.idSemana)
+                                ? 'bg-primary text-white border-primary'
+                                : 'border-default-200 dark:border-default-100 hover:border-primary'
+                            }`}
+                          >
+                            S{semana.nombreSemana} ({rangoFechas})
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </>
+              )}
             </div>
           </CardBody>
         </Card>
