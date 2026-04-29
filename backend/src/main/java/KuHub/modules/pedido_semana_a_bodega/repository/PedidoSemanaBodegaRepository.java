@@ -31,6 +31,7 @@ public interface PedidoSemanaBodegaRepository extends JpaRepository<PedidoSemana
             p.descripcion_pedido_semana_bodega AS "descripcionPedido",
             p.estado_pedido::text AS "estadoPedido",
             COUNT(d.id_detalle_pedido_semana) AS "totalDetalles",
+            p.id_semana AS "idSemana",
             jsonb_agg(
                 jsonb_build_object(
                     'nombreProducto', pr.nombre_producto,
@@ -38,7 +39,8 @@ public interface PedidoSemanaBodegaRepository extends JpaRepository<PedidoSemana
                     'abreviatura', u.abreviatura,
                     'idDetallePedido', d.id_detalle_pedido_semana,
                     'idProducto', pr.id_producto,
-                    'idUnidad', u.id_unidad
+                    'idUnidad', u.id_unidad,
+                    'observacion', d.observacion
                 )
             ) AS "detallesJson"
         FROM pedido_semana_bodega p
@@ -46,7 +48,7 @@ public interface PedidoSemanaBodegaRepository extends JpaRepository<PedidoSemana
         LEFT JOIN producto pr ON d.id_producto = pr.id_producto
         LEFT JOIN unidad_medida u ON u.id_unidad = pr.id_unidad
         WHERE p.activo = true
-        GROUP BY p.id_pedido_semana_bodega, p.nombre_pedido_semana_bodega, p.descripcion_pedido_semana_bodega, p.estado_pedido
+        GROUP BY p.id_pedido_semana_bodega, p.nombre_pedido_semana_bodega, p.descripcion_pedido_semana_bodega, p.estado_pedido, p.id_semana
         ORDER BY p.nombre_pedido_semana_bodega ASC
         LIMIT :limit OFFSET :offset
         """, nativeQuery = true)
@@ -65,6 +67,7 @@ public interface PedidoSemanaBodegaRepository extends JpaRepository<PedidoSemana
             p.descripcion_pedido_semana_bodega AS "descripcionPedido",
             p.estado_pedido::text AS "estadoPedido",
             COUNT(d.id_detalle_pedido_semana) AS "totalDetalles",
+            p.id_semana AS "idSemana",
             jsonb_agg(
                 jsonb_build_object(
                     'nombreProducto', pr.nombre_producto,
@@ -72,7 +75,8 @@ public interface PedidoSemanaBodegaRepository extends JpaRepository<PedidoSemana
                     'abreviatura', u.abreviatura,
                     'idDetallePedido', d.id_detalle_pedido_semana,
                     'idProducto', pr.id_producto,
-                    'idUnidad', u.id_unidad
+                    'idUnidad', u.id_unidad,
+                    'observacion', d.observacion
                 )
             ) AS "detallesJson"
         FROM pedido_semana_bodega p
@@ -81,7 +85,7 @@ public interface PedidoSemanaBodegaRepository extends JpaRepository<PedidoSemana
         LEFT JOIN unidad_medida u ON u.id_unidad = pr.id_unidad
         WHERE p.activo = true
           AND (p.nombre_pedido_semana_bodega ILIKE %:term% OR p.descripcion_pedido_semana_bodega ILIKE %:term%)
-        GROUP BY p.id_pedido_semana_bodega, p.nombre_pedido_semana_bodega, p.descripcion_pedido_semana_bodega, p.estado_pedido
+        GROUP BY p.id_pedido_semana_bodega, p.nombre_pedido_semana_bodega, p.descripcion_pedido_semana_bodega, p.estado_pedido, p.id_semana
         ORDER BY p.nombre_pedido_semana_bodega ASC
         LIMIT :limit OFFSET :offset
         """, nativeQuery = true)
