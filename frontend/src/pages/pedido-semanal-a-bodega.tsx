@@ -1378,13 +1378,50 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
                           placeholder="0"
                           value={ingrediente.cantidad === 0 ? '' : ingrediente.cantidad.toString()}
                           onValueChange={(val) => {
+                            // Rechazar negativos
+                            if (val.startsWith('-')) {
+                              return;
+                            }
+
+                            // Permitir vacío
+                            if (val === '') {
+                              actualizarIngrediente(index, 'cantidad', 0);
+                              return;
+                            }
+
+                            const numericValue = parseFloat(val);
+
+                            // Validar que no sea negativo
+                            if (numericValue < 0) {
+                              return;
+                            }
+
+                            // Validar NUMERIC(10, 3): máximo 9999999.999
+                            if (numericValue > 9999999.999) {
+                              toast.warning('La cantidad no puede superar 9,999,999.999');
+                              return;
+                            }
+
+                            // Validar máximo 3 decimales
+                            if (val.includes('.')) {
+                              const decimals = val.split('.')[1];
+                              if (decimals.length > 3) {
+                                return;
+                              }
+                            }
+
+                            // Validar máximo 10 dígitos totales (sin contar el punto decimal)
+                            const digitsOnly = val.replace('.', '');
+                            if (digitsOnly.length > 10) {
+                              return;
+                            }
+
+                            // Si no es fraccionario, rechazar decimales
                             if (!esFraccionario && val.includes('.')) {
                               return;
                             }
-                            if (esFraccionario && val.includes('.') && val.split('.')[1].length > 3) {
-                              return;
-                            }
-                            actualizarIngrediente(index, 'cantidad', parseFloat(val) || 0);
+
+                            actualizarIngrediente(index, 'cantidad', numericValue || 0);
                           }}
                           size="sm"
                           variant="bordered"
@@ -1392,6 +1429,7 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
                           step={esFraccionario ? "0.001" : "1"}
                           isRequired
                           classNames={{ inputWrapper: "bg-white dark:bg-default-100/50" }}
+                          description="Máx: 9,999,999.999"
                         />
 
                         <Input
