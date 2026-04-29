@@ -53,14 +53,14 @@ import { IProductoRecetaSelection } from '../types/producto.types';
 import { IRecetaPaginedDTO, IDetalleRecetaDTO, IPaginationMeta, IRecetaCountResponse } from '../types/receta.types';
 
 /**
- * Página de gestión de recetas simplificada.
+ * Página de pedido semanal a bodega.
  */
-const GestionRecetasPage: React.FC = () => {
-  usePageTitle('Gestión Recetas', 'Crea, edita y administra las recetas del sistema y sus formulaciones', 'lucide:book-open');
+const PedidoSemanalABodegaPage: React.FC = () => {
+  usePageTitle('Pedido Semanal a Bodega', 'Gestiona los pedidos semanales para la bodega', 'lucide:package-open');
   const toast = useToast();
   const confirm = useConfirm();
   const { user } = useAuth();
-  const { canCreate: rec_Crear, canUpdate: rec_Editar, canDelete: rec_Eliminar } = useModulePermission('GESTION_RECETAS');
+  const { canCreate: rec_Crear, canUpdate: rec_Editar, canDelete: rec_Eliminar } = useModulePermission('PEDIDO_SEMANAL_BODEGA');
   const esSoloLectura = user?.rol === 'Profesor';
   const esAdministrador = user?.rol === 'Administrador';
 
@@ -109,7 +109,7 @@ const GestionRecetasPage: React.FC = () => {
       setTotalPages(resRecetas.paging.totalPages);
       nextPageRef.current = 2;
     } catch (error) {
-      toast.error('Error al cargar las recetas');
+      toast.error('Error al cargar las formulaciones');
     } finally {
       setIsLoading(false);
     }
@@ -129,7 +129,7 @@ const GestionRecetasPage: React.FC = () => {
       setRecetas(prev => [...prev, ...data.content]);
       nextPageRef.current += 1;
     } catch (error) {
-      toast.error('Error al cargar más recetas');
+      toast.error('Error al cargar más formulaciones');
     } finally {
       isLoadingMoreRef.current = false;
       setIsLoadingMore(false);
@@ -171,7 +171,7 @@ const GestionRecetasPage: React.FC = () => {
         setTotalPages(res.paging.totalPages);
         nextPageRef.current = 2;
       } catch (error) {
-        toast.error('Error al buscar recetas');
+        toast.error('Error al buscar formulaciones');
       } finally {
         setIsLoading(false);
       }
@@ -208,13 +208,13 @@ const GestionRecetasPage: React.FC = () => {
       if (success) {
         // Recargar datos para que se actualice la tabla y los contadores (TOTAL, ACTIVO, INACTIVO)
         await cargarDatosIniciales();
-        toast.success(`Estado de la receta actualizado correctamente`);
+        toast.success(`Estado de la formulación actualizado correctamente`);
       } else {
-        toast.error('No se pudo cambiar el estado de la receta');
+        toast.error('No se pudo cambiar el estado de la formulación');
       }
     } catch (error) {
       console.error('❌ Error al cambiar estado:', error);
-      toast.error('Error al cambiar el estado de la receta');
+      toast.error('Error al cambiar el estado de la formulación');
     }
   };
 
@@ -233,16 +233,16 @@ const GestionRecetasPage: React.FC = () => {
         });
 
         if (success) {
-          toast.success('Receta creada correctamente');
+          toast.success('Formulación creada correctamente');
         } else {
-          toast.error('No se pudo crear la receta');
+          toast.error('No se pudo crear la formulación');
         }
       } else if (modalMode === 'editar' && updatePayload) {
         const success = await actualizarRecetaConDetallesService(updatePayload);
         if (success) {
-          toast.success('Receta actualizada correctamente');
+          toast.success('Formulación actualizada correctamente');
         } else {
-          toast.error('No se pudo actualizar la receta');
+          toast.error('No se pudo actualizar la formulación');
         }
       }
       await cargarDatosIniciales();
@@ -254,16 +254,16 @@ const GestionRecetasPage: React.FC = () => {
 
   const handleEliminarReceta = async (receta: IRecetaPaginedDTO | any) => {
     if (!esAdministrador) {
-      toast.warning('Solo el rol Administrador puede eliminar recetas.');
+      toast.warning('Solo el rol Administrador puede eliminar formulaciones.');
       return;
     }
 
     const confirmado = await confirm('', {
-      title: 'Eliminar receta',
+      title: 'Eliminar formulación',
       subtitle: 'Esta acción es irreversible',
       headerVariant: 'danger',
       alertTitle: 'Atención',
-      alertMessage: `Eliminarás definitivamente la receta "${receta.nombreReceta}". Esta acción no se puede deshacer.`,
+      alertMessage: `Eliminarás definitivamente la formulación "${receta.nombreReceta}". Esta acción no se puede deshacer.`,
       confirmText: 'Eliminar',
       confirmColor: 'danger',
       requireText: 'ELIMINAR',
@@ -275,7 +275,7 @@ const GestionRecetasPage: React.FC = () => {
 
     try {
       await softDeleteRecetaService(receta.idReceta);
-      toast.success('Receta eliminada correctamente', { title: 'Receta eliminada' });
+      toast.success('Formulación eliminada correctamente', { title: 'Formulación eliminada' });
       await cargarDatosIniciales();
     } catch (error: any) {
       toast.error(error.message || 'Error al eliminar la receta');
@@ -312,11 +312,11 @@ const GestionRecetasPage: React.FC = () => {
           <Card className="shadow-sm border-l-4 border-primary bg-white dark:bg-content1">
             <CardBody className="flex flex-row items-center justify-between p-4 gap-4">
               <div>
-                <p className="text-sm font-semibold text-default-500 uppercase tracking-wide">Total Recetas</p>
+                <p className="text-sm font-semibold text-default-500 uppercase tracking-wide">Total Formulaciones</p>
                 <p className="text-3xl font-bold text-secondary mt-1">{recetaCounts.totalReceta}</p>
               </div>
               <div className="w-12 h-12 rounded-lg flex items-center justify-center bg-primary-100 dark:bg-primary-900/30 text-primary shrink-0">
-                <Icon icon="lucide:book-open" width={24} />
+                <Icon icon="lucide:package-open" width={24} />
               </div>
             </CardBody>
           </Card>
@@ -353,7 +353,7 @@ const GestionRecetasPage: React.FC = () => {
           <CardBody className="p-4">
             <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
               <Input
-                placeholder="Buscar recetas por nombre o descripción..."
+                placeholder="Buscar formulaciones por nombre o descripción..."
                 value={searchTerm}
                 onValueChange={setSearchTerm}
                 startContent={<Icon icon="lucide:search" className="text-default-400" />}
@@ -374,7 +374,7 @@ const GestionRecetasPage: React.FC = () => {
                     startContent={<Icon icon="lucide:plus" width={18} />}
                     onPress={handleNuevaReceta}
                   >
-                    Nueva Receta
+                    Nueva Formulación
                   </Button>
                 )}
                 {esSoloLectura && (
@@ -392,7 +392,7 @@ const GestionRecetasPage: React.FC = () => {
         <Card className="shadow-sm border border-default-200 dark:border-default-100 bg-white dark:bg-content1 mx-4">
           <CardBody className="p-0">
             <Table
-              aria-label="Tabla de recetas"
+              aria-label="Tabla de formulaciones"
               removeWrapper
               layout="fixed"
               classNames={{
@@ -408,7 +408,7 @@ const GestionRecetasPage: React.FC = () => {
               }
             >
               <TableHeader>
-                <TableColumn width="25%" align="center">NOMBRE RECETA</TableColumn>
+                <TableColumn width="25%" align="center">NOMBRE FORMULACIÓN</TableColumn>
                 <TableColumn width="35%" align="center">DESCRIPCIÓN</TableColumn>
                 <TableColumn width="15%" align="center">INGREDIENTES</TableColumn>
                 <TableColumn width="10%" align="center">ESTADO</TableColumn>
@@ -417,8 +417,8 @@ const GestionRecetasPage: React.FC = () => {
               <TableBody
                 emptyContent={
                   <div className="py-12 text-center text-default-400">
-                    <Icon icon="lucide:book-x" className="mx-auto mb-3 opacity-50" width={48} />
-                    <p className="text-lg font-medium">No se encontraron recetas</p>
+                    <Icon icon="lucide:inbox" className="mx-auto mb-3 opacity-50" width={48} />
+                    <p className="text-lg font-medium">No se encontraron formulaciones</p>
                   </div>
                 }
               >
@@ -466,7 +466,7 @@ const GestionRecetasPage: React.FC = () => {
                         {!esSoloLectura && (
                           <>
                             {rec_Editar && (
-                            <Tooltip content="Editar receta" delay={0}>
+                            <Tooltip content="Editar formulación" delay={0}>
                               <Button
                                 isIconOnly
                                 variant="light"
@@ -481,7 +481,7 @@ const GestionRecetasPage: React.FC = () => {
                             )}
 
                             {rec_Editar && (
-                            <Tooltip content={receta.estadoReceta === 'Activo' ? 'Inactivar receta' : 'Activar receta'} delay={0}>
+                            <Tooltip content={receta.estadoReceta === 'Activo' ? 'Inactivar formulación' : 'Activar formulación'} delay={0}>
                               <Button
                                 isIconOnly
                                 variant="light"
@@ -498,7 +498,7 @@ const GestionRecetasPage: React.FC = () => {
                             </Tooltip>
                             )}
                             {esAdministrador && rec_Eliminar && (
-                              <Tooltip content="Eliminar receta" delay={0}>
+                              <Tooltip content="Eliminar formulación" delay={0}>
                                 <Button
                                   isIconOnly
                                   variant="light"
@@ -592,7 +592,7 @@ const DetalleReceta: React.FC<DetalleRecetaProps> = ({ receta, mode, productos, 
             width={24}
           />
           <span className="font-bold text-lg text-secondary dark:text-foreground">
-            {mode === 'crear' ? 'Nueva Receta' : mode === 'editar' ? 'Editar Receta' : 'Detalle de Receta'}
+            {mode === 'crear' ? 'Nueva Formulación' : mode === 'editar' ? 'Editar Formulación' : 'Detalle de Formulación'}
           </span>
         </div>
       </ModalHeader>
@@ -624,7 +624,7 @@ const DetalleReceta: React.FC<DetalleRecetaProps> = ({ receta, mode, productos, 
             className="font-bold text-secondary shadow-md"
             startContent={<Icon icon="lucide:save" />}
           >
-            {mode === 'crear' ? 'Crear Receta' : 'Guardar Cambios'}
+            {mode === 'crear' ? 'Crear Formulación' : 'Guardar Cambios'}
           </Button>
         )}
       </ModalFooter>
@@ -840,7 +840,7 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
       submit: async () => {
         // Validaciones iniciales
         if (!nombre.trim()) {
-          toast.warning('El nombre de la receta es obligatorio');
+          toast.warning('El nombre de la formulación es obligatorio');
           throw new Error('El nombre es requerido');
         }
         if (ingredientes.length === 0) {
@@ -1018,7 +1018,7 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
           <Card shadow="none" className="border border-default-200 dark:border-default-100">
             <CardBody className="p-4 space-y-4">
               <Input
-                label="Nombre de la Receta"
+                label="Nombre de la Formulación"
                 placeholder="Ej: Pan Amasado, Torta de Chocolate, etc."
                 value={nombre}
                 onValueChange={setNombre}
@@ -1031,7 +1031,7 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
               />
               <Textarea
                 label="Descripción (Opcional)"
-                placeholder="Descripción breve de la receta..."
+                placeholder="Descripción breve de la formulación..."
                 value={descripcion}
                 onValueChange={setDescripcion}
                 variant="bordered"
@@ -1211,7 +1211,7 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
             <div className={`p-2 rounded-lg ${estado === 'Activo' ? 'bg-success-100 dark:bg-success-900/30 text-success' : 'bg-danger-100 dark:bg-danger-900/30 text-danger'}`}>
               <Icon icon={estado === 'Activo' ? 'lucide:check-circle' : 'lucide:x-circle'} width={20} />
             </div>
-            <h4 className="font-bold text-base text-secondary dark:text-foreground">Estado de la Receta</h4>
+            <h4 className="font-bold text-base text-secondary dark:text-foreground">Estado de la Formulación</h4>
           </div>
           <Card shadow="none" className="border border-default-200 dark:border-default-100">
             <CardBody className="p-4">
@@ -1223,7 +1223,7 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
                 variant="bordered"
                 isRequired
                 classNames={{ trigger: "bg-white dark:bg-default-100/50" }}
-                description="Esto permite la disponibilidad de la receta para solicitudes"
+                description="Esto permite la disponibilidad de la formulación para solicitudes"
               >
                 <SelectItem key="Activo" startContent={<Icon icon="lucide:check-circle" className="text-success" width={16} />}>Activo</SelectItem>
                 <SelectItem key="Inactivo" startContent={<Icon icon="lucide:x-circle" className="text-danger" width={16} />}>Inactivo</SelectItem>
@@ -1236,4 +1236,4 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
   }
 );
 
-export default GestionRecetasPage;
+export default PedidoSemanalABodegaPage;
