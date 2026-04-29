@@ -614,7 +614,7 @@ const DetalleReceta: React.FC<DetalleRecetaProps> = ({ receta, mode, productos, 
             width={24}
           />
           <span className="font-bold text-lg text-secondary dark:text-foreground">
-            {mode === 'crear' ? 'Nueva Pedido Semanal' : mode === 'editar' ? 'Editar Pedido Semanal' : 'Detalle de Pedido Semanal'}
+            {mode === 'crear' ? 'Nuevo Pedido Semanal' : mode === 'editar' ? 'Editar Pedido Semanal' : 'Detalle de Pedido Semanal'}
           </span>
         </div>
       </ModalHeader>
