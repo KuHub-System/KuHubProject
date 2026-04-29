@@ -294,6 +294,103 @@ interface PermisoMatrizDTO {
 }
 ```
 
+### Tablas — Convención de truncado y alineación
+
+**Todas las tablas en el sistema deben seguir estos patrones:**
+
+#### Estructura base HTML
+
+```tsx
+<div className="overflow-x-auto rounded-lg border border-default-200 dark:border-default-100">
+  <table className="w-full text-xs" style={{ tableLayout: 'fixed' }}>
+    <thead className="bg-default-100 dark:bg-default-50">
+      <tr>
+        <th className="text-center py-2 px-3 font-medium w-[290px]">Nombre Columna</th>
+        {/* Más columnas */}
+      </tr>
+    </thead>
+    <tbody>
+      {/* Filas */}
+    </tbody>
+  </table>
+</div>
+```
+
+#### Celdas con contenido truncado (nombre, descripción)
+
+Usar `Tooltip` + `truncate` + `whitespace-nowrap` para mostrar ellipsis (...) cuando el contenido es muy largo:
+
+```tsx
+<td className="py-2 px-3 text-center">
+  <Tooltip content={producto.nombre} color="foreground" className="text-xs">
+    <span className="truncate block whitespace-nowrap">
+      {producto.nombre}
+    </span>
+  </Tooltip>
+</td>
+```
+
+**Comportamiento:**
+- El contenido se trunca con ellipsis si es muy largo (`truncate whitespace-nowrap`)
+- Al pasar el cursor, aparece un tooltip con el contenido completo
+- El texto siempre está centrado (`text-center`)
+
+#### Celdas simples (números, códigos, estados)
+
+Para contenido que siempre cabe (códigos cortos, números):
+
+```tsx
+<td className="py-2 px-3 text-center">
+  {producto.codigo}
+</td>
+```
+
+#### Reglas obligatorias
+
+| Aspecto | Regla |
+|---|---|
+| **Alineación** | Todas las celdas centradas: `text-center` en header y body |
+| **Header (th)** | `text-center py-2 px-3 font-medium` |
+| **Body (td)** | `py-2 px-3 text-center` |
+| **Contenido largo** | Usar `Tooltip` + `truncate` + `whitespace-nowrap` |
+| **Contenido corto** | Sin truncado, texto directo |
+| **Hover** | Fila completa con `hover:bg-default-100 dark:hover:bg-default-100/30` en `<tr>` |
+| **Celdas deshabilitadas** | Aplicar `opacity-60 bg-default-50/30 dark:bg-default-100/10` a la fila |
+
+#### Ejemplo completo de fila con truncado y acciones
+
+```tsx
+<tr className="border-t border-default-100 hover:bg-default-50 dark:hover:bg-default-100/20">
+  <td className="py-2 px-3 text-center">
+    <Tooltip content={producto.nombreProducto} color="foreground" className="text-xs">
+      <span className="truncate block whitespace-nowrap">
+        {producto.nombreProducto}
+      </span>
+    </Tooltip>
+  </td>
+  
+  <td className="py-2 px-3 text-center text-xs text-default-500">
+    <Tooltip content={producto.codProducto || '—'} color="foreground" className="text-xs">
+      <span className="truncate block whitespace-nowrap">
+        {producto.codProducto || '—'}
+      </span>
+    </Tooltip>
+  </td>
+  
+  <td className="py-2 px-3 text-center">
+    {/* Contenido editable o simple */}
+  </td>
+  
+  <td className="py-2 px-3 text-center">
+    <Tooltip content="Editar">
+      <Button isIconOnly size="sm" variant="light">
+        <Icon icon="lucide:more-vertical" width={16} />
+      </Button>
+    </Tooltip>
+  </td>
+</tr>
+```
+
 ---
 
 ## 5. COMANDOS Y SCRIPTS

@@ -1000,11 +1000,18 @@ const GestionProveedoresPage: React.FC = () => {
                         const newKeys = new Set(keys);
                         // Hacer mutuamente excluyentes los estados
                         if (newKeys.has('estado-DISPONIBLE') && newKeys.has('estado-NO_DISPONIBLE')) {
-                          // Si ambos están seleccionados, remover el que se acaba de agregar
                           if (!selectedFilterOptions.has('estado-DISPONIBLE')) {
                             newKeys.delete('estado-NO_DISPONIBLE');
                           } else if (!selectedFilterOptions.has('estado-NO_DISPONIBLE')) {
                             newKeys.delete('estado-DISPONIBLE');
+                          }
+                        }
+                        // Hacer mutuamente excluyentes los ordenamientos de precio
+                        if (newKeys.has('precio-asc') && newKeys.has('precio-desc')) {
+                          if (!selectedFilterOptions.has('precio-asc')) {
+                            newKeys.delete('precio-desc');
+                          } else if (!selectedFilterOptions.has('precio-desc')) {
+                            newKeys.delete('precio-asc');
                           }
                         }
                         setSelectedFilterOptions(newKeys);
@@ -1114,6 +1121,14 @@ const GestionProveedoresPage: React.FC = () => {
                       loading={loadingBusqueda}
                       error={errorBusqueda}
                       searchTerm={busquedaGlobal}
+                      canEdit={prov_Editar}
+                      editingPrecio={editingPrecio}
+                      precioTemp={precioTemp}
+                      savingPrecio={savingPrecio}
+                      onIniciarEditPrecio={handleIniciarEditPrecio}
+                      onPrecioTempChange={handlePrecioTempChange}
+                      onGuardarPrecio={handleGuardarPrecio}
+                      onCancelarEditPrecio={() => setEditingPrecio(null)}
                     />
                   </>
                 ) : (
@@ -1734,6 +1749,14 @@ interface BusquedaResultadosProps {
   loading: boolean;
   error: string | null;
   searchTerm: string;
+  canEdit: boolean;
+  editingPrecio: { idProveedorProducto: number } | null;
+  precioTemp: string;
+  savingPrecio: boolean;
+  onIniciarEditPrecio: (idProveedorProducto: number, precioActual: number) => void;
+  onPrecioTempChange: (val: string) => void;
+  onGuardarPrecio: () => void;
+  onCancelarEditPrecio: () => void;
 }
 
 const BusquedaResultados: React.FC<BusquedaResultadosProps> = ({
@@ -1741,6 +1764,14 @@ const BusquedaResultados: React.FC<BusquedaResultadosProps> = ({
   loading,
   error,
   searchTerm,
+  canEdit,
+  editingPrecio,
+  precioTemp,
+  savingPrecio,
+  onIniciarEditPrecio,
+  onPrecioTempChange,
+  onGuardarPrecio,
+  onCancelarEditPrecio,
 }) => {
   const [expandedProveedores, setExpandedProveedores] = React.useState<Set<number>>(
     new Set(resultados.map(r => r.idProveedor))
@@ -1933,19 +1964,72 @@ const BusquedaResultados: React.FC<BusquedaResultadosProps> = ({
                                         }`}
                                       >
                                         <td className="py-2 px-3 text-center">
-                                          <div className="truncate">{prod.nombreProducto}</div>
+                                          <Tooltip content={prod.nombreProducto} color="foreground" className="text-xs">
+                                            <span className="truncate block whitespace-nowrap">
+                                              {prod.nombreProducto}
+                                            </span>
+                                          </Tooltip>
                                         </td>
                                         <td className="py-2 px-3 text-center text-xs text-default-500">
-                                          {prod.codProducto || '—'}
+                                          <Tooltip content={prod.codProducto || '—'} color="foreground" className="text-xs">
+                                            <span className="truncate block whitespace-nowrap">
+                                              {prod.codProducto || '—'}
+                                            </span>
+                                          </Tooltip>
                                         </td>
                                         <td className="py-2 px-3 text-center">
                                           {prod.abreviatura}
                                         </td>
-                                        <td className="py-2 px-3 text-center font-semibold">
-                                          ${prod.precioProducto.toLocaleString('es-CL', {
-                                            minimumFractionDigits: 0,
-                                            maximumFractionDigits: 2,
-                                          })}
+                                        <td className="py-2 px-3 text-center">
+                                          {editingPrecio?.idProveedorProducto === prod.idProveedorProducto ? (
+                                            <div className="flex items-center gap-1 justify-center">
+                                              <Input
+                                                size="sm"
+                                                value={precioTemp}
+                                                onValueChange={onPrecioTempChange}
+                                                className="w-24"
+                                                classNames={{ inputWrapper: 'h-6 min-h-6' }}
+                                                startContent={<span className="text-default-400 text-xs">$</span>}
+                                                onKeyDown={(e) => {
+                                                  if (e.key === 'Enter') onGuardarPrecio();
+                                                  if (e.key === 'Escape') onCancelarEditPrecio();
+                                                }}
+                                                autoFocus
+                                              />
+                                              <Button
+                                                isIconOnly
+                                                size="sm"
+                                                variant="flat"
+                                                color="success"
+                                                isLoading={savingPrecio}
+                                                onPress={onGuardarPrecio}
+                                              >
+                                                <Icon icon="lucide:check" width={13} />
+                                              </Button>
+                                              <Button
+                                                isIconOnly
+                                                size="sm"
+                                                variant="light"
+                                                onPress={onCancelarEditPrecio}
+                                              >
+                                                <Icon icon="lucide:x" width={13} />
+                                              </Button>
+                                            </div>
+                                          ) : (
+                                            <span
+                                              className={`cursor-pointer hover:text-primary transition-colors ${canEdit ? 'underline decoration-dotted' : ''}`}
+                                              title={canEdit ? 'Clic para editar precio' : undefined}
+                                              onClick={() =>
+                                                canEdit &&
+                                                onIniciarEditPrecio(prod.idProveedorProducto, prod.precioProducto)
+                                              }
+                                            >
+                                              ${prod.precioProducto.toLocaleString('es-CL', {
+                                                minimumFractionDigits: 0,
+                                                maximumFractionDigits: 2,
+                                              })}
+                                            </span>
+                                          )}
                                         </td>
                                         <td className="py-2 px-3 text-center">
                                           <Chip
@@ -1962,16 +2046,18 @@ const BusquedaResultados: React.FC<BusquedaResultadosProps> = ({
                                             : '—'}
                                         </td>
                                         <td className="py-2 px-3 text-center">
-                                          <Tooltip content="Ver opciones">
-                                            <button
+                                          <Tooltip content="Editar precio">
+                                            <Button
+                                              isIconOnly
+                                              size="sm"
+                                              variant="light"
                                               className="text-default-400 hover:text-primary transition-colors"
-                                              onClick={(e) => {
-                                                e.stopPropagation();
-                                                // Acciones placeholder
+                                              onPress={(e) => {
+                                                canEdit && onIniciarEditPrecio(prod.idProveedorProducto, prod.precioProducto);
                                               }}
                                             >
                                               <Icon icon="lucide:more-vertical" width={16} />
-                                            </button>
+                                            </Button>
                                           </Tooltip>
                                         </td>
                                       </tr>
