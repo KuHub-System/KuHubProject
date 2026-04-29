@@ -3,23 +3,23 @@ package KuHub.modules.pedido_semana_a_bodega.dtos.respose.projection;
 import org.springframework.beans.factory.annotation.Value;
 
 public interface RecipeWithDetailsView {
-    @Value("#{target.idReceta}")
-    Integer getIdReceta();
+    @Value("#{target.idPedidoSemanaBodega}")
+    Integer getIdPedidoSemanaBodega();
 
-    @Value("#{target.nombreReceta}")
-    String getNombreReceta();
+    @Value("#{target.nombrePedido}")
+    String getNombrePedido();
 
-    @Value("#{target.descripcionReceta}")
-    String getDescripcionReceta();
+    @Value("#{target.descripcionPedido}")
+    String getDescripcionPedido();
 
-    @Value("#{target.instruccionesReceta}")
-    String getInstruccionesReceta();
+    @Value("#{target.instrucciones}")
+    String getInstrucciones();
 
-    @Value("#{target.estadoReceta}")
-    String getEstadoReceta();
+    @Value("#{target.estadoPedido}")
+    String getEstadoPedido();
 
-    @Value("#{target.totalIngredientes}")
-    Long getTotalIngredientes();
+    @Value("#{target.totalDetalles}")
+    Long getTotalDetalles();
 
     @Value("#{target.detallesJson}")
     String getDetallesJson();

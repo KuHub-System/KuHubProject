@@ -18,12 +18,12 @@ public record RecipesPage(
 
     // ─── RECORD INTERNO: Item de receta con sus detalles ─────────────────────
     public record RecipeItem(
-            Integer idReceta,
-            String nombreReceta,
-            String descripcionReceta,
-            String instruccionesReceta,
-            String estadoReceta,
-            Long totalIngredientes,
+            Integer idPedidoSemanaBodega,
+            String nombrePedido,
+            String descripcionPedido,
+            String instrucciones,
+            String estadoPedido,
+            Long totalDetalles,
             List<RecipeDetail> detalles
     ) {}
 
@@ -63,12 +63,12 @@ public record RecipesPage(
             }
 
             return new RecipeItem(
-                    row.getIdReceta(),
-                    row.getNombreReceta(),
-                    row.getDescripcionReceta(),
-                    row.getInstruccionesReceta(),
-                    StringUtils.enumToHumanText(row.getEstadoReceta()),
-                    row.getTotalIngredientes(),
+                    row.getIdPedidoSemanaBodega(),
+                    row.getNombrePedido(),
+                    row.getDescripcionPedido(),
+                    row.getInstrucciones(),
+                    StringUtils.enumToHumanText(row.getEstadoPedido()),
+                    row.getTotalDetalles(),
                     detalles
             );
         }).toList();
