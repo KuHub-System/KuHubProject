@@ -14,7 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 
 @Service
-public class DetalleRecetaServiceImp implements DetalleRecetaService{
+public class DetallePedidoSemanaBodegaServiceImp implements DetallePedidoSemanaBodegaService{
 
     @Autowired
     private DetallePedidoSemanaBodegaRepository detalleRecetaRepository;

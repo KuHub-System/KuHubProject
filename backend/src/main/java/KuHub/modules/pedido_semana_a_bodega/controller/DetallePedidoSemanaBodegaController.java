@@ -1,7 +1,7 @@
 package KuHub.modules.pedido_semana_a_bodega.controller;
 
-import KuHub.modules.pedido_semana_a_bodega.entity.DetalleReceta;
-import KuHub.modules.pedido_semana_a_bodega.exceptions.GestionRecetaException;
+import KuHub.modules.pedido_semana_a_bodega.entity.DetallePedidoSemanaBodega;
+import KuHub.modules.pedido_semana_a_bodega.exceptions.PedidoSemanaBodegaException;
 import KuHub.modules.pedido_semana_a_bodega.services.DetallePedidoSemanaBodegaService;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
@@ -44,21 +44,21 @@ public class DetallePedidoSemanaBodegaController {
 
 
     @GetMapping("/find-by-id/{id}")
-    public ResponseEntity<DetalleReceta> findById(@PathVariable Integer id){
+    public ResponseEntity<DetallePedidoSemanaBodega> findById(@PathVariable Integer id){
         return ResponseEntity
                 .status(200)
                 .body(detallePedidoSemanaBodegaService.findById(id));
     }
 
     @GetMapping("/find-all/")
-    public ResponseEntity<Iterable<DetalleReceta>> findAll(){
+    public ResponseEntity<Iterable<DetallePedidoSemanaBodega>> findAll(){
         return ResponseEntity
                 .status(200)
                 .body(detallePedidoSemanaBodegaService.findAll());
     }
 
     @PostMapping("/create-details-recipe/")
-    public ResponseEntity<DetalleReceta> save(@RequestBody DetalleReceta detalleReceta){
+    public ResponseEntity<DetallePedidoSemanaBodega> save(@RequestBody DetallePedidoSemanaBodega detalleReceta){
         return ResponseEntity
                 .status(201)
                 .body(detallePedidoSemanaBodegaService.save(detalleReceta));
@@ -72,7 +72,7 @@ public class DetallePedidoSemanaBodegaController {
         try {
             detallePedidoSemanaBodegaService.deleteById(id);
             return ResponseEntity.noContent().build();
-        } catch (GestionRecetaException ex) {
+        } catch (PedidoSemanaBodegaException ex) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
         } catch (IllegalArgumentException ex) {
             return ResponseEntity.badRequest().build();
