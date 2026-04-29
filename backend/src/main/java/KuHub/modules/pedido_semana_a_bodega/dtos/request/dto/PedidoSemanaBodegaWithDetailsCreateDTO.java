@@ -18,8 +18,9 @@ public class PedidoSemanaBodegaWithDetailsCreateDTO {
     @Valid
     @NotEmpty(message = "La lista de items no puede estar vacía")
     private List<@Valid PedidoSemanaBodegaItemDTO> listaItems;
-    private String instrucciones;
 
     @NotBlank(message = "El estado es obligatorio")
     private String estadoPedido;
+
+    private Integer idSemana;
 }
