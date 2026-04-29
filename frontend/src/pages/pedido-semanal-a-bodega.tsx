@@ -249,7 +249,8 @@ const PedidoSemanalABodegaPage: React.FC = () => {
           descripcionPedido: receta.descripcion,
           listaItems: receta.ingredientes.map(ing => ({
             idProducto: parseInt(ing.productoId),
-            cantUnidadMedida: ing.cantidad
+            cantUnidadMedida: ing.cantidad,
+            observacion: ing.observacion || undefined
           })),
           estadoPedido: receta.estado === 'Activo' || (receta.estado as any) === 'Activa' ? 'Activo' : 'Inactivo',
           idSemana: receta.idSemana
@@ -920,18 +921,19 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
           const originalDetalles = originalDetallesRef.current;
           const originalMap = new Map(originalDetalles.map(d => [d.idProducto.toString(), d]));
 
-          const newItems: { idProducto: number; cantUnidadMedida: number }[] = [];
-          const updateItems: { idProducto: number; cantUnidadMedida: number }[] = [];
+          const newItems: { idProducto: number; cantUnidadMedida: number; observacion?: string }[] = [];
+          const updateItems: { idProducto: number; cantUnidadMedida: number; observacion?: string }[] = [];
 
           ingredientesConsolidados.forEach(ing => {
             const original = originalMap.get(ing.productoId);
+            const observacion = (ing as any).observacion || undefined;
 
             if (!original) {
               // Producto nuevo (no estaba en la DB)
-              newItems.push({ idProducto: parseInt(ing.productoId), cantUnidadMedida: ing.cantidad });
+              newItems.push({ idProducto: parseInt(ing.productoId), cantUnidadMedida: ing.cantidad, observacion });
             } else if (original.cantProducto !== ing.cantidad) {
               // Producto existente con cantidad modificada
-              updateItems.push({ idProducto: parseInt(ing.productoId), cantUnidadMedida: ing.cantidad });
+              updateItems.push({ idProducto: parseInt(ing.productoId), cantUnidadMedida: ing.cantidad, observacion });
             }
           });
 
