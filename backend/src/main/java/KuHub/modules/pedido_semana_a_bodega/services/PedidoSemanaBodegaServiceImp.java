@@ -63,7 +63,7 @@ public class PedidoSemanaBodegaServiceImp implements PedidoSemanaBodegaService{
     @Transactional(readOnly = true)
     @Override
     public RecipesPage findAllRecipesPaginated(Integer pageRequested) {
-        long totalRecords = recetaRepository.countByActivoRecetaTrue();
+        long totalRecords = recetaRepository.countByActivoTrue();
         PaginationUtils.PagingResult paging = PaginationUtils.buildPaging(pageRequested, totalRecords);
 
         List<RecipeWithDetailsView> rows = recetaRepository.findAllWithDetailsPaging(
@@ -99,21 +99,21 @@ public class PedidoSemanaBodegaServiceImp implements PedidoSemanaBodegaService{
     public boolean saveRecipeWithDetails(RecipeWithDetailsCreateDTO request) {
         String nombreReceta = StringUtils.capitalizarPalabras(request.getNombreReceta());
 
-        if (recetaRepository.existsByNombreRecetaAndActivoRecetaTrue(nombreReceta)) {
+        if (recetaRepository.existsByNombrePedidoAndActivoTrue(nombreReceta)) {
             throw new PedidoSemanaBodegaException("Ya existe una receta activa con el nombre: " + nombreReceta,
                     HttpStatus.CONFLICT);
         }
 
         PedidoSemanaBodega newReceta = new PedidoSemanaBodega();
-        newReceta.setNombreReceta(nombreReceta);
+        newReceta.setNombrePedido(nombreReceta);
         String key = StringUtils.normalizeToEnumKey(request.getEstadoReceta());
         PedidoSemanaBodega.EstadoPedidoSemana estadoEnum = PedidoSemanaBodega.EstadoPedidoSemana.valueOf(key);
-        newReceta.setEstadoReceta(estadoEnum);
+        newReceta.setEstadoPedido(estadoEnum);
 
-        newReceta.setDescripcionReceta((request.getDescripcionReceta() == null || request.getDescripcionReceta().isBlank())
+        newReceta.setDescripcionPedido((request.getDescripcionReceta() == null || request.getDescripcionReceta().isBlank())
                 ? null : StringUtils.normalizeSpaces(request.getDescripcionReceta()));
 
-        newReceta.setInstruccionesReceta((request.getInstrucciones() == null || request.getInstrucciones().isBlank())
+        newReceta.setInstruccionesPedido((request.getInstrucciones() == null || request.getInstrucciones().isBlank())
                 ? null : StringUtils.normalizeSpaces(request.getInstrucciones()));
 
         PedidoSemanaBodega recetaGuardada = recetaRepository.save(newReceta);
@@ -132,7 +132,7 @@ public class PedidoSemanaBodegaServiceImp implements PedidoSemanaBodegaService{
             DetallePedidoSemanaBodega detalle = new DetallePedidoSemanaBodega();
 
             // Asociamos usando el objeto guardado (para el ID)
-            detalle.setReceta(recetaGuardada);
+            detalle.setPedidoSemanaBodega(recetaGuardada);
 
             // Usamos setProductoById para evitar un SELECT innecesario del objeto Producto
             detalle.setProductoById(idProducto);
@@ -167,32 +167,32 @@ public class PedidoSemanaBodegaServiceImp implements PedidoSemanaBodegaService{
         /**Parsear String y validar cambios*/
         String nombreReceta = StringUtils.capitalizarPalabras(request.getNombreReceta());
         if (!nombreReceta.equals(request.getNombreReceta())
-                && recetaRepository.existsByNombreRecetaAndActivoRecetaTrue(nombreReceta)) {
+                && recetaRepository.existsByNombrePedidoAndActivoTrue(nombreReceta)) {
             throw new PedidoSemanaBodegaException("Ya existe una receta con el nombre : " + nombreReceta
                     , HttpStatus.CONFLICT);
         } else {
-            oldRecipe.setNombreReceta(nombreReceta);
+            oldRecipe.setNombrePedido(nombreReceta);
         }
         /**Parsear String y validar cambios*/
         String descripcion = (request.getDescripcionReceta() != null)
                 ? StringUtils.normalizeSpaces(request.getDescripcionReceta())
                 : null;
-        if (!Objects.equals(descripcion, oldRecipe.getDescripcionReceta())) {
-            oldRecipe.setDescripcionReceta(descripcion);
+        if (!Objects.equals(descripcion, oldRecipe.getDescripcionPedido())) {
+            oldRecipe.setDescripcionPedido(descripcion);
         }
         /**Parsear String y validar cambios*/
         String instruciones = (request.getInstruccionesReceta() != null)
                 ? StringUtils.normalizeSpaces(request.getInstruccionesReceta())
                 : null;
-        if (!Objects.equals(instruciones, oldRecipe.getInstruccionesReceta())) {
-            oldRecipe.setInstruccionesReceta(instruciones);
+        if (!Objects.equals(instruciones, oldRecipe.getInstruccionesPedido())) {
+            oldRecipe.setInstruccionesPedido(instruciones);
         }
         /** Validar y setear el estado */
         String keyEstado = StringUtils.normalizeToEnumKey(request.getEstadoReceta());
         PedidoSemanaBodega.EstadoPedidoSemana nuevoEstado = PedidoSemanaBodega.EstadoPedidoSemana.valueOf(keyEstado);
 
-        if (oldRecipe.getEstadoReceta() != nuevoEstado) {
-            oldRecipe.setEstadoReceta(nuevoEstado);
+        if (oldRecipe.getEstadoPedido() != nuevoEstado) {
+            oldRecipe.setEstadoPedido(nuevoEstado);
         }
         /**Update Recipe Head*/
         recetaRepository.save(oldRecipe);
@@ -317,7 +317,7 @@ public class PedidoSemanaBodegaServiceImp implements PedidoSemanaBodegaService{
             }
 
             DetallePedidoSemanaBodega nuevoDetalle = new DetallePedidoSemanaBodega();
-            nuevoDetalle.setRecetaById(idReceta);
+            nuevoDetalle.setPedidoSemanaBodegaById(idReceta);
             nuevoDetalle.setProductoById(item.getIdProducto());
             nuevoDetalle.setCantProducto(item.getCantUnidadMedida());
 
