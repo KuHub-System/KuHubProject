@@ -27,7 +27,7 @@ const HistoricoPedidosPage    = lazy(() => import('./pages/historico-pedidos'));
 const ConglomeradoPedidosPage = lazy(() => import('./pages/conglomerado-pedidos'));
 const GestionProveedoresPage = lazy(() => import('./pages/gestion-proveedores'));
 const BodegaTransitoPage = lazy(() => import('./pages/bodega-transito'));
-const GestionRecetasPage = lazy(() => import('./pages/gestion-recetas'));
+const PedidoSemanalABodegaPage = lazy(() => import('./pages/pedido-semanal-a-bodega'));
 const GestionUsuariosPage = lazy(() => import('./pages/gestion-usuarios'));
 const GestionSolicitudesPage = lazy(() => import('./pages/gestion-solicitudes'));
 const AdminSistemaPage = lazy(() => import('./pages/admin-sistema'));
@@ -88,7 +88,7 @@ const SmartRedirect: React.FC = () => {
     'conglomerado-pedidos': '/conglomerado-pedidos',
     'gestion-proveedores': '/gestion-proveedores',
     'bodega-transito': '/bodega-transito',
-    'gestion-recetas': '/gestion-recetas',
+    'pedido-semanal-a-bodega': '/pedido-semanal-a-bodega',
     'gestion-academica': '/gestion-academica',
     'gestion-roles': '/gestion-roles',
     'gestion-usuarios': '/gestion-usuarios', // 🔥 NUEVO
@@ -239,9 +239,9 @@ const App: React.FC = () => {
                     </MainLayout>
                   </ProtectedRoute>
 
-                  <ProtectedRoute path="/gestion-recetas" pageId="gestion-recetas">
+                  <ProtectedRoute path="/pedido-semanal-a-bodega" pageId="pedido-semanal-a-bodega">
                     <MainLayout>
-                      <GestionRecetasPage />
+                      <PedidoSemanalABodegaPage />
                     </MainLayout>
                   </ProtectedRoute>
 

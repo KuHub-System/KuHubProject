@@ -681,7 +681,92 @@ if (permisos.puedeCrear) { /* mostrar botón agregar */ }
 
 ---
 
-## 14. VITE — CHUNKS DE BUILD
+## 14. CREACIÓN DE NUEVAS PÁGINAS — CHECKLIST COMPLETO
+
+Cuando se crea una nueva página, **SIEMPRE** completar estos 6 pasos en orden:
+
+### Paso 1: Crear el archivo de la página
+
+```bash
+# frontend/src/pages/mi-nueva-page.tsx
+import React from 'react';
+import { usePageTitle } from '../hooks/usePageTitle';
+import { useAuth } from '../contexts/auth-context';
+import { useModulePermission } from '../contexts/permission-context';
+
+const MiNuevaPage: React.FC = () => {
+  usePageTitle('Mi Nueva Página', 'Descripción breve', 'lucide:icon-name');
+  const { user } = useAuth();
+  const { canCreate, canUpdate, canDelete } = useModulePermission('MI_NUEVO_MODULO');
+
+  return (
+    <div className="min-h-screen bg-default-50/50 dark:bg-background pb-20">
+      {/* contenido */}
+    </div>
+  );
+};
+
+export default MiNuevaPage;
+```
+
+### Paso 2: Agregar import lazy en App.tsx
+
+```typescript
+// Después de otros imports de páginas
+const MiNuevaPage = lazy(() => import('./pages/mi-nueva-page'));
+```
+
+### Paso 3: Agregar ruta protegida en App.tsx
+
+```tsx
+<ProtectedRoute path="/mi-nueva-page" pageId="mi-nueva-page">
+  <MainLayout>
+    <MiNuevaPage />
+  </MainLayout>
+</ProtectedRoute>
+```
+
+### Paso 4: Agregar entrada en SmartRedirect (App.tsx)
+
+```typescript
+const rutasPorPermiso: { [key: string]: string } = {
+  // ... otras rutas
+  'mi-nueva-page': '/mi-nueva-page',
+};
+```
+
+### Paso 5: Agregar item en sidebar.tsx
+
+```typescript
+const menuCategories: MenuCategory[] = [
+  {
+    title: 'Mi Categoría',
+    items: [
+      { 
+        title: 'Mi Nueva Página', 
+        path: '/mi-nueva-page', 
+        icon: 'lucide:icon-name', 
+        pageId: 'mi-nueva-page' 
+      },
+    ]
+  }
+];
+```
+
+### Paso 6: Registrar módulo en gestion-roles.tsx
+
+```typescript
+const modulosDisponibles = [
+  // ... otros módulos
+  'MI_NUEVO_MODULO',
+];
+```
+
+**Nota**: El `pageId` debe coincidir en todos los archivos. Usa kebab-case para la ruta y SCREAMING_SNAKE_CASE para el módulo de permisos.
+
+---
+
+## 15. VITE — CHUNKS DE BUILD
 
 ```typescript
 // vite.config.ts — chunks manuales para optimizar carga
