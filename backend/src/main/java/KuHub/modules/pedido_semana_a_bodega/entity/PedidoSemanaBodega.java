@@ -17,14 +17,11 @@ public class PedidoSemanaBodega {
     @Column(name = "id_pedido_semana_bodega")
     private Integer idPedidoSemanaBodega;
 
-    @Column(name = "nombre_pedido", nullable = false, length = 100)
+    @Column(name = "nombre_pedido_semana_bodega", nullable = false, length = 100)
     private String nombrePedido;
 
-    @Column(name = "descripcion_pedido", columnDefinition = "TEXT")
+    @Column(name = "descripcion_pedido_semana_bodega", columnDefinition = "TEXT")
     private String descripcionPedido;
-
-    @Column(name = "instrucciones", columnDefinition = "TEXT")
-    private String instrucciones;
 
     @Column(name = "activo", nullable = false)
     private Boolean activo = true;

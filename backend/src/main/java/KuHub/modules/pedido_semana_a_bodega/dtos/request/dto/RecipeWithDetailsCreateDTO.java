@@ -13,13 +13,13 @@ import java.util.List;
 public class RecipeWithDetailsCreateDTO {
 
     @NotBlank(message = "El nombre de la receta es obligatorio")
-    private String nombreReceta;
-    private String descripcionReceta;
+    private String nombrePedido;
+    private String descripcionPedido;
     @Valid
     @NotEmpty(message = "La lista de items no puede estar vacía")
     private List<@Valid RecipeItemDTO> listaItems;
     private String instrucciones;
 
     @NotBlank(message = "El estado es obligatorio")
-    private String estadoReceta;
+    private String estadoPedido;
 }
