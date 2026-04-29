@@ -762,7 +762,7 @@ interface FormularioRecetaProps {
 const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
   ({ receta, mode, productos, onSave, onValidationChange }, ref) => {
     const toast = useToast();
-    const { semanas } = usePeriodoSemana();
+    const { periodos, semanas, periodo, isLoading: isLoadingSemanas, seleccionarPeriodo } = usePeriodoSemana();
     const [nombre, setNombre] = React.useState(receta?.nombrePedido || '');
     const [descripcion, setDescripcion] = React.useState(receta?.descripcionPedido || '');
     const [estado, setEstado] = React.useState<'Activo' | 'Inactivo'>(receta?.estadoPedido || 'Activo');
@@ -775,6 +775,9 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
       const stored = sessionStorage.getItem('kuhub_semana_id');
       return stored ? Number(stored) : undefined;
     });
+
+    // Verificar si hay periodos disponibles
+    const sinPeriodos = !periodos || periodos.length === 0;
 
     const qtyRefs = React.useRef<Record<string, HTMLInputElement | null>>({});
 
@@ -1072,28 +1075,65 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
                 minRows={2}
                 classNames={{ inputWrapper: "bg-white dark:bg-default-100/50" }}
               />
-              <Select
-                label="Semana (Opcional)"
-                placeholder={semanas.length === 0 ? "Cargando semanas..." : "Selecciona una semana..."}
-                value={idSemana ? idSemana.toString() : ''}
-                onChange={(e) => setIdSemana(e.target.value ? Number(e.target.value) : undefined)}
-                variant="bordered"
-                isDisabled={semanas.length === 0}
-                classNames={{ trigger: "bg-white dark:bg-default-100/50" }}
-                startContent={<Icon icon="lucide:calendar" className="text-default-400" width={18} />}
-              >
-                {semanas.length > 0 ? (
-                  semanas.map((semana) => (
-                    <SelectItem key={semana.idSemana} value={semana.idSemana.toString()}>
-                      {semana.nombreSemana} ({semana.fechaInicio} a {semana.fechaFin})
-                    </SelectItem>
-                  ))
+              <div className="space-y-3">
+                <label className="text-sm font-medium text-default-700">Semana (Opcional)</label>
+
+                {/* Seleccionar Período */}
+                {isLoadingSemanas ? (
+                  <div className="flex items-center gap-2 text-sm text-default-500">
+                    <Spinner size="sm" /> Cargando periodos...
+                  </div>
+                ) : sinPeriodos ? (
+                  <p className="text-sm text-warning-600 dark:text-warning-400">
+                    No hay periodos académicos disponibles. Contacte al administrador.
+                  </p>
                 ) : (
-                  <SelectItem isReadOnly key="no-semanas" value="" textValue="No hay semanas disponibles">
-                    No hay semanas disponibles
-                  </SelectItem>
+                  <div className="flex flex-wrap gap-2">
+                    {periodos?.map(p =>
+                      p.semestres.map((s: number) => (
+                        <button
+                          key={`${p.anio}-${s}`}
+                          onClick={() => seleccionarPeriodo(p.anio, s)}
+                          disabled={isLoadingSemanas}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all cursor-pointer ${
+                            periodo?.anio === p.anio && periodo?.semestre === s
+                              ? 'bg-primary text-white border-primary'
+                              : 'border-default-200 dark:border-default-100 hover:border-primary'
+                          }`}
+                        >
+                          {p.anio} - S{s}
+                        </button>
+                      ))
+                    )}
+                  </div>
                 )}
-              </Select>
+
+                {/* Seleccionar Semana */}
+                {!sinPeriodos && periodo && (
+                  <Select
+                    label="Semana"
+                    placeholder={semanas.length === 0 ? "Cargando semanas..." : "Selecciona una semana..."}
+                    value={idSemana ? idSemana.toString() : ''}
+                    onChange={(e) => setIdSemana(e.target.value ? Number(e.target.value) : undefined)}
+                    variant="bordered"
+                    isDisabled={semanas.length === 0}
+                    classNames={{ trigger: "bg-white dark:bg-default-100/50" }}
+                    startContent={<Icon icon="lucide:calendar" className="text-default-400" width={18} />}
+                  >
+                    {semanas.length > 0 ? (
+                      semanas.map((semana) => (
+                        <SelectItem key={semana.idSemana} value={semana.idSemana.toString()}>
+                          {semana.nombreSemana} ({semana.fechaInicio} a {semana.fechaFin})
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <SelectItem isReadOnly key="no-semanas" value="" textValue="No hay semanas disponibles">
+                        No hay semanas disponibles
+                      </SelectItem>
+                    )}
+                  </Select>
+                )}
+              </div>
             </CardBody>
           </Card>
         </div>
