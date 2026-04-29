@@ -1399,6 +1399,7 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
                           startContent={<Icon icon="lucide:note" className="text-default-400" width={16} />}
                           description={`${(ingrediente.observacion || '').length}/100 caracteres`}
                         />
+                      </div>
                     </div>
                   </CardBody>
                 </Card>
