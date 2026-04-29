@@ -36,7 +36,7 @@ import { useModulePermission } from '../contexts/permission-context';
 import BookPageLoader from '../components/BookPageLoader';
 
 // IMPORTAR TIPOS Y SERVICIOS
-import { IReceta, IIngrediente, IRecipeWithDetailsUpdateDTO } from '../types/receta.types';
+import { IPedidoSemanaBodega, IIngrediente, IPedidoSemanaBodegaWithDetailsUpdateDTO } from '../types/receta.types';
 import {
   obtenerRecetasPaginadasService,
   crearRecetaService,
@@ -51,7 +51,7 @@ import {
 } from '../services/receta-service';
 import { obtenerProductosParaRecetaService } from '../services/producto-service';
 import { IProductoRecetaSelection } from '../types/producto.types';
-import { IRecetaPaginedDTO, IDetalleRecetaDTO, IPaginationMeta, IRecetaCountResponse } from '../types/receta.types';
+import { IPedidoSemanaBodegaPaginedDTO, IDetallePedidoSemanaBodegaDTO, IPaginationMeta, IPedidoSemanaBodegaCountResponse } from '../types/receta.types';
 
 /**
  * Página de pedido semanal a bodega.
@@ -65,9 +65,9 @@ const PedidoSemanalABodegaPage: React.FC = () => {
   const esSoloLectura = user?.rol === 'Profesor';
   const esAdministrador = user?.rol === 'Administrador';
 
-  const [recetas, setRecetas] = React.useState<IRecetaPaginedDTO[]>([]);
+  const [recetas, setRecetas] = React.useState<IPedidoSemanaBodegaPaginedDTO[]>([]);
   const [productos, setProductos] = React.useState<IProductoRecetaSelection[]>([]);
-  const [recetaSeleccionada, setRecetaSeleccionada] = React.useState<IRecetaPaginedDTO | null>(null);
+  const [recetaSeleccionada, setRecetaSeleccionada] = React.useState<IPedidoSemanaBodegaPaginedDTO | null>(null);
   const [modalMode, setModalMode] = React.useState<'crear' | 'editar' | 'ver'>('crear');
   const [searchTerm, setSearchTerm] = React.useState<string>('');
 
@@ -76,8 +76,8 @@ const PedidoSemanalABodegaPage: React.FC = () => {
   const nextPageRef = React.useRef<number>(2);
   const isLoadingMoreRef = React.useRef<boolean>(false);
   const [isLoadingMore, setIsLoadingMore] = React.useState<boolean>(false);
-  const [recetaCounts, setRecetaCounts] = React.useState<IRecetaCountResponse>({
-    totalReceta: 0,
+  const [recetaCounts, setRecetaCounts] = React.useState<IPedidoSemanaBodegaCountResponse>({
+    totalPedidos: 0,
     total_activos: 0,
     total_inactivos: 0
   });
@@ -189,13 +189,13 @@ const PedidoSemanalABodegaPage: React.FC = () => {
     onOpen();
   };
 
-  const handleEditarReceta = (receta: IRecetaPaginedDTO | any) => {
+  const handleEditarReceta = (receta: IPedidoSemanaBodegaPaginedDTO | any) => {
     setModalMode('editar');
     setRecetaSeleccionada(receta);
     onOpen();
   };
 
-  const handleVerReceta = (receta: IRecetaPaginedDTO | any) => {
+  const handleVerReceta = (receta: IPedidoSemanaBodegaPaginedDTO | any) => {
     setModalMode('ver');
     setRecetaSeleccionada(receta);
     onOpen();
@@ -219,18 +219,17 @@ const PedidoSemanalABodegaPage: React.FC = () => {
     }
   };
 
-  const handleGuardarReceta = async (receta: IReceta, updatePayload?: IRecipeWithDetailsUpdateDTO) => {
+  const handleGuardarReceta = async (receta: IPedidoSemanaBodega, updatePayload?: IPedidoSemanaBodegaWithDetailsUpdateDTO) => {
     try {
       if (modalMode === 'crear') {
         const success = await crearRecetaConDetallesService({
-          nombreReceta: receta.nombre,
-          descripcionReceta: receta.descripcion,
+          nombrePedido: receta.nombre,
+          descripcionPedido: receta.descripcion,
           listaItems: receta.ingredientes.map(ing => ({
             idProducto: parseInt(ing.productoId),
             cantUnidadMedida: ing.cantidad
           })),
-          instrucciones: receta.instrucciones,
-          estadoReceta: receta.estado === 'Activo' || (receta.estado as any) === 'Activa' ? 'Activo' : 'Inactivo'
+          estadoPedido: receta.estado === 'Activo' || (receta.estado as any) === 'Activa' ? 'Activo' : 'Inactivo'
         });
 
         if (success) {
@@ -253,7 +252,7 @@ const PedidoSemanalABodegaPage: React.FC = () => {
     }
   };
 
-  const handleEliminarReceta = async (receta: IRecetaPaginedDTO | any) => {
+  const handleEliminarReceta = async (receta: IPedidoSemanaBodegaPaginedDTO | any) => {
     if (!esAdministrador) {
       toast.warning('Solo el rol Administrador puede eliminar formulaciones.');
       return;
@@ -264,7 +263,7 @@ const PedidoSemanalABodegaPage: React.FC = () => {
       subtitle: 'Esta acción es irreversible',
       headerVariant: 'danger',
       alertTitle: 'Atención',
-      alertMessage: `Eliminarás definitivamente la formulación "${receta.nombreReceta}". Esta acción no se puede deshacer.`,
+      alertMessage: `Eliminarás definitivamente la formulación "${receta.nombrePedido}". Esta acción no se puede deshacer.`,
       confirmText: 'Eliminar',
       confirmColor: 'danger',
       requireText: 'ELIMINAR',
@@ -312,7 +311,7 @@ const PedidoSemanalABodegaPage: React.FC = () => {
             <CardBody className="flex flex-row items-center justify-between p-4 gap-4">
               <div>
                 <p className="text-sm font-semibold text-default-500 uppercase tracking-wide">Total Formulaciones</p>
-                <p className="text-3xl font-bold text-secondary mt-1">{recetaCounts.totalReceta}</p>
+                <p className="text-3xl font-bold text-secondary mt-1">{recetaCounts.totalPedidos}</p>
               </div>
               <div className="w-12 h-12 rounded-lg flex items-center justify-center bg-primary-100 dark:bg-primary-900/30 text-primary shrink-0">
                 <Icon icon="lucide:package-open" width={24} />
@@ -435,21 +434,21 @@ const PedidoSemanalABodegaPage: React.FC = () => {
                     }}
                   >
                     <TableCell className="text-center">
-                      <Tooltip content={receta.nombreReceta} delay={500} closeDelay={0}>
+                      <Tooltip content={receta.nombrePedido} delay={500} closeDelay={0}>
                         <div className="flex justify-center w-full">
                           <p className="font-semibold text-secondary dark:text-foreground truncate text-center w-full">
-                            {receta.nombreReceta}
+                            {receta.nombrePedido}
                           </p>
                         </div>
                       </Tooltip>
                     </TableCell>
                     <TableCell className="text-center">
-                      <Tooltip content={receta.descripcionReceta || '-'} delay={800} closeDelay={0} className="max-w-[400px]">
+                      <Tooltip content={receta.descripcionPedido || '-'} delay={800} closeDelay={0} className="max-w-[400px]">
                         <div className="flex justify-center w-full">
                           <p className="text-sm text-default-500 text-center w-full">
-                            {receta.descripcionReceta && receta.descripcionReceta.length > 100
-                              ? `${receta.descripcionReceta.substring(0, 100)}...`
-                              : receta.descripcionReceta || '-'}
+                            {receta.descripcionPedido && receta.descripcionPedido.length > 100
+                              ? `${receta.descripcionPedido.substring(0, 100)}...`
+                              : receta.descripcionPedido || '-'}
                           </p>
                         </div>
                       </Tooltip>
@@ -459,7 +458,7 @@ const PedidoSemanalABodegaPage: React.FC = () => {
                         {receta.totalIngredientes} ingredientes
                       </Chip>
                     </TableCell>
-                    <TableCell className="text-center">{renderEstado(receta.estadoReceta)}</TableCell>
+                    <TableCell className="text-center">{renderEstado(receta.estadoPedido)}</TableCell>
                     <TableCell>
                       <div className="flex justify-center gap-1">
                         {!esSoloLectura && (
@@ -480,17 +479,17 @@ const PedidoSemanalABodegaPage: React.FC = () => {
                             )}
 
                             {rec_Editar && (
-                            <Tooltip content={receta.estadoReceta === 'Activo' ? 'Inactivar formulación' : 'Activar formulación'} delay={0}>
+                            <Tooltip content={receta.estadoPedido === 'Activo' ? 'Inactivar formulación' : 'Activar formulación'} delay={0}>
                               <Button
                                 isIconOnly
                                 variant="light"
                                 size="sm"
                                 onPress={() => cambiarEstadoReceta(receta.idReceta)}
-                                className={receta.estadoReceta === 'Activo' ? 'text-default-400 hover:text-danger z-10' : 'text-default-400 hover:text-success z-10'}
+                                className={receta.estadoPedido === 'Activo' ? 'text-default-400 hover:text-danger z-10' : 'text-default-400 hover:text-success z-10'}
                                 style={{ cursor: 'pointer' }}
                               >
                                 <Icon
-                                  icon={receta.estadoReceta === 'Activo' ? 'lucide:x-circle' : 'lucide:check-circle'}
+                                  icon={receta.estadoPedido === 'Activo' ? 'lucide:x-circle' : 'lucide:check-circle'}
                                   width={18}
                                 />
                               </Button>
@@ -558,11 +557,11 @@ const PedidoSemanalABodegaPage: React.FC = () => {
 };
 
 interface DetalleRecetaProps {
-  receta: IRecetaPaginedDTO | null;
+  receta: IPedidoSemanaBodegaPaginedDTO | null;
   mode: 'crear' | 'editar' | 'ver';
   productos: IProductoRecetaSelection[];
   onClose: () => void;
-  onSave: (receta: IReceta, updatePayload?: IRecipeWithDetailsUpdateDTO) => Promise<void>;
+  onSave: (receta: IPedidoSemanaBodega, updatePayload?: IPedidoSemanaBodegaWithDetailsUpdateDTO) => Promise<void>;
 }
 
 const DetalleReceta: React.FC<DetalleRecetaProps> = ({ receta, mode, productos, onClose, onSave }) => {
@@ -632,11 +631,11 @@ const DetalleReceta: React.FC<DetalleRecetaProps> = ({ receta, mode, productos, 
 };
 
 interface VistaRecetaProps {
-  receta: IRecetaPaginedDTO;
+  receta: IPedidoSemanaBodegaPaginedDTO;
 }
 
 const VistaReceta: React.FC<VistaRecetaProps> = ({ receta }) => {
-  const isActivo = receta.estadoReceta === 'Activo';
+  const isActivo = receta.estadoPedido === 'Activo';
 
   return (
     <div className="space-y-6">
@@ -661,9 +660,9 @@ const VistaReceta: React.FC<VistaRecetaProps> = ({ receta }) => {
               <Icon icon="lucide:chef-hat" width={28} className={isActivo ? 'text-success-700' : 'text-danger-700'} />
             </div>
             <div className="min-w-0">
-              <h3 className="text-xl font-bold text-secondary dark:text-foreground truncate">{receta.nombreReceta}</h3>
-              {receta.descripcionReceta && (
-                <p className="text-sm text-default-600 mt-1 line-clamp-2">{receta.descripcionReceta}</p>
+              <h3 className="text-xl font-bold text-secondary dark:text-foreground truncate">{receta.nombrePedido}</h3>
+              {receta.descripcionPedido && (
+                <p className="text-sm text-default-600 mt-1 line-clamp-2">{receta.descripcionPedido}</p>
               )}
             </div>
           </div>
@@ -674,7 +673,7 @@ const VistaReceta: React.FC<VistaRecetaProps> = ({ receta }) => {
             className="font-bold shrink-0"
             startContent={<Icon icon={isActivo ? 'lucide:check-circle-2' : 'lucide:x-circle'} width={14} className="ml-1" />}
           >
-            {receta.estadoReceta}
+            {receta.estadoPedido}
           </Chip>
         </div>
       </div>
@@ -699,7 +698,7 @@ const VistaReceta: React.FC<VistaRecetaProps> = ({ receta }) => {
         <div className="space-y-2">
           {(receta.detalles || []).map((detalle, index) => (
             <Card
-              key={detalle.idDetalleReceta}
+              key={detalle.idDetallePedido}
               shadow="none"
               className="border border-default-200 dark:border-default-100 hover:border-primary-200 dark:hover:border-primary-400/30 transition-colors"
             >
@@ -722,46 +721,29 @@ const VistaReceta: React.FC<VistaRecetaProps> = ({ receta }) => {
         </div>
       </div>
 
-      {/* === SECCIÓN: Instrucciones === */}
-      <div>
-        <div className="flex items-center gap-2 mb-3">
-          <div className="p-2 rounded-lg bg-secondary-100 dark:bg-secondary-900/30 text-secondary">
-            <Icon icon="lucide:file-text" width={20} />
-          </div>
-          <h4 className="font-bold text-base text-secondary dark:text-foreground">Instrucciones</h4>
-        </div>
-        <Card shadow="none" className="bg-default-50 dark:bg-default-100/30 border border-default-200 dark:border-default-100/50">
-          <CardBody className="p-4">
-            <p className="whitespace-pre-line text-sm text-default-600 dark:text-default-400 italic">
-              {receta.instruccionesReceta?.trim() || 'Sin instrucciones registradas.'}
-            </p>
-          </CardBody>
-        </Card>
-      </div>
     </div>
   );
 };
 
 interface FormularioRecetaProps {
-  receta: IRecetaPaginedDTO | null;
+  receta: IPedidoSemanaBodegaPaginedDTO | null;
   mode: 'crear' | 'editar';
   productos: IProductoRecetaSelection[];
-  onSave: (receta: IReceta, updatePayload?: IRecipeWithDetailsUpdateDTO) => Promise<void>;
+  onSave: (receta: IPedidoSemanaBodega, updatePayload?: IPedidoSemanaBodegaWithDetailsUpdateDTO) => Promise<void>;
   onValidationChange: (isValid: boolean) => void;
 }
 
 const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
   ({ receta, mode, productos, onSave, onValidationChange }, ref) => {
     const toast = useToast();
-    const [nombre, setNombre] = React.useState(receta?.nombreReceta || '');
-    const [descripcion, setDescripcion] = React.useState(receta?.descripcionReceta || '');
-    const [instrucciones, setInstrucciones] = React.useState(receta?.instruccionesReceta || '');
-    const [estado, setEstado] = React.useState<'Activo' | 'Inactivo'>(receta?.estadoReceta || 'Activo');
+    const [nombre, setNombre] = React.useState(receta?.nombrePedido || '');
+    const [descripcion, setDescripcion] = React.useState(receta?.descripcionPedido || '');
+    const [estado, setEstado] = React.useState<'Activo' | 'Inactivo'>(receta?.estadoPedido || 'Activo');
 
     const qtyRefs = React.useRef<Record<string, HTMLInputElement | null>>({});
 
     // Snapshot de los detalles originales para calcular deltas en modo editar
-    const originalDetallesRef = React.useRef<IDetalleRecetaDTO[]>(receta?.detalles || []);
+    const originalDetallesRef = React.useRef<IDetallePedidoSemanaBodegaDTO[]>(receta?.detalles || []);
 
     // REEMPLAZAR deletedDetailIds por deletedProductIds
     const [deletedProductIds, setDeletedProductIds] = React.useState<number[]>([]);
@@ -774,7 +756,7 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
     // REEMPLAZAR el estado y la inicialización de ingredientes en FormularioReceta
     const [ingredientes, setIngredientes] = React.useState<IIngrediente[]>(
       (receta?.detalles || []).map(d => ({
-        id: d.idDetalleReceta.toString(),
+        id: d.idDetallePedido.toString(),
         productoId: d.idProducto.toString(),
         productoNombre: d.nombreProducto,
         cantidad: d.cantProducto,
@@ -795,10 +777,9 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
       // 2. Detección de cambios (solo relevante en modo editar)
       let hasChanges = false;
       if (mode === 'editar' && receta) {
-        const changedNombre = nombre.trim() !== (receta.nombreReceta || '');
-        const changedDesc = descripcion.trim() !== (receta.descripcionReceta || '');
-        const changedInstr = (instrucciones || '').trim() !== (receta.instruccionesReceta || '').trim();
-        const changedEstado = estado !== (receta.estadoReceta || 'Activo');
+        const changedNombre = nombre.trim() !== (receta.nombrePedido || '');
+        const changedDesc = descripcion.trim() !== (receta.descripcionPedido || '');
+        const changedEstado = estado !== (receta.estadoPedido || 'Activo');
 
         // Comparar ingredientes consolidando cantidades para la comparación
         const currentIngsMap = new Map<string, number>();
@@ -827,13 +808,13 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
           }
         }
 
-        hasChanges = changedNombre || changedDesc || changedInstr || changedEstado || changedIngs;
+        hasChanges = changedNombre || changedDesc || changedEstado || changedIngs;
       }
 
       // En modo 'crear' habilitamos si es válido. En 'editar' solo si es válido Y hubo cambios.
       const canSave = mode === 'crear' ? isValid : (isValid && hasChanges);
       onValidationChange(canSave);
-    }, [nombre, descripcion, instrucciones, estado, ingredientes, mode, receta, onValidationChange]);
+    }, [nombre, descripcion, estado, ingredientes, mode, receta, onValidationChange]);
 
     React.useImperativeHandle(ref, () => ({
       submit: async () => {
@@ -874,12 +855,12 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
           }
         });
 
-        const recetaData: IReceta = {
+        const recetaData: IPedidoSemanaBodega = {
           id: receta?.idReceta?.toString() || '',
           nombre: nombre.trim(),
           descripcion: descripcion.trim(),
           ingredientes: ingredientesConsolidados,
-          instrucciones: instrucciones.trim(),
+          instrucciones: '',
           estado,
           fechaCreacion: new Date().toISOString(),
           fechaActualizacion: new Date().toISOString(),
@@ -905,12 +886,11 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
             }
           });
 
-          const updatePayload: IRecipeWithDetailsUpdateDTO = {
-            idReceta: receta.idReceta,
-            nombreReceta: nombre.trim(),
-            descripcionReceta: descripcion.trim() || undefined,
-            instruccionesReceta: instrucciones.trim() || undefined,
-            estadoReceta: estado,
+          const updatePayload: IPedidoSemanaBodegaWithDetailsUpdateDTO = {
+            idPedidoSemanaBodega: receta.idPedidoSemanaBodega,
+            nombrePedido: nombre.trim(),
+            descripcionPedido: descripcion.trim() || undefined,
+            estadoPedido: estado,
             newItems,
             updateItems,
             deleteItems: deletedProductIds, // IDs de PRODUCTOS, no de detalles
@@ -1177,31 +1157,6 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
               </CardBody>
             </Card>
           </div>
-        </div>
-
-        {/* === SECCIÓN: Instrucciones === */}
-        <div>
-          <div className="flex items-center gap-2 mb-4">
-            <div className="p-2 rounded-lg bg-secondary-100 dark:bg-secondary-900/30 text-secondary">
-              <Icon icon="lucide:list-ordered" width={20} />
-            </div>
-            <div>
-              <h4 className="font-bold text-base text-secondary dark:text-foreground">Instrucciones</h4>
-              <p className="text-xs text-default-400">Opcional - describe los pasos de preparación</p>
-            </div>
-          </div>
-          <Card shadow="none" className="border border-default-200 dark:border-default-100">
-            <CardBody className="p-4">
-              <Textarea
-                placeholder="Paso 1: ...&#10;Paso 2: ...&#10;Paso 3: ..."
-                value={instrucciones}
-                onValueChange={setInstrucciones}
-                variant="bordered"
-                minRows={4}
-                classNames={{ inputWrapper: "bg-white dark:bg-default-100/50" }}
-              />
-            </CardBody>
-          </Card>
         </div>
 
         {/* === SECCIÓN: Estado === */}

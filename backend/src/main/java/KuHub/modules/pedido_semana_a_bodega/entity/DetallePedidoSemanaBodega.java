@@ -33,6 +33,9 @@ public class DetallePedidoSemanaBodega {
     @Column(name = "cant_producto", nullable = false, precision = 10, scale = 3)
     private BigDecimal cantProducto;
 
+    @Column(name = "observacion", columnDefinition = "TEXT")
+    private String observacion;
+
     public void setPedidoSemanaBodegaById(Integer idPedidoSemanaBodega) {
         this.pedidoSemanaBodega = new PedidoSemanaBodega();
         this.pedidoSemanaBodega.setIdPedidoSemanaBodega(idPedidoSemanaBodega);
