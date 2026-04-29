@@ -97,7 +97,7 @@ public class PedidoSemanaBodegaServiceImp implements PedidoSemanaBodegaService{
     @Transactional
     @Override
     public boolean saveRecipeWithDetails(RecipeWithDetailsCreateDTO request) {
-        String nombreReceta = StringUtils.capitalizarPalabras(request.getNombreReceta());
+        String nombreReceta = StringUtils.capitalizarPalabras(request.getNombrePedido());
 
         if (recetaRepository.existsByNombrePedidoAndActivoTrue(nombreReceta)) {
             throw new PedidoSemanaBodegaException("Ya existe una receta activa con el nombre: " + nombreReceta,
@@ -106,12 +106,12 @@ public class PedidoSemanaBodegaServiceImp implements PedidoSemanaBodegaService{
 
         PedidoSemanaBodega newReceta = new PedidoSemanaBodega();
         newReceta.setNombrePedido(nombreReceta);
-        String key = StringUtils.normalizeToEnumKey(request.getEstadoReceta());
+        String key = StringUtils.normalizeToEnumKey(request.getEstadoPedido());
         PedidoSemanaBodega.EstadoPedidoSemana estadoEnum = PedidoSemanaBodega.EstadoPedidoSemana.valueOf(key);
         newReceta.setEstadoPedido(estadoEnum);
 
-        newReceta.setDescripcionPedido((request.getDescripcionReceta() == null || request.getDescripcionReceta().isBlank())
-                ? null : StringUtils.normalizeSpaces(request.getDescripcionReceta()));
+        newReceta.setDescripcionPedido((request.getDescripcionPedido() == null || request.getDescripcionPedido().isBlank())
+                ? null : StringUtils.normalizeSpaces(request.getDescripcionPedido()));
 
         newReceta.setInstrucciones((request.getInstrucciones() == null || request.getInstrucciones().isBlank())
                 ? null : StringUtils.normalizeSpaces(request.getInstrucciones()));
@@ -163,10 +163,10 @@ public class PedidoSemanaBodegaServiceImp implements PedidoSemanaBodegaService{
     @Override
     public boolean updateRecipeWithDetails (RecipeWithDetailsUpdateDTO request) {
         /**Validar existencia de la receta obtenendo el objeto*/
-        PedidoSemanaBodega oldRecipe = findById(request.getIdReceta());
+        PedidoSemanaBodega oldRecipe = findById(request.getIdPedidoSemanaBodega());
         /**Parsear String y validar cambios*/
-        String nombreReceta = StringUtils.capitalizarPalabras(request.getNombreReceta());
-        if (!nombreReceta.equals(request.getNombreReceta())
+        String nombreReceta = StringUtils.capitalizarPalabras(request.getNombrePedido());
+        if (!nombreReceta.equals(request.getNombrePedido())
                 && recetaRepository.existsByNombrePedidoAndActivoTrue(nombreReceta)) {
             throw new PedidoSemanaBodegaException("Ya existe una receta con el nombre : " + nombreReceta
                     , HttpStatus.CONFLICT);
@@ -174,21 +174,21 @@ public class PedidoSemanaBodegaServiceImp implements PedidoSemanaBodegaService{
             oldRecipe.setNombrePedido(nombreReceta);
         }
         /**Parsear String y validar cambios*/
-        String descripcion = (request.getDescripcionReceta() != null)
-                ? StringUtils.normalizeSpaces(request.getDescripcionReceta())
+        String descripcion = (request.getDescripcionPedido() != null)
+                ? StringUtils.normalizeSpaces(request.getDescripcionPedido())
                 : null;
         if (!Objects.equals(descripcion, oldRecipe.getDescripcionPedido())) {
             oldRecipe.setDescripcionPedido(descripcion);
         }
         /**Parsear String y validar cambios*/
-        String instruciones = (request.getInstruccionesReceta() != null)
-                ? StringUtils.normalizeSpaces(request.getInstruccionesReceta())
+        String instruciones = (request.getInstrucciones() != null)
+                ? StringUtils.normalizeSpaces(request.getInstrucciones())
                 : null;
         if (!Objects.equals(instruciones, oldRecipe.getInstrucciones())) {
             oldRecipe.setInstrucciones(instruciones);
         }
         /** Validar y setear el estado */
-        String keyEstado = StringUtils.normalizeToEnumKey(request.getEstadoReceta());
+        String keyEstado = StringUtils.normalizeToEnumKey(request.getEstadoPedido());
         PedidoSemanaBodega.EstadoPedidoSemana nuevoEstado = PedidoSemanaBodega.EstadoPedidoSemana.valueOf(keyEstado);
 
         if (oldRecipe.getEstadoPedido() != nuevoEstado) {
@@ -198,7 +198,7 @@ public class PedidoSemanaBodegaServiceImp implements PedidoSemanaBodegaService{
         recetaRepository.save(oldRecipe);
 
         /**Obtener detalles de la receta*/
-        List<DetailsByUpdateView> rows = detallePedidoSemanaBodegaRepository.findDetailsForUpdate(request.getIdReceta());
+        List<DetailsByUpdateView> rows = detallePedidoSemanaBodegaRepository.findDetailsForUpdate(request.getIdPedidoSemanaBodega());
         if (rows.isEmpty()){
             throw new PedidoSemanaBodegaException("La receta no tiene detalles anteriores, error al crear una receta!"
             ,HttpStatus.NOT_FOUND);
@@ -217,17 +217,17 @@ public class PedidoSemanaBodegaServiceImp implements PedidoSemanaBodegaService{
         /** --- PROCESAMIENTO DE DELTAS ---*/
 
         /**llama metodo que retorna la cantidad de itens eliminados*/
-        int deleted = processDeletions(request.getIdReceta(), request.getDeleteItems(), currentMap);
+        int deleted = processDeletions(request.getIdPedidoSemanaBodega(), request.getDeleteItems(), currentMap);
 
         /**llama el metodo que retorna la cantidad de itens modificados*/
-        int updated = processUpdates(request.getIdReceta(), request.getUpdateItems(), currentMap);
+        int updated = processUpdates(request.getIdPedidoSemanaBodega(), request.getUpdateItems(), currentMap);
 
         /**llama el metodo que retorna la cantidad de intes creados*/
-        int created = processNewItems(request.getIdReceta(), request.getNewItems(), currentMap);
+        int created = processNewItems(request.getIdPedidoSemanaBodega(), request.getNewItems(), currentMap);
 
         /**logo para validaciones*/
         log.info("Sincronización finalizada para PedidoSemanaBodega {}: [Borrados: {}, Actualizados: {}, Creados: {}]",
-                request.getIdReceta(), deleted, updated, created);
+                request.getIdPedidoSemanaBodega(), deleted, updated, created);
 
         return true;
     }
