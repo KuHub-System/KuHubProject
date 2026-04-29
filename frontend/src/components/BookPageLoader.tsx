@@ -16,22 +16,20 @@ const BookPageLoader: React.FC<BookPageLoaderProps> = ({
 
   React.useEffect(() => {
     const interval = setInterval(() => {
-      setVisiblePage((prev) => (prev + 1) % 4);
-    }, 1500);
+      if (bookRef.current?.pageFlip?.()) {
+        try {
+          const controller = bookRef.current.pageFlip();
+          // flip() hace el flip a la siguiente página (simula el click del usuario)
+          controller.flip();
+          setVisiblePage((prev) => (prev + 1) % 4);
+        } catch (e) {
+          console.log('Error en flip:', e);
+        }
+      }
+    }, 1800);
 
     return () => clearInterval(interval);
   }, []);
-
-  // Cambiar de página cuando visiblePage cambia
-  React.useEffect(() => {
-    if (bookRef.current?.pageFlip?.()) {
-      try {
-        bookRef.current.pageFlip().turnToPage(visiblePage);
-      } catch (e) {
-        // Silently handle
-      }
-    }
-  }, [visiblePage]);
 
   // Componente de página con contenido animado (lineas punteadas)
   const PageContent: React.FC<{ variant: 'light' | 'medium' | 'dark' }> = ({ variant }) => {
