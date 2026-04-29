@@ -7,7 +7,7 @@ import KuHub.modules.pedido_semana_a_bodega.dtos.respose.record.RecipesPage;
 import KuHub.modules.pedido_semana_a_bodega.dtos.request.RecipeWithDetailsUpdateDTO;
 import KuHub.modules.pedido_semana_a_bodega.entity.PedidoSemanaBodega;
 
-public interface RecetaService {
+public interface PedidoSemanaBodegaService {
     PedidoSemanaBodega findById(Integer id);
     CountRecipesAndStatusView countRecipesAndStatus();
     RecipesPage findAllRecipesPaginated(Integer pageRequested);
