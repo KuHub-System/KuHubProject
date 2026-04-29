@@ -1394,11 +1394,11 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
                           }}
                           size="sm"
                           variant="bordered"
-                        maxLength={100}
-                        classNames={{ inputWrapper: "bg-white dark:bg-default-100/50" }}
-                        startContent={<Icon icon="lucide:note" className="text-default-400" width={16} />}
-                        description={`${(ingrediente.observacion || '').length}/100 caracteres`}
-                      />
+                          maxLength={100}
+                          classNames={{ inputWrapper: "bg-white dark:bg-default-100/50" }}
+                          startContent={<Icon icon="lucide:note" className="text-default-400" width={16} />}
+                          description={`${(ingrediente.observacion || '').length}/100 caracteres`}
+                        />
                     </div>
                   </CardBody>
                 </Card>
