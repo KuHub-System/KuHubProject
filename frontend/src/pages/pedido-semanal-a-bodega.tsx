@@ -551,9 +551,10 @@ const PedidoSemanalABodegaPage: React.FC = () => {
         scrollBehavior="inside"
         radius="lg"
         backdrop="blur"
-        hideCloseButton
+        closeButton={<Icon icon="lucide:x" width={20} />}
         classNames={{
           base: "rounded-[32px] overflow-hidden",
+          closeButton: "hover:bg-default-100 dark:hover:bg-default-100/50 transition-colors text-default-500 hover:text-secondary cursor-pointer",
         }}
       >
         <ModalContent>
@@ -799,6 +800,16 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
         unidadMedida: d.abreviatura,
       }))
     );
+
+    // Cargar idSemana desde cache cuando el modal se abre en modo crear
+    React.useEffect(() => {
+      if (mode === 'crear') {
+        const stored = sessionStorage.getItem('kuhub_semana_id');
+        if (stored) {
+          setIdSemana(Number(stored));
+        }
+      }
+    }, [mode]);
 
     // Guardar idSemana en sessionStorage cuando cambia
     React.useEffect(() => {
