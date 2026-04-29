@@ -31,7 +31,9 @@ DROP TABLE IF EXISTS detalle_pedido CASCADE; -- <--- CORREGIDO (era pedido_detal
 DROP TABLE IF EXISTS pedido CASCADE;
 DROP TABLE IF EXISTS semanas CASCADE; -- CAMBIADO: Agregado
 
--- Tablas de recetas
+-- Tablas de recetas/pedidos semana bodega
+DROP TABLE IF EXISTS detalle_pedido_semana_bodega CASCADE;
+DROP TABLE IF EXISTS pedido_semana_bodega CASCADE;
 DROP TABLE IF EXISTS detalle_receta CASCADE;
 DROP TABLE IF EXISTS receta CASCADE;
 
@@ -69,6 +71,7 @@ DROP TABLE IF EXISTS rol CASCADE;
 DROP TYPE IF EXISTS estado_bodega_transito_type CASCADE;
 DROP TYPE IF EXISTS estado_provedor_type CASCADE;
 DROP TYPE IF EXISTS estado_receta_type CASCADE;
+DROP TYPE IF EXISTS estado_pedido_semana_bodega CASCADE;
 DROP TYPE IF EXISTS estado_solicitud_type CASCADE;
 DROP TYPE IF EXISTS estado_pedido_type CASCADE;
 DROP TYPE IF EXISTS tipo_movimiento_type CASCADE;
@@ -160,6 +163,11 @@ CREATE TYPE estado_pedido_type AS ENUM (
     'RECHAZADO'
 );
 
+CREATE TYPE estado_pedido_semana_bodega AS ENUM(
+    'ACTIVO',
+    'INACTIVO'
+);
+
 -- =====================================================
 -- CREAR CASTS (DESPUÉS DE CREAR LOS ENUM)
 -- =====================================================
@@ -171,6 +179,7 @@ CREATE CAST (varchar AS estado_provedor_type) WITH INOUT AS IMPLICIT;
 CREATE CAST (varchar AS estado_solicitud_type) WITH INOUT AS IMPLICIT;
 CREATE CAST (varchar AS estado_seccion_type) WITH INOUT AS IMPLICIT;
 CREATE CAST (varchar AS estado_pedido_type) WITH INOUT AS IMPLICIT;
+CREATE CAST (varchar AS estado_pedido_semana_bodega) WITH INOUT AS IMPLICIT;
 
 -- =====================================================
 -- TABLAS PRINCIPALES
@@ -515,28 +524,36 @@ CREATE TABLE proveedor_producto (
 );
 
 -- =====================================================
--- TABLAS DE RECETAS
+-- TABLAS DE PEDIDO SEMANA BODEGA (Antigua 'Recetas')
 -- =====================================================
 
--- Tabla receta
-CREATE TABLE receta (
-    id_receta INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,--ASUMINDO QUE LA RECETA ESTA DISENADA PARA 20 PERSONAS
-    nombre_receta VARCHAR(100) NOT NULL,
-    descripcion_receta TEXT,
-    instrucciones TEXT,
-    activo BOOLEAN NOT NULL DEFAULT TRUE,
-    estado_receta estado_receta_type NOT NULL
+-- Tabla pedido_semana_bodega
+CREATE TABLE pedido_semana_bodega (
+    id_pedido_semana_bodega INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    nombre_pedido           VARCHAR(100) NOT NULL,
+    descripcion_pedido      TEXT,
+    instrucciones           TEXT,
+    activo                  BOOLEAN NOT NULL DEFAULT TRUE,
+    estado_pedido           estado_pedido_semana_bodega NOT NULL
 );
 
--- Tabla detalle_receta
-CREATE TABLE detalle_receta (
-    id_detalle_receta INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    id_receta INTEGER NOT NULL,
-    id_producto INTEGER NOT NULL,
-    cant_producto NUMERIC(10, 3) NOT NULL CHECK (cant_producto >= 0),
-    FOREIGN KEY (id_receta) REFERENCES receta(id_receta) ON DELETE CASCADE,
-    FOREIGN KEY (id_producto) REFERENCES producto(id_producto),
-    UNIQUE(id_receta, id_producto)
+-- Tabla detalle_pedido_semana_bodega
+CREATE TABLE detalle_pedido_semana_bodega (
+    id_detalle_pedido_semana INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    id_pedido_semana_bodega  INTEGER NOT NULL,
+    id_producto              INTEGER NOT NULL,
+    cant_producto            NUMERIC(10, 3) NOT NULL CHECK (cant_producto >= 0),
+
+    CONSTRAINT fk_pedido_cabecera
+        FOREIGN KEY (id_pedido_semana_bodega)
+        REFERENCES pedido_semana_bodega(id_pedido_semana_bodega)
+        ON DELETE CASCADE,
+
+    CONSTRAINT fk_pedido_producto
+        FOREIGN KEY (id_producto)
+        REFERENCES producto(id_producto),
+
+    UNIQUE(id_pedido_semana_bodega, id_producto)
 );
 
 -- =====================================================
@@ -561,7 +578,7 @@ CREATE TABLE solicitud (
     id_solicitud INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY, -- <--- PK Simple
     id_usuario_gestor_solicitud INTEGER NOT NULL,
     id_seccion INTEGER NOT NULL,
-    id_receta INTEGER,
+    id_pedido_semana_bodega INTEGER,
     id_reserva_sala INTEGER,
     fecha_solicitada DATE NOT NULL,
     fecha_registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -570,7 +587,7 @@ CREATE TABLE solicitud (
 
     CONSTRAINT fk_solicitud_usuario FOREIGN KEY (id_usuario_gestor_solicitud) REFERENCES usuario(id_usuario),
     CONSTRAINT fk_solicitud_seccion FOREIGN KEY (id_seccion) REFERENCES seccion(id_seccion),
-    CONSTRAINT fk_solicitud_receta FOREIGN KEY (id_receta) REFERENCES receta(id_receta) ON DELETE SET NULL,
+    CONSTRAINT fk_solicitud_pedido_semana FOREIGN KEY (id_pedido_semana_bodega) REFERENCES pedido_semana_bodega(id_pedido_semana_bodega) ON DELETE SET NULL,
     CONSTRAINT fk_solicitud_reserva FOREIGN KEY (id_reserva_sala) REFERENCES reserva_sala(id_reserva_sala) ON DELETE SET NULL
 );
 

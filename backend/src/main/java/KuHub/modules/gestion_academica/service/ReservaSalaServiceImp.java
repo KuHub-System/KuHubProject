@@ -7,7 +7,7 @@ import KuHub.modules.gestion_academica.dtos.request.projection.NumberBlockProjec
 import KuHub.modules.gestion_academica.entity.ReservaSala;
 import KuHub.modules.gestion_academica.exceptions.GestionAcademicaException;
 import KuHub.modules.gestion_academica.repository.ReservaSalaRepository;
-import KuHub.modules.gestion_receta.exceptions.GestionRecetaException;
+import KuHub.modules.pedido_semana_a_bodega.exceptions.PedidoSemanaBodegaException;
 import KuHub.utils.StringUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -103,7 +103,7 @@ public class ReservaSalaServiceImp implements ReservaSalaService{
     @Override
     public ReservaSalaEntityResponseDTO findById(Integer id) {
         ReservaSala reservaSala = reservaSalaRepository.findById(id).orElseThrow(
-                ()-> new GestionRecetaException("No existe una Reserva Sala del id :"+id+" registrada"
+                ()-> new PedidoSemanaBodegaException("No existe una Reserva Sala del id :"+id+" registrada"
                     , HttpStatus.NOT_FOUND)
         );
         return covertsDTO(reservaSala);
