@@ -456,20 +456,20 @@ const PedidoSemanalABodegaPage: React.FC = () => {
                         placeholder="Semana"
                         variant="bordered"
                         size="sm"
-                        className="w-40"
-                        classNames={{ trigger: "bg-white dark:bg-default-100/50 text-xs" }}
+                        className="w-32"
+                        classNames={{ trigger: "bg-white dark:bg-default-100/50 text-xs px-2", listboxWrapper: "max-w-48" }}
                       >
                         <SelectItem key="todas" textValue="Todas">
                           Todas
                         </SelectItem>
                         {filterSemanas.map((semana) => {
-                          const fechaInicio = new Date(semana.fechaInicio + 'T00:00:00').toLocaleDateString('es-CL', { day: 'numeric', month: 'short' });
-                          const fechaFin = new Date(semana.fechaFin + 'T00:00:00').toLocaleDateString('es-CL', { day: 'numeric', month: 'short' });
+                          const fechaInicio = new Date(semana.fechaInicio + 'T00:00:00').toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit' });
+                          const fechaFin = new Date(semana.fechaFin + 'T00:00:00').toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit' });
                           const rangoFechas = `${fechaInicio}–${fechaFin}`;
 
                           return (
-                            <SelectItem key={String(semana.idSemana)} textValue={`S${semana.nombreSemana}`}>
-                              <span className="text-xs">S{semana.nombreSemana} ({rangoFechas})</span>
+                            <SelectItem key={String(semana.idSemana)} textValue={semana.nombreSemana}>
+                              <span className="text-xs whitespace-nowrap">{semana.nombreSemana} ({rangoFechas})</span>
                             </SelectItem>
                           );
                         })}
@@ -1241,20 +1241,20 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
                           </SelectItem>
                           {semanas.map((semana) => {
                             const isCurrentWeek = defaultSemanaId && String(semana.idSemana) === String(defaultSemanaId);
-                            const fechaInicio = new Date(semana.fechaInicio + 'T00:00:00').toLocaleDateString('es-CL', { day: 'numeric', month: 'short' });
-                            const fechaFin = new Date(semana.fechaFin + 'T00:00:00').toLocaleDateString('es-CL', { day: 'numeric', month: 'short' });
-                            const rangoFechas = `${fechaInicio} – ${fechaFin}`;
+                            const fechaInicio = new Date(semana.fechaInicio + 'T00:00:00').toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit' });
+                            const fechaFin = new Date(semana.fechaFin + 'T00:00:00').toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit' });
+                            const rangoFechas = `${fechaInicio}–${fechaFin}`;
 
                             return (
                               <SelectItem key={String(semana.idSemana)} textValue={semana.nombreSemana}>
-                                <div className="flex items-center gap-2 w-full">
-                                  <span className="font-medium">{semana.nombreSemana}</span>
+                                <div className="flex items-center gap-1 w-full">
+                                  <span className="font-medium text-sm">{semana.nombreSemana}</span>
                                   <span className="text-default-400 text-xs">
-                                    {rangoFechas}
+                                    ({rangoFechas})
                                   </span>
                                   {isCurrentWeek && (
                                     <Chip size="sm" color="success" variant="flat" className="ml-auto text-[10px] font-medium">
-                                      Actual {rangoFechas}
+                                      Actual
                                     </Chip>
                                   )}
                                 </div>
