@@ -287,65 +287,85 @@ const PedidoSemanalABodegaPage: React.FC = () => {
     return <Chip color="danger" size="sm">Inactivo</Chip>;
   };
 
-  // Componente de animación: Hojas pasándose
+  // Componente de animación: Libro abierto con hojas pasándose
   const PaginasAnimacion: React.FC = () => (
-    <div className="flex flex-col items-center justify-center gap-6">
-      {/* Animación de hojas */}
-      <div className="relative w-32 h-40 perspective">
-        {/* Hoja 1 */}
+    <div className="flex flex-col items-center justify-center gap-8">
+      {/* Libro abierto */}
+      <div className="relative w-80 h-56" style={{ perspective: '1200px' }}>
+        {/* Lomo del libro (centro) */}
+        <div className="absolute left-1/2 top-0 bottom-0 w-1 bg-primary transform -translate-x-1/2 shadow-lg rounded-full" />
+
+        {/* Página izquierda */}
         <motion.div
-          className="absolute inset-0 bg-gradient-to-br from-primary-50 to-primary-100 dark:from-primary-900/30 dark:to-primary-800/30 rounded-r-lg border-l-4 border-primary shadow-lg"
+          className="absolute left-0 top-0 w-1/2 h-full bg-gradient-to-r from-primary-50 to-white dark:from-primary-900/40 dark:to-gray-800 rounded-l-lg shadow-lg border-r border-primary-100"
           animate={{
-            rotateZ: [0, 15, 0],
-            x: [0, 8, 0],
+            rotateY: [0, -30, 0],
           }}
           transition={{
-            duration: 1.5,
+            duration: 3,
             repeat: Infinity,
             repeatType: 'loop',
             ease: 'easeInOut',
           }}
-        />
-
-        {/* Hoja 2 */}
-        <motion.div
-          className="absolute inset-0 bg-gradient-to-br from-primary-100 to-primary-200 dark:from-primary-900/50 dark:to-primary-800/50 rounded-r-lg border-l-4 border-primary-200 shadow-md"
-          animate={{
-            rotateZ: [0, -15, 0],
-            x: [0, -8, 0],
-          }}
-          transition={{
-            duration: 1.5,
-            repeat: Infinity,
-            repeatType: 'loop',
-            ease: 'easeInOut',
-            delay: 0.5,
-          }}
-        />
-
-        {/* Hoja 3 */}
-        <motion.div
-          className="absolute inset-0 bg-gradient-to-br from-primary-200 to-primary-300 dark:from-primary-900/70 dark:to-primary-800/70 rounded-r-lg border-l-4 border-primary-300 shadow-sm"
-          animate={{
-            rotateZ: [0, 15, 0],
-            x: [0, 8, 0],
-          }}
-          transition={{
-            duration: 1.5,
-            repeat: Infinity,
-            repeatType: 'loop',
-            ease: 'easeInOut',
-            delay: 1,
-          }}
-        />
-
-        {/* Ícono central */}
-        <motion.div
-          className="absolute inset-0 flex items-center justify-center"
-          animate={{ scale: [0.95, 1.05] }}
-          transition={{ duration: 1.5, repeat: Infinity, repeatType: 'reverse' }}
+          style={{ transformOrigin: 'right center', transformStyle: 'preserve-3d' }}
         >
-          <Icon icon="lucide:book-open" width={48} className="text-primary" />
+          <div className="p-6 h-full flex flex-col justify-between">
+            <div className="space-y-3">
+              <div className="h-2 bg-primary-200 dark:bg-primary-700/40 rounded w-3/4" />
+              <div className="h-2 bg-primary-100 dark:bg-primary-700/30 rounded w-full" />
+              <div className="h-2 bg-primary-100 dark:bg-primary-700/30 rounded w-5/6" />
+            </div>
+            <p className="text-xs text-primary-400 dark:text-primary-600 text-right">1</p>
+          </div>
+        </motion.div>
+
+        {/* Página derecha */}
+        <motion.div
+          className="absolute right-0 top-0 w-1/2 h-full bg-gradient-to-l from-primary-50 to-white dark:from-primary-900/40 dark:to-gray-800 rounded-r-lg shadow-lg border-l border-primary-100"
+          animate={{
+            rotateY: [0, 30, 0],
+          }}
+          transition={{
+            duration: 3,
+            repeat: Infinity,
+            repeatType: 'loop',
+            ease: 'easeInOut',
+          }}
+          style={{ transformOrigin: 'left center', transformStyle: 'preserve-3d' }}
+        >
+          <div className="p-6 h-full flex flex-col justify-between">
+            <div className="space-y-3">
+              <div className="h-2 bg-primary-200 dark:bg-primary-700/40 rounded w-3/4 ml-auto" />
+              <div className="h-2 bg-primary-100 dark:bg-primary-700/30 rounded w-full" />
+              <div className="h-2 bg-primary-100 dark:bg-primary-700/30 rounded w-5/6 ml-auto" />
+            </div>
+            <p className="text-xs text-primary-400 dark:text-primary-600 text-left">2</p>
+          </div>
+        </motion.div>
+
+        {/* Hoja deslizándose (simulación de página siguiente) */}
+        <motion.div
+          className="absolute right-0 top-0 w-1/2 h-full bg-gradient-to-l from-primary-100 to-primary-50 dark:from-primary-800/40 dark:to-primary-900/40 rounded-r-lg shadow-md border-l border-primary-200"
+          animate={{
+            rotateY: [-30, 0, 30],
+            zIndex: [0, 10, 0],
+          }}
+          transition={{
+            duration: 3,
+            repeat: Infinity,
+            repeatType: 'loop',
+            ease: 'easeInOut',
+          }}
+          style={{ transformOrigin: 'left center', transformStyle: 'preserve-3d' }}
+        >
+          <div className="p-6 h-full flex flex-col justify-between">
+            <div className="space-y-3">
+              <div className="h-2 bg-primary-300 dark:bg-primary-700/50 rounded w-2/3 ml-auto" />
+              <div className="h-2 bg-primary-200 dark:bg-primary-700/40 rounded w-full" />
+              <div className="h-2 bg-primary-200 dark:bg-primary-700/40 rounded w-5/6 ml-auto" />
+            </div>
+            <p className="text-xs text-primary-500 dark:text-primary-500 text-left">3</p>
+          </div>
         </motion.div>
       </div>
 
