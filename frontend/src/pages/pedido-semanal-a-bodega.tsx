@@ -415,31 +415,44 @@ const PedidoSemanalABodegaPage: React.FC = () => {
                   <Spinner size="sm" />
                 ) : !periodos || periodos.length === 0 ? (
                   <span className="text-xs text-warning-600">Sin periodos</span>
-                ) : (
-                  <Select
-                    selectedKeys={filterPeriodo ? new Set([`${filterPeriodo.anio}-${filterPeriodo.semestre}`]) : new Set()}
-                    onSelectionChange={(keys) => {
-                      const v = Array.from(keys as Set<string>)[0];
-                      if (v) {
-                        const [anio, semestre] = v.split('-');
-                        seleccionarPeriodo(Number(anio), Number(semestre));
-                      }
-                    }}
-                    placeholder="Período"
-                    variant="bordered"
-                    size="sm"
-                    className="w-32"
-                    classNames={{ trigger: "bg-white dark:bg-default-100/50 text-xs" }}
-                  >
-                    {periodos?.flatMap(p =>
-                      p.semestres.map((s: number) => (
-                        <SelectItem key={`${p.anio}-${s}`} textValue={`${p.anio} - S${s}`}>
-                          {p.anio} - S{s}
-                        </SelectItem>
-                      ))
-                    )}
-                  </Select>
-                )}
+                ) : (() => {
+                  // Detectar el período actual basado en sysdate
+                  const hoy = new Date();
+                  const mesActual = hoy.getMonth() + 1;
+                  const semestreActual = mesActual <= 6 ? 1 : 2;
+                  const anioActual = hoy.getFullYear();
+
+                  return (
+                    <Select
+                      selectedKeys={filterPeriodo ? new Set([`${filterPeriodo.anio}-${filterPeriodo.semestre}`]) : new Set()}
+                      onSelectionChange={(keys) => {
+                        const v = Array.from(keys as Set<string>)[0];
+                        if (v) {
+                          const [anio, semestre] = v.split('-');
+                          seleccionarPeriodo(Number(anio), Number(semestre));
+                        }
+                      }}
+                      placeholder="Período"
+                      variant="bordered"
+                      size="sm"
+                      className="w-48"
+                      classNames={{ trigger: "bg-default-50", base: "max-w-xs" }}
+                    >
+                      {periodos?.flatMap(p =>
+                        p.semestres.map((s: number) => (
+                          <SelectItem key={`${p.anio}-${s}`} textValue={`${p.anio} - S${s}`}>
+                            <div className="flex items-center w-full gap-2">
+                              <span className="font-semibold">{p.anio} - S{s}</span>
+                              {p.anio === anioActual && s === semestreActual && (
+                                <Chip size="sm" color="success" variant="flat" className="ml-auto shrink-0 text-[10px]">Actual</Chip>
+                              )}
+                            </div>
+                          </SelectItem>
+                        ))
+                      )}
+                    </Select>
+                  );
+                })()}
 
                 {/* Select de semana */}
                 {filterPeriodo && filterSemanas.length > 0 && (
@@ -456,14 +469,13 @@ const PedidoSemanalABodegaPage: React.FC = () => {
                         placeholder="Semana"
                         variant="bordered"
                         size="sm"
-                        className="w-64"
-                        classNames={{ trigger: "bg-default-50", base: "max-w-xs" }}
+                        className="w-96"
+                        classNames={{ trigger: "bg-default-50", base: "max-w-96" }}
                       >
                         <SelectItem key="todas" textValue="Todas">
                           Todas
                         </SelectItem>
                         {filterSemanas
-                          .filter(s => s.fechaFin >= new Date().toISOString().slice(0, 10))
                           .map((semana) => (
                           <SelectItem key={String(semana.idSemana)} textValue={semana.nombreSemana}>
                             <div className="flex items-center w-full gap-2">
@@ -1244,7 +1256,6 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
                             <span className="text-default-500">Ninguno</span>
                           </SelectItem>
                           {semanas
-                            .filter(s => s.fechaFin >= new Date().toISOString().slice(0, 10))
                             .map((semana) => (
                             <SelectItem key={String(semana.idSemana)} textValue={semana.nombreSemana}>
                               <div className="flex items-center w-full gap-2">
