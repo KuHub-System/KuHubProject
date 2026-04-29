@@ -3,6 +3,7 @@ package KuHub.modules.pedido_semana_a_bodega.dtos.request.dto;
 import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.Size;
 import lombok.*;
 
 import java.math.BigDecimal;
@@ -19,4 +20,7 @@ public class PedidoSemanaBodegaItemDTO {
     @Positive(message = "La cantidad debe ser mayor a cero")
     @Digits(integer = 7, fraction = 3, message = "La cantidad excede el formato permitido (máx. 7 enteros y 3 decimales)")
     private BigDecimal cantUnidadMedida;
+
+    @Size(max = 100, message = "La observación no puede exceder los 100 caracteres")
+    private String observacion;
 }
