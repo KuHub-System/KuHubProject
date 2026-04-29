@@ -11,9 +11,9 @@ export interface LoadingBookAnimationProps {
 }
 
 const SIZE_CONFIG = {
-  small:  { width: 140, height: 180 },
-  medium: { width: 200, height: 260 },
-  large:  { width: 260, height: 340 },
+  small:  { width: 200, height: 280 },
+  medium: { width: 320, height: 420 },
+  large:  { width: 400, height: 550 },
 };
 
 // ─── Líneas decorativas dentro de cada página ──────────────────────────────
@@ -27,16 +27,16 @@ const PageLines: React.FC<{ seed: number }> = ({ seed }) => {
   const widths = patterns[seed % patterns.length];
 
   return (
-    <div className="w-full space-y-2 px-3">
+    <div className="w-full space-y-3 px-6">
       {/* Título simulado */}
-      <div className="h-3 bg-primary-300 dark:bg-primary-600/50 rounded w-2/3 mx-auto mb-3" />
+      <div className="h-4 bg-primary-400 dark:bg-primary-500/60 rounded w-2/3 mx-auto mb-6" />
       {widths.map((w, i) => (
-        <div key={i} className={`h-2 bg-primary-100 dark:bg-primary-600/30 rounded ${w}`} />
+        <div key={i} className={`h-3 bg-primary-200 dark:bg-primary-600/40 rounded ${w}`} />
       ))}
       {/* Párrafo 2 */}
-      <div className="h-2 bg-primary-200 dark:bg-primary-600/40 rounded w-full mt-4" />
+      <div className="h-3 bg-primary-300 dark:bg-primary-600/50 rounded w-full mt-6" />
       {widths.slice(0, 3).map((w, i) => (
-        <div key={`p2-${i}`} className={`h-2 bg-primary-100 dark:bg-primary-600/30 rounded ${w}`} />
+        <div key={`p2-${i}`} className={`h-3 bg-primary-200 dark:bg-primary-600/40 rounded ${w}`} />
       ))}
     </div>
   );
