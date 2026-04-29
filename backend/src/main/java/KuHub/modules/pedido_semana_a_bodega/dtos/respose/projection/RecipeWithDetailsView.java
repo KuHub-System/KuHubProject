@@ -12,9 +12,6 @@ public interface RecipeWithDetailsView {
     @Value("#{target.descripcionPedido}")
     String getDescripcionPedido();
 
-    @Value("#{target.instrucciones}")
-    String getInstrucciones();
-
     @Value("#{target.estadoPedido}")
     String getEstadoPedido();
 

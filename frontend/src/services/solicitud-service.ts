@@ -57,14 +57,14 @@ export interface IDetalleReceta {
   esFraccionario: boolean;
   activoProducto: boolean;
 }
-export interface IReceta {
+export interface IPedidoSemanaBodegaSolicitud {
   idReceta: number;
   nombreReceta: string;
   detalles: IDetalleReceta[];
 }
 
-export const obtenerRecetasSolicitudService = async (): Promise<IReceta[]> => {
-  const response = await api.get<IReceta[]>('/solicitud/recipes-with-details-by-solicitation');
+export const obtenerRecetasSolicitudService = async (): Promise<IPedidoSemanaBodegaSolicitud[]> => {
+  const response = await api.get<IPedidoSemanaBodegaSolicitud[]>('/solicitud/recipes-with-details-by-solicitation');
   return response.data;
 };
 

@@ -1,11 +1,11 @@
 /**
- * TIPOS PARA RECETAS Y SOLICITUDES
- * 
+ * TIPOS PARA PEDIDOS SEMANALES A BODEGA
+ *
  * Ubicación: src/types/receta.types.ts
  */
 
 /**
- * Interfaz para un ingrediente de receta.
+ * Interfaz para un ingrediente de pedido semanal.
  */
 export interface IIngrediente {
   id: string;
@@ -16,9 +16,9 @@ export interface IIngrediente {
 }
 
 /**
- * Interfaz que define la estructura de una receta.
+ * Interfaz que define la estructura de un pedido semanal a bodega.
  */
-export interface IReceta {
+export interface IPedidoSemanaBodega {
   id: string;
   nombre: string;
   descripcion: string;
@@ -30,9 +30,9 @@ export interface IReceta {
 }
 
 /**
- * Interfaz para crear una receta.
+ * Interfaz para crear un pedido semanal a bodega.
  */
-export interface ICrearReceta {
+export interface ICrearPedidoSemanaBodega {
   nombre: string;
   descripcion: string;
   ingredientes: Omit<IIngrediente, 'id'>[];
@@ -41,9 +41,9 @@ export interface ICrearReceta {
 }
 
 /**
- * Interfaz para actualizar una receta.
+ * Interfaz para actualizar un pedido semanal a bodega.
  */
-export interface IActualizarReceta {
+export interface IActualizarPedidoSemanaBodega {
   id: string;
   nombre?: string;
   descripcion?: string;
@@ -109,62 +109,60 @@ export interface IActualizarSolicitud {
 }
 
 /**
- * DTO para crear un item de receta (Backend)
+ * DTO para crear un item de pedido semanal (Backend)
  */
-export interface IRecipeItemCreateDTO {
+export interface IPedidoSemanaBodegaItemCreateDTO {
   idProducto: number;
   cantUnidadMedida: number;
 }
 
 /**
- * DTO para crear una receta con detalles (Backend)
+ * DTO para crear un pedido semanal con detalles (Backend)
  */
-export interface IRecipeWithDetailsCreateDTO {
-  nombreReceta: string;
-  descripcionReceta: string;
-  listaItems: IRecipeItemCreateDTO[];
-  instrucciones: string;
-  estadoReceta: 'Activo' | 'Inactivo';
+export interface IPedidoSemanaBodegaWithDetailsCreateDTO {
+  nombrePedido: string;
+  descripcionPedido: string;
+  listaItems: IPedidoSemanaBodegaItemCreateDTO[];
+  estadoPedido: 'Activo' | 'Inactivo';
 }
 
 /**
- * DTO para actualizar una receta con detalles (Backend)
- * PUT /v1/receta/update-recipe-with-details
+ * DTO para actualizar un pedido semanal con detalles (Backend)
+ * PUT /v1/pedido-semana-bodega/update-recipe-with-details
  */
-export interface IRecipeWithDetailsUpdateDTO {
-  idReceta: number;
-  nombreReceta: string;
-  descripcionReceta?: string;
-  instruccionesReceta?: string;
-  estadoReceta: string;
-  newItems: IRecipeItemCreateDTO[];
-  updateItems: IRecipeItemCreateDTO[];
+export interface IPedidoSemanaBodegaWithDetailsUpdateDTO {
+  idPedidoSemanaBodega: number;
+  nombrePedido: string;
+  descripcionPedido?: string;
+  estadoPedido: string;
+  newItems: IPedidoSemanaBodegaItemCreateDTO[];
+  updateItems: IPedidoSemanaBodegaItemCreateDTO[];
   deleteItems: number[];
 }
 
 /**
- * DTO para el detalle de una receta en Paginación (Backend)
+ * DTO para el detalle de un pedido semanal en Paginación (Backend)
  */
-export interface IDetalleRecetaDTO {
-  idDetalleReceta: number;
+export interface IDetallePedidoSemanaBodegaDTO {
+  idDetallePedido: number;
   nombreProducto: string;
   cantProducto: number;
   abreviatura: string;
   idProducto: number;
   idUnidad: number;
+  observacion?: string;
 }
 
 /**
- * DTO para una receta en Paginación (Backend)
+ * DTO para un pedido semanal en Paginación (Backend)
  */
-export interface IRecetaPaginedDTO {
-  idReceta: number;
-  nombreReceta: string;
-  descripcionReceta: string;
-  instruccionesReceta?: string;
-  estadoReceta: 'Activo' | 'Inactivo';
-  totalIngredientes: number;
-  detalles: IDetalleRecetaDTO[];
+export interface IPedidoSemanaBodegaPaginedDTO {
+  idPedidoSemanaBodega: number;
+  nombrePedido: string;
+  descripcionPedido: string;
+  estadoPedido: 'Activo' | 'Inactivo';
+  totalDetalles: number;
+  detalles: IDetallePedidoSemanaBodegaDTO[];
 }
 
 /**
@@ -178,18 +176,18 @@ export interface IPaginationMeta {
 }
 
 /**
- * Respuesta Paginada de Recetas
+ * Respuesta Paginada de Pedidos Semanales
  */
-export interface IPaginatedRecetasResponse {
-  content: IRecetaPaginedDTO[];
+export interface IPaginatedPedidoSemanaBodegaResponse {
+  content: IPedidoSemanaBodegaPaginedDTO[];
   paging: IPaginationMeta;
 }
 
 /**
- * Respuesta del conteo de recetas
+ * Respuesta del conteo de pedidos semanales
  */
-export interface IRecetaCountResponse {
-  totalReceta: number;
+export interface IPedidoSemanaBodegaCountResponse {
+  totalPedidos: number;
   total_inactivos: number;
   total_activos: number;
 }
