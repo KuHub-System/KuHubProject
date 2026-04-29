@@ -1325,7 +1325,7 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
                       </Button>
                     </div>
                     <div className="space-y-3">
-                      <div className="grid grid-cols-1 md:grid-cols-[1.6fr_1fr] gap-3">
+                      <div className="grid grid-cols-1 md:grid-cols-[0.8fr_0.75fr_1.45fr] gap-3">
                         <Autocomplete
                           label="Producto"
                           placeholder="Buscar producto..."
@@ -1382,19 +1382,18 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
                             </Chip>
                           }
                         />
-                      </div>
 
-                      <Input
-                        label="Observación (Opcional)"
-                        placeholder="Notas o instrucciones especiales..."
-                        value={ingrediente.observacion || ''}
-                        onValueChange={(val) => {
-                          if (val.length <= 100) {
-                            actualizarIngrediente(index, 'observacion', val);
-                          }
-                        }}
-                        size="sm"
-                        variant="bordered"
+                        <Input
+                          label="Observación (Opcional)"
+                          placeholder="Notas o instrucciones especiales..."
+                          value={ingrediente.observacion || ''}
+                          onValueChange={(val) => {
+                            if (val.length <= 100) {
+                              actualizarIngrediente(index, 'observacion', val);
+                            }
+                          }}
+                          size="sm"
+                          variant="bordered"
                         maxLength={100}
                         classNames={{ inputWrapper: "bg-white dark:bg-default-100/50" }}
                         startContent={<Icon icon="lucide:note" className="text-default-400" width={16} />}
