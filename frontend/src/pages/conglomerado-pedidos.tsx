@@ -99,85 +99,104 @@ const ConglomeradoPedidosPage: React.FC = () => {
   const { isAdmin } = usePermission();
   const history = useHistory();
 
-  // Componente de animación: Libro abierto con hojas pasándose
+  // Componente de animación: Libro abierto con carrusel de páginas
   const PedidosAnimacion: React.FC = () => {
-    const Pagina: React.FC<{ numero: number; delay: number }> = ({ numero, delay }) => (
-      <motion.div
-        className="absolute left-0 top-0 w-1/2 h-full bg-gradient-to-r from-primary-50 to-white dark:from-primary-900/40 dark:to-gray-800 rounded-l-lg shadow-lg border-r border-primary-100"
-        animate={{
-          x: [0, -280],
-          rotateY: [0, -90],
-          opacity: [1, 0],
-        }}
-        transition={{
-          duration: 2.5,
-          repeat: Infinity,
-          repeatType: 'loop',
-          ease: 'easeInOut',
-          delay: delay,
-        }}
-        style={{ transformOrigin: 'right center', transformStyle: 'preserve-3d' }}
-      >
-        <div className="p-6 h-full flex flex-col justify-between">
-          <div className="space-y-3">
-            <div className="h-2 bg-primary-200 dark:bg-primary-700/40 rounded w-3/4" />
-            <div className="h-2 bg-primary-100 dark:bg-primary-700/30 rounded w-full" />
-            <div className="h-2 bg-primary-100 dark:bg-primary-700/30 rounded w-5/6" />
-            <div className="h-2 bg-primary-100 dark:bg-primary-700/30 rounded w-4/6" />
-          </div>
-          <p className="text-xs text-primary-400 dark:text-primary-600 text-right font-semibold">{numero}</p>
-        </div>
-      </motion.div>
-    );
+    const [currentPage, setCurrentPage] = React.useState(0);
 
-    const PaginaDerecha: React.FC<{ numero: number; delay: number }> = ({ numero, delay }) => (
-      <motion.div
-        className="absolute right-0 top-0 w-1/2 h-full bg-gradient-to-l from-primary-50 to-white dark:from-primary-900/40 dark:to-gray-800 rounded-r-lg shadow-lg border-l border-primary-100"
-        animate={{
-          x: [280, 0, -280],
-          rotateY: [90, 0, -90],
-          opacity: [0, 1, 0],
-        }}
-        transition={{
-          duration: 2.5,
-          repeat: Infinity,
-          repeatType: 'loop',
-          ease: 'easeInOut',
-          delay: delay,
-        }}
-        style={{ transformOrigin: 'left center', transformStyle: 'preserve-3d' }}
-      >
-        <div className="p-6 h-full flex flex-col justify-between">
-          <div className="space-y-3">
-            <div className="h-2 bg-primary-200 dark:bg-primary-700/40 rounded w-3/4 ml-auto" />
-            <div className="h-2 bg-primary-100 dark:bg-primary-700/30 rounded w-full" />
-            <div className="h-2 bg-primary-100 dark:bg-primary-700/30 rounded w-5/6 ml-auto" />
-            <div className="h-2 bg-primary-100 dark:bg-primary-700/30 rounded w-4/6 ml-auto" />
-          </div>
-          <p className="text-xs text-primary-400 dark:text-primary-600 text-left font-semibold">{numero}</p>
-        </div>
-      </motion.div>
-    );
+    React.useEffect(() => {
+      const id = setInterval(() => {
+        setCurrentPage((prev) => (prev + 1) % 3);
+      }, 900);
+      return () => clearInterval(id);
+    }, []);
+
+    const pageStyle = (pageIndex: number): React.CSSProperties => {
+      const visible = pageIndex === currentPage;
+      const next = pageIndex === (currentPage + 1) % 3;
+
+      return {
+        position: 'absolute',
+        width: '100%',
+        height: '100%',
+        background: visible ? '#fff' : '#f5f5f5',
+        dark: visible ? '#1f2937' : '#111827',
+        borderLeft: '1px solid #e5e7eb',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        flexDirection: 'column',
+        fontSize: '14px',
+        transform: `rotateY(${visible ? 0 : next ? 45 : -45}deg)`,
+        transformOrigin: 'center',
+        transition: 'transform 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55)',
+        opacity: visible ? 1 : 0.7,
+        pointerEvents: visible ? 'auto' : 'none',
+      } as React.CSSProperties;
+    };
 
     return (
       <div className="flex flex-col items-center justify-center gap-8">
-        {/* Libro abierto */}
-        <div className="relative w-96 h-64 overflow-hidden rounded-2xl" style={{ perspective: '1200px' }}>
-          {/* Lomo del libro (centro) */}
-          <div className="absolute left-1/2 top-0 bottom-0 w-1 bg-gradient-to-b from-primary-600 to-primary-400 transform -translate-x-1/2 shadow-xl rounded-full z-50" />
+        {/* Libro abierto - Contenedor con perspectiva 3D */}
+        <div
+          className="relative w-96 h-64 rounded-xl shadow-2xl border-4 border-primary-200 dark:border-primary-700 bg-white dark:bg-gray-900"
+          style={{
+            perspective: '1200px',
+            transformStyle: 'preserve-3d',
+            backgroundColor: 'white',
+          }}
+        >
+          {/* Lomo central del libro */}
+          <div className="absolute left-1/2 top-0 bottom-0 w-1.5 bg-gradient-to-b from-primary-600 to-primary-700 transform -translate-x-1/2 shadow-xl z-50 rounded-full" />
 
-          {/* Hojas izquierdas (se pasan hacia la izquierda) */}
-          <Pagina numero={1} delay={0} />
-          <Pagina numero={3} delay={2.5} />
-          <Pagina numero={5} delay={5} />
+          {/* Página 1 */}
+          <div style={pageStyle(0)} className="dark:bg-gray-800">
+            <div className="text-center space-y-4">
+              <div className="space-y-2 px-6">
+                <div className="h-3 bg-primary-200 dark:bg-primary-700/40 rounded w-3/4 mx-auto" />
+                <div className="h-3 bg-primary-100 dark:bg-primary-700/30 rounded w-full" />
+                <div className="h-3 bg-primary-100 dark:bg-primary-700/30 rounded w-5/6 mx-auto" />
+              </div>
+              <p className="text-xs font-bold text-primary-500">Página 1</p>
+            </div>
+          </div>
 
-          {/* Hojas derechas (se deslizan) */}
-          <PaginaDerecha numero={2} delay={0} />
-          <PaginaDerecha numero={4} delay={2.5} />
-          <PaginaDerecha numero={6} delay={5} />
+          {/* Página 2 */}
+          <div style={pageStyle(1)} className="dark:bg-gray-800">
+            <div className="text-center space-y-4">
+              <div className="space-y-2 px-6">
+                <div className="h-3 bg-primary-300 dark:bg-primary-700/50 rounded w-2/3 mx-auto" />
+                <div className="h-3 bg-primary-200 dark:bg-primary-700/40 rounded w-full" />
+                <div className="h-3 bg-primary-200 dark:bg-primary-700/40 rounded w-4/5 mx-auto" />
+              </div>
+              <p className="text-xs font-bold text-primary-500">Página 2</p>
+            </div>
+          </div>
 
-          {/* Fondo del libro */}
-          <div className="absolute inset-0 bg-gradient-to-r from-primary-900 via-primary-800 to-primary-700 opacity-20 dark:opacity-40" />
+          {/* Página 3 */}
+          <div style={pageStyle(2)} className="dark:bg-gray-800">
+            <div className="text-center space-y-4">
+              <div className="space-y-2 px-6">
+                <div className="h-3 bg-primary-300 dark:bg-primary-700/50 rounded w-3/5 mx-auto" />
+                <div className="h-3 bg-primary-100 dark:bg-primary-700/30 rounded w-full" />
+                <div className="h-3 bg-primary-200 dark:bg-primary-700/40 rounded w-5/6 mx-auto" />
+              </div>
+              <p className="text-xs font-bold text-primary-500">Página 3</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Indicador de página */}
+        <div className="flex gap-2">
+          {[0, 1, 2].map((i) => (
+            <motion.div
+              key={i}
+              className={`h-2 rounded-full transition-all ${i === currentPage ? 'bg-primary w-6' : 'bg-default-300 w-2'}`}
+              animate={{
+                scale: i === currentPage ? 1.2 : 1,
+              }}
+              transition={{ duration: 0.3 }}
+            />
+          ))}
         </div>
 
         {/* Texto */}

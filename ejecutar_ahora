@@ -1,11 +1,77 @@
-index.min.js:1 TypeError: y.productosEncontrados is not iterable
-    at gestion-proveedores-DbBUj8iW.js:1:13727
-    at Array.map (<anonymous>)
-    at gestion-proveedores-DbBUj8iW.js:1:13686
-    at Object.ns [as useMemo] (react-vendor-BxMPNXTO.js:30:21561)
-    at Hd.se.useMemo (react-vendor-BxMPNXTO.js:9:6311)
-    at Nt (gestion-proveedores-DbBUj8iW.js:1:13439)
-    at ei (react-vendor-BxMPNXTO.js:30:17178)
-    at ci (react-vendor-BxMPNXTO.js:32:3158)
-    at Gs (react-vendor-BxMPNXTO.js:32:45093)
-    at Qs (react-vendor-BxMPNXTO.js:32:39986)
+1. Idea simple: carrusel de 2 páginas que se vuelven
+No necesitas librería pesada; basta con un setInterval que cambie una variable currentPage y un CSS que simule el giro de página.
+
+Ejemplo básico:
+
+jsx
+import { useState, useEffect } from "react";
+
+const BookLoader = () => {
+  const [currentPage, setCurrentPage] = useState(0);
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      setCurrentPage((prev) => (prev + 1) % 3); // 0, 1, 2, 0...
+    }, 800);
+    return () => clearInterval(id);
+  }, []);
+
+  return (
+    <div style={{ display: "flex", justifyContent: "center", padding: "40px" }}>
+      <div
+        className="book"
+        style={{
+          width: "200px",
+          height: "300px",
+          border: "1px solid #ccc",
+          borderRadius: "8px",
+          position: "relative",
+          overflow: "hidden",
+        }}
+      >
+        <div className="page" style={pageStyle(0, currentPage)}>
+          Página 1
+        </div>
+        <div className="page" style={pageStyle(1, currentPage)}>
+          Página 2
+        </div>
+        <div className="page" style={pageStyle(2, currentPage)}>
+          Página 3
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Función auxiliar para simular animación de página
+const pageStyle = (pageIndex, currentPage) => {
+  const visible = pageIndex === currentPage;
+  const next = pageIndex === (currentPage + 1) % 3;
+
+  return {
+    position: "absolute",
+    width: "100%",
+    height: "100%",
+    background: visible ? "#f9f9f9" : "#eee",
+    borderLeft: "1px solid #ddd",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontSize: "14px",
+    transform: `rotateY(${visible ? 0 : next ? 40 : -40}deg)`,
+    transformOrigin: "left",
+    transition: "transform 0.4s ease",
+    opacity: visible ? 1 : 0.8,
+  };
+};
+Esto hace un “libro” pequeño que va girando páginas en bucle cada ~800 ms, imitando que alguien está pasando hojas mientras carga.
+
+2. Si prefieres algo más realista (sin interacción)
+Puedes usar react-pageflip solo como loader decorativo:
+
+Instalas:
+npm install react-pageflip
+
+Luego montas un “libro” de 3‑4 páginas vacías y dejas que se vea mientras loading === true.
+
+Pero para un loader simple, con el ejemplo de arriba te alcanza y no cargas librería extra.
