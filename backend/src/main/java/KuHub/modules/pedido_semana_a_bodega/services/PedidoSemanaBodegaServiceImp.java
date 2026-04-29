@@ -113,9 +113,6 @@ public class PedidoSemanaBodegaServiceImp implements PedidoSemanaBodegaService{
         newReceta.setDescripcionPedido((request.getDescripcionPedido() == null || request.getDescripcionPedido().isBlank())
                 ? null : StringUtils.normalizeSpaces(request.getDescripcionPedido()));
 
-        newReceta.setInstrucciones((request.getInstrucciones() == null || request.getInstrucciones().isBlank())
-                ? null : StringUtils.normalizeSpaces(request.getInstrucciones()));
-
         PedidoSemanaBodega recetaGuardada = recetaRepository.save(newReceta);
 
         Map<Integer, BigDecimal> itemsConsolidados = new HashMap<>();
@@ -179,13 +176,6 @@ public class PedidoSemanaBodegaServiceImp implements PedidoSemanaBodegaService{
                 : null;
         if (!Objects.equals(descripcion, oldRecipe.getDescripcionPedido())) {
             oldRecipe.setDescripcionPedido(descripcion);
-        }
-        /**Parsear String y validar cambios*/
-        String instruciones = (request.getInstrucciones() != null)
-                ? StringUtils.normalizeSpaces(request.getInstrucciones())
-                : null;
-        if (!Objects.equals(instruciones, oldRecipe.getInstrucciones())) {
-            oldRecipe.setInstrucciones(instruciones);
         }
         /** Validar y setear el estado */
         String keyEstado = StringUtils.normalizeToEnumKey(request.getEstadoPedido());
