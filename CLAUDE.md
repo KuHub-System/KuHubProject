@@ -55,7 +55,22 @@ usa `new Date().getFullYear()` y no requiere cambio manual. No modificar ese tex
 
 ---
 
-## 4. Sincronización de documentos de alcance
+## 4. Creación de nuevas páginas
+
+Cuando se crea una nueva página en `frontend/src/pages/`, se **DEBEN** realizar estos pasos:
+
+1. **Crear el archivo** de la página: `frontend/src/pages/mi-nueva-page.tsx`
+2. **Agregar el import lazy** en `frontend/src/App.tsx`
+3. **Agregar la ruta protegida** en `frontend/src/App.tsx` con su `pageId`
+4. **Agregar la entrada en el mapa de redirección** en `SmartRedirect` (App.tsx)
+5. **Crear el item del menú** en `frontend/src/components/sidebar.tsx` en la categoría correspondiente
+6. **Registrar el permiso** en `frontend/src/pages/gestion-roles.tsx` (si aplica control de acceso)
+
+Esto asegura que la página sea accesible, navegable y protegida por permisos.
+
+---
+
+## 5. Sincronización de documentos de alcance
 
 Cada vez que se agrega o modifica algo en `nota_alcance`, marcar el ítem con la etiqueta
 **(MODIFICAR INFORME)** al final de la línea o bloque modificado.
