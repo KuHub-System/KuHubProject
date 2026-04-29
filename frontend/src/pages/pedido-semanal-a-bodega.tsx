@@ -1075,18 +1075,25 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
               />
               <Select
                 label="Semana (Opcional)"
-                placeholder="Selecciona una semana..."
+                placeholder={semanas.length === 0 ? "Cargando semanas..." : "Selecciona una semana..."}
                 value={idSemana ? idSemana.toString() : ''}
                 onChange={(e) => setIdSemana(e.target.value ? Number(e.target.value) : undefined)}
                 variant="bordered"
+                isDisabled={semanas.length === 0}
                 classNames={{ trigger: "bg-white dark:bg-default-100/50" }}
                 startContent={<Icon icon="lucide:calendar" className="text-default-400" width={18} />}
               >
-                {semanas.map((semana) => (
-                  <SelectItem key={semana.idSemana} value={semana.idSemana.toString()}>
-                    {semana.nombreSemana} ({semana.fechaInicio} a {semana.fechaFin})
+                {semanas.length > 0 ? (
+                  semanas.map((semana) => (
+                    <SelectItem key={semana.idSemana} value={semana.idSemana.toString()}>
+                      {semana.nombreSemana} ({semana.fechaInicio} a {semana.fechaFin})
+                    </SelectItem>
+                  ))
+                ) : (
+                  <SelectItem isReadOnly key="no-semanas" value="" textValue="No hay semanas disponibles">
+                    No hay semanas disponibles
                   </SelectItem>
-                ))}
+                )}
               </Select>
             </CardBody>
           </Card>
