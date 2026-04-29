@@ -382,33 +382,33 @@ public class SpringSecurityConfig {
                         .hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR")
 
                         // ========================================
-                        // ENDPOINTS DE RECETAS Y DETALLES (REORGANIZADO)
+                        // ENDPOINTS DE PEDIDO SEMANA BODEGA (Antigua "Recetas")
                         // ========================================
 
                         // 1. LECTURA (GET): Permitido para todos los roles académicos y administrativos
-                        .requestMatchers(HttpMethod.GET, "/api/v*/receta/**", "/api/v*/detalle-receta/**")
+                        .requestMatchers(HttpMethod.GET, "/api/v*/pedido-semana-bodega/**", "/api/v*/detalle-pedido-semana-bodega/**")
                         .hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR", "GESTOR_PEDIDOS", "PROFESOR_A_CARGO", "DOCENTE")
 
                         // 2a. POST de LECTURA (paginación/búsqueda): accesible para roles con acceso de lectura
                         //     Estos endpoints usan POST solo para enviar filtros en el body, no para crear datos
                         .requestMatchers(HttpMethod.POST,
-                                "/api/v*/receta/find-all-recipes-pagined/**",
-                                "/api/v*/receta/search-recipes"
+                                "/api/v*/pedido-semana-bodega/find-all-recipes-pagined/**",
+                                "/api/v*/pedido-semana-bodega/search-recipes"
                         ).hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR", "PROFESOR_A_CARGO", "DOCENTE")
 
                         // 2b. CREACIÓN (POST): Solo quienes diseñan el programa académico
-                        .requestMatchers(HttpMethod.POST, "/api/v*/receta/**", "/api/v*/detalle-receta/**")
+                        .requestMatchers(HttpMethod.POST, "/api/v*/pedido-semana-bodega/**", "/api/v*/detalle-pedido-semana-bodega/**")
                         .hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR", "PROFESOR_A_CARGO")
 
                         // 3. EDICIÓN (PUT / PATCH): Solo quienes diseñan el programa académico
-                        .requestMatchers(HttpMethod.PUT, "/api/v*/receta/**", "/api/v*/detalle-receta/**")
+                        .requestMatchers(HttpMethod.PUT, "/api/v*/pedido-semana-bodega/**", "/api/v*/detalle-pedido-semana-bodega/**")
                         .hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR", "PROFESOR_A_CARGO")
 
-                        .requestMatchers(HttpMethod.PATCH, "/api/v*/receta/**", "/api/v*/detalle-receta/**")
+                        .requestMatchers(HttpMethod.PATCH, "/api/v*/pedido-semana-bodega/**", "/api/v*/detalle-pedido-semana-bodega/**")
                         .hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR", "PROFESOR_A_CARGO")
 
                         // 4. ELIMINACIÓN (DELETE): Restringido a la jerarquía más alta
-                        .requestMatchers(HttpMethod.DELETE, "/api/v*/receta/**", "/api/v*/detalle-receta/**")
+                        .requestMatchers(HttpMethod.DELETE, "/api/v*/pedido-semana-bodega/**", "/api/v*/detalle-pedido-semana-bodega/**")
                         .hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR")
 
                         // ========================================

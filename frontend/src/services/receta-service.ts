@@ -32,7 +32,7 @@ import {
  */
 export const obtenerRecetasPaginadasService = async (page: number = 1): Promise<IPaginatedRecetasResponse> => {
   try {
-    const response = await api.post<IPaginatedRecetasResponse>(`/receta/find-all-recipes-pagined/${page}`);
+    const response = await api.post<IPaginatedRecetasResponse>(`/pedido-semana-bodega/find-all-recipes-pagined/${page}`);
     return response.data;
   } catch (error: any) {
     console.error('Error al obtener recetas paginadas', error);
@@ -51,7 +51,7 @@ export const obtenerRecetasPaginadasService = async (page: number = 1): Promise<
  */
 export const buscarRecetasPaginadasService = async (term: string, page: number = 1): Promise<IPaginatedRecetasResponse> => {
   try {
-    const response = await api.post<IPaginatedRecetasResponse>('/receta/search-recipes', { term, page });
+    const response = await api.post<IPaginatedRecetasResponse>('/pedido-semana-bodega/search-recipes', { term, page });
     return response.data;
   } catch (error: any) {
     console.error('Error al buscar recetas paginadas', error);
@@ -181,7 +181,7 @@ export const actualizarRecetaService = async (recetaData: IActualizarReceta): Pr
  */
 export const crearRecetaConDetallesService = async (data: IRecipeWithDetailsCreateDTO): Promise<boolean> => {
   try {
-    const response = await api.post<boolean>('/receta/create-recipe-with-details', data);
+    const response = await api.post<boolean>('/pedido-semana-bodega/create-recipe-with-details', data);
     return response.data;
   } catch (error: any) {
     throw new Error(
@@ -198,7 +198,7 @@ export const crearRecetaConDetallesService = async (data: IRecipeWithDetailsCrea
  */
 export const actualizarRecetaConDetallesService = async (data: IRecipeWithDetailsUpdateDTO): Promise<boolean> => {
   try {
-    const response = await api.patch<boolean>('/receta/update-recipe-with-details', data);
+    const response = await api.patch<boolean>('/pedido-semana-bodega/update-recipe-with-details', data);
     return response.data;
   } catch (error: any) {
     throw new Error(
@@ -234,7 +234,7 @@ export const eliminarRecetaService = async (id: string): Promise<boolean> => {
 export const cambiarEstadoRecetaService = async (id: string): Promise<boolean> => {
   try {
     const idNumero = parseInt(id, 10);
-    const response = await api.patch<boolean>(`/receta/change-status/${idNumero}`);
+    const response = await api.patch<boolean>(`/pedido-semana-bodega/change-status/${idNumero}`);
     return response.data;
   } catch (error: any) {
     console.error('Error al cambiar el estado de la receta', error);
@@ -252,7 +252,7 @@ export const cambiarEstadoRecetaService = async (id: string): Promise<boolean> =
  */
 export const softDeleteRecetaService = async (idReceta: number): Promise<boolean> => {
   try {
-    await api.delete(`/receta/soft-delete-receta/${idReceta}`);
+    await api.delete(`/pedido-semana-bodega/soft-delete-receta/${idReceta}`);
     return true;
   } catch (error: any) {
     console.error('Error al eliminar la receta', error);
@@ -269,7 +269,7 @@ export const softDeleteRecetaService = async (idReceta: number): Promise<boolean
  */
 export const obtenerRecetasCountService = async (): Promise<IRecetaCountResponse> => {
   try {
-    const response = await api.get<IRecetaCountResponse>('/receta/count-recipes');
+    const response = await api.get<IRecetaCountResponse>('/pedido-semana-bodega/count-recipes');
     return response.data;
   } catch (error: any) {
     console.error('Error al obtener el conteo de recetas', error);

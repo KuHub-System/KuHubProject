@@ -5,7 +5,7 @@ import KuHub.modules.gestion_inventario.exceptions.GestionInventarioException;
 import KuHub.modules.gestion_proveedor.exceptions.GestionProveedorException;
 import KuHub.modules.gestion_solicitud.exception.GestionSolicitudException;
 import KuHub.modules.gestion_usuario.exceptions.*;
-import KuHub.modules.gestion_receta.exceptions.GestionRecetaException;
+import KuHub.modules.pedido_semana_a_bodega.exceptions.PedidoSemanaBodegaException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
