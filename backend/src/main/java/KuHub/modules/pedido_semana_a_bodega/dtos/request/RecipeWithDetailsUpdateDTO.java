@@ -19,19 +19,19 @@ import java.util.List;
 public class RecipeWithDetailsUpdateDTO {
     @NotNull(message = "El ID de la receta es obligatorio")
     @Positive(message = "El ID de la receta debe ser un número positivo")
-    private Integer idReceta;
+    private Integer idPedidoSemanaBodega;
 
     @NotBlank(message = "El nombre de la receta es obligatorio")
     @Size(max = 100, message = "El nombre de la receta no puede superar los 100 caracteres")
-    private String nombreReceta;
+    private String nombrePedido;
 
     // Campos opcionales (no llevan @NotBlank ni @NotNull)
-    private String descripcionReceta;
+    private String descripcionPedido;
 
-    private String instruccionesReceta;
+    private String instrucciones;
 
     @NotBlank(message = "El estado de la receta es obligatorio")
-    private String estadoReceta;
+    private String estadoPedido;
 
     // --- Arrays de Deltas para los Ingredientes ---
 
