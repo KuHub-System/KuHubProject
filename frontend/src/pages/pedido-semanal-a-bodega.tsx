@@ -551,7 +551,6 @@ const PedidoSemanalABodegaPage: React.FC = () => {
         scrollBehavior="inside"
         radius="lg"
         backdrop="blur"
-        closeButton={<Icon icon="lucide:x" width={20} />}
         classNames={{
           base: "rounded-[32px] overflow-hidden",
           closeButton: "hover:bg-default-100 dark:hover:bg-default-100/50 transition-colors text-default-500 hover:text-secondary cursor-pointer",
