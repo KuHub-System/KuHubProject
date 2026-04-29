@@ -1,77 +1,195 @@
-1. Idea simple: carrusel de 2 páginas que se vuelven
-No necesitas librería pesada; basta con un setInterval que cambie una variable currentPage y un CSS que simule el giro de página.
 
-Ejemplo básico:
+Animación de Libro con Paso de Páginas Real
+Tu problema principal es que no tienes una animación de volteo de página real. Vamos a reconstruirlo con rotateY correcto usando framer-motion y perspectiva 3D adecuada.
 
-jsx
-import { useState, useEffect } from "react";
+Problemas del código actual
+perspective en el hijo en lugar del padre
+transform en CSS plano sin transformStyle: preserve-3d
+No hay efecto de "página que se dobla" real
+Las páginas no tienen cara frontal/trasera
+Solución Completa
+import React from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 
-const BookLoader = () => {
-  const [currentPage, setCurrentPage] = useState(0);
+export interface LoadingBookAnimationProps {
+  pageCount?: number;
+  pageChangeInterval?: number;
+  message?: string;
+  subMessage?: string;
+  size?: 'small' | 'medium' | 'large';
+  showPageIndicators?: boolean;
+}
 
-  useEffect(() => {
-    const id = setInterval(() => {
-      setCurrentPage((prev) => (prev + 1) % 3); // 0, 1, 2, 0...
-    }, 800);
-    return () => clearInterval(id);
-  }, []);
+const SIZE_CONFIG = {
+  small:  { width: 140, height: 180 },
+  medium: { width: 200, height: 260 },
+  large:  { width: 260, height: 340 },
+};
+
+// ─── Líneas decorativas dentro de cada página ──────────────────────────────
+const PageLines: React.FC<{ seed: number }> = ({ seed }) => {
+  const patterns = [
+    ['w-3/4', 'w-full', 'w-5/6', 'w-4/5', 'w-2/3'],
+    ['w-full', 'w-4/5', 'w-full', 'w-3/4', 'w-5/6'],
+    ['w-5/6', 'w-3/4', 'w-full', 'w-full', 'w-4/5'],
+    ['w-4/5', 'w-full', 'w-2/3', 'w-5/6', 'w-full'],
+  ];
+  const widths = patterns[seed % patterns.length];
 
   return (
-    <div style={{ display: "flex", justifyContent: "center", padding: "40px" }}>
-      <div
-        className="book"
-        style={{
-          width: "200px",
-          height: "300px",
-          border: "1px solid #ccc",
-          borderRadius: "8px",
-          position: "relative",
-          overflow: "hidden",
-        }}
-      >
-        <div className="page" style={pageStyle(0, currentPage)}>
-          Página 1
-        </div>
-        <div className="page" style={pageStyle(1, currentPage)}>
-          Página 2
-        </div>
-        <div className="page" style={pageStyle(2, currentPage)}>
-          Página 3
-        </div>
-      </div>
-    </div>
+    
+      {/* Título simulado */}
+      
+      {widths.map((w, i) => (
+        
+      ))}
+      {/* Párrafo 2 */}
+      
+        {widths.slice(0, 3).map((w, i) => (
+          
+        ))}
+      
+    
   );
 };
 
-// Función auxiliar para simular animación de página
-const pageStyle = (pageIndex, currentPage) => {
-  const visible = pageIndex === currentPage;
-  const next = pageIndex === (currentPage + 1) % 3;
+// ─── Una sola página con volteo 3D ─────────────────────────────────────────
+const BookPage: React.FC<{
+  pageIndex:  number;
+  isFlipping: boolean;
+  bookWidth:  number;
+  bookHeight: number;
+}> = ({ pageIndex, isFlipping, bookWidth, bookHeight }) => {
+  const halfW = bookWidth / 2;
 
-  return {
-    position: "absolute",
-    width: "100%",
-    height: "100%",
-    background: visible ? "#f9f9f9" : "#eee",
-    borderLeft: "1px solid #ddd",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    fontSize: "14px",
-    transform: `rotateY(${visible ? 0 : next ? 40 : -40}deg)`,
-    transformOrigin: "left",
-    transition: "transform 0.4s ease",
-    opacity: visible ? 1 : 0.8,
-  };
+  return (
+    // Contenedor con perspectiva — necesita estar en el padre directo del elemento que rota
+    
+      <motion.div>
+        {/* Cara FRONTAL de la página */}
+        
+          
+        
+
+        {/* Cara TRASERA de la página (se ve al voltear) */}
+        
+          
+        
+      </motion.div>
+    
+  );
 };
-Esto hace un “libro” pequeño que va girando páginas en bucle cada ~800 ms, imitando que alguien está pasando hojas mientras carga.
 
-2. Si prefieres algo más realista (sin interacción)
-Puedes usar react-pageflip solo como loader decorativo:
+// ─── Sombra dinámica mientras voltea ───────────────────────────────────────
+const FlipShadow: React.FC<{ isFlipping: boolean; bookWidth: number; bookHeight: number }> = ({
+  isFlipping, bookWidth, bookHeight,
+}) => (
+  <animatepresence>
+    {isFlipping && (
+      
+    )}
+  
+);
 
-Instalas:
-npm install react-pageflip
+// ─── Componente principal ──────────────────────────────────────────────────
+const LoadingBookAnimation: React.FC<loadingbookanimationprops> = ({
+  pageCount            = 5,
+  pageChangeInterval   = 1000,
+  message              = 'Cargando datos',
+  subMessage           = 'Por favor espera...',
+  size                 = 'medium',
+  showPageIndicators   = true,
+}) => {
+  const [currentPage, setCurrentPage] = React.useState(0);
+  const [flippingPage, setFlippingPage] = React.useState(null);
 
-Luego montas un “libro” de 3‑4 páginas vacías y dejas que se vea mientras loading === true.
+  const { width: bookWidth, height: bookHeight } = SIZE_CONFIG[size];
 
-Pero para un loader simple, con el ejemplo de arriba te alcanza y no cargas librería extra.
+  React.useEffect(() => {
+    const interval = setInterval(() => {
+      setFlippingPage(currentPage);
+
+      // Después de medio flip, cambia el contenido de la página izquierda
+      const contentTimer = setTimeout(() => {
+        setCurrentPage((prev) => (prev + 1) % pageCount);
+      }, 350);
+
+      // Limpia el estado de "volteando" al terminar
+      const endTimer = setTimeout(() => {
+        setFlippingPage(null);
+      }, 700);
+
+      return () => {
+        clearTimeout(contentTimer);
+        clearTimeout(endTimer);
+      };
+    }, pageChangeInterval);
+
+    return () => clearInterval(interval);
+  }, [currentPage, pageCount, pageChangeInterval]);
+
+  const nextPage = (currentPage + 1) % pageCount;
+
+  return (
+    
+
+      {/* ── Libro ── */}
+      
+        {/* Tapa / fondo del libro */}
+        
+
+        {/* Página izquierda (estática, ya leída) */}
+        
+          
+        
+
+        {/* Página derecha estática (la que está "debajo" de la que voltea) */}
+        
+          
+        
+
+        {/* Página que voltea */}
+        
+
+        {/* Sombra de volteo */}
+        
+
+        {/* Lomo central */}
+        
+
+        {/* Sombra inferior del libro */}
+        
+      
+
+      {/* ── Indicadores de página ── */}
+      {showPageIndicators && (
+        
+          {Array.from({ length: pageCount }).map((_, i) => (
+            
+          ))}
+        
+      )}
+
+      {/* ── Textos ── */}
+      
+        
+          {message}
+        
+        
+          {subMessage}
+        
+      
+
+    
+  );
+};
+
+export default LoadingBookAnimation;
+Qué cambió y por qué funciona
+Problema anterior	Solución aplicada
+perspective en el hijo	perspective + perspectiveOrigin: '0% 50%' en el contenedor directo del elemento que rota
+Sin backfaceVisibility	Cada página tiene cara frontal y trasera con backfaceVisibility: hidden
+transformOrigin incorrecto	'0% 50%' en ambos: contenedor y elemento → gira desde el lomo
+Sin sombra de profundidad	FlipShadow con AnimatePresence da sensación de volumen real
+Estado simple	Dos estados separados: currentPage (contenido) y flippingPage (animación) con timers distintos
+Página izquierda vacía	Página izquierda estática visible siempre → da sensación de libro abierto real
