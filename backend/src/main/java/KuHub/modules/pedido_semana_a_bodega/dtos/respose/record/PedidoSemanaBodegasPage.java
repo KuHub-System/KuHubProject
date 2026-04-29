@@ -23,6 +23,7 @@ public record PedidoSemanaBodegasPage(
             String descripcionPedido,
             String estadoPedido,
             Long totalDetalles,
+            Integer idSemana,
             List<RecipeDetail> detalles
     ) {}
 
@@ -69,6 +70,7 @@ public record PedidoSemanaBodegasPage(
                     row.getDescripcionPedido(),
                     StringUtils.enumToHumanText(row.getEstadoPedido()),
                     row.getTotalDetalles(),
+                    row.getIdSemana(),
                     detalles
             );
         }).toList();

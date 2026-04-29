@@ -57,3 +57,5 @@ A PostCSS plugin did not pass the `from` option to `postcss.parse`. This may cau
 [2m3:31:00 p.m.[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/types/receta.types.ts[22m
 [2m3:31:04 p.m.[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/types/receta.types.ts[22m
 [2m4:25:03 p.m.[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/types/receta.types.ts[22m
+[2m4:43:42 p.m.[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/services/receta-service.ts[22m
+[2m4:43:47 p.m.[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/services/receta-service.ts[22m
