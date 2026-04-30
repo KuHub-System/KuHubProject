@@ -1311,15 +1311,27 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
           {vistaTabla ? (
             // === VISTA TABLA ===
             <div className="space-y-3">
+              <div className="flex justify-end mb-2">
+                <Button
+                  isIconOnly
+                  variant="light"
+                  size="sm"
+                  onPress={() => setVistaTabla(false)}
+                  className="text-warning-600 hover:bg-warning-50"
+                  title="Volver a vista de tarjetas"
+                >
+                  <Icon icon="lucide:th-large" width={20} />
+                </Button>
+              </div>
               <div className="overflow-x-auto rounded-lg border border-default-200 dark:border-default-100">
                 <table className="w-full text-sm" style={{ tableLayout: 'fixed' }}>
                   <thead className="bg-warning-50 dark:bg-warning-900/20">
                     <tr>
-                      <th className="text-left py-3 px-4 font-bold text-warning-700 dark:text-warning-400 w-[5%]">#</th>
-                      <th className="text-left py-3 px-4 font-bold text-warning-700 dark:text-warning-400 w-[45%]">Producto</th>
-                      <th className="text-center py-3 px-4 font-bold text-warning-700 dark:text-warning-400 w-[15%]">Cantidad</th>
-                      <th className="text-left py-3 px-4 font-bold text-warning-700 dark:text-warning-400 w-[30%]">Observación</th>
-                      <th className="text-center py-3 px-4 font-bold text-warning-700 dark:text-warning-400 w-[5%]">Acción</th>
+                      <th className="text-center py-3 px-4 font-bold text-warning-700 dark:text-warning-400 w-[5%] truncate">#</th>
+                      <th className="text-center py-3 px-4 font-bold text-warning-700 dark:text-warning-400 w-[36%] truncate">Producto</th>
+                      <th className="text-center py-3 px-4 font-bold text-warning-700 dark:text-warning-400 w-[19%] truncate">Cantidad</th>
+                      <th className="text-center py-3 px-4 font-bold text-warning-700 dark:text-warning-400 w-[24%] truncate">Observación</th>
+                      <th className="text-center py-3 px-4 font-bold text-warning-700 dark:text-warning-400 w-[5%] truncate">Acción</th>
                     </tr>
                   </thead>
                   <tbody>
