@@ -1328,10 +1328,10 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
                   <thead className="bg-warning-50 dark:bg-warning-900/20">
                     <tr>
                       <th className="text-center py-3 px-4 font-bold text-warning-700 dark:text-warning-400 w-[5%] truncate">#</th>
-                      <th className="text-center py-3 px-4 font-bold text-warning-700 dark:text-warning-400 w-[36%] truncate">Producto</th>
-                      <th className="text-center py-3 px-4 font-bold text-warning-700 dark:text-warning-400 w-[19%] truncate">Cantidad</th>
+                      <th className="text-center py-3 px-4 font-bold text-warning-700 dark:text-warning-400 w-[32%] truncate">Producto</th>
+                      <th className="text-center py-3 px-4 font-bold text-warning-700 dark:text-warning-400 w-[23%] truncate">Cantidad</th>
                       <th className="text-center py-3 px-4 font-bold text-warning-700 dark:text-warning-400 w-[24%] truncate">Observación</th>
-                      <th className="text-center py-3 px-4 font-bold text-warning-700 dark:text-warning-400 w-[5%] truncate">Acción</th>
+                      <th className="text-center py-3 px-4 font-bold text-warning-700 dark:text-warning-400 w-[5%]"></th>
                     </tr>
                   </thead>
                   <tbody>
