@@ -881,10 +881,65 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
     const [estado, setEstado] = React.useState<'Activo' | 'Inactivo'>(receta?.estadoPedido || 'Activo');
     const [vistaTabla, setVistaTabla] = React.useState(false);
 
+    // Texto local de cada input de cantidad (permite escribir coma y valores intermedios como "1,")
+    // El valor real del ingrediente se actualiza solo cuando el texto es un número válido.
+    // Se guarda en BD como NUMERIC(10, 3) de PostgreSQL (ej: 1500.5), pero se muestra con formato CL (ej: 1.500,5)
+    const [cantidadesTexto, setCantidadesTexto] = React.useState<Record<string, string>>(() => {
+      const inicial: Record<string, string> = {};
+      (receta?.detalles || []).forEach(d => {
+        inicial[d.idDetallePedido.toString()] = d.cantProducto
+          ? d.cantProducto.toLocaleString('es-CL', { minimumFractionDigits: 0, maximumFractionDigits: 3 })
+          : '';
+      });
+      return inicial;
+    });
+
     // Formatea cantidad con separador de miles (.) y decimal (,) solo para mostrar al usuario
     // El valor interno se mantiene sin formato y se guarda en BD como NUMERIC(10, 3) de PostgreSQL
     const formatearCantidadParaUsuario = (valor: number): string => {
       return valor.toLocaleString('es-CL', { minimumFractionDigits: 0, maximumFractionDigits: 3 });
+    };
+
+    const validarYActualizarCantidad = (
+      val: string,
+      index: number,
+      id: string,
+      esFraccionario: boolean,
+      isTabla: boolean
+    ) => {
+      // Actualizar texto local siempre (permite escribir coma e intermedios)
+      setCantidadesTexto(prev => ({ ...prev, [id]: val }));
+
+      if (val === '') {
+        actualizarIngrediente(index, 'cantidad', 0);
+        return;
+      }
+
+      // Normalizar: eliminar separadores de miles (.) y convertir coma a punto
+      const normalizado = val.replace(/\./g, '').replace(',', '.');
+      const numericValue = parseFloat(normalizado);
+
+      // Valor incompleto (ej: "1,") — dejar que el usuario siga escribiendo
+      if (isNaN(numericValue)) return;
+      if (numericValue < 0) return;
+
+      if (numericValue > 9999999.999) {
+        toast.warning('La cantidad no puede superar 9.999.999,999');
+        setCantidadesTexto(prev => ({ ...prev, [id]: formatearCantidadParaUsuario(9999999.999) }));
+        actualizarIngrediente(index, 'cantidad', 9999999.999);
+        return;
+      }
+
+      if (normalizado.includes('.')) {
+        const decimals = normalizado.split('.')[1];
+        if (decimals.length > 3) return;
+      }
+
+      const digitsOnly = normalizado.replace('.', '');
+      if (digitsOnly.length > 10) return;
+      if (!esFraccionario && normalizado.includes('.')) return;
+
+      actualizarIngrediente(index, 'cantidad', numericValue);
     };
 
     // Inicializar idSemana desde sessionStorage (cache) o valor guardado en receta
@@ -1302,35 +1357,21 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <Button
-                isIconOnly
-                variant="light"
-                size="sm"
-                onPress={() => setVistaTabla(!vistaTabla)}
-                className="text-warning-600 hover:bg-warning-50"
-                title={vistaTabla ? 'Ver como tarjetas' : 'Ver como tabla'}
-              >
-                <Icon icon={vistaTabla ? 'lucide:th-large' : 'lucide:table'} width={20} />
-              </Button>
-            </div>
+            <Button
+              isIconOnly
+              variant="light"
+              size="sm"
+              onPress={() => setVistaTabla(!vistaTabla)}
+              className="text-warning-600 hover:bg-warning-50"
+              title={vistaTabla ? 'Ver como tarjetas' : 'Ver como tabla'}
+            >
+              <Icon icon={vistaTabla ? 'lucide:layout-grid' : 'lucide:table'} width={20} />
+            </Button>
           </div>
 
           {vistaTabla ? (
             // === VISTA TABLA ===
             <div className="space-y-3">
-              <div className="flex justify-end mb-2">
-                <Button
-                  isIconOnly
-                  variant="light"
-                  size="sm"
-                  onPress={() => setVistaTabla(false)}
-                  className="text-warning-600 hover:bg-warning-50"
-                  title="Volver a vista de tarjetas"
-                >
-                  <Icon icon="lucide:th-large" width={20} />
-                </Button>
-              </div>
               <div className="overflow-x-auto rounded-lg border border-default-200 dark:border-default-100">
                 <table className="w-full text-sm" style={{ tableLayout: 'fixed' }}>
                   <thead className="bg-warning-50 dark:bg-warning-900/20">
@@ -1378,46 +1419,10 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
                             <Input
                               type="text"
                               placeholder="Ej: 1500,5"
-                              value={ingrediente.cantidad === 0 ? '' : formatearCantidadParaUsuario(ingrediente.cantidad)}
+                              value={cantidadesTexto[ingrediente.id] ?? (ingrediente.cantidad === 0 ? '' : formatearCantidadParaUsuario(ingrediente.cantidad))}
                               onValueChange={(val) => {
-                                // Rechazar negativos al inicio
                                 if (val && val[0] === '-') return;
-
-                                // Permitir vacío
-                                if (val === '') {
-                                  actualizarIngrediente(index, 'cantidad', 0);
-                                  return;
-                                }
-
-                                // Normalizar: eliminar separadores de miles (.) y convertir coma a punto
-                                let normalizado = val.replace(/\./g, '').replace(',', '.');
-                                const numericValue = parseFloat(normalizado);
-
-                                // Si el valor es inválido, permitir si contiene dígitos (usuario aún escribiendo)
-                                if (isNaN(numericValue)) {
-                                  // Solo rechazar si no hay dígitos en absoluto
-                                  if (!/\d/.test(val)) return;
-                                  // Si hay dígitos, permitir continuar escribiendo
-                                  return;
-                                }
-
-                                // Validaciones para valores numéricos completos
-                                if (numericValue < 0) return;
-                                if (numericValue > 9999999.999) {
-                                  toast.warning('Máximo: 9.999.999,999');
-                                  return;
-                                }
-
-                                if (normalizado.includes('.')) {
-                                  const decimals = normalizado.split('.')[1];
-                                  if (decimals.length > 3) return;
-                                }
-
-                                const digitsOnly = normalizado.replace('.', '');
-                                if (digitsOnly.length > 10) return;
-                                if (!esFraccionario && normalizado.includes('.')) return;
-
-                                actualizarIngrediente(index, 'cantidad', numericValue || 0);
+                                validarYActualizarCantidad(val, index, ingrediente.id, esFraccionario, true);
                               }}
                               size="sm"
                               variant="bordered"
@@ -1554,46 +1559,10 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
                               )
                             }
                             placeholder="Ej: 1500,5"
-                            value={ingrediente.cantidad === 0 ? '' : formatearCantidadParaUsuario(ingrediente.cantidad)}
+                            value={cantidadesTexto[ingrediente.id] ?? (ingrediente.cantidad === 0 ? '' : formatearCantidadParaUsuario(ingrediente.cantidad))}
                             onValueChange={(val) => {
-                              // Rechazar negativos al inicio
                               if (val && val[0] === '-') return;
-
-                              // Permitir vacío
-                              if (val === '') {
-                                actualizarIngrediente(index, 'cantidad', 0);
-                                return;
-                              }
-
-                              // Normalizar: eliminar separadores de miles (.) y convertir coma a punto
-                              let normalizado = val.replace(/\./g, '').replace(',', '.');
-                              const numericValue = parseFloat(normalizado);
-
-                              // Si el valor es inválido, permitir si contiene dígitos (usuario aún escribiendo)
-                              if (isNaN(numericValue)) {
-                                // Solo rechazar si no hay dígitos en absoluto
-                                if (!/\d/.test(val)) return;
-                                // Si hay dígitos, permitir continuar escribiendo
-                                return;
-                              }
-
-                              // Validaciones para valores numéricos completos
-                              if (numericValue < 0) return;
-                              if (numericValue > 9999999.999) {
-                                toast.warning('La cantidad no puede superar 9.999.999,999');
-                                return;
-                              }
-
-                              if (normalizado.includes('.')) {
-                                const decimals = normalizado.split('.')[1];
-                                if (decimals.length > 3) return;
-                              }
-
-                              const digitsOnly = normalizado.replace('.', '');
-                              if (digitsOnly.length > 10) return;
-                              if (!esFraccionario && normalizado.includes('.')) return;
-
-                              actualizarIngrediente(index, 'cantidad', numericValue || 0);
+                              validarYActualizarCantidad(val, index, ingrediente.id, esFraccionario, false);
                             }}
                             size="sm"
                             variant="bordered"
