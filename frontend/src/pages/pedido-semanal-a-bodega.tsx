@@ -1381,7 +1381,7 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
                               value={ingrediente.cantidad === 0 ? '' : formatearCantidadParaUsuario(ingrediente.cantidad)}
                               onValueChange={(val) => {
                                 // Rechazar negativos al inicio
-                                if (val.length > 0 && val[0] === '-') return;
+                                if (val && val[0] === '-') return;
 
                                 // Permitir vacío
                                 if (val === '') {
@@ -1390,13 +1390,21 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
                                 }
 
                                 // Normalizar: eliminar separadores de miles (.) y convertir coma a punto
-                                // Esto permite al usuario escribir: 1500,5 o 1.500,5
                                 let normalizado = val.replace(/\./g, '').replace(',', '.');
-
                                 const numericValue = parseFloat(normalizado);
-                                if (isNaN(numericValue) || numericValue < 0) return;
+
+                                // Si el valor es inválido, permitir si contiene dígitos (usuario aún escribiendo)
+                                if (isNaN(numericValue)) {
+                                  // Solo rechazar si no hay dígitos en absoluto
+                                  if (!/\d/.test(val)) return;
+                                  // Si hay dígitos, permitir continuar escribiendo
+                                  return;
+                                }
+
+                                // Validaciones para valores numéricos completos
+                                if (numericValue < 0) return;
                                 if (numericValue > 9999999.999) {
-                                  toast.warning('Máximo: 9,999,999.999');
+                                  toast.warning('Máximo: 9.999.999,999');
                                   return;
                                 }
 
@@ -1549,7 +1557,7 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
                             value={ingrediente.cantidad === 0 ? '' : formatearCantidadParaUsuario(ingrediente.cantidad)}
                             onValueChange={(val) => {
                               // Rechazar negativos al inicio
-                              if (val.length > 0 && val[0] === '-') return;
+                              if (val && val[0] === '-') return;
 
                               // Permitir vacío
                               if (val === '') {
@@ -1558,13 +1566,21 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
                               }
 
                               // Normalizar: eliminar separadores de miles (.) y convertir coma a punto
-                              // Esto permite al usuario escribir: 1500,5 o 1.500,5
                               let normalizado = val.replace(/\./g, '').replace(',', '.');
-
                               const numericValue = parseFloat(normalizado);
-                              if (isNaN(numericValue) || numericValue < 0) return;
+
+                              // Si el valor es inválido, permitir si contiene dígitos (usuario aún escribiendo)
+                              if (isNaN(numericValue)) {
+                                // Solo rechazar si no hay dígitos en absoluto
+                                if (!/\d/.test(val)) return;
+                                // Si hay dígitos, permitir continuar escribiendo
+                                return;
+                              }
+
+                              // Validaciones para valores numéricos completos
+                              if (numericValue < 0) return;
                               if (numericValue > 9999999.999) {
-                                toast.warning('La cantidad no puede superar 9,999,999.999');
+                                toast.warning('La cantidad no puede superar 9.999.999,999');
                                 return;
                               }
 
@@ -1583,7 +1599,7 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
                             variant="bordered"
                             isRequired
                             classNames={{ inputWrapper: "bg-white dark:bg-default-100/50" }}
-                            description="Máx: 9,999,999.999"
+                            description="Máx: 9.999.999,999"
                           />
 
                           <Input
