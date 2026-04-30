@@ -881,6 +881,12 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
     const [estado, setEstado] = React.useState<'Activo' | 'Inactivo'>(receta?.estadoPedido || 'Activo');
     const [vistaTabla, setVistaTabla] = React.useState(false);
 
+    // Formatea cantidad con separador de miles (.) y decimal (,) solo para mostrar al usuario
+    // El valor interno se mantiene sin formato y se guarda en BD como NUMERIC(10, 3) de PostgreSQL
+    const formatearCantidadParaUsuario = (valor: number): string => {
+      return valor.toLocaleString('es-CL', { minimumFractionDigits: 0, maximumFractionDigits: 3 });
+    };
+
     // Inicializar idSemana desde sessionStorage (cache) o valor guardado en receta
     const [idSemana, setIdSemana] = React.useState<string>(() => {
       if (mode === 'editar' && receta?.idSemana) {
@@ -1371,29 +1377,38 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
                           <td className="py-3 px-4">
                             <Input
                               type="text"
-                              inputMode="decimal"
-                              placeholder="0"
-                              value={ingrediente.cantidad === 0 ? '' : ingrediente.cantidad.toString().replace('.', ',')}
+                              placeholder="Ej: 1500,5"
+                              value={ingrediente.cantidad === 0 ? '' : formatearCantidadParaUsuario(ingrediente.cantidad)}
                               onValueChange={(val) => {
-                                if (val.startsWith('-')) return;
+                                // Rechazar negativos al inicio
+                                if (val.length > 0 && val[0] === '-') return;
+
+                                // Permitir vacío
                                 if (val === '') {
                                   actualizarIngrediente(index, 'cantidad', 0);
                                   return;
                                 }
-                                const normalizado = val.replace(',', '.');
+
+                                // Normalizar: eliminar separadores de miles (.) y convertir coma a punto
+                                // Esto permite al usuario escribir: 1500,5 o 1.500,5
+                                let normalizado = val.replace(/\./g, '').replace(',', '.');
+
                                 const numericValue = parseFloat(normalizado);
                                 if (isNaN(numericValue) || numericValue < 0) return;
                                 if (numericValue > 9999999.999) {
                                   toast.warning('Máximo: 9,999,999.999');
                                   return;
                                 }
+
                                 if (normalizado.includes('.')) {
                                   const decimals = normalizado.split('.')[1];
                                   if (decimals.length > 3) return;
                                 }
+
                                 const digitsOnly = normalizado.replace('.', '');
                                 if (digitsOnly.length > 10) return;
                                 if (!esFraccionario && normalizado.includes('.')) return;
+
                                 actualizarIngrediente(index, 'cantidad', numericValue || 0);
                               }}
                               size="sm"
@@ -1513,7 +1528,6 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
                             }}
                             data-ingrediente-id={ingrediente.id}
                             type="text"
-                            inputMode="decimal"
                             label={
                               ingrediente.unidadMedida && ingrediente.unidadMedida.length > 8 ? (
                                 <Tooltip
@@ -1531,28 +1545,38 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
                                 `Cant. ${ingrediente.unidadMedida || ''}`
                               )
                             }
-                            placeholder="0"
-                            value={ingrediente.cantidad === 0 ? '' : ingrediente.cantidad.toString().replace('.', ',')}
+                            placeholder="Ej: 1500,5"
+                            value={ingrediente.cantidad === 0 ? '' : formatearCantidadParaUsuario(ingrediente.cantidad)}
                             onValueChange={(val) => {
-                              if (val.startsWith('-')) return;
+                              // Rechazar negativos al inicio
+                              if (val.length > 0 && val[0] === '-') return;
+
+                              // Permitir vacío
                               if (val === '') {
                                 actualizarIngrediente(index, 'cantidad', 0);
                                 return;
                               }
-                              const normalizado = val.replace(',', '.');
+
+                              // Normalizar: eliminar separadores de miles (.) y convertir coma a punto
+                              // Esto permite al usuario escribir: 1500,5 o 1.500,5
+                              let normalizado = val.replace(/\./g, '').replace(',', '.');
+
                               const numericValue = parseFloat(normalizado);
                               if (isNaN(numericValue) || numericValue < 0) return;
                               if (numericValue > 9999999.999) {
                                 toast.warning('La cantidad no puede superar 9,999,999.999');
                                 return;
                               }
+
                               if (normalizado.includes('.')) {
                                 const decimals = normalizado.split('.')[1];
                                 if (decimals.length > 3) return;
                               }
+
                               const digitsOnly = normalizado.replace('.', '');
                               if (digitsOnly.length > 10) return;
                               if (!esFraccionario && normalizado.includes('.')) return;
+
                               actualizarIngrediente(index, 'cantidad', numericValue || 0);
                             }}
                             size="sm"
