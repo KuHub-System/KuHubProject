@@ -1296,16 +1296,18 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
                 </p>
               </div>
             </div>
-            <Button
-              isIconOnly
-              variant="light"
-              size="sm"
-              onPress={() => setVistaTabla(!vistaTabla)}
-              className="text-warning-600 hover:bg-warning-50"
-              title={vistaTabla ? 'Ver como tarjetas' : 'Ver como tabla'}
-            >
-              <Icon icon={vistaTabla ? 'lucide:th-large' : 'lucide:table'} width={20} />
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                isIconOnly
+                variant="light"
+                size="sm"
+                onPress={() => setVistaTabla(!vistaTabla)}
+                className="text-warning-600 hover:bg-warning-50"
+                title={vistaTabla ? 'Ver como tarjetas' : 'Ver como tabla'}
+              >
+                <Icon icon={vistaTabla ? 'lucide:th-large' : 'lucide:table'} width={20} />
+              </Button>
+            </div>
           </div>
 
           {vistaTabla ? (
@@ -1328,8 +1330,8 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
                   <thead className="bg-warning-50 dark:bg-warning-900/20">
                     <tr>
                       <th className="text-center py-3 px-4 font-bold text-warning-700 dark:text-warning-400 w-[5%] truncate">#</th>
-                      <th className="text-center py-3 px-4 font-bold text-warning-700 dark:text-warning-400 w-[32%] truncate">Producto</th>
-                      <th className="text-center py-3 px-4 font-bold text-warning-700 dark:text-warning-400 w-[23%] truncate">Cantidad</th>
+                      <th className="text-center py-3 px-4 font-bold text-warning-700 dark:text-warning-400 w-[28%] truncate">Producto</th>
+                      <th className="text-center py-3 px-4 font-bold text-warning-700 dark:text-warning-400 w-[27%] truncate">Cantidad</th>
                       <th className="text-center py-3 px-4 font-bold text-warning-700 dark:text-warning-400 w-[24%] truncate">Observación</th>
                       <th className="text-center py-3 px-4 font-bold text-warning-700 dark:text-warning-400 w-[5%]"></th>
                     </tr>
@@ -1368,32 +1370,39 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
                           </td>
                           <td className="py-3 px-4">
                             <Input
-                              type="number"
+                              type="text"
+                              inputMode="decimal"
                               placeholder="0"
-                              value={ingrediente.cantidad === 0 ? '' : ingrediente.cantidad.toString()}
+                              value={ingrediente.cantidad === 0 ? '' : ingrediente.cantidad.toString().replace('.', ',')}
                               onValueChange={(val) => {
                                 if (val.startsWith('-')) return;
                                 if (val === '') {
                                   actualizarIngrediente(index, 'cantidad', 0);
                                   return;
                                 }
-                                const numericValue = parseFloat(val);
-                                if (numericValue < 0) return;
+                                const normalizado = val.replace(',', '.');
+                                const numericValue = parseFloat(normalizado);
+                                if (isNaN(numericValue) || numericValue < 0) return;
                                 if (numericValue > 9999999.999) {
                                   toast.warning('Máximo: 9,999,999.999');
                                   return;
                                 }
-                                if (val.includes('.')) {
-                                  const decimals = val.split('.')[1];
+                                if (normalizado.includes('.')) {
+                                  const decimals = normalizado.split('.')[1];
                                   if (decimals.length > 3) return;
                                 }
-                                const digitsOnly = val.replace('.', '');
+                                const digitsOnly = normalizado.replace('.', '');
                                 if (digitsOnly.length > 10) return;
-                                if (!esFraccionario && val.includes('.')) return;
+                                if (!esFraccionario && normalizado.includes('.')) return;
                                 actualizarIngrediente(index, 'cantidad', numericValue || 0);
                               }}
                               size="sm"
                               variant="bordered"
+                              endContent={
+                                <span className="text-xs text-default-400 font-medium pr-2">
+                                  {ingrediente.unidadMedida || '-'}
+                                </span>
+                              }
                               classNames={{ inputWrapper: "bg-white dark:bg-default-100/50" }}
                             />
                           </td>
@@ -1503,7 +1512,8 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
                               }
                             }}
                             data-ingrediente-id={ingrediente.id}
-                            type="number"
+                            type="text"
+                            inputMode="decimal"
                             label={
                               ingrediente.unidadMedida && ingrediente.unidadMedida.length > 8 ? (
                                 <Tooltip
@@ -1522,32 +1532,31 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
                               )
                             }
                             placeholder="0"
-                            value={ingrediente.cantidad === 0 ? '' : ingrediente.cantidad.toString()}
+                            value={ingrediente.cantidad === 0 ? '' : ingrediente.cantidad.toString().replace('.', ',')}
                             onValueChange={(val) => {
                               if (val.startsWith('-')) return;
                               if (val === '') {
                                 actualizarIngrediente(index, 'cantidad', 0);
                                 return;
                               }
-                              const numericValue = parseFloat(val);
-                              if (numericValue < 0) return;
+                              const normalizado = val.replace(',', '.');
+                              const numericValue = parseFloat(normalizado);
+                              if (isNaN(numericValue) || numericValue < 0) return;
                               if (numericValue > 9999999.999) {
                                 toast.warning('La cantidad no puede superar 9,999,999.999');
                                 return;
                               }
-                              if (val.includes('.')) {
-                                const decimals = val.split('.')[1];
+                              if (normalizado.includes('.')) {
+                                const decimals = normalizado.split('.')[1];
                                 if (decimals.length > 3) return;
                               }
-                              const digitsOnly = val.replace('.', '');
+                              const digitsOnly = normalizado.replace('.', '');
                               if (digitsOnly.length > 10) return;
-                              if (!esFraccionario && val.includes('.')) return;
+                              if (!esFraccionario && normalizado.includes('.')) return;
                               actualizarIngrediente(index, 'cantidad', numericValue || 0);
                             }}
                             size="sm"
                             variant="bordered"
-                            min="0"
-                            step={esFraccionario ? "0.001" : "1"}
                             isRequired
                             classNames={{ inputWrapper: "bg-white dark:bg-default-100/50" }}
                             description="Máx: 9,999,999.999"
