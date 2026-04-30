@@ -959,12 +959,27 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
       if (digitsOnly.length > 10) return;
       if (!esFraccionario && normalizado.includes('.')) return;
 
-      // Si es un número válido, mostrar formateado con puntos de miles (1.234.567,890)
-      if (limpiado && limpiado !== ',' && !isNaN(numericValue)) {
-        setCantidadesTexto(prev => ({ ...prev, [id]: formatearCantidadParaUsuario(numericValue) }));
+      // normalizado termina en '.' cuando el usuario acaba de escribir la coma (ej: "1234567,")
+      const terminaEnComa = normalizado.endsWith('.');
+
+      if (limpiado && limpiado !== ',' && !isNaN(numericValue) && !terminaEnComa) {
+        // Número completo — formatear entero con puntos de miles y preservar ceros decimales finales
+        if (limpiado.includes(',')) {
+          const [intParte, decParte] = limpiado.split(',');
+          const intFormateado = intParte.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+          setCantidadesTexto(prev => ({ ...prev, [id]: `${intFormateado},${decParte}` }));
+        } else {
+          setCantidadesTexto(prev => ({ ...prev, [id]: formatearCantidadParaUsuario(numericValue) }));
+        }
         actualizarIngrediente(index, 'cantidad', numericValue);
+      } else if (terminaEnComa && limpiado !== ',') {
+        // Usuario acaba de escribir la coma — mostrar entero formateado + coma
+        const intParte = limpiado.slice(0, -1);
+        const intFormateado = intParte.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+        setCantidadesTexto(prev => ({ ...prev, [id]: `${intFormateado},` }));
+        actualizarIngrediente(index, 'cantidad', parseFloat(intParte || '0'));
       } else {
-        // Si está escribiendo incompleto (ej: "1234," ), mostrar sin formatear
+        // Incompleto — mostrar sin formatear
         setCantidadesTexto(prev => ({ ...prev, [id]: limpiado }));
       }
     };
