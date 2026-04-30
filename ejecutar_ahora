@@ -1,41 +1,37 @@
-1s
-2s
 Run docker/build-push-action@v5
 GitHub Actions runtime token ACs
 Docker info
 Proxy configuration
 Buildx version
 Builder info
-/usr/bin/docker buildx build --file ./backend/Dockerfile --iidfile /home/runner/work/_temp/docker-actions-toolkit-ILIW2a/build-iidfile-5c9ab7a550.txt --tag ***/kuhub-app:backend-K1.0.19 --metadata-file /home/runner/work/_temp/docker-actions-toolkit-ILIW2a/build-metadata-628dddc583.json --push .
+/usr/bin/docker buildx build --iidfile /home/runner/work/_temp/docker-actions-toolkit-Y7FxjW/build-iidfile-9462f29c1d.txt --tag ***/kuhub-app:frontend-K1.0.19 --metadata-file /home/runner/work/_temp/docker-actions-toolkit-Y7FxjW/build-metadata-d1eabedd62.json --push ./frontend
 #0 building with "default" instance using docker driver
 
 #1 [internal] load build definition from Dockerfile
-#1 transferring dockerfile: 707B done
+#1 transferring dockerfile: 306B done
 #1 DONE 0.0s
 
-#2 [auth] library/maven:pull token for registry-1.docker.io
+#2 [auth] library/nginx:pull token for registry-1.docker.io
 #2 DONE 0.0s
 
-#3 [auth] library/eclipse-temurin:pull token for registry-1.docker.io
+#3 [auth] library/node:pull token for registry-1.docker.io
 #3 DONE 0.0s
 
-#4 [internal] load metadata for docker.io/library/eclipse-temurin:21-jre-alpine
-#4 ...
+#4 [internal] load metadata for docker.io/library/nginx:1.25-alpine
+#4 ERROR: failed to copy: httpReadSeeker: failed open: unexpected status code https://registry-1.docker.io/v2/library/nginx/manifests/sha256:516475cc129da42866742567714ddc681e5eed7b9ee0b9e9c015e464b4221a00: 429 Too Many Requests - Server message: toomanyrequests: You have reached your pull rate limit as '***': dckr_jti_jtHGO949p6W1x239Orvxq-SVg5g=. You may increase the limit by upgrading. https://www.docker.com/increase-rate-limit
 
-#5 [internal] load metadata for docker.io/library/maven:3.9.6-eclipse-temurin-21-alpine
-#5 ERROR: failed to copy: httpReadSeeker: failed open: unexpected status code https://registry-1.docker.io/v2/library/maven/manifests/sha256:9fca6934e64eff26860889804faecb71a522d04b4ebf05574140c71f8e9bc700: 429 Too Many Requests - Server message: toomanyrequests: You have reached your pull rate limit as '***': dckr_jti_abi8zCRYeLgzNa90HisX0_DGqyk=. You may increase the limit by upgrading. https://www.docker.com/increase-rate-limit
-
-#4 [internal] load metadata for docker.io/library/eclipse-temurin:21-jre-alpine
-#4 CANCELED
+#5 [internal] load metadata for docker.io/library/node:20-alpine
+#5 CANCELED
 ------
- > [internal] load metadata for docker.io/library/maven:3.9.6-eclipse-temurin-21-alpine:
+ > [internal] load metadata for docker.io/library/nginx:1.25-alpine:
 ------
-Dockerfile:2
+Dockerfile:8
 --------------------
-   1 |     # ETAPA 1: Build
-   2 | >>> FROM maven:3.9.6-eclipse-temurin-21-alpine AS build
-   3 |     WORKDIR /app
-   4 |     
+   6 |     RUN npm run build
+   7 |
+   8 | >>> FROM nginx:1.25-alpine
+   9 |     COPY --from=build /app/dist /usr/share/nginx/html
+  10 |     COPY nginx.conf /etc/nginx/conf.d/default.conf
 --------------------
-ERROR: failed to build: failed to solve: maven:3.9.6-eclipse-temurin-21-alpine: failed to resolve source metadata for docker.io/library/maven:3.9.6-eclipse-temurin-21-alpine: failed to copy: httpReadSeeker: failed open: unexpected status code https://registry-1.docker.io/v2/library/maven/manifests/sha256:9fca6934e64eff26860889804faecb71a522d04b4ebf05574140c71f8e9bc700: 429 Too Many Requests - Server message: toomanyrequests: You have reached your pull rate limit as '***': dckr_jti_abi8zCRYeLgzNa90HisX0_DGqyk=. You may increase the limit by upgrading. https://www.docker.com/increase-rate-limit
-Error: buildx failed with: ERROR: failed to build: failed to solve: maven:3.9.6-eclipse-temurin-21-alpine: failed to resolve source metadata for docker.io/library/maven:3.9.6-eclipse-temurin-21-alpine: failed to copy: httpReadSeeker: failed open: unexpected status code https://registry-1.docker.io/v2/library/maven/manifests/sha256:9fca6934e64eff26860889804faecb71a522d04b4ebf05574140c71f8e9bc700: 429 Too Many Requests - Server message: toomanyrequests: You have reached your pull rate limit as '***': dckr_jti_abi8zCRYeLgzNa90HisX0_DGqyk=. You may increase the limit by upgrading. https://www.docker.com/increase-rate-limit
+ERROR: failed to build: failed to solve: nginx:1.25-alpine: failed to resolve source metadata for docker.io/library/nginx:1.25-alpine: failed to copy: httpReadSeeker: failed open: unexpected status code https://registry-1.docker.io/v2/library/nginx/manifests/sha256:516475cc129da42866742567714ddc681e5eed7b9ee0b9e9c015e464b4221a00: 429 Too Many Requests - Server message: toomanyrequests: You have reached your pull rate limit as '***': dckr_jti_jtHGO949p6W1x239Orvxq-SVg5g=. You may increase the limit by upgrading. https://www.docker.com/increase-rate-limit
+Error: buildx failed with: ERROR: failed to build: failed to solve: nginx:1.25-alpine: failed to resolve source metadata for docker.io/library/nginx:1.25-alpine: failed to copy: httpReadSeeker: failed open: unexpected status code https://registry-1.docker.io/v2/library/nginx/manifests/sha256:516475cc129da42866742567714ddc681e5eed7b9ee0b9e9c015e464b4221a00: 429 Too Many Requests - Server message: toomanyrequests: You have reached your pull rate limit as '***': dckr_jti_jtHGO949p6W1x239Orvxq-SVg5g=. You may increase the limit by upgrading. https://www.docker.com/increase-rate-limit
