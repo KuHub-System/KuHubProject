@@ -897,7 +897,17 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
     // Formatea cantidad con separador de miles (.) y decimal (,) solo para mostrar al usuario
     // El valor interno se mantiene sin formato y se guarda en BD como NUMERIC(10, 3) de PostgreSQL
     const formatearCantidadParaUsuario = (valor: number): string => {
-      return valor.toLocaleString('es-CL', { minimumFractionDigits: 0, maximumFractionDigits: 3 });
+      const partes = valor.toString().split('.');
+      const enteros = partes[0];
+      const decimales = partes[1] || '';
+
+      // Agregar puntos de miles a los enteros
+      const enterosFormateados = enteros.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+
+      // Combinar: enteros.decimales (con coma como separador decimal)
+      return decimales
+        ? `${enterosFormateados},${decimales}`
+        : enterosFormateados;
     };
 
     const validarYActualizarCantidad = (
