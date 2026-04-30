@@ -913,10 +913,24 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
         return;
       }
 
-      // Normalizar: eliminar separadores de miles (.) y convertir coma a punto
-      const normalizado = val.replace(/\./g, '').replace(',', '.');
+      // Validar que solo contenga números y punto (rechazar coma)
+      if (!/^[\d.]*$/.test(val)) {
+        return;
+      }
 
-      // Validar máximo 3 decimales ANTES de cualquier otra validación
+      // Normalizar: eliminar separadores de miles (.)
+      const partes = val.split('.');
+      let normalizado = '';
+
+      // Si hay múltiples puntos, solo tomar el último como decimal
+      if (partes.length > 2) {
+        // Reconstruir: todos los puntos excepto el último son miles
+        normalizado = partes.slice(0, -1).join('') + '.' + partes[partes.length - 1];
+      } else {
+        normalizado = val;
+      }
+
+      // Validar máximo 3 decimales
       if (normalizado.includes('.')) {
         const decimals = normalizado.split('.')[1];
         if (decimals.length > 3) {
