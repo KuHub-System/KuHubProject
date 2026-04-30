@@ -1,143 +1,41 @@
+1s
+2s
 Run docker/build-push-action@v5
 GitHub Actions runtime token ACs
 Docker info
 Proxy configuration
 Buildx version
 Builder info
-/usr/bin/docker buildx build --iidfile /home/runner/work/_temp/docker-actions-toolkit-harwbl/build-iidfile-c3dc608cc9.txt --tag ***/kuhub-app:frontend-K1.0.19 --metadata-file /home/runner/work/_temp/docker-actions-toolkit-harwbl/build-metadata-61998d4cf1.json --push ./frontend
+/usr/bin/docker buildx build --file ./backend/Dockerfile --iidfile /home/runner/work/_temp/docker-actions-toolkit-ILIW2a/build-iidfile-5c9ab7a550.txt --tag ***/kuhub-app:backend-K1.0.19 --metadata-file /home/runner/work/_temp/docker-actions-toolkit-ILIW2a/build-metadata-628dddc583.json --push .
 #0 building with "default" instance using docker driver
 
 #1 [internal] load build definition from Dockerfile
-#1 transferring dockerfile: 306B done
+#1 transferring dockerfile: 707B done
 #1 DONE 0.0s
 
-#2 [auth] library/node:pull token for registry-1.docker.io
+#2 [auth] library/maven:pull token for registry-1.docker.io
 #2 DONE 0.0s
 
-#3 [auth] library/nginx:pull token for registry-1.docker.io
+#3 [auth] library/eclipse-temurin:pull token for registry-1.docker.io
 #3 DONE 0.0s
 
-#4 [internal] load metadata for docker.io/library/node:20-alpine
+#4 [internal] load metadata for docker.io/library/eclipse-temurin:21-jre-alpine
 #4 ...
 
-#5 [internal] load metadata for docker.io/library/nginx:1.25-alpine
-#5 DONE 0.7s
+#5 [internal] load metadata for docker.io/library/maven:3.9.6-eclipse-temurin-21-alpine
+#5 ERROR: failed to copy: httpReadSeeker: failed open: unexpected status code https://registry-1.docker.io/v2/library/maven/manifests/sha256:9fca6934e64eff26860889804faecb71a522d04b4ebf05574140c71f8e9bc700: 429 Too Many Requests - Server message: toomanyrequests: You have reached your pull rate limit as '***': dckr_jti_abi8zCRYeLgzNa90HisX0_DGqyk=. You may increase the limit by upgrading. https://www.docker.com/increase-rate-limit
 
-#4 [internal] load metadata for docker.io/library/node:20-alpine
-#4 DONE 0.7s
-
-#6 [internal] load .dockerignore
-#6 transferring context: 2B done
-#6 DONE 0.0s
-
-#7 [build 1/6] FROM docker.io/library/node:20-alpine@sha256:fb4cd12c85ee03686f6af5362a0b0d56d50c58a04632e6c0fb8363f609372293
-#7 resolve docker.io/library/node:20-alpine@sha256:fb4cd12c85ee03686f6af5362a0b0d56d50c58a04632e6c0fb8363f609372293 0.0s done
-#7 ...
-
-#8 [internal] load build context
-#8 transferring context: 8.01MB 0.1s done
-#8 DONE 0.1s
-
-#7 [build 1/6] FROM docker.io/library/node:20-alpine@sha256:fb4cd12c85ee03686f6af5362a0b0d56d50c58a04632e6c0fb8363f609372293
-#7 sha256:11cedc39e663e7c5d5cb9cc77a461a0d2adc25537b94e6831a6108f09cb2001b 6.52kB / 6.52kB done
-#7 sha256:fb4cd12c85ee03686f6af5362a0b0d56d50c58a04632e6c0fb8363f609372293 7.67kB / 7.67kB done
-#7 sha256:afdf98210b07b586eb71fa22ba2e432e058e4cd1304d31ed60888755b8c865fb 1.72kB / 1.72kB done
-#7 sha256:4feea04c154301db6f4a496efa397b3db96603b1c009c797cfdde77bea8b3287 0B / 43.23MB 0.5s
-#7 sha256:b2cbbfe903b0821005780EME9M9cSy9FvfHvcx2gMPkp1H5Dj4YaKufPRsAyon8Tf 0B / 1.26MB 0.5s
-#7 sha256:fff4e2c1b189bf87d63ad8bd07f7f4eb288d6f2b6a07a8bb44c60e8c075d2096 0B / 445B 0.6s
-#7 sha256:4feea04c154301db6f4a496efa397b3db96603b1c009c797cfdde77bea8b3287 20.97MB / 43.23MB 0.8s
-#7 sha256:b2cbbfe903b0821005780EME9M9cSy9FvfHvcx2gMPkp1H5Dj4YaKufPRsAyon8Tf 1.26MB / 1.26MB 0.6s done
-#7 sha256:fff4e2c1b189bf87d63ad8bd07f7f4eb288d6f2b6a07a8bb44c60e8c075d2096 445B / 445B 0.7s done
-#7 sha256:4feea04c154301db6f4a496efa397b3db96603b1c009c797cfdde77bea8b3287 33.55MB / 43.23MB 0.9s
-#7 sha256:4feea04c154301db6f4a496efa397b3db96603b1c009c797cfdde77bea8b3287 43.23MB / 43.23MB 1.0s done
-#7 extracting sha256:4feea04c154301db6f4a496efa397b3db96603b1c009c797cfdde77bea8b3287
-#7 ...
-
-#9 [stage-1 1/3] FROM docker.io/library/nginx:1.25-alpine@sha256:516475cc129da42866742567714ddc681e5eed7b9ee0b9e9c015e464b4221a00
-#9 resolve docker.io/library/nginx:1.25-alpine@sha256:516475cc129da42866742567714ddc681e5eed7b9ee0b9e9c015e464b4221a00 done
-#9 sha256:fc21a1d387f514f53589abea6d67cd6b329dfd3c9059bc96a552af3b3c97b413 3.99MB / 3.99MB 0.2s done
-#9 sha256:13fcfbc94648785b918ecc1af675ac5187cdfc30f4fdaf9afa8bd2e9dedf548b 954B / 954B 0.3s done
-#9 sha256:516475cc129da42866742567714ddc681e5eed7b9ee0b9e9c015e464b4221a00 9.07kB / 9.07kB done
-#9 sha256:501d84f5d06487ff81e506134dc922ed4fd2080d5521eb5b6ee4054fa17d15c4 10.80kB / 10.80kB done
-#9 sha256:721fa00bc549df26b3e67cc558ff176112d4ba69847537766f3c28e171d180e7 2.50kB / 2.50kB done
-#9 sha256:e6ef242c157026935bf8a69e6cf19f8f6635e44507c813daf0cc644f2e22396b 629B / 629B 0.3s done
-#9 extracting sha256:fc21a1d387f514f53589abea6d67cd6b329dfd3c9059bc96a552af3b3c97b413 0.2s done
-#9 sha256:d4bca490e609acaaf54ca73363442d31a31fd136a47a20a12370cf2025f0a10b 393B / 393B 0.4s done
-#9 sha256:5406ed7b06d9a94b5bd15843d2a1c7e38796a3ec5dc7f40f16f70cc1d045f453 1.21kB / 1.21kB 0.4s done
-#9 sha256:8a3742a9529dc5c00974dfcf5e465be9f1606ff8a1911527b3928cf86ad57465 1.40kB / 1.40kB 0.4s done
-#9 sha256:0d0c16747d2c6b6c26c064652afcb964c15f1b1e596ec052b2aa19b83948ae27 13.04MB / 13.04MB 0.6s done
-#9 extracting sha256:e6ef242c157026935bf8a69e6cf19f8f6635e44507c813daf0cc644f2e22396b done
-#9 extracting sha256:13fcfbc94648785b918ecc1af675ac5187cdfc30f4fdaf9afa8bd2e9dedf548b done
-#9 extracting sha256:d4bca490e609acaaf54ca73363442d31a31fd136a47a20a12370cf2025f0a10b done
-#9 extracting sha256:5406ed7b06d9a94b5bd15843d2a1c7e38796a3ec5dc7f40f16f70cc1d045f453 done
-#9 extracting sha256:8a3742a9529dc5c00974dfcf5e465be9f1606ff8a1911527b3928cf86ad57465 done
-#9 extracting sha256:0d0c16747d2c6b6c26c064652afcb964c15f1b1e596ec052b2aa19b83948ae27 0.5s done
-#9 DONE 1.5s
-
-#7 [build 1/6] FROM docker.io/library/node:20-alpine@sha256:fb4cd12c85ee03686f6af5362a0b0d56d50c58a04632e6c0fb8363f609372293
-#7 extracting sha256:4feea04c154301db6f4a496efa397b3db96603b1c009c797cfdde77bea8b3287 1.5s done
-#7 extracting sha256:b2cbbfe903b0821005780EME9M9cSy9FvfHvcx2gMPkp1H5Dj4YaKufPRsAyon8Tf
-#7 extracting sha256:b2cbbfe903b0821005780EME9M9cSy9FvfHvcx2gMPkp1H5Dj4YaKufPRsAyon8Tf 0.0s done
-#7 extracting sha256:fff4e2c1b189bf87d63ad8bd07f7f4eb288d6f2b6a07a8bb44c60e8c075d2096 done
-#7 DONE 2.8s
-
-#10 [build 2/6] WORKDIR /app
-#10 DONE 0.0s
-
-#11 [build 3/6] COPY package*.json ./
-#11 DONE 0.0s
-
-#12 [build 4/6] RUN npm ci
-#12 12.71
-#12 12.71 added 541 packages, and audited 542 packages in 13s
-#12 12.71
-#12 12.71 48 packages are looking for funding
-#12 12.71   run `npm fund` for details
-#12 12.74
-#12 12.74 13 vulnerabilities (3 moderate, 8 high, 2 critical)
-#12 12.74
-#12 12.74 To address issues that do not require attention, run:
-#12 12.74   npm audit fix
-#12 12.74
-#12 12.74 To address all issues possible (including breaking changes), run:
-#12 12.74   npm audit fix --force
-#12 12.74
-#12 12.74 Some issues need review, and may require choosing
-#12 12.74 a different dependency.
-#12 12.74
-#12 12.74 Run `npm audit` for details.
-#12 12.74 npm notice
-#12 12.74 npm notice New major version of npm available! 10.8.2 -> 11.13.0
-#12 12.74 npm notice Changelog: https://github.com/npm/cli/releases/tag/v11.13.0
-#12 12.74 npm notice To update run: npm install -g npm@11.13.0
-#12 12.74 npm notice
-#12 DONE 14.4s
-
-#13 [build 5/6] COPY . .
-#13 DONE 0.1s
-
-#14 [build 6/6] RUN npm run build
-#14 0.279
-#14 0.279 > kuhub-system@0.1.0 build
-#14 0.279 > tsc --noCheck && vite build
-#14 0.279
-#14 3.479 src/pages/pedido-semanal-a-bodega.tsx(1327,22): error TS17008: JSX element 'div' has no corresponding closing tag.
-#14 ERROR: process "/bin/sh -c npm run build" did not complete successfully: exit code: 2
+#4 [internal] load metadata for docker.io/library/eclipse-temurin:21-jre-alpine
+#4 CANCELED
 ------
- > [build 6/6] RUN npm run build:
-0.279
-0.279 > kuhub-system@0.1.0 build
-0.279 > tsc --noCheck && vite build
-0.279
-3.479 src/pages/pedido-semanal-a-bodega.tsx(1327,22): error TS17008: JSX element 'div' has no corresponding closing tag.
+ > [internal] load metadata for docker.io/library/maven:3.9.6-eclipse-temurin-21-alpine:
 ------
-Dockerfile:6
+Dockerfile:2
 --------------------
-   4 |     RUN npm ci
-   5 |     COPY . .
-   6 | >>> RUN npm run build
-   7 |     
-   8 |     FROM nginx:1.25-alpine
+   1 |     # ETAPA 1: Build
+   2 | >>> FROM maven:3.9.6-eclipse-temurin-21-alpine AS build
+   3 |     WORKDIR /app
+   4 |     
 --------------------
-ERROR: failed to build: failed to solve: process "/bin/sh -c npm run build" did not complete successfully: exit code: 2
-Error: buildx failed with: ERROR: failed to build: failed to solve: process "/bin/sh -c npm run build" did not complete successfully: exit code: 2
+ERROR: failed to build: failed to solve: maven:3.9.6-eclipse-temurin-21-alpine: failed to resolve source metadata for docker.io/library/maven:3.9.6-eclipse-temurin-21-alpine: failed to copy: httpReadSeeker: failed open: unexpected status code https://registry-1.docker.io/v2/library/maven/manifests/sha256:9fca6934e64eff26860889804faecb71a522d04b4ebf05574140c71f8e9bc700: 429 Too Many Requests - Server message: toomanyrequests: You have reached your pull rate limit as '***': dckr_jti_abi8zCRYeLgzNa90HisX0_DGqyk=. You may increase the limit by upgrading. https://www.docker.com/increase-rate-limit
+Error: buildx failed with: ERROR: failed to build: failed to solve: maven:3.9.6-eclipse-temurin-21-alpine: failed to resolve source metadata for docker.io/library/maven:3.9.6-eclipse-temurin-21-alpine: failed to copy: httpReadSeeker: failed open: unexpected status code https://registry-1.docker.io/v2/library/maven/manifests/sha256:9fca6934e64eff26860889804faecb71a522d04b4ebf05574140c71f8e9bc700: 429 Too Many Requests - Server message: toomanyrequests: You have reached your pull rate limit as '***': dckr_jti_abi8zCRYeLgzNa90HisX0_DGqyk=. You may increase the limit by upgrading. https://www.docker.com/increase-rate-limit
