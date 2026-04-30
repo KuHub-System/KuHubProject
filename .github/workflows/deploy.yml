@@ -22,6 +22,9 @@ jobs:
           username: ${{ secrets.DOCKER_AWS_AC_USERNAME }}
           password: ${{ secrets.DOCKER_AWS_AC_PASSWORD }}
 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
       - name: Build & Push Backend
         uses: docker/build-push-action@v5
         with:
@@ -29,6 +32,8 @@ jobs:
           file: ./backend/Dockerfile
           push: true
           tags: ${{ secrets.DOCKER_AWS_AC_USERNAME }}/kuhub-app:backend-${{ steps.vars.outputs.tag }}
+          cache-from: type=registry,ref=${{ secrets.DOCKER_AWS_AC_USERNAME }}/kuhub-app:backend-cache
+          cache-to: type=registry,ref=${{ secrets.DOCKER_AWS_AC_USERNAME }}/kuhub-app:backend-cache,mode=max
 
       - name: Build & Push Frontend
         uses: docker/build-push-action@v5
@@ -36,6 +41,8 @@ jobs:
           context: ./frontend
           push: true
           tags: ${{ secrets.DOCKER_AWS_AC_USERNAME }}/kuhub-app:frontend-${{ steps.vars.outputs.tag }}
+          cache-from: type=registry,ref=${{ secrets.DOCKER_AWS_AC_USERNAME }}/kuhub-app:frontend-cache
+          cache-to: type=registry,ref=${{ secrets.DOCKER_AWS_AC_USERNAME }}/kuhub-app:frontend-cache,mode=max
 
       - name: Deploy to AWS Lightsail
         run: |
