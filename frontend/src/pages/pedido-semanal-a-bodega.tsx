@@ -939,7 +939,9 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
       if (digitsOnly.length > 10) return;
       if (!esFraccionario && normalizado.includes('.')) return;
 
+      // Actualizar cantidad y formatear el texto para mostrar con separadores de miles
       actualizarIngrediente(index, 'cantidad', numericValue);
+      setCantidadesTexto(prev => ({ ...prev, [id]: formatearCantidadParaUsuario(numericValue) }));
     };
 
     // Inicializar idSemana desde sessionStorage (cache) o valor guardado en receta
@@ -1376,7 +1378,7 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
                 <table className="w-full text-sm" style={{ tableLayout: 'fixed' }}>
                   <thead className="bg-warning-50 dark:bg-warning-900/20">
                     <tr>
-                      <th className="text-center py-3 px-4 font-bold text-warning-700 dark:text-warning-400 w-[5%] truncate">#</th>
+                      <th className="text-center py-3 px-4 font-bold text-warning-700 dark:text-warning-400 w-[5%]">#</th>
                       <th className="text-center py-3 px-4 font-bold text-warning-700 dark:text-warning-400 w-[28%] truncate">Producto</th>
                       <th className="text-center py-3 px-4 font-bold text-warning-700 dark:text-warning-400 w-[27%] truncate">Cantidad</th>
                       <th className="text-center py-3 px-4 font-bold text-warning-700 dark:text-warning-400 w-[24%] truncate">Observación</th>
