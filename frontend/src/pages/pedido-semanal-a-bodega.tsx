@@ -1319,16 +1319,17 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
           {vistaTabla ? (
             // === VISTA TABLA ===
             <div className="space-y-3">
-              <div className="flex justify-end mb-2">
+              <div className="flex justify-end mb-3">
                 <Button
                   isIconOnly
-                  variant="light"
-                  size="sm"
+                  variant="flat"
+                  size="md"
                   onPress={() => setVistaTabla(false)}
-                  className="text-warning-600 hover:bg-warning-50"
+                  color="warning"
+                  className="hover:bg-warning-100 dark:hover:bg-warning-900/30"
                   title="Volver a vista de tarjetas"
                 >
-                  <Icon icon="lucide:th-large" width={20} />
+                  <Icon icon="lucide:th-large" width={22} />
                 </Button>
               </div>
               <div className="overflow-x-auto rounded-lg border border-default-200 dark:border-default-100">
