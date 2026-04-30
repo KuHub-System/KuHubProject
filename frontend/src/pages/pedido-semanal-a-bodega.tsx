@@ -908,44 +908,33 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
       isTabla: boolean
     ) => {
       if (val === '') {
-        setCantidadesTexto(prev => ({ ...prev, [id]: val }));
+        setCantidadesTexto(prev => ({ ...prev, [id]: '' }));
         actualizarIngrediente(index, 'cantidad', 0);
         return;
       }
 
-      // Validar que solo contenga números y punto (rechazar coma)
-      if (!/^[\d.]*$/.test(val)) {
-        return;
+      // Eliminar puntos (el usuario NO debe escribirlos, el sistema los agrega)
+      // Dejar números y coma (que será el decimal)
+      let limpiado = val.replace(/\./g, ''); // Quitar puntos que intente escribir
+
+      // Validar que solo tenga números y UNA coma
+      const cantidadComas = (limpiado.match(/,/g) || []).length;
+      if (cantidadComas > 1) {
+        return; // Rechazar si más de una coma
       }
 
-      // Normalizar: eliminar separadores de miles (.)
-      const partes = val.split('.');
-      let normalizado = '';
+      // Normalizar coma a punto para cálculos
+      const normalizado = limpiado.replace(',', '.');
 
-      // Si hay múltiples puntos, solo tomar el último como decimal
-      if (partes.length > 2) {
-        // Reconstruir: todos los puntos excepto el último son miles
-        normalizado = partes.slice(0, -1).join('') + '.' + partes[partes.length - 1];
-      } else {
-        normalizado = val;
-      }
-
-      // Validar máximo 3 decimales
+      // Validar máximo 3 decimales después de la coma
       if (normalizado.includes('.')) {
         const decimals = normalizado.split('.')[1];
         if (decimals.length > 3) {
-          // Rechazar si intenta escribir más de 3 decimales
-          return;
+          return; // Rechazar si más de 3 decimales
         }
       }
 
-      const numericValue = parseFloat(normalizado);
-
-      // Valor incompleto (ej: "1,") — dejar que el usuario siga escribiendo
-      if (isNaN(numericValue)) {
-        setCantidadesTexto(prev => ({ ...prev, [id]: val }));
-        return;
-      }
+      const numericValue = parseFloat(normalizado || '0');
 
       if (numericValue < 0) return;
 
@@ -960,12 +949,14 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
       if (digitsOnly.length > 10) return;
       if (!esFraccionario && normalizado.includes('.')) return;
 
-      // Actualizar texto local (permite escribir coma e intermedios válidos)
-      setCantidadesTexto(prev => ({ ...prev, [id]: val }));
-
-      // Actualizar cantidad y formatear el texto para mostrar con separadores de miles
-      actualizarIngrediente(index, 'cantidad', numericValue);
-      setCantidadesTexto(prev => ({ ...prev, [id]: formatearCantidadParaUsuario(numericValue) }));
+      // Si es un número válido, mostrar formateado con puntos de miles (1.234.567,890)
+      if (limpiado && limpiado !== ',' && !isNaN(numericValue)) {
+        setCantidadesTexto(prev => ({ ...prev, [id]: formatearCantidadParaUsuario(numericValue) }));
+        actualizarIngrediente(index, 'cantidad', numericValue);
+      } else {
+        // Si está escribiendo incompleto (ej: "1234," ), mostrar sin formatear
+        setCantidadesTexto(prev => ({ ...prev, [id]: limpiado }));
+      }
     };
 
     // Inicializar idSemana desde sessionStorage (cache) o valor guardado en receta
