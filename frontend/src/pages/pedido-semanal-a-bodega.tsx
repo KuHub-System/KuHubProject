@@ -907,20 +907,32 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
       esFraccionario: boolean,
       isTabla: boolean
     ) => {
-      // Actualizar texto local siempre (permite escribir coma e intermedios)
-      setCantidadesTexto(prev => ({ ...prev, [id]: val }));
-
       if (val === '') {
+        setCantidadesTexto(prev => ({ ...prev, [id]: val }));
         actualizarIngrediente(index, 'cantidad', 0);
         return;
       }
 
       // Normalizar: eliminar separadores de miles (.) y convertir coma a punto
       const normalizado = val.replace(/\./g, '').replace(',', '.');
+
+      // Validar máximo 3 decimales ANTES de cualquier otra validación
+      if (normalizado.includes('.')) {
+        const decimals = normalizado.split('.')[1];
+        if (decimals.length > 3) {
+          // Rechazar si intenta escribir más de 3 decimales
+          return;
+        }
+      }
+
       const numericValue = parseFloat(normalizado);
 
       // Valor incompleto (ej: "1,") — dejar que el usuario siga escribiendo
-      if (isNaN(numericValue)) return;
+      if (isNaN(numericValue)) {
+        setCantidadesTexto(prev => ({ ...prev, [id]: val }));
+        return;
+      }
+
       if (numericValue < 0) return;
 
       if (numericValue > 9999999.999) {
@@ -930,14 +942,12 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
         return;
       }
 
-      if (normalizado.includes('.')) {
-        const decimals = normalizado.split('.')[1];
-        if (decimals.length > 3) return;
-      }
-
       const digitsOnly = normalizado.replace('.', '');
       if (digitsOnly.length > 10) return;
       if (!esFraccionario && normalizado.includes('.')) return;
+
+      // Actualizar texto local (permite escribir coma e intermedios válidos)
+      setCantidadesTexto(prev => ({ ...prev, [id]: val }));
 
       // Actualizar cantidad y formatear el texto para mostrar con separadores de miles
       actualizarIngrediente(index, 'cantidad', numericValue);
