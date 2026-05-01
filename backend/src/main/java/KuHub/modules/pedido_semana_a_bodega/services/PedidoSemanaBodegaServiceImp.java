@@ -311,8 +311,8 @@ public class PedidoSemanaBodegaServiceImp implements PedidoSemanaBodegaService{
                 // Si A, B y C están todos vacíos → ignorar fila
                 if (celdaA.isBlank() && celdaB.isBlank() && celdaC.isBlank()) continue;
 
-                String nombreExcel        = celdaA.trim();
-                String nombreParaBusqueda = StringUtils.capitalizarPalabras(celdaA);
+                String nombreExcel        = celdaB.trim();
+                String nombreParaBusqueda = StringUtils.capitalizarPalabras(celdaB);
                 BigDecimal cantidad       = parseCantidad(row.getCell(3));
 
                 String observacion = null;
