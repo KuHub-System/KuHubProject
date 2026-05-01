@@ -396,7 +396,11 @@ public class SpringSecurityConfig {
                                 "/api/v*/pedido-semana-bodega/search-recipes"
                         ).hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR", "PROFESOR_A_CARGO", "DOCENTE")
 
-                        // 2b. CREACIÓN (POST): Solo quienes diseñan el programa académico
+                        // 2b. IMPORTAR EXCEL: procesamiento de archivo — mismos roles que creación
+                        .requestMatchers(HttpMethod.POST, "/api/v*/pedido-semana-bodega/importar-excel")
+                        .hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR", "PROFESOR_A_CARGO")
+
+                        // 2c. CREACIÓN (POST): Solo quienes diseñan el programa académico
                         .requestMatchers(HttpMethod.POST, "/api/v*/pedido-semana-bodega/**", "/api/v*/detalle-pedido-semana-bodega/**")
                         .hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR", "PROFESOR_A_CARGO")
 

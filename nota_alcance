@@ -1323,6 +1323,34 @@ PENDIENTE DE IMPLEMENTAR O DEFINIR:
         permite GESTOR_PEDIDOS y superiores).
       Frontend: pendiente de conexión desde solicitud-service.ts
 
+  [✓] Importación Excel — Pedido Semanal a Bodega, endpoint backend (2026-04-30):
+      Apache POI (poi-ooxml 5.3.0) agregado a pom.xml.
+      POST /api/v1/pedido-semana-bodega/importar-excel (multipart/form-data, campo "archivo").
+      Lee filas 12-80 del Excel (A=nombre producto, D=cantidad, E=observación opcional).
+      Regla de omisión: si columnas A+B+C están todas vacías → fila ignorada.
+      Proceso: nombre col-A → StringUtils.capitalizarPalabras() →
+      ProductoRepository.findByNombreProductoAndActivo(nombre, true).
+      Sin excepción si no encuentra: acumula en lista con estado "no_encontrado".
+      Record de respuesta ImportarExcelResultado:
+        resultados[] con { fila, nombreExcel, idProducto, nombreProducto,
+        nombreUnidadMedida (JOIN unidad_medida), cantidad, observacion, estado }.
+        totalOk, totalNoEncontrados.
+      Archivos: pom.xml (+poi-ooxml 5.3.0), ImportarExcelResultado.java (nuevo),
+      PedidoSemanaBodegaService.java (+firma), PedidoSemanaBodegaServiceImp.java (+impl,
+      +ProductoRepository @Autowired, +getCellText, +parseCantidad helpers privados),
+      PedidoSemanaBodegaController.java (+endpoint).
+      SpringSecurityConfig: regla explícita POST /api/v*/pedido-semana-bodega/importar-excel
+      antes del bloque 2c (mismos roles: ADMINISTRADOR, CO_ADMINISTRADOR, PROFESOR_A_CARGO).
+      Frontend (2026-04-30): IMPLEMENTADO.
+      Botón "Importar Excel" en ModalFooter del modal Nuevo/Editar Pedido Semanal,
+      entre Cancelar y Crear Pedido Semanal. Input[type=file] oculto (accept .xlsx,.xlsm,.xls).
+      isImporting bloquea Cancelar y Crear durante el upload.
+      importarExcelPedidoService() en receta-service.ts (FormData multipart/form-data).
+      useImperativeHandle: importarDesdeExcel() en FormularioReceta inyecta los ingredientes
+      "ok" en el state existente. Toasts: success con count ok, warning con nombres (≤3)
+      o count (>3) de no encontrados.
+      Tipos: IResultadoItemExcel, IImportarExcelResultado en receta.types.ts.
+
   [✓] Endpoint de resumen histórico de pedidos (2026-04-23):
       Estructura base del módulo gestion_pedido completada con DTOs, excepciones
       y documentación CLAUDE.md específica del módulo.

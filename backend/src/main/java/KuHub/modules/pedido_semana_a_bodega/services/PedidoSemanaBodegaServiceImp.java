@@ -1,6 +1,8 @@
 package KuHub.modules.pedido_semana_a_bodega.services;
 
 import KuHub.modules.gestion_inventario.dtos.request.SearchDTO;
+import KuHub.modules.gestion_inventario.entity.Producto;
+import KuHub.modules.gestion_inventario.repository.ProductoRepository;
 import KuHub.modules.gestion_inventario.services.ProductoService;
 import KuHub.modules.pedido_semana_a_bodega.dtos.projection.CountPedidoSemanaBodegaAndStatusView;
 import KuHub.modules.pedido_semana_a_bodega.dtos.request.dto.PedidoSemanaBodegaItemDTO;
@@ -8,6 +10,7 @@ import KuHub.modules.pedido_semana_a_bodega.dtos.request.dto.PedidoSemanaBodegaW
 import KuHub.modules.pedido_semana_a_bodega.dtos.respose.projection.DetailsByUpdateView;
 import KuHub.modules.pedido_semana_a_bodega.dtos.respose.projection.PedidoSemanaBodegaWithDetailsView;
 import KuHub.modules.pedido_semana_a_bodega.dtos.respose.record.DetailsByUpdateRec;
+import KuHub.modules.pedido_semana_a_bodega.dtos.respose.record.ImportarExcelResultado;
 import KuHub.modules.pedido_semana_a_bodega.dtos.respose.record.PedidoSemanaBodegasPage;
 import KuHub.modules.pedido_semana_a_bodega.dtos.request.PedidoSemanaBodegaWithDetailsUpdateDTO;
 import KuHub.modules.pedido_semana_a_bodega.entity.DetallePedidoSemanaBodega;
@@ -16,15 +19,19 @@ import KuHub.modules.pedido_semana_a_bodega.exceptions.PedidoSemanaBodegaExcepti
 import KuHub.modules.pedido_semana_a_bodega.repository.DetallePedidoSemanaBodegaRepository;
 import KuHub.modules.pedido_semana_a_bodega.repository.PedidoSemanaBodegaRepository;
 import KuHub.utils.PaginationUtils;
+import KuHub.utils.StringUtils;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.poi.ss.usermodel.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import KuHub.utils.StringUtils;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -32,6 +39,7 @@ import java.util.stream.Collectors;
 @Service
 public class PedidoSemanaBodegaServiceImp implements PedidoSemanaBodegaService{
 
+    /**Repositories*/
     @Autowired
     private PedidoSemanaBodegaRepository recetaRepository;
 
@@ -39,8 +47,13 @@ public class PedidoSemanaBodegaServiceImp implements PedidoSemanaBodegaService{
     private DetallePedidoSemanaBodegaRepository detallePedidoSemanaBodegaRepository;
 
     @Autowired
+    private ProductoRepository productoRepository;
+
+    /**Services*/
+    @Autowired
     private ProductoService productoService;
 
+    /**Others*/
     @Autowired
     private ObjectMapper objectMapper;
 
@@ -269,6 +282,82 @@ public class PedidoSemanaBodegaServiceImp implements PedidoSemanaBodegaService{
         return false;
     }
 
+    /** Parsea un archivo Excel (.xlsx/.xlsm) leyendo filas 12-80, cruza nombres de productos con BD
+     *  y retorna resultados separados en encontrados y no encontrados. */
+    @Transactional(readOnly = true)
+    @Override
+    public ImportarExcelResultado importarExcelProductos(MultipartFile archivo) {
+        if (archivo.isEmpty()) {
+            throw new PedidoSemanaBodegaException("El archivo Excel está vacío.", HttpStatus.BAD_REQUEST);
+        }
+
+        List<ImportarExcelResultado.ResultadoItem> resultados = new ArrayList<>();
+
+        try (Workbook workbook = WorkbookFactory.create(archivo.getInputStream())) {
+            Sheet sheet = workbook.getSheetAt(0);
+            DataFormatter formatter = new DataFormatter();
+
+            int filaInicio = 11; // Fila 12 en Excel (índice 0-based)
+            int filaFin    = 79; // Fila 80 en Excel (índice 0-based)
+
+            for (int i = filaInicio; i <= filaFin; i++) {
+                Row row = sheet.getRow(i);
+                if (row == null) continue;
+
+                String celdaA = getCellText(row.getCell(0), formatter);
+                String celdaB = getCellText(row.getCell(1), formatter);
+                String celdaC = getCellText(row.getCell(2), formatter);
+
+                // Si A, B y C están todos vacíos → ignorar fila
+                if (celdaA.isBlank() && celdaB.isBlank() && celdaC.isBlank()) continue;
+
+                String nombreExcel        = celdaA.trim();
+                String nombreParaBusqueda = StringUtils.capitalizarPalabras(celdaA);
+                BigDecimal cantidad       = parseCantidad(row.getCell(3));
+
+                String observacion = null;
+                String celdaE = getCellText(row.getCell(4), formatter);
+                if (!celdaE.isBlank()) {
+                    observacion = StringUtils.normalizeSpaces(celdaE);
+                }
+
+                int filaNumero = i + 1;
+
+                Optional<Producto> productoOpt =
+                        productoRepository.findByNombreProductoAndActivo(nombreParaBusqueda, true);
+
+                if (productoOpt.isEmpty()) {
+                    resultados.add(new ImportarExcelResultado.ResultadoItem(
+                            filaNumero, nombreExcel, null, null, null,
+                            cantidad, observacion, "no_encontrado"
+                    ));
+                } else {
+                    Producto producto = productoOpt.get();
+                    resultados.add(new ImportarExcelResultado.ResultadoItem(
+                            filaNumero,
+                            nombreExcel,
+                            producto.getIdProducto(),
+                            producto.getNombreProducto(),
+                            producto.getUnidadMedida().getNombreUnidad(),
+                            cantidad,
+                            observacion,
+                            "ok"
+                    ));
+                }
+            }
+        } catch (IOException e) {
+            log.error("Error al leer el archivo Excel: {}", e.getMessage());
+            throw new PedidoSemanaBodegaException("No se pudo procesar el archivo Excel.", HttpStatus.BAD_REQUEST);
+        }
+
+        long totalOk             = resultados.stream().filter(r -> "ok".equals(r.estado())).count();
+        long totalNoEncontrados  = resultados.stream().filter(r -> "no_encontrado".equals(r.estado())).count();
+
+        log.info("Importación Excel finalizada: {} encontrados, {} no encontrados.", totalOk, totalNoEncontrados);
+
+        return new ImportarExcelResultado(resultados, (int) totalOk, (int) totalNoEncontrados);
+    }
+
     /** Procesa y elimina los ingredientes desmarcados en el frontend, validando que pertenezcan a la receta. */
     private int processDeletions(Integer idReceta, List<Integer> idsToDelete, Map<Integer, DetailsByUpdateRec> currentMap) {
         if (idsToDelete == null || idsToDelete.isEmpty()) {
@@ -372,6 +461,35 @@ public class PedidoSemanaBodegaServiceImp implements PedidoSemanaBodegaService{
         }
 
         return 0;
+    }
+
+    /** Retorna el texto de una celda como String, usando DataFormatter para manejar tipos numéricos y fórmulas. */
+    private String getCellText(Cell cell, DataFormatter formatter) {
+        if (cell == null) return "";
+        return formatter.formatCellValue(cell).trim();
+    }
+
+    /** Parsea la cantidad de la columna D desde celdas numéricas o texto con coma decimal (es-CL). */
+    private BigDecimal parseCantidad(Cell cell) {
+        if (cell == null) return null;
+        CellType type = cell.getCellType() == CellType.FORMULA
+                ? cell.getCachedFormulaResultType()
+                : cell.getCellType();
+        if (type == CellType.NUMERIC) {
+            return BigDecimal.valueOf(cell.getNumericCellValue())
+                    .setScale(3, RoundingMode.HALF_UP);
+        }
+        if (type == CellType.STRING) {
+            String val = cell.getStringCellValue().trim()
+                    .replace(".", "")
+                    .replace(",", ".");
+            try {
+                return new BigDecimal(val).setScale(3, RoundingMode.HALF_UP);
+            } catch (NumberFormatException ignored) {
+                return null;
+            }
+        }
+        return null;
     }
 
 }
