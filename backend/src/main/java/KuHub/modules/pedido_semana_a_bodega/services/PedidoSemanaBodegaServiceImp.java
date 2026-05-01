@@ -294,8 +294,12 @@ public class PedidoSemanaBodegaServiceImp implements PedidoSemanaBodegaService{
         List<ImportarExcelResultado.ResultadoItem> resultados = new ArrayList<>();
 
         try (Workbook workbook = WorkbookFactory.create(archivo.getInputStream())) {
-            Sheet sheet = workbook.getSheetAt(0);
+            int activeIdx = workbook.getActiveSheetIndex();
+            Sheet sheet   = workbook.getSheetAt(activeIdx);
             DataFormatter formatter = new DataFormatter();
+
+            log.info("[Excel] Hoja activa: '{}' (índice {}). Total hojas: {}",
+                    sheet.getSheetName(), activeIdx, workbook.getNumberOfSheets());
 
             int filaInicio = 11; // Fila 12 en Excel (índice 0-based)
             int filaFin    = 79; // Fila 80 en Excel (índice 0-based)
@@ -323,16 +327,22 @@ public class PedidoSemanaBodegaServiceImp implements PedidoSemanaBodegaService{
 
                 int filaNumero = i + 1;
 
+                log.info("[Excel] Fila {}: excel='{}' → busqueda='{}' | cantidad={} | obs={}",
+                        filaNumero, nombreExcel, nombreParaBusqueda, cantidad, observacion);
+
                 Optional<Producto> productoOpt =
                         productoRepository.findByNombreProductoAndActivo(nombreParaBusqueda, true);
 
                 if (productoOpt.isEmpty()) {
+                    log.info("[Excel] Fila {} '{}': NO ENCONTRADO en BD.", filaNumero, nombreParaBusqueda);
                     resultados.add(new ImportarExcelResultado.ResultadoItem(
                             filaNumero, nombreExcel, null, null, null,
                             cantidad, observacion, "no_encontrado"
                     ));
                 } else {
                     Producto producto = productoOpt.get();
+                    log.info("[Excel] Fila {} '{}': OK → id={}, nombre='{}'",
+                            filaNumero, nombreParaBusqueda, producto.getIdProducto(), producto.getNombreProducto());
                     resultados.add(new ImportarExcelResultado.ResultadoItem(
                             filaNumero,
                             nombreExcel,
@@ -353,7 +363,14 @@ public class PedidoSemanaBodegaServiceImp implements PedidoSemanaBodegaService{
         long totalOk             = resultados.stream().filter(r -> "ok".equals(r.estado())).count();
         long totalNoEncontrados  = resultados.stream().filter(r -> "no_encontrado".equals(r.estado())).count();
 
-        log.info("Importación Excel finalizada: {} encontrados, {} no encontrados.", totalOk, totalNoEncontrados);
+        log.info("[Excel] Importación finalizada: {} encontrados, {} no encontrados.", totalOk, totalNoEncontrados);
+        if (totalNoEncontrados > 0) {
+            List<String> nombres = resultados.stream()
+                    .filter(r -> "no_encontrado".equals(r.estado()))
+                    .map(ImportarExcelResultado.ResultadoItem::nombreExcel)
+                    .toList();
+            log.info("[Excel] No encontrados: {}", nombres);
+        }
 
         return new ImportarExcelResultado(resultados, (int) totalOk, (int) totalNoEncontrados);
     }
