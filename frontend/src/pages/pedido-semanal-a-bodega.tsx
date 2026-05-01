@@ -37,7 +37,7 @@ import { usePeriodoSemana } from '../contexts/periodo-semana-context';
 import BookPageLoader from '../components/BookPageLoader';
 
 // IMPORTAR TIPOS Y SERVICIOS
-import { IPedidoSemanaBodega, IIngrediente, IPedidoSemanaBodegaWithDetailsUpdateDTO } from '../types/receta.types';
+import { IPedidoSemanaBodega, IIngrediente, IPedidoSemanaBodegaWithDetailsUpdateDTO, IResultadoItemExcel, IImportarExcelResultado } from '../types/receta.types';
 import {
   obtenerRecetasPaginadasService,
   crearRecetaService,
@@ -48,7 +48,8 @@ import {
   actualizarRecetaConDetallesService,
   obtenerRecetasCountService,
   buscarRecetasPaginadasService,
-  softDeleteRecetaService
+  softDeleteRecetaService,
+  importarExcelPedidoService
 } from '../services/receta-service';
 import { obtenerProductosParaRecetaService } from '../services/producto-service';
 import { IProductoRecetaSelection } from '../types/producto.types';
@@ -701,9 +702,12 @@ interface DetalleRecetaProps {
 }
 
 const DetalleReceta: React.FC<DetalleRecetaProps> = ({ receta, mode, productos, onClose, onSave }) => {
+  const toast = useToast();
   const [isSaving, setIsSaving] = React.useState(false);
   const [isValidForm, setIsValidForm] = React.useState(false);
+  const [isImporting, setIsImporting] = React.useState(false);
   const formRef = React.useRef<any>(null);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   const handleSubmit = async () => {
     if (formRef.current) {
@@ -713,6 +717,41 @@ const DetalleReceta: React.FC<DetalleRecetaProps> = ({ receta, mode, productos, 
       } finally {
         setIsSaving(false);
       }
+    }
+  };
+
+  const handleImportarExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = '';
+
+    setIsImporting(true);
+    try {
+      const resultado: IImportarExcelResultado = await importarExcelPedidoService(file);
+
+      if (resultado.totalOk > 0 && formRef.current?.importarDesdeExcel) {
+        formRef.current.importarDesdeExcel(resultado.resultados);
+        toast.success(
+          `${resultado.totalOk} producto${resultado.totalOk > 1 ? 's' : ''} importado${resultado.totalOk > 1 ? 's' : ''} correctamente`
+        );
+      }
+
+      if (resultado.totalNoEncontrados > 0) {
+        const noEncontrados = resultado.resultados.filter(r => r.estado === 'no_encontrado');
+        const nombres = noEncontrados.map(r => r.nombreExcel).filter(Boolean);
+        const mensaje = nombres.length <= 3
+          ? `No encontrado${nombres.length > 1 ? 's' : ''}: ${nombres.join(', ')}`
+          : `${resultado.totalNoEncontrados} productos no encontrados en el sistema`;
+        toast.warning(mensaje);
+      }
+
+      if (resultado.totalOk === 0 && resultado.totalNoEncontrados === 0) {
+        toast.warning('El archivo no contiene datos válidos para importar');
+      }
+    } catch (error: any) {
+      toast.error(error?.message || 'Error al procesar el archivo Excel');
+    } finally {
+      setIsImporting(false);
     }
   };
 
@@ -745,16 +784,39 @@ const DetalleReceta: React.FC<DetalleRecetaProps> = ({ receta, mode, productos, 
         )}
       </ModalBody>
       <ModalFooter className="bg-default-50 dark:bg-content2 border-t border-default-100 dark:border-default-50/50 rounded-b-[32px]">
-        <Button variant="ghost" onPress={onClose} isDisabled={isSaving} className="font-medium">
+        {/* Input oculto para selección de archivo Excel */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".xlsx,.xlsm,.xls"
+          style={{ display: 'none' }}
+          onChange={handleImportarExcel}
+        />
+
+        <Button variant="ghost" onPress={onClose} isDisabled={isSaving || isImporting} className="font-medium">
           {mode === 'ver' ? 'Cerrar' : 'Cancelar'}
         </Button>
+
+        {mode !== 'ver' && (
+          <Button
+            variant="bordered"
+            onPress={() => fileInputRef.current?.click()}
+            isLoading={isImporting}
+            isDisabled={isSaving || isImporting}
+            className="font-medium border-default-300"
+            startContent={!isImporting ? <Icon icon="lucide:file-spreadsheet" width={16} /> : undefined}
+          >
+            Importar Excel
+          </Button>
+        )}
+
         {mode !== 'ver' && (
           <Button
             color="primary"
             variant="solid"
             onPress={handleSubmit}
             isLoading={isSaving}
-            isDisabled={isSaving || !isValidForm}
+            isDisabled={isSaving || !isValidForm || isImporting}
             className="font-bold text-secondary shadow-md"
             startContent={<Icon icon="lucide:save" />}
           >
@@ -957,7 +1019,6 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
 
       const digitsOnly = normalizado.replace('.', '');
       if (digitsOnly.length > 10) return;
-      if (!esFraccionario && normalizado.includes('.')) return;
 
       // normalizado termina en '.' cuando el usuario acaba de escribir la coma (ej: "1234567,")
       const terminaEnComa = normalizado.endsWith('.');
@@ -1098,6 +1159,22 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
     }, [nombre, descripcion, estado, ingredientes, idSemana, mode, receta, onValidationChange]);
 
     React.useImperativeHandle(ref, () => ({
+      importarDesdeExcel: (resultados: IResultadoItemExcel[]) => {
+        const nuevos = resultados
+          .filter(r => r.estado === 'ok' && r.idProducto != null)
+          .map(r => ({
+            id: `excel_${r.fila}_${r.idProducto}_${Math.random().toString(36).slice(2)}`,
+            productoId: r.idProducto!.toString(),
+            productoNombre: r.nombreProducto ?? '',
+            cantidad: r.cantidad ?? 0,
+            unidadMedida: r.nombreUnidadMedida ?? '',
+            observacion: r.observacion ?? ''
+          }));
+        if (nuevos.length > 0) {
+          setIngredientes(prev => [...prev, ...nuevos]);
+        }
+      },
+
       submit: async () => {
         // Validaciones iniciales
         if (!nombre.trim()) {

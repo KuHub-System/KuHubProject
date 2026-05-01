@@ -11,7 +11,8 @@ import {
   IPedidoSemanaBodegaWithDetailsCreateDTO,
   IPedidoSemanaBodegaWithDetailsUpdateDTO,
   IPaginatedPedidoSemanaBodegaResponse,
-  IPedidoSemanaBodegaCountResponse
+  IPedidoSemanaBodegaCountResponse,
+  IImportarExcelResultado
 } from '../types/receta.types';
 
 import api from '../config/Axios';
@@ -262,6 +263,31 @@ export const softDeleteRecetaService = async (idReceta: number): Promise<boolean
     throw new Error(
       error.response?.data?.message ||
       'Error al eliminar la receta'
+    );
+  }
+};
+
+/**
+ * Envía un archivo Excel (.xlsx/.xlsm) al backend para cruzar los nombres
+ * de productos contra la BD y precargar el formulario de Nuevo Pedido Semanal.
+ * @param {File} archivo - Archivo con el listado de pedido (filas 12-80, col A=nombre, D=cantidad, E=observación).
+ * @returns {Promise<IImportarExcelResultado>} Productos encontrados y no encontrados.
+ */
+export const importarExcelPedidoService = async (archivo: File): Promise<IImportarExcelResultado> => {
+  try {
+    const formData = new FormData();
+    formData.append('archivo', archivo);
+    const response = await api.post<IImportarExcelResultado>(
+      '/pedido-semana-bodega/importar-excel',
+      formData,
+      { headers: { 'Content-Type': 'multipart/form-data' } }
+    );
+    return response.data;
+  } catch (error: any) {
+    console.error('Error al importar Excel', error);
+    throw new Error(
+      error.response?.data?.message ||
+      'Error al procesar el archivo Excel'
     );
   }
 };

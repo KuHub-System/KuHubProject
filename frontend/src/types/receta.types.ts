@@ -195,3 +195,22 @@ export interface IPedidoSemanaBodegaCountResponse {
   total_inactivos: number;
   total_activos: number;
 }
+
+/** Item individual del resultado de importación Excel */
+export interface IResultadoItemExcel {
+  fila: number;
+  nombreExcel: string;
+  idProducto?: number;
+  nombreProducto?: string;
+  nombreUnidadMedida?: string;
+  cantidad?: number;
+  observacion?: string;
+  estado: 'ok' | 'no_encontrado';
+}
+
+/** Respuesta del endpoint POST /pedido-semana-bodega/importar-excel */
+export interface IImportarExcelResultado {
+  resultados: IResultadoItemExcel[];
+  totalOk: number;
+  totalNoEncontrados: number;
+}
