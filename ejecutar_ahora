@@ -1,0 +1,204 @@
+ubuntu@ip-172-26-1-143:~$ docker logs --tail 200 kuhub-backend
+Hibernate:
+    select
+        p1_0.id_producto,
+        p1_0.activo,
+        p1_0.id_categoria,
+        p1_0.cod_producto,
+        p1_0.descripcion_producto,
+        p1_0.nombre_producto,
+        p1_0.id_unidad
+    from
+        producto p1_0
+    where
+        p1_0.nombre_producto=?
+        and p1_0.activo=?
+2026-05-01T01:27:03.045Z TRACE 1 --- [nio-8080-exec-1] org.hibernate.orm.jdbc.bind              : binding parameter (1:VARCHAR) <- []
+2026-05-01T01:27:03.045Z TRACE 1 --- [nio-8080-exec-1] org.hibernate.orm.jdbc.bind              : binding parameter (2:BOOLEAN) <- [true]
+2026-05-01T01:27:03.048Z DEBUG 1 --- [nio-8080-exec-1] org.hibernate.SQL                        :
+    select
+        p1_0.id_producto,
+        p1_0.activo,
+        p1_0.id_categoria,
+        p1_0.cod_producto,
+        p1_0.descripcion_producto,
+        p1_0.nombre_producto,
+        p1_0.id_unidad
+    from
+        producto p1_0
+    where
+        p1_0.nombre_producto=?
+        and p1_0.activo=?
+Hibernate:
+    select
+        p1_0.id_producto,
+        p1_0.activo,
+        p1_0.id_categoria,
+        p1_0.cod_producto,
+        p1_0.descripcion_producto,
+        p1_0.nombre_producto,
+        p1_0.id_unidad
+    from
+        producto p1_0
+    where
+        p1_0.nombre_producto=?
+        and p1_0.activo=?
+2026-05-01T01:27:03.049Z TRACE 1 --- [nio-8080-exec-1] org.hibernate.orm.jdbc.bind              : binding parameter (1:VARCHAR) <- []
+2026-05-01T01:27:03.049Z TRACE 1 --- [nio-8080-exec-1] org.hibernate.orm.jdbc.bind              : binding parameter (2:BOOLEAN) <- [true]
+2026-05-01T01:27:03.052Z DEBUG 1 --- [nio-8080-exec-1] org.hibernate.SQL                        :
+    select
+        p1_0.id_producto,
+        p1_0.activo,
+        p1_0.id_categoria,
+        p1_0.cod_producto,
+        p1_0.descripcion_producto,
+        p1_0.nombre_producto,
+        p1_0.id_unidad
+    from
+        producto p1_0
+    where
+        p1_0.nombre_producto=?
+        and p1_0.activo=?
+Hibernate:
+    select
+        p1_0.id_producto,
+        p1_0.activo,
+        p1_0.id_categoria,
+        p1_0.cod_producto,
+        p1_0.descripcion_producto,
+        p1_0.nombre_producto,
+        p1_0.id_unidad
+    from
+        producto p1_0
+    where
+        p1_0.nombre_producto=?
+        and p1_0.activo=?
+2026-05-01T01:27:03.052Z TRACE 1 --- [nio-8080-exec-1] org.hibernate.orm.jdbc.bind              : binding parameter (1:VARCHAR) <- []
+2026-05-01T01:27:03.052Z TRACE 1 --- [nio-8080-exec-1] org.hibernate.orm.jdbc.bind              : binding parameter (2:BOOLEAN) <- [true]
+2026-05-01T01:27:03.055Z DEBUG 1 --- [nio-8080-exec-1] org.hibernate.SQL                        :
+    select
+        p1_0.id_producto,
+        p1_0.activo,
+        p1_0.id_categoria,
+        p1_0.cod_producto,
+        p1_0.descripcion_producto,
+        p1_0.nombre_producto,
+        p1_0.id_unidad
+    from
+        producto p1_0
+    where
+        p1_0.nombre_producto=?
+        and p1_0.activo=?
+Hibernate:
+    select
+        p1_0.id_producto,
+        p1_0.activo,
+        p1_0.id_categoria,
+        p1_0.cod_producto,
+        p1_0.descripcion_producto,
+        p1_0.nombre_producto,
+        p1_0.id_unidad
+    from
+        producto p1_0
+    where
+        p1_0.nombre_producto=?
+        and p1_0.activo=?
+2026-05-01T01:27:03.056Z TRACE 1 --- [nio-8080-exec-1] org.hibernate.orm.jdbc.bind              : binding parameter (1:VARCHAR) <- []
+2026-05-01T01:27:03.056Z TRACE 1 --- [nio-8080-exec-1] org.hibernate.orm.jdbc.bind              : binding parameter (2:BOOLEAN) <- [true]
+2026-05-01T01:27:03.059Z DEBUG 1 --- [nio-8080-exec-1] org.hibernate.SQL                        :
+    select
+        p1_0.id_producto,
+        p1_0.activo,
+        p1_0.id_categoria,
+        p1_0.cod_producto,
+        p1_0.descripcion_producto,
+        p1_0.nombre_producto,
+        p1_0.id_unidad
+    from
+        producto p1_0
+    where
+        p1_0.nombre_producto=?
+        and p1_0.activo=?
+Hibernate:
+    select
+        p1_0.id_producto,
+        p1_0.activo,
+        p1_0.id_categoria,
+        p1_0.cod_producto,
+        p1_0.descripcion_producto,
+        p1_0.nombre_producto,
+        p1_0.id_unidad
+    from
+        producto p1_0
+    where
+        p1_0.nombre_producto=?
+        and p1_0.activo=?
+2026-05-01T01:27:03.059Z TRACE 1 --- [nio-8080-exec-1] org.hibernate.orm.jdbc.bind              : binding parameter (1:VARCHAR) <- []
+2026-05-01T01:27:03.059Z TRACE 1 --- [nio-8080-exec-1] org.hibernate.orm.jdbc.bind              : binding parameter (2:BOOLEAN) <- [true]
+2026-05-01T01:27:03.062Z DEBUG 1 --- [nio-8080-exec-1] org.hibernate.SQL                        :
+    select
+        p1_0.id_producto,
+        p1_0.activo,
+        p1_0.id_categoria,
+        p1_0.cod_producto,
+        p1_0.descripcion_producto,
+        p1_0.nombre_producto,
+        p1_0.id_unidad
+    from
+        producto p1_0
+    where
+        p1_0.nombre_producto=?
+        and p1_0.activo=?
+Hibernate:
+    select
+        p1_0.id_producto,
+        p1_0.activo,
+        p1_0.id_categoria,
+        p1_0.cod_producto,
+        p1_0.descripcion_producto,
+        p1_0.nombre_producto,
+        p1_0.id_unidad
+    from
+        producto p1_0
+    where
+        p1_0.nombre_producto=?
+        and p1_0.activo=?
+2026-05-01T01:27:03.063Z TRACE 1 --- [nio-8080-exec-1] org.hibernate.orm.jdbc.bind              : binding parameter (1:VARCHAR) <- []
+2026-05-01T01:27:03.063Z TRACE 1 --- [nio-8080-exec-1] org.hibernate.orm.jdbc.bind              : binding parameter (2:BOOLEAN) <- [true]
+2026-05-01T01:27:03.067Z DEBUG 1 --- [nio-8080-exec-1] org.hibernate.SQL                        :
+    select
+        p1_0.id_producto,
+        p1_0.activo,
+        p1_0.id_categoria,
+        p1_0.cod_producto,
+        p1_0.descripcion_producto,
+        p1_0.nombre_producto,
+        p1_0.id_unidad
+    from
+        producto p1_0
+    where
+        p1_0.nombre_producto=?
+        and p1_0.activo=?
+Hibernate:
+    select
+        p1_0.id_producto,
+        p1_0.activo,
+        p1_0.id_categoria,
+        p1_0.cod_producto,
+        p1_0.descripcion_producto,
+        p1_0.nombre_producto,
+        p1_0.id_unidad
+    from
+        producto p1_0
+    where
+        p1_0.nombre_producto=?
+        and p1_0.activo=?
+2026-05-01T01:27:03.068Z TRACE 1 --- [nio-8080-exec-1] org.hibernate.orm.jdbc.bind              : binding parameter (1:VARCHAR) <- []
+2026-05-01T01:27:03.068Z TRACE 1 --- [nio-8080-exec-1] org.hibernate.orm.jdbc.bind              : binding parameter (2:BOOLEAN) <- [true]
+2026-05-01T01:27:03.069Z  INFO 1 --- [nio-8080-exec-1] K.m.p.s.PedidoSemanaBodegaServiceImp     : Importación Excel finalizada: 0 encontrados, 69 no encontrados.
+2026-05-01T01:27:03.071Z DEBUG 1 --- [nio-8080-exec-1] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/yaml]
+2026-05-01T01:27:03.072Z DEBUG 1 --- [nio-8080-exec-1] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Writing [ImportarExcelResultado[resultados=[ResultadoItem[fila=12, nombreExcel=, idProducto=null, nombreProdu (truncated)...]
+2026-05-01T01:27:03.074Z DEBUG 1 --- [nio-8080-exec-1] o.s.web.servlet.DispatcherServlet        : Completed 200 OK
+ubuntu@ip-172-26-1-143:~$
+
+[AXIOS] Token añadido a /pedido-semana-bodega/importar-excel
