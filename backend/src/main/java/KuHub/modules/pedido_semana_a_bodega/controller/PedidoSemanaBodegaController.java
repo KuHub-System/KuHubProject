@@ -3,14 +3,17 @@ package KuHub.modules.pedido_semana_a_bodega.controller;
 import KuHub.modules.gestion_inventario.dtos.request.SearchDTO;
 import KuHub.modules.pedido_semana_a_bodega.dtos.request.dto.PedidoSemanaBodegaWithDetailsCreateDTO;
 import KuHub.modules.pedido_semana_a_bodega.dtos.projection.CountPedidoSemanaBodegaAndStatusView;
+import KuHub.modules.pedido_semana_a_bodega.dtos.respose.record.ImportarExcelResultado;
 import KuHub.modules.pedido_semana_a_bodega.dtos.respose.record.PedidoSemanaBodegasPage;
 import KuHub.modules.pedido_semana_a_bodega.dtos.request.PedidoSemanaBodegaWithDetailsUpdateDTO;
 import KuHub.modules.pedido_semana_a_bodega.services.PedidoSemanaBodegaService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/api/v1/pedido-semana-bodega")
@@ -90,6 +93,20 @@ public class PedidoSemanaBodegaController {
         return ResponseEntity
                 .status(204)
                 .body(pedidoSemanaBodegaService.softDeleteRecipeWithDetails(idReceta));
+    }
+
+    /**
+     * Parsea un archivo Excel (.xlsx/.xlsm) con el listado de pedido (filas 12-80).
+     * Cruza los nombres de la columna A contra la BD y retorna productos encontrados
+     * y no encontrados para precargar el formulario de Nuevo Pedido Semanal.
+     * ⬜ Sin uso frontend aún.
+     */
+    @PostMapping(value = "/importar-excel", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ImportarExcelResultado> importarExcel(
+            @RequestParam("archivo") MultipartFile archivo) {
+        return ResponseEntity
+                .status(200)
+                .body(pedidoSemanaBodegaService.importarExcelProductos(archivo));
     }
 
 
