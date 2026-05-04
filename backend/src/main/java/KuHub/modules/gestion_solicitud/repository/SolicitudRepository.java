@@ -87,13 +87,13 @@ public interface SolicitudRepository extends JpaRepository<Solicitud, Integer> {
             """, nativeQuery = true)
     List<Object[]> findCourseWithSectionsAndBlocksRaw();
 
-    /**Obtiene las recetas asignadas como estado ACTIVO asignado para usalas en solicitud,
-     * muestra todos los productos asignados a la receta los que fueran eliminados logicamente
-     * se mustrara no disponible en el frontend,*/
+    /**Obtiene los pedidos semana bodega con estado ACTIVO para usarlos en solicitud,
+     * muestra todos los productos asignados; los eliminados lógicamente se mostrarán
+     * como no disponibles en el frontend.*/
     @Query(value = """
             SELECT
-                r.id_receta AS idReceta,
-                r.nombre_receta AS nombreReceta,
+                r.id_pedido_semana_bodega AS idReceta,
+                r.nombre_pedido_semana_bodega AS nombreReceta,
                 COALESCE(
                     jsonb_agg(
                         jsonb_build_object(
@@ -102,21 +102,21 @@ public interface SolicitudRepository extends JpaRepository<Solicitud, Integer> {
                             'abreviatura', u.abreviatura,
                             'esFraccionario', u.es_fraccionario,
                             'activoProducto', p.activo,
-                            'idDetalleReceta', d.id_detalle_receta,
+                            'idDetalleReceta', d.id_detalle_pedido_semana,
                             'idProducto', p.id_producto,
                             'idUnidad', u.id_unidad
                         )
-                    ) FILTER (WHERE d.id_detalle_receta IS NOT NULL), 
+                    ) FILTER (WHERE d.id_detalle_pedido_semana IS NOT NULL),
                     '[]'::jsonb
                 ) AS detallesJson
-            FROM receta r
-            LEFT JOIN detalle_receta d ON d.id_receta = r.id_receta
+            FROM pedido_semana_bodega r
+            LEFT JOIN detalle_pedido_semana_bodega d ON d.id_pedido_semana_bodega = r.id_pedido_semana_bodega
             LEFT JOIN producto p ON d.id_producto = p.id_producto
             LEFT JOIN unidad_medida u ON u.id_unidad = p.id_unidad
-            WHERE r.activo = true 
-            AND r.estado_receta = 'ACTIVO'
-            GROUP BY r.id_receta, r.nombre_receta
-            ORDER BY r.nombre_receta ASC
+            WHERE r.activo = true
+            AND r.estado_pedido = 'ACTIVO'
+            GROUP BY r.id_pedido_semana_bodega, r.nombre_pedido_semana_bodega
+            ORDER BY r.nombre_pedido_semana_bodega ASC
             """, nativeQuery = true)
     List<Object[]> findActiveRecipesWithDetailsRaw();
 
@@ -132,10 +132,10 @@ public interface SolicitudRepository extends JpaRepository<Solicitud, Integer> {
 
     @Query(value = """
         SELECT
-            so.fecha_solicitada,                                          -- [0]
-            COALESCE(rc.nombre_receta, 'Sin receta') AS nombre_receta,   -- [1]
-            so.id_solicitud,                                              -- [2]
-            so.id_receta,                                                 -- [3]
+            so.fecha_solicitada,                                                       -- [0]
+            COALESCE(rc.nombre_pedido_semana_bodega, 'Sin receta') AS nombre_receta, -- [1]
+            so.id_solicitud,                                                           -- [2]
+            so.id_pedido_semana_bodega,                                                -- [3]
             so.id_reserva_sala,                                           -- [4]
             so.estado_solicitud,                                          -- [5]
             so.observaciones,                                             -- [6]
@@ -200,7 +200,7 @@ public interface SolicitudRepository extends JpaRepository<Solicitud, Integer> {
                  ELSE NULL
             END AS motivo_rechazo                                         -- [9]
         FROM solicitud so
-        LEFT JOIN receta rc ON rc.id_receta = so.id_receta
+        LEFT JOIN pedido_semana_bodega rc ON rc.id_pedido_semana_bodega = so.id_pedido_semana_bodega
         LEFT JOIN motivo_rechazo_solicitud mrs ON mrs.id_solicitud = so.id_solicitud
         JOIN seccion s ON s.id_seccion = so.id_seccion
         JOIN asignatura a ON a.id_asignatura = s.id_asignatura
@@ -254,7 +254,7 @@ public interface SolicitudRepository extends JpaRepository<Solicitud, Integer> {
         SELECT 
             sol.id_solicitud,
             sol.fecha_solicitada,
-            COALESCE(rec.nombre_receta, 'Sin receta') AS nombre_receta,
+            COALESCE(rec.nombre_pedido_semana_bodega, 'Sin receta') AS nombre_receta,
             sol.observaciones, 
             JSON_BUILD_OBJECT(
                 'nombre_asignatura', asig.nombre_asignatura,
@@ -335,7 +335,7 @@ public interface SolicitudRepository extends JpaRepository<Solicitud, Integer> {
                 )
             ) AS asignatura_detalle
         FROM solicitud sol
-        LEFT JOIN receta rec ON rec.id_receta = sol.id_receta
+        LEFT JOIN pedido_semana_bodega rec ON rec.id_pedido_semana_bodega = sol.id_pedido_semana_bodega
         JOIN seccion sec ON sec.id_seccion = sol.id_seccion
         JOIN asignatura asig ON asig.id_asignatura = sec.id_asignatura
         JOIN docente_seccion doc_sec ON doc_sec.id_seccion = sec.id_seccion
