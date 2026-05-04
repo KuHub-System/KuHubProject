@@ -190,6 +190,19 @@ const AsigCard: React.FC<AsigCardProps> = ({
   const historyCard = useHistory();
   const semana = semanas.find(s => String(s.idSemana) === config.semanaId) ?? null;
 
+  // ── Filtros de receta (período + semana) ──────────────────────────────────────
+  const { periodos, semanas: contextSemanas, periodo: contextPeriodo, semanaId: contextSemanaId, seleccionarPeriodo } = usePeriodoSemana();
+  const [filterIdSemana, setFilterIdSemana] = React.useState<string>(contextSemanaId || 'todas');
+
+  React.useEffect(() => {
+    setFilterIdSemana('todas');
+  }, [contextPeriodo?.anio, contextPeriodo?.semestre]);
+
+  const recetasFiltradas = React.useMemo(() => {
+    if (filterIdSemana === 'todas') return recetas;
+    return recetas.filter(r => r.idSemana != null && String(r.idSemana) === filterIdSemana);
+  }, [recetas, filterIdSemana]);
+
   // ── derivados de bloquesIds ──
   const secSel         = seccionesSeleccionadas(asig.secciones, config.bloquesIds);
   const selCount       = secSel.length;
@@ -540,24 +553,106 @@ const AsigCard: React.FC<AsigCardProps> = ({
                     </p>
                   )
                 ) : (
-                  <Autocomplete
-                    selectedKey={config.recetaId || null}
-                    onSelectionChange={key => handleSelectReceta(String(key ?? ''))}
-                    variant="bordered" size="sm" placeholder="Buscar receta por nombre..."
-                    defaultItems={recetas}
-                    classNames={{ base: 'w-full', popoverContent: 'dark:bg-content1' }}
-                    inputProps={{ classNames: { inputWrapper: 'bg-default-50' } }}
-                    startContent={<Icon icon="lucide:book-open" width={13} className="text-default-400 shrink-0" />}
-                  >
-                    {(r) => (
-                      <AutocompleteItem key={String(r.idReceta)} textValue={r.nombreReceta}>
-                        <div className="flex items-center gap-2">
-                          <span>{r.nombreReceta}</span>
-                          <span className="text-default-400 text-xs ml-auto">{r.detalles.length} items</span>
-                        </div>
-                      </AutocompleteItem>
+                  /* Contenedor único: filtro período + filtro semana + buscador */
+                  <div className="flex flex-wrap gap-2 items-center">
+
+                    {/* Selector período */}
+                    {periodos && periodos.length > 0 && (
+                      (() => {
+                        const hoy = new Date();
+                        const mesActual = hoy.getMonth() + 1;
+                        const semestreActual = mesActual <= 6 ? 1 : 2;
+                        const anioActual = hoy.getFullYear();
+                        return (
+                          <Select
+                            selectedKeys={contextPeriodo ? new Set([`${contextPeriodo.anio}-${contextPeriodo.semestre}`]) : new Set()}
+                            onSelectionChange={(keys) => {
+                              const v = Array.from(keys as Set<string>)[0];
+                              if (v) {
+                                const [anio, semestre] = v.split('-');
+                                seleccionarPeriodo(Number(anio), Number(semestre));
+                              }
+                            }}
+                            placeholder="Período"
+                            variant="bordered"
+                            size="sm"
+                            className="w-36"
+                            classNames={{ trigger: 'bg-default-50 cursor-pointer', popoverContent: 'dark:bg-content1' }}
+                          >
+                            {periodos.flatMap(p =>
+                              p.semestres.map((s: number) => (
+                                <SelectItem key={`${p.anio}-${s}`} textValue={`${p.anio} S${s}`}>
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="font-semibold text-xs">{p.anio} S{s}</span>
+                                    {p.anio === anioActual && s === semestreActual && (
+                                      <Chip size="sm" color="success" variant="flat" className="text-[9px] h-4 px-1">Actual</Chip>
+                                    )}
+                                  </div>
+                                </SelectItem>
+                              ))
+                            )}
+                          </Select>
+                        );
+                      })()
                     )}
-                  </Autocomplete>
+
+                    {/* Selector semana */}
+                    {contextSemanas && contextSemanas.length > 0 && (
+                      <Select
+                        selectedKeys={new Set([filterIdSemana])}
+                        onSelectionChange={(keys) => {
+                          const v = Array.from(keys as Set<string>)[0];
+                          setFilterIdSemana(v || 'todas');
+                        }}
+                        placeholder="Semana"
+                        variant="bordered"
+                        size="sm"
+                        className="w-52"
+                        classNames={{ trigger: 'bg-default-50 cursor-pointer', popoverContent: 'dark:bg-content1' }}
+                      >
+                        <SelectItem key="todas" textValue="Todas">Todas</SelectItem>
+                        {contextSemanas.map(s => (
+                          <SelectItem key={String(s.idSemana)} textValue={s.nombreSemana}>
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium text-xs">{s.nombreSemana}</span>
+                              <span className="text-default-400 text-[10px]">
+                                {fmtCorto(new Date(s.fechaInicio + 'T00:00:00'))} – {fmtCorto(new Date(s.fechaFin + 'T00:00:00'))}
+                              </span>
+                              {String(s.idSemana) === contextSemanaId && contextSemanaId && (
+                                <Chip size="sm" color="success" variant="flat" className="ml-auto shrink-0 text-[9px] h-4 px-1">Actual</Chip>
+                              )}
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </Select>
+                    )}
+
+                    {/* Buscador de receta */}
+                    <Autocomplete
+                      selectedKey={config.recetaId || null}
+                      onSelectionChange={key => handleSelectReceta(String(key ?? ''))}
+                      variant="bordered" size="sm" placeholder="Buscar receta..."
+                      defaultItems={recetasFiltradas}
+                      classNames={{ base: 'flex-1 min-w-[160px]', popoverContent: 'dark:bg-content1' }}
+                      inputProps={{ classNames: { inputWrapper: 'bg-default-50' } }}
+                      startContent={<Icon icon="lucide:book-open" width={13} className="text-default-400 shrink-0" />}
+                    >
+                      {(r) => (
+                        <AutocompleteItem key={String(r.idReceta)} textValue={r.nombreReceta}>
+                          <div className="flex items-center gap-2">
+                            <span>{r.nombreReceta}</span>
+                            <span className="text-default-400 text-xs ml-auto">{r.detalles.length} items</span>
+                          </div>
+                        </AutocompleteItem>
+                      )}
+                    </Autocomplete>
+
+                    {recetasFiltradas.length === 0 && filterIdSemana !== 'todas' && (
+                      <p className="text-xs text-default-400 w-full mt-1">
+                        Sin recetas para la semana seleccionada.
+                      </p>
+                    )}
+                  </div>
                 )}
 
                 {config.items.length > 0 && (

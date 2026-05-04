@@ -16,6 +16,7 @@ import java.util.List;
 public record RecipeSolicitation(
         Integer idReceta,
         String nombreReceta,
+        Integer idSemana,
         List<RecipeDetailsDTO> detalles
 ) {
 
