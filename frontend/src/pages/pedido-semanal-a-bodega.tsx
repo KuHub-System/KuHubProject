@@ -1099,6 +1099,8 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
         return;
       }
 
+      if (/[^0-9,.]/.test(val)) return;
+
       // Eliminar puntos (el usuario NO debe escribirlos, el sistema los agrega)
       // Dejar números y coma (que será el decimal)
       let limpiado = val.replace(/\./g, ''); // Quitar puntos que intente escribir
