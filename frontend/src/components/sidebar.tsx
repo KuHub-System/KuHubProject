@@ -71,16 +71,16 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar, onLogout }) =>
       ]
     },
     {
-      title: 'Administración',
+      title: 'Centro de Operaciones',
       items: [
-        { title: 'Histórico de Pedidos', path: '/historico-pedidos', icon: 'lucide:bar-chart-2', pageId: 'historico-pedidos' },
-        { title: 'Conglomerado de Pedidos', path: '/conglomerado-pedidos', icon: 'lucide:layers', pageId: 'conglomerado-pedidos' },
-        { title: 'Gestión de Pedidos', path: '/gestion-pedidos', icon: 'lucide:shopping-cart', pageId: 'gestion-pedidos' },
-        { title: 'Gestión de Solicitudes', path: '/gestion-solicitudes', icon: 'lucide:clipboard-check', pageId: 'gestion-solicitudes' },
-        { title: 'Solicitud', path: '/solicitud', icon: 'lucide:clipboard-list', pageId: 'solicitud' },
-        { title: 'Gestión Académica', path: '/gestion-academica', icon: 'lucide:graduation-cap', pageId: 'gestion-academica' },
         { title: 'Pedido Semanal a Bodega', path: '/pedido-semanal-a-bodega', icon: 'lucide:package-open', pageId: 'pedido-semanal-a-bodega' },
-        { title: 'Administración del Sistema', path: '/admin-sistema', icon: 'lucide:settings-2', pageId: 'admin-sistema' }
+        { title: 'Gestión Académica', path: '/gestion-academica', icon: 'lucide:graduation-cap', pageId: 'gestion-academica' },
+        { title: 'Solicitud', path: '/solicitud', icon: 'lucide:clipboard-list', pageId: 'solicitud' },
+        { title: 'Gestión de Solicitudes', path: '/gestion-solicitudes', icon: 'lucide:clipboard-check', pageId: 'gestion-solicitudes' },
+        { title: 'Gestión de Pedidos', path: '/gestion-pedidos', icon: 'lucide:shopping-cart', pageId: 'gestion-pedidos' },
+        { title: 'Conglomerado de Pedidos', path: '/conglomerado-pedidos', icon: 'lucide:layers', pageId: 'conglomerado-pedidos' },
+        { title: 'Gestión de Proveedores', path: '/gestion-proveedores', icon: 'lucide:truck', pageId: 'gestion-proveedores' },
+        { title: 'Histórico de Pedidos', path: '/historico-pedidos', icon: 'lucide:bar-chart-2', pageId: 'historico-pedidos' }
       ]
     },
     {
@@ -88,8 +88,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar, onLogout }) =>
       items: [
         { title: 'Inventario', path: '/inventario', icon: 'lucide:package', pageId: 'inventario' },
         { title: 'Historial / Movimientos', path: '/movimientos', icon: 'lucide:history', pageId: 'historial-movimientos' },
-        { title: 'Bodega de Tránsito', path: '/bodega-transito', icon: 'lucide:warehouse', pageId: 'bodega-transito' },
-        { title: 'Gestión de Proveedores', path: '/gestion-proveedores', icon: 'lucide:truck', pageId: 'gestion-proveedores' }
+        { title: 'Bodega de Tránsito', path: '/bodega-transito', icon: 'lucide:warehouse', pageId: 'bodega-transito' }
       ]
     },
     {
@@ -97,6 +96,12 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar, onLogout }) =>
       items: [
         { title: 'Gestión de Roles', path: '/gestion-roles', icon: 'lucide:users', pageId: 'gestion-roles' },
         { title: 'Gestión de Usuarios', path: '/gestion-usuarios', icon: 'lucide:user-cog', pageId: 'gestion-usuarios' }
+      ]
+    },
+    {
+      title: 'Sistema',
+      items: [
+        { title: 'Administración del Sistema', path: '/admin-sistema', icon: 'lucide:settings-2', pageId: 'admin-sistema' }
       ]
     }
   ];
