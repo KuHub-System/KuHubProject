@@ -325,6 +325,20 @@ public class PedidoSemanaBodegaServiceImp implements PedidoSemanaBodegaService{
             log.info("[Excel] Hoja seleccionada: '{}'. Semana Excel: {}. Total hojas: {}",
                     sheet.getSheetName(), numeroSemanaExcel, workbook.getNumberOfSheets());
 
+            // Detectar columna de observación desde la cabecera (fila 11 Excel = índice 10 POI)
+            int colObservacion = 4; // fallback: columna E
+            Row headerRow = sheet.getRow(10);
+            if (headerRow != null) {
+                for (int c = 0; c < headerRow.getLastCellNum(); c++) {
+                    if (getCellText(headerRow.getCell(c), formatter).toUpperCase().contains("OBSERV")) {
+                        colObservacion = c;
+                        log.info("[Excel] Columna de observación detectada en índice {} (col {})",
+                                c, (char) ('A' + c));
+                        break;
+                    }
+                }
+            }
+
             int filaInicio = 11; // Fila 12 en Excel (índice 0-based)
             int filaFin    = 79; // Fila 80 en Excel (índice 0-based)
 
@@ -344,9 +358,9 @@ public class PedidoSemanaBodegaServiceImp implements PedidoSemanaBodegaService{
                 BigDecimal cantidad       = parseCantidad(row.getCell(3));
 
                 String observacion = null;
-                String celdaE = getCellText(row.getCell(4), formatter);
-                if (!celdaE.isBlank()) {
-                    observacion = StringUtils.normalizeSpaces(celdaE);
+                String celdaObs = getCellText(row.getCell(colObservacion), formatter);
+                if (!celdaObs.isBlank()) {
+                    observacion = StringUtils.normalizeSpaces(celdaObs);
                 }
 
                 int filaNumero = i + 1;
