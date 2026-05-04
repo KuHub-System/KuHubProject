@@ -40,7 +40,7 @@ public class Solicitud {
     private Seccion seccion;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "id_receta", nullable = true) // Es nullable = true por defecto, pero es buena práctica declararlo
+    @JoinColumn(name = "id_pedido_semana_bodega", nullable = true)
     private PedidoSemanaBodega receta;
 
     @ManyToOne(fetch = FetchType.LAZY)
