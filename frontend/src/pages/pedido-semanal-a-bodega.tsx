@@ -706,6 +706,7 @@ const DetalleReceta: React.FC<DetalleRecetaProps> = ({ receta, mode, productos, 
   const [isSaving, setIsSaving] = React.useState(false);
   const [isValidForm, setIsValidForm] = React.useState(false);
   const [isImporting, setIsImporting] = React.useState(false);
+  const [semanaExcelInput, setSemanaExcelInput] = React.useState<string>('');
   const formRef = React.useRef<any>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
@@ -727,13 +728,18 @@ const DetalleReceta: React.FC<DetalleRecetaProps> = ({ receta, mode, productos, 
 
     setIsImporting(true);
     try {
-      const resultado: IImportarExcelResultado = await importarExcelPedidoService(file);
+      const numeroSemana = semanaExcelInput ? parseInt(semanaExcelInput) : undefined;
+      const resultado: IImportarExcelResultado = await importarExcelPedidoService(file, numeroSemana);
 
       if (resultado.totalOk > 0 && formRef.current?.importarDesdeExcel) {
         formRef.current.importarDesdeExcel(resultado.resultados);
         toast.success(
           `${resultado.totalOk} producto${resultado.totalOk > 1 ? 's' : ''} importado${resultado.totalOk > 1 ? 's' : ''} correctamente`
         );
+      }
+
+      if (resultado.numeroSemanaExcel > 0 && formRef.current?.setSemanaDesdeNumero) {
+        formRef.current.setSemanaDesdeNumero(resultado.numeroSemanaExcel);
       }
 
       if (resultado.totalNoEncontrados > 0) {
@@ -798,16 +804,35 @@ const DetalleReceta: React.FC<DetalleRecetaProps> = ({ receta, mode, productos, 
         </Button>
 
         {mode !== 'ver' && (
-          <Button
-            variant="bordered"
-            onPress={() => fileInputRef.current?.click()}
-            isLoading={isImporting}
-            isDisabled={isSaving || isImporting}
-            className="font-medium border-default-300"
-            startContent={!isImporting ? <Icon icon="lucide:file-spreadsheet" width={16} /> : undefined}
-          >
-            Importar Excel
-          </Button>
+          <div className="flex items-center gap-2">
+            <Input
+              type="number"
+              placeholder="Semana"
+              value={semanaExcelInput}
+              onValueChange={(v) => {
+                const n = parseInt(v);
+                if (v === '' || (n >= 1 && n <= 18)) setSemanaExcelInput(v);
+              }}
+              min={1}
+              max={18}
+              size="sm"
+              variant="bordered"
+              isDisabled={isSaving || isImporting}
+              className="w-24"
+              classNames={{ inputWrapper: "bg-white dark:bg-default-100/50" }}
+              startContent={<Icon icon="lucide:hash" className="text-default-400" width={14} />}
+            />
+            <Button
+              variant="bordered"
+              onPress={() => fileInputRef.current?.click()}
+              isLoading={isImporting}
+              isDisabled={isSaving || isImporting}
+              className="font-medium border-default-300"
+              startContent={!isImporting ? <Icon icon="lucide:file-spreadsheet" width={16} /> : undefined}
+            >
+              Importar Excel
+            </Button>
+          </div>
         )}
 
         {mode !== 'ver' && (
@@ -1172,6 +1197,15 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
           }));
         if (nuevos.length > 0) {
           setIngredientes(prev => [...prev, ...nuevos]);
+        }
+      },
+
+      setSemanaDesdeNumero: (numeroSemana: number) => {
+        if (numeroSemana >= 1 && numeroSemana <= semanas.length) {
+          const semanaTarget = semanas[numeroSemana - 1];
+          if (semanaTarget) {
+            setIdSemana(String(semanaTarget.idSemana));
+          }
         }
       },
 
