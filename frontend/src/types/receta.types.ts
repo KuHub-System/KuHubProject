@@ -213,4 +213,5 @@ export interface IImportarExcelResultado {
   resultados: IResultadoItemExcel[];
   totalOk: number;
   totalNoEncontrados: number;
+  numeroSemanaExcel: number;
 }

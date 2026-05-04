@@ -6,7 +6,8 @@ import java.util.List;
 public record ImportarExcelResultado(
         List<ResultadoItem> resultados,
         int totalOk,
-        int totalNoEncontrados
+        int totalNoEncontrados,
+        int numeroSemanaExcel
 ) {
     /** estado: "ok" si el producto fue encontrado en BD, "no_encontrado" si no existe. */
     public record ResultadoItem(

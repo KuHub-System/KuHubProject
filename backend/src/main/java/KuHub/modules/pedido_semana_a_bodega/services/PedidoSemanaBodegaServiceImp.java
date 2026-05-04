@@ -286,20 +286,44 @@ public class PedidoSemanaBodegaServiceImp implements PedidoSemanaBodegaService{
      *  y retorna resultados separados en encontrados y no encontrados. */
     @Transactional(readOnly = true)
     @Override
-    public ImportarExcelResultado importarExcelProductos(MultipartFile archivo) {
+    public ImportarExcelResultado importarExcelProductos(MultipartFile archivo, Integer numeroSemana) {
         if (archivo.isEmpty()) {
             throw new PedidoSemanaBodegaException("El archivo Excel está vacío.", HttpStatus.BAD_REQUEST);
         }
 
         List<ImportarExcelResultado.ResultadoItem> resultados = new ArrayList<>();
 
-        try (Workbook workbook = WorkbookFactory.create(archivo.getInputStream())) {
-            int activeIdx = workbook.getActiveSheetIndex();
-            Sheet sheet   = workbook.getSheetAt(activeIdx);
-            DataFormatter formatter = new DataFormatter();
+        int numeroSemanaExcel = 0;
 
-            log.info("[Excel] Hoja activa: '{}' (índice {}). Total hojas: {}",
-                    sheet.getSheetName(), activeIdx, workbook.getNumberOfSheets());
+        try (Workbook workbook = WorkbookFactory.create(archivo.getInputStream())) {
+            Sheet sheet;
+
+            if (numeroSemana != null) {
+                // El usuario especificó una semana: buscar la hoja por nombre "SEMANA (X)"
+                String nombreHoja = "SEMANA (" + numeroSemana + ")";
+                sheet = workbook.getSheet(nombreHoja);
+                if (sheet == null) {
+                    throw new PedidoSemanaBodegaException(
+                        "No se encontró la hoja '" + nombreHoja + "' en el archivo Excel.",
+                        HttpStatus.BAD_REQUEST
+                    );
+                }
+                numeroSemanaExcel = numeroSemana;
+            } else {
+                // Sin selección: usar la hoja activa
+                int activeIdx = workbook.getActiveSheetIndex();
+                sheet = workbook.getSheetAt(activeIdx);
+                // Parsear número de semana del nombre de hoja: "SEMANA (3)" → 3
+                java.util.regex.Matcher matcher =
+                    java.util.regex.Pattern.compile("\\((\\d+)\\)").matcher(sheet.getSheetName());
+                if (matcher.find()) {
+                    numeroSemanaExcel = Integer.parseInt(matcher.group(1));
+                }
+            }
+
+            DataFormatter formatter = new DataFormatter();
+            log.info("[Excel] Hoja seleccionada: '{}'. Semana Excel: {}. Total hojas: {}",
+                    sheet.getSheetName(), numeroSemanaExcel, workbook.getNumberOfSheets());
 
             int filaInicio = 11; // Fila 12 en Excel (índice 0-based)
             int filaFin    = 79; // Fila 80 en Excel (índice 0-based)
@@ -372,7 +396,7 @@ public class PedidoSemanaBodegaServiceImp implements PedidoSemanaBodegaService{
             log.info("[Excel] No encontrados: {}", nombres);
         }
 
-        return new ImportarExcelResultado(resultados, (int) totalOk, (int) totalNoEncontrados);
+        return new ImportarExcelResultado(resultados, (int) totalOk, (int) totalNoEncontrados, numeroSemanaExcel);
     }
 
     /** Procesa y elimina los ingredientes desmarcados en el frontend, validando que pertenezcan a la receta. */
