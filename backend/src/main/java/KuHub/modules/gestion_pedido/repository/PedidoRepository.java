@@ -94,7 +94,7 @@ public interface PedidoRepository extends JpaRepository<Pedido, Integer> {
                                                 'unidadAbreviada', uni.abreviatura,
                                                 'observacion', ds.observacion,
                                                 'alumnos', sec.cant_inscritos,
-                                                'nombreReceta', COALESCE(rec.nombre_receta, 'Sin receta'),
+                                                'nombreReceta', COALESCE(rec.nombre_pedido_semana_bodega, 'Sin receta'),
                                                 'nombreSala', (
                                                     SELECT sala.nombre_sala || '-' || sala.cod_sala
                                                     FROM reserva_sala res_sal
@@ -137,7 +137,7 @@ public interface PedidoRepository extends JpaRepository<Pedido, Integer> {
                                     JOIN asignatura asig ON asig.id_asignatura = sec.id_asignatura
                                     JOIN docente_seccion doc_sec ON doc_sec.id_seccion = sec.id_seccion
                                     JOIN usuario usr ON usr.id_usuario = doc_sec.id_usuario
-                                    LEFT JOIN receta rec ON rec.id_receta = sol.id_receta
+                                    LEFT JOIN pedido_semana_bodega rec ON rec.id_pedido_semana_bodega = sol.id_pedido_semana_bodega
                                     WHERE ps3.id_pedido = ped.id_pedido
                                 ) AS detalles_solicitudes
                             FROM detalle_pedido dp
@@ -155,7 +155,7 @@ public interface PedidoRepository extends JpaRepository<Pedido, Integer> {
                                     'idSolicitud', sol.id_solicitud,
                                     'fechaSolicitada', sol.fecha_solicitada,
                                     'estadoSolicitud', sol.estado_solicitud,
-                                    'nombreReceta', COALESCE(rec.nombre_receta, 'Sin receta'),
+                                    'nombreReceta', COALESCE(rec.nombre_pedido_semana_bodega, 'Sin receta'),
                                     'observaciones', sol.observaciones,
                                     'seccion', json_build_object(
                                         'idSeccion', sec.id_seccion,
@@ -231,7 +231,7 @@ public interface PedidoRepository extends JpaRepository<Pedido, Integer> {
                         )
                         FROM pedido_solicitud ps
                         JOIN solicitud sol ON sol.id_solicitud = ps.id_solicitud
-                        LEFT JOIN receta rec ON rec.id_receta = sol.id_receta
+                        LEFT JOIN pedido_semana_bodega rec ON rec.id_pedido_semana_bodega = sol.id_pedido_semana_bodega
                         JOIN seccion sec ON sec.id_seccion = sol.id_seccion
                         JOIN asignatura asig ON asig.id_asignatura = sec.id_asignatura
                         JOIN docente_seccion doc_sec ON doc_sec.id_seccion = sec.id_seccion
@@ -502,7 +502,7 @@ public interface PedidoRepository extends JpaRepository<Pedido, Integer> {
                                                         NULLIF(TRIM(usr_e.app_paterno), '')
                                                     ),
                                                     'cantInscritos',  sec_e.cant_inscritos,
-                                                    'nombreReceta',   COALESCE(rec_e.nombre_receta, 'Sin receta'),
+                                                    'nombreReceta',   COALESCE(rec_e.nombre_pedido_semana_bodega, 'Sin receta'),
                                                     'observaciones',  sol_e.observaciones,
                                                     'productos', (
                                                         SELECT COALESCE(
@@ -540,7 +540,7 @@ public interface PedidoRepository extends JpaRepository<Pedido, Integer> {
                                         JOIN asignatura         asig_e ON asig_e.id_asignatura = sec_e.id_asignatura
                                         JOIN docente_seccion    doc_e  ON doc_e.id_seccion     = sec_e.id_seccion
                                         JOIN usuario            usr_e  ON usr_e.id_usuario     = doc_e.id_usuario
-                                        LEFT JOIN receta        rec_e  ON rec_e.id_receta      = sol_e.id_receta
+                                        LEFT JOIN pedido_semana_bodega rec_e ON rec_e.id_pedido_semana_bodega = sol_e.id_pedido_semana_bodega
                                         WHERE (
                                                   (ped_e.estado_pedido = 'APROBADO'  AND sol_e.estado_solicitud = 'EN_PEDIDO')
                                                OR (ped_e.estado_pedido IN ('APROBADO', 'ENTREGADO') AND sol_e.estado_solicitud = 'PROCESADO')
