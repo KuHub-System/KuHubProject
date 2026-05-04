@@ -92,8 +92,8 @@ public interface SolicitudRepository extends JpaRepository<Solicitud, Integer> {
      * como no disponibles en el frontend.*/
     @Query(value = """
             SELECT
-                r.id_pedido_semana_bodega AS idReceta,
-                r.nombre_pedido_semana_bodega AS nombreReceta,
+                r.id_pedido_semana_bodega AS idReceta,          -- [0]
+                r.nombre_pedido_semana_bodega AS nombreReceta,   -- [1]
                 COALESCE(
                     jsonb_agg(
                         jsonb_build_object(
@@ -108,14 +108,15 @@ public interface SolicitudRepository extends JpaRepository<Solicitud, Integer> {
                         )
                     ) FILTER (WHERE d.id_detalle_pedido_semana IS NOT NULL),
                     '[]'::jsonb
-                ) AS detallesJson
+                ) AS detallesJson,                               -- [2]
+                r.id_semana AS idSemana                          -- [3]
             FROM pedido_semana_bodega r
             LEFT JOIN detalle_pedido_semana_bodega d ON d.id_pedido_semana_bodega = r.id_pedido_semana_bodega
             LEFT JOIN producto p ON d.id_producto = p.id_producto
             LEFT JOIN unidad_medida u ON u.id_unidad = p.id_unidad
             WHERE r.activo = true
             AND r.estado_pedido = 'ACTIVO'
-            GROUP BY r.id_pedido_semana_bodega, r.nombre_pedido_semana_bodega
+            GROUP BY r.id_pedido_semana_bodega, r.nombre_pedido_semana_bodega, r.id_semana
             ORDER BY r.nombre_pedido_semana_bodega ASC
             """, nativeQuery = true)
     List<Object[]> findActiveRecipesWithDetailsRaw();
