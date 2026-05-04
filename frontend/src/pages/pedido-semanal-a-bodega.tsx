@@ -1,4 +1,5 @@
 import React from 'react';
+import * as XLSX from 'xlsx';
 import {
   Table,
   TableHeader,
@@ -701,12 +702,31 @@ interface DetalleRecetaProps {
   onSave: (receta: IPedidoSemanaBodega, updatePayload?: IPedidoSemanaBodegaWithDetailsUpdateDTO) => Promise<void>;
 }
 
+const leerNombresHojas = (file: File): Promise<string[]> =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const data = new Uint8Array(e.target!.result as ArrayBuffer);
+        const wb = XLSX.read(data, { type: 'array', bookSheets: true });
+        resolve(wb.SheetNames);
+      } catch (err) {
+        reject(err);
+      }
+    };
+    reader.onerror = reject;
+    reader.readAsArrayBuffer(file);
+  });
+
 const DetalleReceta: React.FC<DetalleRecetaProps> = ({ receta, mode, productos, onClose, onSave }) => {
   const toast = useToast();
+  const { semanas } = usePeriodoSemana();
   const [isSaving, setIsSaving] = React.useState(false);
   const [isValidForm, setIsValidForm] = React.useState(false);
   const [isImporting, setIsImporting] = React.useState(false);
-  const [semanaExcelInput, setSemanaExcelInput] = React.useState<string>('');
+  const [pendingFile, setPendingFile] = React.useState<File | null>(null);
+  const [sheetOptions, setSheetOptions] = React.useState<string[]>([]);
+  const { isOpen: isSheetOpen, onOpen: onSheetOpen, onClose: onSheetClose } = useDisclosure();
   const formRef = React.useRef<any>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
@@ -721,15 +741,12 @@ const DetalleReceta: React.FC<DetalleRecetaProps> = ({ receta, mode, productos, 
     }
   };
 
-  const handleImportarExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    e.target.value = '';
-
+  const doImport = async (file: File, numeroSemana?: number) => {
     setIsImporting(true);
+    setPendingFile(null);
+    setSheetOptions([]);
     try {
-      const numeroSemana = semanaExcelInput ? parseInt(semanaExcelInput) : undefined;
-      const resultado: IImportarExcelResultado = await importarExcelPedidoService(file, numeroSemana);
+      const resultado = await importarExcelPedidoService(file, numeroSemana);
 
       if (resultado.totalOk > 0 && formRef.current?.importarDesdeExcel) {
         formRef.current.importarDesdeExcel(resultado.resultados);
@@ -761,8 +778,100 @@ const DetalleReceta: React.FC<DetalleRecetaProps> = ({ receta, mode, productos, 
     }
   };
 
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = '';
+
+    setIsImporting(true);
+    try {
+      const allSheets = await leerNombresHojas(file);
+      const semanaSheets = allSheets.filter(n => /^SEMANA \(\d+\)$/.test(n));
+
+      if (semanaSheets.length <= 1) {
+        const num = semanaSheets.length === 1
+          ? parseInt(semanaSheets[0].match(/\((\d+)\)/)?.[1] || '0') || undefined
+          : undefined;
+        await doImport(file, num);
+      } else {
+        setIsImporting(false);
+        setPendingFile(file);
+        setSheetOptions(semanaSheets);
+        onSheetOpen();
+      }
+    } catch {
+      setIsImporting(false);
+      toast.error('No se pudo leer el archivo Excel');
+    }
+  };
+
+  const handleSelectSheet = async (sheetName: string) => {
+    onSheetClose();
+    const num = parseInt(sheetName.match(/\((\d+)\)/)?.[1] || '0') || undefined;
+    if (pendingFile) await doImport(pendingFile, num);
+  };
+
+  const handleCancelarSeleccion = () => {
+    onSheetClose();
+    setPendingFile(null);
+    setSheetOptions([]);
+  };
+
   return (
     <>
+      {/* Modal de selección de semana */}
+      <Modal
+        isOpen={isSheetOpen}
+        onOpenChange={(open) => { if (!open) handleCancelarSeleccion(); }}
+        size="md"
+        backdrop="blur"
+        radius="lg"
+        classNames={{ base: 'rounded-[24px] overflow-hidden' }}
+      >
+        <ModalContent>
+          <ModalHeader className="border-b border-default-100 dark:border-default-50/50 bg-white dark:bg-content2">
+            <div className="flex items-center gap-2">
+              <Icon icon="lucide:layers" className="text-primary" width={20} />
+              <span className="font-bold text-secondary dark:text-foreground">Seleccionar semana</span>
+            </div>
+          </ModalHeader>
+          <ModalBody className="py-4">
+            <p className="text-sm text-default-500 mb-3">
+              El archivo contiene <span className="font-semibold text-secondary dark:text-foreground">{sheetOptions.length} semanas</span>. Seleccione cuál desea cargar:
+            </p>
+            <div className="grid grid-cols-3 gap-2">
+              {sheetOptions.map(sheetName => {
+                const num = parseInt(sheetName.match(/\((\d+)\)/)?.[1] || '0');
+                const semanaInfo = num >= 1 ? semanas[num - 1] : undefined;
+                return (
+                  <button
+                    key={sheetName}
+                    onClick={() => handleSelectSheet(sheetName)}
+                    className="flex flex-col items-center gap-1 p-3 rounded-xl border border-default-200 dark:border-default-100 hover:border-primary hover:bg-primary/5 transition-all cursor-pointer"
+                  >
+                    <span className="font-bold text-secondary dark:text-foreground text-sm">Semana {num}</span>
+                    {semanaInfo ? (
+                      <span className="text-xs text-default-400 text-center leading-tight">
+                        {new Date(semanaInfo.fechaInicio + 'T00:00:00').toLocaleDateString('es-CL', { day: 'numeric', month: 'short' })}
+                        {' – '}
+                        {new Date(semanaInfo.fechaFin + 'T00:00:00').toLocaleDateString('es-CL', { day: 'numeric', month: 'short' })}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-default-300">—</span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </ModalBody>
+          <ModalFooter>
+            <Button variant="ghost" onPress={handleCancelarSeleccion} className="font-medium">
+              Cancelar
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+
       <ModalHeader className="border-b border-default-100 dark:border-default-50/50 bg-white dark:bg-content2 rounded-t-[32px]">
         <div className="flex items-center gap-2">
           <Icon
@@ -790,13 +899,12 @@ const DetalleReceta: React.FC<DetalleRecetaProps> = ({ receta, mode, productos, 
         )}
       </ModalBody>
       <ModalFooter className="bg-default-50 dark:bg-content2 border-t border-default-100 dark:border-default-50/50 rounded-b-[32px]">
-        {/* Input oculto para selección de archivo Excel */}
         <input
           ref={fileInputRef}
           type="file"
           accept=".xlsx,.xlsm,.xls"
           style={{ display: 'none' }}
-          onChange={handleImportarExcel}
+          onChange={handleFileChange}
         />
 
         <Button variant="ghost" onPress={onClose} isDisabled={isSaving || isImporting} className="font-medium">
@@ -804,35 +912,16 @@ const DetalleReceta: React.FC<DetalleRecetaProps> = ({ receta, mode, productos, 
         </Button>
 
         {mode !== 'ver' && (
-          <div className="flex items-center gap-2">
-            <Input
-              type="number"
-              placeholder="Semana"
-              value={semanaExcelInput}
-              onValueChange={(v) => {
-                const n = parseInt(v);
-                if (v === '' || (n >= 1 && n <= 18)) setSemanaExcelInput(v);
-              }}
-              min={1}
-              max={18}
-              size="sm"
-              variant="bordered"
-              isDisabled={isSaving || isImporting}
-              className="w-24"
-              classNames={{ inputWrapper: "bg-white dark:bg-default-100/50" }}
-              startContent={<Icon icon="lucide:hash" className="text-default-400" width={14} />}
-            />
-            <Button
-              variant="bordered"
-              onPress={() => fileInputRef.current?.click()}
-              isLoading={isImporting}
-              isDisabled={isSaving || isImporting}
-              className="font-medium border-default-300"
-              startContent={!isImporting ? <Icon icon="lucide:file-spreadsheet" width={16} /> : undefined}
-            >
-              Importar Excel
-            </Button>
-          </div>
+          <Button
+            variant="bordered"
+            onPress={() => fileInputRef.current?.click()}
+            isLoading={isImporting}
+            isDisabled={isSaving || isImporting}
+            className="font-medium border-default-300"
+            startContent={!isImporting ? <Icon icon="lucide:file-spreadsheet" width={16} /> : undefined}
+          >
+            Importar Excel
+          </Button>
         )}
 
         {mode !== 'ver' && (
