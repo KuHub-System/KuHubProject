@@ -3058,7 +3058,7 @@ BEGIN
             INSERT INTO solicitud (
                 id_usuario_gestor_solicitud,
                 id_seccion,
-                id_receta,
+                id_pedido_semana_bodega,
                 id_reserva_sala,
                 fecha_solicitada,
                 observaciones,
@@ -3100,16 +3100,16 @@ BEGIN
 					dr.id_producto,
 					dr.cant_producto AS cant_base,
 					NULL::TEXT AS observacion
-                FROM detalle_receta dr
+                FROM detalle_pedido_semana_bodega dr
                 WHERE v_id_receta IS NOT NULL
-                  AND dr.id_receta = v_id_receta
+                  AND dr.id_pedido_semana_bodega = v_id_receta
                   AND NOT EXISTS (
                       SELECT 1 FROM jsonb_array_elements_text(COALESCE(v_solicitud_masiva->'deltas'->'eliminados', '[]'::jsonb)) e
-                      WHERE e::INTEGER = dr.id_detalle_receta
+                      WHERE e::INTEGER = dr.id_detalle_pedido_semana
                   )
                   AND NOT EXISTS (
                       SELECT 1 FROM jsonb_array_elements(COALESCE(v_solicitud_masiva->'deltas'->'modificados', '[]'::jsonb)) m
-                      WHERE (m->>'idDetalleReceta')::INTEGER = dr.id_detalle_receta
+                      WHERE (m->>'idDetalleReceta')::INTEGER = dr.id_detalle_pedido_semana
                   )
 
                 UNION ALL
@@ -3120,7 +3120,7 @@ BEGIN
 					(m->>'cantProducto')::NUMERIC AS cant_base,
 					 m->>'observacion' AS observacion
                 FROM jsonb_array_elements(COALESCE(v_solicitud_masiva->'deltas'->'modificados', '[]'::jsonb)) m
-                JOIN detalle_receta dr ON dr.id_detalle_receta = (m->>'idDetalleReceta')::INTEGER
+                JOIN detalle_pedido_semana_bodega dr ON dr.id_detalle_pedido_semana = (m->>'idDetalleReceta')::INTEGER
                 WHERE v_id_receta IS NOT NULL
 
                 UNION ALL
