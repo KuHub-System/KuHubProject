@@ -1599,16 +1599,40 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
                 </p>
               </div>
             </div>
-            <Button
-              isIconOnly
-              variant="light"
-              size="sm"
-              onPress={() => setVistaTabla(!vistaTabla)}
-              className="text-warning-600 hover:bg-warning-50"
-              title={vistaTabla ? 'Ver como tarjetas' : 'Ver como tabla'}
-            >
-              <Icon icon={vistaTabla ? 'lucide:layout-grid' : 'lucide:table'} width={20} />
-            </Button>
+            <div className="flex items-center gap-1">
+              {ingredientes.length > 0 && (
+                <Button
+                  variant="light"
+                  size="sm"
+                  color="danger"
+                  onPress={() => {
+                    if (mode === 'editar') {
+                      setDeletedProductIds(
+                        ingredientes
+                          .filter(ing => originalProductIdsRef.current.has(ing.productoId))
+                          .map(ing => parseInt(ing.productoId))
+                      );
+                    }
+                    setIngredientes([]);
+                    setCantidadesTexto({});
+                  }}
+                  startContent={<Icon icon="lucide:trash-2" width={14} />}
+                  className="text-danger-500 hover:bg-danger-50 text-xs font-medium"
+                >
+                  Limpiar todo
+                </Button>
+              )}
+              <Button
+                isIconOnly
+                variant="light"
+                size="sm"
+                onPress={() => setVistaTabla(!vistaTabla)}
+                className="text-warning-600 hover:bg-warning-50"
+                title={vistaTabla ? 'Ver como tarjetas' : 'Ver como tabla'}
+              >
+                <Icon icon={vistaTabla ? 'lucide:layout-grid' : 'lucide:table'} width={20} />
+              </Button>
+            </div>
           </div>
 
           {vistaTabla ? (
