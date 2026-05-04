@@ -191,17 +191,28 @@ const AsigCard: React.FC<AsigCardProps> = ({
   const semana = semanas.find(s => String(s.idSemana) === config.semanaId) ?? null;
 
   // ── Filtros de receta (período + semana) ──────────────────────────────────────
-  const { periodos, semanas: contextSemanas, periodo: contextPeriodo, semanaId: contextSemanaId, seleccionarPeriodo } = usePeriodoSemana();
+  const { periodos, semanas: contextSemanas, periodo: contextPeriodo, semanaId: contextSemanaId } = usePeriodoSemana();
+  const [filterPeriodo, setFilterPeriodo] = React.useState<{ anio: number; semestre: number } | null>(
+    contextPeriodo ? { anio: contextPeriodo.anio, semestre: contextPeriodo.semestre } : null
+  );
   const [filterIdSemana, setFilterIdSemana] = React.useState<string>(contextSemanaId || 'todas');
 
+  // Sincronización UNI-DIRECCIONAL: el superior actualiza el inferior, no al revés
   React.useEffect(() => {
-    setFilterIdSemana('todas');
+    if (contextPeriodo) {
+      setFilterPeriodo({ anio: contextPeriodo.anio, semestre: contextPeriodo.semestre });
+      setFilterIdSemana('todas');
+    }
   }, [contextPeriodo?.anio, contextPeriodo?.semestre]);
 
+  const periodMatchesGlobal =
+    filterPeriodo?.anio === contextPeriodo?.anio &&
+    filterPeriodo?.semestre === contextPeriodo?.semestre;
+
   const recetasFiltradas = React.useMemo(() => {
-    if (filterIdSemana === 'todas') return recetas;
+    if (!periodMatchesGlobal || filterIdSemana === 'todas') return recetas;
     return recetas.filter(r => r.idSemana != null && String(r.idSemana) === filterIdSemana);
-  }, [recetas, filterIdSemana]);
+  }, [recetas, filterIdSemana, periodMatchesGlobal]);
 
   // ── derivados de bloquesIds ──
   const secSel         = seccionesSeleccionadas(asig.secciones, config.bloquesIds);
@@ -565,12 +576,13 @@ const AsigCard: React.FC<AsigCardProps> = ({
                         const anioActual = hoy.getFullYear();
                         return (
                           <Select
-                            selectedKeys={contextPeriodo ? new Set([`${contextPeriodo.anio}-${contextPeriodo.semestre}`]) : new Set()}
+                            selectedKeys={filterPeriodo ? new Set([`${filterPeriodo.anio}-${filterPeriodo.semestre}`]) : new Set()}
                             onSelectionChange={(keys) => {
                               const v = Array.from(keys as Set<string>)[0];
                               if (v) {
                                 const [anio, semestre] = v.split('-');
-                                seleccionarPeriodo(Number(anio), Number(semestre));
+                                setFilterPeriodo({ anio: Number(anio), semestre: Number(semestre) });
+                                setFilterIdSemana('todas');
                               }
                             }}
                             placeholder="Período"
@@ -596,8 +608,8 @@ const AsigCard: React.FC<AsigCardProps> = ({
                       })()
                     )}
 
-                    {/* Selector semana */}
-                    {contextSemanas && contextSemanas.length > 0 && (
+                    {/* Selector semana — solo visible cuando el período local coincide con el global */}
+                    {periodMatchesGlobal && contextSemanas && contextSemanas.length > 0 && (
                       <Select
                         selectedKeys={new Set([filterIdSemana])}
                         onSelectionChange={(keys) => {
