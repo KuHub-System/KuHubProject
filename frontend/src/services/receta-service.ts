@@ -273,12 +273,13 @@ export const softDeleteRecetaService = async (idReceta: number): Promise<boolean
  * @param {File} archivo - Archivo con el listado de pedido (filas 12-80, col A=nombre, D=cantidad, E=observación).
  * @returns {Promise<IImportarExcelResultado>} Productos encontrados y no encontrados.
  */
-export const importarExcelPedidoService = async (archivo: File): Promise<IImportarExcelResultado> => {
+export const importarExcelPedidoService = async (archivo: File, numeroSemana?: number): Promise<IImportarExcelResultado> => {
   try {
     const formData = new FormData();
     formData.append('archivo', archivo);
+    const params = numeroSemana ? `?numeroSemana=${numeroSemana}` : '';
     const response = await api.post<IImportarExcelResultado>(
-      '/pedido-semana-bodega/importar-excel',
+      `/pedido-semana-bodega/importar-excel${params}`,
       formData,
       { headers: { 'Content-Type': 'multipart/form-data' } }
     );
