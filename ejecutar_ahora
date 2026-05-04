@@ -1,1 +1,221 @@
-funciono el cargamento inicial en solicitud, asi como la funcion. Ahora necesito que donde esta el selector Receta Base donde dice Buscar Receta por Nombre diminui el tamano y al lado crea otro selectores para filtra las recetas, en Pedido Semanal a Bodega al al inicio tiene dos selector uno correspondiente al anio - semestre existentes, y otro correspondiente a las semanas de este enio y semestre selecionado, donde tiene que repliecar los mismos selectores al lado del buscador de receta de solicitud, esto permitirar filtrar con mas facilidade, tiene que dar la opcion de de todas semejante como esta en Pedido Semana a Bodega. Ademas vamos hacer que estaran los filtro previamente aplicados segun el anio-semestre y semana ya selecionado den solicitud en el selector superior que no cumplen las mismas funciones, tanto el buscador como los 2 selectores a agregar tiene que estar en un mismo contenedor en una misma linea.
+utils-vendor-kqifLFwZ.js:11 
+ POST https://appkuhub.questweb.cl/api/v1/pedido/consolidate 500 (Internal Server Error)
+(anonymous)	@	utils-vendor-kqifLFwZ.js:11
+xhr	@	utils-vendor-kqifLFwZ.js:11
+wo	@	utils-vendor-kqifLFwZ.js:13
+Promise.then		
+_request	@	utils-vendor-kqifLFwZ.js:14
+request	@	utils-vendor-kqifLFwZ.js:13
+(anonymous)	@	utils-vendor-kqifLFwZ.js:14
+(anonymous)	@	utils-vendor-kqifLFwZ.js:9
+h	@	solicitud-service-CtAtFW1V.js:1
+(anonymous)	@	conglomerado-pedidos-Bansa7YO.js:1
+El	@	react-vendor-BxMPNXTO.js:32
+$n	@	react-vendor-BxMPNXTO.js:32
+Rd	@	react-vendor-BxMPNXTO.js:32
+pn	@	react-vendor-BxMPNXTO.js:32
+Bs	@	react-vendor-BxMPNXTO.js:32
+Wt	@	react-vendor-BxMPNXTO.js:30
+(anonymous)	@	react-vendor-BxMPNXTO.js:32
+
+ubuntu@ip-172-26-1-143:~$ docker logs --tail 200 kuhub-backend
+                                            LIMIT 1
+                                        ),
+                                        'rangoHoras', (
+                                            SELECT string_agg(rango, ' / ' ORDER BY min_inicio)
+                                            FROM (
+                                                SELECT
+                                                    MIN(hora_inicio) AS min_inicio,
+                                                    to_char(MIN(hora_inicio), 'HH24:MI') || '-' ||
+                                                    to_char(MAX(hora_fin), 'HH24:MI') AS rango
+                                                FROM (
+                                                    SELECT
+                                                        bloq.hora_inicio,
+                                                        bloq.hora_fin,
+                                                        bloq.id_bloque - CAST(ROW_NUMBER() OVER (ORDER BY bloq.id_bloque ASC) AS INT) AS grp
+                                                    FROM reserva_sala res_sal
+                                                    INNER JOIN reserva_sala rs_ref ON rs_ref.id_reserva_sala = sol.id_reserva_sala
+                                                    INNER JOIN bloque_horario bloq ON bloq.id_bloque = res_sal.id_bloque
+                                                    WHERE res_sal.id_seccion = rs_ref.id_seccion
+                                                      AND res_sal.id_sala = rs_ref.id_sala
+                                                      AND res_sal.dia_semana = rs_ref.dia_semana
+                                                      AND res_sal.activo = true
+                                                ) islas
+                                                GROUP BY grp
+                                            ) rangos
+                                        )
+                                    ) ORDER BY sol.fecha_solicitada ASC
+                                ),
+                                '[]'::json
+                            )
+                            FROM pedido_solicitud ps3
+                            JOIN solicitud sol ON sol.id_solicitud = ps3.id_solicitud
+                            JOIN detalle_solicitud ds ON ds.id_solicitud = sol.id_solicitud
+                                                     AND ds.id_producto = dp.id_producto
+                            JOIN seccion sec ON sec.id_seccion = sol.id_seccion
+                            JOIN asignatura asig ON asig.id_asignatura = sec.id_asignatura
+                            JOIN docente_seccion doc_sec ON doc_sec.id_seccion = sec.id_seccion
+                            JOIN usuario usr ON usr.id_usuario = doc_sec.id_usuario
+                            LEFT JOIN receta rec ON rec.id_receta = sol.id_receta
+                            WHERE ps3.id_pedido = ped.id_pedido
+                        ) AS detalles_solicitudes
+                    FROM detalle_pedido dp
+                    JOIN producto prod ON prod.id_producto = dp.id_producto
+                    JOIN unidad_medida uni ON uni.id_unidad = prod.id_unidad
+                    JOIN categoria cat ON cat.id_categoria = prod.id_categoria
+                    WHERE dp.id_pedido = ped.id_pedido
+                ) agg
+            ),
+
+            'solicitudesVinculadas', (
+                SELECT COALESCE(
+                    json_agg(
+                        json_build_object(
+                            'idSolicitud', sol.id_solicitud,
+                            'fechaSolicitada', sol.fecha_solicitada,
+                            'estadoSolicitud', sol.estado_solicitud,
+                            'nombreReceta', COALESCE(rec.nombre_receta, 'Sin receta'),
+                            'observaciones', sol.observaciones,
+                            'seccion', json_build_object(
+                                'idSeccion', sec.id_seccion,
+                                'nombreSeccion', sec.nombre_seccion,
+                                'nombreAsignatura', asig.nombre_asignatura,
+                                'nombreDocente', CONCAT_WS(' ',
+                                    NULLIF(TRIM(usr.p_nombre), ''),
+                                    NULLIF(TRIM(usr.s_nombre), ''),
+                                    NULLIF(TRIM(usr.app_paterno), ''),
+                                    NULLIF(TRIM(usr.app_materno), '')
+                                ),
+                                'cantInscritos', sec.cant_inscritos
+                            ),
+                            'cantProductos', (
+                                SELECT COUNT(ds.id_producto)
+                                FROM detalle_solicitud ds
+                                WHERE ds.id_solicitud = sol.id_solicitud
+                            ),
+                            'productosSolicitados', (
+                                SELECT COALESCE(
+                                    json_agg(
+                                        json_build_object(
+                                            'nombreProducto', prod.nombre_producto,
+                                            'cantidad', ds.cant_producto_solicitud,
+                                            'unidadAbreviada', uni_p.abreviatura,
+                                            'observacion', ds.observacion
+                                        ) ORDER BY prod.nombre_producto ASC
+                                    ),
+                                    '[]'::json
+                                )
+                                FROM detalle_solicitud ds
+                                JOIN producto prod ON prod.id_producto = ds.id_producto
+                                JOIN unidad_medida uni_p ON uni_p.id_unidad = prod.id_unidad
+                                WHERE ds.id_solicitud = sol.id_solicitud
+                            ),
+                            'horarios', (
+                                SELECT COALESCE(
+                                    (
+                                        SELECT json_build_object(
+                                            'nombreSala', MAX(ia.sala),
+                                            'rangoHoras', string_agg(ia.rango, ' / ' ORDER BY min_inicio)
+                                        )
+                                        FROM (
+                                            SELECT sala,
+                                                MIN(hora_inicio) AS min_inicio,
+                                                to_char(MIN(hora_inicio), 'HH24:MI') || ' - ' ||
+                                                to_char(MAX(hora_fin), 'HH24:MI') AS rango
+                                            FROM (
+                                                SELECT
+                                                    sala.nombre_sala || '-' || sala.cod_sala AS sala,
+                                                    bloq.hora_inicio,
+                                                    bloq.hora_fin,
+                                                    bloq.id_bloque - CAST(ROW_NUMBER() OVER (ORDER BY bloq.id_bloque ASC) AS INT) AS grp
+                                                FROM reserva_sala res_sal
+                                                INNER JOIN reserva_sala rs_ref ON rs_ref.id_reserva_sala = sol.id_reserva_sala
+                                                INNER JOIN bloque_horario bloq ON bloq.id_bloque = res_sal.id_bloque
+                                                INNER JOIN sala sala ON sala.id_sala = res_sal.id_sala
+                                                WHERE res_sal.id_seccion = rs_ref.id_seccion
+                                                  AND res_sal.id_sala = rs_ref.id_sala
+                                                  AND res_sal.dia_semana = rs_ref.dia_semana
+                                                  AND res_sal.activo = true
+                                                  AND sala.activo = true
+                                            ) islas
+                                            GROUP BY sala, grp
+                                        ) ia
+                                    ),
+                                    '{}'::json
+                                )
+                            )
+                        ) ORDER BY sol.fecha_solicitada ASC
+                    ),
+                    '[]'::json
+                )
+                FROM pedido_solicitud ps
+                JOIN solicitud sol ON sol.id_solicitud = ps.id_solicitud
+                LEFT JOIN receta rec ON rec.id_receta = sol.id_receta
+                JOIN seccion sec ON sec.id_seccion = sol.id_seccion
+                JOIN asignatura asig ON asig.id_asignatura = sec.id_asignatura
+                JOIN docente_seccion doc_sec ON doc_sec.id_seccion = sec.id_seccion
+                JOIN usuario usr ON usr.id_usuario = doc_sec.id_usuario
+                WHERE ps.id_pedido = ped.id_pedido
+            )
+        ) ORDER BY ped.id_pedido ASC
+    ),
+    '[]'::json
+) AS pedidos_completos_json
+FROM pedido ped
+WHERE ped.fecha_inicio_pedido <= ?
+  AND ped.fecha_fin_pedido >= ?
+] [ERROR: relation "receta" does not exist
+  Position: 6748] [n/a]
+        at org.hibernate.exception.internal.SQLStateConversionDelegate.convert(SQLStateConversionDelegate.java:91)
+        at org.hibernate.exception.internal.StandardSQLExceptionConverter.convert(StandardSQLExceptionConverter.java:58)
+        at org.hibernate.engine.jdbc.spi.SqlExceptionHelper.convert(SqlExceptionHelper.java:108)
+        at org.hibernate.engine.jdbc.spi.SqlExceptionHelper.convert(SqlExceptionHelper.java:94)
+        at org.hibernate.sql.results.jdbc.internal.DeferredResultSetAccess.executeQuery(DeferredResultSetAccess.java:268)
+        at org.hibernate.sql.results.jdbc.internal.DeferredResultSetAccess.getResultSet(DeferredResultSetAccess.java:171)
+        at org.hibernate.sql.results.jdbc.internal.AbstractResultSetAccess.getMetaData(AbstractResultSetAccess.java:36)
+        at org.hibernate.sql.results.jdbc.internal.AbstractResultSetAccess.getColumnCount(AbstractResultSetAccess.java:52)
+        at org.hibernate.query.results.ResultSetMappingImpl.resolve(ResultSetMappingImpl.java:194)
+        at org.hibernate.sql.exec.internal.JdbcSelectExecutorStandardImpl.resolveJdbcValuesSource(JdbcSelectExecutorStandardImpl.java:340)
+        at org.hibernate.sql.exec.internal.JdbcSelectExecutorStandardImpl.doExecuteQuery(JdbcSelectExecutorStandardImpl.java:137)
+        at org.hibernate.sql.exec.internal.JdbcSelectExecutorStandardImpl.executeQuery(JdbcSelectExecutorStandardImpl.java:102)
+        at org.hibernate.sql.exec.spi.JdbcSelectExecutor.executeQuery(JdbcSelectExecutor.java:91)
+        at org.hibernate.sql.exec.spi.JdbcSelectExecutor.list(JdbcSelectExecutor.java:165)
+        at org.hibernate.sql.exec.spi.JdbcSelectExecutor.list(JdbcSelectExecutor.java:142)
+        at org.hibernate.sql.exec.spi.JdbcSelectExecutor.list(JdbcSelectExecutor.java:132)
+        at org.hibernate.query.sql.internal.NativeSelectQueryPlanImpl.performList(NativeSelectQueryPlanImpl.java:135)
+        at org.hibernate.query.sql.internal.NativeQueryImpl.doList(NativeQueryImpl.java:693)
+        at org.hibernate.query.spi.AbstractSelectionQuery.list(AbstractSelectionQuery.java:143)
+        at org.hibernate.query.spi.AbstractSelectionQuery.getSingleResult(AbstractSelectionQuery.java:275)
+        at org.springframework.data.jpa.repository.query.JpaQueryExecution$SingleEntityExecution.doExecute(JpaQueryExecution.java:224)
+        at org.springframework.data.jpa.repository.query.JpaQueryExecution.execute(JpaQueryExecution.java:93)
+        at org.springframework.data.jpa.repository.query.AbstractJpaQuery.doExecute(AbstractJpaQuery.java:152)
+        at org.springframework.data.jpa.repository.query.AbstractJpaQuery.execute(AbstractJpaQuery.java:140)
+        at org.springframework.data.repository.core.support.RepositoryMethodInvoker.doInvoke(RepositoryMethodInvoker.java:170)
+        at org.springframework.data.repository.core.support.RepositoryMethodInvoker.invoke(RepositoryMethodInvoker.java:158)
+        at org.springframework.data.repository.core.support.QueryExecutorMethodInterceptor.doInvoke(QueryExecutorMethodInterceptor.java:170)
+        at org.springframework.data.repository.core.support.QueryExecutorMethodInterceptor.invoke(QueryExecutorMethodInterceptor.java:149)
+        at org.springframework.aop.framework.ReflectiveMethodInvocation.proceed(ReflectiveMethodInvocation.java:184)
+        at org.springframework.data.projection.DefaultMethodInvokingMethodInterceptor.invoke(DefaultMethodInvokingMethodInterceptor.java:69)
+        at org.springframework.aop.framework.ReflectiveMethodInvocation.proceed(ReflectiveMethodInvocation.java:184)
+        at org.springframework.transaction.interceptor.TransactionAspectSupport.invokeWithinTransaction(TransactionAspectSupport.java:380)
+        at org.springframework.transaction.interceptor.TransactionInterceptor.invoke(TransactionInterceptor.java:119)
+        at org.springframework.aop.framework.ReflectiveMethodInvocation.proceed(ReflectiveMethodInvocation.java:184)
+        at org.springframework.dao.support.PersistenceExceptionTranslationInterceptor.invoke(PersistenceExceptionTranslationInterceptor.java:138)
+        ... 171 more
+Caused by: org.postgresql.util.PSQLException: ERROR: relation "receta" does not exist
+  Position: 6748
+        at org.postgresql.core.v3.QueryExecutorImpl.receiveErrorResponse(QueryExecutorImpl.java:2725)
+        at org.postgresql.core.v3.QueryExecutorImpl.processResults(QueryExecutorImpl.java:2412)
+        at org.postgresql.core.v3.QueryExecutorImpl.execute(QueryExecutorImpl.java:371)
+        at org.postgresql.jdbc.PgStatement.executeInternal(PgStatement.java:502)
+        at org.postgresql.jdbc.PgStatement.execute(PgStatement.java:419)
+        at org.postgresql.jdbc.PgPreparedStatement.executeWithFlags(PgPreparedStatement.java:194)
+        at org.postgresql.jdbc.PgPreparedStatement.executeQuery(PgPreparedStatement.java:137)
+        at com.zaxxer.hikari.pool.ProxyPreparedStatement.executeQuery(ProxyPreparedStatement.java:52)
+        at com.zaxxer.hikari.pool.HikariProxyPreparedStatement.executeQuery(HikariProxyPreparedStatement.java)
+        at org.hibernate.sql.results.jdbc.internal.DeferredResultSetAccess.executeQuery(DeferredResultSetAccess.java:250)
+        ... 201 more
+2026-05-04T23:15:18.681Z DEBUG 1 --- [io-8080-exec-10] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/yaml]
+2026-05-04T23:15:18.682Z DEBUG 1 --- [io-8080-exec-10] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Writing [{error=Error interno del servidor, message=Ha ocurrido un error inesperado. Por favor contacte al ad (truncated)...]
+2026-05-04T23:15:18.685Z DEBUG 1 --- [io-8080-exec-10] .m.m.a.ExceptionHandlerExceptionResolver : Resolved [org.springframework.dao.InvalidDataAccessResourceUsageException: JDBC exception executing SQL [SELECT COALESCE(<EOL>    json_agg(<EOL>        json_build_object(<EOL>            'idPedido', ped.id_pedido,<EOL>            'fechaInicioPedido', ped.fecha_inicio_pedido,<EOL>            'fechaFinPedido', ped.fecha_fin_pedido,<EOL>            'fechaRegistro', ped.fecha_registro,<EOL>            'estadoPedido', ped.estado_pedido,<EOL><EOL>            'totalSolicitudes', (<EOL>                SELECT COUNT(*)<EOL>                FROM pedido_solicitud ps<EOL>                WHERE ps.id_pedido = ped.id_pedido<EOL>            ),<EOL><EOL>            'totalProductos', (<EOL>                SELECT COUNT(*)<EOL>                FROM detalle_pedido dp<EOL>                WHERE dp.id_pedido = ped.id_pedido<EOL>            ),<EOL><EOL>            'productos', (<EOL>                SELECT COALESCE(<EOL>                    json_agg(<EOL>                        json_build_object(<EOL>                            'idProducto', agg.id_producto,<EOL>                            'nombreProducto', agg.nombre_producto,<EOL>                            'idCategoria', agg.id_categoria,<EOL>                            'nombreCategoria', agg.nombre_categoria,<EOL>                            'cantidadTotalPedido', agg.cant_producto_pedido,<EOL>                            'unidad', agg.nombre_unidad,<EOL>                            'abreviatura', agg.abreviatura,<EOL>                            'totalSecciones', agg.total_secciones,<EOL>                            'detallesPorSolicitud', agg.detalles_solicitudes<EOL>                        ) ORDER BY agg.nombre_producto ASC<EOL>                    ),<EOL>                    '[]'::json<EOL>                )<EOL>                FROM (<EOL>                    SELECT<EOL>                        dp.id_producto,<EOL>                        prod.nombre_producto,<EOL>                        cat.id_categoria,<EOL>                        cat.nombre_categoria,<EOL>                        dp.cant_producto_pedido,<EOL>                        uni.nombre_unidad,<EOL>                        uni.abreviatura,<EOL>                        (<EOL>                            SELECT COUNT(DISTINCT sol.id_seccion)<EOL>                            FROM pedido_solicitud ps2<EOL>                            JOIN solicitud sol ON sol.id_solicitud = ps2.id_solicitud<EOL>                            JOIN detalle_solicitud ds ON ds.id_solicitud = sol.id_solicitud<EOL>                            WHERE ps2.id_pedido = ped.id_pedido<EOL>                              AND ds.id_producto = dp.id_producto<EOL>                        ) AS total_secciones,<EOL>                        (<EOL>                            SELECT COALESCE(<EOL>                                json_agg(<EOL>                                    json_build_object(<EOL>                                        'idSolicitud', sol.id_solicitud,<EOL>                                        'fechaSolicitada', sol.fecha_solicitada,<EOL>                                        'nombreSeccion', sec.nombre_seccion,<EOL>                                        'nombreAsignatura', asig.nombre_asignatura,<EOL>                                        'nombreDocente', CONCAT_WS(' ',<EOL>                                            NULLIF(TRIM(usr.p_nombre), ''),<EOL>                                            NULLIF(TRIM(usr.app_paterno), '')<EOL>                                        ),<EOL>                                        'cantidad', ds.cant_producto_solicitud,<EOL>                                        'unidadAbreviada', uni.abreviatura,<EOL>                                        'observacion', ds.observacion,<EOL>                                        'alumnos', sec.cant_inscritos,<EOL>                                        'nombreReceta', COALESCE(rec.nombre_receta, 'Sin receta'),<EOL>                                        'nombreSala', (<EOL>                                            SELECT sala.nombre_sala || '-' || sala.cod_sala<EOL>                                            FROM reserva_sala res_sal<EOL>                                            JOIN sala sala ON sala.id_sala = res_sal.id_sala<EOL>                                            WHERE res_sal.id_reserva_sala = sol.id_reserva_sala<EOL>                                            LIMIT 1<EOL>                                        ),<EOL>                                        'rangoHoras', (<EOL>                                            SELECT string_agg(rango, ' / ' ORDER BY min_inicio)<EOL>                                            FROM (<EOL>                                                SELECT<EOL>                                                    MIN(hora_inicio) AS min_inicio,<EOL>                                                    to_char(MIN(hora_inicio), 'HH24:MI') || '-' ||<EOL>                                                    to_char(MAX(hora_fin), 'HH24:MI') AS rango<EOL>                                                FROM (<EOL>                                                    SELECT<EOL>                                                        bloq.hora_inicio,<EOL>                                                        bloq.hora_fin,<EOL>                                                        bloq.id_bloque - CAST(ROW_NUMBER() OVER (ORDER BY bloq.id_bloque ASC) AS INT) AS grp<EOL>                                                    FROM reserva_sala res_sal<EOL>                                                    INNER JOIN reserva_sala rs_ref ON rs_ref.id_reserva_sala = sol.id_reserva_sala<EOL>                                                    INNER JOIN bloque_horario bloq ON bloq.id_bloque = res_sal.id_bloque<EOL>                                                    WHERE res_sal.id_seccion = rs_ref.id_seccion<EOL>                                                      AND res_sal.id_sala = rs_ref.id_sala<EOL>                                                      AND res_sal.dia_semana = rs_ref.dia_semana<EOL>                                                      AND res_sal.activo = true<EOL>                                                ) islas<EOL>                                                GROUP BY grp<EOL>                                            ) rangos<EOL>                                        )<EOL>                                    ) ORDER BY sol.fecha_solicitada ASC<EOL>                                ),<EOL>                                '[]'::json<EOL>                            )<EOL>                            FROM pedido_solicitud ps3<EOL>                            JOIN solicitud sol ON sol.id_solicitud = ps3.id_solicitud<EOL>                            JOIN detalle_solicitud ds ON ds.id_solicitud = sol.id_solicitud<EOL>                                                     AND ds.id_producto = dp.id_producto<EOL>                            JOIN seccion sec ON sec.id_seccion = sol.id_seccion<EOL>                            JOIN asignatura asig ON asig.id_asignatura = sec.id_asignatura<EOL>                            JOIN docente_seccion doc_sec ON doc_sec.id_seccion = sec.id_seccion<EOL>                            JOIN usuario usr ON usr.id_usuario = doc_sec.id_usuario<EOL>                            LEFT JOIN receta rec ON rec.id_receta = sol.id_receta<EOL>                            WHERE ps3.id_pedido = ped.id_pedido<EOL>                        ) AS detalles_solicitudes<EOL>                    FROM detalle_pedido dp<EOL>                    JOIN producto prod ON prod.id_producto = dp.id_producto<EOL>                    JOIN unidad_medida uni ON uni.id_unidad = prod.id_unidad<EOL>                    JOIN categoria cat ON cat.id_categoria = prod.id_categoria<EOL>                    WHERE dp.id_pedido = ped.id_pedido<EOL>                ) agg<EOL>            ),<EOL><EOL>            'solicitudesVinculadas', (<EOL>                SELECT COALESCE(<EOL>                    json_agg(<EOL>                        json_build_object(<EOL>                            'idSolicitud', sol.id_solicitud,<EOL>                            'fechaSolicitada', sol.fecha_solicitada,<EOL>                            'estadoSolicitud', sol.estado_solicitud,<EOL>                            'nombreReceta', COALESCE(rec.nombre_receta, 'Sin receta'),<EOL>                            'observaciones', sol.observaciones,<EOL>                            'seccion', json_build_object(<EOL>                                'idSeccion', sec.id_seccion,<EOL>                                'nombreSeccion', sec.nombre_seccion,<EOL>                                'nombreAsignatura', asig.nombre_asignatura,<EOL>                                'nombreDocente', CONCAT_WS(' ',<EOL>                                    NULLIF(TRIM(usr.p_nombre), ''),<EOL>                                    NULLIF(TRIM(usr.s_nombre), ''),<EOL>                                    NULLIF(TRIM(usr.app_paterno), ''),<EOL>                                    NULLIF(TRIM(usr.app_materno), '')<EOL>                                ),<EOL>                                'cantInscritos', sec.cant_inscritos<EOL>                            ),<EOL>                            'cantProductos', (<EOL>                                SELECT COUNT(ds.id_producto)<EOL>                                FROM detalle_solicitud ds<EOL>                                WHERE ds.id_solicitud = sol.id_solicitud<EOL>                            ),<EOL>                            'productosSolicitados', (<EOL>                                SELECT COALESCE(<EOL>                                    json_agg(<EOL>                                        json_build_object(<EOL>                                            'nombreProducto', prod.nombre_producto,<EOL>                                            'cantidad', ds.cant_producto_solicitud,<EOL>                                            'unidadAbreviada', uni_p.abreviatura,<EOL>                                            'observacion', ds.observacion<EOL>                                        ) ORDER BY prod.nombre_producto ASC<EOL>                                    ),<EOL>                                    '[]'::json<EOL>                                )<EOL>                                FROM detalle_solicitud ds<EOL>                                JOIN producto prod ON prod.id_producto = ds.id_producto<EOL>                                JOIN unidad_medida uni_p ON uni_p.id_unidad = prod.id_unidad<EOL>                                WHERE ds.id_solicitud = sol.id_solicitud<EOL>                            ),<EOL>                            'horarios', (<EOL>                                SELECT COALESCE(<EOL>                                    (<EOL>                                        SELECT json_build_object(<EOL>                                            'nombreSala', MAX(ia.sala),<EOL>                                            'rangoHoras', string_agg(ia.rango, ' / ' ORDER BY min_inicio)<EOL>                                        )<EOL>                                        FROM (<EOL>                                            SELECT sala,<EOL>                                                MIN(hora_inicio) AS min_inicio,<EOL>                                                to_char(MIN(hora_inicio), 'HH24:MI') || ' - ' ||<EOL>                                                to_char(MAX(hora_fin), 'HH24:MI') AS rango<EOL>                                            FROM (<EOL>                                                SELECT<EOL>                                                    sala.nombre_sala || '-' || sala.cod_sala AS sala,<EOL>                                                    bloq.hora_inicio,<EOL>                                                    bloq.hora_fin,<EOL>                                                    bloq.id_bloque - CAST(ROW_NUMBER() OVER (ORDER BY bloq.id_bloque ASC) AS INT) AS grp<EOL>                                                FROM reserva_sala res_sal<EOL>                                                INNER JOIN reserva_sala rs_ref ON rs_ref.id_reserva_sala = sol.id_reserva_sala<EOL>                                                INNER JOIN bloque_horario bloq ON bloq.id_bloque = res_sal.id_bloque<EOL>                                                INNER JOIN sala sala ON sala.id_sala = res_sal.id_sala<EOL>                                                WHERE res_sal.id_seccion = rs_ref.id_seccion<EOL>                                                  AND res_sal.id_sala = rs_ref.id_sala<EOL>                                                  AND res_sal.dia_semana = rs_ref.dia_semana<EOL>                                                  AND res_sal.activo = true<EOL>                                                  AND sala.activo = true<EOL>                                            ) islas<EOL>                                            GROUP BY sala, grp<EOL>                                        ) ia<EOL>                                    ),<EOL>                                    '{}'::json<EOL>                                )<EOL>                            )<EOL>                        ) ORDER BY sol.fecha_solicitada ASC<EOL>                    ),<EOL>                    '[]'::json<EOL>                )<EOL>                FROM pedido_solicitud ps<EOL>                JOIN solicitud sol ON sol.id_solicitud = ps.id_solicitud<EOL>                LEFT JOIN receta rec ON rec.id_receta = sol.id_receta<EOL>                JOIN seccion sec ON sec.id_seccion = sol.id_seccion<EOL>                JOIN asignatura asig ON asig.id_asignatura = sec.id_asignatura<EOL>                JOIN docente_seccion doc_sec ON doc_sec.id_seccion = sec.id_seccion<EOL>                JOIN usuario usr ON usr.id_usuario = doc_sec.id_usuario<EOL>                WHERE ps.id_pedido = ped.id_pedido<EOL>            )<EOL>        ) ORDER BY ped.id_pedido ASC<EOL>    ),<EOL>    '[]'::json<EOL>) AS pedidos_completos_json<EOL>FROM pedido ped<EOL>WHERE ped.fecha_inicio_pedido <= ?<EOL>  AND ped.fecha_fin_pedido >= ?<EOL>] [ERROR: relation "receta" does not exist<EOL>  Position: 6748] [n/a]; SQL [n/a]]
+2026-05-04T23:15:18.686Z DEBUG 1 --- [io-8080-exec-10] o.s.web.servlet.DispatcherServlet        : Completed 500 INTERNAL_SERVER_ERROR
