@@ -124,8 +124,9 @@ public class SolicitudServiceImp implements SolicitudService {
                 throw new RuntimeException("Error al mapear JSONB de receta detalles: " + detallesJsonb, e);
             }
             responseList.add(new RecipeSolicitation(
-                    ((Number) row[0]).intValue(), // idReceta
-                    (String) row[1],              // nombreReceta
+                    ((Number) row[0]).intValue(),                                // idReceta
+                    (String) row[1],                                             // nombreReceta
+                    row[3] != null ? ((Number) row[3]).intValue() : null,        // idSemana
                     detalles
             ));
         }
