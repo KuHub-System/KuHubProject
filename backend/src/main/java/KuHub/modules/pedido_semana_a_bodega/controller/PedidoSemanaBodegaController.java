@@ -101,12 +101,18 @@ public class PedidoSemanaBodegaController {
      * y no encontrados para precargar el formulario de Nuevo Pedido Semanal.
      * ⬜ Sin uso frontend aún.
      */
+    /**
+     * Parsea un archivo Excel (.xlsx/.xlsm) con el listado de pedido (filas 12-80).
+     * Si se pasa numeroSemana (1-18) se lee esa hoja ("SEMANA (X)"); si no, se lee la hoja activa.
+     * ✅ En uso: consumido por importarExcelPedidoService en receta-service.ts.
+     */
     @PostMapping(value = "/importar-excel", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ImportarExcelResultado> importarExcel(
-            @RequestParam("archivo") MultipartFile archivo) {
+            @RequestParam("archivo") MultipartFile archivo,
+            @RequestParam(value = "numeroSemana", required = false) Integer numeroSemana) {
         return ResponseEntity
                 .status(200)
-                .body(pedidoSemanaBodegaService.importarExcelProductos(archivo));
+                .body(pedidoSemanaBodegaService.importarExcelProductos(archivo, numeroSemana));
     }
 
 

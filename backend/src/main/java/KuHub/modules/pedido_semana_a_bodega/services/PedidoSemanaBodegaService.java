@@ -18,5 +18,5 @@ public interface PedidoSemanaBodegaService {
     boolean updateRecipeWithDetails (PedidoSemanaBodegaWithDetailsUpdateDTO request);
     boolean changeStatus(Integer idReceta);
     boolean softDeleteRecipeWithDetails(Integer idReceta);
-    ImportarExcelResultado importarExcelProductos(MultipartFile archivo);
+    ImportarExcelResultado importarExcelProductos(MultipartFile archivo, Integer numeroSemana);
 }
