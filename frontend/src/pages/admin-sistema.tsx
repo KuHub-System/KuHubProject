@@ -35,6 +35,7 @@ import { motion } from 'framer-motion';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useToast } from '../hooks/useToast';
 import { useModulePermission } from '../contexts/permission-context';
+import { useSistemaConfig } from '../contexts/sistema-config-context';
 
 // ─── TIPOS Y SERVICIOS ───────────────────────────────────────────────────────
 import { IBloqueHorario } from '../types/bloque-horario.types';
@@ -1871,6 +1872,7 @@ const SeccionGestionSalaYReservas: React.FC = () => {
 
 const SeccionGestionDelSistema: React.FC = () => {
   const toast = useToast();
+  const { refreshConfig } = useSistemaConfig();
 
   // ── Estado de la configuración ──
   const [solicitudesEnPedido, setSolicitudesEnPedido] = React.useState(false);
@@ -1910,6 +1912,7 @@ const SeccionGestionDelSistema: React.FC = () => {
       });
       setSolicitudesEnPedido(updated.solicitudesEnPedido);
       setSolicitudesEnPedidoGuardado(updated.solicitudesEnPedido);
+      await refreshConfig();
       toast.success('Configuración guardada correctamente');
     } catch (error: any) {
       toast.error(error?.response?.data?.message || error.message || 'Error al guardar la configuración');
@@ -1925,6 +1928,7 @@ const SeccionGestionDelSistema: React.FC = () => {
       const restored = await restaurarConfiguracionSistema();
       setSolicitudesEnPedido(restored.solicitudesEnPedido);
       setSolicitudesEnPedidoGuardado(restored.solicitudesEnPedido);
+      await refreshConfig();
       toast.success('Configuración restablecida a los valores predeterminados');
     } catch (error: any) {
       toast.error(error?.response?.data?.message || error.message || 'Error al restablecer la configuración');
