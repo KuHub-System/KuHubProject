@@ -1088,15 +1088,19 @@ IMPLEMENTADO Y FUNCIONAL:
   [✓] Despliegue en producción con dominio, SSL y Docker
   [✓] Compresión gzip en nginx, build multi-stage Docker
   [✓] Observación de producto en solicitud masiva (2026-05-05):
-      Backend (ConexionXD_v2.sql, BLOQUE A): Cambiar NULL::TEXT AS observacion por
-      dr.observacion para que los productos sin modificación hereden la observación
-      guardada en detalle_pedido_semana_bodega.
+      Backend (ConexionXD_v2.sql):
+      - BLOQUE A (línea 3190): Cambiar NULL::TEXT AS observacion por dr.observacion
+        para que productos sin cambios hereden la observación original.
+      - BLOQUE B (línea 3209): Usar COALESCE(m->>'observacion', dr.observacion)
+        para preservar observación original si usuario modifica solo cantidad,
+        evitando pérdida de observación cuando delta no la trae.
       Frontend (solicitud.tsx, línea 945): Corrección de condición observacionCambiada.
       Cambiar de !!i.observacion por comparación real contra valor original:
       observacionOriginal = orig?.observacion ?? null; observacionActual = i.observacion || null;
       observacionCambiada = observacionActual !== observacionOriginal.
-      Resultado: solo productos con observación modificada van a BLOQUE B (modificados);
-      productos sin cambios van a BLOQUE A con su observación original de la BD.
+      Resultado: solo productos con observación realmente modificada van a BLOQUE B;
+      productos sin cambios van a BLOQUE A con observación original;
+      cambios de cantidad conservan observación original via COALESCE.
 
 PENDIENTE DE IMPLEMENTAR O DEFINIR:
   [✓] Estado EN_PEDIDO implementado (2026-04-14):
