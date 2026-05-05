@@ -218,7 +218,9 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar, onLogout }) =>
                     {isOpen && (
                       <Icon
                         icon="lucide:chevron-down"
-                        className={`text-default-300 text-xs transition-transform duration-200 group-hover:text-primary ${isCollapsed ? '-rotate-90' : 'rotate-0'}`}
+                        className={`text-secondary font-bold text-base transition-transform duration-200 group-hover:text-primary ${isCollapsed ? '-rotate-90' : 'rotate-0'}`}
+                        width={22}
+                        height={22}
                       />
                     )}
                   </motion.div>
