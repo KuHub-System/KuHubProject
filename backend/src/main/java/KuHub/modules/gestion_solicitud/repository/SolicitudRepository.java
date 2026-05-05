@@ -104,7 +104,8 @@ public interface SolicitudRepository extends JpaRepository<Solicitud, Integer> {
                             'activoProducto', p.activo,
                             'idDetalleReceta', d.id_detalle_pedido_semana,
                             'idProducto', p.id_producto,
-                            'idUnidad', u.id_unidad
+                            'idUnidad', u.id_unidad,
+                            'observacion', d.observacion
                         )
                     ) FILTER (WHERE d.id_detalle_pedido_semana IS NOT NULL),
                     '[]'::jsonb
