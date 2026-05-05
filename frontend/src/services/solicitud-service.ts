@@ -48,14 +48,14 @@ export const obtenerCursosParaSolicitudService = async (): Promise<IAsignaturaCu
 
 // ── Recetas con detalles ──────────────────────────────────────────────────────
 export interface IDetalleReceta {
-  idDetalleReceta: number;
+  idDetallePedidoSemana: number;
   idProducto: number;
   idUnidad: number;
   nombreProducto: string;
   cantProducto: number;
   abreviatura: string;
   esFraccionario: boolean;
-  activoProducto: boolean;
+  activo: boolean;
   observacion?: string;
 }
 export interface IPedidoSemanaBodegaSolicitud {

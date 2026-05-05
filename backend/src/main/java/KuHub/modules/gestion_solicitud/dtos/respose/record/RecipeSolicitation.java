@@ -22,9 +22,16 @@ public record RecipeSolicitation(
 
     // ============================================================================
     // 1. DETALLE DE RECETA — parseado desde row[2] (JSONB)
-    //    SQL genera: 'nombreProducto', 'cantProducto', 'abreviatura',
-    //                'esFraccionario', 'activoProducto', 'idDetalleReceta',
-    //                'idProducto', 'idUnidad' (camelCase)
+    //    Nombres en JSON (camelCase) ← Columnas BD (snake_case)
+    //    - nombreProducto ← p.nombre_producto
+    //    - cantProducto ← d.cant_producto
+    //    - abreviatura ← u.abreviatura
+    //    - esFraccionario ← u.es_fraccionario
+    //    - activo ← p.activo
+    //    - idDetallePedidoSemana ← d.id_detalle_pedido_semana
+    //    - idProducto ← p.id_producto
+    //    - idUnidad ← u.id_unidad
+    //    - observacion ← d.observacion
     // ============================================================================
 
     @JsonIgnoreProperties(ignoreUnknown = true)
@@ -33,9 +40,10 @@ public record RecipeSolicitation(
             @JsonProperty("cantProducto") BigDecimal cantProducto,
             @JsonProperty("abreviatura") String abreviatura,
             @JsonProperty("esFraccionario") Boolean esFraccionario,
-            @JsonProperty("activoProducto") Boolean activoProducto,
-            @JsonProperty("idDetalleReceta") Integer idDetalleReceta,
+            @JsonProperty("activo") Boolean activo,
+            @JsonProperty("idDetallePedidoSemana") Integer idDetallePedidoSemana,
             @JsonProperty("idProducto") Integer idProducto,
-            @JsonProperty("idUnidad") Short idUnidad
+            @JsonProperty("idUnidad") Short idUnidad,
+            @JsonProperty("observacion") String observacion
     ) {}
 }
