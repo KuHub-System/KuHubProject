@@ -1,23 +1,8 @@
-EJECUTA ESTO CON /model Haiku 4.5 el REQUERIMENTO 1
-REQUERIMENTO 1
-E:\Dev_Codes\K\BBDD_POSTGRES\Nube no tocar
-archivo ConexionXD_v2
-
-necesito mejor orden para mi archivo sql de la bbdd, necesito que se respecte la orden logica
-reorganizarlo con el orden lógico correcto:
-DROPs (funciones/triggers → tipos → tablas)
-Extensiones
-ENUMs + CASTs
-Tablas (respetando dependencias)
-Constraints extras (ALTER TABLE)
-Índices
-Funciones y Triggers (antes de inserciones, porque la función generar_solicitudes_masivas no es trigger pero otras sí)
-Inserciones (datos semilla y datos de prueba)
-
-También estandarizo estado_pedido_semana_bodega → estado_pedido_semana_bodega_type.
-UNIQUE en detalle_pedido. Lo mueve dentro de la definición de esa tabla
-NO REMOVER LOS COMENTARIOS QUE ESTAN, SI ES NECESARIO AGREGA NUEVOS, SEPARADOR DE CADA ORDEN LOGICOS.
-
-EJECUTA ESTO CON /model Sonnet 4.6 el REQUERIMENTO 2
-REQUERIMENTO 2
-En la page de solicitud se carga el Pedido Semanal Base al seleccionar una asignatura, lo que sucede es que ahora que se agrego en la tabla detalle_pedido_semana_bodega el atributo observacion se debe agregar en la consulta que esta en la solicitud para que se cargue en el campo del frontend si es que tiene observacion.
+Me di cuenta que la funcion de crear solicitud masiva no tiene el campo observacion del producto, tiene solamente la general.
+necesito que lea los documentos con /model Haiku 4.5
+1-si el usuario agrega una observacion apos ser cargado la informacion de pedido semanal a bodega, tiene que entrar como modificado al delta, asi como esta para la cantidad que si es alterada es considerado el delta modificado.
+2-tiene que ler el contexto de la logica en el frontend, los records dtos del backend.
+3-la funcion se encuentra en ConexionXD_v2.sql de la linea 3089-3235.
+4-si es necesario revisa las tablas existente para coraborar atributos para que no de error, de la linea 200-724
+necesito que planifique y ejecute con /model sonnet 4.6
+tiene que agregar el dato de la obsevacion a la funcion para que se ejecute correctamente.
