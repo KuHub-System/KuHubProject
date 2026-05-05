@@ -8,7 +8,7 @@ import { PAGE_TO_MODULE } from '../types/permissions.types';
 import { useSistemaConfig } from '../contexts/sistema-config-context';
 import { motion } from 'framer-motion';
 
-const LOGO_URL = new URL('./assets/KuHubLogoWBG.png', import.meta.url).href;
+const LOGO_URL = '/nrelogoo-Photoroom.png';
 
 /**
  * Interfaz para las propiedades del componente Sidebar.
@@ -160,8 +160,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar, onLogout }) =>
         <div className="p-5 flex items-center justify-between border-b border-default-100 dark:border-default-50">
           <div className="flex items-center">
             {/* Logo de KüHub */}
-            <div className="w-10 h-10 bg-primary flex items-center justify-center rounded-lg shadow-sm">
-              <img src={LOGO_URL} alt="Logo KüHub" />
+            <div className="w-12 h-12 flex items-center justify-center rounded-lg shadow-sm">
+              <img src={LOGO_URL} alt="Logo KüHub" className="w-full h-full object-contain" />
             </div>
             <motion.div
               className="ml-3 flex flex-col justify-center"
@@ -180,9 +180,9 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar, onLogout }) =>
               variant="light"
               aria-label="Toggle Sidebar"
               onPress={toggleSidebar}
-              className="text-default-400 hover:text-secondary dark:hover:text-foreground hover:bg-default-100 dark:hover:bg-default-50"
+              className="text-secondary font-bold hover:text-primary dark:hover:text-foreground hover:bg-default-100 dark:hover:bg-default-50"
             >
-              <Icon icon="lucide:chevron-left" width={20} />
+              <Icon icon="lucide:chevron-left" width={24} height={24} />
             </Button>
           )}
         </div>
