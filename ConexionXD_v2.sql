@@ -3206,7 +3206,10 @@ BEGIN
                 SELECT
 					 dr.id_producto,
 					(m->>'cantProducto')::NUMERIC AS cant_base,
-					 COALESCE(m->>'observacion', dr.observacion) AS observacion
+					 CASE
+					   WHEN m->>'observacion' IS NOT NULL THEN m->>'observacion'
+					   ELSE dr.observacion
+					 END AS observacion
                 FROM jsonb_array_elements(COALESCE(v_solicitud_masiva->'deltas'->'modificados', '[]'::jsonb)) m
                 JOIN detalle_pedido_semana_bodega dr ON dr.id_detalle_pedido_semana = (m->>'idDetalleReceta')::INTEGER
                 WHERE v_id_receta IS NOT NULL
