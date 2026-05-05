@@ -160,7 +160,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar, onLogout }) =>
         <div className="p-5 flex items-center justify-between border-b border-default-100 dark:border-default-50">
           <div className="flex items-center">
             {/* Logo de KüHub */}
-            <div className="w-12 h-12 flex items-center justify-center rounded-lg shadow-sm">
+            <div className="w-[72px] h-[72px] flex items-center justify-center rounded-lg shadow-sm">
               <img src={LOGO_URL} alt="Logo KüHub" className="w-full h-full object-contain" />
             </div>
             <motion.div
