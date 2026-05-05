@@ -1,0 +1,687 @@
+
+> kuhub-system@0.1.0 lint
+> eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0
+
+
+C:\Users\Matheus\IdeaProjects\KuHubProject\frontend\src\components\dashboard\DashboardBodega.tsx
+  30:6  warning  React Hook useEffect has a missing dependency: 'cargarDatos'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  53:9  warning  'stockTotal' is assigned a value but never used                                                                 @typescript-eslint/no-unused-vars
+
+C:\Users\Matheus\IdeaProjects\KuHubProject\frontend\src\components\dashboard\DashboardInventarioView.tsx
+  13:41  warning  'Legend' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\Matheus\IdeaProjects\KuHubProject\frontend\src\components\dashboard\DashboardProfesor.tsx
+  16:3  warning  'calcularDiasRestantesProceso' is defined but never used                                                        @typescript-eslint/no-unused-vars
+  49:6  warning  React Hook useEffect has a missing dependency: 'cargarDatos'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\Matheus\IdeaProjects\KuHubProject\frontend\src\components\dashboard\ProcesoPedidosSection.tsx
+   7:52  warning  'Select' is defined but never used                                                            @typescript-eslint/no-unused-vars
+   7:60  warning  'SelectItem' is defined but never used                                                        @typescript-eslint/no-unused-vars
+  12:7   warning  'getFirstSelectionValue' is assigned a value but never used                                   @typescript-eslint/no-unused-vars
+  12:39  warning  Unexpected any. Specify a different type                                                      @typescript-eslint/no-explicit-any
+  71:3   warning  'semanaSeleccionada' is defined but never used. Allowed unused args must match /^_/u          @typescript-eslint/no-unused-vars
+  73:3   warning  'onSemanaSeleccionadaChange' is defined but never used. Allowed unused args must match /^_/u  @typescript-eslint/no-unused-vars
+
+C:\Users\Matheus\IdeaProjects\KuHubProject\frontend\src\components\dashboard\shared\StatsCard.tsx
+  28:7  warning  'valueColorClasses' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\Matheus\IdeaProjects\KuHubProject\frontend\src\components\modals\ComprobacionModal.tsx
+  1:17  warning  'useState' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\Matheus\IdeaProjects\KuHubProject\frontend\src\components\modals\GestionCategoriasModal.tsx
+   10:5   warning  'Listbox' is defined but never used                                       @typescript-eslint/no-unused-vars
+   11:5   warning  'ListboxItem' is defined but never used                                   @typescript-eslint/no-unused-vars
+   75:25  warning  Unexpected any. Specify a different type                                  @typescript-eslint/no-explicit-any
+  113:20  warning  Empty block statement                                                     no-empty
+  116:25  warning  Unexpected any. Specify a different type                                  @typescript-eslint/no-explicit-any
+  161:25  warning  Unexpected any. Specify a different type                                  @typescript-eslint/no-explicit-any
+  191:29  warning  Unexpected any. Specify a different type                                  @typescript-eslint/no-explicit-any
+  205:41  warning  'nombre' is defined but never used. Allowed unused args must match /^_/u  @typescript-eslint/no-unused-vars
+  251:25  warning  Unexpected any. Specify a different type                                  @typescript-eslint/no-explicit-any
+  283:25  warning  Unexpected any. Specify a different type                                  @typescript-eslint/no-explicit-any
+
+C:\Users\Matheus\IdeaProjects\KuHubProject\frontend\src\components\modals\GestionUnidadesModal.tsx
+   10:5   warning  'Switch' is defined but never used              @typescript-eslint/no-unused-vars
+   43:12  warning  'isLoading' is assigned a value but never used  @typescript-eslint/no-unused-vars
+   95:25  warning  Unexpected any. Specify a different type        @typescript-eslint/no-explicit-any
+  134:25  warning  Unexpected any. Specify a different type        @typescript-eslint/no-explicit-any
+  175:25  warning  Unexpected any. Specify a different type        @typescript-eslint/no-explicit-any
+  227:25  warning  Unexpected any. Specify a different type        @typescript-eslint/no-explicit-any
+  253:25  warning  Unexpected any. Specify a different type        @typescript-eslint/no-explicit-any
+
+C:\Users\Matheus\IdeaProjects\KuHubProject\frontend\src\components\modals\SolicitudBoardModal.tsx
+   34:5    warning  'onRequestClick' is defined but never used. Allowed unused args must match /^_/u  @typescript-eslint/no-unused-vars
+  278:142  error    `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`                   react/no-unescaped-entities
+  278:162  error    `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`                   react/no-unescaped-entities
+
+C:\Users\Matheus\IdeaProjects\KuHubProject\frontend\src\components\sidebar.tsx
+  3:18  warning  'Divider' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\Matheus\IdeaProjects\KuHubProject\frontend\src\config\axios.ts
+   38:36  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   43:18  warning  '_' is defined but never used             @typescript-eslint/no-unused-vars
+  117:22  warning  '_' is defined but never used             @typescript-eslint/no-unused-vars
+
+C:\Users\Matheus\IdeaProjects\KuHubProject\frontend\src\contexts\auth-context.tsx
+    4:29  warning  'ROLES_SISTEMA' is defined but never used  @typescript-eslint/no-unused-vars
+  196:16  warning  'error' is defined but never used          @typescript-eslint/no-unused-vars
+  196:23  warning  Unexpected any. Specify a different type   @typescript-eslint/no-explicit-any
+  254:14  warning  'error' is defined but never used          @typescript-eslint/no-unused-vars
+  264:14  warning  'error' is defined but never used          @typescript-eslint/no-unused-vars
+  264:21  warning  Empty block statement                      no-empty
+
+C:\Users\Matheus\IdeaProjects\KuHubProject\frontend\src\contexts\periodo-semana-context.tsx
+   98:6  warning  React Hook React.useCallback has unnecessary dependencies: 'detectarPeriodoActual', 'encontrarSemanaActual', 'obtenerPeriodosAcademicosService', and 'obtenerSemanasPorPeriodoService'. Either exclude them or remove the dependency array. Outer scope values like 'obtenerPeriodosAcademicosService' aren't valid dependencies because mutating them doesn't re-render the component  react-hooks/exhaustive-deps
+  124:5  warning  React Hook React.useCallback has unnecessary dependencies: 'encontrarSemanaActual' and 'obtenerSemanasPorPeriodoService'. Either exclude them or remove the dependency array. Outer scope values like 'obtenerSemanasPorPeriodoService' aren't valid dependencies because mutating them doesn't re-render the component                                                                 react-hooks/exhaustive-deps
+  139:6  warning  React Hook React.useCallback has an unnecessary dependency: 'obtenerPeriodosAcademicosService'. Either exclude it or remove the dependency array. Outer scope values like 'obtenerPeriodosAcademicosService' aren't valid dependencies because mutating them doesn't re-render the component                                                                                            react-hooks/exhaustive-deps
+  149:6  warning  React Hook React.useCallback has an unnecessary dependency: 'obtenerSemanasPorPeriodoService'. Either exclude it or remove the dependency array. Outer scope values like 'obtenerSemanasPorPeriodoService' aren't valid dependencies because mutating them doesn't re-render the component                                                                                              react-hooks/exhaustive-deps
+
+C:\Users\Matheus\IdeaProjects\KuHubProject\frontend\src\contexts\permission-context.tsx
+  118:6  warning  React Hook useCallback has a missing dependency: 'user'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\Matheus\IdeaProjects\KuHubProject\frontend\src\contexts\roles-context.tsx
+    8:58  warning  'guardarRolesConfig' is defined but never used   @typescript-eslint/no-unused-vars
+   51:16  warning  'error' is defined but never used                @typescript-eslint/no-unused-vars
+  165:11  warning  'ProtectedRouteProps' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\Matheus\IdeaProjects\KuHubProject\frontend\src\contexts\theme-context.tsx
+  53:6  warning  React Hook React.useEffect has a missing dependency: 'setTheme'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\Matheus\IdeaProjects\KuHubProject\frontend\src\hooks\useInactivityTimeout.ts
+  14:32  error    'NodeJS' is not defined                                                                                                                                                                                                                              no-undef
+  70:30  error    'NodeJS' is not defined                                                                                                                                                                                                                              no-undef
+  96:8   warning  React Hook useEffect has missing dependencies: 'onWarning' and 'warningMs'. Either include them or remove the dependency array. If 'onWarning' changes too often, find the parent component that defines it and wrap that definition in useCallback  react-hooks/exhaustive-deps
+
+C:\Users\Matheus\IdeaProjects\KuHubProject\frontend\src\pages\admin-sistema.tsx
+    60:7   warning  'addDays' is assigned a value but never used                                                                    @typescript-eslint/no-unused-vars
+    99:23  warning  Unexpected any. Specify a different type                                                                        @typescript-eslint/no-explicit-any
+   225:7   warning  'BLOQUES_DEFAULT_TIMES' is assigned a value but never used                                                      @typescript-eslint/no-unused-vars
+   351:21  warning  Unexpected any. Specify a different type                                                                        @typescript-eslint/no-explicit-any
+   531:21  warning  Unexpected any. Specify a different type                                                                        @typescript-eslint/no-explicit-any
+   756:21  warning  Unexpected any. Specify a different type                                                                        @typescript-eslint/no-explicit-any
+   794:49  warning  Unexpected any. Specify a different type                                                                        @typescript-eslint/no-explicit-any
+   971:16  warning  'error' is defined but never used                                                                               @typescript-eslint/no-unused-vars
+   994:23  warning  Unexpected any. Specify a different type                                                                        @typescript-eslint/no-explicit-any
+  1047:21  warning  Unexpected any. Specify a different type                                                                        @typescript-eslint/no-explicit-any
+  1146:39  warning  Unexpected any. Specify a different type                                                                        @typescript-eslint/no-explicit-any
+  1268:6   warning  React Hook React.useEffect has a missing dependency: 'toast'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  1499:6   warning  React Hook React.useEffect has a missing dependency: 'toast'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  1539:19  warning  Unexpected any. Specify a different type                                                                        @typescript-eslint/no-explicit-any
+  1558:19  warning  Unexpected any. Specify a different type                                                                        @typescript-eslint/no-explicit-any
+  1577:19  warning  Unexpected any. Specify a different type                                                                        @typescript-eslint/no-explicit-any
+  1894:23  warning  Unexpected any. Specify a different type                                                                        @typescript-eslint/no-explicit-any
+  1901:6   warning  React Hook React.useEffect has a missing dependency: 'toast'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  1917:21  warning  Unexpected any. Specify a different type                                                                        @typescript-eslint/no-explicit-any
+  1933:21  warning  Unexpected any. Specify a different type                                                                        @typescript-eslint/no-explicit-any
+
+C:\Users\Matheus\IdeaProjects\KuHubProject\frontend\src\pages\bodega-transito.tsx
+     6:10  warning  'ScrollShadow' is defined but never used                                                                                                                                                      @typescript-eslint/no-unused-vars
+    14:22  warning  'IItemSolicitud' is defined but never used                                                                                                                                                    @typescript-eslint/no-unused-vars
+    51:7   warning  'RequestCard' is assigned a value but never used                                                                                                                                              @typescript-eslint/no-unused-vars
+   171:54  error    Expected an assignment or function call and instead saw an expression                                                                                                                         @typescript-eslint/no-unused-expressions
+   341:44  warning  'bod_Editar' is assigned a value but never used                                                                                                                                               @typescript-eslint/no-unused-vars
+   341:67  warning  'bod_Eliminar' is assigned a value but never used                                                                                                                                             @typescript-eslint/no-unused-vars
+   346:23  warning  'setSolicitudes' is assigned a value but never used                                                                                                                                           @typescript-eslint/no-unused-vars
+   418:19  warning  Unexpected any. Specify a different type                                                                                                                                                      @typescript-eslint/no-explicit-any
+   454:10  warning  'recetaInstrucciones' is assigned a value but never used                                                                                                                                      @typescript-eslint/no-unused-vars
+   467:10  warning  'totalPaginas' is assigned a value but never used                                                                                                                                             @typescript-eslint/no-unused-vars
+   474:9   warning  'scrollerRef' is assigned a value but never used                                                                                                                                              @typescript-eslint/no-unused-vars
+   495:9   warning  'filtrosCombinados' is assigned a value but never used                                                                                                                                        @typescript-eslint/no-unused-vars
+   557:14  warning  'error' is defined but never used                                                                                                                                                             @typescript-eslint/no-unused-vars
+   573:14  warning  'error' is defined but never used                                                                                                                                                             @typescript-eslint/no-unused-vars
+   573:21  warning  Empty block statement                                                                                                                                                                         no-empty
+   595:6   warning  React Hook React.useEffect has a missing dependency: 'toast'. Either include it or remove the dependency array                                                                                react-hooks/exhaustive-deps
+   741:9   warning  'getRequestsForDate' is assigned a value but never used                                                                                                                                       @typescript-eslint/no-unused-vars
+   748:9   warning  'handleOpenExtra' is assigned a value but never used                                                                                                                                          @typescript-eslint/no-unused-vars
+   756:20  warning  Unexpected any. Specify a different type                                                                                                                                                      @typescript-eslint/no-explicit-any
+   766:9   warning  'handleOpenDetail' is assigned a value but never used                                                                                                                                         @typescript-eslint/no-unused-vars
+   773:16  warning  'e' is defined but never used                                                                                                                                                                 @typescript-eslint/no-unused-vars
+   779:25  warning  Unexpected any. Specify a different type                                                                                                                                                      @typescript-eslint/no-explicit-any
+   808:9   warning  The 'dateCol1' object construction makes the dependencies of useMemo Hook (at line 815) change on every render. To fix this, wrap the initialization of 'dateCol1' in its own useMemo() Hook  react-hooks/exhaustive-deps
+   809:9   warning  The 'dateCol2' object construction makes the dependencies of useMemo Hook (at line 820) change on every render. To fix this, wrap the initialization of 'dateCol2' in its own useMemo() Hook  react-hooks/exhaustive-deps
+  1091:28  warning  Unexpected any. Specify a different type                                                                                                                                                      @typescript-eslint/no-explicit-any
+  1367:45  warning  Unexpected any. Specify a different type                                                                                                                                                      @typescript-eslint/no-explicit-any
+
+C:\Users\Matheus\IdeaProjects\KuHubProject\frontend\src\pages\conglomerado-pedidos.tsx
+    9:10  warning  'motion' is defined but never used                                                                                     @typescript-eslint/no-unused-vars
+   99:22  warning  'cong_Crear' is assigned a value but never used                                                                        @typescript-eslint/no-unused-vars
+   99:69  warning  'cong_Eliminar' is assigned a value but never used                                                                     @typescript-eslint/no-unused-vars
+  150:6   warning  React Hook React.useEffect has a missing dependency: 'toast'. Either include it or remove the dependency array         react-hooks/exhaustive-deps
+  298:6   warning  React Hook React.useMemo has a missing dependency: 'SECCION_COLORS'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  384:54  error    Expected an assignment or function call and instead saw an expression                                                  @typescript-eslint/no-unused-expressions
+  405:6   warning  React Hook React.useCallback has a missing dependency: 'toast'. Either include it or remove the dependency array       react-hooks/exhaustive-deps
+  509:30  warning  Unexpected any. Specify a different type                                                                               @typescript-eslint/no-explicit-any
+  510:19  warning  Unexpected any. Specify a different type                                                                               @typescript-eslint/no-explicit-any
+  524:9   error    This assigned value is not used in subsequent statements                                                               no-useless-assignment
+  633:30  warning  Unexpected any. Specify a different type                                                                               @typescript-eslint/no-explicit-any
+  634:19  warning  Unexpected any. Specify a different type                                                                               @typescript-eslint/no-explicit-any
+
+C:\Users\Matheus\IdeaProjects\KuHubProject\frontend\src\pages\gestion-academica.tsx
+   117:10  warning  'profesores' is assigned a value but never used  @typescript-eslint/no-unused-vars
+   258:21  warning  Unexpected any. Specify a different type         @typescript-eslint/no-explicit-any
+   267:42  warning  Unexpected any. Specify a different type         @typescript-eslint/no-explicit-any
+   275:21  warning  Unexpected any. Specify a different type         @typescript-eslint/no-explicit-any
+   301:21  warning  Unexpected any. Specify a different type         @typescript-eslint/no-explicit-any
+   327:25  warning  Unexpected any. Specify a different type         @typescript-eslint/no-explicit-any
+   355:25  warning  Unexpected any. Specify a different type         @typescript-eslint/no-explicit-any
+   642:33  warning  Unexpected any. Specify a different type         @typescript-eslint/no-explicit-any
+   737:21  warning  Unexpected any. Specify a different type         @typescript-eslint/no-explicit-any
+   816:21  warning  Unexpected any. Specify a different type         @typescript-eslint/no-explicit-any
+  1108:21  warning  Unexpected any. Specify a different type         @typescript-eslint/no-explicit-any
+  1580:19  warning  Unexpected any. Specify a different type         @typescript-eslint/no-explicit-any
+
+C:\Users\Matheus\IdeaProjects\KuHubProject\frontend\src\pages\gestion-pedidos.tsx
+   59:44  warning  'ped_Editar' is assigned a value but never used                                                                 @typescript-eslint/no-unused-vars
+   59:67  warning  'ped_Eliminar' is assigned a value but never used                                                               @typescript-eslint/no-unused-vars
+  113:6   warning  React Hook React.useEffect has a missing dependency: 'toast'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  140:54  error    Expected an assignment or function call and instead saw an expression                                           @typescript-eslint/no-unused-expressions
+  406:62  error    `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`                                                 react/no-unescaped-entities
+  406:73  error    `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`                                                 react/no-unescaped-entities
+
+C:\Users\Matheus\IdeaProjects\KuHubProject\frontend\src\pages\gestion-proveedores.tsx
+    21:3   warning  'Pagination' is defined but never used                           @typescript-eslint/no-unused-vars
+    35:3   warning  'obtenerProveedoresService' is defined but never used            @typescript-eslint/no-unused-vars
+    63:3   warning  'IProductoBuscado' is defined but never used                     @typescript-eslint/no-unused-vars
+    65:15  warning  'IProductoRecetaSelection' is defined but never used             @typescript-eslint/no-unused-vars
+    79:7   warning  'DIAS_ABREV' is assigned a value but never used                  @typescript-eslint/no-unused-vars
+   214:7   warning  'cl' is assigned a value but never used                          @typescript-eslint/no-unused-vars
+   377:10  warning  'currentPage' is assigned a value but never used                 @typescript-eslint/no-unused-vars
+   458:21  warning  Unexpected any. Specify a different type                         @typescript-eslint/no-explicit-any
+   517:23  warning  Unexpected any. Specify a different type                         @typescript-eslint/no-explicit-any
+   561:21  warning  Unexpected any. Specify a different type                         @typescript-eslint/no-explicit-any
+   644:43  warning  Unexpected any. Specify a different type                         @typescript-eslint/no-explicit-any
+   645:19  warning  Unexpected any. Specify a different type                         @typescript-eslint/no-explicit-any
+   656:43  warning  Unexpected any. Specify a different type                         @typescript-eslint/no-explicit-any
+   657:19  warning  Unexpected any. Specify a different type                         @typescript-eslint/no-explicit-any
+   676:19  warning  Unexpected any. Specify a different type                         @typescript-eslint/no-explicit-any
+   685:5   error    Unnecessary try/catch wrapper                                    no-useless-catch
+   695:19  warning  Unexpected any. Specify a different type                         @typescript-eslint/no-explicit-any
+   721:5   error    Unnecessary try/catch wrapper                                    no-useless-catch
+   736:19  warning  Unexpected any. Specify a different type                         @typescript-eslint/no-explicit-any
+   805:19  warning  Unexpected any. Specify a different type                         @typescript-eslint/no-explicit-any
+   866:19  warning  Unexpected any. Specify a different type                         @typescript-eslint/no-explicit-any
+   918:19  warning  Unexpected any. Specify a different type                         @typescript-eslint/no-explicit-any
+  1140:72  error    'cargarProveedores' is not defined                               no-undef
+  1372:25  warning  Unexpected any. Specify a different type                         @typescript-eslint/no-explicit-any
+  1875:48  error    `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`  react/no-unescaped-entities
+  1875:61  error    `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`  react/no-unescaped-entities
+  2181:33  warning  Unexpected any. Specify a different type                         @typescript-eslint/no-explicit-any
+  2183:60  warning  Unexpected any. Specify a different type                         @typescript-eslint/no-explicit-any
+  2234:19  warning  Unexpected any. Specify a different type                         @typescript-eslint/no-explicit-any
+  2675:36  error    'NodeJS' is not defined                                          no-undef
+  2692:63  warning  Unexpected any. Specify a different type                         @typescript-eslint/no-explicit-any
+  2724:85  warning  Unexpected any. Specify a different type                         @typescript-eslint/no-explicit-any
+  2766:19  warning  Unexpected any. Specify a different type                         @typescript-eslint/no-explicit-any
+  2897:9   warning  'nCols' is assigned a value but never used                       @typescript-eslint/no-unused-vars
+
+C:\Users\Matheus\IdeaProjects\KuHubProject\frontend\src\pages\gestion-roles.tsx
+   99:9   warning  'opt' is assigned a value but never used             @typescript-eslint/no-unused-vars
+  141:64  warning  'allPermissions' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  163:19  warning  Unexpected any. Specify a different type             @typescript-eslint/no-explicit-any
+
+C:\Users\Matheus\IdeaProjects\KuHubProject\frontend\src\pages\gestion-solicitudes.tsx
+   20:10  warning  'ISemana' is defined but never used                                                                               @typescript-eslint/no-unused-vars
+  156:22  warning  'sol_Crear' is assigned a value but never used                                                                    @typescript-eslint/no-unused-vars
+  156:67  warning  'sol_Eliminar' is assigned a value but never used                                                                 @typescript-eslint/no-unused-vars
+  194:6   warning  React Hook React.useEffect has a missing dependency: 'toast'. Either include it or remove the dependency array    react-hooks/exhaustive-deps
+  248:60  error    Expected an assignment or function call and instead saw an expression                                             @typescript-eslint/no-unused-expressions
+  274:6   warning  React Hook React.useCallback has a missing dependency: 'toast'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\Matheus\IdeaProjects\KuHubProject\frontend\src\pages\gestion-usuarios.tsx
+    6:26  warning  'Divider' is defined but never used                                                                                @typescript-eslint/no-unused-vars
+   41:9   warning  'opcionesRol' is assigned a value but never used                                                                   @typescript-eslint/no-unused-vars
+   49:10  warning  'totalPages' is assigned a value but never used                                                                    @typescript-eslint/no-unused-vars
+   93:6   warning  React Hook useEffect has a missing dependency: 'cargarUsuarios'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  149:14  warning  'error' is defined but never used                                                                                  @typescript-eslint/no-unused-vars
+  231:9   warning  'handleFotoChange' is assigned a value but never used                                                              @typescript-eslint/no-unused-vars
+  303:21  warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
+  335:21  warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
+
+C:\Users\Matheus\IdeaProjects\KuHubProject\frontend\src\pages\historico-pedidos.tsx
+  149:7   error  Expected an assignment or function call and instead saw an expression  @typescript-eslint/no-unused-expressions
+  345:62  error  `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`        react/no-unescaped-entities
+  345:73  error  `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`        react/no-unescaped-entities
+
+C:\Users\Matheus\IdeaProjects\KuHubProject\frontend\src\pages\inventario.tsx
+    16:3    warning  'Pagination' is defined but never used                                                                                                           @typescript-eslint/no-unused-vars
+    24:3    warning  'Autocomplete' is defined but never used                                                                                                         @typescript-eslint/no-unused-vars
+    25:3    warning  'AutocompleteItem' is defined but never used                                                                                                     @typescript-eslint/no-unused-vars
+    44:3    warning  'eliminarProductoService' is defined but never used                                                                                              @typescript-eslint/no-unused-vars
+    53:10   warning  'logger' is defined but never used                                                                                                               @typescript-eslint/no-unused-vars
+    56:10   warning  'obtenerCategorias' is defined but never used                                                                                                    @typescript-eslint/no-unused-vars
+    56:29   warning  'obtenerUnidades' is defined but never used                                                                                                      @typescript-eslint/no-unused-vars
+    68:3    warning  'IStockSyncWarning' is defined but never used                                                                                                    @typescript-eslint/no-unused-vars
+    69:3    warning  'IStockInsuficiente' is defined but never used                                                                                                   @typescript-eslint/no-unused-vars
+    73:3    warning  'IProyeccionAbastecimiento' is defined but never used                                                                                            @typescript-eslint/no-unused-vars
+    91:9    warning  'confirm' is assigned a value but never used                                                                                                     @typescript-eslint/no-unused-vars
+    99:10   warning  'filteredProductos' is assigned a value but never used                                                                                           @typescript-eslint/no-unused-vars
+   118:10   warning  'cache' is assigned a value but never used                                                                                                       @typescript-eslint/no-unused-vars
+   137:9    warning  'scrollerRef' is assigned a value but never used                                                                                                 @typescript-eslint/no-unused-vars
+   138:9    warning  'isScrollingRef' is assigned a value but never used                                                                                              @typescript-eslint/no-unused-vars
+   166:14   warning  'error' is defined but never used                                                                                                                @typescript-eslint/no-unused-vars
+   223:14   warning  'e' is defined but never used                                                                                                                    @typescript-eslint/no-unused-vars
+   336:14   warning  'error' is defined but never used                                                                                                                @typescript-eslint/no-unused-vars
+   342:6    warning  React Hook React.useCallback has a missing dependency: 'checkpointPaginationScroll'. Either include it or remove the dependency array            react-hooks/exhaustive-deps
+   358:57   warning  'apiPage' is defined but never used. Allowed unused args must match /^_/u                                                                        @typescript-eslint/no-unused-vars
+   467:6    warning  React Hook React.useEffect has missing dependencies: 'debouncedSearchCode' and 'searchCode'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+   475:6    warning  React Hook React.useEffect has a missing dependency: 'currentPage'. Either include it or remove the dependency array                             react-hooks/exhaustive-deps
+   493:9    warning  'filtrosCombinados' is assigned a value but never used                                                                                           @typescript-eslint/no-unused-vars
+   551:51   warning  Unexpected any. Specify a different type                                                                                                         @typescript-eslint/no-explicit-any
+   571:21   warning  Unexpected any. Specify a different type                                                                                                         @typescript-eslint/no-explicit-any
+   962:22   warning  Unexpected any. Specify a different type                                                                                                         @typescript-eslint/no-explicit-any
+  1207:43   error    `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`                                                                                  react/no-unescaped-entities
+  1207:74   error    `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`                                                                                  react/no-unescaped-entities
+  1232:70   error    `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`                                                                                  react/no-unescaped-entities
+  1232:101  error    `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`                                                                                  react/no-unescaped-entities
+  1286:69   warning  Unexpected any. Specify a different type                                                                                                         @typescript-eslint/no-explicit-any
+  1410:15   warning  'stockCambiado' is assigned a value but never used                                                                                               @typescript-eslint/no-unused-vars
+  1418:44   warning  Unexpected any. Specify a different type                                                                                                         @typescript-eslint/no-explicit-any
+  1498:40   warning  Unexpected any. Specify a different type                                                                                                         @typescript-eslint/no-explicit-any
+  1517:45   warning  Unexpected any. Specify a different type                                                                                                         @typescript-eslint/no-explicit-any
+  1519:45   warning  Unexpected any. Specify a different type                                                                                                         @typescript-eslint/no-explicit-any
+  1521:44   warning  Unexpected any. Specify a different type                                                                                                         @typescript-eslint/no-explicit-any
+  1544:44   warning  Unexpected any. Specify a different type                                                                                                         @typescript-eslint/no-explicit-any
+  1556:21   warning  Unexpected any. Specify a different type                                                                                                         @typescript-eslint/no-explicit-any
+  1577:56   warning  Unexpected any. Specify a different type                                                                                                         @typescript-eslint/no-explicit-any
+  1579:11   warning  'originalStock' is assigned a value but never used                                                                                               @typescript-eslint/no-unused-vars
+  1593:6    warning  React Hook React.useMemo has an unnecessary dependency: 'stock'. Either exclude it or remove the dependency array                                react-hooks/exhaustive-deps
+  1597:9    warning  'currentStockVal' is assigned a value but never used                                                                                             @typescript-eslint/no-unused-vars
+  1620:7    warning  'stockError' is assigned a value but never used                                                                                                  @typescript-eslint/no-unused-vars
+  1621:7    warning  'diffText' is assigned a value but never used                                                                                                    @typescript-eslint/no-unused-vars
+  1646:9    warning  'motivoLabel' is assigned a value but never used                                                                                                 @typescript-eslint/no-unused-vars
+  1736:31   warning  Unexpected any. Specify a different type                                                                                                         @typescript-eslint/no-explicit-any
+  1752:33   warning  Unexpected any. Specify a different type                                                                                                         @typescript-eslint/no-explicit-any
+  1841:29   warning  Unexpected any. Specify a different type                                                                                                         @typescript-eslint/no-explicit-any
+  1966:73   warning  'onNuevoProducto' is defined but never used. Allowed unused args must match /^_/u                                                                @typescript-eslint/no-unused-vars
+  1983:10   warning  'hasMoreBulk' is assigned a value but never used                                                                                                 @typescript-eslint/no-unused-vars
+  1989:26   error    'NodeJS' is not defined                                                                                                                          no-undef
+  2039:9    warning  'scrollContainerRef' is assigned a value but never used                                                                                          @typescript-eslint/no-unused-vars
+  2116:6    warning  React Hook React.useEffect has missing dependencies: 'isAjusteBulk' and 'productoActual'. Either include them or remove the dependency array     react-hooks/exhaustive-deps
+  2273:21   warning  Unexpected any. Specify a different type                                                                                                         @typescript-eslint/no-explicit-any
+  2285:9    warning  'vaciarLista' is assigned a value but never used                                                                                                 @typescript-eslint/no-unused-vars
+  2336:21   warning  Unexpected any. Specify a different type                                                                                                         @typescript-eslint/no-explicit-any
+  2451:31   warning  Unexpected any. Specify a different type                                                                                                         @typescript-eslint/no-explicit-any
+
+C:\Users\Matheus\IdeaProjects\KuHubProject\frontend\src\pages\pedido-semanal-a-bodega.tsx
+    15:3    warning  'Pagination' is defined but never used                                                                                         @typescript-eslint/no-unused-vars
+    22:3    warning  'Divider' is defined but never used                                                                                            @typescript-eslint/no-unused-vars
+    41:107  warning  'IImportarExcelResultado' is defined but never used                                                                            @typescript-eslint/no-unused-vars
+    44:3    warning  'crearRecetaService' is defined but never used                                                                                 @typescript-eslint/no-unused-vars
+    45:3    warning  'actualizarRecetaService' is defined but never used                                                                            @typescript-eslint/no-unused-vars
+    47:3    warning  'eliminarRecetaService' is defined but never used                                                                              @typescript-eslint/no-unused-vars
+    57:72   warning  'IPaginationMeta' is defined but never used                                                                                    @typescript-eslint/no-unused-vars
+    68:137  warning  'seleccionarSemana' is assigned a value but never used                                                                         @typescript-eslint/no-unused-vars
+    81:60   warning  Unexpected any. Specify a different type                                                                                       @typescript-eslint/no-explicit-any
+   109:6    warning  React Hook React.useEffect has a missing dependency: 'cargarDatosIniciales'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+   133:14   warning  'error' is defined but never used                                                                                              @typescript-eslint/no-unused-vars
+   155:14   warning  'error' is defined but never used                                                                                              @typescript-eslint/no-unused-vars
+   198:16   warning  'error' is defined but never used                                                                                              @typescript-eslint/no-unused-vars
+   206:6    warning  React Hook React.useEffect has a missing dependency: 'cargarDatosIniciales'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+   216:71   warning  Unexpected any. Specify a different type                                                                                       @typescript-eslint/no-explicit-any
+   222:68   warning  Unexpected any. Specify a different type                                                                                       @typescript-eslint/no-explicit-any
+   267:46   warning  Unexpected any. Specify a different type                                                                                       @typescript-eslint/no-explicit-any
+   278:73   warning  Unexpected any. Specify a different type                                                                                       @typescript-eslint/no-explicit-any
+   296:21   warning  Unexpected any. Specify a different type                                                                                       @typescript-eslint/no-explicit-any
+   302:79   warning  Unexpected any. Specify a different type                                                                                       @typescript-eslint/no-explicit-any
+   327:21   warning  Unexpected any. Specify a different type                                                                                       @typescript-eslint/no-explicit-any
+   685:26   warning  'error' is defined but never used                                                                                              @typescript-eslint/no-unused-vars
+   730:32   warning  Unexpected any. Specify a different type                                                                                       @typescript-eslint/no-explicit-any
+   774:21   warning  Unexpected any. Specify a different type                                                                                       @typescript-eslint/no-explicit-any
+  1051:26   error    Component definition is missing display name                                                                                   react/display-name
+  1051:43   warning  Unexpected any. Specify a different type                                                                                       @typescript-eslint/no-explicit-any
+  1093:7    warning  'esFraccionario' is defined but never used. Allowed unused args must match /^_/u                                               @typescript-eslint/no-unused-vars
+  1094:7    warning  'isTabla' is defined but never used. Allowed unused args must match /^_/u                                                      @typescript-eslint/no-unused-vars
+  1341:27   warning  Unexpected any. Specify a different type                                                                                       @typescript-eslint/no-explicit-any
+  1363:41   warning  Unexpected any. Specify a different type                                                                                       @typescript-eslint/no-explicit-any
+  1404:114  warning  Unexpected any. Specify a different type                                                                                       @typescript-eslint/no-explicit-any
+  1433:24   warning  'e' is defined but never used                                                                                                  @typescript-eslint/no-unused-vars
+  1433:27   warning  Empty block statement                                                                                                          no-empty
+
+C:\Users\Matheus\IdeaProjects\KuHubProject\frontend\src\pages\perfil-usuario.tsx
+   16:34  warning  'actualizarFotoPerfilService' is defined but never used  @typescript-eslint/no-unused-vars
+   71:52  warning  Unexpected any. Specify a different type                 @typescript-eslint/no-explicit-any
+  101:45  warning  Unexpected any. Specify a different type                 @typescript-eslint/no-explicit-any
+  102:10  warning  'isLoading' is assigned a value but never used           @typescript-eslint/no-unused-vars
+  102:21  warning  'setIsLoading' is assigned a value but never used        @typescript-eslint/no-unused-vars
+  103:21  warning  'setAvatarUrl' is assigned a value but never used        @typescript-eslint/no-unused-vars
+  104:9   warning  'fileInputRef' is assigned a value but never used        @typescript-eslint/no-unused-vars
+  109:9   warning  'handleAvatarClick' is assigned a value but never used   @typescript-eslint/no-unused-vars
+  238:21  warning  Unexpected any. Specify a different type                 @typescript-eslint/no-explicit-any
+
+C:\Users\Matheus\IdeaProjects\KuHubProject\frontend\src\pages\solicitud.tsx
+   13:24  warning  'ModalHeader' is defined but never used                                                                                  @typescript-eslint/no-unused-vars
+  206:6   warning  React Hook React.useEffect has a missing dependency: 'contextPeriodo'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  246:9   warning  'recomputeIns' is assigned a value but never used                                                                        @typescript-eslint/no-unused-vars
+  816:45  warning  'soli_Editar' is assigned a value but never used                                                                         @typescript-eslint/no-unused-vars
+  816:69  warning  'soli_Eliminar' is assigned a value but never used                                                                       @typescript-eslint/no-unused-vars
+  878:6   warning  React Hook React.useEffect has a missing dependency: 'toast'. Either include it or remove the dependency array           react-hooks/exhaustive-deps
+  905:6   warning  React Hook React.useMemo has an unnecessary dependency: 'configs'. Either exclude it or remove the dependency array      react-hooks/exhaustive-deps
+
+C:\Users\Matheus\IdeaProjects\KuHubProject\frontend\src\services\asignatura-service.ts
+   11:3   warning  'IAsignaturaActualizacion' is defined but never used            @typescript-eslint/no-unused-vars
+   13:3   warning  'ISeccionActualizacion' is defined but never used               @typescript-eslint/no-unused-vars
+  169:19  warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+  170:5   error    There is no `cause` attached to the symptom error being thrown  preserve-caught-error
+  181:19  warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+  182:5   error    There is no `cause` attached to the symptom error being thrown  preserve-caught-error
+  202:19  warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+  203:5   error    There is no `cause` attached to the symptom error being thrown  preserve-caught-error
+  227:19  warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+  228:5   error    There is no `cause` attached to the symptom error being thrown  preserve-caught-error
+  238:19  warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+  239:5   error    There is no `cause` attached to the symptom error being thrown  preserve-caught-error
+  274:19  warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+  275:5   error    There is no `cause` attached to the symptom error being thrown  preserve-caught-error
+  306:19  warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+  307:5   error    There is no `cause` attached to the symptom error being thrown  preserve-caught-error
+  341:19  warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+  342:5   error    There is no `cause` attached to the symptom error being thrown  preserve-caught-error
+  354:19  warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+  355:5   error    There is no `cause` attached to the symptom error being thrown  preserve-caught-error
+  370:19  warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+  371:5   error    There is no `cause` attached to the symptom error being thrown  preserve-caught-error
+  386:12  warning  'error' is defined but never used                               @typescript-eslint/no-unused-vars
+
+C:\Users\Matheus\IdeaProjects\KuHubProject\frontend\src\services\auth-service.ts
+    7:10  warning  'RolUsuario' is defined but never used                          @typescript-eslint/no-unused-vars
+   55:19  warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+   61:5   error    There is no `cause` attached to the symptom error being thrown  preserve-caught-error
+  111:12  warning  'error' is defined but never used                               @typescript-eslint/no-unused-vars
+  167:19  warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+  168:5   error    There is no `cause` attached to the symptom error being thrown  preserve-caught-error
+  202:19  warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+  203:5   error    There is no `cause` attached to the symptom error being thrown  preserve-caught-error
+
+C:\Users\Matheus\IdeaProjects\KuHubProject\frontend\src\services\bloque-horario-service.ts
+   34:21  warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+   35:9   error    There is no `cause` attached to the symptom error being thrown  preserve-caught-error
+   46:21  warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+   47:9   error    There is no `cause` attached to the symptom error being thrown  preserve-caught-error
+   67:21  warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+   68:9   error    There is no `cause` attached to the symptom error being thrown  preserve-caught-error
+   86:21  warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+   87:9   error    There is no `cause` attached to the symptom error being thrown  preserve-caught-error
+  100:21  warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+  101:9   error    There is no `cause` attached to the symptom error being thrown  preserve-caught-error
+
+C:\Users\Matheus\IdeaProjects\KuHubProject\frontend\src\services\bodega-transito-service.ts
+  127:42  warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+  142:21  warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+  144:13  error    There is no `cause` attached to the symptom error being thrown  preserve-caught-error
+  148:21  warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+  151:9   error    There is no `cause` attached to the symptom error being thrown  preserve-caught-error
+
+C:\Users\Matheus\IdeaProjects\KuHubProject\frontend\src\services\categoria-service.ts
+   41:21  warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+   42:9   error    There is no `cause` attached to the symptom error being thrown  preserve-caught-error
+   56:21  warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+   57:9   error    There is no `cause` attached to the symptom error being thrown  preserve-caught-error
+   74:21  warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+   75:9   error    There is no `cause` attached to the symptom error being thrown  preserve-caught-error
+  102:21  warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+  103:9   error    There is no `cause` attached to the symptom error being thrown  preserve-caught-error
+  122:21  warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+  131:9   error    There is no `cause` attached to the symptom error being thrown  preserve-caught-error
+  157:21  warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+  158:9   error    There is no `cause` attached to the symptom error being thrown  preserve-caught-error
+  180:21  warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+  181:9   error    There is no `cause` attached to the symptom error being thrown  preserve-caught-error
+  197:21  warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+  198:9   error    There is no `cause` attached to the symptom error being thrown  preserve-caught-error
+
+C:\Users\Matheus\IdeaProjects\KuHubProject\frontend\src\services\init-system.ts
+  16:3   error    Unnecessary try/catch wrapper               no-useless-catch
+  21:11  warning  'stats' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  39:12  warning  'error' is defined but never used           @typescript-eslint/no-unused-vars
+  39:19  warning  Empty block statement                       no-empty
+  45:14  warning  Unexpected any. Specify a different type    @typescript-eslint/no-explicit-any
+  46:14  warning  Unexpected any. Specify a different type    @typescript-eslint/no-explicit-any
+
+C:\Users\Matheus\IdeaProjects\KuHubProject\frontend\src\services\inventario-service.ts
+   30:21   warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+   31:9    error    There is no `cause` attached to the symptom error being thrown  preserve-caught-error
+   96:37   warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+  124:21   warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+  131:27   warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+  140:9    error    There is no `cause` attached to the symptom error being thrown  preserve-caught-error
+  161:21   warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+  162:9    error    There is no `cause` attached to the symptom error being thrown  preserve-caught-error
+  179:21   warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+  180:9    error    There is no `cause` attached to the symptom error being thrown  preserve-caught-error
+  205:21   warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+  206:9    error    There is no `cause` attached to the symptom error being thrown  preserve-caught-error
+  250:21   warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+  254:13   error    There is no `cause` attached to the symptom error being thrown  preserve-caught-error
+  260:9    error    There is no `cause` attached to the symptom error being thrown  preserve-caught-error
+  321:21   warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+  331:13   error    There is no `cause` attached to the symptom error being thrown  preserve-caught-error
+  342:27   warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+  351:13   error    There is no `cause` attached to the symptom error being thrown  preserve-caught-error
+  355:13   error    There is no `cause` attached to the symptom error being thrown  preserve-caught-error
+  361:9    error    There is no `cause` attached to the symptom error being thrown  preserve-caught-error
+  378:43   warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+  391:21   warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+  394:13   error    There is no `cause` attached to the symptom error being thrown  preserve-caught-error
+  398:13   error    There is no `cause` attached to the symptom error being thrown  preserve-caught-error
+  404:9    error    There is no `cause` attached to the symptom error being thrown  preserve-caught-error
+  417:43   warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+  430:21   warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+  431:9    error    There is no `cause` attached to the symptom error being thrown  preserve-caught-error
+  454:46   warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+  455:56   warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+  456:56   warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+  467:21   warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+  468:9    error    There is no `cause` attached to the symptom error being thrown  preserve-caught-error
+  489:46   warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+  490:56   warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+  491:56   warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+  500:21   warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+  501:9    error    There is no `cause` attached to the symptom error being thrown  preserve-caught-error
+  523:46   warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+  524:56   warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+  525:56   warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+  534:21   warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+  535:9    error    There is no `cause` attached to the symptom error being thrown  preserve-caught-error
+  547:62   warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+  548:54   warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+  549:68   warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+  550:62   warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+  550:92   warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+  551:54   warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+  552:54   warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+  554:84   warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+  555:100  warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+  602:21   warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+  603:9    error    There is no `cause` attached to the symptom error being thrown  preserve-caught-error
+  638:21   warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+  645:9    error    There is no `cause` attached to the symptom error being thrown  preserve-caught-error
+
+C:\Users\Matheus\IdeaProjects\KuHubProject\frontend\src\services\movimiento-service.ts
+  62:21  warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+  63:9   error    There is no `cause` attached to the symptom error being thrown  preserve-caught-error
+
+C:\Users\Matheus\IdeaProjects\KuHubProject\frontend\src\services\pdf-service.ts
+  138:18  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  351:18  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\Matheus\IdeaProjects\KuHubProject\frontend\src\services\pedido-service.ts
+  6:19  warning  'EstadoPedido' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\Matheus\IdeaProjects\KuHubProject\frontend\src\services\permission-service.ts
+  120:29  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\Matheus\IdeaProjects\KuHubProject\frontend\src\services\producto-service.ts
+   15:3   warning  'IInventoryPageItem' is defined but never used             @typescript-eslint/no-unused-vars
+   45:67  warning  Unexpected any. Specify a different type                   @typescript-eslint/no-explicit-any
+   51:3   warning  'obtenerMovimientosPorProducto' is defined but never used  @typescript-eslint/no-unused-vars
+  194:11  warning  'fin' is assigned a value but never used                   @typescript-eslint/no-unused-vars
+  270:3   error    Unnecessary try/catch wrapper                              no-useless-catch
+
+C:\Users\Matheus\IdeaProjects\KuHubProject\frontend\src\services\proveedor-service.ts
+   26:33  warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+   39:31  warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+   60:36  warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+   62:19  warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+   63:5   error    There is no `cause` attached to the symptom error being thrown  preserve-caught-error
+   86:34  warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+   90:36  warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+   98:19  warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+   99:5   error    There is no `cause` attached to the symptom error being thrown  preserve-caught-error
+  114:36  warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+  116:19  warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+  117:5   error    There is no `cause` attached to the symptom error being thrown  preserve-caught-error
+  132:37  warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+  134:19  warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+  136:7   error    There is no `cause` attached to the symptom error being thrown  preserve-caught-error
+  142:7   error    There is no `cause` attached to the symptom error being thrown  preserve-caught-error
+  147:5   error    There is no `cause` attached to the symptom error being thrown  preserve-caught-error
+  163:38  warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+  165:19  warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+  167:7   error    There is no `cause` attached to the symptom error being thrown  preserve-caught-error
+  173:7   error    There is no `cause` attached to the symptom error being thrown  preserve-caught-error
+  178:5   error    There is no `cause` attached to the symptom error being thrown  preserve-caught-error
+  195:19  warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+  197:7   error    There is no `cause` attached to the symptom error being thrown  preserve-caught-error
+  203:7   error    There is no `cause` attached to the symptom error being thrown  preserve-caught-error
+  208:5   error    There is no `cause` attached to the symptom error being thrown  preserve-caught-error
+  229:19  warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+  231:7   error    There is no `cause` attached to the symptom error being thrown  preserve-caught-error
+  237:7   error    There is no `cause` attached to the symptom error being thrown  preserve-caught-error
+  242:5   error    There is no `cause` attached to the symptom error being thrown  preserve-caught-error
+  268:19  warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+  271:7   error    There is no `cause` attached to the symptom error being thrown  preserve-caught-error
+  277:7   error    There is no `cause` attached to the symptom error being thrown  preserve-caught-error
+  282:5   error    There is no `cause` attached to the symptom error being thrown  preserve-caught-error
+  301:19  warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+  303:7   error    There is no `cause` attached to the symptom error being thrown  preserve-caught-error
+  308:5   error    There is no `cause` attached to the symptom error being thrown  preserve-caught-error
+  327:19  warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+  329:7   error    There is no `cause` attached to the symptom error being thrown  preserve-caught-error
+  334:5   error    There is no `cause` attached to the symptom error being thrown  preserve-caught-error
+  349:36  warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+  351:19  warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+  352:5   error    There is no `cause` attached to the symptom error being thrown  preserve-caught-error
+  373:34  warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+  397:19  warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+  398:5   error    There is no `cause` attached to the symptom error being thrown  preserve-caught-error
+  421:19  warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+  423:7   error    There is no `cause` attached to the symptom error being thrown  preserve-caught-error
+  428:5   error    There is no `cause` attached to the symptom error being thrown  preserve-caught-error
+  457:19  warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+  458:5   error    There is no `cause` attached to the symptom error being thrown  preserve-caught-error
+  483:19  warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+  484:5   error    There is no `cause` attached to the symptom error being thrown  preserve-caught-error
+
+C:\Users\Matheus\IdeaProjects\KuHubProject\frontend\src\services\receta-service.ts
+   40:19  warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+   42:5   error    There is no `cause` attached to the symptom error being thrown  preserve-caught-error
+   60:19  warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+   62:5   error    There is no `cause` attached to the symptom error being thrown  preserve-caught-error
+  190:19  warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+  191:5   error    There is no `cause` attached to the symptom error being thrown  preserve-caught-error
+  207:19  warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+  208:5   error    There is no `cause` attached to the symptom error being thrown  preserve-caught-error
+  243:19  warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+  245:5   error    There is no `cause` attached to the symptom error being thrown  preserve-caught-error
+  261:19  warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+  263:5   error    There is no `cause` attached to the symptom error being thrown  preserve-caught-error
+  287:19  warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+  289:5   error    There is no `cause` attached to the symptom error being thrown  preserve-caught-error
+  304:19  warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+  306:5   error    There is no `cause` attached to the symptom error being thrown  preserve-caught-error
+
+C:\Users\Matheus\IdeaProjects\KuHubProject\frontend\src\services\reserva-sala-service.ts
+  38:19  warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+  39:5   error    There is no `cause` attached to the symptom error being thrown  preserve-caught-error
+
+C:\Users\Matheus\IdeaProjects\KuHubProject\frontend\src\services\sala-service.ts
+  18:21  warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+  19:9   error    There is no `cause` attached to the symptom error being thrown  preserve-caught-error
+  31:21  warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+  32:9   error    There is no `cause` attached to the symptom error being thrown  preserve-caught-error
+  47:21  warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+  48:9   error    There is no `cause` attached to the symptom error being thrown  preserve-caught-error
+  59:21  warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+  60:9   error    There is no `cause` attached to the symptom error being thrown  preserve-caught-error
+
+C:\Users\Matheus\IdeaProjects\KuHubProject\frontend\src\services\semana-service.ts
+   24:19  warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+   25:5   error    There is no `cause` attached to the symptom error being thrown  preserve-caught-error
+   40:19  warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+   41:5   error    There is no `cause` attached to the symptom error being thrown  preserve-caught-error
+   87:19  warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+   88:5   error    There is no `cause` attached to the symptom error being thrown  preserve-caught-error
+  113:19  warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+  114:5   error    There is no `cause` attached to the symptom error being thrown  preserve-caught-error
+  127:19  warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+  128:5   error    There is no `cause` attached to the symptom error being thrown  preserve-caught-error
+  142:19  warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+  143:5   error    There is no `cause` attached to the symptom error being thrown  preserve-caught-error
+
+C:\Users\Matheus\IdeaProjects\KuHubProject\frontend\src\services\solicitud-service.ts
+  511:7   warning  'ENDPOINTS' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  959:18  error    'IDateRangeDTO' is already defined              no-redeclare
+
+C:\Users\Matheus\IdeaProjects\KuHubProject\frontend\src\services\storage-service.ts
+  244:29  warning  'password' is defined but never used. Allowed unused args must match /^_/u  @typescript-eslint/no-unused-vars
+  261:21  warning  '_' is assigned a value but never used                                      @typescript-eslint/no-unused-vars
+  280:11  warning  'password' is assigned a value but never used                               @typescript-eslint/no-unused-vars
+  464:78  warning  Unexpected any. Specify a different type                                    @typescript-eslint/no-explicit-any
+  483:77  warning  Unexpected any. Specify a different type                                    @typescript-eslint/no-explicit-any
+  555:11  warning  'id' is assigned a value but never used                                     @typescript-eslint/no-unused-vars
+
+C:\Users\Matheus\IdeaProjects\KuHubProject\frontend\src\services\unidad-medida-service.ts
+   25:48  warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+   42:14  warning  'error' is defined but never used                               @typescript-eslint/no-unused-vars
+   55:48  warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+   72:14  warning  'error' is defined but never used                               @typescript-eslint/no-unused-vars
+   84:24  warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+   95:21  warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+   96:9   error    There is no `cause` attached to the symptom error being thrown  preserve-caught-error
+  108:24  warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+  119:42  warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+  122:21  warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+  123:9   error    There is no `cause` attached to the symptom error being thrown  preserve-caught-error
+  140:21  warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+  141:9   error    There is no `cause` attached to the symptom error being thrown  preserve-caught-error
+  155:21  warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+  156:9   error    There is no `cause` attached to the symptom error being thrown  preserve-caught-error
+  174:21  warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+  175:9   error    There is no `cause` attached to the symptom error being thrown  preserve-caught-error
+
+C:\Users\Matheus\IdeaProjects\KuHubProject\frontend\src\services\usuario-service.ts
+   50:52  warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+   53:19  warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+   54:5   error    There is no `cause` attached to the symptom error being thrown  preserve-caught-error
+   66:52  warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+   69:19  warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+   70:5   error    There is no `cause` attached to the symptom error being thrown  preserve-caught-error
+   77:55  warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+  120:19  warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+  121:5   error    There is no `cause` attached to the symptom error being thrown  preserve-caught-error
+  151:19  warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+  152:5   error    There is no `cause` attached to the symptom error being thrown  preserve-caught-error
+  163:19  warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+  164:5   error    There is no `cause` attached to the symptom error being thrown  preserve-caught-error
+  200:19  warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+  201:5   error    There is no `cause` attached to the symptom error being thrown  preserve-caught-error
+  213:19  warning  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+  214:5   error    There is no `cause` attached to the symptom error being thrown  preserve-caught-error
+
+C:\Users\Matheus\IdeaProjects\KuHubProject\frontend\src\types\auth.types.ts
+  5:20  warning  'RolUsuario' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\Matheus\IdeaProjects\KuHubProject\frontend\src\utils\logger.ts
+  11:41  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  21:12  warning  'e' is defined but never used             @typescript-eslint/no-unused-vars
+  27:18  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  31:20  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  35:19  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  39:19  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  43:20  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  52:14  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  58:24  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  66:14  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+✖ 572 problems (137 errors, 435 warnings)
+
