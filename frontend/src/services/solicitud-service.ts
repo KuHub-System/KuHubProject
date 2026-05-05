@@ -56,6 +56,7 @@ export interface IDetalleReceta {
   abreviatura: string;
   esFraccionario: boolean;
   activoProducto: boolean;
+  observacion?: string;
 }
 export interface IPedidoSemanaBodegaSolicitud {
   idReceta: number;
