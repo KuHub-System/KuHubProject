@@ -96,9 +96,14 @@ export const obtenerSemanasService = async (anio: number, forceRefresh: boolean 
 export const invalidarCacheSemanas = (anio?: number) => {
   if (anio) {
     delete weeksCache[anio];
+    // También invalidar el cache por período para ese año
+    Object.keys(semanasPorPeriodoCache)
+      .filter(key => key.startsWith(`${anio}-`))
+      .forEach(key => semanasPorPeriodoCache.delete(key));
   } else {
-    // Vaciar objeto sin perder referencia si fuera necesario, o simplemente reasignar
+    // Limpiar todos los cachés
     Object.keys(weeksCache).forEach(key => delete weeksCache[parseInt(key)]);
+    semanasPorPeriodoCache.clear();
   }
 };
 
