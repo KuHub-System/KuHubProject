@@ -648,7 +648,7 @@ const AsigCard: React.FC<AsigCardProps> = ({
                     <Autocomplete
                       selectedKey={config.recetaId || null}
                       onSelectionChange={key => handleSelectReceta(String(key ?? ''))}
-                      variant="bordered" size="sm" placeholder="Buscar pedido semanals..."
+                      variant="bordered" size="sm" placeholder="Buscar pedidos semanales..."
                       defaultItems={recetasFiltradas}
                       classNames={{ base: 'flex-1 min-w-[160px]', popoverContent: 'dark:bg-content1' }}
                       inputProps={{ classNames: { inputWrapper: 'bg-default-50' } }}
