@@ -250,8 +250,11 @@ const AsigCard: React.FC<AsigCardProps> = ({
   const toggleBloque = (secId: number, dia: string, idSala: number) => onUpdate(prev => {
     const key  = mkBlkKey(secId, dia, idSala);
     const next = new Set(prev.bloquesIds);
-    next.has(key) ? next.delete(key) : next.add(key);
-    // Solo actualizamos bloquesIds; las cantidades base NO cambian
+    if (next.has(key)) {
+      next.delete(key);
+    } else {
+      next.add(key);
+    }
     return { ...prev, bloquesIds: next };
   });
 
@@ -535,7 +538,7 @@ const AsigCard: React.FC<AsigCardProps> = ({
 
               {/* RECETA */}
               <div>
-                <p className="text-xs font-bold text-default-500 uppercase tracking-wider mb-2">Receta Base</p>
+                <p className="text-xs font-bold text-default-500 uppercase tracking-wider mb-2">Pedido Semanal Base</p>
 
                 {/* Banner informativo: cantidades base */}
                 <div className="mb-3 flex items-center gap-2 px-3 py-2 rounded-lg bg-secondary-50 dark:bg-secondary-900/20 border border-secondary-200 text-xs">
@@ -609,7 +612,7 @@ const AsigCard: React.FC<AsigCardProps> = ({
                     )}
 
                     {/* Selector semana — solo visible cuando el período local coincide con el global */}
-                    {periodMatchesGlobal && contextSemanas && contextSemanas.length > 0 && (
+                    {periodMatchesGlobal && (contextSemanas as ISemana[]).length > 0 && (
                       <Select
                         selectedKeys={new Set([filterIdSemana])}
                         onSelectionChange={(keys) => {
@@ -623,19 +626,21 @@ const AsigCard: React.FC<AsigCardProps> = ({
                         classNames={{ trigger: 'bg-default-50 cursor-pointer', popoverContent: 'dark:bg-content1' }}
                       >
                         <SelectItem key="todas" textValue="Todas">Todas</SelectItem>
-                        {contextSemanas.map(s => (
-                          <SelectItem key={String(s.idSemana)} textValue={s.nombreSemana}>
-                            <div className="flex items-center gap-2">
-                              <span className="font-medium text-xs">{s.nombreSemana}</span>
-                              <span className="text-default-400 text-[10px]">
-                                {fmtCorto(new Date(s.fechaInicio + 'T00:00:00'))} – {fmtCorto(new Date(s.fechaFin + 'T00:00:00'))}
-                              </span>
-                              {String(s.idSemana) === contextSemanaId && contextSemanaId && (
-                                <Chip size="sm" color="success" variant="flat" className="ml-auto shrink-0 text-[9px] h-4 px-1">Actual</Chip>
-                              )}
-                            </div>
-                          </SelectItem>
-                        ))}
+                        <>
+                          {(contextSemanas as ISemana[]).map(s => (
+                            <SelectItem key={String(s.idSemana)} textValue={s.nombreSemana}>
+                              <div className="flex items-center gap-2">
+                                <span className="font-medium text-xs">{s.nombreSemana}</span>
+                                <span className="text-default-400 text-[10px]">
+                                  {fmtCorto(new Date(s.fechaInicio + 'T00:00:00'))} – {fmtCorto(new Date(s.fechaFin + 'T00:00:00'))}
+                                </span>
+                                {String(s.idSemana) === contextSemanaId && (
+                                  <Chip size="sm" color="success" variant="flat" className="ml-auto shrink-0 text-[9px] h-4 px-1">Actual</Chip>
+                                )}
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </>
                       </Select>
                     )}
 
@@ -643,7 +648,7 @@ const AsigCard: React.FC<AsigCardProps> = ({
                     <Autocomplete
                       selectedKey={config.recetaId || null}
                       onSelectionChange={key => handleSelectReceta(String(key ?? ''))}
-                      variant="bordered" size="sm" placeholder="Buscar receta..."
+                      variant="bordered" size="sm" placeholder="Buscar pedido semanals..."
                       defaultItems={recetasFiltradas}
                       classNames={{ base: 'flex-1 min-w-[160px]', popoverContent: 'dark:bg-content1' }}
                       inputProps={{ classNames: { inputWrapper: 'bg-default-50' } }}
@@ -842,7 +847,15 @@ const SolicitudPage: React.FC = () => {
     setConfigs(prev => { const m = new Map(prev); m.set(asigId, fn(getConfig(asigId))); return m; });
 
   const toggleExpand = (id: string) =>
-    setExpanded(prev => { const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s; });
+    setExpanded(prev => {
+      const s = new Set(prev);
+      if (s.has(id)) {
+        s.delete(id);
+      } else {
+        s.add(id);
+      }
+      return s;
+    });
 
   // ── cargar asignaturas y recetas (una sola vez) ──
   React.useEffect(() => {
