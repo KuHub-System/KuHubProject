@@ -942,7 +942,9 @@ const SolicitudPage: React.FC = () => {
               const orig = receta.detalles.find(d => String(d.idDetalleReceta) === i.id);
               // Comparamos directamente con cantidadBase (sin multiplicar)
               const cantidadCambiada = orig && Math.abs(i.cantidad - orig.cantProducto) > 0.0001;
-              const observacionCambiada = !!i.observacion;
+              const observacionOriginal = orig?.observacion ?? null;
+              const observacionActual = i.observacion || null;
+              const observacionCambiada = observacionActual !== observacionOriginal;
               return cantidadCambiada || observacionCambiada;
             })
             .map(i => ({
