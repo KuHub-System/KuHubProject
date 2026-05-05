@@ -160,8 +160,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar, onLogout }) =>
         <div className="p-5 flex items-center justify-between border-b border-default-100 dark:border-default-50">
           <div className="flex items-center">
             {/* Logo de KüHub */}
-            <div className="w-10 h-10 flex items-center justify-center rounded-lg shadow-sm overflow-hidden">
-              <img src={LOGO_URL} alt="Logo KüHub" className="w-full h-full object-cover scale-150" />
+            <div className="w-10 h-10 flex items-center justify-center rounded-lg shadow-md overflow-hidden">
+              <img src={LOGO_URL} alt="Logo KüHub" className="w-full h-full object-cover scale-150 antialiased drop-shadow-sm" />
             </div>
             <motion.div
               className="ml-3 flex flex-col justify-center"
