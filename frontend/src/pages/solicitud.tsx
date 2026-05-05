@@ -285,14 +285,14 @@ const AsigCard: React.FC<AsigCardProps> = ({
       // Las cantidades se guardan tal como vienen de la receta (base 20 porciones)
       // El backend escala según los alumnos inscritos por sección
       items: receta.detalles.map(d => ({
-        id: String(d.idDetalleReceta),
+        id: String(d.idDetallePedidoSemana),
         nombre: d.nombreProducto,
         cantidadBase: d.cantProducto,
         cantidad: d.cantProducto, // Se muestra la cantidad base sin multiplicar
         unidad: d.abreviatura,
         esExtra: false,
         esFraccionario: d.esFraccionario,
-        activoProducto: d.activoProducto,
+        activoProducto: d.activo,
         observacion: d.observacion,
       })),
     }));
