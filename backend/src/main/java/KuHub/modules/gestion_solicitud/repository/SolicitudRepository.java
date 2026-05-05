@@ -101,8 +101,8 @@ public interface SolicitudRepository extends JpaRepository<Solicitud, Integer> {
                             'cantProducto', d.cant_producto,
                             'abreviatura', u.abreviatura,
                             'esFraccionario', u.es_fraccionario,
-                            'activoProducto', p.activo,
-                            'idDetalleReceta', d.id_detalle_pedido_semana,
+                            'activo', p.activo,
+                            'idDetallePedidoSemana', d.id_detalle_pedido_semana,
                             'idProducto', p.id_producto,
                             'idUnidad', u.id_unidad,
                             'observacion', d.observacion
