@@ -36,6 +36,7 @@ import { usePageTitle } from '../hooks/usePageTitle';
 import { useToast } from '../hooks/useToast';
 import { useModulePermission } from '../contexts/permission-context';
 import { useSistemaConfig } from '../contexts/sistema-config-context';
+import { usePeriodoSemana } from '../contexts/periodo-semana-context';
 
 // ─── TIPOS Y SERVICIOS ───────────────────────────────────────────────────────
 import { IBloqueHorario } from '../types/bloque-horario.types';
@@ -936,6 +937,7 @@ interface SeccionSemanasProps {
 }
 
 const SeccionSemanas: React.FC<SeccionSemanasProps> = ({ toast }) => {
+  const { recargarPeriodos, recargarSemanas: recargarSemanasGlobal } = usePeriodoSemana();
   const [fechaSeleccionada, setFechaSeleccionada] = React.useState<DateValue | null>(null);
   const [semestre, setSemestre] = React.useState<1 | 2>(1);
   const [semanas, setSemanas] = React.useState<ISemana[]>([]);
@@ -1002,7 +1004,7 @@ const SeccionSemanas: React.FC<SeccionSemanasProps> = ({ toast }) => {
 
   // Callback llamado por ReasignarSemanasModal tras éxito
   // updatedSemanas contiene TODAS las semanas del año de la nueva fecha (backend devuelve año completo)
-  const handleReasignarSuccess = (anioSolicitado: string, updatedSemanas: ISemana[]) => {
+  const handleReasignarSuccess = async (anioSolicitado: string, updatedSemanas: ISemana[]) => {
     // Determinar el año real de los datos devueltos (puede diferir si la nueva fecha es otro año)
     const anioReal = updatedSemanas.length > 0
       ? updatedSemanas[0].anio.toString()
@@ -1011,6 +1013,10 @@ const SeccionSemanas: React.FC<SeccionSemanasProps> = ({ toast }) => {
     if (anioReal !== anioSolicitado) invalidarCacheSemanas(parseInt(anioReal));
     setFiltroAnio(anioReal);
     setSemanas(updatedSemanas);
+
+    // Recargar el contexto global para que otras páginas vean los cambios sin necesidad de F5
+    await recargarPeriodos();
+    await recargarSemanasGlobal();
   };
 
   const handleGenerar = async () => {
@@ -1044,6 +1050,10 @@ const SeccionSemanas: React.FC<SeccionSemanasProps> = ({ toast }) => {
       // Refrescar datos (forzando refresh tras generación)
       const data = await obtenerSemanasService(anioGeneradoNum, true);
       setSemanas(data);
+
+      // Recargar el contexto global para que otras páginas vean los cambios sin necesidad de F5
+      await recargarPeriodos();
+      await recargarSemanasGlobal();
     } catch (error: any) {
       toast.error(error.message || 'Error al generar el calendario semestral');
     } finally {
