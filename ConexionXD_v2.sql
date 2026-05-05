@@ -641,9 +641,6 @@ CREATE TABLE detalle_pedido_semana_bodega (
     UNIQUE(id_pedido_semana_bodega, id_producto)
 );
 
-
-
-
 -- Tabla solicitud
 CREATE TABLE solicitud (
     id_solicitud INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY, -- <--- PK Simple
