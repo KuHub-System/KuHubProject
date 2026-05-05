@@ -3187,7 +3187,7 @@ BEGIN
                 SELECT
 					dr.id_producto,
 					dr.cant_producto AS cant_base,
-					NULL::TEXT AS observacion
+					dr.observacion
                 FROM detalle_pedido_semana_bodega dr
                 WHERE v_id_receta IS NOT NULL
                   AND dr.id_pedido_semana_bodega = v_id_receta
