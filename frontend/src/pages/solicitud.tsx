@@ -293,6 +293,7 @@ const AsigCard: React.FC<AsigCardProps> = ({
         esExtra: false,
         esFraccionario: d.esFraccionario,
         activoProducto: d.activoProducto,
+        observacion: d.observacion,
       })),
     }));
   };
@@ -697,12 +698,17 @@ const AsigCard: React.FC<AsigCardProps> = ({
                             <span className="text-[9px] text-danger font-medium shrink-0 ml-1">no disponible</span>
                           )}
                         </div>
-                        <Input size="sm" value={item.observacion ?? ''}
-                          onValueChange={v => onUpdate(prev => ({ ...prev, items: prev.items.map(i => i.id === item.id ? { ...i, observacion: v.slice(0, 100) } : i) }))}
-                          placeholder="Opcional..."
-                          isDisabled={!item.activoProducto}
-                          variant="bordered"
-                          classNames={{ inputWrapper: 'h-7 bg-white dark:bg-content1 min-h-7', input: 'text-xs' }} />
+                        <div className="relative">
+                          <Input size="sm" value={item.observacion ?? ''}
+                            onValueChange={v => onUpdate(prev => ({ ...prev, items: prev.items.map(i => i.id === item.id ? { ...i, observacion: v.slice(0, 100) } : i) }))}
+                            placeholder="Opcional..."
+                            isDisabled={!item.activoProducto}
+                            variant="bordered"
+                            classNames={{ inputWrapper: 'h-7 bg-white dark:bg-content1 min-h-7', input: 'text-xs' }} />
+                          <span className={`absolute right-2 bottom-0.5 text-[9px] ${(item.observacion?.length ?? 0) >= 90 ? 'text-warning font-medium' : 'text-default-400'}`}>
+                            {(item.observacion?.length ?? 0)}/100
+                          </span>
+                        </div>
                         <Input type="number" size="sm" value={String(item.cantidad)}
                           onValueChange={v => actualizarCantidad(item.id, v, item.esFraccionario)}
                           isDisabled={!item.activoProducto}
