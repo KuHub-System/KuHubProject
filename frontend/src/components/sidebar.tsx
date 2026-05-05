@@ -5,6 +5,7 @@ import { Icon } from '@iconify/react';
 import { useAuth } from '../contexts/auth-context';
 import { usePermission } from '../contexts/permission-context';
 import { PAGE_TO_MODULE } from '../types/permissions.types';
+import { useSistemaConfig } from '../contexts/sistema-config-context';
 import { motion } from 'framer-motion';
 
 const LOGO_URL = new URL('./assets/KuHubLogoWBG.png', import.meta.url).href;
@@ -39,6 +40,7 @@ interface MenuItem {
 const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar, onLogout }) => {
   const { user, logout } = useAuth();
   const { canAccess, isAdmin } = usePermission();
+  const { solicitudesEnPedido } = useSistemaConfig();
   const location = useLocation();
   const history = useHistory();
 
@@ -113,6 +115,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar, onLogout }) =>
     ...category,
     items: category.items.filter(item => {
       if (!user) return false;
+      if (item.pageId === 'gestion-pedidos' && solicitudesEnPedido) return false;
       if (isAdmin) return true;
       const moduleKey = PAGE_TO_MODULE[item.pageId];
       return moduleKey ? canAccess(moduleKey, 'read') : false;

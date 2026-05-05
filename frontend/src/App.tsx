@@ -3,6 +3,7 @@ import { Switch, Route, Redirect } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/auth-context';
 import { PermissionProvider } from './contexts/permission-context';
 import { PeriodoSemanaProvider } from './contexts/periodo-semana-context';
+import { SistemaConfigProvider } from './contexts/sistema-config-context';
 import { ThemeProvider } from './contexts/theme-context';
 import { PageTitleProvider } from './contexts/PageTitleContext';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -132,6 +133,7 @@ const App: React.FC = () => {
           <PageTitleProvider>
             <AuthProvider>
               <PermissionProvider>
+                <SistemaConfigProvider>
                 <PeriodoSemanaProvider>
                   <Suspense fallback={<PageLoader />}>
                 <Switch>
@@ -288,6 +290,7 @@ const App: React.FC = () => {
                 </Switch>
                   </Suspense>
                 </PeriodoSemanaProvider>
+                </SistemaConfigProvider>
               </PermissionProvider>
             </AuthProvider>
           </PageTitleProvider>
