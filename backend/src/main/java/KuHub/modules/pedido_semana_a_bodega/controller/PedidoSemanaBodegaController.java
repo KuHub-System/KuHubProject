@@ -3,10 +3,13 @@ package KuHub.modules.pedido_semana_a_bodega.controller;
 import KuHub.modules.gestion_inventario.dtos.request.SearchDTO;
 import KuHub.modules.pedido_semana_a_bodega.dtos.request.dto.PedidoSemanaBodegaWithDetailsCreateDTO;
 import KuHub.modules.pedido_semana_a_bodega.dtos.projection.CountPedidoSemanaBodegaAndStatusView;
+import KuHub.modules.pedido_semana_a_bodega.dtos.respose.projection.AsignaturaActivaView;
 import KuHub.modules.pedido_semana_a_bodega.dtos.respose.record.ImportarExcelResultado;
 import KuHub.modules.pedido_semana_a_bodega.dtos.respose.record.PedidoSemanaBodegasPage;
 import KuHub.modules.pedido_semana_a_bodega.dtos.request.PedidoSemanaBodegaWithDetailsUpdateDTO;
 import KuHub.modules.pedido_semana_a_bodega.services.PedidoSemanaBodegaService;
+
+import java.util.List;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
@@ -107,6 +110,17 @@ public class PedidoSemanaBodegaController {
         return ResponseEntity
                 .status(200)
                 .body(pedidoSemanaBodegaService.importarExcelProductos(archivo, nombreHoja));
+    }
+
+    /**
+     * Obtiene todas las asignaturas activas para el selector del modal.
+     * ✅ En uso: Consumido por obtenerAsignaturasActivasService en pedido-semanal-bodega-service.ts.
+     */
+    @GetMapping("/asignaturas/activas")
+    public ResponseEntity<List<AsignaturaActivaView>> obtenerAsignaturasActivas() {
+        return ResponseEntity
+                .status(200)
+                .body(pedidoSemanaBodegaService.obtenerAsignaturasActivas());
     }
 
 

@@ -13,7 +13,7 @@ import { useHistory } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ISolicitud, IItemSolicitud } from '../types/solicitud.types';
 import { actualizarEstadoBodegaService, obtenerEntregasDiariasService, prepararEntregaService, IEntregaDiaria, ISalaEntrega, ISolicitudEntrega } from '../services/solicitud-service';
-import { obtenerRecetaPorIdService } from '../services/receta-service';
+import { obtenerRecetaPorIdService } from '../services/pedido-semanal-bodega-service';
 import { obtenerFiltrosInventarioService } from '../services/producto-service';
 import { buscarBodegaTransitoService, buscarBodegaTransitoPorCodigoService, obtenerBodegaPaginadaService, IBodegaTransitoItem } from '../services/bodega-transito-service';
 import { useToast } from '../hooks/useToast';

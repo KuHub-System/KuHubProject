@@ -38,7 +38,7 @@ import { usePeriodoSemana } from '../contexts/periodo-semana-context';
 import BookPageLoader from '../components/BookPageLoader';
 
 // IMPORTAR TIPOS Y SERVICIOS
-import { IPedidoSemanaBodega, IIngrediente, IPedidoSemanaBodegaWithDetailsUpdateDTO, IResultadoItemExcel, IImportarExcelResultado } from '../types/receta.types';
+import { IPedidoSemanaBodega, IIngrediente, IPedidoSemanaBodegaWithDetailsUpdateDTO, IResultadoItemExcel, IImportarExcelResultado, IAsignatura } from '../types/receta.types';
 import {
   obtenerRecetasPaginadasService,
   crearRecetaService,
@@ -50,8 +50,9 @@ import {
   obtenerRecetasCountService,
   buscarRecetasPaginadasService,
   softDeleteRecetaService,
-  importarExcelPedidoService
-} from '../services/receta-service';
+  importarExcelPedidoService,
+  obtenerAsignaturasActivasService
+} from '../services/pedido-semanal-bodega-service';
 import { obtenerProductosParaRecetaService } from '../services/producto-service';
 import { IProductoRecetaSelection } from '../types/producto.types';
 import { IPedidoSemanaBodegaPaginedDTO, IDetallePedidoSemanaBodegaDTO, IPaginationMeta, IPedidoSemanaBodegaCountResponse } from '../types/receta.types';
@@ -78,7 +79,7 @@ const PedidoSemanalABodegaPage: React.FC = () => {
   // Filtro de semana
   const [filterIdSemana, setFilterIdSemana] = React.useState<string>('todas');
   const [filterPeriodo, setFilterPeriodo] = React.useState<{ anio: number; semestre: number } | null>(null);
-  const [filterSemanas, setFilterSemanas] = React.useState<any[]>([]);
+  const [filterSemanas, setFilterSemanas] = React.useState<Array<{ idSemana: number; nombreSemana: string; fechaInicio: string; fechaFin: string }>>([]);
 
   const [isLoading, setIsLoading] = React.useState<boolean>(true);
   const [totalPages, setTotalPages] = React.useState<number>(1);
@@ -270,13 +271,14 @@ const PedidoSemanalABodegaPage: React.FC = () => {
         const success = await crearRecetaConDetallesService({
           nombrePedido: receta.nombre,
           descripcionPedido: receta.descripcion,
-          listaItems: receta.ingredientes.map(ing => ({
+          listaItems: (receta.ingredientes || []).map((ing: IIngrediente & { observacion?: string }) => ({
             idProducto: parseInt(ing.productoId),
             cantUnidadMedida: ing.cantidad,
             observacion: ing.observacion || undefined
           })),
           estadoPedido: receta.estado === 'Activo' || (receta.estado as any) === 'Activa' ? 'Activo' : 'Inactivo',
-          idSemana: receta.idSemana
+          idSemana: receta.idSemana,
+          idAsignatura: receta.idAsignatura
         });
 
         if (success) {
@@ -477,22 +479,23 @@ const PedidoSemanalABodegaPage: React.FC = () => {
                         <SelectItem key="todas" textValue="Todas">
                           Todas
                         </SelectItem>
-                        {filterSemanas
-                          .map((semana) => (
-                          <SelectItem key={String(semana.idSemana)} textValue={semana.nombreSemana}>
-                            <div className="flex items-center w-full gap-2">
-                              <span className="font-semibold">{semana.nombreSemana}</span>
-                              <span className="text-default-400 text-xs">
-                                {new Date(semana.fechaInicio + 'T00:00:00').toLocaleDateString('es-CL', { day: 'numeric', month: 'short' })}
-                                {' – '}
-                                {new Date(semana.fechaFin + 'T00:00:00').toLocaleDateString('es-CL', { day: 'numeric', month: 'short' })}
-                              </span>
-                              {String(semana.idSemana) === defaultSemanaId && defaultSemanaId && (
-                                <Chip size="sm" color="success" variant="flat" className="ml-auto shrink-0">Actual</Chip>
-                              )}
-                            </div>
-                          </SelectItem>
-                        ))}
+                        <>
+                          {filterSemanas?.map((semana) => (
+                            <SelectItem key={String(semana.idSemana)} textValue={semana.nombreSemana}>
+                              <div className="flex items-center w-full gap-2">
+                                <span className="font-semibold">{semana.nombreSemana}</span>
+                                <span className="text-default-400 text-xs">
+                                  {new Date(semana.fechaInicio + 'T00:00:00').toLocaleDateString('es-CL', { day: 'numeric', month: 'short' })}
+                                  {' – '}
+                                  {new Date(semana.fechaFin + 'T00:00:00').toLocaleDateString('es-CL', { day: 'numeric', month: 'short' })}
+                                </span>
+                                {String(semana.idSemana) === defaultSemanaId && defaultSemanaId && (
+                                  <Chip size="sm" color="success" variant="flat" className="ml-auto shrink-0">Actual</Chip>
+                                )}
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </>
                       </Select>
                     )}
                   </>
@@ -560,7 +563,7 @@ const PedidoSemanalABodegaPage: React.FC = () => {
               >
                 {recetasAMostrar.map((receta) => (
                   <TableRow
-                    key={receta.idReceta}
+                    key={receta.idPedidoSemanaBodega}
                     className="hover:bg-default-100 dark:hover:bg-default-100/50 transition-colors"
                     style={{ cursor: "url('data:image/svg+xml;utf8,<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" strokeWidth=\"2\" strokeLinecap=\"round\" strokeLinejoin=\"round\"><path d=\"M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z\"/><circle cx=\"12\" cy=\"12\" r=\"3\"/></svg>') 12 12, pointer" }}
                     onClick={(e: React.MouseEvent<Element>) => {
@@ -1114,6 +1117,13 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
     const [descripcion, setDescripcion] = React.useState(receta?.descripcionPedido || '');
     const [estado, setEstado] = React.useState<'Activo' | 'Inactivo'>(receta?.estadoPedido || 'Activo');
     const [vistaTabla, setVistaTabla] = React.useState(false);
+    const [asignaturas, setAsignaturas] = React.useState<IAsignatura[]>([]);
+    const [idAsignaturaSeleccionada, setIdAsignaturaSeleccionada] = React.useState<string>(() => {
+      if (mode === 'editar' && receta?.idAsignatura) {
+        return receta.idAsignatura.toString();
+      }
+      return '';
+    });
 
     // Texto local de cada input de cantidad (permite escribir coma y valores intermedios como "1,")
     // El valor real del ingrediente se actualiza solo cuando el texto es un número válido.
@@ -1267,6 +1277,14 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
     }, [idSemana, seleccionarSemana]);
 
     React.useEffect(() => {
+      obtenerAsignaturasActivasService()
+        .then(setAsignaturas)
+        .catch(err => {
+          console.warn('Error cargando asignaturas:', err);
+        });
+    }, []);
+
+    React.useEffect(() => {
       // 1. Validaciones básicas de integridad
       const isNombreValid = nombre.trim().length > 0;
       const isEstadoValid = !!estado;
@@ -1324,13 +1342,17 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
           }
         }
 
-        hasChanges = changedNombre || changedDesc || changedEstado || changedIngs || changedSemana;
+        const currentIdAsignatura = idAsignaturaSeleccionada ? parseInt(idAsignaturaSeleccionada) : null;
+        const originalIdAsignatura = receta.idAsignatura || null;
+        const changedAsignatura = currentIdAsignatura !== originalIdAsignatura;
+
+        hasChanges = changedNombre || changedDesc || changedEstado || changedIngs || changedSemana || changedAsignatura;
       }
 
       // En modo 'crear' habilitamos si es válido. En 'editar' solo si es válido Y hubo cambios.
       const canSave = mode === 'crear' ? isValid : (isValid && hasChanges);
       onValidationChange(canSave);
-    }, [nombre, descripcion, estado, ingredientes, idSemana, mode, receta, onValidationChange]);
+    }, [nombre, descripcion, estado, ingredientes, idSemana, idAsignaturaSeleccionada, mode, receta, onValidationChange]);
 
     React.useImperativeHandle(ref, () => ({
       importarDesdeExcel: (resultados: IResultadoItemExcel[]) => {
@@ -1401,13 +1423,14 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
         });
 
         const recetaData: any = {
-          id: receta?.idReceta?.toString() || '',
+          id: receta?.idPedidoSemanaBodega?.toString() || '',
           nombre: nombre.trim(),
           descripcion: descripcion.trim(),
           ingredientes: ingredientesConsolidados,
           instrucciones: '',
           estado,
           idSemana: idSemana && idSemana !== 'ninguno' ? Number(idSemana) : undefined,
+          idAsignatura: idAsignaturaSeleccionada ? parseInt(idAsignaturaSeleccionada) : null,
           fechaCreacion: new Date().toISOString(),
           fechaActualizacion: new Date().toISOString(),
         };
@@ -1442,6 +1465,7 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
             updateItems,
             deleteItems: deletedProductIds, // IDs de PRODUCTOS, no de detalles
             idSemana: idSemana && idSemana !== 'ninguno' ? Number(idSemana) : undefined,
+            idAsignatura: idAsignaturaSeleccionada ? parseInt(idAsignaturaSeleccionada) : null,
           };
 
           await onSave(recetaData, updatePayload);
@@ -1623,28 +1647,59 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
                           <SelectItem key="ninguno" textValue="Ninguno">
                             <span className="text-default-500">Ninguno</span>
                           </SelectItem>
-                          {semanas
-                            .map((semana) => (
-                            <SelectItem key={String(semana.idSemana)} textValue={semana.nombreSemana}>
-                              <div className="flex items-center w-full gap-2">
-                                <span className="font-semibold">{semana.nombreSemana}</span>
-                                <span className="text-default-400 text-xs">
-                                  {new Date(semana.fechaInicio + 'T00:00:00').toLocaleDateString('es-CL', { day: 'numeric', month: 'short' })}
-                                  {' – '}
-                                  {new Date(semana.fechaFin + 'T00:00:00').toLocaleDateString('es-CL', { day: 'numeric', month: 'short' })}
-                                </span>
-                                {String(semana.idSemana) === defaultSemanaId && defaultSemanaId && (
-                                  <Chip size="sm" color="success" variant="flat" className="ml-auto shrink-0">Actual</Chip>
-                                )}
-                              </div>
-                            </SelectItem>
-                          ))}
+                          <>
+                            {semanas?.map((semana) => (
+                              <SelectItem key={String(semana.idSemana)} textValue={semana.nombreSemana}>
+                                <div className="flex items-center w-full gap-2">
+                                  <span className="font-semibold">{semana.nombreSemana}</span>
+                                  <span className="text-default-400 text-xs">
+                                    {new Date(semana.fechaInicio + 'T00:00:00').toLocaleDateString('es-CL', { day: 'numeric', month: 'short' })}
+                                    {' – '}
+                                    {new Date(semana.fechaFin + 'T00:00:00').toLocaleDateString('es-CL', { day: 'numeric', month: 'short' })}
+                                  </span>
+                                  {String(semana.idSemana) === defaultSemanaId && defaultSemanaId && (
+                                    <Chip size="sm" color="success" variant="flat" className="ml-auto shrink-0">Actual</Chip>
+                                  )}
+                                </div>
+                              </SelectItem>
+                            ))}
+                          </>
                         </Select>
                       </>
                     )}
                   </>
                 )}
               </div>
+
+              {/* Asignatura (Opcional) */}
+              {asignaturas.length > 0 && (
+                <Select
+                  label="Asignatura (Opcional)"
+                  placeholder="Selecciona una asignatura"
+                  variant="bordered"
+                  selectedKeys={idAsignaturaSeleccionada ? new Set([idAsignaturaSeleccionada]) : new Set()}
+                  onSelectionChange={(keys) => setIdAsignaturaSeleccionada(Array.from(keys as Set<string>)[0] || '')}
+                  classNames={{
+                    label: 'text-sm font-medium text-default-700',
+                    trigger: 'bg-white dark:bg-default-100/50',
+                  }}
+                  startContent={<Icon icon="lucide:book-open" width={14} className="text-default-400 shrink-0" />}
+                >
+                  <SelectItem key="" textValue="Ninguna">
+                    <span className="text-default-500">Ninguna</span>
+                  </SelectItem>
+                  <>
+                    {asignaturas?.map(asignatura => (
+                      <SelectItem key={asignatura.idAsignatura.toString()} textValue={`${asignatura.nombreAsignatura} (${asignatura.codAsignatura})`}>
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold">{asignatura.nombreAsignatura}</span>
+                          <span className="text-default-400 text-xs">({asignatura.codAsignatura})</span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </>
+                </Select>
+              )}
             </CardBody>
           </Card>
         </div>

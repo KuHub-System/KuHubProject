@@ -19,7 +19,7 @@ export type ModuleKey =
   | 'GESTION_PROVEEDORES'
   | 'BODEGA_TRANSITO'
   | 'GESTION_PEDIDOS_DIARIOS'
-  | 'GESTION_RECETAS'
+  | 'PEDIDO_SEMANAL_BODEGA'
   | 'GESTION_ACADEMICA'
   | 'GESTION_ROLES'
   | 'GESTION_USUARIOS'
@@ -89,7 +89,7 @@ export const MODULE_LABELS: Record<ModuleKey, string> = {
   GESTION_PROVEEDORES:  'Gestión de Proveedores',
   BODEGA_TRANSITO:           'Bodega de Tránsito',
   GESTION_PEDIDOS_DIARIOS:   'Gestión de Pedidos Diarios',
-  GESTION_RECETAS:           'Gestión de Recetas',
+  PEDIDO_SEMANAL_BODEGA:      'Pedido Semanal a Bodega',
   GESTION_ACADEMICA:    'Gestión Académica',
   GESTION_ROLES:        'Gestión de Roles',
   GESTION_USUARIOS:     'Gestión de Usuarios',
@@ -110,7 +110,7 @@ export const MODULE_ICONS: Record<ModuleKey, string> = {
   GESTION_PROVEEDORES:  'lucide:truck',
   BODEGA_TRANSITO:           'lucide:warehouse',
   GESTION_PEDIDOS_DIARIOS:   'lucide:shopping-cart',
-  GESTION_RECETAS:           'lucide:chef-hat',
+  PEDIDO_SEMANAL_BODEGA:      'lucide:package-open',
   GESTION_ACADEMICA:    'lucide:book-open',
   GESTION_ROLES:        'lucide:shield',
   GESTION_USUARIOS:     'lucide:users',
@@ -130,7 +130,7 @@ export const PAGE_TO_MODULE: Record<string, ModuleKey> = {
   'conglomerado-pedidos': 'CONGLOMERADO_PEDIDOS',
   'gestion-proveedores':  'GESTION_PROVEEDORES',
   'bodega-transito':      'BODEGA_TRANSITO',
-  'gestion-recetas':      'GESTION_RECETAS',
+  'pedido-semanal-a-bodega': 'PEDIDO_SEMANAL_BODEGA',
   'gestion-academica':    'GESTION_ACADEMICA',
   'gestion-roles':        'GESTION_ROLES',
   'gestion-usuarios':     'GESTION_USUARIOS',
