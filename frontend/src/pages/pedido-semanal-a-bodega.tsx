@@ -778,6 +778,7 @@ const DetallePedidoSemanaBodega: React.FC<DetallePedidoSemanaBodegaProps> = ({ r
   const toast = useToast();
   const { user } = useAuth();
   const isAdmin = user?.rol === 'Administrador';
+  const history = useHistory();
   const { semanas } = usePeriodoSemana();
   const [isSaving, setIsSaving] = React.useState(false);
   const [isValidForm, setIsValidForm] = React.useState(false);
