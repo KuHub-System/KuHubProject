@@ -47,6 +47,7 @@ interface AsigConfig {
   semanaId: string;
   recetaId: string;
   items: ItemSolicitud[];
+  itemsEliminadosIds: number[];
   observaciones: string;
   extraProductoId: string;
   extraCantidad: string;
@@ -161,7 +162,7 @@ const seccionesSeleccionadas = (secciones: ISeccionCurso[], bloquesIds: Set<stri
 
 const makeEmptyConfig = (defaultSemanaId: string): AsigConfig => ({
   bloquesIds: new Set(), semanaId: defaultSemanaId,
-  recetaId: '', items: [], observaciones: '',
+  recetaId: '', items: [], itemsEliminadosIds: [], observaciones: '',
   extraProductoId: '', extraCantidad: '',
 });
 
@@ -286,6 +287,7 @@ const AsigCard: React.FC<AsigCardProps> = ({
     if (!receta) return;
     onUpdate(prev => ({
       ...prev, recetaId,
+      itemsEliminadosIds: [],
       // Las cantidades se guardan tal como vienen de la receta (base 20 porciones)
       // El backend escala según los alumnos inscritos por sección
       items: receta.detalles.map(d => ({
@@ -737,7 +739,13 @@ const AsigCard: React.FC<AsigCardProps> = ({
                           classNames={{ inputWrapper: 'h-7 bg-white dark:bg-content1 min-h-7', input: 'text-center text-xs font-bold' }} />
                         <span className="text-xs text-default-500 text-center">{item.unidad}</span>
                         <Button isIconOnly variant="light" color="danger" size="sm" className="h-7 w-7 min-w-7"
-                          onPress={() => onUpdate(prev => ({ ...prev, items: prev.items.filter(i => i.id !== item.id) }))}>
+                          onPress={() => onUpdate(prev => ({
+                            ...prev,
+                            items: prev.items.filter(i => i.id !== item.id),
+                            itemsEliminadosIds: !item.esExtra
+                              ? [...prev.itemsEliminadosIds, parseInt(item.id)]
+                              : prev.itemsEliminadosIds,
+                          }))}>
                           <Icon icon="lucide:x" width={12} />
                         </Button>
                       </div>
@@ -951,11 +959,8 @@ const SolicitudPage: React.FC = () => {
         let deltas: { eliminados: number[]; modificados: { idDetalleReceta: number; cantProducto: number; observacion?: string }[]; nuevos: { idProducto: number; cantProducto: number; observacion: string }[] } | undefined;
         if (receta) {
           const originalIds = new Set(receta.detalles.map(d => String(d.idDetallePedidoSemana)));
-          const currentRecipeIds = new Set(cfg.items.filter(i => !i.esExtra).map(i => i.id));
 
-          const eliminados = receta.detalles
-            .filter(d => !currentRecipeIds.has(String(d.idDetallePedidoSemana)))
-            .map(d => d.idDetallePedidoSemana);
+          const eliminados = cfg.itemsEliminadosIds;
 
           const modificados = cfg.items
             .filter(i => !i.esExtra && originalIds.has(i.id))
