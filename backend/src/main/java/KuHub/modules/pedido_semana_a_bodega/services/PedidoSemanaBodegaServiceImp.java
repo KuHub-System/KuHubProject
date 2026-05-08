@@ -1,5 +1,6 @@
 package KuHub.modules.pedido_semana_a_bodega.services;
 
+import KuHub.modules.gestion_academica.repository.AsignaturaRepository;
 import KuHub.modules.gestion_inventario.dtos.request.SearchDTO;
 import KuHub.modules.gestion_inventario.entity.Producto;
 import KuHub.modules.gestion_inventario.repository.ProductoRepository;
@@ -9,6 +10,7 @@ import KuHub.modules.pedido_semana_a_bodega.dtos.request.dto.PedidoSemanaBodegaI
 import KuHub.modules.pedido_semana_a_bodega.dtos.request.dto.PedidoSemanaBodegaWithDetailsCreateDTO;
 import KuHub.modules.pedido_semana_a_bodega.dtos.respose.projection.DetailsByUpdateView;
 import KuHub.modules.pedido_semana_a_bodega.dtos.respose.projection.PedidoSemanaBodegaWithDetailsView;
+import KuHub.modules.pedido_semana_a_bodega.dtos.respose.projection.AsignaturaActivaView;
 import KuHub.modules.pedido_semana_a_bodega.dtos.respose.record.DetailsByUpdateRec;
 import KuHub.modules.pedido_semana_a_bodega.dtos.respose.record.ImportarExcelResultado;
 import KuHub.modules.pedido_semana_a_bodega.dtos.respose.record.PedidoSemanaBodegasPage;
@@ -48,6 +50,9 @@ public class PedidoSemanaBodegaServiceImp implements PedidoSemanaBodegaService{
 
     @Autowired
     private ProductoRepository productoRepository;
+
+    @Autowired
+    private AsignaturaRepository asignaturaRepository;
 
     /**Services*/
     @Autowired
@@ -129,6 +134,17 @@ public class PedidoSemanaBodegaServiceImp implements PedidoSemanaBodegaService{
                 ? null : StringUtils.normalizeSpaces(request.getDescripcionPedido()));
 
         newReceta.setIdSemana(request.getIdSemana());
+
+        if (request.getIdAsignatura() != null) {
+            boolean asignaturaExists = asignaturaRepository.existsByIdAsignaturaAndActivoTrue(request.getIdAsignatura());
+            if (!asignaturaExists) {
+                throw new PedidoSemanaBodegaException(
+                        "Asignatura no encontrada o inactiva",
+                        HttpStatus.UNPROCESSABLE_ENTITY
+                );
+            }
+        }
+        newReceta.setIdAsignatura(request.getIdAsignatura());
 
         PedidoSemanaBodega recetaGuardada = recetaRepository.save(newReceta);
 
@@ -232,6 +248,20 @@ public class PedidoSemanaBodegaServiceImp implements PedidoSemanaBodegaService{
             oldRecipe.setIdSemana(request.getIdSemana());
         }
 
+        /** Validar y setear el idAsignatura (opcional) */
+        if (!Objects.equals(request.getIdAsignatura(), oldRecipe.getIdAsignatura())) {
+            if (request.getIdAsignatura() != null) {
+                boolean asignaturaExists = asignaturaRepository.existsByIdAsignaturaAndActivoTrue(request.getIdAsignatura());
+                if (!asignaturaExists) {
+                    throw new PedidoSemanaBodegaException(
+                            "Asignatura no encontrada o inactiva",
+                            HttpStatus.UNPROCESSABLE_ENTITY
+                    );
+                }
+            }
+            oldRecipe.setIdAsignatura(request.getIdAsignatura());
+        }
+
         /**Update Recipe Head*/
         recetaRepository.save(oldRecipe);
 
@@ -280,6 +310,13 @@ public class PedidoSemanaBodegaServiceImp implements PedidoSemanaBodegaService{
             return true;
         }
         return false;
+    }
+
+    /** Retorna todas las asignaturas activas para el selector del modal. */
+    @Transactional(readOnly = true)
+    @Override
+    public List<AsignaturaActivaView> obtenerAsignaturasActivas() {
+        return recetaRepository.findAllAsignaturasActivas();
     }
 
     /** Parsea un archivo Excel (.xlsx/.xlsm) leyendo filas 12-80, cruza nombres de productos con BD

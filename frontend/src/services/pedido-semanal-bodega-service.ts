@@ -12,7 +12,8 @@ import {
   IPedidoSemanaBodegaWithDetailsUpdateDTO,
   IPaginatedPedidoSemanaBodegaResponse,
   IPedidoSemanaBodegaCountResponse,
-  IImportarExcelResultado
+  IImportarExcelResultado,
+  IAsignatura
 } from '../types/receta.types';
 
 import api from '../config/Axios';
@@ -308,4 +309,13 @@ export const obtenerRecetasCountService = async (): Promise<IPedidoSemanaBodegaC
       'Error al obtener el conteo de recetas'
     );
   }
+};
+
+/**
+ * Obtiene todas las asignaturas activas para el selector del modal de pedido semanal.
+ * @returns {Promise<IAsignatura[]>}
+ */
+export const obtenerAsignaturasActivasService = async (): Promise<IAsignatura[]> => {
+  const response = await api.get<IAsignatura[]>('/pedido-semana-bodega/asignaturas/activas');
+  return response.data;
 };

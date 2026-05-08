@@ -1,6 +1,7 @@
 package KuHub.modules.pedido_semana_a_bodega.repository;
 
 import KuHub.modules.pedido_semana_a_bodega.dtos.projection.CountPedidoSemanaBodegaAndStatusView;
+import KuHub.modules.pedido_semana_a_bodega.dtos.respose.projection.AsignaturaActivaView;
 import KuHub.modules.pedido_semana_a_bodega.dtos.respose.projection.PedidoSemanaBodegaWithDetailsView;
 import KuHub.modules.pedido_semana_a_bodega.entity.PedidoSemanaBodega;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -224,6 +225,19 @@ public interface PedidoSemanaBodegaRepository extends JpaRepository<PedidoSemana
        """)
     int softDeleteRecipeById(@Param("idPedidoSemanaBodega") Integer idPedidoSemanaBodega);
 
+
+
+    /** Obtiene todas las asignaturas activas para el selector del modal. */
+    @Query(value = """
+        SELECT
+            a.id_asignatura    AS idAsignatura,
+            a.nombre_asignatura AS nombreAsignatura,
+            a.cod_asignatura    AS codAsignatura
+        FROM asignatura a
+        WHERE a.activo = TRUE
+        ORDER BY a.nombre_asignatura ASC
+        """, nativeQuery = true)
+    List<AsignaturaActivaView> findAllAsignaturasActivas();
 
 
     // ─── BOOLEANOS ───────────────────────────────────────────────────────────────

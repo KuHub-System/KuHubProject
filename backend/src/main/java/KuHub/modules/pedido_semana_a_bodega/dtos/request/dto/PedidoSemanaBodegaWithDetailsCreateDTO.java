@@ -23,4 +23,6 @@ public class PedidoSemanaBodegaWithDetailsCreateDTO {
     private String estadoPedido;
 
     private Integer idSemana;
+
+    private Integer idAsignatura;
 }

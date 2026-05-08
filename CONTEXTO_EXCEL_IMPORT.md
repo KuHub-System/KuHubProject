@@ -41,8 +41,9 @@ La hoja a leer se determina así:
 - **Cabecera:** fila 11 en Excel → índice 10 en POI. Se usa para detectar la columna de observación.
 - **Inicio datos:** fila 12 en Excel → índice 11 en POI
 - **Fin datos:** fila 80 en Excel → índice 79 en POI
-- **Skip:** si A + B + C están todas en blanco → ignorar la fila
-- Las filas con encabezados de categoría (ej. "ABARROTES", "VERDURAS Y FRUTAS") pasan el check de skip pero no se encuentran en BD → quedan como `no_encontrado` (comportamiento esperado)
+- **Skip 1:** si A + B + C están todas en blanco → ignorar la fila completamente
+- **Skip 2 (NUEVO 2026-05-08):** si Producto (col B), UnidadMedida (col C) o Cantidad (col D) son nulos/vacíos → ignorar la fila completamente (no marcar como `no_encontrado`)
+- **Resultado:** Las filas con encabezados de categoría (ej. "ABARROTES" con col B llena, col C vacía, col D nula) ahora son ignoradas silenciosamente, no aparecen en la lista de no encontrados
 
 ### Detección dinámica de la columna de observación
 
@@ -193,12 +194,17 @@ for (int i = 11; i <= 79; i++) {
 
     String nombreParaBusqueda = StringUtils.capitalizarPalabras(celdaB);
     BigDecimal cantidad       = parseCantidad(row.getCell(3));
+    
+    // Solo procesar si Producto (B), UnidadMedida (C) y Cantidad (D) no son nulos/vacíos
+    if (celdaB.isBlank() || celdaC.isBlank() || cantidad == null) continue;
+    
     String celdaObs = getCellText(row.getCell(colObservacion), formatter);
     String observacion = celdaObs.isBlank() ? null : StringUtils.normalizeSpaces(celdaObs);
 
     Optional<Producto> productoOpt =
         productoRepository.findByNombreProductoAndActivo(nombreParaBusqueda, true);
-    // → estado "ok" o "no_encontrado"
+    // → estado "ok" si producto existe en BD
+    // → estado "no_encontrado" si NO existe en BD (solo se llega aquí si B, C, D pasaron validación)
 }
 
 // 5. Retornar (incluye preparaciones si fue detectado)
@@ -962,6 +968,7 @@ User input: archivo .xlsm
 - [x] Extracción de `numeroSemanaExcel` con regex en todos los casos (0 si no coincide con patrón SEMANA)
 - [x] Detección dinámica de columna de observación desde cabecera (fila 11 Excel)
 - [x] **NUEVO (2026-05-08): Detección de PREPARACIONES en fila 7 col B (etiqueta) + fila 8 cols B+C (datos)**
+- [x] **NUEVO (2026-05-08): Validación de campos requeridos — solo marcar como no_encontrado si B, C, D son no-nulos**
 - [x] Endpoint `POST /api/v1/pedido-semana-bodega/importar-excel?nombreHoja=<nombre>`
 - [x] Regla en `SpringSecurityConfig` (sin 403)
 - [x] Logs detallados (hoja seleccionada, columna observación, preparaciones, cada fila)

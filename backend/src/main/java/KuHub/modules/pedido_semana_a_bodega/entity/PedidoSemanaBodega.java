@@ -20,6 +20,9 @@ public class PedidoSemanaBodega {
     @Column(name = "id_semana", nullable = true)
     private Integer idSemana;
 
+    @Column(name = "id_asignatura", nullable = true)
+    private Integer idAsignatura;
+
     @Column(name = "nombre_pedido_semana_bodega", nullable = false, length = 100)
     private String nombrePedido;
 

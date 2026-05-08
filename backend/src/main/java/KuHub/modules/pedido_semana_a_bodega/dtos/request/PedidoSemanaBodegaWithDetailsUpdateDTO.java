@@ -33,6 +33,8 @@ public class PedidoSemanaBodegaWithDetailsUpdateDTO {
 
     private Integer idSemana;
 
+    private Integer idAsignatura;
+
     // --- Arrays de Deltas para los Ingredientes ---
 
     // Inicializamos las listas para evitar NullPointerException si el frontend envía null
