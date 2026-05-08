@@ -1,6 +1,7 @@
 package KuHub.modules.pedido_semana_a_bodega.services;
 
 import KuHub.modules.gestion_academica.repository.AsignaturaRepository;
+import KuHub.modules.gestion_academica.repository.SemanaRepository;
 import KuHub.modules.gestion_inventario.dtos.request.SearchDTO;
 import KuHub.modules.gestion_inventario.entity.Producto;
 import KuHub.modules.gestion_inventario.repository.ProductoRepository;
@@ -53,6 +54,9 @@ public class PedidoSemanaBodegaServiceImp implements PedidoSemanaBodegaService{
 
     @Autowired
     private AsignaturaRepository asignaturaRepository;
+
+    @Autowired
+    private SemanaRepository semanaRepository;
 
     /**Services*/
     @Autowired
