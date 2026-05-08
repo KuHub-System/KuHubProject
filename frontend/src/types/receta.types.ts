@@ -214,4 +214,5 @@ export interface IImportarExcelResultado {
   totalOk: number;
   totalNoEncontrados: number;
   numeroSemanaExcel: number;
+  preparaciones?: string;
 }
