@@ -37,16 +37,17 @@ public class PedidoSemanaBodegaController {
     }
 
     /**
-     * llama todas las recetas paginas
+     * llama todas las recetas paginas, con soporte de filtro por semana y/o asignatura.
      * ✅ FUNCIONAL IMPLEMENTADO EN EL FRONT*/
     @PostMapping("/find-all-recipes-pagined/{page}")
     public ResponseEntity<PedidoSemanaBodegasPage> findAllRecipesPaginated(
             @PathVariable Integer page,
-            @RequestParam(required = false) Integer idSemana
+            @RequestParam(required = false) Integer idSemana,
+            @RequestParam(required = false) Integer idAsignatura
     ){
         return ResponseEntity
                 .status(200)
-                .body(pedidoSemanaBodegaService.findAllRecipesPaginated(page, idSemana));
+                .body(pedidoSemanaBodegaService.findAllRecipesPaginated(page, idSemana, idAsignatura));
     }
 
     /**
@@ -122,6 +123,7 @@ public class PedidoSemanaBodegaController {
                 .status(200)
                 .body(pedidoSemanaBodegaService.obtenerAsignaturasActivas());
     }
+
 
 
 
