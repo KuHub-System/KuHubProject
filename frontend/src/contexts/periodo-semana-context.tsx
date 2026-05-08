@@ -95,7 +95,7 @@ export const PeriodoSemanaProvider: React.FC<{ children: React.ReactNode }> = ({
     } finally {
       setIsLoading(false);
     }
-  }, [obtenerPeriodosAcademicosService, obtenerSemanasPorPeriodoService, detectarPeriodoActual, encontrarSemanaActual]);
+  }, []);
 
   const seleccionarPeriodo = React.useCallback(
     async (anio: number, semestre: number) => {

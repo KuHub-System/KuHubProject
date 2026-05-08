@@ -46,8 +46,8 @@ export const obtenerCursosParaSolicitudService = async (): Promise<IAsignaturaCu
   return response.data;
 };
 
-// ── Recetas con detalles ──────────────────────────────────────────────────────
-export interface IDetalleReceta {
+// ── Pedido semana bodega con detalles ─────────────────────────────────────────
+export interface IDetallePedidoSemanaBodega {
   idDetallePedidoSemana: number;
   idProducto: number;
   idUnidad: number;
@@ -62,7 +62,7 @@ export interface IPedidoSemanaBodegaSolicitud {
   idReceta: number;
   nombreReceta: string;
   idSemana?: number;
-  detalles: IDetalleReceta[];
+  detalles: IDetallePedidoSemanaBodega[];
 }
 
 export const obtenerRecetasSolicitudService = async (): Promise<IPedidoSemanaBodegaSolicitud[]> => {
