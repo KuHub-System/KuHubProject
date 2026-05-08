@@ -89,7 +89,8 @@ public interface SolicitudRepository extends JpaRepository<Solicitud, Integer> {
 
     /**Obtiene los pedidos semana bodega con estado ACTIVO para usarlos en solicitud,
      * muestra todos los productos asignados; los eliminados lógicamente se mostrarán
-     * como no disponibles en el frontend.*/
+     * como no disponibles en el frontend.
+     * Si idAsignatura es null retorna todos; si tiene valor filtra por asignatura.*/
     @Query(value = """
             SELECT
                 r.id_pedido_semana_bodega AS idReceta,          -- [0]
@@ -110,17 +111,19 @@ public interface SolicitudRepository extends JpaRepository<Solicitud, Integer> {
                     ) FILTER (WHERE d.id_detalle_pedido_semana IS NOT NULL),
                     '[]'::jsonb
                 ) AS detallesJson,                               -- [2]
-                r.id_semana AS idSemana                          -- [3]
+                r.id_semana AS idSemana,                         -- [3]
+                r.id_asignatura AS idAsignatura                  -- [4]
             FROM pedido_semana_bodega r
             LEFT JOIN detalle_pedido_semana_bodega d ON d.id_pedido_semana_bodega = r.id_pedido_semana_bodega
             LEFT JOIN producto p ON d.id_producto = p.id_producto
             LEFT JOIN unidad_medida u ON u.id_unidad = p.id_unidad
             WHERE r.activo = true
             AND r.estado_pedido = 'ACTIVO'
-            GROUP BY r.id_pedido_semana_bodega, r.nombre_pedido_semana_bodega, r.id_semana
+            AND (:idAsignatura IS NULL OR r.id_asignatura = :idAsignatura)
+            GROUP BY r.id_pedido_semana_bodega, r.nombre_pedido_semana_bodega, r.id_semana, r.id_asignatura
             ORDER BY r.nombre_pedido_semana_bodega ASC
             """, nativeQuery = true)
-    List<Object[]> findActiveRecipesWithDetailsRaw();
+    List<Object[]> findActiveRecipesWithDetailsRaw(@Param("idAsignatura") Integer idAsignatura);
 
     /**Llama la funcion para crear solicitudes masivas retornado valores de filas insertadas*/
     @Query(value = """
