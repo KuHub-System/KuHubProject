@@ -294,6 +294,7 @@ public class PedidoSemanaBodegaServiceImp implements PedidoSemanaBodegaService{
         List<ImportarExcelResultado.ResultadoItem> resultados = new ArrayList<>();
 
         int numeroSemanaExcel = 0;
+        String preparaciones = null;
 
         try (Workbook workbook = WorkbookFactory.create(archivo.getInputStream())) {
             Sheet sheet;
@@ -323,6 +324,24 @@ public class PedidoSemanaBodegaServiceImp implements PedidoSemanaBodegaService{
             DataFormatter formatter = new DataFormatter();
             log.info("[Excel] Hoja seleccionada: '{}'. Semana Excel: {}. Total hojas: {}",
                     sheet.getSheetName(), numeroSemanaExcel, workbook.getNumberOfSheets());
+
+            // Detectar PREPARACIONES en fila 7 Excel (índice 6 POI), col B (índice 1)
+            Row prepLabelRow = sheet.getRow(6);
+            if (prepLabelRow != null) {
+                String etiqueta = getCellText(prepLabelRow.getCell(1), formatter);
+                if (etiqueta.toUpperCase().contains("PREPARACIONES")) {
+                    Row prepDataRow = sheet.getRow(7);
+                    if (prepDataRow != null) {
+                        String colB = getCellText(prepDataRow.getCell(1), formatter);
+                        String colC = getCellText(prepDataRow.getCell(2), formatter);
+                        String combinado = (colB + " " + colC).trim();
+                        if (!combinado.isBlank()) {
+                            preparaciones = StringUtils.normalizeSpaces(combinado);
+                        }
+                    }
+                }
+            }
+            log.info("[Excel] Preparaciones detectadas: {}", preparaciones != null ? preparaciones : "(ninguna)");
 
             // Detectar columna de observación desde la cabecera (fila 11 Excel = índice 10 POI)
             int colObservacion = 4; // fallback: columna E
@@ -409,7 +428,7 @@ public class PedidoSemanaBodegaServiceImp implements PedidoSemanaBodegaService{
             log.info("[Excel] No encontrados: {}", nombres);
         }
 
-        return new ImportarExcelResultado(resultados, (int) totalOk, (int) totalNoEncontrados, numeroSemanaExcel);
+        return new ImportarExcelResultado(resultados, (int) totalOk, (int) totalNoEncontrados, numeroSemanaExcel, preparaciones);
     }
 
     /** Procesa y elimina los ingredientes desmarcados en el frontend, validando que pertenezcan a la receta. */

@@ -727,6 +727,8 @@ const DetalleReceta: React.FC<DetalleRecetaProps> = ({ receta, mode, productos, 
   const [pendingFile, setPendingFile] = React.useState<File | null>(null);
   const [sheetOptions, setSheetOptions] = React.useState<string[]>([]);
   const { isOpen: isSheetOpen, onOpen: onSheetOpen, onClose: onSheetClose } = useDisclosure();
+  const [noEncontradosResultados, setNoEncontradosResultados] = React.useState<IResultadoItemExcel[]>([]);
+  const { isOpen: isNoEncontradosOpen, onOpen: onNoEncontradosOpen, onClose: onNoEncontradosClose } = useDisclosure();
   const formRef = React.useRef<any>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
@@ -759,13 +761,14 @@ const DetalleReceta: React.FC<DetalleRecetaProps> = ({ receta, mode, productos, 
         formRef.current.setSemanaDesdeNumero(resultado.numeroSemanaExcel);
       }
 
+      if (resultado.preparaciones && formRef.current?.setDescripcionDesdeExcel) {
+        formRef.current.setDescripcionDesdeExcel(resultado.preparaciones);
+      }
+
       if (resultado.totalNoEncontrados > 0) {
         const noEncontrados = resultado.resultados.filter(r => r.estado === 'no_encontrado');
-        const nombres = noEncontrados.map(r => r.nombreExcel).filter(Boolean);
-        const mensaje = nombres.length <= 3
-          ? `No encontrado${nombres.length > 1 ? 's' : ''}: ${nombres.join(', ')}`
-          : `${resultado.totalNoEncontrados} productos no encontrados en el sistema`;
-        toast.warning(mensaje);
+        setNoEncontradosResultados(noEncontrados);
+        onNoEncontradosOpen();
       }
 
       if (resultado.totalOk === 0 && resultado.totalNoEncontrados === 0) {
@@ -865,6 +868,63 @@ const DetalleReceta: React.FC<DetalleRecetaProps> = ({ receta, mode, productos, 
           <ModalFooter>
             <Button variant="ghost" onPress={handleCancelarSeleccion} className="font-medium">
               Cancelar
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+
+      {/* Modal de productos no encontrados en el Excel */}
+      <Modal
+        isOpen={isNoEncontradosOpen}
+        onOpenChange={(open) => { if (!open) onNoEncontradosClose(); }}
+        size="lg"
+        backdrop="blur"
+        radius="lg"
+        classNames={{ base: 'rounded-[24px] overflow-hidden' }}
+      >
+        <ModalContent>
+          <ModalHeader className="border-b border-default-100 dark:border-default-50/50 bg-white dark:bg-content2">
+            <div className="flex items-center gap-2">
+              <Icon icon="lucide:alert-triangle" className="text-warning" width={20} />
+              <span className="font-bold text-secondary dark:text-foreground">
+                {noEncontradosResultados.length} producto{noEncontradosResultados.length !== 1 ? 's' : ''} no encontrado{noEncontradosResultados.length !== 1 ? 's' : ''}
+              </span>
+            </div>
+          </ModalHeader>
+          <ModalBody className="py-4">
+            <p className="text-sm text-default-500 mb-3">
+              Los siguientes productos del Excel no existen en el sistema. Verifique los nombres o agréguelos manualmente si es necesario.
+            </p>
+            <div className="space-y-2 max-h-[320px] overflow-y-auto pr-1">
+              {noEncontradosResultados.map((item, idx) => (
+                <div
+                  key={idx}
+                  className="flex items-start gap-3 p-3 rounded-xl border border-warning-200 dark:border-warning-400/30 bg-warning-50/50 dark:bg-warning-900/10"
+                >
+                  <div className="shrink-0 mt-0.5">
+                    <Icon icon="lucide:package-x" className="text-warning-600" width={16} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-sm text-secondary dark:text-foreground truncate">
+                      {item.nombreExcel}
+                    </p>
+                    <div className="flex flex-wrap gap-3 mt-1">
+                      {item.cantidad != null && (
+                        <span className="text-xs text-default-500">Cant: <span className="font-medium text-foreground">{item.cantidad}</span></span>
+                      )}
+                      {item.observacion && (
+                        <span className="text-xs text-default-500">Obs: <span className="font-medium text-foreground">{item.observacion}</span></span>
+                      )}
+                      <span className="text-xs text-default-400">Fila {item.fila}</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </ModalBody>
+          <ModalFooter>
+            <Button color="warning" variant="solid" onPress={onNoEncontradosClose} className="font-bold text-white">
+              Entendido
             </Button>
           </ModalFooter>
         </ModalContent>
@@ -1296,6 +1356,10 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
             setIdSemana(String(semanaTarget.idSemana));
           }
         }
+      },
+
+      setDescripcionDesdeExcel: (valor: string) => {
+        setDescripcion(valor);
       },
 
       submit: async () => {
