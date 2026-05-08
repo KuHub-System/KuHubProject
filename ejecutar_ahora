@@ -1,12 +1,4 @@
-index.min.js:1 ReferenceError: isAdmin is not defined
-    at zx (pedido-semanal-a-bod…rTHiniI.js:36:45957)
-    at ei (react-vendor-BxMPNXTO.js:30:17178)
-    at Gs (react-vendor-BxMPNXTO.js:32:44319)
-    at Qs (react-vendor-BxMPNXTO.js:32:39986)
-    at _d (react-vendor-BxMPNXTO.js:32:39914)
-    at Ll (react-vendor-BxMPNXTO.js:32:39767)
-    at _i (react-vendor-BxMPNXTO.js:32:36096)
-    at Bs (react-vendor-BxMPNXTO.js:32:36908)
-    at Wt (react-vendor-BxMPNXTO.js:30:3273)
-    at react-vendor-BxMPNXTO.js:32:34407
-﻿
+utils-vendor-kqifLFwZ.js:11 
+ POST https://appkuhub.questweb.cl/api/v1/pedido-semana-bodega/create-recipe-with-details 422 (Unprocessable Content)
+
+ NECESITO QUE CUANDO PASSE EL ERROR DE LA SEMANA, CREE SIN ESTAR ASIGNADO UNA SEMANA, DADO QUE EL CAMPO ES OPCIONAL

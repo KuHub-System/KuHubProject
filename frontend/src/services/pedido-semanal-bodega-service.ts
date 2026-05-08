@@ -189,10 +189,12 @@ export const crearRecetaConDetallesService = async (data: IPedidoSemanaBodegaWit
     const response = await api.post<boolean>('/pedido-semana-bodega/create-recipe-with-details', data);
     return response.data;
   } catch (error: any) {
-    throw new Error(
+    const err = new Error(
       error.response?.data?.message ||
       'Error al crear la receta en el servidor'
-    );
+    ) as Error & { status?: number };
+    err.status = error.response?.status;
+    throw err;
   }
 };
 
