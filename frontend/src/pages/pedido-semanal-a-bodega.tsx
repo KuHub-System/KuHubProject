@@ -1662,9 +1662,31 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
                     <Spinner size="sm" /> Cargando periodos...
                   </div>
                 ) : sinPeriodos ? (
-                  <p className="text-sm text-warning-600 dark:text-warning-400">
-                    No hay periodos académicos disponibles. Contacte al administrador.
-                  </p>
+                  <div className="flex items-center gap-3 p-4 bg-warning-50 dark:bg-warning-900/20 border border-warning-200 dark:border-warning-200/30 rounded-lg">
+                    <Icon icon="lucide:alert-circle" width={18} className="text-warning-600 dark:text-warning-400 shrink-0" />
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-warning-700 dark:text-warning-300">
+                        No hay períodos académicos disponibles.
+                      </p>
+                      <p className="text-xs text-warning-600 dark:text-warning-400 mt-1">
+                        {isAdmin
+                          ? 'Para configurar semanas, ve a Gestión Académica.'
+                          : 'Contacte al Administrador para generar el período académico.'}
+                      </p>
+                    </div>
+                    {isAdmin && (
+                      <Button
+                        isIconOnly
+                        variant="light"
+                        size="sm"
+                        className="text-warning-600 dark:text-warning-400 hover:bg-warning-100 dark:hover:bg-warning-900/30 shrink-0"
+                        onPress={() => history.push('/gestion-academica')}
+                        title="Ir a Gestión Académica"
+                      >
+                        <Icon icon="lucide:arrow-right" width={18} />
+                      </Button>
+                    )}
+                  </div>
                 ) : (
                   <div className="flex flex-wrap gap-2">
                     {periodos?.map(p =>
