@@ -1,1 +1,2 @@
-quiero que considere que no fue encontrado solamente si los campos que corresponde a Producto, UnidadMedida, Cantidad del excel no sea null, en caso que alguno de estos sean null no considerar en "no encotradodos".
+No hacer commit nin push
+no es necesario hacer alter modifica directamente en ConexionXD_v2.sql ver MAPA_ConexionXD_v2.md, debido que ejecuto todo el script en la bbdd

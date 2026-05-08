@@ -608,15 +608,22 @@ CREATE TABLE semanas (
 CREATE TABLE pedido_semana_bodega (
     id_pedido_semana_bodega INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     id_semana INTEGER, -- <--- NUEVA COLUMNA OPCIONAL
+    id_asignatura INTEGER, -- <--- NUEVA COLUMNA OPCIONAL
     nombre_pedido_semana_bodega VARCHAR(100) NOT NULL,
-    descripcion_pedido_semana_bodega TEXT, 
+    descripcion_pedido_semana_bodega TEXT,
     activo BOOLEAN NOT NULL DEFAULT TRUE,
     estado_pedido estado_pedido_semana_bodega_type NOT NULL,
 
     -- Llave foránea opcional. Si se borra la semana, el id queda en NULL pero la plantilla no se pierde.
-    CONSTRAINT fk_pedido_semana_bodega_semana 
-        FOREIGN KEY (id_semana) 
-        REFERENCES semanas(id_semana) 
+    CONSTRAINT fk_pedido_semana_bodega_semana
+        FOREIGN KEY (id_semana)
+        REFERENCES semanas(id_semana)
+        ON DELETE SET NULL,
+
+    -- Llave foránea opcional hacia asignatura.
+    CONSTRAINT fk_pedido_semana_asignatura
+        FOREIGN KEY (id_asignatura)
+        REFERENCES asignatura(id_asignatura)
         ON DELETE SET NULL
 );
 
@@ -1184,6 +1191,7 @@ CREATE INDEX idx_bodega_transito_activo ON bodega_transito(activo);
 CREATE INDEX idx_pedido_semana_bodega_estado ON pedido_semana_bodega(estado_pedido);
 CREATE INDEX idx_detalle_pedido_semana_padre ON detalle_pedido_semana_bodega(id_pedido_semana_bodega);
 CREATE INDEX idx_detalle_pedido_semana_producto ON detalle_pedido_semana_bodega(id_producto);
+CREATE INDEX idx_pedido_semana_asignatura ON pedido_semana_bodega(id_asignatura);
 
 -- Índices en pedidos
 CREATE INDEX idx_pedido_estado ON pedido(estado_pedido);
