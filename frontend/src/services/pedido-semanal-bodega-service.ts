@@ -31,12 +31,16 @@ import {
  * Obtiene las recetas con paginación desde el backend.
  * @param {number} page - El número de página (por defecto 1).
  * @param {number} idSemana - ID de la semana para filtrar (opcional).
+ * @param {number} idAsignatura - ID de la asignatura para filtrar (opcional).
  * @returns {Promise<IPaginatedPedidoSemanaBodegaResponse>} Promesa que resuelve la repuesta paginada.
  */
-export const obtenerRecetasPaginadasService = async (page: number = 1, idSemana?: number): Promise<IPaginatedPedidoSemanaBodegaResponse> => {
+export const obtenerRecetasPaginadasService = async (page: number = 1, idSemana?: number, idAsignatura?: number): Promise<IPaginatedPedidoSemanaBodegaResponse> => {
   try {
-    const params = idSemana ? `?idSemana=${idSemana}` : '';
-    const response = await api.post<IPaginatedPedidoSemanaBodegaResponse>(`/pedido-semana-bodega/find-all-recipes-pagined/${page}${params}`);
+    const params = new URLSearchParams();
+    if (idSemana) params.append('idSemana', idSemana.toString());
+    if (idAsignatura) params.append('idAsignatura', idAsignatura.toString());
+    const queryStr = params.toString() ? `?${params.toString()}` : '';
+    const response = await api.post<IPaginatedPedidoSemanaBodegaResponse>(`/pedido-semana-bodega/find-all-recipes-pagined/${page}${queryStr}`);
     return response.data;
   } catch (error: any) {
     console.error('Error al obtener recetas paginadas', error);
@@ -52,11 +56,12 @@ export const obtenerRecetasPaginadasService = async (page: number = 1, idSemana?
  * @param {string} term - Término de búsqueda.
  * @param {number} page - Número de página.
  * @param {number} idSemana - ID de la semana para filtrar (opcional).
+ * @param {number} idAsignatura - ID de la asignatura para filtrar (opcional).
  * @returns {Promise<IPaginatedPedidoSemanaBodegaResponse>}
  */
-export const buscarRecetasPaginadasService = async (term: string, page: number = 1, idSemana?: number): Promise<IPaginatedPedidoSemanaBodegaResponse> => {
+export const buscarRecetasPaginadasService = async (term: string, page: number = 1, idSemana?: number, idAsignatura?: number): Promise<IPaginatedPedidoSemanaBodegaResponse> => {
   try {
-    const response = await api.post<IPaginatedPedidoSemanaBodegaResponse>('/pedido-semana-bodega/search-recipes', { term, page, idSemana });
+    const response = await api.post<IPaginatedPedidoSemanaBodegaResponse>('/pedido-semana-bodega/search-recipes', { term, page, idSemana, idAsignatura });
     return response.data;
   } catch (error: any) {
     console.error('Error al buscar recetas paginadas', error);
@@ -321,3 +326,4 @@ export const obtenerAsignaturasActivasService = async (): Promise<IAsignatura[]>
   const response = await api.get<IAsignatura[]>('/pedido-semana-bodega/asignaturas/activas');
   return response.data;
 };
+

@@ -84,6 +84,10 @@ const PedidoSemanalABodegaPage: React.FC = () => {
   const [filterPeriodo, setFilterPeriodo] = React.useState<{ anio: number; semestre: number } | null>(null);
   const [filterSemanas, setFilterSemanas] = React.useState<Array<{ idSemana: number; nombreSemana: string; fechaInicio: string; fechaFin: string }>>([]);
 
+  // Filtro de asignatura
+  const [filterIdAsignatura, setFilterIdAsignatura] = React.useState<string>('todas');
+  const [filterAsignaturas, setFilterAsignaturas] = React.useState<IAsignatura[]>([]);
+
   const [isLoading, setIsLoading] = React.useState<boolean>(true);
   const [totalPages, setTotalPages] = React.useState<number>(1);
   const nextPageRef = React.useRef<number>(2);
@@ -102,8 +106,9 @@ const PedidoSemanalABodegaPage: React.FC = () => {
     if (contextPeriodo && contextSemanas.length > 0) {
       setFilterPeriodo(contextPeriodo);
       setFilterSemanas(contextSemanas);
-      // Resetear filtro de semana cuando cambia período
+      // Resetear filtros de semana y asignatura cuando cambia período
       setFilterIdSemana('todas');
+      setFilterIdAsignatura('todas');
     }
   }, [contextPeriodo, contextSemanas]);
 
@@ -111,17 +116,29 @@ const PedidoSemanalABodegaPage: React.FC = () => {
   React.useEffect(() => {
     if (!isLoadingSemanas) {
       cargarDatosIniciales();
+      // Cargar asignaturas para el selector de filtro (una sola vez)
+      obtenerAsignaturasActivasService()
+        .then(setFilterAsignaturas)
+        .catch(() => {});
     }
   }, [isLoadingSemanas]);
+
+  // Recargar datos cuando cambia el filtro de asignatura
+  React.useEffect(() => {
+    if (!isLoadingSemanas) {
+      cargarDatosIniciales();
+    }
+  }, [filterIdAsignatura]);
 
   const cargarDatosIniciales = async () => {
     try {
       setIsLoading(true);
 
       const idSemanaFilter = filterIdSemana !== 'todas' ? Number(filterIdSemana) : undefined;
+      const idAsignaturaFilter = filterIdAsignatura !== 'todas' ? Number(filterIdAsignatura) : undefined;
 
       // Cargar recetas primero (datos críticos)
-      const resRecetas = await obtenerRecetasPaginadasService(1, idSemanaFilter);
+      const resRecetas = await obtenerRecetasPaginadasService(1, idSemanaFilter, idAsignaturaFilter);
       setRecetas(resRecetas.content);
       setTotalPages(resRecetas.paging.totalPages);
       nextPageRef.current = 2;
@@ -162,10 +179,11 @@ const PedidoSemanalABodegaPage: React.FC = () => {
       setIsLoadingMore(true);
 
       const idSemanaFilter = filterIdSemana !== 'todas' ? Number(filterIdSemana) : undefined;
+      const idAsignaturaFilter = filterIdAsignatura !== 'todas' ? Number(filterIdAsignatura) : undefined;
 
       const data = searchTerm
-        ? await buscarRecetasPaginadasService(searchTerm, nextPageRef.current, idSemanaFilter)
-        : await obtenerRecetasPaginadasService(nextPageRef.current, idSemanaFilter);
+        ? await buscarRecetasPaginadasService(searchTerm, nextPageRef.current, idSemanaFilter, idAsignaturaFilter)
+        : await obtenerRecetasPaginadasService(nextPageRef.current, idSemanaFilter, idAsignaturaFilter);
 
       setRecetas(prev => [...prev, ...data.content]);
       nextPageRef.current += 1;
@@ -175,7 +193,7 @@ const PedidoSemanalABodegaPage: React.FC = () => {
       isLoadingMoreRef.current = false;
       setIsLoadingMore(false);
     }
-  }, [totalPages, toast, filterIdSemana, searchTerm]);
+  }, [totalPages, toast, filterIdSemana, filterIdAsignatura, searchTerm]);
 
   React.useEffect(() => {
     const onScroll = () => {
@@ -208,7 +226,8 @@ const PedidoSemanalABodegaPage: React.FC = () => {
       try {
         setIsLoading(true);
         const idSemanaFilter = filterIdSemana !== 'todas' ? Number(filterIdSemana) : undefined;
-        const res = await buscarRecetasPaginadasService(searchTerm, 1, idSemanaFilter);
+        const idAsignaturaFilter = filterIdAsignatura !== 'todas' ? Number(filterIdAsignatura) : undefined;
+        const res = await buscarRecetasPaginadasService(searchTerm, 1, idSemanaFilter, idAsignaturaFilter);
         setRecetas(res.content);
         setTotalPages(res.paging.totalPages);
         nextPageRef.current = 2;
@@ -220,7 +239,7 @@ const PedidoSemanalABodegaPage: React.FC = () => {
     }, 1500);
 
     return () => clearTimeout(timer);
-  }, [searchTerm, filterIdSemana, toast]);
+  }, [searchTerm, filterIdSemana, filterIdAsignatura, toast]);
 
   const recetasAMostrar = recetas;
 
@@ -552,6 +571,37 @@ const PedidoSemanalABodegaPage: React.FC = () => {
                       </Select>
                     )}
                   </>
+                )}
+
+                {/* Select de asignatura */}
+                {filterAsignaturas.length > 0 && (
+                  <Select
+                    selectedKeys={new Set([filterIdAsignatura])}
+                    onSelectionChange={(keys) => {
+                      const v = Array.from(keys as Set<string>)[0];
+                      setFilterIdAsignatura(v || 'todas');
+                    }}
+                    placeholder="Asignatura"
+                    variant="bordered"
+                    size="sm"
+                    className="w-56"
+                    classNames={{ trigger: "bg-default-50", base: "max-w-xs" }}
+                    startContent={<Icon icon="lucide:book-open" width={14} className="text-default-400 shrink-0" />}
+                  >
+                    <SelectItem key="todas" textValue="Todas">
+                      Todas las asignaturas
+                    </SelectItem>
+                    <>
+                      {filterAsignaturas.map((asig) => (
+                        <SelectItem key={String(asig.idAsignatura)} textValue={`${asig.nombreAsignatura} (${asig.codAsignatura})`}>
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold">{asig.nombreAsignatura}</span>
+                            <span className="text-default-400 text-xs">({asig.codAsignatura})</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </>
+                  </Select>
                 )}
 
                 {/* Botones de acción */}
@@ -1781,7 +1831,7 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
               </div>
 
               {/* Asignatura (Opcional) */}
-              {asignaturas.length > 0 && (
+              {asignaturas.length > 0 ? (
                 <Select
                   label="Asignatura (Opcional)"
                   placeholder="Selecciona una asignatura"
@@ -1808,6 +1858,32 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
                     ))}
                   </>
                 </Select>
+              ) : (
+                <div className="flex items-center gap-3 p-4 bg-warning-50 dark:bg-warning-900/20 border border-warning-200 dark:border-warning-200/30 rounded-lg">
+                  <Icon icon="lucide:alert-circle" width={18} className="text-warning-600 dark:text-warning-400 shrink-0" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-warning-700 dark:text-warning-300">
+                      No hay asignaturas activas disponibles.
+                    </p>
+                    <p className="text-xs text-warning-600 dark:text-warning-400 mt-1">
+                      {isAdmin
+                        ? 'Para asignar asignaturas a los pedidos, cree una nueva asignatura desde Gestión Académica.'
+                        : 'Contacte al Administrador para crear asignaturas activas.'}
+                    </p>
+                  </div>
+                  {isAdmin && (
+                    <Button
+                      isIconOnly
+                      variant="light"
+                      size="sm"
+                      className="text-warning-600 dark:text-warning-400 hover:bg-warning-100 dark:hover:bg-warning-900/30 shrink-0"
+                      onPress={() => history.push('/gestion-academica')}
+                      title="Ir a Gestión Académica"
+                    >
+                      <Icon icon="lucide:arrow-right" width={18} />
+                    </Button>
+                  )}
+                </div>
               )}
             </CardBody>
           </Card>

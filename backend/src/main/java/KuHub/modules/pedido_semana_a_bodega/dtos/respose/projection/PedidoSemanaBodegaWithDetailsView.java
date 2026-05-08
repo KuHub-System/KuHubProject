@@ -21,6 +21,9 @@ public interface PedidoSemanaBodegaWithDetailsView {
     @Value("#{target.idSemana}")
     Integer getIdSemana();
 
+    @Value("#{target.idAsignatura}")
+    Integer getIdAsignatura();
+
     @Value("#{target.detallesJson}")
     String getDetallesJson();
 }
