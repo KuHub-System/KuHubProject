@@ -40,6 +40,7 @@ import BookPageLoader from '../components/BookPageLoader';
 
 // IMPORTAR TIPOS Y SERVICIOS
 import { IPedidoSemanaBodega, IIngrediente, IPedidoSemanaBodegaWithDetailsUpdateDTO, IResultadoItemExcel, IImportarExcelResultado, IAsignatura } from '../types/receta.types';
+import { parallelWithLimit } from '../utils/request-throttle';
 import {
   obtenerRecetasPaginadasService,
   crearRecetaService,
@@ -106,33 +107,46 @@ const PedidoSemanalABodegaPage: React.FC = () => {
     }
   }, [contextPeriodo, contextSemanas]);
 
-  // Cargar recetas iniciales y productos
+  // Cargar recetas iniciales y productos (esperar a que contexto termine de cargar)
   React.useEffect(() => {
-    cargarDatosIniciales();
-  }, []);
+    if (!isLoadingSemanas) {
+      cargarDatosIniciales();
+    }
+  }, [isLoadingSemanas]);
 
   const cargarDatosIniciales = async () => {
     try {
       setIsLoading(true);
 
-      // Productos se cargan una sola vez (el servicio usa cache interno)
-      const productosPromise = productos.length === 0
-        ? obtenerProductosParaRecetaService()
-        : Promise.resolve(productos);
-
       const idSemanaFilter = filterIdSemana !== 'todas' ? Number(filterIdSemana) : undefined;
 
-      const [resRecetas, resProductos, resCounts] = await Promise.all([
-        obtenerRecetasPaginadasService(1, idSemanaFilter),
-        productosPromise,
-        obtenerRecetasCountService()
-      ]);
-
+      // Cargar recetas primero (datos críticos)
+      const resRecetas = await obtenerRecetasPaginadasService(1, idSemanaFilter);
       setRecetas(resRecetas.content);
-      if (productos.length === 0) setProductos(resProductos);
-      setRecetaCounts(resCounts);
       setTotalPages(resRecetas.paging.totalPages);
       nextPageRef.current = 2;
+
+      // Cargar datos secundarios con límite de concurrencia (máx 2 simultáneas)
+      // Esto evita sobrecargar el servidor con 429 Too Many Requests
+      const secondaryRequests = [
+        async () => {
+          if (productos.length === 0) {
+            const prods = await obtenerProductosParaRecetaService();
+            setProductos(prods);
+            return prods;
+          }
+          return productos;
+        },
+        async () => {
+          const counts = await obtenerRecetasCountService();
+          setRecetaCounts(counts);
+          return counts;
+        }
+      ];
+
+      // Ejecutar con límite de concurrencia
+      parallelWithLimit(secondaryRequests, 2)
+        .catch(() => console.error('Error al cargar datos secundarios'));
     } catch (error) {
       toast.error('Error al cargar las pedidos semanales');
     } finally {
@@ -702,7 +716,7 @@ const PedidoSemanalABodegaPage: React.FC = () => {
       >
         <ModalContent>
           {(onClose) => (
-            <DetalleReceta
+            <DetallePedidoSemanaBodega
               receta={recetaSeleccionada}
               mode={modalMode}
               productos={productos}
@@ -723,7 +737,7 @@ const PedidoSemanalABodegaPage: React.FC = () => {
   );
 };
 
-interface DetalleRecetaProps {
+interface DetallePedidoSemanaBodegaProps {
   receta: IPedidoSemanaBodegaPaginedDTO | null;
   mode: 'crear' | 'editar' | 'ver';
   productos: IProductoRecetaSelection[];
@@ -747,7 +761,7 @@ const leerNombresHojas = (file: File): Promise<string[]> =>
     reader.readAsArrayBuffer(file);
   });
 
-const DetalleReceta: React.FC<DetalleRecetaProps> = ({ receta, mode, productos, onClose, onSave }) => {
+const DetallePedidoSemanaBodega: React.FC<DetallePedidoSemanaBodegaProps> = ({ receta, mode, productos, onClose, onSave }) => {
   const toast = useToast();
   const { semanas } = usePeriodoSemana();
   const [isSaving, setIsSaving] = React.useState(false);

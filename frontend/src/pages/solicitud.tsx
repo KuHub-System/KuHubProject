@@ -929,17 +929,17 @@ const SolicitudPage: React.FC = () => {
         // El backend es responsable de escalar por sección según cant_inscritos.
         let deltas: { eliminados: number[]; modificados: { idDetalleReceta: number; cantProducto: number; observacion?: string }[]; nuevos: { idProducto: number; cantProducto: number; observacion: string }[] } | undefined;
         if (receta) {
-          const originalIds = new Set(receta.detalles.map(d => String(d.idDetalleReceta)));
+          const originalIds = new Set(receta.detalles.map(d => String(d.idDetallePedidoSemana)));
           const currentRecipeIds = new Set(cfg.items.filter(i => !i.esExtra).map(i => i.id));
 
           const eliminados = receta.detalles
-            .filter(d => !currentRecipeIds.has(String(d.idDetalleReceta)))
-            .map(d => d.idDetalleReceta);
+            .filter(d => !currentRecipeIds.has(String(d.idDetallePedidoSemana)))
+            .map(d => d.idDetallePedidoSemana);
 
           const modificados = cfg.items
             .filter(i => !i.esExtra && originalIds.has(i.id))
             .filter(i => {
-              const orig = receta.detalles.find(d => String(d.idDetalleReceta) === i.id);
+              const orig = receta.detalles.find(d => String(d.idDetallePedidoSemana) === i.id);
               // Comparamos directamente con cantidadBase (sin multiplicar)
               const cantidadCambiada = orig && Math.abs(i.cantidad - orig.cantProducto) > 0.0001;
               const observacionOriginal = orig?.observacion ?? null;
