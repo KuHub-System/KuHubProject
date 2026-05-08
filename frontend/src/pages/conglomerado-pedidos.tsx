@@ -841,7 +841,7 @@ const ConglomeradoPedidosPage: React.FC = () => {
         <CardHeader className="px-5 py-4 flex flex-col sm:flex-row gap-3 items-start sm:items-center flex-wrap">
           {/* Tabs */}
           <div className="flex items-center gap-1 bg-default-100 rounded-lg p-1 flex-wrap">
-            {(['categorias', 'cronograma', 'totales', 'aprobacion'] as const).map(v => (
+            {(['aprobacion', 'cronograma', 'totales', 'categorias'] as const).map(v => (
               <button key={v} onClick={() => { setVistaActiva(v); setExpandidos(new Set()); }}
                 className={`px-3 py-1.5 rounded-md text-xs font-semibold cursor-pointer transition-all ${
                   vistaActiva === v ? 'bg-white shadow-sm text-primary' : 'text-default-500 hover:text-default-700'
