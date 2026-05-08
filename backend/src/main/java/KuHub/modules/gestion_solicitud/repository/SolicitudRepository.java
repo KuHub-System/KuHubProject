@@ -130,7 +130,7 @@ public interface SolicitudRepository extends JpaRepository<Solicitud, Integer> {
             SELECT 
                 total_solicitudes AS totalSolicitudes, 
                 total_detalles AS totalDetalles 
-            FROM generar_solicitudes_masivas(CAST(:payload AS jsonb))
+            FROM generar_solicitudes_masivas(CAST(:payload AS jsonb), CAST(NULL AS INTEGER))
             """, nativeQuery = true)
     ResultsMassSolicitationView ejecutarSolicitudMasivaRaw(@Param("payload") String payload);
 
