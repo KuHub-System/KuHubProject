@@ -34,7 +34,7 @@ import { useHistory } from 'react-router-dom';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useToast, useConfirm } from '../hooks/useToast';
 import { useAuth } from '../contexts/auth-context';
-import { useModulePermission } from '../contexts/permission-context';
+import { useModulePermission, usePermission } from '../contexts/permission-context';
 import { usePeriodoSemana } from '../contexts/periodo-semana-context';
 import BookPageLoader from '../components/BookPageLoader';
 
@@ -420,7 +420,31 @@ const PedidoSemanalABodegaPage: React.FC = () => {
                 {isLoadingSemanas ? (
                   <Spinner size="sm" />
                 ) : !periodos || periodos.length === 0 ? (
-                  <span className="text-xs text-warning-600">Sin periodos</span>
+                  <div className="flex items-center gap-3 px-4 py-2 bg-warning-50 dark:bg-warning-900/20 border border-warning-200 dark:border-warning-200/30 rounded-lg">
+                    <Icon icon="lucide:alert-circle" width={16} className="text-warning-600 dark:text-warning-400 shrink-0" />
+                    <div className="flex-1">
+                      <p className="text-xs font-medium text-warning-700 dark:text-warning-300">
+                        No hay períodos académicos disponibles.
+                      </p>
+                      <p className="text-[11px] text-warning-600 dark:text-warning-400 mt-0.5">
+                        {esAdministrador
+                          ? 'Para crear pedidos semanales, genere el período académico.'
+                          : 'Contacte al Administrador para generar el período académico.'}
+                      </p>
+                    </div>
+                    {esAdministrador && (
+                      <Button
+                        isIconOnly
+                        variant="light"
+                        size="sm"
+                        className="text-warning-600 dark:text-warning-400 hover:bg-warning-100 dark:hover:bg-warning-900/30 shrink-0"
+                        onPress={() => history.push('/admin-sistema?tab=semanas')}
+                        title="Ir a crear período académico"
+                      >
+                        <Icon icon="lucide:arrow-right" width={16} />
+                      </Button>
+                    )}
+                  </div>
                 ) : (() => {
                   // Detectar el período actual basado en sysdate
                   const hoy = new Date();
@@ -958,6 +982,7 @@ const DetalleReceta: React.FC<DetalleRecetaProps> = ({ receta, mode, productos, 
             productos={productos}
             onSave={onSave}
             onValidationChange={setIsValidForm}
+            history={history}
           />
         )}
       </ModalBody>
@@ -1109,11 +1134,13 @@ interface FormularioRecetaProps {
   productos: IProductoRecetaSelection[];
   onSave: (receta: IPedidoSemanaBodega, updatePayload?: IPedidoSemanaBodegaWithDetailsUpdateDTO) => Promise<void>;
   onValidationChange: (isValid: boolean) => void;
+  history: any;
 }
 
 const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
-  ({ receta, mode, productos, onSave, onValidationChange }, ref) => {
+  ({ receta, mode, productos, onSave, onValidationChange, history }, ref) => {
     const toast = useToast();
+    const { isAdmin: esAdministrador } = usePermission();
     const { periodos, semanas, periodo, defaultSemanaId, isLoading: isLoadingSemanas, seleccionarPeriodo, seleccionarSemana } = usePeriodoSemana();
     const [nombre, setNombre] = React.useState(receta?.nombrePedido || '');
     const [descripcion, setDescripcion] = React.useState(receta?.descripcionPedido || '');
