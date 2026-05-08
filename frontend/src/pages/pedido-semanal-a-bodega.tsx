@@ -284,7 +284,7 @@ const PedidoSemanalABodegaPage: React.FC = () => {
   const handleGuardarReceta = async (receta: any, updatePayload?: IPedidoSemanaBodegaWithDetailsUpdateDTO) => {
     try {
       if (modalMode === 'crear') {
-        const success = await crearRecetaConDetallesService({
+        const createPayload = {
           nombrePedido: receta.nombre,
           descripcionPedido: receta.descripcion,
           listaItems: (receta.ingredientes || []).map((ing: IIngrediente & { observacion?: string }) => ({
@@ -295,7 +295,20 @@ const PedidoSemanalABodegaPage: React.FC = () => {
           estadoPedido: receta.estado === 'Activo' || (receta.estado as any) === 'Activa' ? 'Activo' : 'Inactivo',
           idSemana: receta.idSemana,
           idAsignatura: receta.idAsignatura
-        });
+        };
+
+        let success: boolean;
+        try {
+          success = await crearRecetaConDetallesService(createPayload);
+        } catch (err: any) {
+          if (err.status === 422 && createPayload.idSemana) {
+            // La semana seleccionada no es válida para el backend — crear sin semana asignada
+            toast.warning('La semana seleccionada no pudo asignarse. Creando sin semana.');
+            success = await crearRecetaConDetallesService({ ...createPayload, idSemana: undefined });
+          } else {
+            throw err;
+          }
+        }
 
         if (success) {
           toast.success('Pedido Semanal creada correctamente');
