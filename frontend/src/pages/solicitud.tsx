@@ -1,6 +1,6 @@
 /**
  * SOLICITUD DE INSUMOS — masiva
- * Por cada asignatura: selecciona secciones + semana + receta + observaciones.
+ * Por cada asignatura: selecciona secciones + semana + pedido semanal bodega + observaciones.
  * Al enviar se crean N solicitudes (una por sección seleccionada).
  */
 
@@ -190,7 +190,7 @@ const AsigCard: React.FC<AsigCardProps> = ({
   const historyCard = useHistory();
   const semana = semanas.find(s => String(s.idSemana) === config.semanaId) ?? null;
 
-  // ── Filtros de receta (período + semana + asignatura) ────────────────────────
+  // ── Filtros de pedido semanal bodega (período + semana + asignatura) ────────
   const { periodos, semanas: contextSemanas, periodo: contextPeriodo, semanaId: contextSemanaId } = usePeriodoSemana();
   const [filterPeriodo, setFilterPeriodo] = React.useState<{ anio: number; semestre: number } | null>(
     contextPeriodo ? { anio: contextPeriodo.anio, semestre: contextPeriodo.semestre } : null
@@ -212,7 +212,7 @@ const AsigCard: React.FC<AsigCardProps> = ({
 
   const recetasFiltradas = React.useMemo(() => {
     const porAsignatura = soloEstaAsignatura
-      ? recetas.filter(r => r.idAsignatura == null || r.idAsignatura === asig.idAsignatura)
+      ? recetas.filter(r => r.idAsignatura === asig.idAsignatura)
       : recetas;
     if (!periodMatchesGlobal || filterIdSemana === 'todas') return porAsignatura;
     return porAsignatura.filter(r => r.idSemana != null && String(r.idSemana) === filterIdSemana);
@@ -541,10 +541,10 @@ const AsigCard: React.FC<AsigCardProps> = ({
 
               <Divider />
 
-              {/* RECETA */}
+              {/* PEDIDO SEMANAL BODEGA */}
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <p className="text-xs font-bold text-default-500 uppercase tracking-wider">Pedido Semanal Base</p>
+                  <p className="text-xs font-bold text-default-500 uppercase tracking-wider">Pedido Semanal Bodega Base</p>
                   <Checkbox
                     isSelected={soloEstaAsignatura}
                     onValueChange={setSoloEstaAsignatura}
@@ -562,7 +562,7 @@ const AsigCard: React.FC<AsigCardProps> = ({
                 <div className="mb-3 flex items-center gap-2 px-3 py-2 rounded-lg bg-secondary-50 dark:bg-secondary-900/20 border border-secondary-200 text-xs">
                   <Icon icon="lucide:info" className="text-secondary shrink-0" width={14} />
                   <span className="text-secondary-700 dark:text-secondary-300">
-                    Las cantidades mostradas corresponden a la <strong>receta base (20 porciones)</strong>.
+                    Las cantidades mostradas corresponden al <strong>pedido semanal bodega base (20 porciones)</strong>.
                     El sistema calculará automáticamente la cantidad proporcional según los alumnos inscritos por sección al momento de enviar.
                   </span>
                 </div>
@@ -575,13 +575,13 @@ const AsigCard: React.FC<AsigCardProps> = ({
                       onClick={() => historyCard.push('/pedido-semanal-a-bodega')}
                     >
                       <Icon icon="lucide:book-plus" width={14} />
-                      No hay recetas disponibles. Ir a Pedido Semanal a Bodega para crear una.
+                      No hay pedidos semanales bodega disponibles. Ir a Pedido Semanal a Bodega para crear uno.
                       <Icon icon="lucide:arrow-right" width={12} />
                     </button>
                   ) : (
                     <p className="text-sm text-warning-600 dark:text-warning-400 flex items-center gap-1.5">
                       <Icon icon="lucide:alert-triangle" width={14} />
-                      Contacte el administrador para crear Recetas Base.
+                      Contacte el administrador para crear Pedidos Semanales Bodega.
                     </p>
                   )
                 ) : (
@@ -662,12 +662,12 @@ const AsigCard: React.FC<AsigCardProps> = ({
                       </Select>
                     )}
 
-                    {/* Buscador de receta */}
+                    {/* Buscador de pedido semanal bodega */}
                     <Autocomplete
                       selectedKey={config.recetaId || null}
                       onSelectionChange={key => handleSelectReceta(String(key ?? ''))}
                       variant="bordered" size="sm" placeholder="Buscar pedidos semanales..."
-                      defaultItems={recetasFiltradas}
+                      items={recetasFiltradas}
                       classNames={{ base: 'flex-1 min-w-[160px]', popoverContent: 'dark:bg-content1' }}
                       inputProps={{ classNames: { inputWrapper: 'bg-default-50' } }}
                       startContent={<Icon icon="lucide:book-open" width={13} className="text-default-400 shrink-0" />}
@@ -682,9 +682,13 @@ const AsigCard: React.FC<AsigCardProps> = ({
                       )}
                     </Autocomplete>
 
-                    {recetasFiltradas.length === 0 && filterIdSemana !== 'todas' && (
+                    {recetasFiltradas.length === 0 && (
                       <p className="text-xs text-default-400 w-full mt-1">
-                        Sin recetas para la semana seleccionada.
+                        {soloEstaAsignatura
+                          ? `Sin pedidos semanales bodega asignados a ${asig.nombreAsignatura}. Desactiva el filtro para ver todos.`
+                          : filterIdSemana !== 'todas'
+                            ? 'Sin pedidos semanales bodega para la semana seleccionada.'
+                            : null}
                       </p>
                     )}
                   </div>
@@ -819,7 +823,7 @@ const AsigCard: React.FC<AsigCardProps> = ({
                   <Icon icon={isValid ? 'lucide:check-circle-2' : 'lucide:alert-circle'} width={14} />
                   {isValid
                     ? `Generará ${blkCount} solicitud${blkCount > 1 ? 'es' : ''} · ${selCount} sección${selCount > 1 ? 'es' : ''} · ${totalInscritos} alumnos`
-                    : 'Seleccione una receta para completar la configuración'
+                    : 'Seleccione un pedido semanal bodega para completar la configuración'
                   }
                 </div>
               )}
@@ -849,7 +853,7 @@ const SolicitudPage: React.FC = () => {
   const [asignaturas,      setAsignaturas]       = React.useState<IAsignaturaCurso[]>([]);
   const [isLoadingAsig,    setIsLoadingAsig]      = React.useState(true);
 
-  // ── recetas + productos state ──
+  // ── pedidos semanales bodega + productos state ──
   const [recetas,          setRecetas]           = React.useState<IPedidoSemanaBodegaSolicitud[]>([]);
   const [productos,        setProductos]         = React.useState<IProductoOpcion[]>([]);
 
@@ -880,7 +884,7 @@ const SolicitudPage: React.FC = () => {
       return s;
     });
 
-  // ── cargar asignaturas y recetas (una sola vez) ──
+  // ── cargar asignaturas y pedidos semanales bodega (una sola vez) ──
   React.useEffect(() => {
     const load = async () => {
       setIsLoadingAsig(true);
@@ -982,7 +986,7 @@ const SolicitudPage: React.FC = () => {
             deltas = { eliminados, modificados, nuevos };
           }
         } else {
-          // Sin receta base: incluir solo los productos ingresados manualmente como nuevos
+          // Sin pedido semanal bodega base: incluir solo los productos ingresados manualmente como nuevos
           const nuevosManuales = cfg.items
             .filter(i => i.esExtra && i.idProducto != null)
             .map(i => ({
@@ -1160,7 +1164,7 @@ const SolicitudPage: React.FC = () => {
       <div className="flex items-start gap-3 px-4 py-3 rounded-xl bg-primary-50 dark:bg-primary-900/20 border border-primary-200">
         <Icon icon="lucide:info" className="text-primary mt-0.5 shrink-0" width={16} />
         <p className="text-sm text-primary-700 dark:text-primary-300">
-          <strong>Solicitud masiva:</strong> configure cada asignatura con sus secciones, semana y receta.
+          <strong>Solicitud masiva:</strong> configure cada asignatura con sus secciones, semana y pedido semanal bodega.
           Al enviar se crea una solicitud por cada sección seleccionada.
         </p>
       </div>
@@ -1320,7 +1324,7 @@ const SolicitudPage: React.FC = () => {
             <div className="mt-4 flex items-start gap-2 bg-default-50 border border-default-200 rounded-xl px-4 py-3">
               <Icon icon="lucide:info" width={16} className="text-default-400 mt-0.5 shrink-0" />
               <p className="text-xs text-default-500 leading-relaxed">
-                Cada producto fue multiplicado según la receta y la cantidad de alumnos inscritos por sección.
+                Cada producto fue multiplicado según el pedido semanal bodega y la cantidad de alumnos inscritos por sección.
               </p>
             </div>
           </ModalBody>
