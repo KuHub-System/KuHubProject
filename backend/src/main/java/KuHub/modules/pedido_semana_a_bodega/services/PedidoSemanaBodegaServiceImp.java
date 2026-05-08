@@ -286,7 +286,7 @@ public class PedidoSemanaBodegaServiceImp implements PedidoSemanaBodegaService{
      *  y retorna resultados separados en encontrados y no encontrados. */
     @Transactional(readOnly = true)
     @Override
-    public ImportarExcelResultado importarExcelProductos(MultipartFile archivo, Integer numeroSemana) {
+    public ImportarExcelResultado importarExcelProductos(MultipartFile archivo, String nombreHoja) {
         if (archivo.isEmpty()) {
             throw new PedidoSemanaBodegaException("El archivo Excel está vacío.", HttpStatus.BAD_REQUEST);
         }
@@ -298,9 +298,8 @@ public class PedidoSemanaBodegaServiceImp implements PedidoSemanaBodegaService{
         try (Workbook workbook = WorkbookFactory.create(archivo.getInputStream())) {
             Sheet sheet;
 
-            if (numeroSemana != null) {
-                // El usuario especificó una semana: buscar la hoja por nombre "SEMANA (X)"
-                String nombreHoja = "SEMANA (" + numeroSemana + ")";
+            if (nombreHoja != null && !nombreHoja.isBlank()) {
+                // El usuario seleccionó una hoja por nombre exacto
                 sheet = workbook.getSheet(nombreHoja);
                 if (sheet == null) {
                     throw new PedidoSemanaBodegaException(
@@ -308,17 +307,17 @@ public class PedidoSemanaBodegaServiceImp implements PedidoSemanaBodegaService{
                         HttpStatus.BAD_REQUEST
                     );
                 }
-                numeroSemanaExcel = numeroSemana;
             } else {
                 // Sin selección: usar la hoja activa
                 int activeIdx = workbook.getActiveSheetIndex();
                 sheet = workbook.getSheetAt(activeIdx);
-                // Parsear número de semana del nombre de hoja: "SEMANA (3)" → 3
-                java.util.regex.Matcher matcher =
-                    java.util.regex.Pattern.compile("\\((\\d+)\\)").matcher(sheet.getSheetName());
-                if (matcher.find()) {
-                    numeroSemanaExcel = Integer.parseInt(matcher.group(1));
-                }
+            }
+
+            // Extraer número de semana del nombre de hoja si coincide con "SEMANA (X)"
+            java.util.regex.Matcher matcher =
+                java.util.regex.Pattern.compile("\\((\\d+)\\)").matcher(sheet.getSheetName());
+            if (matcher.find()) {
+                numeroSemanaExcel = Integer.parseInt(matcher.group(1));
             }
 
             DataFormatter formatter = new DataFormatter();

@@ -741,12 +741,12 @@ const DetalleReceta: React.FC<DetalleRecetaProps> = ({ receta, mode, productos, 
     }
   };
 
-  const doImport = async (file: File, numeroSemana?: number) => {
+  const doImport = async (file: File, nombreHoja?: string) => {
     setIsImporting(true);
     setPendingFile(null);
     setSheetOptions([]);
     try {
-      const resultado = await importarExcelPedidoService(file, numeroSemana);
+      const resultado = await importarExcelPedidoService(file, nombreHoja);
 
       if (resultado.totalOk > 0 && formRef.current?.importarDesdeExcel) {
         formRef.current.importarDesdeExcel(resultado.resultados);
@@ -786,17 +786,13 @@ const DetalleReceta: React.FC<DetalleRecetaProps> = ({ receta, mode, productos, 
     setIsImporting(true);
     try {
       const allSheets = await leerNombresHojas(file);
-      const semanaSheets = allSheets.filter(n => /^SEMANA \(\d+\)$/.test(n));
 
-      if (semanaSheets.length <= 1) {
-        const num = semanaSheets.length === 1
-          ? parseInt(semanaSheets[0].match(/\((\d+)\)/)?.[1] || '0') || undefined
-          : undefined;
-        await doImport(file, num);
+      if (allSheets.length <= 1) {
+        await doImport(file, allSheets[0]);
       } else {
         setIsImporting(false);
         setPendingFile(file);
-        setSheetOptions(semanaSheets);
+        setSheetOptions(allSheets);
         onSheetOpen();
       }
     } catch {
@@ -807,8 +803,7 @@ const DetalleReceta: React.FC<DetalleRecetaProps> = ({ receta, mode, productos, 
 
   const handleSelectSheet = async (sheetName: string) => {
     onSheetClose();
-    const num = parseInt(sheetName.match(/\((\d+)\)/)?.[1] || '0') || undefined;
-    if (pendingFile) await doImport(pendingFile, num);
+    if (pendingFile) await doImport(pendingFile, sheetName);
   };
 
   const handleCancelarSeleccion = () => {
@@ -837,19 +832,22 @@ const DetalleReceta: React.FC<DetalleRecetaProps> = ({ receta, mode, productos, 
           </ModalHeader>
           <ModalBody className="py-4">
             <p className="text-sm text-default-500 mb-3">
-              El archivo contiene <span className="font-semibold text-secondary dark:text-foreground">{sheetOptions.length} semanas</span>. Seleccione cuál desea cargar:
+              El archivo contiene <span className="font-semibold text-secondary dark:text-foreground">{sheetOptions.length} hojas</span>. Seleccione cuál desea cargar:
             </p>
             <div className="grid grid-cols-3 gap-2">
               {sheetOptions.map(sheetName => {
                 const num = parseInt(sheetName.match(/\((\d+)\)/)?.[1] || '0');
-                const semanaInfo = num >= 1 ? semanas[num - 1] : undefined;
+                const esSemana = /^SEMANA \(\d+\)$/.test(sheetName);
+                const semanaInfo = esSemana && num >= 1 ? semanas[num - 1] : undefined;
                 return (
                   <button
                     key={sheetName}
                     onClick={() => handleSelectSheet(sheetName)}
                     className="flex flex-col items-center gap-1 p-3 rounded-xl border border-default-200 dark:border-default-100 hover:border-primary hover:bg-primary/5 transition-all cursor-pointer"
                   >
-                    <span className="font-bold text-secondary dark:text-foreground text-sm">Semana {num}</span>
+                    <span className="font-bold text-secondary dark:text-foreground text-sm">
+                      {esSemana ? `Semana ${num}` : sheetName}
+                    </span>
                     {semanaInfo ? (
                       <span className="text-xs text-default-400 text-center leading-tight">
                         {new Date(semanaInfo.fechaInicio + 'T00:00:00').toLocaleDateString('es-CL', { day: 'numeric', month: 'short' })}
