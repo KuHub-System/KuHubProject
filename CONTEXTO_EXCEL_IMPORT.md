@@ -87,7 +87,8 @@ public record ImportarExcelResultado(
         List<ResultadoItem> resultados,
         int totalOk,
         int totalNoEncontrados,
-        int numeroSemanaExcel        // número de semana leída (ej: 3 para "SEMANA (3)"), 0 si no se pudo detectar
+        int numeroSemanaExcel,       // número de semana leída (ej: 3 para "SEMANA (3)"), 0 si no se pudo detectar
+        String preparaciones         // datos de PREPARACIONES desde fila 7 col B + fila 8 cols B+C, null si no existe
 ) {
     public record ResultadoItem(
             int fila, String nombreExcel, Integer idProducto,
@@ -150,7 +151,26 @@ if (nombreHoja != null && !nombreHoja.isBlank()) {
 Matcher m = Pattern.compile("\\((\\d+)\\)").matcher(sheet.getSheetName());
 if (m.find()) numeroSemanaExcel = Integer.parseInt(m.group(1));
 
-// 2. Detectar columna de observación desde cabecera (fila 11 Excel = índice 10 POI)
+// 2.5 Detectar PREPARACIONES en fila 7 Excel (índice 6 POI), col B para etiqueta
+//     Si existe "PREPARACIONES", leer fila 8 cols B + C y concatenar normalizando espacios
+String preparaciones = null;
+Row prepLabelRow = sheet.getRow(6);
+if (prepLabelRow != null) {
+    String etiqueta = getCellText(prepLabelRow.getCell(1), formatter);
+    if (etiqueta.toUpperCase().contains("PREPARACIONES")) {
+        Row prepDataRow = sheet.getRow(7);
+        if (prepDataRow != null) {
+            String colB = getCellText(prepDataRow.getCell(1), formatter);
+            String colC = getCellText(prepDataRow.getCell(2), formatter);
+            String combinado = (colB + " " + colC).trim();
+            if (!combinado.isBlank()) {
+                preparaciones = StringUtils.normalizeSpaces(combinado);
+            }
+        }
+    }
+}
+
+// 3. Detectar columna de observación desde cabecera (fila 11 Excel = índice 10 POI)
 int colObservacion = 4; // fallback columna E
 Row headerRow = sheet.getRow(10);
 if (headerRow != null) {
@@ -161,7 +181,7 @@ if (headerRow != null) {
     }
 }
 
-// 3. Iterar filas de datos (fila 12→80, índices 11→79)
+// 4. Iterar filas de datos (fila 12→80, índices 11→79)
 for (int i = 11; i <= 79; i++) {
     Row row = sheet.getRow(i);
     if (row == null) continue;
@@ -181,8 +201,8 @@ for (int i = 11; i <= 79; i++) {
     // → estado "ok" o "no_encontrado"
 }
 
-// 4. Retornar
-return new ImportarExcelResultado(resultados, totalOk, totalNoEncontrados, numeroSemanaExcel);
+// 5. Retornar (incluye preparaciones si fue detectado)
+return new ImportarExcelResultado(resultados, totalOk, totalNoEncontrados, numeroSemanaExcel, preparaciones);
 ```
 
 La unidad de medida NO se lee del Excel (col C); se obtiene de la relación JPA:
@@ -235,6 +255,7 @@ export interface IImportarExcelResultado {
   totalOk: number;
   totalNoEncontrados: number;
   numeroSemanaExcel: number;  // número de semana leída (0 si no detectado)
+  preparaciones?: string;     // datos de PREPARACIONES (fila 7 + fila 8), null si no existe
 }
 ```
 
@@ -334,6 +355,21 @@ Muestra una grilla 3 columnas con botones por cada hoja detectada:
 - Si el nombre coincide con `SEMANA (X)` → muestra "Semana X" + rango de fechas
 - Si el nombre no coincide → muestra el nombre tal como está (ej: "LISTADO PRODUCTOS")
 
+#### Modal de productos no encontrados
+
+**NUEVO (2026-05-08):** Reemplaza el toast de no-encontrados con un modal flotante detallado.
+
+Se abre cuando `resultado.totalNoEncontrados > 0`. Muestra:
+- Header con icono de alerta y cantidad de productos no encontrados
+- Lista scrollable (max-height 320px) de productos no encontrados, cada uno con:
+  - Nombre del producto (desde `nombreExcel`)
+  - Cantidad (si existe en el Excel)
+  - Observación (si existe en el Excel)
+  - Número de fila donde aparece
+- Botón "Entendido" para cerrar
+
+Esto permite que el usuario revise todos los detalles del producto no encontrado (nombre, cantidad, observación, fila) para investigar y corregir manualmente si es necesario.
+
 #### Función `doImport` — lógica post-selección
 
 ```typescript
@@ -347,8 +383,20 @@ const doImport = async (file: File, nombreHoja?: string) => {
   // Auto-seleccionar semana en el formulario
   if (resultado.numeroSemanaExcel > 0) formRef.current?.setSemanaDesdeNumero(resultado.numeroSemanaExcel);
 
-  // Toasts de resultado
-  // ...
+  // Auto-cargar PREPARACIONES en descripción (si existen en fila 7+8 del Excel)
+  if (resultado.preparaciones && formRef.current?.setDescripcionDesdeExcel) {
+    formRef.current.setDescripcionDesdeExcel(resultado.preparaciones);
+  }
+
+  // Toast de productos ok
+  if (resultado.totalOk > 0) toast.success("N productos importados correctamente");
+
+  // Modal flotante de productos no encontrados (en lugar de toast)
+  if (resultado.totalNoEncontrados > 0) {
+    const noEncontrados = resultado.resultados.filter(r => r.estado === 'no_encontrado');
+    setNoEncontradosResultados(noEncontrados);
+    onNoEncontradosOpen(); // abre modal con lista detallada
+  }
 };
 ```
 
@@ -377,6 +425,12 @@ setSemanaDesdeNumero: (numeroSemana: number) => {
     const semanaTarget = semanas[numeroSemana - 1];
     if (semanaTarget) setIdSemana(String(semanaTarget.idSemana));
   }
+},
+
+// Carga automáticamente PREPARACIONES en el campo "Descripción (opcional)"
+// Se ejecuta si el backend detectó PREPARACIONES en fila 7 col B + fila 8 cols B+C
+setDescripcionDesdeExcel: (valor: string) => {
+  setDescripcion(valor);
 },
 ```
 
@@ -819,23 +873,25 @@ User input: archivo .xlsm
        │  └─ XLSX.read({ bookSheets: true })
        │     → Devuelve: ['LISTADO PRODUCTOS', 'SEMANA (1)', ...]
        │
-       └─ Presenta modal si hay múltiples hojas SEMANA
+       └─ Presenta modal si hay múltiples hojas
              │
-             └─ Usuario selecciona semana
+             └─ Usuario selecciona hoja
                     │
-                    ├─ FormData { archivo, numeroSemana: 5 }
+                    ├─ FormData { archivo, nombreHoja: "SEMANA (5)" }
                     └─────────────────────────────────────→
                                                 POST /api/v1/pedido-semana-bodega/importar-excel
-                                                ?numeroSemana=5
+                                                ?nombreHoja=SEMANA%20(5)
                                                    │
                                                    ├─ PedidoSemanaBodegaController
-                                                   │  .importarExcel(archivo, 5)
+                                                   │  .importarExcel(archivo, "SEMANA (5)")
                                                    │     │
                                                    │     ├─ pedidoSemanaBodegaService
-                                                   │     │  .importarExcelProductos(archivo, 5)
+                                                   │     │  .importarExcelProductos(archivo, "SEMANA (5)")
                                                    │     │     │
                                                    │     │     ├─ XSSFWorkbook wb = new XSSFWorkbook(archivo)
                                                    │     │     ├─ Sheet sheet = wb.getSheet("SEMANA (5)")
+                                                       │     │     ├─ [NUEVO] Detecta PREPARACIONES fila 7 col B
+                                                   │     │     │   └─ Si existe, concatena fila 8 cols B+C
                                                    │     │     ├─ Detecta columna observación (fila 11)
                                                    │     │     ├─ FOR fila 12-80:
                                                    │     │     │   ├─ Lee cols A, B, C, D, observación
@@ -848,7 +904,8 @@ User input: archivo .xlsm
                                                    │     │          resultados: [...65 items...],
                                                    │     │          totalOk: 65,
                                                    │     │          totalNoEncontrados: 4,
-                                                   │     │          numeroSemanaExcel: 5
+                                                   │     │          numeroSemanaExcel: 5,
+                                                   │     │          preparaciones: "Mezcla de... Hornear a..."  // [NUEVO]
                                                    │     │        }
                                                    │     │
                                                    │     └─ ResponseEntity.ok(resultado)
@@ -857,14 +914,25 @@ User input: archivo .xlsm
                     ImportarExcelResultado JSON
                     
        ├─ resultado.resultados.filter(r => r.estado === 'ok')
-       ├─ formRef.current.importarDesdeExcel(resultados) [línea 1278]
+       ├─ formRef.current.importarDesdeExcel(resultados)
        │  └─ setIngredientes([...prev, ...nuevos])
        │
-       ├─ formRef.current.setSemanaDesdeNumero(5) [línea 1294]
+       ├─ formRef.current.setSemanaDesdeNumero(5)
        │  └─ setIdSemana("412")
        │
+       ├─ [NUEVO] Si resultado.preparaciones existe:
+       │  formRef.current.setDescripcionDesdeExcel(resultado.preparaciones)
+       │  └─ setDescripcion(valor)
+       │
        ├─ toast.success("65 productos importados")
-       ├─ toast.warning("No encontrados: ABARROTES, ...")
+       │
+       ├─ [NUEVO] Si hay no-encontrados → Modal flotante con lista detallada
+       │  setNoEncontradosResultados(noEncontrados)
+       │  onNoEncontradosOpen() → Modal muestra:
+       │                           ├─ Nombre producto (nombreExcel)
+       │                           ├─ Cantidad
+       │                           ├─ Observación
+       │                           └─ Número de fila
        │
        └─ Usuario hace clic "Guardar"
               │
@@ -888,14 +956,15 @@ User input: archivo .xlsm
 
 ### Backend
 - [x] Dependencia Apache POI en `pom.xml`
-- [x] Record `ImportarExcelResultado` con `ResultadoItem` anidado y campo `numeroSemanaExcel`
+- [x] Record `ImportarExcelResultado` con `ResultadoItem` anidado y campos `numeroSemanaExcel`, `preparaciones`
 - [x] Método `importarExcelProductos(archivo, String nombreHoja)` en `PedidoSemanaBodegaServiceImp`
 - [x] Selección de hoja por nombre exacto (cualquier nombre) cuando `nombreHoja` es provisto; hoja activa como fallback
 - [x] Extracción de `numeroSemanaExcel` con regex en todos los casos (0 si no coincide con patrón SEMANA)
 - [x] Detección dinámica de columna de observación desde cabecera (fila 11 Excel)
+- [x] **NUEVO (2026-05-08): Detección de PREPARACIONES en fila 7 col B (etiqueta) + fila 8 cols B+C (datos)**
 - [x] Endpoint `POST /api/v1/pedido-semana-bodega/importar-excel?nombreHoja=<nombre>`
 - [x] Regla en `SpringSecurityConfig` (sin 403)
-- [x] Logs detallados (hoja seleccionada, columna observación, cada fila)
+- [x] Logs detallados (hoja seleccionada, columna observación, preparaciones, cada fila)
 
 ### Frontend
 - [x] Import de `xlsx` para lectura de nombres de hojas en el cliente
@@ -904,7 +973,9 @@ User input: archivo .xlsm
 - [x] Modal de selección de hojas con grilla 3 columnas (hojas SEMANA muestran fechas; otras muestran el nombre)
 - [x] Botón "Importar Excel" en `ModalFooter` (sin input de número manual)
 - [x] `importarExcelPedidoService(archivo, nombreHoja?)` con query param opcional (nombre exacto)
-- [x] Tipos `IResultadoItemExcel` / `IImportarExcelResultado` (con `numeroSemanaExcel`) en `receta.types.ts`
+- [x] Tipos `IResultadoItemExcel` / `IImportarExcelResultado` (con `numeroSemanaExcel`, `preparaciones`) en `receta.types.ts`
 - [x] Método `importarDesdeExcel()` — puebla ingredientes del formulario
 - [x] Método `setSemanaDesdeNumero()` — auto-selecciona la semana solo si `numeroSemanaExcel > 0`
-- [x] **Funcional en entorno de desarrollo (cambios aplicados 2026-05-07)**
+- [x] **NUEVO (2026-05-08): Método `setDescripcionDesdeExcel()` — carga automáticamente PREPARACIONES en el campo Descripción**
+- [x] **NUEVO (2026-05-08): Modal de productos no encontrados — lista detallada (nombre, cantidad, observación, fila) en lugar de toast**
+- [x] **Funcional en entorno de desarrollo (cambios aplicados 2026-05-07, mejoras 2026-05-08)**
