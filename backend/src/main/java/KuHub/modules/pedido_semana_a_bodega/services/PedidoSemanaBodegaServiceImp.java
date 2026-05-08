@@ -375,6 +375,9 @@ public class PedidoSemanaBodegaServiceImp implements PedidoSemanaBodegaService{
                 String nombreParaBusqueda = StringUtils.capitalizarPalabras(celdaB);
                 BigDecimal cantidad       = parseCantidad(row.getCell(3));
 
+                // Solo considerar la fila si Producto (B), UnidadMedida (C) y Cantidad (D) no son nulos/vacíos
+                if (celdaB.isBlank() || celdaC.isBlank() || cantidad == null) continue;
+
                 String observacion = null;
                 String celdaObs = getCellText(row.getCell(colObservacion), formatter);
                 if (!celdaObs.isBlank()) {
