@@ -1,4 +1,1 @@
-utils-vendor-kqifLFwZ.js:11 
- POST https://appkuhub.questweb.cl/api/v1/pedido-semana-bodega/create-recipe-with-details 422 (Unprocessable Content)
-
- NECESITO QUE CUANDO PASSE EL ERROR DE LA SEMANA, CREE SIN ESTAR ASIGNADO UNA SEMANA, DADO QUE EL CAMPO ES OPCIONAL
+necesito que revise donde esta la funcion segun el mapa las lineas exactas en ConexionXD_v2.sql, ademas para agregar en la modificacion en CONTEXTO_SOLICITUD.md, debido que los deltas del frontend y la funcion no tiene los itens removidos, los ids removidos si aceptan los modificados pero no se eliminar cuando intenta eliminar.

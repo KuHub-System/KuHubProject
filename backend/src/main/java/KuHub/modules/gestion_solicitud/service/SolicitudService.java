@@ -16,7 +16,7 @@ import java.util.List;
 public interface SolicitudService {
     Solicitud findById(Integer idSolicitud);
     List<CourseForSolicitation> findCourseWithSectionsAndBlocksRaw();
-    List<RecipeSolicitation> findActiveRecipesWithDetailsRaw();
+    List<RecipeSolicitation> findActiveRecipesWithDetailsRaw(Integer idAsignatura);
     ResultsMassSolicitationView saveMass(List<MassiveSolicitation> payloadList);
     List<SolicitationManagement> findSolicitationsPerWeekRaw(DateRangeDTO request);
     DashboardConsolidado obtenerDashboard(DateRangeDTO request);
