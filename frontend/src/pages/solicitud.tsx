@@ -190,12 +190,13 @@ const AsigCard: React.FC<AsigCardProps> = ({
   const historyCard = useHistory();
   const semana = semanas.find(s => String(s.idSemana) === config.semanaId) ?? null;
 
-  // ── Filtros de receta (período + semana) ──────────────────────────────────────
+  // ── Filtros de receta (período + semana + asignatura) ────────────────────────
   const { periodos, semanas: contextSemanas, periodo: contextPeriodo, semanaId: contextSemanaId } = usePeriodoSemana();
   const [filterPeriodo, setFilterPeriodo] = React.useState<{ anio: number; semestre: number } | null>(
     contextPeriodo ? { anio: contextPeriodo.anio, semestre: contextPeriodo.semestre } : null
   );
   const [filterIdSemana, setFilterIdSemana] = React.useState<string>(contextSemanaId || 'todas');
+  const [soloEstaAsignatura, setSoloEstaAsignatura] = React.useState(true);
 
   // Sincronización UNI-DIRECCIONAL: el superior actualiza el inferior, no al revés
   React.useEffect(() => {
@@ -210,9 +211,12 @@ const AsigCard: React.FC<AsigCardProps> = ({
     filterPeriodo?.semestre === contextPeriodo?.semestre;
 
   const recetasFiltradas = React.useMemo(() => {
-    if (!periodMatchesGlobal || filterIdSemana === 'todas') return recetas;
-    return recetas.filter(r => r.idSemana != null && String(r.idSemana) === filterIdSemana);
-  }, [recetas, filterIdSemana, periodMatchesGlobal]);
+    const porAsignatura = soloEstaAsignatura
+      ? recetas.filter(r => r.idAsignatura == null || r.idAsignatura === asig.idAsignatura)
+      : recetas;
+    if (!periodMatchesGlobal || filterIdSemana === 'todas') return porAsignatura;
+    return porAsignatura.filter(r => r.idSemana != null && String(r.idSemana) === filterIdSemana);
+  }, [recetas, filterIdSemana, periodMatchesGlobal, soloEstaAsignatura, asig.idAsignatura]);
 
   // ── derivados de bloquesIds ──
   const secSel         = seccionesSeleccionadas(asig.secciones, config.bloquesIds);
@@ -539,7 +543,20 @@ const AsigCard: React.FC<AsigCardProps> = ({
 
               {/* RECETA */}
               <div>
-                <p className="text-xs font-bold text-default-500 uppercase tracking-wider mb-2">Pedido Semanal Base</p>
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-xs font-bold text-default-500 uppercase tracking-wider">Pedido Semanal Base</p>
+                  <Checkbox
+                    isSelected={soloEstaAsignatura}
+                    onValueChange={setSoloEstaAsignatura}
+                    size="sm"
+                  >
+                    <span className="text-xs text-default-600">
+                      {soloEstaAsignatura
+                        ? `Solo pedidos de ${asig.nombreAsignatura}`
+                        : 'Mostrar todos los pedidos'}
+                    </span>
+                  </Checkbox>
+                </div>
 
                 {/* Banner informativo: cantidades base */}
                 <div className="mb-3 flex items-center gap-2 px-3 py-2 rounded-lg bg-secondary-50 dark:bg-secondary-900/20 border border-secondary-200 text-xs">

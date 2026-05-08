@@ -53,13 +53,15 @@ public class SolicitudController {
 
     /**
      * Obtiene la lista de recetas activas incluyendo el detalle de sus insumos.
+     * Si se pasa idAsignatura filtra por asignatura en BD; si es null retorna todas.
      * ✅ En uso: Consumido por obtenerRecetasSolicitudService en solicitud-service.ts.
      */
     @GetMapping("/recipes-with-details-by-solicitation")
-    public ResponseEntity<List<RecipeSolicitation>> findActiveRecipesWithDetails() {
+    public ResponseEntity<List<RecipeSolicitation>> findActiveRecipesWithDetails(
+            @RequestParam(required = false) Integer idAsignatura) {
         return ResponseEntity
                 .status(200)
-                .body(solicitudService.findActiveRecipesWithDetailsRaw());
+                .body(solicitudService.findActiveRecipesWithDetailsRaw(idAsignatura));
     }
 
     /**
