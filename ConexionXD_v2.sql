@@ -3094,6 +3094,8 @@ EXECUTE FUNCTION fn_limpiar_por_sala_inactiva();
  * ==================================================================================== */
 
 
+DROP FUNCTION IF EXISTS generar_solicitudes_masivas(JSONB);
+
 CREATE OR REPLACE FUNCTION generar_solicitudes_masivas(
     p_payload JSONB,
     p_solicitud_id_existente INTEGER DEFAULT NULL,
