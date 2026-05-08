@@ -126,6 +126,7 @@ export interface IPedidoSemanaBodegaWithDetailsCreateDTO {
   listaItems: IPedidoSemanaBodegaItemCreateDTO[];
   estadoPedido: 'Activo' | 'Inactivo';
   idSemana?: number;
+  idAsignatura?: number | null;
 }
 
 /**
@@ -141,6 +142,7 @@ export interface IPedidoSemanaBodegaWithDetailsUpdateDTO {
   updateItems: IPedidoSemanaBodegaItemCreateDTO[];
   deleteItems: number[];
   idSemana?: number;
+  idAsignatura?: number | null;
 }
 
 /**
@@ -166,6 +168,7 @@ export interface IPedidoSemanaBodegaPaginedDTO {
   estadoPedido: 'Activo' | 'Inactivo';
   totalDetalles: number;
   idSemana?: number | null;
+  idAsignatura?: number | null;
   detalles: IDetallePedidoSemanaBodegaDTO[];
 }
 
@@ -215,4 +218,11 @@ export interface IImportarExcelResultado {
   totalNoEncontrados: number;
   numeroSemanaExcel: number;
   preparaciones?: string;
+}
+
+/** Asignatura activa para el selector del modal de pedido semanal */
+export interface IAsignatura {
+  idAsignatura: number;
+  codAsignatura: string;
+  nombreAsignatura: string;
 }

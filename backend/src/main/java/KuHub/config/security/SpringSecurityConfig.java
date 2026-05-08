@@ -385,6 +385,10 @@ public class SpringSecurityConfig {
                         // ENDPOINTS DE PEDIDO SEMANA BODEGA (Antigua "Recetas")
                         // ========================================
 
+                        // 0. Selector de asignaturas: accesible también para bodega (necesitan ver asignaturas al gestionar pedidos)
+                        .requestMatchers(HttpMethod.GET, "/api/v1/pedido-semana-bodega/asignaturas/activas")
+                        .hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR", "GESTOR_PEDIDOS", "PROFESOR_A_CARGO", "DOCENTE", "ENCARGADO_BODEGA", "ASISTENTE_BODEGA")
+
                         // 1. LECTURA (GET): Permitido para todos los roles académicos y administrativos
                         .requestMatchers(HttpMethod.GET, "/api/v*/pedido-semana-bodega/**", "/api/v*/detalle-pedido-semana-bodega/**")
                         .hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR", "GESTOR_PEDIDOS", "PROFESOR_A_CARGO", "DOCENTE")
