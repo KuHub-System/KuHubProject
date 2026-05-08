@@ -1670,7 +1670,7 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
                       </p>
                       <p className="text-xs text-warning-600 dark:text-warning-400 mt-1">
                         {isAdmin
-                          ? 'Para configurar semanas, ve a Gestión Académica.'
+                          ? 'Para realizar pedidos, genere el período académico desde Administración del Sistema.'
                           : 'Contacte al Administrador para generar el período académico.'}
                       </p>
                     </div>
@@ -1680,8 +1680,8 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
                         variant="light"
                         size="sm"
                         className="text-warning-600 dark:text-warning-400 hover:bg-warning-100 dark:hover:bg-warning-900/30 shrink-0"
-                        onPress={() => history.push('/gestion-academica')}
-                        title="Ir a Gestión Académica"
+                        onPress={() => history.push('/admin-sistema?tab=semanas')}
+                        title="Ir a Administración del Sistema - Semanas"
                       >
                         <Icon icon="lucide:arrow-right" width={18} />
                       </Button>
