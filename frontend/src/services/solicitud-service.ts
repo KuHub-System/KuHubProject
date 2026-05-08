@@ -62,6 +62,7 @@ export interface IPedidoSemanaBodegaSolicitud {
   idReceta: number;
   nombreReceta: string;
   idSemana?: number;
+  idAsignatura?: number;
   detalles: IDetallePedidoSemanaBodega[];
 }
 

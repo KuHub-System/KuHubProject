@@ -17,6 +17,7 @@ public record RecipeSolicitation(
         Integer idReceta,
         String nombreReceta,
         Integer idSemana,
+        Integer idAsignatura,
         List<RecipeDetailsDTO> detalles
 ) {
 

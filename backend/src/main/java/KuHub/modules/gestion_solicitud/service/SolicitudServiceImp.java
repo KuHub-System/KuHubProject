@@ -107,9 +107,9 @@ public class SolicitudServiceImp implements SolicitudService {
 
     @Transactional(readOnly = true)
     @Override
-    public List<RecipeSolicitation> findActiveRecipesWithDetailsRaw() {
+    public List<RecipeSolicitation> findActiveRecipesWithDetailsRaw(Integer idAsignatura) {
 
-        List<Object[]> rawResults = solicitudRepository.findActiveRecipesWithDetailsRaw();
+        List<Object[]> rawResults = solicitudRepository.findActiveRecipesWithDetailsRaw(idAsignatura);
         List<RecipeSolicitation> responseList = new ArrayList<>();
 
         for (Object[] row : rawResults) {
@@ -124,9 +124,10 @@ public class SolicitudServiceImp implements SolicitudService {
                 throw new RuntimeException("Error al mapear JSONB de receta detalles: " + detallesJsonb, e);
             }
             responseList.add(new RecipeSolicitation(
-                    ((Number) row[0]).intValue(),                                // idReceta
-                    (String) row[1],                                             // nombreReceta
-                    row[3] != null ? ((Number) row[3]).intValue() : null,        // idSemana
+                    ((Number) row[0]).intValue(),                                // idReceta       [0]
+                    (String) row[1],                                             // nombreReceta   [1]
+                    row[3] != null ? ((Number) row[3]).intValue() : null,        // idSemana       [3]
+                    row[4] != null ? ((Number) row[4]).intValue() : null,        // idAsignatura   [4]
                     detalles
             ));
         }
