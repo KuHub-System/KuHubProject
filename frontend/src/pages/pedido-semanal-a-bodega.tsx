@@ -70,7 +70,7 @@ const PedidoSemanalABodegaPage: React.FC = () => {
   const { canCreate: rec_Crear, canUpdate: rec_Editar, canDelete: rec_Eliminar } = useModulePermission('PEDIDO_SEMANAL_BODEGA');
   const { periodos, semanas: contextSemanas, periodo: contextPeriodo, defaultSemanaId, isLoading: isLoadingSemanas, seleccionarPeriodo, seleccionarSemana } = usePeriodoSemana();
   const esSoloLectura = user?.rol === 'Profesor';
-  const esAdministrador = user?.rol === 'Administrador';
+  const isAdmin = user?.rol === 'Administrador';
 
   const [recetas, setRecetas] = React.useState<IPedidoSemanaBodegaPaginedDTO[]>([]);
   const [productos, setProductos] = React.useState<IProductoRecetaSelection[]>([]);
@@ -304,7 +304,7 @@ const PedidoSemanalABodegaPage: React.FC = () => {
   };
 
   const handleEliminarReceta = async (receta: IPedidoSemanaBodegaPaginedDTO | any) => {
-    if (!esAdministrador) {
+    if (!isAdmin) {
       toast.warning('Solo el rol Administrador puede eliminar pedidos semanales.');
       return;
     }
@@ -427,12 +427,12 @@ const PedidoSemanalABodegaPage: React.FC = () => {
                         No hay períodos académicos disponibles.
                       </p>
                       <p className="text-[11px] text-warning-600 dark:text-warning-400 mt-0.5">
-                        {esAdministrador
+                        {isAdmin
                           ? 'Para crear pedidos semanales, genere el período académico.'
                           : 'Contacte al Administrador para generar el período académico.'}
                       </p>
                     </div>
-                    {esAdministrador && (
+                    {isAdmin && (
                       <Button
                         isIconOnly
                         variant="light"
@@ -662,7 +662,7 @@ const PedidoSemanalABodegaPage: React.FC = () => {
                               </Button>
                             </Tooltip>
                             )}
-                            {esAdministrador && rec_Eliminar && (
+                            {isAdmin && rec_Eliminar && (
                               <Tooltip content="Eliminar pedido semanal" delay={0}>
                                 <Button
                                   isIconOnly
@@ -983,6 +983,7 @@ const DetalleReceta: React.FC<DetalleRecetaProps> = ({ receta, mode, productos, 
             onSave={onSave}
             onValidationChange={setIsValidForm}
             history={history}
+            isAdmin={isAdmin}
           />
         )}
       </ModalBody>
@@ -1135,12 +1136,12 @@ interface FormularioRecetaProps {
   onSave: (receta: IPedidoSemanaBodega, updatePayload?: IPedidoSemanaBodegaWithDetailsUpdateDTO) => Promise<void>;
   onValidationChange: (isValid: boolean) => void;
   history: any;
+  isAdmin: boolean;
 }
 
 const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
-  ({ receta, mode, productos, onSave, onValidationChange, history }, ref) => {
+  ({ receta, mode, productos, onSave, onValidationChange, history, isAdmin }, ref) => {
     const toast = useToast();
-    const { isAdmin: esAdministrador } = usePermission();
     const { periodos, semanas, periodo, defaultSemanaId, isLoading: isLoadingSemanas, seleccionarPeriodo, seleccionarSemana } = usePeriodoSemana();
     const [nombre, setNombre] = React.useState(receta?.nombrePedido || '');
     const [descripcion, setDescripcion] = React.useState(receta?.descripcionPedido || '');
@@ -1670,12 +1671,12 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
                             No hay períodos académicos disponibles.
                           </p>
                           <p className="text-xs text-warning-600 dark:text-warning-400 mt-1">
-                            {esAdministrador
+                            {isAdmin
                               ? 'Para realizar pedidos, genere el período académico desde Gestión Académica.'
                               : 'Contacte al Administrador para generar el período académico.'}
                           </p>
                         </div>
-                        {esAdministrador && (
+                        {isAdmin && (
                           <Button
                             isIconOnly
                             variant="light"
