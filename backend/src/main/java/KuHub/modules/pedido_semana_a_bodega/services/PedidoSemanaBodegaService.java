@@ -15,7 +15,7 @@ import java.util.List;
 public interface PedidoSemanaBodegaService {
     PedidoSemanaBodega findById(Integer id);
     CountPedidoSemanaBodegaAndStatusView countRecipesAndStatus();
-    PedidoSemanaBodegasPage findAllRecipesPaginated(Integer pageRequested, Integer idSemana);
+    PedidoSemanaBodegasPage findAllRecipesPaginated(Integer pageRequested, Integer idSemana, Integer idAsignatura);
     PedidoSemanaBodegasPage findAllWithDetailsAndSearchPaging(SearchDTO searchDto);
     boolean saveRecipeWithDetails(PedidoSemanaBodegaWithDetailsCreateDTO dto);
     boolean updateRecipeWithDetails (PedidoSemanaBodegaWithDetailsUpdateDTO request);

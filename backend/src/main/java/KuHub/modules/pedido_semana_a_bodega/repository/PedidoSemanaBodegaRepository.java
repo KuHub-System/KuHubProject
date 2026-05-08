@@ -33,6 +33,7 @@ public interface PedidoSemanaBodegaRepository extends JpaRepository<PedidoSemana
             p.estado_pedido::text AS "estadoPedido",
             COUNT(d.id_detalle_pedido_semana) AS "totalDetalles",
             p.id_semana AS "idSemana",
+            p.id_asignatura AS "idAsignatura",
             jsonb_agg(
                 jsonb_build_object(
                     'nombreProducto', pr.nombre_producto,
@@ -49,7 +50,7 @@ public interface PedidoSemanaBodegaRepository extends JpaRepository<PedidoSemana
         LEFT JOIN producto pr ON d.id_producto = pr.id_producto
         LEFT JOIN unidad_medida u ON u.id_unidad = pr.id_unidad
         WHERE p.activo = true
-        GROUP BY p.id_pedido_semana_bodega, p.nombre_pedido_semana_bodega, p.descripcion_pedido_semana_bodega, p.estado_pedido, p.id_semana
+        GROUP BY p.id_pedido_semana_bodega, p.nombre_pedido_semana_bodega, p.descripcion_pedido_semana_bodega, p.estado_pedido, p.id_semana, p.id_asignatura
         ORDER BY p.nombre_pedido_semana_bodega ASC
         LIMIT :limit OFFSET :offset
         """, nativeQuery = true)
@@ -66,6 +67,7 @@ public interface PedidoSemanaBodegaRepository extends JpaRepository<PedidoSemana
             p.estado_pedido::text AS "estadoPedido",
             COUNT(d.id_detalle_pedido_semana) AS "totalDetalles",
             p.id_semana AS "idSemana",
+            p.id_asignatura AS "idAsignatura",
             jsonb_agg(
                 jsonb_build_object(
                     'nombreProducto', pr.nombre_producto,
@@ -82,7 +84,7 @@ public interface PedidoSemanaBodegaRepository extends JpaRepository<PedidoSemana
         LEFT JOIN producto pr ON d.id_producto = pr.id_producto
         LEFT JOIN unidad_medida u ON u.id_unidad = pr.id_unidad
         WHERE p.activo = true AND p.id_semana = :idSemana
-        GROUP BY p.id_pedido_semana_bodega, p.nombre_pedido_semana_bodega, p.descripcion_pedido_semana_bodega, p.estado_pedido, p.id_semana
+        GROUP BY p.id_pedido_semana_bodega, p.nombre_pedido_semana_bodega, p.descripcion_pedido_semana_bodega, p.estado_pedido, p.id_semana, p.id_asignatura
         ORDER BY p.nombre_pedido_semana_bodega ASC
         LIMIT :limit OFFSET :offset
         """, nativeQuery = true)
@@ -110,6 +112,7 @@ public interface PedidoSemanaBodegaRepository extends JpaRepository<PedidoSemana
             p.estado_pedido::text AS "estadoPedido",
             COUNT(d.id_detalle_pedido_semana) AS "totalDetalles",
             p.id_semana AS "idSemana",
+            p.id_asignatura AS "idAsignatura",
             jsonb_agg(
                 jsonb_build_object(
                     'nombreProducto', pr.nombre_producto,
@@ -127,7 +130,7 @@ public interface PedidoSemanaBodegaRepository extends JpaRepository<PedidoSemana
         LEFT JOIN unidad_medida u ON u.id_unidad = pr.id_unidad
         WHERE p.activo = true
           AND (p.nombre_pedido_semana_bodega ILIKE %:term% OR p.descripcion_pedido_semana_bodega ILIKE %:term%)
-        GROUP BY p.id_pedido_semana_bodega, p.nombre_pedido_semana_bodega, p.descripcion_pedido_semana_bodega, p.estado_pedido, p.id_semana
+        GROUP BY p.id_pedido_semana_bodega, p.nombre_pedido_semana_bodega, p.descripcion_pedido_semana_bodega, p.estado_pedido, p.id_semana, p.id_asignatura
         ORDER BY p.nombre_pedido_semana_bodega ASC
         LIMIT :limit OFFSET :offset
         """, nativeQuery = true)
@@ -145,6 +148,7 @@ public interface PedidoSemanaBodegaRepository extends JpaRepository<PedidoSemana
             p.estado_pedido::text AS "estadoPedido",
             COUNT(d.id_detalle_pedido_semana) AS "totalDetalles",
             p.id_semana AS "idSemana",
+            p.id_asignatura AS "idAsignatura",
             jsonb_agg(
                 jsonb_build_object(
                     'nombreProducto', pr.nombre_producto,
@@ -163,7 +167,7 @@ public interface PedidoSemanaBodegaRepository extends JpaRepository<PedidoSemana
         WHERE p.activo = true
           AND (p.nombre_pedido_semana_bodega ILIKE %:term% OR p.descripcion_pedido_semana_bodega ILIKE %:term%)
           AND p.id_semana = :idSemana
-        GROUP BY p.id_pedido_semana_bodega, p.nombre_pedido_semana_bodega, p.descripcion_pedido_semana_bodega, p.estado_pedido, p.id_semana
+        GROUP BY p.id_pedido_semana_bodega, p.nombre_pedido_semana_bodega, p.descripcion_pedido_semana_bodega, p.estado_pedido, p.id_semana, p.id_asignatura
         ORDER BY p.nombre_pedido_semana_bodega ASC
         LIMIT :limit OFFSET :offset
         """, nativeQuery = true)
@@ -226,6 +230,190 @@ public interface PedidoSemanaBodegaRepository extends JpaRepository<PedidoSemana
     int softDeleteRecipeById(@Param("idPedidoSemanaBodega") Integer idPedidoSemanaBodega);
 
 
+
+    // ─── QUERIES CON FILTRO POR ASIGNATURA ──────────────────────────────────────
+
+    /** Lista paginada de pedidos semana bodega activos filtrados por idAsignatura. */
+    @Query(value = """
+        SELECT
+            p.id_pedido_semana_bodega AS "idPedidoSemanaBodega",
+            p.nombre_pedido_semana_bodega AS "nombrePedido",
+            p.descripcion_pedido_semana_bodega AS "descripcionPedido",
+            p.estado_pedido::text AS "estadoPedido",
+            COUNT(d.id_detalle_pedido_semana) AS "totalDetalles",
+            p.id_semana AS "idSemana",
+            p.id_asignatura AS "idAsignatura",
+            jsonb_agg(
+                jsonb_build_object(
+                    'nombreProducto', pr.nombre_producto,
+                    'cantProducto', d.cant_producto,
+                    'abreviatura', u.abreviatura,
+                    'idDetallePedido', d.id_detalle_pedido_semana,
+                    'idProducto', pr.id_producto,
+                    'idUnidad', u.id_unidad,
+                    'observacion', d.observacion
+                )
+            ) AS "detallesJson"
+        FROM pedido_semana_bodega p
+        LEFT JOIN detalle_pedido_semana_bodega d ON d.id_pedido_semana_bodega = p.id_pedido_semana_bodega
+        LEFT JOIN producto pr ON d.id_producto = pr.id_producto
+        LEFT JOIN unidad_medida u ON u.id_unidad = pr.id_unidad
+        WHERE p.activo = true AND p.id_asignatura = :idAsignatura
+        GROUP BY p.id_pedido_semana_bodega, p.nombre_pedido_semana_bodega, p.descripcion_pedido_semana_bodega, p.estado_pedido, p.id_semana, p.id_asignatura
+        ORDER BY p.nombre_pedido_semana_bodega ASC
+        LIMIT :limit OFFSET :offset
+        """, nativeQuery = true)
+    List<PedidoSemanaBodegaWithDetailsView> findAllWithDetailsPagingByIdAsignatura(
+            @Param("idAsignatura") Integer idAsignatura,
+            @Param("limit") int limit,
+            @Param("offset") int offset);
+
+    /** Cuenta el total de pedidos semana bodega activos filtrados por idAsignatura. */
+    @Query(value = """
+        SELECT COUNT(*) FROM pedido_semana_bodega
+        WHERE activo = true AND id_asignatura = :idAsignatura
+        """, nativeQuery = true)
+    long countByActivoTrueAndIdAsignatura(@Param("idAsignatura") Integer idAsignatura);
+
+    /** Lista paginada de pedidos semana bodega activos filtrados por idSemana e idAsignatura. */
+    @Query(value = """
+        SELECT
+            p.id_pedido_semana_bodega AS "idPedidoSemanaBodega",
+            p.nombre_pedido_semana_bodega AS "nombrePedido",
+            p.descripcion_pedido_semana_bodega AS "descripcionPedido",
+            p.estado_pedido::text AS "estadoPedido",
+            COUNT(d.id_detalle_pedido_semana) AS "totalDetalles",
+            p.id_semana AS "idSemana",
+            p.id_asignatura AS "idAsignatura",
+            jsonb_agg(
+                jsonb_build_object(
+                    'nombreProducto', pr.nombre_producto,
+                    'cantProducto', d.cant_producto,
+                    'abreviatura', u.abreviatura,
+                    'idDetallePedido', d.id_detalle_pedido_semana,
+                    'idProducto', pr.id_producto,
+                    'idUnidad', u.id_unidad,
+                    'observacion', d.observacion
+                )
+            ) AS "detallesJson"
+        FROM pedido_semana_bodega p
+        LEFT JOIN detalle_pedido_semana_bodega d ON d.id_pedido_semana_bodega = p.id_pedido_semana_bodega
+        LEFT JOIN producto pr ON d.id_producto = pr.id_producto
+        LEFT JOIN unidad_medida u ON u.id_unidad = pr.id_unidad
+        WHERE p.activo = true AND p.id_semana = :idSemana AND p.id_asignatura = :idAsignatura
+        GROUP BY p.id_pedido_semana_bodega, p.nombre_pedido_semana_bodega, p.descripcion_pedido_semana_bodega, p.estado_pedido, p.id_semana, p.id_asignatura
+        ORDER BY p.nombre_pedido_semana_bodega ASC
+        LIMIT :limit OFFSET :offset
+        """, nativeQuery = true)
+    List<PedidoSemanaBodegaWithDetailsView> findAllWithDetailsPagingByIdSemanaAndIdAsignatura(
+            @Param("idSemana") Integer idSemana,
+            @Param("idAsignatura") Integer idAsignatura,
+            @Param("limit") int limit,
+            @Param("offset") int offset);
+
+    /** Cuenta el total de pedidos semana bodega activos filtrados por idSemana e idAsignatura. */
+    @Query(value = """
+        SELECT COUNT(*) FROM pedido_semana_bodega
+        WHERE activo = true AND id_semana = :idSemana AND id_asignatura = :idAsignatura
+        """, nativeQuery = true)
+    long countByActivoTrueAndIdSemanaAndIdAsignatura(@Param("idSemana") Integer idSemana, @Param("idAsignatura") Integer idAsignatura);
+
+    /** Lista paginada de pedidos semana bodega activos filtrados por búsqueda e idAsignatura. */
+    @Query(value = """
+        SELECT
+            p.id_pedido_semana_bodega AS "idPedidoSemanaBodega",
+            p.nombre_pedido_semana_bodega AS "nombrePedido",
+            p.descripcion_pedido_semana_bodega AS "descripcionPedido",
+            p.estado_pedido::text AS "estadoPedido",
+            COUNT(d.id_detalle_pedido_semana) AS "totalDetalles",
+            p.id_semana AS "idSemana",
+            p.id_asignatura AS "idAsignatura",
+            jsonb_agg(
+                jsonb_build_object(
+                    'nombreProducto', pr.nombre_producto,
+                    'cantProducto', d.cant_producto,
+                    'abreviatura', u.abreviatura,
+                    'idDetallePedido', d.id_detalle_pedido_semana,
+                    'idProducto', pr.id_producto,
+                    'idUnidad', u.id_unidad,
+                    'observacion', d.observacion
+                )
+            ) AS "detallesJson"
+        FROM pedido_semana_bodega p
+        LEFT JOIN detalle_pedido_semana_bodega d ON d.id_pedido_semana_bodega = p.id_pedido_semana_bodega
+        LEFT JOIN producto pr ON d.id_producto = pr.id_producto
+        LEFT JOIN unidad_medida u ON u.id_unidad = pr.id_unidad
+        WHERE p.activo = true
+          AND (p.nombre_pedido_semana_bodega ILIKE %:term% OR p.descripcion_pedido_semana_bodega ILIKE %:term%)
+          AND p.id_asignatura = :idAsignatura
+        GROUP BY p.id_pedido_semana_bodega, p.nombre_pedido_semana_bodega, p.descripcion_pedido_semana_bodega, p.estado_pedido, p.id_semana, p.id_asignatura
+        ORDER BY p.nombre_pedido_semana_bodega ASC
+        LIMIT :limit OFFSET :offset
+        """, nativeQuery = true)
+    List<PedidoSemanaBodegaWithDetailsView> findAllWithDetailsAndSearchByIdAsignatura(
+            @Param("term") String term,
+            @Param("idAsignatura") Integer idAsignatura,
+            @Param("limit") int limit,
+            @Param("offset") int offset);
+
+    /** Cuenta el total de pedidos semana bodega activos filtrados por búsqueda e idAsignatura. */
+    @Query(value = """
+        SELECT COUNT(*) FROM pedido_semana_bodega
+        WHERE activo = true
+          AND (nombre_pedido_semana_bodega ILIKE %:term% OR descripcion_pedido_semana_bodega ILIKE %:term%)
+          AND id_asignatura = :idAsignatura
+        """, nativeQuery = true)
+    long countWithSearchAndIdAsignatura(@Param("term") String term, @Param("idAsignatura") Integer idAsignatura);
+
+    /** Lista paginada de pedidos semana bodega activos filtrados por búsqueda, idSemana e idAsignatura. */
+    @Query(value = """
+        SELECT
+            p.id_pedido_semana_bodega AS "idPedidoSemanaBodega",
+            p.nombre_pedido_semana_bodega AS "nombrePedido",
+            p.descripcion_pedido_semana_bodega AS "descripcionPedido",
+            p.estado_pedido::text AS "estadoPedido",
+            COUNT(d.id_detalle_pedido_semana) AS "totalDetalles",
+            p.id_semana AS "idSemana",
+            p.id_asignatura AS "idAsignatura",
+            jsonb_agg(
+                jsonb_build_object(
+                    'nombreProducto', pr.nombre_producto,
+                    'cantProducto', d.cant_producto,
+                    'abreviatura', u.abreviatura,
+                    'idDetallePedido', d.id_detalle_pedido_semana,
+                    'idProducto', pr.id_producto,
+                    'idUnidad', u.id_unidad,
+                    'observacion', d.observacion
+                )
+            ) AS "detallesJson"
+        FROM pedido_semana_bodega p
+        LEFT JOIN detalle_pedido_semana_bodega d ON d.id_pedido_semana_bodega = p.id_pedido_semana_bodega
+        LEFT JOIN producto pr ON d.id_producto = pr.id_producto
+        LEFT JOIN unidad_medida u ON u.id_unidad = pr.id_unidad
+        WHERE p.activo = true
+          AND (p.nombre_pedido_semana_bodega ILIKE %:term% OR p.descripcion_pedido_semana_bodega ILIKE %:term%)
+          AND p.id_semana = :idSemana
+          AND p.id_asignatura = :idAsignatura
+        GROUP BY p.id_pedido_semana_bodega, p.nombre_pedido_semana_bodega, p.descripcion_pedido_semana_bodega, p.estado_pedido, p.id_semana, p.id_asignatura
+        ORDER BY p.nombre_pedido_semana_bodega ASC
+        LIMIT :limit OFFSET :offset
+        """, nativeQuery = true)
+    List<PedidoSemanaBodegaWithDetailsView> findAllWithDetailsAndSearchByIdSemanaAndIdAsignatura(
+            @Param("term") String term,
+            @Param("idSemana") Integer idSemana,
+            @Param("idAsignatura") Integer idAsignatura,
+            @Param("limit") int limit,
+            @Param("offset") int offset);
+
+    /** Cuenta el total de pedidos semana bodega activos filtrados por búsqueda, idSemana e idAsignatura. */
+    @Query(value = """
+        SELECT COUNT(*) FROM pedido_semana_bodega
+        WHERE activo = true
+          AND (nombre_pedido_semana_bodega ILIKE %:term% OR descripcion_pedido_semana_bodega ILIKE %:term%)
+          AND id_semana = :idSemana
+          AND id_asignatura = :idAsignatura
+        """, nativeQuery = true)
+    long countWithSearchAndIdSemanaAndIdAsignatura(@Param("term") String term, @Param("idSemana") Integer idSemana, @Param("idAsignatura") Integer idAsignatura);
 
     /** Obtiene todas las asignaturas activas para el selector del modal. */
     @Query(value = """

@@ -81,39 +81,69 @@ public class PedidoSemanaBodegaServiceImp implements PedidoSemanaBodegaService{
         return recetaRepository.countRecipesAndStatus();
     }
 
-    /** Lista todas las recetas activas paginadas con sus detalles e ingredientes. */
+    /** Lista todas las recetas activas paginadas con sus detalles e ingredientes, con soporte de filtro por semana y/o asignatura. */
     @Transactional(readOnly = true)
     @Override
-    public PedidoSemanaBodegasPage findAllRecipesPaginated(Integer pageRequested, Integer idSemana) {
-        long totalRecords = idSemana != null
-                ? recetaRepository.countByActivoTrueAndIdSemana(idSemana)
-                : recetaRepository.countByActivoTrue();
-        PaginationUtils.PagingResult paging = PaginationUtils.buildPaging(pageRequested, totalRecords);
+    public PedidoSemanaBodegasPage findAllRecipesPaginated(Integer pageRequested, Integer idSemana, Integer idAsignatura) {
+        long totalRecords;
+        List<PedidoSemanaBodegaWithDetailsView> rows;
 
-        List<PedidoSemanaBodegaWithDetailsView> rows = idSemana != null
-                ? recetaRepository.findAllWithDetailsPagingByIdSemana(idSemana, paging.limit(), paging.offset())
-                : recetaRepository.findAllWithDetailsPaging(paging.limit(), paging.offset());
-
-        return PedidoSemanaBodegasPage.of(rows, paging, objectMapper);
+        if (idAsignatura != null && idSemana != null) {
+            totalRecords = recetaRepository.countByActivoTrueAndIdSemanaAndIdAsignatura(idSemana, idAsignatura);
+            PaginationUtils.PagingResult paging = PaginationUtils.buildPaging(pageRequested, totalRecords);
+            rows = recetaRepository.findAllWithDetailsPagingByIdSemanaAndIdAsignatura(idSemana, idAsignatura, paging.limit(), paging.offset());
+            return PedidoSemanaBodegasPage.of(rows, paging, objectMapper);
+        } else if (idAsignatura != null) {
+            totalRecords = recetaRepository.countByActivoTrueAndIdAsignatura(idAsignatura);
+            PaginationUtils.PagingResult paging = PaginationUtils.buildPaging(pageRequested, totalRecords);
+            rows = recetaRepository.findAllWithDetailsPagingByIdAsignatura(idAsignatura, paging.limit(), paging.offset());
+            return PedidoSemanaBodegasPage.of(rows, paging, objectMapper);
+        } else if (idSemana != null) {
+            totalRecords = recetaRepository.countByActivoTrueAndIdSemana(idSemana);
+            PaginationUtils.PagingResult paging = PaginationUtils.buildPaging(pageRequested, totalRecords);
+            rows = recetaRepository.findAllWithDetailsPagingByIdSemana(idSemana, paging.limit(), paging.offset());
+            return PedidoSemanaBodegasPage.of(rows, paging, objectMapper);
+        } else {
+            totalRecords = recetaRepository.countByActivoTrue();
+            PaginationUtils.PagingResult paging = PaginationUtils.buildPaging(pageRequested, totalRecords);
+            rows = recetaRepository.findAllWithDetailsPaging(paging.limit(), paging.offset());
+            return PedidoSemanaBodegasPage.of(rows, paging, objectMapper);
+        }
     }
 
-    /** Lista recetas paginadas filtradas por nombre o descripción. */
+    /** Lista recetas paginadas filtradas por nombre o descripción, con soporte de filtro por semana y/o asignatura. */
     @Transactional(readOnly = true)
     @Override
     public PedidoSemanaBodegasPage findAllWithDetailsAndSearchPaging(SearchDTO searchDto) {
         String term = (searchDto.getTerm() == null) ? "" : searchDto.getTerm().trim();
         int page = (searchDto.getPage() == null || searchDto.getPage() < 1) ? 1 : searchDto.getPage();
         Integer idSemana = searchDto.getIdSemana();
+        Integer idAsignatura = searchDto.getIdAsignatura();
 
-        long totalRecords = idSemana != null
-                ? recetaRepository.countWithSearchAndIdSemana(term, idSemana)
-                : recetaRepository.countWithSearch(term);
-        PaginationUtils.PagingResult paging = PaginationUtils.buildPaging(page, totalRecords);
+        long totalRecords;
+        List<PedidoSemanaBodegaWithDetailsView> rows;
 
-        List<PedidoSemanaBodegaWithDetailsView> rows = idSemana != null
-                ? recetaRepository.findAllWithDetailsAndSearchByIdSemana(term, idSemana, paging.limit(), paging.offset())
-                : recetaRepository.findAllWithDetailsAndSearch(term, paging.limit(), paging.offset());
-        return PedidoSemanaBodegasPage.of(rows, paging, objectMapper);
+        if (idAsignatura != null && idSemana != null) {
+            totalRecords = recetaRepository.countWithSearchAndIdSemanaAndIdAsignatura(term, idSemana, idAsignatura);
+            PaginationUtils.PagingResult paging = PaginationUtils.buildPaging(page, totalRecords);
+            rows = recetaRepository.findAllWithDetailsAndSearchByIdSemanaAndIdAsignatura(term, idSemana, idAsignatura, paging.limit(), paging.offset());
+            return PedidoSemanaBodegasPage.of(rows, paging, objectMapper);
+        } else if (idAsignatura != null) {
+            totalRecords = recetaRepository.countWithSearchAndIdAsignatura(term, idAsignatura);
+            PaginationUtils.PagingResult paging = PaginationUtils.buildPaging(page, totalRecords);
+            rows = recetaRepository.findAllWithDetailsAndSearchByIdAsignatura(term, idAsignatura, paging.limit(), paging.offset());
+            return PedidoSemanaBodegasPage.of(rows, paging, objectMapper);
+        } else if (idSemana != null) {
+            totalRecords = recetaRepository.countWithSearchAndIdSemana(term, idSemana);
+            PaginationUtils.PagingResult paging = PaginationUtils.buildPaging(page, totalRecords);
+            rows = recetaRepository.findAllWithDetailsAndSearchByIdSemana(term, idSemana, paging.limit(), paging.offset());
+            return PedidoSemanaBodegasPage.of(rows, paging, objectMapper);
+        } else {
+            totalRecords = recetaRepository.countWithSearch(term);
+            PaginationUtils.PagingResult paging = PaginationUtils.buildPaging(page, totalRecords);
+            rows = recetaRepository.findAllWithDetailsAndSearch(term, paging.limit(), paging.offset());
+            return PedidoSemanaBodegasPage.of(rows, paging, objectMapper);
+        }
     }
 
 
