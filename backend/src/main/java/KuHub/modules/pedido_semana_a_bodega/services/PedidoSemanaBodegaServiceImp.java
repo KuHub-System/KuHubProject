@@ -133,6 +133,17 @@ public class PedidoSemanaBodegaServiceImp implements PedidoSemanaBodegaService{
         newReceta.setDescripcionPedido((request.getDescripcionPedido() == null || request.getDescripcionPedido().isBlank())
                 ? null : StringUtils.normalizeSpaces(request.getDescripcionPedido()));
 
+        // Validar que si viene idSemana, existe en la BD
+        if (request.getIdSemana() != null) {
+            boolean semanaExists = semanaRepository.existsById(request.getIdSemana());
+            if (!semanaExists) {
+                throw new PedidoSemanaBodegaException(
+                        "La semana con ID " + request.getIdSemana() + " no existe",
+                        HttpStatus.UNPROCESSABLE_ENTITY
+                );
+            }
+        }
+
         newReceta.setIdSemana(request.getIdSemana());
 
         if (request.getIdAsignatura() != null) {
@@ -245,6 +256,16 @@ public class PedidoSemanaBodegaServiceImp implements PedidoSemanaBodegaService{
 
         /** Validar y setear el idSemana (opcional) */
         if (!Objects.equals(request.getIdSemana(), oldRecipe.getIdSemana())) {
+            // Validar que si viene idSemana, existe en la BD
+            if (request.getIdSemana() != null) {
+                boolean semanaExists = semanaRepository.existsById(request.getIdSemana());
+                if (!semanaExists) {
+                    throw new PedidoSemanaBodegaException(
+                            "La semana con ID " + request.getIdSemana() + " no existe",
+                            HttpStatus.UNPROCESSABLE_ENTITY
+                    );
+                }
+            }
             oldRecipe.setIdSemana(request.getIdSemana());
         }
 
