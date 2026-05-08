@@ -405,6 +405,486 @@ setSemanaDesdeNumero: (numeroSemana: number) => {
 
 ---
 
+## Flujo visual — Paso a paso (Frontend)
+
+```
+Usuario abre modal "Nuevo Pedido Semanal"
+        ↓
+    [ModalFooter]
+    Botón "Importar Excel" → onClick: fileInputRef.current?.click()
+        ↓
+Usuario selecciona archivo (.xlsx, .xlsm, .xls)
+        ↓
+    handleFileChange() [línea 781]
+        ├─ setIsImporting(true)
+        ├─ leerNombresHojas(file) [línea 705]
+        │   └─ Devuelve: ['LISTADO PRODUCTOS', 'SEMANA (1)', 'SEMANA (2)', ..., 'SEMANA (18)']
+        └─ Filtrar solo hojas SEMANA: /^SEMANA \(\d+\)$/
+                ↓
+        ¿Cuántas hojas SEMANA encontradas?
+            │
+            ├─ 0 ó 1 hojas
+            │   └─ doImport(file, numeroSemana?) [línea 744]
+            │       └─ setIsImporting(false)
+            │
+            └─ 2+ hojas
+                ├─ setIsImporting(false)
+                ├─ setPendingFile(file)
+                ├─ setSheetOptions(semanaSheets)
+                ├─ onSheetOpen() → Modal visible [línea 823]
+                │
+                └─ Usuario selecciona una semana en el modal
+                    └─ handleSelectSheet(sheetName) [línea 808]
+                        ├─ onSheetClose()
+                        ├─ Extrae número: parseInt("SEMANA (5)") = 5
+                        └─ doImport(pendingFile, 5)
+                            ↓
+                        importarExcelPedidoService(file, 5) [línea 749]
+                            ↓
+                        POST /api/v1/pedido-semana-bodega/importar-excel?numeroSemana=5
+                            ↓
+                        [BACKEND PROCESA]
+                            ↓
+                        Respuesta: ImportarExcelResultado
+                        {
+                          resultados: [
+                            { fila: 12, nombreExcel: "ABARROTES", idProducto: null, estado: "no_encontrado" },
+                            { fila: 13, nombreExcel: "ACEITE OLIVA EXTRA VIRGEN", idProducto: 42, 
+                              nombreProducto: "Aceite Oliva Extra Virgen", cantidad: 2500, 
+                              observacion: "Primera opción", estado: "ok" },
+                            ...
+                          ],
+                          totalOk: 65,
+                          totalNoEncontrados: 4,
+                          numeroSemanaExcel: 5
+                        }
+                            ↓
+                        [FRONTEND PROCESA RESULTADO]
+                            ├─ formRef.current?.importarDesdeExcel(resultado.resultados)
+                            │   └─ Agrega 65 ingredientes a setIngredientes
+                            │       (consolidando duplicados en el submit)
+                            │
+                            ├─ formRef.current?.setSemanaDesdeNumero(5)
+                            │   └─ Auto-selecciona semana[4] en el selector
+                            │
+                            ├─ toast.success("65 productos importados correctamente")
+                            │
+                            └─ toast.warning("No encontrados: ABARROTES, PRODUCTO A, ...")
+                                    ↓
+                        Usuario ve:
+                        ┌─────────────────────────────────┐
+                        │ Formulario Pedido Semanal       │
+                        │                                 │
+                        │ Nombre: [________]              │
+                        │ Descripción: [_______]          │
+                        │ Semana: [Semana 5 (15-21 may)]  │
+                        │                                 │
+                        │ Ingredientes: 65 productos ✓    │
+                        │ [Tabla con ingredientes]        │
+                        │                                 │
+                        │ [Cancelar] [Importar Excel] [Guardar]
+                        └─────────────────────────────────┘
+```
+
+---
+
+## Estados locales del componente `DetalleReceta` [línea 721]
+
+```typescript
+const DetalleReceta: React.FC<DetalleRecetaProps> = ({ receta, mode, productos, onClose, onSave }) => {
+  // Modal de selección de semanas
+  const [isImporting, setIsImporting] = React.useState(false);           // ¿Procesando archivo?
+  const [pendingFile, setPendingFile] = React.useState<File | null>(null); // Archivo esperando selección
+  const [sheetOptions, setSheetOptions] = React.useState<string[]>([]); // ["SEMANA (1)", "SEMANA (2)", ...]
+  const { isOpen: isSheetOpen, onOpen: onSheetOpen, onClose: onSheetClose } = useDisclosure();
+  
+  // Referencias
+  const formRef = React.useRef<any>(null);        // FormularioReceta expuesto
+  const fileInputRef = React.useRef<HTMLInputElement>(null); // Input file hidden
+```
+
+---
+
+## Ubicación en el código — archivo principal
+
+**Archivo:** `frontend/src/pages/pedido-semanal-a-bodega.tsx`
+
+| Sección | Líneas | Descripción |
+|---------|--------|-------------|
+| Función `leerNombresHojas` | 705-719 | Lee nombres de hojas sin parsear celdas (rápido) |
+| Componente `DetalleReceta` | 721-942 | Modal con formulario e importación |
+| Modal de selección de semana | 823-873 | Grilla 3 cols con botones de semanas |
+| `handleFileChange` | 781-806 | Entrada de archivo + lógica condicional |
+| `handleSelectSheet` | 808-812 | Usuario selecciona semana del modal |
+| `doImport` | 744-779 | Llama API + puebla formulario + toasts |
+| `ModalFooter` (input file) | 902-908 | Input hidden con accept types |
+| `ModalFooter` (botón Excel) | 914-925 | Botón "Importar Excel" |
+| `FormularioReceta.importarDesdeExcel` | 1278-1292 | Agrega ingredientes importados |
+| `FormularioReceta.setSemanaDesdeNumero` | 1294-1301 | Auto-selecciona semana |
+
+---
+
+## Caso de uso típico — Importar Excel en modo CREAR
+
+```
+ESCENARIO:
+Usuario (Profesor a Cargo) quiere crear un "Pedido Semanal" para la Semana 5
+mediante importación de Excel. El archivo tiene 18 hojas SEMANA (1)...SEMANA (18).
+
+PASO 1: Abrir modal
+────────────────────
+Hace clic en "Nuevo Pedido Semanal" [línea 513]
+  → abre Modal [línea 662]
+  → mode='crear'
+  → receta=null
+  → Se renderiza DetalleReceta [línea 676]
+
+PASO 2: Seleccionar archivo
+────────────────────────────
+En el ModalFooter, hace clic en "Importar Excel" [línea 917]
+  → onClick={() => fileInputRef.current?.click()}
+  → Se abre dialog de archivo
+  → Selecciona "CHOCOLATERÍA LISTADO PEDIDO 2025.xlsm"
+
+PASO 3: Sistema detecta múltiples hojas
+───────────────────────────────────────
+handleFileChange [línea 781]:
+  • leerNombresHojas() retorna 19 hojas
+  • Filtra: ['SEMANA (1)', 'SEMANA (2)', ..., 'SEMANA (18)']
+  • Encuentra 18 hojas SEMANA
+  • Como > 1, abre modal de selección [línea 823]
+
+PASO 4: Usuario selecciona Semana 5
+────────────────────────────────────
+Modal muestra grilla [línea 842]:
+  ┌──────┬──────┬──────┐
+  │ Sem1 │ Sem2 │ Sem3 │  (botones con fechas del contexto)
+  │15-21 │22-28 │29-4  │
+  └──────┴──────┴──────┘
+  │ Sem4 │ Sem5 │ Sem6 │
+  │5-11  │12-18 │19-25 │  ← Usuario hace clic aquí
+  └──────┴──────┴──────┘
+
+handleSelectSheet("SEMANA (5)") [línea 808]:
+  • Extrae número 5 del nombre
+  • Llama doImport(pendingFile, 5)
+
+PASO 5: Backend procesa y retorna resultados
+──────────────────────────────────────────────
+doImport(file, 5) [línea 744]:
+  POST /api/v1/pedido-semana-bodega/importar-excel?numeroSemana=5
+
+Backend (SpringBoot):
+  1. Lee hoja "SEMANA (5)"
+  2. Detecta columna observación en fila 11
+  3. Parsea filas 12-80
+  4. Busca cada producto en BD
+  5. Retorna:
+     {
+       resultados: [
+         { fila: 12, nombreExcel: "ACEITE OLIVA EXTRA VIRGEN", idProducto: 42, 
+           nombreProducto: "Aceite Oliva Extra Virgen", cantidad: 2500, 
+           nombreUnidadMedida: "ml", observacion: "Primera opción", estado: "ok" },
+         { fila: 13, nombreExcel: "ABARROTES", idProducto: null, estado: "no_encontrado" },
+         ...
+       ],
+       totalOk: 65,
+       totalNoEncontrados: 4,
+       numeroSemanaExcel: 5
+     }
+
+PASO 6: Frontend puebla formulario
+──────────────────────────────────
+doImport continúa [línea 751]:
+  • resultado.totalOk=65 > 0
+  • formRef.current.importarDesdeExcel(resultado.resultados)
+    └─ Crea 65 IIngrediente y llama setIngredientes
+
+FormularioReceta.importarDesdeExcel [línea 1278]:
+  const nuevos = resultados
+    .filter(r => r.estado === 'ok' && r.idProducto != null)
+    .map(r => ({
+      id: `excel_${r.fila}_${r.idProducto}_${Math.random().toString(36).slice(2)}`,
+      productoId: r.idProducto!.toString(),     // "42"
+      productoNombre: r.nombreProducto,         // "Aceite Oliva Extra Virgen"
+      cantidad: r.cantidad,                     // 2500
+      unidadMedida: r.nombreUnidadMedida,       // "ml"
+      observacion: r.observacion                // "Primera opción"
+    }));
+  setIngredientes(prev => [...prev, ...nuevos]);
+
+PASO 7: Auto-selecciona semana
+───────────────────────────────
+doImport continúa [línea 758]:
+  • resultado.numeroSemanaExcel=5 > 0
+  • formRef.current.setSemanaDesdeNumero(5)
+
+FormularioReceta.setSemanaDesdeNumero [línea 1294]:
+  const semanaTarget = semanas[5-1];  // semanas[4]
+  setIdSemana(String(semanaTarget.idSemana));  // ej: "412"
+  • Selector de semana ahora muestra "Semana 5 (12 may – 18 may)" ✓
+
+PASO 8: Toasts informativos
+─────────────────────────────
+doImport finaliza [línea 753-769]:
+  • toast.success("65 productos importados correctamente")
+  • Filtra resultados con estado='no_encontrado'
+  • toast.warning("No encontrados: ABARROTES, PRODUCTO B, PRODUCTO C, PRODUCTO D")
+
+PASO 9: Usuario completa el formulario
+───────────────────────────────────────
+El modal ahora muestra:
+
+┌──────────────────────────────────┐
+│ Nuevo Pedido Semanal             │
+├──────────────────────────────────┤
+│                                  │
+│ Nombre: [Pedido Semana 5      ]  │
+│ Descripción: [Choco pedido    ]  │
+│ Semana: [Semana 5 (12-18 may) ]  │
+│                                  │
+│ Ingredientes: 65 agregados       │
+│ [Tabla con ingredientes de Excel]│
+│ - Aceite Oliva Extra Virgen, 2500, ml, "Primera opción" ✓
+│ - Azúcar Blanca, 1500, kg, "Marca X" ✓
+│ - Harina Premium, 3000, kg, "" ✓
+│ ...                              │
+│                                  │
+│ Estado: [Activo ▼]               │
+│                                  │
+│ [Cancelar] [Importar Excel] [Crear Pedido Semanal]
+└──────────────────────────────────┘
+
+Usuario completa campos requeridos:
+  • Nombre: "Pedido Semana 5 - Chocolate"
+  • Descripción: (opcional)
+  • Estado: Activo (por defecto)
+  • Ingredientes: Ya están (65 de Excel)
+
+PASO 10: Enviar formulario
+───────────────────────────
+Usuario hace clic [Crear Pedido Semanal]
+  → handleSubmit [línea 733]
+  → formRef.current.submit()
+
+FormularioReceta.submit [línea 1303]:
+  1. Valida:
+     - Nombre no vacío
+     - ≥1 ingrediente
+     - Todos tienen producto y cantidad > 0
+  2. Consolida duplicados:
+     (Si usuario agregó el mismo producto 2 veces, suma cantidades)
+  3. Construye payload:
+     {
+       id: "",
+       nombre: "Pedido Semana 5 - Chocolate",
+       descripcion: "...",
+       ingredientes: [ 65 consolidados ],
+       estado: "Activo",
+       idSemana: 412
+     }
+  4. Llama onSave(recetaData)
+
+handleGuardarReceta [línea 267]:
+  Como mode='crear':
+    crearRecetaConDetallesService({
+      nombrePedido: "Pedido Semana 5 - Chocolate",
+      descripcionPedido: "...",
+      listaItems: [ 65 items con idProducto, cantUnidadMedida, observacion ],
+      estadoPedido: "Activo",
+      idSemana: 412
+    })
+    POST /api/v1/pedido-semana-bodega (create endpoint)
+
+Backend persiste en BD:
+  INSERT INTO pedido_semana_bodega (nombre, descripcion, estado, id_semana) → ID 1234
+  INSERT INTO detalle_pedido (id_pedido, id_producto, cantidad, observacion) x65
+
+PASO 11: Confirmación
+──────────────────────
+toast.success("Pedido Semanal creada correctamente")
+Modal cierra
+Recarga tabla de pedidos (cargarDatosIniciales)
+  → Usuario ve su nuevo pedido en la lista
+```
+
+---
+
+## Caso de uso típico — Editar Excel en modo EDITAR
+
+```
+ESCENARIO:
+Usuario (Profesor a Cargo) quiere EDITAR un pedido existente.
+Necesita importar nuevos ingredientes desde Excel y descartar algunos viejos.
+
+PASO 1: Abrir modal en modo editar
+──────────────────────────────────
+Hace clic en el ícono editar de un pedido [línea 610]
+  → handleEditarReceta(receta)
+  → mode='editar'
+  → receta={ idPedidoSemanaBodega: 1234, nombrePedido: "Pedido viejo", ... }
+  → Se renderiza DetalleReceta [línea 676]
+
+Diferencias respecto a 'crear':
+  • El formulario se puebla con datos existentes [línea 1055-1199]
+  • FormularioReceta mantiene snapshot de detalles originales [línea 1179]
+  • Botón dice "Guardar Cambios" en lugar de "Crear Pedido Semanal"
+  • Se detectan CAMBIOS para habilitar botón guardar [línea 1221-1275]
+
+PASO 2: Usuario hace clic "Importar Excel"
+───────────────────────────────────────────
+Mismo flujo que en 'crear' [línea 917-925]
+  → Selecciona archivo
+  → Elige semana si hay múltiples
+  → doImport llama API
+  → Retorna 50 productos
+
+PASO 3: Los 50 productos se SUMAN a los existentes
+────────────────────────────────────────────────────
+formRef.current.importarDesdeExcel(resultado.resultados) [línea 1290]:
+  setIngredientes(prev => [...prev, ...nuevos]);  // ← SUMA, no reemplaza
+  
+Ahora ingredientes = [15 viejos] + [50 nuevos] = 65 total
+
+PASO 4: Usuario puede eliminar ingredientes viejos
+────────────────────────────────────────────────────
+Para cada ingrediente viejo que quiere eliminar:
+  Hace clic en botón eliminar [línea 1726]
+    → eliminarIngrediente(index) [línea 1465]
+    → Si el producto estaba en BD (originalProductIdsRef):
+       setDeletedProductIds(prev => [...prev, idProducto])  // Marca para borrar
+    → setIngredientes(filtro)  // Quita de la UI
+
+Ahora ingredientes = 55 total
+deletedProductIds = [X, Y, Z]  // Productos a eliminar de la BD
+
+PASO 5: Enviar cambios
+──────────────────────
+Usuario hace clic [Guardar Cambios]
+  → handleSubmit → formRef.current.submit()
+
+FormularioReceta.submit [línea 1354]:
+  Como mode='editar':
+    Detecta deltas respecto a BD:
+    • newItems: 50 (productos nuevos del Excel)
+    • updateItems: 0 (ninguno con cantidad modificada)
+    • deleteItems: 3 (los que usuario eliminó: [X, Y, Z])
+    
+    Construye updatePayload:
+    {
+      idPedidoSemanaBodega: 1234,
+      nombrePedido: "Pedido actualizado",
+      descripcionPedido: "...",
+      estadoPedido: "Activo",
+      newItems: [ 50 items del Excel con idProducto, cant, obs ],
+      updateItems: [],
+      deleteItems: [X, Y, Z],  // IDs de PRODUCTOS a borrar
+      idSemana: 412
+    }
+    
+    Llama onSave(recetaData, updatePayload)
+
+handleGuardarReceta [línea 287]:
+  Como mode='editar':
+    actualizarRecetaConDetallesService(updatePayload)
+    PUT /api/v1/pedido-semana-bodega/{id}
+
+Backend:
+  • Actualiza nombre, descripción, estado, idSemana
+  • INSERT 50 nuevos detalles
+  • DELETE detalles con idProducto IN [X, Y, Z]
+  • No toca los detalles existentes (no eliminados)
+
+PASO 6: Confirmación
+────────────────────
+toast.success("Pedido Semanal actualizada correctamente")
+Modal cierra
+Recarga tabla (cargarDatosIniciales)
+  → Usuario ve su pedido con:
+    - 15 ingredientes viejos (menos los 3 eliminados)
+    - 50 ingredientes nuevos del Excel
+    - Total: 62 ingredientes
+```
+
+---
+
+## Integración Frontend ↔ Backend — Flujo de datos
+
+```
+FRONTEND (React)                        BACKEND (Spring Boot)
+════════════════════════════════════════════════════════════════
+
+User input: archivo .xlsm
+       │
+       ├─ leerNombresHojas(file)
+       │  └─ XLSX.read({ bookSheets: true })
+       │     → Devuelve: ['LISTADO PRODUCTOS', 'SEMANA (1)', ...]
+       │
+       └─ Presenta modal si hay múltiples hojas SEMANA
+             │
+             └─ Usuario selecciona semana
+                    │
+                    ├─ FormData { archivo, numeroSemana: 5 }
+                    └─────────────────────────────────────→
+                                                POST /api/v1/pedido-semana-bodega/importar-excel
+                                                ?numeroSemana=5
+                                                   │
+                                                   ├─ PedidoSemanaBodegaController
+                                                   │  .importarExcel(archivo, 5)
+                                                   │     │
+                                                   │     ├─ pedidoSemanaBodegaService
+                                                   │     │  .importarExcelProductos(archivo, 5)
+                                                   │     │     │
+                                                   │     │     ├─ XSSFWorkbook wb = new XSSFWorkbook(archivo)
+                                                   │     │     ├─ Sheet sheet = wb.getSheet("SEMANA (5)")
+                                                   │     │     ├─ Detecta columna observación (fila 11)
+                                                   │     │     ├─ FOR fila 12-80:
+                                                   │     │     │   ├─ Lee cols A, B, C, D, observación
+                                                   │     │     │   ├─ Busca producto por nombre en BD
+                                                   │     │     │   └─ Crea ResultadoItem
+                                                   │     │     │       (fila, nombreExcel, idProducto, estado)
+                                                   │     │     │
+                                                   │     │     └─ RETURN ImportarExcelResultado
+                                                   │     │        {
+                                                   │     │          resultados: [...65 items...],
+                                                   │     │          totalOk: 65,
+                                                   │     │          totalNoEncontrados: 4,
+                                                   │     │          numeroSemanaExcel: 5
+                                                   │     │        }
+                                                   │     │
+                                                   │     └─ ResponseEntity.ok(resultado)
+                                                   │
+                    ←────────────────────────────────────
+                    ImportarExcelResultado JSON
+                    
+       ├─ resultado.resultados.filter(r => r.estado === 'ok')
+       ├─ formRef.current.importarDesdeExcel(resultados) [línea 1278]
+       │  └─ setIngredientes([...prev, ...nuevos])
+       │
+       ├─ formRef.current.setSemanaDesdeNumero(5) [línea 1294]
+       │  └─ setIdSemana("412")
+       │
+       ├─ toast.success("65 productos importados")
+       ├─ toast.warning("No encontrados: ABARROTES, ...")
+       │
+       └─ Usuario hace clic "Guardar"
+              │
+              ├─ submit() consolida duplicados
+              ├─ FormData { nombrePedido, ingredientes, ... }
+              └────────────────────────────────────────→
+                                                POST /api/v1/pedido-semana-bodega (crear)
+                                                o PUT (editar)
+                                                   │
+                                                   ├─ Persiste en BD
+                                                   └─ RETURN { idPedidoSemanaBodega: 1234, ... }
+                    ←────────────────────────────────────
+                    PedidoSemanaBodega entity
+       
+       └─ toast.success("Pedido creado/actualizado")
+```
+
+---
+
 ## Estado actual
 
 ### Backend

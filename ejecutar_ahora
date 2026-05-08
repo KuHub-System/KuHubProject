@@ -1,8 +1,1 @@
-Me di cuenta que la funcion de crear solicitud masiva no tiene el campo observacion del producto, tiene solamente la general.
-necesito que lea los documentos con /model Haiku 4.5
-1-si el usuario agrega una observacion apos ser cargado la informacion de pedido semanal a bodega, tiene que entrar como modificado al delta, asi como esta para la cantidad que si es alterada es considerado el delta modificado.
-2-tiene que ler el contexto de la logica en el frontend, los records dtos del backend.
-3-la funcion se encuentra en ConexionXD_v2.sql de la linea 3089-3235.
-4-si es necesario revisa las tablas existente para coraborar atributos para que no de error, de la linea 200-724
-necesito que planifique y ejecute con /model sonnet 4.6
-tiene que agregar el dato de la obsevacion a la funcion para que se ejecute correctamente.
+Necesito realizar un cambio, al usuario importar el excel, necesito que cargue los nombre de las horas tal como esta, no mas tiene que esperar que sea una semana, debido que puede ser otro nombre a la hoja. En caso que sea SemanaX haremos que siga selecionando el selector del frontend como esta actualmente, en caso que sea otro nombre no seleccionara nada el mismo usuario tiene que hacerlo.
