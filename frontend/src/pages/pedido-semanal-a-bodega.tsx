@@ -30,6 +30,7 @@ import {
 } from '@heroui/react';
 import { Icon } from '@iconify/react';
 import { motion } from 'framer-motion';
+import { useHistory } from 'react-router-dom';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useToast, useConfirm } from '../hooks/useToast';
 import { useAuth } from '../contexts/auth-context';
@@ -64,6 +65,7 @@ const PedidoSemanalABodegaPage: React.FC = () => {
   usePageTitle('Pedido Semanal a Bodega', 'Gestiona los pedidos semanales para la bodega', 'lucide:package-open');
   const toast = useToast();
   const confirm = useConfirm();
+  const history = useHistory();
   const { user } = useAuth();
   const { canCreate: rec_Crear, canUpdate: rec_Editar, canDelete: rec_Eliminar } = useModulePermission('PEDIDO_SEMANAL_BODEGA');
   const { periodos, semanas: contextSemanas, periodo: contextPeriodo, defaultSemanaId, isLoading: isLoadingSemanas, seleccionarPeriodo, seleccionarSemana } = usePeriodoSemana();
@@ -1390,6 +1392,9 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
           toast.warning('El nombre de la pedido semanal es obligatorio');
           throw new Error('El nombre es requerido');
         }
+        if (!idSemana || idSemana === 'ninguno') {
+          toast.warning('El pedido semanal será creado sin vinculación a una semana');
+        }
         if (ingredientes.length === 0) {
           toast.warning('Debe agregar al menos un ingrediente');
           throw new Error('Debe agregar al menos un ingrediente');
@@ -1631,7 +1636,31 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
                         <Spinner size="sm" /> Cargando semanas...
                       </div>
                     ) : semanas.length === 0 ? (
-                      <p className="text-sm text-default-400">Sin semanas disponibles para este período.</p>
+                      <div className="flex items-center gap-3 p-4 bg-warning-50 dark:bg-warning-900/20 border border-warning-200 dark:border-warning-200/30 rounded-lg">
+                        <Icon icon="lucide:alert-circle" width={18} className="text-warning-600 dark:text-warning-400 shrink-0" />
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-warning-700 dark:text-warning-300">
+                            No hay períodos académicos disponibles.
+                          </p>
+                          <p className="text-xs text-warning-600 dark:text-warning-400 mt-1">
+                            {esAdministrador
+                              ? 'Para realizar pedidos, genere el período académico desde Gestión Académica.'
+                              : 'Contacte al Administrador para generar el período académico.'}
+                          </p>
+                        </div>
+                        {esAdministrador && (
+                          <Button
+                            isIconOnly
+                            variant="light"
+                            size="sm"
+                            className="text-warning-600 dark:text-warning-400 hover:bg-warning-100 dark:hover:bg-warning-900/30 shrink-0"
+                            onPress={() => history.push('/admin-sistema?tab=semanas')}
+                            title="Ir a crear período académico"
+                          >
+                            <Icon icon="lucide:arrow-right" width={18} />
+                          </Button>
+                        )}
+                      </div>
                     ) : (
                       <>
                         <Select size="sm" variant="bordered"
