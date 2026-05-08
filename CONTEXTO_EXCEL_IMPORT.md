@@ -22,8 +22,9 @@ un JSON con los resultados. El frontend usa ese JSON para poblar el formulario.
 | 1–18 | `SEMANA (1)` … `SEMANA (18)` | Pedido semanal por semana. **Esta es la hoja a leer.** |
 
 La hoja a leer se determina así:
-- Si el usuario seleccionó una semana en el modal de selección del frontend → backend busca la hoja por nombre exacto `SEMANA (X)`.
-- Si no se especificó (caso de un solo archivo con una sola hoja SEMANA) → backend usa `workbook.getActiveSheetIndex()`.
+- Si el usuario seleccionó una hoja en el modal del frontend → backend busca esa hoja por nombre exacto (puede ser cualquier nombre: `SEMANA (X)`, `LISTADO PRODUCTOS`, o nombres personalizados).
+- Si no se especificó (caso de un solo archivo con una sola hoja) → backend usa `workbook.getActiveSheetIndex()`.
+- El `numeroSemanaExcel` se extrae automáticamente del nombre con regex `\((\d+)\)`: si el nombre es `SEMANA (5)` → `numeroSemanaExcel = 5`. Si el nombre no coincide → `numeroSemanaExcel = 0` (no auto-selecciona semana).
 
 ### Columnas de las hojas SEMANA (0-based en POI)
 
@@ -105,13 +106,13 @@ public record ImportarExcelResultado(
 @PostMapping(value = "/importar-excel", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
 public ResponseEntity<ImportarExcelResultado> importarExcel(
         @RequestParam("archivo") MultipartFile archivo,
-        @RequestParam(value = "numeroSemana", required = false) Integer numeroSemana) {
+        @RequestParam(value = "nombreHoja", required = false) String nombreHoja) {
     return ResponseEntity.status(200)
-            .body(pedidoSemanaBodegaService.importarExcelProductos(archivo, numeroSemana));
+            .body(pedidoSemanaBodegaService.importarExcelProductos(archivo, nombreHoja));
 }
 ```
 
-`numeroSemana` es opcional (query param `?numeroSemana=X`). Si viene → se lee la hoja `SEMANA (X)` por nombre. Si no → se usa la hoja activa.
+`nombreHoja` es opcional (query param `?nombreHoja=<nombre>`). Si viene → se lee esa hoja por nombre exacto (puede ser cualquier nombre). Si no → se usa la hoja activa. Ejemplo: `?nombreHoja=SEMANA%20(5)` o `?nombreHoja=LISTADO%20PRODUCTOS`.
 
 ### Seguridad (`SpringSecurityConfig.java`)
 
@@ -125,30 +126,29 @@ public ResponseEntity<ImportarExcelResultado> importarExcel(
 **Archivo:** `backend/.../services/PedidoSemanaBodegaService.java`
 
 ```java
-ImportarExcelResultado importarExcelProductos(MultipartFile archivo, Integer numeroSemana);
+ImportarExcelResultado importarExcelProductos(MultipartFile archivo, String nombreHoja);
 ```
 
 ### Lógica de parseo (`PedidoSemanaBodegaServiceImp.java`)
 
-Flujo completo del método `importarExcelProductos(archivo, numeroSemana)`:
+Flujo completo del método `importarExcelProductos(archivo, nombreHoja)`:
 
 ```java
-// 1. Selección de hoja
+// 1. Selección de hoja por nombre exacto o hoja activa
 Sheet sheet;
-if (numeroSemana != null) {
-    // Usuario eligió una hoja desde el modal del frontend
-    String nombreHoja = "SEMANA (" + numeroSemana + ")";
+if (nombreHoja != null && !nombreHoja.isBlank()) {
+    // Usuario seleccionó una hoja por nombre exacto (puede ser cualquier nombre)
     sheet = workbook.getSheet(nombreHoja);
     if (sheet == null) throw new PedidoSemanaBodegaException("No se encontró la hoja '" + nombreHoja + "'", BAD_REQUEST);
-    numeroSemanaExcel = numeroSemana;
 } else {
-    // Un solo archivo o sin selección → usar hoja activa
+    // Sin selección → usar hoja activa
     int activeIdx = workbook.getActiveSheetIndex();
     sheet = workbook.getSheetAt(activeIdx);
-    // Parsear número de semana del nombre: "SEMANA (3)" → 3
-    Matcher m = Pattern.compile("\\((\\d+)\\)").matcher(sheet.getSheetName());
-    if (m.find()) numeroSemanaExcel = Integer.parseInt(m.group(1));
 }
+
+// 2. Extraer número de semana si el nombre coincide con "SEMANA (X)"
+Matcher m = Pattern.compile("\\((\\d+)\\)").matcher(sheet.getSheetName());
+if (m.find()) numeroSemanaExcel = Integer.parseInt(m.group(1));
 
 // 2. Detectar columna de observación desde cabecera (fila 11 Excel = índice 10 POI)
 int colObservacion = 4; // fallback columna E
@@ -243,11 +243,11 @@ export interface IImportarExcelResultado {
 ```typescript
 export const importarExcelPedidoService = async (
   archivo: File,
-  numeroSemana?: number          // opcional: fuerza lectura de SEMANA (X)
+  nombreHoja?: string            // opcional: nombre exacto de la hoja a leer
 ): Promise<IImportarExcelResultado> => {
   const formData = new FormData();
   formData.append('archivo', archivo);
-  const params = numeroSemana ? `?numeroSemana=${numeroSemana}` : '';
+  const params = nombreHoja ? `?nombreHoja=${encodeURIComponent(nombreHoja)}` : '';
   const response = await api.post<IImportarExcelResultado>(
     `/pedido-semana-bodega/importar-excel${params}`,
     formData,
@@ -288,7 +288,7 @@ const leerNombresHojas = (file: File): Promise<string[]> =>
 const { semanas } = usePeriodoSemana();          // para mostrar fechas en el modal
 const [isImporting, setIsImporting] = React.useState(false);
 const [pendingFile, setPendingFile] = React.useState<File | null>(null);
-const [sheetOptions, setSheetOptions] = React.useState<string[]>([]); // hojas SEMANA (X) detectadas
+const [sheetOptions, setSheetOptions] = React.useState<string[]>([]); // todas las hojas detectadas
 const { isOpen: isSheetOpen, onOpen: onSheetOpen, onClose: onSheetClose } = useDisclosure();
 ```
 
@@ -302,19 +302,15 @@ const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
   setIsImporting(true);
   try {
     const allSheets = await leerNombresHojas(file);
-    const semanaSheets = allSheets.filter(n => /^SEMANA \(\d+\)$/.test(n));
 
-    if (semanaSheets.length <= 1) {
-      // Una sola hoja SEMANA → importar directamente sin preguntar
-      const num = semanaSheets.length === 1
-        ? parseInt(semanaSheets[0].match(/\((\d+)\)/)?.[1] || '0') || undefined
-        : undefined;
-      await doImport(file, num);
+    if (allSheets.length <= 1) {
+      // Una sola hoja → importar directamente sin preguntar
+      await doImport(file, allSheets[0]);
     } else {
-      // Varias hojas SEMANA → mostrar modal de selección
+      // Múltiples hojas → mostrar modal de selección con todas ellas
       setIsImporting(false);
       setPendingFile(file);
-      setSheetOptions(semanaSheets);
+      setSheetOptions(allSheets);
       onSheetOpen();
     }
   } catch {
@@ -325,24 +321,25 @@ const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
 
 const handleSelectSheet = async (sheetName: string) => {
   onSheetClose();
-  const num = parseInt(sheetName.match(/\((\d+)\)/)?.[1] || '0') || undefined;
-  if (pendingFile) await doImport(pendingFile, num);
+  if (pendingFile) await doImport(pendingFile, sheetName);  // pasar el nombre exacto
 };
 ```
 
-#### Modal de selección de semana
+#### Modal de selección de hojas
+
+**CAMBIO (2026-05-07):** Muestra todas las hojas detectadas, no solo las SEMANA.
 
 Se renderiza dentro del `<>` fragment de `DetalleReceta`, antes del `ModalHeader` principal.
-Muestra una grilla 3 columnas con botones por cada hoja `SEMANA (X)` detectada.
-Cada botón muestra el número de semana y el rango de fechas del contexto `usePeriodoSemana`
-(usando posición `semanas[num - 1]`).
+Muestra una grilla 3 columnas con botones por cada hoja detectada:
+- Si el nombre coincide con `SEMANA (X)` → muestra "Semana X" + rango de fechas
+- Si el nombre no coincide → muestra el nombre tal como está (ej: "LISTADO PRODUCTOS")
 
 #### Función `doImport` — lógica post-selección
 
 ```typescript
-const doImport = async (file: File, numeroSemana?: number) => {
+const doImport = async (file: File, nombreHoja?: string) => {
   setIsImporting(true);
-  const resultado = await importarExcelPedidoService(file, numeroSemana);
+  const resultado = await importarExcelPedidoService(file, nombreHoja);
 
   // Poblar ingredientes en el formulario
   if (resultado.totalOk > 0) formRef.current?.importarDesdeExcel(resultado.resultados);
@@ -419,29 +416,28 @@ Usuario selecciona archivo (.xlsx, .xlsm, .xls)
         ├─ setIsImporting(true)
         ├─ leerNombresHojas(file) [línea 705]
         │   └─ Devuelve: ['LISTADO PRODUCTOS', 'SEMANA (1)', 'SEMANA (2)', ..., 'SEMANA (18)']
-        └─ Filtrar solo hojas SEMANA: /^SEMANA \(\d+\)$/
+        └─ Usar TODAS las hojas (sin filtro)
                 ↓
-        ¿Cuántas hojas SEMANA encontradas?
+        ¿Cuántas hojas en total?
             │
             ├─ 0 ó 1 hojas
-            │   └─ doImport(file, numeroSemana?) [línea 744]
+            │   └─ doImport(file, nombreHoja) [línea 744]
             │       └─ setIsImporting(false)
             │
             └─ 2+ hojas
                 ├─ setIsImporting(false)
                 ├─ setPendingFile(file)
-                ├─ setSheetOptions(semanaSheets)
+                ├─ setSheetOptions(allSheets)  // todas las hojas
                 ├─ onSheetOpen() → Modal visible [línea 823]
                 │
-                └─ Usuario selecciona una semana en el modal
+                └─ Usuario selecciona una hoja en el modal
                     └─ handleSelectSheet(sheetName) [línea 808]
                         ├─ onSheetClose()
-                        ├─ Extrae número: parseInt("SEMANA (5)") = 5
-                        └─ doImport(pendingFile, 5)
+                        └─ doImport(pendingFile, sheetName)  // nombre exacto
                             ↓
-                        importarExcelPedidoService(file, 5) [línea 749]
+                        importarExcelPedidoService(file, "SEMANA (5)") [línea 749]
                             ↓
-                        POST /api/v1/pedido-semana-bodega/importar-excel?numeroSemana=5
+                        POST /api/v1/pedido-semana-bodega/importar-excel?nombreHoja=SEMANA%20(5)
                             ↓
                         [BACKEND PROCESA]
                             ↓
@@ -464,8 +460,11 @@ Usuario selecciona archivo (.xlsx, .xlsm, .xls)
                             │   └─ Agrega 65 ingredientes a setIngredientes
                             │       (consolidando duplicados en el submit)
                             │
-                            ├─ formRef.current?.setSemanaDesdeNumero(5)
-                            │   └─ Auto-selecciona semana[4] en el selector
+                            ├─ Si resultado.numeroSemanaExcel > 0:
+                            │   ├─ formRef.current?.setSemanaDesdeNumero(resultado.numeroSemanaExcel)
+                            │   │   └─ Auto-selecciona semana en el selector
+                            │   │
+                            │   └─ (Para hojas no-SEMANA: numeroSemanaExcel=0 → no auto-selecciona)
                             │
                             ├─ toast.success("65 productos importados correctamente")
                             │
@@ -890,21 +889,22 @@ User input: archivo .xlsm
 ### Backend
 - [x] Dependencia Apache POI en `pom.xml`
 - [x] Record `ImportarExcelResultado` con `ResultadoItem` anidado y campo `numeroSemanaExcel`
-- [x] Método `importarExcelProductos(archivo, numeroSemana)` en `PedidoSemanaBodegaServiceImp`
-- [x] Selección de hoja por nombre `SEMANA (X)` cuando `numeroSemana` es provisto; hoja activa como fallback
+- [x] Método `importarExcelProductos(archivo, String nombreHoja)` en `PedidoSemanaBodegaServiceImp`
+- [x] Selección de hoja por nombre exacto (cualquier nombre) cuando `nombreHoja` es provisto; hoja activa como fallback
+- [x] Extracción de `numeroSemanaExcel` con regex en todos los casos (0 si no coincide con patrón SEMANA)
 - [x] Detección dinámica de columna de observación desde cabecera (fila 11 Excel)
-- [x] Endpoint `POST /api/v1/pedido-semana-bodega/importar-excel?numeroSemana=X`
+- [x] Endpoint `POST /api/v1/pedido-semana-bodega/importar-excel?nombreHoja=<nombre>`
 - [x] Regla en `SpringSecurityConfig` (sin 403)
 - [x] Logs detallados (hoja seleccionada, columna observación, cada fila)
 
 ### Frontend
 - [x] Import de `xlsx` para lectura de nombres de hojas en el cliente
 - [x] Función `leerNombresHojas(file)` con `bookSheets: true` (no parsea celdas, rápido)
-- [x] Flujo: selección de archivo → detección de hojas SEMANA → modal si hay varias → `doImport`
-- [x] Modal de selección de semana con grilla 3 columnas + fechas del contexto `usePeriodoSemana`
+- [x] Flujo: selección de archivo → mostrar TODAS las hojas → modal si hay varias → `doImport`
+- [x] Modal de selección de hojas con grilla 3 columnas (hojas SEMANA muestran fechas; otras muestran el nombre)
 - [x] Botón "Importar Excel" en `ModalFooter` (sin input de número manual)
-- [x] `importarExcelPedidoService(archivo, numeroSemana?)` con query param opcional
+- [x] `importarExcelPedidoService(archivo, nombreHoja?)` con query param opcional (nombre exacto)
 - [x] Tipos `IResultadoItemExcel` / `IImportarExcelResultado` (con `numeroSemanaExcel`) en `receta.types.ts`
 - [x] Método `importarDesdeExcel()` — puebla ingredientes del formulario
-- [x] Método `setSemanaDesdeNumero()` — auto-selecciona la semana en el selector del formulario
-- [x] **Funcional en entorno de desarrollo**
+- [x] Método `setSemanaDesdeNumero()` — auto-selecciona la semana solo si `numeroSemanaExcel > 0`
+- [x] **Funcional en entorno de desarrollo (cambios aplicados 2026-05-07)**
