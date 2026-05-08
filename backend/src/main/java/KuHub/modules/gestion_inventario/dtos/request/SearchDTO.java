@@ -7,4 +7,5 @@ public class SearchDTO {
     private String term;
     private Integer page;
     private Integer idSemana;
+    private Integer idAsignatura;
 }
