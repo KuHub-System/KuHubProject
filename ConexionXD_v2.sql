@@ -3096,6 +3096,7 @@ EXECUTE FUNCTION fn_limpiar_por_sala_inactiva();
 
 CREATE OR REPLACE FUNCTION generar_solicitudes_masivas(
     p_payload JSONB,
+    p_solicitud_id_existente INTEGER DEFAULT NULL,
     OUT total_solicitudes INTEGER,
     OUT total_detalles INTEGER
 )
@@ -3201,7 +3202,16 @@ BEGIN
                   AND dr.id_pedido_semana_bodega = v_id_receta
                   AND NOT EXISTS (
                       SELECT 1 FROM jsonb_array_elements_text(COALESCE(v_solicitud_masiva->'deltas'->'eliminados', '[]'::jsonb)) e
-                      WHERE e::INTEGER = dr.id_detalle_pedido_semana
+                      WHERE CASE
+                          WHEN p_solicitud_id_existente IS NOT NULL THEN
+                              EXISTS (
+                                  SELECT 1 FROM detalle_solicitud ds
+                                  WHERE ds.id_solicitud = p_solicitud_id_existente
+                                    AND ds.id_detalle_solicitud = e::INTEGER
+                              )
+                          ELSE
+                              e::INTEGER = dr.id_detalle_pedido_semana
+                      END
                   )
                   AND NOT EXISTS (
                       SELECT 1 FROM jsonb_array_elements(COALESCE(v_solicitud_masiva->'deltas'->'modificados', '[]'::jsonb)) m
