@@ -763,6 +763,8 @@ const leerNombresHojas = (file: File): Promise<string[]> =>
 
 const DetallePedidoSemanaBodega: React.FC<DetallePedidoSemanaBodegaProps> = ({ receta, mode, productos, onClose, onSave }) => {
   const toast = useToast();
+  const { user } = useAuth();
+  const isAdmin = user?.rol === 'Administrador';
   const { semanas } = usePeriodoSemana();
   const [isSaving, setIsSaving] = React.useState(false);
   const [isValidForm, setIsValidForm] = React.useState(false);
