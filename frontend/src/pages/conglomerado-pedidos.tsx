@@ -284,11 +284,11 @@ const ConglomeradoPedidosPage: React.FC = () => {
     });
   }, [consolidateData]);
 
-  // clave: "nombreAsignatura::nombreSeccion" → color único por asignatura+sección
-  const seccionColorMap = React.useMemo(() => {
+  // clave: nombreAsignatura → color único por asignatura
+  const asignaturaColorMap = React.useMemo(() => {
     const keys = new Set<string>();
     for (const p of productosParaCategorias) {
-      for (const d of p.detalles) keys.add(`${d.nombreAsignatura}::${d.nombreSeccion}`);
+      for (const d of p.detalles) keys.add(d.nombreAsignatura);
     }
     const map = new Map<string, string>();
     Array.from(keys).sort().forEach((key, i) => {
@@ -468,22 +468,20 @@ const ConglomeradoPedidosPage: React.FC = () => {
     const nombreDia = DIA_CONFIG[diaCategoria as number]?.nombre ?? 'Día';
     const semNombre = semanaActual?.nombreSemana ?? '';
 
-    // Clave compuesta "asignatura::seccion" → columna única por asignatura+sección
-    const todasSecciones = new Set<string>();
+    // Clave: solo "asignatura" → columna única por asignatura
+    const todasAsignaturas = new Set<string>();
     for (const cat of categoriasPorDia)
       for (const prod of cat.productos)
         for (const det of prod.detallesFiltrados)
-          todasSecciones.add(`${det.nombreAsignatura}::${det.nombreSeccion}`);
-    const secciones = Array.from(todasSecciones).sort();
-    const secLabel = (key: string) => { const [a, s] = key.split('::'); return `§${s} — ${a}`; };
-    const nCols = 3 + secciones.length + 1; // cat + prod + unidad + secciones + total
+          todasAsignaturas.add(det.nombreAsignatura);
+    const asignaturas = Array.from(todasAsignaturas).sort();
+    const nCols = 3 + asignaturas.length + 1; // cat + prod + unidad + asignaturas + total
 
-    // Helper: construye secMap con clave compuesta para un producto
-    const buildSecMap = (detallesFiltrados: Array<{ nombreAsignatura: string; nombreSeccion: string; cantidad: number }>) => {
+    // Helper: construye asignaturaMap para un producto
+    const buildAsignaturaMap = (detallesFiltrados: Array<{ nombreAsignatura: string; nombreSeccion: string; cantidad: number }>) => {
       const m = new Map<string, number>();
       for (const d of detallesFiltrados) {
-        const k = `${d.nombreAsignatura}::${d.nombreSeccion}`;
-        m.set(k, (m.get(k) ?? 0) + d.cantidad);
+        m.set(d.nombreAsignatura, (m.get(d.nombreAsignatura) ?? 0) + d.cantidad);
       }
       return m;
     };
@@ -492,16 +490,13 @@ const ConglomeradoPedidosPage: React.FC = () => {
     const rawRows: (string | number | null)[][] = [];
     rawRows.push([`Por Categoría — ${nombreDia} — ${semNombre}`, ...Array(nCols - 1).fill(null)]);
     rawRows.push(Array(nCols).fill(null));
-    rawRows.push(['Categoría', 'Producto', 'Unidad', ...secciones.map(secLabel), 'Total Día']);
+    rawRows.push(['Categoría', 'Producto', 'Unidad', ...asignaturas, 'Total Día']);
     for (const cat of categoriasPorDia) {
       rawRows.push([cat.nombreCategoria, ...Array(nCols - 1).fill(null)]);
       for (const prod of cat.productos) {
-        const sm = buildSecMap(prod.detallesFiltrados);
-        rawRows.push([cat.nombreCategoria, prod.nombreProducto, prod.abreviatura, ...secciones.map(k => sm.get(k) ?? 0), prod.totalDia]);
+        const am = buildAsignaturaMap(prod.detallesFiltrados);
+        rawRows.push([cat.nombreCategoria, prod.nombreProducto, prod.abreviatura, ...asignaturas.map(a => am.get(a) ?? 0), prod.totalDia]);
       }
-      // Subtotal row con valores por sección
-      const secSubtotals = secciones.map(k => cat.productos.reduce((sum, p) => sum + (buildSecMap(p.detallesFiltrados).get(k) ?? 0), 0));
-      rawRows.push([`SUBTOTAL ${cat.nombreCategoria}`, '', '', ...secSubtotals, cat.productos.reduce((s, p) => s + p.totalDia, 0)]);
       rawRows.push(Array(nCols).fill(null));
     }
 
@@ -517,7 +512,7 @@ const ConglomeradoPedidosPage: React.FC = () => {
     R = 2;
 
     // Fila encabezados
-    const headers = ['Categoría', 'Producto', 'Unidad', ...secciones.map(secLabel), 'Total Día'];
+    const headers = ['Categoría', 'Producto', 'Unidad', ...asignaturas, 'Total Día'];
     headers.forEach((h, C) => { ws[XLSXStyle.utils.encode_cell({ r: R, c: C })] = sc(h, styleHeader); });
     R++;
 
@@ -530,44 +525,22 @@ const ConglomeradoPedidosPage: React.FC = () => {
       R++;
 
       alt = false;
-      const firstProdRDia = R;
       for (const prod of cat.productos) {
-        const sm = buildSecMap(prod.detallesFiltrados);
+        const am = buildAsignaturaMap(prod.detallesFiltrados);
         const sd = alt ? styleDataAlt : styleData;
         const sn = alt ? styleNumAlt : styleNum;
         ws[XLSXStyle.utils.encode_cell({ r: R, c: 0 })] = sc(cat.nombreCategoria, sd);
         ws[XLSXStyle.utils.encode_cell({ r: R, c: 1 })] = sc(prod.nombreProducto, sd);
         ws[XLSXStyle.utils.encode_cell({ r: R, c: 2 })] = sc(prod.abreviatura, { ...sn, alignment: { horizontal: 'center', vertical: 'center' } });
-        secciones.forEach((k, i) => { ws[XLSXStyle.utils.encode_cell({ r: R, c: 3 + i })] = sc(sm.get(k) ?? 0, sn); });
+        asignaturas.forEach((a, i) => { ws[XLSXStyle.utils.encode_cell({ r: R, c: 3 + i })] = sc(am.get(a) ?? 0, sn); });
         ws[XLSXStyle.utils.encode_cell({ r: R, c: nCols - 1 })] = sf(
-          `SUM(${cl(3)}${R + 1}:${cl(2 + secciones.length)}${R + 1})`,
+          `SUM(${cl(3)}${R + 1}:${cl(2 + asignaturas.length)}${R + 1})`,
           prod.totalDia,
           styleNumHL
         );
         R++;
         alt = !alt;
       }
-      const lastProdRDia = R - 1;
-
-      // Subtotal categoría — con subtotales por columna de sección
-      const totalCat = cat.productos.reduce((s, p) => s + p.totalDia, 0);
-      ws[XLSXStyle.utils.encode_cell({ r: R, c: 0 })] = sc(`SUBTOTAL ${cat.nombreCategoria}`, styleTotal);
-      ws[XLSXStyle.utils.encode_cell({ r: R, c: 1 })] = sc('', styleTotal);
-      ws[XLSXStyle.utils.encode_cell({ r: R, c: 2 })] = sc('', styleTotal);
-      secciones.forEach((k, i) => {
-        const secTotal = cat.productos.reduce((sum, p) => sum + (buildSecMap(p.detallesFiltrados).get(k) ?? 0), 0);
-        ws[XLSXStyle.utils.encode_cell({ r: R, c: 3 + i })] = sf(
-          `SUM(${cl(3 + i)}${firstProdRDia + 1}:${cl(3 + i)}${lastProdRDia + 1})`,
-          secTotal,
-          styleTotalN
-        );
-      });
-      ws[XLSXStyle.utils.encode_cell({ r: R, c: nCols - 1 })] = sf(
-        `SUM(${cl(nCols - 1)}${firstProdRDia + 1}:${cl(nCols - 1)}${lastProdRDia + 1})`,
-        totalCat,
-        styleTotalN
-      );
-      R++;
 
       // Fila separadora
       for (let C = 0; C < nCols; C++) ws[XLSXStyle.utils.encode_cell({ r: R, c: C })] = sc(null, { fill: { fgColor: { rgb: 'EDF2F7' } } });
@@ -590,22 +563,8 @@ const ConglomeradoPedidosPage: React.FC = () => {
     const semNombre = semanaActual?.nombreSemana ?? '';
     const diasOrden = [1, 2, 3, 4, 5, 6, 0];
     const diasNombres = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
-    // Cols: Categoría | Producto | Sección | Unidad | Lun…Dom | Total Semana
-    const nCols = 4 + diasNombres.length + 1;
-
-    // Mapa idProducto → secciones (clave compuesta → datos por día)
-    const prodSecMap = new Map<number, Map<string, { label: string; days: Record<number, number>; total: number }>>();
-    for (const prod of productosParaCategorias) {
-      const sm = new Map<string, { label: string; days: Record<number, number>; total: number }>();
-      for (const d of prod.detalles) {
-        const key = `${d.nombreAsignatura}::${d.nombreSeccion}`;
-        if (!sm.has(key)) sm.set(key, { label: `§${d.nombreSeccion} — ${d.nombreAsignatura}`, days: {}, total: 0 });
-        const e = sm.get(key)!;
-        e.days[d.diaSemana] = (e.days[d.diaSemana] ?? 0) + d.cantidad;
-        e.total += d.cantidad;
-      }
-      prodSecMap.set(prod.idProducto, sm);
-    }
+    // Cols: Categoría | Producto | Unidad | Lun…Dom | Total Semana
+    const nCols = 3 + diasNombres.length + 1;
 
     const styleSecRow = { font: { sz: 10, italic: true, color: { rgb: '4A5568' } }, fill: { fgColor: { rgb: 'F7FAFC' } }, alignment: { horizontal: 'left', vertical: 'center' }, border: { top: { style: 'thin', color: { rgb: 'E2E8F0' } }, bottom: { style: 'thin', color: { rgb: 'E2E8F0' } }, left: { style: 'thin', color: { rgb: 'E2E8F0' } }, right: { style: 'thin', color: { rgb: 'E2E8F0' } } } };
     const styleSecNum = { font: { sz: 10, italic: true }, fill: { fgColor: { rgb: 'F7FAFC' } }, alignment: { horizontal: 'right', vertical: 'center' }, border: { top: { style: 'thin', color: { rgb: 'E2E8F0' } }, bottom: { style: 'thin', color: { rgb: 'E2E8F0' } }, left: { style: 'thin', color: { rgb: 'E2E8F0' } }, right: { style: 'thin', color: { rgb: 'E2E8F0' } } } };
@@ -616,17 +575,12 @@ const ConglomeradoPedidosPage: React.FC = () => {
     const rawRows: (string | number | null)[][] = [];
     rawRows.push([`Vista Completa por Categoría — ${semNombre}`, ...Array(nCols - 1).fill(null)]);
     rawRows.push(Array(nCols).fill(null));
-    rawRows.push(['Categoría', 'Producto', 'Sección', 'Unidad', ...diasNombres, 'Total Semana']);
+    rawRows.push(['Categoría', 'Producto', 'Unidad', ...diasNombres, 'Total Semana']);
     for (const cat of matrizCompleta) {
       rawRows.push([cat.nombre, ...Array(nCols - 1).fill(null)]);
       for (const row of cat.filas) {
-        const secciones = Array.from(prodSecMap.get(row.idProducto)?.entries() ?? []).sort(([a], [b]) => a.localeCompare(b));
-        for (const [, sec] of secciones)
-          rawRows.push([cat.nombre, row.nombreProducto, sec.label, row.abreviatura, ...diasOrden.map(d => sec.days[d] ?? 0), sec.total]);
-        if (secciones.length > 1)
-          rawRows.push([cat.nombre, row.nombreProducto, 'TOTAL', row.abreviatura, ...diasOrden.map(d => row.diasData[d]?.total ?? 0), row.totalSemana]);
+        rawRows.push([cat.nombre, row.nombreProducto, row.abreviatura, ...diasOrden.map(d => row.diasData[d]?.total ?? 0), row.totalSemana]);
       }
-      rawRows.push([`SUBTOTAL ${cat.nombre}`, '', '', '', ...diasOrden.map(d => cat.filas.reduce((s, r) => s + (r.diasData[d]?.total ?? 0), 0)), cat.filas.reduce((s, r) => s + r.totalSemana, 0)]);
       rawRows.push(Array(nCols).fill(null));
     }
 
@@ -641,7 +595,7 @@ const ConglomeradoPedidosPage: React.FC = () => {
     R = 2;
 
     // Encabezados
-    const headers = ['Categoría', 'Producto', 'Sección', 'Unidad', ...diasNombres, 'Total Semana'];
+    const headers = ['Categoría', 'Producto', 'Unidad', ...diasNombres, 'Total Semana'];
     headers.forEach((h, C) => { ws[XLSXStyle.utils.encode_cell({ r: R, c: C })] = sc(h, styleHeader); });
     R++;
 
@@ -652,50 +606,14 @@ const ConglomeradoPedidosPage: React.FC = () => {
       for (let C = 1; C < nCols; C++) ws[XLSXStyle.utils.encode_cell({ r: R, c: C })] = sc(null, styleCat);
       R++;
 
-      const firstCatR = R;
       for (const row of cat.filas) {
-        const secciones = Array.from(prodSecMap.get(row.idProducto)?.entries() ?? []).sort(([a], [b]) => a.localeCompare(b));
-        const hasManySecs = secciones.length > 1;
-
-        for (const [, sec] of secciones) {
-          ws[XLSXStyle.utils.encode_cell({ r: R, c: 0 })] = sc(cat.nombre, styleSecRow);
-          ws[XLSXStyle.utils.encode_cell({ r: R, c: 1 })] = sc(row.nombreProducto, styleSecRow);
-          ws[XLSXStyle.utils.encode_cell({ r: R, c: 2 })] = sc(sec.label, styleSecRow);
-          ws[XLSXStyle.utils.encode_cell({ r: R, c: 3 })] = sc(row.abreviatura, { ...styleSecNum, alignment: { horizontal: 'center', vertical: 'center' } });
-          diasOrden.forEach((dia, i) => { ws[XLSXStyle.utils.encode_cell({ r: R, c: 4 + i })] = sc(sec.days[dia] ?? 0, styleSecNum); });
-          ws[XLSXStyle.utils.encode_cell({ r: R, c: nCols - 1 })] = sf(`SUM(${cl(4)}${R+1}:${cl(4+diasOrden.length-1)}${R+1})`, sec.total, styleNumHL);
-          R++;
-        }
-
-        if (hasManySecs) {
-          // Subtotal del producto
-          ws[XLSXStyle.utils.encode_cell({ r: R, c: 0 })] = sc(cat.nombre, styleProdTotalLabel);
-          ws[XLSXStyle.utils.encode_cell({ r: R, c: 1 })] = sc(row.nombreProducto, styleProdTotalLabel);
-          ws[XLSXStyle.utils.encode_cell({ r: R, c: 2 })] = sc('TOTAL PRODUCTO', styleProdTotalLabel);
-          ws[XLSXStyle.utils.encode_cell({ r: R, c: 3 })] = sc(row.abreviatura, { ...styleProdTotal, alignment: { horizontal: 'center', vertical: 'center' } });
-          diasOrden.forEach((dia, i) => { ws[XLSXStyle.utils.encode_cell({ r: R, c: 4 + i })] = sc(row.diasData[dia]?.total ?? 0, styleProdTotal); });
-          ws[XLSXStyle.utils.encode_cell({ r: R, c: nCols - 1 })] = sf(`SUM(${cl(4)}${R+1}:${cl(4+diasOrden.length-1)}${R+1})`, row.totalSemana, styleNumHL);
-          R++;
-        }
+        ws[XLSXStyle.utils.encode_cell({ r: R, c: 0 })] = sc(cat.nombre, styleSecRow);
+        ws[XLSXStyle.utils.encode_cell({ r: R, c: 1 })] = sc(row.nombreProducto, styleSecRow);
+        ws[XLSXStyle.utils.encode_cell({ r: R, c: 2 })] = sc(row.abreviatura, { ...styleSecNum, alignment: { horizontal: 'center', vertical: 'center' } });
+        diasOrden.forEach((dia, i) => { ws[XLSXStyle.utils.encode_cell({ r: R, c: 3 + i })] = sc(row.diasData[dia]?.total ?? 0, styleSecNum); });
+        ws[XLSXStyle.utils.encode_cell({ r: R, c: nCols - 1 })] = sf(`SUM(${cl(3)}${R+1}:${cl(3+diasOrden.length-1)}${R+1})`, row.totalSemana, styleNumHL);
+        R++;
       }
-      const lastCatR = R - 1;
-
-      // Subtotal categoría
-      const totalesDia = diasOrden.map(dia => cat.filas.reduce((s, r) => s + (r.diasData[dia]?.total ?? 0), 0));
-      const totalCat = cat.filas.reduce((s, r) => s + r.totalSemana, 0);
-      ws[XLSXStyle.utils.encode_cell({ r: R, c: 0 })] = sc(`SUBTOTAL ${cat.nombre}`, styleTotal);
-      ws[XLSXStyle.utils.encode_cell({ r: R, c: 1 })] = sc('', styleTotal);
-      ws[XLSXStyle.utils.encode_cell({ r: R, c: 2 })] = sc('', styleTotal);
-      ws[XLSXStyle.utils.encode_cell({ r: R, c: 3 })] = sc('', styleTotal);
-      totalesDia.forEach((t, i) => {
-        ws[XLSXStyle.utils.encode_cell({ r: R, c: 4 + i })] = sf(
-          `SUM(${cl(4+i)}${firstCatR+1}:${cl(4+i)}${lastCatR+1})`, t || 0, styleTotalN
-        );
-      });
-      ws[XLSXStyle.utils.encode_cell({ r: R, c: nCols - 1 })] = sf(
-        `SUM(${cl(nCols-1)}${firstCatR+1}:${cl(nCols-1)}${lastCatR+1})`, totalCat, styleTotalN
-      );
-      R++;
 
       for (let C = 0; C < nCols; C++) ws[XLSXStyle.utils.encode_cell({ r: R, c: C })] = sc(null, { fill: { fgColor: { rgb: 'EDF2F7' } } });
       R++;
@@ -705,7 +623,7 @@ const ConglomeradoPedidosPage: React.FC = () => {
     ws['!merges'] = merges;
     ws['!cols'] = autoColWidth(rawRows, 2);
     ws['!rows'] = [{ hpt: 28 }, {}, { hpt: 22 }];
-    ws['!freeze'] = { xSplit: 4, ySplit: 3 };
+    ws['!freeze'] = { xSplit: 3, ySplit: 3 };
 
     const wb = XLSXStyle.utils.book_new();
     XLSXStyle.utils.book_append_sheet(wb, ws, 'Vista Completa');
@@ -982,19 +900,26 @@ const ConglomeradoPedidosPage: React.FC = () => {
                                 const cell = row.diasData[dia];
                                 if (!cell) return <td key={dia} className="text-center px-2 py-2 text-default-300">—</td>;
                                 const bgColor = conColores && cell.secciones.length === 1
-                                  ? seccionColorMap.get(cell.secciones[0].compositeKey) ?? 'transparent'
+                                  ? asignaturaColorMap.get(cell.secciones[0].compositeKey.split('::')[0]) ?? 'transparent'
                                   : 'transparent';
                                 return (
                                   <td key={dia} className="text-center px-2 py-2">
                                     <div className="inline-flex flex-col items-center gap-0.5">
                                       {conColores && cell.secciones.length > 1
-                                        ? cell.secciones.map((sec, si) => (
-                                            <span key={si} className="text-[11px] font-mono font-semibold px-1.5 py-0.5 rounded"
-                                              style={{ backgroundColor: seccionColorMap.get(sec.compositeKey) ?? '#f4f4f5' }}>
-                                              {fmtCant(sec.cantidad)}
-                                              <span className="text-[9px] text-default-500 ml-0.5">{row.abreviatura}</span>
-                                            </span>
-                                          ))
+                                        ? (() => {
+                                            const asigMap = new Map<string, number>();
+                                            for (const sec of cell.secciones) {
+                                              const asig = sec.compositeKey.split('::')[0];
+                                              asigMap.set(asig, (asigMap.get(asig) ?? 0) + sec.cantidad);
+                                            }
+                                            return Array.from(asigMap.entries()).map(([asig, cant]) => (
+                                              <span key={asig} className="text-[11px] font-mono font-semibold px-1.5 py-0.5 rounded"
+                                                style={{ backgroundColor: asignaturaColorMap.get(asig) ?? '#f4f4f5' }}>
+                                                {fmtCant(cant)}
+                                                <span className="text-[9px] text-default-500 ml-0.5">{row.abreviatura}</span>
+                                              </span>
+                                            ));
+                                          })()
                                         : (
                                           <span className="text-[11px] font-mono font-semibold px-1.5 py-0.5 rounded"
                                             style={{ backgroundColor: bgColor }}>
@@ -1021,27 +946,22 @@ const ConglomeradoPedidosPage: React.FC = () => {
                   </table>
                 )}
 
-                {/* Leyenda secciones */}
-                {conColores && seccionColorMap.size > 0 && (
+                {/* Leyenda asignaturas */}
+                {conColores && asignaturaColorMap.size > 0 && (
                   <div className="mt-4 p-4 bg-default-50 rounded-xl border border-default-200">
                     <div className="flex items-center gap-2 mb-3">
                       <Icon icon="lucide:palette" width={13} className="text-default-500" />
-                      <p className="text-[10px] font-bold text-default-500 uppercase tracking-wider">Leyenda de secciones</p>
-                      <span className="ml-auto text-[10px] text-default-400">{seccionColorMap.size} sección{seccionColorMap.size !== 1 ? 'es' : ''}</span>
+                      <p className="text-[10px] font-bold text-default-500 uppercase tracking-wider">Leyenda de asignaturas</p>
+                      <span className="ml-auto text-[10px] text-default-400">{asignaturaColorMap.size} asignatura{asignaturaColorMap.size !== 1 ? 's' : ''}</span>
                     </div>
                     <div className="flex flex-wrap gap-2">
-                      {Array.from(seccionColorMap.entries()).map(([key, color]) => {
-                        const [asignatura, seccion] = key.split('::');
-                        return (
-                          <div key={key}
-                            className="flex items-center gap-1.5 pl-2 pr-3 py-1 rounded-lg border border-default-200 text-default-700"
-                            style={{ backgroundColor: color }}>
-                            <span className="font-mono font-bold text-xs">§{seccion}</span>
-                            <span className="text-default-400 text-[10px]">·</span>
-                            <span className="text-[11px] font-medium truncate max-w-[120px]" title={asignatura}>{asignatura}</span>
-                          </div>
-                        );
-                      })}
+                      {Array.from(asignaturaColorMap.entries()).map(([nombreAsignatura, color]) => (
+                        <div key={nombreAsignatura}
+                          className="flex items-center gap-1.5 pl-2 pr-3 py-1 rounded-lg border border-default-200 text-default-700"
+                          style={{ backgroundColor: color }}>
+                          <span className="text-[11px] font-medium truncate max-w-[200px]" title={nombreAsignatura}>{nombreAsignatura}</span>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 )}
@@ -1075,16 +995,10 @@ const ConglomeradoPedidosPage: React.FC = () => {
 
                         {/* Filas de productos */}
                         {cat.productos.map(prod => {
-                          // Agrupar por clave compuesta asignatura::seccion para no mezclar secciones homónimas
-                          const seccionMap = new Map<string, { cantidad: number; nombreSeccion: string; nombreAsignatura: string }>();
+                          // Agrupar por asignatura
+                          const asignaturaMapDia = new Map<string, number>();
                           for (const d of prod.detallesFiltrados) {
-                            const key = `${d.nombreAsignatura}::${d.nombreSeccion}`;
-                            const prev = seccionMap.get(key);
-                            seccionMap.set(key, {
-                              cantidad: (prev?.cantidad ?? 0) + d.cantidad,
-                              nombreSeccion: d.nombreSeccion,
-                              nombreAsignatura: d.nombreAsignatura,
-                            });
+                            asignaturaMapDia.set(d.nombreAsignatura, (asignaturaMapDia.get(d.nombreAsignatura) ?? 0) + d.cantidad);
                           }
                           return (
                             <div key={prod.idProducto}
@@ -1097,11 +1011,11 @@ const ConglomeradoPedidosPage: React.FC = () => {
                                 </p>
                               </div>
                               <div className="flex flex-wrap gap-1 justify-end">
-                                {Array.from(seccionMap.entries()).map(([key, { cantidad, nombreSeccion }]) => (
-                                  <span key={key}
+                                {Array.from(asignaturaMapDia.entries()).map(([asignatura, cantidad]) => (
+                                  <span key={asignatura}
                                     className="px-2 py-1 rounded-lg text-xs font-semibold border border-default-200 text-default-700 font-mono"
-                                    style={{ backgroundColor: conColores ? (seccionColorMap.get(key) ?? '#f4f4f5') : 'white' }}>
-                                    §{nombreSeccion} · {fmtCant(cantidad)} {prod.abreviatura}
+                                    style={{ backgroundColor: conColores ? (asignaturaColorMap.get(asignatura) ?? '#f4f4f5') : 'white' }}>
+                                    {asignatura} · {fmtCant(cantidad)} {prod.abreviatura}
                                   </span>
                                 ))}
                               </div>
@@ -1120,26 +1034,21 @@ const ConglomeradoPedidosPage: React.FC = () => {
                     ))}
 
                     {/* Leyenda */}
-                    {conColores && seccionColorMap.size > 0 && (
+                    {conColores && asignaturaColorMap.size > 0 && (
                       <div className="p-4 bg-default-50 rounded-xl border border-default-200">
                         <div className="flex items-center gap-2 mb-3">
                           <Icon icon="lucide:palette" width={13} className="text-default-500" />
-                          <p className="text-[10px] font-bold text-default-500 uppercase tracking-wider">Leyenda de secciones</p>
-                          <span className="ml-auto text-[10px] text-default-400">{seccionColorMap.size} sección{seccionColorMap.size !== 1 ? 'es' : ''}</span>
+                          <p className="text-[10px] font-bold text-default-500 uppercase tracking-wider">Leyenda de asignaturas</p>
+                          <span className="ml-auto text-[10px] text-default-400">{asignaturaColorMap.size} asignatura{asignaturaColorMap.size !== 1 ? 's' : ''}</span>
                         </div>
                         <div className="flex flex-wrap gap-2">
-                          {Array.from(seccionColorMap.entries()).map(([key, color]) => {
-                            const [asignatura, seccion] = key.split('::');
-                            return (
-                              <div key={key}
-                                className="flex items-center gap-1.5 pl-2 pr-3 py-1 rounded-lg border border-default-200 text-default-700"
-                                style={{ backgroundColor: color }}>
-                                <span className="font-mono font-bold text-xs">§{seccion}</span>
-                                <span className="text-default-400 text-[10px]">·</span>
-                                <span className="text-[11px] font-medium truncate max-w-[120px]" title={asignatura}>{asignatura}</span>
-                              </div>
-                            );
-                          })}
+                          {Array.from(asignaturaColorMap.entries()).map(([nombreAsignatura, color]) => (
+                            <div key={nombreAsignatura}
+                              className="flex items-center gap-1.5 pl-2 pr-3 py-1 rounded-lg border border-default-200 text-default-700"
+                              style={{ backgroundColor: color }}>
+                              <span className="text-[11px] font-medium truncate max-w-[200px]" title={nombreAsignatura}>{nombreAsignatura}</span>
+                            </div>
+                          ))}
                         </div>
                       </div>
                     )}
