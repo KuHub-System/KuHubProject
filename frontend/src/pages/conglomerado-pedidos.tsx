@@ -563,8 +563,21 @@ const ConglomeradoPedidosPage: React.FC = () => {
     const semNombre = semanaActual?.nombreSemana ?? '';
     const diasOrden = [1, 2, 3, 4, 5, 6, 0];
     const diasNombres = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
-    // Cols: Categoría | Producto | Unidad | Lun…Dom | Total Semana
-    const nCols = 3 + diasNombres.length + 1;
+    // Cols: Categoría | Producto | Asignatura | Unidad | Lun…Dom | Total Semana
+    const nCols = 4 + diasNombres.length + 1;
+
+    // Mapa idProducto → asignatura → { days: por día, total }
+    const prodAsignaturaMap = new Map<number, Map<string, { days: Record<number, number>; total: number }>>();
+    for (const prod of productosParaCategorias) {
+      const am = new Map<string, { days: Record<number, number>; total: number }>();
+      for (const d of prod.detalles) {
+        if (!am.has(d.nombreAsignatura)) am.set(d.nombreAsignatura, { days: {}, total: 0 });
+        const e = am.get(d.nombreAsignatura)!;
+        e.days[d.diaSemana] = (e.days[d.diaSemana] ?? 0) + d.cantidad;
+        e.total += d.cantidad;
+      }
+      prodAsignaturaMap.set(prod.idProducto, am);
+    }
 
     const styleSecRow = { font: { sz: 10, italic: true, color: { rgb: '4A5568' } }, fill: { fgColor: { rgb: 'F7FAFC' } }, alignment: { horizontal: 'left', vertical: 'center' }, border: { top: { style: 'thin', color: { rgb: 'E2E8F0' } }, bottom: { style: 'thin', color: { rgb: 'E2E8F0' } }, left: { style: 'thin', color: { rgb: 'E2E8F0' } }, right: { style: 'thin', color: { rgb: 'E2E8F0' } } } };
     const styleSecNum = { font: { sz: 10, italic: true }, fill: { fgColor: { rgb: 'F7FAFC' } }, alignment: { horizontal: 'right', vertical: 'center' }, border: { top: { style: 'thin', color: { rgb: 'E2E8F0' } }, bottom: { style: 'thin', color: { rgb: 'E2E8F0' } }, left: { style: 'thin', color: { rgb: 'E2E8F0' } }, right: { style: 'thin', color: { rgb: 'E2E8F0' } } } };
@@ -575,11 +588,13 @@ const ConglomeradoPedidosPage: React.FC = () => {
     const rawRows: (string | number | null)[][] = [];
     rawRows.push([`Vista Completa por Categoría — ${semNombre}`, ...Array(nCols - 1).fill(null)]);
     rawRows.push(Array(nCols).fill(null));
-    rawRows.push(['Categoría', 'Producto', 'Unidad', ...diasNombres, 'Total Semana']);
+    rawRows.push(['Categoría', 'Producto', 'Asignatura', 'Unidad', ...diasNombres, 'Total Semana']);
     for (const cat of matrizCompleta) {
       rawRows.push([cat.nombre, ...Array(nCols - 1).fill(null)]);
       for (const row of cat.filas) {
-        rawRows.push([cat.nombre, row.nombreProducto, row.abreviatura, ...diasOrden.map(d => row.diasData[d]?.total ?? 0), row.totalSemana]);
+        const asigs = Array.from(prodAsignaturaMap.get(row.idProducto)?.entries() ?? []).sort(([a], [b]) => a.localeCompare(b));
+        for (const [asig, data] of asigs)
+          rawRows.push([cat.nombre, row.nombreProducto, asig, row.abreviatura, ...diasOrden.map(d => data.days[d] ?? 0), data.total]);
       }
       rawRows.push(Array(nCols).fill(null));
     }
@@ -595,7 +610,7 @@ const ConglomeradoPedidosPage: React.FC = () => {
     R = 2;
 
     // Encabezados
-    const headers = ['Categoría', 'Producto', 'Unidad', ...diasNombres, 'Total Semana'];
+    const headers = ['Categoría', 'Producto', 'Asignatura', 'Unidad', ...diasNombres, 'Total Semana'];
     headers.forEach((h, C) => { ws[XLSXStyle.utils.encode_cell({ r: R, c: C })] = sc(h, styleHeader); });
     R++;
 
@@ -607,12 +622,16 @@ const ConglomeradoPedidosPage: React.FC = () => {
       R++;
 
       for (const row of cat.filas) {
-        ws[XLSXStyle.utils.encode_cell({ r: R, c: 0 })] = sc(cat.nombre, styleSecRow);
-        ws[XLSXStyle.utils.encode_cell({ r: R, c: 1 })] = sc(row.nombreProducto, styleSecRow);
-        ws[XLSXStyle.utils.encode_cell({ r: R, c: 2 })] = sc(row.abreviatura, { ...styleSecNum, alignment: { horizontal: 'center', vertical: 'center' } });
-        diasOrden.forEach((dia, i) => { ws[XLSXStyle.utils.encode_cell({ r: R, c: 3 + i })] = sc(row.diasData[dia]?.total ?? 0, styleSecNum); });
-        ws[XLSXStyle.utils.encode_cell({ r: R, c: nCols - 1 })] = sf(`SUM(${cl(3)}${R+1}:${cl(3+diasOrden.length-1)}${R+1})`, row.totalSemana, styleNumHL);
-        R++;
+        const asigs = Array.from(prodAsignaturaMap.get(row.idProducto)?.entries() ?? []).sort(([a], [b]) => a.localeCompare(b));
+        for (const [asig, data] of asigs) {
+          ws[XLSXStyle.utils.encode_cell({ r: R, c: 0 })] = sc(cat.nombre, styleSecRow);
+          ws[XLSXStyle.utils.encode_cell({ r: R, c: 1 })] = sc(row.nombreProducto, styleSecRow);
+          ws[XLSXStyle.utils.encode_cell({ r: R, c: 2 })] = sc(asig, styleSecRow);
+          ws[XLSXStyle.utils.encode_cell({ r: R, c: 3 })] = sc(row.abreviatura, { ...styleSecNum, alignment: { horizontal: 'center', vertical: 'center' } });
+          diasOrden.forEach((dia, i) => { ws[XLSXStyle.utils.encode_cell({ r: R, c: 4 + i })] = sc(data.days[dia] ?? 0, styleSecNum); });
+          ws[XLSXStyle.utils.encode_cell({ r: R, c: nCols - 1 })] = sf(`SUM(${cl(4)}${R+1}:${cl(4+diasOrden.length-1)}${R+1})`, data.total, styleNumHL);
+          R++;
+        }
       }
 
       for (let C = 0; C < nCols; C++) ws[XLSXStyle.utils.encode_cell({ r: R, c: C })] = sc(null, { fill: { fgColor: { rgb: 'EDF2F7' } } });
@@ -623,7 +642,7 @@ const ConglomeradoPedidosPage: React.FC = () => {
     ws['!merges'] = merges;
     ws['!cols'] = autoColWidth(rawRows, 2);
     ws['!rows'] = [{ hpt: 28 }, {}, { hpt: 22 }];
-    ws['!freeze'] = { xSplit: 3, ySplit: 3 };
+    ws['!freeze'] = { xSplit: 4, ySplit: 3 };
 
     const wb = XLSXStyle.utils.book_new();
     XLSXStyle.utils.book_append_sheet(wb, ws, 'Vista Completa');
