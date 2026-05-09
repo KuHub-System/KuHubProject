@@ -1510,12 +1510,19 @@ const ConglomeradoPedidosPage: React.FC = () => {
                     ? `${productosUnificadosFiltrados.length} producto${productosUnificadosFiltrados.length !== 1 ? 's' : ''} totales`
                     : `${pedidosAprobFiltrados.length} pedido${pedidosAprobFiltrados.length !== 1 ? 's' : ''}`}
                 </span>
-                {cong_Editar && pedidosPendientes.length > 0 && (
-                  <Button size="sm" color="success" variant="flat" isLoading={isAprobando}
+                {cong_Editar && consolidateData?.pedidosAprobacion && (
+                  <Button
+                    size="sm"
+                    color={pedidosPendientes.length > 0 ? 'warning' : 'success'}
+                    variant="flat"
+                    isLoading={isAprobando}
                     onPress={handleAprobarTodos}
-                    className="ml-auto"
-                    startContent={!isAprobando && <Icon icon="lucide:check-circle" width={14} />}>
-                    Aprobar {pedidosPendientes.length} pendiente{pedidosPendientes.length > 1 ? 's' : ''}
+                    isDisabled={pedidosPendientes.length === 0}
+                    className={`ml-auto ${pedidosPendientes.length > 0 ? 'hover:bg-success hover:text-white' : ''}`}
+                    startContent={!isAprobando && <Icon icon={pedidosPendientes.length > 0 ? 'lucide:check-circle' : 'lucide:check-circle-2'} width={14} />}>
+                    {pedidosPendientes.length > 0
+                      ? `Aprobar ${pedidosPendientes.length} pendiente${pedidosPendientes.length > 1 ? 's' : ''}`
+                      : 'Aprobado'}
                   </Button>
                 )}
               </div>
