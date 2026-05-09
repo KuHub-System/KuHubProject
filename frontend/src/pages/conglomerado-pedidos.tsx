@@ -468,36 +468,30 @@ const ConglomeradoPedidosPage: React.FC = () => {
     const nombreDia = DIA_CONFIG[diaCategoria as number]?.nombre ?? 'Día';
     const semNombre = semanaActual?.nombreSemana ?? '';
 
-    // Clave: solo "asignatura" → columna única por asignatura
-    const todasAsignaturas = new Set<string>();
-    for (const cat of categoriasPorDia)
-      for (const prod of cat.productos)
-        for (const det of prod.detallesFiltrados)
-          todasAsignaturas.add(det.nombreAsignatura);
-    const asignaturas = Array.from(todasAsignaturas).sort();
-    const nCols = 3 + asignaturas.length + 1; // cat + prod + unidad + asignaturas + total
+    // Cols: Categoría | Producto | Asignatura | Unidad | Total Día
+    const nCols = 5;
 
-    // Helper: construye asignaturaMap para un producto
+    // Helper: construye asignaturaMap para un producto (asignatura → cantidad)
     const buildAsignaturaMap = (detallesFiltrados: Array<{ nombreAsignatura: string; nombreSeccion: string; cantidad: number }>) => {
       const m = new Map<string, number>();
-      for (const d of detallesFiltrados) {
+      for (const d of detallesFiltrados)
         m.set(d.nombreAsignatura, (m.get(d.nombreAsignatura) ?? 0) + d.cantidad);
-      }
       return m;
     };
 
     // ── Construir filas como arrays de valores (para autoColWidth) ──
     const rawRows: (string | number | null)[][] = [];
-    rawRows.push([`Por Categoría — ${nombreDia} — ${semNombre}`, ...Array(nCols - 1).fill(null)]);
-    rawRows.push(Array(nCols).fill(null));
-    rawRows.push(['Categoría', 'Producto', 'Unidad', ...asignaturas, 'Total Día']);
+    rawRows.push([`Por Categoría — ${nombreDia} — ${semNombre}`, null, null, null, null]);
+    rawRows.push([null, null, null, null, null]);
+    rawRows.push(['Categoría', 'Producto', 'Asignatura', 'Unidad', 'Total Día']);
     for (const cat of categoriasPorDia) {
-      rawRows.push([cat.nombreCategoria, ...Array(nCols - 1).fill(null)]);
+      rawRows.push([cat.nombreCategoria, null, null, null, null]);
       for (const prod of cat.productos) {
-        const am = buildAsignaturaMap(prod.detallesFiltrados);
-        rawRows.push([cat.nombreCategoria, prod.nombreProducto, prod.abreviatura, ...asignaturas.map(a => am.get(a) ?? 0), prod.totalDia]);
+        const asigs = Array.from(buildAsignaturaMap(prod.detallesFiltrados).entries()).sort(([a], [b]) => a.localeCompare(b));
+        for (const [asig, cantidad] of asigs)
+          rawRows.push([cat.nombreCategoria, prod.nombreProducto, asig, prod.abreviatura, cantidad]);
       }
-      rawRows.push(Array(nCols).fill(null));
+      rawRows.push([null, null, null, null, null]);
     }
 
     // ── Construir worksheet con estilos ──
@@ -512,7 +506,7 @@ const ConglomeradoPedidosPage: React.FC = () => {
     R = 2;
 
     // Fila encabezados
-    const headers = ['Categoría', 'Producto', 'Unidad', ...asignaturas, 'Total Día'];
+    const headers = ['Categoría', 'Producto', 'Asignatura', 'Unidad', 'Total Día'];
     headers.forEach((h, C) => { ws[XLSXStyle.utils.encode_cell({ r: R, c: C })] = sc(h, styleHeader); });
     R++;
 
@@ -526,19 +520,17 @@ const ConglomeradoPedidosPage: React.FC = () => {
 
       alt = false;
       for (const prod of cat.productos) {
-        const am = buildAsignaturaMap(prod.detallesFiltrados);
+        const asigs = Array.from(buildAsignaturaMap(prod.detallesFiltrados).entries()).sort(([a], [b]) => a.localeCompare(b));
         const sd = alt ? styleDataAlt : styleData;
         const sn = alt ? styleNumAlt : styleNum;
-        ws[XLSXStyle.utils.encode_cell({ r: R, c: 0 })] = sc(cat.nombreCategoria, sd);
-        ws[XLSXStyle.utils.encode_cell({ r: R, c: 1 })] = sc(prod.nombreProducto, sd);
-        ws[XLSXStyle.utils.encode_cell({ r: R, c: 2 })] = sc(prod.abreviatura, { ...sn, alignment: { horizontal: 'center', vertical: 'center' } });
-        asignaturas.forEach((a, i) => { ws[XLSXStyle.utils.encode_cell({ r: R, c: 3 + i })] = sc(am.get(a) ?? 0, sn); });
-        ws[XLSXStyle.utils.encode_cell({ r: R, c: nCols - 1 })] = sf(
-          `SUM(${cl(3)}${R + 1}:${cl(2 + asignaturas.length)}${R + 1})`,
-          prod.totalDia,
-          styleNumHL
-        );
-        R++;
+        for (const [asig, cantidad] of asigs) {
+          ws[XLSXStyle.utils.encode_cell({ r: R, c: 0 })] = sc(cat.nombreCategoria, sd);
+          ws[XLSXStyle.utils.encode_cell({ r: R, c: 1 })] = sc(prod.nombreProducto, sd);
+          ws[XLSXStyle.utils.encode_cell({ r: R, c: 2 })] = sc(asig, sd);
+          ws[XLSXStyle.utils.encode_cell({ r: R, c: 3 })] = sc(prod.abreviatura, { ...sn, alignment: { horizontal: 'center', vertical: 'center' } });
+          ws[XLSXStyle.utils.encode_cell({ r: R, c: 4 })] = sc(cantidad, styleNumHL);
+          R++;
+        }
         alt = !alt;
       }
 
@@ -551,7 +543,7 @@ const ConglomeradoPedidosPage: React.FC = () => {
     ws['!merges'] = merges;
     ws['!cols'] = autoColWidth(rawRows, 2);
     ws['!rows'] = [{ hpt: 28 }, {}, { hpt: 22 }];
-    ws['!freeze'] = { xSplit: 3, ySplit: 3 };
+    ws['!freeze'] = { xSplit: 4, ySplit: 3 };
 
     const wb = XLSXStyle.utils.book_new();
     XLSXStyle.utils.book_append_sheet(wb, ws, nombreDia.slice(0, 31));
