@@ -114,7 +114,7 @@ const ConglomeradoPedidosPage: React.FC = () => {
   const [busquedaCrono, setBusquedaCrono] = React.useState('');
   const [busquedaAprob, setBusquedaAprob] = React.useState('');
   const [expandidos,    setExpandidos]    = React.useState<Set<string>>(new Set());
-  const [vistaActiva,   setVistaActiva]   = React.useState<'categorias' | 'cronograma' | 'totales' | 'aprobacion'>('cronograma');
+  const [vistaActiva,   setVistaActiva]   = React.useState<'categorias' | 'cronograma' | 'totales' | 'aprobacion'>('aprobacion');
   const [aprobVista,    setAprobVista]    = React.useState<'unificado' | 'individual'>('unificado');
   const [isAprobando,   setIsAprobando]   = React.useState(false);
   const [diaCategoria,  setDiaCategoria]  = React.useState<number | 'completa'>(1);
