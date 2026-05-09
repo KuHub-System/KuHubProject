@@ -1510,19 +1510,16 @@ const ConglomeradoPedidosPage: React.FC = () => {
                     ? `${productosUnificadosFiltrados.length} producto${productosUnificadosFiltrados.length !== 1 ? 's' : ''} totales`
                     : `${pedidosAprobFiltrados.length} pedido${pedidosAprobFiltrados.length !== 1 ? 's' : ''}`}
                 </span>
-                {cong_Editar && consolidateData?.pedidosAprobacion && (
+                {cong_Editar && pedidosPendientes.length > 0 && (
                   <Button
                     size="sm"
-                    color={pedidosPendientes.length > 0 ? 'warning' : 'success'}
+                    color="warning"
                     variant="flat"
                     isLoading={isAprobando}
                     onPress={handleAprobarTodos}
-                    isDisabled={pedidosPendientes.length === 0}
-                    className={`ml-auto ${pedidosPendientes.length > 0 ? 'hover:bg-success hover:text-white' : ''}`}
-                    startContent={!isAprobando && <Icon icon={pedidosPendientes.length > 0 ? 'lucide:check-circle' : 'lucide:check-circle-2'} width={14} />}>
-                    {pedidosPendientes.length > 0
-                      ? `Aprobar ${pedidosPendientes.length} pendiente${pedidosPendientes.length > 1 ? 's' : ''}`
-                      : 'Aprobado'}
+                    className="ml-auto hover:bg-success hover:text-white transition-colors"
+                    startContent={!isAprobando && <Icon icon="lucide:check-circle" width={14} />}>
+                    Aprobar {pedidosPendientes.length} pendiente{pedidosPendientes.length > 1 ? 's' : ''}
                   </Button>
                 )}
               </div>
@@ -1537,17 +1534,27 @@ const ConglomeradoPedidosPage: React.FC = () => {
                 ) : (
                   <div className="border border-default-200 rounded-2xl overflow-hidden">
                     {/* Cabecera resumen */}
-                    <div className="flex items-center gap-3 px-5 py-3 bg-primary-50 border-b border-primary-100">
-                      <Icon icon="lucide:layers" width={18} className="text-primary" />
-                      <div className="flex-1">
-                        <p className="font-bold text-sm text-primary">Resumen Unificado de la Semana</p>
-                        <p className="text-xs text-default-500">
-                          {consolidateData?.pedidosAprobacion.length ?? 0} pedido{(consolidateData?.pedidosAprobacion.length ?? 0) !== 1 ? 's' : ''} combinados · {productosUnificadosFiltrados.length} productos
-                          {productosUnificadosFiltrados.some(p => p.diferenciaTransito < 0) && (
-                            <span className="text-danger ml-2 font-medium">· Faltantes detectados</span>
-                          )}
-                        </p>
+                    <div className={`flex flex-col sm:flex-row sm:items-center gap-3 px-5 py-3 ${
+                      pedidosPendientes.length === 0 ? 'bg-success-50 border-b border-success-200' : 'bg-primary-50 border-b border-primary-100'
+                    }`}>
+                      <div className="flex items-center gap-3 flex-1">
+                        <Icon icon="lucide:layers" width={18} className={pedidosPendientes.length === 0 ? 'text-success-600' : 'text-primary'} />
+                        <div>
+                          <p className={`font-bold text-sm ${pedidosPendientes.length === 0 ? 'text-success-700' : 'text-primary'}`}>Resumen Unificado de la Semana</p>
+                          <p className="text-xs text-default-500">
+                            {consolidateData?.pedidosAprobacion.length ?? 0} pedido{(consolidateData?.pedidosAprobacion.length ?? 0) !== 1 ? 's' : ''} combinados · {productosUnificadosFiltrados.length} productos
+                            {productosUnificadosFiltrados.some(p => p.diferenciaTransito < 0) && (
+                              <span className="text-danger ml-2 font-medium">· Faltantes detectados</span>
+                            )}
+                          </p>
+                        </div>
                       </div>
+                      {pedidosPendientes.length === 0 && (
+                        <Chip size="sm" color="success" variant="flat"
+                          startContent={<Icon icon="lucide:check-circle-2" width={10} />}>
+                          Aprobado
+                        </Chip>
+                      )}
                     </div>
 
                     {/* Tabla encabezado */}
