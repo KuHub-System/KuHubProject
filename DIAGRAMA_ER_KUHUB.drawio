@@ -1,0 +1,222 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxfile host="drawio" modified="2026-05-12" version="24.0.0" type="device">
+  <diagram id="ER-KuHub-v1" name="ER KuHub">
+    <mxGraphModel dx="1400" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1900" pageHeight="1200" background="#ffffff" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- MÓDULO SEGURIDAD -->
+        <mxCell id="rol" value="rol" style="text;html=1;fontSize=12;fontStyle=bold;align=center;fillColor=#e1d5e7;strokeColor=#9673a6;rounded=0;arcSize=50;whiteSpace=wrap;overflow=hidden;" vertex="1" parent="1">
+          <mxGeometry x="50" y="50" width="120" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="rol_detail" value="&lt;b&gt;Tabla: rol&lt;/b&gt;&lt;br/&gt;PK: id_rol (SERIAL)&lt;br/&gt;nombre_rol (tipo_rol_type)&lt;br/&gt;activo (BOOLEAN)" style="text;html=1;fontSize=10;align=left;fillColor=#f0f0f0;strokeColor=#666;rounded=1;whiteSpace=wrap;overflow=hidden;" vertex="1" parent="1">
+          <mxGeometry x="30" y="85" width="160" height="80" as="geometry" />
+        </mxCell>
+
+        <mxCell id="usuario" value="usuario" style="text;html=1;fontSize=12;fontStyle=bold;align=center;fillColor=#e1d5e7;strokeColor=#9673a6;rounded=0;arcSize=50;whiteSpace=wrap;overflow=hidden;" vertex="1" parent="1">
+          <mxGeometry x="50" y="200" width="120" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="usuario_detail" value="&lt;b&gt;Tabla: usuario&lt;/b&gt;&lt;br/&gt;PK: id_usuario (INT IDENTITY)&lt;br/&gt;FK: id_rol → rol&lt;br/&gt;email (VARCHAR 75, UNIQUE)&lt;br/&gt;username (VARCHAR 50, UNIQUE)&lt;br/&gt;contrasena (VARCHAR 60, Bcrypt)" style="text;html=1;fontSize=10;align=left;fillColor=#f0f0f0;strokeColor=#666;rounded=1;whiteSpace=wrap;overflow=hidden;" vertex="1" parent="1">
+          <mxGeometry x="30" y="235" width="200" height="100" as="geometry" />
+        </mxCell>
+
+        <!-- RELACIÓN rol → usuario (1:N) -->
+        <mxCell id="rel_rol_usuario" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;startArrow=ERoneToMany;endArrow=none;" edge="1" parent="1" source="rol" target="usuario">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- MÓDULO ACADÉMICO -->
+        <mxCell id="asignatura" value="asignatura" style="text;html=1;fontSize=12;fontStyle=bold;align=center;fillColor=#dae8fc;strokeColor=#6c8ebf;rounded=0;arcSize=50;whiteSpace=wrap;overflow=hidden;" vertex="1" parent="1">
+          <mxGeometry x="350" y="50" width="120" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="asignatura_detail" value="&lt;b&gt;Tabla: asignatura&lt;/b&gt;&lt;br/&gt;PK: id_asignatura (INT IDENTITY)&lt;br/&gt;cod_asignatura (VARCHAR 50, UNIQUE)&lt;br/&gt;nombre_asignatura (VARCHAR 100)&lt;br/&gt;descripcion (VARCHAR 250)&lt;br/&gt;activo (BOOLEAN)" style="text;html=1;fontSize=10;align=left;fillColor=#f0f0f0;strokeColor=#666;rounded=1;whiteSpace=wrap;overflow=hidden;" vertex="1" parent="1">
+          <mxGeometry x="300" y="85" width="220" height="100" as="geometry" />
+        </mxCell>
+
+        <mxCell id="seccion" value="seccion" style="text;html=1;fontSize=12;fontStyle=bold;align=center;fillColor=#dae8fc;strokeColor=#6c8ebf;rounded=0;arcSize=50;whiteSpace=wrap;overflow=hidden;" vertex="1" parent="1">
+          <mxGeometry x="350" y="200" width="120" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="seccion_detail" value="&lt;b&gt;Tabla: seccion&lt;/b&gt;&lt;br/&gt;PK: id_seccion (INT IDENTITY)&lt;br/&gt;FK: id_asignatura → asignatura&lt;br/&gt;nombre_seccion (VARCHAR 100)&lt;br/&gt;capacidad_max, cant_inscritos&lt;br/&gt;estado_seccion (ENUM)" style="text;html=1;fontSize=10;align=left;fillColor=#f0f0f0;strokeColor=#666;rounded=1;whiteSpace=wrap;overflow=hidden;" vertex="1" parent="1">
+          <mxGeometry x="300" y="235" width="220" height="100" as="geometry" />
+        </mxCell>
+
+        <!-- RELACIÓN asignatura → seccion (1:N) -->
+        <mxCell id="rel_asig_seccion" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;startArrow=ERoneToMany;endArrow=none;" edge="1" parent="1" source="asignatura" target="seccion">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="bloque_horario" value="bloque_horario" style="text;html=1;fontSize=12;fontStyle=bold;align=center;fillColor=#dae8fc;strokeColor=#6c8ebf;rounded=0;arcSize=50;whiteSpace=wrap;overflow=hidden;" vertex="1" parent="1">
+          <mxGeometry x="650" y="50" width="120" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="bloque_detail" value="&lt;b&gt;Tabla: bloque_horario&lt;/b&gt;&lt;br/&gt;PK: id_bloque (INT IDENTITY)&lt;br/&gt;numero_bloque (INT, UNIQUE)&lt;br/&gt;hora_inicio, hora_fin (TIME)&lt;br/&gt;CHECK: inicio &lt; fin" style="text;html=1;fontSize=10;align=left;fillColor=#f0f0f0;strokeColor=#666;rounded=1;whiteSpace=wrap;overflow=hidden;" vertex="1" parent="1">
+          <mxGeometry x="600" y="85" width="220" height="100" as="geometry" />
+        </mxCell>
+
+        <mxCell id="reserva_sala" value="reserva_sala" style="text;html=1;fontSize=12;fontStyle=bold;align=center;fillColor=#dae8fc;strokeColor=#6c8ebf;rounded=0;arcSize=50;whiteSpace=wrap;overflow=hidden;" vertex="1" parent="1">
+          <mxGeometry x="650" y="200" width="120" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="reserva_detail" value="&lt;b&gt;Tabla: reserva_sala&lt;/b&gt;&lt;br/&gt;PK: id_reserva_sala (INT IDENTITY)&lt;br/&gt;FK: id_seccion → seccion&lt;br/&gt;FK: id_sala → sala&lt;br/&gt;FK: id_bloque → bloque_horario&lt;br/&gt;dia_semana (ENUM)" style="text;html=1;fontSize=10;align=left;fillColor=#f0f0f0;strokeColor=#666;rounded=1;whiteSpace=wrap;overflow=hidden;" vertex="1" parent="1">
+          <mxGeometry x="600" y="235" width="220" height="100" as="geometry" />
+        </mxCell>
+
+        <!-- RELACIÓN seccion → reserva_sala (1:N) -->
+        <mxCell id="rel_seccion_reserva" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;startArrow=ERoneToMany;endArrow=none;" edge="1" parent="1" source="seccion" target="reserva_sala">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- RELACIÓN bloque_horario → reserva_sala (1:N) -->
+        <mxCell id="rel_bloque_reserva" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;startArrow=ERoneToMany;endArrow=none;" edge="1" parent="1" source="bloque_horario" target="reserva_sala">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="sala" value="sala" style="text;html=1;fontSize=12;fontStyle=bold;align=center;fillColor=#dae8fc;strokeColor=#6c8ebf;rounded=0;arcSize=50;whiteSpace=wrap;overflow=hidden;" vertex="1" parent="1">
+          <mxGeometry x="850" y="50" width="120" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="sala_detail" value="&lt;b&gt;Tabla: sala&lt;/b&gt;&lt;br/&gt;PK: id_sala (INT IDENTITY)&lt;br/&gt;cod_sala (VARCHAR 50, UNIQUE)&lt;br/&gt;nombre_sala (VARCHAR 100)&lt;br/&gt;activo (BOOLEAN)" style="text;html=1;fontSize=10;align=left;fillColor=#f0f0f0;strokeColor=#666;rounded=1;whiteSpace=wrap;overflow=hidden;" vertex="1" parent="1">
+          <mxGeometry x="800" y="85" width="220" height="80" as="geometry" />
+        </mxCell>
+
+        <!-- RELACIÓN sala → reserva_sala (1:N) -->
+        <mxCell id="rel_sala_reserva" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;startArrow=ERoneToMany;endArrow=none;" edge="1" parent="1" source="sala" target="reserva_sala">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- MÓDULO INVENTARIO -->
+        <mxCell id="categoria" value="categoria" style="text;html=1;fontSize=12;fontStyle=bold;align=center;fillColor=#d5e8d4;strokeColor=#82b366;rounded=0;arcSize=50;whiteSpace=wrap;overflow=hidden;" vertex="1" parent="1">
+          <mxGeometry x="50" y="450" width="120" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="categoria_detail" value="&lt;b&gt;Tabla: categoria&lt;/b&gt;&lt;br/&gt;PK: id_categoria (SMALLINT IDENTITY)&lt;br/&gt;nombre_categoria (VARCHAR 50, UNIQUE)&lt;br/&gt;activo (BOOLEAN)" style="text;html=1;fontSize=10;align=left;fillColor=#f0f0f0;strokeColor:#666;rounded=1;whiteSpace=wrap;overflow=hidden;" vertex="1" parent="1">
+          <mxGeometry x="30" y="485" width="200" height="80" as="geometry" />
+        </mxCell>
+
+        <mxCell id="unidad_medida" value="unidad_medida" style="text;html=1;fontSize=12;fontStyle=bold;align=center;fillColor=#d5e8d4;strokeColor=#82b366;rounded=0;arcSize=50;whiteSpace=wrap;overflow=hidden;" vertex="1" parent="1">
+          <mxGeometry x="300" y="450" width="120" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="unidad_detail" value="&lt;b&gt;Tabla: unidad_medida&lt;/b&gt;&lt;br/&gt;PK: id_unidad (SMALLINT IDENTITY)&lt;br/&gt;nombre_unidad (VARCHAR 30, UNIQUE)&lt;br/&gt;abreviatura (VARCHAR 10, UNIQUE)&lt;br/&gt;es_fraccionario (BOOLEAN)" style="text;html=1;fontSize=10;align=left;fillColor=#f0f0f0;strokeColor:#666;rounded=1;whiteSpace=wrap;overflow=hidden;" vertex="1" parent="1">
+          <mxGeometry x="250" y="485" width="220" height="100" as="geometry" />
+        </mxCell>
+
+        <mxCell id="producto" value="producto" style="text;html=1;fontSize=12;fontStyle=bold;align=center;fillColor=#d5e8d4;strokeColor=#82b366;rounded=0;arcSize=50;whiteSpace=wrap;overflow=hidden;" vertex="1" parent="1">
+          <mxGeometry x="200" y="620" width="120" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="producto_detail" value="&lt;b&gt;Tabla: producto&lt;/b&gt;&lt;br/&gt;PK: id_producto (INT IDENTITY)&lt;br/&gt;FK: id_categoria → categoria&lt;br/&gt;FK: id_unidad → unidad_medida&lt;br/&gt;nombre_producto (VARCHAR 100, UNIQUE)&lt;br/&gt;cod_producto (VARCHAR 25)&lt;br/&gt;descripcion, es_fraccionario, activo" style="text;html=1;fontSize=10;align=left;fillColor=#f0f0f0;strokeColor:#666;rounded=1;whiteSpace=wrap;overflow=hidden;" vertex="1" parent="1">
+          <mxGeometry x="100" y="655" width="240" height="120" as="geometry" />
+        </mxCell>
+
+        <!-- RELACIÓN categoria → producto (1:N) -->
+        <mxCell id="rel_cat_prod" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;startArrow=ERoneToMany;endArrow=none;" edge="1" parent="1" source="categoria" target="producto">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- RELACIÓN unidad_medida → producto (1:N) -->
+        <mxCell id="rel_unidad_prod" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;startArrow=ERoneToMany;endArrow=none;" edge="1" parent="1" source="unidad_medida" target="producto">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="inventario" value="inventario" style="text;html=1;fontSize=12;fontStyle=bold;align=center;fillColor=#d5e8d4;strokeColor=#82b366;rounded=0;arcSize=50;whiteSpace=wrap;overflow=hidden;" vertex="1" parent="1">
+          <mxGeometry x="500" y="620" width="120" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="inventario_detail" value="&lt;b&gt;Tabla: inventario&lt;/b&gt;&lt;br/&gt;PK: id_inventario (INT IDENTITY)&lt;br/&gt;FK: id_producto → producto (1:1)&lt;br/&gt;stock (NUMERIC 10.3)&lt;br/&gt;stock_limit (NUMERIC 10.3)&lt;br/&gt;activo (BOOLEAN)&lt;br/&gt;UNIQUE(id_producto)" style="text;html=1;fontSize=10;align=left;fillColor=#f0f0f0;strokeColor:#666;rounded=1;whiteSpace=wrap;overflow=hidden;" vertex="1" parent="1">
+          <mxGeometry x="400" y="655" width="240" height="120" as="geometry" />
+        </mxCell>
+
+        <!-- RELACIÓN producto → inventario (1:1) -->
+        <mxCell id="rel_prod_inv" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;startArrow=ERone;endArrow=ERone;" edge="1" parent="1" source="producto" target="inventario">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="bodega_transito" value="bodega_transito" style="text;html=1;fontSize=12;fontStyle=bold;align=center;fillColor=#d5e8d4;strokeColor=#82b366;rounded=0;arcSize=50;whiteSpace=wrap;overflow=hidden;" vertex="1" parent="1">
+          <mxGeometry x="800" y="620" width="120" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="bodega_detail" value="&lt;b&gt;Tabla: bodega_transito&lt;/b&gt;&lt;br/&gt;PK: id_bodega_transito (INT IDENTITY)&lt;br/&gt;FK: id_inventario → inventario (1:1)&lt;br/&gt;stock (NUMERIC 10.3)&lt;br/&gt;stock_limit (NUMERIC 10.3)&lt;br/&gt;activo (BOOLEAN)&lt;br/&gt;UNIQUE(id_inventario)" style="text;html=1;fontSize=10;align=left;fillColor=#f0f0f0;strokeColor:#666;rounded=1;whiteSpace=wrap;overflow=hidden;" vertex="1" parent="1">
+          <mxGeometry x="700" y="655" width="240" height="120" as="geometry" />
+        </mxCell>
+
+        <!-- RELACIÓN inventario → bodega_transito (1:1) -->
+        <mxCell id="rel_inv_bodega" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;startArrow=ERone;endArrow=ERone;" edge="1" parent="1" source="inventario" target="bodega_transito">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="movimiento" value="movimiento*" style="text;html=1;fontSize=12;fontStyle=bold;align=center;fillColor=#ffe6cc;strokeColor=#d79b00;rounded=0;arcSize=50;whiteSpace=wrap;overflow=hidden;" vertex="1" parent="1">
+          <mxGeometry x="650" y="800" width="120" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="movimiento_detail" value="&lt;b&gt;Tabla: movimiento&lt;/b&gt;&lt;br/&gt;(PARTICIONADA por SEMESTRE)&lt;br/&gt;PK: (id_movimiento, fecha_movimiento)&lt;br/&gt;FK: id_inventario → inventario&lt;br/&gt;FK: id_bodega_transito → bodega_transito&lt;br/&gt;FK: id_usuario → usuario&lt;br/&gt;stock_movimiento, tipo_movimiento(E)&lt;br/&gt;fecha_movimiento, observacion" style="text;html=1;fontSize=10;align=left;fillColor=#ffe6f0;strokeColor:#d79b00;rounded=1;whiteSpace=wrap;overflow=hidden;" vertex="1" parent="1">
+          <mxGeometry x="550" y="835" width="280" height="120" as="geometry" />
+        </mxCell>
+
+        <!-- RELACIÓN inventario → movimiento (1:N) -->
+        <mxCell id="rel_inv_mov" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;startArrow=ERoneToMany;endArrow=none;" edge="1" parent="1" source="inventario" target="movimiento">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- RELACIÓN bodega_transito → movimiento (1:N) -->
+        <mxCell id="rel_bodega_mov" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;startArrow=ERoneToMany;endArrow=none;" edge="1" parent="1" source="bodega_transito" target="movimiento">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- RELACIÓN usuario → movimiento (1:N) -->
+        <mxCell id="rel_usuario_mov" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;startArrow=ERoneToMany;endArrow=none;" edge="1" parent="1" source="usuario" target="movimiento">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- MÓDULO PROVEEDORES -->
+        <mxCell id="proveedor" value="proveedor" style="text;html=1;fontSize=12;fontStyle=bold;align=center;fillColor=#f8cecc;strokeColor=#b85450;rounded=0;arcSize=50;whiteSpace=wrap;overflow=hidden;" vertex="1" parent="1">
+          <mxGeometry x="1100" y="200" width="120" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="proveedor_detail" value="&lt;b&gt;Tabla: proveedor&lt;/b&gt;&lt;br/&gt;PK: id_proveedor (INT IDENTITY)&lt;br/&gt;rut_proveedor (VARCHAR 13, UNIQUE)&lt;br/&gt;nombre_proveedor, nombre_distribuidora&lt;br/&gt;telefono, email&lt;br/&gt;estado_proveedor (ENUM)&lt;br/&gt;activo (BOOLEAN)" style="text;html=1;fontSize=10;align=left;fillColor=#f0f0f0;strokeColor:#666;rounded=1;whiteSpace=wrap;overflow=hidden;" vertex="1" parent="1">
+          <mxGeometry x="1000" y="235" width="240" height="120" as="geometry" />
+        </mxCell>
+
+        <mxCell id="proveedor_producto" value="proveedor_producto" style="text;html=1;fontSize=12;fontStyle=bold;align=center;fillColor=#f8cecc;strokeColor=#b85450;rounded=0;arcSize=50;whiteSpace=wrap;overflow=hidden;" vertex="1" parent="1">
+          <mxGeometry x="1100" y="450" width="120" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="prov_prod_detail" value="&lt;b&gt;Tabla: proveedor_producto&lt;/b&gt;&lt;br/&gt;(M:M Puente)&lt;br/&gt;PK: id_proveedor_producto (BIGINT)&lt;br/&gt;FK: id_proveedor → proveedor&lt;br/&gt;FK: id_producto → producto&lt;br/&gt;precio_producto (NUMERIC 12.2)&lt;br/&gt;activo (BOOLEAN)&lt;br/&gt;UNIQUE(proveedor, producto)" style="text;html=1;fontSize=10;align=left;fillColor=#f0f0f0;strokeColor:#666;rounded=1;whiteSpace=wrap;overflow=hidden;" vertex="1" parent="1">
+          <mxGeometry x="1000" y="485" width="240" height="120" as="geometry" />
+        </mxCell>
+
+        <!-- RELACIÓN proveedor → proveedor_producto (1:N) -->
+        <mxCell id="rel_prov_pp" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;startArrow=ERoneToMany;endArrow=none;" edge="1" parent="1" source="proveedor" target="proveedor_producto">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- RELACIÓN producto → proveedor_producto (1:N) -->
+        <mxCell id="rel_prod_pp" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;startArrow=ERoneToMany;endArrow=none;" edge="1" parent="1" source="producto" target="proveedor_producto">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="proveedor_dia_entrega" value="proveedor_dia_entrega" style="text;html=1;fontSize=12;fontStyle=bold;align=center;fillColor=#f8cecc;strokeColor=#b85450;rounded=0;arcSize=50;whiteSpace=wrap;overflow=hidden;" vertex="1" parent="1">
+          <mxGeometry x="1100" y="650" width="120" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="prov_dia_detail" value="&lt;b&gt;Tabla: proveedor_dia_entrega&lt;/b&gt;&lt;br/&gt;PK: id_dia_entrega (INT IDENTITY)&lt;br/&gt;FK: id_proveedor → proveedor&lt;br/&gt;dia_semana (ENUM)&lt;br/&gt;hora_inicio_entrega, hora_fin_entrega&lt;br/&gt;CHECK: inicio &lt; fin&lt;br/&gt;UNIQUE(proveedor, dia_semana)" style="text;html=1;fontSize=10;align=left;fillColor=#f0f0f0;strokeColor:#666;rounded=1;whiteSpace=wrap;overflow=hidden;" vertex="1" parent="1">
+          <mxGeometry x="1000" y="685" width="240" height="120" as="geometry" />
+        </mxCell>
+
+        <!-- RELACIÓN proveedor → proveedor_dia_entrega (1:N) -->
+        <mxCell id="rel_prov_dia" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;startArrow=ERoneToMany;endArrow=none;" edge="1" parent="1" source="proveedor" target="proveedor_dia_entrega">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- LEYENDA -->
+        <mxCell id="legend" value="&lt;b&gt;LEYENDA&lt;/b&gt;&lt;br/&gt;─── 1:1 (one-to-one)&lt;br/&gt;─→ 1:N (one-to-many)&lt;br/&gt;═── M:M (many-to-many vía tabla puente)&lt;br/&gt;* = Tabla particionada por semestre" style="text;html=1;fontSize=10;align=left;fillColor=#ffff99;strokeColor=#9999ff;rounded=1;whiteSpace=wrap;overflow=hidden;" vertex="1" parent="1">
+          <mxGeometry x="50" y="1000" width="250" height="120" as="geometry" />
+        </mxCell>
+
+        <!-- MÓDULOS INFO -->
+        <mxCell id="module_info" value="&lt;b&gt;MÓDULOS DEL SISTEMA&lt;/b&gt;&lt;br/&gt;🔐 Seguridad (Rojo-Rosa)&lt;br/&gt;🎓 Académico (Azul)&lt;br/&gt;📦 Inventario (Verde)&lt;br/&gt;🚚 Proveedores (Coral)&lt;br/&gt;⏰ Configuración (Amarillo)" style="text;html=1;fontSize=10;align=left;fillColor=#f0f0f0;strokeColor=#666;rounded=1;whiteSpace=wrap;overflow=hidden;" vertex="1" parent="1">
+          <mxGeometry x="350" y="1000" width="250" height="120" as="geometry" />
+        </mxCell>
+
+        <!-- NOTA SOBRE SEMANAS Y CONFIGURACIÓN -->
+        <mxCell id="config_note" value="&lt;b&gt;TABLAS COMPLEMENTARIAS&lt;/b&gt;&lt;br/&gt;• gestion_sistema: Configuración global&lt;br/&gt;• semanas: Períodos académicos&lt;br/&gt;• refresh_token: JWT tokens&lt;br/&gt;• docente_seccion: Asignación docentes (M:M)&lt;br/&gt;• asignatura_profesor_cargo: Profesor a cargo (M:M)&lt;br/&gt;• modulo, permiso_rol: Sistema de permisos" style="text;html=1;fontSize=10;align=left;fillColor=#e8f4f8;strokeColor=#0077d8;rounded=1;whiteSpace=wrap;overflow=hidden;" vertex="1" parent="1">
+          <mxGeometry x="650" y="1000" width="280" height="120" as="geometry" />
+        </mxCell>
+
+        <!-- NOTA SOBRE SOLICITUDES Y PEDIDOS -->
+        <mxCell id="solicitud_note" value="&lt;b&gt;MÓDULOS DE SOLICITUDES/PEDIDOS&lt;/b&gt;&lt;br/&gt;(Ver documento DIAGRAMA_ER_KUHUB.md)&lt;br/&gt;• solicitud: Solicitudes de insumos&lt;br/&gt;• detalle_solicitud: Items de solicitud&lt;br/&gt;• pedido: Pedidos operativos&lt;br/&gt;• detalle_pedido: Items de pedido&lt;br/&gt;• pedido_solicitud: M:M solicitud-pedido&lt;br/&gt;• pedido_semana_bodega: Recetas/plantillas" style="text;html=1;fontSize=10;align=left;fillColor=#f0e6f0;strokeColor=#9933ff;rounded=1;whiteSpace=wrap;overflow=hidden;" vertex="1" parent="1">
+          <mxGeometry x="980" y="1000" width="280" height="120" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
