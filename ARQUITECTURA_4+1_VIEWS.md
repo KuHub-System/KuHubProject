@@ -2284,12 +2284,7 @@ Descargar y editar: **`diagramas/5_vista_escenarios.drawio`**
 
 ---
 
-## 📄 Referencias
-
-- **Archivo de módulos y pantallas**: `MODULOS_Y_PANTALLAS.md`
-- **Documentación de desarrollo**: `backend/CLAUDE.md`, `frontend/CLAUDE.md`
-- **Convenciones globales**: `CLAUDE.md`
-
 **Última actualización**: 12 de mayo de 2026  
 **Responsable**: Equipo de Arquitectura  
 **Versión**: 1.0.0
+
