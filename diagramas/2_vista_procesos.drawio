@@ -1,0 +1,128 @@
+<mxfile host="drawio" modified="2026-05-12" agent="Claude" version="14.0.0" type="device">
+  <diagram name="Vista de Procesos - KuHub" id="KuHub_Process_View">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="900" background="white" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <mxCell id="title" value="FLUJO PRINCIPAL: Docente Solicita → Gestor Consolida → Bodega Recibe" style="text;fontSize=16;fontStyle=bold;fillColor=#ffeeaa;rounded=1;" vertex="1" parent="1">
+          <mxGeometry x="50" y="20" width="800" height="40" as="geometry"/>
+        </mxCell>
+
+        <!-- Lane 1: Docente -->
+        <mxCell id="lane1" value="Docente" style="swimlane;html=1;startSize=30;" vertex="1" parent="1">
+          <mxGeometry x="50" y="80" width="200" height="700" as="geometry"/>
+        </mxCell>
+
+        <!-- Lane 2: Frontend -->
+        <mxCell id="lane2" value="Frontend" style="swimlane;html=1;startSize=30;" vertex="1" parent="1">
+          <mxGeometry x="250" y="80" width="200" height="700" as="geometry"/>
+        </mxCell>
+
+        <!-- Lane 3: Backend -->
+        <mxCell id="lane3" value="Backend (Service)" style="swimlane;html=1;startSize=30;" vertex="1" parent="1">
+          <mxGeometry x="450" y="80" width="200" height="700" as="geometry"/>
+        </mxCell>
+
+        <!-- Lane 4: Database -->
+        <mxCell id="lane4" value="PostgreSQL" style="swimlane;html=1;startSize=30;" vertex="1" parent="1">
+          <mxGeometry x="650" y="80" width="200" height="700" as="geometry"/>
+        </mxCell>
+
+        <!-- Paso 1 -->
+        <mxCell id="step1" value="Accede /solicitud" style="rounded=1;fillColor=#ffffcc;whiteSpace=wrap;" vertex="1" parent="lane1">
+          <mxGeometry x="10" y="100" width="180" height="40" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="arrow1" edge="1" parent="1" source="step1" target="step2">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Paso 2 -->
+        <mxCell id="step2" value="Carga asignaturas\nGET /asignaturas/docente" style="rounded=1;fillColor=#cce5ff;whiteSpace=wrap;" vertex="1" parent="lane2">
+          <mxGeometry x="260" y="100" width="180" height="50" as="geometry"/>
+        </mxCell>
+
+        <!-- Paso 3 -->
+        <mxCell id="step3" value="Valida JWT token\nVerifica permiso" style="rounded=1;fillColor=#e6ccff;whiteSpace=wrap;" vertex="1" parent="lane3">
+          <mxGeometry x="460" y="100" width="180" height="50" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="arrow2" edge="1" parent="1" source="step3" target="step4">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Paso 4 -->
+        <mxCell id="step4" value="SELECT asignaturas\nWHERE docente_id=X" style="rounded=1;fillColor=#ffcccc;whiteSpace=wrap;" vertex="1" parent="lane4">
+          <mxGeometry x="660" y="100" width="180" height="50" as="geometry"/>
+        </mxCell>
+
+        <!-- Paso 5: Selecciona -->
+        <mxCell id="step5" value="Selecciona:\nAsignatura → Sección → Receta" style="rounded=1;fillColor=#ffffcc;whiteSpace=wrap;" vertex="1" parent="lane1">
+          <mxGeometry x="10" y="200" width="180" height="60" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="arrow3" edge="1" parent="1" source="step5" target="step6">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxGeometry>
+        </mxCell>
+
+        <!-- Paso 6: Calcula -->
+        <mxCell id="step6" value="Obtiene productos receta\nGET /recetas/ID/productos" style="rounded=1;fillColor=#cce5ff;whiteSpace=wrap;" vertex="1" parent="lane2">
+          <mxGeometry x="260" y="220" width="180" height="50" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="arrow4" edge="1" parent="1" source="step6" target="step7">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Paso 7 -->
+        <mxCell id="step7" value="Calcula:\nreceta × inscritos / porción" style="rounded=1;fillColor=#e6ccff;whiteSpace=wrap;" vertex="1" parent="lane3">
+          <mxGeometry x="460" y="220" width="180" height="50" as="geometry"/>
+        </mxCell>
+
+        <!-- Paso 8: Revisa y envía -->
+        <mxCell id="step8" value="Revisa tabla\nAjusta cantidades" style="rounded=1;fillColor=#ffffcc;whiteSpace=wrap;" vertex="1" parent="lane1">
+          <mxGeometry x="10" y="320" width="180" height="50" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="arrow5" edge="1" parent="1" source="step8" target="step9">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Paso 9 -->
+        <mxCell id="step9" value="Envía solicitud\nPOST /solicitudes" style="rounded=1;fillColor=#cce5ff;whiteSpace=wrap;" vertex="1" parent="lane2">
+          <mxGeometry x="260" y="330" width="180" height="50" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="arrow6" edge="1" parent="1" source="step9" target="step10">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Paso 10 -->
+        <mxCell id="step10" value="Valida + procesa\nCrea solicitud" style="rounded=1;fillColor=#e6ccff;whiteSpace=wrap;" vertex="1" parent="lane3">
+          <mxGeometry x="460" y="330" width="180" height="50" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="arrow7" edge="1" parent="1" source="step10" target="step11">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Paso 11 -->
+        <mxCell id="step11" value="INSERT Solicitud\nINSERT DetalleSolicitud" style="rounded=1;fillColor=#ffcccc;whiteSpace=wrap;" vertex="1" parent="lane4">
+          <mxGeometry x="660" y="330" width="180" height="50" as="geometry"/>
+        </mxCell>
+
+        <!-- Paso 12: Confirmación -->
+        <mxCell id="step12" value="✅ Solicitud guardada\nEstado: PENDIENTE" style="rounded=1;fillColor=#ccffcc;whiteSpace=wrap;" vertex="1" parent="lane1">
+          <mxGeometry x="10" y="450" width="180" height="50" as="geometry"/>
+        </mxCell>
+
+        <!-- Nota -->
+        <mxCell id="note" value="Nota: El gestor luego verá esta solicitud en /gestion-solicitudes&#10;y podrá aceptarla o rechazarla. Las aceptadas se consolidan en un pedido." style="text;fontSize=9;fillColor=#ffffee;rounded=1;border=1;" vertex="1" parent="1">
+          <mxGeometry x="50" y="750" width="800" height="50" as="geometry"/>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
