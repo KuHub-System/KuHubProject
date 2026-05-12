@@ -1,0 +1,180 @@
+<mxfile host="drawio" modified="2026-05-12" agent="Claude" version="14.0.0" type="device">
+  <diagram name="Vista Lógica - KuHub [DATOS REALES]" id="KuHub_Logical_View_Real">
+    <mxGraphModel dx="1400" dy="1000" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="1200" background="white" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <mxCell id="title" value="VISTA LÓGICA - KUHUB (DATOS REALES DEL PROYECTO)" style="text;fontSize=13;fontStyle=bold;fillColor=#ffdd99;rounded=1;strokeColor=#cc8800;" vertex="1" parent="1">
+          <mxGeometry x="50" y="20" width="1100" height="35" as="geometry"/>
+        </mxCell>
+
+        <!-- CLIENTE -->
+        <mxCell id="client_box" value="📱 CLIENTE" style="swimlane;html=1;startSize=30;fillColor=#f5f5f5;" vertex="1" parent="1">
+          <mxGeometry x="50" y="75" width="200" height="120" as="geometry"/>
+        </mxCell>
+        <mxCell id="browser" value="Navegador\nChrome/Safari/Firefox" style="rounded=1;fillColor:#cce5ff;strokeColor=#0066cc;" vertex="1" parent="client_box">
+          <mxGeometry x="20" y="40" width="160" height="60" as="geometry"/>
+        </mxCell>
+
+        <!-- FRONTEND (React 18 + TypeScript) -->
+        <mxCell id="frontend_box" value="🖥️ FRONTEND (React 18 + TypeScript + Vite)" style="swimlane;html=1;startSize=30;fillColor:#f5f5f5;" vertex="1" parent="1">
+          <mxGeometry x="50" y="225" width="1100" height="280" as="geometry"/>
+        </mxCell>
+
+        <!-- Pages Row -->
+        <mxCell id="pages_label" value="📄 PAGES (18):" style="text;fontSize=11;fontStyle=bold;fillColor=#ffffee;" vertex="1" parent="frontend_box">
+          <mxGeometry x="10" y="40" width="80" height="20" as="geometry"/>
+        </mxCell>
+        <mxCell id="pages_list" value="login • dashboard • admin-sistema • inventario • gestion-solicitudes • gestion-pedidos • gestion-usuarios • gestion-roles • gestion-academica • gestion-proveedores • bodega-transito • movimientos-producto • conglomerado-pedidos • historico-pedidos • pedido-semanal-a-bodega • perfil-usuario • solicitud • not-found" style="rounded=1;fillColor=#ffffcc;fontSize=9;align=left;whiteSpace=wrap;" vertex="1" parent="frontend_box">
+          <mxGeometry x="100" y="35" width="980" height="40" as="geometry"/>
+        </mxCell>
+
+        <!-- Components Row -->
+        <mxCell id="components_label" value="⚛️ COMPONENTS:" style="text;fontSize=11;fontStyle=bold;fillColor=#ffffee;" vertex="1" parent="frontend_box">
+          <mxGeometry x="10" y="85" width="80" height="20" as="geometry"/>
+        </mxCell>
+        <mxCell id="components_list" value="ErrorBoundary • dashboard/ (DashboardInventarioView, DashboardGestor, DashboardRecetasView) • modals/ (ComprobacionModal, CotizacionModal, FinProcesoModal) • shared/ (EstadoSolicitudChip, etc.)" style="rounded=1;fillColor:#ffffcc;fontSize=9;align=left;whiteSpace=wrap;" vertex="1" parent="frontend_box">
+          <mxGeometry x="100" y="80" width="980" height="40" as="geometry"/>
+        </mxCell>
+
+        <!-- Services Row -->
+        <mxCell id="services_label" value="🔗 SERVICES (27):" style="text;fontSize=11;fontStyle=bold;fillColor=#ffffee;" vertex="1" parent="frontend_box">
+          <mxGeometry x="10" y="130" width="80" height="20" as="geometry"/>
+        </mxCell>
+        <mxCell id="services_list" value="usuario-service • auth-service • inventario-service • producto-service • categoria-service • unidad-medida-service • movimiento-service • bodega-transito-service • solicitud-service • pedido-service • historico-pedido-service • pedido-semanal-bodega-service • proveedor-service • asignatura-service • sala-service • bloque-horario-service • reserva-sala-service • semana-service • dashboard-service • api-dashboard • permission-service • notificacion-service • pdf-service • storage-service • gestionSistemaService • init-system • roles-helper" style="rounded=1;fillColor:#ccffcc;fontSize=8;align=left;whiteSpace=wrap;" vertex="1" parent="frontend_box">
+          <mxGeometry x="100" y="125" width="980" height="50" as="geometry"/>
+        </mxCell>
+
+        <!-- State Row -->
+        <mxCell id="state_label" value="🎯 STATE:" style="text;fontSize=11;fontStyle=bold;fillColor=#ffffee;" vertex="1" parent="frontend_box">
+          <mxGeometry x="10" y="185" width="80" height="20" as="geometry"/>
+        </mxCell>
+        <mxCell id="state_list" value="AuthContext (user, login, logout) • PermissionsContext (permisos por módulo) • ThemeContext (tema) • Custom Hooks (useToast, useConfirm, useModulePermission, usePageTitle, etc.)" style="rounded=1;fillColor=#ccffcc;fontSize=9;align=left;whiteSpace=wrap;" vertex="1" parent="frontend_box">
+          <mxGeometry x="100" y="180" width="980" height="40" as="geometry"/>
+        </mxCell>
+
+        <!-- BACKEND (Spring Boot 3) -->
+        <mxCell id="backend_box" value="🔧 BACKEND (Spring Boot 3 + Java 17)" style="swimlane;html=1;startSize=30;fillColor=#f5f5f5;" vertex="1" parent="1">
+          <mxGeometry x="50" y="535" width="1100" height="350" as="geometry"/>
+        </mxCell>
+
+        <!-- Security Layer -->
+        <mxCell id="security_box" value="🔐 SECURITY LAYER" style="swimlane;html=1;startSize=25;fillColor:#ffe6e6;" vertex="1" parent="backend_box">
+          <mxGeometry x="10" y="40" width="220" height="120" as="geometry"/>
+        </mxCell>
+        <mxCell id="security_items" value="TokenJwtConfig • JwtAuthenticationFilter • JwtValidationFilter • MethodSecurityConfig • RateLimitFilter • JpaUserDetailsService • DynamicPermissionService • PermisoRolController" style="rounded=1;fillColor=#ffcccc;fontSize=8;align=left;whiteSpace=wrap;" vertex="1" parent="security_box">
+          <mxGeometry x="10" y="35" width="200" height="75" as="geometry"/>
+        </mxCell>
+
+        <!-- 9 Módulos -->
+        <mxCell id="modules_label" value="9️⃣ MÓDULOS DE NEGOCIO (Controllers + Services + Repositories + Entities)" style="text;fontSize=10;fontStyle=bold;fillColor=#ffffee;" vertex="1" parent="backend_box">
+          <mxGeometry x="250" y="40" width="830" height="20" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="mod1" value="1. gestion_usuario\n[AuthController, UsuarioController, RolController, PermisoRolController]" style="rounded=1;fillColor=#cce5ff;fontSize=8;align=left;" vertex="1" parent="backend_box">
+          <mxGeometry x="250" y="65" width="180" height="50" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="mod2" value="2. gestion_academica\n[AsignaturaController, SeccionController, SalaController, BloqueHorarioController, ReservaSalaController, SemanaController]" style="rounded=1;fillColor=#cce5ff;fontSize=8;align=left;" vertex="1" parent="backend_box">
+          <mxGeometry x="450" y="65" width="180" height="50" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="mod3" value="3. gestion_inventario\n[ProductoController, CategoriaController, UnidadMedidaController, InventarioController, MovimientoController, BodegaTransitoController]" style="rounded=1;fillColor=#cce5ff;fontSize=8;align=left;" vertex="1" parent="backend_box">
+          <mxGeometry x="650" y="65" width="180" height="50" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="mod4" value="4. gestion_solicitud\n[SolicitudController]\nFlujo: Docente → Gestor → Pedido" style="rounded=1;fillColor=#cce5ff;fontSize=8;align=left;" vertex="1" parent="backend_box">
+          <mxGeometry x="850" y="65" width="180" height="50" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="mod5" value="5. gestion_pedido\n[PedidoController, DetallePedidoController, PedidoSolicitudController]\nConsolidación de solicitudes" style="rounded=1;fillColor=#cce5ff;fontSize=8;align=left;" vertex="1" parent="backend_box">
+          <mxGeometry x="250" y="125" width="180" height="50" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="mod6" value="6. gestion_proveedor\n[ProveedorController]\nBase de datos de proveedores" style="rounded=1;fillColor:#cce5ff;fontSize=8;align=left;" vertex="1" parent="backend_box">
+          <mxGeometry x="450" y="125" width="180" height="50" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="mod7" value="7. gestion_sistema\n[GestionSistemaController]\nConfiguración global del sistema" style="rounded=1;fillColor:#cce5ff;fontSize=8;align=left;" vertex="1" parent="backend_box">
+          <mxGeometry x="650" y="125" width="180" height="50" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="mod8" value="8. pedido_semana_a_bodega\n[PedidoSemanaBodegaController, DetallePedidoSemanaBodegaController]\nPedidos semanales especiales" style="rounded=1;fillColor=#cce5ff;fontSize=8;align=left;" vertex="1" parent="backend_box">
+          <mxGeometry x="850" y="125" width="180" height="50" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="mod9" value="9. dashboard\n[DashboardController]\nAnalytics y KPIs por rol" style="rounded=1;fillColor=#80bfff;fontSize=8;align=left;fontColor=#000;" vertex="1" parent="backend_box">
+          <mxGeometry x="550" y="185" width="180" height="50" as="geometry"/>
+        </mxCell>
+
+        <!-- Infrastructure -->
+        <mxCell id="infra_label" value="⚙️ INFRAESTRUCTURA" style="text;fontSize=10;fontStyle=bold;fillColor=#ffffee;" vertex="1" parent="backend_box">
+          <mxGeometry x="250" y="245" width="830" height="20" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="infra_items" value="GlobalExceptionHandler • Logging (SLF4J + Logback) • Auditoría • SwaggerConfig • JacksonConfig • DatabaseTester • Flyway Migrations" style="rounded=1;fillColor=#fff0cc;fontSize=8;align=left;whiteSpace=wrap;" vertex="1" parent="backend_box">
+          <mxGeometry x="250" y="265" width="830" height="40" as="geometry"/>
+        </mxCell>
+
+        <!-- Database -->
+        <mxCell id="database_box" value="💾 PERSISTENCIA" style="swimlane;html=1;startSize=30;fillColor=#f5f5f5;" vertex="1" parent="1">
+          <mxGeometry x="50" y="915" width="450" height="120" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="postgres" value="PostgreSQL 13+\nPrimary (Read/Write)\nSchema con Flyway migrations" style="rounded=1;fillColor:#ccffcc;strokeColor:#00aa00;fontSize=9;" vertex="1" parent="database_box">
+          <mxGeometry x="20" y="40" width="410" height="65" as="geometry"/>
+        </mxCell>
+
+        <!-- External Services -->
+        <mxCell id="external_box" value="🌐 SERVICIOS EXTERNOS" style="swimlane;html=1;startSize=30;fillColor=#f5f5f5;" vertex="1" parent="1">
+          <mxGeometry x="550" y="915" width="600" height="120" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="email" value="📧 SMTP\nEmail Service" style="rounded=1;fillColor=#ffffcc;" vertex="1" parent="external_box">
+          <mxGeometry x="20" y="40" width="120" height="50" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="storage" value="☁️ Storage Service\n(Local/S3/GCS)\nFotos, archivos" style="rounded=1;fillColor=#ffffcc;" vertex="1" parent="external_box">
+          <mxGeometry x="160" y="40" width="140" height="50" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="logging" value="📊 Logging\nELK/Datadog\nMonitoreo" style="rounded=1;fillColor:#ffffcc;" vertex="1" parent="external_box">
+          <mxGeometry x="320" y="40" width="130" height="50" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="cache" value="⚡ Redis (opcional)\nSessions, Cache" style="rounded=1;fillColor:#ffffcc;" vertex="1" parent="external_box">
+          <mxGeometry x="470" y="40" width="110" height="50" as="geometry"/>
+        </mxCell>
+
+        <!-- Conexiones -->
+        <mxCell id="c1" edge="1" parent="1" source="browser" target="frontend_box">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="c2" edge="1" parent="1" source="frontend_box" target="backend_box">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="550" y="520" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="c3" edge="1" parent="1" source="backend_box" target="database_box">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="275" y="900" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="c4" edge="1" parent="1" source="backend_box" target="external_box">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="850" y="900" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Stack Tech Footer -->
+        <mxCell id="footer" value="STACK: Frontend [React 18, TypeScript, Vite, Tailwind CSS 4, HeroUI, Axios] | Backend [Spring Boot 3, Java 17, Spring Data JPA, Spring Security, Maven] | DB [PostgreSQL, Flyway]" style="text;fontSize=8;fillColor=#f0f0f0;rounded=1;border=1;" vertex="1" parent="1">
+          <mxGeometry x="50" y="1055" width="1100" height="30" as="geometry"/>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
