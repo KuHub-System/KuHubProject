@@ -1,6 +1,3 @@
-bash
-
-cat << 'PYEOF' > /home/claude/build_sections.py
 # Helper to generate XML paragraphs and tables for the new sections
 
 def h1(text):
@@ -363,10 +360,11 @@ sections.append(table(
 sections.append(spacer())
 
 xml_content = "\n".join(sections)
-with open("/home/claude/new_sections.xml", "w", encoding="utf-8") as f:
+import os
+output_path = os.path.join(os.path.dirname(__file__), "new_sections_utf8.xml")
+with open(output_path, "w", encoding="utf-8-sig") as f:
     f.write(xml_content)
 
 print("Generated XML length:", len(xml_content))
+print("Output file:", output_path)
 print("Done")
-PYEOF
-python /home/claude/build_sections.py
