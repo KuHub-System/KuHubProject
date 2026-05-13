@@ -3340,7 +3340,6 @@ END;
 $$ LANGUAGE plpgsql;
 
 
- 
 DROP FUNCTION IF EXISTS fn_solicitud_a_pedido() CASCADE;
 
 -- ============================================================
@@ -3526,9 +3525,3 @@ BEGIN
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
-
--- 3. Asignar el Trigger
-CREATE TRIGGER trg_solicitud_a_pedido
-    BEFORE UPDATE ON solicitud
-    FOR EACH ROW
-    EXECUTE FUNCTION fn_solicitud_a_pedido();
