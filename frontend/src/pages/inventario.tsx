@@ -751,7 +751,8 @@ const InventarioPage: React.FC = () => {
       const count = await confirmarNuevosProductosExcelService(items);
       toast.success(`${count} nuevos productos agregados al inventario`);
       onExcelResultOpenChange();
-      cargarDatosIniciales();
+      setCache({});
+      cargarProductosPaginados(1, true);
     } catch (err: any) {
       toast.error(err.message || 'Error al agregar productos');
     } finally {
