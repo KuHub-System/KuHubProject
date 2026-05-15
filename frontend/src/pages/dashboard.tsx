@@ -13,7 +13,7 @@ import { usePageTitle } from '../hooks/usePageTitle';
 // Dashboards de analytics
 import { DashboardInventarioView } from '../components/dashboard/DashboardInventarioView';
 import { DashboardGestor }         from '../components/dashboard/DashboardGestor';
-import { DashboardRecetasView }    from '../components/dashboard/DashboardRecetasView';
+import { DashboardPedidoSemanalBodegaView } from '../components/dashboard/DashboardPedidoSemanalBodegaView';
 
 // Exportar funciones para compatibilidad con otros componentes
 export {
@@ -61,15 +61,15 @@ const DashboardAdminTabs: React.FC = () => (
       </Tab>
 
       <Tab
-        key="recetas"
+        key="pedido-bodega"
         title={
           <span className="flex items-center gap-1.5">
-            <Icon icon="lucide:chef-hat" width={14} />
-            Recetas
+            <Icon icon="lucide:package-check" width={14} />
+            Pedido Semana Bodega
           </span>
         }
       >
-        <DashboardRecetasView />
+        <DashboardPedidoSemanalBodegaView />
       </Tab>
     </Tabs>
   </div>
