@@ -686,3 +686,212 @@ const [isIncluyendoNoEncontrados, setIsIncluyendoNoEncontrados] = React.useState
 |--------|----------------|-------------|
 | Productos encontrados (sync inmediata) | `"Ajuste"` | `"sincronizacion excel"` |
 | Productos nuevos confirmados por usuario | `"Entrada"` | `"sincronizacion del inventario"` |
+
+---
+
+## PARTE 2 — IMPLEMENTACIÓN COMPLETADA
+
+### Estado de implementación
+- ✅ Backend: sincronizarInventarioDesdeExcel() + confirmarNuevosProductosExcel()
+- ✅ Frontend: Modal 3 vistas, handlers, resultados con checkboxes
+- ✅ Tipos actualizados
+- ✅ NGINX proxy fix para multipart (error 413 resuelto)
+- ✅ Logging agregado en backend para debugging
+
+---
+
+### Cambios en Tipos TypeScript
+
+**Archivo:** `frontend/src/types/inventario.types.ts`
+
+Campo renombrado: `stockActual` → `stockAnterior`
+
+```typescript
+export interface IResultadoItemInventarioExcel {
+  fila: number;
+  nombreExcel: string;
+  idInventario?: number;
+  idProducto?: number;
+  nombreProducto?: string;
+  stockExcel?: number;
+  stockAnterior?: number;  // ← cambio: era stockActual
+  unidadMedidaExcel?: string;
+  idUnidadMedida?: number;
+  estado: 'ok' | 'no_encontrado';
+}
+```
+
+Campo renombrado: `totalEncontrados` → `totalSincronizados`
+
+```typescript
+export interface ISincronizarInventarioExcelResultado {
+  resultados: IResultadoItemInventarioExcel[];
+  totalSincronizados: number;  // ← cambio: era totalEncontrados
+  totalNoEncontrados: number;
+  totalFilasProcesadas: number;
+  nombreHojaLeida?: string;
+  colNombreDetectada?: number;
+  colStockDetectada?: number;
+}
+```
+
+---
+
+### Backend — DTOs Record creados
+
+**Archivo:** `backend/src/main/java/KuHub/modules/gestion_inventario/dtos/response/record/SincronizarExcelResultado.java`
+
+Record que encapsula la respuesta con lista de resultados por fila y conteos.
+
+**Archivo:** `backend/src/main/java/KuHub/modules/gestion_inventario/dtos/request/ConfirmarNuevosExcelDTO.java`
+
+Record para aceptar lista de items nuevos a crear (nombre, unidad, stock, categoría).
+
+---
+
+### Backend — Implementación en InventarioServiceImpl
+
+**Método sincronizarInventarioDesdeExcel():**
+- Valida archivo no vacío
+- Carga todas las unidades de medida activas una sola vez
+- Abre el workbook con WorkbookFactory
+- Detecta dinámicamente columna de nombre, stock y unidad del header
+- Para cada fila válida: capitaliza nombre/unidad, busca producto por nombre + categoría
+- Si encontrado: crea movimiento AJUSTE_INVENTARIO con descripción "sincronizacion excel"
+- Si no encontrado: agrega a resultados con datos de la unidad para que el usuario confirme
+- Batch save de inventarios y movimientos
+- Retorna SincronizarExcelResultado con conteos y resultados
+
+**Método confirmarNuevosProductosExcel():**
+- Recibe lista de items nuevos del frontend (solo los seleccionados)
+- Por cada item: crea Producto, Inventario y MovimientoInventario
+- Tipo de movimiento: ENTRADA_INVENTARIO con descripción "sincronizacion del inventario"
+- Batch save de todas las entidades
+- Retorna cantidad de productos creados
+
+**Métodos auxiliares:**
+- `detectarColumnaProducto()`: busca header con keywords INSUMO/PRODUCTO/PRODUTO
+- `detectarColumnaStock()`: busca TOTAL > CANTIDAD > INICIAL
+- `detectarColumnaUnidad()`: busca U/MEDIDA/UNIDAD/MEDIDA
+- `excelCellText()`: extrae seguro valor de celda
+- `excelParseCantidad()`: parsea número desde celda, convierte "," a "."
+
+---
+
+### Frontend — Nuevo servicio
+
+**Archivo:** `frontend/src/services/inventario-service.ts`
+
+Nueva función `confirmarNuevosProductosExcelService()` que envía POST con lista de items nuevos al endpoint `/inventario/sincronizar-excel/confirmar-nuevos`
+
+---
+
+### Frontend — Estados nuevos en inventario.tsx
+
+```
+excelResultado — resultado de la sincronización
+excelNoEncontradosSeleccionados — Set de índices de los items seleccionados
+isIncluyendoNoEncontrados — flag para mostrar loading en botón
+isExcelResultOpen — control del modal de resultados
+```
+
+---
+
+### Frontend — Handler modificado handleDoSincronizarExcel
+
+- Procesa respuesta del backend
+- Almacena resultado en estado
+- Pre-selecciona automáticamente todos los productos no encontrados
+- Cierra modal de configuración
+- Abre modal de resultados (Vista C)
+
+---
+
+### Frontend — Nuevo handler handleConfirmarNuevos
+
+- Filtra items seleccionados
+- Llama servicio de confirmación
+- Muestra toast de éxito con cantidad creada
+- Recarga inventario
+- Cierra modal
+
+---
+
+### Frontend — Modal de Resultados (Vista C)
+
+Muestra:
+- Chips con resumen: productos sincronizados, no encontrados, filas procesadas
+- Lista scrollable de productos no encontrados
+- Checkbox para cada producto (pre-seleccionado)
+- Muestra nombreExcel, unidadMedidaExcel, stockExcel por item
+- Botón "Incluir seleccionados (N)" que ejecuta handleConfirmarNuevos
+- Botón "Cerrar" para descartar sin agregar
+
+---
+
+### Configuración Multipart en application.properties
+
+```
+spring.servlet.multipart.max-file-size=50MB
+spring.servlet.multipart.max-request-size=50MB
+server.tomcat.max-swallow-size=50MB
+```
+
+Permite que Spring Boot acepte archivos y requests de hasta 50MB.
+
+---
+
+### Fix NGINX — Error 413 Request Entity Too Large
+
+**Problema:**
+El frontend está en contenedor NGINX que actúa como proxy. El límite por defecto es 1MB. Las solicitudes >1MB se rechazaban con 413 en la capa de proxy, nunca llegaban a Spring Boot.
+
+**Solución aplicada en frontend/nginx.conf:**
+
+En la sección `/api/` agregar:
+```
+client_max_body_size 50M;
+```
+
+Esto permite que NGINX acepte requests de hasta 50MB antes de pasarlas a Spring Boot.
+
+---
+
+### Logging en Backend
+
+Ambos endpoints ahora loguean:
+
+**Endpoint sincronizar-excel:**
+- REQUEST: nombre archivo, tamaño en bytes, content-type, hoja, categoría, rango de filas
+- RESPONSE: cantidad sincronizados, no encontrados, filas procesadas
+
+**Endpoint confirmar-nuevos:**
+- REQUEST: cantidad de items a confirmar
+- RESPONSE: cantidad creada exitosamente
+
+Logs internos en InventarioServiceImpl:
+- Al iniciar lectura del archivo
+- Unidades cargadas
+- Hoja seleccionada
+- Columnas detectadas
+- Completado con conteos finales
+
+---
+
+### Estado de Deployment
+
+**Pendiente:**
+- Deploy de K1.0.24 con NGINX fix
+- Requiere rebuild imagen docker del frontend con nuevo nginx.conf
+- Verificación: probar upload de Excel >1MB
+
+**Archivos críticos para deployment:**
+- `frontend/nginx.conf` — CONFIGURACIÓN CRÍTICA
+- Backend: cambios en código Java solamente
+- Docker: frontend necesita rebuild
+
+**Notas importantes:**
+- application.properties ya configurado (50MB)
+- Backend en modo "prod" → indica ambiente containerizado
+- Error 413 es específico a NGINX proxy, no afecta localhost development
+- Ambas capas (proxy + backend) deben permitir 50MB
