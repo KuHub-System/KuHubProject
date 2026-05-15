@@ -647,6 +647,16 @@ export const bulkUpdateInventoryStockService = async (requests: IBulkUpdateStock
     }
 };
 
+export const confirmarNuevosProductosExcelService = async (
+    items: Array<{ nombre: string; idUnidadMedida: number; stock: number; idCategoria: number }>
+): Promise<number> => {
+    const response = await api.post<number>(
+        '/inventario/sincronizar-excel/confirmar-nuevos',
+        items
+    );
+    return response.data;
+};
+
 export const sincronizarInventarioDesdeExcelService = async (
     archivo: File,
     filaInicio: number,

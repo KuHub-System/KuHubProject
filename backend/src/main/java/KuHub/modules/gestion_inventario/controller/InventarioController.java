@@ -1,5 +1,6 @@
 package KuHub.modules.gestion_inventario.controller;
 
+import KuHub.modules.gestion_inventario.dtos.request.ConfirmarNuevosExcelDTO;
 import KuHub.modules.gestion_inventario.dtos.request.FilterInventoryPageDTO;
 import KuHub.modules.gestion_inventario.dtos.request.InventoryWithProductCreateDTO;
 import KuHub.modules.gestion_inventario.dtos.request.InventoryWithProductUpdateDTO;
@@ -9,14 +10,17 @@ import KuHub.modules.gestion_inventario.dtos.response.record.BulkInventoriesPage
 import KuHub.modules.gestion_inventario.dtos.response.record.BulkInventoryProcess;
 import KuHub.modules.gestion_inventario.dtos.response.record.InventoriesPage;
 import KuHub.modules.gestion_inventario.dtos.response.record.InventoryFilters;
+import KuHub.modules.gestion_inventario.dtos.response.record.SincronizarExcelResultado;
 import KuHub.modules.gestion_inventario.exceptions.StockDesincronizadoException;
 import KuHub.modules.gestion_inventario.exceptions.StockInsuficienteException;
 import KuHub.modules.gestion_inventario.services.InventarioService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -169,5 +173,31 @@ public class InventarioController {
                  .body(inventarioService.softDeleteByInventoryWithProduct(idInventario));
     }
 
+    /**
+     * Procesa un Excel de inventario: detecta columnas dinámicamente, sincroniza stock
+     * de productos encontrados (AJUSTE_INVENTARIO) y retorna los no encontrados.
+     */
+    @PostMapping(value = "/sincronizar-excel", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<SincronizarExcelResultado> sincronizarInventarioDesdeExcel(
+            @RequestParam("archivo") MultipartFile archivo,
+            @RequestParam(value = "nombreHoja", required = false) String nombreHoja,
+            @RequestParam("idCategoria") Short idCategoria,
+            @RequestParam("filaInicio") int filaInicio,
+            @RequestParam("filaFin") int filaFin) {
+        return ResponseEntity.status(200)
+                .body(inventarioService.sincronizarInventarioDesdeExcel(
+                        archivo, nombreHoja, idCategoria, filaInicio, filaFin));
+    }
+
+    /**
+     * Confirma la creación de nuevos productos no encontrados en la sincronización Excel.
+     * Crea producto + inventario + movimiento ENTRADA_INVENTARIO por cada item.
+     */
+    @PostMapping("/sincronizar-excel/confirmar-nuevos")
+    public ResponseEntity<Integer> confirmarNuevosProductosExcel(
+            @RequestBody List<ConfirmarNuevosExcelDTO.ItemNuevo> items) {
+        return ResponseEntity.status(201)
+                .body(inventarioService.confirmarNuevosProductosExcel(items));
+    }
 
 }

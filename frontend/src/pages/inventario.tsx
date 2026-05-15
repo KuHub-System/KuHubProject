@@ -68,7 +68,8 @@ import {
   IBulkProcessResult,
   IStockSyncWarning,
   IStockInsuficiente,
-  sincronizarInventarioDesdeExcelService
+  sincronizarInventarioDesdeExcelService,
+  confirmarNuevosProductosExcelService
 } from '../services/inventario-service';
 import {
   obtenerProyeccionAbastecimientoService,
@@ -164,7 +165,11 @@ const InventarioPage: React.FC = () => {
   const [excelModalVista,      setExcelModalVista]      = React.useState<'hojas' | 'config'>('hojas');
   const [isSincronizandoExcel, setIsSincronizandoExcel] = React.useState(false);
   const [excelEspecierosAviso, setExcelEspecierosAviso] = React.useState(false);
+  const [excelResultado,                setExcelResultado]                = React.useState<ISincronizarInventarioExcelResultado | null>(null);
+  const [excelNoEncontradosSeleccionados, setExcelNoEncontradosSeleccionados] = React.useState<Set<number>>(new Set());
+  const [isIncluyendoNoEncontrados,     setIsIncluyendoNoEncontrados]     = React.useState(false);
   const { isOpen: isSincronizarExcelOpen, onOpen: onSincronizarExcelOpen, onOpenChange: onSincronizarExcelOpenChange } = useDisclosure();
+  const { isOpen: isExcelResultOpen, onOpen: onExcelResultOpen, onOpenChange: onExcelResultOpenChange } = useDisclosure();
   const [productoSeleccionado, setProductoSeleccionado] = React.useState<IProducto | null>(null);
   const [modalMode, setModalMode] = React.useState<'crear' | 'editar'>('crear');
   const [showStockWarning, setShowStockWarning] = React.useState(false);
@@ -709,12 +714,45 @@ const InventarioPage: React.FC = () => {
       const resultado = await sincronizarInventarioDesdeExcelService(
         excelPendingFile, excelFilaInicio, excelFilaFin, excelSelectedCatId, excelSelectedSheet
       );
-      toast.success(`Lectura completada: ${resultado.totalEncontrados} encontrados, ${resultado.totalNoEncontrados} no encontrados`);
+      setExcelResultado(resultado);
+      setExcelNoEncontradosSeleccionados(
+        new Set(
+          resultado.resultados
+            .map((r, i) => ({ r, i }))
+            .filter(({ r }) => r.estado === 'no_encontrado')
+            .map(({ i }) => i)
+        )
+      );
       onSincronizarExcelOpenChange();
+      onExcelResultOpen();
     } catch (err: any) {
       toast.error(err.message || 'Error al procesar el Excel');
     } finally {
       setIsSincronizandoExcel(false);
+    }
+  };
+
+  const handleConfirmarNuevos = async () => {
+    if (!excelResultado || !excelSelectedCatId) return;
+    const noEncontrados = excelResultado.resultados.filter(r => r.estado === 'no_encontrado');
+    const seleccionados = noEncontrados.filter((_, i) => excelNoEncontradosSeleccionados.has(i));
+    if (seleccionados.length === 0) { onExcelResultOpenChange(); return; }
+    setIsIncluyendoNoEncontrados(true);
+    try {
+      const items = seleccionados.map(r => ({
+        nombre: r.nombreExcel,
+        idUnidadMedida: r.idUnidadMedida ?? 0,
+        stock: r.stockExcel ?? 0,
+        idCategoria: excelSelectedCatId,
+      }));
+      const count = await confirmarNuevosProductosExcelService(items);
+      toast.success(`${count} nuevos productos agregados al inventario`);
+      onExcelResultOpenChange();
+      cargarDatosIniciales();
+    } catch (err: any) {
+      toast.error(err.message || 'Error al agregar productos');
+    } finally {
+      setIsIncluyendoNoEncontrados(false);
     }
   };
 
@@ -1535,6 +1573,92 @@ const InventarioPage: React.FC = () => {
                       onPress={handleDoSincronizarExcel}
                     >
                       {isSincronizandoExcel ? 'Procesando...' : 'Procesar Excel'}
+                    </Button>
+                  )}
+                </ModalFooter>
+              </>
+            )}
+          </ModalContent>
+        </Modal>
+
+        {/* Modal: Resultado Sincronización Excel */}
+        <Modal
+          isOpen={isExcelResultOpen}
+          onOpenChange={onExcelResultOpenChange}
+          size="2xl"
+          scrollBehavior="inside"
+        >
+          <ModalContent>
+            {(onClose) => (
+              <>
+                <ModalHeader className="flex items-center gap-2">
+                  <Icon icon="lucide:file-check" className="text-success" width={20} />
+                  Resultado — Sincronización Excel
+                </ModalHeader>
+                <ModalBody>
+                  {excelResultado && (
+                    <div className="flex flex-col gap-4">
+                      <div className="flex gap-3 flex-wrap">
+                        <Chip color="success" variant="flat">
+                          {excelResultado.totalSincronizados} sincronizados
+                        </Chip>
+                        {excelResultado.totalNoEncontrados > 0 && (
+                          <Chip color="warning" variant="flat">
+                            {excelResultado.totalNoEncontrados} no encontrados
+                          </Chip>
+                        )}
+                        <Chip color="default" variant="flat">
+                          {excelResultado.totalFilasProcesadas} filas procesadas
+                        </Chip>
+                      </div>
+
+                      {excelResultado.totalNoEncontrados > 0 && (
+                        <div className="flex flex-col gap-2">
+                          <p className="text-sm font-medium">Productos no encontrados en el sistema</p>
+                          <p className="text-xs text-default-400">Selecciona cuáles agregar al inventario</p>
+                          <div className="flex flex-col gap-1 max-h-64 overflow-y-auto pr-1">
+                            {excelResultado.resultados
+                              .filter(r => r.estado === 'no_encontrado')
+                              .map((item, idx) => (
+                                <div
+                                  key={idx}
+                                  className="flex items-center gap-3 p-2 rounded-lg bg-default-50 dark:bg-default-100/50"
+                                >
+                                  <Checkbox
+                                    isSelected={excelNoEncontradosSeleccionados.has(idx)}
+                                    onValueChange={(checked) => {
+                                      setExcelNoEncontradosSeleccionados(prev => {
+                                        const next = new Set(prev);
+                                        checked ? next.add(idx) : next.delete(idx);
+                                        return next;
+                                      });
+                                    }}
+                                  />
+                                  <span className="flex-1 text-sm">{item.nombreExcel}</span>
+                                  <span className="text-xs text-default-400 w-16 text-right">
+                                    {item.unidadMedidaExcel || '—'}
+                                  </span>
+                                  <span className="text-xs font-mono w-12 text-right">
+                                    {item.stockExcel ?? 0}
+                                  </span>
+                                </div>
+                              ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </ModalBody>
+                <ModalFooter>
+                  <Button variant="light" onPress={onClose}>Cerrar</Button>
+                  {(excelResultado?.totalNoEncontrados ?? 0) > 0 && (
+                    <Button
+                      color="primary"
+                      isLoading={isIncluyendoNoEncontrados}
+                      isDisabled={excelNoEncontradosSeleccionados.size === 0}
+                      onPress={handleConfirmarNuevos}
+                    >
+                      Incluir seleccionados ({excelNoEncontradosSeleccionados.size})
                     </Button>
                   )}
                 </ModalFooter>

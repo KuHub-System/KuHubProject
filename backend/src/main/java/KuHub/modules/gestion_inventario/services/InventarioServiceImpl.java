@@ -1,5 +1,6 @@
 package KuHub.modules.gestion_inventario.services;
 
+import KuHub.modules.gestion_inventario.dtos.request.ConfirmarNuevosExcelDTO;
 import KuHub.modules.gestion_inventario.dtos.request.FilterInventoryPageDTO;
 import KuHub.modules.gestion_inventario.dtos.request.InventoryWithProductCreateDTO;
 import KuHub.modules.gestion_inventario.dtos.request.InventoryWithProductUpdateDTO;
@@ -24,10 +25,21 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.CellType;
+import org.apache.poi.ss.usermodel.DataFormatter;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.ss.usermodel.WorkbookFactory;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -453,6 +465,193 @@ public class InventarioServiceImpl implements InventarioService {
         }
     }
 
+    @Transactional
+    @Override
+    public SincronizarExcelResultado sincronizarInventarioDesdeExcel(
+            MultipartFile archivo, String nombreHoja, Short idCategoria, int filaInicio, int filaFin) {
+
+        if (archivo.isEmpty())
+            throw new GestionInventarioException("El archivo Excel está vacío.", HttpStatus.BAD_REQUEST);
+
+        List<UnidadMedida> unidadesActivas = unidadMedidaService.findAllActiveTrue();
+        Usuario currentUser = usuarioService.findUserByToken();
+        DataFormatter formatter = new DataFormatter();
+
+        List<SincronizarExcelResultado.ResultadoItem> resultados = new ArrayList<>();
+        List<Inventario> inventariosToSave = new ArrayList<>();
+        List<Movimiento> movimientosToSave = new ArrayList<>();
+
+        try (Workbook workbook = WorkbookFactory.create(archivo.getInputStream())) {
+            Sheet sheet;
+            if (nombreHoja != null && !nombreHoja.isBlank()) {
+                sheet = workbook.getSheet(nombreHoja);
+                if (sheet == null)
+                    throw new GestionInventarioException(
+                            "No se encontró la hoja '" + nombreHoja + "' en el archivo.", HttpStatus.BAD_REQUEST);
+            } else {
+                sheet = workbook.getSheetAt(workbook.getActiveSheetIndex());
+            }
+
+            // Header row: filaInicio - 2 (0-based: una fila antes del inicio de datos)
+            int headerIdx = filaInicio - 2;
+            Row headerRow = headerIdx >= 0 ? sheet.getRow(headerIdx) : null;
+
+            int colNombre = -1, colUnidad = -1;
+            int idxTotal = -1, idxCantidad = -1, idxInicial = -1;
+
+            if (headerRow != null) {
+                for (int c = 0; c < headerRow.getLastCellNum(); c++) {
+                    String h = excelCellText(headerRow.getCell(c), formatter).toUpperCase().strip();
+                    if (colNombre == -1 && (h.contains("INSUMO") || h.contains("PRODUTO") || h.contains("PRODUCTO")))
+                        colNombre = c;
+                    if (colUnidad == -1 && (h.contains("U/MEDIDA") || h.equals("UNIDAD")))
+                        colUnidad = c;
+                    if (h.equals("TOTAL") && idxTotal == -1)         idxTotal    = c;
+                    if (h.contains("CANTIDAD") && idxCantidad == -1) idxCantidad = c;
+                    if (h.equals("INICIAL") && idxInicial == -1)     idxInicial  = c;
+                }
+            }
+
+            int colStock = idxTotal >= 0 ? idxTotal : idxCantidad >= 0 ? idxCantidad : idxInicial >= 0 ? idxInicial : 0;
+            if (colNombre == -1) colNombre = 2;
+            if (colUnidad == -1) colUnidad = 1;
+
+            int idxDataInicio = filaInicio - 1;
+            int idxDataFin    = filaFin - 1;
+
+            for (int i = idxDataInicio; i <= idxDataFin; i++) {
+                Row row = sheet.getRow(i);
+                if (row == null) continue;
+
+                String nombreRaw = excelCellText(row.getCell(colNombre), formatter).trim();
+                if (nombreRaw.isBlank()) continue;
+
+                BigDecimal stockExcel = excelParseCantidad(row.getCell(colStock));
+                if (stockExcel == null) continue;
+
+                String nombreCapitalizado = StringUtils.capitalizarPalabras(nombreRaw);
+                String unidadRaw = excelCellText(row.getCell(colUnidad), formatter).trim();
+                String unidadCapitalizada = StringUtils.capitalizarPalabras(unidadRaw);
+                int filaNro = i + 1;
+
+                Short idUnidadMatcheada = null;
+                for (UnidadMedida u : unidadesActivas) {
+                    if (StringUtils.capitalizarPalabras(u.getNombreUnidad()).equals(unidadCapitalizada)
+                            || (u.getAbreviatura() != null && u.getAbreviatura().equalsIgnoreCase(unidadRaw))) {
+                        idUnidadMatcheada = u.getIdUnidad();
+                        break;
+                    }
+                }
+
+                Optional<Producto> productoOpt = productoRepository
+                        .findByNombreProductoAndCategoria_IdCategoriaAndActivoTrue(nombreCapitalizado, idCategoria);
+
+                if (productoOpt.isEmpty()) {
+                    resultados.add(new SincronizarExcelResultado.ResultadoItem(
+                            filaNro, nombreRaw, null, null, null,
+                            stockExcel, null, unidadCapitalizada, idUnidadMatcheada, "no_encontrado"
+                    ));
+                    continue;
+                }
+
+                Producto producto = productoOpt.get();
+                Optional<Inventario> invOpt = inventarioRepository
+                        .findByProducto_IdProductoAndActivoTrue(producto.getIdProducto());
+
+                if (invOpt.isEmpty()) {
+                    resultados.add(new SincronizarExcelResultado.ResultadoItem(
+                            filaNro, nombreRaw, null, producto.getIdProducto(), producto.getNombreProducto(),
+                            stockExcel, null, unidadCapitalizada, idUnidadMatcheada, "no_encontrado"
+                    ));
+                    continue;
+                }
+
+                Inventario inv = invOpt.get();
+                BigDecimal stockAnterior = inv.getStock();
+
+                Movimiento mov = new Movimiento();
+                mov.setUsuario(currentUser);
+                mov.setInventario(inv);
+                mov.setStockMovimiento(stockExcel);
+                mov.setTipoMovimiento(Movimiento.TipoMovimiento.AJUSTE_INVENTARIO);
+                mov.setObservacion("sincronizacion excel");
+
+                inv.setStock(stockExcel);
+                inventariosToSave.add(inv);
+                movimientosToSave.add(mov);
+
+                resultados.add(new SincronizarExcelResultado.ResultadoItem(
+                        filaNro, nombreRaw, inv.getIdInventario(), producto.getIdProducto(),
+                        producto.getNombreProducto(), stockExcel, stockAnterior,
+                        unidadCapitalizada, idUnidadMatcheada, "ok"
+                ));
+            }
+
+            if (!inventariosToSave.isEmpty()) inventarioRepository.saveAll(inventariosToSave);
+            if (!movimientosToSave.isEmpty()) movimientoRepository.saveAll(movimientosToSave);
+
+            long totalSinc = resultados.stream().filter(r -> "ok".equals(r.estado())).count();
+            long totalNE   = resultados.stream().filter(r -> "no_encontrado".equals(r.estado())).count();
+
+            log.info("[SyncExcel] Hoja='{}' cat={} filas={}-{}: {} sincronizados, {} no encontrados",
+                    sheet.getSheetName(), idCategoria, filaInicio, filaFin, totalSinc, totalNE);
+
+            return new SincronizarExcelResultado(
+                    resultados, (int) totalSinc, (int) totalNE,
+                    resultados.size(), sheet.getSheetName(), colNombre, colStock
+            );
+
+        } catch (IOException e) {
+            log.error("[SyncExcel] Error al leer archivo: {}", e.getMessage());
+            throw new GestionInventarioException("No se pudo procesar el archivo Excel.", HttpStatus.BAD_REQUEST);
+        }
+    }
+
+    @Transactional
+    @Override
+    public int confirmarNuevosProductosExcel(List<ConfirmarNuevosExcelDTO.ItemNuevo> items) {
+        if (items == null || items.isEmpty()) return 0;
+
+        Usuario currentUser = usuarioService.findUserByToken();
+        List<Movimiento> movimientosToSave = new ArrayList<>();
+        int contador = 0;
+
+        for (ConfirmarNuevosExcelDTO.ItemNuevo item : items) {
+            String nombreCapitalizado = StringUtils.capitalizarPalabras(item.nombre());
+            if (productoRepository.existsByNombreProducto(nombreCapitalizado)) continue;
+
+            Categoria categoria = categoriaService.findById(item.idCategoria());
+            UnidadMedida unidadMedida = unidadMedidaService.findById(item.idUnidadMedida());
+
+            Producto producto = new Producto();
+            producto.setNombreProducto(nombreCapitalizado);
+            producto.setCategoria(categoria);
+            producto.setUnidadMedida(unidadMedida);
+            producto = productoRepository.save(producto);
+
+            BigDecimal stockInicial = item.stock() != null ? item.stock() : BigDecimal.ZERO;
+
+            Inventario inventario = new Inventario();
+            inventario.setProducto(producto);
+            inventario.setStock(stockInicial);
+            inventario = inventarioRepository.save(inventario);
+
+            Movimiento mov = new Movimiento();
+            mov.setUsuario(currentUser);
+            mov.setInventario(inventario);
+            mov.setStockMovimiento(stockInicial);
+            mov.setTipoMovimiento(Movimiento.TipoMovimiento.ENTRADA_INVENTARIO);
+            mov.setObservacion("sincronizacion del inventario");
+            movimientosToSave.add(mov);
+
+            contador++;
+        }
+
+        if (!movimientosToSave.isEmpty()) movimientoRepository.saveAll(movimientosToSave);
+        log.info("[SyncExcel] Nuevos confirmados: {} productos creados", contador);
+        return contador;
+    }
+
     /**<------TODOS METODOS PRIVADOS------>*/
 
     /**
@@ -469,6 +668,24 @@ public class InventarioServiceImpl implements InventarioService {
      */
     private Integer[] toArray(List<Integer> ids) {
         return (ids == null || ids.isEmpty()) ? null : ids.toArray(new Integer[0]);
+    }
+
+    private String excelCellText(Cell cell, DataFormatter formatter) {
+        if (cell == null) return "";
+        return formatter.formatCellValue(cell);
+    }
+
+    private BigDecimal excelParseCantidad(Cell cell) {
+        if (cell == null || cell.getCellType() == CellType.BLANK) return null;
+        if (cell.getCellType() == CellType.NUMERIC) {
+            return BigDecimal.valueOf(cell.getNumericCellValue());
+        }
+        if (cell.getCellType() == CellType.STRING) {
+            String val = cell.getStringCellValue().trim().replace(",", ".");
+            if (val.isBlank()) return null;
+            try { return new BigDecimal(val); } catch (NumberFormatException e) { return null; }
+        }
+        return null;
     }
 
 }
