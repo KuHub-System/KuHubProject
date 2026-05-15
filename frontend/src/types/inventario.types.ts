@@ -27,13 +27,15 @@ export interface IResultadoItemInventarioExcel {
   idProducto?: number;
   nombreProducto?: string;
   stockExcel?: number;
-  stockActual?: number;
+  stockAnterior?: number;
+  unidadMedidaExcel?: string;
+  idUnidadMedida?: number;
   estado: 'ok' | 'no_encontrado';
 }
 
 export interface ISincronizarInventarioExcelResultado {
   resultados: IResultadoItemInventarioExcel[];
-  totalEncontrados: number;
+  totalSincronizados: number;
   totalNoEncontrados: number;
   totalFilasProcesadas: number;
   nombreHojaLeida?: string;
