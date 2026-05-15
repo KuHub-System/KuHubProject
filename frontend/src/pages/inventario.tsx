@@ -1,4 +1,5 @@
 import React from 'react';
+import * as XLSX from 'xlsx';
 import { fmtCL } from '../utils/format-numbers';
 import {
   Table,
@@ -58,7 +59,7 @@ import GestionCategoriasModal from '../components/modals/GestionCategoriasModal'
 import GestionUnidadesModal from '../components/modals/GestionUnidadesModal';
 import { obtenerCategoriasActivasService } from '../services/categoria-service';
 import { obtenerUnidadesActivasService } from '../services/unidad-medida-service';
-import { IUnidadMedida } from '../types/inventario.types';
+import { IUnidadMedida, ISincronizarInventarioExcelResultado, IResultadoItemInventarioExcel } from '../types/inventario.types';
 import { actualizarBodegaTransitoConProductoService, WarehouseWithProductUpdateDTO, IBodegaStockSyncWarning, IBodegaStockInsuficiente } from '../services/bodega-transito-service';
 import {
   obtenerBulkProductoInventoryListingService,
@@ -66,7 +67,8 @@ import {
   bulkUpdateInventoryStockService,
   IBulkProcessResult,
   IStockSyncWarning,
-  IStockInsuficiente
+  IStockInsuficiente,
+  sincronizarInventarioDesdeExcelService
 } from '../services/inventario-service';
 import {
   obtenerProyeccionAbastecimientoService,
@@ -79,6 +81,30 @@ interface ItemPedidoMasivo {
   delta: number;
   motivo: string;
 }
+
+// ── Helpers para sincronización Excel ──
+const leerNombresHojas = (file: File): Promise<string[]> =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const data = new Uint8Array(e.target!.result as ArrayBuffer);
+      const wb = XLSX.read(data, { type: 'array', bookSheets: true });
+      resolve(wb.SheetNames);
+    };
+    reader.onerror = reject;
+    reader.readAsArrayBuffer(file);
+  });
+
+const normalizarParaMatch = (s: string): string =>
+  s.toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
+
+const intentarAutoMatchCategoria = (
+  nombreHoja: string,
+  categorias: { id: number; nombre: string }[]
+): number | null => {
+  const norm = normalizarParaMatch(nombreHoja);
+  return categorias.find(c => normalizarParaMatch(c.nombre) === norm)?.id ?? null;
+};
 
 /**
  * Página de inventario.
@@ -127,6 +153,18 @@ const InventarioPage: React.FC = () => {
   const [bulkModalKey, setBulkModalKey] = React.useState(0);
   const { isOpen: isCategoriasOpen, onOpen: onCategoriasOpen, onOpenChange: onCategoriasOpenChange } = useDisclosure();
   const { isOpen: isUnidadesOpen, onOpen: onUnidadesOpen, onOpenChange: onUnidadesOpenChange } = useDisclosure();
+  // ── Sincronizar Inventario con Excel ──
+  const excelFileInputRef = React.useRef<HTMLInputElement>(null);
+  const [excelPendingFile,     setExcelPendingFile]     = React.useState<File | null>(null);
+  const [excelSheetOptions,    setExcelSheetOptions]    = React.useState<string[]>([]);
+  const [excelSelectedSheet,   setExcelSelectedSheet]   = React.useState<string | null>(null);
+  const [excelSelectedCatId,   setExcelSelectedCatId]   = React.useState<number | null>(null);
+  const [excelFilaInicio,      setExcelFilaInicio]      = React.useState<number>(2);
+  const [excelFilaFin,         setExcelFilaFin]         = React.useState<number>(500);
+  const [excelModalVista,      setExcelModalVista]      = React.useState<'hojas' | 'config'>('hojas');
+  const [isSincronizandoExcel, setIsSincronizandoExcel] = React.useState(false);
+  const [excelEspecierosAviso, setExcelEspecierosAviso] = React.useState(false);
+  const { isOpen: isSincronizarExcelOpen, onOpen: onSincronizarExcelOpen, onOpenChange: onSincronizarExcelOpenChange } = useDisclosure();
   const [productoSeleccionado, setProductoSeleccionado] = React.useState<IProducto | null>(null);
   const [modalMode, setModalMode] = React.useState<'crear' | 'editar'>('crear');
   const [showStockWarning, setShowStockWarning] = React.useState(false);
@@ -622,6 +660,64 @@ const InventarioPage: React.FC = () => {
    * @param {IProducto} producto - Producto a evaluar.
    * @returns {JSX.Element} Chip con el estado del stock.
    */
+  // ── Handlers: Sincronizar Inventario con Excel ──
+  const handleExcelFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = '';
+    try {
+      const hojas = await leerNombresHojas(file);
+      setExcelPendingFile(file);
+      setExcelSheetOptions(hojas);
+      setExcelSelectedSheet(null);
+      setExcelSelectedCatId(null);
+      setExcelEspecierosAviso(false);
+
+      if (hojas.length <= 1) {
+        const hoja = hojas[0] ?? '';
+        setExcelSelectedSheet(hoja);
+        setExcelSelectedCatId(intentarAutoMatchCategoria(hoja, categoriasActivas));
+        if (hoja === 'ESPECIEROS') { setExcelFilaInicio(4); setExcelFilaFin(29); setExcelEspecierosAviso(true); }
+        else { setExcelFilaInicio(2); setExcelFilaFin(500); }
+        setExcelModalVista('config');
+      } else {
+        setExcelFilaInicio(2);
+        setExcelFilaFin(500);
+        setExcelModalVista('hojas');
+      }
+      onSincronizarExcelOpen();
+    } catch {
+      toast.error('No se pudo leer el archivo Excel');
+    }
+  };
+
+  const handleSeleccionarHojaExcel = (nombreHoja: string) => {
+    setExcelSelectedSheet(nombreHoja);
+    setExcelSelectedCatId(intentarAutoMatchCategoria(nombreHoja, categoriasActivas));
+    if (nombreHoja === 'ESPECIEROS') {
+      setExcelFilaInicio(4); setExcelFilaFin(29); setExcelEspecierosAviso(true);
+    } else {
+      setExcelFilaInicio(2); setExcelFilaFin(500); setExcelEspecierosAviso(false);
+    }
+    setExcelModalVista('config');
+  };
+
+  const handleDoSincronizarExcel = async () => {
+    if (!excelPendingFile || !excelSelectedSheet || excelSelectedCatId === null) return;
+    setIsSincronizandoExcel(true);
+    try {
+      const resultado = await sincronizarInventarioDesdeExcelService(
+        excelPendingFile, excelFilaInicio, excelFilaFin, excelSelectedCatId, excelSelectedSheet
+      );
+      toast.success(`Lectura completada: ${resultado.totalEncontrados} encontrados, ${resultado.totalNoEncontrados} no encontrados`);
+      onSincronizarExcelOpenChange();
+    } catch (err: any) {
+      toast.error(err.message || 'Error al procesar el Excel');
+    } finally {
+      setIsSincronizandoExcel(false);
+    }
+  };
+
   const renderStockStatus = (producto: IProducto) => {
     if (producto.stock <= 0) {
       return <Chip color="danger" size="sm" variant="flat" className="text-danger-700 dark:text-danger-400 bg-danger-50 dark:bg-danger-50/10 font-medium">Sin stock</Chip>;
@@ -654,6 +750,27 @@ const InventarioPage: React.FC = () => {
           >
             Control Masivo
           </Button>
+          )}
+          {invPuedeCrear && (
+          <>
+            <Button
+              color="success"
+              variant="flat"
+              size="md"
+              className="font-bold shadow-sm"
+              startContent={<Icon icon="lucide:file-spreadsheet" width={18} />}
+              onPress={() => excelFileInputRef.current?.click()}
+            >
+              Sincronizar con Excel
+            </Button>
+            <input
+              ref={excelFileInputRef}
+              type="file"
+              accept=".xlsx,.xlsm,.xls"
+              className="hidden"
+              onChange={handleExcelFileChange}
+            />
+          </>
           )}
           {invPuedeCrear && (
           <Button
@@ -2738,6 +2855,169 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoP
           )}
         </ModalContent>
       </Modal>
+      {/* Modal: Sincronizar Inventario con Excel */}
+      <Modal
+        isOpen={isSincronizarExcelOpen}
+        onOpenChange={onSincronizarExcelOpenChange}
+        size="lg"
+        backdrop="blur"
+        radius="lg"
+        scrollBehavior="inside"
+      >
+        <ModalContent>
+          {(onClose) => (
+            <>
+              <ModalHeader className="flex flex-col gap-1 pb-2">
+                <div className="flex items-center gap-2">
+                  <Icon icon="lucide:file-spreadsheet" className="text-success" width={22} />
+                  <h2 className="text-lg font-bold text-foreground">
+                    Sincronizar Inventario con Excel
+                  </h2>
+                </div>
+                {excelPendingFile && (
+                  <p className="text-xs text-default-400 font-normal truncate">
+                    {excelPendingFile.name}
+                  </p>
+                )}
+              </ModalHeader>
+
+              <ModalBody className="gap-4 py-4">
+                {/* ── Vista A: Selector de hojas ── */}
+                {excelModalVista === 'hojas' && (
+                  <div className="space-y-3">
+                    <p className="text-sm text-default-600">
+                      Selecciona la hoja del Excel a sincronizar:
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {excelSheetOptions.map((hoja) => (
+                        <Button
+                          key={hoja}
+                          size="sm"
+                          variant="flat"
+                          className="font-medium"
+                          onPress={() => handleSeleccionarHojaExcel(hoja)}
+                        >
+                          {hoja}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* ── Vista B: Configuración ── */}
+                {excelModalVista === 'config' && (
+                  <div className="space-y-4">
+                    {/* Hoja seleccionada */}
+                    <div className="flex items-center gap-2 p-2 bg-default-100 rounded-lg">
+                      <Icon icon="lucide:table-2" className="text-default-500 shrink-0" width={16} />
+                      <span className="text-sm font-medium text-default-700">
+                        Hoja: <span className="text-foreground">{excelSelectedSheet}</span>
+                      </span>
+                      {excelSheetOptions.length > 1 && (
+                        <Button
+                          size="sm"
+                          variant="light"
+                          className="ml-auto text-xs"
+                          onPress={() => setExcelModalVista('hojas')}
+                        >
+                          Cambiar
+                        </Button>
+                      )}
+                    </div>
+
+                    {/* Aviso ESPECIEROS */}
+                    {excelEspecierosAviso && (
+                      <div className="flex items-start gap-2 p-2 bg-warning-50 rounded-lg border border-warning-200">
+                        <Icon icon="lucide:info" className="text-warning-600 shrink-0 mt-0.5" width={15} />
+                        <p className="text-xs text-warning-700">
+                          Esta hoja tiene encabezado en fila 3. Fila de inicio ajustada a 4.
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Categoría */}
+                    <div className="space-y-1">
+                      <label className="text-sm font-medium text-default-700">
+                        Categoría <span className="text-danger">*</span>
+                      </label>
+                      <Select
+                        placeholder="Selecciona una categoría"
+                        selectedKeys={excelSelectedCatId !== null ? [String(excelSelectedCatId)] : []}
+                        onSelectionChange={(keys) => {
+                          const val = Array.from(keys)[0];
+                          setExcelSelectedCatId(val ? Number(val) : null);
+                        }}
+                        variant="bordered"
+                        size="sm"
+                        classNames={{ trigger: 'bg-white dark:bg-default-100/50' }}
+                      >
+                        {categoriasActivas.map((cat) => (
+                          <SelectItem key={String(cat.id)}>
+                            {cat.nombre}
+                          </SelectItem>
+                        ))}
+                      </Select>
+                    </div>
+
+                    {/* Rango de filas */}
+                    <div className="space-y-1">
+                      <label className="text-sm font-medium text-default-700">
+                        Rango de filas del Excel
+                      </label>
+                      <div className="flex gap-3 items-center">
+                        <Input
+                          label="Fila inicio"
+                          type="number"
+                          size="sm"
+                          variant="bordered"
+                          value={String(excelFilaInicio)}
+                          onValueChange={(v) => setExcelFilaInicio(Math.max(1, parseInt(v) || 1))}
+                          classNames={{ inputWrapper: 'bg-white dark:bg-default-100/50' }}
+                          className="w-32"
+                        />
+                        <span className="text-default-400 text-sm mt-4">—</span>
+                        <Input
+                          label="Fila fin"
+                          type="number"
+                          size="sm"
+                          variant="bordered"
+                          value={String(excelFilaFin)}
+                          onValueChange={(v) => setExcelFilaFin(Math.max(excelFilaInicio, parseInt(v) || excelFilaInicio))}
+                          classNames={{ inputWrapper: 'bg-white dark:bg-default-100/50' }}
+                          className="w-32"
+                        />
+                      </div>
+                      {excelFilaFin >= excelFilaInicio && (
+                        <p className="text-xs text-default-400">
+                          {excelFilaFin - excelFilaInicio + 1} fila(s) a procesar
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </ModalBody>
+
+              <ModalFooter className="border-t border-default-100">
+                <Button variant="ghost" onPress={onClose} isDisabled={isSincronizandoExcel}>
+                  Cancelar
+                </Button>
+                {excelModalVista === 'config' && (
+                  <Button
+                    color="success"
+                    isDisabled={excelSelectedCatId === null || isSincronizandoExcel}
+                    isLoading={isSincronizandoExcel}
+                    startContent={!isSincronizandoExcel && <Icon icon="lucide:scan" width={18} />}
+                    onPress={handleDoSincronizarExcel}
+                  >
+                    {isSincronizandoExcel ? 'Procesando...' : 'Procesar Excel'}
+                  </Button>
+                )}
+              </ModalFooter>
+            </>
+          )}
+        </ModalContent>
+      </Modal>
+
     </div>
   );
 };

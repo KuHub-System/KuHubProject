@@ -18,6 +18,7 @@ import {
     IValidateStockConflictResponse,
     IProductoRecetaSelection
 } from '../types/producto.types';
+import { ISincronizarInventarioExcelResultado } from '../types/inventario.types';
 
 /**
  * Obtiene las categorías y unidades de medida para los filtros
@@ -643,5 +644,32 @@ export const bulkUpdateInventoryStockService = async (requests: IBulkUpdateStock
             errorMsg = error.response.data.message;
         }
         throw new Error(errorMsg);
+    }
+};
+
+export const sincronizarInventarioDesdeExcelService = async (
+    archivo: File,
+    filaInicio: number,
+    filaFin: number,
+    idCategoria: number,
+    nombreHoja?: string
+): Promise<ISincronizarInventarioExcelResultado> => {
+    const formData = new FormData();
+    formData.append('archivo', archivo);
+    formData.append('filaInicio', String(filaInicio));
+    formData.append('filaFin', String(filaFin));
+    formData.append('idCategoria', String(idCategoria));
+    const params = nombreHoja ? `?nombreHoja=${encodeURIComponent(nombreHoja)}` : '';
+    try {
+        const response = await api.post<ISincronizarInventarioExcelResultado>(
+            `/inventario/sincronizar-excel${params}`,
+            formData,
+            { headers: { 'Content-Type': 'multipart/form-data' } }
+        );
+        return response.data;
+    } catch (error: any) {
+        throw new Error(
+            error.response?.data?.message || 'Error al procesar el Excel de inventario'
+        );
     }
 };
