@@ -46,6 +46,7 @@ public interface ProductoRepository extends JpaRepository<Producto, Integer> {
     List<Producto> findByActivo(Boolean activo);
     boolean existsByNombreProductoAndIdProductoIsNot(String nombreProducto, Integer idProducto);
     boolean existsByNombreProducto(String nombreProducto);
+    boolean existsByNombreProductoAndActivoTrue(String nombreProducto);
     boolean existsBycodProductoAndActivo(String codProducto, Boolean activo);
     boolean existsByIdProducto(Integer idProducto);
     boolean existsByCategoria_IdCategoria(Short idCategoria);
