@@ -140,8 +140,9 @@ public class DashboardServiceImpl implements DashboardService {
     @Override
     @Transactional(readOnly = true)
     public DashboardGestorDTO getDashboardGestor() {
-        log.info("Fetching gestor dashboard data");
+        log.info("[GESTOR] Iniciando getDashboardGestor");
 
+        log.info("[GESTOR] Paso 1: getSolicitudesPorEstado");
         Map<String, Long> estadoMap = dashboardRepository.getSolicitudesPorEstado().stream()
             .collect(Collectors.toMap(
                 r -> (String) r[0],
@@ -155,14 +156,17 @@ public class DashboardServiceImpl implements DashboardService {
         long enPedido    = estadoMap.getOrDefault("EN_PEDIDO",  0L);
         long total       = pendientes + aceptadas + procesadas + rechazadas + enPedido;
 
+        log.info("[GESTOR] Paso 2: getTiempoPromedioHoras");
         double tiempoPromedioHoras = dashboardRepository.getTiempoPromedioHoras();
 
+        log.info("[GESTOR] Paso 3: getSolicitudesPorAsignatura");
         List<ChartPointDTO> solicitudesPorAsignatura = dashboardRepository.getSolicitudesPorAsignatura().stream()
             .map(r -> new ChartPointDTO((String) r[0], ((Number) r[1]).doubleValue()))
             .collect(Collectors.toList());
 
         List<PieSliceDTO> solicitudesPorEstado = buildEstadoPie(estadoMap);
 
+        log.info("[GESTOR] Paso 4: getSolicitudesRechazadas");
         List<SolicitudRechazadaDTO> rechazadasRecientes = dashboardRepository.getSolicitudesRechazadas().stream()
             .map(r -> new SolicitudRechazadaDTO(
                 ((Number) r[0]).intValue(),
@@ -175,6 +179,7 @@ public class DashboardServiceImpl implements DashboardService {
             ))
             .collect(Collectors.toList());
 
+        log.info("[GESTOR] OK - total={}", total);
         return new DashboardGestorDTO(
             total,
             pendientes,
@@ -194,13 +199,16 @@ public class DashboardServiceImpl implements DashboardService {
     @Override
     @Transactional(readOnly = true)
     public DashboardRecetasDTO getDashboardRecetas() {
-        log.info("Fetching recetas dashboard data");
+        log.info("[RECETAS] Iniciando getDashboardRecetas");
 
+        log.info("[RECETAS] Paso 1: getRecetasKpis");
         Object[] kpis = dashboardRepository.getRecetasKpis();
         long recetasActivas   = ((Number) kpis[0]).longValue();
         long recetasInactivas = ((Number) kpis[1]).longValue();
         long recetasTotal     = ((Number) kpis[2]).longValue();
+        log.info("[RECETAS] KPIs: activas={}, inactivas={}, total={}", recetasActivas, recetasInactivas, recetasTotal);
 
+        log.info("[RECETAS] Paso 2: getTopIngredientes");
         List<ChartPointDTO> topIngredientes = dashboardRepository.getTopIngredientes().stream()
             .map(r -> new ChartPointDTO((String) r[0], ((Number) r[1]).doubleValue()))
             .collect(Collectors.toList());
@@ -210,6 +218,7 @@ public class DashboardServiceImpl implements DashboardService {
             new PieSliceDTO("Inactivas", recetasInactivas, "#9CA3AF")
         );
 
+        log.info("[RECETAS] OK");
         return new DashboardRecetasDTO(
             recetasActivas,
             recetasInactivas,

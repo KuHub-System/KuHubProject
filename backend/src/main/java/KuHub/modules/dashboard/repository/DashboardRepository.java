@@ -191,7 +191,7 @@ public class DashboardRepository {
             "  s.id_solicitud,                                        " + // [0]
             "  COALESCE(mr.motivo, 'Sin motivo registrado'),          " + // [1]
             "  TO_CHAR(s.fecha_solicitada, 'DD/MM/YYYY'),             " + // [2]
-            "  COALESCE(r.nombre_receta, '—'),                        " + // [3]
+            "  COALESCE(psb.nombre_pedido_semana_bodega, '—'),        " + // [3]
             "  COALESCE(a.nombre_asignatura, '—'),                    " + // [4]
             "  COALESCE(sec.nombre_seccion, '—'),                     " + // [5]
             "  COALESCE(                                               " + // [6]
@@ -201,7 +201,7 @@ public class DashboardRepository {
             "     WHERE ds2.id_seccion = s.id_seccion LIMIT 1), '—')  " +
             "FROM solicitud s " +
             "LEFT JOIN motivo_rechazo_solicitud mr ON mr.id_solicitud = s.id_solicitud " +
-            "LEFT JOIN receta r   ON r.id_receta  = s.id_receta " +
+            "LEFT JOIN pedido_semana_bodega psb ON psb.id_pedido_semana_bodega = s.id_pedido_semana_bodega " +
             "LEFT JOIN seccion sec ON sec.id_seccion = s.id_seccion " +
             "LEFT JOIN asignatura a ON a.id_asignatura = sec.id_asignatura " +
             "WHERE s.estado_solicitud = 'RECHAZADA' " +
@@ -214,21 +214,21 @@ public class DashboardRepository {
     public Object[] getRecetasKpis() {
         return (Object[]) em.createNativeQuery(
             "SELECT " +
-            "COUNT(*) FILTER (WHERE estado_receta = 'ACTIVO'), " +
-            "COUNT(*) FILTER (WHERE estado_receta = 'INACTIVO'), " +
+            "COUNT(*) FILTER (WHERE estado_pedido::text = 'ACTIVO'), " +
+            "COUNT(*) FILTER (WHERE estado_pedido::text = 'INACTIVO'), " +
             "COUNT(*) " +
-            "FROM receta"
+            "FROM pedido_semana_bodega"
         ).getSingleResult();
     }
 
     @SuppressWarnings("unchecked")
     public List<Object[]> getTopIngredientes() {
         return em.createNativeQuery(
-            "SELECT p.nombre_producto, SUM(dr.cant_producto) AS uso_total " +
-            "FROM detalle_receta dr " +
-            "JOIN producto p ON p.id_producto = dr.id_producto " +
-            "JOIN receta r ON r.id_receta = dr.id_receta " +
-            "WHERE r.estado_receta = 'ACTIVO' " +
+            "SELECT p.nombre_producto, SUM(dpsb.cant_producto) AS uso_total " +
+            "FROM detalle_pedido_semana_bodega dpsb " +
+            "JOIN producto p ON p.id_producto = dpsb.id_producto " +
+            "JOIN pedido_semana_bodega psb ON psb.id_pedido_semana_bodega = dpsb.id_pedido_semana_bodega " +
+            "WHERE psb.estado_pedido::text = 'ACTIVO' " +
             "GROUP BY p.id_producto, p.nombre_producto " +
             "ORDER BY uso_total DESC LIMIT 10"
         ).getResultList();
