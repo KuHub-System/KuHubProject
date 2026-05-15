@@ -154,7 +154,7 @@ const DetalleRechazadaModal: React.FC<{
               {/* Grid de info */}
               <div className="grid grid-cols-2 gap-2.5">
                 {[
-                  { icon: 'lucide:book-open', label: 'Receta',   val: item.nombreReceta,   color: 'text-warning-500',  bg: 'bg-warning-50 dark:bg-warning-900/20'  },
+                  { icon: 'lucide:package-check', label: 'Solicitud', val: item.nombreReceta, color: 'text-warning-500',  bg: 'bg-warning-50 dark:bg-warning-900/20'  },
                   { icon: 'lucide:user',       label: 'Docente',  val: item.nombreDocente,  color: 'text-primary-500',  bg: 'bg-primary-50 dark:bg-primary-900/20'  },
                   { icon: 'lucide:hash',        label: 'ID Sol.',  val: `#${item.idSolicitud}`, color: 'text-default-400', bg: 'bg-default-100 dark:bg-default-50/10' },
                   { icon: 'lucide:calendar',   label: 'Fecha',    val: item.fechaSolicitada, color: 'text-secondary-500', bg: 'bg-secondary-50 dark:bg-secondary-900/20' },

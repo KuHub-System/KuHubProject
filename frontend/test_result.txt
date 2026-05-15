@@ -1,0 +1,17 @@
+
+> kuhub-system@0.1.0 test:run
+> vitest run src/__tests__/pages/inventario.test.tsx
+
+
+[1m[46m RUN [49m[22m [36mv4.0.8 [39m[90mC:/Users/Matheus/IdeaProjects/KuHubProject/frontend[39m
+
+[90mstdout[2m | src/__tests__/pages/inventario.test.tsx
+[22m[39m[AXIOS] BaseURL → http://localhost:8080/api/v1
+
+
+[2m Test Files [22m [90m (1)[39m
+[2m      Tests [22m [1m[31m1 failed[39m[22m[2m | [22m[1m[32m3 passed[39m[22m[90m (20)[39m
+[2m     Errors [22m [1m[31m1 error[39m[22m
+[2m   Start at [22m 21:21:12
+[2m   Duration [22m 3979.03s[2m (transform 626ms, setup 512ms, collect 8.46s, tests 0ms, environment 2.14s, prepare 33ms)[22m
+
