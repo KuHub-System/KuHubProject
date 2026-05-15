@@ -543,6 +543,146 @@ const handleAplicarSincronizacion = async () => {
 
 ## Puntos a confirmar
 
-1. **Tipo de movimiento bulk:** ¿`"Ajuste"` es el tipo correcto para sincronización desde Excel? Revisar enum en backend.
-2. **Roles del endpoint:** ¿`PROFESOR_A_CARGO` accede o solo `ADMINISTRADOR`/`CO_ADMINISTRADOR`?
-3. **Modo set vs delta:** ¿El stock del Excel reemplaza el stock (→ delta = stockExcel - stockActual) o es un incremento directo?
+1. **Roles del endpoint:** ¿`PROFESOR_A_CARGO` accede o solo `ADMINISTRADOR`/`CO_ADMINISTRADOR`?
+2. **Modo set vs delta para encontrados:** ¿El stock del Excel reemplaza el stock (→ Ajuste a stockExcel) o es un incremento directo?
+
+---
+
+## Parte 2 — Procesamiento backend y modal de resultados
+
+### Lógica de matcheo por fila (backend)
+
+Antes del loop, cargar una vez:
+```java
+List<UnidadMedida> unidadesActivas = unidadMedidaRepository.findByActivoTrue();
+```
+
+**Detección de columna de unidad:** algoritmo dinámico — busca header que contenga `"U/MEDIDA"`, `"UNIDAD"` o `"MEDIDA"`.
+
+Para cada fila válida (nombre y stock no vacíos):
+```java
+String nombreExcel  = StringUtils.capitalizeFully(getCellText(row.getCell(colNombre)).strip());
+String unidadExcel  = StringUtils.capitalizeFully(getCellText(row.getCell(colUnidad)).strip());
+BigDecimal stockExcel = parseCantidad(row.getCell(colStock));
+
+// Matcheo de unidad (por nombre o abreviatura)
+Optional<UnidadMedida> unidadMatch = unidadesActivas.stream()
+    .filter(u -> StringUtils.capitalizeFully(u.getNombre()).equals(unidadExcel)
+              || StringUtils.capitalizeFully(u.getAbreviatura()).equals(unidadExcel))
+    .findFirst();
+
+// Matcheo de producto (por nombre + categoría)
+Optional<Inventario> invMatch = inventarioRepository
+    .findByProductoNombreIgnoreCaseAndProductoCategoriaId(nombreExcel, idCategoria);
+```
+
+**Si encontrado — actualizar stock:**
+```java
+// Crear movimiento de ajuste
+MovimientoInventario mov = new MovimientoInventario();
+mov.setTipoMovimiento("Ajuste");
+mov.setDescripcion("sincronizacion excel");
+mov.setStockAnterior(inv.getStockActual());
+mov.setStockNuevo(stockExcel);
+// ... persistir movimiento y actualizar inv.setStockActual(stockExcel)
+// estado = "ok"
+```
+
+**Si no encontrado — agregar a lista de retorno:**
+```java
+// estado = "no_encontrado"
+// incluir: nombreExcel, unidadMedidaExcel, idUnidadMedida (null si no matcheó), stockExcel
+```
+
+---
+
+### DTO actualizado (agregar campos de unidad)
+
+```java
+public record ResultadoItemInventario(
+    int fila,
+    String nombreExcel,
+    Integer idInventario,
+    Integer idProducto,
+    String nombreProducto,
+    BigDecimal stockExcel,
+    BigDecimal stockActual,
+    String unidadMedidaExcel,   // ← nuevo: nombre capitalizado del Excel
+    Integer idUnidadMedida,     // ← nuevo: null si no matcheó con unidades activas
+    String estado               // "ok" | "no_encontrado"
+) {}
+```
+
+### Tipo TypeScript actualizado
+
+```typescript
+// frontend/src/types/inventario.types.ts
+export interface IResultadoItemInventarioExcel {
+  fila: number;
+  nombreExcel: string;
+  idInventario?: number;
+  idProducto?: number;
+  nombreProducto?: string;
+  stockExcel?: number;
+  stockActual?: number;
+  unidadMedidaExcel?: string;   // ← nuevo
+  idUnidadMedida?: number;       // ← nuevo
+  estado: 'ok' | 'no_encontrado';
+}
+```
+
+---
+
+### Modal de resultados (Vista C — frontend)
+
+Se abre automáticamente tras recibir respuesta de `handleDoSincronizarExcel`.
+
+```
+┌─────────────────────────────────────────────────────┐
+│  Resultado — Sincronización Excel                   │
+│                                                     │
+│  ✓ 45 productos sincronizados                       │
+│                                                     │
+│  Productos no encontrados (12)                      │
+│  ┌──────────────────────────────────────────┐       │
+│  │ ☑ Tomate Cherry      Kg      2.5         │       │
+│  │ ☑ Aceite de Oliva    Lt      1.0         │       │
+│  │ ☐ Producto Raro      —       0.0         │       │
+│  └──────────────────────────────────────────┘       │
+│                                                     │
+│  [Cerrar]       [Incluir seleccionados (11)]         │
+└─────────────────────────────────────────────────────┘
+```
+
+Estados adicionales en `InventarioPage`:
+```typescript
+const [excelNoEncontradosSeleccionados, setExcelNoEncontradosSeleccionados] =
+  React.useState<Set<number>>(new Set()); // Set de índices (fila) de los seleccionados
+const [isIncluyendoNoEncontrados, setIsIncluyendoNoEncontrados] = React.useState(false);
+```
+
+---
+
+### Endpoint de confirmación de nuevos
+
+**Ruta:** `POST /api/v1/inventario/sincronizar-excel/confirmar-nuevos`
+
+**Body (JSON):**
+```json
+[
+  { "nombre": "Tomate Cherry", "idUnidadMedida": 3, "stock": 2.5, "idCategoria": 7 },
+  ...
+]
+```
+
+**Acción por item:**
+1. Crear producto nuevo (nombre, idUnidadMedida, idCategoria)
+2. Crear entrada de inventario para ese producto
+3. Crear movimiento tipo `"Entrada"`, descripcion `"sincronizacion del inventario"`, stockNuevo = stock del Excel
+
+**Diferencia de movimientos:**
+
+| Origen | Tipo movimiento | Descripción |
+|--------|----------------|-------------|
+| Productos encontrados (sync inmediata) | `"Ajuste"` | `"sincronizacion excel"` |
+| Productos nuevos confirmados por usuario | `"Entrada"` | `"sincronizacion del inventario"` |

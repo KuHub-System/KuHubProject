@@ -345,4 +345,7 @@ public interface InventarioRepository extends JpaRepository<Inventario, Integer>
     boolean existsInventarioByIdInventarioAndStock(Integer idInventario, BigDecimal stock);
     /** Verifica si existe un inventario con el ID y estado activo indicado. */
     boolean existsInventarioByIdInventarioAndActivo(Integer idInventario, Boolean activo);
+
+    /** Busca un inventario activo por el ID de su producto asociado. */
+    Optional<Inventario> findByProducto_IdProductoAndActivoTrue(Integer idProducto);
 }
