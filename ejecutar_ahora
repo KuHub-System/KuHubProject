@@ -1,211 +1,223 @@
-2026-05-15T19:28:52.169Z  INFO 1 --- [           main] KuHub.BackendMonoliticoApplication       : Starting BackendMonoliticoApplication v1.0-SNAPSHOT using Java 21.0.11 with PID 1 (/app/app.jar started by root in /app)
-2026-05-15T19:28:52.176Z DEBUG 1 --- [           main] KuHub.BackendMonoliticoApplication       : Running with Spring Boot v3.4.3, Spring v6.2.3
-2026-05-15T19:28:52.177Z  INFO 1 --- [           main] KuHub.BackendMonoliticoApplication       : The following 1 profile is active: "prod"
-2026-05-15T19:28:55.807Z  INFO 1 --- [           main] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data JPA repositories in DEFAULT mode.
-2026-05-15T19:28:56.083Z  INFO 1 --- [           main] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 258 ms. Found 30 JPA repository interfaces.
-2026-05-15T19:28:56.675Z  INFO 1 --- [           main] o.s.cloud.context.scope.GenericScope     : BeanFactory id=fc101d5d-ae3f-3bf6-b25b-ec904ddd13b9
-2026-05-15T19:28:58.238Z  INFO 1 --- [           main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat initialized with port 8080 (http)
-2026-05-15T19:28:58.263Z  INFO 1 --- [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
-2026-05-15T19:28:58.264Z  INFO 1 --- [           main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/10.1.36]
-2026-05-15T19:28:58.316Z  INFO 1 --- [           main] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring embedded WebApplicationContext
-2026-05-15T19:28:58.318Z  INFO 1 --- [           main] w.s.c.ServletWebServerApplicationContext : Root WebApplicationContext: initialization completed in 5999 ms
-2026-05-15T19:28:58.847Z DEBUG 1 --- [           main] o.s.w.f.ServerHttpObservationFilter      : Filter 'webMvcObservationFilter' configured for use
-2026-05-15T19:28:58.847Z DEBUG 1 --- [           main] K.c.s.rate_limiting.RateLimitFilter      : Filter 'rateLimitFilter' configured for use
-2026-05-15T19:28:59.088Z  INFO 1 --- [           main] o.hibernate.jpa.internal.util.LogHelper  : HHH000204: Processing PersistenceUnitInfo [name: default]
-2026-05-15T19:28:59.170Z  INFO 1 --- [           main] org.hibernate.Version                    : HHH000412: Hibernate ORM core version 6.6.8.Final
-2026-05-15T19:28:59.223Z  INFO 1 --- [           main] o.h.c.internal.RegionFactoryInitiator    : HHH000026: Second-level cache disabled
-2026-05-15T19:28:59.386Z  INFO 1 --- [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
-2026-05-15T19:29:00.110Z  INFO 1 --- [           main] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Added connection org.postgresql.jdbc.PgConnection@39a9becc
-2026-05-15T19:29:00.114Z  INFO 1 --- [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
-2026-05-15T19:29:00.168Z  WARN 1 --- [           main] org.hibernate.orm.deprecation            : HHH90000025: PostgreSQLDialect does not need to be specified explicitly using 'hibernate.dialect' (remove the property setting and it will be selected by default)
-2026-05-15T19:29:00.204Z  INFO 1 --- [           main] org.hibernate.orm.connections.pooling    : HHH10001005: Database info:
-        Database JDBC URL [Connecting through datasource 'HikariDataSource (HikariPool-1)']
-        Database driver: undefined/unknown
-        Database version: 16.13
-        Autocommit mode: undefined/unknown
-        Isolation level: undefined/unknown
-        Minimum pool size: undefined/unknown
-        Maximum pool size: undefined/unknown
-2026-05-15T19:29:00.773Z  INFO 1 --- [           main] o.s.o.j.p.SpringPersistenceUnitInfo      : No LoadTimeWeaver setup: ignoring JPA class transformer
-2026-05-15T19:29:04.289Z  INFO 1 --- [           main] o.h.e.t.j.p.i.JtaPlatformInitiator       : HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)
-2026-05-15T19:29:04.294Z  INFO 1 --- [           main] j.LocalContainerEntityManagerFactoryBean : Initialized JPA EntityManagerFactory for persistence unit 'default'
-2026-05-15T19:29:05.058Z  INFO 1 --- [           main] o.s.d.j.r.query.QueryEnhancerFactory     : Hibernate is in classpath; If applicable, HQL parser will be used.
-2026-05-15T19:29:11.078Z  INFO 1 --- [           main] r$InitializeUserDetailsManagerConfigurer : Global AuthenticationManager configured with UserDetailsService bean with name jpaUserDetailsService
-2026-05-15T19:29:11.311Z  WARN 1 --- [           main] JpaBaseConfiguration$JpaWebConfiguration : spring.jpa.open-in-view is enabled by default. Therefore, database queries may be performed during view rendering. Explicitly configure spring.jpa.open-in-view to disable this warning
-2026-05-15T19:29:11.911Z DEBUG 1 --- [           main] s.w.s.m.m.a.RequestMappingHandlerMapping : 211 mappings in 'requestMappingHandlerMapping'
-2026-05-15T19:29:12.238Z DEBUG 1 --- [           main] o.s.w.s.handler.SimpleUrlHandlerMapping  : Patterns [/webjars/**, /**, /swagger-ui*/*swagger-initializer.js, /swagger-ui*/**] in 'resourceHandlerMapping'
-2026-05-15T19:29:12.548Z  INFO 1 --- [           main] o.s.b.a.e.web.EndpointLinksResolver      : Exposing 1 endpoint beneath base path '/actuator'
-2026-05-15T19:29:13.278Z DEBUG 1 --- [           main] o.s.s.web.DefaultSecurityFilterChain     : Will secure any request with filters: DisableEncodeUrlFilter, WebAsyncManagerIntegrationFilter, SecurityContextHolderFilter, HeaderWriterFilter, CorsFilter, LogoutFilter, RateLimitFilter, JwtValidationFilter, JwtAuthenticationFilter, RequestCacheAwareFilter, SecurityContextHolderAwareRequestFilter, AnonymousAuthenticationFilter, SessionManagementFilter, ExceptionTranslationFilter, AuthorizationFilter
-2026-05-15T19:29:13.492Z DEBUG 1 --- [           main] s.w.s.m.m.a.RequestMappingHandlerAdapter : ControllerAdvice beans: 0 @ModelAttribute, 0 @InitBinder, 1 RequestBodyAdvice, 1 ResponseBodyAdvice
-2026-05-15T19:29:13.602Z DEBUG 1 --- [           main] .m.m.a.ExceptionHandlerExceptionResolver : ControllerAdvice beans: 2 @ExceptionHandler, 1 ResponseBodyAdvice
-2026-05-15T19:29:14.631Z  INFO 1 --- [           main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat started on port 8080 (http) with context path '/'
-2026-05-15T19:29:14.681Z  INFO 1 --- [           main] KuHub.BackendMonoliticoApplication       : Started BackendMonoliticoApplication in 23.831 seconds (process running for 25.157)
-🔍 Iniciando prueba de conexión a BD...
-✅ CONEXIÓN EXITOSA a PostgreSQL!
-📊 Base de datos: kuhub_devs
-🔗 URL: jdbc:postgresql://172.26.12.228:5432/kuhub_devs
-🏁 Prueba de conexión finalizada
-🚀 Backend Monolítico KuHub iniciado!
-2026-05-15T19:29:45.413Z  INFO 1 --- [nio-8080-exec-3] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring DispatcherServlet 'dispatcherServlet'
-2026-05-15T19:29:45.414Z  INFO 1 --- [nio-8080-exec-3] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
-2026-05-15T19:29:45.415Z DEBUG 1 --- [nio-8080-exec-3] o.s.web.servlet.DispatcherServlet        : Detected StandardServletMultipartResolver
-2026-05-15T19:29:45.415Z DEBUG 1 --- [nio-8080-exec-3] o.s.web.servlet.DispatcherServlet        : Detected AcceptHeaderLocaleResolver
-2026-05-15T19:29:45.415Z DEBUG 1 --- [nio-8080-exec-3] o.s.web.servlet.DispatcherServlet        : Detected FixedThemeResolver
-2026-05-15T19:29:45.418Z DEBUG 1 --- [nio-8080-exec-3] o.s.web.servlet.DispatcherServlet        : Detected org.springframework.web.servlet.view.DefaultRequestToViewNameTranslator@2cc9371f
-2026-05-15T19:29:45.419Z DEBUG 1 --- [nio-8080-exec-3] o.s.web.servlet.DispatcherServlet        : Detected org.springframework.web.servlet.support.SessionFlashMapManager@b6d99bc
-2026-05-15T19:29:45.420Z DEBUG 1 --- [nio-8080-exec-3] o.s.web.servlet.DispatcherServlet        : enableLoggingRequestDetails='false': request parameters and headers will be masked to prevent unsafe logging of potentially sensitive data
-2026-05-15T19:29:45.420Z  INFO 1 --- [nio-8080-exec-3] o.s.web.servlet.DispatcherServlet        : Completed initialization in 6 ms
-2026-05-15T19:29:45.654Z DEBUG 1 --- [nio-8080-exec-2] o.s.security.web.FilterChainProxy        : Securing GET /api/v1/permisos/matrix
-2026-05-15T19:29:45.655Z DEBUG 1 --- [nio-8080-exec-3] o.s.security.web.FilterChainProxy        : Securing GET /api/v1/semanas/find-grouped-perions-academic
-2026-05-15T19:29:45.656Z DEBUG 1 --- [nio-8080-exec-1] o.s.security.web.FilterChainProxy        : Securing GET /api/v1/gestion-sistema/configuracion
-2026-05-15T19:29:45.678Z  INFO 1 --- [nio-8080-exec-2] K.c.s.rate_limiting.RateLimitFilter      : 📍 IP: 186.78.177.220 | Petición 2 de 80
-2026-05-15T19:29:45.680Z  INFO 1 --- [nio-8080-exec-1] K.c.s.rate_limiting.RateLimitFilter      : 📍 IP: 186.78.177.220 | Petición 3 de 80
-2026-05-15T19:29:45.678Z  INFO 1 --- [nio-8080-exec-3] K.c.s.rate_limiting.RateLimitFilter      : 📍 IP: 186.78.177.220 | Petición 1 de 80
-2026-05-15T19:29:46.020Z DEBUG 1 --- [nio-8080-exec-1] o.s.security.web.FilterChainProxy        : Secured GET /api/v1/gestion-sistema/configuracion
-2026-05-15T19:29:46.021Z DEBUG 1 --- [nio-8080-exec-2] o.s.security.web.FilterChainProxy        : Secured GET /api/v1/permisos/matrix
-2026-05-15T19:29:46.021Z DEBUG 1 --- [nio-8080-exec-3] o.s.security.web.FilterChainProxy        : Secured GET /api/v1/semanas/find-grouped-perions-academic
-2026-05-15T19:29:46.026Z DEBUG 1 --- [nio-8080-exec-3] o.s.web.servlet.DispatcherServlet        : GET "/api/v1/semanas/find-grouped-perions-academic", parameters={}
-2026-05-15T19:29:46.028Z DEBUG 1 --- [nio-8080-exec-1] o.s.web.servlet.DispatcherServlet        : GET "/api/v1/gestion-sistema/configuracion", parameters={}
-2026-05-15T19:29:46.029Z DEBUG 1 --- [nio-8080-exec-2] o.s.web.servlet.DispatcherServlet        : GET "/api/v1/permisos/matrix", parameters={}
-2026-05-15T19:29:46.030Z DEBUG 1 --- [nio-8080-exec-2] s.w.s.m.m.a.RequestMappingHandlerMapping : Mapped to KuHub.modules.gestion_usuario.controller.PermisoRolController#getPermissionMatrix()
-2026-05-15T19:29:46.031Z DEBUG 1 --- [nio-8080-exec-1] s.w.s.m.m.a.RequestMappingHandlerMapping : Mapped to KuHub.modules.gestion_sistema.controller.GestionSistemaController#getConfiguracion()
-2026-05-15T19:29:46.032Z DEBUG 1 --- [nio-8080-exec-3] s.w.s.m.m.a.RequestMappingHandlerMapping : Mapped to KuHub.modules.gestion_academica.controller.SemanaController#findGroupedPeriodsAcademic()
-2026-05-15T19:29:46.149Z DEBUG 1 --- [nio-8080-exec-1] org.hibernate.SQL                        :
-    select
-        gs1_0.id,
-        gs1_0.descripcion,
-        gs1_0.solicitudes_en_pedido
-    from
-        gestion_sistema gs1_0
-    where
-        gs1_0.id=?
-2026-05-15T19:29:46.150Z DEBUG 1 --- [nio-8080-exec-3] org.hibernate.SQL                        :
+2026-05-15T19:38:37.683Z DEBUG 1 --- [nio-8080-exec-2] org.hibernate.SQL                        :
     SELECT
-        anio,
-        JSON_AGG(DISTINCT semestre
-    ORDER BY
-        semestre ASC) AS semestres
+        COUNT(*)
     FROM
-        semanas
-    GROUP BY
-        anio
-    ORDER BY
-        anio ASC
-Hibernate:
-    SELECT
-        anio,
-        JSON_AGG(DISTINCT semestre
-    ORDER BY
-        semestre ASC) AS semestres
-    FROM
-        semanas
-    GROUP BY
-        anio
-    ORDER BY
-        anio ASC
-Hibernate:
-    select
-        gs1_0.id,
-        gs1_0.descripcion,
-        gs1_0.solicitudes_en_pedido
-    from
-        gestion_sistema gs1_0
-    where
-        gs1_0.id=?
-2026-05-15T19:29:46.155Z DEBUG 1 --- [nio-8080-exec-2] org.hibernate.SQL                        :
-    SELECT
-        r.id_rol          AS idRol,
-        r.nombre_rol      AS nombreRol,
-        m.id_modulo       AS idModulo,
-        m.codigo_modulo   AS codigoModulo,
-        m.nombre_modulo   AS nombreModulo,
-        m.orden_modulo    AS ordenModulo,
-        pr.id_permiso_rol AS idPermisoRol,
-        COALESCE(pr.puede_leer,       false) AS puedeLeer,
-        COALESCE(pr.puede_crear,      false) AS puedeCrear,
-        COALESCE(pr.puede_actualizar, false) AS puedeActualizar,
-        COALESCE(pr.puede_eliminar,   false) AS puedeEliminar
-    FROM
-        rol r
-    CROSS JOIN
-        modulo m
-    LEFT JOIN
-        permiso_rol pr
-            ON pr.id_rol = r.id_rol
-            AND pr.id_modulo = m.id_modulo
-            AND pr.enabled = true
+        movimiento m
+    JOIN
+        inventario i
+            ON i.id_inventario = m.id_inventario
+    JOIN
+        producto p
+            ON p.id_producto = i.id_producto
+    JOIN
+        usuario u
+            ON u.id_usuario = m.id_usuario
     WHERE
-        r.activo = true
-        AND m.enabled = true
-    ORDER BY
-        m.orden_modulo,
-        r.id_rol
+        m.fecha_movimiento BETWEEN ? AND ?
+        AND (
+            ? IS NULL
+            OR LOWER(p.nombre_producto) LIKE LOWER('%' || ? || '%')
+        )
+        AND (
+            ? IS NULL
+            OR CAST(m.tipo_movimiento AS TEXT) = ?
+        )
+        AND (
+            ? IS NULL
+            OR LOWER(CONCAT_WS(' ', u.p_nombre, u.s_nombre, u.app_paterno, u.app_materno)) LIKE LOWER('%' || ? || '%')
+        )
 Hibernate:
     SELECT
-        r.id_rol          AS idRol,
-        r.nombre_rol      AS nombreRol,
-        m.id_modulo       AS idModulo,
-        m.codigo_modulo   AS codigoModulo,
-        m.nombre_modulo   AS nombreModulo,
-        m.orden_modulo    AS ordenModulo,
-        pr.id_permiso_rol AS idPermisoRol,
-        COALESCE(pr.puede_leer,       false) AS puedeLeer,
-        COALESCE(pr.puede_crear,      false) AS puedeCrear,
-        COALESCE(pr.puede_actualizar, false) AS puedeActualizar,
-        COALESCE(pr.puede_eliminar,   false) AS puedeEliminar
+        COUNT(*)
     FROM
-        rol r
-    CROSS JOIN
-        modulo m
-    LEFT JOIN
-        permiso_rol pr
-            ON pr.id_rol = r.id_rol
-            AND pr.id_modulo = m.id_modulo
-            AND pr.enabled = true
+        movimiento m
+    JOIN
+        inventario i
+            ON i.id_inventario = m.id_inventario
+    JOIN
+        producto p
+            ON p.id_producto = i.id_producto
+    JOIN
+        usuario u
+            ON u.id_usuario = m.id_usuario
     WHERE
-        r.activo = true
-        AND m.enabled = true
+        m.fecha_movimiento BETWEEN ? AND ?
+        AND (
+            ? IS NULL
+            OR LOWER(p.nombre_producto) LIKE LOWER('%' || ? || '%')
+        )
+        AND (
+            ? IS NULL
+            OR CAST(m.tipo_movimiento AS TEXT) = ?
+        )
+        AND (
+            ? IS NULL
+            OR LOWER(CONCAT_WS(' ', u.p_nombre, u.s_nombre, u.app_paterno, u.app_materno)) LIKE LOWER('%' || ? || '%')
+        )
+2026-05-15T19:38:37.684Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (1:TIMESTAMP) <- [2026-05-14T19:38:37.679108190]
+2026-05-15T19:38:37.685Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (2:TIMESTAMP) <- [2026-05-15T19:38:37.679129806]
+2026-05-15T19:38:37.686Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (3:VARCHAR) <- [null]
+2026-05-15T19:38:37.686Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (4:VARCHAR) <- [null]
+2026-05-15T19:38:37.686Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (5:VARCHAR) <- [null]
+2026-05-15T19:38:37.686Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (6:VARCHAR) <- [null]
+2026-05-15T19:38:37.686Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (7:VARCHAR) <- [null]
+2026-05-15T19:38:37.686Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (8:VARCHAR) <- [null]
+2026-05-15T19:38:37.693Z DEBUG 1 --- [nio-8080-exec-2] org.hibernate.SQL                        :
+    SELECT
+        p.nombre_producto,
+        c.nombre_categoria,
+        CAST(m.tipo_movimiento AS TEXT),
+        m.stock_movimiento,
+        m.fecha_movimiento,
+        CONCAT_WS(' ', u.p_nombre, u.s_nombre, u.app_paterno, u.app_materno),
+        m.observacion
+    FROM
+        movimiento m
+    JOIN
+        inventario i
+            ON i.id_inventario = m.id_inventario
+    JOIN
+        producto p
+            ON p.id_producto = i.id_producto
+    JOIN
+        categoria c
+            ON c.id_categoria = p.id_categoria
+    JOIN
+        usuario u
+            ON u.id_usuario = m.id_usuario
+    WHERE
+        m.fecha_movimiento BETWEEN ? AND ?
+        AND (
+            ? IS NULL
+            OR ? = ''
+            OR LOWER(p.nombre_producto) LIKE LOWER('%' || ? || '%')
+        )
+        AND (
+            ? IS NULL
+            OR ? = ''
+            OR CAST(m.tipo_movimiento AS TEXT) = ?
+        )
+        AND (
+            ? IS NULL
+            OR ? = ''
+            OR LOWER(CONCAT_WS(' ', u.p_nombre, u.s_nombre, u.app_paterno, u.app_materno)) LIKE LOWER('%' || ? || '%')
+        )
     ORDER BY
-        m.orden_modulo,
-        r.id_rol
-2026-05-15T19:29:46.168Z TRACE 1 --- [nio-8080-exec-1] org.hibernate.orm.jdbc.bind              : binding parameter (1:INTEGER) <- [2]
-2026-05-15T19:29:46.303Z DEBUG 1 --- [nio-8080-exec-3] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/yaml]
-2026-05-15T19:29:46.311Z DEBUG 1 --- [nio-8080-exec-3] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Writing [[YearWithSemestersDTO(anio=2026, semestres=[1, 2]), YearWithSemestersDTO(anio=2027, semestres=[1])]]
-2026-05-15T19:29:46.318Z DEBUG 1 --- [nio-8080-exec-1] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/yaml]
-2026-05-15T19:29:46.318Z DEBUG 1 --- [nio-8080-exec-1] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Writing [GestionSistemaDTO(solicitudesEnPedido=true)]
-2026-05-15T19:29:46.321Z DEBUG 1 --- [nio-8080-exec-2] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/yaml]
-2026-05-15T19:29:46.335Z DEBUG 1 --- [nio-8080-exec-2] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Writing [{DASHBOARD=[PermisoMatrizDTO(idRol=1, nombreRol=ADMINISTRADOR, idModulo=1, codigoModulo=DASHBOARD, n (truncated)...]
-2026-05-15T19:29:46.340Z DEBUG 1 --- [nio-8080-exec-1] o.s.web.servlet.DispatcherServlet        : Completed 200 OK
-2026-05-15T19:29:46.340Z DEBUG 1 --- [nio-8080-exec-3] o.s.web.servlet.DispatcherServlet        : Completed 200 OK
-2026-05-15T19:29:46.359Z DEBUG 1 --- [nio-8080-exec-2] o.s.web.servlet.DispatcherServlet        : Completed 200 OK
-2026-05-15T19:29:46.487Z DEBUG 1 --- [nio-8080-exec-4] o.s.security.web.FilterChainProxy        : Securing POST /api/v1/semanas/find-by-weekly-for-solicitation
-2026-05-15T19:29:46.509Z  INFO 1 --- [nio-8080-exec-4] K.c.s.rate_limiting.RateLimitFilter      : 📍 IP: 186.78.177.220 | Petición 4 de 80
-2026-05-15T19:29:46.514Z DEBUG 1 --- [nio-8080-exec-4] o.s.security.web.FilterChainProxy        : Secured POST /api/v1/semanas/find-by-weekly-for-solicitation
-2026-05-15T19:29:46.515Z DEBUG 1 --- [nio-8080-exec-4] o.s.web.servlet.DispatcherServlet        : POST "/api/v1/semanas/find-by-weekly-for-solicitation", parameters={}
-2026-05-15T19:29:46.515Z DEBUG 1 --- [nio-8080-exec-4] s.w.s.m.m.a.RequestMappingHandlerMapping : Mapped to KuHub.modules.gestion_academica.controller.SemanaController#findByWeeklyFilterForSolicitation(WeeklyFilterForSolicitationDTO)
-2026-05-15T19:29:46.527Z DEBUG 1 --- [nio-8080-exec-4] m.m.a.RequestResponseBodyMethodProcessor : Read "application/json;charset=UTF-8" to [WeeklyFilterForSolicitationDTO(anio=2026, semestre=1)]
-2026-05-15T19:29:46.560Z DEBUG 1 --- [nio-8080-exec-6] o.s.security.web.FilterChainProxy        : Securing GET /api/v1/categoria/active-true
-2026-05-15T19:29:46.566Z  INFO 1 --- [nio-8080-exec-6] K.c.s.rate_limiting.RateLimitFilter      : 📍 IP: 186.78.177.220 | Petición 5 de 80
-2026-05-15T19:29:46.561Z DEBUG 1 --- [nio-8080-exec-7] o.s.security.web.FilterChainProxy        : Securing GET /api/v1/unidad-medida/find-all-active-true
-2026-05-15T19:29:46.568Z  INFO 1 --- [nio-8080-exec-7] K.c.s.rate_limiting.RateLimitFilter      : 📍 IP: 186.78.177.220 | Petición 6 de 80
-2026-05-15T19:29:46.561Z DEBUG 1 --- [nio-8080-exec-8] o.s.security.web.FilterChainProxy        : Securing POST /api/v1/inventario/paged-inventory
-2026-05-15T19:29:46.556Z DEBUG 1 --- [nio-8080-exec-5] o.s.security.web.FilterChainProxy        : Securing GET /api/v1/inventario/filters
-2026-05-15T19:29:46.571Z  INFO 1 --- [nio-8080-exec-5] K.c.s.rate_limiting.RateLimitFilter      : 📍 IP: 186.78.177.220 | Petición 7 de 80
-2026-05-15T19:29:46.577Z DEBUG 1 --- [nio-8080-exec-6] o.s.security.web.FilterChainProxy        : Secured GET /api/v1/categoria/active-true
-2026-05-15T19:29:46.587Z DEBUG 1 --- [nio-8080-exec-6] o.s.web.servlet.DispatcherServlet        : GET "/api/v1/categoria/active-true", parameters={}
-2026-05-15T19:29:46.588Z DEBUG 1 --- [nio-8080-exec-6] s.w.s.m.m.a.RequestMappingHandlerMapping : Mapped to KuHub.modules.gestion_inventario.controller.CategoriaController#findAllActiveTrue()
-2026-05-15T19:29:46.583Z  INFO 1 --- [nio-8080-exec-8] K.c.s.rate_limiting.RateLimitFilter      : 📍 IP: 186.78.177.220 | Petición 8 de 80
-2026-05-15T19:29:46.595Z DEBUG 1 --- [nio-8080-exec-5] o.s.security.web.FilterChainProxy        : Secured GET /api/v1/inventario/filters
-2026-05-15T19:29:46.595Z DEBUG 1 --- [nio-8080-exec-5] o.s.web.servlet.DispatcherServlet        : GET "/api/v1/inventario/filters", parameters={}
-2026-05-15T19:29:46.598Z DEBUG 1 --- [nio-8080-exec-5] s.w.s.m.m.a.RequestMappingHandlerMapping : Mapped to KuHub.modules.gestion_inventario.controller.InventarioController#findFiltersInventory()
-2026-05-15T19:29:46.591Z DEBUG 1 --- [nio-8080-exec-7] o.s.security.web.FilterChainProxy        : Secured GET /api/v1/unidad-medida/find-all-active-true
-2026-05-15T19:29:46.602Z DEBUG 1 --- [nio-8080-exec-7] o.s.web.servlet.DispatcherServlet        : GET "/api/v1/unidad-medida/find-all-active-true", parameters={}
-2026-05-15T19:29:46.603Z DEBUG 1 --- [nio-8080-exec-7] s.w.s.m.m.a.RequestMappingHandlerMapping : Mapped to KuHub.modules.gestion_inventario.controller.UnidadMedidaController#findAllActiveTrue()
-2026-05-15T19:29:46.600Z DEBUG 1 --- [nio-8080-exec-8] o.s.security.web.FilterChainProxy        : Secured POST /api/v1/inventario/paged-inventory
-2026-05-15T19:29:46.606Z DEBUG 1 --- [nio-8080-exec-8] o.s.web.servlet.DispatcherServlet        : POST "/api/v1/inventario/paged-inventory", parameters={}
-2026-05-15T19:29:46.607Z DEBUG 1 --- [nio-8080-exec-8] s.w.s.m.m.a.RequestMappingHandlerMapping : Mapped to KuHub.modules.gestion_inventario.controller.InventarioController#findPagedInventory(FilterInventoryPageDTO)
-2026-05-15T19:29:46.637Z DEBUG 1 --- [nio-8080-exec-8] m.m.a.RequestResponseBodyMethodProcessor : Read "application/json;charset=UTF-8" to [FilterInventoryPageDTO(categoriasIds=[], unidadesIds=[], soloStockBajo=false, ocultarAgotados=false, (truncated)...]
-2026-05-15T19:29:46.648Z DEBUG 1 --- [nio-8080-exec-5] org.hibernate.SQL                        :
+        CASE
+            WHEN ? = 'MAS_RECIENTES'
+                THEN m.fecha_movimiento
+        END DESC,
+        CASE
+            WHEN ? = 'MAS_ANTIGUOS'
+                THEN m.fecha_movimiento
+        END ASC,
+        CASE
+            WHEN ? = 'MENOR_CANTIDAD'
+                THEN m.stock_movimiento
+        END ASC,
+        CASE
+            WHEN ? = 'MAYOR_CANTIDAD'
+                THEN m.stock_movimiento
+        END DESC
+    LIMIT
+        ?
+    OFFSET
+        ?
+Hibernate:
+    SELECT
+        p.nombre_producto,
+        c.nombre_categoria,
+        CAST(m.tipo_movimiento AS TEXT),
+        m.stock_movimiento,
+        m.fecha_movimiento,
+        CONCAT_WS(' ', u.p_nombre, u.s_nombre, u.app_paterno, u.app_materno),
+        m.observacion
+    FROM
+        movimiento m
+    JOIN
+        inventario i
+            ON i.id_inventario = m.id_inventario
+    JOIN
+        producto p
+            ON p.id_producto = i.id_producto
+    JOIN
+        categoria c
+            ON c.id_categoria = p.id_categoria
+    JOIN
+        usuario u
+            ON u.id_usuario = m.id_usuario
+    WHERE
+        m.fecha_movimiento BETWEEN ? AND ?
+        AND (
+            ? IS NULL
+            OR ? = ''
+            OR LOWER(p.nombre_producto) LIKE LOWER('%' || ? || '%')
+        )
+        AND (
+            ? IS NULL
+            OR ? = ''
+            OR CAST(m.tipo_movimiento AS TEXT) = ?
+        )
+        AND (
+            ? IS NULL
+            OR ? = ''
+            OR LOWER(CONCAT_WS(' ', u.p_nombre, u.s_nombre, u.app_paterno, u.app_materno)) LIKE LOWER('%' || ? || '%')
+        )
+    ORDER BY
+        CASE
+            WHEN ? = 'MAS_RECIENTES'
+                THEN m.fecha_movimiento
+        END DESC,
+        CASE
+            WHEN ? = 'MAS_ANTIGUOS'
+                THEN m.fecha_movimiento
+        END ASC,
+        CASE
+            WHEN ? = 'MENOR_CANTIDAD'
+                THEN m.stock_movimiento
+        END ASC,
+        CASE
+            WHEN ? = 'MAYOR_CANTIDAD'
+                THEN m.stock_movimiento
+        END DESC
+    LIMIT
+        ?
+    OFFSET
+        ?
+2026-05-15T19:38:37.695Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (1:TIMESTAMP) <- [2026-05-14T19:38:37.679108190]
+2026-05-15T19:38:37.696Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (2:TIMESTAMP) <- [2026-05-15T19:38:37.679129806]
+2026-05-15T19:38:37.696Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (3:VARCHAR) <- [null]
+2026-05-15T19:38:37.698Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (4:VARCHAR) <- [null]
+2026-05-15T19:38:37.698Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (5:VARCHAR) <- [null]
+2026-05-15T19:38:37.698Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (6:VARCHAR) <- [null]
+2026-05-15T19:38:37.698Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (7:VARCHAR) <- [null]
+2026-05-15T19:38:37.698Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (8:VARCHAR) <- [null]
+2026-05-15T19:38:37.699Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (9:VARCHAR) <- [null]
+2026-05-15T19:38:37.699Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (10:VARCHAR) <- [null]
+2026-05-15T19:38:37.699Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (11:VARCHAR) <- [null]
+2026-05-15T19:38:37.699Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (12:VARCHAR) <- [MAS_RECIENTES]
+2026-05-15T19:38:37.699Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (13:VARCHAR) <- [MAS_RECIENTES]
+2026-05-15T19:38:37.699Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (14:VARCHAR) <- [MAS_RECIENTES]
+2026-05-15T19:38:37.699Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (15:VARCHAR) <- [MAS_RECIENTES]
+2026-05-15T19:38:37.699Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (16:INTEGER) <- [20]
+2026-05-15T19:38:37.699Z TRACE 1 --- [nio-8080-exec-2] org.hibernate.orm.jdbc.bind              : binding parameter (17:INTEGER) <- [0]
+2026-05-15T19:38:37.720Z DEBUG 1 --- [nio-8080-exec-2] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/yaml]
+2026-05-15T19:38:37.726Z DEBUG 1 --- [nio-8080-exec-2] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Writing [PaginatedMotionDTO(content=[], pagination=PagingResult[page=1, limit=20, offset=0, totalPages=0])]
+2026-05-15T19:38:37.729Z DEBUG 1 --- [nio-8080-exec-2] o.s.web.servlet.DispatcherServlet        : Completed 200 OK
+2026-05-15T19:38:39.528Z DEBUG 1 --- [nio-8080-exec-1] o.s.security.web.FilterChainProxy        : Securing GET /api/v1/inventario/filters
+2026-05-15T19:38:39.529Z  INFO 1 --- [nio-8080-exec-1] K.c.s.rate_limiting.RateLimitFilter      : 📍 IP: 186.78.177.220 | Petición 2 de 80
+2026-05-15T19:38:39.535Z DEBUG 1 --- [nio-8080-exec-3] o.s.security.web.FilterChainProxy        : Securing GET /api/v1/categoria/active-true
+2026-05-15T19:38:39.535Z  INFO 1 --- [nio-8080-exec-3] K.c.s.rate_limiting.RateLimitFilter      : 📍 IP: 186.78.177.220 | Petición 3 de 80
+2026-05-15T19:38:39.537Z DEBUG 1 --- [nio-8080-exec-5] o.s.security.web.FilterChainProxy        : Securing GET /api/v1/unidad-medida/find-all-active-true
+2026-05-15T19:38:39.538Z DEBUG 1 --- [nio-8080-exec-7] o.s.security.web.FilterChainProxy        : Securing POST /api/v1/inventario/paged-inventory
+2026-05-15T19:38:39.537Z DEBUG 1 --- [nio-8080-exec-1] o.s.security.web.FilterChainProxy        : Secured GET /api/v1/inventario/filters
+2026-05-15T19:38:39.538Z DEBUG 1 --- [nio-8080-exec-1] o.s.web.servlet.DispatcherServlet        : GET "/api/v1/inventario/filters", parameters={}
+2026-05-15T19:38:39.539Z DEBUG 1 --- [nio-8080-exec-1] s.w.s.m.m.a.RequestMappingHandlerMapping : Mapped to KuHub.modules.gestion_inventario.controller.InventarioController#findFiltersInventory()
+2026-05-15T19:38:39.541Z DEBUG 1 --- [nio-8080-exec-3] o.s.security.web.FilterChainProxy        : Secured GET /api/v1/categoria/active-true
+2026-05-15T19:38:39.542Z DEBUG 1 --- [nio-8080-exec-3] o.s.web.servlet.DispatcherServlet        : GET "/api/v1/categoria/active-true", parameters={}
+2026-05-15T19:38:39.542Z  INFO 1 --- [nio-8080-exec-5] K.c.s.rate_limiting.RateLimitFilter      : 📍 IP: 186.78.177.220 | Petición 4 de 80
+2026-05-15T19:38:39.543Z DEBUG 1 --- [nio-8080-exec-3] s.w.s.m.m.a.RequestMappingHandlerMapping : Mapped to KuHub.modules.gestion_inventario.controller.CategoriaController#findAllActiveTrue()
+2026-05-15T19:38:39.545Z DEBUG 1 --- [nio-8080-exec-1] org.hibernate.SQL                        :
     SELECT
         json_build_object(         'categorias',         (             SELECT
             json_agg(                 json_build_object(                     'id', c.id_categoria,                     'nombre', c.nombre_categoria                 )             )
@@ -231,7 +243,63 @@ Hibernate:
             unidad_medida u
         WHERE
             u.activo = TRUE         )     )
-2026-05-15T19:29:46.658Z DEBUG 1 --- [nio-8080-exec-8] org.hibernate.SQL                        :
+2026-05-15T19:38:39.545Z  INFO 1 --- [nio-8080-exec-7] K.c.s.rate_limiting.RateLimitFilter      : 📍 IP: 186.78.177.220 | Petición 5 de 80
+2026-05-15T19:38:39.549Z DEBUG 1 --- [nio-8080-exec-3] org.hibernate.SQL                        :
+    select
+        c1_0.id_categoria,
+        c1_0.activo,
+        c1_0.nombre_categoria
+    from
+        categoria c1_0
+    where
+        c1_0.activo=?
+Hibernate:
+    select
+        c1_0.id_categoria,
+        c1_0.activo,
+        c1_0.nombre_categoria
+    from
+        categoria c1_0
+    where
+        c1_0.activo=?
+2026-05-15T19:38:39.549Z TRACE 1 --- [nio-8080-exec-3] org.hibernate.orm.jdbc.bind              : binding parameter (1:BOOLEAN) <- [true]
+2026-05-15T19:38:39.550Z DEBUG 1 --- [nio-8080-exec-5] o.s.security.web.FilterChainProxy        : Secured GET /api/v1/unidad-medida/find-all-active-true
+2026-05-15T19:38:39.552Z DEBUG 1 --- [nio-8080-exec-5] o.s.web.servlet.DispatcherServlet        : GET "/api/v1/unidad-medida/find-all-active-true", parameters={}
+2026-05-15T19:38:39.553Z DEBUG 1 --- [nio-8080-exec-5] s.w.s.m.m.a.RequestMappingHandlerMapping : Mapped to KuHub.modules.gestion_inventario.controller.UnidadMedidaController#findAllActiveTrue()
+2026-05-15T19:38:39.551Z DEBUG 1 --- [nio-8080-exec-1] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/yaml]
+2026-05-15T19:38:39.554Z DEBUG 1 --- [nio-8080-exec-1] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Writing [InventoryFilters[categorias=[SimpleFilter[id=1, nombre=Abarrotes], SimpleFilter[id=2, nombre=Aseo y  (truncated)...]
+2026-05-15T19:38:39.557Z DEBUG 1 --- [nio-8080-exec-7] o.s.security.web.FilterChainProxy        : Secured POST /api/v1/inventario/paged-inventory
+2026-05-15T19:38:39.560Z DEBUG 1 --- [nio-8080-exec-7] o.s.web.servlet.DispatcherServlet        : POST "/api/v1/inventario/paged-inventory", parameters={}
+2026-05-15T19:38:39.561Z DEBUG 1 --- [nio-8080-exec-7] s.w.s.m.m.a.RequestMappingHandlerMapping : Mapped to KuHub.modules.gestion_inventario.controller.InventarioController#findPagedInventory(FilterInventoryPageDTO)
+2026-05-15T19:38:39.557Z DEBUG 1 --- [nio-8080-exec-1] o.s.web.servlet.DispatcherServlet        : Completed 200 OK
+2026-05-15T19:38:39.558Z DEBUG 1 --- [nio-8080-exec-3] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/yaml]
+2026-05-15T19:38:39.564Z DEBUG 1 --- [nio-8080-exec-3] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Writing [[Categoria(idCategoria=1, nombreCategoria=Abarrotes, activo=true), Categoria(idCategoria=2, nombreCa (truncated)...]
+2026-05-15T19:38:39.559Z DEBUG 1 --- [nio-8080-exec-5] org.hibernate.SQL                        :
+    select
+        um1_0.id_unidad,
+        um1_0.abreviatura,
+        um1_0.activo,
+        um1_0.es_fraccionario,
+        um1_0.nombre_unidad
+    from
+        unidad_medida um1_0
+    where
+        um1_0.activo=?
+Hibernate:
+    select
+        um1_0.id_unidad,
+        um1_0.abreviatura,
+        um1_0.activo,
+        um1_0.es_fraccionario,
+        um1_0.nombre_unidad
+    from
+        unidad_medida um1_0
+    where
+        um1_0.activo=?
+2026-05-15T19:38:39.566Z TRACE 1 --- [nio-8080-exec-5] org.hibernate.orm.jdbc.bind              : binding parameter (1:BOOLEAN) <- [true]
+2026-05-15T19:38:39.566Z DEBUG 1 --- [nio-8080-exec-7] m.m.a.RequestResponseBodyMethodProcessor : Read "application/json;charset=UTF-8" to [FilterInventoryPageDTO(categoriasIds=[], unidadesIds=[], soloStockBajo=false, ocultarAgotados=false, (truncated)...]
+2026-05-15T19:38:39.567Z DEBUG 1 --- [nio-8080-exec-3] o.s.web.servlet.DispatcherServlet        : Completed 200 OK
+2026-05-15T19:38:39.572Z DEBUG 1 --- [nio-8080-exec-7] org.hibernate.SQL                        :
     SELECT
         COUNT(*)
     FROM
@@ -285,13 +353,16 @@ Hibernate:
             ? = FALSE
             OR i.stock > 0
         )
-2026-05-15T19:29:46.662Z TRACE 1 --- [nio-8080-exec-8] org.hibernate.orm.jdbc.bind              : binding parameter (1:BOOLEAN) <- [false]
-2026-05-15T19:29:46.663Z TRACE 1 --- [nio-8080-exec-8] org.hibernate.orm.jdbc.bind              : binding parameter (2:JAVA_OBJECT) <- [null]
-2026-05-15T19:29:46.672Z TRACE 1 --- [nio-8080-exec-8] org.hibernate.orm.jdbc.bind              : binding parameter (3:BOOLEAN) <- [false]
-2026-05-15T19:29:46.673Z TRACE 1 --- [nio-8080-exec-8] org.hibernate.orm.jdbc.bind              : binding parameter (4:JAVA_OBJECT) <- [null]
-2026-05-15T19:29:46.676Z TRACE 1 --- [nio-8080-exec-8] org.hibernate.orm.jdbc.bind              : binding parameter (5:BOOLEAN) <- [false]
-2026-05-15T19:29:46.677Z TRACE 1 --- [nio-8080-exec-8] org.hibernate.orm.jdbc.bind              : binding parameter (6:BOOLEAN) <- [false]
-2026-05-15T19:29:46.701Z DEBUG 1 --- [nio-8080-exec-8] org.hibernate.SQL                        :
+2026-05-15T19:38:39.576Z DEBUG 1 --- [nio-8080-exec-5] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/yaml]
+2026-05-15T19:38:39.576Z DEBUG 1 --- [nio-8080-exec-5] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Writing [[UnidadMedida(idUnidad=1, nombreUnidad=Unidad, abreviatura=un, esFraccionario=false, activo=true), U (truncated)...]
+2026-05-15T19:38:39.578Z DEBUG 1 --- [nio-8080-exec-5] o.s.web.servlet.DispatcherServlet        : Completed 200 OK
+2026-05-15T19:38:39.578Z TRACE 1 --- [nio-8080-exec-7] org.hibernate.orm.jdbc.bind              : binding parameter (1:BOOLEAN) <- [false]
+2026-05-15T19:38:39.578Z TRACE 1 --- [nio-8080-exec-7] org.hibernate.orm.jdbc.bind              : binding parameter (2:JAVA_OBJECT) <- [null]
+2026-05-15T19:38:39.581Z TRACE 1 --- [nio-8080-exec-7] org.hibernate.orm.jdbc.bind              : binding parameter (3:BOOLEAN) <- [false]
+2026-05-15T19:38:39.582Z TRACE 1 --- [nio-8080-exec-7] org.hibernate.orm.jdbc.bind              : binding parameter (4:JAVA_OBJECT) <- [null]
+2026-05-15T19:38:39.583Z TRACE 1 --- [nio-8080-exec-7] org.hibernate.orm.jdbc.bind              : binding parameter (5:BOOLEAN) <- [false]
+2026-05-15T19:38:39.583Z TRACE 1 --- [nio-8080-exec-7] org.hibernate.orm.jdbc.bind              : binding parameter (6:BOOLEAN) <- [false]
+2026-05-15T19:38:39.588Z DEBUG 1 --- [nio-8080-exec-7] org.hibernate.SQL                        :
     SELECT
         p.nombre_producto,
         p.cod_producto,
@@ -405,102 +476,16 @@ Hibernate:
         ?
     OFFSET
         ?
-2026-05-15T19:29:46.708Z TRACE 1 --- [nio-8080-exec-8] org.hibernate.orm.jdbc.bind              : binding parameter (1:BOOLEAN) <- [false]
-2026-05-15T19:29:46.709Z TRACE 1 --- [nio-8080-exec-8] org.hibernate.orm.jdbc.bind              : binding parameter (2:JAVA_OBJECT) <- [null]
-2026-05-15T19:29:46.713Z TRACE 1 --- [nio-8080-exec-8] org.hibernate.orm.jdbc.bind              : binding parameter (3:BOOLEAN) <- [false]
-2026-05-15T19:29:46.713Z TRACE 1 --- [nio-8080-exec-8] org.hibernate.orm.jdbc.bind              : binding parameter (4:JAVA_OBJECT) <- [null]
-2026-05-15T19:29:46.717Z DEBUG 1 --- [nio-8080-exec-5] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/yaml]
-2026-05-15T19:29:46.718Z TRACE 1 --- [nio-8080-exec-8] org.hibernate.orm.jdbc.bind              : binding parameter (5:BOOLEAN) <- [false]
-2026-05-15T19:29:46.719Z TRACE 1 --- [nio-8080-exec-8] org.hibernate.orm.jdbc.bind              : binding parameter (6:BOOLEAN) <- [false]
-2026-05-15T19:29:46.719Z TRACE 1 --- [nio-8080-exec-8] org.hibernate.orm.jdbc.bind              : binding parameter (7:BOOLEAN) <- [true]
-2026-05-15T19:29:46.719Z TRACE 1 --- [nio-8080-exec-8] org.hibernate.orm.jdbc.bind              : binding parameter (8:BOOLEAN) <- [true]
-2026-05-15T19:29:46.720Z TRACE 1 --- [nio-8080-exec-8] org.hibernate.orm.jdbc.bind              : binding parameter (9:INTEGER) <- [20]
-2026-05-15T19:29:46.720Z TRACE 1 --- [nio-8080-exec-8] org.hibernate.orm.jdbc.bind              : binding parameter (10:INTEGER) <- [0]
-2026-05-15T19:29:46.721Z DEBUG 1 --- [nio-8080-exec-5] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Writing [InventoryFilters[categorias=[SimpleFilter[id=1, nombre=Abarrotes], SimpleFilter[id=2, nombre=Aseo y  (truncated)...]
-2026-05-15T19:29:46.728Z DEBUG 1 --- [nio-8080-exec-5] o.s.web.servlet.DispatcherServlet        : Completed 200 OK
-2026-05-15T19:29:46.750Z DEBUG 1 --- [nio-8080-exec-8] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/yaml]
-2026-05-15T19:29:46.783Z DEBUG 1 --- [nio-8080-exec-8] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Writing [InventoriesPage[data=[InventoryItem[idInventario=589, idProducto=589, nombreProducto=Abrillanatador  (truncated)...]
-2026-05-15T19:29:46.802Z DEBUG 1 --- [nio-8080-exec-6] org.hibernate.SQL                        :
-    select
-        c1_0.id_categoria,
-        c1_0.activo,
-        c1_0.nombre_categoria
-    from
-        categoria c1_0
-    where
-        c1_0.activo=?
-Hibernate:
-    select
-        c1_0.id_categoria,
-        c1_0.activo,
-        c1_0.nombre_categoria
-    from
-        categoria c1_0
-    where
-        c1_0.activo=?
-2026-05-15T19:29:46.803Z DEBUG 1 --- [nio-8080-exec-4] org.hibernate.SQL                        :
-    select
-        s1_0.id_semana,
-        s1_0.anio,
-        s1_0.fecha_fin,
-        s1_0.fecha_inicio,
-        s1_0.nombre_semana,
-        s1_0.semestre
-    from
-        public.semanas s1_0
-    where
-        s1_0.anio=?
-        and s1_0.semestre=?
-    order by
-        s1_0.fecha_inicio
-Hibernate:
-    select
-        s1_0.id_semana,
-        s1_0.anio,
-        s1_0.fecha_fin,
-        s1_0.fecha_inicio,
-        s1_0.nombre_semana,
-        s1_0.semestre
-    from
-        public.semanas s1_0
-    where
-        s1_0.anio=?
-        and s1_0.semestre=?
-    order by
-        s1_0.fecha_inicio
-2026-05-15T19:29:46.804Z TRACE 1 --- [nio-8080-exec-4] org.hibernate.orm.jdbc.bind              : binding parameter (1:SMALLINT) <- [2026]
-2026-05-15T19:29:46.804Z TRACE 1 --- [nio-8080-exec-6] org.hibernate.orm.jdbc.bind              : binding parameter (1:BOOLEAN) <- [true]
-2026-05-15T19:29:46.804Z TRACE 1 --- [nio-8080-exec-4] org.hibernate.orm.jdbc.bind              : binding parameter (2:SMALLINT) <- [1]
-2026-05-15T19:29:46.804Z DEBUG 1 --- [nio-8080-exec-7] org.hibernate.SQL                        :
-    select
-        um1_0.id_unidad,
-        um1_0.abreviatura,
-        um1_0.activo,
-        um1_0.es_fraccionario,
-        um1_0.nombre_unidad
-    from
-        unidad_medida um1_0
-    where
-        um1_0.activo=?
-Hibernate:
-    select
-        um1_0.id_unidad,
-        um1_0.abreviatura,
-        um1_0.activo,
-        um1_0.es_fraccionario,
-        um1_0.nombre_unidad
-    from
-        unidad_medida um1_0
-    where
-        um1_0.activo=?
-2026-05-15T19:29:46.805Z TRACE 1 --- [nio-8080-exec-7] org.hibernate.orm.jdbc.bind              : binding parameter (1:BOOLEAN) <- [true]
-2026-05-15T19:29:46.813Z DEBUG 1 --- [nio-8080-exec-6] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/yaml]
-2026-05-15T19:29:46.816Z DEBUG 1 --- [nio-8080-exec-6] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Writing [[Categoria(idCategoria=1, nombreCategoria=Abarrotes, activo=true), Categoria(idCategoria=2, nombreCa (truncated)...]
-2026-05-15T19:29:46.814Z DEBUG 1 --- [nio-8080-exec-7] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/yaml]
-2026-05-15T19:29:46.815Z DEBUG 1 --- [nio-8080-exec-8] o.s.web.servlet.DispatcherServlet        : Completed 200 OK
-2026-05-15T19:29:46.819Z DEBUG 1 --- [nio-8080-exec-7] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Writing [[UnidadMedida(idUnidad=1, nombreUnidad=Unidad, abreviatura=un, esFraccionario=false, activo=true), U (truncated)...]
-2026-05-15T19:29:46.827Z DEBUG 1 --- [nio-8080-exec-6] o.s.web.servlet.DispatcherServlet        : Completed 200 OK
-2026-05-15T19:29:46.827Z DEBUG 1 --- [nio-8080-exec-4] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/yaml]
-2026-05-15T19:29:46.830Z DEBUG 1 --- [nio-8080-exec-4] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Writing [[Semana(idSemana=1, nombreSemana=Semana 1, fechaInicio=2026-03-02, fechaFin=2026-03-08, anio=2026, s (truncated)...]
-2026-05-15T19:29:46.829Z DEBUG 1 --- [nio-8080-exec-7] o.s.web.servlet.DispatcherServlet        : Completed 200 OK
-2026-05-15T19:29:46.837Z DEBUG 1 --- [nio-8080-exec-4] o.s.web.servlet.DispatcherServlet        : Completed 200 OK
+2026-05-15T19:38:39.590Z TRACE 1 --- [nio-8080-exec-7] org.hibernate.orm.jdbc.bind              : binding parameter (1:BOOLEAN) <- [false]
+2026-05-15T19:38:39.590Z TRACE 1 --- [nio-8080-exec-7] org.hibernate.orm.jdbc.bind              : binding parameter (2:JAVA_OBJECT) <- [null]
+2026-05-15T19:38:39.592Z TRACE 1 --- [nio-8080-exec-7] org.hibernate.orm.jdbc.bind              : binding parameter (3:BOOLEAN) <- [false]
+2026-05-15T19:38:39.592Z TRACE 1 --- [nio-8080-exec-7] org.hibernate.orm.jdbc.bind              : binding parameter (4:JAVA_OBJECT) <- [null]
+2026-05-15T19:38:39.594Z TRACE 1 --- [nio-8080-exec-7] org.hibernate.orm.jdbc.bind              : binding parameter (5:BOOLEAN) <- [false]
+2026-05-15T19:38:39.595Z TRACE 1 --- [nio-8080-exec-7] org.hibernate.orm.jdbc.bind              : binding parameter (6:BOOLEAN) <- [false]
+2026-05-15T19:38:39.595Z TRACE 1 --- [nio-8080-exec-7] org.hibernate.orm.jdbc.bind              : binding parameter (7:BOOLEAN) <- [true]
+2026-05-15T19:38:39.596Z TRACE 1 --- [nio-8080-exec-7] org.hibernate.orm.jdbc.bind              : binding parameter (8:BOOLEAN) <- [true]
+2026-05-15T19:38:39.596Z TRACE 1 --- [nio-8080-exec-7] org.hibernate.orm.jdbc.bind              : binding parameter (9:INTEGER) <- [20]
+2026-05-15T19:38:39.596Z TRACE 1 --- [nio-8080-exec-7] org.hibernate.orm.jdbc.bind              : binding parameter (10:INTEGER) <- [0]
+2026-05-15T19:38:39.608Z DEBUG 1 --- [nio-8080-exec-7] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/yaml]
+2026-05-15T19:38:39.609Z DEBUG 1 --- [nio-8080-exec-7] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Writing [InventoriesPage[data=[InventoryItem[idInventario=589, idProducto=589, nombreProducto=Abrillanatador  (truncated)...]
+2026-05-15T19:38:39.613Z DEBUG 1 --- [nio-8080-exec-7] o.s.web.servlet.DispatcherServlet        : Completed 200 OK
