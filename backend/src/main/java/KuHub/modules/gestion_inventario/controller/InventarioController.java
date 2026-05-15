@@ -15,6 +15,7 @@ import KuHub.modules.gestion_inventario.exceptions.StockDesincronizadoException;
 import KuHub.modules.gestion_inventario.exceptions.StockInsuficienteException;
 import KuHub.modules.gestion_inventario.services.InventarioService;
 import jakarta.validation.Valid;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -31,6 +32,7 @@ import java.util.List;
  * la creación de productos con stock, actualizaciones masivas, filtrado paginado y validación de stock.
  * Consumido por inventario-service.ts en el frontend.
  */
+@Slf4j
 @RestController
 @Validated
 @RequestMapping("/api/v1/inventario")
@@ -184,9 +186,21 @@ public class InventarioController {
             @RequestParam("idCategoria") Short idCategoria,
             @RequestParam("filaInicio") int filaInicio,
             @RequestParam("filaFin") int filaFin) {
-        return ResponseEntity.status(200)
-                .body(inventarioService.sincronizarInventarioDesdeExcel(
-                        archivo, nombreHoja, idCategoria, filaInicio, filaFin));
+        log.info("[SyncExcel] REQUEST recibido — archivo='{}' size={}bytes contentType='{}' hoja='{}' cat={} filas={}-{}",
+                archivo.getOriginalFilename(),
+                archivo.getSize(),
+                archivo.getContentType(),
+                nombreHoja,
+                idCategoria,
+                filaInicio,
+                filaFin);
+        SincronizarExcelResultado resultado = inventarioService.sincronizarInventarioDesdeExcel(
+                archivo, nombreHoja, idCategoria, filaInicio, filaFin);
+        log.info("[SyncExcel] RESPONSE — sincronizados={} noEncontrados={} filasProcesadas={}",
+                resultado.totalSincronizados(),
+                resultado.totalNoEncontrados(),
+                resultado.totalFilasProcesadas());
+        return ResponseEntity.status(200).body(resultado);
     }
 
     /**
