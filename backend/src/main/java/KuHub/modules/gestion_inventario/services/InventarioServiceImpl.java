@@ -558,7 +558,7 @@ public class InventarioServiceImpl implements InventarioService {
                 }
 
                 Optional<Producto> productoOpt = productoRepository
-                        .findByNombreProductoAndCategoria_IdCategoriaAndActivoTrue(nombreCapitalizado, idCategoria);
+                        .findByNombreProductoAndActivo(nombreCapitalizado, true);
 
                 if (productoOpt.isEmpty()) {
                     log.debug("[SyncExcel-NE] fila={} buscado='{}' cat={}", filaNro, nombreCapitalizado, idCategoria);
