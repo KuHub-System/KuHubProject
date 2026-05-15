@@ -633,7 +633,14 @@ public class InventarioServiceImpl implements InventarioService {
 
         for (ConfirmarNuevosExcelDTO.ItemNuevo item : items) {
             String nombreCapitalizado = StringUtils.capitalizarPalabras(item.nombre());
-            if (productoRepository.existsByNombreProducto(nombreCapitalizado)) continue;
+            if (productoRepository.existsByNombreProductoAndActivoTrue(nombreCapitalizado)) {
+                log.debug("[ConfirmarNuevos] Producto activo ya existe, omitiendo: '{}'", nombreCapitalizado);
+                continue;
+            }
+            if (item.idUnidadMedida() == null || item.idUnidadMedida() == 0) {
+                log.warn("[ConfirmarNuevos] idUnidadMedida inválido para '{}', omitiendo", nombreCapitalizado);
+                continue;
+            }
 
             Categoria categoria = categoriaService.findById(item.idCategoria());
             UnidadMedida unidadMedida = unidadMedidaService.findById(item.idUnidadMedida());
