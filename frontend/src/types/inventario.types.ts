@@ -19,3 +19,24 @@ export interface IUnidadMedida {
   esFraccionario: boolean; // Tipo: Entera (false) o Decimal (true)
   asociados?: number; // Cantidad de productos asociados
 }
+
+export interface IResultadoItemInventarioExcel {
+  fila: number;
+  nombreExcel: string;
+  idInventario?: number;
+  idProducto?: number;
+  nombreProducto?: string;
+  stockExcel?: number;
+  stockActual?: number;
+  estado: 'ok' | 'no_encontrado';
+}
+
+export interface ISincronizarInventarioExcelResultado {
+  resultados: IResultadoItemInventarioExcel[];
+  totalEncontrados: number;
+  totalNoEncontrados: number;
+  totalFilasProcesadas: number;
+  nombreHojaLeida?: string;
+  colNombreDetectada?: number;
+  colStockDetectada?: number;
+}
