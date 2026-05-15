@@ -499,9 +499,10 @@ public class InventarioServiceImpl implements InventarioService {
             }
             log.info("[SyncExcel-SVC] Hoja seleccionada: '{}'", sheet.getSheetName());
 
-            // Header row: filaInicio - 2 (0-based: una fila antes del inicio de datos)
-            int headerIdx = filaInicio - 2;
-            Row headerRow = headerIdx >= 0 ? sheet.getRow(headerIdx) : null;
+            // Header row: filaInicio - 2 (0-based: una fila antes del inicio de datos).
+            // Math.max(0,...) garantiza que si filaInicio=1 aún se lea la fila 0 como cabecera.
+            int headerIdx = Math.max(0, filaInicio - 2);
+            Row headerRow = sheet.getRow(headerIdx);
 
             int colNombre = -1, colUnidad = -1;
             int idxTotal = -1, idxCantidad = -1, idxInicial = -1;
@@ -511,7 +512,7 @@ public class InventarioServiceImpl implements InventarioService {
                     String h = excelCellText(headerRow.getCell(c), formatter).toUpperCase().strip();
                     if (colNombre == -1 && (h.contains("INSUMO") || h.contains("PRODUTO") || h.contains("PRODUCTO")))
                         colNombre = c;
-                    if (colUnidad == -1 && (h.contains("U/MEDIDA") || h.equals("UNIDAD")))
+                    if (colUnidad == -1 && (h.replace(" ", "").contains("U/MEDIDA") || h.equals("UNIDAD") || h.equals("MEDIDA")))
                         colUnidad = c;
                     if (h.equals("TOTAL") && idxTotal == -1)         idxTotal    = c;
                     if (h.contains("CANTIDAD") && idxCantidad == -1) idxCantidad = c;
@@ -689,10 +690,14 @@ public class InventarioServiceImpl implements InventarioService {
 
     private BigDecimal excelParseCantidad(Cell cell) {
         if (cell == null || cell.getCellType() == CellType.BLANK) return null;
-        if (cell.getCellType() == CellType.NUMERIC) {
+        CellType type = cell.getCellType();
+        if (type == CellType.FORMULA) {
+            type = cell.getCachedFormulaResultType();
+        }
+        if (type == CellType.NUMERIC) {
             return BigDecimal.valueOf(cell.getNumericCellValue());
         }
-        if (cell.getCellType() == CellType.STRING) {
+        if (type == CellType.STRING) {
             String val = cell.getStringCellValue().trim().replace(",", ".");
             if (val.isBlank()) return null;
             try { return new BigDecimal(val); } catch (NumberFormatException e) { return null; }
