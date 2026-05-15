@@ -470,10 +470,15 @@ public class InventarioServiceImpl implements InventarioService {
     public SincronizarExcelResultado sincronizarInventarioDesdeExcel(
             MultipartFile archivo, String nombreHoja, Short idCategoria, int filaInicio, int filaFin) {
 
+        log.info("[SyncExcel-SVC] Iniciando — archivo='{}' size={}bytes hoja='{}' cat={} filas={}-{}",
+                archivo.getOriginalFilename(), archivo.getSize(), nombreHoja, idCategoria, filaInicio, filaFin);
+
         if (archivo.isEmpty())
             throw new GestionInventarioException("El archivo Excel está vacío.", HttpStatus.BAD_REQUEST);
 
         List<UnidadMedida> unidadesActivas = unidadMedidaService.findAllActiveTrue();
+        log.info("[SyncExcel-SVC] Unidades activas cargadas: {}", unidadesActivas.size());
+
         Usuario currentUser = usuarioService.findUserByToken();
         DataFormatter formatter = new DataFormatter();
 
@@ -482,6 +487,7 @@ public class InventarioServiceImpl implements InventarioService {
         List<Movimiento> movimientosToSave = new ArrayList<>();
 
         try (Workbook workbook = WorkbookFactory.create(archivo.getInputStream())) {
+            log.info("[SyncExcel-SVC] Workbook abierto — hojas disponibles: {}", workbook.getNumberOfSheets());
             Sheet sheet;
             if (nombreHoja != null && !nombreHoja.isBlank()) {
                 sheet = workbook.getSheet(nombreHoja);
@@ -491,6 +497,7 @@ public class InventarioServiceImpl implements InventarioService {
             } else {
                 sheet = workbook.getSheetAt(workbook.getActiveSheetIndex());
             }
+            log.info("[SyncExcel-SVC] Hoja seleccionada: '{}'", sheet.getSheetName());
 
             // Header row: filaInicio - 2 (0-based: una fila antes del inicio de datos)
             int headerIdx = filaInicio - 2;
@@ -516,8 +523,13 @@ public class InventarioServiceImpl implements InventarioService {
             if (colNombre == -1) colNombre = 2;
             if (colUnidad == -1) colUnidad = 1;
 
+            log.info("[SyncExcel-SVC] Columnas detectadas — nombre=col{} unidad=col{} stock=col{} (TOTAL={} CANTIDAD={} INICIAL={})",
+                    (char)('A' + colNombre), (char)('A' + colUnidad), (char)('A' + colStock),
+                    idxTotal, idxCantidad, idxInicial);
+
             int idxDataInicio = filaInicio - 1;
             int idxDataFin    = filaFin - 1;
+            log.info("[SyncExcel-SVC] Procesando filas POI {}-{} ({} filas)", idxDataInicio, idxDataFin, idxDataFin - idxDataInicio + 1);
 
             for (int i = idxDataInicio; i <= idxDataFin; i++) {
                 Row row = sheet.getRow(i);
