@@ -168,6 +168,7 @@ const InventarioPage: React.FC = () => {
   const [excelResultado,                setExcelResultado]                = React.useState<ISincronizarInventarioExcelResultado | null>(null);
   const [excelNoEncontradosSeleccionados, setExcelNoEncontradosSeleccionados] = React.useState<Set<number>>(new Set());
   const [isIncluyendoNoEncontrados,     setIsIncluyendoNoEncontrados]     = React.useState(false);
+  const [excelResultVista, setExcelResultVista] = React.useState<'sincronizados' | 'no_encontrados'>('no_encontrados');
   const { isOpen: isSincronizarExcelOpen, onOpen: onSincronizarExcelOpen, onOpenChange: onSincronizarExcelOpenChange } = useDisclosure();
   const { isOpen: isExcelResultOpen, onOpen: onExcelResultOpen, onOpenChange: onExcelResultOpenChange } = useDisclosure();
   const [productoSeleccionado, setProductoSeleccionado] = React.useState<IProducto | null>(null);
@@ -715,14 +716,16 @@ const InventarioPage: React.FC = () => {
         excelPendingFile, excelFilaInicio, excelFilaFin, excelSelectedCatId, excelSelectedSheet
       );
       setExcelResultado(resultado);
+      const noEncontrados = resultado.resultados.filter(r => r.estado === 'no_encontrado');
       setExcelNoEncontradosSeleccionados(
         new Set(
-          resultado.resultados
+          noEncontrados
             .map((r, i) => ({ r, i }))
-            .filter(({ r }) => r.estado === 'no_encontrado')
+            .filter(({ r }) => (r.stockExcel ?? 0) > 0)
             .map(({ i }) => i)
         )
       );
+      setExcelResultVista(noEncontrados.length > 0 ? 'no_encontrados' : 'sincronizados');
       onSincronizarExcelOpenChange();
       onExcelResultOpen();
     } catch (err: any) {
@@ -1589,21 +1592,41 @@ const InventarioPage: React.FC = () => {
           scrollBehavior="inside"
         >
           <ModalContent>
-            {(onClose) => (
-              <>
-                <ModalHeader className="flex items-center gap-2">
-                  <Icon icon="lucide:file-check" className="text-success" width={20} />
-                  Resultado — Sincronización Excel
-                </ModalHeader>
-                <ModalBody>
-                  {excelResultado && (
+            {(onClose) => {
+              if (!excelResultado) return null;
+              const noEncontradosList = excelResultado.resultados.filter(r => r.estado === 'no_encontrado');
+              const sincronizadosList = excelResultado.resultados.filter(r => r.estado === 'ok');
+              const tieneConCero = noEncontradosList.some(item => (item.stockExcel ?? 0) === 0);
+              const incluyeCero = tieneConCero && noEncontradosList.some(
+                (item, i) => (item.stockExcel ?? 0) === 0 && excelNoEncontradosSeleccionados.has(i)
+              );
+              return (
+                <>
+                  <ModalHeader className="flex items-center gap-2">
+                    <Icon icon="lucide:file-check" className="text-success" width={20} />
+                    Resultado — Sincronización Excel
+                  </ModalHeader>
+                  <ModalBody>
                     <div className="flex flex-col gap-4">
+                      {/* Chips clickeables para cambiar vista */}
                       <div className="flex gap-3 flex-wrap">
-                        <Chip color="success" variant="flat">
-                          {excelResultado.totalSincronizados} sincronizados
-                        </Chip>
+                        {excelResultado.totalSincronizados > 0 && (
+                          <Chip
+                            color="success"
+                            variant={excelResultVista === 'sincronizados' ? 'solid' : 'flat'}
+                            className="cursor-pointer"
+                            onClick={() => setExcelResultVista('sincronizados')}
+                          >
+                            {excelResultado.totalSincronizados} sincronizados
+                          </Chip>
+                        )}
                         {excelResultado.totalNoEncontrados > 0 && (
-                          <Chip color="warning" variant="flat">
+                          <Chip
+                            color="warning"
+                            variant={excelResultVista === 'no_encontrados' ? 'solid' : 'flat'}
+                            className="cursor-pointer"
+                            onClick={() => setExcelResultVista('no_encontrados')}
+                          >
                             {excelResultado.totalNoEncontrados} no encontrados
                           </Chip>
                         )}
@@ -1612,58 +1635,107 @@ const InventarioPage: React.FC = () => {
                         </Chip>
                       </div>
 
-                      {excelResultado.totalNoEncontrados > 0 && (
+                      {/* Vista: sincronizados */}
+                      {excelResultVista === 'sincronizados' && sincronizadosList.length > 0 && (
                         <div className="flex flex-col gap-2">
-                          <p className="text-sm font-medium">Productos no encontrados en el sistema</p>
-                          <p className="text-xs text-default-400">Selecciona cuáles agregar al inventario</p>
-                          <div className="flex flex-col gap-1 max-h-64 overflow-y-auto pr-1">
-                            {excelResultado.resultados
-                              .filter(r => r.estado === 'no_encontrado')
-                              .map((item, idx) => (
-                                <div
-                                  key={idx}
-                                  className="flex items-center gap-3 p-2 rounded-lg bg-default-50 dark:bg-default-100/50"
-                                >
-                                  <Checkbox
-                                    isSelected={excelNoEncontradosSeleccionados.has(idx)}
-                                    onValueChange={(checked) => {
-                                      setExcelNoEncontradosSeleccionados(prev => {
-                                        const next = new Set(prev);
-                                        checked ? next.add(idx) : next.delete(idx);
-                                        return next;
+                          <p className="text-sm font-medium text-success-600">Productos actualizados</p>
+                          <div className="flex flex-col gap-1 max-h-72 overflow-y-auto pr-1">
+                            {sincronizadosList.map((item, idx) => (
+                              <div
+                                key={idx}
+                                className="flex items-center gap-3 p-2 rounded-lg bg-success-50 dark:bg-success-900/20"
+                              >
+                                <Icon icon="lucide:check-circle" className="text-success flex-shrink-0" width={16} />
+                                <span className="flex-1 text-sm">{item.nombreProducto ?? item.nombreExcel}</span>
+                                <span className="text-xs text-default-400 w-16 text-right shrink-0">
+                                  {item.unidadMedidaExcel || '—'}
+                                </span>
+                                <span className="text-xs font-mono text-default-500 shrink-0">
+                                  {item.stockAnterior ?? 0} → <span className="text-success-600 font-semibold">{item.stockExcel ?? 0}</span>
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Vista: no encontrados */}
+                      {excelResultVista === 'no_encontrados' && noEncontradosList.length > 0 && (
+                        <div className="flex flex-col gap-2">
+                          <div className="flex items-center justify-between">
+                            <p className="text-sm font-medium">Selecciona cuáles agregar al inventario</p>
+                            {tieneConCero && (
+                              <div className="flex items-center gap-2">
+                                <Checkbox
+                                  size="sm"
+                                  isSelected={incluyeCero}
+                                  onValueChange={(checked) => {
+                                    setExcelNoEncontradosSeleccionados(prev => {
+                                      const next = new Set(prev);
+                                      noEncontradosList.forEach((item, i) => {
+                                        if ((item.stockExcel ?? 0) === 0) {
+                                          checked ? next.add(i) : next.delete(i);
+                                        }
                                       });
-                                    }}
-                                  />
-                                  <span className="flex-1 text-sm">{item.nombreExcel}</span>
-                                  <span className="text-xs text-default-400 w-16 text-right">
-                                    {item.unidadMedidaExcel || '—'}
-                                  </span>
-                                  <span className="text-xs font-mono w-12 text-right">
-                                    {item.stockExcel ?? 0}
-                                  </span>
-                                </div>
-                              ))}
+                                      return next;
+                                    });
+                                  }}
+                                />
+                                <span className="text-xs text-default-500">Incluir con stock 0</span>
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex flex-col gap-1 max-h-72 overflow-y-auto pr-1">
+                            {noEncontradosList.map((item, idx) => (
+                              <div
+                                key={idx}
+                                className="flex items-center gap-3 p-2 rounded-lg bg-default-50 dark:bg-default-100/50"
+                              >
+                                <Checkbox
+                                  isSelected={excelNoEncontradosSeleccionados.has(idx)}
+                                  onValueChange={(checked) => {
+                                    setExcelNoEncontradosSeleccionados(prev => {
+                                      const next = new Set(prev);
+                                      checked ? next.add(idx) : next.delete(idx);
+                                      return next;
+                                    });
+                                  }}
+                                />
+                                <span className="flex-1 text-sm">{item.nombreExcel}</span>
+                                <span className="text-xs text-default-400 w-16 text-right shrink-0">
+                                  {item.unidadMedidaExcel || '—'}
+                                </span>
+                                <Chip
+                                  size="sm"
+                                  color={(item.stockExcel ?? 0) === 0 ? 'warning' : 'default'}
+                                  variant="flat"
+                                  className="shrink-0 font-mono"
+                                >
+                                  {item.stockExcel ?? 0}
+                                </Chip>
+                              </div>
+                            ))}
                           </div>
                         </div>
                       )}
                     </div>
-                  )}
-                </ModalBody>
-                <ModalFooter>
-                  <Button variant="light" onPress={onClose}>Cerrar</Button>
-                  {(excelResultado?.totalNoEncontrados ?? 0) > 0 && (
-                    <Button
-                      color="primary"
-                      isLoading={isIncluyendoNoEncontrados}
-                      isDisabled={excelNoEncontradosSeleccionados.size === 0}
-                      onPress={handleConfirmarNuevos}
-                    >
-                      Incluir seleccionados ({excelNoEncontradosSeleccionados.size})
-                    </Button>
-                  )}
-                </ModalFooter>
-              </>
-            )}
+                  </ModalBody>
+                  <ModalFooter>
+                    <Button variant="light" onPress={onClose}>Cerrar</Button>
+                    {excelResultVista === 'no_encontrados' && noEncontradosList.length > 0 && (
+                      <Button
+                        color="primary"
+                        isLoading={isIncluyendoNoEncontrados}
+                        isDisabled={excelNoEncontradosSeleccionados.size === 0}
+                        onPress={handleConfirmarNuevos}
+                      >
+                        Incluir seleccionados ({excelNoEncontradosSeleccionados.size})
+                      </Button>
+                    )}
+                  </ModalFooter>
+                </>
+              );
+            }}
           </ModalContent>
         </Modal>
       </motion.div>

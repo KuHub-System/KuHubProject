@@ -36,6 +36,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -560,6 +561,7 @@ public class InventarioServiceImpl implements InventarioService {
                         .findByNombreProductoAndCategoria_IdCategoriaAndActivoTrue(nombreCapitalizado, idCategoria);
 
                 if (productoOpt.isEmpty()) {
+                    log.debug("[SyncExcel-NE] fila={} buscado='{}' cat={}", filaNro, nombreCapitalizado, idCategoria);
                     resultados.add(new SincronizarExcelResultado.ResultadoItem(
                             filaNro, nombreRaw, null, null, null,
                             stockExcel, null, unidadCapitalizada, idUnidadMatcheada, "no_encontrado"
@@ -642,7 +644,9 @@ public class InventarioServiceImpl implements InventarioService {
             producto.setUnidadMedida(unidadMedida);
             producto = productoRepository.save(producto);
 
-            BigDecimal stockInicial = item.stock() != null ? item.stock() : BigDecimal.ZERO;
+            BigDecimal stockInicial = (item.stock() != null && item.stock().compareTo(BigDecimal.ZERO) > 0)
+                    ? item.stock().setScale(3, RoundingMode.HALF_UP)
+                    : BigDecimal.ZERO;
 
             Inventario inventario = new Inventario();
             inventario.setProducto(producto);
@@ -694,15 +698,20 @@ public class InventarioServiceImpl implements InventarioService {
         if (type == CellType.FORMULA) {
             type = cell.getCachedFormulaResultType();
         }
+        BigDecimal result = null;
         if (type == CellType.NUMERIC) {
-            return BigDecimal.valueOf(cell.getNumericCellValue());
-        }
-        if (type == CellType.STRING) {
+            result = BigDecimal.valueOf(cell.getNumericCellValue());
+        } else if (type == CellType.STRING) {
             String val = cell.getStringCellValue().trim().replace(",", ".");
             if (val.isBlank()) return null;
-            try { return new BigDecimal(val); } catch (NumberFormatException e) { return null; }
+            try { result = new BigDecimal(val); } catch (NumberFormatException e) { return null; }
         }
-        return null;
+        if (result == null) return null;
+        // Redondear a máximo 3 decimales (la BD acepta hasta 3 con punto).
+        // Clampear a 0 para evitar floating-point negativo de fórmulas (ej. 5-5 = -4.4E-16).
+        result = result.setScale(3, RoundingMode.HALF_UP);
+        if (result.compareTo(BigDecimal.ZERO) < 0) result = BigDecimal.ZERO;
+        return result;
     }
 
 }
