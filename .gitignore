@@ -78,7 +78,13 @@ IMPLEMENTACION_VISUALIZACION_DIAS_ENTREGA.md
 run_aider.bat
 aider_commands.txt
 aider-post-apply.sh
-plan_test_backend.md
+PLAN_TEST_BACKEND.md
+
+### Frontend Test & Documentation Files ###
+frontend/README.md
+frontend/src/__tests__/PLAN_TEST_FRONTEND.md
+frontend/src/__tests__/README.md
+frontend/src/__tests__/TESTING_GUIDE.md
 
 ### Documentos de Evaluación ###
 EVALUACION_PARCIAL_2_TPY1101.md
