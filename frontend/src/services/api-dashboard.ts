@@ -72,7 +72,7 @@ export interface DashboardGestorData {
   rechazadasRecientes: SolicitudRechazada[];
 }
 
-export interface DashboardRecetasData {
+export interface DashboardPedidoSemanalBodegaData {
   recetasActivas: number;
   recetasInactivas: number;
   recetasTotal: number;
@@ -83,4 +83,4 @@ export interface DashboardRecetasData {
 export const getDashboardAdmin      = (): Promise<DashboardAdminData>      => api.get('/dashboard/admin').then(r => r.data);
 export const getDashboardInventario = (): Promise<DashboardInventarioData> => api.get('/dashboard/inventario').then(r => r.data);
 export const getDashboardGestor     = (): Promise<DashboardGestorData>     => api.get('/dashboard/gestor').then(r => r.data);
-export const getDashboardRecetas    = (): Promise<DashboardRecetasData>    => api.get('/dashboard/recetas').then(r => r.data);
+export const getDashboardPedidoSemanalBodega = (): Promise<DashboardPedidoSemanalBodegaData> => api.get('/dashboard/recetas').then(r => r.data);
