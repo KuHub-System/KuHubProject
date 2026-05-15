@@ -138,6 +138,7 @@ const InventarioPage: React.FC = () => {
   const isScrollingRef = React.useRef(false);
   const isLoadingRef = React.useRef(false);
   const nextPageRef = React.useRef(1); // Tracker para carga secuencial
+  const productosLengthRef = React.useRef(0);
 
   usePageTitle('Inventario', 'Gestione los productos del inventario, vea movimientos y actualice existencias.', 'lucide:package');
 
@@ -174,7 +175,7 @@ const InventarioPage: React.FC = () => {
   const prefetchSiguientePagina = React.useCallback(async (currentUiPage: number) => {
     // Si la primera página trajo 20 items, la siguiente API page a prefetch es la 3 (que corresponde a UI page 3)
     // Si la primera página trajo 10 items, la siguiente API page a prefetch es la 2 (que corresponde a UI page 2)
-    const apiPageToPrefetch = currentUiPage === 1 && productos.length === 20 ? 3 : currentUiPage + 1;
+    const apiPageToPrefetch = currentUiPage === 1 && productosLengthRef.current === 20 ? 3 : currentUiPage + 1;
 
     if (cacheRef.current[apiPageToPrefetch] || apiPageToPrefetch > totalPaginas) return;
 
@@ -223,7 +224,7 @@ const InventarioPage: React.FC = () => {
     } catch (e) {
       // Prefetch fallido silenciosamente
     }
-  }, [totalPaginas, productos.length]);
+  }, [totalPaginas]);
 
   /**
    * Carga los productos usando una caché local para manejar la asimetría del backend.
@@ -339,7 +340,7 @@ const InventarioPage: React.FC = () => {
       setIsLoading(false);
       isLoadingRef.current = false;
     }
-  }, [toast, prefetchSiguientePagina, productos.length]);
+  }, [toast, prefetchSiguientePagina]);
 
   /**
    * Debounce 2.5s para filtros: cancela el timer anterior antes de iniciar uno nuevo,
@@ -630,6 +631,8 @@ const InventarioPage: React.FC = () => {
       return <Chip color="success" size="sm" variant="flat" className="text-success-700 dark:text-success-400 bg-success-50 dark:bg-success-50/10 font-medium">Disponible</Chip>;
     }
   };
+
+  productosLengthRef.current = productos.length;
 
   return (
     <div className="min-h-screen bg-default-50/50 dark:bg-background pb-20 font-sans">

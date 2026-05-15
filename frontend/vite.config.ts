@@ -9,6 +9,13 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: './src/test/setup.ts',
     css: true,
+    testTimeout: 8000,
+    hookTimeout: 8000,
+    include: ['src/**/*.{test,spec}.{ts,tsx}'],
+    environmentMatchGlobs: [
+      ['src/**/*.test.tsx', 'jsdom'],
+      ['src/**/*.test.ts', 'jsdom'],
+    ],
   },
   build: {
     // Optimizaciones de build
