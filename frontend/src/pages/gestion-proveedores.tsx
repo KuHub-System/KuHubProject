@@ -1663,6 +1663,7 @@ const ProductosProveedor: React.FC<ProductosProveedorProps> = ({
                       <th className="text-center py-2 px-3 font-medium w-[200px]">Producto</th>
                       <th className="text-center py-2 px-3 font-medium w-14">Unidad</th>
                       <th className="text-center py-2 px-3 font-medium w-28">Contenido</th>
+                      <th className="text-center py-2 px-3 font-medium w-24">Marca</th>
                       <th className="text-center py-2 px-3 font-medium w-24">Precio Neto</th>
                       <th className="text-center py-2 px-3 font-medium w-24">Precio + IVA</th>
                       <th className="text-center py-2 px-3 font-medium w-16">Estado</th>
@@ -1721,6 +1722,9 @@ const ProductosProveedor: React.FC<ProductosProveedorProps> = ({
                       </td>
                       <td className="py-2 px-3 text-default-500 text-center">
                         {prod.formatoContenido || '—'}
+                      </td>
+                      <td className="py-2 px-3 text-default-500 text-center">
+                        {prod.marcaProducto || '—'}
                       </td>
                       {/* Precio Neto — editable inline */}
                       <td className="py-2 px-3 text-center">
@@ -1998,10 +2002,10 @@ const BusquedaResultados: React.FC<BusquedaResultadosProps> = ({
                                 <table className="w-full text-xs" style={{ tableLayout: 'fixed' }}>
                                   <thead className="bg-default-100 dark:bg-default-50">
                                     <tr>
-                                      <th className="text-center py-2 px-3 font-medium w-[160px]">Producto</th>
-                                      <th className="text-center py-2 px-3 font-medium w-16">Código</th>
+                                      <th className="text-center py-2 px-3 font-medium w-[200px]">Producto</th>
                                       <th className="text-center py-2 px-3 font-medium w-14">Unidad</th>
-                                      <th className="text-center py-2 px-3 font-medium w-24">Contenido</th>
+                                      <th className="text-center py-2 px-3 font-medium w-28">Contenido</th>
+                                      <th className="text-center py-2 px-3 font-medium w-24">Marca</th>
                                       <th className="text-center py-2 px-3 font-medium w-24">Precio Neto</th>
                                       <th className="text-center py-2 px-3 font-medium w-24">Precio + IVA</th>
                                       <th className="text-center py-2 px-3 font-medium w-16">Estado</th>
@@ -2026,18 +2030,14 @@ const BusquedaResultados: React.FC<BusquedaResultadosProps> = ({
                                             </span>
                                           </Tooltip>
                                         </td>
-                                        <td className="py-2 px-3 text-center text-xs text-default-500">
-                                          <Tooltip content={prod.codProducto || '—'} color="foreground" className="text-xs">
-                                            <span className="truncate block whitespace-nowrap">
-                                              {prod.codProducto || '—'}
-                                            </span>
-                                          </Tooltip>
-                                        </td>
                                         <td className="py-2 px-3 text-center">
                                           {prod.abreviatura}
                                         </td>
                                         <td className="py-2 px-3 text-center text-default-500">
                                           {prod.formatoContenido || '—'}
+                                        </td>
+                                        <td className="py-2 px-3 text-center text-default-500">
+                                          {prod.marcaProducto || '—'}
                                         </td>
                                         {/* Precio Neto — editable inline */}
                                         <td className="py-2 px-3 text-center">
