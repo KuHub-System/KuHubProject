@@ -46,6 +46,8 @@ import {
   obtenerProductosDisponiblesService,
   obtenerCategoriasActivasJsonService,
   buscarProductosGlobalService,
+  listarProveedoresSelectorService,
+  sincronizarPreciosExcelService,
 } from '../services/proveedor-service';
 import type {
   IProveedor,
@@ -62,6 +64,8 @@ import type {
   IProductoDisponibleDTO,
   IBusquedaProductosGlobal,
   IProductoBuscado,
+  IProveedorSelector,
+  ISyncExcelResult,
 } from '../types/proveedor.types';
 import type { IProductoRecetaSelection } from '../types/producto.types';
 
@@ -145,8 +149,7 @@ const formatChileanPrice = (num: number): string => {
   if (isInteger) {
     integerPart = Math.floor(num).toString();
   } else {
-    // Preservar hasta 3 decimales (precisión NUMERIC(10,3) de la BD)
-    const rounded = Math.round(num * 1000) / 1000;
+    const rounded = Math.round(num * 100) / 100;
     const parts = rounded.toString().split('.');
     integerPart = parts[0];
     if (parts[1]) {
@@ -203,7 +206,7 @@ const renderDisponibilidad = (activo: boolean) => {
 };
 
 const formatPrecio = (precio: number) =>
-  `$${precio.toLocaleString('es-CL', { minimumFractionDigits: 0, maximumFractionDigits: 3 })}`;
+  `$${precio.toLocaleString('es-CL', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
 
 // ── Helpers Excel (estándar EXCEL.MD) ─────────────────────────────────────────
 
@@ -401,6 +404,17 @@ const GestionProveedoresPage: React.FC = () => {
   const [cotizacionData, setCotizacionData] = React.useState<ICotizacionResponse | null>(null);
   const [loadingCotizacion, setLoadingCotizacion] = React.useState(false);
   const [errorCotizacion, setErrorCotizacion] = React.useState<string | null>(null);
+
+  // ── Modal sincronización de precios desde Excel ──
+  const { isOpen: isSyncExcelModal, onOpen: openSyncExcelModal, onOpenChange: onSyncExcelModalChange } = useDisclosure();
+  const [proveedoresSelector, setProveedoresSelector] = React.useState<IProveedorSelector[]>([]);
+  const [syncProveedorId, setSyncProveedorId] = React.useState<number | null>(null);
+  const [syncFile, setSyncFile] = React.useState<File | null>(null);
+  const [syncLoading, setSyncLoading] = React.useState(false);
+  const [syncResult, setSyncResult] = React.useState<ISyncExcelResult | null>(null);
+  const [syncError, setSyncError] = React.useState<string | null>(null);
+  const [loadingSelector, setLoadingSelector] = React.useState(false);
+  const excelInputRef = React.useRef<HTMLInputElement>(null);
 
   // ── Búsqueda global optimizada ──
   const [busquedaGlobal, setBusquedaGlobal] = React.useState('');
@@ -913,6 +927,62 @@ const GestionProveedoresPage: React.FC = () => {
     }
   };
 
+  // ── Sincronización Excel ────────────────────────────────────────────────
+
+  const handleAbrirSyncExcel = async () => {
+    setSyncProveedorId(null);
+    setSyncFile(null);
+    setSyncResult(null);
+    setSyncError(null);
+    setLoadingSelector(true);
+    openSyncExcelModal();
+    try {
+      const lista = await listarProveedoresSelectorService();
+      setProveedoresSelector(lista);
+    } catch (err: any) {
+      setSyncError(err?.message ?? 'Error al cargar distribuidoras');
+    } finally {
+      setLoadingSelector(false);
+    }
+  };
+
+  const handleSyncFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] ?? null;
+    setSyncFile(file);
+    setSyncResult(null);
+    setSyncError(null);
+  };
+
+  const handleConfirmarSyncExcel = async () => {
+    if (syncProveedorId == null || !syncFile) return;
+    setSyncLoading(true);
+    setSyncError(null);
+    setSyncResult(null);
+    try {
+      const result = await sincronizarPreciosExcelService(syncProveedorId, syncFile);
+      setSyncResult(result);
+      invalidarCacheProveedor(syncProveedorId);
+      const distribuidora = proveedoresSelector.find(p => p.idProveedor === syncProveedorId)?.nombreDistribuidora ?? '';
+      showToast(
+        `Sincronización: ${result.sincronizados} actualizados, ${result.omitidos} omitidos${distribuidora ? ' · ' + distribuidora : ''}`,
+        result.errores.length > 0 ? 'error' : 'success'
+      );
+    } catch (err: any) {
+      setSyncError(err?.message ?? 'Error al sincronizar los precios');
+    } finally {
+      setSyncLoading(false);
+      if (excelInputRef.current) excelInputRef.current.value = '';
+    }
+  };
+
+  const handleCerrarSyncExcel = () => {
+    setSyncProveedorId(null);
+    setSyncFile(null);
+    setSyncResult(null);
+    setSyncError(null);
+    if (excelInputRef.current) excelInputRef.current.value = '';
+  };
+
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
@@ -984,6 +1054,17 @@ const GestionProveedoresPage: React.FC = () => {
                   onPress={handleNuevoProveedor}
                 >
                   Nuevo Proveedor
+                </Button>
+              )}
+              {prov_Editar && (
+                <Button
+                  color="success"
+                  variant="flat"
+                  className="font-bold cursor-pointer"
+                  startContent={<Icon icon="lucide:upload" width={20} />}
+                  onPress={handleAbrirSyncExcel}
+                >
+                  Sincronizar Precios Excel
                 </Button>
               )}
               <Button
@@ -1371,6 +1452,161 @@ const GestionProveedoresPage: React.FC = () => {
           exportarCotizacionExcel(cotizacionData, dateRangeProyeccion);
         }}
       />
+
+      {/* ── Modal Sincronización de Precios desde Excel ── */}
+      <Modal
+        isOpen={isSyncExcelModal}
+        onOpenChange={onSyncExcelModalChange}
+        size="lg"
+        scrollBehavior="inside"
+        radius="lg"
+        classNames={{ base: 'rounded-2xl', closeButton: 'cursor-pointer' }}
+        onClose={handleCerrarSyncExcel}
+      >
+        <ModalContent className="rounded-2xl overflow-hidden">
+          {(onClose) => (
+            <>
+              <ModalHeader className="flex items-center gap-2">
+                <Icon icon="lucide:upload-cloud" width={22} className="text-success-500" />
+                Sincronizar Precios desde Excel
+              </ModalHeader>
+              <ModalBody className="space-y-4">
+                {!syncResult && (
+                  <>
+                    <p className="text-sm text-default-600">
+                      Selecciona la distribuidora destino y sube su archivo <strong>.xlsx</strong> con precios.
+                      Se actualizarán las versiones activas de cada producto encontrado.
+                    </p>
+
+                    <Select
+                      label="Distribuidora"
+                      placeholder={loadingSelector ? 'Cargando...' : 'Selecciona una distribuidora'}
+                      isDisabled={loadingSelector || syncLoading}
+                      selectedKeys={syncProveedorId != null ? new Set([String(syncProveedorId)]) : new Set()}
+                      onSelectionChange={(keys) => {
+                        const val = Array.from(keys)[0] as string | undefined;
+                        setSyncProveedorId(val ? Number(val) : null);
+                      }}
+                      variant="bordered"
+                    >
+                      {proveedoresSelector.map((p) => (
+                        <SelectItem key={String(p.idProveedor)} textValue={p.nombreDistribuidora}>
+                          {p.nombreDistribuidora}
+                        </SelectItem>
+                      ))}
+                    </Select>
+
+                    <div className="flex flex-col gap-2">
+                      <span className="text-sm font-medium text-default-700">Archivo Excel (.xlsx)</span>
+                      <div className="flex items-center gap-3">
+                        <Button
+                          color="default"
+                          variant="bordered"
+                          startContent={<Icon icon="lucide:file-up" width={18} />}
+                          onPress={() => excelInputRef.current?.click()}
+                          isDisabled={syncLoading}
+                          className="cursor-pointer"
+                        >
+                          {syncFile ? 'Cambiar archivo' : 'Seleccionar archivo'}
+                        </Button>
+                        <span className="text-sm text-default-500 truncate">
+                          {syncFile?.name ?? 'Ningún archivo seleccionado'}
+                        </span>
+                      </div>
+                      <input
+                        ref={excelInputRef}
+                        type="file"
+                        accept=".xlsx"
+                        className="hidden"
+                        onChange={handleSyncFileChange}
+                      />
+                    </div>
+
+                    {syncError && (
+                      <div className="flex items-start gap-2 p-3 rounded-lg bg-danger-50 dark:bg-danger-50/20 border border-danger-200 dark:border-danger-100/30 text-danger-700 dark:text-danger-300 text-sm">
+                        <Icon icon="lucide:alert-circle" width={18} className="flex-shrink-0 mt-0.5" />
+                        <span>{syncError}</span>
+                      </div>
+                    )}
+                  </>
+                )}
+
+                {syncResult && (
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-3 gap-3">
+                      <div className="p-3 rounded-lg bg-success-50 dark:bg-success-50/20 border border-success-200 dark:border-success-100/30 text-center">
+                        <div className="text-2xl font-bold text-success-700 dark:text-success-300">
+                          {syncResult.sincronizados}
+                        </div>
+                        <div className="text-xs text-default-600">Sincronizados</div>
+                      </div>
+                      <div className="p-3 rounded-lg bg-default-100 dark:bg-default-100/40 border border-default-200 dark:border-default-100/40 text-center">
+                        <div className="text-2xl font-bold text-default-700 dark:text-default-300">
+                          {syncResult.omitidos}
+                        </div>
+                        <div className="text-xs text-default-600">Omitidos</div>
+                      </div>
+                      <div className="p-3 rounded-lg bg-danger-50 dark:bg-danger-50/20 border border-danger-200 dark:border-danger-100/30 text-center">
+                        <div className="text-2xl font-bold text-danger-700 dark:text-danger-300">
+                          {syncResult.errores.length}
+                        </div>
+                        <div className="text-xs text-default-600">Errores</div>
+                      </div>
+                    </div>
+
+                    {syncResult.errores.length > 0 && (
+                      <div className="space-y-2">
+                        <p className="text-sm font-semibold text-default-700">Detalle de errores:</p>
+                        <div className="max-h-60 overflow-y-auto border border-default-200 dark:border-default-100 rounded-lg">
+                          <table className="w-full text-sm">
+                            <thead className="bg-default-100 dark:bg-default-100/40 sticky top-0">
+                              <tr>
+                                <th className="px-3 py-2 text-left font-semibold w-20">Fila</th>
+                                <th className="px-3 py-2 text-left font-semibold">Mensaje</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {syncResult.errores.map((e, idx) => (
+                                <tr key={idx} className="border-t border-default-200 dark:border-default-100">
+                                  <td className="px-3 py-2 font-mono text-default-700">{e.fila}</td>
+                                  <td className="px-3 py-2 text-default-700">{e.mensaje}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </ModalBody>
+              <ModalFooter>
+                {!syncResult ? (
+                  <>
+                    <Button variant="light" onPress={onClose} isDisabled={syncLoading} className="cursor-pointer">
+                      Cancelar
+                    </Button>
+                    <Button
+                      color="success"
+                      onPress={handleConfirmarSyncExcel}
+                      isDisabled={syncProveedorId == null || !syncFile || syncLoading}
+                      isLoading={syncLoading}
+                      startContent={!syncLoading && <Icon icon="lucide:upload" width={18} />}
+                      className="font-bold cursor-pointer"
+                    >
+                      {syncLoading ? 'Sincronizando...' : 'Sincronizar'}
+                    </Button>
+                  </>
+                ) : (
+                  <Button color="primary" onPress={onClose} className="font-bold cursor-pointer">
+                    Cerrar
+                  </Button>
+                )}
+              </ModalFooter>
+            </>
+          )}
+        </ModalContent>
+      </Modal>
 
       {/* ── Modal Crear / Editar / Ver Proveedor ── */}
       <Modal isOpen={isProvModal} onOpenChange={onProvModalChange} size="lg" scrollBehavior="inside" radius="lg" classNames={{ base: 'rounded-2xl', closeButton: 'cursor-pointer' }}>

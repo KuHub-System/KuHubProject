@@ -5,6 +5,8 @@ import KuHub.modules.gestion_proveedor.dtos.request.ProveedorCreateDTO;
 import KuHub.modules.gestion_proveedor.dtos.request.ProveedorProductoAddDTO;
 import KuHub.modules.gestion_proveedor.dtos.request.ProveedorProductoUpdateDTO;
 import KuHub.modules.gestion_proveedor.dtos.request.ProveedorUpdateDTO;
+import KuHub.modules.gestion_inventario.entity.Producto;
+import KuHub.modules.gestion_inventario.repository.ProductoRepository;
 import KuHub.modules.gestion_proveedor.dtos.response.BusquedaProductosGlobalDTO;
 import KuHub.modules.gestion_proveedor.dtos.response.CotizacionProveedorDTO;
 import KuHub.modules.gestion_proveedor.dtos.response.DiaEntregaResponseDTO;
@@ -13,7 +15,9 @@ import KuHub.modules.gestion_proveedor.dtos.response.ProductoDisponibleDTO;
 import KuHub.modules.gestion_proveedor.dtos.response.ProductoBuscadoDTO;
 import KuHub.modules.gestion_proveedor.dtos.response.ProveedorDetalleDTO;
 import KuHub.modules.gestion_proveedor.dtos.response.ProveedorListDTO;
+import KuHub.modules.gestion_proveedor.dtos.response.ProveedorSelectorView;
 import KuHub.modules.gestion_proveedor.dtos.response.ProveedoresPageResponse;
+import KuHub.modules.gestion_proveedor.dtos.response.SyncExcelResultDTO;
 import KuHub.modules.gestion_solicitud.dtos.request.DateRangeDTO;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.type.TypeFactory;
@@ -30,19 +34,31 @@ import KuHub.modules.gestion_proveedor.repository.ProveedorProductoRepository;
 import KuHub.modules.gestion_proveedor.repository.ProveedorRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.CellType;
+import org.apache.poi.ss.usermodel.DataFormatter;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -61,6 +77,9 @@ public class ProveedorServiceImpl implements ProveedorService {
 
     @Autowired
     private ProveedorDiaEntregaRepository proveedorDiaEntregaRepository;
+
+    @Autowired
+    private ProductoRepository productoRepository;
 
     /**Services*/
     @Autowired
@@ -679,5 +698,212 @@ public class ProveedorServiceImpl implements ProveedorService {
 
         pp.setPrecioNeto(neto);
         pp.setPrecioConIva(iva);
+    }
+
+    // ══════════════════════════════════════════════════════════════
+    // 9. SINCRONIZACIÓN DE PRECIOS DESDE EXCEL
+    // ══════════════════════════════════════════════════════════════
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ProveedorSelectorView> listarProveedoresSelector() {
+        return proveedorRepository
+                .findByActivoTrueAndEstadoProveedorOrderByNombreDistribuidoraAsc(EstadoProveedor.DISPONIBLE);
+    }
+
+    @Override
+    @Transactional
+    public SyncExcelResultDTO sincronizarPreciosExcel(Integer idProveedor, MultipartFile file) {
+        findById(idProveedor);
+
+        if (file == null || file.isEmpty()) {
+            throw new GestionProveedorException(
+                    "Debe adjuntar un archivo .xlsx válido.", HttpStatus.BAD_REQUEST);
+        }
+        String original = file.getOriginalFilename();
+        if (original == null || !original.toLowerCase().endsWith(".xlsx")) {
+            throw new GestionProveedorException(
+                    "Solo se aceptan archivos .xlsx (Excel 2007+).", HttpStatus.BAD_REQUEST);
+        }
+
+        int sincronizados = 0;
+        int omitidos = 0;
+        List<SyncExcelResultDTO.ErrorFila> errores = new ArrayList<>();
+        DataFormatter formatter = new DataFormatter();
+
+        try (InputStream in = file.getInputStream();
+             Workbook workbook = new XSSFWorkbook(in)) {
+
+            Sheet sheet = workbook.getSheetAt(0);
+
+            // ── Detección de cabeceras (fila 5 índice 4, fallback fila 6 índice 5) ──
+            Map<String, Integer> colIndex = new HashMap<>();
+            int headerRowIdx = -1;
+
+            for (int rowIdx : new int[]{4, 5}) {
+                Row row = sheet.getRow(rowIdx);
+                if (row == null) continue;
+
+                Map<String, Integer> candidato = new HashMap<>();
+                for (int c = 1; c <= 9; c++) { // columnas B(1) … J(9)
+                    Cell cell = row.getCell(c);
+                    if (cell == null) continue;
+                    String header = formatter.formatCellValue(cell).trim();
+                    if (!header.isEmpty()) candidato.put(header.toLowerCase(), c);
+                }
+
+                if (candidato.containsKey("prducto")) {
+                    colIndex = candidato;
+                    headerRowIdx = rowIdx;
+                    break;
+                }
+            }
+
+            if (headerRowIdx == -1) {
+                throw new GestionProveedorException(
+                        "No se encontró la fila de cabeceras (PRDUCTO) en filas 5 ni 6.",
+                        HttpStatus.BAD_REQUEST);
+            }
+            if (!colIndex.containsKey("cantidad")) {
+                throw new GestionProveedorException(
+                        "Fila de cabeceras encontrada pero falta la columna CANTIDAD.",
+                        HttpStatus.BAD_REQUEST);
+            }
+
+            Integer colProducto = colIndex.get("prducto");
+            Integer colCantidad = colIndex.get("cantidad");
+            Integer colFormato  = colIndex.get("formato de grs.");
+            Integer colMarca    = colIndex.get("marca");
+            Integer colPrecioN  = colIndex.get("precio neto");
+            Integer colPrecioT  = colIndex.get("precio total");
+
+            // Datos reales empiezan 2 filas después (se salta fila EJEMPLO)
+            int firstDataRow = headerRowIdx + 2;
+            int lastRow = sheet.getLastRowNum();
+
+            for (int r = firstDataRow; r <= lastRow; r++) {
+                Row row = sheet.getRow(r);
+                if (row == null) continue;
+
+                String nombreRaw = leerStringCelda(row, colProducto, formatter);
+                if (nombreRaw == null || nombreRaw.isBlank()) {
+                    omitidos++;
+                    continue;
+                }
+
+                BigDecimal cantidad = leerNumeroCelda(row, colCantidad);
+                if (cantidad == null || cantidad.compareTo(BigDecimal.ZERO) <= 0) {
+                    omitidos++;
+                    continue;
+                }
+
+                BigDecimal precioNetoTotal = leerNumeroCelda(row, colPrecioN);
+                BigDecimal precioIvaTotal  = leerNumeroCelda(row, colPrecioT);
+
+                boolean netoValido = precioNetoTotal != null && precioNetoTotal.compareTo(BigDecimal.ZERO) > 0;
+                boolean ivaValido  = precioIvaTotal  != null && precioIvaTotal.compareTo(BigDecimal.ZERO) > 0;
+                if (!netoValido && !ivaValido) {
+                    omitidos++;
+                    continue;
+                }
+
+                String nombreProducto = KuHub.utils.StringUtils.capitalizarPalabras(nombreRaw.trim());
+
+                Optional<Producto> productoOpt = productoRepository
+                        .findByNombreProductoIgnoreCaseAndActivoTrue(nombreProducto);
+                if (productoOpt.isEmpty()) {
+                    errores.add(new SyncExcelResultDTO.ErrorFila(
+                            r + 1,
+                            "Producto no encontrado: '" + nombreProducto + "'"
+                    ));
+                    continue;
+                }
+                Producto producto = productoOpt.get();
+
+                BigDecimal precioNetoUnit = null;
+                BigDecimal precioIvaUnit = null;
+                if (netoValido) {
+                    precioNetoUnit = precioNetoTotal.divide(cantidad, 3, RoundingMode.HALF_UP);
+                }
+                if (ivaValido) {
+                    precioIvaUnit = precioIvaTotal.divide(cantidad, 3, RoundingMode.HALF_UP);
+                }
+                if (precioNetoUnit == null) {
+                    precioNetoUnit = precioIvaUnit.divide(IVA, 3, RoundingMode.HALF_UP);
+                } else if (precioIvaUnit == null) {
+                    precioIvaUnit = precioNetoUnit.multiply(IVA).setScale(3, RoundingMode.HALF_UP);
+                }
+
+                String formato = colFormato != null ? leerStringCelda(row, colFormato, formatter) : null;
+                String marca   = colMarca   != null ? leerStringCelda(row, colMarca, formatter)   : null;
+                if (formato != null && formato.isBlank()) formato = null;
+                if (marca != null && marca.isBlank()) marca = null;
+
+                proveedorProductoRepository.desactivarVersionesActivas(idProveedor, producto.getIdProducto());
+
+                ProveedorProducto nueva = new ProveedorProducto();
+                nueva.setIdProveedor(idProveedor);
+                nueva.setIdProducto(producto.getIdProducto());
+                nueva.setMarcaProducto(marca);
+                nueva.setFormatoContenido(formato);
+                nueva.setPrecioNeto(precioNetoUnit);
+                nueva.setPrecioConIva(precioIvaUnit);
+                nueva.setActivo(true);
+                nueva.setFechaActualizacion(LocalDateTime.now());
+                proveedorProductoRepository.save(nueva);
+
+                sincronizados++;
+            }
+
+        } catch (GestionProveedorException e) {
+            throw e;
+        } catch (IOException e) {
+            log.error("Error leyendo Excel para proveedor ID={}: {}", idProveedor, e.getMessage());
+            throw new GestionProveedorException(
+                    "No se pudo leer el archivo Excel: " + e.getMessage(),
+                    HttpStatus.BAD_REQUEST);
+        } catch (Exception e) {
+            log.error("Error procesando Excel para proveedor ID={}: {}", idProveedor, e.getMessage(), e);
+            throw new GestionProveedorException(
+                    "Error inesperado procesando el archivo: " + e.getMessage(),
+                    HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+
+        log.info("Sincronización Excel proveedor ID={}: sincronizados={}, omitidos={}, errores={}",
+                idProveedor, sincronizados, omitidos, errores.size());
+        return new SyncExcelResultDTO(sincronizados, omitidos, errores);
+    }
+
+    /** Lee una celda como texto usando DataFormatter (maneja números, fórmulas, etc.). */
+    private String leerStringCelda(Row row, Integer col, DataFormatter formatter) {
+        if (col == null) return null;
+        Cell cell = row.getCell(col);
+        if (cell == null) return null;
+        String v = formatter.formatCellValue(cell);
+        return v == null ? null : v.trim();
+    }
+
+    /**
+     * Lee una celda como BigDecimal. Soporta celdas numéricas, fórmulas y strings
+     * con formato chileno (1.234,567) o estándar (1234.567).
+     */
+    private BigDecimal leerNumeroCelda(Row row, Integer col) {
+        if (col == null) return null;
+        Cell cell = row.getCell(col);
+        if (cell == null) return null;
+        try {
+            CellType tipo = cell.getCellType() == CellType.FORMULA ? cell.getCachedFormulaResultType() : cell.getCellType();
+            if (tipo == CellType.NUMERIC) {
+                return BigDecimal.valueOf(cell.getNumericCellValue());
+            }
+            if (tipo == CellType.STRING) {
+                String raw = cell.getStringCellValue();
+                if (raw == null || raw.isBlank()) return null;
+                return KuHub.utils.ChileanPriceUtils.parseChileanPrice(raw);
+            }
+            return null;
+        } catch (Exception e) {
+            return null;
+        }
     }
 }
