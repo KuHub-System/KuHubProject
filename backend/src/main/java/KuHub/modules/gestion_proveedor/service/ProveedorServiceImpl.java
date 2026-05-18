@@ -707,8 +707,9 @@ public class ProveedorServiceImpl implements ProveedorService {
     @Override
     @Transactional(readOnly = true)
     public List<ProveedorSelectorView> listarProveedoresSelector() {
-        return proveedorRepository
-                .findByActivoTrueAndEstadoProveedorOrderByNombreDistribuidoraAsc(EstadoProveedor.DISPONIBLE);
+        List<ProveedorSelectorView> lista = proveedorRepository.findSelectorActivos();
+        log.info("listarProveedoresSelector: {} distribuidoras activas", lista.size());
+        return lista;
     }
 
     @Override
