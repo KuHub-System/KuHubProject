@@ -388,7 +388,7 @@ const GestionProveedoresPage: React.FC = () => {
   const [quitarTarget, setQuitarTarget] = React.useState<{ idProveedor: number; idProducto: number; nombre: string } | null>(null);
 
   // ── Precio inline ──
-  const [editingPrecio, setEditingPrecio] = React.useState<{ idProveedorProducto: number } | null>(null);
+  const [editingPrecio, setEditingPrecio] = React.useState<{ idProveedorProducto: number; campo: 'neto' | 'iva' } | null>(null);
   const [precioTemp, setPrecioTemp] = React.useState('');
 
   // ── Filtro mostrar inactivos ──
@@ -738,8 +738,8 @@ const GestionProveedoresPage: React.FC = () => {
 
   // ── Precio inline ─────────────────────────────────────────────────────────
 
-  const handleIniciarEditPrecio = (idProveedorProducto: number, precioActual: number) => {
-    setEditingPrecio({ idProveedorProducto });
+  const handleIniciarEditPrecio = (idProveedorProducto: number, precioActual: number, campo: 'neto' | 'iva' = 'neto') => {
+    setEditingPrecio({ idProveedorProducto, campo });
     setPrecioTemp(formatChileanPrice(precioActual));
   };
 
@@ -760,7 +760,7 @@ const GestionProveedoresPage: React.FC = () => {
     try {
       const actualizado = await actualizarPrecioProductoService(
         editingPrecio.idProveedorProducto,
-        { precioNeto: precioTemp }
+        editingPrecio.campo === 'iva' ? { precioConIva: precioTemp } : { precioNeto: precioTemp }
       );
 
       if (actualizado) {
@@ -1514,11 +1514,10 @@ const GestionProveedoresPage: React.FC = () => {
 interface ProductosProveedorProps {
   detalle: IProveedorDetalle;
   canEdit: boolean;
-  editingPrecio: { idProveedorProducto: number } | null;
+  editingPrecio: { idProveedorProducto: number; campo: 'neto' | 'iva' } | null;
   precioTemp: string;
   savingPrecio: boolean;
-  // [CAMBIO 2026-04-24] onIniciarEditPrecio ahora solo recibe idProveedorProducto
-  onIniciarEditPrecio: (idProveedorProducto: number, precioActual: number) => void;
+  onIniciarEditPrecio: (idProveedorProducto: number, precioActual: number, campo?: 'neto' | 'iva') => void;
   onPrecioTempChange: (val: string) => void;
   onGuardarPrecio: () => void;
   onCancelarEditPrecio: () => void;
@@ -1661,8 +1660,9 @@ const ProductosProveedor: React.FC<ProductosProveedorProps> = ({
                 <table className="w-full text-xs" style={{ tableLayout: 'fixed' }}>
                   <thead className="bg-default-100 dark:bg-default-50">
                     <tr>
-                      <th className="text-center py-2 px-3 font-medium w-[240px]">Producto</th>
+                      <th className="text-center py-2 px-3 font-medium w-[200px]">Producto</th>
                       <th className="text-center py-2 px-3 font-medium w-14">Unidad</th>
+                      <th className="text-center py-2 px-3 font-medium w-28">Contenido</th>
                       <th className="text-center py-2 px-3 font-medium w-24">Precio Neto</th>
                       <th className="text-center py-2 px-3 font-medium w-24">Precio + IVA</th>
                       <th className="text-center py-2 px-3 font-medium w-16">Estado</th>
@@ -1672,8 +1672,33 @@ const ProductosProveedor: React.FC<ProductosProveedorProps> = ({
               </thead>
               <tbody>
                 {filtrarProductos(detalle.productosPorCategoria[categoria]).map((prod) => {
-                  const isEditing =
-                    editingPrecio?.idProveedorProducto === prod.idProveedorProducto;
+                  const isEditing = editingPrecio?.idProveedorProducto === prod.idProveedorProducto;
+                  const isEditingNeto = isEditing && editingPrecio?.campo === 'neto';
+                  const isEditingIva  = isEditing && editingPrecio?.campo === 'iva';
+
+                  const inlineEditUI = (
+                    <div className="flex items-center gap-1">
+                      <Input
+                        size="sm"
+                        value={precioTemp}
+                        onValueChange={onPrecioTempChange}
+                        className="w-20"
+                        classNames={{ inputWrapper: 'h-6 min-h-6' }}
+                        startContent={<span className="text-default-400 text-xs">$</span>}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') onGuardarPrecio();
+                          if (e.key === 'Escape') onCancelarEditPrecio();
+                        }}
+                        autoFocus
+                      />
+                      <Button isIconOnly size="sm" variant="flat" color="success" isLoading={savingPrecio} onPress={onGuardarPrecio}>
+                        <Icon icon="lucide:check" width={13} />
+                      </Button>
+                      <Button isIconOnly size="sm" variant="light" onPress={onCancelarEditPrecio}>
+                        <Icon icon="lucide:x" width={13} />
+                      </Button>
+                    </div>
+                  );
 
                   return (
                     <tr
@@ -1684,7 +1709,7 @@ const ProductosProveedor: React.FC<ProductosProveedorProps> = ({
                           : 'bg-default-50/30 dark:bg-default-100/10 opacity-60'
                       }`}
                     >
-                      <td className="py-2 px-3 font-medium text-center w-[290px] overflow-hidden">
+                      <td className="py-2 px-3 font-medium text-center w-[200px] overflow-hidden">
                         <Tooltip content={prod.nombreProducto} color="foreground" className="text-xs">
                           <span className="truncate block whitespace-nowrap">
                             {prod.nombreProducto}
@@ -1694,43 +1719,36 @@ const ProductosProveedor: React.FC<ProductosProveedorProps> = ({
                       <td className="py-2 px-3 text-default-500 text-center">
                         {prod.abreviatura || prod.nombreUnidad}
                       </td>
+                      <td className="py-2 px-3 text-default-500 text-center">
+                        {prod.formatoContenido || '—'}
+                      </td>
                       {/* Precio Neto — editable inline */}
                       <td className="py-2 px-3 text-center">
-                        {isEditing ? (
-                          <div className="flex items-center gap-1">
-                            <Input
-                              size="sm"
-                              value={precioTemp}
-                              onValueChange={onPrecioTempChange}
-                              className="w-20"
-                              classNames={{ inputWrapper: 'h-6 min-h-6' }}
-                              startContent={<span className="text-default-400 text-xs">$</span>}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter') onGuardarPrecio();
-                                if (e.key === 'Escape') onCancelarEditPrecio();
-                              }}
-                              autoFocus
-                            />
-                            <Button isIconOnly size="sm" variant="flat" color="success" isLoading={savingPrecio} onPress={onGuardarPrecio}>
-                              <Icon icon="lucide:check" width={13} />
-                            </Button>
-                            <Button isIconOnly size="sm" variant="light" onPress={onCancelarEditPrecio}>
-                              <Icon icon="lucide:x" width={13} />
-                            </Button>
-                          </div>
+                        {isEditingNeto ? inlineEditUI : isEditingIva ? (
+                          <span className="text-default-300">—</span>
                         ) : (
                           <span
                             className={`cursor-pointer hover:text-primary transition-colors ${canEdit ? 'underline decoration-dotted' : ''}`}
                             title={canEdit ? 'Clic para editar precio neto' : undefined}
-                            onClick={() => canEdit && onIniciarEditPrecio(prod.idProveedorProducto, prod.precioNeto)}
+                            onClick={() => canEdit && onIniciarEditPrecio(prod.idProveedorProducto, prod.precioNeto, 'neto')}
                           >
                             {formatPrecio(prod.precioNeto)}
                           </span>
                         )}
                       </td>
-                      {/* Precio + IVA — solo visualización */}
-                      <td className="py-2 px-3 text-center text-default-500">
-                        {isEditing ? '—' : formatPrecio(prod.precioConIva)}
+                      {/* Precio + IVA — editable inline */}
+                      <td className="py-2 px-3 text-center">
+                        {isEditingIva ? inlineEditUI : isEditingNeto ? (
+                          <span className="text-default-300">—</span>
+                        ) : (
+                          <span
+                            className={`cursor-pointer hover:text-primary transition-colors ${canEdit ? 'underline decoration-dotted' : ''}`}
+                            title={canEdit ? 'Clic para editar precio con IVA' : undefined}
+                            onClick={() => canEdit && onIniciarEditPrecio(prod.idProveedorProducto, prod.precioConIva, 'iva')}
+                          >
+                            {formatPrecio(prod.precioConIva)}
+                          </span>
+                        )}
                       </td>
                       <td className="py-2 px-3 text-center">{renderDisponibilidad(prod.activo)}</td>
                       <td className="py-2 px-3 text-default-400 text-center">
@@ -1782,10 +1800,10 @@ interface BusquedaResultadosProps {
   error: string | null;
   searchTerm: string;
   canEdit: boolean;
-  editingPrecio: { idProveedorProducto: number } | null;
+  editingPrecio: { idProveedorProducto: number; campo: 'neto' | 'iva' } | null;
   precioTemp: string;
   savingPrecio: boolean;
-  onIniciarEditPrecio: (idProveedorProducto: number, precioActual: number) => void;
+  onIniciarEditPrecio: (idProveedorProducto: number, precioActual: number, campo?: 'neto' | 'iva') => void;
   onPrecioTempChange: (val: string) => void;
   onGuardarPrecio: () => void;
   onCancelarEditPrecio: () => void;
@@ -1980,9 +1998,10 @@ const BusquedaResultados: React.FC<BusquedaResultadosProps> = ({
                                 <table className="w-full text-xs" style={{ tableLayout: 'fixed' }}>
                                   <thead className="bg-default-100 dark:bg-default-50">
                                     <tr>
-                                      <th className="text-center py-2 px-3 font-medium w-[180px]">Producto</th>
+                                      <th className="text-center py-2 px-3 font-medium w-[160px]">Producto</th>
                                       <th className="text-center py-2 px-3 font-medium w-16">Código</th>
                                       <th className="text-center py-2 px-3 font-medium w-14">Unidad</th>
+                                      <th className="text-center py-2 px-3 font-medium w-24">Contenido</th>
                                       <th className="text-center py-2 px-3 font-medium w-24">Precio Neto</th>
                                       <th className="text-center py-2 px-3 font-medium w-24">Precio + IVA</th>
                                       <th className="text-center py-2 px-3 font-medium w-16">Estado</th>
@@ -2017,9 +2036,12 @@ const BusquedaResultados: React.FC<BusquedaResultadosProps> = ({
                                         <td className="py-2 px-3 text-center">
                                           {prod.abreviatura}
                                         </td>
+                                        <td className="py-2 px-3 text-center text-default-500">
+                                          {prod.formatoContenido || '—'}
+                                        </td>
                                         {/* Precio Neto — editable inline */}
                                         <td className="py-2 px-3 text-center">
-                                          {editingPrecio?.idProveedorProducto === prod.idProveedorProducto ? (
+                                          {editingPrecio?.idProveedorProducto === prod.idProveedorProducto && editingPrecio.campo === 'neto' ? (
                                             <div className="flex items-center gap-1 justify-center">
                                               <Input
                                                 size="sm"
@@ -2041,21 +2063,53 @@ const BusquedaResultados: React.FC<BusquedaResultadosProps> = ({
                                                 <Icon icon="lucide:x" width={13} />
                                               </Button>
                                             </div>
+                                          ) : editingPrecio?.idProveedorProducto === prod.idProveedorProducto && editingPrecio.campo === 'iva' ? (
+                                            <span className="text-default-300">—</span>
                                           ) : (
                                             <span
                                               className={`cursor-pointer hover:text-primary transition-colors ${canEdit ? 'underline decoration-dotted' : ''}`}
                                               title={canEdit ? 'Clic para editar precio neto' : undefined}
-                                              onClick={() => canEdit && onIniciarEditPrecio(prod.idProveedorProducto, prod.precioNeto)}
+                                              onClick={() => canEdit && onIniciarEditPrecio(prod.idProveedorProducto, prod.precioNeto, 'neto')}
                                             >
                                               {formatPrecio(prod.precioNeto)}
                                             </span>
                                           )}
                                         </td>
-                                        {/* Precio + IVA — solo visualización */}
-                                        <td className="py-2 px-3 text-center text-default-500">
-                                          {editingPrecio?.idProveedorProducto === prod.idProveedorProducto
-                                            ? '—'
-                                            : formatPrecio(prod.precioConIva)}
+                                        {/* Precio + IVA — editable inline */}
+                                        <td className="py-2 px-3 text-center">
+                                          {editingPrecio?.idProveedorProducto === prod.idProveedorProducto && editingPrecio.campo === 'iva' ? (
+                                            <div className="flex items-center gap-1 justify-center">
+                                              <Input
+                                                size="sm"
+                                                value={precioTemp}
+                                                onValueChange={onPrecioTempChange}
+                                                className="w-28"
+                                                classNames={{ inputWrapper: 'h-8 min-h-8' }}
+                                                startContent={<span className="text-default-400 text-xs">$</span>}
+                                                onKeyDown={(e) => {
+                                                  if (e.key === 'Enter') onGuardarPrecio();
+                                                  if (e.key === 'Escape') onCancelarEditPrecio();
+                                                }}
+                                                autoFocus
+                                              />
+                                              <Button isIconOnly size="sm" variant="flat" color="success" isLoading={savingPrecio} onPress={onGuardarPrecio}>
+                                                <Icon icon="lucide:check" width={13} />
+                                              </Button>
+                                              <Button isIconOnly size="sm" variant="light" onPress={onCancelarEditPrecio}>
+                                                <Icon icon="lucide:x" width={13} />
+                                              </Button>
+                                            </div>
+                                          ) : editingPrecio?.idProveedorProducto === prod.idProveedorProducto && editingPrecio.campo === 'neto' ? (
+                                            <span className="text-default-300">—</span>
+                                          ) : (
+                                            <span
+                                              className={`cursor-pointer hover:text-primary transition-colors ${canEdit ? 'underline decoration-dotted' : ''}`}
+                                              title={canEdit ? 'Clic para editar precio con IVA' : undefined}
+                                              onClick={() => canEdit && onIniciarEditPrecio(prod.idProveedorProducto, prod.precioConIva, 'iva')}
+                                            >
+                                              {formatPrecio(prod.precioConIva)}
+                                            </span>
+                                          )}
                                         </td>
                                         <td className="py-2 px-3 text-center">
                                           <Chip
