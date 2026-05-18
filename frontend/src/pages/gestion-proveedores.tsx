@@ -138,7 +138,6 @@ const parseChileanPrice = (input: string): number => {
 const formatChileanPrice = (num: number): string => {
   if (isNaN(num) || num === null || num === undefined) return '0';
 
-  // Separar enteros y decimales preservando hasta 2 decimales
   const isInteger = Number.isInteger(num);
   let integerPart: string;
   let decimalPart: string = '';
@@ -146,8 +145,8 @@ const formatChileanPrice = (num: number): string => {
   if (isInteger) {
     integerPart = Math.floor(num).toString();
   } else {
-    // Obtener máximo 2 decimales para evitar errores de precisión
-    const rounded = Math.round(num * 100) / 100;
+    // Preservar hasta 3 decimales (precisión NUMERIC(10,3) de la BD)
+    const rounded = Math.round(num * 1000) / 1000;
     const parts = rounded.toString().split('.');
     integerPart = parts[0];
     if (parts[1]) {
@@ -155,7 +154,6 @@ const formatChileanPrice = (num: number): string => {
     }
   }
 
-  // Agregar separador de miles al entero
   const formattedInteger = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
 
   return formattedInteger + decimalPart;
@@ -205,7 +203,7 @@ const renderDisponibilidad = (activo: boolean) => {
 };
 
 const formatPrecio = (precio: number) =>
-  `$${precio.toLocaleString('es-CL', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
+  `$${precio.toLocaleString('es-CL', { minimumFractionDigits: 0, maximumFractionDigits: 3 })}`;
 
 // ── Helpers Excel (estándar EXCEL.MD) ─────────────────────────────────────────
 
