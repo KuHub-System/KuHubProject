@@ -1,21 +1,34 @@
 package KuHub.modules.gestion_proveedor.dtos.response;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 /**
  * Record que representa el resultado de la sincronización de precios desde Excel.
  * Devuelto por POST /api/v1/proveedor/{id}/sync-precios-excel.
  *
- * - sincronizados: filas insertadas correctamente (nuevas versiones de proveedor_producto).
- * - omitidos:     filas saltadas (EJEMPLO, sin nombre, sin cantidad, sin precios).
- * - errores:      filas que cumplían las condiciones mínimas pero no se pudieron sincronizar
- *                 (producto no encontrado, error de parseo, etc.).
+ * - sincronizados: detalle de cada producto actualizado con su nombre y nuevos precios.
+ * - noEncontrados: filas con campos válidos pero cuyo nombre de producto no existe en el sistema.
+ *
+ * Las filas sin nombre / sin cantidad / sin precios se descartan internamente y no se reportan.
  */
 public record SyncExcelResultDTO(
-        int sincronizados,
-        int omitidos,
-        List<ErrorFila> errores
+        int totalSincronizados,
+        int totalNoEncontrados,
+        List<ProductoSincronizado> sincronizados,
+        List<ProductoNoEncontrado> noEncontrados
 ) {
-    /** Error asociado a una fila específica del Excel. */
-    public record ErrorFila(int fila, String mensaje) {}
+    /** Producto sincronizado correctamente. */
+    public record ProductoSincronizado(
+            int fila,
+            String nombreProducto,
+            BigDecimal precioNeto,
+            BigDecimal precioConIva
+    ) {}
+
+    /** Fila con datos válidos pero cuyo nombre no coincide con ningún producto del sistema. */
+    public record ProductoNoEncontrado(
+            int fila,
+            String nombreExcel
+    ) {}
 }
