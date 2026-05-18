@@ -9,9 +9,12 @@ import KuHub.modules.gestion_proveedor.dtos.response.CotizacionProveedorDTO;
 import KuHub.modules.gestion_proveedor.dtos.response.ProductoDisponibleDTO;
 import KuHub.modules.gestion_proveedor.dtos.response.ProveedorDetalleDTO;
 import KuHub.modules.gestion_proveedor.dtos.response.ProveedorListDTO;
+import KuHub.modules.gestion_proveedor.dtos.response.ProveedorSelectorView;
 import KuHub.modules.gestion_proveedor.dtos.response.ProveedoresPageResponse;
+import KuHub.modules.gestion_proveedor.dtos.response.SyncExcelResultDTO;
 import KuHub.modules.gestion_proveedor.entity.Proveedor;
 import KuHub.modules.gestion_solicitud.dtos.request.DateRangeDTO;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -79,4 +82,18 @@ public interface ProveedorService {
      *  La búsqueda es case-insensitive (ILIKE en PostgreSQL).
      */
     List<BusquedaProductosGlobalDTO> buscarProductosGlobal(String searchTerm);
+
+    /**
+     * Lista distribuidoras activas y disponibles para el selector del modal de sincronización Excel.
+     * Filtro: activo = TRUE AND estado_proveedor = DISPONIBLE.
+     * Orden: nombre_distribuidora ASC.
+     */
+    List<ProveedorSelectorView> listarProveedoresSelector();
+
+    /**
+     * Sincroniza precios de los productos del proveedor leyendo un archivo .xlsx.
+     * Inserta una nueva versión activa por producto y desactiva versiones previas.
+     * Retorna resumen con sincronizados, omitidos y errores por fila.
+     */
+    SyncExcelResultDTO sincronizarPreciosExcel(Integer idProveedor, MultipartFile file);
 }
