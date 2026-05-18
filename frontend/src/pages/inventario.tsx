@@ -800,7 +800,7 @@ const InventarioPage: React.FC = () => {
               variant="flat"
               size="md"
               className="font-bold shadow-sm"
-              startContent={<Icon icon="lucide:file-spreadsheet" width={18} />}
+              startContent={<Icon icon="lucide:upload-cloud" width={18} />}
               onPress={() => excelFileInputRef.current?.click()}
             >
               Sincronizar con Excel
@@ -1436,7 +1436,7 @@ const InventarioPage: React.FC = () => {
               <>
                 <ModalHeader className="flex flex-col gap-1 pb-2">
                   <div className="flex items-center gap-2">
-                    <Icon icon="lucide:file-spreadsheet" className="text-success" width={22} />
+                    <Icon icon="lucide:upload-cloud" className="text-success" width={22} />
                     <h2 className="text-lg font-bold text-foreground">
                       Sincronizar Inventario con Excel
                     </h2>
