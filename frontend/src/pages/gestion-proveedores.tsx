@@ -767,40 +767,33 @@ const GestionProveedoresPage: React.FC = () => {
 
       if (actualizado) {
         showToast('Precio actualizado correctamente', 'success');
-        // ✅ OPTIMIZACIÓN: Actualizar el valor en memoria SIN hacer segunda petición
-        setDetalleCache(prev => {
-          const updated = { ...prev };
-          Object.keys(updated).forEach(idProveedor => {
-            const detalle = updated[parseInt(idProveedor)];
-            if (detalle) {
-              Object.keys(detalle.productosPorCategoria).forEach(categoria => {
-                detalle.productosPorCategoria[categoria] = detalle.productosPorCategoria[categoria].map(prod => {
-                  if (prod.idProveedorProducto === editingPrecio.idProveedorProducto) {
-                    return { ...prod, precioProducto: precio };
-                  }
-                  return prod;
-                });
-              });
-            }
-          });
-          return updated;
+
+        // Versioning: cada actualización inserta una fila nueva con un idProveedorProducto
+        // distinto. Actualizar el cache en memoria por el ID viejo lo deja apuntando a
+        // una versión ya inactiva. La forma correcta es invalidar el cache del proveedor
+        // dueño y recargar el detalle desde el backend.
+        let idProveedorDueno: number | undefined;
+        Object.entries(detalleCache).forEach(([idProvStr, detalle]) => {
+          if (!detalle) return;
+          const pertenece = Object.values(detalle.productosPorCategoria).some(productos =>
+            productos.some(p => p.idProveedorProducto === editingPrecio.idProveedorProducto)
+          );
+          if (pertenece) idProveedorDueno = parseInt(idProvStr);
         });
 
-        // ✅ Actualizar también en resultados de búsqueda global
-        setResultadosBusqueda(prev =>
-          prev.map(proveedor => ({
-            ...proveedor,
-            categorias: proveedor.categorias.map(categoria => ({
-              ...categoria,
-              productos: categoria.productos.map(prod => {
-                if (prod.idProveedorProducto === editingPrecio.idProveedorProducto) {
-                  return { ...prod, precioProducto: precio };
-                }
-                return prod;
-              }),
-            })),
-          }))
-        );
+        if (idProveedorDueno !== undefined) {
+          invalidarCacheProveedor(idProveedorDueno);
+          if (expandedRows.has(idProveedorDueno)) {
+            const detalle = await obtenerProveedorDetalleService(idProveedorDueno);
+            setDetalleCache(prev => ({ ...prev, [idProveedorDueno!]: detalle }));
+          }
+        }
+
+        // Los resultados de búsqueda global pueden contener la fila stale: limpiarlos
+        // fuerza al usuario a re-buscar con datos frescos.
+        if (resultadosBusqueda.length > 0) {
+          setResultadosBusqueda([]);
+        }
       }
     } catch (err: any) {
       // [CAMBIO 2026-04-24] 409 Conflict: precio igual al actual (advertencia, no error)
