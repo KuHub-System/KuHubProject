@@ -250,12 +250,23 @@ export interface IProveedorSelector {
 }
 
 /**
- * Error asociado a una fila específica del Excel.
- * Mapea SyncExcelResultDTO.ErrorFila del backend.
+ * Producto sincronizado correctamente desde el Excel.
+ * Mapea SyncExcelResultDTO.ProductoSincronizado del backend.
  */
-export interface ISyncExcelError {
+export interface ISyncProductoSincronizado {
   fila: number;
-  mensaje: string;
+  nombreProducto: string;
+  precioNeto: number;
+  precioConIva: number;
+}
+
+/**
+ * Fila con datos válidos pero cuyo nombre no existe en el sistema.
+ * Mapea SyncExcelResultDTO.ProductoNoEncontrado del backend.
+ */
+export interface ISyncProductoNoEncontrado {
+  fila: number;
+  nombreExcel: string;
 }
 
 /**
@@ -263,7 +274,8 @@ export interface ISyncExcelError {
  * Mapea SyncExcelResultDTO del backend.
  */
 export interface ISyncExcelResult {
-  sincronizados: number;
-  omitidos: number;
-  errores: ISyncExcelError[];
+  totalSincronizados: number;
+  totalNoEncontrados: number;
+  sincronizados: ISyncProductoSincronizado[];
+  noEncontrados: ISyncProductoNoEncontrado[];
 }
