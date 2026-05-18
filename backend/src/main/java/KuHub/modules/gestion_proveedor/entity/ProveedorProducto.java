@@ -30,8 +30,17 @@ public class ProveedorProducto {
     @JoinColumn(name = "id_producto", nullable = false)
     private Producto producto;
 
-    @Column(name = "precio_producto", nullable = false, precision = 12, scale = 2)
-    private BigDecimal precioProducto;
+    @Column(name = "marca_producto", length = 200)
+    private String marcaProducto;
+
+    @Column(name = "formato_contenido", length = 100)
+    private String formatoContenido;
+
+    @Column(name = "precio_neto", nullable = false, precision = 10, scale = 3)
+    private BigDecimal precioNeto;
+
+    @Column(name = "precio_con_iva", nullable = false, precision = 10, scale = 3)
+    private BigDecimal precioConIva;
 
     @Column(name = "activo", nullable = false)
     private Boolean activo = true;

@@ -543,7 +543,10 @@ CREATE TABLE proveedor_producto (
     id_proveedor_producto BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     id_proveedor INTEGER NOT NULL,
     id_producto INTEGER NOT NULL,
-    precio_producto NUMERIC(12,2) NOT NULL,
+    marca_producto VARCHAR(200),
+    formato_contenido VARCHAR(100),
+    precio_neto NUMERIC(10,3) NOT NULL,
+    precio_con_iva NUMERIC(10,3) NOT NULL,
     activo BOOLEAN DEFAULT TRUE,
     fecha_actualizacion TIMESTAMP DEFAULT NOW(),
 
@@ -1178,7 +1181,7 @@ CREATE INDEX idx_movimiento_inventario ON movimiento (id_inventario);
 --CREATE INDEX idx_provedor_producto ON provedor(id_producto);
 --CREATE INDEX idx_provedor_estado ON provedor(estado_provedor);
 CREATE INDEX idx_pp_producto_precio_optimo
-ON proveedor_producto (id_producto, precio_producto ASC)
+ON proveedor_producto (id_producto, precio_neto ASC)
 WHERE activo = TRUE;
 
 -- Versioning de precios: acelera DISTINCT ON por (id_proveedor, id_producto)
@@ -3578,11 +3581,12 @@ BEGIN
         FOR v_prod IN
             SELECT id_producto FROM producto WHERE activo = TRUE
         LOOP
-            INSERT INTO proveedor_producto (id_proveedor, id_producto, precio_producto)
+            INSERT INTO proveedor_producto (id_proveedor, id_producto, precio_neto, precio_con_iva)
             VALUES (
                 v_proveedor_id,
                 v_prod.id_producto,
-                ROUND((RANDOM() * 49500 + 500)::NUMERIC, 2)
+                ROUND((RANDOM() * 49500 + 500)::NUMERIC, 3),
+                ROUND((RANDOM() * 49500 + 500)::NUMERIC * 1.19, 3)
             );
         END LOOP;
 

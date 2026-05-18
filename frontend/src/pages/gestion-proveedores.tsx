@@ -51,6 +51,7 @@ import type {
   IProveedor,
   IProveedorDetalle,
   IProveedorProducto,
+  IProveedorProductoAddDTO,
   IProveedorCreateDTO,
   IProveedorUpdateDTO,
   EstadoProveedor,
@@ -595,15 +596,15 @@ const GestionProveedoresPage: React.FC = () => {
           ...categoria,
           productos: [...categoria.productos].sort((a, b) => {
             const orden = precioFiltro === 'precio-asc' ? 1 : -1;
-            return (a.precioProducto - b.precioProducto) * orden;
+            return ((a.precioNeto ?? 0) - (b.precioNeto ?? 0)) * orden;
           }),
         })),
       }));
 
       // Luego, ordenar los proveedores por el precio mínimo de sus productos
       resultado.sort((provA, provB) => {
-        const preciosA = provA.categorias.flatMap(cat => cat.productos.map(p => p.precioProducto));
-        const preciosB = provB.categorias.flatMap(cat => cat.productos.map(p => p.precioProducto));
+        const preciosA = provA.categorias.flatMap(cat => cat.productos.map(p => p.precioNeto ?? 0));
+        const preciosB = provB.categorias.flatMap(cat => cat.productos.map(p => p.precioNeto ?? 0));
         const precioMinA = Math.min(...preciosA);
         const precioMinB = Math.min(...preciosB);
 
@@ -716,12 +717,11 @@ const GestionProveedoresPage: React.FC = () => {
     openProdModal();
   };
 
-  const handleGuardarProducto = async (idProducto: number, precio: number): Promise<boolean> => {
+  const handleGuardarProducto = async (dto: IProveedorProductoAddDTO): Promise<boolean> => {
     if (!proveedorParaProducto) return false;
     try {
-      const precioFormateado = formatChileanPrice(precio);
       // El backend retorna true si fue exitoso
-      const exitoso = await agregarProductoProveedorService(proveedorParaProducto, { idProducto, precioProducto: precioFormateado });
+      const exitoso = await agregarProductoProveedorService(proveedorParaProducto, dto);
 
       if (exitoso) {
         showToast('Producto asignado correctamente');
@@ -762,7 +762,7 @@ const GestionProveedoresPage: React.FC = () => {
     try {
       const actualizado = await actualizarPrecioProductoService(
         editingPrecio.idProveedorProducto,
-        { precioProducto: precioTemp }
+        { precioNeto: precioTemp }
       );
 
       if (actualizado) {
@@ -1399,13 +1399,13 @@ const GestionProveedoresPage: React.FC = () => {
               productos={productos}
               idProveedor={proveedorParaProducto || 0}
               onClose={onClose}
-              onSave={async (idProducto, precio) => {
+              onSave={async (dto) => {
                 // Guardar el producto
-                const success = await handleGuardarProducto(idProducto, precio);
+                const success = await handleGuardarProducto(dto);
 
                 // Si fue exitoso, remover el producto del listado para evitar duplicados
                 if (success) {
-                  setProductos(prev => prev.filter(p => p.idProducto !== idProducto));
+                  setProductos(prev => prev.filter(p => p.idProducto !== dto.idProducto));
                 }
 
                 // El modal permanece abierto para permitir agregar más productos
@@ -1663,9 +1663,10 @@ const ProductosProveedor: React.FC<ProductosProveedorProps> = ({
                 <table className="w-full text-xs" style={{ tableLayout: 'fixed' }}>
                   <thead className="bg-default-100 dark:bg-default-50">
                     <tr>
-                      <th className="text-center py-2 px-3 font-medium w-[290px]">Producto</th>
-                      <th className="text-center py-2 px-3 font-medium w-16">Unidad</th>
-                      <th className="text-center py-2 px-3 font-medium w-20">Precio</th>
+                      <th className="text-center py-2 px-3 font-medium w-[240px]">Producto</th>
+                      <th className="text-center py-2 px-3 font-medium w-14">Unidad</th>
+                      <th className="text-center py-2 px-3 font-medium w-24">Precio Neto</th>
+                      <th className="text-center py-2 px-3 font-medium w-24">Precio + IVA</th>
                       <th className="text-center py-2 px-3 font-medium w-16">Estado</th>
                       <th className="text-center py-2 px-3 font-medium w-20">Actualizado</th>
                       {canEdit && <th className="py-2 px-3 font-medium text-center w-16">Acciones</th>}
@@ -1695,6 +1696,7 @@ const ProductosProveedor: React.FC<ProductosProveedorProps> = ({
                       <td className="py-2 px-3 text-default-500 text-center">
                         {prod.abreviatura || prod.nombreUnidad}
                       </td>
+                      {/* Precio Neto — editable inline */}
                       <td className="py-2 px-3 text-center">
                         {isEditing ? (
                           <div className="flex items-center gap-1">
@@ -1702,7 +1704,7 @@ const ProductosProveedor: React.FC<ProductosProveedorProps> = ({
                               size="sm"
                               value={precioTemp}
                               onValueChange={onPrecioTempChange}
-                              className="w-24"
+                              className="w-20"
                               classNames={{ inputWrapper: 'h-6 min-h-6' }}
                               startContent={<span className="text-default-400 text-xs">$</span>}
                               onKeyDown={(e) => {
@@ -1711,37 +1713,26 @@ const ProductosProveedor: React.FC<ProductosProveedorProps> = ({
                               }}
                               autoFocus
                             />
-                            <Button
-                              isIconOnly
-                              size="sm"
-                              variant="flat"
-                              color="success"
-                              isLoading={savingPrecio}
-                              onPress={onGuardarPrecio}
-                            >
+                            <Button isIconOnly size="sm" variant="flat" color="success" isLoading={savingPrecio} onPress={onGuardarPrecio}>
                               <Icon icon="lucide:check" width={13} />
                             </Button>
-                            <Button
-                              isIconOnly
-                              size="sm"
-                              variant="light"
-                              onPress={onCancelarEditPrecio}
-                            >
+                            <Button isIconOnly size="sm" variant="light" onPress={onCancelarEditPrecio}>
                               <Icon icon="lucide:x" width={13} />
                             </Button>
                           </div>
                         ) : (
                           <span
                             className={`cursor-pointer hover:text-primary transition-colors ${canEdit ? 'underline decoration-dotted' : ''}`}
-                            title={canEdit ? 'Clic para editar precio' : undefined}
-                            onClick={() =>
-                              canEdit &&
-                              onIniciarEditPrecio(prod.idProveedorProducto, prod.precioProducto)
-                            }
+                            title={canEdit ? 'Clic para editar precio neto' : undefined}
+                            onClick={() => canEdit && onIniciarEditPrecio(prod.idProveedorProducto, prod.precioNeto)}
                           >
-                            {formatPrecio(prod.precioProducto)}
+                            {formatPrecio(prod.precioNeto)}
                           </span>
                         )}
+                      </td>
+                      {/* Precio + IVA — solo visualización */}
+                      <td className="py-2 px-3 text-center text-default-500">
+                        {isEditing ? '—' : formatPrecio(prod.precioConIva)}
                       </td>
                       <td className="py-2 px-3 text-center">{renderDisponibilidad(prod.activo)}</td>
                       <td className="py-2 px-3 text-default-400 text-center">
@@ -1991,10 +1982,11 @@ const BusquedaResultados: React.FC<BusquedaResultadosProps> = ({
                                 <table className="w-full text-xs" style={{ tableLayout: 'fixed' }}>
                                   <thead className="bg-default-100 dark:bg-default-50">
                                     <tr>
-                                      <th className="text-center py-2 px-3 font-medium w-[200px]">Producto</th>
+                                      <th className="text-center py-2 px-3 font-medium w-[180px]">Producto</th>
                                       <th className="text-center py-2 px-3 font-medium w-16">Código</th>
-                                      <th className="text-center py-2 px-3 font-medium w-16">Unidad</th>
-                                      <th className="text-center py-2 px-3 font-medium w-20">Precio</th>
+                                      <th className="text-center py-2 px-3 font-medium w-14">Unidad</th>
+                                      <th className="text-center py-2 px-3 font-medium w-24">Precio Neto</th>
+                                      <th className="text-center py-2 px-3 font-medium w-24">Precio + IVA</th>
                                       <th className="text-center py-2 px-3 font-medium w-16">Estado</th>
                                       <th className="text-center py-2 px-3 font-medium w-20">Actualizado</th>
                                       <th className="py-2 px-3 font-medium text-center w-16">Acciones</th>
@@ -2027,6 +2019,7 @@ const BusquedaResultados: React.FC<BusquedaResultadosProps> = ({
                                         <td className="py-2 px-3 text-center">
                                           {prod.abreviatura}
                                         </td>
+                                        {/* Precio Neto — editable inline */}
                                         <td className="py-2 px-3 text-center">
                                           {editingPrecio?.idProveedorProducto === prod.idProveedorProducto ? (
                                             <div className="flex items-center gap-1 justify-center">
@@ -2034,7 +2027,7 @@ const BusquedaResultados: React.FC<BusquedaResultadosProps> = ({
                                                 size="sm"
                                                 value={precioTemp}
                                                 onValueChange={onPrecioTempChange}
-                                                className="w-40"
+                                                className="w-28"
                                                 classNames={{ inputWrapper: 'h-8 min-h-8' }}
                                                 startContent={<span className="text-default-400 text-xs">$</span>}
                                                 onKeyDown={(e) => {
@@ -2043,40 +2036,28 @@ const BusquedaResultados: React.FC<BusquedaResultadosProps> = ({
                                                 }}
                                                 autoFocus
                                               />
-                                              <Button
-                                                isIconOnly
-                                                size="sm"
-                                                variant="flat"
-                                                color="success"
-                                                isLoading={savingPrecio}
-                                                onPress={onGuardarPrecio}
-                                              >
+                                              <Button isIconOnly size="sm" variant="flat" color="success" isLoading={savingPrecio} onPress={onGuardarPrecio}>
                                                 <Icon icon="lucide:check" width={13} />
                                               </Button>
-                                              <Button
-                                                isIconOnly
-                                                size="sm"
-                                                variant="light"
-                                                onPress={onCancelarEditPrecio}
-                                              >
+                                              <Button isIconOnly size="sm" variant="light" onPress={onCancelarEditPrecio}>
                                                 <Icon icon="lucide:x" width={13} />
                                               </Button>
                                             </div>
                                           ) : (
                                             <span
                                               className={`cursor-pointer hover:text-primary transition-colors ${canEdit ? 'underline decoration-dotted' : ''}`}
-                                              title={canEdit ? 'Clic para editar precio' : undefined}
-                                              onClick={() =>
-                                                canEdit &&
-                                                onIniciarEditPrecio(prod.idProveedorProducto, prod.precioProducto)
-                                              }
+                                              title={canEdit ? 'Clic para editar precio neto' : undefined}
+                                              onClick={() => canEdit && onIniciarEditPrecio(prod.idProveedorProducto, prod.precioNeto)}
                                             >
-                                              ${prod.precioProducto.toLocaleString('es-CL', {
-                                                minimumFractionDigits: 0,
-                                                maximumFractionDigits: 2,
-                                              })}
+                                              {formatPrecio(prod.precioNeto)}
                                             </span>
                                           )}
+                                        </td>
+                                        {/* Precio + IVA — solo visualización */}
+                                        <td className="py-2 px-3 text-center text-default-500">
+                                          {editingPrecio?.idProveedorProducto === prod.idProveedorProducto
+                                            ? '—'
+                                            : formatPrecio(prod.precioConIva)}
                                         </td>
                                         <td className="py-2 px-3 text-center">
                                           <Chip
@@ -2645,8 +2626,10 @@ interface FormularioAsignarProductoProps {
   productos: IProductoDisponibleDTO[];
   idProveedor: number;
   onClose: () => void;
-  onSave: (idProducto: number, precio: number) => Promise<void | boolean>;
+  onSave: (dto: IProveedorProductoAddDTO) => Promise<void | boolean>;
 }
+
+const IVA_TASA = 1.19;
 
 const FormularioAsignarProducto: React.FC<FormularioAsignarProductoProps> = ({
   productos: productosInicial,
@@ -2656,9 +2639,28 @@ const FormularioAsignarProducto: React.FC<FormularioAsignarProductoProps> = ({
 }) => {
   const [searchProd, setSearchProd] = React.useState('');
   const [selectedProducto, setSelectedProducto] = React.useState<IProductoDisponibleDTO | null>(null);
-  const [precio, setPrecio] = React.useState('');
+  const [marcaProducto, setMarcaProducto] = React.useState('');
+  const [formatoContenido, setFormatoContenido] = React.useState('');
+  const [precioNeto, setPrecioNeto] = React.useState('');
+  const [precioConIva, setPrecioConIva] = React.useState('');
   const [error, setError] = React.useState<string | null>(null);
   const [saving, setSaving] = React.useState(false);
+
+  // Cálculo automático: al salir de Precio Neto, completar Precio + IVA si está vacío
+  const handlePrecioNetoBlur = () => {
+    const neto = parseChileanPrice(precioNeto);
+    if (!isNaN(neto) && neto > 0 && !precioConIva.trim()) {
+      setPrecioConIva(formatChileanPrice(neto * IVA_TASA));
+    }
+  };
+
+  // Cálculo automático: al salir de Precio + IVA, completar Precio Neto si está vacío
+  const handlePrecioConIvaBlur = () => {
+    const conIva = parseChileanPrice(precioConIva);
+    if (!isNaN(conIva) && conIva > 0 && !precioNeto.trim()) {
+      setPrecioNeto(formatChileanPrice(conIva / IVA_TASA));
+    }
+  };
   const [selectedCategoryIds, setSelectedCategoryIds] = React.useState<Set<string>>(new Set());
   const [loadingProductos, setLoadingProductos] = React.useState(false);
   const [productos, setProductos] = React.useState<IProductoDisponibleDTO[]>(productosInicial || []);
@@ -2742,19 +2744,25 @@ const FormularioAsignarProducto: React.FC<FormularioAsignarProductoProps> = ({
       setError('Selecciona un producto');
       return;
     }
-    // Parsear precio con la función que valida formato chileno
-    const precioNum = parseChileanPrice(precio);
-    if (isNaN(precioNum) || precioNum <= 0) {
-      setError('El precio debe ser un número mayor a 0 (ej: 1.234,56 o 1234,56)');
+    if (!precioNeto.trim() && !precioConIva.trim()) {
+      setError('Ingresa al menos uno de los precios: Precio Neto o Precio + IVA');
       return;
     }
     setSaving(true);
     try {
-      // Enviar el precio como string formateado (el backend lo parseará)
-      await onSave(selectedProducto.idProducto, precioNum);
-      // ✅ Si fue exitoso, limpiar el formulario para asignar otro producto
+      const dto: IProveedorProductoAddDTO = {
+        idProducto: selectedProducto.idProducto,
+        marcaProducto: marcaProducto.trim() || undefined,
+        formatoContenido: formatoContenido.trim() || undefined,
+        precioNeto: precioNeto.trim() || undefined,
+        precioConIva: precioConIva.trim() || undefined,
+      };
+      await onSave(dto);
       setSelectedProducto(null);
-      setPrecio('');
+      setMarcaProducto('');
+      setFormatoContenido('');
+      setPrecioNeto('');
+      setPrecioConIva('');
       setSearchProd('');
     } catch (err: any) {
       setError(err.message || 'Error al asignar el producto');
@@ -2847,15 +2855,47 @@ const FormularioAsignarProducto: React.FC<FormularioAsignarProductoProps> = ({
         )}
 
         <Input
-          label="Precio"
-          placeholder="Ej: 1.234,56"
-          value={precio}
-          onValueChange={(value) => setPrecio(smartPriceInput(value))}
+          label="Marca"
+          placeholder="Sin marca"
+          value={marcaProducto}
+          onValueChange={setMarcaProducto}
           variant="bordered"
           type="text"
-          startContent={<span className="text-default-400 text-sm">$</span>}
-          isRequired
         />
+
+        <Input
+          label="Formato / Contenido"
+          placeholder="Ej: 1 kg, 500 ml, 6 un."
+          value={formatoContenido}
+          onValueChange={setFormatoContenido}
+          variant="bordered"
+          type="text"
+        />
+
+        <div className="grid grid-cols-2 gap-3">
+          <Input
+            label="Precio Neto"
+            placeholder="Ej: 1.234"
+            value={precioNeto}
+            onValueChange={(value) => setPrecioNeto(smartPriceInput(value))}
+            onBlur={handlePrecioNetoBlur}
+            variant="bordered"
+            type="text"
+            startContent={<span className="text-default-400 text-sm">$</span>}
+            description="IVA 19 % aplicado automáticamente"
+          />
+          <Input
+            label="Precio + IVA"
+            placeholder="Ej: 1.468,46"
+            value={precioConIva}
+            onValueChange={(value) => setPrecioConIva(smartPriceInput(value))}
+            onBlur={handlePrecioConIvaBlur}
+            variant="bordered"
+            type="text"
+            startContent={<span className="text-default-400 text-sm">$</span>}
+            description="Neto derivado automáticamente"
+          />
+        </div>
       </ModalBody>
 
       <ModalFooter className="bg-gradient-to-r from-default-50 to-default-50 dark:from-content2 dark:to-content2 border-t border-default-200 dark:border-default-100 gap-2 px-6 py-4">
