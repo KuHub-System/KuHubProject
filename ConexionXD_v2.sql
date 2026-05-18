@@ -547,8 +547,9 @@ CREATE TABLE proveedor_producto (
     activo BOOLEAN DEFAULT TRUE,
     fecha_actualizacion TIMESTAMP DEFAULT NOW(),
 
-    -- Cada proveedor solo puede tener UNA fila por producto
-    CONSTRAINT uk_proveedor_producto UNIQUE (id_proveedor, id_producto),
+    -- Versioning: se permite multiples filas por (proveedor, producto).
+    -- Solo UNA fila puede estar activa a la vez por par (proveedor, producto);
+    -- esta regla se garantiza a nivel de servicio (desactivar anteriores antes de insertar).
 
     CONSTRAINT fk_proveedor_producto_proveedor
         FOREIGN KEY (id_proveedor)
@@ -1176,9 +1177,15 @@ CREATE INDEX idx_movimiento_inventario ON movimiento (id_inventario);
 -- Indices en proveedores
 --CREATE INDEX idx_provedor_producto ON provedor(id_producto);
 --CREATE INDEX idx_provedor_estado ON provedor(estado_provedor);
-CREATE INDEX idx_pp_producto_precio_optimo 
-ON proveedor_producto (id_producto, precio_producto ASC) 
+CREATE INDEX idx_pp_producto_precio_optimo
+ON proveedor_producto (id_producto, precio_producto ASC)
 WHERE activo = TRUE;
+
+-- Versioning de precios: acelera DISTINCT ON por (id_proveedor, id_producto)
+-- ordenado por fecha_actualizacion DESC (usado en findProductosPorProveedor y
+-- findProductosPorProveedorHastaFecha).
+CREATE INDEX idx_pp_version_reciente
+ON proveedor_producto (id_proveedor, id_producto, fecha_actualizacion DESC);
 
 -- Indices en bodega_transito
 --CREATE INDEX idx_bodega_transito_producto ON bodega_transito(id_producto);
@@ -3525,3 +3532,60 @@ BEGIN
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
+
+
+-- ================================================================
+-- INSERCIÓN: 10 Proveedores modelo con todos los productos activos
+-- Precios generados aleatoriamente (CLP 500 – 50.000)
+-- ================================================================
+DO $$
+DECLARE
+    v_proveedor_id INTEGER;
+    v_prod         RECORD;
+    proveedores    TEXT[][] := ARRAY[
+        ARRAY['76.123.456-7', 'Distribuidora Del Valle Ltda.',         'Juan Pérez',        '+56 9 7123 4567', 'jperez@delvalle.cl'],
+        ARRAY['77.234.567-8', 'Comercial Andina S.A.',                 'María González',    '+56 9 8234 5678', 'mgonzalez@andina.cl'],
+        ARRAY['78.345.678-9', 'Insumos Gastronómicos Sur Ltda.',       'Pedro Rodríguez',   '+56 9 9345 6789', 'prodriguez@insumossur.cl'],
+        ARRAY['79.456.789-0', 'Proveedora Culinaria Norte S.A.',       'Ana Martínez',      '+56 9 6456 7890', 'amartinez@culinarianorte.cl'],
+        ARRAY['76.567.890-K', 'Distribuciones Premium Chile Ltda.',    'Luis Sánchez',      '+56 9 5567 8901', 'lsanchez@premiumchile.cl'],
+        ARRAY['77.678.901-1', 'Central de Abastos Santiago S.A.',      'Carmen López',      '+56 9 4678 9012', 'clopez@abastos.cl'],
+        ARRAY['78.789.012-2', 'Insumos Profesionales Culinarios Ltda.','Roberto Jiménez',   '+56 9 3789 0123', 'rjimenez@insumospro.cl'],
+        ARRAY['79.890.123-3', 'Distribuidora Los Andes S.A.',          'Patricia Ramírez',  '+56 9 2890 1234', 'pramirez@losandes.cl'],
+        ARRAY['76.901.234-4', 'Proveedora Gastronómica Pacífico Ltda.','Jorge Morales',     '+56 9 1901 2345', 'jmorales@gastronomicapac.cl'],
+        ARRAY['77.012.345-5', 'Comercializadora BioChile S.A.',        'Valentina Torres',  '+56 9 0012 3456', 'vtorres@biochile.cl']
+    ];
+    i INTEGER;
+BEGIN
+    FOR i IN 1..array_length(proveedores, 1) LOOP
+
+        INSERT INTO proveedor (
+            rut_proveedor,
+            nombre_distribuidora,
+            nombre_proveedor,
+            telefono_proveedor,
+            email_proveedor
+        )
+        VALUES (
+            proveedores[i][1],
+            proveedores[i][2],
+            proveedores[i][3],
+            proveedores[i][4],
+            proveedores[i][5]
+        )
+        RETURNING id_proveedor INTO v_proveedor_id;
+
+        -- Asociar todos los productos activos con precio aleatorio entre 500 y 50.000 CLP
+        FOR v_prod IN
+            SELECT id_producto FROM producto WHERE activo = TRUE
+        LOOP
+            INSERT INTO proveedor_producto (id_proveedor, id_producto, precio_producto)
+            VALUES (
+                v_proveedor_id,
+                v_prod.id_producto,
+                ROUND((RANDOM() * 49500 + 500)::NUMERIC, 2)
+            );
+        END LOOP;
+
+    END LOOP;
+END;
+$$;

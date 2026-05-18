@@ -9,12 +9,7 @@ import java.time.LocalDateTime;
 
 /** Mapea tabla proveedor_producto (M:M entre proveedor y producto) */
 @Entity
-@Table(
-    name = "proveedor_producto",
-    uniqueConstraints = {
-        @UniqueConstraint(name = "uk_proveedor_producto", columnNames = {"id_proveedor", "id_producto"})
-    }
-)
+@Table(name = "proveedor_producto")
 @Getter
 @Setter
 @NoArgsConstructor
