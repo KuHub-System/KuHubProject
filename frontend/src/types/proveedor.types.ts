@@ -237,3 +237,33 @@ export interface IBusquedaProductosGlobal {
   cantidadProductosActivos: number;
   categorias: ICategoryProducts[];
 }
+
+// ── Sincronización de precios desde Excel ─────────────────────────────────
+
+/**
+ * Item del selector de distribuidoras para el modal de sincronización.
+ * Mapea ProveedorSelectorView (proyección interfaz) del backend.
+ */
+export interface IProveedorSelector {
+  idProveedor: number;
+  nombreDistribuidora: string;
+}
+
+/**
+ * Error asociado a una fila específica del Excel.
+ * Mapea SyncExcelResultDTO.ErrorFila del backend.
+ */
+export interface ISyncExcelError {
+  fila: number;
+  mensaje: string;
+}
+
+/**
+ * Resultado de la sincronización de precios desde Excel.
+ * Mapea SyncExcelResultDTO del backend.
+ */
+export interface ISyncExcelResult {
+  sincronizados: number;
+  omitidos: number;
+  errores: ISyncExcelError[];
+}

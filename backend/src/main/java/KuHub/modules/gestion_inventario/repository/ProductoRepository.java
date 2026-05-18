@@ -42,6 +42,12 @@ public interface ProductoRepository extends JpaRepository<Producto, Integer> {
     Optional<Producto> findByIdProductoAndActivoTrue(Integer id_producto);
     Optional<Producto> findByNombreProductoAndActivo(String nombreProducto, Boolean activo);
 
+    /**
+     * Busca un producto activo por nombre ignorando mayúsculas/minúsculas.
+     * ✅ En uso: sincronización de precios desde Excel (ProveedorServiceImpl.sincronizarPreciosExcel).
+     */
+    Optional<Producto> findByNombreProductoIgnoreCaseAndActivoTrue(String nombreProducto);
+
 
     List<Producto> findByActivo(Boolean activo);
     boolean existsByNombreProductoAndIdProductoIsNot(String nombreProducto, Integer idProducto);

@@ -15,6 +15,8 @@ import {
   ICotizacionResponse,
   IProductoDisponibleDTO,
   IBusquedaProductosGlobal,
+  IProveedorSelector,
+  ISyncExcelResult,
 } from '../types/proveedor.types';
 
 // ── Helpers de transformación ─────────────────────────────────────────────────
@@ -484,6 +486,50 @@ export const obtenerCategoriasActivasJsonService = async (): Promise<{
     throw new Error(
       error.response?.data?.message ||
       'Error al cargar las categorías disponibles'
+    );
+  }
+};
+
+// ── Sincronización de precios desde Excel ─────────────────────────────────────
+
+/**
+ * Lista distribuidoras activas y disponibles para el selector del modal.
+ * GET /api/v1/proveedor/selector
+ */
+export const listarProveedoresSelectorService = async (): Promise<IProveedorSelector[]> => {
+  try {
+    const response = await api.get<IProveedorSelector[]>('/proveedor/selector');
+    return response.data ?? [];
+  } catch (error: any) {
+    throw new Error(
+      error.response?.data?.message ||
+      'Error al cargar las distribuidoras disponibles'
+    );
+  }
+};
+
+/**
+ * Sube un archivo .xlsx y sincroniza los precios de los productos del proveedor.
+ * POST /api/v1/proveedor/{id}/sync-precios-excel (multipart/form-data)
+ */
+export const sincronizarPreciosExcelService = async (
+  idProveedor: number,
+  file: File
+): Promise<ISyncExcelResult> => {
+  try {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const response = await api.post<ISyncExcelResult>(
+      `/proveedor/${idProveedor}/sync-precios-excel`,
+      formData,
+      { headers: { 'Content-Type': 'multipart/form-data' } }
+    );
+    return response.data;
+  } catch (error: any) {
+    throw new Error(
+      error.response?.data?.message ||
+      'Error al sincronizar los precios desde Excel'
     );
   }
 };

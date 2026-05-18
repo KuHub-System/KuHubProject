@@ -9,7 +9,9 @@ import KuHub.modules.gestion_proveedor.dtos.response.CotizacionProveedorDTO;
 import KuHub.modules.gestion_proveedor.dtos.response.ProductoDisponibleDTO;
 import KuHub.modules.gestion_proveedor.dtos.response.ProveedorDetalleDTO;
 import KuHub.modules.gestion_proveedor.dtos.response.ProveedorListDTO;
+import KuHub.modules.gestion_proveedor.dtos.response.ProveedorSelectorView;
 import KuHub.modules.gestion_proveedor.dtos.response.ProveedoresPageResponse;
+import KuHub.modules.gestion_proveedor.dtos.response.SyncExcelResultDTO;
 import KuHub.modules.gestion_proveedor.entity.Proveedor;
 import KuHub.modules.gestion_proveedor.service.ProveedorService;
 import KuHub.modules.gestion_solicitud.dtos.request.DateRangeDTO;
@@ -18,6 +20,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -328,5 +331,42 @@ public class ProveedorController {
         return ResponseEntity
                 .status(200)
                 .body(proveedorService.buscarProductosGlobal(searchTerm));
+    }
+
+    // ══════════════════════════════════════════════════════════════
+    // SINCRONIZACIÓN DE PRECIOS DESDE EXCEL
+    // ══════════════════════════════════════════════════════════════
+
+    /**
+     * Lista distribuidoras activas y disponibles para el selector del modal de sincronización Excel.
+     * ✅ En uso: Consumido por listarProveedoresSelectorService en proveedor-service.ts.
+     */
+    @GetMapping("/selector")
+    public ResponseEntity<List<ProveedorSelectorView>> listarProveedoresSelector() {
+        return ResponseEntity
+                .status(200)
+                .body(proveedorService.listarProveedoresSelector());
+    }
+
+    /**
+     * Sincroniza los precios de los productos de un proveedor leyendo un archivo .xlsx.
+     * Crea una nueva versión activa por producto y desactiva las anteriores.
+     * ✅ En uso: Consumido por sincronizarPreciosExcelService en proveedor-service.ts.
+     *
+     * Respuestas:
+     *   - 200 OK: Sincronización completada con resumen (sincronizados / omitidos / errores).
+     *   - 400 BAD_REQUEST: Archivo inválido, cabeceras no encontradas o columnas obligatorias faltantes.
+     *   - 404 NOT_FOUND: Proveedor no encontrado o inactivo.
+     *
+     * @param id   ID del proveedor destino
+     * @param file Archivo .xlsx con productos y precios
+     */
+    @PostMapping(value = "/{id}/sync-precios-excel", consumes = "multipart/form-data")
+    public ResponseEntity<SyncExcelResultDTO> sincronizarPreciosExcel(
+            @PathVariable Integer id,
+            @RequestParam("file") MultipartFile file) {
+        return ResponseEntity
+                .status(200)
+                .body(proveedorService.sincronizarPreciosExcel(id, file));
     }
 }
