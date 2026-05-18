@@ -13,6 +13,7 @@ public record ProductoBuscadoDTO(
         String nombreProducto,
         String nombreUnidad,
         String abreviatura,
+        String marcaProducto,
         String formatoContenido,
         BigDecimal precioNeto,
         BigDecimal precioConIva,
