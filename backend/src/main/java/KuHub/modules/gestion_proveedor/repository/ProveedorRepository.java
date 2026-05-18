@@ -304,6 +304,7 @@ public interface ProveedorRepository extends JpaRepository<Proveedor, Integer> {
                                             'codProducto',          p.cod_producto,
                                             'nombreUnidad',         u.nombre_unidad,
                                             'abreviatura',          u.abreviatura,
+                                            'marcaProducto',        pp.marca_producto,
                                             'formatoContenido',     pp.formato_contenido,
                                             'precioNeto',           pp.precio_neto,
                                             'precioConIva',         pp.precio_con_iva,
