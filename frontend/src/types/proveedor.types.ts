@@ -205,6 +205,7 @@ export interface IProductoBuscado {
   nombreProducto: string;
   nombreUnidad: string;
   abreviatura: string;
+  formatoContenido: string | null;
   precioNeto: number;
   precioConIva: number;
   activo: boolean;
