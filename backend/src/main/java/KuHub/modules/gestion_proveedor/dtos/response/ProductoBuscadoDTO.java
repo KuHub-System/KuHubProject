@@ -5,7 +5,6 @@ import java.time.LocalDateTime;
 
 /**
  * Record que representa un producto encontrado en la búsqueda global.
- * Incluye información del producto, unidad y precio del proveedor.
  */
 public record ProductoBuscadoDTO(
         Integer idProducto,
@@ -14,7 +13,8 @@ public record ProductoBuscadoDTO(
         String nombreProducto,
         String nombreUnidad,
         String abreviatura,
-        BigDecimal precioProducto,
+        BigDecimal precioNeto,
+        BigDecimal precioConIva,
         Boolean activo,
         LocalDateTime fechaActualizacion
 ) {

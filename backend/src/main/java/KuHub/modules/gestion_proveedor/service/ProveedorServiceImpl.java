@@ -35,6 +35,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ArrayList;
@@ -47,6 +49,8 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class ProveedorServiceImpl implements ProveedorService {
+
+    private static final BigDecimal IVA = new BigDecimal("1.19");
 
     /**Repositories*/
     @Autowired
@@ -315,9 +319,6 @@ public class ProveedorServiceImpl implements ProveedorService {
     @Override
     @Transactional
     public boolean actualizarPrecio(Long idProveedorProducto, ProveedorProductoUpdateDTO dto) {
-        // Versioning: localizar la versión vigente sirve para extraer (idProveedor, idProducto)
-        // y validar contra el precio actual. La fila apuntada NO se modifica — se desactiva
-        // junto al resto de versiones activas y se inserta una nueva.
         ProveedorProducto versionActual = proveedorProductoRepository
                 .findById(idProveedorProducto)
                 .orElseThrow(() -> new GestionProveedorException(
@@ -328,27 +329,15 @@ public class ProveedorServiceImpl implements ProveedorService {
         Integer idProveedor = versionActual.getProveedor().getIdProveedor();
         Integer idProducto = versionActual.getProducto().getIdProducto();
 
-        java.math.BigDecimal nuevoPrecio;
-        try {
-            nuevoPrecio = KuHub.utils.ChileanPriceUtils.parseChileanPrice(dto.getPrecioProducto());
-            log.debug("Precio parseado: Input='{}' → BigDecimal={}", dto.getPrecioProducto(), nuevoPrecio);
-        } catch (IllegalArgumentException e) {
-            log.warn("Error al parsear precio chileno: {} | Mensaje: {}", dto.getPrecioProducto(), e.getMessage());
-            throw new GestionProveedorException(e.getMessage(), HttpStatus.BAD_REQUEST);
-        }
+        // Derivar precios — lanza BAD_REQUEST si ambos son nulos
+        ProveedorProducto tmpPp = new ProveedorProducto();
+        derivarPrecios(tmpPp, dto.getPrecioNeto(), dto.getPrecioConIva());
 
-        if (nuevoPrecio.compareTo(java.math.BigDecimal.ZERO) <= 0) {
+        // No crear una versión nueva si los precios no cambiaron
+        if (tmpPp.getPrecioNeto().compareTo(versionActual.getPrecioNeto()) == 0
+                && tmpPp.getPrecioConIva().compareTo(versionActual.getPrecioConIva()) == 0) {
             throw new GestionProveedorException(
-                    "El precio debe ser mayor a 0. Valor ingresado: " + nuevoPrecio,
-                    HttpStatus.BAD_REQUEST
-            );
-        }
-
-        // No crear una versión nueva si coincide con el precio vigente — evita ruido en el historial.
-        if (versionActual.getPrecioProducto().compareTo(nuevoPrecio) == 0) {
-            throw new GestionProveedorException(
-                    "El precio ingresado es igual al valor actual: " + nuevoPrecio
-                            + ". No hay cambios que guardar.",
+                    "Los precios ingresados son iguales a los actuales. No hay cambios que guardar.",
                     HttpStatus.CONFLICT
             );
         }
@@ -356,17 +345,20 @@ public class ProveedorServiceImpl implements ProveedorService {
         // 1) Desactivar todas las versiones activas del par (proveedor, producto).
         int desactivadas = proveedorProductoRepository.desactivarVersionesActivas(idProveedor, idProducto);
 
-        // 2) Insertar nueva versión activa con el nuevo precio.
+        // 2) Insertar nueva versión activa.
         ProveedorProducto nuevaVersion = new ProveedorProducto();
         nuevaVersion.setIdProveedor(idProveedor);
         nuevaVersion.setIdProducto(idProducto);
-        nuevaVersion.setPrecioProducto(nuevoPrecio);
+        nuevaVersion.setMarcaProducto(dto.getMarcaProducto());
+        nuevaVersion.setFormatoContenido(dto.getFormatoContenido());
+        nuevaVersion.setPrecioNeto(tmpPp.getPrecioNeto());
+        nuevaVersion.setPrecioConIva(tmpPp.getPrecioConIva());
         nuevaVersion.setActivo(true);
         nuevaVersion.setFechaActualizacion(LocalDateTime.now());
         proveedorProductoRepository.save(nuevaVersion);
 
-        log.info("Nueva versión de precio insertada: Proveedor ID={} | Producto ID={} | Precio anterior={} → Nuevo={} | Versiones desactivadas={} (Input: '{}')",
-                idProveedor, idProducto, versionActual.getPrecioProducto(), nuevoPrecio, desactivadas, dto.getPrecioProducto());
+        log.info("Nueva versión insertada: Proveedor ID={} | Producto ID={} | PrecioNeto anterior={} → Nuevo={} | Versiones desactivadas={}",
+                idProveedor, idProducto, versionActual.getPrecioNeto(), tmpPp.getPrecioNeto(), desactivadas);
         return true;
     }
 
@@ -375,25 +367,6 @@ public class ProveedorServiceImpl implements ProveedorService {
     public boolean agregarProducto(Integer idProveedor, ProveedorProductoAddDTO dto) {
         findById(idProveedor);
 
-        java.math.BigDecimal precioProducto;
-        try {
-            precioProducto = KuHub.utils.ChileanPriceUtils.parseChileanPrice(dto.getPrecioProducto());
-            log.debug("Precio parseado: Input='{}' → BigDecimal={}", dto.getPrecioProducto(), precioProducto);
-        } catch (IllegalArgumentException e) {
-            log.warn("Error al parsear precio chileno: {} | Mensaje: {}", dto.getPrecioProducto(), e.getMessage());
-            throw new GestionProveedorException(e.getMessage(), HttpStatus.BAD_REQUEST);
-        }
-
-        if (precioProducto.compareTo(java.math.BigDecimal.ZERO) <= 0) {
-            throw new GestionProveedorException(
-                    "El precio debe ser mayor a 0. Valor ingresado: " + precioProducto,
-                    HttpStatus.BAD_REQUEST
-            );
-        }
-
-        // No permitir alta si ya existe una versión activa del producto en el proveedor
-        // (se considera "asignado"). Para reasignar tras un quitarProducto(), no se reactiva
-        // la fila vieja: se desactiva cualquier residuo y se inserta una versión nueva.
         if (proveedorProductoRepository.existsByProveedor_IdProveedorAndProducto_IdProductoAndActivoTrue(
                 idProveedor, dto.getIdProducto())) {
             throw new GestionProveedorException(
@@ -402,20 +375,20 @@ public class ProveedorServiceImpl implements ProveedorService {
             );
         }
 
-        // Por seguridad: asegurar que no queden versiones activas (no debería haber, pero el
-        // invariante depende de la app, no de un UNIQUE constraint).
         proveedorProductoRepository.desactivarVersionesActivas(idProveedor, dto.getIdProducto());
 
         ProveedorProducto nuevaVersion = new ProveedorProducto();
         nuevaVersion.setIdProveedor(idProveedor);
         nuevaVersion.setIdProducto(dto.getIdProducto());
-        nuevaVersion.setPrecioProducto(precioProducto);
+        nuevaVersion.setMarcaProducto(dto.getMarcaProducto());
+        nuevaVersion.setFormatoContenido(dto.getFormatoContenido());
+        derivarPrecios(nuevaVersion, dto.getPrecioNeto(), dto.getPrecioConIva()); // lanza si ambos nulos
         nuevaVersion.setActivo(true);
         nuevaVersion.setFechaActualizacion(LocalDateTime.now());
         proveedorProductoRepository.save(nuevaVersion);
 
-        log.info("Producto asignado (nueva versión): Proveedor ID={} | Producto ID={} | Precio={} (Input: '{}')",
-                idProveedor, dto.getIdProducto(), precioProducto, dto.getPrecioProducto());
+        log.info("Producto asignado (nueva versión): Proveedor ID={} | Producto ID={} | PrecioNeto={}",
+                idProveedor, dto.getIdProducto(), nuevaVersion.getPrecioNeto());
         return true;
     }
 
@@ -675,5 +648,36 @@ public class ProveedorServiceImpl implements ProveedorService {
                     HttpStatus.INTERNAL_SERVER_ERROR
             );
         }
+    }
+
+    /**
+     * Deriva precio_neto y precio_con_iva con IVA chileno 19 %.
+     * - Si solo llega neto → calcula precio_con_iva = neto × 1.19.
+     * - Si solo llega precio_con_iva → calcula neto = iva / 1.19.
+     * - Si llegan ambos → se persisten tal cual.
+     * - Si ninguno llega → lanza BAD_REQUEST.
+     * Redondeo HALF_UP a 3 decimales.
+     */
+    private void derivarPrecios(ProveedorProducto pp, String rawNeto, String rawIva) {
+        BigDecimal neto = (rawNeto != null && !rawNeto.isBlank())
+                ? KuHub.utils.ChileanPriceUtils.parseChileanPrice(rawNeto) : null;
+        BigDecimal iva = (rawIva != null && !rawIva.isBlank())
+                ? KuHub.utils.ChileanPriceUtils.parseChileanPrice(rawIva) : null;
+
+        if (neto == null && iva == null) {
+            throw new GestionProveedorException(
+                    "Debe ingresar al menos uno de los precios: precio_neto o precio_con_iva.",
+                    HttpStatus.BAD_REQUEST
+            );
+        }
+
+        if (neto != null && iva == null) {
+            iva = neto.multiply(IVA).setScale(3, RoundingMode.HALF_UP);
+        } else if (iva != null && neto == null) {
+            neto = iva.divide(IVA, 3, RoundingMode.HALF_UP);
+        }
+
+        pp.setPrecioNeto(neto);
+        pp.setPrecioConIva(iva);
     }
 }
