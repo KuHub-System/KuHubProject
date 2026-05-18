@@ -728,6 +728,7 @@ public class ProveedorServiceImpl implements ProveedorService {
         }
 
         List<SyncExcelResultDTO.ProductoSincronizado> sincronizados = new ArrayList<>();
+        List<SyncExcelResultDTO.ProductoSinCambios> sinCambios = new ArrayList<>();
         List<SyncExcelResultDTO.ProductoNoEncontrado> noEncontrados = new ArrayList<>();
         DataFormatter formatter = new DataFormatter();
 
@@ -833,6 +834,25 @@ public class ProveedorServiceImpl implements ProveedorService {
                 if (formato != null && formato.isBlank()) formato = null;
                 if (marca != null && marca.isBlank()) marca = null;
 
+                // Comparar contra la versión activa actual: si el precio NO cambió, no versionar.
+                // El criterio de versioning es exclusivamente el precio (neto e IVA);
+                // marca y formato no disparan nueva versión.
+                Optional<ProveedorProducto> versionActualOpt = proveedorProductoRepository
+                        .findFirstByProveedor_IdProveedorAndProducto_IdProductoAndActivoTrueOrderByFechaActualizacionDesc(
+                                idProveedor, producto.getIdProducto());
+
+                if (versionActualOpt.isPresent()
+                        && versionActualOpt.get().getPrecioNeto().compareTo(precioNetoUnit) == 0
+                        && versionActualOpt.get().getPrecioConIva().compareTo(precioIvaUnit) == 0) {
+                    sinCambios.add(new SyncExcelResultDTO.ProductoSinCambios(
+                            r + 1,
+                            producto.getNombreProducto(),
+                            precioNetoUnit,
+                            precioIvaUnit
+                    ));
+                    continue;
+                }
+
                 proveedorProductoRepository.desactivarVersionesActivas(idProveedor, producto.getIdProducto());
 
                 ProveedorProducto nueva = new ProveedorProducto();
@@ -868,12 +888,14 @@ public class ProveedorServiceImpl implements ProveedorService {
                     HttpStatus.INTERNAL_SERVER_ERROR);
         }
 
-        log.info("Sincronización Excel proveedor ID={}: sincronizados={}, no encontrados={}",
-                idProveedor, sincronizados.size(), noEncontrados.size());
+        log.info("Sincronización Excel proveedor ID={}: sincronizados={}, sin cambios={}, no encontrados={}",
+                idProveedor, sincronizados.size(), sinCambios.size(), noEncontrados.size());
         return new SyncExcelResultDTO(
                 sincronizados.size(),
+                sinCambios.size(),
                 noEncontrados.size(),
                 sincronizados,
+                sinCambios,
                 noEncontrados
         );
     }

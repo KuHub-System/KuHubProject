@@ -414,7 +414,7 @@ const GestionProveedoresPage: React.FC = () => {
   const [syncResult, setSyncResult] = React.useState<ISyncExcelResult | null>(null);
   const [syncError, setSyncError] = React.useState<string | null>(null);
   const [loadingSelector, setLoadingSelector] = React.useState(false);
-  const [syncVista, setSyncVista] = React.useState<'sincronizados' | 'no_encontrados'>('sincronizados');
+  const [syncVista, setSyncVista] = React.useState<'sincronizados' | 'sin_cambios' | 'no_encontrados'>('sincronizados');
   const excelInputRef = React.useRef<HTMLInputElement>(null);
 
   // ── Búsqueda global optimizada ──
@@ -962,12 +962,18 @@ const GestionProveedoresPage: React.FC = () => {
     try {
       const result = await sincronizarPreciosExcelService(syncProveedorId, syncFile);
       setSyncResult(result);
-      setSyncVista(result.totalNoEncontrados > 0 && result.totalSincronizados === 0 ? 'no_encontrados' : 'sincronizados');
+      // Vista por defecto: sincronizados si hubo; si no, la siguiente categoría con datos
+      const vistaDefault: 'sincronizados' | 'sin_cambios' | 'no_encontrados' =
+        result.totalSincronizados > 0 ? 'sincronizados'
+        : result.totalSinCambios > 0 ? 'sin_cambios'
+        : result.totalNoEncontrados > 0 ? 'no_encontrados'
+        : 'sincronizados';
+      setSyncVista(vistaDefault);
       invalidarCacheProveedor(syncProveedorId);
       const distribuidora = proveedoresSelector.find(p => p.idProveedor === syncProveedorId)?.nombreDistribuidora ?? '';
       showToast(
-        `Sincronización: ${result.totalSincronizados} actualizados, ${result.totalNoEncontrados} no encontrados${distribuidora ? ' · ' + distribuidora : ''}`,
-        result.totalSincronizados === 0 ? 'error' : 'success'
+        `Sincronización: ${result.totalSincronizados} actualizados, ${result.totalSinCambios} sin cambios, ${result.totalNoEncontrados} no encontrados${distribuidora ? ' · ' + distribuidora : ''}`,
+        result.totalSincronizados === 0 && result.totalSinCambios === 0 ? 'error' : 'success'
       );
     } catch (err: any) {
       setSyncError(err?.message ?? 'Error al sincronizar los precios');
@@ -1565,6 +1571,16 @@ const GestionProveedoresPage: React.FC = () => {
                           {syncResult.totalSincronizados} sincronizados
                         </Chip>
                       )}
+                      {syncResult.totalSinCambios > 0 && (
+                        <Chip
+                          color="default"
+                          variant={syncVista === 'sin_cambios' ? 'solid' : 'flat'}
+                          className="cursor-pointer"
+                          onClick={() => setSyncVista('sin_cambios')}
+                        >
+                          {syncResult.totalSinCambios} sin cambios
+                        </Chip>
+                      )}
                       {syncResult.totalNoEncontrados > 0 && (
                         <Chip
                           color="warning"
@@ -1601,6 +1617,32 @@ const GestionProveedoresPage: React.FC = () => {
                       </div>
                     )}
 
+                    {/* Vista: sin cambios */}
+                    {syncVista === 'sin_cambios' && syncResult.sinCambios.length > 0 && (
+                      <div className="flex flex-col gap-2">
+                        <p className="text-sm font-medium text-default-600">
+                          Productos cuyo precio coincide con la versión actual — no se generó nueva versión
+                        </p>
+                        <div className="flex flex-col gap-1 max-h-72 overflow-y-auto pr-1">
+                          {syncResult.sinCambios.map((item, idx) => (
+                            <div
+                              key={idx}
+                              className="flex items-center gap-3 p-2 rounded-lg bg-default-50 dark:bg-default-100/40"
+                            >
+                              <Icon icon="lucide:minus-circle" className="text-default-500 flex-shrink-0" width={16} />
+                              <span className="flex-1 text-sm truncate">{item.nombreProducto}</span>
+                              <span className="text-xs font-mono text-default-500 shrink-0 whitespace-nowrap">
+                                Neto: <span className="text-default-700 font-semibold">${Number(item.precioNeto).toLocaleString('es-CL', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}</span>
+                                {' · '}
+                                IVA: <span className="text-default-700 font-semibold">${Number(item.precioConIva).toLocaleString('es-CL', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}</span>
+                              </span>
+                              <span className="text-xs text-default-400 w-12 text-right shrink-0">#{item.fila}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
                     {/* Vista: no encontrados */}
                     {syncVista === 'no_encontrados' && syncResult.noEncontrados.length > 0 && (
                       <div className="flex flex-col gap-2">
@@ -1622,7 +1664,9 @@ const GestionProveedoresPage: React.FC = () => {
                       </div>
                     )}
 
-                    {syncResult.totalSincronizados === 0 && syncResult.totalNoEncontrados === 0 && (
+                    {syncResult.totalSincronizados === 0
+                      && syncResult.totalSinCambios === 0
+                      && syncResult.totalNoEncontrados === 0 && (
                       <div className="flex items-center justify-center p-6 text-default-500 text-sm">
                         El archivo no tenía filas válidas para sincronizar.
                       </div>
