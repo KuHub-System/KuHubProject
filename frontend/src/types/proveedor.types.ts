@@ -250,10 +250,21 @@ export interface IProveedorSelector {
 }
 
 /**
- * Producto sincronizado correctamente desde el Excel.
+ * Producto sincronizado correctamente desde el Excel (precio cambió → nueva versión).
  * Mapea SyncExcelResultDTO.ProductoSincronizado del backend.
  */
 export interface ISyncProductoSincronizado {
+  fila: number;
+  nombreProducto: string;
+  precioNeto: number;
+  precioConIva: number;
+}
+
+/**
+ * Producto cuyo precio coincide con la versión activa actual; no se versiona.
+ * Mapea SyncExcelResultDTO.ProductoSinCambios del backend.
+ */
+export interface ISyncProductoSinCambios {
   fila: number;
   nombreProducto: string;
   precioNeto: number;
@@ -275,7 +286,9 @@ export interface ISyncProductoNoEncontrado {
  */
 export interface ISyncExcelResult {
   totalSincronizados: number;
+  totalSinCambios: number;
   totalNoEncontrados: number;
   sincronizados: ISyncProductoSincronizado[];
+  sinCambios: ISyncProductoSinCambios[];
   noEncontrados: ISyncProductoNoEncontrado[];
 }
