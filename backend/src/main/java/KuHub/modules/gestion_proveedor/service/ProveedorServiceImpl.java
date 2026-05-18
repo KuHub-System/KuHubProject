@@ -727,9 +727,8 @@ public class ProveedorServiceImpl implements ProveedorService {
                     "Solo se aceptan archivos .xlsx (Excel 2007+).", HttpStatus.BAD_REQUEST);
         }
 
-        int sincronizados = 0;
-        int omitidos = 0;
-        List<SyncExcelResultDTO.ErrorFila> errores = new ArrayList<>();
+        List<SyncExcelResultDTO.ProductoSincronizado> sincronizados = new ArrayList<>();
+        List<SyncExcelResultDTO.ProductoNoEncontrado> noEncontrados = new ArrayList<>();
         DataFormatter formatter = new DataFormatter();
 
         try (InputStream in = file.getInputStream();
@@ -788,13 +787,11 @@ public class ProveedorServiceImpl implements ProveedorService {
 
                 String nombreRaw = leerStringCelda(row, colProducto, formatter);
                 if (nombreRaw == null || nombreRaw.isBlank()) {
-                    omitidos++;
                     continue;
                 }
 
                 BigDecimal cantidad = leerNumeroCelda(row, colCantidad);
                 if (cantidad == null || cantidad.compareTo(BigDecimal.ZERO) <= 0) {
-                    omitidos++;
                     continue;
                 }
 
@@ -804,7 +801,6 @@ public class ProveedorServiceImpl implements ProveedorService {
                 boolean netoValido = precioNetoTotal != null && precioNetoTotal.compareTo(BigDecimal.ZERO) > 0;
                 boolean ivaValido  = precioIvaTotal  != null && precioIvaTotal.compareTo(BigDecimal.ZERO) > 0;
                 if (!netoValido && !ivaValido) {
-                    omitidos++;
                     continue;
                 }
 
@@ -813,10 +809,7 @@ public class ProveedorServiceImpl implements ProveedorService {
                 Optional<Producto> productoOpt = productoRepository
                         .findByNombreProductoIgnoreCaseAndActivoTrue(nombreProducto);
                 if (productoOpt.isEmpty()) {
-                    errores.add(new SyncExcelResultDTO.ErrorFila(
-                            r + 1,
-                            "Producto no encontrado: '" + nombreProducto + "'"
-                    ));
+                    noEncontrados.add(new SyncExcelResultDTO.ProductoNoEncontrado(r + 1, nombreProducto));
                     continue;
                 }
                 Producto producto = productoOpt.get();
@@ -853,7 +846,12 @@ public class ProveedorServiceImpl implements ProveedorService {
                 nueva.setFechaActualizacion(LocalDateTime.now());
                 proveedorProductoRepository.save(nueva);
 
-                sincronizados++;
+                sincronizados.add(new SyncExcelResultDTO.ProductoSincronizado(
+                        r + 1,
+                        producto.getNombreProducto(),
+                        precioNetoUnit,
+                        precioIvaUnit
+                ));
             }
 
         } catch (GestionProveedorException e) {
@@ -870,9 +868,14 @@ public class ProveedorServiceImpl implements ProveedorService {
                     HttpStatus.INTERNAL_SERVER_ERROR);
         }
 
-        log.info("Sincronización Excel proveedor ID={}: sincronizados={}, omitidos={}, errores={}",
-                idProveedor, sincronizados, omitidos, errores.size());
-        return new SyncExcelResultDTO(sincronizados, omitidos, errores);
+        log.info("Sincronización Excel proveedor ID={}: sincronizados={}, no encontrados={}",
+                idProveedor, sincronizados.size(), noEncontrados.size());
+        return new SyncExcelResultDTO(
+                sincronizados.size(),
+                noEncontrados.size(),
+                sincronizados,
+                noEncontrados
+        );
     }
 
     /** Lee una celda como texto usando DataFormatter (maneja números, fórmulas, etc.). */

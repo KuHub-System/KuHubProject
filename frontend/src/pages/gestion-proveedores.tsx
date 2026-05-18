@@ -414,6 +414,7 @@ const GestionProveedoresPage: React.FC = () => {
   const [syncResult, setSyncResult] = React.useState<ISyncExcelResult | null>(null);
   const [syncError, setSyncError] = React.useState<string | null>(null);
   const [loadingSelector, setLoadingSelector] = React.useState(false);
+  const [syncVista, setSyncVista] = React.useState<'sincronizados' | 'no_encontrados'>('sincronizados');
   const excelInputRef = React.useRef<HTMLInputElement>(null);
 
   // ── Búsqueda global optimizada ──
@@ -961,11 +962,12 @@ const GestionProveedoresPage: React.FC = () => {
     try {
       const result = await sincronizarPreciosExcelService(syncProveedorId, syncFile);
       setSyncResult(result);
+      setSyncVista(result.totalNoEncontrados > 0 && result.totalSincronizados === 0 ? 'no_encontrados' : 'sincronizados');
       invalidarCacheProveedor(syncProveedorId);
       const distribuidora = proveedoresSelector.find(p => p.idProveedor === syncProveedorId)?.nombreDistribuidora ?? '';
       showToast(
-        `Sincronización: ${result.sincronizados} actualizados, ${result.omitidos} omitidos${distribuidora ? ' · ' + distribuidora : ''}`,
-        result.errores.length > 0 ? 'error' : 'success'
+        `Sincronización: ${result.totalSincronizados} actualizados, ${result.totalNoEncontrados} no encontrados${distribuidora ? ' · ' + distribuidora : ''}`,
+        result.totalSincronizados === 0 ? 'error' : 'success'
       );
     } catch (err: any) {
       setSyncError(err?.message ?? 'Error al sincronizar los precios');
@@ -1061,7 +1063,7 @@ const GestionProveedoresPage: React.FC = () => {
                   color="success"
                   variant="flat"
                   className="font-bold cursor-pointer"
-                  startContent={<Icon icon="lucide:upload" width={20} />}
+                  startContent={<Icon icon="lucide:upload-cloud" width={20} />}
                   onPress={handleAbrirSyncExcel}
                 >
                   Sincronizar Precios Excel
@@ -1478,6 +1480,15 @@ const GestionProveedoresPage: React.FC = () => {
                       Se actualizarán las versiones activas de cada producto encontrado.
                     </p>
 
+                    <div className="flex items-start gap-2 p-3 rounded-lg bg-warning-50 dark:bg-warning-50/20 border border-warning-200 dark:border-warning-100/30 text-warning-800 dark:text-warning-200 text-sm">
+                      <Icon icon="lucide:info" width={18} className="flex-shrink-0 mt-0.5" />
+                      <span>
+                        Para sincronizar correctamente, el <strong>nombre de los productos</strong> en el Excel
+                        debe coincidir con el nombre ya registrado en el sistema. Los que no coincidan se reportarán
+                        como <em>no encontrados</em>.
+                      </span>
+                    </div>
+
                     <Select
                       label="Distribuidora"
                       placeholder={loadingSelector ? 'Cargando...' : 'Selecciona una distribuidora'}
@@ -1532,49 +1543,88 @@ const GestionProveedoresPage: React.FC = () => {
                 )}
 
                 {syncResult && (
-                  <div className="space-y-3">
-                    <div className="grid grid-cols-3 gap-3">
-                      <div className="p-3 rounded-lg bg-success-50 dark:bg-success-50/20 border border-success-200 dark:border-success-100/30 text-center">
-                        <div className="text-2xl font-bold text-success-700 dark:text-success-300">
-                          {syncResult.sincronizados}
-                        </div>
-                        <div className="text-xs text-default-600">Sincronizados</div>
-                      </div>
-                      <div className="p-3 rounded-lg bg-default-100 dark:bg-default-100/40 border border-default-200 dark:border-default-100/40 text-center">
-                        <div className="text-2xl font-bold text-default-700 dark:text-default-300">
-                          {syncResult.omitidos}
-                        </div>
-                        <div className="text-xs text-default-600">Omitidos</div>
-                      </div>
-                      <div className="p-3 rounded-lg bg-danger-50 dark:bg-danger-50/20 border border-danger-200 dark:border-danger-100/30 text-center">
-                        <div className="text-2xl font-bold text-danger-700 dark:text-danger-300">
-                          {syncResult.errores.length}
-                        </div>
-                        <div className="text-xs text-default-600">Errores</div>
-                      </div>
+                  <div className="flex flex-col gap-4">
+                    {/* Aviso recordatorio sobre coincidencia de nombres */}
+                    <div className="flex items-start gap-2 p-3 rounded-lg bg-default-100 dark:bg-default-100/40 border border-default-200 dark:border-default-100/40 text-default-700 dark:text-default-300 text-xs">
+                      <Icon icon="lucide:info" width={16} className="flex-shrink-0 mt-0.5" />
+                      <span>
+                        Los productos <em>no encontrados</em> son filas con datos válidos cuyo nombre no coincide
+                        con ningún producto del sistema. Verifica que los nombres del Excel coincidan con los registrados.
+                      </span>
                     </div>
 
-                    {syncResult.errores.length > 0 && (
-                      <div className="space-y-2">
-                        <p className="text-sm font-semibold text-default-700">Detalle de errores:</p>
-                        <div className="max-h-60 overflow-y-auto border border-default-200 dark:border-default-100 rounded-lg">
-                          <table className="w-full text-sm">
-                            <thead className="bg-default-100 dark:bg-default-100/40 sticky top-0">
-                              <tr>
-                                <th className="px-3 py-2 text-left font-semibold w-20">Fila</th>
-                                <th className="px-3 py-2 text-left font-semibold">Mensaje</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {syncResult.errores.map((e, idx) => (
-                                <tr key={idx} className="border-t border-default-200 dark:border-default-100">
-                                  <td className="px-3 py-2 font-mono text-default-700">{e.fila}</td>
-                                  <td className="px-3 py-2 text-default-700">{e.mensaje}</td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
+                    {/* Chips clickeables para alternar vista */}
+                    <div className="flex gap-3 flex-wrap">
+                      {syncResult.totalSincronizados > 0 && (
+                        <Chip
+                          color="success"
+                          variant={syncVista === 'sincronizados' ? 'solid' : 'flat'}
+                          className="cursor-pointer"
+                          onClick={() => setSyncVista('sincronizados')}
+                        >
+                          {syncResult.totalSincronizados} sincronizados
+                        </Chip>
+                      )}
+                      {syncResult.totalNoEncontrados > 0 && (
+                        <Chip
+                          color="warning"
+                          variant={syncVista === 'no_encontrados' ? 'solid' : 'flat'}
+                          className="cursor-pointer"
+                          onClick={() => setSyncVista('no_encontrados')}
+                        >
+                          {syncResult.totalNoEncontrados} no encontrados
+                        </Chip>
+                      )}
+                    </div>
+
+                    {/* Vista: sincronizados */}
+                    {syncVista === 'sincronizados' && syncResult.sincronizados.length > 0 && (
+                      <div className="flex flex-col gap-2">
+                        <p className="text-sm font-medium text-success-600">Productos actualizados</p>
+                        <div className="flex flex-col gap-1 max-h-72 overflow-y-auto pr-1">
+                          {syncResult.sincronizados.map((item, idx) => (
+                            <div
+                              key={idx}
+                              className="flex items-center gap-3 p-2 rounded-lg bg-success-50 dark:bg-success-900/20"
+                            >
+                              <Icon icon="lucide:check-circle" className="text-success flex-shrink-0" width={16} />
+                              <span className="flex-1 text-sm truncate">{item.nombreProducto}</span>
+                              <span className="text-xs font-mono text-default-500 shrink-0 whitespace-nowrap">
+                                Neto: <span className="text-success-700 font-semibold">${Number(item.precioNeto).toLocaleString('es-CL', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}</span>
+                                {' · '}
+                                IVA: <span className="text-success-700 font-semibold">${Number(item.precioConIva).toLocaleString('es-CL', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}</span>
+                              </span>
+                              <span className="text-xs text-default-400 w-12 text-right shrink-0">#{item.fila}</span>
+                            </div>
+                          ))}
                         </div>
+                      </div>
+                    )}
+
+                    {/* Vista: no encontrados */}
+                    {syncVista === 'no_encontrados' && syncResult.noEncontrados.length > 0 && (
+                      <div className="flex flex-col gap-2">
+                        <p className="text-sm font-medium text-warning-600">
+                          Filas con datos válidos pero sin producto coincidente en el sistema
+                        </p>
+                        <div className="flex flex-col gap-1 max-h-72 overflow-y-auto pr-1">
+                          {syncResult.noEncontrados.map((item, idx) => (
+                            <div
+                              key={idx}
+                              className="flex items-center gap-3 p-2 rounded-lg bg-warning-50 dark:bg-warning-900/20"
+                            >
+                              <Icon icon="lucide:alert-triangle" className="text-warning flex-shrink-0" width={16} />
+                              <span className="flex-1 text-sm truncate">{item.nombreExcel}</span>
+                              <span className="text-xs text-default-400 w-12 text-right shrink-0">#{item.fila}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {syncResult.totalSincronizados === 0 && syncResult.totalNoEncontrados === 0 && (
+                      <div className="flex items-center justify-center p-6 text-default-500 text-sm">
+                        El archivo no tenía filas válidas para sincronizar.
                       </div>
                     )}
                   </div>
