@@ -1,6 +1,8 @@
 package KuHub.modules.gestion_proveedor.repository;
 
+import KuHub.modules.gestion_proveedor.dtos.response.ProveedorSelectorView;
 import KuHub.modules.gestion_proveedor.entity.Proveedor;
+import KuHub.modules.gestion_proveedor.enums.EstadoProveedor;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -22,6 +24,14 @@ public interface ProveedorRepository extends JpaRepository<Proveedor, Integer> {
 
     /** Verifica si existe un proveedor con el RUT dado. */
     boolean existsByRutProveedorIgnoreCase(String rutProveedor);
+
+    /**
+     * Lista id y nombre de distribuidoras activas y con el estado indicado
+     * para el selector del modal de sincronización de precios.
+     * Llamar con EstadoProveedor.DISPONIBLE.
+     */
+    List<ProveedorSelectorView> findByActivoTrueAndEstadoProveedorOrderByNombreDistribuidoraAsc(
+            EstadoProveedor estadoProveedor);
 
     // ── 2. @Query personalizados de solo lectura ──
 
