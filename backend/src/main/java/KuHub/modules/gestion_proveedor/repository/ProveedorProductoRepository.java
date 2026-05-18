@@ -19,6 +19,14 @@ public interface ProveedorProductoRepository extends JpaRepository<ProveedorProd
     Optional<ProveedorProducto> findByProveedor_IdProveedorAndProducto_IdProducto(
             Integer idProveedor, Integer idProducto);
 
+    /**
+     * Busca la versión activa más reciente del par (proveedor, producto).
+     * ✅ En uso: sincronización Excel — comparar precios contra versión actual.
+     */
+    Optional<ProveedorProducto>
+        findFirstByProveedor_IdProveedorAndProducto_IdProductoAndActivoTrueOrderByFechaActualizacionDesc(
+                Integer idProveedor, Integer idProducto);
+
     /** Lista todas las relaciones (activas e inactivas) de un proveedor. */
     List<ProveedorProducto> findByProveedor_IdProveedor(Integer idProveedor);
 
