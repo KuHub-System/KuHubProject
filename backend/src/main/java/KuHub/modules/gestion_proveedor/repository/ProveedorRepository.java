@@ -146,23 +146,27 @@ public interface ProveedorRepository extends JpaRepository<Proveedor, Integer> {
      * [8] fecha_actualizacion
      */
     @Query(value = """
-            SELECT
-                prod.id_producto,                                        -- [0]
-                pp.id_proveedor_producto,                                -- [1]
-                prod.nombre_producto,                                    -- [2]
-                cat.nombre_categoria,                                    -- [3]
-                um.nombre_unidad,                                        -- [4]
-                um.abreviatura,                                          -- [5]
-                pp.precio_producto,                                      -- [6]
-                pp.activo,                                               -- [7]
-                pp.fecha_actualizacion                                   -- [8]
-            FROM proveedor_producto pp
-            INNER JOIN producto prod ON prod.id_producto = pp.id_producto
-            INNER JOIN categoria cat ON cat.id_categoria = prod.id_categoria
-            INNER JOIN unidad_medida um ON um.id_unidad = prod.id_unidad
-            WHERE pp.id_proveedor = :idProveedor
-              AND prod.activo = TRUE
-            ORDER BY cat.nombre_categoria ASC, prod.nombre_producto ASC
+            SELECT * FROM (
+                SELECT DISTINCT ON (pp.id_producto)
+                    prod.id_producto             AS id_producto,
+                    pp.id_proveedor_producto     AS id_proveedor_producto,
+                    prod.nombre_producto         AS nombre_producto,
+                    cat.nombre_categoria         AS nombre_categoria,
+                    um.nombre_unidad             AS nombre_unidad,
+                    um.abreviatura               AS abreviatura,
+                    pp.precio_producto           AS precio_producto,
+                    pp.activo                    AS activo,
+                    pp.fecha_actualizacion       AS fecha_actualizacion
+                FROM proveedor_producto pp
+                INNER JOIN producto prod ON prod.id_producto = pp.id_producto
+                INNER JOIN categoria cat ON cat.id_categoria = prod.id_categoria
+                INNER JOIN unidad_medida um ON um.id_unidad = prod.id_unidad
+                WHERE pp.id_proveedor = :idProveedor
+                  AND prod.activo = TRUE
+                ORDER BY pp.id_producto, pp.fecha_actualizacion DESC
+            ) ultima_version
+            WHERE ultima_version.activo = TRUE
+            ORDER BY ultima_version.nombre_categoria ASC, ultima_version.nombre_producto ASC
             """, nativeQuery = true)
     List<Object[]> findProductosPorProveedor(@Param("idProveedor") Integer idProveedor);
 

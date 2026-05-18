@@ -29,9 +29,6 @@ public interface ProveedorProductoRepository extends JpaRepository<ProveedorProd
     /** Cuenta cuántos productos activos tiene asignados un proveedor. */
     long countByProveedor_IdProveedorAndActivoTrue(Integer idProveedor);
 
-    /** Verifica si existe una relación con el mismo precio (para detectar conflicto de actualización). */
-    boolean existsByIdProveedorProductoAndPrecioProducto(Long idProveedorProducto, java.math.BigDecimal precioProducto);
-
     // ── 3. @Modifying + @Transactional ──
 
     /** Desactiva (soft-delete) la relación entre un proveedor y un producto. */
@@ -45,4 +42,18 @@ public interface ProveedorProductoRepository extends JpaRepository<ProveedorProd
     @Modifying
     @Query("UPDATE ProveedorProducto pp SET pp.activo = false WHERE pp.proveedor.idProveedor = :idProveedor AND pp.activo = true")
     void desactivarProductosPorProveedor(@Param("idProveedor") Integer idProveedor);
+
+    /**
+     * Versioning: marca como inactivas todas las filas activas del par (proveedor, producto)
+     * antes de insertar una nueva versión. Garantiza la invariante de "una sola versión activa
+     * por par" sin depender de un UNIQUE constraint en la BD.
+     */
+    @Modifying
+    @Query("UPDATE ProveedorProducto pp SET pp.activo = false " +
+           "WHERE pp.proveedor.idProveedor = :idProveedor " +
+           "  AND pp.producto.idProducto = :idProducto " +
+           "  AND pp.activo = true")
+    int desactivarVersionesActivas(
+            @Param("idProveedor") Integer idProveedor,
+            @Param("idProducto") Integer idProducto);
 }
