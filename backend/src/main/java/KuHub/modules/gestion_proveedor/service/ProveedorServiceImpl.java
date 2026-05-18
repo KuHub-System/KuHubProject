@@ -315,27 +315,28 @@ public class ProveedorServiceImpl implements ProveedorService {
     @Override
     @Transactional
     public boolean actualizarPrecio(Long idProveedorProducto, ProveedorProductoUpdateDTO dto) {
-        ProveedorProducto relacion = proveedorProductoRepository
+        // Versioning: localizar la versión vigente sirve para extraer (idProveedor, idProducto)
+        // y validar contra el precio actual. La fila apuntada NO se modifica — se desactiva
+        // junto al resto de versiones activas y se inserta una nueva.
+        ProveedorProducto versionActual = proveedorProductoRepository
                 .findById(idProveedorProducto)
                 .orElseThrow(() -> new GestionProveedorException(
                         "Relación proveedor-producto ID=" + idProveedorProducto + " no encontrada",
                         HttpStatus.NOT_FOUND
                 ));
 
-        // Parsear el precio desde formato chileno a BigDecimal
+        Integer idProveedor = versionActual.getProveedor().getIdProveedor();
+        Integer idProducto = versionActual.getProducto().getIdProducto();
+
         java.math.BigDecimal nuevoPrecio;
         try {
             nuevoPrecio = KuHub.utils.ChileanPriceUtils.parseChileanPrice(dto.getPrecioProducto());
             log.debug("Precio parseado: Input='{}' → BigDecimal={}", dto.getPrecioProducto(), nuevoPrecio);
         } catch (IllegalArgumentException e) {
             log.warn("Error al parsear precio chileno: {} | Mensaje: {}", dto.getPrecioProducto(), e.getMessage());
-            throw new GestionProveedorException(
-                    e.getMessage(),
-                    HttpStatus.BAD_REQUEST
-            );
+            throw new GestionProveedorException(e.getMessage(), HttpStatus.BAD_REQUEST);
         }
 
-        // Validar que el precio sea mayor a 0
         if (nuevoPrecio.compareTo(java.math.BigDecimal.ZERO) <= 0) {
             throw new GestionProveedorException(
                     "El precio debe ser mayor a 0. Valor ingresado: " + nuevoPrecio,
@@ -343,9 +344,8 @@ public class ProveedorServiceImpl implements ProveedorService {
             );
         }
 
-        // [CAMBIO 2026-04-24] Validar si el precio ya existe en la BD (detecta conflicto)
-        // Si existe una relación con el mismo precio, lanzar 409 Conflict
-        if (proveedorProductoRepository.existsByIdProveedorProductoAndPrecioProducto(idProveedorProducto, nuevoPrecio)) {
+        // No crear una versión nueva si coincide con el precio vigente — evita ruido en el historial.
+        if (versionActual.getPrecioProducto().compareTo(nuevoPrecio) == 0) {
             throw new GestionProveedorException(
                     "El precio ingresado es igual al valor actual: " + nuevoPrecio
                             + ". No hay cambios que guardar.",
@@ -353,14 +353,21 @@ public class ProveedorServiceImpl implements ProveedorService {
             );
         }
 
-        // Actualizar el precio
-        relacion.setPrecioProducto(nuevoPrecio);
-        relacion.setFechaActualizacion(LocalDateTime.now());
-        proveedorProductoRepository.save(relacion);
-        log.info("Precio actualizado: Relación ID={} | Proveedor ID={} | Producto ID={} | Precio anterior={} → Nuevo precio={} (Input: '{}')",
-                idProveedorProducto, relacion.getProveedor().getIdProveedor(),
-                relacion.getProducto().getIdProducto(), relacion.getPrecioProducto(), nuevoPrecio, dto.getPrecioProducto());
-        return true; // Se actualizó correctamente
+        // 1) Desactivar todas las versiones activas del par (proveedor, producto).
+        int desactivadas = proveedorProductoRepository.desactivarVersionesActivas(idProveedor, idProducto);
+
+        // 2) Insertar nueva versión activa con el nuevo precio.
+        ProveedorProducto nuevaVersion = new ProveedorProducto();
+        nuevaVersion.setIdProveedor(idProveedor);
+        nuevaVersion.setIdProducto(idProducto);
+        nuevaVersion.setPrecioProducto(nuevoPrecio);
+        nuevaVersion.setActivo(true);
+        nuevaVersion.setFechaActualizacion(LocalDateTime.now());
+        proveedorProductoRepository.save(nuevaVersion);
+
+        log.info("Nueva versión de precio insertada: Proveedor ID={} | Producto ID={} | Precio anterior={} → Nuevo={} | Versiones desactivadas={} (Input: '{}')",
+                idProveedor, idProducto, versionActual.getPrecioProducto(), nuevoPrecio, desactivadas, dto.getPrecioProducto());
+        return true;
     }
 
     @Override
@@ -368,20 +375,15 @@ public class ProveedorServiceImpl implements ProveedorService {
     public boolean agregarProducto(Integer idProveedor, ProveedorProductoAddDTO dto) {
         findById(idProveedor);
 
-        // Parsear el precio desde formato chileno a BigDecimal
         java.math.BigDecimal precioProducto;
         try {
             precioProducto = KuHub.utils.ChileanPriceUtils.parseChileanPrice(dto.getPrecioProducto());
             log.debug("Precio parseado: Input='{}' → BigDecimal={}", dto.getPrecioProducto(), precioProducto);
         } catch (IllegalArgumentException e) {
             log.warn("Error al parsear precio chileno: {} | Mensaje: {}", dto.getPrecioProducto(), e.getMessage());
-            throw new GestionProveedorException(
-                    e.getMessage(),
-                    HttpStatus.BAD_REQUEST
-            );
+            throw new GestionProveedorException(e.getMessage(), HttpStatus.BAD_REQUEST);
         }
 
-        // Validar que el precio sea mayor a 0
         if (precioProducto.compareTo(java.math.BigDecimal.ZERO) <= 0) {
             throw new GestionProveedorException(
                     "El precio debe ser mayor a 0. Valor ingresado: " + precioProducto,
@@ -389,6 +391,9 @@ public class ProveedorServiceImpl implements ProveedorService {
             );
         }
 
+        // No permitir alta si ya existe una versión activa del producto en el proveedor
+        // (se considera "asignado"). Para reasignar tras un quitarProducto(), no se reactiva
+        // la fila vieja: se desactiva cualquier residuo y se inserta una versión nueva.
         if (proveedorProductoRepository.existsByProveedor_IdProveedorAndProducto_IdProductoAndActivoTrue(
                 idProveedor, dto.getIdProducto())) {
             throw new GestionProveedorException(
@@ -397,33 +402,21 @@ public class ProveedorServiceImpl implements ProveedorService {
             );
         }
 
-        final boolean[] resultado = {false};
-        proveedorProductoRepository
-                .findByProveedor_IdProveedorAndProducto_IdProducto(idProveedor, dto.getIdProducto())
-                .ifPresentOrElse(
-                        relacion -> {
-                            relacion.setActivo(true);
-                            relacion.setPrecioProducto(precioProducto);
-                            relacion.setFechaActualizacion(LocalDateTime.now());
-                            proveedorProductoRepository.save(relacion);
-                            log.info("Relación reactivada: Proveedor ID={} | Producto ID={} | Precio={} (Input: '{}')",
-                                    idProveedor, dto.getIdProducto(), precioProducto, dto.getPrecioProducto());
-                            resultado[0] = true;
-                        },
-                        () -> {
-                            ProveedorProducto nueva = new ProveedorProducto();
-                            nueva.setIdProveedor(idProveedor);
-                            nueva.setIdProducto(dto.getIdProducto());
-                            nueva.setPrecioProducto(precioProducto);
-                            nueva.setActivo(true);
-                            nueva.setFechaActualizacion(LocalDateTime.now());
-                            proveedorProductoRepository.save(nueva);
-                            log.info("Producto asignado: Proveedor ID={} | Producto ID={} | Precio={} (Input: '{}')",
-                                    idProveedor, dto.getIdProducto(), precioProducto, dto.getPrecioProducto());
-                            resultado[0] = true;
-                        }
-                );
-        return resultado[0];
+        // Por seguridad: asegurar que no queden versiones activas (no debería haber, pero el
+        // invariante depende de la app, no de un UNIQUE constraint).
+        proveedorProductoRepository.desactivarVersionesActivas(idProveedor, dto.getIdProducto());
+
+        ProveedorProducto nuevaVersion = new ProveedorProducto();
+        nuevaVersion.setIdProveedor(idProveedor);
+        nuevaVersion.setIdProducto(dto.getIdProducto());
+        nuevaVersion.setPrecioProducto(precioProducto);
+        nuevaVersion.setActivo(true);
+        nuevaVersion.setFechaActualizacion(LocalDateTime.now());
+        proveedorProductoRepository.save(nuevaVersion);
+
+        log.info("Producto asignado (nueva versión): Proveedor ID={} | Producto ID={} | Precio={} (Input: '{}')",
+                idProveedor, dto.getIdProducto(), precioProducto, dto.getPrecioProducto());
+        return true;
     }
 
     // ══════════════════════════════════════════════════════════════
