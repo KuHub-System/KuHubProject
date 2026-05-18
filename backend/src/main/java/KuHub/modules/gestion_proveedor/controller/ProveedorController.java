@@ -184,7 +184,7 @@ public class ProveedorController {
      *   - 409 CONFLICT: El producto ya está asignado al proveedor
      *
      * @param id  ID del proveedor
-     * @param dto Datos del producto a asignar (idProducto + precioProducto)
+     * @param dto Datos del producto a asignar (idProducto + precioNeto/precioConIva)
      * @return true si se asignó correctamente
      */
     @PostMapping("/{id}/productos")

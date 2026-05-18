@@ -44,9 +44,12 @@ export interface IProveedorProducto {
   nombreCategoria: string;
   nombreUnidad: string;
   abreviatura: string;
-  precioProducto: number;
   activo: boolean;
   fechaActualizacion: string | null;
+  marcaProducto?: string | null;
+  formatoContenido?: string | null;
+  precioNeto: number;
+  precioConIva: number;
 }
 
 /**
@@ -102,28 +105,27 @@ export interface IProveedorUpdateDTO {
 /**
  * DTO para asignar un producto a un proveedor.
  * Mapea ProveedorProductoAddDTO del backend.
- *
- * El precioProducto debe enviarse como string en formato chileno:
- * - 1.234,567 (punto=miles, coma=decimal)
- * - 1.234 (entero con separador de miles)
- * - 1234,567 (sin separador de miles)
- * - 1234.567 (formato americano)
- * - 1234 (entero simple)
+ * Al menos uno de precioNeto o precioConIva es obligatorio; el backend deriva el otro.
+ * Los precios en formato chileno: 1.234,567 | 1.234 | 1234,567 | 1234.567 | 1234
  */
 export interface IProveedorProductoAddDTO {
   idProducto: number;
-  precioProducto: string;
+  marcaProducto?: string;
+  formatoContenido?: string;
+  precioNeto?: string;
+  precioConIva?: string;
 }
 
 /**
- * DTO para actualizar el precio de un producto en un proveedor.
+ * DTO para actualizar precio y metadata de un producto en un proveedor.
  * Mapea ProveedorProductoUpdateDTO del backend.
- *
- * El precioProducto debe enviarse como string en formato chileno.
- * Ver IProveedorProductoAddDTO para formatos válidos.
+ * Al menos uno de precioNeto o precioConIva es obligatorio; el backend deriva el otro.
  */
 export interface IProveedorProductoUpdateDTO {
-  precioProducto: string;
+  marcaProducto?: string;
+  formatoContenido?: string;
+  precioNeto?: string;
+  precioConIva?: string;
 }
 
 /**
@@ -203,7 +205,8 @@ export interface IProductoBuscado {
   nombreProducto: string;
   nombreUnidad: string;
   abreviatura: string;
-  precioProducto: number;
+  precioNeto: number;
+  precioConIva: number;
   activo: boolean;
   fechaActualizacion: string | null;
 }

@@ -133,17 +133,20 @@ public interface ProveedorRepository extends JpaRepository<Proveedor, Integer> {
     );
 
     /**
-     * Obtiene el detalle completo de un proveedor con sus productos activos e inactivos.
+     * Obtiene el detalle completo de un proveedor con sus productos activos.
      * Columnas retornadas (Object[]):
-     * [0] id_producto
-     * [1] id_proveedor_producto
-     * [2] nombre_producto
-     * [3] nombre_categoria
-     * [4] nombre_unidad
-     * [5] abreviatura
-     * [6] precio_producto
-     * [7] activo (de proveedor_producto)
-     * [8] fecha_actualizacion
+     * [0]  id_producto
+     * [1]  id_proveedor_producto
+     * [2]  nombre_producto
+     * [3]  nombre_categoria
+     * [4]  nombre_unidad
+     * [5]  abreviatura
+     * [6]  activo (de proveedor_producto)
+     * [7]  fecha_actualizacion
+     * [8]  marca_producto
+     * [9]  formato_contenido
+     * [10] precio_neto
+     * [11] precio_con_iva
      */
     @Query(value = """
             SELECT * FROM (
@@ -154,9 +157,12 @@ public interface ProveedorRepository extends JpaRepository<Proveedor, Integer> {
                     cat.nombre_categoria         AS nombre_categoria,
                     um.nombre_unidad             AS nombre_unidad,
                     um.abreviatura               AS abreviatura,
-                    pp.precio_producto           AS precio_producto,
                     pp.activo                    AS activo,
-                    pp.fecha_actualizacion       AS fecha_actualizacion
+                    pp.fecha_actualizacion       AS fecha_actualizacion,
+                    pp.marca_producto            AS marca_producto,
+                    pp.formato_contenido         AS formato_contenido,
+                    pp.precio_neto               AS precio_neto,
+                    pp.precio_con_iva            AS precio_con_iva
                 FROM proveedor_producto pp
                 INNER JOIN producto prod ON prod.id_producto = pp.id_producto
                 INNER JOIN categoria cat ON cat.id_categoria = prod.id_categoria
@@ -181,7 +187,7 @@ public interface ProveedorRepository extends JpaRepository<Proveedor, Integer> {
      * [4] telefono_proveedor
      * [5] email_proveedor
      * [6] estado_proveedor (cast a text)
-     * [7] precio_producto
+     * [7] precio_neto
      * [8] fecha_actualizacion
      */
     @Query(value = """
@@ -193,14 +199,14 @@ public interface ProveedorRepository extends JpaRepository<Proveedor, Integer> {
                 prov.telefono_proveedor,                                 -- [4]
                 prov.email_proveedor,                                    -- [5]
                 CAST(prov.estado_proveedor AS TEXT),                     -- [6]
-                pp.precio_producto,                                      -- [7]
+                pp.precio_neto,                                          -- [7]
                 pp.fecha_actualizacion                                   -- [8]
             FROM proveedor_producto pp
             INNER JOIN proveedor prov ON prov.id_proveedor = pp.id_proveedor
             WHERE pp.id_producto = :idProducto
               AND pp.activo = TRUE
               AND prov.activo = TRUE
-            ORDER BY pp.precio_producto ASC
+            ORDER BY pp.precio_neto ASC
             """, nativeQuery = true)
     List<Object[]> findProveedoresPorProducto(@Param("idProducto") Integer idProducto);
 
@@ -298,7 +304,8 @@ public interface ProveedorRepository extends JpaRepository<Proveedor, Integer> {
                                             'codProducto',          p.cod_producto,
                                             'nombreUnidad',         u.nombre_unidad,
                                             'abreviatura',          u.abreviatura,
-                                            'precioProducto',       pp.precio_producto,
+                                            'precioNeto',           pp.precio_neto,
+                                            'precioConIva',         pp.precio_con_iva,
                                             'activo',               pp.activo,
                                             'fechaActualizacion',   pp.fecha_actualizacion
                                         ) ORDER BY p.nombre_producto ASC
@@ -377,7 +384,7 @@ mejor_precio AS (
     SELECT DISTINCT ON (pp.id_producto)
         pp.id_producto,
         pp.id_proveedor,
-        pp.precio_producto
+        pp.precio_neto
     FROM proveedor_producto pp
     JOIN proveedor pv ON pv.id_proveedor = pp.id_proveedor
     WHERE pp.activo = TRUE
@@ -385,7 +392,7 @@ mejor_precio AS (
       AND pv.estado_proveedor = 'DISPONIBLE'
     ORDER BY
         pp.id_producto,
-        pp.precio_producto ASC
+        pp.precio_neto ASC
 ),
 
 productos_con_proveedor AS (
@@ -397,7 +404,7 @@ productos_con_proveedor AS (
         ps.abreviatura,
         ps.cantidad_total,
         mp.id_proveedor,
-        mp.precio_producto,
+        mp.precio_neto,
         pv.nombre_distribuidora,
         pv.nombre_proveedor,
         pv.telefono_proveedor,
@@ -453,10 +460,10 @@ FROM (
                     'nombreProducto',  pcp.nombre_producto,
                     'abreviatura',     pcp.abreviatura,
                     'cantidadTotal',   pcp.cantidad_total,
-                    'precioUnitario',  pcp.precio_producto,
+                    'precioUnitario',  pcp.precio_neto,
                     'subtotal',        CASE
-                                           WHEN pcp.precio_producto IS NOT NULL
-                                           THEN ROUND(pcp.precio_producto * pcp.cantidad_total, 2)
+                                           WHEN pcp.precio_neto IS NOT NULL
+                                           THEN ROUND(pcp.precio_neto * pcp.cantidad_total, 2)
                                            ELSE NULL
                                        END
                 )
