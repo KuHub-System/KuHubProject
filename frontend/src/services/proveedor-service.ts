@@ -124,6 +124,41 @@ export const obtenerProveedorDetalleService = async (
 };
 
 /**
+ * Vista histórica: obtiene el detalle del proveedor con los precios vigentes hasta
+ * una fecha dada. Por cada producto retorna la versión cuya fecha_actualizacion sea
+ * la más reciente pero ≤ a la fecha consultada.
+ * GET /api/v1/proveedor/{id}/productos-por-fecha?fecha=YYYY-MM-DD
+ */
+export const obtenerProductosPorFechaService = async (
+  idProveedor: number,
+  fecha: string
+): Promise<IProveedorDetalle> => {
+  try {
+    const response = await api.get<any>(`/proveedor/${idProveedor}/productos-por-fecha`, {
+      params: { fecha },
+    });
+    return normalizarDetalle(response.data);
+  } catch (error: any) {
+    if (error.response?.status === 400) {
+      throw new Error(
+        error.response.data?.message ||
+        'Formato de fecha inválido. Use YYYY-MM-DD.'
+      );
+    }
+    if (error.response?.status === 404) {
+      throw new Error(
+        error.response.data?.message ||
+        `Proveedor ID=${idProveedor} no encontrado`
+      );
+    }
+    throw new Error(
+      error.response?.data?.message ||
+      'Error al cargar los precios históricos del proveedor'
+    );
+  }
+};
+
+/**
  * Crea un nuevo proveedor.
  * POST /api/v1/proveedor → 201 Created
  */

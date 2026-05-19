@@ -16,6 +16,7 @@ import KuHub.modules.gestion_proveedor.entity.Proveedor;
 import KuHub.modules.gestion_solicitud.dtos.request.DateRangeDTO;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.time.LocalDate;
 import java.util.List;
 
 /**
@@ -64,6 +65,14 @@ public interface ProveedorService {
 
     /** Obtiene el detalle completo de un proveedor con sus productos agrupados por categoría. */
     ProveedorDetalleDTO obtenerDetalle(Integer idProveedor);
+
+    /**
+     * Vista histórica: detalle del proveedor con los precios vigentes hasta una fecha dada.
+     * Por cada producto se devuelve la versión cuya fecha_actualizacion sea la más reciente
+     * pero ≤ a la fecha consultada (incluye el día completo).
+     * Útil para auditar qué precios tenía el proveedor en un punto en el tiempo.
+     */
+    ProveedorDetalleDTO obtenerDetalleEnFecha(Integer idProveedor, LocalDate fechaConsulta);
 
     /** Lista los proveedores que ofrecen un producto específico (para comparar precios). */
     List<ProveedorListDTO> findProveedoresPorProducto(Integer idProducto);

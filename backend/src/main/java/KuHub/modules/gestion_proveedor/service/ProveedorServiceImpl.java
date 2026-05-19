@@ -51,6 +51,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ArrayList;
@@ -144,8 +145,27 @@ public class ProveedorServiceImpl implements ProveedorService {
     @Transactional(readOnly = true)
     public ProveedorDetalleDTO obtenerDetalle(Integer idProveedor) {
         Proveedor proveedor = findById(idProveedor);
-
         List<Object[]> rows = proveedorRepository.findProductosPorProveedor(idProveedor);
+        return construirDetalle(proveedor, rows);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ProveedorDetalleDTO obtenerDetalleEnFecha(Integer idProveedor, LocalDate fechaConsulta) {
+        Proveedor proveedor = findById(idProveedor);
+        // Inclusivo del día completo: cualquier actualización dentro de la fecha seleccionada cuenta
+        LocalDateTime corte = fechaConsulta.atTime(LocalTime.MAX);
+        List<Object[]> rows = proveedorRepository.findProductosPorProveedorHastaFecha(idProveedor, corte);
+        log.info("obtenerDetalleEnFecha: Proveedor ID={} | fecha={} | filas={}",
+                idProveedor, fechaConsulta, rows.size());
+        return construirDetalle(proveedor, rows);
+    }
+
+    /**
+     * Helper compartido por obtenerDetalle / obtenerDetalleEnFecha: mapea filas a DTO,
+     * agrupa por categoría y agrega los días de entrega del proveedor.
+     */
+    private ProveedorDetalleDTO construirDetalle(Proveedor proveedor, List<Object[]> rows) {
         List<ProductoConPrecioDTO> productos = rows.stream()
                 .map(ProductoConPrecioDTO::fromRow)
                 .collect(Collectors.toList());
@@ -161,8 +181,7 @@ public class ProveedorServiceImpl implements ProveedorService {
                 .filter(p -> Boolean.TRUE.equals(p.activo()))
                 .count();
 
-        // Obtener días de entrega configurados para el proveedor
-        List<ProveedorDiaEntrega> diasEntrega = proveedorDiaEntregaRepository.findByProveedor_IdProveedor(idProveedor);
+        List<ProveedorDiaEntrega> diasEntrega = proveedorDiaEntregaRepository.findByProveedor_IdProveedor(proveedor.getIdProveedor());
         List<DiaEntregaResponseDTO> diasResponse = diasEntrega.stream()
                 .map(d -> new DiaEntregaResponseDTO(
                         d.getIdDiaEntrega(),
@@ -171,9 +190,6 @@ public class ProveedorServiceImpl implements ProveedorService {
                         d.getHoraFinEntrega() != null ? d.getHoraFinEntrega().toString() : null
                 ))
                 .collect(Collectors.toList());
-
-        log.info("obtenerDetalle: Proveedor ID={} | Productos: {} | Días entrega: {}",
-                idProveedor, productos.size(), diasResponse.size());
 
         return new ProveedorDetalleDTO(
                 proveedor.getIdProveedor(),

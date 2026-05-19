@@ -7,6 +7,8 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -191,6 +193,54 @@ public interface ProveedorRepository extends JpaRepository<Proveedor, Integer> {
             ORDER BY ultima_version.nombre_categoria ASC, ultima_version.nombre_producto ASC
             """, nativeQuery = true)
     List<Object[]> findProductosPorProveedor(@Param("idProveedor") Integer idProveedor);
+
+    /**
+     * Vista histórica: por cada producto del proveedor, retorna la versión cuya
+     * fecha_actualizacion sea la más reciente pero ≤ :fechaConsulta.
+     * Es decir, el precio vigente que tenía el proveedor en ese punto en el tiempo.
+     * Incluye versiones activas e inactivas (no filtra por pp.activo), porque una
+     * versión histórica puede haber sido desactivada por una nueva versión posterior.
+     * Columnas retornadas (mismo orden que ProductoConPrecioDTO.fromRow):
+     * [0]  id_producto
+     * [1]  id_proveedor_producto
+     * [2]  nombre_producto
+     * [3]  nombre_categoria
+     * [4]  nombre_unidad
+     * [5]  abreviatura
+     * [6]  activo (de proveedor_producto en esa versión)
+     * [7]  fecha_actualizacion
+     * [8]  marca_producto
+     * [9]  formato_contenido
+     * [10] precio_neto
+     * [11] precio_con_iva
+     */
+    @Query(value = """
+            SELECT DISTINCT ON (pp.id_producto)
+                prod.id_producto             AS id_producto,
+                pp.id_proveedor_producto     AS id_proveedor_producto,
+                prod.nombre_producto         AS nombre_producto,
+                cat.nombre_categoria         AS nombre_categoria,
+                um.nombre_unidad             AS nombre_unidad,
+                um.abreviatura               AS abreviatura,
+                pp.activo                    AS activo,
+                pp.fecha_actualizacion       AS fecha_actualizacion,
+                pp.marca_producto            AS marca_producto,
+                pp.formato_contenido         AS formato_contenido,
+                pp.precio_neto               AS precio_neto,
+                pp.precio_con_iva            AS precio_con_iva
+            FROM proveedor_producto pp
+            INNER JOIN producto prod ON prod.id_producto = pp.id_producto
+            INNER JOIN categoria cat ON cat.id_categoria = prod.id_categoria
+            INNER JOIN unidad_medida um ON um.id_unidad = prod.id_unidad
+            WHERE pp.id_proveedor = :idProveedor
+              AND prod.activo = TRUE
+              AND pp.fecha_actualizacion <= :fechaConsulta
+            ORDER BY pp.id_producto, pp.fecha_actualizacion DESC
+            """, nativeQuery = true)
+    List<Object[]> findProductosPorProveedorHastaFecha(
+            @Param("idProveedor") Integer idProveedor,
+            @Param("fechaConsulta") LocalDateTime fechaConsulta
+    );
 
     /**
      * Lista todos los proveedores activos que ofrecen un producto específico,
@@ -506,7 +556,7 @@ FROM (
 ) AS proveedor_grupo
             """, nativeQuery = true)
     String findCotizacionProveedoresPorRango(
-            @Param("fechaInicio") java.time.LocalDate fechaInicio,
-            @Param("fechaFin") java.time.LocalDate fechaFin
+            @Param("fechaInicio") LocalDate fechaInicio,
+            @Param("fechaFin") LocalDate fechaFin
     );
 }
