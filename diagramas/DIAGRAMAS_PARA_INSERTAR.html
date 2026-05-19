@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>KuHub — Diagramas para Informe EP2</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<style>
+  /* ===== ESTILOS GENERALES ===== */
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f0f0; }
+
+  /* ===== CADA PÁGINA ES UN A4 ===== */
+  .pagina {
+    width: 210mm;
+    min-height: 297mm;
+    margin: 10mm auto;
+    background: white;
+    padding: 15mm 15mm 10mm 15mm;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    page-break-after: always;
+    break-after: page;
+  }
+
+  /* ===== ENCABEZADO DE CADA PÁGINA ===== */
+  .encabezado {
+    border-bottom: 3px solid #b8960c;
+    padding-bottom: 8px;
+    margin-bottom: 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+  }
+  .encabezado h2 {
+    font-size: 15px;
+    color: #1a1a2e;
+    font-weight: 700;
+  }
+  .encabezado .seccion {
+    font-size: 11px;
+    color: #6c757d;
+    background: #f8f9fa;
+    padding: 3px 8px;
+    border-radius: 4px;
+    border: 1px solid #dee2e6;
+  }
+
+  /* ===== ETIQUETA DE SECCIÓN ===== */
+  .label-seccion {
+    font-size: 10px;
+    color: #b8960c;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+
+  /* ===== CONTENEDOR DEL DIAGRAMA ===== */
+  .diagrama-wrapper {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+  .mermaid {
+    max-width: 100%;
+    max-height: 240mm;
+  }
+  .mermaid svg {
+    max-width: 100%;
+    height: auto;
+  }
+
+  /* ===== PIE DE PÁGINA ===== */
+  .pie {
+    border-top: 1px solid #dee2e6;
+    padding-top: 6px;
+    margin-top: 10px;
+    display: flex;
+    justify-content: space-between;
+    font-size: 9px;
+    color: #adb5bd;
+  }
+
+  /* ===== IMPRESIÓN ===== */
+  @media print {
+    body { background: white; }
+    .pagina {
+      margin: 0;
+      box-shadow: none;
+      width: 100%;
+      min-height: 100vh;
+      padding: 12mm 12mm 8mm 12mm;
+    }
+    .instrucciones-imprimir { display: none; }
+  }
+
+  /* ===== INSTRUCCIONES (solo en pantalla) ===== */
+  .instrucciones-imprimir {
+    width: 210mm;
+    margin: 0 auto 5mm auto;
+    background: #fff3cd;
+    border: 1px solid #ffc107;
+    padding: 12px 16px;
+    border-radius: 6px;
+    font-size: 13px;
+    line-height: 1.6;
+  }
+  .instrucciones-imprimir strong { color: #856404; }
+  .instrucciones-imprimir kbd {
+    background: #495057;
+    color: white;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 12px;
+  }
+  .pasos { margin-top: 8px; padding-left: 20px; }
+  .pasos li { margin-bottom: 3px; }
+</style>
+</head>
+<body>
+
+<!-- ===== INSTRUCCIONES SOLO EN PANTALLA ===== -->
+<div class="instrucciones-imprimir">
+  <strong>📋 Instrucciones para generar el PDF con los diagramas:</strong>
+  <ol class="pasos">
+    <li>Espera que <strong>todos los diagramas carguen</strong> (10–15 segundos)</li>
+    <li>Presiona <kbd>Ctrl + P</kbd> para imprimir</li>
+    <li>Destino: <strong>"Guardar como PDF"</strong></li>
+    <li>Diseño: <strong>Vertical</strong> · Tamaño: <strong>A4</strong> · Márgenes: <strong>Mínimos</strong></li>
+    <li>Desactiva "Encabezados y pies de página" si aparece esa opción</li>
+    <li>Click <strong>"Guardar"</strong> → obtendrás <strong>5 páginas PDF</strong>, una por diagrama</li>
+    <li>En Word: ubica cada placeholder naranja → <strong>Insertar → Imagen</strong> → selecciona la página del PDF correspondiente</li>
+  </ol>
+</div>
+
+<!-- ================================================================ -->
+<!-- PÁGINA 1 — VISTA LÓGICA                                          -->
+<!-- Sección 3.1 · Reemplaza el placeholder de Vista Lógica           -->
+<!-- ================================================================ -->
+<div class="pagina">
+  <div class="encabezado">
+    <div>
+      <div class="label-seccion">Sección 3.1 — Diagramas y Documentos de Diseño (IL2.1)</div>
+      <h2>Vista Lógica — Componentes del Sistema KuHub</h2>
+    </div>
+    <span class="seccion">Diagrama 1 de 4</span>
+  </div>
+
+  <div class="diagrama-wrapper" style="align-items: flex-start; overflow-y: auto;">
+    <div style="width:100%; font-size:11.5px; line-height:1.75; color:#1a1a2e; padding: 4px 2px;">
+
+      <p style="margin-bottom:10px; text-align:justify;">
+        El diagrama de Vista Lógica representa la arquitectura de componentes del sistema KuHub
+        siguiendo el modelo de 4+1 Vistas de Kruchten. Se identifican cuatro capas funcionales
+        interconectadas que estructuran el flujo de información desde el usuario final hasta la
+        base de datos, reflejando una separación clara de responsabilidades y una organización
+        orientada a módulos de negocio.
+      </p>
+
+      <!-- Capa 1 -->
+      <div style="background:#fff3cd;border-left:4px solid #ffc107;border-radius:4px;padding:8px 12px;margin-bottom:10px;">
+        <p style="font-weight:700;font-size:12px;margin-bottom:4px;">&#128241; Capa de Cliente</p>
+        <p style="text-align:justify;">
+          El usuario final accede al sistema a través de un navegador web convencional (Chrome,
+          Safari o Firefox), estableciendo una conexión segura mediante HTTPS hacia el dominio
+          <em>appkuhub.questweb.cl</em>. Esta capa constituye el punto de entrada al sistema y
+          no contiene lógica de negocio propia; su función es exclusivamente presentar la interfaz
+          e iniciar las peticiones hacia el frontend.
+        </p>
+      </div>
+
+      <!-- Capa 2 -->
+      <div style="background:#f8f9fa;border-left:4px solid #6c757d;border-radius:4px;padding:8px 12px;margin-bottom:10px;">
+        <p style="font-weight:700;font-size:12px;margin-bottom:4px;">&#128421; Capa de Presentación — Frontend (React 18 + TypeScript 5 + Vite 6)</p>
+        <p style="text-align:justify;">
+          La interfaz de usuario está compuesta por 18 pantallas cargadas de forma diferida
+          (<em>lazy-loading</em>), organizadas en módulos funcionales como dashboard, inventario,
+          solicitudes y gestión de pedidos. Los componentes visuales se construyen con la
+          biblioteca HeroUI sobre Tailwind CSS 4. La comunicación con el backend se realiza a
+          través de 27 clientes HTTP tipados por dominio, implementados con Axios. El estado
+          global de la aplicación es gestionado mediante la Context API de React, con contextos
+          específicos para autenticación, permisos dinámicos y preferencias de tema visual
+          (AuthContext, PermissionContext y ThemeContext).
+        </p>
+      </div>
+
+      <!-- Capa 3 -->
+      <div style="background:#f8f9fa;border-left:4px solid #3f51b5;border-radius:4px;padding:8px 12px;margin-bottom:10px;">
+        <p style="font-weight:700;font-size:12px;margin-bottom:4px;">&#128295; Capa de Lógica de Negocio — Backend (Spring Boot 3.4.3 + Java 21 LTS)</p>
+        <p style="text-align:justify;">
+          Las peticiones entrantes son interceptadas por una capa de seguridad que implementa
+          autenticación mediante tokens JWT (JJWT 0.12.6), control de acceso basado en roles
+          (RBAC) gestionado por el servicio <em>DynamicPermissionService</em>, y limitación de
+          tasa de peticiones. El núcleo del sistema agrupa nueve módulos de negocio: Gestión
+          Académica, Gestión de Inventario, Gestión de Pedidos, Gestión de Solicitudes, Gestión
+          de Usuarios, Gestión de Proveedores, Pedido Semana Bodega, Dashboard con KPIs y
+          analítica, y Gestión del Sistema. La infraestructura transversal incorpora un manejador
+          global de excepciones, logging centralizado y documentación automática de la API REST
+          mediante OpenAPI 2.8.9 (SwaggerConfig).
+        </p>
+      </div>
+
+      <!-- Capa 4 -->
+      <div style="background:#d4edda;border-left:4px solid #28a745;border-radius:4px;padding:8px 12px;">
+        <p style="font-weight:700;font-size:12px;margin-bottom:4px;">&#128024; Capa de Persistencia — PostgreSQL 16.13</p>
+        <p style="text-align:justify;">
+          Los datos del sistema se almacenan en una base de datos PostgreSQL denominada
+          <em>kuhub_devs</em>, compuesta por 38 tablas distribuidas según los módulos de negocio.
+          Se utiliza la extensión <em>pgcrypto</em> para el cifrado de datos sensibles, y se
+          aplica particionamiento semestral para optimizar el rendimiento de las consultas
+          históricas. La comunicación con el backend se realiza mediante JDBC/JPA a través del
+          puerto TCP 5432, y la instancia reside en una subred privada accesible vía VPC Peering
+          en la dirección 172.26.12.228.
+        </p>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="pie">
+    <span>KuHub — Estado de Avance N°2 · TPY1101 · Duoc UC</span>
+    <span>Arquitectura 4+1 Views (Kruchten) · Vista Lógica</span>
+  </div>
+</div>
+
+<!-- ================================================================ -->
+<!-- PÁGINA 2 — VISTA FÍSICA                                          -->
+<!-- Sección 3.1 · Reemplaza el placeholder de Vista Física + AWS     -->
+<!-- ================================================================ -->
+<div class="pagina">
+  <div class="encabezado">
+    <div>
+      <div class="label-seccion">Sección 3.1 — Diagramas y Documentos de Diseño (IL2.1)</div>
+      <h2>Vista Física — Topología de Despliegue en AWS Lightsail</h2>
+    </div>
+    <span class="seccion">Diagrama 2 de 4</span>
+  </div>
+
+  <div class="diagrama-wrapper" style="padding: 0;">
+    <div class="mermaid" style="max-height: 270mm; width: 100%;">
+graph TB
+    subgraph Internet["🌐 INTERNET"]
+        User["👤 Usuario Final\nChrome / Firefox / Edge\nappkuhub.questweb.cl"]
+    end
+
+    subgraph InstA["🔵 AWS Lightsail — Instancia A · APLICACIÓN\nIP Pública: 52.5.222.79 · Virginia us-east-1 · Ubuntu 20.04 LTS\n2 GB RAM · 2 vCPU · 60 GB SSD · ~USD 10/mes"]
+        NGINX["🔒 NGINX (Host)\n:80 → redirect HTTPS\n:443 SSL/TLS Let's Encrypt\nProxy → localhost:3000"]
+        subgraph DockerNet["🐳 Docker Network kuhub-app"]
+            FE["🖥️ kuhub-frontend\nReact 18 SPA + NGINX interno\n127.0.0.1:3000:80 · RAM: 200 MB\n/api/* → backend:8080"]
+            BE["⚙️ kuhub-backend\nSpring Boot 3.4.3 · Java 21\n127.0.0.1:8080 · RAM: 1400 MB\nJVM: -Xmx1024m -Xms768m"]
+        end
+        NGINX --> FE
+        FE -->|"proxy /api/*"| BE
+    end
+
+    subgraph VPC["🔒 VPC Peering AWS\nRed privada · 172.26.12.228\nBaja latencia · Sin costo extra"]
+        LINK["TCP 5432"]
+    end
+
+    subgraph InstB["🟠 AWS Lightsail — Instancia B · BASE DE DATOS\nIP Pública: 13.218.253.211 · Ubuntu 24.04 LTS\n512 MB RAM + 1.5 GB Swap · 2 vCPU · 20 GB SSD"]
+        PG["🐘 PostgreSQL 16.13\nkuhub_devs · Puerto 5432\nshared_buffers: 128 MB\nmax_connections: 100\nExtensión: pgcrypto\nBackup automático diario"]
+    end
+
+    subgraph CICD["🤖 GitHub Actions CI/CD (SaaS)\ngit tag K*.*.* → Build Docker → Push Hub → SSH Deploy"]
+        GA["Pipeline en ubuntu-latest\nBuild Backend + Frontend\nPush: martorias/kuhub-app\nDeploy: 5-10 minutos"]
+    end
+
+    User -->|"HTTPS :443"| NGINX
+    BE -->|"JDBC/JPA\nVPC Peering"| LINK
+    LINK --> PG
+    GA -.->|"docker compose pull\ndocker compose up -d"| DockerNet
+
+    style NGINX fill:#ff6b6b,stroke:#c92a2a,color:#fff,stroke-width:2px
+    style BE fill:#4c6ef5,stroke:#1540ab,color:#fff,stroke-width:2px
+    style FE fill:#15aabf,stroke:#0c7792,color:#fff
+    style PG fill:#51cf66,stroke:#2b8a3e,color:#000,stroke-width:2px
+    style InstA fill:#e8f4fd,stroke:#2196f3,stroke-width:2px
+    style InstB fill:#fff3e0,stroke:#ff9800,stroke-width:2px
+    style VPC fill:#f3e5f5,stroke:#9c27b0
+    style CICD fill:#e8f5e9,stroke:#4caf50
+    </div>
+  </div>
+
+  <div class="pie">
+    <span>KuHub — Estado de Avance N°2 · TPY1101 · Duoc UC</span>
+    <span>Arquitectura 4+1 Views (Kruchten) · Vista Física</span>
+  </div>
+</div>
+
+<!-- ================================================================ -->
+<!-- PÁGINA 4 — VISTA DE PROCESOS / FLUJOS                           -->
+<!-- Sección 3.1 · Reemplaza el placeholder de Diagramas de Flujo    -->
+<!-- ================================================================ -->
+<div class="pagina">
+  <div class="encabezado">
+    <div>
+      <div class="label-seccion">Sección 3.1 — Diagramas y Documentos de Diseño (IL2.1)</div>
+      <h2>Vista de Procesos — Flujo Principal y Estados del Sistema</h2>
+    </div>
+    <span class="seccion">Diagrama 3 de 4</span>
+  </div>
+
+  <div class="diagrama-wrapper" style="flex-direction: column; gap: 14px; align-items: stretch;">
+
+    <!-- PROCESO 1: Flujo principal -->
+    <div style="text-align:center;">
+      <p style="font-size:10.5px;font-weight:700;color:#1a1a2e;margin-bottom:5px;letter-spacing:0.5px;">
+        ① &nbsp;Flujo de Proceso Principal
+      </p>
+      <div class="mermaid" style="max-height:110mm;">
+flowchart LR
+    subgraph Docente["🎓 Docente / Profesor"]
+        D1["Accede /solicitud\nSelecciona asignatura\nsección y pedido semanal"]
+        D2["Ajusta cantidades\nClick Guardar"]
+    end
+    subgraph Sistema["⚙️ Backend + BD"]
+        S1["POST /solicitud\n/generate-mass-solicitions\nINSERT solicitud PENDIENTE"]
+        S2["PATCH /solicitud\n/change-massive-status\nUPDATE → ACEPTADA/RECHAZADA"]
+        S3["POST /pedido\n/consolidate-order\nINSERT pedido PENDIENTE\nGROUP BY producto"]
+        S4["PUT /bodega-transito\n/confirmar\nUPDATE stock inventario"]
+    end
+    subgraph Gestor["👤 Gestor de Pedidos"]
+        G1["Revisa solicitudes\npor semana"]
+        G2["Acepta / Rechaza\nen masa"]
+        G3["Consolida en\nPedido formal"]
+    end
+    subgraph Bodega["📦 Encargado Bodega"]
+        B1["Recibe productos\nVerifica cantidades"]
+        B2["Confirma recepción\nStock actualizado"]
+    end
+
+    D1 --> D2 --> S1 --> G1 --> G2 --> S2 --> G3 --> S3 --> B1 --> B2 --> S4
+
+    style S1 fill:#4c6ef5,color:#fff
+    style S2 fill:#4c6ef5,color:#fff
+    style S3 fill:#4c6ef5,color:#fff
+    style S4 fill:#51cf66,color:#000
+      </div>
+    </div>
+
+    <!-- PROCESO 2: Estados de Solicitud -->
+    <div style="text-align:center;">
+      <p style="font-size:10.5px;font-weight:700;color:#1a1a2e;margin-bottom:5px;letter-spacing:0.5px;">
+        ② &nbsp;Estados de Solicitud
+      </p>
+      <div class="mermaid" style="max-height:90mm;">
+stateDiagram-v2
+    direction LR
+    [*] --> PENDIENTE : Docente crea
+    PENDIENTE --> ACEPTADA : Gestor acepta
+    PENDIENTE --> RECHAZADA : Gestor rechaza
+    ACEPTADA --> EN_PEDIDO : Consolidación
+    ACEPTADA --> PROCESADA : Proceso directo
+    RECHAZADA --> [*]
+    EN_PEDIDO --> [*]
+    PROCESADA --> [*]
+      </div>
+    </div>
+
+    <!-- PROCESO 3: Estados de Pedido -->
+    <div style="text-align:center;">
+      <p style="font-size:10.5px;font-weight:700;color:#1a1a2e;margin-bottom:5px;letter-spacing:0.5px;">
+        ③ &nbsp;Estados de Pedido
+      </p>
+      <div class="mermaid" style="max-height:90mm;">
+stateDiagram-v2
+    direction LR
+    [*] --> PENDIENTE : Gestor consolida
+    PENDIENTE --> APROBADO : Admin aprueba
+    PENDIENTE --> CANCELADO : Se cancela
+    APROBADO --> EN_PREPARACION : Bodega prepara
+    EN_PREPARACION --> ENTREGADO : Bodega confirma
+    EN_PREPARACION --> CANCELADO : Error
+    ENTREGADO --> [*]
+    CANCELADO --> [*]
+      </div>
+    </div>
+
+  </div>
+
+  <div class="pie">
+    <span>KuHub — Estado de Avance N°2 · TPY1101 · Duoc UC</span>
+    <span>Arquitectura 4+1 Views (Kruchten) · Vista de Procesos</span>
+  </div>
+</div>
+
+<!-- ================================================================ -->
+<!-- PÁGINA 5 — VISTA DE ESCENARIOS / RBAC                           -->
+<!-- Sección 3.1 · Reemplaza el placeholder de RBAC + Escenarios     -->
+<!-- ================================================================ -->
+<div class="pagina">
+  <div class="encabezado">
+    <div>
+      <div class="label-seccion">Sección 3.1 — Diagramas y Documentos de Diseño (IL2.1)</div>
+      <h2>Vista de Escenarios — Control de Acceso RBAC · 7 Roles × 15 Módulos</h2>
+    </div>
+    <span class="seccion">Diagrama 4 de 4</span>
+  </div>
+
+  <div class="diagrama-wrapper" style="flex-direction: column; gap: 12px; align-items: stretch;">
+
+    <table style="width:100%;border-collapse:collapse;font-size:9.5px;margin-top:6px;">
+      <thead>
+        <tr style="background:#1a1a2e;color:white;">
+          <th style="padding:5px 6px;text-align:left;min-width:120px;">Módulo</th>
+          <th style="padding:5px 4px;">⚙️ Admin</th>
+          <th style="padding:5px 4px;">🔧 Co-Admin</th>
+          <th style="padding:5px 4px;">📋 Gestor</th>
+          <th style="padding:5px 4px;">👨‍🏫 Prof.</th>
+          <th style="padding:5px 4px;">🎓 Docente</th>
+          <th style="padding:5px 4px;">📦 Bodega</th>
+          <th style="padding:5px 4px;">🔑 Asistente</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr style="background:#f8f9fa;">
+          <td style="padding:4px 6px;font-weight:bold;">📊 Dashboard</td>
+          <td style="text-align:center;"><span style="background:#d4edda;color:#155724;padding:1px 5px;border-radius:3px;font-weight:bold;font-size:9px;">CRUD</span></td>
+          <td style="text-align:center;"><span style="background:#d4edda;color:#155724;padding:1px 5px;border-radius:3px;font-weight:bold;font-size:9px;">CRUD</span></td>
+          <td style="text-align:center;"><span style="background:#fff3cd;color:#856404;padding:1px 5px;border-radius:3px;font-weight:bold;font-size:9px;">R</span></td>
+          <td style="text-align:center;"><span style="background:#fff3cd;color:#856404;padding:1px 5px;border-radius:3px;font-weight:bold;font-size:9px;">R</span></td>
+          <td style="text-align:center;"><span style="background:#fff3cd;color:#856404;padding:1px 5px;border-radius:3px;font-weight:bold;font-size:9px;">R</span></td>
+          <td style="text-align:center;"><span style="background:#fff3cd;color:#856404;padding:1px 5px;border-radius:3px;font-weight:bold;font-size:9px;">R</span></td>
+          <td style="text-align:center;"><span style="background:#fff3cd;color:#856404;padding:1px 5px;border-radius:3px;font-weight:bold;font-size:9px;">R</span></td>
+        </tr>
+        <tr>
+          <td style="padding:4px 6px;font-weight:bold;">📦 Inventario</td>
+          <td style="text-align:center;"><span style="background:#d4edda;color:#155724;padding:1px 5px;border-radius:3px;font-weight:bold;font-size:9px;">CRUD</span></td>
+          <td style="text-align:center;"><span style="background:#d4edda;color:#155724;padding:1px 5px;border-radius:3px;font-weight:bold;font-size:9px;">CRUD</span></td>
+          <td style="text-align:center;color:#adb5bd;">—</td>
+          <td style="text-align:center;color:#adb5bd;">—</td>
+          <td style="text-align:center;color:#adb5bd;">—</td>
+          <td style="text-align:center;"><span style="background:#cce5ff;color:#004085;padding:1px 5px;border-radius:3px;font-weight:bold;font-size:9px;">CRU</span></td>
+          <td style="text-align:center;color:#adb5bd;">—</td>
+        </tr>
+        <tr style="background:#f8f9fa;">
+          <td style="padding:4px 6px;font-weight:bold;">📋 Solicitud</td>
+          <td style="text-align:center;"><span style="background:#d4edda;color:#155724;padding:1px 5px;border-radius:3px;font-weight:bold;font-size:9px;">CRUD</span></td>
+          <td style="text-align:center;"><span style="background:#d4edda;color:#155724;padding:1px 5px;border-radius:3px;font-weight:bold;font-size:9px;">CRUD</span></td>
+          <td style="text-align:center;color:#adb5bd;">—</td>
+          <td style="text-align:center;"><span style="background:#cce5ff;color:#004085;padding:1px 5px;border-radius:3px;font-weight:bold;font-size:9px;">CRU</span></td>
+          <td style="text-align:center;"><span style="background:#fff3cd;color:#856404;padding:1px 5px;border-radius:3px;font-weight:bold;font-size:9px;">R</span></td>
+          <td style="text-align:center;color:#adb5bd;">—</td>
+          <td style="text-align:center;color:#adb5bd;">—</td>
+        </tr>
+        <tr>
+          <td style="padding:4px 6px;font-weight:bold;">✅ Gest. Solicitudes</td>
+          <td style="text-align:center;"><span style="background:#d4edda;color:#155724;padding:1px 5px;border-radius:3px;font-weight:bold;font-size:9px;">CRUD</span></td>
+          <td style="text-align:center;"><span style="background:#d4edda;color:#155724;padding:1px 5px;border-radius:3px;font-weight:bold;font-size:9px;">CRUD</span></td>
+          <td style="text-align:center;"><span style="background:#cce5ff;color:#004085;padding:1px 5px;border-radius:3px;font-weight:bold;font-size:9px;">CRU</span></td>
+          <td style="text-align:center;color:#adb5bd;">—</td>
+          <td style="text-align:center;color:#adb5bd;">—</td>
+          <td style="text-align:center;color:#adb5bd;">—</td>
+          <td style="text-align:center;color:#adb5bd;">—</td>
+        </tr>
+        <tr style="background:#f8f9fa;">
+          <td style="padding:4px 6px;font-weight:bold;">🛒 Gest. Pedidos</td>
+          <td style="text-align:center;"><span style="background:#d4edda;color:#155724;padding:1px 5px;border-radius:3px;font-weight:bold;font-size:9px;">CRUD</span></td>
+          <td style="text-align:center;"><span style="background:#d4edda;color:#155724;padding:1px 5px;border-radius:3px;font-weight:bold;font-size:9px;">CRUD</span></td>
+          <td style="text-align:center;"><span style="background:#cce5ff;color:#004085;padding:1px 5px;border-radius:3px;font-weight:bold;font-size:9px;">CRU</span></td>
+          <td style="text-align:center;color:#adb5bd;">—</td>
+          <td style="text-align:center;color:#adb5bd;">—</td>
+          <td style="text-align:center;color:#adb5bd;">—</td>
+          <td style="text-align:center;color:#adb5bd;">—</td>
+        </tr>
+        <tr>
+          <td style="padding:4px 6px;font-weight:bold;">📅 Ped. Semana Bodega</td>
+          <td style="text-align:center;"><span style="background:#d4edda;color:#155724;padding:1px 5px;border-radius:3px;font-weight:bold;font-size:9px;">CRUD</span></td>
+          <td style="text-align:center;"><span style="background:#d4edda;color:#155724;padding:1px 5px;border-radius:3px;font-weight:bold;font-size:9px;">CRUD</span></td>
+          <td style="text-align:center;color:#adb5bd;">—</td>
+          <td style="text-align:center;"><span style="background:#cce5ff;color:#004085;padding:1px 5px;border-radius:3px;font-weight:bold;font-size:9px;">CRU</span></td>
+          <td style="text-align:center;"><span style="background:#fff3cd;color:#856404;padding:1px 5px;border-radius:3px;font-weight:bold;font-size:9px;">R</span></td>
+          <td style="text-align:center;color:#adb5bd;">—</td>
+          <td style="text-align:center;color:#adb5bd;">—</td>
+        </tr>
+        <tr style="background:#f8f9fa;">
+          <td style="padding:4px 6px;font-weight:bold;">📚 Gest. Académica</td>
+          <td style="text-align:center;"><span style="background:#d4edda;color:#155724;padding:1px 5px;border-radius:3px;font-weight:bold;font-size:9px;">CRUD</span></td>
+          <td style="text-align:center;"><span style="background:#d4edda;color:#155724;padding:1px 5px;border-radius:3px;font-weight:bold;font-size:9px;">CRUD</span></td>
+          <td style="text-align:center;color:#adb5bd;">—</td>
+          <td style="text-align:center;color:#adb5bd;">—</td>
+          <td style="text-align:center;color:#adb5bd;">—</td>
+          <td style="text-align:center;color:#adb5bd;">—</td>
+          <td style="text-align:center;color:#adb5bd;">—</td>
+        </tr>
+        <tr>
+          <td style="padding:4px 6px;font-weight:bold;">👥 Gest. Usuarios</td>
+          <td style="text-align:center;"><span style="background:#d4edda;color:#155724;padding:1px 5px;border-radius:3px;font-weight:bold;font-size:9px;">CRUD</span></td>
+          <td style="text-align:center;"><span style="background:#cce5ff;color:#004085;padding:1px 5px;border-radius:3px;font-weight:bold;font-size:9px;">CRU</span></td>
+          <td style="text-align:center;color:#adb5bd;">—</td>
+          <td style="text-align:center;color:#adb5bd;">—</td>
+          <td style="text-align:center;color:#adb5bd;">—</td>
+          <td style="text-align:center;color:#adb5bd;">—</td>
+          <td style="text-align:center;color:#adb5bd;">—</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <p style="font-size:9px;color:#6c757d;margin-top:4px;">
+      <strong>Leyenda:</strong>
+      <span style="background:#d4edda;color:#155724;padding:1px 5px;border-radius:3px;font-size:9px;">CRUD</span> Crear+Leer+Actualizar+Eliminar &nbsp;
+      <span style="background:#cce5ff;color:#004085;padding:1px 5px;border-radius:3px;font-size:9px;">CRU</span> Sin eliminar &nbsp;
+      <span style="background:#fff3cd;color:#856404;padding:1px 5px;border-radius:3px;font-size:9px;">R</span> Solo lectura &nbsp;
+      <span style="color:#adb5bd;">—</span> Sin acceso
+    </p>
+  </div>
+
+  <div class="pie">
+    <span>KuHub — Estado de Avance N°2 · TPY1101 · Duoc UC</span>
+    <span>Arquitectura 4+1 Views (Kruchten) · Vista de Escenarios · RBAC dinámico vía DynamicPermissionService</span>
+  </div>
+</div>
+
+<script>
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'default',
+    flowchart: { curve: 'basis', rankSpacing: 60, nodeSpacing: 40 },
+    sequence: { actorMargin: 60 },
+    er: { diagramPadding: 15, layoutDirection: 'TB', minEntityWidth: 80, entityPadding: 10 }
+  });
+</script>
+</body>
+</html>

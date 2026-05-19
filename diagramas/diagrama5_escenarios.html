@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>KuHub — Vista de Escenarios / RBAC</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<style>
+  body { font-family: Arial, sans-serif; background: white; padding: 20px; }
+  h2 { color: #1a1a2e; border-bottom: 3px solid #b8960c; padding-bottom: 8px; }
+  h3 { color: #495057; margin-top: 30px; }
+  .mermaid { max-width: 1200px; margin: 10px auto 40px auto; }
+  .instruccion { background: #fff3cd; border: 1px solid #ffc107; padding: 10px; border-radius: 6px; margin-bottom: 20px; font-size: 14px; }
+  table { width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 13px; }
+  th { background: #1a1a2e; color: white; padding: 10px 8px; text-align: center; }
+  td { padding: 8px; border: 1px solid #dee2e6; text-align: center; }
+  tr:nth-child(even) { background: #f8f9fa; }
+  .rol-col { font-weight: bold; text-align: left; background: #f0f0f0; }
+  .crud  { background: #d4edda; color: #155724; font-weight: bold; border-radius: 4px; padding: 2px 6px; }
+  .cru   { background: #cce5ff; color: #004085; font-weight: bold; border-radius: 4px; padding: 2px 6px; }
+  .cr    { background: #d1ecf1; color: #0c5460; font-weight: bold; border-radius: 4px; padding: 2px 6px; }
+  .r     { background: #fff3cd; color: #856404; font-weight: bold; border-radius: 4px; padding: 2px 6px; }
+  .none  { color: #adb5bd; }
+  .separador { border: none; border-top: 2px dashed #dee2e6; margin: 30px 0; }
+</style>
+</head>
+<body>
+<div class="instruccion">
+  📸 <strong>Para capturar:</strong> Captura el diagrama de flujo Y la tabla RBAC por separado con <kbd>Win + Shift + S</kbd>.
+</div>
+
+<h2>Vista de Escenarios — Casos de Uso y Control de Acceso · KuHub</h2>
+
+<h3>Diagrama de Casos de Uso por Rol</h3>
+<div class="mermaid">
+graph LR
+    subgraph Actores["👥 ACTORES DEL SISTEMA"]
+        ADM["⚙️ Administrador"]
+        COADM["🔧 Co-Administrador"]
+        GES["📋 Gestor de Pedidos"]
+        PROF["👨‍🏫 Profesor a Cargo"]
+        DOC["🎓 Docente"]
+        BOD["📦 Enc. de Bodega"]
+        ASIST["🔑 Asistente Bodega"]
+    end
+
+    subgraph CasosUso["🔧 CASOS DE USO DEL SISTEMA"]
+        UC1["Gestionar Usuarios\ny Roles"]
+        UC2["Configurar Sistema\n(semanas, bloques)"]
+        UC3["Gestionar Inventario\n(productos, stock)"]
+        UC4["Registrar Movimientos\ny Bodega Tránsito"]
+        UC5["Gestionar Catálogos\n(categorías, unidades)"]
+        UC6["Crear Solicitud\nde Ingredientes"]
+        UC7["Revisar y Aprobar\nSolicitudes"]
+        UC8["Consolidar\nPedidos"]
+        UC9["Gestionar Módulo\nAcadémico"]
+        UC10["Visualizar\nDashboard y KPIs"]
+        UC11["Gestionar Pedido\nSemanal Bodega"]
+        UC12["Gestionar\nProveedores"]
+    end
+
+    ADM --> UC1
+    ADM --> UC2
+    ADM --> UC3
+    ADM --> UC4
+    ADM --> UC5
+    ADM --> UC6
+    ADM --> UC7
+    ADM --> UC8
+    ADM --> UC9
+    ADM --> UC10
+    ADM --> UC11
+    ADM --> UC12
+
+    COADM --> UC1
+    COADM --> UC3
+    COADM --> UC4
+    COADM --> UC5
+    COADM --> UC7
+    COADM --> UC8
+    COADM --> UC9
+    COADM --> UC10
+    COADM --> UC11
+
+    GES --> UC7
+    GES --> UC8
+    GES --> UC10
+
+    PROF --> UC6
+    PROF --> UC10
+    PROF --> UC11
+
+    DOC --> UC6
+    DOC --> UC10
+    DOC --> UC11
+
+    BOD --> UC3
+    BOD --> UC4
+    BOD --> UC5
+    BOD --> UC10
+
+    ASIST --> UC4
+    ASIST --> UC5
+    ASIST --> UC10
+
+    style ADM fill:#ff6b6b,stroke:#c92a2a,color:#fff
+    style COADM fill:#ff9999,stroke:#c92a2a,color:#fff
+    style GES fill:#4c6ef5,stroke:#1540ab,color:#fff
+    style PROF fill:#f59f00,stroke:#d9780f,color:#fff
+    style DOC fill:#ffd43b,stroke:#d9780f,color:#000
+    style BOD fill:#51cf66,stroke:#2b8a3e,color:#000
+    style ASIST fill:#a9e34b,stroke:#2b8a3e,color:#000
+</div>
+
+<hr class="separador">
+
+<h3>Matriz de Control de Acceso RBAC — 7 roles × 15 módulos</h3>
+<table>
+  <thead>
+    <tr>
+      <th style="text-align:left">Módulo</th>
+      <th>⚙️ Admin</th>
+      <th>🔧 Co-Admin</th>
+      <th>📋 Gestor</th>
+      <th>👨‍🏫 Prof. Cargo</th>
+      <th>🎓 Docente</th>
+      <th>📦 Enc. Bodega</th>
+      <th>🔑 Asistente</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td class="rol-col">📊 Dashboard</td>
+      <td><span class="crud">CRUD</span></td>
+      <td><span class="crud">CRUD</span></td>
+      <td><span class="r">R</span></td>
+      <td><span class="r">R</span></td>
+      <td><span class="r">R</span></td>
+      <td><span class="r">R</span></td>
+      <td><span class="r">R</span></td>
+    </tr>
+    <tr>
+      <td class="rol-col">📦 Inventario</td>
+      <td><span class="crud">CRUD</span></td>
+      <td><span class="crud">CRUD</span></td>
+      <td><span class="none">—</span></td>
+      <td><span class="none">—</span></td>
+      <td><span class="none">—</span></td>
+      <td><span class="cru">CRU</span></td>
+      <td><span class="none">—</span></td>
+    </tr>
+    <tr>
+      <td class="rol-col">🏷️ Categorías</td>
+      <td><span class="crud">CRUD</span></td>
+      <td><span class="crud">CRUD</span></td>
+      <td><span class="none">—</span></td>
+      <td><span class="none">—</span></td>
+      <td><span class="none">—</span></td>
+      <td><span class="cru">CRU</span></td>
+      <td><span class="r">R</span></td>
+    </tr>
+    <tr>
+      <td class="rol-col">📏 Unidades Medida</td>
+      <td><span class="crud">CRUD</span></td>
+      <td><span class="crud">CRUD</span></td>
+      <td><span class="none">—</span></td>
+      <td><span class="none">—</span></td>
+      <td><span class="none">—</span></td>
+      <td><span class="cru">CRU</span></td>
+      <td><span class="r">R</span></td>
+    </tr>
+    <tr>
+      <td class="rol-col">📜 Historial Movimientos</td>
+      <td><span class="crud">CRUD</span></td>
+      <td><span class="crud">CRUD</span></td>
+      <td><span class="none">—</span></td>
+      <td><span class="none">—</span></td>
+      <td><span class="none">—</span></td>
+      <td><span class="cru">CRU</span></td>
+      <td><span class="r">R</span></td>
+    </tr>
+    <tr>
+      <td class="rol-col">🚛 Bodega Tránsito</td>
+      <td><span class="crud">CRUD</span></td>
+      <td><span class="crud">CRUD</span></td>
+      <td><span class="none">—</span></td>
+      <td><span class="none">—</span></td>
+      <td><span class="none">—</span></td>
+      <td><span class="cru">CRU</span></td>
+      <td><span class="cr">CR</span></td>
+    </tr>
+    <tr>
+      <td class="rol-col">📋 Solicitud</td>
+      <td><span class="crud">CRUD</span></td>
+      <td><span class="crud">CRUD</span></td>
+      <td><span class="none">—</span></td>
+      <td><span class="cru">CRU</span></td>
+      <td><span class="r">R</span></td>
+      <td><span class="none">—</span></td>
+      <td><span class="none">—</span></td>
+    </tr>
+    <tr>
+      <td class="rol-col">✅ Gestión Solicitudes</td>
+      <td><span class="crud">CRUD</span></td>
+      <td><span class="crud">CRUD</span></td>
+      <td><span class="cru">CRU</span></td>
+      <td><span class="none">—</span></td>
+      <td><span class="none">—</span></td>
+      <td><span class="none">—</span></td>
+      <td><span class="none">—</span></td>
+    </tr>
+    <tr>
+      <td class="rol-col">🛒 Gestión Pedidos</td>
+      <td><span class="crud">CRUD</span></td>
+      <td><span class="crud">CRUD</span></td>
+      <td><span class="cru">CRU</span></td>
+      <td><span class="none">—</span></td>
+      <td><span class="none">—</span></td>
+      <td><span class="none">—</span></td>
+      <td><span class="none">—</span></td>
+    </tr>
+    <tr>
+      <td class="rol-col">📅 Ped. Semana Bodega</td>
+      <td><span class="crud">CRUD</span></td>
+      <td><span class="crud">CRUD</span></td>
+      <td><span class="none">—</span></td>
+      <td><span class="cru">CRU</span></td>
+      <td><span class="r">R</span></td>
+      <td><span class="none">—</span></td>
+      <td><span class="none">—</span></td>
+    </tr>
+    <tr>
+      <td class="rol-col">🗓️ Ped. Diarios Bodega</td>
+      <td><span class="crud">CRUD</span></td>
+      <td><span class="crud">CRUD</span></td>
+      <td><span class="none">—</span></td>
+      <td><span class="none">—</span></td>
+      <td><span class="none">—</span></td>
+      <td><span class="cru">CRU</span></td>
+      <td><span class="cru">CRU</span></td>
+    </tr>
+    <tr>
+      <td class="rol-col">📚 Gestión Académica</td>
+      <td><span class="crud">CRUD</span></td>
+      <td><span class="crud">CRUD</span></td>
+      <td><span class="none">—</span></td>
+      <td><span class="none">—</span></td>
+      <td><span class="none">—</span></td>
+      <td><span class="none">—</span></td>
+      <td><span class="none">—</span></td>
+    </tr>
+    <tr>
+      <td class="rol-col">👥 Gestión Usuarios</td>
+      <td><span class="crud">CRUD</span></td>
+      <td><span class="cru">CRU</span></td>
+      <td><span class="none">—</span></td>
+      <td><span class="none">—</span></td>
+      <td><span class="none">—</span></td>
+      <td><span class="none">—</span></td>
+      <td><span class="none">—</span></td>
+    </tr>
+    <tr>
+      <td class="rol-col">🔐 Gestión Roles</td>
+      <td><span class="crud">CRUD</span></td>
+      <td><span class="none">—</span></td>
+      <td><span class="none">—</span></td>
+      <td><span class="none">—</span></td>
+      <td><span class="none">—</span></td>
+      <td><span class="none">—</span></td>
+      <td><span class="none">—</span></td>
+    </tr>
+    <tr>
+      <td class="rol-col">⚙️ Admin Sistema</td>
+      <td><span class="crud">CRUD</span></td>
+      <td><span class="none">—</span></td>
+      <td><span class="none">—</span></td>
+      <td><span class="none">—</span></td>
+      <td><span class="none">—</span></td>
+      <td><span class="none">—</span></td>
+      <td><span class="none">—</span></td>
+    </tr>
+  </tbody>
+</table>
+
+<p style="font-size:12px; color:#6c757d; margin-top:10px;">
+  <strong>Leyenda:</strong>
+  <span class="crud">CRUD</span> = Crear + Leer + Actualizar + Eliminar &nbsp;|&nbsp;
+  <span class="cru">CRU</span> = Crear + Leer + Actualizar &nbsp;|&nbsp;
+  <span class="cr">CR</span> = Crear + Leer &nbsp;|&nbsp;
+  <span class="r">R</span> = Solo Leer &nbsp;|&nbsp;
+  <span class="none">—</span> = Sin acceso
+</p>
+
+<script>mermaid.initialize({ startOnLoad: true, theme: 'default', flowchart: { curve: 'basis' } });</script>
+</body>
+</html>
