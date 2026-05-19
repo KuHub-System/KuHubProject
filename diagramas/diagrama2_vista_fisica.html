@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>KuHub — Vista Física</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<style>
+  body { font-family: Arial, sans-serif; background: white; padding: 20px; }
+  h2 { color: #1a1a2e; border-bottom: 3px solid #b8960c; padding-bottom: 8px; }
+  .mermaid { max-width: 1100px; margin: auto; }
+  .instruccion { background: #fff3cd; border: 1px solid #ffc107; padding: 10px; border-radius: 6px; margin-bottom: 20px; font-size: 14px; }
+</style>
+</head>
+<body>
+<div class="instruccion">
+  📸 <strong>Para capturar:</strong> Espera que cargue → <kbd>Win + Shift + S</kbd> → selecciona el diagrama → guarda como PNG.
+</div>
+<h2>Vista Física — Topología de Despliegue AWS · KuHub</h2>
+<div class="mermaid">
+graph TB
+    subgraph Internet["🌐 INTERNET"]
+        User["👤 Usuario Final\nChrome / Firefox / Edge"]
+    end
+
+    subgraph InstA["🔵 AWS Lightsail — Instancia A · Aplicación\nIP: 52.5.222.79 · Ubuntu 20.04 LTS · 2GB RAM · 2vCPU · 60GB SSD"]
+        NGINX_HOST["🔒 NGINX (Host)\nPuerto :80 → redirect HTTPS\nPuerto :443 SSL/TLS\nLet's Encrypt (Certbot)\nProxy → localhost:3000"]
+
+        subgraph DockerNet["🐳 Docker Network (kuhub-app)"]
+            FE["🖥️ kuhub-frontend\nReact 18 SPA + NGINX interno\nPuerto: 127.0.0.1:3000:80\nRAM: 200 MB máx\nProxy /api/* → backend:8080"]
+            BE["⚙️ kuhub-backend\nSpring Boot 3.4.3\nJava 21 LTS\nPuerto: 127.0.0.1:8080\nRAM: 1400 MB máx\nJVM: -Xmx1024m -Xms768m"]
+        end
+
+        NGINX_HOST --> FE
+        FE -->|"/api/* proxy"| BE
+    end
+
+    subgraph VPC["🔒 VPC Peering AWS\nRed privada · IP: 172.26.12.228\nBaja latencia · Sin costo extra de ancho de banda"]
+        LINK["Conexión segura\nTCP 5432"]
+    end
+
+    subgraph InstB["🟠 AWS Lightsail — Instancia B · Base de Datos\nIP: 13.218.253.211 · Ubuntu 24.04 LTS · 512MB RAM + 1.5GB Swap · 2vCPU · 20GB SSD"]
+        PG["🐘 PostgreSQL 16.13\nBase de datos: kuhub_devs\nPuerto: 5432\nshared_buffers: 128MB\nmax_connections: 100\nExtensión: pgcrypto\n38 tablas · Particionamiento semestral"]
+    end
+
+    subgraph CICD["🤖 GitHub Actions (SaaS)\ngit tag K*.*.* → Build → Push Docker Hub → SSH Deploy"]
+        GA["Pipeline automático\nBuild Backend + Frontend\nDocker Hub: martorias/kuhub-app\nDeploy en 5-10 minutos"]
+    end
+
+    User -->|"HTTPS :443\nappkuhub.questweb.cl"| NGINX_HOST
+    BE -->|"JDBC/JPA\nVPC Peering privado"| LINK
+    LINK --> PG
+    GA -.->|"docker compose pull\ndocker compose up -d"| DockerNet
+
+    style NGINX_HOST fill:#ff6b6b,stroke:#c92a2a,color:#fff,stroke-width:2px
+    style BE fill:#4c6ef5,stroke:#1540ab,color:#fff,stroke-width:2px
+    style FE fill:#15aabf,stroke:#0c7792,color:#fff
+    style PG fill:#51cf66,stroke:#2b8a3e,color:#000,stroke-width:2px
+    style InstA fill:#e8f4fd,stroke:#2196f3,stroke-width:2px
+    style InstB fill:#fff3e0,stroke:#ff9800,stroke-width:2px
+    style VPC fill:#f3e5f5,stroke:#9c27b0,stroke-width:2px
+    style CICD fill:#e8f5e9,stroke:#4caf50,stroke-width:1px
+</div>
+<script>mermaid.initialize({ startOnLoad: true, theme: 'default', flowchart: { curve: 'basis', rankSpacing: 80 } });</script>
+</body>
+</html>
