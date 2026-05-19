@@ -10,6 +10,7 @@ import {
   Card,
   CardBody,
   Chip,
+  DatePicker,
   DateRangePicker,
   Divider,
   Input,
@@ -35,6 +36,7 @@ import {
   obtenerProveedoresService,
   obtenerProveedoresPaginadoService,
   obtenerProveedorDetalleService,
+  obtenerProductosPorFechaService,
   crearProveedorService,
   actualizarProveedorService,
   eliminarProveedorService,
@@ -1872,22 +1874,56 @@ const ProductosProveedor: React.FC<ProductosProveedorProps> = ({
   mostrarInactivos = true,
   onMostrarInactivosChange,
 }) => {
-  const categorias = Object.keys(detalle.productosPorCategoria);
+  // Vista histórica de precios: cuando el usuario elige una fecha, se carga el
+  // detalle del proveedor con los precios vigentes hasta esa fecha (read-only).
+  const [fechaHistorica, setFechaHistorica] = React.useState<CalendarDate | null>(null);
+  const [detalleHistorico, setDetalleHistorico] = React.useState<IProveedorDetalle | null>(null);
+  const [loadingHistorico, setLoadingHistorico] = React.useState(false);
+  const [errorHistorico, setErrorHistorico] = React.useState<string | null>(null);
+
+  const esHistorico = detalleHistorico !== null;
+  const detalleVisible = detalleHistorico ?? detalle;
+  const editable = canEdit && !esHistorico;
+
+  React.useEffect(() => {
+    if (!fechaHistorica) {
+      setDetalleHistorico(null);
+      setErrorHistorico(null);
+      return;
+    }
+    let cancelado = false;
+    const fechaStr = fechaHistorica.toString();
+    setLoadingHistorico(true);
+    setErrorHistorico(null);
+    obtenerProductosPorFechaService(detalle.idProveedor, fechaStr)
+      .then(d => { if (!cancelado) setDetalleHistorico(d); })
+      .catch(err => { if (!cancelado) setErrorHistorico(err.message || 'Error al cargar el historial'); })
+      .finally(() => { if (!cancelado) setLoadingHistorico(false); });
+    return () => { cancelado = true; };
+  }, [fechaHistorica, detalle.idProveedor]);
+
+  const limpiarFecha = () => {
+    setFechaHistorica(null);
+    setDetalleHistorico(null);
+    setErrorHistorico(null);
+  };
+
+  const categorias = Object.keys(detalleVisible.productosPorCategoria);
   const [expandedCategories, setExpandedCategories] = React.useState<Set<string>>(
     new Set(categorias)
   );
   const [searchQuery, setSearchQuery] = React.useState('');
 
-  if (categorias.length === 0) {
-    return (
-      <p className="text-xs text-default-400 py-4 text-center">
-        Este proveedor no tiene productos asignados aún.
-      </p>
-    );
-  }
+  // Cuando cambian las categorías visibles (ej. al cargar histórico), expandir todas
+  React.useEffect(() => {
+    setExpandedCategories(new Set(Object.keys(detalleVisible.productosPorCategoria)));
+  }, [detalleVisible]);
+
+  const hoy = new Date();
+  const calendarHoy = new CalendarDate(hoy.getFullYear(), hoy.getMonth() + 1, hoy.getDate());
 
   // Filtrar productos según mostrarInactivos y búsqueda
-  const filtrarProductos = (productos: typeof detalle.productosPorCategoria[string]) => {
+  const filtrarProductos = (productos: typeof detalleVisible.productosPorCategoria[string]) => {
     let filtered = mostrarInactivos ? productos : productos.filter(p => p.activo);
 
     if (searchQuery.trim()) {
@@ -1911,7 +1947,7 @@ const ProductosProveedor: React.FC<ProductosProveedorProps> = ({
 
   return (
     <div className="space-y-3 mt-2">
-      {/* Controles: búsqueda y mostrar/esconder deshabilitados */}
+      {/* Controles: búsqueda, vista histórica y mostrar/esconder deshabilitados */}
       <div className="space-y-2 px-2 pb-3">
         {/* Buscador de productos (siempre visible, pero se prioriza si el usuario escribe) */}
         <div className="flex items-center gap-2">
@@ -1933,18 +1969,57 @@ const ProductosProveedor: React.FC<ProductosProveedorProps> = ({
           )}
         </div>
 
+        {/* Vista histórica de precios — DatePicker */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <Icon icon="lucide:history" width={16} className="text-default-400" />
+          <span className="text-xs text-default-500">Ver precios al:</span>
+          <DatePicker
+            size="sm"
+            value={fechaHistorica}
+            onChange={setFechaHistorica}
+            maxValue={calendarHoy}
+            granularity="day"
+            aria-label="Fecha para vista histórica de precios"
+            className="max-w-[180px]"
+          />
+          {fechaHistorica && (
+            <Button size="sm" variant="light" onPress={limpiarFecha}>
+              <Icon icon="lucide:x" width={14} className="mr-1" />
+              Ver actual
+            </Button>
+          )}
+          {loadingHistorico && <Spinner size="sm" color="primary" />}
+        </div>
+
+        {/* Banner indicando vista histórica */}
+        {esHistorico && fechaHistorica && (
+          <div className="flex items-start gap-2 px-3 py-2 rounded-lg bg-warning-50 dark:bg-warning-900/20 border border-warning-200 dark:border-warning-800">
+            <Icon icon="lucide:eye" width={14} className="text-warning-600 mt-0.5" />
+            <p className="text-xs text-warning-700 dark:text-warning-300">
+              Vista histórica al <strong>{fechaHistorica.toString()}</strong> — los precios mostrados eran los vigentes a esa fecha. La edición está deshabilitada.
+            </p>
+          </div>
+        )}
+
+        {errorHistorico && (
+          <div className="flex items-start gap-2 px-3 py-2 rounded-lg bg-danger-50 dark:bg-danger-900/20 border border-danger-200 dark:border-danger-800">
+            <Icon icon="lucide:alert-circle" width={14} className="text-danger-600 mt-0.5" />
+            <p className="text-xs text-danger-700 dark:text-danger-300">{errorHistorico}</p>
+          </div>
+        )}
+
         {/* Opción para mostrar/esconder deshabilitados */}
-        {canEdit && (
+        {editable && (
           <div className="flex items-center gap-2">
             <input
               type="checkbox"
-              id={`esconderInactivos-${detalle.idProveedor}`}
+              id={`esconderInactivos-${detalleVisible.idProveedor}`}
               checked={!mostrarInactivos}
               onChange={(e) => onMostrarInactivosChange?.(!e.target.checked)}
               className="w-4 h-4 rounded cursor-pointer accent-warning"
             />
             <label
-              htmlFor={`esconderInactivos-${detalle.idProveedor}`}
+              htmlFor={`esconderInactivos-${detalleVisible.idProveedor}`}
               className="text-xs text-default-500 cursor-pointer hover:text-default-700 transition-colors"
             >
               {mostrarInactivos ? 'Esconder deshabilitados' : 'Mostrar deshabilitados'}
@@ -1952,10 +2027,19 @@ const ProductosProveedor: React.FC<ProductosProveedorProps> = ({
           </div>
         )}
       </div>
+
+      {categorias.length === 0 && !loadingHistorico && (
+        <p className="text-xs text-default-400 py-4 text-center">
+          {esHistorico
+            ? 'No había productos para este proveedor en la fecha seleccionada.'
+            : 'Este proveedor no tiene productos asignados aún.'}
+        </p>
+      )}
+
       {categorias.map((categoria) => {
         const isExpanded = expandedCategories.has(categoria);
-        const productosEnCategoria = filtrarProductos(detalle.productosPorCategoria[categoria]);
-        const total = detalle.productosPorCategoria[categoria].length;
+        const productosEnCategoria = filtrarProductos(detalleVisible.productosPorCategoria[categoria]);
+        const total = detalleVisible.productosPorCategoria[categoria].length;
 
         // No renderizar categoría si no hay productos coincidentes con búsqueda
         if (productosEnCategoria.length === 0 && searchQuery.trim()) {
@@ -1998,11 +2082,11 @@ const ProductosProveedor: React.FC<ProductosProveedorProps> = ({
                       <th className="text-center py-2 px-3 font-medium w-24">Precio + IVA</th>
                       <th className="text-center py-2 px-3 font-medium w-16">Estado</th>
                       <th className="text-center py-2 px-3 font-medium w-20">Actualizado</th>
-                      {canEdit && <th className="py-2 px-3 font-medium text-center w-16">Acciones</th>}
+                      {editable && <th className="py-2 px-3 font-medium text-center w-16">Acciones</th>}
                 </tr>
               </thead>
               <tbody>
-                {filtrarProductos(detalle.productosPorCategoria[categoria]).map((prod) => {
+                {filtrarProductos(detalleVisible.productosPorCategoria[categoria]).map((prod) => {
                   const isEditing = editingPrecio?.idProveedorProducto === prod.idProveedorProducto;
                   const isEditingNeto = isEditing && editingPrecio?.campo === 'neto';
                   const isEditingIva  = isEditing && editingPrecio?.campo === 'iva';
@@ -2056,29 +2140,29 @@ const ProductosProveedor: React.FC<ProductosProveedorProps> = ({
                       <td className="py-2 px-3 text-default-500 text-center">
                         {prod.marcaProducto || '—'}
                       </td>
-                      {/* Precio Neto — editable inline */}
+                      {/* Precio Neto — editable inline (deshabilitado en vista histórica) */}
                       <td className="py-2 px-3 text-center">
                         {isEditingNeto ? inlineEditUI : isEditingIva ? (
                           <span className="text-default-300">—</span>
                         ) : (
                           <span
-                            className={`cursor-pointer hover:text-primary transition-colors ${canEdit ? 'underline decoration-dotted' : ''}`}
-                            title={canEdit ? 'Clic para editar precio neto' : undefined}
-                            onClick={() => canEdit && onIniciarEditPrecio(prod.idProveedorProducto, prod.precioNeto, 'neto')}
+                            className={`cursor-pointer hover:text-primary transition-colors ${editable ? 'underline decoration-dotted' : ''}`}
+                            title={editable ? 'Clic para editar precio neto' : undefined}
+                            onClick={() => editable && onIniciarEditPrecio(prod.idProveedorProducto, prod.precioNeto, 'neto')}
                           >
                             {formatPrecio(prod.precioNeto)}
                           </span>
                         )}
                       </td>
-                      {/* Precio + IVA — editable inline */}
+                      {/* Precio + IVA — editable inline (deshabilitado en vista histórica) */}
                       <td className="py-2 px-3 text-center">
                         {isEditingIva ? inlineEditUI : isEditingNeto ? (
                           <span className="text-default-300">—</span>
                         ) : (
                           <span
-                            className={`cursor-pointer hover:text-primary transition-colors ${canEdit ? 'underline decoration-dotted' : ''}`}
-                            title={canEdit ? 'Clic para editar precio con IVA' : undefined}
-                            onClick={() => canEdit && onIniciarEditPrecio(prod.idProveedorProducto, prod.precioConIva, 'iva')}
+                            className={`cursor-pointer hover:text-primary transition-colors ${editable ? 'underline decoration-dotted' : ''}`}
+                            title={editable ? 'Clic para editar precio con IVA' : undefined}
+                            onClick={() => editable && onIniciarEditPrecio(prod.idProveedorProducto, prod.precioConIva, 'iva')}
                           >
                             {formatPrecio(prod.precioConIva)}
                           </span>
@@ -2090,7 +2174,7 @@ const ProductosProveedor: React.FC<ProductosProveedorProps> = ({
                           ? new Date(prod.fechaActualizacion).toLocaleDateString('es-CL')
                           : '—'}
                       </td>
-                      {canEdit && (
+                      {editable && (
                         <td className="py-2 px-3 text-center">
                           <Tooltip content={prod.activo ? 'Deshabilitar producto' : 'Habilitar producto'}>
                             <Button
@@ -2099,8 +2183,8 @@ const ProductosProveedor: React.FC<ProductosProveedorProps> = ({
                               variant="light"
                               onPress={() =>
                                 prod.activo
-                                  ? onQuitarProducto(detalle.idProveedor, prod)
-                                  : onToggleProducto(detalle.idProveedor, prod)
+                                  ? onQuitarProducto(detalleVisible.idProveedor, prod)
+                                  : onToggleProducto(detalleVisible.idProveedor, prod)
                               }
                               className={prod.activo ? 'text-success hover:text-danger' : 'text-warning hover:text-success'}
                             >
