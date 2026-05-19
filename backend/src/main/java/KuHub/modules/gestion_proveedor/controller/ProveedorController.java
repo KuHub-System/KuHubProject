@@ -17,11 +17,13 @@ import KuHub.modules.gestion_proveedor.service.ProveedorService;
 import KuHub.modules.gestion_solicitud.dtos.request.DateRangeDTO;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.time.LocalDate;
 import java.util.List;
 
 /**
@@ -88,6 +90,25 @@ public class ProveedorController {
         return ResponseEntity
                 .status(200)
                 .body(proveedorService.obtenerDetalle(id));
+    }
+
+    /**
+     * Vista histórica: detalle del proveedor con los precios vigentes hasta la fecha
+     * seleccionada. Por cada producto se devuelve la versión cuya fecha_actualizacion
+     * sea la más reciente pero ≤ a la fecha consultada (incluye el día completo).
+     * ✅ En uso: Consumido por obtenerProductosPorFechaService en proveedor-service.ts.
+     *
+     * @param id    ID del proveedor
+     * @param fecha Fecha de corte en formato YYYY-MM-DD
+     */
+    @GetMapping("/{id}/productos-por-fecha")
+    public ResponseEntity<ProveedorDetalleDTO> findByIdEnFecha(
+            @PathVariable Integer id,
+            @RequestParam("fecha") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fecha
+    ) {
+        return ResponseEntity
+                .status(200)
+                .body(proveedorService.obtenerDetalleEnFecha(id, fecha));
     }
 
     /**
