@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>KuHub — Vista de Procesos</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<style>
+  body { font-family: Arial, sans-serif; background: white; padding: 20px; }
+  h2 { color: #1a1a2e; border-bottom: 3px solid #b8960c; padding-bottom: 8px; }
+  h3 { color: #495057; margin-top: 30px; }
+  .mermaid { max-width: 1100px; margin: 10px auto 40px auto; }
+  .instruccion { background: #fff3cd; border: 1px solid #ffc107; padding: 10px; border-radius: 6px; margin-bottom: 20px; font-size: 14px; }
+  .separador { border: none; border-top: 2px dashed #dee2e6; margin: 30px 0; }
+</style>
+</head>
+<body>
+<div class="instruccion">
+  📸 <strong>Para capturar:</strong> Espera que carguen todos los diagramas → captura cada uno por separado con <kbd>Win + Shift + S</kbd>.
+</div>
+
+<h2>Vista de Procesos — KuHub</h2>
+
+<h3>Flujo 1 — Docente crea Solicitud de ingredientes</h3>
+<div class="mermaid">
+sequenceDiagram
+    actor D as 🎓 Docente / Profesor
+    participant F as Frontend React
+    participant API as Backend Spring Boot
+    participant DB as PostgreSQL
+
+    rect rgb(220, 235, 255)
+        Note over D,DB: FASE 1 — Carga de datos
+        D->>F: Accede a /solicitud
+        F->>API: GET /api/v1/solicitud/curses-by-solicitation
+        API->>DB: SELECT asignaturas + secciones del docente
+        DB-->>API: Lista de asignaturas activas
+        API-->>F: JSON con asignaturas y secciones
+        F->>API: GET /api/v1/solicitud/pedidos-semanales-by-solicitation
+        API-->>F: Pedidos semanales con ingredientes
+        F-->>D: Muestra formulario de solicitud
+    end
+
+    rect rgb(220, 245, 220)
+        Note over D,DB: FASE 2 — Selección y cálculo
+        D->>F: Selecciona Asignatura → Sección → Pedido Semanal
+        F->>D: Calcula: cantidad inscritos × porción
+        D->>F: Ajusta cantidades si necesita
+    end
+
+    rect rgb(255, 248, 210)
+        Note over D,DB: FASE 3 — Envío
+        D->>F: Click "Guardar Solicitud"
+        F->>API: POST /api/v1/solicitud/generate-mass-solicitions
+        API->>DB: INSERT solicitud (estado PENDIENTE)
+        API->>DB: INSERT detalle_solicitud × N productos
+        DB-->>API: OK
+        API-->>F: 201 Created
+        F-->>D: ✅ Solicitud registrada — Estado PENDIENTE
+    end
+</div>
+
+<hr class="separador">
+
+<h3>Flujo 2 — Gestor revisa y consolida Solicitudes en Pedido</h3>
+<div class="mermaid">
+sequenceDiagram
+    actor G as 👤 Gestor de Pedidos
+    participant F as Frontend React
+    participant API as Backend Spring Boot
+    participant DB as PostgreSQL
+
+    rect rgb(230, 240, 255)
+        Note over G,DB: FASE 1 — Revisión semanal
+        G->>F: Accede a /gestion-solicitudes
+        G->>F: Selecciona rango de semanas
+        F->>API: POST /api/v1/solicitud/find-solicitations-per-week
+        API->>DB: SELECT solicitudes agrupadas por asignatura/sección
+        DB-->>API: Solicitudes con estado PENDIENTE
+        API-->>F: Lista jerárquica
+        F-->>G: Tabla con solicitudes pendientes
+    end
+
+    rect rgb(220, 245, 220)
+        Note over G,DB: FASE 2 — Aceptar o Rechazar
+        G->>F: Selecciona solicitudes → Click Aceptar/Rechazar
+        F->>API: PATCH /api/v1/solicitud/change-massive-status
+        API->>DB: UPDATE solicitud SET estado = ACEPTADA / RECHAZADA
+        DB-->>API: OK
+        API-->>F: 200 OK
+        F-->>G: ✅ Estado actualizado
+    end
+
+    rect rgb(255, 240, 210)
+        Note over G,DB: FASE 3 — Consolidar en Pedido
+        G->>F: Accede a /gestion-pedidos
+        F->>API: POST /api/v1/pedido/consolidate (preview)
+        API->>DB: SELECT solicitudes ACEPTADAS → GROUP BY producto SUM(cantidad)
+        API-->>F: Tabla consolidada: Producto | Cant. Total | Precio
+        G->>F: Revisa y Click "Consolidar Pedido"
+        F->>API: POST /api/v1/pedido/consolidate-order
+        API->>DB: INSERT pedido (estado PENDIENTE)
+        API->>DB: INSERT detalle_pedido × N productos
+        API->>DB: INSERT pedido_solicitud (relación M:N)
+        API->>DB: UPDATE solicitudes → estado EN_PEDIDO
+        DB-->>API: OK
+        API-->>F: 201 Created
+        F-->>G: ✅ Pedido creado
+    end
+</div>
+
+<hr class="separador">
+
+<h3>Flujo 3 — Estados de Solicitud y Pedido</h3>
+<div class="mermaid">
+stateDiagram-v2
+    direction LR
+    [*] --> PENDIENTE : Docente crea solicitud\nPOST /generate-mass-solicitions
+
+    PENDIENTE --> ACEPTADA : Gestor acepta\nPATCH /change-massive-status
+    PENDIENTE --> RECHAZADA : Gestor rechaza\nPATCH /change-massive-status
+
+    ACEPTADA --> EN_PEDIDO : Consolidación\nPOST /consolidate-order
+    ACEPTADA --> PROCESADA : Procesamiento directo
+
+    RECHAZADA --> [*] : Fin de ciclo
+    EN_PEDIDO --> [*] : Fin de ciclo
+    PROCESADA --> [*] : Fin de ciclo
+</div>
+
+<div class="mermaid">
+stateDiagram-v2
+    direction LR
+    [*] --> PENDIENTE : Gestor consolida\nPOST /consolidate-order
+
+    PENDIENTE --> APROBADO : Admin aprueba
+    PENDIENTE --> CANCELADO : Admin cancela
+
+    APROBADO --> EN_PREPARACION : Bodega prepara entrega\nPOST /preparar-entrega
+
+    EN_PREPARACION --> ENTREGADO : Bodega confirma recepción\nPUT /bodega-transito/confirmar
+    EN_PREPARACION --> CANCELADO : Error o cancelación
+
+    ENTREGADO --> [*] : Stock actualizado
+    CANCELADO --> [*] : Registro archivado
+</div>
+
+<script>mermaid.initialize({ startOnLoad: true, theme: 'default', sequence: { actorMargin: 80, messageMargin: 40 } });</script>
+</body>
+</html>
