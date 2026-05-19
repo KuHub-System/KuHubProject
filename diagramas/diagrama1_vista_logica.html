@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>KuHub — Vista Lógica</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<style>
+  body { font-family: Arial, sans-serif; background: white; padding: 20px; }
+  h2 { color: #1a1a2e; border-bottom: 3px solid #b8960c; padding-bottom: 8px; }
+  .mermaid { max-width: 1200px; margin: auto; }
+  .instruccion { background: #fff3cd; border: 1px solid #ffc107; padding: 10px; border-radius: 6px; margin-bottom: 20px; font-size: 14px; }
+</style>
+</head>
+<body>
+<div class="instruccion">
+  📸 <strong>Para capturar:</strong> Espera que cargue el diagrama → presiona <kbd>Ctrl + Shift + S</kbd> (Windows Snipping Tool) → selecciona el diagrama completo → guarda como PNG.
+</div>
+<h2>Vista Lógica — KuHub</h2>
+<div class="mermaid">
+graph TB
+    subgraph Client["📱 Cliente"]
+        Browser["Navegador\nChrome / Safari / Firefox"]
+    end
+
+    subgraph Frontend["🖥️ FRONTEND — React 18 + TypeScript + Vite"]
+        Pages["📄 Pages\n18 pantallas lazy-loaded\nlogin • dashboard • inventario\nsolicitud • gestion-pedidos\nacadémica • proveedores • más"]
+        Components["⚛️ Components\nHeroUI + Tailwind CSS\nmodales • tablas • cards"]
+        Services["🔗 Services (27)\nClientes HTTP Axios tipados\npor dominio de negocio"]
+        State["🎯 State\nContext API + Custom Hooks\nAuthContext • PermissionContext\nThemeContext"]
+    end
+
+    subgraph Backend["🔧 BACKEND — Spring Boot 3.4.3 + Java 21 LTS"]
+        Security["🔐 Security Layer\nJWT + RBAC + Rate Limiting\nDynamicPermissionService\nSpring Security"]
+
+        subgraph Modules["9 Módulos de Negocio"]
+            GA["📚 Gestión Académica\nAsignaturas · Secciones\nSalas · Horarios · Reservas"]
+            GI["📦 Gestión Inventario\nProductos · Stock\nMovimientos · BodegaTransito"]
+            GPed["🛒 Gestión Pedido\nConsolidación · Estados\nDetallePedido"]
+            GSol["📋 Gestión Solicitud\nFlujo docente-bodega\nAprobación masiva"]
+            GU["👥 Gestión Usuario\nAuth JWT · Roles\n7 perfiles RBAC"]
+            GProv["🚚 Gestión Proveedor\nProveedores · Precios\nDías entrega"]
+            PSB["📅 Pedido Semana Bodega\nPedidos semanales\nIngredientes vinculados"]
+            Dash["📊 Dashboard\nKPIs por rol · Analytics\nExportación PDF/Excel"]
+            GSis["⚙️ Gestión Sistema\nSemanas académicas\nConfig global"]
+        end
+
+        Infra["⚙️ Infraestructura\nGlobalExceptionHandler\nLogging · Auditoría\nSwaggerConfig OpenAPI"]
+    end
+
+    subgraph Database["💾 Persistencia"]
+        PG["🐘 PostgreSQL 16.13\nkuhub_devs\n38 tablas · pgcrypto\nParticionamiento por semestre"]
+    end
+
+    Browser -->|"HTTPS\nappkuhub.questweb.cl"| Frontend
+    Frontend -->|"REST API + JWT Bearer\n/api/v1/..."| Security
+    Security --> Modules
+    Modules --> Infra
+    Infra -->|"JDBC / JPA\nVPC Peering privado\n172.26.12.228:5432"| PG
+
+    style Security fill:#ff6b6b,stroke:#c92a2a,color:#fff,stroke-width:2px
+    style Modules fill:#4c6ef5,stroke:#1540ab,color:#fff,stroke-width:2px
+    style Dash fill:#15aabf,stroke:#0c7792,color:#fff
+    style PG fill:#51cf66,stroke:#2b8a3e,color:#000
+    style Frontend fill:#f8f9fa,stroke:#6c757d
+    style Backend fill:#f8f9fa,stroke:#6c757d
+    style Client fill:#fff3cd,stroke:#ffc107
+    style Database fill:#d4edda,stroke:#28a745
+</div>
+<script>mermaid.initialize({ startOnLoad: true, theme: 'default', flowchart: { curve: 'basis' } });</script>
+</body>
+</html>

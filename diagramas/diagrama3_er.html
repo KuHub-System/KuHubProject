@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>KuHub — Diagrama ER por Secciones</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f0f0; }
+
+  .pagina {
+    width: 210mm;
+    min-height: 297mm;
+    height: 297mm;
+    margin: 8mm auto;
+    background: white;
+    padding: 10mm 12mm 8mm 12mm;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    page-break-after: always;
+    break-after: page;
+    overflow: hidden;
+  }
+
+  /* ENCABEZADO COMPACTO */
+  .encabezado {
+    border-bottom: 3px solid #b8960c;
+    padding-bottom: 6px;
+    margin-bottom: 6px;
+    flex-shrink: 0;
+  }
+  .label-doc  { font-size: 9px;  color: #b8960c; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; }
+  .titulo-pag { font-size: 14px; color: #1a1a2e; font-weight: 700; margin: 2px 0; }
+  .subtitulo  { font-size: 10px; color: #6c757d; }
+
+  /* DESCRIPCIÓN MUY COMPACTA */
+  .desc {
+    background: #f8f9fa;
+    border-left: 4px solid #b8960c;
+    padding: 5px 10px;
+    font-size: 9.5px;
+    color: #495057;
+    line-height: 1.45;
+    margin-bottom: 6px;
+    border-radius: 0 4px 4px 0;
+    flex-shrink: 0;
+  }
+  .desc strong { color: #1a1a2e; }
+
+  /* DIAGRAMA OCUPA TODO EL ESPACIO RESTANTE */
+  .diagrama-wrapper {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    min-height: 0;
+  }
+
+  .mermaid {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* FORZAR SVG A OCUPAR EL ANCHO COMPLETO */
+  .mermaid svg {
+    width: 100% !important;
+    height: auto !important;
+    max-width: none !important;
+    max-height: 215mm !important;
+  }
+
+  /* PIE */
+  .pie {
+    border-top: 1px solid #dee2e6;
+    padding-top: 4px;
+    margin-top: 5px;
+    display: flex;
+    justify-content: space-between;
+    font-size: 8px;
+    color: #adb5bd;
+    flex-shrink: 0;
+  }
+
+  /* BADGE */
+  .badge {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 20px;
+    font-size: 10px;
+    font-weight: 700;
+    margin-bottom: 5px;
+    flex-shrink: 0;
+  }
+
+  /* INSTRUCCIONES PANTALLA */
+  .instruccion {
+    width: 210mm;
+    margin: 0 auto 6mm auto;
+    background: #fff3cd;
+    border: 1px solid #ffc107;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 11.5px;
+    line-height: 1.5;
+  }
+
+  @media print {
+    body { background: white; }
+    .instruccion { display: none; }
+    .pagina {
+      margin: 0;
+      box-shadow: none;
+      width: 100%;
+      height: 100vh;
+      padding: 8mm 10mm 6mm 10mm;
+    }
+  }
+</style>
+</head>
+<body>
+
+<div class="instruccion">
+  📸 Espera que carguen todos los diagramas (~15 seg) → <strong>Ctrl+P</strong> → Guardar como PDF → A4 · Vertical · Márgenes mínimos · Sin encabezados → Guardar. Obtendrás <strong>5 páginas</strong>.
+</div>
+
+<!-- ═══════════════════ PÁGINA 1 — SEGURIDAD ═══════════════════ -->
+<div class="pagina">
+  <div class="encabezado">
+    <div class="label-doc">Diagrama ER · KuHub · Página 1 de 5 · Sección 3.1</div>
+    <div class="titulo-pag">🔐 Módulo de Seguridad y Usuarios</div>
+    <div class="subtitulo">Autenticación, roles y control de acceso RBAC — 5 tablas</div>
+  </div>
+
+  <span class="badge" style="background:#ffe0e0;color:#c92a2a;">5 tablas: rol · usuario · modulo · permiso_rol · refresh_token</span>
+
+  <div class="desc">
+    Gestiona la <strong>identidad y autorización</strong> de todos los usuarios. Las contraseñas se almacenan con hash <strong>BCrypt ($2a$)</strong>.
+    La tabla <strong>permiso_rol</strong> implementa la matriz RBAC dinámica: cada rol tiene permisos diferenciados (CRUD) por módulo,
+    evaluados en tiempo real por <code>DynamicPermissionService</code>. <strong>refresh_token</strong> habilita renovación del JWT sin re-autenticación.
+  </div>
+
+  <div class="diagrama-wrapper">
+    <div class="mermaid">
+erDiagram
+    ROL {
+        int id_rol PK
+        varchar nombre_rol "UNIQUE - ej: ADMINISTRADOR"
+        boolean activo "soft-delete"
+    }
+    USUARIO {
+        int id_usuario PK
+        varchar nombre
+        varchar apellido
+        varchar email "UNIQUE - login principal"
+        varchar contrasena "BCrypt hash $2a$"
+        int id_rol FK
+        boolean activo "soft-delete"
+        timestamp fecha_registro
+    }
+    MODULO {
+        int id_modulo PK
+        varchar nombre_modulo "ej: INVENTARIO"
+        varchar descripcion
+    }
+    PERMISO_ROL {
+        int id_permiso PK
+        int id_rol FK
+        int id_modulo FK
+        boolean puede_crear
+        boolean puede_leer
+        boolean puede_actualizar
+        boolean puede_eliminar
+    }
+    REFRESH_TOKEN {
+        int id_token PK
+        int id_usuario FK
+        varchar token "JWT refresh token"
+        timestamp expiry_date
+    }
+
+    ROL         ||--o{ USUARIO        : "asigna a"
+    ROL         ||--o{ PERMISO_ROL    : "define permisos"
+    MODULO      ||--o{ PERMISO_ROL    : "controla acceso"
+    USUARIO     ||--o{ REFRESH_TOKEN  : "posee tokens"
+    </div>
+  </div>
+
+  <div class="pie">
+    <span>KuHub — Estado de Avance N°2 · TPY1101 · Duoc UC</span>
+    <span>ER Seguridad · usuario también referenciado en: solicitud, movimiento</span>
+  </div>
+</div>
+
+<!-- ═══════════════════ PÁGINA 2 — ACADÉMICO ═══════════════════ -->
+<div class="pagina">
+  <div class="encabezado">
+    <div class="label-doc">Diagrama ER · KuHub · Página 2 de 5 · Sección 3.1</div>
+    <div class="titulo-pag">📚 Módulo Académico</div>
+    <div class="subtitulo">Asignaturas, secciones, horarios, salas y asignación de docentes — 7 tablas</div>
+  </div>
+
+  <span class="badge" style="background:#d4edda;color:#155724;">7 tablas: asignatura · seccion · bloque_horario · sala · reserva_sala · docente_seccion · asignatura_profesor_cargo</span>
+
+  <div class="desc">
+    Digitaliza la <strong>planificación académica semestral</strong>. Una asignatura tiene múltiples secciones;
+    cada sección tiene docentes asignados (<strong>docente_seccion</strong>) y un profesor responsable (<strong>asignatura_profesor_cargo</strong>).
+    Las <strong>reservas_sala</strong> vinculan sección + sala + bloque horario, evitando solapamientos.
+    <strong>Conexión con Solicitudes:</strong> las solicitudes de ingredientes se originan desde una sección académica específica.
+  </div>
+
+  <div class="diagrama-wrapper">
+    <div class="mermaid">
+erDiagram
+    ASIGNATURA {
+        int id_asignatura PK
+        varchar nombre_asignatura
+        varchar codigo_asignatura "código único"
+        boolean activo "soft-delete"
+    }
+    SECCION {
+        int id_seccion PK
+        int id_asignatura FK
+        varchar codigo_seccion
+        int num_inscritos "cantidad de alumnos"
+        boolean activo "soft-delete"
+    }
+    BLOQUE_HORARIO {
+        int id_bloque PK
+        varchar nombre_bloque "ej: Bloque 1"
+        time hora_inicio
+        time hora_fin
+    }
+    SALA {
+        int id_sala PK
+        varchar nombre_sala "UNIQUE - ej: Cocina A"
+        int capacidad "capacidad máxima alumnos"
+        boolean activo "soft-delete"
+    }
+    RESERVA_SALA {
+        int id_reserva PK
+        int id_seccion FK
+        int id_sala FK
+        int id_bloque FK
+        date fecha_reserva "fecha de la clase"
+    }
+    DOCENTE_SECCION {
+        int id PK
+        int id_seccion FK
+        int id_usuario FK "→ USUARIO"
+    }
+    ASIGNATURA_PROFESOR_CARGO {
+        int id PK
+        int id_asignatura FK
+        int id_usuario FK "→ USUARIO"
+    }
+
+    ASIGNATURA ||--o{ SECCION                    : "tiene secciones"
+    ASIGNATURA ||--o{ ASIGNATURA_PROFESOR_CARGO  : "tiene prof. cargo"
+    SECCION    ||--o{ RESERVA_SALA               : "reserva salas"
+    SECCION    ||--o{ DOCENTE_SECCION            : "tiene docentes"
+    BLOQUE_HORARIO ||--o{ RESERVA_SALA          : "ocupa bloque"
+    SALA       ||--o{ RESERVA_SALA               : "usada en clase"
+    </div>
+  </div>
+
+  <div class="pie">
+    <span>KuHub — Estado de Avance N°2 · TPY1101 · Duoc UC</span>
+    <span>ER Académico · seccion referenciada también en: solicitud</span>
+  </div>
+</div>
+
+<!-- ═══════════════════ PÁGINA 3 — INVENTARIO + PROVEEDORES ═══════════════════ -->
+<div class="pagina">
+  <div class="encabezado">
+    <div class="label-doc">Diagrama ER · KuHub · Página 3 de 5 · Sección 3.1</div>
+    <div class="titulo-pag">📦 Módulo de Inventario y Proveedores</div>
+    <div class="subtitulo">Productos, stock en tiempo real, movimientos históricos y gestión de proveedores — 9 tablas</div>
+  </div>
+
+  <span class="badge" style="background:#fff3cd;color:#856404;">9 tablas: categoria · unidad_medida · producto · inventario · bodega_transito · movimiento · proveedor · proveedor_producto · proveedor_dia_entrega</span>
+
+  <div class="desc">
+    Núcleo operativo de la bodega. Cada <strong>producto</strong> tiene exactamente un <strong>inventario</strong> (relación 1:1) con stock en tiempo real.
+    <strong>movimiento</strong> registra cada entrada/salida con trazabilidad completa (usuario, tipo, fecha, cantidad) y particionamiento por semestre.
+    <strong>bodega_transito</strong> gestiona recepciones pendientes de verificación.
+    El módulo <strong>proveedor</strong> vincula productos con sus proveedores, incluyendo precios de cotización y días de entrega.
+  </div>
+
+  <div class="diagrama-wrapper">
+    <div class="mermaid">
+erDiagram
+    CATEGORIA {
+        int id_categoria PK
+        varchar nombre_categoria "UNIQUE - ej: Lacteos"
+        boolean activo "soft-delete"
+    }
+    UNIDAD_MEDIDA {
+        int id_unidad PK
+        varchar nombre_unidad "ej: Kilogramo"
+        varchar abreviatura "ej: kg"
+        boolean es_fraccionario "permite decimales"
+        boolean activo "soft-delete"
+    }
+    PRODUCTO {
+        int id_producto PK
+        varchar nombre_producto "UNIQUE"
+        varchar cod_producto "UNIQUE - código interno"
+        varchar descripcion
+        int id_categoria FK
+        int id_unidad FK
+        boolean activo "soft-delete"
+    }
+    INVENTARIO {
+        int id_inventario PK
+        int id_producto FK "UNIQUE - relacion 1 a 1"
+        decimal stock "CHECK >= 0"
+        decimal stock_limit "mínimo para alerta"
+        boolean activo
+    }
+    BODEGA_TRANSITO {
+        int id_transito PK
+        int id_inventario FK
+        decimal cantidad "cantidad en tránsito"
+        varchar estado "EN_TRANSITO o RECIBIDA"
+        date fecha_registro
+    }
+    MOVIMIENTO {
+        int id_movimiento PK
+        int id_producto FK
+        int id_inventario FK
+        decimal cantidad_movimiento
+        varchar tipo_movimiento "ENTRADA o SALIDA o AJUSTE"
+        timestamp fecha_movimiento
+        int id_usuario FK "→ USUARIO"
+    }
+    PROVEEDOR {
+        int id_proveedor PK
+        varchar nombre_proveedor
+        varchar rut "UNIQUE"
+        varchar email
+        varchar telefono
+        boolean activo "soft-delete"
+    }
+    PROVEEDOR_PRODUCTO {
+        int id PK
+        int id_proveedor FK
+        int id_producto FK
+        decimal precio_unitario "precio de cotización"
+    }
+    PROVEEDOR_DIA_ENTREGA {
+        int id PK
+        int id_proveedor FK
+        varchar dia_entrega "LUNES o MARTES o etc."
+    }
+
+    CATEGORIA         ||--o{ PRODUCTO           : "clasifica"
+    UNIDAD_MEDIDA     ||--o{ PRODUCTO           : "mide"
+    PRODUCTO          ||--|| INVENTARIO         : "stock 1 a 1"
+    INVENTARIO        ||--o{ BODEGA_TRANSITO    : "en tránsito"
+    INVENTARIO        ||--o{ MOVIMIENTO         : "historial movim."
+    PRODUCTO          ||--o{ MOVIMIENTO         : "registra salidas"
+    PROVEEDOR         ||--o{ PROVEEDOR_PRODUCTO : "suministra"
+    PROVEEDOR         ||--o{ PROVEEDOR_DIA_ENTREGA : "entrega en"
+    PRODUCTO          ||--o{ PROVEEDOR_PRODUCTO : "provisto por"
+    </div>
+  </div>
+
+  <div class="pie">
+    <span>KuHub — Estado de Avance N°2 · TPY1101 · Duoc UC</span>
+    <span>ER Inventario + Proveedores · producto referenciado también en: detalle_solicitud, detalle_pedido, detalle_pedido_semana_bodega</span>
+  </div>
+</div>
+
+<!-- ═══════════════════ PÁGINA 4 — SOLICITUDES + PEDIDOS ═══════════════════ -->
+<div class="pagina">
+  <div class="encabezado">
+    <div class="label-doc">Diagrama ER · KuHub · Página 4 de 5 · Sección 3.1</div>
+    <div class="titulo-pag">📋 Módulo de Solicitudes y Pedidos</div>
+    <div class="subtitulo">Flujo formal docente-bodega: solicitudes, consolidación y pedidos a proveedores — 6 tablas</div>
+  </div>
+
+  <span class="badge" style="background:#f8d7da;color:#721c24;">6 tablas: solicitud · detalle_solicitud · motivo_rechazo_solicitud · pedido · detalle_pedido · pedido_solicitud</span>
+
+  <div class="desc">
+    El flujo central de KuHub. Un <strong>docente crea una solicitud</strong> con ingredientes (<strong>detalle_solicitud</strong>);
+    si es rechazada, se registra el motivo en <strong>motivo_rechazo_solicitud</strong>.
+    El <strong>gestor consolida</strong> las solicitudes aceptadas en un <strong>pedido</strong> formal (<strong>detalle_pedido</strong> con precios).
+    <strong>pedido_solicitud</strong> es la tabla M:N que mantiene trazabilidad completa entre solicitudes y el pedido que las consolidó.
+    <br><strong>Estados solicitud:</strong> PENDIENTE → ACEPTADA/RECHAZADA → EN_PEDIDO/PROCESADA &nbsp;·&nbsp;
+    <strong>Estados pedido:</strong> PENDIENTE → APROBADO → EN_PREPARACION → ENTREGADO
+  </div>
+
+  <div class="diagrama-wrapper">
+    <div class="mermaid">
+erDiagram
+    SOLICITUD {
+        int id_solicitud PK
+        int id_seccion FK "→ SECCION"
+        int id_usuario FK "→ USUARIO docente"
+        int id_semana FK "→ SEMANAS"
+        varchar estado_solicitud "PENDIENTE / ACEPTADA / RECHAZADA / EN_PEDIDO"
+        date fecha_solicitada "fecha de la clase"
+        date fecha_registro "timestamp creación"
+        text observaciones
+    }
+    DETALLE_SOLICITUD {
+        int id_detalle PK
+        int id_solicitud FK
+        int id_producto FK "→ PRODUCTO"
+        decimal cantidad_solicitada "CHECK > 0"
+        text observaciones "notas por ingrediente"
+    }
+    MOTIVO_RECHAZO_SOLICITUD {
+        int id PK
+        int id_solicitud FK "UNIQUE - 1 motivo por solicitud"
+        varchar motivo "razón del rechazo"
+        timestamp fecha_rechazo
+        int id_usuario FK "→ USUARIO gestor"
+    }
+    PEDIDO {
+        int id_pedido PK
+        int id_semana FK "→ SEMANAS"
+        date fecha_inicio
+        date fecha_fin
+        varchar estado_pedido "PENDIENTE / APROBADO / EN_PREPARACION / ENTREGADO"
+        int id_usuario FK "→ USUARIO gestor"
+        timestamp fecha_registro
+    }
+    DETALLE_PEDIDO {
+        int id_detalle PK
+        int id_pedido FK
+        int id_producto FK "→ PRODUCTO"
+        decimal cantidad "total consolidado"
+        decimal precio_unitario "precio cotización"
+    }
+    PEDIDO_SOLICITUD {
+        int id PK
+        int id_pedido FK
+        int id_solicitud FK
+    }
+
+    SOLICITUD           ||--o{ DETALLE_SOLICITUD         : "contiene ingredientes"
+    SOLICITUD           ||--o| MOTIVO_RECHAZO_SOLICITUD  : "tiene motivo rechazo"
+    SOLICITUD           ||--o{ PEDIDO_SOLICITUD          : "consolidada en"
+    PEDIDO              ||--o{ DETALLE_PEDIDO            : "contiene productos"
+    PEDIDO              ||--o{ PEDIDO_SOLICITUD          : "agrupa solicitudes"
+    </div>
+  </div>
+
+  <div class="pie">
+    <span>KuHub — Estado de Avance N°2 · TPY1101 · Duoc UC</span>
+    <span>ER Solicitudes + Pedidos · solicitud referencia: seccion, usuario, semanas · detalle_solicitud referencia: producto</span>
+  </div>
+</div>
+
+<!-- ═══════════════════ PÁGINA 5 — PEDIDO SEMANAL + CONFIG ═══════════════════ -->
+<div class="pagina">
+  <div class="encabezado">
+    <div class="label-doc">Diagrama ER · KuHub · Página 5 de 5 · Sección 3.1</div>
+    <div class="titulo-pag">📅 Pedido Semanal a Bodega y Configuración del Sistema</div>
+    <div class="subtitulo">Plantillas de ingredientes por semana + calendario académico y parámetros globales — 4 tablas</div>
+  </div>
+
+  <span class="badge" style="background:#d1ecf1;color:#0c5460;">4 tablas: pedido_semana_bodega · detalle_pedido_semana_bodega · semanas · gestion_sistema</span>
+
+  <div class="desc">
+    <strong>Pedido Semanal a Bodega:</strong> Los profesores a cargo crean plantillas semanales que definen qué ingredientes
+    necesita cada clase. Cuando un docente crea una solicitud, puede basarse en estas plantillas como punto de partida.
+    <strong>Semanas</strong> define el calendario académico semestral y es referenciada por solicitudes, pedidos y pedidos semanales
+    para contextualizar temporalmente cada operación.
+    <strong>gestion_sistema</strong> almacena parámetros globales editables por el Administrador (bloques por día, estado del sistema).
+  </div>
+
+  <div class="diagrama-wrapper">
+    <div class="mermaid">
+erDiagram
+    SEMANAS {
+        int id_semana PK
+        varchar nombre_semana "ej: Semana 1 - 2026-1"
+        date fecha_inicio
+        date fecha_fin
+        int anio "año académico"
+        int semestre "1 o 2"
+        boolean activo "semana habilitada"
+    }
+    GESTION_SISTEMA {
+        int id PK "singleton - solo 1 fila"
+        int bloques_por_dia "bloques diarios config."
+        boolean sistema_activo "habilita el sistema"
+        timestamp ultima_actualizacion
+    }
+    PEDIDO_SEMANA_BODEGA {
+        int id_pedido PK
+        varchar nombre_pedido "UNIQUE activo - nombre plantilla"
+        varchar estado_pedido "ACTIVO o INACTIVO"
+        int id_semana FK "→ SEMANAS - opcional"
+        int id_asignatura FK "→ ASIGNATURA - opcional"
+        boolean activo "soft-delete"
+    }
+    DETALLE_PEDIDO_SEMANA_BODEGA {
+        int id_detalle PK
+        int id_pedido FK
+        int id_producto FK "→ PRODUCTO"
+        decimal cantidad "cantidad del ingrediente"
+        text observaciones
+    }
+
+    SEMANAS               ||--o{ PEDIDO_SEMANA_BODEGA          : "contextualiza semana"
+    PEDIDO_SEMANA_BODEGA  ||--o{ DETALLE_PEDIDO_SEMANA_BODEGA  : "detalla ingredientes"
+    </div>
+  </div>
+
+  <div class="pie">
+    <span>KuHub — Estado de Avance N°2 · TPY1101 · Duoc UC</span>
+    <span>ER Config + Ped. Semanal · semanas también referenciada en: solicitud, pedido · Total sistema: 38 tablas</span>
+  </div>
+</div>
+
+<script>
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'default',
+    er: {
+      diagramPadding: 25,
+      layoutDirection: 'LR',
+      minEntityWidth: 140,
+      minEntityHeight: 40,
+      entityPadding: 18,
+      useMaxWidth: false
+    }
+  });
+
+  // Después de que Mermaid renderice, forzar que los SVG ocupen el ancho completo
+  document.addEventListener('DOMContentLoaded', function () {
+    setTimeout(function () {
+      document.querySelectorAll('.mermaid svg').forEach(function (svg) {
+        svg.style.width  = '100%';
+        svg.style.height = 'auto';
+        svg.removeAttribute('height');
+        svg.style.maxHeight = '215mm';
+      });
+    }, 3000);
+  });
+</script>
+</body>
+</html>
