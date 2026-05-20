@@ -18,6 +18,8 @@ import KuHub.modules.gestion_solicitud.dtos.request.DateRangeDTO;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
@@ -389,5 +391,27 @@ public class ProveedorController {
         return ResponseEntity
                 .status(200)
                 .body(proveedorService.sincronizarPreciosExcel(id, file));
+    }
+
+    /**
+     * Descarga un .xlsx con el catálogo actual del proveedor en el mismo formato
+     * que la plantilla de sincronización (ABARROTES SAN ANDRES FEBRERO):
+     * cabecera de empresa, fila naranja con PRDUCTO/CANTIDAD/Formato de grs./Marca/
+     * Precio neto/Precio total y una fila por producto activo con los valores actuales.
+     * Permite editar los precios en Excel y re-subir el archivo al sync sin cambios de formato.
+     * ✅ En uso: Consumido por descargarExcelPlantillaService en proveedor-service.ts.
+     *
+     * @param id ID del proveedor
+     */
+    @GetMapping("/{id}/excel-plantilla")
+    public ResponseEntity<byte[]> descargarExcelPlantilla(@PathVariable Integer id) {
+        byte[] contenido = proveedorService.generarExcelPlantillaProveedor(id);
+        String filename = "plantilla-proveedor-" + id + "-" + java.time.LocalDate.now() + ".xlsx";
+        return ResponseEntity
+                .status(200)
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+                .contentType(MediaType.parseMediaType(
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                .body(contenido);
     }
 }
