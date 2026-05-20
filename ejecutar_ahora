@@ -1,12 +1,10 @@
-necesito que lea 2 archivos que esta en descarga uno se llama ABARROTES SAN ANDRES FEBRERO y otro ABARROTES LOGISTICFOOD FEBRERO
-que usaremos para sincronizacion de precios de productos y para generar execel para proveedores
-lo primero a se hacer es realizar la lectura para la sincronizacion de precios, que tendremos que leer las cabeceiras para indentidicar las collumnas que usaremos.
-se localiza el nombre PRDUCTO donde contiene las columna de los nombre de productos este es obligatorio estar para el proceso.
-se localiza el nombre CANTIDAD que contiene numero entero este es obligatorio estar para el proceso
-se localiza el nombre Formato de grs. que contiene el formato del contenido en volume, es un texto opcional puede estar vacio
-se localiza el nombre Formato Marca que contine el texto de la marca de los productos.
-se localiza el nombre Precio neto que puede estar vacio en la lectura
-se localiza el nombre Precio total que puede estar vacio en la lectura
-si no esta el nombre, la cantidad y cualquier uno de los precios no se sincroniza, se omiten los que no tiene y sincroniza los que si tiene.
-para localizar los nombre puede estar en la fila 5 o 6 varia de execel a execel y siempre empieza de la B max hasta la J
+primero tiene que se preparar al consulta donde al seleccionar la semana segun el selecctor indicado anteriormente que es semejante a lo que esta en pedido semanal bodega para el filtrado, tiene que aparecer al precionar el btn generar order compra
+al seleccionar el btn tendra que usar un consulta que mueste el seguinte
+los pedidos existentes para esta semana encuentrado puede ser mas de uno.
+mostrar si existe una orden de compra generada anteriormente a cierto pedido consultado, si la subcosulta se encuentra mas de una orden de compra dado que la tabla orden de compra tiene la id_pedido mostraremos un mensaje al lado 'Ya existe un registro para este pedido' no impedindo que seleccione el pedido anteriormente registrado.
+tiene que mostrar solamente los pedidos con el estado APROBADO
 
+al cargar n pedidos el usuario seleccionara los pedidos que quiere crear la orden de compra, que servira para buscar todos los detalles de los pedidos para tener los ids de productos con las cantidades correspondientes.
+se mostrara la tabla con el nombre_producto, unidad_medida el valor abreviado, la cantidad solicitada que es la cantidad total sumada del mismo producto de entre todos los pedidos
+
+adado a esto los ids del pedido es lo que ayudara a realizar el filtrado correspondiente.

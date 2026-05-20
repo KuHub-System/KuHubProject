@@ -735,6 +735,53 @@ CREATE TABLE pedido_solicitud (
         REFERENCES solicitud(id_solicitud)
 );
 
+-- =====================================================
+-- TABLAS DE ORDEN DE COMPRA (Tarea #13)
+-- Se ubican aquí porque dependen de pedido (línea 706),
+-- proveedor (línea 529) y producto (línea 407).
+-- =====================================================
+
+-- Tabla orden_compra
+CREATE TABLE orden_compra (
+    id_orden_compra INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    id_pedido       INTEGER NOT NULL,
+    id_proveedor    INTEGER NOT NULL,
+    fecha_creacion  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    observaciones   TEXT,
+    activo          BOOLEAN NOT NULL DEFAULT TRUE,
+
+    CONSTRAINT fk_oc_pedido
+        FOREIGN KEY (id_pedido)
+        REFERENCES pedido(id_pedido)
+        ON DELETE RESTRICT,
+
+    CONSTRAINT fk_oc_proveedor
+        FOREIGN KEY (id_proveedor)
+        REFERENCES proveedor(id_proveedor)
+        ON DELETE RESTRICT
+);
+
+-- Tabla detalle_orden_compra
+CREATE TABLE detalle_orden_compra (
+    id_detalle_orden_compra INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    id_orden_compra         INTEGER       NOT NULL,
+    id_producto             INTEGER       NOT NULL,
+    cantidad_solicitada     NUMERIC(10,3) NOT NULL,
+    precio_neto_unitario    NUMERIC(10,3),
+    precio_con_iva_unitario NUMERIC(10,3),
+    activo                  BOOLEAN       NOT NULL DEFAULT TRUE,
+
+    CONSTRAINT fk_doc_orden
+        FOREIGN KEY (id_orden_compra)
+        REFERENCES orden_compra(id_orden_compra)
+        ON DELETE CASCADE,
+
+    CONSTRAINT fk_doc_producto
+        FOREIGN KEY (id_producto)
+        REFERENCES producto(id_producto)
+        ON DELETE RESTRICT
+);
+
 -- Fila 1: configuración default (solo lectura, para restaurar)
 INSERT INTO gestion_sistema (id, solicitudes_en_pedido, descripcion)
 VALUES (1, FALSE, 'Configuración predeterminada del sistema - NO MODIFICAR')
@@ -1190,6 +1237,14 @@ WHERE activo = TRUE;
 -- findProductosPorProveedorHastaFecha).
 CREATE INDEX idx_pp_version_reciente
 ON proveedor_producto (id_proveedor, id_producto, fecha_actualizacion DESC);
+
+-- Indices de Orden de Compra (Tarea #13)
+-- idx_oc_pedido + idx_oc_proveedor: parciales por activo=TRUE, aceleran el
+--   EXISTS de "¿tiene OC?" y los listados por proveedor.
+-- idx_doc_orden: acelera el JOIN orden_compra → detalle_orden_compra.
+CREATE INDEX idx_oc_pedido    ON orden_compra (id_pedido)    WHERE activo = TRUE;
+CREATE INDEX idx_oc_proveedor ON orden_compra (id_proveedor) WHERE activo = TRUE;
+CREATE INDEX idx_doc_orden    ON detalle_orden_compra (id_orden_compra);
 
 -- Indices en bodega_transito
 --CREATE INDEX idx_bodega_transito_producto ON bodega_transito(id_producto);

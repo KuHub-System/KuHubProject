@@ -32,7 +32,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import XLSXStyle from 'xlsx-js-style';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useModulePermission } from '../contexts/permission-context';
+import { usePeriodoSemana } from '../contexts/periodo-semana-context';
+import { obtenerSemanasPorPeriodoService } from '../services/semana-service';
 import BookPageLoader from '../components/BookPageLoader';
+import type { ISemana } from '../types/semana.types';
 import {
   obtenerProveedoresService,
   obtenerProveedoresPaginadoService,
@@ -54,6 +57,8 @@ import {
   descargarExcelPlantillaService,
   sincronizarPrecioDesdeNetoService,
   sincronizarPrecioDesdeIvaService,
+  obtenerPedidosSemanaService,
+  obtenerCotizacionConsolidadaService,
 } from '../services/proveedor-service';
 import type {
   IProveedor,
@@ -72,6 +77,11 @@ import type {
   IProductoBuscado,
   IProveedorSelector,
   ISyncExcelResult,
+  IPedidoSemanaResumen,
+  ICotizacionConsolidadaResponse,
+  IProveedorGrupoConsolidado,
+  IProductoConsolidado,
+  TDiaSemana,
 } from '../types/proveedor.types';
 import type { IProductoRecetaSelection } from '../types/producto.types';
 
@@ -351,6 +361,145 @@ const styleTotalPositivo = {
   },
 };
 
+// ── Helpers Orden de Compra — bloques consecutivos por día ───────────────────
+
+const DIA_ORDEN: Record<TDiaSemana, number> = {
+  LUNES: 1, MARTES: 2, MIERCOLES: 3, JUEVES: 4,
+  VIERNES: 5, SABADO: 6, DOMINGO: 7,
+};
+const DIAS_TODOS: TDiaSemana[] = ['LUNES', 'MARTES', 'MIERCOLES', 'JUEVES', 'VIERNES', 'SABADO', 'DOMINGO'];
+
+/** Suma N días a una fecha YYYY-MM-DD (sin tocar tz). */
+const addDaysISO = (iso: string, n: number): string => {
+  const d = new Date(iso + 'T00:00:00');
+  d.setDate(d.getDate() + n);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+};
+
+/**
+ * Dado el lunes de una semana (semanaBase.fechaInicio) y un día de la semana,
+ * retorna la fecha ISO de ese día en esa misma semana.
+ */
+const fechaDeDiaEnSemana = (lunesISO: string, dia: TDiaSemana): string =>
+  addDaysISO(lunesISO, DIA_ORDEN[dia] - 1);
+
+/**
+ * Agrupa los días LUNES..DOMINGO con cantidad > 0 en bloques de días consecutivos
+ * según el orden de la semana. Ignora SIN_DIA.
+ */
+const agruparBloquesConsecutivos = (
+  cantidadPorDia: { dia: TDiaSemana | 'SIN_DIA'; cantidad: number }[]
+): { dias: TDiaSemana[]; cantidad: number }[] => {
+  const map = new Map<TDiaSemana, number>();
+  for (const c of cantidadPorDia) {
+    if (c.dia === 'SIN_DIA') continue;
+    if (c.cantidad > 0) map.set(c.dia as TDiaSemana, (map.get(c.dia as TDiaSemana) ?? 0) + c.cantidad);
+  }
+  const bloques: { dias: TDiaSemana[]; cantidad: number }[] = [];
+  let actual: { dias: TDiaSemana[]; cantidad: number } | null = null;
+  for (const d of DIAS_TODOS) {
+    if (map.has(d)) {
+      if (actual) {
+        actual.dias.push(d);
+        actual.cantidad += map.get(d)!;
+      } else {
+        actual = { dias: [d], cantidad: map.get(d)! };
+      }
+    } else if (actual) {
+      bloques.push(actual);
+      actual = null;
+    }
+  }
+  if (actual) bloques.push(actual);
+  return bloques;
+};
+
+/**
+ * Calcula, para una semana base y un proveedor, todas las fechas de entrega
+ * resultantes y la cantidad por producto en cada fecha.
+ * Regla:
+ *  - Si el proveedor tiene 1 sólo día de entrega → TODO va a ese día de ESTA semana.
+ *  - Si tiene ≥2 días → por cada bloque consecutivo, la fecha es el día de entrega
+ *    inmediatamente ANTERIOR al primer día del bloque (mapeado a la semana base);
+ *    si no hay anterior en la semana base, usa el ÚLTIMO día de entrega del proveedor
+ *    en la SEMANA ANTERIOR.
+ */
+interface EntregaCelda {
+  fechaISO: string;            // YYYY-MM-DD
+  cantidad: number;
+}
+interface DistribucionProveedor {
+  fechas: string[];                              // fechas únicas ordenadas asc
+  porProducto: Record<number, EntregaCelda[]>;   // idProducto → celdas
+}
+
+const calcularDistribucionProveedor = (
+  productos: IProductoConsolidado[],
+  diasEntrega: TDiaSemana[],
+  lunesSemanaBase: string,
+): DistribucionProveedor => {
+  const lunesSemanaAnterior = addDaysISO(lunesSemanaBase, -7);
+  const fechas = new Set<string>();
+  const porProducto: Record<number, EntregaCelda[]> = {};
+
+  const registrar = (idProd: number, fechaISO: string, cantidad: number) => {
+    fechas.add(fechaISO);
+    if (!porProducto[idProd]) porProducto[idProd] = [];
+    porProducto[idProd].push({ fechaISO, cantidad });
+  };
+
+  // ordenamos diasEntrega por el orden semanal
+  const diasOrdenados = [...diasEntrega].sort((a, b) => DIA_ORDEN[a] - DIA_ORDEN[b]);
+
+  for (const prod of productos) {
+    // CASO ESPECIAL: 1 sólo día de entrega → todo va a ese día de ESTA semana
+    if (diasOrdenados.length === 1) {
+      const total = prod.cantidadPorDia.reduce((s, c) => s + (c.cantidad ?? 0), 0);
+      if (total > 0) {
+        registrar(prod.idProducto, fechaDeDiaEnSemana(lunesSemanaBase, diasOrdenados[0]), total);
+      }
+      continue;
+    }
+
+    // CASO GENERAL: ≥2 días — agrupa bloques consecutivos
+    const bloques = agruparBloquesConsecutivos(prod.cantidadPorDia);
+    if (bloques.length === 0 && diasOrdenados.length > 0) {
+      // si todo cae en SIN_DIA o cantidad 0 → no genera columnas
+      continue;
+    }
+    for (const bloque of bloques) {
+      const primerDia = bloque.dias[0];
+      const anterior = [...diasOrdenados].reverse().find(d => DIA_ORDEN[d] < DIA_ORDEN[primerDia]);
+      const fechaISO = anterior
+        ? fechaDeDiaEnSemana(lunesSemanaBase, anterior)
+        : fechaDeDiaEnSemana(lunesSemanaAnterior, diasOrdenados[diasOrdenados.length - 1]);
+      registrar(prod.idProducto, fechaISO, bloque.cantidad);
+    }
+  }
+
+  return {
+    fechas: Array.from(fechas).sort(),
+    porProducto,
+  };
+};
+
+const DIAS_ABREV_OC: Record<TDiaSemana, string> = {
+  LUNES: 'Lun', MARTES: 'Mar', MIERCOLES: 'Mié', JUEVES: 'Jue',
+  VIERNES: 'Vie', SABADO: 'Sáb', DOMINGO: 'Dom',
+};
+
+/** "2026-05-27" → "Mié 2026-05-27" */
+const formatFechaEntregaLabel = (iso: string): string => {
+  const d = new Date(iso + 'T00:00:00');
+  const dow = d.getDay(); // 0=Dom .. 6=Sab
+  const idx = dow === 0 ? 6 : dow - 1; // → LUNES=0 .. DOMINGO=6
+  const dia = DIAS_TODOS[idx];
+  return `${DIAS_ABREV_OC[dia]} ${iso}`;
+};
+
 // ── Componente principal ──────────────────────────────────────────────────────
 
 const GestionProveedoresPage: React.FC = () => {
@@ -359,6 +508,9 @@ const GestionProveedoresPage: React.FC = () => {
     canUpdate: prov_Editar,
     canDelete: prov_Eliminar,
   } = useModulePermission('GESTION_PROVEEDORES');
+
+  // Context global de período/semana — sólo se LEE (no se muta) para el modal de OC.
+  const { periodos: ctxPeriodos } = usePeriodoSemana();
 
   usePageTitle(
     'Gestión de Proveedores',
@@ -440,6 +592,28 @@ const GestionProveedoresPage: React.FC = () => {
   const [loadingSelector, setLoadingSelector] = React.useState(false);
   const [syncVista, setSyncVista] = React.useState<'sincronizados' | 'sin_cambios' | 'no_encontrados'>('sincronizados');
   const excelInputRef = React.useRef<HTMLInputElement>(null);
+
+  // ── Modal Orden de Compra (Tarea #13) ────────────────────────────────────
+  const {
+    isOpen: isOrdenCompraModal,
+    onOpen: openOrdenCompraModal,
+    onOpenChange: onOrdenCompraModalChange,
+  } = useDisclosure();
+  const [ocPaso, setOcPaso] = React.useState<1 | 2>(1);
+  const [ocPeriodo, setOcPeriodo] = React.useState<{ anio: number; semestre: number } | null>(null);
+  const [ocSemanasPeriodo, setOcSemanasPeriodo] = React.useState<ISemana[]>([]);
+  const [ocSemana, setOcSemana] = React.useState<ISemana | null>(null);
+  const [ocPedidos, setOcPedidos] = React.useState<IPedidoSemanaResumen[]>([]);
+  const [ocLoadingPedidos, setOcLoadingPedidos] = React.useState(false);
+  const [ocErrorPedidos, setOcErrorPedidos] = React.useState<string | null>(null);
+  const [ocSeleccionados, setOcSeleccionados] = React.useState<Set<number>>(new Set());
+  const [ocCotizacion, setOcCotizacion] = React.useState<ICotizacionConsolidadaResponse | null>(null);
+  const [ocLoadingCotizacion, setOcLoadingCotizacion] = React.useState(false);
+  const [ocErrorCotizacion, setOcErrorCotizacion] = React.useState<string | null>(null);
+  /** Cantidades editables del Paso 2 — por idProveedor → idProducto → { cantTotal, entregas: Record<fechaISO, number> }. */
+  const [ocCantidades, setOcCantidades] = React.useState<
+    Record<number, Record<number, { cantTotal: number; entregas: Record<string, number> }>>
+  >({});
 
   // ── Búsqueda global optimizada ──
   const [busquedaGlobal, setBusquedaGlobal] = React.useState('');
@@ -1094,6 +1268,171 @@ const GestionProveedoresPage: React.FC = () => {
     }
   };
 
+  // ── Handlers Orden de Compra ─────────────────────────────────────────────
+
+  /** Resetea estado del modal de OC y lo abre en Paso 1. */
+  const handleAbrirOrdenCompra = () => {
+    setOcPaso(1);
+    setOcPedidos([]);
+    setOcSeleccionados(new Set());
+    setOcErrorPedidos(null);
+    setOcCotizacion(null);
+    setOcErrorCotizacion(null);
+    setOcCantidades({});
+    setOcSemana(null);
+    setOcSemanasPeriodo([]);
+
+    // Pre-selecciona el período actual (si existe en periodos)
+    const hoy = new Date();
+    const mes = hoy.getMonth() + 1;
+    const sem = mes <= 6 ? 1 : 2;
+    const anio = hoy.getFullYear();
+    const tienePeriodoActual = ctxPeriodos.some(p => p.anio === anio && p.semestres.includes(sem));
+    if (tienePeriodoActual) {
+      setOcPeriodo({ anio, semestre: sem });
+    } else {
+      setOcPeriodo(null);
+    }
+    openOrdenCompraModal();
+  };
+
+  /** Cuando cambia el período: carga las semanas (local, sin tocar el context). */
+  React.useEffect(() => {
+    if (!isOrdenCompraModal || !ocPeriodo) {
+      setOcSemanasPeriodo([]);
+      return;
+    }
+    let cancelado = false;
+    (async () => {
+      try {
+        const data = await obtenerSemanasPorPeriodoService(ocPeriodo.anio, ocPeriodo.semestre);
+        if (!cancelado) {
+          setOcSemanasPeriodo(data);
+          setOcSemana(null);
+          setOcPedidos([]);
+          setOcSeleccionados(new Set());
+        }
+      } catch {
+        if (!cancelado) setOcSemanasPeriodo([]);
+      }
+    })();
+    return () => { cancelado = true; };
+  }, [isOrdenCompraModal, ocPeriodo]);
+
+  /** Cuando se elige una semana: carga pedidos APROBADO + 2000ms de BookPageLoader. */
+  React.useEffect(() => {
+    if (!isOrdenCompraModal || !ocSemana) {
+      setOcPedidos([]);
+      setOcSeleccionados(new Set());
+      return;
+    }
+    let cancelado = false;
+    setOcLoadingPedidos(true);
+    setOcErrorPedidos(null);
+    setOcPedidos([]);
+    setOcSeleccionados(new Set());
+    (async () => {
+      try {
+        const [data] = await Promise.all([
+          obtenerPedidosSemanaService(ocSemana.fechaInicio, ocSemana.fechaFin),
+          new Promise<void>(r => setTimeout(r, 2000)),
+        ]);
+        if (!cancelado) setOcPedidos(data);
+      } catch (err: any) {
+        if (!cancelado) setOcErrorPedidos(err.message || 'Error al cargar pedidos');
+      } finally {
+        if (!cancelado) setOcLoadingPedidos(false);
+      }
+    })();
+    return () => { cancelado = true; };
+  }, [isOrdenCompraModal, ocSemana]);
+
+  /** Toggle selección de un pedido en Paso 1. */
+  const toggleSeleccionPedido = (id: number) => {
+    setOcSeleccionados(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  /** Avanza al Paso 2: carga cotización consolidada + 2000ms de BookPageLoader. */
+  const handleGenerarOrdenCompra = async () => {
+    if (ocSeleccionados.size === 0 || !ocSemana) return;
+    setOcPaso(2);
+    setOcLoadingCotizacion(true);
+    setOcErrorCotizacion(null);
+    setOcCotizacion(null);
+    setOcCantidades({});
+
+    try {
+      const [data] = await Promise.all([
+        obtenerCotizacionConsolidadaService([...ocSeleccionados]),
+        new Promise<void>(r => setTimeout(r, 2000)),
+      ]);
+      setOcCotizacion(data);
+
+      // Inicializa cantidades editables — cantTotal = cantidadTotal, entregas = distribución por bloques.
+      const lunes = ocSemana.fechaInicio;
+      const init: typeof ocCantidades = {};
+      for (const prov of data.cotizacion) {
+        if (prov.idProveedor == null) continue;
+        const dist = calcularDistribucionProveedor(
+          prov.categorias.flatMap(c => c.productos),
+          prov.diasEntrega ?? [],
+          lunes,
+        );
+        const provMap: Record<number, { cantTotal: number; entregas: Record<string, number> }> = {};
+        for (const cat of prov.categorias) {
+          for (const prod of cat.productos) {
+            const entregas: Record<string, number> = {};
+            for (const f of dist.fechas) entregas[f] = 0;
+            for (const celda of dist.porProducto[prod.idProducto] ?? []) {
+              entregas[celda.fechaISO] = (entregas[celda.fechaISO] ?? 0) + celda.cantidad;
+            }
+            provMap[prod.idProducto] = {
+              cantTotal: prod.cantidadTotal,
+              entregas,
+            };
+          }
+        }
+        init[prov.idProveedor] = provMap;
+      }
+      setOcCantidades(init);
+    } catch (err: any) {
+      setOcErrorCotizacion(err.message || 'Error al obtener la cotización consolidada');
+    } finally {
+      setOcLoadingCotizacion(false);
+    }
+  };
+
+  /** Vuelve al Paso 1 conservando la selección. */
+  const handleVolverPaso1 = () => {
+    setOcPaso(1);
+    setOcErrorCotizacion(null);
+  };
+
+  /** Actualiza una cantidad editable del Paso 2 (cantTotal o una celda de entrega). */
+  const actualizarCantidadOc = (
+    idProveedor: number,
+    idProducto: number,
+    campo: 'cantTotal' | string, // 'cantTotal' o fecha ISO
+    valor: number,
+  ) => {
+    setOcCantidades(prev => {
+      const provMap = { ...(prev[idProveedor] ?? {}) };
+      const item = { ...(provMap[idProducto] ?? { cantTotal: 0, entregas: {} }) };
+      if (campo === 'cantTotal') {
+        item.cantTotal = isNaN(valor) ? 0 : valor;
+      } else {
+        item.entregas = { ...item.entregas, [campo]: isNaN(valor) ? 0 : valor };
+      }
+      provMap[idProducto] = item;
+      return { ...prev, [idProveedor]: provMap };
+    });
+  };
+
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
@@ -1176,6 +1515,17 @@ const GestionProveedoresPage: React.FC = () => {
                   onPress={handleAbrirSyncExcel}
                 >
                   Sincronizar Precios Excel
+                </Button>
+              )}
+              {prov_Editar && (
+                <Button
+                  color="warning"
+                  variant="flat"
+                  className="font-bold cursor-pointer"
+                  startContent={<Icon icon="lucide:clipboard-list" width={20} />}
+                  onPress={handleAbrirOrdenCompra}
+                >
+                  Generar Orden de Compra
                 </Button>
               )}
               <Button
@@ -1574,6 +1924,31 @@ const GestionProveedoresPage: React.FC = () => {
           if (!cotizacionData || !dateRangeProyeccion) return;
           exportarCotizacionExcel(cotizacionData, dateRangeProyeccion);
         }}
+      />
+
+      {/* ── Modal Orden de Compra (Tarea #13) ── */}
+      <OrdenCompraModal
+        isOpen={isOrdenCompraModal}
+        onOpenChange={onOrdenCompraModalChange}
+        paso={ocPaso}
+        periodos={ctxPeriodos}
+        periodo={ocPeriodo}
+        onPeriodoChange={setOcPeriodo}
+        semanas={ocSemanasPeriodo}
+        semana={ocSemana}
+        onSemanaChange={setOcSemana}
+        pedidos={ocPedidos}
+        loadingPedidos={ocLoadingPedidos}
+        errorPedidos={ocErrorPedidos}
+        seleccionados={ocSeleccionados}
+        onToggleSeleccion={toggleSeleccionPedido}
+        onGenerar={handleGenerarOrdenCompra}
+        cotizacion={ocCotizacion}
+        loadingCotizacion={ocLoadingCotizacion}
+        errorCotizacion={ocErrorCotizacion}
+        cantidades={ocCantidades}
+        onCantidadChange={actualizarCantidadOc}
+        onVolver={handleVolverPaso1}
       />
 
       {/* ── Modal Sincronización de Precios desde Excel ── */}
@@ -4076,6 +4451,554 @@ const CotizacionModal: React.FC<CotizacionModalProps> = ({
         )}
       </ModalContent>
     </Modal>
+  );
+};
+
+// ══════════════════════════════════════════════════════════════════════════
+//  Modal "Generar Orden de Compra" — Paso 1 (selección) + Paso 2 (cotización)
+// ══════════════════════════════════════════════════════════════════════════
+
+interface OrdenCompraModalProps {
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
+  paso: 1 | 2;
+  periodos: { anio: number; semestres: number[] }[];
+  periodo: { anio: number; semestre: number } | null;
+  onPeriodoChange: (p: { anio: number; semestre: number } | null) => void;
+  semanas: ISemana[];
+  semana: ISemana | null;
+  onSemanaChange: (s: ISemana | null) => void;
+  pedidos: IPedidoSemanaResumen[];
+  loadingPedidos: boolean;
+  errorPedidos: string | null;
+  seleccionados: Set<number>;
+  onToggleSeleccion: (id: number) => void;
+  onGenerar: () => void;
+  cotizacion: ICotizacionConsolidadaResponse | null;
+  loadingCotizacion: boolean;
+  errorCotizacion: string | null;
+  cantidades: Record<number, Record<number, { cantTotal: number; entregas: Record<string, number> }>>;
+  onCantidadChange: (idProveedor: number, idProducto: number, campo: 'cantTotal' | string, valor: number) => void;
+  onVolver: () => void;
+}
+
+const chipOrdenCompra = (cantidad: number) => {
+  if (cantidad === 0) return <Chip color="default" size="sm" variant="flat">Sin OC</Chip>;
+  if (cantidad === 1) return <Chip color="success" size="sm" variant="flat">OC Generada</Chip>;
+  return <Chip color="warning" size="sm" variant="flat">Ya existe un registro para este pedido</Chip>;
+};
+
+const formatRangoPedido = (inicio: string, fin: string) => `${inicio} → ${fin}`;
+
+const OrdenCompraModal: React.FC<OrdenCompraModalProps> = ({
+  isOpen,
+  onOpenChange,
+  paso,
+  periodos,
+  periodo,
+  onPeriodoChange,
+  semanas,
+  semana,
+  onSemanaChange,
+  pedidos,
+  loadingPedidos,
+  errorPedidos,
+  seleccionados,
+  onToggleSeleccion,
+  onGenerar,
+  cotizacion,
+  loadingCotizacion,
+  errorCotizacion,
+  cantidades,
+  onCantidadChange,
+  onVolver,
+}) => {
+  const hoy = new Date();
+  const anioActual = hoy.getFullYear();
+  const semestreActual = hoy.getMonth() + 1 <= 6 ? 1 : 2;
+
+  return (
+    <Modal
+      isOpen={isOpen}
+      onOpenChange={onOpenChange}
+      size={paso === 1 ? '3xl' : '5xl'}
+      scrollBehavior="inside"
+      radius="lg"
+      classNames={{ base: 'rounded-2xl' }}
+    >
+      <ModalContent className="rounded-2xl overflow-hidden">
+        {(onClose) => (
+          <>
+            <ModalHeader className="border-b border-default-200 dark:border-default-100 bg-gradient-to-r from-warning/10 to-warning/5 dark:from-warning/20 dark:to-warning/10 px-6 py-4">
+              <div className="flex items-center gap-3 w-full">
+                <div className="p-2 bg-warning/20 rounded-lg">
+                  <Icon icon="lucide:clipboard-list" className="text-warning" width={20} />
+                </div>
+                <div className="flex flex-col gap-0.5">
+                  <span className="font-bold text-lg text-secondary dark:text-foreground">
+                    Generar Orden de Compra
+                  </span>
+                  <span className="text-xs text-default-500">
+                    {paso === 1
+                      ? 'Paso 1 — Seleccione la semana y los pedidos APROBADO a consolidar'
+                      : 'Paso 2 — Cotización consolidada con menor precio + distribución por día'}
+                  </span>
+                </div>
+              </div>
+            </ModalHeader>
+
+            <ModalBody className="gap-6 py-6">
+              {paso === 1 && (
+                <>
+                  {/* Selectores Período + Semana */}
+                  <div className="flex flex-col sm:flex-row gap-3 items-end bg-default-50 dark:bg-default-100/20 rounded-xl p-4 border border-default-200 dark:border-default-100">
+                    <div className="w-full sm:w-48">
+                      <Select
+                        label="Período"
+                        placeholder="Año - Semestre"
+                        variant="bordered"
+                        size="sm"
+                        selectedKeys={periodo ? new Set([`${periodo.anio}-${periodo.semestre}`]) : new Set()}
+                        onSelectionChange={(keys) => {
+                          const v = Array.from(keys as Set<string>)[0];
+                          if (v) {
+                            const [a, s] = v.split('-');
+                            onPeriodoChange({ anio: Number(a), semestre: Number(s) });
+                          }
+                        }}
+                        classNames={{ trigger: 'bg-white dark:bg-default-100/50' }}
+                      >
+                        {periodos.flatMap(p =>
+                          p.semestres.map(s => (
+                            <SelectItem key={`${p.anio}-${s}`} textValue={`${p.anio} - S${s}`}>
+                              <div className="flex items-center w-full gap-2">
+                                <span className="font-semibold">{p.anio} - S{s}</span>
+                                {p.anio === anioActual && s === semestreActual && (
+                                  <Chip size="sm" color="success" variant="flat" className="ml-auto shrink-0 text-[10px]">
+                                    Actual
+                                  </Chip>
+                                )}
+                              </div>
+                            </SelectItem>
+                          ))
+                        )}
+                      </Select>
+                    </div>
+                    <div className="flex-1 w-full">
+                      <Select
+                        label="Semana"
+                        placeholder={semanas.length === 0 ? 'Seleccione un período primero' : 'Seleccione la semana'}
+                        variant="bordered"
+                        size="sm"
+                        isDisabled={semanas.length === 0}
+                        selectedKeys={semana ? new Set([String(semana.idSemana)]) : new Set()}
+                        onSelectionChange={(keys) => {
+                          const v = Array.from(keys as Set<string>)[0];
+                          if (!v) {
+                            onSemanaChange(null);
+                            return;
+                          }
+                          const s = semanas.find(x => String(x.idSemana) === v) ?? null;
+                          onSemanaChange(s);
+                        }}
+                        classNames={{ trigger: 'bg-white dark:bg-default-100/50' }}
+                      >
+                        {semanas.map(s => (
+                          <SelectItem key={String(s.idSemana)} textValue={s.nombreSemana}>
+                            <div className="flex items-center w-full gap-2">
+                              <span className="font-semibold">{s.nombreSemana}</span>
+                              <span className="text-default-400 text-xs">
+                                {s.fechaInicio} – {s.fechaFin}
+                              </span>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </Select>
+                    </div>
+                  </div>
+
+                  {/* Error de carga de pedidos */}
+                  {errorPedidos && (
+                    <div className="flex items-start gap-3 bg-danger-50 dark:bg-danger-50/10 border border-danger/30 text-danger text-sm p-4 rounded-xl">
+                      <Icon icon="lucide:alert-circle" width={18} className="mt-0.5 shrink-0" />
+                      <div className="flex-1">
+                        <p className="font-medium">Error al cargar pedidos</p>
+                        <p className="text-xs text-danger/80 dark:text-danger/70 mt-0.5">{errorPedidos}</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* BookPageLoader mientras se cargan los pedidos */}
+                  {loadingPedidos && (
+                    <div className="flex justify-center items-center py-6 min-h-[220px]">
+                      <BookPageLoader
+                        message="Cargando pedidos"
+                        subMessage="Obteniendo pedidos APROBADO de la semana..."
+                      />
+                    </div>
+                  )}
+
+                  {/* Tabla de pedidos */}
+                  {!loadingPedidos && semana && (
+                    <div className="space-y-2">
+                      {pedidos.length === 0 ? (
+                        <div className="text-center py-10 text-default-400">
+                          <Icon icon="lucide:inbox" width={40} className="mx-auto mb-2" />
+                          <p>No hay pedidos APROBADO en la semana seleccionada.</p>
+                        </div>
+                      ) : (
+                        <div className="overflow-x-auto rounded-lg border border-default-200 dark:border-default-100">
+                          <table className="w-full text-xs">
+                            <thead className="bg-default-100 dark:bg-default-50">
+                              <tr>
+                                <th className="text-center py-2 px-3 font-medium w-12">Sel.</th>
+                                <th className="text-center py-2 px-3 font-medium">Rango del Pedido</th>
+                                <th className="text-center py-2 px-3 font-medium">Estado</th>
+                                <th className="text-center py-2 px-3 font-medium">OC asociadas</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {pedidos.map(p => (
+                                <tr
+                                  key={p.idPedido}
+                                  className="border-t border-default-100 dark:border-default-50 hover:bg-default-50 dark:hover:bg-default-100/20"
+                                >
+                                  <td className="py-2 px-3 text-center">
+                                    <input
+                                      type="checkbox"
+                                      className="w-4 h-4 cursor-pointer accent-warning"
+                                      checked={seleccionados.has(p.idPedido)}
+                                      onChange={() => onToggleSeleccion(p.idPedido)}
+                                    />
+                                  </td>
+                                  <td className="py-2 px-3 text-center font-medium">
+                                    {formatRangoPedido(p.fechaInicioPedido, p.fechaFinPedido)}
+                                  </td>
+                                  <td className="py-2 px-3 text-center">
+                                    <Chip color="primary" size="sm" variant="flat">{p.estadoPedido}</Chip>
+                                  </td>
+                                  <td className="py-2 px-3 text-center">
+                                    {chipOrdenCompra(p.cantidadOrdenCompra)}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </>
+              )}
+
+              {paso === 2 && (
+                <>
+                  {/* Header semana */}
+                  {semana && (
+                    <div className="flex items-center gap-2 text-sm text-default-600 bg-default-50 dark:bg-default-100/20 rounded-xl p-3 border border-default-200 dark:border-default-100">
+                      <Icon icon="lucide:calendar" width={16} className="text-warning" />
+                      <span className="font-medium">
+                        Semana de la OC: {semana.nombreSemana} ({semana.fechaInicio} a {semana.fechaFin})
+                      </span>
+                      <span className="text-default-400 text-xs ml-2">
+                        (afecta sólo el cálculo de fechas de entrega)
+                      </span>
+                    </div>
+                  )}
+
+                  {errorCotizacion && (
+                    <div className="flex items-start gap-3 bg-danger-50 dark:bg-danger-50/10 border border-danger/30 text-danger text-sm p-4 rounded-xl">
+                      <Icon icon="lucide:alert-circle" width={18} className="mt-0.5 shrink-0" />
+                      <div className="flex-1">
+                        <p className="font-medium">Error en la cotización</p>
+                        <p className="text-xs text-danger/80 dark:text-danger/70 mt-0.5">{errorCotizacion}</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {loadingCotizacion && (
+                    <div className="flex justify-center items-center py-6 min-h-[220px]">
+                      <BookPageLoader
+                        message="Consolidando cotización"
+                        subMessage="Calculando menor precio y distribución por día..."
+                      />
+                    </div>
+                  )}
+
+                  {!loadingCotizacion && cotizacion && cotizacion.cotizacion.length === 0 && (
+                    <div className="text-center py-10 text-default-400">
+                      <Icon icon="lucide:inbox" width={40} className="mx-auto mb-2" />
+                      <p>No hay productos para los pedidos seleccionados.</p>
+                    </div>
+                  )}
+
+                  {!loadingCotizacion && cotizacion && cotizacion.cotizacion.length > 0 && semana && (
+                    <div className="space-y-6">
+                      {cotizacion.cotizacion.map((prov, idx) => (
+                        <ProveedorCotizacionTabla
+                          key={prov.idProveedor ?? `sin-prov-${idx}`}
+                          proveedor={prov}
+                          cantidadesProv={prov.idProveedor != null ? cantidades[prov.idProveedor] ?? {} : {}}
+                          onCantidadChange={onCantidadChange}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
+            </ModalBody>
+
+            <ModalFooter className="bg-gradient-to-r from-default-50 to-default-50 dark:from-content2 dark:to-content2 border-t border-default-200 dark:border-default-100 gap-2 px-6 py-4">
+              {paso === 1 && (
+                <>
+                  <Button variant="ghost" onPress={onClose} className="font-medium">
+                    Cerrar
+                  </Button>
+                  <Button
+                    color="warning"
+                    variant="solid"
+                    className="font-bold shadow-md cursor-pointer"
+                    startContent={<Icon icon="lucide:arrow-right" width={18} />}
+                    isDisabled={seleccionados.size === 0}
+                    onPress={onGenerar}
+                    size="lg"
+                  >
+                    Generar ({seleccionados.size})
+                  </Button>
+                </>
+              )}
+              {paso === 2 && (
+                <>
+                  <Button
+                    variant="ghost"
+                    onPress={onVolver}
+                    startContent={<Icon icon="lucide:arrow-left" width={16} />}
+                    className="font-medium"
+                  >
+                    Volver
+                  </Button>
+                  <Button variant="ghost" onPress={onClose} className="font-medium">
+                    Cerrar
+                  </Button>
+                </>
+              )}
+            </ModalFooter>
+          </>
+        )}
+      </ModalContent>
+    </Modal>
+  );
+};
+
+// ── Sub-componente: tabla de un proveedor con columnas Entrega editables ─────
+
+interface ProveedorCotizacionTablaProps {
+  proveedor: IProveedorGrupoConsolidado;
+  cantidadesProv: Record<number, { cantTotal: number; entregas: Record<string, number> }>;
+  onCantidadChange: (idProveedor: number, idProducto: number, campo: 'cantTotal' | string, valor: number) => void;
+}
+
+const ProveedorCotizacionTabla: React.FC<ProveedorCotizacionTablaProps> = ({
+  proveedor,
+  cantidadesProv,
+  onCantidadChange,
+}) => {
+  const esSinProveedor = proveedor.idProveedor == null;
+
+  // Recolectar todas las fechas de entrega usadas por el proveedor (orden cronológico).
+  const fechasEntrega = React.useMemo(() => {
+    const setF = new Set<string>();
+    for (const provMap of Object.values(cantidadesProv)) {
+      for (const f of Object.keys(provMap.entregas)) setF.add(f);
+    }
+    return Array.from(setF).sort();
+  }, [cantidadesProv]);
+
+  // Totales del proveedor (recalculados con cantTotal editado × precio unitario).
+  const totales = React.useMemo(() => {
+    let neto = 0;
+    let conIva = 0;
+    for (const cat of proveedor.categorias) {
+      for (const prod of cat.productos) {
+        const cant = cantidadesProv[prod.idProducto]?.cantTotal ?? prod.cantidadTotal;
+        if (prod.precioNeto != null) neto += cant * prod.precioNeto;
+        if (prod.precioConIva != null) conIva += cant * prod.precioConIva;
+      }
+    }
+    return { neto, conIva };
+  }, [proveedor, cantidadesProv]);
+
+  return (
+    <Card className={esSinProveedor
+      ? 'shadow-sm border-2 border-danger-200 dark:border-danger-300'
+      : 'shadow-sm border border-default-200 dark:border-default-100'
+    }>
+      <CardBody className="p-0">
+        {/* Header del proveedor */}
+        <div className={esSinProveedor
+          ? 'bg-danger-50 dark:bg-danger-50/10 px-4 py-3 border-b border-danger-200'
+          : 'bg-warning-50 dark:bg-warning-50/10 px-4 py-3 border-b border-default-100'
+        }>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div>
+              <h4 className={esSinProveedor
+                ? 'font-bold text-base text-danger'
+                : 'font-bold text-base text-secondary dark:text-foreground'
+              }>
+                {esSinProveedor ? 'Productos Sin Proveedor' : proveedor.nombreDistribuidora}
+              </h4>
+              {!esSinProveedor && (
+                <div className="flex flex-wrap items-center gap-2 text-xs text-default-500 mt-0.5">
+                  <span className="flex items-center gap-1">
+                    <Icon icon="lucide:user" width={12} />
+                    {proveedor.nombreProveedor ?? '—'}
+                  </span>
+                  {proveedor.telefono && (
+                    <>
+                      <span className="text-default-300">•</span>
+                      <span className="flex items-center gap-1">
+                        <Icon icon="lucide:phone" width={12} />
+                        {proveedor.telefono}
+                      </span>
+                    </>
+                  )}
+                  {proveedor.email && (
+                    <>
+                      <span className="text-default-300">•</span>
+                      <span className="flex items-center gap-1">
+                        <Icon icon="lucide:mail" width={12} />
+                        {proveedor.email}
+                      </span>
+                    </>
+                  )}
+                </div>
+              )}
+              {!esSinProveedor && proveedor.diasEntrega && proveedor.diasEntrega.length > 0 && (
+                <div className="flex flex-wrap items-center gap-1 mt-2">
+                  <span className="text-[11px] text-default-500 mr-1">Días de entrega:</span>
+                  {proveedor.diasEntrega.map(d => (
+                    <Chip key={d} size="sm" color="warning" variant="flat" className="text-[10px]">
+                      {DIAS_ABREV_OC[d]}
+                    </Chip>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div className="flex flex-col items-end gap-1">
+              <Chip color="primary" size="sm" variant="flat">
+                {proveedor.totalProductos} producto{proveedor.totalProductos !== 1 ? 's' : ''}
+              </Chip>
+              {!esSinProveedor && (
+                <>
+                  <Chip color="success" size="sm" variant="flat" className="font-bold">
+                    Neto: ${fmtN(totales.neto)}
+                  </Chip>
+                  <Chip color="warning" size="sm" variant="flat" className="font-bold">
+                    c/IVA: ${fmtN(totales.conIva)}
+                  </Chip>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Tabla productos por categoría */}
+        <div className="px-4 py-3">
+          {proveedor.categorias.map(cat => (
+            <div key={cat.idCategoria} className="mb-3 last:mb-0">
+              <p className="text-xs font-semibold text-default-500 uppercase tracking-wide mb-1">
+                {cat.nombreCategoria}
+              </p>
+              <div className="overflow-x-auto rounded-lg border border-default-200 dark:border-default-100">
+                <table className="w-full text-xs">
+                  <thead className="bg-default-100 dark:bg-default-50">
+                    <tr>
+                      <th className="text-center py-2 px-3 font-medium">Producto</th>
+                      <th className="text-center py-2 px-3 font-medium w-16">Und</th>
+                      <th className="text-center py-2 px-3 font-medium w-24">Cant. Total</th>
+                      {!esSinProveedor && fechasEntrega.map(f => (
+                        <th key={f} className="text-center py-2 px-3 font-medium w-32">
+                          Entrega {formatFechaEntregaLabel(f)}
+                        </th>
+                      ))}
+                      <th className="text-center py-2 px-3 font-medium w-24">P. Neto</th>
+                      <th className="text-center py-2 px-3 font-medium w-24">P. c/IVA</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {cat.productos.map(prod => {
+                      const item = cantidadesProv[prod.idProducto];
+                      const cantTotalEditable = item?.cantTotal ?? prod.cantidadTotal;
+                      return (
+                        <tr
+                          key={prod.idProducto}
+                          className="border-t border-default-100 dark:border-default-50 hover:bg-default-50 dark:hover:bg-default-100/20"
+                        >
+                          <td className="py-2 px-3 font-medium text-left">
+                            <Tooltip content={prod.nombreProducto} color="default">
+                              <span className="truncate">{prod.nombreProducto}</span>
+                            </Tooltip>
+                          </td>
+                          <td className="py-2 px-3 text-center text-default-500">{prod.abreviatura}</td>
+                          <td className="py-2 px-3 text-center">
+                            <input
+                              type="number"
+                              min={0}
+                              step="0.001"
+                              value={cantTotalEditable}
+                              onChange={(e) => {
+                                if (proveedor.idProveedor == null) return;
+                                onCantidadChange(
+                                  proveedor.idProveedor,
+                                  prod.idProducto,
+                                  'cantTotal',
+                                  parseFloat(e.target.value),
+                                );
+                              }}
+                              disabled={esSinProveedor}
+                              className="w-20 px-2 py-1 text-center rounded border border-default-200 dark:border-default-100 bg-white dark:bg-default-100/50 focus:outline-none focus:border-warning"
+                            />
+                          </td>
+                          {!esSinProveedor && fechasEntrega.map(f => {
+                            const v = item?.entregas[f] ?? 0;
+                            return (
+                              <td key={f} className="py-2 px-3 text-center">
+                                <input
+                                  type="number"
+                                  min={0}
+                                  step="0.001"
+                                  value={v}
+                                  onChange={(e) => {
+                                    if (proveedor.idProveedor == null) return;
+                                    onCantidadChange(
+                                      proveedor.idProveedor,
+                                      prod.idProducto,
+                                      f,
+                                      parseFloat(e.target.value),
+                                    );
+                                  }}
+                                  className="w-24 px-2 py-1 text-center rounded border border-default-200 dark:border-default-100 bg-white dark:bg-default-100/50 focus:outline-none focus:border-warning"
+                                />
+                              </td>
+                            );
+                          })}
+                          <td className="py-2 px-3 text-center">
+                            {prod.precioNeto !== null ? `$${fmtN(prod.precioNeto)}` : '—'}
+                          </td>
+                          <td className="py-2 px-3 text-center">
+                            {prod.precioConIva !== null ? `$${fmtN(prod.precioConIva)}` : '—'}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ))}
+        </div>
+      </CardBody>
+    </Card>
   );
 };
 
