@@ -2643,6 +2643,7 @@ const FormularioProveedor: React.FC<FormularioProveedorProps> = ({
   const [nombreProveedor, setNombreProveedor] = React.useState(proveedor?.nombreProveedor || '');
   const [telefonoProveedor, setTelefonoProveedor] = React.useState(proveedor?.telefonoProveedor || '');
   const [emailProveedor, setEmailProveedor] = React.useState(proveedor?.emailProveedor || '');
+  const [direccionProveedor, setDireccionProveedor] = React.useState((proveedor as any)?.direccionProveedor || '');
   const [rutProveedor, setRutProveedor] = React.useState(proveedor?.rutProveedor || '');
   const [estadoProveedor, setEstadoProveedor] = React.useState<EstadoProveedor>(
     proveedor?.estadoProveedor || 'DISPONIBLE'
@@ -2708,6 +2709,7 @@ const FormularioProveedor: React.FC<FormularioProveedorProps> = ({
       nombreProveedor: nombreProveedor.trim(),
       telefonoProveedor: telefonoProveedor.trim(),
       emailProveedor: emailProveedor.trim(),
+      direccionProveedor: direccionProveedor.trim() ? direccionProveedor.trim() : undefined,
       estadoProveedor,
       diasEntrega: diasEntrega.length > 0 ? diasEntrega : undefined,
     };
@@ -2881,6 +2883,20 @@ const FormularioProveedor: React.FC<FormularioProveedorProps> = ({
             />
             <p className="text-xs text-default-400 text-right">{emailProveedor.length}/150</p>
           </div>
+        </div>
+
+        <div className="space-y-1">
+          <Input
+            label="Dirección (opcional)"
+            placeholder="Ej: Av. Vicuña Mackenna 4860, Macul"
+            value={direccionProveedor}
+            onValueChange={(val) => setDireccionProveedor(val.slice(0, 255))}
+            isReadOnly={isReadOnly}
+            variant="bordered"
+            maxLength={255}
+            description="Se mostrará en la cabecera del Excel generado para este proveedor."
+          />
+          <p className="text-xs text-default-400 text-right">{direccionProveedor.length}/255</p>
         </div>
 
         {!isReadOnly ? (

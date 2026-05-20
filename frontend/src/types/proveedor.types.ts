@@ -27,6 +27,8 @@ export interface IProveedor {
   nombreProveedor: string;
   telefonoProveedor: string;
   emailProveedor: string;
+  /** Dirección opcional. Solo viene poblada en el detalle, no en la lista. */
+  direccionProveedor?: string | null;
   estadoProveedor: EstadoProveedor;
   activo: boolean;
   fechaCreacion: string | null;
@@ -84,6 +86,8 @@ export interface IProveedorCreateDTO {
   nombreProveedor: string;
   telefonoProveedor: string;
   emailProveedor: string;
+  /** Dirección opcional — usada en la cabecera del Excel plantilla. */
+  direccionProveedor?: string;
   estadoProveedor?: EstadoProveedor;
   diasEntrega?: IDiaEntregaDTO[];
 }
@@ -98,6 +102,8 @@ export interface IProveedorUpdateDTO {
   nombreProveedor: string;
   telefonoProveedor: string;
   emailProveedor: string;
+  /** Dirección opcional — usada en la cabecera del Excel plantilla. */
+  direccionProveedor?: string;
   estadoProveedor?: EstadoProveedor;
   diasEntrega?: IDiaEntregaDTO[];
 }
