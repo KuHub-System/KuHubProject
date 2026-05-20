@@ -53,6 +53,20 @@ public interface ProveedorService {
      */
     boolean actualizarPrecio(Long idProveedorProducto, ProveedorProductoUpdateDTO dto);
 
+    /**
+     * Recalcula el precio con IVA a partir del precio neto guardado y persiste el cambio
+     * IN-PLACE (sin crear una nueva versión, porque es una corrección de datos desincronizados,
+     * no un cambio de precio). Retorna true si efectivamente cambió el IVA, false si ya estaba
+     * sincronizado.
+     */
+    boolean sincronizarPrecioDesdeNeto(Long idProveedorProducto);
+
+    /**
+     * Recalcula el precio neto a partir del precio con IVA guardado y persiste IN-PLACE.
+     * Retorna true si efectivamente cambió el neto, false si ya estaba sincronizado.
+     */
+    boolean sincronizarPrecioDesdeIva(Long idProveedorProducto);
+
     /** Quita (soft-delete) un producto del proveedor.
      *  Retorna true si se soft-deletó correctamente, false si no hubo cambios.
      */
