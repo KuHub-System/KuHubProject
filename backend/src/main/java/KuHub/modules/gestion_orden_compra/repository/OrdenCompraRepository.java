@@ -233,7 +233,7 @@ FROM (
         categoria_grupo.nombre_proveedor,
         categoria_grupo.telefono_proveedor,
         categoria_grupo.email_proveedor,
-        MAX(categoria_grupo.dias_entrega_json) AS dias_entrega_json,
+        MAX(categoria_grupo.dias_entrega_json::text)::jsonb AS dias_entrega_json,
         SUM(categoria_grupo.conteo_productos)  AS total_productos,
         SUM(categoria_grupo.subtotal_neto)     AS total_neto,
         SUM(categoria_grupo.subtotal_con_iva)  AS total_con_iva,
@@ -254,7 +254,7 @@ FROM (
             pcp.email_proveedor,
             pcp.id_categoria,
             pcp.nombre_categoria,
-            MAX(pcp.dias_entrega_json) AS dias_entrega_json,
+            MAX(pcp.dias_entrega_json::text)::jsonb AS dias_entrega_json,
             COUNT(pcp.id_producto)     AS conteo_productos,
             SUM(CASE WHEN pcp.precio_neto IS NOT NULL
                      THEN ROUND(pcp.precio_neto * pcp.cantidad_total, 2)
