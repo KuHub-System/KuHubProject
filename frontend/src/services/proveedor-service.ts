@@ -576,6 +576,49 @@ export const sincronizarPreciosExcelService = async (
  * y se puede re-subir al endpoint de sync tras editar los precios.
  * GET /api/v1/proveedor/{id}/excel-plantilla
  */
+/**
+ * Sincroniza el precio con IVA recalculándolo desde el neto guardado (neto × 1.19).
+ * Update IN-PLACE, no crea versión nueva.
+ * PATCH /api/v1/proveedor/productos/{idProveedorProducto}/sincronizar-desde-neto
+ * Retorna true si cambió, false si ya estaba sincronizado.
+ */
+export const sincronizarPrecioDesdeNetoService = async (
+  idProveedorProducto: number
+): Promise<boolean> => {
+  try {
+    const response = await api.patch<boolean>(
+      `/proveedor/productos/${idProveedorProducto}/sincronizar-desde-neto`
+    );
+    return response.data;
+  } catch (error: any) {
+    throw new Error(
+      error.response?.data?.message ||
+      'Error al sincronizar el precio con IVA desde el neto'
+    );
+  }
+};
+
+/**
+ * Sincroniza el precio neto recalculándolo desde el IVA guardado (iva / 1.19).
+ * Update IN-PLACE, no crea versión nueva.
+ * PATCH /api/v1/proveedor/productos/{idProveedorProducto}/sincronizar-desde-iva
+ */
+export const sincronizarPrecioDesdeIvaService = async (
+  idProveedorProducto: number
+): Promise<boolean> => {
+  try {
+    const response = await api.patch<boolean>(
+      `/proveedor/productos/${idProveedorProducto}/sincronizar-desde-iva`
+    );
+    return response.data;
+  } catch (error: any) {
+    throw new Error(
+      error.response?.data?.message ||
+      'Error al sincronizar el precio neto desde el IVA'
+    );
+  }
+};
+
 export const descargarExcelPlantillaService = async (
   idProveedor: number,
   nombreSugerido?: string

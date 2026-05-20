@@ -249,6 +249,35 @@ public class ProveedorController {
     }
 
     /**
+     * Sincroniza el precio con IVA recalculándolo desde el neto guardado (neto × 1.19).
+     * Update IN-PLACE — no crea nueva versión (es corrección de datos desincronizados).
+     * ✅ Consumido por sincronizarPrecioDesdeNetoService en proveedor-service.ts.
+     *
+     * Respuestas:
+     *   - 200 OK + true: el IVA cambió y se persistió
+     *   - 200 OK + false: ya estaba sincronizado, no hubo cambios
+     *   - 404 NOT_FOUND: relación proveedor-producto no existe
+     */
+    @PatchMapping("/productos/{idProveedorProducto}/sincronizar-desde-neto")
+    public ResponseEntity<Boolean> sincronizarPrecioDesdeNeto(@PathVariable Long idProveedorProducto) {
+        return ResponseEntity
+                .status(200)
+                .body(proveedorService.sincronizarPrecioDesdeNeto(idProveedorProducto));
+    }
+
+    /**
+     * Sincroniza el precio neto recalculándolo desde el IVA guardado (iva / 1.19).
+     * Update IN-PLACE — no crea nueva versión.
+     * ✅ Consumido por sincronizarPrecioDesdeIvaService en proveedor-service.ts.
+     */
+    @PatchMapping("/productos/{idProveedorProducto}/sincronizar-desde-iva")
+    public ResponseEntity<Boolean> sincronizarPrecioDesdeIva(@PathVariable Long idProveedorProducto) {
+        return ResponseEntity
+                .status(200)
+                .body(proveedorService.sincronizarPrecioDesdeIva(idProveedorProducto));
+    }
+
+    /**
      * Quita (soft-delete) un producto del proveedor.
      * ✅ En uso: Consumido por quitarProductoProveedorService en proveedor-service.ts.
      * Se llama desde el modal de confirmación en la tabla de productos del proveedor.

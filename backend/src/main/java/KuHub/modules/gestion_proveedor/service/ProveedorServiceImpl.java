@@ -426,6 +426,50 @@ public class ProveedorServiceImpl implements ProveedorService {
 
     @Override
     @Transactional
+    public boolean sincronizarPrecioDesdeNeto(Long idProveedorProducto) {
+        ProveedorProducto pp = proveedorProductoRepository.findById(idProveedorProducto)
+                .orElseThrow(() -> new GestionProveedorException(
+                        "Relación proveedor-producto ID=" + idProveedorProducto + " no encontrada",
+                        HttpStatus.NOT_FOUND));
+
+        BigDecimal nuevoIva = pp.getPrecioNeto().multiply(IVA).setScale(3, RoundingMode.HALF_UP);
+        if (nuevoIva.compareTo(pp.getPrecioConIva()) == 0) {
+            log.info("sincronizarPrecioDesdeNeto: pp_id={} ya estaba sincronizado, no hubo cambios", idProveedorProducto);
+            return false;
+        }
+
+        BigDecimal ivaPrevio = pp.getPrecioConIva();
+        pp.setPrecioConIva(nuevoIva);
+        proveedorProductoRepository.save(pp);
+        log.info("Sincronizado IVA desde Neto: pp_id={} | neto={} | IVA anterior={} → nuevo={}",
+                idProveedorProducto, pp.getPrecioNeto(), ivaPrevio, nuevoIva);
+        return true;
+    }
+
+    @Override
+    @Transactional
+    public boolean sincronizarPrecioDesdeIva(Long idProveedorProducto) {
+        ProveedorProducto pp = proveedorProductoRepository.findById(idProveedorProducto)
+                .orElseThrow(() -> new GestionProveedorException(
+                        "Relación proveedor-producto ID=" + idProveedorProducto + " no encontrada",
+                        HttpStatus.NOT_FOUND));
+
+        BigDecimal nuevoNeto = pp.getPrecioConIva().divide(IVA, 3, RoundingMode.HALF_UP);
+        if (nuevoNeto.compareTo(pp.getPrecioNeto()) == 0) {
+            log.info("sincronizarPrecioDesdeIva: pp_id={} ya estaba sincronizado, no hubo cambios", idProveedorProducto);
+            return false;
+        }
+
+        BigDecimal netoPrevio = pp.getPrecioNeto();
+        pp.setPrecioNeto(nuevoNeto);
+        proveedorProductoRepository.save(pp);
+        log.info("Sincronizado Neto desde IVA: pp_id={} | iva={} | neto anterior={} → nuevo={}",
+                idProveedorProducto, pp.getPrecioConIva(), netoPrevio, nuevoNeto);
+        return true;
+    }
+
+    @Override
+    @Transactional
     public boolean agregarProducto(Integer idProveedor, ProveedorProductoAddDTO dto) {
         findById(idProveedor);
 
