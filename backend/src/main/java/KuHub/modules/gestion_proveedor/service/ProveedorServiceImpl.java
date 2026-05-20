@@ -1030,12 +1030,16 @@ public class ProveedorServiceImpl implements ProveedorService {
             boldCenteredGeneralStyle.setAlignment(HorizontalAlignment.CENTER);
             boldCenteredGeneralStyle.setVerticalAlignment(VerticalAlignment.CENTER);
 
-            // Formato moneda contabilidad (columnas F y G): COPIADO LITERAL de la plantilla original.
-            // 4 partes: positivo ; negativo ; cero ; texto. `_ "$"* ` empuja `$` a la izquierda y
-            // el número a la derecha con espacio de relleno. `#,##0` sin decimales (en es-CL Excel
-            // lo muestra como `1.500`). Sin prefijo de locale → el usuario ve la versión es-CL.
+            // Formato moneda contabilidad CON 2 DECIMALES (columnas F y G).
+            // Variante del formato original con `.00` forzados para que la COMA DECIMAL sea visible.
+            // 4 partes: positivo ; negativo ; cero ; texto.
+            // `_ "$"* ` empuja `$` al borde izquierdo y el número al borde derecho (relleno de espacios).
+            // `#,##0.00` en convención US → en Excel es-CL se muestra como `1.500,00`:
+            //   - El `,` del formato (separador miles US) → se muestra como `.` (miles es-CL)
+            //   - El `.` del formato (separador decimal US) → se muestra como `,` (decimal es-CL)
+            // `"-"??` en la parte de "cero": dos placeholders para alinear con los 2 decimales.
             short clpFormat = dataFormat.getFormat(
-                    "_ \"$\"* #,##0_ ;_ \"$\"* \\-#,##0_ ;_ \"$\"* \"-\"_ ;_ @_ "
+                    "_ \"$\"* #,##0.00_ ;_ \"$\"* \\-#,##0.00_ ;_ \"$\"* \"-\"??_ ;_ @_ "
             );
 
             CellStyle currencyStyle = workbook.createCellStyle();
