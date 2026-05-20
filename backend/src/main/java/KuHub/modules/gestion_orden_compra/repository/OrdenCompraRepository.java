@@ -165,7 +165,7 @@ mejor_precio AS (
     ORDER BY pp.id_producto, pp.precio_neto ASC
 ),
 
--- Días de entrega activos de cada proveedor (ordenados Lun→Dom).
+-- Días de entrega de cada proveedor (ordenados Lun→Dom).
 proveedor_dias AS (
     SELECT
         pde.id_proveedor,
@@ -183,7 +183,6 @@ proveedor_dias AS (
                 END ASC
         ) AS dias_entrega_json
     FROM proveedor_dia_entrega pde
-    WHERE pde.activo = TRUE
     GROUP BY pde.id_proveedor
 ),
 
