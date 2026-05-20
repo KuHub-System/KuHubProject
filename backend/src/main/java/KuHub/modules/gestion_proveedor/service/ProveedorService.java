@@ -105,4 +105,15 @@ public interface ProveedorService {
      * Retorna resumen con sincronizados, omitidos y errores por fila.
      */
     SyncExcelResultDTO sincronizarPreciosExcel(Integer idProveedor, MultipartFile file);
+
+    /**
+     * Genera un .xlsx con el catálogo actual del proveedor, replicando exactamente
+     * el formato de la plantilla de sincronización (ABARROTES SAN ANDRES FEBRERO):
+     * cabeceras de empresa (NOMBRE EMPRESA / DIRECCIÓN / TELÉFONO / PERSONA DE CONTACTO),
+     * fila de encabezados naranja con PRDUCTO / CANTIDAD / Formato de grs. / Marca /
+     * Precio neto / Precio total, y una fila por cada producto activo del proveedor
+     * con CANTIDAD = 1 y fórmula =F{n}+(F{n}*19%) en Precio total.
+     * Útil para que el proveedor edite los precios y re-suba el mismo archivo al sync.
+     */
+    byte[] generarExcelPlantillaProveedor(Integer idProveedor);
 }
