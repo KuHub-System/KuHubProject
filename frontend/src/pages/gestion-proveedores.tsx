@@ -521,30 +521,44 @@ const GestionProveedoresPage: React.FC = () => {
   // ── Expansión de filas ────────────────────────────────────────────────────
 
   const toggleRowExpansion = async (idProveedor: number) => {
-    const newExpanded = new Set(expandedRows);
-    if (newExpanded.has(idProveedor)) {
-      newExpanded.delete(idProveedor);
-    } else {
-      newExpanded.add(idProveedor);
-      // Cargar detalle si no está en caché
-      if (!detalleCache[idProveedor]) {
-        setLoadingDetalle(prev => new Set(prev).add(idProveedor));
-        try {
-          const detalle = await obtenerProveedorDetalleService(idProveedor);
-          setDetalleCache(prev => ({ ...prev, [idProveedor]: detalle }));
-        } catch (err: any) {
-          showToast(err.message || 'Error al cargar productos del proveedor', 'error');
-          newExpanded.delete(idProveedor);
-        } finally {
-          setLoadingDetalle(prev => {
-            const s = new Set(prev);
-            s.delete(idProveedor);
-            return s;
-          });
-        }
-      }
+    // Si ya estaba expandida → contraer y salir
+    if (expandedRows.has(idProveedor)) {
+      setExpandedRows(prev => {
+        const next = new Set(prev);
+        next.delete(idProveedor);
+        return next;
+      });
+      return;
     }
-    setExpandedRows(newExpanded);
+
+    // Expandir INMEDIATAMENTE para que el usuario vea la animación de carga
+    // mientras llega la respuesta del backend. Antes el setExpandedRows ocurría
+    // después del await → fila + datos aparecían juntos y el loader nunca se veía.
+    setExpandedRows(prev => new Set(prev).add(idProveedor));
+
+    if (detalleCache[idProveedor]) {
+      return; // Caché disponible → render inmediato, no hay nada que cargar
+    }
+
+    setLoadingDetalle(prev => new Set(prev).add(idProveedor));
+    try {
+      const detalle = await obtenerProveedorDetalleService(idProveedor);
+      setDetalleCache(prev => ({ ...prev, [idProveedor]: detalle }));
+    } catch (err: any) {
+      showToast(err.message || 'Error al cargar productos del proveedor', 'error');
+      // En caso de error, colapsar la fila para que el usuario pueda reintentar
+      setExpandedRows(prev => {
+        const next = new Set(prev);
+        next.delete(idProveedor);
+        return next;
+      });
+    } finally {
+      setLoadingDetalle(prev => {
+        const s = new Set(prev);
+        s.delete(idProveedor);
+        return s;
+      });
+    }
   };
 
   const invalidarCacheProveedor = (idProveedor: number) => {
@@ -1415,7 +1429,7 @@ const GestionProveedoresPage: React.FC = () => {
                                   onMostrarInactivosChange={setMostrarInactivos}
                                 />
                               ) : (
-                                <div className="flex justify-center py-6">
+                                <div className="flex justify-center items-center py-6 min-h-[220px]">
                                   <BookPageLoader
                                     message="Cargando catálogo"
                                     subMessage="Obteniendo productos del proveedor..."
