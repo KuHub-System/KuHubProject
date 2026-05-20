@@ -1000,11 +1000,11 @@ public class ProveedorServiceImpl implements ProveedorService {
             centeredStyle.setAlignment(HorizontalAlignment.CENTER);
             centeredStyle.setVerticalAlignment(VerticalAlignment.CENTER);
 
-            // Formato numérico chileno (cantidad/formato): fuerza coma como decimal y punto como
-            // separador de miles regardless del locale de Excel. `[$-340A]` = LCID Chile.
-            // En el FORMAT STRING se usa SIEMPRE convención US ("," = miles, "." = decimal);
-            // Excel hace la substitución al mostrar según el LCID. `#` = dígito opcional (sin
-            // padding de ceros), así no aparecen ".000" cuando el valor es entero.
+            // Formato numérico chileno (cantidad/formato): `[$-340A]` al inicio fuerza el locale
+            // Chile para TODO el formato (no solo el símbolo). En la cadena se usa SIEMPRE
+            // convención US ("," = miles, "." = decimal) y Excel hace la substitución al mostrar:
+            // → `.` se vuelve separador de miles y `,` se vuelve separador decimal.
+            // `#` = dígito opcional → no aparece ".000" cuando el valor es entero.
             DataFormat dataFormat = workbook.createDataFormat();
             short numChilenoFmt = dataFormat.getFormat("[$-340A]#,##0.###");
 
@@ -1019,11 +1019,11 @@ public class ProveedorServiceImpl implements ProveedorService {
             boldCenteredNumStyle.setVerticalAlignment(VerticalAlignment.CENTER);
             boldCenteredNumStyle.setDataFormat(numChilenoFmt);
 
-            // Formato de moneda chileno: $ pegado al borde izquierdo, valor pegado al derecho.
-            // `[$$-340A]` = símbolo $ + locale Chile. `* ` (asterisco + espacio) rellena el
-            // espacio sobrante con espacios → empuja $ a la izquierda y el número a la derecha.
-            // `#,##0.###` da hasta 3 decimales SOLO si son distintos de cero (sin ceros relleno).
-            short clpFormat = dataFormat.getFormat("[$$-340A]* #,##0.###");
+            // Formato moneda chileno: `[$-340A]` fuerza locale Chile para TODO el formato.
+            // `"$"` = símbolo dólar literal. `* ` (asterisco + espacio) rellena con espacios →
+            // empuja `$` al borde izquierdo y el número al borde derecho de la misma celda.
+            // `#,##0.###` en convención US se traduce a `#.##0,###` al mostrar en es-CL.
+            short clpFormat = dataFormat.getFormat("[$-340A]\"$\"* #,##0.###");
 
             CellStyle currencyStyle = workbook.createCellStyle();
             currencyStyle.setDataFormat(clpFormat);

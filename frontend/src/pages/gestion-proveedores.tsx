@@ -32,6 +32,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import XLSXStyle from 'xlsx-js-style';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useModulePermission } from '../contexts/permission-context';
+import BookPageLoader from '../components/BookPageLoader';
 import {
   obtenerProveedoresService,
   obtenerProveedoresPaginadoService,
@@ -987,11 +988,18 @@ const GestionProveedoresPage: React.FC = () => {
   };
 
   const handleCerrarSyncExcel = () => {
+    // Si el cierre ocurre DESPUÉS de una sincronización (haya o no productos sincronizados),
+    // refrescamos toda la página 500ms después para que la tabla y los detalles caché
+    // muestren los precios nuevos. Equivalente a un F5 manual del usuario.
+    const huboSincronizacion = syncResult !== null;
     setSyncProveedorId(null);
     setSyncFile(null);
     setSyncResult(null);
     setSyncError(null);
     if (excelInputRef.current) excelInputRef.current.value = '';
+    if (huboSincronizacion) {
+      setTimeout(() => window.location.reload(), 500);
+    }
   };
 
   // ── Render ────────────────────────────────────────────────────────────────
@@ -1408,7 +1416,10 @@ const GestionProveedoresPage: React.FC = () => {
                                 />
                               ) : (
                                 <div className="flex justify-center py-6">
-                                  <Spinner size="sm" color="primary" />
+                                  <BookPageLoader
+                                    message="Cargando catálogo"
+                                    subMessage="Obteniendo productos del proveedor..."
+                                  />
                                 </div>
                               )}
                             </div>
