@@ -37,6 +37,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellStyle;
 import org.apache.poi.ss.usermodel.CellType;
+import org.apache.poi.ss.usermodel.DataFormat;
 import org.apache.poi.ss.usermodel.DataFormatter;
 import org.apache.poi.ss.usermodel.FillPatternType;
 import org.apache.poi.ss.usermodel.Font;
@@ -988,22 +989,41 @@ public class ProveedorServiceImpl implements ProveedorService {
             headerStyle.setAlignment(HorizontalAlignment.CENTER);
             headerStyle.setVerticalAlignment(VerticalAlignment.CENTER);
 
-            // Bold + centrado (EJEMPLO: cantidad, formato, marca)
+            // Bold + centrado para celdas de TEXTO (marca en EJEMPLO)
             CellStyle boldCenteredStyle = workbook.createCellStyle();
             boldCenteredStyle.setFont(boldFont);
             boldCenteredStyle.setAlignment(HorizontalAlignment.CENTER);
             boldCenteredStyle.setVerticalAlignment(VerticalAlignment.CENTER);
 
-            // Centrado para valores de cantidad / formato / marca en las filas de datos
+            // Centrado para celdas de TEXTO (marca en filas de datos)
             CellStyle centeredStyle = workbook.createCellStyle();
             centeredStyle.setAlignment(HorizontalAlignment.CENTER);
             centeredStyle.setVerticalAlignment(VerticalAlignment.CENTER);
 
-            // Formato chileno de moneda: $ pegado a la izquierda, valor a la derecha,
-            // punto como separador de miles y coma como separador decimal (3 decimales).
-            // El "*" después de $ rellena con espacios → empuja el $ al borde izquierdo.
-            short clpFormat = workbook.createDataFormat()
-                    .getFormat("[$$-340A]* #.##0,000_-");
+            // Formato numérico chileno (cantidad/formato): fuerza coma como decimal y punto como
+            // separador de miles regardless del locale de Excel. `[$-340A]` = LCID Chile.
+            // En el FORMAT STRING se usa SIEMPRE convención US ("," = miles, "." = decimal);
+            // Excel hace la substitución al mostrar según el LCID. `#` = dígito opcional (sin
+            // padding de ceros), así no aparecen ".000" cuando el valor es entero.
+            DataFormat dataFormat = workbook.createDataFormat();
+            short numChilenoFmt = dataFormat.getFormat("[$-340A]#,##0.###");
+
+            CellStyle centeredNumStyle = workbook.createCellStyle();
+            centeredNumStyle.setAlignment(HorizontalAlignment.CENTER);
+            centeredNumStyle.setVerticalAlignment(VerticalAlignment.CENTER);
+            centeredNumStyle.setDataFormat(numChilenoFmt);
+
+            CellStyle boldCenteredNumStyle = workbook.createCellStyle();
+            boldCenteredNumStyle.setFont(boldFont);
+            boldCenteredNumStyle.setAlignment(HorizontalAlignment.CENTER);
+            boldCenteredNumStyle.setVerticalAlignment(VerticalAlignment.CENTER);
+            boldCenteredNumStyle.setDataFormat(numChilenoFmt);
+
+            // Formato de moneda chileno: $ pegado al borde izquierdo, valor pegado al derecho.
+            // `[$$-340A]` = símbolo $ + locale Chile. `* ` (asterisco + espacio) rellena el
+            // espacio sobrante con espacios → empuja $ a la izquierda y el número a la derecha.
+            // `#,##0.###` da hasta 3 decimales SOLO si son distintos de cero (sin ceros relleno).
+            short clpFormat = dataFormat.getFormat("[$$-340A]* #,##0.###");
 
             CellStyle currencyStyle = workbook.createCellStyle();
             currencyStyle.setDataFormat(clpFormat);
@@ -1040,11 +1060,12 @@ public class ProveedorServiceImpl implements ProveedorService {
                 crearCeldaTexto(row5, i + 1, cabeceras[i], headerStyle);
             }
 
-            // Fila 6 (idx 5): EJEMPLO — cantidad/formato/marca centrados, precios con formato moneda
+            // Fila 6 (idx 5): EJEMPLO — cantidad/formato con formato numérico chileno (coma decimal),
+            // marca centrada como texto, precios con formato moneda chileno
             Row row6 = sheet.createRow(5);
             crearCeldaTexto(row6, 1, "EJEMPLO", boldStyle);
-            crearCeldaNumero(row6, 2, 1, boldCenteredStyle);
-            crearCeldaNumero(row6, 3, 0.8, boldCenteredStyle);
+            crearCeldaNumero(row6, 2, 1, boldCenteredNumStyle);
+            crearCeldaNumero(row6, 3, 0.8, boldCenteredNumStyle);
             crearCeldaTexto(row6, 4, "DUOC UC", boldCenteredStyle);
             crearCeldaNumero(row6, 5, 100, boldCurrencyStyle);
             crearCeldaFormulaIva(row6, 6, 6, boldCurrencyStyle);
@@ -1055,11 +1076,11 @@ public class ProveedorServiceImpl implements ProveedorService {
                 Row r = sheet.createRow(rowIdx);
                 // Nombre del producto: mantener alineación izquierda por defecto
                 crearCeldaTexto(r, 1, nullToEmpty(p.nombreProducto()), null);
-                crearCeldaNumero(r, 2, 1, centeredStyle);
+                crearCeldaNumero(r, 2, 1, centeredNumStyle);
 
                 Double formato = parsearFormato(p.formatoContenido());
                 if (formato != null) {
-                    crearCeldaNumero(r, 3, formato, centeredStyle);
+                    crearCeldaNumero(r, 3, formato, centeredNumStyle);
                 } else if (p.formatoContenido() != null && !p.formatoContenido().isBlank()) {
                     crearCeldaTexto(r, 3, p.formatoContenido(), centeredStyle);
                 }
@@ -1073,6 +1094,12 @@ public class ProveedorServiceImpl implements ProveedorService {
                 crearCeldaFormulaIva(r, 6, rowIdx + 1, currencyStyle);
                 rowIdx++;
             }
+
+            // Pre-evalúa las fórmulas IVA y guarda los valores cacheados → al abrir el .xlsx
+            // Excel ve el valor ya calculado (no celdas en blanco) y reaplica el formato moneda.
+            // Además forzamos recálculo on-open por compatibilidad cross-versión.
+            workbook.getCreationHelper().createFormulaEvaluator().evaluateAll();
+            workbook.setForceFormulaRecalculation(true);
 
             workbook.write(out);
             log.info("Excel plantilla generado para proveedor ID={} | {} productos", idProveedor, productos.size());
