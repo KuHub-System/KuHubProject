@@ -531,28 +531,31 @@ const GestionProveedoresPage: React.FC = () => {
       return;
     }
 
-    // Expandir INMEDIATAMENTE para que el usuario vea la animación de carga
-    // mientras llega la respuesta del backend. Antes el setExpandedRows ocurría
-    // después del await → fila + datos aparecían juntos y el loader nunca se veía.
+    // PASO 1: expandir + marcar loading INMEDIATAMENTE.
+    // Ambos updates en el mismo tick para que el render que abre la fila
+    // ya tenga el flag de loading → el BookPageLoader aparece desde el primer frame.
     setExpandedRows(prev => new Set(prev).add(idProveedor));
-
-    if (detalleCache[idProveedor]) {
-      return; // Caché disponible → render inmediato, no hay nada que cargar
-    }
-
     setLoadingDetalle(prev => new Set(prev).add(idProveedor));
+
     try {
-      const detalle = await obtenerProveedorDetalleService(idProveedor);
+      // PASO 2: garantizar mínimo 600 ms de animación visible.
+      // Promise.all → corre fetch + sleep en paralelo y solo continúa cuando AMBOS terminan.
+      // Si el fetch es instantáneo (cache HTTP), igual se ven los 600 ms del libro.
+      const [detalle] = await Promise.all([
+        obtenerProveedorDetalleService(idProveedor),
+        new Promise<void>(resolve => setTimeout(resolve, 600)),
+      ]);
       setDetalleCache(prev => ({ ...prev, [idProveedor]: detalle }));
     } catch (err: any) {
       showToast(err.message || 'Error al cargar productos del proveedor', 'error');
-      // En caso de error, colapsar la fila para que el usuario pueda reintentar
+      // Si falla, colapsar para que el usuario pueda reintentar
       setExpandedRows(prev => {
         const next = new Set(prev);
         next.delete(idProveedor);
         return next;
       });
     } finally {
+      // PASO 3: limpiar el flag de loading → el render cambia del libro a la tabla.
       setLoadingDetalle(prev => {
         const s = new Set(prev);
         s.delete(idProveedor);
@@ -1412,7 +1415,17 @@ const GestionProveedoresPage: React.FC = () => {
                             className="overflow-hidden"
                           >
                             <div className="px-4 pb-4 pt-1 bg-default-50 dark:bg-default-100/20 border-t border-default-100">
-                              {detalleCache[proveedor.idProveedor] ? (
+                              {/* loadingDetalle es la única fuente de verdad para mostrar el loader.
+                                  toggleRowExpansion garantiza un mínimo de 600ms con el flag activo
+                                  → la animación siempre se muestra al expandir la fila. */}
+                              {loadingDetalle.has(proveedor.idProveedor) ? (
+                                <div className="flex justify-center items-center py-6 min-h-[220px]">
+                                  <BookPageLoader
+                                    message="Cargando catálogo"
+                                    subMessage="Obteniendo productos del proveedor..."
+                                  />
+                                </div>
+                              ) : detalleCache[proveedor.idProveedor] ? (
                                 <ProductosProveedor
                                   detalle={detalleCache[proveedor.idProveedor]}
                                   canEdit={prov_Editar}
@@ -1429,11 +1442,8 @@ const GestionProveedoresPage: React.FC = () => {
                                   onMostrarInactivosChange={setMostrarInactivos}
                                 />
                               ) : (
-                                <div className="flex justify-center items-center py-6 min-h-[220px]">
-                                  <BookPageLoader
-                                    message="Cargando catálogo"
-                                    subMessage="Obteniendo productos del proveedor..."
-                                  />
+                                <div className="text-center text-default-400 text-sm py-6">
+                                  Sin datos disponibles
                                 </div>
                               )}
                             </div>
