@@ -106,6 +106,7 @@ productos_por_dia AS (
     SELECT
         p.id_producto,
         p.nombre_producto,
+        p.es_fraccionario,
         c.id_categoria,
         c.nombre_categoria,
         um.abreviatura,
@@ -118,7 +119,7 @@ productos_por_dia AS (
     JOIN unidad_medida um ON um.id_unidad   = p.id_unidad
     WHERE p.activo = TRUE
     GROUP BY
-        p.id_producto, p.nombre_producto,
+        p.id_producto, p.nombre_producto, p.es_fraccionario,
         c.id_categoria, c.nombre_categoria,
         um.abreviatura, COALESCE(sr.dia_semana, 'SIN_DIA')
 ),
@@ -128,6 +129,7 @@ productos_solicitados AS (
     SELECT
         id_producto,
         nombre_producto,
+        es_fraccionario,
         id_categoria,
         nombre_categoria,
         abreviatura,
@@ -147,7 +149,7 @@ productos_solicitados AS (
                 END ASC
         ) AS cantidad_por_dia_json
     FROM productos_por_dia
-    GROUP BY id_producto, nombre_producto, id_categoria, nombre_categoria, abreviatura
+    GROUP BY id_producto, nombre_producto, es_fraccionario, id_categoria, nombre_categoria, abreviatura
 ),
 
 -- Proveedor con menor precio_neto para cada producto.
@@ -190,6 +192,7 @@ productos_con_proveedor AS (
     SELECT
         ps.id_producto,
         ps.nombre_producto,
+        ps.es_fraccionario,
         ps.id_categoria,
         ps.nombre_categoria,
         ps.abreviatura,
@@ -267,6 +270,7 @@ FROM (
                     'idProducto',      pcp.id_producto,
                     'nombreProducto',  pcp.nombre_producto,
                     'abreviatura',     pcp.abreviatura,
+                    'esFraccionario',  pcp.es_fraccionario,
                     'cantidadTotal',   pcp.cantidad_total,
                     'precioNeto',      pcp.precio_neto,
                     'precioConIva',    pcp.precio_con_iva,

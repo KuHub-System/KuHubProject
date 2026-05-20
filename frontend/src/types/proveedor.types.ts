@@ -331,6 +331,7 @@ export interface IProductoConsolidado {
   idProducto: number;
   nombreProducto: string;
   abreviatura: string;
+  esFraccionario: boolean;
   cantidadTotal: number;
   precioNeto: number | null;
   precioConIva: number | null;
