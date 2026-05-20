@@ -386,6 +386,15 @@ const addDaysISO = (iso: string, n: number): string => {
 const fechaDeDiaEnSemana = (lunesISO: string, dia: TDiaSemana): string =>
   addDaysISO(lunesISO, DIA_ORDEN[dia] - 1);
 
+/** Retorna la fecha ISO del lunes de la semana que contiene la fecha dada. */
+const getMondayISO = (iso: string): string => {
+  const d = new Date(iso + 'T00:00:00');
+  const dow = d.getDay(); // 0=Dom, 1=Lun, ..., 6=Sáb
+  const diff = dow === 0 ? -6 : 1 - dow;
+  d.setDate(d.getDate() + diff);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+
 /**
  * Agrupa los días LUNES..DOMINGO con cantidad > 0 en bloques de días consecutivos
  * según el orden de la semana. Ignora SIN_DIA.
@@ -617,7 +626,8 @@ const GestionProveedoresPage: React.FC = () => {
   const [ocCantidades, setOcCantidades] = React.useState<
     Record<number, Record<number, { cantTotal: number; entregas: Record<string, number> }>>
   >({});
-  const [ocSemanaEntrega, setOcSemanaEntrega] = React.useState<ISemana | null>(null);
+  /** Fecha elegida por el usuario en Paso 1 como base para calcular semana de entrega (YYYY-MM-DD). */
+  const [ocFechaEntrega, setOcFechaEntrega] = React.useState<string | null>(null);
 
   // ── Búsqueda global optimizada ──
   const [busquedaGlobal, setBusquedaGlobal] = React.useState('');
@@ -1351,6 +1361,16 @@ const GestionProveedoresPage: React.FC = () => {
     return () => { cancelado = true; };
   }, [isOrdenCompraModal, ocSemana]);
 
+  /** Resetea la fecha de entrega al cambiar la semana académica. */
+  React.useEffect(() => {
+    if (ocSemana) {
+      const hoyISO = new Date().toISOString().slice(0, 10);
+      setOcFechaEntrega(hoyISO <= ocSemana.fechaFin ? hoyISO : null);
+    } else {
+      setOcFechaEntrega(null);
+    }
+  }, [ocSemana]);
+
   /** Toggle selección de un pedido en Paso 1. */
   const toggleSeleccionPedido = (id: number) => {
     setOcSeleccionados(prev => {
@@ -1390,22 +1410,14 @@ const GestionProveedoresPage: React.FC = () => {
     return init;
   };
 
-  /** Cambia la semana de entrega y recalcula la distribución. */
-  const handleSemanaEntregaChange = (nuevaSemana: ISemana) => {
-    setOcSemanaEntrega(nuevaSemana);
-    if (!ocCotizacion) return;
-    setOcCantidades(construirCantidades(ocCotizacion, nuevaSemana.fechaInicio));
-  };
-
   /** Avanza al Paso 2: carga cotización consolidada + 2000ms de BookPageLoader. */
   const handleGenerarOrdenCompra = async () => {
-    if (ocSeleccionados.size === 0 || !ocSemana) return;
+    if (ocSeleccionados.size === 0 || !ocSemana || !ocFechaEntrega) return;
     setOcPaso(2);
     setOcLoadingCotizacion(true);
     setOcErrorCotizacion(null);
     setOcCotizacion(null);
     setOcCantidades({});
-    setOcSemanaEntrega(ocSemana);
 
     try {
       const [data] = await Promise.all([
@@ -1413,7 +1425,7 @@ const GestionProveedoresPage: React.FC = () => {
         new Promise<void>(r => setTimeout(r, 2000)),
       ]);
       setOcCotizacion(data);
-      setOcCantidades(construirCantidades(data, ocSemana.fechaInicio));
+      setOcCantidades(construirCantidades(data, getMondayISO(ocFechaEntrega)));
     } catch (err: any) {
       setOcErrorCotizacion(err.message || 'Error al obtener la cotización consolidada');
     } finally {
@@ -1963,8 +1975,8 @@ const GestionProveedoresPage: React.FC = () => {
         cantidades={ocCantidades}
         onCantidadChange={actualizarCantidadOc}
         onVolver={handleVolverPaso1}
-        semanaEntrega={ocSemanaEntrega}
-        onSemanaEntregaChange={handleSemanaEntregaChange}
+        fechaEntrega={ocFechaEntrega}
+        onFechaEntregaChange={setOcFechaEntrega}
       />
 
       {/* ── Modal Sincronización de Precios desde Excel ── */}
@@ -4496,8 +4508,8 @@ interface OrdenCompraModalProps {
   cantidades: Record<number, Record<number, { cantTotal: number; entregas: Record<string, number> }>>;
   onCantidadChange: (idProveedor: number, idProducto: number, campo: 'cantTotal' | string, valor: number) => void;
   onVolver: () => void;
-  semanaEntrega: ISemana | null;
-  onSemanaEntregaChange: (s: ISemana) => void;
+  fechaEntrega: string | null;
+  onFechaEntregaChange: (f: string) => void;
 }
 
 const chipOrdenCompra = (cantidad: number) => {
@@ -4530,8 +4542,8 @@ const OrdenCompraModal: React.FC<OrdenCompraModalProps> = ({
   cantidades,
   onCantidadChange,
   onVolver,
-  semanaEntrega,
-  onSemanaEntregaChange,
+  fechaEntrega,
+  onFechaEntregaChange,
 }) => {
   const hoy = new Date();
   const anioActual = hoy.getFullYear();
@@ -4637,6 +4649,42 @@ const OrdenCompraModal: React.FC<OrdenCompraModalProps> = ({
                     </div>
                   </div>
 
+                  {/* Selector de fecha de entrega — visible cuando hay semana seleccionada */}
+                  {semana && (() => {
+                    const hoyISO = new Date().toISOString().slice(0, 10);
+                    const maxISO = semana.fechaFin;
+                    const lunesEntrega = fechaEntrega ? getMondayISO(fechaEntrega) : null;
+                    const domEntrega  = lunesEntrega ? addDaysISO(lunesEntrega, 6) : null;
+                    return (
+                      <div className="bg-warning-50 dark:bg-warning-50/10 border border-warning-200 dark:border-warning-400/30 rounded-xl p-3 space-y-2">
+                        <p className="text-xs font-semibold text-warning-700 dark:text-warning-400 uppercase tracking-wide flex items-center gap-1.5">
+                          <Icon icon="lucide:truck" width={13} />
+                          Semana de entrega
+                        </p>
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                          <input
+                            type="date"
+                            min={hoyISO}
+                            max={maxISO}
+                            value={fechaEntrega ?? ''}
+                            onChange={(e) => onFechaEntregaChange(e.target.value)}
+                            className="rounded-lg border border-warning-300 dark:border-warning-500/50 bg-white dark:bg-default-100/50 px-3 py-1.5 text-sm focus:outline-none focus:border-warning-500 text-default-700"
+                          />
+                          {lunesEntrega && domEntrega ? (
+                            <span className="text-sm text-default-600">
+                              Semana del{' '}
+                              <span className="font-semibold text-warning-700 dark:text-warning-400">{lunesEntrega}</span>
+                              {' '}al{' '}
+                              <span className="font-semibold text-warning-700 dark:text-warning-400">{domEntrega}</span>
+                            </span>
+                          ) : (
+                            <span className="text-xs text-default-400 italic">Seleccione una fecha (máx: {maxISO})</span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })()}
+
                   {/* Error de carga de pedidos */}
                   {errorPedidos && (
                     <div className="flex items-start gap-3 bg-danger-50 dark:bg-danger-50/10 border border-danger/30 text-danger text-sm p-4 rounded-xl">
@@ -4713,38 +4761,28 @@ const OrdenCompraModal: React.FC<OrdenCompraModalProps> = ({
 
               {paso === 2 && (
                 <>
-                  {/* Selector de semana de entrega */}
-                  {semana && (
-                    <div className="flex flex-col sm:flex-row sm:items-center gap-3 bg-default-50 dark:bg-default-100/20 rounded-xl p-3 border border-default-200 dark:border-default-100">
-                      <div className="flex items-center gap-2 text-sm text-default-600 shrink-0">
-                        <Icon icon="lucide:calendar" width={16} className="text-warning" />
-                        <span className="font-medium">
-                          Semana solicitud: <span className="text-warning font-bold">{semana.nombreSemana}</span>
+                  {/* Resumen semana solicitud + semana de entrega */}
+                  {semana && fechaEntrega && (() => {
+                    const lunes = getMondayISO(fechaEntrega);
+                    const dom   = addDaysISO(lunes, 6);
+                    return (
+                      <div className="flex flex-wrap items-center gap-4 bg-default-50 dark:bg-default-100/20 rounded-xl px-4 py-3 border border-default-200 dark:border-default-100 text-sm">
+                        <span className="flex items-center gap-1.5 text-default-600">
+                          <Icon icon="lucide:calendar" width={15} className="text-default-400" />
+                          Semana solicitud:
+                          <span className="font-semibold text-secondary dark:text-foreground">{semana.nombreSemana}</span>
+                          <span className="text-default-400 text-xs">({semana.fechaInicio})</span>
+                        </span>
+                        <span className="text-default-300">|</span>
+                        <span className="flex items-center gap-1.5 text-default-600">
+                          <Icon icon="lucide:truck" width={15} className="text-warning" />
+                          Semana de entrega:
+                          <span className="font-semibold text-warning">{lunes}</span>
+                          <span className="text-default-400 text-xs">al {dom}</span>
                         </span>
                       </div>
-                      <div className="flex items-center gap-2 flex-1">
-                        <span className="text-sm text-default-500 shrink-0">Semana de entrega:</span>
-                        <Select
-                          size="sm"
-                          placeholder="Seleccionar semana"
-                          selectedKeys={semanaEntrega ? new Set([String(semanaEntrega.idSemana)]) : new Set<string>()}
-                          onSelectionChange={(keys) => {
-                            const id = Number([...keys][0]);
-                            const found = semanas.filter(s => s.fechaInicio <= semana.fechaInicio).find(s => s.idSemana === id);
-                            if (found) onSemanaEntregaChange(found);
-                          }}
-                          className="flex-1 max-w-xs"
-                          classNames={{ trigger: 'h-8 min-h-8 text-xs' }}
-                        >
-                          {semanas.filter(s => s.fechaInicio <= semana.fechaInicio).map(s => (
-                            <SelectItem key={String(s.idSemana)} textValue={s.nombreSemana}>
-                              {s.nombreSemana} ({s.fechaInicio})
-                            </SelectItem>
-                          ))}
-                        </Select>
-                      </div>
-                    </div>
-                  )}
+                    );
+                  })()}
 
                   {errorCotizacion && (
                     <div className="flex items-start gap-3 bg-danger-50 dark:bg-danger-50/10 border border-danger/30 text-danger text-sm p-4 rounded-xl">
@@ -4799,7 +4837,7 @@ const OrdenCompraModal: React.FC<OrdenCompraModalProps> = ({
                     variant="solid"
                     className="font-bold shadow-md cursor-pointer"
                     startContent={<Icon icon="lucide:arrow-right" width={18} />}
-                    isDisabled={seleccionados.size === 0}
+                    isDisabled={seleccionados.size === 0 || !fechaEntrega}
                     onPress={onGenerar}
                     size="lg"
                   >
@@ -4993,7 +5031,7 @@ const ProveedorCotizacionTabla: React.FC<ProveedorCotizacionTablaProps> = ({
                                 <input
                                   type="number"
                                   min={0}
-                                  step="0.001"
+                                  step={prod.esFraccionario ? 0.001 : 1}
                                   value={v}
                                   onChange={(e) => {
                                     if (proveedor.idProveedor == null) return;
