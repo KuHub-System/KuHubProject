@@ -52,6 +52,8 @@ import {
   listarProveedoresSelectorService,
   sincronizarPreciosExcelService,
   descargarExcelPlantillaService,
+  sincronizarPrecioDesdeNetoService,
+  sincronizarPrecioDesdeIvaService,
 } from '../services/proveedor-service';
 import type {
   IProveedor,
@@ -211,6 +213,24 @@ const renderDisponibilidad = (activo: boolean) => {
 
 const formatPrecio = (precio: number) =>
   `$${precio.toLocaleString('es-CL', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
+
+/** Constante IVA Chile (19%). Coincide con la `IVA = 1.19` del backend. */
+const IVA_RATIO = 1.19;
+
+/** Redondea a 3 decimales (mismo scale que `precio_neto NUMERIC(10,3)` en la BD). */
+const round3 = (n: number): number => Math.round(n * 1000) / 1000;
+
+/**
+ * Detecta si los precios neto y con IVA están desincronizados.
+ * Espera precio_con_iva ≈ precio_neto × 1.19 con tolerancia de ±0,01 para
+ * absorber redondeos de tres decimales (scale=3 en BD).
+ */
+const esDesincronizado = (p: IProveedorProducto): boolean => {
+  const neto = Number(p.precioNeto);
+  const iva = Number(p.precioConIva);
+  if (!isFinite(neto) || !isFinite(iva) || neto <= 0 || iva <= 0) return false;
+  return Math.abs(iva - neto * IVA_RATIO) > 0.01;
+};
 
 // ── Helpers Excel (estándar EXCEL.MD) ─────────────────────────────────────────
 
@@ -897,6 +917,59 @@ const GestionProveedoresPage: React.FC = () => {
     }
   };
 
+  // ── Sincronizar neto/IVA (corrección de desincronización) ──────────────────
+
+  const handleSincronizarPrecio = async (
+    idProveedor: number,
+    prod: IProveedorProducto,
+    direccion: 'desde-neto' | 'desde-iva'
+  ) => {
+    try {
+      const resultado = direccion === 'desde-neto'
+        ? await sincronizarPrecioDesdeNetoService(prod.idProveedorProducto)
+        : await sincronizarPrecioDesdeIvaService(prod.idProveedorProducto);
+
+      if (!resultado) {
+        showToast('Los precios ya estaban sincronizados', 'success');
+        return;
+      }
+
+      // El backend retornó true → calculamos localmente el nuevo valor con la MISMA
+      // fórmula que el backend (round3 = scale=3) y actualizamos el caché en memoria,
+      // sin segunda petición. Cuando el render vuelva a ejecutar `esDesincronizado(p)`
+      // dará false y los iconos de sync desaparecen automáticamente.
+      const nuevoValor = direccion === 'desde-neto'
+        ? round3(Number(prod.precioNeto) * IVA_RATIO)
+        : round3(Number(prod.precioConIva) / IVA_RATIO);
+
+      setDetalleCache(prev => {
+        const updated = { ...prev };
+        const detalle = updated[idProveedor];
+        if (detalle) {
+          Object.keys(detalle.productosPorCategoria).forEach(cat => {
+            detalle.productosPorCategoria[cat] = detalle.productosPorCategoria[cat].map(p =>
+              p.idProveedorProducto === prod.idProveedorProducto
+                ? direccion === 'desde-neto'
+                  ? { ...p, precioConIva: nuevoValor }
+                  : { ...p, precioNeto: nuevoValor }
+                : p
+            );
+          });
+        }
+        return updated;
+      });
+
+      showToast(
+        direccion === 'desde-neto'
+          ? `IVA recalculado para "${prod.nombreProducto}": ${formatPrecio(nuevoValor)}`
+          : `Neto recalculado para "${prod.nombreProducto}": ${formatPrecio(nuevoValor)}`,
+        'success'
+      );
+    } catch (err: any) {
+      showToast(err.message || 'Error al sincronizar el precio', 'error');
+    }
+  };
+
   // ── Quitar producto ───────────────────────────────────────────────────────
 
   const handleConfirmarQuitarProducto = (idProveedor: number, prod: IProveedorProducto) => {
@@ -1289,6 +1362,7 @@ const GestionProveedoresPage: React.FC = () => {
                       onCancelarEditPrecio={() => setEditingPrecio(null)}
                       onToggleProducto={handleToggleProducto}
                       onQuitarProducto={handleConfirmarQuitarProducto}
+                      onSincronizarPrecio={handleSincronizarPrecio}
                     />
                   </>
                 ) : (
@@ -1440,6 +1514,7 @@ const GestionProveedoresPage: React.FC = () => {
                                   onCancelarEditPrecio={() => setEditingPrecio(null)}
                                   onToggleProducto={handleToggleProducto}
                                   onQuitarProducto={handleConfirmarQuitarProducto}
+                                  onSincronizarPrecio={handleSincronizarPrecio}
                                   mostrarInactivos={mostrarInactivos}
                                   onMostrarInactivosChange={setMostrarInactivos}
                                 />
@@ -1893,6 +1968,7 @@ interface ProductosProveedorProps {
   onCancelarEditPrecio: () => void;
   onToggleProducto: (idProveedor: number, prod: IProveedorProducto) => void;
   onQuitarProducto: (idProveedor: number, prod: IProveedorProducto) => void;
+  onSincronizarPrecio: (idProveedor: number, prod: IProveedorProducto, direccion: 'desde-neto' | 'desde-iva') => void;
   mostrarInactivos?: boolean;
   onMostrarInactivosChange?: (mostrar: boolean) => void;
 }
@@ -1909,6 +1985,7 @@ const ProductosProveedor: React.FC<ProductosProveedorProps> = ({
   onCancelarEditPrecio,
   onToggleProducto,
   onQuitarProducto,
+  onSincronizarPrecio,
   mostrarInactivos = true,
   onMostrarInactivosChange,
 }) => {
@@ -2002,6 +2079,16 @@ const ProductosProveedor: React.FC<ProductosProveedorProps> = ({
     }
     setExpandedCategories(newExpanded);
   };
+
+  // Contador de productos con neto/IVA desincronizados — recorre todos los productos
+  // del detalle visible (actual o histórico) y aplica esDesincronizado().
+  const cantDesincronizados = React.useMemo(() => {
+    let n = 0;
+    Object.values(detalleVisible.productosPorCategoria).forEach(prods => {
+      prods.forEach(p => { if (esDesincronizado(p)) n++; });
+    });
+    return n;
+  }, [detalleVisible]);
 
   return (
     <div className="space-y-3 mt-2">
@@ -2105,6 +2192,14 @@ const ProductosProveedor: React.FC<ProductosProveedorProps> = ({
             >
               {mostrarInactivos ? 'Esconder deshabilitados' : 'Mostrar deshabilitados'}
             </label>
+
+            {/* Label de productos con precios desincronizados (neto y IVA no coinciden) */}
+            {cantDesincronizados > 0 && (
+              <span className="ml-3 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-warning-50 dark:bg-warning-900/30 border border-warning-200 dark:border-warning-800 text-warning-700 dark:text-warning-300 text-[11px]">
+                <Icon icon="lucide:alert-triangle" width={12} />
+                {cantDesincronizados} producto{cantDesincronizados === 1 ? '' : 's'} con precios desincronizados
+              </span>
+            )}
           </div>
         )}
       </div>
@@ -2163,7 +2258,7 @@ const ProductosProveedor: React.FC<ProductosProveedorProps> = ({
                       <th className="text-center py-2 px-3 font-medium w-24">Precio + IVA</th>
                       <th className="text-center py-2 px-3 font-medium w-16">Estado</th>
                       <th className="text-center py-2 px-3 font-medium w-20">Actualizado</th>
-                      {editable && <th className="py-2 px-3 font-medium text-center w-16">Acciones</th>}
+                      {editable && <th className="py-2 px-3 font-medium text-center w-32">Acciones</th>}
                 </tr>
               </thead>
               <tbody>
@@ -2257,24 +2352,56 @@ const ProductosProveedor: React.FC<ProductosProveedorProps> = ({
                       </td>
                       {editable && (
                         <td className="py-2 px-3 text-center">
-                          <Tooltip content={prod.activo ? 'Deshabilitar producto' : 'Habilitar producto'}>
-                            <Button
-                              isIconOnly
-                              size="sm"
-                              variant="light"
-                              onPress={() =>
-                                prod.activo
-                                  ? onQuitarProducto(detalleVisible.idProveedor, prod)
-                                  : onToggleProducto(detalleVisible.idProveedor, prod)
-                              }
-                              className={prod.activo ? 'text-success hover:text-danger' : 'text-warning hover:text-success'}
-                            >
-                              <Icon
-                                icon={prod.activo ? 'lucide:check-circle-2' : 'lucide:circle-x'}
-                                width={18}
-                              />
-                            </Button>
-                          </Tooltip>
+                          <div className="flex items-center justify-center gap-1">
+                            {/* Iconos de sincronización — solo aparecen cuando neto/IVA no coinciden.
+                                Al hacer clic se llama al backend; cuando retorna true, el caché local
+                                se actualiza con el nuevo valor calculado y el icono desaparece
+                                (esDesincronizado vuelve a dar false en el próximo render). */}
+                            {esDesincronizado(prod) && (
+                              <>
+                                <Tooltip content="Sincronizar IVA desde el precio neto">
+                                  <Button
+                                    isIconOnly
+                                    size="sm"
+                                    variant="light"
+                                    onPress={() => onSincronizarPrecio(detalleVisible.idProveedor, prod, 'desde-neto')}
+                                    className="text-primary hover:text-primary-600"
+                                  >
+                                    <Icon icon="lucide:arrow-right-from-line" width={16} />
+                                  </Button>
+                                </Tooltip>
+                                <Tooltip content="Sincronizar neto desde el precio con IVA">
+                                  <Button
+                                    isIconOnly
+                                    size="sm"
+                                    variant="light"
+                                    onPress={() => onSincronizarPrecio(detalleVisible.idProveedor, prod, 'desde-iva')}
+                                    className="text-primary hover:text-primary-600"
+                                  >
+                                    <Icon icon="lucide:arrow-left-from-line" width={16} />
+                                  </Button>
+                                </Tooltip>
+                              </>
+                            )}
+                            <Tooltip content={prod.activo ? 'Deshabilitar producto' : 'Habilitar producto'}>
+                              <Button
+                                isIconOnly
+                                size="sm"
+                                variant="light"
+                                onPress={() =>
+                                  prod.activo
+                                    ? onQuitarProducto(detalleVisible.idProveedor, prod)
+                                    : onToggleProducto(detalleVisible.idProveedor, prod)
+                                }
+                                className={prod.activo ? 'text-success hover:text-danger' : 'text-warning hover:text-success'}
+                              >
+                                <Icon
+                                  icon={prod.activo ? 'lucide:check-circle-2' : 'lucide:circle-x'}
+                                  width={18}
+                                />
+                              </Button>
+                            </Tooltip>
+                          </div>
                         </td>
                       )}
                     </tr>
@@ -2308,6 +2435,7 @@ interface BusquedaResultadosProps {
   onCancelarEditPrecio: () => void;
   onToggleProducto: (idProveedor: number, prod: IProveedorProducto) => void;
   onQuitarProducto: (idProveedor: number, prod: IProveedorProducto) => void;
+  onSincronizarPrecio: (idProveedor: number, prod: IProveedorProducto, direccion: 'desde-neto' | 'desde-iva') => void;
 }
 
 const BusquedaResultados: React.FC<BusquedaResultadosProps> = ({
@@ -2325,6 +2453,7 @@ const BusquedaResultados: React.FC<BusquedaResultadosProps> = ({
   onCancelarEditPrecio,
   onToggleProducto,
   onQuitarProducto,
+  onSincronizarPrecio,
 }) => {
   const [expandedProveedores, setExpandedProveedores] = React.useState<Set<number>>(
     new Set(resultados.map(r => r.idProveedor))
