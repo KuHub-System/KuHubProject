@@ -298,3 +298,71 @@ export interface ISyncExcelResult {
   sinCambios: ISyncProductoSinCambios[];
   noEncontrados: ISyncProductoNoEncontrado[];
 }
+
+// ── Orden de compra — Paso 1 (pedidos APROBADO con indicador de OC) ──────────
+
+export type TDiaSemana =
+  | 'LUNES' | 'MARTES' | 'MIERCOLES' | 'JUEVES'
+  | 'VIERNES' | 'SABADO' | 'DOMINGO';
+
+/** Mapea PedidoSemanaResumenDTO del backend (GET /orden-compra/pedidos-semana). */
+export interface IPedidoSemanaResumen {
+  idPedido: number;
+  fechaInicioPedido: string;   // YYYY-MM-DD
+  fechaFinPedido: string;      // YYYY-MM-DD
+  estadoPedido: string;
+  cantidadOrdenCompra: number; // 0 / 1 / ≥2
+  tieneOrdenCompra: boolean;   // = cantidadOrdenCompra > 0
+}
+
+// ── Orden de compra — Paso 2 (cotización consolidada) ────────────────────────
+
+/** Distribución de la cantidad solicitada de un producto por día de la semana. */
+export interface ICantidadDia {
+  dia: TDiaSemana | 'SIN_DIA';   // SIN_DIA = solicitud sin id_reserva_sala
+  cantidad: number;
+}
+
+/**
+ * Producto consolidado del proveedor ganador (menor precio_neto vigente).
+ * Mapea CotizacionConsolidadaDTO.ProductoJson.
+ */
+export interface IProductoConsolidado {
+  idProducto: number;
+  nombreProducto: string;
+  abreviatura: string;
+  cantidadTotal: number;
+  precioNeto: number | null;
+  precioConIva: number | null;
+  cantidadPorDia: ICantidadDia[];
+}
+
+/** Mapea CotizacionConsolidadaDTO.CategoriaGrupo. */
+export interface ICategoriaGrupoConsolidado {
+  idCategoria: number;
+  nombreCategoria: string;
+  productos: IProductoConsolidado[];
+}
+
+/**
+ * Proveedor + sus días de entrega + categorías + totales.
+ * Mapea CotizacionConsolidadaDTO.ProveedorGrupo.
+ * idProveedor = null → bucket "Sin proveedor" (productos sin precio vigente).
+ */
+export interface IProveedorGrupoConsolidado {
+  idProveedor: number | null;
+  nombreDistribuidora: string | null;
+  nombreProveedor: string | null;
+  telefono: string | null;
+  email: string | null;
+  totalProductos: number;
+  totalNeto: number;
+  totalConIva: number;
+  diasEntrega: TDiaSemana[] | null;
+  categorias: ICategoriaGrupoConsolidado[];
+}
+
+/** Mapea CotizacionConsolidadaDTO.CotizacionConsolidadaResponse. */
+export interface ICotizacionConsolidadaResponse {
+  cotizacion: IProveedorGrupoConsolidado[];
+}
