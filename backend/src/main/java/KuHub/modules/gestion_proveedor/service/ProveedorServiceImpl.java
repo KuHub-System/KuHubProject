@@ -40,6 +40,8 @@ import org.apache.poi.ss.usermodel.CellType;
 import org.apache.poi.ss.usermodel.DataFormatter;
 import org.apache.poi.ss.usermodel.FillPatternType;
 import org.apache.poi.ss.usermodel.Font;
+import org.apache.poi.ss.usermodel.HorizontalAlignment;
+import org.apache.poi.ss.usermodel.VerticalAlignment;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
@@ -204,6 +206,7 @@ public class ProveedorServiceImpl implements ProveedorService {
                 proveedor.getNombreProveedor(),
                 proveedor.getTelefonoProveedor(),
                 proveedor.getEmailProveedor(),
+                proveedor.getDireccionProveedor(),
                 proveedor.getEstadoProveedor() != null ? proveedor.getEstadoProveedor().name() : null,
                 proveedor.getActivo(),
                 proveedor.getFechaCreacion() != null ? proveedor.getFechaCreacion().toString() : null,
@@ -255,6 +258,10 @@ public class ProveedorServiceImpl implements ProveedorService {
         proveedor.setNombreProveedor(KuHub.utils.StringUtils.capitalizarPalabras(dto.getNombreProveedor()));
         proveedor.setTelefonoProveedor(dto.getTelefonoProveedor());
         proveedor.setEmailProveedor(dto.getEmailProveedor() != null ? KuHub.utils.StringUtils.normalizeSpaces(dto.getEmailProveedor()) : null);
+        proveedor.setDireccionProveedor(
+                dto.getDireccionProveedor() != null && !dto.getDireccionProveedor().isBlank()
+                        ? KuHub.utils.StringUtils.normalizeSpaces(dto.getDireccionProveedor())
+                        : null);
         proveedor.setActivo(true);
 
         if (dto.getEstadoProveedor() != null && !dto.getEstadoProveedor().isBlank()) {
@@ -323,6 +330,16 @@ public class ProveedorServiceImpl implements ProveedorService {
             proveedor.setEmailProveedor(emailNuevo);
         } else if (emailNuevo == null && emailActual != null) {
             proveedor.setEmailProveedor(null);
+        }
+
+        // Dirección (opcional): blank → null para que la cabecera del Excel quede vacía
+        String direccionNuevaRaw = dto.getDireccionProveedor();
+        String direccionNueva = (direccionNuevaRaw != null && !direccionNuevaRaw.isBlank())
+                ? KuHub.utils.StringUtils.normalizeSpaces(direccionNuevaRaw)
+                : null;
+        String direccionActual = proveedor.getDireccionProveedor();
+        if (direccionNueva == null ? direccionActual != null : !direccionNueva.equals(direccionActual)) {
+            proveedor.setDireccionProveedor(direccionNueva);
         }
 
         if (dto.getEstadoProveedor() != null && !dto.getEstadoProveedor().isBlank()) {
@@ -953,72 +970,107 @@ public class ProveedorServiceImpl implements ProveedorService {
             Font boldFont = workbook.createFont();
             boldFont.setBold(true);
 
+            // Estilos base — labels en bold (alineación izquierda por defecto)
             CellStyle boldStyle = workbook.createCellStyle();
             boldStyle.setFont(boldFont);
 
+            // Valores de la cabecera de empresa (C2, C3, C4, F4) — centrados, sin bold
+            CellStyle headerValueStyle = workbook.createCellStyle();
+            headerValueStyle.setAlignment(HorizontalAlignment.CENTER);
+            headerValueStyle.setVerticalAlignment(VerticalAlignment.CENTER);
+
+            // Cabeceras de la tabla (B5–G5) — bold + naranja + centrado
             CellStyle headerStyle = workbook.createCellStyle();
             headerStyle.setFont(boldFont);
             headerStyle.setFillForegroundColor(
                     new XSSFColor(new byte[]{(byte) 0xFF, (byte) 0xC0, (byte) 0x00}, null));
             headerStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+            headerStyle.setAlignment(HorizontalAlignment.CENTER);
+            headerStyle.setVerticalAlignment(VerticalAlignment.CENTER);
 
-            // Fila 2 (idx 1): NOMBRE EMPRESA  | <distribuidora>  (merge C:G)
+            // Bold + centrado (EJEMPLO: cantidad, formato, marca)
+            CellStyle boldCenteredStyle = workbook.createCellStyle();
+            boldCenteredStyle.setFont(boldFont);
+            boldCenteredStyle.setAlignment(HorizontalAlignment.CENTER);
+            boldCenteredStyle.setVerticalAlignment(VerticalAlignment.CENTER);
+
+            // Centrado para valores de cantidad / formato / marca en las filas de datos
+            CellStyle centeredStyle = workbook.createCellStyle();
+            centeredStyle.setAlignment(HorizontalAlignment.CENTER);
+            centeredStyle.setVerticalAlignment(VerticalAlignment.CENTER);
+
+            // Formato chileno de moneda: $ pegado a la izquierda, valor a la derecha,
+            // punto como separador de miles y coma como separador decimal (3 decimales).
+            // El "*" después de $ rellena con espacios → empuja el $ al borde izquierdo.
+            short clpFormat = workbook.createDataFormat()
+                    .getFormat("[$$-340A]* #.##0,000_-");
+
+            CellStyle currencyStyle = workbook.createCellStyle();
+            currencyStyle.setDataFormat(clpFormat);
+
+            CellStyle boldCurrencyStyle = workbook.createCellStyle();
+            boldCurrencyStyle.setFont(boldFont);
+            boldCurrencyStyle.setDataFormat(clpFormat);
+
+            // Fila 2 (idx 1): NOMBRE EMPRESA  | <distribuidora>  (merge C:G, valor centrado)
             Row row2 = sheet.createRow(1);
             crearCeldaTexto(row2, 1, "NOMBRE EMPRESA", boldStyle);
-            crearCeldaTexto(row2, 2, nullToEmpty(proveedor.getNombreDistribuidora()), null);
+            crearCeldaTexto(row2, 2, nullToEmpty(proveedor.getNombreDistribuidora()), headerValueStyle);
             sheet.addMergedRegion(new CellRangeAddress(1, 1, 2, 6));
 
-            // Fila 3 (idx 2): DIRECCIÓN | (vacío, no se almacena en el sistema)
+            // Fila 3 (idx 2): DIRECCIÓN | <direccion opcional, centrada>
             Row row3 = sheet.createRow(2);
             crearCeldaTexto(row3, 1, "DIRECCIÓN", boldStyle);
+            crearCeldaTexto(row3, 2, nullToEmpty(proveedor.getDireccionProveedor()), headerValueStyle);
             sheet.addMergedRegion(new CellRangeAddress(2, 2, 2, 6));
 
             // Fila 4 (idx 3): TELÉFONO | <telefono>  | PERSONA DE CONTACTO | <contacto>
             Row row4 = sheet.createRow(3);
             crearCeldaTexto(row4, 1, "TELÉFONO", boldStyle);
-            crearCeldaTexto(row4, 2, nullToEmpty(proveedor.getTelefonoProveedor()), null);
+            crearCeldaTexto(row4, 2, nullToEmpty(proveedor.getTelefonoProveedor()), headerValueStyle);
             sheet.addMergedRegion(new CellRangeAddress(3, 3, 2, 3));
             crearCeldaTexto(row4, 4, "PERSONA DE CONTACTO", boldStyle);
-            crearCeldaTexto(row4, 5, nullToEmpty(proveedor.getNombreProveedor()), null);
+            crearCeldaTexto(row4, 5, nullToEmpty(proveedor.getNombreProveedor()), headerValueStyle);
             sheet.addMergedRegion(new CellRangeAddress(3, 3, 5, 6));
 
-            // Fila 5 (idx 4): cabeceras de la tabla (naranjas)
+            // Fila 5 (idx 4): cabeceras de la tabla (naranjas + centrado)
             Row row5 = sheet.createRow(4);
             String[] cabeceras = {"PRDUCTO", "CANTIDAD", "Formato de grs.", "Marca", "Precio neto", "Precio total"};
             for (int i = 0; i < cabeceras.length; i++) {
                 crearCeldaTexto(row5, i + 1, cabeceras[i], headerStyle);
             }
 
-            // Fila 6 (idx 5): EJEMPLO (mismo formato que la plantilla original)
+            // Fila 6 (idx 5): EJEMPLO — cantidad/formato/marca centrados, precios con formato moneda
             Row row6 = sheet.createRow(5);
             crearCeldaTexto(row6, 1, "EJEMPLO", boldStyle);
-            crearCeldaNumero(row6, 2, 1, boldStyle);
-            crearCeldaNumero(row6, 3, 0.8, boldStyle);
-            crearCeldaTexto(row6, 4, "DUOC UC", boldStyle);
-            crearCeldaNumero(row6, 5, 100, boldStyle);
-            crearCeldaFormulaIva(row6, 6, 6, boldStyle);
+            crearCeldaNumero(row6, 2, 1, boldCenteredStyle);
+            crearCeldaNumero(row6, 3, 0.8, boldCenteredStyle);
+            crearCeldaTexto(row6, 4, "DUOC UC", boldCenteredStyle);
+            crearCeldaNumero(row6, 5, 100, boldCurrencyStyle);
+            crearCeldaFormulaIva(row6, 6, 6, boldCurrencyStyle);
 
             // Filas 7+ (idx 6+): un producto por fila con los valores actuales del sistema
             int rowIdx = 6;
             for (ProductoConPrecioDTO p : productos) {
                 Row r = sheet.createRow(rowIdx);
+                // Nombre del producto: mantener alineación izquierda por defecto
                 crearCeldaTexto(r, 1, nullToEmpty(p.nombreProducto()), null);
-                crearCeldaNumero(r, 2, 1, null);
+                crearCeldaNumero(r, 2, 1, centeredStyle);
 
                 Double formato = parsearFormato(p.formatoContenido());
                 if (formato != null) {
-                    crearCeldaNumero(r, 3, formato, null);
+                    crearCeldaNumero(r, 3, formato, centeredStyle);
                 } else if (p.formatoContenido() != null && !p.formatoContenido().isBlank()) {
-                    crearCeldaTexto(r, 3, p.formatoContenido(), null);
+                    crearCeldaTexto(r, 3, p.formatoContenido(), centeredStyle);
                 }
 
                 if (p.marcaProducto() != null && !p.marcaProducto().isBlank()) {
-                    crearCeldaTexto(r, 4, p.marcaProducto(), null);
+                    crearCeldaTexto(r, 4, p.marcaProducto(), centeredStyle);
                 }
                 if (p.precioNeto() != null) {
-                    crearCeldaNumero(r, 5, p.precioNeto().doubleValue(), null);
+                    crearCeldaNumero(r, 5, p.precioNeto().doubleValue(), currencyStyle);
                 }
-                crearCeldaFormulaIva(r, 6, rowIdx + 1, null);
+                crearCeldaFormulaIva(r, 6, rowIdx + 1, currencyStyle);
                 rowIdx++;
             }
 

@@ -14,6 +14,8 @@ public record ProveedorDetalleDTO(
         String nombreProveedor,
         String telefonoProveedor,
         String emailProveedor,
+        /** Dirección opcional. Se usa en la cabecera C3 de la plantilla Excel y en el modal de edición. */
+        String direccionProveedor,
         String estadoProveedor,
         Boolean activo,
         String fechaCreacion,

@@ -32,6 +32,7 @@ const normalizarProveedor = (p: any): IProveedor => ({
   nombreProveedor: p.nombreProveedor,
   telefonoProveedor: p.telefonoProveedor,
   emailProveedor: p.emailProveedor ?? null,
+  direccionProveedor: p.direccionProveedor ?? null,
   estadoProveedor: p.estadoProveedor ?? 'DISPONIBLE',
   activo: p.activo ?? true,
   fechaCreacion: p.fechaCreacion ?? null,

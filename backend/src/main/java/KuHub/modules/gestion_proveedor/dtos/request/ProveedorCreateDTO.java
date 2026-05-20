@@ -40,6 +40,10 @@ public class ProveedorCreateDTO {
     @Size(max = 150, message = "El email no puede exceder 150 caracteres")
     private String emailProveedor;
 
+    /** Dirección del proveedor (opcional). Se usa como C3 en la plantilla Excel. */
+    @Size(max = 255, message = "La dirección no puede exceder 255 caracteres")
+    private String direccionProveedor;
+
     /** Estado inicial: DISPONIBLE o NO_DISPONIBLE. Si es null, el backend asigna DISPONIBLE. */
     private String estadoProveedor;
 
