@@ -60,6 +60,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.text.DecimalFormat;
+import java.text.DecimalFormatSymbols;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -67,6 +69,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -1030,24 +1033,21 @@ public class ProveedorServiceImpl implements ProveedorService {
             boldCenteredGeneralStyle.setAlignment(HorizontalAlignment.CENTER);
             boldCenteredGeneralStyle.setVerticalAlignment(VerticalAlignment.CENTER);
 
-            // Formato moneda contabilidad CON 2 DECIMALES (columnas F y G).
-            // Variante del formato original con `.00` forzados para que la COMA DECIMAL sea visible.
-            // 4 partes: positivo ; negativo ; cero ; texto.
-            // `_ "$"* ` empuja `$` al borde izquierdo y el número al borde derecho (relleno de espacios).
-            // `#,##0.00` en convención US → en Excel es-CL se muestra como `1.500,00`:
-            //   - El `,` del formato (separador miles US) → se muestra como `.` (miles es-CL)
-            //   - El `.` del formato (separador decimal US) → se muestra como `,` (decimal es-CL)
-            // `"-"??` en la parte de "cero": dos placeholders para alinear con los 2 decimales.
-            short clpFormat = dataFormat.getFormat(
-                    "_ \"$\"* #,##0.00_ ;_ \"$\"* \\-#,##0.00_ ;_ \"$\"* \"-\"??_ ;_ @_ "
-            );
-
+            // ENFOQUE STRING para precios — garantiza display chileno independiente del locale
+            // de Excel del usuario. En lugar de escribir un número con formato locale-aware (que
+            // depende del Excel del cliente), pre-formateamos el string en Java con DecimalFormat
+            // forzado a es-CL. El sync (ChileanPriceUtils.parseChileanPrice) ya soporta strings
+            // con prefijo $ y separadores chilenos al re-subir el archivo editado.
+            // Trade-off: la columna G no puede usar la fórmula =F+(F*19%) — calculamos el IVA
+            // en Java y lo escribimos también como string.
             CellStyle currencyStyle = workbook.createCellStyle();
-            currencyStyle.setDataFormat(clpFormat);
+            currencyStyle.setAlignment(HorizontalAlignment.RIGHT);
+            currencyStyle.setVerticalAlignment(VerticalAlignment.CENTER);
 
             CellStyle boldCurrencyStyle = workbook.createCellStyle();
             boldCurrencyStyle.setFont(boldFont);
-            boldCurrencyStyle.setDataFormat(clpFormat);
+            boldCurrencyStyle.setAlignment(HorizontalAlignment.RIGHT);
+            boldCurrencyStyle.setVerticalAlignment(VerticalAlignment.CENTER);
 
             // Fila 2 (idx 1): NOMBRE EMPRESA  | <distribuidora>  (merge C:G, valor centrado)
             Row row2 = sheet.createRow(1);
@@ -1077,16 +1077,22 @@ public class ProveedorServiceImpl implements ProveedorService {
                 crearCeldaTexto(row5, i + 1, cabeceras[i], headerStyle);
             }
 
-            // Fila 6 (idx 5): EJEMPLO — formatos exactos de la plantilla original:
-            //   C6 cantidad: General      | D6 formato: 0.000     | E6 marca: text centrado
-            //   F6 precio neto: contabilidad $ | G6 precio total: contabilidad $ (fórmula IVA)
+            // Formateador Chileno (forzado a es-CL via DecimalFormatSymbols) → garantiza
+            // "$ 39.096,49" en cualquier Excel, sin depender del locale del usuario.
+            DecimalFormatSymbols simbolosCL = new DecimalFormatSymbols(Locale.of("es", "CL"));
+            simbolosCL.setDecimalSeparator(',');
+            simbolosCL.setGroupingSeparator('.');
+            DecimalFormat fmtPrecioCL = new DecimalFormat("'$' #,##0.00", simbolosCL);
+            BigDecimal ivaMultiplicador = new BigDecimal("1.19");
+
+            // Fila 6 (idx 5): EJEMPLO — precios pre-formateados en es-CL (strings)
             Row row6 = sheet.createRow(5);
             crearCeldaTexto(row6, 1, "EJEMPLO", boldStyle);
             crearCeldaNumero(row6, 2, 1, boldCenteredGeneralStyle);
             crearCeldaNumero(row6, 3, 0.8, boldCenteredFormatoStyle);
             crearCeldaTexto(row6, 4, "DUOC UC", boldCenteredStyle);
-            crearCeldaNumero(row6, 5, 100, boldCurrencyStyle);
-            crearCeldaFormulaIva(row6, 6, 6, boldCurrencyStyle);
+            crearCeldaTexto(row6, 5, fmtPrecioCL.format(100), boldCurrencyStyle);
+            crearCeldaTexto(row6, 6, fmtPrecioCL.format(100 * 1.19), boldCurrencyStyle);
 
             // Filas 7+ (idx 6+): un producto por fila con los valores actuales del sistema
             int rowIdx = 6;
@@ -1107,17 +1113,13 @@ public class ProveedorServiceImpl implements ProveedorService {
                     crearCeldaTexto(r, 4, p.marcaProducto(), centeredStyle);
                 }
                 if (p.precioNeto() != null) {
-                    crearCeldaNumero(r, 5, p.precioNeto().doubleValue(), currencyStyle);
+                    BigDecimal neto = p.precioNeto();
+                    BigDecimal iva = neto.multiply(ivaMultiplicador).setScale(2, RoundingMode.HALF_UP);
+                    crearCeldaTexto(r, 5, fmtPrecioCL.format(neto), currencyStyle);
+                    crearCeldaTexto(r, 6, fmtPrecioCL.format(iva), currencyStyle);
                 }
-                crearCeldaFormulaIva(r, 6, rowIdx + 1, currencyStyle);
                 rowIdx++;
             }
-
-            // Pre-evalúa las fórmulas IVA y guarda los valores cacheados → al abrir el .xlsx
-            // Excel ve el valor ya calculado (no celdas en blanco) y reaplica el formato moneda.
-            // Además forzamos recálculo on-open por compatibilidad cross-versión.
-            workbook.getCreationHelper().createFormulaEvaluator().evaluateAll();
-            workbook.setForceFormulaRecalculation(true);
 
             workbook.write(out);
             log.info("Excel plantilla generado para proveedor ID={} | {} productos", idProveedor, productos.size());
@@ -1144,13 +1146,6 @@ public class ProveedorServiceImpl implements ProveedorService {
     private static void crearCeldaNumero(Row row, int col, double valor, CellStyle style) {
         Cell c = row.createCell(col);
         c.setCellValue(valor);
-        if (style != null) c.setCellStyle(style);
-    }
-
-    /** Crea la celda "Precio total" con la fórmula =F{n}+(F{n}*19%). */
-    private static void crearCeldaFormulaIva(Row row, int col, int excelRow1Based, CellStyle style) {
-        Cell c = row.createCell(col);
-        c.setCellFormula("F" + excelRow1Based + "+(F" + excelRow1Based + "*19%)");
         if (style != null) c.setCellStyle(style);
     }
 
