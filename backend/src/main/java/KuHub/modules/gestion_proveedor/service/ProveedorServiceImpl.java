@@ -1000,30 +1000,43 @@ public class ProveedorServiceImpl implements ProveedorService {
             centeredStyle.setAlignment(HorizontalAlignment.CENTER);
             centeredStyle.setVerticalAlignment(VerticalAlignment.CENTER);
 
-            // Formato numérico chileno (cantidad/formato): `[$-340A]` al inicio fuerza el locale
-            // Chile para TODO el formato (no solo el símbolo). En la cadena se usa SIEMPRE
-            // convención US ("," = miles, "." = decimal) y Excel hace la substitución al mostrar:
-            // → `.` se vuelve separador de miles y `,` se vuelve separador decimal.
-            // `#` = dígito opcional → no aparece ".000" cuando el valor es entero.
+            // Formatos COPIADOS LITERAL de la plantilla original `ABARROTES SAN ANDRES FEBRERO.xlsx`.
+            // Importante: NO usamos prefijo `[$-340A]` — la plantilla original no lo tiene y dejarlo
+            // produce la inversión de separadores que reportó el usuario. Sin prefijo, Excel usa el
+            // locale del sistema del usuario (es-CL en este caso) y muestra `1.500,5` correctamente.
             DataFormat dataFormat = workbook.createDataFormat();
-            short numChilenoFmt = dataFormat.getFormat("[$-340A]#,##0.###");
 
-            CellStyle centeredNumStyle = workbook.createCellStyle();
-            centeredNumStyle.setAlignment(HorizontalAlignment.CENTER);
-            centeredNumStyle.setVerticalAlignment(VerticalAlignment.CENTER);
-            centeredNumStyle.setDataFormat(numChilenoFmt);
+            // Formato "Formato de grs." (columna D): 3 decimales fijos, igual que la plantilla
+            short formatoColFmt = dataFormat.getFormat("0.000");
 
-            CellStyle boldCenteredNumStyle = workbook.createCellStyle();
-            boldCenteredNumStyle.setFont(boldFont);
-            boldCenteredNumStyle.setAlignment(HorizontalAlignment.CENTER);
-            boldCenteredNumStyle.setVerticalAlignment(VerticalAlignment.CENTER);
-            boldCenteredNumStyle.setDataFormat(numChilenoFmt);
+            CellStyle centeredFormatoStyle = workbook.createCellStyle();
+            centeredFormatoStyle.setAlignment(HorizontalAlignment.CENTER);
+            centeredFormatoStyle.setVerticalAlignment(VerticalAlignment.CENTER);
+            centeredFormatoStyle.setDataFormat(formatoColFmt);
 
-            // Formato moneda chileno: `[$-340A]` fuerza locale Chile para TODO el formato.
-            // `"$"` = símbolo dólar literal. `* ` (asterisco + espacio) rellena con espacios →
-            // empuja `$` al borde izquierdo y el número al borde derecho de la misma celda.
-            // `#,##0.###` en convención US se traduce a `#.##0,###` al mostrar en es-CL.
-            short clpFormat = dataFormat.getFormat("[$-340A]\"$\"* #,##0.###");
+            CellStyle boldCenteredFormatoStyle = workbook.createCellStyle();
+            boldCenteredFormatoStyle.setFont(boldFont);
+            boldCenteredFormatoStyle.setAlignment(HorizontalAlignment.CENTER);
+            boldCenteredFormatoStyle.setVerticalAlignment(VerticalAlignment.CENTER);
+            boldCenteredFormatoStyle.setDataFormat(formatoColFmt);
+
+            // Cantidad (columna C): sin formato → General, centrado
+            CellStyle centeredGeneralStyle = workbook.createCellStyle();
+            centeredGeneralStyle.setAlignment(HorizontalAlignment.CENTER);
+            centeredGeneralStyle.setVerticalAlignment(VerticalAlignment.CENTER);
+
+            CellStyle boldCenteredGeneralStyle = workbook.createCellStyle();
+            boldCenteredGeneralStyle.setFont(boldFont);
+            boldCenteredGeneralStyle.setAlignment(HorizontalAlignment.CENTER);
+            boldCenteredGeneralStyle.setVerticalAlignment(VerticalAlignment.CENTER);
+
+            // Formato moneda contabilidad (columnas F y G): COPIADO LITERAL de la plantilla original.
+            // 4 partes: positivo ; negativo ; cero ; texto. `_ "$"* ` empuja `$` a la izquierda y
+            // el número a la derecha con espacio de relleno. `#,##0` sin decimales (en es-CL Excel
+            // lo muestra como `1.500`). Sin prefijo de locale → el usuario ve la versión es-CL.
+            short clpFormat = dataFormat.getFormat(
+                    "_ \"$\"* #,##0_ ;_ \"$\"* \\-#,##0_ ;_ \"$\"* \"-\"_ ;_ @_ "
+            );
 
             CellStyle currencyStyle = workbook.createCellStyle();
             currencyStyle.setDataFormat(clpFormat);
@@ -1060,12 +1073,13 @@ public class ProveedorServiceImpl implements ProveedorService {
                 crearCeldaTexto(row5, i + 1, cabeceras[i], headerStyle);
             }
 
-            // Fila 6 (idx 5): EJEMPLO — cantidad/formato con formato numérico chileno (coma decimal),
-            // marca centrada como texto, precios con formato moneda chileno
+            // Fila 6 (idx 5): EJEMPLO — formatos exactos de la plantilla original:
+            //   C6 cantidad: General      | D6 formato: 0.000     | E6 marca: text centrado
+            //   F6 precio neto: contabilidad $ | G6 precio total: contabilidad $ (fórmula IVA)
             Row row6 = sheet.createRow(5);
             crearCeldaTexto(row6, 1, "EJEMPLO", boldStyle);
-            crearCeldaNumero(row6, 2, 1, boldCenteredNumStyle);
-            crearCeldaNumero(row6, 3, 0.8, boldCenteredNumStyle);
+            crearCeldaNumero(row6, 2, 1, boldCenteredGeneralStyle);
+            crearCeldaNumero(row6, 3, 0.8, boldCenteredFormatoStyle);
             crearCeldaTexto(row6, 4, "DUOC UC", boldCenteredStyle);
             crearCeldaNumero(row6, 5, 100, boldCurrencyStyle);
             crearCeldaFormulaIva(row6, 6, 6, boldCurrencyStyle);
@@ -1076,11 +1090,11 @@ public class ProveedorServiceImpl implements ProveedorService {
                 Row r = sheet.createRow(rowIdx);
                 // Nombre del producto: mantener alineación izquierda por defecto
                 crearCeldaTexto(r, 1, nullToEmpty(p.nombreProducto()), null);
-                crearCeldaNumero(r, 2, 1, centeredNumStyle);
+                crearCeldaNumero(r, 2, 1, centeredGeneralStyle);
 
                 Double formato = parsearFormato(p.formatoContenido());
                 if (formato != null) {
-                    crearCeldaNumero(r, 3, formato, centeredNumStyle);
+                    crearCeldaNumero(r, 3, formato, centeredFormatoStyle);
                 } else if (p.formatoContenido() != null && !p.formatoContenido().isBlank()) {
                     crearCeldaTexto(r, 3, p.formatoContenido(), centeredStyle);
                 }
