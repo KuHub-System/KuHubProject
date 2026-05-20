@@ -27,7 +27,11 @@ public class ChileanPriceUtils {
             throw new IllegalArgumentException("El precio no puede estar vacío. Formatos válidos: 1.234,567 | 1.234 | 1234,567 | 1234");
         }
 
-        String cleaned = input.trim();
+        // Strip currency symbols ($) y espacios para soportar valores
+        // tipo "$ 39.096,49" generados por la plantilla Excel exportada.
+        String cleaned = input.trim()
+                .replaceFirst("^\\$\\s*", "")
+                .trim();
 
         // Si tiene coma y puntos: asumir formato chileno 1.234,567
         if (cleaned.contains(",") && cleaned.contains(".")) {
