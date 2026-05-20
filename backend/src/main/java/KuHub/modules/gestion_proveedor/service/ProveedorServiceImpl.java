@@ -35,11 +35,16 @@ import KuHub.modules.gestion_proveedor.repository.ProveedorRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.CellStyle;
 import org.apache.poi.ss.usermodel.CellType;
 import org.apache.poi.ss.usermodel.DataFormatter;
+import org.apache.poi.ss.usermodel.FillPatternType;
+import org.apache.poi.ss.usermodel.Font;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.ss.util.CellRangeAddress;
+import org.apache.poi.xssf.usermodel.XSSFColor;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -47,6 +52,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.math.BigDecimal;
@@ -914,6 +920,151 @@ public class ProveedorServiceImpl implements ProveedorService {
                 sinCambios,
                 noEncontrados
         );
+    }
+
+    // ══════════════════════════════════════════════════════════════
+    // 10. GENERACIÓN DE EXCEL (plantilla con valores del sistema)
+    // ══════════════════════════════════════════════════════════════
+
+    @Override
+    @Transactional(readOnly = true)
+    public byte[] generarExcelPlantillaProveedor(Integer idProveedor) {
+        Proveedor proveedor = findById(idProveedor);
+        List<Object[]> rows = proveedorRepository.findProductosPorProveedor(idProveedor);
+        List<ProductoConPrecioDTO> productos = rows.stream()
+                .map(ProductoConPrecioDTO::fromRow)
+                .collect(Collectors.toList());
+
+        try (Workbook workbook = new XSSFWorkbook();
+             ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+
+            Sheet sheet = workbook.createSheet("Hoja1");
+
+            // Ancho de columnas (units = chars × 256), replica la plantilla original
+            sheet.setColumnWidth(0, (int) (3.85 * 256));
+            sheet.setColumnWidth(1, (int) (46.42 * 256));
+            sheet.setColumnWidth(2, (int) (10.28 * 256));
+            sheet.setColumnWidth(3, (int) (14.71 * 256));
+            sheet.setColumnWidth(4, (int) (20.71 * 256));
+            sheet.setColumnWidth(5, (int) (15.42 * 256));
+            sheet.setColumnWidth(6, (int) (15.28 * 256));
+            sheet.setColumnWidth(7, (int) (13.00 * 256));
+
+            Font boldFont = workbook.createFont();
+            boldFont.setBold(true);
+
+            CellStyle boldStyle = workbook.createCellStyle();
+            boldStyle.setFont(boldFont);
+
+            CellStyle headerStyle = workbook.createCellStyle();
+            headerStyle.setFont(boldFont);
+            headerStyle.setFillForegroundColor(
+                    new XSSFColor(new byte[]{(byte) 0xFF, (byte) 0xC0, (byte) 0x00}, null));
+            headerStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+
+            // Fila 2 (idx 1): NOMBRE EMPRESA  | <distribuidora>  (merge C:G)
+            Row row2 = sheet.createRow(1);
+            crearCeldaTexto(row2, 1, "NOMBRE EMPRESA", boldStyle);
+            crearCeldaTexto(row2, 2, nullToEmpty(proveedor.getNombreDistribuidora()), null);
+            sheet.addMergedRegion(new CellRangeAddress(1, 1, 2, 6));
+
+            // Fila 3 (idx 2): DIRECCIÓN | (vacío, no se almacena en el sistema)
+            Row row3 = sheet.createRow(2);
+            crearCeldaTexto(row3, 1, "DIRECCIÓN", boldStyle);
+            sheet.addMergedRegion(new CellRangeAddress(2, 2, 2, 6));
+
+            // Fila 4 (idx 3): TELÉFONO | <telefono>  | PERSONA DE CONTACTO | <contacto>
+            Row row4 = sheet.createRow(3);
+            crearCeldaTexto(row4, 1, "TELÉFONO", boldStyle);
+            crearCeldaTexto(row4, 2, nullToEmpty(proveedor.getTelefonoProveedor()), null);
+            sheet.addMergedRegion(new CellRangeAddress(3, 3, 2, 3));
+            crearCeldaTexto(row4, 4, "PERSONA DE CONTACTO", boldStyle);
+            crearCeldaTexto(row4, 5, nullToEmpty(proveedor.getNombreProveedor()), null);
+            sheet.addMergedRegion(new CellRangeAddress(3, 3, 5, 6));
+
+            // Fila 5 (idx 4): cabeceras de la tabla (naranjas)
+            Row row5 = sheet.createRow(4);
+            String[] cabeceras = {"PRDUCTO", "CANTIDAD", "Formato de grs.", "Marca", "Precio neto", "Precio total"};
+            for (int i = 0; i < cabeceras.length; i++) {
+                crearCeldaTexto(row5, i + 1, cabeceras[i], headerStyle);
+            }
+
+            // Fila 6 (idx 5): EJEMPLO (mismo formato que la plantilla original)
+            Row row6 = sheet.createRow(5);
+            crearCeldaTexto(row6, 1, "EJEMPLO", boldStyle);
+            crearCeldaNumero(row6, 2, 1, boldStyle);
+            crearCeldaNumero(row6, 3, 0.8, boldStyle);
+            crearCeldaTexto(row6, 4, "DUOC UC", boldStyle);
+            crearCeldaNumero(row6, 5, 100, boldStyle);
+            crearCeldaFormulaIva(row6, 6, 6, boldStyle);
+
+            // Filas 7+ (idx 6+): un producto por fila con los valores actuales del sistema
+            int rowIdx = 6;
+            for (ProductoConPrecioDTO p : productos) {
+                Row r = sheet.createRow(rowIdx);
+                crearCeldaTexto(r, 1, nullToEmpty(p.nombreProducto()), null);
+                crearCeldaNumero(r, 2, 1, null);
+
+                Double formato = parsearFormato(p.formatoContenido());
+                if (formato != null) {
+                    crearCeldaNumero(r, 3, formato, null);
+                } else if (p.formatoContenido() != null && !p.formatoContenido().isBlank()) {
+                    crearCeldaTexto(r, 3, p.formatoContenido(), null);
+                }
+
+                if (p.marcaProducto() != null && !p.marcaProducto().isBlank()) {
+                    crearCeldaTexto(r, 4, p.marcaProducto(), null);
+                }
+                if (p.precioNeto() != null) {
+                    crearCeldaNumero(r, 5, p.precioNeto().doubleValue(), null);
+                }
+                crearCeldaFormulaIva(r, 6, rowIdx + 1, null);
+                rowIdx++;
+            }
+
+            workbook.write(out);
+            log.info("Excel plantilla generado para proveedor ID={} | {} productos", idProveedor, productos.size());
+            return out.toByteArray();
+
+        } catch (IOException e) {
+            log.error("Error generando Excel para proveedor ID={}: {}", idProveedor, e.getMessage(), e);
+            throw new GestionProveedorException(
+                    "No se pudo generar el archivo Excel: " + e.getMessage(),
+                    HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    private static String nullToEmpty(String s) {
+        return s == null ? "" : s;
+    }
+
+    private static void crearCeldaTexto(Row row, int col, String valor, CellStyle style) {
+        Cell c = row.createCell(col);
+        c.setCellValue(valor);
+        if (style != null) c.setCellStyle(style);
+    }
+
+    private static void crearCeldaNumero(Row row, int col, double valor, CellStyle style) {
+        Cell c = row.createCell(col);
+        c.setCellValue(valor);
+        if (style != null) c.setCellStyle(style);
+    }
+
+    /** Crea la celda "Precio total" con la fórmula =F{n}+(F{n}*19%). */
+    private static void crearCeldaFormulaIva(Row row, int col, int excelRow1Based, CellStyle style) {
+        Cell c = row.createCell(col);
+        c.setCellFormula("F" + excelRow1Based + "+(F" + excelRow1Based + "*19%)");
+        if (style != null) c.setCellStyle(style);
+    }
+
+    /** Parsea el formato a Double si es numérico (0.8, "0,8", "0.8"); retorna null si no aplica. */
+    private static Double parsearFormato(String raw) {
+        if (raw == null || raw.isBlank()) return null;
+        try {
+            return Double.parseDouble(raw.trim().replace(",", "."));
+        } catch (NumberFormatException e) {
+            return null;
+        }
     }
 
     /** Lee una celda como texto usando DataFormatter (maneja números, fórmulas, etc.). */

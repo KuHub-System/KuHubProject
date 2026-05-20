@@ -50,6 +50,7 @@ import {
   buscarProductosGlobalService,
   listarProveedoresSelectorService,
   sincronizarPreciosExcelService,
+  descargarExcelPlantillaService,
 } from '../services/proveedor-service';
 import type {
   IProveedor,
@@ -1881,6 +1882,26 @@ const ProductosProveedor: React.FC<ProductosProveedorProps> = ({
   const [loadingHistorico, setLoadingHistorico] = React.useState(false);
   const [errorHistorico, setErrorHistorico] = React.useState<string | null>(null);
 
+  const [descargandoExcel, setDescargandoExcel] = React.useState(false);
+  const [errorDescarga, setErrorDescarga] = React.useState<string | null>(null);
+
+  const handleDescargarExcel = async () => {
+    setDescargandoExcel(true);
+    setErrorDescarga(null);
+    try {
+      const slug = (detalle.nombreDistribuidora || `proveedor-${detalle.idProveedor}`)
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '');
+      const fecha = new Date().toISOString().slice(0, 10);
+      await descargarExcelPlantillaService(detalle.idProveedor, `${slug}-${fecha}`);
+    } catch (err: any) {
+      setErrorDescarga(err.message || 'Error al descargar el archivo Excel');
+    } finally {
+      setDescargandoExcel(false);
+    }
+  };
+
   const esHistorico = detalleHistorico !== null;
   const detalleVisible = detalleHistorico ?? detalle;
   const editable = canEdit && !esHistorico;
@@ -1969,7 +1990,7 @@ const ProductosProveedor: React.FC<ProductosProveedorProps> = ({
           )}
         </div>
 
-        {/* Vista histórica de precios — DatePicker */}
+        {/* Vista histórica de precios — DatePicker + descarga de plantilla Excel */}
         <div className="flex items-center gap-2 flex-wrap">
           <Icon icon="lucide:history" width={16} className="text-default-400" />
           <span className="text-xs text-default-500">Ver precios al:</span>
@@ -1989,7 +2010,30 @@ const ProductosProveedor: React.FC<ProductosProveedorProps> = ({
             </Button>
           )}
           {loadingHistorico && <Spinner size="sm" color="primary" />}
+          <div className="ml-auto">
+            <Button
+              size="sm"
+              variant="flat"
+              color="success"
+              isDisabled={descargandoExcel}
+              onPress={handleDescargarExcel}
+            >
+              {descargandoExcel ? (
+                <Spinner size="sm" color="success" />
+              ) : (
+                <Icon icon="lucide:file-down" width={14} className="mr-1" />
+              )}
+              Descargar Excel
+            </Button>
+          </div>
         </div>
+
+        {errorDescarga && (
+          <div className="flex items-start gap-2 px-3 py-2 rounded-lg bg-danger-50 dark:bg-danger-900/20 border border-danger-200 dark:border-danger-800">
+            <Icon icon="lucide:alert-circle" width={14} className="text-danger-600 mt-0.5" />
+            <p className="text-xs text-danger-700 dark:text-danger-300">{errorDescarga}</p>
+          </div>
+        )}
 
         {/* Banner indicando vista histórica */}
         {esHistorico && fechaHistorica && (

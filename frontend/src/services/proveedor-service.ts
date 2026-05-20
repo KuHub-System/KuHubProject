@@ -568,3 +568,43 @@ export const sincronizarPreciosExcelService = async (
     );
   }
 };
+
+/**
+ * Descarga el catálogo actual del proveedor como .xlsx en el mismo formato
+ * que la plantilla de sincronización. El archivo trae los valores actuales del sistema
+ * y se puede re-subir al endpoint de sync tras editar los precios.
+ * GET /api/v1/proveedor/{id}/excel-plantilla
+ */
+export const descargarExcelPlantillaService = async (
+  idProveedor: number,
+  nombreSugerido?: string
+): Promise<void> => {
+  try {
+    const response = await api.get(`/proveedor/${idProveedor}/excel-plantilla`, {
+      responseType: 'blob',
+    });
+
+    const dispo = response.headers['content-disposition'] as string | undefined;
+    const matchFilename = dispo?.match(/filename="?([^";]+)"?/i);
+    const filename =
+      matchFilename?.[1] ||
+      (nombreSugerido ? `${nombreSugerido}.xlsx` : `plantilla-proveedor-${idProveedor}.xlsx`);
+
+    const blob = new Blob([response.data], {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+  } catch (error: any) {
+    throw new Error(
+      error.response?.data?.message ||
+      'Error al generar el archivo Excel del proveedor'
+    );
+  }
+};
