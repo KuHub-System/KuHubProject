@@ -454,6 +454,9 @@ const calcularDistribucionProveedor = (
   // ordenamos diasEntrega por el orden semanal
   const diasOrdenados = [...diasEntrega].sort((a, b) => DIA_ORDEN[a] - DIA_ORDEN[b]);
 
+  // Sin días de entrega configurados → no se puede calcular distribución
+  if (diasOrdenados.length === 0) return { fechas: [], porProducto: {} };
+
   for (const prod of productos) {
     // CASO ESPECIAL: 1 sólo día de entrega → todo va a ese día de ESTA semana
     if (diasOrdenados.length === 1) {
@@ -614,6 +617,7 @@ const GestionProveedoresPage: React.FC = () => {
   const [ocCantidades, setOcCantidades] = React.useState<
     Record<number, Record<number, { cantTotal: number; entregas: Record<string, number> }>>
   >({});
+  const [ocSemanaEntrega, setOcSemanaEntrega] = React.useState<ISemana | null>(null);
 
   // ── Búsqueda global optimizada ──
   const [busquedaGlobal, setBusquedaGlobal] = React.useState('');
@@ -1357,6 +1361,42 @@ const GestionProveedoresPage: React.FC = () => {
     });
   };
 
+  /** Construye el mapa de cantidades editables dado una semana de entrega y la cotización. */
+  const construirCantidades = (
+    data: ICotizacionConsolidadaResponse,
+    lunesSemanaEntrega: string,
+  ): typeof ocCantidades => {
+    const init: typeof ocCantidades = {};
+    for (const prov of data.cotizacion) {
+      if (prov.idProveedor == null) continue;
+      const dist = calcularDistribucionProveedor(
+        prov.categorias.flatMap(c => c.productos),
+        prov.diasEntrega ?? [],
+        lunesSemanaEntrega,
+      );
+      const provMap: Record<number, { cantTotal: number; entregas: Record<string, number> }> = {};
+      for (const cat of prov.categorias) {
+        for (const prod of cat.productos) {
+          const entregas: Record<string, number> = {};
+          for (const f of dist.fechas) entregas[f] = 0;
+          for (const celda of dist.porProducto[prod.idProducto] ?? []) {
+            entregas[celda.fechaISO] = (entregas[celda.fechaISO] ?? 0) + celda.cantidad;
+          }
+          provMap[prod.idProducto] = { cantTotal: prod.cantidadTotal, entregas };
+        }
+      }
+      init[prov.idProveedor] = provMap;
+    }
+    return init;
+  };
+
+  /** Cambia la semana de entrega y recalcula la distribución. */
+  const handleSemanaEntregaChange = (nuevaSemana: ISemana) => {
+    setOcSemanaEntrega(nuevaSemana);
+    if (!ocCotizacion) return;
+    setOcCantidades(construirCantidades(ocCotizacion, nuevaSemana.fechaInicio));
+  };
+
   /** Avanza al Paso 2: carga cotización consolidada + 2000ms de BookPageLoader. */
   const handleGenerarOrdenCompra = async () => {
     if (ocSeleccionados.size === 0 || !ocSemana) return;
@@ -1365,6 +1405,7 @@ const GestionProveedoresPage: React.FC = () => {
     setOcErrorCotizacion(null);
     setOcCotizacion(null);
     setOcCantidades({});
+    setOcSemanaEntrega(ocSemana);
 
     try {
       const [data] = await Promise.all([
@@ -1372,34 +1413,7 @@ const GestionProveedoresPage: React.FC = () => {
         new Promise<void>(r => setTimeout(r, 2000)),
       ]);
       setOcCotizacion(data);
-
-      // Inicializa cantidades editables — cantTotal = cantidadTotal, entregas = distribución por bloques.
-      const lunes = ocSemana.fechaInicio;
-      const init: typeof ocCantidades = {};
-      for (const prov of data.cotizacion) {
-        if (prov.idProveedor == null) continue;
-        const dist = calcularDistribucionProveedor(
-          prov.categorias.flatMap(c => c.productos),
-          prov.diasEntrega ?? [],
-          lunes,
-        );
-        const provMap: Record<number, { cantTotal: number; entregas: Record<string, number> }> = {};
-        for (const cat of prov.categorias) {
-          for (const prod of cat.productos) {
-            const entregas: Record<string, number> = {};
-            for (const f of dist.fechas) entregas[f] = 0;
-            for (const celda of dist.porProducto[prod.idProducto] ?? []) {
-              entregas[celda.fechaISO] = (entregas[celda.fechaISO] ?? 0) + celda.cantidad;
-            }
-            provMap[prod.idProducto] = {
-              cantTotal: prod.cantidadTotal,
-              entregas,
-            };
-          }
-        }
-        init[prov.idProveedor] = provMap;
-      }
-      setOcCantidades(init);
+      setOcCantidades(construirCantidades(data, ocSemana.fechaInicio));
     } catch (err: any) {
       setOcErrorCotizacion(err.message || 'Error al obtener la cotización consolidada');
     } finally {
@@ -1949,6 +1963,8 @@ const GestionProveedoresPage: React.FC = () => {
         cantidades={ocCantidades}
         onCantidadChange={actualizarCantidadOc}
         onVolver={handleVolverPaso1}
+        semanaEntrega={ocSemanaEntrega}
+        onSemanaEntregaChange={handleSemanaEntregaChange}
       />
 
       {/* ── Modal Sincronización de Precios desde Excel ── */}
@@ -4480,6 +4496,8 @@ interface OrdenCompraModalProps {
   cantidades: Record<number, Record<number, { cantTotal: number; entregas: Record<string, number> }>>;
   onCantidadChange: (idProveedor: number, idProducto: number, campo: 'cantTotal' | string, valor: number) => void;
   onVolver: () => void;
+  semanaEntrega: ISemana | null;
+  onSemanaEntregaChange: (s: ISemana) => void;
 }
 
 const chipOrdenCompra = (cantidad: number) => {
@@ -4512,6 +4530,8 @@ const OrdenCompraModal: React.FC<OrdenCompraModalProps> = ({
   cantidades,
   onCantidadChange,
   onVolver,
+  semanaEntrega,
+  onSemanaEntregaChange,
 }) => {
   const hoy = new Date();
   const anioActual = hoy.getFullYear();
@@ -4693,16 +4713,36 @@ const OrdenCompraModal: React.FC<OrdenCompraModalProps> = ({
 
               {paso === 2 && (
                 <>
-                  {/* Header semana */}
+                  {/* Selector de semana de entrega */}
                   {semana && (
-                    <div className="flex items-center gap-2 text-sm text-default-600 bg-default-50 dark:bg-default-100/20 rounded-xl p-3 border border-default-200 dark:border-default-100">
-                      <Icon icon="lucide:calendar" width={16} className="text-warning" />
-                      <span className="font-medium">
-                        Semana de la OC: {semana.nombreSemana} ({semana.fechaInicio} a {semana.fechaFin})
-                      </span>
-                      <span className="text-default-400 text-xs ml-2">
-                        (afecta sólo el cálculo de fechas de entrega)
-                      </span>
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-3 bg-default-50 dark:bg-default-100/20 rounded-xl p-3 border border-default-200 dark:border-default-100">
+                      <div className="flex items-center gap-2 text-sm text-default-600 shrink-0">
+                        <Icon icon="lucide:calendar" width={16} className="text-warning" />
+                        <span className="font-medium">
+                          Semana solicitud: <span className="text-warning font-bold">{semana.nombreSemana}</span>
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 flex-1">
+                        <span className="text-sm text-default-500 shrink-0">Semana de entrega:</span>
+                        <Select
+                          size="sm"
+                          placeholder="Seleccionar semana"
+                          selectedKeys={semanaEntrega ? new Set([String(semanaEntrega.idSemana)]) : new Set<string>()}
+                          onSelectionChange={(keys) => {
+                            const id = Number([...keys][0]);
+                            const found = semanas.filter(s => s.fechaInicio <= semana.fechaInicio).find(s => s.idSemana === id);
+                            if (found) onSemanaEntregaChange(found);
+                          }}
+                          className="flex-1 max-w-xs"
+                          classNames={{ trigger: 'h-8 min-h-8 text-xs' }}
+                        >
+                          {semanas.filter(s => s.fechaInicio <= semana.fechaInicio).map(s => (
+                            <SelectItem key={String(s.idSemana)} textValue={s.nombreSemana}>
+                              {s.nombreSemana} ({s.fechaInicio})
+                            </SelectItem>
+                          ))}
+                        </Select>
+                      </div>
                     </div>
                   )}
 
@@ -4814,15 +4854,16 @@ const ProveedorCotizacionTabla: React.FC<ProveedorCotizacionTablaProps> = ({
     return Array.from(setF).sort();
   }, [cantidadesProv]);
 
-  // Totales del proveedor (recalculados con cantTotal editado × precio unitario).
+  // Totales del proveedor (Σ entregas × precio unitario por producto).
   const totales = React.useMemo(() => {
     let neto = 0;
     let conIva = 0;
     for (const cat of proveedor.categorias) {
       for (const prod of cat.productos) {
-        const cant = cantidadesProv[prod.idProducto]?.cantTotal ?? prod.cantidadTotal;
-        if (prod.precioNeto != null) neto += cant * prod.precioNeto;
-        if (prod.precioConIva != null) conIva += cant * prod.precioConIva;
+        const item = cantidadesProv[prod.idProducto];
+        const sumEnt = Object.values(item?.entregas ?? {}).reduce((s, v) => s + v, 0);
+        if (prod.precioNeto != null) neto += sumEnt * prod.precioNeto;
+        if (prod.precioConIva != null) conIva += sumEnt * prod.precioConIva;
       }
     }
     return { neto, conIva };
@@ -4914,8 +4955,8 @@ const ProveedorCotizacionTabla: React.FC<ProveedorCotizacionTablaProps> = ({
                   <thead className="bg-default-100 dark:bg-default-50">
                     <tr>
                       <th className="text-center py-2 px-3 font-medium">Producto</th>
-                      <th className="text-center py-2 px-3 font-medium w-16">Und</th>
-                      <th className="text-center py-2 px-3 font-medium w-24">Cant. Total</th>
+                      <th className="text-center py-2 px-3 font-medium w-16">U/M</th>
+                      <th className="text-center py-2 px-3 font-medium w-28">Total Solicitado</th>
                       {!esSinProveedor && fechasEntrega.map(f => (
                         <th key={f} className="text-center py-2 px-3 font-medium w-32">
                           Entrega {formatFechaEntregaLabel(f)}
@@ -4928,7 +4969,9 @@ const ProveedorCotizacionTabla: React.FC<ProveedorCotizacionTablaProps> = ({
                   <tbody>
                     {cat.productos.map(prod => {
                       const item = cantidadesProv[prod.idProducto];
-                      const cantTotalEditable = item?.cantTotal ?? prod.cantidadTotal;
+                      const sumEntregas = Object.values(item?.entregas ?? {}).reduce((s, v) => s + v, 0);
+                      const pNetoFila = prod.precioNeto != null ? sumEntregas * prod.precioNeto : null;
+                      const pConIvaFila = prod.precioConIva != null ? sumEntregas * prod.precioConIva : null;
                       return (
                         <tr
                           key={prod.idProducto}
@@ -4940,24 +4983,8 @@ const ProveedorCotizacionTabla: React.FC<ProveedorCotizacionTablaProps> = ({
                             </Tooltip>
                           </td>
                           <td className="py-2 px-3 text-center text-default-500">{prod.abreviatura}</td>
-                          <td className="py-2 px-3 text-center">
-                            <input
-                              type="number"
-                              min={0}
-                              step="0.001"
-                              value={cantTotalEditable}
-                              onChange={(e) => {
-                                if (proveedor.idProveedor == null) return;
-                                onCantidadChange(
-                                  proveedor.idProveedor,
-                                  prod.idProducto,
-                                  'cantTotal',
-                                  parseFloat(e.target.value),
-                                );
-                              }}
-                              disabled={esSinProveedor}
-                              className="w-20 px-2 py-1 text-center rounded border border-default-200 dark:border-default-100 bg-white dark:bg-default-100/50 focus:outline-none focus:border-warning"
-                            />
+                          <td className="py-2 px-3 text-center font-medium text-default-700">
+                            {prod.cantidadTotal}
                           </td>
                           {!esSinProveedor && fechasEntrega.map(f => {
                             const v = item?.entregas[f] ?? 0;
@@ -4983,10 +5010,10 @@ const ProveedorCotizacionTabla: React.FC<ProveedorCotizacionTablaProps> = ({
                             );
                           })}
                           <td className="py-2 px-3 text-center">
-                            {prod.precioNeto !== null ? `$${fmtN(prod.precioNeto)}` : '—'}
+                            {pNetoFila !== null ? `$${fmtN(pNetoFila)}` : '—'}
                           </td>
                           <td className="py-2 px-3 text-center">
-                            {prod.precioConIva !== null ? `$${fmtN(prod.precioConIva)}` : '—'}
+                            {pConIvaFila !== null ? `$${fmtN(pConIvaFila)}` : '—'}
                           </td>
                         </tr>
                       );
