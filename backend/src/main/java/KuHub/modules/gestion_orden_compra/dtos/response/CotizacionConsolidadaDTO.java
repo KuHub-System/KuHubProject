@@ -73,6 +73,7 @@ public class CotizacionConsolidadaDTO {
             @JsonProperty("idProducto") Integer idProducto,
             @JsonProperty("nombreProducto") String nombreProducto,
             @JsonProperty("abreviatura") String abreviatura,
+            @JsonProperty("esFraccionario") Boolean esFraccionario,
             @JsonProperty("cantidadTotal") BigDecimal cantidadTotal,
             @JsonProperty("precioNeto") BigDecimal precioNeto,
             @JsonProperty("precioConIva") BigDecimal precioConIva,
