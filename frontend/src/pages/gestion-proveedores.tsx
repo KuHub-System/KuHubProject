@@ -538,12 +538,14 @@ const GestionProveedoresPage: React.FC = () => {
     setLoadingDetalle(prev => new Set(prev).add(idProveedor));
 
     try {
-      // PASO 2: garantizar mínimo 600 ms de animación visible.
-      // Promise.all → corre fetch + sleep en paralelo y solo continúa cuando AMBOS terminan.
-      // Si el fetch es instantáneo (cache HTTP), igual se ven los 600 ms del libro.
+      // PASO 2: garantizar mínimo 2000 ms de animación visible.
+      // El BookPageLoader configura `pageChangeInterval=800ms` y cada flip dura 750ms,
+      // o sea: el PRIMER page-flip empieza recién a los 800ms tras el mount.
+      // Con un mínimo de 2 segundos se ven 1–2 flips completos → la animación se nota.
+      // Si el fetch es más lento, el mínimo no agrega delay extra (Promise.all espera al más lento).
       const [detalle] = await Promise.all([
         obtenerProveedorDetalleService(idProveedor),
-        new Promise<void>(resolve => setTimeout(resolve, 600)),
+        new Promise<void>(resolve => setTimeout(resolve, 2000)),
       ]);
       setDetalleCache(prev => ({ ...prev, [idProveedor]: detalle }));
     } catch (err: any) {
