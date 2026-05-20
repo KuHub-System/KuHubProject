@@ -533,6 +533,7 @@ CREATE TABLE proveedor (
     nombre_proveedor VARCHAR(100) NOT NULL,
     telefono_proveedor VARCHAR(20) NOT NULL,
     email_proveedor VARCHAR(150) NOT NULL,
+    direccion_proveedor VARCHAR(255),  -- Opcional: usada en la cabecera del Excel plantilla
     estado_proveedor estado_provedor_type NOT NULL DEFAULT 'DISPONIBLE',
     activo BOOLEAN DEFAULT TRUE,
     fecha_creacion TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP

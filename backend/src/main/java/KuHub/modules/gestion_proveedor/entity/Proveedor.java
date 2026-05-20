@@ -38,6 +38,9 @@ public class Proveedor {
     @Column(name = "telefono_proveedor", length = 20, nullable = false)
     private String telefonoProveedor;
 
+    @Column(name = "direccion_proveedor", length = 255)
+    private String direccionProveedor;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "estado_proveedor", nullable = false, columnDefinition = "estado_provedor_type")
     private EstadoProveedor estadoProveedor = EstadoProveedor.DISPONIBLE;
