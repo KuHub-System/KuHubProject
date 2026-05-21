@@ -3599,8 +3599,10 @@ $$ LANGUAGE plpgsql;
 -- ================================================================
 DO $$
 DECLARE
-    v_proveedor_id INTEGER;
+v_proveedor_id INTEGER;
     v_prod         RECORD;
+    v_num_dias     INTEGER;
+    v_precio_neto  NUMERIC(10,3); -- Variable para asegurar el mismo precio base
     proveedores    TEXT[][] := ARRAY[
         ARRAY['76.123.456-7', 'Distribuidora Del Valle Ltda.',         'Juan Pérez',        '+56 9 7123 4567', 'jperez@delvalle.cl'],
         ARRAY['77.234.567-8', 'Comercial Andina S.A.',                 'María González',    '+56 9 8234 5678', 'mgonzalez@andina.cl'],
@@ -3615,8 +3617,9 @@ DECLARE
     ];
     i INTEGER;
 BEGIN
-    FOR i IN 1..array_length(proveedores, 1) LOOP
+FOR i IN 1..array_length(proveedores, 1) LOOP
 
+        -- 1. Insertar Proveedor
         INSERT INTO proveedor (
             rut_proveedor,
             nombre_distribuidora,
@@ -3633,19 +3636,38 @@ BEGIN
         )
         RETURNING id_proveedor INTO v_proveedor_id;
 
-        -- Asociar todos los productos activos con precio aleatorio entre 500 y 50.000 CLP
-        FOR v_prod IN
-            SELECT id_producto FROM producto WHERE activo = TRUE
-        LOOP
-            INSERT INTO proveedor_producto (id_proveedor, id_producto, precio_neto, precio_con_iva)
-            VALUES (
-                v_proveedor_id,
-                v_prod.id_producto,
-                ROUND((RANDOM() * 49500 + 500)::NUMERIC, 3),
-                ROUND((RANDOM() * 49500 + 500)::NUMERIC * 1.19, 3)
-            );
-        END LOOP;
+        -- 2. Asociar todos los productos activos
+FOR v_prod IN
+SELECT id_producto FROM producto WHERE activo = TRUE
+    LOOP
+            -- Generamos el precio neto base: random entre 2.000 y 10.000
+            v_precio_neto := ROUND((RANDOM() * 8000 + 2000)::NUMERIC, 3);
 
-    END LOOP;
+-- Insertamos usando la variable v_precio_neto para calcular el IVA real (19%)
+INSERT INTO proveedor_producto (id_proveedor, id_producto, precio_neto, precio_con_iva)
+VALUES (
+           v_proveedor_id,
+           v_prod.id_producto,
+           v_precio_neto,
+           ROUND(v_precio_neto * 1.19, 3)
+       );
+END LOOP;
+
+        -- 3. Generar entre 1 y 3 días de entrega aleatorios para este proveedor
+        v_num_dias := floor(random() * 3 + 1)::INT;
+
+INSERT INTO proveedor_dia_entrega (id_proveedor, dia_semana, hora_inicio_entrega, hora_fin_entrega)
+SELECT
+    v_proveedor_id,
+    dia_random,
+    '08:00:00'::TIME,
+    '17:00:00'::TIME
+FROM (
+         SELECT unnest(enum_range(NULL::dia_semana_type)) AS dia_random
+         ORDER BY random()
+             LIMIT v_num_dias
+     ) sub;
+
+END LOOP;
 END;
 $$;
