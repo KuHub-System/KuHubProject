@@ -106,7 +106,7 @@ productos_por_dia AS (
     SELECT
         p.id_producto,
         p.nombre_producto,
-        p.es_fraccionario,
+        um.es_fraccionario,
         c.id_categoria,
         c.nombre_categoria,
         um.abreviatura,
@@ -119,7 +119,7 @@ productos_por_dia AS (
     JOIN unidad_medida um ON um.id_unidad   = p.id_unidad
     WHERE p.activo = TRUE
     GROUP BY
-        p.id_producto, p.nombre_producto, p.es_fraccionario,
+        p.id_producto, p.nombre_producto, um.es_fraccionario,
         c.id_categoria, c.nombre_categoria,
         um.abreviatura, COALESCE(sr.dia_semana, 'SIN_DIA')
 ),
