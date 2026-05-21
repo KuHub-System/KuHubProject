@@ -1268,11 +1268,16 @@ const GestionProveedoresPage: React.FC = () => {
     return () => { cancelado = true; };
   }, [isOrdenCompraModal, ocSemana]);
 
-  /** Resetea la fecha de entrega al cambiar la semana académica. */
+  /** Resetea la fecha de entrega al cambiar la semana académica.
+   *  Usa hoy si cae dentro del rango de la semana, si no usa fechaInicio. */
   React.useEffect(() => {
     if (ocSemana) {
       const hoyISO = new Date().toISOString().slice(0, 10);
-      setOcFechaEntrega(hoyISO <= ocSemana.fechaFin ? hoyISO : null);
+      if (hoyISO >= ocSemana.fechaInicio && hoyISO <= ocSemana.fechaFin) {
+        setOcFechaEntrega(hoyISO);
+      } else {
+        setOcFechaEntrega(ocSemana.fechaInicio);
+      }
     } else {
       setOcFechaEntrega(null);
     }
@@ -1322,16 +1327,29 @@ const GestionProveedoresPage: React.FC = () => {
             const total = [...qtyByDay.values()].reduce((s, v) => s + v, 0);
             entregasProd[diasEntregaOrd[0]] = total;
           } else {
-            let prevOrd = 0;
-            for (const dE of diasEntregaOrd) {
-              const dEOrd = DIA_ORDEN[dE];
+            // Cada entrega D_i cubre los días POSTERIORES a D_i hasta la PRÓXIMA entrega
+            // (inclusive), con wrap-around semanal.
+            // Ej. entregas Lun(1) y Jue(4):
+            //   Lun → cubre Mar,Mié,Jue  (días > 1 y <= 4)
+            //   Jue → cubre Vie,Sáb,Dom,Lun (días > 4 o <= 1, wrap-around)
+            const n = diasEntregaOrd.length;
+            for (let i = 0; i < n; i++) {
+              const dE     = diasEntregaOrd[i];
+              const dEOrd  = DIA_ORDEN[dE];
+              // Próxima entrega en el ciclo (wrap al primero desde el último)
+              const nextOrd = DIA_ORDEN[diasEntregaOrd[(i + 1) % n]];
               let suma = 0;
               for (const [dia, qty] of qtyByDay.entries()) {
                 const o = DIA_ORDEN[dia];
-                if (o > prevOrd && o <= dEOrd) suma += qty;
+                if (dEOrd < nextOrd) {
+                  // rango normal: dEOrd < o <= nextOrd
+                  if (o > dEOrd && o <= nextOrd) suma += qty;
+                } else {
+                  // rango con wrap-around: o > dEOrd OR o <= nextOrd
+                  if (o > dEOrd || o <= nextOrd) suma += qty;
+                }
               }
               entregasProd[dE] = suma;
-              prevOrd = dEOrd;
             }
           }
           provMap[prod.idProducto] = entregasProd;
@@ -4582,7 +4600,7 @@ const OrdenCompraModal: React.FC<OrdenCompraModalProps> = ({
 
                   {/* Selector de fecha de entrega — visible cuando hay semana seleccionada */}
                   {semana && (() => {
-                    const hoyISO = new Date().toISOString().slice(0, 10);
+                    const minISO = semana.fechaInicio;
                     const maxISO = semana.fechaFin;
                     const lunesEntrega = fechaEntrega ? getMondayISO(fechaEntrega) : null;
                     const domEntrega  = lunesEntrega ? addDaysISO(lunesEntrega, 6) : null;
@@ -4595,7 +4613,7 @@ const OrdenCompraModal: React.FC<OrdenCompraModalProps> = ({
                         <div className="flex flex-col sm:flex-row sm:items-center gap-3">
                           <input
                             type="date"
-                            min={hoyISO}
+                            min={minISO}
                             max={maxISO}
                             value={fechaEntrega ?? ''}
                             onChange={(e) => onFechaEntregaChange(e.target.value)}
@@ -4694,7 +4712,7 @@ const OrdenCompraModal: React.FC<OrdenCompraModalProps> = ({
                 <>
                   {/* Resumen semana solicitud + selector de fecha de entrega editable */}
                   {semana && (() => {
-                    const hoyISO      = new Date().toISOString().slice(0, 10);
+                    const minISO      = semana.fechaInicio;
                     const maxISO      = semana.fechaFin;
                     const lunesEntrega = fechaEntrega ? getMondayISO(fechaEntrega) : null;
                     const domEntrega   = lunesEntrega ? addDaysISO(lunesEntrega, 6) : null;
@@ -4712,7 +4730,7 @@ const OrdenCompraModal: React.FC<OrdenCompraModalProps> = ({
                           <span>Semana de entrega:</span>
                           <input
                             type="date"
-                            min={hoyISO}
+                            min={minISO}
                             max={maxISO}
                             value={fechaEntrega ?? ''}
                             onChange={(e) => onFechaEntregaChange(e.target.value)}
@@ -4813,6 +4831,76 @@ const OrdenCompraModal: React.FC<OrdenCompraModalProps> = ({
         )}
       </ModalContent>
     </Modal>
+  );
+};
+
+// ── Sub-componente: tabla de un proveedor con columnas por día de la semana ───
+
+// ── Input de cantidad de entrega (soporta coma decimal para productos fraccionarios) ──
+
+interface EntregaInputProps {
+  value: number;
+  esFraccionario: boolean;
+  onChange: (v: number) => void;
+  className?: string;
+}
+
+const EntregaInput: React.FC<EntregaInputProps> = ({ value, esFraccionario, onChange, className }) => {
+  const inputClass = className ?? 'w-20 px-2 py-1 text-center rounded border border-warning-300 dark:border-warning-600/50 bg-white dark:bg-default-100/50 focus:outline-none focus:border-warning-500 font-semibold text-xs';
+
+  // Para fraccionario: input tipo texto con estado local para no interrumpir el tipeo
+  const [text, setText] = React.useState<string>(() =>
+    esFraccionario ? (value === 0 ? '' : String(value).replace('.', ',')) : String(value),
+  );
+
+  // Sincroniza cuando el valor externo cambia (p.ej. reset)
+  const prevValue = React.useRef(value);
+  React.useEffect(() => {
+    if (value !== prevValue.current) {
+      prevValue.current = value;
+      setText(esFraccionario
+        ? (value === 0 ? '' : String(value).replace('.', ','))
+        : String(value),
+      );
+    }
+  }, [value, esFraccionario]);
+
+  if (!esFraccionario) {
+    return (
+      <input
+        type="number"
+        min={0}
+        step={1}
+        value={value}
+        onChange={(e) => onChange(Math.max(0, parseInt(e.target.value) || 0))}
+        className={inputClass}
+      />
+    );
+  }
+
+  return (
+    <input
+      type="text"
+      inputMode="decimal"
+      value={text}
+      onChange={(e) => {
+        const raw = e.target.value;
+        setText(raw);
+        const parsed = parseChileanPrice(raw);
+        if (!isNaN(parsed) && parsed >= 0) onChange(parsed);
+      }}
+      onBlur={() => {
+        const parsed = parseChileanPrice(text);
+        if (isNaN(parsed) || parsed < 0) {
+          setText('');
+          onChange(0);
+        } else {
+          setText(parsed === 0 ? '' : String(parsed).replace('.', ','));
+        }
+      }}
+      placeholder="0"
+      className={inputClass}
+    />
   );
 };
 
@@ -4976,16 +5064,13 @@ const ProveedorCotizacionTabla: React.FC<ProveedorCotizacionTablaProps> = ({
                             const v = entregasProd[col.dia] ?? 0;
                             return (
                               <td key={`${col.tipo}-${col.dia}`} className="py-1 px-1 text-center bg-warning-50/40 dark:bg-warning-900/10 whitespace-nowrap">
-                                <input
-                                  type="number"
-                                  min={0}
-                                  step={prod.esFraccionario ? 0.001 : 1}
+                                <EntregaInput
                                   value={v}
-                                  onChange={(e) => {
+                                  esFraccionario={prod.esFraccionario}
+                                  onChange={(valor) => {
                                     if (proveedor.idProveedor == null) return;
-                                    onCantidadChange(proveedor.idProveedor, prod.idProducto, col.dia, parseFloat(e.target.value));
+                                    onCantidadChange(proveedor.idProveedor, prod.idProducto, col.dia, valor);
                                   }}
-                                  className="w-20 px-2 py-1 text-center rounded border border-warning-300 dark:border-warning-600/50 bg-white dark:bg-default-100/50 focus:outline-none focus:border-warning-500 font-semibold"
                                 />
                               </td>
                             );
