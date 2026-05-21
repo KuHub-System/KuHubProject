@@ -4503,11 +4503,12 @@ const OrdenCompraModal: React.FC<OrdenCompraModalProps> = ({
       isOpen={isOpen}
       onOpenChange={onOpenChange}
       size={paso === 1 ? '3xl' : '5xl'}
+      backdrop="blur"
       scrollBehavior="inside"
       radius="lg"
-      classNames={{ base: 'rounded-2xl' }}
+      classNames={{ base: 'rounded-2xl', body: 'min-h-[400px]' }}
     >
-      <ModalContent className="rounded-2xl">
+      <ModalContent>
         {(onClose) => (
           <>
             <ModalHeader className="border-b border-default-200 dark:border-default-100 bg-gradient-to-r from-warning/10 to-warning/5 dark:from-warning/20 dark:to-warning/10 px-6 py-4">
@@ -4850,7 +4851,7 @@ const EntregaInput: React.FC<EntregaInputProps> = ({ value, esFraccionario, onCh
 
   // Para fraccionario: input tipo texto con estado local para no interrumpir el tipeo
   const [text, setText] = React.useState<string>(() =>
-    esFraccionario ? (value === 0 ? '' : String(value).replace('.', ',')) : String(value),
+    esFraccionario ? (value === 0 ? '' : fmtN(value)) : String(value),
   );
 
   // Sincroniza cuando el valor externo cambia (p.ej. reset)
@@ -4859,7 +4860,7 @@ const EntregaInput: React.FC<EntregaInputProps> = ({ value, esFraccionario, onCh
     if (value !== prevValue.current) {
       prevValue.current = value;
       setText(esFraccionario
-        ? (value === 0 ? '' : String(value).replace('.', ','))
+        ? (value === 0 ? '' : fmtN(value))
         : String(value),
       );
     }
@@ -4895,7 +4896,7 @@ const EntregaInput: React.FC<EntregaInputProps> = ({ value, esFraccionario, onCh
           setText('');
           onChange(0);
         } else {
-          setText(parsed === 0 ? '' : String(parsed).replace('.', ','));
+          setText(parsed === 0 ? '' : fmtN(parsed));
         }
       }}
       placeholder="0"
@@ -5009,8 +5010,8 @@ const ProveedorCotizacionTabla: React.FC<ProveedorCotizacionTablaProps> = ({
           {proveedor.categorias.map(cat => (
             <div key={cat.idCategoria} className="mb-3 last:mb-0">
               <p className="text-xs font-semibold text-default-500 uppercase tracking-wide mb-1">{cat.nombreCategoria}</p>
-              <div className="rounded-lg border border-default-200 dark:border-default-100" style={{ overflowX: 'auto' }}>
-                <table className="w-full text-xs" style={{ minWidth: 'max-content' }}>
+              <div className="overflow-x-auto rounded-lg border border-default-200 dark:border-default-100">
+                <table className="min-w-max w-full text-xs">
                   <thead className="bg-default-100 dark:bg-default-50">
                     <tr>
                       <th className="text-left py-2 px-3 font-medium">Producto</th>
@@ -5050,13 +5051,13 @@ const ProveedorCotizacionTabla: React.FC<ProveedorCotizacionTablaProps> = ({
                             </Tooltip>
                           </td>
                           <td className="py-2 px-2 text-center text-default-500 whitespace-nowrap">{prod.abreviatura}</td>
-                          <td className="py-2 px-2 text-center font-medium text-default-700 whitespace-nowrap">{prod.cantidadTotal}</td>
+                          <td className="py-2 px-2 text-center font-medium text-default-700 whitespace-nowrap">{fmtN(prod.cantidadTotal)}</td>
                           {!esSinProveedor && colSpecs.map(col => {
                             if (col.tipo === 'cant') {
                               const qty = prod.cantidadPorDia.find(c => c.dia === col.dia)?.cantidad ?? 0;
                               return (
                                 <td key={`${col.tipo}-${col.dia}`} className="py-2 px-2 text-center text-default-500 whitespace-nowrap">
-                                  {qty > 0 ? qty : <span className="text-default-300">—</span>}
+                                  {qty > 0 ? fmtN(qty) : <span className="text-default-300">—</span>}
                                 </td>
                               );
                             }
