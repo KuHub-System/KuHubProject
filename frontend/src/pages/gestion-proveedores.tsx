@@ -379,123 +379,13 @@ const addDaysISO = (iso: string, n: number): string => {
   return `${y}-${m}-${day}`;
 };
 
-/**
- * Dado el lunes de una semana (semanaBase.fechaInicio) y un día de la semana,
- * retorna la fecha ISO de ese día en esa misma semana.
- */
-const fechaDeDiaEnSemana = (lunesISO: string, dia: TDiaSemana): string =>
-  addDaysISO(lunesISO, DIA_ORDEN[dia] - 1);
-
 /** Retorna la fecha ISO del lunes de la semana que contiene la fecha dada. */
 const getMondayISO = (iso: string): string => {
   const d = new Date(iso + 'T00:00:00');
-  const dow = d.getDay(); // 0=Dom, 1=Lun, ..., 6=Sáb
+  const dow = d.getDay();
   const diff = dow === 0 ? -6 : 1 - dow;
   d.setDate(d.getDate() + diff);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-};
-
-/**
- * Agrupa los días LUNES..DOMINGO con cantidad > 0 en bloques de días consecutivos
- * según el orden de la semana. Ignora SIN_DIA.
- */
-const agruparBloquesConsecutivos = (
-  cantidadPorDia: { dia: TDiaSemana | 'SIN_DIA'; cantidad: number }[]
-): { dias: TDiaSemana[]; cantidad: number }[] => {
-  const map = new Map<TDiaSemana, number>();
-  for (const c of cantidadPorDia) {
-    if (c.dia === 'SIN_DIA') continue;
-    if (c.cantidad > 0) map.set(c.dia as TDiaSemana, (map.get(c.dia as TDiaSemana) ?? 0) + c.cantidad);
-  }
-  const bloques: { dias: TDiaSemana[]; cantidad: number }[] = [];
-  let actual: { dias: TDiaSemana[]; cantidad: number } | null = null;
-  for (const d of DIAS_TODOS) {
-    if (map.has(d)) {
-      if (actual) {
-        actual.dias.push(d);
-        actual.cantidad += map.get(d)!;
-      } else {
-        actual = { dias: [d], cantidad: map.get(d)! };
-      }
-    } else if (actual) {
-      bloques.push(actual);
-      actual = null;
-    }
-  }
-  if (actual) bloques.push(actual);
-  return bloques;
-};
-
-/**
- * Calcula, para una semana base y un proveedor, todas las fechas de entrega
- * resultantes y la cantidad por producto en cada fecha.
- * Regla:
- *  - Si el proveedor tiene 1 sólo día de entrega → TODO va a ese día de ESTA semana.
- *  - Si tiene ≥2 días → por cada bloque consecutivo, la fecha es el día de entrega
- *    inmediatamente ANTERIOR al primer día del bloque (mapeado a la semana base);
- *    si no hay anterior en la semana base, usa el ÚLTIMO día de entrega del proveedor
- *    en la SEMANA ANTERIOR.
- */
-interface EntregaCelda {
-  fechaISO: string;            // YYYY-MM-DD
-  cantidad: number;
-}
-interface DistribucionProveedor {
-  fechas: string[];                              // fechas únicas ordenadas asc
-  porProducto: Record<number, EntregaCelda[]>;   // idProducto → celdas
-}
-
-const calcularDistribucionProveedor = (
-  productos: IProductoConsolidado[],
-  diasEntrega: TDiaSemana[],
-  lunesSemanaBase: string,
-): DistribucionProveedor => {
-  const lunesSemanaAnterior = addDaysISO(lunesSemanaBase, -7);
-  const fechas = new Set<string>();
-  const porProducto: Record<number, EntregaCelda[]> = {};
-
-  const registrar = (idProd: number, fechaISO: string, cantidad: number) => {
-    fechas.add(fechaISO);
-    if (!porProducto[idProd]) porProducto[idProd] = [];
-    porProducto[idProd].push({ fechaISO, cantidad });
-  };
-
-  // ordenamos diasEntrega por el orden semanal
-  const diasOrdenados = [...diasEntrega].sort((a, b) => DIA_ORDEN[a] - DIA_ORDEN[b]);
-
-  // Sin días de entrega configurados → no se puede calcular distribución
-  if (diasOrdenados.length === 0) return { fechas: [], porProducto: {} };
-
-  for (const prod of productos) {
-    // CASO ESPECIAL: 1 sólo día de entrega → todo va a ese día de ESTA semana
-    if (diasOrdenados.length === 1) {
-      const total = prod.cantidadPorDia.reduce((s, c) => s + (c.cantidad ?? 0), 0);
-      if (total > 0) {
-        registrar(prod.idProducto, fechaDeDiaEnSemana(lunesSemanaBase, diasOrdenados[0]), total);
-      }
-      continue;
-    }
-
-    // CASO GENERAL: ≥2 días — agrupa bloques consecutivos
-    const bloques = agruparBloquesConsecutivos(prod.cantidadPorDia);
-    if (bloques.length === 0 && diasOrdenados.length > 0) {
-      // si todo cae en SIN_DIA o cantidad 0 → no genera columnas
-      continue;
-    }
-    for (const bloque of bloques) {
-      const primerDia = bloque.dias[0];
-      const anterior = [...diasOrdenados].reverse().find(d => DIA_ORDEN[d] < DIA_ORDEN[primerDia]);
-      const fechaISO = anterior
-        ? fechaDeDiaEnSemana(lunesSemanaBase, anterior)
-        : fechaDeDiaEnSemana(lunesSemanaAnterior, diasOrdenados[diasOrdenados.length - 1]);
-      registrar(prod.idProducto, fechaISO, bloque.cantidad);
-    }
-  }
-
-  return {
-    fechas: Array.from(fechas).sort(),
-    porProducto,
-  };
 };
 
 const DIAS_ABREV_OC: Record<TDiaSemana, string> = {
@@ -503,13 +393,25 @@ const DIAS_ABREV_OC: Record<TDiaSemana, string> = {
   VIERNES: 'Vie', SABADO: 'Sáb', DOMINGO: 'Dom',
 };
 
-/** "2026-05-27" → "Mié 2026-05-27" */
-const formatFechaEntregaLabel = (iso: string): string => {
-  const d = new Date(iso + 'T00:00:00');
-  const dow = d.getDay(); // 0=Dom .. 6=Sab
-  const idx = dow === 0 ? 6 : dow - 1; // → LUNES=0 .. DOMINGO=6
-  const dia = DIAS_TODOS[idx];
-  return `${DIAS_ABREV_OC[dia]} ${iso}`;
+// ── Spec de columna para la tabla de cotización ─────────────────────────────
+type ColSpecOC =
+  | { tipo: 'cant';    dia: TDiaSemana }   // cantidad solicitada — read-only
+  | { tipo: 'entrega'; dia: TDiaSemana };  // cantidad a entregar — editable
+
+/** Genera las columnas de día para un proveedor dado sus días de entrega y los días
+ *  que aparecen con cantidad > 0 en algún producto. Orden: Lun → Dom. */
+const buildColsOC = (
+  diasEntrega: TDiaSemana[],
+  diasConQty: Set<TDiaSemana>,
+): ColSpecOC[] => {
+  const entregaSet = new Set(diasEntrega);
+  const visible = new Set([...diasConQty, ...entregaSet]);
+  return DIAS_TODOS
+    .filter(d => visible.has(d))
+    .map(d => entregaSet.has(d)
+      ? { tipo: 'entrega' as const, dia: d }
+      : { tipo: 'cant' as const, dia: d },
+    );
 };
 
 // ── Componente principal ──────────────────────────────────────────────────────
@@ -622,9 +524,12 @@ const GestionProveedoresPage: React.FC = () => {
   const [ocCotizacion, setOcCotizacion] = React.useState<ICotizacionConsolidadaResponse | null>(null);
   const [ocLoadingCotizacion, setOcLoadingCotizacion] = React.useState(false);
   const [ocErrorCotizacion, setOcErrorCotizacion] = React.useState<string | null>(null);
-  /** Cantidades editables del Paso 2 — por idProveedor → idProducto → { cantTotal, entregas: Record<fechaISO, number> }. */
+  /**
+   * Cantidades editables del Paso 2.
+   * idProveedor → idProducto → diaEntrega (TDiaSemana) → cantidad editable
+   */
   const [ocCantidades, setOcCantidades] = React.useState<
-    Record<number, Record<number, { cantTotal: number; entregas: Record<string, number> }>>
+    Record<number, Record<number, Record<string, number>>>
   >({});
   /** Fecha elegida por el usuario en Paso 1 como base para calcular semana de entrega (YYYY-MM-DD). */
   const [ocFechaEntrega, setOcFechaEntrega] = React.useState<string | null>(null);
@@ -1381,28 +1286,53 @@ const GestionProveedoresPage: React.FC = () => {
     });
   };
 
-  /** Construye el mapa de cantidades editables dado una semana de entrega y la cotización. */
+  /**
+   * Construye el mapa inicial de cantidades editables (por día de entrega).
+   * Para cada día de entrega D_i del proveedor: Entrega_D_i = Σ qty de días
+   * desde la entrega anterior (exclusive) hasta D_i (inclusive).
+   */
   const construirCantidades = (
     data: ICotizacionConsolidadaResponse,
-    lunesSemanaEntrega: string,
   ): typeof ocCantidades => {
     const init: typeof ocCantidades = {};
     for (const prov of data.cotizacion) {
       if (prov.idProveedor == null) continue;
-      const dist = calcularDistribucionProveedor(
-        prov.categorias.flatMap(c => c.productos),
-        prov.diasEntrega ?? [],
-        lunesSemanaEntrega,
+      const diasEntregaOrd = [...(prov.diasEntrega ?? [])].sort(
+        (a, b) => DIA_ORDEN[a] - DIA_ORDEN[b],
       );
-      const provMap: Record<number, { cantTotal: number; entregas: Record<string, number> }> = {};
+      const provMap: Record<number, Record<string, number>> = {};
       for (const cat of prov.categorias) {
         for (const prod of cat.productos) {
-          const entregas: Record<string, number> = {};
-          for (const f of dist.fechas) entregas[f] = 0;
-          for (const celda of dist.porProducto[prod.idProducto] ?? []) {
-            entregas[celda.fechaISO] = (entregas[celda.fechaISO] ?? 0) + celda.cantidad;
+          const qtyByDay = new Map<TDiaSemana, number>();
+          for (const c of prod.cantidadPorDia) {
+            if (c.dia !== 'SIN_DIA') {
+              qtyByDay.set(
+                c.dia as TDiaSemana,
+                (qtyByDay.get(c.dia as TDiaSemana) ?? 0) + c.cantidad,
+              );
+            }
           }
-          provMap[prod.idProducto] = { cantTotal: prod.cantidadTotal, entregas };
+          const entregasProd: Record<string, number> = {};
+          if (diasEntregaOrd.length === 0) {
+            // sin días configurados → no hay Entrega
+          } else if (diasEntregaOrd.length === 1) {
+            // 1 entrega → recibe todo
+            const total = [...qtyByDay.values()].reduce((s, v) => s + v, 0);
+            entregasProd[diasEntregaOrd[0]] = total;
+          } else {
+            let prevOrd = 0;
+            for (const dE of diasEntregaOrd) {
+              const dEOrd = DIA_ORDEN[dE];
+              let suma = 0;
+              for (const [dia, qty] of qtyByDay.entries()) {
+                const o = DIA_ORDEN[dia];
+                if (o > prevOrd && o <= dEOrd) suma += qty;
+              }
+              entregasProd[dE] = suma;
+              prevOrd = dEOrd;
+            }
+          }
+          provMap[prod.idProducto] = entregasProd;
         }
       }
       init[prov.idProveedor] = provMap;
@@ -1425,7 +1355,7 @@ const GestionProveedoresPage: React.FC = () => {
         new Promise<void>(r => setTimeout(r, 2000)),
       ]);
       setOcCotizacion(data);
-      setOcCantidades(construirCantidades(data, getMondayISO(ocFechaEntrega)));
+      setOcCantidades(construirCantidades(data));
     } catch (err: any) {
       setOcErrorCotizacion(err.message || 'Error al obtener la cotización consolidada');
     } finally {
@@ -1439,24 +1369,23 @@ const GestionProveedoresPage: React.FC = () => {
     setOcErrorCotizacion(null);
   };
 
-  /** Actualiza una cantidad editable del Paso 2 (cantTotal o una celda de entrega). */
+  /** Actualiza la cantidad editable de una celda Entrega {día} del Paso 2. */
   const actualizarCantidadOc = (
     idProveedor: number,
     idProducto: number,
-    campo: 'cantTotal' | string, // 'cantTotal' o fecha ISO
+    dia: string,
     valor: number,
   ) => {
-    setOcCantidades(prev => {
-      const provMap = { ...(prev[idProveedor] ?? {}) };
-      const item = { ...(provMap[idProducto] ?? { cantTotal: 0, entregas: {} }) };
-      if (campo === 'cantTotal') {
-        item.cantTotal = isNaN(valor) ? 0 : valor;
-      } else {
-        item.entregas = { ...item.entregas, [campo]: isNaN(valor) ? 0 : valor };
-      }
-      provMap[idProducto] = item;
-      return { ...prev, [idProveedor]: provMap };
-    });
+    setOcCantidades(prev => ({
+      ...prev,
+      [idProveedor]: {
+        ...prev[idProveedor],
+        [idProducto]: {
+          ...(prev[idProveedor]?.[idProducto] ?? {}),
+          [dia]: isNaN(valor) ? 0 : valor,
+        },
+      },
+    }));
   };
 
   // ── Render ────────────────────────────────────────────────────────────────
@@ -4505,8 +4434,8 @@ interface OrdenCompraModalProps {
   cotizacion: ICotizacionConsolidadaResponse | null;
   loadingCotizacion: boolean;
   errorCotizacion: string | null;
-  cantidades: Record<number, Record<number, { cantTotal: number; entregas: Record<string, number> }>>;
-  onCantidadChange: (idProveedor: number, idProducto: number, campo: 'cantTotal' | string, valor: number) => void;
+  cantidades: Record<number, Record<number, Record<string, number>>>;
+  onCantidadChange: (idProveedor: number, idProducto: number, dia: string, valor: number) => void;
   onVolver: () => void;
   fechaEntrega: string | null;
   onFechaEntregaChange: (f: string) => void;
@@ -4816,7 +4745,7 @@ const OrdenCompraModal: React.FC<OrdenCompraModalProps> = ({
                         <ProveedorCotizacionTabla
                           key={prov.idProveedor ?? `sin-prov-${idx}`}
                           proveedor={prov}
-                          cantidadesProv={prov.idProveedor != null ? cantidades[prov.idProveedor] ?? {} : {}}
+                          cantidadesProv={prov.idProveedor != null ? (cantidades[prov.idProveedor] ?? {}) : {}}
                           onCantidadChange={onCantidadChange}
                         />
                       ))}
@@ -4868,12 +4797,13 @@ const OrdenCompraModal: React.FC<OrdenCompraModalProps> = ({
   );
 };
 
-// ── Sub-componente: tabla de un proveedor con columnas Entrega editables ─────
+// ── Sub-componente: tabla de un proveedor con columnas por día de la semana ───
 
 interface ProveedorCotizacionTablaProps {
   proveedor: IProveedorGrupoConsolidado;
-  cantidadesProv: Record<number, { cantTotal: number; entregas: Record<string, number> }>;
-  onCantidadChange: (idProveedor: number, idProducto: number, campo: 'cantTotal' | string, valor: number) => void;
+  /** idProducto → diaSemana → cantidad editable (sólo para días de entrega) */
+  cantidadesProv: Record<number, Record<string, number>>;
+  onCantidadChange: (idProveedor: number, idProducto: number, dia: string, valor: number) => void;
 }
 
 const ProveedorCotizacionTabla: React.FC<ProveedorCotizacionTablaProps> = ({
@@ -4883,27 +4813,31 @@ const ProveedorCotizacionTabla: React.FC<ProveedorCotizacionTablaProps> = ({
 }) => {
   const esSinProveedor = proveedor.idProveedor == null;
 
-  // Recolectar todas las fechas de entrega usadas por el proveedor (orden cronológico).
-  const fechasEntrega = React.useMemo(() => {
-    const setF = new Set<string>();
-    for (const provMap of Object.values(cantidadesProv)) {
-      for (const f of Object.keys(provMap.entregas)) setF.add(f);
-    }
-    return Array.from(setF).sort();
-  }, [cantidadesProv]);
+  // Días con cantidad > 0 en cualquier producto de este proveedor.
+  const diasConQty = React.useMemo<Set<TDiaSemana>>(() => {
+    const s = new Set<TDiaSemana>();
+    for (const cat of proveedor.categorias)
+      for (const prod of cat.productos)
+        for (const c of prod.cantidadPorDia)
+          if (c.dia !== 'SIN_DIA' && c.cantidad > 0) s.add(c.dia as TDiaSemana);
+    return s;
+  }, [proveedor]);
 
-  // Totales del proveedor (Σ entregas × precio unitario por producto).
+  // Especificación de columnas: Cant.{día} (read-only) o Entrega {día} (editable).
+  const colSpecs = React.useMemo<ColSpecOC[]>(
+    () => buildColsOC(proveedor.diasEntrega ?? [], diasConQty),
+    [proveedor.diasEntrega, diasConQty],
+  );
+
+  // Totales del proveedor: Σ (entrega × precioUnitario) para todos los productos.
   const totales = React.useMemo(() => {
-    let neto = 0;
-    let conIva = 0;
-    for (const cat of proveedor.categorias) {
+    let neto = 0; let conIva = 0;
+    for (const cat of proveedor.categorias)
       for (const prod of cat.productos) {
-        const item = cantidadesProv[prod.idProducto];
-        const sumEnt = Object.values(item?.entregas ?? {}).reduce((s, v) => s + v, 0);
-        if (prod.precioNeto != null) neto += sumEnt * prod.precioNeto;
-        if (prod.precioConIva != null) conIva += sumEnt * prod.precioConIva;
+        const sum = Object.values(cantidadesProv[prod.idProducto] ?? {}).reduce((s, v) => s + v, 0);
+        if (prod.precioNeto != null) neto += sum * prod.precioNeto;
+        if (prod.precioConIva != null) conIva += sum * prod.precioConIva;
       }
-    }
     return { neto, conIva };
   }, [proveedor, cantidadesProv]);
 
@@ -4920,61 +4854,31 @@ const ProveedorCotizacionTabla: React.FC<ProveedorCotizacionTablaProps> = ({
         }>
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <div>
-              <h4 className={esSinProveedor
-                ? 'font-bold text-base text-danger'
-                : 'font-bold text-base text-secondary dark:text-foreground'
-              }>
+              <h4 className={esSinProveedor ? 'font-bold text-base text-danger' : 'font-bold text-base text-secondary dark:text-foreground'}>
                 {esSinProveedor ? 'Productos Sin Proveedor' : proveedor.nombreDistribuidora}
               </h4>
               {!esSinProveedor && (
                 <div className="flex flex-wrap items-center gap-2 text-xs text-default-500 mt-0.5">
-                  <span className="flex items-center gap-1">
-                    <Icon icon="lucide:user" width={12} />
-                    {proveedor.nombreProveedor ?? '—'}
-                  </span>
-                  {proveedor.telefono && (
-                    <>
-                      <span className="text-default-300">•</span>
-                      <span className="flex items-center gap-1">
-                        <Icon icon="lucide:phone" width={12} />
-                        {proveedor.telefono}
-                      </span>
-                    </>
-                  )}
-                  {proveedor.email && (
-                    <>
-                      <span className="text-default-300">•</span>
-                      <span className="flex items-center gap-1">
-                        <Icon icon="lucide:mail" width={12} />
-                        {proveedor.email}
-                      </span>
-                    </>
-                  )}
+                  <span className="flex items-center gap-1"><Icon icon="lucide:user" width={12} />{proveedor.nombreProveedor ?? '—'}</span>
+                  {proveedor.telefono && (<><span className="text-default-300">•</span><span className="flex items-center gap-1"><Icon icon="lucide:phone" width={12} />{proveedor.telefono}</span></>)}
+                  {proveedor.email && (<><span className="text-default-300">•</span><span className="flex items-center gap-1"><Icon icon="lucide:mail" width={12} />{proveedor.email}</span></>)}
                 </div>
               )}
               {!esSinProveedor && proveedor.diasEntrega && proveedor.diasEntrega.length > 0 && (
                 <div className="flex flex-wrap items-center gap-1 mt-2">
                   <span className="text-[11px] text-default-500 mr-1">Días de entrega:</span>
                   {proveedor.diasEntrega.map(d => (
-                    <Chip key={d} size="sm" color="warning" variant="flat" className="text-[10px]">
-                      {DIAS_ABREV_OC[d]}
-                    </Chip>
+                    <Chip key={d} size="sm" color="warning" variant="flat" className="text-[10px]">{DIAS_ABREV_OC[d]}</Chip>
                   ))}
                 </div>
               )}
             </div>
             <div className="flex flex-col items-end gap-1">
-              <Chip color="primary" size="sm" variant="flat">
-                {proveedor.totalProductos} producto{proveedor.totalProductos !== 1 ? 's' : ''}
-              </Chip>
+              <Chip color="primary" size="sm" variant="flat">{proveedor.totalProductos} producto{proveedor.totalProductos !== 1 ? 's' : ''}</Chip>
               {!esSinProveedor && (
                 <>
-                  <Chip color="success" size="sm" variant="flat" className="font-bold">
-                    Neto: ${fmtN(totales.neto)}
-                  </Chip>
-                  <Chip color="warning" size="sm" variant="flat" className="font-bold">
-                    c/IVA: ${fmtN(totales.conIva)}
-                  </Chip>
+                  <Chip color="success" size="sm" variant="flat" className="font-bold">Neto: ${fmtN(totales.neto)}</Chip>
+                  <Chip color="warning" size="sm" variant="flat" className="font-bold">c/IVA: ${fmtN(totales.conIva)}</Chip>
                 </>
               )}
             </div>
@@ -4985,49 +4889,59 @@ const ProveedorCotizacionTabla: React.FC<ProveedorCotizacionTablaProps> = ({
         <div className="px-4 py-3">
           {proveedor.categorias.map(cat => (
             <div key={cat.idCategoria} className="mb-3 last:mb-0">
-              <p className="text-xs font-semibold text-default-500 uppercase tracking-wide mb-1">
-                {cat.nombreCategoria}
-              </p>
+              <p className="text-xs font-semibold text-default-500 uppercase tracking-wide mb-1">{cat.nombreCategoria}</p>
               <div className="overflow-x-auto rounded-lg border border-default-200 dark:border-default-100">
                 <table className="w-full text-xs">
                   <thead className="bg-default-100 dark:bg-default-50">
                     <tr>
-                      <th className="text-center py-2 px-3 font-medium">Producto</th>
-                      <th className="text-center py-2 px-3 font-medium w-16">U/M</th>
-                      <th className="text-center py-2 px-3 font-medium w-28">Total Solicitado</th>
-                      {!esSinProveedor && fechasEntrega.map(f => (
-                        <th key={f} className="text-center py-2 px-3 font-medium w-32">
-                          Entrega {formatFechaEntregaLabel(f)}
-                        </th>
+                      <th className="text-left py-2 px-3 font-medium">Producto</th>
+                      <th className="text-center py-2 px-2 font-medium w-14">U/M</th>
+                      <th className="text-center py-2 px-2 font-medium w-24">Total Sol.</th>
+                      {!esSinProveedor && colSpecs.map(col => (
+                        col.tipo === 'entrega'
+                          ? (
+                            <th key={col.dia} className="text-center py-2 px-2 font-semibold w-24 bg-warning-100 dark:bg-warning-900/20 text-warning-700 dark:text-warning-400">
+                              Entrega<br />{DIAS_ABREV_OC[col.dia]}
+                            </th>
+                          )
+                          : (
+                            <th key={col.dia} className="text-center py-2 px-2 font-medium w-20 text-default-500">
+                              Cant.<br />{DIAS_ABREV_OC[col.dia]}
+                            </th>
+                          )
                       ))}
-                      <th className="text-center py-2 px-3 font-medium w-24">P. Neto</th>
-                      <th className="text-center py-2 px-3 font-medium w-24">P. c/IVA</th>
+                      <th className="text-center py-2 px-2 font-medium w-24">P. Neto</th>
+                      <th className="text-center py-2 px-2 font-medium w-24">P. c/IVA</th>
                     </tr>
                   </thead>
                   <tbody>
                     {cat.productos.map(prod => {
-                      const item = cantidadesProv[prod.idProducto];
-                      const sumEntregas = Object.values(item?.entregas ?? {}).reduce((s, v) => s + v, 0);
-                      const pNetoFila = prod.precioNeto != null ? sumEntregas * prod.precioNeto : null;
+                      const entregasProd = cantidadesProv[prod.idProducto] ?? {};
+                      const sumEntregas = Object.values(entregasProd).reduce((s, v) => s + v, 0);
+                      const pNetoFila   = prod.precioNeto   != null ? sumEntregas * prod.precioNeto   : null;
                       const pConIvaFila = prod.precioConIva != null ? sumEntregas * prod.precioConIva : null;
                       return (
-                        <tr
-                          key={prod.idProducto}
-                          className="border-t border-default-100 dark:border-default-50 hover:bg-default-50 dark:hover:bg-default-100/20"
-                        >
-                          <td className="py-2 px-3 font-medium text-left">
+                        <tr key={prod.idProducto} className="border-t border-default-100 dark:border-default-50 hover:bg-default-50 dark:hover:bg-default-100/20">
+                          <td className="py-2 px-3 font-medium text-left max-w-[160px]">
                             <Tooltip content={prod.nombreProducto} color="default">
-                              <span className="truncate">{prod.nombreProducto}</span>
+                              <span className="block truncate">{prod.nombreProducto}</span>
                             </Tooltip>
                           </td>
-                          <td className="py-2 px-3 text-center text-default-500">{prod.abreviatura}</td>
-                          <td className="py-2 px-3 text-center font-medium text-default-700">
-                            {prod.cantidadTotal}
-                          </td>
-                          {!esSinProveedor && fechasEntrega.map(f => {
-                            const v = item?.entregas[f] ?? 0;
+                          <td className="py-2 px-2 text-center text-default-500">{prod.abreviatura}</td>
+                          <td className="py-2 px-2 text-center font-medium text-default-700">{prod.cantidadTotal}</td>
+                          {!esSinProveedor && colSpecs.map(col => {
+                            if (col.tipo === 'cant') {
+                              const qty = prod.cantidadPorDia.find(c => c.dia === col.dia)?.cantidad ?? 0;
+                              return (
+                                <td key={col.dia} className="py-2 px-2 text-center text-default-500">
+                                  {qty > 0 ? qty : <span className="text-default-300">—</span>}
+                                </td>
+                              );
+                            }
+                            // tipo === 'entrega' — editable
+                            const v = entregasProd[col.dia] ?? 0;
                             return (
-                              <td key={f} className="py-2 px-3 text-center">
+                              <td key={col.dia} className="py-1 px-1 text-center bg-warning-50/40 dark:bg-warning-900/10">
                                 <input
                                   type="number"
                                   min={0}
@@ -5035,24 +4949,15 @@ const ProveedorCotizacionTabla: React.FC<ProveedorCotizacionTablaProps> = ({
                                   value={v}
                                   onChange={(e) => {
                                     if (proveedor.idProveedor == null) return;
-                                    onCantidadChange(
-                                      proveedor.idProveedor,
-                                      prod.idProducto,
-                                      f,
-                                      parseFloat(e.target.value),
-                                    );
+                                    onCantidadChange(proveedor.idProveedor, prod.idProducto, col.dia, parseFloat(e.target.value));
                                   }}
-                                  className="w-24 px-2 py-1 text-center rounded border border-default-200 dark:border-default-100 bg-white dark:bg-default-100/50 focus:outline-none focus:border-warning"
+                                  className="w-20 px-2 py-1 text-center rounded border border-warning-300 dark:border-warning-600/50 bg-white dark:bg-default-100/50 focus:outline-none focus:border-warning-500 font-semibold"
                                 />
                               </td>
                             );
                           })}
-                          <td className="py-2 px-3 text-center">
-                            {pNetoFila !== null ? `$${fmtN(pNetoFila)}` : '—'}
-                          </td>
-                          <td className="py-2 px-3 text-center">
-                            {pConIvaFila !== null ? `$${fmtN(pConIvaFila)}` : '—'}
-                          </td>
+                          <td className="py-2 px-2 text-center">{pNetoFila   !== null ? `$${fmtN(pNetoFila)}`   : '—'}</td>
+                          <td className="py-2 px-2 text-center">{pConIvaFila !== null ? `$${fmtN(pConIvaFila)}` : '—'}</td>
                         </tr>
                       );
                     })}
