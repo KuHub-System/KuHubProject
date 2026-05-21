@@ -399,19 +399,21 @@ type ColSpecOC =
   | { tipo: 'entrega'; dia: TDiaSemana };  // cantidad a entregar — editable
 
 /** Genera las columnas de día para un proveedor dado sus días de entrega y los días
- *  que aparecen con cantidad > 0 en algún producto. Orden: Lun → Dom. */
+ *  que aparecen con cantidad > 0. Un día puede producir DOS columnas (Cant. + Entrega)
+ *  cuando coincide que es día solicitado Y día de entrega. Orden: Lun → Dom. */
 const buildColsOC = (
   diasEntrega: TDiaSemana[],
   diasConQty: Set<TDiaSemana>,
 ): ColSpecOC[] => {
   const entregaSet = new Set(diasEntrega);
   const visible = new Set([...diasConQty, ...entregaSet]);
-  return DIAS_TODOS
-    .filter(d => visible.has(d))
-    .map(d => entregaSet.has(d)
-      ? { tipo: 'entrega' as const, dia: d }
-      : { tipo: 'cant' as const, dia: d },
-    );
+  const cols: ColSpecOC[] = [];
+  for (const d of DIAS_TODOS) {
+    if (!visible.has(d)) continue;
+    if (diasConQty.has(d))  cols.push({ tipo: 'cant',    dia: d });
+    if (entregaSet.has(d))  cols.push({ tipo: 'entrega', dia: d });
+  }
+  return cols;
 };
 
 // ── Componente principal ──────────────────────────────────────────────────────
@@ -4487,7 +4489,7 @@ const OrdenCompraModal: React.FC<OrdenCompraModalProps> = ({
       radius="lg"
       classNames={{ base: 'rounded-2xl' }}
     >
-      <ModalContent className="rounded-2xl overflow-hidden">
+      <ModalContent className="rounded-2xl">
         {(onClose) => (
           <>
             <ModalHeader className="border-b border-default-200 dark:border-default-100 bg-gradient-to-r from-warning/10 to-warning/5 dark:from-warning/20 dark:to-warning/10 px-6 py-4">
@@ -4690,12 +4692,14 @@ const OrdenCompraModal: React.FC<OrdenCompraModalProps> = ({
 
               {paso === 2 && (
                 <>
-                  {/* Resumen semana solicitud + semana de entrega */}
-                  {semana && fechaEntrega && (() => {
-                    const lunes = getMondayISO(fechaEntrega);
-                    const dom   = addDaysISO(lunes, 6);
+                  {/* Resumen semana solicitud + selector de fecha de entrega editable */}
+                  {semana && (() => {
+                    const hoyISO      = new Date().toISOString().slice(0, 10);
+                    const maxISO      = semana.fechaFin;
+                    const lunesEntrega = fechaEntrega ? getMondayISO(fechaEntrega) : null;
+                    const domEntrega   = lunesEntrega ? addDaysISO(lunesEntrega, 6) : null;
                     return (
-                      <div className="flex flex-wrap items-center gap-4 bg-default-50 dark:bg-default-100/20 rounded-xl px-4 py-3 border border-default-200 dark:border-default-100 text-sm">
+                      <div className="flex flex-wrap items-center gap-3 bg-default-50 dark:bg-default-100/20 rounded-xl px-4 py-3 border border-default-200 dark:border-default-100 text-sm">
                         <span className="flex items-center gap-1.5 text-default-600">
                           <Icon icon="lucide:calendar" width={15} className="text-default-400" />
                           Semana solicitud:
@@ -4703,11 +4707,25 @@ const OrdenCompraModal: React.FC<OrdenCompraModalProps> = ({
                           <span className="text-default-400 text-xs">({semana.fechaInicio})</span>
                         </span>
                         <span className="text-default-300">|</span>
-                        <span className="flex items-center gap-1.5 text-default-600">
+                        <span className="flex flex-wrap items-center gap-2 text-default-600">
                           <Icon icon="lucide:truck" width={15} className="text-warning" />
-                          Semana de entrega:
-                          <span className="font-semibold text-warning">{lunes}</span>
-                          <span className="text-default-400 text-xs">al {dom}</span>
+                          <span>Semana de entrega:</span>
+                          <input
+                            type="date"
+                            min={hoyISO}
+                            max={maxISO}
+                            value={fechaEntrega ?? ''}
+                            onChange={(e) => onFechaEntregaChange(e.target.value)}
+                            className="rounded-md border border-warning-300 dark:border-warning-500/50 bg-white dark:bg-default-100/50 px-2 py-0.5 text-sm focus:outline-none focus:border-warning-500 text-default-700"
+                          />
+                          {lunesEntrega && domEntrega && (
+                            <span className="text-xs text-default-500">
+                              ({lunesEntrega} al {domEntrega})
+                            </span>
+                          )}
+                          {!fechaEntrega && (
+                            <span className="text-xs text-warning-600 italic">Seleccione una fecha de entrega</span>
+                          )}
                         </span>
                       </div>
                     );
@@ -4747,6 +4765,7 @@ const OrdenCompraModal: React.FC<OrdenCompraModalProps> = ({
                           proveedor={prov}
                           cantidadesProv={prov.idProveedor != null ? (cantidades[prov.idProveedor] ?? {}) : {}}
                           onCantidadChange={onCantidadChange}
+                          fechaEntrega={fechaEntrega}
                         />
                       ))}
                     </div>
@@ -4804,13 +4823,25 @@ interface ProveedorCotizacionTablaProps {
   /** idProducto → diaSemana → cantidad editable (sólo para días de entrega) */
   cantidadesProv: Record<number, Record<string, number>>;
   onCantidadChange: (idProveedor: number, idProducto: number, dia: string, valor: number) => void;
+  /** Fecha elegida por el usuario para calcular la semana de entrega real (YYYY-MM-DD). */
+  fechaEntrega: string | null;
 }
 
 const ProveedorCotizacionTabla: React.FC<ProveedorCotizacionTablaProps> = ({
   proveedor,
   cantidadesProv,
   onCantidadChange,
+  fechaEntrega,
 }) => {
+  /** Dado un día de la semana del proveedor, devuelve la fecha exacta de entrega (DD/MM)
+   *  usando el lunes de la semana elegida por el usuario como base. */
+  const fechaExactaEntrega = React.useCallback((dia: TDiaSemana): string | null => {
+    if (!fechaEntrega) return null;
+    const lunes = getMondayISO(fechaEntrega);
+    const fecha = addDaysISO(lunes, DIA_ORDEN[dia] - 1);
+    const [, mm, dd] = fecha.split('-');
+    return `${dd}/${mm}`;
+  }, [fechaEntrega]);
   const esSinProveedor = proveedor.idProveedor == null;
 
   // Días con cantidad > 0 en cualquier producto de este proveedor.
@@ -4890,26 +4921,29 @@ const ProveedorCotizacionTabla: React.FC<ProveedorCotizacionTablaProps> = ({
           {proveedor.categorias.map(cat => (
             <div key={cat.idCategoria} className="mb-3 last:mb-0">
               <p className="text-xs font-semibold text-default-500 uppercase tracking-wide mb-1">{cat.nombreCategoria}</p>
-              <div className="overflow-x-auto rounded-lg border border-default-200 dark:border-default-100">
-                <table className="w-full text-xs">
+              <div className="rounded-lg border border-default-200 dark:border-default-100" style={{ overflowX: 'auto' }}>
+                <table className="w-full text-xs" style={{ minWidth: 'max-content' }}>
                   <thead className="bg-default-100 dark:bg-default-50">
                     <tr>
                       <th className="text-left py-2 px-3 font-medium">Producto</th>
                       <th className="text-center py-2 px-2 font-medium w-14">U/M</th>
                       <th className="text-center py-2 px-2 font-medium w-24">Total Sol.</th>
-                      {!esSinProveedor && colSpecs.map(col => (
-                        col.tipo === 'entrega'
-                          ? (
-                            <th key={col.dia} className="text-center py-2 px-2 font-semibold w-24 bg-warning-100 dark:bg-warning-900/20 text-warning-700 dark:text-warning-400">
-                              Entrega<br />{DIAS_ABREV_OC[col.dia]}
+                      {!esSinProveedor && colSpecs.map(col => {
+                        if (col.tipo === 'entrega') {
+                          const fechaExacta = fechaExactaEntrega(col.dia);
+                          return (
+                            <th key={`${col.tipo}-${col.dia}`} className="text-center py-2 px-2 font-semibold w-24 bg-warning-100 dark:bg-warning-900/20 text-warning-700 dark:text-warning-400 whitespace-nowrap">
+                              Entrega {DIAS_ABREV_OC[col.dia]}
+                              {fechaExacta && <><br /><span className="text-[10px] font-normal">{fechaExacta}</span></>}
                             </th>
-                          )
-                          : (
-                            <th key={col.dia} className="text-center py-2 px-2 font-medium w-20 text-default-500">
-                              Cant.<br />{DIAS_ABREV_OC[col.dia]}
-                            </th>
-                          )
-                      ))}
+                          );
+                        }
+                        return (
+                          <th key={`${col.tipo}-${col.dia}`} className="text-center py-2 px-2 font-medium w-20 text-default-500 whitespace-nowrap">
+                            Cant.<br />{DIAS_ABREV_OC[col.dia]}
+                          </th>
+                        );
+                      })}
                       <th className="text-center py-2 px-2 font-medium w-24">P. Neto</th>
                       <th className="text-center py-2 px-2 font-medium w-24">P. c/IVA</th>
                     </tr>
@@ -4927,13 +4961,13 @@ const ProveedorCotizacionTabla: React.FC<ProveedorCotizacionTablaProps> = ({
                               <span className="block truncate">{prod.nombreProducto}</span>
                             </Tooltip>
                           </td>
-                          <td className="py-2 px-2 text-center text-default-500">{prod.abreviatura}</td>
-                          <td className="py-2 px-2 text-center font-medium text-default-700">{prod.cantidadTotal}</td>
+                          <td className="py-2 px-2 text-center text-default-500 whitespace-nowrap">{prod.abreviatura}</td>
+                          <td className="py-2 px-2 text-center font-medium text-default-700 whitespace-nowrap">{prod.cantidadTotal}</td>
                           {!esSinProveedor && colSpecs.map(col => {
                             if (col.tipo === 'cant') {
                               const qty = prod.cantidadPorDia.find(c => c.dia === col.dia)?.cantidad ?? 0;
                               return (
-                                <td key={col.dia} className="py-2 px-2 text-center text-default-500">
+                                <td key={`${col.tipo}-${col.dia}`} className="py-2 px-2 text-center text-default-500 whitespace-nowrap">
                                   {qty > 0 ? qty : <span className="text-default-300">—</span>}
                                 </td>
                               );
@@ -4941,7 +4975,7 @@ const ProveedorCotizacionTabla: React.FC<ProveedorCotizacionTablaProps> = ({
                             // tipo === 'entrega' — editable
                             const v = entregasProd[col.dia] ?? 0;
                             return (
-                              <td key={col.dia} className="py-1 px-1 text-center bg-warning-50/40 dark:bg-warning-900/10">
+                              <td key={`${col.tipo}-${col.dia}`} className="py-1 px-1 text-center bg-warning-50/40 dark:bg-warning-900/10 whitespace-nowrap">
                                 <input
                                   type="number"
                                   min={0}
@@ -4956,8 +4990,8 @@ const ProveedorCotizacionTabla: React.FC<ProveedorCotizacionTablaProps> = ({
                               </td>
                             );
                           })}
-                          <td className="py-2 px-2 text-center">{pNetoFila   !== null ? `$${fmtN(pNetoFila)}`   : '—'}</td>
-                          <td className="py-2 px-2 text-center">{pConIvaFila !== null ? `$${fmtN(pConIvaFila)}` : '—'}</td>
+                          <td className="py-2 px-2 text-center whitespace-nowrap">{pNetoFila   !== null ? `$${fmtN(pNetoFila)}`   : '—'}</td>
+                          <td className="py-2 px-2 text-center whitespace-nowrap">{pConIvaFila !== null ? `$${fmtN(pConIvaFila)}` : '—'}</td>
                         </tr>
                       );
                     })}
