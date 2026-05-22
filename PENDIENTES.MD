@@ -2,6 +2,22 @@
 
 ---
 
+## 🔄 Pendiente de Modular — Funciones de Feriados Chilenos (duplicadas)
+
+**Archivos afectados:**
+- `frontend/src/pages/solicitud.tsx` (funciones originales, líneas ~65-102)
+- `frontend/src/pages/gestion-proveedores.tsx` (copias locales con prefijo `_`, implementadas en 13.12)
+
+**Tarea:** Mover las tres funciones a un archivo utilitario compartido:
+```
+frontend/src/utils/feriados-chile.ts
+```
+Exportar: `calcularPascua`, `esFeriadoChile` (o `nombreFeriadoChile` extendida), eliminar duplicados en ambas páginas.
+
+**Impacto:** Solo refactor, sin cambio funcional. Las firmas de las funciones son idénticas.
+
+---
+
 ## ⚠️ Pendiente — Corregir MAPA sección 7.2 (solicitud)
 
 El MAPA documenta columnas que **no existen** en la tabla real:
