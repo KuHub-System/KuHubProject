@@ -388,6 +388,50 @@ const getMondayISO = (iso: string): string => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 };
 
+// ── Feriados Chile (mismo algoritmo que solicitud.tsx) ────────────────────────
+// TODO (Pendiente de Modular): mover calcularPascua + esFeriadoChile + nombreFeriadoChile
+//   a un utils compartido (ej. src/utils/feriados-chile.ts) para eliminar duplicado
+//   con solicitud.tsx — tarea de refactor pendiente.
+const _calcularPascua = (y: number): Date => {
+  const a = y % 19, b = Math.floor(y / 100), c = y % 100;
+  const d = Math.floor(b / 4), e = b % 4, f = Math.floor((b + 8) / 25);
+  const g = Math.floor((b - f + 1) / 3), h = (19 * a + b - d - g + 15) % 30;
+  const i = Math.floor(c / 4), k = c % 4, l = (32 + 2 * e + 2 * i - h - k) % 7;
+  const m = Math.floor((a + 11 * h + 22 * l) / 451);
+  const month = Math.floor((h + l - 7 * m + 114) / 31);
+  const day   = ((h + l - 7 * m + 114) % 31) + 1;
+  return new Date(y, month - 1, day);
+};
+
+const _FERIADOS_FIJOS: [number, number, string][] = [
+  [1,  1,  'Año Nuevo'],
+  [5,  1,  'Día del Trabajo'],
+  [5,  21, 'Glorias Navales'],
+  [6,  29, 'San Pedro y San Pablo'],
+  [7,  16, 'Virgen del Carmen'],
+  [8,  15, 'Asunción de la Virgen'],
+  [9,  18, 'Independencia Nacional'],
+  [9,  19, 'Glorias del Ejército'],
+  [10, 12, 'Encuentro Dos Mundos'],
+  [10, 31, 'Iglesias Evangélicas'],
+  [11, 1,  'Todos los Santos'],
+  [12, 8,  'Inmaculada Concepción'],
+  [12, 25, 'Navidad'],
+];
+
+/** Retorna el nombre del feriado chileno para la fecha, o null si no es feriado. */
+const nombreFeriadoChile = (dt: Date): string | null => {
+  const mm = dt.getMonth() + 1, dd = dt.getDate(), y = dt.getFullYear();
+  const fijo = _FERIADOS_FIJOS.find(([fm, fd]) => fm === mm && fd === dd);
+  if (fijo) return fijo[2];
+  const pascua = _calcularPascua(y);
+  const vs = new Date(pascua); vs.setDate(vs.getDate() - 2);
+  const ss = new Date(pascua); ss.setDate(ss.getDate() - 1);
+  if (dt.getTime() === vs.getTime()) return 'Viernes Santo';
+  if (dt.getTime() === ss.getTime()) return 'Sábado Santo';
+  return null;
+};
+
 const DIAS_ABREV_OC: Record<TDiaSemana, string> = {
   LUNES: 'Lun', MARTES: 'Mar', MIERCOLES: 'Mié', JUEVES: 'Jue',
   VIERNES: 'Vie', SABADO: 'Sáb', DOMINGO: 'Dom',
@@ -4962,6 +5006,62 @@ const ProveedorCotizacionTabla: React.FC<ProveedorCotizacionTablaProps> = ({
     const [, mm, dd] = fecha.split('-');
     return `${dd}/${mm}`;
   }, [fechaEntrega]);
+
+  /** Calcula la info de entrega para una columna E: fecha ajustada + detección de feriados.
+   *  Si la fecha cae en feriado, retrocede al día anterior disponible del proveedor. */
+  const calcEntregaInfo = React.useCallback((col: ColSpecOC): {
+    fechaDisplay: string | null;
+    esFeriado: boolean;
+    fechaOriginal: string | null;
+    nombreFeriado: string | null;
+  } => {
+    if (!fechaEntrega || col.tipo !== 'entrega') {
+      return { fechaDisplay: null, esFeriado: false, fechaOriginal: null, nombreFeriado: null };
+    }
+    const lunes = getMondayISO(fechaEntrega);
+    const base = col.semanaAnterior ? addDaysISO(lunes, -7) : lunes;
+    const fechaISO = addDaysISO(base, DIA_ORDEN[col.dia] - 1);
+    const [añoS, mmS, ddS] = fechaISO.split('-');
+    const fechaDate = new Date(Number(añoS), Number(mmS) - 1, Number(ddS));
+    const fmt = (dt: Date) =>
+      `${String(dt.getDate()).padStart(2, '0')}/${String(dt.getMonth() + 1).padStart(2, '0')}`;
+    const nombreF = nombreFeriadoChile(fechaDate);
+    if (!nombreF) {
+      return { fechaDisplay: fmt(fechaDate), esFeriado: false, fechaOriginal: null, nombreFeriado: null };
+    }
+    // Es feriado: buscar día de entrega anterior del proveedor que no sea feriado
+    const diasProvNum = [...(proveedor.diasEntrega ?? [])]
+      .map(d => DIA_ORDEN[d]).sort((a, b) => a - b);
+    const diaOriginalNum = DIA_ORDEN[col.dia];
+    const originalDisplay = fmt(fechaDate);
+    let fechaAjustada: Date | null = null;
+    // Buscar hacia atrás en días del proveedor de la misma semana base
+    for (let i = diasProvNum.length - 1; i >= 0; i--) {
+      if (diasProvNum[i] < diaOriginalNum) {
+        const candISO = addDaysISO(base, diasProvNum[i] - 1);
+        const [cA, cM, cD] = candISO.split('-');
+        const cand = new Date(Number(cA), Number(cM) - 1, Number(cD));
+        if (!nombreFeriadoChile(cand)) { fechaAjustada = cand; break; }
+      }
+    }
+    // Si no encontró en la misma semana, buscar en semana anterior
+    if (!fechaAjustada) {
+      const baseAnterior = addDaysISO(lunes, -7);
+      for (let i = diasProvNum.length - 1; i >= 0; i--) {
+        const candISO = addDaysISO(baseAnterior, diasProvNum[i] - 1);
+        const [cA, cM, cD] = candISO.split('-');
+        const cand = new Date(Number(cA), Number(cM) - 1, Number(cD));
+        if (!nombreFeriadoChile(cand)) { fechaAjustada = cand; break; }
+      }
+    }
+    return {
+      fechaDisplay: fechaAjustada ? fmt(fechaAjustada) : originalDisplay,
+      esFeriado: true,
+      fechaOriginal: originalDisplay,
+      nombreFeriado: nombreF,
+    };
+  }, [fechaEntrega, proveedor.diasEntrega]);
+
   const esSinProveedor = proveedor.idProveedor == null;
 
   // Días con cantidad > 0 en cualquier producto de este proveedor.
@@ -5050,17 +5150,39 @@ const ProveedorCotizacionTabla: React.FC<ProveedorCotizacionTablaProps> = ({
                       <th className="text-center py-2 px-2 font-medium w-24">Total Sol.</th>
                       {!esSinProveedor && colSpecs.map(col => {
                         if (col.tipo === 'entrega') {
-                          const fechaExacta = fechaExactaEntrega(col.dia, col.semanaAnterior);
-                          return (
-                            <th key={`entrega-${getEntregaKey(col)}`} className="text-center py-2 px-2 font-semibold w-24 bg-warning-100 dark:bg-warning-900/20 text-warning-700 dark:text-warning-400 whitespace-nowrap">
+                          const info = calcEntregaInfo(col);
+                          const thBase = 'text-center py-2 px-2 font-semibold w-24 whitespace-nowrap';
+                          const thClass = info.esFeriado
+                            ? `${thBase} bg-danger-100 dark:bg-danger-900/20 text-danger-700 dark:text-danger-400`
+                            : `${thBase} bg-warning-100 dark:bg-warning-900/20 text-warning-700 dark:text-warning-400`;
+                          const contenido = (
+                            <>
                               Entrega {DIAS_ABREV_OC[col.dia]}{col.semanaAnterior ? '*' : ''}
-                              {fechaExacta && <><br /><span className="text-[10px] font-normal">{fechaExacta}</span></>}
+                              {info.esFeriado && <span className="text-[9px] font-bold ml-0.5">⚠ FERIADO</span>}
+                              {info.fechaDisplay && (
+                                <><br /><span className="text-[10px] font-normal">{info.fechaDisplay}{info.esFeriado && info.fechaOriginal && ` (era ${info.fechaOriginal})`}</span></>
+                              )}
+                            </>
+                          );
+                          return (
+                            <th key={`entrega-${getEntregaKey(col)}`} className={thClass}>
+                              {info.esFeriado ? (
+                                <Tooltip
+                                  content={`Entrega retrasada: ${info.nombreFeriado} (${info.fechaOriginal})`}
+                                  color="danger"
+                                  placement="top"
+                                >
+                                  <span>{contenido}</span>
+                                </Tooltip>
+                              ) : contenido}
                             </th>
                           );
                         }
+                        const fechaCant = fechaExactaEntrega(col.dia);
                         return (
                           <th key={`cant-${col.dia}`} className="text-center py-2 px-2 font-medium w-20 text-default-500 whitespace-nowrap">
                             Cant.<br />{DIAS_ABREV_OC[col.dia]}
+                            {fechaCant && <><br /><span className="text-[10px] font-normal">{fechaCant}</span></>}
                           </th>
                         );
                       })}
