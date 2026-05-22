@@ -395,23 +395,59 @@ const DIAS_ABREV_OC: Record<TDiaSemana, string> = {
 
 // ── Spec de columna para la tabla de cotización ─────────────────────────────
 type ColSpecOC =
-  | { tipo: 'cant';    dia: TDiaSemana }   // cantidad solicitada — read-only
-  | { tipo: 'entrega'; dia: TDiaSemana };  // cantidad a entregar — editable
+  | { tipo: 'cant';    dia: TDiaSemana }
+  | { tipo: 'entrega'; dia: TDiaSemana; semanaAnterior?: boolean };
 
-/** Genera las columnas de día para un proveedor dado sus días de entrega y los días
- *  que aparecen con cantidad > 0. Un día puede producir DOS columnas (Cant. + Entrega)
- *  cuando coincide que es día solicitado Y día de entrega. Orden: Lun → Dom. */
+// Clave compuesta: JUEVES → "JUEVES", JUEVES semana anterior → "JUEVES_prev"
+const getEntregaKey = (col: ColSpecOC): string =>
+  col.tipo === 'entrega' && col.semanaAnterior ? `${col.dia}_prev` : col.dia;
+
+/** Genera columnas con lógica PROSPECTIVA: la entrega (E) se ubica ANTES de los días
+ *  de necesidad (P) que cubre. Para cada día de necesidad se asigna el ÚLTIMO día de
+ *  entrega anterior; si no existe, se usa el último día de entrega de la semana anterior
+ *  (semanaAnterior=true). Caso especial: 1 solo día de entrega → todo a ESA semana. */
 const buildColsOC = (
   diasEntrega: TDiaSemana[],
   diasConQty: Set<TDiaSemana>,
 ): ColSpecOC[] => {
-  const entregaSet = new Set(diasEntrega);
-  const visible = new Set([...diasConQty, ...entregaSet]);
+  if (diasEntrega.length === 0) return [];
+
+  // 1 solo día de entrega → todo va a ese día de ESTA semana (no semana anterior)
+  if (diasEntrega.length === 1) {
+    const dia = diasEntrega[0];
+    const cols: ColSpecOC[] = [{ tipo: 'entrega', dia }];
+    for (const d of DIAS_TODOS) {
+      if (diasConQty.has(d)) cols.push({ tipo: 'cant', dia: d });
+    }
+    return cols;
+  }
+
+  const diasEntregaNum = diasEntrega.map(d => DIA_ORDEN[d]).sort((a, b) => a - b);
+
+  // Para cada día de necesidad 1-6, determinar qué entrega lo cubre
+  const grupos = new Map<string, { dia: TDiaSemana; semanaAnterior: boolean; needNums: number[] }>();
+  for (let diaNec = 1; diaNec <= 6; diaNec++) {
+    let asignado: number | null = null;
+    for (let i = diasEntregaNum.length - 1; i >= 0; i--) {
+      if (diasEntregaNum[i] < diaNec) { asignado = diasEntregaNum[i]; break; }
+    }
+    const esPrev = asignado === null;
+    if (esPrev) asignado = diasEntregaNum[diasEntregaNum.length - 1];
+
+    const clave = `${asignado}-${esPrev ? 'prev' : 'this'}`;
+    const diaNombre = DIAS_TODOS[asignado! - 1];
+    if (!grupos.has(clave)) grupos.set(clave, { dia: diaNombre, semanaAnterior: esPrev, needNums: [] });
+    grupos.get(clave)!.needNums.push(diaNec);
+  }
+
+  // Construir columnas: E primero, luego P de los días con cantidad en ese grupo
   const cols: ColSpecOC[] = [];
-  for (const d of DIAS_TODOS) {
-    if (!visible.has(d)) continue;
-    if (diasConQty.has(d))  cols.push({ tipo: 'cant',    dia: d });
-    if (entregaSet.has(d))  cols.push({ tipo: 'entrega', dia: d });
+  for (const g of grupos.values()) {
+    cols.push({ tipo: 'entrega', dia: g.dia, ...(g.semanaAnterior && { semanaAnterior: true }) });
+    for (const n of g.needNums) {
+      const d = DIAS_TODOS[n - 1];
+      if (diasConQty.has(d)) cols.push({ tipo: 'cant', dia: d });
+    }
   }
   return cols;
 };
@@ -1327,29 +1363,23 @@ const GestionProveedoresPage: React.FC = () => {
             const total = [...qtyByDay.values()].reduce((s, v) => s + v, 0);
             entregasProd[diasEntregaOrd[0]] = total;
           } else {
-            // Cada entrega D_i cubre los días POSTERIORES a D_i hasta la PRÓXIMA entrega
-            // (inclusive), con wrap-around semanal.
-            // Ej. entregas Lun(1) y Jue(4):
-            //   Lun → cubre Mar,Mié,Jue  (días > 1 y <= 4)
-            //   Jue → cubre Vie,Sáb,Dom,Lun (días > 4 o <= 1, wrap-around)
-            const n = diasEntregaOrd.length;
-            for (let i = 0; i < n; i++) {
-              const dE     = diasEntregaOrd[i];
-              const dEOrd  = DIA_ORDEN[dE];
-              // Próxima entrega en el ciclo (wrap al primero desde el último)
-              const nextOrd = DIA_ORDEN[diasEntregaOrd[(i + 1) % n]];
-              let suma = 0;
-              for (const [dia, qty] of qtyByDay.entries()) {
-                const o = DIA_ORDEN[dia];
-                if (dEOrd < nextOrd) {
-                  // rango normal: dEOrd < o <= nextOrd
-                  if (o > dEOrd && o <= nextOrd) suma += qty;
-                } else {
-                  // rango con wrap-around: o > dEOrd OR o <= nextOrd
-                  if (o > dEOrd || o <= nextOrd) suma += qty;
-                }
+            // Lógica prospectiva: para cada día de necesidad, asignar al ÚLTIMO día de
+            // entrega ANTERIOR. Si no existe día anterior, usar el último (semana previa).
+            const diasEntregaNum = diasEntregaOrd.map(d => DIA_ORDEN[d]);
+            for (let diaNec = 1; diaNec <= 6; diaNec++) {
+              const diaNecNombre = DIAS_TODOS[diaNec - 1];
+              const qty = qtyByDay.get(diaNecNombre) ?? 0;
+              if (qty === 0) continue;
+              let asignado: number | null = null;
+              for (let i = diasEntregaNum.length - 1; i >= 0; i--) {
+                if (diasEntregaNum[i] < diaNec) { asignado = diasEntregaNum[i]; break; }
               }
-              entregasProd[dE] = suma;
+              const esPrev = asignado === null;
+              if (esPrev) asignado = diasEntregaNum[diasEntregaNum.length - 1];
+              const entregaKey = esPrev
+                ? `${DIAS_TODOS[asignado! - 1]}_prev`
+                : DIAS_TODOS[asignado! - 1];
+              entregasProd[entregaKey] = (entregasProd[entregaKey] ?? 0) + qty;
             }
           }
           provMap[prod.idProducto] = entregasProd;
@@ -4924,10 +4954,11 @@ const ProveedorCotizacionTabla: React.FC<ProveedorCotizacionTablaProps> = ({
 }) => {
   /** Dado un día de la semana del proveedor, devuelve la fecha exacta de entrega (DD/MM)
    *  usando el lunes de la semana elegida por el usuario como base. */
-  const fechaExactaEntrega = React.useCallback((dia: TDiaSemana): string | null => {
+  const fechaExactaEntrega = React.useCallback((dia: TDiaSemana, semanaAnterior?: boolean): string | null => {
     if (!fechaEntrega) return null;
     const lunes = getMondayISO(fechaEntrega);
-    const fecha = addDaysISO(lunes, DIA_ORDEN[dia] - 1);
+    const base = semanaAnterior ? addDaysISO(lunes, -7) : lunes;
+    const fecha = addDaysISO(base, DIA_ORDEN[dia] - 1);
     const [, mm, dd] = fecha.split('-');
     return `${dd}/${mm}`;
   }, [fechaEntrega]);
@@ -5019,16 +5050,16 @@ const ProveedorCotizacionTabla: React.FC<ProveedorCotizacionTablaProps> = ({
                       <th className="text-center py-2 px-2 font-medium w-24">Total Sol.</th>
                       {!esSinProveedor && colSpecs.map(col => {
                         if (col.tipo === 'entrega') {
-                          const fechaExacta = fechaExactaEntrega(col.dia);
+                          const fechaExacta = fechaExactaEntrega(col.dia, col.semanaAnterior);
                           return (
-                            <th key={`${col.tipo}-${col.dia}`} className="text-center py-2 px-2 font-semibold w-24 bg-warning-100 dark:bg-warning-900/20 text-warning-700 dark:text-warning-400 whitespace-nowrap">
-                              Entrega {DIAS_ABREV_OC[col.dia]}
+                            <th key={`entrega-${getEntregaKey(col)}`} className="text-center py-2 px-2 font-semibold w-24 bg-warning-100 dark:bg-warning-900/20 text-warning-700 dark:text-warning-400 whitespace-nowrap">
+                              Entrega {DIAS_ABREV_OC[col.dia]}{col.semanaAnterior ? '*' : ''}
                               {fechaExacta && <><br /><span className="text-[10px] font-normal">{fechaExacta}</span></>}
                             </th>
                           );
                         }
                         return (
-                          <th key={`${col.tipo}-${col.dia}`} className="text-center py-2 px-2 font-medium w-20 text-default-500 whitespace-nowrap">
+                          <th key={`cant-${col.dia}`} className="text-center py-2 px-2 font-medium w-20 text-default-500 whitespace-nowrap">
                             Cant.<br />{DIAS_ABREV_OC[col.dia]}
                           </th>
                         );
@@ -5056,21 +5087,22 @@ const ProveedorCotizacionTabla: React.FC<ProveedorCotizacionTablaProps> = ({
                             if (col.tipo === 'cant') {
                               const qty = prod.cantidadPorDia.find(c => c.dia === col.dia)?.cantidad ?? 0;
                               return (
-                                <td key={`${col.tipo}-${col.dia}`} className="py-2 px-2 text-center text-default-500 whitespace-nowrap">
+                                <td key={`cant-${col.dia}`} className="py-2 px-2 text-center text-default-500 whitespace-nowrap">
                                   {qty > 0 ? fmtN(qty) : <span className="text-default-300">—</span>}
                                 </td>
                               );
                             }
                             // tipo === 'entrega' — editable
-                            const v = entregasProd[col.dia] ?? 0;
+                            const entregaKey = getEntregaKey(col);
+                            const v = entregasProd[entregaKey] ?? 0;
                             return (
-                              <td key={`${col.tipo}-${col.dia}`} className="py-1 px-1 text-center bg-warning-50/40 dark:bg-warning-900/10 whitespace-nowrap">
+                              <td key={`entrega-${entregaKey}`} className="py-1 px-1 text-center bg-warning-50/40 dark:bg-warning-900/10 whitespace-nowrap">
                                 <EntregaInput
                                   value={v}
                                   esFraccionario={prod.esFraccionario}
                                   onChange={(valor) => {
                                     if (proveedor.idProveedor == null) return;
-                                    onCantidadChange(proveedor.idProveedor, prod.idProducto, col.dia, valor);
+                                    onCantidadChange(proveedor.idProveedor, prod.idProducto, entregaKey, valor);
                                   }}
                                 />
                               </td>
