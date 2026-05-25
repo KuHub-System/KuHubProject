@@ -1512,8 +1512,14 @@ const GestionProveedoresPage: React.FC = () => {
 
       const originalX = ocCantidadesOriginales[idProveedor]?.[idProducto]?.[entregaKey] ?? 0;
 
+      // Suma actual y total objetivo (derivado de los originales = cantidadTotal)
+      const sumAntes = r(entregaCols.reduce((s, c) => s + (prodData[getEntregaKey(c)] ?? 0), 0));
+      const cantidadTotalProd = r(
+        Object.values(ocCantidadesOriginales[idProveedor]?.[idProducto] ?? {}).reduce((s, v) => s + v, 0),
+      );
+
       if (delta > 0) {
-        // Si el paso cruza la base sin pisar exactamente en ella → aterrizar en la base primero
+        // ── Snap de celda: si el paso cruza la base individual sin pisarla ──
         let effectiveDelta = delta;
         if (valorActual < originalX - 0.00001 && r(valorActual + delta) > originalX + 0.00001) {
           effectiveDelta = r(originalX - valorActual);
@@ -1542,10 +1548,25 @@ const GestionProveedoresPage: React.FC = () => {
             restante = r(restante - aRestar);
           }
         }
-        // Si restante > 0: prev+post en 0, X supera el total → permitido
+
+        // ── Snap de total (solo si el total aumenta, es decir restante > 0) ──
+        if (restante > 0.00001) {
+          const sumDespues = r(sumAntes + restante);
+          const step = delta;
+          // Snap 1: aterrizar en cantidadTotal al cruzarla desde abajo
+          if (sumAntes < cantidadTotalProd - 0.00001 && sumDespues > cantidadTotalProd + 0.00001) {
+            prodData[entregaKey] = r(prodData[entregaKey] - r(sumDespues - cantidadTotalProd));
+          } else if (sumAntes >= cantidadTotalProd - 0.00001) {
+            // Snap 2: aterrizar en el siguiente múltiplo del step por encima de cantidadTotal
+            const nextGrid = r(Math.ceil(r((cantidadTotalProd + 0.000001) / step)) * step);
+            if (sumAntes < nextGrid - 0.00001 && sumDespues > nextGrid + 0.00001) {
+              prodData[entregaKey] = r(prodData[entregaKey] - r(sumDespues - nextGrid));
+            }
+          }
+        }
 
       } else if (delta < 0) {
-        // Si el paso cruza la base bajando → aterrizar en la base primero
+        // ── Snap de celda: si el paso cruza la base individual bajando ──
         let effectiveStep = Math.abs(delta);
         if (valorActual > originalX + 0.00001 && r(valorActual - effectiveStep) < originalX - 0.00001) {
           effectiveStep = r(valorActual - originalX);
@@ -1570,7 +1591,22 @@ const GestionProveedoresPage: React.FC = () => {
             pendiente = r(pendiente - aAgregar);
           }
         }
-        // Si pendiente > 0: días posteriores llenos → total baja, no bloquear
+
+        // ── Snap de total (solo si el total disminuye, es decir pendiente > 0) ──
+        if (pendiente > 0.00001) {
+          const sumDespues = r(sumAntes - pendiente);
+          const step = Math.abs(delta);
+          // Snap 1: aterrizar en cantidadTotal al cruzarla desde arriba
+          if (sumAntes > cantidadTotalProd + 0.00001 && sumDespues < cantidadTotalProd - 0.00001) {
+            prodData[entregaKey] = r(prodData[entregaKey] + r(cantidadTotalProd - sumDespues));
+          } else if (sumAntes <= cantidadTotalProd + 0.00001) {
+            // Snap 2: aterrizar en el múltiplo del step inmediatamente por debajo de cantidadTotal
+            const prevGrid = r(Math.floor(r((cantidadTotalProd - 0.000001) / step)) * step);
+            if (sumAntes > prevGrid + 0.00001 && sumDespues < prevGrid - 0.00001) {
+              prodData[entregaKey] = r(prodData[entregaKey] + r(prevGrid - sumDespues));
+            }
+          }
+        }
 
       } else {
         return prev;
@@ -5052,28 +5088,7 @@ interface EntregaInputProps {
 const EntregaInput: React.FC<EntregaInputProps> = ({ value, esFraccionario, onChange, onIncrement, className }) => {
   const inputClass = className ?? 'w-16 px-1 py-1 text-center rounded border border-warning-300 dark:border-warning-600/50 bg-white dark:bg-default-100/50 focus:outline-none focus:border-warning-500 font-semibold text-xs';
 
-  // Formatea decimales con mínimo 2 cifras para evitar que 0,65 aparezca como 0,6
-  const fmtDec = (v: number) =>
-    v.toLocaleString('es-CL', { minimumFractionDigits: 2, maximumFractionDigits: 3 });
-
-  // Estado local de texto para fraccionarios (no interrumpe el tipeo con puntos/comas)
-  const [text, setText] = React.useState<string>(() =>
-    esFraccionario ? (value === 0 ? '' : fmtDec(value)) : String(value),
-  );
-
-  // Sincroniza texto cuando el valor externo cambia (p.ej. restaurar, redistribución)
-  const prevValue = React.useRef(value);
-  React.useEffect(() => {
-    if (value !== prevValue.current) {
-      prevValue.current = value;
-      setText(esFraccionario
-        ? (value === 0 ? '' : fmtDec(value))
-        : String(value),
-      );
-    }
-  }, [value, esFraccionario]);
-
-  // Long press: click simple → ±1; mantener >300ms → ±5 cada 120ms
+  // Long press: click simple → ±step; mantener >300ms → ±stepHold cada 300ms
   const timeoutRef  = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const intervalRef = React.useRef<ReturnType<typeof setInterval> | null>(null);
   const longActive  = React.useRef(false);
@@ -5103,33 +5118,19 @@ const EntregaInput: React.FC<EntregaInputProps> = ({ value, esFraccionario, onCh
 
   const btnClass = 'w-5 h-6 flex items-center justify-center rounded text-xs font-bold bg-warning-100 dark:bg-warning-900/30 hover:bg-warning-200 dark:hover:bg-warning-800/40 text-warning-700 dark:text-warning-400 transition-colors select-none cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed';
 
-  const inputEl = !esFraccionario ? (
+  // Ambos tipos usan type="number"; fraccionario con step 0.001 (Numeric 7,3 en BBDD)
+  const inputEl = (
     <input
       type="number"
       min={0}
-      step={1}
-      value={value}
-      onChange={(e) => onChange(Math.max(0, parseInt(e.target.value) || 0))}
-      className={inputClass}
-    />
-  ) : (
-    <input
-      type="text"
-      inputMode="decimal"
-      value={text}
+      step={esFraccionario ? 0.001 : 1}
+      value={value === 0 ? '' : value}
       onChange={(e) => {
         const raw = e.target.value;
-        setText(raw);
-        const parsed = parseChileanPrice(raw);
-        if (!isNaN(parsed) && parsed >= 0) onChange(parsed);
-      }}
-      onBlur={() => {
-        const parsed = parseChileanPrice(text);
-        if (isNaN(parsed) || parsed < 0) {
-          setText('');
-          onChange(0);
-        } else {
-          setText(parsed === 0 ? '' : fmtDec(parsed));
+        if (raw === '') { onChange(0); return; }
+        const v = esFraccionario ? parseFloat(raw) : parseInt(raw, 10);
+        if (!isNaN(v) && v >= 0) {
+          onChange(esFraccionario ? Math.round(v * 1000) / 1000 : v);
         }
       }}
       placeholder="0"
@@ -5352,7 +5353,7 @@ const ProveedorCotizacionTabla: React.FC<ProveedorCotizacionTablaProps> = ({
                     <tr>
                       <th className="text-left py-2 px-3 font-medium">Producto</th>
                       <th className="text-center py-2 px-2 font-medium w-14">U/M</th>
-                      <th className="text-center py-2 px-2 font-medium w-24">Total Sol.</th>
+                      <th className="text-center py-2 px-2 font-medium w-24">Total Ped.</th>
                       {!esSinProveedor && colSpecs.map(col => {
                         if (col.tipo === 'entrega') {
                           const info = calcEntregaInfo(col);
