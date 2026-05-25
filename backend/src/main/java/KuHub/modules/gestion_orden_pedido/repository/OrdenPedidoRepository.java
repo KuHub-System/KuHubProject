@@ -83,6 +83,58 @@ public interface OrdenPedidoRepository extends JpaRepository<OrdenPedido, Intege
      * Productos sin proveedor disponible se agrupan al final con {@code idProveedor = null}
      * (sin {@code diasEntrega}).
      */
+    // ── 3. Listado y detalle de Órdenes de Pedido ──
+
+    /**
+     * Lista todas las OPs activas con sus datos de cabecera (proveedor, pedido, totales).
+     * [0] id_orden_pedido     (Integer)
+     * [1] id_pedido           (Integer)
+     * [2] fecha_inicio_pedido (String YYYY-MM-DD)
+     * [3] fecha_fin_pedido    (String YYYY-MM-DD)
+     * [4] id_proveedor        (Integer)
+     * [5] nombre_distribuidora(String)
+     * [6] nombre_proveedor    (String)
+     * [7] fecha_creacion      (Timestamp)
+     * [8] estado_orden_pedido (String)
+     * [9] observaciones       (String, nullable)
+     * [10] cantidad_detalles  (Long)
+     * [11] total_neto         (BigDecimal)
+     * [12] total_con_iva      (BigDecimal)
+     */
+    @Query(value = """
+        SELECT
+            op.id_orden_pedido,
+            op.id_pedido,
+            ped.fecha_inicio_pedido::text,
+            ped.fecha_fin_pedido::text,
+            pv.id_proveedor,
+            pv.nombre_distribuidora,
+            pv.nombre_proveedor,
+            op.fecha_creacion,
+            op.estado_orden_pedido::text,
+            op.observaciones,
+            COALESCE((
+                SELECT COUNT(*) FROM detalle_orden_pedido d
+                WHERE d.id_orden_pedido = op.id_orden_pedido AND d.activo = true
+            ), 0) AS cantidad_detalles,
+            COALESCE((
+                SELECT SUM(d.cantidad_solicitada * COALESCE(d.precio_neto_unitario, 0))
+                FROM detalle_orden_pedido d
+                WHERE d.id_orden_pedido = op.id_orden_pedido AND d.activo = true
+            ), 0) AS total_neto,
+            COALESCE((
+                SELECT SUM(d.cantidad_solicitada * COALESCE(d.precio_con_iva_unitario, 0))
+                FROM detalle_orden_pedido d
+                WHERE d.id_orden_pedido = op.id_orden_pedido AND d.activo = true
+            ), 0) AS total_con_iva
+        FROM orden_pedido op
+        JOIN pedido   ped ON ped.id_pedido    = op.id_pedido
+        JOIN proveedor pv ON pv.id_proveedor = op.id_proveedor
+        WHERE op.activo = true
+        ORDER BY op.fecha_creacion DESC
+        """, nativeQuery = true)
+    List<Object[]> findListaOrdenesNative();
+
     @Query(value = """
 WITH
 -- Solicitudes EN_PEDIDO ligadas a los pedidos APROBADO seleccionados,

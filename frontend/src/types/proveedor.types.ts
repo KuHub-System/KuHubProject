@@ -386,3 +386,40 @@ export interface IOrdenPedidoResumen {
   estadoOrdenPedido: EstadoOrdenPedido;
   cantidadDetalles: number;
 }
+
+/** Ítem del listado de Órdenes de Pedido (sin líneas de detalle). */
+export interface IOrdenPedidoListItem {
+  idOrdenPedido: number;
+  idPedido: number;
+  fechaInicioPedido: string; // YYYY-MM-DD
+  fechaFinPedido: string;    // YYYY-MM-DD
+  idProveedor: number;
+  nombreDistribuidora: string;
+  nombreProveedor: string;
+  fechaCreacion: string;     // ISO datetime
+  estadoOrdenPedido: EstadoOrdenPedido;
+  observaciones: string | null;
+  cantidadDetalles: number;
+  totalNeto: number;
+  totalConIva: number;
+}
+
+/** Línea de detalle de una Orden de Pedido. */
+export interface IDetalleOrdenPedido {
+  idDetalleOrdenPedido: number;
+  idProducto: number;
+  nombreProducto: string;
+  abreviatura: string;
+  esFraccionario: boolean;
+  cantidadSolicitada: number;
+  precioNetoUnitario: number | null;
+  precioConIvaUnitario: number | null;
+  fechaEntrega: string; // YYYY-MM-DD
+}
+
+/** Orden de Pedido completa con cabecera y todas sus líneas de detalle. */
+export interface IOrdenPedidoConDetalles extends IOrdenPedidoListItem {
+  telefonoProveedor: string | null;
+  emailProveedor: string | null;
+  detalles: IDetalleOrdenPedido[];
+}
