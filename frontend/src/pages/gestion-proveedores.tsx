@@ -1519,10 +1519,20 @@ const GestionProveedoresPage: React.FC = () => {
       );
 
       if (delta > 0) {
-        // ── Snap de celda: si el paso cruza la base individual sin pisarla ──
+        // ── Snap de celda (subiendo): originalX → cantidadTotalProd → siguiente múltiplo ──
         let effectiveDelta = delta;
         if (valorActual < originalX - 0.00001 && r(valorActual + delta) > originalX + 0.00001) {
+          // P1: aterrizar en la base individual
           effectiveDelta = r(originalX - valorActual);
+        } else if (valorActual < cantidadTotalProd - 0.00001 && r(valorActual + delta) > cantidadTotalProd + 0.00001) {
+          // P2: aterrizar en el total del producto
+          effectiveDelta = r(cantidadTotalProd - valorActual);
+        } else if (valorActual >= cantidadTotalProd - 0.00001) {
+          // P3: aterrizar en el siguiente múltiplo del step por encima de cantidadTotalProd
+          const nextGridCell = r(Math.ceil(r((cantidadTotalProd + 0.000001) / delta)) * delta);
+          if (valorActual < nextGridCell - 0.00001 && r(valorActual + delta) > nextGridCell + 0.00001) {
+            effectiveDelta = r(nextGridCell - valorActual);
+          }
         }
 
         prodData[entregaKey] = r(valorActual + effectiveDelta);
@@ -1566,9 +1576,13 @@ const GestionProveedoresPage: React.FC = () => {
         }
 
       } else if (delta < 0) {
-        // ── Snap de celda: si el paso cruza la base individual bajando ──
+        // ── Snap de celda (bajando): cantidadTotalProd → originalX → 0 ──
         let effectiveStep = Math.abs(delta);
-        if (valorActual > originalX + 0.00001 && r(valorActual - effectiveStep) < originalX - 0.00001) {
+        if (valorActual > cantidadTotalProd + 0.00001 && r(valorActual - effectiveStep) < cantidadTotalProd - 0.00001) {
+          // P1: aterrizar en el total del producto (si la celda lo supera por edición manual)
+          effectiveStep = r(valorActual - cantidadTotalProd);
+        } else if (valorActual > originalX + 0.00001 && r(valorActual - effectiveStep) < originalX - 0.00001) {
+          // P2: aterrizar en la base individual
           effectiveStep = r(valorActual - originalX);
         }
         effectiveStep = Math.min(effectiveStep, valorActual); // piso en 0
