@@ -54,6 +54,9 @@ DROP TABLE IF EXISTS solicitud_procesada CASCADE;
 -- ELIMINAR TABLAS OPERATIVAS (orden inverso a creacion)
 -- =====================================================
 
+-- Tablas de orden de pedido (CASCADE baja a detalle_orden_pedido automáticamente)
+DROP TABLE IF EXISTS orden_pedido CASCADE;
+
 -- Tablas de pedidos y solicitudes
 DROP TABLE IF EXISTS pedido_solicitud CASCADE;
 DROP TABLE IF EXISTS motivo_rechazo_solicitud CASCADE; -- CAMBIADO: Agregado
@@ -179,6 +182,14 @@ CREATE TYPE estado_seccion_type AS ENUM (
     'INACTIVA',
     'SUSPENDIDA'
 );
+
+CREATE TYPE estado_orden_pedido_type AS ENUM (
+    'PENDIENTE',
+    'ENVIADA',
+    'CANCELADA',
+    'CONFIRMADA',
+    'RECIBIDA'
+);
 -- =====================================================
 -- CREAR CASTS (DESPUÉS DE CREAR LOS ENUM)
 -- =====================================================
@@ -192,6 +203,7 @@ CREATE CAST (varchar AS estado_bodega_transito_type) WITH INOUT AS IMPLICIT;
 CREATE CAST (varchar AS estado_solicitud_type) WITH INOUT AS IMPLICIT;
 CREATE CAST (varchar AS estado_pedido_type) WITH INOUT AS IMPLICIT;
 CREATE CAST (varchar AS estado_seccion_type) WITH INOUT AS IMPLICIT;
+CREATE CAST (varchar AS estado_orden_pedido_type) WITH INOUT AS IMPLICIT;
 
 
 -- =====================================================
@@ -744,43 +756,29 @@ CREATE TABLE pedido_solicitud (
 
 -- Tabla orden_pedido
 CREATE TABLE orden_pedido (
-    id_orden_pedido INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    id_pedido       INTEGER NOT NULL,
-    id_proveedor    INTEGER NOT NULL,
-    fecha_creacion  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    observaciones   TEXT,
-    activo          BOOLEAN NOT NULL DEFAULT TRUE,
-
-    CONSTRAINT fk_op_pedido
-        FOREIGN KEY (id_pedido)
-        REFERENCES pedido(id_pedido)
-        ON DELETE RESTRICT,
-
-    CONSTRAINT fk_op_proveedor
-        FOREIGN KEY (id_proveedor)
-        REFERENCES proveedor(id_proveedor)
-        ON DELETE RESTRICT
+    id_orden_pedido     INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    id_pedido           INTEGER                   NOT NULL
+        REFERENCES pedido(id_pedido) ON DELETE RESTRICT,
+    id_proveedor        INTEGER                   NOT NULL
+        REFERENCES proveedor(id_proveedor) ON DELETE RESTRICT,
+    fecha_creacion      TIMESTAMP                 NOT NULL DEFAULT NOW(),
+    estado_orden_pedido estado_orden_pedido_type  NOT NULL DEFAULT 'PENDIENTE',
+    observaciones       TEXT,
+    activo              BOOLEAN                   NOT NULL DEFAULT TRUE
 );
 
--- Tabla detalle_orden_pedido
+-- Tabla detalle_orden_pedido (Tarea #27: agrega fecha_entrega)
 CREATE TABLE detalle_orden_pedido (
     id_detalle_orden_pedido INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    id_orden_pedido         INTEGER       NOT NULL,
-    id_producto             INTEGER       NOT NULL,
-    cantidad_solicitada     NUMERIC(10,3) NOT NULL,
+    id_orden_pedido         INTEGER         NOT NULL
+        REFERENCES orden_pedido(id_orden_pedido) ON DELETE CASCADE,
+    id_producto             INTEGER         NOT NULL
+        REFERENCES producto(id_producto) ON DELETE RESTRICT,
+    cantidad_solicitada     NUMERIC(10,3)   NOT NULL,
     precio_neto_unitario    NUMERIC(10,3),
     precio_con_iva_unitario NUMERIC(10,3),
-    activo                  BOOLEAN       NOT NULL DEFAULT TRUE,
-
-    CONSTRAINT fk_dop_orden
-        FOREIGN KEY (id_orden_pedido)
-        REFERENCES orden_pedido(id_orden_pedido)
-        ON DELETE CASCADE,
-
-    CONSTRAINT fk_dop_producto
-        FOREIGN KEY (id_producto)
-        REFERENCES producto(id_producto)
-        ON DELETE RESTRICT
+    fecha_entrega           DATE            NOT NULL,
+    activo                  BOOLEAN         NOT NULL DEFAULT TRUE
 );
 
 -- Fila 1: configuración default (solo lectura, para restaurar)
@@ -1239,13 +1237,17 @@ WHERE activo = TRUE;
 CREATE INDEX idx_pp_version_reciente
 ON proveedor_producto (id_proveedor, id_producto, fecha_actualizacion DESC);
 
--- Indices de Orden Pedido (Tarea #13)
+-- Indices de Orden Pedido (Tarea #13 + #27)
 -- idx_op_pedido + idx_op_proveedor: parciales por activo=TRUE, aceleran el
 --   EXISTS de "¿tiene OP?" y los listados por proveedor.
 -- idx_dop_orden: acelera el JOIN orden_pedido → detalle_orden_pedido.
-CREATE INDEX idx_op_pedido    ON orden_pedido (id_pedido)    WHERE activo = TRUE;
-CREATE INDEX idx_op_proveedor ON orden_pedido (id_proveedor) WHERE activo = TRUE;
-CREATE INDEX idx_dop_orden    ON detalle_orden_pedido (id_orden_pedido);
+-- idx_op_estado: filtra OPs por estado (Tarea #27).
+-- idx_eop_fecha_entrega: acelera consultas de entregas por fecha (Tarea #27).
+CREATE INDEX idx_op_pedido         ON orden_pedido (id_pedido)             WHERE activo = TRUE;
+CREATE INDEX idx_op_proveedor      ON orden_pedido (id_proveedor)          WHERE activo = TRUE;
+CREATE INDEX idx_op_estado         ON orden_pedido (estado_orden_pedido)   WHERE activo = TRUE;
+CREATE INDEX idx_dop_orden         ON detalle_orden_pedido (id_orden_pedido);
+CREATE INDEX idx_dop_fecha_entrega ON detalle_orden_pedido (fecha_entrega) WHERE activo = TRUE;
 
 -- Indices en bodega_transito
 --CREATE INDEX idx_bodega_transito_producto ON bodega_transito(id_producto);
