@@ -61,6 +61,8 @@ import {
   obtenerCotizacionConsolidadaService,
   actualizarEstadoProveedorService,
   crearOrdenPedidoService,
+  listarOrdenesPedidoService,
+  obtenerOrdenPedidoDetalleService,
 } from '../services/proveedor-service';
 import type {
   IProveedor,
@@ -84,6 +86,10 @@ import type {
   IProveedorGrupoConsolidado,
   IProductoConsolidado,
   TDiaSemana,
+  EstadoOrdenPedido,
+  IOrdenPedidoListItem,
+  IOrdenPedidoConDetalles,
+  IDetalleOrdenPedido,
 } from '../types/proveedor.types';
 import type { IProductoRecetaSelection } from '../types/producto.types';
 
@@ -595,6 +601,15 @@ const GestionProveedoresPage: React.FC = () => {
   const [loadingSelector, setLoadingSelector] = React.useState(false);
   const [syncVista, setSyncVista] = React.useState<'sincronizados' | 'sin_cambios' | 'no_encontrados'>('sincronizados');
   const excelInputRef = React.useRef<HTMLInputElement>(null);
+
+  // ── Vista de Órdenes de Pedido (tab switcher) ────────────────────────
+  const [currentView, setCurrentView] = React.useState<'proveedores' | 'ordenes'>('proveedores');
+  const [opLista, setOpLista] = React.useState<IOrdenPedidoListItem[]>([]);
+  const [opCargando, setOpCargando] = React.useState(false);
+  const [opError, setOpError] = React.useState<string | null>(null);
+  const [opExpandidoId, setOpExpandidoId] = React.useState<number | null>(null);
+  const [opDetalle, setOpDetalle] = React.useState<IOrdenPedidoConDetalles | null>(null);
+  const [opCargandoDetalle, setOpCargandoDetalle] = React.useState(false);
 
   // ── Modal Orden Pedido (Tarea #13) ────────────────────────────────────
   const {
@@ -1817,6 +1832,49 @@ const GestionProveedoresPage: React.FC = () => {
     }));
   };
 
+  // ── Handlers para la vista de Órdenes de Pedido ─────────────────────────
+
+  const cargarOrdenes = React.useCallback(async () => {
+    setOpCargando(true);
+    setOpError(null);
+    try {
+      const data = await listarOrdenesPedidoService();
+      setOpLista(data);
+    } catch (err: any) {
+      setOpError(err.message || 'Error al cargar las órdenes');
+    } finally {
+      setOpCargando(false);
+    }
+  }, []);
+
+  React.useEffect(() => {
+    if (currentView === 'ordenes') {
+      cargarOrdenes();
+      setOpExpandidoId(null);
+      setOpDetalle(null);
+    }
+  }, [currentView, cargarOrdenes]);
+
+  const handleToggleOrden = async (id: number) => {
+    if (opExpandidoId === id) {
+      setOpExpandidoId(null);
+      setOpDetalle(null);
+      return;
+    }
+    setOpExpandidoId(id);
+    setOpDetalle(null);
+    setOpCargandoDetalle(true);
+    try {
+      const detalle = await obtenerOrdenPedidoDetalleService(id);
+      setOpDetalle(detalle);
+    } catch (err: any) {
+      showToast(err.message || 'Error al cargar el detalle', 'error');
+      setOpExpandidoId(null);
+    } finally {
+      setOpCargandoDetalle(false);
+    }
+  };
+
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
@@ -1845,7 +1903,53 @@ const GestionProveedoresPage: React.FC = () => {
         transition={{ duration: 0.4 }}
         className="space-y-6"
       >
-        {/* Filtros + Acciones */}
+        {/* ── Tab switcher: Proveedores / Órdenes de Pedido ── */}
+        <div className="flex items-center gap-2 p-1 bg-default-100 dark:bg-default-50/30 rounded-2xl w-fit border border-default-200 dark:border-default-100">
+          <button
+            onClick={() => setCurrentView('proveedores')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-200 ${
+              currentView === 'proveedores'
+                ? 'bg-white dark:bg-default-100 shadow-sm text-primary border border-default-200 dark:border-default-50'
+                : 'text-default-500 hover:text-default-700 hover:bg-default-50 dark:hover:bg-default-100/50'
+            }`}
+          >
+            <Icon icon="lucide:store" width={16} />
+            Proveedores
+          </button>
+          <button
+            onClick={() => setCurrentView('ordenes')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-200 ${
+              currentView === 'ordenes'
+                ? 'bg-white dark:bg-default-100 shadow-sm text-warning border border-default-200 dark:border-default-50'
+                : 'text-default-500 hover:text-default-700 hover:bg-default-50 dark:hover:bg-default-100/50'
+            }`}
+          >
+            <Icon icon="lucide:clipboard-list" width={16} />
+            Órdenes de Pedido
+            {opLista.length > 0 && (
+              <span className="ml-1 px-1.5 py-0.5 bg-warning-100 text-warning-700 text-[10px] font-bold rounded-full">
+                {opLista.length}
+              </span>
+            )}
+          </button>
+        </div>
+
+        {/* ── VISTA: Órdenes de Pedido ── */}
+        {currentView === 'ordenes' && (
+          <OrdenesVista
+            lista={opLista}
+            cargando={opCargando}
+            error={opError}
+            expandidoId={opExpandidoId}
+            detalle={opDetalle}
+            cargandoDetalle={opCargandoDetalle}
+            onToggle={handleToggleOrden}
+            onRecargar={cargarOrdenes}
+          />
+        )}
+
+        {/* ── Vista: Proveedores ── */}
+        {currentView === 'proveedores' && (<>
         <Card className="shadow-sm bg-default-50 dark:bg-content1 border border-default-200 dark:border-default-100">
           <CardBody className="p-4 space-y-3">
             {/* Filtros básicos */}
@@ -2293,6 +2397,7 @@ const GestionProveedoresPage: React.FC = () => {
             )}
           </>
         )}
+        </>)} {/* fin currentView === 'proveedores' */}
       </motion.div>
 
       {/* ── Modal Cotización por Rango ── */}
@@ -5869,10 +5974,10 @@ const ProveedorCotizacionTabla: React.FC<ProveedorCotizacionTablaProps> = ({
             <div key={cat.idCategoria} className="mb-3 last:mb-0">
               <p className="text-xs font-semibold text-default-500 uppercase tracking-wide mb-1">{cat.nombreCategoria}</p>
               <div className="overflow-x-auto rounded-lg border border-default-200 dark:border-default-100">
-                <table className="min-w-max w-full text-xs">
+                <table className="w-full text-xs">
                   <thead className="bg-default-100 dark:bg-default-50">
                     <tr>
-                      <th className="text-left py-2 px-3 font-medium">Producto</th>
+                      <th className="text-left py-2 px-3 font-medium w-[170px]">Producto</th>
                       <th className="text-center py-2 px-2 font-medium w-16">U/M</th>
                       <th className="text-center py-2 px-2 font-medium w-[110px]">Total Ped.</th>
                       {!esSinProveedor && colSpecs.map(col => {
@@ -5931,9 +6036,9 @@ const ProveedorCotizacionTabla: React.FC<ProveedorCotizacionTablaProps> = ({
                       );
                       return (
                         <tr key={prod.idProducto} className="border-t border-default-100 dark:border-default-50 hover:bg-default-50 dark:hover:bg-default-100/20">
-                          <td className="py-2 px-3 font-medium text-left max-w-[184px]">
-                            <Tooltip content={prod.nombreProducto} color="default">
-                              <span className="block truncate">{prod.nombreProducto}</span>
+                          <td className="py-2 px-3 font-medium text-left w-[170px]">
+                            <Tooltip content={prod.nombreProducto} color="default" placement="top">
+                              <div className="w-[146px] truncate">{prod.nombreProducto}</div>
                             </Tooltip>
                           </td>
                           <td className="py-2 px-2 text-center text-default-500 whitespace-nowrap">{prod.abreviatura}</td>
@@ -5991,6 +6096,295 @@ const ProveedorCotizacionTabla: React.FC<ProveedorCotizacionTablaProps> = ({
         </div>
       </CardBody>
     </Card>
+  );
+};
+
+// ── Vista de Órdenes de Pedido ────────────────────────────────────────────────
+
+const ESTADO_OP_CONFIG: Record<EstadoOrdenPedido, {
+  label: string;
+  chipColor: 'warning' | 'primary' | 'success' | 'danger' | 'secondary';
+  icon: string;
+  headerBg: string;
+  iconClass: string;
+  textClass: string;
+}> = {
+  PENDIENTE:  { label: 'Pendiente',   chipColor: 'warning',   icon: 'lucide:clock',         headerBg: 'bg-warning-50 dark:bg-warning-50/10 border-warning-200',   iconClass: 'text-warning',   textClass: 'text-warning-700 dark:text-warning-400' },
+  ENVIADA:    { label: 'Enviada',     chipColor: 'primary',   icon: 'lucide:send',          headerBg: 'bg-primary-50 dark:bg-primary-50/10 border-primary-200',   iconClass: 'text-primary',   textClass: 'text-primary-700 dark:text-primary-400' },
+  CONFIRMADA: { label: 'Confirmada',  chipColor: 'success',   icon: 'lucide:check-circle',  headerBg: 'bg-success-50 dark:bg-success-50/10 border-success-200',   iconClass: 'text-success',   textClass: 'text-success-700 dark:text-success-400' },
+  CANCELADA:  { label: 'Cancelada',   chipColor: 'danger',    icon: 'lucide:x-circle',      headerBg: 'bg-danger-50 dark:bg-danger-50/10 border-danger-200',     iconClass: 'text-danger',    textClass: 'text-danger-700 dark:text-danger-400' },
+  RECIBIDA:   { label: 'Recibida',    chipColor: 'secondary', icon: 'lucide:package-check', headerBg: 'bg-secondary-50 dark:bg-secondary-50/10 border-secondary-200', iconClass: 'text-secondary', textClass: 'text-secondary-700 dark:text-secondary-400' },
+};
+
+const ESTADO_OP_ORDEN: EstadoOrdenPedido[] = ['PENDIENTE', 'ENVIADA', 'CONFIRMADA', 'RECIBIDA', 'CANCELADA'];
+
+interface OrdenesVistaProps {
+  lista: IOrdenPedidoListItem[];
+  cargando: boolean;
+  error: string | null;
+  expandidoId: number | null;
+  detalle: IOrdenPedidoConDetalles | null;
+  cargandoDetalle: boolean;
+  onToggle: (id: number) => void;
+  onRecargar: () => void;
+}
+
+const OrdenesVista: React.FC<OrdenesVistaProps> = ({
+  lista, cargando, error, expandidoId, detalle, cargandoDetalle, onToggle, onRecargar,
+}) => {
+  const fmtFecha = (iso: string) => {
+    const [y, m, d] = iso.split('-');
+    return `${d}/${m}/${y}`;
+  };
+
+  const fmtDatetime = (iso: string) => {
+    const dt = new Date(iso);
+    return `${String(dt.getDate()).padStart(2,'0')}/${String(dt.getMonth()+1).padStart(2,'0')}/${dt.getFullYear()} ${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')}`;
+  };
+
+  const grupos = React.useMemo(() => {
+    const map = new Map<EstadoOrdenPedido, IOrdenPedidoListItem[]>();
+    for (const e of ESTADO_OP_ORDEN) map.set(e, []);
+    for (const op of lista) {
+      const estado = op.estadoOrdenPedido as EstadoOrdenPedido;
+      map.get(estado)?.push(op);
+    }
+    return ESTADO_OP_ORDEN.map(e => ({ estado: e, items: map.get(e)! })).filter(g => g.items.length > 0);
+  }, [lista]);
+
+  if (cargando) {
+    return (
+      <div className="flex justify-center items-center py-20">
+        <BookPageLoader message="Cargando órdenes" subMessage="Obteniendo todas las órdenes de pedido..." />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <Card className="border border-danger-200 bg-danger-50 dark:bg-danger-50/10">
+        <CardBody className="flex flex-row items-center gap-3 p-4">
+          <Icon icon="lucide:alert-triangle" className="text-danger" width={22} />
+          <p className="text-danger text-sm flex-1">{error}</p>
+          <Button size="sm" variant="flat" color="danger" onPress={onRecargar}>Reintentar</Button>
+        </CardBody>
+      </Card>
+    );
+  }
+
+  if (lista.length === 0) {
+    return (
+      <div className="text-center py-20 text-default-400">
+        <Icon icon="lucide:clipboard-x" width={52} className="mx-auto mb-3 opacity-40" />
+        <p className="text-base font-medium">No hay órdenes de pedido registradas</p>
+        <p className="text-sm mt-1">Las órdenes aparecerán aquí una vez que sean generadas.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {grupos.map(({ estado, items }) => {
+        const cfg = ESTADO_OP_CONFIG[estado];
+        return (
+          <div key={estado} className={`rounded-xl border overflow-hidden ${cfg.headerBg}`}>
+            {/* Cabecera del grupo */}
+            <div className={`px-4 py-3 flex items-center gap-3 border-b ${cfg.headerBg}`}>
+              <Icon icon={cfg.icon} className={cfg.iconClass} width={18} />
+              <span className={`font-bold text-sm uppercase tracking-wide ${cfg.textClass}`}>
+                {cfg.label}
+              </span>
+              <Chip size="sm" color={cfg.chipColor} variant="flat" className="ml-auto font-bold">
+                {items.length} orden{items.length !== 1 ? 'es' : ''}
+              </Chip>
+            </div>
+
+            {/* Filas */}
+            <div className="bg-white dark:bg-default-50/30">
+              {items.map((op, idx) => (
+                <div key={op.idOrdenPedido}>
+                  {/* Fila resumen */}
+                  <div
+                    className={`flex flex-col sm:flex-row sm:items-center gap-2 px-4 py-3 cursor-pointer transition-colors hover:bg-default-50 dark:hover:bg-default-100/20 ${
+                      idx > 0 ? 'border-t border-default-100 dark:border-default-50' : ''
+                    } ${expandidoId === op.idOrdenPedido ? 'bg-default-50 dark:bg-default-100/20' : ''}`}
+                    onClick={() => onToggle(op.idOrdenPedido)}
+                  >
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      <div className="flex items-center gap-1 shrink-0">
+                        <Icon
+                          icon={expandidoId === op.idOrdenPedido ? 'lucide:chevron-down' : 'lucide:chevron-right'}
+                          width={16}
+                          className="text-default-400"
+                        />
+                        <span className="text-xs font-bold text-secondary dark:text-foreground">OP #{op.idOrdenPedido}</span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="w-[200px] truncate font-semibold text-sm text-secondary dark:text-foreground">
+                          {op.nombreDistribuidora}
+                        </div>
+                        <p className="text-xs text-default-400">{op.nombreProveedor}</p>
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-3 text-xs text-default-500 shrink-0">
+                      <span className="flex items-center gap-1">
+                        <Icon icon="lucide:calendar-range" width={12} />
+                        {fmtFecha(op.fechaInicioPedido)} – {fmtFecha(op.fechaFinPedido)}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <Icon icon="lucide:clock" width={12} />
+                        {fmtDatetime(op.fechaCreacion)}
+                      </span>
+                      <Chip size="sm" color={cfg.chipColor} variant="flat" className="text-[10px]">
+                        {op.cantidadDetalles} detalle{op.cantidadDetalles !== 1 ? 's' : ''}
+                      </Chip>
+                      <span className="text-success-600 font-semibold">${fmtN(op.totalNeto)}</span>
+                      <span className="text-warning-600 font-semibold text-[11px]">c/IVA ${fmtN(op.totalConIva)}</span>
+                    </div>
+                  </div>
+
+                  {/* Panel detalle expandido */}
+                  <AnimatePresence>
+                    {expandidoId === op.idOrdenPedido && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.25 }}
+                        className="overflow-hidden"
+                      >
+                        <div className="px-4 pb-4 pt-1 bg-default-50 dark:bg-default-100/20 border-t border-default-100">
+                          {cargandoDetalle ? (
+                            <div className="flex justify-center py-8">
+                              <Spinner size="sm" color="primary" label="Cargando detalle..." />
+                            </div>
+                          ) : detalle && detalle.idOrdenPedido === op.idOrdenPedido ? (
+                            <OrdenDetalleTabla detalle={detalle} />
+                          ) : null}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
+// ── Tabla de detalle de una Orden de Pedido ───────────────────────────────────
+
+const OrdenDetalleTabla: React.FC<{ detalle: IOrdenPedidoConDetalles }> = ({ detalle }) => {
+  // Fechas únicas ordenadas ascendente
+  const fechas = React.useMemo(() => {
+    const set = new Set<string>();
+    for (const d of detalle.detalles) set.add(d.fechaEntrega);
+    return [...set].sort();
+  }, [detalle.detalles]);
+
+  // Producto → { fecha → detalle }
+  type ProductoKey = { idProducto: number; nombreProducto: string; abreviatura: string; esFraccionario: boolean; precioNeto: number | null; precioConIva: number | null };
+  const productos = React.useMemo(() => {
+    const map = new Map<number, { meta: ProductoKey; porFecha: Map<string, IDetalleOrdenPedido> }>();
+    for (const d of detalle.detalles) {
+      if (!map.has(d.idProducto)) {
+        map.set(d.idProducto, {
+          meta: { idProducto: d.idProducto, nombreProducto: d.nombreProducto, abreviatura: d.abreviatura, esFraccionario: d.esFraccionario, precioNeto: d.precioNetoUnitario, precioConIva: d.precioConIvaUnitario },
+          porFecha: new Map(),
+        });
+      }
+      map.get(d.idProducto)!.porFecha.set(d.fechaEntrega, d);
+    }
+    return [...map.values()].sort((a, b) => a.meta.nombreProducto.localeCompare(b.meta.nombreProducto));
+  }, [detalle.detalles]);
+
+  const fmtDDMM = (iso: string) => { const [, m, d] = iso.split('-'); return `${d}/${m}`; };
+
+  const fmtCant = (v: number, fraccionario: boolean) =>
+    fraccionario ? (v === Math.floor(v) ? String(v) : v.toFixed(3).replace(/0+$/, '').replace(',', ',')) : String(Math.round(v));
+
+  return (
+    <div className="mt-3 space-y-3">
+      {/* Info cabecera detalle */}
+      <div className="flex flex-wrap gap-4 text-xs text-default-500 bg-white dark:bg-default-100/20 rounded-lg px-4 py-2 border border-default-100">
+        {detalle.telefonoProveedor && (
+          <span className="flex items-center gap-1"><Icon icon="lucide:phone" width={12} />{detalle.telefonoProveedor}</span>
+        )}
+        {detalle.emailProveedor && (
+          <span className="flex items-center gap-1"><Icon icon="lucide:mail" width={12} />{detalle.emailProveedor}</span>
+        )}
+        {detalle.observaciones && (
+          <span className="flex items-center gap-1 text-warning-700 dark:text-warning-400">
+            <Icon icon="lucide:message-square" width={12} />{detalle.observaciones}
+          </span>
+        )}
+        <span className="ml-auto flex items-center gap-2">
+          <span className="text-success-600 font-semibold">Neto: ${fmtN(detalle.totalNeto)}</span>
+          <span className="text-warning-600 font-semibold">c/IVA: ${fmtN(detalle.totalConIva)}</span>
+        </span>
+      </div>
+
+      {/* Tabla pivotada */}
+      <div className="overflow-x-auto rounded-lg border border-default-200 dark:border-default-100">
+        <table className="w-full text-xs">
+          <thead className="bg-default-100 dark:bg-default-50">
+            <tr>
+              <th className="text-left py-2 px-3 font-medium w-[170px]">Producto</th>
+              <th className="text-center py-2 px-2 font-medium w-14">U/M</th>
+              {fechas.map(f => (
+                <th key={f} className="text-center py-2 px-2 font-semibold w-[90px] bg-warning-100 dark:bg-warning-900/20 text-warning-700 dark:text-warning-400 whitespace-nowrap">
+                  {fmtDDMM(f)}
+                </th>
+              ))}
+              <th className="text-center py-2 px-2 font-medium w-[100px] whitespace-nowrap">P. Neto</th>
+              <th className="text-center py-2 px-2 font-medium w-[100px] whitespace-nowrap">P. c/IVA</th>
+              <th className="text-center py-2 px-2 font-medium w-[100px] whitespace-nowrap">T. Neto</th>
+              <th className="text-center py-2 px-2 font-medium w-[100px] whitespace-nowrap">T. c/IVA</th>
+            </tr>
+          </thead>
+          <tbody>
+            {productos.map(({ meta, porFecha }) => {
+              const cantTotal = [...porFecha.values()].reduce((s, d) => s + d.cantidadSolicitada, 0);
+              const tNeto   = meta.precioNeto   != null ? cantTotal * meta.precioNeto   : null;
+              const tConIva = meta.precioConIva != null ? cantTotal * meta.precioConIva : null;
+              return (
+                <tr key={meta.idProducto} className="border-t border-default-100 dark:border-default-50 hover:bg-default-50 dark:hover:bg-default-100/20">
+                  <td className="py-2 px-3 font-medium text-left w-[170px]">
+                    <Tooltip content={meta.nombreProducto} color="default" placement="top">
+                      <div className="w-[146px] truncate">{meta.nombreProducto}</div>
+                    </Tooltip>
+                  </td>
+                  <td className="py-2 px-2 text-center text-default-500 whitespace-nowrap">{meta.abreviatura}</td>
+                  {fechas.map(f => {
+                    const d = porFecha.get(f);
+                    return (
+                      <td key={f} className="py-2 px-2 text-center bg-warning-50/40 dark:bg-warning-900/10 font-semibold whitespace-nowrap">
+                        {d ? fmtCant(d.cantidadSolicitada, meta.esFraccionario) : <span className="text-default-300">—</span>}
+                      </td>
+                    );
+                  })}
+                  <td className="py-2 px-2 text-center whitespace-nowrap text-default-600">
+                    {meta.precioNeto != null ? `$${fmtN(meta.precioNeto)}` : '—'}
+                  </td>
+                  <td className="py-2 px-2 text-center whitespace-nowrap text-default-600">
+                    {meta.precioConIva != null ? `$${fmtN(meta.precioConIva)}` : '—'}
+                  </td>
+                  <td className="py-2 px-2 text-center whitespace-nowrap text-success-700 font-semibold">
+                    {tNeto != null ? `$${fmtN(tNeto)}` : '—'}
+                  </td>
+                  <td className="py-2 px-2 text-center whitespace-nowrap text-warning-700 font-semibold">
+                    {tConIva != null ? `$${fmtN(tConIva)}` : '—'}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
   );
 };
 

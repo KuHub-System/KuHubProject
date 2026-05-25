@@ -21,6 +21,8 @@ import {
   ICotizacionConsolidadaResponse,
   EstadoProveedor,
   IOrdenPedidoResumen,
+  IOrdenPedidoListItem,
+  IOrdenPedidoConDetalles,
 } from '../types/proveedor.types';
 
 // ── Helpers de transformación ─────────────────────────────────────────────────
@@ -713,6 +715,42 @@ export const crearOrdenPedidoService = async (request: {
     throw new Error(
       error.response?.data?.message ||
       `Error al crear orden de compra para proveedor ${request.idProveedor}`
+    );
+  }
+};
+
+// ── Orden Pedido — Listado y Detalle ─────────────────────────────────────────
+
+/**
+ * Lista todas las Órdenes de Pedido activas (sin líneas de detalle).
+ * GET /api/v1/orden-pedido
+ */
+export const listarOrdenesPedidoService = async (): Promise<IOrdenPedidoListItem[]> => {
+  try {
+    const response = await api.get<IOrdenPedidoListItem[]>('/orden-pedido');
+    return response.data ?? [];
+  } catch (error: any) {
+    throw new Error(
+      error.response?.data?.message ||
+      'Error al cargar las órdenes de pedido'
+    );
+  }
+};
+
+/**
+ * Retorna el detalle completo de una Orden de Pedido: cabecera + líneas de entrega.
+ * GET /api/v1/orden-pedido/{id}
+ */
+export const obtenerOrdenPedidoDetalleService = async (
+  idOrdenPedido: number
+): Promise<IOrdenPedidoConDetalles> => {
+  try {
+    const response = await api.get<IOrdenPedidoConDetalles>(`/orden-pedido/${idOrdenPedido}`);
+    return response.data;
+  } catch (error: any) {
+    throw new Error(
+      error.response?.data?.message ||
+      `Error al cargar el detalle de la Orden de Pedido #${idOrdenPedido}`
     );
   }
 };

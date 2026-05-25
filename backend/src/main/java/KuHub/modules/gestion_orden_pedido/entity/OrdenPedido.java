@@ -10,7 +10,12 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
-/** Mapea tabla orden_pedido (Tarea #13 + #27). Vincula un pedido con un proveedor. */
+/**
+ * Entidad JPA que representa una Orden de Pedido en el sistema.
+ * Vincula un pedido consolidado semanal con el proveedor seleccionado para realizar la compra.
+ * Almacena el estado del flujo de aprobación de la orden, observaciones generales
+ * y contiene la lista de detalles de productos y entregas asociados.
+ */
 @Entity
 @Table(name = "orden_pedido")
 @Getter
