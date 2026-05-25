@@ -1,9 +1,17 @@
 package KuHub.modules.gestion_orden_pedido.service;
 
+import KuHub.modules.gestion_orden_pedido.dtos.request.OrdenPedidoCreateDTO;
 import KuHub.modules.gestion_orden_pedido.dtos.response.CotizacionConsolidadaDTO;
+import KuHub.modules.gestion_orden_pedido.dtos.response.OrdenPedidoDetalleDTO;
 import KuHub.modules.gestion_orden_pedido.dtos.response.PedidoSemanaResumenDTO;
+import KuHub.modules.gestion_orden_pedido.entity.DetalleOrdenPedido;
+import KuHub.modules.gestion_orden_pedido.entity.OrdenPedido;
+import KuHub.modules.gestion_orden_pedido.enums.EstadoOrdenPedido;
 import KuHub.modules.gestion_orden_pedido.exceptions.GestionOrdenPedidoException;
+import KuHub.modules.gestion_orden_pedido.repository.DetalleOrdenPedidoRepository;
 import KuHub.modules.gestion_orden_pedido.repository.OrdenPedidoRepository;
+import KuHub.modules.gestion_proveedor.entity.ProveedorProducto;
+import KuHub.modules.gestion_proveedor.repository.ProveedorProductoRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.type.TypeFactory;
 import lombok.RequiredArgsConstructor;
@@ -24,6 +32,12 @@ public class OrdenPedidoServiceImpl implements OrdenPedidoService {
     /**Repositories*/
     @Autowired
     private OrdenPedidoRepository ordenPedidoRepository;
+
+    @Autowired
+    private DetalleOrdenPedidoRepository detalleOrdenPedidoRepository;
+
+    @Autowired
+    private ProveedorProductoRepository proveedorProductoRepository;
 
     /**Others*/
     @Autowired
@@ -73,5 +87,53 @@ public class OrdenPedidoServiceImpl implements OrdenPedidoService {
                     HttpStatus.INTERNAL_SERVER_ERROR
             );
         }
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // CREAR ORDEN DE PEDIDO (Tarea #27)
+    // ─────────────────────────────────────────────────────────────
+
+    @Override
+    @Transactional
+    public OrdenPedidoDetalleDTO crearOrdenPedido(OrdenPedidoCreateDTO request) {
+        // 1. Crear la orden principal en estado PENDIENTE
+        OrdenPedido orden = new OrdenPedido();
+        orden.setIdPedido(request.getIdPedido());
+        orden.setIdProveedor(request.getIdProveedor());
+        orden.setObservaciones(request.getObservaciones());
+        orden.setEstadoOrdenPedido(EstadoOrdenPedido.PENDIENTE);
+        orden = ordenPedidoRepository.save(orden);
+
+        // 2. Una fila en detalle_orden_pedido por cada (idProducto, fechaEntrega) con cantidad > 0
+        int cantidadDetalles = 0;
+
+        for (OrdenPedidoCreateDTO.EntregaDTO e : request.getEntregas()) {
+            ProveedorProducto pp = proveedorProductoRepository
+                    .findFirstByProveedor_IdProveedorAndProducto_IdProductoAndActivoTrueOrderByFechaActualizacionDesc(
+                            request.getIdProveedor(), e.getIdProducto())
+                    .orElse(null);
+
+            DetalleOrdenPedido detalle = new DetalleOrdenPedido();
+            detalle.setIdOrdenPedido(orden.getIdOrdenPedido());
+            detalle.setIdProducto(e.getIdProducto());
+            detalle.setCantidadSolicitada(e.getCantidad());
+            detalle.setFechaEntrega(e.getFechaEntrega());
+            detalle.setPrecioNetoUnitario(pp != null ? pp.getPrecioNeto() : null);
+            detalle.setPrecioConIvaUnitario(pp != null ? pp.getPrecioConIva() : null);
+            detalleOrdenPedidoRepository.save(detalle);
+            cantidadDetalles++;
+        }
+
+        log.info("crearOrdenPedido: OP #{} | pedido={} | proveedor={} | {} detalles",
+                orden.getIdOrdenPedido(), request.getIdPedido(), request.getIdProveedor(), cantidadDetalles);
+
+        return new OrdenPedidoDetalleDTO(
+                orden.getIdOrdenPedido(),
+                request.getIdPedido(),
+                request.getIdProveedor(),
+                orden.getFechaCreacion(),
+                orden.getEstadoOrdenPedido(),
+                cantidadDetalles
+        );
     }
 }

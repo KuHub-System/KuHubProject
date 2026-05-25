@@ -60,6 +60,7 @@ import {
   obtenerPedidosSemanaService,
   obtenerCotizacionConsolidadaService,
   actualizarEstadoProveedorService,
+  crearOrdenPedidoService,
 } from '../services/proveedor-service';
 import type {
   IProveedor,
@@ -626,6 +627,8 @@ const GestionProveedoresPage: React.FC = () => {
   >({});
   /** Fecha elegida por el usuario en Paso 1 como base para calcular semana de entrega (YYYY-MM-DD). */
   const [ocFechaEntrega, setOcFechaEntrega] = React.useState<string | null>(null);
+
+  const [ocGenerandoOrdenes, setOcGenerandoOrdenes] = React.useState(false);
 
   // ── Modal confirmar cambiar estado proveedor (Paso 2 cotización) ──
   const { isOpen: isOcToggleEstadoModal, onOpen: openOcToggleEstadoModal, onOpenChange: onOcToggleEstadoModalChange } = useDisclosure();
@@ -1508,6 +1511,82 @@ const GestionProveedoresPage: React.FC = () => {
     setOcErrorCotizacion(null);
   };
 
+  /**
+   * Genera una Orden de Pedido por cada proveedor visible en el Paso 2.
+   * Para cada proveedor recolecta (idProducto, cantidad, fechaEntrega) donde cantidad > 0,
+   * calcula la fecha ISO real desde el entregaKey + ocFechaEntrega (con ajuste por feriado),
+   * y llama a crearOrdenPedidoService una vez por proveedor.
+   */
+  const handleConfirmarGenerarOrden = async () => {
+    if (!ocCotizacion || !ocFechaEntrega || ocSeleccionados.size === 0) return;
+    setOcGenerandoOrdenes(true);
+
+    const lunes = getMondayISO(ocFechaEntrega);
+    const idsPedidoArr = [...ocSeleccionados];
+    let exitosos = 0;
+    let totalDetalles = 0;
+
+    for (const prov of ocCotizacion.cotizacion) {
+      if (prov.idProveedor == null) continue;
+
+      const cantidadesProv = ocCantidades[prov.idProveedor] ?? {};
+      const entregas: { idProducto: number; cantidad: number; fechaEntrega: string }[] = [];
+
+      for (const [idProductoStr, entregasProd] of Object.entries(cantidadesProv)) {
+        const idProducto = Number(idProductoStr);
+        for (const [entregaKey, cantidad] of Object.entries(entregasProd)) {
+          if (!cantidad || cantidad <= 0) continue;
+
+          // Calcular fecha ISO desde entregaKey (ej. "JUEVES" o "JUEVES_prev")
+          const esPrev = entregaKey.endsWith('_prev');
+          const dia = (esPrev ? entregaKey.replace('_prev', '') : entregaKey) as TDiaSemana;
+          const base = esPrev ? addDaysISO(lunes, -7) : lunes;
+          let fechaISO = addDaysISO(base, DIA_ORDEN[dia] - 1);
+
+          // Ajuste por feriado: retroceder al día de entrega anterior no feriado del proveedor
+          const [añoS, mmS, ddS] = fechaISO.split('-');
+          const fechaDate = new Date(Number(añoS), Number(mmS) - 1, Number(ddS));
+          if (nombreFeriadoChile(fechaDate)) {
+            const diasProvNum = [...(prov.diasEntrega ?? [])].map(d => DIA_ORDEN[d]).sort((a, b) => a - b);
+            const diaOrigNum = DIA_ORDEN[dia];
+            for (let i = diasProvNum.length - 1; i >= 0; i--) {
+              if (diasProvNum[i] < diaOrigNum) {
+                const candISO = addDaysISO(base, diasProvNum[i] - 1);
+                const [cA, cM, cD] = candISO.split('-');
+                const cand = new Date(Number(cA), Number(cM) - 1, Number(cD));
+                if (!nombreFeriadoChile(cand)) { fechaISO = candISO; break; }
+              }
+            }
+          }
+
+          entregas.push({ idProducto, cantidad, fechaEntrega: fechaISO });
+        }
+      }
+
+      if (entregas.length === 0) continue;
+
+      // Una orden por proveedor; si hay múltiples pedidos seleccionados, usar el primero
+      const idPedido = idsPedidoArr[0];
+
+      try {
+        const resultado = await crearOrdenPedidoService({ idPedido, idProveedor: prov.idProveedor, entregas });
+        exitosos++;
+        totalDetalles += resultado.cantidadDetalles;
+        showToast(`Orden #${resultado.idOrdenPedido} generada para ${prov.nombreDistribuidora ?? prov.nombreProveedor} (${resultado.cantidadDetalles} detalles)`);
+      } catch (err: any) {
+        showToast(err.message || `Error al generar orden para proveedor #${prov.idProveedor}`, 'error');
+      }
+    }
+
+    setOcGenerandoOrdenes(false);
+
+    if (exitosos > 0) {
+      onOrdenPedidoModalChange();
+      showToast(`Se crearon ${exitosos} orden(es) con ${totalDetalles} detalle(s) en total`);
+      cargarProveedoresPaginados(1, true);
+    }
+  };
+
   /** Abre el modal de confirmación para cambiar el estado del proveedor desde el Paso 2. */
   const handleConfirmarToggleEstadoPaso2 = (prov: IProveedorGrupoConsolidado, estadoActual: EstadoProveedor) => {
     setOcProveedorAToggle(prov);
@@ -2256,6 +2335,8 @@ const GestionProveedoresPage: React.FC = () => {
         proveedoresEstados={Object.fromEntries(proveedores.map(p => [p.idProveedor, p.estadoProveedor]))}
         togglingEstadoPaso2Id={ocTogglingEstadoId}
         onToggleEstadoProveedor={handleConfirmarToggleEstadoPaso2}
+        onConfirmarOrden={handleConfirmarGenerarOrden}
+        isGenerandoOrdenes={ocGenerandoOrdenes}
       />
 
       {/* ── Modal Sincronización de Precios desde Excel ── */}
@@ -4898,6 +4979,8 @@ interface OrdenPedidoModalProps {
   proveedoresEstados?: Record<number, EstadoProveedor>;
   togglingEstadoPaso2Id?: number | null;
   onToggleEstadoProveedor?: (prov: IProveedorGrupoConsolidado, estadoActual: EstadoProveedor) => void;
+  onConfirmarOrden: () => void;
+  isGenerandoOrdenes: boolean;
 }
 
 const chipOrdenPedido = (cantidad: number) => {
@@ -4938,6 +5021,8 @@ const OrdenPedidoModal: React.FC<OrdenPedidoModalProps> = ({
   proveedoresEstados,
   togglingEstadoPaso2Id,
   onToggleEstadoProveedor,
+  onConfirmarOrden,
+  isGenerandoOrdenes,
 }) => {
   const hoy = new Date();
   const anioActual = hoy.getFullYear();
@@ -5283,6 +5368,16 @@ const OrdenPedidoModal: React.FC<OrdenPedidoModalProps> = ({
                   </Button>
                   <Button variant="ghost" onPress={onClose} className="font-medium">
                     Cerrar
+                  </Button>
+                  <Button
+                    color="success"
+                    variant="solid"
+                    isLoading={isGenerandoOrdenes}
+                    onPress={onConfirmarOrden}
+                    startContent={!isGenerandoOrdenes && <Icon icon="lucide:shopping-cart" width={18} />}
+                    className="font-medium"
+                  >
+                    Generar Orden de Compra
                   </Button>
                 </>
               )}

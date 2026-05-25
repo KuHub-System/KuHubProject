@@ -20,6 +20,7 @@ import {
   IPedidoSemanaResumen,
   ICotizacionConsolidadaResponse,
   EstadoProveedor,
+  IOrdenPedidoResumen,
 } from '../types/proveedor.types';
 
 // ── Helpers de transformación ─────────────────────────────────────────────────
@@ -686,6 +687,34 @@ export const actualizarEstadoProveedorService = async (
     emailProveedor: proveedor.emailProveedor,
     estadoProveedor: nuevoEstado,
   });
+};
+
+// ── Orden Pedido — Crear (Tarea #27) ─────────────────────────────────────────
+
+/**
+ * Crea una Orden de Pedido para un proveedor con sus líneas de detalle por fecha.
+ * Se invoca una vez por proveedor. Solo se envían entradas con cantidad > 0.
+ * POST /api/v1/orden-pedido → 201 { idOrdenPedido, cantidadDetalles, ... }
+ */
+export const crearOrdenPedidoService = async (request: {
+  idPedido: number;
+  idProveedor: number;
+  observaciones?: string;
+  entregas: Array<{
+    idProducto: number;
+    cantidad: number;
+    fechaEntrega: string; // YYYY-MM-DD
+  }>;
+}): Promise<IOrdenPedidoResumen> => {
+  try {
+    const response = await api.post<IOrdenPedidoResumen>('/orden-pedido', request);
+    return response.data;
+  } catch (error: any) {
+    throw new Error(
+      error.response?.data?.message ||
+      `Error al crear orden de compra para proveedor ${request.idProveedor}`
+    );
+  }
 };
 
 export const descargarExcelPlantillaService = async (
