@@ -19,6 +19,7 @@ import {
   ISyncExcelResult,
   IPedidoSemanaResumen,
   ICotizacionConsolidadaResponse,
+  EstadoProveedor,
 } from '../types/proveedor.types';
 
 // ── Helpers de transformación ─────────────────────────────────────────────────
@@ -666,6 +667,25 @@ export const obtenerCotizacionConsolidadaService = async (
       'Error al obtener la cotización consolidada'
     );
   }
+};
+
+/**
+ * Cambia el estado del proveedor (DISPONIBLE ↔ NO_DISPONIBLE) en un PATCH.
+ * Reutiliza actualizarProveedorService completando los campos requeridos por el backend.
+ * PATCH /api/v1/proveedor/{id}
+ */
+export const actualizarEstadoProveedorService = async (
+  proveedor: IProveedor,
+  nuevoEstado: EstadoProveedor
+): Promise<IProveedor> => {
+  return actualizarProveedorService(proveedor.idProveedor, {
+    rutProveedor: proveedor.rutProveedor,
+    nombreDistribuidora: proveedor.nombreDistribuidora,
+    nombreProveedor: proveedor.nombreProveedor,
+    telefonoProveedor: proveedor.telefonoProveedor,
+    emailProveedor: proveedor.emailProveedor,
+    estadoProveedor: nuevoEstado,
+  });
 };
 
 export const descargarExcelPlantillaService = async (
