@@ -1,4 +1,4 @@
-package KuHub.modules.gestion_orden_compra.entity;
+package KuHub.modules.gestion_orden_pedido.entity;
 
 import KuHub.modules.gestion_inventario.entity.Producto;
 import jakarta.persistence.*;
@@ -6,24 +6,24 @@ import lombok.*;
 
 import java.math.BigDecimal;
 
-/** Mapea tabla detalle_orden_compra (Tarea #13). Snapshot de precios al momento de crear la OC. */
+/** Mapea tabla detalle_orden_pedido (Tarea #13). Snapshot de precios al momento de crear la OP. */
 @Entity
-@Table(name = "detalle_orden_compra")
+@Table(name = "detalle_orden_pedido")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @ToString
-public class DetalleOrdenCompra {
+public class DetalleOrdenPedido {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "id_detalle_orden_compra")
-    private Long idDetalleOrdenCompra;
+    @Column(name = "id_detalle_orden_pedido")
+    private Long idDetalleOrdenPedido;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "id_orden_compra", nullable = false)
-    private OrdenCompra ordenCompra;
+    @JoinColumn(name = "id_orden_pedido", nullable = false)
+    private OrdenPedido ordenPedido;
 
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "id_producto", nullable = false)
@@ -41,10 +41,10 @@ public class DetalleOrdenCompra {
     @Column(name = "activo", nullable = false)
     private Boolean activo = true;
 
-    public void setIdOrdenCompra(Integer id) {
+    public void setIdOrdenPedido(Integer id) {
         if (id != null) {
-            this.ordenCompra = new OrdenCompra();
-            this.ordenCompra.setIdOrdenCompra(id);
+            this.ordenPedido = new OrdenPedido();
+            this.ordenPedido.setIdOrdenPedido(id);
         }
     }
 

@@ -191,6 +191,7 @@ CREATE CAST (varchar AS estado_provedor_type) WITH INOUT AS IMPLICIT;
 CREATE CAST (varchar AS estado_bodega_transito_type) WITH INOUT AS IMPLICIT;
 CREATE CAST (varchar AS estado_solicitud_type) WITH INOUT AS IMPLICIT;
 CREATE CAST (varchar AS estado_pedido_type) WITH INOUT AS IMPLICIT;
+CREATE CAST (varchar AS estado_seccion_type) WITH INOUT AS IMPLICIT;
 
 
 -- =====================================================
@@ -741,42 +742,42 @@ CREATE TABLE pedido_solicitud (
 -- proveedor (línea 529) y producto (línea 407).
 -- =====================================================
 
--- Tabla orden_compra
-CREATE TABLE orden_compra (
-    id_orden_compra INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+-- Tabla orden_pedido
+CREATE TABLE orden_pedido (
+    id_orden_pedido INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     id_pedido       INTEGER NOT NULL,
     id_proveedor    INTEGER NOT NULL,
     fecha_creacion  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     observaciones   TEXT,
     activo          BOOLEAN NOT NULL DEFAULT TRUE,
 
-    CONSTRAINT fk_oc_pedido
+    CONSTRAINT fk_op_pedido
         FOREIGN KEY (id_pedido)
         REFERENCES pedido(id_pedido)
         ON DELETE RESTRICT,
 
-    CONSTRAINT fk_oc_proveedor
+    CONSTRAINT fk_op_proveedor
         FOREIGN KEY (id_proveedor)
         REFERENCES proveedor(id_proveedor)
         ON DELETE RESTRICT
 );
 
--- Tabla detalle_orden_compra
-CREATE TABLE detalle_orden_compra (
-    id_detalle_orden_compra INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    id_orden_compra         INTEGER       NOT NULL,
+-- Tabla detalle_orden_pedido
+CREATE TABLE detalle_orden_pedido (
+    id_detalle_orden_pedido INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    id_orden_pedido         INTEGER       NOT NULL,
     id_producto             INTEGER       NOT NULL,
     cantidad_solicitada     NUMERIC(10,3) NOT NULL,
     precio_neto_unitario    NUMERIC(10,3),
     precio_con_iva_unitario NUMERIC(10,3),
     activo                  BOOLEAN       NOT NULL DEFAULT TRUE,
 
-    CONSTRAINT fk_doc_orden
-        FOREIGN KEY (id_orden_compra)
-        REFERENCES orden_compra(id_orden_compra)
+    CONSTRAINT fk_dop_orden
+        FOREIGN KEY (id_orden_pedido)
+        REFERENCES orden_pedido(id_orden_pedido)
         ON DELETE CASCADE,
 
-    CONSTRAINT fk_doc_producto
+    CONSTRAINT fk_dop_producto
         FOREIGN KEY (id_producto)
         REFERENCES producto(id_producto)
         ON DELETE RESTRICT
@@ -1238,13 +1239,13 @@ WHERE activo = TRUE;
 CREATE INDEX idx_pp_version_reciente
 ON proveedor_producto (id_proveedor, id_producto, fecha_actualizacion DESC);
 
--- Indices de Orden de Compra (Tarea #13)
--- idx_oc_pedido + idx_oc_proveedor: parciales por activo=TRUE, aceleran el
---   EXISTS de "¿tiene OC?" y los listados por proveedor.
--- idx_doc_orden: acelera el JOIN orden_compra → detalle_orden_compra.
-CREATE INDEX idx_oc_pedido    ON orden_compra (id_pedido)    WHERE activo = TRUE;
-CREATE INDEX idx_oc_proveedor ON orden_compra (id_proveedor) WHERE activo = TRUE;
-CREATE INDEX idx_doc_orden    ON detalle_orden_compra (id_orden_compra);
+-- Indices de Orden Pedido (Tarea #13)
+-- idx_op_pedido + idx_op_proveedor: parciales por activo=TRUE, aceleran el
+--   EXISTS de "¿tiene OP?" y los listados por proveedor.
+-- idx_dop_orden: acelera el JOIN orden_pedido → detalle_orden_pedido.
+CREATE INDEX idx_op_pedido    ON orden_pedido (id_pedido)    WHERE activo = TRUE;
+CREATE INDEX idx_op_proveedor ON orden_pedido (id_proveedor) WHERE activo = TRUE;
+CREATE INDEX idx_dop_orden    ON detalle_orden_pedido (id_orden_pedido);
 
 -- Indices en bodega_transito
 --CREATE INDEX idx_bodega_transito_producto ON bodega_transito(id_producto);

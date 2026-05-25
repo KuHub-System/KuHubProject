@@ -1,4 +1,4 @@
-package KuHub.modules.gestion_orden_compra.dtos.response;
+package KuHub.modules.gestion_orden_pedido.dtos.response;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;

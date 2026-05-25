@@ -1,21 +1,21 @@
-package KuHub.modules.gestion_orden_compra.service;
+package KuHub.modules.gestion_orden_pedido.service;
 
-import KuHub.modules.gestion_orden_compra.dtos.response.CotizacionConsolidadaDTO;
-import KuHub.modules.gestion_orden_compra.dtos.response.PedidoSemanaResumenDTO;
+import KuHub.modules.gestion_orden_pedido.dtos.response.CotizacionConsolidadaDTO;
+import KuHub.modules.gestion_orden_pedido.dtos.response.PedidoSemanaResumenDTO;
 
 import java.time.LocalDate;
 import java.util.List;
 
 /**
- * Interfaz del servicio de gestión de órdenes de compra (Tarea #13).
+ * Interfaz del servicio de gestión de órdenes de pedido (Tarea #13).
  * Define los métodos públicos disponibles para el controller.
  */
-public interface OrdenCompraService {
+public interface OrdenPedidoService {
 
     /**
      * Lista los pedidos con estado APROBADO cuyas fechas caen dentro del rango indicado,
-     * incluyendo un contador de cuántas OCs activas tiene cada pedido.
-     * Consumido por el Paso 1 del modal "Generar Orden de Compra".
+     * incluyendo un contador de cuántas OPs activas tiene cada pedido.
+     * Consumido por el Paso 1 del modal "Generar Orden Pedido".
      */
     List<PedidoSemanaResumenDTO> listarPedidosSemana(LocalDate fechaInicio, LocalDate fechaFin);
 

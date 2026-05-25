@@ -1,6 +1,6 @@
 /**
  * SERVICIO DE GENERACIÓN DE PDFs
- * Genera PDFs para órdenes de compra (general y por proveedor)
+ * Genera PDFs para órdenes de pedido (general y por proveedor)
  */
 
 import jsPDF from 'jspdf';
@@ -56,7 +56,7 @@ export const generarPDFOrdenGeneral = (
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(24);
   doc.setFont('helvetica', 'bold');
-  doc.text('ORDEN DE COMPRA GENERAL', 105, 20, { align: 'center' });
+  doc.text('ORDEN DE PEDIDO GENERAL', 105, 20, { align: 'center' });
 
   doc.setFontSize(12);
   doc.setFont('helvetica', 'normal');
@@ -257,7 +257,7 @@ export const generarPDFOrdenProveedor = (
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(24);
   doc.setFont('helvetica', 'bold');
-  doc.text('ORDEN DE COMPRA', 105, 20, { align: 'center' });
+  doc.text('ORDEN DE PEDIDO', 105, 20, { align: 'center' });
 
   doc.setFontSize(12);
   doc.setFont('helvetica', 'normal');
@@ -378,7 +378,7 @@ export const generarPDFOrdenProveedor = (
   doc.setTextColor(0, 0, 0);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(11);
-  doc.text('CONDICIONES DE COMPRA', 20, yPos);
+  doc.text('CONDICIONES DE PEDIDO', 20, yPos);
 
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9);
@@ -456,7 +456,7 @@ export const generarYDescargarTodosPDFs = (
 ): void => {
   // PDF General
   const pdfGeneral = generarPDFOrdenGeneral(productos, fechaPedido);
-  descargarPDF(pdfGeneral, `Orden_Compra_General_${Date.now()}.pdf`);
+  descargarPDF(pdfGeneral, `Orden_Pedido_General_${Date.now()}.pdf`);
 
   // Esperar un momento para evitar bloqueo del navegador
   setTimeout(() => {
