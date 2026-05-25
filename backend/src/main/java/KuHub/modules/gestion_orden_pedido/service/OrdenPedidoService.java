@@ -2,39 +2,70 @@ package KuHub.modules.gestion_orden_pedido.service;
 
 import KuHub.modules.gestion_orden_pedido.dtos.request.OrdenPedidoCreateDTO;
 import KuHub.modules.gestion_orden_pedido.dtos.response.CotizacionConsolidadaDTO;
+import KuHub.modules.gestion_orden_pedido.dtos.response.OrdenPedidoConDetallesDTO;
 import KuHub.modules.gestion_orden_pedido.dtos.response.OrdenPedidoDetalleDTO;
+import KuHub.modules.gestion_orden_pedido.dtos.response.OrdenPedidoListDTO;
 import KuHub.modules.gestion_orden_pedido.dtos.response.PedidoSemanaResumenDTO;
 
 import java.time.LocalDate;
 import java.util.List;
 
 /**
- * Interfaz del servicio de gestión de órdenes de pedido (Tarea #13 + #27).
- * Define los métodos públicos disponibles para el controller.
+ * Interfaz del servicio de negocio para la gestión de Órdenes de Pedido.
+ * Centraliza las operaciones requeridas para el flujo de consolidación de compras a proveedores:
+ * listar pedidos aprobados, generar cotizaciones unificadas con el menor precio y crear órdenes de pedido
+ * con snapshot de precios.
  */
 public interface OrdenPedidoService {
 
     /**
-     * Lista los pedidos con estado APROBADO cuyas fechas caen dentro del rango indicado,
-     * incluyendo un contador de cuántas OPs activas tiene cada pedido.
-     * Consumido por el Paso 1 del modal "Generar Orden Pedido".
+     * Obtiene el listado de pedidos consolidados con estado APROBADO cuyas fechas de entrega estimadas
+     * se encuentran dentro del rango especificado.
+     * Incluye un contador con la cantidad de órdenes de pedido (OP) activas ya generadas para cada pedido.
+     *
+     * @param fechaInicio Límite inferior del rango de búsqueda de pedidos
+     * @param fechaFin Límite superior del rango de búsqueda de pedidos
+     * @return Lista de DTOs con el resumen de cada pedido de la semana y su contador de OP correspondientes
      */
     List<PedidoSemanaResumenDTO> listarPedidosSemana(LocalDate fechaInicio, LocalDate fechaFin);
 
     /**
-     * Cotización consolidada del Paso 2: agrupa por proveedor → categoría → producto,
-     * asignando cada producto al proveedor con menor {@code precio_neto} vigente.
-     * Las cantidades provienen de {@code SUM(detalle_pedido.cant_producto_pedido)} de
-     * los pedidos indicados; los precios neto y con IVA salen del {@code proveedor_producto}
-     * vigente del proveedor ganador.
+     * Genera una cotización consolidada agrupando y analizando un conjunto de pedidos seleccionados.
+     * Realiza un desglose jerárquico de productos por proveedor, categoría y producto, asignando de forma
+     * automática cada producto al proveedor que ofrezca el menor precio neto unitario vigente.
+     *
+     * Las cantidades consolidadas se calculan sumando las demandas individuales de los productos de cada
+     * pedido, y los precios corresponden al catálogo activo del proveedor seleccionado.
+     *
+     * @param idsPedido Lista de IDs de los pedidos consolidados semanales a agrupar
+     * @return Objeto de respuesta que contiene la estructura jerárquica de la cotización consolidada
      */
     CotizacionConsolidadaDTO.CotizacionConsolidadaResponse obtenerCotizacionConsolidada(List<Integer> idsPedido);
 
     /**
-     * Crea una Orden de Pedido para un proveedor.
-     * Una llamada por proveedor; el frontend invoca este endpoint una vez por cada proveedor.
-     * Cada entrega con cantidad > 0 genera un {@code detalle_orden_pedido} con su {@code fecha_entrega}.
-     * POST /api/v1/orden-pedido
+     * Registra una nueva Orden de Pedido para un proveedor y pedido unificado específico.
+     * Genera de forma automatizada las líneas de detalle para cada producto y fecha de entrega programada,
+     * obteniendo los precios neto y con IVA vigentes del proveedor para crear el histórico congelado (snapshot).
+     *
+     * @param request Datos del DTO de creación, que contiene el pedido, proveedor, observaciones y lista de entregas
+     * @return DTO con el resumen de la orden de pedido creada y el número total de líneas persistidas
      */
     OrdenPedidoDetalleDTO crearOrdenPedido(OrdenPedidoCreateDTO request);
+
+    /**
+     * Retorna la lista de todas las Órdenes de Pedido activas con sus datos de cabecera
+     * (proveedor, rango del pedido, estado, totales). Sin líneas de detalle.
+     *
+     * @return Lista ordenada por fecha de creación descendente
+     */
+    List<OrdenPedidoListDTO> listarOrdenes();
+
+    /**
+     * Retorna el detalle completo de una Orden de Pedido: cabecera + todas las líneas de
+     * entrega (producto, cantidad, fecha exacta, precios snapshot).
+     *
+     * @param idOrdenPedido PK de la orden
+     * @return DTO con cabecera y lista de detalles
+     */
+    OrdenPedidoConDetallesDTO obtenerConDetalles(Integer idOrdenPedido);
 }
