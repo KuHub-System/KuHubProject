@@ -1503,17 +1503,23 @@ const GestionProveedoresPage: React.FC = () => {
       const provData = prev[idProveedor] ?? {};
       const prodData = { ...(provData[idProducto] ?? {}) };
       const valorActual = prodData[entregaKey] ?? 0;
-      const nuevoValor = valorActual + delta;
-      if (nuevoValor < 0) return prev;
 
-      prodData[entregaKey] = nuevoValor;
       const entregaCols = colSpecs.filter(c => c.tipo === 'entrega');
       const indexActual = entregaCols.findIndex(c => getEntregaKey(c) === entregaKey);
 
       if (delta > 0) {
-        // Restar del siguiente día de entrega con cantidad disponible
-        let restante = delta;
-        for (let i = indexActual + 1; i < entregaCols.length && restante > 0; i++) {
+        // Calcular cuánto hay REALMENTE disponible en días posteriores
+        let disponible = 0;
+        for (let i = indexActual + 1; i < entregaCols.length; i++) {
+          disponible += prodData[getEntregaKey(entregaCols[i])] ?? 0;
+        }
+        // Limitar incremento a lo disponible (no se puede crear cantidad de la nada)
+        const deltaEfectivo = Math.min(delta, disponible);
+        if (deltaEfectivo < 0.001) return prev;
+
+        prodData[entregaKey] = valorActual + deltaEfectivo;
+        let restante = deltaEfectivo;
+        for (let i = indexActual + 1; i < entregaCols.length && restante > 0.001; i++) {
           const key = getEntregaKey(entregaCols[i]);
           const cantActual = prodData[key] ?? 0;
           if (cantActual > 0) {
@@ -1523,6 +1529,10 @@ const GestionProveedoresPage: React.FC = () => {
           }
         }
       } else if (delta < 0) {
+        const nuevoValor = valorActual + delta;
+        if (nuevoValor < 0) return prev;
+
+        prodData[entregaKey] = nuevoValor;
         const originalesProd = ocCantidadesOriginales[idProveedor]?.[idProducto] ?? {};
         let pendiente = Math.abs(delta);
         // Fase 1: recuperar lo que fue restado de días posteriores
@@ -1545,6 +1555,8 @@ const GestionProveedoresPage: React.FC = () => {
             break;
           }
         }
+      } else {
+        return prev;
       }
 
       return { ...prev, [idProveedor]: { ...provData, [idProducto]: prodData } };
@@ -5060,7 +5072,7 @@ const EntregaInput: React.FC<EntregaInputProps> = ({ value, esFraccionario, onCh
   const handleBtnUp = () => { clearTimers(); };
 
   const handleBtnClick = (sign: 1 | -1) => {
-    if (!longActive.current && onIncrement) onIncrement(sign);
+    if (!longActive.current && onIncrement) onIncrement(sign * (esFraccionario ? 0.5 : 1));
     longActive.current = false;
   };
 
