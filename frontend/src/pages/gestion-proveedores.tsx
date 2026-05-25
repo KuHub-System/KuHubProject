@@ -1490,8 +1490,8 @@ const GestionProveedoresPage: React.FC = () => {
   };
 
   /** Redistribuye automáticamente al pulsar botón + o − en una celda de entrega.
-   *  - delta > 0: resta del siguiente día con cantidad disponible (en cascada).
-   *  - delta < 0: recupera primero lo restado en días posteriores, luego transfiere excedente. */
+   *  - delta > 0: suma a X, resta primero de días ANTERIORES luego POSTERIORES. Permite superar el total.
+   *  - delta < 0: baja X (piso 0), distribuye a días POSTERIORES sin superar su base original. */
   const handleEntregaIncrement = (
     idProveedor: number,
     idProducto: number,
@@ -1499,6 +1499,9 @@ const GestionProveedoresPage: React.FC = () => {
     delta: number,
     colSpecs: ColSpecOC[],
   ) => {
+    // Evita drift de punto flotante redondeando a 5 decimales
+    const r = (v: number) => Math.round(v * 100000) / 100000;
+
     setOcCantidades(prev => {
       const provData = prev[idProveedor] ?? {};
       const prodData = { ...(provData[idProducto] ?? {}) };
@@ -1507,31 +1510,68 @@ const GestionProveedoresPage: React.FC = () => {
       const entregaCols = colSpecs.filter(c => c.tipo === 'entrega');
       const indexActual = entregaCols.findIndex(c => getEntregaKey(c) === entregaKey);
 
+      const originalX = ocCantidadesOriginales[idProveedor]?.[idProducto]?.[entregaKey] ?? 0;
+
       if (delta > 0) {
-        // Incremento libre: siempre suma, nunca bloqueado
-        prodData[entregaKey] = valorActual + delta;
-      } else if (delta < 0) {
-        const actualStep = Math.min(Math.abs(delta), valorActual); // piso en 0
-        if (actualStep < 0.001) return prev;
+        // Si el paso cruza la base sin pisar exactamente en ella → aterrizar en la base primero
+        let effectiveDelta = delta;
+        if (valorActual < originalX - 0.00001 && r(valorActual + delta) > originalX + 0.00001) {
+          effectiveDelta = r(originalX - valorActual);
+        }
 
-        const originalX = ocCantidadesOriginales[idProveedor]?.[idProducto]?.[entregaKey] ?? 0;
-        // Cuánto del valor actual está por encima de la base (excedente de incrementos libres)
-        const excess = Math.max(0, valorActual - originalX);
-        // La parte del paso que solo "deshace" el excedente no requiere distribución
-        const porEncimaBase = Math.min(actualStep, excess);
-        // La parte que baja por debajo de la base se transfiere al siguiente día posterior
-        const porDebajoBase = actualStep - porEncimaBase;
+        prodData[entregaKey] = r(valorActual + effectiveDelta);
+        let restante = effectiveDelta;
 
-        prodData[entregaKey] = valorActual - actualStep;
-
-        if (porDebajoBase > 0.001) {
-          // Distribuir al primer día posterior disponible
-          for (let i = indexActual + 1; i < entregaCols.length; i++) {
-            const key = getEntregaKey(entregaCols[i]);
-            prodData[key] = (prodData[key] ?? 0) + porDebajoBase;
-            break;
+        // 1. Restar de días ANTERIORES (del más cercano al más lejano)
+        for (let i = indexActual - 1; i >= 0 && restante > 0.00001; i--) {
+          const key = getEntregaKey(entregaCols[i]);
+          const cant = prodData[key] ?? 0;
+          if (cant > 0.00001) {
+            const aRestar = Math.min(restante, cant);
+            prodData[key] = r(cant - aRestar);
+            restante = r(restante - aRestar);
           }
         }
+        // 2. Si aún queda, restar de días POSTERIORES
+        for (let i = indexActual + 1; i < entregaCols.length && restante > 0.00001; i++) {
+          const key = getEntregaKey(entregaCols[i]);
+          const cant = prodData[key] ?? 0;
+          if (cant > 0.00001) {
+            const aRestar = Math.min(restante, cant);
+            prodData[key] = r(cant - aRestar);
+            restante = r(restante - aRestar);
+          }
+        }
+        // Si restante > 0: prev+post en 0, X supera el total → permitido
+
+      } else if (delta < 0) {
+        // Si el paso cruza la base bajando → aterrizar en la base primero
+        let effectiveStep = Math.abs(delta);
+        if (valorActual > originalX + 0.00001 && r(valorActual - effectiveStep) < originalX - 0.00001) {
+          effectiveStep = r(valorActual - originalX);
+        }
+        effectiveStep = Math.min(effectiveStep, valorActual); // piso en 0
+        if (effectiveStep < 0.00001) return prev;
+
+        prodData[entregaKey] = r(valorActual - effectiveStep);
+
+        const originalesProd = ocCantidadesOriginales[idProveedor]?.[idProducto] ?? {};
+        let pendiente = effectiveStep;
+
+        // Distribuir a días POSTERIORES sin superar su base original
+        for (let i = indexActual + 1; i < entregaCols.length && pendiente > 0.00001; i++) {
+          const key = getEntregaKey(entregaCols[i]);
+          const baseDay    = originalesProd[key] ?? 0;
+          const currentDay = prodData[key] ?? 0;
+          const espacio    = r(baseDay - currentDay);
+          if (espacio > 0.00001) {
+            const aAgregar = Math.min(pendiente, espacio);
+            prodData[key] = r(currentDay + aAgregar);
+            pendiente = r(pendiente - aAgregar);
+          }
+        }
+        // Si pendiente > 0: días posteriores llenos → total baja, no bloquear
+
       } else {
         return prev;
       }
@@ -5012,9 +5052,13 @@ interface EntregaInputProps {
 const EntregaInput: React.FC<EntregaInputProps> = ({ value, esFraccionario, onChange, onIncrement, className }) => {
   const inputClass = className ?? 'w-16 px-1 py-1 text-center rounded border border-warning-300 dark:border-warning-600/50 bg-white dark:bg-default-100/50 focus:outline-none focus:border-warning-500 font-semibold text-xs';
 
+  // Formatea decimales con mínimo 2 cifras para evitar que 0,65 aparezca como 0,6
+  const fmtDec = (v: number) =>
+    v.toLocaleString('es-CL', { minimumFractionDigits: 2, maximumFractionDigits: 3 });
+
   // Estado local de texto para fraccionarios (no interrumpe el tipeo con puntos/comas)
   const [text, setText] = React.useState<string>(() =>
-    esFraccionario ? (value === 0 ? '' : fmtN(value)) : String(value),
+    esFraccionario ? (value === 0 ? '' : fmtDec(value)) : String(value),
   );
 
   // Sincroniza texto cuando el valor externo cambia (p.ej. restaurar, redistribución)
@@ -5023,7 +5067,7 @@ const EntregaInput: React.FC<EntregaInputProps> = ({ value, esFraccionario, onCh
     if (value !== prevValue.current) {
       prevValue.current = value;
       setText(esFraccionario
-        ? (value === 0 ? '' : fmtN(value))
+        ? (value === 0 ? '' : fmtDec(value))
         : String(value),
       );
     }
@@ -5085,7 +5129,7 @@ const EntregaInput: React.FC<EntregaInputProps> = ({ value, esFraccionario, onCh
           setText('');
           onChange(0);
         } else {
-          setText(parsed === 0 ? '' : fmtN(parsed));
+          setText(parsed === 0 ? '' : fmtDec(parsed));
         }
       }}
       placeholder="0"
