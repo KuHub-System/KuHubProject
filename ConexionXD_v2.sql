@@ -22,6 +22,7 @@ DROP TYPE IF EXISTS tipo_rol_type CASCADE;
 DROP TYPE IF EXISTS estado_seccion_type CASCADE;
 DROP TYPE IF EXISTS estado_provedor_type CASCADE;
 DROP TYPE IF EXISTS estado_bodega_transito_type CASCADE;
+DROP TYPE IF EXISTS estado_orden_pedido_type CASCADE;
 
 -- =====================================================
 -- ELIMINAR CASTS (Limpieza)
