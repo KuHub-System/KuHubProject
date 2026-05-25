@@ -90,3 +90,6 @@ frontend/src/__tests__/TESTING_GUIDE.md
 ### Documentos de Evaluación ###
 EVALUACION_PARCIAL_2_TPY1101.md
 CONTEXTO_ORDER_PEDIDO.MD
+
+### Backup Setup (local only) ###
+BACKUP_POSTGRESQL_SETUP.md
