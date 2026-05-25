@@ -367,3 +367,22 @@ export interface IProveedorGrupoConsolidado {
 export interface ICotizacionConsolidadaResponse {
   cotizacion: IProveedorGrupoConsolidado[];
 }
+
+// ── Orden de Pedido — Tarea #27 ───────────────────────────────────────────────
+
+export type EstadoOrdenPedido =
+  | 'PENDIENTE'
+  | 'ENVIADA'
+  | 'CANCELADA'
+  | 'CONFIRMADA'
+  | 'RECIBIDA';
+
+/** Resumen devuelto por el backend al crear una Orden de Pedido. */
+export interface IOrdenPedidoResumen {
+  idOrdenPedido: number;
+  idPedido: number;
+  idProveedor: number;
+  fechaCreacion: string;
+  estadoOrdenPedido: EstadoOrdenPedido;
+  cantidadDetalles: number;
+}

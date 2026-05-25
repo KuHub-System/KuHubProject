@@ -1,6 +1,8 @@
 package KuHub.modules.gestion_orden_pedido.controller;
 
+import KuHub.modules.gestion_orden_pedido.dtos.request.OrdenPedidoCreateDTO;
 import KuHub.modules.gestion_orden_pedido.dtos.response.CotizacionConsolidadaDTO;
+import KuHub.modules.gestion_orden_pedido.dtos.response.OrdenPedidoDetalleDTO;
 import KuHub.modules.gestion_orden_pedido.dtos.response.PedidoSemanaResumenDTO;
 import KuHub.modules.gestion_orden_pedido.service.OrdenPedidoService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,7 +15,7 @@ import java.time.LocalDate;
 import java.util.List;
 
 /**
- * Controller REST para gestión de Órdenes de Pedido (Tarea #13).
+ * Controller REST para gestión de Órdenes de Pedido (Tarea #13 + #27).
  * Endpoints base: /api/v1/orden-pedido
  */
 @RestController
@@ -31,9 +33,7 @@ public class OrdenPedidoController {
     /**
      * Lista los pedidos APROBADO cuyas fechas caen dentro del rango indicado,
      * con la cantidad de OPs activas que ya tiene cada pedido.
-     * El frontend mapea {@code cantidadOrdenPedido} a un chip:
-     * 0 → "Sin OP" | 1 → "OP Generada" | ≥2 → "Ya existe un registro para este pedido".
-     * ⬜ Sin uso frontend aún. Pendiente integración en gestion-proveedores.tsx (Tarea #18).
+     * ✅ En uso: Consumido por gestion-proveedores.tsx (modal Paso 1).
      *
      * @param fechaInicio Fecha de inicio del rango (YYYY-MM-DD)
      * @param fechaFin    Fecha de fin del rango (YYYY-MM-DD)
@@ -54,10 +54,7 @@ public class OrdenPedidoController {
 
     /**
      * Cotización consolidada de los pedidos seleccionados, agrupada por proveedor → categoría → producto.
-     * Cada producto se asigna al proveedor con menor {@code precio_neto} vigente; las cantidades son la
-     * SUMA de {@code detalle_pedido.cant_producto_pedido} entre los pedidos indicados; los precios neto
-     * y con IVA salen del {@code proveedor_producto} del proveedor ganador.
-     * ⬜ Sin uso frontend aún. Pendiente integración en gestion-proveedores.tsx (Tarea #19).
+     * ✅ En uso: Consumido por gestion-proveedores.tsx (modal Paso 2).
      *
      * @param idsPedido Lista de IDs de pedidos (en query string como CSV: ?idsPedido=1,2,3)
      */
@@ -68,5 +65,24 @@ public class OrdenPedidoController {
         return ResponseEntity
                 .status(200)
                 .body(ordenPedidoService.obtenerCotizacionConsolidada(idsPedido));
+    }
+
+    // ══════════════════════════════════════════════════════════════
+    // CREAR ORDEN DE PEDIDO — Paso 2 botón "Generar Orden de Compra"
+    // ══════════════════════════════════════════════════════════════
+
+    /**
+     * Crea una Orden de Pedido para un proveedor con sus líneas de detalle por fecha de entrega.
+     * El frontend llama este endpoint una vez por proveedor seleccionado en el Paso 2.
+     * Solo se envían filas con cantidad > 0.
+     * ✅ En uso: Consumido por gestion-proveedores.tsx (botón "Generar Orden de Compra").
+     */
+    @PostMapping
+    public ResponseEntity<OrdenPedidoDetalleDTO> crearOrdenPedido(
+            @Validated @RequestBody OrdenPedidoCreateDTO request
+    ) {
+        return ResponseEntity
+                .status(201)
+                .body(ordenPedidoService.crearOrdenPedido(request));
     }
 }
