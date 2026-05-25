@@ -7,7 +7,13 @@ import lombok.*;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
-/** Mapea tabla detalle_orden_pedido (Tarea #13). Snapshot de precios al momento de crear la OP. */
+/**
+ * Entidad JPA que representa el detalle individual de una Orden de Pedido.
+ * Almacena el producto solicitado, la cantidad y la fecha de entrega acordada.
+ * Además, implementa el patrón "Snapshot" al capturar de forma histórica los precios unitarios
+ * neto y con IVA vigentes en el momento en que se genera la orden, garantizando la consistencia
+ * y la trazabilidad de los costos en el tiempo sin verse afectados por cambios posteriores.
+ */
 @Entity
 @Table(name = "detalle_orden_pedido")
 @Getter

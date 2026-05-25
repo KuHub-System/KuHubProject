@@ -2,7 +2,9 @@ package KuHub.modules.gestion_orden_pedido.service;
 
 import KuHub.modules.gestion_orden_pedido.dtos.request.OrdenPedidoCreateDTO;
 import KuHub.modules.gestion_orden_pedido.dtos.response.CotizacionConsolidadaDTO;
+import KuHub.modules.gestion_orden_pedido.dtos.response.OrdenPedidoConDetallesDTO;
 import KuHub.modules.gestion_orden_pedido.dtos.response.OrdenPedidoDetalleDTO;
+import KuHub.modules.gestion_orden_pedido.dtos.response.OrdenPedidoListDTO;
 import KuHub.modules.gestion_orden_pedido.dtos.response.PedidoSemanaResumenDTO;
 import KuHub.modules.gestion_orden_pedido.entity.DetalleOrdenPedido;
 import KuHub.modules.gestion_orden_pedido.entity.OrdenPedido;
@@ -29,7 +31,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class OrdenPedidoServiceImpl implements OrdenPedidoService {
 
-    /**Repositories*/
+    // Repositorios de acceso a datos para persistencia y consultas
     @Autowired
     private OrdenPedidoRepository ordenPedidoRepository;
 
@@ -39,64 +41,70 @@ public class OrdenPedidoServiceImpl implements OrdenPedidoService {
     @Autowired
     private ProveedorProductoRepository proveedorProductoRepository;
 
-    /**Others*/
+    // Componentes utilitarios auxiliares
     @Autowired
     private ObjectMapper objectMapper;
 
     // ─────────────────────────────────────────────────────────────
-    // PASO 1 — Listado de pedidos APROBADO con contador de OP
+    // Consultas de Pedidos Consolidados y Contadores de OP
     // ─────────────────────────────────────────────────────────────
 
     @Override
     @Transactional(readOnly = true)
     public List<PedidoSemanaResumenDTO> listarPedidosSemana(LocalDate fechaInicio, LocalDate fechaFin) {
+        // Consulta los pedidos con estado APROBADO y calcula cuántas OPs activas tiene cada uno.
         List<Object[]> rows = ordenPedidoRepository.findPedidosSemanaConIndicadorOP(fechaInicio, fechaFin);
-        log.info("listarPedidosSemana: {} → {} | {} pedidos APROBADO", fechaInicio, fechaFin, rows.size());
+        log.info("listarPedidosSemana: {} → {} | {} pedidos APROBADO encontrados", fechaInicio, fechaFin, rows.size());
+        
+        // Mapea el resultado tabular nativo de la base de datos a DTOs tipados.
         return rows.stream().map(PedidoSemanaResumenDTO::fromRow).toList();
     }
 
     // ─────────────────────────────────────────────────────────────
-    // PASO 2 — Cotización consolidada jerárquica (menor precio)
+    // Consolidación y Jerarquización de Cotizaciones (Menor Precio)
     // ─────────────────────────────────────────────────────────────
 
     @Override
     @Transactional(readOnly = true)
     public CotizacionConsolidadaDTO.CotizacionConsolidadaResponse obtenerCotizacionConsolidada(List<Integer> idsPedido) {
         if (idsPedido == null || idsPedido.isEmpty()) {
-            log.info("obtenerCotizacionConsolidada: lista vacía → retorna [].");
+            log.info("obtenerCotizacionConsolidada: la lista de IDs de pedidos está vacía. Retornando cotización vacía.");
             return new CotizacionConsolidadaDTO.CotizacionConsolidadaResponse(List.of());
         }
 
+        // Invoca la función PL/pgSQL nativa de la BD que consolida, compara precios y retorna un JSON.
         String jsonStr = ordenPedidoRepository.findCotizacionConsolidada(idsPedido);
 
         try {
+            // Maneja respuestas nulas o vacías de la función de base de datos.
             if (jsonStr == null || jsonStr.isBlank() || "null".equals(jsonStr)) {
                 return new CotizacionConsolidadaDTO.CotizacionConsolidadaResponse(List.of());
             }
 
+            // Deserializa el JSON obtenido a una lista tipada de grupos de proveedores (ProveedorGrupo).
             var typeRef = TypeFactory.defaultInstance()
                     .constructCollectionType(List.class, CotizacionConsolidadaDTO.ProveedorGrupo.class);
             List<CotizacionConsolidadaDTO.ProveedorGrupo> cotizacion = objectMapper.readValue(jsonStr, typeRef);
 
-            log.info("obtenerCotizacionConsolidada: pedidos={} | {} proveedores", idsPedido, cotizacion.size());
+            log.info("obtenerCotizacionConsolidada: pedidos consolidados={} | {} proveedores participantes", idsPedido, cotizacion.size());
             return new CotizacionConsolidadaDTO.CotizacionConsolidadaResponse(cotizacion);
         } catch (Exception e) {
-            log.error("Error al deserializar cotización consolidada. JSON={} | Error={}", jsonStr, e.getMessage());
+            log.error("Error al deserializar cotización consolidada. JSON={} | Excepción={}", jsonStr, e.getMessage());
             throw new GestionOrdenPedidoException(
-                    "Error al procesar la cotización consolidada.",
+                    "Error al procesar la estructura de la cotización consolidada.",
                     HttpStatus.INTERNAL_SERVER_ERROR
             );
         }
     }
 
     // ─────────────────────────────────────────────────────────────
-    // CREAR ORDEN DE PEDIDO (Tarea #27)
+    // Generación de Órdenes de Pedido y Snapshot de Precios
     // ─────────────────────────────────────────────────────────────
 
     @Override
     @Transactional
     public OrdenPedidoDetalleDTO crearOrdenPedido(OrdenPedidoCreateDTO request) {
-        // 1. Crear la orden principal en estado PENDIENTE
+        // Paso 1: Instanciar y guardar la cabecera de la Orden de Pedido en estado PENDIENTE.
         OrdenPedido orden = new OrdenPedido();
         orden.setIdPedido(request.getIdPedido());
         orden.setIdProveedor(request.getIdProveedor());
@@ -104,15 +112,18 @@ public class OrdenPedidoServiceImpl implements OrdenPedidoService {
         orden.setEstadoOrdenPedido(EstadoOrdenPedido.PENDIENTE);
         orden = ordenPedidoRepository.save(orden);
 
-        // 2. Una fila en detalle_orden_pedido por cada (idProducto, fechaEntrega) con cantidad > 0
+        // Paso 2: Iterar y registrar los detalles de entrega de productos correspondientes a la orden.
         int cantidadDetalles = 0;
 
         for (OrdenPedidoCreateDTO.EntregaDTO e : request.getEntregas()) {
+            // Obtener el catálogo de precios neto y con IVA activo del proveedor para congelar los valores (Snapshot).
+            // Se selecciona el registro de precio vigente más reciente.
             ProveedorProducto pp = proveedorProductoRepository
                     .findFirstByProveedor_IdProveedorAndProducto_IdProductoAndActivoTrueOrderByFechaActualizacionDesc(
                             request.getIdProveedor(), e.getIdProducto())
                     .orElse(null);
 
+            // Crear y persistir el detalle individual para congelar la cantidad y los precios negociados.
             DetalleOrdenPedido detalle = new DetalleOrdenPedido();
             detalle.setIdOrdenPedido(orden.getIdOrdenPedido());
             detalle.setIdProducto(e.getIdProducto());
@@ -124,9 +135,10 @@ public class OrdenPedidoServiceImpl implements OrdenPedidoService {
             cantidadDetalles++;
         }
 
-        log.info("crearOrdenPedido: OP #{} | pedido={} | proveedor={} | {} detalles",
+        log.info("crearOrdenPedido exitoso: OP #{} generada | Pedido consolidado={} | Proveedor={} | {} líneas de detalle persistidas",
                 orden.getIdOrdenPedido(), request.getIdPedido(), request.getIdProveedor(), cantidadDetalles);
 
+        // Retornar la confirmación resumida con el ID autogenerado y el recuento de líneas.
         return new OrdenPedidoDetalleDTO(
                 orden.getIdOrdenPedido(),
                 request.getIdPedido(),
@@ -134,6 +146,83 @@ public class OrdenPedidoServiceImpl implements OrdenPedidoService {
                 orden.getFechaCreacion(),
                 orden.getEstadoOrdenPedido(),
                 cantidadDetalles
+        );
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // Listado y Detalle de Órdenes de Pedido
+    // ─────────────────────────────────────────────────────────────
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<OrdenPedidoListDTO> listarOrdenes() {
+        List<Object[]> rows = ordenPedidoRepository.findListaOrdenesNative();
+        log.info("listarOrdenes: {} OPs activas encontradas", rows.size());
+        return rows.stream().map(OrdenPedidoListDTO::fromRow).toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public OrdenPedidoConDetallesDTO obtenerConDetalles(Integer idOrdenPedido) {
+        OrdenPedido op = ordenPedidoRepository.findById(idOrdenPedido)
+                .orElseThrow(() -> new GestionOrdenPedidoException(
+                        "Orden de Pedido #" + idOrdenPedido + " no encontrada",
+                        HttpStatus.NOT_FOUND));
+
+        if (!op.getActivo()) {
+            throw new GestionOrdenPedidoException(
+                    "Orden de Pedido #" + idOrdenPedido + " está inactiva",
+                    HttpStatus.NOT_FOUND);
+        }
+
+        var pv  = op.getProveedor();
+        var ped = op.getPedido();
+
+        // Mapear detalles (acceso lazy — único SELECT adicional dentro de la transacción)
+        java.math.BigDecimal totalNeto   = java.math.BigDecimal.ZERO;
+        java.math.BigDecimal totalConIva = java.math.BigDecimal.ZERO;
+
+        var detalles = new java.util.ArrayList<OrdenPedidoConDetallesDTO.DetalleItemDTO>();
+        for (DetalleOrdenPedido d : op.getDetalles()) {
+            if (!Boolean.TRUE.equals(d.getActivo())) continue;
+            var prod = d.getProducto();
+            var um   = prod.getUnidadMedida();
+            var pNeto   = d.getPrecioNetoUnitario();
+            var pConIva = d.getPrecioConIvaUnitario();
+            var cant    = d.getCantidadSolicitada();
+            if (pNeto   != null && cant != null) totalNeto   = totalNeto.add(cant.multiply(pNeto));
+            if (pConIva != null && cant != null) totalConIva = totalConIva.add(cant.multiply(pConIva));
+            detalles.add(new OrdenPedidoConDetallesDTO.DetalleItemDTO(
+                    d.getIdDetalleOrdenPedido(),
+                    prod.getIdProducto(),
+                    prod.getNombreProducto(),
+                    um.getAbreviatura(),
+                    um.getEsFraccionario(),
+                    d.getCantidadSolicitada(),
+                    pNeto,
+                    pConIva,
+                    d.getFechaEntrega()
+            ));
+        }
+
+        log.info("obtenerConDetalles: OP #{} | {} detalles activos", idOrdenPedido, detalles.size());
+
+        return new OrdenPedidoConDetallesDTO(
+                op.getIdOrdenPedido(),
+                ped.getIdPedido(),
+                ped.getFechaInicioPedido(),
+                ped.getFechaFinPedido(),
+                pv.getIdProveedor(),
+                pv.getNombreDistribuidora(),
+                pv.getNombreProveedor(),
+                pv.getTelefonoProveedor(),
+                pv.getEmailProveedor(),
+                op.getFechaCreacion(),
+                op.getEstadoOrdenPedido().name(),
+                op.getObservaciones(),
+                totalNeto,
+                totalConIva,
+                detalles
         );
     }
 }
