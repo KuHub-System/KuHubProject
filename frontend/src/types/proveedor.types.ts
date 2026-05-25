@@ -299,23 +299,23 @@ export interface ISyncExcelResult {
   noEncontrados: ISyncProductoNoEncontrado[];
 }
 
-// ── Orden de compra — Paso 1 (pedidos APROBADO con indicador de OC) ──────────
+// ── Orden de pedido — Paso 1 (pedidos APROBADO con indicador de OP) ──────────
 
 export type TDiaSemana =
   | 'LUNES' | 'MARTES' | 'MIERCOLES' | 'JUEVES'
   | 'VIERNES' | 'SABADO' | 'DOMINGO';
 
-/** Mapea PedidoSemanaResumenDTO del backend (GET /orden-compra/pedidos-semana). */
+/** Mapea PedidoSemanaResumenDTO del backend (GET /orden-pedido/pedidos-semana). */
 export interface IPedidoSemanaResumen {
   idPedido: number;
   fechaInicioPedido: string;   // YYYY-MM-DD
   fechaFinPedido: string;      // YYYY-MM-DD
   estadoPedido: string;
-  cantidadOrdenCompra: number; // 0 / 1 / ≥2
-  tieneOrdenCompra: boolean;   // = cantidadOrdenCompra > 0
+  cantidadOrdenPedido: number; // 0 / 1 / ≥2
+  tieneOrdenPedido: boolean;   // = cantidadOrdenPedido > 0
 }
 
-// ── Orden de compra — Paso 2 (cotización consolidada) ────────────────────────
+// ── Orden Pedido — Paso 2 (cotización consolidada) ────────────────────────
 
 /** Distribución de la cantidad solicitada de un producto por día de la semana. */
 export interface ICantidadDia {

@@ -361,7 +361,7 @@ const styleTotalPositivo = {
   },
 };
 
-// ── Helpers Orden de Compra — bloques consecutivos por día ───────────────────
+// ── Helpers Orden Pedido — bloques consecutivos por día ───────────────────
 
 const DIA_ORDEN: Record<TDiaSemana, number> = {
   LUNES: 1, MARTES: 2, MIERCOLES: 3, JUEVES: 4,
@@ -589,11 +589,11 @@ const GestionProveedoresPage: React.FC = () => {
   const [syncVista, setSyncVista] = React.useState<'sincronizados' | 'sin_cambios' | 'no_encontrados'>('sincronizados');
   const excelInputRef = React.useRef<HTMLInputElement>(null);
 
-  // ── Modal Orden de Compra (Tarea #13) ────────────────────────────────────
+  // ── Modal Orden Pedido (Tarea #13) ────────────────────────────────────
   const {
-    isOpen: isOrdenCompraModal,
-    onOpen: openOrdenCompraModal,
-    onOpenChange: onOrdenCompraModalChange,
+    isOpen: isOrdenPedidoModal,
+    onOpen: openOrdenPedidoModal,
+    onOpenChange: onOrdenPedidoModalChange,
   } = useDisclosure();
   const [ocPaso, setOcPaso] = React.useState<1 | 2>(1);
   const [ocPeriodo, setOcPeriodo] = React.useState<{ anio: number; semestre: number } | null>(null);
@@ -611,6 +611,11 @@ const GestionProveedoresPage: React.FC = () => {
    * idProveedor → idProducto → diaEntrega (TDiaSemana) → cantidad editable
    */
   const [ocCantidades, setOcCantidades] = React.useState<
+    Record<number, Record<number, Record<string, number>>>
+  >({});
+  /** Snapshot inmutable de las cantidades iniciales calculadas por construirCantidades().
+   *  Usada para redistribución con botones ± (fase 1: recuperar lo restado) y para restaurar filas. */
+  const [ocCantidadesOriginales, setOcCantidadesOriginales] = React.useState<
     Record<number, Record<number, Record<string, number>>>
   >({});
   /** Fecha elegida por el usuario en Paso 1 como base para calcular semana de entrega (YYYY-MM-DD). */
@@ -1269,10 +1274,10 @@ const GestionProveedoresPage: React.FC = () => {
     }
   };
 
-  // ── Handlers Orden de Compra ─────────────────────────────────────────────
+  // ── Handlers Orden Pedido ─────────────────────────────────────────────
 
-  /** Resetea estado del modal de OC y lo abre en Paso 1. */
-  const handleAbrirOrdenCompra = () => {
+  /** Resetea estado del modal de OP y lo abre en Paso 1. */
+  const handleAbrirOrdenPedido = () => {
     setOcPaso(1);
     setOcPedidos([]);
     setOcSeleccionados(new Set());
@@ -1294,12 +1299,12 @@ const GestionProveedoresPage: React.FC = () => {
     } else {
       setOcPeriodo(null);
     }
-    openOrdenCompraModal();
+    openOrdenPedidoModal();
   };
 
   /** Cuando cambia el período: carga las semanas (local, sin tocar el context). */
   React.useEffect(() => {
-    if (!isOrdenCompraModal || !ocPeriodo) {
+    if (!isOrdenPedidoModal || !ocPeriodo) {
       setOcSemanasPeriodo([]);
       return;
     }
@@ -1318,11 +1323,11 @@ const GestionProveedoresPage: React.FC = () => {
       }
     })();
     return () => { cancelado = true; };
-  }, [isOrdenCompraModal, ocPeriodo]);
+  }, [isOrdenPedidoModal, ocPeriodo]);
 
   /** Cuando se elige una semana: carga pedidos APROBADO + 2000ms de BookPageLoader. */
   React.useEffect(() => {
-    if (!isOrdenCompraModal || !ocSemana) {
+    if (!isOrdenPedidoModal || !ocSemana) {
       setOcPedidos([]);
       setOcSeleccionados(new Set());
       return;
@@ -1346,7 +1351,7 @@ const GestionProveedoresPage: React.FC = () => {
       }
     })();
     return () => { cancelado = true; };
-  }, [isOrdenCompraModal, ocSemana]);
+  }, [isOrdenPedidoModal, ocSemana]);
 
   /** Resetea la fecha de entrega al cambiar la semana académica.
    *  Usa hoy si cae dentro del rango de la semana, si no usa fechaInicio. */
@@ -1435,7 +1440,7 @@ const GestionProveedoresPage: React.FC = () => {
   };
 
   /** Avanza al Paso 2: carga cotización consolidada + 2000ms de BookPageLoader. */
-  const handleGenerarOrdenCompra = async () => {
+  const handleGenerarOrdenPedido = async () => {
     if (ocSeleccionados.size === 0 || !ocSemana || !ocFechaEntrega) return;
     setOcPaso(2);
     setOcLoadingCotizacion(true);
@@ -1449,7 +1454,9 @@ const GestionProveedoresPage: React.FC = () => {
         new Promise<void>(r => setTimeout(r, 2000)),
       ]);
       setOcCotizacion(data);
-      setOcCantidades(construirCantidades(data));
+      const cantInicial = construirCantidades(data);
+      setOcCantidades(cantInicial);
+      setOcCantidadesOriginales(cantInicial);
     } catch (err: any) {
       setOcErrorCotizacion(err.message || 'Error al obtener la cotización consolidada');
     } finally {
@@ -1478,6 +1485,81 @@ const GestionProveedoresPage: React.FC = () => {
           ...(prev[idProveedor]?.[idProducto] ?? {}),
           [dia]: isNaN(valor) ? 0 : valor,
         },
+      },
+    }));
+  };
+
+  /** Redistribuye automáticamente al pulsar botón + o − en una celda de entrega.
+   *  - delta > 0: resta del siguiente día con cantidad disponible (en cascada).
+   *  - delta < 0: recupera primero lo restado en días posteriores, luego transfiere excedente. */
+  const handleEntregaIncrement = (
+    idProveedor: number,
+    idProducto: number,
+    entregaKey: string,
+    delta: number,
+    colSpecs: ColSpecOC[],
+  ) => {
+    setOcCantidades(prev => {
+      const provData = prev[idProveedor] ?? {};
+      const prodData = { ...(provData[idProducto] ?? {}) };
+      const valorActual = prodData[entregaKey] ?? 0;
+      const nuevoValor = valorActual + delta;
+      if (nuevoValor < 0) return prev;
+
+      prodData[entregaKey] = nuevoValor;
+      const entregaCols = colSpecs.filter(c => c.tipo === 'entrega');
+      const indexActual = entregaCols.findIndex(c => getEntregaKey(c) === entregaKey);
+
+      if (delta > 0) {
+        // Restar del siguiente día de entrega con cantidad disponible
+        let restante = delta;
+        for (let i = indexActual + 1; i < entregaCols.length && restante > 0; i++) {
+          const key = getEntregaKey(entregaCols[i]);
+          const cantActual = prodData[key] ?? 0;
+          if (cantActual > 0) {
+            const aRestar = Math.min(restante, cantActual);
+            prodData[key] = cantActual - aRestar;
+            restante -= aRestar;
+          }
+        }
+      } else if (delta < 0) {
+        const originalesProd = ocCantidadesOriginales[idProveedor]?.[idProducto] ?? {};
+        let pendiente = Math.abs(delta);
+        // Fase 1: recuperar lo que fue restado de días posteriores
+        for (let i = indexActual + 1; i < entregaCols.length && pendiente > 0; i++) {
+          const key = getEntregaKey(entregaCols[i]);
+          const valorOriginal = originalesProd[key] ?? 0;
+          const valorActualKey = prodData[key] ?? 0;
+          const restado = valorOriginal - valorActualKey;
+          if (restado > 0) {
+            const aRecuperar = Math.min(pendiente, restado);
+            prodData[key] = valorActualKey + aRecuperar;
+            pendiente -= aRecuperar;
+          }
+        }
+        // Fase 2: transferir excedente al siguiente día disponible
+        if (pendiente > 0) {
+          for (let i = indexActual + 1; i < entregaCols.length; i++) {
+            const key = getEntregaKey(entregaCols[i]);
+            prodData[key] = (prodData[key] ?? 0) + pendiente;
+            break;
+          }
+        }
+      }
+
+      return { ...prev, [idProveedor]: { ...provData, [idProducto]: prodData } };
+    });
+  };
+
+  /** Restaura la distribución de un producto a los valores iniciales calculados por construirCantidades(). */
+  const handleRestaurarProducto = (idProveedor: number, idProducto: number) => {
+    const originales = ocCantidadesOriginales[idProveedor]?.[idProducto];
+    if (!originales) return;
+    setOcCantidades(prev => ({
+      ...prev,
+      [idProveedor]: {
+        ...(prev[idProveedor] ?? {}),
+        [idProducto]: { ...originales },
       },
     }));
   };
@@ -1572,9 +1654,9 @@ const GestionProveedoresPage: React.FC = () => {
                   variant="flat"
                   className="font-bold cursor-pointer"
                   startContent={<Icon icon="lucide:clipboard-list" width={20} />}
-                  onPress={handleAbrirOrdenCompra}
+                  onPress={handleAbrirOrdenPedido}
                 >
-                  Generar Orden de Compra
+                  Generar Orden Pedido
                 </Button>
               )}
               <Button
@@ -1975,10 +2057,10 @@ const GestionProveedoresPage: React.FC = () => {
         }}
       />
 
-      {/* ── Modal Orden de Compra (Tarea #13) ── */}
-      <OrdenCompraModal
-        isOpen={isOrdenCompraModal}
-        onOpenChange={onOrdenCompraModalChange}
+      {/* ── Modal Orden Pedido (Tarea #13) ── */}
+      <OrdenPedidoModal
+        isOpen={isOrdenPedidoModal}
+        onOpenChange={onOrdenPedidoModalChange}
         paso={ocPaso}
         periodos={ctxPeriodos}
         periodo={ocPeriodo}
@@ -1991,12 +2073,14 @@ const GestionProveedoresPage: React.FC = () => {
         errorPedidos={ocErrorPedidos}
         seleccionados={ocSeleccionados}
         onToggleSeleccion={toggleSeleccionPedido}
-        onGenerar={handleGenerarOrdenCompra}
+        onGenerar={handleGenerarOrdenPedido}
         cotizacion={ocCotizacion}
         loadingCotizacion={ocLoadingCotizacion}
         errorCotizacion={ocErrorCotizacion}
         cantidades={ocCantidades}
         onCantidadChange={actualizarCantidadOc}
+        onIncrement={handleEntregaIncrement}
+        onRestaurar={handleRestaurarProducto}
         onVolver={handleVolverPaso1}
         fechaEntrega={ocFechaEntrega}
         onFechaEntregaChange={setOcFechaEntrega}
@@ -4506,10 +4590,10 @@ const CotizacionModal: React.FC<CotizacionModalProps> = ({
 };
 
 // ══════════════════════════════════════════════════════════════════════════
-//  Modal "Generar Orden de Compra" — Paso 1 (selección) + Paso 2 (cotización)
+//  Modal "Generar Orden Pedido" — Paso 1 (selección) + Paso 2 (cotización)
 // ══════════════════════════════════════════════════════════════════════════
 
-interface OrdenCompraModalProps {
+interface OrdenPedidoModalProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   paso: 1 | 2;
@@ -4530,20 +4614,22 @@ interface OrdenCompraModalProps {
   errorCotizacion: string | null;
   cantidades: Record<number, Record<number, Record<string, number>>>;
   onCantidadChange: (idProveedor: number, idProducto: number, dia: string, valor: number) => void;
+  onIncrement: (idProveedor: number, idProducto: number, entregaKey: string, delta: number, colSpecs: ColSpecOC[]) => void;
+  onRestaurar: (idProveedor: number, idProducto: number) => void;
   onVolver: () => void;
   fechaEntrega: string | null;
   onFechaEntregaChange: (f: string) => void;
 }
 
-const chipOrdenCompra = (cantidad: number) => {
-  if (cantidad === 0) return <Chip color="default" size="sm" variant="flat">Sin OC</Chip>;
-  if (cantidad === 1) return <Chip color="success" size="sm" variant="flat">OC Generada</Chip>;
+const chipOrdenPedido = (cantidad: number) => {
+  if (cantidad === 0) return <Chip color="default" size="sm" variant="flat">Sin OP</Chip>;
+  if (cantidad === 1) return <Chip color="success" size="sm" variant="flat">OP Generada</Chip>;
   return <Chip color="warning" size="sm" variant="flat">Ya existe un registro para este pedido</Chip>;
 };
 
 const formatRangoPedido = (inicio: string, fin: string) => `${inicio} → ${fin}`;
 
-const OrdenCompraModal: React.FC<OrdenCompraModalProps> = ({
+const OrdenPedidoModal: React.FC<OrdenPedidoModalProps> = ({
   isOpen,
   onOpenChange,
   paso,
@@ -4564,6 +4650,8 @@ const OrdenCompraModal: React.FC<OrdenCompraModalProps> = ({
   errorCotizacion,
   cantidades,
   onCantidadChange,
+  onIncrement,
+  onRestaurar,
   onVolver,
   fechaEntrega,
   onFechaEntregaChange,
@@ -4592,7 +4680,7 @@ const OrdenCompraModal: React.FC<OrdenCompraModalProps> = ({
                 </div>
                 <div className="flex flex-col gap-0.5">
                   <span className="font-bold text-lg text-secondary dark:text-foreground">
-                    Generar Orden de Compra
+                    Generar Orden Pedido
                   </span>
                   <span className="text-xs text-default-500">
                     {paso === 1
@@ -4770,7 +4858,7 @@ const OrdenCompraModal: React.FC<OrdenCompraModalProps> = ({
                                     <Chip color="primary" size="sm" variant="flat">{p.estadoPedido}</Chip>
                                   </td>
                                   <td className="py-2 px-3 text-center">
-                                    {chipOrdenCompra(p.cantidadOrdenCompra)}
+                                    {chipOrdenPedido(p.cantidadOrdenPedido)}
                                   </td>
                                 </tr>
                               ))}
@@ -4858,6 +4946,12 @@ const OrdenCompraModal: React.FC<OrdenCompraModalProps> = ({
                           proveedor={prov}
                           cantidadesProv={prov.idProveedor != null ? (cantidades[prov.idProveedor] ?? {}) : {}}
                           onCantidadChange={onCantidadChange}
+                          onIncrement={(idProducto, entregaKey, delta, colSpecs) => {
+                            if (prov.idProveedor != null) onIncrement(prov.idProveedor, idProducto, entregaKey, delta, colSpecs);
+                          }}
+                          onRestaurar={(idProducto) => {
+                            if (prov.idProveedor != null) onRestaurar(prov.idProveedor, idProducto);
+                          }}
                           fechaEntrega={fechaEntrega}
                         />
                       ))}
@@ -4917,18 +5011,20 @@ interface EntregaInputProps {
   value: number;
   esFraccionario: boolean;
   onChange: (v: number) => void;
+  /** Si se provee, los botones ± disparan redistribución automática con este handler. */
+  onIncrement?: (delta: number) => void;
   className?: string;
 }
 
-const EntregaInput: React.FC<EntregaInputProps> = ({ value, esFraccionario, onChange, className }) => {
-  const inputClass = className ?? 'w-20 px-2 py-1 text-center rounded border border-warning-300 dark:border-warning-600/50 bg-white dark:bg-default-100/50 focus:outline-none focus:border-warning-500 font-semibold text-xs';
+const EntregaInput: React.FC<EntregaInputProps> = ({ value, esFraccionario, onChange, onIncrement, className }) => {
+  const inputClass = className ?? 'w-16 px-1 py-1 text-center rounded border border-warning-300 dark:border-warning-600/50 bg-white dark:bg-default-100/50 focus:outline-none focus:border-warning-500 font-semibold text-xs';
 
-  // Para fraccionario: input tipo texto con estado local para no interrumpir el tipeo
+  // Estado local de texto para fraccionarios (no interrumpe el tipeo con puntos/comas)
   const [text, setText] = React.useState<string>(() =>
     esFraccionario ? (value === 0 ? '' : fmtN(value)) : String(value),
   );
 
-  // Sincroniza cuando el valor externo cambia (p.ej. reset)
+  // Sincroniza texto cuando el valor externo cambia (p.ej. restaurar, redistribución)
   const prevValue = React.useRef(value);
   React.useEffect(() => {
     if (value !== prevValue.current) {
@@ -4940,20 +5036,46 @@ const EntregaInput: React.FC<EntregaInputProps> = ({ value, esFraccionario, onCh
     }
   }, [value, esFraccionario]);
 
-  if (!esFraccionario) {
-    return (
-      <input
-        type="number"
-        min={0}
-        step={1}
-        value={value}
-        onChange={(e) => onChange(Math.max(0, parseInt(e.target.value) || 0))}
-        className={inputClass}
-      />
-    );
-  }
+  // Long press: click simple → ±1; mantener >300ms → ±5 cada 120ms
+  const timeoutRef  = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const intervalRef = React.useRef<ReturnType<typeof setInterval> | null>(null);
+  const longActive  = React.useRef(false);
 
-  return (
+  const clearTimers = () => {
+    if (timeoutRef.current)  { clearTimeout(timeoutRef.current);   timeoutRef.current  = null; }
+    if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null; }
+  };
+
+  const handleBtnDown = (sign: 1 | -1) => {
+    longActive.current = false;
+    clearTimers();
+    timeoutRef.current = setTimeout(() => {
+      longActive.current = true;
+      intervalRef.current = setInterval(() => {
+        if (onIncrement) onIncrement(sign * 5);
+      }, 120);
+    }, 300);
+  };
+
+  const handleBtnUp = () => { clearTimers(); };
+
+  const handleBtnClick = (sign: 1 | -1) => {
+    if (!longActive.current && onIncrement) onIncrement(sign);
+    longActive.current = false;
+  };
+
+  const btnClass = 'w-5 h-6 flex items-center justify-center rounded text-xs font-bold bg-warning-100 dark:bg-warning-900/30 hover:bg-warning-200 dark:hover:bg-warning-800/40 text-warning-700 dark:text-warning-400 transition-colors select-none cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed';
+
+  const inputEl = !esFraccionario ? (
+    <input
+      type="number"
+      min={0}
+      step={1}
+      value={value}
+      onChange={(e) => onChange(Math.max(0, parseInt(e.target.value) || 0))}
+      className={inputClass}
+    />
+  ) : (
     <input
       type="text"
       inputMode="decimal"
@@ -4977,6 +5099,43 @@ const EntregaInput: React.FC<EntregaInputProps> = ({ value, esFraccionario, onCh
       className={inputClass}
     />
   );
+
+  if (!onIncrement) return inputEl;
+
+  return (
+    <div className="flex items-center gap-0.5 justify-center">
+      <button
+        type="button"
+        aria-label="Decrementar"
+        className={btnClass}
+        disabled={value === 0}
+        onMouseDown={() => handleBtnDown(-1)}
+        onMouseUp={handleBtnUp}
+        onMouseLeave={handleBtnUp}
+        onTouchStart={() => handleBtnDown(-1)}
+        onTouchEnd={handleBtnUp}
+        onTouchCancel={handleBtnUp}
+        onClick={() => handleBtnClick(-1)}
+      >
+        −
+      </button>
+      {inputEl}
+      <button
+        type="button"
+        aria-label="Incrementar"
+        className={btnClass}
+        onMouseDown={() => handleBtnDown(1)}
+        onMouseUp={handleBtnUp}
+        onMouseLeave={handleBtnUp}
+        onTouchStart={() => handleBtnDown(1)}
+        onTouchEnd={handleBtnUp}
+        onTouchCancel={handleBtnUp}
+        onClick={() => handleBtnClick(1)}
+      >
+        +
+      </button>
+    </div>
+  );
 };
 
 // ── Sub-componente: tabla de un proveedor con columnas por día de la semana ───
@@ -4986,6 +5145,10 @@ interface ProveedorCotizacionTablaProps {
   /** idProducto → diaSemana → cantidad editable (sólo para días de entrega) */
   cantidadesProv: Record<number, Record<string, number>>;
   onCantidadChange: (idProveedor: number, idProducto: number, dia: string, valor: number) => void;
+  /** Incremento/decremento con redistribución automática (botones ±). */
+  onIncrement: (idProducto: number, entregaKey: string, delta: number, colSpecs: ColSpecOC[]) => void;
+  /** Restaura la distribución de un producto a los valores iniciales. */
+  onRestaurar: (idProducto: number) => void;
   /** Fecha elegida por el usuario para calcular la semana de entrega real (YYYY-MM-DD). */
   fechaEntrega: string | null;
 }
@@ -4994,6 +5157,8 @@ const ProveedorCotizacionTabla: React.FC<ProveedorCotizacionTablaProps> = ({
   proveedor,
   cantidadesProv,
   onCantidadChange,
+  onIncrement,
+  onRestaurar,
   fechaEntrega,
 }) => {
   /** Dado un día de la semana del proveedor, devuelve la fecha exacta de entrega (DD/MM)
@@ -5188,6 +5353,7 @@ const ProveedorCotizacionTabla: React.FC<ProveedorCotizacionTablaProps> = ({
                       })}
                       <th className="text-center py-2 px-2 font-medium w-24">P. Neto</th>
                       <th className="text-center py-2 px-2 font-medium w-24">P. c/IVA</th>
+                      {!esSinProveedor && <th className="text-center py-2 px-1 font-medium w-8" title="Restaurar distribución"></th>}
                     </tr>
                   </thead>
                   <tbody>
@@ -5226,12 +5392,27 @@ const ProveedorCotizacionTabla: React.FC<ProveedorCotizacionTablaProps> = ({
                                     if (proveedor.idProveedor == null) return;
                                     onCantidadChange(proveedor.idProveedor, prod.idProducto, entregaKey, valor);
                                   }}
+                                  onIncrement={(delta) => onIncrement(prod.idProducto, entregaKey, delta, colSpecs)}
                                 />
                               </td>
                             );
                           })}
                           <td className="py-2 px-2 text-center whitespace-nowrap">{pNetoFila   !== null ? `$${fmtN(pNetoFila)}`   : '—'}</td>
                           <td className="py-2 px-2 text-center whitespace-nowrap">{pConIvaFila !== null ? `$${fmtN(pConIvaFila)}` : '—'}</td>
+                          {!esSinProveedor && (
+                            <td className="py-1 px-1 text-center">
+                              {Math.abs(sumEntregas - prod.cantidadTotal) > 0.001 && (
+                                <button
+                                  title={`Restaurar distribución (actual: ${fmtN(sumEntregas)} ≠ solicitado: ${fmtN(prod.cantidadTotal)})`}
+                                  onClick={() => onRestaurar(prod.idProducto)}
+                                  className="p-1 rounded hover:bg-warning-100 dark:hover:bg-warning-900/20 text-warning-500 dark:text-warning-400 transition-colors cursor-pointer"
+                                  type="button"
+                                >
+                                  <Icon icon="lucide:refresh-cw" width={13} />
+                                </button>
+                              )}
+                            </td>
+                          )}
                         </tr>
                       );
                     })}
