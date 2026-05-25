@@ -1,9 +1,9 @@
-package KuHub.modules.gestion_orden_compra.service;
+package KuHub.modules.gestion_orden_pedido.service;
 
-import KuHub.modules.gestion_orden_compra.dtos.response.CotizacionConsolidadaDTO;
-import KuHub.modules.gestion_orden_compra.dtos.response.PedidoSemanaResumenDTO;
-import KuHub.modules.gestion_orden_compra.exceptions.GestionOrdenCompraException;
-import KuHub.modules.gestion_orden_compra.repository.OrdenCompraRepository;
+import KuHub.modules.gestion_orden_pedido.dtos.response.CotizacionConsolidadaDTO;
+import KuHub.modules.gestion_orden_pedido.dtos.response.PedidoSemanaResumenDTO;
+import KuHub.modules.gestion_orden_pedido.exceptions.GestionOrdenPedidoException;
+import KuHub.modules.gestion_orden_pedido.repository.OrdenPedidoRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.type.TypeFactory;
 import lombok.RequiredArgsConstructor;
@@ -19,24 +19,24 @@ import java.util.List;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class OrdenCompraServiceImpl implements OrdenCompraService {
+public class OrdenPedidoServiceImpl implements OrdenPedidoService {
 
     /**Repositories*/
     @Autowired
-    private OrdenCompraRepository ordenCompraRepository;
+    private OrdenPedidoRepository ordenPedidoRepository;
 
     /**Others*/
     @Autowired
     private ObjectMapper objectMapper;
 
     // ─────────────────────────────────────────────────────────────
-    // PASO 1 — Listado de pedidos APROBADO con contador de OC
+    // PASO 1 — Listado de pedidos APROBADO con contador de OP
     // ─────────────────────────────────────────────────────────────
 
     @Override
     @Transactional(readOnly = true)
     public List<PedidoSemanaResumenDTO> listarPedidosSemana(LocalDate fechaInicio, LocalDate fechaFin) {
-        List<Object[]> rows = ordenCompraRepository.findPedidosSemanaConIndicadorOC(fechaInicio, fechaFin);
+        List<Object[]> rows = ordenPedidoRepository.findPedidosSemanaConIndicadorOP(fechaInicio, fechaFin);
         log.info("listarPedidosSemana: {} → {} | {} pedidos APROBADO", fechaInicio, fechaFin, rows.size());
         return rows.stream().map(PedidoSemanaResumenDTO::fromRow).toList();
     }
@@ -53,7 +53,7 @@ public class OrdenCompraServiceImpl implements OrdenCompraService {
             return new CotizacionConsolidadaDTO.CotizacionConsolidadaResponse(List.of());
         }
 
-        String jsonStr = ordenCompraRepository.findCotizacionConsolidada(idsPedido);
+        String jsonStr = ordenPedidoRepository.findCotizacionConsolidada(idsPedido);
 
         try {
             if (jsonStr == null || jsonStr.isBlank() || "null".equals(jsonStr)) {
@@ -68,7 +68,7 @@ public class OrdenCompraServiceImpl implements OrdenCompraService {
             return new CotizacionConsolidadaDTO.CotizacionConsolidadaResponse(cotizacion);
         } catch (Exception e) {
             log.error("Error al deserializar cotización consolidada. JSON={} | Error={}", jsonStr, e.getMessage());
-            throw new GestionOrdenCompraException(
+            throw new GestionOrdenPedidoException(
                     "Error al procesar la cotización consolidada.",
                     HttpStatus.INTERNAL_SERVER_ERROR
             );

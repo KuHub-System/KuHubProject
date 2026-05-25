@@ -1,4 +1,4 @@
-package KuHub.modules.gestion_orden_compra.entity;
+package KuHub.modules.gestion_orden_pedido.entity;
 
 import KuHub.modules.gestion_pedido.entity.Pedido;
 import KuHub.modules.gestion_proveedor.entity.Proveedor;
@@ -9,20 +9,20 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
-/** Mapea tabla orden_compra (Tarea #13). Vincula un pedido con un proveedor. */
+/** Mapea tabla orden_pedido (Tarea #13). Vincula un pedido con un proveedor. */
 @Entity
-@Table(name = "orden_compra")
+@Table(name = "orden_pedido")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @ToString(exclude = "detalles")
-public class OrdenCompra {
+public class OrdenPedido {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "id_orden_compra")
-    private Integer idOrdenCompra;
+    @Column(name = "id_orden_pedido")
+    private Integer idOrdenPedido;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_pedido", nullable = false)
@@ -42,8 +42,8 @@ public class OrdenCompra {
     @Column(name = "activo", nullable = false)
     private Boolean activo = true;
 
-    @OneToMany(mappedBy = "ordenCompra", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
-    private List<DetalleOrdenCompra> detalles = new ArrayList<>();
+    @OneToMany(mappedBy = "ordenPedido", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
+    private List<DetalleOrdenPedido> detalles = new ArrayList<>();
 
     public void setIdPedido(Integer id) {
         if (id != null) {

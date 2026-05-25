@@ -583,23 +583,23 @@ public class SpringSecurityConfig {
                         .hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR")
 
                         // ========================================
-                        // ENDPOINTS DE ÓRDENES DE COMPRA (Tarea #13)
+                        // ENDPOINTS DE ÓRDENES DE PEDIDO (Tarea #13)
                         // ========================================
 
-                        // 1. LECTURA (GET): Roles con acceso al módulo de compras/bodega
-                        .requestMatchers(HttpMethod.GET, "/api/v1/orden-compra/**")
+                        // 1. LECTURA (GET): Roles con acceso al módulo de pedidos/bodega
+                        .requestMatchers(HttpMethod.GET, "/api/v1/orden-pedido/**")
                         .hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR", "GESTOR_PEDIDOS", "ENCARGADO_BODEGA")
 
-                        // 2. CREACIÓN (POST): Administradores y gestores de compras
-                        .requestMatchers(HttpMethod.POST, "/api/v1/orden-compra/**")
+                        // 2. CREACIÓN (POST): Administradores y gestores de pedidos
+                        .requestMatchers(HttpMethod.POST, "/api/v1/orden-pedido/**")
                         .hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR", "GESTOR_PEDIDOS")
 
-                        // 3. MODIFICACIÓN (PATCH): Administradores y gestores de compras
-                        .requestMatchers(HttpMethod.PATCH, "/api/v1/orden-compra/**")
+                        // 3. MODIFICACIÓN (PATCH): Administradores y gestores de pedidos
+                        .requestMatchers(HttpMethod.PATCH, "/api/v1/orden-pedido/**")
                         .hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR", "GESTOR_PEDIDOS")
 
                         // 4. ELIMINACIÓN (DELETE): Solo jerarquía alta
-                        .requestMatchers(HttpMethod.DELETE, "/api/v1/orden-compra/**")
+                        .requestMatchers(HttpMethod.DELETE, "/api/v1/orden-pedido/**")
                         .hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR")
 
                         // ========================================

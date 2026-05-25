@@ -621,19 +621,19 @@ export const sincronizarPrecioDesdeIvaService = async (
   }
 };
 
-// ── Orden de compra (Paso 1 + Paso 2) ─────────────────────────────────────────
+// ── Orden Pedido (Paso 1 + Paso 2) ─────────────────────────────────────────
 
 /**
- * Lista pedidos APROBADO cuyas fechas caen dentro del rango + cantidad de OC ya activas
+ * Lista pedidos APROBADO cuyas fechas caen dentro del rango + cantidad de OPs ya activas
  * por cada pedido (para mostrar chip 0/1/≥2 en el frontend).
- * GET /api/v1/orden-compra/pedidos-semana?fechaInicio=YYYY-MM-DD&fechaFin=YYYY-MM-DD
+ * GET /api/v1/orden-pedido/pedidos-semana?fechaInicio=YYYY-MM-DD&fechaFin=YYYY-MM-DD
  */
 export const obtenerPedidosSemanaService = async (
   fechaInicio: string,
   fechaFin: string
 ): Promise<IPedidoSemanaResumen[]> => {
   try {
-    const response = await api.get<IPedidoSemanaResumen[]>('/orden-compra/pedidos-semana', {
+    const response = await api.get<IPedidoSemanaResumen[]>('/orden-pedido/pedidos-semana', {
       params: { fechaInicio, fechaFin },
     });
     return response.data ?? [];
@@ -649,14 +649,14 @@ export const obtenerPedidosSemanaService = async (
  * Cotización consolidada de los pedidos seleccionados. Por cada producto retorna el
  * proveedor con menor precio_neto vigente y la distribución de la cantidad por día
  * de la semana (a partir de reserva_sala.dia_semana en la solicitud).
- * GET /api/v1/orden-compra/cotizacion-consolidada?idsPedido=1,2,3
+ * GET /api/v1/orden-pedido/cotizacion-consolidada?idsPedido=1,2,3
  */
 export const obtenerCotizacionConsolidadaService = async (
   idsPedido: number[]
 ): Promise<ICotizacionConsolidadaResponse> => {
   try {
     const response = await api.get<ICotizacionConsolidadaResponse>(
-      '/orden-compra/cotizacion-consolidada',
+      '/orden-pedido/cotizacion-consolidada',
       { params: { idsPedido: idsPedido.join(',') } }
     );
     return response.data ?? { cotizacion: [] };

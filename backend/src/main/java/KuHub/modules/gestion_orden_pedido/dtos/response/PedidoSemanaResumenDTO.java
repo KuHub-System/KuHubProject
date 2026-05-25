@@ -1,16 +1,16 @@
-package KuHub.modules.gestion_orden_compra.dtos.response;
+package KuHub.modules.gestion_orden_pedido.dtos.response;
 
 import java.time.LocalDate;
 
 /**
- * DTO de respuesta para el Paso 1 del modal "Generar Orden de Compra".
- * Representa un pedido APROBADO de la semana con contador de OCs ya generadas.
+ * DTO de respuesta para el Paso 1 del modal "Generar Orden Pedido".
+ * Representa un pedido APROBADO de la semana con contador de OPs ya generadas.
  *
- * Mapea desde {@code OrdenCompraRepository.findPedidosSemanaConIndicadorOC}.
+ * Mapea desde {@code OrdenPedidoRepository.findPedidosSemanaConIndicadorOP}.
  *
- * El frontend decide la presentación según {@code cantidadOrdenCompra}:
- *   0   → chip "Sin OC"
- *   1   → chip "OC Generada"
+ * El frontend decide la presentación según {@code cantidadOrdenPedido}:
+ *   0   → chip "Sin OP"
+ *   1   → chip "OP Generada"
  *   ≥2  → mensaje "Ya existe un registro para este pedido" (no bloquea selección)
  */
 public record PedidoSemanaResumenDTO(
@@ -18,8 +18,8 @@ public record PedidoSemanaResumenDTO(
         LocalDate fechaInicioPedido,
         LocalDate fechaFinPedido,
         String estadoPedido,
-        int cantidadOrdenCompra,
-        boolean tieneOrdenCompra
+        int cantidadOrdenPedido,
+        boolean tieneOrdenPedido
 ) {
 
     /** Convierte una fila de Object[] (consulta nativa) al DTO. */

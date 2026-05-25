@@ -1,6 +1,6 @@
-package KuHub.modules.gestion_orden_compra.repository;
+package KuHub.modules.gestion_orden_pedido.repository;
 
-import KuHub.modules.gestion_orden_compra.entity.OrdenCompra;
+import KuHub.modules.gestion_orden_pedido.entity.OrdenPedido;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -10,30 +10,30 @@ import java.time.LocalDate;
 import java.util.List;
 
 @Repository
-public interface OrdenCompraRepository extends JpaRepository<OrdenCompra, Integer> {
+public interface OrdenPedidoRepository extends JpaRepository<OrdenPedido, Integer> {
 
     // ── 1. Métodos JPA derivados ──
 
-    /** Lista OC activas vinculadas a un pedido. */
-    List<OrdenCompra> findByPedido_IdPedidoAndActivoTrue(Integer idPedido);
+    /** Lista OPs activas vinculadas a un pedido. */
+    List<OrdenPedido> findByPedido_IdPedidoAndActivoTrue(Integer idPedido);
 
-    /** Lista OC activas de un proveedor. */
-    List<OrdenCompra> findByProveedor_IdProveedorAndActivoTrue(Integer idProveedor);
+    /** Lista OPs activas de un proveedor. */
+    List<OrdenPedido> findByProveedor_IdProveedorAndActivoTrue(Integer idProveedor);
 
-    /** Verifica si existe una OC activa para un pedido (indicador del Paso 1). */
+    /** Verifica si existe una OP activa para un pedido (indicador del Paso 1). */
     boolean existsByPedido_IdPedidoAndActivoTrue(Integer idPedido);
 
     // ── 2. @Query personalizados de solo lectura ──
 
     /**
-     * Lista pedidos APROBADO dentro de un rango de fechas con CONTADOR de OC activas.
-     * El front decide chips según cantidad: 0 → "Sin OC" | 1 → "OC Generada" |
+     * Lista pedidos APROBADO dentro de un rango de fechas con CONTADOR de OPs activas.
+     * El front decide chips según cantidad: 0 → "Sin OP" | 1 → "OP Generada" |
      * ≥2 → "Ya existe un registro para este pedido" (no bloquea selección).
      * [0] id_pedido               (Integer)
      * [1] fecha_inicio_pedido     (Date)
      * [2] fecha_fin_pedido        (Date)
      * [3] estado_pedido           (String)
-     * [4] cantidad_orden_compra   (Long)
+     * [4] cantidad_orden_pedido   (Long)
      */
     @Query(value = """
         SELECT
@@ -42,17 +42,17 @@ public interface OrdenCompraRepository extends JpaRepository<OrdenCompra, Intege
             p.fecha_fin_pedido,                                                     -- [2]
             p.estado_pedido::text,                                                  -- [3]
             (
-                SELECT COUNT(*) FROM orden_compra oc
-                WHERE oc.id_pedido = p.id_pedido
-                  AND oc.activo = TRUE
-            ) AS cantidad_orden_compra                                              -- [4]
+                SELECT COUNT(*) FROM orden_pedido op
+                WHERE op.id_pedido = p.id_pedido
+                  AND op.activo = TRUE
+            ) AS cantidad_orden_pedido                                              -- [4]
         FROM pedido p
         WHERE p.estado_pedido = 'APROBADO'
           AND p.fecha_inicio_pedido >= :fechaInicio
           AND p.fecha_fin_pedido    <= :fechaFin
         ORDER BY p.fecha_inicio_pedido ASC
         """, nativeQuery = true)
-    List<Object[]> findPedidosSemanaConIndicadorOC(
+    List<Object[]> findPedidosSemanaConIndicadorOP(
             @Param("fechaInicio") LocalDate fechaInicio,
             @Param("fechaFin")    LocalDate fechaFin);
 
