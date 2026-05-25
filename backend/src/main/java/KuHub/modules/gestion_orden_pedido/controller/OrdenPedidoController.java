@@ -1,8 +1,8 @@
-package KuHub.modules.gestion_orden_compra.controller;
+package KuHub.modules.gestion_orden_pedido.controller;
 
-import KuHub.modules.gestion_orden_compra.dtos.response.CotizacionConsolidadaDTO;
-import KuHub.modules.gestion_orden_compra.dtos.response.PedidoSemanaResumenDTO;
-import KuHub.modules.gestion_orden_compra.service.OrdenCompraService;
+import KuHub.modules.gestion_orden_pedido.dtos.response.CotizacionConsolidadaDTO;
+import KuHub.modules.gestion_orden_pedido.dtos.response.PedidoSemanaResumenDTO;
+import KuHub.modules.gestion_orden_pedido.service.OrdenPedidoService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
@@ -13,26 +13,26 @@ import java.time.LocalDate;
 import java.util.List;
 
 /**
- * Controller REST para gestión de Órdenes de Compra (Tarea #13).
- * Endpoints base: /api/v1/orden-compra
+ * Controller REST para gestión de Órdenes de Pedido (Tarea #13).
+ * Endpoints base: /api/v1/orden-pedido
  */
 @RestController
 @Validated
-@RequestMapping("/api/v1/orden-compra")
-public class OrdenCompraController {
+@RequestMapping("/api/v1/orden-pedido")
+public class OrdenPedidoController {
 
     @Autowired
-    private OrdenCompraService ordenCompraService;
+    private OrdenPedidoService ordenPedidoService;
 
     // ══════════════════════════════════════════════════════════════
-    // PASO 1 — Pedidos APROBADO de la semana + contador de OC
+    // PASO 1 — Pedidos APROBADO de la semana + contador de OP
     // ══════════════════════════════════════════════════════════════
 
     /**
      * Lista los pedidos APROBADO cuyas fechas caen dentro del rango indicado,
-     * con la cantidad de OCs activas que ya tiene cada pedido.
-     * El frontend mapea {@code cantidadOrdenCompra} a un chip:
-     * 0 → "Sin OC" | 1 → "OC Generada" | ≥2 → "Ya existe un registro para este pedido".
+     * con la cantidad de OPs activas que ya tiene cada pedido.
+     * El frontend mapea {@code cantidadOrdenPedido} a un chip:
+     * 0 → "Sin OP" | 1 → "OP Generada" | ≥2 → "Ya existe un registro para este pedido".
      * ⬜ Sin uso frontend aún. Pendiente integración en gestion-proveedores.tsx (Tarea #18).
      *
      * @param fechaInicio Fecha de inicio del rango (YYYY-MM-DD)
@@ -45,7 +45,7 @@ public class OrdenCompraController {
     ) {
         return ResponseEntity
                 .status(200)
-                .body(ordenCompraService.listarPedidosSemana(fechaInicio, fechaFin));
+                .body(ordenPedidoService.listarPedidosSemana(fechaInicio, fechaFin));
     }
 
     // ══════════════════════════════════════════════════════════════
@@ -67,6 +67,6 @@ public class OrdenCompraController {
     ) {
         return ResponseEntity
                 .status(200)
-                .body(ordenCompraService.obtenerCotizacionConsolidada(idsPedido));
+                .body(ordenPedidoService.obtenerCotizacionConsolidada(idsPedido));
     }
 }
