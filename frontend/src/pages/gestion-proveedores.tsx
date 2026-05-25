@@ -627,6 +627,11 @@ const GestionProveedoresPage: React.FC = () => {
   /** Fecha elegida por el usuario en Paso 1 como base para calcular semana de entrega (YYYY-MM-DD). */
   const [ocFechaEntrega, setOcFechaEntrega] = React.useState<string | null>(null);
 
+  // ── Modal confirmar cambiar estado proveedor (Paso 2 cotización) ──
+  const { isOpen: isOcToggleEstadoModal, onOpen: openOcToggleEstadoModal, onOpenChange: onOcToggleEstadoModalChange } = useDisclosure();
+  const [ocProveedorAToggle, setOcProveedorAToggle] = React.useState<IProveedorGrupoConsolidado | null>(null);
+  const [ocTogglingEstadoId, setOcTogglingEstadoId] = React.useState<number | null>(null);
+
   // ── Búsqueda global optimizada ──
   const [busquedaGlobal, setBusquedaGlobal] = React.useState('');
   const [resultadosBusqueda, setResultadosBusqueda] = React.useState<IBusquedaProductosGlobal[]>([]);
@@ -1502,6 +1507,42 @@ const GestionProveedoresPage: React.FC = () => {
     setOcErrorCotizacion(null);
   };
 
+  /** Abre el modal de confirmación para cambiar el estado del proveedor desde el Paso 2. */
+  const handleConfirmarToggleEstadoPaso2 = (prov: IProveedorGrupoConsolidado) => {
+    setOcProveedorAToggle(prov);
+    openOcToggleEstadoModal();
+  };
+
+  /** Ejecuta el PATCH de estado del proveedor y refresca la cotización consolidada. */
+  const handleToggleEstadoPaso2 = async () => {
+    if (!ocProveedorAToggle || ocProveedorAToggle.idProveedor == null) return;
+    const proveedorCompleto = proveedores.find(p => p.idProveedor === ocProveedorAToggle.idProveedor);
+    if (!proveedorCompleto) {
+      showToast('No se encontró el proveedor en la lista', 'error');
+      return;
+    }
+    const nuevoEstado: EstadoProveedor = proveedorCompleto.estadoProveedor === 'DISPONIBLE' ? 'NO_DISPONIBLE' : 'DISPONIBLE';
+    setOcTogglingEstadoId(ocProveedorAToggle.idProveedor);
+    try {
+      await actualizarEstadoProveedorService(proveedorCompleto, nuevoEstado);
+      setProveedores(prev =>
+        prev.map(p => p.idProveedor === proveedorCompleto.idProveedor ? { ...p, estadoProveedor: nuevoEstado } : p)
+      );
+      const data = await obtenerCotizacionConsolidadaService([...ocSeleccionados]);
+      setOcCotizacion(data);
+      const cantInicial = construirCantidades(data);
+      setOcCantidades(cantInicial);
+      setOcCantidadesOriginales(cantInicial);
+      const label = nuevoEstado === 'DISPONIBLE' ? 'Disponible' : 'No Disponible';
+      showToast(`Estado actualizado a ${label}`);
+    } catch (err: any) {
+      showToast(err.message || 'No se pudo actualizar el estado del proveedor', 'error');
+    } finally {
+      setOcTogglingEstadoId(null);
+      setOcProveedorAToggle(null);
+    }
+  };
+
   /** Actualiza la cantidad editable de una celda Entrega {día} del Paso 2. */
   const actualizarCantidadOc = (
     idProveedor: number,
@@ -2212,6 +2253,9 @@ const GestionProveedoresPage: React.FC = () => {
         onVolver={handleVolverPaso1}
         fechaEntrega={ocFechaEntrega}
         onFechaEntregaChange={setOcFechaEntrega}
+        proveedoresEstados={Object.fromEntries(proveedores.map(p => [p.idProveedor, p.estadoProveedor]))}
+        togglingEstadoPaso2Id={ocTogglingEstadoId}
+        onToggleEstadoProveedor={handleConfirmarToggleEstadoPaso2}
       />
 
       {/* ── Modal Sincronización de Precios desde Excel ── */}
@@ -2584,6 +2628,61 @@ const GestionProveedoresPage: React.FC = () => {
                     isLoading={togglingEstadoId !== null}
                     className="font-bold shadow-md cursor-pointer"
                     startContent={!togglingEstadoId && <Icon icon={esDeshabilitar ? 'lucide:toggle-left' : 'lucide:toggle-right'} width={16} />}
+                    size="lg"
+                  >
+                    Confirmar
+                  </Button>
+                </ModalFooter>
+              </>
+            );
+          }}
+        </ModalContent>
+      </Modal>
+
+      {/* ── Modal Confirmar Cambiar Estado Proveedor (Paso 2 Cotización) ── */}
+      <Modal isOpen={isOcToggleEstadoModal} onOpenChange={onOcToggleEstadoModalChange} size="sm" radius="lg" classNames={{ base: 'rounded-2xl', closeButton: 'cursor-pointer' }}>
+        <ModalContent className="rounded-2xl overflow-hidden">
+          {(onClose) => {
+            const provCompleto = proveedores.find(p => p.idProveedor === ocProveedorAToggle?.idProveedor);
+            const estadoActual = provCompleto?.estadoProveedor ?? null;
+            const esDeshabilitar = estadoActual === 'DISPONIBLE';
+            const nuevoEstadoLabel = esDeshabilitar ? 'No Disponible' : 'Disponible';
+            return (
+              <>
+                <ModalHeader className={`border-b border-default-200 dark:border-default-100 px-6 py-4 ${esDeshabilitar ? 'bg-gradient-to-r from-warning/10 to-warning/5 dark:from-warning/20 dark:to-warning/10' : 'bg-gradient-to-r from-success/10 to-success/5 dark:from-success/20 dark:to-success/10'}`}>
+                  <div className="flex items-center gap-3">
+                    <div className={`p-2 rounded-lg ${esDeshabilitar ? 'bg-warning/20' : 'bg-success/20'}`}>
+                      <Icon icon={esDeshabilitar ? 'lucide:toggle-left' : 'lucide:toggle-right'} className={esDeshabilitar ? 'text-warning' : 'text-success'} width={20} />
+                    </div>
+                    <span className="font-bold text-lg text-secondary dark:text-foreground">
+                      Cambiar Estado del Proveedor
+                    </span>
+                  </div>
+                </ModalHeader>
+                <ModalBody className="py-4">
+                  <p className="text-sm text-default-600">
+                    ¿Cambiar el estado de{' '}
+                    <strong>{ocProveedorAToggle?.nombreDistribuidora}</strong>{' '}
+                    a <strong className={esDeshabilitar ? 'text-warning-600' : 'text-success-600'}>{nuevoEstadoLabel}</strong>?
+                  </p>
+                  <p className="text-xs text-default-400 mt-1">
+                    La cotización se actualizará automáticamente.
+                  </p>
+                </ModalBody>
+                <ModalFooter className="bg-gradient-to-r from-default-50 to-default-50 dark:from-content2 dark:to-content2 border-t border-default-200 dark:border-default-100 gap-2 px-6 py-4">
+                  <Button variant="ghost" onPress={onClose} className="font-medium">
+                    Cancelar
+                  </Button>
+                  <Button
+                    color={esDeshabilitar ? 'warning' : 'success'}
+                    variant="solid"
+                    onPress={async () => {
+                      await handleToggleEstadoPaso2();
+                      onClose();
+                    }}
+                    isLoading={ocTogglingEstadoId !== null}
+                    className="font-bold shadow-md cursor-pointer"
+                    startContent={!ocTogglingEstadoId && <Icon icon={esDeshabilitar ? 'lucide:toggle-left' : 'lucide:toggle-right'} width={16} />}
                     size="lg"
                   >
                     Confirmar
@@ -4798,6 +4897,9 @@ interface OrdenPedidoModalProps {
   onVolver: () => void;
   fechaEntrega: string | null;
   onFechaEntregaChange: (f: string) => void;
+  proveedoresEstados?: Record<number, EstadoProveedor>;
+  togglingEstadoPaso2Id?: number | null;
+  onToggleEstadoProveedor?: (prov: IProveedorGrupoConsolidado) => void;
 }
 
 const chipOrdenPedido = (cantidad: number) => {
@@ -4835,6 +4937,9 @@ const OrdenPedidoModal: React.FC<OrdenPedidoModalProps> = ({
   onVolver,
   fechaEntrega,
   onFechaEntregaChange,
+  proveedoresEstados,
+  togglingEstadoPaso2Id,
+  onToggleEstadoProveedor,
 }) => {
   const hoy = new Date();
   const anioActual = hoy.getFullYear();
@@ -5134,6 +5239,9 @@ const OrdenPedidoModal: React.FC<OrdenPedidoModalProps> = ({
                             if (prov.idProveedor != null) onRestaurar(prov.idProveedor, idProducto);
                           }}
                           fechaEntrega={fechaEntrega}
+                          estadoProveedor={prov.idProveedor != null ? (proveedoresEstados?.[prov.idProveedor] ?? null) : null}
+                          isToggling={togglingEstadoPaso2Id === prov.idProveedor}
+                          onToggleEstado={prov.idProveedor != null && onToggleEstadoProveedor ? () => onToggleEstadoProveedor(prov) : undefined}
                         />
                       ))}
                     </div>
@@ -5335,6 +5443,9 @@ interface ProveedorCotizacionTablaProps {
   onRestaurar: (idProducto: number) => void;
   /** Fecha elegida por el usuario para calcular la semana de entrega real (YYYY-MM-DD). */
   fechaEntrega: string | null;
+  estadoProveedor?: EstadoProveedor | null;
+  isToggling?: boolean;
+  onToggleEstado?: () => void;
 }
 
 const ProveedorCotizacionTabla: React.FC<ProveedorCotizacionTablaProps> = ({
@@ -5345,6 +5456,9 @@ const ProveedorCotizacionTabla: React.FC<ProveedorCotizacionTablaProps> = ({
   onIncrement,
   onRestaurar,
   fechaEntrega,
+  estadoProveedor,
+  isToggling,
+  onToggleEstado,
 }) => {
   /** Dado un día de la semana del proveedor, devuelve la fecha exacta de entrega (DD/MM)
    *  usando el lunes de la semana elegida por el usuario como base. */
@@ -5481,6 +5595,32 @@ const ProveedorCotizacionTabla: React.FC<ProveedorCotizacionTablaProps> = ({
                   <Chip color="success" size="sm" variant="flat" className="font-bold">Neto: ${fmtN(totales.neto)}</Chip>
                   <Chip color="warning" size="sm" variant="flat" className="font-bold">c/IVA: ${fmtN(totales.conIva)}</Chip>
                 </>
+              )}
+              {!esSinProveedor && onToggleEstado && estadoProveedor != null && (
+                <div className="flex items-center gap-1 mt-0.5">
+                  <Chip
+                    color={estadoProveedor === 'DISPONIBLE' ? 'success' : 'danger'}
+                    size="sm"
+                    variant="flat"
+                    className="text-[10px]"
+                  >
+                    {estadoProveedor === 'DISPONIBLE' ? 'Disponible' : 'No Disponible'}
+                  </Chip>
+                  <Button
+                    isIconOnly
+                    variant="light"
+                    size="sm"
+                    title={estadoProveedor === 'DISPONIBLE' ? 'Cambiar a No Disponible' : 'Cambiar a Disponible'}
+                    isLoading={isToggling}
+                    onPress={onToggleEstado}
+                  >
+                    <Icon
+                      icon={estadoProveedor === 'DISPONIBLE' ? 'lucide:toggle-right' : 'lucide:toggle-left'}
+                      className={estadoProveedor === 'DISPONIBLE' ? 'text-success' : 'text-danger'}
+                      width={20}
+                    />
+                  </Button>
+                </div>
               )}
             </div>
           </div>
