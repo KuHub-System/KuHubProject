@@ -630,6 +630,11 @@ const GestionProveedoresPage: React.FC = () => {
 
   const [ocGenerandoOrdenes, setOcGenerandoOrdenes] = React.useState(false);
 
+  const [ocResultado, setOcResultado] = React.useState<{
+    ordenes: Array<{ idOrdenPedido: number; nombreProveedor: string; cantidadDetalles: number }>;
+    errores: Array<{ nombreProveedor: string; mensaje: string }>;
+  } | null>(null);
+
   // ── Modal confirmar cambiar estado proveedor (Paso 2 cotización) ──
   const { isOpen: isOcToggleEstadoModal, onOpen: openOcToggleEstadoModal, onOpenChange: onOcToggleEstadoModalChange } = useDisclosure();
   const [ocProveedorAToggle, setOcProveedorAToggle] = React.useState<IProveedorGrupoConsolidado | null>(null);
@@ -1446,17 +1451,24 @@ const GestionProveedoresPage: React.FC = () => {
             }
           }
           const entregasProd: Record<string, number> = {};
+          // Cantidades de días sin reserva de sala: se suman al día de entrega más próximo
+          const sinDiaTotal = prod.cantidadPorDia
+            .filter(c => c.dia === 'SIN_DIA')
+            .reduce((s, c) => s + c.cantidad, 0);
+
           if (diasEntregaOrd.length === 0) {
-            // sin días configurados → no hay Entrega
+            // Sin días de entrega configurados: acumular todo en LUNES como fallback
+            const totalAll = [...qtyByDay.values()].reduce((s, v) => s + v, 0) + sinDiaTotal;
+            if (totalAll > 0) entregasProd['LUNES'] = totalAll;
           } else if (diasEntregaOrd.length === 1) {
-            // 1 entrega → recibe todo
-            const total = [...qtyByDay.values()].reduce((s, v) => s + v, 0);
+            // 1 entrega → recibe todo (incluyendo SIN_DIA)
+            const total = [...qtyByDay.values()].reduce((s, v) => s + v, 0) + sinDiaTotal;
             entregasProd[diasEntregaOrd[0]] = total;
           } else {
             // Lógica prospectiva: para cada día de necesidad, asignar al ÚLTIMO día de
             // entrega ANTERIOR. Si no existe día anterior, usar el último (semana previa).
             const diasEntregaNum = diasEntregaOrd.map(d => DIA_ORDEN[d]);
-            for (let diaNec = 1; diaNec <= 6; diaNec++) {
+            for (let diaNec = 1; diaNec <= 7; diaNec++) {
               const diaNecNombre = DIAS_TODOS[diaNec - 1];
               const qty = qtyByDay.get(diaNecNombre) ?? 0;
               if (qty === 0) continue;
@@ -1470,6 +1482,10 @@ const GestionProveedoresPage: React.FC = () => {
                 ? `${DIAS_TODOS[asignado! - 1]}_prev`
                 : DIAS_TODOS[asignado! - 1];
               entregasProd[entregaKey] = (entregasProd[entregaKey] ?? 0) + qty;
+            }
+            // SIN_DIA va al primer día de entrega
+            if (sinDiaTotal > 0) {
+              entregasProd[diasEntregaOrd[0]] = (entregasProd[diasEntregaOrd[0]] ?? 0) + sinDiaTotal;
             }
           }
           provMap[prod.idProducto] = entregasProd;
@@ -1523,12 +1539,14 @@ const GestionProveedoresPage: React.FC = () => {
 
     const lunes = getMondayISO(ocFechaEntrega);
     const idsPedidoArr = [...ocSeleccionados];
-    let exitosos = 0;
-    let totalDetalles = 0;
+
+    const ordenesCreadas: Array<{ idOrdenPedido: number; nombreProveedor: string; cantidadDetalles: number }> = [];
+    const erroresCreacion: Array<{ nombreProveedor: string; mensaje: string }> = [];
 
     for (const prov of ocCotizacion.cotizacion) {
       if (prov.idProveedor == null) continue;
 
+      const nombreProv = prov.nombreDistribuidora ?? prov.nombreProveedor ?? `Proveedor #${prov.idProveedor}`;
       const cantidadesProv = ocCantidades[prov.idProveedor] ?? {};
       const entregas: { idProducto: number; cantidad: number; fechaEntrega: string }[] = [];
 
@@ -1537,13 +1555,11 @@ const GestionProveedoresPage: React.FC = () => {
         for (const [entregaKey, cantidad] of Object.entries(entregasProd)) {
           if (!cantidad || cantidad <= 0) continue;
 
-          // Calcular fecha ISO desde entregaKey (ej. "JUEVES" o "JUEVES_prev")
           const esPrev = entregaKey.endsWith('_prev');
           const dia = (esPrev ? entregaKey.replace('_prev', '') : entregaKey) as TDiaSemana;
           const base = esPrev ? addDaysISO(lunes, -7) : lunes;
           let fechaISO = addDaysISO(base, DIA_ORDEN[dia] - 1);
 
-          // Ajuste por feriado: retroceder al día de entrega anterior no feriado del proveedor
           const [añoS, mmS, ddS] = fechaISO.split('-');
           const fechaDate = new Date(Number(añoS), Number(mmS) - 1, Number(ddS));
           if (nombreFeriadoChile(fechaDate)) {
@@ -1559,31 +1575,37 @@ const GestionProveedoresPage: React.FC = () => {
             }
           }
 
-          entregas.push({ idProducto, cantidad, fechaEntrega: fechaISO });
+          entregas.push({ idProducto, cantidad: Math.round(cantidad * 1000) / 1000, fechaEntrega: fechaISO });
         }
       }
 
       if (entregas.length === 0) continue;
 
-      // Una orden por proveedor; si hay múltiples pedidos seleccionados, usar el primero
       const idPedido = idsPedidoArr[0];
 
       try {
         const resultado = await crearOrdenPedidoService({ idPedido, idProveedor: prov.idProveedor, entregas });
-        exitosos++;
-        totalDetalles += resultado.cantidadDetalles;
-        showToast(`Orden #${resultado.idOrdenPedido} generada para ${prov.nombreDistribuidora ?? prov.nombreProveedor} (${resultado.cantidadDetalles} detalles)`);
+        ordenesCreadas.push({
+          idOrdenPedido: resultado.idOrdenPedido,
+          nombreProveedor: nombreProv,
+          cantidadDetalles: resultado.cantidadDetalles,
+        });
       } catch (err: any) {
-        showToast(err.message || `Error al generar orden para proveedor #${prov.idProveedor}`, 'error');
+        erroresCreacion.push({
+          nombreProveedor: nombreProv,
+          mensaje: err.message || `Error al generar la orden`,
+        });
       }
     }
 
     setOcGenerandoOrdenes(false);
 
-    if (exitosos > 0) {
+    if (ordenesCreadas.length > 0) {
       onOrdenPedidoModalChange();
-      showToast(`Se crearon ${exitosos} orden(es) con ${totalDetalles} detalle(s) en total`);
       cargarProveedoresPaginados(1, true);
+    }
+    if (ordenesCreadas.length > 0 || erroresCreacion.length > 0) {
+      setOcResultado({ ordenes: ordenesCreadas, errores: erroresCreacion });
     }
   };
 
@@ -2338,6 +2360,124 @@ const GestionProveedoresPage: React.FC = () => {
         onConfirmarOrden={handleConfirmarGenerarOrden}
         isGenerandoOrdenes={ocGenerandoOrdenes}
       />
+
+      {/* ── Modal resultado Generar Ordenes de Pedidos ── */}
+      <Modal
+        isOpen={ocResultado !== null}
+        onClose={() => setOcResultado(null)}
+        size="md"
+        hideCloseButton
+        radius="lg"
+        classNames={{ base: 'rounded-2xl' }}
+      >
+        <ModalContent className="overflow-hidden">
+          {/* Banner */}
+          <div className={`px-6 py-8 flex flex-col items-center gap-3 ${
+            ocResultado?.errores.length === 0
+              ? 'bg-gradient-to-br from-success-400 to-success-600'
+              : ocResultado?.ordenes.length === 0
+                ? 'bg-gradient-to-br from-danger-400 to-danger-600'
+                : 'bg-gradient-to-br from-warning-400 to-warning-600'
+          }`}>
+            <div className="bg-white/20 rounded-full p-4">
+              <Icon
+                icon={ocResultado?.errores.length === 0 ? 'lucide:check' : ocResultado?.ordenes.length === 0 ? 'lucide:x' : 'lucide:alert-triangle'}
+                width={36}
+                className="text-white"
+              />
+            </div>
+            <h2 className="text-xl font-bold text-white">
+              {ocResultado?.errores.length === 0
+                ? '¡Órdenes generadas!'
+                : ocResultado?.ordenes.length === 0
+                  ? 'Error al generar órdenes'
+                  : 'Generación con errores'}
+            </h2>
+            <p className="text-sm text-white/80 text-center max-w-[260px]">
+              {ocResultado?.errores.length === 0
+                ? 'Las órdenes de pedido fueron creadas exitosamente.'
+                : 'Algunas órdenes no pudieron ser procesadas.'}
+            </p>
+          </div>
+
+          <ModalBody className="py-5 px-6 space-y-4">
+            {/* Stats */}
+            <div className="flex gap-3">
+              <div className="flex-1 flex flex-col items-center gap-2 py-4 rounded-2xl bg-success-50 border border-success-200">
+                <Icon icon="lucide:clipboard-check" className="text-success-600" width={24} />
+                <span className="text-4xl font-bold text-success-700">{ocResultado?.ordenes.length ?? 0}</span>
+                <span className="text-xs text-success-600 font-semibold text-center uppercase tracking-wide leading-tight">
+                  Órdenes<br/>Creadas
+                </span>
+              </div>
+              <div className="flex-1 flex flex-col items-center gap-2 py-4 rounded-2xl bg-warning-50 border border-warning-200">
+                <Icon icon="lucide:package" className="text-warning-600" width={24} />
+                <span className="text-4xl font-bold text-warning-700">
+                  {ocResultado?.ordenes.reduce((s, o) => s + o.cantidadDetalles, 0) ?? 0}
+                </span>
+                <span className="text-xs text-warning-600 font-semibold text-center uppercase tracking-wide leading-tight">
+                  Detalles<br/>Insertados
+                </span>
+              </div>
+            </div>
+
+            {/* Lista de órdenes creadas */}
+            {(ocResultado?.ordenes.length ?? 0) > 0 && (
+              <div className="rounded-xl border border-default-200 overflow-hidden">
+                {ocResultado!.ordenes.map((o, i) => (
+                  <div
+                    key={o.idOrdenPedido}
+                    className={`flex items-center gap-3 px-4 py-3 ${i > 0 ? 'border-t border-default-100' : ''}`}
+                  >
+                    <div className="p-1.5 bg-success-100 rounded-lg shrink-0">
+                      <Icon icon="lucide:store" className="text-success-600" width={14} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-secondary dark:text-foreground truncate">{o.nombreProveedor}</p>
+                      <p className="text-xs text-default-400">OP #{o.idOrdenPedido} · {o.cantidadDetalles} detalle{o.cantidadDetalles !== 1 ? 's' : ''}</p>
+                    </div>
+                    <Icon icon="lucide:check-circle-2" className="text-success-500 shrink-0" width={18} />
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Errores si los hay */}
+            {(ocResultado?.errores.length ?? 0) > 0 && (
+              <div className="rounded-xl border border-danger-200 overflow-hidden">
+                {ocResultado!.errores.map((e, i) => (
+                  <div
+                    key={i}
+                    className={`flex items-start gap-3 px-4 py-3 ${i > 0 ? 'border-t border-danger-100' : ''}`}
+                  >
+                    <div className="p-1.5 bg-danger-100 rounded-lg shrink-0 mt-0.5">
+                      <Icon icon="lucide:store" className="text-danger-600" width={14} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-danger truncate">{e.nombreProveedor}</p>
+                      <p className="text-xs text-danger/70 leading-snug">{e.mensaje}</p>
+                    </div>
+                    <Icon icon="lucide:x-circle" className="text-danger shrink-0 mt-0.5" width={18} />
+                  </div>
+                ))}
+              </div>
+            )}
+          </ModalBody>
+
+          <ModalFooter className="pt-0 px-6 pb-5">
+            <Button
+              color="success"
+              fullWidth
+              size="lg"
+              onPress={() => setOcResultado(null)}
+              className="font-semibold"
+              startContent={<Icon icon="lucide:thumbs-up" width={18} />}
+            >
+              Entendido
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
 
       {/* ── Modal Sincronización de Precios desde Excel ── */}
       <Modal
@@ -5377,7 +5517,7 @@ const OrdenPedidoModal: React.FC<OrdenPedidoModalProps> = ({
                     startContent={!isGenerandoOrdenes && <Icon icon="lucide:shopping-cart" width={18} />}
                     className="font-medium"
                   >
-                    Generar Orden de Compra
+                    Generar Ordenes de Pedidos
                   </Button>
                 </>
               )}
