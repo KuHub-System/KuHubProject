@@ -2067,6 +2067,7 @@ const GestionProveedoresPage: React.FC = () => {
         loadingCotizacion={ocLoadingCotizacion}
         errorCotizacion={ocErrorCotizacion}
         cantidades={ocCantidades}
+        cantidadesOriginales={ocCantidadesOriginales}
         onCantidadChange={actualizarCantidadOc}
         onIncrement={handleEntregaIncrement}
         onRestaurar={handleRestaurarProducto}
@@ -4602,6 +4603,7 @@ interface OrdenPedidoModalProps {
   loadingCotizacion: boolean;
   errorCotizacion: string | null;
   cantidades: Record<number, Record<number, Record<string, number>>>;
+  cantidadesOriginales: Record<number, Record<number, Record<string, number>>>;
   onCantidadChange: (idProveedor: number, idProducto: number, dia: string, valor: number) => void;
   onIncrement: (idProveedor: number, idProducto: number, entregaKey: string, delta: number, colSpecs: ColSpecOC[]) => void;
   onRestaurar: (idProveedor: number, idProducto: number) => void;
@@ -4638,6 +4640,7 @@ const OrdenPedidoModal: React.FC<OrdenPedidoModalProps> = ({
   loadingCotizacion,
   errorCotizacion,
   cantidades,
+  cantidadesOriginales,
   onCantidadChange,
   onIncrement,
   onRestaurar,
@@ -4934,6 +4937,7 @@ const OrdenPedidoModal: React.FC<OrdenPedidoModalProps> = ({
                           key={prov.idProveedor ?? `sin-prov-${idx}`}
                           proveedor={prov}
                           cantidadesProv={prov.idProveedor != null ? (cantidades[prov.idProveedor] ?? {}) : {}}
+                          cantidadesOriginalesProv={prov.idProveedor != null ? (cantidadesOriginales[prov.idProveedor] ?? {}) : {}}
                           onCantidadChange={onCantidadChange}
                           onIncrement={(idProducto, entregaKey, delta, colSpecs) => {
                             if (prov.idProveedor != null) onIncrement(prov.idProveedor, idProducto, entregaKey, delta, colSpecs);
