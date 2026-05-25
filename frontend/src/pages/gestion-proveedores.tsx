@@ -630,6 +630,7 @@ const GestionProveedoresPage: React.FC = () => {
   // ── Modal confirmar cambiar estado proveedor (Paso 2 cotización) ──
   const { isOpen: isOcToggleEstadoModal, onOpen: openOcToggleEstadoModal, onOpenChange: onOcToggleEstadoModalChange } = useDisclosure();
   const [ocProveedorAToggle, setOcProveedorAToggle] = React.useState<IProveedorGrupoConsolidado | null>(null);
+  const [ocEstadoActualToggle, setOcEstadoActualToggle] = React.useState<EstadoProveedor | null>(null);
   const [ocTogglingEstadoId, setOcTogglingEstadoId] = React.useState<number | null>(null);
 
   // ── Búsqueda global optimizada ──
@@ -1508,38 +1509,37 @@ const GestionProveedoresPage: React.FC = () => {
   };
 
   /** Abre el modal de confirmación para cambiar el estado del proveedor desde el Paso 2. */
-  const handleConfirmarToggleEstadoPaso2 = (prov: IProveedorGrupoConsolidado) => {
+  const handleConfirmarToggleEstadoPaso2 = (prov: IProveedorGrupoConsolidado, estadoActual: EstadoProveedor) => {
     setOcProveedorAToggle(prov);
+    setOcEstadoActualToggle(estadoActual);
     openOcToggleEstadoModal();
   };
 
   /** Ejecuta el PATCH de estado del proveedor y refresca la cotización consolidada. */
   const handleToggleEstadoPaso2 = async () => {
-    if (!ocProveedorAToggle || ocProveedorAToggle.idProveedor == null) return;
-    const proveedorCompleto = proveedores.find(p => p.idProveedor === ocProveedorAToggle.idProveedor);
-    if (!proveedorCompleto) {
-      showToast('No se encontró el proveedor en la lista', 'error');
-      return;
-    }
-    const nuevoEstado: EstadoProveedor = proveedorCompleto.estadoProveedor === 'DISPONIBLE' ? 'NO_DISPONIBLE' : 'DISPONIBLE';
-    setOcTogglingEstadoId(ocProveedorAToggle.idProveedor);
+    if (!ocProveedorAToggle || ocProveedorAToggle.idProveedor == null || !ocEstadoActualToggle) return;
+    const idProv = ocProveedorAToggle.idProveedor;
+    const nuevoEstado: EstadoProveedor = ocEstadoActualToggle === 'DISPONIBLE' ? 'NO_DISPONIBLE' : 'DISPONIBLE';
+    setOcTogglingEstadoId(idProv);
     try {
+      // Obtener datos completos del proveedor (rutProveedor requerido por el PATCH)
+      const proveedorCompleto = await obtenerProveedorDetalleService(idProv);
       await actualizarEstadoProveedorService(proveedorCompleto, nuevoEstado);
       setProveedores(prev =>
-        prev.map(p => p.idProveedor === proveedorCompleto.idProveedor ? { ...p, estadoProveedor: nuevoEstado } : p)
+        prev.map(p => p.idProveedor === idProv ? { ...p, estadoProveedor: nuevoEstado } : p)
       );
       const data = await obtenerCotizacionConsolidadaService([...ocSeleccionados]);
       setOcCotizacion(data);
       const cantInicial = construirCantidades(data);
       setOcCantidades(cantInicial);
       setOcCantidadesOriginales(cantInicial);
-      const label = nuevoEstado === 'DISPONIBLE' ? 'Disponible' : 'No Disponible';
-      showToast(`Estado actualizado a ${label}`);
+      showToast(`Estado actualizado a ${nuevoEstado === 'DISPONIBLE' ? 'Disponible' : 'No Disponible'}`);
     } catch (err: any) {
       showToast(err.message || 'No se pudo actualizar el estado del proveedor', 'error');
     } finally {
       setOcTogglingEstadoId(null);
       setOcProveedorAToggle(null);
+      setOcEstadoActualToggle(null);
     }
   };
 
@@ -2643,9 +2643,7 @@ const GestionProveedoresPage: React.FC = () => {
       <Modal isOpen={isOcToggleEstadoModal} onOpenChange={onOcToggleEstadoModalChange} size="sm" radius="lg" classNames={{ base: 'rounded-2xl', closeButton: 'cursor-pointer' }}>
         <ModalContent className="rounded-2xl overflow-hidden">
           {(onClose) => {
-            const provCompleto = proveedores.find(p => p.idProveedor === ocProveedorAToggle?.idProveedor);
-            const estadoActual = provCompleto?.estadoProveedor ?? null;
-            const esDeshabilitar = estadoActual === 'DISPONIBLE';
+            const esDeshabilitar = ocEstadoActualToggle === 'DISPONIBLE';
             const nuevoEstadoLabel = esDeshabilitar ? 'No Disponible' : 'Disponible';
             return (
               <>
@@ -4899,7 +4897,7 @@ interface OrdenPedidoModalProps {
   onFechaEntregaChange: (f: string) => void;
   proveedoresEstados?: Record<number, EstadoProveedor>;
   togglingEstadoPaso2Id?: number | null;
-  onToggleEstadoProveedor?: (prov: IProveedorGrupoConsolidado) => void;
+  onToggleEstadoProveedor?: (prov: IProveedorGrupoConsolidado, estadoActual: EstadoProveedor) => void;
 }
 
 const chipOrdenPedido = (cantidad: number) => {
@@ -5241,7 +5239,11 @@ const OrdenPedidoModal: React.FC<OrdenPedidoModalProps> = ({
                           fechaEntrega={fechaEntrega}
                           estadoProveedor={prov.idProveedor != null ? (proveedoresEstados?.[prov.idProveedor] ?? null) : null}
                           isToggling={togglingEstadoPaso2Id === prov.idProveedor}
-                          onToggleEstado={prov.idProveedor != null && onToggleEstadoProveedor ? () => onToggleEstadoProveedor(prov) : undefined}
+                          onToggleEstado={
+                            prov.idProveedor != null && onToggleEstadoProveedor && proveedoresEstados?.[prov.idProveedor] != null
+                              ? () => onToggleEstadoProveedor(prov, proveedoresEstados![prov.idProveedor!])
+                              : undefined
+                          }
                         />
                       ))}
                     </div>
