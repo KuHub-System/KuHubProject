@@ -59,6 +59,7 @@ import {
   sincronizarPrecioDesdeIvaService,
   obtenerPedidosSemanaService,
   obtenerCotizacionConsolidadaService,
+  actualizarEstadoProveedorService,
 } from '../services/proveedor-service';
 import type {
   IProveedor,
@@ -558,6 +559,11 @@ const GestionProveedoresPage: React.FC = () => {
   const [proveedorAEliminar, setProveedorAEliminar] = React.useState<IProveedor | null>(null);
   const [deletingId, setDeletingId] = React.useState<number | null>(null);
 
+  // ── Modal confirmar cambiar estado proveedor ──
+  const { isOpen: isToggleEstadoModal, onOpen: openToggleEstadoModal, onOpenChange: onToggleEstadoModalChange } = useDisclosure();
+  const [proveedorAToggle, setProveedorAToggle] = React.useState<IProveedor | null>(null);
+  const [togglingEstadoId, setTogglingEstadoId] = React.useState<number | null>(null);
+
   // ── Modal confirmar quitar producto ──
   const { isOpen: isQuitarModal, onOpen: openQuitarModal, onOpenChange: onQuitarModalChange } = useDisclosure();
   const [quitarTarget, setQuitarTarget] = React.useState<{ idProveedor: number; idProducto: number; nombre: string } | null>(null);
@@ -901,6 +907,32 @@ const GestionProveedoresPage: React.FC = () => {
   const handleConfirmarEliminar = (p: IProveedor) => {
     setProveedorAEliminar(p);
     openDelModal();
+  };
+
+  const handleConfirmarToggleEstado = (p: IProveedor) => {
+    setProveedorAToggle(p);
+    openToggleEstadoModal();
+  };
+
+  const handleToggleEstadoProveedor = async () => {
+    if (!proveedorAToggle) return;
+    const nuevoEstado: EstadoProveedor = proveedorAToggle.estadoProveedor === 'DISPONIBLE' ? 'NO_DISPONIBLE' : 'DISPONIBLE';
+    setTogglingEstadoId(proveedorAToggle.idProveedor);
+    try {
+      await actualizarEstadoProveedorService(proveedorAToggle, nuevoEstado);
+      setProveedores((prev) =>
+        prev.map((p) =>
+          p.idProveedor === proveedorAToggle.idProveedor ? { ...p, estadoProveedor: nuevoEstado } : p
+        )
+      );
+      const label = nuevoEstado === 'DISPONIBLE' ? 'Disponible' : 'No Disponible';
+      showToast(`Estado actualizado a ${label}`);
+    } catch (err: any) {
+      showToast(err.message || 'No se pudo actualizar el estado del proveedor', 'error');
+    } finally {
+      setTogglingEstadoId(null);
+      setProveedorAToggle(null);
+    }
   };
 
   const handleEliminarProveedor = async () => {
@@ -1990,6 +2022,22 @@ const GestionProveedoresPage: React.FC = () => {
                             {proveedor.cantidadProductosActivos} producto{proveedor.cantidadProductosActivos !== 1 ? 's' : ''}
                           </Chip>
                           {renderEstado(proveedor.estadoProveedor)}
+                          {prov_Editar && proveedor.activo && (
+                            <Button
+                              isIconOnly
+                              variant="light"
+                              size="sm"
+                              title={proveedor.estadoProveedor === 'DISPONIBLE' ? 'Cambiar a No Disponible' : 'Cambiar a Disponible'}
+                              isLoading={togglingEstadoId === proveedor.idProveedor}
+                              onPress={() => handleConfirmarToggleEstado(proveedor)}
+                            >
+                              <Icon
+                                icon={proveedor.estadoProveedor === 'DISPONIBLE' ? 'lucide:toggle-right' : 'lucide:toggle-left'}
+                                className={proveedor.estadoProveedor === 'DISPONIBLE' ? 'text-success' : 'text-danger'}
+                                width={20}
+                              />
+                            </Button>
+                          )}
 
                           {/* Acciones */}
                           <div className="flex gap-1">
@@ -2494,6 +2542,56 @@ const GestionProveedoresPage: React.FC = () => {
               </ModalFooter>
             </>
           )}
+        </ModalContent>
+      </Modal>
+
+      {/* ── Modal Confirmar Cambiar Estado Proveedor ── */}
+      <Modal isOpen={isToggleEstadoModal} onOpenChange={onToggleEstadoModalChange} size="sm" radius="lg" classNames={{ base: 'rounded-2xl', closeButton: 'cursor-pointer' }}>
+        <ModalContent className="rounded-2xl overflow-hidden">
+          {(onClose) => {
+            const esDeshabilitar = proveedorAToggle?.estadoProveedor === 'DISPONIBLE';
+            const nuevoEstadoLabel = esDeshabilitar ? 'No Disponible' : 'Disponible';
+            return (
+              <>
+                <ModalHeader className={`border-b border-default-200 dark:border-default-100 px-6 py-4 ${esDeshabilitar ? 'bg-gradient-to-r from-warning/10 to-warning/5 dark:from-warning/20 dark:to-warning/10' : 'bg-gradient-to-r from-success/10 to-success/5 dark:from-success/20 dark:to-success/10'}`}>
+                  <div className="flex items-center gap-3">
+                    <div className={`p-2 rounded-lg ${esDeshabilitar ? 'bg-warning/20' : 'bg-success/20'}`}>
+                      <Icon icon={esDeshabilitar ? 'lucide:toggle-left' : 'lucide:toggle-right'} className={esDeshabilitar ? 'text-warning' : 'text-success'} width={20} />
+                    </div>
+                    <span className="font-bold text-lg text-secondary dark:text-foreground">
+                      Cambiar Estado del Proveedor
+                    </span>
+                  </div>
+                </ModalHeader>
+                <ModalBody className="py-4">
+                  <p className="text-sm text-default-600">
+                    ¿Cambiar el estado de{' '}
+                    <strong>{proveedorAToggle?.nombreDistribuidora}</strong>{' '}
+                    a <strong className={esDeshabilitar ? 'text-warning-600' : 'text-success-600'}>{nuevoEstadoLabel}</strong>?
+                  </p>
+                </ModalBody>
+                <ModalFooter className="bg-gradient-to-r from-default-50 to-default-50 dark:from-content2 dark:to-content2 border-t border-default-200 dark:border-default-100 gap-2 px-6 py-4">
+                  <Button variant="ghost" onPress={onClose} className="font-medium">
+                    Cancelar
+                  </Button>
+                  <Button
+                    color={esDeshabilitar ? 'warning' : 'success'}
+                    variant="solid"
+                    onPress={async () => {
+                      await handleToggleEstadoProveedor();
+                      onClose();
+                    }}
+                    isLoading={togglingEstadoId !== null}
+                    className="font-bold shadow-md cursor-pointer"
+                    startContent={!togglingEstadoId && <Icon icon={esDeshabilitar ? 'lucide:toggle-left' : 'lucide:toggle-right'} width={16} />}
+                    size="lg"
+                  >
+                    Confirmar
+                  </Button>
+                </ModalFooter>
+              </>
+            );
+          }}
         </ModalContent>
       </Modal>
 
@@ -4752,7 +4850,7 @@ const OrdenPedidoModal: React.FC<OrdenPedidoModalProps> = ({
       radius="lg"
       classNames={{ base: 'rounded-2xl', body: 'min-h-[400px]' }}
     >
-      <ModalContent>
+      <ModalContent className="rounded-2xl overflow-hidden">
         {(onClose) => (
           <>
             <ModalHeader className="border-b border-default-200 dark:border-default-100 bg-gradient-to-r from-warning/10 to-warning/5 dark:from-warning/20 dark:to-warning/10 px-6 py-4">
