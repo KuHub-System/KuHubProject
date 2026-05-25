@@ -1508,50 +1508,27 @@ const GestionProveedoresPage: React.FC = () => {
       const indexActual = entregaCols.findIndex(c => getEntregaKey(c) === entregaKey);
 
       if (delta > 0) {
-        // Calcular cuánto hay REALMENTE disponible en días posteriores
-        let disponible = 0;
-        for (let i = indexActual + 1; i < entregaCols.length; i++) {
-          disponible += prodData[getEntregaKey(entregaCols[i])] ?? 0;
-        }
-        // Limitar incremento a lo disponible (no se puede crear cantidad de la nada)
-        const deltaEfectivo = Math.min(delta, disponible);
-        if (deltaEfectivo < 0.001) return prev;
-
-        prodData[entregaKey] = valorActual + deltaEfectivo;
-        let restante = deltaEfectivo;
-        for (let i = indexActual + 1; i < entregaCols.length && restante > 0.001; i++) {
-          const key = getEntregaKey(entregaCols[i]);
-          const cantActual = prodData[key] ?? 0;
-          if (cantActual > 0) {
-            const aRestar = Math.min(restante, cantActual);
-            prodData[key] = cantActual - aRestar;
-            restante -= aRestar;
-          }
-        }
+        // Incremento libre: siempre suma, nunca bloqueado
+        prodData[entregaKey] = valorActual + delta;
       } else if (delta < 0) {
-        const nuevoValor = valorActual + delta;
-        if (nuevoValor < 0) return prev;
+        const actualStep = Math.min(Math.abs(delta), valorActual); // piso en 0
+        if (actualStep < 0.001) return prev;
 
-        prodData[entregaKey] = nuevoValor;
-        const originalesProd = ocCantidadesOriginales[idProveedor]?.[idProducto] ?? {};
-        let pendiente = Math.abs(delta);
-        // Fase 1: recuperar lo que fue restado de días posteriores
-        for (let i = indexActual + 1; i < entregaCols.length && pendiente > 0; i++) {
-          const key = getEntregaKey(entregaCols[i]);
-          const valorOriginal = originalesProd[key] ?? 0;
-          const valorActualKey = prodData[key] ?? 0;
-          const restado = valorOriginal - valorActualKey;
-          if (restado > 0) {
-            const aRecuperar = Math.min(pendiente, restado);
-            prodData[key] = valorActualKey + aRecuperar;
-            pendiente -= aRecuperar;
-          }
-        }
-        // Fase 2: transferir excedente al siguiente día disponible
-        if (pendiente > 0) {
+        const originalX = ocCantidadesOriginales[idProveedor]?.[idProducto]?.[entregaKey] ?? 0;
+        // Cuánto del valor actual está por encima de la base (excedente de incrementos libres)
+        const excess = Math.max(0, valorActual - originalX);
+        // La parte del paso que solo "deshace" el excedente no requiere distribución
+        const porEncimaBase = Math.min(actualStep, excess);
+        // La parte que baja por debajo de la base se transfiere al siguiente día posterior
+        const porDebajoBase = actualStep - porEncimaBase;
+
+        prodData[entregaKey] = valorActual - actualStep;
+
+        if (porDebajoBase > 0.001) {
+          // Distribuir al primer día posterior disponible
           for (let i = indexActual + 1; i < entregaCols.length; i++) {
             const key = getEntregaKey(entregaCols[i]);
-            prodData[key] = (prodData[key] ?? 0) + pendiente;
+            prodData[key] = (prodData[key] ?? 0) + porDebajoBase;
             break;
           }
         }
@@ -5064,15 +5041,15 @@ const EntregaInput: React.FC<EntregaInputProps> = ({ value, esFraccionario, onCh
     timeoutRef.current = setTimeout(() => {
       longActive.current = true;
       intervalRef.current = setInterval(() => {
-        if (onIncrement) onIncrement(sign * 5);
-      }, 120);
+        if (onIncrement) onIncrement(sign * (esFraccionario ? 0.5 : 5));
+      }, 300);
     }, 300);
   };
 
   const handleBtnUp = () => { clearTimers(); };
 
   const handleBtnClick = (sign: 1 | -1) => {
-    if (!longActive.current && onIncrement) onIncrement(sign * (esFraccionario ? 0.5 : 1));
+    if (!longActive.current && onIncrement) onIncrement(sign * (esFraccionario ? 0.1 : 1));
     longActive.current = false;
   };
 
@@ -5156,6 +5133,8 @@ interface ProveedorCotizacionTablaProps {
   proveedor: IProveedorGrupoConsolidado;
   /** idProducto → diaSemana → cantidad editable (sólo para días de entrega) */
   cantidadesProv: Record<number, Record<string, number>>;
+  /** idProducto → diaSemana → cantidad original (base de comparación para el icono de restaurar) */
+  cantidadesOriginalesProv: Record<number, Record<string, number>>;
   onCantidadChange: (idProveedor: number, idProducto: number, dia: string, valor: number) => void;
   /** Incremento/decremento con redistribución automática (botones ±). */
   onIncrement: (idProducto: number, entregaKey: string, delta: number, colSpecs: ColSpecOC[]) => void;
@@ -5168,6 +5147,7 @@ interface ProveedorCotizacionTablaProps {
 const ProveedorCotizacionTabla: React.FC<ProveedorCotizacionTablaProps> = ({
   proveedor,
   cantidadesProv,
+  cantidadesOriginalesProv,
   onCantidadChange,
   onIncrement,
   onRestaurar,
@@ -5370,10 +5350,15 @@ const ProveedorCotizacionTabla: React.FC<ProveedorCotizacionTablaProps> = ({
                   </thead>
                   <tbody>
                     {cat.productos.map(prod => {
-                      const entregasProd = cantidadesProv[prod.idProducto] ?? {};
-                      const sumEntregas = Object.values(entregasProd).reduce((s, v) => s + v, 0);
+                      const entregasProd  = cantidadesProv[prod.idProducto] ?? {};
+                      const originalesProd = cantidadesOriginalesProv[prod.idProducto] ?? {};
+                      const sumEntregas   = Object.values(entregasProd).reduce((s, v) => s + v, 0);
                       const pNetoFila   = prod.precioNeto   != null ? sumEntregas * prod.precioNeto   : null;
                       const pConIvaFila = prod.precioConIva != null ? sumEntregas * prod.precioConIva : null;
+                      // Hay alteración si cualquier clave difiere del valor original
+                      const hayAlteracion = Object.keys({ ...entregasProd, ...originalesProd }).some(k =>
+                        Math.abs((entregasProd[k] ?? 0) - (originalesProd[k] ?? 0)) > 0.001,
+                      );
                       return (
                         <tr key={prod.idProducto} className="border-t border-default-100 dark:border-default-50 hover:bg-default-50 dark:hover:bg-default-100/20">
                           <td className="py-2 px-3 font-medium text-left max-w-[160px]">
@@ -5413,9 +5398,9 @@ const ProveedorCotizacionTabla: React.FC<ProveedorCotizacionTablaProps> = ({
                           <td className="py-2 px-2 text-center whitespace-nowrap">{pConIvaFila !== null ? `$${fmtN(pConIvaFila)}` : '—'}</td>
                           {!esSinProveedor && (
                             <td className="py-1 px-1 text-center">
-                              {Math.abs(sumEntregas - prod.cantidadTotal) > 0.001 && (
+                              {hayAlteracion && (
                                 <button
-                                  title={`Restaurar distribución (actual: ${fmtN(sumEntregas)} ≠ solicitado: ${fmtN(prod.cantidadTotal)})`}
+                                  title={`Restaurar distribución original (actual: ${fmtN(sumEntregas)} / solicitado: ${fmtN(prod.cantidadTotal)})`}
                                   onClick={() => onRestaurar(prod.idProducto)}
                                   className="p-1 rounded hover:bg-warning-100 dark:hover:bg-warning-900/20 text-warning-500 dark:text-warning-400 transition-colors cursor-pointer"
                                   type="button"
