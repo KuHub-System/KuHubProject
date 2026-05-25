@@ -5,6 +5,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 
 /** Mapea tabla detalle_orden_pedido (Tarea #13). Snapshot de precios al momento de crear la OP. */
 @Entity
@@ -37,6 +38,9 @@ public class DetalleOrdenPedido {
 
     @Column(name = "precio_con_iva_unitario", precision = 10, scale = 3)
     private BigDecimal precioConIvaUnitario;
+
+    @Column(name = "fecha_entrega", nullable = false, columnDefinition = "DATE")
+    private LocalDate fechaEntrega;
 
     @Column(name = "activo", nullable = false)
     private Boolean activo = true;

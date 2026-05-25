@@ -1,5 +1,6 @@
 package KuHub.modules.gestion_orden_pedido.entity;
 
+import KuHub.modules.gestion_orden_pedido.enums.EstadoOrdenPedido;
 import KuHub.modules.gestion_pedido.entity.Pedido;
 import KuHub.modules.gestion_proveedor.entity.Proveedor;
 import jakarta.persistence.*;
@@ -9,7 +10,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
-/** Mapea tabla orden_pedido (Tarea #13). Vincula un pedido con un proveedor. */
+/** Mapea tabla orden_pedido (Tarea #13 + #27). Vincula un pedido con un proveedor. */
 @Entity
 @Table(name = "orden_pedido")
 @Getter
@@ -35,6 +36,10 @@ public class OrdenPedido {
     @Column(name = "fecha_creacion", nullable = false, updatable = false,
             columnDefinition = "TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
     private LocalDateTime fechaCreacion = LocalDateTime.now();
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "estado_orden_pedido", nullable = false)
+    private EstadoOrdenPedido estadoOrdenPedido = EstadoOrdenPedido.PENDIENTE;
 
     @Column(name = "observaciones", columnDefinition = "TEXT")
     private String observaciones;
