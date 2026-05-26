@@ -3523,9 +3523,22 @@ DROP FUNCTION IF EXISTS fn_solicitud_a_pedido();
 -- Cuando solicitudes_en_pedido = TRUE y se acepta una solicitud,
 -- se verifica si existe un pedido en el rango de la semana.
 -- Si NO existe → se crea el pedido con los productos de la solicitud.
--- Si SÍ existe → se agregan/suman los productos al pedido existente.
+-- Si SÍ existe → se verifica si el pedido tiene una orden_pedido activa:
+--   · Sin orden o con estado CANCELADA: se agregan/suman productos al pedido existente.
+--   · Con cualquier otro estado (PENDIENTE/ENVIADA/CONFIRMADA/RECIBIDA): se crea un
+--     pedido nuevo para evitar conflicto con la orden vigente.
 -- Finalmente se cambia el estado de la solicitud a 'EN_PEDIDO'.
 -- ============================================================
+
+-- Función que maneja la lógica de inserción/actualización de pedido
+-- CORRECCIÓN: Se calificaron todas las tablas con schema "public." para evitar
+-- el error "relation does not exist" cuando el search_path del trigger
+-- no incluye el schema por defecto.
+
+-- La fecha se lee directamente de NEW.fecha_solicitada (columna de la tabla solicitud).
+-- Ya no se necesita JOIN con reserva_sala para obtener la fecha.
+-- ⚠️ Si la columna se llama diferente (ej: fecha_clase, fecha_reserva),
+--    reemplazar NEW.fecha_solicitada por el nombre correcto.
 
 -- Función que maneja la lógica de inserción/actualización de pedido
 CREATE OR REPLACE FUNCTION fn_solicitud_a_pedido()
@@ -3563,15 +3576,21 @@ BEGIN
         RETURN NEW;
     END IF;
 
-    -- Buscar si ya existe un pedido en el rango de esa semana
+    -- Buscar un pedido disponible en el rango de esa semana:
+    -- disponible = sin orden vigente, o con todas sus órdenes en estado CANCELADA
     SELECT p.id_pedido INTO v_pedido_id
     FROM pedido p
     WHERE p.fecha_inicio_pedido = v_semana_inicio
       AND p.fecha_fin_pedido    = v_semana_fin
-      AND p.estado_pedido NOT IN ('RECHAZADO') 
+      AND p.estado_pedido NOT IN ('RECHAZADO','ENTREGADO')
+      AND NOT EXISTS (
+          SELECT 1 FROM orden_pedido op
+          WHERE op.id_pedido = p.id_pedido
+            AND op.estado_orden_pedido <> 'CANCELADA'
+      )
     LIMIT 1;
 
-    -- Si NO existe pedido → crear uno nuevo
+    -- Si ningún pedido disponible fue encontrado → crear uno nuevo
     IF v_pedido_id IS NULL THEN
         INSERT INTO pedido (fecha_inicio_pedido, fecha_fin_pedido, estado_pedido)
         VALUES (v_semana_inicio, v_semana_fin, 'PENDIENTE')
