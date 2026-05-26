@@ -755,6 +755,25 @@ export const obtenerOrdenPedidoDetalleService = async (
   }
 };
 
+/**
+ * Cambia el estado de una Orden de Pedido validando la transición en el backend.
+ * PATCH /api/v1/orden-pedido/{id}/estado
+ */
+export const cambiarEstadoOrdenPedidoService = async (
+  idOrdenPedido: number,
+  estado: string
+): Promise<IOrdenPedidoListItem> => {
+  try {
+    const response = await api.patch<IOrdenPedidoListItem>(`/orden-pedido/${idOrdenPedido}/estado`, { estado });
+    return response.data;
+  } catch (error: any) {
+    throw new Error(
+      error.response?.data?.message ||
+      `Error al cambiar el estado de la Orden de Pedido #${idOrdenPedido}`
+    );
+  }
+};
+
 export const descargarExcelPlantillaService = async (
   idProveedor: number,
   nombreSugerido?: string

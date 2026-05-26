@@ -63,6 +63,7 @@ import {
   crearOrdenPedidoService,
   listarOrdenesPedidoService,
   obtenerOrdenPedidoDetalleService,
+  cambiarEstadoOrdenPedidoService,
 } from '../services/proveedor-service';
 import type {
   IProveedor,
@@ -610,6 +611,9 @@ const GestionProveedoresPage: React.FC = () => {
   const [opExpandidoId, setOpExpandidoId] = React.useState<number | null>(null);
   const [opDetalle, setOpDetalle] = React.useState<IOrdenPedidoConDetalles | null>(null);
   const [opCargandoDetalle, setOpCargandoDetalle] = React.useState(false);
+  const [opCambiandoEstadoId, setOpCambiandoEstadoId] = React.useState<number | null>(null);
+  /** Modal de confirmación para CANCELAR una orden */
+  const [opConfirmCancelar, setOpConfirmCancelar] = React.useState<IOrdenPedidoListItem | null>(null);
 
   // ── Modal Orden Pedido (Tarea #13) ────────────────────────────────────
   const {
@@ -1855,6 +1859,21 @@ const GestionProveedoresPage: React.FC = () => {
     }
   }, [currentView, cargarOrdenes]);
 
+  const handleCambiarEstadoOp = async (id: number, nuevoEstado: EstadoOrdenPedido) => {
+    setOpCambiandoEstadoId(id);
+    try {
+      const actualizado = await cambiarEstadoOrdenPedidoService(id, nuevoEstado);
+      setOpLista(prev => prev.map(op => op.idOrdenPedido === id ? actualizado : op));
+      // Si el detalle expandido es esta OP, colapsar (el estado cambió)
+      if (opExpandidoId === id) { setOpExpandidoId(null); setOpDetalle(null); }
+    } catch (err: any) {
+      showToast(err.message || 'Error al cambiar el estado', 'error');
+    } finally {
+      setOpCambiandoEstadoId(null);
+      setOpConfirmCancelar(null);
+    }
+  };
+
   const handleToggleOrden = async (id: number) => {
     if (opExpandidoId === id) {
       setOpExpandidoId(null);
@@ -1936,6 +1955,7 @@ const GestionProveedoresPage: React.FC = () => {
 
         {/* ── VISTA: Órdenes de Pedido ── */}
         {currentView === 'ordenes' && (
+          <>
           <OrdenesVista
             lista={opLista}
             cargando={opCargando}
@@ -1943,9 +1963,55 @@ const GestionProveedoresPage: React.FC = () => {
             expandidoId={opExpandidoId}
             detalle={opDetalle}
             cargandoDetalle={opCargandoDetalle}
+            cambiandoEstadoId={opCambiandoEstadoId}
             onToggle={handleToggleOrden}
             onRecargar={cargarOrdenes}
+            onCambiarEstado={handleCambiarEstadoOp}
+            onConfirmCancelar={setOpConfirmCancelar}
           />
+
+          {/* ── Modal confirmación Cancelar Orden ── */}
+          <Modal
+            isOpen={opConfirmCancelar !== null}
+            onOpenChange={(open) => { if (!open) setOpConfirmCancelar(null); }}
+            size="sm"
+            radius="lg"
+            classNames={{ base: 'rounded-2xl' }}
+          >
+            <ModalContent>
+              {(onClose) => (
+                <>
+                  <ModalHeader className="flex items-center gap-2 text-danger">
+                    <Icon icon="lucide:x-circle" width={20} />
+                    Cancelar Orden de Pedido
+                  </ModalHeader>
+                  <ModalBody>
+                    <p className="text-sm text-default-600">
+                      ¿Confirmas que deseas cancelar la{' '}
+                      <span className="font-bold">OP #{opConfirmCancelar?.idOrdenPedido}</span> de{' '}
+                      <span className="font-semibold">{opConfirmCancelar?.nombreDistribuidora}</span>?
+                    </p>
+                    <p className="text-xs text-default-400 mt-1">
+                      Esta acción cambiará el estado a <span className="text-danger font-semibold">CANCELADA</span>.
+                      Podrás revertirla a PENDIENTE si es necesario.
+                    </p>
+                  </ModalBody>
+                  <ModalFooter className="gap-2">
+                    <Button variant="ghost" onPress={onClose}>Volver</Button>
+                    <Button
+                      color="danger"
+                      variant="solid"
+                      isLoading={opCambiandoEstadoId === opConfirmCancelar?.idOrdenPedido}
+                      onPress={() => opConfirmCancelar && handleCambiarEstadoOp(opConfirmCancelar.idOrdenPedido, 'CANCELADA')}
+                    >
+                      Sí, cancelar
+                    </Button>
+                  </ModalFooter>
+                </>
+              )}
+            </ModalContent>
+          </Modal>
+          </>
         )}
 
         {/* ── Vista: Proveedores ── */}
@@ -6108,15 +6174,27 @@ const ESTADO_OP_CONFIG: Record<EstadoOrdenPedido, {
   headerBg: string;
   iconClass: string;
   textClass: string;
+  activeBtnClass: string;
 }> = {
-  PENDIENTE:  { label: 'Pendiente',   chipColor: 'warning',   icon: 'lucide:clock',         headerBg: 'bg-warning-50 dark:bg-warning-50/10 border-warning-200',   iconClass: 'text-warning',   textClass: 'text-warning-700 dark:text-warning-400' },
-  ENVIADA:    { label: 'Enviada',     chipColor: 'primary',   icon: 'lucide:send',          headerBg: 'bg-primary-50 dark:bg-primary-50/10 border-primary-200',   iconClass: 'text-primary',   textClass: 'text-primary-700 dark:text-primary-400' },
-  CONFIRMADA: { label: 'Confirmada',  chipColor: 'success',   icon: 'lucide:check-circle',  headerBg: 'bg-success-50 dark:bg-success-50/10 border-success-200',   iconClass: 'text-success',   textClass: 'text-success-700 dark:text-success-400' },
-  CANCELADA:  { label: 'Cancelada',   chipColor: 'danger',    icon: 'lucide:x-circle',      headerBg: 'bg-danger-50 dark:bg-danger-50/10 border-danger-200',     iconClass: 'text-danger',    textClass: 'text-danger-700 dark:text-danger-400' },
-  RECIBIDA:   { label: 'Recibida',    chipColor: 'secondary', icon: 'lucide:package-check', headerBg: 'bg-secondary-50 dark:bg-secondary-50/10 border-secondary-200', iconClass: 'text-secondary', textClass: 'text-secondary-700 dark:text-secondary-400' },
+  PENDIENTE:  { label: 'Pendiente',   chipColor: 'warning',   icon: 'lucide:clock',         headerBg: 'bg-warning-50 dark:bg-warning-50/10 border-warning-200',       iconClass: 'text-warning',   textClass: 'text-warning-700 dark:text-warning-400',     activeBtnClass: 'bg-warning text-white border-warning'     },
+  ENVIADA:    { label: 'Enviada',     chipColor: 'primary',   icon: 'lucide:send',          headerBg: 'bg-primary-50 dark:bg-primary-50/10 border-primary-200',       iconClass: 'text-primary',   textClass: 'text-primary-700 dark:text-primary-400',     activeBtnClass: 'bg-primary text-white border-primary'     },
+  CONFIRMADA: { label: 'Confirmada',  chipColor: 'success',   icon: 'lucide:check-circle',  headerBg: 'bg-success-50 dark:bg-success-50/10 border-success-200',       iconClass: 'text-success',   textClass: 'text-success-700 dark:text-success-400',     activeBtnClass: 'bg-success text-white border-success'     },
+  CANCELADA:  { label: 'Cancelada',   chipColor: 'danger',    icon: 'lucide:x-circle',      headerBg: 'bg-danger-50 dark:bg-danger-50/10 border-danger-200',         iconClass: 'text-danger',    textClass: 'text-danger-700 dark:text-danger-400',       activeBtnClass: 'bg-danger text-white border-danger'       },
+  RECIBIDA:   { label: 'Recibida',    chipColor: 'secondary', icon: 'lucide:package-check', headerBg: 'bg-secondary-50 dark:bg-secondary-50/10 border-secondary-200', iconClass: 'text-secondary', textClass: 'text-secondary-700 dark:text-secondary-400', activeBtnClass: 'bg-secondary text-white border-secondary' },
 };
 
 const ESTADO_OP_ORDEN: EstadoOrdenPedido[] = ['PENDIENTE', 'ENVIADA', 'CONFIRMADA', 'RECIBIDA', 'CANCELADA'];
+
+/** Transiciones disponibles por estado: [nuevoEstado, label, icono, color] */
+const TRANSICIONES_OP: Record<EstadoOrdenPedido, Array<{ estado: EstadoOrdenPedido; label: string; icon: string; color: 'primary' | 'success' | 'warning' | 'secondary' }>> = {
+  PENDIENTE:  [{ estado: 'ENVIADA',    label: 'Marcar Enviada',    icon: 'lucide:send',         color: 'primary'   }],
+  ENVIADA:    [{ estado: 'CONFIRMADA', label: 'Confirmar',         icon: 'lucide:check-circle', color: 'success'   },
+               { estado: 'PENDIENTE',  label: 'Revertir a Pendiente', icon: 'lucide:undo-2',    color: 'warning'   }],
+  CONFIRMADA: [{ estado: 'RECIBIDA',   label: 'Marcar Recibida',   icon: 'lucide:package-check', color: 'secondary' },
+               { estado: 'ENVIADA',    label: 'Revertir a Enviada', icon: 'lucide:undo-2',     color: 'warning'   }],
+  RECIBIDA:   [],
+  CANCELADA:  [{ estado: 'PENDIENTE',  label: 'Reactivar',         icon: 'lucide:refresh-cw',  color: 'warning'   }],
+};
 
 interface OrdenesVistaProps {
   lista: IOrdenPedidoListItem[];
@@ -6125,13 +6203,19 @@ interface OrdenesVistaProps {
   expandidoId: number | null;
   detalle: IOrdenPedidoConDetalles | null;
   cargandoDetalle: boolean;
+  cambiandoEstadoId: number | null;
   onToggle: (id: number) => void;
   onRecargar: () => void;
+  onCambiarEstado: (id: number, nuevoEstado: EstadoOrdenPedido) => void;
+  onConfirmCancelar: (op: IOrdenPedidoListItem) => void;
 }
 
 const OrdenesVista: React.FC<OrdenesVistaProps> = ({
-  lista, cargando, error, expandidoId, detalle, cargandoDetalle, onToggle, onRecargar,
+  lista, cargando, error, expandidoId, detalle, cargandoDetalle,
+  cambiandoEstadoId, onToggle, onRecargar, onCambiarEstado, onConfirmCancelar,
 }) => {
+  const [filtroEstado, setFiltroEstado] = React.useState<EstadoOrdenPedido>('PENDIENTE');
+
   const fmtFecha = (iso: string) => {
     const [y, m, d] = iso.split('-');
     return `${d}/${m}/${y}`;
@@ -6142,15 +6226,17 @@ const OrdenesVista: React.FC<OrdenesVistaProps> = ({
     return `${String(dt.getDate()).padStart(2,'0')}/${String(dt.getMonth()+1).padStart(2,'0')}/${dt.getFullYear()} ${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')}`;
   };
 
-  const grupos = React.useMemo(() => {
-    const map = new Map<EstadoOrdenPedido, IOrdenPedidoListItem[]>();
-    for (const e of ESTADO_OP_ORDEN) map.set(e, []);
-    for (const op of lista) {
-      const estado = op.estadoOrdenPedido as EstadoOrdenPedido;
-      map.get(estado)?.push(op);
-    }
-    return ESTADO_OP_ORDEN.map(e => ({ estado: e, items: map.get(e)! })).filter(g => g.items.length > 0);
+  const conteosPorEstado = React.useMemo(() => {
+    const map = new Map<EstadoOrdenPedido, number>();
+    for (const e of ESTADO_OP_ORDEN) map.set(e, 0);
+    for (const op of lista) map.set(op.estadoOrdenPedido, (map.get(op.estadoOrdenPedido) ?? 0) + 1);
+    return map;
   }, [lista]);
+
+  const listaFiltrada = React.useMemo(
+    () => lista.filter(op => op.estadoOrdenPedido === filtroEstado),
+    [lista, filtroEstado],
+  );
 
   if (cargando) {
     return (
@@ -6172,106 +6258,167 @@ const OrdenesVista: React.FC<OrdenesVistaProps> = ({
     );
   }
 
-  if (lista.length === 0) {
-    return (
-      <div className="text-center py-20 text-default-400">
-        <Icon icon="lucide:clipboard-x" width={52} className="mx-auto mb-3 opacity-40" />
-        <p className="text-base font-medium">No hay órdenes de pedido registradas</p>
-        <p className="text-sm mt-1">Las órdenes aparecerán aquí una vez que sean generadas.</p>
-      </div>
-    );
-  }
+  const cfg = ESTADO_OP_CONFIG[filtroEstado];
 
   return (
-    <div className="space-y-4">
-      {grupos.map(({ estado, items }) => {
-        const cfg = ESTADO_OP_CONFIG[estado];
-        return (
-          <div key={estado} className={`rounded-xl border overflow-hidden ${cfg.headerBg}`}>
-            {/* Cabecera del grupo */}
-            <div className={`px-4 py-3 flex items-center gap-3 border-b ${cfg.headerBg}`}>
-              <Icon icon={cfg.icon} className={cfg.iconClass} width={18} />
-              <span className={`font-bold text-sm uppercase tracking-wide ${cfg.textClass}`}>
-                {cfg.label}
-              </span>
-              <Chip size="sm" color={cfg.chipColor} variant="flat" className="ml-auto font-bold">
-                {items.length} orden{items.length !== 1 ? 'es' : ''}
-              </Chip>
-            </div>
+    <Card className="shadow-sm border border-default-200 dark:border-default-100">
+      {/* ── Barra de filtros por estado ── */}
+      <div className="px-4 pt-4 pb-3 border-b border-default-100">
+        <div className="flex items-center gap-1.5 flex-wrap">
+          {ESTADO_OP_ORDEN.map(e => {
+            const c = ESTADO_OP_CONFIG[e];
+            const count = conteosPorEstado.get(e) ?? 0;
+            const activo = filtroEstado === e;
+            return (
+              <button
+                key={e}
+                onClick={() => setFiltroEstado(e)}
+                className={`px-3 py-1 rounded-full text-xs font-semibold border transition-all cursor-pointer flex items-center gap-1.5 ${
+                  activo
+                    ? c.activeBtnClass
+                    : 'bg-default-100 text-default-600 border-default-200 hover:bg-default-200'
+                }`}
+              >
+                <Icon icon={c.icon} width={11} />
+                {c.label}
+                <span className={`${activo ? 'opacity-80' : 'opacity-60'}`}>({count})</span>
+              </button>
+            );
+          })}
+          <Button
+            size="sm"
+            variant="flat"
+            className="ml-auto"
+            startContent={<Icon icon="lucide:refresh-cw" width={13} />}
+            onPress={onRecargar}
+          >
+            Actualizar
+          </Button>
+        </div>
+      </div>
 
-            {/* Filas */}
-            <div className="bg-white dark:bg-default-50/30">
-              {items.map((op, idx) => (
-                <div key={op.idOrdenPedido}>
-                  {/* Fila resumen */}
-                  <div
-                    className={`flex flex-col sm:flex-row sm:items-center gap-2 px-4 py-3 cursor-pointer transition-colors hover:bg-default-50 dark:hover:bg-default-100/20 ${
-                      idx > 0 ? 'border-t border-default-100 dark:border-default-50' : ''
-                    } ${expandidoId === op.idOrdenPedido ? 'bg-default-50 dark:bg-default-100/20' : ''}`}
-                    onClick={() => onToggle(op.idOrdenPedido)}
-                  >
-                    <div className="flex items-center gap-3 flex-1 min-w-0">
-                      <div className="flex items-center gap-1 shrink-0">
-                        <Icon
-                          icon={expandidoId === op.idOrdenPedido ? 'lucide:chevron-down' : 'lucide:chevron-right'}
-                          width={16}
-                          className="text-default-400"
-                        />
-                        <span className="text-xs font-bold text-secondary dark:text-foreground">OP #{op.idOrdenPedido}</span>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="w-[200px] truncate font-semibold text-sm text-secondary dark:text-foreground">
-                          {op.nombreDistribuidora}
-                        </div>
-                        <p className="text-xs text-default-400">{op.nombreProveedor}</p>
-                      </div>
+      <CardBody className="p-0">
+        {listaFiltrada.length === 0 ? (
+          <div className="py-16 flex flex-col items-center gap-3 text-default-400">
+            <Icon icon={cfg.icon} width={48} className="opacity-30" />
+            <p className="text-sm font-medium">
+              No hay órdenes con estado <span className="font-bold">{cfg.label}</span>
+            </p>
+            <p className="text-xs">
+              {filtroEstado === 'PENDIENTE'  && 'Las órdenes recién generadas aparecerán aquí.'}
+              {filtroEstado === 'ENVIADA'    && 'Las órdenes marcadas como enviadas al proveedor aparecerán aquí.'}
+              {filtroEstado === 'CONFIRMADA' && 'Las órdenes confirmadas por el proveedor aparecerán aquí.'}
+              {filtroEstado === 'RECIBIDA'   && 'Las órdenes con mercadería recibida aparecerán aquí.'}
+              {filtroEstado === 'CANCELADA'  && 'Las órdenes canceladas aparecerán aquí.'}
+            </p>
+          </div>
+        ) : (
+          <div>
+            {listaFiltrada.map((op, idx) => (
+              <div key={op.idOrdenPedido} className={idx > 0 ? 'border-t border-default-100 dark:border-default-50' : ''}>
+                {/* Fila resumen */}
+                <div
+                  className={`flex flex-col sm:flex-row sm:items-center gap-2 px-4 py-3 cursor-pointer transition-colors hover:bg-default-50 dark:hover:bg-default-100/20 ${
+                    expandidoId === op.idOrdenPedido ? 'bg-default-50 dark:bg-default-100/20' : ''
+                  }`}
+                  onClick={() => onToggle(op.idOrdenPedido)}
+                >
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <div className="flex items-center gap-1 shrink-0">
+                      <Icon
+                        icon={expandidoId === op.idOrdenPedido ? 'lucide:chevron-down' : 'lucide:chevron-right'}
+                        width={16}
+                        className="text-default-400"
+                      />
+                      <span className="text-xs font-bold text-secondary dark:text-foreground">OP #{op.idOrdenPedido}</span>
                     </div>
-                    <div className="flex flex-wrap items-center gap-3 text-xs text-default-500 shrink-0">
-                      <span className="flex items-center gap-1">
-                        <Icon icon="lucide:calendar-range" width={12} />
-                        {fmtFecha(op.fechaInicioPedido)} – {fmtFecha(op.fechaFinPedido)}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Icon icon="lucide:clock" width={12} />
-                        {fmtDatetime(op.fechaCreacion)}
-                      </span>
-                      <Chip size="sm" color={cfg.chipColor} variant="flat" className="text-[10px]">
-                        {op.cantidadDetalles} detalle{op.cantidadDetalles !== 1 ? 's' : ''}
-                      </Chip>
-                      <span className="text-success-600 font-semibold">${fmtN(op.totalNeto)}</span>
-                      <span className="text-warning-600 font-semibold text-[11px]">c/IVA ${fmtN(op.totalConIva)}</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="w-[200px] truncate font-semibold text-sm text-secondary dark:text-foreground">
+                        {op.nombreDistribuidora}
+                      </div>
+                      <p className="text-xs text-default-400">{op.nombreProveedor}</p>
                     </div>
                   </div>
-
-                  {/* Panel detalle expandido */}
-                  <AnimatePresence>
-                    {expandidoId === op.idOrdenPedido && (
-                      <motion.div
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: 'auto', opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
-                        transition={{ duration: 0.25 }}
-                        className="overflow-hidden"
-                      >
-                        <div className="px-4 pb-4 pt-1 bg-default-50 dark:bg-default-100/20 border-t border-default-100">
-                          {cargandoDetalle ? (
-                            <div className="flex justify-center py-8">
-                              <Spinner size="sm" color="primary" label="Cargando detalle..." />
-                            </div>
-                          ) : detalle && detalle.idOrdenPedido === op.idOrdenPedido ? (
-                            <OrdenDetalleTabla detalle={detalle} />
-                          ) : null}
-                        </div>
-                      </motion.div>
+                  <div className="flex flex-wrap items-center gap-3 text-xs text-default-500 shrink-0">
+                    <span className="flex items-center gap-1">
+                      <Icon icon="lucide:calendar-range" width={12} />
+                      {fmtFecha(op.fechaInicioPedido)} – {fmtFecha(op.fechaFinPedido)}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Icon icon="lucide:clock" width={12} />
+                      {fmtDatetime(op.fechaCreacion)}
+                    </span>
+                    <Chip size="sm" color={cfg.chipColor} variant="flat" className="text-[10px]">
+                      {op.cantidadDetalles} detalle{op.cantidadDetalles !== 1 ? 's' : ''}
+                    </Chip>
+                    <span className="text-success-600 font-semibold">${fmtN(op.totalNeto)}</span>
+                    <span className="text-warning-600 font-semibold text-[11px]">c/IVA ${fmtN(op.totalConIva)}</span>
+                  </div>
+                  {/* Botones de acción de estado */}
+                  <div
+                    className="flex items-center gap-1.5 shrink-0"
+                    onClick={e => e.stopPropagation()}
+                  >
+                    {TRANSICIONES_OP[op.estadoOrdenPedido].map(t => (
+                      <Tooltip key={t.estado} content={t.label} placement="top">
+                        <Button
+                          isIconOnly
+                          size="sm"
+                          color={t.color}
+                          variant="flat"
+                          isLoading={cambiandoEstadoId === op.idOrdenPedido}
+                          isDisabled={cambiandoEstadoId !== null}
+                          onPress={() => onCambiarEstado(op.idOrdenPedido, t.estado)}
+                        >
+                          <Icon icon={t.icon} width={14} />
+                        </Button>
+                      </Tooltip>
+                    ))}
+                    {(['PENDIENTE', 'ENVIADA', 'CONFIRMADA'] as EstadoOrdenPedido[]).includes(op.estadoOrdenPedido) && (
+                      <Tooltip content="Cancelar orden" placement="top">
+                        <Button
+                          isIconOnly
+                          size="sm"
+                          color="danger"
+                          variant="flat"
+                          isDisabled={cambiandoEstadoId !== null}
+                          onPress={() => onConfirmCancelar(op)}
+                        >
+                          <Icon icon="lucide:x-circle" width={14} />
+                        </Button>
+                      </Tooltip>
                     )}
-                  </AnimatePresence>
+                  </div>
                 </div>
-              ))}
-            </div>
+
+                {/* Panel detalle expandido */}
+                <AnimatePresence>
+                  {expandidoId === op.idOrdenPedido && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.25 }}
+                      className="overflow-hidden"
+                    >
+                      <div className="px-4 pb-4 pt-1 bg-default-50 dark:bg-default-100/20 border-t border-default-100">
+                        {cargandoDetalle ? (
+                          <div className="flex justify-center py-8">
+                            <Spinner size="sm" color="primary" label="Cargando detalle..." />
+                          </div>
+                        ) : detalle && detalle.idOrdenPedido === op.idOrdenPedido ? (
+                          <OrdenDetalleTabla detalle={detalle} />
+                        ) : null}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            ))}
           </div>
-        );
-      })}
-    </div>
+        )}
+      </CardBody>
+    </Card>
   );
 };
 
