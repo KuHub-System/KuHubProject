@@ -445,7 +445,7 @@ const BodegaTransitoPage: React.FC = () => {
   usePageTitle(
     currentView === 'inventario' ? 'Bodega de Tránsito' : 'Gestión de Pedidos Diarios',
     currentView === 'inventario' ? 'Gestión de armado de carros diarios' : 'Planificación y seguimiento de armado de carros para clases',
-    currentView === 'inventario' ? 'lucide:warehouse' : 'lucide:clipboard-list'
+    currentView === 'inventario' ? 'lucide:warehouse' : 'lucide:shopping-cart'
   );
 
   const { isOpen: isExtraOpen, onOpen: onExtraOpen, onOpenChange: onExtraOpenChange } = useDisclosure();
@@ -821,7 +821,7 @@ const BodegaTransitoPage: React.FC = () => {
 
   return (
     <>
-    <div className="flex h-[calc(100vh-100px)] overflow-hidden font-sans relative">
+    <div className="flex h-[calc(100vh-76px)] overflow-hidden font-sans relative -mt-6">
       {/* Área de Contenido Principal */}
       <div ref={mainScrollerRef} onScroll={handleScroll} className="flex-grow overflow-y-auto bg-default-50/50 dark:bg-background scrollbar-hide pb-20">
         <AnimatePresence mode="wait">
@@ -1167,16 +1167,6 @@ const BodegaTransitoPage: React.FC = () => {
               transition={{ duration: 0.3 }}
               className="space-y-6 pt-6 pb-10"
             >
-              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white dark:bg-content1 p-6 rounded-2xl shadow-sm border border-default-200 dark:border-default-100 mx-4">
-                <div>
-                  <h1 className="text-2xl font-bold text-secondary dark:text-white flex items-center gap-2">
-                    <Icon icon="lucide:shopping-cart" className="text-secondary" width={28} />
-                    Gestión de Pedidos Diarios
-                  </h1>
-                  <p className="text-default-500 text-sm mt-1">Planificación y seguimiento de armado de carros para clases</p>
-                </div>
-              </div>
-
               <Accordion variant="splitted" selectionMode="multiple" defaultSelectedKeys={["gestion-pedidos"]} className="px-4 w-full">
                 <AccordionItem
                   key="gestion-pedidos"
@@ -1264,7 +1254,7 @@ const BodegaTransitoPage: React.FC = () => {
       </div>
 
       {/* Riel de Navegación Derecho */}
-      <div className="w-[70px] shrink-0 bg-white dark:bg-content1 border-l border-default-200 dark:border-default-100 flex flex-col items-center py-6 gap-4 z-40 sticky right-0 shadow-[-4px_0_15px_rgba(0,0,0,0.02)]">
+      <div className="w-[70px] shrink-0 bg-white dark:bg-content1 border-l border-default-200 dark:border-default-100 flex flex-col items-center py-6 gap-4 z-30 sticky right-0 shadow-[-4px_0_15px_rgba(0,0,0,0.02)] -mr-6 self-stretch">
         <Tooltip content="Bodega de Tránsito" placement="left">
           <Button
             isIconOnly
