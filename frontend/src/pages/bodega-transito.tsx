@@ -443,9 +443,9 @@ const BodegaTransitoPage: React.FC = () => {
   }, [preparandoSolicitud, productosEdit, selectedDate, toast]);
 
   usePageTitle(
-    'Bodega de Tránsito',
-    'Gestión de armado de carros diarios',
-    'lucide:warehouse'
+    currentView === 'inventario' ? 'Bodega de Tránsito' : 'Gestión de Pedidos Diarios',
+    currentView === 'inventario' ? 'Gestión de armado de carros diarios' : 'Planificación y seguimiento de armado de carros para clases',
+    currentView === 'inventario' ? 'lucide:warehouse' : 'lucide:clipboard-list'
   );
 
   const { isOpen: isExtraOpen, onOpen: onExtraOpen, onOpenChange: onExtraOpenChange } = useDisclosure();
@@ -1265,7 +1265,7 @@ const BodegaTransitoPage: React.FC = () => {
 
       {/* Riel de Navegación Derecho */}
       <div className="w-[70px] shrink-0 bg-white dark:bg-content1 border-l border-default-200 dark:border-default-100 flex flex-col items-center py-6 gap-4 z-40 sticky right-0 shadow-[-4px_0_15px_rgba(0,0,0,0.02)]">
-        <Tooltip content="Inventario Consolidado" placement="left">
+        <Tooltip content="Bodega de Tránsito" placement="left">
           <Button
             isIconOnly
             variant={currentView === 'inventario' ? 'solid' : 'light'}
