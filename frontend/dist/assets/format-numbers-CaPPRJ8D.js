@@ -1,1 +1,0 @@
-const m=new Intl.NumberFormat("es-CL",{minimumFractionDigits:0,maximumFractionDigits:0}),r=new Intl.NumberFormat("es-CL",{minimumFractionDigits:0,maximumFractionDigits:3}),n=t=>{if(t==null||isNaN(t))return"0";const i=t;return Number.isInteger(i)?m.format(i):r.format(i)};export{n as f};
