@@ -81,7 +81,7 @@ public class ProveedorServiceImpl implements ProveedorService {
 
     private static final BigDecimal IVA = new BigDecimal("1.19");
 
-    /**Repositories*/
+    // Repositorios de acceso a datos para persistencia y consultas
     @Autowired
     private ProveedorRepository proveedorRepository;
 
@@ -94,11 +94,11 @@ public class ProveedorServiceImpl implements ProveedorService {
     @Autowired
     private ProductoRepository productoRepository;
 
-    /**Services*/
+    // Servicios de negocio asociados
     @Autowired
     private KuHub.modules.gestion_inventario.services.CategoriaService categoriaService;
 
-    /**Others*/
+    // Componentes utilitarios auxiliares
     @Autowired
     private ObjectMapper objectMapper;
 

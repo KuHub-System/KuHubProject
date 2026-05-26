@@ -7,8 +7,10 @@ import lombok.*;
 import java.time.LocalTime;
 
 /**
- * Mapea tabla proveedor_dia_entrega.
- * Vincula un proveedor con los días y horarios en que realiza entregas.
+ * Entidad JPA que representa las ventanas horarias de entrega asignadas a un Proveedor.
+ * Vincula un proveedor con los días de la semana y los rangos horarios específicos
+ * (inicio y término) en los cuales está facultado y programado para realizar entregas
+ * de insumos en las bodegas del establecimiento.
  */
 @Entity
 @Table(name = "proveedor_dia_entrega",
