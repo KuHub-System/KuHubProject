@@ -8,7 +8,12 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
-/** Mapea tabla proveedor */
+/**
+ * Entidad JPA que representa a un Proveedor en el sistema.
+ * Almacena los datos de contacto del proveedor, su identificador tributario (RUT único),
+ * su estado actual de disponibilidad, así como las relaciones con su catálogo de productos
+ * y los días asignados para la realización de entregas.
+ */
 @Entity
 @Table(name = "proveedor")
 @Getter

@@ -7,7 +7,12 @@ import lombok.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
-/** Mapea tabla proveedor_producto (M:M entre proveedor y producto) */
+/**
+ * Entidad JPA que representa la relación y el catálogo de productos ofrecidos por un Proveedor.
+ * Mapea la relación muchos a muchos entre Proveedor y Producto, almacenando los datos de
+ * la marca asignada, el formato de contenido del insumo, y la cotización específica
+ * detallando el precio neto, el precio con IVA calculado y el estado activo/inactivo de la oferta.
+ */
 @Entity
 @Table(name = "proveedor_producto")
 @Getter
