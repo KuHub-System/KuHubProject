@@ -29,9 +29,12 @@ import java.time.LocalDate;
 import java.util.List;
 
 /**
- * Controller REST para gestión de Proveedores.
- * Endpoints base: /api/v1/proveedor
- * ✅ Todos los endpoints conectados con gestion-proveedores.tsx y solicitud-service.ts
+ * Controlador REST para la gestión de Proveedores.
+ * Ofrece endpoints para el mantenimiento del ciclo de vida de los proveedores (CRUD),
+ * la asignación y fijación de precios de productos en su catálogo, y la sincronización
+ * masiva mediante plantillas personalizadas en formato Excel (.xlsx).
+ * 
+ * Ruta base: /api/v1/proveedor
  */
 @RestController
 @Validated
@@ -46,11 +49,15 @@ public class ProveedorController {
     // ══════════════════════════════════════════════════════════════
 
     /**
-     * Lista todos los proveedores activos con filtros opcionales.
-     * ✅ En uso: Consumido por obtenerProveedoresService en proveedor-service.ts.
+     * Lista todos los proveedores activos con filtros opcionales de estado y búsqueda parcial.
+     * 
+     * [✅] INTEGRACIÓN CON EL FRONTEND:
+     * - **Implementado:** Sí.
+     * - **Servicio frontend:** {@code frontend/src/services/proveedor-service.ts} -> {@code obtenerProveedoresService()}
+     * - **Pantalla UI:** {@code frontend/src/pages/gestion-proveedores.tsx} (Utilizado en listados generales y filtros de búsqueda de distribuidoras).
      *
-     * @param estado   Filtro por estado: DISPONIBLE o NO_DISPONIBLE (opcional)
-     * @param busqueda Búsqueda por nombre, distribuidora o RUT (opcional)
+     * @param estado   Filtro por estado de disponibilidad (DISPONIBLE o NO_DISPONIBLE) (opcional)
+     * @param busqueda Búsqueda de coincidencia parcial por nombre, distribuidora o RUT (opcional)
      */
     @GetMapping
     public ResponseEntity<List<ProveedorListDTO>> findAll(
@@ -63,12 +70,16 @@ public class ProveedorController {
     }
 
     /**
-     * Lista proveedores activos con paginación asimétrica (20/10) y filtros opcionales.
-     * ✅ En uso: Consumido por obtenerProveedoresService en proveedor-service.ts (nueva versión con paginación).
+     * Lista proveedores activos con filtros de estado y búsqueda en formato paginado (20/10 registros).
+     * 
+     * [✅] INTEGRACIÓN CON EL FRONTEND:
+     * - **Implementado:** Sí.
+     * - **Servicio frontend:** {@code frontend/src/services/proveedor-service.ts} -> {@code obtenerProveedoresPaginadoService()}
+     * - **Pantalla UI:** {@code frontend/src/pages/gestion-proveedores.tsx} (Puebla la tabla principal de administración de proveedores con paginación asimétrica).
      *
-     * @param estado   Filtro por estado: DISPONIBLE o NO_DISPONIBLE (opcional)
-     * @param busqueda Búsqueda por nombre, distribuidora o RUT (opcional)
-     * @param page     Número de página (por defecto 1)
+     * @param estado   Filtro por estado de disponibilidad (opcional)
+     * @param busqueda Término de búsqueda parcial (opcional)
+     * @param page     Número de la página a consultar (por defecto 1)
      */
     @GetMapping("/find-paginated")
     public ResponseEntity<ProveedoresPageResponse> findPaginated(
@@ -83,7 +94,11 @@ public class ProveedorController {
 
     /**
      * Obtiene el detalle completo de un proveedor con sus productos agrupados por categoría y días de entrega.
-     * ✅ En uso: Consumido por obtenerProveedorDetalleService en proveedor-service.ts.
+     * 
+     * [✅] INTEGRACIÓN CON EL FRONTEND:
+     * - **Implementado:** Sí.
+     * - **Servicio frontend:** {@code frontend/src/services/proveedor-service.ts} -> {@code obtenerProveedorDetalleService()}
+     * - **Pantalla UI:** {@code frontend/src/pages/gestion-proveedores.tsx} (Carga los datos y el catálogo del proveedor al abrir el modal de detalles o de edición).
      *
      * @param id ID del proveedor
      */
@@ -95,13 +110,16 @@ public class ProveedorController {
     }
 
     /**
-     * Vista histórica: detalle del proveedor con los precios vigentes hasta la fecha
-     * seleccionada. Por cada producto se devuelve la versión cuya fecha_actualizacion
-     * sea la más reciente pero ≤ a la fecha consultada (incluye el día completo).
-     * ✅ En uso: Consumido por obtenerProductosPorFechaService en proveedor-service.ts.
+     * Obtiene una vista histórica del catálogo del proveedor con los precios vigentes a una fecha determinada.
+     * Recupera para cada producto la versión de cotización cuya fecha de actualización sea menor o igual a la seleccionada.
+     * 
+     * [✅] INTEGRACIÓN CON EL FRONTEND:
+     * - **Implementado:** Sí.
+     * - **Servicio frontend:** {@code frontend/src/services/proveedor-service.ts} -> {@code obtenerProductosPorFechaService()}
+     * - **Pantalla UI:** {@code frontend/src/pages/gestion-proveedores.tsx} (Accionado en el modal de consulta de precios históricos o auditoría temporal de tarifas).
      *
-     * @param id    ID del proveedor
-     * @param fecha Fecha de corte en formato YYYY-MM-DD
+     * @param id    Identificador del proveedor
+     * @param fecha Fecha de corte para la auditoría (formato YYYY-MM-DD)
      */
     @GetMapping("/{id}/productos-por-fecha")
     public ResponseEntity<ProveedorDetalleDTO> findByIdEnFecha(
@@ -114,8 +132,12 @@ public class ProveedorController {
     }
 
     /**
-     * Crea un nuevo proveedor con días de entrega opcionales.
-     * ✅ En uso: Consumido por crearProveedorService en proveedor-service.ts.
+     * Registra un nuevo proveedor en el sistema, permitiendo configurar sus días hábiles de entrega opcionalmente.
+     * 
+     * [✅] INTEGRACIÓN CON EL FRONTEND:
+     * - **Implementado:** Sí.
+     * - **Servicio frontend:** {@code frontend/src/services/proveedor-service.ts} -> {@code crearProveedorService()}
+     * - **Pantalla UI:** {@code frontend/src/pages/gestion-proveedores.tsx} (Gatillado al enviar el formulario del modal de registro de nuevo proveedor).
      *
      * @param dto Datos del proveedor a crear (incluye diasEntrega opcional)
      */
@@ -127,9 +149,12 @@ public class ProveedorController {
     }
 
     /**
-     * Actualiza los datos de un proveedor existente (incluye días de entrega).
-     * ✅ En uso: Consumido por actualizarProveedorService en proveedor-service.ts.
-     * Implementa estrategia delete+insert para diasEntrega: elimina todos los días existentes e inserta los nuevos.
+     * Actualiza la información técnica, dirección, estado y días de entrega de un proveedor existente.
+     * 
+     * [✅] INTEGRACIÓN CON EL FRONTEND:
+     * - **Implementado:** Sí.
+     * - **Servicio frontend:** {@code frontend/src/services/proveedor-service.ts} -> {@code actualizarProveedorService()}
+     * - **Pantalla UI:** {@code frontend/src/pages/gestion-proveedores.tsx} (Gatillado al enviar el formulario del modal de edición del proveedor).
      *
      * @param id  ID del proveedor a actualizar
      * @param dto Datos actualizados del proveedor (diasEntrega reemplaza completamente los existentes)
@@ -145,9 +170,12 @@ public class ProveedorController {
     }
 
     /**
-     * Elimina lógicamente un proveedor (activo = false).
-     * Solo permite eliminar si no tiene productos activos asignados.
-     * ✅ En uso: Consumido por eliminarProveedorService en proveedor-service.ts.
+     * Realiza la desactivación lógica (soft-delete) de un proveedor en el sistema.
+     * 
+     * [✅] INTEGRACIÓN CON EL FRONTEND:
+     * - **Implementado:** Sí.
+     * - **Servicio frontend:** {@code frontend/src/services/proveedor-service.ts} -> {@code eliminarProveedorService()}
+     * - **Pantalla UI:** {@code frontend/src/pages/gestion-proveedores.tsx} (Se activa al presionar el botón de eliminación y confirmar en el diálogo toast).
      *
      * @param id ID del proveedor a eliminar
      */
@@ -164,8 +192,10 @@ public class ProveedorController {
 
     /**
      * Lista los productos asignados a un proveedor, agrupados por categoría.
-     * ⬜ Sin uso frontend: Este endpoint es redundante con GET /{id} que ya trae productos.
-     * Se mantiene por compatibilidad. Prefiere usar GET /{id} directamente.
+     * 
+     * [❌] INTEGRACIÓN CON EL FRONTEND:
+     * - **Implementado:** No.
+     * - **Detalle:** Endpoint redundante y obsoleto que ha sido deprecado en favor de GET /{id}. No se consume en los flujos principales de la UI.
      *
      * @param id ID del proveedor
      * @deprecated Usar GET /{id} en su lugar
@@ -178,10 +208,13 @@ public class ProveedorController {
     }
 
     /**
-     * Lista productos disponibles para asignar a un proveedor.
-     * ✅ En uso: Consumido por obtenerProductosDisponiblesService en proveedor-service.ts (nueva versión).
-     * Retorna todos los productos activos EXCEPTO los que están asignados con estado activo.
-     * Incluye productos con estado inactivo para poder reactivarlos.
+     * Lista los productos del sistema activos que aún no han sido asignados al catálogo del proveedor.
+     * Permite filtrar opcionalmente por una categoría en particular.
+     * 
+     * [✅] INTEGRACIÓN CON EL FRONTEND:
+     * - **Implementado:** Sí.
+     * - **Servicio frontend:** {@code frontend/src/services/proveedor-service.ts} -> {@code obtenerProductosDisponiblesService()}
+     * - **Pantalla UI:** {@code frontend/src/pages/gestion-proveedores.tsx} (Carga los insumos que se pueden seleccionar en el buscador del modal de asignar productos).
      *
      * @param idProveedor ID del proveedor
      * @param idCategoria ID de categoría para filtrar (opcional)
@@ -198,16 +231,12 @@ public class ProveedorController {
     }
 
     /**
-     * Asigna un producto a un proveedor con su precio específico.
-     * ✅ En uso: Consumido por agregarProductoProveedorService en proveedor-service.ts.
-     * Se llama desde el modal de asignación de productos en gestion-proveedores.tsx.
-     * [CAMBIO 2026-04-24] Ahora retorna boolean para indicar éxito sin cerrar el modal.
-     *
-     * Respuestas:
-     *   - 201 CREATED: Producto asignado correctamente (true en body)
-     *   - 400 BAD_REQUEST: Formato inválido o precio ≤ 0
-     *   - 404 NOT_FOUND: Proveedor o producto no encontrado
-     *   - 409 CONFLICT: El producto ya está asignado al proveedor
+     * Asocia comercialmente un nuevo producto al catálogo del proveedor fijando su precio negociado.
+     * 
+     * [✅] INTEGRACIÓN CON EL FRONTEND:
+     * - **Implementado:** Sí.
+     * - **Servicio frontend:** {@code frontend/src/services/proveedor-service.ts} -> {@code agregarProductoProveedorService()}
+     * - **Pantalla UI:** {@code frontend/src/pages/gestion-proveedores.tsx} (Gatillado al presionar el botón "Agregar Producto" en el modal de asignación).
      *
      * @param id  ID del proveedor
      * @param dto Datos del producto a asignar (idProducto + precioNeto/precioConIva)
@@ -223,17 +252,12 @@ public class ProveedorController {
     }
 
     /**
-     * Actualiza el precio de un producto asignado a un proveedor.
-     * ✅ En uso: Consumido por actualizarPrecioProductoService en proveedor-service.ts.
-     * Se llama desde la tabla de productos en el modal de detalle/edición del proveedor.
-     * [CAMBIO 2026-04-24] Endpoint actualizado a usar idProveedorProducto (PK) en lugar de dos IDs.
-     * Simplifica la consulta y evita ambigüedades con dos path parameters.
-     *
-     * Respuestas:
-     *   - 200 OK: Precio actualizado correctamente (true en body)
-     *   - 400 BAD_REQUEST: Formato inválido o precio ≤ 0
-     *   - 404 NOT_FOUND: Relación proveedor-producto no existe
-     *   - 409 CONFLICT: El precio ingresado es igual al actual (advierte sin error)
+     * Actualiza el valor de cotización de un producto en el catálogo del proveedor usando la clave primaria de la relación.
+     * 
+     * [✅] INTEGRACIÓN CON EL FRONTEND:
+     * - **Implementado:** Sí.
+     * - **Servicio frontend:** {@code frontend/src/services/proveedor-service.ts} -> {@code actualizarPrecioProductoService()}
+     * - **Pantalla UI:** {@code frontend/src/pages/gestion-proveedores.tsx} (Llamado al modificar e ingresar un nuevo precio neto o con IVA en la tabla de productos asignados).
      *
      * @param idProveedorProducto ID de la relación proveedor-producto (PK)
      * @param dto Nuevo precio del producto (formato chileno: 1.234,567)
@@ -249,14 +273,15 @@ public class ProveedorController {
     }
 
     /**
-     * Sincroniza el precio con IVA recalculándolo desde el neto guardado (neto × 1.19).
-     * Update IN-PLACE — no crea nueva versión (es corrección de datos desincronizados).
-     * ✅ Consumido por sincronizarPrecioDesdeNetoService en proveedor-service.ts.
+     * Corrige in-place y sincroniza el precio con IVA basándose en el neto guardado aplicando el factor (neto * 1.19).
+     * 
+     * [✅] INTEGRACIÓN CON EL FRONTEND:
+     * - **Implementado:** Sí.
+     * - **Servicio frontend:** {@code frontend/src/services/proveedor-service.ts} -> {@code sincronizarPrecioDesdeNetoService()}
+     * - **Pantalla UI:** {@code frontend/src/pages/gestion-proveedores.tsx} (Acción rápida de sincronización de IVA por desajuste matemático).
      *
-     * Respuestas:
-     *   - 200 OK + true: el IVA cambió y se persistió
-     *   - 200 OK + false: ya estaba sincronizado, no hubo cambios
-     *   - 404 NOT_FOUND: relación proveedor-producto no existe
+     * @param idProveedorProducto ID de la relación proveedor-producto (PK)
+     * @return true si se actualizó, excepción si hay conflicto
      */
     @PatchMapping("/productos/{idProveedorProducto}/sincronizar-desde-neto")
     public ResponseEntity<Boolean> sincronizarPrecioDesdeNeto(@PathVariable Long idProveedorProducto) {
@@ -266,9 +291,14 @@ public class ProveedorController {
     }
 
     /**
-     * Sincroniza el precio neto recalculándolo desde el IVA guardado (iva / 1.19).
-     * Update IN-PLACE — no crea nueva versión.
-     * ✅ Consumido por sincronizarPrecioDesdeIvaService en proveedor-service.ts.
+     * Corrige in-place y sincroniza el precio neto basándose en el IVA guardado aplicando el factor (iva / 1.19).
+     * 
+     * [✅] INTEGRACIÓN CON EL FRONTEND:
+     * - **Implementado:** Sí.
+     * - **Servicio frontend:** {@code frontend/src/services/proveedor-service.ts} -> {@code sincronizarPrecioDesdeIvaService()}
+     * - **Pantalla UI:** {@code frontend/src/pages/gestion-proveedores.tsx} (Acción rápida de sincronización de Neto por desajuste matemático).
+     *
+     * @param idProveedorProducto ID de la relación proveedor-producto (PK)
      */
     @PatchMapping("/productos/{idProveedorProducto}/sincronizar-desde-iva")
     public ResponseEntity<Boolean> sincronizarPrecioDesdeIva(@PathVariable Long idProveedorProducto) {
@@ -278,10 +308,12 @@ public class ProveedorController {
     }
 
     /**
-     * Quita (soft-delete) un producto del proveedor.
-     * ✅ En uso: Consumido por quitarProductoProveedorService en proveedor-service.ts.
-     * Se llama desde el modal de confirmación en la tabla de productos del proveedor.
-     * [CAMBIO 2026-04-24] Ahora retorna boolean para validar cambio exitoso sin segunda petición.
+     * Remueve lógicamente un producto del portafolio del proveedor (soft-delete de la oferta).
+     * 
+     * [✅] INTEGRACIÓN CON EL FRONTEND:
+     * - **Implementado:** Sí.
+     * - **Servicio frontend:** {@code frontend/src/services/proveedor-service.ts} -> {@code quitarProductoProveedorService()}
+     * - **Pantalla UI:** {@code frontend/src/pages/gestion-proveedores.tsx} (Accionado al presionar el ícono de eliminar producto en la tabla de productos asignados).
      *
      * @param id  ID del proveedor
      * @param pid ID del producto a quitar
@@ -296,11 +328,12 @@ public class ProveedorController {
     }
 
     /**
-     * Habilita/deshabilita un producto del proveedor (toggle del campo activo).
-     * ✅ En uso: Consumido por toggleProductoProveedorService en proveedor-service.ts.
-     * Se llama desde el botón toggle en la tabla de productos del proveedor.
-     * El producto NO se elimina, solo se cambia su estado activo/inactivo.
-     * [CAMBIO 2026-04-24] Ahora retorna boolean para validar cambio exitoso.
+     * Alterna la disponibilidad comercial de un producto en el catálogo de un proveedor (Toggle activo/inactivo).
+     * 
+     * [✅] INTEGRACIÓN CON EL FRONTEND:
+     * - **Implementado:** Sí.
+     * - **Servicio frontend:** {@code frontend/src/services/proveedor-service.ts} -> {@code toggleProductoProveedorService()}
+     * - **Pantalla UI:** {@code frontend/src/pages/gestion-proveedores.tsx} (Llamado al alternar el switch de estado del insumo dentro de la tabla del proveedor).
      *
      * @param id  ID del proveedor
      * @param pid ID del producto a habilitar/deshabilitar
@@ -321,7 +354,11 @@ public class ProveedorController {
     /**
      * Lista todos los proveedores que ofrecen un producto específico.
      * Útil para comparar precios entre proveedores.
-     * ✅ En uso: Consumido por obtenerProveedoresPorProductoService en proveedor-service.ts.
+     * 
+     * [✅] INTEGRACIÓN CON EL FRONTEND:
+     * - **Implementado:** Sí.
+     * - **Servicio frontend:** {@code frontend/src/services/proveedor-service.ts} -> {@code obtenerProveedoresPorProductoService()}
+     * - **Pantalla UI:** {@code frontend/src/pages/gestion-proveedores.tsx} (Muestra la lista comparativa de ofertas de los proveedores para un insumo).
      *
      * @param idProducto ID del producto
      */
@@ -337,9 +374,12 @@ public class ProveedorController {
     // ══════════════════════════════════════════════════════════════
 
     /**
-     * Obtiene todas las categorías activas como JSON para filtros en el modal de asignar productos.
-     * Retorna: [ { "id": 1, "nombre": "Bebidas" }, { "id": 2, "nombre": "Verduras" }, ... ]
-     * ✅ En uso: Consumido por obtenerCategoriasActivasJsonService en proveedor-service.ts (para filtrar productos disponibles).
+     * Obtiene el listado serializado en JSON simple de todas las categorías de productos activas del sistema.
+     * 
+     * [✅] INTEGRACIÓN CON EL FRONTEND:
+     * - **Implementado:** Sí.
+     * - **Servicio frontend:** {@code frontend/src/services/proveedor-service.ts} -> {@code obtenerCategoriasActivasJsonService()}
+     * - **Pantalla UI:** {@code frontend/src/pages/gestion-proveedores.tsx} (Utilizado para cargar y filtrar por categorías en el selector del modal).
      */
     @GetMapping("/categorias-activas-json")
     public ResponseEntity<String> obtenerCategoriasActivasParaFiltrado() {
@@ -354,9 +394,12 @@ public class ProveedorController {
     // ══════════════════════════════════════════════════════════════
 
     /**
-     * Obtiene cotización agrupada por proveedor (menor precio) para solicitudes EN_PEDIDO en un rango de fechas.
-     * Productos ordenados por categoría dentro de cada proveedor.
-     * ✅ En uso: Consumido por cotizacionProveedoresService en solicitud-service.ts.
+     * Consolida solicitudes de pedido aprobadas dentro de un rango de fechas y genera la cotización unificada seleccionando el menor precio.
+     * 
+     * [✅] INTEGRACIÓN CON EL FRONTEND:
+     * - **Implementado:** Sí.
+     * - **Servicio frontend:** {@code frontend/src/services/proveedor-service.ts} -> {@code obtenerCotizacionPorRangoService()} y consumido en {@code solicitud-service.ts}
+     * - **Pantalla UI:** {@code frontend/src/pages/gestion-solicitudes.tsx} (Utilizado en las estimaciones consolidadas y cierres de solicitudes).
      *
      * @param request Rango de fechas (fechaInicio, fechaFin) para filtrar solicitudes EN_PEDIDO
      */
@@ -369,10 +412,12 @@ public class ProveedorController {
     }
 
     /**
-     * Búsqueda global de productos por nombre, código o descripción.
-     * Retorna lista de proveedores que tienen los productos encontrados.
-     * La búsqueda es case-insensitive.
-     * ✅ En uso: Consumido por buscarProductosGlobalService en proveedor-service.ts (nueva búsqueda optimizada).
+     * Realiza una búsqueda global e insensible a mayúsculas de productos, retornando la oferta comercial de proveedores.
+     * 
+     * [✅] INTEGRACIÓN CON EL FRONTEND:
+     * - **Implementado:** Sí.
+     * - **Servicio frontend:** {@code frontend/src/services/proveedor-service.ts} -> {@code buscarProductosGlobalService()}
+     * - **Pantalla UI:** {@code frontend/src/pages/gestion-proveedores.tsx} (Utilizado por el buscador global del panel administrativo).
      *
      * @param searchTerm Término de búsqueda (nombre, código o descripción del producto)
      * @return Lista de proveedores con sus productos coincidentes
@@ -390,8 +435,12 @@ public class ProveedorController {
     // ══════════════════════════════════════════════════════════════
 
     /**
-     * Lista distribuidoras activas y disponibles para el selector del modal de sincronización Excel.
-     * ✅ En uso: Consumido por listarProveedoresSelectorService en proveedor-service.ts.
+     * Lista a las distribuidoras que se encuentran activas y disponibles para mapearlas en selectores simples.
+     * 
+     * [✅] INTEGRACIÓN CON EL FRONTEND:
+     * - **Implementado:** Sí.
+     * - **Servicio frontend:** {@code frontend/src/services/proveedor-service.ts} -> {@code listarProveedoresSelectorService()}
+     * - **Pantalla UI:** {@code frontend/src/pages/gestion-proveedores.tsx} (Rellena el selector en el modal de importación/sincronización de catálogo).
      */
     @GetMapping("/selector")
     public ResponseEntity<List<ProveedorSelectorView>> listarProveedoresSelector() {
@@ -401,14 +450,12 @@ public class ProveedorController {
     }
 
     /**
-     * Sincroniza los precios de los productos de un proveedor leyendo un archivo .xlsx.
-     * Crea una nueva versión activa por producto y desactiva las anteriores.
-     * ✅ En uso: Consumido por sincronizarPreciosExcelService en proveedor-service.ts.
-     *
-     * Respuestas:
-     *   - 200 OK: Sincronización completada con resumen (sincronizados / omitidos / errores).
-     *   - 400 BAD_REQUEST: Archivo inválido, cabeceras no encontradas o columnas obligatorias faltantes.
-     *   - 404 NOT_FOUND: Proveedor no encontrado o inactivo.
+     * Sincroniza y actualiza de forma masiva los precios de catálogo de un proveedor importándolos desde un archivo Excel.
+     * 
+     * [✅] INTEGRACIÓN CON EL FRONTEND:
+     * - **Implementado:** Sí.
+     * - **Servicio frontend:** {@code frontend/src/services/proveedor-service.ts} -> {@code sincronizarPreciosExcelService()}
+     * - **Pantalla UI:** {@code frontend/src/pages/gestion-proveedores.tsx} (Llamado al confirmar la carga del archivo Excel en el modal de importación masiva).
      *
      * @param id   ID del proveedor destino
      * @param file Archivo .xlsx con productos y precios
@@ -423,12 +470,12 @@ public class ProveedorController {
     }
 
     /**
-     * Descarga un .xlsx con el catálogo actual del proveedor en el mismo formato
-     * que la plantilla de sincronización (ABARROTES SAN ANDRES FEBRERO):
-     * cabecera de empresa, fila naranja con PRDUCTO/CANTIDAD/Formato de grs./Marca/
-     * Precio neto/Precio total y una fila por producto activo con los valores actuales.
-     * Permite editar los precios en Excel y re-subir el archivo al sync sin cambios de formato.
-     * ✅ En uso: Consumido por descargarExcelPlantillaService en proveedor-service.ts.
+     * Descarga la plantilla de Excel oficial pre-completada con el catálogo y cotizaciones actuales del proveedor.
+     * 
+     * [✅] INTEGRACIÓN CON EL FRONTEND:
+     * - **Implementado:** Sí.
+     * - **Servicio frontend:** {@code frontend/src/services/proveedor-service.ts} -> {@code descargarExcelPlantillaService()}
+     * - **Pantalla UI:** {@code frontend/src/pages/gestion-proveedores.tsx} (Accionado al presionar el botón para exportar/descargar plantilla del proveedor).
      *
      * @param id ID del proveedor
      */
