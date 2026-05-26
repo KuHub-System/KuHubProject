@@ -517,10 +517,15 @@ const GestionProveedoresPage: React.FC = () => {
   // Context global de período/semana — sólo se LEE (no se muta) para el modal de OC.
   const { periodos: ctxPeriodos } = usePeriodoSemana();
 
+  // ── Vista de Órdenes de Pedido (tab switcher) ────────────────────────
+  const [currentView, setCurrentView] = React.useState<'proveedores' | 'ordenes'>('proveedores');
+
   usePageTitle(
-    'Gestión de Proveedores',
-    'Administre los proveedores y sus productos con precios actualizados.',
-    'lucide:truck'
+    currentView === 'proveedores' ? 'Gestión de Proveedores' : 'Órdenes de Pedido',
+    currentView === 'proveedores'
+      ? 'Administre los proveedores y sus productos con precios actualizados.'
+      : 'Planificación, cotización y generación de órdenes de compra.',
+    currentView === 'proveedores' ? 'lucide:truck' : 'lucide:clipboard-list'
   );
 
   // ── Estado principal ──
@@ -604,7 +609,6 @@ const GestionProveedoresPage: React.FC = () => {
   const excelInputRef = React.useRef<HTMLInputElement>(null);
 
   // ── Vista de Órdenes de Pedido (tab switcher) ────────────────────────
-  const [currentView, setCurrentView] = React.useState<'proveedores' | 'ordenes'>('proveedores');
   const [opLista, setOpLista] = React.useState<IOrdenPedidoListItem[]>([]);
   const [opCargando, setOpCargando] = React.useState(false);
   const [opError, setOpError] = React.useState<string | null>(null);
