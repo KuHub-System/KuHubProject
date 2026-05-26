@@ -17,32 +17,31 @@ jobs:
         run: echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
 
       - name: Login to Docker Hub
-        uses: docker/login-action@v3.4.0
-        with:
-          username: ${{ secrets.DOCKER_AWS_AC_USERNAME }}
-          password: ${{ secrets.DOCKER_AWS_AC_PASSWORD }}
+        run: echo "${{ secrets.DOCKER_AWS_AC_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_AWS_AC_USERNAME }}" --password-stdin
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3.10.0
+        run: |
+          docker buildx create --use --name kuhub-builder
+          docker buildx inspect --bootstrap
 
       - name: Build & Push Backend
-        uses: docker/build-push-action@v6.16.0
-        with:
-          context: .
-          file: ./backend/Dockerfile
-          push: true
-          tags: ${{ secrets.DOCKER_AWS_AC_USERNAME }}/kuhub-app:backend-${{ steps.vars.outputs.tag }}
-          cache-from: type=registry,ref=${{ secrets.DOCKER_AWS_AC_USERNAME }}/kuhub-app:backend-cache
-          cache-to: type=registry,ref=${{ secrets.DOCKER_AWS_AC_USERNAME }}/kuhub-app:backend-cache,mode=max
+        run: |
+          docker buildx build \
+            --push \
+            --tag ${{ secrets.DOCKER_AWS_AC_USERNAME }}/kuhub-app:backend-${{ steps.vars.outputs.tag }} \
+            --cache-from type=registry,ref=${{ secrets.DOCKER_AWS_AC_USERNAME }}/kuhub-app:backend-cache \
+            --cache-to type=registry,ref=${{ secrets.DOCKER_AWS_AC_USERNAME }}/kuhub-app:backend-cache,mode=max \
+            --file ./backend/Dockerfile \
+            .
 
       - name: Build & Push Frontend
-        uses: docker/build-push-action@v6.16.0
-        with:
-          context: ./frontend
-          push: true
-          tags: ${{ secrets.DOCKER_AWS_AC_USERNAME }}/kuhub-app:frontend-${{ steps.vars.outputs.tag }}
-          cache-from: type=registry,ref=${{ secrets.DOCKER_AWS_AC_USERNAME }}/kuhub-app:frontend-cache
-          cache-to: type=registry,ref=${{ secrets.DOCKER_AWS_AC_USERNAME }}/kuhub-app:frontend-cache,mode=max
+        run: |
+          docker buildx build \
+            --push \
+            --tag ${{ secrets.DOCKER_AWS_AC_USERNAME }}/kuhub-app:frontend-${{ steps.vars.outputs.tag }} \
+            --cache-from type=registry,ref=${{ secrets.DOCKER_AWS_AC_USERNAME }}/kuhub-app:frontend-cache \
+            --cache-to type=registry,ref=${{ secrets.DOCKER_AWS_AC_USERNAME }}/kuhub-app:frontend-cache,mode=max \
+            ./frontend
 
       - name: Deploy to AWS Lightsail
         run: |
