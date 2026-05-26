@@ -612,9 +612,9 @@ const GestionProveedoresPage: React.FC = () => {
   const [opLista, setOpLista] = React.useState<IOrdenPedidoListItem[]>([]);
   const [opCargando, setOpCargando] = React.useState(false);
   const [opError, setOpError] = React.useState<string | null>(null);
-  const [opExpandidoId, setOpExpandidoId] = React.useState<number | null>(null);
-  const [opDetalle, setOpDetalle] = React.useState<IOrdenPedidoConDetalles | null>(null);
-  const [opCargandoDetalle, setOpCargandoDetalle] = React.useState(false);
+  const [opExpandidosIds, setOpExpandidosIds] = React.useState<Set<number>>(new Set());
+  const [opDetalles, setOpDetalles] = React.useState<Map<number, IOrdenPedidoConDetalles>>(new Map());
+  const [opCargandoDetalleIds, setOpCargandoDetalleIds] = React.useState<Set<number>>(new Set());
   const [opCambiandoEstadoId, setOpCambiandoEstadoId] = React.useState<number | null>(null);
   /** Modal de confirmación para CANCELAR una orden */
   const [opConfirmCancelar, setOpConfirmCancelar] = React.useState<IOrdenPedidoListItem | null>(null);
@@ -1858,8 +1858,8 @@ const GestionProveedoresPage: React.FC = () => {
   React.useEffect(() => {
     if (currentView === 'ordenes') {
       cargarOrdenes();
-      setOpExpandidoId(null);
-      setOpDetalle(null);
+      setOpExpandidosIds(new Set());
+      setOpDetalles(new Map());
     }
   }, [currentView, cargarOrdenes]);
 
@@ -1869,7 +1869,10 @@ const GestionProveedoresPage: React.FC = () => {
       const actualizado = await cambiarEstadoOrdenPedidoService(id, nuevoEstado);
       setOpLista(prev => prev.map(op => op.idOrdenPedido === id ? actualizado : op));
       // Si el detalle expandido es esta OP, colapsar (el estado cambió)
-      if (opExpandidoId === id) { setOpExpandidoId(null); setOpDetalle(null); }
+      if (opExpandidosIds.has(id)) {
+        setOpExpandidosIds(prev => { const s = new Set(prev); s.delete(id); return s; });
+        setOpDetalles(prev => { const m = new Map(prev); m.delete(id); return m; });
+      }
     } catch (err: any) {
       showToast(err.message || 'Error al cambiar el estado', 'error');
     } finally {
@@ -1879,29 +1882,29 @@ const GestionProveedoresPage: React.FC = () => {
   };
 
   const handleToggleOrden = async (id: number) => {
-    if (opExpandidoId === id) {
-      setOpExpandidoId(null);
-      setOpDetalle(null);
+    if (opExpandidosIds.has(id)) {
+      setOpExpandidosIds(prev => { const s = new Set(prev); s.delete(id); return s; });
       return;
     }
-    setOpExpandidoId(id);
-    setOpDetalle(null);
-    setOpCargandoDetalle(true);
-    try {
-      const detalle = await obtenerOrdenPedidoDetalleService(id);
-      setOpDetalle(detalle);
-    } catch (err: any) {
-      showToast(err.message || 'Error al cargar el detalle', 'error');
-      setOpExpandidoId(null);
-    } finally {
-      setOpCargandoDetalle(false);
+    setOpExpandidosIds(prev => new Set([...prev, id]));
+    if (!opDetalles.has(id)) {
+      setOpCargandoDetalleIds(prev => new Set([...prev, id]));
+      try {
+        const detalle = await obtenerOrdenPedidoDetalleService(id);
+        setOpDetalles(prev => new Map([...prev, [id, detalle]]));
+      } catch (err: any) {
+        showToast(err.message || 'Error al cargar el detalle', 'error');
+        setOpExpandidosIds(prev => { const s = new Set(prev); s.delete(id); return s; });
+      } finally {
+        setOpCargandoDetalleIds(prev => { const s = new Set(prev); s.delete(id); return s; });
+      }
     }
   };
 
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <div className="container mx-auto px-4 py-8 font-sans">
+    <div className="container mx-auto px-4 pb-8 font-sans -mt-6">
 
       {/* Toast */}
       <AnimatePresence>
@@ -1920,9 +1923,9 @@ const GestionProveedoresPage: React.FC = () => {
         )}
       </AnimatePresence>
 
-      <div className="flex gap-6 items-start">
+      <div className="flex gap-6 items-stretch">
         {/* ── Área de contenido principal ── */}
-        <div className="flex-1 min-w-0">
+        <div className="flex-1 min-w-0 pt-14">
           <AnimatePresence mode="wait">
 
             {currentView === 'ordenes' ? (
@@ -1931,9 +1934,9 @@ const GestionProveedoresPage: React.FC = () => {
             lista={opLista}
             cargando={opCargando}
             error={opError}
-            expandidoId={opExpandidoId}
-            detalle={opDetalle}
-            cargandoDetalle={opCargandoDetalle}
+            expandidosIds={opExpandidosIds}
+            detalles={opDetalles}
+            cargandoDetalleIds={opCargandoDetalleIds}
             cambiandoEstadoId={opCambiandoEstadoId}
             onToggle={handleToggleOrden}
             onRecargar={cargarOrdenes}
@@ -2438,34 +2441,36 @@ const GestionProveedoresPage: React.FC = () => {
         </div>
 
         {/* ── Riel de navegación derecho ── */}
-        <div className="w-[70px] shrink-0 bg-white dark:bg-content1 border-l border-default-200 dark:border-default-100 flex flex-col items-center py-6 gap-4 z-30 sticky top-8 shadow-[-4px_0_15px_rgba(0,0,0,0.02)]">
-          <Tooltip content="Proveedores" placement="left">
-            <Button
-              isIconOnly
-              variant={currentView === 'proveedores' ? 'solid' : 'light'}
-              color={currentView === 'proveedores' ? 'primary' : 'default'}
-              onPress={() => setCurrentView('proveedores')}
-              className={`w-12 h-12 rounded-2xl transition-all duration-300 ${currentView === 'proveedores' ? 'shadow-lg shadow-primary/30' : 'text-default-400 hover:bg-default-100'}`}
-            >
-              <Icon icon="lucide:store" width={22} />
-            </Button>
-          </Tooltip>
-          <Tooltip content="Órdenes de Pedido" placement="left">
-            <Button
-              isIconOnly
-              variant={currentView === 'ordenes' ? 'solid' : 'light'}
-              color={currentView === 'ordenes' ? 'warning' : 'default'}
-              onPress={() => setCurrentView('ordenes')}
-              className={`w-12 h-12 rounded-2xl transition-all duration-300 ${currentView === 'ordenes' ? 'shadow-lg shadow-warning/30' : 'text-default-400 hover:bg-default-100'}`}
-            >
-              <Icon icon="lucide:clipboard-list" width={22} />
-            </Button>
-          </Tooltip>
-          {opLista.length > 0 && currentView !== 'ordenes' && (
-            <span className="px-2 py-0.5 bg-warning-100 text-warning-700 text-[10px] font-bold rounded-full">
-              {opLista.length}
-            </span>
-          )}
+        <div className="w-[70px] shrink-0 bg-white dark:bg-content1 border-l border-default-200 dark:border-default-100 shadow-[-4px_0_15px_rgba(0,0,0,0.02)] self-stretch -mt-14 -mr-10 pb-[1000px] -mb-[1000px]">
+          <div className="sticky top-8 flex flex-col items-center pt-28 pb-6 gap-4 z-30">
+            <Tooltip content="Proveedores" placement="left">
+              <Button
+                isIconOnly
+                variant={currentView === 'proveedores' ? 'solid' : 'light'}
+                color={currentView === 'proveedores' ? 'primary' : 'default'}
+                onPress={() => setCurrentView('proveedores')}
+                className={`w-12 h-12 rounded-2xl transition-all duration-300 ${currentView === 'proveedores' ? 'shadow-lg shadow-primary/30' : 'text-default-400 hover:bg-default-100'}`}
+              >
+                <Icon icon="lucide:store" width={22} />
+              </Button>
+            </Tooltip>
+            <Tooltip content="Órdenes de Pedido" placement="left">
+              <Button
+                isIconOnly
+                variant={currentView === 'ordenes' ? 'solid' : 'light'}
+                color={currentView === 'ordenes' ? 'warning' : 'default'}
+                onPress={() => setCurrentView('ordenes')}
+                className={`w-12 h-12 rounded-2xl transition-all duration-300 ${currentView === 'ordenes' ? 'shadow-lg shadow-warning/30' : 'text-default-400 hover:bg-default-100'}`}
+              >
+                <Icon icon="lucide:clipboard-list" width={22} />
+              </Button>
+            </Tooltip>
+            {opLista.length > 0 && currentView !== 'ordenes' && (
+              <span className="px-2 py-0.5 bg-warning-100 text-warning-700 text-[10px] font-bold rounded-full">
+                {opLista.length}
+              </span>
+            )}
+          </div>
         </div>
       </div>
 
@@ -6203,9 +6208,9 @@ interface OrdenesVistaProps {
   lista: IOrdenPedidoListItem[];
   cargando: boolean;
   error: string | null;
-  expandidoId: number | null;
-  detalle: IOrdenPedidoConDetalles | null;
-  cargandoDetalle: boolean;
+  expandidosIds: Set<number>;
+  detalles: Map<number, IOrdenPedidoConDetalles>;
+  cargandoDetalleIds: Set<number>;
   cambiandoEstadoId: number | null;
   onToggle: (id: number) => void;
   onRecargar: () => void;
@@ -6214,7 +6219,7 @@ interface OrdenesVistaProps {
 }
 
 const OrdenesVista: React.FC<OrdenesVistaProps> = ({
-  lista, cargando, error, expandidoId, detalle, cargandoDetalle,
+  lista, cargando, error, expandidosIds, detalles, cargandoDetalleIds,
   cambiandoEstadoId, onToggle, onRecargar, onCambiarEstado, onConfirmCancelar,
 }) => {
   const [filtroEstado, setFiltroEstado] = React.useState<EstadoOrdenPedido>('PENDIENTE');
@@ -6240,6 +6245,91 @@ const OrdenesVista: React.FC<OrdenesVistaProps> = ({
     () => lista.filter(op => op.estadoOrdenPedido === filtroEstado),
     [lista, filtroEstado],
   );
+
+  const [criteriosOrden, setCriteriosOrden] = React.useState<string[]>(['fechaEntrega']);
+  const [tempSelectedKeys, setTempSelectedKeys] = React.useState<Set<string>>(new Set(['fechaEntrega']));
+  const timerRef = React.useRef<NodeJS.Timeout | null>(null);
+
+  const aplicarFiltros = React.useCallback((keys: Set<string>) => {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+    setCriteriosOrden(Array.from(keys));
+  }, []);
+
+  const handleSelectionChange = React.useCallback((keys: any) => {
+    let newKeys = new Set<string>();
+    if (keys === 'all') {
+      newKeys = new Set(['fechaEntrega', 'idOP_asc', 'distribuidora', 'fechaCreacion']);
+    } else {
+      newKeys = new Set(Array.from(keys) as string[]);
+    }
+
+    // Manejo de exclusión mutua para idOP_asc e idOP_desc
+    const hadAsc = tempSelectedKeys.has('idOP_asc');
+    const hadDesc = tempSelectedKeys.has('idOP_desc');
+    const hasAsc = newKeys.has('idOP_asc');
+    const hasDesc = newKeys.has('idOP_desc');
+
+    if (hasAsc && hasDesc) {
+      if (hadAsc) {
+        newKeys.delete('idOP_asc');
+      } else if (hadDesc) {
+        newKeys.delete('idOP_desc');
+      } else {
+        newKeys.delete('idOP_asc');
+      }
+    }
+
+    setTempSelectedKeys(newKeys);
+
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+    }
+    timerRef.current = setTimeout(() => {
+      aplicarFiltros(newKeys);
+    }, 2000);
+  }, [tempSelectedKeys, aplicarFiltros]);
+
+  const handleOpenChange = React.useCallback((isOpen: boolean) => {
+    if (!isOpen) {
+      aplicarFiltros(tempSelectedKeys);
+    }
+  }, [tempSelectedKeys, aplicarFiltros]);
+
+  React.useEffect(() => {
+    return () => {
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+      }
+    };
+  }, []);
+
+  const listaOrdenada = React.useMemo(() => {
+    const copia = [...listaFiltrada];
+    if (criteriosOrden.length === 0) return copia;
+
+    copia.sort((a, b) => {
+      for (const crit of criteriosOrden) {
+        let diff = 0;
+        if (crit === 'fechaEntrega') {
+          diff = (b.fechaInicioPedido || '').localeCompare(a.fechaInicioPedido || '');
+        } else if (crit === 'idOP_asc') {
+          diff = a.idOrdenPedido - b.idOrdenPedido;
+        } else if (crit === 'idOP_desc') {
+          diff = b.idOrdenPedido - a.idOrdenPedido;
+        } else if (crit === 'distribuidora') {
+          diff = (a.nombreDistribuidora || '').localeCompare(b.nombreDistribuidora || '');
+        } else if (crit === 'fechaCreacion') {
+          diff = new Date(b.fechaCreacion).getTime() - new Date(a.fechaCreacion).getTime();
+        }
+        if (diff !== 0) return diff;
+      }
+      return b.idOrdenPedido - a.idOrdenPedido;
+    });
+    return copia;
+  }, [listaFiltrada, criteriosOrden]);
 
   if (cargando) {
     return (
@@ -6300,8 +6390,49 @@ const OrdenesVista: React.FC<OrdenesVistaProps> = ({
         </div>
       </div>
 
+      {/* ── Barra de filtros de ordenamiento ── */}
+      <div className="px-4 py-2 bg-default-50 dark:bg-default-50/50 border-b border-default-100 flex items-center justify-between gap-4 text-xs">
+        <div className="flex items-center gap-2 text-default-500 font-medium">
+          <Icon icon="lucide:arrow-up-down" width={14} />
+          <span>Ordenar por:</span>
+        </div>
+        <Select
+          aria-label="Criterio de ordenamiento"
+          size="sm"
+          variant="bordered"
+          selectionMode="multiple"
+          closeOnSelect={false}
+          selectedKeys={tempSelectedKeys}
+          onSelectionChange={handleSelectionChange}
+          onOpenChange={handleOpenChange}
+          placeholder="Seleccionar..."
+          className="w-44"
+          classNames={{
+            trigger: "bg-white dark:bg-default-100/50 border-default-200 dark:border-default-100 h-8 min-h-8",
+            value: "text-xs font-semibold text-default-700 dark:text-default-300"
+          }}
+          renderValue={() => "Seleccionar..."}
+        >
+          <SelectItem key="fechaEntrega" textValue="Fecha de Entrega">
+            Fecha de Entrega
+          </SelectItem>
+          <SelectItem key="idOP_asc" textValue="Número de OP (ASC)">
+            Número de OP (ASC)
+          </SelectItem>
+          <SelectItem key="idOP_desc" textValue="Número de OP (DESC)">
+            Número de OP (DESC)
+          </SelectItem>
+          <SelectItem key="distribuidora" textValue="Distribuidora">
+            Distribuidora
+          </SelectItem>
+          <SelectItem key="fechaCreacion" textValue="Fecha de Creación">
+            Fecha de Creación
+          </SelectItem>
+        </Select>
+      </div>
+
       <CardBody className="p-0">
-        {listaFiltrada.length === 0 ? (
+        {listaOrdenada.length === 0 ? (
           <div className="py-16 flex flex-col items-center gap-3 text-default-400">
             <Icon icon={cfg.icon} width={48} className="opacity-30" />
             <p className="text-sm font-medium">
@@ -6317,19 +6448,19 @@ const OrdenesVista: React.FC<OrdenesVistaProps> = ({
           </div>
         ) : (
           <div>
-            {listaFiltrada.map((op, idx) => (
+            {listaOrdenada.map((op, idx) => (
               <div key={op.idOrdenPedido} className={idx > 0 ? 'border-t border-default-100 dark:border-default-50' : ''}>
                 {/* Fila resumen */}
                 <div
                   className={`flex flex-col sm:flex-row sm:items-center gap-2 px-4 py-3 cursor-pointer transition-colors hover:bg-default-50 dark:hover:bg-default-100/20 ${
-                    expandidoId === op.idOrdenPedido ? 'bg-default-50 dark:bg-default-100/20' : ''
+                    expandidosIds.has(op.idOrdenPedido) ? 'bg-default-50 dark:bg-default-100/20' : ''
                   }`}
                   onClick={() => onToggle(op.idOrdenPedido)}
                 >
                   <div className="flex items-center gap-3 flex-1 min-w-0">
                     <div className="flex items-center gap-1 shrink-0">
                       <Icon
-                        icon={expandidoId === op.idOrdenPedido ? 'lucide:chevron-down' : 'lucide:chevron-right'}
+                        icon={expandidosIds.has(op.idOrdenPedido) ? 'lucide:chevron-down' : 'lucide:chevron-right'}
                         width={16}
                         className="text-default-400"
                       />
@@ -6354,8 +6485,6 @@ const OrdenesVista: React.FC<OrdenesVistaProps> = ({
                     <Chip size="sm" color={cfg.chipColor} variant="flat" className="text-[10px]">
                       {op.cantidadDetalles} detalle{op.cantidadDetalles !== 1 ? 's' : ''}
                     </Chip>
-                    <span className="text-success-600 font-semibold">${fmtN(op.totalNeto)}</span>
-                    <span className="text-warning-600 font-semibold text-[11px]">c/IVA ${fmtN(op.totalConIva)}</span>
                   </div>
                   {/* Botones de acción de estado */}
                   <div
@@ -6396,7 +6525,7 @@ const OrdenesVista: React.FC<OrdenesVistaProps> = ({
 
                 {/* Panel detalle expandido */}
                 <AnimatePresence>
-                  {expandidoId === op.idOrdenPedido && (
+                  {expandidosIds.has(op.idOrdenPedido) && (
                     <motion.div
                       initial={{ height: 0, opacity: 0 }}
                       animate={{ height: 'auto', opacity: 1 }}
@@ -6405,12 +6534,12 @@ const OrdenesVista: React.FC<OrdenesVistaProps> = ({
                       className="overflow-hidden"
                     >
                       <div className="px-4 pb-4 pt-1 bg-default-50 dark:bg-default-100/20 border-t border-default-100">
-                        {cargandoDetalle ? (
+                        {cargandoDetalleIds.has(op.idOrdenPedido) ? (
                           <div className="flex justify-center py-8">
                             <Spinner size="sm" color="primary" label="Cargando detalle..." />
                           </div>
-                        ) : detalle && detalle.idOrdenPedido === op.idOrdenPedido ? (
-                          <OrdenDetalleTabla detalle={detalle} />
+                        ) : detalles.get(op.idOrdenPedido) ? (
+                          <OrdenDetalleTabla detalle={detalles.get(op.idOrdenPedido)!} />
                         ) : null}
                       </div>
                     </motion.div>
@@ -6471,10 +6600,6 @@ const OrdenDetalleTabla: React.FC<{ detalle: IOrdenPedidoConDetalles }> = ({ det
             <Icon icon="lucide:message-square" width={12} />{detalle.observaciones}
           </span>
         )}
-        <span className="ml-auto flex items-center gap-2">
-          <span className="text-success-600 font-semibold">Neto: ${fmtN(detalle.totalNeto)}</span>
-          <span className="text-warning-600 font-semibold">c/IVA: ${fmtN(detalle.totalConIva)}</span>
-        </span>
       </div>
 
       {/* Tabla pivotada */}
@@ -6533,6 +6658,12 @@ const OrdenDetalleTabla: React.FC<{ detalle: IOrdenPedidoConDetalles }> = ({ det
             })}
           </tbody>
         </table>
+      </div>
+
+      <div className="flex justify-end items-center gap-3 text-xs bg-default-50 dark:bg-default-100/10 rounded-lg px-4 py-2.5 border border-default-200/60">
+        <span className="font-bold text-default-700">Sub totales esperado:</span>
+        <span className="text-success-600 font-semibold">Neto: ${fmtN(detalle.totalNeto)}</span>
+        <span className="text-warning-600 font-semibold">c/IVA: ${fmtN(detalle.totalConIva)}</span>
       </div>
     </div>
   );
