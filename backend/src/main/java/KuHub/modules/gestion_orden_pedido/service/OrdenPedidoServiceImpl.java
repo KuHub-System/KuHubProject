@@ -6,6 +6,10 @@ import KuHub.modules.gestion_orden_pedido.dtos.response.OrdenPedidoConDetallesDT
 import KuHub.modules.gestion_orden_pedido.dtos.response.OrdenPedidoDetalleDTO;
 import KuHub.modules.gestion_orden_pedido.dtos.response.OrdenPedidoListDTO;
 import KuHub.modules.gestion_orden_pedido.dtos.response.PedidoSemanaResumenDTO;
+
+import java.util.EnumSet;
+import java.util.Map;
+import java.util.Set;
 import KuHub.modules.gestion_orden_pedido.entity.DetalleOrdenPedido;
 import KuHub.modules.gestion_orden_pedido.entity.OrdenPedido;
 import KuHub.modules.gestion_orden_pedido.enums.EstadoOrdenPedido;
@@ -224,5 +228,57 @@ public class OrdenPedidoServiceImpl implements OrdenPedidoService {
                 totalConIva,
                 detalles
         );
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // Cambio de Estado de Órdenes de Pedido
+    // ─────────────────────────────────────────────────────────────
+
+    /** Transiciones válidas por estado origen. */
+    private static final Map<EstadoOrdenPedido, Set<EstadoOrdenPedido>> TRANSICIONES_VALIDAS = Map.of(
+            EstadoOrdenPedido.PENDIENTE,   EnumSet.of(EstadoOrdenPedido.ENVIADA,    EstadoOrdenPedido.CANCELADA),
+            EstadoOrdenPedido.ENVIADA,     EnumSet.of(EstadoOrdenPedido.CONFIRMADA, EstadoOrdenPedido.PENDIENTE, EstadoOrdenPedido.CANCELADA),
+            EstadoOrdenPedido.CONFIRMADA,  EnumSet.of(EstadoOrdenPedido.RECIBIDA,   EstadoOrdenPedido.ENVIADA,   EstadoOrdenPedido.CANCELADA),
+            EstadoOrdenPedido.RECIBIDA,    EnumSet.noneOf(EstadoOrdenPedido.class),
+            EstadoOrdenPedido.CANCELADA,   EnumSet.of(EstadoOrdenPedido.PENDIENTE)
+    );
+
+    @Override
+    @Transactional
+    public OrdenPedidoListDTO cambiarEstado(Integer idOrdenPedido, EstadoOrdenPedido nuevoEstado) {
+        OrdenPedido op = ordenPedidoRepository.findById(idOrdenPedido)
+                .orElseThrow(() -> new GestionOrdenPedidoException(
+                        "Orden de Pedido #" + idOrdenPedido + " no encontrada",
+                        HttpStatus.NOT_FOUND));
+
+        if (!op.getActivo()) {
+            throw new GestionOrdenPedidoException(
+                    "Orden de Pedido #" + idOrdenPedido + " está inactiva",
+                    HttpStatus.UNPROCESSABLE_ENTITY);
+        }
+
+        EstadoOrdenPedido estadoActual = op.getEstadoOrdenPedido();
+        Set<EstadoOrdenPedido> permitidos = TRANSICIONES_VALIDAS.getOrDefault(estadoActual, EnumSet.noneOf(EstadoOrdenPedido.class));
+
+        if (!permitidos.contains(nuevoEstado)) {
+            throw new GestionOrdenPedidoException(
+                    String.format("Transición inválida: %s → %s. Estados permitidos: %s",
+                            estadoActual, nuevoEstado, permitidos),
+                    HttpStatus.UNPROCESSABLE_ENTITY);
+        }
+
+        op.setEstadoOrdenPedido(nuevoEstado);
+        ordenPedidoRepository.save(op);
+
+        log.info("cambiarEstado OP #{}: {} → {}", idOrdenPedido, estadoActual, nuevoEstado);
+
+        // Retorna el ítem actualizado re-ejecutando la query de lista para este registro.
+        return ordenPedidoRepository.findListaOrdenesNative()
+                .stream()
+                .filter(row -> ((Number) row[0]).intValue() == idOrdenPedido)
+                .findFirst()
+                .map(OrdenPedidoListDTO::fromRow)
+                .orElseThrow(() -> new GestionOrdenPedidoException(
+                        "Error al refrescar OP #" + idOrdenPedido, HttpStatus.INTERNAL_SERVER_ERROR));
     }
 }
