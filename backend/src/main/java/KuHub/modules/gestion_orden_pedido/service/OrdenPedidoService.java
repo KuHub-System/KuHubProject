@@ -6,6 +6,7 @@ import KuHub.modules.gestion_orden_pedido.dtos.response.OrdenPedidoConDetallesDT
 import KuHub.modules.gestion_orden_pedido.dtos.response.OrdenPedidoDetalleDTO;
 import KuHub.modules.gestion_orden_pedido.dtos.response.OrdenPedidoListDTO;
 import KuHub.modules.gestion_orden_pedido.dtos.response.PedidoSemanaResumenDTO;
+import KuHub.modules.gestion_orden_pedido.enums.EstadoOrdenPedido;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -68,4 +69,19 @@ public interface OrdenPedidoService {
      * @return DTO con cabecera y lista de detalles
      */
     OrdenPedidoConDetallesDTO obtenerConDetalles(Integer idOrdenPedido);
+
+    /**
+     * Cambia el estado de una Orden de Pedido validando las transiciones permitidas.
+     * Transiciones válidas:
+     * PENDIENTE  → ENVIADA | CANCELADA
+     * ENVIADA    → CONFIRMADA | PENDIENTE | CANCELADA
+     * CONFIRMADA → RECIBIDA | ENVIADA | CANCELADA
+     * RECIBIDA   → (terminal, sin transiciones)
+     * CANCELADA  → PENDIENTE
+     *
+     * @param idOrdenPedido PK de la orden
+     * @param nuevoEstado   Estado destino
+     * @return DTO con el resumen actualizado
+     */
+    OrdenPedidoListDTO cambiarEstado(Integer idOrdenPedido, EstadoOrdenPedido nuevoEstado);
 }

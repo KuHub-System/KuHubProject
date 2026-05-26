@@ -1,5 +1,6 @@
 package KuHub.modules.gestion_orden_pedido.controller;
 
+import KuHub.modules.gestion_orden_pedido.dtos.request.CambiarEstadoOrdenPedidoDTO;
 import KuHub.modules.gestion_orden_pedido.dtos.request.OrdenPedidoCreateDTO;
 import KuHub.modules.gestion_orden_pedido.dtos.response.CotizacionConsolidadaDTO;
 import KuHub.modules.gestion_orden_pedido.dtos.response.OrdenPedidoConDetallesDTO;
@@ -134,5 +135,18 @@ public class OrdenPedidoController {
     @GetMapping("/{id}")
     public ResponseEntity<OrdenPedidoConDetallesDTO> obtenerConDetalles(@PathVariable Integer id) {
         return ResponseEntity.ok(ordenPedidoService.obtenerConDetalles(id));
+    }
+
+    /**
+     * Cambia el estado de una Orden de Pedido validando las transiciones permitidas.
+     *
+     * PATCH /api/v1/orden-pedido/{id}/estado
+     */
+    @PatchMapping("/{id}/estado")
+    public ResponseEntity<OrdenPedidoListDTO> cambiarEstado(
+            @PathVariable Integer id,
+            @Validated @RequestBody CambiarEstadoOrdenPedidoDTO dto
+    ) {
+        return ResponseEntity.ok(ordenPedidoService.cambiarEstado(id, dto.getEstado()));
     }
 }
