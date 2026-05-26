@@ -1920,43 +1920,15 @@ const GestionProveedoresPage: React.FC = () => {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4 }}
-        className="space-y-6"
+        className="flex gap-6 items-start"
       >
-        {/* ── Tab switcher: Proveedores / Órdenes de Pedido ── */}
-        <div className="flex items-center gap-2 p-1 bg-default-100 dark:bg-default-50/30 rounded-2xl w-fit border border-default-200 dark:border-default-100">
-          <button
-            onClick={() => setCurrentView('proveedores')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-200 ${
-              currentView === 'proveedores'
-                ? 'bg-white dark:bg-default-100 shadow-sm text-primary border border-default-200 dark:border-default-50'
-                : 'text-default-500 hover:text-default-700 hover:bg-default-50 dark:hover:bg-default-100/50'
-            }`}
-          >
-            <Icon icon="lucide:store" width={16} />
-            Proveedores
-          </button>
-          <button
-            onClick={() => setCurrentView('ordenes')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-200 ${
-              currentView === 'ordenes'
-                ? 'bg-white dark:bg-default-100 shadow-sm text-warning border border-default-200 dark:border-default-50'
-                : 'text-default-500 hover:text-default-700 hover:bg-default-50 dark:hover:bg-default-100/50'
-            }`}
-          >
-            <Icon icon="lucide:clipboard-list" width={16} />
-            Órdenes de Pedido
-            {opLista.length > 0 && (
-              <span className="ml-1 px-1.5 py-0.5 bg-warning-100 text-warning-700 text-[10px] font-bold rounded-full">
-                {opLista.length}
-              </span>
-            )}
-          </button>
-        </div>
+        {/* ── Área de contenido principal ── */}
+        <div className="flex-1 min-w-0 space-y-6">
+          <AnimatePresence mode="wait">
 
-        {/* ── VISTA: Órdenes de Pedido ── */}
-        {currentView === 'ordenes' && (
-          <>
-          <OrdenesVista
+            {currentView === 'ordenes' ? (
+              <motion.div key="ordenes" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.25 }}>
+              <OrdenesVista
             lista={opLista}
             cargando={opCargando}
             error={opError}
@@ -2011,11 +1983,9 @@ const GestionProveedoresPage: React.FC = () => {
               )}
             </ModalContent>
           </Modal>
-          </>
-        )}
-
-        {/* ── Vista: Proveedores ── */}
-        {currentView === 'proveedores' && (<>
+              </motion.div>
+            ) : (
+              <motion.div key="proveedores" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} transition={{ duration: 0.25 }} className="space-y-6">
         <Card className="shadow-sm bg-default-50 dark:bg-content1 border border-default-200 dark:border-default-100">
           <CardBody className="p-4 space-y-3">
             {/* Filtros básicos */}
@@ -2463,7 +2433,41 @@ const GestionProveedoresPage: React.FC = () => {
             )}
           </>
         )}
-        </>)} {/* fin currentView === 'proveedores' */}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
+        {/* ── Riel de navegación derecho ── */}
+        <div className="w-[70px] shrink-0 bg-white dark:bg-content1 border border-default-200 dark:border-default-100 flex flex-col items-center py-6 gap-4 rounded-2xl sticky top-8 shadow-sm z-30">
+          <Tooltip content="Proveedores" placement="left">
+            <Button
+              isIconOnly
+              variant={currentView === 'proveedores' ? 'solid' : 'light'}
+              color={currentView === 'proveedores' ? 'primary' : 'default'}
+              onPress={() => setCurrentView('proveedores')}
+              className={`w-12 h-12 rounded-2xl transition-all duration-300 ${currentView === 'proveedores' ? 'shadow-lg shadow-primary/30' : 'text-default-400 hover:bg-default-100'}`}
+            >
+              <Icon icon="lucide:store" width={22} />
+            </Button>
+          </Tooltip>
+          <Tooltip content="Órdenes de Pedido" placement="left">
+            <Button
+              isIconOnly
+              variant={currentView === 'ordenes' ? 'solid' : 'light'}
+              color={currentView === 'ordenes' ? 'warning' : 'default'}
+              onPress={() => setCurrentView('ordenes')}
+              className={`w-12 h-12 rounded-2xl transition-all duration-300 ${currentView === 'ordenes' ? 'shadow-lg shadow-warning/30' : 'text-default-400 hover:bg-default-100'}`}
+            >
+              <Icon icon="lucide:clipboard-list" width={22} />
+            </Button>
+          </Tooltip>
+          {opLista.length > 0 && currentView !== 'ordenes' && (
+            <span className="px-2 py-0.5 bg-warning-100 text-warning-700 text-[10px] font-bold rounded-full">
+              {opLista.length}
+            </span>
+          )}
+        </div>
       </motion.div>
 
       {/* ── Modal Cotización por Rango ── */}
