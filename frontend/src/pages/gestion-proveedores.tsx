@@ -1897,7 +1897,7 @@ const GestionProveedoresPage: React.FC = () => {
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <div className="container mx-auto px-4 py-8 space-y-6 font-sans">
+    <>
 
       {/* Toast */}
       <AnimatePresence>
@@ -1916,18 +1916,13 @@ const GestionProveedoresPage: React.FC = () => {
         )}
       </AnimatePresence>
 
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4 }}
-        className="flex gap-6 items-start"
-      >
+      <div className="flex h-[calc(100vh-100px)] overflow-hidden font-sans relative">
         {/* ── Área de contenido principal ── */}
-        <div className="flex-1 min-w-0 space-y-6">
+        <div className="flex-grow overflow-y-auto bg-default-50/50 dark:bg-background scrollbar-hide">
           <AnimatePresence mode="wait">
 
             {currentView === 'ordenes' ? (
-              <motion.div key="ordenes" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.25 }}>
+              <motion.div key="ordenes" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.25 }} className="px-4 pt-6 pb-10 space-y-6">
               <OrdenesVista
             lista={opLista}
             cargando={opCargando}
@@ -1985,7 +1980,7 @@ const GestionProveedoresPage: React.FC = () => {
           </Modal>
               </motion.div>
             ) : (
-              <motion.div key="proveedores" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} transition={{ duration: 0.25 }} className="space-y-6">
+              <motion.div key="proveedores" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} transition={{ duration: 0.25 }} className="px-4 pt-6 pb-10 space-y-6">
         <Card className="shadow-sm bg-default-50 dark:bg-content1 border border-default-200 dark:border-default-100">
           <CardBody className="p-4 space-y-3">
             {/* Filtros básicos */}
@@ -2439,7 +2434,7 @@ const GestionProveedoresPage: React.FC = () => {
         </div>
 
         {/* ── Riel de navegación derecho ── */}
-        <div className="w-[70px] shrink-0 bg-white dark:bg-content1 border border-default-200 dark:border-default-100 flex flex-col items-center py-6 gap-4 rounded-2xl sticky top-8 shadow-sm z-30">
+        <div className="w-[70px] shrink-0 bg-white dark:bg-content1 border-l border-default-200 dark:border-default-100 flex flex-col items-center py-6 gap-4 z-40 sticky right-0 shadow-[-4px_0_15px_rgba(0,0,0,0.02)]">
           <Tooltip content="Proveedores" placement="left">
             <Button
               isIconOnly
@@ -2468,7 +2463,7 @@ const GestionProveedoresPage: React.FC = () => {
             </span>
           )}
         </div>
-      </motion.div>
+      </div>
 
       {/* ── Modal Cotización por Rango ── */}
       <CotizacionModal
@@ -3131,7 +3126,7 @@ const GestionProveedoresPage: React.FC = () => {
           )}
         </ModalContent>
       </Modal>
-    </div>
+    </>
   );
 };
 
