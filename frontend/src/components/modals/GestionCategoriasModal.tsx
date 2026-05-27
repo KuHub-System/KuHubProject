@@ -289,7 +289,7 @@ const GestionCategoriasModal: React.FC<GestionCategoriasModalProps> = ({
 
     return (
         <>
-            <Modal isOpen={isOpen} onOpenChange={onOpenChange} size="md" scrollBehavior="inside">
+            <Modal isOpen={isOpen} onOpenChange={onOpenChange} size="md" scrollBehavior="inside" isDismissable={false}>
                 <ModalContent>
                     {(onClose) => (
                         <>
@@ -517,6 +517,7 @@ const GestionCategoriasModal: React.FC<GestionCategoriasModalProps> = ({
                 size="md"
                 backdrop="blur"
                 scrollBehavior="inside"
+                isDismissable={false}
             >
                 <ModalContent>
                     {(onClose) => (

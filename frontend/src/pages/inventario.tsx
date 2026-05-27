@@ -61,7 +61,7 @@ import GestionAbastecimientoModal from '../components/modals/GestionAbastecimien
 import { obtenerCategoriasActivasService } from '../services/categoria-service';
 import { obtenerUnidadesActivasService } from '../services/unidad-medida-service';
 import { IUnidadMedida, ISincronizarInventarioExcelResultado, IResultadoItemInventarioExcel } from '../types/inventario.types';
-import { actualizarBodegaTransitoConProductoService, WarehouseWithProductUpdateDTO, IBodegaStockSyncWarning, IBodegaStockInsuficiente } from '../services/bodega-transito-service';
+import { actualizarBodegaTransitoConProductoService, crearBodegaConProductoService, WarehouseWithProductUpdateDTO, IBodegaStockSyncWarning, IBodegaStockInsuficiente } from '../services/bodega-transito-service';
 import {
   obtenerBulkProductoInventoryListingService,
   IBulkProductoInventoryListing,
@@ -872,7 +872,7 @@ const InventarioPage: React.FC = () => {
             title="Gestión Abastecimiento"
             className="bg-default-100 dark:bg-default-50/10"
           >
-            <Icon icon="lucide:warehouse" className="text-default-600" width={20} />
+            <Icon icon="lucide:boxes" className="text-default-600" width={20} />
           </Button>
         </div>
 
@@ -1896,19 +1896,34 @@ export const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto
       setIsLoading(true);
 
       if (mode === 'crear') {
-        // Crear nuevo producto usando el servicio
-        const datosProducto = {
-          nombre: nombre.trim(),
-          codProducto: codProducto.trim() || undefined,
-          descripcion: descripcion.trim(),
-          idCategoria: parseInt(idCategoria),
-          idUnidadMedida: parseInt(idUnidadMedida),
-          stock: parseFloat(stock) || 0,
-          stockMinimo: parseFloat(stockMinimo) || 0,
-        };
+        if (origenContext === 'bodega') {
+          // Crear nuevo producto directamente en bodega de tránsito
+          await crearBodegaConProductoService({
+            nombreProducto: nombre.trim(),
+            codigoProducto: codProducto.trim() || undefined,
+            descripcionProducto: descripcion.trim(),
+            idCategoria: parseInt(idCategoria),
+            idUnidadMedida: parseInt(idUnidadMedida),
+            stock: parseFloat(stock) || 0,
+            stockLimit: parseFloat(stockMinimo) || 0,
+          });
+          window.dispatchEvent(new Event('productosActualizados'));
+          toast.success('Producto creado en bodega de tránsito exitosamente');
+        } else {
+          // Crear nuevo producto en inventario
+          const datosProducto = {
+            nombre: nombre.trim(),
+            codProducto: codProducto.trim() || undefined,
+            descripcion: descripcion.trim(),
+            idCategoria: parseInt(idCategoria),
+            idUnidadMedida: parseInt(idUnidadMedida),
+            stock: parseFloat(stock) || 0,
+            stockMinimo: parseFloat(stockMinimo) || 0,
+          };
 
-        await crearProductoService(datosProducto);
-        toast.success('Producto creado exitosamente');
+          await crearProductoService(datosProducto);
+          toast.success('Producto creado exitosamente');
+        }
       } else {
         // Actualizar producto existente usando el servicio
         if (!producto?.id) {
@@ -2453,7 +2468,7 @@ export const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto
           className="font-bold text-secondary shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
           startContent={<Icon icon="lucide:save" />}
         >
-          {mode === 'crear' ? 'Crear Inventario' : 'Guardar Cambios'}
+          {mode === 'crear' ? (origenContext === 'bodega' ? 'Crear a Bodega' : 'Crear Inventario') : 'Guardar Cambios'}
         </Button>
       </div>
     </div>

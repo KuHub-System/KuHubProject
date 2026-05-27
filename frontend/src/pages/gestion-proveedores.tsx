@@ -6292,11 +6292,11 @@ const generarExcelOrdenPedidoProveedor = (prov: ProveedorTablaItem, lunesSelecci
   const border    = { top: B,  bottom: B,  left: B,  right: B  };
   const borderMed = { top: BM, bottom: BM, left: BM, right: BM };
 
-  // Cabecera unificada (filas full-width sin juntas internas)
-  const sTitulo    = { font: { bold: true, sz: 14, color: { rgb: 'FFFFFFFF' } }, fill: { fgColor: { rgb: '1E3A8A' } }, alignment: { horizontal: 'center' as const, vertical: 'center' as const }, border: borderMed };
-  const sEmpresa   = { font: { bold: true, sz: 13, color: { rgb: 'FFFFFFFF' } }, fill: { fgColor: { rgb: '2563EB' } }, alignment: { horizontal: 'left' as const, vertical: 'center' as const }, border };
-  const sInfoRow   = { font: { sz: 11 }, fill: { fgColor: { rgb: 'EFF6FF' } }, alignment: { horizontal: 'left' as const, vertical: 'center' as const, wrapText: true }, border };
-  const sSemana    = { font: { bold: true, sz: 11 }, fill: { fgColor: { rgb: 'FEF3C7' } }, alignment: { horizontal: 'left' as const, vertical: 'center' as const }, border };
+  // Cabecera unificada (filas con fondo de color y limpias de bordes)
+  const sTitulo    = { font: { bold: true, sz: 14, color: { rgb: 'FFFFFFFF' } }, fill: { fgColor: { rgb: '1E3A8A' } }, alignment: { horizontal: 'center' as const, vertical: 'center' as const } };
+  const sEmpresa   = { font: { bold: true, sz: 13, color: { rgb: 'FFFFFFFF' } }, fill: { fgColor: { rgb: '2563EB' } }, alignment: { horizontal: 'left' as const, vertical: 'center' as const } };
+  const sInfoRow   = { font: { sz: 11 }, fill: { fgColor: { rgb: 'EFF6FF' } }, alignment: { horizontal: 'left' as const, vertical: 'center' as const, wrapText: true } };
+  const sSemana    = { font: { bold: true, sz: 11 }, fill: { fgColor: { rgb: 'FEF3C7' } }, alignment: { horizontal: 'left' as const, vertical: 'center' as const } };
   const sTableHeader = { font: { bold: true, sz: 11, color: { rgb: 'FFFFFFFF' } }, fill: { fgColor: { rgb: '1E3A8A' } }, alignment: { horizontal: 'center' as const, vertical: 'center' as const }, border: borderMed };
   const sProducto  = { font: { sz: 11 }, alignment: { horizontal: 'left' as const }, border };
   const sUM        = { font: { sz: 10 }, alignment: { horizontal: 'center' as const }, border };

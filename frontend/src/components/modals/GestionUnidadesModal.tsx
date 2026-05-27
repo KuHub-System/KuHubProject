@@ -259,7 +259,7 @@ const GestionUnidadesModal: React.FC<GestionUnidadesModalProps> = ({
 
     return (
         <>
-            <Modal isOpen={isOpen} onOpenChange={onOpenChange} size="md" scrollBehavior="inside">
+            <Modal isOpen={isOpen} onOpenChange={onOpenChange} size="md" scrollBehavior="inside" isDismissable={false}>
                 <ModalContent>
                     {(onClose) => (
                         <>
@@ -484,6 +484,7 @@ const GestionUnidadesModal: React.FC<GestionUnidadesModalProps> = ({
                 size="md"
                 backdrop="blur"
                 scrollBehavior="inside"
+                isDismissable={false}
             >
                 <ModalContent>
                     {(onClose) => (
@@ -566,6 +567,7 @@ const GestionUnidadesModal: React.FC<GestionUnidadesModalProps> = ({
                 onOpenChange={setShowDeleteConfirm}
                 size="sm"
                 backdrop="blur"
+                isDismissable={false}
             >
                 <ModalContent>
                     {(onClose) => (
