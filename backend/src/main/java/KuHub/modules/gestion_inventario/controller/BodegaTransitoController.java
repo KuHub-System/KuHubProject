@@ -1,6 +1,7 @@
 package KuHub.modules.gestion_inventario.controller;
 
 import KuHub.config.security.service.DynamicPermissionService;
+import KuHub.modules.gestion_inventario.dtos.request.ConfirmarNuevosExcelDTO;
 import KuHub.modules.gestion_inventario.dtos.request.FilterInventoryPageDTO;
 import KuHub.modules.gestion_inventario.dtos.request.InventoryWithProductCreateDTO;
 import KuHub.modules.gestion_inventario.dtos.request.SearchDTO;
@@ -9,6 +10,7 @@ import KuHub.modules.gestion_inventario.exceptions.GestionInventarioException;
 import KuHub.modules.gestion_inventario.dtos.response.dto.StockSyncWarningDTO;
 import KuHub.modules.gestion_inventario.dtos.response.record.BulkWarehouseProcess;
 import KuHub.modules.gestion_inventario.dtos.response.record.BulkWarehousesPage;
+import KuHub.modules.gestion_inventario.dtos.response.record.SincronizarExcelResultado;
 import KuHub.modules.gestion_inventario.dtos.response.record.WarehousesPage;
 import KuHub.modules.gestion_inventario.exceptions.StockDesincronizadoException;
 import KuHub.modules.gestion_inventario.exceptions.StockInsuficienteException;
@@ -16,10 +18,12 @@ import KuHub.modules.gestion_inventario.services.BodegaTransitoService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -124,6 +128,35 @@ public class BodegaTransitoController {
         return ResponseEntity
                 .status(200)
                 .body(bodegaTransitoService.processBulkWarehouseUpdate(request));
+    }
+
+    /**
+     * Sincroniza el stock de bodega de tránsito desde un Excel.
+     * Los productos encontrados reciben AJUSTE_BODEGA; los no encontrados se retornan para confirmación.
+     * ✅ En uso: Consumido por sincronizarBodegaTransitoDesdeExcelService en bodega-transito-service.ts.
+     */
+    @PostMapping(value = "/sincronizar-excel", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<SincronizarExcelResultado> sincronizarBodegaDesdeExcel(
+            @RequestParam("archivo") MultipartFile archivo,
+            @RequestParam(value = "nombreHoja", required = false) String nombreHoja,
+            @RequestParam("idCategoria") Short idCategoria,
+            @RequestParam("filaInicio") int filaInicio,
+            @RequestParam("filaFin") int filaFin) {
+        SincronizarExcelResultado resultado = bodegaTransitoService.sincronizarBodegaDesdeExcel(
+                archivo, nombreHoja, idCategoria, filaInicio, filaFin);
+        return ResponseEntity.status(200).body(resultado);
+    }
+
+    /**
+     * Confirma la creación de productos no encontrados en la sincronización Excel de bodega.
+     * Crea producto + inventario(stock=0) + bodega para los que no existen; aplica ENTRADA_BODEGA.
+     * ✅ En uso: Consumido por confirmarNuevosBodegaExcelService en bodega-transito-service.ts.
+     */
+    @PostMapping("/sincronizar-excel/confirmar-nuevos")
+    public ResponseEntity<Integer> confirmarNuevosBodegaExcel(
+            @RequestBody List<ConfirmarNuevosExcelDTO.ItemNuevo> items) {
+        return ResponseEntity.status(201)
+                .body(bodegaTransitoService.confirmarNuevosBodegaExcel(items));
     }
 
     /**
