@@ -1,6 +1,7 @@
 package KuHub.modules.gestion_orden_pedido.service;
 
 import KuHub.modules.gestion_orden_pedido.dtos.request.OrdenPedidoCreateDTO;
+import KuHub.modules.gestion_orden_pedido.dtos.response.AbastecimientoProveedorDTO;
 import KuHub.modules.gestion_orden_pedido.dtos.response.CotizacionConsolidadaDTO;
 import KuHub.modules.gestion_orden_pedido.dtos.response.OrdenPedidoConDetallesDTO;
 import KuHub.modules.gestion_orden_pedido.dtos.response.OrdenPedidoDetalleDTO;
@@ -96,6 +97,37 @@ public class OrdenPedidoServiceImpl implements OrdenPedidoService {
             log.error("Error al deserializar cotización consolidada. JSON={} | Excepción={}", jsonStr, e.getMessage());
             throw new GestionOrdenPedidoException(
                     "Error al procesar la estructura de la cotización consolidada.",
+                    HttpStatus.INTERNAL_SERVER_ERROR
+            );
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // Abastecimiento de Proveedores — OPs CONFIRMADA por fecha de entrega
+    // ─────────────────────────────────────────────────────────────
+
+    @Override
+    @Transactional(readOnly = true)
+    public AbastecimientoProveedorDTO obtenerAbastecimientoConfirmado(LocalDate fechaHasta) {
+        // null = filtro "Todas": usar fecha lejana para no limitar por arriba
+        LocalDate hasta = (fechaHasta != null) ? fechaHasta : LocalDate.of(2099, 12, 31);
+        String jsonStr = ordenPedidoRepository.findAbastecimientoConfirmado(hasta);
+
+        if (jsonStr == null || jsonStr.isBlank() || "null".equals(jsonStr)) {
+            log.info("obtenerAbastecimientoConfirmado: sin resultados (hasta={})", hasta);
+            return new AbastecimientoProveedorDTO(List.of());
+        }
+
+        try {
+            var typeRef = TypeFactory.defaultInstance()
+                    .constructCollectionType(List.class, AbastecimientoProveedorDTO.OrdenAbastecimiento.class);
+            List<AbastecimientoProveedorDTO.OrdenAbastecimiento> ordenes = objectMapper.readValue(jsonStr, typeRef);
+            log.info("obtenerAbastecimientoConfirmado: {} OPs CONFIRMADA | hasta={}", ordenes.size(), hasta);
+            return new AbastecimientoProveedorDTO(ordenes);
+        } catch (Exception e) {
+            log.error("Error al deserializar abastecimiento. JSON={} | Excepción={}", jsonStr, e.getMessage());
+            throw new GestionOrdenPedidoException(
+                    "Error al procesar la estructura de abastecimiento de proveedores.",
                     HttpStatus.INTERNAL_SERVER_ERROR
             );
         }
@@ -206,12 +238,15 @@ public class OrdenPedidoServiceImpl implements OrdenPedidoService {
                     d.getIdDetalleOrdenPedido(),
                     prod.getIdProducto(),
                     prod.getNombreProducto(),
+                    prod.getCategoria().getNombreCategoria(),
                     um.getAbreviatura(),
+                    um.getNombreUnidad(),
                     um.getEsFraccionario(),
                     d.getCantidadSolicitada(),
                     pNeto,
                     pConIva,
-                    d.getFechaEntrega()
+                    d.getFechaEntrega(),
+                    Boolean.TRUE.equals(d.getEntregado())
             ));
         }
 
@@ -227,6 +262,7 @@ public class OrdenPedidoServiceImpl implements OrdenPedidoService {
                 pv.getNombreProveedor(),
                 pv.getTelefonoProveedor(),
                 pv.getEmailProveedor(),
+                pv.getDireccionProveedor(),
                 op.getFechaCreacion(),
                 op.getEstadoOrdenPedido().name(),
                 op.getObservaciones(),
@@ -286,5 +322,18 @@ public class OrdenPedidoServiceImpl implements OrdenPedidoService {
                 .map(OrdenPedidoListDTO::fromRow)
                 .orElseThrow(() -> new GestionOrdenPedidoException(
                         "Error al refrescar OP #" + idOrdenPedido, HttpStatus.INTERNAL_SERVER_ERROR));
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // Marcar detalles como entregados (bulk)
+    // ─────────────────────────────────────────────────────────────
+
+    @Override
+    @Transactional
+    public int marcarDetallesEntregados(List<Long> ids) {
+        if (ids == null || ids.isEmpty()) return 0;
+        int actualizados = detalleOrdenPedidoRepository.marcarEntregados(ids);
+        log.info("marcarDetallesEntregados: {} filas actualizadas de {} solicitadas", actualizados, ids.size());
+        return actualizados;
     }
 }

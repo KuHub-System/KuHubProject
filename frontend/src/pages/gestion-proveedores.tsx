@@ -6257,9 +6257,12 @@ const getNombreDia = (fechaISO: string): string => {
 };
 
 type OpCelda = { op: IOrdenPedidoListItem; cantidad: number };
-type ProductoTablaFila = { idProducto: number; nombre: string; abrev: string; porFecha: Map<string, OpCelda[]> };
+type ProductoTablaFila = { idProducto: number; nombre: string; abrev: string; nombreUnidad: string; nombreCategoria: string; porFecha: Map<string, OpCelda[]> };
 type ProveedorTablaItem = {
   idProveedor: number; nombreDistribuidora: string; nombreProveedor: string;
+  telefonoProveedor?: string | null;
+  emailProveedor?: string | null;
+  direccionProveedor?: string | null;
   fechas: string[]; semanasDeFechas: Map<string, string>; productos: ProductoTablaFila[];
 };
 
@@ -6284,65 +6287,90 @@ const generarExcelOrdenPedidoProveedor = (prov: ProveedorTablaItem, lunesSelecci
   const lastCol = COL_D + N - 1;
   const enc = (r: number, c: number) => XLSXStyle.utils.encode_cell({ r, c });
 
-  const sLabelBold = { font: { bold: true, sz: 11 }, border: { top: { style: 'medium' as const }, bottom: { style: 'medium' as const }, left: { style: 'medium' as const } } };
-  const sValue = { font: { sz: 11 }, alignment: { horizontal: 'center' as const }, border: { top: { style: 'thin' as const }, bottom: { style: 'thin' as const }, left: { style: 'thin' as const }, right: { style: 'thin' as const } } };
-  const sYellowLabel = { font: { bold: true, sz: 11 }, fill: { fgColor: { rgb: 'FFFF00' } }, border: { top: { style: 'medium' as const }, bottom: { style: 'medium' as const }, left: { style: 'medium' as const } } };
-  const sTableHeader = { font: { bold: true, sz: 11 }, fill: { fgColor: { rgb: 'FFC000' } }, alignment: { horizontal: 'center' as const }, border: { bottom: { style: 'medium' as const }, left: { style: 'medium' as const }, right: { style: 'medium' as const } } };
-  const sProducto = { font: { sz: 11 }, alignment: { horizontal: 'left' as const }, border: { top: { style: 'thin' as const }, bottom: { style: 'thin' as const }, left: { style: 'thin' as const }, right: { style: 'thin' as const } } };
-  const sUM = { font: { sz: 10 }, alignment: { horizontal: 'center' as const }, border: { top: { style: 'thin' as const }, bottom: { style: 'thin' as const }, left: { style: 'thin' as const }, right: { style: 'thin' as const } } };
-  const sCantidad = { font: { bold: true, sz: 11 }, alignment: { horizontal: 'center' as const }, border: { top: { style: 'thin' as const }, bottom: { style: 'thin' as const }, left: { style: 'thin' as const }, right: { style: 'thin' as const } } };
+  const B = { style: 'thin' as const };
+  const BM = { style: 'medium' as const };
+  const border    = { top: B,  bottom: B,  left: B,  right: B  };
+  const borderMed = { top: BM, bottom: BM, left: BM, right: BM };
+
+  // Cabecera unificada (filas full-width sin juntas internas)
+  const sTitulo    = { font: { bold: true, sz: 14, color: { rgb: 'FFFFFFFF' } }, fill: { fgColor: { rgb: '1E3A8A' } }, alignment: { horizontal: 'center' as const, vertical: 'center' as const }, border: borderMed };
+  const sEmpresa   = { font: { bold: true, sz: 13, color: { rgb: 'FFFFFFFF' } }, fill: { fgColor: { rgb: '2563EB' } }, alignment: { horizontal: 'left' as const, vertical: 'center' as const }, border };
+  const sInfoRow   = { font: { sz: 11 }, fill: { fgColor: { rgb: 'EFF6FF' } }, alignment: { horizontal: 'left' as const, vertical: 'center' as const, wrapText: true }, border };
+  const sSemana    = { font: { bold: true, sz: 11 }, fill: { fgColor: { rgb: 'FEF3C7' } }, alignment: { horizontal: 'left' as const, vertical: 'center' as const }, border };
+  const sTableHeader = { font: { bold: true, sz: 11, color: { rgb: 'FFFFFFFF' } }, fill: { fgColor: { rgb: '1E3A8A' } }, alignment: { horizontal: 'center' as const, vertical: 'center' as const }, border: borderMed };
+  const sProducto  = { font: { sz: 11 }, alignment: { horizontal: 'left' as const }, border };
+  const sUM        = { font: { sz: 10 }, alignment: { horizontal: 'center' as const }, border };
+  const sCantidad  = { font: { bold: true, sz: 11 }, alignment: { horizontal: 'center' as const }, border };
+  const sCatHeader = { font: { bold: true, sz: 10 }, fill: { fgColor: { rgb: 'DBEAFE' } }, alignment: { horizontal: 'left' as const, vertical: 'center' as const }, border };
 
   const ws: Record<string, unknown> = {};
 
-  // Cabecera — replica estructura exacta del modelo de proveedor
-  ws[enc(1, COL_B)] = { v: 'NOMBRE EMPRESA', t: 's', s: sLabelBold };
-  ws[enc(1, COL_C)] = { v: prov.nombreDistribuidora, t: 's', s: sValue };
+  // ── Cabecera del proveedor (filas unificadas, sin juntas internas) ──
 
-  ws[enc(2, COL_B)] = { v: 'DIRECCIÓN', t: 's', s: sLabelBold };
-  ws[enc(2, COL_C)] = { v: '', t: 's', s: sValue };
+  // r=1  Título
+  ws[enc(1, COL_B)] = { v: 'PEDIDO A PROVEEDOR', t: 's', s: sTitulo };
 
-  ws[enc(3, COL_B)] = { v: 'SEMANA:', t: 's', s: sYellowLabel };
-  ws[enc(3, COL_C)] = { v: `${fmtCorta(lunesSeleccionado)} al ${fmtCorta(domingo)}`, t: 's', s: sValue };
+  // r=2  Empresa
+  ws[enc(2, COL_B)] = { v: prov.nombreDistribuidora, t: 's', s: sEmpresa };
 
-  ws[enc(4, COL_B)] = { v: 'TELÉFONO', t: 's', s: sLabelBold };
-  ws[enc(4, COL_C)] = { v: '', t: 's', s: sValue };
-  if (lastCol >= 5) {
-    ws[enc(4, 4)] = { v: 'PERSONA DE CONTACTO', t: 's', s: { font: { bold: true, sz: 11 }, border: { top: { style: 'thin' as const }, bottom: { style: 'thin' as const }, left: { style: 'thin' as const }, right: { style: 'thin' as const } } } };
-    ws[enc(4, 5)] = { v: prov.nombreProveedor !== prov.nombreDistribuidora ? prov.nombreProveedor : '', t: 's', s: sValue };
-  }
+  // r=3  Dirección
+  ws[enc(3, COL_B)] = { v: `Dirección:  ${prov.direccionProveedor || '—'}`, t: 's', s: sInfoRow };
 
-  // Cabeceras de tabla (fila 7 = r=6)
-  ws[enc(6, COL_B)] = { v: 'PRODUCTO', t: 's', s: sTableHeader };
-  ws[enc(6, COL_C)] = { v: 'U/M', t: 's', s: sTableHeader };
+  // r=4  Semana (fila destacada en ámbar)
+  ws[enc(4, COL_B)] = { v: `Semana:  ${fmtCorta(lunesSeleccionado)} al ${fmtCorta(domingo)}`, t: 's', s: sSemana };
+
+  // r=5  Contacto · Teléfono · Email
+  const contactoNombre = prov.nombreProveedor !== prov.nombreDistribuidora ? prov.nombreProveedor : '';
+  const contactLine = [
+    contactoNombre ? `Contacto: ${contactoNombre}` : null,
+    prov.telefonoProveedor ? `Tel: ${prov.telefonoProveedor}` : null,
+    prov.emailProveedor ? `Email: ${prov.emailProveedor}` : null,
+  ].filter(Boolean).join('    |    ');
+  ws[enc(5, COL_B)] = { v: contactLine, t: 's', s: sInfoRow };
+
+  // r=7  Cabeceras de tabla
+  ws[enc(7, COL_B)] = { v: 'PRODUCTO', t: 's', s: sTableHeader };
+  ws[enc(7, COL_C)] = { v: 'U/M', t: 's', s: sTableHeader };
   fechasSemana.forEach((fecha, i) => {
     const [y, m, d] = fecha.split('-').map(Number);
-    ws[enc(6, COL_D + i)] = { v: `${NOM_DIA_ES[new Date(y, m - 1, d).getDay()]} ${String(d).padStart(2, '0')}/${String(m).padStart(2, '0')}`, t: 's', s: sTableHeader };
+    ws[enc(7, COL_D + i)] = { v: `${NOM_DIA_ES[new Date(y, m - 1, d).getDay()]} ${String(d).padStart(2, '0')}/${String(m).padStart(2, '0')}`, t: 's', s: sTableHeader };
   });
 
-  // Filas de datos
-  prov.productos.forEach((prod, pi) => {
-    const r = 7 + pi;
-    ws[enc(r, COL_B)] = { v: prod.nombre, t: 's', s: sProducto };
-    ws[enc(r, COL_C)] = { v: prod.abrev, t: 's', s: sUM };
+  // Merges (cabecera fija + categorías que se añaden en el loop)
+  const merges: { s: { r: number; c: number }; e: { r: number; c: number } }[] = [
+    { s: { r: 1, c: COL_B }, e: { r: 1, c: lastCol } },
+    { s: { r: 2, c: COL_B }, e: { r: 2, c: lastCol } },
+    { s: { r: 3, c: COL_B }, e: { r: 3, c: lastCol } },
+    { s: { r: 4, c: COL_B }, e: { r: 4, c: lastCol } },
+    { s: { r: 5, c: COL_B }, e: { r: 5, c: lastCol } },
+  ];
+
+  // Filas de datos agrupadas por categoría
+  let currentRow = 8;
+  let prevCat = '';
+  prov.productos.forEach((prod) => {
+    if (prod.nombreCategoria !== prevCat) {
+      ws[enc(currentRow, COL_B)] = { v: prod.nombreCategoria || 'Sin categoría', t: 's', s: sCatHeader };
+      merges.push({ s: { r: currentRow, c: COL_B }, e: { r: currentRow, c: lastCol } });
+      prevCat = prod.nombreCategoria;
+      currentRow++;
+    }
+    ws[enc(currentRow, COL_B)] = { v: prod.nombre, t: 's', s: sProducto };
+    ws[enc(currentRow, COL_C)] = { v: prod.nombreUnidad, t: 's', s: sUM };
     fechasSemana.forEach((fecha, i) => {
       const items = prod.porFecha.get(fecha);
       const total = items ? items.reduce((s, it) => s + it.cantidad, 0) : null;
-      ws[enc(r, COL_D + i)] = total !== null ? { v: total, t: 'n', s: sCantidad } : { v: '', t: 's', s: sUM };
+      ws[enc(currentRow, COL_D + i)] = total !== null
+        ? { v: total.toLocaleString('es-CL', { maximumFractionDigits: 3 }), t: 's', s: sCantidad }
+        : { v: '', t: 's', s: sUM };
     });
+    currentRow++;
   });
 
-  // Merges de cabecera
-  const merges: { s: { r: number; c: number }; e: { r: number; c: number } }[] = [
-    { s: { r: 1, c: COL_C }, e: { r: 1, c: lastCol } },
-    { s: { r: 2, c: COL_C }, e: { r: 2, c: lastCol } },
-    { s: { r: 3, c: COL_C }, e: { r: 3, c: lastCol } },
-    { s: { r: 4, c: COL_C }, e: { r: 4, c: 3 } },
-  ];
-  if (lastCol >= 5) merges.push({ s: { r: 4, c: 5 }, e: { r: 4, c: lastCol } });
   ws['!merges'] = merges;
-
-  ws['!cols'] = [{ wch: 4 }, { wch: 35 }, { wch: 8 }, ...fechasSemana.map(() => ({ wch: 14 }))];
-  ws['!ref'] = XLSXStyle.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: 7 + prov.productos.length - 1, c: lastCol } });
+  ws['!cols'] = [{ wch: 4 }, { wch: 32 }, { wch: 14 }, ...fechasSemana.map(() => ({ wch: 14 }))];
+  ws['!rows'] = [{ hpt: 4 }, { hpt: 30 }, { hpt: 22 }, { hpt: 18 }, { hpt: 18 }, { hpt: 18 }, { hpt: 8 }, { hpt: 22 }];
+  ws['!ref'] = XLSXStyle.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: currentRow - 1, c: lastCol } });
 
   const wb = XLSXStyle.utils.book_new();
   XLSXStyle.utils.book_append_sheet(wb, ws, 'Pedido');
@@ -6502,6 +6530,7 @@ const OrdenesVista: React.FC<OrdenesVistaProps> = ({
     if (!agruparPorFechaReal) return null;
     const grupos = new Map<number, {
       idProveedor: number; nombreDistribuidora: string; nombreProveedor: string;
+      telefonoProveedor: string | null; emailProveedor: string | null; direccionProveedor: string | null;
       todasLasFechas: Set<string>; productos: Map<number, ProductoTablaFila>;
     }>();
     for (const op of listaOrdenada) {
@@ -6510,14 +6539,16 @@ const OrdenesVista: React.FC<OrdenesVistaProps> = ({
       if (!grupos.has(op.idProveedor)) {
         grupos.set(op.idProveedor, {
           idProveedor: op.idProveedor, nombreDistribuidora: op.nombreDistribuidora,
-          nombreProveedor: op.nombreProveedor, todasLasFechas: new Set(), productos: new Map(),
+          nombreProveedor: op.nombreProveedor, telefonoProveedor: det.telefonoProveedor ?? null,
+          emailProveedor: det.emailProveedor ?? null, direccionProveedor: det.direccionProveedor ?? null,
+          todasLasFechas: new Set(), productos: new Map(),
         });
       }
       const grupo = grupos.get(op.idProveedor)!;
       for (const d of det.detalles) {
         grupo.todasLasFechas.add(d.fechaEntrega);
         if (!grupo.productos.has(d.idProducto)) {
-          grupo.productos.set(d.idProducto, { idProducto: d.idProducto, nombre: d.nombreProducto, abrev: d.abreviatura, porFecha: new Map() });
+          grupo.productos.set(d.idProducto, { idProducto: d.idProducto, nombre: d.nombreProducto, abrev: d.abreviatura, nombreUnidad: d.nombreUnidad ?? d.abreviatura, nombreCategoria: d.nombreCategoria ?? '', porFecha: new Map() });
         }
         const prod = grupo.productos.get(d.idProducto)!;
         if (!prod.porFecha.has(d.fechaEntrega)) prod.porFecha.set(d.fechaEntrega, []);
@@ -6528,9 +6559,13 @@ const OrdenesVista: React.FC<OrdenesVistaProps> = ({
       .sort((a, b) => a.nombreDistribuidora.localeCompare(b.nombreDistribuidora))
       .map(g => ({
         idProveedor: g.idProveedor, nombreDistribuidora: g.nombreDistribuidora, nombreProveedor: g.nombreProveedor,
+        telefonoProveedor: g.telefonoProveedor, emailProveedor: g.emailProveedor, direccionProveedor: g.direccionProveedor,
         fechas: [...g.todasLasFechas].sort(),
         semanasDeFechas: new Map([...g.todasLasFechas].map(f => [f, getLunesDe(f)])),
-        productos: [...g.productos.values()].sort((a, b) => a.nombre.localeCompare(b.nombre)),
+        productos: [...g.productos.values()].sort((a, b) => {
+          const cat = a.nombreCategoria.localeCompare(b.nombreCategoria);
+          return cat !== 0 ? cat : a.nombre.localeCompare(b.nombre);
+        }),
       }));
   }, [agruparPorFechaReal, listaOrdenada, detalles]);
 
@@ -6543,12 +6578,12 @@ const OrdenesVista: React.FC<OrdenesVistaProps> = ({
   const detalladaTabla = React.useMemo(() => {
     if (!agrupadoFechaReal || modoUnificada) return null;
     return agrupadoFechaReal.map(prov => {
-      const rowMap = new Map<string, { idOP: number; idProducto: number; nombre: string; abrev: string; porFecha: Map<string, number> }>();
+      const rowMap = new Map<string, { idOP: number; idProducto: number; nombre: string; abrev: string; nombreCategoria: string; porFecha: Map<string, number> }>();
       for (const prod of prov.productos) {
         for (const [fecha, items] of prod.porFecha) {
           for (const { op, cantidad } of items) {
             const key = `${prod.idProducto}-${op.idOrdenPedido}`;
-            if (!rowMap.has(key)) rowMap.set(key, { idOP: op.idOrdenPedido, idProducto: prod.idProducto, nombre: prod.nombre, abrev: prod.abrev, porFecha: new Map() });
+            if (!rowMap.has(key)) rowMap.set(key, { idOP: op.idOrdenPedido, idProducto: prod.idProducto, nombre: prod.nombre, abrev: prod.abrev, nombreCategoria: prod.nombreCategoria, porFecha: new Map() });
             rowMap.get(key)!.porFecha.set(fecha, cantidad);
           }
         }
@@ -6556,6 +6591,8 @@ const OrdenesVista: React.FC<OrdenesVistaProps> = ({
       return {
         idProveedor: prov.idProveedor,
         rows: [...rowMap.values()].sort((a, b) => {
+          const cat = a.nombreCategoria.localeCompare(b.nombreCategoria);
+          if (cat !== 0) return cat;
           const n = a.nombre.localeCompare(b.nombre);
           return n !== 0 ? n : a.idOP - b.idOP;
         }),
@@ -6951,75 +6988,101 @@ const OrdenesVista: React.FC<OrdenesVistaProps> = ({
                         </thead>
                         <tbody>
                           {!modoUnificada ? (
-                            // ── Detallada: una fila por (producto × OP), ID a la izquierda del nombre ──
-                            (detalladaTabla?.find(d => d.idProveedor === prov.idProveedor)?.rows ?? []).map((row, rowIdx) => {
+                            // ── Detallada: una fila por (producto × OP), agrupada por categoría ──
+                            (detalladaTabla?.find(d => d.idProveedor === prov.idProveedor)?.rows ?? []).map((row, rowIdx, allRows) => {
+                              const isNewCat = rowIdx === 0 || allRows[rowIdx - 1].nombreCategoria !== row.nombreCategoria;
                               const isOdd = rowIdx % 2 !== 0;
                               const bgSticky = isOdd ? 'bg-secondary-50/80 dark:bg-secondary-900/20' : 'bg-white dark:bg-default-900';
                               const bgRow   = isOdd ? 'bg-secondary-50/40 dark:bg-secondary-900/10' : '';
                               return (
-                                <tr key={`${row.idProducto}-${row.idOP}`} className={`${bgRow} hover:bg-secondary-50/70 dark:hover:bg-secondary-900/20 transition-colors`}>
-                                  {/* OP ID + Nombre (sticky) */}
-                                  <td className={`py-2 px-3 sticky left-0 z-10 border-r border-secondary-200 dark:border-secondary-700 text-xs ${bgSticky}`}>
-                                    <div className="flex items-center gap-1.5 w-[146px]">
-                                      <span className="text-[10px] font-bold text-secondary-400 dark:text-secondary-400 shrink-0 tabular-nums">#{row.idOP}</span>
-                                      <Tooltip content={row.nombre} placement="right" color="default">
-                                        <div className="truncate font-medium text-default-700 dark:text-default-200">{row.nombre}</div>
-                                      </Tooltip>
-                                    </div>
-                                  </td>
-                                  {/* U/M (sticky) */}
-                                  <td className={`py-2 px-2 text-center text-default-500 text-[11px] sticky left-[170px] z-10 border-r border-secondary-200 dark:border-secondary-700 ${bgSticky}`}>
-                                    {row.abrev}
-                                  </td>
-                                  {/* Celdas por fecha — solo cantidad */}
-                                  {prov.fechas.map((fecha, idx) => {
-                                    const lunesActual = prov.semanasDeFechas.get(fecha)!;
-                                    const esNuevaSemana = idx > 0 && prov.semanasDeFechas.get(prov.fechas[idx - 1]) !== lunesActual;
-                                    const borde = esNuevaSemana ? 'border-l-2 border-secondary-400 dark:border-secondary-500' : 'border-l border-default-100 dark:border-default-100/20';
-                                    const cantidad = row.porFecha.get(fecha);
-                                    if (!cantidad) return <td key={fecha} className={`py-2 px-3 text-center text-default-300 text-xs ${borde}`}>—</td>;
-                                    return (
-                                      <td key={fecha} className={`py-2 px-3 text-center font-semibold text-default-700 dark:text-default-200 text-xs ${borde}`}>
-                                        {fmtN(cantidad)}
+                                <React.Fragment key={`${row.idProducto}-${row.idOP}`}>
+                                  {isNewCat && (
+                                    <tr>
+                                      <td colSpan={2 + prov.fechas.length} className="py-1 px-3 bg-secondary-100/70 dark:bg-secondary-800/30 text-secondary-700 dark:text-secondary-300 text-[10px] font-bold uppercase tracking-wide border-t-2 border-secondary-300 dark:border-secondary-600">
+                                        <span className="flex items-center gap-1.5">
+                                          <Icon icon="lucide:tag" width={10} />
+                                          {row.nombreCategoria}
+                                        </span>
                                       </td>
-                                    );
-                                  })}
-                                </tr>
+                                    </tr>
+                                  )}
+                                  <tr className={`${bgRow} hover:bg-secondary-50/70 dark:hover:bg-secondary-900/20 transition-colors`}>
+                                    {/* OP ID + Nombre (sticky) */}
+                                    <td className={`py-2 px-3 sticky left-0 z-10 border-r border-secondary-200 dark:border-secondary-700 text-xs ${bgSticky}`}>
+                                      <div className="flex items-center gap-1.5 w-[146px]">
+                                        <span className="text-[10px] font-bold text-secondary-400 dark:text-secondary-400 shrink-0 tabular-nums">#{row.idOP}</span>
+                                        <Tooltip content={row.nombre} placement="right" color="default">
+                                          <div className="truncate font-medium text-default-700 dark:text-default-200">{row.nombre}</div>
+                                        </Tooltip>
+                                      </div>
+                                    </td>
+                                    {/* U/M (sticky) */}
+                                    <td className={`py-2 px-2 text-center text-default-500 text-[11px] sticky left-[170px] z-10 border-r border-secondary-200 dark:border-secondary-700 ${bgSticky}`}>
+                                      {row.abrev}
+                                    </td>
+                                    {/* Celdas por fecha — solo cantidad */}
+                                    {prov.fechas.map((fecha, idx) => {
+                                      const lunesActual = prov.semanasDeFechas.get(fecha)!;
+                                      const esNuevaSemana = idx > 0 && prov.semanasDeFechas.get(prov.fechas[idx - 1]) !== lunesActual;
+                                      const borde = esNuevaSemana ? 'border-l-2 border-secondary-400 dark:border-secondary-500' : 'border-l border-default-100 dark:border-default-100/20';
+                                      const cantidad = row.porFecha.get(fecha);
+                                      if (!cantidad) return <td key={fecha} className={`py-2 px-3 text-center text-default-300 text-xs ${borde}`}>—</td>;
+                                      return (
+                                        <td key={fecha} className={`py-2 px-3 text-center font-semibold text-default-700 dark:text-default-200 text-xs ${borde}`}>
+                                          {fmtN(cantidad)}
+                                        </td>
+                                      );
+                                    })}
+                                  </tr>
+                                </React.Fragment>
                               );
                             })
                           ) : (
-                            // ── Unificada: una fila por producto, suma de todas las OPs ──
-                            prov.productos.map((prod, rowIdx) => {
+                            // ── Unificada: una fila por producto, agrupada por categoría ──
+                            prov.productos.map((prod, rowIdx, allProds) => {
+                              const isNewCat = rowIdx === 0 || allProds[rowIdx - 1].nombreCategoria !== prod.nombreCategoria;
                               const isOdd = rowIdx % 2 !== 0;
                               const bgSticky = isOdd ? 'bg-success-50/70 dark:bg-success-900/15' : 'bg-white dark:bg-default-900';
                               const bgRow   = isOdd ? 'bg-success-50/25 dark:bg-success-900/8' : '';
                               return (
-                                <tr key={prod.idProducto} className={`${bgRow} hover:bg-success-50/50 dark:hover:bg-success-900/15 transition-colors`}>
-                                  {/* Nombre (sticky) — sin ID en unificada */}
-                                  <td className={`py-2 px-3 font-medium sticky left-0 z-10 border-r border-secondary-200 dark:border-secondary-700 text-xs ${bgSticky}`}>
-                                    <Tooltip content={prod.nombre} placement="right" color="default">
-                                      <div className="w-[146px] truncate">{prod.nombre}</div>
-                                    </Tooltip>
-                                  </td>
-                                  {/* U/M (sticky) */}
-                                  <td className={`py-2 px-2 text-center text-default-500 text-[11px] sticky left-[170px] z-10 border-r border-secondary-200 dark:border-secondary-700 ${bgSticky}`}>
-                                    {prod.abrev}
-                                  </td>
-                                  {/* Celdas por fecha — total sumado */}
-                                  {prov.fechas.map((fecha, idx) => {
-                                    const lunesActual = prov.semanasDeFechas.get(fecha)!;
-                                    const esNuevaSemana = idx > 0 && prov.semanasDeFechas.get(prov.fechas[idx - 1]) !== lunesActual;
-                                    const borde = esNuevaSemana ? 'border-l-2 border-secondary-400 dark:border-secondary-500' : 'border-l border-default-100 dark:border-default-100/20';
-                                    const items = prod.porFecha.get(fecha);
-                                    if (!items || items.length === 0) return <td key={fecha} className={`py-2 px-3 text-center text-default-300 text-xs ${borde}`}>—</td>;
-                                    const total = items.reduce((s, it) => s + it.cantidad, 0);
-                                    return (
-                                      <td key={fecha} className={`py-2 px-3 text-center font-bold text-success-700 dark:text-success-300 text-xs ${borde}`}>
-                                        {fmtN(total)}
+                                <React.Fragment key={prod.idProducto}>
+                                  {isNewCat && (
+                                    <tr>
+                                      <td colSpan={2 + prov.fechas.length} className="py-1 px-3 bg-success-100/60 dark:bg-success-800/25 text-success-700 dark:text-success-300 text-[10px] font-bold uppercase tracking-wide border-t-2 border-success-300 dark:border-success-600">
+                                        <span className="flex items-center gap-1.5">
+                                          <Icon icon="lucide:tag" width={10} />
+                                          {prod.nombreCategoria}
+                                        </span>
                                       </td>
-                                    );
-                                  })}
-                                </tr>
+                                    </tr>
+                                  )}
+                                  <tr className={`${bgRow} hover:bg-success-50/50 dark:hover:bg-success-900/15 transition-colors`}>
+                                    {/* Nombre (sticky) — sin ID en unificada */}
+                                    <td className={`py-2 px-3 font-medium sticky left-0 z-10 border-r border-secondary-200 dark:border-secondary-700 text-xs ${bgSticky}`}>
+                                      <Tooltip content={prod.nombre} placement="right" color="default">
+                                        <div className="w-[146px] truncate">{prod.nombre}</div>
+                                      </Tooltip>
+                                    </td>
+                                    {/* U/M (sticky) */}
+                                    <td className={`py-2 px-2 text-center text-default-500 text-[11px] sticky left-[170px] z-10 border-r border-secondary-200 dark:border-secondary-700 ${bgSticky}`}>
+                                      {prod.abrev}
+                                    </td>
+                                    {/* Celdas por fecha — total sumado */}
+                                    {prov.fechas.map((fecha, idx) => {
+                                      const lunesActual = prov.semanasDeFechas.get(fecha)!;
+                                      const esNuevaSemana = idx > 0 && prov.semanasDeFechas.get(prov.fechas[idx - 1]) !== lunesActual;
+                                      const borde = esNuevaSemana ? 'border-l-2 border-secondary-400 dark:border-secondary-500' : 'border-l border-default-100 dark:border-default-100/20';
+                                      const items = prod.porFecha.get(fecha);
+                                      if (!items || items.length === 0) return <td key={fecha} className={`py-2 px-3 text-center text-default-300 text-xs ${borde}`}>—</td>;
+                                      const total = items.reduce((s, it) => s + it.cantidad, 0);
+                                      return (
+                                        <td key={fecha} className={`py-2 px-3 text-center font-bold text-success-700 dark:text-success-300 text-xs ${borde}`}>
+                                          {fmtN(total)}
+                                        </td>
+                                      );
+                                    })}
+                                  </tr>
+                                </React.Fragment>
                               );
                             })
                           )}
@@ -7069,19 +7132,22 @@ const OrdenDetalleTabla: React.FC<{ detalle: IOrdenPedidoConDetalles }> = ({ det
   }, [detalle.detalles]);
 
   // Producto → { fecha → detalle }
-  type ProductoKey = { idProducto: number; nombreProducto: string; abreviatura: string; esFraccionario: boolean; precioNeto: number | null; precioConIva: number | null };
+  type ProductoKey = { idProducto: number; nombreProducto: string; nombreCategoria: string; abreviatura: string; esFraccionario: boolean; precioNeto: number | null; precioConIva: number | null };
   const productos = React.useMemo(() => {
     const map = new Map<number, { meta: ProductoKey; porFecha: Map<string, IDetalleOrdenPedido> }>();
     for (const d of detalle.detalles) {
       if (!map.has(d.idProducto)) {
         map.set(d.idProducto, {
-          meta: { idProducto: d.idProducto, nombreProducto: d.nombreProducto, abreviatura: d.abreviatura, esFraccionario: d.esFraccionario, precioNeto: d.precioNetoUnitario, precioConIva: d.precioConIvaUnitario },
+          meta: { idProducto: d.idProducto, nombreProducto: d.nombreProducto, nombreCategoria: d.nombreCategoria ?? '', abreviatura: d.abreviatura, esFraccionario: d.esFraccionario, precioNeto: d.precioNetoUnitario, precioConIva: d.precioConIvaUnitario },
           porFecha: new Map(),
         });
       }
       map.get(d.idProducto)!.porFecha.set(d.fechaEntrega, d);
     }
-    return [...map.values()].sort((a, b) => a.meta.nombreProducto.localeCompare(b.meta.nombreProducto));
+    return [...map.values()].sort((a, b) => {
+      const cat = a.meta.nombreCategoria.localeCompare(b.meta.nombreCategoria);
+      return cat !== 0 ? cat : a.meta.nombreProducto.localeCompare(b.meta.nombreProducto);
+    });
   }, [detalle.detalles]);
 
   const fmtDDMM = (iso: string) => { const [, m, d] = iso.split('-'); return `${d}/${m}`; };
@@ -7125,39 +7191,52 @@ const OrdenDetalleTabla: React.FC<{ detalle: IOrdenPedidoConDetalles }> = ({ det
             </tr>
           </thead>
           <tbody>
-            {productos.map(({ meta, porFecha }) => {
+            {productos.map(({ meta, porFecha }, prodIdx, allProds) => {
+              const isNewCat = prodIdx === 0 || allProds[prodIdx - 1].meta.nombreCategoria !== meta.nombreCategoria;
               const cantTotal = [...porFecha.values()].reduce((s, d) => s + d.cantidadSolicitada, 0);
               const tNeto   = meta.precioNeto   != null ? cantTotal * meta.precioNeto   : null;
               const tConIva = meta.precioConIva != null ? cantTotal * meta.precioConIva : null;
               return (
-                <tr key={meta.idProducto} className="border-t border-default-100 dark:border-default-50 hover:bg-default-50 dark:hover:bg-default-100/20">
-                  <td className="py-2 px-3 font-medium text-left w-[170px]">
-                    <Tooltip content={meta.nombreProducto} color="default" placement="top">
-                      <div className="w-[146px] truncate">{meta.nombreProducto}</div>
-                    </Tooltip>
-                  </td>
-                  <td className="py-2 px-2 text-center text-default-500 whitespace-nowrap">{meta.abreviatura}</td>
-                  {fechas.map(f => {
-                    const d = porFecha.get(f);
-                    return (
-                      <td key={f} className="py-2 px-2 text-center bg-warning-50/40 dark:bg-warning-900/10 font-semibold whitespace-nowrap">
-                        {d ? fmtCant(d.cantidadSolicitada, meta.esFraccionario) : <span className="text-default-300">—</span>}
+                <React.Fragment key={meta.idProducto}>
+                  {isNewCat && (
+                    <tr>
+                      <td colSpan={6 + fechas.length} className="py-1 px-3 bg-default-100/80 dark:bg-default-50/20 text-default-600 dark:text-default-400 text-[10px] font-bold uppercase tracking-wide border-t-2 border-default-300 dark:border-default-600">
+                        <span className="flex items-center gap-1.5">
+                          <Icon icon="lucide:tag" width={10} />
+                          {meta.nombreCategoria}
+                        </span>
                       </td>
-                    );
-                  })}
-                  <td className="py-2 px-2 text-center whitespace-nowrap text-default-600">
-                    {meta.precioNeto != null ? `$${fmtN(meta.precioNeto)}` : '—'}
-                  </td>
-                  <td className="py-2 px-2 text-center whitespace-nowrap text-default-600">
-                    {meta.precioConIva != null ? `$${fmtN(meta.precioConIva)}` : '—'}
-                  </td>
-                  <td className="py-2 px-2 text-center whitespace-nowrap text-success-700 font-semibold">
-                    {tNeto != null ? `$${fmtN(tNeto)}` : '—'}
-                  </td>
-                  <td className="py-2 px-2 text-center whitespace-nowrap text-warning-700 font-semibold">
-                    {tConIva != null ? `$${fmtN(tConIva)}` : '—'}
-                  </td>
-                </tr>
+                    </tr>
+                  )}
+                  <tr className="border-t border-default-100 dark:border-default-50 hover:bg-default-50 dark:hover:bg-default-100/20">
+                    <td className="py-2 px-3 font-medium text-left w-[170px]">
+                      <Tooltip content={meta.nombreProducto} color="default" placement="top">
+                        <div className="w-[146px] truncate">{meta.nombreProducto}</div>
+                      </Tooltip>
+                    </td>
+                    <td className="py-2 px-2 text-center text-default-500 whitespace-nowrap">{meta.abreviatura}</td>
+                    {fechas.map(f => {
+                      const d = porFecha.get(f);
+                      return (
+                        <td key={f} className="py-2 px-2 text-center bg-warning-50/40 dark:bg-warning-900/10 font-semibold whitespace-nowrap">
+                          {d ? fmtCant(d.cantidadSolicitada, meta.esFraccionario) : <span className="text-default-300">—</span>}
+                        </td>
+                      );
+                    })}
+                    <td className="py-2 px-2 text-center whitespace-nowrap text-default-600">
+                      {meta.precioNeto != null ? `$${fmtN(meta.precioNeto)}` : '—'}
+                    </td>
+                    <td className="py-2 px-2 text-center whitespace-nowrap text-default-600">
+                      {meta.precioConIva != null ? `$${fmtN(meta.precioConIva)}` : '—'}
+                    </td>
+                    <td className="py-2 px-2 text-center whitespace-nowrap text-success-700 font-semibold">
+                      {tNeto != null ? `$${fmtN(tNeto)}` : '—'}
+                    </td>
+                    <td className="py-2 px-2 text-center whitespace-nowrap text-warning-700 font-semibold">
+                      {tConIva != null ? `$${fmtN(tConIva)}` : '—'}
+                    </td>
+                  </tr>
+                </React.Fragment>
               );
             })}
           </tbody>

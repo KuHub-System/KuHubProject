@@ -1,6 +1,7 @@
 package KuHub.modules.gestion_orden_pedido.service;
 
 import KuHub.modules.gestion_orden_pedido.dtos.request.OrdenPedidoCreateDTO;
+import KuHub.modules.gestion_orden_pedido.dtos.response.AbastecimientoProveedorDTO;
 import KuHub.modules.gestion_orden_pedido.dtos.response.CotizacionConsolidadaDTO;
 import KuHub.modules.gestion_orden_pedido.dtos.response.OrdenPedidoConDetallesDTO;
 import KuHub.modules.gestion_orden_pedido.dtos.response.OrdenPedidoDetalleDTO;
@@ -54,6 +55,16 @@ public interface OrdenPedidoService {
     OrdenPedidoDetalleDTO crearOrdenPedido(OrdenPedidoCreateDTO request);
 
     /**
+     * Retorna OPs activas con estado CONFIRMADA, agrupadas por OP → día de entrega → productos.
+     * Siempre incluye historial de hasta 15 días hacia atrás desde la fecha actual.
+     * Cada producto incluye la marca registrada en el catálogo del proveedor (proveedor_producto).
+     *
+     * @param fechaHasta Límite superior de fechaEntrega. null = sin límite (usa 2099-12-31).
+     * @return Wrapper con la lista de órdenes de abastecimiento
+     */
+    AbastecimientoProveedorDTO obtenerAbastecimientoConfirmado(LocalDate fechaHasta);
+
+    /**
      * Retorna las Órdenes de Pedido activas con sus datos de cabecera.
      *
      * @param diasAtras si no es null, filtra solo las OPs creadas en los últimos N días; null = todas
@@ -84,4 +95,13 @@ public interface OrdenPedidoService {
      * @return DTO con el resumen actualizado
      */
     OrdenPedidoListDTO cambiarEstado(Integer idOrdenPedido, EstadoOrdenPedido nuevoEstado);
+
+    /**
+     * Marca como entregados (entregado = true) en bloque los DetalleOrdenPedido indicados.
+     * Se invoca en paralelo con el control masivo de stock al confirmar la recepción desde la bodega.
+     *
+     * @param ids Lista de IDs de detalle_orden_pedido a marcar
+     * @return Número de filas actualizadas
+     */
+    int marcarDetallesEntregados(List<Long> ids);
 }

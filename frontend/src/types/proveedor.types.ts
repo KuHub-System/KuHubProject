@@ -410,7 +410,9 @@ export interface IDetalleOrdenPedido {
   idDetalleOrdenPedido: number;
   idProducto: number;
   nombreProducto: string;
+  nombreCategoria: string;
   abreviatura: string;
+  nombreUnidad: string;
   esFraccionario: boolean;
   cantidadSolicitada: number;
   precioNetoUnitario: number | null;
@@ -422,5 +424,50 @@ export interface IDetalleOrdenPedido {
 export interface IOrdenPedidoConDetalles extends IOrdenPedidoListItem {
   telefonoProveedor: string | null;
   emailProveedor: string | null;
+  direccionProveedor: string | null;
   detalles: IDetalleOrdenPedido[];
+}
+
+// ── Abastecimiento de Proveedores (OPs CONFIRMADA) ───────────────────────────
+
+/** Producto dentro de una entrega de abastecimiento. */
+export interface IProductoEntregaAbastecimiento {
+  idDetalleOrdenPedido: number;
+  idProducto: number;
+  nombreProducto: string;
+  abreviatura: string;
+  esFraccionario: boolean;
+  cantidadSolicitada: number;
+  marcaProducto: string;
+  entregado: boolean;
+  idInventario: number;
+  stock: number;
+}
+
+/** Agrupa los productos de una misma categoría dentro de una entrega. */
+export interface ICategoriaEntregaAbastecimiento {
+  nombreCategoria: string;
+  productos: IProductoEntregaAbastecimiento[];
+}
+
+/** Agrupa las categorías que se entregan en una misma fecha. */
+export interface IEntregaDiaAbastecimiento {
+  fechaEntrega: string; // YYYY-MM-DD
+  categorias: ICategoriaEntregaAbastecimiento[];
+}
+
+/** Una OP CONFIRMADA con sus fechas de entrega y productos agrupados. */
+export interface IOrdenAbastecimiento {
+  idOrdenPedido: number;
+  idProveedor: number;
+  nombreDistribuidora: string;
+  nombreProveedor: string;
+  telefonoProveedor: string | null;
+  emailProveedor: string | null;
+  entregas: IEntregaDiaAbastecimiento[];
+}
+
+/** Respuesta completa del endpoint de abastecimiento. */
+export interface IAbastecimientoProveedorResponse {
+  ordenes: IOrdenAbastecimiento[];
 }

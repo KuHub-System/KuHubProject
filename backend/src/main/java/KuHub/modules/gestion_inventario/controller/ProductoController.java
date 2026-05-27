@@ -1,6 +1,7 @@
 package KuHub.modules.gestion_inventario.controller;
 
 import KuHub.modules.gestion_inventario.dtos.response.proyeccion.ProductRecipeView;
+import KuHub.modules.gestion_inventario.dtos.response.proyeccion.ProductRecipeWithCategoryView;
 import KuHub.modules.gestion_inventario.entity.Producto;
 import KuHub.modules.gestion_inventario.exceptions.GestionInventarioException;
 import KuHub.modules.gestion_inventario.services.ProductoService;
@@ -47,6 +48,17 @@ public class ProductoController {
         return ResponseEntity
                 .status(200)
                 .body(productoService.findAllActiveForRecipe());
+    }
+
+    /**
+     * Igual que find-all-product-active-for-option pero incluye idCategoria y nombreCategoria.
+     * ✅ En uso: Consumido por obtenerProductosOpcionConCategoriaService en solicitud-service.ts (filtro de categorías en solicitud).
+     */
+    @GetMapping("/find-all-product-active-for-option-with-category")
+    public ResponseEntity<List<ProductRecipeWithCategoryView>> findAllActiveForRecipeWithCategory() {
+        return ResponseEntity
+                .status(200)
+                .body(productoService.findAllActiveForRecipeWithCategory());
     }
 
     /**

@@ -1,6 +1,7 @@
 package KuHub.modules.gestion_inventario.services;
 
 import KuHub.modules.gestion_inventario.dtos.response.proyeccion.ProductRecipeView;
+import KuHub.modules.gestion_inventario.dtos.response.proyeccion.ProductRecipeWithCategoryView;
 import KuHub.modules.gestion_inventario.entity.Producto;
 import KuHub.modules.gestion_inventario.exceptions.GestionInventarioException;
 import KuHub.modules.gestion_inventario.repository.ProductoRepository;
@@ -50,6 +51,13 @@ public class ProductoServiceImpl implements ProductoService {
     @Override// ✅ En uso: Método invocado por el controlador.
     public List<ProductRecipeView> findAllActiveForRecipe(){
         return productoRepository.findAllActiveForRecipe();
+    }
+
+    /** Igual que findAllActiveForRecipe pero con idCategoria y nombreCategoria para el filtro en solicitud. */
+    @Transactional(readOnly = true)
+    @Override// ✅ En uso: Método invocado por el controlador.
+    public List<ProductRecipeWithCategoryView> findAllActiveForRecipeWithCategory(){
+        return productoRepository.findAllActiveForRecipeWithCategory();
     }
 
     @Transactional(readOnly = true)
