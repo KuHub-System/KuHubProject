@@ -159,9 +159,15 @@ public class OrdenPedidoServiceImpl implements OrdenPedidoService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<OrdenPedidoListDTO> listarOrdenes() {
-        List<Object[]> rows = ordenPedidoRepository.findListaOrdenesNative();
-        log.info("listarOrdenes: {} OPs activas encontradas", rows.size());
+    public List<OrdenPedidoListDTO> listarOrdenes(Integer diasAtras) {
+        List<Object[]> rows;
+        if (diasAtras != null && diasAtras > 0) {
+            String fechaDesde = LocalDate.now().minusDays(diasAtras).toString();
+            rows = ordenPedidoRepository.findListaOrdenesNativeSince(fechaDesde);
+        } else {
+            rows = ordenPedidoRepository.findListaOrdenesNative();
+        }
+        log.info("listarOrdenes: {} OPs activas encontradas (diasAtras={})", rows.size(), diasAtras);
         return rows.stream().map(OrdenPedidoListDTO::fromRow).toList();
     }
 

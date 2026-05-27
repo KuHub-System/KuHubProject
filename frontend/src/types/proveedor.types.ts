@@ -308,11 +308,12 @@ export type TDiaSemana =
 /** Mapea PedidoSemanaResumenDTO del backend (GET /orden-pedido/pedidos-semana). */
 export interface IPedidoSemanaResumen {
   idPedido: number;
-  fechaInicioPedido: string;   // YYYY-MM-DD
-  fechaFinPedido: string;      // YYYY-MM-DD
+  fechaInicioPedido: string;        // YYYY-MM-DD
+  fechaFinPedido: string;           // YYYY-MM-DD
   estadoPedido: string;
-  cantidadOrdenPedido: number; // 0 / 1 / ≥2
-  tieneOrdenPedido: boolean;   // = cantidadOrdenPedido > 0
+  cantidadOrdenPedido: number;      // OPs activas con estado != CANCELADA
+  cantidadOrdenCanceladas: number;  // OPs activas con estado == CANCELADA
+  tieneOrdenPedido: boolean;        // = cantidadOrdenPedido > 0
 }
 
 // ── Orden Pedido — Paso 2 (cotización consolidada) ────────────────────────

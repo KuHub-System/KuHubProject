@@ -54,12 +54,12 @@ public interface OrdenPedidoService {
     OrdenPedidoDetalleDTO crearOrdenPedido(OrdenPedidoCreateDTO request);
 
     /**
-     * Retorna la lista de todas las Órdenes de Pedido activas con sus datos de cabecera
-     * (proveedor, rango del pedido, estado, totales). Sin líneas de detalle.
+     * Retorna las Órdenes de Pedido activas con sus datos de cabecera.
      *
+     * @param diasAtras si no es null, filtra solo las OPs creadas en los últimos N días; null = todas
      * @return Lista ordenada por fecha de creación descendente
      */
-    List<OrdenPedidoListDTO> listarOrdenes();
+    List<OrdenPedidoListDTO> listarOrdenes(Integer diasAtras);
 
     /**
      * Retorna el detalle completo de una Orden de Pedido: cabecera + todas las líneas de

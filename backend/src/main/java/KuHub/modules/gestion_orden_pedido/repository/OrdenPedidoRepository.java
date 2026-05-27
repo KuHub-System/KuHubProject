@@ -27,13 +27,17 @@ public interface OrdenPedidoRepository extends JpaRepository<OrdenPedido, Intege
 
     /**
      * Lista pedidos APROBADO dentro de un rango de fechas con CONTADOR de OPs activas.
-     * El front decide chips según cantidad: 0 → "Sin OP" | 1 → "OP Generada" |
-     * ≥2 → "Ya existe un registro para este pedido" (no bloquea selección).
-     * [0] id_pedido               (Integer)
-     * [1] fecha_inicio_pedido     (Date)
-     * [2] fecha_fin_pedido        (Date)
-     * [3] estado_pedido           (String)
-     * [4] cantidad_orden_pedido   (Long)
+     * El front decide chips según cantidades:
+     *   [4]=0 y [5]=0 → "Sin OP"
+     *   [4]=0 y [5]>0 → "Existe un registro cancelado, realizar nuevo"
+     *   [4]=1         → "OP Generada"
+     *   [4]≥2         → "Ya existe un registro para este pedido"
+     * [0] id_pedido                    (Integer)
+     * [1] fecha_inicio_pedido          (Date)
+     * [2] fecha_fin_pedido             (Date)
+     * [3] estado_pedido                (String)
+     * [4] cantidad_orden_pedido        (Long) — OPs activas con estado != CANCELADA
+     * [5] cantidad_orden_canceladas    (Long) — OPs activas con estado == CANCELADA
      */
     @Query(value = """
         SELECT
@@ -45,7 +49,14 @@ public interface OrdenPedidoRepository extends JpaRepository<OrdenPedido, Intege
                 SELECT COUNT(*) FROM orden_pedido op
                 WHERE op.id_pedido = p.id_pedido
                   AND op.activo = TRUE
-            ) AS cantidad_orden_pedido                                              -- [4]
+                  AND op.estado_orden_pedido <> 'CANCELADA'
+            ) AS cantidad_orden_pedido,                                             -- [4]
+            (
+                SELECT COUNT(*) FROM orden_pedido op
+                WHERE op.id_pedido = p.id_pedido
+                  AND op.activo = TRUE
+                  AND op.estado_orden_pedido = 'CANCELADA'
+            ) AS cantidad_orden_canceladas                                          -- [5]
         FROM pedido p
         WHERE p.estado_pedido = 'APROBADO'
           AND p.fecha_inicio_pedido >= :fechaInicio
@@ -134,6 +145,44 @@ public interface OrdenPedidoRepository extends JpaRepository<OrdenPedido, Intege
         ORDER BY op.fecha_creacion DESC
         """, nativeQuery = true)
     List<Object[]> findListaOrdenesNative();
+
+    /**
+     * Lista OPs activas cuya fecha_creacion >= fechaDesde. Mismo esquema de columnas que findListaOrdenesNative.
+     */
+    @Query(value = """
+        SELECT
+            op.id_orden_pedido,
+            op.id_pedido,
+            ped.fecha_inicio_pedido::text,
+            ped.fecha_fin_pedido::text,
+            pv.id_proveedor,
+            pv.nombre_distribuidora,
+            pv.nombre_proveedor,
+            op.fecha_creacion,
+            op.estado_orden_pedido::text,
+            op.observaciones,
+            COALESCE((
+                SELECT COUNT(*) FROM detalle_orden_pedido d
+                WHERE d.id_orden_pedido = op.id_orden_pedido AND d.activo = true
+            ), 0) AS cantidad_detalles,
+            COALESCE((
+                SELECT SUM(d.cantidad_solicitada * COALESCE(d.precio_neto_unitario, 0))
+                FROM detalle_orden_pedido d
+                WHERE d.id_orden_pedido = op.id_orden_pedido AND d.activo = true
+            ), 0) AS total_neto,
+            COALESCE((
+                SELECT SUM(d.cantidad_solicitada * COALESCE(d.precio_con_iva_unitario, 0))
+                FROM detalle_orden_pedido d
+                WHERE d.id_orden_pedido = op.id_orden_pedido AND d.activo = true
+            ), 0) AS total_con_iva
+        FROM orden_pedido op
+        JOIN pedido   ped ON ped.id_pedido    = op.id_pedido
+        JOIN proveedor pv ON pv.id_proveedor = op.id_proveedor
+        WHERE op.activo = true
+          AND op.fecha_creacion >= CAST(:fechaDesde AS timestamp)
+        ORDER BY op.fecha_creacion DESC
+        """, nativeQuery = true)
+    List<Object[]> findListaOrdenesNativeSince(@Param("fechaDesde") String fechaDesde);
 
     @Query(value = """
 WITH

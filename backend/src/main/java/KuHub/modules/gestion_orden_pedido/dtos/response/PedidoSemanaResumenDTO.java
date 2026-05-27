@@ -8,10 +8,11 @@ import java.time.LocalDate;
  *
  * Mapea desde {@code OrdenPedidoRepository.findPedidosSemanaConIndicadorOP}.
  *
- * El frontend decide la presentación según {@code cantidadOrdenPedido}:
- *   0   → chip "Sin OP"
- *   1   → chip "OP Generada"
- *   ≥2  → mensaje "Ya existe un registro para este pedido" (no bloquea selección)
+ * El frontend decide la presentación según las cantidades:
+ *   cantidadOrdenPedido=0 y cantidadOrdenCanceladas=0 → chip "Sin OP"
+ *   cantidadOrdenPedido=0 y cantidadOrdenCanceladas>0 → chip "Existe un registro cancelado, realizar nuevo"
+ *   cantidadOrdenPedido=1                              → chip "OP Generada"
+ *   cantidadOrdenPedido≥2                             → chip "Ya existe un registro para este pedido"
  */
 public record PedidoSemanaResumenDTO(
         Integer idPedido,
@@ -19,18 +20,21 @@ public record PedidoSemanaResumenDTO(
         LocalDate fechaFinPedido,
         String estadoPedido,
         int cantidadOrdenPedido,
+        int cantidadOrdenCanceladas,
         boolean tieneOrdenPedido
 ) {
 
     /** Convierte una fila de Object[] (consulta nativa) al DTO. */
     public static PedidoSemanaResumenDTO fromRow(Object[] row) {
-        int cantidad = ((Number) row[4]).intValue();
+        int cantidad    = ((Number) row[4]).intValue();
+        int canceladas  = ((Number) row[5]).intValue();
         return new PedidoSemanaResumenDTO(
                 ((Number) row[0]).intValue(),
                 ((java.sql.Date) row[1]).toLocalDate(),
                 ((java.sql.Date) row[2]).toLocalDate(),
                 (String) row[3],
                 cantidad,
+                canceladas,
                 cantidad > 0
         );
     }
