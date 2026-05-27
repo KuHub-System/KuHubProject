@@ -123,16 +123,18 @@ public class OrdenPedidoController {
      * Incluye datos del proveedor y la marca del producto registrada en proveedor_producto.
      * Usado por el modal de abastecimiento de proveedores en Control de Stock Masivo.
      *
-     * GET /api/v1/orden-pedido/abastecimiento?fechaHasta=2026-06-30
-     * ⬜ Sin uso frontend aún.
+     * GET /api/v1/orden-pedido/abastecimiento?fechaHasta=2026-06-30&tipoAbastecimiento=INVENTARIO
+     * tipoAbastecimiento: "INVENTARIO" (inventario.tsx) | "BODEGA_TRANSITO" (bodega-transito.tsx)
+     * ✅ En uso: Consumido por obtenerAbastecimientoConfirmadoService en proveedor-service.ts.
      */
     @GetMapping("/abastecimiento")
     public ResponseEntity<AbastecimientoProveedorDTO> obtenerAbastecimiento(
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaHasta
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaHasta,
+            @RequestParam(required = false, defaultValue = "INVENTARIO") String tipoAbastecimiento
     ) {
         return ResponseEntity
                 .status(200)
-                .body(ordenPedidoService.obtenerAbastecimientoConfirmado(fechaHasta));
+                .body(ordenPedidoService.obtenerAbastecimientoConfirmado(fechaHasta, tipoAbastecimiento));
     }
 
     // ══════════════════════════════════════════════════════════════

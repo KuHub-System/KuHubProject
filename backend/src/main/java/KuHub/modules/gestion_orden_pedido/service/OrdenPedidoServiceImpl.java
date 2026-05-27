@@ -108,13 +108,13 @@ public class OrdenPedidoServiceImpl implements OrdenPedidoService {
 
     @Override
     @Transactional(readOnly = true)
-    public AbastecimientoProveedorDTO obtenerAbastecimientoConfirmado(LocalDate fechaHasta) {
+    public AbastecimientoProveedorDTO obtenerAbastecimientoConfirmado(LocalDate fechaHasta, String tipoAbastecimiento) {
         // null = filtro "Todas": usar fecha lejana para no limitar por arriba
         LocalDate hasta = (fechaHasta != null) ? fechaHasta : LocalDate.of(2099, 12, 31);
-        String jsonStr = ordenPedidoRepository.findAbastecimientoConfirmado(hasta);
+        String jsonStr = ordenPedidoRepository.findAbastecimientoConfirmado(hasta, tipoAbastecimiento);
 
         if (jsonStr == null || jsonStr.isBlank() || "null".equals(jsonStr)) {
-            log.info("obtenerAbastecimientoConfirmado: sin resultados (hasta={})", hasta);
+            log.info("obtenerAbastecimientoConfirmado: sin resultados (hasta={}, tipo={})", hasta, tipoAbastecimiento);
             return new AbastecimientoProveedorDTO(List.of());
         }
 
@@ -122,7 +122,7 @@ public class OrdenPedidoServiceImpl implements OrdenPedidoService {
             var typeRef = TypeFactory.defaultInstance()
                     .constructCollectionType(List.class, AbastecimientoProveedorDTO.OrdenAbastecimiento.class);
             List<AbastecimientoProveedorDTO.OrdenAbastecimiento> ordenes = objectMapper.readValue(jsonStr, typeRef);
-            log.info("obtenerAbastecimientoConfirmado: {} OPs CONFIRMADA | hasta={}", ordenes.size(), hasta);
+            log.info("obtenerAbastecimientoConfirmado: {} OPs CONFIRMADA | hasta={} | tipo={}", ordenes.size(), hasta, tipoAbastecimiento);
             return new AbastecimientoProveedorDTO(ordenes);
         } catch (Exception e) {
             log.error("Error al deserializar abastecimiento. JSON={} | Excepción={}", jsonStr, e.getMessage());
