@@ -144,7 +144,7 @@ WITH productos_entrega AS (
                                      AND inv.activo         = TRUE
     JOIN categoria                cat ON cat.id_categoria   = pr.id_categoria
     JOIN categoria_abastecimiento ca  ON ca.id_categoria   = pr.id_categoria
-                                     AND ca.tipo_abastecimiento = 'INVENTARIO'
+                                     AND ca.tipo_abastecimiento = CAST(:tipoAbastecimiento AS tipo_abastecimiento)
     LEFT JOIN proveedor_producto  pp  ON pp.id_proveedor    = op.id_proveedor
                                      AND pp.id_producto     = d.id_producto
                                      AND pp.activo          = TRUE
@@ -235,7 +235,7 @@ SELECT jsonb_agg(
 )
 FROM agrupado_por_op
     """, nativeQuery = true)
-    String findAbastecimientoConfirmado(@Param("fechaHasta") LocalDate fechaHasta);
+    String findAbastecimientoConfirmado(@Param("fechaHasta") LocalDate fechaHasta, @Param("tipoAbastecimiento") String tipoAbastecimiento);
 
     // ── 3. Listado y detalle de Órdenes de Pedido ──
 
