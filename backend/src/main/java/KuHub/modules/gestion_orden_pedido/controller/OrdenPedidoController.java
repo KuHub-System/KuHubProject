@@ -116,14 +116,18 @@ public class OrdenPedidoController {
     // ══════════════════════════════════════════════════════════════
 
     /**
-     * Retorna todas las Órdenes de Pedido activas con su cabecera (proveedor, rango del pedido,
+     * Retorna las Órdenes de Pedido activas con su cabecera (proveedor, rango del pedido,
      * estado, totales). No incluye las líneas de detalle para mantener el payload liviano.
      *
-     * GET /api/v1/orden-pedido
+     * @param diasAtras opcional — filtra OPs creadas en los últimos N días. Omitir o null = todas.
+     *
+     * GET /api/v1/orden-pedido?diasAtras=30
+     * ✅ En uso: Consumido por listarOrdenesPedidoService en proveedor-service.ts.
      */
     @GetMapping
-    public ResponseEntity<List<OrdenPedidoListDTO>> listarOrdenes() {
-        return ResponseEntity.ok(ordenPedidoService.listarOrdenes());
+    public ResponseEntity<List<OrdenPedidoListDTO>> listarOrdenes(
+            @RequestParam(required = false) Integer diasAtras) {
+        return ResponseEntity.ok(ordenPedidoService.listarOrdenes(diasAtras));
     }
 
     /**
