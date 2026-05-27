@@ -60,8 +60,8 @@ import GestionUnidadesModal from '../components/modals/GestionUnidadesModal';
 import GestionAbastecimientoModal from '../components/modals/GestionAbastecimientoModal';
 import { obtenerCategoriasActivasService } from '../services/categoria-service';
 import { obtenerUnidadesActivasService } from '../services/unidad-medida-service';
-import { IUnidadMedida, ISincronizarInventarioExcelResultado, IResultadoItemInventarioExcel } from '../types/inventario.types';
-import { actualizarBodegaTransitoConProductoService, crearBodegaConProductoService, WarehouseWithProductUpdateDTO, IBodegaStockSyncWarning, IBodegaStockInsuficiente } from '../services/bodega-transito-service';
+import { IUnidadMedida, ISincronizarInventarioExcelResultado, IResultadoItemInventarioExcel, ICategoriaAbastecimientoView } from '../types/inventario.types';
+import { actualizarBodegaTransitoConProductoService, crearBodegaConProductoService, sincronizarBodegaTransitoDesdeExcelService, confirmarNuevosBodegaExcelService, WarehouseWithProductUpdateDTO, IBodegaStockSyncWarning, IBodegaStockInsuficiente } from '../services/bodega-transito-service';
 import {
   obtenerBulkProductoInventoryListingService,
   IBulkProductoInventoryListing,
@@ -70,7 +70,8 @@ import {
   IStockSyncWarning,
   IStockInsuficiente,
   sincronizarInventarioDesdeExcelService,
-  confirmarNuevosProductosExcelService
+  confirmarNuevosProductosExcelService,
+  obtenerConfigAbastecimientoService
 } from '../services/inventario-service';
 import {
   obtenerProyeccionAbastecimientoService,
@@ -183,8 +184,13 @@ const InventarioPage: React.FC = () => {
   const [excelNoEncontradosSeleccionados, setExcelNoEncontradosSeleccionados] = React.useState<Set<number>>(new Set());
   const [isIncluyendoNoEncontrados,     setIsIncluyendoNoEncontrados]     = React.useState(false);
   const [excelResultVista, setExcelResultVista] = React.useState<'sincronizados' | 'no_encontrados'>('no_encontrados');
+  const [excelSyncTarget, setExcelSyncTarget] = React.useState<'inventario' | 'bodega'>('inventario');
+  const [configAbastecimiento, setConfigAbastecimiento] = React.useState<ICategoriaAbastecimientoView[]>([]);
+  const [excelCatNoEncontradaHoja, setExcelCatNoEncontradaHoja] = React.useState<string>('');
   const { isOpen: isSincronizarExcelOpen, onOpen: onSincronizarExcelOpen, onOpenChange: onSincronizarExcelOpenChange } = useDisclosure();
   const { isOpen: isExcelResultOpen, onOpen: onExcelResultOpen, onOpenChange: onExcelResultOpenChange } = useDisclosure();
+  const { isOpen: isExcelCatNoEncontradaOpen, onOpen: onExcelCatNoEncontradaOpen, onOpenChange: onExcelCatNoEncontradaOpenChange } = useDisclosure();
+  const { isOpen: isExcelBodegaAdvertenciaOpen, onOpen: onExcelBodegaAdvertenciaOpen, onOpenChange: onExcelBodegaAdvertenciaOpenChange } = useDisclosure();
   const [productoSeleccionado, setProductoSeleccionado] = React.useState<IProducto | null>(null);
   const [modalMode, setModalMode] = React.useState<'crear' | 'editar'>('crear');
   const [showStockWarning, setShowStockWarning] = React.useState(false);
@@ -437,6 +443,13 @@ const InventarioPage: React.FC = () => {
       cargarFiltros();
     }
   }, [isOpen, cargarFiltros]);
+
+  // Cargar configuración de abastecimiento para detección de categorías de bodega
+  React.useEffect(() => {
+    obtenerConfigAbastecimientoService()
+      .then(setConfigAbastecimiento)
+      .catch(() => {});
+  }, []);
 
   // Cargar productos iniciales
   React.useEffect(() => {
@@ -696,16 +709,22 @@ const InventarioPage: React.FC = () => {
       if (hojas.length <= 1) {
         const hoja = hojas[0] ?? '';
         setExcelSelectedSheet(hoja);
-        setExcelSelectedCatId(intentarAutoMatchCategoria(hoja, categoriasActivas));
+        const autoMatch = intentarAutoMatchCategoria(hoja, categoriasActivas);
+        setExcelSelectedCatId(autoMatch);
         if (hoja === 'ESPECIEROS') { setExcelFilaInicio(4); setExcelFilaFin(29); setExcelEspecierosAviso(true); }
         else { setExcelFilaInicio(2); setExcelFilaFin(500); }
         setExcelModalVista('config');
+        onSincronizarExcelOpen();
+        if (autoMatch === null) {
+          setExcelCatNoEncontradaHoja(hoja);
+          onExcelCatNoEncontradaOpen();
+        }
       } else {
         setExcelFilaInicio(2);
         setExcelFilaFin(500);
         setExcelModalVista('hojas');
+        onSincronizarExcelOpen();
       }
-      onSincronizarExcelOpen();
     } catch {
       toast.error('No se pudo leer el archivo Excel');
     }
@@ -713,16 +732,31 @@ const InventarioPage: React.FC = () => {
 
   const handleSeleccionarHojaExcel = (nombreHoja: string) => {
     setExcelSelectedSheet(nombreHoja);
-    setExcelSelectedCatId(intentarAutoMatchCategoria(nombreHoja, categoriasActivas));
+    const catMatch = intentarAutoMatchCategoria(nombreHoja, categoriasActivas);
+    setExcelSelectedCatId(catMatch);
     if (nombreHoja === 'ESPECIEROS') {
       setExcelFilaInicio(4); setExcelFilaFin(29); setExcelEspecierosAviso(true);
     } else {
       setExcelFilaInicio(2); setExcelFilaFin(500); setExcelEspecierosAviso(false);
     }
     setExcelModalVista('config');
+    if (catMatch === null) {
+      setExcelCatNoEncontradaHoja(nombreHoja);
+      onExcelCatNoEncontradaOpen();
+    }
   };
 
   const handleDoSincronizarExcel = async () => {
+    if (!excelPendingFile || !excelSelectedSheet || excelSelectedCatId === null) return;
+    const catConfig = configAbastecimiento.find(c => c.idCategoria === excelSelectedCatId);
+    if (catConfig?.bodegaTransito) {
+      onExcelBodegaAdvertenciaOpen();
+      return;
+    }
+    await doSincronizarInventario();
+  };
+
+  const doSincronizarInventario = async () => {
     if (!excelPendingFile || !excelSelectedSheet || excelSelectedCatId === null) return;
     setIsSincronizandoExcel(true);
     try {
@@ -730,6 +764,7 @@ const InventarioPage: React.FC = () => {
         excelPendingFile, excelFilaInicio, excelFilaFin, excelSelectedCatId, excelSelectedSheet
       );
       setExcelResultado(resultado);
+      setExcelSyncTarget('inventario');
       const noEncontrados = resultado.resultados.filter(r => r.estado === 'no_encontrado');
       setExcelNoEncontradosSeleccionados(
         new Set(
@@ -749,6 +784,35 @@ const InventarioPage: React.FC = () => {
     }
   };
 
+  const doSincronizarBodega = async () => {
+    if (!excelPendingFile || !excelSelectedSheet || excelSelectedCatId === null) return;
+    setIsSincronizandoExcel(true);
+    try {
+      const resultado = await sincronizarBodegaTransitoDesdeExcelService(
+        excelPendingFile, excelFilaInicio, excelFilaFin, excelSelectedCatId, excelSelectedSheet
+      );
+      setExcelResultado(resultado);
+      setExcelSyncTarget('bodega');
+      const noEncontrados = resultado.resultados.filter(r => r.estado === 'no_encontrado');
+      setExcelNoEncontradosSeleccionados(
+        new Set(
+          noEncontrados
+            .map((r, i) => ({ r, i }))
+            .filter(({ r }) => (r.stockExcel ?? 0) > 0)
+            .map(({ i }) => i)
+        )
+      );
+      setExcelResultVista(noEncontrados.length > 0 ? 'no_encontrados' : 'sincronizados');
+      onSincronizarExcelOpenChange();
+      onExcelBodegaAdvertenciaOpenChange();
+      onExcelResultOpen();
+    } catch (err: any) {
+      toast.error(err.message || 'Error al procesar el Excel para bodega de tránsito');
+    } finally {
+      setIsSincronizandoExcel(false);
+    }
+  };
+
   const handleConfirmarNuevos = async () => {
     if (!excelResultado || !excelSelectedCatId) return;
     const noEncontrados = excelResultado.resultados.filter(r => r.estado === 'no_encontrado');
@@ -762,8 +826,14 @@ const InventarioPage: React.FC = () => {
         stock: r.stockExcel ?? 0,
         idCategoria: excelSelectedCatId,
       }));
-      const count = await confirmarNuevosProductosExcelService(items);
-      toast.success(`${count} nuevos productos agregados al inventario`);
+      if (excelSyncTarget === 'bodega') {
+        const count = await confirmarNuevosBodegaExcelService(items);
+        toast.success(`${count} nuevos productos registrados en bodega de tránsito`);
+        window.dispatchEvent(new Event('productosActualizados'));
+      } else {
+        const count = await confirmarNuevosProductosExcelService(items);
+        toast.success(`${count} nuevos productos agregados al inventario`);
+      }
       onExcelResultOpenChange();
       setCache({});
       cargarProductosPaginados(1, true);
@@ -1696,7 +1766,11 @@ const InventarioPage: React.FC = () => {
                       {excelResultVista === 'no_encontrados' && noEncontradosList.length > 0 && (
                         <div className="flex flex-col gap-2">
                           <div className="flex items-center justify-between">
-                            <p className="text-sm font-medium">Selecciona cuáles agregar al inventario</p>
+                            <p className="text-sm font-medium">
+                              {excelSyncTarget === 'bodega'
+                                ? 'Selecciona cuáles registrar en bodega de tránsito'
+                                : 'Selecciona cuáles agregar al inventario'}
+                            </p>
                             {tieneConCero && (
                               <div className="flex items-center gap-2">
                                 <Checkbox
@@ -1771,6 +1845,96 @@ const InventarioPage: React.FC = () => {
             }}
           </ModalContent>
         </Modal>
+        {/* Modal: Categoría no encontrada en sistema */}
+        <Modal
+          isOpen={isExcelCatNoEncontradaOpen}
+          onOpenChange={onExcelCatNoEncontradaOpenChange}
+          size="md"
+          backdrop="blur"
+          radius="lg"
+          classNames={{ base: 'rounded-2xl' }}
+        >
+          <ModalContent>
+            {(onClose) => (
+              <>
+                <ModalHeader className="flex items-center gap-2">
+                  <Icon icon="lucide:alert-triangle" className="text-warning" width={20} />
+                  Categoría no reconocida
+                </ModalHeader>
+                <ModalBody className="pb-2">
+                  <p className="text-sm text-default-600">
+                    No se encontró ninguna categoría con el nombre{' '}
+                    <span className="font-semibold text-foreground">"{excelCatNoEncontradaHoja}"</span>{' '}
+                    en el sistema.
+                  </p>
+                  <p className="text-sm text-default-500 mt-2">
+                    Si desea asignar los productos a una categoría existente, selecciónela en el campo de categoría o cree una nueva desde la gestión de categorías.
+                  </p>
+                </ModalBody>
+                <ModalFooter>
+                  <Button color="primary" onPress={onClose}>
+                    Entendido
+                  </Button>
+                </ModalFooter>
+              </>
+            )}
+          </ModalContent>
+        </Modal>
+
+        {/* Modal: Advertencia categoría de bodega de tránsito */}
+        <Modal
+          isOpen={isExcelBodegaAdvertenciaOpen}
+          onOpenChange={onExcelBodegaAdvertenciaOpenChange}
+          size="md"
+          backdrop="blur"
+          radius="lg"
+          isDismissable={false}
+          classNames={{ base: 'rounded-2xl' }}
+        >
+          <ModalContent>
+            {(onClose) => {
+              const catSeleccionada = categoriasActivas.find(c => c.id === excelSelectedCatId);
+              return (
+                <>
+                  <ModalHeader className="flex items-center gap-2">
+                    <Icon icon="lucide:warehouse" className="text-warning" width={20} />
+                    Categoría de Bodega de Tránsito
+                  </ModalHeader>
+                  <ModalBody className="pb-2">
+                    <div className="p-3 bg-warning-50 dark:bg-warning-900/20 rounded-lg border border-warning-200 dark:border-warning-700">
+                      <p className="text-sm text-warning-800 dark:text-warning-300">
+                        El sistema indica que la categoría{' '}
+                        <span className="font-semibold">"{catSeleccionada?.nombre}"</span>{' '}
+                        se abastece en <strong>bodega de tránsito</strong>, por lo que en el inventario no debería haber registro de productos de esta categoría.
+                      </p>
+                    </div>
+                    <p className="text-sm text-default-600 mt-3">
+                      ¿Desea sincronizar los valores para <strong>bodega de tránsito</strong> en lugar de inventario?
+                    </p>
+                  </ModalBody>
+                  <ModalFooter>
+                    <Button
+                      variant="ghost"
+                      isDisabled={isSincronizandoExcel}
+                      onPress={() => { onClose(); doSincronizarInventario(); }}
+                    >
+                      No, sincronizar inventario
+                    </Button>
+                    <Button
+                      color="warning"
+                      isLoading={isSincronizandoExcel}
+                      startContent={!isSincronizandoExcel && <Icon icon="lucide:warehouse" width={18} />}
+                      onPress={doSincronizarBodega}
+                    >
+                      Sí, sincronizar bodega
+                    </Button>
+                  </ModalFooter>
+                </>
+              );
+            }}
+          </ModalContent>
+        </Modal>
+
       </motion.div>
     </div>
   );

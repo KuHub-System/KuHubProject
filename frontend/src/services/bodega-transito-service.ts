@@ -198,6 +198,53 @@ export const crearBodegaConProductoService = async (
     }
 };
 
+import type { ISincronizarInventarioExcelResultado } from '../types/inventario.types';
+
+/**
+ * Sincroniza el stock de bodega de tránsito desde un Excel.
+ * Endpoint: POST /v1/bodega-transito/sincronizar-excel
+ */
+export const sincronizarBodegaTransitoDesdeExcelService = async (
+    archivo: File,
+    filaInicio: number,
+    filaFin: number,
+    idCategoria: number,
+    nombreHoja?: string
+): Promise<ISincronizarInventarioExcelResultado> => {
+    const formData = new FormData();
+    formData.append('archivo', archivo);
+    formData.append('filaInicio', String(filaInicio));
+    formData.append('filaFin', String(filaFin));
+    formData.append('idCategoria', String(idCategoria));
+    const params = nombreHoja ? `?nombreHoja=${encodeURIComponent(nombreHoja)}` : '';
+    try {
+        const response = await api.post<ISincronizarInventarioExcelResultado>(
+            `/bodega-transito/sincronizar-excel${params}`,
+            formData,
+            { headers: { 'Content-Type': 'multipart/form-data' } }
+        );
+        return response.data;
+    } catch (error: any) {
+        throw new Error(
+            error.response?.data?.message || 'Error al procesar el Excel de bodega de tránsito'
+        );
+    }
+};
+
+/**
+ * Confirma la creación de productos no encontrados en la sincronización Excel de bodega.
+ * Endpoint: POST /v1/bodega-transito/sincronizar-excel/confirmar-nuevos
+ */
+export const confirmarNuevosBodegaExcelService = async (
+    items: Array<{ nombre: string; idUnidadMedida: number; stock: number; idCategoria: number }>
+): Promise<number> => {
+    const response = await api.post<number>(
+        '/bodega-transito/sincronizar-excel/confirmar-nuevos',
+        items
+    );
+    return response.data;
+};
+
 export interface IBodegaStockSyncWarning {
     desync: true;
     warning: string;
