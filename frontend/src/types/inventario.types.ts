@@ -33,6 +33,23 @@ export interface IResultadoItemInventarioExcel {
   estado: 'ok' | 'no_encontrado';
 }
 
+// ── Configuración de abastecimiento por categoría ──────────────────────────
+
+/** Categoría activa con sus flags de tipo de abastecimiento. */
+export interface ICategoriaAbastecimientoView {
+  idCategoria: number;
+  nombreCategoria: string;
+  inventario: boolean;
+  bodegaTransito: boolean;
+}
+
+/** DTO de actualización: flag por categoría. */
+export interface ICategoriaAbastecimientoItemDTO {
+  idCategoria: number;
+  inventario: boolean;
+  bodegaTransito: boolean;
+}
+
 export interface ISincronizarInventarioExcelResultado {
   resultados: IResultadoItemInventarioExcel[];
   totalSincronizados: number;

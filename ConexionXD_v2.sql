@@ -23,6 +23,7 @@ DROP TYPE IF EXISTS estado_seccion_type CASCADE;
 DROP TYPE IF EXISTS estado_provedor_type CASCADE;
 DROP TYPE IF EXISTS estado_bodega_transito_type CASCADE;
 DROP TYPE IF EXISTS estado_orden_pedido_type CASCADE;
+DROP TYPE IF EXISTS tipo_abastecimiento;
 
 -- =====================================================
 -- ELIMINAR CASTS (Limpieza)
@@ -36,6 +37,7 @@ DROP CAST IF EXISTS (varchar AS estado_provedor_type) CASCADE;
 DROP CAST IF EXISTS (varchar AS estado_bodega_transito_type) CASCADE;
 DROP CAST IF EXISTS (varchar AS estado_solicitud_type) CASCADE;
 DROP CAST IF EXISTS (varchar AS estado_pedido_type) CASCADE;
+DROP CAST  IF EXISTS (varchar AS tipo_abastecimiento);
 
 -- Matamos los fantasmas viejos por si siguen dando vueltas
 DROP CAST IF EXISTS (varchar AS estado_receta_type) CASCADE;
@@ -83,6 +85,7 @@ DROP TABLE IF EXISTS inventario CASCADE;
 DROP TABLE IF EXISTS producto CASCADE;
 DROP TABLE IF EXISTS categoria CASCADE;
 DROP TABLE IF EXISTS unidad_medida CASCADE;
+DROP TABLE IF EXISTS categoria_abastecimiento CASCADE;
 
 -- Tablas academicas
 DROP TABLE IF EXISTS asignatura_profesor_cargo CASCADE;
@@ -191,6 +194,12 @@ CREATE TYPE estado_orden_pedido_type AS ENUM (
     'CONFIRMADA',
     'RECIBIDA'
 );
+
+CREATE TYPE tipo_abastecimiento AS ENUM (
+    'INVENTARIO',
+    'BODEGA_TRANSITO'
+);
+
 -- =====================================================
 -- CREAR CASTS (DESPUÉS DE CREAR LOS ENUM)
 -- =====================================================
@@ -205,7 +214,7 @@ CREATE CAST (varchar AS estado_solicitud_type) WITH INOUT AS IMPLICIT;
 CREATE CAST (varchar AS estado_pedido_type) WITH INOUT AS IMPLICIT;
 CREATE CAST (varchar AS estado_seccion_type) WITH INOUT AS IMPLICIT;
 CREATE CAST (varchar AS estado_orden_pedido_type) WITH INOUT AS IMPLICIT;
-
+CREATE CAST (varchar AS tipo_abastecimiento) WITH INOUT AS IMPLICIT;
 
 -- =====================================================
 -- TABLAS PRINCIPALES
@@ -492,6 +501,13 @@ CREATE TABLE bodega_transito (
         ON UPDATE CASCADE ON DELETE RESTRICT
 );
 
+-- Tabla categoria_abastecimiento(determina las categorias que llegan al abastecimiento)
+CREATE TABLE categoria_abastecimiento (
+    id_categoria        SMALLINT            NOT NULL REFERENCES categoria(id_categoria),
+    tipo_abastecimiento tipo_abastecimiento NOT NULL,
+    PRIMARY KEY (id_categoria, tipo_abastecimiento)
+);
+
 -- Tabla movimiento
 CREATE TABLE movimiento (
     id_movimiento INTEGER GENERATED ALWAYS AS IDENTITY,
@@ -768,7 +784,7 @@ CREATE TABLE orden_pedido (
     activo              BOOLEAN                   NOT NULL DEFAULT TRUE
 );
 
--- Tabla detalle_orden_pedido (Tarea #27: agrega fecha_entrega)
+-- Tabla detalle_orden_pedido
 CREATE TABLE detalle_orden_pedido (
     id_detalle_orden_pedido INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     id_orden_pedido         INTEGER         NOT NULL
@@ -779,7 +795,8 @@ CREATE TABLE detalle_orden_pedido (
     precio_neto_unitario    NUMERIC(10,3),
     precio_con_iva_unitario NUMERIC(10,3),
     fecha_entrega           DATE            NOT NULL,
-    activo                  BOOLEAN         NOT NULL DEFAULT TRUE
+    activo                  BOOLEAN         NOT NULL DEFAULT TRUE,
+    entregado               BOOLEAN         NOT NULL DEFAULT FALSE
 );
 
 -- Fila 1: configuración default (solo lectura, para restaurar)

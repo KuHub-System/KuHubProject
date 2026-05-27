@@ -23,6 +23,7 @@ import {
   IOrdenPedidoResumen,
   IOrdenPedidoListItem,
   IOrdenPedidoConDetalles,
+  IAbastecimientoProveedorResponse,
 } from '../types/proveedor.types';
 
 // ── Helpers de transformación ─────────────────────────────────────────────────
@@ -772,6 +773,44 @@ export const cambiarEstadoOrdenPedidoService = async (
     throw new Error(
       error.response?.data?.message ||
       `Error al cambiar el estado de la Orden de Pedido #${idOrdenPedido}`
+    );
+  }
+};
+
+/**
+ * Retorna OPs CONFIRMADA agrupadas por OP → día de entrega → productos, con marca e inventario.
+ * Siempre incluye historial de 15 días hacia atrás. fechaHasta controla el límite superior.
+ * GET /api/v1/orden-pedido/abastecimiento?fechaHasta=YYYY-MM-DD
+ */
+export const obtenerAbastecimientoConfirmadoService = async (
+  fechaHasta?: string
+): Promise<IAbastecimientoProveedorResponse> => {
+  try {
+    const params: Record<string, string> = {};
+    if (fechaHasta) params.fechaHasta = fechaHasta;
+    const response = await api.get<IAbastecimientoProveedorResponse>('/orden-pedido/abastecimiento', { params });
+    return response.data;
+  } catch (error: any) {
+    throw new Error(
+      error.response?.data?.message ||
+      'Error al cargar el abastecimiento de proveedores'
+    );
+  }
+};
+
+/**
+ * Marca como entregados (entregado = true) en bloque los detalles de orden de pedido indicados.
+ * Se llama en paralelo con bulkUpdateInventoryStockService al confirmar el Control de Stock Masivo.
+ * PATCH /api/v1/orden-pedido/detalles/entregar → número de filas actualizadas
+ */
+export const marcarEntregadosMasivoService = async (ids: number[]): Promise<number> => {
+  try {
+    const response = await api.patch<number>('/orden-pedido/detalles/entregar', ids);
+    return response.data ?? 0;
+  } catch (error: any) {
+    throw new Error(
+      error.response?.data?.message ||
+      'Error al marcar los detalles de orden como entregados'
     );
   }
 };

@@ -51,6 +51,9 @@ public class DetalleOrdenPedido {
     @Column(name = "activo", nullable = false)
     private Boolean activo = true;
 
+    @Column(name = "entregado", nullable = false)
+    private Boolean entregado = false;
+
     public void setIdOrdenPedido(Integer id) {
         if (id != null) {
             this.ordenPedido = new OrdenPedido();

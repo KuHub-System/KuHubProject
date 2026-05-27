@@ -57,6 +57,7 @@ import { useModulePermission } from '../contexts/permission-context';
 import { obtenerCategorias, obtenerUnidades } from '../services/storage-service';
 import GestionCategoriasModal from '../components/modals/GestionCategoriasModal';
 import GestionUnidadesModal from '../components/modals/GestionUnidadesModal';
+import GestionAbastecimientoModal from '../components/modals/GestionAbastecimientoModal';
 import { obtenerCategoriasActivasService } from '../services/categoria-service';
 import { obtenerUnidadesActivasService } from '../services/unidad-medida-service';
 import { IUnidadMedida, ISincronizarInventarioExcelResultado, IResultadoItemInventarioExcel } from '../types/inventario.types';
@@ -75,12 +76,24 @@ import {
   obtenerProyeccionAbastecimientoService,
   IProyeccionAbastecimiento
 } from '../services/solicitud-service';
+import {
+  obtenerAbastecimientoConfirmadoService,
+  marcarEntregadosMasivoService,
+} from '../services/proveedor-service';
+import {
+  IOrdenAbastecimiento,
+  IEntregaDiaAbastecimiento,
+  ICategoriaEntregaAbastecimiento,
+  IProductoEntregaAbastecimiento,
+} from '../types/proveedor.types';
 
 interface ItemPedidoMasivo {
   id: string;
   producto: IBulkProductoInventoryListing;
   delta: number;
   motivo: string;
+  idDetalleOrdenPedido?: number;
+  marcaProducto?: string | null;
 }
 
 // ── Helpers para sincronización Excel ──
@@ -154,6 +167,7 @@ const InventarioPage: React.FC = () => {
   const [bulkModalKey, setBulkModalKey] = React.useState(0);
   const { isOpen: isCategoriasOpen, onOpen: onCategoriasOpen, onOpenChange: onCategoriasOpenChange } = useDisclosure();
   const { isOpen: isUnidadesOpen, onOpen: onUnidadesOpen, onOpenChange: onUnidadesOpenChange } = useDisclosure();
+  const { isOpen: isAbastecimientoConfigOpen, onOpen: onAbastecimientoConfigOpen, onOpenChange: onAbastecimientoConfigOpenChange } = useDisclosure();
   // ── Sincronizar Inventario con Excel ──
   const excelFileInputRef = React.useRef<HTMLInputElement>(null);
   const [excelPendingFile,     setExcelPendingFile]     = React.useState<File | null>(null);
@@ -850,6 +864,16 @@ const InventarioPage: React.FC = () => {
             <Icon icon="lucide:scale" className="text-default-600" width={20} />
           </Button>
           )}
+          <Button
+            isIconOnly
+            variant="flat"
+            size="md"
+            onPress={onAbastecimientoConfigOpen}
+            title="Gestión Abastecimiento"
+            className="bg-default-100 dark:bg-default-50/10"
+          >
+            <Icon icon="lucide:warehouse" className="text-default-600" width={20} />
+          </Button>
         </div>
 
         {/* Barra de herramientas */}
@@ -1201,7 +1225,7 @@ const InventarioPage: React.FC = () => {
         </Table>
 
         {/* Modales */}
-        <Modal isOpen={isOpen} onOpenChange={onOpenChange} size="lg" backdrop="blur" placement="top" classNames={{ base: "mt-4" }}>
+        <Modal isOpen={isOpen} onOpenChange={onOpenChange} size="lg" backdrop="blur" placement="top" classNames={{ base: "mt-4" }} isDismissable={false}>
           <ModalContent>
             {(onClose) => (
               <>
@@ -1226,7 +1250,7 @@ const InventarioPage: React.FC = () => {
           </ModalContent>
         </Modal>
 
-        <Modal key={bulkModalKey} isOpen={isPedidoMasivoOpen} onOpenChange={onPedidoMasivoOpenChange} size="4xl" backdrop="blur" scrollBehavior="inside" radius="lg" classNames={{ base: 'rounded-2xl', body: 'min-h-[520px]' }}>
+        <Modal key={bulkModalKey} isOpen={isPedidoMasivoOpen} onOpenChange={onPedidoMasivoOpenChange} size="5xl" backdrop="blur" scrollBehavior="inside" radius="lg" classNames={{ base: 'rounded-2xl min-h-[80vh] max-h-[90vh]', body: 'min-h-[620px]' }} isDismissable={false}>
           <ModalContent>
             {(onClose) => (
               <PedidoMasivoModal
@@ -1251,6 +1275,7 @@ const InventarioPage: React.FC = () => {
           onOpenChange={onResultModalOpenChange}
           size="md"
           scrollBehavior="inside"
+          isDismissable={false}
           classNames={{
             backdrop: "bg-background/50 backdrop-blur-sm",
             base: "bg-background dark:bg-content1 shadow-xl border border-default-200 dark:border-default-100",
@@ -1348,13 +1373,18 @@ const InventarioPage: React.FC = () => {
           onRefresh={() => cargarProductosPaginados(1, true)}
         />
 
+        <GestionAbastecimientoModal
+          isOpen={isAbastecimientoConfigOpen}
+          onOpenChange={onAbastecimientoConfigOpenChange}
+        />
+
         <GestionUnidadesModal
           isOpen={isUnidadesOpen}
           onOpenChange={onUnidadesOpenChange}
           onRefresh={() => cargarProductosPaginados(1, true)}
         />
 
-        <Modal isOpen={showStockWarning} onOpenChange={setShowStockWarning} backdrop="blur">
+        <Modal isOpen={showStockWarning} onOpenChange={setShowStockWarning} backdrop="blur" isDismissable={false}>
           <ModalContent>
             {(onClose) => (
               <>
@@ -1377,7 +1407,7 @@ const InventarioPage: React.FC = () => {
           </ModalContent>
         </Modal>
 
-        <Modal isOpen={showDeleteConfirm} onOpenChange={setShowDeleteConfirm} backdrop="blur" hideCloseButton>
+        <Modal isOpen={showDeleteConfirm} onOpenChange={setShowDeleteConfirm} backdrop="blur" hideCloseButton isDismissable={false}>
           <ModalContent>
             {(onClose) => (
               <>
@@ -1430,6 +1460,7 @@ const InventarioPage: React.FC = () => {
           backdrop="blur"
           radius="lg"
           scrollBehavior="inside"
+          isDismissable={false}
         >
           <ModalContent>
             {(onClose) => (
@@ -1591,6 +1622,7 @@ const InventarioPage: React.FC = () => {
           onOpenChange={onExcelResultOpenChange}
           size="2xl"
           scrollBehavior="inside"
+          isDismissable={false}
         >
           <ModalContent>
             {(onClose) => {
@@ -2455,6 +2487,85 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoP
   const [dateRangeProyeccion, setDateRangeProyeccion] = React.useState<{ start: CalendarDate; end: CalendarDate } | null>(null);
   const [loadingProy, setLoadingProy] = React.useState(false);
 
+  // Estados para modal de abastecimiento de proveedores (OPs CONFIRMADA)
+  const { isOpen: isAbastecimientoOpen, onOpen: onAbastecimientoOpen, onOpenChange: onAbastecimientoOpenChange } = useDisclosure();
+  type FiltroAbastecimiento = 'semana' | '30dias' | '3meses' | 'todas';
+  const [filtroAbastecimiento, setFiltroAbastecimiento] = React.useState<FiltroAbastecimiento>('semana');
+  const [ordenesAbastecimiento, setOrdenesAbastecimiento] = React.useState<IOrdenAbastecimiento[]>([]);
+  const [loadingAbastecimiento, setLoadingAbastecimiento] = React.useState(false);
+  const [diasSeleccionados, setDiasSeleccionados] = React.useState<Set<string>>(new Set());
+
+  const getFechaHastaAbastecimiento = (filtro: FiltroAbastecimiento): string | undefined => {
+    const hoy = new Date();
+    const fmt = (d: Date) =>
+      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    if (filtro === 'semana') {
+      const diasHastaDomingo = hoy.getDay() === 0 ? 0 : 7 - hoy.getDay();
+      const domingo = new Date(hoy);
+      domingo.setDate(hoy.getDate() + diasHastaDomingo);
+      return fmt(domingo);
+    }
+    if (filtro === '30dias') { const d = new Date(hoy); d.setDate(d.getDate() + 30); return fmt(d); }
+    if (filtro === '3meses') { const d = new Date(hoy); d.setDate(d.getDate() + 90); return fmt(d); }
+    return undefined; // 'todas' → sin límite superior
+  };
+
+  const cargarAbastecimiento = async (filtro: FiltroAbastecimiento) => {
+    setLoadingAbastecimiento(true);
+    setDiasSeleccionados(new Set());
+    try {
+      const fechaHasta = getFechaHastaAbastecimiento(filtro);
+      const data = await obtenerAbastecimientoConfirmadoService(fechaHasta);
+      setOrdenesAbastecimiento(data.ordenes ?? []);
+    } catch {
+      toast.error('Error al cargar el abastecimiento de proveedores');
+    } finally {
+      setLoadingAbastecimiento(false);
+    }
+  };
+
+  const toggleDia = (key: string) => {
+    setDiasSeleccionados(prev => {
+      const next = new Set(prev);
+      next.has(key) ? next.delete(key) : next.add(key);
+      return next;
+    });
+  };
+
+  const cargarDiasSeleccionados = () => {
+    const nuevosItems: ItemPedidoMasivo[] = [];
+    for (const orden of ordenesAbastecimiento) {
+      for (const entrega of orden.entregas) {
+        const key = `${orden.idOrdenPedido}-${entrega.fechaEntrega}`;
+        if (!diasSeleccionados.has(key)) continue;
+        for (const cat of entrega.categorias) {
+          for (const prod of cat.productos) {
+            nuevosItems.push({
+              id: `abast-${prod.idDetalleOrdenPedido}-${Date.now()}-${Math.random()}`,
+              producto: {
+                idProducto: prod.idProducto,
+                idInventario: prod.idInventario,
+                nombreProducto: prod.nombreProducto,
+                detalles: prod.abreviatura,
+                stock: prod.stock,
+                esFraccionario: prod.esFraccionario,
+              },
+              delta: prod.cantidadSolicitada,
+              motivo: 'ENTRADA_INVENTARIO',
+              idDetalleOrdenPedido: prod.idDetalleOrdenPedido,
+              marcaProducto: prod.marcaProducto ?? null,
+            });
+          }
+        }
+      }
+    }
+    if (nuevosItems.length === 0) { toast.warning('No hay ítems seleccionados'); return; }
+    setItemsPedido(prev => [...prev, ...nuevosItems]);
+    toast.success(`${nuevosItems.length} ítem(s) cargado(s) al control masivo`);
+    onAbastecimientoOpenChange();
+    setDiasSeleccionados(new Set());
+  };
+
   // States para la paginación y búsqueda
   const [bulkProductos, setBulkProductos] = React.useState<IBulkProductoInventoryListing[]>([]);
   const [isLoadingBulk, setIsLoadingBulk] = React.useState(false);
@@ -2780,16 +2891,38 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoP
         MERMA_INVENTARIO: 5, MERMA_BODEGA: 5,
       };
 
-      const payload = [...itemsPedido]
-        .sort((a, b) => (motivoProcesarOrder[a.motivo] ?? 99) - (motivoProcesarOrder[b.motivo] ?? 99))
-        .map(item => ({
-          idInventario: item.producto.idInventario,
-          delta: item.delta,
-          stockEnVista: item.producto.stock,
-          tipoMovimiento: item.motivo,
-        }));
+      // Agrupa por (idInventario, motivo) sumando deltas para evitar falsos warnings de
+      // sincronización cuando el mismo producto aparece más de una vez en la lista
+      // (e.g., múltiples días de entrega pre-cargados desde Abastecimiento).
+      const agregado = new Map<string, { idInventario: number; delta: number; stockEnVista: number; tipoMovimiento: string }>();
+      for (const item of itemsPedido) {
+        const key = `${item.producto.idInventario}__${item.motivo}`;
+        const existing = agregado.get(key);
+        if (existing) {
+          existing.delta += item.delta;
+        } else {
+          agregado.set(key, {
+            idInventario: item.producto.idInventario,
+            delta: item.delta,
+            stockEnVista: item.producto.stock,
+            tipoMovimiento: item.motivo,
+          });
+        }
+      }
+      const payload = [...agregado.values()]
+        .sort((a, b) => (motivoProcesarOrder[a.tipoMovimiento] ?? 99) - (motivoProcesarOrder[b.tipoMovimiento] ?? 99));
 
       const result: IBulkProcessResult = await bulkUpdateInventoryStockService(payload);
+
+      // Solo marcar como entregados los ítems que el backend confirmó como exitosos
+      // y que siguen en la lista (no eliminados). Los eliminados = no llegaron = no se marcan.
+      const exitososSet = new Set(result.exitosos.map(e => e.idInventario));
+      const idsEntregados = itemsPedido
+        .filter(i => i.idDetalleOrdenPedido != null && exitososSet.has(i.producto.idInventario))
+        .map(i => i.idDetalleOrdenPedido!);
+      if (idsEntregados.length > 0) {
+        marcarEntregadosMasivoService(idsEntregados).catch(e => logger.warn('marcarEntregados failed', e));
+      }
 
       // Build retry items for recoverable errors (product exists, stock insufficient)
       const retryItems: ItemPedidoMasivo[] = result.errores
@@ -2845,18 +2978,32 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoP
               Registre entradas, salidas, mermas, ajustes o traslados de múltiples productos de forma estructurada.
             </p>
           </div>
-          <Button
-            isIconOnly
-            variant="light"
-            color="primary"
-            size="lg"
-            onPress={onProyeccionOpen}
-            isDisabled={!puedeAccederAbastecimiento}
-            title={puedeAccederAbastecimiento ? "Cargar proyección de abastecimiento por pedido" : "No tiene permisos para acceder a esta funcionalidad"}
-            className="shrink-0"
-          >
-            <Icon icon="lucide:package-plus" width={22} />
-          </Button>
+          <div className="flex items-center gap-1 shrink-0">
+            <Tooltip content={puedeAccederAbastecimiento ? "Cargar proyección de abastecimiento por pedido" : "Sin permisos"} color="foreground" className="text-xs">
+              <Button
+                isIconOnly
+                variant="light"
+                color="primary"
+                size="lg"
+                onPress={onProyeccionOpen}
+                isDisabled={!puedeAccederAbastecimiento}
+              >
+                <Icon icon="lucide:package-plus" width={22} />
+              </Button>
+            </Tooltip>
+            <Tooltip content={puedeAccederAbastecimiento ? "Abastecimiento de proveedores (OPs confirmadas)" : "Sin permisos"} color="foreground" className="text-xs">
+              <Button
+                isIconOnly
+                variant="light"
+                color="secondary"
+                size="lg"
+                onPress={() => { onAbastecimientoOpen(); cargarAbastecimiento('semana'); }}
+                isDisabled={!puedeAccederAbastecimiento}
+              >
+                <Icon icon="lucide:truck" width={22} />
+              </Button>
+            </Tooltip>
+          </div>
         </div>
       </ModalHeader>
       <ModalBody className="px-4 py-3 space-y-3">
@@ -3030,7 +3177,7 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoP
                 />
               </button>
 
-              <div className={`transition-all duration-300 ${listadoExpandido ? 'max-h-[65vh]' : 'max-h-52'} overflow-y-auto`}>
+              <div className={`transition-all duration-300 ${listadoExpandido ? 'max-h-[65vh]' : 'max-h-[420px]'} overflow-y-auto`}>
                 <div className="border border-default-200 dark:border-default-100 rounded-xl overflow-hidden bg-white dark:bg-content2">
                   {/* Encabezados */}
                   <div className="grid grid-cols-[2fr_1fr_1fr_1fr_auto] gap-3 px-4 py-3 bg-default-100 dark:bg-default-50 font-semibold text-sm text-default-600 border-b border-default-200 dark:border-default-100">
@@ -3069,7 +3216,10 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoP
                           {/* Producto */}
                           <div className="min-w-0">
                             <p className="font-medium text-sm text-default-800 dark:text-foreground truncate">{item.producto.nombreProducto}</p>
-                            <p className="text-xs text-default-400">{item.producto.detalles}</p>
+                            <p className="text-xs text-default-400">
+                              {item.producto.detalles}
+                              {item.marcaProducto && <span className="ml-1.5 italic text-default-400">{item.marcaProducto}</span>}
+                            </p>
                           </div>
 
                           {/* Stock Actual */}
@@ -3171,8 +3321,171 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoP
         </div>
       </ModalFooter>
 
+      {/* Modal de Abastecimiento de Proveedores (OPs CONFIRMADA) */}
+      <Modal
+        isOpen={isAbastecimientoOpen}
+        onOpenChange={onAbastecimientoOpenChange}
+        size="5xl"
+        backdrop="blur"
+        radius="lg"
+        scrollBehavior="inside"
+        classNames={{ base: 'rounded-2xl' }}
+        isDismissable={false}
+      >
+        <ModalContent>
+          {(onAbastClose) => (
+            <>
+              <ModalHeader className="flex flex-col gap-2 border-b border-default-100 pb-4">
+                <div className="flex items-center gap-2">
+                  <Icon icon="lucide:truck" width={20} className="text-secondary dark:text-foreground" />
+                  <h2 className="text-lg font-bold text-secondary dark:text-foreground">Abastecimiento de Proveedores</h2>
+                </div>
+                <p className="text-xs text-default-500 font-normal">OPs confirmadas — seleccione los días a cargar al control masivo</p>
+                {/* Filtro de período */}
+                <div className="flex gap-2 flex-wrap">
+                  {([['semana','Esta semana'],['30dias','Próx. 30 días'],['3meses','3 meses'],['todas','Todas']] as [FiltroAbastecimiento, string][]).map(([key, label]) => (
+                    <Button
+                      key={key}
+                      size="sm"
+                      variant={filtroAbastecimiento === key ? 'solid' : 'bordered'}
+                      color={filtroAbastecimiento === key ? 'secondary' : 'default'}
+                      onPress={() => { setFiltroAbastecimiento(key); cargarAbastecimiento(key); }}
+                      className="text-xs"
+                    >
+                      {label}
+                    </Button>
+                  ))}
+                </div>
+              </ModalHeader>
+              <ModalBody className="py-5 px-5 overflow-y-auto max-h-[65vh] space-y-4">
+                {loadingAbastecimiento ? (
+                  <div className="flex justify-center py-20">
+                    <Spinner size="lg" color="warning" />
+                  </div>
+                ) : ordenesAbastecimiento.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-20 text-default-400">
+                    <Icon icon="lucide:truck" width={48} className="mb-3 opacity-30" />
+                    <p className="text-sm">No hay órdenes de pedido confirmadas en este período.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4 w-full flex-none pb-2">
+                    {ordenesAbastecimiento.map((orden) => (
+                      <div key={orden.idOrdenPedido} className="border border-default-200 dark:border-default-100 rounded-xl overflow-hidden bg-white dark:bg-content2/30">
+                        {/* Header del proveedor */}
+                        <div className="bg-default-100 dark:bg-content2 px-5 py-3 flex items-center justify-between gap-4">
+                          <div>
+                            <p className="text-sm font-bold text-secondary dark:text-foreground">{orden.nombreDistribuidora}</p>
+                            <p className="text-xs text-default-500 mt-0.5">{orden.nombreProveedor}</p>
+                          </div>
+                          <div className="flex items-center gap-4">
+                            {orden.telefonoProveedor && (
+                              <span className="text-xs text-default-400 flex items-center gap-1.5">
+                                <Icon icon="lucide:phone" width={12} /> {orden.telefonoProveedor}
+                              </span>
+                            )}
+                            {orden.emailProveedor && (
+                              <span className="text-xs text-default-400 flex items-center gap-1.5">
+                                <Icon icon="lucide:mail" width={12} /> {orden.emailProveedor}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        {/* Días de entrega */}
+                        <div className="divide-y divide-default-100 dark:divide-default-50">
+                          {orden.entregas.map((entrega) => {
+                            const diaKey = `${orden.idOrdenPedido}-${entrega.fechaEntrega}`;
+                            const seleccionado = diasSeleccionados.has(diaKey);
+                            const hoy = new Date().toISOString().split('T')[0];
+                            const esPasado = entrega.fechaEntrega < hoy;
+                            const todosEntregados = entrega.categorias.every(c => c.productos.every(p => p.entregado));
+                            return (
+                              <div
+                                key={diaKey}
+                                className={`px-5 py-3 cursor-pointer transition-all-200 ${seleccionado ? 'bg-primary/10 dark:bg-primary/5' : 'hover:bg-default-50 dark:hover:bg-default-100/20'}`}
+                                onClick={() => toggleDia(diaKey)}
+                              >
+                                {/* Fila fecha + chips */}
+                                <div className="flex items-center gap-3 mb-3">
+                                  <Checkbox
+                                    isSelected={seleccionado}
+                                    onValueChange={() => toggleDia(diaKey)}
+                                    size="sm"
+                                    color="secondary"
+                                    onClick={e => e.stopPropagation()}
+                                  />
+                                  <span className={`text-sm font-semibold capitalize ${esPasado ? 'text-default-400' : 'text-secondary dark:text-foreground'}`}>
+                                    {new Date(entrega.fechaEntrega + 'T12:00:00').toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+                                  </span>
+                                  {todosEntregados && (
+                                    <Chip size="sm" color="success" variant="flat">Recibido</Chip>
+                                  )}
+                                  {esPasado && !todosEntregados && (
+                                    <Chip size="sm" color="warning" variant="flat">Pendiente</Chip>
+                                  )}
+                                </div>
+                                {/* Productos agrupados por categoría */}
+                                <div className="ml-8 flex flex-col gap-3">
+                                  {entrega.categorias.map((cat: ICategoriaEntregaAbastecimiento) => (
+                                    <div key={cat.nombreCategoria}>
+                                      <p className="text-xs font-semibold uppercase tracking-wide text-default-400 mb-1.5 px-1">
+                                        {cat.nombreCategoria}
+                                      </p>
+                                      <div className="flex flex-col gap-1.5">
+                                        {cat.productos.map((prod) => (
+                                          <div
+                                            key={prod.idDetalleOrdenPedido}
+                                            className={`flex items-center justify-between gap-3 py-1.5 px-3 rounded-lg bg-default-50/60 dark:bg-default-100/10 ${prod.entregado ? 'opacity-50' : ''}`}
+                                          >
+                                            <div className="flex items-center gap-2 min-w-0 flex-1">
+                                              {prod.entregado
+                                                ? <Icon icon="lucide:check-circle-2" width={14} className="text-success shrink-0" />
+                                                : <Icon icon="lucide:circle" width={14} className="text-default-300 shrink-0" />
+                                              }
+                                              <Tooltip content={prod.nombreProducto} color="foreground" className="text-xs">
+                                                <span className="text-sm text-default-700 dark:text-default-300 truncate">{prod.nombreProducto}</span>
+                                              </Tooltip>
+                                              {prod.marcaProducto && (
+                                                <span className="text-xs text-default-400 shrink-0 italic">{prod.marcaProducto}</span>
+                                              )}
+                                            </div>
+                                            <span className="shrink-0 text-sm font-semibold text-default-600 dark:text-default-300 tabular-nums">
+                                              {fmtCL(prod.cantidadSolicitada)} <span className="font-normal text-default-400">{prod.abreviatura}</span>
+                                            </span>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </ModalBody>
+              <ModalFooter className="border-t border-default-100 gap-2">
+                <Button variant="ghost" onPress={onAbastClose} className="font-medium">
+                  Cancelar
+                </Button>
+                <Button
+                  color="secondary"
+                  onPress={cargarDiasSeleccionados}
+                  isDisabled={diasSeleccionados.size === 0}
+                  startContent={<Icon icon="lucide:download" width={16} />}
+                >
+                  Cargar {diasSeleccionados.size > 0 ? `${diasSeleccionados.size} día(s)` : 'seleccionados'}
+                </Button>
+              </ModalFooter>
+            </>
+          )}
+        </ModalContent>
+      </Modal>
+
       {/* Modal de Proyección de Abastecimiento */}
-      <Modal isOpen={isProyeccionOpen} onOpenChange={onProyeccionOpenChange} size="md" backdrop="blur" radius="lg">
+      <Modal isOpen={isProyeccionOpen} onOpenChange={onProyeccionOpenChange} size="md" backdrop="blur" radius="lg" isDismissable={false}>
         <ModalContent>
           {(onProyeccionClose) => (
             <>

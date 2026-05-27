@@ -11,6 +11,7 @@ import {
   Autocomplete, AutocompleteItem,
   Chip, Checkbox, Textarea, Input, Divider, Spinner,
   Modal, ModalContent, ModalHeader, ModalBody, ModalFooter,
+  Dropdown, DropdownTrigger, DropdownMenu, DropdownItem,
 } from '@heroui/react';
 import { Icon } from '@iconify/react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -21,11 +22,11 @@ import { usePeriodoSemana } from '../contexts/periodo-semana-context';
 import { useHistory } from 'react-router-dom';
 import {
   IAsignaturaCurso, ISeccionCurso, IHorarioCurso,
-  IPedidoSemanaBodegaSolicitud, IProductoOpcion,
+  IPedidoSemanaBodegaSolicitud, IProductoOpcionConCategoria,
   IResultsMassSolicitation,
   obtenerCursosParaSolicitudService,
   obtenerRecetasSolicitudService,
-  obtenerProductosOpcionService,
+  obtenerProductosOpcionConCategoriaService,
   generarSolicitudesMasivasService,
 } from '../services/solicitud-service';
 import {ISemana} from "../types/semana.types.ts";
@@ -179,7 +180,7 @@ interface AsigCardProps {
   isLoadingSemanas: boolean;
   sinPeriodos: boolean;
   recetas: IPedidoSemanaBodegaSolicitud[];
-  productos: IProductoOpcion[];
+  productos: IProductoOpcionConCategoria[];
   onToggleExpand: () => void;
   onUpdate: (fn: (prev: AsigConfig) => AsigConfig) => void;
 }
@@ -312,7 +313,24 @@ const AsigCard: React.FC<AsigCardProps> = ({
     onUpdate(prev => ({ ...prev, items: prev.items.map(i => i.id === itemId ? { ...i, cantidad: n, cantidadBase: n } : i) }));
   };
 
-  const extraProducto = productos.find(p => String(p.idProducto) === config.extraProductoId) ?? null;
+  const [extraCategoriasIds, setExtraCategoriasIds] = React.useState<Set<string>>(new Set());
+
+  const categoriasUnicas = React.useMemo(() => {
+    const map = new Map<number, string>();
+    productos.forEach(p => { if (!map.has(p.idCategoria)) map.set(p.idCategoria, p.nombreCategoria); });
+    return Array.from(map.entries())
+      .map(([id, nombre]) => ({ id, nombre }))
+      .sort((a, b) => a.nombre.localeCompare(b.nombre));
+  }, [productos]);
+
+  const productosFiltrados = React.useMemo(() =>
+    extraCategoriasIds.size === 0
+      ? productos
+      : productos.filter(p => extraCategoriasIds.has(String(p.idCategoria))),
+    [productos, extraCategoriasIds]
+  );
+
+  const extraProducto = productosFiltrados.find(p => String(p.idProducto) === config.extraProductoId) ?? null;
 
   const agregarExtra = () => {
     if (!extraProducto || !config.extraCantidad || parseFloat(config.extraCantidad) <= 0) return;
@@ -760,7 +778,41 @@ const AsigCard: React.FC<AsigCardProps> = ({
                     <Icon icon="lucide:info" width={11} className="shrink-0 mt-0.5" />
                     <span>La cantidad ingresada corresponde a <strong>20 porciones base</strong>. El sistema calculará automáticamente la cantidad proporcional según los alumnos inscritos por sección.</span>
                   </div>
-                  <div className="grid grid-cols-[1fr_90px_50px_auto] gap-1.5 items-end">
+                  <div className="grid grid-cols-[auto_1fr_90px_50px_auto] gap-1.5 items-end">
+                    {/* Selector de categorías */}
+                    <Dropdown closeOnSelect={false}>
+                      <DropdownTrigger>
+                        <Button
+                          size="sm"
+                          variant="bordered"
+                          className="h-7 min-h-7 px-2 bg-white dark:bg-content1 border-default-200 relative"
+                          startContent={<Icon icon="lucide:filter" width={12} className="text-default-500" />}
+                        >
+                          <span className="text-xs text-default-600">
+                            {extraCategoriasIds.size === 0 ? 'Categoría' : `${extraCategoriasIds.size} cat.`}
+                          </span>
+                          {extraCategoriasIds.size > 0 && (
+                            <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-secondary text-white text-[9px] font-bold flex items-center justify-center">
+                              {extraCategoriasIds.size}
+                            </span>
+                          )}
+                        </Button>
+                      </DropdownTrigger>
+                      <DropdownMenu
+                        aria-label="Filtrar por categoría"
+                        selectionMode="multiple"
+                        selectedKeys={extraCategoriasIds}
+                        onSelectionChange={keys => setExtraCategoriasIds(new Set(keys as Set<string>))}
+                        classNames={{ base: 'dark:bg-content1 max-h-48 overflow-y-auto' }}
+                      >
+                        {categoriasUnicas.map(cat => (
+                          <DropdownItem key={String(cat.id)} className="text-xs">
+                            {cat.nombre}
+                          </DropdownItem>
+                        ))}
+                      </DropdownMenu>
+                    </Dropdown>
+
                     <Autocomplete size="sm" placeholder="Buscar producto..."
                       selectedKey={config.extraProductoId || null}
                       onSelectionChange={key => {
@@ -770,22 +822,22 @@ const AsigCard: React.FC<AsigCardProps> = ({
                       variant="bordered"
                       classNames={{
                         base: 'min-w-[150px] w-full',
-                            popoverContent: 'dark:bg-content1'
-                          }}
-                          inputProps={{
-                            classNames: {
-                              inputWrapper: 'h-7 min-h-7 bg-white dark:bg-content1',
-                              input: 'text-xs border-none shadow-none focus:outline-none focus:ring-0',
-                            }
-                          }}
-                        >
-                          {productos.map(p => (
-                            <AutocompleteItem key={String(p.idProducto)} textValue={p.nombreProducto}>
-                              <span className="text-xs">{p.nombreProducto}</span>
-                              <span className="text-[10px] text-default-400 ml-1">({p.abreviatura})</span>
-                            </AutocompleteItem>
-                          ))}
-                        </Autocomplete>
+                        popoverContent: 'dark:bg-content1'
+                      }}
+                      inputProps={{
+                        classNames: {
+                          inputWrapper: 'h-7 min-h-7 bg-white dark:bg-content1',
+                          input: 'text-xs border-none shadow-none focus:outline-none focus:ring-0',
+                        }
+                      }}
+                    >
+                      {productosFiltrados.map(p => (
+                        <AutocompleteItem key={String(p.idProducto)} textValue={p.nombreProducto}>
+                          <span className="text-xs">{p.nombreProducto}</span>
+                          <span className="text-[10px] text-default-400 ml-1">({p.abreviatura})</span>
+                        </AutocompleteItem>
+                      ))}
+                    </Autocomplete>
                         <Input size="sm" type="number" placeholder="Cant."
                           value={config.extraCantidad}
                           onValueChange={v => onUpdate(p => ({ ...p, extraCantidad: v }))}
@@ -863,7 +915,7 @@ const SolicitudPage: React.FC = () => {
 
   // ── pedidos semanales bodega + productos state ──
   const [recetas,          setRecetas]           = React.useState<IPedidoSemanaBodegaSolicitud[]>([]);
-  const [productos,        setProductos]         = React.useState<IProductoOpcion[]>([]);
+  const [productos,        setProductos]         = React.useState<IProductoOpcionConCategoria[]>([]);
 
   // ── form state ──
   const [configs,          setConfigs]           = React.useState<Map<string, AsigConfig>>(new Map());
@@ -900,7 +952,7 @@ const SolicitudPage: React.FC = () => {
         const [asigData, recetasData, productosData] = await Promise.all([
           obtenerCursosParaSolicitudService(),
           obtenerRecetasSolicitudService(),
-          obtenerProductosOpcionService(),
+          obtenerProductosOpcionConCategoriaService(),
         ]);
         setAsignaturas(asigData);
         setRecetas(recetasData);

@@ -583,6 +583,18 @@ public class SpringSecurityConfig {
                         .hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR")
 
                         // ========================================
+                        // ENDPOINTS DE CONFIGURACIÓN DE ABASTECIMIENTO POR CATEGORÍA
+                        // ========================================
+
+                        // Lectura: roles con acceso al módulo de inventario/proveedores
+                        .requestMatchers(HttpMethod.GET, "/api/v1/categoria-abastecimiento/**")
+                        .hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR", "GESTOR_PEDIDOS", "ENCARGADO_BODEGA")
+
+                        // Actualización: administradores y gestores de pedidos
+                        .requestMatchers(HttpMethod.PUT, "/api/v1/categoria-abastecimiento/**")
+                        .hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR", "GESTOR_PEDIDOS")
+
+                        // ========================================
                         // ENDPOINTS DE ÓRDENES DE PEDIDO (Tarea #13)
                         // ========================================
 
@@ -594,7 +606,11 @@ public class SpringSecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/v1/orden-pedido/**")
                         .hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR", "GESTOR_PEDIDOS")
 
-                        // 3. MODIFICACIÓN (PATCH): Administradores y gestores de pedidos
+                        // 3a. Marcar detalles como entregados: también accesible por bodega
+                        .requestMatchers(HttpMethod.PATCH, "/api/v1/orden-pedido/detalles/entregar")
+                        .hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR", "GESTOR_PEDIDOS", "ENCARGADO_BODEGA")
+
+                        // 3b. MODIFICACIÓN (PATCH): Administradores y gestores de pedidos
                         .requestMatchers(HttpMethod.PATCH, "/api/v1/orden-pedido/**")
                         .hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR", "GESTOR_PEDIDOS")
 

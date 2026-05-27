@@ -18,7 +18,11 @@ import {
     IValidateStockConflictResponse,
     IProductoRecetaSelection
 } from '../types/producto.types';
-import { ISincronizarInventarioExcelResultado } from '../types/inventario.types';
+import {
+    ISincronizarInventarioExcelResultado,
+    ICategoriaAbastecimientoView,
+    ICategoriaAbastecimientoItemDTO,
+} from '../types/inventario.types';
 
 /**
  * Obtiene las categorías y unidades de medida para los filtros
@@ -680,6 +684,32 @@ export const sincronizarInventarioDesdeExcelService = async (
     } catch (error: any) {
         throw new Error(
             error.response?.data?.message || 'Error al procesar el Excel de inventario'
+        );
+    }
+};
+
+// ── Configuración de Gestión de Abastecimiento ──────────────────────────────
+
+export const obtenerConfigAbastecimientoService = async (): Promise<ICategoriaAbastecimientoView[]> => {
+    try {
+        const response = await api.get<ICategoriaAbastecimientoView[]>('/categoria-abastecimiento');
+        return response.data;
+    } catch (error: any) {
+        throw new Error(
+            error.response?.data?.message || 'Error al cargar la configuración de abastecimiento'
+        );
+    }
+};
+
+export const actualizarConfigAbastecimientoService = async (
+    items: ICategoriaAbastecimientoItemDTO[]
+): Promise<boolean> => {
+    try {
+        const response = await api.put<boolean>('/categoria-abastecimiento', items);
+        return response.data;
+    } catch (error: any) {
+        throw new Error(
+            error.response?.data?.message || 'Error al guardar la configuración de abastecimiento'
         );
     }
 };

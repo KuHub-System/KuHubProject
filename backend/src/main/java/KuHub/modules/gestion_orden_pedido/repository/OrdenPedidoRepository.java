@@ -94,6 +94,149 @@ public interface OrdenPedidoRepository extends JpaRepository<OrdenPedido, Intege
      * Productos sin proveedor disponible se agrupan al final con {@code idProveedor = null}
      * (sin {@code diasEntrega}).
      */
+    /**
+     * OPs con estado CONFIRMADA y activo=TRUE, agrupadas en JSON jerárquico:
+     * OP → días de entrega → categoría → productos (con marca desde proveedor_producto).
+     *
+     * Filtro de fechas aplicado sobre detalle_orden_pedido.fecha_entrega:
+     *   - Desde:  CURRENT_DATE - 15 días (historial fijo, regla de negocio)
+     *   - Hasta:  :fechaHasta (controlado por el filtro del frontend)
+     *
+     * Estructura del JSON retornado (Patrón C — jsonb_agg anidado):
+     *   [{ idOrdenPedido, idProveedor, nombreDistribuidora, nombreProveedor,
+     *      telefonoProveedor, emailProveedor,
+     *      entregas: [{ fechaEntrega,
+     *        categorias: [{ nombreCategoria,
+     *          productos: [{ idDetalleOrdenPedido, idProducto, nombreProducto,
+     *            abreviatura, cantidadSolicitada, marcaProducto, entregado,
+     *            idInventario, stock }] }] }] }]
+     *
+     * Retorna NULL si no hay coincidencias.
+     */
+    @Query(value = """
+WITH productos_entrega AS (
+    SELECT
+        op.id_orden_pedido,
+        op.id_proveedor,
+        pv.nombre_distribuidora,
+        pv.nombre_proveedor,
+        pv.telefono_proveedor,
+        pv.email_proveedor,
+        d.fecha_entrega,
+        d.id_detalle_orden_pedido,
+        d.id_producto,
+        pr.nombre_producto,
+        um.abreviatura,
+        d.cantidad_solicitada,
+        COALESCE(pp.marca_producto, '')   AS marca_producto,
+        d.entregado,
+        um.es_fraccionario,
+        inv.id_inventario,
+        inv.stock,
+        cat.nombre_categoria
+    FROM orden_pedido             op
+    JOIN proveedor                pv  ON pv.id_proveedor    = op.id_proveedor
+    JOIN detalle_orden_pedido     d   ON d.id_orden_pedido  = op.id_orden_pedido
+                                     AND d.activo           = TRUE
+    JOIN producto                 pr  ON pr.id_producto     = d.id_producto
+    JOIN unidad_medida            um  ON um.id_unidad       = pr.id_unidad
+    JOIN inventario               inv ON inv.id_producto    = d.id_producto
+                                     AND inv.activo         = TRUE
+    JOIN categoria                cat ON cat.id_categoria   = pr.id_categoria
+    JOIN categoria_abastecimiento ca  ON ca.id_categoria   = pr.id_categoria
+                                     AND ca.tipo_abastecimiento = 'INVENTARIO'
+    LEFT JOIN proveedor_producto  pp  ON pp.id_proveedor    = op.id_proveedor
+                                     AND pp.id_producto     = d.id_producto
+                                     AND pp.activo          = TRUE
+    WHERE op.estado_orden_pedido  = 'CONFIRMADA'
+      AND op.activo               = TRUE
+      AND d.fecha_entrega        >= (CURRENT_DATE - INTERVAL '15 days')
+      AND d.fecha_entrega        <= CAST(:fechaHasta AS date)
+),
+agrupado_por_categoria AS (
+    SELECT
+        id_orden_pedido,
+        id_proveedor,
+        nombre_distribuidora,
+        nombre_proveedor,
+        telefono_proveedor,
+        email_proveedor,
+        fecha_entrega,
+        nombre_categoria,
+        jsonb_agg(
+            jsonb_build_object(
+                'idDetalleOrdenPedido', id_detalle_orden_pedido,
+                'idProducto',           id_producto,
+                'nombreProducto',       nombre_producto,
+                'abreviatura',          abreviatura,
+                'esFraccionario',       es_fraccionario,
+                'cantidadSolicitada',   cantidad_solicitada,
+                'marcaProducto',        marca_producto,
+                'entregado',            entregado,
+                'idInventario',         id_inventario,
+                'stock',                stock
+            )
+            ORDER BY nombre_producto ASC
+        ) AS productos
+    FROM productos_entrega
+    GROUP BY id_orden_pedido, id_proveedor, nombre_distribuidora, nombre_proveedor,
+             telefono_proveedor, email_proveedor, fecha_entrega, nombre_categoria
+),
+agrupado_por_dia AS (
+    SELECT
+        id_orden_pedido,
+        id_proveedor,
+        nombre_distribuidora,
+        nombre_proveedor,
+        telefono_proveedor,
+        email_proveedor,
+        fecha_entrega,
+        jsonb_agg(
+            jsonb_build_object(
+                'nombreCategoria', nombre_categoria,
+                'productos',       productos
+            )
+            ORDER BY nombre_categoria ASC
+        ) AS categorias
+    FROM agrupado_por_categoria
+    GROUP BY id_orden_pedido, id_proveedor, nombre_distribuidora, nombre_proveedor,
+             telefono_proveedor, email_proveedor, fecha_entrega
+),
+agrupado_por_op AS (
+    SELECT
+        id_orden_pedido,
+        id_proveedor,
+        nombre_distribuidora,
+        nombre_proveedor,
+        telefono_proveedor,
+        email_proveedor,
+        jsonb_agg(
+            jsonb_build_object(
+                'fechaEntrega', fecha_entrega::text,
+                'categorias',   categorias
+            )
+            ORDER BY fecha_entrega ASC
+        ) AS entregas
+    FROM agrupado_por_dia
+    GROUP BY id_orden_pedido, id_proveedor, nombre_distribuidora, nombre_proveedor,
+             telefono_proveedor, email_proveedor
+)
+SELECT jsonb_agg(
+    jsonb_build_object(
+        'idOrdenPedido',       id_orden_pedido,
+        'idProveedor',         id_proveedor,
+        'nombreDistribuidora', nombre_distribuidora,
+        'nombreProveedor',     nombre_proveedor,
+        'telefonoProveedor',   telefono_proveedor,
+        'emailProveedor',      email_proveedor,
+        'entregas',            entregas
+    )
+    ORDER BY nombre_distribuidora ASC, id_orden_pedido ASC
+)
+FROM agrupado_por_op
+    """, nativeQuery = true)
+    String findAbastecimientoConfirmado(@Param("fechaHasta") LocalDate fechaHasta);
+
     // ── 3. Listado y detalle de Órdenes de Pedido ──
 
     /**
