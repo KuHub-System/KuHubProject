@@ -26,6 +26,8 @@ import { obtenerUnidadesActivasService } from '../services/unidad-medida-service
 import GestionCategoriasModal from '../components/modals/GestionCategoriasModal';
 import GestionUnidadesModal from '../components/modals/GestionUnidadesModal';
 import GestionAbastecimientoModal from '../components/modals/GestionAbastecimientoModal';
+import { obtenerAbastecimientoConfirmadoService, marcarEntregadosMasivoService } from '../services/proveedor-service';
+import { IOrdenAbastecimiento, ICategoriaEntregaAbastecimiento } from '../types/proveedor.types';
 
 // Mapa de Bloques Horarios
 const BLOQUES_HORARIOS: Record<number, string> = {
@@ -350,6 +352,7 @@ interface ItemBodegaMasivo {
   producto: IBulkBodegaListing;
   delta: number;
   motivo: string;
+  idDetalleOrdenPedido?: number;
 }
 
 const MOTIVOS_BODEGA = ['ENTRADA_BODEGA', 'SALIDA_BODEGA', 'AJUSTE_BODEGA', 'MERMA_BODEGA', 'DEVOLUCION'] as const;
@@ -365,10 +368,124 @@ interface ControlMasivoBodegaModalProps {
   onClose: () => void;
   initialItems?: ItemBodegaMasivo[];
   onProcessComplete?: (data: IBulkWarehouseProcessResult, retryItems: ItemBodegaMasivo[]) => void;
+  puedeAccederAbastecimiento?: boolean;
 }
 
-const ControlMasivoBodegaModal: React.FC<ControlMasivoBodegaModalProps> = ({ onClose, initialItems, onProcessComplete }) => {
+const ControlMasivoBodegaModal: React.FC<ControlMasivoBodegaModalProps> = ({ onClose, initialItems, onProcessComplete, puedeAccederAbastecimiento = false }) => {
   const toast = useToast();
+
+  // Estados para modal de abastecimiento de proveedores (OPs CONFIRMADA)
+  const { isOpen: isAbastecimientoOpen, onOpen: onAbastecimientoOpen, onOpenChange: onAbastecimientoOpenChange } = useDisclosure();
+  type FiltroAbastecimiento = 'semana' | '30dias' | '3meses' | 'todas';
+  const [filtroAbastecimiento, setFiltroAbastecimiento] = React.useState<FiltroAbastecimiento>('semana');
+  const [ordenesAbastecimiento, setOrdenesAbastecimiento] = React.useState<IOrdenAbastecimiento[]>([]);
+  const [loadingAbastecimiento, setLoadingAbastecimiento] = React.useState(false);
+  const [diasSeleccionados, setDiasSeleccionados] = React.useState<Set<string>>(new Set());
+
+  const getFechaHastaAbastecimiento = (filtro: FiltroAbastecimiento): string | undefined => {
+    const hoy = new Date();
+    const fmt = (d: Date) =>
+      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    if (filtro === 'semana') {
+      const diasHastaDomingo = hoy.getDay() === 0 ? 0 : 7 - hoy.getDay();
+      const domingo = new Date(hoy);
+      domingo.setDate(hoy.getDate() + diasHastaDomingo);
+      return fmt(domingo);
+    }
+    if (filtro === '30dias') { const d = new Date(hoy); d.setDate(d.getDate() + 30); return fmt(d); }
+    if (filtro === '3meses') { const d = new Date(hoy); d.setDate(d.getDate() + 90); return fmt(d); }
+    return undefined; // 'todas' → sin límite superior
+  };
+
+  const cargarAbastecimiento = async (filtro: FiltroAbastecimiento) => {
+    setLoadingAbastecimiento(true);
+    setDiasSeleccionados(new Set());
+    try {
+      const fechaHasta = getFechaHastaAbastecimiento(filtro);
+      const data = await obtenerAbastecimientoConfirmadoService(fechaHasta, 'BODEGA_TRANSITO');
+      setOrdenesAbastecimiento(data.ordenes ?? []);
+    } catch {
+      toast.error('Error al cargar el abastecimiento de proveedores');
+    } finally {
+      setLoadingAbastecimiento(false);
+    }
+  };
+
+  const toggleDia = (key: string) => {
+    setDiasSeleccionados(prev => {
+      const next = new Set(prev);
+      next.has(key) ? next.delete(key) : next.add(key);
+      return next;
+    });
+  };
+
+  const cargarDiasSeleccionados = async () => {
+    setLoadingAbastecimiento(true);
+    try {
+      const bodegaRes = await obtenerBodegaPaginadaService({ page: 1, pageSize: 2000 });
+      const bodegaMap = new Map<number, IBodegaTransitoItem>();
+      for (const b of bodegaRes.data) {
+        bodegaMap.set(b.idProducto, b);
+      }
+
+      const nuevosItems: ItemBodegaMasivo[] = [];
+      for (const orden of ordenesAbastecimiento) {
+        for (const entrega of orden.entregas) {
+          const key = `${orden.idOrdenPedido}-${entrega.fechaEntrega}`;
+          if (!diasSeleccionados.has(key)) continue;
+          for (const cat of entrega.categorias) {
+            for (const prod of cat.productos) {
+              const bodegaItem = bodegaMap.get(prod.idProducto);
+              if (!bodegaItem) {
+                continue;
+              }
+              nuevosItems.push({
+                id: `abast-${prod.idDetalleOrdenPedido}-${Date.now()}-${Math.random()}`,
+                producto: {
+                  idBodegaTransito: bodegaItem.idBodegaTransito,
+                  idProducto: bodegaItem.idProducto,
+                  idInventario: bodegaItem.idInventario,
+                  nombreProducto: bodegaItem.nombreProducto,
+                  detalles: bodegaItem.nombreUnidad || bodegaItem.codProducto || '',
+                  stock: bodegaItem.stock,
+                  esFraccionario: bodegaItem.esFraccionario ?? false,
+                },
+                delta: prod.cantidadSolicitada,
+                motivo: 'ENTRADA_BODEGA',
+                idDetalleOrdenPedido: prod.idDetalleOrdenPedido,
+              });
+            }
+          }
+        }
+      }
+
+      if (nuevosItems.length === 0) {
+        toast.warning('No hay ítems coincidentes en bodega de tránsito para cargar');
+        return;
+      }
+
+      setItemsPedido(prev => {
+        const merged = [...prev];
+        for (const nuevo of nuevosItems) {
+          const idx = merged.findIndex(i => i.producto.idBodegaTransito === nuevo.producto.idBodegaTransito && i.motivo === nuevo.motivo);
+          if (idx >= 0) {
+            merged[idx] = { ...merged[idx], delta: merged[idx].delta + nuevo.delta };
+          } else {
+            merged.push(nuevo);
+          }
+        }
+        return merged;
+      });
+
+      toast.success(`${nuevosItems.length} ítem(s) cargado(s) al control masivo de bodega`);
+      onAbastecimientoOpenChange();
+      setDiasSeleccionados(new Set());
+    } catch (err) {
+      toast.error('Error al mapear productos de la bodega de tránsito');
+    } finally {
+      setLoadingAbastecimiento(false);
+    }
+  };
 
   // ── Búsqueda ──
   const [inputDisplay, setInputDisplay]     = React.useState('');
@@ -555,6 +672,15 @@ const ControlMasivoBodegaModal: React.FC<ControlMasivoBodegaModalProps> = ({ onC
       const result = await bulkUpdateBodegaStockService(payload);
       window.dispatchEvent(new Event('productosActualizados'));
 
+      // Solo marcar como entregados los ítems que el backend confirmó como exitosos
+      const exitososSet = new Set(result.exitosos.map(e => e.idBodegaTransito));
+      const idsEntregados = itemsPedido
+        .filter(i => i.idDetalleOrdenPedido != null && exitososSet.has(i.producto.idBodegaTransito))
+        .map(i => i.idDetalleOrdenPedido!);
+      if (idsEntregados.length > 0) {
+        marcarEntregadosMasivoService(idsEntregados).catch(e => console.warn('marcarEntregados failed', e));
+      }
+
       // Calculate retry items (failed items)
       const retryItems = result.errores.map((e, i) => {
         const prod = itemsPedido.find(p => p.producto.idBodegaTransito === e.idBodegaTransito);
@@ -584,12 +710,31 @@ const ControlMasivoBodegaModal: React.FC<ControlMasivoBodegaModalProps> = ({ onC
   };
 
   return (
-    <div className="flex flex-col w-full overflow-hidden rounded-2xl">
-      <ModalHeader className="flex flex-col gap-1 border-b border-default-100 bg-white dark:bg-content2 px-6 py-4">
-        <h2 className="text-xl font-bold text-secondary dark:text-foreground">Control de Stock Masivo</h2>
-        <p className="text-sm font-medium text-default-500">
-          Registre entradas, salidas, mermas y ajustes en la bodega de tránsito.
-        </p>
+    <>
+      <div className="flex flex-col w-full overflow-hidden rounded-2xl">
+      <ModalHeader className="flex flex-col gap-3 border-b border-default-100 dark:border-default-50 bg-white dark:bg-content2 px-6 py-4">
+        <div className="flex items-center justify-between">
+          <div className="flex-1">
+            <h2 className="text-xl font-bold text-secondary dark:text-foreground">Control de Stock Masivo</h2>
+            <p className="text-sm font-medium text-default-500 mt-1">
+              Registre entradas, salidas, mermas y ajustes en la bodega de tránsito.
+            </p>
+          </div>
+          <div className="flex items-center gap-1 shrink-0">
+            <Tooltip content={puedeAccederAbastecimiento ? "Abastecimiento de proveedores (OPs confirmadas)" : "Sin permisos"} color="foreground" className="text-xs">
+              <Button
+                isIconOnly
+                variant="light"
+                color="secondary"
+                size="lg"
+                onPress={() => { onAbastecimientoOpen(); cargarAbastecimiento('semana'); }}
+                isDisabled={!puedeAccederAbastecimiento}
+              >
+                <Icon icon="lucide:truck" width={22} />
+              </Button>
+            </Tooltip>
+          </div>
+        </div>
       </ModalHeader>
 
       <ModalBody className="px-4 py-3 space-y-3">
@@ -806,6 +951,169 @@ const ControlMasivoBodegaModal: React.FC<ControlMasivoBodegaModalProps> = ({ onC
         </Button>
       </ModalFooter>
     </div>
+
+      {/* Modal de Abastecimiento de Proveedores (OPs CONFIRMADA) */}
+      <Modal
+        isOpen={isAbastecimientoOpen}
+        onOpenChange={onAbastecimientoOpenChange}
+        size="5xl"
+        backdrop="blur"
+        radius="lg"
+        scrollBehavior="inside"
+        classNames={{ base: 'rounded-2xl' }}
+        isDismissable={false}
+      >
+        <ModalContent>
+          {(onAbastClose) => (
+            <>
+              <ModalHeader className="flex flex-col gap-2 border-b border-default-100 pb-4">
+                <div className="flex items-center gap-2">
+                  <Icon icon="lucide:truck" width={20} className="text-secondary dark:text-foreground" />
+                  <h2 className="text-lg font-bold text-secondary dark:text-foreground">Abastecimiento de Proveedores</h2>
+                </div>
+                <p className="text-xs text-default-500 font-normal">OPs confirmadas — seleccione los días a cargar al control masivo</p>
+                {/* Filtro de período */}
+                <div className="flex gap-2 flex-wrap">
+                  {([['semana','Esta semana'],['30dias','Próx. 30 días'],['3meses','3 meses'],['todas','Todas']] as [FiltroAbastecimiento, string][]).map(([key, label]) => (
+                    <Button
+                      key={key}
+                      size="sm"
+                      variant={filtroAbastecimiento === key ? 'solid' : 'bordered'}
+                      color={filtroAbastecimiento === key ? 'secondary' : 'default'}
+                      onPress={() => { setFiltroAbastecimiento(key); cargarAbastecimiento(key); }}
+                      className="text-xs"
+                    >
+                      {label}
+                    </Button>
+                  ))}
+                </div>
+              </ModalHeader>
+              <ModalBody className="py-5 px-5 overflow-y-auto max-h-[65vh] space-y-4">
+                {loadingAbastecimiento ? (
+                  <div className="flex justify-center py-20">
+                    <Spinner size="lg" color="warning" />
+                  </div>
+                ) : ordenesAbastecimiento.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-20 text-default-400">
+                    <Icon icon="lucide:truck" width={48} className="mb-3 opacity-30" />
+                    <p className="text-sm">No hay órdenes de pedido confirmadas con productos de bodega de tránsito en este período.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4 w-full flex-none pb-2">
+                    {ordenesAbastecimiento.map((orden) => (
+                      <div key={orden.idOrdenPedido} className="border border-default-200 dark:border-default-100 rounded-xl overflow-hidden bg-white dark:bg-content2/30">
+                        {/* Header del proveedor */}
+                        <div className="bg-default-100 dark:bg-content2 px-5 py-3 flex items-center justify-between gap-4">
+                          <div>
+                            <p className="text-sm font-bold text-secondary dark:text-foreground">{orden.nombreDistribuidora}</p>
+                            <p className="text-xs text-default-500 mt-0.5">{orden.nombreProveedor}</p>
+                          </div>
+                          <div className="flex items-center gap-4">
+                            {orden.telefonoProveedor && (
+                              <span className="text-xs text-default-400 flex items-center gap-1.5">
+                                <Icon icon="lucide:phone" width={12} /> {orden.telefonoProveedor}
+                              </span>
+                            )}
+                            {orden.emailProveedor && (
+                              <span className="text-xs text-default-400 flex items-center gap-1.5">
+                                <Icon icon="lucide:mail" width={12} /> {orden.emailProveedor}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        {/* Días de entrega */}
+                        <div className="divide-y divide-default-100 dark:divide-default-50">
+                          {orden.entregas.map((entrega) => {
+                            const diaKey = `${orden.idOrdenPedido}-${entrega.fechaEntrega}`;
+                            const seleccionado = diasSeleccionados.has(diaKey);
+                            const hoy = new Date().toISOString().split('T')[0];
+                            const esPasado = entrega.fechaEntrega < hoy;
+                            const todosEntregados = entrega.categorias.every(c => c.productos.every(p => p.entregado));
+                            return (
+                              <div
+                                key={diaKey}
+                                className={`px-5 py-3 cursor-pointer transition-all-200 ${seleccionado ? 'bg-primary/10 dark:bg-primary/5' : 'hover:bg-default-50 dark:hover:bg-default-100/20'}`}
+                                onClick={() => toggleDia(diaKey)}
+                              >
+                                {/* Fila fecha + chips */}
+                                <div className="flex items-center gap-3 mb-3">
+                                  <Checkbox
+                                    isSelected={seleccionado}
+                                    onValueChange={() => toggleDia(diaKey)}
+                                    size="sm"
+                                    color="secondary"
+                                    onClick={e => e.stopPropagation()}
+                                  />
+                                  <span className={`text-sm font-semibold capitalize ${esPasado ? 'text-default-400' : 'text-secondary dark:text-foreground'}`}>
+                                    {new Date(entrega.fechaEntrega + 'T12:00:00').toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+                                  </span>
+                                  {todosEntregados && (
+                                    <Chip size="sm" color="success" variant="flat">Recibido</Chip>
+                                  )}
+                                  {esPasado && !todosEntregados && (
+                                    <Chip size="sm" color="warning" variant="flat">Pendiente</Chip>
+                                  )}
+                                </div>
+                                {/* Productos agrupados por categoría */}
+                                <div className="ml-8 flex flex-col gap-3">
+                                  {entrega.categorias.map((cat: ICategoriaEntregaAbastecimiento) => (
+                                    <div key={cat.nombreCategoria}>
+                                      <p className="text-xs font-semibold uppercase tracking-wide text-default-400 mb-1.5 px-1">
+                                        {cat.nombreCategoria}
+                                      </p>
+                                      <div className="flex flex-col gap-1.5">
+                                        {cat.productos.map((prod) => (
+                                          <div
+                                            key={prod.idDetalleOrdenPedido}
+                                            className={`flex items-center justify-between gap-3 py-1.5 px-3 rounded-lg bg-default-50/60 dark:bg-default-100/10 ${prod.entregado ? 'opacity-50' : ''}`}
+                                          >
+                                            <div className="flex items-center gap-2 min-w-0 flex-1">
+                                              {prod.entregado
+                                                ? <Icon icon="lucide:check-circle-2" width={14} className="text-success shrink-0" />
+                                                : <Icon icon="lucide:circle" width={14} className="text-default-300 shrink-0" />
+                                              }
+                                              <Tooltip content={prod.nombreProducto} color="foreground" className="text-xs">
+                                                <span className="text-sm text-default-700 dark:text-default-300 truncate">{prod.nombreProducto}</span>
+                                              </Tooltip>
+                                              {prod.marcaProducto && (
+                                                <span className="text-xs text-default-400 shrink-0 italic">{prod.marcaProducto}</span>
+                                              )}
+                                            </div>
+                                            <span className="shrink-0 text-sm font-semibold text-default-600 dark:text-default-300 tabular-nums">
+                                              {fmtCL(prod.cantidadSolicitada)} <span className="font-normal text-default-400">{prod.abreviatura}</span>
+                                            </span>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </ModalBody>
+              <ModalFooter className="border-t border-default-100 gap-2">
+                <Button variant="ghost" onPress={onAbastClose} className="font-medium">
+                  Cancelar
+                </Button>
+                <Button
+                  color="secondary"
+                  onPress={cargarDiasSeleccionados}
+                  isDisabled={diasSeleccionados.size === 0}
+                >
+                  Cargar seleccionados
+                </Button>
+              </ModalFooter>
+            </>
+          )}
+        </ModalContent>
+      </Modal>
+    </>
   );
 };
 
@@ -1943,6 +2251,7 @@ const BodegaTransitoPage: React.FC = () => {
             <ControlMasivoBodegaModal
               onClose={onClose}
               initialItems={bulkRetryItems}
+              puedeAccederAbastecimiento={bod_Crear || bod_Editar}
               onProcessComplete={(data, retryItems) => {
                 setBulkResult(data);
                 setBulkRetryItems(retryItems);

@@ -2694,7 +2694,7 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoP
     setDiasSeleccionados(new Set());
     try {
       const fechaHasta = getFechaHastaAbastecimiento(filtro);
-      const data = await obtenerAbastecimientoConfirmadoService(fechaHasta);
+      const data = await obtenerAbastecimientoConfirmadoService(fechaHasta, 'INVENTARIO');
       setOrdenesAbastecimiento(data.ordenes ?? []);
     } catch {
       toast.error('Error al cargar el abastecimiento de proveedores');

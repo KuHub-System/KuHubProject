@@ -780,13 +780,15 @@ export const cambiarEstadoOrdenPedidoService = async (
 /**
  * Retorna OPs CONFIRMADA agrupadas por OP → día de entrega → productos, con marca e inventario.
  * Siempre incluye historial de 15 días hacia atrás. fechaHasta controla el límite superior.
- * GET /api/v1/orden-pedido/abastecimiento?fechaHasta=YYYY-MM-DD
+ * tipoAbastecimiento: "INVENTARIO" (inventario.tsx) | "BODEGA_TRANSITO" (bodega-transito.tsx)
+ * GET /api/v1/orden-pedido/abastecimiento?fechaHasta=YYYY-MM-DD&tipoAbastecimiento=INVENTARIO
  */
 export const obtenerAbastecimientoConfirmadoService = async (
-  fechaHasta?: string
+  fechaHasta?: string,
+  tipoAbastecimiento: 'INVENTARIO' | 'BODEGA_TRANSITO' = 'INVENTARIO'
 ): Promise<IAbastecimientoProveedorResponse> => {
   try {
-    const params: Record<string, string> = {};
+    const params: Record<string, string> = { tipoAbastecimiento };
     if (fechaHasta) params.fechaHasta = fechaHasta;
     const response = await api.get<IAbastecimientoProveedorResponse>('/orden-pedido/abastecimiento', { params });
     return response.data;

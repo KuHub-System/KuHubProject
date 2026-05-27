@@ -59,10 +59,11 @@ public interface OrdenPedidoService {
      * Siempre incluye historial de hasta 15 días hacia atrás desde la fecha actual.
      * Cada producto incluye la marca registrada en el catálogo del proveedor (proveedor_producto).
      *
-     * @param fechaHasta Límite superior de fechaEntrega. null = sin límite (usa 2099-12-31).
+     * @param fechaHasta         Límite superior de fechaEntrega. null = sin límite (usa 2099-12-31).
+     * @param tipoAbastecimiento Valor del ENUM: "INVENTARIO" o "BODEGA_TRANSITO".
      * @return Wrapper con la lista de órdenes de abastecimiento
      */
-    AbastecimientoProveedorDTO obtenerAbastecimientoConfirmado(LocalDate fechaHasta);
+    AbastecimientoProveedorDTO obtenerAbastecimientoConfirmado(LocalDate fechaHasta, String tipoAbastecimiento);
 
     /**
      * Retorna las Órdenes de Pedido activas con sus datos de cabecera.
