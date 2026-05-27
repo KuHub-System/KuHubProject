@@ -1,8 +1,11 @@
 package KuHub.modules.gestion_inventario.services;
 
 import KuHub.modules.gestion_inventario.dtos.request.FilterInventoryPageDTO;
+import KuHub.modules.gestion_inventario.dtos.request.InventoryWithProductCreateDTO;
 import KuHub.modules.gestion_inventario.dtos.request.SearchDTO;
 import KuHub.modules.gestion_inventario.dtos.request.WarehouseWithProductUpdateDTO;
+import KuHub.modules.gestion_inventario.dtos.response.record.BulkWarehouseProcess;
+import KuHub.modules.gestion_inventario.dtos.response.record.BulkWarehousesPage;
 import KuHub.modules.gestion_inventario.dtos.response.record.WarehousesPage;
 import KuHub.modules.gestion_inventario.entity.BodegaTransito;
 import KuHub.modules.gestion_inventario.entity.Inventario;
@@ -22,6 +25,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.List;
 
 @Slf4j
@@ -31,6 +35,8 @@ public class BodegaTransitoServiceImpl implements BodegaTransitoService{
     /**Services*/
     @Autowired
     private MovimientoService movimientoService;
+    @Autowired
+    private InventarioService inventarioService;
     /**Repositories*/
     @Autowired
     private BodegaTransitoRepository bodegaTransitoRepository;
@@ -159,6 +165,31 @@ public class BodegaTransitoServiceImpl implements BodegaTransitoService{
 
 
     /**
+     * Crea un producto nuevo junto con su inventario (stock=0) y su registro en bodega de tránsito,
+     * registrando una ENTRADA_BODEGA si el stock inicial es mayor a cero.
+     */
+    @Transactional
+    @Override
+    public WarehousesPage.WarehouseItem createBodegaConProducto(InventoryWithProductCreateDTO request) {
+        Inventario newInventario = inventarioService.createProductAndInventory(request);
+
+        BodegaTransito newBodega = new BodegaTransito();
+        newBodega.setInventario(newInventario);
+        newBodega.setStock(BigDecimal.ZERO);
+        newBodega.setStockLimit(request.getStockLimit());
+        newBodega = bodegaTransitoRepository.save(newBodega);
+
+        if (request.getStock() != null && request.getStock().compareTo(BigDecimal.ZERO) > 0) {
+            movimientoService.motionInUpdateTransitWarehouse(newBodega, request.getStock(), "ENTRADA_BODEGA");
+            newBodega = bodegaTransitoRepository.save(newBodega);
+        }
+
+        log.info("Nuevo producto en bodega: '{}' | stock inicial: {}",
+                newInventario.getProducto().getNombreProducto(), newBodega.getStock());
+        return findSingleWarehouseById(newBodega.getIdBodegaTransito());
+    }
+
+    /**
      * Actualiza la bodega de tránsito con validaciones de producto, categoría y unidad.
      * Aplica el movimiento correspondiente según el tipo, maneja desincronización de stock
      * y stock insuficiente retornando el item actualizado para sincronizar el frontend.
@@ -277,6 +308,89 @@ public class BodegaTransitoServiceImpl implements BodegaTransitoService{
 
         // Retorna el item actualizado (200 OK)
         return updatedItem;
+    }
+
+    // =========================================================================================
+    // MÉTODOS DE CONTROL MASIVO
+    // =========================================================================================
+
+    /**
+     * Lista paginada de bodega de tránsito para el proceso masivo, filtrando por nombre o código.
+     */
+    @Transactional(readOnly = true)
+    @Override
+    public BulkWarehousesPage findByMassiveBodegaPaginated(SearchDTO request) {
+        String term = normalize(request.getTerm());
+        long total = bodegaTransitoRepository.countMassiveBodegaListing(term);
+        PaginationUtils.PagingResult paging = PaginationUtils.buildPaging(request.getPage(), total);
+        List<Object[]> rows = bodegaTransitoRepository.findMassiveBodegaListing(term, paging.limit(), paging.offset());
+        return BulkWarehousesPage.of(rows, paging, total);
+    }
+
+    /**
+     * Procesa actualizaciones masivas de stock para la bodega de tránsito.
+     * Cada ítem se procesa de forma independiente: los ítems inválidos van a errores
+     * sin impedir que los demás se procesen. Los ítems con desincronización van a advertencias.
+     */
+    @Override
+    public BulkWarehouseProcess processBulkWarehouseUpdate(List<BulkWarehouseProcess.ItemRequest> requests) {
+        List<BulkWarehouseProcess.ItemResult> exitosos    = new ArrayList<>();
+        List<BulkWarehouseProcess.ItemResult> advertencias = new ArrayList<>();
+        List<BulkWarehouseProcess.ItemResult> errores     = new ArrayList<>();
+
+        for (BulkWarehouseProcess.ItemRequest req : requests) {
+            BodegaTransito bodega = bodegaTransitoRepository.findById(req.idBodegaTransito()).orElse(null);
+            if (bodega == null) {
+                errores.add(new BulkWarehouseProcess.ItemResult(
+                        req.idBodegaTransito(), "ID " + req.idBodegaTransito(),
+                        BigDecimal.ZERO, "Registro de bodega no encontrado"));
+                continue;
+            }
+
+            String nombre    = bodega.getInventario().getProducto().getNombreProducto();
+            BigDecimal stockReal = bodega.getStock();
+            String tipoKey = StringUtils.normalizeToEnumKey(req.tipoMovimiento());
+            boolean esSalida = tipoKey.equals("SALIDA_BODEGA") || tipoKey.equals("MERMA_BODEGA") || tipoKey.equals("DEVOLUCION");
+
+            BigDecimal nuevoStock = tipoKey.equals("AJUSTE_BODEGA")
+                    ? req.delta()
+                    : esSalida ? stockReal.subtract(req.delta()) : stockReal.add(req.delta());
+
+            if (nuevoStock.compareTo(BigDecimal.ZERO) < 0) {
+                errores.add(new BulkWarehouseProcess.ItemResult(
+                        req.idBodegaTransito(), nombre, stockReal,
+                        "Stock insuficiente (actual: " + stockReal + ")"));
+                continue;
+            }
+
+            boolean desincronizado = stockReal.compareTo(req.stockEnVista()) != 0;
+
+            try {
+                movimientoService.motionInUpdateTransitWarehouse(bodega, req.delta(), req.tipoMovimiento());
+                bodegaTransitoRepository.save(bodega);
+                log.info("Bulk Bodega [{}]: '{}' | {} → {}",
+                        req.tipoMovimiento(), nombre, stockReal, bodega.getStock());
+            } catch (Exception e) {
+                log.error("Error en bulk bodega ítem {}: {}", req.idBodegaTransito(), e.getMessage());
+                errores.add(new BulkWarehouseProcess.ItemResult(
+                        req.idBodegaTransito(), nombre, stockReal,
+                        "Error al procesar: " + e.getMessage()));
+                continue;
+            }
+
+            if (desincronizado) {
+                log.warn("Bulk Bodega desync {}: vista={} real={}",
+                        req.idBodegaTransito(), req.stockEnVista(), stockReal);
+                advertencias.add(new BulkWarehouseProcess.ItemResult(
+                        req.idBodegaTransito(), nombre, bodega.getStock(),
+                        "Stock desincronizado — operación aplicada al real (" + stockReal + ")"));
+            } else {
+                exitosos.add(new BulkWarehouseProcess.ItemResult(
+                        req.idBodegaTransito(), nombre, bodega.getStock(), "OK"));
+            }
+        }
+
+        return new BulkWarehouseProcess(exitosos, advertencias, errores);
     }
 
     // =========================================================================================

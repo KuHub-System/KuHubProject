@@ -5,7 +5,8 @@ import {
   Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, useDisclosure,
   Input, ScrollShadow, Accordion, AccordionItem,
   Table, TableHeader, TableColumn, TableBody, TableRow, TableCell,
-  Spinner, Tooltip, Dropdown, DropdownTrigger, DropdownMenu, DropdownItem, Checkbox
+  Spinner, Tooltip, Dropdown, DropdownTrigger, DropdownMenu, DropdownItem, Checkbox,
+  Select, SelectItem
 } from '@heroui/react';
 import { Icon } from '@iconify/react';
 import { usePageTitle } from '../hooks/usePageTitle';
@@ -15,13 +16,16 @@ import { ISolicitud, IItemSolicitud } from '../types/solicitud.types';
 import { actualizarEstadoBodegaService, obtenerEntregasDiariasService, prepararEntregaService, IEntregaDiaria, ISalaEntrega, ISolicitudEntrega } from '../services/solicitud-service';
 import { obtenerRecetaPorIdService } from '../services/pedido-semanal-bodega-service';
 import { obtenerFiltrosInventarioService } from '../services/producto-service';
-import { buscarBodegaTransitoService, buscarBodegaTransitoPorCodigoService, obtenerBodegaPaginadaService, IBodegaTransitoItem } from '../services/bodega-transito-service';
+import { buscarBodegaTransitoService, buscarBodegaTransitoPorCodigoService, obtenerBodegaPaginadaService, IBodegaTransitoItem, obtenerBulkBodegaListingService, bulkUpdateBodegaStockService, IBulkBodegaListing, IBulkWarehouseUpdateRequest, IBulkWarehouseProcessResult } from '../services/bodega-transito-service';
 import { useToast } from '../hooks/useToast';
 import { useModulePermission } from '../contexts/permission-context';
 import { IProducto } from '../types/producto.types';
 import { IUnidadMedida } from '../types/inventario.types';
 import { FormularioProducto } from './inventario';
 import { obtenerUnidadesActivasService } from '../services/unidad-medida-service';
+import GestionCategoriasModal from '../components/modals/GestionCategoriasModal';
+import GestionUnidadesModal from '../components/modals/GestionUnidadesModal';
+import GestionAbastecimientoModal from '../components/modals/GestionAbastecimientoModal';
 
 // Mapa de Bloques Horarios
 const BLOQUES_HORARIOS: Record<number, string> = {
@@ -337,9 +341,481 @@ const EntregaSalaCard: React.FC<{
   );
 };
 
+// ─────────────────────────────────────────────────────────────────────────────
+// CONTROL DE STOCK MASIVO — BODEGA DE TRÁNSITO
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface ItemBodegaMasivo {
+  id: string;
+  producto: IBulkBodegaListing;
+  delta: number;
+  motivo: string;
+}
+
+const MOTIVOS_BODEGA = ['ENTRADA_BODEGA', 'SALIDA_BODEGA', 'AJUSTE_BODEGA', 'MERMA_BODEGA', 'DEVOLUCION'] as const;
+const MOTIVO_LABEL: Record<string, string> = {
+  ENTRADA_BODEGA: 'Entrada',
+  SALIDA_BODEGA:  'Salida',
+  AJUSTE_BODEGA:  'Ajuste',
+  MERMA_BODEGA:   'Merma',
+  DEVOLUCION:     'Devolución',
+};
+
+interface ControlMasivoBodegaModalProps {
+  onClose: () => void;
+  initialItems?: ItemBodegaMasivo[];
+  onProcessComplete?: (data: IBulkWarehouseProcessResult, retryItems: ItemBodegaMasivo[]) => void;
+}
+
+const ControlMasivoBodegaModal: React.FC<ControlMasivoBodegaModalProps> = ({ onClose, initialItems, onProcessComplete }) => {
+  const toast = useToast();
+
+  // ── Búsqueda ──
+  const [inputDisplay, setInputDisplay]     = React.useState('');
+  const [searchTerm,   setSearchTerm]       = React.useState('');
+  const [bulkItems,    setBulkItems]        = React.useState<IBulkBodegaListing[]>([]);
+  const [isLoadingBulk, setIsLoadingBulk]  = React.useState(false);
+  const [page,         setPage]            = React.useState(1);
+  const [hasMore,      setHasMore]         = React.useState(true);
+  const hasMoreRef = React.useRef(true);
+  const isLoadingRef = React.useRef(false);
+  const [isDropdownOpen, setIsDropdownOpen] = React.useState(false);
+  const [dropdownPos,   setDropdownPos]    = React.useState<{ top: number; left: number; width: number } | null>(null);
+  const inputWrapperRef = React.useRef<HTMLDivElement>(null);
+  const dropdownRef     = React.useRef<HTMLDivElement>(null);
+
+  // ── Form ──
+  const [productoId, setProductoId]     = React.useState('');
+  const [motivo,     setMotivo]         = React.useState('');
+  const [stockInput, setStockInput]     = React.useState('');
+
+  // ── Lista de ítems ──
+  const [itemsPedido,       setItemsPedido]       = React.useState<ItemBodegaMasivo[]>(initialItems ?? []);
+  const [listadoExpandido,  setListadoExpandido]  = React.useState(false);
+
+  // ── Procesamiento ──
+  const [processState, setProcessState] = React.useState<'idle' | 'procesando'>('idle');
+
+  // ── Carga de productos desde backend ──
+  React.useEffect(() => {
+    let mounted = true;
+    const timer = setTimeout(async () => {
+      try {
+        isLoadingRef.current = true;
+        setIsLoadingBulk(true);
+        const data = await obtenerBulkBodegaListingService(searchTerm, 1);
+        if (!mounted) return;
+        setBulkItems(data.content);
+        setPage(1);
+        const more = data.page < data.totalPages;
+        setHasMore(more);
+        hasMoreRef.current = more;
+      } catch {
+        if (mounted) toast.error('Error al cargar productos de bodega');
+      } finally {
+        if (mounted) { isLoadingRef.current = false; setIsLoadingBulk(false); }
+      }
+    }, 400);
+    return () => { mounted = false; clearTimeout(timer); };
+  }, [searchTerm]);
+
+  // Cerrar dropdown al click fuera
+  React.useEffect(() => {
+    const handle = (e: MouseEvent) => {
+      if (
+        dropdownRef.current && !dropdownRef.current.contains(e.target as Node) &&
+        inputWrapperRef.current && !inputWrapperRef.current.contains(e.target as Node)
+      ) setIsDropdownOpen(false);
+    };
+    document.addEventListener('mousedown', handle);
+    return () => document.removeEventListener('mousedown', handle);
+  }, []);
+
+  const updateDropdownPos = () => {
+    if (inputWrapperRef.current) {
+      const r = inputWrapperRef.current.getBoundingClientRect();
+      setDropdownPos({ top: r.bottom + 6, left: r.left, width: r.width });
+    }
+  };
+
+  const handleDropdownScroll = async (e: React.UIEvent<HTMLDivElement>) => {
+    const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
+    if (scrollHeight - Math.round(scrollTop) <= clientHeight * 1.5 && !isLoadingRef.current && hasMoreRef.current) {
+      isLoadingRef.current = true;
+      const nextPage = page + 1;
+      try {
+        const data = await obtenerBulkBodegaListingService(searchTerm, nextPage);
+        setBulkItems(prev => [...prev, ...data.content]);
+        setPage(nextPage);
+        const more = data.page < data.totalPages;
+        setHasMore(more);
+        hasMoreRef.current = more;
+      } finally {
+        isLoadingRef.current = false;
+      }
+    }
+  };
+
+  const handleInputChange = (value: string) => {
+    setInputDisplay(value);
+    setSearchTerm(value);
+    setProductoId('');
+    setStockInput('');
+    updateDropdownPos();
+    if (!isDropdownOpen) setIsDropdownOpen(true);
+  };
+
+  const handleSelectProduct = (prod: IBulkBodegaListing) => {
+    setProductoId(prod.idBodegaTransito.toString());
+    setInputDisplay(prod.nombreProducto);
+    setIsDropdownOpen(false);
+  };
+
+  const productoActual = bulkItems.find(p => p.idBodegaTransito.toString() === productoId) ?? null;
+  const stockReal      = productoActual?.stock ?? 0;
+  const esFraccionario = productoActual?.esFraccionario ?? false;
+  const isAjuste       = motivo === 'AJUSTE_BODEGA';
+  const esSalida       = ['SALIDA_BODEGA', 'MERMA_BODEGA', 'DEVOLUCION'].includes(motivo);
+  const currentVal     = parseFloat(stockInput);
+
+  // Pre-llenar stock input al cambiar motivo
+  React.useEffect(() => {
+    if (!productoId) return;
+    if (isAjuste && productoActual) setStockInput(productoActual.stock.toString());
+    else setStockInput('');
+  }, [motivo, productoId]);
+
+  const existingItem = itemsPedido.find(i => i.producto.idBodegaTransito === productoActual?.idBodegaTransito && i.motivo === motivo);
+  const accumulated  = existingItem?.delta ?? 0;
+  const newDelta     = isNaN(currentVal) ? 0 : currentVal;
+  const totalDelta   = accumulated + newDelta;
+  const stockFinalEstimado = isAjuste
+    ? currentVal
+    : esSalida ? stockReal - totalDelta : stockReal + totalDelta;
+
+  let deltaError = '';
+  if (motivo && stockInput.trim() !== '' && !isNaN(currentVal)) {
+    if (isAjuste) {
+      if (currentVal < 0) deltaError = 'El nuevo stock no puede ser negativo';
+      else if (currentVal === stockReal) deltaError = 'El nuevo stock es igual al actual';
+    } else {
+      if (currentVal <= 0) deltaError = 'La cantidad debe ser mayor a 0';
+      else if (esSalida && totalDelta > stockReal) deltaError = `Stock insuficiente (actual: ${fmtCL(stockReal)})`;
+    }
+  }
+
+  const isFormValid = !!(productoId && motivo && stockInput !== '' && !isNaN(currentVal) && currentVal >= 0 && !deltaError);
+
+  const agregarProducto = () => {
+    if (!isFormValid || !productoActual) return;
+    const nuevoItem: ItemBodegaMasivo = { id: Date.now().toString(), producto: productoActual, delta: currentVal, motivo };
+    const idx = itemsPedido.findIndex(i => i.producto.idBodegaTransito === productoActual.idBodegaTransito && i.motivo === motivo);
+    if (idx >= 0) {
+      const updated = [...itemsPedido];
+      updated[idx] = isAjuste ? { ...updated[idx], delta: currentVal } : { ...updated[idx], delta: updated[idx].delta + currentVal };
+      setItemsPedido(updated);
+    } else {
+      setItemsPedido(prev => [...prev, nuevoItem]);
+    }
+    setProductoId(''); setStockInput(''); setInputDisplay(''); setSearchTerm(''); setPage(1);
+  };
+
+  const eliminarItem  = (id: string) => setItemsPedido(prev => prev.filter(i => i.id !== id));
+
+  const actualizarDelta = (id: string, val: number) => {
+    setItemsPedido(prev => prev.map(item => {
+      if (item.id !== id) return item;
+      const salida  = ['SALIDA_BODEGA', 'MERMA_BODEGA', 'DEVOLUCION'].includes(item.motivo);
+      const ajuste  = item.motivo === 'AJUSTE_BODEGA';
+      if (ajuste && val < 0) return item;
+      if (salida && val > item.producto.stock) return item;
+      if (!item.producto.esFraccionario && !Number.isInteger(val)) return item;
+      return { ...item, delta: val };
+    }));
+  };
+
+  const procesarMasivo = async () => {
+    if (itemsPedido.length === 0) return;
+    setProcessState('procesando');
+    try {
+      const payload: IBulkWarehouseUpdateRequest[] = [];
+      const agregado = new Map<number, { delta: number; stockEnVista: number; tipoMovimiento: string }>();
+      for (const item of itemsPedido) {
+        const key = item.producto.idBodegaTransito;
+        const ex  = agregado.get(key);
+        if (ex && !item.motivo.includes('AJUSTE')) {
+          ex.delta += item.delta;
+        } else {
+          agregado.set(key, { delta: item.delta, stockEnVista: item.producto.stock, tipoMovimiento: item.motivo });
+        }
+      }
+      for (const [idBodegaTransito, v] of agregado.entries()) {
+        payload.push({ idBodegaTransito, ...v });
+      }
+      const result = await bulkUpdateBodegaStockService(payload);
+      window.dispatchEvent(new Event('productosActualizados'));
+
+      // Calculate retry items (failed items)
+      const retryItems = result.errores.map((e, i) => {
+        const prod = itemsPedido.find(p => p.producto.idBodegaTransito === e.idBodegaTransito);
+        return prod ? { ...prod, id: `retry-${e.idBodegaTransito}-${Date.now()}-${Math.random()}` } : null;
+      }).filter((x): x is ItemBodegaMasivo => x !== null);
+
+      if (onProcessComplete) {
+        onProcessComplete(result, retryItems);
+      } else {
+        toast.success(`Proceso completado. ${result.exitosos.length} actualizados.`);
+      }
+      onClose();
+    } catch (err: any) {
+      toast.error(err.message || 'Error al procesar el control masivo');
+    } finally {
+      setProcessState('idle');
+    }
+  };
+
+  // ── Formulario principal ──
+  const chipColorMap: Record<string, 'success' | 'warning' | 'primary' | 'danger' | 'secondary'> = {
+    ENTRADA_BODEGA: 'success',
+    AJUSTE_BODEGA:  'primary',
+    SALIDA_BODEGA:  'danger',
+    MERMA_BODEGA:   'danger',
+    DEVOLUCION:     'secondary',
+  };
+
+  return (
+    <div className="flex flex-col w-full overflow-hidden rounded-2xl">
+      <ModalHeader className="flex flex-col gap-1 border-b border-default-100 bg-white dark:bg-content2 px-6 py-4">
+        <h2 className="text-xl font-bold text-secondary dark:text-foreground">Control de Stock Masivo</h2>
+        <p className="text-sm font-medium text-default-500">
+          Registre entradas, salidas, mermas y ajustes en la bodega de tránsito.
+        </p>
+      </ModalHeader>
+
+      <ModalBody className="px-4 py-3 space-y-3">
+        {/* ── Formulario de agregar ── */}
+        <div className="p-3 border border-default-200 dark:border-default-100 rounded-xl bg-default-50 dark:bg-content2">
+          {productoActual && (
+            <p className="text-xs text-default-500 px-0.5 mb-1.5">
+              Stock actual en tránsito: <span className="font-semibold text-secondary">{fmtCL(stockReal)}</span>
+            </p>
+          )}
+          <div className="grid grid-cols-1 md:grid-cols-[2fr_1fr_1fr_auto] gap-3 items-start">
+            {/* Buscador producto */}
+            <div className="relative" ref={inputWrapperRef}>
+              <Input
+                label="Nombre Producto"
+                placeholder="Buscar por nombre o código"
+                value={inputDisplay}
+                onValueChange={handleInputChange}
+                onFocus={() => { updateDropdownPos(); setIsDropdownOpen(true); }}
+                variant="bordered"
+                isRequired
+                endContent={isLoadingBulk ? <Spinner size="sm" /> : null}
+              />
+              {isDropdownOpen && dropdownPos && (
+                <div
+                  ref={dropdownRef}
+                  className="fixed z-[9999] bg-white dark:bg-content1 border border-default-200 dark:border-default-100 rounded-xl shadow-lg max-h-[220px] overflow-y-auto py-1"
+                  style={{ top: dropdownPos.top, left: dropdownPos.left, width: dropdownPos.width }}
+                  onScroll={handleDropdownScroll}
+                >
+                  {bulkItems.length === 0 && !isLoadingBulk && (
+                    <div className="px-4 py-4 text-center text-default-400 text-sm">No se encontraron productos</div>
+                  )}
+                  {bulkItems.map(prod => (
+                    <div
+                      key={prod.idBodegaTransito}
+                      className="px-4 py-2.5 mx-1 my-0.5 hover:bg-default-100 dark:hover:bg-default-50 cursor-pointer transition-colors rounded-lg"
+                      onClick={() => handleSelectProduct(prod)}
+                    >
+                      <span className="text-small font-semibold block leading-snug truncate">
+                        {prod.nombreProducto.length > 50 ? prod.nombreProducto.substring(0, 50) + '…' : prod.nombreProducto}
+                      </span>
+                      <span className="text-tiny text-default-400 block leading-snug mt-0.5">{prod.detalles}</span>
+                    </div>
+                  ))}
+                  {isLoadingBulk && <div className="flex justify-center py-3"><Spinner size="sm" /></div>}
+                </div>
+              )}
+            </div>
+
+            {/* Selector de acción */}
+            <Select
+              label="Acción"
+              placeholder="Seleccione..."
+              selectedKeys={motivo ? [motivo] : []}
+              onChange={(e: any) => setMotivo(e.target.value)}
+              isRequired
+              variant="bordered"
+              classNames={{ trigger: 'bg-white dark:bg-default-100/50' }}
+            >
+              {MOTIVOS_BODEGA.map(key => (
+                <SelectItem key={key} textValue={MOTIVO_LABEL[key]}>{MOTIVO_LABEL[key]}</SelectItem>
+              ))}
+            </Select>
+
+            {/* Delta input */}
+            <Input
+              type="number"
+              label={isAjuste ? 'Nuevo Stock' : 'Cantidad'}
+              placeholder={isAjuste ? `Actual: ${fmtCL(stockReal)}` : 'Ingrese cantidad…'}
+              value={stockInput}
+              onValueChange={val => {
+                if (val === '') { setStockInput(''); return; }
+                const regex = esFraccionario ? /^\d{0,7}(\.\d{0,3})?$/ : /^\d{0,7}$/;
+                if (regex.test(val)) setStockInput(val);
+              }}
+              min="0"
+              step={esFraccionario ? '0.001' : '1'}
+              variant="bordered"
+              isDisabled={!productoId || !motivo}
+              isInvalid={!!deltaError}
+              errorMessage={deltaError}
+              description={
+                productoId && motivo && stockInput !== '' && !deltaError
+                  ? `Stock final: ${fmtCL(stockFinalEstimado)}`
+                  : undefined
+              }
+              isRequired
+            />
+
+            {/* Botón agregar */}
+            <Button
+              isIconOnly
+              color="warning"
+              variant="solid"
+              radius="full"
+              size="lg"
+              onPress={agregarProducto}
+              isDisabled={!isFormValid}
+              className="shadow-md"
+            >
+              <Icon icon="lucide:plus" width={22} />
+            </Button>
+          </div>
+
+          {/* Info motivo */}
+          {motivo && (
+            <div className="mt-2 p-2.5 bg-secondary/5 rounded-lg border border-secondary/10 dark:bg-white/5 dark:border-white/10">
+              <p className="text-secondary dark:text-foreground text-xs font-medium flex items-center gap-2">
+                <Icon icon="lucide:info" width={14} className="shrink-0" />
+                {motivo === 'ENTRADA_BODEGA'  && 'Entrada de insumos a la bodega de tránsito'}
+                {motivo === 'SALIDA_BODEGA'   && 'Salida de insumos de la bodega de tránsito'}
+                {motivo === 'AJUSTE_BODEGA'   && 'Ajustar el stock actual a un nuevo valor'}
+                {motivo === 'MERMA_BODEGA'    && 'Salida por daño o pérdida en bodega de tránsito'}
+                {motivo === 'DEVOLUCION'      && 'Registrar devolución de insumos'}
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* ── Lista de ítems ── */}
+        {itemsPedido.length > 0 && (
+          <div className="space-y-3">
+            <button
+              type="button"
+              className="w-full flex items-center gap-2 font-bold text-secondary hover:text-secondary/80 transition-colors cursor-pointer"
+              onClick={() => setListadoExpandido(v => !v)}
+            >
+              <Icon icon="lucide:list" width={18} />
+              Listado ({itemsPedido.length} producto{itemsPedido.length !== 1 ? 's' : ''})
+              <Icon icon={listadoExpandido ? 'lucide:chevron-up' : 'lucide:chevron-down'} width={16} className="ml-auto text-default-400" />
+            </button>
+
+            <div className={`transition-all duration-300 ${listadoExpandido ? 'max-h-[65vh]' : 'max-h-[420px]'} overflow-y-auto`}>
+              <div className="border border-default-200 dark:border-default-100 rounded-xl overflow-hidden bg-white dark:bg-content2">
+                <div className="grid grid-cols-[2fr_1fr_1fr_1fr_auto] gap-3 px-4 py-3 bg-default-100 dark:bg-default-50 font-semibold text-sm text-default-600 border-b border-default-200 dark:border-default-100">
+                  <div>Producto</div>
+                  <div className="text-center">Stock Tránsito</div>
+                  <div className="text-center">Cantidad</div>
+                  <div className="text-center">Resultado</div>
+                  <div className="text-center">Acción</div>
+                </div>
+                <div className="divide-y divide-default-100 dark:divide-default-50">
+                  {itemsPedido.map(item => {
+                    const salida  = ['SALIDA_BODEGA', 'MERMA_BODEGA', 'DEVOLUCION'].includes(item.motivo);
+                    const ajuste  = item.motivo === 'AJUSTE_BODEGA';
+                    const sf = ajuste ? item.delta : salida ? item.producto.stock - item.delta : item.producto.stock + item.delta;
+                    const simbolo = salida ? '-' : ajuste ? '=' : '+';
+                    const color   = chipColorMap[item.motivo] ?? 'default';
+                    return (
+                      <div key={item.id} className="grid grid-cols-[2fr_1fr_1fr_1fr_auto] gap-3 px-4 py-3 items-center hover:bg-default-50 dark:hover:bg-default-100/50 transition-colors">
+                        <div className="min-w-0">
+                          <p className="font-medium text-sm text-default-800 dark:text-foreground truncate">{item.producto.nombreProducto}</p>
+                          <p className="text-xs text-default-400">{item.producto.detalles}</p>
+                        </div>
+                        <div className="text-center">
+                          <span className="font-semibold text-sm">{fmtCL(item.producto.stock)}</span>
+                        </div>
+                        <div className="flex items-center justify-center gap-1">
+                          <Button isIconOnly variant="light" size="sm" className="h-6 w-6 min-w-6"
+                            onPress={() => actualizarDelta(item.id, Math.max(0, item.delta - (item.producto.esFraccionario ? 0.5 : 1)))}>
+                            <Icon icon="lucide:minus" width={14} />
+                          </Button>
+                          <Input
+                            type="number"
+                            value={item.delta.toString()}
+                            onValueChange={val => { const n = parseFloat(val); if (!isNaN(n)) actualizarDelta(item.id, n); }}
+                            step={item.producto.esFraccionario ? '0.5' : '1'}
+                            className="w-16"
+                            size="sm"
+                            variant="bordered"
+                            classNames={{ input: 'text-center text-xs h-6' }}
+                          />
+                          <Button isIconOnly variant="light" size="sm" className="h-6 w-6 min-w-6"
+                            onPress={() => actualizarDelta(item.id, item.delta + (item.producto.esFraccionario ? 0.5 : 1))}>
+                            <Icon icon="lucide:plus" width={14} />
+                          </Button>
+                        </div>
+                        <div className="text-center">
+                          <Chip size="sm" color={color} variant="flat" className="text-xs">
+                            {simbolo}{fmtCL(item.delta)} → {fmtCL(sf)}
+                          </Chip>
+                        </div>
+                        <div className="text-center">
+                          <Button isIconOnly variant="light" color="danger" size="sm" onPress={() => eliminarItem(item.id)}>
+                            <Icon icon="lucide:trash-2" width={16} />
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-between items-center px-1">
+              <span className="text-sm text-default-500">Total de productos:</span>
+              <span className="font-bold text-secondary">{itemsPedido.length}</span>
+            </div>
+          </div>
+        )}
+      </ModalBody>
+
+      <ModalFooter className="bg-default-50 border-t border-default-100 flex justify-end gap-2">
+        <Button variant="ghost" onPress={onClose} isDisabled={processState !== 'idle'}>Cancelar</Button>
+        <Button
+          color="warning"
+          onPress={procesarMasivo}
+          isDisabled={itemsPedido.length === 0 || processState !== 'idle'}
+          isLoading={processState !== 'idle'}
+          startContent={processState === 'idle' ? <Icon icon="lucide:send" width={18} /> : undefined}
+        >
+          {processState === 'idle' ? `Ctrl. Masivo (${itemsPedido.length})` : 'Procesando...'}
+        </Button>
+      </ModalFooter>
+    </div>
+  );
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 const BodegaTransitoPage: React.FC = () => {
   const { canCreate: bod_Crear, canUpdate: bod_Editar, canDelete: bod_Eliminar } = useModulePermission('BODEGA_TRANSITO');
   const { canRead: ped_Leer, canCreate: ped_Crear } = useModulePermission('GESTION_PEDIDOS_DIARIOS');
+  const { canCreate: catPuedeCrear } = useModulePermission('CATEGORIAS');
+  const { canCreate: uniPuedeCrear } = useModulePermission('UNIDADES_MEDIDA');
 
   const toast = useToast();
   const history = useHistory();
@@ -448,6 +924,12 @@ const BodegaTransitoPage: React.FC = () => {
     currentView === 'inventario' ? 'lucide:warehouse' : 'lucide:shopping-cart'
   );
 
+  const [isMasivoOpen, setIsMasivoOpen] = React.useState(false);
+  const [isResultOpen, setIsResultOpen] = React.useState(false);
+  const [bulkResult, setBulkResult] = React.useState<IBulkWarehouseProcessResult | null>(null);
+  const [bulkRetryItems, setBulkRetryItems] = React.useState<ItemBodegaMasivo[]>([]);
+  const [bulkModalKey, setBulkModalKey] = React.useState(0);
+
   const { isOpen: isExtraOpen, onOpen: onExtraOpen, onOpenChange: onExtraOpenChange } = useDisclosure();
   const { isOpen: isDetailOpen, onOpen: onDetailOpen, onOpenChange: onDetailOpenChange } = useDisclosure();
   const [selectedSolicitud, setSelectedSolicitud] = React.useState<ISolicitud | null>(null);
@@ -482,6 +964,10 @@ const BodegaTransitoPage: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = React.useState(false);
   const onModalOpenChange = (open: boolean) => setIsModalOpen(open);
   const [productoSeleccionado, setProductoSeleccionado] = React.useState<IProducto | null>(null);
+  const [modalMode, setModalMode] = React.useState<'crear' | 'editar'>('crear');
+  const { isOpen: isCategoriasOpen, onOpen: onCategoriasOpen, onOpenChange: onCategoriasOpenChange } = useDisclosure();
+  const { isOpen: isUnidadesOpen, onOpen: onUnidadesOpen, onOpenChange: onUnidadesOpenChange } = useDisclosure();
+  const { isOpen: isAbastecimientoConfigOpen, onOpen: onAbastecimientoConfigOpen, onOpenChange: onAbastecimientoConfigOpenChange } = useDisclosure();
 
   const filtrosCategorias = React.useMemo(() => {
     const cats = categoriasFull.map(c => ({ id: `cat-${c.id}`, nombre: c.nombre }));
@@ -802,6 +1288,13 @@ const BodegaTransitoPage: React.FC = () => {
     mockProducto.descripcion = item.descripcionProducto;
 
     setProductoSeleccionado(mockProducto);
+    setModalMode('editar');
+    setIsModalOpen(true);
+  };
+
+  const handleNuevoProducto = () => {
+    setModalMode('crear');
+    setProductoSeleccionado(null);
     setIsModalOpen(true);
   };
 
@@ -834,6 +1327,69 @@ const BodegaTransitoPage: React.FC = () => {
               transition={{ duration: 0.3 }}
               className="space-y-6 pt-6 pb-10"
             >
+              {(bod_Editar || bod_Crear || catPuedeCrear || uniPuedeCrear) && (
+                <div className="flex flex-wrap items-center gap-3 px-4 mb-2 mt-2">
+                  {bod_Editar && (
+                    <Button
+                      color="secondary"
+                      variant="solid"
+                      size="md"
+                      className="font-bold shadow-sm"
+                      startContent={<Icon icon="lucide:arrow-right-left" width={18} />}
+                      onPress={() => setIsMasivoOpen(true)}
+                    >
+                      Control Masivo
+                    </Button>
+                  )}
+                  {bod_Crear && (
+                    <Button
+                      color="primary"
+                      variant="solid"
+                      size="md"
+                      className="font-bold text-secondary shadow-sm"
+                      startContent={<Icon icon="lucide:plus" width={18} />}
+                      onPress={handleNuevoProducto}
+                    >
+                      Nuevo
+                    </Button>
+                  )}
+                  {catPuedeCrear && (
+                    <Button
+                      isIconOnly
+                      variant="flat"
+                      size="md"
+                      onPress={onCategoriasOpen}
+                      title="Categorías"
+                      className="bg-default-100 dark:bg-default-50/10"
+                    >
+                      <Icon icon="lucide:tags" className="text-default-600" width={20} />
+                    </Button>
+                  )}
+                  {uniPuedeCrear && (
+                    <Button
+                      isIconOnly
+                      variant="flat"
+                      size="md"
+                      onPress={onUnidadesOpen}
+                      title="Unidades"
+                      className="bg-default-100 dark:bg-default-50/10"
+                    >
+                      <Icon icon="lucide:scale" className="text-default-600" width={20} />
+                    </Button>
+                  )}
+                  <Button
+                    isIconOnly
+                    variant="flat"
+                    size="md"
+                    onPress={onAbastecimientoConfigOpen}
+                    title="Gestión Abastecimiento"
+                    className="bg-default-100 dark:bg-default-50/10"
+                  >
+                    <Icon icon="lucide:boxes" className="text-default-600" width={20} />
+                  </Button>
+                </div>
+              )}
+
               {/* Herramientas de búsqueda y filtrado */}
               <Card className="shadow-sm bg-white dark:bg-content1 border border-default-200 dark:border-default-100 mx-4">
                 <CardBody className="p-4">
@@ -1281,13 +1837,15 @@ const BodegaTransitoPage: React.FC = () => {
           </Tooltip>
         )}
 
+
+
         <div className="mt-auto border-t border-default-100 w-8 pt-4 flex flex-col gap-4">
           {/* Refresh icon removed as requested */}
         </div>
       </div>
 
       {/* Modals Functionality */}
-      <Modal isOpen={isExtraOpen} onOpenChange={onExtraOpenChange}>
+      <Modal isOpen={isExtraOpen} onOpenChange={onExtraOpenChange} isDismissable={false}>
         <ModalContent>
           {(onClose) => (
             <>
@@ -1305,7 +1863,7 @@ const BodegaTransitoPage: React.FC = () => {
         </ModalContent>
       </Modal>
 
-      <Modal isOpen={isDetailOpen} onOpenChange={onDetailOpenChange} size="3xl" scrollBehavior="inside" backdrop="blur">
+      <Modal isOpen={isDetailOpen} onOpenChange={onDetailOpenChange} size="3xl" scrollBehavior="inside" backdrop="blur" isDismissable={false}>
         <ModalContent>
           {(onClose) => (
             <>
@@ -1337,21 +1895,21 @@ const BodegaTransitoPage: React.FC = () => {
         </ModalContent>
       </Modal>
 
-      <Modal isOpen={isModalOpen} onOpenChange={onModalOpenChange} size="lg" backdrop="blur" placement="top" classNames={{ base: "mt-4" }}>
+      <Modal isOpen={isModalOpen} onOpenChange={onModalOpenChange} size="lg" backdrop="blur" placement="top" classNames={{ base: "mt-4" }} isDismissable={false}>
         <ModalContent>
           {(onClose) => (
             <>
               <ModalHeader className="border-b border-default-100 dark:border-default-50 bg-white dark:bg-content2">
                 <div className="flex items-center gap-2">
-                  <Icon icon="lucide:package-check" className="text-primary" width={24} />
-                  <span className="font-bold text-lg text-secondary dark:text-foreground">Control de Bodega</span>
+                  <Icon icon={modalMode === 'crear' ? "lucide:plus-circle" : "lucide:package-check"} className="text-primary" width={24} />
+                  <span className="font-bold text-lg text-secondary dark:text-foreground">{modalMode === 'crear' ? 'Nuevo Producto en Bodega' : 'Control de Bodega'}</span>
                 </div>
               </ModalHeader>
               <ModalBody className="py-6">
                 <FormularioProducto
                   producto={productoSeleccionado}
                   onClose={onClose}
-                  mode="editar"
+                  mode={modalMode}
                   origenContext="bodega"
                   categorias={categoriasFull}
                   unidades={unidadesFull as any}
@@ -1363,6 +1921,120 @@ const BodegaTransitoPage: React.FC = () => {
                   }}
                 />
               </ModalBody>
+            </>
+          )}
+        </ModalContent>
+      </Modal>
+
+      {/* Modal Control de Stock Masivo Bodega */}
+      <Modal
+        key={bulkModalKey}
+        isOpen={isMasivoOpen}
+        onOpenChange={(open) => setIsMasivoOpen(open)}
+        size="5xl"
+        backdrop="blur"
+        placement="top"
+        isDismissable={false}
+        scrollBehavior="inside"
+        classNames={{ base: 'min-h-[80vh] max-h-[90vh] mt-4', body: 'min-h-[620px]' }}
+      >
+        <ModalContent>
+          {(onClose) => (
+            <ControlMasivoBodegaModal
+              onClose={onClose}
+              initialItems={bulkRetryItems}
+              onProcessComplete={(data, retryItems) => {
+                setBulkResult(data);
+                setBulkRetryItems(retryItems);
+                setIsResultOpen(true);
+              }}
+            />
+          )}
+        </ModalContent>
+      </Modal>
+
+      {/* Modal de Resultado Control Masivo Bodega */}
+      <Modal
+        backdrop="opaque"
+        isOpen={isResultOpen}
+        onOpenChange={(open) => setIsResultOpen(open)}
+        size="md"
+        scrollBehavior="inside"
+        isDismissable={false}
+        classNames={{
+          backdrop: "bg-background/50 backdrop-blur-sm",
+          base: "bg-background dark:bg-content1 shadow-xl border border-default-200 dark:border-default-100",
+        }}
+      >
+        <ModalContent>
+          {(onClose) => (
+            <>
+              <ModalBody className="px-6 py-4 space-y-3">
+                <div className="flex flex-col items-center justify-center px-6 pt-8 pb-4 text-center gap-4 animate-appearance-in w-full">
+                  <Icon icon="lucide:check-circle" className="text-success w-16 h-16" />
+                  <h3 className="text-2xl font-bold">Proceso Completado</h3>
+                  <p className="text-default-600 text-lg">
+                    {((bulkResult?.exitosos.length ?? 0) + (bulkResult?.advertencias.length ?? 0))} {((bulkResult?.exitosos.length ?? 0) + (bulkResult?.advertencias.length ?? 0)) === 1 ? 'producto procesado' : 'productos procesados'} con éxito.
+                  </p>
+
+                  {bulkResult && bulkResult.advertencias.length > 0 && (
+                    <div className="w-full p-3 bg-warning/10 dark:bg-warning/20 border border-warning/20 rounded-xl flex flex-col gap-2 text-left">
+                      <div className="flex items-center gap-2">
+                        <Icon icon="lucide:refresh-cw" className="text-warning-600 dark:text-warning-400 w-5 h-5 shrink-0" />
+                        <span className="text-warning-600 dark:text-warning-400 font-semibold text-sm">
+                          {bulkResult.advertencias.length} sincronizado{bulkResult.advertencias.length !== 1 ? 's' : ''} automáticamente
+                        </span>
+                      </div>
+                      <ul className="flex flex-col gap-1 pl-1">
+                        {bulkResult.advertencias.map((item, i) => (
+                          <li key={i} className="text-xs text-warning-700 dark:text-warning-400 flex items-start gap-1.5">
+                            <span className="mt-0.5 shrink-0">•</span>
+                            <span><span className="font-semibold">{item.producto}</span></span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {bulkResult && bulkResult.errores.length > 0 && (
+                    <div className="w-full p-3 bg-danger/10 dark:bg-danger/20 border border-danger/20 rounded-xl flex flex-col gap-2 text-left">
+                      <div className="flex items-center gap-2">
+                        <Icon icon="lucide:x-circle" className="text-danger w-5 h-5 shrink-0" />
+                        <span className="text-danger font-semibold text-sm">
+                          {bulkResult.errores.length} con error
+                        </span>
+                      </div>
+                      <ul className="flex flex-col gap-1 pl-1">
+                        {bulkResult.errores.map((item, i) => (
+                          <li key={i} className="text-xs text-danger flex items-start gap-1.5">
+                            <span className="mt-0.5 shrink-0">•</span>
+                            <span><span className="font-semibold">{item.producto}</span> — {item.mensaje}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              </ModalBody>
+              <ModalFooter className="flex justify-center border-t border-default-100 bg-default-50 w-full pt-4 pb-4">
+                <Button
+                  color="primary"
+                  size="lg"
+                  className="font-bold px-10"
+                  startContent={<Icon icon={bulkRetryItems.length > 0 ? 'lucide:rotate-ccw' : 'lucide:thumbs-up'} width={18} />}
+                  onPress={() => {
+                    onClose();
+                    if (bulkRetryItems.length > 0) {
+                      setBulkModalKey(k => k + 1);
+                      setIsMasivoOpen(true);
+                    } else {
+                      setBulkRetryItems([]);
+                    }
+                  }}
+                >
+                  {bulkRetryItems.length > 0 ? 'Reintentar errores' : 'Entendido'}
+                </Button>
+              </ModalFooter>
             </>
           )}
         </ModalContent>
@@ -1383,7 +2055,7 @@ const BodegaTransitoPage: React.FC = () => {
       isOpen={!!preparandoSolicitud}
       onClose={() => { if (!isConfirmando) { setPreparandoSolicitud(null); setConfirmarTextoEntrega(''); } }}
       size="2xl"
-      isDismissable={!isConfirmando}
+      isDismissable={false}
       hideCloseButton={isConfirmando}
       scrollBehavior="inside"
     >
@@ -1510,6 +2182,29 @@ const BodegaTransitoPage: React.FC = () => {
         </ModalFooter>
       </ModalContent>
     </Modal>
+
+    <GestionCategoriasModal
+      isOpen={isCategoriasOpen}
+      onOpenChange={onCategoriasOpenChange}
+      onRefresh={() => {
+        cacheRef.current = {};
+        cargarProductosPaginados(1, true);
+      }}
+    />
+
+    <GestionUnidadesModal
+      isOpen={isUnidadesOpen}
+      onOpenChange={onUnidadesOpenChange}
+      onRefresh={() => {
+        cacheRef.current = {};
+        cargarProductosPaginados(1, true);
+      }}
+    />
+
+    <GestionAbastecimientoModal
+      isOpen={isAbastecimientoConfigOpen}
+      onOpenChange={onAbastecimientoConfigOpenChange}
+    />
     </>
   );
 };

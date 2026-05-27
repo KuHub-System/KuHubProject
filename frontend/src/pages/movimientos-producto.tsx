@@ -272,11 +272,11 @@ const MovimientosProductoPage: React.FC = () => {
         }
       >
         <TableHeader>
-          <TableColumn width="15%" align="center">PRODUCTO</TableColumn>
+          <TableColumn width="24%" align="center">PRODUCTO</TableColumn>
           <TableColumn width="10%" align="center">CATEGORÍA</TableColumn>
           <TableColumn width="10%" align="center">TIPO</TableColumn>
           <TableColumn width="5%" align="center">CANTIDAD</TableColumn>
-          <TableColumn width="15%" align="center">FECHA</TableColumn>
+          <TableColumn width="6%" align="center">FECHA</TableColumn>
           <TableColumn width="20%" align="center">RESPONSABLE</TableColumn>
           <TableColumn width="25%" align="center">OBSERVACIÓN</TableColumn>
         </TableHeader>
@@ -293,7 +293,7 @@ const MovimientosProductoPage: React.FC = () => {
         >
           {movimientos.map((mov, idx) => (
             <TableRow key={idx} className="hover:bg-default-50 dark:hover:bg-default-100/50 transition-colors">
-              <TableCell className="max-w-[200px]">
+              <TableCell className="max-w-[320px]">
                 <Tooltip content={mov.nombreProducto} delay={500} closeDelay={0}>
                   <div className="flex flex-col items-center truncate">
                     <span className="font-semibold text-secondary dark:text-foreground truncate text-center w-full">
@@ -302,10 +302,18 @@ const MovimientosProductoPage: React.FC = () => {
                   </div>
                 </Tooltip>
               </TableCell>
-              <TableCell>
-                <Chip size="sm" variant="flat" className="bg-default-100 dark:bg-default-100/50 text-default-600 dark:text-default-300">
-                  {mov.nombreCategoria || '-'}
-                </Chip>
+              <TableCell className="max-w-[120px]">
+                {mov.nombreCategoria ? (
+                  <Tooltip content={mov.nombreCategoria} delay={500} closeDelay={0}>
+                    <div className="flex justify-center w-full">
+                      <Chip size="sm" variant="flat" className="bg-default-100 dark:bg-default-100/50 text-default-600 dark:text-default-300 max-w-[100px]" classNames={{ content: "truncate" }}>
+                        {mov.nombreCategoria}
+                      </Chip>
+                    </div>
+                  </Tooltip>
+                ) : (
+                  <div className="text-center text-default-300">-</div>
+                )}
               </TableCell>
               <TableCell>{renderTipoMovimiento(mov.tipoMovimiento)}</TableCell>
               <TableCell>
