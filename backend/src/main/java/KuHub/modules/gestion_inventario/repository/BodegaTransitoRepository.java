@@ -222,6 +222,44 @@ public interface BodegaTransitoRepository extends JpaRepository<BodegaTransito, 
     Optional<Object[]> findSingleTransitById(@Param("idBodegaTransito") Integer idBodegaTransito);
 
 
+    /** Lista productos de bodega para proceso masivo, filtrando por nombre o código. */
+    @Query(value = """
+        SELECT
+            p.nombre_producto,                                     -- [0]
+            CONCAT(u.nombre_unidad, ' (', u.abreviatura, ')'),     -- [1] detalles
+            b.stock,                                               -- [2]
+            u.es_fraccionario,                                     -- [3]
+            b.id_bodega_transito,                                  -- [4]
+            p.id_producto,                                         -- [5]
+            i.id_inventario                                        -- [6]
+        FROM bodega_transito b
+        JOIN inventario i ON i.id_inventario = b.id_inventario
+        JOIN producto p ON p.id_producto = i.id_producto
+        JOIN unidad_medida u ON u.id_unidad = p.id_unidad
+        WHERE b.activo = TRUE
+          AND (:term = '' OR LOWER(p.nombre_producto) LIKE LOWER(CONCAT('%', :term, '%'))
+               OR LOWER(p.cod_producto) LIKE LOWER(CONCAT('%', :term, '%')))
+        ORDER BY p.nombre_producto ASC
+        LIMIT :limit OFFSET :offset
+    """, nativeQuery = true)
+    List<Object[]> findMassiveBodegaListing(
+            @Param("term") String term,
+            @Param("limit") int limit,
+            @Param("offset") int offset
+    );
+
+    /** Cuenta el total de registros de bodega para el proceso masivo, filtrando por nombre o código. */
+    @Query(value = """
+        SELECT COUNT(*)
+        FROM bodega_transito b
+        JOIN inventario i ON i.id_inventario = b.id_inventario
+        JOIN producto p ON p.id_producto = i.id_producto
+        WHERE b.activo = TRUE
+          AND (:term = '' OR LOWER(p.nombre_producto) LIKE LOWER(CONCAT('%', :term, '%'))
+               OR LOWER(p.cod_producto) LIKE LOWER(CONCAT('%', :term, '%')))
+    """, nativeQuery = true)
+    long countMassiveBodegaListing(@Param("term") String term);
+
     // ─── MODIFICACIONES ──────────────────────────────────────────────────────────
 
     /**Metodo para sumar stock en transito afin de evitar procesos en paralelo*/

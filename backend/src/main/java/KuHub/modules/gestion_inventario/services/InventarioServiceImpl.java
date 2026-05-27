@@ -266,6 +266,41 @@ public class InventarioServiceImpl implements InventarioService {
     }
 
     /**
+     * Crea un producto con su inventario en stock=0, sin registrar movimiento de entrada.
+     * Usado por BodegaTransitoService para crear el inventario base antes de asignar bodega.
+     */
+    @Transactional
+    @Override
+    public Inventario createProductAndInventory(InventoryWithProductCreateDTO request) {
+        String nombreProducto = StringUtils.capitalizarPalabras(request.getNombreProducto());
+        String codigoProducto = StringUtils.normalizeSpaces(request.getCodigoProducto());
+        if (productoRepository.existsByNombreProducto(nombreProducto)) {
+            throw new GestionInventarioException("El producto ya existe", HttpStatus.CONFLICT);
+        }
+        if (codigoProducto != null && !codigoProducto.isBlank()) {
+            if (productoRepository.existsBycodProductoAndActivo(codigoProducto, true)) {
+                throw new GestionInventarioException("El código '" + codigoProducto + "' ya está asignado a otro producto activo", HttpStatus.CONFLICT);
+            }
+        }
+        Categoria categoria = categoriaService.findById(request.getIdCategoria());
+        UnidadMedida unidadMedida = unidadMedidaService.findById(request.getIdUnidadMedida());
+
+        Producto newProducto = new Producto();
+        newProducto.setNombreProducto(nombreProducto);
+        newProducto.setCodProducto(codigoProducto);
+        newProducto.setDescripcionProducto(request.getDescripcionProducto());
+        newProducto.setCategoria(categoria);
+        newProducto.setUnidadMedida(unidadMedida);
+        productoRepository.save(newProducto);
+
+        Inventario newInventario = new Inventario();
+        newInventario.setStockLimit(request.getStockLimit());
+        newInventario.setStock(BigDecimal.ZERO);
+        newInventario.setProducto(newProducto);
+        return inventarioRepository.save(newInventario);
+    }
+
+    /**
      * Actualiza un inventario y su producto asociado aplicando el delta de stock
      * según el tipo de movimiento. Detecta y maneja desincronización de stock
      * entre la vista del usuario y el valor real en base de datos.

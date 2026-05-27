@@ -23,6 +23,7 @@ public interface InventarioService {
     InventoryFilters findFiltersInventory() ;
     BulkInventoriesPage findByMassiveInventoryPaginated(SearchDTO request);
     boolean saveInventoryWithProduct (InventoryWithProductCreateDTO inventarioRequest);
+    Inventario createProductAndInventory(InventoryWithProductCreateDTO request);
     Object updateInventoryWithProduct (InventoryWithProductUpdateDTO request);
     BulkInventoryProcess processBulkInventoryUpdate(List<BulkInventoryProcess.ItemRequest> requests);
     boolean softDeleteByInventoryWithProduct(Integer idInventario);

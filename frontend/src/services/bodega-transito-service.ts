@@ -100,6 +100,104 @@ export interface WarehouseWithProductUpdateDTO {
     stockEnVista: number;
 }
 
+// ── Control de Stock Masivo ──────────────────────────────────────────────────
+
+export interface IBulkBodegaListing {
+    idBodegaTransito: number;
+    idProducto: number;
+    idInventario: number;
+    nombreProducto: string;
+    detalles: string;
+    stock: number;
+    esFraccionario: boolean;
+}
+
+export interface IBulkBodegasPage {
+    content: IBulkBodegaListing[];
+    page: number;
+    limit: number;
+    totalPages: number;
+    totalElements: number;
+}
+
+export interface IBulkWarehouseUpdateRequest {
+    idBodegaTransito: number;
+    delta: number;
+    stockEnVista: number;
+    tipoMovimiento: string;
+}
+
+export interface IBulkWarehouseItemResult {
+    idBodegaTransito: number;
+    producto: string;
+    stockResultante: number;
+    mensaje: string;
+}
+
+export interface IBulkWarehouseProcessResult {
+    exitosos: IBulkWarehouseItemResult[];
+    advertencias: IBulkWarehouseItemResult[];
+    errores: IBulkWarehouseItemResult[];
+}
+
+/**
+ * Lista paginada de productos de bodega para el Control de Stock Masivo.
+ * Endpoint: POST /v1/bodega-transito/massive-warehouse-listing
+ */
+export const obtenerBulkBodegaListingService = async (
+    term: string,
+    page: number
+): Promise<IBulkBodegasPage> => {
+    const response = await api.post<IBulkBodegasPage>(
+        '/bodega-transito/massive-warehouse-listing',
+        { term, page }
+    );
+    return response.data;
+};
+
+/**
+ * Envía la lista de ítems al backend para procesamiento masivo de bodega de tránsito.
+ * Endpoint: PATCH /v1/bodega-transito/bulk-update-warehouse-stock
+ */
+export const bulkUpdateBodegaStockService = async (
+    requests: IBulkWarehouseUpdateRequest[]
+): Promise<IBulkWarehouseProcessResult> => {
+    const response = await api.patch<IBulkWarehouseProcessResult>(
+        '/bodega-transito/bulk-update-warehouse-stock',
+        requests
+    );
+    return response.data;
+};
+
+export interface ICreateBodegaConProductoRequest {
+    nombreProducto: string;
+    codigoProducto?: string;
+    descripcionProducto?: string;
+    idCategoria: number;
+    idUnidadMedida: number;
+    stock: number;
+    stockLimit?: number;
+}
+
+/**
+ * Crea un producto nuevo con inventario en cero y registro de bodega de tránsito.
+ * Aplica ENTRADA_BODEGA si el stock inicial es mayor a cero.
+ * Endpoint: POST /v1/bodega-transito/create-bodega-con-producto
+ */
+export const crearBodegaConProductoService = async (
+    data: ICreateBodegaConProductoRequest
+): Promise<IBodegaTransitoItem> => {
+    try {
+        const response = await api.post<IBodegaTransitoItem>('/bodega-transito/create-bodega-con-producto', data);
+        return response.data;
+    } catch (error: any) {
+        if (error.response?.status === 409) {
+            throw new Error(error.response.data?.message || 'El nombre o código del producto ya está en uso');
+        }
+        throw new Error(error.response?.data?.message || 'Error al crear producto en bodega');
+    }
+};
+
 export interface IBodegaStockSyncWarning {
     desync: true;
     warning: string;

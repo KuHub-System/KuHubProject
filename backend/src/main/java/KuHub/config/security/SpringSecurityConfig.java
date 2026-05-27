@@ -373,7 +373,14 @@ public class SpringSecurityConfig {
                         // ========================================
 
                         .requestMatchers(HttpMethod.GET, "/api/v*/bodega-transito/**").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/api/v*/bodega-transito/**").permitAll()
+                        .requestMatchers(HttpMethod.POST,
+                                "/api/v*/bodega-transito/paged-bodega",
+                                "/api/v*/bodega-transito/search-bodega",
+                                "/api/v*/bodega-transito/search-by-cod-producto",
+                                "/api/v*/bodega-transito/massive-warehouse-listing"
+                        ).permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/v*/bodega-transito/**")
+                        .authenticated() // Creación: permiso granular verificado dinámicamente en BodegaTransitoController
 
                         .requestMatchers(HttpMethod.PATCH, "/api/v*/bodega-transito/**")
                         .authenticated() // Permiso granular verificado dinámicamente en BodegaTransitoController
