@@ -618,6 +618,8 @@ const GestionProveedoresPage: React.FC = () => {
   const [opCambiandoEstadoId, setOpCambiandoEstadoId] = React.useState<number | null>(null);
   /** Modal de confirmación para CANCELAR una orden */
   const [opConfirmCancelar, setOpConfirmCancelar] = React.useState<IOrdenPedidoListItem | null>(null);
+  /** Rango de fechas para el listado de OPs: 30 = últimos 30 días, 90 = últimos 3 meses, null = todas */
+  const [opRango, setOpRango] = React.useState<number | null>(30);
 
   // ── Modal Orden Pedido (Tarea #13) ────────────────────────────────────
   const {
@@ -1846,14 +1848,14 @@ const GestionProveedoresPage: React.FC = () => {
     setOpCargando(true);
     setOpError(null);
     try {
-      const data = await listarOrdenesPedidoService();
+      const data = await listarOrdenesPedidoService(opRango ?? undefined);
       setOpLista(data);
     } catch (err: any) {
       setOpError(err.message || 'Error al cargar las órdenes');
     } finally {
       setOpCargando(false);
     }
-  }, []);
+  }, [opRango]);
 
   React.useEffect(() => {
     if (currentView === 'ordenes') {
@@ -1863,11 +1865,20 @@ const GestionProveedoresPage: React.FC = () => {
     }
   }, [currentView, cargarOrdenes]);
 
+  const LABEL_ESTADO_OP: Record<EstadoOrdenPedido, string> = {
+    PENDIENTE:  'Pendiente',
+    ENVIADA:    'Enviada',
+    CONFIRMADA: 'Confirmada',
+    RECIBIDA:   'Recibida',
+    CANCELADA:  'Cancelada',
+  };
+
   const handleCambiarEstadoOp = async (id: number, nuevoEstado: EstadoOrdenPedido) => {
     setOpCambiandoEstadoId(id);
     try {
       const actualizado = await cambiarEstadoOrdenPedidoService(id, nuevoEstado);
       setOpLista(prev => prev.map(op => op.idOrdenPedido === id ? actualizado : op));
+      showToast(`Orden #${id} actualizada a ${LABEL_ESTADO_OP[nuevoEstado]}`, 'success');
       // Si el detalle expandido es esta OP, colapsar (el estado cambió)
       if (opExpandidosIds.has(id)) {
         setOpExpandidosIds(prev => { const s = new Set(prev); s.delete(id); return s; });
@@ -1900,6 +1911,22 @@ const GestionProveedoresPage: React.FC = () => {
       }
     }
   };
+
+  const opDetallesRef = React.useRef(opDetalles);
+  React.useEffect(() => { opDetallesRef.current = opDetalles; }, [opDetalles]);
+
+  const cargarDetallesBulk = React.useCallback(async (ids: number[]) => {
+    const sinCargar = ids.filter(id => !opDetallesRef.current.has(id));
+    if (sinCargar.length === 0) return;
+    setOpCargandoDetalleIds(prev => { const s = new Set(prev); sinCargar.forEach(id => s.add(id)); return s; });
+    const resultados = await Promise.allSettled(sinCargar.map(id => obtenerOrdenPedidoDetalleService(id)));
+    setOpDetalles(prev => {
+      const m = new Map(prev);
+      resultados.forEach((res, i) => { if (res.status === 'fulfilled') m.set(sinCargar[i], res.value); });
+      return m;
+    });
+    setOpCargandoDetalleIds(prev => { const s = new Set(prev); sinCargar.forEach(id => s.delete(id)); return s; });
+  }, []);
 
   // ── Render ────────────────────────────────────────────────────────────────
 
@@ -1942,6 +1969,9 @@ const GestionProveedoresPage: React.FC = () => {
             onRecargar={cargarOrdenes}
             onCambiarEstado={handleCambiarEstadoOp}
             onConfirmCancelar={setOpConfirmCancelar}
+            rango={opRango}
+            onRangoChange={setOpRango}
+            onCargarDetallesBulk={cargarDetallesBulk}
           />
 
           {/* ── Modal confirmación Cancelar Orden ── */}
@@ -5302,7 +5332,8 @@ interface OrdenPedidoModalProps {
   isGenerandoOrdenes: boolean;
 }
 
-const chipOrdenPedido = (cantidad: number) => {
+const chipOrdenPedido = (cantidad: number, canceladas: number) => {
+  if (cantidad === 0 && canceladas > 0) return <Chip color="warning" size="sm" variant="flat">Existe un registro cancelado, realizar nuevo</Chip>;
   if (cantidad === 0) return <Chip color="default" size="sm" variant="flat">Sin OP</Chip>;
   if (cantidad === 1) return <Chip color="success" size="sm" variant="flat">OP Generada</Chip>;
   return <Chip color="warning" size="sm" variant="flat">Ya existe un registro para este pedido</Chip>;
@@ -5545,7 +5576,7 @@ const OrdenPedidoModal: React.FC<OrdenPedidoModalProps> = ({
                                     <Chip color="primary" size="sm" variant="flat">{p.estadoPedido}</Chip>
                                   </td>
                                   <td className="py-2 px-3 text-center">
-                                    {chipOrdenPedido(p.cantidadOrdenPedido)}
+                                    {chipOrdenPedido(p.cantidadOrdenPedido, p.cantidadOrdenCanceladas)}
                                   </td>
                                 </tr>
                               ))}
@@ -6198,10 +6229,124 @@ const TRANSICIONES_OP: Record<EstadoOrdenPedido, Array<{ estado: EstadoOrdenPedi
   PENDIENTE:  [{ estado: 'ENVIADA',    label: 'Marcar Enviada',    icon: 'lucide:send',         color: 'primary'   }],
   ENVIADA:    [{ estado: 'CONFIRMADA', label: 'Confirmar',         icon: 'lucide:check-circle', color: 'success'   },
                { estado: 'PENDIENTE',  label: 'Revertir a Pendiente', icon: 'lucide:undo-2',    color: 'warning'   }],
-  CONFIRMADA: [{ estado: 'RECIBIDA',   label: 'Marcar Recibida',   icon: 'lucide:package-check', color: 'secondary' },
-               { estado: 'ENVIADA',    label: 'Revertir a Enviada', icon: 'lucide:undo-2',     color: 'warning'   }],
+  CONFIRMADA: [{ estado: 'ENVIADA',    label: 'Revertir a Enviada', icon: 'lucide:undo-2',     color: 'warning'   }],
   RECIBIDA:   [],
   CANCELADA:  [{ estado: 'PENDIENTE',  label: 'Reactivar',         icon: 'lucide:refresh-cw',  color: 'warning'   }],
+};
+
+// ── Helpers de fecha real para agrupación por entrega ────────────────────────
+
+const getLunesDe = (fechaISO: string): string => {
+  const [y, m, d] = fechaISO.split('-').map(Number);
+  const dow = new Date(y, m - 1, d).getDay(); // 0=Dom,1=Lun,...,6=Sáb
+  const diff = dow === 0 ? -6 : 1 - dow;
+  const lunes = new Date(y, m - 1, d + diff);
+  return `${lunes.getFullYear()}-${String(lunes.getMonth()+1).padStart(2,'0')}-${String(lunes.getDate()).padStart(2,'0')}`;
+};
+
+const getDomingoDe = (lunesISO: string): string => {
+  const [y, m, d] = lunesISO.split('-').map(Number);
+  const dom = new Date(y, m - 1, d + 6);
+  return `${dom.getFullYear()}-${String(dom.getMonth()+1).padStart(2,'0')}-${String(dom.getDate()).padStart(2,'0')}`;
+};
+
+const NOM_DIA_ES = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+const getNombreDia = (fechaISO: string): string => {
+  const [y, m, d] = fechaISO.split('-').map(Number);
+  return NOM_DIA_ES[new Date(y, m - 1, d).getDay()];
+};
+
+type OpCelda = { op: IOrdenPedidoListItem; cantidad: number };
+type ProductoTablaFila = { idProducto: number; nombre: string; abrev: string; porFecha: Map<string, OpCelda[]> };
+type ProveedorTablaItem = {
+  idProveedor: number; nombreDistribuidora: string; nombreProveedor: string;
+  fechas: string[]; semanasDeFechas: Map<string, string>; productos: ProductoTablaFila[];
+};
+
+// ── Exportación Excel de orden de pedido por proveedor (replica cabecera del modelo) ──
+const generarExcelOrdenPedidoProveedor = (prov: ProveedorTablaItem, lunesSeleccionado: string): void => {
+  const fechasSemana = prov.fechas.filter(f => prov.semanasDeFechas.get(f) === lunesSeleccionado);
+  if (fechasSemana.length === 0) return;
+  const domingo = getDomingoDe(lunesSeleccionado);
+
+  const fmtCorta = (iso: string) => {
+    const [y, m, d] = iso.split('-').map(Number);
+    return `${String(d).padStart(2, '0')}/${String(m).padStart(2, '0')}/${y}`;
+  };
+  const fmtArch = (iso: string) => {
+    const [, m, d] = iso.split('-').map(Number);
+    return `${String(d).padStart(2, '0')}-${String(m).padStart(2, '0')}`;
+  };
+
+  // Columnas (0-based): 0=A margen, 1=B label/producto, 2=C valor/U/M, 3..=días
+  const N = fechasSemana.length;
+  const COL_B = 1, COL_C = 2, COL_D = 3;
+  const lastCol = COL_D + N - 1;
+  const enc = (r: number, c: number) => XLSXStyle.utils.encode_cell({ r, c });
+
+  const sLabelBold = { font: { bold: true, sz: 11 }, border: { top: { style: 'medium' as const }, bottom: { style: 'medium' as const }, left: { style: 'medium' as const } } };
+  const sValue = { font: { sz: 11 }, alignment: { horizontal: 'center' as const }, border: { top: { style: 'thin' as const }, bottom: { style: 'thin' as const }, left: { style: 'thin' as const }, right: { style: 'thin' as const } } };
+  const sYellowLabel = { font: { bold: true, sz: 11 }, fill: { fgColor: { rgb: 'FFFF00' } }, border: { top: { style: 'medium' as const }, bottom: { style: 'medium' as const }, left: { style: 'medium' as const } } };
+  const sTableHeader = { font: { bold: true, sz: 11 }, fill: { fgColor: { rgb: 'FFC000' } }, alignment: { horizontal: 'center' as const }, border: { bottom: { style: 'medium' as const }, left: { style: 'medium' as const }, right: { style: 'medium' as const } } };
+  const sProducto = { font: { sz: 11 }, alignment: { horizontal: 'left' as const }, border: { top: { style: 'thin' as const }, bottom: { style: 'thin' as const }, left: { style: 'thin' as const }, right: { style: 'thin' as const } } };
+  const sUM = { font: { sz: 10 }, alignment: { horizontal: 'center' as const }, border: { top: { style: 'thin' as const }, bottom: { style: 'thin' as const }, left: { style: 'thin' as const }, right: { style: 'thin' as const } } };
+  const sCantidad = { font: { bold: true, sz: 11 }, alignment: { horizontal: 'center' as const }, border: { top: { style: 'thin' as const }, bottom: { style: 'thin' as const }, left: { style: 'thin' as const }, right: { style: 'thin' as const } } };
+
+  const ws: Record<string, unknown> = {};
+
+  // Cabecera — replica estructura exacta del modelo de proveedor
+  ws[enc(1, COL_B)] = { v: 'NOMBRE EMPRESA', t: 's', s: sLabelBold };
+  ws[enc(1, COL_C)] = { v: prov.nombreDistribuidora, t: 's', s: sValue };
+
+  ws[enc(2, COL_B)] = { v: 'DIRECCIÓN', t: 's', s: sLabelBold };
+  ws[enc(2, COL_C)] = { v: '', t: 's', s: sValue };
+
+  ws[enc(3, COL_B)] = { v: 'SEMANA:', t: 's', s: sYellowLabel };
+  ws[enc(3, COL_C)] = { v: `${fmtCorta(lunesSeleccionado)} al ${fmtCorta(domingo)}`, t: 's', s: sValue };
+
+  ws[enc(4, COL_B)] = { v: 'TELÉFONO', t: 's', s: sLabelBold };
+  ws[enc(4, COL_C)] = { v: '', t: 's', s: sValue };
+  if (lastCol >= 5) {
+    ws[enc(4, 4)] = { v: 'PERSONA DE CONTACTO', t: 's', s: { font: { bold: true, sz: 11 }, border: { top: { style: 'thin' as const }, bottom: { style: 'thin' as const }, left: { style: 'thin' as const }, right: { style: 'thin' as const } } } };
+    ws[enc(4, 5)] = { v: prov.nombreProveedor !== prov.nombreDistribuidora ? prov.nombreProveedor : '', t: 's', s: sValue };
+  }
+
+  // Cabeceras de tabla (fila 7 = r=6)
+  ws[enc(6, COL_B)] = { v: 'PRODUCTO', t: 's', s: sTableHeader };
+  ws[enc(6, COL_C)] = { v: 'U/M', t: 's', s: sTableHeader };
+  fechasSemana.forEach((fecha, i) => {
+    const [y, m, d] = fecha.split('-').map(Number);
+    ws[enc(6, COL_D + i)] = { v: `${NOM_DIA_ES[new Date(y, m - 1, d).getDay()]} ${String(d).padStart(2, '0')}/${String(m).padStart(2, '0')}`, t: 's', s: sTableHeader };
+  });
+
+  // Filas de datos
+  prov.productos.forEach((prod, pi) => {
+    const r = 7 + pi;
+    ws[enc(r, COL_B)] = { v: prod.nombre, t: 's', s: sProducto };
+    ws[enc(r, COL_C)] = { v: prod.abrev, t: 's', s: sUM };
+    fechasSemana.forEach((fecha, i) => {
+      const items = prod.porFecha.get(fecha);
+      const total = items ? items.reduce((s, it) => s + it.cantidad, 0) : null;
+      ws[enc(r, COL_D + i)] = total !== null ? { v: total, t: 'n', s: sCantidad } : { v: '', t: 's', s: sUM };
+    });
+  });
+
+  // Merges de cabecera
+  const merges: { s: { r: number; c: number }; e: { r: number; c: number } }[] = [
+    { s: { r: 1, c: COL_C }, e: { r: 1, c: lastCol } },
+    { s: { r: 2, c: COL_C }, e: { r: 2, c: lastCol } },
+    { s: { r: 3, c: COL_C }, e: { r: 3, c: lastCol } },
+    { s: { r: 4, c: COL_C }, e: { r: 4, c: 3 } },
+  ];
+  if (lastCol >= 5) merges.push({ s: { r: 4, c: 5 }, e: { r: 4, c: lastCol } });
+  ws['!merges'] = merges;
+
+  ws['!cols'] = [{ wch: 4 }, { wch: 35 }, { wch: 8 }, ...fechasSemana.map(() => ({ wch: 14 }))];
+  ws['!ref'] = XLSXStyle.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: 7 + prov.productos.length - 1, c: lastCol } });
+
+  const wb = XLSXStyle.utils.book_new();
+  XLSXStyle.utils.book_append_sheet(wb, ws, 'Pedido');
+  XLSXStyle.writeFile(wb, `${prov.nombreDistribuidora} Semana ${fmtArch(lunesSeleccionado)} al ${fmtArch(domingo)}.xlsx`);
 };
 
 interface OrdenesVistaProps {
@@ -6216,13 +6361,21 @@ interface OrdenesVistaProps {
   onRecargar: () => void;
   onCambiarEstado: (id: number, nuevoEstado: EstadoOrdenPedido) => void;
   onConfirmCancelar: (op: IOrdenPedidoListItem) => void;
+  rango: number | null;
+  onRangoChange: (r: number | null) => void;
+  onCargarDetallesBulk: (ids: number[]) => Promise<void>;
 }
 
 const OrdenesVista: React.FC<OrdenesVistaProps> = ({
   lista, cargando, error, expandidosIds, detalles, cargandoDetalleIds,
   cambiandoEstadoId, onToggle, onRecargar, onCambiarEstado, onConfirmCancelar,
+  rango, onRangoChange, onCargarDetallesBulk,
 }) => {
   const [filtroEstado, setFiltroEstado] = React.useState<EstadoOrdenPedido>('PENDIENTE');
+  const [agruparPorPedido, setAgruparPorPedido] = React.useState(false);
+  const [agruparPorFechaReal, setAgruparPorFechaReal] = React.useState(false);
+  const [modoUnificada, setModoUnificada] = React.useState(false);
+  const [weekPickerOpenId, setWeekPickerOpenId] = React.useState<number | null>(null);
 
   const fmtFecha = (iso: string) => {
     const [y, m, d] = iso.split('-');
@@ -6331,6 +6484,185 @@ const OrdenesVista: React.FC<OrdenesVistaProps> = ({
     return copia;
   }, [listaFiltrada, criteriosOrden]);
 
+  const listaAgrupada = React.useMemo(() => {
+    if (!agruparPorPedido) return null;
+    const grupos = new Map<number, { fechaInicio: string; fechaFin: string; ops: IOrdenPedidoListItem[] }>();
+    for (const op of listaOrdenada) {
+      if (!grupos.has(op.idPedido)) {
+        grupos.set(op.idPedido, { fechaInicio: op.fechaInicioPedido, fechaFin: op.fechaFinPedido, ops: [] });
+      }
+      grupos.get(op.idPedido)!.ops.push(op);
+    }
+    return grupos;
+  }, [listaOrdenada, agruparPorPedido]);
+
+  // ── Agrupación por fecha real de entrega (tabla columnar) ────────────────
+
+  const agrupadoFechaReal = React.useMemo((): ProveedorTablaItem[] | null => {
+    if (!agruparPorFechaReal) return null;
+    const grupos = new Map<number, {
+      idProveedor: number; nombreDistribuidora: string; nombreProveedor: string;
+      todasLasFechas: Set<string>; productos: Map<number, ProductoTablaFila>;
+    }>();
+    for (const op of listaOrdenada) {
+      const det = detalles.get(op.idOrdenPedido);
+      if (!det) continue;
+      if (!grupos.has(op.idProveedor)) {
+        grupos.set(op.idProveedor, {
+          idProveedor: op.idProveedor, nombreDistribuidora: op.nombreDistribuidora,
+          nombreProveedor: op.nombreProveedor, todasLasFechas: new Set(), productos: new Map(),
+        });
+      }
+      const grupo = grupos.get(op.idProveedor)!;
+      for (const d of det.detalles) {
+        grupo.todasLasFechas.add(d.fechaEntrega);
+        if (!grupo.productos.has(d.idProducto)) {
+          grupo.productos.set(d.idProducto, { idProducto: d.idProducto, nombre: d.nombreProducto, abrev: d.abreviatura, porFecha: new Map() });
+        }
+        const prod = grupo.productos.get(d.idProducto)!;
+        if (!prod.porFecha.has(d.fechaEntrega)) prod.porFecha.set(d.fechaEntrega, []);
+        prod.porFecha.get(d.fechaEntrega)!.push({ op, cantidad: d.cantidadSolicitada });
+      }
+    }
+    return [...grupos.values()]
+      .sort((a, b) => a.nombreDistribuidora.localeCompare(b.nombreDistribuidora))
+      .map(g => ({
+        idProveedor: g.idProveedor, nombreDistribuidora: g.nombreDistribuidora, nombreProveedor: g.nombreProveedor,
+        fechas: [...g.todasLasFechas].sort(),
+        semanasDeFechas: new Map([...g.todasLasFechas].map(f => [f, getLunesDe(f)])),
+        productos: [...g.productos.values()].sort((a, b) => a.nombre.localeCompare(b.nombre)),
+      }));
+  }, [agruparPorFechaReal, listaOrdenada, detalles]);
+
+  React.useEffect(() => {
+    if (!agruparPorFechaReal || listaOrdenada.length === 0) return;
+    onCargarDetallesBulk(listaOrdenada.map(op => op.idOrdenPedido));
+  }, [agruparPorFechaReal, listaOrdenada, onCargarDetallesBulk]);
+
+  // Filas detallada: una fila por (producto × OP), con el ID de OP en la columna izquierda
+  const detalladaTabla = React.useMemo(() => {
+    if (!agrupadoFechaReal || modoUnificada) return null;
+    return agrupadoFechaReal.map(prov => {
+      const rowMap = new Map<string, { idOP: number; idProducto: number; nombre: string; abrev: string; porFecha: Map<string, number> }>();
+      for (const prod of prov.productos) {
+        for (const [fecha, items] of prod.porFecha) {
+          for (const { op, cantidad } of items) {
+            const key = `${prod.idProducto}-${op.idOrdenPedido}`;
+            if (!rowMap.has(key)) rowMap.set(key, { idOP: op.idOrdenPedido, idProducto: prod.idProducto, nombre: prod.nombre, abrev: prod.abrev, porFecha: new Map() });
+            rowMap.get(key)!.porFecha.set(fecha, cantidad);
+          }
+        }
+      }
+      return {
+        idProveedor: prov.idProveedor,
+        rows: [...rowMap.values()].sort((a, b) => {
+          const n = a.nombre.localeCompare(b.nombre);
+          return n !== 0 ? n : a.idOP - b.idOP;
+        }),
+      };
+    });
+  }, [agrupadoFechaReal, modoUnificada]);
+
+  const renderOpRow = (op: IOrdenPedidoListItem, isFirst: boolean) => (
+    <div key={op.idOrdenPedido} className={!isFirst ? 'border-t border-default-100 dark:border-default-50' : ''}>
+      {/* Fila resumen */}
+      <div
+        className={`flex flex-col sm:flex-row sm:items-center gap-2 px-4 py-3 cursor-pointer transition-colors hover:bg-default-50 dark:hover:bg-default-100/20 ${
+          expandidosIds.has(op.idOrdenPedido) ? 'bg-default-50 dark:bg-default-100/20' : ''
+        }`}
+        onClick={() => onToggle(op.idOrdenPedido)}
+      >
+        <div className="flex items-center gap-3 flex-1 min-w-0">
+          <div className="flex items-center gap-1 shrink-0">
+            <Icon
+              icon={expandidosIds.has(op.idOrdenPedido) ? 'lucide:chevron-down' : 'lucide:chevron-right'}
+              width={16}
+              className="text-default-400"
+            />
+            <span className="text-xs font-bold text-secondary dark:text-foreground">OP #{op.idOrdenPedido}</span>
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="w-[200px] truncate font-semibold text-sm text-secondary dark:text-foreground">
+              {op.nombreDistribuidora}
+            </div>
+            <p className="text-xs text-default-400">{op.nombreProveedor}</p>
+          </div>
+        </div>
+        <div className="flex flex-wrap items-center gap-3 text-xs text-default-500 shrink-0">
+          <span className="flex items-center gap-1">
+            <Icon icon="lucide:calendar-range" width={12} />
+            {fmtFecha(op.fechaInicioPedido)} – {fmtFecha(op.fechaFinPedido)}
+          </span>
+          <span className="flex items-center gap-1">
+            <Icon icon="lucide:clock" width={12} />
+            {fmtDatetime(op.fechaCreacion)}
+          </span>
+          <Chip size="sm" color={cfg.chipColor} variant="flat" className="text-[10px]">
+            {op.cantidadDetalles} detalle{op.cantidadDetalles !== 1 ? 's' : ''}
+          </Chip>
+        </div>
+        {/* Botones de acción de estado */}
+        <div
+          className="flex items-center gap-1.5 shrink-0"
+          onClick={e => e.stopPropagation()}
+        >
+          {TRANSICIONES_OP[op.estadoOrdenPedido].map(t => (
+            <Tooltip key={t.estado} content={t.label} placement="top">
+              <Button
+                isIconOnly
+                size="sm"
+                color={t.color}
+                variant="flat"
+                isLoading={cambiandoEstadoId === op.idOrdenPedido}
+                isDisabled={cambiandoEstadoId !== null}
+                onPress={() => onCambiarEstado(op.idOrdenPedido, t.estado)}
+              >
+                <Icon icon={t.icon} width={14} />
+              </Button>
+            </Tooltip>
+          ))}
+          {(['PENDIENTE', 'ENVIADA', 'CONFIRMADA'] as EstadoOrdenPedido[]).includes(op.estadoOrdenPedido) && (
+            <Tooltip content="Cancelar orden" placement="top">
+              <Button
+                isIconOnly
+                size="sm"
+                color="danger"
+                variant="flat"
+                isDisabled={cambiandoEstadoId !== null}
+                onPress={() => onConfirmCancelar(op)}
+              >
+                <Icon icon="lucide:x-circle" width={14} />
+              </Button>
+            </Tooltip>
+          )}
+        </div>
+      </div>
+
+      {/* Panel detalle expandido */}
+      <AnimatePresence>
+        {expandidosIds.has(op.idOrdenPedido) && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.25 }}
+            className="overflow-hidden"
+          >
+            <div className="px-4 pb-4 pt-1 bg-default-50 dark:bg-default-100/20 border-t border-default-100">
+              {cargandoDetalleIds.has(op.idOrdenPedido) ? (
+                <div className="flex justify-center py-8">
+                  <Spinner size="sm" color="primary" label="Cargando detalle..." />
+                </div>
+              ) : detalles.get(op.idOrdenPedido) ? (
+                <OrdenDetalleTabla detalle={detalles.get(op.idOrdenPedido)!} />
+              ) : null}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+
   if (cargando) {
     return (
       <div className="flex justify-center items-center py-20">
@@ -6378,15 +6710,35 @@ const OrdenesVista: React.FC<OrdenesVistaProps> = ({
               </button>
             );
           })}
-          <Button
-            size="sm"
-            variant="flat"
-            className="ml-auto"
-            startContent={<Icon icon="lucide:refresh-cw" width={13} />}
-            onPress={onRecargar}
-          >
-            Actualizar
-          </Button>
+          <div className="ml-auto flex items-center gap-2">
+            <Select
+              aria-label="Rango de fechas"
+              size="sm"
+              variant="flat"
+              selectedKeys={new Set([rango != null ? String(rango) : 'todas'])}
+              onSelectionChange={(keys) => {
+                const v = Array.from(keys as Set<string>)[0];
+                onRangoChange(v === 'todas' ? null : Number(v));
+              }}
+              className="w-36"
+              classNames={{
+                trigger: "bg-default-100 border-transparent h-8 min-h-8",
+                value: "text-xs font-medium text-default-700 dark:text-default-300",
+              }}
+            >
+              <SelectItem key="30" textValue="Últimos 30 días">Últimos 30 días</SelectItem>
+              <SelectItem key="90" textValue="Últimos 3 meses">Últimos 3 meses</SelectItem>
+              <SelectItem key="todas" textValue="Todas">Todas</SelectItem>
+            </Select>
+            <Button
+              size="sm"
+              variant="flat"
+              startContent={<Icon icon="lucide:refresh-cw" width={13} />}
+              onPress={onRecargar}
+            >
+              Actualizar
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -6396,6 +6748,31 @@ const OrdenesVista: React.FC<OrdenesVistaProps> = ({
           <Icon icon="lucide:arrow-up-down" width={14} />
           <span>Ordenar por:</span>
         </div>
+        <div className="flex items-center gap-2">
+          <Tooltip content={agruparPorPedido ? 'Quitar agrupación por pedido' : 'Agrupar por pedido'} placement="top">
+            <Button
+              size="sm"
+              variant={agruparPorPedido ? 'solid' : 'flat'}
+              color={agruparPorPedido ? 'primary' : 'default'}
+              isIconOnly
+              onPress={() => { setAgruparPorPedido(v => !v); setAgruparPorFechaReal(false); }}
+              className="h-8 w-8 min-w-0"
+            >
+              <Icon icon="lucide:layers" width={14} />
+            </Button>
+          </Tooltip>
+          <Tooltip content={agruparPorFechaReal ? 'Quitar agrupación por fecha de entrega' : 'Agrupar por fecha real de entrega'} placement="top">
+            <Button
+              size="sm"
+              variant={agruparPorFechaReal ? 'solid' : 'flat'}
+              color={agruparPorFechaReal ? 'secondary' : 'default'}
+              isIconOnly
+              onPress={() => { setAgruparPorFechaReal(v => !v); setAgruparPorPedido(false); setModoUnificada(false); }}
+              className="h-8 w-8 min-w-0"
+            >
+              <Icon icon="lucide:calendar-days" width={14} />
+            </Button>
+          </Tooltip>
         <Select
           aria-label="Criterio de ordenamiento"
           size="sm"
@@ -6429,6 +6806,7 @@ const OrdenesVista: React.FC<OrdenesVistaProps> = ({
             Fecha de Creación
           </SelectItem>
         </Select>
+        </div>
       </div>
 
       <CardBody className="p-0">
@@ -6446,107 +6824,233 @@ const OrdenesVista: React.FC<OrdenesVistaProps> = ({
               {filtroEstado === 'CANCELADA'  && 'Las órdenes canceladas aparecerán aquí.'}
             </p>
           </div>
-        ) : (
+        ) : agruparPorFechaReal ? (
           <div>
-            {listaOrdenada.map((op, idx) => (
-              <div key={op.idOrdenPedido} className={idx > 0 ? 'border-t border-default-100 dark:border-default-50' : ''}>
-                {/* Fila resumen */}
-                <div
-                  className={`flex flex-col sm:flex-row sm:items-center gap-2 px-4 py-3 cursor-pointer transition-colors hover:bg-default-50 dark:hover:bg-default-100/20 ${
-                    expandidosIds.has(op.idOrdenPedido) ? 'bg-default-50 dark:bg-default-100/20' : ''
-                  }`}
-                  onClick={() => onToggle(op.idOrdenPedido)}
-                >
-                  <div className="flex items-center gap-3 flex-1 min-w-0">
-                    <div className="flex items-center gap-1 shrink-0">
-                      <Icon
-                        icon={expandidosIds.has(op.idOrdenPedido) ? 'lucide:chevron-down' : 'lucide:chevron-right'}
-                        width={16}
-                        className="text-default-400"
-                      />
-                      <span className="text-xs font-bold text-secondary dark:text-foreground">OP #{op.idOrdenPedido}</span>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="w-[200px] truncate font-semibold text-sm text-secondary dark:text-foreground">
-                        {op.nombreDistribuidora}
-                      </div>
-                      <p className="text-xs text-default-400">{op.nombreProveedor}</p>
-                    </div>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-3 text-xs text-default-500 shrink-0">
-                    <span className="flex items-center gap-1">
-                      <Icon icon="lucide:calendar-range" width={12} />
-                      {fmtFecha(op.fechaInicioPedido)} – {fmtFecha(op.fechaFinPedido)}
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <Icon icon="lucide:clock" width={12} />
-                      {fmtDatetime(op.fechaCreacion)}
-                    </span>
-                    <Chip size="sm" color={cfg.chipColor} variant="flat" className="text-[10px]">
-                      {op.cantidadDetalles} detalle{op.cantidadDetalles !== 1 ? 's' : ''}
-                    </Chip>
-                  </div>
-                  {/* Botones de acción de estado */}
-                  <div
-                    className="flex items-center gap-1.5 shrink-0"
-                    onClick={e => e.stopPropagation()}
-                  >
-                    {TRANSICIONES_OP[op.estadoOrdenPedido].map(t => (
-                      <Tooltip key={t.estado} content={t.label} placement="top">
-                        <Button
-                          isIconOnly
-                          size="sm"
-                          color={t.color}
-                          variant="flat"
-                          isLoading={cambiandoEstadoId === op.idOrdenPedido}
-                          isDisabled={cambiandoEstadoId !== null}
-                          onPress={() => onCambiarEstado(op.idOrdenPedido, t.estado)}
-                        >
-                          <Icon icon={t.icon} width={14} />
-                        </Button>
-                      </Tooltip>
-                    ))}
-                    {(['PENDIENTE', 'ENVIADA', 'CONFIRMADA'] as EstadoOrdenPedido[]).includes(op.estadoOrdenPedido) && (
-                      <Tooltip content="Cancelar orden" placement="top">
-                        <Button
-                          isIconOnly
-                          size="sm"
-                          color="danger"
-                          variant="flat"
-                          isDisabled={cambiandoEstadoId !== null}
-                          onPress={() => onConfirmCancelar(op)}
-                        >
-                          <Icon icon="lucide:x-circle" width={14} />
-                        </Button>
-                      </Tooltip>
-                    )}
-                  </div>
+            {/* Cargando detalles en bulk */}
+            {listaOrdenada.some(op => cargandoDetalleIds.has(op.idOrdenPedido)) && (
+              <div className="flex items-center gap-2 px-4 py-2 text-xs text-primary-600 dark:text-primary-400 bg-primary-50/60 dark:bg-primary-900/10 border-b border-primary-100">
+                <Spinner size="sm" color="primary" />
+                <span>Cargando datos de entrega de {listaOrdenada.filter(op => cargandoDetalleIds.has(op.idOrdenPedido)).length} orden{listaOrdenada.filter(op => cargandoDetalleIds.has(op.idOrdenPedido)).length !== 1 ? 'es' : ''}...</span>
+              </div>
+            )}
+            {/* Sin datos todavía */}
+            {agrupadoFechaReal !== null && agrupadoFechaReal.length === 0 && !listaOrdenada.some(op => cargandoDetalleIds.has(op.idOrdenPedido)) && (
+              <div className="py-12 flex flex-col items-center gap-2 text-default-400">
+                <Icon icon="lucide:calendar-x" width={36} className="opacity-30" />
+                <p className="text-sm">Sin datos de entrega disponibles para estas órdenes</p>
+              </div>
+            )}
+            {/* Barra toggle vista */}
+            {agrupadoFechaReal !== null && agrupadoFechaReal.length > 0 && (
+              <div className="px-4 py-2 bg-default-50 dark:bg-default-50/30 border-b border-default-100 flex items-center gap-3 text-xs">
+                <span className="text-default-500 font-medium">Vista:</span>
+                <div className="flex rounded-lg overflow-hidden border border-default-200">
+                  <button onClick={() => setModoUnificada(false)} className={`px-3 py-1 text-xs font-medium transition-colors ${!modoUnificada ? 'bg-default-700 text-white dark:bg-default-200 dark:text-default-800' : 'bg-white dark:bg-default-100/30 text-default-500 hover:bg-default-100'}`}>Detallada</button>
+                  <button onClick={() => setModoUnificada(true)} className={`px-3 py-1 text-xs font-medium transition-colors border-l border-default-200 ${modoUnificada ? 'bg-success-500 text-white' : 'bg-white dark:bg-default-100/30 text-default-500 hover:bg-default-100'}`}>Unificada</button>
                 </div>
-
-                {/* Panel detalle expandido */}
-                <AnimatePresence>
-                  {expandidosIds.has(op.idOrdenPedido) && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: 'auto', opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.25 }}
-                      className="overflow-hidden"
-                    >
-                      <div className="px-4 pb-4 pt-1 bg-default-50 dark:bg-default-100/20 border-t border-default-100">
-                        {cargandoDetalleIds.has(op.idOrdenPedido) ? (
-                          <div className="flex justify-center py-8">
-                            <Spinner size="sm" color="primary" label="Cargando detalle..." />
+                <span className="text-default-400 ml-auto text-[11px]">{(agrupadoFechaReal ?? []).length} proveedor{(agrupadoFechaReal ?? []).length !== 1 ? 'es' : ''}</span>
+              </div>
+            )}
+            {/* Tablas columnares — una por proveedor con borde grueso de separación */}
+            <div className="p-4 space-y-5">
+              {(agrupadoFechaReal ?? []).map(prov => {
+                const semanaGrupos = new Map<string, string[]>();
+                for (const f of prov.fechas) {
+                  const lunes = prov.semanasDeFechas.get(f)!;
+                  if (!semanaGrupos.has(lunes)) semanaGrupos.set(lunes, []);
+                  semanaGrupos.get(lunes)!.push(f);
+                }
+                const semanasOrdenadas = [...semanaGrupos.entries()].sort(([a], [b]) => a.localeCompare(b));
+                const multiSemana = semanasOrdenadas.length > 1;
+                return (
+                  <div key={prov.idProveedor} className="rounded-xl overflow-hidden border-2 border-secondary-400 dark:border-secondary-500">
+                    {/* Header sólido — mismo color que el borde para contorno uniforme */}
+                    <div className="px-4 py-2.5 bg-secondary-400 dark:bg-secondary-500 flex items-center gap-2">
+                      <Icon icon="lucide:truck" width={15} className="text-white shrink-0" />
+                      <span className="font-bold text-sm text-white">{prov.nombreDistribuidora}</span>
+                      {prov.nombreProveedor !== prov.nombreDistribuidora && (
+                        <span className="text-xs text-secondary-100">{prov.nombreProveedor}</span>
+                      )}
+                      <div className="ml-auto flex items-center gap-2">
+                        <span className="text-[11px] text-secondary-100">
+                          {prov.fechas.length} día{prov.fechas.length !== 1 ? 's' : ''} · {!modoUnificada ? (detalladaTabla?.find(d => d.idProveedor === prov.idProveedor)?.rows.length ?? 0) : prov.productos.length} fila{(!modoUnificada ? (detalladaTabla?.find(d => d.idProveedor === prov.idProveedor)?.rows.length ?? 0) : prov.productos.length) !== 1 ? 's' : ''}
+                        </span>
+                        {modoUnificada && (
+                          <div className="relative">
+                            <button
+                              onClick={() => {
+                                if (semanasOrdenadas.length === 1) {
+                                  generarExcelOrdenPedidoProveedor(prov, semanasOrdenadas[0][0]);
+                                } else {
+                                  setWeekPickerOpenId(prev => prev === prov.idProveedor ? null : prov.idProveedor);
+                                }
+                              }}
+                              className="flex items-center gap-1 px-2 py-0.5 rounded bg-white/20 hover:bg-white/35 text-white text-[11px] font-medium transition-colors"
+                              title="Descargar Excel de esta semana"
+                            >
+                              <Icon icon="lucide:download" width={12} />
+                              <span>Excel</span>
+                              {semanasOrdenadas.length > 1 && <Icon icon="lucide:chevron-down" width={10} />}
+                            </button>
+                            {weekPickerOpenId === prov.idProveedor && semanasOrdenadas.length > 1 && (
+                              <div className="absolute right-0 top-full mt-1 bg-white dark:bg-default-100 rounded-lg shadow-xl border border-default-200 z-30 overflow-hidden min-w-[210px]">
+                                <div className="px-3 py-1.5 text-[11px] font-semibold text-default-400 border-b border-default-100 uppercase tracking-wide">Elegir semana</div>
+                                {semanasOrdenadas.map(([lunes]) => (
+                                  <button
+                                    key={lunes}
+                                    onClick={() => {
+                                      generarExcelOrdenPedidoProveedor(prov, lunes);
+                                      setWeekPickerOpenId(null);
+                                    }}
+                                    className="w-full text-left px-3 py-2 text-xs text-default-700 dark:text-default-200 hover:bg-secondary-50 dark:hover:bg-secondary-900/20 transition-colors"
+                                  >
+                                    Sem. {fmtFecha(lunes)} – {fmtFecha(getDomingoDe(lunes))}
+                                  </button>
+                                ))}
+                              </div>
+                            )}
                           </div>
-                        ) : detalles.get(op.idOrdenPedido) ? (
-                          <OrdenDetalleTabla detalle={detalles.get(op.idOrdenPedido)!} />
-                        ) : null}
+                        )}
                       </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+                    </div>
+                    {/* Tabla con scroll horizontal */}
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full text-xs border-collapse">
+                        <thead>
+                          {/* Fila de semanas — solo cuando hay más de una */}
+                          {multiSemana && (
+                            <tr>
+                              <th rowSpan={2} className="text-left py-2 px-3 bg-secondary-50 dark:bg-secondary-900/30 sticky left-0 z-10 border-r border-secondary-300 dark:border-secondary-600 min-w-[170px] font-medium whitespace-nowrap">Producto</th>
+                              <th rowSpan={2} className="text-center py-2 px-2 bg-secondary-50 dark:bg-secondary-900/30 sticky left-[170px] z-10 border-r border-secondary-300 dark:border-secondary-600 w-12 min-w-[48px] font-medium">U/M</th>
+                              {semanasOrdenadas.map(([lunes, fechasSem]) => (
+                                <th key={lunes} colSpan={fechasSem.length} className="text-center py-1 px-2 bg-default-50 dark:bg-default-50/20 border-l-2 border-secondary-400 dark:border-secondary-500 text-[11px] text-default-500 font-semibold whitespace-nowrap">
+                                  Sem. {fmtFecha(lunes)} – {fmtFecha(getDomingoDe(lunes))}
+                                </th>
+                              ))}
+                            </tr>
+                          )}
+                          {/* Fila de días */}
+                          <tr>
+                            {!multiSemana && (
+                              <>
+                                <th className="text-left py-2 px-3 bg-secondary-50 dark:bg-secondary-900/30 sticky left-0 z-10 border-r border-secondary-300 dark:border-secondary-600 min-w-[170px] font-medium whitespace-nowrap">Producto</th>
+                                <th className="text-center py-2 px-2 bg-secondary-50 dark:bg-secondary-900/30 sticky left-[170px] z-10 border-r border-secondary-300 dark:border-secondary-600 w-12 min-w-[48px] font-medium">U/M</th>
+                              </>
+                            )}
+                            {prov.fechas.map((fecha, idx) => {
+                              const lunesActual = prov.semanasDeFechas.get(fecha)!;
+                              const esNuevaSemana = idx > 0 && prov.semanasDeFechas.get(prov.fechas[idx - 1]) !== lunesActual;
+                              return (
+                                <th key={fecha} className={`text-center py-1.5 px-3 bg-warning-50 dark:bg-warning-900/20 font-semibold whitespace-nowrap text-warning-700 dark:text-warning-300 min-w-[90px] ${esNuevaSemana ? 'border-l-2 border-secondary-400 dark:border-secondary-500' : 'border-l border-default-200 dark:border-default-100/20'}`}>
+                                  <div>{getNombreDia(fecha).slice(0, 3)}</div>
+                                  <div className="font-normal text-[10px] text-warning-500">{fmtFecha(fecha).slice(0, 5)}</div>
+                                </th>
+                              );
+                            })}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {!modoUnificada ? (
+                            // ── Detallada: una fila por (producto × OP), ID a la izquierda del nombre ──
+                            (detalladaTabla?.find(d => d.idProveedor === prov.idProveedor)?.rows ?? []).map((row, rowIdx) => {
+                              const isOdd = rowIdx % 2 !== 0;
+                              const bgSticky = isOdd ? 'bg-secondary-50/80 dark:bg-secondary-900/20' : 'bg-white dark:bg-default-900';
+                              const bgRow   = isOdd ? 'bg-secondary-50/40 dark:bg-secondary-900/10' : '';
+                              return (
+                                <tr key={`${row.idProducto}-${row.idOP}`} className={`${bgRow} hover:bg-secondary-50/70 dark:hover:bg-secondary-900/20 transition-colors`}>
+                                  {/* OP ID + Nombre (sticky) */}
+                                  <td className={`py-2 px-3 sticky left-0 z-10 border-r border-secondary-200 dark:border-secondary-700 text-xs ${bgSticky}`}>
+                                    <div className="flex items-center gap-1.5 w-[146px]">
+                                      <span className="text-[10px] font-bold text-secondary-400 dark:text-secondary-400 shrink-0 tabular-nums">#{row.idOP}</span>
+                                      <Tooltip content={row.nombre} placement="right" color="default">
+                                        <div className="truncate font-medium text-default-700 dark:text-default-200">{row.nombre}</div>
+                                      </Tooltip>
+                                    </div>
+                                  </td>
+                                  {/* U/M (sticky) */}
+                                  <td className={`py-2 px-2 text-center text-default-500 text-[11px] sticky left-[170px] z-10 border-r border-secondary-200 dark:border-secondary-700 ${bgSticky}`}>
+                                    {row.abrev}
+                                  </td>
+                                  {/* Celdas por fecha — solo cantidad */}
+                                  {prov.fechas.map((fecha, idx) => {
+                                    const lunesActual = prov.semanasDeFechas.get(fecha)!;
+                                    const esNuevaSemana = idx > 0 && prov.semanasDeFechas.get(prov.fechas[idx - 1]) !== lunesActual;
+                                    const borde = esNuevaSemana ? 'border-l-2 border-secondary-400 dark:border-secondary-500' : 'border-l border-default-100 dark:border-default-100/20';
+                                    const cantidad = row.porFecha.get(fecha);
+                                    if (!cantidad) return <td key={fecha} className={`py-2 px-3 text-center text-default-300 text-xs ${borde}`}>—</td>;
+                                    return (
+                                      <td key={fecha} className={`py-2 px-3 text-center font-semibold text-default-700 dark:text-default-200 text-xs ${borde}`}>
+                                        {fmtN(cantidad)}
+                                      </td>
+                                    );
+                                  })}
+                                </tr>
+                              );
+                            })
+                          ) : (
+                            // ── Unificada: una fila por producto, suma de todas las OPs ──
+                            prov.productos.map((prod, rowIdx) => {
+                              const isOdd = rowIdx % 2 !== 0;
+                              const bgSticky = isOdd ? 'bg-success-50/70 dark:bg-success-900/15' : 'bg-white dark:bg-default-900';
+                              const bgRow   = isOdd ? 'bg-success-50/25 dark:bg-success-900/8' : '';
+                              return (
+                                <tr key={prod.idProducto} className={`${bgRow} hover:bg-success-50/50 dark:hover:bg-success-900/15 transition-colors`}>
+                                  {/* Nombre (sticky) — sin ID en unificada */}
+                                  <td className={`py-2 px-3 font-medium sticky left-0 z-10 border-r border-secondary-200 dark:border-secondary-700 text-xs ${bgSticky}`}>
+                                    <Tooltip content={prod.nombre} placement="right" color="default">
+                                      <div className="w-[146px] truncate">{prod.nombre}</div>
+                                    </Tooltip>
+                                  </td>
+                                  {/* U/M (sticky) */}
+                                  <td className={`py-2 px-2 text-center text-default-500 text-[11px] sticky left-[170px] z-10 border-r border-secondary-200 dark:border-secondary-700 ${bgSticky}`}>
+                                    {prod.abrev}
+                                  </td>
+                                  {/* Celdas por fecha — total sumado */}
+                                  {prov.fechas.map((fecha, idx) => {
+                                    const lunesActual = prov.semanasDeFechas.get(fecha)!;
+                                    const esNuevaSemana = idx > 0 && prov.semanasDeFechas.get(prov.fechas[idx - 1]) !== lunesActual;
+                                    const borde = esNuevaSemana ? 'border-l-2 border-secondary-400 dark:border-secondary-500' : 'border-l border-default-100 dark:border-default-100/20';
+                                    const items = prod.porFecha.get(fecha);
+                                    if (!items || items.length === 0) return <td key={fecha} className={`py-2 px-3 text-center text-default-300 text-xs ${borde}`}>—</td>;
+                                    const total = items.reduce((s, it) => s + it.cantidad, 0);
+                                    return (
+                                      <td key={fecha} className={`py-2 px-3 text-center font-bold text-success-700 dark:text-success-300 text-xs ${borde}`}>
+                                        {fmtN(total)}
+                                      </td>
+                                    );
+                                  })}
+                                </tr>
+                              );
+                            })
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ) : agruparPorPedido && listaAgrupada ? (
+          <div>
+            {[...listaAgrupada.entries()].map(([idPedido, grupo]) => (
+              <div key={idPedido} className="border-b border-default-200 dark:border-default-100 last:border-b-0">
+                {/* Cabecera del grupo de pedido */}
+                <div className="px-4 py-2 bg-default-100/70 dark:bg-default-100/20 border-b border-default-200 dark:border-default-100 flex items-center gap-2 text-xs">
+                  <Icon icon="lucide:folder-open" width={13} className="text-primary shrink-0" />
+                  <span className="font-semibold text-default-700 dark:text-default-300">Pedido #{idPedido}</span>
+                  <span className="text-default-400">{fmtFecha(grupo.fechaInicio)} – {fmtFecha(grupo.fechaFin)}</span>
+                  <Chip size="sm" variant="flat" color="primary" className="text-[10px] ml-auto">
+                    {grupo.ops.length} OP{grupo.ops.length !== 1 ? 's' : ''}
+                  </Chip>
+                </div>
+                {grupo.ops.map((op, idx) => renderOpRow(op, idx === 0))}
               </div>
             ))}
+          </div>
+        ) : (
+          <div>
+            {listaOrdenada.map((op, idx) => renderOpRow(op, idx === 0))}
           </div>
         )}
       </CardBody>
@@ -6583,7 +7087,7 @@ const OrdenDetalleTabla: React.FC<{ detalle: IOrdenPedidoConDetalles }> = ({ det
   const fmtDDMM = (iso: string) => { const [, m, d] = iso.split('-'); return `${d}/${m}`; };
 
   const fmtCant = (v: number, fraccionario: boolean) =>
-    fraccionario ? (v === Math.floor(v) ? String(v) : v.toFixed(3).replace(/0+$/, '').replace(',', ',')) : String(Math.round(v));
+    fraccionario ? fmtN(v) : fmtN(Math.round(v));
 
   return (
     <div className="mt-3 space-y-3">

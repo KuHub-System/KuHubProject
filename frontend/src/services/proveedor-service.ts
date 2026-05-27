@@ -722,12 +722,14 @@ export const crearOrdenPedidoService = async (request: {
 // ── Orden Pedido — Listado y Detalle ─────────────────────────────────────────
 
 /**
- * Lista todas las Órdenes de Pedido activas (sin líneas de detalle).
- * GET /api/v1/orden-pedido
+ * Lista las Órdenes de Pedido activas (sin líneas de detalle).
+ * @param diasAtras si se provee, filtra OPs de los últimos N días; undefined = todas.
+ * GET /api/v1/orden-pedido?diasAtras=30
  */
-export const listarOrdenesPedidoService = async (): Promise<IOrdenPedidoListItem[]> => {
+export const listarOrdenesPedidoService = async (diasAtras?: number): Promise<IOrdenPedidoListItem[]> => {
   try {
-    const response = await api.get<IOrdenPedidoListItem[]>('/orden-pedido');
+    const params = diasAtras != null ? { diasAtras } : {};
+    const response = await api.get<IOrdenPedidoListItem[]>('/orden-pedido', { params });
     return response.data ?? [];
   } catch (error: any) {
     throw new Error(
