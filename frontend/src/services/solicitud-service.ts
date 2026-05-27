@@ -86,6 +86,16 @@ export const obtenerProductosOpcionService = async (): Promise<IProductoOpcion[]
   return response.data;
 };
 
+export interface IProductoOpcionConCategoria extends IProductoOpcion {
+  idCategoria: number;
+  nombreCategoria: string;
+}
+
+export const obtenerProductosOpcionConCategoriaService = async (): Promise<IProductoOpcionConCategoria[]> => {
+  const response = await api.get<IProductoOpcionConCategoria[]>('/producto/find-all-product-active-for-option-with-category');
+  return response.data;
+};
+
 // ── DTOs para solicitud masiva ────────────────────────────────────────────────
 export interface IScheduleSolicitationDTO {
   idReservaSala: number;

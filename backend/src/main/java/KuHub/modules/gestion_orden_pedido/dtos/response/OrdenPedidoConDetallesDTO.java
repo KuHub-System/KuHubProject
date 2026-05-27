@@ -16,6 +16,7 @@ public record OrdenPedidoConDetallesDTO(
         String nombreProveedor,
         String telefonoProveedor,
         String emailProveedor,
+        String direccionProveedor,
         LocalDateTime fechaCreacion,
         String estadoOrdenPedido,
         String observaciones,
@@ -27,11 +28,14 @@ public record OrdenPedidoConDetallesDTO(
             Long idDetalleOrdenPedido,
             Integer idProducto,
             String nombreProducto,
+            String nombreCategoria,
             String abreviatura,
+            String nombreUnidad,
             Boolean esFraccionario,
             BigDecimal cantidadSolicitada,
             BigDecimal precioNetoUnitario,
             BigDecimal precioConIvaUnitario,
-            LocalDate fechaEntrega
+            LocalDate fechaEntrega,
+            Boolean entregado
     ) {}
 }

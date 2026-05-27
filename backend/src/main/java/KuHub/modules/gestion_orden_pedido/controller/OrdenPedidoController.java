@@ -2,6 +2,7 @@ package KuHub.modules.gestion_orden_pedido.controller;
 
 import KuHub.modules.gestion_orden_pedido.dtos.request.CambiarEstadoOrdenPedidoDTO;
 import KuHub.modules.gestion_orden_pedido.dtos.request.OrdenPedidoCreateDTO;
+import KuHub.modules.gestion_orden_pedido.dtos.response.AbastecimientoProveedorDTO;
 import KuHub.modules.gestion_orden_pedido.dtos.response.CotizacionConsolidadaDTO;
 import KuHub.modules.gestion_orden_pedido.dtos.response.OrdenPedidoConDetallesDTO;
 import KuHub.modules.gestion_orden_pedido.dtos.response.OrdenPedidoDetalleDTO;
@@ -112,6 +113,29 @@ public class OrdenPedidoController {
     }
 
     // ══════════════════════════════════════════════════════════════
+    // ABASTECIMIENTO DE PROVEEDORES — OPs CONFIRMADA por fecha de entrega
+    // ══════════════════════════════════════════════════════════════
+
+    /**
+     * Retorna las OPs con estado CONFIRMADA agrupadas por OP → día de entrega → productos.
+     * Siempre incluye historial de 15 días hacia atrás. El parámetro fechaHasta controla
+     * el límite superior (filtros del frontend: semana, 30 días, 3 meses, todas).
+     * Incluye datos del proveedor y la marca del producto registrada en proveedor_producto.
+     * Usado por el modal de abastecimiento de proveedores en Control de Stock Masivo.
+     *
+     * GET /api/v1/orden-pedido/abastecimiento?fechaHasta=2026-06-30
+     * ⬜ Sin uso frontend aún.
+     */
+    @GetMapping("/abastecimiento")
+    public ResponseEntity<AbastecimientoProveedorDTO> obtenerAbastecimiento(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaHasta
+    ) {
+        return ResponseEntity
+                .status(200)
+                .body(ordenPedidoService.obtenerAbastecimientoConfirmado(fechaHasta));
+    }
+
+    // ══════════════════════════════════════════════════════════════
     // LISTADO Y DETALLE — Vista "Órdenes de Pedido"
     // ══════════════════════════════════════════════════════════════
 
@@ -152,5 +176,25 @@ public class OrdenPedidoController {
             @Validated @RequestBody CambiarEstadoOrdenPedidoDTO dto
     ) {
         return ResponseEntity.ok(ordenPedidoService.cambiarEstado(id, dto.getEstado()));
+    }
+
+    // ══════════════════════════════════════════════════════════════
+    // MARCAR DETALLES COMO ENTREGADOS — Control masivo de stock
+    // ══════════════════════════════════════════════════════════════
+
+    /**
+     * Marca como entregados (entregado = true) en bloque los DetalleOrdenPedido indicados.
+     * Se invoca en paralelo con el bulk update de inventario al confirmar la recepción desde el
+     * Control de Stock Masivo en la página de inventario.
+     *
+     * PATCH /api/v1/orden-pedido/detalles/entregar
+     * ✅ En uso: Consumido por marcarEntregadosMasivoService en proveedor-service.ts.
+     */
+    @PatchMapping("/detalles/entregar")
+    public ResponseEntity<Integer> marcarDetallesEntregados(@RequestBody List<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return ResponseEntity.status(200).body(0);
+        }
+        return ResponseEntity.status(200).body(ordenPedidoService.marcarDetallesEntregados(ids));
     }
 }

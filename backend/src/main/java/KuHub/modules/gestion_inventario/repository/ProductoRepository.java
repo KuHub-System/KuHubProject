@@ -1,6 +1,7 @@
 package KuHub.modules.gestion_inventario.repository;
 
 import KuHub.modules.gestion_inventario.dtos.response.proyeccion.ProductRecipeView;
+import KuHub.modules.gestion_inventario.dtos.response.proyeccion.ProductRecipeWithCategoryView;
 import KuHub.modules.gestion_inventario.entity.Producto;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -33,6 +34,28 @@ public interface ProductoRepository extends JpaRepository<Producto, Integer> {
         ORDER BY p.nombre_producto ASC
         """, nativeQuery = true)
     List<ProductRecipeView> findAllActiveForRecipe();
+
+    /**
+     * Igual que findAllActiveForRecipe pero incluye idCategoria y nombreCategoria.
+     * ✅ En uso: endpoint /find-all-product-active-for-option-with-category (solicitud.tsx).
+     */
+    @Query(value = """
+        SELECT
+            p.nombre_producto  AS "nombreProducto",
+            u.nombre_unidad    AS "nombreUnidad",
+            u.abreviatura      AS "abreviatura",
+            u.es_fraccionario  AS "esFraccionario",
+            p.id_producto      AS "idProducto",
+            u.id_unidad        AS "idUnidad",
+            c.id_categoria     AS "idCategoria",
+            c.nombre_categoria AS "nombreCategoria"
+        FROM producto p
+        JOIN unidad_medida u ON p.id_unidad      = u.id_unidad
+        JOIN categoria     c ON p.id_categoria   = c.id_categoria
+        WHERE p.activo = true
+        ORDER BY c.nombre_categoria ASC, p.nombre_producto ASC
+        """, nativeQuery = true)
+    List<ProductRecipeWithCategoryView> findAllActiveForRecipeWithCategory();
 
     /**
     @Query("SELECT DISTINCT p.unidadMedida FROM Producto p WHERE p.activo = true")
