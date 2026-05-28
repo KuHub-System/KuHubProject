@@ -9,6 +9,7 @@ import {
   Button,
   Card,
   CardBody,
+  Checkbox,
   Chip,
   DatePicker,
   DateRangePicker,
@@ -64,6 +65,7 @@ import {
   listarOrdenesPedidoService,
   obtenerOrdenPedidoDetalleService,
   cambiarEstadoOrdenPedidoService,
+  sincronizarEstadosOrdenPedidoService,
 } from '../services/proveedor-service';
 import type {
   IProveedor,
@@ -1848,6 +1850,7 @@ const GestionProveedoresPage: React.FC = () => {
     setOpCargando(true);
     setOpError(null);
     try {
+      await sincronizarEstadosOrdenPedidoService();
       const data = await listarOrdenesPedidoService(opRango ?? undefined);
       setOpLista(data);
     } catch (err: any) {
@@ -6256,7 +6259,7 @@ const getNombreDia = (fechaISO: string): string => {
   return NOM_DIA_ES[new Date(y, m - 1, d).getDay()];
 };
 
-type OpCelda = { op: IOrdenPedidoListItem; cantidad: number };
+type OpCelda = { op: IOrdenPedidoListItem; cantidad: number; entregado: boolean };
 type ProductoTablaFila = { idProducto: number; nombre: string; abrev: string; nombreUnidad: string; nombreCategoria: string; porFecha: Map<string, OpCelda[]> };
 type ProveedorTablaItem = {
   idProveedor: number; nombreDistribuidora: string; nombreProveedor: string;
@@ -6403,6 +6406,7 @@ const OrdenesVista: React.FC<OrdenesVistaProps> = ({
   const [agruparPorPedido, setAgruparPorPedido] = React.useState(false);
   const [agruparPorFechaReal, setAgruparPorFechaReal] = React.useState(false);
   const [modoUnificada, setModoUnificada] = React.useState(false);
+  const [mostrarEntregados, setMostrarEntregados] = React.useState(true);
   const [weekPickerOpenId, setWeekPickerOpenId] = React.useState<number | null>(null);
 
   const fmtFecha = (iso: string) => {
@@ -6552,7 +6556,7 @@ const OrdenesVista: React.FC<OrdenesVistaProps> = ({
         }
         const prod = grupo.productos.get(d.idProducto)!;
         if (!prod.porFecha.has(d.fechaEntrega)) prod.porFecha.set(d.fechaEntrega, []);
-        prod.porFecha.get(d.fechaEntrega)!.push({ op, cantidad: d.cantidadSolicitada });
+        prod.porFecha.get(d.fechaEntrega)!.push({ op, cantidad: d.cantidadSolicitada, entregado: d.entregado });
       }
     }
     return [...grupos.values()]
@@ -6578,13 +6582,13 @@ const OrdenesVista: React.FC<OrdenesVistaProps> = ({
   const detalladaTabla = React.useMemo(() => {
     if (!agrupadoFechaReal || modoUnificada) return null;
     return agrupadoFechaReal.map(prov => {
-      const rowMap = new Map<string, { idOP: number; idProducto: number; nombre: string; abrev: string; nombreCategoria: string; porFecha: Map<string, number> }>();
+      const rowMap = new Map<string, { idOP: number; idProducto: number; nombre: string; abrev: string; nombreCategoria: string; porFecha: Map<string, { cantidad: number; entregado: boolean }> }>();
       for (const prod of prov.productos) {
         for (const [fecha, items] of prod.porFecha) {
-          for (const { op, cantidad } of items) {
+          for (const { op, cantidad, entregado } of items) {
             const key = `${prod.idProducto}-${op.idOrdenPedido}`;
             if (!rowMap.has(key)) rowMap.set(key, { idOP: op.idOrdenPedido, idProducto: prod.idProducto, nombre: prod.nombre, abrev: prod.abrev, nombreCategoria: prod.nombreCategoria, porFecha: new Map() });
-            rowMap.get(key)!.porFecha.set(fecha, cantidad);
+            rowMap.get(key)!.porFecha.set(fecha, { cantidad, entregado });
           }
         }
       }
@@ -6691,7 +6695,7 @@ const OrdenesVista: React.FC<OrdenesVistaProps> = ({
                   <Spinner size="sm" color="primary" label="Cargando detalle..." />
                 </div>
               ) : detalles.get(op.idOrdenPedido) ? (
-                <OrdenDetalleTabla detalle={detalles.get(op.idOrdenPedido)!} />
+                <OrdenDetalleTabla detalle={detalles.get(op.idOrdenPedido)!} mostrarEntregados={mostrarEntregados} />
               ) : null}
             </div>
           </motion.div>
@@ -6748,6 +6752,14 @@ const OrdenesVista: React.FC<OrdenesVistaProps> = ({
             );
           })}
           <div className="ml-auto flex items-center gap-2">
+            <Checkbox
+              size="sm"
+              isSelected={mostrarEntregados}
+              onValueChange={setMostrarEntregados}
+              classNames={{ label: 'text-xs text-default-600 whitespace-nowrap' }}
+            >
+              Entregados
+            </Checkbox>
             <Select
               aria-label="Rango de fechas"
               size="sm"
@@ -7025,11 +7037,14 @@ const OrdenesVista: React.FC<OrdenesVistaProps> = ({
                                       const lunesActual = prov.semanasDeFechas.get(fecha)!;
                                       const esNuevaSemana = idx > 0 && prov.semanasDeFechas.get(prov.fechas[idx - 1]) !== lunesActual;
                                       const borde = esNuevaSemana ? 'border-l-2 border-secondary-400 dark:border-secondary-500' : 'border-l border-default-100 dark:border-default-100/20';
-                                      const cantidad = row.porFecha.get(fecha);
-                                      if (!cantidad) return <td key={fecha} className={`py-2 px-3 text-center text-default-300 text-xs ${borde}`}>—</td>;
+                                      const cell = row.porFecha.get(fecha);
+                                      if (!cell) return <td key={fecha} className={`py-2 px-3 text-center text-default-300 text-xs ${borde}`}>—</td>;
                                       return (
                                         <td key={fecha} className={`py-2 px-3 text-center font-semibold text-default-700 dark:text-default-200 text-xs ${borde}`}>
-                                          {fmtN(cantidad)}
+                                          <div className="flex items-center justify-center gap-1">
+                                            {fmtN(cell.cantidad)}
+                                            {mostrarEntregados && cell.entregado && <Icon icon="lucide:check-circle-2" width={11} className="text-success shrink-0" />}
+                                          </div>
                                         </td>
                                       );
                                     })}
@@ -7075,9 +7090,13 @@ const OrdenesVista: React.FC<OrdenesVistaProps> = ({
                                       const items = prod.porFecha.get(fecha);
                                       if (!items || items.length === 0) return <td key={fecha} className={`py-2 px-3 text-center text-default-300 text-xs ${borde}`}>—</td>;
                                       const total = items.reduce((s, it) => s + it.cantidad, 0);
+                                      const todosEntregados = items.every(it => it.entregado);
                                       return (
                                         <td key={fecha} className={`py-2 px-3 text-center font-bold text-success-700 dark:text-success-300 text-xs ${borde}`}>
-                                          {fmtN(total)}
+                                          <div className="flex items-center justify-center gap-1">
+                                            {fmtN(total)}
+                                            {mostrarEntregados && todosEntregados && <Icon icon="lucide:check-circle-2" width={11} className="text-success shrink-0" />}
+                                          </div>
                                         </td>
                                       );
                                     })}
@@ -7123,7 +7142,7 @@ const OrdenesVista: React.FC<OrdenesVistaProps> = ({
 
 // ── Tabla de detalle de una Orden de Pedido ───────────────────────────────────
 
-const OrdenDetalleTabla: React.FC<{ detalle: IOrdenPedidoConDetalles }> = ({ detalle }) => {
+const OrdenDetalleTabla: React.FC<{ detalle: IOrdenPedidoConDetalles; mostrarEntregados?: boolean }> = ({ detalle, mostrarEntregados = true }) => {
   // Fechas únicas ordenadas ascendente
   const fechas = React.useMemo(() => {
     const set = new Set<string>();
@@ -7219,7 +7238,12 @@ const OrdenDetalleTabla: React.FC<{ detalle: IOrdenPedidoConDetalles }> = ({ det
                       const d = porFecha.get(f);
                       return (
                         <td key={f} className="py-2 px-2 text-center bg-warning-50/40 dark:bg-warning-900/10 font-semibold whitespace-nowrap">
-                          {d ? fmtCant(d.cantidadSolicitada, meta.esFraccionario) : <span className="text-default-300">—</span>}
+                          {d ? (
+                            <div className="flex items-center justify-center gap-1">
+                              {fmtCant(d.cantidadSolicitada, meta.esFraccionario)}
+                              {mostrarEntregados && d.entregado && <Icon icon="lucide:check-circle-2" width={11} className="text-success shrink-0" />}
+                            </div>
+                          ) : <span className="text-default-300">—</span>}
                         </td>
                       );
                     })}
