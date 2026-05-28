@@ -8,6 +8,7 @@ import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Set;
 
 @Repository
 public interface OrdenPedidoRepository extends JpaRepository<OrdenPedido, Integer> {
@@ -24,6 +25,41 @@ public interface OrdenPedidoRepository extends JpaRepository<OrdenPedido, Intege
     boolean existsByPedido_IdPedidoAndActivoTrue(Integer idPedido);
 
     // ── 2. @Query personalizados de solo lectura ──
+
+    /**
+     * Retorna OPs CONFIRMADAS activas donde todos sus detalles activos ya tienen entregado=true.
+     * Usado para la auto-transición CONFIRMADA → RECIBIDA tras un marcarEntregados bulk.
+     */
+    @Query("""
+            SELECT op FROM OrdenPedido op
+            WHERE op.idOrdenPedido IN :ids
+              AND op.estadoOrdenPedido = 'CONFIRMADA'
+              AND op.activo = true
+              AND NOT EXISTS (
+                  SELECT d FROM DetalleOrdenPedido d
+                  WHERE d.ordenPedido = op
+                    AND d.activo = true
+                    AND d.entregado = false
+              )
+            """)
+    List<OrdenPedido> findConfirmadasConTodosEntregados(@Param("ids") Set<Integer> ids);
+
+    /**
+     * Retorna TODAS las OPs CONFIRMADAS activas donde todos sus detalles activos tienen entregado=true.
+     * Usado por sincronizarEstadosRecibida para corregir datos históricos o inconsistencias.
+     */
+    @Query("""
+            SELECT op FROM OrdenPedido op
+            WHERE op.estadoOrdenPedido = 'CONFIRMADA'
+              AND op.activo = true
+              AND NOT EXISTS (
+                  SELECT d FROM DetalleOrdenPedido d
+                  WHERE d.ordenPedido = op
+                    AND d.activo = true
+                    AND d.entregado = false
+              )
+            """)
+    List<OrdenPedido> findAllConfirmadasConTodosEntregados();
 
     /**
      * Lista pedidos APROBADO dentro de un rango de fechas con CONTADOR de OPs activas.

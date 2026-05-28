@@ -334,6 +334,36 @@ public class OrdenPedidoServiceImpl implements OrdenPedidoService {
         if (ids == null || ids.isEmpty()) return 0;
         int actualizados = detalleOrdenPedidoRepository.marcarEntregados(ids);
         log.info("marcarDetallesEntregados: {} filas actualizadas de {} solicitadas", actualizados, ids.size());
+
+        // Auto-transición CONFIRMADA → RECIBIDA si todos los detalles activos ya fueron entregados
+        if (actualizados > 0) {
+            Set<Integer> opIds = detalleOrdenPedidoRepository.findOrdenPedidoIdsByDetalleIds(ids);
+            List<OrdenPedido> completadas = ordenPedidoRepository.findConfirmadasConTodosEntregados(opIds);
+            if (!completadas.isEmpty()) {
+                completadas.forEach(op -> op.setEstadoOrdenPedido(EstadoOrdenPedido.RECIBIDA));
+                ordenPedidoRepository.saveAll(completadas);
+                log.info("Auto-transición RECIBIDA: {} OP(s) → {}",
+                        completadas.size(),
+                        completadas.stream().map(OrdenPedido::getIdOrdenPedido).toList());
+            }
+        }
         return actualizados;
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // Sincronización de estados históricos CONFIRMADA → RECIBIDA
+    // ─────────────────────────────────────────────────────────────
+
+    @Override
+    @Transactional
+    public int sincronizarEstadosRecibida() {
+        List<OrdenPedido> completadas = ordenPedidoRepository.findAllConfirmadasConTodosEntregados();
+        if (completadas.isEmpty()) return 0;
+        completadas.forEach(op -> op.setEstadoOrdenPedido(EstadoOrdenPedido.RECIBIDA));
+        ordenPedidoRepository.saveAll(completadas);
+        log.info("sincronizarEstadosRecibida: {} OP(s) transicionadas a RECIBIDA {}",
+                completadas.size(),
+                completadas.stream().map(OrdenPedido::getIdOrdenPedido).toList());
+        return completadas.size();
     }
 }

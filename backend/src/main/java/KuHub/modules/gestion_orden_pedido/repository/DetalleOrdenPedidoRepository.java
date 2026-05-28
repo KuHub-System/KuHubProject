@@ -9,6 +9,7 @@ import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Set;
 
 @Repository
 public interface DetalleOrdenPedidoRepository extends JpaRepository<DetalleOrdenPedido, Long> {
@@ -25,4 +26,8 @@ public interface DetalleOrdenPedidoRepository extends JpaRepository<DetalleOrden
     @Transactional
     @Query("UPDATE DetalleOrdenPedido d SET d.entregado = true WHERE d.idDetalleOrdenPedido IN :ids")
     int marcarEntregados(@Param("ids") List<Long> ids);
+
+    /** Retorna los IDs de OrdenPedido distintos a los que pertenecen los detalles indicados. */
+    @Query("SELECT DISTINCT d.ordenPedido.idOrdenPedido FROM DetalleOrdenPedido d WHERE d.idDetalleOrdenPedido IN :ids")
+    Set<Integer> findOrdenPedidoIdsByDetalleIds(@Param("ids") List<Long> ids);
 }

@@ -105,4 +105,14 @@ public interface OrdenPedidoService {
      * @return Número de filas actualizadas
      */
     int marcarDetallesEntregados(List<Long> ids);
+
+    /**
+     * Evalúa TODAS las OPs CONFIRMADAS activas y transiciona a RECIBIDA las que tienen
+     * todos sus detalles activos con entregado=true.
+     * Llamado desde el botón "Actualizar" en la vista de Órdenes de Pedido para corregir
+     * datos históricos o inconsistencias que no pasaron por marcarDetallesEntregados.
+     *
+     * @return Número de OPs transicionadas a RECIBIDA
+     */
+    int sincronizarEstadosRecibida();
 }

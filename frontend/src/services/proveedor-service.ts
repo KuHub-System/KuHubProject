@@ -817,6 +817,22 @@ export const marcarEntregadosMasivoService = async (ids: number[]): Promise<numb
   }
 };
 
+/**
+ * Evalúa todas las OPs CONFIRMADAS activas y transiciona a RECIBIDA las que tienen
+ * todos sus detalles activos con entregado=true.
+ * Se llama silenciosamente antes de refrescar la lista (botón Actualizar en Órdenes de Pedido).
+ * Falla silenciosamente — no propaga el error para no bloquear la carga de la lista.
+ * POST /api/v1/orden-pedido/sincronizar-estados → número de OPs transicionadas
+ */
+export const sincronizarEstadosOrdenPedidoService = async (): Promise<number> => {
+  try {
+    const response = await api.post<number>('/orden-pedido/sincronizar-estados');
+    return response.data ?? 0;
+  } catch {
+    return 0;
+  }
+};
+
 export const descargarExcelPlantillaService = async (
   idProveedor: number,
   nombreSugerido?: string
