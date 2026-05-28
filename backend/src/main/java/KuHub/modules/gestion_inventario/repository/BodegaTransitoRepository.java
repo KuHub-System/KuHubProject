@@ -260,6 +260,32 @@ public interface BodegaTransitoRepository extends JpaRepository<BodegaTransito, 
     """, nativeQuery = true)
     long countMassiveBodegaListing(@Param("term") String term);
 
+    /** Retorna los registros activos de bodega de tránsito para una lista de IDs de inventario. Evita paginación. */
+    @Query(value = """
+        SELECT
+            p.nombre_producto,
+            p.cod_producto,
+            p.descripcion_producto,
+            c.nombre_categoria,
+            b.stock,
+            b.stock_limit,
+            u.nombre_unidad,
+            u.es_fraccionario,
+            b.id_bodega_transito,
+            i.id_inventario,
+            p.id_producto,
+            c.id_categoria,
+            u.id_unidad
+        FROM bodega_transito b
+        JOIN inventario i ON i.id_inventario = b.id_inventario
+        JOIN producto p ON p.id_producto = i.id_producto
+        JOIN categoria c ON c.id_categoria = p.id_categoria
+        JOIN unidad_medida u ON u.id_unidad = p.id_unidad
+        WHERE b.activo = TRUE
+          AND i.id_inventario = ANY(CAST(:inventarioIds AS INTEGER[]))
+    """, nativeQuery = true)
+    List<Object[]> findByInventarioIds(@Param("inventarioIds") Integer[] inventarioIds);
+
     // ─── MODIFICACIONES ──────────────────────────────────────────────────────────
 
     /**Metodo para sumar stock en transito afin de evitar procesos en paralelo*/

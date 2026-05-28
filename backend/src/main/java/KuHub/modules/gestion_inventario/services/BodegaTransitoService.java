@@ -25,6 +25,9 @@ public interface BodegaTransitoService {
     BulkWarehousesPage findByMassiveBodegaPaginated(SearchDTO request);
     BulkWarehouseProcess processBulkWarehouseUpdate(List<BulkWarehouseProcess.ItemRequest> requests);
 
+    List<WarehousesPage.WarehouseItem> inicializarDesdeAbastecimiento(List<Integer> idsProducto);
+    List<WarehousesPage.WarehouseItem> findBodegaByInventarioIds(List<Integer> inventarioIds);
+
     SincronizarExcelResultado sincronizarBodegaDesdeExcel(
             MultipartFile archivo, String nombreHoja, Short idCategoria, int filaInicio, int filaFin);
     int confirmarNuevosBodegaExcel(List<ConfirmarNuevosExcelDTO.ItemNuevo> items);
