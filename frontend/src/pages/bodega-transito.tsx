@@ -16,7 +16,7 @@ import { ISolicitud, IItemSolicitud } from '../types/solicitud.types';
 import { actualizarEstadoBodegaService, obtenerEntregasDiariasService, prepararEntregaService, IEntregaDiaria, ISalaEntrega, ISolicitudEntrega } from '../services/solicitud-service';
 import { obtenerRecetaPorIdService } from '../services/pedido-semanal-bodega-service';
 import { obtenerFiltrosInventarioService } from '../services/producto-service';
-import { buscarBodegaTransitoService, buscarBodegaTransitoPorCodigoService, obtenerBodegaPaginadaService, IBodegaTransitoItem, obtenerBulkBodegaListingService, bulkUpdateBodegaStockService, IBulkBodegaListing, IBulkWarehouseUpdateRequest, IBulkWarehouseProcessResult } from '../services/bodega-transito-service';
+import { buscarBodegaTransitoService, buscarBodegaTransitoPorCodigoService, obtenerBodegaPaginadaService, IBodegaTransitoItem, obtenerBulkBodegaListingService, bulkUpdateBodegaStockService, IBulkBodegaListing, IBulkWarehouseUpdateRequest, IBulkWarehouseProcessResult, inicializarDesdeAbastecimientoService, obtenerBodegaByInventarioIdsService } from '../services/bodega-transito-service';
 import { useToast } from '../hooks/useToast';
 import { useModulePermission } from '../contexts/permission-context';
 import { IProducto } from '../types/producto.types';
@@ -382,6 +382,18 @@ const ControlMasivoBodegaModal: React.FC<ControlMasivoBodegaModalProps> = ({ onC
   const [loadingAbastecimiento, setLoadingAbastecimiento] = React.useState(false);
   const [diasSeleccionados, setDiasSeleccionados] = React.useState<Set<string>>(new Set());
 
+  // Modal de confirmación: crear bodega para productos faltantes
+  const { isOpen: isCrearBodegaOpen, onOpen: onCrearBodegaOpen, onOpenChange: onCrearBodegaOpenChange } = useDisclosure();
+  type FaltanteInfo = {
+    idProducto: number;
+    idInventario: number;
+    nombre: string;
+    detalles: { idDetalleOrdenPedido: number; cantidadSolicitada: number }[];
+  };
+  const [productosFaltantes, setProductosFaltantes] = React.useState<FaltanteInfo[]>([]);
+  const [itemsFoundCache, setItemsFoundCache] = React.useState<ItemBodegaMasivo[]>([]);
+  const [cargandoCrearBodega, setCargandoCrearBodega] = React.useState(false);
+
   const getFechaHastaAbastecimiento = (filtro: FiltroAbastecimiento): string | undefined => {
     const hoy = new Date();
     const fmt = (d: Date) =>
@@ -422,24 +434,64 @@ const ControlMasivoBodegaModal: React.FC<ControlMasivoBodegaModalProps> = ({ onC
   const cargarDiasSeleccionados = async () => {
     setLoadingAbastecimiento(true);
     try {
-      const bodegaRes = await obtenerBodegaPaginadaService({ page: 1, pageSize: 2000 });
-      const bodegaMap = new Map<number, IBodegaTransitoItem>();
-      for (const b of bodegaRes.data) {
-        bodegaMap.set(b.idProducto, b);
-      }
-
-      const nuevosItems: ItemBodegaMasivo[] = [];
+      // Paso 1: recopilar todos los idInventario únicos de los días seleccionados
+      const inventarioIdsSet = new Set<number>();
       for (const orden of ordenesAbastecimiento) {
         for (const entrega of orden.entregas) {
           const key = `${orden.idOrdenPedido}-${entrega.fechaEntrega}`;
           if (!diasSeleccionados.has(key)) continue;
           for (const cat of entrega.categorias) {
             for (const prod of cat.productos) {
-              const bodegaItem = bodegaMap.get(prod.idProducto);
+              inventarioIdsSet.add(prod.idInventario);
+            }
+          }
+        }
+      }
+
+      if (inventarioIdsSet.size === 0) {
+        toast.warning('No hay ítems para cargar en el período seleccionado');
+        return;
+      }
+
+      // Paso 2: lookup directo por idInventario, sin paginación
+      const bodegaItems = await obtenerBodegaByInventarioIdsService(Array.from(inventarioIdsSet));
+      const bodegaMap = new Map<number, IBodegaTransitoItem>();
+      for (const b of bodegaItems) {
+        bodegaMap.set(b.idInventario, b);
+      }
+
+      const encontrados: ItemBodegaMasivo[] = [];
+      // Agrupado por idProducto para evitar duplicados (un producto en varios días)
+      const faltantesMap = new Map<number, FaltanteInfo>();
+
+      for (const orden of ordenesAbastecimiento) {
+        for (const entrega of orden.entregas) {
+          const key = `${orden.idOrdenPedido}-${entrega.fechaEntrega}`;
+          if (!diasSeleccionados.has(key)) continue;
+          for (const cat of entrega.categorias) {
+            for (const prod of cat.productos) {
+              const bodegaItem = bodegaMap.get(prod.idInventario);
               if (!bodegaItem) {
+                const existing = faltantesMap.get(prod.idProducto);
+                if (existing) {
+                  existing.detalles.push({
+                    idDetalleOrdenPedido: prod.idDetalleOrdenPedido,
+                    cantidadSolicitada: prod.cantidadSolicitada,
+                  });
+                } else {
+                  faltantesMap.set(prod.idProducto, {
+                    idProducto: prod.idProducto,
+                    idInventario: prod.idInventario,
+                    nombre: prod.nombreProducto,
+                    detalles: [{
+                      idDetalleOrdenPedido: prod.idDetalleOrdenPedido,
+                      cantidadSolicitada: prod.cantidadSolicitada,
+                    }],
+                  });
+                }
                 continue;
               }
-              nuevosItems.push({
+              encontrados.push({
                 id: `abast-${prod.idDetalleOrdenPedido}-${Date.now()}-${Math.random()}`,
                 producto: {
                   idBodegaTransito: bodegaItem.idBodegaTransito,
@@ -459,31 +511,92 @@ const ControlMasivoBodegaModal: React.FC<ControlMasivoBodegaModalProps> = ({ onC
         }
       }
 
-      if (nuevosItems.length === 0) {
-        toast.warning('No hay ítems coincidentes en bodega de tránsito para cargar');
+      if (faltantesMap.size > 0) {
+        setProductosFaltantes(Array.from(faltantesMap.values()));
+        setItemsFoundCache(encontrados);
+        onCrearBodegaOpen();
         return;
       }
 
-      setItemsPedido(prev => {
-        const merged = [...prev];
-        for (const nuevo of nuevosItems) {
-          const idx = merged.findIndex(i => i.producto.idBodegaTransito === nuevo.producto.idBodegaTransito && i.motivo === nuevo.motivo);
-          if (idx >= 0) {
-            merged[idx] = { ...merged[idx], delta: merged[idx].delta + nuevo.delta };
-          } else {
-            merged.push(nuevo);
-          }
-        }
-        return merged;
-      });
+      if (encontrados.length === 0) {
+        toast.warning('No hay ítems para cargar en el período seleccionado');
+        return;
+      }
 
-      toast.success(`${nuevosItems.length} ítem(s) cargado(s) al control masivo de bodega`);
-      onAbastecimientoOpenChange();
-      setDiasSeleccionados(new Set());
-    } catch (err) {
+      aplicarItemsAlMasivo(encontrados);
+    } catch {
       toast.error('Error al mapear productos de la bodega de tránsito');
     } finally {
       setLoadingAbastecimiento(false);
+    }
+  };
+
+  // Aplica la lista de ítems al control masivo y cierra el modal de abastecimiento
+  const aplicarItemsAlMasivo = (items: ItemBodegaMasivo[]) => {
+    setItemsPedido(prev => {
+      const merged = [...prev];
+      for (const nuevo of items) {
+        const idx = merged.findIndex(
+          i => i.producto.idBodegaTransito === nuevo.producto.idBodegaTransito && i.motivo === nuevo.motivo
+        );
+        if (idx >= 0) {
+          merged[idx] = { ...merged[idx], delta: merged[idx].delta + nuevo.delta };
+        } else {
+          merged.push(nuevo);
+        }
+      }
+      return merged;
+    });
+    toast.success(`${items.length} ítem(s) cargado(s) al control masivo de bodega`);
+    onAbastecimientoOpenChange();
+    setDiasSeleccionados(new Set());
+  };
+
+  const confirmarCrearEnBodega = async () => {
+    setCargandoCrearBodega(true);
+    try {
+      // Backend crea/reactiva bodega para los productos faltantes y los retorna
+      const bodegaCreados = await inicializarDesdeAbastecimientoService(
+        productosFaltantes.map(p => p.idProducto)
+      );
+
+      // Mapa de los bodega recién creados/encontrados por idInventario
+      const creadosMap = new Map<number, IBodegaTransitoItem>();
+      for (const b of bodegaCreados) {
+        creadosMap.set(b.idInventario, b);
+      }
+
+      // Construir ítems para los faltantes usando el resultado del backend directamente
+      const itemsNuevos: ItemBodegaMasivo[] = [];
+      for (const faltante of productosFaltantes) {
+        const bodegaItem = creadosMap.get(faltante.idInventario);
+        if (!bodegaItem) continue;
+        for (const d of faltante.detalles) {
+          itemsNuevos.push({
+            id: `abast-${d.idDetalleOrdenPedido}-${Date.now()}-${Math.random()}`,
+            producto: {
+              idBodegaTransito: bodegaItem.idBodegaTransito,
+              idProducto: bodegaItem.idProducto,
+              idInventario: bodegaItem.idInventario,
+              nombreProducto: bodegaItem.nombreProducto,
+              detalles: bodegaItem.nombreUnidad || bodegaItem.codProducto || '',
+              stock: bodegaItem.stock,
+              esFraccionario: bodegaItem.esFraccionario ?? false,
+            },
+            delta: d.cantidadSolicitada,
+            motivo: 'ENTRADA_BODEGA',
+            idDetalleOrdenPedido: d.idDetalleOrdenPedido,
+          });
+        }
+      }
+
+      onCrearBodegaOpenChange();
+      // Combinar ítems ya encontrados + ítems recién creados
+      aplicarItemsAlMasivo([...itemsFoundCache, ...itemsNuevos]);
+    } catch (err: any) {
+      toast.error(err?.message || 'Error al crear los productos en bodega de tránsito');
+    } finally {
+      setCargandoCrearBodega(false);
     }
   };
 
@@ -1107,6 +1220,71 @@ const ControlMasivoBodegaModal: React.FC<ControlMasivoBodegaModalProps> = ({ onC
                   isDisabled={diasSeleccionados.size === 0}
                 >
                   Cargar seleccionados
+                </Button>
+              </ModalFooter>
+            </>
+          )}
+        </ModalContent>
+      </Modal>
+
+      {/* Modal de confirmación: productos sin registro en bodega de tránsito */}
+      <Modal
+        isOpen={isCrearBodegaOpen}
+        onOpenChange={onCrearBodegaOpenChange}
+        size="lg"
+        backdrop="blur"
+        radius="lg"
+        classNames={{ base: 'rounded-2xl' }}
+        isDismissable={!cargandoCrearBodega}
+        hideCloseButton={cargandoCrearBodega}
+      >
+        <ModalContent>
+          {(onClose) => (
+            <>
+              <ModalHeader className="flex flex-col gap-1 border-b border-default-100 pb-4">
+                <div className="flex items-center gap-2">
+                  <Icon icon="lucide:alert-triangle" width={20} className="text-warning" />
+                  <h2 className="text-base font-bold text-secondary dark:text-foreground">
+                    Productos sin registro en Bodega
+                  </h2>
+                </div>
+                <p className="text-xs font-normal text-default-500">
+                  Los siguientes productos no se encuentran en la Bodega de Tránsito.
+                </p>
+              </ModalHeader>
+              <ModalBody className="py-4 px-5">
+                <p className="text-sm text-default-600 mb-3">
+                  ¿Desea agregarlos? Se crearán con stock en <span className="font-bold text-warning">cero</span> para iniciar el proceso de abastecimiento.
+                </p>
+                <div className="border border-default-200 dark:border-default-100 rounded-xl overflow-hidden max-h-[240px] overflow-y-auto">
+                  <div className="px-3 py-2 bg-default-100 dark:bg-default-50 text-[10px] font-bold text-default-500 uppercase tracking-wider border-b border-default-200">
+                    Productos a inicializar ({productosFaltantes.length})
+                  </div>
+                  <div className="divide-y divide-default-100 dark:divide-default-50">
+                    {productosFaltantes.map((p) => (
+                      <div key={p.idProducto} className="flex items-center gap-2 px-3 py-2.5">
+                        <Icon icon="lucide:package" width={14} className="text-default-400 shrink-0" />
+                        <span className="text-sm text-default-700 dark:text-default-300">{p.nombre}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </ModalBody>
+              <ModalFooter className="border-t border-default-100 gap-2">
+                <Button
+                  variant="ghost"
+                  onPress={onClose}
+                  isDisabled={cargandoCrearBodega}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  color="warning"
+                  onPress={confirmarCrearEnBodega}
+                  isLoading={cargandoCrearBodega}
+                  startContent={!cargandoCrearBodega ? <Icon icon="lucide:plus-circle" width={16} /> : undefined}
+                >
+                  {cargandoCrearBodega ? 'Creando...' : 'Crear y Cargar'}
                 </Button>
               </ModalFooter>
             </>
