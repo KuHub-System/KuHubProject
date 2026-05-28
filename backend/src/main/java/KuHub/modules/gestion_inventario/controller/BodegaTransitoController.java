@@ -47,6 +47,38 @@ public class BodegaTransitoController {
     private DynamicPermissionService dynamicPermissionService;
 
     /**
+     * Para cada idProducto recibido, garantiza que exista inventario y bodega_transito con stock=0.
+     * Usado por el modal de confirmación cuando no hay coincidencias en el Abastecimiento de Bodega.
+     * ✅ En uso: Consumido por inicializarDesdeAbastecimientoService en bodega-transito-service.ts.
+     * Acceso dinámico: verificado contra permiso_rol (BODEGA_TRANSITO write).
+     */
+    @PostMapping("/inicializar-desde-abastecimiento")
+    public ResponseEntity<?> inicializarDesdeAbastecimiento(
+            @RequestBody List<Integer> idsProducto,
+            Authentication authentication) {
+        if (!dynamicPermissionService.check(authentication, "BODEGA_TRANSITO", "write")) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+        try {
+            List<WarehousesPage.WarehouseItem> result = bodegaTransitoService.inicializarDesdeAbastecimiento(idsProducto);
+            return ResponseEntity.status(201).body(result);
+        } catch (GestionInventarioException ex) {
+            return ResponseEntity.status(ex.getStatus()).body(java.util.Map.of("message", ex.getMessage()));
+        }
+    }
+
+    /**
+     * Retorna los registros activos de bodega de tránsito para una lista de IDs de inventario.
+     * Lookup directo sin paginación: evita el límite asimétrico de PaginationUtils.
+     * ✅ En uso: Consumido por obtenerBodegaByInventarioIdsService en bodega-transito-service.ts.
+     */
+    @PostMapping("/find-by-inventario-ids")
+    public ResponseEntity<List<WarehousesPage.WarehouseItem>> findBodegaByInventarioIds(
+            @RequestBody List<Integer> inventarioIds) {
+        return ResponseEntity.ok(bodegaTransitoService.findBodegaByInventarioIds(inventarioIds));
+    }
+
+    /**
      * Crea un producto nuevo con su inventario (stock=0) y su registro en bodega de tránsito,
      * aplicando ENTRADA_BODEGA si el stock inicial es mayor a cero.
      * ✅ En uso: Consumido por crearBodegaConProductoService en bodega-transito-service.ts.

@@ -21,6 +21,9 @@ public interface InventarioRepository extends JpaRepository<Inventario, Integer>
     @Query("SELECT i FROM Inventario i JOIN FETCH i.producto WHERE i.idInventario IN :ids AND i.activo = true")
     List<Inventario> findAllByIdsWithProductsActive(@Param("ids") List<Integer> ids);
 
+    /** Busca el inventario de un producto por su ID de producto (relación OneToOne). */
+    Optional<Inventario> findByProducto_IdProducto(Integer idProducto);
+
     /** Busca un inventario activo con su producto por ID. */
     @Query("SELECT i FROM Inventario i JOIN i.producto p WHERE p.activo = :activo AND i.idInventario = :idInventario")
     Optional<Inventario> findByIdInventoryWithProductActive(

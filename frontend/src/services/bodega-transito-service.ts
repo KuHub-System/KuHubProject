@@ -169,6 +169,39 @@ export const bulkUpdateBodegaStockService = async (
     return response.data;
 };
 
+/**
+ * Retorna los registros activos de bodega de tránsito para una lista de IDs de inventario.
+ * Lookup directo sin paginación: evita el límite de PaginationUtils.
+ * Endpoint: POST /v1/bodega-transito/find-by-inventario-ids
+ */
+export const obtenerBodegaByInventarioIdsService = async (
+    inventarioIds: number[]
+): Promise<IBodegaTransitoItem[]> => {
+    const response = await api.post<IBodegaTransitoItem[]>(
+        '/bodega-transito/find-by-inventario-ids',
+        inventarioIds
+    );
+    return response.data;
+};
+
+/**
+ * Para cada idProducto recibido, crea (si no existe) inventario y bodega_transito con stock=0.
+ * Endpoint: POST /v1/bodega-transito/inicializar-desde-abastecimiento
+ */
+export const inicializarDesdeAbastecimientoService = async (
+    idsProducto: number[]
+): Promise<IBodegaTransitoItem[]> => {
+    try {
+        const response = await api.post<IBodegaTransitoItem[]>(
+            '/bodega-transito/inicializar-desde-abastecimiento',
+            idsProducto
+        );
+        return response.data;
+    } catch (error: any) {
+        throw new Error(error.response?.data?.message || 'Error al inicializar productos en bodega de tránsito');
+    }
+};
+
 export interface ICreateBodegaConProductoRequest {
     nombreProducto: string;
     codigoProducto?: string;

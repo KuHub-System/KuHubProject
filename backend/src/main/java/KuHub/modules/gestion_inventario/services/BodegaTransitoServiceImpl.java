@@ -629,6 +629,85 @@ public class BodegaTransitoServiceImpl implements BodegaTransitoService{
     }
 
     // =========================================================================================
+    // INICIALIZAR BODEGA DESDE ABASTECIMIENTO
+    // =========================================================================================
+
+    /**
+     * Para cada idProducto recibido, garantiza que exista un registro activo de inventario
+     * y uno de bodega_transito (ambos con stock=0 si se crean nuevos).
+     * Usado por el modal de confirmación del Abastecimiento de Proveedores en bodega-transito.tsx.
+     * ✅ En uso: Consumido por inicializarDesdeAbastecimientoService en bodega-transito-service.ts.
+     */
+    @Transactional
+    @Override
+    public List<WarehousesPage.WarehouseItem> inicializarDesdeAbastecimiento(List<Integer> idsProducto) {
+        List<WarehousesPage.WarehouseItem> result = new ArrayList<>();
+
+        for (Integer idProducto : idsProducto) {
+            // 1. Buscar o crear inventario
+            Optional<Inventario> inventarioOpt = inventarioRepository.findByProducto_IdProducto(idProducto);
+            Inventario inventario;
+            if (inventarioOpt.isPresent()) {
+                inventario = inventarioOpt.get();
+                if (!Boolean.TRUE.equals(inventario.getActivo())) {
+                    inventario.setActivo(true);
+                    inventario = inventarioRepository.save(inventario);
+                    log.info("[InicBodega] Inventario reactivado para idProducto={}", idProducto);
+                }
+            } else {
+                Producto producto = productoRepository.findById(idProducto)
+                        .orElseThrow(() -> new GestionInventarioException(
+                                "Producto no encontrado: " + idProducto, HttpStatus.NOT_FOUND));
+                inventario = new Inventario();
+                inventario.setProducto(producto);
+                inventario.setStock(BigDecimal.ZERO);
+                inventario.setActivo(true);
+                inventario = inventarioRepository.save(inventario);
+                log.info("[InicBodega] Inventario creado para '{}' (id={})",
+                        producto.getNombreProducto(), idProducto);
+            }
+
+            // 2. Buscar o crear bodega_transito
+            Optional<BodegaTransito> bodegaOpt =
+                    bodegaTransitoRepository.findByInventario_IdInventario(inventario.getIdInventario());
+            BodegaTransito bodega;
+            if (bodegaOpt.isPresent()) {
+                bodega = bodegaOpt.get();
+                if (!Boolean.TRUE.equals(bodega.getActivo())) {
+                    bodega.setActivo(true);
+                    bodega = bodegaTransitoRepository.save(bodega);
+                    log.info("[InicBodega] Bodega reactivada para idProducto={}", idProducto);
+                }
+            } else {
+                bodega = new BodegaTransito();
+                bodega.setInventario(inventario);
+                bodega.setStock(BigDecimal.ZERO);
+                bodega.setActivo(true);
+                bodega = bodegaTransitoRepository.save(bodega);
+                log.info("[InicBodega] Bodega creada con stock=0 para idProducto={}", idProducto);
+            }
+
+            result.add(findSingleWarehouseById(bodega.getIdBodegaTransito()));
+        }
+
+        log.info("[InicBodega] {} registros inicializados para abastecimiento", result.size());
+        return result;
+    }
+
+    /**
+     * Retorna los registros activos de bodega de tránsito para una lista de IDs de inventario.
+     * No usa paginación: retorna todos los que coincidan exactamente con los IDs recibidos.
+     * ✅ En uso: Consumido por obtenerBodegaByInventarioIdsService en bodega-transito-service.ts.
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public List<WarehousesPage.WarehouseItem> findBodegaByInventarioIds(List<Integer> inventarioIds) {
+        if (inventarioIds == null || inventarioIds.isEmpty()) return List.of();
+        List<Object[]> rows = bodegaTransitoRepository.findByInventarioIds(inventarioIds.toArray(new Integer[0]));
+        return rows.stream().map(WarehousesPage.WarehouseItem::fromRow).toList();
+    }
+
+    // =========================================================================================
     // <------ TODOS MÉTODOS PRIVADOS ------>
     // =========================================================================================
 
