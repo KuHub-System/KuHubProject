@@ -199,4 +199,17 @@ public class OrdenPedidoController {
         }
         return ResponseEntity.status(200).body(ordenPedidoService.marcarDetallesEntregados(ids));
     }
+
+    /**
+     * Evalúa todas las OPs CONFIRMADAS activas y transiciona a RECIBIDA las que tienen
+     * todos sus detalles activos con entregado=true.
+     * Llamado silenciosamente al presionar "Actualizar" en la vista de Órdenes de Pedido.
+     *
+     * POST /api/v1/orden-pedido/sincronizar-estados
+     * ✅ En uso: sincronizarEstadosOrdenPedidoService en proveedor-service.ts
+     */
+    @PostMapping("/sincronizar-estados")
+    public ResponseEntity<Integer> sincronizarEstados() {
+        return ResponseEntity.ok(ordenPedidoService.sincronizarEstadosRecibida());
+    }
 }
