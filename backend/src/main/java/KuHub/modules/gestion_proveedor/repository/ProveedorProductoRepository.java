@@ -30,6 +30,9 @@ public interface ProveedorProductoRepository extends JpaRepository<ProveedorProd
     /** Lista todas las relaciones (activas e inactivas) de un proveedor. */
     List<ProveedorProducto> findByProveedor_IdProveedor(Integer idProveedor);
 
+    /** Lista los productos activos de un proveedor (para construir el mapa de formatoContenido). */
+    List<ProveedorProducto> findByProveedor_IdProveedorAndActivoTrue(Integer idProveedor);
+
     /** Verifica si ya existe una relación activa entre proveedor y producto. */
     boolean existsByProveedor_IdProveedorAndProducto_IdProductoAndActivoTrue(
             Integer idProveedor, Integer idProducto);

@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -432,39 +433,69 @@ public interface SolicitudRepository extends JpaRepository<Solicitud, Integer> {
     String findConsolidadoGlobalJson(@Param("fechaInicio") LocalDate fechaInicio, @Param("fechaFin") LocalDate fechaFin);
 
     /**
-     * Obtiene la proyección de abastecimiento consolidada de productos cuyas solicitudes
-     * tienen estado EN_PEDIDO, filtradas por rango de fechas (fecha_solicitada).
-     * Retorna un único JSON con el arreglo de productos agrupados por categoría y nombre.
+     * Retorna solicitudes EN_PEDIDO en el rango de fechas, agrupando sus detalles por solicitud.
+     * Solo incluye productos cuya categoría esté configurada como INVENTARIO en categoria_abastecimiento.
+     * Incluye información de sección, asignatura y horario (reserva_sala + bloque_horario).
+     * JSON: { solicitudes: [ { idSolicitud, ..., detalles: [..., enviadoBodegaTransito] } ] }
      */
     @Query(value = """
-        SELECT jsonb_agg(
-            jsonb_build_object(
-                'idProducto',              p.id_producto,
-                'nombreProducto',          p.nombre_producto,
-                'nombreUnidad',            um.nombre_unidad,
-                'abreviatura',             um.abreviatura,
-                'esFraccionario',          um.es_fraccionario,
-                'nombreCategoria',         c.nombre_categoria,
-                'cantidadTotalSolicitada', sub_total.total_solicitado,
-                'idInventario',            inv.id_inventario,
-                'stock',                   inv.stock
-            ) ORDER BY c.nombre_categoria ASC, p.nombre_producto ASC
-        ) AS proyeccion_abastecimiento
-        FROM (
-            SELECT ds.id_producto,
-                   SUM(ds.cant_producto_solicitud) AS total_solicitado
+        WITH detalles_por_solicitud AS (
+            SELECT
+                ds.id_solicitud,
+                jsonb_agg(
+                    jsonb_build_object(
+                        'idDetalleSolicitud',    ds.id_detalle_solicitud,
+                        'idProducto',            p.id_producto,
+                        'nombreProducto',        p.nombre_producto,
+                        'abreviatura',           um.abreviatura,
+                        'esFraccionario',        um.es_fraccionario,
+                        'cantidadSolicitada',    ds.cant_producto_solicitud,
+                        'idInventario',          inv.id_inventario,
+                        'stock',                 inv.stock,
+                        'enviadoBodegaTransito', ds.enviado_bodega_transito
+                    ) ORDER BY p.nombre_producto ASC
+                ) AS detalles_json
             FROM detalle_solicitud ds
-            INNER JOIN solicitud s ON s.id_solicitud = ds.id_solicitud
-            WHERE s.estado_solicitud = 'EN_PEDIDO'
-              AND s.fecha_solicitada BETWEEN :fechaInicio AND :fechaFin
-            GROUP BY ds.id_producto
-        ) sub_total
-        INNER JOIN producto      p  ON p.id_producto  = sub_total.id_producto AND p.activo = TRUE
-        INNER JOIN unidad_medida um ON um.id_unidad    = p.id_unidad
-        INNER JOIN categoria     c  ON c.id_categoria  = p.id_categoria
-        INNER JOIN inventario    inv ON inv.id_producto = p.id_producto AND inv.activo = TRUE
+            INNER JOIN producto p ON p.id_producto = ds.id_producto AND p.activo = TRUE
+            INNER JOIN unidad_medida um ON um.id_unidad = p.id_unidad
+            INNER JOIN inventario inv ON inv.id_producto = p.id_producto AND inv.activo = TRUE
+            INNER JOIN categoria_abastecimiento ca
+                ON ca.id_categoria = p.id_categoria AND ca.tipo_abastecimiento = 'INVENTARIO'
+            GROUP BY ds.id_solicitud
+        )
+        SELECT jsonb_build_object(
+            'solicitudes',
+            COALESCE(
+                jsonb_agg(
+                    jsonb_build_object(
+                        'idSolicitud',      s.id_solicitud,
+                        'fechaSolicitada',  s.fecha_solicitada,
+                        'nombreSeccion',    sec.nombre_seccion,
+                        'nombreAsignatura', a.nombre_asignatura,
+                        'diaSemana',        CAST(rs.dia_semana AS TEXT),
+                        'horaInicio',       CAST(bh.hora_inicio AS TEXT),
+                        'horaFin',          CAST(bh.hora_fin AS TEXT),
+                        'detalles',         dp.detalles_json
+                    ) ORDER BY s.fecha_solicitada ASC, s.id_solicitud ASC
+                ),
+            '[]'::jsonb)
+        ) AS resultado
+        FROM solicitud s
+        INNER JOIN seccion sec ON sec.id_seccion = s.id_seccion
+        INNER JOIN asignatura a ON a.id_asignatura = sec.id_asignatura
+        LEFT  JOIN reserva_sala rs ON rs.id_reserva_sala = s.id_reserva_sala
+        LEFT  JOIN bloque_horario bh ON bh.id_bloque = rs.id_bloque
+        INNER JOIN detalles_por_solicitud dp ON dp.id_solicitud = s.id_solicitud
+        WHERE s.estado_solicitud = 'EN_PEDIDO'
+          AND s.fecha_solicitada BETWEEN :fechaInicio AND :fechaFin
         """, nativeQuery = true)
-    String findProyeccionAbastecimientoJson(@Param("fechaInicio") LocalDate fechaInicio,
-                                            @Param("fechaFin") LocalDate fechaFin);
+    String findAbastecimientoBodegaJson(@Param("fechaInicio") LocalDate fechaInicio,
+                                        @Param("fechaFin") LocalDate fechaFin);
+
+    /** Marca como enviados a bodega de tránsito los detalles de solicitud indicados. */
+    @Modifying
+    @Transactional
+    @Query("UPDATE DetalleSolicitud d SET d.enviadoBodegaTransito = true WHERE d.idDetalleSolicitud IN :ids")
+    int marcarEnviadosBodegaByIds(@Param("ids") List<Integer> ids);
 
 }

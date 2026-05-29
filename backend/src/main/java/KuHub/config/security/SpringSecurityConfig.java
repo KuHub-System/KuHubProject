@@ -491,8 +491,8 @@ public class SpringSecurityConfig {
                                 "/api/v*/solicitudes/find-solicitations-per-week",
                                 "/api/v*/solicitud/order-for-consolidation",
                                 "/api/v*/solicitudes/order-for-consolidation",
-                                "/api/v*/solicitud/proyeccion-abastecimiento",
-                                "/api/v*/solicitudes/proyeccion-abastecimiento"
+                                "/api/v*/solicitud/abastecimiento-bodega",
+                                "/api/v*/solicitudes/abastecimiento-bodega"
                         ).authenticated()
 
                         // 2b. CREACIÓN (POST): Roles operativos que pueden solicitar insumos
@@ -624,6 +624,15 @@ public class SpringSecurityConfig {
                         // 4. ELIMINACIÓN (DELETE): Solo jerarquía alta
                         .requestMatchers(HttpMethod.DELETE, "/api/v1/orden-pedido/**")
                         .hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR")
+
+                        // ========================================
+                        // ENDPOINTS DE STOCK DISPONIBLE (sobrantes bodega)
+                        // ========================================
+                        .requestMatchers(HttpMethod.GET, "/api/v1/stock-disponible/**")
+                        .hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR", "ENCARGADO_BODEGA")
+
+                        .requestMatchers(HttpMethod.POST, "/api/v1/stock-disponible/**")
+                        .hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR", "ENCARGADO_BODEGA")
 
                         // ========================================
                         // RESTO DE ENDPOINTS

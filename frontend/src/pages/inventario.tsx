@@ -58,6 +58,7 @@ import { obtenerCategorias, obtenerUnidades } from '../services/storage-service'
 import GestionCategoriasModal from '../components/modals/GestionCategoriasModal';
 import GestionUnidadesModal from '../components/modals/GestionUnidadesModal';
 import GestionAbastecimientoModal from '../components/modals/GestionAbastecimientoModal';
+import StockDisponiblesModal from '../components/modals/StockDisponiblesModal';
 import { obtenerCategoriasActivasService } from '../services/categoria-service';
 import { obtenerUnidadesActivasService } from '../services/unidad-medida-service';
 import { IUnidadMedida, ISincronizarInventarioExcelResultado, IResultadoItemInventarioExcel, ICategoriaAbastecimientoView } from '../types/inventario.types';
@@ -74,8 +75,12 @@ import {
   obtenerConfigAbastecimientoService
 } from '../services/inventario-service';
 import {
-  obtenerProyeccionAbastecimientoService,
-  IProyeccionAbastecimiento
+  obtenerAbastecimientoBodegaService,
+  marcarEnviadoBodegaService,
+  registrarDisponiblesService,
+  ISolicitudBodegaItem,
+  IDetalleBodegaItem,
+  IRegistrarDisponibleDTO,
 } from '../services/solicitud-service';
 import {
   obtenerAbastecimientoConfirmadoService,
@@ -95,6 +100,9 @@ interface ItemPedidoMasivo {
   motivo: string;
   idDetalleOrdenPedido?: number;
   marcaProducto?: string | null;
+  idDetalleSolicitud?: number;
+  cantidadOriginal?: number;
+  idSolicitud?: number;
 }
 
 // ── Helpers para sincronización Excel ──
@@ -169,6 +177,7 @@ const InventarioPage: React.FC = () => {
   const { isOpen: isCategoriasOpen, onOpen: onCategoriasOpen, onOpenChange: onCategoriasOpenChange } = useDisclosure();
   const { isOpen: isUnidadesOpen, onOpen: onUnidadesOpen, onOpenChange: onUnidadesOpenChange } = useDisclosure();
   const { isOpen: isAbastecimientoConfigOpen, onOpen: onAbastecimientoConfigOpen, onOpenChange: onAbastecimientoConfigOpenChange } = useDisclosure();
+  const { isOpen: isStockDisponiblesOpen, onOpen: onStockDisponiblesOpen, onOpenChange: onStockDisponiblesOpenChange } = useDisclosure();
   // ── Sincronizar Inventario con Excel ──
   const excelFileInputRef = React.useRef<HTMLInputElement>(null);
   const [excelPendingFile,     setExcelPendingFile]     = React.useState<File | null>(null);
@@ -944,6 +953,16 @@ const InventarioPage: React.FC = () => {
           >
             <Icon icon="lucide:boxes" className="text-default-600" width={20} />
           </Button>
+          <Button
+            isIconOnly
+            variant="flat"
+            size="md"
+            onPress={onStockDisponiblesOpen}
+            title="Stock Disponible"
+            className="bg-default-100 dark:bg-default-50/10"
+          >
+            <Icon icon="lucide:package-check" className="text-default-600" width={20} />
+          </Button>
         </div>
 
         {/* Barra de herramientas */}
@@ -1446,6 +1465,11 @@ const InventarioPage: React.FC = () => {
         <GestionAbastecimientoModal
           isOpen={isAbastecimientoConfigOpen}
           onOpenChange={onAbastecimientoConfigOpenChange}
+        />
+
+        <StockDisponiblesModal
+          isOpen={isStockDisponiblesOpen}
+          onOpenChange={onStockDisponiblesOpenChange}
         />
 
         <GestionUnidadesModal
@@ -2661,10 +2685,19 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoP
   const [stockInput, setStockInput] = React.useState<string>('');
   const [motivo, setMotivo] = React.useState<string>('');
 
-  // Estados para modal de proyección de abastecimiento
-  const { isOpen: isProyeccionOpen, onOpen: onProyeccionOpen, onOpenChange: onProyeccionOpenChange } = useDisclosure();
-  const [dateRangeProyeccion, setDateRangeProyeccion] = React.useState<{ start: CalendarDate; end: CalendarDate } | null>(null);
-  const [loadingProy, setLoadingProy] = React.useState(false);
+  // Estados para modal de Abastecimiento de Bodega
+  const { isOpen: isBodegaOpen, onOpen: onBodegaOpen, onOpenChange: onBodegaOpenChange } = useDisclosure();
+  const [dateRangeBodega, setDateRangeBodega] = React.useState<{ start: CalendarDate; end: CalendarDate } | null>(null);
+  const [solicitudesBodega, setSolicitudesBodega] = React.useState<ISolicitudBodegaItem[]>([]);
+  const [solicitudesSeleccionadas, setSolicitudesSeleccionadas] = React.useState<Set<number>>(new Set());
+  const [loadingBodega, setLoadingBodega] = React.useState(false);
+  const [cargadoBodega, setCargadoBodega] = React.useState(false);
+  const [agruparPorDia, setAgruparPorDia] = React.useState(false);
+  const bodegaSearchTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Estados para modal de Disponibles (sobrantes detectados en TRASLADO)
+  const [isDisponiblesOpen, setIsDisponiblesOpen] = React.useState(false);
+  const [disponiblesPendientes, setDisponiblesPendientes] = React.useState<IRegistrarDisponibleDTO[]>([]);
 
   // Estados para modal de abastecimiento de proveedores (OPs CONFIRMADA)
   const { isOpen: isAbastecimientoOpen, onOpen: onAbastecimientoOpen, onOpenChange: onAbastecimientoOpenChange } = useDisclosure();
@@ -2990,75 +3023,109 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoP
     actualizarDeltaItem(id, newDelta);
   };
 
-  const cargarProyeccionAbastecimiento = async () => {
-    if (!dateRangeProyeccion || !dateRangeProyeccion.start || !dateRangeProyeccion.end) {
-      toast.error('Debe seleccionar un rango de fechas válido');
-      return;
-    }
+  const fmtCalendar = (d: CalendarDate) =>
+    `${d.year}-${String(d.month).padStart(2, '0')}-${String(d.day).padStart(2, '0')}`;
 
-    const fechaInicioProy = `${dateRangeProyeccion.start.year}-${String(dateRangeProyeccion.start.month).padStart(2, '0')}-${String(dateRangeProyeccion.start.day).padStart(2, '0')}`;
-    const fechaFinProy = `${dateRangeProyeccion.end.year}-${String(dateRangeProyeccion.end.month).padStart(2, '0')}-${String(dateRangeProyeccion.end.day).padStart(2, '0')}`;
-
+  const buscarSolicitudesBodega = async (range?: { start: CalendarDate; end: CalendarDate } | null) => {
+    const r = range ?? dateRangeBodega;
+    if (!r?.start || !r?.end) return;
+    setLoadingBodega(true);
+    setCargadoBodega(false);
+    setSolicitudesSeleccionadas(new Set());
     try {
-      setLoadingProy(true);
-      const proyeccion = await obtenerProyeccionAbastecimientoService(fechaInicioProy, fechaFinProy);
-
-      if (!proyeccion.proyeccionAbastecimiento || proyeccion.proyeccionAbastecimiento.length === 0) {
-        toast.warning('No hay datos de proyección para el rango de fechas seleccionado');
-        return;
-      }
-
-      // Convertir los productos de la proyección a ItemPedidoMasivo
-      // Todos se agregan con motivo "ENTRADA_INVENTARIO" (acción por defecto)
-      const nuevosMotivoEntrante = 'ENTRADA_INVENTARIO';
-      const nuevosItems: ItemPedidoMasivo[] = proyeccion.proyeccionAbastecimiento.map((producto) => {
-        // Obtener stock actual e idInventario de la proyección (sincronización correcta con BD)
-        const stockActual = producto.stock;
-        const idInventarioActual = producto.idInventario;
-
-        const bulkProducto: IBulkProductoInventoryListing = {
-          idProducto: producto.idProducto,
-          idInventario: idInventarioActual,
-          nombreProducto: producto.nombreProducto,
-          detalles: `${producto.nombreUnidad} (${producto.abreviatura})`,
-          stock: stockActual,
-          esFraccionario: producto.esFraccionario,
-        };
-
-        return {
-          id: Date.now().toString() + Math.random(),
-          producto: bulkProducto,
-          delta: producto.cantidadTotalSolicitada,
-          motivo: nuevosMotivoEntrante,
-        };
-      });
-
-      // Agregar a la lista existente
-      setItemsPedido([...itemsPedido, ...nuevosItems]);
-      toast.success(`${nuevosItems.length} producto(s) cargado(s) desde la proyección`);
-
-      // Cerrar el modal y limpiar campos
-      onProyeccionOpenChange();
-      setDateRangeProyeccion(null);
+      const data = await obtenerAbastecimientoBodegaService(fmtCalendar(r.start), fmtCalendar(r.end));
+      setSolicitudesBodega(data.solicitudes ?? []);
+      setCargadoBodega(true);
     } catch (error: any) {
-      console.error('Error al cargar proyección:', error);
       if (error.response?.status === 403) {
-        toast.error('No tiene permisos para acceder a esta funcionalidad');
+        toast.error('Sin permisos para acceder al abastecimiento de bodega');
       } else {
-        toast.error('Error al cargar la proyección de abastecimiento');
+        toast.error('Error al cargar solicitudes de bodega');
       }
     } finally {
-      setLoadingProy(false);
+      setLoadingBodega(false);
     }
   };
+
+  const toggleSolicitudBodega = (idSolicitud: number) => {
+    setSolicitudesSeleccionadas(prev => {
+      const next = new Set(prev);
+      next.has(idSolicitud) ? next.delete(idSolicitud) : next.add(idSolicitud);
+      return next;
+    });
+  };
+
+  const cargarSolicitudesSeleccionadas = () => {
+    const nuevosItems: ItemPedidoMasivo[] = [];
+    for (const sol of solicitudesBodega) {
+      if (!solicitudesSeleccionadas.has(sol.idSolicitud)) continue;
+      for (const det of sol.detalles) {
+        if (det.enviadoBodegaTransito) continue;
+        nuevosItems.push({
+          id: `bodega-${det.idDetalleSolicitud}-${Date.now()}-${Math.random()}`,
+          producto: {
+            idProducto: det.idProducto,
+            idInventario: det.idInventario,
+            nombreProducto: det.nombreProducto,
+            detalles: det.abreviatura,
+            stock: det.stock,
+            esFraccionario: det.esFraccionario,
+          },
+          delta: det.cantidadSolicitada,
+          motivo: 'TRASLADO',
+          idDetalleSolicitud: det.idDetalleSolicitud,
+          cantidadOriginal: det.cantidadSolicitada,
+          idSolicitud: sol.idSolicitud,
+        });
+      }
+    }
+    if (nuevosItems.length === 0) {
+      toast.warning('No hay productos pendientes en las solicitudes seleccionadas');
+      return;
+    }
+    setItemsPedido(prev => [...prev, ...nuevosItems]);
+    toast.success(`${nuevosItems.length} producto(s) cargado(s) para traslado a bodega`);
+    onBodegaOpenChange();
+  };
+
+  React.useEffect(() => {
+    if (isBodegaOpen) {
+      const hoy = new Date();
+      const plus3 = new Date(hoy);
+      plus3.setDate(hoy.getDate() + 3);
+      const toCalendar = (d: Date) => new CalendarDate(d.getFullYear(), d.getMonth() + 1, d.getDate());
+      const range = { start: toCalendar(hoy), end: toCalendar(plus3) };
+      setDateRangeBodega(range);
+      buscarSolicitudesBodega(range);
+    } else {
+      if (bodegaSearchTimerRef.current) clearTimeout(bodegaSearchTimerRef.current);
+      setSolicitudesBodega([]);
+      setSolicitudesSeleccionadas(new Set());
+      setCargadoBodega(false);
+      setAgruparPorDia(false);
+    }
+  }, [isBodegaOpen]);
 
   const vaciarLista = () => {
     setItemsPedido([]);
   };
 
-  const procesarPedido = async () => {
-    if (itemsPedido.length === 0) return;
+  const detectarDisponibles = (): IRegistrarDisponibleDTO[] => {
+    return itemsPedido
+      .filter(i =>
+        i.motivo === 'TRASLADO' &&
+        i.idDetalleSolicitud != null &&
+        i.cantidadOriginal != null &&
+        (i.cantidadOriginal - i.delta) > 0.001
+      )
+      .map(i => ({
+        idProducto: i.producto.idProducto,
+        idSolicitud: i.idSolicitud,
+        cantidad: parseFloat((i.cantidadOriginal! - i.delta).toFixed(3)),
+      }));
+  };
 
+  const ejecutarProcesoTraslado = async () => {
     setProcessState('procesando');
     try {
       const motivoProcesarOrder: Record<string, number> = {
@@ -3103,6 +3170,13 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoP
         marcarEntregadosMasivoService(idsEntregados).catch(e => logger.warn('marcarEntregados failed', e));
       }
 
+      const idsEnviadosBodega = itemsPedido
+        .filter(i => i.idDetalleSolicitud != null && exitososSet.has(i.producto.idInventario))
+        .map(i => i.idDetalleSolicitud!);
+      if (idsEnviadosBodega.length > 0) {
+        marcarEnviadoBodegaService(idsEnviadosBodega).catch(e => logger.warn('marcarEnviadoBodega failed', e));
+      }
+
       // Build retry items for recoverable errors (product exists, stock insufficient)
       const retryItems: ItemPedidoMasivo[] = result.errores
         .filter(err => err.stockResultante > 0)
@@ -3132,6 +3206,33 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoP
     }
   };
 
+  const handleDisponiblesSi = async () => {
+    try {
+      await registrarDisponiblesService(disponiblesPendientes);
+      toast.success('Disponibles registrados correctamente');
+    } catch {
+      toast.warning('No se pudieron registrar los disponibles, pero el traslado continuará');
+    }
+    setIsDisponiblesOpen(false);
+    await ejecutarProcesoTraslado();
+  };
+
+  const handleDisponiblesNo = async () => {
+    setIsDisponiblesOpen(false);
+    await ejecutarProcesoTraslado();
+  };
+
+  const procesarPedido = async () => {
+    if (itemsPedido.length === 0) return;
+    const candidatos = detectarDisponibles();
+    if (candidatos.length > 0) {
+      setDisponiblesPendientes(candidatos);
+      setIsDisponiblesOpen(true);
+      return;
+    }
+    await ejecutarProcesoTraslado();
+  };
+
   const opcionesMotivoMap: Record<string, string[]> = {
     'bodega': ['ENTRADA_BODEGA', 'DEVOLUCION', 'AJUSTE_BODEGA', 'SALIDA_BODEGA', 'MERMA_BODEGA'],
     'inventario': ['ENTRADA_INVENTARIO', 'TRASLADO', 'AJUSTE_INVENTARIO', 'SALIDA_INVENTARIO', 'MERMA_INVENTARIO']
@@ -3147,6 +3248,49 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoP
   const context = window.location.pathname.includes('bodega') ? 'bodega' : 'inventario';
   const opcionesMotivoList = opcionesMotivoMap[context];
 
+  // ── Helpers para "Agrupar por día" en modal Abastecimiento de Bodega ──
+  type DetalleDia = IDetalleBodegaItem & { cantidadTotal: number };
+
+  const getProductosDia = (solicitudes: ISolicitudBodegaItem[]): DetalleDia[] => {
+    const mapa = new Map<number, DetalleDia>();
+    for (const sol of solicitudes) {
+      for (const det of sol.detalles) {
+        if (mapa.has(det.idProducto)) {
+          mapa.get(det.idProducto)!.cantidadTotal += det.cantidadSolicitada;
+        } else {
+          mapa.set(det.idProducto, { ...det, cantidadTotal: det.cantidadSolicitada });
+        }
+      }
+    }
+    return Array.from(mapa.values()).sort((a, b) => a.nombreProducto.localeCompare(b.nombreProducto));
+  };
+
+  const solicitudesPorDia = React.useMemo(() => {
+    const grupos = new Map<string, ISolicitudBodegaItem[]>();
+    for (const sol of solicitudesBodega) {
+      const key = sol.fechaSolicitada;
+      if (!grupos.has(key)) grupos.set(key, []);
+      grupos.get(key)!.push(sol);
+    }
+    return Array.from(grupos.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([fecha, sols]) => ({ fecha, solicitudes: sols }));
+  }, [solicitudesBodega]);
+
+  const toggleDiaBodega = (fecha: string) => {
+    const grupo = solicitudesPorDia.find(g => g.fecha === fecha);
+    if (!grupo) return;
+    const idsConPendientes = grupo.solicitudes
+      .filter(s => s.detalles.some(d => !d.enviadoBodegaTransito))
+      .map(s => s.idSolicitud);
+    const todosMarcados = idsConPendientes.length > 0 && idsConPendientes.every(id => solicitudesSeleccionadas.has(id));
+    setSolicitudesSeleccionadas(prev => {
+      const next = new Set(prev);
+      idsConPendientes.forEach(id => todosMarcados ? next.delete(id) : next.add(id));
+      return next;
+    });
+  };
+
   return (
     <div className="flex flex-col w-full overflow-hidden rounded-2xl">
       <ModalHeader className="flex flex-col gap-3 border-b border-default-100 dark:border-default-50 bg-white dark:bg-content2 px-6 py-4">
@@ -3158,16 +3302,16 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoP
             </p>
           </div>
           <div className="flex items-center gap-1 shrink-0">
-            <Tooltip content={puedeAccederAbastecimiento ? "Cargar proyección de abastecimiento por pedido" : "Sin permisos"} color="foreground" className="text-xs">
+            <Tooltip content={puedeAccederAbastecimiento ? "Abastecimiento de Bodega (solicitudes EN_PEDIDO)" : "Sin permisos"} color="foreground" className="text-xs">
               <Button
                 isIconOnly
                 variant="light"
                 color="primary"
                 size="lg"
-                onPress={onProyeccionOpen}
+                onPress={onBodegaOpen}
                 isDisabled={!puedeAccederAbastecimiento}
               >
-                <Icon icon="lucide:package-plus" width={22} />
+                <Icon icon="lucide:warehouse" width={22} />
               </Button>
             </Tooltip>
             <Tooltip content={puedeAccederAbastecimiento ? "Abastecimiento de proveedores (OPs confirmadas)" : "Sin permisos"} color="foreground" className="text-xs">
@@ -3663,48 +3807,277 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoP
         </ModalContent>
       </Modal>
 
-      {/* Modal de Proyección de Abastecimiento */}
-      <Modal isOpen={isProyeccionOpen} onOpenChange={onProyeccionOpenChange} size="md" backdrop="blur" radius="lg" isDismissable={false}>
+      {/* Modal de Abastecimiento de Bodega */}
+      <Modal isOpen={isBodegaOpen} onOpenChange={onBodegaOpenChange} size="4xl" backdrop="blur" radius="lg" isDismissable={false} scrollBehavior="inside">
         <ModalContent>
-          {(onProyeccionClose) => (
+          {(onBodegaClose) => (
             <>
               <ModalHeader className="flex flex-col gap-1">
-                <h2 className="text-lg font-bold text-secondary dark:text-foreground">Abastecimiento por Pedido</h2>
+                <h2 className="text-lg font-bold text-secondary dark:text-foreground">Abastecimiento de Bodega</h2>
+                <p className="text-xs text-default-500 font-normal">Solicitudes EN_PEDIDO con productos de categorías INVENTARIO → TRASLADO a bodega de tránsito</p>
               </ModalHeader>
               <ModalBody className="space-y-4">
-                <div className="p-3 bg-primary/10 rounded-lg border border-primary/20">
-                  <p className="text-sm text-secondary dark:text-foreground">
-                    Esta es una proyección de lo que se espera recibir de las mercancías solicitadas por pedido.
-                  </p>
+                {/* Filtro de fechas — auto-búsqueda 1.5 s tras seleccionar */}
+                <div className="flex gap-2 items-end">
+                  <div className="flex-1">
+                    <DateRangePicker
+                      label="Rango de fechas"
+                      variant="bordered"
+                      value={dateRangeBodega}
+                      onChange={(range) => {
+                        setDateRangeBodega(range);
+                        if (bodegaSearchTimerRef.current) clearTimeout(bodegaSearchTimerRef.current);
+                        if (range?.start && range?.end) {
+                          bodegaSearchTimerRef.current = setTimeout(() => buscarSolicitudesBodega(range), 1500);
+                        }
+                      }}
+                    />
+                  </div>
+                  {loadingBodega && <span className="text-xs text-default-400 pb-2">Buscando...</span>}
                 </div>
 
-                <DateRangePicker
-                  label="Rango de fechas"
-                  variant="bordered"
-                  value={dateRangeProyeccion}
-                  onChange={setDateRangeProyeccion}
-                />
+                {/* Resultados */}
+                {loadingBodega && (
+                  <div className="flex justify-center py-8">
+                    <span className="text-default-400 text-sm">Cargando solicitudes...</span>
+                  </div>
+                )}
+
+                {!loadingBodega && cargadoBodega && solicitudesBodega.length === 0 && (
+                  <div className="p-4 bg-default-100 rounded-lg text-center">
+                    <p className="text-default-500 text-sm">No hay solicitudes EN_PEDIDO con productos de categorías INVENTARIO en el rango seleccionado.</p>
+                  </div>
+                )}
+
+                {!loadingBodega && solicitudesBodega.length > 0 && (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between flex-wrap gap-2">
+                      <span className="text-sm text-default-600">{solicitudesBodega.length} solicitud(es) encontrada(s)</span>
+                      <div className="flex gap-2 flex-wrap">
+                        <Button
+                          size="sm"
+                          variant={agruparPorDia ? 'solid' : 'flat'}
+                          color={agruparPorDia ? 'primary' : 'default'}
+                          startContent={<Icon icon="lucide:calendar-days" width={14} />}
+                          onPress={() => setAgruparPorDia(v => !v)}
+                        >
+                          Agrupar por día
+                        </Button>
+                        <Button size="sm" variant="flat" onPress={() => setSolicitudesSeleccionadas(new Set(solicitudesBodega.map(s => s.idSolicitud)))}>
+                          Seleccionar todas
+                        </Button>
+                        <Button size="sm" variant="flat" onPress={() => setSolicitudesSeleccionadas(new Set())}>
+                          Limpiar
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* Vista AGRUPADA por día */}
+                    {agruparPorDia && solicitudesPorDia.map(({ fecha, solicitudes }) => {
+                      const productosDia = getProductosDia(solicitudes);
+                      const idsConPendientes = solicitudes
+                        .filter(s => s.detalles.some(d => !d.enviadoBodegaTransito))
+                        .map(s => s.idSolicitud);
+                      const todosMarcados = idsConPendientes.length > 0 && idsConPendientes.every(id => solicitudesSeleccionadas.has(id));
+                      return (
+                        <div key={fecha} className={`border rounded-lg overflow-hidden transition-all ${todosMarcados ? 'border-primary/50 bg-primary/5' : 'border-default-200'}`}>
+                          <div
+                            className="flex items-center gap-3 p-3 cursor-pointer hover:bg-default-100"
+                            onClick={() => toggleDiaBodega(fecha)}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={todosMarcados}
+                              disabled={idsConPendientes.length === 0}
+                              onChange={() => toggleDiaBodega(fecha)}
+                              className="w-4 h-4 accent-primary"
+                              onClick={e => e.stopPropagation()}
+                            />
+                            <div className="flex-1">
+                              <span className="font-semibold text-sm">{fecha}</span>
+                              <span className="text-xs text-default-500 ml-2">
+                                {solicitudes.length} solicitud(es) · {productosDia.length} producto(s)
+                              </span>
+                            </div>
+                            {idsConPendientes.length === 0 && (
+                              <span className="text-xs text-success flex items-center gap-1">
+                                <Icon icon="lucide:check-circle-2" width={12} /> Todos enviados
+                              </span>
+                            )}
+                          </div>
+                          <div className="border-t border-default-100 divide-y divide-default-100">
+                            {productosDia.map((det) => (
+                              <div key={det.idProducto} className={`flex items-center gap-3 px-4 py-2 text-sm ${det.enviadoBodegaTransito ? 'opacity-50' : ''}`}>
+                                {det.enviadoBodegaTransito
+                                  ? <Icon icon="lucide:check-circle-2" className="text-success shrink-0" width={16} />
+                                  : <Icon icon="lucide:circle" className="text-default-300 shrink-0" width={16} />
+                                }
+                                <span className="flex-1">{det.nombreProducto}</span>
+                                <span className="text-default-500 tabular-nums">{det.cantidadTotal} {det.abreviatura}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })}
+
+                    {/* Vista NORMAL — por solicitud */}
+                    {!agruparPorDia && solicitudesBodega.map((sol) => {
+                      const seleccionada = solicitudesSeleccionadas.has(sol.idSolicitud);
+                      const pendientes = sol.detalles.filter(d => !d.enviadoBodegaTransito).length;
+                      return (
+                        <div
+                          key={sol.idSolicitud}
+                          className={`border rounded-lg overflow-hidden transition-all ${seleccionada ? 'border-primary/50 bg-primary/5' : 'border-default-200'}`}
+                        >
+                          {/* Header solicitud */}
+                          <div
+                            className="flex items-center gap-3 p-3 cursor-pointer hover:bg-default-100"
+                            onClick={() => { if (pendientes > 0) toggleSolicitudBodega(sol.idSolicitud); }}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={seleccionada}
+                              disabled={pendientes === 0}
+                              onChange={() => toggleSolicitudBodega(sol.idSolicitud)}
+                              className="w-4 h-4 accent-primary"
+                              onClick={e => e.stopPropagation()}
+                            />
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="font-medium text-sm">{sol.nombreAsignatura}</span>
+                                <span className="text-xs text-default-400">·</span>
+                                <span className="text-xs text-default-500">{sol.nombreSeccion}</span>
+                                {sol.diaSemana && (
+                                  <>
+                                    <span className="text-xs text-default-400">·</span>
+                                    <span className="text-xs text-default-500">{sol.diaSemana}</span>
+                                  </>
+                                )}
+                                {sol.horaInicio && sol.horaFin && (
+                                  <span className="text-xs text-default-400">{sol.horaInicio.slice(0,5)}–{sol.horaFin.slice(0,5)}</span>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-2 mt-0.5">
+                                <span className="text-xs text-default-400">{sol.fechaSolicitada}</span>
+                                {pendientes === 0 && (
+                                  <span className="text-xs text-success flex items-center gap-1">
+                                    <Icon icon="lucide:check-circle-2" width={12} /> Todos enviados
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            <span className="text-xs text-default-400 shrink-0">{sol.detalles.length} producto(s)</span>
+                          </div>
+
+                          {/* Detalles productos */}
+                          <div className="border-t border-default-100 divide-y divide-default-100">
+                            {sol.detalles.map((det: IDetalleBodegaItem) => (
+                              <div
+                                key={det.idDetalleSolicitud}
+                                className={`flex items-center gap-3 px-4 py-2 text-sm ${det.enviadoBodegaTransito ? 'opacity-50' : ''}`}
+                              >
+                                {det.enviadoBodegaTransito
+                                  ? <Icon icon="lucide:check-circle-2" className="text-success shrink-0" width={16} />
+                                  : <Icon icon="lucide:circle" className="text-default-300 shrink-0" width={16} />
+                                }
+                                <span className="flex-1">{det.nombreProducto}</span>
+                                <span className="text-default-500">{det.cantidadSolicitada} {det.abreviatura}</span>
+                                <span className="text-xs text-default-400 w-20 text-right">Stock: {det.stock}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </ModalBody>
               <ModalFooter>
-                <Button
-                  variant="ghost"
-                  onPress={onProyeccionClose}
-                  className="font-medium"
-                  isDisabled={loadingProy}
-                >
+                <Button variant="ghost" onPress={onBodegaClose} className="font-medium" isDisabled={loadingBodega}>
                   Cancelar
                 </Button>
                 <Button
                   color="primary"
-                  onPress={cargarProyeccionAbastecimiento}
-                  isLoading={loadingProy}
-                  startContent={!loadingProy && <Icon icon="lucide:download" width={18} />}
+                  onPress={cargarSolicitudesSeleccionadas}
+                  isDisabled={solicitudesSeleccionadas.size === 0 || loadingBodega}
+                  startContent={<Icon icon="lucide:arrow-right-to-line" width={18} />}
                 >
-                  Cargar Datos
+                  Cargar {solicitudesSeleccionadas.size > 0 ? `${solicitudesSeleccionadas.size} solicitud(es)` : ''}
                 </Button>
               </ModalFooter>
             </>
           )}
+        </ModalContent>
+      </Modal>
+
+      {/* Modal de Disponibles — sobrantes detectados en TRASLADO */}
+      <Modal
+        isOpen={isDisponiblesOpen}
+        isDismissable={false}
+        hideCloseButton
+        size="lg"
+        backdrop="blur"
+        radius="lg"
+        classNames={{ base: 'rounded-2xl' }}
+      >
+        <ModalContent>
+          <ModalHeader>
+            <div className="flex items-center gap-2">
+              <Icon icon="lucide:alert-triangle" width={20} className="text-warning" />
+              <span className="text-base font-bold">Productos sobrantes detectados</span>
+            </div>
+          </ModalHeader>
+          <ModalBody className="space-y-4 pb-2">
+            <p className="text-sm text-default-600">
+              Se identificó que los siguientes productos serán trasladados en una cantidad{' '}
+              <strong>menor a la solicitada</strong>. Esto puede indicar que hay sobrantes en{' '}
+              bodega de tránsito no gestionados. ¿Desea registrarlos como{' '}
+              <strong>disponibles en Inventario</strong> no asociados a un pedido o solicitud?
+            </p>
+            <div className="rounded-lg border border-default-200 overflow-hidden">
+              <table className="w-full text-xs" style={{ tableLayout: 'fixed' }}>
+                <thead className="bg-default-100 dark:bg-default-50">
+                  <tr>
+                    <th className="py-2 px-3 font-medium text-left">Producto</th>
+                    <th className="py-2 px-3 font-medium text-center w-36">Disponible estimado</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {disponiblesPendientes.map((d, idx) => {
+                    const item = itemsPedido.find(
+                      i => i.producto.idProducto === d.idProducto && i.idSolicitud === d.idSolicitud
+                    );
+                    return (
+                      <tr key={idx} className="border-t border-default-100">
+                        <td className="py-2 px-3 text-default-700">
+                          {item?.producto.nombreProducto ?? `Producto #${d.idProducto}`}
+                        </td>
+                        <td className="py-2 px-3 text-center font-semibold text-default-600 tabular-nums">
+                          {d.cantidad} {item?.producto.detalles}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+            <p className="text-xs text-warning-600 dark:text-warning-400 italic">
+              En caso de No, el sistema no contará con trazabilidad de estos productos sobrantes.
+            </p>
+          </ModalBody>
+          <ModalFooter className="border-t border-default-100 gap-2">
+            <Button variant="ghost" onPress={handleDisponiblesNo} className="font-medium">
+              No
+            </Button>
+            <Button
+              color="success"
+              onPress={handleDisponiblesSi}
+              startContent={<Icon icon="lucide:check-circle-2" width={16} />}
+            >
+              Sí, registrar disponibles
+            </Button>
+          </ModalFooter>
         </ModalContent>
       </Modal>
 

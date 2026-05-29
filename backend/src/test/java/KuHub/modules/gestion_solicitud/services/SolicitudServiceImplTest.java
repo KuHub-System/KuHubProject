@@ -13,7 +13,7 @@ import KuHub.modules.gestion_solicitud.dtos.request.record.MassiveSolicitation;
 import KuHub.modules.gestion_solicitud.dtos.respose.projection.ResultsMassSolicitationView;
 import KuHub.modules.gestion_solicitud.dtos.respose.record.CourseForSolicitation;
 import KuHub.modules.gestion_solicitud.dtos.respose.record.DashboardConsolidado;
-import KuHub.modules.gestion_solicitud.dtos.respose.record.ProyeccionAbastecimiento;
+import KuHub.modules.gestion_solicitud.dtos.respose.record.AbastecimientoBodegaDTO;
 import KuHub.modules.gestion_solicitud.dtos.respose.record.RecipeSolicitation;
 import KuHub.modules.gestion_solicitud.dtos.respose.record.SolicitationManagement;
 import KuHub.modules.gestion_solicitud.entity.Solicitud;
@@ -231,19 +231,18 @@ class SolicitudServiceImplTest {
     }
 
     @Test
-    void test9FindProyeccionAbastecimiento() throws Exception {
+    void test9ObtenerAbastecimientoBodega() {
         DateRangeDTO dto = new DateRangeDTO();
         dto.setFechaInicio(LocalDate.of(2026, 5, 1));
         dto.setFechaFin(LocalDate.of(2026, 5, 31));
 
-        when(solicitudRepository.findProyeccionAbastecimientoJson(
+        when(solicitudRepository.findAbastecimientoBodegaJson(
             dto.getFechaInicio(), dto.getFechaFin()
-        )).thenReturn("[]");
-        when(objectMapper.readValue(eq("[]"), any(TypeReference.class)))
-            .thenReturn(List.of());
+        )).thenReturn(null);
 
-        ProyeccionAbastecimiento result = solicitudService.findProyeccionAbastecimiento(dto);
+        AbastecimientoBodegaDTO result = solicitudService.obtenerAbastecimientoBodega(dto);
 
         assertNotNull(result);
+        assertNotNull(result.solicitudes());
     }
 }
