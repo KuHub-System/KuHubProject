@@ -419,6 +419,7 @@ export interface IDetalleOrdenPedido {
   precioConIvaUnitario: number | null;
   fechaEntrega: string; // YYYY-MM-DD
   entregado: boolean;
+  formatoContenido: string | null;
 }
 
 /** Orden de Pedido completa con cabecera y todas sus líneas de detalle. */

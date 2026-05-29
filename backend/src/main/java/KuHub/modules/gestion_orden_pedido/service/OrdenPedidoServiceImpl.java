@@ -220,6 +220,16 @@ public class OrdenPedidoServiceImpl implements OrdenPedidoService {
         var pv  = op.getProveedor();
         var ped = op.getPedido();
 
+        // Mapa idProducto → formatoContenido para enriquecer cada línea (un único SELECT extra)
+        java.util.Map<Integer, String> formatoMap = proveedorProductoRepository
+                .findByProveedor_IdProveedorAndActivoTrue(pv.getIdProveedor())
+                .stream()
+                .filter(pp -> pp.getFormatoContenido() != null)
+                .collect(java.util.stream.Collectors.toMap(
+                        pp -> pp.getProducto().getIdProducto(),
+                        pp -> pp.getFormatoContenido(),
+                        (a, b) -> a));
+
         // Mapear detalles (acceso lazy — único SELECT adicional dentro de la transacción)
         java.math.BigDecimal totalNeto   = java.math.BigDecimal.ZERO;
         java.math.BigDecimal totalConIva = java.math.BigDecimal.ZERO;
@@ -246,7 +256,8 @@ public class OrdenPedidoServiceImpl implements OrdenPedidoService {
                     pNeto,
                     pConIva,
                     d.getFechaEntrega(),
-                    Boolean.TRUE.equals(d.getEntregado())
+                    Boolean.TRUE.equals(d.getEntregado()),
+                    formatoMap.getOrDefault(prod.getIdProducto(), null)
             ));
         }
 

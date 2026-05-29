@@ -4,7 +4,7 @@ import KuHub.modules.gestion_solicitud.dtos.request.record.ChangeSolicitationSta
 import KuHub.modules.gestion_solicitud.dtos.request.record.MassiveSolicitation;
 import KuHub.modules.gestion_solicitud.dtos.respose.record.CourseForSolicitation;
 import KuHub.modules.gestion_solicitud.dtos.respose.record.DashboardConsolidado;
-import KuHub.modules.gestion_solicitud.dtos.respose.record.ProyeccionAbastecimiento;
+import KuHub.modules.gestion_solicitud.dtos.respose.record.AbastecimientoBodegaDTO;
 import KuHub.modules.gestion_solicitud.dtos.request.*;
 import KuHub.modules.gestion_solicitud.dtos.respose.projection.ResultsMassSolicitationView;
 import KuHub.modules.gestion_solicitud.dtos.respose.record.RecipeSolicitation;
@@ -118,30 +118,48 @@ public class SolicitudController {
     }
 
     /**
-     * Obtiene la proyección de abastecimiento consolidada de productos cuyas solicitudes
-     * tienen estado EN_PEDIDO, filtradas por rango de fechas.
-     * Agrupa por categoría y nombre de producto, sumando cantidades totales solicitadas.
-     * ✅ En uso: Consumido por cargarProyeccionAbastecimiento en inventario.tsx (Abastecimiento por Pedido).
-     * Requiere permiso de LECTURA o ESCRITURA en el módulo INVENTARIO.
+     * Retorna solicitudes EN_PEDIDO con sus productos de categorías INVENTARIO, para precargar
+     * en Control de Stock Masivo con tipo TRASLADO (inventario → bodega de tránsito).
+     * ✅ En uso: Consumido por obtenerAbastecimientoBodegaService en solicitud-service.ts.
+     * Requiere permiso de LECTURA en el módulo INVENTARIO.
      */
-    @PostMapping("/proyeccion-abastecimiento")
-    public ResponseEntity<?> findProyeccionAbastecimiento(
+    @PostMapping("/abastecimiento-bodega")
+    public ResponseEntity<?> obtenerAbastecimientoBodega(
             @Validated @RequestBody DateRangeDTO request,
             Authentication authentication) {
         try {
-            // Validación dinámica de permisos: requiere lectura o escritura en INVENTARIO
             if (!dynamicPermissionService.check(authentication, "INVENTARIO", "read") &&
                 !dynamicPermissionService.check(authentication, "INVENTARIO", "write")) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN)
                         .body(Map.of("message", "No tiene permisos para acceder a esta funcionalidad"));
             }
-
-            ProyeccionAbastecimiento resultado = solicitudService.findProyeccionAbastecimiento(request);
+            AbastecimientoBodegaDTO resultado = solicitudService.obtenerAbastecimientoBodega(request);
             return ResponseEntity.status(200).body(resultado);
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("error", "Error interno al obtener proyección de abastecimiento",
-                                 "message", e.getMessage()));
+                    .body(Map.of("error", "Error al obtener abastecimiento de bodega", "message", e.getMessage()));
+        }
+    }
+
+    /**
+     * Marca los DetalleSolicitud indicados como enviadoBodegaTransito = true.
+     * ✅ En uso: Consumido por marcarEnviadoBodegaService en solicitud-service.ts.
+     * Requiere permiso de ESCRITURA en el módulo INVENTARIO.
+     */
+    @PatchMapping("/detalles/marcar-enviado-bodega")
+    public ResponseEntity<?> marcarEnviadosBodega(
+            @RequestBody List<Integer> ids,
+            Authentication authentication) {
+        try {
+            if (!dynamicPermissionService.check(authentication, "INVENTARIO", "write")) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(Map.of("message", "No tiene permisos para marcar abastecimiento de bodega"));
+            }
+            int updated = solicitudService.marcarEnviadosBodega(ids);
+            return ResponseEntity.status(200).body(updated);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Error al marcar enviados a bodega", "message", e.getMessage()));
         }
     }
 

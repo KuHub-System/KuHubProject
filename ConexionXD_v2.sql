@@ -86,6 +86,7 @@ DROP TABLE IF EXISTS producto CASCADE;
 DROP TABLE IF EXISTS categoria CASCADE;
 DROP TABLE IF EXISTS unidad_medida CASCADE;
 DROP TABLE IF EXISTS categoria_abastecimiento CASCADE;
+DROP TABLE IF EXISTS stock_disponible CASCADE;
 
 -- Tablas academicas
 DROP TABLE IF EXISTS asignatura_profesor_cargo CASCADE;
@@ -508,6 +509,20 @@ CREATE TABLE categoria_abastecimiento (
     PRIMARY KEY (id_categoria, tipo_abastecimiento)
 );
 
+-- Tabla Stock_disponible sierve para registrar producto que sobraran por x motivo que no esta asociadas a un pedido.
+CREATE TABLE stock_disponible (
+    id_stock_disponible  SERIAL PRIMARY KEY,
+    id_producto          INTEGER NOT NULL REFERENCES producto(id_producto),
+    id_pedido            INTEGER REFERENCES pedido(id_pedido),
+    id_solicitud         INTEGER REFERENCES solicitud(id_solicitud),
+    cantidad             DECIMAL(10,3) NOT NULL CHECK (cantidad >= 0),
+    tipo_disponible      VARCHAR(20) NOT NULL DEFAULT 'INVENTARIO'
+      CHECK (tipo_disponible IN ('INVENTARIO', 'BODEGA_TRANSITO')),
+    fecha_registro       DATE NOT NULL DEFAULT CURRENT_DATE,
+    activo               BOOLEAN NOT NULL DEFAULT TRUE
+);
+
+
 -- Tabla movimiento
 CREATE TABLE movimiento (
     id_movimiento INTEGER GENERATED ALWAYS AS IDENTITY,
@@ -708,6 +723,7 @@ CREATE TABLE detalle_solicitud (
     id_producto INTEGER NOT NULL,
     cant_producto_solicitud NUMERIC(10, 3) NOT NULL,
     observacion TEXT, -- <--- Cambiado a TEXT
+    enviado_bodega_transito BOOLEAN NOT NULL DEFAULT,
 
     -- La FK ahora apunta solo al ID simple de la cabecera
     CONSTRAINT fk_detalle_solicitud_padre

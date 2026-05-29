@@ -11,7 +11,7 @@ import KuHub.modules.gestion_sistema.entity.GestionSistema;
 import KuHub.modules.gestion_sistema.repository.GestionSistemaRepository;
 import KuHub.modules.gestion_solicitud.dtos.request.record.ChangeSolicitationStatus;
 import KuHub.modules.gestion_solicitud.dtos.request.record.MassiveSolicitation;
-import KuHub.modules.gestion_solicitud.dtos.respose.record.ProyeccionAbastecimiento;
+import KuHub.modules.gestion_solicitud.dtos.respose.record.AbastecimientoBodegaDTO;
 import KuHub.modules.gestion_solicitud.exception.GestionSolicitudException;
 import KuHub.modules.gestion_solicitud.dtos.respose.record.CourseForSolicitation;
 import KuHub.modules.gestion_solicitud.dtos.respose.record.DashboardConsolidado;
@@ -399,54 +399,52 @@ public class SolicitudServiceImp implements SolicitudService {
     }
 
     /**
-     * Obtiene la proyección de abastecimiento consolidada de productos cuyas solicitudes
-     * tienen estado EN_PEDIDO, filtradas por rango de fechas (fecha_solicitada).
-     * Agrupa por categoría y nombre de producto, sumando cantidades totales solicitadas.
-     *
-     * @param request DTO con fechaInicio y fechaFin del rango a consultar.
-     * @return {@link ProyeccionAbastecimiento} con la lista de productos consolidados.
+     * Retorna solicitudes EN_PEDIDO en el rango de fechas con sus productos de categorías INVENTARIO,
+     * incluyendo el boolean enviadoBodegaTransito por detalle.
+     * Usado por Abastecimiento de Bodega en Control de Stock Masivo (TRASLADO inventario → bodega).
      */
     @Transactional(readOnly = true)
     @Override
-    public ProyeccionAbastecimiento findProyeccionAbastecimiento(DateRangeDTO request) {
-
-        // 1. Validar fechas
+    public AbastecimientoBodegaDTO obtenerAbastecimientoBodega(DateRangeDTO request) {
         if (request.getFechaInicio() == null || request.getFechaFin() == null) {
-            log.warn("Fechas nulas en solicitud de proyección de abastecimiento");
-            return new ProyeccionAbastecimiento(new ArrayList<>());
+            log.warn("Fechas nulas en solicitud de abastecimiento bodega");
+            return new AbastecimientoBodegaDTO(new ArrayList<>());
         }
 
-        // 2. Ejecutar la consulta nativa que retorna un único JSON string
         String jsonRaw = null;
         try {
-            jsonRaw = solicitudRepository.findProyeccionAbastecimientoJson(
+            jsonRaw = solicitudRepository.findAbastecimientoBodegaJson(
                     request.getFechaInicio(),
                     request.getFechaFin()
             );
-            log.info("Consulta proyección abastecimiento completada. Resultado nulo: {}", jsonRaw == null);
+            log.info("Abastecimiento bodega JSON presente: {}", jsonRaw != null);
         } catch (Exception e) {
-            log.error("Error ejecutando consulta de proyección abastecimiento", e);
-            return new ProyeccionAbastecimiento(new ArrayList<>());
+            log.error("Error ejecutando consulta abastecimiento bodega", e);
+            return new AbastecimientoBodegaDTO(new ArrayList<>());
         }
 
-        // 3. Si no hay datos, retornar lista vacía
-        List<ProyeccionAbastecimiento.ProductoAbastecimientoItem> items = new ArrayList<>();
+        if (jsonRaw == null || jsonRaw.isBlank() || "null".equals(jsonRaw)) {
+            return new AbastecimientoBodegaDTO(new ArrayList<>());
+        }
 
         try {
-            if (jsonRaw != null && !jsonRaw.isBlank()) {
-                items = objectMapper.readValue(
-                        jsonRaw,
-                        new TypeReference<List<ProyeccionAbastecimiento.ProductoAbastecimientoItem>>() {}
-                );
-                log.info("Proyección abastecimiento parseada: {} productos", items.size());
-            }
+            AbastecimientoBodegaDTO resultado = objectMapper.readValue(jsonRaw, AbastecimientoBodegaDTO.class);
+            log.info("Abastecimiento bodega: {} solicitudes", resultado.solicitudes().size());
+            return resultado;
         } catch (JsonProcessingException e) {
-            log.error("Error parseando JSON de proyección. JSON recibido: {}", jsonRaw, e);
-            return new ProyeccionAbastecimiento(new ArrayList<>());
+            log.error("Error parseando JSON abastecimiento bodega. JSON={} | Error={}", jsonRaw, e.getMessage());
+            return new AbastecimientoBodegaDTO(new ArrayList<>());
         }
+    }
 
-        // 4. Empaquetar y retornar
-        return new ProyeccionAbastecimiento(items);
+    /**
+     * Marca como enviados a bodega de tránsito los DetalleSolicitud con los IDs indicados.
+     */
+    @Transactional
+    @Override
+    public int marcarEnviadosBodega(List<Integer> ids) {
+        if (ids == null || ids.isEmpty()) return 0;
+        return solicitudRepository.marcarEnviadosBodegaByIds(ids);
     }
 
 }

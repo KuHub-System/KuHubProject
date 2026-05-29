@@ -391,28 +391,65 @@ public class ProveedorServiceImpl implements ProveedorService {
         Integer idProveedor = versionActual.getProveedor().getIdProveedor();
         Integer idProducto = versionActual.getProducto().getIdProducto();
 
-        // Derivar precios — lanza BAD_REQUEST si ambos son nulos
+        // Preservar Marca/Contenido actuales cuando el DTO no los envía (evita borrar al actualizar solo precio)
+        String nuevaMarca = (dto.getMarcaProducto() != null) ? dto.getMarcaProducto() : versionActual.getMarcaProducto();
+        String nuevoFormato = (dto.getFormatoContenido() != null) ? dto.getFormatoContenido() : versionActual.getFormatoContenido();
+
+        boolean marcaCambio = !java.util.Objects.equals(nuevaMarca, versionActual.getMarcaProducto());
+        boolean formatoCambio = !java.util.Objects.equals(nuevoFormato, versionActual.getFormatoContenido());
+
+        boolean hayPrecios = (dto.getPrecioNeto() != null && !dto.getPrecioNeto().isBlank())
+                || (dto.getPrecioConIva() != null && !dto.getPrecioConIva().isBlank());
+
+        if (!hayPrecios) {
+            // Solo Marca/Contenido → actualizar in-place sin crear nueva versión
+            if (!marcaCambio && !formatoCambio) {
+                throw new GestionProveedorException(
+                        "Los valores ingresados son iguales a los actuales. No hay cambios que guardar.",
+                        HttpStatus.CONFLICT
+                );
+            }
+            versionActual.setMarcaProducto(nuevaMarca);
+            versionActual.setFormatoContenido(nuevoFormato);
+            versionActual.setFechaActualizacion(LocalDateTime.now());
+            proveedorProductoRepository.save(versionActual);
+            log.info("Marca/Contenido actualizados in-place: pp_id={} | marca={} | contenido={}", idProveedorProducto, nuevaMarca, nuevoFormato);
+            return true;
+        }
+
+        // Hay precios → derivar y verificar si cambiaron
         ProveedorProducto tmpPp = new ProveedorProducto();
         derivarPrecios(tmpPp, dto.getPrecioNeto(), dto.getPrecioConIva());
 
-        // No crear una versión nueva si los precios no cambiaron
-        if (tmpPp.getPrecioNeto().compareTo(versionActual.getPrecioNeto()) == 0
-                && tmpPp.getPrecioConIva().compareTo(versionActual.getPrecioConIva()) == 0) {
+        boolean preciosCambiaron = tmpPp.getPrecioNeto().compareTo(versionActual.getPrecioNeto()) != 0
+                || tmpPp.getPrecioConIva().compareTo(versionActual.getPrecioConIva()) != 0;
+
+        if (!preciosCambiaron && !marcaCambio && !formatoCambio) {
             throw new GestionProveedorException(
-                    "Los precios ingresados son iguales a los actuales. No hay cambios que guardar.",
+                    "Los valores ingresados son iguales a los actuales. No hay cambios que guardar.",
                     HttpStatus.CONFLICT
             );
+        }
+
+        if (!preciosCambiaron) {
+            // Solo Marca/Contenido cambiaron, precios iguales → actualizar in-place
+            versionActual.setMarcaProducto(nuevaMarca);
+            versionActual.setFormatoContenido(nuevoFormato);
+            versionActual.setFechaActualizacion(LocalDateTime.now());
+            proveedorProductoRepository.save(versionActual);
+            log.info("Marca/Contenido actualizados in-place (precios iguales): pp_id={} | marca={} | contenido={}", idProveedorProducto, nuevaMarca, nuevoFormato);
+            return true;
         }
 
         // 1) Desactivar todas las versiones activas del par (proveedor, producto).
         int desactivadas = proveedorProductoRepository.desactivarVersionesActivas(idProveedor, idProducto);
 
-        // 2) Insertar nueva versión activa.
+        // 2) Insertar nueva versión activa con precios actualizados.
         ProveedorProducto nuevaVersion = new ProveedorProducto();
         nuevaVersion.setIdProveedor(idProveedor);
         nuevaVersion.setIdProducto(idProducto);
-        nuevaVersion.setMarcaProducto(dto.getMarcaProducto());
-        nuevaVersion.setFormatoContenido(dto.getFormatoContenido());
+        nuevaVersion.setMarcaProducto(nuevaMarca);
+        nuevaVersion.setFormatoContenido(nuevoFormato);
         nuevaVersion.setPrecioNeto(tmpPp.getPrecioNeto());
         nuevaVersion.setPrecioConIva(tmpPp.getPrecioConIva());
         nuevaVersion.setActivo(true);

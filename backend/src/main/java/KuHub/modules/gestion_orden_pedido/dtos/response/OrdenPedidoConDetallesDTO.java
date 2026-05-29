@@ -36,6 +36,7 @@ public record OrdenPedidoConDetallesDTO(
             BigDecimal precioNetoUnitario,
             BigDecimal precioConIvaUnitario,
             LocalDate fechaEntrega,
-            Boolean entregado
+            Boolean entregado,
+            String formatoContenido
     ) {}
 }
