@@ -4,7 +4,7 @@ import KuHub.modules.gestion_solicitud.dtos.request.record.ChangeSolicitationSta
 import KuHub.modules.gestion_solicitud.dtos.request.record.MassiveSolicitation;
 import KuHub.modules.gestion_solicitud.dtos.respose.record.CourseForSolicitation;
 import KuHub.modules.gestion_solicitud.dtos.respose.record.DashboardConsolidado;
-import KuHub.modules.gestion_solicitud.dtos.respose.record.ProyeccionAbastecimiento;
+import KuHub.modules.gestion_solicitud.dtos.respose.record.AbastecimientoBodegaDTO;
 import KuHub.modules.gestion_solicitud.dtos.request.*;
 import KuHub.modules.gestion_solicitud.dtos.respose.projection.ResultsMassSolicitationView;
 import KuHub.modules.gestion_solicitud.dtos.respose.record.RecipeSolicitation;
@@ -21,5 +21,6 @@ public interface SolicitudService {
     List<SolicitationManagement> findSolicitationsPerWeekRaw(DateRangeDTO request);
     DashboardConsolidado obtenerDashboard(DateRangeDTO request);
     boolean changeMassiveStatus(ChangeSolicitationStatus request);
-    ProyeccionAbastecimiento findProyeccionAbastecimiento(DateRangeDTO request);
+    AbastecimientoBodegaDTO obtenerAbastecimientoBodega(DateRangeDTO request);
+    int marcarEnviadosBodega(List<Integer> ids);
 }

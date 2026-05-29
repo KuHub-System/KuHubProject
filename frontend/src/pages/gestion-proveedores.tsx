@@ -584,8 +584,10 @@ const GestionProveedoresPage: React.FC = () => {
   const [quitarTarget, setQuitarTarget] = React.useState<{ idProveedor: number; idProducto: number; nombre: string } | null>(null);
 
   // ── Precio inline ──
-  const [editingPrecio, setEditingPrecio] = React.useState<{ idProveedorProducto: number; campo: 'neto' | 'iva' } | null>(null);
+  const [editingPrecio, setEditingPrecio] = React.useState<{ idProveedorProducto: number; campo: 'neto' | 'iva' | 'marca' | 'contenido' } | null>(null);
   const [precioTemp, setPrecioTemp] = React.useState('');
+  const blurTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const handleGuardarPrecioRef = React.useRef<() => Promise<void>>(() => Promise.resolve());
 
   // ── Filtro mostrar inactivos ──
   const [mostrarInactivos, setMostrarInactivos] = React.useState(true);
@@ -1049,74 +1051,115 @@ const GestionProveedoresPage: React.FC = () => {
 
   // ── Precio inline ─────────────────────────────────────────────────────────
 
-  const handleIniciarEditPrecio = (idProveedorProducto: number, precioActual: number, campo: 'neto' | 'iva' = 'neto') => {
-    setEditingPrecio({ idProveedorProducto, campo });
-    setPrecioTemp(formatChileanPrice(precioActual));
+  const clearBlurTimeout = () => {
+    if (blurTimeoutRef.current) { clearTimeout(blurTimeoutRef.current); blurTimeoutRef.current = null; }
   };
 
-  // Handler que aplica automáticamente el input mask mientras el usuario escribe
+  const handleBlurTexto = () => {
+    blurTimeoutRef.current = setTimeout(() => { handleGuardarPrecioRef.current(); }, 1200);
+  };
+
+  const handleIniciarEditPrecio = (
+    idProveedorProducto: number,
+    valorActual: string | number,
+    campo: 'neto' | 'iva' | 'marca' | 'contenido' = 'neto'
+  ) => {
+    clearBlurTimeout();
+    setEditingPrecio({ idProveedorProducto, campo });
+    const esCampoTexto = campo === 'marca' || campo === 'contenido';
+    setPrecioTemp(esCampoTexto ? String(valorActual ?? '') : formatChileanPrice(valorActual as number));
+  };
+
+  // Handler que aplica input mask para precios; para campos texto pasa directo
   const handlePrecioTempChange = (value: string) => {
-    const formatted = smartPriceInput(value);
-    setPrecioTemp(formatted);
+    if (editingPrecio?.campo === 'marca' || editingPrecio?.campo === 'contenido') {
+      setPrecioTemp(value);
+    } else {
+      setPrecioTemp(smartPriceInput(value));
+    }
   };
 
   const handleGuardarPrecio = async () => {
+    clearBlurTimeout();
     if (!editingPrecio) return;
-    const precio = parseChileanPrice(precioTemp);
-    if (isNaN(precio) || precio <= 0) {
-      showToast('El precio debe ser un número válido mayor a 0 (ej: 1.234,567 o 1234)', 'error');
-      return;
+    const esCampoTexto = editingPrecio.campo === 'marca' || editingPrecio.campo === 'contenido';
+    let dto: import('../types/proveedor.types').IProveedorProductoUpdateDTO;
+    if (esCampoTexto) {
+      dto = editingPrecio.campo === 'marca'
+        ? { marcaProducto: precioTemp.trim() }
+        : { formatoContenido: precioTemp.trim() };
+    } else {
+      const precio = parseChileanPrice(precioTemp);
+      if (isNaN(precio) || precio <= 0) {
+        showToast('El precio debe ser un número válido mayor a 0 (ej: 1.234,567 o 1234)', 'error');
+        return;
+      }
+      dto = editingPrecio.campo === 'iva' ? { precioConIva: precioTemp } : { precioNeto: precioTemp };
     }
     setSavingPrecio(true);
     try {
-      const actualizado = await actualizarPrecioProductoService(
-        editingPrecio.idProveedorProducto,
-        editingPrecio.campo === 'iva' ? { precioConIva: precioTemp } : { precioNeto: precioTemp }
-      );
+      const actualizado = await actualizarPrecioProductoService(editingPrecio.idProveedorProducto, dto);
 
       if (actualizado) {
-        showToast('Precio actualizado correctamente', 'success');
+        showToast(esCampoTexto ? 'Atributo actualizado correctamente' : 'Precio actualizado correctamente', 'success');
 
-        // Versioning: cada actualización inserta una fila nueva con un idProveedorProducto
-        // distinto. Actualizar el cache en memoria por el ID viejo lo deja apuntando a
-        // una versión ya inactiva. La forma correcta es invalidar el cache del proveedor
-        // dueño y recargar el detalle desde el backend.
-        let idProveedorDueno: number | undefined;
-        Object.entries(detalleCache).forEach(([idProvStr, detalle]) => {
-          if (!detalle) return;
-          const pertenece = Object.values(detalle.productosPorCategoria).some(productos =>
-            productos.some(p => p.idProveedorProducto === editingPrecio.idProveedorProducto)
-          );
-          if (pertenece) idProveedorDueno = parseInt(idProvStr);
-        });
-
-        if (idProveedorDueno !== undefined) {
-          invalidarCacheProveedor(idProveedorDueno);
-          if (expandedRows.has(idProveedorDueno)) {
-            const detalle = await obtenerProveedorDetalleService(idProveedorDueno);
-            setDetalleCache(prev => ({ ...prev, [idProveedorDueno!]: detalle }));
-          }
+        const idPP = editingPrecio.idProveedorProducto;
+        const campo = editingPrecio.campo;
+        const IVA = 1.19;
+        type CamposActualizados = { marcaProducto?: string | null; formatoContenido?: string | null; precioNeto?: number; precioConIva?: number };
+        let cambios: CamposActualizados;
+        if (campo === 'marca') {
+          cambios = { marcaProducto: precioTemp.trim() };
+        } else if (campo === 'contenido') {
+          cambios = { formatoContenido: precioTemp.trim() };
+        } else {
+          const precioNum = parseChileanPrice(precioTemp);
+          cambios = campo === 'neto'
+            ? { precioNeto: precioNum, precioConIva: Math.round(precioNum * IVA * 100) / 100 }
+            : { precioConIva: precioNum, precioNeto: Math.round((precioNum / IVA) * 100) / 100 };
         }
 
-        // Los resultados de búsqueda global pueden contener la fila stale: limpiarlos
-        // fuerza al usuario a re-buscar con datos frescos.
+        setDetalleCache(prev => {
+          const updated = { ...prev };
+          Object.keys(updated).forEach(idProvStr => {
+            const idProv = parseInt(idProvStr);
+            const detalle = updated[idProv];
+            if (!detalle) return;
+            const newCats: Record<string, IProveedorProducto[]> = {};
+            let changed = false;
+            Object.keys(detalle.productosPorCategoria).forEach(cat => {
+              newCats[cat] = detalle.productosPorCategoria[cat].map((p: IProveedorProducto) => {
+                if (p.idProveedorProducto === idPP) { changed = true; return { ...p, ...cambios }; }
+                return p;
+              });
+            });
+            if (changed) updated[idProv] = { ...detalle, productosPorCategoria: newCats };
+          });
+          return updated;
+        });
+
         if (resultadosBusqueda.length > 0) {
-          setResultadosBusqueda([]);
+          setResultadosBusqueda(prev => prev.map(resultado => ({
+            ...resultado,
+            categorias: resultado.categorias.map(cat => ({
+              ...cat,
+              productos: cat.productos.map(p =>
+                p.idProveedorProducto === idPP ? { ...p, ...cambios } : p
+              ),
+            })),
+          })));
         }
       }
     } catch (err: any) {
-      // [CAMBIO 2026-04-24] 409 Conflict: precio igual al actual (advertencia, no error)
       const isConflict = err.response?.status === 409;
-      showToast(
-        err.message || 'Error al actualizar el precio',
-        isConflict ? 'warning' : 'error'
-      );
+      showToast(err.message || 'Error al actualizar', isConflict ? 'warning' : 'error');
     } finally {
       setSavingPrecio(false);
       setEditingPrecio(null);
       setPrecioTemp('');
     }
   };
+  handleGuardarPrecioRef.current = handleGuardarPrecio;
 
   // ── Toggle producto (habilitar/deshabilitar) ──────────────────────────────
 
@@ -2268,7 +2311,8 @@ const GestionProveedoresPage: React.FC = () => {
                       onIniciarEditPrecio={handleIniciarEditPrecio}
                       onPrecioTempChange={handlePrecioTempChange}
                       onGuardarPrecio={handleGuardarPrecio}
-                      onCancelarEditPrecio={() => setEditingPrecio(null)}
+                      onCancelarEditPrecio={() => { clearBlurTimeout(); setEditingPrecio(null); setPrecioTemp(''); }}
+                      onBlurTexto={handleBlurTexto}
                       onToggleProducto={handleToggleProducto}
                       onQuitarProducto={handleConfirmarQuitarProducto}
                       onSincronizarPrecio={handleSincronizarPrecio}
@@ -2436,7 +2480,8 @@ const GestionProveedoresPage: React.FC = () => {
                                   onIniciarEditPrecio={handleIniciarEditPrecio}
                                   onPrecioTempChange={handlePrecioTempChange}
                                   onGuardarPrecio={handleGuardarPrecio}
-                                  onCancelarEditPrecio={() => setEditingPrecio(null)}
+                                  onCancelarEditPrecio={() => { clearBlurTimeout(); setEditingPrecio(null); setPrecioTemp(''); }}
+                                  onBlurTexto={handleBlurTexto}
                                   onToggleProducto={handleToggleProducto}
                                   onQuitarProducto={handleConfirmarQuitarProducto}
                                   onSincronizarPrecio={handleSincronizarPrecio}
@@ -3177,13 +3222,14 @@ const GestionProveedoresPage: React.FC = () => {
 interface ProductosProveedorProps {
   detalle: IProveedorDetalle;
   canEdit: boolean;
-  editingPrecio: { idProveedorProducto: number; campo: 'neto' | 'iva' } | null;
+  editingPrecio: { idProveedorProducto: number; campo: 'neto' | 'iva' | 'marca' | 'contenido' } | null;
   precioTemp: string;
   savingPrecio: boolean;
-  onIniciarEditPrecio: (idProveedorProducto: number, precioActual: number, campo?: 'neto' | 'iva') => void;
+  onIniciarEditPrecio: (idProveedorProducto: number, valorActual: string | number, campo?: 'neto' | 'iva' | 'marca' | 'contenido') => void;
   onPrecioTempChange: (val: string) => void;
   onGuardarPrecio: () => void;
   onCancelarEditPrecio: () => void;
+  onBlurTexto: () => void;
   onToggleProducto: (idProveedor: number, prod: IProveedorProducto) => void;
   onQuitarProducto: (idProveedor: number, prod: IProveedorProducto) => void;
   onSincronizarPrecio: (idProveedor: number, prod: IProveedorProducto, direccion: 'desde-neto' | 'desde-iva') => void;
@@ -3201,6 +3247,7 @@ const ProductosProveedor: React.FC<ProductosProveedorProps> = ({
   onPrecioTempChange,
   onGuardarPrecio,
   onCancelarEditPrecio,
+  onBlurTexto,
   onToggleProducto,
   onQuitarProducto,
   onSincronizarPrecio,
@@ -3464,49 +3511,44 @@ const ProductosProveedor: React.FC<ProductosProveedorProps> = ({
 
             {/* Tabla de productos (solo si la categoría está expandida) */}
             {isExpanded && (
-              <div className="overflow-x-auto rounded-lg border border-default-200 dark:border-default-100">
-                <table className="w-full text-xs" style={{ tableLayout: 'fixed' }}>
-                  <thead className="bg-default-100 dark:bg-default-50">
+              <div className="overflow-x-auto overflow-y-auto max-h-72 rounded-lg border border-default-200 dark:border-default-100">
+                <table className="min-w-[820px] w-full text-xs table-fixed">
+                  <thead className="bg-default-100 dark:bg-default-50 sticky top-0 z-10">
                     <tr>
-                      <th className="text-center py-2 px-3 font-medium w-[200px]">Producto</th>
-                      <th className="text-center py-2 px-3 font-medium w-14">Unidad</th>
-                      <th className="text-center py-2 px-3 font-medium w-28">Contenido</th>
+                      <th className="text-center py-2 px-3 font-medium w-[160px]">Producto</th>
+                      <th className="text-center py-2 px-3 font-medium w-12">Unidad</th>
+                      <th className="text-center py-2 px-3 font-medium w-24">Contenido</th>
                       <th className="text-center py-2 px-3 font-medium w-24">Marca</th>
-                      <th className="text-center py-2 px-3 font-medium w-24">Precio Neto</th>
-                      <th className="text-center py-2 px-3 font-medium w-24">Precio + IVA</th>
-                      <th className="text-center py-2 px-3 font-medium w-16">Estado</th>
+                      <th className="text-center py-2 px-3 font-medium w-28">Precio Neto</th>
+                      <th className="text-center py-2 px-3 font-medium w-28">Precio + IVA</th>
+                      <th className="text-center py-2 px-3 font-medium w-14">Estado</th>
                       <th className="text-center py-2 px-3 font-medium w-20">Actualizado</th>
-                      {editable && <th className="py-2 px-3 font-medium text-center w-32">Acciones</th>}
-                </tr>
-              </thead>
-              <tbody>
+                      {editable && <th className="py-2 px-3 font-medium text-center w-20">Acciones</th>}
+                    </tr>
+                  </thead>
+                  <tbody>
                 {filtrarProductos(detalleVisible.productosPorCategoria[categoria]).map((prod) => {
                   const isEditing = editingPrecio?.idProveedorProducto === prod.idProveedorProducto;
                   const isEditingNeto = isEditing && editingPrecio?.campo === 'neto';
                   const isEditingIva  = isEditing && editingPrecio?.campo === 'iva';
+                  const isEditingContenido = isEditing && editingPrecio?.campo === 'contenido';
+                  const isEditingMarca = isEditing && editingPrecio?.campo === 'marca';
 
                   const inlineEditUI = (
-                    <div className="flex items-center gap-1">
-                      <Input
-                        size="sm"
-                        value={precioTemp}
-                        onValueChange={onPrecioTempChange}
-                        className="w-20"
-                        classNames={{ inputWrapper: 'h-6 min-h-6' }}
-                        startContent={<span className="text-default-400 text-xs">$</span>}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') onGuardarPrecio();
-                          if (e.key === 'Escape') onCancelarEditPrecio();
-                        }}
-                        autoFocus
-                      />
-                      <Button isIconOnly size="sm" variant="flat" color="success" isLoading={savingPrecio} onPress={onGuardarPrecio}>
-                        <Icon icon="lucide:check" width={13} />
-                      </Button>
-                      <Button isIconOnly size="sm" variant="light" onPress={onCancelarEditPrecio}>
-                        <Icon icon="lucide:x" width={13} />
-                      </Button>
-                    </div>
+                    <Input
+                      size="sm"
+                      value={precioTemp}
+                      onValueChange={onPrecioTempChange}
+                      className="w-20"
+                      classNames={{ inputWrapper: 'h-6 min-h-6' }}
+                      startContent={<span className="text-default-400 text-xs">$</span>}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') onGuardarPrecio();
+                        if (e.key === 'Escape') onCancelarEditPrecio();
+                      }}
+                      onBlur={onBlurTexto}
+                      autoFocus
+                    />
                   );
 
                   return (
@@ -3518,21 +3560,65 @@ const ProductosProveedor: React.FC<ProductosProveedorProps> = ({
                           : 'bg-default-50/30 dark:bg-default-100/10 opacity-60'
                       }`}
                     >
-                      <td className="py-2 px-3 font-medium text-center w-[200px] overflow-hidden">
+                      <td className="py-2 px-3 font-medium text-center overflow-hidden">
                         <Tooltip content={prod.nombreProducto} color="foreground" className="text-xs">
-                          <span className="truncate block whitespace-nowrap">
-                            {prod.nombreProducto}
-                          </span>
+                          <span className="truncate block">{prod.nombreProducto}</span>
                         </Tooltip>
                       </td>
-                      <td className="py-2 px-3 text-default-500 text-center">
-                        {prod.abreviatura || prod.nombreUnidad}
+                      <td className="py-2 px-3 text-default-500 text-center overflow-hidden">
+                        <span className="truncate block">{prod.abreviatura || prod.nombreUnidad}</span>
                       </td>
-                      <td className="py-2 px-3 text-default-500 text-center">
-                        {prod.formatoContenido || '—'}
+                      <td className="py-2 px-3 text-default-500 text-center overflow-hidden">
+                        {isEditingContenido ? (
+                          <Input
+                            size="sm"
+                            value={precioTemp}
+                            onValueChange={onPrecioTempChange}
+                            className="w-20"
+                            classNames={{ inputWrapper: 'h-6 min-h-6' }}
+                            placeholder="—"
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') onGuardarPrecio();
+                              if (e.key === 'Escape') onCancelarEditPrecio();
+                            }}
+                            onBlur={onBlurTexto}
+                            autoFocus
+                          />
+                        ) : (
+                          <span
+                            className={`truncate block ${editable ? 'cursor-pointer hover:text-primary underline decoration-dotted' : ''}`}
+                            title={editable ? 'Clic para editar contenido' : undefined}
+                            onClick={() => editable && onIniciarEditPrecio(prod.idProveedorProducto, prod.formatoContenido ?? '', 'contenido')}
+                          >
+                            {prod.formatoContenido || '—'}
+                          </span>
+                        )}
                       </td>
-                      <td className="py-2 px-3 text-default-500 text-center">
-                        {prod.marcaProducto || '—'}
+                      <td className="py-2 px-3 text-default-500 text-center overflow-hidden">
+                        {isEditingMarca ? (
+                          <Input
+                            size="sm"
+                            value={precioTemp}
+                            onValueChange={onPrecioTempChange}
+                            className="w-20"
+                            classNames={{ inputWrapper: 'h-6 min-h-6' }}
+                            placeholder="—"
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') onGuardarPrecio();
+                              if (e.key === 'Escape') onCancelarEditPrecio();
+                            }}
+                            onBlur={onBlurTexto}
+                            autoFocus
+                          />
+                        ) : (
+                          <span
+                            className={`truncate block ${editable ? 'cursor-pointer hover:text-primary underline decoration-dotted' : ''}`}
+                            title={editable ? 'Clic para editar marca' : undefined}
+                            onClick={() => editable && onIniciarEditPrecio(prod.idProveedorProducto, prod.marcaProducto ?? '', 'marca')}
+                          >
+                            {prod.marcaProducto || '—'}
+                          </span>
+                        )}
                       </td>
                       {/* Precio Neto — editable inline (deshabilitado en vista histórica) */}
                       <td className="py-2 px-3 text-center">
@@ -3644,13 +3730,14 @@ interface BusquedaResultadosProps {
   error: string | null;
   searchTerm: string;
   canEdit: boolean;
-  editingPrecio: { idProveedorProducto: number; campo: 'neto' | 'iva' } | null;
+  editingPrecio: { idProveedorProducto: number; campo: 'neto' | 'iva' | 'marca' | 'contenido' } | null;
   precioTemp: string;
   savingPrecio: boolean;
-  onIniciarEditPrecio: (idProveedorProducto: number, precioActual: number, campo?: 'neto' | 'iva') => void;
+  onIniciarEditPrecio: (idProveedorProducto: number, valorActual: string | number, campo?: 'neto' | 'iva' | 'marca' | 'contenido') => void;
   onPrecioTempChange: (val: string) => void;
   onGuardarPrecio: () => void;
   onCancelarEditPrecio: () => void;
+  onBlurTexto: () => void;
   onToggleProducto: (idProveedor: number, prod: IProveedorProducto) => void;
   onQuitarProducto: (idProveedor: number, prod: IProveedorProducto) => void;
   onSincronizarPrecio: (idProveedor: number, prod: IProveedorProducto, direccion: 'desde-neto' | 'desde-iva') => void;
@@ -3669,6 +3756,7 @@ const BusquedaResultados: React.FC<BusquedaResultadosProps> = ({
   onPrecioTempChange,
   onGuardarPrecio,
   onCancelarEditPrecio,
+  onBlurTexto,
   onToggleProducto,
   onQuitarProducto,
   onSincronizarPrecio,
@@ -3838,25 +3926,31 @@ const BusquedaResultados: React.FC<BusquedaResultadosProps> = ({
                               </span>
                             </div>
 
-                            {/* Tabla de productos - igual estructura que vista individual */}
+                            {/* Tabla de productos */}
                             {isCategoriaExpanded && (
-                              <div className="overflow-x-auto rounded-lg border border-default-200 dark:border-default-100">
-                                <table className="w-full text-xs" style={{ tableLayout: 'fixed' }}>
-                                  <thead className="bg-default-100 dark:bg-default-50">
+                              <div className="overflow-x-auto overflow-y-auto max-h-72 rounded-lg border border-default-200 dark:border-default-100">
+                                <table className="min-w-[820px] w-full text-xs table-fixed">
+                                  <thead className="bg-default-100 dark:bg-default-50 sticky top-0 z-10">
                                     <tr>
-                                      <th className="text-center py-2 px-3 font-medium w-[200px]">Producto</th>
-                                      <th className="text-center py-2 px-3 font-medium w-14">Unidad</th>
-                                      <th className="text-center py-2 px-3 font-medium w-28">Contenido</th>
+                                      <th className="text-center py-2 px-3 font-medium w-[160px]">Producto</th>
+                                      <th className="text-center py-2 px-3 font-medium w-12">Unidad</th>
+                                      <th className="text-center py-2 px-3 font-medium w-24">Contenido</th>
                                       <th className="text-center py-2 px-3 font-medium w-24">Marca</th>
-                                      <th className="text-center py-2 px-3 font-medium w-24">Precio Neto</th>
-                                      <th className="text-center py-2 px-3 font-medium w-24">Precio + IVA</th>
-                                      <th className="text-center py-2 px-3 font-medium w-16">Estado</th>
+                                      <th className="text-center py-2 px-3 font-medium w-28">Precio Neto</th>
+                                      <th className="text-center py-2 px-3 font-medium w-28">Precio + IVA</th>
+                                      <th className="text-center py-2 px-3 font-medium w-14">Estado</th>
                                       <th className="text-center py-2 px-3 font-medium w-20">Actualizado</th>
                                       <th className="py-2 px-3 font-medium text-center w-16">Acciones</th>
                                     </tr>
                                   </thead>
                                   <tbody>
-                                    {productosEnCategoria.map((prod) => (
+                                    {productosEnCategoria.map((prod) => {
+                                      const isEditingEste = editingPrecio?.idProveedorProducto === prod.idProveedorProducto;
+                                      const isEditingNetoB = isEditingEste && editingPrecio?.campo === 'neto';
+                                      const isEditingIvaB  = isEditingEste && editingPrecio?.campo === 'iva';
+                                      const isEditingContenidoB = isEditingEste && editingPrecio?.campo === 'contenido';
+                                      const isEditingMarcaB = isEditingEste && editingPrecio?.campo === 'marca';
+                                      return (
                                       <tr
                                         key={prod.idProveedorProducto}
                                         className={`border-t border-default-100 ${
@@ -3865,47 +3959,84 @@ const BusquedaResultados: React.FC<BusquedaResultadosProps> = ({
                                             : 'hover:bg-default-100 dark:hover:bg-default-100/30'
                                         }`}
                                       >
-                                        <td className="py-2 px-3 text-center">
+                                        <td className="py-2 px-3 text-center overflow-hidden">
                                           <Tooltip content={prod.nombreProducto} color="foreground" className="text-xs">
-                                            <span className="truncate block whitespace-nowrap">
-                                              {prod.nombreProducto}
-                                            </span>
+                                            <span className="truncate block">{prod.nombreProducto}</span>
                                           </Tooltip>
                                         </td>
-                                        <td className="py-2 px-3 text-center">
-                                          {prod.abreviatura}
+                                        <td className="py-2 px-3 text-center overflow-hidden">
+                                          <span className="truncate block">{prod.abreviatura}</span>
                                         </td>
-                                        <td className="py-2 px-3 text-center text-default-500">
-                                          {prod.formatoContenido || '—'}
+                                        <td className="py-2 px-3 text-center text-default-500 overflow-hidden">
+                                          {isEditingContenidoB ? (
+                                            <Input
+                                              size="sm"
+                                              value={precioTemp}
+                                              onValueChange={onPrecioTempChange}
+                                              className="w-20"
+                                              classNames={{ inputWrapper: 'h-6 min-h-6' }}
+                                              placeholder="—"
+                                              onKeyDown={(e) => {
+                                                if (e.key === 'Enter') onGuardarPrecio();
+                                                if (e.key === 'Escape') onCancelarEditPrecio();
+                                              }}
+                                              onBlur={onBlurTexto}
+                                              autoFocus
+                                            />
+                                          ) : (
+                                            <span
+                                              className={`truncate block ${canEdit ? 'cursor-pointer hover:text-primary underline decoration-dotted' : ''}`}
+                                              title={canEdit ? 'Clic para editar contenido' : undefined}
+                                              onClick={() => canEdit && onIniciarEditPrecio(prod.idProveedorProducto, prod.formatoContenido ?? '', 'contenido')}
+                                            >
+                                              {prod.formatoContenido || '—'}
+                                            </span>
+                                          )}
                                         </td>
-                                        <td className="py-2 px-3 text-center text-default-500">
-                                          {prod.marcaProducto || '—'}
+                                        <td className="py-2 px-3 text-center text-default-500 overflow-hidden">
+                                          {isEditingMarcaB ? (
+                                            <Input
+                                              size="sm"
+                                              value={precioTemp}
+                                              onValueChange={onPrecioTempChange}
+                                              className="w-20"
+                                              classNames={{ inputWrapper: 'h-6 min-h-6' }}
+                                              placeholder="—"
+                                              onKeyDown={(e) => {
+                                                if (e.key === 'Enter') onGuardarPrecio();
+                                                if (e.key === 'Escape') onCancelarEditPrecio();
+                                              }}
+                                              onBlur={onBlurTexto}
+                                              autoFocus
+                                            />
+                                          ) : (
+                                            <span
+                                              className={`truncate block ${canEdit ? 'cursor-pointer hover:text-primary underline decoration-dotted' : ''}`}
+                                              title={canEdit ? 'Clic para editar marca' : undefined}
+                                              onClick={() => canEdit && onIniciarEditPrecio(prod.idProveedorProducto, prod.marcaProducto ?? '', 'marca')}
+                                            >
+                                              {prod.marcaProducto || '—'}
+                                            </span>
+                                          )}
                                         </td>
                                         {/* Precio Neto — editable inline */}
                                         <td className="py-2 px-3 text-center">
-                                          {editingPrecio?.idProveedorProducto === prod.idProveedorProducto && editingPrecio.campo === 'neto' ? (
-                                            <div className="flex items-center gap-1 justify-center">
-                                              <Input
-                                                size="sm"
-                                                value={precioTemp}
-                                                onValueChange={onPrecioTempChange}
-                                                className="w-28"
-                                                classNames={{ inputWrapper: 'h-8 min-h-8' }}
-                                                startContent={<span className="text-default-400 text-xs">$</span>}
-                                                onKeyDown={(e) => {
-                                                  if (e.key === 'Enter') onGuardarPrecio();
-                                                  if (e.key === 'Escape') onCancelarEditPrecio();
-                                                }}
-                                                autoFocus
-                                              />
-                                              <Button isIconOnly size="sm" variant="flat" color="success" isLoading={savingPrecio} onPress={onGuardarPrecio}>
-                                                <Icon icon="lucide:check" width={13} />
-                                              </Button>
-                                              <Button isIconOnly size="sm" variant="light" onPress={onCancelarEditPrecio}>
-                                                <Icon icon="lucide:x" width={13} />
-                                              </Button>
-                                            </div>
-                                          ) : editingPrecio?.idProveedorProducto === prod.idProveedorProducto && editingPrecio.campo === 'iva' ? (
+                                          {isEditingNetoB ? (
+                                            <Input
+                                              size="sm"
+                                              value={precioTemp}
+                                              onValueChange={onPrecioTempChange}
+                                              className="w-24"
+                                              classNames={{ inputWrapper: 'h-6 min-h-6' }}
+                                              startContent={<span className="text-default-400 text-xs">$</span>}
+                                              onKeyDown={(e) => {
+                                                if (e.key === 'Enter') onGuardarPrecio();
+                                                if (e.key === 'Escape') onCancelarEditPrecio();
+                                              }}
+                                              onBlur={onBlurTexto}
+                                              autoFocus
+                                            />
+                                          ) : isEditingIvaB ? (
                                             <span className="text-default-300">—</span>
                                           ) : (
                                             <span
@@ -3919,29 +4050,22 @@ const BusquedaResultados: React.FC<BusquedaResultadosProps> = ({
                                         </td>
                                         {/* Precio + IVA — editable inline */}
                                         <td className="py-2 px-3 text-center">
-                                          {editingPrecio?.idProveedorProducto === prod.idProveedorProducto && editingPrecio.campo === 'iva' ? (
-                                            <div className="flex items-center gap-1 justify-center">
-                                              <Input
-                                                size="sm"
-                                                value={precioTemp}
-                                                onValueChange={onPrecioTempChange}
-                                                className="w-28"
-                                                classNames={{ inputWrapper: 'h-8 min-h-8' }}
-                                                startContent={<span className="text-default-400 text-xs">$</span>}
-                                                onKeyDown={(e) => {
-                                                  if (e.key === 'Enter') onGuardarPrecio();
-                                                  if (e.key === 'Escape') onCancelarEditPrecio();
-                                                }}
-                                                autoFocus
-                                              />
-                                              <Button isIconOnly size="sm" variant="flat" color="success" isLoading={savingPrecio} onPress={onGuardarPrecio}>
-                                                <Icon icon="lucide:check" width={13} />
-                                              </Button>
-                                              <Button isIconOnly size="sm" variant="light" onPress={onCancelarEditPrecio}>
-                                                <Icon icon="lucide:x" width={13} />
-                                              </Button>
-                                            </div>
-                                          ) : editingPrecio?.idProveedorProducto === prod.idProveedorProducto && editingPrecio.campo === 'neto' ? (
+                                          {isEditingIvaB ? (
+                                            <Input
+                                              size="sm"
+                                              value={precioTemp}
+                                              onValueChange={onPrecioTempChange}
+                                              className="w-24"
+                                              classNames={{ inputWrapper: 'h-6 min-h-6' }}
+                                              startContent={<span className="text-default-400 text-xs">$</span>}
+                                              onKeyDown={(e) => {
+                                                if (e.key === 'Enter') onGuardarPrecio();
+                                                if (e.key === 'Escape') onCancelarEditPrecio();
+                                              }}
+                                              onBlur={onBlurTexto}
+                                              autoFocus
+                                            />
+                                          ) : isEditingNetoB ? (
                                             <span className="text-default-300">—</span>
                                           ) : (
                                             <span
@@ -3975,8 +4099,8 @@ const BusquedaResultados: React.FC<BusquedaResultadosProps> = ({
                                               variant="light"
                                               onPress={() =>
                                                 prod.activo
-                                                  ? onQuitarProducto(resultado.idProveedor, prod)
-                                                  : onToggleProducto(resultado.idProveedor, prod)
+                                                  ? onQuitarProducto(resultado.idProveedor, prod as any)
+                                                  : onToggleProducto(resultado.idProveedor, prod as any)
                                               }
                                               className={prod.activo ? 'text-success hover:text-danger' : 'text-warning hover:text-success'}
                                             >
@@ -3988,7 +4112,8 @@ const BusquedaResultados: React.FC<BusquedaResultadosProps> = ({
                                           </Tooltip>
                                         </td>
                                       </tr>
-                                    ))}
+                                      );
+                                    })}
                                   </tbody>
                                 </table>
                               </div>
@@ -6260,7 +6385,7 @@ const getNombreDia = (fechaISO: string): string => {
 };
 
 type OpCelda = { op: IOrdenPedidoListItem; cantidad: number; entregado: boolean };
-type ProductoTablaFila = { idProducto: number; nombre: string; abrev: string; nombreUnidad: string; nombreCategoria: string; porFecha: Map<string, OpCelda[]> };
+type ProductoTablaFila = { idProducto: number; nombre: string; abrev: string; nombreUnidad: string; nombreCategoria: string; formatoContenido: string | null; porFecha: Map<string, OpCelda[]> };
 type ProveedorTablaItem = {
   idProveedor: number; nombreDistribuidora: string; nombreProveedor: string;
   telefonoProveedor?: string | null;
@@ -6284,9 +6409,9 @@ const generarExcelOrdenPedidoProveedor = (prov: ProveedorTablaItem, lunesSelecci
     return `${String(d).padStart(2, '0')}-${String(m).padStart(2, '0')}`;
   };
 
-  // Columnas (0-based): 0=A margen, 1=B label/producto, 2=C valor/U/M, 3..=días
+  // Columnas (0-based): 0=A margen, 1=B label/producto, 2=C U/M, 3=D formato, 4..=días
   const N = fechasSemana.length;
-  const COL_B = 1, COL_C = 2, COL_D = 3;
+  const COL_B = 1, COL_C = 2, COL_FORMATO = 3, COL_D = 4;
   const lastCol = COL_D + N - 1;
   const enc = (r: number, c: number) => XLSXStyle.utils.encode_cell({ r, c });
 
@@ -6334,6 +6459,7 @@ const generarExcelOrdenPedidoProveedor = (prov: ProveedorTablaItem, lunesSelecci
   // r=7  Cabeceras de tabla
   ws[enc(7, COL_B)] = { v: 'PRODUCTO', t: 's', s: sTableHeader };
   ws[enc(7, COL_C)] = { v: 'U/M', t: 's', s: sTableHeader };
+  ws[enc(7, COL_FORMATO)] = { v: 'FORMATO', t: 's', s: sTableHeader };
   fechasSemana.forEach((fecha, i) => {
     const [y, m, d] = fecha.split('-').map(Number);
     ws[enc(7, COL_D + i)] = { v: `${NOM_DIA_ES[new Date(y, m - 1, d).getDay()]} ${String(d).padStart(2, '0')}/${String(m).padStart(2, '0')}`, t: 's', s: sTableHeader };
@@ -6360,6 +6486,7 @@ const generarExcelOrdenPedidoProveedor = (prov: ProveedorTablaItem, lunesSelecci
     }
     ws[enc(currentRow, COL_B)] = { v: prod.nombre, t: 's', s: sProducto };
     ws[enc(currentRow, COL_C)] = { v: prod.nombreUnidad, t: 's', s: sUM };
+    ws[enc(currentRow, COL_FORMATO)] = { v: prod.formatoContenido ?? '', t: 's', s: sUM };
     fechasSemana.forEach((fecha, i) => {
       const items = prod.porFecha.get(fecha);
       const total = items ? items.reduce((s, it) => s + it.cantidad, 0) : null;
@@ -6371,7 +6498,7 @@ const generarExcelOrdenPedidoProveedor = (prov: ProveedorTablaItem, lunesSelecci
   });
 
   ws['!merges'] = merges;
-  ws['!cols'] = [{ wch: 4 }, { wch: 32 }, { wch: 14 }, ...fechasSemana.map(() => ({ wch: 14 }))];
+  ws['!cols'] = [{ wch: 4 }, { wch: 32 }, { wch: 14 }, { wch: 20 }, ...fechasSemana.map(() => ({ wch: 14 }))];
   ws['!rows'] = [{ hpt: 4 }, { hpt: 30 }, { hpt: 22 }, { hpt: 18 }, { hpt: 18 }, { hpt: 18 }, { hpt: 8 }, { hpt: 22 }];
   ws['!ref'] = XLSXStyle.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: currentRow - 1, c: lastCol } });
 
@@ -6552,7 +6679,7 @@ const OrdenesVista: React.FC<OrdenesVistaProps> = ({
       for (const d of det.detalles) {
         grupo.todasLasFechas.add(d.fechaEntrega);
         if (!grupo.productos.has(d.idProducto)) {
-          grupo.productos.set(d.idProducto, { idProducto: d.idProducto, nombre: d.nombreProducto, abrev: d.abreviatura, nombreUnidad: d.nombreUnidad ?? d.abreviatura, nombreCategoria: d.nombreCategoria ?? '', porFecha: new Map() });
+          grupo.productos.set(d.idProducto, { idProducto: d.idProducto, nombre: d.nombreProducto, abrev: d.abreviatura, nombreUnidad: d.nombreUnidad ?? d.abreviatura, nombreCategoria: d.nombreCategoria ?? '', formatoContenido: d.formatoContenido ?? null, porFecha: new Map() });
         }
         const prod = grupo.productos.get(d.idProducto)!;
         if (!prod.porFecha.has(d.fechaEntrega)) prod.porFecha.set(d.fechaEntrega, []);
@@ -6582,12 +6709,12 @@ const OrdenesVista: React.FC<OrdenesVistaProps> = ({
   const detalladaTabla = React.useMemo(() => {
     if (!agrupadoFechaReal || modoUnificada) return null;
     return agrupadoFechaReal.map(prov => {
-      const rowMap = new Map<string, { idOP: number; idProducto: number; nombre: string; abrev: string; nombreCategoria: string; porFecha: Map<string, { cantidad: number; entregado: boolean }> }>();
+      const rowMap = new Map<string, { idOP: number; idProducto: number; nombre: string; abrev: string; nombreCategoria: string; formatoContenido: string | null; porFecha: Map<string, { cantidad: number; entregado: boolean }> }>();
       for (const prod of prov.productos) {
         for (const [fecha, items] of prod.porFecha) {
           for (const { op, cantidad, entregado } of items) {
             const key = `${prod.idProducto}-${op.idOrdenPedido}`;
-            if (!rowMap.has(key)) rowMap.set(key, { idOP: op.idOrdenPedido, idProducto: prod.idProducto, nombre: prod.nombre, abrev: prod.abrev, nombreCategoria: prod.nombreCategoria, porFecha: new Map() });
+            if (!rowMap.has(key)) rowMap.set(key, { idOP: op.idOrdenPedido, idProducto: prod.idProducto, nombre: prod.nombre, abrev: prod.abrev, nombreCategoria: prod.nombreCategoria, formatoContenido: prod.formatoContenido, porFecha: new Map() });
             rowMap.get(key)!.porFecha.set(fecha, { cantidad, entregado });
           }
         }
@@ -6971,6 +7098,7 @@ const OrdenesVista: React.FC<OrdenesVistaProps> = ({
                             <tr>
                               <th rowSpan={2} className="text-left py-2 px-3 bg-secondary-50 dark:bg-secondary-900/30 sticky left-0 z-10 border-r border-secondary-300 dark:border-secondary-600 min-w-[170px] font-medium whitespace-nowrap">Producto</th>
                               <th rowSpan={2} className="text-center py-2 px-2 bg-secondary-50 dark:bg-secondary-900/30 sticky left-[170px] z-10 border-r border-secondary-300 dark:border-secondary-600 w-12 min-w-[48px] font-medium">U/M</th>
+                              <th rowSpan={2} className="text-center py-2 px-2 bg-secondary-50 dark:bg-secondary-900/30 border-r border-secondary-300 dark:border-secondary-600 w-24 min-w-[96px] font-medium whitespace-nowrap">Formato</th>
                               {semanasOrdenadas.map(([lunes, fechasSem]) => (
                                 <th key={lunes} colSpan={fechasSem.length} className="text-center py-1 px-2 bg-default-50 dark:bg-default-50/20 border-l-2 border-secondary-400 dark:border-secondary-500 text-[11px] text-default-500 font-semibold whitespace-nowrap">
                                   Sem. {fmtFecha(lunes)} – {fmtFecha(getDomingoDe(lunes))}
@@ -6984,6 +7112,7 @@ const OrdenesVista: React.FC<OrdenesVistaProps> = ({
                               <>
                                 <th className="text-left py-2 px-3 bg-secondary-50 dark:bg-secondary-900/30 sticky left-0 z-10 border-r border-secondary-300 dark:border-secondary-600 min-w-[170px] font-medium whitespace-nowrap">Producto</th>
                                 <th className="text-center py-2 px-2 bg-secondary-50 dark:bg-secondary-900/30 sticky left-[170px] z-10 border-r border-secondary-300 dark:border-secondary-600 w-12 min-w-[48px] font-medium">U/M</th>
+                                <th className="text-center py-2 px-2 bg-secondary-50 dark:bg-secondary-900/30 border-r border-secondary-300 dark:border-secondary-600 w-24 min-w-[96px] font-medium whitespace-nowrap">Formato</th>
                               </>
                             )}
                             {prov.fechas.map((fecha, idx) => {
@@ -7010,7 +7139,7 @@ const OrdenesVista: React.FC<OrdenesVistaProps> = ({
                                 <React.Fragment key={`${row.idProducto}-${row.idOP}`}>
                                   {isNewCat && (
                                     <tr>
-                                      <td colSpan={2 + prov.fechas.length} className="py-1 px-3 bg-secondary-100/70 dark:bg-secondary-800/30 text-secondary-700 dark:text-secondary-300 text-[10px] font-bold uppercase tracking-wide border-t-2 border-secondary-300 dark:border-secondary-600">
+                                      <td colSpan={3 + prov.fechas.length} className="py-1 px-3 bg-secondary-100/70 dark:bg-secondary-800/30 text-secondary-700 dark:text-secondary-300 text-[10px] font-bold uppercase tracking-wide border-t-2 border-secondary-300 dark:border-secondary-600">
                                         <span className="flex items-center gap-1.5">
                                           <Icon icon="lucide:tag" width={10} />
                                           {row.nombreCategoria}
@@ -7031,6 +7160,10 @@ const OrdenesVista: React.FC<OrdenesVistaProps> = ({
                                     {/* U/M (sticky) */}
                                     <td className={`py-2 px-2 text-center text-default-500 text-[11px] sticky left-[170px] z-10 border-r border-secondary-200 dark:border-secondary-700 ${bgSticky}`}>
                                       {row.abrev}
+                                    </td>
+                                    {/* Formato contenido */}
+                                    <td className="py-2 px-2 text-center text-default-400 text-[11px] border-r border-default-100 dark:border-default-100/20 whitespace-nowrap">
+                                      {row.formatoContenido ?? '—'}
                                     </td>
                                     {/* Celdas por fecha — solo cantidad */}
                                     {prov.fechas.map((fecha, idx) => {
@@ -7063,7 +7196,7 @@ const OrdenesVista: React.FC<OrdenesVistaProps> = ({
                                 <React.Fragment key={prod.idProducto}>
                                   {isNewCat && (
                                     <tr>
-                                      <td colSpan={2 + prov.fechas.length} className="py-1 px-3 bg-success-100/60 dark:bg-success-800/25 text-success-700 dark:text-success-300 text-[10px] font-bold uppercase tracking-wide border-t-2 border-success-300 dark:border-success-600">
+                                      <td colSpan={3 + prov.fechas.length} className="py-1 px-3 bg-success-100/60 dark:bg-success-800/25 text-success-700 dark:text-success-300 text-[10px] font-bold uppercase tracking-wide border-t-2 border-success-300 dark:border-success-600">
                                         <span className="flex items-center gap-1.5">
                                           <Icon icon="lucide:tag" width={10} />
                                           {prod.nombreCategoria}
@@ -7081,6 +7214,10 @@ const OrdenesVista: React.FC<OrdenesVistaProps> = ({
                                     {/* U/M (sticky) */}
                                     <td className={`py-2 px-2 text-center text-default-500 text-[11px] sticky left-[170px] z-10 border-r border-secondary-200 dark:border-secondary-700 ${bgSticky}`}>
                                       {prod.abrev}
+                                    </td>
+                                    {/* Formato contenido */}
+                                    <td className="py-2 px-2 text-center text-default-400 text-[11px] border-r border-default-100 dark:border-default-100/20 whitespace-nowrap">
+                                      {prod.formatoContenido ?? '—'}
                                     </td>
                                     {/* Celdas por fecha — total sumado */}
                                     {prov.fechas.map((fecha, idx) => {

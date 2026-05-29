@@ -951,36 +951,89 @@ export const actualizarEstadoBodegaService = (
   });
 };
 
-// ── Proyección de Abastecimiento ──────────────────────────────────────────────
-export interface IProductoAbastecimientoItem {
+// ── Abastecimiento de Bodega ──────────────────────────────────────────────────
+export interface IDetalleBodegaItem {
+  idDetalleSolicitud: number;
   idProducto: number;
   nombreProducto: string;
-  nombreUnidad: string;
   abreviatura: string;
   esFraccionario: boolean;
-  nombreCategoria: string;
-  cantidadTotalSolicitada: number;
+  cantidadSolicitada: number;
   idInventario: number;
   stock: number;
+  enviadoBodegaTransito: boolean;
 }
 
-export interface IProyeccionAbastecimiento {
-  proyeccionAbastecimiento: IProductoAbastecimientoItem[];
+export interface ISolicitudBodegaItem {
+  idSolicitud: number;
+  fechaSolicitada: string;
+  nombreSeccion: string;
+  nombreAsignatura: string;
+  diaSemana?: string;
+  horaInicio?: string;
+  horaFin?: string;
+  detalles: IDetalleBodegaItem[];
 }
 
-export interface IDateRangeDTO {
-  fechaInicio: string; // "YYYY-MM-DD"
-  fechaFin: string;    // "YYYY-MM-DD"
+export interface IAbastecimientoBodegaDTO {
+  solicitudes: ISolicitudBodegaItem[];
 }
 
-export const obtenerProyeccionAbastecimientoService = async (
+export const obtenerAbastecimientoBodegaService = async (
   fechaInicio: string,
   fechaFin: string
-): Promise<IProyeccionAbastecimiento> => {
-  const response = await api.post<IProyeccionAbastecimiento>(
-    '/solicitud/proyeccion-abastecimiento',
-    { fechaInicio, fechaFin } as IDateRangeDTO
+): Promise<IAbastecimientoBodegaDTO> => {
+  const response = await api.post<IAbastecimientoBodegaDTO>(
+    '/solicitud/abastecimiento-bodega',
+    { fechaInicio, fechaFin }
   );
+  return response.data;
+};
+
+export const marcarEnviadoBodegaService = async (ids: number[]): Promise<number> => {
+  const response = await api.patch<number>('/solicitud/detalles/marcar-enviado-bodega', ids);
+  return response.data ?? 0;
+};
+
+// ── Stock Disponible (sobrantes en bodega de tránsito) ──
+export interface IRegistrarDisponibleDTO {
+  idProducto: number;
+  idSolicitud?: number;
+  idPedido?: number;
+  cantidad: number;
+}
+
+export const registrarDisponiblesService = async (
+  items: IRegistrarDisponibleDTO[]
+): Promise<void> => {
+  await api.post('/stock-disponible/registrar', items);
+};
+
+export interface IStockDisponibleItem {
+  nombreProducto: string;
+  nombreCategoria: string;
+  stock: number;
+  nombreUnidad: string;
+  abreviatura: string;
+  fechaRegistro: string;
+  tipoDisponible: string;
+}
+
+export interface IStockDisponiblePage {
+  data: IStockDisponibleItem[];
+  page: number;
+  pageSize: number;
+  totalPaginas: number;
+  totalRegistros: number;
+}
+
+export const obtenerStockDisponiblesService = async (
+  tipo: string,
+  page: number
+): Promise<IStockDisponiblePage> => {
+  const response = await api.get<IStockDisponiblePage>('/stock-disponible/listar', {
+    params: { tipo, page },
+  });
   return response.data;
 };
 
