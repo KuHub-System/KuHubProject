@@ -17,6 +17,7 @@ import KuHub.modules.gestion_orden_pedido.enums.EstadoOrdenPedido;
 import KuHub.modules.gestion_orden_pedido.exceptions.GestionOrdenPedidoException;
 import KuHub.modules.gestion_orden_pedido.repository.DetalleOrdenPedidoRepository;
 import KuHub.modules.gestion_orden_pedido.repository.OrdenPedidoRepository;
+import KuHub.modules.gestion_pedido.repository.PedidoSolicitudRepository;
 import KuHub.modules.gestion_proveedor.entity.ProveedorProducto;
 import KuHub.modules.gestion_proveedor.repository.ProveedorProductoRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -45,6 +46,9 @@ public class OrdenPedidoServiceImpl implements OrdenPedidoService {
 
     @Autowired
     private ProveedorProductoRepository proveedorProductoRepository;
+
+    @Autowired
+    private PedidoSolicitudRepository pedidoSolicitudRepository;
 
     // Componentes utilitarios auxiliares
     @Autowired
@@ -230,6 +234,28 @@ public class OrdenPedidoServiceImpl implements OrdenPedidoService {
                         pp -> pp.getFormatoContenido(),
                         (a, b) -> a));
 
+        // ── Porciones de solicitud ─────────────────────────────────────────────
+        // Un único SELECT extra: (fecha_solicitada, idProducto, cantidad) de todas
+        // las solicitudes EN_PEDIDO vinculadas al pedido de esta OP.
+        java.util.List<Object[]> solicitudRows =
+                pedidoSolicitudRepository.findSolicitudDetallesByPedido(ped.getIdPedido());
+
+        // Agrupar por idProducto para consulta rápida en el loop de detalles.
+        java.util.Map<Integer, java.util.List<Object[]>> solicitudPorProducto = new java.util.HashMap<>();
+        for (Object[] row : solicitudRows) {
+            Integer idProd = ((Number) row[1]).intValue();
+            solicitudPorProducto.computeIfAbsent(idProd, k -> new java.util.ArrayList<>()).add(row);
+        }
+
+        // Fechas de entrega ordenadas por producto (para calcular el rango de cobertura).
+        java.util.Map<Integer, java.util.List<LocalDate>> fechasEntregaPorProducto = new java.util.HashMap<>();
+        for (DetalleOrdenPedido d : op.getDetalles()) {
+            if (!Boolean.TRUE.equals(d.getActivo())) continue;
+            Integer idProd = d.getProducto().getIdProducto();
+            fechasEntregaPorProducto.computeIfAbsent(idProd, k -> new java.util.ArrayList<>()).add(d.getFechaEntrega());
+        }
+        fechasEntregaPorProducto.values().forEach(java.util.Collections::sort);
+
         // Mapear detalles (acceso lazy — único SELECT adicional dentro de la transacción)
         java.math.BigDecimal totalNeto   = java.math.BigDecimal.ZERO;
         java.math.BigDecimal totalConIva = java.math.BigDecimal.ZERO;
@@ -244,6 +270,14 @@ public class OrdenPedidoServiceImpl implements OrdenPedidoService {
             var cant    = d.getCantidadSolicitada();
             if (pNeto   != null && cant != null) totalNeto   = totalNeto.add(cant.multiply(pNeto));
             if (pConIva != null && cant != null) totalConIva = totalConIva.add(cant.multiply(pConIva));
+
+            String observacion = computarObservacion(
+                    d.getFechaEntrega(),
+                    fechasEntregaPorProducto.getOrDefault(prod.getIdProducto(), java.util.List.of()),
+                    solicitudPorProducto.getOrDefault(prod.getIdProducto(), java.util.List.of()),
+                    ped.getFechaInicioPedido(),
+                    ped.getFechaFinPedido());
+
             detalles.add(new OrdenPedidoConDetallesDTO.DetalleItemDTO(
                     d.getIdDetalleOrdenPedido(),
                     prod.getIdProducto(),
@@ -257,7 +291,8 @@ public class OrdenPedidoServiceImpl implements OrdenPedidoService {
                     pConIva,
                     d.getFechaEntrega(),
                     Boolean.TRUE.equals(d.getEntregado()),
-                    formatoMap.getOrDefault(prod.getIdProducto(), null)
+                    formatoMap.getOrDefault(prod.getIdProducto(), null),
+                    observacion
             ));
         }
 
@@ -364,6 +399,90 @@ public class OrdenPedidoServiceImpl implements OrdenPedidoService {
     // ─────────────────────────────────────────────────────────────
     // Sincronización de estados históricos CONFIRMADA → RECIBIDA
     // ─────────────────────────────────────────────────────────────
+
+    /**
+     * Replica la lógica de construirCantidades() del frontend para calcular qué solicitudes
+     * cubre cada fecha de entrega. Regla: la entrega con dow=d cubre días de clase diaNec donde
+     * d es el último día de entrega estrictamente menor que diaNec. Si no existe entrega anterior,
+     * las clases van a la entrega _prev (semana anterior). Formato: "pc1 2x(5)/ pc2 10".
+     */
+    private String computarObservacion(
+            LocalDate fechaEntrega,
+            java.util.List<LocalDate> sortedFechasEntrega,
+            java.util.List<Object[]> solicitudRows,
+            LocalDate fechaInicioPedido,
+            LocalDate fechaFinPedido) {
+
+        if (solicitudRows.isEmpty() || sortedFechasEntrega.isEmpty()) return null;
+
+        // Lunes de la semana del pedido — separa entregas "prev" de las de la semana actual
+        LocalDate lunesPedido = fechaInicioPedido.with(
+                java.time.temporal.TemporalAdjusters.previousOrSame(java.time.DayOfWeek.MONDAY));
+
+        boolean isPrevDelivery = fechaEntrega.isBefore(lunesPedido);
+
+        // Días de semana (1=lun..7=dom) de las entregas de la semana actual, ordenados asc
+        java.util.NavigableSet<Integer> currentDows = sortedFechasEntrega.stream()
+                .filter(d -> !d.isBefore(lunesPedido))
+                .mapToInt(d -> d.getDayOfWeek().getValue())
+                .distinct()
+                .boxed()
+                .collect(java.util.stream.Collectors.toCollection(java.util.TreeSet::new));
+
+        // Determinar qué días de clase (diaNec 1-7) cubre esta entrega
+        java.util.Set<Integer> coveredDows = new java.util.HashSet<>();
+
+        if (isPrevDelivery) {
+            // _prev: cubre diaNec en [1, minDow] (ninguna entrega actual es < diaNec)
+            int limit = currentDows.isEmpty() ? 7 : currentDows.first();
+            for (int d = 1; d <= limit; d++) coveredDows.add(d);
+        } else {
+            int dow = fechaEntrega.getDayOfWeek().getValue();
+            // Cubre diaNec en (dow, nextDow] → nextDow = siguiente entrega actual, o 7 si es la última
+            Integer nextDow = currentDows.higher(dow);
+            int upperLimit = nextDow != null ? nextDow : 7;
+            for (int d = dow + 1; d <= upperLimit; d++) coveredDows.add(d);
+        }
+
+        if (coveredDows.isEmpty()) return null;
+
+        // Filtrar solicitudes: dentro del rango del pedido y con día-de-semana cubierto
+        java.util.List<java.math.BigDecimal> cantidades = solicitudRows.stream()
+                .filter(row -> {
+                    LocalDate fs = ((java.sql.Date) row[0]).toLocalDate();
+                    if (fs.isBefore(fechaInicioPedido) || fs.isAfter(fechaFinPedido)) return false;
+                    return coveredDows.contains(fs.getDayOfWeek().getValue());
+                })
+                .map(row -> row[2] instanceof java.math.BigDecimal
+                        ? (java.math.BigDecimal) row[2]
+                        : new java.math.BigDecimal(row[2].toString()))
+                .collect(java.util.stream.Collectors.toList());
+
+        if (cantidades.isEmpty()) return null;
+
+        // Agrupar por valor de cantidad (orden de primera aparición)
+        java.util.LinkedHashMap<String, Long> grupos = new java.util.LinkedHashMap<>();
+        for (java.math.BigDecimal q : cantidades) {
+            String key = q.stripTrailingZeros().toPlainString();
+            grupos.merge(key, 1L, Long::sum);
+        }
+
+        // Formatear: "pc1 2x(5)/ pc2 10"
+        StringBuilder sb = new StringBuilder();
+        int pc = 1;
+        for (java.util.Map.Entry<String, Long> e : grupos.entrySet()) {
+            if (sb.length() > 0) sb.append("/ ");
+            long count = e.getValue();
+            String qStr = e.getKey();
+            if (count > 1) {
+                sb.append("pc").append(pc).append(" ").append(count).append("x(").append(qStr).append(")");
+            } else {
+                sb.append("pc").append(pc).append(" ").append(qStr);
+            }
+            pc++;
+        }
+        return sb.isEmpty() ? null : sb.toString();
+    }
 
     @Override
     @Transactional

@@ -6384,7 +6384,7 @@ const getNombreDia = (fechaISO: string): string => {
   return NOM_DIA_ES[new Date(y, m - 1, d).getDay()];
 };
 
-type OpCelda = { op: IOrdenPedidoListItem; cantidad: number; entregado: boolean };
+type OpCelda = { op: IOrdenPedidoListItem; cantidad: number; entregado: boolean; observacion: string | null };
 type ProductoTablaFila = { idProducto: number; nombre: string; abrev: string; nombreUnidad: string; nombreCategoria: string; formatoContenido: string | null; porFecha: Map<string, OpCelda[]> };
 type ProveedorTablaItem = {
   idProveedor: number; nombreDistribuidora: string; nombreProveedor: string;
@@ -6409,10 +6409,12 @@ const generarExcelOrdenPedidoProveedor = (prov: ProveedorTablaItem, lunesSelecci
     return `${String(d).padStart(2, '0')}-${String(m).padStart(2, '0')}`;
   };
 
-  // Columnas (0-based): 0=A margen, 1=B label/producto, 2=C U/M, 3=D formato, 4..=días
+  // Columnas (0-based): 0=A margen, 1=B producto, 2=C U/M, 3=D formato, 4+i*2=día_i, 4+i*2+1=obs_i
   const N = fechasSemana.length;
   const COL_B = 1, COL_C = 2, COL_FORMATO = 3, COL_D = 4;
-  const lastCol = COL_D + N - 1;
+  const lastCol = COL_D + N * 2 - 1;
+  const colDia = (i: number) => COL_D + i * 2;
+  const colObs = (i: number) => COL_D + i * 2 + 1;
   const enc = (r: number, c: number) => XLSXStyle.utils.encode_cell({ r, c });
 
   const B = { style: 'thin' as const };
@@ -6430,6 +6432,7 @@ const generarExcelOrdenPedidoProveedor = (prov: ProveedorTablaItem, lunesSelecci
   const sUM        = { font: { sz: 10 }, alignment: { horizontal: 'center' as const }, border };
   const sCantidad  = { font: { bold: true, sz: 11 }, alignment: { horizontal: 'center' as const }, border };
   const sCatHeader = { font: { bold: true, sz: 10 }, fill: { fgColor: { rgb: 'DBEAFE' } }, alignment: { horizontal: 'left' as const, vertical: 'center' as const }, border };
+  const sObservacion = { font: { sz: 9, italic: true }, fill: { fgColor: { rgb: 'F0F9FF' } }, alignment: { horizontal: 'left' as const, vertical: 'top' as const, wrapText: true }, border };
 
   const ws: Record<string, unknown> = {};
 
@@ -6462,7 +6465,8 @@ const generarExcelOrdenPedidoProveedor = (prov: ProveedorTablaItem, lunesSelecci
   ws[enc(7, COL_FORMATO)] = { v: 'FORMATO', t: 's', s: sTableHeader };
   fechasSemana.forEach((fecha, i) => {
     const [y, m, d] = fecha.split('-').map(Number);
-    ws[enc(7, COL_D + i)] = { v: `${NOM_DIA_ES[new Date(y, m - 1, d).getDay()]} ${String(d).padStart(2, '0')}/${String(m).padStart(2, '0')}`, t: 's', s: sTableHeader };
+    ws[enc(7, colDia(i))] = { v: `${NOM_DIA_ES[new Date(y, m - 1, d).getDay()]} ${String(d).padStart(2, '0')}/${String(m).padStart(2, '0')}`, t: 's', s: sTableHeader };
+    ws[enc(7, colObs(i))] = { v: 'OBSERVACIONES', t: 's', s: sTableHeader };
   });
 
   // Merges (cabecera fija + categorías que se añaden en el loop)
@@ -6490,15 +6494,20 @@ const generarExcelOrdenPedidoProveedor = (prov: ProveedorTablaItem, lunesSelecci
     fechasSemana.forEach((fecha, i) => {
       const items = prod.porFecha.get(fecha);
       const total = items ? items.reduce((s, it) => s + it.cantidad, 0) : null;
-      ws[enc(currentRow, COL_D + i)] = total !== null
+      ws[enc(currentRow, colDia(i))] = total !== null
         ? { v: total.toLocaleString('es-CL', { maximumFractionDigits: 3 }), t: 's', s: sCantidad }
         : { v: '', t: 's', s: sUM };
+      // Observaciones: concatenar porciones de todas las OPs para este producto+fecha
+      const obs = items
+        ? items.map(it => it.observacion).filter((o): o is string => !!o).join(' | ')
+        : '';
+      ws[enc(currentRow, colObs(i))] = { v: obs, t: 's', s: sObservacion };
     });
     currentRow++;
   });
 
   ws['!merges'] = merges;
-  ws['!cols'] = [{ wch: 4 }, { wch: 32 }, { wch: 14 }, { wch: 20 }, ...fechasSemana.map(() => ({ wch: 14 }))];
+  ws['!cols'] = [{ wch: 4 }, { wch: 32 }, { wch: 14 }, { wch: 20 }, ...fechasSemana.flatMap(() => [{ wch: 14 }, { wch: 28 }])];
   ws['!rows'] = [{ hpt: 4 }, { hpt: 30 }, { hpt: 22 }, { hpt: 18 }, { hpt: 18 }, { hpt: 18 }, { hpt: 8 }, { hpt: 22 }];
   ws['!ref'] = XLSXStyle.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: currentRow - 1, c: lastCol } });
 
@@ -6683,7 +6692,7 @@ const OrdenesVista: React.FC<OrdenesVistaProps> = ({
         }
         const prod = grupo.productos.get(d.idProducto)!;
         if (!prod.porFecha.has(d.fechaEntrega)) prod.porFecha.set(d.fechaEntrega, []);
-        prod.porFecha.get(d.fechaEntrega)!.push({ op, cantidad: d.cantidadSolicitada, entregado: d.entregado });
+        prod.porFecha.get(d.fechaEntrega)!.push({ op, cantidad: d.cantidadSolicitada, entregado: d.entregado, observacion: d.observacion ?? null });
       }
     }
     return [...grupos.values()]

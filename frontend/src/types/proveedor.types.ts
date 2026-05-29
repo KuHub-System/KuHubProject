@@ -420,6 +420,7 @@ export interface IDetalleOrdenPedido {
   fechaEntrega: string; // YYYY-MM-DD
   entregado: boolean;
   formatoContenido: string | null;
+  observacion: string | null; // porciones de solicitud: "pc1 2x(5)/ pc2 10"
 }
 
 /** Orden de Pedido completa con cabecera y todas sus líneas de detalle. */
