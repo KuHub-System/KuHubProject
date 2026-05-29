@@ -37,6 +37,7 @@ public record OrdenPedidoConDetallesDTO(
             BigDecimal precioConIvaUnitario,
             LocalDate fechaEntrega,
             Boolean entregado,
-            String formatoContenido
+            String formatoContenido,
+            String observacion   // porciones de solicitud: "pc1 2x(5)/ pc2 10"
     ) {}
 }

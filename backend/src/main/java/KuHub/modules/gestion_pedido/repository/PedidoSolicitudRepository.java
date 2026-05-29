@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -30,5 +31,27 @@ public interface PedidoSolicitudRepository extends JpaRepository<PedidoSolicitud
           AND s.estado_solicitud != 'PROCESADO'
         """, nativeQuery = true)
     Long countSolicitudesNoProcesadas(@Param("idPedido") Integer idPedido);
+
+    /**
+     * Retorna (fecha_solicitada, id_producto, cant_producto_solicitud) de todas las
+     * solicitudes EN_PEDIDO vinculadas al pedido, ordenadas por fecha. Usado para calcular
+     * las porciones de solicitud en las observaciones del Excel de Órdenes de Pedido.
+     *   [0] fecha_solicitada  (java.sql.Date → LocalDate)
+     *   [1] id_producto       (Integer)
+     *   [2] cant_producto_solicitud (BigDecimal)
+     */
+    @Query(value = """
+        SELECT
+            s.fecha_solicitada,           -- [0]
+            ds.id_producto,               -- [1]
+            ds.cant_producto_solicitud    -- [2]
+        FROM pedido_solicitud ps
+        JOIN solicitud s ON s.id_solicitud = ps.id_solicitud
+        JOIN detalle_solicitud ds ON ds.id_solicitud = s.id_solicitud
+        WHERE ps.id_pedido = :idPedido
+          AND s.estado_solicitud = 'EN_PEDIDO'
+        ORDER BY s.fecha_solicitada ASC
+        """, nativeQuery = true)
+    List<Object[]> findSolicitudDetallesByPedido(@Param("idPedido") Integer idPedido);
 
 }
