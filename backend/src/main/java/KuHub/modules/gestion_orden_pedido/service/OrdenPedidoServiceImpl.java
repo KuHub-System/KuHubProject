@@ -463,7 +463,7 @@ public class OrdenPedidoServiceImpl implements OrdenPedidoService {
         // Agrupar por valor de cantidad (orden de primera aparición)
         java.util.LinkedHashMap<String, Long> grupos = new java.util.LinkedHashMap<>();
         for (java.math.BigDecimal q : cantidades) {
-            String key = q.stripTrailingZeros().toPlainString();
+            String key = q.stripTrailingZeros().toPlainString().replace('.', ',');
             grupos.merge(key, 1L, Long::sum);
         }
 

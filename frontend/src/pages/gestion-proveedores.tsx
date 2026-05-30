@@ -6409,9 +6409,9 @@ const generarExcelOrdenPedidoProveedor = (prov: ProveedorTablaItem, lunesSelecci
     return `${String(d).padStart(2, '0')}-${String(m).padStart(2, '0')}`;
   };
 
-  // Columnas (0-based): 0=A margen, 1=B producto, 2=C U/M, 3=D formato, 4+i*2=día_i, 4+i*2+1=obs_i
+  // Columnas (0-based): 0=A margen, 1=B producto, 2=C U/M, 3+i*2=día_i, 3+i*2+1=obs_i
   const N = fechasSemana.length;
-  const COL_B = 1, COL_C = 2, COL_FORMATO = 3, COL_D = 4;
+  const COL_B = 1, COL_C = 2, COL_D = 3;
   const lastCol = COL_D + N * 2 - 1;
   const colDia = (i: number) => COL_D + i * 2;
   const colObs = (i: number) => COL_D + i * 2 + 1;
@@ -6462,7 +6462,6 @@ const generarExcelOrdenPedidoProveedor = (prov: ProveedorTablaItem, lunesSelecci
   // r=7  Cabeceras de tabla
   ws[enc(7, COL_B)] = { v: 'PRODUCTO', t: 's', s: sTableHeader };
   ws[enc(7, COL_C)] = { v: 'U/M', t: 's', s: sTableHeader };
-  ws[enc(7, COL_FORMATO)] = { v: 'FORMATO', t: 's', s: sTableHeader };
   fechasSemana.forEach((fecha, i) => {
     const [y, m, d] = fecha.split('-').map(Number);
     ws[enc(7, colDia(i))] = { v: `${NOM_DIA_ES[new Date(y, m - 1, d).getDay()]} ${String(d).padStart(2, '0')}/${String(m).padStart(2, '0')}`, t: 's', s: sTableHeader };
@@ -6490,7 +6489,6 @@ const generarExcelOrdenPedidoProveedor = (prov: ProveedorTablaItem, lunesSelecci
     }
     ws[enc(currentRow, COL_B)] = { v: prod.nombre, t: 's', s: sProducto };
     ws[enc(currentRow, COL_C)] = { v: prod.nombreUnidad, t: 's', s: sUM };
-    ws[enc(currentRow, COL_FORMATO)] = { v: prod.formatoContenido ?? '', t: 's', s: sUM };
     fechasSemana.forEach((fecha, i) => {
       const items = prod.porFecha.get(fecha);
       const total = items ? items.reduce((s, it) => s + it.cantidad, 0) : null;
@@ -6507,7 +6505,7 @@ const generarExcelOrdenPedidoProveedor = (prov: ProveedorTablaItem, lunesSelecci
   });
 
   ws['!merges'] = merges;
-  ws['!cols'] = [{ wch: 4 }, { wch: 32 }, { wch: 14 }, { wch: 20 }, ...fechasSemana.flatMap(() => [{ wch: 14 }, { wch: 28 }])];
+  ws['!cols'] = [{ wch: 4 }, { wch: 32 }, { wch: 14 }, ...fechasSemana.flatMap(() => [{ wch: 14 }, { wch: 28 }])];
   ws['!rows'] = [{ hpt: 4 }, { hpt: 30 }, { hpt: 22 }, { hpt: 18 }, { hpt: 18 }, { hpt: 18 }, { hpt: 8 }, { hpt: 22 }];
   ws['!ref'] = XLSXStyle.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: currentRow - 1, c: lastCol } });
 
