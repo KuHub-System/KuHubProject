@@ -1001,6 +1001,8 @@ export interface IRegistrarDisponibleDTO {
   idSolicitud?: number;
   idPedido?: number;
   cantidad: number;
+  // Opcional: 'INVENTARIO' (default backend si se omite) o 'BODEGA_TRANSITO'.
+  tipoDisponible?: string;
 }
 
 export const registrarDisponiblesService = async (

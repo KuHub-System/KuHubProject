@@ -13,7 +13,7 @@ import { usePageTitle } from '../hooks/usePageTitle';
 import { useHistory } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ISolicitud, IItemSolicitud } from '../types/solicitud.types';
-import { actualizarEstadoBodegaService, obtenerEntregasDiariasService, prepararEntregaService, IEntregaDiaria, ISalaEntrega, ISolicitudEntrega } from '../services/solicitud-service';
+import { actualizarEstadoBodegaService, obtenerEntregasDiariasService, prepararEntregaService, registrarDisponiblesService, IRegistrarDisponibleDTO, IEntregaDiaria, ISalaEntrega, ISolicitudEntrega } from '../services/solicitud-service';
 import { obtenerRecetaPorIdService } from '../services/pedido-semanal-bodega-service';
 import { obtenerFiltrosInventarioService } from '../services/producto-service';
 import { buscarBodegaTransitoService, buscarBodegaTransitoPorCodigoService, obtenerBodegaPaginadaService, IBodegaTransitoItem, obtenerBulkBodegaListingService, bulkUpdateBodegaStockService, IBulkBodegaListing, IBulkWarehouseUpdateRequest, IBulkWarehouseProcessResult, inicializarDesdeAbastecimientoService, obtenerBodegaByInventarioIdsService } from '../services/bodega-transito-service';
@@ -26,6 +26,8 @@ import { obtenerUnidadesActivasService } from '../services/unidad-medida-service
 import GestionCategoriasModal from '../components/modals/GestionCategoriasModal';
 import GestionUnidadesModal from '../components/modals/GestionUnidadesModal';
 import GestionAbastecimientoModal from '../components/modals/GestionAbastecimientoModal';
+import StockDisponiblesModal from '../components/modals/StockDisponiblesModal';
+import ConfirmarDisponibleBodegaModal, { ConfirmarDisponibleBodegaItem } from '../components/modals/ConfirmarDisponibleBodegaModal';
 import { obtenerAbastecimientoConfirmadoService, marcarEntregadosMasivoService } from '../services/proveedor-service';
 import { IOrdenAbastecimiento, ICategoriaEntregaAbastecimiento } from '../types/proveedor.types';
 
@@ -353,6 +355,9 @@ interface ItemBodegaMasivo {
   delta: number;
   motivo: string;
   idDetalleOrdenPedido?: number;
+  // Cantidad que provino del Abastecimiento de Proveedores (baseline cargado).
+  // Lo "extra" sobre este valor (manual o aumento) puede ir a stock_disponible.
+  cargadoAbastecimiento?: number;
 }
 
 const MOTIVOS_BODEGA = ['ENTRADA_BODEGA', 'SALIDA_BODEGA', 'AJUSTE_BODEGA', 'MERMA_BODEGA', 'DEVOLUCION'] as const;
@@ -505,6 +510,7 @@ const ControlMasivoBodegaModal: React.FC<ControlMasivoBodegaModalProps> = ({ onC
                 delta: prod.cantidadSolicitada,
                 motivo: 'ENTRADA_BODEGA',
                 idDetalleOrdenPedido: prod.idDetalleOrdenPedido,
+                cargadoAbastecimiento: prod.cantidadSolicitada,
               });
             }
           }
@@ -540,7 +546,11 @@ const ControlMasivoBodegaModal: React.FC<ControlMasivoBodegaModalProps> = ({ onC
           i => i.producto.idBodegaTransito === nuevo.producto.idBodegaTransito && i.motivo === nuevo.motivo
         );
         if (idx >= 0) {
-          merged[idx] = { ...merged[idx], delta: merged[idx].delta + nuevo.delta };
+          merged[idx] = {
+            ...merged[idx],
+            delta: merged[idx].delta + nuevo.delta,
+            cargadoAbastecimiento: (merged[idx].cargadoAbastecimiento ?? 0) + (nuevo.cargadoAbastecimiento ?? 0),
+          };
         } else {
           merged.push(nuevo);
         }
@@ -586,6 +596,7 @@ const ControlMasivoBodegaModal: React.FC<ControlMasivoBodegaModalProps> = ({ onC
             delta: d.cantidadSolicitada,
             motivo: 'ENTRADA_BODEGA',
             idDetalleOrdenPedido: d.idDetalleOrdenPedido,
+            cargadoAbastecimiento: d.cantidadSolicitada,
           });
         }
       }
@@ -625,6 +636,10 @@ const ControlMasivoBodegaModal: React.FC<ControlMasivoBodegaModalProps> = ({ onC
 
   // ── Procesamiento ──
   const [processState, setProcessState] = React.useState<'idle' | 'procesando'>('idle');
+
+  // ── Confirmación stock disponible (excedente de ENTRADAS) ──
+  const [isDisponibleMasivoOpen, setIsDisponibleMasivoOpen] = React.useState(false);
+  const [disponiblesMasivo,      setDisponiblesMasivo]      = React.useState<ConfirmarDisponibleBodegaItem[]>([]);
 
   // ── Carga de productos desde backend ──
   React.useEffect(() => {
@@ -764,7 +779,57 @@ const ControlMasivoBodegaModal: React.FC<ControlMasivoBodegaModalProps> = ({ onC
     }));
   };
 
+  // Detecta el excedente de las ENTRADAS que puede registrarse como stock disponible:
+  // productos agregados manualmente (todo el delta) y productos cargados desde
+  // Abastecimiento cuya cantidad fue aumentada (delta - cargadoAbastecimiento).
+  const detectarDisponiblesMasivo = (): ConfirmarDisponibleBodegaItem[] => {
+    return itemsPedido
+      .filter(i => i.motivo === 'ENTRADA_BODEGA')
+      .map(i => ({ item: i, extra: i.delta - (i.cargadoAbastecimiento ?? 0) }))
+      .filter(x => x.extra > 0.001)
+      .map(x => ({
+        idProducto: x.item.producto.idProducto,
+        nombreProducto: x.item.producto.nombreProducto,
+        unidad: x.item.producto.detalles,
+        cantidad: parseFloat(x.extra.toFixed(3)),
+      }));
+  };
+
   const procesarMasivo = async () => {
+    if (itemsPedido.length === 0) return;
+    const disponibles = detectarDisponiblesMasivo();
+    if (disponibles.length > 0) {
+      setDisponiblesMasivo(disponibles);
+      setIsDisponibleMasivoOpen(true);
+      return;
+    }
+    await ejecutarMasivo();
+  };
+
+  const handleConfirmarDisponibleMasivo = async () => {
+    setProcessState('procesando');
+    try {
+      await registrarDisponiblesService(
+        disponiblesMasivo.map(d => ({
+          idProducto: d.idProducto,
+          cantidad: d.cantidad,
+          tipoDisponible: 'BODEGA_TRANSITO',
+        }))
+      );
+      toast.success('Productos registrados como stock disponible de bodega de tránsito');
+    } catch {
+      toast.warning('No se pudieron registrar los disponibles, pero la entrada continuará');
+    }
+    setIsDisponibleMasivoOpen(false);
+    await ejecutarMasivo();
+  };
+
+  const handleCancelarDisponibleMasivo = async () => {
+    setIsDisponibleMasivoOpen(false);
+    await ejecutarMasivo();
+  };
+
+  const ejecutarMasivo = async () => {
     if (itemsPedido.length === 0) return;
     setProcessState('procesando');
     try {
@@ -1065,6 +1130,15 @@ const ControlMasivoBodegaModal: React.FC<ControlMasivoBodegaModalProps> = ({ onC
       </ModalFooter>
     </div>
 
+      {/* Confirmación: registrar excedente de ENTRADAS como stock disponible */}
+      <ConfirmarDisponibleBodegaModal
+        isOpen={isDisponibleMasivoOpen}
+        items={disponiblesMasivo}
+        isLoading={processState !== 'idle'}
+        onCancelar={handleCancelarDisponibleMasivo}
+        onConfirmar={handleConfirmarDisponibleMasivo}
+      />
+
       {/* Modal de Abastecimiento de Proveedores (OPs CONFIRMADA) */}
       <Modal
         isOpen={isAbastecimientoOpen}
@@ -1306,13 +1380,29 @@ const BodegaTransitoPage: React.FC = () => {
   const toast = useToast();
   const history = useHistory();
   const [solicitudes, setSolicitudes] = React.useState<ISolicitud[]>([]);
-  const [selectedDate, setSelectedDate] = React.useState<Date>(new Date());
+  const [selectedDate, setSelectedDate] = React.useState<Date>(() => { const d = new Date(); d.setHours(12, 0, 0, 0); return d; });
   const [currentView, setCurrentView] = React.useState<'inventario' | 'pedidos'>('inventario');
 
   // ── Entregas diarias ──
   const [entregasData,       setEntregasData]       = React.useState<IEntregaDiaria[]>([]);
   const [isLoadingEntregas,  setIsLoadingEntregas]  = React.useState(false);
+  const [buscandoPendiente,  setBuscandoPendiente]  = React.useState(false);
   const entregasCache = React.useRef<Map<string, IEntregaDiaria[]>>(new Map());
+
+  // ── Stock disponible bodega tránsito ──
+  const [isStockDisponiblesOpen, setIsStockDisponiblesOpen] = React.useState(false);
+
+  // ── Resumen de productos por período (entregas no realizadas) ──
+  type ProductoPeriodo = { idProducto: number; nombreProducto: string; unidadAbreviada: string; cantidad: number };
+  type ResumenPeriodo = { productos: ProductoPeriodo[]; totalSolicitudes: number; totalProductos: number };
+  const [isPeriodoOpen,    setIsPeriodoOpen]    = React.useState(false);
+  const [periodoFechaIni,  setPeriodoFechaIni]  = React.useState('');
+  const [periodoHoraIni,   setPeriodoHoraIni]   = React.useState('08:00');
+  const [periodoFechaFin,  setPeriodoFechaFin]  = React.useState('');
+  const [periodoHoraFin,   setPeriodoHoraFin]   = React.useState('22:00');
+  const [periodoLoading,   setPeriodoLoading]   = React.useState(false);
+  const [periodoError,     setPeriodoError]     = React.useState<string | null>(null);
+  const [periodoResultado, setPeriodoResultado] = React.useState<ResumenPeriodo | null>(null);
 
   // ── Polling de stock para solicitudes expandidas ──
   // Contiene los idSolicitud de los items actualmente desplegados y no-PROCESADO
@@ -1336,7 +1426,11 @@ const BodegaTransitoPage: React.FC = () => {
   const [productosEdit,       setProductosEdit]       = React.useState<ProductoEdit[]>([]);
   const [isConfirmando,       setIsConfirmando]       = React.useState(false);
   const [preparaError,        setPreparaError]        = React.useState<string | null>(null);
-  const [confirmarTextoEntrega, setConfirmarTextoEntrega] = React.useState('');
+  const [isConfirmacionOpen,  setIsConfirmacionOpen]  = React.useState(false);
+
+  // ── Sobrantes detectados al entregar menos de lo solicitado (stock disponible BODEGA_TRANSITO) ──
+  const [isSobrantesOpen,     setIsSobrantesOpen]     = React.useState(false);
+  const [sobrantesPendientes, setSobrantesPendientes] = React.useState<IRegistrarDisponibleDTO[]>([]);
 
   const abrirPreparar = React.useCallback((sol: ISolicitudEntrega) => {
     setPreparandoSolicitud(sol);
@@ -1350,7 +1444,6 @@ const BodegaTransitoPage: React.FC = () => {
       cantidadAEntregar:  p.cantidad,
     })));
     setPreparaError(null);
-    setConfirmarTextoEntrega('');
   }, []);
 
   const confirmarEntrega = React.useCallback(async () => {
@@ -1368,7 +1461,6 @@ const BodegaTransitoPage: React.FC = () => {
       });
       toast.success('Entrega preparada y solicitud procesada correctamente.');
       setPreparandoSolicitud(null);
-      setConfirmarTextoEntrega('');
       // Invalidar caché y recargar la semana actual
       entregasCache.current.clear();
       const range = getWeekRange(selectedDate);
@@ -1382,7 +1474,6 @@ const BodegaTransitoPage: React.FC = () => {
         // Operación exitosa pero con desincronización
         toast.warning(err.response.data?.mensaje ?? 'Entrega preparada. El stock estaba desincronizado.');
         setPreparandoSolicitud(null);
-        setConfirmarTextoEntrega('');
         entregasCache.current.clear();
         const range = getWeekRange(selectedDate);
         setIsLoadingEntregas(true);
@@ -1403,6 +1494,49 @@ const BodegaTransitoPage: React.FC = () => {
       setIsConfirmando(false);
     }
   }, [preparandoSolicitud, productosEdit, selectedDate, toast]);
+
+  // Detecta productos donde se entregará menos de lo solicitado: ese sobrante
+  // (cantidadSolicitada - cantidadAEntregar) puede registrarse como stock disponible
+  // de bodega de tránsito, no asociado a la solicitud entregada.
+  const detectarSobrantesEntrega = React.useCallback((): IRegistrarDisponibleDTO[] => {
+    if (!preparandoSolicitud) return [];
+    return productosEdit
+      .filter(p => p.cantidadSolicitada - p.cantidadAEntregar > 0.001)
+      .map(p => ({
+        idProducto: p.idProducto,
+        idSolicitud: preparandoSolicitud.idSolicitud,
+        cantidad: parseFloat((p.cantidadSolicitada - p.cantidadAEntregar).toFixed(3)),
+        tipoDisponible: 'BODEGA_TRANSITO',
+      }));
+  }, [preparandoSolicitud, productosEdit]);
+
+  // Botón "Confirmar Entrega": si hay sobrantes, ofrecer registrarlos como disponibles;
+  // si no, ir directo a la confirmación de entrega irreversible.
+  const handleConfirmarEntregaClick = React.useCallback(() => {
+    const sobrantes = detectarSobrantesEntrega();
+    if (sobrantes.length > 0) {
+      setSobrantesPendientes(sobrantes);
+      setIsSobrantesOpen(true);
+    } else {
+      setIsConfirmacionOpen(true);
+    }
+  }, [detectarSobrantesEntrega]);
+
+  const handleSobrantesSi = React.useCallback(async () => {
+    setIsSobrantesOpen(false);
+    try {
+      await registrarDisponiblesService(sobrantesPendientes);
+      toast.success('Sobrantes registrados como stock disponible de bodega de tránsito');
+    } catch {
+      toast.warning('No se pudieron registrar los sobrantes, pero la entrega continuará');
+    }
+    await confirmarEntrega();
+  }, [sobrantesPendientes, confirmarEntrega, toast]);
+
+  const handleSobrantesNo = React.useCallback(async () => {
+    setIsSobrantesOpen(false);
+    await confirmarEntrega();
+  }, [confirmarEntrega]);
 
   usePageTitle(
     currentView === 'inventario' ? 'Bodega de Tránsito' : 'Gestión de Pedidos Diarios',
@@ -1706,9 +1840,116 @@ const BodegaTransitoPage: React.FC = () => {
     history.push(`/movimientos?productoId=${id}&nombre=${encodeURIComponent(nombre)}`);
   };
 
-  const handlePrevDay = () => { const d = new Date(selectedDate); d.setDate(d.getDate() - 1); setSelectedDate(d); };
-  const handleNextDay = () => { const d = new Date(selectedDate); d.setDate(d.getDate() + 1); setSelectedDate(d); };
-  const handleToday = () => { setSelectedDate(new Date()); };
+  const handlePrevDay = () => { const d = new Date(selectedDate); d.setDate(d.getDate() - 1); d.setHours(12, 0, 0, 0); setSelectedDate(d); };
+  const handleNextDay = () => { const d = new Date(selectedDate); d.setDate(d.getDate() + 1); d.setHours(12, 0, 0, 0); setSelectedDate(d); };
+  const handlePrevWeek = () => { const d = new Date(selectedDate); d.setDate(d.getDate() - 7); d.setHours(12, 0, 0, 0); setSelectedDate(d); };
+  const handleNextWeek = () => { const d = new Date(selectedDate); d.setDate(d.getDate() + 7); d.setHours(12, 0, 0, 0); setSelectedDate(d); };
+  const handleToday = () => { const d = new Date(); d.setHours(12, 0, 0, 0); setSelectedDate(d); };
+  const handleSelectDay = (date: Date) => { const d = new Date(date); d.setHours(12, 0, 0, 0); setSelectedDate(d); };
+
+  // Busca en un rango amplio la entrega pendiente (solicitud no PROCESADO) más relevante y navega a ella.
+  // Prioriza la próxima desde hoy hacia adelante; si no hay futuras, salta a la atrasada más reciente.
+  const irAProximaPendiente = React.useCallback(async () => {
+    setBuscandoPendiente(true);
+    try {
+      const inicio = new Date(); inicio.setDate(inicio.getDate() - 60);
+      const fin = new Date();    fin.setDate(fin.getDate() + 120);
+      const data = await obtenerEntregasDiariasService({
+        fechaInicio: inicio.toISOString().slice(0, 10),
+        fechaFin:    fin.toISOString().slice(0, 10),
+      });
+      const hoyRef = new Date(); hoyRef.setHours(12, 0, 0, 0);
+      const hoyStr = hoyRef.toISOString().slice(0, 10);
+      const tienePendiente = (d: IEntregaDiaria) =>
+        d.salas.some(s => s.solicitudes.some(sol => sol.estadoSolicitud !== 'PROCESADO'));
+      const ordenados = [...data].sort((a, b) => a.fecha.localeCompare(b.fecha));
+      const futura   = ordenados.find(d => d.fecha >= hoyStr && tienePendiente(d));
+      const atrasada = [...ordenados].reverse().find(d => d.fecha < hoyStr && tienePendiente(d));
+      const objetivo = futura ?? atrasada;
+      if (!objetivo) {
+        toast.info('No hay entregas pendientes en el sistema.');
+        return;
+      }
+      setSelectedDate(new Date(objetivo.fecha + 'T12:00:00'));
+      if (!futura && atrasada) {
+        toast.warning('No hay entregas futuras pendientes. Te llevamos a la entrega atrasada más reciente.');
+      }
+    } catch {
+      toast.error('No se pudo buscar la próxima entrega pendiente.');
+    } finally {
+      setBuscandoPendiente(false);
+    }
+  }, [toast]);
+
+  const abrirPeriodo = () => {
+    const base = dateCol1.toISOString().slice(0, 10);
+    setPeriodoFechaIni(base);
+    setPeriodoFechaFin(base);
+    setPeriodoHoraIni('08:00');
+    setPeriodoHoraFin('22:00');
+    setPeriodoError(null);
+    setPeriodoResultado(null);
+    setIsPeriodoOpen(true);
+  };
+
+  // Suma los productos de las entregas NO realizadas cuyo inicio cae dentro del período indicado.
+  // Productos iguales (mismo idProducto) se acumulan en una sola fila. Sólo informativo.
+  const calcularPeriodo = React.useCallback(async () => {
+    if (!periodoFechaIni || !periodoFechaFin || !periodoHoraIni || !periodoHoraFin) {
+      setPeriodoError('Completa la fecha y hora de inicio y de fin.');
+      return;
+    }
+    const inicioDate = new Date(`${periodoFechaIni}T${periodoHoraIni}:00`);
+    const finDate    = new Date(`${periodoFechaFin}T${periodoHoraFin}:00`);
+    if (isNaN(inicioDate.getTime()) || isNaN(finDate.getTime())) {
+      setPeriodoError('El período ingresado no es válido.');
+      return;
+    }
+    if (finDate < inicioDate) {
+      setPeriodoError('La fecha/hora de fin debe ser posterior al inicio.');
+      return;
+    }
+    setPeriodoLoading(true);
+    setPeriodoError(null);
+    try {
+      const data = await obtenerEntregasDiariasService({
+        fechaInicio: periodoFechaIni,
+        fechaFin:    periodoFechaFin,
+      });
+      const acumulado = new Map<number, ProductoPeriodo>();
+      let totalSolicitudes = 0;
+      for (const dia of data) {
+        for (const sala of dia.salas) {
+          for (const sol of sala.solicitudes) {
+            if (sol.estadoSolicitud === 'PROCESADO') continue; // sólo entregas NO realizadas
+            const dt = new Date(`${dia.fecha}T${sol.horaInicio || '00:00'}:00`);
+            if (isNaN(dt.getTime()) || dt < inicioDate || dt > finDate) continue;
+            totalSolicitudes++;
+            for (const p of sol.productos) {
+              const ex = acumulado.get(p.idProducto);
+              if (ex) {
+                ex.cantidad += p.cantidad;
+              } else {
+                acumulado.set(p.idProducto, {
+                  idProducto:      p.idProducto,
+                  nombreProducto:  p.nombreProducto,
+                  unidadAbreviada: p.unidadAbreviada,
+                  cantidad:        p.cantidad,
+                });
+              }
+            }
+          }
+        }
+      }
+      const productos = Array.from(acumulado.values())
+        .sort((a, b) => a.nombreProducto.localeCompare(b.nombreProducto));
+      setPeriodoResultado({ productos, totalSolicitudes, totalProductos: productos.length });
+    } catch {
+      setPeriodoError('No se pudo calcular el resumen del período.');
+    } finally {
+      setPeriodoLoading(false);
+    }
+  }, [periodoFechaIni, periodoHoraIni, periodoFechaFin, periodoHoraFin]);
 
   const getRequestsForDate = (date: Date) => {
     const dStr = date.toISOString().split('T')[0];
@@ -1785,18 +2026,59 @@ const BodegaTransitoPage: React.FC = () => {
   };
 
   const dateCol1 = new Date(selectedDate);
-  const dateCol2 = new Date(selectedDate);
-  dateCol2.setDate(selectedDate.getDate() + 1);
 
   const entregasHoy = React.useMemo(() => {
     const dateStr = dateCol1.toISOString().slice(0, 10);
     return entregasData.find(e => e.fecha === dateStr) ?? null;
   }, [entregasData, dateCol1]);
 
-  const entregasManana = React.useMemo(() => {
-    const dateStr = dateCol2.toISOString().slice(0, 10);
-    return entregasData.find(e => e.fecha === dateStr) ?? null;
-  }, [entregasData, dateCol2]);
+  // ── Strip de navegación semanal ──
+  const hoyStr = React.useMemo(() => {
+    const d = new Date(); d.setHours(12, 0, 0, 0);
+    return d.toISOString().slice(0, 10);
+  }, []);
+
+  const selectedDateStr = React.useMemo(() => dateCol1.toISOString().slice(0, 10), [dateCol1]);
+
+  // 7 días de la semana del día seleccionado, con conteo de entregas y pendientes de cada uno
+  const weekDays = React.useMemo(() => {
+    const base = new Date(selectedDate);
+    const day = base.getDay();
+    const monday = new Date(base);
+    monday.setDate(base.getDate() - (day === 0 ? 6 : day - 1));
+    monday.setHours(12, 0, 0, 0);
+    return Array.from({ length: 7 }, (_, i) => {
+      const date = new Date(monday);
+      date.setDate(monday.getDate() + i);
+      const fechaStr = date.toISOString().slice(0, 10);
+      const dia = entregasData.find(e => e.fecha === fechaStr);
+      let total = 0, pendientes = 0;
+      if (dia) {
+        for (const sala of dia.salas) {
+          for (const sol of sala.solicitudes) {
+            total++;
+            if (sol.estadoSolicitud !== 'PROCESADO') pendientes++;
+          }
+        }
+      }
+      return { date, fechaStr, total, pendientes };
+    });
+  }, [selectedDate, entregasData]);
+
+  const rangoSemanaLabel = React.useMemo(() => {
+    if (weekDays.length < 7) return '';
+    const ini = weekDays[0].date, fin = weekDays[6].date;
+    const mesIni = ini.toLocaleDateString('es-CL', { month: 'short' }).replace('.', '');
+    const mesFin = fin.toLocaleDateString('es-CL', { month: 'short' }).replace('.', '');
+    return mesIni === mesFin
+      ? `${ini.getDate()} – ${fin.getDate()} ${mesFin}`
+      : `${ini.getDate()} ${mesIni} – ${fin.getDate()} ${mesFin}`;
+  }, [weekDays]);
+
+  const statsDiaSeleccionado = React.useMemo(
+    () => weekDays.find(d => d.fechaStr === selectedDateStr) ?? { total: 0, pendientes: 0 },
+    [weekDays, selectedDateStr]
+  );
 
   return (
     <>
@@ -1872,6 +2154,16 @@ const BodegaTransitoPage: React.FC = () => {
                     className="bg-default-100 dark:bg-default-50/10"
                   >
                     <Icon icon="lucide:boxes" className="text-default-600" width={20} />
+                  </Button>
+                  <Button
+                    isIconOnly
+                    variant="flat"
+                    size="md"
+                    onPress={() => setIsStockDisponiblesOpen(true)}
+                    title="Stock Disponible"
+                    className="bg-default-100 dark:bg-default-50/10"
+                  >
+                    <Icon icon="lucide:package-check" className="text-default-600" width={20} />
                   </Button>
                 </div>
               )}
@@ -2214,7 +2506,11 @@ const BodegaTransitoPage: React.FC = () => {
                   key="gestion-pedidos"
                   aria-label="Pedidos"
                   title={<span className="font-bold text-lg">Pedidos Activos</span>}
-                  subtitle={`${entregasHoy?.totalSolicitudes ?? 0} solicitudes para hoy`}
+                  subtitle={
+                    statsDiaSeleccionado.total > 0
+                      ? `${statsDiaSeleccionado.total} entrega${statsDiaSeleccionado.total !== 1 ? 's' : ''} · ${statsDiaSeleccionado.pendientes} pendiente${statsDiaSeleccionado.pendientes !== 1 ? 's' : ''} para el día seleccionado`
+                      : 'Sin entregas para el día seleccionado'
+                  }
                   classNames={{
                     base: "shadow-md border border-default-200 dark:border-default-100 rounded-2xl overflow-hidden bg-white dark:bg-content1 p-0",
                     title: "font-bold text-secondary",
@@ -2223,14 +2519,90 @@ const BodegaTransitoPage: React.FC = () => {
                   }}
                 >
                   <div className="space-y-6">
-                    {/* Controles de Fecha */}
-                    <div className="flex items-center gap-2 bg-default-50 dark:bg-default-100/30 rounded-full p-1 border border-default-200 dark:border-default-100 shadow-sm max-w-md mx-auto">
-                      <Button variant="flat" onPress={handleToday} size="sm" className="flex-grow h-8 font-bold capitalize bg-white dark:bg-default-100/50 text-secondary dark:text-foreground rounded-full" startContent={<Icon icon="lucide:calendar" className="text-primary" width={14} />}>
-                        {formatDate(selectedDate)}
-                      </Button>
-                      <div className="flex gap-1 shrink-0 px-1">
-                        <Button isIconOnly size="sm" variant="light" onPress={handlePrevDay} className="rounded-full h-8 w-8 min-w-0"><Icon icon="lucide:chevron-left" width={16} /></Button>
-                        <Button isIconOnly size="sm" variant="light" onPress={handleNextDay} className="rounded-full h-8 w-8 min-w-0"><Icon icon="lucide:chevron-right" width={16} /></Button>
+                    {/* ── Navegación de fecha mejorada ── */}
+                    <div className="space-y-3 max-w-3xl mx-auto">
+                      {/* Fila superior: semana + acciones rápidas */}
+                      <div className="flex items-center justify-between gap-2 flex-wrap">
+                        <div className="flex items-center gap-1">
+                          <Button isIconOnly size="sm" variant="flat" onPress={handlePrevWeek} className="rounded-full h-8 w-8 min-w-0" title="Semana anterior">
+                            <Icon icon="lucide:chevrons-left" width={16} />
+                          </Button>
+                          <span className="text-xs font-bold text-default-500 uppercase tracking-wider px-2 min-w-[150px] text-center select-none">
+                            {rangoSemanaLabel}
+                          </span>
+                          <Button isIconOnly size="sm" variant="flat" onPress={handleNextWeek} className="rounded-full h-8 w-8 min-w-0" title="Semana siguiente">
+                            <Icon icon="lucide:chevrons-right" width={16} />
+                          </Button>
+                        </div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <Button size="sm" variant="flat" onPress={handleToday} startContent={<Icon icon="lucide:calendar-check" width={14} />} className="h-8 font-semibold">
+                            Hoy
+                          </Button>
+                          <Button size="sm" variant="flat" color="primary" onPress={abrirPeriodo} startContent={<Icon icon="lucide:layers" width={14} />} className="h-8 font-semibold text-secondary">
+                            Resumen período
+                          </Button>
+                          <Button
+                            size="sm"
+                            color="secondary"
+                            variant="solid"
+                            onPress={irAProximaPendiente}
+                            isLoading={buscandoPendiente}
+                            startContent={!buscandoPendiente ? <Icon icon="lucide:zap" width={14} /> : undefined}
+                            className="h-8 font-semibold"
+                          >
+                            Próxima pendiente
+                          </Button>
+                        </div>
+                      </div>
+
+                      {/* Strip de días de la semana */}
+                      <div className="grid grid-cols-7 gap-1.5">
+                        {weekDays.map(d => {
+                          const esSeleccionado = d.fechaStr === selectedDateStr;
+                          const esHoy = d.fechaStr === hoyStr;
+                          const tienePendientes = d.pendientes > 0;
+                          return (
+                            <button
+                              key={d.fechaStr}
+                              onClick={() => handleSelectDay(d.date)}
+                              className={`relative flex flex-col items-center justify-center gap-0.5 rounded-xl py-2 px-1 border transition-all
+                                ${esSeleccionado
+                                  ? 'bg-secondary text-white border-secondary shadow-md'
+                                  : esHoy
+                                    ? 'bg-white dark:bg-content1 border-primary text-secondary dark:text-foreground hover:bg-default-50'
+                                    : 'bg-white dark:bg-content1 border-default-200 dark:border-default-100 text-default-600 dark:text-default-400 hover:border-secondary/40 hover:bg-default-50'}`}
+                            >
+                              <span className={`text-[10px] font-bold uppercase ${esSeleccionado ? 'text-white/70' : 'text-default-400'}`}>
+                                {d.date.toLocaleDateString('es-CL', { weekday: 'short' }).replace('.', '')}
+                              </span>
+                              <span className="text-lg font-bold leading-none">{d.date.getDate()}</span>
+                              <div className="h-4 flex items-center justify-center mt-0.5">
+                                {d.total === 0 ? (
+                                  <span className={`w-1 h-1 rounded-full ${esSeleccionado ? 'bg-white/30' : 'bg-default-200'}`} />
+                                ) : tienePendientes ? (
+                                  <span className={`text-[9px] font-bold px-1.5 rounded-full leading-tight min-w-4 text-center
+                                    ${esSeleccionado ? 'bg-white/25 text-white' : 'bg-warning-100 dark:bg-warning-100/20 text-warning-700 dark:text-warning-400'}`}>
+                                    {d.pendientes}
+                                  </span>
+                                ) : (
+                                  <Icon icon="lucide:check" width={12} className={esSeleccionado ? 'text-white' : 'text-success-500'} />
+                                )}
+                              </div>
+                              {esHoy && !esSeleccionado && (
+                                <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-primary" />
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      {/* Día seleccionado + flechas de día */}
+                      <div className="flex items-center justify-center gap-2">
+                        <Button isIconOnly size="sm" variant="light" onPress={handlePrevDay} className="rounded-full h-7 w-7 min-w-0"><Icon icon="lucide:chevron-left" width={15} /></Button>
+                        <span className="text-sm font-bold capitalize text-secondary dark:text-foreground min-w-[200px] text-center">
+                          {formatDate(selectedDate)}
+                        </span>
+                        <Button isIconOnly size="sm" variant="light" onPress={handleNextDay} className="rounded-full h-7 w-7 min-w-0"><Icon icon="lucide:chevron-right" width={15} /></Button>
                       </div>
                     </div>
 
@@ -2240,51 +2612,29 @@ const BodegaTransitoPage: React.FC = () => {
                         <p className="text-sm">Cargando pedidos del día...</p>
                       </div>
                     ) : (
-                      <div className="space-y-6">
-                        {/* HOY */}
-                        <div className="space-y-3">
-                          <div className="flex items-center gap-2 px-1">
-                            <span className="text-xs font-bold text-default-400 uppercase tracking-widest">{formatDate(dateCol1)}</span>
-                            <div className="flex-grow border-t border-default-100 border-dashed" />
-                            {entregasHoy && (
-                              <Chip size="sm" variant="flat" color="success" className="text-[10px] h-5 border-none">
-                                {entregasHoy.totalSolicitudes} entrega{entregasHoy.totalSolicitudes !== 1 ? 's' : ''}
-                              </Chip>
-                            )}
-                          </div>
-                          {!entregasHoy || entregasHoy.salas.length === 0 ? (
-                            <div className="py-12 text-center border-2 border-dashed border-default-100 rounded-2xl">
-                              <Icon icon="lucide:calendar-x" className="mx-auto mb-2 text-default-200" width={48} />
-                              <p className="text-default-400 font-bold">No hay pedidos registrados para este día</p>
-                            </div>
-                          ) : (
-                            <div className="space-y-3">
-                              {entregasHoy.salas.map(sala => (
-                                <EntregaSalaCard key={sala.idSala} sala={sala} onPreparar={abrirPreparar} canPreparar={ped_Crear} onExpandChange={handleExpandChange} />
-                              ))}
-                            </div>
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-2 px-1">
+                          <Icon icon="lucide:shopping-cart" width={15} className="text-default-400" />
+                          <span className="text-xs font-bold text-default-400 uppercase tracking-widest">Entregas del día</span>
+                          <div className="flex-grow border-t border-default-100 border-dashed" />
+                          {entregasHoy && (
+                            <Chip size="sm" variant="flat" color="success" className="text-[10px] h-5 border-none">
+                              {entregasHoy.totalSolicitudes} entrega{entregasHoy.totalSolicitudes !== 1 ? 's' : ''}
+                            </Chip>
                           )}
                         </div>
-
-                        {/* MAÑANA */}
-                        <div className="pt-2">
-                          <div className="flex items-center gap-2 px-1 mb-3">
-                            <span className="text-xs font-bold text-default-400 uppercase tracking-widest">{formatDate(dateCol2)}</span>
-                            <div className="flex-grow border-t border-default-100 border-dashed" />
-                            <Chip size="sm" variant="dot" color="primary" className="border-none text-[10px] h-5">Próxima Jornada</Chip>
+                        {!entregasHoy || entregasHoy.salas.length === 0 ? (
+                          <div className="py-12 text-center border-2 border-dashed border-default-100 rounded-2xl">
+                            <Icon icon="lucide:calendar-x" className="mx-auto mb-2 text-default-200" width={48} />
+                            <p className="text-default-400 font-bold">No hay pedidos registrados para este día</p>
                           </div>
-                          {!entregasManana || entregasManana.salas.length === 0 ? (
-                            <div className="py-8 text-center border-2 border-dashed border-default-50 rounded-2xl">
-                              <p className="text-xs text-default-300 italic">No hay pedidos anticipados</p>
-                            </div>
-                          ) : (
-                            <div className="space-y-3 opacity-80">
-                              {entregasManana.salas.map(sala => (
-                                <EntregaSalaCard key={sala.idSala} sala={sala} onPreparar={abrirPreparar} canPreparar={ped_Crear} onExpandChange={handleExpandChange} />
-                              ))}
-                            </div>
-                          )}
-                        </div>
+                        ) : (
+                          <div className="space-y-3">
+                            {entregasHoy.salas.map(sala => (
+                              <EntregaSalaCard key={sala.idSala} sala={sala} onPreparar={abrirPreparar} canPreparar={ped_Crear} onExpandChange={handleExpandChange} />
+                            ))}
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
@@ -2540,7 +2890,7 @@ const BodegaTransitoPage: React.FC = () => {
     {/* ── Modal Preparar Entrega ── */}
     <Modal
       isOpen={!!preparandoSolicitud}
-      onClose={() => { if (!isConfirmando) { setPreparandoSolicitud(null); setConfirmarTextoEntrega(''); } }}
+      onClose={() => { if (!isConfirmando) { setPreparandoSolicitud(null); } }}
       size="2xl"
       isDismissable={false}
       hideCloseButton={isConfirmando}
@@ -2632,41 +2982,248 @@ const BodegaTransitoPage: React.FC = () => {
             </div>
           )}
 
-          {/* Advertencia acción irreversible */}
-          <div className="flex items-start gap-2 px-3 py-2 mt-2 bg-warning-50 border border-warning-200 rounded-lg text-xs text-warning-800">
-            <Icon icon="lucide:alert-triangle" width={13} className="mt-px shrink-0 text-warning-600" />
-            <span>Esta acción es <strong>irreversible</strong>. Se realizarán los descuentos correspondientes en la bodega de tránsito.</span>
-          </div>
-
-          {/* Input de confirmación */}
-          <div className="mt-3">
-            <Input
-              label='Escriba "CONFIRMAR" para continuar'
-              placeholder="CONFIRMAR"
-              value={confirmarTextoEntrega}
-              onValueChange={setConfirmarTextoEntrega}
-              variant="bordered"
-              color={confirmarTextoEntrega.trim().toUpperCase() === 'CONFIRMAR' ? 'success' : 'default'}
-              endContent={confirmarTextoEntrega.trim().toUpperCase() === 'CONFIRMAR'
-                ? <Icon icon="lucide:check-circle" width={16} className="text-success" /> : null}
-            />
-          </div>
         </ModalBody>
 
         <ModalFooter>
-          <Button variant="light" onPress={() => { setPreparandoSolicitud(null); setConfirmarTextoEntrega(''); }} isDisabled={isConfirmando}>
+          <Button variant="light" onPress={() => setPreparandoSolicitud(null)} isDisabled={isConfirmando}>
             Cancelar
           </Button>
           <Button
             color="secondary"
-            onPress={confirmarEntrega}
-            isLoading={isConfirmando}
-            isDisabled={isConfirmando || productosEdit.length === 0 || productosEdit.some(p => !p.cantidadAEntregar || p.cantidadAEntregar <= 0 || p.stockTransito - p.cantidadAEntregar < 0) || confirmarTextoEntrega.trim().toUpperCase() !== 'CONFIRMAR'}
-            startContent={!isConfirmando ? <Icon icon="lucide:check" width={14} /> : undefined}
+            onPress={handleConfirmarEntregaClick}
+            isDisabled={isConfirmando || productosEdit.length === 0 || productosEdit.some(p => !p.cantidadAEntregar || p.cantidadAEntregar <= 0 || p.stockTransito - p.cantidadAEntregar < 0)}
+            startContent={<Icon icon="lucide:check" width={14} />}
           >
             Confirmar Entrega
           </Button>
         </ModalFooter>
+      </ModalContent>
+    </Modal>
+
+    {/* ── Modal Confirmación Preparar Entrega ── */}
+    <Modal
+      isOpen={isConfirmacionOpen}
+      isDismissable={false}
+      isKeyboardDismissDisabled={true}
+      hideCloseButton={true}
+      size="sm"
+      backdrop="blur"
+      radius="lg"
+      classNames={{ base: 'rounded-2xl' }}
+    >
+      <ModalContent>
+        <ModalHeader className="flex items-center gap-2 border-b border-default-100 pb-3">
+          <Icon icon="lucide:alert-triangle" width={18} className="text-warning shrink-0" />
+          <span className="text-base font-bold">¿Confirmar entrega?</span>
+        </ModalHeader>
+        <ModalBody className="py-4 px-5">
+          <p className="text-sm text-default-600">
+            Esta acción es <strong>irreversible</strong>. Se realizarán los descuentos correspondientes en la bodega de tránsito y la solicitud quedará marcada como procesada.
+          </p>
+        </ModalBody>
+        <ModalFooter className="gap-2 border-t border-default-100">
+          <Button
+            variant="light"
+            onPress={() => setIsConfirmacionOpen(false)}
+            isDisabled={isConfirmando}
+          >
+            Cancelar
+          </Button>
+          <Button
+            color="secondary"
+            onPress={() => { setIsConfirmacionOpen(false); confirmarEntrega(); }}
+            isLoading={isConfirmando}
+            startContent={!isConfirmando ? <Icon icon="lucide:check" width={14} /> : undefined}
+          >
+            Confirmar
+          </Button>
+        </ModalFooter>
+      </ModalContent>
+    </Modal>
+
+    {/* ── Modal Sobrantes detectados al entregar menos de lo solicitado ── */}
+    <Modal
+      isOpen={isSobrantesOpen}
+      isDismissable={false}
+      hideCloseButton
+      size="lg"
+      backdrop="blur"
+      radius="lg"
+      classNames={{ base: 'rounded-2xl' }}
+    >
+      <ModalContent>
+        <ModalHeader>
+          <div className="flex items-center gap-2">
+            <Icon icon="lucide:alert-triangle" width={20} className="text-warning" />
+            <span className="text-base font-bold">Productos sobrantes detectados</span>
+          </div>
+        </ModalHeader>
+        <ModalBody className="space-y-4 pb-2">
+          <p className="text-sm text-default-600">
+            Se identificó que los siguientes productos serán entregados en una cantidad{' '}
+            <strong>menor a la solicitada</strong>. Esto puede ocurrir por ausencias de alumnos u
+            otros motivos, generando un excedente que permanece en{' '}
+            <strong>bodega de tránsito</strong>. ¿Desea registrarlos como{' '}
+            <strong>stock disponible de bodega de tránsito</strong> no asociado a un pedido o solicitud?
+          </p>
+          <div className="rounded-lg border border-default-200 overflow-hidden">
+            <table className="w-full text-xs" style={{ tableLayout: 'fixed' }}>
+              <thead className="bg-default-100 dark:bg-default-50">
+                <tr>
+                  <th className="py-2 px-3 font-medium text-left">Producto</th>
+                  <th className="py-2 px-3 font-medium text-center w-36">Disponible estimado</th>
+                </tr>
+              </thead>
+              <tbody>
+                {sobrantesPendientes.map((d, idx) => {
+                  const prod = productosEdit.find(p => p.idProducto === d.idProducto);
+                  return (
+                    <tr key={idx} className="border-t border-default-100">
+                      <td className="py-2 px-3 text-default-700">
+                        {prod?.nombreProducto ?? `Producto #${d.idProducto}`}
+                      </td>
+                      <td className="py-2 px-3 text-center font-semibold text-default-600 tabular-nums">
+                        {fmtCantidadEntrega(d.cantidad)} {prod?.unidadAbreviada}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          <p className="text-xs text-warning-600 dark:text-warning-400 italic">
+            En caso de No, el sistema no contará con trazabilidad de estos productos sobrantes.
+            La entrega se procesará igualmente y es irreversible.
+          </p>
+        </ModalBody>
+        <ModalFooter className="border-t border-default-100 gap-2">
+          <Button variant="ghost" onPress={handleSobrantesNo} className="font-medium" isDisabled={isConfirmando}>
+            No
+          </Button>
+          <Button
+            color="success"
+            onPress={handleSobrantesSi}
+            isLoading={isConfirmando}
+            startContent={!isConfirmando ? <Icon icon="lucide:check-circle-2" width={16} /> : undefined}
+          >
+            Sí, registrar sobrantes
+          </Button>
+        </ModalFooter>
+      </ModalContent>
+    </Modal>
+
+    {/* ── Modal Stock Disponible Bodega Tránsito ── */}
+    <StockDisponiblesModal
+      isOpen={isStockDisponiblesOpen}
+      onOpenChange={setIsStockDisponiblesOpen}
+      defaultTipo="BODEGA_TRANSITO"
+    />
+
+    {/* ── Modal Resumen de productos por período ── */}
+    <Modal
+      isOpen={isPeriodoOpen}
+      onOpenChange={setIsPeriodoOpen}
+      size="2xl"
+      backdrop="blur"
+      radius="lg"
+      scrollBehavior="inside"
+      classNames={{ base: 'rounded-2xl' }}
+    >
+      <ModalContent>
+        {(onClose) => (
+          <>
+            <ModalHeader className="flex flex-col gap-1 border-b border-default-100 pb-3">
+              <div className="flex items-center gap-2">
+                <Icon icon="lucide:layers" width={18} className="text-secondary dark:text-foreground" />
+                <span className="text-base font-bold">Resumen de productos por período</span>
+              </div>
+              <p className="text-xs font-normal text-default-500">
+                Suma los productos de las entregas <strong>no realizadas</strong> dentro del período indicado. Los productos iguales se acumulan.
+              </p>
+            </ModalHeader>
+            <ModalBody className="py-4 px-5 space-y-4">
+              {/* Selectores de período */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2 p-3 rounded-xl border border-default-200 dark:border-default-100 bg-default-50/50 dark:bg-content2">
+                  <p className="text-[11px] font-bold uppercase tracking-wider text-default-500 flex items-center gap-1.5">
+                    <Icon icon="lucide:log-in" width={12} /> Desde
+                  </p>
+                  <div className="flex gap-2">
+                    <Input type="date" size="sm" variant="bordered" value={periodoFechaIni} onValueChange={setPeriodoFechaIni} className="flex-1" />
+                    <Input type="time" size="sm" variant="bordered" value={periodoHoraIni} onValueChange={setPeriodoHoraIni} className="w-28" />
+                  </div>
+                </div>
+                <div className="space-y-2 p-3 rounded-xl border border-default-200 dark:border-default-100 bg-default-50/50 dark:bg-content2">
+                  <p className="text-[11px] font-bold uppercase tracking-wider text-default-500 flex items-center gap-1.5">
+                    <Icon icon="lucide:log-out" width={12} /> Hasta
+                  </p>
+                  <div className="flex gap-2">
+                    <Input type="date" size="sm" variant="bordered" value={periodoFechaFin} onValueChange={setPeriodoFechaFin} className="flex-1" />
+                    <Input type="time" size="sm" variant="bordered" value={periodoHoraFin} onValueChange={setPeriodoHoraFin} className="w-28" />
+                  </div>
+                </div>
+              </div>
+
+              <Button
+                color="secondary"
+                variant="flat"
+                onPress={calcularPeriodo}
+                isLoading={periodoLoading}
+                startContent={!periodoLoading ? <Icon icon="lucide:calculator" width={15} /> : undefined}
+                className="w-full font-semibold"
+              >
+                Calcular resumen
+              </Button>
+
+              {periodoError && (
+                <div className="flex items-start gap-2 px-3 py-2 bg-danger-50 border border-danger-200 rounded-lg text-xs text-danger-700">
+                  <Icon icon="lucide:alert-circle" width={13} className="mt-px shrink-0" />
+                  {periodoError}
+                </div>
+              )}
+
+              {/* Resultado */}
+              {periodoResultado && !periodoLoading && (
+                periodoResultado.productos.length === 0 ? (
+                  <div className="py-10 text-center border-2 border-dashed border-default-100 rounded-2xl">
+                    <Icon icon="lucide:package-x" width={40} className="mx-auto mb-2 text-default-200" />
+                    <p className="text-default-400 font-semibold text-sm">No hay entregas pendientes en este período</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Chip size="sm" variant="flat" color="warning" startContent={<Icon icon="lucide:clipboard-list" width={12} />} className="font-semibold">
+                        {periodoResultado.totalSolicitudes} entrega{periodoResultado.totalSolicitudes !== 1 ? 's' : ''} pendiente{periodoResultado.totalSolicitudes !== 1 ? 's' : ''}
+                      </Chip>
+                      <Chip size="sm" variant="flat" color="secondary" startContent={<Icon icon="lucide:package" width={12} />} className="font-semibold">
+                        {periodoResultado.totalProductos} producto{periodoResultado.totalProductos !== 1 ? 's' : ''} distinto{periodoResultado.totalProductos !== 1 ? 's' : ''}
+                      </Chip>
+                    </div>
+                    <div className="rounded-xl border border-default-200 dark:border-default-100 overflow-hidden">
+                      <div className="grid grid-cols-[1fr_0.5fr] px-4 py-2 bg-default-100 dark:bg-default-50 text-[10px] font-bold text-default-500 uppercase tracking-wider">
+                        <span>Producto</span>
+                        <span className="text-center">Cantidad total</span>
+                      </div>
+                      <div className="divide-y divide-default-100 dark:divide-default-50 max-h-[40vh] overflow-y-auto">
+                        {periodoResultado.productos.map(p => (
+                          <div key={p.idProducto} className="grid grid-cols-[1fr_0.5fr] px-4 py-2.5 text-sm items-center hover:bg-default-50/50 dark:hover:bg-default-100/20">
+                            <span className="text-default-700 dark:text-default-300">{p.nombreProducto}</span>
+                            <span className="font-mono font-semibold text-center text-secondary dark:text-foreground">
+                              {fmtCantidadEntrega(p.cantidad)} <span className="text-default-400 text-xs">{p.unidadAbreviada}</span>
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )
+              )}
+            </ModalBody>
+            <ModalFooter className="border-t border-default-100">
+              <Button variant="light" onPress={onClose}>Cerrar</Button>
+            </ModalFooter>
+          </>
+        )}
       </ModalContent>
     </Modal>
 
