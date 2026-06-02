@@ -38,6 +38,10 @@ public class StockDisponibleServiceImpl implements StockDisponibleService {
             sd.setIdSolicitud(dto.idSolicitud());
             sd.setIdPedido(dto.idPedido());
             sd.setCantidad(dto.cantidad());
+            // Si no viene tipo, la entidad conserva su default 'INVENTARIO'.
+            if (dto.tipoDisponible() != null && !dto.tipoDisponible().isBlank()) {
+                sd.setTipoDisponible(dto.tipoDisponible());
+            }
             entidades.add(sd);
         }
         stockDisponibleRepository.saveAll(entidades);

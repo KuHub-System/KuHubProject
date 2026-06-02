@@ -22,6 +22,7 @@ import { useToast } from '../../hooks/useToast';
 interface StockDisponiblesModalProps {
     isOpen: boolean;
     onOpenChange: (isOpen: boolean) => void;
+    defaultTipo?: TipoVista;
 }
 
 type TipoVista = 'INVENTARIO' | 'BODEGA_TRANSITO';
@@ -29,9 +30,10 @@ type TipoVista = 'INVENTARIO' | 'BODEGA_TRANSITO';
 const StockDisponiblesModal: React.FC<StockDisponiblesModalProps> = ({
     isOpen,
     onOpenChange,
+    defaultTipo = 'INVENTARIO',
 }) => {
     const toast = useToast();
-    const [tipo, setTipo] = React.useState<TipoVista>('INVENTARIO');
+    const [tipo, setTipo] = React.useState<TipoVista>(defaultTipo);
     const [pagina, setPagina] = React.useState<number>(1);
     const [isLoading, setIsLoading] = React.useState(false);
     const [resultado, setResultado] = React.useState<IStockDisponiblePage | null>(null);
@@ -50,11 +52,13 @@ const StockDisponiblesModal: React.FC<StockDisponiblesModalProps> = ({
 
     React.useEffect(() => {
         if (isOpen) {
-            cargar(tipo, pagina);
+            setTipo(defaultTipo);
+            setPagina(1);
+            cargar(defaultTipo, 1);
         } else {
             setResultado(null);
             setPagina(1);
-            setTipo('INVENTARIO');
+            setTipo(defaultTipo);
         }
     }, [isOpen]);
 
