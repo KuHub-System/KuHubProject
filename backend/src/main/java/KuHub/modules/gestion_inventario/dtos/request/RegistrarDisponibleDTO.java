@@ -16,5 +16,8 @@ public record RegistrarDisponibleDTO(
 
         @NotNull(message = "La cantidad es obligatoria")
         @DecimalMin(value = "0", message = "La cantidad no puede ser negativa")
-        @JsonProperty("cantidad") BigDecimal cantidad
+        @JsonProperty("cantidad") BigDecimal cantidad,
+
+        // Opcional: 'INVENTARIO' (default si viene null) o 'BODEGA_TRANSITO'.
+        @JsonProperty("tipoDisponible") String tipoDisponible
 ) {}

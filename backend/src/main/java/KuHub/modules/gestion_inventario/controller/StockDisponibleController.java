@@ -30,8 +30,11 @@ public class StockDisponibleController {
     private DynamicPermissionService dynamicPermissionService;
 
     /**
-     * Registra sobrantes detectados en bodega de tránsito tras un TRASLADO parcial.
-     * ✅ En uso: Consumido por registrarDisponiblesService en inventario.tsx.
+     * Registra sobrantes detectados como stock disponible. El tipo lo define el DTO:
+     * 'INVENTARIO' (default) para sobrantes de TRASLADO, o 'BODEGA_TRANSITO' para
+     * sobrantes detectados al entregar menos de lo solicitado en una entrega diaria.
+     * ✅ En uso: Consumido por registrarDisponiblesService en inventario.tsx (TRASLADO)
+     * y en bodega-transito.tsx (entrega parcial → tipo BODEGA_TRANSITO).
      * Requiere permiso de ESCRITURA en el módulo INVENTARIO.
      */
     @PostMapping("/registrar")
