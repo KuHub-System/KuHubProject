@@ -86,7 +86,7 @@ DROP TABLE IF EXISTS producto CASCADE;
 DROP TABLE IF EXISTS categoria CASCADE;
 DROP TABLE IF EXISTS unidad_medida CASCADE;
 DROP TABLE IF EXISTS categoria_abastecimiento CASCADE;
-DROP TABLE IF EXISTS stock_disponible CASCADE;
+DROP TABLE IF EXISTS stock_disponible CASCAD
 
 -- Tablas academicas
 DROP TABLE IF EXISTS asignatura_profesor_cargo CASCADE;
