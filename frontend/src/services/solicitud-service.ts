@@ -1011,6 +1011,53 @@ export const registrarDisponiblesService = async (
   await api.post('/stock-disponible/registrar', items);
 };
 
+/**
+ * Consulta el disponible activo por producto (solo los que tienen > 0) para un tipo.
+ * Retorna un mapa { idProducto: cantidadDisponible }. Usado por bodega de tránsito
+ * para decidir si mostrar el modal de salida con disponibles.
+ */
+export const consultarDisponiblesPorProductoService = async (
+  idsProducto: number[],
+  tipo: string = 'BODEGA_TRANSITO'
+): Promise<Record<number, number>> => {
+  if (idsProducto.length === 0) return {};
+  const response = await api.get<Record<number, number>>('/stock-disponible/por-productos', {
+    params: { ids: idsProducto.join(','), tipo },
+  });
+  return response.data ?? {};
+};
+
+export interface IRestarDisponibleDTO {
+  idProducto: number;
+  cantidad: number;
+  // Disponible que veía el usuario; si difiere del real, el backend avisa que sincronizó.
+  disponibleEnVista?: number;
+  tipoDisponible?: string;
+}
+
+export interface IRestarDisponibleItemResult {
+  idProducto: number;
+  // 'OK' | 'SINCRONIZADO' | 'INSUFICIENTE'
+  estado: string;
+  disponibleReal: number;
+  restado: number;
+}
+
+export interface IRestarDisponibleResult {
+  resultados: IRestarDisponibleItemResult[];
+}
+
+/**
+ * Descuenta disponible por producto (FIFO) al registrar una salida/merma/devolución.
+ * Aplica sincronización ante procesos en paralelo (estado SINCRONIZADO/INSUFICIENTE).
+ */
+export const restarDisponiblesService = async (
+  items: IRestarDisponibleDTO[]
+): Promise<IRestarDisponibleResult> => {
+  const response = await api.post<IRestarDisponibleResult>('/stock-disponible/restar', items);
+  return response.data ?? { resultados: [] };
+};
+
 export interface IStockDisponibleItem {
   nombreProducto: string;
   nombreCategoria: string;

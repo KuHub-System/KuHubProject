@@ -60,6 +60,7 @@ import GestionUnidadesModal from '../components/modals/GestionUnidadesModal';
 import GestionAbastecimientoModal from '../components/modals/GestionAbastecimientoModal';
 import StockDisponiblesModal from '../components/modals/StockDisponiblesModal';
 import ConfirmarDisponibleBodegaModal from '../components/modals/ConfirmarDisponibleBodegaModal';
+import ConfirmarSalidaDisponibleModal, { ConfirmarSalidaDisponibleItem } from '../components/modals/ConfirmarSalidaDisponibleModal';
 import { obtenerCategoriasActivasService } from '../services/categoria-service';
 import { obtenerUnidadesActivasService } from '../services/unidad-medida-service';
 import { IUnidadMedida, ISincronizarInventarioExcelResultado, IResultadoItemInventarioExcel, ICategoriaAbastecimientoView } from '../types/inventario.types';
@@ -79,6 +80,8 @@ import {
   obtenerAbastecimientoBodegaService,
   marcarEnviadoBodegaService,
   registrarDisponiblesService,
+  consultarDisponiblesPorProductoService,
+  restarDisponiblesService,
   ISolicitudBodegaItem,
   IDetalleBodegaItem,
   IRegistrarDisponibleDTO,
@@ -2048,6 +2051,10 @@ export const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto
   // Caso 1 bodega: confirmación para registrar una ENTRADA como stock disponible.
   const [isDisponibleBodegaOpen, setIsDisponibleBodegaOpen] = React.useState(false);
 
+  // Caso 1 bodega: confirmación para descontar disponible al registrar una SALIDA.
+  const [isSalidaDisponibleBodegaOpen, setIsSalidaDisponibleBodegaOpen] = React.useState(false);
+  const [salidaDisponibleBodega, setSalidaDisponibleBodega] = React.useState<ConfirmarSalidaDisponibleItem | null>(null);
+
   const handleSubmit = async () => {
     // Validaciones
     if (!nombre.trim()) {
@@ -2094,10 +2101,43 @@ export const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto
       setIsDisponibleBodegaOpen(true);
       return;
     }
+
+    // Caso 1 salida: una SALIDA/MERMA/DEVOLUCIÓN a bodega cuyo producto tiene disponible
+    // registrado abre el modal para confirmar el descuento del sobrante.
+    const MOTIVOS_SALIDA_BODEGA = ['SALIDA_BODEGA', 'MERMA_BODEGA', 'DEVOLUCION'];
+    const esSalidaBodega =
+      origenContext === 'bodega' && mode === 'editar' && !!producto &&
+      !!tipoMovimiento && MOTIVOS_SALIDA_BODEGA.includes(tipoMovimiento) &&
+      !isNaN(deltaEntradaBodega) && deltaEntradaBodega > 0;
+    if (esSalidaBodega && producto) {
+      try {
+        const idProd = parseInt(producto.id);
+        const map = await consultarDisponiblesPorProductoService([idProd], 'BODEGA_TRANSITO');
+        const disponible = map[idProd] ?? 0;
+        if (disponible > 0.001) {
+          setSalidaDisponibleBodega({
+            idProducto: idProd,
+            nombreProducto: nombre.trim() || producto.nombre || '',
+            unidad: producto.unidadMedida,
+            cantidadSalida: deltaEntradaBodega,
+            disponible: parseFloat(disponible.toFixed(3)),
+            aDescontar: parseFloat(Math.min(deltaEntradaBodega, disponible).toFixed(3)),
+          });
+          setIsSalidaDisponibleBodegaOpen(true);
+          return;
+        }
+      } catch {
+        // Si falla la consulta no bloqueamos la salida; se guarda sin descontar.
+      }
+    }
+
     await ejecutarGuardado(false);
   };
 
-  const ejecutarGuardado = async (registrarDisponible: boolean) => {
+  const ejecutarGuardado = async (
+    registrarDisponible: boolean,
+    restarDisponible?: { cantidad: number; disponibleEnVista: number },
+  ) => {
     try {
       setIsLoading(true);
 
@@ -2200,6 +2240,28 @@ export const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto
               toast.success('Producto registrado como stock disponible de bodega de tránsito');
             } catch {
               toast.warning('La entrada se guardó, pero no se pudo registrar como stock disponible');
+            }
+          }
+
+          // Caso 1 salida: descontar el sobrante del stock disponible (la salida ya se procesó).
+          if (restarDisponible && hayMovBodega) {
+            try {
+              const res = await restarDisponiblesService([{
+                idProducto: parseInt(producto.id),
+                cantidad: restarDisponible.cantidad,
+                disponibleEnVista: restarDisponible.disponibleEnVista,
+                tipoDisponible: 'BODEGA_TRANSITO',
+              }]);
+              const r = res.resultados[0];
+              if (r?.estado === 'INSUFICIENTE') {
+                toast.warning(`Un proceso en paralelo dejó el stock disponible en ${r.disponibleReal}, por debajo de lo que se iba a descontar; no se descontó el sobrante. La salida se realizó igualmente.`, { duration: 20000 });
+              } else if (r?.estado === 'SINCRONIZADO') {
+                toast.warning('El stock disponible cambió por un proceso en paralelo; se sincronizó automáticamente.', { duration: 12000 });
+              } else {
+                toast.success('Stock disponible descontado correctamente');
+              }
+            } catch {
+              toast.warning('La salida se guardó, pero no se pudo descontar el stock disponible');
             }
           }
         } else {
@@ -2704,6 +2766,26 @@ export const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto
         }]}
         onCancelar={() => { setIsDisponibleBodegaOpen(false); ejecutarGuardado(false); }}
         onConfirmar={() => { setIsDisponibleBodegaOpen(false); ejecutarGuardado(true); }}
+      />
+
+      {/* Caso 1 salida: confirmar descuento del disponible al salir (solo bodega) */}
+      <ConfirmarSalidaDisponibleModal
+        isOpen={isSalidaDisponibleBodegaOpen}
+        isLoading={isLoading}
+        tipoMovimientoLabel="Salida"
+        items={salidaDisponibleBodega ? [salidaDisponibleBodega] : []}
+        onCancelar={() => { setIsSalidaDisponibleBodegaOpen(false); ejecutarGuardado(false); }}
+        onConfirmar={() => {
+          setIsSalidaDisponibleBodegaOpen(false);
+          if (salidaDisponibleBodega) {
+            ejecutarGuardado(false, {
+              cantidad: salidaDisponibleBodega.aDescontar,
+              disponibleEnVista: salidaDisponibleBodega.disponible,
+            });
+          } else {
+            ejecutarGuardado(false);
+          }
+        }}
       />
     </div>
   );

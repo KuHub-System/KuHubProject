@@ -50,4 +50,35 @@ public interface StockDisponibleRepository extends JpaRepository<StockDisponible
             @Param("tipo") String tipo,
             @Param("limit") int limit,
             @Param("offset") int offset);
+
+    /**
+     * Suma la cantidad disponible activa por producto, para un conjunto de productos y un tipo.
+     * Solo retorna productos que tienen disponible (> 0). Usado para saber si mostrar el modal
+     * de salida con disponibles en bodega de tránsito.
+     * [0] id_producto
+     * [1] cantidad_disponible (suma)
+     */
+    @Query(value = """
+            SELECT sd.id_producto, COALESCE(SUM(sd.cantidad), 0)
+            FROM stock_disponible sd
+            WHERE sd.tipo_disponible = :tipo
+              AND sd.activo = TRUE
+              AND sd.id_producto IN (:ids)
+            GROUP BY sd.id_producto
+            HAVING COALESCE(SUM(sd.cantidad), 0) > 0
+            """, nativeQuery = true)
+    List<Object[]> sumDisponibleByProductosAndTipo(@Param("ids") List<Integer> ids, @Param("tipo") String tipo);
+
+    /**
+     * Registros activos de un producto y tipo, ordenados FIFO (más antiguo primero)
+     * para consumir el disponible al registrar una salida de bodega de tránsito.
+     */
+    @Query("""
+            SELECT sd FROM StockDisponible sd
+            WHERE sd.producto.idProducto = :idProducto
+              AND sd.tipoDisponible = :tipo
+              AND sd.activo = TRUE
+            ORDER BY sd.fechaRegistro ASC, sd.idStockDisponible ASC
+            """)
+    List<StockDisponible> findActivosByProductoAndTipoFifo(@Param("idProducto") Integer idProducto, @Param("tipo") String tipo);
 }
