@@ -26,4 +26,10 @@ public class MotionCreateDTO {
 
     @Size(max = 150, message = "La observación no puede exceder los 150 caracteres")
     private String observacion;
+
+    private Integer idSolicitud;
+
+    private Integer idPedido;
+
+    private Integer idOrdenPedido;
 }

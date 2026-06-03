@@ -153,6 +153,7 @@ public interface OrdenPedidoRepository extends JpaRepository<OrdenPedido, Intege
 WITH productos_entrega AS (
     SELECT
         op.id_orden_pedido,
+        op.id_pedido,
         op.id_proveedor,
         pv.nombre_distribuidora,
         pv.nombre_proveedor,
@@ -192,6 +193,7 @@ WITH productos_entrega AS (
 agrupado_por_categoria AS (
     SELECT
         id_orden_pedido,
+        id_pedido,
         id_proveedor,
         nombre_distribuidora,
         nombre_proveedor,
@@ -215,12 +217,13 @@ agrupado_por_categoria AS (
             ORDER BY nombre_producto ASC
         ) AS productos
     FROM productos_entrega
-    GROUP BY id_orden_pedido, id_proveedor, nombre_distribuidora, nombre_proveedor,
+    GROUP BY id_orden_pedido, id_pedido, id_proveedor, nombre_distribuidora, nombre_proveedor,
              telefono_proveedor, email_proveedor, fecha_entrega, nombre_categoria
 ),
 agrupado_por_dia AS (
     SELECT
         id_orden_pedido,
+        id_pedido,
         id_proveedor,
         nombre_distribuidora,
         nombre_proveedor,
@@ -235,12 +238,13 @@ agrupado_por_dia AS (
             ORDER BY nombre_categoria ASC
         ) AS categorias
     FROM agrupado_por_categoria
-    GROUP BY id_orden_pedido, id_proveedor, nombre_distribuidora, nombre_proveedor,
+    GROUP BY id_orden_pedido, id_pedido, id_proveedor, nombre_distribuidora, nombre_proveedor,
              telefono_proveedor, email_proveedor, fecha_entrega
 ),
 agrupado_por_op AS (
     SELECT
         id_orden_pedido,
+        id_pedido,
         id_proveedor,
         nombre_distribuidora,
         nombre_proveedor,
@@ -254,12 +258,13 @@ agrupado_por_op AS (
             ORDER BY fecha_entrega ASC
         ) AS entregas
     FROM agrupado_por_dia
-    GROUP BY id_orden_pedido, id_proveedor, nombre_distribuidora, nombre_proveedor,
+    GROUP BY id_orden_pedido, id_pedido, id_proveedor, nombre_distribuidora, nombre_proveedor,
              telefono_proveedor, email_proveedor
 )
 SELECT jsonb_agg(
     jsonb_build_object(
         'idOrdenPedido',       id_orden_pedido,
+        'idPedido',            id_pedido,
         'idProveedor',         id_proveedor,
         'nombreDistribuidora', nombre_distribuidora,
         'nombreProveedor',     nombre_proveedor,

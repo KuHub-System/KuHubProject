@@ -351,6 +351,11 @@ public class BodegaTransitoServiceImpl implements BodegaTransitoService{
         List<BulkWarehouseProcess.ItemResult> advertencias = new ArrayList<>();
         List<BulkWarehouseProcess.ItemResult> errores     = new ArrayList<>();
 
+        // Bodegas ya procesadas en este lote: cuando un mismo producto aparece más de una vez
+        // (varios detalles de la misma OP, separados para mapeo exacto), solo se valida la
+        // desincronización en la primera aparición (las siguientes mutan el stock nosotros mismos).
+        java.util.Set<Integer> bodegasVistas = new java.util.HashSet<>();
+
         for (BulkWarehouseProcess.ItemRequest req : requests) {
             BodegaTransito bodega = bodegaTransitoRepository.findById(req.idBodegaTransito()).orElse(null);
             if (bodega == null) {
@@ -376,10 +381,12 @@ public class BodegaTransitoServiceImpl implements BodegaTransitoService{
                 continue;
             }
 
-            boolean desincronizado = stockReal.compareTo(req.stockEnVista()) != 0;
+            boolean primeraVez = bodegasVistas.add(req.idBodegaTransito());
+            boolean desincronizado = primeraVez && stockReal.compareTo(req.stockEnVista()) != 0;
 
             try {
-                movimientoService.motionInUpdateTransitWarehouse(bodega, req.delta(), req.tipoMovimiento());
+                movimientoService.motionInUpdateTransitWarehouse(bodega, req.delta(), req.tipoMovimiento(),
+                        req.idSolicitud(), req.idPedido(), req.idOrdenPedido(), req.idDetalleOrdenPedido());
                 bodegaTransitoRepository.save(bodega);
                 log.info("Bulk Bodega [{}]: '{}' | {} → {}",
                         req.tipoMovimiento(), nombre, stockReal, bodega.getStock());

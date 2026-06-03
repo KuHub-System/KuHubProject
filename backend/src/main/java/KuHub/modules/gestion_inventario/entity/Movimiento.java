@@ -52,6 +52,20 @@ public class Movimiento {
     @Column(name = "observacion", columnDefinition = "TEXT")
     private String observacion;
 
+    // --- REFERENCIAS OPCIONALES (solo ID, sin join) ---
+
+    @Column(name = "id_solicitud")
+    private Integer idSolicitud;
+
+    @Column(name = "id_pedido")
+    private Integer idPedido;
+
+    @Column(name = "id_orden_pedido")
+    private Integer idOrdenPedido;
+
+    @Column(name = "id_detalle_orden_pedido")
+    private Integer idDetalleOrdenPedido;
+
     public enum TipoMovimiento {
         ENTRADA_INVENTARIO,
         ENTRADA_BODEGA,

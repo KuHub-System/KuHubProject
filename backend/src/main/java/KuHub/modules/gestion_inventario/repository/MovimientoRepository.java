@@ -14,13 +14,16 @@ public interface MovimientoRepository extends JpaRepository<Movimiento, Integer>
 
     /** Lista paginada de movimientos con filtros dinámicos: fecha, producto, tipo, orden y responsable. */
     @Query(value = "SELECT " +
-            "    p.nombre_producto, " +
-            "    c.nombre_categoria, " +
-            "    CAST(m.tipo_movimiento AS TEXT), " +
-            "    m.stock_movimiento, " +
-            "    m.fecha_movimiento, " +
-            "    CONCAT_WS(' ', u.p_nombre, u.s_nombre, u.app_paterno, u.app_materno), " +
-            "    m.observacion " +
+            "    p.nombre_producto, " +          // [0]
+            "    c.nombre_categoria, " +          // [1]
+            "    CAST(m.tipo_movimiento AS TEXT), " + // [2]
+            "    m.stock_movimiento, " +          // [3]
+            "    m.fecha_movimiento, " +          // [4]
+            "    CONCAT_WS(' ', u.p_nombre, u.s_nombre, u.app_paterno, u.app_materno), " + // [5]
+            "    m.observacion, " +               // [6]
+            "    m.id_solicitud, " +              // [7]
+            "    m.id_pedido, " +                 // [8]
+            "    m.id_orden_pedido " +            // [9]
             "FROM movimiento m " +
             "JOIN inventario i ON i.id_inventario = m.id_inventario " +
             "JOIN producto p ON p.id_producto = i.id_producto " +
@@ -48,6 +51,21 @@ public interface MovimientoRepository extends JpaRepository<Movimiento, Integer>
             @Param("offset") int offset
     );
 
+
+    /** Retorna las entregas reales (ENTRADA_INVENTARIO / ENTRADA_BODEGA) de una OP, agrupadas por detalle (línea/fecha exacta). */
+    @Query(value = """
+        SELECT
+            m.id_detalle_orden_pedido,
+            SUM(CASE WHEN m.tipo_movimiento::text = 'ENTRADA_INVENTARIO' THEN m.stock_movimiento ELSE 0 END) AS cant_inventario,
+            SUM(CASE WHEN m.tipo_movimiento::text = 'ENTRADA_BODEGA'      THEN m.stock_movimiento ELSE 0 END) AS cant_bodega
+        FROM movimiento m
+        WHERE m.id_orden_pedido = :idOrdenPedido
+          AND m.id_detalle_orden_pedido IS NOT NULL
+          AND m.tipo_movimiento::text IN ('ENTRADA_INVENTARIO', 'ENTRADA_BODEGA')
+        GROUP BY m.id_detalle_orden_pedido
+        HAVING SUM(m.stock_movimiento) > 0
+        """, nativeQuery = true)
+    List<Object[]> findEntregasRealesByOrdenPedido(@Param("idOrdenPedido") Integer idOrdenPedido);
 
     /** Cuenta el total de movimientos según los mismos filtros dinámicos para calcular la paginación. */
     @Query(value = "SELECT COUNT(*) FROM movimiento m " +

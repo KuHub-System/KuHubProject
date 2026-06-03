@@ -359,6 +359,8 @@ interface ItemBodegaMasivo {
   // Cantidad que provino del Abastecimiento de Proveedores (baseline cargado).
   // Lo "extra" sobre este valor (manual o aumento) puede ir a stock_disponible.
   cargadoAbastecimiento?: number;
+  idOrdenPedido?: number;
+  idPedido?: number;
 }
 
 const MOTIVOS_BODEGA = ['ENTRADA_BODEGA', 'SALIDA_BODEGA', 'AJUSTE_BODEGA', 'MERMA_BODEGA', 'DEVOLUCION'] as const;
@@ -399,6 +401,14 @@ const ControlMasivoBodegaModal: React.FC<ControlMasivoBodegaModalProps> = ({ onC
   const [productosFaltantes, setProductosFaltantes] = React.useState<FaltanteInfo[]>([]);
   const [itemsFoundCache, setItemsFoundCache] = React.useState<ItemBodegaMasivo[]>([]);
   const [cargandoCrearBodega, setCargandoCrearBodega] = React.useState(false);
+
+  // Modal: productos ya entregados detectados al cargar desde abastecimiento
+  type EntregadoItemInfo = { nombre: string; cantidad: number; abreviatura: string };
+  const [isEntregadosOpen, setIsEntregadosOpen] = React.useState(false);
+  const [entregadosInfoList, setEntregadosInfoList] = React.useState<EntregadoItemInfo[]>([]);
+  const [itemsConEntregados, setItemsConEntregados] = React.useState<ItemBodegaMasivo[]>([]);
+  const [itemsSinEntregados, setItemsSinEntregados] = React.useState<ItemBodegaMasivo[]>([]);
+  const [faltantesMapCache, setFaltantesMapCache] = React.useState<Map<number, FaltanteInfo>>(new Map());
 
   const getFechaHastaAbastecimiento = (filtro: FiltroAbastecimiento): string | undefined => {
     const hoy = new Date();
@@ -469,6 +479,9 @@ const ControlMasivoBodegaModal: React.FC<ControlMasivoBodegaModalProps> = ({ onC
       const encontrados: ItemBodegaMasivo[] = [];
       // Agrupado por idProducto para evitar duplicados (un producto en varios días)
       const faltantesMap = new Map<number, FaltanteInfo>();
+      // Detectar productos ya entregados
+      const entregadosIdSet = new Set<number>();
+      const entregadosInfoCollect: EntregadoItemInfo[] = [];
 
       for (const orden of ordenesAbastecimiento) {
         for (const entrega of orden.entregas) {
@@ -497,7 +510,7 @@ const ControlMasivoBodegaModal: React.FC<ControlMasivoBodegaModalProps> = ({ onC
                 }
                 continue;
               }
-              encontrados.push({
+              const nuevoItem: ItemBodegaMasivo = {
                 id: `abast-${prod.idDetalleOrdenPedido}-${Date.now()}-${Math.random()}`,
                 producto: {
                   idBodegaTransito: bodegaItem.idBodegaTransito,
@@ -512,10 +525,32 @@ const ControlMasivoBodegaModal: React.FC<ControlMasivoBodegaModalProps> = ({ onC
                 motivo: 'ENTRADA_BODEGA',
                 idDetalleOrdenPedido: prod.idDetalleOrdenPedido,
                 cargadoAbastecimiento: prod.cantidadSolicitada,
-              });
+                idOrdenPedido: orden.idOrdenPedido,
+                idPedido: orden.idPedido,
+              };
+              encontrados.push(nuevoItem);
+              if (prod.entregado) {
+                entregadosIdSet.add(prod.idDetalleOrdenPedido);
+                entregadosInfoCollect.push({
+                  nombre: prod.nombreProducto,
+                  cantidad: prod.cantidadSolicitada,
+                  abreviatura: prod.abreviatura,
+                });
+              }
             }
           }
         }
+      }
+
+      // Si hay productos ya entregados, mostrar modal de decisión antes de continuar
+      if (entregadosInfoCollect.length > 0) {
+        const sinEntregados = encontrados.filter(i => !entregadosIdSet.has(i.idDetalleOrdenPedido!));
+        setItemsConEntregados(encontrados);
+        setItemsSinEntregados(sinEntregados);
+        setEntregadosInfoList(entregadosInfoCollect);
+        setFaltantesMapCache(faltantesMap);
+        setIsEntregadosOpen(true);
+        return;
       }
 
       if (faltantesMap.size > 0) {
@@ -610,6 +645,35 @@ const ControlMasivoBodegaModal: React.FC<ControlMasivoBodegaModalProps> = ({ onC
     } finally {
       setCargandoCrearBodega(false);
     }
+  };
+
+  // Handlers para el modal de productos ya entregados
+  const handleOmitirEntregados = () => {
+    setIsEntregadosOpen(false);
+    if (faltantesMapCache.size > 0) {
+      setProductosFaltantes(Array.from(faltantesMapCache.values()));
+      setItemsFoundCache(itemsSinEntregados);
+      onCrearBodegaOpen();
+      return;
+    }
+    if (itemsSinEntregados.length === 0) {
+      toast.warning('Todos los productos de la selección ya fueron entregados anteriormente');
+      onAbastecimientoOpenChange();
+      setDiasSeleccionados(new Set());
+      return;
+    }
+    aplicarItemsAlMasivo(itemsSinEntregados);
+  };
+
+  const handleIncluirEntregados = () => {
+    setIsEntregadosOpen(false);
+    if (faltantesMapCache.size > 0) {
+      setProductosFaltantes(Array.from(faltantesMapCache.values()));
+      setItemsFoundCache(itemsConEntregados);
+      onCrearBodegaOpen();
+      return;
+    }
+    aplicarItemsAlMasivo(itemsConEntregados);
   };
 
   // ── Búsqueda ──
@@ -928,18 +992,23 @@ const ControlMasivoBodegaModal: React.FC<ControlMasivoBodegaModalProps> = ({ onC
     setProcessState('procesando');
     try {
       const payload: IBulkWarehouseUpdateRequest[] = [];
-      const agregado = new Map<number, { delta: number; stockEnVista: number; tipoMovimiento: string }>();
+      // Clave por (idBodegaTransito, motivo, idDetalleOrdenPedido): se incluye el detalle para NO
+      // colapsar distintas líneas/fechas de la misma OP, así cada detalle genera su propio
+      // movimiento con su id_detalle_orden_pedido (mapeo exacto de la entrega real).
+      const agregado = new Map<string, { idBodegaTransito: number; delta: number; stockEnVista: number; tipoMovimiento: string; idOrdenPedido?: number; idPedido?: number; idDetalleOrdenPedido?: number }>();
       for (const item of itemsPedido) {
-        const key = item.producto.idBodegaTransito;
+        const key = `${item.producto.idBodegaTransito}__${item.motivo}__${item.idDetalleOrdenPedido ?? 'manual'}`;
         const ex  = agregado.get(key);
         if (ex && !item.motivo.includes('AJUSTE')) {
           ex.delta += item.delta;
+          if (!ex.idOrdenPedido && item.idOrdenPedido) ex.idOrdenPedido = item.idOrdenPedido;
+          if (!ex.idPedido && item.idPedido) ex.idPedido = item.idPedido;
         } else {
-          agregado.set(key, { delta: item.delta, stockEnVista: item.producto.stock, tipoMovimiento: item.motivo });
+          agregado.set(key, { idBodegaTransito: item.producto.idBodegaTransito, delta: item.delta, stockEnVista: item.producto.stock, tipoMovimiento: item.motivo, idOrdenPedido: item.idOrdenPedido, idPedido: item.idPedido, idDetalleOrdenPedido: item.idDetalleOrdenPedido });
         }
       }
-      for (const [idBodegaTransito, v] of agregado.entries()) {
-        payload.push({ idBodegaTransito, ...v });
+      for (const v of agregado.values()) {
+        payload.push({ ...v });
       }
       const result = await bulkUpdateBodegaStockService(payload);
       window.dispatchEvent(new Event('productosActualizados'));
@@ -1210,17 +1279,30 @@ const ControlMasivoBodegaModal: React.FC<ControlMasivoBodegaModalProps> = ({ onC
         )}
       </ModalBody>
 
-      <ModalFooter className="bg-default-50 border-t border-default-100 flex justify-end gap-2">
-        <Button variant="ghost" onPress={onClose} isDisabled={processState !== 'idle'}>Cancelar</Button>
+      <ModalFooter className="bg-default-50 border-t border-default-100 flex justify-between items-center gap-2">
         <Button
-          color="warning"
-          onPress={procesarMasivo}
+          variant="flat"
+          color="danger"
+          size="sm"
+          startContent={<Icon icon="lucide:trash-2" width={15} />}
+          onPress={() => setItemsPedido([])}
           isDisabled={itemsPedido.length === 0 || processState !== 'idle'}
-          isLoading={processState !== 'idle'}
-          startContent={processState === 'idle' ? <Icon icon="lucide:send" width={18} /> : undefined}
+          className="font-medium"
         >
-          {processState === 'idle' ? `Ctrl. Masivo (${itemsPedido.length})` : 'Procesando...'}
+          Limpiar todo
         </Button>
+        <div className="flex gap-2">
+          <Button variant="ghost" onPress={onClose} isDisabled={processState !== 'idle'}>Cancelar</Button>
+          <Button
+            color="warning"
+            onPress={procesarMasivo}
+            isDisabled={itemsPedido.length === 0 || processState !== 'idle'}
+            isLoading={processState !== 'idle'}
+            startContent={processState === 'idle' ? <Icon icon="lucide:send" width={18} /> : undefined}
+          >
+            {processState === 'idle' ? `Ctrl. Masivo (${itemsPedido.length})` : 'Procesando...'}
+          </Button>
+        </div>
       </ModalFooter>
     </div>
 
@@ -1463,6 +1545,84 @@ const ControlMasivoBodegaModal: React.FC<ControlMasivoBodegaModalProps> = ({ onC
                   startContent={!cargandoCrearBodega ? <Icon icon="lucide:plus-circle" width={16} /> : undefined}
                 >
                   {cargandoCrearBodega ? 'Creando...' : 'Crear y Cargar'}
+                </Button>
+              </ModalFooter>
+            </>
+          )}
+        </ModalContent>
+      </Modal>
+
+      {/* Modal: productos ya entregados detectados al cargar desde abastecimiento */}
+      <Modal
+        isOpen={isEntregadosOpen}
+        onOpenChange={() => setIsEntregadosOpen(false)}
+        size="lg"
+        backdrop="blur"
+        radius="lg"
+        classNames={{ base: 'rounded-2xl' }}
+        isDismissable={false}
+        hideCloseButton
+      >
+        <ModalContent>
+          {() => (
+            <>
+              <ModalHeader className="flex flex-col gap-1 border-b border-default-100 pb-4">
+                <div className="flex items-center gap-2">
+                  <Icon icon="lucide:circle-check-big" width={20} className="text-success" />
+                  <h2 className="text-base font-bold text-secondary dark:text-foreground">
+                    Productos ya entregados
+                  </h2>
+                </div>
+                <p className="text-xs font-normal text-default-500">
+                  {entregadosInfoList.length} producto{entregadosInfoList.length !== 1 ? 's' : ''} de la selección {entregadosInfoList.length !== 1 ? 'fueron marcados' : 'fue marcado'} como recibido{entregadosInfoList.length !== 1 ? 's' : ''} anteriormente. ¿Cómo deseas proceder?
+                </p>
+              </ModalHeader>
+              <ModalBody className="py-4 px-5 space-y-3">
+                <div className="border border-default-200 dark:border-default-100 rounded-xl overflow-hidden max-h-[260px] overflow-y-auto">
+                  <div className="grid grid-cols-[1fr_auto_auto] px-3 py-2 bg-default-100 dark:bg-default-50 text-[10px] font-bold text-default-500 uppercase tracking-wider border-b border-default-200 dark:border-default-100">
+                    <span>Producto</span>
+                    <span className="text-right pr-2">Cantidad</span>
+                    <span>Unidad</span>
+                  </div>
+                  <div className="divide-y divide-default-100 dark:divide-default-50">
+                    {entregadosInfoList.map((p, i) => (
+                      <div key={i} className="grid grid-cols-[1fr_auto_auto] items-center px-3 py-2.5 gap-2">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <Icon icon="lucide:check-circle-2" width={14} className="text-success shrink-0" />
+                          <span className="text-sm text-default-700 dark:text-default-300 truncate">{p.nombre}</span>
+                        </div>
+                        <span className="text-sm font-semibold text-default-600 tabular-nums text-right pr-2">
+                          {p.cantidad}
+                        </span>
+                        <span className="text-xs text-default-400">{p.abreviatura}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div className="flex items-start gap-2 px-2 py-2 bg-warning-50 dark:bg-warning-50/10 border border-warning-200 dark:border-warning-100/30 rounded-lg">
+                  <Icon icon="lucide:alert-triangle" width={15} className="text-warning-600 dark:text-warning-400 shrink-0 mt-0.5" />
+                  <p className="text-xs text-warning-700 dark:text-warning-400">
+                    ¿Cómo deseas proceder? Si incluyes los ya entregados, pueden generarse ingresos duplicados para la misma Orden de Pedido.
+                  </p>
+                </div>
+              </ModalBody>
+              <ModalFooter className="border-t border-default-100 gap-2 flex justify-between">
+                <Button
+                  variant="flat"
+                  color="default"
+                  startContent={<Icon icon="lucide:package-plus" width={16} />}
+                  onPress={handleIncluirEntregados}
+                  className="font-medium"
+                >
+                  Incluir de todas formas
+                </Button>
+                <Button
+                  color="secondary"
+                  startContent={<Icon icon="lucide:skip-forward" width={16} />}
+                  onPress={handleOmitirEntregados}
+                  className="font-medium"
+                >
+                  Omitir entregados
                 </Button>
               </ModalFooter>
             </>
