@@ -2,6 +2,8 @@ package KuHub.modules.gestion_inventario.controller;
 
 import KuHub.config.security.service.DynamicPermissionService;
 import KuHub.modules.gestion_inventario.dtos.request.RegistrarDisponibleDTO;
+import KuHub.modules.gestion_inventario.dtos.request.RestarDisponibleDTO;
+import KuHub.modules.gestion_inventario.dtos.response.record.RestarDisponibleResult;
 import KuHub.modules.gestion_inventario.dtos.response.record.StockDisponiblePage;
 import KuHub.modules.gestion_inventario.services.StockDisponibleService;
 import jakarta.validation.Valid;
@@ -11,6 +13,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 
@@ -51,6 +54,57 @@ public class StockDisponibleController {
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("error", "Error al registrar stock disponible", "message", e.getMessage()));
+        }
+    }
+
+    /**
+     * Suma el disponible activo por producto (solo los que tienen > 0), para un tipo dado.
+     * Lo usa bodega de tránsito para decidir si mostrar el modal de salida con disponibles.
+     * Retorna un mapa { idProducto: cantidadDisponible }.
+     * ✅ En uso: Consumido por consultarDisponiblesPorProductoService en solicitud-service.ts.
+     * Requiere permiso de LECTURA en el módulo INVENTARIO.
+     */
+    @GetMapping("/por-productos")
+    public ResponseEntity<?> porProductos(
+            @RequestParam("ids") List<Integer> ids,
+            @RequestParam(defaultValue = "INVENTARIO") String tipo,
+            Authentication authentication) {
+        try {
+            if (!dynamicPermissionService.check(authentication, "INVENTARIO", "read")) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(Map.of("message", "No tiene permisos para consultar stock disponible"));
+            }
+            Map<Integer, BigDecimal> resultado = stockDisponibleService.consultarDisponiblePorProductos(ids, tipo);
+            return ResponseEntity.status(HttpStatus.OK).body(resultado);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Error al consultar stock disponible", "message", e.getMessage()));
+        }
+    }
+
+    /**
+     * Descuenta disponible por producto (FIFO) al registrar una salida/merma/devolución en
+     * bodega de tránsito. El disponible es un marcador de sobrantes del mismo stock de bodega:
+     * la salida real se procesa por el flujo de bodega; aquí solo se reduce el registro de sobrante.
+     * Aplica sincronización ante procesos en paralelo: si el disponible real quedó por debajo de
+     * lo solicitado, ese ítem NO se descuenta y se informa el valor real (estado INSUFICIENTE).
+     * ✅ En uso: Consumido por restarDisponiblesService en solicitud-service.ts.
+     * Requiere permiso de ESCRITURA en el módulo INVENTARIO.
+     */
+    @PostMapping("/restar")
+    public ResponseEntity<?> restar(
+            @Valid @RequestBody List<RestarDisponibleDTO> items,
+            Authentication authentication) {
+        try {
+            if (!dynamicPermissionService.check(authentication, "INVENTARIO", "write")) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(Map.of("message", "No tiene permisos para descontar stock disponible"));
+            }
+            RestarDisponibleResult resultado = stockDisponibleService.restar(items);
+            return ResponseEntity.status(HttpStatus.OK).body(resultado);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Error al descontar stock disponible", "message", e.getMessage()));
         }
     }
 

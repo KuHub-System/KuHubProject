@@ -13,7 +13,7 @@ import { usePageTitle } from '../hooks/usePageTitle';
 import { useHistory } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ISolicitud, IItemSolicitud } from '../types/solicitud.types';
-import { actualizarEstadoBodegaService, obtenerEntregasDiariasService, prepararEntregaService, registrarDisponiblesService, IRegistrarDisponibleDTO, IEntregaDiaria, ISalaEntrega, ISolicitudEntrega } from '../services/solicitud-service';
+import { actualizarEstadoBodegaService, obtenerEntregasDiariasService, prepararEntregaService, registrarDisponiblesService, IRegistrarDisponibleDTO, consultarDisponiblesPorProductoService, restarDisponiblesService, IRestarDisponibleDTO, IEntregaDiaria, ISalaEntrega, ISolicitudEntrega } from '../services/solicitud-service';
 import { obtenerRecetaPorIdService } from '../services/pedido-semanal-bodega-service';
 import { obtenerFiltrosInventarioService } from '../services/producto-service';
 import { buscarBodegaTransitoService, buscarBodegaTransitoPorCodigoService, obtenerBodegaPaginadaService, IBodegaTransitoItem, obtenerBulkBodegaListingService, bulkUpdateBodegaStockService, IBulkBodegaListing, IBulkWarehouseUpdateRequest, IBulkWarehouseProcessResult, inicializarDesdeAbastecimientoService, obtenerBodegaByInventarioIdsService } from '../services/bodega-transito-service';
@@ -28,6 +28,7 @@ import GestionUnidadesModal from '../components/modals/GestionUnidadesModal';
 import GestionAbastecimientoModal from '../components/modals/GestionAbastecimientoModal';
 import StockDisponiblesModal from '../components/modals/StockDisponiblesModal';
 import ConfirmarDisponibleBodegaModal, { ConfirmarDisponibleBodegaItem } from '../components/modals/ConfirmarDisponibleBodegaModal';
+import ConfirmarSalidaDisponibleModal, { ConfirmarSalidaDisponibleItem } from '../components/modals/ConfirmarSalidaDisponibleModal';
 import { obtenerAbastecimientoConfirmadoService, marcarEntregadosMasivoService } from '../services/proveedor-service';
 import { IOrdenAbastecimiento, ICategoriaEntregaAbastecimiento } from '../types/proveedor.types';
 
@@ -641,6 +642,10 @@ const ControlMasivoBodegaModal: React.FC<ControlMasivoBodegaModalProps> = ({ onC
   const [isDisponibleMasivoOpen, setIsDisponibleMasivoOpen] = React.useState(false);
   const [disponiblesMasivo,      setDisponiblesMasivo]      = React.useState<ConfirmarDisponibleBodegaItem[]>([]);
 
+  // ── Confirmación descuento de disponible al SALIR (salida/merma/devolución) ──
+  const [isSalidaDisponibleMasivoOpen, setIsSalidaDisponibleMasivoOpen] = React.useState(false);
+  const [salidaDisponiblesMasivo,      setSalidaDisponiblesMasivo]      = React.useState<ConfirmarSalidaDisponibleItem[]>([]);
+
   // ── Carga de productos desde backend ──
   React.useEffect(() => {
     let mounted = true;
@@ -795,12 +800,65 @@ const ControlMasivoBodegaModal: React.FC<ControlMasivoBodegaModalProps> = ({ onC
       }));
   };
 
+  // Detecta las SALIDAS (salida/merma/devolución) cuyo producto tiene stock disponible
+  // registrado: consulta el disponible real y arma el descuento topeado (min(salida, disponible)).
+  const detectarSalidaDisponiblesMasivo = async (): Promise<ConfirmarSalidaDisponibleItem[]> => {
+    const MOTIVOS_SALIDA = ['SALIDA_BODEGA', 'MERMA_BODEGA', 'DEVOLUCION'];
+    // Sumar la salida total por producto.
+    const salidaPorProducto = new Map<number, { item: ItemBodegaMasivo; salida: number }>();
+    for (const i of itemsPedido) {
+      if (!MOTIVOS_SALIDA.includes(i.motivo)) continue;
+      const key = i.producto.idProducto;
+      const ex = salidaPorProducto.get(key);
+      if (ex) ex.salida += i.delta;
+      else salidaPorProducto.set(key, { item: i, salida: i.delta });
+    }
+    if (salidaPorProducto.size === 0) return [];
+
+    const ids = Array.from(salidaPorProducto.keys());
+    let disponiblesMap: Record<number, number> = {};
+    try {
+      disponiblesMap = await consultarDisponiblesPorProductoService(ids, 'BODEGA_TRANSITO');
+    } catch {
+      // Si falla la consulta, no bloqueamos la salida: simplemente no mostramos el modal.
+      return [];
+    }
+
+    const resultado: ConfirmarSalidaDisponibleItem[] = [];
+    for (const [idProducto, { item, salida }] of salidaPorProducto.entries()) {
+      const disponible = disponiblesMap[idProducto] ?? 0;
+      if (disponible <= 0.001) continue;
+      // La salida de bodega es completa; del disponible se descuenta hasta su máximo.
+      const aDescontar = Math.min(salida, disponible);
+      resultado.push({
+        idProducto,
+        nombreProducto: item.producto.nombreProducto,
+        unidad: item.producto.detalles,
+        cantidadSalida: parseFloat(salida.toFixed(3)),
+        disponible: parseFloat(disponible.toFixed(3)),
+        aDescontar: parseFloat(aDescontar.toFixed(3)),
+      });
+    }
+    return resultado;
+  };
+
   const procesarMasivo = async () => {
     if (itemsPedido.length === 0) return;
     const disponibles = detectarDisponiblesMasivo();
     if (disponibles.length > 0) {
       setDisponiblesMasivo(disponibles);
       setIsDisponibleMasivoOpen(true);
+      return;
+    }
+    await continuarConSalidaMasivo();
+  };
+
+  // Tras resolver las ENTRADAS, revisa si alguna SALIDA tiene disponible que descontar.
+  const continuarConSalidaMasivo = async () => {
+    const salidas = await detectarSalidaDisponiblesMasivo();
+    if (salidas.length > 0) {
+      setSalidaDisponiblesMasivo(salidas);
+      setIsSalidaDisponibleMasivoOpen(true);
       return;
     }
     await ejecutarMasivo();
@@ -820,12 +878,48 @@ const ControlMasivoBodegaModal: React.FC<ControlMasivoBodegaModalProps> = ({ onC
     } catch {
       toast.warning('No se pudieron registrar los disponibles, pero la entrada continuará');
     }
+    setProcessState('idle');
     setIsDisponibleMasivoOpen(false);
-    await ejecutarMasivo();
+    await continuarConSalidaMasivo();
   };
 
   const handleCancelarDisponibleMasivo = async () => {
     setIsDisponibleMasivoOpen(false);
+    await continuarConSalidaMasivo();
+  };
+
+  const handleConfirmarSalidaDisponibleMasivo = async () => {
+    setProcessState('procesando');
+    try {
+      const payload: IRestarDisponibleDTO[] = salidaDisponiblesMasivo.map(d => ({
+        idProducto: d.idProducto,
+        cantidad: d.aDescontar,
+        disponibleEnVista: d.disponible,
+        tipoDisponible: 'BODEGA_TRANSITO',
+      }));
+      const res = await restarDisponiblesService(payload);
+      const insuficientes = res.resultados.filter(r => r.estado === 'INSUFICIENTE');
+      const sincronizados = res.resultados.filter(r => r.estado === 'SINCRONIZADO');
+      if (insuficientes.length > 0) {
+        toast.warning(
+          `Un proceso en paralelo dejó el stock disponible por debajo en ${insuficientes.length} producto(s); no se descontó el sobrante. La salida se realizó igualmente.`,
+          { duration: 20000 }
+        );
+      } else if (sincronizados.length > 0) {
+        toast.warning('El stock disponible cambió por un proceso en paralelo; se sincronizó automáticamente.', { duration: 12000 });
+      } else {
+        toast.success('Stock disponible descontado correctamente');
+      }
+    } catch {
+      toast.warning('No se pudo descontar el stock disponible, pero la salida continuará');
+    }
+    setProcessState('idle');
+    setIsSalidaDisponibleMasivoOpen(false);
+    await ejecutarMasivo();
+  };
+
+  const handleCancelarSalidaDisponibleMasivo = async () => {
+    setIsSalidaDisponibleMasivoOpen(false);
     await ejecutarMasivo();
   };
 
@@ -1139,6 +1233,16 @@ const ControlMasivoBodegaModal: React.FC<ControlMasivoBodegaModalProps> = ({ onC
         onConfirmar={handleConfirmarDisponibleMasivo}
       />
 
+      {/* Confirmación: descontar disponible al registrar SALIDAS */}
+      <ConfirmarSalidaDisponibleModal
+        isOpen={isSalidaDisponibleMasivoOpen}
+        items={salidaDisponiblesMasivo}
+        tipoMovimientoLabel="Salida"
+        isLoading={processState !== 'idle'}
+        onCancelar={handleCancelarSalidaDisponibleMasivo}
+        onConfirmar={handleConfirmarSalidaDisponibleMasivo}
+      />
+
       {/* Modal de Abastecimiento de Proveedores (OPs CONFIRMADA) */}
       <Modal
         isOpen={isAbastecimientoOpen}
@@ -1374,8 +1478,8 @@ const ControlMasivoBodegaModal: React.FC<ControlMasivoBodegaModalProps> = ({ onC
 const BodegaTransitoPage: React.FC = () => {
   const { canCreate: bod_Crear, canUpdate: bod_Editar, canDelete: bod_Eliminar } = useModulePermission('BODEGA_TRANSITO');
   const { canRead: ped_Leer, canCreate: ped_Crear } = useModulePermission('GESTION_PEDIDOS_DIARIOS');
-  const { canCreate: catPuedeCrear } = useModulePermission('CATEGORIAS');
-  const { canCreate: uniPuedeCrear } = useModulePermission('UNIDADES_MEDIDA');
+  const { canCreate: catPuedeCrear } = useModulePermission('GESTION_CATEGORIAS');
+  const { canCreate: uniPuedeCrear } = useModulePermission('GESTION_UNIDADES');
 
   const toast = useToast();
   const history = useHistory();
