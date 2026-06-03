@@ -22,6 +22,8 @@ public interface MovimientoService {
             Usuario currentUser
     );
     boolean motionInUpdateTransitWarehouse(BodegaTransito oldTransit, BigDecimal newStock, String typeMotion);
+    boolean motionInUpdateTransitWarehouse(BodegaTransito oldTransit, BigDecimal newStock, String typeMotion, Integer idSolicitud, Integer idPedido, Integer idOrdenPedido);
+    boolean motionInUpdateTransitWarehouse(BodegaTransito oldTransit, BigDecimal newStock, String typeMotion, Integer idSolicitud, Integer idPedido, Integer idOrdenPedido, Integer idDetalleOrdenPedido);
     void save (Movimiento m);
 
 }

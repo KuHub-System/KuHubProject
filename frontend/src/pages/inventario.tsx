@@ -107,6 +107,8 @@ interface ItemPedidoMasivo {
   idDetalleSolicitud?: number;
   cantidadOriginal?: number;
   idSolicitud?: number;
+  idOrdenPedido?: number;
+  idPedido?: number;
 }
 
 // ── Helpers para sincronización Excel ──
@@ -2835,6 +2837,13 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoP
   const [loadingAbastecimiento, setLoadingAbastecimiento] = React.useState(false);
   const [diasSeleccionados, setDiasSeleccionados] = React.useState<Set<string>>(new Set());
 
+  // Modal: productos ya entregados detectados al cargar desde abastecimiento
+  type EntregadoItemInfoInv = { nombre: string; cantidad: number; abreviatura: string };
+  const [isEntregadosInvOpen, setIsEntregadosInvOpen] = React.useState(false);
+  const [entregadosInvList, setEntregadosInvList] = React.useState<EntregadoItemInfoInv[]>([]);
+  const [itemsConEntregadosInv, setItemsConEntregadosInv] = React.useState<ItemPedidoMasivo[]>([]);
+  const [itemsSinEntregadosInv, setItemsSinEntregadosInv] = React.useState<ItemPedidoMasivo[]>([]);
+
   const getFechaHastaAbastecimiento = (filtro: FiltroAbastecimiento): string | undefined => {
     const hoy = new Date();
     const fmt = (d: Date) =>
@@ -2873,14 +2882,17 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoP
   };
 
   const cargarDiasSeleccionados = () => {
-    const nuevosItems: ItemPedidoMasivo[] = [];
+    const todosItems: ItemPedidoMasivo[] = [];
+    const entregadosIdSet = new Set<number>();
+    const entregadosInfoCollect: EntregadoItemInfoInv[] = [];
+
     for (const orden of ordenesAbastecimiento) {
       for (const entrega of orden.entregas) {
         const key = `${orden.idOrdenPedido}-${entrega.fechaEntrega}`;
         if (!diasSeleccionados.has(key)) continue;
         for (const cat of entrega.categorias) {
           for (const prod of cat.productos) {
-            nuevosItems.push({
+            const item: ItemPedidoMasivo = {
               id: `abast-${prod.idDetalleOrdenPedido}-${Date.now()}-${Math.random()}`,
               producto: {
                 idProducto: prod.idProducto,
@@ -2894,14 +2906,58 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoP
               motivo: 'ENTRADA_INVENTARIO',
               idDetalleOrdenPedido: prod.idDetalleOrdenPedido,
               marcaProducto: prod.marcaProducto ?? null,
-            });
+              idOrdenPedido: orden.idOrdenPedido,
+              idPedido: orden.idPedido,
+            };
+            todosItems.push(item);
+            if (prod.entregado) {
+              entregadosIdSet.add(prod.idDetalleOrdenPedido);
+              entregadosInfoCollect.push({
+                nombre: prod.nombreProducto,
+                cantidad: prod.cantidadSolicitada,
+                abreviatura: prod.abreviatura,
+              });
+            }
           }
         }
       }
     }
-    if (nuevosItems.length === 0) { toast.warning('No hay ítems seleccionados'); return; }
-    setItemsPedido(prev => [...prev, ...nuevosItems]);
-    toast.success(`${nuevosItems.length} ítem(s) cargado(s) al control masivo`);
+
+    if (todosItems.length === 0) { toast.warning('No hay ítems seleccionados'); return; }
+
+    if (entregadosInfoCollect.length > 0) {
+      const sinEntregados = todosItems.filter(i => !entregadosIdSet.has(i.idDetalleOrdenPedido!));
+      setItemsConEntregadosInv(todosItems);
+      setItemsSinEntregadosInv(sinEntregados);
+      setEntregadosInvList(entregadosInfoCollect);
+      setIsEntregadosInvOpen(true);
+      return;
+    }
+
+    setItemsPedido(prev => [...prev, ...todosItems]);
+    toast.success(`${todosItems.length} ítem(s) cargado(s) al control masivo`);
+    onAbastecimientoOpenChange();
+    setDiasSeleccionados(new Set());
+  };
+
+  const handleOmitirEntregadosInv = () => {
+    setIsEntregadosInvOpen(false);
+    if (itemsSinEntregadosInv.length === 0) {
+      toast.warning('Todos los productos de la selección ya fueron entregados anteriormente');
+      onAbastecimientoOpenChange();
+      setDiasSeleccionados(new Set());
+      return;
+    }
+    setItemsPedido(prev => [...prev, ...itemsSinEntregadosInv]);
+    toast.success(`${itemsSinEntregadosInv.length} ítem(s) cargado(s) al control masivo`);
+    onAbastecimientoOpenChange();
+    setDiasSeleccionados(new Set());
+  };
+
+  const handleIncluirEntregadosInv = () => {
+    setIsEntregadosInvOpen(false);
+    setItemsPedido(prev => [...prev, ...itemsConEntregadosInv]);
+    toast.success(`${itemsConEntregadosInv.length} ítem(s) cargado(s) al control masivo`);
     onAbastecimientoOpenChange();
     setDiasSeleccionados(new Set());
   };
@@ -3265,21 +3321,29 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoP
         MERMA_INVENTARIO: 5, MERMA_BODEGA: 5,
       };
 
-      // Agrupa por (idInventario, motivo) sumando deltas para evitar falsos warnings de
-      // sincronización cuando el mismo producto aparece más de una vez en la lista
-      // (e.g., múltiples días de entrega pre-cargados desde Abastecimiento).
-      const agregado = new Map<string, { idInventario: number; delta: number; stockEnVista: number; tipoMovimiento: string }>();
+      // Agrupa por (idInventario, motivo, idDetalleOrdenPedido) sumando deltas. Se incluye el
+      // detalle en la clave para NO colapsar distintas líneas/fechas de la misma OP: así cada
+      // detalle genera su propio movimiento con su id_detalle_orden_pedido (mapeo exacto de la
+      // entrega real). Los ítems manuales (sin detalle) comparten clave y se suman como antes.
+      const agregado = new Map<string, { idInventario: number; delta: number; stockEnVista: number; tipoMovimiento: string; idSolicitud?: number; idPedido?: number; idOrdenPedido?: number; idDetalleOrdenPedido?: number }>();
       for (const item of itemsPedido) {
-        const key = `${item.producto.idInventario}__${item.motivo}`;
+        const key = `${item.producto.idInventario}__${item.motivo}__${item.idDetalleOrdenPedido ?? 'manual'}`;
         const existing = agregado.get(key);
         if (existing) {
           existing.delta += item.delta;
+          if (!existing.idOrdenPedido && item.idOrdenPedido) existing.idOrdenPedido = item.idOrdenPedido;
+          if (!existing.idPedido && item.idPedido) existing.idPedido = item.idPedido;
+          if (!existing.idSolicitud && item.idSolicitud) existing.idSolicitud = item.idSolicitud;
         } else {
           agregado.set(key, {
             idInventario: item.producto.idInventario,
             delta: item.delta,
             stockEnVista: item.producto.stock,
             tipoMovimiento: item.motivo,
+            idSolicitud: item.idSolicitud,
+            idPedido: item.idPedido,
+            idOrdenPedido: item.idOrdenPedido,
+            idDetalleOrdenPedido: item.idDetalleOrdenPedido,
           });
         }
       }
@@ -3753,7 +3817,18 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoP
           )}
       </ModalBody>
 
-      <ModalFooter className="bg-default-50 border-t border-default-100 flex justify-end items-center w-full gap-2">
+      <ModalFooter className="bg-default-50 border-t border-default-100 flex justify-between items-center w-full gap-2">
+        <Button
+          variant="flat"
+          color="danger"
+          size="sm"
+          startContent={<Icon icon="lucide:trash-2" width={15} />}
+          onPress={() => setItemsPedido([])}
+          isDisabled={itemsPedido.length === 0 || processState !== 'idle'}
+          className="font-medium"
+        >
+          Limpiar todo
+        </Button>
         <div className="flex gap-2">
           <Button variant="ghost" onPress={onClose} className="font-medium">
             Cancelar
@@ -3928,6 +4003,84 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoP
                   startContent={<Icon icon="lucide:download" width={16} />}
                 >
                   Cargar {diasSeleccionados.size > 0 ? `${diasSeleccionados.size} día(s)` : 'seleccionados'}
+                </Button>
+              </ModalFooter>
+            </>
+          )}
+        </ModalContent>
+      </Modal>
+
+      {/* Modal: productos ya entregados detectados al cargar desde abastecimiento */}
+      <Modal
+        isOpen={isEntregadosInvOpen}
+        onOpenChange={() => setIsEntregadosInvOpen(false)}
+        size="lg"
+        backdrop="blur"
+        radius="lg"
+        classNames={{ base: 'rounded-2xl' }}
+        isDismissable={false}
+        hideCloseButton
+      >
+        <ModalContent>
+          {() => (
+            <>
+              <ModalHeader className="flex flex-col gap-1 border-b border-default-100 pb-4">
+                <div className="flex items-center gap-2">
+                  <Icon icon="lucide:circle-check-big" width={20} className="text-success" />
+                  <h2 className="text-base font-bold text-secondary dark:text-foreground">
+                    Productos ya entregados
+                  </h2>
+                </div>
+                <p className="text-xs font-normal text-default-500">
+                  {entregadosInvList.length} producto{entregadosInvList.length !== 1 ? 's' : ''} de la selección {entregadosInvList.length !== 1 ? 'fueron marcados' : 'fue marcado'} como recibido{entregadosInvList.length !== 1 ? 's' : ''} anteriormente. ¿Cómo deseas proceder?
+                </p>
+              </ModalHeader>
+              <ModalBody className="py-4 px-5 space-y-3">
+                <div className="border border-default-200 dark:border-default-100 rounded-xl overflow-hidden max-h-[260px] overflow-y-auto">
+                  <div className="grid grid-cols-[1fr_auto_auto] px-3 py-2 bg-default-100 dark:bg-default-50 text-[10px] font-bold text-default-500 uppercase tracking-wider border-b border-default-200 dark:border-default-100">
+                    <span>Producto</span>
+                    <span className="text-right pr-2">Cantidad</span>
+                    <span>Unidad</span>
+                  </div>
+                  <div className="divide-y divide-default-100 dark:divide-default-50">
+                    {entregadosInvList.map((p, i) => (
+                      <div key={i} className="grid grid-cols-[1fr_auto_auto] items-center px-3 py-2.5 gap-2">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <Icon icon="lucide:check-circle-2" width={14} className="text-success shrink-0" />
+                          <span className="text-sm text-default-700 dark:text-default-300 truncate">{p.nombre}</span>
+                        </div>
+                        <span className="text-sm font-semibold text-default-600 tabular-nums text-right pr-2">
+                          {p.cantidad}
+                        </span>
+                        <span className="text-xs text-default-400">{p.abreviatura}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div className="flex items-start gap-2 px-2 py-2 bg-warning-50 dark:bg-warning-50/10 border border-warning-200 dark:border-warning-100/30 rounded-lg">
+                  <Icon icon="lucide:alert-triangle" width={15} className="text-warning-600 dark:text-warning-400 shrink-0 mt-0.5" />
+                  <p className="text-xs text-warning-700 dark:text-warning-400">
+                    ¿Cómo deseas proceder? Si incluyes los ya entregados, pueden generarse ingresos duplicados para la misma Orden de Pedido.
+                  </p>
+                </div>
+              </ModalBody>
+              <ModalFooter className="border-t border-default-100 gap-2 flex justify-between">
+                <Button
+                  variant="flat"
+                  color="default"
+                  startContent={<Icon icon="lucide:package-plus" width={16} />}
+                  onPress={handleIncluirEntregadosInv}
+                  className="font-medium"
+                >
+                  Incluir de todas formas
+                </Button>
+                <Button
+                  color="secondary"
+                  startContent={<Icon icon="lucide:skip-forward" width={16} />}
+                  onPress={handleOmitirEntregadosInv}
+                  className="font-medium"
+                >
+                  Omitir entregados
                 </Button>
               </ModalFooter>
             </>

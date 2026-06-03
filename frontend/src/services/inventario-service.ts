@@ -617,6 +617,10 @@ export interface IBulkUpdateStockRequest {
     delta: number;
     stockEnVista: number;
     tipoMovimiento: string;
+    idSolicitud?: number;
+    idPedido?: number;
+    idOrdenPedido?: number;
+    idDetalleOrdenPedido?: number;
 }
 
 export interface IBulkItemResult {

@@ -125,6 +125,10 @@ export interface IBulkWarehouseUpdateRequest {
     delta: number;
     stockEnVista: number;
     tipoMovimiento: string;
+    idSolicitud?: number;
+    idPedido?: number;
+    idOrdenPedido?: number;
+    idDetalleOrdenPedido?: number;
 }
 
 export interface IBulkWarehouseItemResult {

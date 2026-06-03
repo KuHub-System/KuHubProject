@@ -349,6 +349,18 @@ public class MovimientoServiceImpl implements MovimientoService {
     @Transactional
     @Override
     public boolean motionInUpdateTransitWarehouse(BodegaTransito oldTransit, BigDecimal delta, String typeMotion) {
+        return motionInUpdateTransitWarehouse(oldTransit, delta, typeMotion, null, null, null, null);
+    }
+
+    @Transactional
+    @Override
+    public boolean motionInUpdateTransitWarehouse(BodegaTransito oldTransit, BigDecimal delta, String typeMotion, Integer idSolicitud, Integer idPedido, Integer idOrdenPedido) {
+        return motionInUpdateTransitWarehouse(oldTransit, delta, typeMotion, idSolicitud, idPedido, idOrdenPedido, null);
+    }
+
+    @Transactional
+    @Override
+    public boolean motionInUpdateTransitWarehouse(BodegaTransito oldTransit, BigDecimal delta, String typeMotion, Integer idSolicitud, Integer idPedido, Integer idOrdenPedido, Integer idDetalleOrdenPedido) {
         String tipoKey = StringUtils.normalizeToEnumKey(typeMotion);
         BigDecimal stockActual = oldTransit.getStock();
         BigDecimal nuevoStock;
@@ -403,6 +415,10 @@ public class MovimientoServiceImpl implements MovimientoService {
         newMotion.setStockMovimiento(calculatedAmount);
         newMotion.setTipoMovimiento(Movimiento.TipoMovimiento.valueOf(tipoKey));
         newMotion.setObservacion(description);
+        newMotion.setIdSolicitud(idSolicitud);
+        newMotion.setIdPedido(idPedido);
+        newMotion.setIdOrdenPedido(idOrdenPedido);
+        newMotion.setIdDetalleOrdenPedido(idDetalleOrdenPedido);
 
         movimientoRepository.save(newMotion);
         return true;
@@ -417,7 +433,10 @@ public class MovimientoServiceImpl implements MovimientoService {
                 (java.math.BigDecimal) row[3],                   // stock_movimiento
                 ((java.sql.Timestamp) row[4]).toLocalDateTime(), // fecha_movimiento
                 (String) row[5],                                 // nombreUsuario (concatenado)
-                (String) row[6]                                  // observacion
+                (String) row[6],                                 // observacion
+                row[7] != null ? ((Number) row[7]).intValue() : null, // id_solicitud
+                row[8] != null ? ((Number) row[8]).intValue() : null, // id_pedido
+                row[9] != null ? ((Number) row[9]).intValue() : null  // id_orden_pedido
         );
     }
 

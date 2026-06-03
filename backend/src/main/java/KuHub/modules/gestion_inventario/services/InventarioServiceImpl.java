@@ -433,6 +433,12 @@ public class InventarioServiceImpl implements InventarioService {
 
         Usuario currentUser = usuarioService.findUserByToken();
 
+        // Inventarios ya procesados en este lote: cuando un mismo producto aparece más de una
+        // vez (varios detalles/fechas de la misma OP, ahora separados para mapeo exacto), el
+        // stock se acumula por referencia compartida; solo se valida la desincronización en la
+        // PRIMERA aparición para evitar falsos warnings causados por nuestra propia mutación.
+        java.util.Set<Integer> inventariosVistos = new java.util.HashSet<>();
+
         // 2. Procesamiento
         for (BulkInventoryProcess.ItemRequest req : requests) {
             Inventario inv = inventarioMap.get(req.idInventario());
@@ -443,7 +449,8 @@ public class InventarioServiceImpl implements InventarioService {
             }
 
             BigDecimal stockRealAntes = inv.getStock();
-            boolean desincronizado = stockRealAntes.compareTo(req.stockEnVista()) != 0;
+            boolean primeraVez = inventariosVistos.add(req.idInventario());
+            boolean desincronizado = primeraVez && stockRealAntes.compareTo(req.stockEnVista()) != 0;
 
             // Delegar lógica de cálculo y creación de objeto movimiento
             BulkMovementResult result = movimientoService.buildMovementForBulkUpdate(
@@ -456,6 +463,12 @@ public class InventarioServiceImpl implements InventarioService {
                         stockRealAntes, result.errorMessage()
                 ));
             } else {
+                // Trazabilidad opcional: origen del movimiento
+                result.movimiento().setIdSolicitud(req.idSolicitud());
+                result.movimiento().setIdPedido(req.idPedido());
+                result.movimiento().setIdOrdenPedido(req.idOrdenPedido());
+                result.movimiento().setIdDetalleOrdenPedido(req.idDetalleOrdenPedido());
+
                 // Éxito: Agregamos a listas de persistencia masiva
                 inventariosToSave.add(inv);
                 movimientosToSave.add(result.movimiento());

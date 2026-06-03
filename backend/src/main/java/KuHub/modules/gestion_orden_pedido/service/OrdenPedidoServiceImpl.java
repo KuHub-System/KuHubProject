@@ -19,6 +19,7 @@ import KuHub.modules.gestion_orden_pedido.repository.DetalleOrdenPedidoRepositor
 import KuHub.modules.gestion_orden_pedido.repository.OrdenPedidoRepository;
 import KuHub.modules.gestion_pedido.repository.PedidoSolicitudRepository;
 import KuHub.modules.gestion_proveedor.entity.ProveedorProducto;
+import KuHub.modules.gestion_inventario.repository.MovimientoRepository;
 import KuHub.modules.gestion_proveedor.repository.ProveedorProductoRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.type.TypeFactory;
@@ -49,6 +50,9 @@ public class OrdenPedidoServiceImpl implements OrdenPedidoService {
 
     @Autowired
     private PedidoSolicitudRepository pedidoSolicitudRepository;
+
+    @Autowired
+    private MovimientoRepository movimientoRepository;
 
     // Componentes utilitarios auxiliares
     @Autowired
@@ -298,6 +302,26 @@ public class OrdenPedidoServiceImpl implements OrdenPedidoService {
 
         log.info("obtenerConDetalles: OP #{} | {} detalles activos", idOrdenPedido, detalles.size());
 
+        List<OrdenPedidoConDetallesDTO.EntregaRealDTO> entregasReales = java.util.List.of();
+        if (op.getEstadoOrdenPedido() == EstadoOrdenPedido.CONFIRMADA ||
+            op.getEstadoOrdenPedido() == EstadoOrdenPedido.RECIBIDA) {
+            entregasReales = movimientoRepository
+                .findEntregasRealesByOrdenPedido(idOrdenPedido)
+                .stream()
+                .map(row -> {
+                    java.math.BigDecimal cantInv = row[1] instanceof java.math.BigDecimal bd ? bd : new java.math.BigDecimal(row[1].toString());
+                    java.math.BigDecimal cantBod = row[2] instanceof java.math.BigDecimal bd ? bd : new java.math.BigDecimal(row[2].toString());
+                    boolean esInventario = cantInv.compareTo(java.math.BigDecimal.ZERO) > 0;
+                    return new OrdenPedidoConDetallesDTO.EntregaRealDTO(
+                        ((Number) row[0]).longValue(),
+                        esInventario ? cantInv : cantBod,
+                        esInventario ? "INVENTARIO" : "BODEGA"
+                    );
+                })
+                .toList();
+            log.info("obtenerConDetalles: OP #{} | {} entregas reales", idOrdenPedido, entregasReales.size());
+        }
+
         return new OrdenPedidoConDetallesDTO(
                 op.getIdOrdenPedido(),
                 ped.getIdPedido(),
@@ -314,7 +338,8 @@ public class OrdenPedidoServiceImpl implements OrdenPedidoService {
                 op.getObservaciones(),
                 totalNeto,
                 totalConIva,
-                detalles
+                detalles,
+                entregasReales
         );
     }
 
