@@ -22,7 +22,8 @@ public record OrdenPedidoConDetallesDTO(
         String observaciones,
         BigDecimal totalNeto,
         BigDecimal totalConIva,
-        List<DetalleItemDTO> detalles
+        List<DetalleItemDTO> detalles,
+        List<EntregaRealDTO> entregasReales
 ) {
     public record DetalleItemDTO(
             Long idDetalleOrdenPedido,
@@ -39,5 +40,11 @@ public record OrdenPedidoConDetallesDTO(
             Boolean entregado,
             String formatoContenido,
             String observacion   // porciones de solicitud: "pc1 2x(5)/ pc2 10"
+    ) {}
+
+    public record EntregaRealDTO(
+            Long idDetalleOrdenPedido,
+            BigDecimal cantidadEntregada,
+            String destino   // "INVENTARIO" | "BODEGA"
     ) {}
 }

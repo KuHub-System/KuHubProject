@@ -10,6 +10,7 @@ public record AbastecimientoProveedorDTO(List<OrdenAbastecimiento> ordenes) {
 
     public record OrdenAbastecimiento(
             @JsonProperty("idOrdenPedido")       Integer idOrdenPedido,
+            @JsonProperty("idPedido")            Integer idPedido,
             @JsonProperty("idProveedor")         Integer idProveedor,
             @JsonProperty("nombreDistribuidora") String nombreDistribuidora,
             @JsonProperty("nombreProveedor")     String nombreProveedor,

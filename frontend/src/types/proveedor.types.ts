@@ -423,12 +423,20 @@ export interface IDetalleOrdenPedido {
   observacion: string | null; // porciones de solicitud: "pc1 2x(5)/ pc2 10"
 }
 
+/** Entrega real registrada en movimiento (ENTRADA_INVENTARIO o ENTRADA_BODEGA), ligada a la línea exacta de la OP. */
+export interface IEntregaReal {
+  idDetalleOrdenPedido: number; // línea/fecha exacta de la OP — clave de mapeo
+  cantidadEntregada: number;
+  destino: 'INVENTARIO' | 'BODEGA';
+}
+
 /** Orden de Pedido completa con cabecera y todas sus líneas de detalle. */
 export interface IOrdenPedidoConDetalles extends IOrdenPedidoListItem {
   telefonoProveedor: string | null;
   emailProveedor: string | null;
   direccionProveedor: string | null;
   detalles: IDetalleOrdenPedido[];
+  entregasReales: IEntregaReal[];
 }
 
 // ── Abastecimiento de Proveedores (OPs CONFIRMADA) ───────────────────────────
@@ -462,6 +470,7 @@ export interface IEntregaDiaAbastecimiento {
 /** Una OP CONFIRMADA con sus fechas de entrega y productos agrupados. */
 export interface IOrdenAbastecimiento {
   idOrdenPedido: number;
+  idPedido: number;
   idProveedor: number;
   nombreDistribuidora: string;
   nombreProveedor: string;

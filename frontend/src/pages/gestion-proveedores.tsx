@@ -93,6 +93,7 @@ import type {
   IOrdenPedidoListItem,
   IOrdenPedidoConDetalles,
   IDetalleOrdenPedido,
+  IEntregaReal,
 } from '../types/proveedor.types';
 import type { IProductoRecetaSelection } from '../types/producto.types';
 
@@ -6384,7 +6385,7 @@ const getNombreDia = (fechaISO: string): string => {
   return NOM_DIA_ES[new Date(y, m - 1, d).getDay()];
 };
 
-type OpCelda = { op: IOrdenPedidoListItem; cantidad: number; entregado: boolean; observacion: string | null };
+type OpCelda = { op: IOrdenPedidoListItem; cantidad: number; entregado: boolean; observacion: string | null; idDetalleOrdenPedido: number };
 type ProductoTablaFila = { idProducto: number; nombre: string; abrev: string; nombreUnidad: string; nombreCategoria: string; formatoContenido: string | null; porFecha: Map<string, OpCelda[]> };
 type ProveedorTablaItem = {
   idProveedor: number; nombreDistribuidora: string; nombreProveedor: string;
@@ -6690,7 +6691,7 @@ const OrdenesVista: React.FC<OrdenesVistaProps> = ({
         }
         const prod = grupo.productos.get(d.idProducto)!;
         if (!prod.porFecha.has(d.fechaEntrega)) prod.porFecha.set(d.fechaEntrega, []);
-        prod.porFecha.get(d.fechaEntrega)!.push({ op, cantidad: d.cantidadSolicitada, entregado: d.entregado, observacion: d.observacion ?? null });
+        prod.porFecha.get(d.fechaEntrega)!.push({ op, cantidad: d.cantidadSolicitada, entregado: d.entregado, observacion: d.observacion ?? null, idDetalleOrdenPedido: d.idDetalleOrdenPedido });
       }
     }
     return [...grupos.values()]
@@ -6716,13 +6717,13 @@ const OrdenesVista: React.FC<OrdenesVistaProps> = ({
   const detalladaTabla = React.useMemo(() => {
     if (!agrupadoFechaReal || modoUnificada) return null;
     return agrupadoFechaReal.map(prov => {
-      const rowMap = new Map<string, { idOP: number; idProducto: number; nombre: string; abrev: string; nombreCategoria: string; formatoContenido: string | null; porFecha: Map<string, { cantidad: number; entregado: boolean }> }>();
+      const rowMap = new Map<string, { idOP: number; idProducto: number; nombre: string; abrev: string; nombreCategoria: string; formatoContenido: string | null; porFecha: Map<string, { cantidad: number; entregado: boolean; idDetalleOrdenPedido: number }> }>();
       for (const prod of prov.productos) {
         for (const [fecha, items] of prod.porFecha) {
-          for (const { op, cantidad, entregado } of items) {
+          for (const { op, cantidad, entregado, idDetalleOrdenPedido } of items) {
             const key = `${prod.idProducto}-${op.idOrdenPedido}`;
             if (!rowMap.has(key)) rowMap.set(key, { idOP: op.idOrdenPedido, idProducto: prod.idProducto, nombre: prod.nombre, abrev: prod.abrev, nombreCategoria: prod.nombreCategoria, formatoContenido: prod.formatoContenido, porFecha: new Map() });
-            rowMap.get(key)!.porFecha.set(fecha, { cantidad, entregado });
+            rowMap.get(key)!.porFecha.set(fecha, { cantidad, entregado, idDetalleOrdenPedido });
           }
         }
       }
@@ -6737,6 +6738,16 @@ const OrdenesVista: React.FC<OrdenesVistaProps> = ({
       };
     });
   }, [agrupadoFechaReal, modoUnificada]);
+
+  // Mapa global idDetalleOrdenPedido → entrega real, a partir de todos los detalles cargados.
+  // Permite mostrar lo verdaderamente ingresado por celda exacta en la vista agrupada por OP.
+  const realPorDetalle = React.useMemo(() => {
+    const map = new Map<number, IEntregaReal>();
+    for (const det of detalles.values()) {
+      for (const er of det.entregasReales ?? []) map.set(er.idDetalleOrdenPedido, er);
+    }
+    return map;
+  }, [detalles]);
 
   const renderOpRow = (op: IOrdenPedidoListItem, isFirst: boolean) => (
     <div key={op.idOrdenPedido} className={!isFirst ? 'border-t border-default-100 dark:border-default-50' : ''}>
@@ -7179,12 +7190,23 @@ const OrdenesVista: React.FC<OrdenesVistaProps> = ({
                                       const borde = esNuevaSemana ? 'border-l-2 border-secondary-400 dark:border-secondary-500' : 'border-l border-default-100 dark:border-default-100/20';
                                       const cell = row.porFecha.get(fecha);
                                       if (!cell) return <td key={fecha} className={`py-2 px-3 text-center text-default-300 text-xs ${borde}`}>—</td>;
+                                      const erReal = realPorDetalle.get(cell.idDetalleOrdenPedido);
+                                      const matchR = erReal && Math.abs(erReal.cantidadEntregada - cell.cantidad) < 0.001;
+                                      const shortR = erReal && erReal.cantidadEntregada < cell.cantidad - 0.001;
                                       return (
                                         <td key={fecha} className={`py-2 px-3 text-center font-semibold text-default-700 dark:text-default-200 text-xs ${borde}`}>
                                           <div className="flex items-center justify-center gap-1">
                                             {fmtN(cell.cantidad)}
                                             {mostrarEntregados && cell.entregado && <Icon icon="lucide:check-circle-2" width={11} className="text-success shrink-0" />}
                                           </div>
+                                          {erReal && (
+                                            <Tooltip content={`Real ingresado: ${fmtN(erReal.cantidadEntregada)} (${erReal.destino === 'INVENTARIO' ? 'Inventario' : 'Bodega'})`} placement="top" color="default">
+                                              <div className={`flex items-center justify-center gap-0.5 text-[10px] mt-0.5 font-bold ${matchR ? 'text-success-600 dark:text-success-400' : shortR ? 'text-warning-600 dark:text-warning-400' : 'text-primary-600 dark:text-primary-400'}`}>
+                                                <Icon icon={erReal.destino === 'INVENTARIO' ? 'lucide:package' : 'lucide:warehouse'} width={9} className="shrink-0" />
+                                                {fmtN(erReal.cantidadEntregada)}
+                                              </div>
+                                            </Tooltip>
+                                          )}
                                         </td>
                                       );
                                     })}
@@ -7235,12 +7257,28 @@ const OrdenesVista: React.FC<OrdenesVistaProps> = ({
                                       if (!items || items.length === 0) return <td key={fecha} className={`py-2 px-3 text-center text-default-300 text-xs ${borde}`}>—</td>;
                                       const total = items.reduce((s, it) => s + it.cantidad, 0);
                                       const todosEntregados = items.every(it => it.entregado);
+                                      // Real: suma de las entregas reales de los detalles que caen en esta celda
+                                      const realesCelda = items
+                                        .map(it => realPorDetalle.get(it.idDetalleOrdenPedido))
+                                        .filter((er): er is IEntregaReal => er != null);
+                                      const totalReal = realesCelda.reduce((s, er) => s + er.cantidadEntregada, 0);
+                                      const destinoCelda = realesCelda[0]?.destino;
+                                      const matchR = realesCelda.length > 0 && Math.abs(totalReal - total) < 0.001;
+                                      const shortR = realesCelda.length > 0 && totalReal < total - 0.001;
                                       return (
                                         <td key={fecha} className={`py-2 px-3 text-center font-bold text-success-700 dark:text-success-300 text-xs ${borde}`}>
                                           <div className="flex items-center justify-center gap-1">
                                             {fmtN(total)}
                                             {mostrarEntregados && todosEntregados && <Icon icon="lucide:check-circle-2" width={11} className="text-success shrink-0" />}
                                           </div>
+                                          {realesCelda.length > 0 && (
+                                            <Tooltip content={`Real ingresado: ${fmtN(totalReal)}${destinoCelda ? ` (${destinoCelda === 'INVENTARIO' ? 'Inventario' : 'Bodega'})` : ''}`} placement="top" color="default">
+                                              <div className={`flex items-center justify-center gap-0.5 text-[10px] mt-0.5 font-bold ${matchR ? 'text-success-600 dark:text-success-400' : shortR ? 'text-warning-600 dark:text-warning-400' : 'text-primary-600 dark:text-primary-400'}`}>
+                                                {destinoCelda && <Icon icon={destinoCelda === 'INVENTARIO' ? 'lucide:package' : 'lucide:warehouse'} width={9} className="shrink-0" />}
+                                                {fmtN(totalReal)}
+                                              </div>
+                                            </Tooltip>
+                                          )}
                                         </td>
                                       );
                                     })}
@@ -7313,10 +7351,25 @@ const OrdenDetalleTabla: React.FC<{ detalle: IOrdenPedidoConDetalles; mostrarEnt
     });
   }, [detalle.detalles]);
 
+  // Mapa idDetalleOrdenPedido → IEntregaReal (mapeo exacto por línea/fecha de la OP)
+  const entregaMap = React.useMemo(() => {
+    const map = new Map<number, IEntregaReal>();
+    for (const er of detalle.entregasReales ?? []) {
+      map.set(er.idDetalleOrdenPedido, er);
+    }
+    return map;
+  }, [detalle.entregasReales]);
+
+  const hasEntregas = (['CONFIRMADA', 'RECIBIDA'] as EstadoOrdenPedido[]).includes(detalle.estadoOrdenPedido)
+    && (detalle.entregasReales?.length ?? 0) > 0;
+
   const fmtDDMM = (iso: string) => { const [, m, d] = iso.split('-'); return `${d}/${m}`; };
 
   const fmtCant = (v: number, fraccionario: boolean) =>
     fraccionario ? fmtN(v) : fmtN(Math.round(v));
+
+  // Número de columnas totales (para el colSpan de separadores de categoría)
+  const totalCols = 2 + (hasEntregas ? fechas.length * 2 : fechas.length) + 4;
 
   return (
     <div className="mt-3 space-y-3">
@@ -7339,19 +7392,31 @@ const OrdenDetalleTabla: React.FC<{ detalle: IOrdenPedidoConDetalles; mostrarEnt
       <div className="overflow-x-auto rounded-lg border border-default-200 dark:border-default-100">
         <table className="w-full text-xs">
           <thead className="bg-default-100 dark:bg-default-50">
+            {/* Fila 1: cabeceras fijas + una cabecera por fecha (con colSpan=2 si hay entregas reales) */}
             <tr>
-              <th className="text-left py-2 px-3 font-medium w-[170px]">Producto</th>
-              <th className="text-center py-2 px-2 font-medium w-14">U/M</th>
+              <th rowSpan={hasEntregas ? 2 : 1} className="text-left py-2 px-3 font-medium w-[170px]">Producto</th>
+              <th rowSpan={hasEntregas ? 2 : 1} className="text-center py-2 px-2 font-medium w-14">U/M</th>
               {fechas.map(f => (
-                <th key={f} className="text-center py-2 px-2 font-semibold w-[90px] bg-warning-100 dark:bg-warning-900/20 text-warning-700 dark:text-warning-400 whitespace-nowrap">
+                <th key={f} colSpan={hasEntregas ? 2 : 1} className="text-center py-2 px-2 font-semibold bg-warning-100 dark:bg-warning-900/20 text-warning-700 dark:text-warning-400 whitespace-nowrap">
                   {fmtDDMM(f)}
                 </th>
               ))}
-              <th className="text-center py-2 px-2 font-medium w-[100px] whitespace-nowrap">P. Neto</th>
-              <th className="text-center py-2 px-2 font-medium w-[100px] whitespace-nowrap">P. c/IVA</th>
-              <th className="text-center py-2 px-2 font-medium w-[100px] whitespace-nowrap">T. Neto</th>
-              <th className="text-center py-2 px-2 font-medium w-[100px] whitespace-nowrap">T. c/IVA</th>
+              <th rowSpan={hasEntregas ? 2 : 1} className="text-center py-2 px-2 font-medium w-[100px] whitespace-nowrap">P. Neto</th>
+              <th rowSpan={hasEntregas ? 2 : 1} className="text-center py-2 px-2 font-medium w-[100px] whitespace-nowrap">P. c/IVA</th>
+              <th rowSpan={hasEntregas ? 2 : 1} className="text-center py-2 px-2 font-medium w-[100px] whitespace-nowrap">T. Neto</th>
+              <th rowSpan={hasEntregas ? 2 : 1} className="text-center py-2 px-2 font-medium w-[100px] whitespace-nowrap">T. c/IVA</th>
             </tr>
+            {/* Fila 2: sub-cabeceras Solic. / Real bajo cada fecha */}
+            {hasEntregas && (
+              <tr>
+                {fechas.map(f => (
+                  <React.Fragment key={f}>
+                    <th className="text-center py-1 px-2 text-[9px] font-medium text-warning-600 dark:text-warning-400 bg-warning-50 dark:bg-warning-900/10 border-t border-warning-200 dark:border-warning-800 w-[62px]">Solic.</th>
+                    <th className="text-center py-1 px-2 text-[9px] font-medium text-success-600 dark:text-success-400 bg-success-50 dark:bg-success-900/10 border-t border-success-200 dark:border-success-800 w-[62px]">Real</th>
+                  </React.Fragment>
+                ))}
+              </tr>
+            )}
           </thead>
           <tbody>
             {productos.map(({ meta, porFecha }, prodIdx, allProds) => {
@@ -7363,7 +7428,7 @@ const OrdenDetalleTabla: React.FC<{ detalle: IOrdenPedidoConDetalles; mostrarEnt
                 <React.Fragment key={meta.idProducto}>
                   {isNewCat && (
                     <tr>
-                      <td colSpan={6 + fechas.length} className="py-1 px-3 bg-default-100/80 dark:bg-default-50/20 text-default-600 dark:text-default-400 text-[10px] font-bold uppercase tracking-wide border-t-2 border-default-300 dark:border-default-600">
+                      <td colSpan={totalCols} className="py-1 px-3 bg-default-100/80 dark:bg-default-50/20 text-default-600 dark:text-default-400 text-[10px] font-bold uppercase tracking-wide border-t-2 border-default-300 dark:border-default-600">
                         <span className="flex items-center gap-1.5">
                           <Icon icon="lucide:tag" width={10} />
                           {meta.nombreCategoria}
@@ -7380,15 +7445,44 @@ const OrdenDetalleTabla: React.FC<{ detalle: IOrdenPedidoConDetalles; mostrarEnt
                     <td className="py-2 px-2 text-center text-default-500 whitespace-nowrap">{meta.abreviatura}</td>
                     {fechas.map(f => {
                       const d = porFecha.get(f);
+                      const er = d ? entregaMap.get(d.idDetalleOrdenPedido) : undefined;
+                      const solicitado = d?.cantidadSolicitada ?? 0;
+                      const entregado  = er?.cantidadEntregada ?? null;
+                      const match = entregado != null && Math.abs(entregado - solicitado) < 0.001;
+                      const short = entregado != null && entregado < solicitado - 0.001;
                       return (
-                        <td key={f} className="py-2 px-2 text-center bg-warning-50/40 dark:bg-warning-900/10 font-semibold whitespace-nowrap">
-                          {d ? (
-                            <div className="flex items-center justify-center gap-1">
-                              {fmtCant(d.cantidadSolicitada, meta.esFraccionario)}
-                              {mostrarEntregados && d.entregado && <Icon icon="lucide:check-circle-2" width={11} className="text-success shrink-0" />}
-                            </div>
-                          ) : <span className="text-default-300">—</span>}
-                        </td>
+                        <React.Fragment key={f}>
+                          {/* Columna solicitado */}
+                          <td className="py-2 px-2 text-center bg-warning-50/40 dark:bg-warning-900/10 font-semibold whitespace-nowrap">
+                            {d ? (
+                              <div className="flex items-center justify-center gap-1">
+                                {fmtCant(d.cantidadSolicitada, meta.esFraccionario)}
+                                {mostrarEntregados && d.entregado && <Icon icon="lucide:check-circle-2" width={11} className="text-success shrink-0" />}
+                              </div>
+                            ) : <span className="text-default-300">—</span>}
+                          </td>
+                          {/* Columna real — solo cuando hay entregas */}
+                          {hasEntregas && (
+                            <td className={`py-2 px-2 text-center whitespace-nowrap font-semibold ${
+                              entregado != null
+                                ? match
+                                  ? 'bg-success-50/60 dark:bg-success-900/20 text-success-600 dark:text-success-400'
+                                  : short
+                                  ? 'bg-warning-50/60 dark:bg-warning-900/20 text-warning-600 dark:text-warning-400'
+                                  : 'bg-primary-50/60 dark:bg-primary-900/20 text-primary-600 dark:text-primary-400'
+                                : 'bg-default-50/20'
+                            }`}>
+                              {entregado != null ? (
+                                <div className="flex items-center justify-center gap-0.5">
+                                  {fmtCant(entregado, meta.esFraccionario)}
+                                  {match && <Icon icon="lucide:check-circle-2" width={10} className="shrink-0" />}
+                                  {short && <Icon icon="lucide:alert-circle" width={10} className="shrink-0" />}
+                                  {!match && !short && <Icon icon="lucide:arrow-up-circle" width={10} className="shrink-0" />}
+                                </div>
+                              ) : <span className="text-default-300 text-[10px]">—</span>}
+                            </td>
+                          )}
+                        </React.Fragment>
                       );
                     })}
                     <td className="py-2 px-2 text-center whitespace-nowrap text-default-600">

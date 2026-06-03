@@ -35,4 +35,10 @@ public class MotionAnswerDTO {
     private String nombreUsuario;
 
     private String observacion;
+
+    private Integer idSolicitud;
+
+    private Integer idPedido;
+
+    private Integer idOrdenPedido;
 }

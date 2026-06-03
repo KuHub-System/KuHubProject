@@ -25,7 +25,12 @@ public record BulkWarehouseProcess(
             BigDecimal stockEnVista,
 
             @NotNull(message = "El tipo de movimiento es obligatorio")
-            String tipoMovimiento
+            String tipoMovimiento,
+
+            Integer idSolicitud,
+            Integer idPedido,
+            Integer idOrdenPedido,
+            Integer idDetalleOrdenPedido
     ) {}
 
     // =========================================================

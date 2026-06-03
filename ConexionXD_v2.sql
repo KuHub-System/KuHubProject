@@ -528,24 +528,34 @@ CREATE TABLE movimiento (
     id_movimiento INTEGER GENERATED ALWAYS AS IDENTITY,
     id_usuario INTEGER NOT NULL,
     id_inventario INTEGER NOT NULL,
-	id_bodega_transito INTEGER,
+    id_bodega_transito INTEGER,
     stock_movimiento NUMERIC(10, 3) NOT NULL,
     tipo_movimiento tipo_movimiento_type NOT NULL,
     fecha_movimiento TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    -- Usando TEXT para máxima flexibilidad y eficiencia
+-- Usando TEXT para máxima flexibilidad y eficiencia
     observacion TEXT,
+    id_solicitud        INTEGER,
+    id_pedido           INTEGER,
+    id_orden_pedido     INTEGER,
+    id_detalle_orden_pedido INTEGER,
 
-    -- La PK debe ser compuesta: ID + FECHA (Obligatorio en particiones)
+-- La PK debe ser compuesta: ID + FECHA (Obligatorio en particiones)
     PRIMARY KEY (id_movimiento, fecha_movimiento),
+
     CONSTRAINT fk_usuario_movimiento
-        FOREIGN KEY (id_usuario) REFERENCES usuario(id_usuario)
-        ON UPDATE CASCADE ON DELETE RESTRICT,
+        FOREIGN KEY (id_usuario) 		  REFERENCES usuario(id_usuario) ON UPDATE CASCADE ON DELETE RESTRICT,
     CONSTRAINT fk_inventario_movimiento
-        FOREIGN KEY (id_inventario) REFERENCES inventario(id_inventario)
-        ON UPDATE CASCADE ON DELETE RESTRICT,
-	CONSTRAINT fk_bodega_movimiento
-	FOREIGN KEY (id_bodega_transito) REFERENCES bodega_transito(id_bodega_transito)
-	ON UPDATE CASCADE ON DELETE RESTRICT
+        FOREIGN KEY (id_inventario) 	  REFERENCES inventario(id_inventario) ON UPDATE CASCADE ON DELETE RESTRICT,
+    CONSTRAINT fk_bodega_movimiento
+        FOREIGN KEY (id_bodega_transito)  REFERENCES bodega_transito(id_bodega_transito) ON UPDATE CASCADE ON DELETE RESTRICT,
+    CONSTRAINT fk_mov_solicitud
+        FOREIGN KEY (id_solicitud)        REFERENCES solicitud(id_solicitud),
+    CONSTRAINT fk_mov_pedido
+        FOREIGN KEY (id_pedido)           REFERENCES pedido(id_pedido),
+    CONSTRAINT fk_mov_orden_pedido
+        FOREIGN KEY (id_orden_pedido)     REFERENCES orden_pedido(id_orden_pedido),
+    CONSTRAINT fk_mov_detalle_orden_pedido
+        FOREIGN KEY (id_detalle_orden_pedido) REFERENCES detalle_orden_pedido(id_detalle_orden_pedido)
 ) PARTITION BY RANGE (fecha_movimiento);
 
 -- Crear Particiones Semestrales (Semestre = 6 meses)
