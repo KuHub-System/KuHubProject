@@ -1,1 +1,92 @@
-Necesito obtener tan solamente las solicitudes con estado EN_PEDIDO pero no todas si no un grupo especifico que para llegar, tiene que hacer la relacion de la tabla intermedia para saber todos los id_pedido con los id_pedido podemos obtener todas las OPs asociadas al id_pedido con la OP que es Orden Pedido tenemos que filtrar por los estados CONFIRMADA (alguna tiene el valor recibido true indicando que se recibio en abastecimiento) y RECEBIDA (significa que la OP que abarca toda la semana se entrego), pero necesitaremos la entrada real que es consultando el movimiento, como indica CONTEXTO_INVENTARIO_REAL.md. PERO ESTOY ME DANDO CUENTA QUE NO LOGRARE OBTENER EXACTAMENTE LAS SOLICITUDES CON EL ESTADO EN_CURSO QUE ESTAN EN LA OPS CONFIRMADAS (QUE TIENE EL BOLLEANO TRUE DEL ATRIBUTO recebida Y EL ESTADO RECEBIDA, PORQUE AL MOMENTO DE CREAR LA ORDEN NO ASOCIAMOS LAS IDS DE SOLICITUD PARA EL DIA DE LA SEMANA ESPECIFICO! ASI QUE NECESITO GRAN AYUDA Y ANALISIS, PORQUE ESTAS SOLICITUDES CON ESTE ESTADO EN ESTE GRUPO SIGNIFICA QUE PUEDO CONTAR TODAS ESTAS SOLICITUDES Y RESTAR POR LA CANTIDAD QUE HAY EN INVENTARIO Y BODEGA DE TRANSITO DESCOBRINDO ASI QUE PRODUCTOS TENGO DISPONIBLES QUE NO ESTA ASOCIADAS A NINGUNA SOLICITUD
+Downloaded from central: https://repo.maven.apache.org/maven2/org/codehaus/plexus/plexus-utils/3.5.0/plexus-utils-3.5.0.jar (267 kB at 3.9 MB/s)
+#15 18.97 Downloading from central: https://repo.maven.apache.org/maven2/org/springframework/boot/spring-boot-configuration-processor/3.2.0/spring-boot-configuration-processor-3.2.0.pom
+#15 18.99 Progress (1): 1.0 kB
+Progress (1): 1.9 kB
+                    
+Downloaded from central: https://repo.maven.apache.org/maven2/org/springframework/boot/spring-boot-configuration-processor/3.2.0/spring-boot-configuration-processor-3.2.0.pom (1.9 kB at 78 kB/s)
+#15 19.00 Downloading from central: https://repo.maven.apache.org/maven2/org/springframework/boot/spring-boot-configuration-processor/3.2.0/spring-boot-configuration-processor-3.2.0.jar
+#15 19.02 Progress (1): 7.7/122 kB
+Progress (1): 11/122 kB 
+Progress (1): 28/122 kB
+Progress (1): 44/122 kB
+Progress (1): 61/122 kB
+Progress (1): 77/122 kB
+Progress (1): 93/122 kB
+Progress (1): 110/122 kB
+Progress (1): 122 kB    
+                    
+Downloaded from central: https://repo.maven.apache.org/maven2/org/springframework/boot/spring-boot-configuration-processor/3.2.0/spring-boot-configuration-processor-3.2.0.jar (122 kB at 4.2 MB/s)
+#15 19.08 [INFO] Changes detected - recompiling the module! :source
+release 21] to target/classes
+#15 30.89 [WARNING] /app/backend/src/main/java/KuHub/modules/gestion_inventario/dtos/response/dto/MotionFilterRequestDTO.java:[30,20] @Builder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+#15 30.89 [WARNING] /app/backend/src/main/java/KuHub/modules/gestion_proveedor/controller/ProveedorController.java:[204,48] deprecated item is not annotated with @Deprecated
+#15 30.89 [INFO] /app/backend/src/main/java/KuHub/config/security/filter/JwtAuthenticationFilter.java: /app/backend/src/main/java/KuHub/config/security/filter/JwtAuthenticationFilter.java uses unchecked or unsafe operations.
+#15 30.89 [INFO] /app/backend/src/main/java/KuHub/config/security/filter/JwtAuthenticationFilter.java: Recompile with -Xlint:unchecked for details.
+#15 30.89 [INFO] 
+#15 30.90 [INFO] --- resources:3.3.1:testResources (default-testResources) @ backend ---
+#15 30.90 [INFO] skip non existing resourceDirectory /app/backend/src/test/resources
+#15 30.90 [INFO] 
+#15 30.90 [INFO] --- compiler:3.11.0:testCompile (default-testCompile) @ backend ---
+#15 30.92 [INFO] Changes detected - recompiling the module! :dependency
+release 21] to target/test-classes
+#15 32.34 [INFO] /app/backend/src/test/java/KuHub/modules/gestion_solicitud/services/SolicitudServiceImplTest.java: /app/backend/src/test/java/KuHub/modules/gestion_solicitud/services/SolicitudServiceImplTest.java uses unchecked or unsafe operations.
+#15 32.34 [INFO] /app/backend/src/test/java/KuHub/modules/gestion_solicitud/services/SolicitudServiceImplTest.java: Recompile with -Xlint:unchecked for details.
+#15 32.34 [INFO] -------------------------------------------------------------
+#15 32.34 [ERROR] COMPILATION ERROR : 
+#15 32.34 [INFO] -------------------------------------------------------------
+#15 32.34 [ERROR] /app/backend/src/test/java/KuHub/modules/gestion_inventario/services/InventarioServiceImplTest.java:[232,13] constructor ItemRequest in record KuHub.modules.gestion_inventario.dtos.response.record.BulkInventoryProcess.ItemRequest cannot be applied to given types;
+#15 32.34   required: java.lang.Integer,java.math.BigDecimal,java.math.BigDecimal,java.lang.String,java.lang.Integer,java.lang.Integer,java.lang.Integer,java.lang.Integer
+#15 32.34   found:    int,java.math.BigDecimal,java.math.BigDecimal,java.lang.String
+#15 32.34   reason: actual and formal argument lists differ in length
+#15 32.34 [INFO] 1 error
+#15 32.34 [INFO] -------------------------------------------------------------
+#15 32.34 [INFO] ------------------------------------------------------------------------
+#15 32.34 [INFO] Reactor Summary for KuHub Monolitico Project 1.0-SNAPSHOT:
+#15 32.34 [INFO] 
+#15 32.35 [INFO] KuHub Monolitico Project ........................... SUCCESS [  0.397 s]
+#15 32.35 [INFO] backend ............................................ FAILURE [ 26.752 s]
+#15 32.35 [INFO] ------------------------------------------------------------------------
+#15 32.35 [INFO] BUILD FAILURE
+#15 32.35 [INFO] ------------------------------------------------------------------------
+#15 32.35 [INFO] Total time:  30.628 s
+#15 32.35 [INFO] Finished at: 2026-06-04T01:53:49Z
+#15 32.35 [INFO] ------------------------------------------------------------------------
+#15 32.35 [ERROR] Failed to execute goal org.apache.maven.plugins:maven-compiler-plugin:3.11.0:testCompile (default-testCompile) on project backend: Compilation failure
+#15 32.35 [ERROR] /app/backend/src/test/java/KuHub/modules/gestion_inventario/services/InventarioServiceImplTest.java:[232,13] constructor ItemRequest in record KuHub.modules.gestion_inventario.dtos.response.record.BulkInventoryProcess.ItemRequest cannot be applied to given types;
+#15 32.35 [ERROR]   required: java.lang.Integer,java.math.BigDecimal,java.math.BigDecimal,java.lang.String,java.lang.Integer,java.lang.Integer,java.lang.Integer,java.lang.Integer
+#15 32.35 [ERROR]   found:    int,java.math.BigDecimal,java.math.BigDecimal,java.lang.String
+#15 32.35 [ERROR]   reason: actual and formal argument lists differ in length
+#15 32.35 [ERROR] 
+#15 32.35 [ERROR] -> [Help 1]
+#15 32.35 [ERROR] 
+#15 32.35 [ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+#15 32.36 [ERROR] Re-run Maven using the -X switch to enable full debug logging.
+#15 32.36 [ERROR] 
+#15 32.36 [ERROR] For more information about the errors and possible solutions, please read the following articles:
+#15 32.36 [ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoFailureException
+#15 32.36 [ERROR] 
+#15 32.36 [ERROR] After correcting the problems, you can resume the build with the command
+#15 32.36 [ERROR]   mvn <args> -rf :backend
+#15 ERROR: process "/bin/sh -c mvn clean package -pl backend -am -DskipTests" did not complete successfully: exit code: 1
+------
+ > [build 5/5] RUN mvn clean package -pl backend -am -DskipTests:
+Error: ERROR] -> [Help 1]
+Error: ERROR] 
+Error: ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+Error: ERROR] Re-run Maven using the -X switch to enable full debug logging.
+Error: ERROR] 
+Error: ERROR] For more information about the errors and possible solutions, please read the following articles:
+Error: ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoFailureException
+Error: ERROR] 
+Error: ERROR] After correcting the problems, you can resume the build with the command
+Error: ERROR]   mvn <args> -rf :backend
+------
+Dockerfile:12
+--------------------
+  10 |     
+  11 |     # 3. Construimos solo el backend, pero con acceso al padre
+  12 | >>> RUN mvn clean package -pl backend -am -DskipTests
+  13 |     
+  14 |     # ETAPA 2: Run
+--------------------
+ERROR: failed to build: failed to solve: process "/bin/sh -c mvn clean package -pl backend -am -DskipTests" did not complete successfully: exit code: 1
