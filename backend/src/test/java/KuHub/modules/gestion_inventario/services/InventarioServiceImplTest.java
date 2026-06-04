@@ -230,7 +230,8 @@ class InventarioServiceImplTest {
 
         var requests = java.util.List.of(
             new KuHub.modules.gestion_inventario.dtos.response.record.BulkInventoryProcess.ItemRequest(
-                1, BigDecimal.valueOf(50), BigDecimal.valueOf(100), "ENTRADA_INVENTARIO"
+                1, BigDecimal.valueOf(50), BigDecimal.valueOf(100), "ENTRADA_INVENTARIO",
+                null, null, null, null
             )
         );
 
