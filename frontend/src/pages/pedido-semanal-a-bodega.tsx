@@ -93,6 +93,7 @@ const PedidoSemanalABodegaPage: React.FC = () => {
   const nextPageRef = React.useRef<number>(2);
   const isLoadingMoreRef = React.useRef<boolean>(false);
   const [isLoadingMore, setIsLoadingMore] = React.useState<boolean>(false);
+  const tableScrollRef = React.useRef<HTMLDivElement>(null);
   const [recetaCounts, setRecetaCounts] = React.useState<IPedidoSemanaBodegaCountResponse>({
     totalPedidos: 0,
     total_activos: 0,
@@ -196,23 +197,26 @@ const PedidoSemanalABodegaPage: React.FC = () => {
   }, [totalPages, toast, filterIdSemana, filterIdAsignatura, searchTerm]);
 
   React.useEffect(() => {
+    // El scroll vertical ahora vive dentro del contenedor de la tabla (caja de altura fija),
+    // no en la ventana. Escuchamos ese contenedor para disparar la carga infinita.
+    const el = tableScrollRef.current;
+    if (!el) return;
+
     const onScroll = () => {
       // Si ya está cargando, salir
       if (isLoadingMoreRef.current) return;
 
-      const scrollY = window.scrollY;
-      const windowHeight = window.innerHeight;
-      const fullHeight = document.documentElement.scrollHeight;
+      const { scrollTop, clientHeight, scrollHeight } = el;
 
-      if (scrollY + windowHeight > fullHeight - 500) {
+      if (scrollTop + clientHeight > scrollHeight - 500) {
         if (nextPageRef.current <= totalPages) {
           cargarMasRecetas();
         }
       }
     };
 
-    window.addEventListener('scroll', onScroll, { passive: true });
-    return () => window.removeEventListener('scroll', onScroll);
+    el.addEventListener('scroll', onScroll, { passive: true });
+    return () => el.removeEventListener('scroll', onScroll);
   }, [totalPages, searchTerm, cargarMasRecetas]);
 
   // Lógica de búsqueda con debounce desde el backend
@@ -633,12 +637,16 @@ const PedidoSemanalABodegaPage: React.FC = () => {
         {/* Tabla */}
         <Card className="shadow-sm border border-default-200 dark:border-default-100 bg-white dark:bg-content1 mx-4">
           <CardBody className="p-0">
+            {/* Caja de altura fija: scroll vertical interno + barra horizontal siempre visible.
+                min-w-[850px] en la tabla fuerza la barra horizontal cuando no cabe (zoom / pantalla angosta). */}
+            <div ref={tableScrollRef} className="overflow-auto max-h-[calc(100vh-180px)] min-h-[300px] rounded-xl">
             <Table
               aria-label="Tabla de pedidos semanales"
               removeWrapper
               layout="fixed"
               classNames={{
-                th: "bg-default-100 dark:bg-default-50/20 text-default-500 font-bold uppercase text-xs h-12",
+                table: "min-w-[850px]",
+                th: "bg-default-100 dark:bg-default-100 text-default-500 font-bold uppercase text-xs h-12 sticky top-0 z-20",
                 td: "py-3 border-b border-default-50 dark:border-default-50/10 group-data-[last=true]:border-none px-4",
               }}
               bottomContent={
@@ -761,6 +769,7 @@ const PedidoSemanalABodegaPage: React.FC = () => {
                 ))}
               </TableBody>
             </Table>
+            </div>
           </CardBody>
         </Card>
       </motion.div>
@@ -1671,7 +1680,7 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
     };
 
     return (
-      <div className="space-y-6">
+      <div className="space-y-6 min-w-0">
         {/* === SECCIÓN: Información General === */}
         <div>
           <div className="flex items-center gap-2 mb-4">
@@ -1942,15 +1951,15 @@ const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
           {vistaTabla ? (
             // === VISTA TABLA ===
             <div className="space-y-3">
-              <div className="overflow-x-auto rounded-lg border border-default-200 dark:border-default-100">
-                <table className="w-full text-sm" style={{ tableLayout: 'fixed' }}>
-                  <thead className="bg-warning-50 dark:bg-warning-900/20">
+              <div className="overflow-x-auto overflow-y-auto max-h-72 rounded-lg border border-default-200 dark:border-default-100">
+                <table className="min-w-[900px] w-full text-sm table-fixed">
+                  <thead className="bg-warning-50 dark:bg-warning-900/20 sticky top-0 z-10">
                     <tr>
-                      <th className="text-center py-3 px-4 font-bold text-warning-700 dark:text-warning-400 w-[5%]">#</th>
-                      <th className="text-center py-3 px-4 font-bold text-warning-700 dark:text-warning-400 w-[28%] truncate">Producto</th>
-                      <th className="text-center py-3 px-4 font-bold text-warning-700 dark:text-warning-400 w-[27%] truncate">Cantidad</th>
-                      <th className="text-center py-3 px-4 font-bold text-warning-700 dark:text-warning-400 w-[24%] truncate">Observación</th>
-                      <th className="text-center py-3 px-4 font-bold text-warning-700 dark:text-warning-400 w-[5%]"></th>
+                      <th className="text-center py-3 px-4 font-bold text-warning-700 dark:text-warning-400 w-[60px]">#</th>
+                      <th className="text-center py-3 px-4 font-bold text-warning-700 dark:text-warning-400 w-[280px]">Producto</th>
+                      <th className="text-center py-3 px-4 font-bold text-warning-700 dark:text-warning-400 w-[240px]">Cantidad</th>
+                      <th className="text-center py-3 px-4 font-bold text-warning-700 dark:text-warning-400 w-[240px]">Observación</th>
+                      <th className="text-center py-3 px-4 font-bold text-warning-700 dark:text-warning-400 w-[80px]"></th>
                     </tr>
                   </thead>
                   <tbody>
