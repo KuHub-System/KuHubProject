@@ -122,10 +122,12 @@ public class SeccionServiceImp implements SeccionService{
          * La tabla docente_seccion es M:M por diseño para escalabilidad futura,
          * pero el servicio restringe la creación a una única asignación por sección.
          */
-        DocenteSeccion newTeaching = new DocenteSeccion();
-        newTeaching.setSeccion(savedSection);
-        newTeaching.setIdUsuario(request.getIdUsuarioDocente());
-        docenteSeccionRepository.save(newTeaching);
+        if (request.getIdUsuarioDocente() != null && request.getIdUsuarioDocente() > 0) {
+            DocenteSeccion newTeaching = new DocenteSeccion();
+            newTeaching.setSeccion(savedSection);
+            newTeaching.setIdUsuario(request.getIdUsuarioDocente());
+            docenteSeccionRepository.save(newTeaching);
+        }
 
         return true;
     }
@@ -253,7 +255,7 @@ public class SeccionServiceImp implements SeccionService{
         // La tabla docente_seccion es M:M por diseño (escalabilidad futura),
         // pero aquí se controla a nivel de aplicación que solo exista una asignación.
         // ==========================================================
-        if (request.getIdUsuarioDocente() != null) {
+        if (request.getIdUsuarioDocente() != null && request.getIdUsuarioDocente() > 0) {
             Optional<DocenteSeccion> asignacionExistente =
                     docenteSeccionRepository.findBySeccion_IdSeccion(oldSeccion.getIdSeccion());
 

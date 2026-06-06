@@ -28,7 +28,9 @@ public record SolicitationManagement(
         String observaciones,
         List<ProductDetailDTO> productos,
         CourseDetailsDTO asignaturaDetalle,
-        String motivoRechazo
+        String motivoRechazo,
+        Integer idPedido,
+        Boolean tieneOrdenPedidoActiva
 ) {
 
     // ============================================================================

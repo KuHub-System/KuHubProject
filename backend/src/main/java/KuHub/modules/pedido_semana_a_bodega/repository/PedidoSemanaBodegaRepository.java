@@ -211,10 +211,10 @@ public interface PedidoSemanaBodegaRepository extends JpaRepository<PedidoSemana
         UPDATE pedido_semana_bodega
         SET estado_pedido = (
             CASE
-                WHEN estado_pedido = 'ACTIVO' THEN 'INACTIVO'::estado_pedido_semana_bodega
-                ELSE 'ACTIVO'::estado_pedido_semana_bodega
+                WHEN estado_pedido = 'ACTIVO' THEN 'INACTIVO'
+                ELSE 'ACTIVO'
             END
-        )
+        )::estado_pedido_semana_bodega_type
         WHERE id_pedido_semana_bodega = :idPedidoSemanaBodega
         """, nativeQuery = true)
     int toggleRecipeStatus(@Param("idPedidoSemanaBodega") Integer idPedidoSemanaBodega);

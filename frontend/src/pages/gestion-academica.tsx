@@ -421,19 +421,17 @@ const GestionAsignaturasPage: React.FC = () => {
                 <Card key={asignatura.id} className="shadow-sm bg-white dark:bg-content1">
                   <CardBody className="p-0">
                     {/* Fila principal de la asignatura */}
-                    <div className="flex items-center justify-between p-4 border-b border-default-200">
+                    <div
+                      className="flex items-center justify-between p-4 border-b border-default-200 cursor-pointer hover:bg-default-50 dark:hover:bg-default-100/10 transition-colors select-none"
+                      onClick={() => toggleRowExpansion(asignatura.id)}
+                    >
                       <div className="flex items-center gap-4">
-                        <Button
-                          isIconOnly
-                          variant="light"
-                          size="sm"
-                          onPress={() => toggleRowExpansion(asignatura.id)}
-                        >
+                        <div className="w-8 h-8 flex items-center justify-center">
                           <Icon
                             icon={expandedRows.has(asignatura.id) ? "lucide:chevron-down" : "lucide:chevron-right"}
                             className="text-default-400"
                           />
-                        </Button>
+                        </div>
                         <div>
                           <div className="flex items-center gap-2">
                             <h3 className="font-semibold text-lg">{asignatura.nombre}</h3>
@@ -459,7 +457,7 @@ const GestionAsignaturasPage: React.FC = () => {
                         >
                           {asignatura.secciones.filter((s: ISeccion) => s.estado === 'ACTIVA').length} activas
                         </Chip>
-                        <div className="flex gap-2">
+                        <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
                           {ramos_Editar && (
                           <Button
                             isIconOnly
@@ -467,7 +465,7 @@ const GestionAsignaturasPage: React.FC = () => {
                             size="md"
                             onPress={() => editarAsignatura(asignatura)}
                           >
-                            <Icon icon="lucide:edit" width={18} className="text-primary" />
+                            <Icon icon="lucide:edit" width={18} className="text-default-400 hover:text-primary" />
                           </Button>
                           )}
                           {ramos_Eliminar && (
@@ -475,10 +473,9 @@ const GestionAsignaturasPage: React.FC = () => {
                             isIconOnly
                             variant="light"
                             size="md"
-                            color="danger"
                             onPress={() => eliminarAsignatura(asignatura.id, asignatura.nombre)}
                           >
-                            <Icon icon="lucide:trash-2" width={18} />
+                            <Icon icon="lucide:trash-2" width={18} className="text-default-400 hover:text-danger" />
                           </Button>
                           )}
                         </div>
@@ -545,12 +542,12 @@ const GestionAsignaturasPage: React.FC = () => {
                                     <div className="py-2.5 border-b border-default-100 flex gap-1 justify-center items-start">
                                       {ramos_Editar && (
                                       <Button isIconOnly variant="light" size="md" onPress={() => editarSeccion(asignatura, seccion)}>
-                                        <Icon icon="lucide:edit" width={18} className="text-primary" />
+                                        <Icon icon="lucide:edit" width={18} className="text-default-400 hover:text-primary" />
                                       </Button>
                                       )}
                                       {ramos_Eliminar && (
-                                      <Button isIconOnly variant="light" size="md" color="danger" onPress={() => eliminarSeccion(asignatura.id, seccion.id, seccion.numeroSeccion)}>
-                                        <Icon icon="lucide:trash-2" width={18} />
+                                      <Button isIconOnly variant="light" size="md" onPress={() => eliminarSeccion(asignatura.id, seccion.id, seccion.numeroSeccion)}>
+                                        <Icon icon="lucide:trash-2" width={18} className="text-default-400 hover:text-danger" />
                                       </Button>
                                       )}
                                     </div>

@@ -2,6 +2,7 @@ package KuHub.modules.gestion_solicitud.service;
 
 import KuHub.modules.gestion_solicitud.dtos.request.record.ChangeSolicitationStatus;
 import KuHub.modules.gestion_solicitud.dtos.request.record.MassiveSolicitation;
+import KuHub.modules.gestion_solicitud.dtos.request.record.RejectEnPedidoDTO;
 import KuHub.modules.gestion_solicitud.dtos.respose.record.CourseForSolicitation;
 import KuHub.modules.gestion_solicitud.dtos.respose.record.DashboardConsolidado;
 import KuHub.modules.gestion_solicitud.dtos.respose.record.AbastecimientoBodegaDTO;
@@ -21,6 +22,7 @@ public interface SolicitudService {
     List<SolicitationManagement> findSolicitationsPerWeekRaw(DateRangeDTO request);
     DashboardConsolidado obtenerDashboard(DateRangeDTO request);
     boolean changeMassiveStatus(ChangeSolicitationStatus request);
+    boolean rechazarSolicitudEnPedido(RejectEnPedidoDTO request);
     AbastecimientoBodegaDTO obtenerAbastecimientoBodega(DateRangeDTO request);
     int marcarEnviadosBodega(List<Integer> ids);
 }

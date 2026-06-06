@@ -2410,7 +2410,7 @@ const GestionProveedoresPage: React.FC = () => {
                               title="Ver detalle"
                               onPress={() => handleVerProveedor(proveedor)}
                             >
-                              <Icon icon="lucide:eye" className="text-primary" width={17} />
+                              <Icon icon="lucide:eye" className="text-default-400 hover:text-success" width={17} />
                             </Button>
                             {prov_Editar && (
                               <Button
@@ -2420,7 +2420,7 @@ const GestionProveedoresPage: React.FC = () => {
                                 title="Editar proveedor"
                                 onPress={() => handleEditarProveedor(proveedor)}
                               >
-                                <Icon icon="lucide:edit" className="text-default-500 hover:text-secondary" width={17} />
+                                <Icon icon="lucide:edit" className="text-default-400 hover:text-primary" width={17} />
                               </Button>
                             )}
                             {prov_Editar && (
