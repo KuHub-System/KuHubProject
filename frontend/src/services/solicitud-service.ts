@@ -169,9 +169,11 @@ export interface ISolicitudPorSemanaResponse {
   idReceta: number;
   nombreReceta: string;
   fechaSolicitada: string;    // "YYYY-MM-DD"
-  estadoSolicitud: string;    // "PENDIENTE" | "ACEPTADA" | "RECHAZADA" | "PROCESADO"
+  estadoSolicitud: string;    // "PENDIENTE" | "ACEPTADA" | "RECHAZADA" | "PROCESADO" | "EN_PEDIDO"
   motivoRechazo?: string;
   observaciones?: string;
+  idPedido?: number | null;            // pedido al que está vinculada (solo EN_PEDIDO)
+  tieneOrdenPedidoActiva?: boolean;    // true si el pedido ya tiene una OP vigente (no CANCELADA)
   productos: IProductoSolicitudResponse[];
   asignaturaDetalle: {
     id_asignatura: number;
@@ -213,6 +215,22 @@ export const cambiarEstadoMasivoService = async (
   payload: IChangeMassiveStatusDTO
 ): Promise<boolean> => {
   const response = await api.patch<boolean>('/solicitud/change-massive-status', payload);
+  return response.data;
+};
+
+export interface IRejectEnPedidoDTO {
+  idSolicitud: number;
+  motivo: string;
+}
+
+/**
+ * Rechaza una solicitud EN_PEDIDO: resta automáticamente sus cantidades del pedido asociado
+ * y la desvincula. El backend lanza error si el pedido ya tiene una Orden de Pedido vigente.
+ */
+export const rechazarSolicitudEnPedidoService = async (
+  payload: IRejectEnPedidoDTO
+): Promise<boolean> => {
+  const response = await api.patch<boolean>('/solicitud/reject-en-pedido', payload);
   return response.data;
 };
 

@@ -21,4 +21,25 @@ public interface DetallePedidoRepository extends JpaRepository<DetallePedido, In
         DO UPDATE SET cant_producto_pedido = detalle_pedido.cant_producto_pedido + EXCLUDED.cant_producto_pedido
         """, nativeQuery = true)
     void upsertDetallesFromSolicitud(@Param("idPedido") Integer idPedido, @Param("idSolicitud") Integer idSolicitud);
+
+    /** Resta del pedido las cantidades de los productos de una solicitud (operación inversa al upsert). */
+    @Modifying
+    @Query(value = """
+        UPDATE detalle_pedido dp
+        SET cant_producto_pedido = dp.cant_producto_pedido - ds.cant_producto_solicitud
+        FROM detalle_solicitud ds
+        WHERE ds.id_solicitud = :idSolicitud
+          AND dp.id_pedido    = :idPedido
+          AND dp.id_producto  = ds.id_producto
+        """, nativeQuery = true)
+    void subtractDetallesFromSolicitud(@Param("idPedido") Integer idPedido, @Param("idSolicitud") Integer idSolicitud);
+
+    /** Elimina los detalles de un pedido que quedaron en cero o negativo tras restar una solicitud. */
+    @Modifying
+    @Query(value = """
+        DELETE FROM detalle_pedido
+        WHERE id_pedido = :idPedido
+          AND cant_producto_pedido <= 0
+        """, nativeQuery = true)
+    void deleteDetallesVaciosByPedido(@Param("idPedido") Integer idPedido);
 }

@@ -22,6 +22,7 @@ import {
   IMotionFilterRequest
 } from '../services/movimiento-service';
 import { usePageTitle } from '../hooks/usePageTitle';
+import { useLocation } from 'react-router-dom';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -69,6 +70,13 @@ const renderTipoMovimiento = (tipo: string) => {
 const MovimientosProductoPage: React.FC = () => {
   usePageTitle('Movimientos', 'Historial de movimientos de inventario y bodega de tránsito.', 'lucide:history');
 
+  const location = useLocation();
+  const initialNombre = React.useMemo(
+    () => new URLSearchParams(location.search).get('nombre') ?? '',
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
+  );
+
   // Data state
   const [movimientos, setMovimientos] = React.useState<IMotionAnswer[]>([]);
   const [isLoading, setIsLoading] = React.useState(false);
@@ -80,7 +88,7 @@ const MovimientosProductoPage: React.FC = () => {
   const totalPagesRef = React.useRef<number>(1);
 
   // Filter state
-  const [nombreProducto, setNombreProducto] = React.useState('');
+  const [nombreProducto, setNombreProducto] = React.useState(initialNombre);
   const [nombreResponsable, setNombreResponsable] = React.useState('');
   const [tipoMovimiento, setTipoMovimiento] = React.useState<IMotionFilterRequest['tipoMovimiento']>('TODOS');
   const [orden, setOrden] = React.useState<IMotionFilterRequest['orden']>('MAS_RECIENTES');
@@ -172,14 +180,14 @@ const MovimientosProductoPage: React.FC = () => {
   React.useEffect(() => {
     setDebouncedRequest({
       page: 1,
-      nombreProducto: '',
+      nombreProducto: initialNombre,
       nombreResponsable: '',
       tipoMovimiento: 'TODOS',
       orden: 'MAS_RECIENTES',
       fechaInicio: null,
       fechaFin: null
     });
-  }, []);
+  }, [initialNombre]);
 
   return (
     <div className="container mx-auto px-4 py-8 space-y-6 font-sans">

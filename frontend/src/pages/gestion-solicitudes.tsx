@@ -22,6 +22,7 @@ import {
   obtenerSolicitudesPorSemanaService,
   ISolicitudPorSemanaResponse,
   cambiarEstadoMasivoService,
+  rechazarSolicitudEnPedidoService,
 } from '../services/solicitud-service';
 import { useModulePermission, usePermission } from '../contexts/permission-context';
 import { usePeriodoSemana } from '../contexts/periodo-semana-context';
@@ -58,6 +59,8 @@ interface ISolicitudGestion {
   estado: EstadoSolicitud;
   motivoRechazo?: string;
   observacion?: string;
+  idPedido?: number | null;
+  tieneOrdenPedidoActiva?: boolean;
   detalles: IDetalleSolicitud[];
 }
 
@@ -98,6 +101,8 @@ const mapSolicitud = (r: ISolicitudPorSemanaResponse): ISolicitudGestion => {
     estado:           ESTADO_MAP[r.estadoSolicitud?.toUpperCase()] ?? 'Pendiente',
     motivoRechazo:    r.motivoRechazo,
     observacion:      r.observaciones,
+    idPedido:         r.idPedido,
+    tieneOrdenPedidoActiva: r.tieneOrdenPedidoActiva,
     detalles:         (r.productos ?? []).map((p, i) => ({
       idProducto:      i,
       nombreProducto:  p.nombreProducto,
@@ -112,8 +117,13 @@ const mapSolicitud = (r: ISolicitudPorSemanaResponse): ISolicitudGestion => {
 // HELPERS
 // ─────────────────────────────────────────────────────────────────────────────
 
-const fmtFecha = (iso: string) =>
-  new Date(iso + 'T00:00:00').toLocaleDateString('es-CL', { weekday: 'short', day: 'numeric', month: 'short' });
+const MESES_RE = /\b(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre|ene|feb|mar|abr|may|jun|jul|ago|sep|oct|nov|dic)\b/gi;
+const cap = (s: string) => (s.charAt(0).toUpperCase() + s.slice(1)).replace(MESES_RE, m => m.charAt(0).toUpperCase() + m.slice(1).toLowerCase());
+
+const fmtFecha = (iso: string) => {
+  const s = new Date(iso + 'T00:00:00').toLocaleDateString('es-CL', { weekday: 'short', day: 'numeric', month: 'short' });
+  return cap(s);
+};
 
 const fmtFechaCorta = (iso: string) => {
   const d = new Date(iso + 'T00:00:00');
@@ -173,9 +183,11 @@ const GestionSolicitudesPage: React.FC = () => {
   // ── Modales ──
   const detalle  = useDisclosure();
   const rechazar = useDisclosure();
+  const rechazarPedido = useDisclosure();
   const revertir = useDisclosure();
   const [selSol,            setSelSol]            = React.useState<ISolicitudGestion | null>(null);
   const [motivoRechazo,     setMotivoRechazo]     = React.useState('');
+  const [motivoRechazoPedido, setMotivoRechazoPedido] = React.useState('');
   const [revertirAccion,    setRevertirAccion]     = React.useState<'pendiente' | 'rechazar' | 'aceptar'>('pendiente');
   const [revertirDesde,     setRevertirDesde]      = React.useState<'Aceptada' | 'Rechazada'>('Aceptada');
   const [revertirConfirm,   setRevertirConfirm]   = React.useState('');
@@ -305,6 +317,25 @@ const GestionSolicitudesPage: React.FC = () => {
     setIsSaving(false);
   };
 
+  // ── Rechazo de solicitud EN_PEDIDO (resta valores del pedido) ──
+  const abrirRechazarPedido = (sol: ISolicitudGestion) => {
+    setSelSol(sol); setMotivoRechazoPedido(''); rechazarPedido.onOpen();
+  };
+
+  const confirmarRechazoPedido = async () => {
+    if (!selSol || !motivoRechazoPedido.trim()) return;
+    setIsSaving(true);
+    try {
+      await rechazarSolicitudEnPedidoService({ idSolicitud: selSol.id, motivo: motivoRechazoPedido.trim() });
+      toast.warning(`Solicitud §${selSol.nombreSeccion} rechazada y restada del pedido`);
+      rechazarPedido.onClose();
+      recargarSolicitudes();
+    } catch (e: any) {
+      toast.error(e?.response?.data ?? 'No se pudo rechazar: el pedido ya tiene una Orden de Pedido vigente.');
+    }
+    setIsSaving(false);
+  };
+
   const aceptarSeleccionados = async () => {
     const ids = Array.from(seleccionados);
     if (ids.length === 0) return;
@@ -361,7 +392,7 @@ const GestionSolicitudesPage: React.FC = () => {
       @media print { body { padding: 0; margin: 0; } }
     </style></head><body>
     <h2 style="text-align:center">Vista previa para Consolidado — Detalle Solicitud</h2>
-    <p class="sub">${sol.nombreAsignatura} · §${sol.nombreSeccion} · ${new Date(sol.fechaClase + 'T00:00:00').toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
+    <p class="sub">${sol.nombreAsignatura} · §${sol.nombreSeccion} · ${cap(new Date(sol.fechaClase + 'T00:00:00').toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long' }))}</p>
     <div class="grid">
       <div class="field"><label>Receta</label><span>${sol.nombreReceta}</span></div>
       <div class="field"><label>Docente</label><span>${sol.nombreDocente}</span></div>
@@ -495,9 +526,9 @@ const GestionSolicitudesPage: React.FC = () => {
 
             {semanaActual && (
               <p className="text-xs text-default-400 shrink-0">
-                {new Date(semanaActual.fechaInicio + 'T00:00:00').toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long' })}
+                {cap(new Date(semanaActual.fechaInicio + 'T00:00:00').toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long' }))}
                 {' al '}
-                {new Date(semanaActual.fechaFin + 'T00:00:00').toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long' })}
+                {cap(new Date(semanaActual.fechaFin + 'T00:00:00').toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long' }))}
                 {semanaId === defaultSemanaId && defaultSemanaId && (
                   <span className="text-success ml-1 font-medium">· en curso</span>
                 )}
@@ -565,8 +596,9 @@ const GestionSolicitudesPage: React.FC = () => {
                 Aceptar {seleccionados.size} seleccionada{seleccionados.size > 1 ? 's' : ''}
               </Button>
             )}
-            {/* Aceptar todas pendientes */}
-            {sol_Editar && !haySeleccionados && contadores.pendientes > 0 && (
+            {/* Aceptar todas pendientes — solo en Todas o Pendiente */}
+            {sol_Editar && !haySeleccionados && contadores.pendientes > 0
+              && (filtroEstado === 'Todas' || filtroEstado === 'Pendiente') && (
               <Button size="sm" color="success" variant="flat" isLoading={isSaving}
                 onPress={aceptarTodasPendientes}
                 startContent={!isSaving && <Icon icon="lucide:check-check" width={14} />}
@@ -709,6 +741,15 @@ const GestionSolicitudesPage: React.FC = () => {
 
                           {/* Estado + acciones */}
                           <div className="flex items-center gap-2 shrink-0" onClick={e => e.stopPropagation()}>
+                            {sol_Editar && sol.estado === 'En Pedido' && !sol.tieneOrdenPedidoActiva && (
+                              <Tooltip content="Rechazar (resta del pedido)">
+                                <Button isIconOnly size="sm" color="danger" variant="flat"
+                                  onPress={() => abrirRechazarPedido(sol)}>
+                                  <Icon icon="lucide:x" width={15} />
+                                </Button>
+                              </Tooltip>
+                            )}
+
                             <Chip size="sm" color={cfg.color} variant="flat"
                               startContent={<Icon icon={cfg.icon} width={11} />}
                             >
@@ -778,7 +819,7 @@ const GestionSolicitudesPage: React.FC = () => {
       </Card>
 
       {/* ── Modal Detalle ── */}
-      <Modal isOpen={detalle.isOpen} onOpenChange={detalle.onOpenChange} size="3xl" scrollBehavior="inside">
+      <Modal isOpen={detalle.isOpen} onOpenChange={detalle.onOpenChange} size="3xl" scrollBehavior="inside" isDismissable={false}>
         <ModalContent>
           {onClose => selSol && (
             <>
@@ -965,6 +1006,13 @@ const GestionSolicitudesPage: React.FC = () => {
                   </Button>
                   </>
                 )}
+                {selSol.estado === 'En Pedido' && !selSol.tieneOrdenPedidoActiva && (
+                  <Button color="danger" variant="flat"
+                    onPress={() => { onClose(); abrirRechazarPedido(selSol); }}
+                    startContent={<Icon icon="lucide:x" width={14} />}>
+                    Rechazar
+                  </Button>
+                )}
                 <Button variant="flat" onPress={() => handleImprimir(selSol)}
                   startContent={<Icon icon="lucide:printer" width={14} />}>
                   Imprimir
@@ -1007,6 +1055,52 @@ const GestionSolicitudesPage: React.FC = () => {
                   startContent={!isSaving && <Icon icon="lucide:x-circle" width={14} />}
                 >
                   Confirmar rechazo
+                </Button>
+              </ModalFooter>
+            </>
+          )}
+        </ModalContent>
+      </Modal>
+
+      {/* ── Modal Rechazar solicitud EN_PEDIDO (resta valores del pedido) ── */}
+      <Modal isOpen={rechazarPedido.isOpen} onOpenChange={rechazarPedido.onOpenChange} size="sm" isDismissable={false}>
+        <ModalContent>
+          {onClose => selSol && (
+            <>
+              <ModalHeader className="flex items-center gap-2 text-danger">
+                <Icon icon="lucide:x-circle" width={18} />
+                Rechazar solicitud en pedido
+              </ModalHeader>
+              <ModalBody>
+                <p className="text-sm text-default-600 mb-1">
+                  <span className="font-semibold">{selSol.nombreAsignatura} §{selSol.nombreSeccion}</span>
+                  {' — '}{fmtFecha(selSol.fechaClase)}
+                </p>
+                <div className="flex items-start gap-2.5 px-3 py-2.5 rounded-xl bg-warning-50 dark:bg-warning-900/20 border border-warning-200 dark:border-warning-800">
+                  <Icon icon="lucide:alert-triangle" width={16} className="text-warning-500 shrink-0 mt-0.5" />
+                  <p className="text-xs text-warning-700 dark:text-warning-300">
+                    Esta acción <strong>restará automáticamente las cantidades de esta solicitud del pedido</strong> asociado
+                    y la desvinculará. Solo es posible mientras el pedido no tenga una Orden de Pedido vigente.
+                  </p>
+                </div>
+                <Textarea
+                  className="mt-3"
+                  label="Motivo del rechazo"
+                  placeholder="Indique el motivo para informar al docente..."
+                  value={motivoRechazoPedido}
+                  onValueChange={setMotivoRechazoPedido}
+                  minRows={3} maxRows={6} maxLength={500}
+                  isRequired variant="bordered"
+                  description={`${motivoRechazoPedido.length}/500 caracteres`}
+                />
+              </ModalBody>
+              <ModalFooter>
+                <Button variant="light" onPress={onClose}>Cancelar</Button>
+                <Button color="danger" isLoading={isSaving} isDisabled={!motivoRechazoPedido.trim()}
+                  onPress={confirmarRechazoPedido}
+                  startContent={!isSaving && <Icon icon="lucide:x-circle" width={14} />}
+                >
+                  Confirmar y restar del pedido
                 </Button>
               </ModalFooter>
             </>

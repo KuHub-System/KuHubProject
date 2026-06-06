@@ -6,11 +6,14 @@ import KuHub.modules.gestion_pedido.entity.Pedido;
 import KuHub.modules.gestion_pedido.repository.DetallePedidoRepository;
 import KuHub.modules.gestion_pedido.repository.PedidoRepository;
 import KuHub.modules.gestion_pedido.repository.PedidoSolicitudRepository;
+import KuHub.modules.gestion_orden_pedido.enums.EstadoOrdenPedido;
+import KuHub.modules.gestion_orden_pedido.repository.OrdenPedidoRepository;
 import KuHub.modules.pedido_semana_a_bodega.services.DetallePedidoSemanaBodegaService;
 import KuHub.modules.gestion_sistema.entity.GestionSistema;
 import KuHub.modules.gestion_sistema.repository.GestionSistemaRepository;
 import KuHub.modules.gestion_solicitud.dtos.request.record.ChangeSolicitationStatus;
 import KuHub.modules.gestion_solicitud.dtos.request.record.MassiveSolicitation;
+import KuHub.modules.gestion_solicitud.dtos.request.record.RejectEnPedidoDTO;
 import KuHub.modules.gestion_solicitud.dtos.respose.record.AbastecimientoBodegaDTO;
 import KuHub.modules.gestion_solicitud.exception.GestionSolicitudException;
 import KuHub.modules.gestion_solicitud.dtos.respose.record.CourseForSolicitation;
@@ -56,6 +59,8 @@ public class SolicitudServiceImp implements SolicitudService {
     private DetallePedidoRepository detallePedidoRepository;
     @Autowired
     private PedidoSolicitudRepository pedidoSolicitudRepository;
+    @Autowired
+    private OrdenPedidoRepository ordenPedidoRepository;
     @Autowired
     private GestionSistemaRepository gestionSistemaRepository;
 
@@ -186,7 +191,9 @@ public class SolicitudServiceImp implements SolicitudService {
                     row[6] != null ? row[6].toString() : "",             // observaciones
                     productos,
                     courseDetails,
-                    row[9] != null ? row[9].toString() : null            // motivoRechazo
+                    row[9] != null ? row[9].toString() : null,           // motivoRechazo
+                    row[10] != null ? ((Number) row[10]).intValue() : null, // idPedido
+                    row[11] != null && (Boolean) row[11]                 // tieneOrdenPedidoActiva
             ));
         }
         return responseList;
@@ -339,6 +346,47 @@ public class SolicitudServiceImp implements SolicitudService {
         }
 
         return idPedido;
+    }
+
+    @Override
+    @Transactional
+    public boolean rechazarSolicitudEnPedido(RejectEnPedidoDTO request) {
+        Integer idSolicitud = request.idSolicitud();
+
+        Solicitud solicitud = solicitudRepository.findById(idSolicitud)
+                .orElseThrow(() -> new GestionSolicitudException(
+                        "Solicitud con ID " + idSolicitud + " no encontrada."));
+
+        if (solicitud.getEstadoSolicitud() != Solicitud.EstadoSolicitud.EN_PEDIDO) {
+            throw new GestionSolicitudException(
+                    "Solo se pueden rechazar de esta forma solicitudes en estado EN_PEDIDO.");
+        }
+
+        Integer idPedido = pedidoSolicitudRepository.findIdPedidoByIdSolicitud(idSolicitud)
+                .orElseThrow(() -> new GestionSolicitudException(
+                        "La solicitud no está vinculada a ningún pedido."));
+
+        // Bloqueo: si el pedido ya tiene una Orden de Pedido activa NO CANCELADA, no se puede revertir
+        if (ordenPedidoRepository.existsByPedido_IdPedidoAndActivoTrueAndEstadoOrdenPedidoNot(
+                idPedido, EstadoOrdenPedido.CANCELADA)) {
+            throw new GestionSolicitudException(
+                    "No se puede rechazar la solicitud: el pedido ya tiene una Orden de Pedido vigente.");
+        }
+
+        // 1. Restar las cantidades de la solicitud del pedido y limpiar detalles que queden en cero
+        detallePedidoRepository.subtractDetallesFromSolicitud(idPedido, idSolicitud);
+        detallePedidoRepository.deleteDetallesVaciosByPedido(idPedido);
+
+        // 2. Desvincular la solicitud del pedido
+        pedidoSolicitudRepository.deleteVinculo(idPedido, idSolicitud);
+
+        // 3. Marcar la solicitud como RECHAZADA y guardar el motivo
+        solicitudRepository.updateMassiveStateSolicitation(
+                List.of(idSolicitud), Solicitud.EstadoSolicitud.RECHAZADA);
+        motivoRechazoRepository.upsertMotivo(idSolicitud, request.motivo().trim());
+
+        log.info("Solicitud {} rechazada desde EN_PEDIDO. Valores restados del pedido {}.", idSolicitud, idPedido);
+        return true;
     }
 
     /** Rechaza automáticamente solicitudes PENDIENTES con fecha vencida. Se ejecuta diariamente a las 03:00 AM. */

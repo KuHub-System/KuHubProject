@@ -2,6 +2,7 @@ package KuHub.modules.gestion_solicitud.controller;
 
 import KuHub.modules.gestion_solicitud.dtos.request.record.ChangeSolicitationStatus;
 import KuHub.modules.gestion_solicitud.dtos.request.record.MassiveSolicitation;
+import KuHub.modules.gestion_solicitud.dtos.request.record.RejectEnPedidoDTO;
 import KuHub.modules.gestion_solicitud.dtos.respose.record.CourseForSolicitation;
 import KuHub.modules.gestion_solicitud.dtos.respose.record.DashboardConsolidado;
 import KuHub.modules.gestion_solicitud.dtos.respose.record.AbastecimientoBodegaDTO;
@@ -115,6 +116,20 @@ public class SolicitudController {
         return ResponseEntity
                 .status(200)
                 .body(solicitudService.changeMassiveStatus(request));
+    }
+
+    /**
+     * Rechaza una solicitud en estado EN_PEDIDO, restando automáticamente sus cantidades del pedido
+     * asociado y desvinculándola del mismo. Solo se permite si el pedido no tiene una Orden de Pedido
+     * vigente (estado distinto a CANCELADA); de lo contrario lanza excepción de negocio.
+     * ✅ En uso: Consumido por rechazarSolicitudEnPedidoService en solicitud-service.ts.
+     */
+    @PatchMapping("/reject-en-pedido")
+    public ResponseEntity<Boolean> rechazarSolicitudEnPedido(
+            @Validated @RequestBody RejectEnPedidoDTO request) {
+        return ResponseEntity
+                .status(200)
+                .body(solicitudService.rechazarSolicitudEnPedido(request));
     }
 
     /**

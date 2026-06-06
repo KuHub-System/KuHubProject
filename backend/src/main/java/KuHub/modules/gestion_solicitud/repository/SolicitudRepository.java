@@ -204,7 +204,19 @@ public interface SolicitudRepository extends JpaRepository<Solicitud, Integer> {
             CASE WHEN so.estado_solicitud = 'RECHAZADA'
                  THEN mrs.motivo
                  ELSE NULL
-            END AS motivo_rechazo                                         -- [9]
+            END AS motivo_rechazo,                                        -- [9]
+            (
+                SELECT ps.id_pedido FROM pedido_solicitud ps
+                WHERE ps.id_solicitud = so.id_solicitud
+                LIMIT 1
+            ) AS id_pedido,                                               -- [10]
+            EXISTS (
+                SELECT 1 FROM pedido_solicitud ps
+                JOIN orden_pedido op ON op.id_pedido = ps.id_pedido
+                WHERE ps.id_solicitud = so.id_solicitud
+                  AND op.activo = TRUE
+                  AND op.estado_orden_pedido <> 'CANCELADA'
+            ) AS tiene_orden_pedido_activa                                -- [11]
         FROM solicitud so
         LEFT JOIN pedido_semana_bodega rc ON rc.id_pedido_semana_bodega = so.id_pedido_semana_bodega
         LEFT JOIN motivo_rechazo_solicitud mrs ON mrs.id_solicitud = so.id_solicitud
