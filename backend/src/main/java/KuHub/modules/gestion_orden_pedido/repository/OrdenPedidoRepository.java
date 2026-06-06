@@ -1,6 +1,7 @@
 package KuHub.modules.gestion_orden_pedido.repository;
 
 import KuHub.modules.gestion_orden_pedido.entity.OrdenPedido;
+import KuHub.modules.gestion_orden_pedido.enums.EstadoOrdenPedido;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -23,6 +24,9 @@ public interface OrdenPedidoRepository extends JpaRepository<OrdenPedido, Intege
 
     /** Verifica si existe una OP activa para un pedido (indicador del Paso 1). */
     boolean existsByPedido_IdPedidoAndActivoTrue(Integer idPedido);
+
+    /** Verifica si existe una OP activa NO CANCELADA para un pedido (bloquea el rechazo de solicitudes EN_PEDIDO). */
+    boolean existsByPedido_IdPedidoAndActivoTrueAndEstadoOrdenPedidoNot(Integer idPedido, EstadoOrdenPedido estadoOrdenPedido);
 
     // ── 2. @Query personalizados de solo lectura ──
 

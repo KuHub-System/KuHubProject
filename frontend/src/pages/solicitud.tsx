@@ -9,7 +9,7 @@ import {
   Card, CardBody, CardHeader, CardFooter,
   Button, Select, SelectItem,
   Autocomplete, AutocompleteItem,
-  Chip, Checkbox, Textarea, Input, Divider, Spinner,
+  Chip, Checkbox, Textarea, Input, Divider, Spinner, Tooltip,
   Modal, ModalContent, ModalHeader, ModalBody, ModalFooter,
   Dropdown, DropdownTrigger, DropdownMenu, DropdownItem,
 } from '@heroui/react';
@@ -732,9 +732,11 @@ const AsigCard: React.FC<AsigCardProps> = ({
                       >
                         <div className="flex items-center gap-1.5 min-w-0">
                           {item.esExtra && <Chip size="sm" color="warning" variant="flat" className="text-[9px] h-4 px-1 shrink-0">+</Chip>}
-                          <span className={`text-xs font-medium truncate ${!item.activoProducto ? 'line-through text-default-400' : ''}`}>
-                            {item.nombre}
-                          </span>
+                          <Tooltip content={item.nombre} color="foreground" className="text-xs max-w-xs">
+                            <span className={`text-xs font-medium truncate ${!item.activoProducto ? 'line-through text-default-400' : ''}`}>
+                              {item.nombre}
+                            </span>
+                          </Tooltip>
                           {!item.activoProducto && (
                             <span className="text-[9px] text-danger font-medium shrink-0 ml-1">no disponible</span>
                           )}
@@ -756,7 +758,7 @@ const AsigCard: React.FC<AsigCardProps> = ({
                           min="0" step={item.esFraccionario ? '0.001' : '1'} variant="bordered"
                           classNames={{ inputWrapper: 'h-7 bg-white dark:bg-content1 min-h-7', input: 'text-center text-xs font-bold' }} />
                         <span className="text-xs text-default-500 text-center">{item.unidad}</span>
-                        <Button isIconOnly variant="light" color="danger" size="sm" className="h-7 w-7 min-w-7"
+                        <Button isIconOnly variant="light" size="sm" className="h-7 w-7 min-w-7"
                           onPress={() => onUpdate(prev => ({
                             ...prev,
                             items: prev.items.filter(i => i.id !== item.id),
@@ -764,7 +766,7 @@ const AsigCard: React.FC<AsigCardProps> = ({
                               ? [...prev.itemsEliminadosIds, parseInt(item.id)]
                               : prev.itemsEliminadosIds,
                           }))}>
-                          <Icon icon="lucide:x" width={12} />
+                          <Icon icon="lucide:trash-2" className="text-default-400 hover:text-danger" width={16} />
                         </Button>
                       </div>
                     ))}
@@ -1150,23 +1152,6 @@ const SolicitudPage: React.FC = () => {
                   {p.anio} S{s}
                 </button>
               ))
-            )}
-            {/* Botón para recargar períodos académicos */}
-            {!sinPeriodos && periodo && (
-              <button
-                type="button"
-                onClick={() => {
-                  if (!isLoadingSemanas) {
-                    recargarPeriodos();
-                  }
-                }}
-                disabled={isLoadingSemanas}
-                className="ml-auto flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border border-default-300 bg-default-100 text-default-600 hover:bg-default-200 transition-colors cursor-pointer"
-                title="Recargar períodos académicos"
-              >
-                <Icon icon="lucide:refresh-cw" width={12} />
-                Recargar
-              </button>
             )}
           </div>
 

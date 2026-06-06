@@ -22,6 +22,11 @@ public interface PedidoSolicitudRepository extends JpaRepository<PedidoSolicitud
     @Query(value = "INSERT INTO pedido_solicitud (id_pedido, id_solicitud) VALUES (:idPedido, :idSolicitud) ON CONFLICT DO NOTHING", nativeQuery = true)
     void insertIfNotExists(@Param("idPedido") Integer idPedido, @Param("idSolicitud") Integer idSolicitud);
 
+    /** Elimina el vínculo entre una solicitud y su pedido (al rechazar una solicitud EN_PEDIDO). */
+    @Modifying
+    @Query(value = "DELETE FROM pedido_solicitud WHERE id_pedido = :idPedido AND id_solicitud = :idSolicitud", nativeQuery = true)
+    void deleteVinculo(@Param("idPedido") Integer idPedido, @Param("idSolicitud") Integer idSolicitud);
+
     /** Cuenta solicitudes vinculadas a un pedido cuyo estado NO es PROCESADO. */
     @Query(value = """
         SELECT COUNT(*)

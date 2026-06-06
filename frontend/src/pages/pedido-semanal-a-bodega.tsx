@@ -79,6 +79,9 @@ const PedidoSemanalABodegaPage: React.FC = () => {
   const [modalMode, setModalMode] = React.useState<'crear' | 'editar' | 'ver'>('crear');
   const [searchTerm, setSearchTerm] = React.useState<string>('');
 
+  // Filtro de estado (segmentado, lado cliente sobre lo ya cargado)
+  const [filterEstado, setFilterEstado] = React.useState<'todos' | 'activos' | 'inactivos'>('todos');
+
   // Filtro de semana
   const [filterIdSemana, setFilterIdSemana] = React.useState<string>('todas');
   const [filterPeriodo, setFilterPeriodo] = React.useState<{ anio: number; semestre: number } | null>(null);
@@ -101,17 +104,30 @@ const PedidoSemanalABodegaPage: React.FC = () => {
   });
 
   const { isOpen, onOpen, onOpenChange } = useDisclosure();
+  const prevPeriodoRef = React.useRef<{ anio: number; semestre: number } | null>(null);
 
   // Actualizar semanas del filtro cuando cambia el período
   React.useEffect(() => {
     if (contextPeriodo && contextSemanas.length > 0) {
       setFilterPeriodo(contextPeriodo);
       setFilterSemanas(contextSemanas);
-      // Resetear filtros de semana y asignatura cuando cambia período
-      setFilterIdSemana('todas');
-      setFilterIdAsignatura('todas');
+
+      const prev = prevPeriodoRef.current;
+      const periodoCambio = prev !== null &&
+        (prev.anio !== contextPeriodo.anio || prev.semestre !== contextPeriodo.semestre);
+
+      if (periodoCambio) {
+        // El usuario cambió el período manualmente: resetear filtros
+        setFilterIdSemana('todas');
+        setFilterIdAsignatura('todas');
+      } else if (prev === null) {
+        // Primera carga: preseleccionar la semana actual
+        setFilterIdSemana(defaultSemanaId || 'todas');
+      }
+
+      prevPeriodoRef.current = contextPeriodo;
     }
-  }, [contextPeriodo, contextSemanas]);
+  }, [contextPeriodo, contextSemanas, defaultSemanaId]);
 
   // Cargar recetas iniciales y productos (esperar a que contexto termine de cargar)
   React.useEffect(() => {
@@ -245,7 +261,11 @@ const PedidoSemanalABodegaPage: React.FC = () => {
     return () => clearTimeout(timer);
   }, [searchTerm, filterIdSemana, filterIdAsignatura, toast]);
 
-  const recetasAMostrar = recetas;
+  const recetasAMostrar = React.useMemo(() => {
+    if (filterEstado === 'todos') return recetas;
+    const objetivo = filterEstado === 'activos' ? 'Activo' : 'Inactivo';
+    return recetas.filter(r => r.estadoPedido === objetivo);
+  }, [recetas, filterEstado]);
 
   const handleNuevaReceta = () => {
     setModalMode('crear');
@@ -406,42 +426,50 @@ const PedidoSemanalABodegaPage: React.FC = () => {
       >
 
 
-        {/* Estadísticas */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 px-4">
-          <Card className="shadow-sm border-l-4 border-primary bg-white dark:bg-content1">
-            <CardBody className="flex flex-row items-center justify-between p-4 gap-4">
+        {/* Estadísticas — clicables como filtro de estado */}
+        <div className="grid grid-cols-3 gap-3 px-4">
+          <Card
+            isPressable
+            onPress={() => setFilterEstado('todos')}
+            className={`shadow-sm border-l-4 border-primary bg-white dark:bg-content1 transition-all ${filterEstado === 'todos' ? 'ring-2 ring-primary ring-offset-1 dark:ring-offset-background' : 'opacity-90 hover:opacity-100'}`}
+          >
+            <CardBody className="flex flex-row items-center justify-between py-2.5 px-3 gap-3">
               <div>
-                <p className="text-sm font-semibold text-default-500 uppercase tracking-wide">Total Formulaciones</p>
-                <p className="text-3xl font-bold text-secondary mt-1">{recetaCounts.totalPedidos}</p>
+                <p className="text-[11px] font-semibold text-default-500 uppercase tracking-wide">Total Formulaciones</p>
+                <p className="text-2xl font-bold text-secondary leading-tight">{recetaCounts.totalPedidos}</p>
               </div>
-              <div className="w-12 h-12 rounded-lg flex items-center justify-center bg-primary-100 dark:bg-primary-900/30 text-primary shrink-0">
-                <Icon icon="lucide:package-open" width={24} />
+              <div className="w-9 h-9 rounded-lg flex items-center justify-center bg-primary-100 dark:bg-primary-900/30 text-primary shrink-0">
+                <Icon icon="lucide:package-open" width={18} />
               </div>
             </CardBody>
           </Card>
-          <Card className="shadow-sm border-l-4 border-success bg-white dark:bg-content1">
-            <CardBody className="flex flex-row items-center justify-between p-4 gap-4">
+          <Card
+            isPressable
+            onPress={() => setFilterEstado('activos')}
+            className={`shadow-sm border-l-4 border-success bg-white dark:bg-content1 transition-all ${filterEstado === 'activos' ? 'ring-2 ring-success ring-offset-1 dark:ring-offset-background' : 'opacity-90 hover:opacity-100'}`}
+          >
+            <CardBody className="flex flex-row items-center justify-between py-2.5 px-3 gap-3">
               <div>
-                <p className="text-sm font-semibold text-default-500 uppercase tracking-wide">Activos</p>
-                <p className="text-3xl font-bold text-secondary mt-1">
-                  {recetaCounts.total_activos}
-                </p>
+                <p className="text-[11px] font-semibold text-default-500 uppercase tracking-wide">Activos</p>
+                <p className="text-2xl font-bold text-secondary leading-tight">{recetaCounts.total_activos}</p>
               </div>
-              <div className="w-12 h-12 rounded-lg flex items-center justify-center bg-success-100 dark:bg-success-900/30 text-success shrink-0">
-                <Icon icon="lucide:check-circle" width={24} />
+              <div className="w-9 h-9 rounded-lg flex items-center justify-center bg-success-100 dark:bg-success-900/30 text-success shrink-0">
+                <Icon icon="lucide:check-circle" width={18} />
               </div>
             </CardBody>
           </Card>
-          <Card className="shadow-sm border-l-4 border-danger bg-white dark:bg-content1">
-            <CardBody className="flex flex-row items-center justify-between p-4 gap-4">
+          <Card
+            isPressable
+            onPress={() => setFilterEstado('inactivos')}
+            className={`shadow-sm border-l-4 border-danger bg-white dark:bg-content1 transition-all ${filterEstado === 'inactivos' ? 'ring-2 ring-danger ring-offset-1 dark:ring-offset-background' : 'opacity-90 hover:opacity-100'}`}
+          >
+            <CardBody className="flex flex-row items-center justify-between py-2.5 px-3 gap-3">
               <div>
-                <p className="text-sm font-semibold text-default-500 uppercase tracking-wide">Inactivos</p>
-                <p className="text-3xl font-bold text-secondary mt-1">
-                  {recetaCounts.total_inactivos}
-                </p>
+                <p className="text-[11px] font-semibold text-default-500 uppercase tracking-wide">Inactivos</p>
+                <p className="text-2xl font-bold text-secondary leading-tight">{recetaCounts.total_inactivos}</p>
               </div>
-              <div className="w-12 h-12 rounded-lg flex items-center justify-center bg-danger-100 dark:bg-danger-900/30 text-danger shrink-0">
-                <Icon icon="lucide:x-circle" width={24} />
+              <div className="w-9 h-9 rounded-lg flex items-center justify-center bg-danger-100 dark:bg-danger-900/30 text-danger shrink-0">
+                <Icon icon="lucide:x-circle" width={18} />
               </div>
             </CardBody>
           </Card>
@@ -722,7 +750,7 @@ const PedidoSemanalABodegaPage: React.FC = () => {
                                 variant="light"
                                 size="sm"
                                 onPress={() => handleEditarReceta(receta)}
-                                className="text-default-400 hover:text-secondary z-10"
+                                className="text-default-400 hover:text-primary z-10"
                                 style={{ cursor: 'pointer' }}
                               >
                                 <Icon icon="lucide:edit" width={18} />
@@ -757,7 +785,7 @@ const PedidoSemanalABodegaPage: React.FC = () => {
                                   className="text-default-400 hover:text-danger z-10"
                                   style={{ cursor: 'pointer' }}
                                 >
-                                  <Icon icon="lucide:trash" width={18} />
+                                  <Icon icon="lucide:trash-2" width={18} />
                                 </Button>
                               </Tooltip>
                             )}
@@ -777,6 +805,7 @@ const PedidoSemanalABodegaPage: React.FC = () => {
       <Modal
         isOpen={isOpen}
         onOpenChange={onOpenChange}
+        isDismissable={false}
         size="3xl"
         scrollBehavior="inside"
         radius="lg"

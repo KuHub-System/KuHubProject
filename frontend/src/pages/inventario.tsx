@@ -1304,11 +1304,10 @@ const InventarioPage: React.FC = () => {
                           isIconOnly
                           variant="light"
                           size="sm"
-                          color="danger"
                           onPress={() => handleEliminarProducto(producto)}
                           className="text-default-400 hover:text-danger"
                         >
-                          <Icon icon="lucide:trash" width={18} />
+                          <Icon icon="lucide:trash-2" width={18} />
                         </Button>
                       </Tooltip>
                     )}
@@ -3794,10 +3793,9 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoP
                             <Button
                               isIconOnly
                               variant="light"
-                              color="danger"
                               size="sm"
                               onPress={() => eliminarItem(item.id)}
-                              className="text-danger-400 hover:text-danger"
+                              className="text-default-400 hover:text-danger"
                             >
                               <Icon icon="lucide:trash-2" width={16} />
                             </Button>
