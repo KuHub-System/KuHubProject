@@ -2,7 +2,7 @@ package KuHub.modules.pedido_semana_a_bodega.services;
 
 import KuHub.modules.gestion_academica.repository.AsignaturaRepository;
 import KuHub.modules.gestion_academica.repository.SemanaRepository;
-import KuHub.modules.gestion_inventario.dtos.request.SearchDTO;
+import KuHub.modules.pedido_semana_a_bodega.dtos.request.SearchPedidoSemanaBodegaDTO;
 import KuHub.modules.gestion_inventario.entity.Producto;
 import KuHub.modules.gestion_inventario.repository.ProductoRepository;
 import KuHub.modules.gestion_inventario.services.ProductoService;
@@ -81,69 +81,83 @@ public class PedidoSemanaBodegaServiceImp implements PedidoSemanaBodegaService{
         return recetaRepository.countRecipesAndStatus();
     }
 
-    /** Lista todas las recetas activas paginadas con sus detalles e ingredientes, con soporte de filtro por semana y/o asignatura. */
+    /** Lista todas las recetas activas paginadas con sus detalles e ingredientes, con soporte de filtro por semana, asignatura y/o estado. */
     @Transactional(readOnly = true)
     @Override
-    public PedidoSemanaBodegasPage findAllRecipesPaginated(Integer pageRequested, Integer idSemana, Integer idAsignatura) {
+    public PedidoSemanaBodegasPage findAllRecipesPaginated(Integer pageRequested, Integer idSemana, Integer idAsignatura, String estadoPedido) {
+        String estado = normalizarEstadoFiltro(estadoPedido);
         long totalRecords;
         List<PedidoSemanaBodegaWithDetailsView> rows;
 
         if (idAsignatura != null && idSemana != null) {
-            totalRecords = recetaRepository.countByActivoTrueAndIdSemanaAndIdAsignatura(idSemana, idAsignatura);
+            totalRecords = recetaRepository.countByActivoTrueAndIdSemanaAndIdAsignatura(idSemana, idAsignatura, estado);
             PaginationUtils.PagingResult paging = PaginationUtils.buildPaging(pageRequested, totalRecords);
-            rows = recetaRepository.findAllWithDetailsPagingByIdSemanaAndIdAsignatura(idSemana, idAsignatura, paging.limit(), paging.offset());
+            rows = recetaRepository.findAllWithDetailsPagingByIdSemanaAndIdAsignatura(idSemana, idAsignatura, estado, paging.limit(), paging.offset());
             return PedidoSemanaBodegasPage.of(rows, paging, objectMapper);
         } else if (idAsignatura != null) {
-            totalRecords = recetaRepository.countByActivoTrueAndIdAsignatura(idAsignatura);
+            totalRecords = recetaRepository.countByActivoTrueAndIdAsignatura(idAsignatura, estado);
             PaginationUtils.PagingResult paging = PaginationUtils.buildPaging(pageRequested, totalRecords);
-            rows = recetaRepository.findAllWithDetailsPagingByIdAsignatura(idAsignatura, paging.limit(), paging.offset());
+            rows = recetaRepository.findAllWithDetailsPagingByIdAsignatura(idAsignatura, estado, paging.limit(), paging.offset());
             return PedidoSemanaBodegasPage.of(rows, paging, objectMapper);
         } else if (idSemana != null) {
-            totalRecords = recetaRepository.countByActivoTrueAndIdSemana(idSemana);
+            totalRecords = recetaRepository.countByActivoTrueAndIdSemana(idSemana, estado);
             PaginationUtils.PagingResult paging = PaginationUtils.buildPaging(pageRequested, totalRecords);
-            rows = recetaRepository.findAllWithDetailsPagingByIdSemana(idSemana, paging.limit(), paging.offset());
+            rows = recetaRepository.findAllWithDetailsPagingByIdSemana(idSemana, estado, paging.limit(), paging.offset());
             return PedidoSemanaBodegasPage.of(rows, paging, objectMapper);
         } else {
-            totalRecords = recetaRepository.countByActivoTrue();
+            totalRecords = recetaRepository.countByActivoTrue(estado);
             PaginationUtils.PagingResult paging = PaginationUtils.buildPaging(pageRequested, totalRecords);
-            rows = recetaRepository.findAllWithDetailsPaging(paging.limit(), paging.offset());
+            rows = recetaRepository.findAllWithDetailsPaging(estado, paging.limit(), paging.offset());
             return PedidoSemanaBodegasPage.of(rows, paging, objectMapper);
         }
     }
 
-    /** Lista recetas paginadas filtradas por nombre o descripción, con soporte de filtro por semana y/o asignatura. */
+    /** Lista recetas paginadas filtradas por nombre o descripción, con soporte de filtro por semana, asignatura y/o estado. */
     @Transactional(readOnly = true)
     @Override
-    public PedidoSemanaBodegasPage findAllWithDetailsAndSearchPaging(SearchDTO searchDto) {
+    public PedidoSemanaBodegasPage findAllWithDetailsAndSearchPaging(SearchPedidoSemanaBodegaDTO searchDto) {
         String term = (searchDto.getTerm() == null) ? "" : searchDto.getTerm().trim();
         int page = (searchDto.getPage() == null || searchDto.getPage() < 1) ? 1 : searchDto.getPage();
         Integer idSemana = searchDto.getIdSemana();
         Integer idAsignatura = searchDto.getIdAsignatura();
+        String estado = normalizarEstadoFiltro(searchDto.getEstadoPedido());
 
         long totalRecords;
         List<PedidoSemanaBodegaWithDetailsView> rows;
 
         if (idAsignatura != null && idSemana != null) {
-            totalRecords = recetaRepository.countWithSearchAndIdSemanaAndIdAsignatura(term, idSemana, idAsignatura);
+            totalRecords = recetaRepository.countWithSearchAndIdSemanaAndIdAsignatura(term, idSemana, idAsignatura, estado);
             PaginationUtils.PagingResult paging = PaginationUtils.buildPaging(page, totalRecords);
-            rows = recetaRepository.findAllWithDetailsAndSearchByIdSemanaAndIdAsignatura(term, idSemana, idAsignatura, paging.limit(), paging.offset());
+            rows = recetaRepository.findAllWithDetailsAndSearchByIdSemanaAndIdAsignatura(term, idSemana, idAsignatura, estado, paging.limit(), paging.offset());
             return PedidoSemanaBodegasPage.of(rows, paging, objectMapper);
         } else if (idAsignatura != null) {
-            totalRecords = recetaRepository.countWithSearchAndIdAsignatura(term, idAsignatura);
+            totalRecords = recetaRepository.countWithSearchAndIdAsignatura(term, idAsignatura, estado);
             PaginationUtils.PagingResult paging = PaginationUtils.buildPaging(page, totalRecords);
-            rows = recetaRepository.findAllWithDetailsAndSearchByIdAsignatura(term, idAsignatura, paging.limit(), paging.offset());
+            rows = recetaRepository.findAllWithDetailsAndSearchByIdAsignatura(term, idAsignatura, estado, paging.limit(), paging.offset());
             return PedidoSemanaBodegasPage.of(rows, paging, objectMapper);
         } else if (idSemana != null) {
-            totalRecords = recetaRepository.countWithSearchAndIdSemana(term, idSemana);
+            totalRecords = recetaRepository.countWithSearchAndIdSemana(term, idSemana, estado);
             PaginationUtils.PagingResult paging = PaginationUtils.buildPaging(page, totalRecords);
-            rows = recetaRepository.findAllWithDetailsAndSearchByIdSemana(term, idSemana, paging.limit(), paging.offset());
+            rows = recetaRepository.findAllWithDetailsAndSearchByIdSemana(term, idSemana, estado, paging.limit(), paging.offset());
             return PedidoSemanaBodegasPage.of(rows, paging, objectMapper);
         } else {
-            totalRecords = recetaRepository.countWithSearch(term);
+            totalRecords = recetaRepository.countWithSearch(term, estado);
             PaginationUtils.PagingResult paging = PaginationUtils.buildPaging(page, totalRecords);
-            rows = recetaRepository.findAllWithDetailsAndSearch(term, paging.limit(), paging.offset());
+            rows = recetaRepository.findAllWithDetailsAndSearch(term, estado, paging.limit(), paging.offset());
             return PedidoSemanaBodegasPage.of(rows, paging, objectMapper);
         }
+    }
+
+    /**
+     * Normaliza el filtro de estado recibido del frontend a la clave del ENUM o null.
+     * "todos", vacío o null → null (sin filtro, devuelve activos e inactivos).
+     * Cualquier otro valor se pasa a mayúsculas (ej: "activo" → "ACTIVO", "INACTIVO").
+     */
+    private String normalizarEstadoFiltro(String estadoPedido) {
+        if (estadoPedido == null || estadoPedido.isBlank() || estadoPedido.equalsIgnoreCase("todos")) {
+            return null;
+        }
+        return estadoPedido.trim().toUpperCase();
     }
 
 

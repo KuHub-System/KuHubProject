@@ -5,32 +5,66 @@ import { useAuth } from '../contexts/auth-context';
 import { useThemeContext } from '../contexts/theme-context';
 import { useHistory } from 'react-router-dom';
 import { usePageTitleContext } from '../contexts/PageTitleContext';
+import { usePeriodoSemana } from '../contexts/periodo-semana-context';
+import { useSistemaConfig } from '../contexts/sistema-config-context';
+import { obtenerNotificacionesPorSemana, obtenerNotificacionesAceptadasPorSemana, INotificacionSemana } from '../services/notification-service';
 
 const LOGO_URL = new URL('./assets/KuHubLogoWBG.png', import.meta.url).href;
 
-/**
- * Interfaz para las propiedades del componente Header.
- */
 interface HeaderProps {
   toggleSidebar: () => void;
   onLogout?: () => void;
 }
 
-/**
- * Componente de encabezado (Header) que muestra información del usuario y controles de navegación.
- * 
- * @param {HeaderProps} props - Propiedades del componente.
- * @returns {JSX.Element} El componente Header.
- */
+const POLL_MS = 60_000;
+
 const Header: React.FC<HeaderProps> = ({ toggleSidebar, onLogout }) => {
   const { user, logout } = useAuth();
   const { theme, toggleTheme } = useThemeContext();
   const { title, subtitle, icon } = usePageTitleContext();
   const history = useHistory();
+  const { periodo, seleccionarPeriodo, seleccionarSemana } = usePeriodoSemana();
+  const { solicitudesEnPedido } = useSistemaConfig();
 
-  /**
-   * Maneja el cierre de sesión.
-   */
+  const [notificaciones, setNotificaciones] = React.useState<INotificacionSemana[]>([]);
+  const [notificacionesAceptadas, setNotificacionesAceptadas] = React.useState<INotificacionSemana[]>([]);
+  const [panelOpen, setPanelOpen] = React.useState(false);
+  const panelRef = React.useRef<HTMLDivElement>(null);
+
+  const totalPendientes = notificaciones.reduce((acc, n) => acc + n.cantidadPendientes, 0);
+  const totalAceptadasSinConsolidar = !solicitudesEnPedido
+    ? notificacionesAceptadas.reduce((acc, n) => acc + n.cantidadPendientes, 0)
+    : 0;
+  const totalBadge = totalPendientes + totalAceptadasSinConsolidar;
+
+  // Cerrar panel al hacer click fuera
+  React.useEffect(() => {
+    const handleOutside = (e: MouseEvent) => {
+      if (panelRef.current && !panelRef.current.contains(e.target as Node)) {
+        setPanelOpen(false);
+      }
+    };
+    if (panelOpen) document.addEventListener('mousedown', handleOutside);
+    return () => document.removeEventListener('mousedown', handleOutside);
+  }, [panelOpen]);
+
+  // Polling
+  React.useEffect(() => {
+    const poll = async () => {
+      try {
+        const [pendientes, aceptadas] = await Promise.all([
+          obtenerNotificacionesPorSemana(),
+          obtenerNotificacionesAceptadasPorSemana(),
+        ]);
+        setNotificaciones(pendientes);
+        setNotificacionesAceptadas(aceptadas);
+      } catch {}
+    };
+    poll();
+    const id = setInterval(poll, POLL_MS);
+    return () => clearInterval(id);
+  }, []);
+
   const handleLogout = () => {
     if (onLogout) {
       onLogout();
@@ -40,17 +74,31 @@ const Header: React.FC<HeaderProps> = ({ toggleSidebar, onLogout }) => {
     }
   };
 
-  /**
-   * Navega al perfil del usuario.
-   */
-  const goToProfile = () => {
-    history.push('/perfil');
+  const goToProfile = () => history.push('/perfil');
+
+  const handleIr = async (item: INotificacionSemana) => {
+    setPanelOpen(false);
+    if (!periodo || periodo.anio !== item.anio || periodo.semestre !== item.semestre) {
+      await seleccionarPeriodo(item.anio, item.semestre);
+    }
+    seleccionarSemana(String(item.idSemana));
+    history.push('/gestion-solicitudes');
+  };
+
+  const handleIrPedidos = async (item: INotificacionSemana) => {
+    setPanelOpen(false);
+    if (!periodo || periodo.anio !== item.anio || periodo.semestre !== item.semestre) {
+      await seleccionarPeriodo(item.anio, item.semestre);
+    }
+    seleccionarSemana(String(item.idSemana));
+    history.push('/gestion-pedidos');
   };
 
   return (
     <header className="header w-full py-3 px-6 bg-white dark:bg-content1 border-b border-default-200 dark:border-default-100 sticky top-0 z-40 transition-colors duration-200">
       <div className="flex items-center justify-between">
-        {/* Botón para mostrar/ocultar sidebar en móviles */}
+
+        {/* Botón sidebar móvil */}
         <Button
           isIconOnly
           variant="light"
@@ -61,13 +109,13 @@ const Header: React.FC<HeaderProps> = ({ toggleSidebar, onLogout }) => {
           <Icon icon="lucide:menu" width={24} />
         </Button>
 
-        {/* Título de la página (visible solo en móviles) */}
+        {/* Título móvil */}
         <div className="flex items-center gap-2 md:hidden">
           <img src={LOGO_URL} alt="Logo" className="h-6 w-6" />
           <h1 className="text-lg font-bold text-secondary dark:text-foreground">KüHub</h1>
         </div>
 
-        {/* Título dinámico (visible en desktop) */}
+        {/* Título dinámico desktop */}
         <div className="hidden md:flex flex-col ml-4">
           <h1 className="text-xl font-bold text-secondary dark:text-foreground leading-tight flex items-center gap-2">
             {icon && <Icon icon={icon} width={20} className="text-primary shrink-0" />}
@@ -76,12 +124,137 @@ const Header: React.FC<HeaderProps> = ({ toggleSidebar, onLogout }) => {
           {subtitle && <p className="text-xs text-default-500">{subtitle}</p>}
         </div>
 
-        {/* Espacio flexible */}
-        <div className="flex-1"></div>
+        <div className="flex-1" />
 
-        {/* Controles de la derecha */}
+        {/* Controles derecha */}
         <div className="flex items-center gap-3">
-          {/* Botón de cambio de tema */}
+
+          {/* Panel de notificaciones */}
+          <div className="relative" ref={panelRef}>
+            <Button
+              isIconOnly
+              variant="light"
+              size="sm"
+              aria-label="Notificaciones"
+              className="text-default-500 hover:text-primary transition-colors"
+              onPress={() => setPanelOpen(v => !v)}
+            >
+              <Icon icon={totalBadge > 0 ? 'lucide:bell-ring' : 'lucide:bell'} width={20} />
+            </Button>
+
+            {totalBadge > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-0.5 bg-danger text-white text-[10px] font-bold rounded-full flex items-center justify-center leading-none pointer-events-none">
+                {totalBadge > 99 ? '99+' : totalBadge}
+              </span>
+            )}
+
+            {panelOpen && (
+              <div className="absolute right-0 top-full mt-2 w-72 bg-white dark:bg-content1 border border-default-200 dark:border-default-100 rounded-xl shadow-lg z-50 overflow-hidden">
+
+                {/* Header del panel */}
+                <div className="px-4 py-3 border-b border-default-100 dark:border-default-100/50 flex items-center gap-2">
+                  <Icon icon="lucide:bell" width={15} className="text-primary shrink-0" />
+                  <span className="text-sm font-bold text-secondary dark:text-foreground">
+                    Notificaciones
+                  </span>
+                  {totalBadge > 0 && (
+                    <span className="ml-auto min-w-[20px] h-5 px-1.5 bg-danger text-white text-[10px] font-bold rounded-full flex items-center justify-center leading-none">
+                      {totalBadge}
+                    </span>
+                  )}
+                </div>
+
+                {/* Sección: Solicitudes Pendientes */}
+                <div className="px-4 pt-2.5 pb-1 flex items-center gap-1.5">
+                  <Icon icon="lucide:clock" width={12} className="text-warning shrink-0" />
+                  <span className="text-[10px] font-bold text-warning uppercase tracking-wider">
+                    Solicitudes Pendientes
+                  </span>
+                  {totalPendientes > 0 && (
+                    <span className="ml-auto min-w-[18px] h-4 px-1 bg-warning/20 text-warning text-[10px] font-bold rounded-full flex items-center justify-center leading-none">
+                      {totalPendientes}
+                    </span>
+                  )}
+                </div>
+
+                {notificaciones.length === 0 ? (
+                  <div className="flex items-center gap-2 px-4 py-2 mb-1 text-default-400">
+                    <Icon icon="lucide:check-circle" width={14} />
+                    <span className="text-xs">Sin solicitudes pendientes</span>
+                  </div>
+                ) : (
+                  <div className="flex flex-col divide-y divide-default-100 dark:divide-default-100/30 max-h-48 overflow-y-auto">
+                    {notificaciones.map(item => (
+                      <button
+                        key={item.idSemana}
+                        type="button"
+                        className="w-full flex items-center justify-between px-4 py-2.5 text-left hover:bg-default-50 dark:hover:bg-default-100/10 transition-colors cursor-pointer group"
+                        onClick={() => handleIr(item)}
+                      >
+                        <div className="flex flex-col gap-0.5">
+                          <span className="text-xs font-semibold text-secondary dark:text-foreground leading-none">
+                            {item.nombreSemana}
+                          </span>
+                          <span className="text-[11px] text-warning-600 dark:text-warning font-medium">
+                            {item.cantidadPendientes} Pendiente{item.cantidadPendientes !== 1 ? 's' : ''}
+                          </span>
+                        </div>
+                        <Icon icon="lucide:arrow-right" width={14} className="text-default-300 group-hover:text-primary transition-colors shrink-0" />
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {/* Sección: Solicitudes por Consolidar (solo cuando solicitudesEnPedido = false) */}
+                {!solicitudesEnPedido && (
+                  <>
+                    <div className="border-t border-default-100 dark:border-default-100/50 mx-0" />
+                    <div className="px-4 pt-2.5 pb-1 flex items-center gap-1.5">
+                      <Icon icon="lucide:shopping-cart" width={12} className="text-primary shrink-0" />
+                      <span className="text-[10px] font-bold text-primary uppercase tracking-wider">
+                        Por Consolidar
+                      </span>
+                      {totalAceptadasSinConsolidar > 0 && (
+                        <span className="ml-auto min-w-[18px] h-4 px-1 bg-primary/20 text-primary text-[10px] font-bold rounded-full flex items-center justify-center leading-none">
+                          {totalAceptadasSinConsolidar}
+                        </span>
+                      )}
+                    </div>
+
+                    {notificacionesAceptadas.length === 0 ? (
+                      <div className="flex items-center gap-2 px-4 py-2 mb-2 text-default-400">
+                        <Icon icon="lucide:check-circle" width={14} />
+                        <span className="text-xs">Todo consolidado</span>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col divide-y divide-default-100 dark:divide-default-100/30 max-h-48 overflow-y-auto mb-1">
+                        {notificacionesAceptadas.map(item => (
+                          <button
+                            key={item.idSemana}
+                            type="button"
+                            className="w-full flex items-center justify-between px-4 py-2.5 text-left hover:bg-default-50 dark:hover:bg-default-100/10 transition-colors cursor-pointer group"
+                            onClick={() => handleIrPedidos(item)}
+                          >
+                            <div className="flex flex-col gap-0.5">
+                              <span className="text-xs font-semibold text-secondary dark:text-foreground leading-none">
+                                {item.nombreSemana}
+                              </span>
+                              <span className="text-[11px] text-primary font-medium">
+                                {item.cantidadPendientes} Aceptada{item.cantidadPendientes !== 1 ? 's' : ''} sin consolidar
+                              </span>
+                            </div>
+                            <Icon icon="lucide:arrow-right" width={14} className="text-default-300 group-hover:text-primary transition-colors shrink-0" />
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Toggle de tema */}
           <Button
             isIconOnly
             variant="light"
@@ -90,15 +263,12 @@ const Header: React.FC<HeaderProps> = ({ toggleSidebar, onLogout }) => {
             onPress={toggleTheme}
             className="text-default-500 hover:text-primary transition-colors"
           >
-            <Icon
-              icon={theme === 'light' ? 'lucide:moon' : 'lucide:sun'}
-              width={20}
-            />
+            <Icon icon={theme === 'light' ? 'lucide:moon' : 'lucide:sun'} width={20} />
           </Button>
 
-          <div className="h-6 w-px bg-default-200 mx-1 hidden md:block"></div>
+          <div className="h-6 w-px bg-default-200 mx-1 hidden md:block" />
 
-          {/* Dropdown del usuario */}
+          {/* Dropdown usuario */}
           {user && (
             <Dropdown placement="bottom-end">
               <DropdownTrigger>

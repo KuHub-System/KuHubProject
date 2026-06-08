@@ -2,7 +2,7 @@ package KuHub.modules.pedido_semana_a_bodega.services;
 
 import KuHub.modules.gestion_academica.repository.AsignaturaRepository;
 import KuHub.modules.gestion_academica.repository.SemanaRepository;
-import KuHub.modules.gestion_inventario.dtos.request.SearchDTO;
+import KuHub.modules.pedido_semana_a_bodega.dtos.request.SearchPedidoSemanaBodegaDTO;
 import KuHub.modules.gestion_inventario.repository.ProductoRepository;
 import KuHub.modules.gestion_inventario.services.ProductoService;
 import KuHub.modules.pedido_semana_a_bodega.dtos.projection.CountPedidoSemanaBodegaAndStatusView;
@@ -31,6 +31,7 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -100,11 +101,11 @@ class PedidoSemanaBodegaServiceImpTest {
     @Test
     void test04FindAllRecipesPaginatedNoFilters() {
         // Arrange
-        when(recetaRepository.countByActivoTrue()).thenReturn(0L);
-        when(recetaRepository.findAllWithDetailsPaging(anyInt(), anyInt())).thenReturn(List.of());
+        when(recetaRepository.countByActivoTrue(isNull())).thenReturn(0L);
+        when(recetaRepository.findAllWithDetailsPaging(isNull(), anyInt(), anyInt())).thenReturn(List.of());
 
         // Act
-        PedidoSemanaBodegasPage result = service.findAllRecipesPaginated(1, null, null);
+        PedidoSemanaBodegasPage result = service.findAllRecipesPaginated(1, null, null, null);
 
         // Assert
         assertNotNull(result);
@@ -114,11 +115,11 @@ class PedidoSemanaBodegaServiceImpTest {
     @Test
     void test05FindAllRecipesPaginatedBySemana() {
         // Arrange
-        when(recetaRepository.countByActivoTrueAndIdSemana(1)).thenReturn(0L);
-        when(recetaRepository.findAllWithDetailsPagingByIdSemana(eq(1), anyInt(), anyInt())).thenReturn(List.of());
+        when(recetaRepository.countByActivoTrueAndIdSemana(eq(1), isNull())).thenReturn(0L);
+        when(recetaRepository.findAllWithDetailsPagingByIdSemana(eq(1), isNull(), anyInt(), anyInt())).thenReturn(List.of());
 
         // Act
-        PedidoSemanaBodegasPage result = service.findAllRecipesPaginated(1, 1, null);
+        PedidoSemanaBodegasPage result = service.findAllRecipesPaginated(1, 1, null, null);
 
         // Assert
         assertNotNull(result);
@@ -127,11 +128,11 @@ class PedidoSemanaBodegaServiceImpTest {
     @Test
     void test06FindAllRecipesPaginatedByAsignatura() {
         // Arrange
-        when(recetaRepository.countByActivoTrueAndIdAsignatura(2)).thenReturn(0L);
-        when(recetaRepository.findAllWithDetailsPagingByIdAsignatura(eq(2), anyInt(), anyInt())).thenReturn(List.of());
+        when(recetaRepository.countByActivoTrueAndIdAsignatura(eq(2), isNull())).thenReturn(0L);
+        when(recetaRepository.findAllWithDetailsPagingByIdAsignatura(eq(2), isNull(), anyInt(), anyInt())).thenReturn(List.of());
 
         // Act
-        PedidoSemanaBodegasPage result = service.findAllRecipesPaginated(1, null, 2);
+        PedidoSemanaBodegasPage result = service.findAllRecipesPaginated(1, null, 2, null);
 
         // Assert
         assertNotNull(result);
@@ -140,11 +141,11 @@ class PedidoSemanaBodegaServiceImpTest {
     @Test
     void test07FindAllRecipesPaginatedBySemanaAndAsignatura() {
         // Arrange
-        when(recetaRepository.countByActivoTrueAndIdSemanaAndIdAsignatura(1, 2)).thenReturn(0L);
-        when(recetaRepository.findAllWithDetailsPagingByIdSemanaAndIdAsignatura(eq(1), eq(2), anyInt(), anyInt())).thenReturn(List.of());
+        when(recetaRepository.countByActivoTrueAndIdSemanaAndIdAsignatura(eq(1), eq(2), isNull())).thenReturn(0L);
+        when(recetaRepository.findAllWithDetailsPagingByIdSemanaAndIdAsignatura(eq(1), eq(2), isNull(), anyInt(), anyInt())).thenReturn(List.of());
 
         // Act
-        PedidoSemanaBodegasPage result = service.findAllRecipesPaginated(1, 1, 2);
+        PedidoSemanaBodegasPage result = service.findAllRecipesPaginated(1, 1, 2, null);
 
         // Assert
         assertNotNull(result);
@@ -155,11 +156,11 @@ class PedidoSemanaBodegaServiceImpTest {
     @Test
     void test08SearchPagingNoFilters() {
         // Arrange
-        SearchDTO dto = new SearchDTO();
+        SearchPedidoSemanaBodegaDTO dto = new SearchPedidoSemanaBodegaDTO();
         dto.setTerm(null);
         dto.setPage(1);
-        when(recetaRepository.countWithSearch("")).thenReturn(0L);
-        when(recetaRepository.findAllWithDetailsAndSearch(eq(""), anyInt(), anyInt())).thenReturn(List.of());
+        when(recetaRepository.countWithSearch(eq(""), isNull())).thenReturn(0L);
+        when(recetaRepository.findAllWithDetailsAndSearch(eq(""), isNull(), anyInt(), anyInt())).thenReturn(List.of());
 
         // Act
         PedidoSemanaBodegasPage result = service.findAllWithDetailsAndSearchPaging(dto);
@@ -171,12 +172,12 @@ class PedidoSemanaBodegaServiceImpTest {
     @Test
     void test09SearchPagingBySemana() {
         // Arrange
-        SearchDTO dto = new SearchDTO();
+        SearchPedidoSemanaBodegaDTO dto = new SearchPedidoSemanaBodegaDTO();
         dto.setTerm("arroz");
         dto.setPage(1);
         dto.setIdSemana(3);
-        when(recetaRepository.countWithSearchAndIdSemana("arroz", 3)).thenReturn(0L);
-        when(recetaRepository.findAllWithDetailsAndSearchByIdSemana(eq("arroz"), eq(3), anyInt(), anyInt())).thenReturn(List.of());
+        when(recetaRepository.countWithSearchAndIdSemana(eq("arroz"), eq(3), isNull())).thenReturn(0L);
+        when(recetaRepository.findAllWithDetailsAndSearchByIdSemana(eq("arroz"), eq(3), isNull(), anyInt(), anyInt())).thenReturn(List.of());
 
         // Act
         PedidoSemanaBodegasPage result = service.findAllWithDetailsAndSearchPaging(dto);
@@ -188,12 +189,12 @@ class PedidoSemanaBodegaServiceImpTest {
     @Test
     void test10SearchPagingByAsignatura() {
         // Arrange
-        SearchDTO dto = new SearchDTO();
+        SearchPedidoSemanaBodegaDTO dto = new SearchPedidoSemanaBodegaDTO();
         dto.setTerm("");
         dto.setPage(1);
         dto.setIdAsignatura(5);
-        when(recetaRepository.countWithSearchAndIdAsignatura("", 5)).thenReturn(0L);
-        when(recetaRepository.findAllWithDetailsAndSearchByIdAsignatura(eq(""), eq(5), anyInt(), anyInt())).thenReturn(List.of());
+        when(recetaRepository.countWithSearchAndIdAsignatura(eq(""), eq(5), isNull())).thenReturn(0L);
+        when(recetaRepository.findAllWithDetailsAndSearchByIdAsignatura(eq(""), eq(5), isNull(), anyInt(), anyInt())).thenReturn(List.of());
 
         // Act
         PedidoSemanaBodegasPage result = service.findAllWithDetailsAndSearchPaging(dto);
@@ -205,13 +206,13 @@ class PedidoSemanaBodegaServiceImpTest {
     @Test
     void test11SearchPagingBySemanaAndAsignatura() {
         // Arrange
-        SearchDTO dto = new SearchDTO();
+        SearchPedidoSemanaBodegaDTO dto = new SearchPedidoSemanaBodegaDTO();
         dto.setTerm("pollo");
         dto.setPage(1);
         dto.setIdSemana(2);
         dto.setIdAsignatura(4);
-        when(recetaRepository.countWithSearchAndIdSemanaAndIdAsignatura("pollo", 2, 4)).thenReturn(0L);
-        when(recetaRepository.findAllWithDetailsAndSearchByIdSemanaAndIdAsignatura(eq("pollo"), eq(2), eq(4), anyInt(), anyInt())).thenReturn(List.of());
+        when(recetaRepository.countWithSearchAndIdSemanaAndIdAsignatura(eq("pollo"), eq(2), eq(4), isNull())).thenReturn(0L);
+        when(recetaRepository.findAllWithDetailsAndSearchByIdSemanaAndIdAsignatura(eq("pollo"), eq(2), eq(4), isNull(), anyInt(), anyInt())).thenReturn(List.of());
 
         // Act
         PedidoSemanaBodegasPage result = service.findAllWithDetailsAndSearchPaging(dto);

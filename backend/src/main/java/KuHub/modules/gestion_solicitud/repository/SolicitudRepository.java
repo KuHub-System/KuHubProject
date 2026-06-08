@@ -15,6 +15,53 @@ import java.util.List;
 @Repository
 public interface SolicitudRepository extends JpaRepository<Solicitud, Integer> {
 
+    /** Cuenta solicitudes en estado PENDIENTE (usado para notificaciones del header).
+     *  Cast explícito al enum nativo porque el operador enum = varchar no existe en PostgreSQL. */
+    @Query(value = """
+            SELECT COUNT(*) FROM solicitud
+            WHERE estado_solicitud = 'PENDIENTE'::estado_solicitud_type
+            """, nativeQuery = true)
+    long contarSolicitudesPendientes();
+
+    /** Agrupa solicitudes PENDIENTES por semana académica para el panel de notificaciones.
+     *  Retorna filas [idSemana, nombreSemana, fechaInicio, fechaFin, anio, semestre, cantidadPendientes]. */
+    @Query(value = """
+            SELECT
+                sm.id_semana            AS idSemana,
+                sm.nombre_semana        AS nombreSemana,
+                sm.fecha_inicio         AS fechaInicio,
+                sm.fecha_fin            AS fechaFin,
+                sm.anio                 AS anio,
+                sm.semestre             AS semestre,
+                COUNT(so.id_solicitud)  AS cantidadPendientes
+            FROM solicitud so
+            JOIN semanas sm ON so.fecha_solicitada BETWEEN sm.fecha_inicio AND sm.fecha_fin
+            WHERE so.estado_solicitud = 'PENDIENTE'::estado_solicitud_type
+            GROUP BY sm.id_semana, sm.nombre_semana, sm.fecha_inicio, sm.fecha_fin, sm.anio, sm.semestre
+            ORDER BY sm.fecha_inicio ASC
+            """, nativeQuery = true)
+    List<Object[]> findPendientesPorSemana();
+
+    /** Agrupa solicitudes ACEPTADAS (aún no consolidadas en pedido) por semana académica.
+     *  Excluye solicitudes ya vinculadas a pedido_solicitud (ya consolidadas).
+     *  Retorna filas [idSemana, nombreSemana, fechaInicio, fechaFin, anio, semestre, cantidadAceptadas]. */
+    @Query(value = """
+            SELECT
+                sm.id_semana            AS idSemana,
+                sm.nombre_semana        AS nombreSemana,
+                sm.fecha_inicio         AS fechaInicio,
+                sm.fecha_fin            AS fechaFin,
+                sm.anio                 AS anio,
+                sm.semestre             AS semestre,
+                COUNT(so.id_solicitud)  AS cantidadAceptadas
+            FROM solicitud so
+            JOIN semanas sm ON so.fecha_solicitada BETWEEN sm.fecha_inicio AND sm.fecha_fin
+            WHERE so.estado_solicitud = 'ACEPTADA'::estado_solicitud_type
+              AND so.id_solicitud NOT IN (SELECT id_solicitud FROM pedido_solicitud)
+            GROUP BY sm.id_semana, sm.nombre_semana, sm.fecha_inicio, sm.fecha_fin, sm.anio, sm.semestre
+            ORDER BY sm.fecha_inicio ASC
+            """, nativeQuery = true)
+    List<Object[]> findAceptadasPorSemana();
 
     /**Obtiene las asignaturas que tiene al menos una seccion con el estado ACTIVO y con bloques de horarios asignados o sea
      * reservas de sala para dia semana asigando, para cargar en la pagina de solicitud*/

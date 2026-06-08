@@ -6,6 +6,7 @@ import KuHub.modules.gestion_solicitud.dtos.request.record.RejectEnPedidoDTO;
 import KuHub.modules.gestion_solicitud.dtos.respose.record.CourseForSolicitation;
 import KuHub.modules.gestion_solicitud.dtos.respose.record.DashboardConsolidado;
 import KuHub.modules.gestion_solicitud.dtos.respose.record.AbastecimientoBodegaDTO;
+import KuHub.modules.gestion_solicitud.dtos.respose.record.NotificacionSemanaDTO;
 import KuHub.modules.gestion_solicitud.dtos.request.*;
 import KuHub.modules.gestion_solicitud.dtos.respose.projection.ResultsMassSolicitationView;
 import KuHub.modules.gestion_solicitud.dtos.respose.record.RecipeSolicitation;
@@ -16,6 +17,9 @@ import java.util.List;
 
 public interface SolicitudService {
     Solicitud findById(Integer idSolicitud);
+    long contarPendientes();
+    List<NotificacionSemanaDTO> obtenerNotificacionesPorSemana();
+    List<NotificacionSemanaDTO> obtenerNotificacionesAceptadasPorSemana();
     List<CourseForSolicitation> findCourseWithSectionsAndBlocksRaw();
     List<RecipeSolicitation> findActiveRecipesWithDetailsRaw(Integer idAsignatura);
     ResultsMassSolicitationView saveMass(List<MassiveSolicitation> payloadList);
