@@ -18,13 +18,23 @@ import java.util.Optional;
 @Repository
 public interface PedidoSemanaBodegaRepository extends JpaRepository<PedidoSemanaBodega,Integer> {
 
+    /*
+     * Filtro de estado opcional en las consultas paginadas y de búsqueda:
+     *   AND (CAST(:estadoPedido AS text) IS NULL OR estado_pedido::text = :estadoPedido)
+     * Cuando :estadoPedido es NULL devuelve todos (activos + inactivos); cuando trae
+     * 'ACTIVO' o 'INACTIVO' filtra ese estado DENTRO de la consulta, evitando que un
+     * registro inactivo quede fuera por la paginación (no aparecía nunca si caía más
+     * allá de las primeras 20 filas). El CAST explícito es obligatorio para que
+     * PostgreSQL pueda inferir el tipo del parámetro cuando llega NULL.
+     */
+
     /** Busca un pedido semana bodega activo por ID. */
     Optional<PedidoSemanaBodega> findByIdPedidoSemanaBodegaAndActivoIsTrue(Integer idPedidoSemanaBodega);
 
     /** Lista todos los pedidos semana bodega activos sin paginación. */
     List<PedidoSemanaBodega> findAllByActivoTrue();
 
-    /** Lista paginada de pedidos semana bodega activos con sus detalles agrupados en JSON. */
+    /** Lista paginada de pedidos semana bodega activos con sus detalles agrupados en JSON, filtrable por estado. */
     @Query(value = """
         SELECT
             p.id_pedido_semana_bodega AS "idPedidoSemanaBodega",
@@ -50,15 +60,17 @@ public interface PedidoSemanaBodegaRepository extends JpaRepository<PedidoSemana
         LEFT JOIN producto pr ON d.id_producto = pr.id_producto
         LEFT JOIN unidad_medida u ON u.id_unidad = pr.id_unidad
         WHERE p.activo = true
+          AND (CAST(:estadoPedido AS text) IS NULL OR p.estado_pedido::text = :estadoPedido)
         GROUP BY p.id_pedido_semana_bodega, p.nombre_pedido_semana_bodega, p.descripcion_pedido_semana_bodega, p.estado_pedido, p.id_semana, p.id_asignatura
         ORDER BY p.nombre_pedido_semana_bodega ASC
         LIMIT :limit OFFSET :offset
         """, nativeQuery = true)
     List<PedidoSemanaBodegaWithDetailsView> findAllWithDetailsPaging(
+            @Param("estadoPedido") String estadoPedido,
             @Param("limit") int limit,
             @Param("offset") int offset);
 
-    /** Lista paginada de pedidos semana bodega activos filtrados por idSemana. */
+    /** Lista paginada de pedidos semana bodega activos filtrados por idSemana, filtrable por estado. */
     @Query(value = """
         SELECT
             p.id_pedido_semana_bodega AS "idPedidoSemanaBodega",
@@ -84,26 +96,35 @@ public interface PedidoSemanaBodegaRepository extends JpaRepository<PedidoSemana
         LEFT JOIN producto pr ON d.id_producto = pr.id_producto
         LEFT JOIN unidad_medida u ON u.id_unidad = pr.id_unidad
         WHERE p.activo = true AND p.id_semana = :idSemana
+          AND (CAST(:estadoPedido AS text) IS NULL OR p.estado_pedido::text = :estadoPedido)
         GROUP BY p.id_pedido_semana_bodega, p.nombre_pedido_semana_bodega, p.descripcion_pedido_semana_bodega, p.estado_pedido, p.id_semana, p.id_asignatura
         ORDER BY p.nombre_pedido_semana_bodega ASC
         LIMIT :limit OFFSET :offset
         """, nativeQuery = true)
     List<PedidoSemanaBodegaWithDetailsView> findAllWithDetailsPagingByIdSemana(
             @Param("idSemana") Integer idSemana,
+            @Param("estadoPedido") String estadoPedido,
             @Param("limit") int limit,
             @Param("offset") int offset);
 
-    /** Cuenta el total de pedidos semana bodega activos para calcular la paginación. */
-    long countByActivoTrue();
+    /** Cuenta el total de pedidos semana bodega activos para calcular la paginación, filtrable por estado. */
+    @Query(value = """
+        SELECT COUNT(*) FROM pedido_semana_bodega
+        WHERE activo = true
+          AND (CAST(:estadoPedido AS text) IS NULL OR estado_pedido::text = :estadoPedido)
+        """, nativeQuery = true)
+    long countByActivoTrue(@Param("estadoPedido") String estadoPedido);
 
-    /** Cuenta el total de pedidos semana bodega activos filtrados por idSemana. */
+    /** Cuenta el total de pedidos semana bodega activos filtrados por idSemana, filtrable por estado. */
     @Query(value = """
         SELECT COUNT(*) FROM pedido_semana_bodega
         WHERE activo = true AND id_semana = :idSemana
+          AND (CAST(:estadoPedido AS text) IS NULL OR estado_pedido::text = :estadoPedido)
         """, nativeQuery = true)
-    long countByActivoTrueAndIdSemana(@Param("idSemana") Integer idSemana);
+    long countByActivoTrueAndIdSemana(@Param("idSemana") Integer idSemana,
+                                      @Param("estadoPedido") String estadoPedido);
 
-    /** Lista paginada de pedidos semana bodega activos filtrados por nombre o descripción con detalles en JSON. */
+    /** Lista paginada de pedidos semana bodega activos filtrados por nombre o descripción con detalles en JSON, filtrable por estado. */
     @Query(value = """
         SELECT
             p.id_pedido_semana_bodega AS "idPedidoSemanaBodega",
@@ -130,16 +151,18 @@ public interface PedidoSemanaBodegaRepository extends JpaRepository<PedidoSemana
         LEFT JOIN unidad_medida u ON u.id_unidad = pr.id_unidad
         WHERE p.activo = true
           AND (p.nombre_pedido_semana_bodega ILIKE %:term% OR p.descripcion_pedido_semana_bodega ILIKE %:term%)
+          AND (CAST(:estadoPedido AS text) IS NULL OR p.estado_pedido::text = :estadoPedido)
         GROUP BY p.id_pedido_semana_bodega, p.nombre_pedido_semana_bodega, p.descripcion_pedido_semana_bodega, p.estado_pedido, p.id_semana, p.id_asignatura
         ORDER BY p.nombre_pedido_semana_bodega ASC
         LIMIT :limit OFFSET :offset
         """, nativeQuery = true)
     List<PedidoSemanaBodegaWithDetailsView> findAllWithDetailsAndSearch(
             @Param("term") String term,
+            @Param("estadoPedido") String estadoPedido,
             @Param("limit") int limit,
             @Param("offset") int offset);
 
-    /** Lista paginada de pedidos semana bodega activos filtrados por búsqueda e idSemana. */
+    /** Lista paginada de pedidos semana bodega activos filtrados por búsqueda e idSemana, filtrable por estado. */
     @Query(value = """
         SELECT
             p.id_pedido_semana_bodega AS "idPedidoSemanaBodega",
@@ -167,6 +190,7 @@ public interface PedidoSemanaBodegaRepository extends JpaRepository<PedidoSemana
         WHERE p.activo = true
           AND (p.nombre_pedido_semana_bodega ILIKE %:term% OR p.descripcion_pedido_semana_bodega ILIKE %:term%)
           AND p.id_semana = :idSemana
+          AND (CAST(:estadoPedido AS text) IS NULL OR p.estado_pedido::text = :estadoPedido)
         GROUP BY p.id_pedido_semana_bodega, p.nombre_pedido_semana_bodega, p.descripcion_pedido_semana_bodega, p.estado_pedido, p.id_semana, p.id_asignatura
         ORDER BY p.nombre_pedido_semana_bodega ASC
         LIMIT :limit OFFSET :offset
@@ -174,25 +198,31 @@ public interface PedidoSemanaBodegaRepository extends JpaRepository<PedidoSemana
     List<PedidoSemanaBodegaWithDetailsView> findAllWithDetailsAndSearchByIdSemana(
             @Param("term") String term,
             @Param("idSemana") Integer idSemana,
+            @Param("estadoPedido") String estadoPedido,
             @Param("limit") int limit,
             @Param("offset") int offset);
 
-    /** Cuenta el total de pedidos semana bodega activos filtrados por búsqueda para calcular la paginación. */
+    /** Cuenta el total de pedidos semana bodega activos filtrados por búsqueda, filtrable por estado. */
     @Query(value = """
         SELECT COUNT(*) FROM pedido_semana_bodega
         WHERE activo = true
           AND (nombre_pedido_semana_bodega ILIKE %:term% OR descripcion_pedido_semana_bodega ILIKE %:term%)
+          AND (CAST(:estadoPedido AS text) IS NULL OR estado_pedido::text = :estadoPedido)
         """, nativeQuery = true)
-    long countWithSearch(@Param("term") String term);
+    long countWithSearch(@Param("term") String term,
+                         @Param("estadoPedido") String estadoPedido);
 
-    /** Cuenta el total de pedidos semana bodega activos filtrados por búsqueda e idSemana. */
+    /** Cuenta el total de pedidos semana bodega activos filtrados por búsqueda e idSemana, filtrable por estado. */
     @Query(value = """
         SELECT COUNT(*) FROM pedido_semana_bodega
         WHERE activo = true
           AND (nombre_pedido_semana_bodega ILIKE %:term% OR descripcion_pedido_semana_bodega ILIKE %:term%)
           AND id_semana = :idSemana
+          AND (CAST(:estadoPedido AS text) IS NULL OR estado_pedido::text = :estadoPedido)
         """, nativeQuery = true)
-    long countWithSearchAndIdSemana(@Param("term") String term, @Param("idSemana") Integer idSemana);
+    long countWithSearchAndIdSemana(@Param("term") String term,
+                                    @Param("idSemana") Integer idSemana,
+                                    @Param("estadoPedido") String estadoPedido);
 
     /** Retorna el conteo de pedidos semana bodega agrupado por estado para mostrar en el dashboard. */
     @Query(value = """
@@ -233,7 +263,7 @@ public interface PedidoSemanaBodegaRepository extends JpaRepository<PedidoSemana
 
     // ─── QUERIES CON FILTRO POR ASIGNATURA ──────────────────────────────────────
 
-    /** Lista paginada de pedidos semana bodega activos filtrados por idAsignatura. */
+    /** Lista paginada de pedidos semana bodega activos filtrados por idAsignatura, filtrable por estado. */
     @Query(value = """
         SELECT
             p.id_pedido_semana_bodega AS "idPedidoSemanaBodega",
@@ -259,23 +289,27 @@ public interface PedidoSemanaBodegaRepository extends JpaRepository<PedidoSemana
         LEFT JOIN producto pr ON d.id_producto = pr.id_producto
         LEFT JOIN unidad_medida u ON u.id_unidad = pr.id_unidad
         WHERE p.activo = true AND p.id_asignatura = :idAsignatura
+          AND (CAST(:estadoPedido AS text) IS NULL OR p.estado_pedido::text = :estadoPedido)
         GROUP BY p.id_pedido_semana_bodega, p.nombre_pedido_semana_bodega, p.descripcion_pedido_semana_bodega, p.estado_pedido, p.id_semana, p.id_asignatura
         ORDER BY p.nombre_pedido_semana_bodega ASC
         LIMIT :limit OFFSET :offset
         """, nativeQuery = true)
     List<PedidoSemanaBodegaWithDetailsView> findAllWithDetailsPagingByIdAsignatura(
             @Param("idAsignatura") Integer idAsignatura,
+            @Param("estadoPedido") String estadoPedido,
             @Param("limit") int limit,
             @Param("offset") int offset);
 
-    /** Cuenta el total de pedidos semana bodega activos filtrados por idAsignatura. */
+    /** Cuenta el total de pedidos semana bodega activos filtrados por idAsignatura, filtrable por estado. */
     @Query(value = """
         SELECT COUNT(*) FROM pedido_semana_bodega
         WHERE activo = true AND id_asignatura = :idAsignatura
+          AND (CAST(:estadoPedido AS text) IS NULL OR estado_pedido::text = :estadoPedido)
         """, nativeQuery = true)
-    long countByActivoTrueAndIdAsignatura(@Param("idAsignatura") Integer idAsignatura);
+    long countByActivoTrueAndIdAsignatura(@Param("idAsignatura") Integer idAsignatura,
+                                          @Param("estadoPedido") String estadoPedido);
 
-    /** Lista paginada de pedidos semana bodega activos filtrados por idSemana e idAsignatura. */
+    /** Lista paginada de pedidos semana bodega activos filtrados por idSemana e idAsignatura, filtrable por estado. */
     @Query(value = """
         SELECT
             p.id_pedido_semana_bodega AS "idPedidoSemanaBodega",
@@ -301,6 +335,7 @@ public interface PedidoSemanaBodegaRepository extends JpaRepository<PedidoSemana
         LEFT JOIN producto pr ON d.id_producto = pr.id_producto
         LEFT JOIN unidad_medida u ON u.id_unidad = pr.id_unidad
         WHERE p.activo = true AND p.id_semana = :idSemana AND p.id_asignatura = :idAsignatura
+          AND (CAST(:estadoPedido AS text) IS NULL OR p.estado_pedido::text = :estadoPedido)
         GROUP BY p.id_pedido_semana_bodega, p.nombre_pedido_semana_bodega, p.descripcion_pedido_semana_bodega, p.estado_pedido, p.id_semana, p.id_asignatura
         ORDER BY p.nombre_pedido_semana_bodega ASC
         LIMIT :limit OFFSET :offset
@@ -308,17 +343,21 @@ public interface PedidoSemanaBodegaRepository extends JpaRepository<PedidoSemana
     List<PedidoSemanaBodegaWithDetailsView> findAllWithDetailsPagingByIdSemanaAndIdAsignatura(
             @Param("idSemana") Integer idSemana,
             @Param("idAsignatura") Integer idAsignatura,
+            @Param("estadoPedido") String estadoPedido,
             @Param("limit") int limit,
             @Param("offset") int offset);
 
-    /** Cuenta el total de pedidos semana bodega activos filtrados por idSemana e idAsignatura. */
+    /** Cuenta el total de pedidos semana bodega activos filtrados por idSemana e idAsignatura, filtrable por estado. */
     @Query(value = """
         SELECT COUNT(*) FROM pedido_semana_bodega
         WHERE activo = true AND id_semana = :idSemana AND id_asignatura = :idAsignatura
+          AND (CAST(:estadoPedido AS text) IS NULL OR estado_pedido::text = :estadoPedido)
         """, nativeQuery = true)
-    long countByActivoTrueAndIdSemanaAndIdAsignatura(@Param("idSemana") Integer idSemana, @Param("idAsignatura") Integer idAsignatura);
+    long countByActivoTrueAndIdSemanaAndIdAsignatura(@Param("idSemana") Integer idSemana,
+                                                     @Param("idAsignatura") Integer idAsignatura,
+                                                     @Param("estadoPedido") String estadoPedido);
 
-    /** Lista paginada de pedidos semana bodega activos filtrados por búsqueda e idAsignatura. */
+    /** Lista paginada de pedidos semana bodega activos filtrados por búsqueda e idAsignatura, filtrable por estado. */
     @Query(value = """
         SELECT
             p.id_pedido_semana_bodega AS "idPedidoSemanaBodega",
@@ -346,6 +385,7 @@ public interface PedidoSemanaBodegaRepository extends JpaRepository<PedidoSemana
         WHERE p.activo = true
           AND (p.nombre_pedido_semana_bodega ILIKE %:term% OR p.descripcion_pedido_semana_bodega ILIKE %:term%)
           AND p.id_asignatura = :idAsignatura
+          AND (CAST(:estadoPedido AS text) IS NULL OR p.estado_pedido::text = :estadoPedido)
         GROUP BY p.id_pedido_semana_bodega, p.nombre_pedido_semana_bodega, p.descripcion_pedido_semana_bodega, p.estado_pedido, p.id_semana, p.id_asignatura
         ORDER BY p.nombre_pedido_semana_bodega ASC
         LIMIT :limit OFFSET :offset
@@ -353,19 +393,23 @@ public interface PedidoSemanaBodegaRepository extends JpaRepository<PedidoSemana
     List<PedidoSemanaBodegaWithDetailsView> findAllWithDetailsAndSearchByIdAsignatura(
             @Param("term") String term,
             @Param("idAsignatura") Integer idAsignatura,
+            @Param("estadoPedido") String estadoPedido,
             @Param("limit") int limit,
             @Param("offset") int offset);
 
-    /** Cuenta el total de pedidos semana bodega activos filtrados por búsqueda e idAsignatura. */
+    /** Cuenta el total de pedidos semana bodega activos filtrados por búsqueda e idAsignatura, filtrable por estado. */
     @Query(value = """
         SELECT COUNT(*) FROM pedido_semana_bodega
         WHERE activo = true
           AND (nombre_pedido_semana_bodega ILIKE %:term% OR descripcion_pedido_semana_bodega ILIKE %:term%)
           AND id_asignatura = :idAsignatura
+          AND (CAST(:estadoPedido AS text) IS NULL OR estado_pedido::text = :estadoPedido)
         """, nativeQuery = true)
-    long countWithSearchAndIdAsignatura(@Param("term") String term, @Param("idAsignatura") Integer idAsignatura);
+    long countWithSearchAndIdAsignatura(@Param("term") String term,
+                                        @Param("idAsignatura") Integer idAsignatura,
+                                        @Param("estadoPedido") String estadoPedido);
 
-    /** Lista paginada de pedidos semana bodega activos filtrados por búsqueda, idSemana e idAsignatura. */
+    /** Lista paginada de pedidos semana bodega activos filtrados por búsqueda, idSemana e idAsignatura, filtrable por estado. */
     @Query(value = """
         SELECT
             p.id_pedido_semana_bodega AS "idPedidoSemanaBodega",
@@ -394,6 +438,7 @@ public interface PedidoSemanaBodegaRepository extends JpaRepository<PedidoSemana
           AND (p.nombre_pedido_semana_bodega ILIKE %:term% OR p.descripcion_pedido_semana_bodega ILIKE %:term%)
           AND p.id_semana = :idSemana
           AND p.id_asignatura = :idAsignatura
+          AND (CAST(:estadoPedido AS text) IS NULL OR p.estado_pedido::text = :estadoPedido)
         GROUP BY p.id_pedido_semana_bodega, p.nombre_pedido_semana_bodega, p.descripcion_pedido_semana_bodega, p.estado_pedido, p.id_semana, p.id_asignatura
         ORDER BY p.nombre_pedido_semana_bodega ASC
         LIMIT :limit OFFSET :offset
@@ -402,18 +447,23 @@ public interface PedidoSemanaBodegaRepository extends JpaRepository<PedidoSemana
             @Param("term") String term,
             @Param("idSemana") Integer idSemana,
             @Param("idAsignatura") Integer idAsignatura,
+            @Param("estadoPedido") String estadoPedido,
             @Param("limit") int limit,
             @Param("offset") int offset);
 
-    /** Cuenta el total de pedidos semana bodega activos filtrados por búsqueda, idSemana e idAsignatura. */
+    /** Cuenta el total de pedidos semana bodega activos filtrados por búsqueda, idSemana e idAsignatura, filtrable por estado. */
     @Query(value = """
         SELECT COUNT(*) FROM pedido_semana_bodega
         WHERE activo = true
           AND (nombre_pedido_semana_bodega ILIKE %:term% OR descripcion_pedido_semana_bodega ILIKE %:term%)
           AND id_semana = :idSemana
           AND id_asignatura = :idAsignatura
+          AND (CAST(:estadoPedido AS text) IS NULL OR estado_pedido::text = :estadoPedido)
         """, nativeQuery = true)
-    long countWithSearchAndIdSemanaAndIdAsignatura(@Param("term") String term, @Param("idSemana") Integer idSemana, @Param("idAsignatura") Integer idAsignatura);
+    long countWithSearchAndIdSemanaAndIdAsignatura(@Param("term") String term,
+                                                   @Param("idSemana") Integer idSemana,
+                                                   @Param("idAsignatura") Integer idAsignatura,
+                                                   @Param("estadoPedido") String estadoPedido);
 
     /** Obtiene todas las asignaturas activas para el selector del modal. */
     @Query(value = """

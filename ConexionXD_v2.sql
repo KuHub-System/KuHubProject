@@ -223,115 +223,115 @@ CREATE CAST (varchar AS estado_orden_pedido_type) WITH INOUT AS IMPLICIT;
 
 -- Tabla configuraciones del sistema
 CREATE TABLE IF NOT EXISTS gestion_sistema (
-                                               id                      SERIAL PRIMARY KEY,
-                                               solicitudes_en_pedido   BOOLEAN NOT NULL DEFAULT FALSE,
-                                               descripcion             VARCHAR(255)
-    );
+    id                      SERIAL PRIMARY KEY,
+    solicitudes_en_pedido   BOOLEAN NOT NULL DEFAULT FALSE,
+    descripcion             VARCHAR(255)
+);
 
 -- Tabla rol
 CREATE TABLE rol (
-                     id_rol SERIAL PRIMARY KEY,
-                     nombre_rol tipo_rol_type NOT NULL,
-                     activo BOOLEAN DEFAULT TRUE --soft delete
+    id_rol SERIAL PRIMARY KEY,
+    nombre_rol tipo_rol_type NOT NULL,
+    activo BOOLEAN DEFAULT TRUE --soft delete
 );
 
 -- Tabla usuario
 CREATE TABLE usuario (
-                         id_usuario INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-                         id_rol INTEGER NOT NULL REFERENCES rol(id_rol),
+    id_usuario INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    id_rol INTEGER NOT NULL REFERENCES rol(id_rol),
     -- Ajuste de nombres a 50 caracteres
-                         p_nombre VARCHAR(50),
-                         s_nombre VARCHAR(50),
-                         app_paterno VARCHAR(50),
-                         app_materno VARCHAR(50),
+    p_nombre VARCHAR(50),
+    s_nombre VARCHAR(50),
+    app_paterno VARCHAR(50),
+    app_materno VARCHAR(50),
     -- Ajuste de email a 75 (uso interno)
-                         email VARCHAR(75) NOT NULL,
-                         username VARCHAR(50) NOT NULL, -- Asumo que el username también baja a 50
+    email VARCHAR(75) NOT NULL,
+    username VARCHAR(50) NOT NULL, -- Asumo que el username también baja a 50
     -- Ajuste CRÍTICO para Bcrypt (Mínimo 60)
-                         contrasena VARCHAR(60) NOT NULL,
-                         url_foto_perfil BYTEA, -- SE CAMBIARA EN UN FUTURO A URL
-                         activo BOOLEAN DEFAULT true,
-                         fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                         ultimo_acceso TIMESTAMP
+    contrasena VARCHAR(60) NOT NULL,
+    url_foto_perfil BYTEA, -- SE CAMBIARA EN UN FUTURO A URL
+    activo BOOLEAN DEFAULT true,
+    fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    ultimo_acceso TIMESTAMP
 );
 
 CREATE TABLE refresh_token (
-                               id_refresh_token BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-                               activo           BOOLEAN DEFAULT TRUE,
-                               creado_en        TIMESTAMP(6) WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-                               expires_at       TIMESTAMP(6) WITHOUT TIME ZONE NOT NULL,
-                               token            VARCHAR(255) NOT NULL,
-                               id_usuario       INTEGER NOT NULL,
+    id_refresh_token BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    activo           BOOLEAN DEFAULT TRUE,
+    creado_en        TIMESTAMP(6) WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    expires_at       TIMESTAMP(6) WITHOUT TIME ZONE NOT NULL,
+    token            VARCHAR(255) NOT NULL,
+    id_usuario       INTEGER NOT NULL,
 
     -- Restricción para que el token no se repita
-                               CONSTRAINT uk_refresh_token UNIQUE (token),
+    CONSTRAINT uk_refresh_token UNIQUE (token),
 
     -- Llave foránea hacia la tabla usuario
-                               CONSTRAINT fk_refresh_token_usuario
-                                   FOREIGN KEY (id_usuario)
-                                       REFERENCES usuario(id_usuario)
-                                       ON DELETE CASCADE
+    CONSTRAINT fk_refresh_token_usuario
+       FOREIGN KEY (id_usuario)
+           REFERENCES usuario(id_usuario)
+           ON DELETE CASCADE
 );
 
 -- Tabla bloque_horario
 
 CREATE TABLE bloque_horario (
-                                id_bloque INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-                                numero_bloque INTEGER UNIQUE NOT NULL,
-                                hora_inicio TIME NOT NULL,
-                                hora_fin TIME NOT NULL,
-                                CONSTRAINT check_horario_valido CHECK (hora_inicio < hora_fin)
+    id_bloque INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    numero_bloque INTEGER UNIQUE NOT NULL,
+    hora_inicio TIME NOT NULL,
+    hora_fin TIME NOT NULL,
+    CONSTRAINT check_horario_valido CHECK (hora_inicio < hora_fin)
 );
 
 -- Tabla asignatura
 CREATE TABLE asignatura (
-                            id_asignatura INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-                            cod_asignatura VARCHAR(50) UNIQUE NOT NULL,
-                            nombre_asignatura VARCHAR(100) NOT NULL,
-                            activo BOOLEAN DEFAULT TRUE,             -- soft delete
-                            descripcion VARCHAR(250)              	 -- nueva columna
+    id_asignatura INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    cod_asignatura VARCHAR(50) UNIQUE NOT NULL,
+    nombre_asignatura VARCHAR(100) NOT NULL,
+    activo BOOLEAN DEFAULT TRUE,             -- soft delete
+    descripcion VARCHAR(250)              	 -- nueva columna
 );
 
 -- Tabla sala
 CREATE TABLE sala (
-                      id_sala INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-                      cod_sala VARCHAR(50) UNIQUE,
-                      nombre_sala VARCHAR(100),
-                      activo BOOLEAN DEFAULT TRUE -- soft delete
+    id_sala INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    cod_sala VARCHAR(50) UNIQUE,
+    nombre_sala VARCHAR(100),
+    activo BOOLEAN DEFAULT TRUE -- soft delete
 );
 
 -- Tabla seccion
 CREATE TABLE seccion (
-                         id_seccion INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-                         id_asignatura INTEGER NOT NULL,
-                         nombre_seccion VARCHAR(100) NOT NULL,
-                         capacidad_max SMALLINT NOT NULL,
-                         cant_inscritos SMALLINT NOT NULL,
-                         activo BOOLEAN DEFAULT TRUE, -- soft delete
-                         estado_seccion estado_seccion_type NOT NULL DEFAULT 'ACTIVA',
-                         CONSTRAINT fk_asignatura
-                             FOREIGN KEY (id_asignatura)
-                                 REFERENCES asignatura(id_asignatura)
+    id_seccion INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    id_asignatura INTEGER NOT NULL,
+    nombre_seccion VARCHAR(100) NOT NULL,
+    capacidad_max SMALLINT NOT NULL,
+    cant_inscritos SMALLINT NOT NULL,
+    activo BOOLEAN DEFAULT TRUE, -- soft delete
+    estado_seccion estado_seccion_type NOT NULL DEFAULT 'ACTIVA',
+    CONSTRAINT fk_asignatura
+     FOREIGN KEY (id_asignatura)
+         REFERENCES asignatura(id_asignatura)
 );
 
 -- Tabla reserva_sala
 CREATE TABLE reserva_sala (
-                              id_reserva_sala INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-                              id_seccion INTEGER NOT NULL,
-                              id_sala INTEGER NOT NULL,
-                              dia_semana dia_semana_type NOT NULL,
-                              id_bloque INTEGER NOT NULL,
-                              activo BOOLEAN DEFAULT TRUE,
-                              CONSTRAINT fk_reserva_sala_seccion
-                                  FOREIGN KEY (id_seccion)
-                                      REFERENCES seccion(id_seccion)
-                                      ON DELETE CASCADE,
-                              CONSTRAINT fk_reserva_sala_sala
-                                  FOREIGN KEY (id_sala)
-                                      REFERENCES sala(id_sala),
-                              CONSTRAINT fk_reserva_sala_bloque
-                                  FOREIGN KEY (id_bloque)
-                                      REFERENCES bloque_horario(id_bloque)
+    id_reserva_sala INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    id_seccion INTEGER NOT NULL,
+    id_sala INTEGER NOT NULL,
+    dia_semana dia_semana_type NOT NULL,
+    id_bloque INTEGER NOT NULL,
+    activo BOOLEAN DEFAULT TRUE,
+    CONSTRAINT fk_reserva_sala_seccion
+      FOREIGN KEY (id_seccion)
+          REFERENCES seccion(id_seccion)
+          ON DELETE CASCADE,
+    CONSTRAINT fk_reserva_sala_sala
+      FOREIGN KEY (id_sala)
+          REFERENCES sala(id_sala),
+    CONSTRAINT fk_reserva_sala_bloque
+      FOREIGN KEY (id_bloque)
+          REFERENCES bloque_horario(id_bloque)
 );
 
 
@@ -357,21 +357,21 @@ CREATE TABLE reserva_sala (
  * ========================================================================= */
 -- Tabla docente_seccion
 CREATE TABLE docente_seccion (
-                                 id_docente_seccion INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-                                 id_usuario         INTEGER NOT NULL,
-                                 id_seccion         INTEGER NOT NULL,
-                                 fecha_asignacion   DATE DEFAULT CURRENT_DATE,
+    id_docente_seccion INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    id_usuario         INTEGER NOT NULL,
+    id_seccion         INTEGER NOT NULL,
+    fecha_asignacion   DATE DEFAULT CURRENT_DATE,
     -- UNIQUE(id_usuario, id_seccion): evita duplicados exactos.
     -- NO se agrega UNIQUE(id_seccion) para preservar escalabilidad futura (co-docencia).
     -- El límite de 1 docente por sección se controla en SeccionServiceImp (capa de aplicación).
-                                 CONSTRAINT uq_docente_seccion_usuario_seccion
-                                     UNIQUE (id_usuario, id_seccion),
-                                 CONSTRAINT fk_docente_seccion_usuario
-                                     FOREIGN KEY (id_usuario)
-                                         REFERENCES usuario(id_usuario),
-                                 CONSTRAINT fk_docente_seccion_seccion
-                                     FOREIGN KEY (id_seccion)
-                                         REFERENCES seccion(id_seccion)
+    CONSTRAINT uq_docente_seccion_usuario_seccion
+     UNIQUE (id_usuario, id_seccion),
+    CONSTRAINT fk_docente_seccion_usuario
+     FOREIGN KEY (id_usuario)
+         REFERENCES usuario(id_usuario),
+    CONSTRAINT fk_docente_seccion_seccion
+     FOREIGN KEY (id_seccion)
+         REFERENCES seccion(id_seccion)
 );
 
 
@@ -393,87 +393,87 @@ CREATE TABLE docente_seccion (
  * ========================================================================= */
 -- Tabla asignatura_profesor_cargo
 CREATE TABLE asignatura_profesor_cargo (
-                                           id_asignatura_profesor_cargo INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-                                           id_asignatura INTEGER NOT NULL,
-                                           id_usuario INTEGER NOT NULL,
-                                           fecha_asignacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    id_asignatura_profesor_cargo INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    id_asignatura INTEGER NOT NULL,
+    id_usuario INTEGER NOT NULL,
+    fecha_asignacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     -- UNIQUE(id_asignatura): garantiza 1 solo profesor a cargo por asignatura a nivel de BD.
     -- El control también se replica en AsignaturaServiceImp (capa de aplicación).
-                                           CONSTRAINT uq_asignatura UNIQUE (id_asignatura),
+    CONSTRAINT uq_asignatura UNIQUE (id_asignatura),
     -- Foreign Keys
-                                           CONSTRAINT fk_asignatura_profesor_asignatura
-                                               FOREIGN KEY (id_asignatura) REFERENCES asignatura(id_asignatura),
-                                           CONSTRAINT fk_asignatura_profesor_usuario
-                                               FOREIGN KEY (id_usuario) REFERENCES usuario(id_usuario)
+    CONSTRAINT fk_asignatura_profesor_asignatura
+       FOREIGN KEY (id_asignatura) REFERENCES asignatura(id_asignatura),
+    CONSTRAINT fk_asignatura_profesor_usuario
+       FOREIGN KEY (id_usuario) REFERENCES usuario(id_usuario)
 );
 
 -- =====================================================
 -- TABLAS DE INVENTARIO Y PRODUCTOS
 -- =====================================================
 CREATE TABLE unidad_medida (
-                               id_unidad SMALLINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-                               nombre_unidad VARCHAR(30) NOT NULL UNIQUE,
-                               abreviatura VARCHAR(10) NOT NULL UNIQUE,
-                               es_fraccionario BOOLEAN NOT NULL,
-                               activo BOOLEAN DEFAULT TRUE
+    id_unidad SMALLINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    nombre_unidad VARCHAR(30) NOT NULL UNIQUE,
+    abreviatura VARCHAR(10) NOT NULL UNIQUE,
+    es_fraccionario BOOLEAN NOT NULL,
+    activo BOOLEAN DEFAULT TRUE
 );
 
 -- Tabla categoria (Máxima optimización de espacio)
 CREATE TABLE categoria (
     -- SMALLINT ocupa solo 2 bytes (rango hasta 32,767)
-                           id_categoria SMALLINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-                           nombre_categoria VARCHAR(50) NOT NULL UNIQUE,
-                           activo BOOLEAN DEFAULT TRUE
+    id_categoria SMALLINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    nombre_categoria VARCHAR(50) NOT NULL UNIQUE,
+    activo BOOLEAN DEFAULT TRUE
 );
 
 
 -- Tabla producto
 CREATE TABLE producto (
-                          id_producto INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    id_producto INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     -- Opcional (admite NULL) pero no permite repetidos si tiene valor
-                          cod_producto VARCHAR(25),
+    cod_producto VARCHAR(25),
     -- Usando TEXT para máxima flexibilidad y eficiencia
-                          descripcion_producto TEXT,
-                          nombre_producto VARCHAR(100) NOT NULL UNIQUE,
-                          activo BOOLEAN DEFAULT TRUE,
+    descripcion_producto TEXT,
+    nombre_producto VARCHAR(100) NOT NULL UNIQUE,
+    activo BOOLEAN DEFAULT TRUE,
     -- Relaciones (SMALLINT para compatibilidad)
-                          id_categoria SMALLINT NOT NULL,
-                          id_unidad SMALLINT NOT NULL,
+    id_categoria SMALLINT NOT NULL,
+    id_unidad SMALLINT NOT NULL,
 
     ---------------------------------------------------------
     -- RESTRICCIONES DE UNICIDAD (UNIQUE CONSTRAINTS)
     ---------------------------------------------------------
     -- El nombre siempre debe ser único
-                          CONSTRAINT uk_producto_nombre UNIQUE (nombre_producto),
+    CONSTRAINT uk_producto_nombre UNIQUE (nombre_producto),
 
     -- El código es opcional pero único si se ingresa
-                          CONSTRAINT uk_producto_codigo UNIQUE (cod_producto),
+    CONSTRAINT uk_producto_codigo UNIQUE (cod_producto),
 
     ---------------------------------------------------------
     -- LLAVES FORÁNEAS (FOREIGN KEYS)
     ---------------------------------------------------------
-                          CONSTRAINT fk_categoria_producto
-                              FOREIGN KEY (id_categoria)
-                                  REFERENCES categoria (id_categoria)
-                                  ON UPDATE CASCADE ON DELETE RESTRICT,
+    CONSTRAINT fk_categoria_producto
+      FOREIGN KEY (id_categoria)
+          REFERENCES categoria (id_categoria)
+          ON UPDATE CASCADE ON DELETE RESTRICT,
 
-                          CONSTRAINT fk_unidad_producto
-                              FOREIGN KEY (id_unidad)
-                                  REFERENCES unidad_medida (id_unidad)
-                                  ON UPDATE CASCADE ON DELETE RESTRICT
+    CONSTRAINT fk_unidad_producto
+      FOREIGN KEY (id_unidad)
+          REFERENCES unidad_medida (id_unidad)
+          ON UPDATE CASCADE ON DELETE RESTRICT
 );
 
 -- Tabla inventario
 CREATE TABLE inventario (
-                            id_inventario INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-                            id_producto INTEGER NOT NULL,
-                            stock NUMERIC(10, 3) NOT NULL CHECK (stock >= 0),
-                            stock_limit NUMERIC(10, 3) CHECK (stock_limit IS NULL OR stock_limit >= 0),
-                            activo BOOLEAN NOT NULL DEFAULT TRUE,
-                            CONSTRAINT fk_inventario_producto
-                                FOREIGN KEY (id_producto) REFERENCES producto(id_producto)
-                                    ON UPDATE CASCADE ON DELETE RESTRICT,
-                            UNIQUE (id_producto)
+    id_inventario INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    id_producto INTEGER NOT NULL,
+    stock NUMERIC(10, 3) NOT NULL CHECK (stock >= 0),
+    stock_limit NUMERIC(10, 3) CHECK (stock_limit IS NULL OR stock_limit >= 0),
+    activo BOOLEAN NOT NULL DEFAULT TRUE,
+    CONSTRAINT fk_inventario_producto
+        FOREIGN KEY (id_producto) REFERENCES producto(id_producto)
+            ON UPDATE CASCADE ON DELETE RESTRICT,
+    UNIQUE (id_producto)
 );
 
 -- =====================================================
@@ -482,95 +482,95 @@ CREATE TABLE inventario (
 
 -- Tabla bodega_transito (Estructura espejo para movimientos temporales)
 CREATE TABLE bodega_transito (
-                                 id_bodega_transito INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    id_bodega_transito INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     -- Relación con el registro de inventario
-                                 id_inventario INTEGER NOT NULL,
+    id_inventario INTEGER NOT NULL,
     -- Mismo formato para mantener precisión decimal
-                                 stock NUMERIC(10, 3) NOT NULL CHECK (stock >= 0),
+    stock NUMERIC(10, 3) NOT NULL CHECK (stock >= 0),
     -- Límite opcional para alertas en tránsito
-                                 stock_limit NUMERIC(10, 3) CHECK (stock_limit IS NULL OR stock_limit >= 0),
-                                 activo BOOLEAN NOT NULL DEFAULT TRUE,
+    stock_limit NUMERIC(10, 3) CHECK (stock_limit IS NULL OR stock_limit >= 0),
+    activo BOOLEAN NOT NULL DEFAULT TRUE,
 
     ---------------------------------------------------------
     -- RESTRICCIONES Y LLAVES FORÁNEAS
     ---------------------------------------------------------
     -- Un inventario principal solo tiene un registro de tránsito
-                                 CONSTRAINT uk_transito_inventario UNIQUE (id_inventario),
+    CONSTRAINT uk_transito_inventario UNIQUE (id_inventario),
 
-                                 CONSTRAINT fk_bodega_transito_inventario
-                                     FOREIGN KEY (id_inventario) REFERENCES inventario(id_inventario)
-                                         ON UPDATE CASCADE ON DELETE RESTRICT
+    CONSTRAINT fk_bodega_transito_inventario
+     FOREIGN KEY (id_inventario) REFERENCES inventario(id_inventario)
+         ON UPDATE CASCADE ON DELETE RESTRICT
 );
 
 -- Tabla categoria_abastecimiento(determina las categorias que llegan al abastecimiento)
 CREATE TABLE categoria_abastecimiento (
-                                          id_categoria        SMALLINT            NOT NULL REFERENCES categoria(id_categoria),
-                                          tipo_abastecimiento tipo_abastecimiento NOT NULL,
-                                          PRIMARY KEY (id_categoria, tipo_abastecimiento)
+    id_categoria        SMALLINT            NOT NULL REFERENCES categoria(id_categoria),
+    tipo_abastecimiento tipo_abastecimiento NOT NULL,
+    PRIMARY KEY (id_categoria, tipo_abastecimiento)
 );
 
 -- =====================================================
 -- TABLAS DE PROVEEDORES
 -- =====================================================
 CREATE TABLE proveedor (
-                           id_proveedor INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-                           rut_proveedor VARCHAR(13) NOT NULL UNIQUE,  -- Aquí se agregó el NOT NULL
-                           nombre_distribuidora VARCHAR(100) NOT NULL,
-                           nombre_proveedor VARCHAR(100) NOT NULL,
-                           telefono_proveedor VARCHAR(20) NOT NULL,
-                           email_proveedor VARCHAR(150) NOT NULL,
-                           direccion_proveedor VARCHAR(255),  -- Opcional: usada en la cabecera del Excel plantilla
-                           estado_proveedor estado_provedor_type NOT NULL DEFAULT 'DISPONIBLE',
-                           activo BOOLEAN DEFAULT TRUE,
-                           fecha_creacion TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    id_proveedor INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    rut_proveedor VARCHAR(13) NOT NULL UNIQUE,  -- Aquí se agregó el NOT NULL
+    nombre_distribuidora VARCHAR(100) NOT NULL,
+    nombre_proveedor VARCHAR(100) NOT NULL,
+    telefono_proveedor VARCHAR(20) NOT NULL,
+    email_proveedor VARCHAR(150) NOT NULL,
+    direccion_proveedor VARCHAR(255),  -- Opcional: usada en la cabecera del Excel plantilla
+    estado_proveedor estado_provedor_type NOT NULL DEFAULT 'DISPONIBLE',
+    activo BOOLEAN DEFAULT TRUE,
+    fecha_creacion TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Tabla puente: vincula proveedor <-> producto con precio y metadata propia
 CREATE TABLE proveedor_producto (
-                                    id_proveedor_producto BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-                                    id_proveedor INTEGER NOT NULL,
-                                    id_producto INTEGER NOT NULL,
-                                    marca_producto VARCHAR(200),
-                                    formato_contenido VARCHAR(100),
-                                    precio_neto NUMERIC(10,3) NOT NULL,
-                                    precio_con_iva NUMERIC(10,3) NOT NULL,
-                                    activo BOOLEAN DEFAULT TRUE,
-                                    fecha_actualizacion TIMESTAMP DEFAULT NOW(),
+    id_proveedor_producto BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    id_proveedor INTEGER NOT NULL,
+    id_producto INTEGER NOT NULL,
+    marca_producto VARCHAR(200),
+    formato_contenido VARCHAR(100),
+    precio_neto NUMERIC(10,3) NOT NULL,
+    precio_con_iva NUMERIC(10,3) NOT NULL,
+    activo BOOLEAN DEFAULT TRUE,
+    fecha_actualizacion TIMESTAMP DEFAULT NOW(),
 
     -- Versioning: se permite multiples filas por (proveedor, producto).
     -- Solo UNA fila puede estar activa a la vez por par (proveedor, producto);
     -- esta regla se garantiza a nivel de servicio (desactivar anteriores antes de insertar).
 
-                                    CONSTRAINT fk_proveedor_producto_proveedor
-                                        FOREIGN KEY (id_proveedor)
-                                            REFERENCES proveedor (id_proveedor)
-                                            ON UPDATE CASCADE ON DELETE CASCADE,
+    CONSTRAINT fk_proveedor_producto_proveedor
+    FOREIGN KEY (id_proveedor)
+        REFERENCES proveedor (id_proveedor)
+        ON UPDATE CASCADE ON DELETE CASCADE,
 
-                                    CONSTRAINT fk_proveedor_producto_producto
-                                        FOREIGN KEY (id_producto)
-                                            REFERENCES producto (id_producto)
-                                            ON UPDATE CASCADE ON DELETE RESTRICT
+    CONSTRAINT fk_proveedor_producto_producto
+    FOREIGN KEY (id_producto)
+        REFERENCES producto (id_producto)
+        ON UPDATE CASCADE ON DELETE RESTRICT
 );
 
 CREATE TABLE proveedor_dia_entrega (
-                                       id_dia_entrega INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-                                       id_proveedor INTEGER NOT NULL,
-                                       dia_semana dia_semana_type NOT NULL,
+    id_dia_entrega INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    id_proveedor INTEGER NOT NULL,
+    dia_semana dia_semana_type NOT NULL,
 
     -- Nombres específicos para evitar confusión con otras tablas
-                                       hora_inicio_entrega TIME,
-                                       hora_fin_entrega TIME,
+    hora_inicio_entrega TIME,
+    hora_fin_entrega TIME,
 
     -- 1. Evitamos que se duplique el mismo día para el mismo proveedor
-                                       CONSTRAINT uk_proveedor_dia UNIQUE (id_proveedor, dia_semana),
+    CONSTRAINT uk_proveedor_dia UNIQUE (id_proveedor, dia_semana),
 
     -- 2. Validación de coherencia: La hora de inicio debe ser menor a la hora de fin
-                                       CONSTRAINT chk_horas_logicas_entrega CHECK (hora_inicio_entrega < hora_fin_entrega),
+    CONSTRAINT chk_horas_logicas_entrega CHECK (hora_inicio_entrega < hora_fin_entrega),
 
-                                       CONSTRAINT fk_proveedor_dia_entrega_proveedor
-                                           FOREIGN KEY (id_proveedor)
-                                               REFERENCES proveedor (id_proveedor)
-                                               ON UPDATE CASCADE ON DELETE CASCADE
+    CONSTRAINT fk_proveedor_dia_entrega_proveedor
+       FOREIGN KEY (id_proveedor)
+           REFERENCES proveedor (id_proveedor)
+           ON UPDATE CASCADE ON DELETE CASCADE
 );
 
 
@@ -579,15 +579,15 @@ CREATE TABLE proveedor_dia_entrega (
 -- =====================================================
 
 CREATE TABLE semanas (
-                         id_semana INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-                         nombre_semana VARCHAR(50) NOT NULL,
-                         fecha_inicio DATE NOT NULL,
-                         fecha_fin DATE NOT NULL,
-                         anio SMALLINT GENERATED ALWAYS AS (EXTRACT(YEAR FROM fecha_inicio)) STORED,
-                         semestre SMALLINT NOT NULL,
+    id_semana INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    nombre_semana VARCHAR(50) NOT NULL,
+    fecha_inicio DATE NOT NULL,
+    fecha_fin DATE NOT NULL,
+    anio SMALLINT GENERATED ALWAYS AS (EXTRACT(YEAR FROM fecha_inicio)) STORED,
+    semestre SMALLINT NOT NULL,
 
-                         CONSTRAINT uk_semana_periodo UNIQUE (nombre_semana, anio, semestre),
-                         CONSTRAINT uk_fecha_inicio UNIQUE (fecha_inicio)
+    CONSTRAINT uk_semana_periodo UNIQUE (nombre_semana, anio, semestre),
+    CONSTRAINT uk_fecha_inicio UNIQUE (fecha_inicio)
 );
 
 
@@ -597,95 +597,95 @@ CREATE TABLE semanas (
 
 -- Tabla pedido_semana_bodega (Antigua 'receta')
 CREATE TABLE pedido_semana_bodega (
-                                      id_pedido_semana_bodega INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-                                      id_semana INTEGER, -- <--- NUEVA COLUMNA OPCIONAL
-                                      id_asignatura INTEGER, -- <--- NUEVA COLUMNA OPCIONAL
-                                      nombre_pedido_semana_bodega VARCHAR(100) NOT NULL,
-                                      descripcion_pedido_semana_bodega TEXT,
-                                      activo BOOLEAN NOT NULL DEFAULT TRUE,
-                                      estado_pedido estado_pedido_semana_bodega_type NOT NULL,
+    id_pedido_semana_bodega INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    id_semana INTEGER, -- <--- NUEVA COLUMNA OPCIONAL
+    id_asignatura INTEGER, -- <--- NUEVA COLUMNA OPCIONAL
+    nombre_pedido_semana_bodega VARCHAR(100) NOT NULL,
+    descripcion_pedido_semana_bodega TEXT,
+    activo BOOLEAN NOT NULL DEFAULT TRUE,
+    estado_pedido estado_pedido_semana_bodega_type NOT NULL,
 
     -- Llave foránea opcional. Si se borra la semana, el id queda en NULL pero la plantilla no se pierde.
-                                      CONSTRAINT fk_pedido_semana_bodega_semana
-                                          FOREIGN KEY (id_semana)
-                                              REFERENCES semanas(id_semana)
-                                              ON DELETE SET NULL,
+    CONSTRAINT fk_pedido_semana_bodega_semana
+      FOREIGN KEY (id_semana)
+          REFERENCES semanas(id_semana)
+          ON DELETE SET NULL,
 
     -- Llave foránea opcional hacia asignatura.
-                                      CONSTRAINT fk_pedido_semana_asignatura
-                                          FOREIGN KEY (id_asignatura)
-                                              REFERENCES asignatura(id_asignatura)
-                                              ON DELETE SET NULL
+    CONSTRAINT fk_pedido_semana_asignatura
+      FOREIGN KEY (id_asignatura)
+          REFERENCES asignatura(id_asignatura)
+          ON DELETE SET NULL
 );
 
 
 -- Tabla detalle (Se mantiene igual, apuntando a la nueva PK)
 CREATE TABLE detalle_pedido_semana_bodega (
-                                              id_detalle_pedido_semana INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-                                              id_pedido_semana_bodega  INTEGER NOT NULL,
-                                              id_producto              INTEGER NOT NULL,
-                                              cant_producto            NUMERIC(10, 3) NOT NULL CHECK (cant_producto >= 0),
-                                              observacion              TEXT, -- <--- NUEVA COLUMNA AGREGADA AQUÍ
+    id_detalle_pedido_semana INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    id_pedido_semana_bodega  INTEGER NOT NULL,
+    id_producto              INTEGER NOT NULL,
+    cant_producto            NUMERIC(10, 3) NOT NULL CHECK (cant_producto >= 0),
+    observacion              TEXT, -- <--- NUEVA COLUMNA AGREGADA AQUÍ
 
-                                              CONSTRAINT fk_pedido_cabecera
-                                                  FOREIGN KEY (id_pedido_semana_bodega)
-                                                      REFERENCES pedido_semana_bodega(id_pedido_semana_bodega)
-                                                      ON DELETE CASCADE,
+    CONSTRAINT fk_pedido_cabecera
+      FOREIGN KEY (id_pedido_semana_bodega)
+          REFERENCES pedido_semana_bodega(id_pedido_semana_bodega)
+          ON DELETE CASCADE,
 
-                                              CONSTRAINT fk_pedido_producto
-                                                  FOREIGN KEY (id_producto)
-                                                      REFERENCES producto(id_producto),
+    CONSTRAINT fk_pedido_producto
+      FOREIGN KEY (id_producto)
+          REFERENCES producto(id_producto),
 
-                                              UNIQUE(id_pedido_semana_bodega, id_producto)
+    UNIQUE(id_pedido_semana_bodega, id_producto)
 );
 
 -- Tabla solicitud
 CREATE TABLE solicitud (
-                           id_solicitud INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY, -- <--- PK Simple
-                           id_usuario_gestor_solicitud INTEGER NOT NULL,
-                           id_seccion INTEGER NOT NULL,
-                           id_pedido_semana_bodega INTEGER,
-                           id_reserva_sala INTEGER,
-                           fecha_solicitada DATE NOT NULL,
-                           fecha_registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                           observaciones TEXT,
-                           estado_solicitud estado_solicitud_type DEFAULT 'PENDIENTE',
+    id_solicitud INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY, -- <--- PK Simple
+    id_usuario_gestor_solicitud INTEGER NOT NULL,
+    id_seccion INTEGER NOT NULL,
+    id_pedido_semana_bodega INTEGER,
+    id_reserva_sala INTEGER,
+    fecha_solicitada DATE NOT NULL,
+    fecha_registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    observaciones TEXT,
+    estado_solicitud estado_solicitud_type DEFAULT 'PENDIENTE',
 
-                           CONSTRAINT fk_solicitud_usuario FOREIGN KEY (id_usuario_gestor_solicitud) REFERENCES usuario(id_usuario),
-                           CONSTRAINT fk_solicitud_seccion FOREIGN KEY (id_seccion) REFERENCES seccion(id_seccion),
-                           CONSTRAINT fk_solicitud_pedido_semana FOREIGN KEY (id_pedido_semana_bodega) REFERENCES pedido_semana_bodega(id_pedido_semana_bodega) ON DELETE SET NULL,
-                           CONSTRAINT fk_solicitud_reserva FOREIGN KEY (id_reserva_sala) REFERENCES reserva_sala(id_reserva_sala) ON DELETE SET NULL
+    CONSTRAINT fk_solicitud_usuario FOREIGN KEY (id_usuario_gestor_solicitud) REFERENCES usuario(id_usuario),
+    CONSTRAINT fk_solicitud_seccion FOREIGN KEY (id_seccion) REFERENCES seccion(id_seccion),
+    CONSTRAINT fk_solicitud_pedido_semana FOREIGN KEY (id_pedido_semana_bodega) REFERENCES pedido_semana_bodega(id_pedido_semana_bodega) ON DELETE SET NULL,
+    CONSTRAINT fk_solicitud_reserva FOREIGN KEY (id_reserva_sala) REFERENCES reserva_sala(id_reserva_sala) ON DELETE SET NULL
 );
 
 -- Tabla detalle_solicitud
 CREATE TABLE detalle_solicitud (
-                                   id_detalle_solicitud INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-                                   id_solicitud INTEGER NOT NULL,
-                                   id_producto INTEGER NOT NULL,
-                                   cant_producto_solicitud NUMERIC(10, 3) NOT NULL,
-                                   observacion TEXT, -- <--- Cambiado a TEXT
-                                   enviado_bodega_transito BOOLEAN NOT NULL DEFAULT FALSE,
+    id_detalle_solicitud INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    id_solicitud INTEGER NOT NULL,
+    id_producto INTEGER NOT NULL,
+    cant_producto_solicitud NUMERIC(10, 3) NOT NULL,
+    observacion TEXT, -- <--- Cambiado a TEXT
+    enviado_bodega_transito BOOLEAN NOT NULL DEFAULT FALSE,
 
     -- La FK ahora apunta solo al ID simple de la cabecera
-                                   CONSTRAINT fk_detalle_solicitud_padre
-                                       FOREIGN KEY (id_solicitud) REFERENCES solicitud(id_solicitud) ON DELETE CASCADE,
-                                   CONSTRAINT fk_detalle_solicitud_producto
-                                       FOREIGN KEY (id_producto) REFERENCES producto(id_producto)
+    CONSTRAINT fk_detalle_solicitud_padre
+       FOREIGN KEY (id_solicitud) REFERENCES solicitud(id_solicitud) ON DELETE CASCADE,
+    CONSTRAINT fk_detalle_solicitud_producto
+       FOREIGN KEY (id_producto) REFERENCES producto(id_producto)
 );
 
 -- Tabla motivo reahazo solicitud
 CREATE TABLE motivo_rechazo_solicitud (
-                                          id_motivo INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-                                          id_solicitud INT NOT NULL,
-                                          motivo TEXT NOT NULL,
-                                          fecha_rechazo TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    id_motivo INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    id_solicitud INT NOT NULL,
+    motivo TEXT NOT NULL,
+    fecha_rechazo TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
-                                          CONSTRAINT fk_solicitud_rechazo
-                                              FOREIGN KEY (id_solicitud)
-                                                  REFERENCES solicitud(id_solicitud) ON DELETE CASCADE,
+    CONSTRAINT fk_solicitud_rechazo
+      FOREIGN KEY (id_solicitud)
+          REFERENCES solicitud(id_solicitud) ON DELETE CASCADE,
 
     -- Un rechazo por solicitud, llave única simplificada
-                                          CONSTRAINT uk_solicitud_rechazo UNIQUE (id_solicitud)
+    CONSTRAINT uk_solicitud_rechazo UNIQUE (id_solicitud)
 );
 
 -- Tabla pedido
@@ -699,39 +699,39 @@ CREATE TABLE pedido (
 
 -- Tabla pedido_detalle
 CREATE TABLE detalle_pedido (
-                                id_pedido_detalle INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-                                id_pedido INTEGER NOT NULL,
-                                id_producto INTEGER NOT NULL,
-                                cant_producto_pedido NUMERIC(10, 3) NOT NULL,
-                                CONSTRAINT fk_pd_pedido FOREIGN KEY (id_pedido) REFERENCES pedido(id_pedido),
-                                CONSTRAINT fk_pd_producto FOREIGN KEY (id_producto) REFERENCES producto(id_producto),
-                                CONSTRAINT uq_detalle_pedido_pedido_producto UNIQUE (id_pedido, id_producto)
+    id_pedido_detalle INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    id_pedido INTEGER NOT NULL,
+    id_producto INTEGER NOT NULL,
+    cant_producto_pedido NUMERIC(10, 3) NOT NULL,
+    CONSTRAINT fk_pd_pedido FOREIGN KEY (id_pedido) REFERENCES pedido(id_pedido),
+    CONSTRAINT fk_pd_producto FOREIGN KEY (id_producto) REFERENCES producto(id_producto),
+    CONSTRAINT uq_detalle_pedido_pedido_producto UNIQUE (id_pedido, id_producto)
 );
 
 -- Tabla pedido_solicitud
 CREATE TABLE pedido_solicitud (
-                                  id_pedido_solicitud INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-                                  id_pedido INTEGER NOT NULL,
-                                  id_solicitud INTEGER NOT NULL,
-                                  fecha_union_registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    id_pedido_solicitud INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    id_pedido INTEGER NOT NULL,
+    id_solicitud INTEGER NOT NULL,
+    fecha_union_registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
-                                  CONSTRAINT fk_ps_pedido FOREIGN KEY (id_pedido) REFERENCES pedido(id_pedido),
-                                  CONSTRAINT fk_ps_solicitud
-                                      FOREIGN KEY (id_solicitud)
-                                          REFERENCES solicitud(id_solicitud)
+    CONSTRAINT fk_ps_pedido FOREIGN KEY (id_pedido) REFERENCES pedido(id_pedido),
+    CONSTRAINT fk_ps_solicitud
+      FOREIGN KEY (id_solicitud)
+          REFERENCES solicitud(id_solicitud)
 );
 
 -- Tabla Stock_disponible sierve para registrar producto que sobraran por x motivo que no esta asociadas a un pedido.
 CREATE TABLE stock_disponible (
-                                  id_stock_disponible  SERIAL PRIMARY KEY,
-                                  id_producto          INTEGER NOT NULL REFERENCES producto(id_producto),
-                                  id_pedido            INTEGER REFERENCES pedido(id_pedido),
-                                  id_solicitud         INTEGER REFERENCES solicitud(id_solicitud),
-                                  cantidad             DECIMAL(10,3) NOT NULL CHECK (cantidad >= 0),
-                                  tipo_disponible      VARCHAR(20) NOT NULL DEFAULT 'INVENTARIO'
-                                      CHECK (tipo_disponible IN ('INVENTARIO', 'BODEGA_TRANSITO')),
-                                  fecha_registro       DATE NOT NULL DEFAULT CURRENT_DATE,
-                                  activo               BOOLEAN NOT NULL DEFAULT TRUE
+    id_stock_disponible  SERIAL PRIMARY KEY,
+    id_producto          INTEGER NOT NULL REFERENCES producto(id_producto),
+    id_pedido            INTEGER REFERENCES pedido(id_pedido),
+    id_solicitud         INTEGER REFERENCES solicitud(id_solicitud),
+    cantidad             DECIMAL(10,3) NOT NULL CHECK (cantidad >= 0),
+    tipo_disponible      VARCHAR(20) NOT NULL DEFAULT 'INVENTARIO'
+      CHECK (tipo_disponible IN ('INVENTARIO', 'BODEGA_TRANSITO')),
+    fecha_registro       DATE NOT NULL DEFAULT CURRENT_DATE,
+    activo               BOOLEAN NOT NULL DEFAULT TRUE
 );
 
 
@@ -744,65 +744,65 @@ CREATE TABLE stock_disponible (
 
 -- Tabla orden_pedido
 CREATE TABLE orden_pedido (
-                              id_orden_pedido     INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-                              id_pedido           INTEGER                   NOT NULL
-                                  REFERENCES pedido(id_pedido) ON DELETE RESTRICT,
-                              id_proveedor        INTEGER                   NOT NULL
-                                  REFERENCES proveedor(id_proveedor) ON DELETE RESTRICT,
-                              fecha_creacion      TIMESTAMP                 NOT NULL DEFAULT NOW(),
-                              estado_orden_pedido estado_orden_pedido_type  NOT NULL DEFAULT 'PENDIENTE',
-                              observaciones       TEXT,
-                              activo              BOOLEAN                   NOT NULL DEFAULT TRUE
+    id_orden_pedido     INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    id_pedido           INTEGER                   NOT NULL
+      REFERENCES pedido(id_pedido) ON DELETE RESTRICT,
+    id_proveedor        INTEGER                   NOT NULL
+      REFERENCES proveedor(id_proveedor) ON DELETE RESTRICT,
+    fecha_creacion      TIMESTAMP                 NOT NULL DEFAULT NOW(),
+    estado_orden_pedido estado_orden_pedido_type  NOT NULL DEFAULT 'PENDIENTE',
+    observaciones       TEXT,
+    activo              BOOLEAN                   NOT NULL DEFAULT TRUE
 );
 
--- Tabla detalle_orden_pedido (Tarea #27: agrega fecha_entrega)
+-- Tabla detalle_orden_pedido
 CREATE TABLE detalle_orden_pedido (
-                                      id_detalle_orden_pedido INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-                                      id_orden_pedido         INTEGER         NOT NULL
-                                          REFERENCES orden_pedido(id_orden_pedido) ON DELETE CASCADE,
-                                      id_producto             INTEGER         NOT NULL
-                                          REFERENCES producto(id_producto) ON DELETE RESTRICT,
-                                      cantidad_solicitada     NUMERIC(10,3)   NOT NULL,
-                                      precio_neto_unitario    NUMERIC(10,3),
-                                      precio_con_iva_unitario NUMERIC(10,3),
-                                      fecha_entrega           DATE            NOT NULL,
-                                      activo                  BOOLEAN         NOT NULL DEFAULT TRUE,
-                                      entregado               BOOLEAN         NOT NULL DEFAULT FALSE
+    id_detalle_orden_pedido INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    id_orden_pedido         INTEGER         NOT NULL
+      REFERENCES orden_pedido(id_orden_pedido) ON DELETE CASCADE,
+    id_producto             INTEGER         NOT NULL
+      REFERENCES producto(id_producto) ON DELETE RESTRICT,
+    cantidad_solicitada     NUMERIC(10,3)   NOT NULL,
+    precio_neto_unitario    NUMERIC(10,3),
+    precio_con_iva_unitario NUMERIC(10,3),
+    fecha_entrega           DATE            NOT NULL,
+    activo                  BOOLEAN         NOT NULL DEFAULT TRUE,
+    entregado               BOOLEAN         NOT NULL DEFAULT FALSE
 );
 
 -- Tabla movimiento
 CREATE TABLE movimiento (
-                            id_movimiento INTEGER GENERATED ALWAYS AS IDENTITY,
-                            id_usuario INTEGER NOT NULL,
-                            id_inventario INTEGER NOT NULL,
-                            id_bodega_transito INTEGER,
-                            stock_movimiento NUMERIC(10, 3) NOT NULL,
-                            tipo_movimiento tipo_movimiento_type NOT NULL,
-                            fecha_movimiento TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
--- Usando TEXT para máxima flexibilidad y eficiencia
-                            observacion TEXT,
-                            id_solicitud        INTEGER,
-                            id_pedido           INTEGER,
-                            id_orden_pedido     INTEGER,
-                            id_detalle_orden_pedido INTEGER,
+    id_movimiento INTEGER GENERATED ALWAYS AS IDENTITY,
+    id_usuario INTEGER NOT NULL,
+    id_inventario INTEGER NOT NULL,
+    id_bodega_transito INTEGER,
+    stock_movimiento NUMERIC(10, 3) NOT NULL,
+    tipo_movimiento tipo_movimiento_type NOT NULL,
+    fecha_movimiento TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    -- Usando TEXT para máxima flexibilidad y eficiencia
+    observacion TEXT,
+    id_solicitud        INTEGER,
+    id_pedido           INTEGER,
+    id_orden_pedido     INTEGER,
+    id_detalle_orden_pedido INTEGER,
 
--- La PK debe ser compuesta: ID + FECHA (Obligatorio en particiones)
-                            PRIMARY KEY (id_movimiento, fecha_movimiento),
+    -- La PK debe ser compuesta: ID + FECHA (Obligatorio en particiones)
+    PRIMARY KEY (id_movimiento, fecha_movimiento),
 
-                            CONSTRAINT fk_usuario_movimiento
-                                FOREIGN KEY (id_usuario) 		  REFERENCES usuario(id_usuario) ON UPDATE CASCADE ON DELETE RESTRICT,
-                            CONSTRAINT fk_inventario_movimiento
-                                FOREIGN KEY (id_inventario) 	  REFERENCES inventario(id_inventario) ON UPDATE CASCADE ON DELETE RESTRICT,
-                            CONSTRAINT fk_bodega_movimiento
-                                FOREIGN KEY (id_bodega_transito)  REFERENCES bodega_transito(id_bodega_transito) ON UPDATE CASCADE ON DELETE RESTRICT,
-                            CONSTRAINT fk_mov_solicitud
-                                FOREIGN KEY (id_solicitud)        REFERENCES solicitud(id_solicitud),
-                            CONSTRAINT fk_mov_pedido
-                                FOREIGN KEY (id_pedido)           REFERENCES pedido(id_pedido),
-                            CONSTRAINT fk_mov_orden_pedido
-                                FOREIGN KEY (id_orden_pedido)     REFERENCES orden_pedido(id_orden_pedido),
-                            CONSTRAINT fk_mov_detalle_orden_pedido
-                                FOREIGN KEY (id_detalle_orden_pedido) REFERENCES detalle_orden_pedido(id_detalle_orden_pedido)
+    CONSTRAINT fk_usuario_movimiento
+    FOREIGN KEY (id_usuario) 		  REFERENCES usuario(id_usuario) ON UPDATE CASCADE ON DELETE RESTRICT,
+    CONSTRAINT fk_inventario_movimiento
+    FOREIGN KEY (id_inventario) 	  REFERENCES inventario(id_inventario) ON UPDATE CASCADE ON DELETE RESTRICT,
+    CONSTRAINT fk_bodega_movimiento
+    FOREIGN KEY (id_bodega_transito)  REFERENCES bodega_transito(id_bodega_transito) ON UPDATE CASCADE ON DELETE RESTRICT,
+    CONSTRAINT fk_mov_solicitud
+    FOREIGN KEY (id_solicitud)        REFERENCES solicitud(id_solicitud),
+    CONSTRAINT fk_mov_pedido
+    FOREIGN KEY (id_pedido)           REFERENCES pedido(id_pedido),
+    CONSTRAINT fk_mov_orden_pedido
+    FOREIGN KEY (id_orden_pedido)     REFERENCES orden_pedido(id_orden_pedido),
+    CONSTRAINT fk_mov_detalle_orden_pedido
+    FOREIGN KEY (id_detalle_orden_pedido) REFERENCES detalle_orden_pedido(id_detalle_orden_pedido)
 ) PARTITION BY RANGE (fecha_movimiento);
 
 -- Crear Particiones Semestrales (Semestre = 6 meses)

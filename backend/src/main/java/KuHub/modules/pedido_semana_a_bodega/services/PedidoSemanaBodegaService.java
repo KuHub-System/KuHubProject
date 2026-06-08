@@ -1,6 +1,6 @@
 package KuHub.modules.pedido_semana_a_bodega.services;
 
-import KuHub.modules.gestion_inventario.dtos.request.SearchDTO;
+import KuHub.modules.pedido_semana_a_bodega.dtos.request.SearchPedidoSemanaBodegaDTO;
 import KuHub.modules.pedido_semana_a_bodega.dtos.request.dto.PedidoSemanaBodegaWithDetailsCreateDTO;
 import KuHub.modules.pedido_semana_a_bodega.dtos.projection.CountPedidoSemanaBodegaAndStatusView;
 import KuHub.modules.pedido_semana_a_bodega.dtos.respose.projection.AsignaturaActivaView;
@@ -15,8 +15,8 @@ import java.util.List;
 public interface PedidoSemanaBodegaService {
     PedidoSemanaBodega findById(Integer id);
     CountPedidoSemanaBodegaAndStatusView countRecipesAndStatus();
-    PedidoSemanaBodegasPage findAllRecipesPaginated(Integer pageRequested, Integer idSemana, Integer idAsignatura);
-    PedidoSemanaBodegasPage findAllWithDetailsAndSearchPaging(SearchDTO searchDto);
+    PedidoSemanaBodegasPage findAllRecipesPaginated(Integer pageRequested, Integer idSemana, Integer idAsignatura, String estadoPedido);
+    PedidoSemanaBodegasPage findAllWithDetailsAndSearchPaging(SearchPedidoSemanaBodegaDTO searchDto);
     boolean saveRecipeWithDetails(PedidoSemanaBodegaWithDetailsCreateDTO dto);
     boolean updateRecipeWithDetails (PedidoSemanaBodegaWithDetailsUpdateDTO request);
     boolean changeStatus(Integer idReceta);

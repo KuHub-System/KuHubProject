@@ -34,11 +34,12 @@ import {
  * @param {number} idAsignatura - ID de la asignatura para filtrar (opcional).
  * @returns {Promise<IPaginatedPedidoSemanaBodegaResponse>} Promesa que resuelve la repuesta paginada.
  */
-export const obtenerRecetasPaginadasService = async (page: number = 1, idSemana?: number, idAsignatura?: number): Promise<IPaginatedPedidoSemanaBodegaResponse> => {
+export const obtenerRecetasPaginadasService = async (page: number = 1, idSemana?: number, idAsignatura?: number, estadoPedido?: string): Promise<IPaginatedPedidoSemanaBodegaResponse> => {
   try {
     const params = new URLSearchParams();
     if (idSemana) params.append('idSemana', idSemana.toString());
     if (idAsignatura) params.append('idAsignatura', idAsignatura.toString());
+    if (estadoPedido) params.append('estadoPedido', estadoPedido);
     const queryStr = params.toString() ? `?${params.toString()}` : '';
     const response = await api.post<IPaginatedPedidoSemanaBodegaResponse>(`/pedido-semana-bodega/find-all-recipes-pagined/${page}${queryStr}`);
     return response.data;
@@ -59,9 +60,9 @@ export const obtenerRecetasPaginadasService = async (page: number = 1, idSemana?
  * @param {number} idAsignatura - ID de la asignatura para filtrar (opcional).
  * @returns {Promise<IPaginatedPedidoSemanaBodegaResponse>}
  */
-export const buscarRecetasPaginadasService = async (term: string, page: number = 1, idSemana?: number, idAsignatura?: number): Promise<IPaginatedPedidoSemanaBodegaResponse> => {
+export const buscarRecetasPaginadasService = async (term: string, page: number = 1, idSemana?: number, idAsignatura?: number, estadoPedido?: string): Promise<IPaginatedPedidoSemanaBodegaResponse> => {
   try {
-    const response = await api.post<IPaginatedPedidoSemanaBodegaResponse>('/pedido-semana-bodega/search-recipes', { term, page, idSemana, idAsignatura });
+    const response = await api.post<IPaginatedPedidoSemanaBodegaResponse>('/pedido-semana-bodega/search-recipes', { term, page, idSemana, idAsignatura, estadoPedido });
     return response.data;
   } catch (error: any) {
     console.error('Error al buscar recetas paginadas', error);

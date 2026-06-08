@@ -471,28 +471,21 @@ const InventarioPage: React.FC = () => {
     cargarProductosPaginados(1);
   }, [cargarProductosPaginados]);
 
-  /**
-   * Maneja el scroll global para cargar más datos.
-   */
   React.useEffect(() => {
+    const el = scrollerRef.current;
+    if (!el) return;
     const onScroll = () => {
       if (isLoading || isLoadingRef.current) return;
-
-      const scrollY = window.scrollY;
-      const windowHeight = window.innerHeight;
-      const fullHeight = document.documentElement.scrollHeight;
-
-      // Gatillo: cargamos cuando faltan 3000px para el final (muy anticipado)
-      if (scrollY + windowHeight > fullHeight - 3000) {
+      const { scrollTop, clientHeight, scrollHeight } = el;
+      if (scrollTop + clientHeight > scrollHeight - 3000) {
         if (productos.length < totalRegistros) {
           const pageToLoad = nextPageRef.current;
           cargarProductosPaginados(pageToLoad);
         }
       }
     };
-
-    window.addEventListener('scroll', onScroll, { passive: true });
-    return () => window.removeEventListener('scroll', onScroll);
+    el.addEventListener('scroll', onScroll, { passive: true });
+    return () => el.removeEventListener('scroll', onScroll);
   }, [isLoading, productos.length, totalRegistros, cargarProductosPaginados]);
 
   React.useEffect(() => {
@@ -1160,17 +1153,18 @@ const InventarioPage: React.FC = () => {
           </CardBody>
         </Card>
 
-        {/* Tabla de productos (Sin Card para sentimiento infinito) */}
+        {/* Tabla de productos */}
+        <Card className="shadow-sm border border-default-200 dark:border-default-100 bg-white dark:bg-content1 mx-4">
+          <CardBody className="p-0">
+            <div ref={scrollerRef} className="overflow-auto max-h-[calc(100vh-300px)] min-h-[300px] rounded-xl">
+              <div className="min-w-[800px] w-full">
         <Table
           aria-label="Tabla de inventario"
-          isHeaderSticky
           removeWrapper
-          className="min-w-full relative"
           layout="fixed"
           classNames={{
-            table: "min-w-full table-fixed border-collapse bg-transparent",
-            thead: "[&>tr]:first:shadow-none sticky top-[4rem] z-20",
-            th: "bg-default-100 dark:bg-default-100 text-default-500 font-bold uppercase text-xs h-12 sticky top-[4rem] z-20 border-b border-default-200/50 shadow-sm outline-none text-center",
+            table: "w-full",
+            th: "bg-default-100 dark:bg-default-100 text-default-500 font-bold uppercase text-xs h-12 sticky top-0 z-20 border-b border-default-200/50 shadow-sm outline-none text-center",
             td: "py-3 border-b border-default-50 dark:border-default-50/10 group-data-[last=true]:border-none px-4 text-center"
           }}
           bottomContent={
@@ -1317,6 +1311,10 @@ const InventarioPage: React.FC = () => {
             ))}
           </TableBody>
         </Table>
+              </div>
+            </div>
+          </CardBody>
+        </Card>
 
         {/* Modales */}
         <Modal isOpen={isOpen} onOpenChange={onOpenChange} size="lg" backdrop="blur" placement="top" classNames={{ base: "mt-4" }} isDismissable={false}>
