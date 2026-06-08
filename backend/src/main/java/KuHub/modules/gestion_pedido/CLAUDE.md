@@ -222,7 +222,6 @@ public ResponseEntity<ResumenHistoricoResponse> obtenerResumenHistorico(
 - [ ] La ruta está registrada en `SpringSecurityConfig`
 - [ ] Se usó `@Transactional(readOnly = true)` en métodos de lectura
 - [ ] Las excepciones usan `GestionPedidoException`
-- [ ] **`nota_alcance` fue actualizado** con la nueva funcionalidad
 
 ---
 

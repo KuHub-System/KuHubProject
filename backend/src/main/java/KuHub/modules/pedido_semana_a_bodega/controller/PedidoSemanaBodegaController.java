@@ -1,6 +1,6 @@
 package KuHub.modules.pedido_semana_a_bodega.controller;
 
-import KuHub.modules.gestion_inventario.dtos.request.SearchDTO;
+import KuHub.modules.pedido_semana_a_bodega.dtos.request.SearchPedidoSemanaBodegaDTO;
 import KuHub.modules.pedido_semana_a_bodega.dtos.request.dto.PedidoSemanaBodegaWithDetailsCreateDTO;
 import KuHub.modules.pedido_semana_a_bodega.dtos.projection.CountPedidoSemanaBodegaAndStatusView;
 import KuHub.modules.pedido_semana_a_bodega.dtos.respose.projection.AsignaturaActivaView;
@@ -37,25 +37,28 @@ public class PedidoSemanaBodegaController {
     }
 
     /**
-     * llama todas las recetas paginas, con soporte de filtro por semana y/o asignatura.
+     * llama todas las recetas paginas, con soporte de filtro por semana, asignatura y/o estado.
+     * El filtro estadoPedido ("ACTIVO"/"INACTIVO"/null) se aplica DENTRO de la consulta para que
+     * los inactivos no queden fuera por la paginación.
      * ✅ FUNCIONAL IMPLEMENTADO EN EL FRONT*/
     @PostMapping("/find-all-recipes-pagined/{page}")
     public ResponseEntity<PedidoSemanaBodegasPage> findAllRecipesPaginated(
             @PathVariable Integer page,
             @RequestParam(required = false) Integer idSemana,
-            @RequestParam(required = false) Integer idAsignatura
+            @RequestParam(required = false) Integer idAsignatura,
+            @RequestParam(required = false) String estadoPedido
     ){
         return ResponseEntity
                 .status(200)
-                .body(pedidoSemanaBodegaService.findAllRecipesPaginated(page, idSemana, idAsignatura));
+                .body(pedidoSemanaBodegaService.findAllRecipesPaginated(page, idSemana, idAsignatura, estadoPedido));
     }
 
     /**
-     * Llama las recetas por el nombre o descripcion similares paginada
+     * Llama las recetas por el nombre o descripcion similares paginada, con soporte de filtro por estado.
      * ✅ FUNCIONAL IMPLEMENTADO EN EL FRONT*/
     @PostMapping("/search-recipes")
     public ResponseEntity<PedidoSemanaBodegasPage> findAllWithDetailsAndSearchPaging(
-            @RequestBody SearchDTO searchDto
+            @RequestBody SearchPedidoSemanaBodegaDTO searchDto
     ){
         return ResponseEntity
                 .status(200)

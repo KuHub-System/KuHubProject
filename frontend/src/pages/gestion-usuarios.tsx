@@ -52,6 +52,7 @@ const GestionUsuariosPage: React.FC = () => {
   const isLoadingMoreRef = React.useRef<boolean>(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const scrollEnabledRef = React.useRef<boolean>(false);
+  const scrollerRef = React.useRef<HTMLDivElement>(null);
 
   usePageTitle('Gestión de Usuarios', 'Administra los usuarios del sistema y sus permisos', 'lucide:user-cog');
 
@@ -157,20 +158,17 @@ const GestionUsuariosPage: React.FC = () => {
 
   // Scroll listener
   useEffect(() => {
+    const el = scrollerRef.current;
+    if (!el) return;
     const onScroll = () => {
       if (!scrollEnabledRef.current || isLoadingMoreRef.current || !hasMoreRef.current) return;
-
-      const scrollY = window.scrollY;
-      const windowHeight = window.innerHeight;
-      const fullHeight = document.documentElement.scrollHeight;
-
-      if (scrollY + windowHeight > fullHeight - 300) {
+      const { scrollTop, clientHeight, scrollHeight } = el;
+      if (scrollTop + clientHeight > scrollHeight - 300) {
         cargarMasUsuarios();
       }
     };
-
-    window.addEventListener('scroll', onScroll, { passive: true });
-    return () => window.removeEventListener('scroll', onScroll);
+    el.addEventListener('scroll', onScroll, { passive: true });
+    return () => el.removeEventListener('scroll', onScroll);
   }, [cargarMasUsuarios]);
 
   const abrirModalCrear = () => {
@@ -445,22 +443,25 @@ const GestionUsuariosPage: React.FC = () => {
 
         <Card className="shadow-md border border-default-200 dark:border-default-100 bg-white dark:bg-content1">
           <CardBody className="p-0">
+            <div ref={scrollerRef} className="overflow-auto max-h-[calc(100vh-300px)] min-h-[300px] rounded-xl">
+              <div className="min-w-[900px] w-full">
             <Table
               aria-label="Tabla de usuarios"
               removeWrapper
+              layout="fixed"
               classNames={{
-                table: "table-fixed",
-                th: "bg-default-100 dark:bg-default-50 text-default-500 font-bold uppercase text-xs h-12",
+                table: "w-full",
+                th: "bg-default-100 dark:bg-default-100 text-default-500 font-bold uppercase text-xs h-12 sticky top-0 z-20 border-b border-default-200/50 shadow-sm outline-none",
                 td: "py-3 border-b border-default-50 dark:border-default-50/20 group-data-[last=true]:border-none"
               }}
             >
               <TableHeader>
-                <TableColumn width="25%">USUARIO</TableColumn>
-                <TableColumn width="15%">NOMBRE USUARIO</TableColumn>
-                <TableColumn width="20%">CORREO</TableColumn>
-                <TableColumn width="15%">ROL</TableColumn>
-                <TableColumn width="10%">ESTADO</TableColumn>
-                <TableColumn width="15%">ÚLTIMO ACCESO</TableColumn>
+                <TableColumn align="center" width="25%">USUARIO</TableColumn>
+                <TableColumn align="center" width="15%">NOMBRE USUARIO</TableColumn>
+                <TableColumn align="center" width="20%">CORREO</TableColumn>
+                <TableColumn align="center" width="15%">ROL</TableColumn>
+                <TableColumn align="center" width="10%">ESTADO</TableColumn>
+                <TableColumn align="center" width="15%">ÚLTIMO ACCESO</TableColumn>
                 <TableColumn align="center" width={100}>ACCIONES</TableColumn>
               </TableHeader>
               <TableBody
@@ -579,6 +580,8 @@ const GestionUsuariosPage: React.FC = () => {
                 </div>
               </div>
             )}
+              </div>
+            </div>
           </CardBody>
         </Card>
       </motion.div>

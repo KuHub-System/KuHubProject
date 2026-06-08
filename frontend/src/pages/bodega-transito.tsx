@@ -2348,7 +2348,7 @@ const BodegaTransitoPage: React.FC = () => {
     <>
     <div className="flex h-[calc(100vh-76px)] overflow-hidden font-sans relative -mt-6">
       {/* Área de Contenido Principal */}
-      <div ref={mainScrollerRef} onScroll={handleScroll} className="flex-grow overflow-y-auto bg-default-50/50 dark:bg-background scrollbar-hide pb-20">
+      <div ref={mainScrollerRef} className="flex-grow overflow-y-auto bg-default-50/50 dark:bg-background scrollbar-hide pb-20">
         <AnimatePresence mode="wait">
           {currentView === 'inventario' ? (
             <motion.div
@@ -2612,17 +2612,19 @@ const BodegaTransitoPage: React.FC = () => {
                 </CardBody>
               </Card>
 
-              {/* Tabla de productos (Sin Card para sentimiento infinito) */}
+              {/* Tabla de productos */}
+              <Card className="shadow-sm border border-default-200 dark:border-default-100 bg-white dark:bg-content1 mx-4">
+                <CardBody className="p-0">
+                  <div ref={scrollerRef} onScroll={handleScroll} className="overflow-auto max-h-[calc(100vh-300px)] min-h-[300px] rounded-xl">
+                    <div className="min-w-[800px] w-full">
               <Table
                 aria-label="Tabla inventario"
                 removeWrapper
-                className="min-w-full"
                 selectionMode="none"
                 layout="fixed"
                 classNames={{
-                  table: "min-w-full table-fixed border-collapse bg-transparent",
-                  thead: "[&>tr]:first:shadow-none sticky top-0 z-30",
-                  th: "bg-default-100 dark:bg-default-50/20 text-default-500 font-bold uppercase text-xs h-12 sticky top-0 z-30 border-b border-default-200/50 shadow-sm outline-none text-center",
+                  table: "w-full",
+                  th: "bg-default-100 dark:bg-default-100 text-default-500 font-bold uppercase text-xs h-12 sticky top-0 z-30 border-b border-default-200/50 shadow-sm outline-none text-center",
                   td: "py-3 border-b border-default-50 dark:border-default-50/10 text-center px-4",
                 }}
                 bottomContent={
@@ -2750,6 +2752,10 @@ const BodegaTransitoPage: React.FC = () => {
                   )}
                 </TableBody>
               </Table>
+                    </div>
+                  </div>
+                </CardBody>
+              </Card>
             </motion.div>
           ) : !ped_Leer ? (
             <motion.div key="sin-acceso-pedidos" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col items-center justify-center h-full py-24 gap-4 text-center">

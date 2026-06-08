@@ -15,6 +15,7 @@ import KuHub.modules.gestion_solicitud.dtos.request.record.ChangeSolicitationSta
 import KuHub.modules.gestion_solicitud.dtos.request.record.MassiveSolicitation;
 import KuHub.modules.gestion_solicitud.dtos.request.record.RejectEnPedidoDTO;
 import KuHub.modules.gestion_solicitud.dtos.respose.record.AbastecimientoBodegaDTO;
+import KuHub.modules.gestion_solicitud.dtos.respose.record.NotificacionSemanaDTO;
 import KuHub.modules.gestion_solicitud.exception.GestionSolicitudException;
 import KuHub.modules.gestion_solicitud.dtos.respose.record.CourseForSolicitation;
 import KuHub.modules.gestion_solicitud.dtos.respose.record.DashboardConsolidado;
@@ -79,6 +80,44 @@ public class SolicitudServiceImp implements SolicitudService {
     public Solicitud findById(Integer idSolicitud) {
         return solicitudRepository.findById(idSolicitud).orElseThrow((
         ) -> new RuntimeException("Solicitud no encontrada"));
+    }
+
+    @Transactional(readOnly = true)
+    @Override
+    public long contarPendientes() {
+        return solicitudRepository.contarSolicitudesPendientes();
+    }
+
+    @Transactional(readOnly = true)
+    @Override
+    public List<NotificacionSemanaDTO> obtenerNotificacionesPorSemana() {
+        return solicitudRepository.findPendientesPorSemana().stream()
+                .map(row -> new NotificacionSemanaDTO(
+                        ((Number) row[0]).intValue(),
+                        (String) row[1],
+                        ((java.sql.Date) row[2]).toLocalDate(),
+                        ((java.sql.Date) row[3]).toLocalDate(),
+                        ((Number) row[4]).intValue(),
+                        ((Number) row[5]).intValue(),
+                        ((Number) row[6]).longValue()
+                ))
+                .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    @Override
+    public List<NotificacionSemanaDTO> obtenerNotificacionesAceptadasPorSemana() {
+        return solicitudRepository.findAceptadasPorSemana().stream()
+                .map(row -> new NotificacionSemanaDTO(
+                        ((Number) row[0]).intValue(),
+                        (String) row[1],
+                        ((java.sql.Date) row[2]).toLocalDate(),
+                        ((java.sql.Date) row[3]).toLocalDate(),
+                        ((Number) row[4]).intValue(),
+                        ((Number) row[5]).intValue(),
+                        ((Number) row[6]).longValue()
+                ))
+                .collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)

@@ -42,10 +42,12 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   const contentVariants = {
     sidebarOpen: {
       marginLeft: '280px',
+      width: 'calc(100% - 280px)',
       transition: { duration: 0.3 }
     },
     sidebarClosed: {
       marginLeft: '80px',
+      width: 'calc(100% - 80px)',
       transition: { duration: 0.3 }
     }
   };

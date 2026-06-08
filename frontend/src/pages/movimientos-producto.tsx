@@ -12,7 +12,9 @@ import {
   Tooltip,
   Spinner,
   Chip,
-  DateRangePicker
+  DateRangePicker,
+  Card,
+  CardBody
 } from '@heroui/react';
 import { Icon } from '@iconify/react';
 import { CalendarDate, today, getLocalTimeZone } from '@internationalized/date';
@@ -86,6 +88,7 @@ const MovimientosProductoPage: React.FC = () => {
   const nextPageRef = React.useRef<number>(1);
   const isLoadingMoreRef = React.useRef<boolean>(false);
   const totalPagesRef = React.useRef<number>(1);
+  const tableScrollRef = React.useRef<HTMLDivElement>(null);
 
   // Filter state
   const [nombreProducto, setNombreProducto] = React.useState(initialNombre);
@@ -162,18 +165,19 @@ const MovimientosProductoPage: React.FC = () => {
     }
   }, [debouncedRequest]);
 
-  // Scroll listener
+  // Scroll listener — apunta al contenedor de la tabla, no a window
   React.useEffect(() => {
+    const el = tableScrollRef.current;
+    if (!el) return;
     const handleScroll = () => {
-      const scrollY = window.scrollY;
-      const windowHeight = window.innerHeight;
-      const fullHeight = document.documentElement.scrollHeight;
-      if (scrollY + windowHeight > fullHeight - 500) {
+      if (isLoadingMoreRef.current) return;
+      const { scrollTop, clientHeight, scrollHeight } = el;
+      if (scrollTop + clientHeight > scrollHeight - 500) {
         cargarMasMovimientos();
       }
     };
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
+    el.addEventListener('scroll', handleScroll, { passive: true });
+    return () => el.removeEventListener('scroll', handleScroll);
   }, [cargarMasMovimientos]);
 
   // Trigger initial load on mount
@@ -263,31 +267,36 @@ const MovimientosProductoPage: React.FC = () => {
       </p>
 
       {/* Table */}
-      <Table
-        aria-label="Tabla de movimientos"
-        removeWrapper
-        layout="fixed"
-        classNames={{
-          th: "bg-default-100 dark:bg-default-50/20 text-default-500 font-bold uppercase text-xs h-12",
-          td: "py-3 border-b border-default-50 dark:border-default-50/10 group-data-[last=true]:border-none"
-        }}
-        bottomContent={
-          isLoadingMore ? (
-            <div className="flex w-full justify-center py-4">
-              <Spinner size="sm" />
-            </div>
-          ) : null
-        }
-      >
-        <TableHeader>
-          <TableColumn width="24%" align="center">PRODUCTO</TableColumn>
-          <TableColumn width="10%" align="center">CATEGORÍA</TableColumn>
-          <TableColumn width="10%" align="center">TIPO</TableColumn>
-          <TableColumn width="5%" align="center">CANTIDAD</TableColumn>
-          <TableColumn width="6%" align="center">FECHA</TableColumn>
-          <TableColumn width="20%" align="center">RESPONSABLE</TableColumn>
-          <TableColumn width="25%" align="center">OBSERVACIÓN</TableColumn>
-        </TableHeader>
+      <Card className="shadow-sm border border-default-200 dark:border-default-100 bg-white dark:bg-content1">
+        <CardBody className="p-0">
+          <div ref={tableScrollRef} className="overflow-auto max-h-[calc(100vh-280px)] min-h-[300px] rounded-xl">
+          <div className="min-w-[960px] w-full">
+          <Table
+            aria-label="Tabla de movimientos"
+            removeWrapper
+            layout="fixed"
+            classNames={{
+              table: "w-full",
+              th: "bg-default-100 dark:bg-default-100 text-default-500 font-bold uppercase text-xs h-12 sticky top-0 z-20",
+              td: "py-3 border-b border-default-50 dark:border-default-50/10 group-data-[last=true]:border-none"
+            }}
+            bottomContent={
+              isLoadingMore ? (
+                <div className="flex w-full justify-center py-4">
+                  <Spinner size="sm" />
+                </div>
+              ) : null
+            }
+          >
+            <TableHeader>
+              <TableColumn width="20%" align="center">PRODUCTO</TableColumn>
+              <TableColumn width="10%" align="center">CATEGORÍA</TableColumn>
+              <TableColumn width="14%" align="center">TIPO</TableColumn>
+              <TableColumn width="6%" align="center">CANTIDAD</TableColumn>
+              <TableColumn width="9%" align="center">FECHA</TableColumn>
+              <TableColumn width="17%" align="center">RESPONSABLE</TableColumn>
+              <TableColumn width="24%" align="center">OBSERVACIÓN</TableColumn>
+            </TableHeader>
         <TableBody
           isLoading={isLoading}
           loadingContent={<Spinner label="Cargando movimientos..." />}
@@ -301,16 +310,16 @@ const MovimientosProductoPage: React.FC = () => {
         >
           {movimientos.map((mov, idx) => (
             <TableRow key={idx} className="hover:bg-default-50 dark:hover:bg-default-100/50 transition-colors">
-              <TableCell className="max-w-[320px]">
+              <TableCell>
                 <Tooltip content={mov.nombreProducto} delay={500} closeDelay={0}>
-                  <div className="flex flex-col items-center truncate">
+                  <div className="flex flex-col items-center">
                     <span className="font-semibold text-secondary dark:text-foreground truncate text-center w-full">
                       {mov.nombreProducto}
                     </span>
                   </div>
                 </Tooltip>
               </TableCell>
-              <TableCell className="max-w-[120px]">
+              <TableCell>
                 {mov.nombreCategoria ? (
                   <Tooltip content={mov.nombreCategoria} delay={500} closeDelay={0}>
                     <div className="flex justify-center w-full">
@@ -339,12 +348,12 @@ const MovimientosProductoPage: React.FC = () => {
                   </span>
                 </div>
               </TableCell>
-              <TableCell className="max-w-[180px]">
+              <TableCell>
                 <Tooltip content={mov.nombreUsuario} delay={500} closeDelay={0}>
                   <span className="truncate block text-center w-full">{mov.nombreUsuario}</span>
                 </Tooltip>
               </TableCell>
-              <TableCell className="max-w-[250px]">
+              <TableCell>
                 {mov.observacion ? (
                   <Tooltip content={mov.observacion} delay={500} closeDelay={0}>
                     <span className="italic text-default-500 truncate block text-center w-full">
@@ -359,6 +368,10 @@ const MovimientosProductoPage: React.FC = () => {
           ))}
         </TableBody>
       </Table>
+          </div>
+          </div>
+        </CardBody>
+      </Card>
     </div>
   );
 };

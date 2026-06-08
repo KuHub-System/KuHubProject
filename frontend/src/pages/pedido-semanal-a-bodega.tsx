@@ -153,9 +153,10 @@ const PedidoSemanalABodegaPage: React.FC = () => {
 
       const idSemanaFilter = filterIdSemana !== 'todas' ? Number(filterIdSemana) : undefined;
       const idAsignaturaFilter = filterIdAsignatura !== 'todas' ? Number(filterIdAsignatura) : undefined;
+      const estadoFilter = filterEstado === 'activos' ? 'ACTIVO' : filterEstado === 'inactivos' ? 'INACTIVO' : undefined;
 
       // Cargar recetas primero (datos críticos)
-      const resRecetas = await obtenerRecetasPaginadasService(1, idSemanaFilter, idAsignaturaFilter);
+      const resRecetas = await obtenerRecetasPaginadasService(1, idSemanaFilter, idAsignaturaFilter, estadoFilter);
       setRecetas(resRecetas.content);
       setTotalPages(resRecetas.paging.totalPages);
       nextPageRef.current = 2;
@@ -197,10 +198,11 @@ const PedidoSemanalABodegaPage: React.FC = () => {
 
       const idSemanaFilter = filterIdSemana !== 'todas' ? Number(filterIdSemana) : undefined;
       const idAsignaturaFilter = filterIdAsignatura !== 'todas' ? Number(filterIdAsignatura) : undefined;
+      const estadoFilter = filterEstado === 'activos' ? 'ACTIVO' : filterEstado === 'inactivos' ? 'INACTIVO' : undefined;
 
       const data = searchTerm
-        ? await buscarRecetasPaginadasService(searchTerm, nextPageRef.current, idSemanaFilter, idAsignaturaFilter)
-        : await obtenerRecetasPaginadasService(nextPageRef.current, idSemanaFilter, idAsignaturaFilter);
+        ? await buscarRecetasPaginadasService(searchTerm, nextPageRef.current, idSemanaFilter, idAsignaturaFilter, estadoFilter)
+        : await obtenerRecetasPaginadasService(nextPageRef.current, idSemanaFilter, idAsignaturaFilter, estadoFilter);
 
       setRecetas(prev => [...prev, ...data.content]);
       nextPageRef.current += 1;
@@ -210,7 +212,7 @@ const PedidoSemanalABodegaPage: React.FC = () => {
       isLoadingMoreRef.current = false;
       setIsLoadingMore(false);
     }
-  }, [totalPages, toast, filterIdSemana, filterIdAsignatura, searchTerm]);
+  }, [totalPages, toast, filterIdSemana, filterIdAsignatura, filterEstado, searchTerm]);
 
   React.useEffect(() => {
     // El scroll vertical ahora vive dentro del contenedor de la tabla (caja de altura fija),
@@ -247,7 +249,8 @@ const PedidoSemanalABodegaPage: React.FC = () => {
         setIsLoading(true);
         const idSemanaFilter = filterIdSemana !== 'todas' ? Number(filterIdSemana) : undefined;
         const idAsignaturaFilter = filterIdAsignatura !== 'todas' ? Number(filterIdAsignatura) : undefined;
-        const res = await buscarRecetasPaginadasService(searchTerm, 1, idSemanaFilter, idAsignaturaFilter);
+        const estadoFilter = filterEstado === 'activos' ? 'ACTIVO' : filterEstado === 'inactivos' ? 'INACTIVO' : undefined;
+        const res = await buscarRecetasPaginadasService(searchTerm, 1, idSemanaFilter, idAsignaturaFilter, estadoFilter);
         setRecetas(res.content);
         setTotalPages(res.paging.totalPages);
         nextPageRef.current = 2;
@@ -259,13 +262,12 @@ const PedidoSemanalABodegaPage: React.FC = () => {
     }, 1500);
 
     return () => clearTimeout(timer);
-  }, [searchTerm, filterIdSemana, filterIdAsignatura, toast]);
+  }, [searchTerm, filterIdSemana, filterIdAsignatura, filterEstado, toast]);
 
-  const recetasAMostrar = React.useMemo(() => {
-    if (filterEstado === 'todos') return recetas;
-    const objetivo = filterEstado === 'activos' ? 'Activo' : 'Inactivo';
-    return recetas.filter(r => r.estadoPedido === objetivo);
-  }, [recetas, filterEstado]);
+  // El filtro de estado (todos/activos/inactivos) ahora se aplica en el backend
+  // dentro de la consulta paginada, por lo que ya no se filtra en el cliente:
+  // los inactivos que antes quedaban fuera de la paginación ahora sí se listan.
+  const recetasAMostrar = recetas;
 
   const handleNuevaReceta = () => {
     setModalMode('crear');

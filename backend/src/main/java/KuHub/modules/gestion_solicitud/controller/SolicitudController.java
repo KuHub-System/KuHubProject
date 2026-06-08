@@ -6,6 +6,7 @@ import KuHub.modules.gestion_solicitud.dtos.request.record.RejectEnPedidoDTO;
 import KuHub.modules.gestion_solicitud.dtos.respose.record.CourseForSolicitation;
 import KuHub.modules.gestion_solicitud.dtos.respose.record.DashboardConsolidado;
 import KuHub.modules.gestion_solicitud.dtos.respose.record.AbastecimientoBodegaDTO;
+import KuHub.modules.gestion_solicitud.dtos.respose.record.NotificacionSemanaDTO;
 import KuHub.modules.gestion_solicitud.dtos.request.*;
 import KuHub.modules.gestion_solicitud.dtos.respose.projection.ResultsMassSolicitationView;
 import KuHub.modules.gestion_solicitud.dtos.respose.record.RecipeSolicitation;
@@ -40,6 +41,37 @@ public class SolicitudController {
 
     @Autowired
     private DynamicPermissionService dynamicPermissionService;
+
+    /**
+     * Retorna el conteo de solicitudes con estado PENDIENTE para el panel de notificaciones.
+     * ✅ En uso: Consumido por notification-service.ts (polling cada 60s en el header).
+     */
+    @GetMapping("/notificacion-pendientes")
+    public ResponseEntity<Long> contarPendientes() {
+        return ResponseEntity
+                .status(200)
+                .body(solicitudService.contarPendientes());
+    }
+
+    /**
+     * Retorna solicitudes PENDIENTES agrupadas por semana académica para el dropdown de notificaciones.
+     * Cada elemento incluye idSemana, nombreSemana, fechas, anio, semestre y cantidad de pendientes.
+     * ✅ En uso: Consumido por notification-service.ts (polling en header).
+     */
+    @GetMapping("/notificacion-pendientes-lista")
+    public ResponseEntity<List<NotificacionSemanaDTO>> obtenerNotificacionesPorSemana() {
+        return ResponseEntity.ok(solicitudService.obtenerNotificacionesPorSemana());
+    }
+
+    /**
+     * Retorna solicitudes ACEPTADAS (aún no consolidadas en pedido) agrupadas por semana.
+     * Se usa cuando solicitudesEnPedido = false para alertar al gestor de consolidación manual.
+     * ✅ En uso: Consumido por notification-service.ts (polling en header).
+     */
+    @GetMapping("/notificacion-aceptadas-lista")
+    public ResponseEntity<List<NotificacionSemanaDTO>> obtenerNotificacionesAceptadasPorSemana() {
+        return ResponseEntity.ok(solicitudService.obtenerNotificacionesAceptadasPorSemana());
+    }
 
     /**
      * Obtiene todas las asignaturas con sus secciones y bloques horarios activos (con reserva de sala).
