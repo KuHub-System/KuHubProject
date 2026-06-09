@@ -18,6 +18,7 @@ import KuHub.modules.gestion_pedido.repository.DetallePedidoRepository;
 import KuHub.modules.gestion_pedido.repository.PedidoRepository;
 import KuHub.modules.gestion_pedido.repository.PedidoSolicitudRepository;
 import KuHub.modules.gestion_solicitud.dtos.request.DateRangeDTO;
+import KuHub.modules.gestion_solicitud.dtos.respose.record.NotificacionSemanaDTO;
 import KuHub.modules.gestion_solicitud.entity.Solicitud;
 import KuHub.modules.gestion_solicitud.repository.SolicitudRepository;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -335,6 +336,26 @@ public class PedidoServiceImpl implements PedidoService{
             log.error("Error deserializando obtenerResumenHistoricoJSON: {}", e.getMessage(), e);
             throw new RuntimeException("Error al procesar resumen histórico", e);
         }
+    }
+
+    // =====================================================
+    // NOTIFICACIONES: pedidos PENDIENTE agrupados por semana
+    // =====================================================
+
+    @Transactional(readOnly = true)
+    @Override
+    public List<NotificacionSemanaDTO> obtenerNotificacionesPedidosPendientes() {
+        return pedidoRepository.findPedidosPendientesPorSemana().stream()
+                .map(row -> new NotificacionSemanaDTO(
+                        ((Number) row[0]).intValue(),
+                        (String) row[1],
+                        ((java.sql.Date) row[2]).toLocalDate(),
+                        ((java.sql.Date) row[3]).toLocalDate(),
+                        ((Number) row[4]).intValue(),
+                        ((Number) row[5]).intValue(),
+                        ((Number) row[6]).longValue()
+                ))
+                .toList();
     }
 
     // =====================================================

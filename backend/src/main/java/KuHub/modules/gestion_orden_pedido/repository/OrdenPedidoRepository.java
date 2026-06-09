@@ -107,6 +107,70 @@ public interface OrdenPedidoRepository extends JpaRepository<OrdenPedido, Intege
             @Param("fechaInicio") LocalDate fechaInicio,
             @Param("fechaFin")    LocalDate fechaFin);
 
+    // =====================================================
+    // NOTIFICACIONES: pedidos APROBADO sin OP (o con todas CANCELADAS) por semana
+    // Retorna [idSemana, nombreSemana, fechaInicio, fechaFin, anio, semestre, cantidad]
+    // =====================================================
+    /**
+     * Agrupa pedidos APROBADOS que no tienen ninguna OP activa no-cancelada, por semana académica.
+     * Cubre dos casos: pedido sin OP alguna, y pedido cuyas OPs están todas CANCELADAS.
+     * Retorna filas [idSemana, nombreSemana, fechaInicio, fechaFin, anio, semestre, cantidadPendientes].
+     */
+    @Query(value = """
+        SELECT
+            sm.id_semana,                      -- [0]
+            sm.nombre_semana,                  -- [1]
+            sm.fecha_inicio,                   -- [2]
+            sm.fecha_fin,                      -- [3]
+            sm.anio,                           -- [4]
+            sm.semestre,                       -- [5]
+            COUNT(*) AS cantidad_pendientes    -- [6]
+        FROM pedido p
+        JOIN semanas sm ON p.fecha_inicio_pedido = sm.fecha_inicio
+                       AND p.fecha_fin_pedido    = sm.fecha_fin
+        WHERE p.estado_pedido = 'APROBADO'::estado_pedido_type
+          AND NOT EXISTS (
+              SELECT 1 FROM orden_pedido op
+              WHERE op.id_pedido = p.id_pedido
+                AND op.activo    = TRUE
+                AND op.estado_orden_pedido != 'CANCELADA'::estado_orden_pedido_type
+          )
+        GROUP BY sm.id_semana, sm.nombre_semana, sm.fecha_inicio, sm.fecha_fin, sm.anio, sm.semestre
+        ORDER BY sm.fecha_inicio ASC
+        """, nativeQuery = true)
+    List<Object[]> findPedidosAprobadosSinOpPorSemana();
+
+    // =====================================================
+    // NOTIFICACIONES: entregas programadas para hoy o ayer (CONFIRMADA, entregado=false)
+    // Retorna [idOrdenPedido, nombreDistribuidora, fechaEntrega(text), cantidadProductos]
+    // =====================================================
+    /**
+     * Devuelve las OPs CONFIRMADAS que tienen al menos un detalle activo con entregado=false
+     * cuya fecha_entrega es hoy o ayer. Agrupa por OP + proveedor + fecha de entrega.
+     * [0] id_orden_pedido      (Integer)
+     * [1] nombre_distribuidora (String)
+     * [2] fecha_entrega        (String YYYY-MM-DD)
+     * [3] cantidad_productos   (Long)
+     */
+    @Query(value = """
+        SELECT
+            op.id_orden_pedido,                    -- [0]
+            pv.nombre_distribuidora,               -- [1]
+            d.fecha_entrega::text,                 -- [2]
+            COUNT(*) AS cantidad_productos          -- [3]
+        FROM orden_pedido op
+        JOIN proveedor pv ON pv.id_proveedor = op.id_proveedor
+        JOIN detalle_orden_pedido d ON d.id_orden_pedido = op.id_orden_pedido
+        WHERE op.estado_orden_pedido = 'CONFIRMADA'::estado_orden_pedido_type
+          AND op.activo = TRUE
+          AND d.activo = TRUE
+          AND d.entregado = FALSE
+          AND d.fecha_entrega IN (CURRENT_DATE, CURRENT_DATE - INTERVAL '1 day')
+        GROUP BY op.id_orden_pedido, pv.nombre_distribuidora, d.fecha_entrega
+        ORDER BY d.fecha_entrega ASC, pv.nombre_distribuidora ASC
+        """, nativeQuery = true)
+    List<Object[]> findEntregasPendientesHoyAyer();
+
     /**
      * Cotización consolidada (Paso 2). Cadena de tablas:
      *

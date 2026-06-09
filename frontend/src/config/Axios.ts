@@ -46,7 +46,7 @@ if (typeof window !== 'undefined') {
 
 const api: AxiosInstance = axios.create({
     baseURL: API_URL, // <--- Aplicamos la variable aquí
-    timeout: 15000,
+    timeout: 30000,
     headers: { 'Content-Type': 'application/json' },
 });
 

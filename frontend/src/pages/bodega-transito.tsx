@@ -377,9 +377,10 @@ interface ControlMasivoBodegaModalProps {
   initialItems?: ItemBodegaMasivo[];
   onProcessComplete?: (data: IBulkWarehouseProcessResult, retryItems: ItemBodegaMasivo[]) => void;
   puedeAccederAbastecimiento?: boolean;
+  onOpenGestionAbastecimiento?: () => void;
 }
 
-const ControlMasivoBodegaModal: React.FC<ControlMasivoBodegaModalProps> = ({ onClose, initialItems, onProcessComplete, puedeAccederAbastecimiento = false }) => {
+const ControlMasivoBodegaModal: React.FC<ControlMasivoBodegaModalProps> = ({ onClose, initialItems, onProcessComplete, puedeAccederAbastecimiento = false, onOpenGestionAbastecimiento }) => {
   const toast = useToast();
 
   // Estados para modal de abastecimiento de proveedores (OPs CONFIRMADA)
@@ -1345,6 +1346,24 @@ const ControlMasivoBodegaModal: React.FC<ControlMasivoBodegaModalProps> = ({ onC
                   <h2 className="text-lg font-bold text-secondary dark:text-foreground">Abastecimiento de Proveedores</h2>
                 </div>
                 <p className="text-xs text-default-500 font-normal">OPs confirmadas — seleccione los días a cargar al control masivo</p>
+                <div className="flex items-center justify-between gap-2 bg-warning/10 border border-warning/30 rounded-lg px-3 py-2">
+                  <div className="flex items-center gap-2">
+                    <Icon icon="lucide:info" width={14} className="text-warning shrink-0" />
+                    <p className="text-xs text-warning-700 dark:text-warning">Se visualizan todas las categorías asignadas al abastecimiento.</p>
+                  </div>
+                  {onOpenGestionAbastecimiento && (
+                    <Button
+                      size="sm"
+                      variant="light"
+                      color="warning"
+                      className="text-xs shrink-0 h-7 px-2"
+                      onPress={onOpenGestionAbastecimiento}
+                      startContent={<Icon icon="lucide:settings-2" width={12} />}
+                    >
+                      Gestión de Abastecimiento
+                    </Button>
+                  )}
+                </div>
                 {/* Filtro de período */}
                 <div className="flex gap-2 flex-wrap">
                   {([['semana','Esta semana'],['30dias','Próx. 30 días'],['3meses','3 meses'],['todas','Todas']] as [FiltroAbastecimiento, string][]).map(([key, label]) => (
@@ -3050,6 +3069,7 @@ const BodegaTransitoPage: React.FC = () => {
               onClose={onClose}
               initialItems={bulkRetryItems}
               puedeAccederAbastecimiento={bod_Crear || bod_Editar}
+              onOpenGestionAbastecimiento={onAbastecimientoConfigOpen}
               onProcessComplete={(data, retryItems) => {
                 setBulkResult(data);
                 setBulkRetryItems(retryItems);
