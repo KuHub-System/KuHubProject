@@ -635,6 +635,13 @@ public class SpringSecurityConfig {
                         .hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR", "ENCARGADO_BODEGA")
 
                         // ========================================
+                        // ENDPOINTS DE ASISTENTE IA (Ollama)
+                        // ========================================
+                        // Chat con la IA: cualquier usuario autenticado puede usarlo.
+                        // La IA corre en instancia dedicada y solo es accesible vía backend (VPC privada).
+                        .requestMatchers(HttpMethod.POST, "/api/v1/ia/**").authenticated()
+
+                        // ========================================
                         // RESTO DE ENDPOINTS
                         // ========================================
                         // Cualquier otra petición requiere autenticación (sin importar el rol)
