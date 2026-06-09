@@ -635,6 +635,12 @@ public class SpringSecurityConfig {
                         .hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR", "ENCARGADO_BODEGA")
 
                         // ========================================
+                        // ENDPOINTS DE NOTIFICACIONES (resumen unificado del header)
+                        // Accesible para cualquier usuario autenticado; el servicio filtra por rol.
+                        // ========================================
+                        .requestMatchers(HttpMethod.GET, "/api/v1/notificacion/**").authenticated()
+
+                        // ========================================
                         // RESTO DE ENDPOINTS
                         // ========================================
                         // Cualquier otra petición requiere autenticación (sin importar el rol)

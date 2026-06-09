@@ -3,10 +3,12 @@ package KuHub.modules.gestion_orden_pedido.service;
 import KuHub.modules.gestion_orden_pedido.dtos.request.OrdenPedidoCreateDTO;
 import KuHub.modules.gestion_orden_pedido.dtos.response.AbastecimientoProveedorDTO;
 import KuHub.modules.gestion_orden_pedido.dtos.response.CotizacionConsolidadaDTO;
+import KuHub.modules.gestion_orden_pedido.dtos.response.NotificacionEntregaDTO;
 import KuHub.modules.gestion_orden_pedido.dtos.response.OrdenPedidoConDetallesDTO;
 import KuHub.modules.gestion_orden_pedido.dtos.response.OrdenPedidoDetalleDTO;
 import KuHub.modules.gestion_orden_pedido.dtos.response.OrdenPedidoListDTO;
 import KuHub.modules.gestion_orden_pedido.dtos.response.PedidoSemanaResumenDTO;
+import KuHub.modules.gestion_solicitud.dtos.respose.record.NotificacionSemanaDTO;
 
 import java.util.EnumSet;
 import java.util.Map;
@@ -520,5 +522,37 @@ public class OrdenPedidoServiceImpl implements OrdenPedidoService {
                 completadas.size(),
                 completadas.stream().map(OrdenPedido::getIdOrdenPedido).toList());
         return completadas.size();
+    }
+
+    // =====================================================
+    // NOTIFICACIONES: pedidos APROBADO sin OP activa por semana
+    // =====================================================
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<NotificacionSemanaDTO> obtenerNotificacionesPedidosSinOp() {
+        return ordenPedidoRepository.findPedidosAprobadosSinOpPorSemana().stream()
+                .map(row -> new NotificacionSemanaDTO(
+                        ((Number) row[0]).intValue(),
+                        (String) row[1],
+                        ((java.sql.Date) row[2]).toLocalDate(),
+                        ((java.sql.Date) row[3]).toLocalDate(),
+                        ((Number) row[4]).intValue(),
+                        ((Number) row[5]).intValue(),
+                        ((Number) row[6]).longValue()
+                ))
+                .toList();
+    }
+
+    // =====================================================
+    // NOTIFICACIONES: entregas programadas para hoy o ayer
+    // =====================================================
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<NotificacionEntregaDTO> obtenerNotificacionesEntregas() {
+        return ordenPedidoRepository.findEntregasPendientesHoyAyer().stream()
+                .map(NotificacionEntregaDTO::fromRow)
+                .toList();
     }
 }

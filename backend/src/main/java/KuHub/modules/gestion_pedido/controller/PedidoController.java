@@ -14,6 +14,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import KuHub.modules.gestion_pedido.services.PedidoService;
 import KuHub.modules.gestion_solicitud.dtos.request.DateRangeDTO;
+import KuHub.modules.gestion_solicitud.dtos.respose.record.NotificacionSemanaDTO;
 import KuHub.utils.StringUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -108,6 +109,17 @@ public class PedidoController {
         return ResponseEntity
                 .status(200)
                 .body(pedidoService.changeMassiveStatus(request));
+    }
+
+    /**
+     * Devuelve los pedidos PENDIENTE agrupados por semana académica para el panel de notificaciones.
+     * ✅ En uso: Consumido por obtenerNotificacionesPedidosPendientes en notification-service.ts.
+     */
+    @GetMapping("/notificacion-pendientes-lista")
+    public ResponseEntity<List<NotificacionSemanaDTO>> notificacionPedidosPendientes() {
+        return ResponseEntity
+                .status(200)
+                .body(pedidoService.obtenerNotificacionesPedidosPendientes());
     }
 
     /**

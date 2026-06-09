@@ -7,7 +7,7 @@ import { useHistory } from 'react-router-dom';
 import { usePageTitleContext } from '../contexts/PageTitleContext';
 import { usePeriodoSemana } from '../contexts/periodo-semana-context';
 import { useSistemaConfig } from '../contexts/sistema-config-context';
-import { obtenerNotificacionesPorSemana, obtenerNotificacionesAceptadasPorSemana, INotificacionSemana } from '../services/notification-service';
+import { obtenerResumenNotificaciones, INotificacionSemana, INotificacionEntrega } from '../services/notification-service';
 
 const LOGO_URL = new URL('./assets/KuHubLogoWBG.png', import.meta.url).href;
 
@@ -28,6 +28,9 @@ const Header: React.FC<HeaderProps> = ({ toggleSidebar, onLogout }) => {
 
   const [notificaciones, setNotificaciones] = React.useState<INotificacionSemana[]>([]);
   const [notificacionesAceptadas, setNotificacionesAceptadas] = React.useState<INotificacionSemana[]>([]);
+  const [notificacionesPedidosPendientes, setNotificacionesPedidosPendientes] = React.useState<INotificacionSemana[]>([]);
+  const [notificacionesSinOp, setNotificacionesSinOp] = React.useState<INotificacionSemana[]>([]);
+  const [notificacionesEntregas, setNotificacionesEntregas] = React.useState<INotificacionEntrega[]>([]);
   const [panelOpen, setPanelOpen] = React.useState(false);
   const panelRef = React.useRef<HTMLDivElement>(null);
 
@@ -35,7 +38,16 @@ const Header: React.FC<HeaderProps> = ({ toggleSidebar, onLogout }) => {
   const totalAceptadasSinConsolidar = !solicitudesEnPedido
     ? notificacionesAceptadas.reduce((acc, n) => acc + n.cantidadPendientes, 0)
     : 0;
-  const totalBadge = totalPendientes + totalAceptadasSinConsolidar;
+  const totalPedidosPendientes = notificacionesPedidosPendientes.reduce((acc, n) => acc + n.cantidadPendientes, 0);
+  const totalSinOp = notificacionesSinOp.reduce((acc, n) => acc + n.cantidadPendientes, 0);
+  const totalEntregas = notificacionesEntregas.length;
+  const totalBadge = totalPendientes + totalAceptadasSinConsolidar + totalPedidosPendientes + totalSinOp + totalEntregas;
+
+  const fechaHoy = React.useMemo(() => {
+    const hoy = new Date();
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${hoy.getFullYear()}-${pad(hoy.getMonth() + 1)}-${pad(hoy.getDate())}`;
+  }, []);
 
   // Cerrar panel al hacer click fuera
   React.useEffect(() => {
@@ -48,17 +60,19 @@ const Header: React.FC<HeaderProps> = ({ toggleSidebar, onLogout }) => {
     return () => document.removeEventListener('mousedown', handleOutside);
   }, [panelOpen]);
 
-  // Polling
+  // Polling — única consulta al backend
   React.useEffect(() => {
     const poll = async () => {
       try {
-        const [pendientes, aceptadas] = await Promise.all([
-          obtenerNotificacionesPorSemana(),
-          obtenerNotificacionesAceptadasPorSemana(),
-        ]);
-        setNotificaciones(pendientes);
-        setNotificacionesAceptadas(aceptadas);
-      } catch {}
+        const resumen = await obtenerResumenNotificaciones();
+        setNotificaciones(resumen.solicitudesPendientes);
+        setNotificacionesAceptadas(resumen.solicitudesAceptadas);
+        setNotificacionesPedidosPendientes(resumen.pedidosPendientes);
+        setNotificacionesSinOp(resumen.pedidosSinOp);
+        setNotificacionesEntregas(resumen.entregasHoyAyer);
+      } catch {
+        // Falla silenciosa: el usuario puede no tener conexión o el backend no estar disponible
+      }
     };
     poll();
     const id = setInterval(poll, POLL_MS);
@@ -92,6 +106,24 @@ const Header: React.FC<HeaderProps> = ({ toggleSidebar, onLogout }) => {
     }
     seleccionarSemana(String(item.idSemana));
     history.push('/gestion-pedidos');
+  };
+
+  const handleIrConglomerado = async (item: INotificacionSemana) => {
+    setPanelOpen(false);
+    if (!periodo || periodo.anio !== item.anio || periodo.semestre !== item.semestre) {
+      await seleccionarPeriodo(item.anio, item.semestre);
+    }
+    seleccionarSemana(String(item.idSemana));
+    history.push('/conglomerado-pedidos');
+  };
+
+  const handleIrProveedores = async (item: INotificacionSemana) => {
+    setPanelOpen(false);
+    if (!periodo || periodo.anio !== item.anio || periodo.semestre !== item.semestre) {
+      await seleccionarPeriodo(item.anio, item.semestre);
+    }
+    seleccionarSemana(String(item.idSemana));
+    history.push(`/gestion-proveedores?abrirOP=1&anio=${item.anio}&semestre=${item.semestre}&semanaId=${item.idSemana}`);
   };
 
   return (
@@ -248,6 +280,119 @@ const Header: React.FC<HeaderProps> = ({ toggleSidebar, onLogout }) => {
                         ))}
                       </div>
                     )}
+                  </>
+                )}
+
+                {/* Sección: Pedidos por Aprobar */}
+                {notificacionesPedidosPendientes.length > 0 && (
+                  <>
+                    <div className="border-t border-default-100 dark:border-default-100/50 mx-0" />
+                    <div className="px-4 pt-2.5 pb-1 flex items-center gap-1.5">
+                      <Icon icon="lucide:package-check" width={12} className="text-danger shrink-0" />
+                      <span className="text-[10px] font-bold text-danger uppercase tracking-wider">
+                        Por Aprobar
+                      </span>
+                      {totalPedidosPendientes > 0 && (
+                        <span className="ml-auto min-w-[18px] h-4 px-1 bg-danger/20 text-danger text-[10px] font-bold rounded-full flex items-center justify-center leading-none">
+                          {totalPedidosPendientes}
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex flex-col divide-y divide-default-100 dark:divide-default-100/30 max-h-48 overflow-y-auto mb-1">
+                      {notificacionesPedidosPendientes.map(item => (
+                        <button
+                          key={item.idSemana}
+                          type="button"
+                          className="w-full flex items-center justify-between px-4 py-2.5 text-left hover:bg-default-50 dark:hover:bg-default-100/10 transition-colors cursor-pointer group"
+                          onClick={() => handleIrConglomerado(item)}
+                        >
+                          <div className="flex flex-col gap-0.5">
+                            <span className="text-xs font-semibold text-secondary dark:text-foreground leading-none">
+                              {item.nombreSemana}
+                            </span>
+                            <span className="text-[11px] text-danger font-medium">
+                              {item.cantidadPendientes} Pedido{item.cantidadPendientes !== 1 ? 's' : ''} pendiente{item.cantidadPendientes !== 1 ? 's' : ''}
+                            </span>
+                          </div>
+                          <Icon icon="lucide:arrow-right" width={14} className="text-default-300 group-hover:text-danger transition-colors shrink-0" />
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+
+                {/* Sección: Pedidos sin Orden de Pedido */}
+                {notificacionesSinOp.length > 0 && (
+                  <>
+                    <div className="border-t border-default-100 dark:border-default-100/50 mx-0" />
+                    <div className="px-4 pt-2.5 pb-1 flex items-center gap-1.5">
+                      <Icon icon="lucide:file-x" width={12} className="text-secondary dark:text-foreground shrink-0" />
+                      <span className="text-[10px] font-bold text-secondary dark:text-foreground uppercase tracking-wider">
+                        Sin Orden de Pedido
+                      </span>
+                      {totalSinOp > 0 && (
+                        <span className="ml-auto min-w-[18px] h-4 px-1 bg-default-200 dark:bg-default-100/30 text-secondary dark:text-foreground text-[10px] font-bold rounded-full flex items-center justify-center leading-none">
+                          {totalSinOp}
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex flex-col divide-y divide-default-100 dark:divide-default-100/30 max-h-48 overflow-y-auto mb-1">
+                      {notificacionesSinOp.map(item => (
+                        <button
+                          key={item.idSemana}
+                          type="button"
+                          className="w-full flex items-center justify-between px-4 py-2.5 text-left hover:bg-default-50 dark:hover:bg-default-100/10 transition-colors cursor-pointer group"
+                          onClick={() => handleIrProveedores(item)}
+                        >
+                          <div className="flex flex-col gap-0.5">
+                            <span className="text-xs font-semibold text-secondary dark:text-foreground leading-none">
+                              {item.nombreSemana}
+                            </span>
+                            <span className="text-[11px] text-default-500 dark:text-default-400 font-medium">
+                              {item.cantidadPendientes} pedido{item.cantidadPendientes !== 1 ? 's' : ''} sin OP
+                            </span>
+                          </div>
+                          <Icon icon="lucide:arrow-right" width={14} className="text-default-300 group-hover:text-secondary dark:group-hover:text-foreground transition-colors shrink-0" />
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+
+                {/* Sección: Entregas Hoy/Ayer (informativa, sin navegación) */}
+                {notificacionesEntregas.length > 0 && (
+                  <>
+                    <div className="border-t border-default-100 dark:border-default-100/50 mx-0" />
+                    <div className="px-4 pt-2.5 pb-1 flex items-center gap-1.5">
+                      <Icon icon="lucide:truck" width={12} className="text-success shrink-0" />
+                      <span className="text-[10px] font-bold text-success uppercase tracking-wider">
+                        Entregas Hoy/Ayer
+                      </span>
+                      <span className="ml-auto min-w-[18px] h-4 px-1 bg-success/20 text-success text-[10px] font-bold rounded-full flex items-center justify-center leading-none">
+                        {totalEntregas}
+                      </span>
+                    </div>
+
+                    <div className="flex flex-col divide-y divide-default-100 dark:divide-default-100/30 max-h-48 overflow-y-auto mb-1">
+                      {notificacionesEntregas.map(item => (
+                        <div
+                          key={`${item.idOrdenPedido}-${item.fechaEntrega}`}
+                          className="w-full flex items-center justify-between px-4 py-2.5"
+                        >
+                          <div className="flex flex-col gap-0.5">
+                            <span className="text-xs font-semibold text-secondary dark:text-foreground leading-none">
+                              {item.nombreDistribuidora}
+                            </span>
+                            <span className="text-[11px] text-success font-medium">
+                              {item.fechaEntrega === fechaHoy ? 'Hoy' : 'Ayer'} · {item.cantidadProductos} producto{item.cantidadProductos !== 1 ? 's' : ''} pendiente{item.cantidadProductos !== 1 ? 's' : ''}
+                            </span>
+                          </div>
+                          <Icon icon="lucide:truck" width={13} className="text-success/50 shrink-0" />
+                        </div>
+                      ))}
+                    </div>
                   </>
                 )}
               </div>
