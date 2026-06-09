@@ -10,12 +10,22 @@ export interface INotificacionSemana {
   cantidadPendientes: number;
 }
 
-export const obtenerNotificacionesPorSemana = async (): Promise<INotificacionSemana[]> => {
-  const { data } = await api.get<INotificacionSemana[]>('/solicitud/notificacion-pendientes-lista');
-  return data;
-};
+export interface INotificacionEntrega {
+  idOrdenPedido: number;
+  nombreDistribuidora: string;
+  fechaEntrega: string; // YYYY-MM-DD
+  cantidadProductos: number;
+}
 
-export const obtenerNotificacionesAceptadasPorSemana = async (): Promise<INotificacionSemana[]> => {
-  const { data } = await api.get<INotificacionSemana[]>('/solicitud/notificacion-aceptadas-lista');
+export interface INotificacionResumen {
+  solicitudesPendientes: INotificacionSemana[];
+  solicitudesAceptadas: INotificacionSemana[];
+  pedidosPendientes: INotificacionSemana[];
+  pedidosSinOp: INotificacionSemana[];
+  entregasHoyAyer: INotificacionEntrega[];
+}
+
+export const obtenerResumenNotificaciones = async (): Promise<INotificacionResumen> => {
+  const { data } = await api.get<INotificacionResumen>('/notificacion/resumen');
   return data;
 };

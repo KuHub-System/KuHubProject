@@ -3,11 +3,13 @@ package KuHub.modules.gestion_orden_pedido.service;
 import KuHub.modules.gestion_orden_pedido.dtos.request.OrdenPedidoCreateDTO;
 import KuHub.modules.gestion_orden_pedido.dtos.response.AbastecimientoProveedorDTO;
 import KuHub.modules.gestion_orden_pedido.dtos.response.CotizacionConsolidadaDTO;
+import KuHub.modules.gestion_orden_pedido.dtos.response.NotificacionEntregaDTO;
 import KuHub.modules.gestion_orden_pedido.dtos.response.OrdenPedidoConDetallesDTO;
 import KuHub.modules.gestion_orden_pedido.dtos.response.OrdenPedidoDetalleDTO;
 import KuHub.modules.gestion_orden_pedido.dtos.response.OrdenPedidoListDTO;
 import KuHub.modules.gestion_orden_pedido.dtos.response.PedidoSemanaResumenDTO;
 import KuHub.modules.gestion_orden_pedido.enums.EstadoOrdenPedido;
+import KuHub.modules.gestion_solicitud.dtos.respose.record.NotificacionSemanaDTO;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -115,4 +117,10 @@ public interface OrdenPedidoService {
      * @return Número de OPs transicionadas a RECIBIDA
      */
     int sincronizarEstadosRecibida();
+
+    /** Devuelve los pedidos APROBADOS sin OP activa (o con todas CANCELADAS) agrupados por semana. */
+    List<NotificacionSemanaDTO> obtenerNotificacionesPedidosSinOp();
+
+    /** Devuelve OPs CONFIRMADAS con entregas programadas para hoy o ayer que aún no fueron marcadas como entregadas. */
+    List<NotificacionEntregaDTO> obtenerNotificacionesEntregas();
 }

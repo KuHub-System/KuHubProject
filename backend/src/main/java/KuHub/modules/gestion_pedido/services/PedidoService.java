@@ -6,6 +6,7 @@ import KuHub.modules.gestion_pedido.record.CreateOrder;
 import KuHub.modules.gestion_pedido.record.PedidoDashboardRecords;
 import KuHub.modules.gestion_pedido.record.PrepararEntregaDTO;
 import KuHub.modules.gestion_solicitud.dtos.request.DateRangeDTO;
+import KuHub.modules.gestion_solicitud.dtos.respose.record.NotificacionSemanaDTO;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -42,4 +43,7 @@ public interface PedidoService {
      * Filtra por rango de fechas y estados de pedido (CSV validado).
      */
     ResumenHistoricoResponse obtenerResumenHistorico(LocalDate fechaInicio, LocalDate fechaFin, String estadosCsv);
+
+    /** Devuelve los pedidos en estado PENDIENTE agrupados por semana académica (para notificaciones). */
+    List<NotificacionSemanaDTO> obtenerNotificacionesPedidosPendientes();
 }

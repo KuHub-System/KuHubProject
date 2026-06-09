@@ -595,6 +595,30 @@ public interface PedidoRepository extends JpaRepository<Pedido, Integer> {
 
 
     // =====================================================
+    // NOTIFICACIONES: pedidos PENDIENTE agrupados por semana académica
+    // Retorna [idSemana, nombreSemana, fechaInicio, fechaFin, anio, semestre, cantidadPendientes]
+    // =====================================================
+    /** Agrupa pedidos con estado PENDIENTE por semana académica (join por rango de fechas del pedido).
+     *  Retorna filas [idSemana, nombreSemana, fechaInicio, fechaFin, anio, semestre, cantidadPendientes]. */
+    @Query(value = """
+            SELECT
+                sm.id_semana,              -- [0]
+                sm.nombre_semana,          -- [1]
+                sm.fecha_inicio,           -- [2]
+                sm.fecha_fin,              -- [3]
+                sm.anio,                   -- [4]
+                sm.semestre,               -- [5]
+                COUNT(*) AS cantidad_pendientes  -- [6]
+            FROM pedido p
+            JOIN semanas sm ON p.fecha_inicio_pedido = sm.fecha_inicio
+                           AND p.fecha_fin_pedido    = sm.fecha_fin
+            WHERE p.estado_pedido = 'PENDIENTE'::estado_pedido_type
+            GROUP BY sm.id_semana, sm.nombre_semana, sm.fecha_inicio, sm.fecha_fin, sm.anio, sm.semestre
+            ORDER BY sm.fecha_inicio ASC
+            """, nativeQuery = true)
+    List<Object[]> findPedidosPendientesPorSemana();
+
+    // =====================================================
     // BÚSQUEDA: pedido activo en rango de fechas de semana
     // Excluye RECHAZADO y ENTREGADO
     // =====================================================
