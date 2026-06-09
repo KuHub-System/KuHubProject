@@ -14,6 +14,12 @@ services:
       - JAVA_OPTS=-Xmx1024m -Xms768m
       - LOGGING_LEVEL_ORG_HIBERNATE_SQL=DEBUG
       - LOGGING_LEVEL_ORG_HIBERNATE_ORM_JDBC_BIND=TRACE
+      # === Asistente IA (Ollama) — Instancia C dedicada (VPC privada) ===
+      # Hardcodeado por ahora para que la IA funcione en el deploy y quede rastreable.
+      # TODO: mover estos valores a GitHub Secrets / .env del servidor (variables KUHUB_IA_*).
+      - KUHUB_IA_OLLAMA_URL=http://172.26.14.71:11434
+      - KUHUB_IA_MODEL=qwen2.5:1.5b
+      - KUHUB_IA_ALLOWED_MODELS=qwen2.5:1.5b,llama3.2:1b,gemma2:2b
     deploy:
       resources:
         limits:
