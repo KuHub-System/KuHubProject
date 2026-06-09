@@ -690,11 +690,11 @@ CREATE TABLE motivo_rechazo_solicitud (
 
 -- Tabla pedido
 CREATE TABLE pedido (
-                        id_pedido INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-                        fecha_inicio_pedido DATE NOT NULL,
-                        fecha_fin_pedido DATE NOT NULL,
-                        fecha_registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                        estado_pedido estado_pedido_type NOT NULL
+    id_pedido INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    fecha_inicio_pedido DATE NOT NULL,
+    fecha_fin_pedido DATE NOT NULL,
+    fecha_registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    estado_pedido estado_pedido_type NOT NULL
 );
 
 -- Tabla pedido_detalle

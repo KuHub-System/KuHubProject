@@ -4,11 +4,13 @@ import KuHub.modules.gestion_orden_pedido.dtos.request.CambiarEstadoOrdenPedidoD
 import KuHub.modules.gestion_orden_pedido.dtos.request.OrdenPedidoCreateDTO;
 import KuHub.modules.gestion_orden_pedido.dtos.response.AbastecimientoProveedorDTO;
 import KuHub.modules.gestion_orden_pedido.dtos.response.CotizacionConsolidadaDTO;
+import KuHub.modules.gestion_orden_pedido.dtos.response.NotificacionEntregaDTO;
 import KuHub.modules.gestion_orden_pedido.dtos.response.OrdenPedidoConDetallesDTO;
 import KuHub.modules.gestion_orden_pedido.dtos.response.OrdenPedidoDetalleDTO;
 import KuHub.modules.gestion_orden_pedido.dtos.response.OrdenPedidoListDTO;
 import KuHub.modules.gestion_orden_pedido.dtos.response.PedidoSemanaResumenDTO;
 import KuHub.modules.gestion_orden_pedido.service.OrdenPedidoService;
+import KuHub.modules.gestion_solicitud.dtos.respose.record.NotificacionSemanaDTO;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
@@ -211,5 +213,34 @@ public class OrdenPedidoController {
     @PostMapping("/sincronizar-estados")
     public ResponseEntity<Integer> sincronizarEstados() {
         return ResponseEntity.ok(ordenPedidoService.sincronizarEstadosRecibida());
+    }
+
+    /**
+     * Devuelve los pedidos APROBADOS sin OP activa (o con todas CANCELADAS) agrupados por semana.
+     * Notifica al gestor de pedidos que debe generar la orden de pedido para esas semanas.
+     *
+     * GET /api/v1/orden-pedido/notificacion-sin-op-lista
+     * ✅ En uso: Consumido por obtenerNotificacionesPedidosSinOp en notification-service.ts.
+     */
+    @GetMapping("/notificacion-sin-op-lista")
+    public ResponseEntity<List<NotificacionSemanaDTO>> notificacionPedidosSinOp() {
+        return ResponseEntity
+                .status(200)
+                .body(ordenPedidoService.obtenerNotificacionesPedidosSinOp());
+    }
+
+    /**
+     * Devuelve las OPs CONFIRMADAS con entregas programadas para hoy o ayer
+     * que aún tienen detalles sin marcar como entregados.
+     * Notificación informativa: avisa que hay abastecimiento activo sin completar.
+     *
+     * GET /api/v1/orden-pedido/notificacion-entregas-hoy
+     * ✅ En uso: Consumido por obtenerNotificacionesEntregas en notification-service.ts.
+     */
+    @GetMapping("/notificacion-entregas-hoy")
+    public ResponseEntity<List<NotificacionEntregaDTO>> notificacionEntregasHoy() {
+        return ResponseEntity
+                .status(200)
+                .body(ordenPedidoService.obtenerNotificacionesEntregas());
     }
 }

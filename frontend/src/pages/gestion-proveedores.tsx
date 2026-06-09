@@ -5,6 +5,7 @@
  */
 
 import React from 'react';
+import { useLocation } from 'react-router-dom';
 import {
   Button,
   Card,
@@ -519,6 +520,10 @@ const GestionProveedoresPage: React.FC = () => {
 
   // Context global de período/semana — sólo se LEE (no se muta) para el modal de OC.
   const { periodos: ctxPeriodos } = usePeriodoSemana();
+  const location = useLocation();
+
+  /** Semana ID a pre-seleccionar cuando el modal se abre desde la notificación "Sin OP". */
+  const ocAutoSemanaId = React.useRef<number | null>(null);
 
   // ── Vista de Órdenes de Pedido (tab switcher) ────────────────────────
   const [currentView, setCurrentView] = React.useState<'proveedores' | 'ordenes'>('proveedores');
@@ -1393,8 +1398,9 @@ const GestionProveedoresPage: React.FC = () => {
 
   // ── Handlers Orden Pedido ─────────────────────────────────────────────
 
-  /** Resetea estado del modal de OP y lo abre en Paso 1. */
-  const handleAbrirOrdenPedido = () => {
+  /** Resetea estado del modal de OP y lo abre en Paso 1.
+   *  Si se pasa `periodoOverride` se usa ese período en vez del actual. */
+  const handleAbrirOrdenPedido = (periodoOverride?: { anio: number; semestre: number }) => {
     setOcPaso(1);
     setOcPedidos([]);
     setOcSeleccionados(new Set());
@@ -1405,21 +1411,38 @@ const GestionProveedoresPage: React.FC = () => {
     setOcSemana(null);
     setOcSemanasPeriodo([]);
 
-    // Pre-selecciona el período actual (si existe en periodos)
-    const hoy = new Date();
-    const mes = hoy.getMonth() + 1;
-    const sem = mes <= 6 ? 1 : 2;
-    const anio = hoy.getFullYear();
-    const tienePeriodoActual = ctxPeriodos.some(p => p.anio === anio && p.semestres.includes(sem));
-    if (tienePeriodoActual) {
-      setOcPeriodo({ anio, semestre: sem });
+    if (periodoOverride) {
+      setOcPeriodo(periodoOverride);
     } else {
-      setOcPeriodo(null);
+      // Pre-selecciona el período actual (si existe en periodos)
+      const hoy = new Date();
+      const mes = hoy.getMonth() + 1;
+      const sem = mes <= 6 ? 1 : 2;
+      const anio = hoy.getFullYear();
+      const tienePeriodoActual = ctxPeriodos.some(p => p.anio === anio && p.semestres.includes(sem));
+      if (tienePeriodoActual) {
+        setOcPeriodo({ anio, semestre: sem });
+      } else {
+        setOcPeriodo(null);
+      }
     }
     openOrdenPedidoModal();
   };
 
-  /** Cuando cambia el período: carga las semanas (local, sin tocar el context). */
+  /** Abre automáticamente el modal "Generar Orden Pedido" cuando se navega desde la notificación "Sin OP". */
+  React.useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get('abrirOP') !== '1') return;
+    const anio = parseInt(params.get('anio') ?? '', 10);
+    const semestre = parseInt(params.get('semestre') ?? '', 10);
+    const semanaId = parseInt(params.get('semanaId') ?? '', 10);
+    if (!anio || !semestre || !semanaId) return;
+    ocAutoSemanaId.current = semanaId;
+    handleAbrirOrdenPedido({ anio, semestre });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  /** Cuando cambia el período: carga las semanas (local, sin tocar el context).
+   *  Si hay un semanaId pendiente (desde notificación), la auto-selecciona. */
   React.useEffect(() => {
     if (!isOrdenPedidoModal || !ocPeriodo) {
       setOcSemanasPeriodo([]);
@@ -1431,7 +1454,13 @@ const GestionProveedoresPage: React.FC = () => {
         const data = await obtenerSemanasPorPeriodoService(ocPeriodo.anio, ocPeriodo.semestre);
         if (!cancelado) {
           setOcSemanasPeriodo(data);
-          setOcSemana(null);
+          if (ocAutoSemanaId.current !== null) {
+            const target = data.find(s => s.idSemana === ocAutoSemanaId.current) ?? null;
+            setOcSemana(target);
+            ocAutoSemanaId.current = null;
+          } else {
+            setOcSemana(null);
+          }
           setOcPedidos([]);
           setOcSeleccionados(new Set());
         }
@@ -2027,6 +2056,7 @@ const GestionProveedoresPage: React.FC = () => {
             onOpenChange={(open) => { if (!open) setOpConfirmCancelar(null); }}
             size="sm"
             radius="lg"
+            isDismissable={false}
             classNames={{ base: 'rounded-2xl' }}
           >
             <ModalContent>
@@ -2126,7 +2156,7 @@ const GestionProveedoresPage: React.FC = () => {
                   variant="flat"
                   className="font-bold cursor-pointer"
                   startContent={<Icon icon="lucide:clipboard-list" width={20} />}
-                  onPress={handleAbrirOrdenPedido}
+                  onPress={() => handleAbrirOrdenPedido()}
                 >
                   Generar Orden Pedido
                 </Button>
@@ -2625,6 +2655,7 @@ const GestionProveedoresPage: React.FC = () => {
         onClose={() => setOcResultado(null)}
         size="md"
         hideCloseButton
+        isDismissable={false}
         radius="lg"
         classNames={{ base: 'rounded-2xl' }}
       >
@@ -2743,6 +2774,7 @@ const GestionProveedoresPage: React.FC = () => {
         onOpenChange={onSyncExcelModalChange}
         size="lg"
         scrollBehavior="inside"
+        isDismissable={false}
         radius="lg"
         classNames={{ base: 'rounded-2xl', closeButton: 'cursor-pointer' }}
         onClose={handleCerrarSyncExcel}
@@ -2979,7 +3011,7 @@ const GestionProveedoresPage: React.FC = () => {
       </Modal>
 
       {/* ── Modal Crear / Editar / Ver Proveedor ── */}
-      <Modal isOpen={isProvModal} onOpenChange={onProvModalChange} size="lg" scrollBehavior="inside" radius="lg" classNames={{ base: 'rounded-2xl', closeButton: 'cursor-pointer' }}>
+      <Modal isOpen={isProvModal} onOpenChange={onProvModalChange} size="lg" scrollBehavior="inside" isDismissable={false} radius="lg" classNames={{ base: 'rounded-2xl', closeButton: 'cursor-pointer' }}>
         <ModalContent className="rounded-2xl overflow-hidden">
           {(onClose) => (
             <FormularioProveedor
@@ -2996,7 +3028,7 @@ const GestionProveedoresPage: React.FC = () => {
       </Modal>
 
       {/* ── Modal Asignar Producto ── */}
-      <Modal isOpen={isProdModal} onOpenChange={onProdModalChange} size="md" radius="lg" classNames={{ base: 'rounded-2xl', closeButton: 'cursor-pointer' }}>
+      <Modal isOpen={isProdModal} onOpenChange={onProdModalChange} size="md" isDismissable={false} radius="lg" classNames={{ base: 'rounded-2xl', closeButton: 'cursor-pointer' }}>
         <ModalContent className="rounded-2xl overflow-hidden">
           {(onClose) => (
             <FormularioAsignarProducto
@@ -3020,7 +3052,7 @@ const GestionProveedoresPage: React.FC = () => {
       </Modal>
 
       {/* ── Modal Confirmar Eliminar Proveedor ── */}
-      <Modal isOpen={isDelModal} onOpenChange={onDelModalChange} size="sm" radius="lg" classNames={{ base: 'rounded-2xl', closeButton: 'cursor-pointer' }}>
+      <Modal isOpen={isDelModal} onOpenChange={onDelModalChange} size="sm" isDismissable={false} radius="lg" classNames={{ base: 'rounded-2xl', closeButton: 'cursor-pointer' }}>
         <ModalContent className="rounded-2xl overflow-hidden">
           {(onClose) => (
             <>
@@ -3069,7 +3101,7 @@ const GestionProveedoresPage: React.FC = () => {
       </Modal>
 
       {/* ── Modal Confirmar Cambiar Estado Proveedor ── */}
-      <Modal isOpen={isToggleEstadoModal} onOpenChange={onToggleEstadoModalChange} size="sm" radius="lg" classNames={{ base: 'rounded-2xl', closeButton: 'cursor-pointer' }}>
+      <Modal isOpen={isToggleEstadoModal} onOpenChange={onToggleEstadoModalChange} size="sm" isDismissable={false} radius="lg" classNames={{ base: 'rounded-2xl', closeButton: 'cursor-pointer' }}>
         <ModalContent className="rounded-2xl overflow-hidden">
           {(onClose) => {
             const esDeshabilitar = proveedorAToggle?.estadoProveedor === 'DISPONIBLE';
@@ -3119,7 +3151,7 @@ const GestionProveedoresPage: React.FC = () => {
       </Modal>
 
       {/* ── Modal Confirmar Cambiar Estado Proveedor (Paso 2 Cotización) ── */}
-      <Modal isOpen={isOcToggleEstadoModal} onOpenChange={onOcToggleEstadoModalChange} size="sm" radius="lg" classNames={{ base: 'rounded-2xl', closeButton: 'cursor-pointer' }}>
+      <Modal isOpen={isOcToggleEstadoModal} onOpenChange={onOcToggleEstadoModalChange} size="sm" isDismissable={false} radius="lg" classNames={{ base: 'rounded-2xl', closeButton: 'cursor-pointer' }}>
         <ModalContent className="rounded-2xl overflow-hidden">
           {(onClose) => {
             const esDeshabilitar = ocEstadoActualToggle === 'DISPONIBLE';
@@ -3172,7 +3204,7 @@ const GestionProveedoresPage: React.FC = () => {
       </Modal>
 
       {/* ── Modal Confirmar Quitar Producto ── */}
-      <Modal isOpen={isQuitarModal} onOpenChange={onQuitarModalChange} size="sm" radius="lg" classNames={{ base: 'rounded-2xl', closeButton: 'cursor-pointer' }}>
+      <Modal isOpen={isQuitarModal} onOpenChange={onQuitarModalChange} size="sm" isDismissable={false} radius="lg" classNames={{ base: 'rounded-2xl', closeButton: 'cursor-pointer' }}>
         <ModalContent className="rounded-2xl overflow-hidden">
           {(onClose) => (
             <>
@@ -4618,7 +4650,7 @@ const FormularioProveedor: React.FC<FormularioProveedorProps> = ({
       </ModalFooter>
 
       {/* Modal confirmar reemplazar día de entrega */}
-      <Modal isOpen={isReemplazarModal} onOpenChange={setIsReemplazarModal} size="sm" radius="lg" classNames={{ base: 'rounded-2xl' }}>
+      <Modal isOpen={isReemplazarModal} onOpenChange={setIsReemplazarModal} size="sm" isDismissable={false} radius="lg" classNames={{ base: 'rounded-2xl' }}>
         <ModalContent className="rounded-2xl overflow-hidden">
           <ModalHeader className="border-b border-default-200 dark:border-default-100 bg-gradient-to-r from-warning/10 to-warning/5 dark:from-warning/20 dark:to-warning/10 px-6 py-4">
             <div className="flex items-center gap-3">
@@ -5136,7 +5168,7 @@ const CotizacionModal: React.FC<CotizacionModalProps> = ({
   };
 
   return (
-    <Modal isOpen={isOpen} onOpenChange={onOpenChange} size="5xl" scrollBehavior="inside" radius="lg" classNames={{ base: 'rounded-2xl' }}>
+    <Modal isOpen={isOpen} onOpenChange={onOpenChange} size="5xl" scrollBehavior="inside" isDismissable={false} radius="lg" classNames={{ base: 'rounded-2xl' }}>
       <ModalContent className="rounded-2xl overflow-hidden">
         {(onClose) => (
           <>
@@ -5514,6 +5546,7 @@ const OrdenPedidoModal: React.FC<OrdenPedidoModalProps> = ({
       size={paso === 1 ? '3xl' : '5xl'}
       backdrop="blur"
       scrollBehavior="inside"
+      isDismissable={false}
       radius="lg"
       classNames={{ base: 'rounded-2xl', body: 'min-h-[400px]' }}
     >

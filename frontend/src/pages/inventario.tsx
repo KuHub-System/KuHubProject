@@ -1351,6 +1351,7 @@ const InventarioPage: React.FC = () => {
                 onNuevoProducto={handleNuevoProducto}
                 initialItems={bulkRetryItems}
                 puedeAccederAbastecimiento={invPuedeLeer}
+                onOpenGestionAbastecimiento={onAbastecimientoConfigOpen}
                 onProcessComplete={(data, retryItems) => {
                   setBulkResult(data);
                   setBulkRetryItems(retryItems);
@@ -2800,12 +2801,13 @@ interface PedidoMasivoModalProps {
   initialItems?: ItemPedidoMasivo[];
   onProcessComplete?: (data: IBulkProcessResult, retryItems: ItemPedidoMasivo[]) => void;
   puedeAccederAbastecimiento?: boolean;
+  onOpenGestionAbastecimiento?: () => void;
 }
 
 /**
  * Modal para realizar pedidos masivos hacia bodega de tránsito
  */
-const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoProducto, onProcessComplete, initialItems, puedeAccederAbastecimiento = false }) => {
+const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoProducto, onProcessComplete, initialItems, puedeAccederAbastecimiento = false, onOpenGestionAbastecimiento }) => {
   const toast = useToast();
   const [itemsPedido, setItemsPedido] = React.useState<ItemPedidoMasivo[]>(initialItems ?? []);
   const [productoSeleccionado, setProductoSeleccionado] = React.useState<string>('');
@@ -3863,6 +3865,24 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoP
                   <h2 className="text-lg font-bold text-secondary dark:text-foreground">Abastecimiento de Proveedores</h2>
                 </div>
                 <p className="text-xs text-default-500 font-normal">OPs confirmadas — seleccione los días a cargar al control masivo</p>
+                <div className="flex items-center justify-between gap-2 bg-warning/10 border border-warning/30 rounded-lg px-3 py-2">
+                  <div className="flex items-center gap-2">
+                    <Icon icon="lucide:info" width={14} className="text-warning shrink-0" />
+                    <p className="text-xs text-warning-700 dark:text-warning">Se visualizan todas las categorías asignadas al abastecimiento.</p>
+                  </div>
+                  {onOpenGestionAbastecimiento && (
+                    <Button
+                      size="sm"
+                      variant="light"
+                      color="warning"
+                      className="text-xs shrink-0 h-7 px-2"
+                      onPress={onOpenGestionAbastecimiento}
+                      startContent={<Icon icon="lucide:settings-2" width={12} />}
+                    >
+                      Gestión de Abastecimiento
+                    </Button>
+                  )}
+                </div>
                 {/* Filtro de período */}
                 <div className="flex gap-2 flex-wrap">
                   {([['semana','Esta semana'],['30dias','Próx. 30 días'],['3meses','3 meses'],['todas','Todas']] as [FiltroAbastecimiento, string][]).map(([key, label]) => (
