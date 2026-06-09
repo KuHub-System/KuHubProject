@@ -41,14 +41,14 @@ export const MODELOS_IA: IModeloIa[] = [
     nombre: 'Qwen 2.5 · 1.5B',
     descripcion: 'Principal · equilibrado',
     tiempoPromedio: '~15-20 s',
-    timeoutMs: 90_000,
+    timeoutMs: 180_000,
   },
   {
     id: 'llama3.2:1b',
     nombre: 'Llama 3.2 · 1B',
     descripcion: 'Rápido y liviano',
     tiempoPromedio: '~10-30 s',
-    timeoutMs: 110_000,
+    timeoutMs: 220_000,
   },
   {
     id: 'gemma2:2b',
