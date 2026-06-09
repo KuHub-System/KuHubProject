@@ -20,6 +20,8 @@ services:
       - KUHUB_IA_OLLAMA_URL=http://172.26.14.71:11434
       - KUHUB_IA_MODEL=qwen2.5:1.5b
       - KUHUB_IA_ALLOWED_MODELS=qwen2.5:1.5b,llama3.2:1b,gemma2:2b
+      # Timeout amplio para cubrir la carga en frio de Gemma 2 (~70 s) + inferencia.
+      - KUHUB_IA_TIMEOUT=180
     deploy:
       resources:
         limits:
