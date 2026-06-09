@@ -55,7 +55,7 @@ export const MODELOS_IA: IModeloIa[] = [
     nombre: 'Gemma 2 · 2B',
     descripcion: 'Mejor redacción',
     tiempoPromedio: '~10 s (1ª vez ~70 s)',
-    timeoutMs: 125_000,
+    timeoutMs: 185_000,
   },
 ];
 
