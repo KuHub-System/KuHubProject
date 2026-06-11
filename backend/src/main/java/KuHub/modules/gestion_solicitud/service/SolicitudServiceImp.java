@@ -8,6 +8,7 @@ import KuHub.modules.gestion_pedido.repository.PedidoRepository;
 import KuHub.modules.gestion_pedido.repository.PedidoSolicitudRepository;
 import KuHub.modules.gestion_orden_pedido.enums.EstadoOrdenPedido;
 import KuHub.modules.gestion_orden_pedido.repository.OrdenPedidoRepository;
+import KuHub.modules.gestion_orden_pedido.repository.ReservaStockSolicitudRepository;
 import KuHub.modules.pedido_semana_a_bodega.services.DetallePedidoSemanaBodegaService;
 import KuHub.modules.gestion_sistema.entity.GestionSistema;
 import KuHub.modules.gestion_sistema.repository.GestionSistemaRepository;
@@ -62,6 +63,8 @@ public class SolicitudServiceImp implements SolicitudService {
     private PedidoSolicitudRepository pedidoSolicitudRepository;
     @Autowired
     private OrdenPedidoRepository ordenPedidoRepository;
+    @Autowired
+    private ReservaStockSolicitudRepository reservaStockSolicitudRepository;
     @Autowired
     private GestionSistemaRepository gestionSistemaRepository;
 
@@ -406,8 +409,8 @@ public class SolicitudServiceImp implements SolicitudService {
                         "La solicitud no está vinculada a ningún pedido."));
 
         // Bloqueo: si el pedido ya tiene una Orden de Pedido activa NO CANCELADA, no se puede revertir
-        if (ordenPedidoRepository.existsByPedido_IdPedidoAndActivoTrueAndEstadoOrdenPedidoNot(
-                idPedido, EstadoOrdenPedido.CANCELADA)) {
+        if (ordenPedidoRepository.existsOrdenActivaConEstadoDistinto(
+                idPedido, EstadoOrdenPedido.CANCELADA.name())) {
             throw new GestionSolicitudException(
                     "No se puede rechazar la solicitud: el pedido ya tiene una Orden de Pedido vigente.");
         }
@@ -423,6 +426,10 @@ public class SolicitudServiceImp implements SolicitudService {
         solicitudRepository.updateMassiveStateSolicitation(
                 List.of(idSolicitud), Solicitud.EstadoSolicitud.RECHAZADA);
         motivoRechazoRepository.upsertMotivo(idSolicitud, request.motivo().trim());
+
+        // 4. Liberar (desactivar) las reservas de stock de la solicitud rechazada para que no queden
+        //    huérfanas. El stock ya se libera por el filtro EN_PEDIDO, esto solo limpia los datos.
+        reservaStockSolicitudRepository.desactivarByIdSolicitud(idSolicitud);
 
         log.info("Solicitud {} rechazada desde EN_PEDIDO. Valores restados del pedido {}.", idSolicitud, idPedido);
         return true;

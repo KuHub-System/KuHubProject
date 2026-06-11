@@ -39,5 +39,25 @@ public class OrdenPedidoCreateDTO {
 
         @NotNull(message = "La fecha de entrega es obligatoria")
         private LocalDate fechaEntrega;
+
+        /**
+         * Solicitudes que abastece esta línea y cuánto aporta cada una (puente de trazabilidad).
+         * Opcional: si viene vacía no se persisten vínculos. La diferencia entre {@code cantidad}
+         * y la suma de las atribuidas es el ajuste manual (±) sin dueño.
+         */
+        @Valid
+        private List<SolicitudAtribuidaDTO> solicitudes;
+    }
+
+    @Getter @Setter @ToString @NoArgsConstructor @AllArgsConstructor
+    public static class SolicitudAtribuidaDTO {
+
+        @NotNull(message = "El idSolicitud es obligatorio")
+        private Integer idSolicitud;
+
+        @NotNull(message = "La cantidad atribuida es obligatoria")
+        @DecimalMin(value = "0.001", message = "La cantidad atribuida debe ser mayor a 0")
+        @Digits(integer = 7, fraction = 3, message = "Máximo 7 enteros y 3 decimales")
+        private BigDecimal cantidadAtribuida;
     }
 }

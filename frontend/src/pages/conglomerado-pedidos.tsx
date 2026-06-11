@@ -12,7 +12,9 @@ import {
   Card, CardBody, CardHeader,
   Input, Chip,
   Select, SelectItem,
-  Divider, Spinner, Tooltip
+  Divider, Spinner, Tooltip,
+  Textarea, Checkbox,
+  Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, useDisclosure
 } from '@heroui/react';
 import { Icon } from '@iconify/react';
 import { usePageTitle } from '../hooks/usePageTitle';
@@ -20,9 +22,14 @@ import { useToast } from '../hooks/useToast';
 import BookPageLoader from '../components/BookPageLoader';
 import {
   IConsolidatePedidoResponse,
+  IPedidoAprobacion,
   ISolicitudVinculada,
+  IOrdenPedidoResumen,
   consolidatePedidoQueryService,
   aprobarPedidosService,
+  reservarDisponiblePedidoService,
+  obtenerOrdenesPorPedidoService,
+  rechazarPedidoService,
 } from '../services/solicitud-service';
 import { useModulePermission, usePermission } from '../contexts/permission-context';
 import { usePeriodoSemana } from '../contexts/periodo-semana-context';
@@ -115,8 +122,18 @@ const ConglomeradoPedidosPage: React.FC = () => {
   const [busquedaAprob, setBusquedaAprob] = React.useState('');
   const [expandidos,    setExpandidos]    = React.useState<Set<string>>(new Set());
   const [vistaActiva,   setVistaActiva]   = React.useState<'categorias' | 'cronograma' | 'totales' | 'aprobacion'>('aprobacion');
-  const [aprobVista,    setAprobVista]    = React.useState<'unificado' | 'individual'>('unificado');
+  const [aprobVista,    setAprobVista]    = React.useState<'unificado' | 'individual'>('individual');
   const [isAprobando,   setIsAprobando]   = React.useState(false);
+  const reservaModal = useDisclosure();
+  const [pedidoReservaModal, setPedidoReservaModal] = React.useState<IPedidoAprobacion | null>(null);
+  // ── Rechazo (cancelación) de pedido ──
+  const rechazoModal = useDisclosure();
+  const [pedidoRechazo, setPedidoRechazo] = React.useState<IPedidoAprobacion | null>(null);
+  const [ordenesRechazo, setOrdenesRechazo] = React.useState<IOrdenPedidoResumen[]>([]);
+  const [loadingOrdenesRechazo, setLoadingOrdenesRechazo] = React.useState(false);
+  const [motivoRechazo, setMotivoRechazo] = React.useState('');
+  const [cancelarOrdenesChk, setCancelarOrdenesChk] = React.useState(false);
+  const [isRechazando, setIsRechazando] = React.useState(false);
   const [diaCategoria,  setDiaCategoria]  = React.useState<number | 'completa'>(1);
   const [conColores,    setConColores]    = React.useState(true);
 
@@ -217,22 +234,27 @@ const ConglomeradoPedidosPage: React.FC = () => {
       .filter(ped => ped.productos.length > 0);
   }, [consolidateData, busquedaAprob]);
 
-  // Productos unificados a través de todos los pedidos de aprobación
+  // Productos unificados a través de todos los pedidos de aprobación.
+  // cantidadTotal/reservado/solicitado se SUMAN; disponibleReal es global por producto (mismo valor en
+  // todos los pedidos), así que se conserva sin sumar.
   const productosUnificadosAprob = React.useMemo(() => {
-    interface ProdUnif { nombreProducto: string; abreviatura: string; categoria?: string; cantidadTotal: number; stockBodegaTransito: number; stockInventarioPrincipal: number; }
+    interface ProdUnif { nombreProducto: string; abreviatura: string; categoria?: string; cantidadTotal: number; reservado: number; solicitadoFirme: number; solicitadoRevision: number; disponibleReal: number; }
     const mapa = new Map<string, ProdUnif>();
     for (const ped of (consolidateData?.pedidosAprobacion ?? [])) {
       for (const p of ped.productos) {
         const key = p.nombreProducto;
         if (mapa.has(key)) {
-          mapa.get(key)!.cantidadTotal += p.cantidadPedido;
+          const acc = mapa.get(key)!;
+          acc.cantidadTotal += p.cantidadPedido;
+          acc.reservado += p.reservado ?? 0;
+          acc.solicitadoFirme += p.solicitadoFirme ?? 0;
+          acc.solicitadoRevision += p.solicitadoRevision ?? 0;
         } else {
-          mapa.set(key, { nombreProducto: p.nombreProducto, abreviatura: p.abreviatura, categoria: p.categoria, cantidadTotal: p.cantidadPedido, stockBodegaTransito: p.stockBodegaTransito, stockInventarioPrincipal: p.stockInventarioPrincipal });
+          mapa.set(key, { nombreProducto: p.nombreProducto, abreviatura: p.abreviatura, categoria: p.categoria, cantidadTotal: p.cantidadPedido, reservado: p.reservado ?? 0, solicitadoFirme: p.solicitadoFirme ?? 0, solicitadoRevision: p.solicitadoRevision ?? 0, disponibleReal: p.disponibleReal ?? 0 });
         }
       }
     }
     return Array.from(mapa.values())
-      .map(p => ({ ...p, diferenciaTransito: p.stockBodegaTransito - p.cantidadTotal }))
       .sort((a, b) => a.nombreProducto.localeCompare(b.nombreProducto));
   }, [consolidateData]);
 
@@ -404,14 +426,28 @@ const ConglomeradoPedidosPage: React.FC = () => {
     finally { setIsLoadingDatos(false); }
   }, [semanaId, semanas]);
 
-  const handleAprobarPedido = async (idPedido: number) => {
+  // Ejecuta la aprobación de un pedido, reservando antes su disponible si el usuario lo pidió.
+  const ejecutarAprobacion = async (idPedido: number, reservar: boolean) => {
     setIsAprobando(true);
     try {
+      if (reservar) await reservarDisponiblePedidoService(idPedido);
       await aprobarPedidosService({ idsPedidos: [idPedido], estado: 'APROBADO' });
-      toast.success('Pedido aprobado correctamente');
+      toast.success(reservar ? 'Disponibles reservados y pedido aprobado' : 'Pedido aprobado correctamente');
       await recargarDatos();
     } catch { toast.error('Error al aprobar el pedido'); }
-    finally { setIsAprobando(false); }
+    finally { setIsAprobando(false); reservaModal.onClose(); setPedidoReservaModal(null); }
+  };
+
+  // Al presionar "Aprobar pedido": si tiene productos con disponible > 0, abre el modal de reserva;
+  // si no hay disponibles, aprueba directo.
+  const handleAprobarPedido = (ped: IPedidoAprobacion) => {
+    const hayDisponibles = ped.productos.some(p => (p.disponibleReal ?? 0) > 0);
+    if (hayDisponibles) {
+      setPedidoReservaModal(ped);
+      reservaModal.onOpen();
+    } else {
+      void ejecutarAprobacion(ped.idPedido, false);
+    }
   };
 
   const handleAprobarTodos = async () => {
@@ -427,6 +463,119 @@ const ConglomeradoPedidosPage: React.FC = () => {
     } catch { toast.error('Error al aprobar los pedidos'); }
     finally { setIsAprobando(false); }
   };
+
+  // Abre el modal de rechazo: carga las OPs del pedido para advertir cuáles se cancelarían.
+  const handleAbrirRechazo = async (ped: IPedidoAprobacion) => {
+    setPedidoRechazo(ped);
+    setMotivoRechazo('');
+    setCancelarOrdenesChk(false);
+    setOrdenesRechazo([]);
+    rechazoModal.onOpen();
+    setLoadingOrdenesRechazo(true);
+    try {
+      const ordenes = await obtenerOrdenesPorPedidoService(ped.idPedido);
+      setOrdenesRechazo(ordenes);
+    } catch {
+      toast.error('No se pudieron cargar las órdenes de pedido asociadas');
+    } finally {
+      setLoadingOrdenesRechazo(false);
+    }
+  };
+
+  // OPs vigentes (no canceladas) del pedido en el modal de rechazo.
+  const ordenesVigentesRechazo = React.useMemo(
+    () => ordenesRechazo.filter(o => o.estado !== 'CANCELADA'),
+    [ordenesRechazo],
+  );
+  const hayOrdenRecibida = React.useMemo(
+    () => ordenesVigentesRechazo.some(o => o.estado === 'RECIBIDA'),
+    [ordenesVigentesRechazo],
+  );
+  // Productos del pedido cuya reserva se liberará al rechazar.
+  const reservasALiberar = React.useMemo(
+    () => (pedidoRechazo?.productos ?? []).filter(p => (p.reservado ?? 0) > 0),
+    [pedidoRechazo],
+  );
+  // El botón de confirmar se habilita si hay motivo, no hay OPs recibidas y, de haber OPs vigentes,
+  // el usuario confirmó su cancelación.
+  const puedeRechazar =
+    motivoRechazo.trim().length > 0 &&
+    !hayOrdenRecibida &&
+    (ordenesVigentesRechazo.length === 0 || cancelarOrdenesChk);
+
+  // Ejecuta el rechazo del pedido (y opcionalmente la cancelación de sus OPs vigentes).
+  const ejecutarRechazo = async () => {
+    if (!pedidoRechazo || !puedeRechazar) return;
+    setIsRechazando(true);
+    try {
+      const res = await rechazarPedidoService(pedidoRechazo.idPedido, motivoRechazo.trim(), cancelarOrdenesChk);
+      const partes = [`${res.solicitudesRechazadas} solicitud${res.solicitudesRechazadas !== 1 ? 'es' : ''} rechazada${res.solicitudesRechazadas !== 1 ? 's' : ''}`];
+      if (res.ordenesCanceladas > 0) partes.push(`${res.ordenesCanceladas} OP${res.ordenesCanceladas !== 1 ? 's' : ''} cancelada${res.ordenesCanceladas !== 1 ? 's' : ''}`);
+      if (res.reservasLiberadas > 0) partes.push(`${res.reservasLiberadas} reserva${res.reservasLiberadas !== 1 ? 's' : ''} liberada${res.reservasLiberadas !== 1 ? 's' : ''}`);
+      toast.success(`Pedido #${pedidoRechazo.idPedido} rechazado · ${partes.join(' · ')}`);
+      rechazoModal.onClose();
+      setPedidoRechazo(null);
+      await recargarDatos();
+    } catch (err) {
+      const e = err as { response?: { data?: string } };
+      toast.error(typeof e?.response?.data === 'string' ? e.response.data : 'No se pudo rechazar el pedido');
+    } finally {
+      setIsRechazando(false);
+    }
+  };
+
+  // ── Render de celdas nuevas de la tabla de aprobación (compartidas entre ambas vistas) ──
+  const renderReservado = (res: number, abrev: string) => {
+    const v = res ?? 0;
+    if (v <= 0) return <span className="text-default-300">—</span>;
+    return (
+      <>
+        <span className="font-mono font-semibold text-primary">{fmtCant(v)}</span>
+        <span className="text-xs text-default-400 ml-1">{abrev}</span>
+      </>
+    );
+  };
+
+  // Solicitado al proveedor: firme (negro, OP CONFIRMADA/RECIBIDA) + en revisión (amarillo, OP PENDIENTE/ENVIADA).
+  const renderSolicitado = (firme: number, revision: number, abrev: string) => {
+    const f = firme ?? 0, r = revision ?? 0;
+    if (f <= 0 && r <= 0) return <span className="text-default-300">—</span>;
+    return (
+      <span className="inline-flex items-baseline gap-1 justify-center flex-wrap">
+        {f > 0 && <span className="font-mono font-semibold text-default-800">{fmtCant(f)}</span>}
+        {r > 0 && (
+          <Tooltip content="OP en revisión (PENDIENTE / ENVIADA)" color="foreground" className="text-xs">
+            <span className="font-mono font-semibold text-warning-600">{f > 0 ? `+${fmtCant(r)}` : fmtCant(r)}</span>
+          </Tooltip>
+        )}
+        <span className="text-xs text-default-400">{abrev}</span>
+      </span>
+    );
+  };
+
+  // Disponible real: nunca negativo (si no hay, es 0).
+  const renderDisponible = (disp: number, abrev: string) => {
+    const d = Math.max(0, disp ?? 0);
+    return (
+      <>
+        <span className={`font-mono font-semibold ${d > 0 ? 'text-success-600' : 'text-default-400'}`}>{fmtCant(d)}</span>
+        <span className="text-xs text-default-400 ml-1">{abrev}</span>
+      </>
+    );
+  };
+
+  // Productos del pedido objetivo del modal con disponible > 0 (cantidad propuesta a reservar).
+  const productosReservables = React.useMemo(() => {
+    if (!pedidoReservaModal) return [] as Array<{ nombreProducto: string; abreviatura: string; aReservar: number }>;
+    return pedidoReservaModal.productos
+      .filter(p => (p.disponibleReal ?? 0) > 0)
+      .map(p => ({
+        nombreProducto: p.nombreProducto,
+        abreviatura: p.abreviatura,
+        aReservar: Math.min(p.disponibleReal ?? 0, p.cantidadPedido),
+      }))
+      .sort((a, b) => a.nombreProducto.localeCompare(b.nombreProducto));
+  }, [pedidoReservaModal]);
 
   // ── Helpers de estilo Excel ──
   const styleTitle   = { font: { bold: true, sz: 14, color: { rgb: '1A1A1A' } }, fill: { fgColor: { rgb: 'FFB800' } }, alignment: { horizontal: 'center', vertical: 'center', wrapText: false } };
@@ -1422,7 +1571,7 @@ const ConglomeradoPedidosPage: React.FC = () => {
               {/* Sub-toggle Unificado / Por Pedido */}
               <div className="flex items-center gap-3 flex-wrap">
                 <div className="flex items-center gap-1 bg-default-100 rounded-lg p-1">
-                  {(['unificado', 'individual'] as const).map(v => (
+                  {(['individual', 'unificado'] as const).map(v => (
                     <button key={v} onClick={() => setAprobVista(v)}
                       className={`px-3 py-1.5 rounded-md text-xs font-semibold cursor-pointer transition-all ${
                         aprobVista === v ? 'bg-white shadow-sm text-primary' : 'text-default-500 hover:text-default-700'
@@ -1438,7 +1587,7 @@ const ConglomeradoPedidosPage: React.FC = () => {
                     ? `${productosUnificadosFiltrados.length} producto${productosUnificadosFiltrados.length !== 1 ? 's' : ''} totales`
                     : `${pedidosAprobFiltrados.length} pedido${pedidosAprobFiltrados.length !== 1 ? 's' : ''}`}
                 </span>
-                {cong_Editar && pedidosPendientes.length > 0 && (
+                {cong_Editar && aprobVista === 'individual' && pedidosPendientes.length > 0 && (
                   <Button
                     size="sm"
                     color="warning"
@@ -1471,9 +1620,6 @@ const ConglomeradoPedidosPage: React.FC = () => {
                           <p className={`font-bold text-sm ${pedidosPendientes.length === 0 ? 'text-success-700' : 'text-primary'}`}>Resumen Unificado de la Semana</p>
                           <p className="text-xs text-default-500">
                             {consolidateData?.pedidosAprobacion.length ?? 0} pedido{(consolidateData?.pedidosAprobacion.length ?? 0) !== 1 ? 's' : ''} combinados · {productosUnificadosFiltrados.length} productos
-                            {productosUnificadosFiltrados.some(p => p.diferenciaTransito < 0) && (
-                              <span className="text-danger ml-2 font-medium">· Faltantes detectados</span>
-                            )}
                           </p>
                         </div>
                       </div>
@@ -1489,18 +1635,16 @@ const ConglomeradoPedidosPage: React.FC = () => {
                     <div className="grid grid-cols-12 px-4 py-2 bg-default-50 border-b border-default-100 text-[10px] font-bold text-default-500 uppercase tracking-wider">
                       <span className="col-span-4">Producto</span>
                       <span className="col-span-2 text-center">Total Pedido</span>
-                      <span className="col-span-2 text-center">Stock Tránsito</span>
-                      <span className="col-span-2 text-center">Diferencia</span>
-                      <span className="col-span-2 text-center">Inv. Principal</span>
+                      <span className="col-span-2 text-center">Reservado</span>
+                      <span className="col-span-2 text-center">Solicitado Proveedor</span>
+                      <span className="col-span-2 text-center">Disponible</span>
                     </div>
 
                     {/* Filas */}
-                    {productosUnificadosFiltrados.map((p, i) => {
-                      const ok = p.diferenciaTransito >= 0;
-                      return (
-                        <div key={i} className={`grid grid-cols-12 px-4 py-2.5 text-sm border-b border-default-50 last:border-0 hover:bg-default-50/50 ${ok ? '' : 'bg-danger-50/30'}`}>
+                    {productosUnificadosFiltrados.map((p, i) => (
+                        <div key={i} className="grid grid-cols-12 px-4 py-2.5 text-sm border-b border-default-50 last:border-0 hover:bg-default-50/50">
                           <div className="col-span-4 flex items-center gap-2 min-w-0">
-                            <Icon icon={ok ? 'lucide:check-circle' : 'lucide:alert-circle'} width={14} className={ok ? 'text-success-500 shrink-0' : 'text-danger-500 shrink-0'} />
+                            <Icon icon="lucide:package" width={14} className="text-default-400 shrink-0" />
                             <div className="min-w-0">
                               <Tooltip content={p.nombreProducto} placement="top-start" delay={500}>
                                 <p className="font-medium text-default-800 truncate cursor-default block pr-2">{p.nombreProducto}</p>
@@ -1512,33 +1656,21 @@ const ConglomeradoPedidosPage: React.FC = () => {
                             <span className="font-mono font-semibold text-default-700">{fmtCant(p.cantidadTotal)}</span>
                             <span className="text-xs text-default-400 ml-1">{p.abreviatura}</span>
                           </div>
-                          <div className="col-span-2 text-center self-center">
-                            <span className="font-mono text-default-600">{fmtCant(p.stockBodegaTransito)}</span>
-                            <span className="text-xs text-default-400 ml-1">{p.abreviatura}</span>
-                          </div>
-                          <div className="col-span-2 text-center self-center">
-                            <span className={`font-mono font-bold ${ok ? 'text-success-600' : 'text-danger-600'}`}>
-                              {ok ? '+' : ''}{fmtCant(p.diferenciaTransito)}
-                            </span>
-                            <span className="text-xs text-default-400 ml-1">{p.abreviatura}</span>
-                          </div>
-                          <div className="col-span-2 text-center self-center">
-                            <span className="font-mono text-default-600">{fmtCant(p.stockInventarioPrincipal)}</span>
-                            <span className="text-xs text-default-400 ml-1">{p.abreviatura}</span>
-                          </div>
+                          <div className="col-span-2 text-center self-center">{renderReservado(p.reservado, p.abreviatura)}</div>
+                          <div className="col-span-2 text-center self-center">{renderSolicitado(p.solicitadoFirme, p.solicitadoRevision, p.abreviatura)}</div>
+                          <div className="col-span-2 text-center self-center">{renderDisponible(p.disponibleReal, p.abreviatura)}</div>
                         </div>
-                      );
-                    })}
+                    ))}
 
-                    {/* Footer */}
-                    {productosUnificadosFiltrados.some(p => p.diferenciaTransito < 0) && (
-                      <div className="flex items-center gap-2 px-4 py-2.5 bg-danger-50 border-t border-danger-200">
-                        <Icon icon="lucide:alert-triangle" width={13} className="text-danger-500" />
-                        <span className="text-xs text-danger-700 font-medium">
-                          Hay productos con stock insuficiente en Bodega de Tránsito considerando todos los pedidos de la semana.
-                        </span>
-                      </div>
-                    )}
+                    {/* Leyenda */}
+                    <div className="flex items-center gap-2 px-4 py-2.5 bg-default-50 border-t border-default-100">
+                      <Icon icon="lucide:info" width={13} className="text-default-400" />
+                      <span className="text-[11px] text-default-500">
+                        En <strong className="text-default-700">Solicitado Proveedor</strong>: número en
+                        <span className="text-warning-600 font-semibold"> amarillo</span> = OP en revisión;
+                        en <span className="text-default-800 font-semibold">negro</span> = dato confirmado.
+                      </span>
+                    </div>
                   </div>
                 )
               ) : (
@@ -1554,7 +1686,6 @@ const ConglomeradoPedidosPage: React.FC = () => {
                 const isAprobado   = ped.estadoPedido === 'APROBADO';
                 const isEntregado  = ped.estadoPedido === 'ENTREGADO';
                 const isExitoso    = isAprobado || isEntregado;
-                const hayFaltante  = ped.productos.some(p => p.diferenciaTransito < 0);
                 const labelEstado: Record<string, string> = { PENDIENTE: 'Pendiente', APROBADO: 'Aprobado', ENTREGADO: 'Entregado', RECHAZADO: 'Rechazado' };
                 const chipColor    = isEntregado ? 'success' : isAprobado ? 'success' : isPendiente ? 'warning' : 'danger';
                 const chipIcon     = isEntregado ? 'lucide:package-check' : isAprobado ? 'lucide:check-circle-2' : isPendiente ? 'lucide:clock' : 'lucide:x-circle';
@@ -1570,7 +1701,6 @@ const ConglomeradoPedidosPage: React.FC = () => {
                           <p className="font-bold text-sm text-default-800">Pedido #{ped.idPedido}</p>
                           <p className="text-xs text-default-400">
                             {ped.productos.length} producto{ped.productos.length !== 1 ? 's' : ''}
-                            {hayFaltante && <span className="text-danger ml-2 font-medium">· Faltantes detectados</span>}
                           </p>
                         </div>
                       </div>
@@ -1582,7 +1712,7 @@ const ConglomeradoPedidosPage: React.FC = () => {
                         {cong_Editar && isPendiente && (
                           <Button size="sm" color="success" variant="flat"
                             isLoading={isAprobando}
-                            onPress={() => handleAprobarPedido(ped.idPedido)}
+                            onPress={() => handleAprobarPedido(ped)}
                             startContent={!isAprobando && <Icon icon="lucide:check" width={12} />}>
                             Aprobar pedido
                           </Button>
@@ -1594,16 +1724,14 @@ const ConglomeradoPedidosPage: React.FC = () => {
                       <div className="grid grid-cols-12 px-4 py-2 bg-default-50 border-b border-default-100 text-[10px] font-bold text-default-500 uppercase tracking-wider">
                         <span className="col-span-4">Producto</span>
                         <span className="col-span-2 text-center">Pedido</span>
-                        <span className="col-span-2 text-center">Stock Tránsito</span>
-                        <span className="col-span-2 text-center">Diferencia</span>
-                        <span className="col-span-2 text-center">Inv. Principal</span>
+                        <span className="col-span-2 text-center">Reservado</span>
+                        <span className="col-span-2 text-center">Solicitado Proveedor</span>
+                        <span className="col-span-2 text-center">Disponible</span>
                       </div>
-                      {ped.productos.map((p, i) => {
-                        const ok = p.diferenciaTransito >= 0;
-                        return (
-                          <div key={i} className={`grid grid-cols-12 px-4 py-2.5 text-sm border-b border-default-50 last:border-0 hover:bg-default-50/50 ${ok ? '' : 'bg-danger-50/30'}`}>
+                      {ped.productos.map((p, i) => (
+                          <div key={i} className="grid grid-cols-12 px-4 py-2.5 text-sm border-b border-default-50 last:border-0 hover:bg-default-50/50">
                             <div className="col-span-4 flex items-center gap-2 min-w-0">
-                              <Icon icon={ok ? 'lucide:check-circle' : 'lucide:alert-circle'} width={14} className={ok ? 'text-success-500 shrink-0' : 'text-danger-500 shrink-0'} />
+                              <Icon icon="lucide:package" width={14} className="text-default-400 shrink-0" />
                               <div className="min-w-0">
                                 <Tooltip content={p.nombreProducto} placement="top-start" delay={500}>
                                   <p className="font-medium text-default-800 truncate cursor-default block pr-2">{p.nombreProducto}</p>
@@ -1615,33 +1743,30 @@ const ConglomeradoPedidosPage: React.FC = () => {
                               <span className="font-mono font-semibold text-default-700">{fmtCant(p.cantidadPedido)}</span>
                               <span className="text-xs text-default-400 ml-1">{p.abreviatura}</span>
                             </div>
-                            <div className="col-span-2 text-center self-center">
-                              <span className="font-mono text-default-600">{fmtCant(p.stockBodegaTransito)}</span>
-                              <span className="text-xs text-default-400 ml-1">{p.abreviatura}</span>
-                            </div>
-                            <div className="col-span-2 text-center self-center">
-                              <span className={`font-mono font-bold ${ok ? 'text-success-600' : 'text-danger-600'}`}>
-                                {ok ? '+' : ''}{fmtCant(p.diferenciaTransito)}
-                              </span>
-                              <span className="text-xs text-default-400 ml-1">{p.abreviatura}</span>
-                            </div>
-                            <div className="col-span-2 text-center self-center">
-                              <span className="font-mono text-default-600">{fmtCant(p.stockInventarioPrincipal)}</span>
-                              <span className="text-xs text-default-400 ml-1">{p.abreviatura}</span>
-                            </div>
+                            <div className="col-span-2 text-center self-center">{renderReservado(p.reservado, p.abreviatura)}</div>
+                            <div className="col-span-2 text-center self-center">{renderSolicitado(p.solicitadoFirme, p.solicitadoRevision, p.abreviatura)}</div>
+                            <div className="col-span-2 text-center self-center">{renderDisponible(p.disponibleReal, p.abreviatura)}</div>
                           </div>
-                        );
-                      })}
+                      ))}
                     </div>
 
-                    {hayFaltante && (
-                      <div className="flex items-center gap-2 px-4 py-2.5 bg-danger-50 border-t border-danger-200">
-                        <Icon icon="lucide:alert-triangle" width={13} className="text-danger-500" />
-                        <span className="text-xs text-danger-700 font-medium">
-                          Hay productos con stock insuficiente en Bodega de Tránsito. Revise el Inventario Principal antes de aprobar.
+                    <div className="flex items-center justify-between gap-3 px-4 py-2.5 bg-default-50 border-t border-default-100">
+                      <span className="flex items-center gap-2 text-[11px] text-default-500">
+                        <Icon icon="lucide:info" width={13} className="text-default-400 shrink-0" />
+                        <span>
+                          En <strong className="text-default-700">Solicitado Proveedor</strong>: número en
+                          <span className="text-warning-600 font-semibold"> amarillo</span> = OP en revisión;
+                          en <span className="text-default-800 font-semibold">negro</span> = dato confirmado.
                         </span>
-                      </div>
-                    )}
+                      </span>
+                      {cong_Editar && (isPendiente || isAprobado) && (
+                        <Button size="sm" color="danger" variant="flat" className="shrink-0"
+                          onPress={() => void handleAbrirRechazo(ped)}
+                          startContent={<Icon icon="lucide:x-circle" width={12} />}>
+                          Rechazar pedido
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 );
               })}</div>
@@ -1651,6 +1776,201 @@ const ConglomeradoPedidosPage: React.FC = () => {
           )}
         </CardBody>
       </Card>
+
+      {/* Modal: reservar disponibles al aprobar un pedido */}
+      <Modal
+        isOpen={reservaModal.isOpen}
+        onOpenChange={reservaModal.onOpenChange}
+        size="lg"
+        backdrop="blur"
+        radius="lg"
+        scrollBehavior="inside"
+        classNames={{ base: 'rounded-2xl' }}
+      >
+        <ModalContent>
+          {() => (
+            <>
+              <ModalHeader className="flex flex-col gap-1">
+                <span className="flex items-center gap-2 text-secondary">
+                  <Icon icon="lucide:bookmark-check" width={20} className="text-primary" />
+                  Reservar disponibles del Pedido #{pedidoReservaModal?.idPedido}
+                </span>
+                <span className="text-xs font-normal text-default-500">
+                  Estos productos tienen stock disponible. Si reservas, ese stock queda asociado a las
+                  solicitudes de este pedido y dejará de aparecer como disponible. Igual puedes no reservar
+                  y hacerlo después al generar la orden de compra.
+                </span>
+              </ModalHeader>
+              <ModalBody>
+                <div className="border border-default-200 rounded-xl overflow-hidden">
+                  <div className="grid grid-cols-12 px-4 py-2 bg-default-50 border-b border-default-100 text-[10px] font-bold text-default-500 uppercase tracking-wider">
+                    <span className="col-span-8">Producto</span>
+                    <span className="col-span-4 text-right">A reservar</span>
+                  </div>
+                  {productosReservables.map((p, i) => (
+                    <div key={i} className="grid grid-cols-12 px-4 py-2.5 text-sm border-b border-default-50 last:border-0">
+                      <div className="col-span-8 min-w-0">
+                        <Tooltip content={p.nombreProducto} placement="top-start" delay={500}>
+                          <span className="font-medium text-default-800 truncate block pr-2">{p.nombreProducto}</span>
+                        </Tooltip>
+                      </div>
+                      <div className="col-span-4 text-right self-center">
+                        <span className="font-mono font-semibold text-primary">{fmtCant(p.aReservar)}</span>
+                        <span className="text-xs text-default-400 ml-1">{p.abreviatura}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </ModalBody>
+              <ModalFooter>
+                <Button
+                  variant="flat"
+                  isDisabled={isAprobando}
+                  onPress={() => { if (pedidoReservaModal) void ejecutarAprobacion(pedidoReservaModal.idPedido, false); }}
+                >
+                  Aprobar sin reservar
+                </Button>
+                <Button
+                  color="primary"
+                  isLoading={isAprobando}
+                  startContent={!isAprobando && <Icon icon="lucide:bookmark-check" width={16} />}
+                  onPress={() => { if (pedidoReservaModal) void ejecutarAprobacion(pedidoReservaModal.idPedido, true); }}
+                >
+                  Reservar y aprobar
+                </Button>
+              </ModalFooter>
+            </>
+          )}
+        </ModalContent>
+      </Modal>
+
+      {/* Modal: rechazar (cancelar) un pedido completo */}
+      <Modal
+        isOpen={rechazoModal.isOpen}
+        onOpenChange={rechazoModal.onOpenChange}
+        size="lg"
+        backdrop="blur"
+        radius="lg"
+        scrollBehavior="inside"
+        classNames={{ base: 'rounded-2xl' }}
+      >
+        <ModalContent>
+          {() => (
+            <>
+              <ModalHeader className="flex flex-col gap-1">
+                <span className="flex items-center gap-2 text-danger">
+                  <Icon icon="lucide:alert-triangle" width={20} />
+                  Rechazar Pedido #{pedidoRechazo?.idPedido}
+                </span>
+                <span className="text-xs font-normal text-default-500">
+                  Esta acción es <strong className="text-danger">irreversible</strong>. Las solicitudes del
+                  pedido pasarán a <strong>Rechazada</strong> y el pedido quedará cancelado.
+                </span>
+              </ModalHeader>
+              <ModalBody>
+                <div className="space-y-4">
+                  {/* Reservas que se liberarán */}
+                  {reservasALiberar.length > 0 && (
+                    <div className="rounded-xl border border-warning-200 bg-warning-50/60 p-3">
+                      <p className="flex items-center gap-2 text-xs font-semibold text-warning-700 mb-2">
+                        <Icon icon="lucide:bookmark-x" width={14} />
+                        {reservasALiberar.length} producto{reservasALiberar.length !== 1 ? 's' : ''} reservado{reservasALiberar.length !== 1 ? 's' : ''} volverá{reservasALiberar.length !== 1 ? 'n' : ''} a estar disponible{reservasALiberar.length !== 1 ? 's' : ''}:
+                      </p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {reservasALiberar.map((p, i) => (
+                          <Chip key={i} size="sm" variant="flat" color="warning" className="text-[11px]">
+                            {p.nombreProducto}: {fmtCant(p.reservado)} {p.abreviatura}
+                          </Chip>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Órdenes de Pedido asociadas */}
+                  {loadingOrdenesRechazo ? (
+                    <div className="flex items-center gap-2 text-sm text-default-400 py-2">
+                      <Spinner size="sm" color="warning" /> Cargando órdenes de pedido asociadas…
+                    </div>
+                  ) : ordenesRechazo.length > 0 && (
+                    <div className="rounded-xl border border-default-200 p-3">
+                      <p className="flex items-center gap-2 text-xs font-semibold text-default-700 mb-2">
+                        <Icon icon="lucide:file-text" width={14} />
+                        Este pedido tiene {ordenesRechazo.length} Orden{ordenesRechazo.length !== 1 ? 'es' : ''} de Pedido:
+                      </p>
+                      <div className="space-y-1.5">
+                        {ordenesRechazo.map(o => {
+                          const estColor: Record<string, string> = {
+                            PENDIENTE: 'text-warning-600', ENVIADA: 'text-primary',
+                            CONFIRMADA: 'text-success-600', RECIBIDA: 'text-success-700',
+                            CANCELADA: 'text-default-400',
+                          };
+                          return (
+                            <div key={o.idOrdenPedido} className="flex items-center justify-between text-xs">
+                              <span className="text-default-600">OP #{o.idOrdenPedido} · {o.nombreProveedor}</span>
+                              <span className={`font-semibold ${estColor[o.estado] ?? 'text-default-600'}`}>{o.estado}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {hayOrdenRecibida ? (
+                        <div className="mt-3 flex items-start gap-2 rounded-lg bg-danger-50 border border-danger-200 p-2.5 text-[11px] text-danger-700">
+                          <Icon icon="lucide:ban" width={14} className="mt-0.5 shrink-0" />
+                          <span>No se puede rechazar el pedido porque tiene una OP en estado <strong>RECIBIDA</strong> (la mercadería ya fue recibida).</span>
+                        </div>
+                      ) : ordenesVigentesRechazo.length > 0 && (
+                        <div className="mt-3 space-y-2">
+                          <Checkbox
+                            size="sm"
+                            color="danger"
+                            isSelected={cancelarOrdenesChk}
+                            onValueChange={setCancelarOrdenesChk}
+                          >
+                            <span className="text-xs">
+                              También <strong>cancelar las {ordenesVigentesRechazo.length} OP{ordenesVigentesRechazo.length !== 1 ? 's' : ''} vigente{ordenesVigentesRechazo.length !== 1 ? 's' : ''}</strong> asociada{ordenesVigentesRechazo.length !== 1 ? 's' : ''}
+                            </span>
+                          </Checkbox>
+                          <p className="flex items-start gap-1.5 text-[11px] text-default-500 pl-6">
+                            <Icon icon="lucide:phone" width={12} className="mt-0.5 shrink-0" />
+                            Obligatorio para poder rechazar. Deberás contactar al proveedor para informar la cancelación.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Motivo */}
+                  <Textarea
+                    label="Motivo del rechazo"
+                    placeholder="Indica por qué se rechaza este pedido…"
+                    value={motivoRechazo}
+                    onValueChange={setMotivoRechazo}
+                    minRows={2}
+                    maxRows={4}
+                    maxLength={500}
+                    isRequired
+                    variant="bordered"
+                  />
+                </div>
+              </ModalBody>
+              <ModalFooter>
+                <Button variant="flat" isDisabled={isRechazando} onPress={() => rechazoModal.onClose()}>
+                  Cancelar
+                </Button>
+                <Button
+                  color="danger"
+                  isLoading={isRechazando}
+                  isDisabled={!puedeRechazar || loadingOrdenesRechazo}
+                  startContent={!isRechazando && <Icon icon="lucide:x-circle" width={16} />}
+                  onPress={() => void ejecutarRechazo()}
+                >
+                  Rechazar pedido
+                </Button>
+              </ModalFooter>
+            </>
+          )}
+        </ModalContent>
+      </Modal>
     </div>
   );
 };

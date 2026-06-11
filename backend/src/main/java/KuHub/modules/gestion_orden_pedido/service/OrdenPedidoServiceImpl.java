@@ -7,17 +7,24 @@ import KuHub.modules.gestion_orden_pedido.dtos.response.NotificacionEntregaDTO;
 import KuHub.modules.gestion_orden_pedido.dtos.response.OrdenPedidoConDetallesDTO;
 import KuHub.modules.gestion_orden_pedido.dtos.response.OrdenPedidoDetalleDTO;
 import KuHub.modules.gestion_orden_pedido.dtos.response.OrdenPedidoListDTO;
+import KuHub.modules.gestion_orden_pedido.dtos.response.OrdenPedidoResumenDTO;
 import KuHub.modules.gestion_orden_pedido.dtos.response.PedidoSemanaResumenDTO;
 import KuHub.modules.gestion_solicitud.dtos.respose.record.NotificacionSemanaDTO;
 
 import java.util.EnumSet;
 import java.util.Map;
 import java.util.Set;
+import KuHub.modules.gestion_orden_pedido.dtos.request.ReservaStockSolicitudCreateDTO;
+import KuHub.modules.gestion_orden_pedido.dtos.response.DisponibleRealDTO;
 import KuHub.modules.gestion_orden_pedido.entity.DetalleOrdenPedido;
+import KuHub.modules.gestion_orden_pedido.entity.DetalleOrdenPedidoSolicitud;
+import KuHub.modules.gestion_orden_pedido.entity.ReservaStockSolicitud;
+import KuHub.modules.gestion_orden_pedido.repository.ReservaStockSolicitudRepository;
 import KuHub.modules.gestion_orden_pedido.entity.OrdenPedido;
 import KuHub.modules.gestion_orden_pedido.enums.EstadoOrdenPedido;
 import KuHub.modules.gestion_orden_pedido.exceptions.GestionOrdenPedidoException;
 import KuHub.modules.gestion_orden_pedido.repository.DetalleOrdenPedidoRepository;
+import KuHub.modules.gestion_orden_pedido.repository.DetalleOrdenPedidoSolicitudRepository;
 import KuHub.modules.gestion_orden_pedido.repository.OrdenPedidoRepository;
 import KuHub.modules.gestion_pedido.repository.PedidoSolicitudRepository;
 import KuHub.modules.gestion_proveedor.entity.ProveedorProducto;
@@ -32,7 +39,11 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 
 @Slf4j
@@ -46,6 +57,12 @@ public class OrdenPedidoServiceImpl implements OrdenPedidoService {
 
     @Autowired
     private DetalleOrdenPedidoRepository detalleOrdenPedidoRepository;
+
+    @Autowired
+    private DetalleOrdenPedidoSolicitudRepository detalleOrdenPedidoSolicitudRepository;
+
+    @Autowired
+    private ReservaStockSolicitudRepository reservaStockSolicitudRepository;
 
     @Autowired
     private ProveedorProductoRepository proveedorProductoRepository;
@@ -110,6 +127,98 @@ public class OrdenPedidoServiceImpl implements OrdenPedidoService {
                     HttpStatus.INTERNAL_SERVER_ERROR
             );
         }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<DisponibleRealDTO> obtenerDisponibleReal(List<Integer> idsProducto) {
+        if (idsProducto == null || idsProducto.isEmpty()) {
+            return List.of();
+        }
+        return ordenPedidoRepository.findDisponibleRealByProductos(idsProducto)
+                .stream()
+                .map(DisponibleRealDTO::fromRow)
+                .toList();
+    }
+
+    @Override
+    @Transactional
+    public int registrarReservasStock(List<ReservaStockSolicitudCreateDTO> reservas) {
+        if (reservas == null || reservas.isEmpty()) {
+            return 0;
+        }
+        int registradas = 0;
+        for (ReservaStockSolicitudCreateDTO dto : reservas) {
+            if (dto.getCantidad() == null || dto.getCantidad().signum() <= 0) continue;
+            // Upsert por la clave única (solicitud, producto): si ya existe se actualiza.
+            ReservaStockSolicitud reserva = reservaStockSolicitudRepository
+                    .findByIdSolicitudAndIdProducto(dto.getIdSolicitud(), dto.getIdProducto())
+                    .orElseGet(ReservaStockSolicitud::new);
+            reserva.setIdSolicitud(dto.getIdSolicitud());
+            reserva.setIdProducto(dto.getIdProducto());
+            reserva.setCantidad(dto.getCantidad());
+            reserva.setActivo(true);
+            if (reserva.getFechaReserva() == null) reserva.setFechaReserva(java.time.LocalDate.now());
+            reservaStockSolicitudRepository.save(reserva);
+            registradas++;
+        }
+        log.info("registrarReservasStock: {} reservas registradas/actualizadas", registradas);
+        return registradas;
+    }
+
+    @Override
+    @Transactional
+    public int reservarDisponiblePedido(Integer idPedido) {
+        // Porciones (idSolicitud, idProducto, cantidad) de las solicitudes EN_PEDIDO del pedido.
+        List<Object[]> rows = pedidoSolicitudRepository.findSolicitudProductoCantidadByPedido(idPedido);
+        if (rows.isEmpty()) return 0;
+
+        // idProducto → porciones (idSolicitud, cantidad), preservando el orden por fecha de solicitud.
+        Map<Integer, List<Object[]>> porcionesPorProducto = new LinkedHashMap<>();
+        for (Object[] r : rows) {
+            Integer idSolicitud = ((Number) r[0]).intValue();
+            Integer idProducto = ((Number) r[1]).intValue();
+            BigDecimal cantidad = new BigDecimal(r[2].toString());
+            porcionesPorProducto
+                    .computeIfAbsent(idProducto, k -> new ArrayList<>())
+                    .add(new Object[]{ idSolicitud, cantidad });
+        }
+
+        // Disponible real por producto (mismo cálculo de "cubrir con disponible").
+        List<Integer> idsProducto = new ArrayList<>(porcionesPorProducto.keySet());
+        Map<Integer, BigDecimal> dispPorProducto = new HashMap<>();
+        for (DisponibleRealDTO d : obtenerDisponibleReal(idsProducto)) {
+            dispPorProducto.put(d.idProducto(), d.disponible());
+        }
+
+        // Repartir la cobertura (min(disponible, demanda)) entre las solicitudes que piden cada
+        // producto y acumular por (solicitud, producto) para un único upsert por par.
+        Map<String, BigDecimal> acumulado = new LinkedHashMap<>();
+        Map<String, Integer[]> claveRef = new HashMap<>();
+        for (Map.Entry<Integer, List<Object[]>> e : porcionesPorProducto.entrySet()) {
+            Integer idProducto = e.getKey();
+            BigDecimal cobertura = dispPorProducto.getOrDefault(idProducto, BigDecimal.ZERO);
+            if (cobertura.signum() <= 0) continue;
+            for (Object[] porcion : e.getValue()) {
+                if (cobertura.signum() <= 0) break;
+                Integer idSolicitud = (Integer) porcion[0];
+                BigDecimal cant = (BigDecimal) porcion[1];
+                BigDecimal take = cant.min(cobertura);
+                if (take.signum() <= 0) continue;
+                String key = idSolicitud + "-" + idProducto;
+                acumulado.merge(key, take, BigDecimal::add);
+                claveRef.putIfAbsent(key, new Integer[]{ idSolicitud, idProducto });
+                cobertura = cobertura.subtract(take);
+            }
+        }
+
+        if (acumulado.isEmpty()) return 0;
+        List<ReservaStockSolicitudCreateDTO> dtos = new ArrayList<>();
+        for (Map.Entry<String, BigDecimal> e : acumulado.entrySet()) {
+            Integer[] ref = claveRef.get(e.getKey());
+            dtos.add(new ReservaStockSolicitudCreateDTO(ref[0], ref[1], e.getValue()));
+        }
+        return registrarReservasStock(dtos);
     }
 
     // ─────────────────────────────────────────────────────────────
@@ -177,8 +286,22 @@ public class OrdenPedidoServiceImpl implements OrdenPedidoService {
             detalle.setFechaEntrega(e.getFechaEntrega());
             detalle.setPrecioNetoUnitario(pp != null ? pp.getPrecioNeto() : null);
             detalle.setPrecioConIvaUnitario(pp != null ? pp.getPrecioConIva() : null);
-            detalleOrdenPedidoRepository.save(detalle);
+            detalle = detalleOrdenPedidoRepository.save(detalle);
             cantidadDetalles++;
+
+            // Puente de trazabilidad: registrar qué solicitudes abastece esta línea y cuánto aporta cada una.
+            if (e.getSolicitudes() != null && detalle.getIdDetalleOrdenPedido() != null) {
+                Integer idDetalle = detalle.getIdDetalleOrdenPedido().intValue();
+                for (OrdenPedidoCreateDTO.SolicitudAtribuidaDTO sa : e.getSolicitudes()) {
+                    if (sa.getCantidadAtribuida() == null || sa.getCantidadAtribuida().signum() <= 0) continue;
+                    DetalleOrdenPedidoSolicitud puente = new DetalleOrdenPedidoSolicitud();
+                    puente.setIdDetalleOrdenPedido(idDetalle);
+                    puente.setIdSolicitud(sa.getIdSolicitud());
+                    puente.setCantidadAtribuida(sa.getCantidadAtribuida());
+                    puente.setActivo(true);
+                    detalleOrdenPedidoSolicitudRepository.save(puente);
+                }
+            }
         }
 
         log.info("crearOrdenPedido exitoso: OP #{} generada | Pedido consolidado={} | Proveedor={} | {} líneas de detalle persistidas",
@@ -395,6 +518,22 @@ public class OrdenPedidoServiceImpl implements OrdenPedidoService {
                 .map(OrdenPedidoListDTO::fromRow)
                 .orElseThrow(() -> new GestionOrdenPedidoException(
                         "Error al refrescar OP #" + idOrdenPedido, HttpStatus.INTERNAL_SERVER_ERROR));
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // Resumen de OPs por pedido (modal de rechazo de pedido)
+    // ─────────────────────────────────────────────────────────────
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<OrdenPedidoResumenDTO> obtenerResumenPorPedido(Integer idPedido) {
+        return ordenPedidoRepository.findByPedido_IdPedidoAndActivoTrue(idPedido).stream()
+                .map(op -> new OrdenPedidoResumenDTO(
+                        op.getIdOrdenPedido(),
+                        op.getEstadoOrdenPedido().name(),
+                        op.getProveedor().getNombreProveedor()))
+                .sorted((a, b) -> Integer.compare(a.idOrdenPedido(), b.idOrdenPedido()))
+                .toList();
     }
 
     // ─────────────────────────────────────────────────────────────

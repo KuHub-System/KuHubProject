@@ -1,12 +1,15 @@
 package KuHub.modules.gestion_orden_pedido.service;
 
 import KuHub.modules.gestion_orden_pedido.dtos.request.OrdenPedidoCreateDTO;
+import KuHub.modules.gestion_orden_pedido.dtos.request.ReservaStockSolicitudCreateDTO;
 import KuHub.modules.gestion_orden_pedido.dtos.response.AbastecimientoProveedorDTO;
 import KuHub.modules.gestion_orden_pedido.dtos.response.CotizacionConsolidadaDTO;
+import KuHub.modules.gestion_orden_pedido.dtos.response.DisponibleRealDTO;
 import KuHub.modules.gestion_orden_pedido.dtos.response.NotificacionEntregaDTO;
 import KuHub.modules.gestion_orden_pedido.dtos.response.OrdenPedidoConDetallesDTO;
 import KuHub.modules.gestion_orden_pedido.dtos.response.OrdenPedidoDetalleDTO;
 import KuHub.modules.gestion_orden_pedido.dtos.response.OrdenPedidoListDTO;
+import KuHub.modules.gestion_orden_pedido.dtos.response.OrdenPedidoResumenDTO;
 import KuHub.modules.gestion_orden_pedido.dtos.response.PedidoSemanaResumenDTO;
 import KuHub.modules.gestion_orden_pedido.enums.EstadoOrdenPedido;
 import KuHub.modules.gestion_solicitud.dtos.respose.record.NotificacionSemanaDTO;
@@ -45,6 +48,37 @@ public interface OrdenPedidoService {
      * @return Objeto de respuesta que contiene la estructura jerárquica de la cotización consolidada
      */
     CotizacionConsolidadaDTO.CotizacionConsolidadaResponse obtenerCotizacionConsolidada(List<Integer> idsPedido);
+
+    /**
+     * Calcula el disponible real por producto = (inventario + bodega de tránsito) − demanda
+     * comprometida (Σ demanda de solicitudes EN_PEDIDO ya abastecidas, vía la puente). Sirve para
+     * que el usuario, al generar la OP, vea cuánto le sobra de cada producto y pida menos.
+     *
+     * @param idsProducto IDs de los productos a evaluar
+     * @return Lista con stock físico, demanda comprometida y disponible por producto
+     */
+    List<DisponibleRealDTO> obtenerDisponibleReal(List<Integer> idsProducto);
+
+    /**
+     * Registra (upsert) las reservas de stock cubierto por solicitud generadas con "cubrir con
+     * disponible". Cada (solicitud, producto) tiene una sola reserva; si ya existe se actualiza.
+     *
+     * @param reservas Lista de reservas a registrar
+     * @return Cantidad de reservas registradas/actualizadas
+     */
+    int registrarReservasStock(List<ReservaStockSolicitudCreateDTO> reservas);
+
+    /**
+     * Reserva el disponible real de los productos de un pedido completo, asociándolo a las solicitudes
+     * EN_PEDIDO de ese pedido. Por cada producto con disponible &gt; 0 cubre como máximo su demanda
+     * dentro del pedido, repartiendo la cobertura entre las solicitudes que lo piden (orden por fecha)
+     * y haciendo upsert en {@code reserva_stock_solicitud}. Se invoca al aprobar el pedido si el usuario
+     * acepta reservar; es idempotente.
+     *
+     * @param idPedido ID del pedido consolidado a reservar
+     * @return Cantidad de reservas registradas/actualizadas
+     */
+    int reservarDisponiblePedido(Integer idPedido);
 
     /**
      * Registra una nueva Orden de Pedido para un proveedor y pedido unificado específico.
@@ -117,6 +151,16 @@ public interface OrdenPedidoService {
      * @return Número de OPs transicionadas a RECIBIDA
      */
     int sincronizarEstadosRecibida();
+
+    /**
+     * Lista las Órdenes de Pedido activas de un pedido con su estado y proveedor. Se usa para poblar
+     * el modal de rechazo de pedido (Conglomerado · Por Pedido) y advertir al usuario qué OPs se
+     * cancelarían junto con el pedido.
+     *
+     * @param idPedido PK del pedido consolidado
+     * @return Lista de resúmenes de OP (idOrdenPedido, estado, nombreProveedor)
+     */
+    List<OrdenPedidoResumenDTO> obtenerResumenPorPedido(Integer idPedido);
 
     /** Devuelve los pedidos APROBADOS sin OP activa (o con todas CANCELADAS) agrupados por semana. */
     List<NotificacionSemanaDTO> obtenerNotificacionesPedidosSinOp();

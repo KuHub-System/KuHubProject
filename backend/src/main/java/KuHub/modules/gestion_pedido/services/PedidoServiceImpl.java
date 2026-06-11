@@ -6,11 +6,19 @@ import KuHub.modules.gestion_inventario.exceptions.StockDesincronizadoException;
 import KuHub.modules.gestion_inventario.exceptions.StockInsuficienteException;
 import KuHub.modules.gestion_inventario.repository.BodegaTransitoRepository;
 import KuHub.modules.gestion_inventario.services.MovimientoService;
+import KuHub.modules.gestion_orden_pedido.entity.OrdenPedido;
+import KuHub.modules.gestion_orden_pedido.enums.EstadoOrdenPedido;
+import KuHub.modules.gestion_orden_pedido.repository.OrdenPedidoRepository;
+import KuHub.modules.gestion_orden_pedido.repository.ReservaStockSolicitudRepository;
+import KuHub.modules.gestion_pedido.dtos.request.RechazarPedidoDTO;
+import KuHub.modules.gestion_pedido.dtos.response.RechazoPedidoResultDTO;
 import KuHub.modules.gestion_pedido.dtos.response.ResumenHistoricoResponse;
 import KuHub.modules.gestion_pedido.entity.DetallePedido;
 import KuHub.modules.gestion_pedido.entity.Pedido;
 import KuHub.modules.gestion_pedido.entity.PedidoSolicitud;
+import KuHub.modules.gestion_pedido.exceptions.GestionPedidoException;
 import KuHub.modules.gestion_pedido.record.ChangePedidoStatusDTO;
+import KuHub.modules.gestion_solicitud.repository.MotivoRechazoRepository;
 import KuHub.modules.gestion_pedido.record.CreateOrder;
 import KuHub.modules.gestion_pedido.record.PedidoDashboardRecords;
 import KuHub.modules.gestion_pedido.record.PrepararEntregaDTO;
@@ -55,6 +63,12 @@ public class PedidoServiceImpl implements PedidoService{
     private BodegaTransitoRepository bodegaTransitoRepository;
     @Autowired
     private MovimientoService movimientoService;
+    @Autowired
+    private OrdenPedidoRepository ordenPedidoRepository;
+    @Autowired
+    private ReservaStockSolicitudRepository reservaStockSolicitudRepository;
+    @Autowired
+    private MotivoRechazoRepository motivoRechazoRepository;
     @Autowired
     private ObjectMapper objectMapper;
 
@@ -168,6 +182,74 @@ public class PedidoServiceImpl implements PedidoService{
     public boolean changeMassiveStatus(ChangePedidoStatusDTO request) {
         int filasAfectadas = pedidoRepository.updateMassiveStatePedido(request.idsPedidos(), request.estado());
         return filasAfectadas > 0;
+    }
+
+    // =====================================================
+    // RECHAZAR (CANCELAR) PEDIDO COMPLETO
+    // =====================================================
+    @Override
+    @Transactional
+    public RechazoPedidoResultDTO rechazarPedidoCompleto(Integer idPedido, RechazarPedidoDTO request) {
+        Pedido pedido = pedidoRepository.findById(idPedido)
+                .orElseThrow(() -> new GestionPedidoException(
+                        "Pedido con ID " + idPedido + " no encontrado.", HttpStatus.NOT_FOUND));
+
+        Pedido.EstadoPedidoType estado = pedido.getEstadoPedido();
+        if (estado != Pedido.EstadoPedidoType.PENDIENTE && estado != Pedido.EstadoPedidoType.APROBADO) {
+            throw new GestionPedidoException(
+                    "Solo se pueden rechazar pedidos en estado PENDIENTE o APROBADO. Estado actual: " + estado,
+                    HttpStatus.UNPROCESSABLE_ENTITY);
+        }
+
+        // 1. OPs activas del pedido. Las vigentes (no CANCELADA) bloquean el rechazo salvo que el
+        //    usuario confirme su cancelación. Una OP RECIBIDA impide el rechazo (mercadería recibida).
+        List<OrdenPedido> ordenes = ordenPedidoRepository.findByPedido_IdPedidoAndActivoTrue(idPedido);
+        List<OrdenPedido> vigentes = ordenes.stream()
+                .filter(op -> op.getEstadoOrdenPedido() != EstadoOrdenPedido.CANCELADA)
+                .toList();
+
+        boolean hayRecibida = vigentes.stream()
+                .anyMatch(op -> op.getEstadoOrdenPedido() == EstadoOrdenPedido.RECIBIDA);
+        if (hayRecibida) {
+            throw new GestionPedidoException(
+                    "No se puede rechazar el pedido: tiene Órdenes de Pedido ya RECIBIDAS (mercadería recibida).",
+                    HttpStatus.UNPROCESSABLE_ENTITY);
+        }
+
+        int ordenesCanceladas = 0;
+        if (!vigentes.isEmpty()) {
+            if (!request.cancelarOrdenes()) {
+                throw new GestionPedidoException(
+                        "El pedido tiene " + vigentes.size() + " Orden(es) de Pedido vigente(s). Debe confirmar " +
+                        "su cancelación para poder rechazar el pedido.",
+                        HttpStatus.CONFLICT);
+            }
+            vigentes.forEach(op -> op.setEstadoOrdenPedido(EstadoOrdenPedido.CANCELADA));
+            ordenPedidoRepository.saveAll(vigentes);
+            ordenesCanceladas = vigentes.size();
+            log.info("Rechazo pedido {}: {} OP(s) canceladas {}.", idPedido, ordenesCanceladas,
+                    vigentes.stream().map(OrdenPedido::getIdOrdenPedido).toList());
+        }
+
+        // 2. Solicitudes EN_PEDIDO del pedido → RECHAZADA + motivo + liberar (desactivar) reservas.
+        List<Integer> idsSolicitudes = pedidoSolicitudRepository.findIdSolicitudesEnPedidoByPedido(idPedido);
+        int reservasLiberadas = 0;
+        if (!idsSolicitudes.isEmpty()) {
+            solicitudRepository.updateMassiveStateSolicitation(idsSolicitudes, Solicitud.EstadoSolicitud.RECHAZADA);
+            String motivo = request.motivo().trim();
+            for (Integer idSolicitud : idsSolicitudes) {
+                motivoRechazoRepository.upsertMotivo(idSolicitud, motivo);
+                reservasLiberadas += reservaStockSolicitudRepository.desactivarByIdSolicitud(idSolicitud);
+            }
+        }
+
+        // 3. Pedido → RECHAZADO
+        pedidoRepository.updateMassiveStatePedido(List.of(idPedido), Pedido.EstadoPedidoType.RECHAZADO.name());
+
+        log.info("Pedido {} RECHAZADO. Solicitudes rechazadas: {}, OPs canceladas: {}, reservas liberadas: {}.",
+                idPedido, idsSolicitudes.size(), ordenesCanceladas, reservasLiberadas);
+
+        return new RechazoPedidoResultDTO(idsSolicitudes.size(), ordenesCanceladas, reservasLiberadas);
     }
 
     @Override

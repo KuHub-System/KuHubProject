@@ -89,6 +89,7 @@ build_sections_utf8.py
 insertar_en_docx.py
 SNIPPETS_COPY_PASTE.md
 PLAN_TEST_BACKEND.md
+PRO_STOCK_REAL.md
 
 ### Frontend Test & Documentation Files ###
 frontend/README.md

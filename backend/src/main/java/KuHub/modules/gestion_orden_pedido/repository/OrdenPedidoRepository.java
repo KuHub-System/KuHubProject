@@ -25,10 +25,23 @@ public interface OrdenPedidoRepository extends JpaRepository<OrdenPedido, Intege
     /** Verifica si existe una OP activa para un pedido (indicador del Paso 1). */
     boolean existsByPedido_IdPedidoAndActivoTrue(Integer idPedido);
 
-    /** Verifica si existe una OP activa NO CANCELADA para un pedido (bloquea el rechazo de solicitudes EN_PEDIDO). */
-    boolean existsByPedido_IdPedidoAndActivoTrueAndEstadoOrdenPedidoNot(Integer idPedido, EstadoOrdenPedido estadoOrdenPedido);
-
     // ── 2. @Query personalizados de solo lectura ──
+
+    /**
+     * Verifica si existe una OP activa de un pedido cuyo estado sea distinto del indicado
+     * (bloquea el rechazo de solicitudes EN_PEDIDO). Native porque {@code estado_orden_pedido} es un
+     * enum nativo de PostgreSQL ({@code estado_orden_pedido_type}) y un método derivado generaría
+     * {@code enum <> varchar}, sin operador en PG; se castea con {@code ::text}.
+     */
+    @Query(value = """
+            SELECT EXISTS(
+                SELECT 1 FROM orden_pedido op
+                WHERE op.id_pedido = :idPedido
+                  AND op.activo = TRUE
+                  AND op.estado_orden_pedido::text <> :estado
+            )
+            """, nativeQuery = true)
+    boolean existsOrdenActivaConEstadoDistinto(@Param("idPedido") Integer idPedido, @Param("estado") String estado);
 
     /**
      * Retorna OPs CONFIRMADAS activas donde todos sus detalles activos ya tienen entregado=true.
@@ -505,6 +518,56 @@ productos_solicitados AS (
     GROUP BY id_producto, nombre_producto, es_fraccionario, id_categoria, nombre_categoria, abreviatura
 ),
 
+-- Desglose por solicitud: cuánto de cada producto demanda cada solicitud y en qué día de
+-- necesidad. Una solicitud es atómica (un único día), así que se puede "mover" entera.
+solicitud_producto AS (
+    SELECT
+        ds.id_producto,
+        sr.id_solicitud,
+        COALESCE(sr.dia_semana, 'SIN_DIA') AS dia_semana,
+        SUM(ds.cant_producto_solicitud)    AS cantidad,
+        -- Stock ya reservado a esta (solicitud, producto): hay a lo sumo una fila por par (UNIQUE),
+        -- por eso MAX (no SUM, que se inflaría si hay varias filas de detalle_solicitud).
+        COALESCE(MAX(rss.cantidad), 0)     AS reservado
+    FROM solicitudes_relevantes sr
+    JOIN detalle_solicitud ds ON ds.id_solicitud = sr.id_solicitud
+    JOIN producto p ON p.id_producto = ds.id_producto
+    LEFT JOIN reserva_stock_solicitud rss
+           ON rss.id_solicitud = sr.id_solicitud
+          AND rss.id_producto  = ds.id_producto
+          AND rss.activo = TRUE
+    WHERE p.activo = TRUE
+    GROUP BY ds.id_producto, sr.id_solicitud, COALESCE(sr.dia_semana, 'SIN_DIA')
+),
+
+-- Un array JSON de solicitudes por producto (ordenado por día de necesidad).
+solicitudes_por_producto AS (
+    SELECT
+        id_producto,
+        jsonb_agg(
+            jsonb_build_object(
+                'idSolicitud', id_solicitud,
+                'dia',         dia_semana,
+                'cantidad',    cantidad,
+                'reservado',   reservado
+            )
+            ORDER BY
+                CASE dia_semana
+                    WHEN 'LUNES'     THEN 1
+                    WHEN 'MARTES'    THEN 2
+                    WHEN 'MIERCOLES' THEN 3
+                    WHEN 'JUEVES'    THEN 4
+                    WHEN 'VIERNES'   THEN 5
+                    WHEN 'SABADO'    THEN 6
+                    WHEN 'DOMINGO'   THEN 7
+                    ELSE 8 -- SIN_DIA al final
+                END ASC,
+                id_solicitud ASC
+        ) AS solicitudes_json
+    FROM solicitud_producto
+    GROUP BY id_producto
+),
+
 -- Proveedor con menor precio_neto para cada producto.
 mejor_precio AS (
     SELECT DISTINCT ON (pp.id_producto)
@@ -551,6 +614,7 @@ productos_con_proveedor AS (
         ps.abreviatura,
         ps.cantidad_total,
         ps.cantidad_por_dia_json,
+        spp.solicitudes_json,
         mp.id_proveedor,
         mp.precio_neto,
         mp.precio_con_iva,
@@ -560,6 +624,7 @@ productos_con_proveedor AS (
         pv.email_proveedor,
         pd.dias_entrega_json
     FROM productos_solicitados ps
+    LEFT JOIN solicitudes_por_producto spp ON spp.id_producto = ps.id_producto
     LEFT JOIN mejor_precio    mp ON mp.id_producto  = ps.id_producto
     LEFT JOIN proveedor       pv ON pv.id_proveedor = mp.id_proveedor
     LEFT JOIN proveedor_dias  pd ON pd.id_proveedor = mp.id_proveedor
@@ -627,7 +692,8 @@ FROM (
                     'cantidadTotal',   pcp.cantidad_total,
                     'precioNeto',      pcp.precio_neto,
                     'precioConIva',    pcp.precio_con_iva,
-                    'cantidadPorDia',  pcp.cantidad_por_dia_json
+                    'cantidadPorDia',  pcp.cantidad_por_dia_json,
+                    'solicitudes',     pcp.solicitudes_json
                 )
                 ORDER BY pcp.nombre_producto ASC
             ) AS productos_json
@@ -650,4 +716,60 @@ FROM (
 ) AS proveedor_grupo
             """, nativeQuery = true)
     String findCotizacionConsolidada(@Param("idsPedido") List<Integer> idsPedido);
+
+    /**
+     * Disponible real por producto = (inventario + bodega de tránsito) − demanda comprometida.
+     * La demanda comprometida es la suma de {@code cant_producto_solicitud} de las solicitudes
+     * EN_PEDIDO ya abastecidas (con línea de OP {@code entregado = true}), identificadas por la
+     * puente {@code detalle_orden_pedido_solicitud}. Se resta la demanda REAL (lo que se consumirá),
+     * no lo atribuido/pedido.
+     *
+     * [0] id_producto
+     * [1] stock_fisico         (inventario + bodega de tránsito)
+     * [2] demanda_comprometida (Σ demanda de solicitudes EN_PEDIDO abastecidas)
+     * [3] disponible           (stock_fisico − demanda_comprometida; puede ser negativo = faltante)
+     */
+    @Query(value = """
+        WITH abastecidas AS (
+            -- (solicitud, producto) EN_PEDIDO que ya llegaron (entregado = true), vía la puente
+            SELECT DISTINCT dops.id_solicitud, dop.id_producto
+            FROM detalle_orden_pedido_solicitud dops
+            JOIN detalle_orden_pedido dop ON dop.id_detalle_orden_pedido = dops.id_detalle_orden_pedido
+            JOIN solicitud s              ON s.id_solicitud              = dops.id_solicitud
+            WHERE dops.activo = TRUE
+              AND dop.activo  = TRUE
+              AND dop.entregado = TRUE
+              AND s.estado_solicitud = 'EN_PEDIDO'::estado_solicitud_type
+        ),
+        demanda AS (
+            SELECT ds.id_producto, SUM(ds.cant_producto_solicitud) AS demanda
+            FROM abastecidas a
+            JOIN detalle_solicitud ds
+              ON ds.id_solicitud = a.id_solicitud AND ds.id_producto = a.id_producto
+            GROUP BY ds.id_producto
+        ),
+        reservas AS (
+            -- Stock ya reservado a solicitudes EN_PEDIDO (cubierto con disponible). Al pasar la
+            -- solicitud a PROCESADA/RECHAZADA deja de contar por este mismo filtro de estado.
+            SELECT r.id_producto, SUM(r.cantidad) AS reservado
+            FROM reserva_stock_solicitud r
+            JOIN solicitud s ON s.id_solicitud = r.id_solicitud
+            WHERE r.activo = TRUE
+              AND s.estado_solicitud = 'EN_PEDIDO'::estado_solicitud_type
+            GROUP BY r.id_producto
+        )
+        SELECT
+            i.id_producto,                                                                          -- [0]
+            COALESCE(i.stock, 0) + COALESCE(bt.stock, 0),                                           -- [1]
+            COALESCE(d.demanda, 0) + COALESCE(rv.reservado, 0),                                     -- [2]
+            COALESCE(i.stock, 0) + COALESCE(bt.stock, 0)
+                - COALESCE(d.demanda, 0) - COALESCE(rv.reservado, 0)                                -- [3]
+        FROM inventario i
+        LEFT JOIN bodega_transito bt ON bt.id_inventario = i.id_inventario AND bt.activo = TRUE
+        LEFT JOIN demanda d          ON d.id_producto    = i.id_producto
+        LEFT JOIN reservas rv        ON rv.id_producto   = i.id_producto
+        WHERE i.activo = TRUE
+          AND i.id_producto IN (:idsProducto)
+        """, nativeQuery = true)
+    List<Object[]> findDisponibleRealByProductos(@Param("idsProducto") List<Integer> idsProducto);
 }

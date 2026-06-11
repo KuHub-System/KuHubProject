@@ -4,6 +4,8 @@ import KuHub.modules.gestion_inventario.exceptions.StockDesincronizadoException;
 import KuHub.modules.gestion_inventario.exceptions.StockInsuficienteException;
 import KuHub.modules.gestion_pedido.dtos.request.ResumenHistoricoRequestDTO;
 import KuHub.modules.gestion_pedido.dtos.response.ResumenHistoricoResponse;
+import KuHub.modules.gestion_pedido.dtos.request.RechazarPedidoDTO;
+import KuHub.modules.gestion_pedido.dtos.response.RechazoPedidoResultDTO;
 import KuHub.modules.gestion_pedido.record.ChangePedidoStatusDTO;
 import KuHub.modules.gestion_pedido.record.CreateOrder;
 import KuHub.modules.gestion_pedido.record.PedidoDashboardRecords;
@@ -109,6 +111,21 @@ public class PedidoController {
         return ResponseEntity
                 .status(200)
                 .body(pedidoService.changeMassiveStatus(request));
+    }
+
+    /**
+     * Rechaza (cancela) un pedido completo: pasa sus solicitudes EN_PEDIDO a RECHAZADA, libera sus
+     * reservas de stock y deja el pedido en RECHAZADO. Si el body trae {@code cancelarOrdenes=true},
+     * además cancela las OPs vigentes del pedido. Acción irreversible.
+     * ✅ En uso: Consumido por rechazarPedidoService en solicitud-service.ts (Conglomerado · Por Pedido).
+     */
+    @PostMapping("/rechazar/{idPedido}")
+    public ResponseEntity<RechazoPedidoResultDTO> rechazarPedido(
+            @PathVariable Integer idPedido,
+            @Validated @RequestBody RechazarPedidoDTO request) {
+        return ResponseEntity
+                .status(200)
+                .body(pedidoService.rechazarPedidoCompleto(idPedido, request));
     }
 
     /**

@@ -2,12 +2,15 @@ package KuHub.modules.gestion_orden_pedido.controller;
 
 import KuHub.modules.gestion_orden_pedido.dtos.request.CambiarEstadoOrdenPedidoDTO;
 import KuHub.modules.gestion_orden_pedido.dtos.request.OrdenPedidoCreateDTO;
+import KuHub.modules.gestion_orden_pedido.dtos.request.ReservaStockSolicitudCreateDTO;
 import KuHub.modules.gestion_orden_pedido.dtos.response.AbastecimientoProveedorDTO;
 import KuHub.modules.gestion_orden_pedido.dtos.response.CotizacionConsolidadaDTO;
+import KuHub.modules.gestion_orden_pedido.dtos.response.DisponibleRealDTO;
 import KuHub.modules.gestion_orden_pedido.dtos.response.NotificacionEntregaDTO;
 import KuHub.modules.gestion_orden_pedido.dtos.response.OrdenPedidoConDetallesDTO;
 import KuHub.modules.gestion_orden_pedido.dtos.response.OrdenPedidoDetalleDTO;
 import KuHub.modules.gestion_orden_pedido.dtos.response.OrdenPedidoListDTO;
+import KuHub.modules.gestion_orden_pedido.dtos.response.OrdenPedidoResumenDTO;
 import KuHub.modules.gestion_orden_pedido.dtos.response.PedidoSemanaResumenDTO;
 import KuHub.modules.gestion_orden_pedido.service.OrdenPedidoService;
 import KuHub.modules.gestion_solicitud.dtos.respose.record.NotificacionSemanaDTO;
@@ -86,6 +89,62 @@ public class OrdenPedidoController {
         return ResponseEntity
                 .status(200)
                 .body(ordenPedidoService.obtenerCotizacionConsolidada(idsPedido));
+    }
+
+    /**
+     * Disponible real por producto = (inventario + bodega de tránsito) − demanda comprometida
+     * (Σ demanda de solicitudes EN_PEDIDO ya abastecidas, vía la puente detalle_orden_pedido_solicitud).
+     * Permite ver, al generar la OP, cuánto sobra de cada producto para pedir menos al proveedor.
+     *
+     * 💻 INTEGRACIÓN CON EL FRONTEND:
+     * - **Servicio frontend:** {@code obtenerDisponibleRealService} en proveedor-service.ts
+     * - **Pantalla:** Modal "Generar Orden Pedido" (Paso 2), columna "Disponible" por producto.
+     *
+     * GET /api/v1/orden-pedido/disponible-real?idsProducto=1,2,3
+     */
+    @GetMapping("/disponible-real")
+    public ResponseEntity<List<DisponibleRealDTO>> obtenerDisponibleReal(
+            @RequestParam List<Integer> idsProducto
+    ) {
+        return ResponseEntity
+                .status(200)
+                .body(ordenPedidoService.obtenerDisponibleReal(idsProducto));
+    }
+
+    /**
+     * Registra las reservas de stock cubierto por solicitud (upsert) generadas al marcar
+     * "cubrir con disponible" en el Paso 2. Hace que ese stock deje de aparecer como disponible.
+     *
+     * 💻 INTEGRACIÓN CON EL FRONTEND:
+     * - **Servicio frontend:** {@code registrarReservasStockService} en proveedor-service.ts
+     * - **Pantalla:** Modal "Generar Orden Pedido" (Paso 2), al confirmar con "cubrir con disponible".
+     *
+     * POST /api/v1/orden-pedido/reservas
+     */
+    @PostMapping("/reservas")
+    public ResponseEntity<Integer> registrarReservasStock(
+            @Validated @RequestBody List<ReservaStockSolicitudCreateDTO> reservas
+    ) {
+        return ResponseEntity
+                .status(200)
+                .body(ordenPedidoService.registrarReservasStock(reservas));
+    }
+
+    /**
+     * Reserva el disponible real de los productos de un pedido completo, asociándolo a las
+     * solicitudes EN_PEDIDO del pedido (reparte la cobertura entre ellas). Idempotente.
+     *
+     * 💻 INTEGRACIÓN CON EL FRONTEND:
+     * - **Servicio frontend:** {@code reservarDisponiblePedidoService} en solicitud-service.ts
+     * - **Pantalla:** Conglomerado de Pedidos → Aprobación → modal "¿Reservar disponibles?" al aprobar.
+     *
+     * POST /api/v1/orden-pedido/reservar-disponible/{idPedido}
+     */
+    @PostMapping("/reservar-disponible/{idPedido}")
+    public ResponseEntity<Integer> reservarDisponiblePedido(@PathVariable Integer idPedido) {
+        return ResponseEntity
+                .status(200)
+                .body(ordenPedidoService.reservarDisponiblePedido(idPedido));
     }
 
     // ══════════════════════════════════════════════════════════════
@@ -167,6 +226,17 @@ public class OrdenPedidoController {
     @GetMapping("/{id}")
     public ResponseEntity<OrdenPedidoConDetallesDTO> obtenerConDetalles(@PathVariable Integer id) {
         return ResponseEntity.ok(ordenPedidoService.obtenerConDetalles(id));
+    }
+
+    /**
+     * Lista las OPs activas de un pedido (estado + proveedor) para el modal de rechazo de pedido.
+     * ✅ En uso: Consumido por obtenerOrdenesPorPedidoService en solicitud-service.ts (Conglomerado · Por Pedido).
+     *
+     * GET /api/v1/orden-pedido/resumen-por-pedido/{idPedido}
+     */
+    @GetMapping("/resumen-por-pedido/{idPedido}")
+    public ResponseEntity<List<OrdenPedidoResumenDTO>> obtenerResumenPorPedido(@PathVariable Integer idPedido) {
+        return ResponseEntity.status(200).body(ordenPedidoService.obtenerResumenPorPedido(idPedido));
     }
 
     /**

@@ -424,13 +424,19 @@ export interface IPedidoResumen {
 }
 
 export interface IProductoAprobacion {
+  idProducto: number;
   nombreProducto: string;
   cantidadPedido: number;
   abreviatura: string;
   categoria?: string;
-  stockBodegaTransito: number;
-  stockInventarioPrincipal: number;
-  diferenciaTransito: number;
+  /** Stock ya reservado a las solicitudes de este pedido para el producto. */
+  reservado: number;
+  /** Solicitado al proveedor con OP firme (CONFIRMADA/RECIBIDA). */
+  solicitadoFirme: number;
+  /** Solicitado al proveedor con OP en revisión (PENDIENTE/ENVIADA). */
+  solicitadoRevision: number;
+  /** Disponible real (inventario + tránsito − demanda comprometida − reservas). Puede ser negativo. */
+  disponibleReal: number;
 }
 
 export interface IPedidoAprobacion {
@@ -461,6 +467,56 @@ export interface IChangePedidoStatusDTO {
 
 export const aprobarPedidosService = async (dto: IChangePedidoStatusDTO): Promise<boolean> => {
   const response = await api.patch<boolean>('/pedido/change-massive-status', dto);
+  return response.data;
+};
+
+/**
+ * Reserva el disponible real de los productos de un pedido, asociándolo a sus solicitudes EN_PEDIDO.
+ * El backend reparte la cobertura (min(disponible, demanda)) entre las solicitudes del pedido.
+ * Idempotente. Devuelve la cantidad de reservas registradas/actualizadas.
+ * POST /api/v1/orden-pedido/reservar-disponible/{idPedido}
+ */
+export const reservarDisponiblePedidoService = async (idPedido: number): Promise<number> => {
+  const response = await api.post<number>(`/orden-pedido/reservar-disponible/${idPedido}`);
+  return response.data;
+};
+
+// ── Rechazar (cancelar) un pedido completo ─────────────────────────────────────
+
+/** Resumen liviano de una OP de un pedido (para el modal de rechazo). */
+export interface IOrdenPedidoResumen {
+  idOrdenPedido: number;
+  estado: string; // "PENDIENTE" | "ENVIADA" | "CANCELADA" | "CONFIRMADA" | "RECIBIDA"
+  nombreProveedor: string;
+}
+
+/**
+ * Lista las OPs activas de un pedido (estado + proveedor) para el modal de rechazo.
+ * GET /api/v1/orden-pedido/resumen-por-pedido/{idPedido}
+ */
+export const obtenerOrdenesPorPedidoService = async (idPedido: number): Promise<IOrdenPedidoResumen[]> => {
+  const response = await api.get<IOrdenPedidoResumen[]>(`/orden-pedido/resumen-por-pedido/${idPedido}`);
+  return response.data;
+};
+
+export interface IRechazarPedidoResult {
+  solicitudesRechazadas: number;
+  ordenesCanceladas: number;
+  reservasLiberadas: number;
+}
+
+/**
+ * Rechaza (cancela) un pedido completo: sus solicitudes EN_PEDIDO pasan a RECHAZADA, se liberan sus
+ * reservas y el pedido queda RECHAZADO. Si {@code cancelarOrdenes} es true, además cancela las OPs
+ * vigentes del pedido. Acción irreversible.
+ * POST /api/v1/pedido/rechazar/{idPedido}
+ */
+export const rechazarPedidoService = async (
+  idPedido: number,
+  motivo: string,
+  cancelarOrdenes: boolean,
+): Promise<IRechazarPedidoResult> => {
+  const response = await api.post<IRechazarPedidoResult>(`/pedido/rechazar/${idPedido}`, { motivo, cancelarOrdenes });
   return response.data;
 };
 

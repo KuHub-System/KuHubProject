@@ -673,6 +673,58 @@ export const obtenerCotizacionConsolidadaService = async (
   }
 };
 
+/** Disponible real por producto (mapea DisponibleRealDTO del backend). */
+export interface IDisponibleReal {
+  idProducto: number;
+  stockFisico: number;
+  demandaComprometida: number;
+  disponible: number;
+}
+
+/**
+ * Disponible real por producto = (inventario + bodega de tránsito) − demanda comprometida
+ * (Σ demanda de solicitudes EN_PEDIDO ya abastecidas). Se usa en el Paso 2 para mostrar el
+ * sobrante por producto y decidir pedir menos al proveedor.
+ * GET /api/v1/orden-pedido/disponible-real?idsProducto=1,2,3
+ */
+export const obtenerDisponibleRealService = async (
+  idsProducto: number[]
+): Promise<IDisponibleReal[]> => {
+  if (idsProducto.length === 0) return [];
+  try {
+    const response = await api.get<IDisponibleReal[]>(
+      '/orden-pedido/disponible-real',
+      { params: { idsProducto: idsProducto.join(',') } }
+    );
+    return response.data ?? [];
+  } catch (error: any) {
+    throw new Error(
+      error.response?.data?.message ||
+      'Error al obtener el disponible real de los productos'
+    );
+  }
+};
+
+/**
+ * Registra (upsert) las reservas de stock cubierto por solicitud al generar la OP con
+ * "cubrir con disponible". Hace que ese stock deje de aparecer como disponible.
+ * POST /api/v1/orden-pedido/reservas
+ */
+export const registrarReservasStockService = async (
+  reservas: Array<{ idSolicitud: number; idProducto: number; cantidad: number }>
+): Promise<number> => {
+  if (reservas.length === 0) return 0;
+  try {
+    const response = await api.post<number>('/orden-pedido/reservas', reservas);
+    return response.data ?? 0;
+  } catch (error: any) {
+    throw new Error(
+      error.response?.data?.message ||
+      'Error al registrar las reservas de stock'
+    );
+  }
+};
+
 /**
  * Cambia el estado del proveedor (DISPONIBLE ↔ NO_DISPONIBLE) en un PATCH.
  * Reutiliza actualizarProveedorService completando los campos requeridos por el backend.
@@ -707,6 +759,8 @@ export const crearOrdenPedidoService = async (request: {
     idProducto: number;
     cantidad: number;
     fechaEntrega: string; // YYYY-MM-DD
+    /** Solicitudes que abastece esta línea y cuánto aporta cada una (puente de trazabilidad). */
+    solicitudes?: Array<{ idSolicitud: number; cantidadAtribuida: number }>;
   }>;
 }): Promise<IOrdenPedidoResumen> => {
   try {

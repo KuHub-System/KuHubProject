@@ -325,6 +325,20 @@ export interface ICantidadDia {
 }
 
 /**
+ * Porción de un producto que demanda una solicitud específica.
+ * Mapea CotizacionConsolidadaDTO.SolicitudCantidadJson.
+ * Unidad atómica para "mover" una solicitud completa a otro día de entrega: el `dia`
+ * es el día de necesidad de la solicitud (de su reserva_sala), único por solicitud.
+ */
+export interface ISolicitudCantidad {
+  idSolicitud: number;
+  dia: TDiaSemana | 'SIN_DIA';
+  cantidad: number;
+  /** Cantidad ya reservada (cubierta desde stock) de este producto para la solicitud. */
+  reservado?: number;
+}
+
+/**
  * Producto consolidado del proveedor ganador (menor precio_neto vigente).
  * Mapea CotizacionConsolidadaDTO.ProductoJson.
  */
@@ -337,6 +351,8 @@ export interface IProductoConsolidado {
   precioNeto: number | null;
   precioConIva: number | null;
   cantidadPorDia: ICantidadDia[];
+  /** Desglose por solicitud (habilita mover la porción de una solicitud completa). */
+  solicitudes: ISolicitudCantidad[];
 }
 
 /** Mapea CotizacionConsolidadaDTO.CategoriaGrupo. */
