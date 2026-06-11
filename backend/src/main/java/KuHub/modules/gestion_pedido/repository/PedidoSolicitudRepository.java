@@ -59,4 +59,36 @@ public interface PedidoSolicitudRepository extends JpaRepository<PedidoSolicitud
         """, nativeQuery = true)
     List<Object[]> findSolicitudDetallesByPedido(@Param("idPedido") Integer idPedido);
 
+    /**
+     * Retorna (id_solicitud, id_producto, cant_producto_solicitud) de las solicitudes EN_PEDIDO
+     * del pedido, ordenadas por fecha de solicitud. Usado para repartir la reserva del disponible
+     * entre las solicitudes que piden cada producto al aprobar el pedido.
+     *   [0] id_solicitud  (Integer)
+     *   [1] id_producto   (Integer)
+     *   [2] cant_producto_solicitud (BigDecimal)
+     */
+    @Query(value = """
+        SELECT
+            s.id_solicitud,               -- [0]
+            ds.id_producto,               -- [1]
+            ds.cant_producto_solicitud    -- [2]
+        FROM pedido_solicitud ps
+        JOIN solicitud s ON s.id_solicitud = ps.id_solicitud
+        JOIN detalle_solicitud ds ON ds.id_solicitud = s.id_solicitud
+        WHERE ps.id_pedido = :idPedido
+          AND s.estado_solicitud = 'EN_PEDIDO'
+        ORDER BY s.fecha_solicitada ASC, s.id_solicitud ASC
+        """, nativeQuery = true)
+    List<Object[]> findSolicitudProductoCantidadByPedido(@Param("idPedido") Integer idPedido);
+
+    /** Retorna los IDs de las solicitudes EN_PEDIDO vinculadas a un pedido (para rechazar el pedido completo). */
+    @Query(value = """
+        SELECT ps.id_solicitud
+        FROM pedido_solicitud ps
+        JOIN solicitud s ON s.id_solicitud = ps.id_solicitud
+        WHERE ps.id_pedido = :idPedido
+          AND s.estado_solicitud = 'EN_PEDIDO'
+        """, nativeQuery = true)
+    List<Integer> findIdSolicitudesEnPedidoByPedido(@Param("idPedido") Integer idPedido);
+
 }

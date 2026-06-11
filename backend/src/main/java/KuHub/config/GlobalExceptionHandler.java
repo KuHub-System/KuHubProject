@@ -3,6 +3,7 @@ package KuHub.config;
 import KuHub.modules.gestion_academica.exceptions.GestionAcademicaException;
 import KuHub.modules.gestion_inventario.exceptions.GestionInventarioException;
 import KuHub.modules.gestion_orden_pedido.exceptions.GestionOrdenPedidoException;
+import KuHub.modules.gestion_pedido.exceptions.GestionPedidoException;
 import KuHub.modules.gestion_proveedor.exceptions.GestionProveedorException;
 import KuHub.modules.gestion_solicitud.exception.GestionSolicitudException;
 import KuHub.modules.gestion_usuario.exceptions.*;
@@ -213,6 +214,11 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(GestionOrdenPedidoException.class)
     public ResponseEntity<String> handleGestionOrdenPedido(GestionOrdenPedidoException ex) {
+        return ResponseEntity.status(ex.getStatus()).body(ex.getMessage());
+    }
+
+    @ExceptionHandler(GestionPedidoException.class)
+    public ResponseEntity<String> handleGestionPedido(GestionPedidoException ex) {
         return ResponseEntity.status(ex.getStatus()).body(ex.getMessage());
     }
 

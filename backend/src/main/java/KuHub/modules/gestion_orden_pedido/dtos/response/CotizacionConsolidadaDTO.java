@@ -77,7 +77,14 @@ public class CotizacionConsolidadaDTO {
             @JsonProperty("cantidadTotal") BigDecimal cantidadTotal,
             @JsonProperty("precioNeto") BigDecimal precioNeto,
             @JsonProperty("precioConIva") BigDecimal precioConIva,
-            @JsonProperty("cantidadPorDia") List<CantidadDiaJson> cantidadPorDia
+            @JsonProperty("cantidadPorDia") List<CantidadDiaJson> cantidadPorDia,
+            /**
+             * Desglose por solicitud que origina la demanda de este producto.
+             * Habilita "mover" la porción de una solicitud completa a otro día de entrega
+             * (dentro del proveedor) sin perder la trazabilidad solicitud → línea de OP.
+             * Cada solicitud es atómica: tiene un único día de necesidad (de su reserva_sala).
+             */
+            @JsonProperty("solicitudes") List<SolicitudCantidadJson> solicitudes
     ) {}
 
     /** Cantidad solicitada agrupada por día de la semana. */
@@ -86,5 +93,20 @@ public class CotizacionConsolidadaDTO {
             /** "LUNES", "MARTES", ..., "DOMINGO", o "SIN_DIA". */
             @JsonProperty("dia") String dia,
             @JsonProperty("cantidad") BigDecimal cantidad
+    ) {}
+
+    /**
+     * Porción de un producto que demanda una solicitud específica.
+     * El {@code dia} es el día de necesidad de la solicitud (de su reserva_sala); todas las
+     * líneas de detalle de esa solicitud para este producto se suman en {@code cantidad}.
+     */
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record SolicitudCantidadJson(
+            @JsonProperty("idSolicitud") Integer idSolicitud,
+            /** Día de necesidad: "LUNES".."DOMINGO" o "SIN_DIA". */
+            @JsonProperty("dia") String dia,
+            @JsonProperty("cantidad") BigDecimal cantidad,
+            /** Cantidad de este producto ya reservada para la solicitud (cubierta desde stock). */
+            @JsonProperty("reservado") BigDecimal reservado
     ) {}
 }

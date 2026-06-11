@@ -5,7 +5,7 @@
  */
 
 import React from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useHistory } from 'react-router-dom';
 import {
   Button,
   Card,
@@ -61,6 +61,9 @@ import {
   sincronizarPrecioDesdeIvaService,
   obtenerPedidosSemanaService,
   obtenerCotizacionConsolidadaService,
+  obtenerDisponibleRealService,
+  registrarReservasStockService,
+  type IDisponibleReal,
   actualizarEstadoProveedorService,
   crearOrdenPedidoService,
   listarOrdenesPedidoService,
@@ -382,6 +385,10 @@ const DIA_ORDEN: Record<TDiaSemana, number> = {
 };
 const DIAS_TODOS: TDiaSemana[] = ['LUNES', 'MARTES', 'MIERCOLES', 'JUEVES', 'VIERNES', 'SABADO', 'DOMINGO'];
 
+/** Cantidad neta a pedir de una solicitud = demanda − reservado (lo reservado ya se cubre con stock). */
+const netoSolicitud = (s: { cantidad: number; reservado?: number }): number =>
+  Math.max(0, s.cantidad - (s.reservado ?? 0));
+
 /** Suma N días a una fecha YYYY-MM-DD (sin tocar tz). */
 const addDaysISO = (iso: string, n: number): string => {
   const d = new Date(iso + 'T00:00:00');
@@ -521,6 +528,7 @@ const GestionProveedoresPage: React.FC = () => {
   // Context global de período/semana — sólo se LEE (no se muta) para el modal de OC.
   const { periodos: ctxPeriodos } = usePeriodoSemana();
   const location = useLocation();
+  const history = useHistory();
 
   /** Semana ID a pre-seleccionar cuando el modal se abre desde la notificación "Sin OP". */
   const ocAutoSemanaId = React.useRef<number | null>(null);
@@ -658,6 +666,25 @@ const GestionProveedoresPage: React.FC = () => {
   /** Snapshot inmutable de las cantidades iniciales calculadas por construirCantidades().
    *  Usada para redistribución con botones ± (fase 1: recuperar lo restado) y para restaurar filas. */
   const [ocCantidadesOriginales, setOcCantidadesOriginales] = React.useState<
+    Record<number, Record<number, Record<string, number>>>
+  >({});
+  /**
+   * Día de entrega asignado a cada solicitud, por proveedor: idProveedor → idSolicitud → entregaKey.
+   * Es la capa que se edita al "mover" una solicitud; de ella se derivan las cantidades por día.
+   */
+  const [ocSolicitudDia, setOcSolicitudDia] = React.useState<
+    Record<number, Record<number, string>>
+  >({});
+  /** Snapshot inicial de la capa solicitud→día, para el botón "volver al inicial". */
+  const [ocSolicitudDiaOriginales, setOcSolicitudDiaOriginales] = React.useState<
+    Record<number, Record<number, string>>
+  >({});
+  /** Disponible real por producto (idProducto → {stockFisico, demanda, disponible}) para el Paso 2. */
+  const [ocDisponible, setOcDisponible] = React.useState<Record<number, IDisponibleReal>>({});
+  /** Checkbox "Cubrir con disponible": reduce el pedido por el disponible (parcial o total). */
+  const [ocCubrirDisponible, setOcCubrirDisponible] = React.useState(false);
+  /** Snapshot de cantidades antes de aplicar "cubrir con disponible", para revertir al desmarcar. */
+  const [ocCantidadesPreCover, setOcCantidadesPreCover] = React.useState<
     Record<number, Record<number, Record<string, number>>>
   >({});
   /** Fecha elegida por el usuario en Paso 1 como base para calcular semana de entrega (YYYY-MM-DD). */
@@ -1439,7 +1466,8 @@ const GestionProveedoresPage: React.FC = () => {
     if (!anio || !semestre || !semanaId) return;
     ocAutoSemanaId.current = semanaId;
     handleAbrirOrdenPedido({ anio, semestre });
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    history.replace('/gestion-proveedores');
+  }, [location.search]); // eslint-disable-line react-hooks/exhaustive-deps
 
   /** Cuando cambia el período: carga las semanas (local, sin tocar el context).
    *  Si hay un semanaId pendiente (desde notificación), la auto-selecciona. */
@@ -1550,11 +1578,23 @@ const GestionProveedoresPage: React.FC = () => {
               );
             }
           }
+          // Descontar lo reservado por día: lo reservado ya se cubre con stock y no se pide al proveedor.
+          const reservadoPorDia = new Map<string, number>();
+          for (const s of (prod.solicitudes ?? [])) {
+            if ((s.reservado ?? 0) > 0)
+              reservadoPorDia.set(s.dia, (reservadoPorDia.get(s.dia) ?? 0) + (s.reservado ?? 0));
+          }
+          for (const [dia, val] of qtyByDay) {
+            const net = Math.max(0, val - (reservadoPorDia.get(dia) ?? 0));
+            if (net > 0) qtyByDay.set(dia, net); else qtyByDay.delete(dia);
+          }
           const entregasProd: Record<string, number> = {};
-          // Cantidades de días sin reserva de sala: se suman al día de entrega más próximo
-          const sinDiaTotal = prod.cantidadPorDia
-            .filter(c => c.dia === 'SIN_DIA')
-            .reduce((s, c) => s + c.cantidad, 0);
+          // Cantidades de días sin reserva de sala: se suman al día de entrega más próximo (netas de reserva)
+          const sinDiaTotal = Math.max(0,
+            prod.cantidadPorDia
+              .filter(c => c.dia === 'SIN_DIA')
+              .reduce((s, c) => s + c.cantidad, 0)
+            - (reservadoPorDia.get('SIN_DIA') ?? 0));
 
           if (diasEntregaOrd.length === 0) {
             // Sin días de entrega configurados: acumular todo en LUNES como fallback
@@ -1596,6 +1636,190 @@ const GestionProveedoresPage: React.FC = () => {
     return init;
   };
 
+  /**
+   * Calcula el día de entrega (entregaKey) por defecto para un día de necesidad, replicando
+   * la lógica prospectiva de construirCantidades para que la capa solicitud→día sea coherente
+   * con las cantidades iniciales. Devuelve un día ("MARTES") o un día de semana previa ("MARTES_prev").
+   */
+  const entregaKeyParaDia = (
+    dia: TDiaSemana | 'SIN_DIA',
+    diasEntregaOrd: TDiaSemana[],
+  ): string => {
+    if (diasEntregaOrd.length === 0) return 'LUNES';
+    if (diasEntregaOrd.length === 1) return diasEntregaOrd[0];
+    if (dia === 'SIN_DIA') return diasEntregaOrd[0];
+    const diasEntregaNum = diasEntregaOrd.map(d => DIA_ORDEN[d]);
+    const diaNec = DIA_ORDEN[dia];
+    let asignado: number | null = null;
+    for (let i = diasEntregaNum.length - 1; i >= 0; i--) {
+      if (diasEntregaNum[i] < diaNec) { asignado = diasEntregaNum[i]; break; }
+    }
+    const esPrev = asignado === null;
+    if (esPrev) asignado = diasEntregaNum[diasEntregaNum.length - 1];
+    return esPrev ? `${DIAS_TODOS[asignado! - 1]}_prev` : DIAS_TODOS[asignado! - 1];
+  };
+
+  /**
+   * Construye la capa solicitud→día: por proveedor, a qué día de entrega queda asignada cada
+   * solicitud por defecto (según su día de necesidad). Cada solicitud es atómica (un solo día).
+   */
+  const construirSolicitudDias = (
+    data: ICotizacionConsolidadaResponse,
+  ): Record<number, Record<number, string>> => {
+    const init: Record<number, Record<number, string>> = {};
+    for (const prov of data.cotizacion) {
+      if (prov.idProveedor == null) continue;
+      const diasEntregaOrd = [...(prov.diasEntrega ?? [])].sort(
+        (a, b) => DIA_ORDEN[a] - DIA_ORDEN[b],
+      );
+      const solDia: Record<number, TDiaSemana | 'SIN_DIA'> = {};
+      for (const cat of prov.categorias)
+        for (const prod of cat.productos)
+          for (const s of prod.solicitudes)
+            solDia[s.idSolicitud] = s.dia;
+      const provMap: Record<number, string> = {};
+      for (const [idSolStr, dia] of Object.entries(solDia)) {
+        provMap[Number(idSolStr)] = entregaKeyParaDia(dia, diasEntregaOrd);
+      }
+      init[prov.idProveedor] = provMap;
+    }
+    return init;
+  };
+
+  /**
+   * Mueve una solicitud completa a otro día de entrega dentro de un proveedor: reubica la porción
+   * de cada producto de esa solicitud del entregaKey viejo al nuevo, sin tocar los ± manuales.
+   */
+  const handleMoverSolicitud = (idProveedor: number, idSolicitud: number, nuevoKey: string) => {
+    const prov = ocCotizacion?.cotizacion.find(p => p.idProveedor === idProveedor);
+    if (!prov) return;
+    const viejoKey = ocSolicitudDia[idProveedor]?.[idSolicitud];
+    if (!viejoKey || viejoKey === nuevoKey) return;
+
+    // Porciones (producto, cantidad NETA) que aporta esta solicitud en este proveedor (lo reservado
+    // no se pide, así que se mueve solo el neto).
+    const porProducto: Array<{ idProducto: number; cantidad: number }> = [];
+    for (const cat of prov.categorias)
+      for (const prod of cat.productos)
+        for (const s of prod.solicitudes)
+          if (s.idSolicitud === idSolicitud && netoSolicitud(s) > 0)
+            porProducto.push({ idProducto: prod.idProducto, cantidad: netoSolicitud(s) });
+
+    if (porProducto.length === 0) return;
+
+    // Reubica las porciones (viejoKey → nuevoKey) sobre una base de cantidades, devolviendo una copia nueva.
+    const moverEnBase = (
+      base: Record<number, Record<number, Record<string, number>>>,
+    ): Record<number, Record<number, Record<string, number>>> => {
+      const provMap = { ...(base[idProveedor] ?? {}) };
+      for (const { idProducto, cantidad } of porProducto) {
+        const dias = { ...(provMap[idProducto] ?? {}) };
+        const restante = (dias[viejoKey] ?? 0) - cantidad;
+        if (restante > 0.0005) dias[viejoKey] = Math.round(restante * 1000) / 1000;
+        else delete dias[viejoKey];
+        dias[nuevoKey] = Math.round(((dias[nuevoKey] ?? 0) + cantidad) * 1000) / 1000;
+        provMap[idProducto] = dias;
+      }
+      return { ...base, [idProveedor]: provMap };
+    };
+
+    if (ocCubrirDisponible) {
+      // Con "cubrir" activo, ocCantidades está reducido por el disponible. Si moviéramos sobre él,
+      // reinyectaríamos la cantidad completa de la solicitud y reaparecería lo cubierto. Por eso
+      // movemos sobre la base SIN cubrir (snapshot) y re-aplicamos el cubrir para la vista.
+      const nuevaBase = moverEnBase(ocCantidadesPreCover);
+      setOcCantidadesPreCover(nuevaBase);
+      setOcCantidades(aplicarCubrirDisponible(nuevaBase));
+    } else {
+      setOcCantidades(prev => moverEnBase(prev));
+    }
+
+    setOcSolicitudDia(prev => ({
+      ...prev,
+      [idProveedor]: { ...(prev[idProveedor] ?? {}), [idSolicitud]: nuevoKey },
+    }));
+  };
+
+  /**
+   * Vuelve un proveedor a su distribución inicial: restaura las cantidades por día y los
+   * selectores de "mover" a como quedaron al cargar la cotización (deshace movimientos y ±).
+   */
+  const handleResetProveedorPaso2 = (idProveedor: number) => {
+    const origCant = ocCantidadesOriginales[idProveedor] ?? {};
+    const copiaCant: Record<number, Record<string, number>> = {};
+    for (const [idProd, dias] of Object.entries(origCant)) {
+      copiaCant[Number(idProd)] = { ...dias };
+    }
+    setOcCantidades(prev => ({ ...prev, [idProveedor]: copiaCant }));
+    setOcSolicitudDia(prev => ({
+      ...prev,
+      [idProveedor]: { ...(ocSolicitudDiaOriginales[idProveedor] ?? {}) },
+    }));
+  };
+
+  /** Carga el disponible real (inventario+tránsito − demanda comprometida) de los productos de la cotización. */
+  const cargarDisponibleReal = async (data: ICotizacionConsolidadaResponse) => {
+    const ids = new Set<number>();
+    for (const prov of data.cotizacion)
+      for (const cat of prov.categorias)
+        for (const prod of cat.productos)
+          ids.add(prod.idProducto);
+    if (ids.size === 0) { setOcDisponible({}); return; }
+    try {
+      const lista = await obtenerDisponibleRealService([...ids]);
+      const map: Record<number, IDisponibleReal> = {};
+      for (const d of lista) map[d.idProducto] = d;
+      setOcDisponible(map);
+    } catch {
+      setOcDisponible({});
+    }
+  };
+
+  /**
+   * Aplica "cubrir con disponible" sobre una base de cantidades: por producto, reduce el pedido en
+   * min(disponible, pedido) — cubre total o parcial, dejando el saldo (lo que falta) por pedir.
+   * Crea objetos nuevos (no muta la base, para poder revertir con el snapshot).
+   */
+  const aplicarCubrirDisponible = (
+    base: Record<number, Record<number, Record<string, number>>>,
+  ): Record<number, Record<number, Record<string, number>>> => {
+    const r = (v: number) => Math.round(v * 1000) / 1000;
+    const result: Record<number, Record<number, Record<string, number>>> = {};
+    for (const [provStr, prods] of Object.entries(base)) {
+      const newProds: Record<number, Record<string, number>> = {};
+      for (const [prodStr, dias] of Object.entries(prods)) {
+        const prodId = Number(prodStr);
+        const disp = Math.max(0, ocDisponible[prodId]?.disponible ?? 0);
+        const total = Object.values(dias).reduce((s, v) => s + v, 0);
+        let coverage = Math.min(disp, total);
+        const newDias: Record<string, number> = { ...dias };
+        for (const key of Object.keys(newDias)) {
+          if (coverage <= 0.0005) break;
+          const val = newDias[key];
+          const take = Math.min(coverage, val);
+          const nv = r(val - take);
+          if (nv > 0.0005) newDias[key] = nv; else delete newDias[key];
+          coverage = r(coverage - take);
+        }
+        newProds[prodId] = newDias;
+      }
+      result[Number(provStr)] = newProds;
+    }
+    return result;
+  };
+
+  /** Marca/desmarca "cubrir con disponible": al marcar guarda snapshot y reduce; al desmarcar revierte. */
+  const handleToggleCubrirDisponible = (checked: boolean) => {
+    setOcCubrirDisponible(checked);
+    if (checked) {
+      setOcCantidadesPreCover(ocCantidades);
+      setOcCantidades(prev => aplicarCubrirDisponible(prev));
+    } else {
+      setOcCantidades(ocCantidadesPreCover);
+      setOcCantidadesPreCover({});
+    }
+  };
+
   /** Avanza al Paso 2: carga cotización consolidada + 2000ms de BookPageLoader. */
   const handleGenerarOrdenPedido = async () => {
     if (ocSeleccionados.size === 0 || !ocSemana || !ocFechaEntrega) return;
@@ -1614,6 +1838,12 @@ const GestionProveedoresPage: React.FC = () => {
       const cantInicial = construirCantidades(data);
       setOcCantidades(cantInicial);
       setOcCantidadesOriginales(cantInicial);
+      setOcCubrirDisponible(false);
+      setOcCantidadesPreCover({});
+      const solDiasInicial = construirSolicitudDias(data);
+      setOcSolicitudDia(solDiasInicial);
+      setOcSolicitudDiaOriginales(solDiasInicial);
+      void cargarDisponibleReal(data);
     } catch (err: any) {
       setOcErrorCotizacion(err.message || 'Error al obtener la cotización consolidada');
     } finally {
@@ -1648,7 +1878,19 @@ const GestionProveedoresPage: React.FC = () => {
 
       const nombreProv = prov.nombreDistribuidora ?? prov.nombreProveedor ?? `Proveedor #${prov.idProveedor}`;
       const cantidadesProv = ocCantidades[prov.idProveedor] ?? {};
-      const entregas: { idProducto: number; cantidad: number; fechaEntrega: string }[] = [];
+      const solDiaProv = ocSolicitudDia[prov.idProveedor] ?? {};
+      // Lookup idProducto → solicitudes (para atribuir cada entrega a las solicitudes de ese día).
+      const solsPorProducto = new Map<number, Array<{ idSolicitud: number; cantidad: number; reservado?: number }>>();
+      for (const cat of prov.categorias)
+        for (const prod of cat.productos)
+          solsPorProducto.set(prod.idProducto, prod.solicitudes);
+
+      const entregas: Array<{
+        idProducto: number;
+        cantidad: number;
+        fechaEntrega: string;
+        solicitudes?: Array<{ idSolicitud: number; cantidadAtribuida: number }>;
+      }> = [];
 
       for (const [idProductoStr, entregasProd] of Object.entries(cantidadesProv)) {
         const idProducto = Number(idProductoStr);
@@ -1675,7 +1917,18 @@ const GestionProveedoresPage: React.FC = () => {
             }
           }
 
-          entregas.push({ idProducto, cantidad: Math.round(cantidad * 1000) / 1000, fechaEntrega: fechaISO });
+          // Solicitudes atribuidas a esta línea: las asignadas a este día (entregaKey) para este producto.
+          // Se atribuye el NETO (demanda − reservado): lo reservado se cubre con stock, no se pide.
+          const solicitudesLinea = (solsPorProducto.get(idProducto) ?? [])
+            .filter(s => solDiaProv[s.idSolicitud] === entregaKey && netoSolicitud(s) > 0)
+            .map(s => ({ idSolicitud: s.idSolicitud, cantidadAtribuida: Math.round(netoSolicitud(s) * 1000) / 1000 }));
+
+          entregas.push({
+            idProducto,
+            cantidad: Math.round(cantidad * 1000) / 1000,
+            fechaEntrega: fechaISO,
+            ...(solicitudesLinea.length > 0 && { solicitudes: solicitudesLinea }),
+          });
         }
       }
 
@@ -1695,6 +1948,46 @@ const GestionProveedoresPage: React.FC = () => {
           nombreProveedor: nombreProv,
           mensaje: err.message || `Error al generar la orden`,
         });
+      }
+    }
+
+    // Reservas de stock: si "cubrir con disponible" está activo, registrar por solicitud lo cubierto
+    // desde el stock (para que deje de aparecer como disponible). Se distribuye la cobertura del
+    // producto entre sus solicitudes (secuencial). No bloquea el resultado de la generación.
+    if (ocCubrirDisponible) {
+      const reservas: Array<{ idSolicitud: number; idProducto: number; cantidad: number }> = [];
+      for (const prov of ocCotizacion.cotizacion) {
+        if (prov.idProveedor == null) continue;
+        for (const cat of prov.categorias) {
+          for (const prod of cat.productos) {
+            const disp = Math.max(0, ocDisponible[prod.idProducto]?.disponible ?? 0);
+            if (disp <= 0.0005) continue;
+            // El disponible ya excluye lo reservado: la cobertura se distribuye sobre el NETO de cada
+            // solicitud y la reserva final = reserva previa + lo recién cubierto (el upsert por
+            // (solicitud,producto) no debe perder la reserva hecha al aprobar el pedido).
+            const totalDemanda = prod.solicitudes.reduce((s, x) => s + netoSolicitud(x), 0);
+            let cobertura = Math.min(disp, totalDemanda);
+            for (const sol of prod.solicitudes) {
+              if (cobertura <= 0.0005) break;
+              const cubierto = Math.min(cobertura, netoSolicitud(sol));
+              if (cubierto > 0.0005) {
+                reservas.push({
+                  idSolicitud: sol.idSolicitud,
+                  idProducto: prod.idProducto,
+                  cantidad: Math.round(((sol.reservado ?? 0) + cubierto) * 1000) / 1000,
+                });
+                cobertura = Math.round((cobertura - cubierto) * 1000) / 1000;
+              }
+            }
+          }
+        }
+      }
+      if (reservas.length > 0) {
+        try {
+          await registrarReservasStockService(reservas);
+        } catch {
+          showToast('Las órdenes se generaron, pero no se pudieron registrar las reservas de stock', 'error');
+        }
       }
     }
 
@@ -1734,6 +2027,12 @@ const GestionProveedoresPage: React.FC = () => {
       const cantInicial = construirCantidades(data);
       setOcCantidades(cantInicial);
       setOcCantidadesOriginales(cantInicial);
+      setOcCubrirDisponible(false);
+      setOcCantidadesPreCover({});
+      const solDiasInicial = construirSolicitudDias(data);
+      setOcSolicitudDia(solDiasInicial);
+      setOcSolicitudDiaOriginales(solDiasInicial);
+      void cargarDisponibleReal(data);
       showToast(`Estado actualizado a ${nuevoEstado === 'DISPONIBLE' ? 'Disponible' : 'No Disponible'}`);
     } catch (err: any) {
       showToast(err.message || 'No se pudo actualizar el estado del proveedor', 'error');
@@ -1763,143 +2062,60 @@ const GestionProveedoresPage: React.FC = () => {
     }));
   };
 
-  /** Redistribuye automáticamente al pulsar botón + o − en una celda de entrega.
-   *  - delta > 0: suma a X, resta primero de días ANTERIORES luego POSTERIORES. Permite superar el total.
-   *  - delta < 0: baja X (piso 0), distribuye a días POSTERIORES sin superar su base original. */
+  /**
+   * Ajuste manual puro al pulsar + o − en una celda de entrega: suma/resta el delta SOLO en
+   * esa celda (piso en 0). No redistribuye ni roba de los días vecinos — la cantidad atribuida
+   * a las solicitudes se mueve únicamente con el panel "Mover solicitudes". El delta manual es
+   * la decisión del usuario (pedir de más por precio, o de menos porque ya tiene stock).
+   */
   const handleEntregaIncrement = (
     idProveedor: number,
     idProducto: number,
     entregaKey: string,
     delta: number,
-    colSpecs: ColSpecOC[],
+    _colSpecs: ColSpecOC[],
   ) => {
-    // Evita drift de punto flotante redondeando a 5 decimales
+    if (delta === 0) return;
+    const step = Math.abs(delta);
     const r = (v: number) => Math.round(v * 100000) / 100000;
+    const EPS = 1e-6;
+
+    // "marco" = cantidad atribuida a las solicitudes en esta celda (sin el ajuste manual).
+    // Se usa como punto de parada al subir/bajar, además de los múltiplos del step.
+    let marco = 0;
+    const prov = ocCotizacion?.cotizacion.find(p => p.idProveedor === idProveedor);
+    if (prov) {
+      for (const cat of prov.categorias)
+        for (const prod of cat.productos)
+          if (prod.idProducto === idProducto)
+            for (const s of prod.solicitudes)
+              if (ocSolicitudDia[idProveedor]?.[s.idSolicitud] === entregaKey)
+                marco = r(marco + netoSolicitud(s));
+    }
 
     setOcCantidades(prev => {
       const provData = prev[idProveedor] ?? {};
       const prodData = { ...(provData[idProducto] ?? {}) };
       const valorActual = prodData[entregaKey] ?? 0;
 
-      const entregaCols = colSpecs.filter(c => c.tipo === 'entrega');
-      const indexActual = entregaCols.findIndex(c => getEntregaKey(c) === entregaKey);
-
-      const originalX = ocCantidadesOriginales[idProveedor]?.[idProducto]?.[entregaKey] ?? 0;
-
-      // Suma actual y total objetivo (derivado de los originales = cantidadTotal)
-      const sumAntes = r(entregaCols.reduce((s, c) => s + (prodData[getEntregaKey(c)] ?? 0), 0));
-      const cantidadTotalProd = r(
-        Object.values(ocCantidadesOriginales[idProveedor]?.[idProducto] ?? {}).reduce((s, v) => s + v, 0),
-      );
-
+      let resultado: number;
       if (delta > 0) {
-        // ── Snap de celda (subiendo): originalX → cantidadTotalProd → siguiente múltiplo ──
-        let effectiveDelta = delta;
-        if (valorActual < originalX - 0.00001 && r(valorActual + delta) > originalX + 0.00001) {
-          // P1: aterrizar en la base individual
-          effectiveDelta = r(originalX - valorActual);
-        } else if (valorActual < cantidadTotalProd - 0.00001 && r(valorActual + delta) > cantidadTotalProd + 0.00001) {
-          // P2: aterrizar en el total del producto
-          effectiveDelta = r(cantidadTotalProd - valorActual);
-        } else if (valorActual >= cantidadTotalProd - 0.00001) {
-          // P3: aterrizar en el siguiente múltiplo del step por encima de cantidadTotalProd
-          const nextGridCell = r(Math.ceil(r((cantidadTotalProd + 0.000001) / delta)) * delta);
-          if (valorActual < nextGridCell - 0.00001 && r(valorActual + delta) > nextGridCell + 0.00001) {
-            effectiveDelta = r(nextGridCell - valorActual);
-          }
-        }
-
-        prodData[entregaKey] = r(valorActual + effectiveDelta);
-        let restante = effectiveDelta;
-
-        // 1. Restar de días ANTERIORES (del más cercano al más lejano)
-        for (let i = indexActual - 1; i >= 0 && restante > 0.00001; i--) {
-          const key = getEntregaKey(entregaCols[i]);
-          const cant = prodData[key] ?? 0;
-          if (cant > 0.00001) {
-            const aRestar = Math.min(restante, cant);
-            prodData[key] = r(cant - aRestar);
-            restante = r(restante - aRestar);
-          }
-        }
-        // 2. Si aún queda, restar de días POSTERIORES
-        for (let i = indexActual + 1; i < entregaCols.length && restante > 0.00001; i++) {
-          const key = getEntregaKey(entregaCols[i]);
-          const cant = prodData[key] ?? 0;
-          if (cant > 0.00001) {
-            const aRestar = Math.min(restante, cant);
-            prodData[key] = r(cant - aRestar);
-            restante = r(restante - aRestar);
-          }
-        }
-
-        // ── Snap de total (solo si el total aumenta, es decir restante > 0) ──
-        if (restante > 0.00001) {
-          const sumDespues = r(sumAntes + restante);
-          const step = delta;
-          // Snap 1: aterrizar en cantidadTotal al cruzarla desde abajo
-          if (sumAntes < cantidadTotalProd - 0.00001 && sumDespues > cantidadTotalProd + 0.00001) {
-            prodData[entregaKey] = r(prodData[entregaKey] - r(sumDespues - cantidadTotalProd));
-          } else if (sumAntes >= cantidadTotalProd - 0.00001) {
-            // Snap 2: aterrizar en el siguiente múltiplo del step por encima de cantidadTotal
-            const nextGrid = r(Math.ceil(r((cantidadTotalProd + 0.000001) / step)) * step);
-            if (sumAntes < nextGrid - 0.00001 && sumDespues > nextGrid + 0.00001) {
-              prodData[entregaKey] = r(prodData[entregaKey] - r(sumDespues - nextGrid));
-            }
-          }
-        }
-
-      } else if (delta < 0) {
-        // ── Snap de celda (bajando): cantidadTotalProd → originalX → 0 ──
-        let effectiveStep = Math.abs(delta);
-        if (valorActual > cantidadTotalProd + 0.00001 && r(valorActual - effectiveStep) < cantidadTotalProd - 0.00001) {
-          // P1: aterrizar en el total del producto (si la celda lo supera por edición manual)
-          effectiveStep = r(valorActual - cantidadTotalProd);
-        } else if (valorActual > originalX + 0.00001 && r(valorActual - effectiveStep) < originalX - 0.00001) {
-          // P2: aterrizar en la base individual
-          effectiveStep = r(valorActual - originalX);
-        }
-        effectiveStep = Math.min(effectiveStep, valorActual); // piso en 0
-        if (effectiveStep < 0.00001) return prev;
-
-        prodData[entregaKey] = r(valorActual - effectiveStep);
-
-        const originalesProd = ocCantidadesOriginales[idProveedor]?.[idProducto] ?? {};
-        let pendiente = effectiveStep;
-
-        // Distribuir a días POSTERIORES sin superar su base original
-        for (let i = indexActual + 1; i < entregaCols.length && pendiente > 0.00001; i++) {
-          const key = getEntregaKey(entregaCols[i]);
-          const baseDay    = originalesProd[key] ?? 0;
-          const currentDay = prodData[key] ?? 0;
-          const espacio    = r(baseDay - currentDay);
-          if (espacio > 0.00001) {
-            const aAgregar = Math.min(pendiente, espacio);
-            prodData[key] = r(currentDay + aAgregar);
-            pendiente = r(pendiente - aAgregar);
-          }
-        }
-
-        // ── Snap de total (solo si el total disminuye, es decir pendiente > 0) ──
-        if (pendiente > 0.00001) {
-          const sumDespues = r(sumAntes - pendiente);
-          const step = Math.abs(delta);
-          // Snap 1: aterrizar en cantidadTotal al cruzarla desde arriba
-          if (sumAntes > cantidadTotalProd + 0.00001 && sumDespues < cantidadTotalProd - 0.00001) {
-            prodData[entregaKey] = r(prodData[entregaKey] + r(cantidadTotalProd - sumDespues));
-          } else if (sumAntes <= cantidadTotalProd + 0.00001) {
-            // Snap 2: aterrizar en el múltiplo del step inmediatamente por debajo de cantidadTotal
-            const prevGrid = r(Math.floor(r((cantidadTotalProd - 0.000001) / step)) * step);
-            if (sumAntes > prevGrid + 0.00001 && sumDespues < prevGrid - 0.00001) {
-              prodData[entregaKey] = r(prodData[entregaKey] + r(prevGrid - sumDespues));
-            }
-          }
-        }
-
+        // Siguiente múltiplo del step por encima del valor actual...
+        let next = r((Math.floor(r(valorActual / step) + EPS) + 1) * step);
+        // ...salvo que el marco quede entre el valor actual y ese múltiplo: parar en el marco.
+        if (marco > valorActual + EPS && marco < next - EPS) next = marco;
+        resultado = next;
       } else {
-        return prev;
+        // Múltiplo del step inmediatamente por debajo (piso en 0)...
+        let prevStop = r((Math.ceil(r(valorActual / step) - EPS) - 1) * step);
+        if (prevStop < 0) prevStop = 0;
+        // ...salvo que el marco quede entre ese múltiplo y el valor actual: parar en el marco.
+        if (marco < valorActual - EPS && marco > prevStop + EPS) prevStop = marco;
+        resultado = Math.max(0, prevStop);
       }
-
+      resultado = r(resultado);
+      if (resultado === valorActual) return prev;
+      prodData[entregaKey] = resultado;
       return { ...prev, [idProveedor]: { ...provData, [idProducto]: prodData } };
     });
   };
@@ -2636,9 +2852,15 @@ const GestionProveedoresPage: React.FC = () => {
         errorCotizacion={ocErrorCotizacion}
         cantidades={ocCantidades}
         cantidadesOriginales={ocCantidadesOriginales}
+        solicitudDias={ocSolicitudDia}
+        disponible={ocDisponible}
+        cubrirDisponible={ocCubrirDisponible}
+        onToggleCubrirDisponible={handleToggleCubrirDisponible}
         onCantidadChange={actualizarCantidadOc}
         onIncrement={handleEntregaIncrement}
         onRestaurar={handleRestaurarProducto}
+        onMoverSolicitud={handleMoverSolicitud}
+        onResetProveedor={handleResetProveedorPaso2}
         onVolver={handleVolverPaso1}
         fechaEntrega={ocFechaEntrega}
         onFechaEntregaChange={setOcFechaEntrega}
@@ -5480,9 +5702,21 @@ interface OrdenPedidoModalProps {
   errorCotizacion: string | null;
   cantidades: Record<number, Record<number, Record<string, number>>>;
   cantidadesOriginales: Record<number, Record<number, Record<string, number>>>;
+  /** idProveedor → idSolicitud → entregaKey: día de entrega actual de cada solicitud. */
+  solicitudDias: Record<number, Record<number, string>>;
+  /** idProducto → disponible real (inventario+tránsito − demanda comprometida). */
+  disponible: Record<number, IDisponibleReal>;
+  /** Estado del checkbox "Cubrir con disponible". */
+  cubrirDisponible: boolean;
+  /** Marca/desmarca "cubrir con disponible" (reduce el pedido por el disponible). */
+  onToggleCubrirDisponible: (checked: boolean) => void;
   onCantidadChange: (idProveedor: number, idProducto: number, dia: string, valor: number) => void;
   onIncrement: (idProveedor: number, idProducto: number, entregaKey: string, delta: number, colSpecs: ColSpecOC[]) => void;
   onRestaurar: (idProveedor: number, idProducto: number) => void;
+  /** Mueve una solicitud completa a otro día de entrega dentro de un proveedor. */
+  onMoverSolicitud: (idProveedor: number, idSolicitud: number, nuevoKey: string) => void;
+  /** Vuelve un proveedor a su distribución inicial (cantidades + selectores de mover). */
+  onResetProveedor: (idProveedor: number) => void;
   onVolver: () => void;
   fechaEntrega: string | null;
   onFechaEntregaChange: (f: string) => void;
@@ -5523,9 +5757,15 @@ const OrdenPedidoModal: React.FC<OrdenPedidoModalProps> = ({
   errorCotizacion,
   cantidades,
   cantidadesOriginales,
+  solicitudDias,
+  disponible,
+  cubrirDisponible,
+  onToggleCubrirDisponible,
   onCantidadChange,
   onIncrement,
   onRestaurar,
+  onMoverSolicitud,
+  onResetProveedor,
   onVolver,
   fechaEntrega,
   onFechaEntregaChange,
@@ -5820,18 +6060,41 @@ const OrdenPedidoModal: React.FC<OrdenPedidoModalProps> = ({
 
                   {!loadingCotizacion && cotizacion && cotizacion.cotizacion.length > 0 && semana && (
                     <div className="space-y-6">
+                      {/* Cubrir con disponible: reduce el pedido por el stock disponible (parcial o total) */}
+                      <div className="flex items-center justify-between gap-3 rounded-lg border border-default-200 dark:border-default-100 bg-default-50/60 dark:bg-default-100/5 px-4 py-2">
+                        <Checkbox
+                          size="sm"
+                          isSelected={cubrirDisponible}
+                          onValueChange={onToggleCubrirDisponible}
+                        >
+                          <span className="text-xs font-medium text-default-700 dark:text-default-300">
+                            Cubrir con disponible
+                          </span>
+                        </Checkbox>
+                        <span className="text-[11px] text-default-400">
+                          Resta de cada producto lo que ya tienes disponible; deja por pedir solo el saldo faltante.
+                        </span>
+                      </div>
                       {cotizacion.cotizacion.map((prov, idx) => (
                         <ProveedorCotizacionTabla
                           key={prov.idProveedor ?? `sin-prov-${idx}`}
                           proveedor={prov}
                           cantidadesProv={prov.idProveedor != null ? (cantidades[prov.idProveedor] ?? {}) : {}}
                           cantidadesOriginalesProv={prov.idProveedor != null ? (cantidadesOriginales[prov.idProveedor] ?? {}) : {}}
+                          solicitudDiaProv={prov.idProveedor != null ? (solicitudDias[prov.idProveedor] ?? {}) : {}}
+                          disponible={disponible}
                           onCantidadChange={onCantidadChange}
                           onIncrement={(idProducto, entregaKey, delta, colSpecs) => {
                             if (prov.idProveedor != null) onIncrement(prov.idProveedor, idProducto, entregaKey, delta, colSpecs);
                           }}
                           onRestaurar={(idProducto) => {
                             if (prov.idProveedor != null) onRestaurar(prov.idProveedor, idProducto);
+                          }}
+                          onMoverSolicitud={(idSolicitud, nuevoKey) => {
+                            if (prov.idProveedor != null) onMoverSolicitud(prov.idProveedor, idSolicitud, nuevoKey);
+                          }}
+                          onResetProveedor={() => {
+                            if (prov.idProveedor != null) onResetProveedor(prov.idProveedor);
                           }}
                           fechaEntrega={fechaEntrega}
                           estadoProveedor={prov.idProveedor != null ? (proveedoresEstados?.[prov.idProveedor] ?? null) : null}
@@ -6050,6 +6313,14 @@ interface ProveedorCotizacionTablaProps {
   onIncrement: (idProducto: number, entregaKey: string, delta: number, colSpecs: ColSpecOC[]) => void;
   /** Restaura la distribución de un producto a los valores iniciales. */
   onRestaurar: (idProducto: number) => void;
+  /** idSolicitud → entregaKey: día de entrega actual de cada solicitud de este proveedor. */
+  solicitudDiaProv?: Record<number, string>;
+  /** idProducto → disponible real (inventario+tránsito − demanda comprometida). */
+  disponible?: Record<number, IDisponibleReal>;
+  /** Mueve una solicitud completa a otro día de entrega. */
+  onMoverSolicitud?: (idSolicitud: number, nuevoKey: string) => void;
+  /** Vuelve este proveedor a su distribución inicial. */
+  onResetProveedor?: () => void;
   /** Fecha elegida por el usuario para calcular la semana de entrega real (YYYY-MM-DD). */
   fechaEntrega: string | null;
   estadoProveedor?: EstadoProveedor | null;
@@ -6061,14 +6332,32 @@ const ProveedorCotizacionTabla: React.FC<ProveedorCotizacionTablaProps> = ({
   proveedor,
   cantidadesProv,
   cantidadesOriginalesProv,
+  solicitudDiaProv,
+  disponible,
   onCantidadChange,
   onIncrement,
   onRestaurar,
+  onMoverSolicitud,
+  onResetProveedor,
   fechaEntrega,
   estadoProveedor,
   isToggling,
   onToggleEstado,
 }) => {
+  /** Solicitud cuyo detalle de productos está desplegado en el panel (null = ninguno). */
+  const [solDetalleAbierta, setSolDetalleAbierta] = React.useState<number | null>(null);
+
+  /** Productos (cantidad y reservado) que aporta una solicitud específica en este proveedor. */
+  const productosDeSolicitud = React.useCallback((idSolicitud: number) => {
+    const out: Array<{ nombreProducto: string; abreviatura: string; cantidad: number; reservado: number }> = [];
+    for (const cat of proveedor.categorias)
+      for (const prod of cat.productos)
+        for (const s of prod.solicitudes)
+          if (s.idSolicitud === idSolicitud && s.cantidad > 0)
+            out.push({ nombreProducto: prod.nombreProducto, abreviatura: prod.abreviatura, cantidad: s.cantidad, reservado: s.reservado ?? 0 });
+    return out;
+  }, [proveedor]);
+
   /** Dado un día de la semana del proveedor, devuelve la fecha exacta de entrega (DD/MM)
    *  usando el lunes de la semana elegida por el usuario como base. */
   const fechaExactaEntrega = React.useCallback((dia: TDiaSemana, semanaAnterior?: boolean): string | null => {
@@ -6153,6 +6442,46 @@ const ProveedorCotizacionTabla: React.FC<ProveedorCotizacionTablaProps> = ({
     [proveedor.diasEntrega, diasConQty],
   );
 
+  // Solicitudes únicas que aporta este proveedor, con su día de necesidad (para el panel de mover).
+  const solicitudesProv = React.useMemo<Array<{ idSolicitud: number; dia: TDiaSemana | 'SIN_DIA' }>>(() => {
+    const map = new Map<number, TDiaSemana | 'SIN_DIA'>();
+    for (const cat of proveedor.categorias)
+      for (const prod of cat.productos)
+        for (const s of prod.solicitudes)
+          if (!map.has(s.idSolicitud)) map.set(s.idSolicitud, s.dia);
+    return [...map.entries()]
+      .map(([idSolicitud, dia]) => ({ idSolicitud, dia }))
+      .sort((a, b) => a.idSolicitud - b.idSolicitud);
+  }, [proveedor]);
+
+  // Días de entrega disponibles como destino (las columnas de entrega reales, con su fecha).
+  const entregaOpciones = React.useMemo<Array<{ key: string; diaNum: number; semanaAnterior: boolean; label: string }>>(() =>
+    colSpecs
+      .filter((c): c is Extract<ColSpecOC, { tipo: 'entrega' }> => c.tipo === 'entrega')
+      .map(c => {
+        const info = calcEntregaInfo(c);
+        return {
+          key: getEntregaKey(c),
+          diaNum: DIA_ORDEN[c.dia],
+          semanaAnterior: !!c.semanaAnterior,
+          label: `${DIAS_ABREV_OC[c.dia]}${c.semanaAnterior ? ' (sem. ant.)' : ''}${info.fechaDisplay ? ' · ' + info.fechaDisplay : ''}`,
+        };
+      }),
+    [colSpecs, calcEntregaInfo],
+  );
+
+  /**
+   * Destinos válidos para una solicitud: la entrega debe ser ESTRICTAMENTE anterior a su día de
+   * necesidad (no el mismo día — no hay tiempo de abastecer y entregar). Los días de semana
+   * anterior siempre califican.
+   */
+  const targetsParaSolicitud = React.useCallback((dia: TDiaSemana | 'SIN_DIA') =>
+    dia === 'SIN_DIA'
+      ? entregaOpciones
+      : entregaOpciones.filter(o => o.semanaAnterior || o.diaNum < DIA_ORDEN[dia]),
+    [entregaOpciones],
+  );
+
   // Totales del proveedor: Σ (entrega × precioUnitario) para todos los productos.
   const totales = React.useMemo(() => {
     let neto = 0; let conIva = 0;
@@ -6235,6 +6564,134 @@ const ProveedorCotizacionTabla: React.FC<ProveedorCotizacionTablaProps> = ({
           </div>
         </div>
 
+        {/* Panel: mover solicitudes a un día de entrega (la entrega nunca pasa la necesidad) */}
+        {!esSinProveedor && onMoverSolicitud && solicitudesProv.length > 0 && entregaOpciones.length > 0 && (
+          <div className="px-4 pt-3">
+            <div className="rounded-lg border border-default-200 dark:border-default-100 bg-default-50/60 dark:bg-default-100/5 p-3">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-xs font-semibold text-default-600 dark:text-default-400 flex items-center gap-1">
+                  <Icon icon="lucide:calendar-clock" width={14} />
+                  Mover solicitudes a un día de entrega
+                </p>
+                {onResetProveedor && (
+                  <button
+                    type="button"
+                    onClick={() => { setSolDetalleAbierta(null); onResetProveedor(); }}
+                    title="Volver a la distribución inicial (deshace movimientos y ajustes ±)"
+                    className="flex items-center gap-1 text-[11px] text-default-500 hover:text-warning border border-default-200 dark:border-default-100 rounded-md px-2 py-0.5 hover:bg-warning-50 dark:hover:bg-warning-900/20 transition-colors cursor-pointer"
+                  >
+                    <Icon icon="lucide:rotate-ccw" width={12} />
+                    Volver al inicial
+                  </button>
+                )}
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {solicitudesProv.map(sol => {
+                  const actual = solicitudDiaProv?.[sol.idSolicitud] ?? '';
+                  const opciones = targetsParaSolicitud(sol.dia);
+                  const abierta = solDetalleAbierta === sol.idSolicitud;
+                  return (
+                    <div
+                      key={sol.idSolicitud}
+                      className={`flex items-center gap-1.5 rounded-md border px-2 py-1 ${
+                        abierta
+                          ? 'border-warning bg-warning-50/60 dark:bg-warning-900/20'
+                          : 'border-default-200 dark:border-default-100 bg-content1 dark:bg-default-50'
+                      }`}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => setSolDetalleAbierta(abierta ? null : sol.idSolicitud)}
+                        title="Ver productos de esta solicitud"
+                        className="flex items-center gap-1 text-[11px] font-semibold text-secondary dark:text-foreground hover:text-warning whitespace-nowrap cursor-pointer"
+                      >
+                        <Icon icon="lucide:list" width={11} />
+                        Sol. #{sol.idSolicitud}
+                      </button>
+                      <span className="text-[10px] text-default-400 whitespace-nowrap">
+                        nec. {sol.dia === 'SIN_DIA' ? '—' : DIAS_ABREV_OC[sol.dia as TDiaSemana]}
+                      </span>
+                      <Icon icon="lucide:arrow-right" width={11} className="text-default-300" />
+                      <select
+                        value={actual}
+                        onChange={e => onMoverSolicitud(sol.idSolicitud, e.target.value)}
+                        className="text-[11px] rounded border border-default-200 dark:border-default-100 bg-transparent px-1 py-0.5 outline-none focus:border-warning cursor-pointer max-w-[150px]"
+                        title="Día de entrega de esta solicitud"
+                      >
+                        {opciones.map(o => (
+                          <option key={o.key} value={o.key}>{o.label}</option>
+                        ))}
+                      </select>
+                    </div>
+                  );
+                })}
+              </div>
+
+            </div>
+          </div>
+        )}
+
+        {/* Modal: detalle de productos de una solicitud */}
+        <Modal
+          isOpen={solDetalleAbierta != null}
+          onOpenChange={(open) => { if (!open) setSolDetalleAbierta(null); }}
+          size="lg"
+          backdrop="blur"
+          radius="lg"
+          scrollBehavior="inside"
+          classNames={{ base: 'rounded-2xl', body: 'min-h-[200px]' }}
+        >
+          <ModalContent>
+            {(onClose) => (
+              <>
+                <ModalHeader className="flex flex-col gap-1">
+                  <span className="text-base font-bold text-secondary dark:text-foreground">
+                    Solicitud #{solDetalleAbierta}
+                  </span>
+                  <span className="text-xs font-normal text-default-500">
+                    Productos que aporta a {proveedor.nombreDistribuidora ?? 'este proveedor'}
+                  </span>
+                </ModalHeader>
+                <ModalBody>
+                  <div className="overflow-x-auto rounded-lg border border-default-200 dark:border-default-100">
+                    <table className="w-full text-xs">
+                      <thead className="bg-default-100 dark:bg-default-50">
+                        <tr>
+                          <th className="text-left py-2 px-3 font-medium">Producto</th>
+                          <th className="text-center py-2 px-3 font-medium w-24">Cantidad</th>
+                          <th className="text-center py-2 px-3 font-medium w-24">Reservado</th>
+                          <th className="text-center py-2 px-3 font-medium w-16">U/M</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(solDetalleAbierta != null ? productosDeSolicitud(solDetalleAbierta) : []).map((p, i) => (
+                          <tr key={i} className="border-t border-default-100 dark:border-default-50">
+                            <td className="py-2 px-3 text-left">
+                              <Tooltip content={p.nombreProducto} color="foreground" className="text-xs">
+                                <span className="truncate block whitespace-nowrap max-w-[320px]">{p.nombreProducto}</span>
+                              </Tooltip>
+                            </td>
+                            <td className="py-2 px-3 text-center font-medium text-default-700 dark:text-default-300 whitespace-nowrap">{fmtN(p.cantidad)}</td>
+                            <td className="py-2 px-3 text-center whitespace-nowrap">
+                              {p.reservado > 0
+                                ? <span className="font-semibold text-primary">{fmtN(p.reservado)}</span>
+                                : <span className="text-default-300">—</span>}
+                            </td>
+                            <td className="py-2 px-3 text-center text-default-500 whitespace-nowrap">{p.abreviatura}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </ModalBody>
+                <ModalFooter>
+                  <Button variant="flat" onPress={onClose}>Cerrar</Button>
+                </ModalFooter>
+              </>
+            )}
+          </ModalContent>
+        </Modal>
+
         {/* Tabla productos por categoría */}
         <div className="px-4 py-3">
           {proveedor.categorias.map(cat => (
@@ -6246,7 +6703,9 @@ const ProveedorCotizacionTabla: React.FC<ProveedorCotizacionTablaProps> = ({
                     <tr>
                       <th className="text-left py-2 px-3 font-medium w-[170px]">Producto</th>
                       <th className="text-center py-2 px-2 font-medium w-16">U/M</th>
+                      <th className="text-center py-2 px-2 font-medium w-[90px]" title="Cantidad ya reservada desde stock (cubierta al aprobar el pedido); se descuenta de lo que se pide.">Reservado</th>
                       <th className="text-center py-2 px-2 font-medium w-[110px]">Total Ped.</th>
+                      <th className="text-center py-2 px-2 font-medium w-[110px]" title="Disponible real = inventario + bodega de tránsito − demanda comprometida (solicitudes EN_PEDIDO ya abastecidas)">Disponible</th>
                       {!esSinProveedor && colSpecs.map(col => {
                         if (col.tipo === 'entrega') {
                           const info = calcEntregaInfo(col);
@@ -6287,20 +6746,14 @@ const ProveedorCotizacionTabla: React.FC<ProveedorCotizacionTablaProps> = ({
                       })}
                       <th className="text-center py-2 px-2 font-medium w-[110px]">P. Neto</th>
                       <th className="text-center py-2 px-2 font-medium w-[110px]">P. c/IVA</th>
-                      {!esSinProveedor && <th className="text-center py-2 px-1 font-medium w-9" title="Restaurar distribución"></th>}
                     </tr>
                   </thead>
                   <tbody>
                     {cat.productos.map(prod => {
                       const entregasProd  = cantidadesProv[prod.idProducto] ?? {};
-                      const originalesProd = cantidadesOriginalesProv[prod.idProducto] ?? {};
                       const sumEntregas   = Object.values(entregasProd).reduce((s, v) => s + v, 0);
                       const pNetoFila   = prod.precioNeto   != null ? sumEntregas * prod.precioNeto   : null;
                       const pConIvaFila = prod.precioConIva != null ? sumEntregas * prod.precioConIva : null;
-                      // Hay alteración si cualquier clave difiere del valor original
-                      const hayAlteracion = Object.keys({ ...entregasProd, ...originalesProd }).some(k =>
-                        Math.abs((entregasProd[k] ?? 0) - (originalesProd[k] ?? 0)) > 0.001,
-                      );
                       return (
                         <tr key={prod.idProducto} className="border-t border-default-100 dark:border-default-50 hover:bg-default-50 dark:hover:bg-default-100/20">
                           <td className="py-2 px-3 font-medium text-left w-[170px]">
@@ -6309,7 +6762,33 @@ const ProveedorCotizacionTabla: React.FC<ProveedorCotizacionTablaProps> = ({
                             </Tooltip>
                           </td>
                           <td className="py-2 px-2 text-center text-default-500 whitespace-nowrap">{prod.abreviatura}</td>
+                          <td className="py-2 px-2 text-center whitespace-nowrap">
+                            {(() => {
+                              const res = (prod.solicitudes ?? []).reduce((s, x) => s + (x.reservado ?? 0), 0);
+                              return res > 0
+                                ? <span className="font-semibold text-primary">{fmtN(res)}</span>
+                                : <span className="text-default-300">—</span>;
+                            })()}
+                          </td>
                           <td className="py-2 px-2 text-center font-medium text-default-700 whitespace-nowrap">{fmtN(prod.cantidadTotal)}</td>
+                          <td className="py-2 px-2 text-center whitespace-nowrap">
+                            {(() => {
+                              const d = disponible?.[prod.idProducto];
+                              if (!d) return <span className="text-default-300">—</span>;
+                              // El disponible no puede ser negativo: si no hay stock real, es CERO.
+                              const dispMostrado = Math.max(0, d.disponible);
+                              const color = dispMostrado > 0 ? 'text-success' : 'text-default-500';
+                              return (
+                                <Tooltip
+                                  content={`Stock físico (inv. + tránsito): ${fmtN(d.stockFisico)} · Comprometido: ${fmtN(d.demandaComprometida)}`}
+                                  color="foreground"
+                                  className="text-xs"
+                                >
+                                  <span className={`font-semibold ${color}`}>{fmtN(dispMostrado)}</span>
+                                </Tooltip>
+                              );
+                            })()}
+                          </td>
                           {!esSinProveedor && colSpecs.map(col => {
                             if (col.tipo === 'cant') {
                               const qty = prod.cantidadPorDia.find(c => c.dia === col.dia)?.cantidad ?? 0;
@@ -6338,20 +6817,6 @@ const ProveedorCotizacionTabla: React.FC<ProveedorCotizacionTablaProps> = ({
                           })}
                           <td className="py-2 px-2 text-center whitespace-nowrap">{pNetoFila   !== null ? `$${fmtN(pNetoFila)}`   : '—'}</td>
                           <td className="py-2 px-2 text-center whitespace-nowrap">{pConIvaFila !== null ? `$${fmtN(pConIvaFila)}` : '—'}</td>
-                          {!esSinProveedor && (
-                            <td className="py-1 px-1 text-center">
-                              {hayAlteracion && (
-                                <button
-                                  title={`Restaurar distribución original (actual: ${fmtN(sumEntregas)} / solicitado: ${fmtN(prod.cantidadTotal)})`}
-                                  onClick={() => onRestaurar(prod.idProducto)}
-                                  className="p-1 rounded hover:bg-warning-100 dark:hover:bg-warning-900/20 text-warning-500 dark:text-warning-400 transition-colors cursor-pointer"
-                                  type="button"
-                                >
-                                  <Icon icon="lucide:refresh-cw" width={13} />
-                                </button>
-                              )}
-                            </td>
-                          )}
                         </tr>
                       );
                     })}

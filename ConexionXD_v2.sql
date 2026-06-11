@@ -58,8 +58,11 @@ DROP TABLE IF EXISTS solicitud_procesada CASCADE;
 -- =====================================================
 
 -- Tablas de orden de pedido (CASCADE baja a detalle_orden_pedido automáticamente)
+DROP TABLE IF EXISTS reserva_stock_solicitud CASCADE;
+DROP TABLE IF EXISTS detalle_orden_pedido_solicitud CASCADE;
 DROP TABLE IF EXISTS orden_pedido CASCADE;
 DROP TABLE IF EXISTS detalle_orden_pedido CASCADE;
+
 -- Tablas de pedidos y solicitudes
 DROP TABLE IF EXISTS pedido_solicitud CASCADE;
 DROP TABLE IF EXISTS motivo_rechazo_solicitud CASCADE; -- CAMBIADO: Agregado
@@ -768,6 +771,50 @@ CREATE TABLE detalle_orden_pedido (
     fecha_entrega           DATE            NOT NULL,
     activo                  BOOLEAN         NOT NULL DEFAULT TRUE,
     entregado               BOOLEAN         NOT NULL DEFAULT FALSE
+);
+
+-- Puente: qué solicitudes (y cuánto) cubre cada línea de entrega de la OP.
+-- Permite, por línea (producto + fecha_entrega), saber qué solicitudes abastece y derivar
+-- las asignaturas involucradas (solicitud → reserva_sala → asignatura).
+CREATE TABLE detalle_orden_pedido_solicitud (
+	id_dop_solicitud        INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+	id_detalle_orden_pedido INTEGER         NOT NULL
+	REFERENCES detalle_orden_pedido(id_detalle_orden_pedido) ON DELETE CASCADE,
+	id_solicitud            INTEGER         NOT NULL
+	REFERENCES solicitud(id_solicitud) ON DELETE RESTRICT,
+	cantidad_atribuida      NUMERIC(10,3)   NOT NULL,
+	activo                  BOOLEAN         NOT NULL DEFAULT TRUE,
+	
+	CONSTRAINT uk_dop_solicitud UNIQUE (id_detalle_orden_pedido, id_solicitud)
+);
+
+-- ============================================================================
+-- Tabla puente: detalle_orden_pedido_solicitud
+-- ----------------------------------------------------------------------------
+-- Vincula cada línea de entrega de una Orden de Pedido (detalle_orden_pedido)
+-- con las solicitudes que abastece, guardando cuánto aporta cada una
+-- (cantidad_atribuida = demanda real de la solicitud, NO la cantidad recortada
+-- al pedir menos por sobrante en inventario).
+--
+-- Permite:
+--   * Saber qué solicitudes cubre cada entrega cuando se marca entregado=true.
+--   * Calcular el sobrante real: stock − Σ demanda(solicitudes abastecidas).
+--   * Distinguir el ajuste manual sin dueño = cantidad de la línea − Σ atribuida
+--     (compra de más a propósito, o recorte por stock ya disponible).
+--   * Derivar las asignaturas involucradas vía solicitud → reserva_sala → asignatura.
+--
+-- Cada solicitud se mueve entera a un día de entrega (no se parte su cantidad a
+-- mano), por lo que la relación es determinista: una porción de solicitud apunta
+-- a una sola línea de entrega, sin ambigüedad de a quién pertenece cada kilo.
+-- ============================================================================
+CREATE TABLE reserva_stock_solicitud (
+	id_reserva    INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+	id_solicitud  INTEGER       NOT NULL REFERENCES solicitud(id_solicitud) ON DELETE RESTRICT,
+	id_producto   INTEGER       NOT NULL REFERENCES producto(id_producto)   ON DELETE RESTRICT,
+	cantidad      NUMERIC(10,3) NOT NULL,
+	fecha_reserva DATE          NOT NULL DEFAULT CURRENT_DATE,
+	activo        BOOLEAN       NOT NULL DEFAULT TRUE,
+	CONSTRAINT uk_reserva_sol_prod UNIQUE (id_solicitud, id_producto)
 );
 
 -- Tabla movimiento

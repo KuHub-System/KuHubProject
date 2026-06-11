@@ -402,9 +402,68 @@ public interface PedidoRepository extends JpaRepository<Pedido, Integer> {
                                     'unidad', uni.nombre_unidad,
                                     'abreviatura', uni.abreviatura,
                                     'categoria', cat.nombre_categoria,
-                                    'stockBodegaTransito', COALESCE(bt.stock, 0),
-                                    'stockInventarioPrincipal', COALESCE(inv.stock, 0),
-                                    'diferenciaTransito', COALESCE(bt.stock, 0) - dp.cant_producto_pedido,
+                                    -- Reservado: stock ya reservado a las solicitudes de ESTE pedido para el producto.
+                                    'reservado', COALESCE((
+                                        SELECT SUM(rss.cantidad)
+                                        FROM reserva_stock_solicitud rss
+                                        JOIN pedido_solicitud ps2 ON ps2.id_solicitud = rss.id_solicitud
+                                        WHERE ps2.id_pedido = ped.id_pedido
+                                          AND rss.id_producto = dp.id_producto
+                                          AND rss.activo = TRUE
+                                    ), 0),
+                                    -- Solicitado al proveedor (firme): OP CONFIRMADA o RECIBIDA del pedido.
+                                    'solicitadoFirme', COALESCE((
+                                        SELECT SUM(dopf.cantidad_solicitada)
+                                        FROM detalle_orden_pedido dopf
+                                        JOIN orden_pedido opf ON opf.id_orden_pedido = dopf.id_orden_pedido
+                                        WHERE opf.id_pedido = ped.id_pedido
+                                          AND dopf.id_producto = dp.id_producto
+                                          AND dopf.activo = TRUE
+                                          AND opf.activo = TRUE
+                                          AND opf.estado_orden_pedido::text IN ('CONFIRMADA', 'RECIBIDA')
+                                    ), 0),
+                                    -- Solicitado al proveedor (en revisión): OP PENDIENTE o ENVIADA del pedido.
+                                    'solicitadoRevision', COALESCE((
+                                        SELECT SUM(dopr.cantidad_solicitada)
+                                        FROM detalle_orden_pedido dopr
+                                        JOIN orden_pedido opr ON opr.id_orden_pedido = dopr.id_orden_pedido
+                                        WHERE opr.id_pedido = ped.id_pedido
+                                          AND dopr.id_producto = dp.id_producto
+                                          AND dopr.activo = TRUE
+                                          AND opr.activo = TRUE
+                                          AND opr.estado_orden_pedido::text IN ('PENDIENTE', 'ENVIADA')
+                                    ), 0),
+                                    -- Disponible real = inventario + bodega de tránsito − demanda comprometida − reservas
+                                    -- (solicitudes EN_PEDIDO). Puede ser negativo (faltante); el frontend lo limita a 0.
+                                    'disponibleReal', COALESCE((
+                                        SELECT COALESCE(inv2.stock, 0) + COALESCE(bt2.stock, 0)
+                                             - COALESCE((
+                                                 SELECT SUM(ds2.cant_producto_solicitud)
+                                                 FROM detalle_solicitud ds2
+                                                 WHERE ds2.id_producto = dp.id_producto
+                                                   AND ds2.id_solicitud IN (
+                                                     SELECT dops2.id_solicitud
+                                                     FROM detalle_orden_pedido_solicitud dops2
+                                                     JOIN detalle_orden_pedido dop2 ON dop2.id_detalle_orden_pedido = dops2.id_detalle_orden_pedido
+                                                     JOIN solicitud s2 ON s2.id_solicitud = dops2.id_solicitud
+                                                     WHERE dops2.activo = TRUE AND dop2.activo = TRUE AND dop2.entregado = TRUE
+                                                       AND dop2.id_producto = dp.id_producto
+                                                       AND s2.estado_solicitud = 'EN_PEDIDO'::estado_solicitud_type
+                                                   )
+                                             ), 0)
+                                             - COALESCE((
+                                                 SELECT SUM(r2.cantidad)
+                                                 FROM reserva_stock_solicitud r2
+                                                 JOIN solicitud sr2 ON sr2.id_solicitud = r2.id_solicitud
+                                                 WHERE r2.activo = TRUE
+                                                   AND r2.id_producto = dp.id_producto
+                                                   AND sr2.estado_solicitud = 'EN_PEDIDO'::estado_solicitud_type
+                                             ), 0)
+                                        FROM inventario inv2
+                                        LEFT JOIN bodega_transito bt2 ON bt2.id_inventario = inv2.id_inventario AND bt2.activo = TRUE
+                                        WHERE inv2.activo = TRUE AND inv2.id_producto = dp.id_producto
+                                        LIMIT 1
+                                    ), 0),
                                     'totalSecciones', (
                                         SELECT COUNT(DISTINCT sol.id_seccion)
                                         FROM pedido_solicitud ps
@@ -421,8 +480,6 @@ public interface PedidoRepository extends JpaRepository<Pedido, Integer> {
                         JOIN producto prod ON prod.id_producto = dp.id_producto
                         JOIN unidad_medida uni ON uni.id_unidad = prod.id_unidad
                         JOIN categoria cat ON cat.id_categoria = prod.id_categoria
-                        LEFT JOIN inventario inv ON inv.id_producto = dp.id_producto AND inv.activo = true
-                        LEFT JOIN bodega_transito bt ON bt.id_inventario = inv.id_inventario AND bt.activo = true
                         WHERE dp.id_pedido = ped.id_pedido
                     )
                 ) ORDER BY ped.id_pedido ASC

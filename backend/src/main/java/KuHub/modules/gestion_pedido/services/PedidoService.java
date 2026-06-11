@@ -1,5 +1,7 @@
 package KuHub.modules.gestion_pedido.services;
 
+import KuHub.modules.gestion_pedido.dtos.request.RechazarPedidoDTO;
+import KuHub.modules.gestion_pedido.dtos.response.RechazoPedidoResultDTO;
 import KuHub.modules.gestion_pedido.dtos.response.ResumenHistoricoResponse;
 import KuHub.modules.gestion_pedido.record.ChangePedidoStatusDTO;
 import KuHub.modules.gestion_pedido.record.CreateOrder;
@@ -46,4 +48,17 @@ public interface PedidoService {
 
     /** Devuelve los pedidos en estado PENDIENTE agrupados por semana académica (para notificaciones). */
     List<NotificacionSemanaDTO> obtenerNotificacionesPedidosPendientes();
+
+    /**
+     * Rechaza (cancela) un pedido completo. Solo aplica a pedidos PENDIENTE o APROBADO.
+     * Pasa todas las solicitudes EN_PEDIDO del pedido a RECHAZADA (con el motivo), libera/desactiva sus
+     * reservas de stock y deja el pedido en RECHAZADO. Si {@code cancelarOrdenes} es true, además cancela
+     * (CANCELADA) las OPs vigentes del pedido. Bloquea si hay OPs vigentes y no se confirma su cancelación,
+     * o si alguna OP ya está RECIBIDA. Acción irreversible.
+     *
+     * @param idPedido PK del pedido a rechazar
+     * @param request  motivo + flag de cancelación de OPs asociadas
+     * @return resumen con solicitudes rechazadas, OPs canceladas y reservas liberadas
+     */
+    RechazoPedidoResultDTO rechazarPedidoCompleto(Integer idPedido, RechazarPedidoDTO request);
 }

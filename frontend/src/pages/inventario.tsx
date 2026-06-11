@@ -4112,6 +4112,24 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoP
               <ModalHeader className="flex flex-col gap-1">
                 <h2 className="text-lg font-bold text-secondary dark:text-foreground">Abastecimiento de Bodega</h2>
                 <p className="text-xs text-default-500 font-normal">Solicitudes EN_PEDIDO con productos de categorías INVENTARIO → TRASLADO a bodega de tránsito</p>
+                <div className="flex items-center justify-between gap-2 bg-warning/10 border border-warning/30 rounded-lg px-3 py-2 mt-1">
+                  <div className="flex items-center gap-2">
+                    <Icon icon="lucide:info" width={14} className="text-warning shrink-0" />
+                    <p className="text-xs text-warning-700 dark:text-warning">Se visualizan todas las categorías asignadas al abastecimiento.</p>
+                  </div>
+                  {onOpenGestionAbastecimiento && (
+                    <Button
+                      size="sm"
+                      variant="light"
+                      color="warning"
+                      className="text-xs shrink-0 h-7 px-2"
+                      onPress={onOpenGestionAbastecimiento}
+                      startContent={<Icon icon="lucide:settings-2" width={12} />}
+                    >
+                      Gestión de Abastecimiento
+                    </Button>
+                  )}
+                </div>
               </ModalHeader>
               <ModalBody className="space-y-4">
                 {/* Filtro de fechas — auto-búsqueda 1.5 s tras seleccionar */}

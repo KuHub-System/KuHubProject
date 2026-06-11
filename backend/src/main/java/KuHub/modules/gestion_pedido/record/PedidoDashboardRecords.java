@@ -195,9 +195,10 @@ public class PedidoDashboardRecords {
             @JsonProperty("unidad") String unidad,
             @JsonProperty("abreviatura") String abreviatura,
             @JsonProperty("categoria") String categoria,
-            @JsonProperty("stockBodegaTransito") BigDecimal stockBodegaTransito,
-            @JsonProperty("stockInventarioPrincipal") BigDecimal stockInventarioPrincipal,
-            @JsonProperty("diferenciaTransito") BigDecimal diferenciaTransito,
+            @JsonProperty("reservado") BigDecimal reservado,
+            @JsonProperty("solicitadoFirme") BigDecimal solicitadoFirme,
+            @JsonProperty("solicitadoRevision") BigDecimal solicitadoRevision,
+            @JsonProperty("disponibleReal") BigDecimal disponibleReal,
             @JsonProperty("totalSecciones") Integer totalSecciones
     ) {}
 
