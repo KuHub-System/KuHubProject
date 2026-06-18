@@ -497,7 +497,5 @@ El historial de versiones y el contexto de cada cambio se documentan en los arch
 | `DIAGRAMA_ER_KUHUB.md` | Diagrama entidad-relación de la base de datos |
 | `CONTEXTO_GENERAL.md` | Decisiones técnicas y contexto de implementación |
 | `GESTION_PERMISO.md` | Diseño del sistema de permisos dinámico |
-| `backend/CLAUDE.md` | Convenciones detalladas de implementación del backend |
-| `frontend/CLAUDE.md` | Convenciones detalladas de implementación del frontend |
 | `BACKUP_POSTGRESQL_SETUP.md` | Procedimiento de backup y restauración de la base de datos |
 | `CONFIGURATION_HOST_DEVS.md` | Configuración del servidor de desarrollo |
