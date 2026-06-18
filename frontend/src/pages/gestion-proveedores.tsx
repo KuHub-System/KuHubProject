@@ -487,6 +487,7 @@ const buildColsOC = (
   }
 
   const diasEntregaNum = diasEntrega.map(d => DIA_ORDEN[d]).sort((a, b) => a - b);
+  const diasEntregaOrd = diasEntregaNum.map(num => DIAS_TODOS[num - 1]);
 
   // Para cada día de necesidad 1-6, determinar qué entrega lo cubre
   const grupos = new Map<string, { dia: TDiaSemana; semanaAnterior: boolean; needNums: number[] }>();
@@ -504,15 +505,39 @@ const buildColsOC = (
     grupos.get(clave)!.needNums.push(diaNec);
   }
 
-  // Construir columnas: E primero, luego P de los días con cantidad en ese grupo
+  // Construir columnas: primero semana anterior, luego semana actual
   const cols: ColSpecOC[] = [];
-  for (const g of grupos.values()) {
-    cols.push({ tipo: 'entrega', dia: g.dia, ...(g.semanaAnterior && { semanaAnterior: true }) });
-    for (const n of g.needNums) {
-      const d = DIAS_TODOS[n - 1];
-      if (diasConQty.has(d)) cols.push({ tipo: 'cant', dia: d });
+
+  // Semana anterior
+  for (const dia of diasEntregaOrd) {
+    const diaNum = DIA_ORDEN[dia];
+    const clave = `${diaNum}-prev`;
+    cols.push({ tipo: 'entrega', dia, semanaAnterior: true });
+    
+    const g = grupos.get(clave);
+    if (g) {
+      for (const n of g.needNums) {
+        const d = DIAS_TODOS[n - 1];
+        if (diasConQty.has(d)) cols.push({ tipo: 'cant', dia: d });
+      }
     }
   }
+
+  // Semana actual
+  for (const dia of diasEntregaOrd) {
+    const diaNum = DIA_ORDEN[dia];
+    const clave = `${diaNum}-this`;
+    cols.push({ tipo: 'entrega', dia });
+    
+    const g = grupos.get(clave);
+    if (g) {
+      for (const n of g.needNums) {
+        const d = DIAS_TODOS[n - 1];
+        if (diasConQty.has(d)) cols.push({ tipo: 'cant', dia: d });
+      }
+    }
+  }
+
   return cols;
 };
 
@@ -740,8 +765,8 @@ const GestionProveedoresPage: React.FC = () => {
   const [mostrarInactivosBusqueda, setMostrarInactivosBusqueda] = React.useState(true);
 
   // ── Toast simple ──
-  const [toast, setToast] = React.useState<{ msg: string; type: 'success' | 'error' } | null>(null);
-  const showToast = (msg: string, type: 'success' | 'error' = 'success') => {
+  const [toast, setToast] = React.useState<{ msg: string; type: 'success' | 'error' | 'warning' } | null>(null);
+  const showToast = (msg: string, type: 'success' | 'error' | 'warning' = 'success') => {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 3500);
   };
@@ -1729,33 +1754,33 @@ const GestionProveedoresPage: React.FC = () => {
           if (s.idSolicitud === idSolicitud && netoSolicitud(s) > 0)
             porProducto.push({ idProducto: prod.idProducto, cantidad: netoSolicitud(s) });
 
-    if (porProducto.length === 0) return;
+    if (porProducto.length > 0) {
+      // Reubica las porciones (viejoKey → nuevoKey) sobre una base de cantidades, devolviendo una copia nueva.
+      const moverEnBase = (
+        base: Record<number, Record<number, Record<string, number>>>,
+      ): Record<number, Record<number, Record<string, number>>> => {
+        const provMap = { ...(base[idProveedor] ?? {}) };
+        for (const { idProducto, cantidad } of porProducto) {
+          const dias = { ...(provMap[idProducto] ?? {}) };
+          const restante = (dias[viejoKey] ?? 0) - cantidad;
+          if (restante > 0.0005) dias[viejoKey] = Math.round(restante * 1000) / 1000;
+          else delete dias[viejoKey];
+          dias[nuevoKey] = Math.round(((dias[nuevoKey] ?? 0) + cantidad) * 1000) / 1000;
+          provMap[idProducto] = dias;
+        }
+        return { ...base, [idProveedor]: provMap };
+      };
 
-    // Reubica las porciones (viejoKey → nuevoKey) sobre una base de cantidades, devolviendo una copia nueva.
-    const moverEnBase = (
-      base: Record<number, Record<number, Record<string, number>>>,
-    ): Record<number, Record<number, Record<string, number>>> => {
-      const provMap = { ...(base[idProveedor] ?? {}) };
-      for (const { idProducto, cantidad } of porProducto) {
-        const dias = { ...(provMap[idProducto] ?? {}) };
-        const restante = (dias[viejoKey] ?? 0) - cantidad;
-        if (restante > 0.0005) dias[viejoKey] = Math.round(restante * 1000) / 1000;
-        else delete dias[viejoKey];
-        dias[nuevoKey] = Math.round(((dias[nuevoKey] ?? 0) + cantidad) * 1000) / 1000;
-        provMap[idProducto] = dias;
+      if (ocCubrirDisponible) {
+        // Con "cubrir" activo, ocCantidades está reducido por el disponible. Si moviéramos sobre él,
+        // reinyectaríamos la cantidad completa de la solicitud y reaparecería lo cubierto. Por eso
+        // movemos sobre la base SIN cubrir (snapshot) y re-aplicamos el cubrir para la vista.
+        const nuevaBase = moverEnBase(ocCantidadesPreCover);
+        setOcCantidadesPreCover(nuevaBase);
+        setOcCantidades(aplicarCubrirDisponible(nuevaBase));
+      } else {
+        setOcCantidades(prev => moverEnBase(prev));
       }
-      return { ...base, [idProveedor]: provMap };
-    };
-
-    if (ocCubrirDisponible) {
-      // Con "cubrir" activo, ocCantidades está reducido por el disponible. Si moviéramos sobre él,
-      // reinyectaríamos la cantidad completa de la solicitud y reaparecería lo cubierto. Por eso
-      // movemos sobre la base SIN cubrir (snapshot) y re-aplicamos el cubrir para la vista.
-      const nuevaBase = moverEnBase(ocCantidadesPreCover);
-      setOcCantidadesPreCover(nuevaBase);
-      setOcCantidades(aplicarCubrirDisponible(nuevaBase));
-    } else {
-      setOcCantidades(prev => moverEnBase(prev));
     }
 
     setOcSolicitudDia(prev => ({
@@ -2257,10 +2282,10 @@ const GestionProveedoresPage: React.FC = () => {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
             className={`fixed top-4 right-4 z-50 px-4 py-3 rounded-lg shadow-lg text-white text-sm font-medium flex items-center gap-2 ${
-              toast.type === 'success' ? 'bg-success-500' : 'bg-danger-500'
+              toast.type === 'success' ? 'bg-success-500' : toast.type === 'warning' ? 'bg-warning-500' : 'bg-danger-500'
             }`}
           >
-            <Icon icon={toast.type === 'success' ? 'lucide:check-circle' : 'lucide:alert-circle'} width={18} />
+            <Icon icon={toast.type === 'success' ? 'lucide:check-circle' : toast.type === 'warning' ? 'lucide:alert-triangle' : 'lucide:alert-circle'} width={18} />
             {toast.msg}
           </motion.div>
         )}
@@ -2456,7 +2481,10 @@ const GestionProveedoresPage: React.FC = () => {
                       placeholder="Filtrar & Ordenar"
                       selectedKeys={selectedFilterOptions}
                       onSelectionChange={(keys) => {
-                        const newKeys = new Set(keys);
+                        const newKeys = new Set<string>();
+                        for (const key of Array.from(keys)) {
+                          newKeys.add(String(key));
+                        }
                         // Hacer mutuamente excluyentes los estados
                         if (newKeys.has('estado-DISPONIBLE') && newKeys.has('estado-NO_DISPONIBLE')) {
                           if (!selectedFilterOptions.has('estado-DISPONIBLE')) {
@@ -2479,23 +2507,22 @@ const GestionProveedoresPage: React.FC = () => {
                       variant="bordered"
                       size="md"
                       selectionMode="multiple"
-                      closeOnSelect={false}
                       classNames={{ trigger: 'bg-white dark:bg-default-100/50 border-warning-300 dark:border-warning-200/50 h-10' }}
                       startContent={<Icon icon="lucide:filter" className="text-warning-500" width={16} />}
                     >
                   {/* Grupo Estado - Mutuamente excluyentes */}
-                  <SelectItem key="estado-DISPONIBLE" value="estado-DISPONIBLE">
+                  <SelectItem key="estado-DISPONIBLE">
                     Estado: Disponible
                   </SelectItem>
-                  <SelectItem key="estado-NO_DISPONIBLE" value="estado-NO_DISPONIBLE">
+                  <SelectItem key="estado-NO_DISPONIBLE">
                     Estado: No Disponible
                   </SelectItem>
 
                   {/* Grupo Precio */}
-                  <SelectItem key="precio-asc" value="precio-asc">
+                  <SelectItem key="precio-asc">
                     Menor Precio Primero
                   </SelectItem>
-                  <SelectItem key="precio-desc" value="precio-desc">
+                  <SelectItem key="precio-desc">
                     Mayor Precio Primero
                   </SelectItem>
                   </Select>
@@ -2548,7 +2575,7 @@ const GestionProveedoresPage: React.FC = () => {
             <CardBody className="flex flex-row items-center gap-3 p-4">
               <Icon icon="lucide:alert-triangle" className="text-danger" width={22} />
               <p className="text-danger text-sm">{error}</p>
-              <Button size="sm" variant="flat" color="danger" onPress={cargarProveedores}>
+              <Button size="sm" variant="flat" color="danger" onPress={() => cargarProveedoresPaginados(1, true)}>
                 Reintentar
               </Button>
             </CardBody>
@@ -4850,9 +4877,9 @@ const FormularioProveedor: React.FC<FormularioProveedorProps> = ({
               </span>
             </div>
 
-            {proveedor.diasEntrega && proveedor.diasEntrega.length > 0 ? (
+            {(proveedor as any).diasEntrega && (proveedor as any).diasEntrega.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                {proveedor.diasEntrega.map((dia) => (
+                {(proveedor as any).diasEntrega.map((dia: any) => (
                   <div
                     key={dia.idDiaEntrega}
                     className="flex items-center gap-3 p-3 rounded-lg bg-primary-50 dark:bg-primary-50/20 border border-primary-200 dark:border-primary-300"
@@ -5009,7 +5036,9 @@ const FormularioAsignarProducto: React.FC<FormularioAsignarProductoProps> = ({
   // Manejar cambio de múltiples categorías y filtrar
   const handleCategoryChange = React.useCallback(async (keys: any) => {
     const newSelectedIds = new Set(
-      Array.from(keys).filter((key: string) => key !== 'todas') as string[]
+      Array.from(keys)
+        .map(key => String(key))
+        .filter((key: string) => key !== 'todas')
     );
     setSelectedCategoryIds(newSelectedIds);
 
@@ -5130,14 +5159,13 @@ const FormularioAsignarProducto: React.FC<FormularioAsignarProductoProps> = ({
           onSelectionChange={handleCategoryChange}
           variant="bordered"
           selectionMode="multiple"
-          closeOnSelect={false}
           isDisabled={loadingProductos}
           startContent={<Icon icon="lucide:tag" className="text-default-400" width={16} />}
           endContent={loadingProductos && <Spinner size="sm" color="warning" />}
           description={selectedCategoryIds.size > 0 ? `${selectedCategoryIds.size} categoría(s) seleccionada(s)` : undefined}
         >
           {categorias.map((cat) => (
-            <SelectItem key={cat.id} value={cat.id}>
+            <SelectItem key={cat.id}>
               {cat.nombre}
             </SelectItem>
           ))}
@@ -6379,6 +6407,8 @@ const ProveedorCotizacionTabla: React.FC<ProveedorCotizacionTablaProps> = ({
 }) => {
   /** Solicitud cuyo detalle de productos está desplegado en el panel (null = ninguno). */
   const [solDetalleAbierta, setSolDetalleAbierta] = React.useState<number | null>(null);
+  const [ordenSol, setOrdenSol] = React.useState<'dia' | 'id'>('dia');
+  const [ocultarReservadas, setOcultarReservadas] = React.useState(false);
 
   /** Productos (cantidad y reservado) que aporta una solicitud específica en este proveedor. */
   const productosDeSolicitud = React.useCallback((idSolicitud: number) => {
@@ -6476,16 +6506,31 @@ const ProveedorCotizacionTabla: React.FC<ProveedorCotizacionTablaProps> = ({
   );
 
   // Solicitudes únicas que aporta este proveedor, con su día de necesidad (para el panel de mover).
-  const solicitudesProv = React.useMemo<Array<{ idSolicitud: number; dia: TDiaSemana | 'SIN_DIA' }>>(() => {
+  const solicitudesProvTodas = React.useMemo<Array<{ idSolicitud: number; dia: TDiaSemana | 'SIN_DIA'; totalmenteReservada: boolean }>>(() => {
     const map = new Map<number, TDiaSemana | 'SIN_DIA'>();
     for (const cat of proveedor.categorias)
       for (const prod of cat.productos)
         for (const s of prod.solicitudes)
           if (!map.has(s.idSolicitud)) map.set(s.idSolicitud, s.dia);
+    const getDiaOrden = (d: TDiaSemana | 'SIN_DIA') => d === 'SIN_DIA' ? 99 : DIA_ORDEN[d];
     return [...map.entries()]
-      .map(([idSolicitud, dia]) => ({ idSolicitud, dia }))
-      .sort((a, b) => a.idSolicitud - b.idSolicitud);
-  }, [proveedor]);
+      .map(([idSolicitud, dia]) => {
+        const prods = productosDeSolicitud(idSolicitud);
+        const totalmenteReservada = prods.length > 0 && prods.every(p => p.cantidad <= p.reservado);
+        return { idSolicitud, dia, totalmenteReservada };
+      })
+      .sort((a, b) => {
+        if (ordenSol === 'dia') {
+          const diff = getDiaOrden(a.dia) - getDiaOrden(b.dia);
+          if (diff !== 0) return diff;
+        }
+        return a.idSolicitud - b.idSolicitud;
+      });
+  }, [proveedor, ordenSol, productosDeSolicitud]);
+
+  const solicitudesProv = React.useMemo(() => {
+    return solicitudesProvTodas.filter(sol => !ocultarReservadas || !sol.totalmenteReservada);
+  }, [solicitudesProvTodas, ocultarReservadas]);
 
   // Días de entrega disponibles como destino (las columnas de entrega reales, con su fecha).
   const entregaOpciones = React.useMemo<Array<{ key: string; diaNum: number; semanaAnterior: boolean; label: string }>>(() =>
@@ -6598,66 +6643,127 @@ const ProveedorCotizacionTabla: React.FC<ProveedorCotizacionTablaProps> = ({
         </div>
 
         {/* Panel: mover solicitudes a un día de entrega (la entrega nunca pasa la necesidad) */}
-        {!esSinProveedor && onMoverSolicitud && solicitudesProv.length > 0 && entregaOpciones.length > 0 && (
+        {!esSinProveedor && onMoverSolicitud && solicitudesProvTodas.length > 0 && entregaOpciones.length > 0 && (
           <div className="px-4 pt-3">
             <div className="rounded-lg border border-default-200 dark:border-default-100 bg-default-50/60 dark:bg-default-100/5 p-3">
-              <div className="flex items-center justify-between mb-2">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
                 <p className="text-xs font-semibold text-default-600 dark:text-default-400 flex items-center gap-1">
                   <Icon icon="lucide:calendar-clock" width={14} />
                   Mover solicitudes a un día de entrega
                 </p>
-                {onResetProveedor && (
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-[11px] text-default-500">Ordenar por:</span>
                   <button
                     type="button"
-                    onClick={() => { setSolDetalleAbierta(null); onResetProveedor(); }}
-                    title="Volver a la distribución inicial (deshace movimientos y ajustes ±)"
-                    className="flex items-center gap-1 text-[11px] text-default-500 hover:text-warning border border-default-200 dark:border-default-100 rounded-md px-2 py-0.5 hover:bg-warning-50 dark:hover:bg-warning-900/20 transition-colors cursor-pointer"
+                    onClick={() => setOrdenSol('dia')}
+                    className={`text-[10px] px-2 py-0.5 rounded transition-colors cursor-pointer ${
+                      ordenSol === 'dia'
+                        ? 'bg-warning text-white font-semibold'
+                        : 'bg-default-100 text-default-600 hover:bg-default-200'
+                    }`}
                   >
-                    <Icon icon="lucide:rotate-ccw" width={12} />
-                    Volver al inicial
+                    Día Clase
                   </button>
-                )}
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {solicitudesProv.map(sol => {
-                  const actual = solicitudDiaProv?.[sol.idSolicitud] ?? '';
-                  const opciones = targetsParaSolicitud(sol.dia);
-                  const abierta = solDetalleAbierta === sol.idSolicitud;
-                  return (
-                    <div
-                      key={sol.idSolicitud}
-                      className={`flex items-center gap-1.5 rounded-md border px-2 py-1 ${
-                        abierta
-                          ? 'border-warning bg-warning-50/60 dark:bg-warning-900/20'
-                          : 'border-default-200 dark:border-default-100 bg-content1 dark:bg-default-50'
-                      }`}
-                    >
+                  <button
+                    type="button"
+                    onClick={() => setOrdenSol('id')}
+                    className={`text-[10px] px-2 py-0.5 rounded transition-colors cursor-pointer ${
+                      ordenSol === 'id'
+                        ? 'bg-warning text-white font-semibold'
+                        : 'bg-default-100 text-default-600 hover:bg-default-200'
+                    }`}
+                  >
+                    ID Solicitud
+                  </button>
+
+                  <Divider orientation="vertical" className="h-4 hidden sm:block" />
+
+                  <Checkbox
+                    size="sm"
+                    color="warning"
+                    isSelected={ocultarReservadas}
+                    onValueChange={setOcultarReservadas}
+                    classNames={{ label: "text-[11px] text-default-600 font-medium cursor-pointer" }}
+                  >
+                    Ocultar reservados
+                  </Checkbox>
+
+                  {onResetProveedor && (
+                    <>
+                      <Divider orientation="vertical" className="h-4 hidden sm:block" />
                       <button
                         type="button"
-                        onClick={() => setSolDetalleAbierta(abierta ? null : sol.idSolicitud)}
-                        title="Ver productos de esta solicitud"
-                        className="flex items-center gap-1 text-[11px] font-semibold text-secondary dark:text-foreground hover:text-warning whitespace-nowrap cursor-pointer"
+                        onClick={() => { setSolDetalleAbierta(null); onResetProveedor(); }}
+                        title="Volver a la distribución inicial (deshace movimientos y ajustes ±)"
+                        className="flex items-center gap-1 text-[11px] text-default-500 hover:text-warning border border-default-200 dark:border-default-100 rounded-md px-2 py-0.5 hover:bg-warning-50 dark:hover:bg-warning-900/20 transition-colors cursor-pointer"
                       >
-                        <Icon icon="lucide:list" width={11} />
-                        Sol. #{sol.idSolicitud}
+                        <Icon icon="lucide:rotate-ccw" width={12} />
+                        Volver al inicial
                       </button>
-                      <span className="text-[10px] text-default-400 whitespace-nowrap">
-                        nec. {sol.dia === 'SIN_DIA' ? '—' : DIAS_ABREV_OC[sol.dia as TDiaSemana]}
-                      </span>
-                      <Icon icon="lucide:arrow-right" width={11} className="text-default-300" />
-                      <select
-                        value={actual}
-                        onChange={e => onMoverSolicitud(sol.idSolicitud, e.target.value)}
-                        className="text-[11px] rounded border border-default-200 dark:border-default-100 bg-transparent px-1 py-0.5 outline-none focus:border-warning cursor-pointer max-w-[150px]"
-                        title="Día de entrega de esta solicitud"
+                    </>
+                  )}
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {solicitudesProv.length === 0 ? (
+                  <p className="text-[11px] text-default-400 italic">No hay solicitudes para mostrar.</p>
+                ) : (
+                  solicitudesProv.map(sol => {
+                    const actual = solicitudDiaProv?.[sol.idSolicitud] ?? '';
+                    const opciones = targetsParaSolicitud(sol.dia);
+                    const abierta = solDetalleAbierta === sol.idSolicitud;
+                    const totalmenteReservada = sol.totalmenteReservada;
+                    return (
+                      <div
+                        key={sol.idSolicitud}
+                        className={`flex items-center gap-1.5 rounded-md border px-2 py-1 ${
+                          abierta
+                            ? 'border-warning bg-warning-50/60 dark:bg-warning-900/20'
+                            : 'border-default-200 dark:border-default-100 bg-content1 dark:bg-default-50'
+                        }`}
                       >
-                        {opciones.map(o => (
-                          <option key={o.key} value={o.key}>{o.label}</option>
-                        ))}
-                      </select>
-                    </div>
-                  );
-                })}
+                        <button
+                          type="button"
+                          onClick={() => setSolDetalleAbierta(abierta ? null : sol.idSolicitud)}
+                          title="Ver productos de esta solicitud"
+                          className="flex items-center gap-1 text-[11px] font-semibold text-secondary dark:text-foreground hover:text-warning whitespace-nowrap cursor-pointer"
+                        >
+                          <Icon icon="lucide:list" width={11} />
+                          Sol. #{sol.idSolicitud}
+                        </button>
+                        <span className="text-[10px] text-default-400 whitespace-nowrap">
+                          nec. {sol.dia === 'SIN_DIA' ? '—' : DIAS_ABREV_OC[sol.dia as TDiaSemana]}
+                        </span>
+                        <Icon icon="lucide:arrow-right" width={11} className="text-default-300" />
+                        {totalmenteReservada ? (
+                          <Tooltip content="Todos los productos de la solicitud se encuentran reservados" color="warning" placement="top">
+                            <span className="inline-block">
+                              <select
+                                disabled
+                                value={actual}
+                                className="text-[11px] rounded border border-default-200 dark:border-default-100 bg-transparent px-1 py-0.5 outline-none opacity-50 cursor-not-allowed max-w-[150px]"
+                                title="Todos los productos de la solicitud se encuentran reservados"
+                              >
+                                <option value={actual}>{actual}</option>
+                              </select>
+                            </span>
+                          </Tooltip>
+                        ) : (
+                          <select
+                            value={actual}
+                            onChange={e => onMoverSolicitud(sol.idSolicitud, e.target.value)}
+                            className="text-[11px] rounded border border-default-200 dark:border-default-100 bg-transparent px-1 py-0.5 outline-none focus:border-warning cursor-pointer max-w-[150px]"
+                            title="Día de entrega de esta solicitud"
+                          >
+                            {opciones.map(o => (
+                              <option key={o.key} value={o.key}>{o.label}</option>
+                            ))}
+                          </select>
+                        )}
+                      </div>
+                    );
+                  })
+                )}
               </div>
 
             </div>
@@ -7512,7 +7618,6 @@ const OrdenesVista: React.FC<OrdenesVistaProps> = ({
           size="sm"
           variant="bordered"
           selectionMode="multiple"
-          closeOnSelect={false}
           selectedKeys={tempSelectedKeys}
           onSelectionChange={handleSelectionChange}
           onOpenChange={handleOpenChange}

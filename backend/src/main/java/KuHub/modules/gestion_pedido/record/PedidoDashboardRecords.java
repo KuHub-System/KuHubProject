@@ -75,6 +75,7 @@ public class PedidoDashboardRecords {
             @JsonProperty("estadoPedido") String estadoPedido,
             @JsonProperty("fechaInicioPedido") LocalDate fechaInicioPedido,
             @JsonProperty("fechaFinPedido") LocalDate fechaFinPedido,
+            @JsonProperty("tieneOpActiva") Boolean tieneOpActiva,
             @JsonProperty("productos") List<ProductoAprobacionJson> productos
     ) {}
 

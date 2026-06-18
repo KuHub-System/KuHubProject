@@ -8,6 +8,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -20,6 +21,10 @@ public interface ReservaStockSolicitudRepository
 
     /** Reserva existente para un par (solicitud, producto), si la hay. */
     Optional<ReservaStockSolicitud> findByIdSolicitudAndIdProducto(Integer idSolicitud, Integer idProducto);
+
+    /** Reservas existentes para una lista de solicitudes. */
+    @Query("SELECT r FROM ReservaStockSolicitud r WHERE r.idSolicitud IN :idsSolicitudes AND r.activo = true")
+    List<ReservaStockSolicitud> findByIdSolicitudInAndActivoTrue(@Param("idsSolicitudes") List<Integer> idsSolicitudes);
 
     /** Desactiva (activo=false) todas las reservas de una solicitud. Usado al rechazar la solicitud. */
     @Modifying
