@@ -442,6 +442,7 @@ export interface IProductoAprobacion {
 export interface IPedidoAprobacion {
   idPedido: number;
   estadoPedido: string;         // "PENDIENTE" | "APROBADO" | "RECHAZADO"
+  tieneOpActiva?: boolean;
   productos: IProductoAprobacion[];
 }
 

@@ -453,10 +453,44 @@ const ConglomeradoPedidosPage: React.FC = () => {
     finally { setIsAprobando(false); reservaModal.onClose(); setPedidoReservaModal(null); }
   };
 
+  // Ejecuta la reserva de un pedido ya aprobado
+  const ejecutarSoloReserva = async (idPedido: number) => {
+    setIsAprobando(true);
+    try {
+      const reservadas = await reservarDisponiblePedidoService(idPedido);
+      if (reservadas > 0) {
+        toast.success(`${reservadas} línea${reservadas !== 1 ? 's' : ''} de reserva registrada${reservadas !== 1 ? 's' : ''}`);
+      } else {
+        toast.info('No se realizaron nuevas reservas');
+      }
+      await recargarDatos();
+    } catch {
+      toast.error('Error al registrar las reservas');
+    } finally {
+      setIsAprobando(false);
+      reservaModal.onClose();
+      setPedidoReservaModal(null);
+    }
+  };
+
   // Al presionar "Aprobar pedido": siempre abre el modal de reserva para que el usuario
   // confirme antes de aprobar. Si hay disponible > 0, lo lista para reservar; si no, muestra
   // la lista vacía y el usuario elige "Aprobar sin reservar".
   const handleAprobarPedido = (ped: IPedidoAprobacion) => {
+    setPedidoReservaModal(ped);
+    reservaModal.onOpen();
+  };
+
+  const handleBuscarReserva = (ped: IPedidoAprobacion) => {
+    const reservables = ped.productos
+      .map(p => Math.min(p.disponibleReal ?? 0, p.cantidadPedido - (p.reservado ?? 0)))
+      .filter(cant => cant > 0);
+
+    if (reservables.length === 0) {
+      toast.info('No hay productos pendientes por reservar con stock disponible.');
+      return;
+    }
+
     setPedidoReservaModal(ped);
     reservaModal.onOpen();
   };
@@ -579,12 +613,15 @@ const ConglomeradoPedidosPage: React.FC = () => {
   const productosReservables = React.useMemo(() => {
     if (!pedidoReservaModal) return [] as Array<{ nombreProducto: string; abreviatura: string; aReservar: number }>;
     return pedidoReservaModal.productos
-      .filter(p => (p.disponibleReal ?? 0) > 0)
-      .map(p => ({
-        nombreProducto: p.nombreProducto,
-        abreviatura: p.abreviatura,
-        aReservar: Math.min(p.disponibleReal ?? 0, p.cantidadPedido),
-      }))
+      .map(p => {
+        const aReservar = Math.min(p.disponibleReal ?? 0, p.cantidadPedido - (p.reservado ?? 0));
+        return {
+          nombreProducto: p.nombreProducto,
+          abreviatura: p.abreviatura,
+          aReservar: aReservar > 0 ? aReservar : 0,
+        };
+      })
+      .filter(p => p.aReservar > 0)
       .sort((a, b) => a.nombreProducto.localeCompare(b.nombreProducto));
   }, [pedidoReservaModal]);
 
@@ -1728,6 +1765,14 @@ const ConglomeradoPedidosPage: React.FC = () => {
                             Aprobar pedido
                           </Button>
                         )}
+                        {permAprobar && isAprobado && !ped.tieneOpActiva && (
+                          <Button size="sm" color="warning" variant="flat"
+                            isLoading={isAprobando}
+                            onPress={() => handleBuscarReserva(ped)}
+                            startContent={!isAprobando && <Icon icon="lucide:bookmark-check" width={12} />}>
+                            Buscar reserva al pedido
+                          </Button>
+                        )}
                       </div>
                     </div>
 
@@ -1807,9 +1852,11 @@ const ConglomeradoPedidosPage: React.FC = () => {
                   Reservar disponibles del Pedido #{pedidoReservaModal?.idPedido}
                 </span>
                 <span className="text-xs font-normal text-default-500">
-                  Estos productos tienen stock disponible. Si reservas, ese stock queda asociado a las
-                  solicitudes de este pedido y dejará de aparecer como disponible. Igual puedes no reservar
-                  y hacerlo después al generar la orden de compra.
+                  {pedidoReservaModal?.estadoPedido === 'APROBADO' ? (
+                    'Estos productos tienen stock disponible. Si reservas, ese stock queda asociado a las solicitudes de este pedido y dejará de aparecer como disponible.'
+                  ) : (
+                    'Estos productos tienen stock disponible. Si reservas, ese stock queda asociado a las solicitudes de este pedido y dejará de aparecer como disponible. Igual puedes no reservar y hacerlo después al generar la orden de compra.'
+                  )}
                 </span>
               </ModalHeader>
               <ModalBody>
@@ -1834,21 +1881,43 @@ const ConglomeradoPedidosPage: React.FC = () => {
                 </div>
               </ModalBody>
               <ModalFooter>
-                <Button
-                  variant="flat"
-                  isDisabled={isAprobando}
-                  onPress={() => { if (pedidoReservaModal) void ejecutarAprobacion(pedidoReservaModal.idPedido, false); }}
-                >
-                  Aprobar sin reservar
-                </Button>
-                <Button
-                  color="primary"
-                  isLoading={isAprobando}
-                  startContent={!isAprobando && <Icon icon="lucide:bookmark-check" width={16} />}
-                  onPress={() => { if (pedidoReservaModal) void ejecutarAprobacion(pedidoReservaModal.idPedido, true); }}
-                >
-                  Reservar y aprobar
-                </Button>
+                {pedidoReservaModal?.estadoPedido === 'APROBADO' ? (
+                  <>
+                    <Button
+                      variant="flat"
+                      isDisabled={isAprobando}
+                      onPress={() => { reservaModal.onClose(); setPedidoReservaModal(null); }}
+                    >
+                      Cancelar
+                    </Button>
+                    <Button
+                      color="warning"
+                      isLoading={isAprobando}
+                      startContent={!isAprobando && <Icon icon="lucide:bookmark-check" width={16} />}
+                      onPress={() => { if (pedidoReservaModal) void ejecutarSoloReserva(pedidoReservaModal.idPedido); }}
+                    >
+                      Reservar disponibles
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Button
+                      variant="flat"
+                      isDisabled={isAprobando}
+                      onPress={() => { if (pedidoReservaModal) void ejecutarAprobacion(pedidoReservaModal.idPedido, false); }}
+                    >
+                      Aprobar sin reservar
+                    </Button>
+                    <Button
+                      color="primary"
+                      isLoading={isAprobando}
+                      startContent={!isAprobando && <Icon icon="lucide:bookmark-check" width={16} />}
+                      onPress={() => { if (pedidoReservaModal) void ejecutarAprobacion(pedidoReservaModal.idPedido, true); }}
+                    >
+                      Reservar y aprobar
+                    </Button>
+                  </>
+                )}
               </ModalFooter>
             </>
           )}

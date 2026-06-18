@@ -173,6 +173,23 @@ public class OrdenPedidoServiceImpl implements OrdenPedidoService {
         List<Object[]> rows = pedidoSolicitudRepository.findSolicitudProductoCantidadByPedido(idPedido);
         if (rows.isEmpty()) return 0;
 
+        // Extraer IDs de solicitudes para buscar reservas existentes
+        List<Integer> idsSolicitudes = rows.stream()
+                .map(r -> ((Number) r[0]).intValue())
+                .distinct()
+                .toList();
+
+        // Buscar todas las reservas activas para estas solicitudes
+        List<ReservaStockSolicitud> reservasExistentes = reservaStockSolicitudRepository
+                .findByIdSolicitudInAndActivoTrue(idsSolicitudes);
+
+        // Mapear reservas existentes por "idSolicitud-idProducto"
+        Map<String, BigDecimal> reservaExistenteMap = new HashMap<>();
+        for (ReservaStockSolicitud r : reservasExistentes) {
+            String key = r.getIdSolicitud() + "-" + r.getIdProducto();
+            reservaExistenteMap.put(key, r.getCantidad());
+        }
+
         // idProducto → porciones (idSolicitud, cantidad), preservando el orden por fecha de solicitud.
         Map<Integer, List<Object[]>> porcionesPorProducto = new LinkedHashMap<>();
         for (Object[] r : rows) {
@@ -191,7 +208,7 @@ public class OrdenPedidoServiceImpl implements OrdenPedidoService {
             dispPorProducto.put(d.idProducto(), d.disponible());
         }
 
-        // Repartir la cobertura (min(disponible, demanda)) entre las solicitudes que piden cada
+        // Repartir la cobertura (min(disponible, demanda - reservada)) entre las solicitudes que piden cada
         // producto y acumular por (solicitud, producto) para un único upsert por par.
         Map<String, BigDecimal> acumulado = new LinkedHashMap<>();
         Map<String, Integer[]> claveRef = new HashMap<>();
@@ -202,11 +219,18 @@ public class OrdenPedidoServiceImpl implements OrdenPedidoService {
             for (Object[] porcion : e.getValue()) {
                 if (cobertura.signum() <= 0) break;
                 Integer idSolicitud = (Integer) porcion[0];
-                BigDecimal cant = (BigDecimal) porcion[1];
-                BigDecimal take = cant.min(cobertura);
-                if (take.signum() <= 0) continue;
+                BigDecimal cantTotal = (BigDecimal) porcion[1];
+                
                 String key = idSolicitud + "-" + idProducto;
-                acumulado.merge(key, take, BigDecimal::add);
+                BigDecimal yaReservado = reservaExistenteMap.getOrDefault(key, BigDecimal.ZERO);
+                BigDecimal falta = cantTotal.subtract(yaReservado);
+                if (falta.signum() <= 0) continue;
+
+                BigDecimal take = falta.min(cobertura);
+                if (take.signum() <= 0) continue;
+                
+                BigDecimal nuevaReserva = yaReservado.add(take);
+                acumulado.put(key, nuevaReserva);
                 claveRef.putIfAbsent(key, new Integer[]{ idSolicitud, idProducto });
                 cobertura = cobertura.subtract(take);
             }

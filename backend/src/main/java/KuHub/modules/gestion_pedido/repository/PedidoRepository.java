@@ -391,6 +391,12 @@ public interface PedidoRepository extends JpaRepository<Pedido, Integer> {
                     'estadoPedido', ped.estado_pedido,
                     'fechaInicioPedido', ped.fecha_inicio_pedido,
                     'fechaFinPedido', ped.fecha_fin_pedido,
+                    'tieneOpActiva', EXISTS(
+                        SELECT 1 FROM orden_pedido op
+                        WHERE op.id_pedido = ped.id_pedido
+                          AND op.activo = TRUE
+                          AND op.estado_orden_pedido <> 'CANCELADA'::estado_orden_pedido_type
+                    ),
         
                     'productos', (
                         SELECT COALESCE(
