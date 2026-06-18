@@ -11,6 +11,32 @@
   scrollbar-width: none;
 }
 
+/* Utilidad para una barra de desplazamiento visible y elegante */
+@utility custom-scrollbar {
+  &::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+    display: block !important;
+  }
+  &::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.02);
+    border-radius: 4px;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 4px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+  }
+  &::-webkit-scrollbar-thumb:hover {
+    background: #eab308;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+  }
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+}
+
 /* Utilidad para transiciones suaves */
 @utility transition-all-200 {
   transition: all 200ms ease-out;

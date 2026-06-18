@@ -824,7 +824,7 @@ const PedidoSemanalABodegaPage: React.FC = () => {
         radius="lg"
         backdrop="blur"
         classNames={{
-          base: "rounded-[32px] overflow-hidden",
+          base: "rounded-[32px] overflow-hidden max-h-[75vh]",
           closeButton: "hover:bg-default-100 dark:hover:bg-default-100/50 transition-colors text-default-500 hover:text-secondary cursor-pointer",
         }}
       >
@@ -1102,7 +1102,7 @@ const DetallePedidoSemanaBodega: React.FC<DetallePedidoSemanaBodegaProps> = ({ r
           </span>
         </div>
       </ModalHeader>
-      <ModalBody>
+      <ModalBody className="overflow-y-scroll custom-scrollbar">
         {mode === 'ver' ? (
           receta && <VistaReceta receta={receta} />
         ) : (

@@ -3058,7 +3058,7 @@ const GestionProveedoresPage: React.FC = () => {
         scrollBehavior="inside"
         isDismissable={false}
         radius="lg"
-        classNames={{ base: 'rounded-2xl', closeButton: 'cursor-pointer' }}
+        classNames={{ base: 'rounded-2xl max-h-[75vh]', closeButton: 'cursor-pointer' }}
         onClose={handleCerrarSyncExcel}
       >
         <ModalContent className="rounded-2xl overflow-hidden">
@@ -3068,7 +3068,7 @@ const GestionProveedoresPage: React.FC = () => {
                 <Icon icon="lucide:upload-cloud" width={22} className="text-success-500" />
                 Sincronizar Precios desde Excel
               </ModalHeader>
-              <ModalBody className="space-y-4">
+              <ModalBody className="space-y-4 overflow-y-scroll custom-scrollbar">
                 {!syncResult && (
                   <>
                     <p className="text-sm text-default-600">
@@ -3293,7 +3293,7 @@ const GestionProveedoresPage: React.FC = () => {
       </Modal>
 
       {/* ── Modal Crear / Editar / Ver Proveedor ── */}
-      <Modal isOpen={isProvModal} onOpenChange={onProvModalChange} size="lg" scrollBehavior="inside" isDismissable={false} radius="lg" classNames={{ base: 'rounded-2xl', closeButton: 'cursor-pointer' }}>
+      <Modal isOpen={isProvModal} onOpenChange={onProvModalChange} size="lg" scrollBehavior="inside" isDismissable={false} radius="lg" classNames={{ base: 'rounded-2xl max-h-[75vh]', closeButton: 'cursor-pointer' }}>
         <ModalContent className="rounded-2xl overflow-hidden">
           {(onClose) => (
             <FormularioProveedor
@@ -3310,7 +3310,7 @@ const GestionProveedoresPage: React.FC = () => {
       </Modal>
 
       {/* ── Modal Asignar Producto ── */}
-      <Modal isOpen={isProdModal} onOpenChange={onProdModalChange} size="md" isDismissable={false} radius="lg" classNames={{ base: 'rounded-2xl', closeButton: 'cursor-pointer' }}>
+      <Modal isOpen={isProdModal} onOpenChange={onProdModalChange} size="md" scrollBehavior="inside" isDismissable={false} radius="lg" classNames={{ base: 'rounded-2xl max-h-[75vh]', closeButton: 'cursor-pointer' }}>
         <ModalContent className="rounded-2xl overflow-hidden">
           {(onClose) => (
             <FormularioAsignarProducto
@@ -4628,7 +4628,7 @@ const FormularioProveedor: React.FC<FormularioProveedorProps> = ({
         </div>
       </ModalHeader>
 
-      <ModalBody className="gap-3 py-4">
+      <ModalBody className="gap-3 py-4 overflow-y-scroll custom-scrollbar">
         {error && (
           <div className="flex items-center gap-2 bg-danger-50 dark:bg-danger-50/10 text-danger text-sm p-3 rounded-lg">
             <Icon icon="lucide:alert-circle" width={16} />
@@ -5132,7 +5132,7 @@ const FormularioAsignarProducto: React.FC<FormularioAsignarProductoProps> = ({
         </div>
       </ModalHeader>
 
-      <ModalBody className="gap-3 py-4">
+      <ModalBody className="gap-3 py-4 overflow-y-scroll custom-scrollbar">
         {error && (
           <div className="flex items-center gap-2 bg-danger-50 dark:bg-danger-50/10 text-danger text-sm p-3 rounded-lg">
             <Icon icon="lucide:alert-circle" width={16} />
@@ -5451,7 +5451,7 @@ const CotizacionModal: React.FC<CotizacionModalProps> = ({
   };
 
   return (
-    <Modal isOpen={isOpen} onOpenChange={onOpenChange} size="5xl" scrollBehavior="inside" isDismissable={false} radius="lg" classNames={{ base: 'rounded-2xl' }}>
+    <Modal isOpen={isOpen} onOpenChange={onOpenChange} size="5xl" scrollBehavior="inside" isDismissable={false} radius="lg" classNames={{ base: 'rounded-2xl max-h-[75vh]' }}>
       <ModalContent className="rounded-2xl overflow-hidden">
         {(onClose) => (
           <>
@@ -5469,7 +5469,7 @@ const CotizacionModal: React.FC<CotizacionModalProps> = ({
               </div>
             </ModalHeader>
 
-            <ModalBody className="gap-6 py-6">
+            <ModalBody className="gap-6 py-6 overflow-y-scroll custom-scrollbar">
               {/* Selector de rango */}
               <div className="flex flex-col sm:flex-row gap-3 items-end bg-default-50 dark:bg-default-100/20 rounded-xl p-4 border border-default-200 dark:border-default-100">
                 <div className="flex-1">

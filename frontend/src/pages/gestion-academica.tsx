@@ -373,38 +373,34 @@ const SeccionGestionSalas: React.FC = () => {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-        <div className="flex items-center gap-3 flex-1">
-          <div className="p-2.5 rounded-xl bg-warning-100 dark:bg-warning-900/30 text-warning-600 dark:text-warning-400">
-            <Icon icon="lucide:building-2" width={22} />
-          </div>
-          <div>
-            <h3 className="font-bold text-base text-secondary dark:text-foreground leading-tight">Salas Activas</h3>
-            <p className="text-xs text-default-400">
-              {filtroSala.trim() !== '' && salasFiltradas.length !== salas.length
-                ? `${salasFiltradas.length} resultado${salasFiltradas.length !== 1 ? 's' : ''} · ${salas.length} totales`
-                : `${salas.length} sala${salas.length !== 1 ? 's' : ''} registrada${salas.length !== 1 ? 's' : ''}`}
-            </p>
-          </div>
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="p-2.5 rounded-xl bg-warning-100 dark:bg-warning-900/30 text-warning-600 dark:text-warning-400 shrink-0">
+          <Icon icon="lucide:building-2" width={22} />
         </div>
-        <div className="flex items-center gap-2">
-          <Input
-            placeholder="Buscar sala..."
-            value={filtroSala}
-            onValueChange={setFiltroSala}
-            variant="bordered"
-            size="sm"
-            className="w-48"
-            startContent={<Icon icon="lucide:search" className="text-default-400" width={15} />}
-            isClearable
-            onClear={() => setFiltroSala('')}
-          />
-          {salaCrear && (
-            <Button size="sm" color="warning" variant="solid" className="font-bold text-white shadow-sm shrink-0" startContent={<Icon icon="lucide:plus" width={16} />} onPress={openCreate}>
-              Nueva Sala
-            </Button>
-          )}
+        <div className="shrink-0">
+          <h3 className="font-bold text-base text-secondary dark:text-foreground leading-tight">Salas Activas</h3>
+          <p className="text-xs text-default-400">
+            {filtroSala.trim() !== '' && salasFiltradas.length !== salas.length
+              ? `${salasFiltradas.length} resultado${salasFiltradas.length !== 1 ? 's' : ''} · ${salas.length} totales`
+              : `${salas.length} sala${salas.length !== 1 ? 's' : ''} registrada${salas.length !== 1 ? 's' : ''}`}
+          </p>
         </div>
+        {salaCrear && (
+          <Button size="sm" color="warning" variant="solid" className="font-bold text-white shadow-sm shrink-0" startContent={<Icon icon="lucide:plus" width={16} />} onPress={openCreate}>
+            Nueva Sala
+          </Button>
+        )}
+        <Input
+          placeholder="Buscar sala..."
+          value={filtroSala}
+          onValueChange={setFiltroSala}
+          variant="bordered"
+          size="sm"
+          className="w-48"
+          startContent={<Icon icon="lucide:search" className="text-default-400" width={15} />}
+          isClearable
+          onClear={() => setFiltroSala('')}
+        />
       </div>
 
       {isLoading ? (
@@ -454,7 +450,7 @@ const SeccionGestionSalas: React.FC = () => {
         </div>
       )}
 
-      <Modal isOpen={isCreateOpen} onOpenChange={onCreateOpenChange} size="sm" placement="center">
+      <Modal isOpen={isCreateOpen} onOpenChange={onCreateOpenChange} size="sm" placement="center" scrollBehavior="inside" classNames={{ base: "max-h-[75vh]" }}>
         <ModalContent>
           {(onClose) => (
             <>
@@ -462,7 +458,7 @@ const SeccionGestionSalas: React.FC = () => {
                 <div className="p-1.5 rounded-lg bg-warning-100 text-warning-600"><Icon icon="lucide:plus-circle" width={18} /></div>
                 <span className="font-bold text-secondary dark:text-white">Nueva Sala</span>
               </ModalHeader>
-              <ModalBody className="py-4 flex flex-col gap-3">
+              <ModalBody className="py-4 flex flex-col gap-3 overflow-y-scroll custom-scrollbar">
                 <Input label="Código de sala" placeholder="Ej: LG1, AULA-01" variant="bordered" value={formCod} onValueChange={(v) => { if (v.length <= MAX_COD) setFormCod(v); }} description={`${formCod.length}/${MAX_COD} caracteres`} startContent={<Icon icon="lucide:hash" className="text-default-400" width={16} />} />
                 <Input label="Nombre de sala" placeholder="Ej: Laboratorio de Gastronomía" variant="bordered" value={formNombre} onValueChange={(v) => { if (v.length <= MAX_NOMBRE) setFormNombre(v); }} description={`${formNombre.length}/${MAX_NOMBRE} caracteres`} startContent={<Icon icon="lucide:building-2" className="text-default-400" width={16} />} />
               </ModalBody>
@@ -475,7 +471,7 @@ const SeccionGestionSalas: React.FC = () => {
         </ModalContent>
       </Modal>
 
-      <Modal isOpen={isEditOpen} onOpenChange={onEditOpenChange} size="sm" placement="center">
+      <Modal isOpen={isEditOpen} onOpenChange={onEditOpenChange} size="sm" placement="center" scrollBehavior="inside" classNames={{ base: "max-h-[75vh]" }}>
         <ModalContent>
           {(onClose) => (
             <>
@@ -483,7 +479,7 @@ const SeccionGestionSalas: React.FC = () => {
                 <div className="p-1.5 rounded-lg bg-primary-100 text-primary-600"><Icon icon="lucide:pencil" width={18} /></div>
                 <span className="font-bold text-secondary dark:text-white">Editar Sala</span>
               </ModalHeader>
-              <ModalBody className="py-4 flex flex-col gap-3">
+              <ModalBody className="py-4 flex flex-col gap-3 overflow-y-scroll custom-scrollbar">
                 <Input label="Código de sala" variant="bordered" value={formCod} onValueChange={(v) => { if (v.length <= MAX_COD) setFormCod(v); }} description={`${formCod.length}/${MAX_COD} caracteres`} startContent={<Icon icon="lucide:hash" className="text-default-400" width={16} />} />
                 <Input label="Nombre de sala" variant="bordered" value={formNombre} onValueChange={(v) => { if (v.length <= MAX_NOMBRE) setFormNombre(v); }} description={`${formNombre.length}/${MAX_NOMBRE} caracteres`} startContent={<Icon icon="lucide:building-2" className="text-default-400" width={16} />} />
               </ModalBody>
@@ -1207,7 +1203,7 @@ const GestionAsignaturasPage: React.FC = () => {
       </div>
 
       {/* Modal para editar sección */}
-      <Modal isOpen={isSeccionModalOpen} onOpenChange={onSeccionModalOpenChange} size="2xl" scrollBehavior="inside">
+      <Modal isOpen={isSeccionModalOpen} onOpenChange={onSeccionModalOpenChange} size="2xl" scrollBehavior="inside" classNames={{ base: "max-h-[75vh]" }}>
         <ModalContent>
           {(onClose) => (
             <EditarSeccionModal
@@ -1220,7 +1216,7 @@ const GestionAsignaturasPage: React.FC = () => {
       </Modal>
 
       {/* Modal para crear sección */}
-      <Modal isOpen={isCrearSeccionModalOpen} onOpenChange={onCrearSeccionModalOpenChange} size="2xl" scrollBehavior="inside">
+      <Modal isOpen={isCrearSeccionModalOpen} onOpenChange={onCrearSeccionModalOpenChange} size="2xl" scrollBehavior="inside" classNames={{ base: "max-h-[75vh]" }}>
         <ModalContent>
           {(onClose) => (
             <CrearSeccionModal
@@ -1233,7 +1229,7 @@ const GestionAsignaturasPage: React.FC = () => {
       </Modal>
 
       {/* Modal para editar/crear asignatura */}
-      <Modal isOpen={isAsignaturaModalOpen} onOpenChange={onAsignaturaModalOpenChange} size="lg">
+      <Modal isOpen={isAsignaturaModalOpen} onOpenChange={onAsignaturaModalOpenChange} size="lg" scrollBehavior="inside" classNames={{ base: "max-h-[75vh]" }}>
         <ModalContent>
           {(onClose) => (
             <EditarAsignaturaModal
@@ -1444,7 +1440,7 @@ const CrearSeccionModal: React.FC<CrearSeccionModalProps> = ({ asignatura, onClo
           <p className="text-sm text-default-500">{asignatura.nombre} · {asignatura.codigo}</p>
         </div>
       </ModalHeader>
-      <ModalBody>
+      <ModalBody className="overflow-y-scroll custom-scrollbar">
         <div className="space-y-5">
 
           {/* ── Info básica ── */}
@@ -1932,7 +1928,7 @@ const EditarSeccionModal: React.FC<EditarSeccionModalProps> = ({ seccionData, on
           <p className="text-sm text-default-500">{seccionData.asignatura.nombre}</p>
         </div>
       </ModalHeader>
-      <ModalBody>
+      <ModalBody className="overflow-y-scroll custom-scrollbar">
         <div className="space-y-5">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Input
@@ -2258,7 +2254,7 @@ const EditarAsignaturaModal: React.FC<EditarAsignaturaModalProps> = ({
           {asignatura ? 'Editar Asignatura' : 'Nueva Asignatura'}
         </h2>
       </ModalHeader>
-      <ModalBody>
+      <ModalBody className="overflow-y-scroll custom-scrollbar">
         <div className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Input
