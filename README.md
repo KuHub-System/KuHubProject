@@ -246,6 +246,28 @@ Cada request autenticado pasa por los siguientes filtros de Spring Security:
 
 Los permisos son configurables por un administrador desde la página `/gestion-roles` sin necesidad de redeploy.
 
+### Optimización de red — Compresión Gzip
+
+El container del frontend (NGINX interno) aplica compresión Gzip sobre todas las respuestas que pasan por el proxy hacia el backend. Esto reduce el peso de los payloads JSON de la API REST sin ningún cambio en el código de la aplicación.
+
+```
+Backend (Spring Boot)  →  JSON sin comprimir  →  NGINX interno
+NGINX interno          →  gzip (nivel 5)       →  navegador
+Navegador (Axios)      →  descomprime automáticamente vía Accept-Encoding
+```
+
+Configuración activa en `frontend/nginx.conf`:
+
+| Parámetro | Valor | Efecto |
+|---|---|---|
+| `gzip_proxied any` | `any` | Comprime respuestas que vienen del proxy (backend) |
+| `gzip_comp_level` | `5` | Punto óptimo velocidad/ratio de compresión (escala 1-9) |
+| `gzip_min_length` | `2048` | Solo comprime respuestas mayores a 2 KB (las pequeñas no justifican el overhead) |
+| `gzip_types` | `application/json`, `text/*`, `application/javascript` | Aplica solo a tipos de contenido comprimibles |
+| `gzip_vary` | `on` | Agrega el header `Vary: Accept-Encoding` para compatibilidad con proxies intermedios |
+
+El navegador envía automáticamente `Accept-Encoding: gzip` y Axios descomprime la respuesta de forma transparente. El ahorro típico en payloads JSON es del **60–80 %**, lo que reduce la latencia percibida especialmente en listados grandes (inventario, pedidos, movimientos).
+
 ---
 
 ## Base de datos
@@ -561,6 +583,29 @@ KuHubProject/
 - **Consultas nativas:** `List<Object[]>` (plano), `String` con `json_agg` (1-2 niveles), `String` con `jsonb_agg` (jerarquía profunda o CTEs).
 - **Transacciones:** `@Transactional(readOnly = true)` en lecturas; `@Transactional` en escrituras.
 - **Nuevos endpoints:** siempre registrar en `SpringSecurityConfig` para evitar 403.
+
+#### Por qué se usa `Object[]` en consultas de reporte y dashboard
+
+Las consultas orientadas a estadísticas, métricas y reportes (dashboard, KPIs, conteos por semana) utilizan proyecciones `Object[]` en lugar de retornar entidades completas. La razón es que Hibernate, al mapear entidades, ejecuta trabajo adicional que no aporta valor en estos contextos:
+
+- Instanciación de un objeto de entidad por cada registro recuperado.
+- Registro de cada entidad en el contexto de persistencia (*Session*).
+- Seguimiento de cambios (*dirty checking*) sobre datos que nunca se van a modificar.
+- Resolución de relaciones y metadatos asociados.
+
+Con `Object[]`, Hibernate actúa solo como intermediario entre la base de datos y la aplicación, entregando los valores sin construir ni administrar entidades. Esto reduce consumo de CPU y memoria en la capa de aplicación.
+
+**Impacto estimado por volumen de registros:**
+
+| Registros | Diferencia en tiempo de respuesta (capa de aplicación) |
+|---|---|
+| Hasta 1.000 | Marginal — imperceptible en producción |
+| 10.000 – 50.000 | Mejora del 10 % al 30 % |
+| 100.000 o más | Mejora significativa, dependiente de la infraestructura |
+
+> El mayor tiempo de ejecución siempre corresponde al motor de base de datos (JOINs, GROUP BY, índices). Reducir la sobrecarga de Hibernate no reemplaza la optimización de las queries, pero mantiene los tiempos de respuesta estables y predecibles conforme el volumen de datos crece.
+
+Este criterio aplica exclusivamente a consultas de solo lectura con resultados agregados. Las operaciones de persistencia (crear, actualizar) siguen usando entidades JPA de forma normal.
 
 ### Frontend
 
