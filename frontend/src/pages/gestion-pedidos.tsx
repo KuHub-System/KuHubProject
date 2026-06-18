@@ -57,6 +57,8 @@ const GestionPedidosPage: React.FC = () => {
   usePageTitle('Gestión de Pedidos', 'Genera el pedido semanal consolidado a partir de las solicitudes aceptadas, agrupando todos los productos requeridos por sección.', 'lucide:shopping-cart');
   const toast = useToast();
   const { canCreate: ped_Crear, canUpdate: ped_Editar, canDelete: ped_Eliminar } = useModulePermission('GESTION_PEDIDOS');
+  const { canRead: verResumen }   = useModulePermission('GP_VISTA_RESUMEN');
+  const { canRead: verAceptadas } = useModulePermission('GP_VISTA_ACEPTADAS');
   const { isAdmin } = usePermission();
   const history = useHistory();
   const confirmarModal = useDisclosure();
@@ -69,7 +71,6 @@ const GestionPedidosPage: React.FC = () => {
   const [isLoadingDatos, setIsLoadingDatos] = React.useState(false);
   const [consolidado,    setConsolidado]    = React.useState(false);
   const [isConsolidando, setIsConsolidando] = React.useState(false);
-  const [confirmarTexto, setConfirmarTexto] = React.useState('');
 
   // ── Cache por semanaId ──
   const cache = React.useRef<Map<string, IOrderConsolidationResponse>>(new Map());
@@ -78,6 +79,15 @@ const GestionPedidosPage: React.FC = () => {
   const [busqueda,    setBusqueda]    = React.useState('');
   const [expandidos,  setExpandidos]  = React.useState<Set<string>>(new Set());
   const [vistaActiva, setVistaActiva] = React.useState<'consolidado' | 'solicitudes'>('consolidado');
+
+  // Si el rol no puede ver la vista activa, conmutar a la primera vista permitida
+  React.useEffect(() => {
+    const permitida: Record<string, boolean> = { consolidado: verResumen, solicitudes: verAceptadas };
+    if (!permitida[vistaActiva]) {
+      if (verResumen) setVistaActiva('consolidado');
+      else if (verAceptadas) setVistaActiva('solicitudes');
+    }
+  }, [verResumen, verAceptadas, vistaActiva]);
 
   // ── Carga de datos al cambiar semana (con cache) ──
   React.useEffect(() => {
@@ -343,7 +353,7 @@ const GestionPedidosPage: React.FC = () => {
         <CardHeader className="px-5 py-4 flex flex-col sm:flex-row gap-3 items-start sm:items-center">
           {/* Tabs vista */}
           <div className="flex items-center gap-1 bg-default-100 rounded-lg p-1">
-            {(['consolidado', 'solicitudes'] as const).map(v => (
+            {(['consolidado', 'solicitudes'] as const).filter(v => v === 'consolidado' ? verResumen : verAceptadas).map(v => (
               <button key={v} onClick={() => setVistaActiva(v)}
                 className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
                   vistaActiva === v ? 'bg-white shadow-sm text-primary' : 'text-default-500 hover:text-default-700'
@@ -365,7 +375,7 @@ const GestionPedidosPage: React.FC = () => {
             {!consolidado ? (
               ped_Crear && (
               <Button color="primary" isDisabled={solicitudes.length === 0 || isLoadingDatos}
-                onPress={() => { setConfirmarTexto(''); confirmarModal.onOpen(); }}
+                onPress={confirmarModal.onOpen}
                 startContent={<Icon icon="lucide:layers" width={15} />}>
                 Consolidar Pedido
               </Button>
@@ -620,21 +630,10 @@ const GestionPedidosPage: React.FC = () => {
                     <span className="font-semibold">Semana:</span> {fmtFecha(semanaActual.fechaInicio)} al {fmtFecha(semanaActual.fechaFin)}
                   </p>
                 )}
-                <Input
-                  label='Escriba "CONFIRMAR" para continuar'
-                  placeholder="CONFIRMAR"
-                  value={confirmarTexto}
-                  onValueChange={setConfirmarTexto}
-                  variant="bordered"
-                  color={confirmarTexto.trim().toUpperCase() === 'CONFIRMAR' ? 'success' : 'default'}
-                  endContent={confirmarTexto.trim().toUpperCase() === 'CONFIRMAR'
-                    ? <Icon icon="lucide:check-circle" width={16} className="text-success" /> : null}
-                />
               </ModalBody>
               <ModalFooter>
                 <Button variant="light" onPress={onClose}>Cancelar</Button>
                 <Button color="primary" isLoading={isConsolidando}
-                  isDisabled={confirmarTexto.trim().toUpperCase() !== 'CONFIRMAR'}
                   onPress={handleConsolidar}
                   startContent={!isConsolidando && <Icon icon="lucide:layers" width={14} />}>
                   Confirmar consolidación

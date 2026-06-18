@@ -163,7 +163,8 @@ const MotivoTexto: React.FC<{ texto: string }> = ({ texto }) => {
 const GestionSolicitudesPage: React.FC = () => {
   usePageTitle('Gestión de Solicitudes', 'Administre las solicitudes de insumos realizadas por los docentes.', 'lucide:clipboard-check');
   const toast = useToast();
-  const { canCreate: sol_Crear, canUpdate: sol_Editar, canDelete: sol_Eliminar } = useModulePermission('GESTION_SOLICITUDES');
+  const { canUpdate: sol_Gestionar } = useModulePermission('GEST_SOL_GESTIONAR');
+  const { canUpdate: sol_Rechazar  } = useModulePermission('GEST_SOL_RECHAZAR');
   const { isAdmin } = usePermission();
   const history = useHistory();
 
@@ -588,7 +589,7 @@ const GestionSolicitudesPage: React.FC = () => {
 
           <div className="sm:ml-auto flex items-center gap-2 shrink-0">
             {/* Acción masiva sobre seleccionados */}
-            {sol_Editar && haySeleccionados && (
+            {sol_Gestionar && haySeleccionados && (
               <Button size="sm" color="success" variant="flat" isLoading={isSaving}
                 onPress={aceptarSeleccionados}
                 startContent={!isSaving && <Icon icon="lucide:check-check" width={14} />}
@@ -597,7 +598,7 @@ const GestionSolicitudesPage: React.FC = () => {
               </Button>
             )}
             {/* Aceptar todas pendientes — solo en Todas o Pendiente */}
-            {sol_Editar && !haySeleccionados && contadores.pendientes > 0
+            {sol_Gestionar && !haySeleccionados && contadores.pendientes > 0
               && (filtroEstado === 'Todas' || filtroEstado === 'Pendiente') && (
               <Button size="sm" color="success" variant="flat" isLoading={isSaving}
                 onPress={aceptarTodasPendientes}
@@ -651,8 +652,8 @@ const GestionSolicitudesPage: React.FC = () => {
                 <div key={grupo.idAsignatura} className="rounded-xl border border-default-200 overflow-hidden">
                   {/* Cabecera del grupo */}
                   <div className="flex items-center gap-3 px-4 py-2.5 bg-default-50 border-b border-default-200">
-                    {/* Checkbox grupo (solo si hay pendientes) */}
-                    {tienePendientes ? (
+                    {/* Checkbox grupo (solo si hay pendientes y puede gestionar) */}
+                    {tienePendientes && sol_Gestionar ? (
                       <Checkbox
                         size="sm"
                         isSelected={isChecked}
@@ -667,7 +668,7 @@ const GestionSolicitudesPage: React.FC = () => {
                     <span className="font-bold text-sm text-default-700">{grupo.nombre}</span>
                     <div className="ml-auto flex items-center gap-2">
                       {/* Acción rápida aceptar pendientes del grupo */}
-                      {sol_Editar && pendGrupo.length > 0 && (
+                      {sol_Gestionar && pendGrupo.length > 0 && (
                         <Button size="sm" variant="flat" color="success"
                           className="text-xs h-6 px-2 min-w-0"
                           isLoading={isSaving}
@@ -703,9 +704,9 @@ const GestionSolicitudesPage: React.FC = () => {
                           className="flex flex-col sm:flex-row sm:items-center gap-3 px-4 py-3 hover:bg-default-50/50 transition-colors cursor-pointer"
                           onClick={() => abrirDetalle(sol)}
                         >
-                          {/* Checkbox individual (solo pendientes) */}
+                          {/* Checkbox individual (solo pendientes con permiso de gestionar) */}
                           <div className="w-5 shrink-0 flex justify-center" onClick={e => e.stopPropagation()}>
-                            {esPend ? (
+                            {esPend && sol_Gestionar ? (
                               <Checkbox size="sm" isSelected={seleccionados.has(sol.id)}
                                 onValueChange={() => toggleItem(sol.id)}
                                 aria-label={`Seleccionar §${sol.nombreSeccion}`}
@@ -741,7 +742,7 @@ const GestionSolicitudesPage: React.FC = () => {
 
                           {/* Estado + acciones */}
                           <div className="flex items-center gap-2 shrink-0" onClick={e => e.stopPropagation()}>
-                            {sol_Editar && sol.estado === 'En Pedido' && !sol.tieneOrdenPedidoActiva && (
+                            {sol_Rechazar && sol.estado === 'En Pedido' && !sol.tieneOrdenPedidoActiva && (
                               <Tooltip content="Rechazar (resta del pedido)">
                                 <Button isIconOnly size="sm" color="danger" variant="flat"
                                   onPress={() => abrirRechazarPedido(sol)}>
@@ -756,41 +757,41 @@ const GestionSolicitudesPage: React.FC = () => {
                               {cfg.label}
                             </Chip>
 
-                            {sol_Editar && esPend && (
-                              <>
-                                <Tooltip content="Aceptar">
-                                  <Button isIconOnly size="sm" color="success" variant="flat"
-                                    isLoading={isSaving} onPress={() => aceptar(sol)}>
-                                    <Icon icon="lucide:check" width={15} />
-                                  </Button>
-                                </Tooltip>
-                                <Tooltip content="Rechazar">
-                                  <Button isIconOnly size="sm" color="danger" variant="flat"
-                                    onPress={() => abrirRechazar(sol)}>
-                                    <Icon icon="lucide:x" width={15} />
-                                  </Button>
-                                </Tooltip>
-                              </>
+                            {sol_Gestionar && esPend && (
+                              <Tooltip content="Aceptar">
+                                <Button isIconOnly size="sm" color="success" variant="flat"
+                                  isLoading={isSaving} onPress={() => aceptar(sol)}>
+                                  <Icon icon="lucide:check" width={15} />
+                                </Button>
+                              </Tooltip>
+                            )}
+                            {sol_Rechazar && esPend && (
+                              <Tooltip content="Rechazar">
+                                <Button isIconOnly size="sm" color="danger" variant="flat"
+                                  onPress={() => abrirRechazar(sol)}>
+                                  <Icon icon="lucide:x" width={15} />
+                                </Button>
+                              </Tooltip>
                             )}
 
-                            {sol_Editar && sol.estado === 'Aceptada' && (
-                              <>
-                                <Tooltip content="Revertir a Pendiente">
-                                  <Button isIconOnly size="sm" color="warning" variant="flat"
-                                    onPress={() => abrirRevertir(sol, 'pendiente', 'Aceptada')}>
-                                    <Icon icon="lucide:undo-2" width={15} />
-                                  </Button>
-                                </Tooltip>
-                                <Tooltip content="Rechazar">
-                                  <Button isIconOnly size="sm" color="danger" variant="flat"
-                                    onPress={() => abrirRevertir(sol, 'rechazar', 'Aceptada')}>
-                                    <Icon icon="lucide:x" width={15} />
-                                  </Button>
-                                </Tooltip>
-                              </>
+                            {sol_Gestionar && sol.estado === 'Aceptada' && (
+                              <Tooltip content="Revertir a Pendiente">
+                                <Button isIconOnly size="sm" color="warning" variant="flat"
+                                  onPress={() => abrirRevertir(sol, 'pendiente', 'Aceptada')}>
+                                  <Icon icon="lucide:undo-2" width={15} />
+                                </Button>
+                              </Tooltip>
+                            )}
+                            {sol_Rechazar && sol.estado === 'Aceptada' && (
+                              <Tooltip content="Rechazar">
+                                <Button isIconOnly size="sm" color="danger" variant="flat"
+                                  onPress={() => abrirRevertir(sol, 'rechazar', 'Aceptada')}>
+                                  <Icon icon="lucide:x" width={15} />
+                                </Button>
+                              </Tooltip>
                             )}
 
-                            {sol_Editar && sol.estado === 'Rechazada' && !sol.motivoRechazo?.includes('automáticamente') && (
+                            {sol_Gestionar && sol.estado === 'Rechazada' && !sol.motivoRechazo?.includes('automáticamente') && (
                               <>
                               <Tooltip content="Aceptar solicitud">
                                 <Button isIconOnly size="sm" color="success" variant="flat"
@@ -966,33 +967,41 @@ const GestionSolicitudesPage: React.FC = () => {
               <ModalFooter className="gap-2">
                 {selSol.estado === 'Pendiente' && (
                   <>
-                    <Button color="danger" variant="flat"
-                      onPress={() => { onClose(); abrirRechazar(selSol); }}
-                      startContent={<Icon icon="lucide:x" width={14} />}>
-                      Rechazar
-                    </Button>
-                    <Button color="success"
-                      onPress={async () => { await aceptar(selSol); onClose(); }}
-                      startContent={<Icon icon="lucide:check" width={14} />}>
-                      Aceptar
-                    </Button>
+                    {sol_Rechazar && (
+                      <Button color="danger" variant="flat"
+                        onPress={() => { onClose(); abrirRechazar(selSol); }}
+                        startContent={<Icon icon="lucide:x" width={14} />}>
+                        Rechazar
+                      </Button>
+                    )}
+                    {sol_Gestionar && (
+                      <Button color="success"
+                        onPress={async () => { await aceptar(selSol); onClose(); }}
+                        startContent={<Icon icon="lucide:check" width={14} />}>
+                        Aceptar
+                      </Button>
+                    )}
                   </>
                 )}
                 {selSol.estado === 'Aceptada' && (
                   <>
-                    <Button color="warning" variant="flat"
-                      onPress={() => { onClose(); abrirRevertir(selSol, 'pendiente', 'Aceptada'); }}
-                      startContent={<Icon icon="lucide:undo-2" width={14} />}>
-                      Revertir a Pendiente
-                    </Button>
-                    <Button color="danger" variant="flat"
-                      onPress={() => { onClose(); abrirRevertir(selSol, 'rechazar', 'Aceptada'); }}
-                      startContent={<Icon icon="lucide:x" width={14} />}>
-                      Rechazar
-                    </Button>
+                    {sol_Gestionar && (
+                      <Button color="warning" variant="flat"
+                        onPress={() => { onClose(); abrirRevertir(selSol, 'pendiente', 'Aceptada'); }}
+                        startContent={<Icon icon="lucide:undo-2" width={14} />}>
+                        Revertir a Pendiente
+                      </Button>
+                    )}
+                    {sol_Rechazar && (
+                      <Button color="danger" variant="flat"
+                        onPress={() => { onClose(); abrirRevertir(selSol, 'rechazar', 'Aceptada'); }}
+                        startContent={<Icon icon="lucide:x" width={14} />}>
+                        Rechazar
+                      </Button>
+                    )}
                   </>
                 )}
-                {selSol.estado === 'Rechazada' && !selSol.motivoRechazo?.includes('automáticamente') && (
+                {selSol.estado === 'Rechazada' && !selSol.motivoRechazo?.includes('automáticamente') && sol_Gestionar && (
                   <>
                   <Button color="success" variant="flat"
                     onPress={() => { onClose(); abrirRevertir(selSol, 'aceptar', 'Rechazada'); }}
@@ -1006,7 +1015,7 @@ const GestionSolicitudesPage: React.FC = () => {
                   </Button>
                   </>
                 )}
-                {selSol.estado === 'En Pedido' && !selSol.tieneOrdenPedidoActiva && (
+                {selSol.estado === 'En Pedido' && !selSol.tieneOrdenPedidoActiva && sol_Rechazar && (
                   <Button color="danger" variant="flat"
                     onPress={() => { onClose(); abrirRechazarPedido(selSol); }}
                     startContent={<Icon icon="lucide:x" width={14} />}>

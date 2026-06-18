@@ -34,7 +34,7 @@ import { useHistory } from 'react-router-dom';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useToast, useConfirm } from '../hooks/useToast';
 import { useAuth } from '../contexts/auth-context';
-import { useModulePermission, usePermission } from '../contexts/permission-context';
+import { usePermission } from '../contexts/permission-context';
 import { usePeriodoSemana } from '../contexts/periodo-semana-context';
 import BookPageLoader from '../components/BookPageLoader';
 
@@ -68,9 +68,20 @@ const PedidoSemanalABodegaPage: React.FC = () => {
   const confirm = useConfirm();
   const history = useHistory();
   const { user } = useAuth();
-  const { canCreate: rec_Crear, canUpdate: rec_Editar, canDelete: rec_Eliminar } = useModulePermission('PEDIDO_SEMANAL_BODEGA');
+  // Permisos GRANULARES por acción (cada ícono/botón es su propio módulo en la matriz).
+  // La PÁGINA (PEDIDO_SEMANAL_BODEGA, acceso de lectura) habilita filtros, selectores,
+  // buscadores y ver el detalle; cada acción de escritura se gobierna por su submódulo.
+  // Cada acción se habilita con nivel "Escritura" en su módulo (coherente con el
+  // interceptor backend, que exige write/delete). "Lectura"/"Sin Acceso" → ícono apagado.
+  const { canAccess } = usePermission();
+  const rec_Crear     = canAccess('PEDIDO_SEM_CREAR', 'write');
+  const rec_Editar    = canAccess('PEDIDO_SEM_EDITAR', 'write');
+  const rec_Inactivar = canAccess('PEDIDO_SEM_INACTIVAR', 'write');
+  const rec_Eliminar  = canAccess('PEDIDO_SEM_ELIMINAR', 'write');
   const { periodos, semanas: contextSemanas, periodo: contextPeriodo, defaultSemanaId, isLoading: isLoadingSemanas, seleccionarPeriodo, seleccionarSemana } = usePeriodoSemana();
-  const esSoloLectura = user?.rol === 'Profesor';
+  // Solo lectura = el rol no tiene NINGUNA acción de escritura habilitada
+  // (se deriva de la matriz de permisos, no de un rol hardcodeado).
+  const esSoloLectura = !(rec_Crear || rec_Editar || rec_Inactivar || rec_Eliminar);
   const isAdmin = user?.rol === 'Administrador';
 
   const [recetas, setRecetas] = React.useState<IPedidoSemanaBodegaPaginedDTO[]>([]);
@@ -640,7 +651,7 @@ const PedidoSemanalABodegaPage: React.FC = () => {
 
                 {/* Botones de acción */}
                 <div className="flex items-center gap-2 ml-auto">
-                  {!esSoloLectura && rec_Crear && (
+                  {rec_Crear && (
                     <Button
                       color="primary"
                       variant="solid"
@@ -743,56 +754,56 @@ const PedidoSemanalABodegaPage: React.FC = () => {
                     <TableCell className="text-center">{renderEstado(receta.estadoPedido)}</TableCell>
                     <TableCell>
                       <div className="flex justify-center gap-1">
-                        {!esSoloLectura && (
-                          <>
-                            {rec_Editar && (
-                            <Tooltip content="Editar pedido semanal" delay={0}>
-                              <Button
-                                isIconOnly
-                                variant="light"
-                                size="sm"
-                                onPress={() => handleEditarReceta(receta)}
-                                className="text-default-400 hover:text-primary z-10"
-                                style={{ cursor: 'pointer' }}
-                              >
-                                <Icon icon="lucide:edit" width={18} />
-                              </Button>
-                            </Tooltip>
-                            )}
+                        {/* Editar: requiere escritura (canUpdate). Solo lectura → atenuado y no clickable. */}
+                        <Tooltip content={rec_Editar ? 'Editar pedido semanal' : 'Sin permiso de edición'} delay={0}>
+                          <span className="inline-flex">
+                            <Button
+                              isIconOnly
+                              variant="light"
+                              size="sm"
+                              isDisabled={!rec_Editar}
+                              onPress={() => handleEditarReceta(receta)}
+                              className={`z-10 ${rec_Editar ? 'text-default-400 hover:text-primary cursor-pointer' : 'text-default-300 opacity-40 cursor-not-allowed'}`}
+                            >
+                              <Icon icon="lucide:edit" width={18} />
+                            </Button>
+                          </span>
+                        </Tooltip>
 
-                            {rec_Editar && (
-                            <Tooltip content={receta.estadoPedido === 'Activo' ? 'Inactivar pedido semanal' : 'Activar pedido semanal'} delay={0}>
-                              <Button
-                                isIconOnly
-                                variant="light"
-                                size="sm"
-                                onPress={() => cambiarEstadoReceta(receta.idPedidoSemanaBodega, receta)}
-                                className={receta.estadoPedido === 'Activo' ? 'text-default-400 hover:text-danger z-10' : 'text-default-400 hover:text-success z-10'}
-                                style={{ cursor: 'pointer' }}
-                              >
-                                <Icon
-                                  icon={receta.estadoPedido === 'Activo' ? 'lucide:x-circle' : 'lucide:check-circle'}
-                                  width={18}
-                                />
-                              </Button>
-                            </Tooltip>
-                            )}
-                            {isAdmin && rec_Eliminar && (
-                              <Tooltip content="Eliminar pedido semanal" delay={0}>
-                                <Button
-                                  isIconOnly
-                                  variant="light"
-                                  size="sm"
-                                  onPress={() => handleEliminarReceta(receta)}
-                                  className="text-default-400 hover:text-danger z-10"
-                                  style={{ cursor: 'pointer' }}
-                                >
-                                  <Icon icon="lucide:trash-2" width={18} />
-                                </Button>
-                              </Tooltip>
-                            )}
-                          </>
-                        )}
+                        {/* Inactivar/Activar: requiere el permiso de Inactivar (módulo propio). */}
+                        <Tooltip content={!rec_Inactivar ? 'Sin permiso para inactivar' : (receta.estadoPedido === 'Activo' ? 'Inactivar pedido semanal' : 'Activar pedido semanal')} delay={0}>
+                          <span className="inline-flex">
+                            <Button
+                              isIconOnly
+                              variant="light"
+                              size="sm"
+                              isDisabled={!rec_Inactivar}
+                              onPress={() => cambiarEstadoReceta(receta.idPedidoSemanaBodega, receta)}
+                              className={`z-10 ${!rec_Inactivar ? 'text-default-300 opacity-40 cursor-not-allowed' : (receta.estadoPedido === 'Activo' ? 'text-default-400 hover:text-danger cursor-pointer' : 'text-default-400 hover:text-success cursor-pointer')}`}
+                            >
+                              <Icon
+                                icon={receta.estadoPedido === 'Activo' ? 'lucide:x-circle' : 'lucide:check-circle'}
+                                width={18}
+                              />
+                            </Button>
+                          </span>
+                        </Tooltip>
+
+                        {/* Eliminar: requiere permiso de eliminación (canDelete). */}
+                        <Tooltip content={rec_Eliminar ? 'Eliminar pedido semanal' : 'Sin permiso de eliminación'} delay={0}>
+                          <span className="inline-flex">
+                            <Button
+                              isIconOnly
+                              variant="light"
+                              size="sm"
+                              isDisabled={!rec_Eliminar}
+                              onPress={() => handleEliminarReceta(receta)}
+                              className={`z-10 ${rec_Eliminar ? 'text-default-400 hover:text-danger cursor-pointer' : 'text-default-300 opacity-40 cursor-not-allowed'}`}
+                            >
+                              <Icon icon="lucide:trash-2" width={18} />
+                            </Button>
+                          </span>
+                        </Tooltip>
                       </div>
                     </TableCell>
                   </TableRow>

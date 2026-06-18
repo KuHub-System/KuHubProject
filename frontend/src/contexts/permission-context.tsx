@@ -17,7 +17,9 @@ import {
   AccessLevel,
   ACCESS_HIERARCHY,
   ModuleKey,
+  ModulePermissions,
   RolePermission,
+  levelFromPermissions,
 } from '../types/permissions.types';
 
 // ── Interfaz del contexto ─────────────────────────────────────────────────────
@@ -61,11 +63,14 @@ export const PermissionProvider: React.FC<{ children: ReactNode }> = ({ children
 
   const [isLoading,          setIsLoading]          = useState(true);
   const [allPermissions,     setAllPermissions]      = useState<RolePermission[]>([]);
-  const [userPermissions,    setUserPermissions]     = useState<Record<ModuleKey, AccessLevel> | null>(null);
+  const [userPermissions,    setUserPermissions]     = useState<Record<ModuleKey, ModulePermissions> | null>(null);
   // Cache CRUD granular del usuario actual
   const [crudCache,          setCrudCache]           = useState<Map<ModuleKey, { r: boolean; c: boolean; u: boolean; d: boolean }>>(new Map());
 
-  const isAdmin = user?.rol === 'Administrador' || user?.rol === 'Co-Administrador';
+  // Solo el Administrador tiene acceso total garantizado (bypass de la matriz).
+  // El Co-Administrador NO es bypass: respeta la matriz de permisos (sin Gestión de
+  // Roles ni Administración del Sistema), igual que cualquier otro rol.
+  const isAdmin = user?.rol === 'Administrador';
 
   // ── Carga de permisos ──────────────────────────────────────────────────────
 
@@ -96,16 +101,17 @@ export const PermissionProvider: React.FC<{ children: ReactNode }> = ({ children
 
       setUserPermissions(myRolePerms);
 
-      // Reconstruir cache CRUD desde la matriz
+      // Reconstruir cache CRUD desde la matriz (usando los booleanos REALES,
+      // no un nivel colapsado: así un rol puede tener p.ej. editar pero no eliminar).
       const newCache = new Map<ModuleKey, { r: boolean; c: boolean; u: boolean; d: boolean }>();
       if (myRolePerms) {
-        for (const [key, level] of Object.entries(myRolePerms)) {
+        for (const [key, p] of Object.entries(myRolePerms)) {
           const mk = key as ModuleKey;
           newCache.set(mk, {
-            r: level === 'read'  || level === 'write',
-            c: level === 'write',
-            u: level === 'write',
-            d: level === 'write',
+            r: p.puedeLeer || p.puedeCrear || p.puedeActualizar || p.puedeEliminar,
+            c: p.puedeCrear,
+            u: p.puedeActualizar,
+            d: p.puedeEliminar,
           });
         }
       }
@@ -126,7 +132,7 @@ export const PermissionProvider: React.FC<{ children: ReactNode }> = ({ children
   const getAccessLevel = (module: ModuleKey): AccessLevel => {
     if (!user) return 'none';
     if (isAdmin)  return 'write'; // Administrador siempre tiene acceso total
-    return userPermissions?.[module] ?? 'none';
+    return levelFromPermissions(userPermissions?.[module]);
   };
 
   const canAccess = (module: ModuleKey, minLevel: AccessLevel = 'read'): boolean => {

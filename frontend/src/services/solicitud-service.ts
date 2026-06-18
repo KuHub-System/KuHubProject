@@ -1160,3 +1160,34 @@ export const obtenerStockDisponiblesService = async (
   return response.data;
 };
 
+/** Ítem de la vista "Disponible Real" (mapea DisponibleRealPage.DisponibleRealItem del backend). */
+export interface IDisponibleRealItem {
+  nombreProducto: string;
+  nombreCategoria: string;
+  abreviatura: string;
+  /** Stock actual en inventario. */
+  inventario: number;
+  /** Stock actual en bodega de tránsito. */
+  bodegaTransito: number;
+  /** Inventario + bodega de tránsito. */
+  stockFisico: number;
+  /** Demanda de solicitudes EN_PEDIDO ya abastecidas por el proveedor. */
+  demandaComprometida: number;
+  /** Stock reservado a solicitudes EN_PEDIDO. */
+  reservado: number;
+  /** stockFisico − demandaComprometida − reservado (puede ser negativo = faltante). */
+  disponible: number;
+}
+
+/**
+ * Disponible real por producto: (inventario + bodega de tránsito) − demanda comprometida de
+ * solicitudes EN_PEDIDO abastecidas − reservas EN_PEDIDO. Mismo cálculo de la columna "Disponible"
+ * de Generar OP / "Por Pedido" del Conglomerado (stock libre, no asociado a ninguna solicitud).
+ * Devuelve la lista completa (el frontend filtra por nombre y scrollea).
+ * GET /api/v1/stock-disponible/disponible-real
+ */
+export const obtenerDisponibleRealService = async (): Promise<IDisponibleRealItem[]> => {
+  const response = await api.get<IDisponibleRealItem[]>('/stock-disponible/disponible-real');
+  return response.data ?? [];
+};
+

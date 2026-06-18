@@ -232,11 +232,11 @@ public class SpringSecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/v2/roles").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v2/roles/**").permitAll()
 
-                        // Solo ADMINISTRADOR puede crear/modificar roles
-                        .requestMatchers(HttpMethod.POST, "/api/v*/roles").hasRole("ADMINISTRADOR")
-                        .requestMatchers(HttpMethod.PUT, "/api/v*/roles/**").hasRole("ADMINISTRADOR")
-                        .requestMatchers(HttpMethod.DELETE, "/api/v*/roles/**").hasRole("ADMINISTRADOR")
-                        .requestMatchers(HttpMethod.PATCH, "/api/v*/roles/**").hasRole("ADMINISTRADOR")
+                        // Escritura de roles: autorización dinámica (GESTION_ROLES) vía DynamicPermissionInterceptor
+                        .requestMatchers(HttpMethod.POST, "/api/v*/roles").authenticated()
+                        .requestMatchers(HttpMethod.PUT, "/api/v*/roles/**").authenticated()
+                        .requestMatchers(HttpMethod.DELETE, "/api/v*/roles/**").authenticated()
+                        .requestMatchers(HttpMethod.PATCH, "/api/v*/roles/**").authenticated()
 
                         // ========================================
                         // ENDPOINTS DE USUARIOS
@@ -247,24 +247,23 @@ public class SpringSecurityConfig {
                         .requestMatchers(HttpMethod.PATCH, "/api/v*/usuarios/cambiar-contrasena").authenticated()
                         .requestMatchers(HttpMethod.PUT, "/api/v*/usuarios/actualizar-foto").authenticated()
 
-                        // 2. LECTURA (Listar usuarios): Solo roles que gestionan personal
-                        .requestMatchers(HttpMethod.GET, "/api/v*/usuarios/**")
-                        .hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR", "GESTOR_PEDIDOS", "PROFESOR_A_CARGO")
+                        // 2. LECTURA (Listar usuarios): cualquier autenticado — la matriz controla el acceso real
+                        .requestMatchers(HttpMethod.GET, "/api/v*/usuarios/**").authenticated()
 
-                        // 2b. POST de LECTURA para usuarios (paginación/búsqueda): mismos roles que GET
+                        // 2b. POST de LECTURA para usuarios (paginación/búsqueda): cualquier autenticado
                         .requestMatchers(HttpMethod.POST,
                                 "/api/v*/usuario/find-all-users-with-pagination",
                                 "/api/v*/usuario/find-users-by-filter",
                                 "/api/v*/usuarios/find-all-users-with-pagination",
                                 "/api/v*/usuarios/find-users-by-filter"
-                        ).hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR", "GESTOR_PEDIDOS", "PROFESOR_A_CARGO")
+                        ).authenticated()
 
-                        // 3. GESTIÓN ADMINISTRATIVA (Crear/Editar otros usuarios)
-                        .requestMatchers(HttpMethod.POST, "/api/v*/usuarios").hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR")
-                        .requestMatchers(HttpMethod.PUT, "/api/v*/usuarios/**").hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR")
+                        // 3. GESTIÓN ADMINISTRATIVA (Crear/Editar otros usuarios): dinámico (GESTION_USUARIOS)
+                        .requestMatchers(HttpMethod.POST, "/api/v*/usuarios").authenticated()
+                        .requestMatchers(HttpMethod.PUT, "/api/v*/usuarios/**").authenticated()
 
-                        // 4. ELIMINACIÓN: Solo el Administrador principal
-                        .requestMatchers(HttpMethod.DELETE, "/api/v*/usuarios/**").hasRole("ADMINISTRADOR")
+                        // 4. ELIMINACIÓN: dinámico (GESTION_USUARIOS → delete)
+                        .requestMatchers(HttpMethod.DELETE, "/api/v*/usuarios/**").authenticated()
 
                         // ========================================
                         // ENDPOINTS DE CATEGORIA
@@ -273,17 +272,10 @@ public class SpringSecurityConfig {
                         // Lectura pública
                         .requestMatchers(HttpMethod.GET, "/api/v*/categoria/**").permitAll()
 
-                        // Crear
-                        .requestMatchers(HttpMethod.POST, "/api/v*/categoria/**")
-                        .hasAnyRole("ADMINISTRADOR", "ENCARGADO_BODEGA")
-
-                        // Actualizar (PATCH → lo estás usando)
-                        .requestMatchers(HttpMethod.PATCH, "/api/v*/categoria/**")
-                        .hasAnyRole("ADMINISTRADOR", "ENCARGADO_BODEGA")
-
-                        // Eliminar
-                        .requestMatchers(HttpMethod.DELETE, "/api/v*/categoria/**")
-                        .hasRole("ADMINISTRADOR")
+                        // Escritura de categorías: dinámico (GESTION_CATEGORIAS) vía interceptor
+                        .requestMatchers(HttpMethod.POST, "/api/v*/categoria/**").authenticated()
+                        .requestMatchers(HttpMethod.PATCH, "/api/v*/categoria/**").authenticated()
+                        .requestMatchers(HttpMethod.DELETE, "/api/v*/categoria/**").authenticated()
 
                         // ========================================
                         // ENDPOINTS DE UNIDAD DE MEDIDA
@@ -292,20 +284,11 @@ public class SpringSecurityConfig {
                         // Lectura pública
                         .requestMatchers(HttpMethod.GET, "/api/v*/unidad-medida/**").permitAll()
 
-                        // Crear
-                        .requestMatchers(HttpMethod.POST, "/api/v*/unidad-medida/**")
-                        .hasAnyRole("ADMINISTRADOR", "ENCARGADO_BODEGA")
-
-                        // Actualizar
-                        .requestMatchers(HttpMethod.PUT, "/api/v*/unidad-medida/**")
-                        .hasAnyRole("ADMINISTRADOR", "ENCARGADO_BODEGA")
-
-                        .requestMatchers(HttpMethod.PATCH, "/api/v*/unidad-medida/**")
-                        .hasAnyRole("ADMINISTRADOR", "ENCARGADO_BODEGA")
-
-                        // Eliminar
-                        .requestMatchers(HttpMethod.DELETE, "/api/v*/unidad-medida/**")
-                        .hasRole("ADMINISTRADOR")
+                        // Escritura de unidades: dinámico (GESTION_UNIDADES) vía interceptor
+                        .requestMatchers(HttpMethod.POST, "/api/v*/unidad-medida/**").authenticated()
+                        .requestMatchers(HttpMethod.PUT, "/api/v*/unidad-medida/**").authenticated()
+                        .requestMatchers(HttpMethod.PATCH, "/api/v*/unidad-medida/**").authenticated()
+                        .requestMatchers(HttpMethod.DELETE, "/api/v*/unidad-medida/**").authenticated()
 
                         // ========================================
                         // ENDPOINTS DE PRODUCTOS
@@ -314,14 +297,13 @@ public class SpringSecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/v*/producto/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v*/productos/**").permitAll()
 
-                        .requestMatchers(HttpMethod.POST, "/api/v*/producto").hasAnyRole("ADMINISTRADOR", "ENCARGADO_BODEGA")
-                        .requestMatchers(HttpMethod.POST, "/api/v*/productos").hasAnyRole("ADMINISTRADOR", "ENCARGADO_BODEGA")
-
-                        .requestMatchers(HttpMethod.PUT, "/api/v*/producto/**").hasAnyRole("ADMINISTRADOR", "ENCARGADO_BODEGA")
-                        .requestMatchers(HttpMethod.PUT, "/api/v*/productos/**").hasAnyRole("ADMINISTRADOR", "ENCARGADO_BODEGA")
-
-                        .requestMatchers(HttpMethod.DELETE, "/api/v*/producto/**").hasRole("ADMINISTRADOR")
-                        .requestMatchers(HttpMethod.DELETE, "/api/v*/productos/**").hasRole("ADMINISTRADOR")
+                        // Escritura de productos: dinámico (INVENTARIO) vía interceptor
+                        .requestMatchers(HttpMethod.POST, "/api/v*/producto").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/v*/productos").authenticated()
+                        .requestMatchers(HttpMethod.PUT, "/api/v*/producto/**").authenticated()
+                        .requestMatchers(HttpMethod.PUT, "/api/v*/productos/**").authenticated()
+                        .requestMatchers(HttpMethod.DELETE, "/api/v*/producto/**").authenticated()
+                        .requestMatchers(HttpMethod.DELETE, "/api/v*/productos/**").authenticated()
 
                         // ========================================
                         // ENDPOINTS DE INVENTARIO
@@ -341,32 +323,22 @@ public class SpringSecurityConfig {
                                 "/api/v*/inventario/paged-bodega"
                         ).authenticated()
 
-                        // 2b. Creación/modificación (POST): Administradores, Co-Admins, Gestores y Encargados de Bodega
-                        .requestMatchers(HttpMethod.POST, "/api/v*/inventario/**")
-                        .hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR", "GESTOR_PEDIDOS", "ENCARGADO_BODEGA")
-
-                        // 3. Modificación (PUT): Los mismos que pueden crear (incluyendo el ajuste de stock)
-                        .requestMatchers(HttpMethod.PUT, "/api/v*/inventario/**")
-                        .hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR", "GESTOR_PEDIDOS", "ENCARGADO_BODEGA")
-
-                        .requestMatchers(HttpMethod.PATCH, "/api/v*/inventario/**")
-                        .hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR", "GESTOR_PEDIDOS", "ENCARGADO_BODEGA")
-
-                        // 4. Eliminación (DELETE): Acceso restringido solo a la jerarquía más alta
-                        .requestMatchers(HttpMethod.DELETE, "/api/v*/inventario/**")
-                        .hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR")
+                        // Escritura de inventario: dinámico (INVENTARIO) vía interceptor
+                        .requestMatchers(HttpMethod.POST, "/api/v*/inventario/**").authenticated()
+                        .requestMatchers(HttpMethod.PUT, "/api/v*/inventario/**").authenticated()
+                        .requestMatchers(HttpMethod.PATCH, "/api/v*/inventario/**").authenticated()
+                        .requestMatchers(HttpMethod.DELETE, "/api/v*/inventario/**").authenticated()
 
                         // ========================================
                         // ENDPOINTS DE MOVIMIENTOS DE INVENTARIO
                         // ========================================
 
-                        // POST de lectura/filtro: incluye roles que necesitan ver movimientos
+                        // POST de lectura/filtro: cualquier autenticado — la matriz controla el acceso real
                         .requestMatchers(HttpMethod.POST, "/api/v1/movimiento/find-all-motion-with-filter")
-                        .hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR", "GESTOR_PEDIDOS", "ENCARGADO_BODEGA", "ASISTENTE_BODEGA")
+                        .authenticated()
 
-                        // POST de creación/registro de movimiento
-                        .requestMatchers(HttpMethod.POST, "/api/v1/movimiento/**")
-                        .hasAnyRole("ADMINISTRADOR", "GESTOR_PEDIDOS", "ENCARGADO_BODEGA", "ASISTENTE_BODEGA")
+                        // POST de creación/registro de movimiento: dinámico (HISTORIAL_MOVIMIENTOS) vía interceptor
+                        .requestMatchers(HttpMethod.POST, "/api/v1/movimiento/**").authenticated()
 
                         // ========================================
                         // ENDPOINTS DE BODEGA DE TRÁNSITO
@@ -386,45 +358,32 @@ public class SpringSecurityConfig {
                         .authenticated() // Permiso granular verificado dinámicamente en BodegaTransitoController
 
                         .requestMatchers(HttpMethod.DELETE, "/api/v*/bodega-transito/**")
-                        .hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR")
+                        .authenticated() // dinámico (BODEGA_TRANSITO → delete) vía interceptor
 
                         // ========================================
                         // ENDPOINTS DE PEDIDO SEMANA BODEGA (Antigua "Recetas")
                         // ========================================
 
-                        // 0. Selector de asignaturas: accesible también para bodega (necesitan ver asignaturas al gestionar pedidos)
+                        // 0. Selector de asignaturas: cualquier autenticado (selector usado en múltiples páginas)
                         .requestMatchers(HttpMethod.GET, "/api/v1/pedido-semana-bodega/asignaturas/activas")
-                        .hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR", "GESTOR_PEDIDOS", "PROFESOR_A_CARGO", "DOCENTE", "ENCARGADO_BODEGA", "ASISTENTE_BODEGA")
+                        .authenticated()
 
-                        // 1. LECTURA (GET): Permitido para todos los roles académicos y administrativos
+                        // 1. LECTURA (GET): cualquier autenticado — la matriz controla el acceso real
                         .requestMatchers(HttpMethod.GET, "/api/v*/pedido-semana-bodega/**", "/api/v*/detalle-pedido-semana-bodega/**")
-                        .hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR", "GESTOR_PEDIDOS", "PROFESOR_A_CARGO", "DOCENTE")
+                        .authenticated()
 
-                        // 2a. POST de LECTURA (paginación/búsqueda): accesible para roles con acceso de lectura
-                        //     Estos endpoints usan POST solo para enviar filtros en el body, no para crear datos
+                        // 2a. POST de LECTURA (paginación/búsqueda): cualquier autenticado
                         .requestMatchers(HttpMethod.POST,
                                 "/api/v*/pedido-semana-bodega/find-all-recipes-pagined/**",
                                 "/api/v*/pedido-semana-bodega/search-recipes"
-                        ).hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR", "PROFESOR_A_CARGO", "DOCENTE")
+                        ).authenticated()
 
-                        // 2b. IMPORTAR EXCEL: procesamiento de archivo — mismos roles que creación
-                        .requestMatchers(HttpMethod.POST, "/api/v*/pedido-semana-bodega/importar-excel")
-                        .hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR", "PROFESOR_A_CARGO")
-
-                        // 2c. CREACIÓN (POST): Solo quienes diseñan el programa académico
-                        .requestMatchers(HttpMethod.POST, "/api/v*/pedido-semana-bodega/**", "/api/v*/detalle-pedido-semana-bodega/**")
-                        .hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR", "PROFESOR_A_CARGO")
-
-                        // 3. EDICIÓN (PUT / PATCH): Solo quienes diseñan el programa académico
-                        .requestMatchers(HttpMethod.PUT, "/api/v*/pedido-semana-bodega/**", "/api/v*/detalle-pedido-semana-bodega/**")
-                        .hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR", "PROFESOR_A_CARGO")
-
-                        .requestMatchers(HttpMethod.PATCH, "/api/v*/pedido-semana-bodega/**", "/api/v*/detalle-pedido-semana-bodega/**")
-                        .hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR", "PROFESOR_A_CARGO")
-
-                        // 4. ELIMINACIÓN (DELETE): Restringido a la jerarquía más alta
-                        .requestMatchers(HttpMethod.DELETE, "/api/v*/pedido-semana-bodega/**", "/api/v*/detalle-pedido-semana-bodega/**")
-                        .hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR")
+                        // Escritura de pedido semanal a bodega: dinámico (PEDIDO_SEMANAL_BODEGA) vía interceptor
+                        .requestMatchers(HttpMethod.POST, "/api/v*/pedido-semana-bodega/importar-excel").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/v*/pedido-semana-bodega/**", "/api/v*/detalle-pedido-semana-bodega/**").authenticated()
+                        .requestMatchers(HttpMethod.PUT, "/api/v*/pedido-semana-bodega/**", "/api/v*/detalle-pedido-semana-bodega/**").authenticated()
+                        .requestMatchers(HttpMethod.PATCH, "/api/v*/pedido-semana-bodega/**", "/api/v*/detalle-pedido-semana-bodega/**").authenticated()
+                        .requestMatchers(HttpMethod.DELETE, "/api/v*/pedido-semana-bodega/**", "/api/v*/detalle-pedido-semana-bodega/**").authenticated()
 
                         // ========================================
                         // ENDPOINTS DE BLOQUES HORARIOS
@@ -434,10 +393,10 @@ public class SpringSecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/v*/bloque-horario/**").permitAll()
 
                         // 2. Gestión (Crear, Editar, Borrar): Solo roles administrativos
-                        .requestMatchers(HttpMethod.POST, "/api/v*/bloque-horario/**").hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR")
-                        .requestMatchers(HttpMethod.PUT, "/api/v*/bloque-horario/**").hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR")
-                        .requestMatchers(HttpMethod.PATCH, "/api/v*/bloque-horario/**").hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR")
-                        .requestMatchers(HttpMethod.DELETE, "/api/v*/bloque-horario/**").hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR")
+                        .requestMatchers(HttpMethod.POST, "/api/v*/bloque-horario/**").authenticated()
+                        .requestMatchers(HttpMethod.PUT, "/api/v*/bloque-horario/**").authenticated()
+                        .requestMatchers(HttpMethod.PATCH, "/api/v*/bloque-horario/**").authenticated()
+                        .requestMatchers(HttpMethod.DELETE, "/api/v*/bloque-horario/**").authenticated()
 
                         // ========================================
                         // ENDPOINTS DE SEMANAS (CALENDARIO ACADÉMICO)
@@ -452,9 +411,9 @@ public class SpringSecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/v*/semanas/**").authenticated()
 
                         // 3. Modificación y eliminación: Solo roles administrativos
-                        .requestMatchers(HttpMethod.PUT, "/api/v*/semanas/**").hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR")
-                        .requestMatchers(HttpMethod.PATCH, "/api/v*/semanas/**").hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR")
-                        .requestMatchers(HttpMethod.DELETE, "/api/v*/semanas/**").hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR")
+                        .requestMatchers(HttpMethod.PUT, "/api/v*/semanas/**").authenticated()
+                        .requestMatchers(HttpMethod.PATCH, "/api/v*/semanas/**").authenticated()
+                        .requestMatchers(HttpMethod.DELETE, "/api/v*/semanas/**").authenticated()
 
                         // ========================================
                         // ENDPOINTS DE RESERVA SALA
@@ -471,18 +430,18 @@ public class SpringSecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/v*/sala/**").permitAll()
 
                         // 2. Gestión (Crear, Editar, Borrar): Solo roles administrativos
-                        .requestMatchers(HttpMethod.POST, "/api/v*/sala/**").hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR")
-                        .requestMatchers(HttpMethod.PUT, "/api/v*/sala/**").hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR")
-                        .requestMatchers(HttpMethod.PATCH, "/api/v*/sala/**").hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR")
-                        .requestMatchers(HttpMethod.DELETE, "/api/v*/sala/**").hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR")
+                        .requestMatchers(HttpMethod.POST, "/api/v*/sala/**").authenticated()
+                        .requestMatchers(HttpMethod.PUT, "/api/v*/sala/**").authenticated()
+                        .requestMatchers(HttpMethod.PATCH, "/api/v*/sala/**").authenticated()
+                        .requestMatchers(HttpMethod.DELETE, "/api/v*/sala/**").authenticated()
 
                         // ========================================
                         // ENDPOINTS DE SOLICITUDES
                         // ========================================
 
-                        // 1. LECTURA (GET): Todos los roles operativos y académicos
+                        // 1. LECTURA (GET): cualquier autenticado — la matriz controla el acceso real
                         .requestMatchers(HttpMethod.GET, "/api/v*/solicitudes/**", "/api/v*/solicitud/**")
-                        .hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR", "GESTOR_PEDIDOS", "PROFESOR_A_CARGO", "DOCENTE")
+                        .authenticated()
 
                         // 2a. POST de LECTURA (consulta semanal/consolidada): roles con acceso de lectura
                         //     Estos endpoints usan POST para enviar filtros de fecha, no para crear solicitudes
@@ -495,31 +454,22 @@ public class SpringSecurityConfig {
                                 "/api/v*/solicitudes/abastecimiento-bodega"
                         ).authenticated()
 
-                        // 2b. CREACIÓN (POST): Roles operativos que pueden solicitar insumos
-                        .requestMatchers(HttpMethod.POST, "/api/v*/solicitudes/**", "/api/v*/solicitud/**")
-                        .hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR", "GESTOR_PEDIDOS", "PROFESOR_A_CARGO")
-
-                        // 3. EDICIÓN COMPLETA (PUT) Y PARCIAL (PATCH): Modificar estados, observaciones, etc.
-                        .requestMatchers(HttpMethod.PUT, "/api/v*/solicitudes/**", "/api/v*/solicitud/**")
-                        .hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR", "GESTOR_PEDIDOS", "PROFESOR_A_CARGO")
-
-                        .requestMatchers(HttpMethod.PATCH, "/api/v*/solicitudes/**", "/api/v*/solicitud/**")
-                        .hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR", "GESTOR_PEDIDOS", "PROFESOR_A_CARGO")
-
-                        // 4. ELIMINACIÓN (DELETE): Solo jerarquía administrativa (borrado físico o soft-delete)
-                        .requestMatchers(HttpMethod.DELETE, "/api/v*/solicitudes/**", "/api/v*/solicitud/**")
-                        .hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR")
+                        // Escritura de solicitudes: dinámico (SOLICITUD / GESTION_SOLICITUDES) vía interceptor
+                        .requestMatchers(HttpMethod.POST, "/api/v*/solicitudes/**", "/api/v*/solicitud/**").authenticated()
+                        .requestMatchers(HttpMethod.PUT, "/api/v*/solicitudes/**", "/api/v*/solicitud/**").authenticated()
+                        .requestMatchers(HttpMethod.PATCH, "/api/v*/solicitudes/**", "/api/v*/solicitud/**").authenticated()
+                        .requestMatchers(HttpMethod.DELETE, "/api/v*/solicitudes/**", "/api/v*/solicitud/**").authenticated()
 
                         // ========================================
                         // ENDPOINTS DE GESTIÓN DE PEDIDOS (NUEVO)
                         // ========================================
-                        // 1. LECTURA (GET): Ver historial de pedidos y sus detalles
+                        // 1. LECTURA (GET): cualquier autenticado — la matriz controla el acceso real
                         .requestMatchers(HttpMethod.GET,
                         "/api/v*/pedido/**",
                         "/api/v*/detalle-pedido/**",
                         "/api/v*/pedido-solicitud/**"
-                        ).hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR", "GESTOR_PEDIDOS")
-                
+                        ).authenticated()
+
                         // Agregar el controlador de /api/v1/gestion-sistema
                         .requestMatchers(HttpMethod.GET, "/api/v1/gestion-sistema/**").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/v1/gestion-sistema/**").authenticated()
@@ -527,118 +477,95 @@ public class SpringSecurityConfig {
                         .requestMatchers(HttpMethod.PATCH, "/api/v1/gestion-sistema/**").authenticated()
                         .requestMatchers(HttpMethod.DELETE, "/api/v1/gestion-sistema/**").authenticated()
 
-                        // 1. LECTURA (GET): Ver historial de pedidos y sus detalles
+                        // 1. LECTURA (GET): cualquier autenticado — la matriz controla el acceso real
                         .requestMatchers(HttpMethod.GET,
                         "/api/v*/pedido/**",
                         "/api/v*/detalle-pedido/**",
                         "/api/v*/pedido-solicitud/**"
-                        ).hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR", "GESTOR_PEDIDOS")
+                        ).authenticated()
 
-                        // 2a. Endpoints de Gestión de Pedidos Diarios (vista bodega):
-                        //     ENCARGADO y ASISTENTE necesitan consultar entregas y preparar despacho
+                        // Escritura de pedidos: dinámico (GESTION_PEDIDOS / CONGLOMERADO_PEDIDOS /
+                        // GESTION_PEDIDOS_DIARIOS para entregas) vía interceptor
                         .requestMatchers(HttpMethod.POST,
                         "/api/v*/pedido/entregas-diarias",
                         "/api/v*/pedido/preparar-entrega"
-                        ).hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR", "GESTOR_PEDIDOS",
-                                     "ENCARGADO_BODEGA", "ASISTENTE_BODEGA")
-
-                        // 2b. CREACIÓN (POST): Consolidar nuevos pedidos masivos (resto de operaciones)
+                        ).authenticated()
                         .requestMatchers(HttpMethod.POST,
                         "/api/v*/pedido/**",
                         "/api/v*/detalle-pedido/**",
                         "/api/v*/pedido-solicitud/**"
-                        ).hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR", "GESTOR_PEDIDOS")
-
-                        // 3. EDICIÓN (PUT / PATCH): Modificar estados o corregir cantidades
+                        ).authenticated()
                         .requestMatchers(HttpMethod.PUT,
                         "/api/v*/pedido/**",
                         "/api/v*/detalle-pedido/**",
                         "/api/v*/pedido-solicitud/**"
-                        ).hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR", "GESTOR_PEDIDOS")
-
+                        ).authenticated()
                         .requestMatchers(HttpMethod.PATCH,
                         "/api/v*/pedido/**",
                         "/api/v*/detalle-pedido/**",
                         "/api/v*/pedido-solicitud/**"
-                        ).hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR", "GESTOR_PEDIDOS")
-
-                        // 4. ELIMINACIÓN (DELETE): Solo jerarquía administrativa alta
+                        ).authenticated()
                         .requestMatchers(HttpMethod.DELETE,
                         "/api/v*/pedido/**",
                         "/api/v*/detalle-pedido/**",
                         "/api/v*/pedido-solicitud/**"
-                        ).hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR")
+                        ).authenticated()
 
                         // ========================================
                         // ENDPOINTS DE GESTIÓN DE PROVEEDORES
                         // ========================================
 
-                        // 1. LECTURA (GET): Roles con acceso al módulo de compras/bodega
-                        .requestMatchers(HttpMethod.GET, "/api/v1/proveedor/**")
-                        .hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR", "GESTOR_PEDIDOS", "ENCARGADO_BODEGA")
+                        // 1. LECTURA (GET): cualquier autenticado — la matriz controla el acceso real
+                        .requestMatchers(HttpMethod.GET, "/api/v1/proveedor/**").authenticated()
 
-                        // 2. CREACIÓN (POST): Administradores y gestores de compras
-                        .requestMatchers(HttpMethod.POST, "/api/v1/proveedor/**")
-                        .hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR", "GESTOR_PEDIDOS")
-
-                        // 3. MODIFICACIÓN (PATCH): Administradores y gestores de compras
-                        .requestMatchers(HttpMethod.PATCH, "/api/v1/proveedor/**")
-                        .hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR", "GESTOR_PEDIDOS")
-
-                        // 4. ELIMINACIÓN (DELETE): Solo jerarquía alta
-                        .requestMatchers(HttpMethod.DELETE, "/api/v1/proveedor/**")
-                        .hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR")
+                        // Escritura de proveedores: dinámico (GESTION_PROVEEDORES) vía interceptor
+                        .requestMatchers(HttpMethod.POST, "/api/v1/proveedor/**").authenticated()
+                        .requestMatchers(HttpMethod.PATCH, "/api/v1/proveedor/**").authenticated()
+                        .requestMatchers(HttpMethod.DELETE, "/api/v1/proveedor/**").authenticated()
 
                         // ========================================
                         // ENDPOINTS DE CONFIGURACIÓN DE ABASTECIMIENTO POR CATEGORÍA
                         // ========================================
 
-                        // Lectura: roles con acceso al módulo de inventario/proveedores
-                        .requestMatchers(HttpMethod.GET, "/api/v1/categoria-abastecimiento/**")
-                        .hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR", "GESTOR_PEDIDOS", "ENCARGADO_BODEGA")
+                        // Lectura: cualquier autenticado — la matriz controla el acceso real
+                        .requestMatchers(HttpMethod.GET, "/api/v1/categoria-abastecimiento/**").authenticated()
 
-                        // Actualización: administradores y gestores de pedidos
-                        .requestMatchers(HttpMethod.PUT, "/api/v1/categoria-abastecimiento/**")
-                        .hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR", "GESTOR_PEDIDOS")
+                        // Actualización: dinámico (GESTION_PROVEEDORES / GESTION_PEDIDOS / INVENTARIO) vía interceptor
+                        .requestMatchers(HttpMethod.PUT, "/api/v1/categoria-abastecimiento/**").authenticated()
 
                         // ========================================
                         // ENDPOINTS DE ÓRDENES DE PEDIDO (Tarea #13)
                         // ========================================
 
-                        // 1. LECTURA (GET): Roles con acceso al módulo de pedidos/bodega
-                        .requestMatchers(HttpMethod.GET, "/api/v1/orden-pedido/**")
-                        .hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR", "GESTOR_PEDIDOS", "ENCARGADO_BODEGA")
+                        // 1. LECTURA (GET): cualquier autenticado — la matriz controla el acceso real
+                        .requestMatchers(HttpMethod.GET, "/api/v1/orden-pedido/**").authenticated()
 
-                        // 2. CREACIÓN (POST): Administradores y gestores de pedidos
-                        .requestMatchers(HttpMethod.POST, "/api/v1/orden-pedido/**")
-                        .hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR", "GESTOR_PEDIDOS")
-
-                        // 3a. Marcar detalles como entregados: también accesible por bodega
-                        .requestMatchers(HttpMethod.PATCH, "/api/v1/orden-pedido/detalles/entregar")
-                        .hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR", "GESTOR_PEDIDOS", "ENCARGADO_BODEGA")
-
-                        // 3b. MODIFICACIÓN (PATCH): Administradores y gestores de pedidos
-                        .requestMatchers(HttpMethod.PATCH, "/api/v1/orden-pedido/**")
-                        .hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR", "GESTOR_PEDIDOS")
-
-                        // 4. ELIMINACIÓN (DELETE): Solo jerarquía alta
-                        .requestMatchers(HttpMethod.DELETE, "/api/v1/orden-pedido/**")
-                        .hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR")
+                        // Escritura de órdenes de pedido: dinámico (GESTION_PEDIDOS / GESTION_PROVEEDORES) vía interceptor
+                        .requestMatchers(HttpMethod.POST, "/api/v1/orden-pedido/**").authenticated()
+                        .requestMatchers(HttpMethod.PATCH, "/api/v1/orden-pedido/detalles/entregar").authenticated()
+                        .requestMatchers(HttpMethod.PATCH, "/api/v1/orden-pedido/**").authenticated()
+                        .requestMatchers(HttpMethod.DELETE, "/api/v1/orden-pedido/**").authenticated()
 
                         // ========================================
                         // ENDPOINTS DE STOCK DISPONIBLE (sobrantes bodega)
                         // ========================================
-                        .requestMatchers(HttpMethod.GET, "/api/v1/stock-disponible/**")
-                        .hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR", "ENCARGADO_BODEGA")
+                        // Lectura: cualquier autenticado — la matriz controla el acceso real
+                        .requestMatchers(HttpMethod.GET, "/api/v1/stock-disponible/**").authenticated()
 
                         .requestMatchers(HttpMethod.POST, "/api/v1/stock-disponible/**")
-                        .hasAnyRole("ADMINISTRADOR", "CO_ADMINISTRADOR", "ENCARGADO_BODEGA")
+                        .authenticated() // dinámico (BODEGA_TRANSITO) vía interceptor
 
                         // ========================================
                         // ENDPOINTS DE NOTIFICACIONES (resumen unificado del header)
                         // Accesible para cualquier usuario autenticado; el servicio filtra por rol.
                         // ========================================
                         .requestMatchers(HttpMethod.GET, "/api/v1/notificacion/**").authenticated()
+
+                        // ========================================
+                        // ENDPOINTS DE SOPORTE (reporte de errores desde el header)
+                        // Cualquier usuario autenticado puede enviar un ticket.
+                        // ========================================
+                        .requestMatchers(HttpMethod.POST, "/api/v1/soporte").authenticated()
 
                         // ========================================
                         // RESTO DE ENDPOINTS

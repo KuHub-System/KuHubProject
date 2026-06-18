@@ -1659,6 +1659,9 @@ const BodegaTransitoPage: React.FC = () => {
   const { canRead: ped_Leer, canCreate: ped_Crear } = useModulePermission('GESTION_PEDIDOS_DIARIOS');
   const { canCreate: catPuedeCrear } = useModulePermission('GESTION_CATEGORIAS');
   const { canCreate: uniPuedeCrear } = useModulePermission('GESTION_UNIDADES');
+  // Acciones especiales de bodega (módulos individuales por botón)
+  const { canRead: bodControlMasivo }  = useModulePermission('BOD_CONTROL_MASIVO');
+  const { canRead: bodAbastecimiento } = useModulePermission('BOD_ABASTECIMIENTO');
 
   const toast = useToast();
   const history = useHistory();
@@ -2378,9 +2381,9 @@ const BodegaTransitoPage: React.FC = () => {
               transition={{ duration: 0.3 }}
               className="space-y-6 pt-6 pb-10"
             >
-              {(bod_Editar || bod_Crear || catPuedeCrear || uniPuedeCrear) && (
+              {(bodControlMasivo || bod_Crear || catPuedeCrear || uniPuedeCrear || bodAbastecimiento) && (
                 <div className="flex flex-wrap items-center gap-3 px-4 mb-2 mt-2">
-                  {bod_Editar && (
+                  {bodControlMasivo && (
                     <Button
                       color="secondary"
                       variant="solid"
@@ -2428,6 +2431,7 @@ const BodegaTransitoPage: React.FC = () => {
                       <Icon icon="lucide:scale" className="text-default-600" width={20} />
                     </Button>
                   )}
+                  {bodAbastecimiento && (
                   <Button
                     isIconOnly
                     variant="flat"
@@ -2438,6 +2442,7 @@ const BodegaTransitoPage: React.FC = () => {
                   >
                     <Icon icon="lucide:boxes" className="text-default-600" width={20} />
                   </Button>
+                  )}
                   <Button
                     isIconOnly
                     variant="flat"
@@ -2702,8 +2707,8 @@ const BodegaTransitoPage: React.FC = () => {
                   {(item) => (
                     <TableRow
                       key={item.idBodegaTransito}
-                      className="cursor-pointer hover:bg-default-50 transition-colors"
-                      onClick={() => handleRowClick(item)}
+                      className={`${bod_Editar ? 'cursor-pointer' : 'cursor-default'} hover:bg-default-50 transition-colors`}
+                      onClick={() => bod_Editar && handleRowClick(item)}
                       style={{
                         contentVisibility: 'auto',
                         containIntrinsicSize: '70px 70px'
@@ -3068,7 +3073,7 @@ const BodegaTransitoPage: React.FC = () => {
             <ControlMasivoBodegaModal
               onClose={onClose}
               initialItems={bulkRetryItems}
-              puedeAccederAbastecimiento={bod_Crear || bod_Editar}
+              puedeAccederAbastecimiento={bodAbastecimiento}
               onOpenGestionAbastecimiento={onAbastecimientoConfigOpen}
               onProcessComplete={(data, retryItems) => {
                 setBulkResult(data);

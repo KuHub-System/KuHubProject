@@ -3,6 +3,7 @@ package KuHub.modules.gestion_inventario.controller;
 import KuHub.config.security.service.DynamicPermissionService;
 import KuHub.modules.gestion_inventario.dtos.request.RegistrarDisponibleDTO;
 import KuHub.modules.gestion_inventario.dtos.request.RestarDisponibleDTO;
+import KuHub.modules.gestion_inventario.dtos.response.record.DisponibleRealItem;
 import KuHub.modules.gestion_inventario.dtos.response.record.RestarDisponibleResult;
 import KuHub.modules.gestion_inventario.dtos.response.record.StockDisponiblePage;
 import KuHub.modules.gestion_inventario.services.StockDisponibleService;
@@ -128,6 +129,30 @@ public class StockDisponibleController {
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("error", "Error al listar stock disponible", "message", e.getMessage()));
+        }
+    }
+
+    /**
+     * Lista el disponible real por producto, paginado: (inventario + bodega de tránsito) − demanda
+     * comprometida de solicitudes EN_PEDIDO ya abastecidas − reservas activas EN_PEDIDO. Es el mismo
+     * cálculo de la columna "Disponible" de Generar OP / "Por Pedido" del Conglomerado: representa el
+     * stock libre, no asociado a ninguna solicitud.
+     * El frontend filtra por nombre y scrollea (sin paginación).
+     * ✅ En uso: Consumido por StockDisponiblesModal (pestaña "Disponible Real") en inventario.tsx y bodega-transito.tsx.
+     * Requiere permiso de LECTURA en el módulo INVENTARIO.
+     */
+    @GetMapping("/disponible-real")
+    public ResponseEntity<?> listarDisponibleReal(Authentication authentication) {
+        try {
+            if (!dynamicPermissionService.check(authentication, "INVENTARIO", "read")) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(Map.of("message", "No tiene permisos para ver el disponible real"));
+            }
+            List<DisponibleRealItem> resultado = stockDisponibleService.listarDisponibleReal();
+            return ResponseEntity.status(HttpStatus.OK).body(resultado);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Error al listar el disponible real", "message", e.getMessage()));
         }
     }
 }

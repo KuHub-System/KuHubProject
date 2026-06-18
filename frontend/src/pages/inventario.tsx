@@ -147,9 +147,13 @@ const InventarioPage: React.FC = () => {
   const { user } = useAuth();
   const esAdministrador = user?.rol === 'Administrador';
   // ── Permisos granulares del módulo INVENTARIO ──
-  const { canRead: invPuedeLeer, canCreate: invPuedeCrear, canUpdate: invPuedeEditar, canDelete: invPuedeEliminar } = useModulePermission('INVENTARIO');
+  const { canCreate: invPuedeCrear, canUpdate: invPuedeEditar, canDelete: invPuedeEliminar } = useModulePermission('INVENTARIO');
   const { canCreate: catPuedeCrear } = useModulePermission('GESTION_CATEGORIAS');
   const { canCreate: uniPuedeCrear } = useModulePermission('GESTION_UNIDADES');
+  // Acciones especiales de inventario (módulos individuales por botón)
+  const { canRead: invControlMasivo }  = useModulePermission('INV_CONTROL_MASIVO');
+  const { canRead: invSyncExcel }      = useModulePermission('INV_SYNC_EXCEL');
+  const { canRead: invAbastecimiento } = useModulePermission('INV_ABASTECIMIENTO');
   const [productos, setProductos] = React.useState<IProducto[]>([]);
   const [filteredProductos, setFilteredProductos] = React.useState<IProducto[]>([]);
   const [categoriasFull, setCategoriasFull] = React.useState<{ id: number, nombre: string }[]>([]);
@@ -873,7 +877,7 @@ const InventarioPage: React.FC = () => {
         className="space-y-6"
       >
         <div className="flex flex-wrap items-center gap-3 px-4 mt-8 mb-4">
-          {invPuedeCrear && (
+          {invControlMasivo && (
           <Button
             color="secondary"
             variant="solid"
@@ -885,7 +889,7 @@ const InventarioPage: React.FC = () => {
             Control Masivo
           </Button>
           )}
-          {invPuedeCrear && (
+          {invSyncExcel && (
           <>
             <Button
               color="success"
@@ -942,6 +946,7 @@ const InventarioPage: React.FC = () => {
             <Icon icon="lucide:scale" className="text-default-600" width={20} />
           </Button>
           )}
+          {invAbastecimiento && (
           <Button
             isIconOnly
             variant="flat"
@@ -952,6 +957,7 @@ const InventarioPage: React.FC = () => {
           >
             <Icon icon="lucide:boxes" className="text-default-600" width={20} />
           </Button>
+          )}
           <Button
             isIconOnly
             variant="flat"
@@ -1350,7 +1356,7 @@ const InventarioPage: React.FC = () => {
                 onClose={onClose}
                 onNuevoProducto={handleNuevoProducto}
                 initialItems={bulkRetryItems}
-                puedeAccederAbastecimiento={invPuedeLeer}
+                puedeAccederAbastecimiento={invAbastecimiento}
                 onOpenGestionAbastecimiento={onAbastecimientoConfigOpen}
                 onProcessComplete={(data, retryItems) => {
                   setBulkResult(data);

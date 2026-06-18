@@ -118,7 +118,11 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar, onLogout }) =>
       if (item.pageId === 'gestion-pedidos' && solicitudesEnPedido) return false;
       if (isAdmin) return true;
       const moduleKey = PAGE_TO_MODULE[item.pageId];
-      return moduleKey ? canAccess(moduleKey, 'read') : false;
+      if (!moduleKey) return false;
+      // Si es un array, basta con que CUALQUIERA de los módulos tenga lectura (OR-gate).
+      return Array.isArray(moduleKey)
+        ? moduleKey.some(k => canAccess(k, 'read'))
+        : canAccess(moduleKey, 'read');
     })
   })).filter(category => category.items.length > 0);
 

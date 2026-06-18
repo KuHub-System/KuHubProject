@@ -2,6 +2,7 @@ package KuHub.modules.gestion_inventario.services;
 
 import KuHub.modules.gestion_inventario.dtos.request.RegistrarDisponibleDTO;
 import KuHub.modules.gestion_inventario.dtos.request.RestarDisponibleDTO;
+import KuHub.modules.gestion_inventario.dtos.response.record.DisponibleRealItem;
 import KuHub.modules.gestion_inventario.dtos.response.record.RestarDisponibleResult;
 import KuHub.modules.gestion_inventario.dtos.response.record.StockDisponiblePage;
 
@@ -16,6 +17,9 @@ public interface StockDisponibleService {
 
     /** Retorna página paginada de stock disponible filtrada por tipo (INVENTARIO | BODEGA_TRANSITO). */
     StockDisponiblePage listar(String tipo, int page);
+
+    /** Retorna todos los productos con su disponible real (inv + tránsito − comprometido − reservas), sin paginar. */
+    List<DisponibleRealItem> listarDisponibleReal();
 
     /** Suma el disponible activo por producto (solo los que tienen > 0), para un tipo dado. */
     Map<Integer, BigDecimal> consultarDisponiblePorProductos(List<Integer> idsProducto, String tipo);

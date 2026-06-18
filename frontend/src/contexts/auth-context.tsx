@@ -250,6 +250,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(userData);
       // El efecto unificado se encargará de matchear el rol y luego poner isLoading en false
 
+      // Reactivar el badge "1" de soporte para esta nueva sesión.
+      sessionStorage.removeItem('kuhub_soporte_visto');
+
       return true;
     } catch (error) {
       setIsLoading(false);

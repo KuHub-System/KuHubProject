@@ -81,4 +81,66 @@ public interface StockDisponibleRepository extends JpaRepository<StockDisponible
             ORDER BY sd.fechaRegistro ASC, sd.idStockDisponible ASC
             """)
     List<StockDisponible> findActivosByProductoAndTipoFifo(@Param("idProducto") Integer idProducto, @Param("tipo") String tipo);
+
+    /**
+     * Disponible real por producto = (inventario + bodega de tránsito) − demanda comprometida
+     * (solicitudes EN_PEDIDO ya abastecidas) − reservado (a solicitudes EN_PEDIDO). Devuelve TODOS
+     * los productos con stock físico o demanda/reservas (sin paginar; el frontend filtra y scrollea).
+     * Mismo cálculo que la columna "Disponible" de Generar OP / "Por Pedido" del Conglomerado.
+     * [0] nombre_producto
+     * [1] nombre_categoria
+     * [2] abreviatura
+     * [3] inventario           (stock actual en inventario)
+     * [4] bodega_transito      (stock actual en bodega de tránsito)
+     * [5] stock_fisico         (inventario + bodega de tránsito)
+     * [6] demanda_comprometida (Σ demanda de solicitudes EN_PEDIDO abastecidas)
+     * [7] reservado            (Σ reservas activas de solicitudes EN_PEDIDO)
+     * [8] disponible           (stock_fisico − demanda_comprometida − reservado; puede ser negativo)
+     */
+    @Query(value = """
+            WITH abastecidas AS (
+                SELECT DISTINCT dops.id_solicitud, dop.id_producto
+                FROM detalle_orden_pedido_solicitud dops
+                JOIN detalle_orden_pedido dop ON dop.id_detalle_orden_pedido = dops.id_detalle_orden_pedido
+                JOIN solicitud s              ON s.id_solicitud              = dops.id_solicitud
+                WHERE dops.activo = TRUE AND dop.activo = TRUE AND dop.entregado = TRUE
+                  AND s.estado_solicitud = 'EN_PEDIDO'::estado_solicitud_type
+            ),
+            demanda AS (
+                SELECT ds.id_producto, SUM(ds.cant_producto_solicitud) AS demanda
+                FROM abastecidas a
+                JOIN detalle_solicitud ds ON ds.id_solicitud = a.id_solicitud AND ds.id_producto = a.id_producto
+                GROUP BY ds.id_producto
+            ),
+            reservas AS (
+                SELECT r.id_producto, SUM(r.cantidad) AS reservado
+                FROM reserva_stock_solicitud r
+                JOIN solicitud s ON s.id_solicitud = r.id_solicitud
+                WHERE r.activo = TRUE AND s.estado_solicitud = 'EN_PEDIDO'::estado_solicitud_type
+                GROUP BY r.id_producto
+            )
+            SELECT
+                p.nombre_producto,                                                  -- [0]
+                c.nombre_categoria,                                                 -- [1]
+                um.abreviatura,                                                     -- [2]
+                COALESCE(i.stock, 0),                                               -- [3]
+                COALESCE(bt.stock, 0),                                              -- [4]
+                COALESCE(i.stock, 0) + COALESCE(bt.stock, 0),                       -- [5]
+                COALESCE(d.demanda, 0),                                             -- [6]
+                COALESCE(rv.reservado, 0),                                          -- [7]
+                COALESCE(i.stock, 0) + COALESCE(bt.stock, 0)
+                    - COALESCE(d.demanda, 0) - COALESCE(rv.reservado, 0)            -- [8]
+            FROM inventario i
+            JOIN producto p       ON p.id_producto  = i.id_producto
+            JOIN categoria c      ON c.id_categoria = p.id_categoria
+            JOIN unidad_medida um ON um.id_unidad   = p.id_unidad
+            LEFT JOIN bodega_transito bt ON bt.id_inventario = i.id_inventario AND bt.activo = TRUE
+            LEFT JOIN demanda d          ON d.id_producto    = i.id_producto
+            LEFT JOIN reservas rv        ON rv.id_producto   = i.id_producto
+            WHERE i.activo = TRUE
+              AND (COALESCE(i.stock, 0) + COALESCE(bt.stock, 0) > 0
+                   OR COALESCE(d.demanda, 0) + COALESCE(rv.reservado, 0) > 0)
+            ORDER BY p.nombre_producto ASC
+            """, nativeQuery = true)
+    List<Object[]> findDisponibleReal();
 }

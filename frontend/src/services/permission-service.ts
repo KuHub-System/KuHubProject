@@ -12,8 +12,8 @@
 
 import api from '../config/Axios';
 import {
-  AccessLevel,
   ModuleKey,
+  ModulePermissions,
   PermisoMatrizDTO,
   PermisoRolRequestDTO,
   RolePermission,
@@ -54,15 +54,6 @@ const normalizeRoleName = (name: string): string => DB_TO_DISPLAY_ROLE[name] ?? 
 // ── Helpers de mapeo ──────────────────────────────────────────────────────────
 
 /**
- * Convierte el nivelAcceso del backend al AccessLevel del frontend.
- */
-const mapBackendToAccessLevel = (dto: PermisoMatrizDTO): AccessLevel => {
-  if (dto.puedeCrear || dto.puedeActualizar || dto.puedeEliminar) return 'write';
-  if (dto.puedeLeer) return 'read';
-  return 'none';
-};
-
-/**
  * Convierte el codigoModulo del backend a ModuleKey.
  * Fallback al propio código si no existe en el enum.
  */
@@ -81,7 +72,7 @@ export const permissionService = {
     const response = await api.get<Record<string, PermisoMatrizDTO[]>>('/permisos/matrix');
     matrixCache = response.data;
 
-    // Pivotar: de "agrupado por módulo" a "agrupado por rol"
+    // Pivotar: de "agrupado por módulo" a "agrupado por rol" (CRUD granular completo)
     const roleGroups: Record<string, RolePermission> = {};
 
     Object.values(matrixCache).flat().forEach((dto) => {
@@ -91,11 +82,16 @@ export const permissionService = {
       if (!roleGroups[roleKey]) {
         roleGroups[roleKey] = {
           role: roleKey,
-          permissions: {} as Record<ModuleKey, AccessLevel>,
+          permissions: {} as Record<ModuleKey, ModulePermissions>,
         };
       }
 
-      roleGroups[roleKey].permissions[pageKey] = mapBackendToAccessLevel(dto);
+      roleGroups[roleKey].permissions[pageKey] = {
+        puedeLeer:       !!dto.puedeLeer,
+        puedeCrear:      !!dto.puedeCrear,
+        puedeActualizar: !!dto.puedeActualizar,
+        puedeEliminar:   !!dto.puedeEliminar,
+      };
     });
 
     return Object.values(roleGroups);
@@ -123,29 +119,28 @@ export const permissionService = {
       // Administrador siempre tiene control total — nunca se modifica vía esta función
       if (rp.role === 'Administrador') continue;
 
-      for (const [pageKey, access] of Object.entries(rp.permissions)) {
+      for (const [pageKey, perms] of Object.entries(rp.permissions)) {
         const cachedDTO = cacheMap.get(`${rp.role}-${pageKey}`);
         if (!cachedDTO) continue; // módulo no existe en BD → ignorar
 
-        const intendedWrite = access === 'write';
-        const intendedRead  = access === 'read' || intendedWrite;
-
-        const currentRead  = cachedDTO.puedeLeer;
-        const currentWrite = cachedDTO.puedeCrear || cachedDTO.puedeActualizar || cachedDTO.puedeEliminar;
+        const puedeCrear      = !!perms.puedeCrear;
+        const puedeActualizar = !!perms.puedeActualizar;
+        const puedeEliminar   = !!perms.puedeEliminar;
+        // Cualquier acción de escritura implica lectura.
+        const puedeLeer       = !!perms.puedeLeer || puedeCrear || puedeActualizar || puedeEliminar;
 
         const changed =
-          intendedRead  !== currentRead ||
-          intendedWrite !== currentWrite;
+          puedeLeer       !== cachedDTO.puedeLeer ||
+          puedeCrear      !== cachedDTO.puedeCrear ||
+          puedeActualizar !== cachedDTO.puedeActualizar ||
+          puedeEliminar   !== cachedDTO.puedeEliminar;
 
         if (!changed) continue;
 
         const payload: PermisoRolRequestDTO = {
           idRol:           cachedDTO.idRol,
           idModulo:        cachedDTO.idModulo,
-          puedeLeer:       intendedRead,
-          puedeCrear:      intendedWrite,
-          puedeActualizar: intendedWrite,
-          puedeEliminar:   intendedWrite,
+          puedeLeer, puedeCrear, puedeActualizar, puedeEliminar,
         };
 
         // Usar siempre el endpoint upsert (POST) para evitar problemas con PUT en proxies
@@ -163,10 +158,10 @@ export const permissionService = {
    * Obtiene los permisos de un rol específico como mapa ModuleKey → AccessLevel.
    * Útil para cargar los permisos del usuario activo sin la matriz completa.
    */
-  getPermissionsForRole: async (nombreRol: string): Promise<Record<ModuleKey, AccessLevel>> => {
+  getPermissionsForRole: async (nombreRol: string): Promise<Record<ModuleKey, ModulePermissions>> => {
     const all = await permissionService.getPermissions();
     const found = all.find((p) => p.role === nombreRol);
-    return found?.permissions ?? ({} as Record<ModuleKey, AccessLevel>);
+    return found?.permissions ?? ({} as Record<ModuleKey, ModulePermissions>);
   },
 
   /** Restaura todos los permisos a los valores predeterminados del sistema. */

@@ -42,8 +42,12 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     if (isAdmin) return true;
 
     if (pageId) {
-      const moduleKey     = PAGE_TO_MODULE[pageId];
-      const dynamicAccess = moduleKey ? canAccess(moduleKey, 'read') : false;
+      const moduleKey = PAGE_TO_MODULE[pageId];
+      const dynamicAccess = moduleKey
+        ? (Array.isArray(moduleKey)
+            ? moduleKey.some(k => canAccess(k, 'read'))
+            : canAccess(moduleKey, 'read'))
+        : false;
       logger.log(`[ProtectedRoute] pageId="${pageId}" dynamic=${dynamicAccess}`);
       return dynamicAccess;
     }

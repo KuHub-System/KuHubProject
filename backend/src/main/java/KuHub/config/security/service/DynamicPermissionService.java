@@ -46,10 +46,11 @@ public class DynamicPermissionService {
         try {
             if (authentication == null || !authentication.isAuthenticated()) return false;
 
-            // ADMINISTRADOR siempre tiene acceso total sin consultar la BD
+            // Solo ADMINISTRADOR tiene acceso total sin consultar la BD.
+            // CO_ADMINISTRADOR NO es bypass: respeta la matriz permiso_rol
+            // (sin GESTION_ROLES ni ADMIN_SISTEMA), igual que cualquier otro rol.
             boolean isAdmin = authentication.getAuthorities().stream()
-                    .anyMatch(a -> a.getAuthority().equals("ROLE_ADMINISTRADOR")
-                               || a.getAuthority().equals("ROLE_CO_ADMINISTRADOR"));
+                    .anyMatch(a -> a.getAuthority().equals("ROLE_ADMINISTRADOR"));
             if (isAdmin) return true;
 
             // Extraer nombre del rol desde la authority del JWT
@@ -74,15 +75,34 @@ public class DynamicPermissionService {
         }
     }
 
+    /**
+     * Igual que {@link #check}, pero acepta varios módulos candidatos.
+     * Retorna true si el usuario tiene el nivel requerido en AL MENOS UNO de ellos.
+     *
+     * Útil para endpoints del backend que son compartidos por varios módulos del
+     * frontend (ej: /api/v1/pedido lo usan GESTION_PEDIDOS y CONGLOMERADO_PEDIDOS).
+     */
+    @Transactional(readOnly = true)
+    public boolean checkAny(Authentication authentication, java.util.List<String> moduleCodes, String level) {
+        if (moduleCodes == null || moduleCodes.isEmpty()) return false;
+        for (String moduleCode : moduleCodes) {
+            if (check(authentication, moduleCode, level)) return true;
+        }
+        return false;
+    }
+
     private boolean evaluateLevel(PermisoRol permiso, String level) {
         boolean canWrite = Boolean.TRUE.equals(permiso.getPuedeCrear())
                 || Boolean.TRUE.equals(permiso.getPuedeActualizar())
                 || Boolean.TRUE.equals(permiso.getPuedeEliminar());
 
         return switch (level.toLowerCase()) {
-            case "write" -> canWrite;
-            case "read"  -> Boolean.TRUE.equals(permiso.getPuedeLeer()) || canWrite;
-            default      -> false;
+            case "write"  -> canWrite;
+            case "create" -> Boolean.TRUE.equals(permiso.getPuedeCrear());
+            case "update" -> Boolean.TRUE.equals(permiso.getPuedeActualizar());
+            case "delete" -> Boolean.TRUE.equals(permiso.getPuedeEliminar());
+            case "read"   -> Boolean.TRUE.equals(permiso.getPuedeLeer()) || canWrite;
+            default       -> false;
         };
     }
 }

@@ -8,6 +8,7 @@ import { usePageTitleContext } from '../contexts/PageTitleContext';
 import { usePeriodoSemana } from '../contexts/periodo-semana-context';
 import { useSistemaConfig } from '../contexts/sistema-config-context';
 import { obtenerResumenNotificaciones, INotificacionSemana, INotificacionEntrega } from '../services/notification-service';
+import SoporteModal from './modals/SoporteModal';
 
 const LOGO_URL = new URL('./assets/KuHubLogoWBG.png', import.meta.url).href;
 
@@ -17,6 +18,9 @@ interface HeaderProps {
 }
 
 const POLL_MS = 60_000;
+
+/** Clave en sessionStorage que indica que el usuario ya abrió el panel de soporte en esta sesión. */
+const SOPORTE_VISTO_KEY = 'kuhub_soporte_visto';
 
 const Header: React.FC<HeaderProps> = ({ toggleSidebar, onLogout }) => {
   const { user, logout } = useAuth();
@@ -33,6 +37,18 @@ const Header: React.FC<HeaderProps> = ({ toggleSidebar, onLogout }) => {
   const [notificacionesEntregas, setNotificacionesEntregas] = React.useState<INotificacionEntrega[]>([]);
   const [panelOpen, setPanelOpen] = React.useState(false);
   const panelRef = React.useRef<HTMLDivElement>(null);
+
+  // Soporte: el badge "1" se muestra en cada inicio de sesión hasta que el usuario abra el modal.
+  const [soporteOpen, setSoporteOpen] = React.useState(false);
+  const [soporteVisto, setSoporteVisto] = React.useState<boolean>(
+    () => sessionStorage.getItem(SOPORTE_VISTO_KEY) === '1'
+  );
+
+  const handleAbrirSoporte = () => {
+    setSoporteOpen(true);
+    setSoporteVisto(true);
+    sessionStorage.setItem(SOPORTE_VISTO_KEY, '1');
+  };
 
   const totalPendientes = notificaciones.reduce((acc, n) => acc + n.cantidadPendientes, 0);
   const totalAceptadasSinConsolidar = !solicitudesEnPedido
@@ -399,6 +415,26 @@ const Header: React.FC<HeaderProps> = ({ toggleSidebar, onLogout }) => {
             )}
           </div>
 
+          {/* Botón de soporte */}
+          <div className="relative">
+            <Button
+              isIconOnly
+              variant="light"
+              size="sm"
+              aria-label="Soporte"
+              className="text-default-500 hover:text-primary transition-colors"
+              onPress={handleAbrirSoporte}
+            >
+              <Icon icon="lucide:life-buoy" width={20} />
+            </Button>
+
+            {!soporteVisto && (
+              <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-0.5 bg-danger text-white text-[10px] font-bold rounded-full flex items-center justify-center leading-none pointer-events-none">
+                1
+              </span>
+            )}
+          </div>
+
           {/* Toggle de tema */}
           <Button
             isIconOnly
@@ -458,6 +494,9 @@ const Header: React.FC<HeaderProps> = ({ toggleSidebar, onLogout }) => {
           )}
         </div>
       </div>
+
+      {/* Modal de soporte / reporte de errores */}
+      <SoporteModal isOpen={soporteOpen} onOpenChange={setSoporteOpen} />
     </header>
   );
 };

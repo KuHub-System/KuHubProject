@@ -2,6 +2,7 @@ package KuHub.modules.gestion_inventario.services;
 
 import KuHub.modules.gestion_inventario.dtos.request.RegistrarDisponibleDTO;
 import KuHub.modules.gestion_inventario.dtos.request.RestarDisponibleDTO;
+import KuHub.modules.gestion_inventario.dtos.response.record.DisponibleRealItem;
 import KuHub.modules.gestion_inventario.dtos.response.record.RestarDisponibleResult;
 import KuHub.modules.gestion_inventario.dtos.response.record.StockDisponiblePage;
 import KuHub.modules.gestion_inventario.entity.Producto;
@@ -60,6 +61,14 @@ public class StockDisponibleServiceImpl implements StockDisponibleService {
         PaginationUtils.PagingResult paging = PaginationUtils.buildPaging(page, total);
         List<Object[]> rows = stockDisponibleRepository.findByTipoPaginado(tipo, paging.limit(), paging.offset());
         return StockDisponiblePage.of(rows, paging, total);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<DisponibleRealItem> listarDisponibleReal() {
+        return stockDisponibleRepository.findDisponibleReal().stream()
+                .map(DisponibleRealItem::fromRow)
+                .toList();
     }
 
     @Override
