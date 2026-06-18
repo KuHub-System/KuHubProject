@@ -8,15 +8,21 @@ Sistema de gestión de bodega e inventario desarrollado para la escuela de Gastr
 
 ## Tabla de contenidos
 
-- [Descripción general](#descripción-general)
-- [Stack tecnológico](#stack-tecnológico)
-- [Arquitectura](#arquitectura)
+- [Descripción](#descripción)
+- [Tecnologías utilizadas](#tecnologías-utilizadas)
+- [Requisitos previos](#requisitos-previos)
+- [Instalación](#instalación)
+- [Configuración](#configuración)
+- [Uso / Ejecución](#uso--ejecución)
+- [Arquitectura del proyecto](#arquitectura-del-proyecto)
+- [Base de datos](#base-de-datos)
+- [Documentación de la API](#documentación-de-la-api)
+- [Estructura del equipo / Autores](#estructura-del-equipo--autores)
+- [Tests / Pruebas](#tests--pruebas)
+- [Licencia](#licencia)
 - [Módulos del sistema](#módulos-del-sistema)
 - [Roles y permisos](#roles-y-permisos)
 - [Flujos de negocio principales](#flujos-de-negocio-principales)
-- [Requisitos previos](#requisitos-previos)
-- [Configuración local](#configuración-local)
-- [Compilación y validación](#compilación-y-validación)
 - [Despliegue (CI/CD)](#despliegue-cicd)
 - [Variables de entorno y secretos](#variables-de-entorno-y-secretos)
 - [Estructura del proyecto](#estructura-del-proyecto)
@@ -25,7 +31,7 @@ Sistema de gestión de bodega e inventario desarrollado para la escuela de Gastr
 
 ---
 
-## Descripción general
+## Descripción
 
 KuHub centraliza la operación logística de una cocina de enseñanza:
 
@@ -38,7 +44,7 @@ Todos los datos fluyen por una API REST con autenticación JWT y un sistema de p
 
 ---
 
-## Stack tecnológico
+## Tecnologías utilizadas
 
 ### Frontend
 
@@ -88,7 +94,132 @@ Todos los datos fluyen por una API REST con autenticación JWT y un sistema de p
 
 ---
 
-## Arquitectura
+## Requisitos previos
+
+### Backend
+
+- **JDK 21** — se recomienda Microsoft OpenJDK 21 LTS o equivalente
+- **Maven** — no es necesario instalarlo globalmente; usar el wrapper `mvnw` / `mvnw.cmd` incluido en la raíz del proyecto
+- **PostgreSQL 16** — instancia corriendo y accesible con las credenciales configuradas
+
+### Frontend
+
+- **Node.js 20+**
+- **npm** (incluido con Node)
+
+### Despliegue
+
+- **Docker** y **Docker Compose**
+- Cuenta en **Docker Hub** con acceso al repositorio `martorias/kuhub-app`
+- Acceso SSH a la instancia AWS Lightsail
+
+---
+
+## Instalación
+
+### 1. Clonar el repositorio
+
+```bash
+git clone <url-del-repositorio>
+cd KuHubProject
+```
+
+### 2. Instalar dependencias del frontend
+
+```bash
+cd frontend
+npm install
+```
+
+### 3. Compilar el backend (verificación local)
+
+```bash
+# Desde la raíz del proyecto — Linux/macOS
+export JAVA_HOME=/ruta/a/jdk21
+./mvnw -f backend/pom.xml -DskipTests compile
+
+# Windows (PowerShell / CMD)
+set JAVA_HOME=C:\ruta\a\jdk21
+./mvnw.cmd -f backend/pom.xml -DskipTests compile
+```
+
+---
+
+## Configuración
+
+### Backend — perfil local
+
+Crear el archivo `backend/src/main/resources/application-local.properties` con las credenciales de la base de datos local:
+
+```properties
+spring.datasource.url=jdbc:postgresql://localhost:5432/kuhub_devs
+spring.datasource.username=tu_usuario
+spring.datasource.password=tu_password
+spring.jpa.hibernate.ddl-auto=none
+```
+
+Activar el perfil en el IDE agregando `-Dspring.profiles.active=local` a las opciones de la JVM.
+
+### Frontend — variables de entorno
+
+```bash
+cd frontend
+cp .env.example .env.local   # si existe, o crear manualmente
+```
+
+Contenido mínimo de `.env.local`:
+
+```env
+VITE_API_URL=http://localhost:8080/api/v1
+```
+
+### Secretos de CI/CD
+
+Los secretos de producción se almacenan en **GitHub Actions Secrets**. Ver la sección [Variables de entorno y secretos](#variables-de-entorno-y-secretos) para el listado completo.
+
+---
+
+## Uso / Ejecución
+
+### Entorno de desarrollo local
+
+**Backend** — ejecutar desde el IDE (IntelliJ IDEA recomendado) con el perfil configurado, o via Maven:
+
+```bash
+# Desde la raíz del proyecto
+export JAVA_HOME=/ruta/a/jdk21
+./mvnw -f backend/pom.xml spring-boot:run -Dspring-boot.run.profiles=local
+```
+
+**Frontend** — servidor de desarrollo con hot-reload:
+
+```bash
+cd frontend
+npm run dev
+# Disponible en http://localhost:5173
+```
+
+### Build de producción
+
+```bash
+# Frontend
+cd frontend && npm run build   # genera dist/ optimizado
+
+# Backend
+./mvnw -f backend/pom.xml package -DskipTests  # genera JAR en backend/target/
+```
+
+### Aplicación desplegada
+
+La versión en producción está disponible en: `https://appkuhub.questweb.cl/login`
+
+### Credencial de prueba (solo entorno de desarrollo)
+
+El sistema incluye un usuario administrador por defecto al restaurar el backup de desarrollo. Consultar `BACKUP_BBDD_DEVS.md` para instrucciones de restauración.
+
+---
+
+## Arquitectura del proyecto
 
 El sistema es un **monolito modular**: un único backend Spring Boot organizado en 9 módulos de dominio, con un frontend React desacoplado que se comunica exclusivamente vía API REST.
 
@@ -106,7 +237,7 @@ PostgreSQL 16.13 (instancia separada)
 
 ### Modelo de seguridad
 
-Cada request autenticado pasa por dos filtros de Spring Security:
+Cada request autenticado pasa por los siguientes filtros de Spring Security:
 
 1. **`JwtAuthenticationFilter`** — genera el token al hacer login (`POST /api/v1/auth/login`).
 2. **`JwtValidationFilter`** — valida el token en cada request y carga permisos del usuario.
@@ -114,6 +245,108 @@ Cada request autenticado pasa por dos filtros de Spring Security:
 4. **`DynamicPermissionService`** — resuelve permisos granulares (leer/crear/actualizar/eliminar) por rol y módulo en tiempo de ejecución.
 
 Los permisos son configurables por un administrador desde la página `/gestion-roles` sin necesidad de redeploy.
+
+---
+
+## Base de datos
+
+El proyecto utiliza **PostgreSQL 16.13**. El esquema es gestionado manualmente (no se usa Flyway ni Liquibase); `spring.jpa.hibernate.ddl-auto=none` en todos los entornos.
+
+### Tablas principales
+
+| Tabla | Descripción |
+|---|---|
+| `usuario` / `rol` | Autenticación y control de acceso |
+| `asignatura` / `seccion` / `semana` | Estructura académica del período |
+| `producto` / `inventario` / `categoria` / `unidad_medida` | Catálogo y stock de ingredientes |
+| `solicitud` / `detalle_solicitud` | Solicitudes de ingredientes por docente |
+| `pedido` / `detalle_pedido` / `pedido_solicitud` | Pedidos consolidados a proveedores |
+| `proveedor` / `contacto_proveedor` | Base de datos de proveedores |
+| `bodega_transito` | Productos en tránsito pendientes de recepción |
+| `movimiento` | Historial completo de movimientos de stock (particionado) |
+| `configuracion_sistema` | Parámetros globales del sistema |
+
+### Particionamiento
+
+La tabla `movimiento` usa **particionamiento por rango** (`PARTITION BY RANGE (fecha_movimiento)`) en semestres. Esto permite consultas eficientes sobre historial de stock sin degradación con el tiempo.
+
+### Diagrama
+
+El diagrama entidad-relación completo está disponible en [`DIAGRAMA_ER_KUHUB.md`](DIAGRAMA_ER_KUHUB.md).
+
+El script SQL inicial de la base de datos se encuentra en [`ConexionXD_v2.sql`](ConexionXD_v2.sql).
+
+---
+
+## Documentación de la API
+
+La API REST está documentada automáticamente con **SpringDoc OpenAPI (Swagger UI)**.
+
+Una vez que el backend esté corriendo, acceder a:
+
+```
+http://localhost:8080/swagger-ui/index.html
+```
+
+### Grupos de endpoints principales
+
+| Prefijo | Módulo |
+|---|---|
+| `POST /api/v1/auth/login` | Autenticación — obtener token JWT |
+| `/api/v1/usuario/**` | Gestión de usuarios |
+| `/api/v1/rol/**` | Gestión de roles y permisos |
+| `/api/v1/solicitud/**` | Solicitudes de ingredientes |
+| `/api/v1/pedido/**` | Pedidos consolidados |
+| `/api/v1/inventario/**` | Stock e inventario |
+| `/api/v1/producto/**` | Catálogo de productos |
+| `/api/v1/proveedor/**` | Proveedores |
+| `/api/v1/bodega-transito/**` | Recepción de pedidos |
+| `/api/v1/dashboard/**` | KPIs y métricas por rol |
+| `/api/v1/sistema/**` | Configuración global |
+
+Todos los endpoints (excepto `/auth/login`) requieren el header `Authorization: Bearer <token>`.
+
+---
+
+## Estructura del equipo / Autores
+
+| Nombre | Área | Responsabilidades |
+|---|---|---|
+| **Matheus de Lara** | Fullstack | Arquitecto del sistema y responsable general del proyecto. Planificación de arquitectura y modelo de base de datos. Desarrollo backend (integración y lógica de negocio) e implementación de vistas personalizadas en el frontend. Infraestructura, CI/CD y despliegue. Contacto secundario con el cliente cuando Francisco no puede comparecer. |
+| **Francisco Gomes** | Fullstack | Desarrollo backend y frontend según necesidad. Especialista en base de datos (diseño de consultas, optimización y migraciones). Contacto principal con el cliente: levantamiento de requerimientos y acuerdos. |
+| **Benjamin Aravena** | Fullstack | Responsable de la experiencia de usuario (UX) e implementaciones frontend de alta calidad con tecnologías modernas. Contacto auxiliar con el cliente. |
+
+---
+
+## Tests / Pruebas
+
+### Frontend (Vitest)
+
+El proyecto tiene **Vitest 4.0.3** configurado como framework de testing. Para ejecutar las pruebas:
+
+```bash
+cd frontend
+npm run test        # ejecutar suite de tests
+npm run test -- --coverage   # con reporte de cobertura
+```
+
+> Las pruebas unitarias están en proceso de implementación. El stack está configurado y listo para agregar casos de prueba en archivos `*.test.ts` / `*.test.tsx`.
+
+### Backend (JUnit / Spring Boot Test)
+
+```bash
+# Desde la raíz del proyecto
+export JAVA_HOME=/ruta/a/jdk21
+./mvnw -f backend/pom.xml test
+```
+
+---
+
+## Licencia
+
+Proyecto académico desarrollado para la asignatura de Taller de Proyecto en **DuocUC**. Todos los derechos reservados.
+
+El uso, distribución o modificación del código fuente fuera del contexto académico debe contar con autorización explícita de los autores.
 
 ---
 
@@ -131,9 +364,21 @@ Los permisos son configurables por un administrador desde la página `/gestion-r
 | `pedido_semana_a_bodega` | PedidoSemanal | Pedidos semanales especiales a bodega |
 | `dashboard` | — | Consultas agregadas para KPIs por rol |
 
-### Tabla `movimiento` — particionamiento
+Cada módulo sigue la misma estructura interna:
 
-La tabla `movimiento` usa **particionamiento por rango** (`PARTITION BY RANGE (fecha_movimiento)`) en semestres. Esto permite consultas eficientes sobre historial de stock sin degradación con el paso del tiempo. El `ALTER TABLE` sobre el padre propaga automáticamente a todas las particiones.
+```
+<modulo>/
+├── controller/
+├── dtos/
+│   ├── request/
+│   └── response/
+├── entity/
+├── exceptions/
+├── repository/
+└── services/
+    ├── <Servicio>Service.java
+    └── <Servicio>ServiceImpl.java
+```
 
 ---
 
@@ -206,120 +451,13 @@ PENDIENTE → APROBADO → EN_PREPARACION → ENTREGADO
 
 ---
 
-## Requisitos previos
-
-### Backend
-
-- **JDK 21** — el proyecto usa Microsoft OpenJDK 21 LTS (`C:\Users\Matheus\.jdks\ms-21.0.9` en la máquina de desarrollo)
-- **Maven** — no es necesario instalarlo globalmente; usar el wrapper `mvnw` / `mvnw.cmd` en la raíz del proyecto
-- **PostgreSQL 16** — base de datos corriendo accesible en el `SPRING_DATASOURCE_URL` configurado
-
-### Frontend
-
-- **Node.js 20+**
-- **npm** (incluido con Node)
-
-### Despliegue
-
-- **Docker** y **Docker Compose**
-- Cuenta en **Docker Hub** con acceso al repositorio `martorias/kuhub-app`
-- Acceso SSH a la instancia AWS Lightsail
-
----
-
-## Configuración local
-
-### 1. Clonar el repositorio
-
-```bash
-git clone <url-del-repositorio>
-cd KuHubProject
-```
-
-### 2. Configurar el backend
-
-Crear el perfil de desarrollo local en `backend/src/main/resources/application-mat.properties` (o cualquier nombre de perfil) con las credenciales de tu base de datos local:
-
-```properties
-spring.datasource.url=jdbc:postgresql://localhost:5432/kuhub_devs
-spring.datasource.username=tu_usuario
-spring.datasource.password=tu_password
-spring.jpa.hibernate.ddl-auto=none
-```
-
-Activar el perfil al correr la aplicación en el IDE agregando `-Dspring.profiles.active=mat` (o el nombre que hayas elegido) a las opciones de la JVM.
-
-### 3. Configurar el frontend
-
-```bash
-cd frontend
-cp .env.example .env.local   # si existe, o crear manualmente
-```
-
-Contenido mínimo de `.env.local`:
-
-```env
-VITE_API_URL=http://localhost:8080/api/v1
-```
-
-Instalar dependencias e iniciar el servidor de desarrollo:
-
-```bash
-npm install
-npm run dev
-# Disponible en http://localhost:5173
-```
-
----
-
-## Compilación y validación
-
-> La máquina de desarrollo no tiene `mvn` ni `JAVA_HOME` en el PATH global. Usar siempre el wrapper.
-
-### Backend (desde la raíz del proyecto)
-
-```bash
-# Windows — PowerShell o CMD
-set JAVA_HOME=C:\Users\Matheus\.jdks\ms-21.0.9
-./mvnw.cmd -f backend/pom.xml -o -DskipTests compile
-```
-
-```bash
-# Bash
-export JAVA_HOME="C:\Users\Matheus\.jdks\ms-21.0.9"
-./mvnw.cmd -f backend/pom.xml -o -DskipTests compile 2>&1 | tail -30
-```
-
-La bandera `-o` (offline) evita resolver dependencias en cada corrida. Quitar `-DskipTests` para ejecutar los tests.
-
-> **Nota:** El deploy hace `package` (compila tests aunque se use `-DskipTests`). Para validar el build de CI localmente, usar `test-compile` en lugar de solo `compile`.
-
-### Frontend
-
-```bash
-# Type-check sin emitir (rápido)
-cd frontend
-npx --no-install tsc --noEmit --project tsconfig.json 2>&1 | tail -30
-
-# Build completo (equivalente al CI)
-npm run build
-```
-
-El build de producción usa `tsc --noCheck && vite build`, por lo que errores de tipos preexistentes no bloquean el build. Filtrar solo los archivos modificados al validar:
-
-```bash
-npx --no-install tsc --noEmit 2>&1 | grep "mi-archivo.tsx"
-```
-
----
-
 ## Despliegue (CI/CD)
 
 El pipeline se dispara automáticamente al hacer push de un tag con formato `K*.*.*`.
 
 ### Flujo completo
 
-```
+```bash
 git add <archivos>
 git commit -m "descripción del cambio"
 git push
@@ -335,12 +473,12 @@ GitHub Actions ejecuta en paralelo:
 3. Push de ambas imágenes a Docker Hub con el tag de la versión
 4. SSH a Lightsail → `docker compose down` → `docker compose pull` → `docker compose up -d`
 
-El deploy completo toma aproximadamente **5-10 minutos**. Verificar en `https://appkuhub.questweb.cl/login`.
+El deploy completo toma aproximadamente **5-10 minutos**.
 
 ### Deploy manual (en caso de falla del CI)
 
 ```bash
-ssh -i /ruta/a/key.pem ubuntu@52.5.222.79
+ssh -i /ruta/a/key.pem ubuntu@<IP>
 cd ~/kuhub-app
 
 sed -i "s/^TAG=.*/TAG=K1.0.X/" .env
@@ -349,16 +487,13 @@ docker compose down
 docker image prune -af
 docker compose pull
 docker compose up -d
-
-docker ps
-docker logs -f kuhub-backend
 ```
 
 ---
 
 ## Variables de entorno y secretos
 
-Todos los secretos se almacenan en **GitHub Actions Secrets** (Repository Settings → Secrets and variables → Actions). Nunca deben aparecer en el repositorio.
+Todos los secretos se almacenan en **GitHub Actions Secrets**. Nunca deben aparecer en el repositorio.
 
 | Variable | Descripción |
 |---|---|
@@ -374,15 +509,7 @@ Todos los secretos se almacenan en **GitHub Actions Secrets** (Repository Settin
 | `KU_AWS_AC_DB_PORT` | Puerto de PostgreSQL (5432) |
 | `VITE_API_URL` | URL base de la API para el build del frontend |
 
-El archivo `.env` en el servidor (`~/kuhub-app/.env`) es generado automáticamente por el pipeline con estas variables. **No versionar este archivo.**
-
-### Rotación recomendada de secretos críticos
-
-| Secret | Frecuencia |
-|---|---|
-| `KU_AWS_AC_DB_PASS` | Cada 3-6 meses |
-| `DOCKER_AWS_AC_PASSWORD` | Cada 6 meses |
-| `KUHUB_MASTER_KEY` | Anual o ante exposición |
+El archivo `.env` en el servidor es generado automáticamente por el pipeline. **No versionar este archivo.**
 
 ---
 
@@ -404,7 +531,7 @@ KuHubProject/
 │       │   ├── gestion_sistema/
 │       │   ├── pedido_semana_a_bodega/
 │       │   └── dashboard/
-│       └── utils/                  # PaginationUtils, StringUtils
+│       └── utils/
 │
 ├── frontend/                       # React 18 + TypeScript + Vite
 │   └── src/
@@ -423,53 +550,24 @@ KuHubProject/
 └── .github/workflows/              # Pipeline CI/CD (GitHub Actions)
 ```
 
-Cada módulo del backend sigue la misma estructura interna:
-
-```
-<modulo>/
-├── controller/
-├── dtos/
-│   ├── request/
-│   └── response/
-├── entity/
-├── exceptions/
-├── repository/
-└── services/
-    ├── <Servicio>Service.java         # Interfaz
-    └── <Servicio>ServiceImpl.java     # Implementación
-```
-
 ---
 
 ## Convenciones y estándares
 
 ### Backend
 
-- **Eliminación lógica:** todo el sistema usa `activo = false`. Nunca se ejecutan `DELETE` reales en la base de datos.
-- **DTOs de respuesta:** elegir entre DTO (clase), Proyección (interfaz) o Record según la complejidad. Ver `backend/CLAUDE.md` §3.
-- **Consultas nativas:** tres patrones según el nivel de anidamiento — `List<Object[]>` (plano), `String` con `json_agg` (1-2 niveles), `String` con `jsonb_agg` (jerarquía profunda o CTEs).
-- **Transacciones:** `@Transactional(readOnly = true)` en métodos de solo lectura; `@Transactional` en escrituras.
-- **Nuevos endpoints:** siempre registrar en `SpringSecurityConfig` con el rol correspondiente para evitar 403.
+- **Eliminación lógica:** todo el sistema usa `activo = false`. Nunca se ejecutan `DELETE` reales.
+- **DTOs de respuesta:** DTO (clase), Proyección (interfaz) o Record según la complejidad.
+- **Consultas nativas:** `List<Object[]>` (plano), `String` con `json_agg` (1-2 niveles), `String` con `jsonb_agg` (jerarquía profunda o CTEs).
+- **Transacciones:** `@Transactional(readOnly = true)` en lecturas; `@Transactional` en escrituras.
+- **Nuevos endpoints:** siempre registrar en `SpringSecurityConfig` para evitar 403.
 
 ### Frontend
 
-- **Nunca `any`** en TypeScript. Crear interfaz para cada contrato de datos.
+- **Sin `any`** en TypeScript. Crear interfaz para cada contrato de datos.
 - **Sin `style={{}}`** inline — solo clases Tailwind.
 - **Sin `window.alert/confirm`** — usar `useToast()` con `useConfirm()`.
-- **Routing:** el proyecto usa React Router **v5** (`<Switch>`, `<Route>`, `<Redirect>`), no v6.
-- **Nueva página:** seguir los 6 pasos del checklist en `frontend/CLAUDE.md` §14 (archivo, import lazy, ruta protegida, SmartRedirect, sidebar, registro de permisos).
-
-### Actualización de versión al hacer deploy
-
-Antes de crear el tag, actualizar el número de versión en:
-
-- `frontend/src/layouts/auth-layout.tsx`
-- `frontend/src/components/footer.tsx`
-
-```tsx
-// Cambiar a la versión del tag que se va a publicar
-© {new Date().getFullYear()} KuHub · Entorno de Pruebas | v1.0.X
-```
+- **Routing:** React Router **v5** (`<Switch>`, `<Route>`, `<Redirect>`), no v6.
 
 ---
 
@@ -483,9 +581,7 @@ Antes de crear el tag, actualizar el número de versión en:
 | `<menor>` | Nuevas funcionalidades |
 | `<mayor>` | Cambios de arquitectura o refactors grandes |
 
-**Regla:** una tag por día, mismo número todo el día. No crear múltiples tags el mismo día por cada commit.
-
-El historial de versiones y el contexto de cada cambio se documentan en los archivos `CONTEXTO_*.md` del repositorio.
+**Regla:** una tag por día, mismo número todo el día. El historial de versiones y el contexto de cada cambio se documentan en los archivos `CONTEXTO_*.md` del repositorio.
 
 ---
 
