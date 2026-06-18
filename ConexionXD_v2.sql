@@ -954,7 +954,6 @@ CREATE TABLE soporte_ticket (
 );
 
 
-
 CREATE TABLE IF NOT EXISTS modulo (
     id_modulo                   INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     codigo_modulo               VARCHAR(50)  NOT NULL UNIQUE,
@@ -980,8 +979,6 @@ CREATE TABLE IF NOT EXISTS permiso_rol (
     enabled                         BOOLEAN   NOT NULL DEFAULT TRUE,
     CONSTRAINT uk_permiso_rol_modulo UNIQUE (id_rol, id_modulo)
 );
-
-
 -- ================================================================
 -- PASO 2: Insertar los módulos del sistema
 -- (Los códigos deben coincidir exactamente con los ModuleKey
@@ -1005,7 +1002,6 @@ VALUES
     ('ADMIN_SISTEMA',        'Administración del Sistema',   'Centro de control: horarios, semanas y salas',        'lucide:settings',         13)
 ON CONFLICT (codigo_modulo) DO NOTHING;
 
-
 -- ================================================================
 -- PASO 3: Insertar permisos iniciales por rol
 --
@@ -1013,7 +1009,6 @@ ON CONFLICT (codigo_modulo) DO NOTHING;
 --   Administrador, Co-Administrador, Gestor de Pedidos,
 --   Profesor a Cargo, Docente, Encargado de Bodega, Asistente de Bodega
 -- ================================================================
-
 
 -- =====================================================
 -- 1. INSERTAR ROLES
@@ -1119,37 +1114,6 @@ FROM modulo m WHERE m.enabled = TRUE
 ON CONFLICT (id_rol, id_modulo) DO UPDATE SET
     puede_leer = EXCLUDED.puede_leer, puede_crear = EXCLUDED.puede_crear, 
     puede_actualizar = FALSE, puede_eliminar = FALSE;
-
--- ================================================================
--- VERIFICACIÓN: Consultar la matriz completa de permisos
--- (Útil para confirmar que los datos se insertaron correctamente)
--- ================================================================
-
-/*
-SELECT
-    r.nombre_rol,
-    m.codigo_modulo,
-    m.nombre_modulo,
-    COALESCE(pr.puede_leer,       FALSE) AS leer,
-    COALESCE(pr.puede_crear,      FALSE) AS crear,
-    COALESCE(pr.puede_actualizar, FALSE) AS actualizar,
-    COALESCE(pr.puede_eliminar,   FALSE) AS eliminar,
-    CASE
-        WHEN COALESCE(pr.puede_crear,FALSE) OR COALESCE(pr.puede_actualizar,FALSE) OR COALESCE(pr.puede_eliminar,FALSE) THEN 'ESCRITURA'
-        WHEN COALESCE(pr.puede_leer,FALSE) THEN 'LECTURA'
-        ELSE 'SIN_ACCESO'
-    END AS nivel_acceso
-FROM rol r
-CROSS JOIN modulo m
-LEFT JOIN permiso_rol pr
-    ON pr.id_rol    = r.id_rol
-   AND pr.id_modulo = m.id_modulo
-   AND pr.enabled   = TRUE
-WHERE r.activo   = TRUE
-  AND m.enabled  = TRUE
-ORDER BY m.orden_modulo, r.id_rol;
-*/
-
 
 -- ================================================================
 -- NUEVOS MÓDULOS: GESTION_CATEGORIAS y GESTION_UNIDADES
@@ -1603,6 +1567,146 @@ WHERE m.codigo_modulo IN (
     SELECT 1 FROM permiso_rol pr WHERE pr.id_rol = r.id_rol AND pr.id_modulo = m.id_modulo
   )
 ON CONFLICT (id_rol, id_modulo) DO NOTHING;
+
+
+-- ================================================================
+-- MÓDULO DE LECTURA: GPRV_DATOS_PROV (Pestaña Proveedores — solo lectura)
+-- Permite ver la lista de proveedores sin acceder a la pestaña Órdenes de Pedido.
+-- Si el rol solo tiene este módulo, GPRV_ORDENES queda en Sin Acceso → pestaña
+-- Órdenes no se muestra. Cuando GESTION_PROVEEDORES tiene Lectura, cascadea a
+-- GPRV_DATOS_PROV Y GPRV_ORDENES → ambas pestañas visibles.
+-- ================================================================
+
+INSERT INTO modulo (codigo_modulo, nombre_modulo, descripcion_modulo, icono_modulo, orden_modulo)
+VALUES
+    ('GPRV_DATOS_PROV', 'G. Proveedores · Datos Proveedores',
+     'Lectura individual de la pestaña de Proveedores (sin pestaña Órdenes de Pedido)',
+     'lucide:truck', 54)
+ON CONFLICT (codigo_modulo) DO NOTHING;
+
+-- ADMINISTRADOR y CO_ADMINISTRADOR → lectura total (cascada desde GESTION_PROVEEDORES)
+INSERT INTO permiso_rol (id_rol, id_modulo, puede_leer, puede_crear, puede_actualizar, puede_eliminar)
+SELECT r.id_rol, m.id_modulo, TRUE, TRUE, TRUE, TRUE
+FROM rol r CROSS JOIN modulo m
+WHERE r.nombre_rol IN ('ADMINISTRADOR', 'CO_ADMINISTRADOR')
+  AND m.codigo_modulo = 'GPRV_DATOS_PROV'
+  AND m.enabled = TRUE
+ON CONFLICT (id_rol, id_modulo) DO UPDATE SET
+    puede_leer=TRUE, puede_crear=TRUE, puede_actualizar=TRUE, puede_eliminar=TRUE;
+
+-- Resto de roles → sin acceso (el Administrador asigna según necesidad)
+INSERT INTO permiso_rol (id_rol, id_modulo, puede_leer, puede_crear, puede_actualizar, puede_eliminar)
+SELECT r.id_rol, m.id_modulo, FALSE, FALSE, FALSE, FALSE
+FROM rol r CROSS JOIN modulo m
+WHERE r.nombre_rol IN ('GESTOR_PEDIDOS', 'PROFESOR_A_CARGO', 'DOCENTE', 'ENCARGADO_BODEGA', 'ASISTENTE_BODEGA')
+  AND m.codigo_modulo = 'GPRV_DATOS_PROV'
+  AND m.enabled = TRUE
+ON CONFLICT (id_rol, id_modulo) DO UPDATE SET
+    puede_leer=FALSE, puede_crear=FALSE, puede_actualizar=FALSE, puede_eliminar=FALSE;
+
+
+-- ================================================================
+-- MÓDULOS DE ACCIÓN: GESTIÓN ACADÉMICA
+-- Granularidad por botón/ícono dentro de la pestaña Gestión Académica.
+-- GESTION_ACADEMICA (TriStateCell) es la puerta de acceso a la pestaña;
+-- Lectura = ver lista/buscador/paginación. Escritura cascadea a los hijos.
+-- Cada módulo de acción controla un botón o ícono individual.
+--
+--   GA_CREAR_ASIGNATURA  → botón "Nueva Asignatura"
+--   GA_CREAR_SECCION     → botón "Agregar nueva sección"
+--   GA_EDITAR_ASIGNATURA → ícono editar asignatura
+--   GA_ELIMINAR_ASIGNATURA → ícono eliminar asignatura
+--   GA_EDITAR_SECCION    → ícono editar sección
+--   GA_ELIMINAR_SECCION  → ícono eliminar sección
+-- ================================================================
+
+INSERT INTO modulo (codigo_modulo, nombre_modulo, descripcion_modulo, icono_modulo, orden_modulo)
+VALUES
+    ('GA_CREAR_ASIGNATURA',   'G. Académica · Crear Asignatura',    'Permite crear una nueva asignatura',                   'lucide:plus-circle',  55),
+    ('GA_CREAR_SECCION',      'G. Académica · Crear Sección',       'Permite agregar una nueva sección a una asignatura',   'lucide:plus-square',  56),
+    ('GA_EDITAR_ASIGNATURA',  'G. Académica · Editar Asignatura',   'Permite editar los datos de una asignatura',           'lucide:pencil',       57),
+    ('GA_ELIMINAR_ASIGNATURA','G. Académica · Eliminar Asignatura', 'Permite eliminar o inactivar una asignatura',          'lucide:trash-2',      58),
+    ('GA_EDITAR_SECCION',     'G. Académica · Editar Sección',      'Permite editar los datos de una sección',              'lucide:edit',         59),
+    ('GA_ELIMINAR_SECCION',   'G. Académica · Eliminar Sección',    'Permite eliminar o inactivar una sección',             'lucide:trash-2',      60)
+ON CONFLICT (codigo_modulo) DO NOTHING;
+
+-- ADMINISTRADOR y CO_ADMINISTRADOR → escritura total (GESTION_ACADEMICA es LCAE para ambos)
+INSERT INTO permiso_rol (id_rol, id_modulo, puede_leer, puede_crear, puede_actualizar, puede_eliminar)
+SELECT r.id_rol, m.id_modulo, TRUE, TRUE, TRUE, TRUE
+FROM rol r CROSS JOIN modulo m
+WHERE r.nombre_rol IN ('ADMINISTRADOR', 'CO_ADMINISTRADOR')
+  AND m.codigo_modulo IN (
+    'GA_CREAR_ASIGNATURA','GA_CREAR_SECCION',
+    'GA_EDITAR_ASIGNATURA','GA_ELIMINAR_ASIGNATURA',
+    'GA_EDITAR_SECCION','GA_ELIMINAR_SECCION'
+  )
+  AND m.enabled = TRUE
+ON CONFLICT (id_rol, id_modulo) DO UPDATE SET
+    puede_leer=TRUE, puede_crear=TRUE, puede_actualizar=TRUE, puede_eliminar=TRUE;
+
+-- Resto de roles → sin acceso
+INSERT INTO permiso_rol (id_rol, id_modulo, puede_leer, puede_crear, puede_actualizar, puede_eliminar)
+SELECT r.id_rol, m.id_modulo, FALSE, FALSE, FALSE, FALSE
+FROM rol r CROSS JOIN modulo m
+WHERE r.nombre_rol IN ('GESTOR_PEDIDOS', 'PROFESOR_A_CARGO', 'DOCENTE', 'ENCARGADO_BODEGA', 'ASISTENTE_BODEGA')
+  AND m.codigo_modulo IN (
+    'GA_CREAR_ASIGNATURA','GA_CREAR_SECCION',
+    'GA_EDITAR_ASIGNATURA','GA_ELIMINAR_ASIGNATURA',
+    'GA_EDITAR_SECCION','GA_ELIMINAR_SECCION'
+  )
+  AND m.enabled = TRUE
+ON CONFLICT (id_rol, id_modulo) DO UPDATE SET
+    puede_leer=FALSE, puede_crear=FALSE, puede_actualizar=FALSE, puede_eliminar=FALSE;
+
+-- ================================================================
+-- MÓDULOS DE VISTA Y ACCIÓN: GESTIÓN SALA Y RESERVAS
+-- ADMIN_SALAS_RESERVAS (TriStateCell) es la puerta de acceso a la pestaña
+-- "Gestión Sala y Reservas" dentro de Gestión Académica (Y dentro de
+-- Administración del Sistema). Lectura cascadea a las vistas hijas;
+-- Escritura cascadea además a las acciones de sala.
+--
+--   GA_VER_RESERVAS  → sub-pestaña "Reservas Registradas"  (BinaryRead)
+--   GA_VER_SALAS     → sub-pestaña "Gestión Salas"          (BinaryRead)
+--   GA_CREAR_SALA    → botón "Nueva Sala"                   (BinaryWrite)
+--   GA_EDITAR_SALA   → ícono editar sala                    (BinaryWrite)
+--   GA_ELIMINAR_SALA → ícono desactivar/eliminar sala       (BinaryWrite)
+-- ================================================================
+
+INSERT INTO modulo (codigo_modulo, nombre_modulo, descripcion_modulo, icono_modulo, orden_modulo)
+VALUES
+    ('GA_VER_RESERVAS', 'G. Sala · Ver Reservas Registradas', 'Permite ver la sub-pestaña de reservas registradas en Gestión Sala',     'lucide:calendar-clock', 61),
+    ('GA_VER_SALAS',    'G. Sala · Ver Gestión Salas',        'Permite ver la sub-pestaña de gestión de salas',                         'lucide:building-2',     62),
+    ('GA_CREAR_SALA',   'G. Sala · Crear Nueva Sala',         'Permite crear una nueva sala',                                           'lucide:plus-circle',    63),
+    ('GA_EDITAR_SALA',  'G. Sala · Editar Sala',              'Permite editar los datos de una sala existente',                         'lucide:pencil',         64),
+    ('GA_ELIMINAR_SALA','G. Sala · Eliminar Sala',            'Permite desactivar o eliminar una sala',                                 'lucide:trash-2',        65)
+ON CONFLICT (codigo_modulo) DO NOTHING;
+
+-- ADMINISTRADOR → escritura total (único con acceso a ADMIN_SALAS_RESERVAS por defecto)
+INSERT INTO permiso_rol (id_rol, id_modulo, puede_leer, puede_crear, puede_actualizar, puede_eliminar)
+SELECT r.id_rol, m.id_modulo, TRUE, TRUE, TRUE, TRUE
+FROM rol r CROSS JOIN modulo m
+WHERE r.nombre_rol = 'ADMINISTRADOR'
+  AND m.codigo_modulo IN (
+    'GA_VER_RESERVAS','GA_VER_SALAS',
+    'GA_CREAR_SALA','GA_EDITAR_SALA','GA_ELIMINAR_SALA'
+  )
+  AND m.enabled = TRUE
+ON CONFLICT (id_rol, id_modulo) DO UPDATE SET
+    puede_leer=TRUE, puede_crear=TRUE, puede_actualizar=TRUE, puede_eliminar=TRUE;
+
+-- Resto de roles (incluido CO_ADMINISTRADOR) → sin acceso
+-- (CO_ADMIN no tiene acceso a ADMIN_SALAS_RESERVAS según la matriz base)
+INSERT INTO permiso_rol (id_rol, id_modulo, puede_leer, puede_crear, puede_actualizar, puede_eliminar)
+SELECT r.id_rol, m.id_modulo, FALSE, FALSE, FALSE, FALSE
+FROM rol r CROSS JOIN modulo m
+WHERE r.nombre_rol IN ('CO_ADMINISTRADOR', 'GESTOR_PEDIDOS', 'PROFESOR_A_CARGO', 'DOCENTE', 'ENCARGADO_BODEGA', 'ASISTENTE_BODEGA')
+  AND m.codigo_modulo IN (
+    'GA_VER_RESERVAS','GA_VER_SALAS',
+    'GA_CREAR_SALA','GA_EDITAR_SALA','GA_ELIMINAR_SALA'
+  )
+  AND m.enabled = TRUE
+ON CONFLICT (id_rol, id_modulo) DO UPDATE SET
+    puede_leer=FALSE, puede_crear=FALSE, puede_actualizar=FALSE, puede_eliminar=FALSE;
 
 
 -- ================================================================

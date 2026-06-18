@@ -49,6 +49,7 @@ export type ModuleKey =
   | 'CONG_APROBAR_PEDIDO'
   | 'CONG_RECHAZAR_PEDIDO'
   // ── Vista y acciones internas de Gestión de Proveedores ──
+  | 'GPRV_DATOS_PROV'
   | 'GPRV_NUEVO_PROV'
   | 'GPRV_SYNC_EXCEL'
   | 'GPRV_GENERAR_ORDEN'
@@ -60,6 +61,19 @@ export type ModuleKey =
   | 'GPRV_ORDENES'
   | 'GPRV_CANCELAR_OP'
   | 'GPRV_EXPORT_OP'
+  // ── Acciones internas de Gestión Académica (pestaña Académica) ──
+  | 'GA_CREAR_ASIGNATURA'
+  | 'GA_CREAR_SECCION'
+  | 'GA_EDITAR_ASIGNATURA'
+  | 'GA_ELIMINAR_ASIGNATURA'
+  | 'GA_EDITAR_SECCION'
+  | 'GA_ELIMINAR_SECCION'
+  // ── Vistas y acciones internas de Gestión Sala y Reservas ──
+  | 'GA_VER_RESERVAS'
+  | 'GA_VER_SALAS'
+  | 'GA_CREAR_SALA'
+  | 'GA_EDITAR_SALA'
+  | 'GA_ELIMINAR_SALA'
   // ── Acciones internas de Inventario ──
   | 'INV_CONTROL_MASIVO'
   | 'INV_SYNC_EXCEL'
@@ -155,8 +169,19 @@ export const MODULE_LABELS: Record<ModuleKey, string> = {
   PEDIDO_SEM_ELIMINAR:   'Pedido Sem. · Eliminar Pedido',
   GEST_SOL_GESTIONAR:    'G. Solicitudes · Gestionar Estados',
   GEST_SOL_RECHAZAR:     'G. Solicitudes · Rechazar',
-  GESTION_ACADEMICA:    'Gestión Académica',
-  GESTION_ROLES:        'Gestión de Roles',
+  GESTION_ACADEMICA:      'Gestión Académica',
+  GA_CREAR_ASIGNATURA:    'G. Académica · Crear Asignatura',
+  GA_CREAR_SECCION:       'G. Académica · Crear Sección',
+  GA_EDITAR_ASIGNATURA:   'G. Académica · Editar Asignatura',
+  GA_ELIMINAR_ASIGNATURA: 'G. Académica · Eliminar Asignatura',
+  GA_EDITAR_SECCION:      'G. Académica · Editar Sección',
+  GA_ELIMINAR_SECCION:    'G. Académica · Eliminar Sección',
+  GA_VER_RESERVAS:        'G. Sala · Ver Reservas Registradas',
+  GA_VER_SALAS:           'G. Sala · Ver Gestión Salas',
+  GA_CREAR_SALA:          'G. Sala · Crear Nueva Sala',
+  GA_EDITAR_SALA:         'G. Sala · Editar Sala',
+  GA_ELIMINAR_SALA:       'G. Sala · Eliminar Sala',
+  GESTION_ROLES:          'Gestión de Roles',
   GESTION_USUARIOS:     'Gestión de Usuarios',
   ADMIN_SISTEMA:        'Administración del Sistema',
   ADMIN_BLOQUES_HORARIOS: 'Adm. Sistema · Bloques Horarios',
@@ -171,6 +196,7 @@ export const MODULE_LABELS: Record<ModuleKey, string> = {
   CONG_VISTA_CATEGORIAS:  'Conglom. · Por Categoría',
   CONG_APROBAR_PEDIDO:    'Conglom. · Aprobar Pedido',
   CONG_RECHAZAR_PEDIDO:   'Conglom. · Rechazar Pedido',
+  GPRV_DATOS_PROV:          'G. Proveedores · Datos Proveedores',
   GPRV_NUEVO_PROV:          'G. Proveedores · Nuevo Proveedor',
   GPRV_SYNC_EXCEL:          'G. Proveedores · Sincronizar Excel',
   GPRV_GENERAR_ORDEN:       'G. Proveedores · Generar Orden Pedido',
@@ -212,8 +238,19 @@ export const MODULE_ICONS: Record<ModuleKey, string> = {
   PEDIDO_SEM_ELIMINAR:   'lucide:trash-2',
   GEST_SOL_GESTIONAR:    'lucide:check-circle',
   GEST_SOL_RECHAZAR:     'lucide:x-circle',
-  GESTION_ACADEMICA:    'lucide:book-open',
-  GESTION_ROLES:        'lucide:shield',
+  GESTION_ACADEMICA:      'lucide:book-open',
+  GA_CREAR_ASIGNATURA:    'lucide:plus-circle',
+  GA_CREAR_SECCION:       'lucide:plus-square',
+  GA_EDITAR_ASIGNATURA:   'lucide:pencil',
+  GA_ELIMINAR_ASIGNATURA: 'lucide:trash-2',
+  GA_EDITAR_SECCION:      'lucide:edit',
+  GA_ELIMINAR_SECCION:    'lucide:trash-2',
+  GA_VER_RESERVAS:        'lucide:calendar-clock',
+  GA_VER_SALAS:           'lucide:building-2',
+  GA_CREAR_SALA:          'lucide:plus-circle',
+  GA_EDITAR_SALA:         'lucide:pencil',
+  GA_ELIMINAR_SALA:       'lucide:trash-2',
+  GESTION_ROLES:          'lucide:shield',
   GESTION_USUARIOS:     'lucide:users',
   ADMIN_SISTEMA:        'lucide:settings',
   ADMIN_BLOQUES_HORARIOS: 'lucide:clock-4',
@@ -228,6 +265,7 @@ export const MODULE_ICONS: Record<ModuleKey, string> = {
   CONG_VISTA_CATEGORIAS:  'lucide:tag',
   CONG_APROBAR_PEDIDO:    'lucide:check-circle-2',
   CONG_RECHAZAR_PEDIDO:   'lucide:x-circle',
+  GPRV_DATOS_PROV:          'lucide:truck',
   GPRV_NUEVO_PROV:          'lucide:plus-circle',
   GPRV_SYNC_EXCEL:          'lucide:upload-cloud',
   GPRV_GENERAR_ORDEN:       'lucide:clipboard-list',
@@ -260,7 +298,7 @@ export const PAGE_TO_MODULE: Record<string, ModuleKey | ModuleKey[]> = {
   'gestion-solicitudes':  'GESTION_SOLICITUDES',
   'historico-pedidos':    'HISTORICO_PEDIDOS',
   'conglomerado-pedidos': 'CONGLOMERADO_PEDIDOS',
-  'gestion-proveedores':  ['GESTION_PROVEEDORES', 'GPRV_ORDENES'],
+  'gestion-proveedores':  ['GESTION_PROVEEDORES', 'GPRV_ORDENES', 'GPRV_DATOS_PROV'],
   'bodega-transito':      'BODEGA_TRANSITO',
   'pedido-semanal-a-bodega': 'PEDIDO_SEMANAL_BODEGA',
   'gestion-academica':    ['GESTION_ACADEMICA', 'ADMIN_SALAS_RESERVAS'],

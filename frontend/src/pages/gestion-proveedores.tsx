@@ -523,6 +523,8 @@ const GestionProveedoresPage: React.FC = () => {
 
   // ── Permisos de la vista Proveedores ──
   const { canRead: prov_VerLista }       = useModulePermission('GESTION_PROVEEDORES');
+  const { canRead: prov_DatosProv }      = useModulePermission('GPRV_DATOS_PROV');
+  const verTabProveedores                = prov_VerLista || prov_DatosProv;
   const { canRead: prov_NuevoProv }      = useModulePermission('GPRV_NUEVO_PROV');
   const { canRead: prov_SyncExcel }      = useModulePermission('GPRV_SYNC_EXCEL');
   const { canRead: prov_GenerarOrden }   = useModulePermission('GPRV_GENERAR_ORDEN');
@@ -533,9 +535,12 @@ const GestionProveedoresPage: React.FC = () => {
   const { canRead: prov_EliminarProv }   = useModulePermission('GPRV_ELIMINAR_PROV');
 
   // ── Permisos de la vista Órdenes de Pedido ──
-  const { canRead: verOrdenes, canCreate: op_CambiarEstado } = useModulePermission('GPRV_ORDENES');
-  const { canRead: op_CancelarOp }  = useModulePermission('GPRV_CANCELAR_OP');
-  const { canRead: op_ExportExcel } = useModulePermission('GPRV_EXPORT_OP');
+  // canRead para verOrdenes (BinaryRead: puedeLeer=true es suficiente para ver la pestaña).
+  // canCreate para las acciones: BinaryWrite → solo true cuando puedeCrear=true (Escritura real,
+  // no propagación de Lectura que solo deja puedeLeer=true).
+  const { canRead: verOrdenes }      = useModulePermission('GPRV_ORDENES');
+  const { canCreate: op_CancelarOp } = useModulePermission('GPRV_CANCELAR_OP');
+  const { canCreate: op_ExportExcel }= useModulePermission('GPRV_EXPORT_OP');
 
   // Context global de período/semana — sólo se LEE (no se muta) para el modal de OC.
   const { periodos: ctxPeriodos } = usePeriodoSemana();
@@ -548,12 +553,12 @@ const GestionProveedoresPage: React.FC = () => {
   // ── Vista de Órdenes de Pedido (tab switcher) ────────────────────────
   const [currentView, setCurrentView] = React.useState<'proveedores' | 'ordenes'>('proveedores');
 
-  // Auto-switch: si no tiene acceso a Proveedores pero sí a Órdenes → ir a Órdenes.
+  // Auto-switch: si no tiene acceso a la pestaña Proveedores pero sí a Órdenes → ir a Órdenes.
   React.useEffect(() => {
-    if (!permLoading && !prov_VerLista && verOrdenes) {
+    if (!permLoading && !verTabProveedores && verOrdenes) {
       setCurrentView('ordenes');
     }
-  }, [permLoading, prov_VerLista, verOrdenes]);
+  }, [permLoading, verTabProveedores, verOrdenes]);
 
   usePageTitle(
     currentView === 'proveedores' ? 'Gestión de Proveedores' : 'Órdenes de Pedido',
@@ -2283,7 +2288,7 @@ const GestionProveedoresPage: React.FC = () => {
             rango={opRango}
             onRangoChange={setOpRango}
             onCargarDetallesBulk={cargarDetallesBulk}
-            canCambiarEstado={op_CambiarEstado}
+            canCambiarEstado={op_CancelarOp}
             canCancelar={op_CancelarOp}
             canExportExcel={op_ExportExcel}
           />
@@ -2792,7 +2797,7 @@ const GestionProveedoresPage: React.FC = () => {
         {/* ── Riel de navegación derecho ── */}
         <div className="w-[70px] shrink-0 bg-white dark:bg-content1 border-l border-default-200 dark:border-default-100 shadow-[-4px_0_15px_rgba(0,0,0,0.02)] self-stretch -mt-14 -mr-10 pb-[1000px] -mb-[1000px]">
           <div className="sticky top-8 flex flex-col items-center pt-28 pb-6 gap-4 z-30">
-            {prov_VerLista && (
+            {verTabProveedores && (
             <Tooltip content="Proveedores" placement="left">
               <Button
                 isIconOnly
@@ -7322,16 +7327,21 @@ const OrdenesVista: React.FC<OrdenesVistaProps> = ({
           className="flex items-center gap-1.5 shrink-0"
           onClick={e => e.stopPropagation()}
         >
-          {canCambiarEstado && TRANSICIONES_OP[op.estadoOrdenPedido].map(t => (
-            <Tooltip key={t.estado} content={t.label} placement="top">
+          {TRANSICIONES_OP[op.estadoOrdenPedido].map(t => (
+            <Tooltip
+              key={t.estado}
+              content={canCambiarEstado ? t.label : 'Sin permiso de cambiar estado'}
+              placement="top"
+            >
               <Button
                 isIconOnly
                 size="sm"
-                color={t.color}
+                color={canCambiarEstado ? t.color : 'default'}
                 variant="flat"
-                isLoading={cambiandoEstadoId === op.idOrdenPedido}
-                isDisabled={cambiandoEstadoId !== null}
-                onPress={() => onCambiarEstado(op.idOrdenPedido, t.estado)}
+                isLoading={canCambiarEstado && cambiandoEstadoId === op.idOrdenPedido}
+                isDisabled={!canCambiarEstado || cambiandoEstadoId !== null}
+                className={!canCambiarEstado ? 'opacity-40 cursor-not-allowed' : ''}
+                onPress={() => canCambiarEstado && onCambiarEstado(op.idOrdenPedido, t.estado)}
               >
                 <Icon icon={t.icon} width={14} />
               </Button>

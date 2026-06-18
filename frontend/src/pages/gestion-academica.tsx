@@ -288,7 +288,9 @@ const SeccionReservas: React.FC = () => {
 
 const SeccionGestionSalas: React.FC = () => {
   const toast = useToast();
-  const { canCreate: salaCrear, canUpdate: salaEditar, canDelete: salaEliminar } = useModulePermission('ADMIN_SALAS_RESERVAS');
+  const { canCreate: salaCrear }  = useModulePermission('GA_CREAR_SALA');
+  const { canUpdate: salaEditar } = useModulePermission('GA_EDITAR_SALA');
+  const { canDelete: salaEliminar } = useModulePermission('GA_ELIMINAR_SALA');
   const { isOpen: isCreateOpen, onOpen: onCreateOpen, onOpenChange: onCreateOpenChange } = useDisclosure();
   const { isOpen: isEditOpen, onOpen: onEditOpen, onOpenChange: onEditOpenChange } = useDisclosure();
   const { isOpen: isDeleteOpen, onOpen: onDeleteOpen, onOpenChange: onDeleteOpenChange } = useDisclosure();
@@ -529,30 +531,47 @@ const SeccionGestionSalas: React.FC = () => {
 
 const SeccionGestionSalaYReservas: React.FC = () => {
   const [vista, setVista] = React.useState<'reservas' | 'salas'>('reservas');
+  const { canRead: verReservas }     = useModulePermission('GA_VER_RESERVAS');
+  const { canRead: verGestionSalas } = useModulePermission('GA_VER_SALAS');
+  const { isLoading: permLoading }   = usePermission();
+
+  // Si el usuario solo tiene acceso a la vista de Salas (sin Reservas), redirigir
+  React.useEffect(() => {
+    if (!permLoading && !verReservas && verGestionSalas) {
+      setVista('salas');
+    }
+  }, [permLoading, verReservas, verGestionSalas]);
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-1 bg-default-100 rounded-lg p-1 w-fit">
-        <button
-          onClick={() => setVista('reservas')}
-          className={`px-3 py-1.5 rounded-md text-xs font-semibold cursor-pointer transition-all ${vista === 'reservas' ? 'bg-white shadow-sm text-primary dark:bg-content2 dark:text-primary' : 'text-default-500 hover:text-default-700'}`}
-        >
-          <span className="flex items-center gap-1.5">
-            <Icon icon="lucide:calendar-clock" width={12} />
-            Reservas Registradas
-          </span>
-        </button>
-        <button
-          onClick={() => setVista('salas')}
-          className={`px-3 py-1.5 rounded-md text-xs font-semibold cursor-pointer transition-all ${vista === 'salas' ? 'bg-white shadow-sm text-warning dark:bg-content2 dark:text-warning' : 'text-default-500 hover:text-default-700'}`}
-        >
-          <span className="flex items-center gap-1.5">
-            <Icon icon="lucide:building-2" width={12} />
-            Gestión Salas
-          </span>
-        </button>
-      </div>
-      {vista === 'reservas' ? <SeccionReservas /> : <SeccionGestionSalas />}
+      {(verReservas || verGestionSalas) && (
+        <div className="flex items-center gap-1 bg-default-100 rounded-lg p-1 w-fit">
+          {verReservas && (
+            <button
+              onClick={() => setVista('reservas')}
+              className={`px-3 py-1.5 rounded-md text-xs font-semibold cursor-pointer transition-all ${vista === 'reservas' ? 'bg-white shadow-sm text-primary dark:bg-content2 dark:text-primary' : 'text-default-500 hover:text-default-700'}`}
+            >
+              <span className="flex items-center gap-1.5">
+                <Icon icon="lucide:calendar-clock" width={12} />
+                Reservas Registradas
+              </span>
+            </button>
+          )}
+          {verGestionSalas && (
+            <button
+              onClick={() => setVista('salas')}
+              className={`px-3 py-1.5 rounded-md text-xs font-semibold cursor-pointer transition-all ${vista === 'salas' ? 'bg-white shadow-sm text-warning dark:bg-content2 dark:text-warning' : 'text-default-500 hover:text-default-700'}`}
+            >
+              <span className="flex items-center gap-1.5">
+                <Icon icon="lucide:building-2" width={12} />
+                Gestión Salas
+              </span>
+            </button>
+          )}
+        </div>
+      )}
+      {vista === 'reservas' && verReservas     && <SeccionReservas />}
+      {vista === 'salas'    && verGestionSalas && <SeccionGestionSalas />}
     </div>
   );
 };
@@ -630,8 +649,14 @@ const GestionAsignaturasPage: React.FC = () => {
   const toast = useToast();
   const { showConfirm } = useNotifications();
   const { isLoading: permLoading } = usePermission();
-  const { canRead: verAcademica, canCreate: ramos_Crear, canUpdate: ramos_Editar, canDelete: ramos_Eliminar } = useModulePermission('GESTION_ACADEMICA');
-  const { canRead: verSalas } = useModulePermission('ADMIN_SALAS_RESERVAS');
+  const { canRead: verAcademica }          = useModulePermission('GESTION_ACADEMICA');
+  const { canCreate: ramos_Crear }         = useModulePermission('GA_CREAR_ASIGNATURA');
+  const { canCreate: secciones_Crear }     = useModulePermission('GA_CREAR_SECCION');
+  const { canUpdate: ramos_Editar }        = useModulePermission('GA_EDITAR_ASIGNATURA');
+  const { canDelete: ramos_Eliminar }      = useModulePermission('GA_ELIMINAR_ASIGNATURA');
+  const { canUpdate: secciones_Editar }    = useModulePermission('GA_EDITAR_SECCION');
+  const { canDelete: secciones_Eliminar }  = useModulePermission('GA_ELIMINAR_SECCION');
+  const { canRead: verSalas }              = useModulePermission('ADMIN_SALAS_RESERVAS');
 
   // Si el rol solo tiene acceso a "Sala y Reservas" (sin Gestión Académica),
   // redirige automáticamente a esa vista al cargar (OR-gate, patrón Proveedores).
@@ -1079,12 +1104,12 @@ const GestionAsignaturasPage: React.FC = () => {
                                       <div className="mt-1">{renderEstadoSeccion(seccion.estado)}</div>
                                     </div>
                                     <div className="py-2.5 border-b border-default-100 flex gap-1 justify-center items-start">
-                                      {ramos_Editar && (
+                                      {secciones_Editar && (
                                       <Button isIconOnly variant="light" size="md" onPress={() => editarSeccion(asignatura, seccion)}>
                                         <Icon icon="lucide:edit" width={18} className="text-default-400 hover:text-primary" />
                                       </Button>
                                       )}
-                                      {ramos_Eliminar && (
+                                      {secciones_Eliminar && (
                                       <Button isIconOnly variant="light" size="md" onPress={() => eliminarSeccion(asignatura.id, seccion.id, seccion.numeroSeccion)}>
                                         <Icon icon="lucide:trash-2" width={18} className="text-default-400 hover:text-danger" />
                                       </Button>
@@ -1096,7 +1121,7 @@ const GestionAsignaturasPage: React.FC = () => {
                             )}
 
                             {/* Botón para agregar nueva sección */}
-                            {ramos_Crear && (
+                            {secciones_Crear && (
                             <button
                               type="button"
                               onClick={() => abrirCrearSeccion(asignatura)}
