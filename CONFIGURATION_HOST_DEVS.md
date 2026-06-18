@@ -604,9 +604,9 @@ SELECT query, calls, mean_time FROM pg_stat_statements ORDER BY mean_time DESC L
 
 | Documento | Ubicación | Contenido |
 |---|---|---|
-| **CLAUDE.md** (Global) | `/KuHubProject/CLAUDE.md` | Convenciones de versionado y deploy |
-| **CLAUDE.md** (Backend) | `/backend/CLAUDE.md` | Estructura de código, módulos, DTOs |
-| **CLAUDE.md** (Frontend) | `/frontend/CLAUDE.md` | Tech stack, componentes, hooks |
+| **CONVENTIONS.md** (Global) | `/KuHubProject/CONVENTIONS.md` | Convenciones de versionado y deploy |
+| **CONVENTIONS.md** (Backend) | `/backend/CONVENTIONS.md` | Estructura de código, módulos, DTOs |
+| **CONVENTIONS.md** (Frontend) | `/frontend/CONVENTIONS.md` | Tech stack, componentes, hooks |
 | **nota_alcance** | `/KuHubProject/nota_alcance.md` | Alcance funcional del proyecto |
 
 ---

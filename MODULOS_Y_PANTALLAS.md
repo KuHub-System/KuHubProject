@@ -1254,7 +1254,7 @@ Cuando agregues nuevos módulos o funcionalidades:
 5. **Crear servicios**: API client tipado en `services/`
 6. **Crear tipos**: Interfaces en `types/`
 7. **Registrar permisos**: Agregar módulo en `gestion-roles.tsx`
-8. **Actualizar versión**: Modificar tag (ej. K1.0.9) en `CLAUDE.md`
+8. **Actualizar versión**: Modificar tag (ej. K1.0.9) en `CONVENTIONS.md`
 
 ---
 

@@ -45,9 +45,7 @@ application-mat.properties
 /informe_ep1/06_alcance.md
 /informe_ep1/07_planificacion.md
 /informe_ep1/08_conceptualizacion.md
-CLAUDE.md
-/backend/CLAUDE.md
-/frontend/CLAUDE.md
+**/CLAUDE.md
 .aider*
 
 ### Secrets & Credentials ###
