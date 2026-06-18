@@ -1,29 +1,30 @@
-solicitud-service.ts:457
- POST http://localhost:8080/api/v1/pedido/consolidate 403 (Forbidden)
-Promise.then
-(anonymous)	@	solicitud-service.ts:457
-(anonymous)	@	conglomerado-pedidos.tsx:175
+Todos los errores en gestion-proveedores.tsx son pre-existentes (problemas de HeroUI, tipos, etc.) — ninguno está cerca de
+  las líneas que modifiqué (~525-556 y 2795). Sin errores nuevos.
 
-index.min.js:1 ❌ HTTP 403 en POST /pedido/consolidate
-{error: 'Acceso denegado', message: 'No tienes permiso para esta acción sobre el módulo requerido.'}
-console.error	@	index.min.js:1
-(anonymous)	@	logger.ts:32
-(anonymous)	@	Axios.ts:116
-Promise.then
-(anonymous)	@	solicitud-service.ts:457
-(anonymous)	@	conglomerado-pedidos.tsx:175
+  El SQL para el nuevo módulo:
 
-solicitud-service.ts:457
- POST http://localhost:8080/api/v1/pedido/consolidate 403 (Forbidden)
-Promise.then
-(anonymous)	@	solicitud-service.ts:457
-(anonymous)	@	conglomerado-pedidos.tsx:175
+  -- ================================================================
+  -- Nuevo módulo: lectura individual de la pestaña Proveedores
+  -- ================================================================
+  INSERT INTO modulo (codigo_modulo, nombre_modulo, descripcion_modulo, icono_modulo, orden_modulo)
+  VALUES ('GPRV_DATOS_PROV', 'G. Proveedores · Datos Proveedores',
+          'Lectura individual de la lista de proveedores (sin pestaña Órdenes de Pedido)',
+          'lucide:truck', 42);
 
-❌ HTTP 403 en POST /pedido/consolidate
-{error: 'Acceso denegado', message: 'No tienes permiso para esta acción sobre el módulo requerido.'}
-console.error	@	index.min.js:1
-(anonymous)	@	logger.ts:32
-(anonymous)	@	Axios.ts:116
-Promise.then
-(anonymous)	@	solicitud-service.ts:457
-(anonymous)	@	conglomerado-pedidos.tsx:175
+  ---
+  Resumen completo de lo implementado en las dos solicitudes:
+
+  Gestión Académica (en la vista de Roles y Permisos, sección "Centro de Operaciones"):
+  - GESTION_ACADEMICA → ahora agregado (TriStateCell). Lectura = ver asignaturas + secciones con buscador y paginación.
+  Escritura = cascadea todo.
+    - Sección "Pestaña: Gestión Académica": 6 acciones individuales (BinaryWriteCell) — crear asignatura, crear sección,
+  editar asignatura, eliminar asignatura, editar sección, eliminar sección.
+  - Sección "Pestaña: Gestión Sala y Reservas": ADMIN_SALAS_RESERVAS (se movió de Sistema a aquí) como agregado, con 5
+  sub-módulos — 2 de Lectura (ver reservas, ver gestión salas) y 3 de Escritura (crear/editar/eliminar sala).
+
+  Gestión Proveedores (sección "Centro de Operaciones"):
+  - GPRV_DATOS_PROV nuevo BinaryReadCell al inicio de "Pestaña: Proveedores" — da acceso de lectura a la lista de proveedores
+  sin tocar la pestaña Órdenes de Pedido.
+  - Cuando el admin da Lectura en GESTION_PROVEEDORES (el agregado padre), cascadea a todos los hijos incluyendo GPRV_ORDENES
+  → aparece la pestaña Órdenes.
+  - Cuando da Lectura solo en GPRV_DATOS_PROV, GPRV_ORDENES queda en Sin Acceso → pestaña Órdenes no aparece.

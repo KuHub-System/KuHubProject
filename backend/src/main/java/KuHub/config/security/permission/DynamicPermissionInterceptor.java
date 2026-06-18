@@ -100,6 +100,8 @@ public class DynamicPermissionInterceptor implements HandlerInterceptor {
         mod("/api/v*/pedido/entregas-diarias", List.of("GESTION_PEDIDOS_DIARIOS", "GESTION_PEDIDOS"), P),
         mod("/api/v*/pedido/preparar-entrega", List.of("GESTION_PEDIDOS_DIARIOS", "GESTION_PEDIDOS"), P),
         mod("/api/v*/orden-pedido/detalles/entregar", List.of("GESTION_PEDIDOS_DIARIOS", "GESTION_PEDIDOS"), PA),
+        mod("/api/v*/orden-pedido/reservar-disponible/**", List.of("CONG_APROBAR_PEDIDO", "CONGLOMERADO_PEDIDOS", "GESTION_PEDIDOS"), P),
+        mod("/api/v*/pedido/change-massive-status", List.of("CONG_APROBAR_PEDIDO", "CONG_RECHAZAR_PEDIDO", "CONGLOMERADO_PEDIDOS", "GESTION_PEDIDOS"), PA),
         mod("/api/v*/pedido-semana-bodega/importar-excel", List.of("PEDIDO_SEM_CREAR"), P),
 
         // ── Inventario y catálogos ──

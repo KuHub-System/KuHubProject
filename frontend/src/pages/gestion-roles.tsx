@@ -70,10 +70,17 @@ const MODULE_GROUPS: { title: string; modules: ModuleKey[] }[] = [
       'GESTION_PEDIDOS', 'GP_VISTA_RESUMEN', 'GP_VISTA_ACEPTADAS',
       'CONGLOMERADO_PEDIDOS', 'CONG_VISTA_APROBACION', 'CONG_APROBAR_PEDIDO', 'CONG_RECHAZAR_PEDIDO', 'CONG_VISTA_CRONOGRAMA', 'CONG_VISTA_TOTALES', 'CONG_VISTA_CATEGORIAS',
       'GESTION_PROVEEDORES',
+        'GPRV_DATOS_PROV',
         'GPRV_NUEVO_PROV', 'GPRV_SYNC_EXCEL', 'GPRV_GENERAR_ORDEN', 'GPRV_COTIZACION',
         'GPRV_CAMBIAR_ESTADO_PROV', 'GPRV_EDITAR_PROV', 'GPRV_ASIGNAR_PROD', 'GPRV_ELIMINAR_PROV',
         'GPRV_ORDENES', 'GPRV_CANCELAR_OP', 'GPRV_EXPORT_OP',
       'GESTION_ACADEMICA',
+        'GA_CREAR_ASIGNATURA', 'GA_CREAR_SECCION',
+        'GA_EDITAR_ASIGNATURA', 'GA_ELIMINAR_ASIGNATURA',
+        'GA_EDITAR_SECCION', 'GA_ELIMINAR_SECCION',
+      'ADMIN_SALAS_RESERVAS',
+        'GA_VER_RESERVAS', 'GA_VER_SALAS',
+        'GA_CREAR_SALA', 'GA_EDITAR_SALA', 'GA_ELIMINAR_SALA',
       'HISTORICO_PEDIDOS', 'HIST_EXPORT_EXCEL',
     ],
   },
@@ -89,7 +96,7 @@ const MODULE_GROUPS: { title: string; modules: ModuleKey[] }[] = [
   { title: 'Usuarios', modules: ['GESTION_ROLES', 'GESTION_USUARIOS'] },
   {
     title: 'Sistema',
-    modules: ['ADMIN_SISTEMA', 'ADMIN_BLOQUES_HORARIOS', 'ADMIN_SEMANAS', 'ADMIN_SALAS_RESERVAS', 'ADMIN_CONFIG_SISTEMA'],
+    modules: ['ADMIN_SISTEMA', 'ADMIN_BLOQUES_HORARIOS', 'ADMIN_SEMANAS', 'ADMIN_CONFIG_SISTEMA'],
   },
 ];
 
@@ -102,10 +109,16 @@ const SUBMODULES = new Set<ModuleKey>([
   'CONG_VISTA_CRONOGRAMA', 'CONG_VISTA_TOTALES', 'CONG_VISTA_CATEGORIAS',
   'GESTION_CATEGORIAS', 'GESTION_UNIDADES',
   'GESTION_PEDIDOS_DIARIOS',
-  'ADMIN_BLOQUES_HORARIOS', 'ADMIN_SEMANAS', 'ADMIN_SALAS_RESERVAS', 'ADMIN_CONFIG_SISTEMA',
+  'ADMIN_BLOQUES_HORARIOS', 'ADMIN_SEMANAS', 'ADMIN_CONFIG_SISTEMA',
+  'GPRV_DATOS_PROV',
   'GPRV_NUEVO_PROV', 'GPRV_SYNC_EXCEL', 'GPRV_GENERAR_ORDEN', 'GPRV_COTIZACION',
   'GPRV_CAMBIAR_ESTADO_PROV', 'GPRV_EDITAR_PROV', 'GPRV_ASIGNAR_PROD', 'GPRV_ELIMINAR_PROV',
   'GPRV_ORDENES', 'GPRV_CANCELAR_OP', 'GPRV_EXPORT_OP',
+  'GA_CREAR_ASIGNATURA', 'GA_CREAR_SECCION',
+  'GA_EDITAR_ASIGNATURA', 'GA_ELIMINAR_ASIGNATURA',
+  'GA_EDITAR_SECCION', 'GA_ELIMINAR_SECCION',
+  'GA_VER_RESERVAS', 'GA_VER_SALAS',
+  'GA_CREAR_SALA', 'GA_EDITAR_SALA', 'GA_ELIMINAR_SALA',
   'INV_CONTROL_MASIVO', 'INV_SYNC_EXCEL', 'INV_ABASTECIMIENTO',
   'BOD_CONTROL_MASIVO', 'BOD_ABASTECIMIENTO',
   'HIST_EXPORT_EXCEL',
@@ -122,8 +135,10 @@ const MODULE_CHILDREN: Partial<Record<ModuleKey, ModuleKey[]>> = {
   GESTION_PEDIDOS:       ['GP_VISTA_RESUMEN', 'GP_VISTA_ACEPTADAS'],
   CONGLOMERADO_PEDIDOS:  ['CONG_VISTA_APROBACION', 'CONG_VISTA_CRONOGRAMA', 'CONG_VISTA_TOTALES', 'CONG_VISTA_CATEGORIAS', 'CONG_APROBAR_PEDIDO', 'CONG_RECHAZAR_PEDIDO'],
   CONG_VISTA_APROBACION: ['CONG_APROBAR_PEDIDO', 'CONG_RECHAZAR_PEDIDO'],
-  GESTION_PROVEEDORES:   ['GPRV_NUEVO_PROV', 'GPRV_SYNC_EXCEL', 'GPRV_GENERAR_ORDEN', 'GPRV_COTIZACION', 'GPRV_CAMBIAR_ESTADO_PROV', 'GPRV_EDITAR_PROV', 'GPRV_ASIGNAR_PROD', 'GPRV_ELIMINAR_PROV', 'GPRV_ORDENES'],
-  GPRV_ORDENES:          ['GPRV_CANCELAR_OP', 'GPRV_EXPORT_OP'],
+  GESTION_PROVEEDORES:   ['GPRV_DATOS_PROV', 'GPRV_NUEVO_PROV', 'GPRV_SYNC_EXCEL', 'GPRV_GENERAR_ORDEN', 'GPRV_COTIZACION', 'GPRV_CAMBIAR_ESTADO_PROV', 'GPRV_EDITAR_PROV', 'GPRV_ASIGNAR_PROD', 'GPRV_ELIMINAR_PROV', 'GPRV_ORDENES', 'GPRV_CANCELAR_OP', 'GPRV_EXPORT_OP'],
+  GESTION_ACADEMICA:     ['GA_CREAR_ASIGNATURA', 'GA_CREAR_SECCION', 'GA_EDITAR_ASIGNATURA', 'GA_ELIMINAR_ASIGNATURA', 'GA_EDITAR_SECCION', 'GA_ELIMINAR_SECCION'],
+  ADMIN_SALAS_RESERVAS:  ['GA_VER_RESERVAS', 'GA_VER_SALAS', 'GA_CREAR_SALA', 'GA_EDITAR_SALA', 'GA_ELIMINAR_SALA'],
+  ADMIN_SISTEMA:         ['ADMIN_BLOQUES_HORARIOS', 'ADMIN_SEMANAS', 'ADMIN_CONFIG_SISTEMA'],
   INVENTARIO:            ['INV_CONTROL_MASIVO', 'INV_SYNC_EXCEL', 'INV_ABASTECIMIENTO'],
   BODEGA_TRANSITO:       ['BOD_CONTROL_MASIVO', 'BOD_ABASTECIMIENTO'],
   HISTORICO_PEDIDOS:     ['HIST_EXPORT_EXCEL'],
@@ -141,6 +156,15 @@ const MODULE_PARENTS: Partial<Record<ModuleKey, ModuleKey[]>> = (() => {
   }
   return map;
 })();
+
+// ── Separadores visuales de sección dentro de un módulo padre ────────────────
+// Antes de renderizar el módulo indicado se muestra una fila etiqueta de sección.
+const SECTION_HEADERS: Partial<Record<ModuleKey, string>> = {
+  GPRV_DATOS_PROV:      'Pestaña: Proveedores',
+  GPRV_ORDENES:         'Pestaña: Órdenes de Pedido',
+  GA_CREAR_ASIGNATURA:  'Pestaña: Gestión Académica',
+  ADMIN_SALAS_RESERVAS: 'Pestaña: Gestión Sala y Reservas',
+};
 
 // ── Acciones CRUD seleccionables por celda ───────────────────────────────────
 const CRUD_ACTIONS: { key: keyof ModulePermissions; label: string; icon: string }[] = [
@@ -376,11 +400,15 @@ const BinaryWriteCell: React.FC<CrudCellProps> = ({ perms, disabled, onChange })
 // La escritura se gestiona con módulos de acción independientes (CONG_APROBAR_*, etc.).
 const READ_MODULES = new Set<ModuleKey>([
   'CONG_VISTA_APROBACION', 'CONG_VISTA_CRONOGRAMA', 'CONG_VISTA_TOTALES',
+  'GA_VER_RESERVAS', 'GA_VER_SALAS',
+  'GPRV_DATOS_PROV',
+  'GPRV_ORDENES',
 ]);
 const AGGREGATE_MODULES = new Set<ModuleKey>([
   'PEDIDO_SEMANAL_BODEGA', 'GESTION_SOLICITUDES', 'GESTION_PEDIDOS',
   'CONGLOMERADO_PEDIDOS', 'CONG_VISTA_CATEGORIAS',
-  'GESTION_PROVEEDORES', 'GPRV_ORDENES',
+  'GESTION_PROVEEDORES',
+  'GESTION_ACADEMICA', 'ADMIN_SALAS_RESERVAS',
   'HISTORICO_PEDIDOS',
 ]);
 const ACTION_MODULES = new Set<ModuleKey>([
@@ -391,6 +419,10 @@ const ACTION_MODULES = new Set<ModuleKey>([
   'GPRV_NUEVO_PROV', 'GPRV_SYNC_EXCEL', 'GPRV_GENERAR_ORDEN', 'GPRV_COTIZACION',
   'GPRV_CAMBIAR_ESTADO_PROV', 'GPRV_EDITAR_PROV', 'GPRV_ASIGNAR_PROD', 'GPRV_ELIMINAR_PROV',
   'GPRV_CANCELAR_OP', 'GPRV_EXPORT_OP',
+  'GA_CREAR_ASIGNATURA', 'GA_CREAR_SECCION',
+  'GA_EDITAR_ASIGNATURA', 'GA_ELIMINAR_ASIGNATURA',
+  'GA_EDITAR_SECCION', 'GA_ELIMINAR_SECCION',
+  'GA_CREAR_SALA', 'GA_EDITAR_SALA', 'GA_ELIMINAR_SALA',
   'INV_CONTROL_MASIVO', 'INV_SYNC_EXCEL', 'INV_ABASTECIMIENTO',
   'BOD_CONTROL_MASIVO', 'BOD_ABASTECIMIENTO',
   'HIST_EXPORT_EXCEL',
@@ -469,9 +501,20 @@ const GestionRolesPage: React.FC = () => {
       const newPerms = { ...updated[roleIndex].permissions, [moduleKey]: newValue };
 
       // Cascada hacia abajo: el módulo "aglobado" copia su perfil CRUD a las acciones hijas.
+      // Los hijos en READ_MODULES se capean a Lectura como máximo (nunca reciben escritura).
+      // Los hijos en ACTION_MODULES (BinaryWrite) solo admiten 'none' o 'write', nunca 'read'.
       const children = MODULE_CHILDREN[moduleKey];
       if (children) {
-        for (const child of children) newPerms[child] = { ...newValue };
+        const parentLevel = levelFromPermissions(newValue);
+        for (const child of children) {
+          if (READ_MODULES.has(child)) {
+            newPerms[child] = permsFromLevel(parentLevel === 'none' ? 'none' : 'read');
+          } else if (ACTION_MODULES.has(child)) {
+            newPerms[child] = permsFromLevel(parentLevel === 'write' ? 'write' : 'none');
+          } else {
+            newPerms[child] = { ...newValue };
+          }
+        }
       }
 
       // Cascada hacia arriba: recalcula el nivel de cada ancestro como el máximo
@@ -725,48 +768,67 @@ const GestionRolesPage: React.FC = () => {
 
                           {/* Filas de módulos del grupo */}
                           {!collapsed && group.modules.map((moduleKey) => {
-                            const label  = MODULE_LABELS[moduleKey];
-                            const icon   = MODULE_ICONS[moduleKey];
-                            const isSub  = SUBMODULES.has(moduleKey);
-                            const inDb   = availableModules.has(moduleKey);
+                            const label      = MODULE_LABELS[moduleKey];
+                            const icon       = MODULE_ICONS[moduleKey];
+                            const isSub      = SUBMODULES.has(moduleKey);
+                            const inDb       = availableModules.has(moduleKey);
+                            const sectionHdr = SECTION_HEADERS[moduleKey];
 
                             return (
-                              <tr key={moduleKey} className={`hover:bg-default-50/50 dark:hover:bg-default-100/5 transition-colors ${!inDb ? 'opacity-70' : ''}`}>
-                                {/* Columna fija: nombre del módulo */}
-                                <td className={`sticky left-0 z-10 bg-white dark:bg-content1 py-2.5 border-r border-divider ${isSub ? 'pl-10 pr-5' : 'px-5'}`}>
-                                  <div className="flex items-center gap-2">
-                                    {isSub && <Icon icon="lucide:corner-down-right" width={12} className="text-default-300 shrink-0" />}
-                                    <div className={`rounded-lg bg-[#FFB800]/10 flex items-center justify-center shrink-0 ${isSub ? 'w-6 h-6' : 'w-7 h-7'}`}>
-                                      <Icon icon={icon} width={isSub ? 12 : 14} className="text-[#FFB800]" />
-                                    </div>
-                                    <span className={`font-medium text-default-800 dark:text-default-200 whitespace-nowrap ${isSub ? 'text-xs' : 'text-sm'}`}>
-                                      {label}
-                                    </span>
-                                    {!inDb && (
-                                      <Tooltip content="Este módulo aún no existe en la base de datos. Créalo (corre el SQL) para poder asignar y guardar sus permisos." color="warning" className="text-xs max-w-[240px]">
-                                        <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-warning-600 bg-warning-50 dark:bg-warning-50/10 border border-warning-200 rounded px-1.5 py-0.5">
-                                          <Icon icon="lucide:database" width={11} /> falta en BD
+                              <React.Fragment key={moduleKey}>
+                                {sectionHdr && (
+                                  <tr>
+                                    <td className="sticky left-0 z-10 bg-default-50/80 dark:bg-content1/80 pl-8 pr-5 py-1 border-t border-default-200 dark:border-default-100">
+                                      <div className="flex items-center gap-1.5">
+                                        <Icon icon="lucide:corner-down-right" width={10} className="text-default-300 shrink-0" />
+                                        <span className="text-[9px] font-bold uppercase tracking-widest text-default-400 whitespace-nowrap">
+                                          {sectionHdr}
                                         </span>
-                                      </Tooltip>
-                                    )}
-                                  </div>
-                                </td>
-
-                                {/* Celdas por rol (sin Administrador): control según el tipo de módulo */}
-                                {localPermissions.map((rp, roleIdx) => {
-                                  const perms = rp.permissions[moduleKey] ?? emptyModulePermissions();
-                                  const CellControl = cellComponentFor(moduleKey);
-                                  return (
-                                    <td key={`${rp.role}-${moduleKey}`} className="px-3 py-2.5 text-center">
-                                      <CellControl
-                                        perms={perms}
-                                        disabled={isSaving || !inDb}
-                                        onChange={(p) => handlePermissionChange(roleIdx, moduleKey, p)}
-                                      />
+                                        <div className="flex-1 h-px bg-default-200 dark:bg-default-100 ml-1" />
+                                      </div>
                                     </td>
-                                  );
-                                })}
-                              </tr>
+                                    {localPermissions.map((rp) => (
+                                      <td key={rp.role} className="border-t border-default-200 dark:border-default-100 bg-default-50/80 dark:bg-content1/80" />
+                                    ))}
+                                  </tr>
+                                )}
+                                <tr className={`hover:bg-default-50/50 dark:hover:bg-default-100/5 transition-colors ${!inDb ? 'opacity-70' : ''}`}>
+                                  {/* Columna fija: nombre del módulo */}
+                                  <td className={`sticky left-0 z-10 bg-white dark:bg-content1 py-2.5 border-r border-divider ${isSub ? 'pl-10 pr-5' : 'px-5'}`}>
+                                    <div className="flex items-center gap-2">
+                                      {isSub && <Icon icon="lucide:corner-down-right" width={12} className="text-default-300 shrink-0" />}
+                                      <div className={`rounded-lg bg-[#FFB800]/10 flex items-center justify-center shrink-0 ${isSub ? 'w-6 h-6' : 'w-7 h-7'}`}>
+                                        <Icon icon={icon} width={isSub ? 12 : 14} className="text-[#FFB800]" />
+                                      </div>
+                                      <span className={`font-medium text-default-800 dark:text-default-200 whitespace-nowrap ${isSub ? 'text-xs' : 'text-sm'}`}>
+                                        {label}
+                                      </span>
+                                      {!inDb && (
+                                        <Tooltip content="Este módulo aún no existe en la base de datos. Créalo (corre el SQL) para poder asignar y guardar sus permisos." color="warning" className="text-xs max-w-[240px]">
+                                          <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-warning-600 bg-warning-50 dark:bg-warning-50/10 border border-warning-200 rounded px-1.5 py-0.5">
+                                            <Icon icon="lucide:database" width={11} /> falta en BD
+                                          </span>
+                                        </Tooltip>
+                                      )}
+                                    </div>
+                                  </td>
+
+                                  {/* Celdas por rol (sin Administrador): control según el tipo de módulo */}
+                                  {localPermissions.map((rp, roleIdx) => {
+                                    const perms = rp.permissions[moduleKey] ?? emptyModulePermissions();
+                                    const CellControl = cellComponentFor(moduleKey);
+                                    return (
+                                      <td key={`${rp.role}-${moduleKey}`} className="px-3 py-2.5 text-center">
+                                        <CellControl
+                                          perms={perms}
+                                          disabled={isSaving || !inDb}
+                                          onChange={(p) => handlePermissionChange(roleIdx, moduleKey, p)}
+                                        />
+                                      </td>
+                                    );
+                                  })}
+                                </tr>
+                              </React.Fragment>
                             );
                           })}
                         </React.Fragment>

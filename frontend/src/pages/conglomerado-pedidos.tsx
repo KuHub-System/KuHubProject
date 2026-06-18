@@ -453,16 +453,12 @@ const ConglomeradoPedidosPage: React.FC = () => {
     finally { setIsAprobando(false); reservaModal.onClose(); setPedidoReservaModal(null); }
   };
 
-  // Al presionar "Aprobar pedido": si tiene productos con disponible > 0, abre el modal de reserva;
-  // si no hay disponibles, aprueba directo.
+  // Al presionar "Aprobar pedido": siempre abre el modal de reserva para que el usuario
+  // confirme antes de aprobar. Si hay disponible > 0, lo lista para reservar; si no, muestra
+  // la lista vacía y el usuario elige "Aprobar sin reservar".
   const handleAprobarPedido = (ped: IPedidoAprobacion) => {
-    const hayDisponibles = ped.productos.some(p => (p.disponibleReal ?? 0) > 0);
-    if (hayDisponibles) {
-      setPedidoReservaModal(ped);
-      reservaModal.onOpen();
-    } else {
-      void ejecutarAprobacion(ped.idPedido, false);
-    }
+    setPedidoReservaModal(ped);
+    reservaModal.onOpen();
   };
 
   const handleAprobarTodos = async () => {
