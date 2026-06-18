@@ -37,7 +37,7 @@ export const ROLES_SISTEMA: IRole[] = [
       'conglomerado-pedidos',
       'gestion-proveedores',
       'bodega-transito',
-      'gestion-recetas',
+      'pedido-semanal-a-bodega',
       'gestion-academica',
       'gestion-roles',
       'gestion-usuarios',
@@ -57,7 +57,7 @@ export const ROLES_SISTEMA: IRole[] = [
       'conglomerado-pedidos',
       'gestion-proveedores',
       'bodega-transito',
-      'gestion-recetas',
+      'pedido-semanal-a-bodega',
       'gestion-academica'
     ]
   },
@@ -77,7 +77,7 @@ export const ROLES_SISTEMA: IRole[] = [
     permisos: [
       'dashboard',
       'solicitud',
-      'gestion-recetas'
+      'pedido-semanal-a-bodega'
     ]
   },
   {
@@ -86,7 +86,7 @@ export const ROLES_SISTEMA: IRole[] = [
     permisos: [
       'dashboard',
       'solicitud',
-      'gestion-recetas'
+      'pedido-semanal-a-bodega'
     ]
   },
   {
@@ -123,7 +123,7 @@ export const PAGINAS_DISPONIBLES = [
   { id: 'conglomerado-pedidos', nombre: 'Conglomerado de Pedidos', descripcion: 'Agrupación de pedidos' },
   { id: 'gestion-proveedores', nombre: 'Gestión de Proveedores', descripcion: 'Administración de proveedores' },
   { id: 'bodega-transito', nombre: 'Bodega de Tránsito', descripcion: 'Control de productos en tránsito' },
-  { id: 'gestion-recetas', nombre: 'Gestión de Recetas', descripcion: 'Administración de recetas' },
+  { id: 'pedido-semanal-a-bodega', nombre: 'Pedido Semanal a Bodega', descripcion: 'Diseño y carga del pedido semanal a bodega' },
   { id: 'gestion-academica', nombre: 'Gestión Académica', descripcion: 'Administración académica: asignaturas, secciones y asignaciones' },
   { id: 'gestion-roles', nombre: 'Gestión de Roles', descripcion: 'Administración de roles y permisos' },
   { id: 'gestion-usuarios', nombre: 'Gestión de Usuarios', descripcion: 'Administración de usuarios del sistema' },

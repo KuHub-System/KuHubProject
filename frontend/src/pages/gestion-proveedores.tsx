@@ -33,7 +33,7 @@ import { Icon } from '@iconify/react';
 import { motion, AnimatePresence } from 'framer-motion';
 import XLSXStyle from 'xlsx-js-style';
 import { usePageTitle } from '../hooks/usePageTitle';
-import { useModulePermission } from '../contexts/permission-context';
+import { useModulePermission, usePermission } from '../contexts/permission-context';
 import { usePeriodoSemana } from '../contexts/periodo-semana-context';
 import { obtenerSemanasPorPeriodoService } from '../services/semana-service';
 import BookPageLoader from '../components/BookPageLoader';
@@ -519,11 +519,23 @@ const buildColsOC = (
 // ── Componente principal ──────────────────────────────────────────────────────
 
 const GestionProveedoresPage: React.FC = () => {
-  const {
-    canCreate: prov_Crear,
-    canUpdate: prov_Editar,
-    canDelete: prov_Eliminar,
-  } = useModulePermission('GESTION_PROVEEDORES');
+  const { isLoading: permLoading } = usePermission();
+
+  // ── Permisos de la vista Proveedores ──
+  const { canRead: prov_VerLista }       = useModulePermission('GESTION_PROVEEDORES');
+  const { canRead: prov_NuevoProv }      = useModulePermission('GPRV_NUEVO_PROV');
+  const { canRead: prov_SyncExcel }      = useModulePermission('GPRV_SYNC_EXCEL');
+  const { canRead: prov_GenerarOrden }   = useModulePermission('GPRV_GENERAR_ORDEN');
+  const { canRead: prov_Cotizacion }     = useModulePermission('GPRV_COTIZACION');
+  const { canRead: prov_CambiarEstado }  = useModulePermission('GPRV_CAMBIAR_ESTADO_PROV');
+  const { canRead: prov_EditarProv }     = useModulePermission('GPRV_EDITAR_PROV');
+  const { canRead: prov_AsignarProd }    = useModulePermission('GPRV_ASIGNAR_PROD');
+  const { canRead: prov_EliminarProv }   = useModulePermission('GPRV_ELIMINAR_PROV');
+
+  // ── Permisos de la vista Órdenes de Pedido ──
+  const { canRead: verOrdenes, canCreate: op_CambiarEstado } = useModulePermission('GPRV_ORDENES');
+  const { canRead: op_CancelarOp }  = useModulePermission('GPRV_CANCELAR_OP');
+  const { canRead: op_ExportExcel } = useModulePermission('GPRV_EXPORT_OP');
 
   // Context global de período/semana — sólo se LEE (no se muta) para el modal de OC.
   const { periodos: ctxPeriodos } = usePeriodoSemana();
@@ -535,6 +547,13 @@ const GestionProveedoresPage: React.FC = () => {
 
   // ── Vista de Órdenes de Pedido (tab switcher) ────────────────────────
   const [currentView, setCurrentView] = React.useState<'proveedores' | 'ordenes'>('proveedores');
+
+  // Auto-switch: si no tiene acceso a Proveedores pero sí a Órdenes → ir a Órdenes.
+  React.useEffect(() => {
+    if (!permLoading && !prov_VerLista && verOrdenes) {
+      setCurrentView('ordenes');
+    }
+  }, [permLoading, prov_VerLista, verOrdenes]);
 
   usePageTitle(
     currentView === 'proveedores' ? 'Gestión de Proveedores' : 'Órdenes de Pedido',
@@ -2264,6 +2283,9 @@ const GestionProveedoresPage: React.FC = () => {
             rango={opRango}
             onRangoChange={setOpRango}
             onCargarDetallesBulk={cargarDetallesBulk}
+            canCambiarEstado={op_CambiarEstado}
+            canCancelar={op_CancelarOp}
+            canExportExcel={op_ExportExcel}
           />
 
           {/* ── Modal confirmación Cancelar Orden ── */}
@@ -2344,7 +2366,7 @@ const GestionProveedoresPage: React.FC = () => {
             </div>
             <Divider />
             <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
-              {prov_Crear && (
+              {prov_NuevoProv && (
                 <Button
                   color="primary"
                   variant="solid"
@@ -2355,7 +2377,7 @@ const GestionProveedoresPage: React.FC = () => {
                   Nuevo Proveedor
                 </Button>
               )}
-              {prov_Editar && (
+              {prov_SyncExcel && (
                 <Button
                   color="success"
                   variant="flat"
@@ -2366,7 +2388,7 @@ const GestionProveedoresPage: React.FC = () => {
                   Sincronizar Precios Excel
                 </Button>
               )}
-              {prov_Editar && (
+              {prov_GenerarOrden && (
                 <Button
                   color="warning"
                   variant="flat"
@@ -2377,6 +2399,7 @@ const GestionProveedoresPage: React.FC = () => {
                   Generar Orden Pedido
                 </Button>
               )}
+              {prov_Cotizacion && (
               <Button
                 color="secondary"
                 variant="flat"
@@ -2391,6 +2414,7 @@ const GestionProveedoresPage: React.FC = () => {
               >
                 Proyección Cotización
               </Button>
+              )}
             </div>
           </CardBody>
         </Card>
@@ -2534,7 +2558,7 @@ const GestionProveedoresPage: React.FC = () => {
                 <CardBody className="flex flex-col items-center gap-3 py-16 text-default-400">
                   <Icon icon="lucide:truck" width={48} />
                   <p className="text-sm">No se encontraron proveedores</p>
-                  {prov_Crear && (
+                  {prov_NuevoProv && (
                     <Button size="sm" color="primary" variant="flat" onPress={handleNuevoProveedor}>
                       Crear primer proveedor
                     </Button>
@@ -2551,7 +2575,7 @@ const GestionProveedoresPage: React.FC = () => {
                       loading={loadingBusqueda}
                       error={errorBusqueda}
                       searchTerm={busquedaGlobal}
-                      canEdit={prov_Editar}
+                      canEdit={prov_EditarProv}
                       editingPrecio={editingPrecio}
                       precioTemp={precioTemp}
                       savingPrecio={savingPrecio}
@@ -2630,7 +2654,7 @@ const GestionProveedoresPage: React.FC = () => {
                             {proveedor.cantidadProductosActivos} producto{proveedor.cantidadProductosActivos !== 1 ? 's' : ''}
                           </Chip>
                           {renderEstado(proveedor.estadoProveedor)}
-                          {prov_Editar && proveedor.activo && (
+                          {prov_CambiarEstado && proveedor.activo && (
                             <Button
                               isIconOnly
                               variant="light"
@@ -2658,7 +2682,7 @@ const GestionProveedoresPage: React.FC = () => {
                             >
                               <Icon icon="lucide:eye" className="text-default-400 hover:text-success" width={17} />
                             </Button>
-                            {prov_Editar && (
+                            {prov_EditarProv && (
                               <Button
                                 isIconOnly
                                 variant="light"
@@ -2669,7 +2693,7 @@ const GestionProveedoresPage: React.FC = () => {
                                 <Icon icon="lucide:edit" className="text-default-400 hover:text-primary" width={17} />
                               </Button>
                             )}
-                            {prov_Editar && (
+                            {prov_AsignarProd && (
                               <Button
                                 isIconOnly
                                 variant="light"
@@ -2680,7 +2704,7 @@ const GestionProveedoresPage: React.FC = () => {
                                 <Icon icon="lucide:package-plus" className="text-default-500 hover:text-success" width={17} />
                               </Button>
                             )}
-                            {prov_Eliminar && (
+                            {prov_EliminarProv && (
                               <Button
                                 isIconOnly
                                 variant="light"
@@ -2720,7 +2744,7 @@ const GestionProveedoresPage: React.FC = () => {
                               ) : detalleCache[proveedor.idProveedor] ? (
                                 <ProductosProveedor
                                   detalle={detalleCache[proveedor.idProveedor]}
-                                  canEdit={prov_Editar}
+                                  canEdit={prov_EditarProv}
                                   editingPrecio={editingPrecio}
                                   precioTemp={precioTemp}
                                   savingPrecio={savingPrecio}
@@ -2768,6 +2792,7 @@ const GestionProveedoresPage: React.FC = () => {
         {/* ── Riel de navegación derecho ── */}
         <div className="w-[70px] shrink-0 bg-white dark:bg-content1 border-l border-default-200 dark:border-default-100 shadow-[-4px_0_15px_rgba(0,0,0,0.02)] self-stretch -mt-14 -mr-10 pb-[1000px] -mb-[1000px]">
           <div className="sticky top-8 flex flex-col items-center pt-28 pb-6 gap-4 z-30">
+            {prov_VerLista && (
             <Tooltip content="Proveedores" placement="left">
               <Button
                 isIconOnly
@@ -2779,6 +2804,8 @@ const GestionProveedoresPage: React.FC = () => {
                 <Icon icon="lucide:store" width={22} />
               </Button>
             </Tooltip>
+            )}
+            {verOrdenes && (
             <Tooltip content="Órdenes de Pedido" placement="left">
               <Button
                 isIconOnly
@@ -2790,6 +2817,7 @@ const GestionProveedoresPage: React.FC = () => {
                 <Icon icon="lucide:clipboard-list" width={22} />
               </Button>
             </Tooltip>
+            )}
             {opLista.length > 0 && currentView !== 'ordenes' && (
               <span className="px-2 py-0.5 bg-warning-100 text-warning-700 text-[10px] font-bold rounded-full">
                 {opLista.length}
@@ -7028,12 +7056,16 @@ interface OrdenesVistaProps {
   rango: number | null;
   onRangoChange: (r: number | null) => void;
   onCargarDetallesBulk: (ids: number[]) => Promise<void>;
+  canCambiarEstado: boolean;
+  canCancelar: boolean;
+  canExportExcel: boolean;
 }
 
 const OrdenesVista: React.FC<OrdenesVistaProps> = ({
   lista, cargando, error, expandidosIds, detalles, cargandoDetalleIds,
   cambiandoEstadoId, onToggle, onRecargar, onCambiarEstado, onConfirmCancelar,
   rango, onRangoChange, onCargarDetallesBulk,
+  canCambiarEstado, canCancelar, canExportExcel,
 }) => {
   const [filtroEstado, setFiltroEstado] = React.useState<EstadoOrdenPedido>('PENDIENTE');
   const [agruparPorPedido, setAgruparPorPedido] = React.useState(false);
@@ -7290,7 +7322,7 @@ const OrdenesVista: React.FC<OrdenesVistaProps> = ({
           className="flex items-center gap-1.5 shrink-0"
           onClick={e => e.stopPropagation()}
         >
-          {TRANSICIONES_OP[op.estadoOrdenPedido].map(t => (
+          {canCambiarEstado && TRANSICIONES_OP[op.estadoOrdenPedido].map(t => (
             <Tooltip key={t.estado} content={t.label} placement="top">
               <Button
                 isIconOnly
@@ -7305,7 +7337,7 @@ const OrdenesVista: React.FC<OrdenesVistaProps> = ({
               </Button>
             </Tooltip>
           ))}
-          {(['PENDIENTE', 'ENVIADA', 'CONFIRMADA'] as EstadoOrdenPedido[]).includes(op.estadoOrdenPedido) && (
+          {canCancelar && (['PENDIENTE', 'ENVIADA', 'CONFIRMADA'] as EstadoOrdenPedido[]).includes(op.estadoOrdenPedido) && (
             <Tooltip content="Cancelar orden" placement="top">
               <Button
                 isIconOnly
@@ -7567,7 +7599,7 @@ const OrdenesVista: React.FC<OrdenesVistaProps> = ({
                         <span className="text-[11px] text-secondary-100">
                           {prov.fechas.length} día{prov.fechas.length !== 1 ? 's' : ''} · {!modoUnificada ? (detalladaTabla?.find(d => d.idProveedor === prov.idProveedor)?.rows.length ?? 0) : prov.productos.length} fila{(!modoUnificada ? (detalladaTabla?.find(d => d.idProveedor === prov.idProveedor)?.rows.length ?? 0) : prov.productos.length) !== 1 ? 's' : ''}
                         </span>
-                        {modoUnificada && (
+                        {modoUnificada && canExportExcel && (
                           <div className="relative">
                             <button
                               onClick={() => {

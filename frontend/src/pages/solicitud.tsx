@@ -905,7 +905,7 @@ const SolicitudPage: React.FC = () => {
   usePageTitle('Solicitud de Insumos', 'Cree solicitudes masivas de insumos para sus clases prácticas.', 'lucide:clipboard-list');
   const toast = useToast();
   const { canCreate: soli_Crear, canUpdate: soli_Editar, canDelete: soli_Eliminar } = useModulePermission('SOLICITUD');
-  const { isAdmin } = usePermission();
+  const { isAdmin, canRead } = usePermission();
   const history = useHistory();
 
   // CAMBIO 1: se agrega semanaId al destructuring
@@ -1224,7 +1224,7 @@ const SolicitudPage: React.FC = () => {
             <div className="text-center py-12 text-default-400">
               <Icon icon="lucide:book-x" width={32} className="mx-auto mb-2" />
               <p className="text-sm">No hay asignaturas disponibles</p>
-              {isAdmin && (
+              {canRead('GESTION_ACADEMICA') && (
                 <button
                   type="button"
                   className="mt-3 inline-flex items-center gap-1.5 text-sm text-primary hover:text-primary-600 underline underline-offset-2 cursor-pointer transition-colors"
@@ -1235,6 +1235,11 @@ const SolicitudPage: React.FC = () => {
                   <Icon icon="lucide:arrow-right" width={12} />
                 </button>
               )}
+            </div>
+          ) : !soli_Crear ? (
+            <div className="text-center py-12 text-default-400">
+              <Icon icon="lucide:eye" width={32} className="mx-auto mb-2" />
+              <p className="text-sm">Solo lectura — no tienes permiso para crear solicitudes.</p>
             </div>
           ) : (
             asignaturas.map(asig => (

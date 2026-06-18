@@ -17,6 +17,10 @@ import {
   CardBody,
   CardHeader,
   Chip,
+  Dropdown,
+  DropdownTrigger,
+  DropdownMenu,
+  DropdownItem,
   Input,
   Modal,
   ModalBody,
@@ -24,6 +28,7 @@ import {
   ModalFooter,
   ModalHeader,
   Spinner,
+  Tooltip,
   useDisclosure,
 } from '@heroui/react';
 import { Icon } from '@iconify/react';
@@ -34,9 +39,12 @@ import { permissionService } from '../services/permission-service';
 import {
   AccessLevel,
   ModuleKey,
+  ModulePermissions,
   MODULE_LABELS,
   MODULE_ICONS,
   RolePermission,
+  emptyModulePermissions,
+  levelFromPermissions,
 } from '../types/permissions.types';
 
 // ── Opciones de nivel de acceso ───────────────────────────────────────────────
@@ -47,26 +55,99 @@ const ACCESS_OPTIONS: { value: AccessLevel; label: string; chipColor: 'default' 
   { value: 'write', label: 'Escritura',     chipColor: 'success', icon: 'lucide:pencil' },
 ];
 
-// ── Orden de módulos (debe coincidir con orden_modulo en BD) ─────────────────
+// ── Módulos agrupados por categoría (mismo orden del menú lateral) ───────────
+// General → Centro de Operaciones → Inventario → Usuarios → Sistema.
+// Cada submódulo/vista/acción interna va justo debajo de su página padre.
+const MODULE_GROUPS: { title: string; modules: ModuleKey[] }[] = [
+  { title: 'General', modules: ['DASHBOARD'] },
+  {
+    title: 'Centro de Operaciones',
+    modules: [
+      'PEDIDO_SEMANAL_BODEGA',
+      'PEDIDO_SEM_CREAR', 'PEDIDO_SEM_EDITAR', 'PEDIDO_SEM_INACTIVAR', 'PEDIDO_SEM_ELIMINAR',
+      'SOLICITUD',
+      'GESTION_SOLICITUDES', 'GEST_SOL_GESTIONAR', 'GEST_SOL_RECHAZAR',
+      'GESTION_PEDIDOS', 'GP_VISTA_RESUMEN', 'GP_VISTA_ACEPTADAS',
+      'CONGLOMERADO_PEDIDOS', 'CONG_VISTA_APROBACION', 'CONG_APROBAR_PEDIDO', 'CONG_RECHAZAR_PEDIDO', 'CONG_VISTA_CRONOGRAMA', 'CONG_VISTA_TOTALES', 'CONG_VISTA_CATEGORIAS',
+      'GESTION_PROVEEDORES',
+        'GPRV_NUEVO_PROV', 'GPRV_SYNC_EXCEL', 'GPRV_GENERAR_ORDEN', 'GPRV_COTIZACION',
+        'GPRV_CAMBIAR_ESTADO_PROV', 'GPRV_EDITAR_PROV', 'GPRV_ASIGNAR_PROD', 'GPRV_ELIMINAR_PROV',
+        'GPRV_ORDENES', 'GPRV_CANCELAR_OP', 'GPRV_EXPORT_OP',
+      'GESTION_ACADEMICA',
+      'HISTORICO_PEDIDOS', 'HIST_EXPORT_EXCEL',
+    ],
+  },
+  {
+    title: 'Inventario',
+    modules: [
+      'INVENTARIO', 'INV_CONTROL_MASIVO', 'INV_SYNC_EXCEL', 'INV_ABASTECIMIENTO',
+      'GESTION_CATEGORIAS', 'GESTION_UNIDADES',
+      'HISTORIAL_MOVIMIENTOS',
+      'BODEGA_TRANSITO', 'BOD_CONTROL_MASIVO', 'BOD_ABASTECIMIENTO', 'GESTION_PEDIDOS_DIARIOS',
+    ],
+  },
+  { title: 'Usuarios', modules: ['GESTION_ROLES', 'GESTION_USUARIOS'] },
+  {
+    title: 'Sistema',
+    modules: ['ADMIN_SISTEMA', 'ADMIN_BLOQUES_HORARIOS', 'ADMIN_SEMANAS', 'ADMIN_SALAS_RESERVAS', 'ADMIN_CONFIG_SISTEMA'],
+  },
+];
 
-const MODULE_ORDER: ModuleKey[] = [
-  'ADMIN_SISTEMA',
-  'DASHBOARD',
-  'GESTION_ROLES',
-  'GESTION_USUARIOS',
-  'INVENTARIO',
-  'GESTION_CATEGORIAS',
-  'GESTION_UNIDADES',
-  'BODEGA_TRANSITO',
+// Submódulos (vistas/acciones internas) → se muestran indentados bajo su padre.
+const SUBMODULES = new Set<ModuleKey>([
+  'PEDIDO_SEM_CREAR', 'PEDIDO_SEM_EDITAR', 'PEDIDO_SEM_INACTIVAR', 'PEDIDO_SEM_ELIMINAR',
+  'GEST_SOL_GESTIONAR', 'GEST_SOL_RECHAZAR',
+  'GP_VISTA_RESUMEN', 'GP_VISTA_ACEPTADAS',
+  'CONG_VISTA_APROBACION', 'CONG_APROBAR_PEDIDO', 'CONG_RECHAZAR_PEDIDO',
+  'CONG_VISTA_CRONOGRAMA', 'CONG_VISTA_TOTALES', 'CONG_VISTA_CATEGORIAS',
+  'GESTION_CATEGORIAS', 'GESTION_UNIDADES',
   'GESTION_PEDIDOS_DIARIOS',
-  'HISTORIAL_MOVIMIENTOS',
-  'PEDIDO_SEMANAL_BODEGA',
-  'GESTION_ACADEMICA',
-  'SOLICITUD',
-  'GESTION_SOLICITUDES',
-  'GESTION_PEDIDOS',
-  'CONGLOMERADO_PEDIDOS',
-  // 'GESTION_PROVEEDORES', // En cuarentena — no mostrar hasta confirmar si entra al sistema
+  'ADMIN_BLOQUES_HORARIOS', 'ADMIN_SEMANAS', 'ADMIN_SALAS_RESERVAS', 'ADMIN_CONFIG_SISTEMA',
+  'GPRV_NUEVO_PROV', 'GPRV_SYNC_EXCEL', 'GPRV_GENERAR_ORDEN', 'GPRV_COTIZACION',
+  'GPRV_CAMBIAR_ESTADO_PROV', 'GPRV_EDITAR_PROV', 'GPRV_ASIGNAR_PROD', 'GPRV_ELIMINAR_PROV',
+  'GPRV_ORDENES', 'GPRV_CANCELAR_OP', 'GPRV_EXPORT_OP',
+  'INV_CONTROL_MASIVO', 'INV_SYNC_EXCEL', 'INV_ABASTECIMIENTO',
+  'BOD_CONTROL_MASIVO', 'BOD_ABASTECIMIENTO',
+  'HIST_EXPORT_EXCEL',
+]);
+
+const ALL_MODULES: ModuleKey[] = MODULE_GROUPS.flatMap((g) => g.modules);
+
+// ── Módulos "aglobados" → acciones hijas ─────────────────────────────────────
+// Al cambiar el módulo padre se copia su perfil CRUD a las acciones hijas
+// (Escritura las habilita todas; el admin luego puede desactivar las que quiera).
+const MODULE_CHILDREN: Partial<Record<ModuleKey, ModuleKey[]>> = {
+  PEDIDO_SEMANAL_BODEGA: ['PEDIDO_SEM_CREAR', 'PEDIDO_SEM_EDITAR', 'PEDIDO_SEM_INACTIVAR', 'PEDIDO_SEM_ELIMINAR'],
+  GESTION_SOLICITUDES:   ['GEST_SOL_GESTIONAR', 'GEST_SOL_RECHAZAR'],
+  GESTION_PEDIDOS:       ['GP_VISTA_RESUMEN', 'GP_VISTA_ACEPTADAS'],
+  CONGLOMERADO_PEDIDOS:  ['CONG_VISTA_APROBACION', 'CONG_VISTA_CRONOGRAMA', 'CONG_VISTA_TOTALES', 'CONG_VISTA_CATEGORIAS', 'CONG_APROBAR_PEDIDO', 'CONG_RECHAZAR_PEDIDO'],
+  CONG_VISTA_APROBACION: ['CONG_APROBAR_PEDIDO', 'CONG_RECHAZAR_PEDIDO'],
+  GESTION_PROVEEDORES:   ['GPRV_NUEVO_PROV', 'GPRV_SYNC_EXCEL', 'GPRV_GENERAR_ORDEN', 'GPRV_COTIZACION', 'GPRV_CAMBIAR_ESTADO_PROV', 'GPRV_EDITAR_PROV', 'GPRV_ASIGNAR_PROD', 'GPRV_ELIMINAR_PROV', 'GPRV_ORDENES'],
+  GPRV_ORDENES:          ['GPRV_CANCELAR_OP', 'GPRV_EXPORT_OP'],
+  INVENTARIO:            ['INV_CONTROL_MASIVO', 'INV_SYNC_EXCEL', 'INV_ABASTECIMIENTO'],
+  BODEGA_TRANSITO:       ['BOD_CONTROL_MASIVO', 'BOD_ABASTECIMIENTO'],
+  HISTORICO_PEDIDOS:     ['HIST_EXPORT_EXCEL'],
+};
+
+// Inverso de MODULE_CHILDREN: hijo → lista de padres directos.
+// Permite que al asignar permiso a un hijo se promueva al padre a al menos Lectura.
+const MODULE_PARENTS: Partial<Record<ModuleKey, ModuleKey[]>> = (() => {
+  const map: Partial<Record<ModuleKey, ModuleKey[]>> = {};
+  for (const [parent, children] of Object.entries(MODULE_CHILDREN) as [ModuleKey, ModuleKey[]][]) {
+    for (const child of children) {
+      if (!map[child]) map[child] = [];
+      map[child]!.push(parent as ModuleKey);
+    }
+  }
+  return map;
+})();
+
+// ── Acciones CRUD seleccionables por celda ───────────────────────────────────
+const CRUD_ACTIONS: { key: keyof ModulePermissions; label: string; icon: string }[] = [
+  { key: 'puedeLeer',       label: 'Leer',     icon: 'lucide:eye' },
+  { key: 'puedeCrear',      label: 'Crear',    icon: 'lucide:plus' },
+  { key: 'puedeActualizar', label: 'Editar',   icon: 'lucide:pencil' },
+  { key: 'puedeEliminar',   label: 'Eliminar', icon: 'lucide:trash-2' },
 ];
 
 // ── Componente chip de nivel de acceso ────────────────────────────────────────
@@ -85,54 +166,241 @@ const AccessChip: React.FC<{ level: AccessLevel }> = ({ level }) => {
   );
 };
 
-// ── Selector de nivel de acceso ───────────────────────────────────────────────
+// ── Helpers de estilo de celda (compartidos por los 3 tipos de control) ───────
+const TRIGGER_BASE =
+  'inline-flex items-center gap-1 px-2 py-1.5 rounded-lg border text-xs font-medium ' +
+  'transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-[#FFB800]/40';
 
-interface AccessSelectorProps {
-  value:    AccessLevel;
+const levelBg = (level: AccessLevel): string =>
+  level === 'write' ? 'bg-success-50 border-success-200 text-success-700 dark:bg-success-50/10 dark:text-success-400' :
+  level === 'read'  ? 'bg-warning-50 border-warning-200 text-warning-700 dark:bg-warning-50/10 dark:text-warning-400' :
+                      'bg-default-100 border-default-200 text-default-500 dark:bg-default-50/10';
+
+interface CrudCellProps {
+  perms:    ModulePermissions;
   disabled: boolean;
-  locked:   boolean;
-  onChange: (v: AccessLevel) => void;
+  onChange: (p: ModulePermissions) => void;
 }
 
-const AccessSelector: React.FC<AccessSelectorProps> = ({ value, disabled, locked, onChange }) => {
-  const display = locked ? 'write' : value;
-  const opt = ACCESS_OPTIONS.find((o) => o.value === display) ?? ACCESS_OPTIONS[0];
+// Genera el perfil CRUD a partir de un nivel resumido (para celdas no granulares).
+const permsFromLevel = (level: AccessLevel): ModulePermissions =>
+  level === 'write' ? { puedeLeer: true, puedeCrear: true, puedeActualizar: true, puedeEliminar: true } :
+  level === 'read'  ? { puedeLeer: true, puedeCrear: false, puedeActualizar: false, puedeEliminar: false } :
+                      emptyModulePermissions();
 
-  const bgClass =
-    display === 'write' ? 'bg-success-50 border-success-200 text-success-700 dark:bg-success-50/10 dark:text-success-400' :
-    display === 'read'  ? 'bg-warning-50 border-warning-200 text-warning-700 dark:bg-warning-50/10 dark:text-warning-400' :
-                          'bg-default-100 border-default-200 text-default-500 dark:bg-default-50/10';
+// ── Celda CRUD granular (módulos normales) ────────────────────────────────────
+// Muestra un resumen (Sin Acceso / Lectura / Escritura + qué acciones) y al abrir
+// permite marcar individualmente Leer / Crear / Editar / Eliminar.
+// Regla: cualquier acción de escritura implica Leer automáticamente.
 
-  if (locked) {
-    return (
-      <div className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg border text-xs font-semibold opacity-80 ${bgClass}`}>
-        <Icon icon="lucide:shield-check" width={12} />
-        Escritura
-      </div>
-    );
-  }
+const CrudCell: React.FC<CrudCellProps> = ({ perms, disabled, onChange }) => {
+  const level = levelFromPermissions(perms);
+
+  const selectedKeys = new Set<string>();
+  CRUD_ACTIONS.forEach((a) => { if (perms[a.key]) selectedKeys.add(a.key); });
+  if (level === 'write') selectedKeys.add('puedeLeer'); // escritura implica lectura
+
+  const apply = (keys: Set<string>) => {
+    const c = keys.has('puedeCrear');
+    const u = keys.has('puedeActualizar');
+    const d = keys.has('puedeEliminar');
+    const r = keys.has('puedeLeer') || c || u || d;
+    onChange({ puedeLeer: r, puedeCrear: c, puedeActualizar: u, puedeEliminar: d });
+  };
+
+  const levelLabel = level === 'write' ? 'Escritura' : level === 'read' ? 'Lectura' : 'Sin Acceso';
+  const levelIcon  = level === 'write' ? 'lucide:pencil' : level === 'read' ? 'lucide:eye' : 'lucide:lock';
 
   return (
-    <select
-      value={display}
-      disabled={disabled}
-      onChange={(e) => onChange(e.target.value as AccessLevel)}
-      className={`
-        text-xs font-medium px-2 py-1.5 rounded-lg border cursor-pointer
-        focus:outline-none focus:ring-2 focus:ring-[#FFB800]/40
-        transition-colors duration-150
-        ${bgClass}
-        ${disabled ? 'opacity-50 cursor-not-allowed' : 'hover:opacity-90'}
-      `}
-    >
-      {ACCESS_OPTIONS.map((o) => (
-        <option key={o.value} value={o.value}>
-          {o.label}
-        </option>
-      ))}
-    </select>
+    <Dropdown placement="bottom" isDisabled={disabled}>
+      <DropdownTrigger>
+        <button
+          type="button"
+          disabled={disabled}
+          className={`${TRIGGER_BASE} ${levelBg(level)} ${disabled ? 'opacity-50 cursor-not-allowed' : 'hover:opacity-90 cursor-pointer'}`}
+        >
+          <Icon icon={levelIcon} width={12} />
+          <span>{levelLabel}</span>
+          {level === 'write' && (
+            <span className="flex items-center gap-0.5 ml-0.5 opacity-80">
+              {perms.puedeCrear      && <Icon icon="lucide:plus" width={11} />}
+              {perms.puedeActualizar && <Icon icon="lucide:pencil" width={11} />}
+              {perms.puedeEliminar   && <Icon icon="lucide:trash-2" width={11} />}
+            </span>
+          )}
+          <Icon icon="lucide:chevron-down" width={11} className="ml-0.5 opacity-60" />
+        </button>
+      </DropdownTrigger>
+      <DropdownMenu
+        aria-label="Seleccionar permisos"
+        closeOnSelect={false}
+        selectionMode="multiple"
+        selectedKeys={selectedKeys}
+        onSelectionChange={(keys) => {
+          const set = typeof keys === 'string' ? new Set<string>() : new Set(Array.from(keys).map(String));
+          apply(set);
+        }}
+      >
+        {CRUD_ACTIONS.map((a) => (
+          <DropdownItem key={a.key} startContent={<Icon icon={a.icon} width={14} />}>
+            {a.label}
+          </DropdownItem>
+        ))}
+      </DropdownMenu>
+    </Dropdown>
   );
 };
+
+// ── Celda de 3 estados (módulo "aglobado": página con cascada) ────────────────
+// Sin Acceso / Lectura / Escritura. La Lectura deja la página solo-lectura
+// (ver filtros/detalle, íconos apagados); la Escritura cascadea a sus acciones.
+const TRISTATE_OPTIONS: { key: AccessLevel; label: string; icon: string }[] = [
+  { key: 'none',  label: 'Sin Acceso', icon: 'lucide:lock' },
+  { key: 'read',  label: 'Lectura',    icon: 'lucide:eye' },
+  { key: 'write', label: 'Escritura',  icon: 'lucide:pencil' },
+];
+
+const TriStateCell: React.FC<CrudCellProps> = ({ perms, disabled, onChange }) => {
+  const level = levelFromPermissions(perms);
+  const opt = TRISTATE_OPTIONS.find((o) => o.key === level) ?? TRISTATE_OPTIONS[0];
+
+  return (
+    <Dropdown placement="bottom" isDisabled={disabled}>
+      <DropdownTrigger>
+        <button
+          type="button"
+          disabled={disabled}
+          className={`${TRIGGER_BASE} ${levelBg(level)} ${disabled ? 'opacity-50 cursor-not-allowed' : 'hover:opacity-90 cursor-pointer'}`}
+        >
+          <Icon icon={opt.icon} width={12} />
+          <span>{opt.label}</span>
+          <Icon icon="lucide:chevron-down" width={11} className="ml-0.5 opacity-60" />
+        </button>
+      </DropdownTrigger>
+      <DropdownMenu
+        aria-label="Nivel de acceso"
+        selectionMode="single"
+        selectedKeys={new Set([level])}
+        onSelectionChange={(keys) => {
+          const k = (typeof keys === 'string' ? '' : Array.from(keys).map(String)[0]) as AccessLevel;
+          if (k) onChange(permsFromLevel(k));
+        }}
+      >
+        {TRISTATE_OPTIONS.map((o) => (
+          <DropdownItem key={o.key} startContent={<Icon icon={o.icon} width={14} />}>
+            {o.label}
+          </DropdownItem>
+        ))}
+      </DropdownMenu>
+    </Dropdown>
+  );
+};
+
+// ── Celda binaria de lectura (vista de solo consulta) ────────────────────────
+// Para tabs que solo tienen Sin Acceso o Lectura: no existe acción de escritura
+// propia; el write se gestiona con módulos de acción independientes.
+const BinaryReadCell: React.FC<CrudCellProps> = ({ perms, disabled, onChange }) => {
+  const isRead = perms.puedeLeer || perms.puedeCrear || perms.puedeActualizar || perms.puedeEliminar;
+  const level: AccessLevel = isRead ? 'read' : 'none';
+
+  return (
+    <Dropdown placement="bottom" isDisabled={disabled}>
+      <DropdownTrigger>
+        <button
+          type="button"
+          disabled={disabled}
+          className={`${TRIGGER_BASE} ${levelBg(level)} ${disabled ? 'opacity-50 cursor-not-allowed' : 'hover:opacity-90 cursor-pointer'}`}
+        >
+          <Icon icon={isRead ? 'lucide:eye' : 'lucide:lock'} width={12} />
+          <span>{isRead ? 'Lectura' : 'Sin Acceso'}</span>
+          <Icon icon="lucide:chevron-down" width={11} className="ml-0.5 opacity-60" />
+        </button>
+      </DropdownTrigger>
+      <DropdownMenu
+        aria-label="Permiso de lectura"
+        selectionMode="single"
+        selectedKeys={new Set([isRead ? 'read' : 'none'])}
+        onSelectionChange={(keys) => {
+          const k = typeof keys === 'string' ? '' : Array.from(keys).map(String)[0];
+          onChange(k === 'read' ? permsFromLevel('read') : emptyModulePermissions());
+        }}
+      >
+        <DropdownItem key="none" startContent={<Icon icon="lucide:lock" width={14} />}>Sin Acceso</DropdownItem>
+        <DropdownItem key="read"  startContent={<Icon icon="lucide:eye"  width={14} />}>Lectura</DropdownItem>
+      </DropdownMenu>
+    </Dropdown>
+  );
+};
+
+// ── Celda binaria (acción: Sin permiso / Escritura) ───────────────────────────
+// Para acciones puntuales (Nuevo, Editar, Inactivar, Eliminar): no tienen "Leer",
+// solo se conceden o no. La página muestra el ícono apagado cuando es Sin permiso.
+const BinaryWriteCell: React.FC<CrudCellProps> = ({ perms, disabled, onChange }) => {
+  const isWrite = perms.puedeCrear || perms.puedeActualizar || perms.puedeEliminar;
+  const level: AccessLevel = isWrite ? 'write' : 'none';
+
+  return (
+    <Dropdown placement="bottom" isDisabled={disabled}>
+      <DropdownTrigger>
+        <button
+          type="button"
+          disabled={disabled}
+          className={`${TRIGGER_BASE} ${levelBg(level)} ${disabled ? 'opacity-50 cursor-not-allowed' : 'hover:opacity-90 cursor-pointer'}`}
+        >
+          <Icon icon={isWrite ? 'lucide:pencil' : 'lucide:lock'} width={12} />
+          <span>{isWrite ? 'Escritura' : 'Sin permiso'}</span>
+          <Icon icon="lucide:chevron-down" width={11} className="ml-0.5 opacity-60" />
+        </button>
+      </DropdownTrigger>
+      <DropdownMenu
+        aria-label="Permiso de acción"
+        selectionMode="single"
+        selectedKeys={new Set([isWrite ? 'write' : 'none'])}
+        onSelectionChange={(keys) => {
+          const k = typeof keys === 'string' ? '' : Array.from(keys).map(String)[0];
+          onChange(k === 'write' ? permsFromLevel('write') : emptyModulePermissions());
+        }}
+      >
+        <DropdownItem key="none" startContent={<Icon icon="lucide:lock" width={14} />}>Sin permiso</DropdownItem>
+        <DropdownItem key="write" startContent={<Icon icon="lucide:pencil" width={14} />}>Escritura</DropdownItem>
+      </DropdownMenu>
+    </Dropdown>
+  );
+};
+
+// ── Clasificación de módulos por tipo de control ──────────────────────────────
+// Aglobado (3 estados con cascada): la página Pedido Semanal a Bodega.
+// Acción (binario Sin/Escritura): sus 4 acciones internas.
+// Resto: CRUD granular (4 checkboxes).
+// Vistas con solo dos opciones (Sin Acceso / Lectura): no tienen escritura propia.
+// La escritura se gestiona con módulos de acción independientes (CONG_APROBAR_*, etc.).
+const READ_MODULES = new Set<ModuleKey>([
+  'CONG_VISTA_APROBACION', 'CONG_VISTA_CRONOGRAMA', 'CONG_VISTA_TOTALES',
+]);
+const AGGREGATE_MODULES = new Set<ModuleKey>([
+  'PEDIDO_SEMANAL_BODEGA', 'GESTION_SOLICITUDES', 'GESTION_PEDIDOS',
+  'CONGLOMERADO_PEDIDOS', 'CONG_VISTA_CATEGORIAS',
+  'GESTION_PROVEEDORES', 'GPRV_ORDENES',
+  'HISTORICO_PEDIDOS',
+]);
+const ACTION_MODULES = new Set<ModuleKey>([
+  'PEDIDO_SEM_CREAR', 'PEDIDO_SEM_EDITAR', 'PEDIDO_SEM_INACTIVAR', 'PEDIDO_SEM_ELIMINAR',
+  'GEST_SOL_GESTIONAR', 'GEST_SOL_RECHAZAR',
+  'SOLICITUD',
+  'CONG_APROBAR_PEDIDO', 'CONG_RECHAZAR_PEDIDO',
+  'GPRV_NUEVO_PROV', 'GPRV_SYNC_EXCEL', 'GPRV_GENERAR_ORDEN', 'GPRV_COTIZACION',
+  'GPRV_CAMBIAR_ESTADO_PROV', 'GPRV_EDITAR_PROV', 'GPRV_ASIGNAR_PROD', 'GPRV_ELIMINAR_PROV',
+  'GPRV_CANCELAR_OP', 'GPRV_EXPORT_OP',
+  'INV_CONTROL_MASIVO', 'INV_SYNC_EXCEL', 'INV_ABASTECIMIENTO',
+  'BOD_CONTROL_MASIVO', 'BOD_ABASTECIMIENTO',
+  'HIST_EXPORT_EXCEL',
+]);
+
+const cellComponentFor = (moduleKey: ModuleKey): React.FC<CrudCellProps> =>
+  ACTION_MODULES.has(moduleKey)    ? BinaryWriteCell :
+  READ_MODULES.has(moduleKey)      ? BinaryReadCell :
+  AGGREGATE_MODULES.has(moduleKey) ? TriStateCell :
+                                     CrudCell;
 
 // ── Página principal ──────────────────────────────────────────────────────────
 
@@ -149,6 +417,24 @@ const GestionRolesPage: React.FC = () => {
   const [confirmarTexto,    setConfirmarTexto]     = React.useState('');
   const [message,           setMessage]           = React.useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [errorState,        setErrorState]        = React.useState<{ is403: boolean; message: string } | null>(null);
+  const [collapsedGroups,   setCollapsedGroups]   = React.useState<Record<string, boolean>>({});
+
+  const toggleGroup = (title: string) =>
+    setCollapsedGroups((prev) => ({ ...prev, [title]: !prev[title] }));
+
+  // Módulos que SÍ existen en la BD (vienen en la matriz del backend). Un módulo
+  // de la vista que no esté aquí NO se puede guardar: el backend solo conoce los
+  // módulos de la tabla `modulo`, así que hay que crearlos en la BD primero.
+  const availableModules = React.useMemo(() => {
+    const s = new Set<string>();
+    localPermissions.forEach((rp) => Object.keys(rp.permissions).forEach((k) => s.add(k)));
+    return s;
+  }, [localPermissions]);
+
+  const missingModules = React.useMemo(
+    () => ALL_MODULES.filter((m) => localPermissions.length > 0 && !availableModules.has(m)),
+    [availableModules, localPermissions.length]
+  );
 
   // ── Cargar la matriz desde el backend ───────────────────────────────────────
 
@@ -177,16 +463,40 @@ const GestionRolesPage: React.FC = () => {
 
   // ── Cambiar un nivel de acceso en el estado local ───────────────────────────
 
-  const handlePermissionChange = (roleIndex: number, moduleKey: ModuleKey, newValue: AccessLevel) => {
+  const handlePermissionChange = (roleIndex: number, moduleKey: ModuleKey, newValue: ModulePermissions) => {
     setLocalPermissions((prev) => {
       const updated = [...prev];
-      updated[roleIndex] = {
-        ...updated[roleIndex],
-        permissions: {
-          ...updated[roleIndex].permissions,
-          [moduleKey]: newValue,
-        },
-      };
+      const newPerms = { ...updated[roleIndex].permissions, [moduleKey]: newValue };
+
+      // Cascada hacia abajo: el módulo "aglobado" copia su perfil CRUD a las acciones hijas.
+      const children = MODULE_CHILDREN[moduleKey];
+      if (children) {
+        for (const child of children) newPerms[child] = { ...newValue };
+      }
+
+      // Cascada hacia arriba: recalcula el nivel de cada ancestro como el máximo
+      // de TODOS sus hijos directos (en newPerms). Sube y también baja con el resto.
+      const upQueue: ModuleKey[] = [moduleKey];
+      const upVisited = new Set<ModuleKey>();
+      while (upQueue.length > 0) {
+        const current = upQueue.shift()!;
+        if (upVisited.has(current)) continue;
+        upVisited.add(current);
+        for (const parent of MODULE_PARENTS[current] ?? []) {
+          const siblings = MODULE_CHILDREN[parent] ?? [];
+          let maxLevel: AccessLevel = 'none';
+          for (const sib of siblings) {
+            const sl = levelFromPermissions(newPerms[sib]);
+            if (sl === 'write') { maxLevel = 'write'; break; }
+            if (sl === 'read') maxLevel = 'read';
+          }
+          if (READ_MODULES.has(parent) && maxLevel === 'write') maxLevel = 'read';
+          newPerms[parent] = permsFromLevel(maxLevel);
+          upQueue.push(parent);
+        }
+      }
+
+      updated[roleIndex] = { ...updated[roleIndex], permissions: newPerms };
       return updated;
     });
     setMessage(null);
@@ -315,13 +625,28 @@ const GestionRolesPage: React.FC = () => {
           </div>
         )}
 
+        {/* ── Aviso: módulos de la vista que no existen en la BD ── */}
+        {!isLoading && !errorState && missingModules.length > 0 && (
+          <div className="p-3 rounded-xl border border-warning-200 bg-warning-50 dark:bg-warning-50/10 text-warning-800 dark:text-warning-400 text-sm flex items-start gap-2">
+            <Icon icon="lucide:database" width={16} className="shrink-0 mt-0.5" />
+            <div>
+              <p className="font-semibold">{missingModules.length} módulo(s) todavía no existen en la base de datos.</p>
+              <p className="text-xs mt-0.5">
+                Sus celdas están deshabilitadas y <strong>no se pueden guardar</strong> hasta crearlos en la tabla <code>modulo</code>.
+                Corre el script SQL (o el bloque incremental) para agregarlos:{' '}
+                <span className="font-medium">{missingModules.map((m) => MODULE_LABELS[m]).join(', ')}</span>.
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* ── Matriz de permisos ── */}
         <Card className="shadow-sm">
           <CardHeader className="px-6 py-4 border-b border-divider">
             <div className="flex items-center gap-2">
               <Icon icon="lucide:grid" width={16} className="text-[#FFB800]" />
               <span className="font-semibold text-sm">
-                Módulos ({MODULE_ORDER.length}) × Roles ({localPermissions.length})
+                Módulos ({ALL_MODULES.length}) × Roles ({localPermissions.length})
               </span>
             </div>
           </CardHeader>
@@ -379,43 +704,72 @@ const GestionRolesPage: React.FC = () => {
                       </td>
                     </tr>
                   ) : (
-                    MODULE_ORDER.map((moduleKey) => {
-                      const label = MODULE_LABELS[moduleKey];
-                      const icon  = MODULE_ICONS[moduleKey];
-
+                    MODULE_GROUPS.map((group) => {
+                      const collapsed = collapsedGroups[group.title];
                       return (
-                        <tr key={moduleKey} className="hover:bg-default-50/50 dark:hover:bg-default-100/5 transition-colors">
-                          {/* Columna fija: nombre del módulo */}
-                          <td className="sticky left-0 z-10 bg-white dark:bg-content1 px-5 py-3 border-r border-divider">
-                            <div className="flex items-center gap-2">
-                              <div className="w-7 h-7 rounded-lg bg-[#FFB800]/10 flex items-center justify-center shrink-0">
-                                <Icon icon={icon} width={14} className="text-[#FFB800]" />
+                        <React.Fragment key={group.title}>
+                          {/* Fila de categoría (colapsable) */}
+                          <tr
+                            className="bg-default-100/70 dark:bg-default-100/10 border-y border-divider cursor-pointer select-none"
+                            onClick={() => toggleGroup(group.title)}
+                          >
+                            <td className="sticky left-0 z-10 bg-default-100/70 dark:bg-content2 px-5 py-2 border-r border-divider">
+                              <div className="flex items-center gap-2">
+                                <Icon icon={collapsed ? 'lucide:chevron-right' : 'lucide:chevron-down'} width={14} className="text-default-500" />
+                                <span className="text-[11px] font-bold uppercase tracking-wider text-default-500">{group.title}</span>
+                                <span className="text-[10px] text-default-400">({group.modules.length})</span>
                               </div>
-                              <span className="text-sm font-medium text-default-800 dark:text-default-200 whitespace-nowrap">
-                                {label}
-                              </span>
-                            </div>
-                          </td>
+                            </td>
+                            <td colSpan={localPermissions.length} className="bg-default-100/70 dark:bg-content2" />
+                          </tr>
 
-                          {/* Celdas: selector por rol (sin Administrador) */}
-                          {localPermissions.map((rp, roleIdx) => {
-                            const currentAccess = rp.permissions[moduleKey] ?? 'none';
+                          {/* Filas de módulos del grupo */}
+                          {!collapsed && group.modules.map((moduleKey) => {
+                            const label  = MODULE_LABELS[moduleKey];
+                            const icon   = MODULE_ICONS[moduleKey];
+                            const isSub  = SUBMODULES.has(moduleKey);
+                            const inDb   = availableModules.has(moduleKey);
 
                             return (
-                              <td
-                                key={`${rp.role}-${moduleKey}`}
-                                className="px-4 py-3 text-center"
-                              >
-                                <AccessSelector
-                                  value={currentAccess}
-                                  locked={false}
-                                  disabled={isSaving}
-                                  onChange={(v) => handlePermissionChange(roleIdx, moduleKey, v)}
-                                />
-                              </td>
+                              <tr key={moduleKey} className={`hover:bg-default-50/50 dark:hover:bg-default-100/5 transition-colors ${!inDb ? 'opacity-70' : ''}`}>
+                                {/* Columna fija: nombre del módulo */}
+                                <td className={`sticky left-0 z-10 bg-white dark:bg-content1 py-2.5 border-r border-divider ${isSub ? 'pl-10 pr-5' : 'px-5'}`}>
+                                  <div className="flex items-center gap-2">
+                                    {isSub && <Icon icon="lucide:corner-down-right" width={12} className="text-default-300 shrink-0" />}
+                                    <div className={`rounded-lg bg-[#FFB800]/10 flex items-center justify-center shrink-0 ${isSub ? 'w-6 h-6' : 'w-7 h-7'}`}>
+                                      <Icon icon={icon} width={isSub ? 12 : 14} className="text-[#FFB800]" />
+                                    </div>
+                                    <span className={`font-medium text-default-800 dark:text-default-200 whitespace-nowrap ${isSub ? 'text-xs' : 'text-sm'}`}>
+                                      {label}
+                                    </span>
+                                    {!inDb && (
+                                      <Tooltip content="Este módulo aún no existe en la base de datos. Créalo (corre el SQL) para poder asignar y guardar sus permisos." color="warning" className="text-xs max-w-[240px]">
+                                        <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-warning-600 bg-warning-50 dark:bg-warning-50/10 border border-warning-200 rounded px-1.5 py-0.5">
+                                          <Icon icon="lucide:database" width={11} /> falta en BD
+                                        </span>
+                                      </Tooltip>
+                                    )}
+                                  </div>
+                                </td>
+
+                                {/* Celdas por rol (sin Administrador): control según el tipo de módulo */}
+                                {localPermissions.map((rp, roleIdx) => {
+                                  const perms = rp.permissions[moduleKey] ?? emptyModulePermissions();
+                                  const CellControl = cellComponentFor(moduleKey);
+                                  return (
+                                    <td key={`${rp.role}-${moduleKey}`} className="px-3 py-2.5 text-center">
+                                      <CellControl
+                                        perms={perms}
+                                        disabled={isSaving || !inDb}
+                                        onChange={(p) => handlePermissionChange(roleIdx, moduleKey, p)}
+                                      />
+                                    </td>
+                                  );
+                                })}
+                              </tr>
                             );
                           })}
-                        </tr>
+                        </React.Fragment>
                       );
                     })
                   )}
@@ -426,12 +780,37 @@ const GestionRolesPage: React.FC = () => {
         </Card>
 
         {/* ── Nota informativa ── */}
-        <div className="flex items-start gap-2 text-xs text-default-400 bg-default-50 dark:bg-default-100/5 rounded-xl p-3 border border-divider">
-          <Icon icon="lucide:info" width={14} className="shrink-0 mt-0.5 text-[#FFB800]" />
-          <p>
-            Los cambios se aplican a todos los usuarios de ese rol inmediatamente después de guardar.
-            El Administrador siempre mantiene acceso total y no puede ser restringido.
-          </p>
+        <div className="flex flex-col gap-2 text-xs text-default-500 bg-default-50 dark:bg-default-100/5 rounded-xl p-3 border border-divider">
+          <div className="flex items-start gap-2">
+            <Icon icon="lucide:info" width={14} className="shrink-0 mt-0.5 text-[#FFB800]" />
+            <p className="text-default-400">
+              Los cambios se aplican a todos los usuarios de ese rol inmediatamente después de guardar.
+              El Administrador siempre mantiene acceso total y no puede ser restringido.
+            </p>
+          </div>
+          <div className="border-t border-divider pt-2 space-y-1.5">
+            <p className="font-semibold text-default-600">Cómo asignar permisos:</p>
+            <div className="flex items-start gap-2">
+              <Icon icon="lucide:mouse-pointer-click" width={12} className="shrink-0 mt-0.5 text-[#FFB800]" />
+              <span>Haz clic en la celda de cada rol y <strong>marca las acciones</strong> que tendrá: <strong>Leer, Crear, Editar, Eliminar</strong>. Puedes combinarlas (p. ej. Leer + Editar sin Eliminar).</span>
+            </div>
+            <div className="flex items-start gap-2">
+              <Icon icon="lucide:lock" width={12} className="shrink-0 mt-0.5 text-default-400" />
+              <span><strong>Sin Acceso</strong> (nada marcado): el módulo no aparece en el menú ni por URL; no se muestra ningún ícono.</span>
+            </div>
+            <div className="flex items-start gap-2">
+              <Icon icon="lucide:eye" width={12} className="shrink-0 mt-0.5 text-warning-500" />
+              <span><strong>Lectura</strong> (solo Leer): ve la información y usa filtros/buscadores, pero los íconos de crear/editar/eliminar aparecen apagados y no clickeables.</span>
+            </div>
+            <div className="flex items-start gap-2">
+              <Icon icon="lucide:pencil" width={12} className="shrink-0 mt-0.5 text-success-500" />
+              <span><strong>Escritura</strong> (alguna acción marcada): se habilitan exactamente los íconos correspondientes. Marcar cualquier acción de escritura activa Leer automáticamente.</span>
+            </div>
+            <div className="flex items-start gap-2">
+              <Icon icon="lucide:package-open" width={12} className="shrink-0 mt-0.5 text-[#FFB800]" />
+              <span><strong>Pedido Semanal a Bodega:</strong> la página tiene Sin Acceso / Lectura / Escritura (Lectura = ver con íconos apagados). Sus acciones <strong>Nuevo, Editar, Inactivar y Eliminar</strong> son solo <strong>Sin permiso o Escritura</strong>. Poner la página en Escritura las activa todas; luego puedes apagar las que quieras.</span>
+            </div>
+          </div>
         </div>
 
       </motion.div>

@@ -103,7 +103,13 @@ const fmtCant = (n: number): string => {
 const ConglomeradoPedidosPage: React.FC = () => {
   usePageTitle('Conglomerado de Pedidos', 'Seguimiento y estado de los pedidos semanales generados a partir de solicitudes aceptadas.', 'lucide:layers');
   const toast = useToast();
-  const { canCreate: cong_Crear, canUpdate: cong_Editar, canDelete: cong_Eliminar } = useModulePermission('CONGLOMERADO_PEDIDOS');
+  const { canUpdate: permAprobar }  = useModulePermission('CONG_APROBAR_PEDIDO');
+  const { canUpdate: permRechazar } = useModulePermission('CONG_RECHAZAR_PEDIDO');
+  const { canCreate: permDescargarExcel } = useModulePermission('CONG_VISTA_CATEGORIAS');
+  const { canRead: verCongAprob }   = useModulePermission('CONG_VISTA_APROBACION');
+  const { canRead: verCongCrono }   = useModulePermission('CONG_VISTA_CRONOGRAMA');
+  const { canRead: verCongTotales } = useModulePermission('CONG_VISTA_TOTALES');
+  const { canRead: verCongCateg }   = useModulePermission('CONG_VISTA_CATEGORIAS');
   const { isAdmin } = usePermission();
   const history = useHistory();
 
@@ -122,6 +128,15 @@ const ConglomeradoPedidosPage: React.FC = () => {
   const [busquedaAprob, setBusquedaAprob] = React.useState('');
   const [expandidos,    setExpandidos]    = React.useState<Set<string>>(new Set());
   const [vistaActiva,   setVistaActiva]   = React.useState<'categorias' | 'cronograma' | 'totales' | 'aprobacion'>('aprobacion');
+
+  // Conmutar a la primera vista permitida si el rol no puede ver la activa
+  React.useEffect(() => {
+    const permitida: Record<string, boolean> = { aprobacion: verCongAprob, cronograma: verCongCrono, totales: verCongTotales, categorias: verCongCateg };
+    if (!permitida[vistaActiva]) {
+      const primera = (['aprobacion', 'cronograma', 'totales', 'categorias'] as const).find(v => permitida[v]);
+      if (primera) setVistaActiva(primera);
+    }
+  }, [verCongAprob, verCongCrono, verCongTotales, verCongCateg, vistaActiva]);
   const [aprobVista,    setAprobVista]    = React.useState<'unificado' | 'individual'>('individual');
   const [isAprobando,   setIsAprobando]   = React.useState(false);
   const reservaModal = useDisclosure();
@@ -927,7 +942,7 @@ const ConglomeradoPedidosPage: React.FC = () => {
         <CardHeader className="px-5 py-4 flex flex-col sm:flex-row gap-3 items-start sm:items-center flex-wrap">
           {/* Tabs */}
           <div className="flex items-center gap-1 bg-default-100 rounded-lg p-1 flex-wrap">
-            {(['aprobacion', 'cronograma', 'totales', 'categorias'] as const).map(v => (
+            {(['aprobacion', 'cronograma', 'totales', 'categorias'] as const).filter(v => ({ aprobacion: verCongAprob, cronograma: verCongCrono, totales: verCongTotales, categorias: verCongCateg } as Record<string, boolean>)[v]).map(v => (
               <button key={v} onClick={() => { setVistaActiva(v); setExpandidos(new Set()); }}
                 className={`px-3 py-1.5 rounded-md text-xs font-semibold cursor-pointer transition-all ${
                   vistaActiva === v ? 'bg-white shadow-sm text-primary' : 'text-default-500 hover:text-default-700'
@@ -971,7 +986,7 @@ const ConglomeradoPedidosPage: React.FC = () => {
                 {conColores ? 'Con colores' : 'Sin colores'}
               </button>
               {/* Botón descarga Excel */}
-              {hayDatos && (
+              {hayDatos && permDescargarExcel && (
                 <button
                   onClick={diaCategoria === 'completa' ? descargarExcelCompleta : descargarExcelDia}
                   className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold border border-success-300 bg-success-50 text-success-700 hover:bg-success-100 transition-all cursor-pointer">
@@ -1587,7 +1602,7 @@ const ConglomeradoPedidosPage: React.FC = () => {
                     ? `${productosUnificadosFiltrados.length} producto${productosUnificadosFiltrados.length !== 1 ? 's' : ''} totales`
                     : `${pedidosAprobFiltrados.length} pedido${pedidosAprobFiltrados.length !== 1 ? 's' : ''}`}
                 </span>
-                {cong_Editar && aprobVista === 'individual' && pedidosPendientes.length > 0 && (
+                {permAprobar && aprobVista === 'individual' && pedidosPendientes.length > 0 && (
                   <Button
                     size="sm"
                     color="warning"
@@ -1709,7 +1724,7 @@ const ConglomeradoPedidosPage: React.FC = () => {
                           startContent={<Icon icon={chipIcon} width={10} />}>
                           {labelEstado[ped.estadoPedido] ?? ped.estadoPedido}
                         </Chip>
-                        {cong_Editar && isPendiente && (
+                        {permAprobar && isPendiente && (
                           <Button size="sm" color="success" variant="flat"
                             isLoading={isAprobando}
                             onPress={() => handleAprobarPedido(ped)}
@@ -1759,7 +1774,7 @@ const ConglomeradoPedidosPage: React.FC = () => {
                           en <span className="text-default-800 font-semibold">negro</span> = dato confirmado.
                         </span>
                       </span>
-                      {cong_Editar && (isPendiente || isAprobado) && (
+                      {permRechazar && (isPendiente || isAprobado) && (
                         <Button size="sm" color="danger" variant="flat" className="shrink-0"
                           onPress={() => void handleAbrirRechazo(ped)}
                           startContent={<Icon icon="lucide:x-circle" width={12} />}>

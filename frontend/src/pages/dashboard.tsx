@@ -79,7 +79,7 @@ const DashboardAdminTabs: React.FC = () => (
 
 const DashboardProfesorView: React.FC = () => (
   <div className="container mx-auto px-4 py-6 space-y-4">
-    <DashboardRecetasView />
+    <DashboardPedidoSemanalBodegaView />
   </div>
 );
 
@@ -103,7 +103,8 @@ const DashboardPage: React.FC = () => {
   }
 
   // ── Administrador / Co-Administrador: vista con tabs ──
-  if (isAdmin || canRead('ADMIN_SISTEMA')) {
+  // (Co-Admin ya no es bypass de isAdmin; se identifica por su acceso a Gestión de Usuarios)
+  if (isAdmin || canRead('ADMIN_SISTEMA') || canRead('GESTION_USUARIOS')) {
     return <DashboardAdminTabs />;
   }
 

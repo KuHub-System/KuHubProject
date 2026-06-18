@@ -9,6 +9,7 @@ import { motion } from 'framer-motion';
 import { CalendarDate } from '@internationalized/date';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useToast } from '../hooks/useToast';
+import { useModulePermission } from '../contexts/permission-context';
 import {
   IResumenHistorico,
   IProductoResumenHistorico,
@@ -134,6 +135,7 @@ const exportarExcel = (resumen: IResumenHistorico) => {
 const HistoricoPedidosPage: React.FC = () => {
   usePageTitle('Histórico de Pedidos', 'Consulta agregada de productos pedidos por rango de fechas y estados.', 'lucide:bar-chart-2');
   const toast = useToast();
+  const { canRead: histExport } = useModulePermission('HIST_EXPORT_EXCEL');
 
   const [dateRange, setDateRange] = React.useState<{ start: CalendarDate; end: CalendarDate } | null>(null);
   const [estadosSeleccionados, setEstadosSeleccionados] = React.useState<Set<EstadoPedido>>(
@@ -325,6 +327,7 @@ const HistoricoPedidosPage: React.FC = () => {
                   startContent={<Icon icon="lucide:search" className="text-default-400" width={14} />}
                   classNames={{ base: 'max-w-xs', inputWrapper: 'bg-default-50' }}
                 />
+                {histExport && (
                 <Button
                   size="sm"
                   variant="bordered"
@@ -335,6 +338,7 @@ const HistoricoPedidosPage: React.FC = () => {
                 >
                   Excel
                 </Button>
+                )}
               </div>
             </CardHeader>
             <Divider />
