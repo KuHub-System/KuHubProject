@@ -820,7 +820,16 @@ const GestionSolicitudesPage: React.FC = () => {
       </Card>
 
       {/* ── Modal Detalle ── */}
-      <Modal isOpen={detalle.isOpen} onOpenChange={detalle.onOpenChange} size="3xl" scrollBehavior="inside" isDismissable={false}>
+      <Modal
+        isOpen={detalle.isOpen}
+        onOpenChange={detalle.onOpenChange}
+        size="3xl"
+        scrollBehavior="inside"
+        isDismissable={false}
+        classNames={{
+          base: "max-h-[75vh]"
+        }}
+      >
         <ModalContent>
           {onClose => selSol && (
             <>
@@ -851,7 +860,7 @@ const GestionSolicitudesPage: React.FC = () => {
                 </div>
               </ModalHeader>
 
-              <ModalBody className="pt-4 space-y-4">
+              <ModalBody className="pt-4 space-y-4 overflow-y-scroll custom-scrollbar">
                 {/* Grid de info */}
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
                   {[

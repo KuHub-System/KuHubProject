@@ -1841,7 +1841,7 @@ const ConglomeradoPedidosPage: React.FC = () => {
         backdrop="blur"
         radius="lg"
         scrollBehavior="inside"
-        classNames={{ base: 'rounded-2xl' }}
+        classNames={{ base: 'rounded-2xl max-h-[75vh]' }}
       >
         <ModalContent>
           {() => (
@@ -1859,7 +1859,7 @@ const ConglomeradoPedidosPage: React.FC = () => {
                   )}
                 </span>
               </ModalHeader>
-              <ModalBody>
+              <ModalBody className="overflow-y-scroll custom-scrollbar">
                 <div className="border border-default-200 rounded-xl overflow-hidden">
                   <div className="grid grid-cols-12 px-4 py-2 bg-default-50 border-b border-default-100 text-[10px] font-bold text-default-500 uppercase tracking-wider">
                     <span className="col-span-8">Producto</span>
@@ -1932,7 +1932,7 @@ const ConglomeradoPedidosPage: React.FC = () => {
         backdrop="blur"
         radius="lg"
         scrollBehavior="inside"
-        classNames={{ base: 'rounded-2xl' }}
+        classNames={{ base: 'rounded-2xl max-h-[75vh]' }}
       >
         <ModalContent>
           {() => (
@@ -1947,7 +1947,7 @@ const ConglomeradoPedidosPage: React.FC = () => {
                   pedido pasarán a <strong>Rechazada</strong> y el pedido quedará cancelado.
                 </span>
               </ModalHeader>
-              <ModalBody>
+              <ModalBody className="overflow-y-scroll custom-scrollbar">
                 <div className="space-y-4">
                   {/* Reservas que se liberarán */}
                   {reservasALiberar.length > 0 && (
