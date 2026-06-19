@@ -100,7 +100,7 @@ class PedidoServiceImplTest {
                         2, inicio, fin, null, "APROBADO", 1, 2, List.of());
         PedidoDashboardRecords.PedidoAprobacionJson pedidoAprobacion =
                 new PedidoDashboardRecords.PedidoAprobacionJson(
-                        3, "APROBADO", inicio, fin, List.of());
+                        3, "APROBADO", inicio, fin, false, List.of());
 
         when(objectMapper.readValue(eq(jsonCompletos), any(TypeReference.class)))
                 .thenReturn(List.of(pedidoCompleto));
