@@ -162,6 +162,7 @@ public interface OrdenPedidoService {
      */
     List<OrdenPedidoResumenDTO> obtenerResumenPorPedido(Integer idPedido);
 
+
     /** Devuelve los pedidos APROBADOS sin OP activa (o con todas CANCELADAS) agrupados por semana. */
     List<NotificacionSemanaDTO> obtenerNotificacionesPedidosSinOp();
 

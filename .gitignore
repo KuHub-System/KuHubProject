@@ -101,3 +101,6 @@ CONTEXTO_ORDER_PEDIDO.MD
 
 ### Backup Setup (local only) ###
 BACKUP_POSTGRESQL_SETUP.md
+
+### Configuración de Infraestructura IA (local only) ###
+CONFIGURATION_HOST_IA.md

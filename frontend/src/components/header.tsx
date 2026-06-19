@@ -1,6 +1,7 @@
 import React from 'react';
-import { Avatar, Button, Dropdown, DropdownTrigger, DropdownMenu, DropdownItem } from '@heroui/react';
+import { Avatar, Button, Dropdown, DropdownTrigger, DropdownMenu, DropdownItem, useDisclosure } from '@heroui/react';
 import { Icon } from '@iconify/react';
+import IaChatModal from './modals/ia-chat-modal';
 import { useAuth } from '../contexts/auth-context';
 import { useThemeContext } from '../contexts/theme-context';
 import { useHistory } from 'react-router-dom';
@@ -37,6 +38,13 @@ const Header: React.FC<HeaderProps> = ({ toggleSidebar, onLogout }) => {
   const [notificacionesEntregas, setNotificacionesEntregas] = React.useState<INotificacionEntrega[]>([]);
   const [panelOpen, setPanelOpen] = React.useState(false);
   const panelRef = React.useRef<HTMLDivElement>(null);
+  const iaModal = useDisclosure();
+  const [iaNoLeidos, setIaNoLeidos] = React.useState(0);
+
+  // Al abrir el chat de IA, marcar los mensajes como leídos (reiniciar el badge).
+  React.useEffect(() => {
+    if (iaModal.isOpen) setIaNoLeidos(0);
+  }, [iaModal.isOpen]);
 
   // Soporte: el badge "1" se muestra en cada inicio de sesión hasta que el usuario abra el modal.
   const [soporteOpen, setSoporteOpen] = React.useState(false);
@@ -176,6 +184,26 @@ const Header: React.FC<HeaderProps> = ({ toggleSidebar, onLogout }) => {
 
         {/* Controles derecha */}
         <div className="flex items-center gap-3">
+
+          {/* Asistente IA — a la izquierda de las notificaciones */}
+          <div className="relative">
+            <Button
+              isIconOnly
+              variant="light"
+              size="sm"
+              aria-label="Asistente IA"
+              className="text-default-500 hover:text-primary transition-colors"
+              onPress={iaModal.onOpen}
+            >
+              <Icon icon="lucide:sparkles" width={20} />
+            </Button>
+
+            {iaNoLeidos > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-0.5 bg-danger text-white text-[10px] font-bold rounded-full flex items-center justify-center leading-none pointer-events-none">
+                {iaNoLeidos > 99 ? '99+' : iaNoLeidos}
+              </span>
+            )}
+          </div>
 
           {/* Panel de notificaciones */}
           <div className="relative" ref={panelRef}>
@@ -497,6 +525,13 @@ const Header: React.FC<HeaderProps> = ({ toggleSidebar, onLogout }) => {
 
       {/* Modal de soporte / reporte de errores */}
       <SoporteModal isOpen={soporteOpen} onOpenChange={setSoporteOpen} />
+
+      {/* Modal del asistente IA */}
+      <IaChatModal
+        isOpen={iaModal.isOpen}
+        onOpenChange={iaModal.onOpenChange}
+        onMensajeNoLeido={() => setIaNoLeidos(c => c + 1)}
+      />
     </header>
   );
 };

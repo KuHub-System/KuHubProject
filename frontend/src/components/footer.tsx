@@ -8,7 +8,7 @@ import React from 'react';
 const Footer: React.FC = () => {
   return (
     <footer className="footer">
-      <p>© {new Date().getFullYear()} KuHub · Entorno de Pruebas | v1.0.29</p>
+      <p>© {new Date().getFullYear()} KuHub · Entorno de Pruebas | v1.0.30 · IA: Prueba Temporal</p>
     </footer>
   );
 };

@@ -568,6 +568,19 @@ public class SpringSecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/v1/soporte").authenticated()
 
                         // ========================================
+                        // ENDPOINTS DE NOTIFICACIONES (resumen unificado del header)
+                        // Accesible para cualquier usuario autenticado; el servicio filtra por rol.
+                        // ========================================
+                        .requestMatchers(HttpMethod.GET, "/api/v1/notificacion/**").authenticated()
+
+                        // ========================================
+                        // ENDPOINTS DE ASISTENTE IA (Ollama)
+                        // ========================================
+                        // Chat con la IA: cualquier usuario autenticado puede usarlo.
+                        // La IA corre en instancia dedicada y solo es accesible vía backend (VPC privada).
+                        .requestMatchers(HttpMethod.POST, "/api/v1/ia/**").authenticated()
+
+                        // ========================================
                         // RESTO DE ENDPOINTS
                         // ========================================
                         // Cualquier otra petición requiere autenticación (sin importar el rol)
