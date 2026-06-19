@@ -1270,7 +1270,7 @@ interface FormularioRecetaProps {
   isAdmin: boolean;
 }
 
-const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
+export const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
   ({ receta, mode, productos, onSave, onValidationChange, history, isAdmin }, ref) => {
     const toast = useToast();
     const { periodos, semanas, periodo, defaultSemanaId, isLoading: isLoadingSemanas, seleccionarPeriodo, seleccionarSemana } = usePeriodoSemana();
