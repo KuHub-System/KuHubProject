@@ -68,15 +68,20 @@ vi.mock('framer-motion', () => ({
 
 vi.mock('../../hooks/usePageTitle', () => ({ usePageTitle: vi.fn() }));
 
-vi.mock('../../hooks/useToast', () => ({
-  useToast: () => ({
+vi.mock('../../hooks/useToast', () => {
+  // Objeto estable: misma referencia en cada render, evita que cargarProductosPaginados
+  // se recree por cambio de referencia de `toast` (dep de useCallback).
+  const toastInstance = {
     success: mockToastSuccess,
     error: mockToastError,
     warning: mockToastWarning,
     info: vi.fn(),
-  }),
-  useConfirm: () => vi.fn(),
-}));
+  };
+  return {
+    useToast: () => toastInstance,
+    useConfirm: () => vi.fn(),
+  };
+});
 
 vi.mock('../../services/storage-service', () => ({
   obtenerCategorias: vi.fn().mockReturnValue([{ id: 1, nombre: 'Categoría 1' }]),
@@ -97,6 +102,8 @@ vi.mock('../../components/modals/GestionUnidadesModal', () => ({ default: () => 
 vi.mock('../../services/inventario-service', () => ({
   obtenerBulkProductoInventoryListingService: mockObtenerBulkProductos,
   bulkUpdateInventoryStockService: vi.fn().mockResolvedValue({ exitosos: [], fallidos: [] }),
+  obtenerConfigAbastecimientoService: vi.fn().mockResolvedValue([]),
+  actualizarConfigAbastecimientoService: vi.fn().mockResolvedValue(true),
   transformarPageItemAProducto: (item: any) => ({
     id: item.idProducto?.toString() ?? item.id ?? '0',
     nombre: item.nombre ?? 'Sin nombre',
@@ -200,7 +207,7 @@ describe('InventarioPage', () => {
   // ============================================
   // TEST 01: Llama servicio de filtros al montar
   // ============================================
-  it('test01: debe llamar al servicio de filtros al montar', async () => {
+  it('INV-01: llama a obtenerFiltrosInventarioService al montar', async () => {
     // ARRANGE
     renderWithProviders(<InventarioPage />);
 
@@ -213,7 +220,7 @@ describe('InventarioPage', () => {
   // ============================================
   // TEST 02: Llama servicio de productos con page=1
   // ============================================
-  it('test02: debe llamar al servicio de productos con page 1 en la carga inicial', async () => {
+  it('INV-02: carga inicial de productos llama al servicio con page 1', async () => {
     // ARRANGE
     renderWithProviders(<InventarioPage />);
 
@@ -228,7 +235,7 @@ describe('InventarioPage', () => {
   // ============================================
   // TEST 03: Llama servicio de categorías activas
   // ============================================
-  it('test03: debe llamar al servicio de categorías activas al montar', async () => {
+  it('INV-03: carga el catálogo de categorías activas al montar', async () => {
     // ARRANGE
     renderWithProviders(<InventarioPage />);
 
@@ -241,7 +248,7 @@ describe('InventarioPage', () => {
   // ============================================
   // TEST 04: Llama servicio de unidades activas
   // ============================================
-  it('test04: debe llamar al servicio de unidades activas al montar', async () => {
+  it('INV-04: carga el catálogo de unidades activas al montar', async () => {
     // ARRANGE
     renderWithProviders(<InventarioPage />);
 
@@ -254,7 +261,7 @@ describe('InventarioPage', () => {
   // ============================================
   // TEST 05: Botón "Nuevo" visible con permiso de crear
   // ============================================
-  it('test05: debe mostrar el botón "Nuevo" cuando tiene permiso de crear', async () => {
+  it('INV-05: muestra el botón "Nuevo" con permiso de crear', async () => {
     // ARRANGE
     const { container } = renderWithProviders(<InventarioPage />);
     await waitFor(() => expect(mockObtenerProductosPaginados).toHaveBeenCalled());
@@ -270,7 +277,7 @@ describe('InventarioPage', () => {
   // ============================================
   // TEST 06: Botón "Control Masivo" visible con permiso de crear
   // ============================================
-  it('test06: debe mostrar el botón "Control Masivo" cuando tiene permiso de crear', async () => {
+  it('INV-06: muestra el botón "Control Masivo" con permiso de crear', async () => {
     // ARRANGE
     const { container } = renderWithProviders(<InventarioPage />);
     await waitFor(() => expect(mockObtenerProductosPaginados).toHaveBeenCalled());
@@ -286,7 +293,7 @@ describe('InventarioPage', () => {
   // ============================================
   // TEST 07: Error al obtener productos
   // ============================================
-  it('test07: debe manejar error al obtener productos paginados', async () => {
+  it('INV-07: maneja error al obtener productos paginados sin romper la página', async () => {
     // ARRANGE
     mockObtenerProductosPaginados.mockRejectedValueOnce(new Error('Error de conexión'));
 
@@ -302,7 +309,7 @@ describe('InventarioPage', () => {
   // ============================================
   // TEST 08: Error al obtener filtros
   // ============================================
-  it('test08: debe manejar error al obtener filtros', async () => {
+  it('INV-08: maneja error al obtener filtros sin romper la página', async () => {
     // ARRANGE
     mockObtenerFiltros.mockRejectedValueOnce(new Error('Error de conexión'));
 
@@ -318,7 +325,7 @@ describe('InventarioPage', () => {
   // ============================================
   // TEST 09: Error al obtener categorías
   // ============================================
-  it('test09: debe manejar error al obtener categorías', async () => {
+  it('INV-09: maneja error al obtener categorías sin romper la página', async () => {
     // ARRANGE
     mockObtenerCategorias.mockRejectedValueOnce(new Error('Error de conexión'));
 
@@ -334,7 +341,7 @@ describe('InventarioPage', () => {
   // ============================================
   // TEST 10: Error al obtener unidades
   // ============================================
-  it('test10: debe manejar error al obtener unidades', async () => {
+  it('INV-10: maneja error al obtener unidades sin romper la página', async () => {
     // ARRANGE
     mockObtenerUnidades.mockRejectedValueOnce(new Error('Error de conexión'));
 
@@ -350,9 +357,10 @@ describe('InventarioPage', () => {
   // ============================================
   // TEST 11: Recuperación después de error en productos
   // ============================================
-  it('test11: debe recuperarse después de error en productos', async () => {
-    // ARRANGE — primer intento falla, segundo intenta
-    mockObtenerProductosPaginados.mockRejectedValueOnce(new Error('Error'))
+  it('INV-11: se recupera tras error en productos en el segundo intento', async () => {
+    // ARRANGE — primer intento falla, segundo resuelve correctamente
+    mockObtenerProductosPaginados
+      .mockRejectedValueOnce(new Error('Error al cargar'))
       .mockResolvedValueOnce({
         items: [productoConStock],
         page: 1, pageSize: 40, totalPages: 1, totalItems: 1,
@@ -361,16 +369,24 @@ describe('InventarioPage', () => {
     // ACT
     renderWithProviders(<InventarioPage />);
 
-    // ASSERT
-    await waitFor(() => {
-      expect(mockObtenerProductosPaginados).toHaveBeenCalled();
+    // Esperar primer intento fallido
+    await waitFor(() => expect(mockObtenerProductosPaginados).toHaveBeenCalledTimes(1));
+
+    // Disparar reload via evento global (mismo mecanismo que usa la página al actualizar).
+    // act() síncrono para flush del setCache(); waitFor maneja el resto async.
+    act(() => {
+      window.dispatchEvent(new CustomEvent('productosActualizados'));
     });
+
+    // ASSERT — segundo intento resuelve y el producto se muestra
+    await waitFor(() => expect(mockObtenerProductosPaginados).toHaveBeenCalledTimes(2));
+    expect(screen.getByText('Arroz Premium')).toBeInTheDocument();
   });
 
   // ============================================
   // TEST 12: Resultado vacío sin productos
   // ============================================
-  it('test12: debe mostrar página cuando no hay productos', async () => {
+  it('INV-12: página sin productos (resultado vacío) se renderiza sin errores', async () => {
     // ARRANGE
     mockObtenerProductosPaginados.mockResolvedValueOnce({
       items: [],
@@ -380,16 +396,16 @@ describe('InventarioPage', () => {
     // ACT
     renderWithProviders(<InventarioPage />);
 
-    // ASSERT
-    await waitFor(() => {
-      expect(mockObtenerProductosPaginados).toHaveBeenCalledTimes(1);
-    });
+    // ASSERT — servicio invocado y ningún producto en DOM
+    await waitFor(() => expect(mockObtenerProductosPaginados).toHaveBeenCalledTimes(1));
+    expect(screen.queryByText('Arroz Premium')).not.toBeInTheDocument();
+    expect(screen.queryByText('Harina de Trigo')).not.toBeInTheDocument();
   });
 
   // ============================================
   // TEST 13: Múltiples productos cargados
   // ============================================
-  it('test13: debe cargar múltiples productos correctamente', async () => {
+  it('INV-13: carga de múltiples productos invoca el servicio con page 1 y los muestra', async () => {
     // ARRANGE — múltiples productos
     const variosProductos = [
       productoConStock,
@@ -405,12 +421,14 @@ describe('InventarioPage', () => {
     // ACT
     renderWithProviders(<InventarioPage />);
 
-    // ASSERT
-    await waitFor(() => {
+    // ASSERT — servicio con page 1 y productos visibles en el DOM
+    await waitFor(() =>
       expect(mockObtenerProductosPaginados).toHaveBeenCalledWith(
         expect.objectContaining({ page: 1 })
-      );
-    });
+      )
+    );
+    expect(screen.getByText('Arroz Premium')).toBeInTheDocument();
+    expect(screen.getByText('Harina de Trigo')).toBeInTheDocument();
   });
 
 });
