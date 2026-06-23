@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+﻿import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { BrowserRouter } from 'react-router-dom';
@@ -63,12 +63,14 @@ describe('LoginPage', () => {
   // ============================================
   // TEST 01: Email vacío - mostrar error
   // ============================================
-  it('test01: debe mostrar error cuando el email está vacío', async () => {
+  it('TC-LOGIN-01: debe mostrar error cuando el email está vacío', async () => {
     // ARRANGE
     const { container } = renderWithProviders(<LoginPage />);
+    const passwordInput = container.querySelector('input[type="password"]') as HTMLInputElement;
     const form = container.querySelector('form') as HTMLFormElement;
 
-    // ACT
+    // ACT — contraseña presente, email vacío
+    fireEvent.change(passwordInput, { target: { value: 'password123' } });
     fireEvent.submit(form);
 
     // ASSERT
@@ -81,7 +83,7 @@ describe('LoginPage', () => {
   // ============================================
   // TEST 02: Contraseña vacía - mostrar error
   // ============================================
-  it('test02: debe mostrar error cuando la contraseña está vacía', async () => {
+  it('TC-LOGIN-02: debe mostrar error cuando la contraseña está vacía', async () => {
     // ARRANGE
     const { container } = renderWithProviders(<LoginPage />);
     const emailInput = container.querySelector('input[type="email"]') as HTMLInputElement;
@@ -101,7 +103,7 @@ describe('LoginPage', () => {
   // ============================================
   // TEST 03: Ambos campos vacíos - mostrar error
   // ============================================
-  it('test03: debe mostrar error cuando ambos campos están vacíos', async () => {
+  it('TC-LOGIN-03: debe mostrar error cuando ambos campos están vacíos', async () => {
     // ARRANGE
     const { container } = renderWithProviders(<LoginPage />);
     const form = container.querySelector('form') as HTMLFormElement;
@@ -119,7 +121,7 @@ describe('LoginPage', () => {
   // ============================================
   // TEST 04: Email sin @ - mostrar error
   // ============================================
-  it('test04: debe mostrar error para email sin símbolo @', async () => {
+  it('TC-LOGIN-04: debe mostrar error para email sin símbolo @', async () => {
     // ARRANGE
     const { container } = renderWithProviders(<LoginPage />);
     const emailInput = container.querySelector('input[type="email"]') as HTMLInputElement;
@@ -141,7 +143,7 @@ describe('LoginPage', () => {
   // ============================================
   // TEST 05: Email sin dominio - mostrar error
   // ============================================
-  it('test05: debe mostrar error para email sin dominio', async () => {
+  it('TC-LOGIN-05: debe mostrar error para email sin dominio', async () => {
     // ARRANGE
     const { container } = renderWithProviders(<LoginPage />);
     const emailInput = container.querySelector('input[type="email"]') as HTMLInputElement;
@@ -163,7 +165,7 @@ describe('LoginPage', () => {
   // ============================================
   // TEST 06: Email sin punto en dominio - mostrar error
   // ============================================
-  it('test06: debe mostrar error para email sin punto en dominio', async () => {
+  it('TC-LOGIN-06: debe mostrar error para email sin punto en dominio', async () => {
     // ARRANGE
     renderWithProviders(<LoginPage />);
     const emailInput = screen.getByPlaceholderText(/correo@duoc.cl/i);
@@ -185,7 +187,7 @@ describe('LoginPage', () => {
   // ============================================
   // TEST 07: Email válido - aceptar formato
   // ============================================
-  it('test07: debe aceptar email válido con formato correcto', async () => {
+  it('TC-LOGIN-07: debe aceptar email válido con formato correcto', async () => {
     // ARRANGE
     mockLogin.mockResolvedValueOnce(false);
     renderWithProviders(<LoginPage />);
@@ -207,7 +209,7 @@ describe('LoginPage', () => {
   // ============================================
   // TEST 08: Escribir en campo email
   // ============================================
-  it('test08: debe permitir escribir en el campo de email', async () => {
+  it('TC-LOGIN-08: debe permitir escribir en el campo de email', async () => {
     // ARRANGE
     renderWithProviders(<LoginPage />);
     const emailInput = screen.getByPlaceholderText(/correo@duoc.cl/i) as HTMLInputElement;
@@ -222,7 +224,7 @@ describe('LoginPage', () => {
   // ============================================
   // TEST 09: Escribir en campo contraseña
   // ============================================
-  it('test09: debe permitir escribir en el campo de contraseña', async () => {
+  it('TC-LOGIN-09: debe permitir escribir en el campo de contraseña', async () => {
     // ARRANGE
     renderWithProviders(<LoginPage />);
     const passwordInput = screen.getByPlaceholderText(/••••••••/i) as HTMLInputElement;
@@ -237,7 +239,7 @@ describe('LoginPage', () => {
   // ============================================
   // TEST 10: Toggle mostrar/ocultar contraseña
   // ============================================
-  it('test10: debe mostrar/ocultar la contraseña al hacer click en el ícono', async () => {
+  it('TC-LOGIN-10: debe mostrar/ocultar la contraseña al hacer click en el ícono', async () => {
     // ARRANGE
     renderWithProviders(<LoginPage />);
     const passwordInput = screen.getByPlaceholderText(/••••••••/i) as HTMLInputElement;
@@ -263,7 +265,7 @@ describe('LoginPage', () => {
   // ============================================
   // TEST 11: Checkbox "Recordar sesión"
   // ============================================
-  it('test11: debe permitir hacer click en "Recordar sesión"', async () => {
+  it('TC-LOGIN-11: debe permitir hacer click en "Recordar sesión"', async () => {
     // ARRANGE
     renderWithProviders(<LoginPage />);
     const recordarCheckbox = screen.getByRole('checkbox', { name: /recordar sesión/i });
@@ -283,7 +285,7 @@ describe('LoginPage', () => {
   // ============================================
   // TEST 12: Login con credenciales válidas
   // ============================================
-  it('test12: debe llamar a login con credenciales válidas', async () => {
+  it('TC-LOGIN-12: debe llamar a login con credenciales válidas', async () => {
     // ARRANGE
     mockLogin.mockResolvedValueOnce(true);
     renderWithProviders(<LoginPage />);
@@ -305,7 +307,7 @@ describe('LoginPage', () => {
   // ============================================
   // TEST 13: Pasar estado "recordar sesión" a login
   // ============================================
-  it('test13: debe pasar el estado "recordar sesión" al login', async () => {
+  it('TC-LOGIN-13: debe pasar el estado "recordar sesión" al login', async () => {
     // ARRANGE
     mockLogin.mockResolvedValueOnce(true);
     renderWithProviders(<LoginPage />);
@@ -329,7 +331,7 @@ describe('LoginPage', () => {
   // ============================================
   // TEST 14: Deshabilitar formulario durante carga
   // ============================================
-  it('test14: debe deshabilitar el formulario mientras se procesa login', async () => {
+  it('TC-LOGIN-14: debe deshabilitar el formulario mientras se procesa login', async () => {
     // ARRANGE
     mockLogin.mockImplementationOnce(() => new Promise(resolve => setTimeout(() => resolve(true), 1000)));
     renderWithProviders(<LoginPage />);
@@ -353,7 +355,7 @@ describe('LoginPage', () => {
   // ============================================
   // TEST 15: Error por credenciales inválidas
   // ============================================
-  it('test15: debe mostrar error cuando credenciales son inválidas', async () => {
+  it('TC-LOGIN-15: debe mostrar error cuando credenciales son inválidas', async () => {
     // ARRANGE
     mockLogin.mockResolvedValueOnce(false);
     renderWithProviders(<LoginPage />);
@@ -375,7 +377,7 @@ describe('LoginPage', () => {
   // ============================================
   // TEST 16: Error por fallo de conexión
   // ============================================
-  it('test16: debe mostrar error cuando falla la conexión', async () => {
+  it('TC-LOGIN-16: debe mostrar error cuando falla la conexión', async () => {
     // ARRANGE
     mockLogin.mockRejectedValueOnce(new Error('Network error'));
     renderWithProviders(<LoginPage />);
@@ -397,7 +399,7 @@ describe('LoginPage', () => {
   // ============================================
   // TEST 17: Limpiar errores previos
   // ============================================
-  it('test17: debe limpiar el error anterior al intentar un nuevo login', async () => {
+  it('TC-LOGIN-17: debe limpiar el error anterior al intentar un nuevo login', async () => {
     // ARRANGE
     mockLogin.mockResolvedValueOnce(false);
     renderWithProviders(<LoginPage />);
@@ -430,7 +432,7 @@ describe('LoginPage', () => {
   // ============================================
   // TEST 18: Prevenir envío por defecto
   // ============================================
-  it('test18: debe prevenir el envío por defecto del formulario', async () => {
+  it('TC-LOGIN-18: debe prevenir el envío por defecto del formulario', async () => {
     // ARRANGE
     mockLogin.mockResolvedValueOnce(false);
     renderWithProviders(<LoginPage />);
@@ -452,7 +454,7 @@ describe('LoginPage', () => {
   // ============================================
   // TEST 19: Componente renderizado correctamente
   // ============================================
-  it('test19: debe renderizar el componente LoginPage correctamente', () => {
+  it('TC-LOGIN-19: debe renderizar el componente LoginPage correctamente', () => {
     // ARRANGE & ACT (renderizado inicial, no requiere interacción)
     const { container } = renderWithProviders(<LoginPage />);
 
@@ -468,7 +470,7 @@ describe('LoginPage', () => {
   // ============================================
   // TEST 20: Logo de KuHub visible
   // ============================================
-  it('test20: debe mostrar el logo de KuHub en el formulario', () => {
+  it('TC-LOGIN-20: debe mostrar el logo de KuHub en el formulario', () => {
     // ARRANGE
     renderWithProviders(<LoginPage />);
 

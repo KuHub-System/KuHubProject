@@ -33,6 +33,7 @@ const GestionUsuariosPage = lazy(() => import('./pages/gestion-usuarios'));
 const GestionSolicitudesPage = lazy(() => import('./pages/gestion-solicitudes'));
 const AdminSistemaPage = lazy(() => import('./pages/admin-sistema'));
 const NotFoundPage = lazy(() => import('./pages/not-found'));
+const PresentacionPage = lazy(() => import('./pages/presentacion'));
 
 // Componente de ruta protegida
 import ProtectedRoute from './components/protected-route';
@@ -137,6 +138,13 @@ const App: React.FC = () => {
                 <PeriodoSemanaProvider>
                   <Suspense fallback={<PageLoader />}>
                 <Switch>
+                  {/* Ruta pública: Presentación (sin autenticación) */}
+                  <Route path="/presentacion">
+                    <Suspense fallback={<PageLoader />}>
+                      <PresentacionPage />
+                    </Suspense>
+                  </Route>
+
                   {/* Rutas de autenticación */}
                   <Route path="/login">
                     <AuthLayout>
