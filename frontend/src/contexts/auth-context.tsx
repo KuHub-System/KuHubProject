@@ -2,8 +2,6 @@ import React from 'react';
 import { IUser, IRole } from '../types/user.types';
 import { iniciarSesionService, cerrarSesionService, obtenerUsuarioActualService, renovarSesionService } from '../services/auth-service';
 import { ROLES_STORAGE_KEY, ROLES_SISTEMA, cargarRoles as cargarRolesConfig } from '../config/roles-config';
-import { useInactivityTimeout } from '../hooks/useInactivityTimeout';
-import InactivityWarningModal from '../components/modals/InactivityWarningModal';
 
 /**
  * FUNCIONES PARA MANEJAR LOS ROLES DINÁMICOS
@@ -54,9 +52,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [availableRoles, setAvailableRoles] = React.useState<IRole[]>([]);
   const [userRole, setUserRole] = React.useState<IRole | null>(null);
 
-  // Estado para el modal de advertencia de inactividad
-  const [isWarningModalOpen, setIsWarningModalOpen] = React.useState(false);
-
   // 🆕 Estado para rastrear si los roles están completamente cargados
   const [rolesLoaded, setRolesLoaded] = React.useState<boolean>(false);
 
@@ -65,29 +60,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setAvailableRoles(nuevosRoles);
     setRolesLoaded(true);
   }, []);
-
-  // Logout para inactividad (sin necesidad de retornar Promesa, que `cerrarSesionService` sí requiere en el type de context)
-  // Logout para inactividad
-  const handleInactivityLogout = React.useCallback(() => {
-    setIsWarningModalOpen(false);
-    cerrarSesionService()
-      .then(() => {
-        setUser(null);
-        setUserRole(null);
-        window.location.href = '/login';
-      })
-      .catch(() => { });
-  }, []);
-
-  // Inicializar hook de inactividad (25 minutos = 25 * 60 * 1000 = 1500000ms)
-  // Advertencia a los 20 minutos (20 * 60 * 1000 = 1200000ms)
-  useInactivityTimeout(
-    handleInactivityLogout,
-    !!user,
-    25 * 60 * 1000,
-    () => setIsWarningModalOpen(true),
-    20 * 60 * 1000
-  );
 
   React.useEffect(() => {
     const roles = cargarRolesActuales();
@@ -290,11 +262,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   return (
     <AuthContext.Provider value={value}>
       {children}
-      <InactivityWarningModal
-        isOpen={isWarningModalOpen}
-        onClose={() => setIsWarningModalOpen(false)}
-        onStayLoggedIn={() => setIsWarningModalOpen(false)}
-      />
     </AuthContext.Provider>
   );
 };

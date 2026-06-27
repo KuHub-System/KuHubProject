@@ -64,11 +64,6 @@ api.interceptors.request.use(
             }
         }
 
-        // Notificar actividad de API para reiniciar el timeout de inactividad
-        if (typeof window !== 'undefined') {
-            window.dispatchEvent(new Event('api-request'));
-        }
-
         return config;
     }
 );
@@ -85,8 +80,6 @@ api.interceptors.response.use(
                     const sesion = JSON.parse(sesionStr);
                     sesion.token = newToken;
                     localStorage.setItem('sesion_actual', JSON.stringify(sesion));
-                    // Disparar evento para reiniciar el contador de inactividad
-                    window.dispatchEvent(new Event('api-request'));
                 } catch (e) {
                     logger.error("Error al actualizar la sesión", e);
                 }
