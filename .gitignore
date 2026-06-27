@@ -102,3 +102,6 @@ CONTEXTO_ORDER_PEDIDO.MD
 
 ### Backup Setup (local only) ###
 BACKUP_POSTGRESQL_SETUP.md
+
+### Producción — variables y credenciales ###
+VARIABLES_BY_HOST_PROD.MD

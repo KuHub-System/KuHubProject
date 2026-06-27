@@ -1,0 +1,73 @@
+name: KUHUB Deploy Produccion
+
+on:
+  push:
+    tags:
+      - 'PK*.*.*'
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Get Version
+        id: vars
+        run: echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_AWS_AC_USERNAME }}
+          password: ${{ secrets.DOCKER_AWS_AC_PASSWORD }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build & Push Backend
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./backend/Dockerfile
+          push: true
+          tags: ${{ secrets.DOCKER_AWS_AC_USERNAME }}/kuhub-app:backend-${{ steps.vars.outputs.tag }}
+          cache-from: type=registry,ref=${{ secrets.DOCKER_AWS_AC_USERNAME }}/kuhub-app:backend-prod-cache
+          cache-to: type=registry,ref=${{ secrets.DOCKER_AWS_AC_USERNAME }}/kuhub-app:backend-prod-cache,mode=max
+
+      - name: Build & Push Frontend
+        uses: docker/build-push-action@v5
+        with:
+          context: ./frontend
+          push: true
+          tags: ${{ secrets.DOCKER_AWS_AC_USERNAME }}/kuhub-app:frontend-${{ steps.vars.outputs.tag }}
+          cache-from: type=registry,ref=${{ secrets.DOCKER_AWS_AC_USERNAME }}/kuhub-app:frontend-prod-cache
+          cache-to: type=registry,ref=${{ secrets.DOCKER_AWS_AC_USERNAME }}/kuhub-app:frontend-prod-cache,mode=max
+
+      - name: Deploy to AWS Lightsail Produccion
+        run: |
+          echo "${{ secrets.PROD_MASTER_KEY }}" > key.pem
+          chmod 600 key.pem
+
+          scp -i key.pem -o StrictHostKeyChecking=no docker-compose.prod.yml ${{ secrets.AWS_REMOTE_USER }}@${{ secrets.PROD_AWS_REMOTE_HOST }}:~/kuhub-app/docker-compose.prod.yml
+
+          ssh -i key.pem -o StrictHostKeyChecking=no ${{ secrets.AWS_REMOTE_USER }}@${{ secrets.PROD_AWS_REMOTE_HOST }} << 'EOF'
+            cd ~/kuhub-app
+
+            docker compose -f docker-compose.prod.yml down
+
+            docker images --format "{{.Repository}}:{{.Tag}}" | grep "kuhub-app" | xargs -r docker rmi -f 2>/dev/null || true
+
+            docker image prune -af
+
+            sed -i "s/^TAG=.*/TAG=${{ steps.vars.outputs.tag }}/" .env
+
+            docker compose -f docker-compose.prod.yml pull
+
+            docker compose -f docker-compose.prod.yml up -d
+
+            docker ps
+
+            echo "Deploy produccion completado - KUHUB ${{ steps.vars.outputs.tag }}"
+          EOF
+          rm key.pem

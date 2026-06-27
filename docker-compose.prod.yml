@@ -1,0 +1,39 @@
+services:
+  # Backend (Spring Boot) — conecta a PostgreSQL 17 nativo del host via bridge gateway
+  backend:
+    image: ${DOCKER_USERNAME}/kuhub-app:backend-${TAG}
+    container_name: kuhub-backend
+    restart: always
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://host.docker.internal:5432/kuhub_prod_db
+      - SPRING_DATASOURCE_USERNAME=${KUHUB_BD_USER_PROD}
+      - SPRING_DATASOURCE_PASSWORD=${KUHUB_BD_USER_PASS}
+      - SPRING_PROFILES_ACTIVE=prod
+      - JWT_SECRET=${JWT_SECRET}
+      - SPRING_JPA_SHOW_SQL=false
+      - LOGGING_LEVEL_ROOT=WARN
+      - LOGGING_LEVEL_COM_KUHUB=INFO
+      - LOGGING_LEVEL_ORG_HIBERNATE_SQL=WARN
+    entrypoint: ["java", "-Xmx2048m", "-Xms1536m", "-jar", "app.jar"]
+    deploy:
+      resources:
+        limits:
+          memory: 2800M
+        reservations:
+          memory: 1536M
+
+  # Frontend (React + Nginx) — proxy inverso a backend, expone puerto 80
+  frontend:
+    image: ${DOCKER_USERNAME}/kuhub-app:frontend-${TAG}
+    container_name: kuhub-frontend
+    restart: always
+    ports:
+      - "80:80"
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+        reservations:
+          memory: 128M
