@@ -60,7 +60,7 @@ const AuthLayout: React.FC<AuthLayoutProps> = ({ children }) => {
 
       {/* Footer */}
       <footer className="relative z-10 py-4 text-center text-sm text-default-500">
-        <p>© {new Date().getFullYear()} KuHub · Entorno de Pruebas | v1.0.29</p>
+        <p>© {new Date().getFullYear()} KuHub · Sistema de Gestión | v1.0.29</p>
       </footer>
     </div>
   );

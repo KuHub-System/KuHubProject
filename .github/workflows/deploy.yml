@@ -76,6 +76,6 @@ jobs:
             # Verificar que están corriendo
             docker ps
           
-            echo "✅ Deploy completado - KUHUB ${{ steps.vars.outputs.tag }}"
+            echo "Deploy completado - KUHUB ${{ steps.vars.outputs.tag }}"
           EOF
           rm key.pem

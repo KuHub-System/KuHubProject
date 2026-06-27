@@ -16,7 +16,7 @@ import java.util.concurrent.ConcurrentHashMap;
 @Slf4j
 @Component
 public class RateLimitFilter extends OncePerRequestFilter {
-    private final int MAX_REQUESTS = 80; // Tu límite
+    private final int MAX_REQUESTS = 100;
     private final long TIME_WINDOW_MS = 60000; // 1 minuto en milisegundos
 
     // Mapa en memoria: Guarda la IP y sus datos [contador, tiempo de inicio]
