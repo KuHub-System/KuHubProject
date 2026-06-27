@@ -28,7 +28,7 @@ import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.methodOn;
 
 @RestController
 @RequestMapping("/api/v2/usuarios")
-@CrossOrigin(origins = "http://localhost:5173")
+@CrossOrigin(origins = {"http://localhost:5173", "http://localhost:5174"})
 @Tag(name = "Usuarios HATEOAS", description = "Gestión completa de usuarios con hypermedia links")
 public class UsuarioControllerV2 {
 

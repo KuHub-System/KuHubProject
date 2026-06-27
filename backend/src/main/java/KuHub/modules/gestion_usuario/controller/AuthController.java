@@ -3,6 +3,7 @@ package KuHub.modules.gestion_usuario.controller;
 import KuHub.modules.gestion_usuario.entity.RefreshToken;
 import KuHub.modules.gestion_usuario.entity.Usuario;
 import KuHub.modules.gestion_usuario.exceptions.GestionUsuarioException;
+import KuHub.modules.gestion_usuario.repository.UsuarioRepository;
 import KuHub.modules.gestion_usuario.service.RefreshTokenService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.jsonwebtoken.Claims;
@@ -15,9 +16,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
+import java.time.LocalDateTime;
 import java.util.*;
 
 import static KuHub.config.security.TokenJwtConfig.*;
@@ -34,15 +37,21 @@ import static KuHub.config.security.TokenJwtConfig.*;
 @RequiredArgsConstructor
 public class AuthController {
 
+    /**Repositories*/
+    @Autowired
+    private UsuarioRepository usuarioRepository;
+
     /**Services*/
     @Autowired
     private RefreshTokenService refreshTokenService;
 
+    /**Others*/
     @Autowired
     private ObjectMapper objectMapper;
 
-    private static final String REFRESH_COOKIE_NAME = "kuhub_refresh";
-    private static final long ACCESS_TOKEN_MS = 15 * 60 * 1000L;  // 15 minutos
+    private static final String REFRESH_COOKIE_NAME     = "kuhub_refresh";
+    private static final long   ACCESS_TOKEN_MS          = 15 * 60 * 1000L;
+    private static final String TERMINOS_VERSION_ACTUAL  = "1.0";
 
     /**
      * Renueva el Access Token usando el Refresh Token almacenado en cookie HttpOnly.
@@ -94,6 +103,27 @@ public class AuthController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("message", "Error interno al renovar sesión"));
         }
+    }
+
+    /**
+     * Registra la aceptación de los términos y condiciones por parte del usuario autenticado.
+     * ✅ En uso: modal de términos en el frontend al iniciar sesión.
+     */
+    @PostMapping("/terminos/aceptar")
+    public ResponseEntity<?> aceptarTerminos(Authentication authentication) {
+        String email = authentication.getName();
+
+        return usuarioRepository.findByEmailIgnoreCaseAndActivoTrue(email)
+                .map(usuario -> {
+                    usuario.setTerminosVersionAceptada(TERMINOS_VERSION_ACTUAL);
+                    usuario.setTerminosFechaAceptacion(LocalDateTime.now());
+                    usuarioRepository.save(usuario);
+                    log.info("Términos v{} aceptados por usuario id={}", TERMINOS_VERSION_ACTUAL, usuario.getIdUsuario());
+                    return ResponseEntity.status(HttpStatus.OK)
+                            .<Object>body(Map.of("message", "Términos aceptados correctamente"));
+                })
+                .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(Map.of("message", "Usuario no encontrado")));
     }
 
     /**

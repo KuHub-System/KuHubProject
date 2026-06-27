@@ -123,13 +123,11 @@ const mockPermisos = (overrides: Partial<Record<string, Partial<typeof noPerm>>>
 
 // Permisos base para vista de Reservas (SA-01..03)
 const permReservas = {
-  ADMIN_SALAS_RESERVAS: { canRead: true },
   GA_VER_RESERVAS:      { canRead: true },
 };
 
 // Permisos base para vista de Gestión Salas (SA-04..08)
 const permSalas = {
-  ADMIN_SALAS_RESERVAS: { canRead: true },
   GA_VER_SALAS:         { canRead: true },
 };
 

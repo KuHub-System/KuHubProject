@@ -541,18 +541,25 @@ public class ProveedorServiceImpl implements ProveedorService {
 
     @Override
     @Transactional
-    public boolean softDelete(Integer idProveedor) {
+    public boolean softDelete(Integer idProveedor, boolean force) {
         Proveedor proveedor = findById(idProveedor);
 
         long productosActivos = proveedorProductoRepository.countByProveedor_IdProveedorAndActivoTrue(idProveedor);
         if (productosActivos > 0) {
+            if (!force) {
+                throw new GestionProveedorException(
+                    "No se puede eliminar el proveedor porque tiene " + productosActivos +
+                    " producto(s) activo(s) asignado(s). Desasígnelos primero.",
+                    HttpStatus.UNPROCESSABLE_ENTITY
+                );
+            }
             proveedorProductoRepository.desactivarProductosPorProveedor(idProveedor);
-            log.info("Productos del proveedor ID={} desactivados automáticamente: {} producto(s)", idProveedor, productosActivos);
+            log.info("Productos del proveedor ID={} desactivados automáticamente (forzado): {} producto(s)", idProveedor, productosActivos);
         }
 
         proveedor.setActivo(false);
         proveedorRepository.save(proveedor);
-        log.info("Proveedor eliminado (soft-delete): ID={} | Distribuidora={}", idProveedor, proveedor.getNombreDistribuidora());
+        log.info("Proveedor eliminado (soft-delete{}): ID={} | Distribuidora={}", force ? " forzado" : "", idProveedor, proveedor.getNombreDistribuidora());
         return true;
     }
 

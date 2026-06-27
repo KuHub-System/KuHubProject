@@ -77,12 +77,14 @@ public interface ProveedorService {
 
     /**
      * Realiza la eliminación lógica (desactivación) de un proveedor en el sistema.
-     * Lanza una excepción si el proveedor posee actualmente productos activos asignados en su catálogo.
+     * Si force=false y el proveedor tiene productos activos, lanza 422.
+     * Si force=true, desactiva los productos automáticamente y procede (uso exclusivo del Administrador).
      *
      * @param idProveedor Identificador único del proveedor a desactivar
+     * @param force       Si true, fuerza la eliminación desactivando los productos activos primero
      * @return true si la desactivación lógica fue exitosa, false en caso contrario
      */
-    boolean softDelete(Integer idProveedor);
+    boolean softDelete(Integer idProveedor, boolean force);
 
     /**
      * Asocia un producto del catálogo general al portafolio de un proveedor asignándole un precio específico.

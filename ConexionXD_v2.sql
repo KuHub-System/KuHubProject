@@ -1,4 +1,4 @@
--- =====================================================
+﻿-- =====================================================
 -- ELIMINAR FUNCIONES Y TRIGGERS
 -- =====================================================
 --DROP FUNCTION IF EXISTS validar_asignacion_docente() CASCADE;
@@ -286,7 +286,9 @@ CREATE TABLE usuario (
     url_foto_perfil BYTEA, -- SE CAMBIARA EN UN FUTURO A URL
     activo BOOLEAN DEFAULT true,
     fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    ultimo_acceso TIMESTAMP
+    ultimo_acceso TIMESTAMP,
+    terminos_version_aceptada VARCHAR(10) NULL,
+    terminos_fecha_aceptacion TIMESTAMP NULL
 );
 
 CREATE TABLE refresh_token (
@@ -1185,23 +1187,23 @@ VALUES ('HISTORIAL_MOVIMIENTOS', 'Historial / Movimientos', 'Historial de movimi
 ON CONFLICT (codigo_modulo) DO NOTHING;
 
 -- Paso B: Permisos por rol
--- ADMINISTRADOR → acceso total
+-- ADMINISTRADOR → solo lectura (la página no tiene operaciones de escritura)
 INSERT INTO permiso_rol (id_rol, id_modulo, puede_leer, puede_crear, puede_actualizar, puede_eliminar)
-SELECT (SELECT id_rol FROM rol WHERE nombre_rol = 'ADMINISTRADOR' LIMIT 1), id_modulo, TRUE, TRUE, TRUE, TRUE
+SELECT (SELECT id_rol FROM rol WHERE nombre_rol = 'ADMINISTRADOR' LIMIT 1), id_modulo, TRUE, FALSE, FALSE, FALSE
 FROM modulo WHERE codigo_modulo = 'HISTORIAL_MOVIMIENTOS' AND enabled = TRUE
-ON CONFLICT (id_rol, id_modulo) DO UPDATE SET puede_leer=TRUE, puede_crear=TRUE, puede_actualizar=TRUE, puede_eliminar=TRUE;
+ON CONFLICT (id_rol, id_modulo) DO UPDATE SET puede_leer=TRUE, puede_crear=FALSE, puede_actualizar=FALSE, puede_eliminar=FALSE;
 
--- CO-ADMINISTRADOR → acceso total
+-- CO-ADMINISTRADOR → solo lectura
 INSERT INTO permiso_rol (id_rol, id_modulo, puede_leer, puede_crear, puede_actualizar, puede_eliminar)
-SELECT (SELECT id_rol FROM rol WHERE nombre_rol = 'CO_ADMINISTRADOR' LIMIT 1), id_modulo, TRUE, TRUE, TRUE, TRUE
+SELECT (SELECT id_rol FROM rol WHERE nombre_rol = 'CO_ADMINISTRADOR' LIMIT 1), id_modulo, TRUE, FALSE, FALSE, FALSE
 FROM modulo WHERE codigo_modulo = 'HISTORIAL_MOVIMIENTOS' AND enabled = TRUE
-ON CONFLICT (id_rol, id_modulo) DO UPDATE SET puede_leer=TRUE, puede_crear=TRUE, puede_actualizar=TRUE, puede_eliminar=TRUE;
+ON CONFLICT (id_rol, id_modulo) DO UPDATE SET puede_leer=TRUE, puede_crear=FALSE, puede_actualizar=FALSE, puede_eliminar=FALSE;
 
--- ENCARGADO DE BODEGA → escritura (registra y ve movimientos)
+-- ENCARGADO DE BODEGA → solo lectura (consulta historial)
 INSERT INTO permiso_rol (id_rol, id_modulo, puede_leer, puede_crear, puede_actualizar, puede_eliminar)
-SELECT (SELECT id_rol FROM rol WHERE nombre_rol = 'ENCARGADO_BODEGA' LIMIT 1), id_modulo, TRUE, TRUE, TRUE, FALSE
+SELECT (SELECT id_rol FROM rol WHERE nombre_rol = 'ENCARGADO_BODEGA' LIMIT 1), id_modulo, TRUE, FALSE, FALSE, FALSE
 FROM modulo WHERE codigo_modulo = 'HISTORIAL_MOVIMIENTOS' AND enabled = TRUE
-ON CONFLICT (id_rol, id_modulo) DO UPDATE SET puede_leer=TRUE, puede_crear=TRUE, puede_actualizar=TRUE, puede_eliminar=FALSE;
+ON CONFLICT (id_rol, id_modulo) DO UPDATE SET puede_leer=TRUE, puede_crear=FALSE, puede_actualizar=FALSE, puede_eliminar=FALSE;
 
 -- ASISTENTE DE BODEGA → solo lectura (consulta historial)
 INSERT INTO permiso_rol (id_rol, id_modulo, puede_leer, puede_crear, puede_actualizar, puede_eliminar)
@@ -1216,6 +1218,16 @@ FROM rol r CROSS JOIN modulo m
 WHERE r.nombre_rol IN ('GESTOR_PEDIDOS','PROFESOR_A_CARGO','DOCENTE')
   AND m.codigo_modulo = 'HISTORIAL_MOVIMIENTOS' AND m.enabled = TRUE
 ON CONFLICT (id_rol, id_modulo) DO UPDATE SET puede_leer=FALSE, puede_crear=FALSE, puede_actualizar=FALSE, puede_eliminar=FALSE;
+
+
+-- ================================================================
+-- ENCARGADO DE BODEGA → acceso a Bodega de Tránsito (vista de inventario de bodega)
+-- ================================================================
+
+INSERT INTO permiso_rol (id_rol, id_modulo, puede_leer, puede_crear, puede_actualizar, puede_eliminar)
+SELECT (SELECT id_rol FROM rol WHERE nombre_rol = 'ENCARGADO_BODEGA' LIMIT 1), id_modulo, TRUE, TRUE, TRUE, FALSE
+FROM modulo WHERE codigo_modulo = 'BODEGA_TRANSITO' AND enabled = TRUE
+ON CONFLICT (id_rol, id_modulo) DO UPDATE SET puede_leer=TRUE, puede_crear=TRUE, puede_actualizar=TRUE, puede_eliminar=FALSE;
 
 
 -- ================================================================
@@ -1255,36 +1267,22 @@ ON CONFLICT (id_rol, id_modulo) DO UPDATE SET puede_leer=TRUE, puede_crear=TRUE,
 
 
 -- ================================================================
--- ENCARGADO DE BODEGA → acceso a Bodega de Tránsito (vista de inventario de bodega)
+-- MÓDULOS DE VISTA: ADMINISTRACIÓN DEL SISTEMA — 3 pestañas (solo Administrador)
 -- ================================================================
-
-INSERT INTO permiso_rol (id_rol, id_modulo, puede_leer, puede_crear, puede_actualizar, puede_eliminar)
-SELECT (SELECT id_rol FROM rol WHERE nombre_rol = 'ENCARGADO_BODEGA' LIMIT 1), id_modulo, TRUE, TRUE, TRUE, FALSE
-FROM modulo WHERE codigo_modulo = 'BODEGA_TRANSITO' AND enabled = TRUE
-ON CONFLICT (id_rol, id_modulo) DO UPDATE SET puede_leer=TRUE, puede_crear=TRUE, puede_actualizar=TRUE, puede_eliminar=FALSE;
-
-
--- ================================================================
--- VISTAS COMO MÓDULOS — pestañas internas gestionables por rol
--- (cada pestaña de una página multi-vista es su propio módulo y se
---  muestra/oculta por rol desde Gestión de Roles)
--- ================================================================
-
--- 1) Vistas de ADMINISTRACIÓN DEL SISTEMA (4 pestañas) — solo Administrador
 INSERT INTO modulo (codigo_modulo, nombre_modulo, descripcion_modulo, icono_modulo, orden_modulo)
 VALUES
     ('ADMIN_BLOQUES_HORARIOS', 'Adm. Sistema · Bloques Horarios',   'Pestaña de bloques horarios en Administración del Sistema',     'lucide:clock-4',            18),
     ('ADMIN_SEMANAS',          'Adm. Sistema · Gestión de Semanas', 'Pestaña de semanas académicas en Administración del Sistema',   'lucide:calendar-range',     19),
-    ('ADMIN_SALAS_RESERVAS',   'Adm. Sistema · Salas y Reservas',   'Pestaña de salas y reservas en Administración del Sistema',     'lucide:calendar-clock',     20),
     ('ADMIN_CONFIG_SISTEMA',   'Adm. Sistema · Configuración',      'Pestaña de configuración global en Administración del Sistema', 'lucide:sliders-horizontal', 21)
 ON CONFLICT (codigo_modulo) DO NOTHING;
 
 INSERT INTO permiso_rol (id_rol, id_modulo, puede_leer, puede_crear, puede_actualizar, puede_eliminar)
 SELECT (SELECT id_rol FROM rol WHERE nombre_rol = 'ADMINISTRADOR' LIMIT 1), id_modulo, TRUE, TRUE, TRUE, TRUE
 FROM modulo
-WHERE codigo_modulo IN ('ADMIN_BLOQUES_HORARIOS','ADMIN_SEMANAS','ADMIN_SALAS_RESERVAS','ADMIN_CONFIG_SISTEMA') AND enabled = TRUE
+WHERE codigo_modulo IN ('ADMIN_BLOQUES_HORARIOS','ADMIN_SEMANAS','ADMIN_CONFIG_SISTEMA') AND enabled = TRUE
 ON CONFLICT (id_rol, id_modulo) DO UPDATE SET
     puede_leer=TRUE, puede_crear=TRUE, puede_actualizar=TRUE, puede_eliminar=TRUE;
+
 
 -- 2) Vistas de GESTIÓN DE PEDIDOS (2) y CONGLOMERADO (4)
 --    Admin/Co-Admin: escritura | Gestor de Pedidos: lectura
@@ -1311,6 +1309,7 @@ WHERE r.nombre_rol IN ('ADMINISTRADOR','CO_ADMINISTRADOR','GESTOR_PEDIDOS')
 ON CONFLICT (id_rol, id_modulo) DO UPDATE SET
     puede_leer=EXCLUDED.puede_leer, puede_crear=EXCLUDED.puede_crear,
     puede_actualizar=EXCLUDED.puede_actualizar, puede_eliminar=EXCLUDED.puede_eliminar;
+
 
 -- 3) ACCIONES de PEDIDO SEMANAL A BODEGA (4) — granularidad por botón/ícono
 --    La PÁGINA (PEDIDO_SEMANAL_BODEGA) da acceso de lectura: filtros de estado,
@@ -1344,6 +1343,7 @@ WHERE m.codigo_modulo IN ('PEDIDO_SEM_CREAR','PEDIDO_SEM_EDITAR','PEDIDO_SEM_INA
   AND m.enabled = TRUE
 ON CONFLICT (id_rol, id_modulo) DO UPDATE SET
     puede_leer=TRUE, puede_crear=TRUE, puede_actualizar=TRUE, puede_eliminar=FALSE;
+
 
 
 -- ================================================================
@@ -1435,6 +1435,42 @@ ON CONFLICT (id_rol, id_modulo) DO UPDATE SET
 
 
 -- ================================================================
+-- MÓDULO DE LECTURA: GPRV_DATOS_PROV (Pestaña Proveedores — solo lectura)
+-- Permite ver la lista de proveedores sin acceder a la pestaña Órdenes de Pedido.
+-- Si el rol solo tiene este módulo, GPRV_ORDENES queda en Sin Acceso → pestaña
+-- Órdenes no se muestra. Cuando GESTION_PROVEEDORES tiene Lectura, cascadea a
+-- GPRV_DATOS_PROV Y GPRV_ORDENES → ambas pestañas visibles.
+-- ================================================================
+
+INSERT INTO modulo (codigo_modulo, nombre_modulo, descripcion_modulo, icono_modulo, orden_modulo)
+VALUES
+    ('GPRV_DATOS_PROV', 'G. Proveedores · Datos Proveedores',
+     'Lectura individual de la pestaña de Proveedores (sin pestaña Órdenes de Pedido)',
+     'lucide:truck', 54)
+ON CONFLICT (codigo_modulo) DO NOTHING;
+
+-- ADMINISTRADOR y CO_ADMINISTRADOR → lectura total (cascada desde GESTION_PROVEEDORES)
+INSERT INTO permiso_rol (id_rol, id_modulo, puede_leer, puede_crear, puede_actualizar, puede_eliminar)
+SELECT r.id_rol, m.id_modulo, TRUE, TRUE, TRUE, TRUE
+FROM rol r CROSS JOIN modulo m
+WHERE r.nombre_rol IN ('ADMINISTRADOR', 'CO_ADMINISTRADOR')
+  AND m.codigo_modulo = 'GPRV_DATOS_PROV'
+  AND m.enabled = TRUE
+ON CONFLICT (id_rol, id_modulo) DO UPDATE SET
+    puede_leer=TRUE, puede_crear=TRUE, puede_actualizar=TRUE, puede_eliminar=TRUE;
+
+-- Resto de roles → sin acceso (el Administrador asigna según necesidad)
+INSERT INTO permiso_rol (id_rol, id_modulo, puede_leer, puede_crear, puede_actualizar, puede_eliminar)
+SELECT r.id_rol, m.id_modulo, FALSE, FALSE, FALSE, FALSE
+FROM rol r CROSS JOIN modulo m
+WHERE r.nombre_rol IN ('GESTOR_PEDIDOS', 'PROFESOR_A_CARGO', 'DOCENTE', 'ENCARGADO_BODEGA', 'ASISTENTE_BODEGA')
+  AND m.codigo_modulo = 'GPRV_DATOS_PROV'
+  AND m.enabled = TRUE
+ON CONFLICT (id_rol, id_modulo) DO UPDATE SET
+    puede_leer=FALSE, puede_crear=FALSE, puede_actualizar=FALSE, puede_eliminar=FALSE;
+
+
+-- ================================================================
 -- MÓDULOS DE ACCIÓN: GESTIÓN DE PROVEEDORES
 -- GESTION_PROVEEDORES da acceso de lectura (lista, filtros, expandir, detalle).
 -- Cada acción de escritura tiene su propio módulo (patrón PEDIDO_SEM_*).
@@ -1448,7 +1484,7 @@ VALUES
     ('GPRV_GENERAR_ORDEN',       'G. Proveedores · Generar Orden Pedido',  'Permite generar órdenes de pedido para proveedores',                             'lucide:clipboard-list',   38),
     ('GPRV_COTIZACION',          'G. Proveedores · Proyección Cotización', 'Permite consultar proyección de cotización por rango de fechas',                 'lucide:file-spreadsheet', 39),
     ('GPRV_CAMBIAR_ESTADO_PROV', 'G. Proveedores · Cambiar Estado Prov',  'Permite cambiar el estado (Disponible/No Disponible) de un proveedor',           'lucide:toggle-right',     40),
-    ('GPRV_EDITAR_PROV',         'G. Proveedores · Editar Proveedor',     'Permite editar datos del proveedor y precios de sus productos',                  'lucide:edit',             41),
+    ('GPRV_EDITAR_PROV',         'G. Proveedores · Editar Proveedor y Productos', 'Permite editar datos del proveedor y las filas de productos (marca, contenido, precio neto, precio con IVA)', 'lucide:edit', 41),
     ('GPRV_ASIGNAR_PROD',        'G. Proveedores · Asignar Producto',     'Permite asignar y desasignar productos a un proveedor',                          'lucide:package-plus',     42),
     ('GPRV_ELIMINAR_PROV',       'G. Proveedores · Eliminar Proveedor',   'Permite eliminar permanentemente un proveedor',                                  'lucide:trash-2',          43),
     ('GPRV_ORDENES',             'G. Proveedores · Órdenes de Pedido',    'Pestaña de órdenes de pedido: visualización y gestión de estados',               'lucide:shopping-bag',     44),
@@ -1486,6 +1522,84 @@ ON CONFLICT (id_rol, id_modulo) DO UPDATE SET
 
 
 -- ================================================================
+-- VISTAS DE ESTADO: G. PROVEEDORES - PENDIENTE/ENVIADA y CONFIRMADA
+-- Controlan qué chips de estado son visibles en la pestaña Órdenes de Pedido.
+-- BinaryReadCell: Sin permiso / Lectura.
+-- Hijos de GPRV_ORDENES (cascada 2° nivel) y de GESTION_PROVEEDORES (cascada directa).
+-- ================================================================
+
+INSERT INTO modulo (codigo_modulo, nombre_modulo, descripcion_modulo, icono_modulo, orden_modulo)
+VALUES
+    ('GPRV_PENDIENTE_ENVIADA', 'G. Proveedores · Pendiente y Enviada',
+     'Permite ver y filtrar órdenes en estado PENDIENTE y ENVIADA en la pestaña Órdenes de Pedido',
+     'lucide:clock', 67)
+ON CONFLICT (codigo_modulo) DO NOTHING;
+
+INSERT INTO modulo (codigo_modulo, nombre_modulo, descripcion_modulo, icono_modulo, orden_modulo)
+VALUES
+    ('GPRV_CONFIRMADA', 'G. Proveedores · Confirmada',
+     'Permite ver y filtrar órdenes en estado CONFIRMADA y RECIBIDA en la pestaña Órdenes de Pedido',
+     'lucide:check-circle', 68)
+ON CONFLICT (codigo_modulo) DO NOTHING;
+
+-- ADMINISTRADOR y CO_ADMINISTRADOR → acceso total
+INSERT INTO permiso_rol (id_rol, id_modulo, puede_leer, puede_crear, puede_actualizar, puede_eliminar)
+SELECT r.id_rol, m.id_modulo, TRUE, TRUE, TRUE, TRUE
+FROM rol r CROSS JOIN modulo m
+WHERE r.nombre_rol IN ('ADMINISTRADOR', 'CO_ADMINISTRADOR')
+  AND m.codigo_modulo IN ('GPRV_PENDIENTE_ENVIADA', 'GPRV_CONFIRMADA')
+  AND m.enabled = TRUE
+ON CONFLICT (id_rol, id_modulo) DO UPDATE SET
+    puede_leer=TRUE, puede_crear=TRUE, puede_actualizar=TRUE, puede_eliminar=TRUE;
+
+-- Resto de roles → sin acceso (el Administrador asigna según necesidad)
+INSERT INTO permiso_rol (id_rol, id_modulo, puede_leer, puede_crear, puede_actualizar, puede_eliminar)
+SELECT r.id_rol, m.id_modulo, FALSE, FALSE, FALSE, FALSE
+FROM rol r CROSS JOIN modulo m
+WHERE r.nombre_rol IN ('GESTOR_PEDIDOS', 'PROFESOR_A_CARGO', 'DOCENTE', 'ENCARGADO_BODEGA', 'ASISTENTE_BODEGA')
+  AND m.codigo_modulo IN ('GPRV_PENDIENTE_ENVIADA', 'GPRV_CONFIRMADA')
+  AND m.enabled = TRUE
+ON CONFLICT (id_rol, id_modulo) DO UPDATE SET
+    puede_leer=FALSE, puede_crear=FALSE, puede_actualizar=FALSE, puede_eliminar=FALSE;
+
+
+-- ================================================================
+-- MÓDULO DE ACCIÓN: G. PROVEEDORES - EXPORTAR DATOS EXCEL
+-- Controla el botón "Descargar Excel" dentro de la tabla expandida
+-- de productos de un proveedor (pestaña Proveedores / Datos Prov).
+-- BinaryWriteCell: Sin permiso / Escritura.
+-- Cascada descendente desde GESTION_PROVEEDORES (Escritura).
+-- ================================================================
+
+INSERT INTO modulo (codigo_modulo, nombre_modulo, descripcion_modulo, icono_modulo, orden_modulo)
+VALUES
+    ('GPRV_EXPORT_DATOS', 'G. Proveedores · Exportar Datos Excel',
+     'Permite descargar el Excel de plantilla de precios del proveedor (tabla expandida)',
+     'lucide:file-down', 66)
+ON CONFLICT (codigo_modulo) DO NOTHING;
+
+-- ADMINISTRADOR y CO_ADMINISTRADOR → acceso total
+INSERT INTO permiso_rol (id_rol, id_modulo, puede_leer, puede_crear, puede_actualizar, puede_eliminar)
+SELECT r.id_rol, m.id_modulo, TRUE, TRUE, TRUE, TRUE
+FROM rol r CROSS JOIN modulo m
+WHERE r.nombre_rol IN ('ADMINISTRADOR', 'CO_ADMINISTRADOR')
+  AND m.codigo_modulo = 'GPRV_EXPORT_DATOS'
+  AND m.enabled = TRUE
+ON CONFLICT (id_rol, id_modulo) DO UPDATE SET
+    puede_leer=TRUE, puede_crear=TRUE, puede_actualizar=TRUE, puede_eliminar=TRUE;
+
+-- Resto de roles → sin acceso (el Administrador ajusta según necesidad)
+INSERT INTO permiso_rol (id_rol, id_modulo, puede_leer, puede_crear, puede_actualizar, puede_eliminar)
+SELECT r.id_rol, m.id_modulo, FALSE, FALSE, FALSE, FALSE
+FROM rol r CROSS JOIN modulo m
+WHERE r.nombre_rol IN ('GESTOR_PEDIDOS', 'PROFESOR_A_CARGO', 'DOCENTE', 'ENCARGADO_BODEGA', 'ASISTENTE_BODEGA')
+  AND m.codigo_modulo = 'GPRV_EXPORT_DATOS'
+  AND m.enabled = TRUE
+ON CONFLICT (id_rol, id_modulo) DO UPDATE SET
+    puede_leer=FALSE, puede_crear=FALSE, puede_actualizar=FALSE, puede_eliminar=FALSE;
+
+
+-- ================================================================
 -- MÓDULOS DE ACCIÓN: INVENTARIO / BODEGA DE TRÁNSITO / HISTÓRICO
 -- Cubre botones, íconos y vistas particulares que NO se representan
 -- con el CRUD básico de la página (patrón GPRV_* / PEDIDO_SEM_*).
@@ -1508,13 +1622,15 @@ ON CONFLICT (id_rol, id_modulo) DO UPDATE SET
 
 INSERT INTO modulo (codigo_modulo, nombre_modulo, descripcion_modulo, icono_modulo, orden_modulo)
 VALUES
-    ('INV_CONTROL_MASIVO', 'Inventario · Control Masivo',       'Permite abrir el Control Masivo de movimientos de inventario',          'lucide:arrow-right-left', 47),
-    ('INV_SYNC_EXCEL',     'Inventario · Sincronizar Excel',    'Permite sincronizar el inventario desde un archivo Excel',              'lucide:upload-cloud',     48),
-    ('INV_ABASTECIMIENTO', 'Inventario · Gestión Abastecimiento','Permite configurar el abastecimiento y ver las OPs de proveedores',     'lucide:boxes',            49),
-    ('BOD_CONTROL_MASIVO', 'Bodega · Control Masivo',           'Permite abrir el Control Masivo de stock de la bodega de tránsito',     'lucide:arrow-right-left', 50),
-    ('BOD_ABASTECIMIENTO', 'Bodega · Gestión Abastecimiento',   'Permite configurar el abastecimiento y ver las OPs en bodega',          'lucide:boxes',            51),
-    ('HISTORICO_PEDIDOS',  'Histórico de Pedidos',              'Consulta agregada de productos pedidos por rango de fechas y estados',  'lucide:bar-chart-2',      52),
-    ('HIST_EXPORT_EXCEL',  'Histórico · Exportar Excel',        'Permite exportar a Excel el resumen del histórico de pedidos',          'lucide:download',         53)
+    ('INV_CONTROL_MASIVO', 'Inventario · Control Masivo',       'Permite abrir el Control Masivo de movimientos de inventario',                   'lucide:arrow-right-left', 47),
+    ('INV_SYNC_EXCEL',     'Inventario · Sincronizar Excel',    'Permite sincronizar el inventario desde un archivo Excel',                       'lucide:upload-cloud',     48),
+    ('INV_ABASTECIMIENTO', 'Inventario · Gestión Abastecimiento','Permite configurar el abastecimiento y ver las OPs de proveedores',              'lucide:boxes',            49),
+    ('BOD_CONTROL_MASIVO', 'Bodega · Control Masivo',           'Permite abrir el Control Masivo de stock de la bodega de tránsito',              'lucide:arrow-right-left', 50),
+    ('BOD_ABASTECIMIENTO', 'Bodega · Abastec. Proveedores',     'Permite acceder al icono de Abastecimiento de Proveedores dentro del Control Masivo de bodega', 'lucide:truck', 51),
+    ('BOD_NUEVO',          'Bodega · Nuevo Producto',           'Permite usar el botón + Nuevo para crear productos en Bodega de Tránsito',        'lucide:plus-circle',      78),
+    ('BOD_EDITAR_PRODUCTO','Bodega · Editar Datos Producto',    'Permite editar los Datos del Producto dentro del modal Control de Bodega',        'lucide:pencil',           79),
+    ('HISTORICO_PEDIDOS',  'Histórico de Pedidos',              'Consulta agregada de productos pedidos por rango de fechas y estados',            'lucide:bar-chart-2',      52),
+    ('HIST_EXPORT_EXCEL',  'Histórico · Exportar Excel',        'Permite exportar a Excel el resumen del histórico de pedidos',                   'lucide:download',         53)
 ON CONFLICT (codigo_modulo) DO NOTHING;
 
 -- ADMINISTRADOR y CO_ADMINISTRADOR → acceso total a todos
@@ -1524,7 +1640,7 @@ FROM rol r CROSS JOIN modulo m
 WHERE r.nombre_rol IN ('ADMINISTRADOR', 'CO_ADMINISTRADOR')
   AND m.codigo_modulo IN (
     'INV_CONTROL_MASIVO','INV_SYNC_EXCEL','INV_ABASTECIMIENTO',
-    'BOD_CONTROL_MASIVO','BOD_ABASTECIMIENTO',
+    'BOD_CONTROL_MASIVO','BOD_ABASTECIMIENTO','BOD_NUEVO','BOD_EDITAR_PRODUCTO',
     'HISTORICO_PEDIDOS','HIST_EXPORT_EXCEL'
   )
   AND m.enabled = TRUE
@@ -1538,7 +1654,7 @@ SELECT (SELECT id_rol FROM rol WHERE nombre_rol = 'ENCARGADO_BODEGA' LIMIT 1), m
 FROM modulo m
 WHERE m.codigo_modulo IN (
     'INV_CONTROL_MASIVO','INV_SYNC_EXCEL','INV_ABASTECIMIENTO',
-    'BOD_CONTROL_MASIVO','BOD_ABASTECIMIENTO'
+    'BOD_CONTROL_MASIVO','BOD_ABASTECIMIENTO','BOD_NUEVO','BOD_EDITAR_PRODUCTO'
   )
   AND m.enabled = TRUE
 ON CONFLICT (id_rol, id_modulo) DO UPDATE SET
@@ -1559,7 +1675,7 @@ SELECT r.id_rol, m.id_modulo, FALSE, FALSE, FALSE, FALSE
 FROM rol r CROSS JOIN modulo m
 WHERE m.codigo_modulo IN (
     'INV_CONTROL_MASIVO','INV_SYNC_EXCEL','INV_ABASTECIMIENTO',
-    'BOD_CONTROL_MASIVO','BOD_ABASTECIMIENTO',
+    'BOD_CONTROL_MASIVO','BOD_ABASTECIMIENTO','BOD_NUEVO','BOD_EDITAR_PRODUCTO',
     'HISTORICO_PEDIDOS','HIST_EXPORT_EXCEL'
   )
   AND m.enabled = TRUE
@@ -1567,42 +1683,6 @@ WHERE m.codigo_modulo IN (
     SELECT 1 FROM permiso_rol pr WHERE pr.id_rol = r.id_rol AND pr.id_modulo = m.id_modulo
   )
 ON CONFLICT (id_rol, id_modulo) DO NOTHING;
-
-
--- ================================================================
--- MÓDULO DE LECTURA: GPRV_DATOS_PROV (Pestaña Proveedores — solo lectura)
--- Permite ver la lista de proveedores sin acceder a la pestaña Órdenes de Pedido.
--- Si el rol solo tiene este módulo, GPRV_ORDENES queda en Sin Acceso → pestaña
--- Órdenes no se muestra. Cuando GESTION_PROVEEDORES tiene Lectura, cascadea a
--- GPRV_DATOS_PROV Y GPRV_ORDENES → ambas pestañas visibles.
--- ================================================================
-
-INSERT INTO modulo (codigo_modulo, nombre_modulo, descripcion_modulo, icono_modulo, orden_modulo)
-VALUES
-    ('GPRV_DATOS_PROV', 'G. Proveedores · Datos Proveedores',
-     'Lectura individual de la pestaña de Proveedores (sin pestaña Órdenes de Pedido)',
-     'lucide:truck', 54)
-ON CONFLICT (codigo_modulo) DO NOTHING;
-
--- ADMINISTRADOR y CO_ADMINISTRADOR → lectura total (cascada desde GESTION_PROVEEDORES)
-INSERT INTO permiso_rol (id_rol, id_modulo, puede_leer, puede_crear, puede_actualizar, puede_eliminar)
-SELECT r.id_rol, m.id_modulo, TRUE, TRUE, TRUE, TRUE
-FROM rol r CROSS JOIN modulo m
-WHERE r.nombre_rol IN ('ADMINISTRADOR', 'CO_ADMINISTRADOR')
-  AND m.codigo_modulo = 'GPRV_DATOS_PROV'
-  AND m.enabled = TRUE
-ON CONFLICT (id_rol, id_modulo) DO UPDATE SET
-    puede_leer=TRUE, puede_crear=TRUE, puede_actualizar=TRUE, puede_eliminar=TRUE;
-
--- Resto de roles → sin acceso (el Administrador asigna según necesidad)
-INSERT INTO permiso_rol (id_rol, id_modulo, puede_leer, puede_crear, puede_actualizar, puede_eliminar)
-SELECT r.id_rol, m.id_modulo, FALSE, FALSE, FALSE, FALSE
-FROM rol r CROSS JOIN modulo m
-WHERE r.nombre_rol IN ('GESTOR_PEDIDOS', 'PROFESOR_A_CARGO', 'DOCENTE', 'ENCARGADO_BODEGA', 'ASISTENTE_BODEGA')
-  AND m.codigo_modulo = 'GPRV_DATOS_PROV'
-  AND m.enabled = TRUE
-ON CONFLICT (id_rol, id_modulo) DO UPDATE SET
-    puede_leer=FALSE, puede_crear=FALSE, puede_actualizar=FALSE, puede_eliminar=FALSE;
 
 
 -- ================================================================
@@ -1658,18 +1738,18 @@ WHERE r.nombre_rol IN ('GESTOR_PEDIDOS', 'PROFESOR_A_CARGO', 'DOCENTE', 'ENCARGA
 ON CONFLICT (id_rol, id_modulo) DO UPDATE SET
     puede_leer=FALSE, puede_crear=FALSE, puede_actualizar=FALSE, puede_eliminar=FALSE;
 
+
 -- ================================================================
 -- MÓDULOS DE VISTA Y ACCIÓN: GESTIÓN SALA Y RESERVAS
--- ADMIN_SALAS_RESERVAS (TriStateCell) es la puerta de acceso a la pestaña
--- "Gestión Sala y Reservas" dentro de Gestión Académica (Y dentro de
--- Administración del Sistema). Lectura cascadea a las vistas hijas;
--- Escritura cascadea además a las acciones de sala.
+-- Sub-páginas internas de Gestión Académica. Cada vista es independiente:
+-- GA_VER_RESERVAS otorga acceso a la sub-pestaña Reservas Registradas;
+-- GA_VER_SALAS otorga acceso a la sub-pestaña Gestión Salas.
 --
---   GA_VER_RESERVAS  → sub-pestaña "Reservas Registradas"  (BinaryRead)
---   GA_VER_SALAS     → sub-pestaña "Gestión Salas"          (BinaryRead)
---   GA_CREAR_SALA    → botón "Nueva Sala"                   (BinaryWrite)
---   GA_EDITAR_SALA   → ícono editar sala                    (BinaryWrite)
---   GA_ELIMINAR_SALA → ícono desactivar/eliminar sala       (BinaryWrite)
+--   GA_VER_RESERVAS  -> sub-pestana Reservas Registradas  (BinaryRead)
+--   GA_VER_SALAS     -> sub-pestana Gestion Salas          (BinaryRead)
+--   GA_CREAR_SALA    -> boton Nueva Sala                   (BinaryWrite)
+--   GA_EDITAR_SALA   -> icono editar sala                  (BinaryWrite)
+--   GA_ELIMINAR_SALA -> icono desactivar/eliminar sala     (BinaryWrite)
 -- ================================================================
 
 INSERT INTO modulo (codigo_modulo, nombre_modulo, descripcion_modulo, icono_modulo, orden_modulo)
@@ -1681,7 +1761,7 @@ VALUES
     ('GA_ELIMINAR_SALA','G. Sala · Eliminar Sala',            'Permite desactivar o eliminar una sala',                                 'lucide:trash-2',        65)
 ON CONFLICT (codigo_modulo) DO NOTHING;
 
--- ADMINISTRADOR → escritura total (único con acceso a ADMIN_SALAS_RESERVAS por defecto)
+-- ADMINISTRADOR -> escritura total
 INSERT INTO permiso_rol (id_rol, id_modulo, puede_leer, puede_crear, puede_actualizar, puede_eliminar)
 SELECT r.id_rol, m.id_modulo, TRUE, TRUE, TRUE, TRUE
 FROM rol r CROSS JOIN modulo m
@@ -1695,7 +1775,6 @@ ON CONFLICT (id_rol, id_modulo) DO UPDATE SET
     puede_leer=TRUE, puede_crear=TRUE, puede_actualizar=TRUE, puede_eliminar=TRUE;
 
 -- Resto de roles (incluido CO_ADMINISTRADOR) → sin acceso
--- (CO_ADMIN no tiene acceso a ADMIN_SALAS_RESERVAS según la matriz base)
 INSERT INTO permiso_rol (id_rol, id_modulo, puede_leer, puede_crear, puede_actualizar, puede_eliminar)
 SELECT r.id_rol, m.id_modulo, FALSE, FALSE, FALSE, FALSE
 FROM rol r CROSS JOIN modulo m
@@ -1704,6 +1783,292 @@ WHERE r.nombre_rol IN ('CO_ADMINISTRADOR', 'GESTOR_PEDIDOS', 'PROFESOR_A_CARGO',
     'GA_VER_RESERVAS','GA_VER_SALAS',
     'GA_CREAR_SALA','GA_EDITAR_SALA','GA_ELIMINAR_SALA'
   )
+  AND m.enabled = TRUE
+ON CONFLICT (id_rol, id_modulo) DO UPDATE SET
+    puede_leer=FALSE, puede_crear=FALSE, puede_actualizar=FALSE, puede_eliminar=FALSE;
+
+
+-- ================================================================
+-- MÓDULO DE VISTA: GESTIÓN ACADÉMICA · VER ASIGNATURA Y SECCIÓN
+-- Acceso de solo lectura a la pestaña Gestión Académica (lista de
+-- asignaturas y secciones) sin necesidad de asignar GESTION_ACADEMICA
+-- completo (que es el TriStateCell con cascada a las acciones de escritura).
+-- Patrón análogo a GA_VER_RESERVAS / GA_VER_SALAS.
+--
+--   GA_VER_ASIGNATURA -> pestaña Gestión Académica (BinaryRead)
+-- ================================================================
+
+INSERT INTO modulo (codigo_modulo, nombre_modulo, descripcion_modulo, icono_modulo, orden_modulo)
+VALUES
+    ('GA_VER_ASIGNATURA', 'G. Académica · Ver Asignatura y Sección',
+     'Permite ver la pestaña de asignaturas y secciones en Gestión Académica (solo lectura)',
+     'lucide:eye', 69)
+ON CONFLICT (codigo_modulo) DO NOTHING;
+
+-- ADMINISTRADOR y CO_ADMINISTRADOR -> acceso total
+INSERT INTO permiso_rol (id_rol, id_modulo, puede_leer, puede_crear, puede_actualizar, puede_eliminar)
+SELECT r.id_rol, m.id_modulo, TRUE, TRUE, TRUE, TRUE
+FROM rol r CROSS JOIN modulo m
+WHERE r.nombre_rol IN ('ADMINISTRADOR', 'CO_ADMINISTRADOR')
+  AND m.codigo_modulo = 'GA_VER_ASIGNATURA'
+  AND m.enabled = TRUE
+ON CONFLICT (id_rol, id_modulo) DO UPDATE SET
+    puede_leer=TRUE, puede_crear=TRUE, puede_actualizar=TRUE, puede_eliminar=TRUE;
+
+-- Resto de roles -> sin acceso (el Administrador asigna según necesidad)
+INSERT INTO permiso_rol (id_rol, id_modulo, puede_leer, puede_crear, puede_actualizar, puede_eliminar)
+SELECT r.id_rol, m.id_modulo, FALSE, FALSE, FALSE, FALSE
+FROM rol r CROSS JOIN modulo m
+WHERE r.nombre_rol IN ('GESTOR_PEDIDOS', 'PROFESOR_A_CARGO', 'DOCENTE', 'ENCARGADO_BODEGA', 'ASISTENTE_BODEGA')
+  AND m.codigo_modulo = 'GA_VER_ASIGNATURA'
+  AND m.enabled = TRUE
+ON CONFLICT (id_rol, id_modulo) DO UPDATE SET
+    puede_leer=FALSE, puede_crear=FALSE, puede_actualizar=FALSE, puede_eliminar=FALSE;
+
+
+-- ================================================================
+-- MÓDULOS DE PERMISOS: INVENTARIO (nuevos sub-módulos granulares)
+-- Controladores de botones individuales en la página de Inventario:
+--   INV_NUEVO_PRODUCTO  -> botón "Nuevo" (BinaryWrite / ACTION)
+--   INV_ABAST_BODEGA    -> icono Bodega en Control Masivo (BinaryWrite / ACTION)
+--   INV_ABAST_PROV      -> icono Proveedores en Control Masivo (BinaryWrite / ACTION)
+--   INV_STOCK_DISPONIBLE-> icono package-check (BinaryRead)
+--   SD_INVENTARIO       -> sección Inventario en modal Stock Disponible (BinaryRead)
+--   SD_BODEGA_TRANSITO  -> sección Bodega Tránsito en modal Stock Disponible (BinaryRead)
+--   SD_DISPONIBLE_REAL  -> sección Disponible Real en modal Stock Disponible (BinaryRead)
+-- ================================================================
+
+INSERT INTO modulo (codigo_modulo, nombre_modulo, descripcion_modulo, icono_modulo, orden_modulo)
+VALUES
+    ('INV_NUEVO_PRODUCTO',  'Inventario · Nuevo Producto',
+     'Permite usar el botón Nuevo para crear productos en Inventario',
+     'lucide:plus-circle', 70),
+    ('INV_ABAST_BODEGA',    'Inventario · Abastec. Bodega',
+     'Permite acceder al icono de Abastecimiento de Bodega dentro del Control Masivo',
+     'lucide:warehouse', 71),
+    ('INV_ABAST_PROV',      'Inventario · Abastec. Proveedores',
+     'Permite acceder al icono de Abastecimiento de Proveedores dentro del Control Masivo',
+     'lucide:truck', 72),
+    ('INV_STOCK_DISPONIBLE','Inventario · Stock Disponible',
+     'Permite acceder al modal de Stock Disponible desde la barra de Inventario',
+     'lucide:package-check', 73),
+    ('SD_INVENTARIO',       'Stock Disp. · Inventario',
+     'Permite ver la sección Inventario dentro del modal de Stock Disponible',
+     'lucide:package', 74),
+    ('SD_BODEGA_TRANSITO',  'Stock Disp. · Bodega Tránsito',
+     'Permite ver la sección Bodega Tránsito dentro del modal de Stock Disponible',
+     'lucide:warehouse', 75),
+    ('SD_DISPONIBLE_REAL',  'Stock Disp. · Disponible Real',
+     'Permite ver la sección Disponible Real dentro del modal de Stock Disponible',
+     'lucide:calculator', 76)
+ON CONFLICT (codigo_modulo) DO NOTHING;
+
+-- ADMINISTRADOR y CO_ADMINISTRADOR -> acceso total a todos los nuevos módulos
+INSERT INTO permiso_rol (id_rol, id_modulo, puede_leer, puede_crear, puede_actualizar, puede_eliminar)
+SELECT r.id_rol, m.id_modulo, TRUE, TRUE, TRUE, TRUE
+FROM rol r CROSS JOIN modulo m
+WHERE r.nombre_rol IN ('ADMINISTRADOR', 'CO_ADMINISTRADOR')
+  AND m.codigo_modulo IN ('INV_NUEVO_PRODUCTO', 'INV_ABAST_BODEGA', 'INV_ABAST_PROV',
+                           'INV_STOCK_DISPONIBLE', 'SD_INVENTARIO', 'SD_BODEGA_TRANSITO', 'SD_DISPONIBLE_REAL')
+  AND m.enabled = TRUE
+ON CONFLICT (id_rol, id_modulo) DO UPDATE SET
+    puede_leer=TRUE, puede_crear=TRUE, puede_actualizar=TRUE, puede_eliminar=TRUE;
+
+-- ENCARGADO_BODEGA -> acceso total a todos los nuevos módulos
+INSERT INTO permiso_rol (id_rol, id_modulo, puede_leer, puede_crear, puede_actualizar, puede_eliminar)
+SELECT r.id_rol, m.id_modulo, TRUE, TRUE, TRUE, TRUE
+FROM rol r CROSS JOIN modulo m
+WHERE r.nombre_rol = 'ENCARGADO_BODEGA'
+  AND m.codigo_modulo IN ('INV_NUEVO_PRODUCTO', 'INV_ABAST_BODEGA', 'INV_ABAST_PROV',
+                           'INV_STOCK_DISPONIBLE', 'SD_INVENTARIO', 'SD_BODEGA_TRANSITO', 'SD_DISPONIBLE_REAL')
+  AND m.enabled = TRUE
+ON CONFLICT (id_rol, id_modulo) DO UPDATE SET
+    puede_leer=TRUE, puede_crear=TRUE, puede_actualizar=TRUE, puede_eliminar=TRUE;
+
+-- ASISTENTE_BODEGA -> solo lectura en INV_STOCK_DISPONIBLE y SD_* (sin acceso a acciones de escritura)
+INSERT INTO permiso_rol (id_rol, id_modulo, puede_leer, puede_crear, puede_actualizar, puede_eliminar)
+SELECT r.id_rol, m.id_modulo, TRUE, FALSE, FALSE, FALSE
+FROM rol r CROSS JOIN modulo m
+WHERE r.nombre_rol = 'ASISTENTE_BODEGA'
+  AND m.codigo_modulo IN ('INV_STOCK_DISPONIBLE', 'SD_INVENTARIO', 'SD_BODEGA_TRANSITO', 'SD_DISPONIBLE_REAL')
+  AND m.enabled = TRUE
+ON CONFLICT (id_rol, id_modulo) DO UPDATE SET
+    puede_leer=TRUE, puede_crear=FALSE, puede_actualizar=FALSE, puede_eliminar=FALSE;
+
+-- ASISTENTE_BODEGA -> sin acceso a acciones de escritura de inventario
+INSERT INTO permiso_rol (id_rol, id_modulo, puede_leer, puede_crear, puede_actualizar, puede_eliminar)
+SELECT r.id_rol, m.id_modulo, FALSE, FALSE, FALSE, FALSE
+FROM rol r CROSS JOIN modulo m
+WHERE r.nombre_rol = 'ASISTENTE_BODEGA'
+  AND m.codigo_modulo IN ('INV_NUEVO_PRODUCTO', 'INV_ABAST_BODEGA', 'INV_ABAST_PROV')
+  AND m.enabled = TRUE
+ON CONFLICT (id_rol, id_modulo) DO UPDATE SET
+    puede_leer=FALSE, puede_crear=FALSE, puede_actualizar=FALSE, puede_eliminar=FALSE;
+
+-- Resto de roles -> sin acceso a los nuevos módulos de inventario
+INSERT INTO permiso_rol (id_rol, id_modulo, puede_leer, puede_crear, puede_actualizar, puede_eliminar)
+SELECT r.id_rol, m.id_modulo, FALSE, FALSE, FALSE, FALSE
+FROM rol r CROSS JOIN modulo m
+WHERE r.nombre_rol IN ('GESTOR_PEDIDOS', 'PROFESOR_A_CARGO', 'DOCENTE')
+  AND m.codigo_modulo IN ('INV_NUEVO_PRODUCTO', 'INV_ABAST_BODEGA', 'INV_ABAST_PROV',
+                           'INV_STOCK_DISPONIBLE', 'SD_INVENTARIO', 'SD_BODEGA_TRANSITO', 'SD_DISPONIBLE_REAL')
+  AND m.enabled = TRUE
+ON CONFLICT (id_rol, id_modulo) DO UPDATE SET
+    puede_leer=FALSE, puede_crear=FALSE, puede_actualizar=FALSE, puede_eliminar=FALSE;
+
+-- ================================================================
+-- MÓDULO: INV_EDITAR_PRODUCTO (orden 77)
+-- Controla el acceso al ícono de editar fila en Inventario
+-- (abre el modal "Control de Inventario" con los datos del producto)
+-- ================================================================
+
+INSERT INTO modulo (codigo_modulo, nombre_modulo, descripcion_modulo, icono_modulo, orden_modulo)
+VALUES
+    ('INV_EDITAR_PRODUCTO', 'Inventario · Editar Producto',
+     'Permite hacer clic en una fila del inventario para abrir y editar los datos del producto',
+     'lucide:pencil', 77)
+ON CONFLICT (codigo_modulo) DO NOTHING;
+
+-- ADMINISTRADOR y CO_ADMINISTRADOR → acceso total
+INSERT INTO permiso_rol (id_rol, id_modulo, puede_leer, puede_crear, puede_actualizar, puede_eliminar)
+SELECT r.id_rol, m.id_modulo, TRUE, TRUE, TRUE, TRUE
+FROM rol r CROSS JOIN modulo m
+WHERE r.nombre_rol IN ('ADMINISTRADOR', 'CO_ADMINISTRADOR')
+  AND m.codigo_modulo = 'INV_EDITAR_PRODUCTO'
+  AND m.enabled = TRUE
+ON CONFLICT (id_rol, id_modulo) DO UPDATE SET
+    puede_leer=TRUE, puede_crear=TRUE, puede_actualizar=TRUE, puede_eliminar=TRUE;
+
+-- ENCARGADO_BODEGA → acceso total (gestiona inventario)
+INSERT INTO permiso_rol (id_rol, id_modulo, puede_leer, puede_crear, puede_actualizar, puede_eliminar)
+SELECT r.id_rol, m.id_modulo, TRUE, TRUE, TRUE, TRUE
+FROM rol r CROSS JOIN modulo m
+WHERE r.nombre_rol = 'ENCARGADO_BODEGA'
+  AND m.codigo_modulo = 'INV_EDITAR_PRODUCTO'
+  AND m.enabled = TRUE
+ON CONFLICT (id_rol, id_modulo) DO UPDATE SET
+    puede_leer=TRUE, puede_crear=TRUE, puede_actualizar=TRUE, puede_eliminar=TRUE;
+
+-- Resto de roles → sin acceso
+INSERT INTO permiso_rol (id_rol, id_modulo, puede_leer, puede_crear, puede_actualizar, puede_eliminar)
+SELECT r.id_rol, m.id_modulo, FALSE, FALSE, FALSE, FALSE
+FROM rol r CROSS JOIN modulo m
+WHERE r.nombre_rol IN ('ASISTENTE_BODEGA', 'GESTOR_PEDIDOS', 'PROFESOR_A_CARGO', 'DOCENTE')
+  AND m.codigo_modulo = 'INV_EDITAR_PRODUCTO'
+  AND m.enabled = TRUE
+ON CONFLICT (id_rol, id_modulo) DO UPDATE SET
+    puede_leer=FALSE, puede_crear=FALSE, puede_actualizar=FALSE, puede_eliminar=FALSE;
+
+
+-- ================================================================
+-- MÓDULOS DE ACCIÓN: BODEGA DE TRÁNSITO — acciones granulares
+--   BOD_NUEVO          → botón "+ Nuevo" en Bodega de Tránsito (BinaryWrite)
+--   BOD_EDITAR_PRODUCTO→ ícono editar "Datos del Producto" en modal Control de Bodega (BinaryWrite)
+-- ================================================================
+
+INSERT INTO modulo (codigo_modulo, nombre_modulo, descripcion_modulo, icono_modulo, orden_modulo)
+VALUES
+    ('BOD_NUEVO',           'Bodega · Nuevo Producto',
+     'Permite usar el botón + Nuevo para crear productos en Bodega de Tránsito',
+     'lucide:plus-circle', 78),
+    ('BOD_EDITAR_PRODUCTO',  'Bodega · Editar Datos Producto',
+     'Permite editar los Datos del Producto dentro del modal Control de Bodega',
+     'lucide:pencil', 79)
+ON CONFLICT (codigo_modulo) DO NOTHING;
+
+-- ADMINISTRADOR y CO_ADMINISTRADOR → acceso total
+INSERT INTO permiso_rol (id_rol, id_modulo, puede_leer, puede_crear, puede_actualizar, puede_eliminar)
+SELECT r.id_rol, m.id_modulo, TRUE, TRUE, TRUE, TRUE
+FROM rol r CROSS JOIN modulo m
+WHERE r.nombre_rol IN ('ADMINISTRADOR', 'CO_ADMINISTRADOR')
+  AND m.codigo_modulo IN ('BOD_NUEVO', 'BOD_EDITAR_PRODUCTO')
+  AND m.enabled = TRUE
+ON CONFLICT (id_rol, id_modulo) DO UPDATE SET
+    puede_leer=TRUE, puede_crear=TRUE, puede_actualizar=TRUE, puede_eliminar=TRUE;
+
+-- ENCARGADO_BODEGA → escritura
+INSERT INTO permiso_rol (id_rol, id_modulo, puede_leer, puede_crear, puede_actualizar, puede_eliminar)
+SELECT r.id_rol, m.id_modulo, TRUE, TRUE, TRUE, FALSE
+FROM rol r CROSS JOIN modulo m
+WHERE r.nombre_rol = 'ENCARGADO_BODEGA'
+  AND m.codigo_modulo IN ('BOD_NUEVO', 'BOD_EDITAR_PRODUCTO')
+  AND m.enabled = TRUE
+ON CONFLICT (id_rol, id_modulo) DO UPDATE SET
+    puede_leer=TRUE, puede_crear=TRUE, puede_actualizar=TRUE, puede_eliminar=FALSE;
+
+-- Resto de roles → sin acceso
+INSERT INTO permiso_rol (id_rol, id_modulo, puede_leer, puede_crear, puede_actualizar, puede_eliminar)
+SELECT r.id_rol, m.id_modulo, FALSE, FALSE, FALSE, FALSE
+FROM rol r CROSS JOIN modulo m
+WHERE r.nombre_rol IN ('ASISTENTE_BODEGA', 'GESTOR_PEDIDOS', 'PROFESOR_A_CARGO', 'DOCENTE')
+  AND m.codigo_modulo IN ('BOD_NUEVO', 'BOD_EDITAR_PRODUCTO')
+  AND m.enabled = TRUE
+ON CONFLICT (id_rol, id_modulo) DO UPDATE SET
+    puede_leer=FALSE, puede_crear=FALSE, puede_actualizar=FALSE, puede_eliminar=FALSE;
+
+
+-- ================================================================
+-- MÓDULOS DE ACCIÓN: GESTIÓN DE PEDIDOS DIARIOS — sub-acciones granulares
+--
+--   GPD_RESUMEN_PERIODO  → botón "Resumen período" (BinaryRead: Sin Acceso / Lectura)
+--                          Permite ver el resumen agregado de productos del período.
+--   GPD_PREPARAR_ENTREGA → botón "Preparar Entrega" en EntregaSalaCard (BinaryWrite: Sin permiso / Escritura)
+--                          Permite registrar la entrega de una solicitud.
+--
+-- GESTION_PEDIDOS_DIARIOS es la puerta de acceso a la vista (TriStateCell).
+-- Lectura → accede a la página + ve Resumen período.
+-- Escritura → todo lo anterior + puede usar Preparar Entrega.
+--
+-- NOTA EXCLUSIÓN MUTUA: BODEGA_TRANSITO y GESTION_PEDIDOS_DIARIOS son páginas
+-- independientes dentro de bodega-transito.tsx. Un rol NO debe tener ambos al
+-- mismo tiempo; el Administrador asigna UNO u otro según el perfil del usuario.
+-- ================================================================
+
+INSERT INTO modulo (codigo_modulo, nombre_modulo, descripcion_modulo, icono_modulo, orden_modulo)
+VALUES
+    ('GPD_RESUMEN_PERIODO',  'Ped. Diarios · Resumen de Período',
+     'Permite ver el botón Resumen de Período en Gestión de Pedidos Diarios (solo lectura)',
+     'lucide:layers', 80),
+    ('GPD_PREPARAR_ENTREGA', 'Ped. Diarios · Preparar Entrega',
+     'Permite usar el botón Preparar Entrega para registrar la entrega de una solicitud',
+     'lucide:package-check', 81)
+ON CONFLICT (codigo_modulo) DO NOTHING;
+
+-- ADMINISTRADOR y CO_ADMINISTRADOR → acceso total
+INSERT INTO permiso_rol (id_rol, id_modulo, puede_leer, puede_crear, puede_actualizar, puede_eliminar)
+SELECT r.id_rol, m.id_modulo, TRUE, TRUE, TRUE, TRUE
+FROM rol r CROSS JOIN modulo m
+WHERE r.nombre_rol IN ('ADMINISTRADOR', 'CO_ADMINISTRADOR')
+  AND m.codigo_modulo IN ('GPD_RESUMEN_PERIODO', 'GPD_PREPARAR_ENTREGA')
+  AND m.enabled = TRUE
+ON CONFLICT (id_rol, id_modulo) DO UPDATE SET
+    puede_leer=TRUE, puede_crear=TRUE, puede_actualizar=TRUE, puede_eliminar=TRUE;
+
+-- ENCARGADO_BODEGA y ASISTENTE_BODEGA → lectura en Resumen Período + escritura en Preparar Entrega
+INSERT INTO permiso_rol (id_rol, id_modulo, puede_leer, puede_crear, puede_actualizar, puede_eliminar)
+SELECT r.id_rol, m.id_modulo, TRUE, FALSE, FALSE, FALSE
+FROM rol r CROSS JOIN modulo m
+WHERE r.nombre_rol IN ('ENCARGADO_BODEGA', 'ASISTENTE_BODEGA')
+  AND m.codigo_modulo = 'GPD_RESUMEN_PERIODO'
+  AND m.enabled = TRUE
+ON CONFLICT (id_rol, id_modulo) DO UPDATE SET
+    puede_leer=TRUE, puede_crear=FALSE, puede_actualizar=FALSE, puede_eliminar=FALSE;
+
+INSERT INTO permiso_rol (id_rol, id_modulo, puede_leer, puede_crear, puede_actualizar, puede_eliminar)
+SELECT r.id_rol, m.id_modulo, TRUE, TRUE, TRUE, FALSE
+FROM rol r CROSS JOIN modulo m
+WHERE r.nombre_rol IN ('ENCARGADO_BODEGA', 'ASISTENTE_BODEGA')
+  AND m.codigo_modulo = 'GPD_PREPARAR_ENTREGA'
+  AND m.enabled = TRUE
+ON CONFLICT (id_rol, id_modulo) DO UPDATE SET
+    puede_leer=TRUE, puede_crear=TRUE, puede_actualizar=TRUE, puede_eliminar=FALSE;
+
+-- Resto de roles → sin acceso
+INSERT INTO permiso_rol (id_rol, id_modulo, puede_leer, puede_crear, puede_actualizar, puede_eliminar)
+SELECT r.id_rol, m.id_modulo, FALSE, FALSE, FALSE, FALSE
+FROM rol r CROSS JOIN modulo m
+WHERE r.nombre_rol IN ('GESTOR_PEDIDOS', 'PROFESOR_A_CARGO', 'DOCENTE')
+  AND m.codigo_modulo IN ('GPD_RESUMEN_PERIODO', 'GPD_PREPARAR_ENTREGA')
   AND m.enabled = TRUE
 ON CONFLICT (id_rol, id_modulo) DO UPDATE SET
     puede_leer=FALSE, puede_crear=FALSE, puede_actualizar=FALSE, puede_eliminar=FALSE;

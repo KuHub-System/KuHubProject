@@ -70,6 +70,7 @@ public class DynamicPermissionInterceptor implements HandlerInterceptor {
 
         // ── Lecturas vía POST (paginación/búsqueda/filtros) → SKIP ──
         skip("/api/v*/pedido/consolidate", P),            // consulta GOD: lectura con DateRangeDTO
+        skip("/api/v*/pedido/resumen-historico", P),      // histórico de pedidos: lectura agregada vía POST
         skip("/api/v*/inventario/paged-inventory", P),
         skip("/api/v*/inventario/search-inventory", P),
         skip("/api/v*/inventario/search-inventory-by-code", P),
@@ -95,10 +96,11 @@ public class DynamicPermissionInterceptor implements HandlerInterceptor {
         skip("/api/v*/usuarios/find-users-by-filter", P),
         skip("/api/v*/movimiento/find-all-motion-with-filter", P),
         skip("/api/v*/semanas/**", P),                    // POST en semanas = búsqueda/consulta
+        skip("/api/v*/asignatura/find-all-courses-active-true/**", P), // paginación de asignaturas (lectura vía POST)
 
         // ── Escrituras específicas que comparten ruta base ──
-        mod("/api/v*/pedido/entregas-diarias", List.of("GESTION_PEDIDOS_DIARIOS", "GESTION_PEDIDOS"), P),
-        mod("/api/v*/pedido/preparar-entrega", List.of("GESTION_PEDIDOS_DIARIOS", "GESTION_PEDIDOS"), P),
+        skip("/api/v*/pedido/entregas-diarias", P),       // lectura de entregas via POST con DateRangeDTO (requiere solo lectura GESTION_PEDIDOS_DIARIOS)
+        mod("/api/v*/pedido/preparar-entrega", List.of("GPD_PREPARAR_ENTREGA", "GESTION_PEDIDOS_DIARIOS", "GESTION_PEDIDOS"), P),
         mod("/api/v*/orden-pedido/detalles/entregar", List.of("GESTION_PEDIDOS_DIARIOS", "GESTION_PEDIDOS"), PA),
         mod("/api/v*/orden-pedido/reservar-disponible/**", List.of("CONG_APROBAR_PEDIDO", "CONGLOMERADO_PEDIDOS", "GESTION_PEDIDOS"), P),
         mod("/api/v*/pedido/change-massive-status", List.of("CONG_APROBAR_PEDIDO", "CONG_RECHAZAR_PEDIDO", "CONGLOMERADO_PEDIDOS", "GESTION_PEDIDOS"), PA),
@@ -123,9 +125,11 @@ public class DynamicPermissionInterceptor implements HandlerInterceptor {
 
         // ── Académica / Administración del Sistema (recursos compartidos) ──
         mod("/api/v*/bloque-horario/**", List.of("GESTION_ACADEMICA", "ADMIN_SISTEMA", "ADMIN_BLOQUES_HORARIOS"), P, PU, PA, D),
-        mod("/api/v*/sala/**", List.of("GESTION_ACADEMICA", "ADMIN_SISTEMA", "ADMIN_SALAS_RESERVAS"), P, PU, PA, D),
+        // Salas y reservas ahora son sub-páginas de Gestión Académica (ya no de Admin Sistema).
+        // La escritura de salas la gobiernan los módulos de acción granulares (GA_CREAR/EDITAR/ELIMINAR_SALA).
+        mod("/api/v*/sala/**", List.of("GESTION_ACADEMICA", "GA_CREAR_SALA", "GA_EDITAR_SALA", "GA_ELIMINAR_SALA"), P, PU, PA, D),
         mod("/api/v*/semanas/**", List.of("GESTION_ACADEMICA", "ADMIN_SISTEMA", "ADMIN_SEMANAS"), PU, PA, D),
-        mod("/api/v*/reserva-sala/**", List.of("GESTION_ACADEMICA", "ADMIN_SISTEMA", "ADMIN_SALAS_RESERVAS"), P, PU, PA, D),
+        mod("/api/v*/reserva-sala/**", List.of("GESTION_ACADEMICA", "GA_VER_RESERVAS"), P, PU, PA, D),
         mod("/api/v*/asignatura/**", List.of("GESTION_ACADEMICA"), P, PU, PA, D),
         mod("/api/v*/seccion/**", List.of("GESTION_ACADEMICA"), P, PU, PA, D),
         mod("/api/v*/docente-seccion/**", List.of("GESTION_ACADEMICA"), P, PU, PA, D),
@@ -135,7 +139,7 @@ public class DynamicPermissionInterceptor implements HandlerInterceptor {
         mod("/api/v*/solicitudes/**", List.of("SOLICITUD", "GESTION_SOLICITUDES"), P, PU, PA, D),
 
         // ── Pedidos (GESTION_PEDIDOS / CONGLOMERADO_PEDIDOS comparten endpoints) ──
-        mod("/api/v*/orden-pedido/**", List.of("GESTION_PEDIDOS", "GESTION_PROVEEDORES"), P, PU, PA, D),
+        mod("/api/v*/orden-pedido/**", List.of("GPRV_GENERAR_ORDEN", "GESTION_PEDIDOS", "GESTION_PROVEEDORES"), P, PU, PA, D),
         mod("/api/v*/pedido/**", List.of("GESTION_PEDIDOS", "CONGLOMERADO_PEDIDOS"), P, PU, PA, D),
         mod("/api/v*/detalle-pedido/**", List.of("GESTION_PEDIDOS", "CONGLOMERADO_PEDIDOS"), P, PU, PA, D),
         mod("/api/v*/pedido-solicitud/**", List.of("GESTION_PEDIDOS", "CONGLOMERADO_PEDIDOS"), P, PU, PA, D),

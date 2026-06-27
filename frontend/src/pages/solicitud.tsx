@@ -30,6 +30,7 @@ import {
   generarSolicitudesMasivasService,
 } from '../services/solicitud-service';
 import {ISemana} from "../types/semana.types.ts";
+import { obtenerSemanasPorPeriodoService } from '../services/semana-service';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TIPOS LOCALES
@@ -199,6 +200,7 @@ const AsigCard: React.FC<AsigCardProps> = ({
   );
   const [filterIdSemana, setFilterIdSemana] = React.useState<string>(contextSemanaId || 'todas');
   const [soloEstaAsignatura, setSoloEstaAsignatura] = React.useState(true);
+  const [localSemanas, setLocalSemanas] = React.useState<ISemana[]>([]);
 
   // Sincronización UNI-DIRECCIONAL: el superior actualiza el inferior, no al revés
   React.useEffect(() => {
@@ -212,13 +214,26 @@ const AsigCard: React.FC<AsigCardProps> = ({
     filterPeriodo?.anio === contextPeriodo?.anio &&
     filterPeriodo?.semestre === contextPeriodo?.semestre;
 
+  // Cuando el período local difiere del global, cargar las semanas de ese período
+  React.useEffect(() => {
+    if (!filterPeriodo || periodMatchesGlobal) {
+      setLocalSemanas([]);
+      return;
+    }
+    obtenerSemanasPorPeriodoService(filterPeriodo.anio, filterPeriodo.semestre)
+      .then(setLocalSemanas)
+      .catch(() => setLocalSemanas([]));
+  }, [filterPeriodo?.anio, filterPeriodo?.semestre, periodMatchesGlobal]);
+
+  const semanasParaFiltro = periodMatchesGlobal ? (contextSemanas as ISemana[]) : localSemanas;
+
   const recetasFiltradas = React.useMemo(() => {
     const porAsignatura = soloEstaAsignatura
       ? recetas.filter(r => r.idAsignatura === asig.idAsignatura)
       : recetas;
-    if (!periodMatchesGlobal || filterIdSemana === 'todas') return porAsignatura;
+    if (filterIdSemana === 'todas') return porAsignatura;
     return porAsignatura.filter(r => r.idSemana != null && String(r.idSemana) === filterIdSemana);
-  }, [recetas, filterIdSemana, periodMatchesGlobal, soloEstaAsignatura, asig.idAsignatura]);
+  }, [recetas, filterIdSemana, soloEstaAsignatura, asig.idAsignatura]);
 
   // ── derivados de bloquesIds ──
   const secSel         = seccionesSeleccionadas(asig.secciones, config.bloquesIds);
@@ -649,8 +664,8 @@ const AsigCard: React.FC<AsigCardProps> = ({
                       })()
                     )}
 
-                    {/* Selector semana — solo visible cuando el período local coincide con el global */}
-                    {periodMatchesGlobal && (contextSemanas as ISemana[]).length > 0 && (
+                    {/* Selector semana — visible cuando hay semanas para el período seleccionado */}
+                    {semanasParaFiltro.length > 0 && (
                       <Select
                         selectedKeys={new Set([filterIdSemana])}
                         onSelectionChange={(keys) => {
@@ -665,7 +680,7 @@ const AsigCard: React.FC<AsigCardProps> = ({
                       >
                         <SelectItem key="todas" textValue="Todas">Todas</SelectItem>
                         <>
-                          {(contextSemanas as ISemana[]).map(s => (
+                          {semanasParaFiltro.map(s => (
                             <SelectItem key={String(s.idSemana)} textValue={s.nombreSemana}>
                               <div className="flex items-center gap-2">
                                 <span className="font-medium text-xs">{s.nombreSemana}</span>
@@ -687,19 +702,18 @@ const AsigCard: React.FC<AsigCardProps> = ({
                       selectedKey={config.recetaId || null}
                       onSelectionChange={key => handleSelectReceta(String(key ?? ''))}
                       variant="bordered" size="sm" placeholder="Buscar pedidos semanales..."
-                      items={recetasFiltradas}
                       classNames={{ base: 'flex-1 min-w-[160px]', popoverContent: 'dark:bg-content1' }}
                       inputProps={{ classNames: { inputWrapper: 'bg-default-50' } }}
                       startContent={<Icon icon="lucide:book-open" width={13} className="text-default-400 shrink-0" />}
                     >
-                      {(r) => (
+                      {recetasFiltradas.map(r => (
                         <AutocompleteItem key={String(r.idReceta)} textValue={r.nombreReceta}>
                           <div className="flex items-center gap-2">
                             <span>{r.nombreReceta}</span>
                             <span className="text-default-400 text-xs ml-auto">{r.detalles.length} items</span>
                           </div>
                         </AutocompleteItem>
-                      )}
+                      ))}
                     </Autocomplete>
 
                     {recetasFiltradas.length === 0 && (
@@ -1335,8 +1349,8 @@ const SolicitudPage: React.FC = () => {
       </motion.div>
 
       {/* ── Modal de resultado ── */}
-      <Modal isOpen={sendResult !== null} onClose={() => setSendResult(null)} size="md" hideCloseButton>
-        <ModalContent className="overflow-hidden">
+      <Modal isOpen={sendResult !== null} onClose={() => setSendResult(null)} size="md" hideCloseButton classNames={{ base: 'rounded-2xl overflow-hidden' }}>
+        <ModalContent>
           {/* Banner de éxito */}
           <div className="bg-gradient-to-br from-success-400 to-success-600 px-6 py-8 flex flex-col items-center gap-3">
             <div className="bg-white/20 rounded-full p-4">
@@ -1348,7 +1362,7 @@ const SolicitudPage: React.FC = () => {
             </p>
           </div>
 
-          <ModalBody className="py-6 px-6">
+          <div className="px-6 py-6 space-y-4 overflow-y-auto custom-scrollbar max-h-[45vh]">
             {/* Stats */}
             <div className="flex gap-3">
               <div className="flex-1 flex flex-col items-center gap-2 py-5 rounded-2xl bg-success-50 border border-success-200">
@@ -1368,13 +1382,13 @@ const SolicitudPage: React.FC = () => {
             </div>
 
             {/* Explicación */}
-            <div className="mt-4 flex items-start gap-2 bg-default-50 border border-default-200 rounded-xl px-4 py-3">
+            <div className="flex items-start gap-2 bg-default-50 border border-default-200 rounded-xl px-4 py-3">
               <Icon icon="lucide:info" width={16} className="text-default-400 mt-0.5 shrink-0" />
               <p className="text-xs text-default-500 leading-relaxed">
                 Cada producto fue multiplicado según el pedido semanal bodega y la cantidad de alumnos inscritos por sección.
               </p>
             </div>
-          </ModalBody>
+          </div>
 
           <ModalFooter className="pt-0 px-6 pb-5">
             <Button color="success" fullWidth size="lg" onPress={() => setSendResult(null)}

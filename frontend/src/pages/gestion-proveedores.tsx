@@ -61,6 +61,7 @@ import {
   sincronizarPrecioDesdeIvaService,
   obtenerPedidosSemanaService,
   obtenerCotizacionConsolidadaService,
+  obtenerCotizacionDeCanceladasService,
   obtenerDisponibleRealService,
   registrarReservasStockService,
   type IDisponibleReal,
@@ -544,7 +545,7 @@ const buildColsOC = (
 // ── Componente principal ──────────────────────────────────────────────────────
 
 const GestionProveedoresPage: React.FC = () => {
-  const { isLoading: permLoading } = usePermission();
+  const { isLoading: permLoading, isAdmin } = usePermission();
 
   // ── Permisos de la vista Proveedores ──
   const { canRead: prov_VerLista }       = useModulePermission('GESTION_PROVEEDORES');
@@ -552,20 +553,23 @@ const GestionProveedoresPage: React.FC = () => {
   const verTabProveedores                = prov_VerLista || prov_DatosProv;
   const { canRead: prov_NuevoProv }      = useModulePermission('GPRV_NUEVO_PROV');
   const { canRead: prov_SyncExcel }      = useModulePermission('GPRV_SYNC_EXCEL');
-  const { canRead: prov_GenerarOrden }   = useModulePermission('GPRV_GENERAR_ORDEN');
+  const { canCreate: prov_GenerarOrden } = useModulePermission('GPRV_GENERAR_ORDEN');
   const { canRead: prov_Cotizacion }     = useModulePermission('GPRV_COTIZACION');
   const { canRead: prov_CambiarEstado }  = useModulePermission('GPRV_CAMBIAR_ESTADO_PROV');
   const { canRead: prov_EditarProv }     = useModulePermission('GPRV_EDITAR_PROV');
   const { canRead: prov_AsignarProd }    = useModulePermission('GPRV_ASIGNAR_PROD');
   const { canRead: prov_EliminarProv }   = useModulePermission('GPRV_ELIMINAR_PROV');
+  const { canRead: prov_ExportDatos }    = useModulePermission('GPRV_EXPORT_DATOS');
 
   // ── Permisos de la vista Órdenes de Pedido ──
   // canRead para verOrdenes (BinaryRead: puedeLeer=true es suficiente para ver la pestaña).
   // canCreate para las acciones: BinaryWrite → solo true cuando puedeCrear=true (Escritura real,
   // no propagación de Lectura que solo deja puedeLeer=true).
-  const { canRead: verOrdenes }      = useModulePermission('GPRV_ORDENES');
-  const { canCreate: op_CancelarOp } = useModulePermission('GPRV_CANCELAR_OP');
-  const { canCreate: op_ExportExcel }= useModulePermission('GPRV_EXPORT_OP');
+  const { canRead: verOrdenes }           = useModulePermission('GPRV_ORDENES');
+  const { canRead: op_VerPendEnviada }    = useModulePermission('GPRV_PENDIENTE_ENVIADA');
+  const { canRead: op_VerConfirmada }     = useModulePermission('GPRV_CONFIRMADA');
+  const { canCreate: op_CancelarOp }      = useModulePermission('GPRV_CANCELAR_OP');
+  const { canCreate: op_ExportExcel }     = useModulePermission('GPRV_EXPORT_OP');
 
   // Context global de período/semana — sólo se LEE (no se muta) para el modal de OC.
   const { periodos: ctxPeriodos } = usePeriodoSemana();
@@ -634,6 +638,8 @@ const GestionProveedoresPage: React.FC = () => {
 
   // ── Modal confirmar eliminar proveedor ──
   const { isOpen: isDelModal, onOpen: openDelModal, onOpenChange: onDelModalChange } = useDisclosure();
+  // Modal de forzar eliminación (solo Administrador: provider con productos activos)
+  const { isOpen: isForceDelModal, onOpen: openForceDelModal, onOpenChange: onForceDelModalChange } = useDisclosure();
   const [proveedorAEliminar, setProveedorAEliminar] = React.useState<IProveedor | null>(null);
   const [deletingId, setDeletingId] = React.useState<number | null>(null);
 
@@ -751,6 +757,8 @@ const GestionProveedoresPage: React.FC = () => {
   const [ocProveedorAToggle, setOcProveedorAToggle] = React.useState<IProveedorGrupoConsolidado | null>(null);
   const [ocEstadoActualToggle, setOcEstadoActualToggle] = React.useState<EstadoProveedor | null>(null);
   const [ocTogglingEstadoId, setOcTogglingEstadoId] = React.useState<number | null>(null);
+  // true cuando el Paso 2 fue abierto desde pedidos con OPs canceladas → usar endpoint de canceladas
+  const [ocEsDeCanceladas, setOcEsDeCanceladas] = React.useState(false);
 
   // ── Búsqueda global optimizada ──
   const [busquedaGlobal, setBusquedaGlobal] = React.useState('');
@@ -1065,6 +1073,27 @@ const GestionProveedoresPage: React.FC = () => {
     setDeletingId(proveedorAEliminar.idProveedor);
     try {
       await eliminarProveedorService(proveedorAEliminar.idProveedor);
+      showToast(`Proveedor "${proveedorAEliminar.nombreDistribuidora}" eliminado correctamente`);
+      await cargarProveedoresPaginados(1, true);
+      setProveedorAEliminar(null);
+    } catch (err: any) {
+      if ((err as any).isConProductosActivos && isAdmin) {
+        // El admin puede forzar la eliminación aún con productos activos
+        openForceDelModal();
+      } else {
+        showToast(err.message || 'Error al eliminar el proveedor', 'error');
+        setProveedorAEliminar(null);
+      }
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  const handleForzarEliminarProveedor = async () => {
+    if (!proveedorAEliminar) return;
+    setDeletingId(proveedorAEliminar.idProveedor);
+    try {
+      await eliminarProveedorService(proveedorAEliminar.idProveedor, true);
       showToast(`Proveedor "${proveedorAEliminar.nombreDistribuidora}" eliminado correctamente`);
       await cargarProveedoresPaginados(1, true);
     } catch (err: any) {
@@ -1878,9 +1907,20 @@ const GestionProveedoresPage: React.FC = () => {
     setOcCotizacion(null);
     setOcCantidades({});
 
+    const idsPedidoArr = [...ocSeleccionados];
+    // Si todos los pedidos seleccionados tienen OPs canceladas (con o sin activas también),
+    // usar el endpoint filtrado que carga solo los productos de las canceladas.
+    const esDeCanceladas = idsPedidoArr.every(id => {
+      const p = ocPedidos.find(p => p.idPedido === id);
+      return p && p.cantidadOrdenCanceladas > 0;
+    });
+    setOcEsDeCanceladas(esDeCanceladas);
+
     try {
       const [data] = await Promise.all([
-        obtenerCotizacionConsolidadaService([...ocSeleccionados]),
+        esDeCanceladas
+          ? obtenerCotizacionDeCanceladasService(idsPedidoArr)
+          : obtenerCotizacionConsolidadaService(idsPedidoArr),
         new Promise<void>(r => setTimeout(r, 2000)),
       ]);
       setOcCotizacion(data);
@@ -2051,6 +2091,47 @@ const GestionProveedoresPage: React.FC = () => {
     }
   };
 
+  /**
+   * Todo cubierto por disponible: solo registra las reservas de stock y cierra sin generar OPs.
+   */
+  const handleReservarYSalir = async () => {
+    if (!ocCotizacion || !ocCubrirDisponible) return;
+    setOcGenerandoOrdenes(true);
+    const reservas: Array<{ idSolicitud: number; idProducto: number; cantidad: number }> = [];
+    for (const prov of ocCotizacion.cotizacion) {
+      if (prov.idProveedor == null) continue;
+      for (const cat of prov.categorias) {
+        for (const prod of cat.productos) {
+          const disp = Math.max(0, ocDisponible[prod.idProducto]?.disponible ?? 0);
+          if (disp <= 0.0005) continue;
+          const totalDemanda = prod.solicitudes.reduce((s, x) => s + netoSolicitud(x), 0);
+          let cobertura = Math.min(disp, totalDemanda);
+          for (const sol of prod.solicitudes) {
+            if (cobertura <= 0.0005) break;
+            const cubierto = Math.min(cobertura, netoSolicitud(sol));
+            if (cubierto > 0.0005) {
+              reservas.push({
+                idSolicitud: sol.idSolicitud,
+                idProducto: prod.idProducto,
+                cantidad: Math.round(((sol.reservado ?? 0) + cubierto) * 1000) / 1000,
+              });
+              cobertura = Math.round((cobertura - cubierto) * 1000) / 1000;
+            }
+          }
+        }
+      }
+    }
+    try {
+      if (reservas.length > 0) await registrarReservasStockService(reservas);
+      onOrdenPedidoModalChange();
+      showToast('Productos reservados correctamente. No se generó orden de pedido.', 'success');
+    } catch {
+      showToast('No se pudieron registrar las reservas de stock', 'error');
+    } finally {
+      setOcGenerandoOrdenes(false);
+    }
+  };
+
   /** Abre el modal de confirmación para cambiar el estado del proveedor desde el Paso 2. */
   const handleConfirmarToggleEstadoPaso2 = (prov: IProveedorGrupoConsolidado, estadoActual: EstadoProveedor) => {
     setOcProveedorAToggle(prov);
@@ -2071,7 +2152,10 @@ const GestionProveedoresPage: React.FC = () => {
       setProveedores(prev =>
         prev.map(p => p.idProveedor === idProv ? { ...p, estadoProveedor: nuevoEstado } : p)
       );
-      const data = await obtenerCotizacionConsolidadaService([...ocSeleccionados]);
+      const idsPedidoArr = [...ocSeleccionados];
+      const data = await (ocEsDeCanceladas
+        ? obtenerCotizacionDeCanceladasService(idsPedidoArr)
+        : obtenerCotizacionConsolidadaService(idsPedidoArr));
       setOcCotizacion(data);
       const cantInicial = construirCantidades(data);
       setOcCantidades(cantInicial);
@@ -2313,9 +2397,10 @@ const GestionProveedoresPage: React.FC = () => {
             rango={opRango}
             onRangoChange={setOpRango}
             onCargarDetallesBulk={cargarDetallesBulk}
-            canCambiarEstado={op_CancelarOp}
             canCancelar={op_CancelarOp}
             canExportExcel={op_ExportExcel}
+            canVerPendienteEnviada={op_VerPendEnviada}
+            canVerConfirmada={op_VerConfirmada}
           />
 
           {/* ── Modal confirmación Cancelar Orden ── */}
@@ -2777,6 +2862,7 @@ const GestionProveedoresPage: React.FC = () => {
                                 <ProductosProveedor
                                   detalle={detalleCache[proveedor.idProveedor]}
                                   canEdit={prov_EditarProv}
+                                  canExportDatos={prov_ExportDatos}
                                   editingPrecio={editingPrecio}
                                   precioTemp={precioTemp}
                                   savingPrecio={savingPrecio}
@@ -2928,6 +3014,7 @@ const GestionProveedoresPage: React.FC = () => {
         togglingEstadoPaso2Id={ocTogglingEstadoId}
         onToggleEstadoProveedor={handleConfirmarToggleEstadoPaso2}
         onConfirmarOrden={handleConfirmarGenerarOrden}
+        onReservarYSalir={handleReservarYSalir}
         isGenerandoOrdenes={ocGenerandoOrdenes}
       />
 
@@ -2939,9 +3026,9 @@ const GestionProveedoresPage: React.FC = () => {
         hideCloseButton
         isDismissable={false}
         radius="lg"
-        classNames={{ base: 'rounded-2xl' }}
+        classNames={{ base: 'rounded-2xl overflow-hidden' }}
       >
-        <ModalContent className="overflow-hidden">
+        <ModalContent>
           {/* Banner */}
           <div className={`px-6 py-8 flex flex-col items-center gap-3 ${
             ocResultado?.errores.length === 0
@@ -2971,7 +3058,7 @@ const GestionProveedoresPage: React.FC = () => {
             </p>
           </div>
 
-          <ModalBody className="py-5 px-6 space-y-4">
+          <div className="px-6 py-5 space-y-4 overflow-y-auto custom-scrollbar max-h-[45vh]">
             {/* Stats */}
             <div className="flex gap-3">
               <div className="flex-1 flex flex-col items-center gap-2 py-4 rounded-2xl bg-success-50 border border-success-200">
@@ -3033,7 +3120,7 @@ const GestionProveedoresPage: React.FC = () => {
                 ))}
               </div>
             )}
-          </ModalBody>
+          </div>
 
           <ModalFooter className="pt-0 px-6 pb-5">
             <Button
@@ -3382,6 +3469,59 @@ const GestionProveedoresPage: React.FC = () => {
         </ModalContent>
       </Modal>
 
+      {/* ── Modal Forzar Eliminación Proveedor (solo Administrador) ── */}
+      <Modal isOpen={isForceDelModal} onOpenChange={onForceDelModalChange} size="sm" isDismissable={false} radius="lg" classNames={{ base: 'rounded-2xl', closeButton: 'cursor-pointer' }}>
+        <ModalContent className="rounded-2xl overflow-hidden">
+          {(onClose) => (
+            <>
+              <ModalHeader className="border-b border-default-200 dark:border-default-100 bg-gradient-to-r from-danger/20 to-danger/10 dark:from-danger/30 dark:to-danger/15 px-6 py-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-danger/30 rounded-lg">
+                    <Icon icon="lucide:shield-alert" className="text-danger" width={20} />
+                  </div>
+                  <span className="font-bold text-lg text-secondary dark:text-foreground">
+                    Eliminar con Productos Activos
+                  </span>
+                </div>
+              </ModalHeader>
+              <ModalBody className="py-4 gap-3">
+                <p className="text-sm text-default-600">
+                  El proveedor <strong>{proveedorAEliminar?.nombreDistribuidora}</strong> tiene productos activos asignados.
+                </p>
+                <p className="text-sm text-default-600">
+                  Al continuar, <strong>todos los productos quedarán desasignados</strong> y el proveedor será eliminado del sistema. <strong>Esta acción no se puede deshacer.</strong>
+                </p>
+                <div className="flex items-start gap-2 bg-danger-50 dark:bg-danger-50/10 rounded-lg p-3 mt-1">
+                  <Icon icon="lucide:alert-triangle" className="text-danger mt-0.5 shrink-0" width={15} />
+                  <p className="text-xs text-danger-700 dark:text-danger-300">
+                    Acción exclusiva del Administrador. Procede con precaución.
+                  </p>
+                </div>
+              </ModalBody>
+              <ModalFooter className="bg-gradient-to-r from-default-50 to-default-50 dark:from-content2 dark:to-content2 border-t border-default-200 dark:border-default-100 gap-2 px-6 py-4">
+                <Button variant="ghost" onPress={onClose} className="font-medium">
+                  Cancelar
+                </Button>
+                <Button
+                  color="danger"
+                  variant="solid"
+                  onPress={async () => {
+                    await handleForzarEliminarProveedor();
+                    onClose();
+                  }}
+                  isLoading={deletingId !== null}
+                  className="font-bold shadow-md cursor-pointer"
+                  startContent={!deletingId && <Icon icon="lucide:trash-2" width={16} />}
+                  size="lg"
+                >
+                  Eliminar de todas formas
+                </Button>
+              </ModalFooter>
+            </>
+          )}
+        </ModalContent>
+      </Modal>
+
       {/* ── Modal Confirmar Cambiar Estado Proveedor ── */}
       <Modal isOpen={isToggleEstadoModal} onOpenChange={onToggleEstadoModalChange} size="sm" isDismissable={false} radius="lg" classNames={{ base: 'rounded-2xl', closeButton: 'cursor-pointer' }}>
         <ModalContent className="rounded-2xl overflow-hidden">
@@ -3537,6 +3677,7 @@ const GestionProveedoresPage: React.FC = () => {
 interface ProductosProveedorProps {
   detalle: IProveedorDetalle;
   canEdit: boolean;
+  canExportDatos: boolean;
   editingPrecio: { idProveedorProducto: number; campo: 'neto' | 'iva' | 'marca' | 'contenido' } | null;
   precioTemp: string;
   savingPrecio: boolean;
@@ -3555,6 +3696,7 @@ interface ProductosProveedorProps {
 const ProductosProveedor: React.FC<ProductosProveedorProps> = ({
   detalle,
   canEdit,
+  canExportDatos,
   editingPrecio,
   precioTemp,
   savingPrecio,
@@ -3714,22 +3856,24 @@ const ProductosProveedor: React.FC<ProductosProveedorProps> = ({
             </Button>
           )}
           {loadingHistorico && <Spinner size="sm" color="primary" />}
-          <div className="ml-auto">
-            <Button
-              size="sm"
-              variant="flat"
-              color="success"
-              isDisabled={descargandoExcel}
-              onPress={handleDescargarExcel}
-            >
-              {descargandoExcel ? (
-                <Spinner size="sm" color="success" />
-              ) : (
-                <Icon icon="lucide:file-down" width={14} className="mr-1" />
-              )}
-              Descargar Excel
-            </Button>
-          </div>
+          {canExportDatos && (
+            <div className="ml-auto">
+              <Button
+                size="sm"
+                variant="flat"
+                color="success"
+                isDisabled={descargandoExcel}
+                onPress={handleDescargarExcel}
+              >
+                {descargandoExcel ? (
+                  <Spinner size="sm" color="success" />
+                ) : (
+                  <Icon icon="lucide:file-down" width={14} className="mr-1" />
+                )}
+                Descargar Excel
+              </Button>
+            </div>
+          )}
         </div>
 
         {errorDescarga && (
@@ -4996,18 +5140,18 @@ const FormularioAsignarProducto: React.FC<FormularioAsignarProductoProps> = ({
   const [error, setError] = React.useState<string | null>(null);
   const [saving, setSaving] = React.useState(false);
 
-  // Cálculo automático: al salir de Precio Neto, completar Precio + IVA si está vacío
+  // Recalcula Precio + IVA siempre que Neto tenga un valor válido
   const handlePrecioNetoBlur = () => {
     const neto = parseChileanPrice(precioNeto);
-    if (!isNaN(neto) && neto > 0 && !precioConIva.trim()) {
+    if (!isNaN(neto) && neto > 0) {
       setPrecioConIva(formatChileanPrice(neto * IVA_TASA));
     }
   };
 
-  // Cálculo automático: al salir de Precio + IVA, completar Precio Neto si está vacío
+  // Recalcula Precio Neto siempre que Precio + IVA tenga un valor válido
   const handlePrecioConIvaBlur = () => {
     const conIva = parseChileanPrice(precioConIva);
-    if (!isNaN(conIva) && conIva > 0 && !precioNeto.trim()) {
+    if (!isNaN(conIva) && conIva > 0) {
       setPrecioNeto(formatChileanPrice(conIva / IVA_TASA));
     }
   };
@@ -5785,14 +5929,16 @@ interface OrdenPedidoModalProps {
   togglingEstadoPaso2Id?: number | null;
   onToggleEstadoProveedor?: (prov: IProveedorGrupoConsolidado, estadoActual: EstadoProveedor) => void;
   onConfirmarOrden: () => void;
+  onReservarYSalir: () => void;
   isGenerandoOrdenes: boolean;
 }
 
 const chipOrdenPedido = (cantidad: number, canceladas: number) => {
-  if (cantidad === 0 && canceladas > 0) return <Chip color="warning" size="sm" variant="flat">Existe un registro cancelado, realizar nuevo</Chip>;
-  if (cantidad === 0) return <Chip color="default" size="sm" variant="flat">Sin OP</Chip>;
-  if (cantidad === 1) return <Chip color="success" size="sm" variant="flat">OP Generada</Chip>;
-  return <Chip color="warning" size="sm" variant="flat">Ya existe un registro para este pedido</Chip>;
+  if (cantidad === 0 && canceladas === 0) return <Chip color="default" size="sm" variant="flat">Sin OP</Chip>;
+  if (cantidad === 0 && canceladas > 0)   return <Chip color="warning" size="sm" variant="flat">Existe un registro cancelado, realizar nuevo</Chip>;
+  if (cantidad >= 1 && canceladas > 0)    return <Chip color="secondary" size="sm" variant="flat">OP activa + canceladas por regenerar</Chip>;
+  if (cantidad === 1)                     return <Chip color="success" size="sm" variant="flat">OP Generada</Chip>;
+  return <Chip color="danger" size="sm" variant="flat">Ya existe un registro para este pedido</Chip>;
 };
 
 const formatRangoPedido = (inicio: string, fin: string) => `${inicio} → ${fin}`;
@@ -5834,11 +5980,23 @@ const OrdenPedidoModal: React.FC<OrdenPedidoModalProps> = ({
   togglingEstadoPaso2Id,
   onToggleEstadoProveedor,
   onConfirmarOrden,
+  onReservarYSalir,
   isGenerandoOrdenes,
 }) => {
   const hoy = new Date();
   const anioActual = hoy.getFullYear();
   const semestreActual = hoy.getMonth() + 1 <= 6 ? 1 : 2;
+
+  const todoCubierto =
+    cubrirDisponible &&
+    cotizacion != null &&
+    cotizacion.cotizacion.length > 0 &&
+    Object.values(cantidades).length > 0 &&
+    Object.values(cantidades).every(byProd =>
+      Object.values(byProd).every(byDia =>
+        Object.values(byDia).every(v => !v || v <= 0)
+      )
+    );
 
   return (
     <Modal
@@ -6013,24 +6171,39 @@ const OrdenPedidoModal: React.FC<OrdenPedidoModalProps> = ({
                             <thead className="bg-default-100 dark:bg-default-50">
                               <tr>
                                 <th className="text-center py-2 px-3 font-medium w-12">Sel.</th>
+                                <th className="text-center py-2 px-3 font-medium w-16">ID</th>
                                 <th className="text-center py-2 px-3 font-medium">Rango del Pedido</th>
                                 <th className="text-center py-2 px-3 font-medium">Estado</th>
                                 <th className="text-center py-2 px-3 font-medium">OC asociadas</th>
                               </tr>
                             </thead>
                             <tbody>
-                              {pedidos.map(p => (
+                              {pedidos.map(p => {
+                                // cubiertoPorReservados bloquea siempre (stock cubre todo, no se necesita OP).
+                                // Sin eso: bloquear solo si hay OPs activas y ninguna cancelada pendiente.
+                                const bloqueado = p.cubiertoPorReservados || (p.cantidadOrdenPedido >= 1 && p.cantidadOrdenCanceladas === 0);
+                                return (
                                 <tr
                                   key={p.idPedido}
-                                  className="border-t border-default-100 dark:border-default-50 hover:bg-default-50 dark:hover:bg-default-100/20"
+                                  className={`border-t border-default-100 dark:border-default-50 transition-colors ${
+                                    bloqueado
+                                      ? 'opacity-50 cursor-not-allowed'
+                                      : 'cursor-pointer hover:bg-default-50 dark:hover:bg-default-100/20'
+                                  }`}
+                                  onClick={() => !bloqueado && onToggleSeleccion(p.idPedido)}
                                 >
-                                  <td className="py-2 px-3 text-center">
+                                  <td className="py-2 px-3 text-center" onClick={e => e.stopPropagation()}>
                                     <input
                                       type="checkbox"
-                                      className="w-4 h-4 cursor-pointer accent-warning"
+                                      className="w-4 h-4 accent-warning"
+                                      style={{ cursor: bloqueado ? 'not-allowed' : 'pointer' }}
                                       checked={seleccionados.has(p.idPedido)}
-                                      onChange={() => onToggleSeleccion(p.idPedido)}
+                                      disabled={bloqueado}
+                                      onChange={() => !bloqueado && onToggleSeleccion(p.idPedido)}
                                     />
+                                  </td>
+                                  <td className="py-2 px-3 text-center text-default-400 font-mono">
+                                    #{p.idPedido}
                                   </td>
                                   <td className="py-2 px-3 text-center font-medium">
                                     {formatRangoPedido(p.fechaInicioPedido, p.fechaFinPedido)}
@@ -6039,10 +6212,14 @@ const OrdenPedidoModal: React.FC<OrdenPedidoModalProps> = ({
                                     <Chip color="primary" size="sm" variant="flat">{p.estadoPedido}</Chip>
                                   </td>
                                   <td className="py-2 px-3 text-center">
-                                    {chipOrdenPedido(p.cantidadOrdenPedido, p.cantidadOrdenCanceladas)}
+                                    {p.cubiertoPorReservados
+                                      ? <Chip color="primary" size="sm" variant="solid">Cubierto por reservados</Chip>
+                                      : chipOrdenPedido(p.cantidadOrdenPedido, p.cantidadOrdenCanceladas)
+                                    }
                                   </td>
                                 </tr>
-                              ))}
+                                );
+                              })}
                             </tbody>
                           </table>
                         </div>
@@ -6205,16 +6382,29 @@ const OrdenPedidoModal: React.FC<OrdenPedidoModalProps> = ({
                   <Button variant="ghost" onPress={onClose} className="font-medium">
                     Cerrar
                   </Button>
-                  <Button
-                    color="success"
-                    variant="solid"
-                    isLoading={isGenerandoOrdenes}
-                    onPress={onConfirmarOrden}
-                    startContent={!isGenerandoOrdenes && <Icon icon="lucide:shopping-cart" width={18} />}
-                    className="font-medium"
-                  >
-                    Generar Ordenes de Pedidos
-                  </Button>
+                  {todoCubierto ? (
+                    <Button
+                      color="primary"
+                      variant="solid"
+                      isLoading={isGenerandoOrdenes}
+                      onPress={onReservarYSalir}
+                      startContent={!isGenerandoOrdenes && <Icon icon="lucide:package-check" width={18} />}
+                      className="font-medium"
+                    >
+                      Reservar productos y salir
+                    </Button>
+                  ) : (
+                    <Button
+                      color="success"
+                      variant="solid"
+                      isLoading={isGenerandoOrdenes}
+                      onPress={onConfirmarOrden}
+                      startContent={!isGenerandoOrdenes && <Icon icon="lucide:shopping-cart" width={18} />}
+                      className="font-medium"
+                    >
+                      Generar Ordenes de Pedidos
+                    </Button>
+                  )}
                 </>
               )}
             </ModalFooter>
@@ -7167,18 +7357,21 @@ interface OrdenesVistaProps {
   rango: number | null;
   onRangoChange: (r: number | null) => void;
   onCargarDetallesBulk: (ids: number[]) => Promise<void>;
-  canCambiarEstado: boolean;
   canCancelar: boolean;
   canExportExcel: boolean;
+  canVerPendienteEnviada: boolean;
+  canVerConfirmada: boolean;
 }
 
 const OrdenesVista: React.FC<OrdenesVistaProps> = ({
   lista, cargando, error, expandidosIds, detalles, cargandoDetalleIds,
   cambiandoEstadoId, onToggle, onRecargar, onCambiarEstado, onConfirmCancelar,
   rango, onRangoChange, onCargarDetallesBulk,
-  canCambiarEstado, canCancelar, canExportExcel,
+  canCancelar, canExportExcel,
+  canVerPendienteEnviada, canVerConfirmada,
 }) => {
-  const [filtroEstado, setFiltroEstado] = React.useState<EstadoOrdenPedido>('PENDIENTE');
+  const initialEstado = canVerPendienteEnviada ? 'PENDIENTE' : canVerConfirmada ? 'CONFIRMADA' : 'CANCELADA';
+  const [filtroEstado, setFiltroEstado] = React.useState<EstadoOrdenPedido>(initialEstado as EstadoOrdenPedido);
   const [agruparPorPedido, setAgruparPorPedido] = React.useState(false);
   const [agruparPorFechaReal, setAgruparPorFechaReal] = React.useState(false);
   const [modoUnificada, setModoUnificada] = React.useState(false);
@@ -7194,6 +7387,24 @@ const OrdenesVista: React.FC<OrdenesVistaProps> = ({
     const dt = new Date(iso);
     return `${String(dt.getDate()).padStart(2,'0')}/${String(dt.getMonth()+1).padStart(2,'0')}/${dt.getFullYear()} ${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')}`;
   };
+
+  // Estados que este rol puede ver según sus permisos de sub-vista.
+  const estadosPermitidos = React.useMemo<EstadoOrdenPedido[]>(() =>
+    ESTADO_OP_ORDEN.filter(e => {
+      if (e === 'PENDIENTE' || e === 'ENVIADA') return canVerPendienteEnviada;
+      if (e === 'CONFIRMADA' || e === 'RECIBIDA') return canVerConfirmada;
+      return true; // CANCELADA siempre visible
+    }),
+    [canVerPendienteEnviada, canVerConfirmada],
+  );
+
+  // Auto-switch si el estado activo ya no está en la lista permitida.
+  React.useEffect(() => {
+    if (estadosPermitidos.length > 0 && !estadosPermitidos.includes(filtroEstado)) {
+      setFiltroEstado(estadosPermitidos[0]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [estadosPermitidos]);
 
   const conteosPorEstado = React.useMemo(() => {
     const map = new Map<EstadoOrdenPedido, number>();
@@ -7433,26 +7644,34 @@ const OrdenesVista: React.FC<OrdenesVistaProps> = ({
           className="flex items-center gap-1.5 shrink-0"
           onClick={e => e.stopPropagation()}
         >
-          {TRANSICIONES_OP[op.estadoOrdenPedido].map(t => (
-            <Tooltip
-              key={t.estado}
-              content={canCambiarEstado ? t.label : 'Sin permiso de cambiar estado'}
-              placement="top"
-            >
-              <Button
-                isIconOnly
-                size="sm"
-                color={canCambiarEstado ? t.color : 'default'}
-                variant="flat"
-                isLoading={canCambiarEstado && cambiandoEstadoId === op.idOrdenPedido}
-                isDisabled={!canCambiarEstado || cambiandoEstadoId !== null}
-                className={!canCambiarEstado ? 'opacity-40 cursor-not-allowed' : ''}
-                onPress={() => canCambiarEstado && onCambiarEstado(op.idOrdenPedido, t.estado)}
+          {TRANSICIONES_OP[op.estadoOrdenPedido].map(t => {
+            // Determinar permiso por transición:
+            // • ENVIADA↔CONFIRMADA usan GPRV_CONFIRMADA
+            // • El resto (PENDIENTE↔ENVIADA, CANCELADA→PENDIENTE) usan GPRV_PENDIENTE_ENVIADA
+            const canDo = (t.estado === 'CONFIRMADA' || op.estadoOrdenPedido === 'CONFIRMADA')
+              ? canVerConfirmada
+              : canVerPendienteEnviada;
+            return (
+              <Tooltip
+                key={t.estado}
+                content={canDo ? t.label : 'Sin permiso'}
+                placement="top"
               >
-                <Icon icon={t.icon} width={14} />
-              </Button>
-            </Tooltip>
-          ))}
+                <Button
+                  isIconOnly
+                  size="sm"
+                  color={canDo ? t.color : 'default'}
+                  variant="flat"
+                  isLoading={canDo && cambiandoEstadoId === op.idOrdenPedido}
+                  isDisabled={!canDo || cambiandoEstadoId !== null}
+                  className={!canDo ? 'opacity-40 cursor-not-allowed' : ''}
+                  onPress={() => canDo && onCambiarEstado(op.idOrdenPedido, t.estado)}
+                >
+                  <Icon icon={t.icon} width={14} />
+                </Button>
+              </Tooltip>
+            );
+          })}
           {canCancelar && (['PENDIENTE', 'ENVIADA', 'CONFIRMADA'] as EstadoOrdenPedido[]).includes(op.estadoOrdenPedido) && (
             <Tooltip content="Cancelar orden" placement="top">
               <Button
@@ -7522,7 +7741,7 @@ const OrdenesVista: React.FC<OrdenesVistaProps> = ({
       {/* ── Barra de filtros por estado ── */}
       <div className="px-4 pt-4 pb-3 border-b border-default-100">
         <div className="flex items-center gap-1.5 flex-wrap">
-          {ESTADO_OP_ORDEN.map(e => {
+          {estadosPermitidos.map(e => {
             const c = ESTADO_OP_CONFIG[e];
             const count = conteosPorEstado.get(e) ?? 0;
             const activo = filtroEstado === e;

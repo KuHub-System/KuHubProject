@@ -24,6 +24,8 @@ export interface IUsuarioAuth {
 
 export interface IUsuario {
   id: string;
+  idUsuario?: number;
+  idRol?: number;
   nombreCompleto: string;
   correo: string;
   contrasena?: string;
@@ -47,6 +49,16 @@ export interface IPaginatedUsuarioResponse {
     offset: number;
     totalPages: number;
   };
+}
+
+/**
+ * Estado de conexión ligero de un usuario (endpoint /online-status).
+ * Solo lo necesario para refrescar la columna "Estado" sin re-paginar.
+ */
+export interface IUsuarioEstado {
+  correo: string;
+  ultimoAcceso?: string;
+  activo: boolean;
 }
 
 export interface IUsuarioCreacion {

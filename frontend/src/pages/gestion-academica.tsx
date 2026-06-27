@@ -302,7 +302,6 @@ const SeccionGestionSalas: React.FC = () => {
   const [formNombre, setFormNombre] = React.useState('');
   const [editId, setEditId] = React.useState<number | null>(null);
   const [deleteTarget, setDeleteTarget] = React.useState<ISala | null>(null);
-  const [confirmarDesactivar, setConfirmarDesactivar] = React.useState('');
   const [isSubmitting, setIsSubmitting] = React.useState(false);
 
   React.useEffect(() => {
@@ -330,7 +329,7 @@ const SeccionGestionSalas: React.FC = () => {
 
   const openCreate = () => { setFormCod(''); setFormNombre(''); onCreateOpen(); };
   const openEdit = (sala: ISala) => { setEditId(sala.idSala); setFormCod(sala.codSala); setFormNombre(sala.nombreSala); onEditOpen(); };
-  const openDelete = (sala: ISala) => { setDeleteTarget(sala); setConfirmarDesactivar(''); onDeleteOpen(); };
+  const openDelete = (sala: ISala) => { setDeleteTarget(sala); onDeleteOpen(); };
 
   const handleCreate = async (onClose: () => void) => {
     if (!formCod.trim() || !formNombre.trim()) return;
@@ -369,7 +368,6 @@ const SeccionGestionSalas: React.FC = () => {
   };
 
   const canSubmitForm = formCod.trim().length > 0 && formNombre.trim().length > 0;
-  const canConfirmarDesactivar = confirmarDesactivar.trim().toUpperCase() === 'CONFIRMAR';
 
   return (
     <div className="space-y-4">
@@ -492,7 +490,7 @@ const SeccionGestionSalas: React.FC = () => {
         </ModalContent>
       </Modal>
 
-      <Modal isOpen={isDeleteOpen} onOpenChange={onDeleteOpenChange} size="sm" placement="center">
+      <Modal isOpen={isDeleteOpen} onOpenChange={onDeleteOpenChange} size="sm" placement="center" radius="lg" backdrop="blur" isDismissable={!isSubmitting} classNames={{ base: 'rounded-2xl overflow-hidden', closeButton: 'hover:bg-default-100 cursor-pointer' }}>
         <ModalContent>
           {(onClose) => (
             <>
@@ -503,17 +501,16 @@ const SeccionGestionSalas: React.FC = () => {
               <ModalBody className="py-4 flex flex-col gap-3">
                 <p className="text-sm text-default-600">
                   Vas a desactivar{' '}
-                  <span className="font-bold text-secondary dark:text-foreground">{deleteTarget?.codSala} — {deleteTarget?.nombreSala}</span>. Solo se permite si la sala no tiene reservas activas.
+                  <span className="font-bold text-secondary dark:text-foreground">{deleteTarget?.codSala} — {deleteTarget?.nombreSala}</span>. Esta acción solo se permite si la sala no tiene reservas activas.
                 </p>
                 <div className="flex items-start gap-2 px-3 py-2.5 rounded-lg bg-danger-50 dark:bg-danger-900/20 border border-danger-200 dark:border-danger-800">
                   <Icon icon="lucide:info" className="text-danger-500 shrink-0 mt-0.5" width={15} />
                   <p className="text-xs text-danger-700 dark:text-danger-400">Si la sala tiene reservas vinculadas, el sistema rechazará la operación automáticamente.</p>
                 </div>
-                <Input label='Escriba "CONFIRMAR" para continuar' placeholder="CONFIRMAR" variant="bordered" value={confirmarDesactivar} onValueChange={setConfirmarDesactivar} color={canConfirmarDesactivar ? 'success' : 'default'} endContent={canConfirmarDesactivar ? <Icon icon="lucide:check-circle" width={16} className="text-success" /> : null} />
               </ModalBody>
               <ModalFooter>
                 <Button variant="light" className="font-medium" onPress={onClose} isDisabled={isSubmitting}>Cancelar</Button>
-                <Button color="danger" variant="solid" className="font-bold" isLoading={isSubmitting} isDisabled={!canConfirmarDesactivar || isSubmitting} onPress={() => handleDelete(onClose)}>Desactivar</Button>
+                <Button color="danger" variant="solid" className="font-bold" isLoading={isSubmitting} isDisabled={isSubmitting} onPress={() => handleDelete(onClose)}>Desactivar</Button>
               </ModalFooter>
             </>
           )}
@@ -645,22 +642,26 @@ const GestionAsignaturasPage: React.FC = () => {
   const toast = useToast();
   const { showConfirm } = useNotifications();
   const { isLoading: permLoading } = usePermission();
-  const { canRead: verAcademica }          = useModulePermission('GESTION_ACADEMICA');
+  const { canRead: verAcademicaDirecta }   = useModulePermission('GESTION_ACADEMICA');
+  const { canRead: verAcademicaVista }     = useModulePermission('GA_VER_ASIGNATURA');
+  const verAcademica = verAcademicaDirecta || verAcademicaVista;
   const { canCreate: ramos_Crear }         = useModulePermission('GA_CREAR_ASIGNATURA');
   const { canCreate: secciones_Crear }     = useModulePermission('GA_CREAR_SECCION');
   const { canUpdate: ramos_Editar }        = useModulePermission('GA_EDITAR_ASIGNATURA');
   const { canDelete: ramos_Eliminar }      = useModulePermission('GA_ELIMINAR_ASIGNATURA');
   const { canUpdate: secciones_Editar }    = useModulePermission('GA_EDITAR_SECCION');
   const { canDelete: secciones_Eliminar }  = useModulePermission('GA_ELIMINAR_SECCION');
-  const { canRead: verSalas }              = useModulePermission('ADMIN_SALAS_RESERVAS');
+  const { canRead: verReservas }       = useModulePermission('GA_VER_RESERVAS');
+  const { canRead: verGestionSalas }   = useModulePermission('GA_VER_SALAS');
+  const verSalaPanel = verReservas || verGestionSalas;
 
   // Si el rol solo tiene acceso a "Sala y Reservas" (sin Gestión Académica),
   // redirige automáticamente a esa vista al cargar (OR-gate, patrón Proveedores).
   React.useEffect(() => {
-    if (!permLoading && !verAcademica && verSalas) {
+    if (!permLoading && !verAcademica && verSalaPanel) {
       setCurrentView('salas');
     }
-  }, [permLoading, verAcademica, verSalas]);
+  }, [permLoading, verAcademica, verSalaPanel]);
   const [asignaturas, setAsignaturas] = React.useState<IAsignatura[]>([]);
   const [profesores, setProfesores] = React.useState<IUsuario[]>([]);
   const [searchTerm, setSearchTerm] = React.useState<string>('');
@@ -723,8 +724,12 @@ const GestionAsignaturasPage: React.FC = () => {
   }, [toast]);
 
   React.useEffect(() => {
-    cargarDatos();
-  }, [cargarDatos]);
+    if (!permLoading && verAcademica) {
+      cargarDatos();
+    } else if (!permLoading && !verAcademica) {
+      setIsLoading(false);
+    }
+  }, [cargarDatos, permLoading, verAcademica]);
 
   /**
    * Carga la siguiente página y acumula resultados
@@ -1186,7 +1191,7 @@ const GestionAsignaturasPage: React.FC = () => {
             </Button>
           </Tooltip>
           )}
-          {verSalas && (
+          {verSalaPanel && (
             <Tooltip content="Gestión Sala y Reservas" placement="left">
               <Button
                 isIconOnly

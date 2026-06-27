@@ -82,6 +82,23 @@ const AdminSistemaPage: React.FC = () => {
   React.useEffect(() => {
     setActiveTab(tabFromUrl);
   }, [tabFromUrl]);
+  const { canRead: puedeVerBloques } = useModulePermission('ADMIN_BLOQUES_HORARIOS');
+  const { canRead: puedeVerSemanas } = useModulePermission('ADMIN_SEMANAS');
+  const { canRead: puedeVerConfig }  = useModulePermission('ADMIN_CONFIG_SISTEMA');
+
+  // Si el tab activo ya no es accesible, saltar al primero disponible.
+  React.useEffect(() => {
+    const accessible: Record<string, boolean> = {
+      horarios: puedeVerBloques,
+      semanas:  puedeVerSemanas,
+      gestion:  puedeVerConfig,
+    };
+    if (!accessible[activeTab]) {
+      const first = Object.entries(accessible).find(([, v]) => v)?.[0] ?? 'horarios';
+      setActiveTab(first);
+    }
+  }, [puedeVerBloques, puedeVerSemanas, puedeVerConfig, activeTab]);
+
   const [bloques, setBloques] = React.useState<IBloqueHorario[]>([]);
   const [isLoadingBloques, setIsLoadingBloques] = React.useState(true);
 
@@ -159,45 +176,51 @@ const AdminSistemaPage: React.FC = () => {
               tabContent: 'group-data-[selected=true]:text-primary',
             }}
           >
-            <Tab
-              key="horarios"
-              title={
-                <div className="flex items-center gap-2">
-                  <Icon icon="lucide:clock-4" width={18} />
-                  <span>Bloques Horarios</span>
-                </div>
-              }
-            />
-            <Tab
-              key="semanas"
-              title={
-                <div className="flex items-center gap-2">
-                  <Icon icon="lucide:calendar-range" width={18} />
-                  <span>Gestión de Semanas</span>
-                </div>
-              }
-            />
-            <Tab
-              key="gestion"
-              title={
-                <div className="flex items-center gap-2">
-                  <Icon icon="lucide:sliders-horizontal" width={18} />
-                  <span>Gestion del Sistema</span>
-                </div>
-              }
-            />
+            {puedeVerBloques && (
+              <Tab
+                key="horarios"
+                title={
+                  <div className="flex items-center gap-2">
+                    <Icon icon="lucide:clock-4" width={18} />
+                    <span>Bloques Horarios</span>
+                  </div>
+                }
+              />
+            )}
+            {puedeVerSemanas && (
+              <Tab
+                key="semanas"
+                title={
+                  <div className="flex items-center gap-2">
+                    <Icon icon="lucide:calendar-range" width={18} />
+                    <span>Gestión de Semanas</span>
+                  </div>
+                }
+              />
+            )}
+            {puedeVerConfig && (
+              <Tab
+                key="gestion"
+                title={
+                  <div className="flex items-center gap-2">
+                    <Icon icon="lucide:sliders-horizontal" width={18} />
+                    <span>Gestion del Sistema</span>
+                  </div>
+                }
+              />
+            )}
           </Tabs>
 
           <div className="mt-6">
-            {activeTab === 'horarios' && (
+            {activeTab === 'horarios' && puedeVerBloques && (
               <SeccionBloques
                 bloques={bloques}
                 isLoading={isLoadingBloques}
                 onBloquesChange={setBloques}
               />
             )}
-            {activeTab === 'semanas' && <SeccionSemanas toast={toast} />}
-            {activeTab === 'gestion' && <SeccionGestionDelSistema />}
+            {activeTab === 'semanas' && puedeVerSemanas && <SeccionSemanas toast={toast} />}
+            {activeTab === 'gestion' && puedeVerConfig  && <SeccionGestionDelSistema />}
           </div>
         </div>
       </motion.div>
@@ -264,7 +287,6 @@ const ReasignarBloquesModal: React.FC<ReasignarBloquesModalProps> = ({
   const toast = useToast();
   const nextKey = React.useRef(0);
   const [bloques, setBloques] = React.useState<EditableBloque[]>([]);
-  const [confirmarTexto, setConfirmarTexto] = React.useState('');
   const [isSubmitting, setIsSubmitting] = React.useState(false);
 
   React.useEffect(() => {
@@ -277,7 +299,6 @@ const ReasignarBloquesModal: React.FC<ReasignarBloquesModalProps> = ({
           horaFin: b.horaFin.substring(0, 5),
         }))
       );
-      setConfirmarTexto('');
     }
   }, [isOpen, bloquesActuales]);
 
@@ -300,7 +321,19 @@ const ReasignarBloquesModal: React.FC<ReasignarBloquesModalProps> = ({
   }, [bloques]);
 
   const hasErrors = validationErrors.some((e) => e !== null);
-  const canSubmit = !hasErrors && confirmarTexto.trim().toUpperCase() === 'CONFIRMAR' && bloques.length > 0;
+
+  const hasChanges = React.useMemo(() => {
+    if (bloques.length !== bloquesActuales.length) return true;
+    return bloques.some((b, i) => {
+      const orig = bloquesActuales[i];
+      return (
+        b.horaInicio !== orig.horaInicio.substring(0, 5) ||
+        b.horaFin    !== orig.horaFin.substring(0, 5)
+      );
+    });
+  }, [bloques, bloquesActuales]);
+
+  const canSubmit = !hasErrors && bloques.length > 0 && hasChanges;
 
   const handleAdd = () => {
     const last = bloques[bloques.length - 1];
@@ -341,7 +374,20 @@ const ReasignarBloquesModal: React.FC<ReasignarBloquesModalProps> = ({
   };
 
   return (
-    <Modal isOpen={isOpen} onOpenChange={onOpenChange} size="2xl" placement="center" scrollBehavior="inside">
+    <Modal
+      isOpen={isOpen}
+      onOpenChange={onOpenChange}
+      size="2xl"
+      placement="center"
+      scrollBehavior="inside"
+      radius="lg"
+      backdrop="blur"
+      isDismissable={!isSubmitting}
+      classNames={{
+        base: 'rounded-2xl overflow-hidden max-h-[75vh]',
+        closeButton: 'hover:bg-default-100 cursor-pointer',
+      }}
+    >
       <ModalContent>
         {(onClose) => (
           <>
@@ -437,18 +483,6 @@ const ReasignarBloquesModal: React.FC<ReasignarBloquesModalProps> = ({
                   </p>
                 </div>
               </div>
-
-              {/* ── Confirmación ── */}
-              <Input
-                label='Escriba "CONFIRMAR" para continuar'
-                placeholder="CONFIRMAR"
-                value={confirmarTexto}
-                onValueChange={setConfirmarTexto}
-                variant="bordered"
-                color={confirmarTexto.trim().toUpperCase() === 'CONFIRMAR' ? 'success' : 'default'}
-                endContent={confirmarTexto.trim().toUpperCase() === 'CONFIRMAR'
-                  ? <Icon icon="lucide:check-circle" width={16} className="text-success" /> : null}
-              />
             </ModalBody>
 
             <ModalFooter>
@@ -462,8 +496,9 @@ const ReasignarBloquesModal: React.FC<ReasignarBloquesModalProps> = ({
                 isDisabled={!canSubmit}
                 isLoading={isSubmitting}
                 onPress={handleSubmit}
+                startContent={!isSubmitting && <Icon icon="lucide:check" width={16} />}
               >
-                Guardar Bloques
+                Confirmar Cambios
               </Button>
             </ModalFooter>
           </>
@@ -484,10 +519,9 @@ interface SeccionBloquesProps {
 const SeccionBloques: React.FC<SeccionBloquesProps> = ({ bloques, isLoading, onBloquesChange }) => {
   const toast = useToast();
   const { isOpen: isReasignarOpen, onOpen: onReasignarOpen, onOpenChange: onReasignarOpenChange } = useDisclosure();
-  const { isOpen: isRestaurarOpen, onOpen: onRestaurarOpen, onOpenChange: onRestaurarOpenChange } = useDisclosure();
-  const { canCreate: admin_Crear } = useModulePermission('ADMIN_SISTEMA');
+  const { isOpen: isRestaurarOpen, onOpen: onRestaurarOpen, onClose: onRestaurarClose, onOpenChange: onRestaurarOpenChange } = useDisclosure();
+  const { canCreate: bloques_Escribir } = useModulePermission('ADMIN_BLOQUES_HORARIOS');
   const [isRestaurando, setIsRestaurando] = React.useState(false);
-  const [confirmarRestaurar, setConfirmarRestaurar] = React.useState('');
 
   const getBloqueGroup = (bloque: IBloqueHorario): string => {
     const num = bloque.numeroBloque;
@@ -511,8 +545,8 @@ const SeccionBloques: React.FC<SeccionBloquesProps> = ({ bloques, isLoading, onB
     try {
       const restaurados = await restaurarBloquesDefaultService();
       onBloquesChange(restaurados);
+      onRestaurarClose();
       toast.success('Bloques restaurados a los valores predeterminados');
-
     } catch (error: any) {
       toast.error(error.message || 'Error al restaurar los bloques predeterminados');
     } finally {
@@ -536,7 +570,7 @@ const SeccionBloques: React.FC<SeccionBloquesProps> = ({ bloques, isLoading, onB
               <Chip key={label} color={style.chip} size="sm" variant="flat">{label}</Chip>
             ))}
           </div>
-          {admin_Crear && (
+          {bloques_Escribir && (
             <div className="ml-auto flex gap-2 flex-wrap justify-end">
               <Button
                 color="default"
@@ -544,7 +578,7 @@ const SeccionBloques: React.FC<SeccionBloquesProps> = ({ bloques, isLoading, onB
                 size="sm"
                 className="font-semibold"
                 startContent={<Icon icon="lucide:rotate-ccw" width={15} />}
-                onPress={() => { setConfirmarRestaurar(''); onRestaurarOpen(); }}
+                onPress={onRestaurarOpen}
               >
                 Restaurar predeterminados
               </Button>
@@ -623,31 +657,32 @@ const SeccionBloques: React.FC<SeccionBloquesProps> = ({ bloques, isLoading, onB
       />
 
       {/* Modal: Confirmar restaurar */}
-      <Modal isOpen={isRestaurarOpen} onOpenChange={onRestaurarOpenChange} size="sm" placement="center">
+      <Modal
+        isOpen={isRestaurarOpen}
+        onOpenChange={onRestaurarOpenChange}
+        size="sm"
+        placement="center"
+        radius="lg"
+        backdrop="blur"
+        isDismissable={!isRestaurando}
+        classNames={{ base: 'rounded-2xl overflow-hidden' }}
+      >
         <ModalContent>
           {(onClose) => (
             <>
-              <ModalHeader className="flex items-center gap-2">
-                <Icon icon="lucide:rotate-ccw" className="text-warning" width={20} />
-                <span className="font-bold">Restaurar Bloques Predeterminados</span>
+              <ModalHeader className="flex items-center gap-2 pb-2">
+                <div className="p-1.5 rounded-lg bg-warning-100 dark:bg-warning-900/30 text-warning-600">
+                  <Icon icon="lucide:rotate-ccw" width={18} />
+                </div>
+                <span className="font-bold text-secondary dark:text-foreground">Restaurar Bloques Predeterminados</span>
               </ModalHeader>
-              <ModalBody className="space-y-3 py-4">
+              <ModalBody className="space-y-3 pb-2">
                 <div className="flex gap-3 p-3 rounded-xl bg-warning-50 dark:bg-warning-900/15 border border-warning-200 dark:border-warning-800">
                   <Icon icon="lucide:alert-triangle" className="text-warning-600 dark:text-warning-400 shrink-0 mt-0.5" width={16} />
                   <p className="text-sm text-warning-700 dark:text-warning-300 leading-relaxed">
-                    Los <strong>{bloques.length} bloques actuales</strong> serán reemplazados por los <strong>20 bloques predeterminados</strong> originales del sistema. Los cambios afectarán todas las secciones y reservas asociadas.
+                    Los <strong>{bloques.length} bloques actuales</strong> serán reemplazados por los <strong>20 bloques predeterminados</strong> del sistema. Los cambios afectarán todas las secciones y reservas asociadas.
                   </p>
                 </div>
-                <Input
-                  label='Escriba "CONFIRMAR" para continuar'
-                  placeholder="CONFIRMAR"
-                  value={confirmarRestaurar}
-                  onValueChange={setConfirmarRestaurar}
-                  variant="bordered"
-                  color={confirmarRestaurar.trim().toUpperCase() === 'CONFIRMAR' ? 'success' : 'default'}
-                  endContent={confirmarRestaurar.trim().toUpperCase() === 'CONFIRMAR'
-                    ? <Icon icon="lucide:check-circle" width={16} className="text-success" /> : null}
-                />
               </ModalBody>
               <ModalFooter>
                 <Button variant="light" onPress={onClose} isDisabled={isRestaurando}>
@@ -658,8 +693,8 @@ const SeccionBloques: React.FC<SeccionBloquesProps> = ({ bloques, isLoading, onB
                   variant="solid"
                   className="font-bold text-white"
                   isLoading={isRestaurando}
-                  isDisabled={confirmarRestaurar.trim().toUpperCase() !== 'CONFIRMAR'}
                   onPress={handleRestaurar}
+                  startContent={!isRestaurando && <Icon icon="lucide:rotate-ccw" width={15} />}
                 >
                   Restaurar
                 </Button>
@@ -689,7 +724,6 @@ const ReasignarSemanasModal: React.FC<ReasignarSemanasModalProps> = ({
   const [anioSeleccionado, setAnioSeleccionado] = React.useState<string>('');
   const [semestre, setSemestre] = React.useState<1 | 2>(1);
   const [fechaSeleccionada, setFechaSeleccionada] = React.useState<DateValue | null>(null);
-  const [confirmarTexto, setConfirmarTexto] = React.useState('');
   const [isSubmitting, setIsSubmitting] = React.useState(false);
 
   // Inicializar estado al abrir el modal
@@ -699,7 +733,6 @@ const ReasignarSemanasModal: React.FC<ReasignarSemanasModalProps> = ({
       setAnioSeleccionado(anioDefault);
       setSemestre(new Date().getMonth() + 1 <= 6 ? 1 : 2);
       setFechaSeleccionada(null);
-      setConfirmarTexto('');
     }
   }, [isOpen, filtroAnioActual, aniosDisponibles]);
 
@@ -723,7 +756,7 @@ const ReasignarSemanasModal: React.FC<ReasignarSemanasModalProps> = ({
     });
   }, [fechaSeleccionada]);
 
-  const canSubmit = anioSeleccionado !== '' && fechaSeleccionada !== null && confirmarTexto.trim().toUpperCase() === 'CONFIRMAR';
+  const canSubmit = anioSeleccionado !== '' && fechaSeleccionada !== null;
 
   const handleSubmit = async () => {
     if (!canSubmit || !fechaSeleccionada) return;
@@ -752,7 +785,20 @@ const ReasignarSemanasModal: React.FC<ReasignarSemanasModalProps> = ({
   }, [aniosDisponibles]);
 
   return (
-    <Modal isOpen={isOpen} onOpenChange={onOpenChange} size="2xl" placement="center" scrollBehavior="inside">
+    <Modal
+      isOpen={isOpen}
+      onOpenChange={onOpenChange}
+      size="2xl"
+      placement="center"
+      scrollBehavior="inside"
+      radius="lg"
+      backdrop="blur"
+      isDismissable={!isSubmitting}
+      classNames={{
+        base: 'rounded-2xl overflow-hidden max-h-[85vh]',
+        closeButton: 'hover:bg-default-100 cursor-pointer',
+      }}
+    >
       <ModalContent>
         {(onClose) => (
           <>
@@ -879,17 +925,6 @@ const ReasignarSemanasModal: React.FC<ReasignarSemanasModalProps> = ({
                 </div>
               </div>
 
-              {/* ── Confirmación ── */}
-              <Input
-                label='Escriba "CONFIRMAR" para continuar'
-                placeholder="CONFIRMAR"
-                value={confirmarTexto}
-                onValueChange={setConfirmarTexto}
-                variant="bordered"
-                color={confirmarTexto.trim().toUpperCase() === 'CONFIRMAR' ? 'success' : 'default'}
-                endContent={confirmarTexto.trim().toUpperCase() === 'CONFIRMAR'
-                  ? <Icon icon="lucide:check-circle" width={16} className="text-success" /> : null}
-              />
             </ModalBody>
 
             <ModalFooter>
@@ -903,6 +938,7 @@ const ReasignarSemanasModal: React.FC<ReasignarSemanasModalProps> = ({
                 isDisabled={!canSubmit}
                 isLoading={isSubmitting}
                 onPress={handleSubmit}
+                startContent={!isSubmitting && <Icon icon="lucide:calendar-check" width={16} />}
               >
                 Reasignar Semanas
               </Button>
@@ -922,6 +958,7 @@ interface SeccionSemanasProps {
 
 const SeccionSemanas: React.FC<SeccionSemanasProps> = ({ toast }) => {
   const { recargarPeriodos, recargarSemanas: recargarSemanasGlobal } = usePeriodoSemana();
+  const { canCreate: semanas_Escribir } = useModulePermission('ADMIN_SEMANAS');
   const [fechaSeleccionada, setFechaSeleccionada] = React.useState<DateValue | null>(null);
   const [semestre, setSemestre] = React.useState<1 | 2>(1);
   const [semanas, setSemanas] = React.useState<ISemana[]>([]);
@@ -1047,75 +1084,77 @@ const SeccionSemanas: React.FC<SeccionSemanasProps> = ({ toast }) => {
 
   return (
     <div className="space-y-4">
-      {/* Formulario de generación */}
-      <Card className="shadow-sm border border-default-200 dark:border-default-100 bg-white dark:bg-content1">
-        <CardHeader className="px-6 pt-5 pb-3 flex items-center gap-3">
-          <div className="p-2 rounded-lg bg-warning-100 dark:bg-warning-900/30 text-warning-600">
-            <Icon icon="lucide:calendar-plus" width={20} />
-          </div>
-          <div>
-            <h3 className="font-bold text-base text-secondary dark:text-foreground">Generar Calendario Académico</h3>
-            <p className="text-xs text-default-400">Se generarán 18 semanas consecutivas a partir del lunes seleccionado</p>
-          </div>
-        </CardHeader>
-        <Divider />
-        <CardBody className="p-5 space-y-4">
-          <div className="flex flex-col md:flex-row gap-4 items-end">
-            <div className="flex flex-col gap-1">
-              <p className="text-xs text-default-500 px-1">Solo los lunes están disponibles</p>
-              <I18nProvider locale="es-CL">
-                <DatePicker
-                  label="Fecha de inicio (lunes)"
-                  value={fechaSeleccionada}
-                  onChange={setFechaSeleccionada}
-                  isDateUnavailable={esDiaNoLunes}
-                  variant="bordered"
-                  className="md:w-64"
-                  showMonthAndYearPickers
-                />
-              </I18nProvider>
+      {/* Formulario de generación — solo con permiso de escritura */}
+      {semanas_Escribir && (
+        <Card className="shadow-sm border border-default-200 dark:border-default-100 bg-white dark:bg-content1">
+          <CardHeader className="px-6 pt-5 pb-3 flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-warning-100 dark:bg-warning-900/30 text-warning-600">
+              <Icon icon="lucide:calendar-plus" width={20} />
             </div>
-            <div className="flex gap-2">
+            <div>
+              <h3 className="font-bold text-base text-secondary dark:text-foreground">Generar Calendario Académico</h3>
+              <p className="text-xs text-default-400">Se generarán 18 semanas consecutivas a partir del lunes seleccionado</p>
+            </div>
+          </CardHeader>
+          <Divider />
+          <CardBody className="p-5 space-y-4">
+            <div className="flex flex-col md:flex-row gap-4 items-end">
+              <div className="flex flex-col gap-1">
+                <p className="text-xs text-default-500 px-1">Solo los lunes están disponibles</p>
+                <I18nProvider locale="es-CL">
+                  <DatePicker
+                    label="Fecha de inicio (lunes)"
+                    value={fechaSeleccionada}
+                    onChange={setFechaSeleccionada}
+                    isDateUnavailable={esDiaNoLunes}
+                    variant="bordered"
+                    className="md:w-64"
+                    showMonthAndYearPickers
+                  />
+                </I18nProvider>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  variant={semestre === 1 ? 'solid' : 'bordered'}
+                  color={semestre === 1 ? 'primary' : 'default'}
+                  onPress={() => setSemestre(1)}
+                  className={semestre === 1 ? 'font-bold text-secondary' : 'font-medium'}
+                >
+                  1° Semestre
+                </Button>
+                <Button
+                  variant={semestre === 2 ? 'solid' : 'bordered'}
+                  color={semestre === 2 ? 'primary' : 'default'}
+                  onPress={() => setSemestre(2)}
+                  className={semestre === 2 ? 'font-bold text-secondary' : 'font-medium'}
+                >
+                  2° Semestre
+                </Button>
+              </div>
               <Button
-                variant={semestre === 1 ? 'solid' : 'bordered'}
-                color={semestre === 1 ? 'primary' : 'default'}
-                onPress={() => setSemestre(1)}
-                className={semestre === 1 ? 'font-bold text-secondary' : 'font-medium'}
+                color="warning"
+                variant="solid"
+                startContent={<Icon icon="lucide:refresh-cw" width={18} />}
+                onPress={handleGenerar}
+                isLoading={isGenerando}
+                isDisabled={!fechaSeleccionada}
+                className="font-bold text-white"
               >
-                1° Semestre
+                Generar 18 Semanas
               </Button>
               <Button
-                variant={semestre === 2 ? 'solid' : 'bordered'}
-                color={semestre === 2 ? 'primary' : 'default'}
-                onPress={() => setSemestre(2)}
-                className={semestre === 2 ? 'font-bold text-secondary' : 'font-medium'}
+                color="secondary"
+                variant="flat"
+                startContent={<Icon icon="lucide:list-restart" width={18} />}
+                onPress={onOpen}
+                className="font-bold"
               >
-                2° Semestre
+                Reasignar Semanas
               </Button>
             </div>
-            <Button
-              color="warning"
-              variant="solid"
-              startContent={<Icon icon="lucide:refresh-cw" width={18} />}
-              onPress={handleGenerar}
-              isLoading={isGenerando}
-              isDisabled={!fechaSeleccionada}
-              className="font-bold text-white"
-            >
-              Generar 18 Semanas
-            </Button>
-            <Button
-              color="secondary"
-              variant="flat"
-              startContent={<Icon icon="lucide:list-restart" width={18} />}
-              onPress={onOpen}
-              className="font-bold"
-            >
-              Reasignar Semanas
-            </Button>
-          </div>
-        </CardBody>
-      </Card>
+          </CardBody>
+        </Card>
+      )}
 
       {/* Semanas registradas — cabecera con filtro */}
       <div className="flex items-center justify-between px-1">
@@ -1214,14 +1253,16 @@ const SeccionSemanas: React.FC<SeccionSemanasProps> = ({ toast }) => {
         </div>
       )}
 
-      {/* Modal: Reasignar Semanas */}
-      <ReasignarSemanasModal
-        isOpen={isOpen}
-        onOpenChange={onOpenChange}
-        aniosDisponibles={aniosDisponibles}
-        filtroAnioActual={filtroAnio}
-        onSuccess={handleReasignarSuccess}
-      />
+      {/* Modal: Reasignar Semanas — solo con permiso de escritura */}
+      {semanas_Escribir && (
+        <ReasignarSemanasModal
+          isOpen={isOpen}
+          onOpenChange={onOpenChange}
+          aniosDisponibles={aniosDisponibles}
+          filtroAnioActual={filtroAnio}
+          onSuccess={handleReasignarSuccess}
+        />
+      )}
     </div>
   );
 };

@@ -48,6 +48,15 @@
 }
 
 /* Estilos globales */
+html {
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+  &::-webkit-scrollbar { width: 8px; height: 8px; }
+  &::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.02); border-radius: 4px; }
+  &::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; border: 2px solid transparent; background-clip: padding-box; }
+  &::-webkit-scrollbar-thumb:hover { background: #eab308; border: 2px solid transparent; background-clip: padding-box; }
+}
+
 body {
   font-family: 'Roboto', sans-serif;
   @apply bg-background text-foreground;

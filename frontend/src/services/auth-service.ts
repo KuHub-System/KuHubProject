@@ -12,6 +12,7 @@ export interface ISesion {
   usuario: IUsuarioAuth;
   token: string;
   fechaInicio: string;
+  terminosAceptados: boolean;
 }
 
 const SESION_KEY = 'sesion_actual';
@@ -32,7 +33,7 @@ export const iniciarSesionService = async (correo: string, contrasena: string, r
     });
 
     console.log(`[AUTH] ✅ ${response.status} OK →`, response.data);
-    const { usuario, token } = response.data;
+    const { usuario, token, terminosAceptados } = response.data;
 
     const usuarioFrontend: IUsuarioAuth = {
       id: (usuario.idUsuario || usuario.id || '').toString(),
@@ -48,6 +49,7 @@ export const iniciarSesionService = async (correo: string, contrasena: string, r
       usuario: usuarioFrontend,
       token: token,
       fechaInicio: new Date().toISOString(),
+      terminosAceptados: terminosAceptados === true,
     };
 
     localStorage.setItem(SESION_KEY, JSON.stringify(sesion));
@@ -206,3 +208,25 @@ export const actualizarFotoPerfilService = async (archivo: File): Promise<string
 
 // Alias para compatibilidad
 export const getCurrentUserService = obtenerUsuarioActualService;
+
+/**
+ * Registra la aceptación de los términos y condiciones en el backend.
+ * Actualiza el flag en la sesión local para que no vuelva a mostrar el modal.
+ */
+export const aceptarTerminosService = async (): Promise<void> => {
+  await api.post('/auth/terminos/aceptar', {}, { withCredentials: true });
+  const sesionStr = localStorage.getItem(SESION_KEY);
+  if (sesionStr) {
+    const sesion: ISesion = JSON.parse(sesionStr);
+    sesion.terminosAceptados = true;
+    localStorage.setItem(SESION_KEY, JSON.stringify(sesion));
+  }
+};
+
+/**
+ * Retorna si el usuario de la sesión actual ya aceptó los términos vigentes.
+ */
+export const obtenerTerminosAceptadosService = (): boolean => {
+  const sesion = obtenerSesionActualService();
+  return sesion?.terminosAceptados === true;
+};

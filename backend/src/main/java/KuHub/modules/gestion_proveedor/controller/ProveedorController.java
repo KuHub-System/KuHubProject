@@ -177,13 +177,15 @@ public class ProveedorController {
      * - **Servicio frontend:** {@code frontend/src/services/proveedor-service.ts} -> {@code eliminarProveedorService()}
      * - **Pantalla UI:** {@code frontend/src/pages/gestion-proveedores.tsx} (Se activa al presionar el botón de eliminación y confirmar en el diálogo toast).
      *
-     * @param id ID del proveedor a eliminar
+     * @param id    ID del proveedor a eliminar
+     * @param force Si true (solo Administrador), desactiva productos activos y procede con la eliminación
      */
     @DeleteMapping("/{id}")
-    public ResponseEntity<Boolean> softDelete(@PathVariable Integer id) {
+    public ResponseEntity<Boolean> softDelete(@PathVariable Integer id,
+                                              @org.springframework.web.bind.annotation.RequestParam(defaultValue = "false") boolean force) {
         return ResponseEntity
                 .status(204)
-                .body(proveedorService.softDelete(id));
+                .body(proveedorService.softDelete(id, force));
     }
 
     // ══════════════════════════════════════════════════════════════

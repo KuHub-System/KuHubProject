@@ -37,6 +37,7 @@ import { usePermission } from '../contexts/permission-context';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { permissionService } from '../services/permission-service';
 import {
+  ACCESS_HIERARCHY,
   AccessLevel,
   ModuleKey,
   ModulePermissions,
@@ -70,15 +71,15 @@ const MODULE_GROUPS: { title: string; modules: ModuleKey[] }[] = [
       'GESTION_PEDIDOS', 'GP_VISTA_RESUMEN', 'GP_VISTA_ACEPTADAS',
       'CONGLOMERADO_PEDIDOS', 'CONG_VISTA_APROBACION', 'CONG_APROBAR_PEDIDO', 'CONG_RECHAZAR_PEDIDO', 'CONG_VISTA_CRONOGRAMA', 'CONG_VISTA_TOTALES', 'CONG_VISTA_CATEGORIAS',
       'GESTION_PROVEEDORES',
-        'GPRV_DATOS_PROV',
+        'GPRV_DATOS_PROV', 'GPRV_EXPORT_DATOS',
         'GPRV_NUEVO_PROV', 'GPRV_SYNC_EXCEL', 'GPRV_GENERAR_ORDEN', 'GPRV_COTIZACION',
         'GPRV_CAMBIAR_ESTADO_PROV', 'GPRV_EDITAR_PROV', 'GPRV_ASIGNAR_PROD', 'GPRV_ELIMINAR_PROV',
-        'GPRV_ORDENES', 'GPRV_CANCELAR_OP', 'GPRV_EXPORT_OP',
+        'GPRV_ORDENES', 'GPRV_PENDIENTE_ENVIADA', 'GPRV_CONFIRMADA', 'GPRV_CANCELAR_OP', 'GPRV_EXPORT_OP',
       'GESTION_ACADEMICA',
+        'GA_VER_ASIGNATURA',
         'GA_CREAR_ASIGNATURA', 'GA_CREAR_SECCION',
         'GA_EDITAR_ASIGNATURA', 'GA_ELIMINAR_ASIGNATURA',
         'GA_EDITAR_SECCION', 'GA_ELIMINAR_SECCION',
-      'ADMIN_SALAS_RESERVAS',
         'GA_VER_RESERVAS', 'GA_VER_SALAS',
         'GA_CREAR_SALA', 'GA_EDITAR_SALA', 'GA_ELIMINAR_SALA',
       'HISTORICO_PEDIDOS', 'HIST_EXPORT_EXCEL',
@@ -87,13 +88,24 @@ const MODULE_GROUPS: { title: string; modules: ModuleKey[] }[] = [
   {
     title: 'Inventario',
     modules: [
-      'INVENTARIO', 'INV_CONTROL_MASIVO', 'INV_SYNC_EXCEL', 'INV_ABASTECIMIENTO',
-      'GESTION_CATEGORIAS', 'GESTION_UNIDADES',
+      'INVENTARIO',
+        'INV_NUEVO_PRODUCTO', 'INV_EDITAR_PRODUCTO',
+        'INV_CONTROL_MASIVO', 'INV_ABAST_BODEGA', 'INV_ABAST_PROV',
+        'INV_SYNC_EXCEL', 'INV_ABASTECIMIENTO',
+        'INV_STOCK_DISPONIBLE', 'SD_INVENTARIO', 'SD_BODEGA_TRANSITO', 'SD_DISPONIBLE_REAL',
+        'GESTION_CATEGORIAS', 'GESTION_UNIDADES',
       'HISTORIAL_MOVIMIENTOS',
-      'BODEGA_TRANSITO', 'BOD_CONTROL_MASIVO', 'BOD_ABASTECIMIENTO', 'GESTION_PEDIDOS_DIARIOS',
+      'BODEGA_TRANSITO',
+        'BOD_NUEVO', 'BOD_CONTROL_MASIVO', 'BOD_ABASTECIMIENTO',
+        'BOD_EDITAR_PRODUCTO',
+        'INV_ABASTECIMIENTO',
+        'INV_STOCK_DISPONIBLE', 'SD_INVENTARIO', 'SD_BODEGA_TRANSITO', 'SD_DISPONIBLE_REAL',
+        'GESTION_CATEGORIAS', 'GESTION_UNIDADES',
+        'GESTION_PEDIDOS_DIARIOS',
+        'GPD_RESUMEN_PERIODO', 'GPD_PREPARAR_ENTREGA',
     ],
   },
-  { title: 'Usuarios', modules: ['GESTION_ROLES', 'GESTION_USUARIOS'] },
+  { title: 'Usuarios', modules: ['GESTION_USUARIOS'] },
   {
     title: 'Sistema',
     modules: ['ADMIN_SISTEMA', 'ADMIN_BLOQUES_HORARIOS', 'ADMIN_SEMANAS', 'ADMIN_CONFIG_SISTEMA'],
@@ -110,18 +122,30 @@ const SUBMODULES = new Set<ModuleKey>([
   'GESTION_CATEGORIAS', 'GESTION_UNIDADES',
   'GESTION_PEDIDOS_DIARIOS',
   'ADMIN_BLOQUES_HORARIOS', 'ADMIN_SEMANAS', 'ADMIN_CONFIG_SISTEMA',
-  'GPRV_DATOS_PROV',
+  'GPRV_DATOS_PROV', 'GPRV_EXPORT_DATOS',
   'GPRV_NUEVO_PROV', 'GPRV_SYNC_EXCEL', 'GPRV_GENERAR_ORDEN', 'GPRV_COTIZACION',
   'GPRV_CAMBIAR_ESTADO_PROV', 'GPRV_EDITAR_PROV', 'GPRV_ASIGNAR_PROD', 'GPRV_ELIMINAR_PROV',
-  'GPRV_ORDENES', 'GPRV_CANCELAR_OP', 'GPRV_EXPORT_OP',
+  'GPRV_ORDENES', 'GPRV_PENDIENTE_ENVIADA', 'GPRV_CONFIRMADA', 'GPRV_CANCELAR_OP', 'GPRV_EXPORT_OP',
+  'GA_VER_ASIGNATURA',
   'GA_CREAR_ASIGNATURA', 'GA_CREAR_SECCION',
   'GA_EDITAR_ASIGNATURA', 'GA_ELIMINAR_ASIGNATURA',
   'GA_EDITAR_SECCION', 'GA_ELIMINAR_SECCION',
   'GA_VER_RESERVAS', 'GA_VER_SALAS',
   'GA_CREAR_SALA', 'GA_EDITAR_SALA', 'GA_ELIMINAR_SALA',
-  'INV_CONTROL_MASIVO', 'INV_SYNC_EXCEL', 'INV_ABASTECIMIENTO',
-  'BOD_CONTROL_MASIVO', 'BOD_ABASTECIMIENTO',
+  'INV_NUEVO_PRODUCTO', 'INV_EDITAR_PRODUCTO',
+  'INV_CONTROL_MASIVO',
+  'INV_SYNC_EXCEL', 'INV_ABASTECIMIENTO',
+  'INV_STOCK_DISPONIBLE',
+  'BOD_NUEVO', 'BOD_CONTROL_MASIVO', 'BOD_EDITAR_PRODUCTO',
   'HIST_EXPORT_EXCEL',
+]);
+
+// Sub-sub-módulos (hijos de SUBMODULES) → sangría extra para mostrar que son nivel 3.
+const SUB_SUBMODULES = new Set<ModuleKey>([
+  'INV_ABAST_BODEGA', 'INV_ABAST_PROV',
+  'SD_INVENTARIO', 'SD_BODEGA_TRANSITO', 'SD_DISPONIBLE_REAL',
+  'BOD_ABASTECIMIENTO',
+  'GPD_RESUMEN_PERIODO', 'GPD_PREPARAR_ENTREGA',
 ]);
 
 const ALL_MODULES: ModuleKey[] = MODULE_GROUPS.flatMap((g) => g.modules);
@@ -135,12 +159,15 @@ const MODULE_CHILDREN: Partial<Record<ModuleKey, ModuleKey[]>> = {
   GESTION_PEDIDOS:       ['GP_VISTA_RESUMEN', 'GP_VISTA_ACEPTADAS'],
   CONGLOMERADO_PEDIDOS:  ['CONG_VISTA_APROBACION', 'CONG_VISTA_CRONOGRAMA', 'CONG_VISTA_TOTALES', 'CONG_VISTA_CATEGORIAS', 'CONG_APROBAR_PEDIDO', 'CONG_RECHAZAR_PEDIDO'],
   CONG_VISTA_APROBACION: ['CONG_APROBAR_PEDIDO', 'CONG_RECHAZAR_PEDIDO'],
-  GESTION_PROVEEDORES:   ['GPRV_DATOS_PROV', 'GPRV_NUEVO_PROV', 'GPRV_SYNC_EXCEL', 'GPRV_GENERAR_ORDEN', 'GPRV_COTIZACION', 'GPRV_CAMBIAR_ESTADO_PROV', 'GPRV_EDITAR_PROV', 'GPRV_ASIGNAR_PROD', 'GPRV_ELIMINAR_PROV', 'GPRV_ORDENES', 'GPRV_CANCELAR_OP', 'GPRV_EXPORT_OP'],
-  GESTION_ACADEMICA:     ['GA_CREAR_ASIGNATURA', 'GA_CREAR_SECCION', 'GA_EDITAR_ASIGNATURA', 'GA_ELIMINAR_ASIGNATURA', 'GA_EDITAR_SECCION', 'GA_ELIMINAR_SECCION'],
-  ADMIN_SALAS_RESERVAS:  ['GA_VER_RESERVAS', 'GA_VER_SALAS', 'GA_CREAR_SALA', 'GA_EDITAR_SALA', 'GA_ELIMINAR_SALA'],
+  GESTION_PROVEEDORES:   ['GPRV_DATOS_PROV', 'GPRV_EXPORT_DATOS', 'GPRV_NUEVO_PROV', 'GPRV_SYNC_EXCEL', 'GPRV_GENERAR_ORDEN', 'GPRV_COTIZACION', 'GPRV_CAMBIAR_ESTADO_PROV', 'GPRV_EDITAR_PROV', 'GPRV_ASIGNAR_PROD', 'GPRV_ELIMINAR_PROV', 'GPRV_ORDENES', 'GPRV_PENDIENTE_ENVIADA', 'GPRV_CONFIRMADA', 'GPRV_CANCELAR_OP', 'GPRV_EXPORT_OP'],
+  GESTION_ACADEMICA:     ['GA_VER_ASIGNATURA', 'GA_CREAR_ASIGNATURA', 'GA_CREAR_SECCION', 'GA_EDITAR_ASIGNATURA', 'GA_ELIMINAR_ASIGNATURA', 'GA_EDITAR_SECCION', 'GA_ELIMINAR_SECCION'],
   ADMIN_SISTEMA:         ['ADMIN_BLOQUES_HORARIOS', 'ADMIN_SEMANAS', 'ADMIN_CONFIG_SISTEMA'],
-  INVENTARIO:            ['INV_CONTROL_MASIVO', 'INV_SYNC_EXCEL', 'INV_ABASTECIMIENTO'],
-  BODEGA_TRANSITO:       ['BOD_CONTROL_MASIVO', 'BOD_ABASTECIMIENTO'],
+  INVENTARIO:            ['INV_NUEVO_PRODUCTO', 'INV_EDITAR_PRODUCTO', 'INV_CONTROL_MASIVO', 'INV_SYNC_EXCEL', 'INV_ABASTECIMIENTO', 'INV_STOCK_DISPONIBLE', 'GESTION_CATEGORIAS', 'GESTION_UNIDADES'],
+  INV_CONTROL_MASIVO:   ['INV_ABAST_BODEGA', 'INV_ABAST_PROV'],
+  INV_STOCK_DISPONIBLE: ['SD_INVENTARIO', 'SD_BODEGA_TRANSITO', 'SD_DISPONIBLE_REAL'],
+  BODEGA_TRANSITO:          ['BOD_NUEVO', 'BOD_CONTROL_MASIVO', 'BOD_EDITAR_PRODUCTO', 'INV_ABASTECIMIENTO', 'INV_STOCK_DISPONIBLE', 'GESTION_CATEGORIAS', 'GESTION_UNIDADES'],
+  GESTION_PEDIDOS_DIARIOS:  ['GPD_RESUMEN_PERIODO', 'GPD_PREPARAR_ENTREGA'],
+  BOD_CONTROL_MASIVO:    ['BOD_ABASTECIMIENTO'],
   HISTORICO_PEDIDOS:     ['HIST_EXPORT_EXCEL'],
 };
 
@@ -160,10 +187,19 @@ const MODULE_PARENTS: Partial<Record<ModuleKey, ModuleKey[]>> = (() => {
 // ── Separadores visuales de sección dentro de un módulo padre ────────────────
 // Antes de renderizar el módulo indicado se muestra una fila etiqueta de sección.
 const SECTION_HEADERS: Partial<Record<ModuleKey, string>> = {
-  GPRV_DATOS_PROV:      'Pestaña: Proveedores',
-  GPRV_ORDENES:         'Pestaña: Órdenes de Pedido',
-  GA_CREAR_ASIGNATURA:  'Pestaña: Gestión Académica',
-  ADMIN_SALAS_RESERVAS: 'Pestaña: Gestión Sala y Reservas',
+  GPRV_DATOS_PROV:         'Pestaña: Proveedores',
+  GPRV_ORDENES:            'Pestaña: Órdenes de Pedido',
+  GA_VER_ASIGNATURA:       'Pestaña: Gestión Académica',
+  GA_VER_RESERVAS:         'Pestaña: Gestión Sala y Reservas',
+  BODEGA_TRANSITO:         'Pestaña: Bodega de Tránsito',
+  GESTION_PEDIDOS_DIARIOS: 'Pestaña: Gestión de Pedidos Diarios',
+};
+
+// ── Etiquetas alternativas para módulos compartidos en contexto Bodega de Tránsito ──
+// Aplican solo a los módulos que aparecen DESPUÉS de BODEGA_TRANSITO en el grupo Inventario.
+const BODEGA_LABEL_OVERRIDES: Partial<Record<ModuleKey, string>> = {
+  INV_ABASTECIMIENTO:   'Bodega · Gestión Abastecimiento',
+  INV_STOCK_DISPONIBLE: 'Bodega · Stock Disponible',
 };
 
 // ── Acciones CRUD seleccionables por celda ───────────────────────────────────
@@ -173,6 +209,10 @@ const CRUD_ACTIONS: { key: keyof ModulePermissions; label: string; icon: string 
   { key: 'puedeActualizar', label: 'Editar',   icon: 'lucide:pencil' },
   { key: 'puedeEliminar',   label: 'Eliminar', icon: 'lucide:trash-2' },
 ];
+
+// Módulos donde puedeEliminar no aplica y no debe mostrarse en la celda CRUD.
+const NO_DELETE_MODULES = new Set<ModuleKey>(['GESTION_USUARIOS']);
+const CRUD_ACTIONS_NO_DELETE = CRUD_ACTIONS.filter((a) => a.key !== 'puedeEliminar');
 
 // ── Componente chip de nivel de acceso ────────────────────────────────────────
 
@@ -266,6 +306,64 @@ const CrudCell: React.FC<CrudCellProps> = ({ perms, disabled, onChange }) => {
         }}
       >
         {CRUD_ACTIONS.map((a) => (
+          <DropdownItem key={a.key} startContent={<Icon icon={a.icon} width={14} />}>
+            {a.label}
+          </DropdownItem>
+        ))}
+      </DropdownMenu>
+    </Dropdown>
+  );
+};
+
+// ── Celda CRUD sin opción Eliminar (para módulos donde no aplica) ─────────────
+const CrudCellNoDelete: React.FC<CrudCellProps> = ({ perms, disabled, onChange }) => {
+  const sanitized = { ...perms, puedeEliminar: false };
+  const level = levelFromPermissions(sanitized);
+
+  const selectedKeys = new Set<string>();
+  CRUD_ACTIONS_NO_DELETE.forEach((a) => { if (sanitized[a.key]) selectedKeys.add(a.key); });
+  if (level === 'write') selectedKeys.add('puedeLeer');
+
+  const apply = (keys: Set<string>) => {
+    const c = keys.has('puedeCrear');
+    const u = keys.has('puedeActualizar');
+    const r = keys.has('puedeLeer') || c || u;
+    onChange({ puedeLeer: r, puedeCrear: c, puedeActualizar: u, puedeEliminar: false });
+  };
+
+  const levelLabel = level === 'write' ? 'Escritura' : level === 'read' ? 'Lectura' : 'Sin Acceso';
+  const levelIcon  = level === 'write' ? 'lucide:pencil' : level === 'read' ? 'lucide:eye' : 'lucide:lock';
+
+  return (
+    <Dropdown placement="bottom" isDisabled={disabled}>
+      <DropdownTrigger>
+        <button
+          type="button"
+          disabled={disabled}
+          className={`${TRIGGER_BASE} ${levelBg(level)} ${disabled ? 'opacity-50 cursor-not-allowed' : 'hover:opacity-90 cursor-pointer'}`}
+        >
+          <Icon icon={levelIcon} width={12} />
+          <span>{levelLabel}</span>
+          {level === 'write' && (
+            <span className="flex items-center gap-0.5 ml-0.5 opacity-80">
+              {sanitized.puedeCrear      && <Icon icon="lucide:plus" width={11} />}
+              {sanitized.puedeActualizar && <Icon icon="lucide:pencil" width={11} />}
+            </span>
+          )}
+          <Icon icon="lucide:chevron-down" width={11} className="ml-0.5 opacity-60" />
+        </button>
+      </DropdownTrigger>
+      <DropdownMenu
+        aria-label="Seleccionar permisos"
+        closeOnSelect={false}
+        selectionMode="multiple"
+        selectedKeys={selectedKeys}
+        onSelectionChange={(keys) => {
+          const set = typeof keys === 'string' ? new Set<string>() : new Set(Array.from(keys).map(String));
+          apply(set);
+        }}
+      >
+        {CRUD_ACTIONS_NO_DELETE.map((a) => (
           <DropdownItem key={a.key} startContent={<Icon icon={a.icon} width={14} />}>
             {a.label}
           </DropdownItem>
@@ -400,16 +498,23 @@ const BinaryWriteCell: React.FC<CrudCellProps> = ({ perms, disabled, onChange })
 // La escritura se gestiona con módulos de acción independientes (CONG_APROBAR_*, etc.).
 const READ_MODULES = new Set<ModuleKey>([
   'CONG_VISTA_APROBACION', 'CONG_VISTA_CRONOGRAMA', 'CONG_VISTA_TOTALES',
+  'GA_VER_ASIGNATURA',
   'GA_VER_RESERVAS', 'GA_VER_SALAS',
   'GPRV_DATOS_PROV',
   'GPRV_ORDENES',
+  'HISTORICO_PEDIDOS',
+  'INV_STOCK_DISPONIBLE', 'SD_INVENTARIO', 'SD_BODEGA_TRANSITO', 'SD_DISPONIBLE_REAL',
+  'HISTORIAL_MOVIMIENTOS',
+  'GPD_RESUMEN_PERIODO',
 ]);
 const AGGREGATE_MODULES = new Set<ModuleKey>([
   'PEDIDO_SEMANAL_BODEGA', 'GESTION_SOLICITUDES', 'GESTION_PEDIDOS',
   'CONGLOMERADO_PEDIDOS', 'CONG_VISTA_CATEGORIAS',
   'GESTION_PROVEEDORES',
-  'GESTION_ACADEMICA', 'ADMIN_SALAS_RESERVAS',
-  'HISTORICO_PEDIDOS',
+  'GESTION_ACADEMICA',
+  'GESTION_PEDIDOS_DIARIOS',
+  'ADMIN_BLOQUES_HORARIOS',
+  'ADMIN_SEMANAS',
 ]);
 const ACTION_MODULES = new Set<ModuleKey>([
   'PEDIDO_SEM_CREAR', 'PEDIDO_SEM_EDITAR', 'PEDIDO_SEM_INACTIVAR', 'PEDIDO_SEM_ELIMINAR',
@@ -418,20 +523,27 @@ const ACTION_MODULES = new Set<ModuleKey>([
   'CONG_APROBAR_PEDIDO', 'CONG_RECHAZAR_PEDIDO',
   'GPRV_NUEVO_PROV', 'GPRV_SYNC_EXCEL', 'GPRV_GENERAR_ORDEN', 'GPRV_COTIZACION',
   'GPRV_CAMBIAR_ESTADO_PROV', 'GPRV_EDITAR_PROV', 'GPRV_ASIGNAR_PROD', 'GPRV_ELIMINAR_PROV',
-  'GPRV_CANCELAR_OP', 'GPRV_EXPORT_OP',
+  'GPRV_PENDIENTE_ENVIADA', 'GPRV_CONFIRMADA',
+  'GPRV_CANCELAR_OP', 'GPRV_EXPORT_OP', 'GPRV_EXPORT_DATOS',
   'GA_CREAR_ASIGNATURA', 'GA_CREAR_SECCION',
   'GA_EDITAR_ASIGNATURA', 'GA_ELIMINAR_ASIGNATURA',
   'GA_EDITAR_SECCION', 'GA_ELIMINAR_SECCION',
   'GA_CREAR_SALA', 'GA_EDITAR_SALA', 'GA_ELIMINAR_SALA',
+  'INV_NUEVO_PRODUCTO', 'INV_EDITAR_PRODUCTO', 'INV_ABAST_BODEGA', 'INV_ABAST_PROV',
   'INV_CONTROL_MASIVO', 'INV_SYNC_EXCEL', 'INV_ABASTECIMIENTO',
-  'BOD_CONTROL_MASIVO', 'BOD_ABASTECIMIENTO',
+  'BOD_CONTROL_MASIVO', 'BOD_ABASTECIMIENTO', 'BOD_EDITAR_PRODUCTO',
   'HIST_EXPORT_EXCEL',
+  'GPD_PREPARAR_ENTREGA',
+  'ADMIN_CONFIG_SISTEMA',
 ]);
+// ACTION_MODULES que requieren puedeActualizar en el padre para activarse (no basta puedeCrear).
+const ACTION_REQUIRES_UPDATE = new Set<ModuleKey>(['BOD_EDITAR_PRODUCTO']);
 
 const cellComponentFor = (moduleKey: ModuleKey): React.FC<CrudCellProps> =>
   ACTION_MODULES.has(moduleKey)    ? BinaryWriteCell :
   READ_MODULES.has(moduleKey)      ? BinaryReadCell :
   AGGREGATE_MODULES.has(moduleKey) ? TriStateCell :
+  NO_DELETE_MODULES.has(moduleKey) ? CrudCellNoDelete :
                                      CrudCell;
 
 // ── Página principal ──────────────────────────────────────────────────────────
@@ -443,13 +555,15 @@ const GestionRolesPage: React.FC = () => {
   const restaurarModal = useDisclosure();
 
   const [localPermissions,  setLocalPermissions]  = React.useState<RolePermission[]>([]);
-  const [isSaving,          setIsSaving]          = React.useState(false);
+  const [saveStatus,        setSaveStatus]        = React.useState<'idle' | 'pending' | 'saving' | 'saved' | 'error'>('idle');
   const [isLoading,         setIsLoading]         = React.useState(false);
   const [isRestoring,       setIsRestoring]       = React.useState(false);
   const [confirmarTexto,    setConfirmarTexto]     = React.useState('');
   const [message,           setMessage]           = React.useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [errorState,        setErrorState]        = React.useState<{ is403: boolean; message: string } | null>(null);
   const [collapsedGroups,   setCollapsedGroups]   = React.useState<Record<string, boolean>>({});
+
+  const saveTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const toggleGroup = (title: string) =>
     setCollapsedGroups((prev) => ({ ...prev, [title]: !prev[title] }));
@@ -471,6 +585,8 @@ const GestionRolesPage: React.FC = () => {
   // ── Cargar la matriz desde el backend ───────────────────────────────────────
 
   const loadMatrix = React.useCallback(async () => {
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    setSaveStatus('idle');
     setIsLoading(true);
     setErrorState(null);
     setMessage(null);
@@ -493,27 +609,55 @@ const GestionRolesPage: React.FC = () => {
     loadMatrix();
   }, [loadMatrix]);
 
+  // ── Auto-guardado ───────────────────────────────────────────────────────────
+
+  const autoSave = async (permissionsToSave: RolePermission[]) => {
+    setSaveStatus('saving');
+    try {
+      await permissionService.savePermissions(permissionsToSave);
+      setSaveStatus('saved');
+      setTimeout(() => setSaveStatus('idle'), 3000);
+    } catch (err) {
+      console.error(err);
+      setSaveStatus('error');
+    }
+  };
+
   // ── Cambiar un nivel de acceso en el estado local ───────────────────────────
 
   const handlePermissionChange = (roleIndex: number, moduleKey: ModuleKey, newValue: ModulePermissions) => {
+    let permissionsForSave: RolePermission[] = [];
+
     setLocalPermissions((prev) => {
       const updated = [...prev];
       const newPerms = { ...updated[roleIndex].permissions, [moduleKey]: newValue };
 
-      // Cascada hacia abajo: el módulo "aglobado" copia su perfil CRUD a las acciones hijas.
-      // Los hijos en READ_MODULES se capean a Lectura como máximo (nunca reciben escritura).
-      // Los hijos en ACTION_MODULES (BinaryWrite) solo admiten 'none' o 'write', nunca 'read'.
-      const children = MODULE_CHILDREN[moduleKey];
-      if (children) {
-        const parentLevel = levelFromPermissions(newValue);
-        for (const child of children) {
+      // Cascada hacia abajo: recursiva, propaga las perms reales del padre.
+      // - READ_MODULES: capean a Lectura (none si padre es none).
+      // - ACTION_MODULES: 'write' si padre tiene acceso general; los de ACTION_REQUIRES_UPDATE
+      //   solo 'write' si padre tiene puedeActualizar.
+      // - CrudCell/resto: copia bit a bit las perms del padre.
+      const downQueue: { key: ModuleKey; perms: ModulePermissions }[] = [{ key: moduleKey, perms: newValue }];
+      const downVisited = new Set<ModuleKey>([moduleKey]);
+      while (downQueue.length > 0) {
+        const { key: current, perms: parentPerms } = downQueue.shift()!;
+        const parentLevel = levelFromPermissions(parentPerms);
+        for (const child of MODULE_CHILDREN[current] ?? []) {
+          if (downVisited.has(child)) continue;
+          downVisited.add(child);
+          let childPerms: ModulePermissions;
           if (READ_MODULES.has(child)) {
-            newPerms[child] = permsFromLevel(parentLevel === 'none' ? 'none' : 'read');
+            childPerms = permsFromLevel(parentLevel === 'none' ? 'none' : 'read');
           } else if (ACTION_MODULES.has(child)) {
-            newPerms[child] = permsFromLevel(parentLevel === 'write' ? 'write' : 'none');
+            const hasWrite = ACTION_REQUIRES_UPDATE.has(child)
+              ? !!parentPerms.puedeActualizar
+              : parentLevel === 'write';
+            childPerms = permsFromLevel(hasWrite ? 'write' : 'none');
           } else {
-            newPerms[child] = { ...newValue };
+            childPerms = { ...parentPerms };
           }
+          newPerms[child] = childPerms;
+          downQueue.push({ key: child, perms: childPerms });
         }
       }
 
@@ -534,33 +678,25 @@ const GestionRolesPage: React.FC = () => {
             if (sl === 'read') maxLevel = 'read';
           }
           if (READ_MODULES.has(parent) && maxLevel === 'write') maxLevel = 'read';
-          newPerms[parent] = permsFromLevel(maxLevel);
-          upQueue.push(parent);
+          const currentParentLevel = levelFromPermissions(newPerms[parent]);
+          if (ACCESS_HIERARCHY[maxLevel] > ACCESS_HIERARCHY[currentParentLevel]) {
+            newPerms[parent] = permsFromLevel(maxLevel);
+            upQueue.push(parent);
+          }
         }
       }
 
       updated[roleIndex] = { ...updated[roleIndex], permissions: newPerms };
+      permissionsForSave = updated;
       return updated;
     });
-    setMessage(null);
-  };
 
-  // ── Guardar cambios ─────────────────────────────────────────────────────────
-
-  const handleSave = async () => {
-    setIsSaving(true);
     setMessage(null);
-    try {
-      await permissionService.savePermissions(localPermissions);
-      await refreshPermissions(); // invalidar cache del contexto
-      await loadMatrix();         // recargar matriz local
-      setMessage({ type: 'success', text: '¡Permisos actualizados correctamente!' });
-    } catch (err) {
-      console.error(err);
-      setMessage({ type: 'error', text: 'Error al guardar los permisos.' });
-    } finally {
-      setIsSaving(false);
-    }
+    setSaveStatus('pending');
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => {
+      void autoSave(permissionsForSave);
+    }, 700);
   };
 
   // ── Restaurar permisos predeterminados ─────────────────────────────────────
@@ -620,14 +756,27 @@ const GestionRolesPage: React.FC = () => {
             <Icon icon="lucide:shield-check" width={12} />
             <span>El Administrador siempre tiene Escritura total (columna oculta)</span>
           </div>
-          <div className="flex gap-2 ml-auto">
+          <div className="flex items-center gap-3 ml-auto">
+            {saveStatus !== 'idle' && (
+              <span className={`text-xs flex items-center gap-1.5 ${
+                saveStatus === 'pending' ? 'text-default-400' :
+                saveStatus === 'saving'  ? 'text-[#FFB800]'   :
+                saveStatus === 'saved'   ? 'text-success-500' :
+                                           'text-danger-500'
+              }`}>
+                {saveStatus === 'pending' && <><Icon icon="lucide:clock"         width={13} /> Cambios pendientes...</>}
+                {saveStatus === 'saving'  && <><Icon icon="lucide:loader-2"      width={13} className="animate-spin" /> Guardando...</>}
+                {saveStatus === 'saved'   && <><Icon icon="lucide:check-circle"  width={13} /> Guardado</>}
+                {saveStatus === 'error'   && <><Icon icon="lucide:alert-circle"  width={13} /> Error al guardar</>}
+              </span>
+            )}
             <Button
               variant="flat"
               color="default"
               startContent={<Icon icon="lucide:refresh-cw" width={16} />}
               onPress={loadMatrix}
               isLoading={isLoading}
-              isDisabled={isSaving || isRestoring}
+              isDisabled={saveStatus === 'saving' || isRestoring}
               size="sm"
             >
               Recargar
@@ -637,21 +786,10 @@ const GestionRolesPage: React.FC = () => {
               color="danger"
               startContent={<Icon icon="lucide:rotate-ccw" width={16} />}
               onPress={() => { setConfirmarTexto(''); restaurarModal.onOpen(); }}
-              isDisabled={isLoading || isSaving || isRestoring || !!errorState}
+              isDisabled={isLoading || saveStatus === 'saving' || isRestoring || !!errorState}
               size="sm"
             >
               Restaurar Predeterminado
-            </Button>
-            <Button
-              style={{ backgroundColor: '#FFB800', color: '#1A1A1A' }}
-              startContent={!isSaving && <Icon icon="lucide:save" width={16} />}
-              onPress={handleSave}
-              isLoading={isSaving}
-              isDisabled={isLoading || isRestoring || !!errorState}
-              size="sm"
-              className="font-semibold"
-            >
-              Guardar Cambios
             </Button>
           </div>
         </div>
@@ -767,15 +905,19 @@ const GestionRolesPage: React.FC = () => {
                           </tr>
 
                           {/* Filas de módulos del grupo */}
-                          {!collapsed && group.modules.map((moduleKey) => {
-                            const label      = MODULE_LABELS[moduleKey];
+                          {!collapsed && (() => {
+                            const bodegaStartIdx = group.modules.indexOf('BODEGA_TRANSITO' as ModuleKey);
+                            return group.modules.map((moduleKey, modIdx) => {
+                            const inBodegaCtx = bodegaStartIdx !== -1 && modIdx >= bodegaStartIdx;
+                            const label      = (inBodegaCtx && BODEGA_LABEL_OVERRIDES[moduleKey]) ? BODEGA_LABEL_OVERRIDES[moduleKey]! : MODULE_LABELS[moduleKey];
                             const icon       = MODULE_ICONS[moduleKey];
-                            const isSub      = SUBMODULES.has(moduleKey);
+                            const isSubSub   = SUB_SUBMODULES.has(moduleKey);
+                            const isSub      = !isSubSub && SUBMODULES.has(moduleKey);
                             const inDb       = availableModules.has(moduleKey);
                             const sectionHdr = SECTION_HEADERS[moduleKey];
 
                             return (
-                              <React.Fragment key={moduleKey}>
+                              <React.Fragment key={`${moduleKey}-${modIdx}`}>
                                 {sectionHdr && (
                                   <tr>
                                     <td className="sticky left-0 z-10 bg-default-50/80 dark:bg-content1/80 pl-8 pr-5 py-1 border-t border-default-200 dark:border-default-100">
@@ -794,13 +936,14 @@ const GestionRolesPage: React.FC = () => {
                                 )}
                                 <tr className={`hover:bg-default-50/50 dark:hover:bg-default-100/5 transition-colors ${!inDb ? 'opacity-70' : ''}`}>
                                   {/* Columna fija: nombre del módulo */}
-                                  <td className={`sticky left-0 z-10 bg-white dark:bg-content1 py-2.5 border-r border-divider ${isSub ? 'pl-10 pr-5' : 'px-5'}`}>
+                                  <td className={`sticky left-0 z-10 bg-white dark:bg-content1 py-2.5 border-r border-divider ${isSubSub ? 'pl-16 pr-5' : isSub ? 'pl-10 pr-5' : 'px-5'}`}>
                                     <div className="flex items-center gap-2">
+                                      {isSubSub && <Icon icon="lucide:corner-down-right" width={10} className="text-default-200 shrink-0" />}
                                       {isSub && <Icon icon="lucide:corner-down-right" width={12} className="text-default-300 shrink-0" />}
-                                      <div className={`rounded-lg bg-[#FFB800]/10 flex items-center justify-center shrink-0 ${isSub ? 'w-6 h-6' : 'w-7 h-7'}`}>
-                                        <Icon icon={icon} width={isSub ? 12 : 14} className="text-[#FFB800]" />
+                                      <div className={`rounded-lg bg-[#FFB800]/10 flex items-center justify-center shrink-0 ${isSubSub ? 'w-5 h-5' : isSub ? 'w-6 h-6' : 'w-7 h-7'}`}>
+                                        <Icon icon={icon} width={isSubSub ? 10 : isSub ? 12 : 14} className="text-[#FFB800]" />
                                       </div>
-                                      <span className={`font-medium text-default-800 dark:text-default-200 whitespace-nowrap ${isSub ? 'text-xs' : 'text-sm'}`}>
+                                      <span className={`font-medium text-default-800 dark:text-default-200 whitespace-nowrap ${isSubSub ? 'text-[11px]' : isSub ? 'text-xs' : 'text-sm'}`}>
                                         {label}
                                       </span>
                                       {!inDb && (
@@ -821,7 +964,7 @@ const GestionRolesPage: React.FC = () => {
                                       <td key={`${rp.role}-${moduleKey}`} className="px-3 py-2.5 text-center">
                                         <CellControl
                                           perms={perms}
-                                          disabled={isSaving || !inDb}
+                                          disabled={saveStatus === 'saving' || !inDb}
                                           onChange={(p) => handlePermissionChange(roleIdx, moduleKey, p)}
                                         />
                                       </td>
@@ -830,7 +973,8 @@ const GestionRolesPage: React.FC = () => {
                                 </tr>
                               </React.Fragment>
                             );
-                          })}
+                          });
+                          })()}
                         </React.Fragment>
                       );
                     })
@@ -846,7 +990,7 @@ const GestionRolesPage: React.FC = () => {
           <div className="flex items-start gap-2">
             <Icon icon="lucide:info" width={14} className="shrink-0 mt-0.5 text-[#FFB800]" />
             <p className="text-default-400">
-              Los cambios se aplican a todos los usuarios de ese rol inmediatamente después de guardar.
+              Los cambios se guardan automáticamente al modificar un permiso y se aplican a todos los usuarios del rol de inmediato.
               El Administrador siempre mantiene acceso total y no puede ser restringido.
             </p>
           </div>

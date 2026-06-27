@@ -10,6 +10,8 @@ import java.time.LocalDateTime;
         "nombreCompleto",
         "email",
         "username",
+        "idUsuario",
+        "idRol",
         "rolFormateado",
         "activo",
         "ultimoAcceso",
@@ -23,6 +25,8 @@ public interface UsersView {
     String getNombreCompleto();
     String getEmail();
     String getUsername();
+    Integer getIdUsuario();
+    Integer getIdRol();
     String getRolFormateado();
     Boolean getActivo();
     LocalDateTime getUltimoAcceso();

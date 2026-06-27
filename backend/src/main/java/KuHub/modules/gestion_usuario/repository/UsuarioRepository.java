@@ -4,6 +4,7 @@ import KuHub.modules.gestion_usuario.dtos.dtofilter.pro.UserAuthProjection;
 import KuHub.modules.gestion_usuario.dtos.response.proyection.UserIdNameView;
 import KuHub.modules.gestion_usuario.dtos.response.proyection.UsersToManageCourseOrSectionView;
 import KuHub.modules.gestion_usuario.dtos.UsersView;
+import KuHub.modules.gestion_usuario.dtos.UserStatusView;
 import KuHub.modules.gestion_usuario.entity.Usuario;
 import KuHub.modules.gestion_usuario.entity.Rol;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -39,6 +40,8 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Integer> {
         "    ) AS nombreCompleto, " +
         "    u.email AS email, " +
         "    u.username AS username, " +
+        "    u.id_usuario AS idUsuario, " +
+        "    u.id_rol AS idRol, " +
         "    INITCAP(REPLACE(CAST(r.nombre_rol AS TEXT), '_', '-')) AS rolFormateado, " +
         "    u.activo AS activo, " +
         "    u.ultimo_acceso AS ultimoAcceso, " +
@@ -50,22 +53,27 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Integer> {
         "JOIN rol r ON r.id_rol = u.id_rol " +
         "WHERE u.id_usuario NOT IN (1, 2, 3, 4, 5, 6, 7) " +
         "AND u.activo = true " +
-        "ORDER BY u.ultimo_acceso DESC " +
+        // Filtro opcional por rol: si rolesCsv viene vacío/null, no filtra
+        "AND (:rolesCsv IS NULL OR :rolesCsv = '' OR u.id_rol = ANY(string_to_array(:rolesCsv, ',')::int[])) " +
+        // Orden estable por nombre + id (id desempata → paginación OFFSET determinística)
+        "ORDER BY nombreCompleto ASC, u.id_usuario ASC " +
         "LIMIT :limit OFFSET :offset",
         nativeQuery = true)
     List<UsersView> findUsuariosParaFrontend(
             @Param("limit") int limit,
-            @Param("offset") int offset
+            @Param("offset") int offset,
+            @Param("rolesCsv") String rolesCsv
     );
 
     /**
      * Cuenta el total de usuarios (excluyendo sistemas) para el cálculo de páginas totales.
      */
     @Query(value = "SELECT COUNT(*) FROM usuario u " +
-            "WHERE u.id_usuario NOT IN (1, 2, 3, 4, 5, 6, 7)" +
-            "AND u.activo = true",
+            "WHERE u.id_usuario NOT IN (1, 2, 3, 4, 5, 6, 7) " +
+            "AND u.activo = true " +
+            "AND (:rolesCsv IS NULL OR :rolesCsv = '' OR u.id_rol = ANY(string_to_array(:rolesCsv, ',')::int[]))",
             nativeQuery = true)
-    long countUsuariosParaFrontend();
+    long countUsuariosParaFrontend(@Param("rolesCsv") String rolesCsv);
 
     /**
      * Busca usuarios por nombre o email con filtros de sistema y paginación.
@@ -81,6 +89,8 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Integer> {
             "    ) AS \"nombreCompleto\", " +
             "    u.email AS \"email\", " +
             "    u.username AS \"username\", " +
+            "    u.id_usuario AS \"idUsuario\", " +
+            "    u.id_rol AS \"idRol\", " +
             "    INITCAP(REPLACE(CAST(r.nombre_rol AS TEXT), '_', '-')) AS \"rolFormateado\", " +
             "    u.activo AS \"activo\", " +
             "    u.ultimo_acceso AS \"ultimoAcceso\", " +
@@ -101,13 +111,15 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Integer> {
                 "    ) ILIKE CONCAT('%', :term, '%') OR " +
                 "    u.email ILIKE CONCAT('%', :term, '%') " +
                 ") " +
-            "ORDER BY u.ultimo_acceso DESC " +
+                "AND (:rolesCsv IS NULL OR :rolesCsv = '' OR u.id_rol = ANY(string_to_array(:rolesCsv, ',')::int[])) " +
+            "ORDER BY \"nombreCompleto\" ASC, u.id_usuario ASC " +
             "LIMIT :limit OFFSET :offset",
         nativeQuery = true)
     List<UsersView> searchUsuariosParaFrontend(
             @Param("term") String term,
             @Param("limit") int limit,
-            @Param("offset") int offset
+            @Param("offset") int offset,
+            @Param("rolesCsv") String rolesCsv
     );
 
     /**
@@ -125,9 +137,22 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Integer> {
                 "        NULLIF(TRIM(u.app_materno), '') " +
                 "    ) ILIKE CONCAT('%', :term, '%') OR " +
                 "    u.email ILIKE CONCAT('%', :term, '%') " +
-                ")",
+                ") " +
+                "AND (:rolesCsv IS NULL OR :rolesCsv = '' OR u.id_rol = ANY(string_to_array(:rolesCsv, ',')::int[]))",
         nativeQuery = true)
-    long countSearchUsuariosParaFrontend(@Param("term") String term);
+    long countSearchUsuariosParaFrontend(@Param("term") String term, @Param("rolesCsv") String rolesCsv);
+
+    /**
+     * Proyección ligera de estado de conexión: solo email + último acceso + activo.
+     * Usada por el endpoint /online-status para refrescar la columna de estado sin re-paginar.
+     */
+    @Query(value =
+        "SELECT u.email AS email, u.ultimo_acceso AS ultimoAcceso, u.activo AS activo " +
+        "FROM usuario u " +
+        "WHERE u.id_usuario NOT IN (1, 2, 3, 4, 5, 6, 7) " +
+        "AND u.activo = true",
+        nativeQuery = true)
+    List<UserStatusView> findUsuariosStatus();
 
     Optional<Usuario> findUsuarioByEmailAndActivo(String email, Boolean activo);
     Optional<Usuario> findByEmailIgnoreCaseAndActivoTrue(String email);

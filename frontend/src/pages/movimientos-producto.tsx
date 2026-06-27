@@ -269,7 +269,7 @@ const MovimientosProductoPage: React.FC = () => {
       {/* Table */}
       <Card className="shadow-sm border border-default-200 dark:border-default-100 bg-white dark:bg-content1">
         <CardBody className="p-0">
-          <div ref={tableScrollRef} className="overflow-auto max-h-[calc(100vh-280px)] min-h-[300px] rounded-xl">
+          <div ref={tableScrollRef} className="overflow-auto custom-scrollbar max-h-[calc(100vh-280px)] min-h-[300px] rounded-xl">
           <div className="min-w-[960px] w-full">
           <Table
             aria-label="Tabla de movimientos"

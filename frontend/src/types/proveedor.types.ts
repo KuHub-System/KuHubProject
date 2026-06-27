@@ -314,6 +314,7 @@ export interface IPedidoSemanaResumen {
   cantidadOrdenPedido: number;      // OPs activas con estado != CANCELADA
   cantidadOrdenCanceladas: number;  // OPs activas con estado == CANCELADA
   tieneOrdenPedido: boolean;        // = cantidadOrdenPedido > 0
+  cubiertoPorReservados: boolean;   // todas las cantidades del pedido cubiertas por reserva_stock_solicitud
 }
 
 // ── Orden Pedido — Paso 2 (cotización consolidada) ────────────────────────

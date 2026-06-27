@@ -131,6 +131,36 @@ public class OrdenPedidoServiceImpl implements OrdenPedidoService {
 
     @Override
     @Transactional(readOnly = true)
+    public CotizacionConsolidadaDTO.CotizacionConsolidadaResponse obtenerCotizacionDeCanceladas(List<Integer> idsPedido) {
+        if (idsPedido == null || idsPedido.isEmpty()) {
+            log.info("obtenerCotizacionDeCanceladas: lista de IDs vacía. Retornando cotización vacía.");
+            return new CotizacionConsolidadaDTO.CotizacionConsolidadaResponse(List.of());
+        }
+
+        String jsonStr = ordenPedidoRepository.findCotizacionDeCanceladas(idsPedido);
+
+        try {
+            if (jsonStr == null || jsonStr.isBlank() || "null".equals(jsonStr)) {
+                return new CotizacionConsolidadaDTO.CotizacionConsolidadaResponse(List.of());
+            }
+
+            var typeRef = TypeFactory.defaultInstance()
+                    .constructCollectionType(List.class, CotizacionConsolidadaDTO.ProveedorGrupo.class);
+            List<CotizacionConsolidadaDTO.ProveedorGrupo> cotizacion = objectMapper.readValue(jsonStr, typeRef);
+
+            log.info("obtenerCotizacionDeCanceladas: pedidos={} | {} proveedores con productos cancelados", idsPedido, cotizacion.size());
+            return new CotizacionConsolidadaDTO.CotizacionConsolidadaResponse(cotizacion);
+        } catch (Exception e) {
+            log.error("Error al deserializar cotización de canceladas. JSON={} | Excepción={}", jsonStr, e.getMessage());
+            throw new GestionOrdenPedidoException(
+                    "Error al procesar la cotización de órdenes canceladas.",
+                    HttpStatus.INTERNAL_SERVER_ERROR
+            );
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<DisponibleRealDTO> obtenerDisponibleReal(List<Integer> idsProducto) {
         if (idsProducto == null || idsProducto.isEmpty()) {
             return List.of();

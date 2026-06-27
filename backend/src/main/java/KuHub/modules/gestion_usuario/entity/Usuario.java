@@ -62,6 +62,13 @@ public class Usuario {
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime ultimoAcceso;
 
+    @Column(name = "terminos_version_aceptada", length = 10)
+    private String terminosVersionAceptada;
+
+    @Column(name = "terminos_fecha_aceptacion")
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime terminosFechaAceptacion;
+
     @PrePersist
     protected void onCreate() {
         if (fechaCreacion == null) {

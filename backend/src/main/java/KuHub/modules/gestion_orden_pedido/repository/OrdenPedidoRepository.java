@@ -81,6 +81,7 @@ public interface OrdenPedidoRepository extends JpaRepository<OrdenPedido, Intege
     /**
      * Lista pedidos APROBADO dentro de un rango de fechas con CONTADOR de OPs activas.
      * El front decide chips según cantidades:
+     *   [6]=true                      → "Cubierto por reservados" (bloquea generación)
      *   [4]=0 y [5]=0 → "Sin OP"
      *   [4]=0 y [5]>0 → "Existe un registro cancelado, realizar nuevo"
      *   [4]=1         → "OP Generada"
@@ -91,6 +92,7 @@ public interface OrdenPedidoRepository extends JpaRepository<OrdenPedido, Intege
      * [3] estado_pedido                (String)
      * [4] cantidad_orden_pedido        (Long) — OPs activas con estado != CANCELADA
      * [5] cantidad_orden_canceladas    (Long) — OPs activas con estado == CANCELADA
+     * [6] cubierto_por_reservados      (Boolean) — todas las cantidades cubiertas por reserva_stock_solicitud
      */
     @Query(value = """
         SELECT
@@ -109,7 +111,29 @@ public interface OrdenPedidoRepository extends JpaRepository<OrdenPedido, Intege
                 WHERE op.id_pedido = p.id_pedido
                   AND op.activo = TRUE
                   AND op.estado_orden_pedido = 'CANCELADA'
-            ) AS cantidad_orden_canceladas                                          -- [5]
+            ) AS cantidad_orden_canceladas,                                         -- [5]
+            (
+                EXISTS (
+                    SELECT 1
+                    FROM pedido_solicitud ps2
+                    JOIN solicitud s2 ON s2.id_solicitud = ps2.id_solicitud
+                    WHERE ps2.id_pedido = p.id_pedido
+                      AND s2.estado_solicitud = 'EN_PEDIDO'
+                )
+                AND NOT EXISTS (
+                    SELECT 1
+                    FROM pedido_solicitud ps2
+                    JOIN solicitud s2        ON s2.id_solicitud  = ps2.id_solicitud
+                    JOIN detalle_solicitud ds2 ON ds2.id_solicitud = s2.id_solicitud
+                    LEFT JOIN reserva_stock_solicitud rss
+                           ON rss.id_solicitud = s2.id_solicitud
+                          AND rss.id_producto  = ds2.id_producto
+                          AND rss.activo = TRUE
+                    WHERE ps2.id_pedido = p.id_pedido
+                      AND s2.estado_solicitud = 'EN_PEDIDO'
+                      AND ds2.cant_producto_solicitud > COALESCE(rss.cantidad, 0)
+                )
+            ) AS cubierto_por_reservados                                            -- [6]
         FROM pedido p
         WHERE p.estado_pedido = 'APROBADO'
           AND p.fecha_inicio_pedido >= :fechaInicio
@@ -716,6 +740,291 @@ FROM (
 ) AS proveedor_grupo
             """, nativeQuery = true)
     String findCotizacionConsolidada(@Param("idsPedido") List<Integer> idsPedido);
+
+    /**
+     * Variante de {@code findCotizacionConsolidada} para re-generar OPs canceladas.
+     * Aplica el mismo pipeline jerárquico pero {@code solicitudes_relevantes} se restringe
+     * a las solicitudes que ya figuraban en las OPs CANCELADAS de los pedidos indicados
+     * (vía detalle_orden_pedido → detalle_orden_pedido_solicitud). Retorna únicamente los
+     * productos faltantes (los que la OP cancelada tenía asignados), con proveedor, precios
+     * y distribución por día idénticos al flujo normal.
+     */
+    @Query(value = """
+WITH
+-- OPs CANCELADAS de los pedidos seleccionados.
+ordenes_canceladas AS (
+    SELECT op.id_orden_pedido
+    FROM orden_pedido op
+    WHERE op.id_pedido IN (:idsPedido)
+      AND op.activo = TRUE
+      AND op.estado_orden_pedido = 'CANCELADA'
+),
+-- Productos que aparecen en esas OPs canceladas: son los faltantes a regenerar.
+-- Se filtra por producto (no por solicitud) porque una misma solicitud puede cubrir
+-- productos que ya están en una OP activa → filtrar por solicitud los incluiría por error.
+productos_en_canceladas AS (
+    SELECT DISTINCT dop.id_producto
+    FROM detalle_orden_pedido dop
+    WHERE dop.id_orden_pedido IN (SELECT id_orden_pedido FROM ordenes_canceladas)
+      AND dop.activo = TRUE
+),
+-- Solicitudes EN_PEDIDO de los pedidos dados (sin filtro de solicitud).
+solicitudes_relevantes AS (
+    SELECT
+        ps.id_pedido,
+        s.id_solicitud,
+        rs.dia_semana::text AS dia_semana
+    FROM pedido_solicitud ps
+    JOIN pedido    ped ON ped.id_pedido    = ps.id_pedido
+    JOIN solicitud s   ON s.id_solicitud   = ps.id_solicitud
+    LEFT JOIN reserva_sala rs ON rs.id_reserva_sala = s.id_reserva_sala
+    WHERE ps.id_pedido IN (:idsPedido)
+      AND ped.estado_pedido      = 'APROBADO'
+      AND s.estado_solicitud     = 'EN_PEDIDO'
+),
+
+-- Cantidades por (producto, día) — restringido a productos de canceladas.
+productos_por_dia AS (
+    SELECT
+        p.id_producto,
+        p.nombre_producto,
+        um.es_fraccionario,
+        c.id_categoria,
+        c.nombre_categoria,
+        um.abreviatura,
+        COALESCE(sr.dia_semana, 'SIN_DIA') AS dia_semana,
+        SUM(ds.cant_producto_solicitud)    AS cantidad
+    FROM solicitudes_relevantes sr
+    JOIN detalle_solicitud ds ON ds.id_solicitud = sr.id_solicitud
+    JOIN producto      p  ON p.id_producto  = ds.id_producto
+    JOIN categoria     c  ON c.id_categoria = p.id_categoria
+    JOIN unidad_medida um ON um.id_unidad   = p.id_unidad
+    WHERE p.activo = TRUE
+      AND p.id_producto IN (SELECT id_producto FROM productos_en_canceladas)
+    GROUP BY
+        p.id_producto, p.nombre_producto, um.es_fraccionario,
+        c.id_categoria, c.nombre_categoria,
+        um.abreviatura, COALESCE(sr.dia_semana, 'SIN_DIA')
+),
+
+productos_solicitados AS (
+    SELECT
+        id_producto,
+        nombre_producto,
+        es_fraccionario,
+        id_categoria,
+        nombre_categoria,
+        abreviatura,
+        SUM(cantidad) AS cantidad_total,
+        jsonb_agg(
+            jsonb_build_object('dia', dia_semana, 'cantidad', cantidad)
+            ORDER BY
+                CASE dia_semana
+                    WHEN 'LUNES'     THEN 1
+                    WHEN 'MARTES'    THEN 2
+                    WHEN 'MIERCOLES' THEN 3
+                    WHEN 'JUEVES'    THEN 4
+                    WHEN 'VIERNES'   THEN 5
+                    WHEN 'SABADO'    THEN 6
+                    WHEN 'DOMINGO'   THEN 7
+                    ELSE 8
+                END ASC
+        ) AS cantidad_por_dia_json
+    FROM productos_por_dia
+    GROUP BY id_producto, nombre_producto, es_fraccionario, id_categoria, nombre_categoria, abreviatura
+),
+
+solicitud_producto AS (
+    SELECT
+        ds.id_producto,
+        sr.id_solicitud,
+        COALESCE(sr.dia_semana, 'SIN_DIA') AS dia_semana,
+        SUM(ds.cant_producto_solicitud)    AS cantidad,
+        COALESCE(MAX(rss.cantidad), 0)     AS reservado
+    FROM solicitudes_relevantes sr
+    JOIN detalle_solicitud ds ON ds.id_solicitud = sr.id_solicitud
+    JOIN producto p ON p.id_producto = ds.id_producto
+    LEFT JOIN reserva_stock_solicitud rss
+           ON rss.id_solicitud = sr.id_solicitud
+          AND rss.id_producto  = ds.id_producto
+          AND rss.activo = TRUE
+    WHERE p.activo = TRUE
+    GROUP BY ds.id_producto, sr.id_solicitud, COALESCE(sr.dia_semana, 'SIN_DIA')
+),
+
+solicitudes_por_producto AS (
+    SELECT
+        id_producto,
+        jsonb_agg(
+            jsonb_build_object(
+                'idSolicitud', id_solicitud,
+                'dia',         dia_semana,
+                'cantidad',    cantidad,
+                'reservado',   reservado
+            )
+            ORDER BY
+                CASE dia_semana
+                    WHEN 'LUNES'     THEN 1
+                    WHEN 'MARTES'    THEN 2
+                    WHEN 'MIERCOLES' THEN 3
+                    WHEN 'JUEVES'    THEN 4
+                    WHEN 'VIERNES'   THEN 5
+                    WHEN 'SABADO'    THEN 6
+                    WHEN 'DOMINGO'   THEN 7
+                    ELSE 8
+                END ASC,
+                id_solicitud ASC
+        ) AS solicitudes_json
+    FROM solicitud_producto
+    GROUP BY id_producto
+),
+
+mejor_precio AS (
+    SELECT DISTINCT ON (pp.id_producto)
+        pp.id_producto,
+        pp.id_proveedor,
+        pp.precio_neto,
+        pp.precio_con_iva
+    FROM proveedor_producto pp
+    JOIN proveedor pv ON pv.id_proveedor = pp.id_proveedor
+    WHERE pp.activo = TRUE
+      AND pv.activo = TRUE
+      AND pv.estado_proveedor = 'DISPONIBLE'
+    ORDER BY pp.id_producto, pp.precio_neto ASC
+),
+
+proveedor_dias AS (
+    SELECT
+        pde.id_proveedor,
+        jsonb_agg(
+            pde.dia_semana::text
+            ORDER BY
+                CASE pde.dia_semana::text
+                    WHEN 'LUNES'     THEN 1
+                    WHEN 'MARTES'    THEN 2
+                    WHEN 'MIERCOLES' THEN 3
+                    WHEN 'JUEVES'    THEN 4
+                    WHEN 'VIERNES'   THEN 5
+                    WHEN 'SABADO'    THEN 6
+                    WHEN 'DOMINGO'   THEN 7
+                END ASC
+        ) AS dias_entrega_json
+    FROM proveedor_dia_entrega pde
+    GROUP BY pde.id_proveedor
+),
+
+productos_con_proveedor AS (
+    SELECT
+        ps.id_producto,
+        ps.nombre_producto,
+        ps.es_fraccionario,
+        ps.id_categoria,
+        ps.nombre_categoria,
+        ps.abreviatura,
+        ps.cantidad_total,
+        ps.cantidad_por_dia_json,
+        spp.solicitudes_json,
+        mp.id_proveedor,
+        mp.precio_neto,
+        mp.precio_con_iva,
+        pv.nombre_distribuidora,
+        pv.nombre_proveedor,
+        pv.telefono_proveedor,
+        pv.email_proveedor,
+        pd.dias_entrega_json
+    FROM productos_solicitados ps
+    LEFT JOIN solicitudes_por_producto spp ON spp.id_producto = ps.id_producto
+    LEFT JOIN mejor_precio    mp ON mp.id_producto  = ps.id_producto
+    LEFT JOIN proveedor       pv ON pv.id_proveedor = mp.id_proveedor
+    LEFT JOIN proveedor_dias  pd ON pd.id_proveedor = mp.id_proveedor
+)
+
+SELECT jsonb_agg(
+    jsonb_build_object(
+        'idProveedor',         proveedor_grupo.id_proveedor,
+        'nombreDistribuidora', proveedor_grupo.nombre_distribuidora,
+        'nombreProveedor',     proveedor_grupo.nombre_proveedor,
+        'telefono',            proveedor_grupo.telefono_proveedor,
+        'email',               proveedor_grupo.email_proveedor,
+        'totalProductos',      proveedor_grupo.total_productos,
+        'totalNeto',           proveedor_grupo.total_neto,
+        'totalConIva',         proveedor_grupo.total_con_iva,
+        'diasEntrega',         proveedor_grupo.dias_entrega_json,
+        'categorias',          proveedor_grupo.categorias_json
+    )
+    ORDER BY
+        (proveedor_grupo.id_proveedor IS NULL) ASC,
+        proveedor_grupo.nombre_distribuidora ASC
+) AS cotizacion_json
+FROM (
+    SELECT
+        categoria_grupo.id_proveedor,
+        categoria_grupo.nombre_distribuidora,
+        categoria_grupo.nombre_proveedor,
+        categoria_grupo.telefono_proveedor,
+        categoria_grupo.email_proveedor,
+        MAX(categoria_grupo.dias_entrega_json::text)::jsonb AS dias_entrega_json,
+        SUM(categoria_grupo.conteo_productos)  AS total_productos,
+        SUM(categoria_grupo.subtotal_neto)     AS total_neto,
+        SUM(categoria_grupo.subtotal_con_iva)  AS total_con_iva,
+        jsonb_agg(
+            jsonb_build_object(
+                'idCategoria',     categoria_grupo.id_categoria,
+                'nombreCategoria', categoria_grupo.nombre_categoria,
+                'productos',       categoria_grupo.productos_json
+            )
+            ORDER BY categoria_grupo.nombre_categoria ASC
+        ) AS categorias_json
+    FROM (
+        SELECT
+            pcp.id_proveedor,
+            pcp.nombre_distribuidora,
+            pcp.nombre_proveedor,
+            pcp.telefono_proveedor,
+            pcp.email_proveedor,
+            pcp.id_categoria,
+            pcp.nombre_categoria,
+            MAX(pcp.dias_entrega_json::text)::jsonb AS dias_entrega_json,
+            COUNT(pcp.id_producto)     AS conteo_productos,
+            SUM(CASE WHEN pcp.precio_neto IS NOT NULL
+                     THEN ROUND(pcp.precio_neto * pcp.cantidad_total, 2)
+                     ELSE 0 END) AS subtotal_neto,
+            SUM(CASE WHEN pcp.precio_con_iva IS NOT NULL
+                     THEN ROUND(pcp.precio_con_iva * pcp.cantidad_total, 2)
+                     ELSE 0 END) AS subtotal_con_iva,
+            jsonb_agg(
+                jsonb_build_object(
+                    'idProducto',      pcp.id_producto,
+                    'nombreProducto',  pcp.nombre_producto,
+                    'abreviatura',     pcp.abreviatura,
+                    'esFraccionario',  pcp.es_fraccionario,
+                    'cantidadTotal',   pcp.cantidad_total,
+                    'precioNeto',      pcp.precio_neto,
+                    'precioConIva',    pcp.precio_con_iva,
+                    'cantidadPorDia',  pcp.cantidad_por_dia_json,
+                    'solicitudes',     pcp.solicitudes_json
+                )
+                ORDER BY pcp.nombre_producto ASC
+            ) AS productos_json
+        FROM productos_con_proveedor pcp
+        GROUP BY
+            pcp.id_proveedor,
+            pcp.nombre_distribuidora,
+            pcp.nombre_proveedor,
+            pcp.telefono_proveedor,
+            pcp.email_proveedor,
+            pcp.id_categoria,
+            pcp.nombre_categoria
+    ) AS categoria_grupo
+    GROUP BY
+        categoria_grupo.id_proveedor,
+        categoria_grupo.nombre_distribuidora,
+        categoria_grupo.nombre_proveedor,
+        categoria_grupo.telefono_proveedor,
+        categoria_grupo.email_proveedor
+) AS proveedor_grupo
+            """, nativeQuery = true)
+    String findCotizacionDeCanceladas(@Param("idsPedido") List<Integer> idsPedido);
 
     /**
      * Disponible real por producto = (inventario + bodega de tránsito) − demanda comprometida.

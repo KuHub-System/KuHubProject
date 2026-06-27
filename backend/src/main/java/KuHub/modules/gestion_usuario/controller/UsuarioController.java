@@ -3,6 +3,7 @@ package KuHub.modules.gestion_usuario.controller;
 import KuHub.modules.gestion_usuario.dtos.*;
 import KuHub.modules.gestion_usuario.dtos.response.proyection.UsersToManageCourseOrSectionView;
 import KuHub.modules.gestion_usuario.dtos.request.CreateUser;
+import KuHub.modules.gestion_usuario.dtos.request.FindUsersRequest;
 import KuHub.modules.gestion_usuario.dtos.request.SearchUserRequest;
 import KuHub.modules.gestion_usuario.dtos.request.UpdateUser;
 import KuHub.modules.gestion_usuario.dtos.response.PaginatedUsersDTO;
@@ -58,13 +59,27 @@ public class UsuarioController {
 
     /**
      * Obtiene todos los usuarios con paginación optimizada para el formato del frontend.
+     * Acepta filtro opcional por rol en el body.
      * ✅ En uso: Consumido por obtenerUsuariosPaginadosService en usuario-service.ts.
      */
     @PostMapping("/find-all-users-with-pagination")
-    public ResponseEntity<PaginatedUsersDTO> findAllUsersWithPagination(@RequestBody(required = false) Integer page) {
+    public ResponseEntity<PaginatedUsersDTO> findAllUsersWithPagination(
+            @RequestBody(required = false) FindUsersRequest request) {
         return ResponseEntity
                 .status(200)
-                .body(usuarioService.findAllUsersWithPagination(page));
+                .body(usuarioService.findAllUsersWithPagination(request));
+    }
+
+    /**
+     * Obtiene el estado de conexión (email + último acceso + activo) de todos los usuarios.
+     * Endpoint ligero para refrescar solo la columna "Estado" del frontend sin re-paginar.
+     * ✅ En uso: Consumido por obtenerEstadoUsuariosService en usuario-service.ts.
+     */
+    @GetMapping("/online-status")
+    public ResponseEntity<List<UserStatusView>> findUsersStatus() {
+        return ResponseEntity
+                .status(200)
+                .body(usuarioService.findUsersStatus());
     }
 
     /**

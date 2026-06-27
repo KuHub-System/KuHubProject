@@ -50,6 +50,16 @@ public interface OrdenPedidoService {
     CotizacionConsolidadaDTO.CotizacionConsolidadaResponse obtenerCotizacionConsolidada(List<Integer> idsPedido);
 
     /**
+     * Cotización para re-generar OPs canceladas. Retorna únicamente los productos que
+     * formaban parte de las OPs CANCELADAS de los pedidos indicados, con proveedor,
+     * precios y distribución por día idénticos al flujo normal.
+     *
+     * @param idsPedido IDs de los pedidos consolidados con OPs canceladas
+     * @return Cotización filtrada a los productos de las OPs canceladas
+     */
+    CotizacionConsolidadaDTO.CotizacionConsolidadaResponse obtenerCotizacionDeCanceladas(List<Integer> idsPedido);
+
+    /**
      * Calcula el disponible real por producto = (inventario + bodega de tránsito) − demanda
      * comprometida (Σ demanda de solicitudes EN_PEDIDO ya abastecidas, vía la puente). Sirve para
      * que el usuario, al generar la OP, vea cuánto le sobra de cada producto y pida menos.

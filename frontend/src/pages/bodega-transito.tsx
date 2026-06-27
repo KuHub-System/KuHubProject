@@ -1062,20 +1062,21 @@ const ControlMasivoBodegaModal: React.FC<ControlMasivoBodegaModalProps> = ({ onC
               Registre entradas, salidas, mermas y ajustes en la bodega de tránsito.
             </p>
           </div>
+          {puedeAccederAbastecimiento && (
           <div className="flex items-center gap-1 shrink-0">
-            <Tooltip content={puedeAccederAbastecimiento ? "Abastecimiento de proveedores (OPs confirmadas)" : "Sin permisos"} color="foreground" className="text-xs">
+            <Tooltip content="Abastecimiento de proveedores (OPs confirmadas)" color="foreground" className="text-xs">
               <Button
                 isIconOnly
                 variant="light"
                 color="secondary"
                 size="lg"
                 onPress={() => { onAbastecimientoOpen(); cargarAbastecimiento('semana'); }}
-                isDisabled={!puedeAccederAbastecimiento}
               >
                 <Icon icon="lucide:truck" width={22} />
               </Button>
             </Tooltip>
           </div>
+          )}
         </div>
       </ModalHeader>
 
@@ -1210,7 +1211,7 @@ const ControlMasivoBodegaModal: React.FC<ControlMasivoBodegaModalProps> = ({ onC
               <Icon icon={listadoExpandido ? 'lucide:chevron-up' : 'lucide:chevron-down'} width={16} className="ml-auto text-default-400" />
             </button>
 
-            <div className={`transition-all duration-300 ${listadoExpandido ? 'max-h-[65vh]' : 'max-h-[420px]'} overflow-y-auto`}>
+            <div className={`transition-all duration-300 ${listadoExpandido ? 'max-h-[65vh]' : 'max-h-[420px]'} overflow-y-auto custom-scrollbar`}>
               <div className="border border-default-200 dark:border-default-100 rounded-xl overflow-hidden bg-white dark:bg-content2">
                 <div className="grid grid-cols-[2fr_1fr_1fr_1fr_auto] gap-3 px-4 py-3 bg-default-100 dark:bg-default-50 font-semibold text-sm text-default-600 border-b border-default-200 dark:border-default-100">
                   <div>Producto</div>
@@ -1655,19 +1656,31 @@ const ControlMasivoBodegaModal: React.FC<ControlMasivoBodegaModalProps> = ({ onC
 // ─────────────────────────────────────────────────────────────────────────────
 
 const BodegaTransitoPage: React.FC = () => {
-  const { canCreate: bod_Crear, canUpdate: bod_Editar, canDelete: bod_Eliminar } = useModulePermission('BODEGA_TRANSITO');
+  const { canRead: bod_Leer, canUpdate: bod_Editar, isLoading: permLoading } = useModulePermission('BODEGA_TRANSITO');
   const { canRead: ped_Leer, canCreate: ped_Crear } = useModulePermission('GESTION_PEDIDOS_DIARIOS');
-  const { canCreate: catPuedeCrear } = useModulePermission('GESTION_CATEGORIAS');
-  const { canCreate: uniPuedeCrear } = useModulePermission('GESTION_UNIDADES');
-  // Acciones especiales de bodega (módulos individuales por botón)
-  const { canRead: bodControlMasivo }  = useModulePermission('BOD_CONTROL_MASIVO');
-  const { canRead: bodAbastecimiento } = useModulePermission('BOD_ABASTECIMIENTO');
+  const { canRead: gpd_Resumen }    = useModulePermission('GPD_RESUMEN_PERIODO');
+  const { canCreate: gpd_Preparar } = useModulePermission('GPD_PREPARAR_ENTREGA');
+  const { canRead: historialPuedeLeer } = useModulePermission('HISTORIAL_MOVIMIENTOS');
+  const { canRead: catPuedeLeer }         = useModulePermission('GESTION_CATEGORIAS');
+  const { canRead: uniPuedeLeer }         = useModulePermission('GESTION_UNIDADES');
+  const { canCreate: invAbastecimiento }  = useModulePermission('INV_ABASTECIMIENTO');
+  const { canRead: invStockDisponible }   = useModulePermission('INV_STOCK_DISPONIBLE');
+  // Acciones granulares de bodega (un módulo por botón/acción)
+  const { canCreate: bodNuevo }          = useModulePermission('BOD_NUEVO');
+  const { canCreate: bodControlMasivo }  = useModulePermission('BOD_CONTROL_MASIVO');
+  const { canCreate: bodAbastecimiento } = useModulePermission('BOD_ABASTECIMIENTO');
+  const { canCreate: bodEditarProducto } = useModulePermission('BOD_EDITAR_PRODUCTO');
 
   const toast = useToast();
   const history = useHistory();
   const [solicitudes, setSolicitudes] = React.useState<ISolicitud[]>([]);
   const [selectedDate, setSelectedDate] = React.useState<Date>(() => { const d = new Date(); d.setHours(12, 0, 0, 0); return d; });
   const [currentView, setCurrentView] = React.useState<'inventario' | 'pedidos'>('inventario');
+
+  // Si el usuario solo tiene GESTION_PEDIDOS_DIARIOS (sin BODEGA_TRANSITO), forzar vista pedidos.
+  React.useEffect(() => {
+    if (!permLoading && !bod_Leer && ped_Leer) setCurrentView('pedidos');
+  }, [permLoading]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Entregas diarias ──
   const [entregasData,       setEntregasData]       = React.useState<IEntregaDiaria[]>([]);
@@ -2370,7 +2383,7 @@ const BodegaTransitoPage: React.FC = () => {
     <>
     <div className="flex h-[calc(100vh-76px)] overflow-hidden font-sans relative -mt-6">
       {/* Área de Contenido Principal */}
-      <div ref={mainScrollerRef} className="flex-grow overflow-y-auto bg-default-50/50 dark:bg-background scrollbar-hide pb-20">
+      <div ref={mainScrollerRef} className="flex-grow overflow-y-auto bg-default-50/50 dark:bg-background custom-scrollbar pb-20">
         <AnimatePresence mode="wait">
           {currentView === 'inventario' ? (
             <motion.div
@@ -2381,7 +2394,7 @@ const BodegaTransitoPage: React.FC = () => {
               transition={{ duration: 0.3 }}
               className="space-y-6 pt-6 pb-10"
             >
-              {(bodControlMasivo || bod_Crear || catPuedeCrear || uniPuedeCrear || bodAbastecimiento) && (
+              {(bodControlMasivo || bodNuevo || catPuedeLeer || uniPuedeLeer || invAbastecimiento || invStockDisponible) && (
                 <div className="flex flex-wrap items-center gap-3 px-4 mb-2 mt-2">
                   {bodControlMasivo && (
                     <Button
@@ -2395,7 +2408,7 @@ const BodegaTransitoPage: React.FC = () => {
                       Control Masivo
                     </Button>
                   )}
-                  {bod_Crear && (
+                  {bodNuevo && (
                     <Button
                       color="primary"
                       variant="solid"
@@ -2407,7 +2420,7 @@ const BodegaTransitoPage: React.FC = () => {
                       Nuevo
                     </Button>
                   )}
-                  {catPuedeCrear && (
+                  {catPuedeLeer && (
                     <Button
                       isIconOnly
                       variant="flat"
@@ -2419,7 +2432,7 @@ const BodegaTransitoPage: React.FC = () => {
                       <Icon icon="lucide:tags" className="text-default-600" width={20} />
                     </Button>
                   )}
-                  {uniPuedeCrear && (
+                  {uniPuedeLeer && (
                     <Button
                       isIconOnly
                       variant="flat"
@@ -2431,7 +2444,7 @@ const BodegaTransitoPage: React.FC = () => {
                       <Icon icon="lucide:scale" className="text-default-600" width={20} />
                     </Button>
                   )}
-                  {bodAbastecimiento && (
+                  {invAbastecimiento && (
                   <Button
                     isIconOnly
                     variant="flat"
@@ -2443,6 +2456,7 @@ const BodegaTransitoPage: React.FC = () => {
                     <Icon icon="lucide:boxes" className="text-default-600" width={20} />
                   </Button>
                   )}
+                  {invStockDisponible && (
                   <Button
                     isIconOnly
                     variant="flat"
@@ -2453,6 +2467,7 @@ const BodegaTransitoPage: React.FC = () => {
                   >
                     <Icon icon="lucide:package-check" className="text-default-600" width={20} />
                   </Button>
+                  )}
                 </div>
               )}
 
@@ -2639,7 +2654,7 @@ const BodegaTransitoPage: React.FC = () => {
               {/* Tabla de productos */}
               <Card className="shadow-sm border border-default-200 dark:border-default-100 bg-white dark:bg-content1 mx-4">
                 <CardBody className="p-0">
-                  <div ref={scrollerRef} onScroll={handleScroll} className="overflow-auto max-h-[calc(100vh-300px)] min-h-[300px] rounded-xl">
+                  <div ref={scrollerRef} onScroll={handleScroll} className="overflow-auto max-h-[calc(100vh-300px)] min-h-[300px] rounded-xl custom-scrollbar">
                     <div className="min-w-[800px] w-full">
               <Table
                 aria-label="Tabla inventario"
@@ -2765,11 +2780,13 @@ const BodegaTransitoPage: React.FC = () => {
                       </TableCell>
                       <TableCell>
                         <div className="flex justify-center w-full">
+                          {historialPuedeLeer && (
                           <Tooltip content="Ver Movimiento">
                             <Button isIconOnly variant="light" size="sm" onPress={() => verMovimientos(item.idProducto.toString(), item.nombreProducto)} className="text-default-400 hover:text-secondary">
                               <Icon icon="lucide:arrow-right" width={18} />
                             </Button>
                           </Tooltip>
+                          )}
                         </div>
                       </TableCell>
                     </TableRow>
@@ -2832,9 +2849,11 @@ const BodegaTransitoPage: React.FC = () => {
                           <Button size="sm" variant="flat" onPress={handleToday} startContent={<Icon icon="lucide:calendar-check" width={14} />} className="h-8 font-semibold">
                             Hoy
                           </Button>
-                          <Button size="sm" variant="flat" color="primary" onPress={abrirPeriodo} startContent={<Icon icon="lucide:layers" width={14} />} className="h-8 font-semibold text-secondary">
-                            Resumen período
-                          </Button>
+                          {gpd_Resumen && (
+                            <Button size="sm" variant="flat" color="primary" onPress={abrirPeriodo} startContent={<Icon icon="lucide:layers" width={14} />} className="h-8 font-semibold text-secondary">
+                              Resumen período
+                            </Button>
+                          )}
                           <Button
                             size="sm"
                             color="secondary"
@@ -2925,7 +2944,7 @@ const BodegaTransitoPage: React.FC = () => {
                         ) : (
                           <div className="space-y-3">
                             {entregasHoy.salas.map(sala => (
-                              <EntregaSalaCard key={sala.idSala} sala={sala} onPreparar={abrirPreparar} canPreparar={ped_Crear} onExpandChange={handleExpandChange} />
+                              <EntregaSalaCard key={sala.idSala} sala={sala} onPreparar={abrirPreparar} canPreparar={gpd_Preparar} onExpandChange={handleExpandChange} />
                             ))}
                           </div>
                         )}
@@ -2940,18 +2959,20 @@ const BodegaTransitoPage: React.FC = () => {
       </div>
 
       {/* Riel de Navegación Derecho */}
-      <div className="w-[70px] shrink-0 bg-white dark:bg-content1 border-l border-default-200 dark:border-default-100 flex flex-col items-center py-6 gap-4 z-30 sticky right-0 shadow-[-4px_0_15px_rgba(0,0,0,0.02)] -mr-6 self-stretch">
-        <Tooltip content="Bodega de Tránsito" placement="left">
-          <Button
-            isIconOnly
-            variant={currentView === 'inventario' ? 'solid' : 'light'}
-            color={currentView === 'inventario' ? 'primary' : 'default'}
-            onPress={() => setCurrentView('inventario')}
-            className={`w-12 h-12 rounded-2xl transition-all duration-300 ${currentView === 'inventario' ? 'shadow-lg shadow-primary/30' : 'text-default-400 hover:bg-default-100'}`}
-          >
-            <Icon icon="lucide:package-2" width={24} />
-          </Button>
-        </Tooltip>
+      <div className="w-[70px] shrink-0 bg-white dark:bg-content1 border-l border-default-200 dark:border-default-100 flex flex-col items-center py-6 gap-4 z-20 shadow-[-4px_0_15px_rgba(0,0,0,0.02)] self-stretch">
+        {bod_Leer && (
+          <Tooltip content="Bodega de Tránsito" placement="left">
+            <Button
+              isIconOnly
+              variant={currentView === 'inventario' ? 'solid' : 'light'}
+              color={currentView === 'inventario' ? 'primary' : 'default'}
+              onPress={() => setCurrentView('inventario')}
+              className={`w-12 h-12 rounded-2xl transition-all duration-300 ${currentView === 'inventario' ? 'shadow-lg shadow-primary/30' : 'text-default-400 hover:bg-default-100'}`}
+            >
+              <Icon icon="lucide:package-2" width={24} />
+            </Button>
+          </Tooltip>
+        )}
 
         {ped_Leer && (
           <Tooltip content="Gestión de Pedidos Diarios" placement="left">
@@ -2987,7 +3008,7 @@ const BodegaTransitoPage: React.FC = () => {
                   <Input label="Unidad" value={extraUnidad} onValueChange={setExtraUnidad} variant="bordered" labelPlacement="outside" />
                 </div>
               </ModalBody>
-              <ModalFooter><Button variant="light" onPress={onClose}>Cancelar</Button>{bod_Crear && <Button className="bg-gastronomia text-white" onPress={handleSaveExtra}>Guardar</Button>}</ModalFooter>
+              <ModalFooter><Button variant="light" onPress={onClose}>Cancelar</Button>{ped_Crear && <Button className="bg-gastronomia text-white" onPress={handleSaveExtra}>Guardar</Button>}</ModalFooter>
             </>
           )}
         </ModalContent>
@@ -3025,7 +3046,7 @@ const BodegaTransitoPage: React.FC = () => {
         </ModalContent>
       </Modal>
 
-      <Modal isOpen={isModalOpen} onOpenChange={onModalOpenChange} size="lg" backdrop="blur" placement="top" classNames={{ base: "mt-4" }} isDismissable={false}>
+      <Modal isOpen={isModalOpen} onOpenChange={onModalOpenChange} size="lg" backdrop="blur" placement="top" scrollBehavior="inside" radius="lg" classNames={{ base: 'rounded-2xl overflow-hidden max-h-[75vh] mt-4', closeButton: 'hover:bg-default-100 cursor-pointer' }} isDismissable={false}>
         <ModalContent>
           {(onClose) => (
             <>
@@ -3035,7 +3056,7 @@ const BodegaTransitoPage: React.FC = () => {
                   <span className="font-bold text-lg text-secondary dark:text-foreground">{modalMode === 'crear' ? 'Nuevo Producto en Bodega' : 'Control de Bodega'}</span>
                 </div>
               </ModalHeader>
-              <ModalBody className="py-6">
+              <ModalBody className="py-6 overflow-y-scroll custom-scrollbar">
                 <FormularioProducto
                   producto={productoSeleccionado}
                   onClose={onClose}
@@ -3043,6 +3064,7 @@ const BodegaTransitoPage: React.FC = () => {
                   origenContext="bodega"
                   categorias={categoriasFull}
                   unidades={unidadesFull as any}
+                  puedeEditarDatos={modalMode === 'crear' ? true : bodEditarProducto}
                   onConflictSync={(productoActualizado) => {
                     setProductos(prev => prev.map(p =>
                       p.idProducto.toString() === productoActualizado.id ?
@@ -3063,10 +3085,10 @@ const BodegaTransitoPage: React.FC = () => {
         onOpenChange={(open) => setIsMasivoOpen(open)}
         size="5xl"
         backdrop="blur"
-        placement="top"
         isDismissable={false}
         scrollBehavior="inside"
-        classNames={{ base: 'min-h-[80vh] max-h-[90vh] mt-4', body: 'min-h-[620px]' }}
+        radius="lg"
+        classNames={{ base: 'rounded-2xl overflow-hidden max-h-[75vh]', closeButton: 'hover:bg-default-100 cursor-pointer' }}
       >
         <ModalContent>
           {(onClose) => (
@@ -3422,7 +3444,7 @@ const BodegaTransitoPage: React.FC = () => {
       backdrop="blur"
       radius="lg"
       scrollBehavior="inside"
-      classNames={{ base: 'rounded-2xl' }}
+      classNames={{ base: 'rounded-2xl overflow-hidden max-h-[75vh]', closeButton: 'hover:bg-default-100 cursor-pointer' }}
     >
       <ModalContent>
         {(onClose) => (
@@ -3436,7 +3458,7 @@ const BodegaTransitoPage: React.FC = () => {
                 Suma los productos de las entregas <strong>no realizadas</strong> dentro del período indicado. Los productos iguales se acumulan.
               </p>
             </ModalHeader>
-            <ModalBody className="py-4 px-5 space-y-4">
+            <ModalBody className="py-4 px-5 space-y-4 overflow-y-scroll custom-scrollbar">
               {/* Selectores de período */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2 p-3 rounded-xl border border-default-200 dark:border-default-100 bg-default-50/50 dark:bg-content2">
@@ -3499,7 +3521,7 @@ const BodegaTransitoPage: React.FC = () => {
                         <span>Producto</span>
                         <span className="text-center">Cantidad total</span>
                       </div>
-                      <div className="divide-y divide-default-100 dark:divide-default-50 max-h-[40vh] overflow-y-auto">
+                      <div className="divide-y divide-default-100 dark:divide-default-50">
                         {periodoResultado.productos.map(p => (
                           <div key={p.idProducto} className="grid grid-cols-[1fr_0.5fr] px-4 py-2.5 text-sm items-center hover:bg-default-50/50 dark:hover:bg-default-100/20">
                             <span className="text-default-700 dark:text-default-300">{p.nombreProducto}</span>

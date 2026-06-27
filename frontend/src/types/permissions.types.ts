@@ -35,7 +35,6 @@ export type ModuleKey =
   // ── Vistas (tabs) internas de Administración del Sistema ──
   | 'ADMIN_BLOQUES_HORARIOS'
   | 'ADMIN_SEMANAS'
-  | 'ADMIN_SALAS_RESERVAS'
   | 'ADMIN_CONFIG_SISTEMA'
   // ── Vistas internas de Gestión de Pedidos ──
   | 'GP_VISTA_RESUMEN'
@@ -59,9 +58,13 @@ export type ModuleKey =
   | 'GPRV_ASIGNAR_PROD'
   | 'GPRV_ELIMINAR_PROV'
   | 'GPRV_ORDENES'
+  | 'GPRV_PENDIENTE_ENVIADA'
+  | 'GPRV_CONFIRMADA'
   | 'GPRV_CANCELAR_OP'
   | 'GPRV_EXPORT_OP'
-  // ── Acciones internas de Gestión Académica (pestaña Académica) ──
+  | 'GPRV_EXPORT_DATOS'
+  // ── Vistas y acciones internas de Gestión Académica (pestaña Académica) ──
+  | 'GA_VER_ASIGNATURA'
   | 'GA_CREAR_ASIGNATURA'
   | 'GA_CREAR_SECCION'
   | 'GA_EDITAR_ASIGNATURA'
@@ -75,12 +78,25 @@ export type ModuleKey =
   | 'GA_EDITAR_SALA'
   | 'GA_ELIMINAR_SALA'
   // ── Acciones internas de Inventario ──
+  | 'INV_NUEVO_PRODUCTO'
+  | 'INV_EDITAR_PRODUCTO'
   | 'INV_CONTROL_MASIVO'
+  | 'INV_ABAST_BODEGA'
+  | 'INV_ABAST_PROV'
   | 'INV_SYNC_EXCEL'
   | 'INV_ABASTECIMIENTO'
+  | 'INV_STOCK_DISPONIBLE'
+  | 'SD_INVENTARIO'
+  | 'SD_BODEGA_TRANSITO'
+  | 'SD_DISPONIBLE_REAL'
   // ── Acciones internas de Bodega de Tránsito ──
+  | 'BOD_NUEVO'
   | 'BOD_CONTROL_MASIVO'
   | 'BOD_ABASTECIMIENTO'
+  | 'BOD_EDITAR_PRODUCTO'
+  // ── Acciones internas de Gestión de Pedidos Diarios ──
+  | 'GPD_RESUMEN_PERIODO'
+  | 'GPD_PREPARAR_ENTREGA'
   // ── Histórico de Pedidos (página propia + acción) ──
   | 'HISTORICO_PEDIDOS'
   | 'HIST_EXPORT_EXCEL';
@@ -170,6 +186,7 @@ export const MODULE_LABELS: Record<ModuleKey, string> = {
   GEST_SOL_GESTIONAR:    'G. Solicitudes · Gestionar Estados',
   GEST_SOL_RECHAZAR:     'G. Solicitudes · Rechazar',
   GESTION_ACADEMICA:      'Gestión Académica',
+  GA_VER_ASIGNATURA:      'G. Académica · Ver Asignatura y Sección',
   GA_CREAR_ASIGNATURA:    'G. Académica · Crear Asignatura',
   GA_CREAR_SECCION:       'G. Académica · Crear Sección',
   GA_EDITAR_ASIGNATURA:   'G. Académica · Editar Asignatura',
@@ -186,7 +203,6 @@ export const MODULE_LABELS: Record<ModuleKey, string> = {
   ADMIN_SISTEMA:        'Administración del Sistema',
   ADMIN_BLOQUES_HORARIOS: 'Adm. Sistema · Bloques Horarios',
   ADMIN_SEMANAS:          'Adm. Sistema · Gestión de Semanas',
-  ADMIN_SALAS_RESERVAS:   'Adm. Sistema · Salas y Reservas',
   ADMIN_CONFIG_SISTEMA:   'Adm. Sistema · Configuración',
   GP_VISTA_RESUMEN:       'G. Pedidos · Resumen de Productos',
   GP_VISTA_ACEPTADAS:     'G. Pedidos · Solicitudes Aceptadas',
@@ -202,17 +218,32 @@ export const MODULE_LABELS: Record<ModuleKey, string> = {
   GPRV_GENERAR_ORDEN:       'G. Proveedores · Generar Orden Pedido',
   GPRV_COTIZACION:          'G. Proveedores · Proyección Cotización',
   GPRV_CAMBIAR_ESTADO_PROV: 'G. Proveedores · Cambiar Estado Prov',
-  GPRV_EDITAR_PROV:         'G. Proveedores · Editar Proveedor',
+  GPRV_EDITAR_PROV:         'G. Proveedores · Editar Proveedor y Productos',
   GPRV_ASIGNAR_PROD:        'G. Proveedores · Asignar Producto',
   GPRV_ELIMINAR_PROV:       'G. Proveedores · Eliminar Proveedor',
   GPRV_ORDENES:             'G. Proveedores · Órdenes de Pedido',
+  GPRV_PENDIENTE_ENVIADA:   'G. Proveedores · Pendiente y Enviada',
+  GPRV_CONFIRMADA:          'G. Proveedores · Confirmada',
   GPRV_CANCELAR_OP:         'G. Proveedores · Cancelar Orden OP',
   GPRV_EXPORT_OP:           'G. Proveedores · Exportar Excel OP',
+  GPRV_EXPORT_DATOS:        'G. Proveedores · Exportar Datos Excel',
+  INV_NUEVO_PRODUCTO:       'Inventario · Nuevo Producto',
+  INV_EDITAR_PRODUCTO:      'Inventario · Editar Producto',
   INV_CONTROL_MASIVO:       'Inventario · Control Masivo',
+  INV_ABAST_BODEGA:         'Inventario · Abastec. Bodega',
+  INV_ABAST_PROV:           'Inventario · Abastec. Proveedores',
   INV_SYNC_EXCEL:           'Inventario · Sincronizar Excel',
   INV_ABASTECIMIENTO:       'Inventario · Gestión Abastecimiento',
+  INV_STOCK_DISPONIBLE:     'Inventario · Stock Disponible',
+  SD_INVENTARIO:            'Stock Disp. · Inventario',
+  SD_BODEGA_TRANSITO:       'Stock Disp. · Bodega Tránsito',
+  SD_DISPONIBLE_REAL:       'Stock Disp. · Disponible Real',
+  BOD_NUEVO:                'Bodega · Nuevo Producto',
   BOD_CONTROL_MASIVO:       'Bodega · Control Masivo',
-  BOD_ABASTECIMIENTO:       'Bodega · Gestión Abastecimiento',
+  BOD_ABASTECIMIENTO:       'Bodega · Abastec. Proveedores',
+  BOD_EDITAR_PRODUCTO:      'Bodega · Editar Datos Producto',
+  GPD_RESUMEN_PERIODO:      'Ped. Diarios · Resumen de Período',
+  GPD_PREPARAR_ENTREGA:     'Ped. Diarios · Preparar Entrega',
   HISTORICO_PEDIDOS:        'Histórico de Pedidos',
   HIST_EXPORT_EXCEL:        'Histórico · Exportar Excel',
 };
@@ -239,6 +270,7 @@ export const MODULE_ICONS: Record<ModuleKey, string> = {
   GEST_SOL_GESTIONAR:    'lucide:check-circle',
   GEST_SOL_RECHAZAR:     'lucide:x-circle',
   GESTION_ACADEMICA:      'lucide:book-open',
+  GA_VER_ASIGNATURA:      'lucide:eye',
   GA_CREAR_ASIGNATURA:    'lucide:plus-circle',
   GA_CREAR_SECCION:       'lucide:plus-square',
   GA_EDITAR_ASIGNATURA:   'lucide:pencil',
@@ -255,7 +287,6 @@ export const MODULE_ICONS: Record<ModuleKey, string> = {
   ADMIN_SISTEMA:        'lucide:settings',
   ADMIN_BLOQUES_HORARIOS: 'lucide:clock-4',
   ADMIN_SEMANAS:          'lucide:calendar-range',
-  ADMIN_SALAS_RESERVAS:   'lucide:calendar-clock',
   ADMIN_CONFIG_SISTEMA:   'lucide:sliders-horizontal',
   GP_VISTA_RESUMEN:       'lucide:package-check',
   GP_VISTA_ACEPTADAS:     'lucide:clipboard-check',
@@ -275,13 +306,28 @@ export const MODULE_ICONS: Record<ModuleKey, string> = {
   GPRV_ASIGNAR_PROD:        'lucide:package-plus',
   GPRV_ELIMINAR_PROV:       'lucide:trash-2',
   GPRV_ORDENES:             'lucide:shopping-bag',
+  GPRV_PENDIENTE_ENVIADA:   'lucide:clock',
+  GPRV_CONFIRMADA:          'lucide:check-circle',
   GPRV_CANCELAR_OP:         'lucide:x-circle',
   GPRV_EXPORT_OP:           'lucide:download',
+  GPRV_EXPORT_DATOS:        'lucide:file-down',
+  INV_NUEVO_PRODUCTO:       'lucide:plus-circle',
+  INV_EDITAR_PRODUCTO:      'lucide:pencil',
   INV_CONTROL_MASIVO:       'lucide:arrow-right-left',
+  INV_ABAST_BODEGA:         'lucide:warehouse',
+  INV_ABAST_PROV:           'lucide:truck',
   INV_SYNC_EXCEL:           'lucide:upload-cloud',
   INV_ABASTECIMIENTO:       'lucide:boxes',
+  INV_STOCK_DISPONIBLE:     'lucide:package-check',
+  SD_INVENTARIO:            'lucide:package',
+  SD_BODEGA_TRANSITO:       'lucide:warehouse',
+  SD_DISPONIBLE_REAL:       'lucide:calculator',
+  BOD_NUEVO:                'lucide:plus-circle',
   BOD_CONTROL_MASIVO:       'lucide:arrow-right-left',
-  BOD_ABASTECIMIENTO:       'lucide:boxes',
+  BOD_ABASTECIMIENTO:       'lucide:truck',
+  BOD_EDITAR_PRODUCTO:      'lucide:pencil',
+  GPD_RESUMEN_PERIODO:      'lucide:layers',
+  GPD_PREPARAR_ENTREGA:     'lucide:package-check',
   HISTORICO_PEDIDOS:        'lucide:bar-chart-2',
   HIST_EXPORT_EXCEL:        'lucide:download',
 };
@@ -299,9 +345,9 @@ export const PAGE_TO_MODULE: Record<string, ModuleKey | ModuleKey[]> = {
   'historico-pedidos':    'HISTORICO_PEDIDOS',
   'conglomerado-pedidos': 'CONGLOMERADO_PEDIDOS',
   'gestion-proveedores':  ['GESTION_PROVEEDORES', 'GPRV_ORDENES', 'GPRV_DATOS_PROV'],
-  'bodega-transito':      'BODEGA_TRANSITO',
+  'bodega-transito':      ['BODEGA_TRANSITO', 'GESTION_PEDIDOS_DIARIOS'],
   'pedido-semanal-a-bodega': 'PEDIDO_SEMANAL_BODEGA',
-  'gestion-academica':    ['GESTION_ACADEMICA', 'ADMIN_SALAS_RESERVAS'],
+  'gestion-academica':    ['GESTION_ACADEMICA', 'GA_VER_ASIGNATURA', 'GA_VER_RESERVAS', 'GA_VER_SALAS'],
   'gestion-roles':        'GESTION_ROLES',
   'gestion-usuarios':     'GESTION_USUARIOS',
   'admin-sistema':        'ADMIN_SISTEMA',

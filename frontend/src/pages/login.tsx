@@ -1,9 +1,11 @@
 import React from 'react';
 import { useHistory } from 'react-router-dom';
-import { Card, CardBody, Input, Button, Checkbox, Divider } from '@heroui/react';
+import { Card, CardBody, Input, Button, Checkbox, Divider, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter } from '@heroui/react';
 import { Icon } from '@iconify/react';
 import { useAuth } from '../contexts/auth-context';
+import { aceptarTerminosService, obtenerTerminosAceptadosService } from '../services/auth-service';
 import { motion, AnimatePresence } from 'framer-motion';
+import TerminosCondicionesContent from '../components/TerminosCondicionesContent';
 
 /**
  * CONFIGURACIÓN DE USUARIOS DEMO - ACTUALIZADOS
@@ -87,9 +89,11 @@ const LoginPage: React.FC = () => {
   const [isLoading, setIsLoading] = React.useState<boolean>(false);
   const [error, setError] = React.useState<string | null>(null);
   const [selectedDemo, setSelectedDemo] = React.useState<string | null>(null);
-  const [irisOpen,     setIrisOpen]     = React.useState<boolean>(false);
+  const [irisOpen, setIrisOpen] = React.useState<boolean>(false);
+  const [showTerminos, setShowTerminos] = React.useState<boolean>(false);
+  const [aceptandoTerminos, setAceptandoTerminos] = React.useState<boolean>(false);
 
-  const { login } = useAuth();
+  const { login, logout } = useAuth();
   const history = useHistory();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -116,7 +120,11 @@ const LoginPage: React.FC = () => {
 
       if (success) {
         console.log('✅ Login exitoso, iniciando transición...');
-        setIrisOpen(true);
+        if (!obtenerTerminosAceptadosService()) {
+          setShowTerminos(true);
+        } else {
+          setIrisOpen(true);
+        }
       } else {
         setError('Email o contraseña incorrectos');
         console.log('❌ Credenciales inválidas');
@@ -143,6 +151,22 @@ const LoginPage: React.FC = () => {
 
   const handleManualInput = () => {
     setSelectedDemo(null);
+  };
+
+  const handleAceptarTerminos = async () => {
+    try {
+      setAceptandoTerminos(true);
+      await aceptarTerminosService();
+      setShowTerminos(false);
+      setIrisOpen(true);
+    } catch {
+      setAceptandoTerminos(false);
+    }
+  };
+
+  const handleRechazarTerminos = async () => {
+    setShowTerminos(false);
+    await logout();
   };
 
   return (
@@ -324,6 +348,62 @@ const LoginPage: React.FC = () => {
           </CardBody>
         </Card>
       </motion.div>
+
+      {/* ── Modal de Términos y Condiciones ── */}
+      <Modal
+        isOpen={showTerminos}
+        onOpenChange={() => {}}
+        isDismissable={false}
+        hideCloseButton
+        size="3xl"
+        radius="lg"
+        backdrop="blur"
+        scrollBehavior="inside"
+        classNames={{ base: 'rounded-2xl max-h-[75vh]' }}
+      >
+        <ModalContent>
+          <ModalHeader className="flex flex-col gap-1 border-b border-default-200 pb-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-primary/10 rounded-lg">
+                <Icon icon="lucide:file-text" className="text-primary text-2xl" />
+              </div>
+              <div>
+                <h2 className="text-lg font-bold text-secondary dark:text-foreground">
+                  Términos y Condiciones de Uso y Política de Privacidad
+                </h2>
+                <p className="text-xs text-default-500 font-normal">
+                  KuHub · Sistema de Gestión Gastronómica DuocUC
+                </p>
+              </div>
+            </div>
+          </ModalHeader>
+
+          <ModalBody className="py-5 overflow-y-scroll custom-scrollbar">
+            <TerminosCondicionesContent />
+          </ModalBody>
+
+          <ModalFooter className="border-t border-default-200 pt-4 gap-3">
+            <Button
+              variant="flat"
+              color="danger"
+              onPress={handleRechazarTerminos}
+              isDisabled={aceptandoTerminos}
+              startContent={<Icon icon="lucide:x" />}
+            >
+              No acepto
+            </Button>
+            <Button
+              color="primary"
+              onPress={handleAceptarTerminos}
+              isLoading={aceptandoTerminos}
+              className="font-bold text-secondary"
+              startContent={!aceptandoTerminos && <Icon icon="lucide:check" />}
+            >
+              Acepto los términos
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
 
       {/* ── Animación de transición al entrar al sistema ── */}
       <AnimatePresence>

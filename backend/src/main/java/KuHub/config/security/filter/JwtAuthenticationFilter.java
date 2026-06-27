@@ -36,10 +36,11 @@ import static KuHub.config.security.TokenJwtConfig.*;
  */
 public class JwtAuthenticationFilter extends UsernamePasswordAuthenticationFilter {
 
-    private static final String REFRESH_COOKIE_NAME = "kuhub_refresh";
-    private static final long ACCESS_TOKEN_CORTO_MS  = 15 * 60 * 1000L;   // 15 minutos
-    private static final long ACCESS_TOKEN_NORMAL_MS = 60 * 60 * 1000L;   // 1 hora
-    private static final int  REFRESH_COOKIE_DIAS    = 30;
+    private static final String REFRESH_COOKIE_NAME      = "kuhub_refresh";
+    private static final long   ACCESS_TOKEN_CORTO_MS    = 15 * 60 * 1000L;
+    private static final long   ACCESS_TOKEN_NORMAL_MS   = 60 * 60 * 1000L;
+    private static final int    REFRESH_COOKIE_DIAS      = 30;
+    private static final String TERMINOS_VERSION_ACTUAL  = "1.0";
 
     private final AuthenticationManager authenticationManager;
     private final UsuarioRepository usuarioRepository;
@@ -136,6 +137,8 @@ public class JwtAuthenticationFilter extends UsernamePasswordAuthenticationFilte
             response.addCookie(refreshCookie);
 
             // Construir respuesta con datos del usuario
+            boolean terminosAceptados = TERMINOS_VERSION_ACTUAL.equals(usuario.getTerminosVersionAceptada());
+
             Map<String, Object> usuarioLimpio = new HashMap<>();
             usuarioLimpio.put("idUsuario", usuario.getIdUsuario());
             usuarioLimpio.put("nombreCompleto", usuario.getNombreCompleto());
@@ -150,6 +153,7 @@ public class JwtAuthenticationFilter extends UsernamePasswordAuthenticationFilte
             body.put("usuario", usuarioLimpio);
             body.put("token", token);
             body.put("recordarSesion", recordarSesion);
+            body.put("terminosAceptados", terminosAceptados);
 
             response.getWriter().write(objectMapper.writeValueAsString(body));
             response.setContentType(CONTENT_TYPE);

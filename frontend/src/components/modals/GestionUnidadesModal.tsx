@@ -21,6 +21,7 @@ import {
     transferirProductosUnidadService
 } from '../../services/unidad-medida-service';
 import { useToast } from '../../hooks/useToast';
+import { useModulePermission } from '../../contexts/permission-context';
 import { Spinner, Select, SelectItem, Alert } from '@heroui/react';
 
 interface GestionUnidadesModalProps {
@@ -35,6 +36,7 @@ const GestionUnidadesModal: React.FC<GestionUnidadesModalProps> = ({
     onRefresh
 }) => {
     const toast = useToast();
+    const { canCreate: puedeCrear, canUpdate: puedeActualizar, canDelete: puedeEliminar } = useModulePermission('GESTION_UNIDADES');
     const [unidades, setUnidades] = React.useState<IUnidadMedida[]>([]);
     const [nombre, setNombre] = React.useState('');
     const [abreviatura, setAbreviatura] = React.useState('');
@@ -209,11 +211,6 @@ const GestionUnidadesModal: React.FC<GestionUnidadesModalProps> = ({
     const handleConfirmarEliminacionSimple = async () => {
         if (!uniParaEliminar) return;
 
-        if (confirmText !== 'ELIMINAR') {
-            toast.warning('Escribe ELIMINAR para confirmar');
-            return;
-        }
-
         setIsDeleting(true);
         try {
             const exito = await eliminarUnidadService(uniParaEliminar.id);
@@ -259,7 +256,7 @@ const GestionUnidadesModal: React.FC<GestionUnidadesModalProps> = ({
 
     return (
         <>
-            <Modal isOpen={isOpen} onOpenChange={onOpenChange} size="md" scrollBehavior="inside" isDismissable={false}>
+            <Modal isOpen={isOpen} onOpenChange={onOpenChange} size="md" scrollBehavior="inside" isDismissable={false} backdrop="blur" radius="lg" classNames={{ base: 'rounded-2xl overflow-hidden max-h-[75vh]', closeButton: 'hover:bg-default-100 cursor-pointer' }}>
                 <ModalContent>
                     {(onClose) => (
                         <>
@@ -271,10 +268,11 @@ const GestionUnidadesModal: React.FC<GestionUnidadesModalProps> = ({
                                     {editingId ? 'Editar Unidad' : isAdding ? 'Nueva Unidad' : 'Gestión de Unidades'}
                                 </h2>
                             </ModalHeader>
-                            <ModalBody className="py-6">
+                            <ModalBody className="py-6 overflow-y-scroll custom-scrollbar">
                                 <div className="flex flex-col gap-4">
                                     <div className="flex items-center justify-between">
                                         <h3 className="text-sm font-semibold text-default-500 uppercase">Lista de Unidades</h3>
+                                        {(puedeCrear || editingId) && (
                                         <Button
                                             isIconOnly
                                             size="sm"
@@ -290,6 +288,7 @@ const GestionUnidadesModal: React.FC<GestionUnidadesModalProps> = ({
                                         >
                                             <Icon icon={(isAdding || editingId) ? "lucide:minus" : "lucide:plus"} />
                                         </Button>
+                                        )}
                                     </div>
 
                                     {editingId ? (
@@ -419,6 +418,7 @@ const GestionUnidadesModal: React.FC<GestionUnidadesModalProps> = ({
                                                         </div>
                                                     </div>
                                                     <div className="flex items-center gap-2">
+                                                        {puedeActualizar && (
                                                         <Button
                                                             isIconOnly
                                                             size="sm"
@@ -428,6 +428,8 @@ const GestionUnidadesModal: React.FC<GestionUnidadesModalProps> = ({
                                                         >
                                                             <Icon icon="lucide:edit-2" width={14} />
                                                         </Button>
+                                                        )}
+                                                        {puedeEliminar && (
                                                         <Button
                                                             isIconOnly
                                                             size="sm"
@@ -437,6 +439,9 @@ const GestionUnidadesModal: React.FC<GestionUnidadesModalProps> = ({
                                                         >
                                                             <Icon icon="lucide:trash-2" width={14} />
                                                         </Button>
+                                                        )}
+                                                        {puedeActualizar && (
+                                                        <>
                                                         {togglingIds.has(uni.id) && (
                                                             <Spinner size="sm" color="success" />
                                                         )}
@@ -460,6 +465,8 @@ const GestionUnidadesModal: React.FC<GestionUnidadesModalProps> = ({
                                                                 </svg>
                                                             </div>
                                                         </label>
+                                                        </>
+                                                        )}
                                                     </div>
                                                 </div>
                                             ))
@@ -579,25 +586,10 @@ const GestionUnidadesModal: React.FC<GestionUnidadesModalProps> = ({
                                 </div>
                             </ModalHeader>
                             <ModalBody className="py-6">
-                                <div className="flex flex-col gap-4">
-                                    <p className="text-sm text-default-600">
-                                        ¿Estás seguro de eliminar la unidad <strong>{uniParaEliminar?.nombre}</strong>?
-                                        Esta acción no se puede deshacer.
-                                    </p>
-                                    <div className="flex flex-col gap-2">
-                                        <p className="text-xs text-danger-500 italic">
-                                            Escribe <strong>ELIMINAR</strong> para confirmar:
-                                        </p>
-                                        <Input
-                                            placeholder="ELIMINAR"
-                                            value={confirmText}
-                                            onValueChange={setConfirmText}
-                                            variant="bordered"
-                                            isInvalid={confirmText !== '' && confirmText !== 'ELIMINAR'}
-                                            autoFocus
-                                        />
-                                    </div>
-                                </div>
+                                <p className="text-sm text-default-600">
+                                    ¿Estás seguro de eliminar la unidad <strong>{uniParaEliminar?.nombre}</strong>?
+                                    Esta acción no se puede deshacer.
+                                </p>
                             </ModalBody>
                             <ModalFooter className="border-t border-default-100">
                                 <Button variant="light" onPress={onClose} isDisabled={isDeleting}>
@@ -607,7 +599,6 @@ const GestionUnidadesModal: React.FC<GestionUnidadesModalProps> = ({
                                     color="danger"
                                     onPress={handleConfirmarEliminacionSimple}
                                     isLoading={isDeleting}
-                                    isDisabled={confirmText !== 'ELIMINAR'}
                                 >
                                     Eliminar Definitivamente
                                 </Button>

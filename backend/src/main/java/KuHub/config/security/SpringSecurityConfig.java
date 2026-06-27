@@ -85,12 +85,14 @@ public class SpringSecurityConfig {
         // ========================================
         // ORÍGENES PERMITIDOS
         // ========================================
-        // ⚠️ DESARROLLO: localhost:5173
+        // ⚠️ DESARROLLO: localhost:5173 / 5174
         configuration.setAllowedOrigins(Arrays.asList(
                 // ⚠️ DESARROLLO (Tu PC)
                 "http://localhost:5173",
+                "http://localhost:5174",
                 "http://localhost:3000",
                 "http://127.0.0.1:5173",
+                "http://127.0.0.1:5174",
                 "http://127.0.0.1:3000",
 
                 // 🚀 PRODUCCIÓN (AWS Lightsail - IP directa)

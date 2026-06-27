@@ -21,6 +21,7 @@ import {
     IDisponibleRealItem,
 } from '../../services/solicitud-service';
 import { useToast } from '../../hooks/useToast';
+import { useModulePermission } from '../../contexts/permission-context';
 
 interface StockDisponiblesModalProps {
     isOpen: boolean;
@@ -39,6 +40,9 @@ const StockDisponiblesModal: React.FC<StockDisponiblesModalProps> = ({
     defaultTipo = 'INVENTARIO',
 }) => {
     const toast = useToast();
+    const { canRead: verInventario }  = useModulePermission('SD_INVENTARIO');
+    const { canRead: verBodega }      = useModulePermission('SD_BODEGA_TRANSITO');
+    const { canRead: verReal }        = useModulePermission('SD_DISPONIBLE_REAL');
     const [tipo, setTipo] = React.useState<TipoVista>(defaultTipo);
     const [pagina, setPagina] = React.useState<number>(1);
     const [isLoading, setIsLoading] = React.useState(false);
@@ -69,16 +73,16 @@ const StockDisponiblesModal: React.FC<StockDisponiblesModalProps> = ({
 
     React.useEffect(() => {
         if (isOpen) {
-            setTipo(defaultTipo);
+            const tipoInicial: TipoVista = verInventario ? 'INVENTARIO' : verBodega ? 'BODEGA_TRANSITO' : 'DISPONIBLE_REAL';
+            setTipo(tipoInicial);
             setPagina(1);
             setBusqueda('');
-            cargar(defaultTipo, 1);
+            cargar(tipoInicial, 1);
         } else {
             setResultado(null);
             setDatosReal([]);
             setPagina(1);
             setBusqueda('');
-            setTipo(defaultTipo);
         }
     }, [isOpen]);
 
@@ -114,7 +118,7 @@ const StockDisponiblesModal: React.FC<StockDisponiblesModalProps> = ({
             backdrop="blur"
             radius="lg"
             scrollBehavior="inside"
-            classNames={{ base: 'rounded-2xl my-auto', body: 'min-h-[260px] py-3' }}
+            classNames={{ base: 'rounded-2xl overflow-hidden max-h-[75vh]', closeButton: 'hover:bg-default-100 cursor-pointer' }}
         >
             <ModalContent>
                 {(onClose) => (
@@ -138,9 +142,10 @@ const StockDisponiblesModal: React.FC<StockDisponiblesModalProps> = ({
                             </p>
                         </ModalHeader>
 
-                        <ModalBody className="px-4 py-4 space-y-4">
+                        <ModalBody className="px-4 py-4 space-y-4 overflow-y-scroll custom-scrollbar">
                             {/* Toggle de vista */}
                             <div className="flex flex-wrap gap-2">
+                                {verInventario && (
                                 <Button
                                     size="sm"
                                     variant={tipo === 'INVENTARIO' ? 'solid' : 'flat'}
@@ -150,6 +155,8 @@ const StockDisponiblesModal: React.FC<StockDisponiblesModalProps> = ({
                                 >
                                     Inventario
                                 </Button>
+                                )}
+                                {verBodega && (
                                 <Button
                                     size="sm"
                                     variant={tipo === 'BODEGA_TRANSITO' ? 'solid' : 'flat'}
@@ -159,6 +166,8 @@ const StockDisponiblesModal: React.FC<StockDisponiblesModalProps> = ({
                                 >
                                     Bodega Tránsito
                                 </Button>
+                                )}
+                                {verReal && (
                                 <Button
                                     size="sm"
                                     variant={esReal ? 'solid' : 'flat'}
@@ -168,6 +177,7 @@ const StockDisponiblesModal: React.FC<StockDisponiblesModalProps> = ({
                                 >
                                     Disponible Real
                                 </Button>
+                                )}
                             </div>
 
                             {/* Mensaje contextual según vista */}

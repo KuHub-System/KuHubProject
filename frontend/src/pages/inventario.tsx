@@ -147,13 +147,19 @@ const InventarioPage: React.FC = () => {
   const { user } = useAuth();
   const esAdministrador = user?.rol === 'Administrador';
   // ── Permisos granulares del módulo INVENTARIO ──
-  const { canCreate: invPuedeCrear, canUpdate: invPuedeEditar, canDelete: invPuedeEliminar } = useModulePermission('INVENTARIO');
-  const { canCreate: catPuedeCrear } = useModulePermission('GESTION_CATEGORIAS');
-  const { canCreate: uniPuedeCrear } = useModulePermission('GESTION_UNIDADES');
+  const { canDelete: invPuedeEliminar } = useModulePermission('INVENTARIO');
+  const { canRead: invEditarProducto }  = useModulePermission('INV_EDITAR_PRODUCTO');
+  const { canRead: catPuedeLeer, canCreate: catPuedeCrear } = useModulePermission('GESTION_CATEGORIAS');
+  const { canRead: uniPuedeLeer, canCreate: uniPuedeCrear } = useModulePermission('GESTION_UNIDADES');
+  const { canRead: historialPuedeLeer } = useModulePermission('HISTORIAL_MOVIMIENTOS');
   // Acciones especiales de inventario (módulos individuales por botón)
+  const { canRead: invNuevoProducto }  = useModulePermission('INV_NUEVO_PRODUCTO');
   const { canRead: invControlMasivo }  = useModulePermission('INV_CONTROL_MASIVO');
+  const { canRead: invAbastBodega }    = useModulePermission('INV_ABAST_BODEGA');
+  const { canRead: invAbastProv }      = useModulePermission('INV_ABAST_PROV');
   const { canRead: invSyncExcel }      = useModulePermission('INV_SYNC_EXCEL');
   const { canRead: invAbastecimiento } = useModulePermission('INV_ABASTECIMIENTO');
+  const { canRead: invStockDisponible }= useModulePermission('INV_STOCK_DISPONIBLE');
   const [productos, setProductos] = React.useState<IProducto[]>([]);
   const [filteredProductos, setFilteredProductos] = React.useState<IProducto[]>([]);
   const [categoriasFull, setCategoriasFull] = React.useState<{ id: number, nombre: string }[]>([]);
@@ -910,7 +916,7 @@ const InventarioPage: React.FC = () => {
             />
           </>
           )}
-          {invPuedeCrear && (
+          {invNuevoProducto && (
           <Button
             color="primary"
             variant="solid"
@@ -922,7 +928,7 @@ const InventarioPage: React.FC = () => {
             Nuevo
           </Button>
           )}
-          {catPuedeCrear && (
+          {catPuedeLeer && (
           <Button
             isIconOnly
             variant="flat"
@@ -934,7 +940,7 @@ const InventarioPage: React.FC = () => {
             <Icon icon="lucide:tags" className="text-default-600" width={20} />
           </Button>
           )}
-          {uniPuedeCrear && (
+          {uniPuedeLeer && (
           <Button
             isIconOnly
             variant="flat"
@@ -958,6 +964,7 @@ const InventarioPage: React.FC = () => {
             <Icon icon="lucide:boxes" className="text-default-600" width={20} />
           </Button>
           )}
+          {invStockDisponible && (
           <Button
             isIconOnly
             variant="flat"
@@ -968,6 +975,7 @@ const InventarioPage: React.FC = () => {
           >
             <Icon icon="lucide:package-check" className="text-default-600" width={20} />
           </Button>
+          )}
         </div>
 
         {/* Barra de herramientas */}
@@ -1236,15 +1244,15 @@ const InventarioPage: React.FC = () => {
             {paginatedProductos.map((producto) => (
               <TableRow
                 key={producto.id}
-                className={`${invPuedeEditar ? 'cursor-pointer' : 'cursor-default'} hover:bg-default-50 dark:hover:bg-default-100/50 transition-colors duration-200 border-b border-default-50 dark:border-default-50/10`}
+                className={`${invEditarProducto ? 'cursor-pointer' : 'cursor-default'} hover:bg-default-50 dark:hover:bg-default-100/50 transition-colors duration-200 border-b border-default-50 dark:border-default-50/10`}
                 style={{
                   contentVisibility: 'auto',
                   containIntrinsicSize: '70px 70px'
                 } as any}
-                onClick={() => invPuedeEditar && handleEditarProducto(producto)}
+                onClick={() => invEditarProducto && handleEditarProducto(producto)}
               >
                 <TableCell>
-                  <Tooltip content={invPuedeEditar ? "Control de Inventario" : undefined} isDisabled={!invPuedeEditar} color="primary" delay={100} closeDelay={0}>
+                  <Tooltip content={invEditarProducto ? "Control de Inventario" : undefined} isDisabled={!invEditarProducto} color="primary" delay={100} closeDelay={0}>
                     <div className="w-full overflow-hidden text-center flex flex-col items-center">
                       <span className="font-semibold text-secondary dark:text-foreground block truncate w-full">{producto.nombre}</span>
                       {producto.descripcion && (
@@ -1254,7 +1262,7 @@ const InventarioPage: React.FC = () => {
                   </Tooltip>
                 </TableCell>
                 <TableCell className="text-center">
-                  <Tooltip content={invPuedeEditar ? "Control de Inventario" : undefined} isDisabled={!invPuedeEditar} color="primary" delay={100} closeDelay={0}>
+                  <Tooltip content={invEditarProducto ? "Control de Inventario" : undefined} isDisabled={!invEditarProducto} color="primary" delay={100} closeDelay={0}>
                     <div className="flex justify-center w-full">
                       <Chip size="sm" variant="flat" className="bg-default-100 dark:bg-default-100/50 text-default-600 dark:text-default-300">
                         {producto.categoria}
@@ -1263,29 +1271,30 @@ const InventarioPage: React.FC = () => {
                   </Tooltip>
                 </TableCell>
                 <TableCell className="text-center">
-                  <Tooltip content={invPuedeEditar ? "Control de Inventario" : undefined} isDisabled={!invPuedeEditar} color="primary" delay={100} closeDelay={0}>
+                  <Tooltip content={invEditarProducto ? "Control de Inventario" : undefined} isDisabled={!invEditarProducto} color="primary" delay={100} closeDelay={0}>
                     <span className={`font-bold block text-center ${producto.stock <= producto.stockMinimo ? 'text-danger' : 'text-default-700 dark:text-default-300'}`}>
                       {fmtCL(producto.stock)}
                     </span>
                   </Tooltip>
                 </TableCell>
                 <TableCell className="text-center">
-                  <Tooltip content={invPuedeEditar ? "Control de Inventario" : undefined} isDisabled={!invPuedeEditar} color="primary" delay={100} closeDelay={0}>
+                  <Tooltip content={invEditarProducto ? "Control de Inventario" : undefined} isDisabled={!invEditarProducto} color="primary" delay={100} closeDelay={0}>
                     <span className="block text-center">{fmtCL(producto.stockMinimo)}</span>
                   </Tooltip>
                 </TableCell>
                 <TableCell className="text-center">
-                  <Tooltip content={invPuedeEditar ? "Control de Inventario" : undefined} isDisabled={!invPuedeEditar} color="primary" delay={100} closeDelay={0}>
+                  <Tooltip content={invEditarProducto ? "Control de Inventario" : undefined} isDisabled={!invEditarProducto} color="primary" delay={100} closeDelay={0}>
                     <span className="text-default-500 block text-center">{producto.unidadMedida}</span>
                   </Tooltip>
                 </TableCell>
                 <TableCell>
-                  <Tooltip content={invPuedeEditar ? "Control de Inventario" : undefined} isDisabled={!invPuedeEditar} color="primary" delay={100} closeDelay={0} className="w-full">
+                  <Tooltip content={invEditarProducto ? "Control de Inventario" : undefined} isDisabled={!invEditarProducto} color="primary" delay={100} closeDelay={0} className="w-full">
                     <div className="w-full h-full text-center flex justify-center">{renderStockStatus(producto)}</div>
                   </Tooltip>
                 </TableCell>
                 <TableCell>
                   <div className="flex justify-center gap-1" onClick={(e) => e.stopPropagation()}>
+                    {historialPuedeLeer && (
                     <Tooltip content="Ver Movimiento" color="secondary" delay={100} closeDelay={0}>
                       <Button
                         isIconOnly
@@ -1297,6 +1306,7 @@ const InventarioPage: React.FC = () => {
                         <Icon icon="lucide:arrow-right" width={18} />
                       </Button>
                     </Tooltip>
+                    )}
 
                     {invPuedeEliminar && (
                       <Tooltip content="Eliminar" color="danger" delay={100} closeDelay={0}>
@@ -1323,7 +1333,7 @@ const InventarioPage: React.FC = () => {
         </Card>
 
         {/* Modales */}
-        <Modal isOpen={isOpen} onOpenChange={onOpenChange} size="lg" backdrop="blur" placement="top" classNames={{ base: "mt-4" }} isDismissable={false}>
+        <Modal isOpen={isOpen} onOpenChange={onOpenChange} size="lg" backdrop="blur" placement="top" scrollBehavior="inside" radius="lg" classNames={{ base: 'rounded-2xl overflow-hidden max-h-[75vh] mt-4', closeButton: 'hover:bg-default-100 cursor-pointer' }} isDismissable={false}>
           <ModalContent>
             {(onClose) => (
               <>
@@ -1333,7 +1343,7 @@ const InventarioPage: React.FC = () => {
                     <span className="font-bold text-lg text-secondary dark:text-foreground">{modalMode === 'crear' ? 'Nuevo Inventario' : 'Control de Inventario'}</span>
                   </div>
                 </ModalHeader>
-                <ModalBody className="py-6">
+                <ModalBody className="py-6 overflow-y-scroll custom-scrollbar">
                   <FormularioProducto
                     producto={productoSeleccionado}
                     onClose={onClose}
@@ -1348,7 +1358,7 @@ const InventarioPage: React.FC = () => {
           </ModalContent>
         </Modal>
 
-        <Modal key={bulkModalKey} isOpen={isPedidoMasivoOpen} onOpenChange={onPedidoMasivoOpenChange} size="5xl" backdrop="blur" scrollBehavior="inside" radius="lg" classNames={{ base: 'rounded-2xl min-h-[80vh] max-h-[90vh]', body: 'min-h-[620px]' }} isDismissable={false}>
+        <Modal key={bulkModalKey} isOpen={isPedidoMasivoOpen} onOpenChange={onPedidoMasivoOpenChange} size="5xl" backdrop="blur" scrollBehavior="inside" radius="lg" classNames={{ base: 'rounded-2xl overflow-hidden max-h-[75vh]', closeButton: 'hover:bg-default-100 cursor-pointer' }} isDismissable={false}>
           <ModalContent>
             {(onClose) => (
               <PedidoMasivoModal
@@ -1356,7 +1366,8 @@ const InventarioPage: React.FC = () => {
                 onClose={onClose}
                 onNuevoProducto={handleNuevoProducto}
                 initialItems={bulkRetryItems}
-                puedeAccederAbastecimiento={invAbastecimiento}
+                puedeAccederAbastBodega={invAbastBodega}
+                puedeAccederAbastProv={invAbastProv}
                 onOpenGestionAbastecimiento={onAbastecimientoConfigOpen}
                 onProcessComplete={(data, retryItems) => {
                   setBulkResult(data);
@@ -1982,6 +1993,7 @@ interface FormularioProductoProps {
   unidades: IUnidadMedida[];
   onConflictSync?: (producto: IProducto) => void;
   origenContext?: 'inventario' | 'bodega';
+  puedeEditarDatos?: boolean;
 }
 
 /**
@@ -1990,7 +2002,7 @@ interface FormularioProductoProps {
  * @param {FormularioProductoProps} props - Propiedades del componente.
  * @returns {JSX.Element} El formulario de producto.
  */
-export const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto, onClose, mode, categorias, unidades, onConflictSync, origenContext = 'inventario' }) => {
+export const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto, onClose, mode, categorias, unidades, onConflictSync, origenContext = 'inventario', puedeEditarDatos = true }) => {
   const toast = useToast();
   const [nombre, setNombre] = React.useState(producto?.nombre || '');
   const [codProducto, setCodProducto] = React.useState((producto as any)?.codProducto || '');
@@ -2483,17 +2495,19 @@ export const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto
             <Icon icon="lucide:package-2" width={20} />
             <span>Datos del Producto</span>
           </div>
-          <Button
-            isIconOnly
-            size="sm"
-            variant="flat"
-            color="warning"
-            onPress={() => setEditandoDatosBasicos(!editandoDatosBasicos)}
-            title={editandoDatosBasicos ? "Cerrar campos" : "Habilitar edición de campos básicos"}
-            className="shadow-sm"
-          >
-            <Icon icon={editandoDatosBasicos ? "lucide:lock" : "lucide:edit-2"} width={16} />
-          </Button>
+          {puedeEditarDatos && (
+            <Button
+              isIconOnly
+              size="sm"
+              variant="flat"
+              color="warning"
+              onPress={() => setEditandoDatosBasicos(!editandoDatosBasicos)}
+              title={editandoDatosBasicos ? "Cerrar campos" : "Habilitar edición de campos básicos"}
+              className="shadow-sm"
+            >
+              <Icon icon={editandoDatosBasicos ? "lucide:lock" : "lucide:edit-2"} width={16} />
+            </Button>
+          )}
         </div>
       )}
 
@@ -2806,14 +2820,15 @@ interface PedidoMasivoModalProps {
   onNuevoProducto?: () => void;
   initialItems?: ItemPedidoMasivo[];
   onProcessComplete?: (data: IBulkProcessResult, retryItems: ItemPedidoMasivo[]) => void;
-  puedeAccederAbastecimiento?: boolean;
+  puedeAccederAbastBodega?: boolean;
+  puedeAccederAbastProv?: boolean;
   onOpenGestionAbastecimiento?: () => void;
 }
 
 /**
  * Modal para realizar pedidos masivos hacia bodega de tránsito
  */
-const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoProducto, onProcessComplete, initialItems, puedeAccederAbastecimiento = false, onOpenGestionAbastecimiento }) => {
+const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoProducto, onProcessComplete, initialItems, puedeAccederAbastBodega = false, puedeAccederAbastProv = false, onOpenGestionAbastecimiento }) => {
   const toast = useToast();
   const [itemsPedido, setItemsPedido] = React.useState<ItemPedidoMasivo[]>(initialItems ?? []);
   const [productoSeleccionado, setProductoSeleccionado] = React.useState<string>('');
@@ -3489,7 +3504,7 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoP
   };
 
   return (
-    <div className="flex flex-col w-full overflow-hidden rounded-2xl">
+    <>
       <ModalHeader className="flex flex-col gap-3 border-b border-default-100 dark:border-default-50 bg-white dark:bg-content2 px-6 py-4">
         <div className="flex items-center justify-between">
           <div className="flex-1">
@@ -3499,26 +3514,26 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoP
             </p>
           </div>
           <div className="flex items-center gap-1 shrink-0">
-            <Tooltip content={puedeAccederAbastecimiento ? "Abastecimiento de Bodega (solicitudes EN_PEDIDO)" : "Sin permisos"} color="foreground" className="text-xs">
+            <Tooltip content={puedeAccederAbastBodega ? "Abastecimiento de Bodega (solicitudes EN_PEDIDO)" : "Sin permisos"} color="foreground" className="text-xs">
               <Button
                 isIconOnly
                 variant="light"
                 color="primary"
                 size="lg"
                 onPress={onBodegaOpen}
-                isDisabled={!puedeAccederAbastecimiento}
+                isDisabled={!puedeAccederAbastBodega}
               >
                 <Icon icon="lucide:warehouse" width={22} />
               </Button>
             </Tooltip>
-            <Tooltip content={puedeAccederAbastecimiento ? "Abastecimiento de proveedores (OPs confirmadas)" : "Sin permisos"} color="foreground" className="text-xs">
+            <Tooltip content={puedeAccederAbastProv ? "Abastecimiento de proveedores (OPs confirmadas)" : "Sin permisos"} color="foreground" className="text-xs">
               <Button
                 isIconOnly
                 variant="light"
                 color="secondary"
                 size="lg"
                 onPress={() => { onAbastecimientoOpen(); cargarAbastecimiento('semana'); }}
-                isDisabled={!puedeAccederAbastecimiento}
+                isDisabled={!puedeAccederAbastProv}
               >
                 <Icon icon="lucide:truck" width={22} />
               </Button>
@@ -3526,16 +3541,15 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoP
           </div>
         </div>
       </ModalHeader>
-      <ModalBody className="px-4 py-3 space-y-3">
+      <ModalBody className="px-4 py-3 space-y-3 overflow-y-scroll custom-scrollbar max-h-[calc(75vh-150px)]">
           <AnimatePresence initial={false}>
             {!listadoExpandido && (
               <motion.div
                 key="form-masivo"
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                exit={{ opacity: 0, height: 0 }}
-                className="overflow-hidden"
-                transition={{ duration: 0.25 }}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
               >
           {/* Sección para agregar productos */}
           <div className="p-3 border border-default-200 dark:border-default-100 rounded-xl bg-default-50 dark:bg-content2">
@@ -3644,19 +3658,22 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoP
               </Button>
             </div>
           </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           <AnimatePresence>
-            {motivo && (
+            {!listadoExpandido && !!motivo && (
               <motion.div
-                initial={{ opacity: 0, height: 0, y: -10 }}
-                animate={{ opacity: 1, height: 'auto', y: 0 }}
-                exit={{ opacity: 0, height: 0, y: -10 }}
-                className="overflow-hidden"
+                initial={{ opacity: 0, y: -6 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -6 }}
+                transition={{ duration: 0.2 }}
               >
-                <div className="p-3 bg-secondary/5 rounded-medium border border-secondary/10 dark:bg-white/5 dark:border-white/10 mt-2">
-                  <p className="text-secondary dark:text-foreground text-sm font-medium flex items-center gap-2">
-                    <Icon icon="lucide:info" width={16} className="text-secondary shrink-0" />
-                    {(() => {
+                <div className="p-3 bg-secondary/5 rounded-medium border border-secondary/10 dark:bg-white/5 dark:border-white/10">
+                  <p className="text-secondary dark:text-foreground text-sm font-medium flex items-start gap-2">
+                    <Icon icon="lucide:info" width={16} className="text-secondary shrink-0 mt-0.5" />
+                    <span>{(() => {
                       switch (motivo) {
                         case 'ENTRADA_INVENTARIO': return 'Entrada de insumos al inventario';
                         case 'ENTRADA_BODEGA': return 'Entrada de insumos a la bodega de tránsito';
@@ -3670,12 +3687,9 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoP
                         case 'DEVOLUCION': return 'Registrar devolución de insumos al inventario';
                         default: return 'Seleccione un motivo para ver detalles de la operación.';
                       }
-                    })()}
+                    })()}</span>
                   </p>
                 </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
               </motion.div>
             )}
           </AnimatePresence>
@@ -3697,7 +3711,7 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoP
                 />
               </button>
 
-              <div className={`transition-all duration-300 ${listadoExpandido ? 'max-h-[65vh]' : 'max-h-[420px]'} overflow-y-auto`}>
+              <div className={`transition-all duration-300 ${listadoExpandido ? 'max-h-[65vh]' : 'max-h-[420px]'} overflow-y-auto custom-scrollbar`}>
                 <div className="border border-default-200 dark:border-default-100 rounded-xl overflow-hidden bg-white dark:bg-content2">
                   {/* Encabezados */}
                   <div className="grid grid-cols-[2fr_1fr_1fr_1fr_auto] gap-3 px-4 py-3 bg-default-100 dark:bg-default-50 font-semibold text-sm text-default-600 border-b border-default-200 dark:border-default-100">
@@ -3859,7 +3873,7 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoP
         backdrop="blur"
         radius="lg"
         scrollBehavior="inside"
-        classNames={{ base: 'rounded-2xl' }}
+        classNames={{ base: 'rounded-2xl overflow-hidden max-h-[75vh]', closeButton: 'hover:bg-default-100 cursor-pointer' }}
         isDismissable={false}
       >
         <ModalContent>
@@ -3905,7 +3919,7 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoP
                   ))}
                 </div>
               </ModalHeader>
-              <ModalBody className="py-5 px-5 overflow-y-auto max-h-[65vh] space-y-4">
+              <ModalBody className="py-5 px-5 overflow-y-scroll custom-scrollbar max-h-[calc(75vh-150px)] space-y-4">
                 {loadingAbastecimiento ? (
                   <div className="flex justify-center py-20">
                     <Spinner size="lg" color="warning" />
@@ -4111,7 +4125,7 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoP
       </Modal>
 
       {/* Modal de Abastecimiento de Bodega */}
-      <Modal isOpen={isBodegaOpen} onOpenChange={onBodegaOpenChange} size="4xl" backdrop="blur" radius="lg" isDismissable={false} scrollBehavior="inside">
+      <Modal isOpen={isBodegaOpen} onOpenChange={onBodegaOpenChange} size="4xl" backdrop="blur" radius="lg" isDismissable={false} scrollBehavior="inside" classNames={{ base: 'rounded-2xl overflow-hidden max-h-[75vh]', closeButton: 'hover:bg-default-100 cursor-pointer' }}>
         <ModalContent>
           {(onBodegaClose) => (
             <>
@@ -4137,7 +4151,7 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoP
                   )}
                 </div>
               </ModalHeader>
-              <ModalBody className="space-y-4">
+              <ModalBody className="space-y-4 overflow-y-scroll custom-scrollbar max-h-[calc(75vh-150px)]">
                 {/* Filtro de fechas — auto-búsqueda 1.5 s tras seleccionar */}
                 <div className="flex gap-2 items-end">
                   <div className="flex-1">
@@ -4402,7 +4416,7 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoP
         </ModalContent>
       </Modal>
 
-    </div>
+    </>
   );
 };
 

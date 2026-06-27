@@ -14,7 +14,10 @@ import {
   eliminarUsuarioService,
   subirFotoPerfilService,
   obtenerUsuariosPaginadosService,
-  buscarUsuariosService
+  buscarUsuariosService,
+  obtenerEstadoUsuariosService,
+  rolesNombresAIds,
+  obtenerNombreRolPorId
 } from '../services/usuario-service';
 import { useAuth } from '../contexts/auth-context';
 import { useModulePermission } from '../contexts/permission-context';
@@ -38,20 +41,24 @@ const ROLES: RolUsuario[] = [
 const GestionUsuariosPage: React.FC = () => {
   const toast = useToast();
   const confirm = useConfirm();
-  const opcionesRol = ['Todos los roles', ...ROLES];
   const { user: usuarioActual } = useAuth();
   const { canCreate: usuPuedeCrear, canUpdate: usuPuedeEditar, canDelete: usuPuedeEliminar } = useModulePermission('GESTION_USUARIOS');
   const [usuarios, setUsuarios] = useState<IUsuario[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [filtro, setFiltro] = useState('');
 
+  // Filtro por rol (multi-select). rolesSeleccion = lo marcado en el dropdown (no consulta);
+  // rolesAplicados = IDs ya confirmados que SÍ disparan la consulta (se setea al cerrar el selector).
+  const [rolesSeleccion, setRolesSeleccion] = useState<Selection>(new Set([]));
+  const [rolesAplicados, setRolesAplicados] = useState<number[]>([]);
+
   // Pagination states
   const [totalPages, setTotalPages] = useState<number>(1);
   const nextPageRef = React.useRef<number>(2);
-  const hasMoreRef = React.useRef<boolean>(false);
+  const lastLoadedPageRef = React.useRef<number>(1);
   const isLoadingMoreRef = React.useRef<boolean>(false);
+  const isLoadingRef = React.useRef<boolean>(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const scrollEnabledRef = React.useRef<boolean>(false);
   const scrollerRef = React.useRef<HTMLDivElement>(null);
 
   usePageTitle('Gestión de Usuarios', 'Administra los usuarios del sistema y sus permisos', 'lucide:user-cog');
@@ -79,7 +86,7 @@ const GestionUsuariosPage: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [initialFormData, setInitialFormData] = useState<IUsuarioCreacion | null>(null);
 
-  // Cargar usuarios al iniciar y cuando cambie el debounced search
+  // Debounce de búsqueda
   const [debouncedSearch, setDebouncedSearch] = useState('');
 
   useEffect(() => {
@@ -89,34 +96,59 @@ const GestionUsuariosPage: React.FC = () => {
     return () => clearTimeout(timer);
   }, [filtro]);
 
+  // Recargar la lista cuando cambia la búsqueda o el filtro de roles aplicado
   useEffect(() => {
     cargarUsuarios();
-  }, [debouncedSearch]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedSearch, rolesAplicados]);
+
+  // Mantener isLoadingRef sincronizado
+  useEffect(() => { isLoadingRef.current = isLoading; }, [isLoading]);
+
+  // Poll ligero cada 60 s: actualiza SOLO la columna de estado (activo/último acceso)
+  // de los usuarios ya cargados, sin re-paginar ni reordenar la tabla.
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      if (isLoadingRef.current || isLoadingMoreRef.current) return;
+      try {
+        const estados = await obtenerEstadoUsuariosService();
+        const mapa = new Map(estados.map(e => [e.correo, e]));
+        setUsuarios(prev => prev.map(u => {
+          const e = mapa.get(u.correo);
+          return e ? { ...u, ultimoAcceso: e.ultimoAcceso, activo: e.activo } : u;
+        }));
+      } catch {
+        /* fallo silencioso: no molestar al usuario por un refresco de estado */
+      }
+    }, 60_000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const fetchPage = React.useCallback((page: number) =>
+    debouncedSearch.trim()
+      ? buscarUsuariosService(debouncedSearch.trim(), page, rolesAplicados)
+      : obtenerUsuariosPaginadosService(page, rolesAplicados),
+  [debouncedSearch, rolesAplicados]);
+
+  // Confirma el filtro de roles al cerrar el selector (clic afuera). Solo consulta si cambió.
+  const aplicarFiltroRoles = () => {
+    const nombres = Array.from(rolesSeleccion as Set<React.Key>).map(String);
+    const ids = rolesNombresAIds(nombres);
+    const nuevoKey = [...ids].sort((a, b) => a - b).join(',');
+    const actualKey = [...rolesAplicados].sort((a, b) => a - b).join(',');
+    if (nuevoKey !== actualKey) {
+      setRolesAplicados(ids);
+    }
+  };
 
   const cargarUsuarios = async () => {
     try {
       setIsLoading(true);
-      scrollEnabledRef.current = false;
-      hasMoreRef.current = false;
-
-      let data;
-      if (debouncedSearch.trim()) {
-        data = await buscarUsuariosService(debouncedSearch.trim(), 1);
-      } else {
-        data = await obtenerUsuariosPaginadosService(1);
-      }
-
+      const data = await fetchPage(1);
       setUsuarios(data.content);
-      const tp = data.pagination.totalPages;
-      setTotalPages(tp);
+      setTotalPages(data.pagination.totalPages);
       nextPageRef.current = 2;
-      hasMoreRef.current = tp > 1;
-
-      if (tp > 1) {
-        setTimeout(() => {
-          scrollEnabledRef.current = true;
-        }, 1500);
-      }
+      lastLoadedPageRef.current = 1;
     } catch (error) {
       logger.error('Error al cargar usuarios:', error);
       toast.error('Error al cargar usuarios');
@@ -125,51 +157,63 @@ const GestionUsuariosPage: React.FC = () => {
     }
   };
 
-  const cargarMasUsuarios = React.useCallback(async () => {
-    if (isLoadingMoreRef.current || !hasMoreRef.current || !scrollEnabledRef.current) return;
+  // Recarga todas las páginas ya visibles (usado tras crear/editar/eliminar)
+  const recargarLista = async () => {
+    const paginas = lastLoadedPageRef.current;
+    try {
+      setIsLoading(true);
+      const resultados = await Promise.all(
+        Array.from({ length: paginas }, (_, i) => fetchPage(i + 1))
+      );
+      setUsuarios(resultados.flatMap(r => r.content));
+      setTotalPages(resultados[0].pagination.totalPages);
+      nextPageRef.current = paginas + 1;
+    } catch (error) {
+      logger.error('Error al recargar lista:', error);
+      toast.error('Error al actualizar la lista');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
+  const cargarMasUsuarios = React.useCallback(async () => {
+    if (isLoadingMoreRef.current) return;
     const pageToLoad = nextPageRef.current;
     try {
       isLoadingMoreRef.current = true;
       setIsLoadingMore(true);
-
-      let data;
-      if (debouncedSearch.trim()) {
-        data = await buscarUsuariosService(debouncedSearch.trim(), pageToLoad);
-      } else {
-        data = await obtenerUsuariosPaginadosService(pageToLoad);
-      }
-
-      setUsuarios(prev => [...prev, ...data.content]);
+      const data = await fetchPage(pageToLoad);
+      setUsuarios(prev => {
+        const existentes = new Set(prev.map(u => u.correo));
+        const nuevos = data.content.filter(u => !existentes.has(u.correo));
+        return [...prev, ...nuevos];
+      });
       nextPageRef.current = pageToLoad + 1;
-
-      if (pageToLoad >= data.pagination.totalPages || data.content.length === 0) {
-        hasMoreRef.current = false;
-        scrollEnabledRef.current = false;
-      }
+      lastLoadedPageRef.current = pageToLoad;
     } catch (error) {
-      hasMoreRef.current = false;
-      scrollEnabledRef.current = false;
+      logger.error('Error cargando más usuarios:', error);
     } finally {
       isLoadingMoreRef.current = false;
       setIsLoadingMore(false);
     }
-  }, [debouncedSearch]);
+  }, [fetchPage]);
 
-  // Scroll listener
+  // Scroll listener — mismo patrón que inventario.tsx
   useEffect(() => {
     const el = scrollerRef.current;
     if (!el) return;
     const onScroll = () => {
-      if (!scrollEnabledRef.current || isLoadingMoreRef.current || !hasMoreRef.current) return;
+      if (isLoading || isLoadingRef.current) return;
       const { scrollTop, clientHeight, scrollHeight } = el;
       if (scrollTop + clientHeight > scrollHeight - 300) {
-        cargarMasUsuarios();
+        if (nextPageRef.current <= totalPages) {
+          cargarMasUsuarios();
+        }
       }
     };
     el.addEventListener('scroll', onScroll, { passive: true });
     return () => el.removeEventListener('scroll', onScroll);
-  }, [cargarMasUsuarios]);
+  }, [isLoading, usuarios.length, totalPages, cargarMasUsuarios]);
 
   const abrirModalCrear = () => {
     setModoEdicion(false);
@@ -196,20 +240,12 @@ const GestionUsuariosPage: React.FC = () => {
     setModoEdicion(true);
     setUsuarioEditando(usuario);
 
-    setFormData({
-      primeroNombre: usuario.primerNombre || '',
-      segundoNombre: usuario.segundoNombre || '',
-      apellidoPaterno: usuario.apellidoPaterno || '',
-      apellidoMaterno: usuario.apellidoMaterno || '',
-      username: usuario.username || usuario.correo.split('@')[0],
-      email: usuario.correo,
-      password: '',
-      confirmarPassword: '',
-      rol: usuario.rol as RolUsuario,
-      fotoPerfil: usuario.fotoPerfil
-    });
+    // Usar idRol para mapear al nombre exacto del selector (evita mismatch con el string formateado)
+    const rolParaSelector: RolUsuario = usuario.idRol
+      ? obtenerNombreRolPorId(usuario.idRol)
+      : usuario.rol;
 
-    setInitialFormData({
+    const datosBase = {
       primeroNombre: usuario.primerNombre || '',
       segundoNombre: usuario.segundoNombre || '',
       apellidoPaterno: usuario.apellidoPaterno || '',
@@ -218,10 +254,13 @@ const GestionUsuariosPage: React.FC = () => {
       email: usuario.correo,
       password: '',
       confirmarPassword: '',
-      rol: usuario.rol as RolUsuario,
+      rol: rolParaSelector,
       fotoPerfil: usuario.fotoPerfil
-    });
-    setSelectedRolForm(new Set([usuario.rol]));
+    };
+
+    setFormData(datosBase);
+    setInitialFormData(datosBase);
+    setSelectedRolForm(new Set([rolParaSelector]));
     setArchivoFoto(null);
     onOpen();
   };
@@ -296,7 +335,7 @@ const GestionUsuariosPage: React.FC = () => {
         toast.success('Usuario creado correctamente');
       }
 
-      await cargarUsuarios();
+      await recargarLista();
       onOpenChange();
     } catch (error: any) {
       toast.error(error.message || 'Error al guardar usuario');
@@ -329,7 +368,7 @@ const GestionUsuariosPage: React.FC = () => {
     try {
       await eliminarUsuarioService(usuario.correo);
       toast.success('Usuario desactivado correctamente');
-      await cargarUsuarios();
+      await recargarLista();
     } catch (error: any) {
       toast.error(error.message || 'Error al desactivar usuario');
     }
@@ -386,6 +425,20 @@ const GestionUsuariosPage: React.FC = () => {
     }
   };
 
+  // 10 min = ventana activa para considerar al usuario en línea
+  const UMBRAL_EN_LINEA_MS = 10 * 60 * 1000;
+
+  const estaEnLinea = (usuario: IUsuario): boolean => {
+    if (!usuario.activo || !usuario.ultimoAcceso) return false;
+    return Date.now() - new Date(usuario.ultimoAcceso).getTime() < UMBRAL_EN_LINEA_MS;
+  };
+
+  const getEstadoOnline = (usuario: IUsuario): { color: 'success' | 'danger' | 'default'; label: string; tooltip: string } => {
+    if (!usuario.activo) return { color: 'danger', label: 'Inactivo', tooltip: 'Cuenta desactivada' };
+    if (estaEnLinea(usuario)) return { color: 'success', label: 'En línea', tooltip: 'Con actividad en los últimos 10 minutos' };
+    return { color: 'default', label: 'Desconectado', tooltip: usuario.ultimoAcceso ? 'Sin actividad reciente en el sistema' : 'Nunca ha iniciado sesión' };
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-96">
@@ -422,8 +475,27 @@ const GestionUsuariosPage: React.FC = () => {
                 />
               </div>
 
-              <div className="w-full md:w-1/3 invisible">
-                {/* Filtro por rol removido */}
+              <div className="w-full md:w-1/3">
+                <Select
+                  aria-label="Filtrar por rol"
+                  selectionMode="multiple"
+                  placeholder="Todos los roles"
+                  selectedKeys={rolesSeleccion}
+                  onSelectionChange={setRolesSeleccion}
+                  onOpenChange={(open) => { if (!open) aplicarFiltroRoles(); }}
+                  variant="bordered"
+                  startContent={<Icon icon="lucide:filter" className="text-default-400 flex-shrink-0" />}
+                  classNames={{ trigger: "bg-white dark:bg-default-100/50" }}
+                  renderValue={(items) =>
+                    items.length === 0
+                      ? 'Todos los roles'
+                      : `${items.length} rol${items.length > 1 ? 'es' : ''} seleccionado${items.length > 1 ? 's' : ''}`
+                  }
+                >
+                  {ROLES.map((rol) => (
+                    <SelectItem key={rol}>{rol}</SelectItem>
+                  ))}
+                </Select>
               </div>
 
               {usuPuedeCrear && (
@@ -481,7 +553,7 @@ const GestionUsuariosPage: React.FC = () => {
                           name={usuario.nombreCompleto}
                           size="md"
                           isBordered
-                          color={usuario.activo ? "success" : "default"}
+                          color={estaEnLinea(usuario) ? "success" : !usuario.activo ? "danger" : "default"}
                           className="flex-shrink-0"
                           classNames={{ img: "scale-90" }}
                         />
@@ -516,14 +588,21 @@ const GestionUsuariosPage: React.FC = () => {
                       </Chip>
                     </TableCell>
                     <TableCell>
-                      <Chip
-                        size="sm"
-                        color={usuario.activo ? 'success' : 'danger'}
-                        variant="dot"
-                        className="border-none"
-                      >
-                        {usuario.activo ? 'Activo' : 'Inactivo'}
-                      </Chip>
+                      {(() => {
+                        const estado = getEstadoOnline(usuario);
+                        return (
+                          <Tooltip content={estado.tooltip} delay={600} size="sm">
+                            <Chip
+                              size="sm"
+                              color={estado.color}
+                              variant="dot"
+                              className="border-none cursor-default"
+                            >
+                              {estado.label}
+                            </Chip>
+                          </Tooltip>
+                        );
+                      })()}
                     </TableCell>
                     <TableCell>
                       <span className="text-sm text-default-600">
@@ -691,14 +770,15 @@ const GestionUsuariosPage: React.FC = () => {
                   </div>
 
                   <Select
+                    key={`rol-${modoEdicion ? (usuarioEditando?.idUsuario ?? usuarioEditando?.id ?? 'edit') : 'create'}`}
                     label="Rol"
                     placeholder="Seleccione un rol"
-                    selectedKeys={selectedRolForm}
+                    defaultSelectedKeys={new Set([formData.rol])}
                     onSelectionChange={(keys) => {
                       setSelectedRolForm(keys);
                       const selectedKey = Array.from(keys)[0];
                       if (selectedKey) {
-                        setFormData({ ...formData, rol: selectedKey as RolUsuario });
+                        setFormData(prev => ({ ...prev, rol: selectedKey as RolUsuario }));
                       }
                     }}
                     isRequired

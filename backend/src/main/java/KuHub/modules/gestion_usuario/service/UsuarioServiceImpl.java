@@ -7,6 +7,7 @@ import KuHub.modules.gestion_usuario.dtos.response.proyection.UserIdNameView;
 import KuHub.modules.gestion_usuario.dtos.response.proyection.UsersToManageCourseOrSectionView;
 import KuHub.modules.gestion_usuario.dtos.record.UserIdNameDTO;
 import KuHub.modules.gestion_usuario.dtos.request.CreateUser;
+import KuHub.modules.gestion_usuario.dtos.request.FindUsersRequest;
 import KuHub.modules.gestion_usuario.dtos.request.SearchUserRequest;
 import KuHub.modules.gestion_usuario.dtos.request.UpdateUser;
 import KuHub.modules.gestion_usuario.dtos.response.PaginatedUsersDTO;
@@ -93,10 +94,13 @@ public class UsuarioServiceImpl implements UsuarioService {
      */
     @Transactional(readOnly = true)
     @Override
-    public PaginatedUsersDTO findAllUsersWithPagination(Integer pageRequested) {
+    public PaginatedUsersDTO findAllUsersWithPagination(FindUsersRequest request) {
+
+        Integer pageRequested = (request != null) ? request.getPage() : null;
+        String rolesCsv = toRolesCsv((request != null) ? request.getRoles() : null);
 
         // 1. Obtener el conteo total de usuarios (excluyendo los de sistema 1-7)
-        long totalRegistros = usuarioRepository.countUsuariosParaFrontend();
+        long totalRegistros = usuarioRepository.countUsuariosParaFrontend(rolesCsv);
 
         // 2. Calcular los parámetros de paginación asimétrica (limit y offset)
         // Si pageRequested es null, la utilidad asigna la página 1 por defecto
@@ -105,7 +109,8 @@ public class UsuarioServiceImpl implements UsuarioService {
         // 3. Consultar la base de datos usando la proyección UsersView
         List<UsersView> usuarios = usuarioRepository.findUsuariosParaFrontend(
                 paging.limit(),
-                paging.offset()
+                paging.offset(),
+                rolesCsv
         );
 
         // 4. Envolver el resultado en el DTO estandarizado
@@ -120,8 +125,10 @@ public class UsuarioServiceImpl implements UsuarioService {
                 ? StringUtils.normalizeSpaces(request.getTerm())
                 : "";
 
+        String rolesCsv = toRolesCsv(request.getRoles());
+
         // 2. Obtener el conteo total filtrado
-        long totalMatches = usuarioRepository.countSearchUsuariosParaFrontend(term);
+        long totalMatches = usuarioRepository.countSearchUsuariosParaFrontend(term, rolesCsv);
 
         // 3. Calcular limit y offset (Lógica 20/10)
         PaginationUtils.PagingResult paging = PaginationUtils.buildPaging(request.getPage(), totalMatches);
@@ -130,10 +137,28 @@ public class UsuarioServiceImpl implements UsuarioService {
         List<UsersView> usuarios = usuarioRepository.searchUsuariosParaFrontend(
                 term,
                 paging.limit(),
-                paging.offset()
+                paging.offset(),
+                rolesCsv
         );
 
         return new PaginatedUsersDTO(usuarios, paging);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<UserStatusView> findUsersStatus() {
+        return usuarioRepository.findUsuariosStatus();
+    }
+
+    /** Convierte la lista de IDs de rol a CSV ("3,5") o null si está vacía (sin filtro). */
+    private String toRolesCsv(List<Integer> roles) {
+        if (roles == null || roles.isEmpty()) {
+            return null;
+        }
+        return roles.stream()
+                .filter(Objects::nonNull)
+                .map(String::valueOf)
+                .collect(Collectors.joining(","));
     }
 
     /**PENDIENTE EL GUARDADO DE LA FOTO DEBIDO CONFIRMACION DE ALOJAMIENTO EN EL SERVIDOR

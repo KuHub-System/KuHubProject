@@ -4,7 +4,7 @@
  */
 
 import api from '../config/Axios';
-import { IUsuario, IUsuarioCreacion, IUsuarioActualizacion, IPaginatedUsuarioResponse } from '../types/usuario.types';
+import { IUsuario, IUsuarioCreacion, IUsuarioActualizacion, IPaginatedUsuarioResponse, IUsuarioEstado, RolUsuario } from '../types/usuario.types';
 
 /**
  * Mapeo centralizado de roles Frontend → Backend
@@ -19,6 +19,23 @@ const ROL_MAP: { [key: string]: number } = {
   'Encargado de Bodega': 6,
   'Asistente de Bodega': 7
 };
+
+/**
+ * Mapeo inverso: ID de rol Backend → nombre de rol para el selector del modal.
+ * Para ID 5 se usa 'Profesor' porque 'Docente' no aparece en el ROLES del selector.
+ */
+const ID_ROL_A_NOMBRE: { [key: number]: RolUsuario } = {
+  1: 'Administrador',
+  2: 'Co-Administrador',
+  3: 'Gestor de Pedidos',
+  4: 'Profesor a Cargo',
+  5: 'Profesor',
+  6: 'Encargado de Bodega',
+  7: 'Asistente de Bodega'
+};
+
+export const obtenerNombreRolPorId = (idRol: number): RolUsuario =>
+  ID_ROL_A_NOMBRE[idRol] ?? 'Profesor';
 
 /**
  * Función helper para obtener el ID del rol con validación
@@ -40,12 +57,27 @@ export const obtenerUsuariosService = async (): Promise<IUsuario[]> => {
 };
 
 /**
+ * Convierte una lista de nombres de rol del frontend a IDs únicos del backend.
+ * 'Docente' y 'Profesor' comparten el id 5, por eso se deduplican.
+ */
+export const rolesNombresAIds = (roles: string[]): number[] => {
+  const ids = roles
+    .map(r => ROL_MAP[r])
+    .filter((id): id is number => typeof id === 'number');
+  return Array.from(new Set(ids));
+};
+
+/**
  * Obtener usuarios paginados - BACKEND
  * POST /v1/usuarios/find-all-users-with-pagination
+ * @param roles IDs de rol a filtrar (opcional). Vacío = sin filtro.
  */
-export const obtenerUsuariosPaginadosService = async (page: number): Promise<IPaginatedUsuarioResponse> => {
+export const obtenerUsuariosPaginadosService = async (
+  page: number,
+  roles: number[] = []
+): Promise<IPaginatedUsuarioResponse> => {
   try {
-    const response = await api.post('/usuarios/find-all-users-with-pagination', page);
+    const response = await api.post('/usuarios/find-all-users-with-pagination', { page, roles });
     return {
       content: response.data.content.map((usuario: any) => convertirPaginatedUsuarioBackendAFrontend(usuario)),
       pagination: response.data.pagination
@@ -58,10 +90,15 @@ export const obtenerUsuariosPaginadosService = async (page: number): Promise<IPa
 /**
  * Buscar usuarios por filtro - BACKEND
  * POST /v1/usuarios/find-users-by-filter
+ * @param roles IDs de rol a filtrar (opcional). Vacío = sin filtro.
  */
-export const buscarUsuariosService = async (term: string, page: number): Promise<IPaginatedUsuarioResponse> => {
+export const buscarUsuariosService = async (
+  term: string,
+  page: number,
+  roles: number[] = []
+): Promise<IPaginatedUsuarioResponse> => {
   try {
-    const response = await api.post('/usuarios/find-users-by-filter', { term, page });
+    const response = await api.post('/usuarios/find-users-by-filter', { term, page, roles });
     return {
       content: response.data.content.map((usuario: any) => convertirPaginatedUsuarioBackendAFrontend(usuario)),
       pagination: response.data.pagination
@@ -72,11 +109,32 @@ export const buscarUsuariosService = async (term: string, page: number): Promise
 };
 
 /**
+ * Obtener el estado de conexión de todos los usuarios - BACKEND
+ * GET /v1/usuarios/online-status
+ * Endpoint ligero: solo email + ultimoAcceso + activo, para refrescar la columna "Estado".
+ */
+export const obtenerEstadoUsuariosService = async (): Promise<IUsuarioEstado[]> => {
+  try {
+    const response = await api.get('/usuarios/online-status');
+    return (response.data || []).map((u: any) => ({
+      correo: u.email,
+      ultimoAcceso: u.ultimoAcceso,
+      activo: u.activo
+    }));
+  } catch (error: any) {
+    throw new Error(error.response?.data?.message || 'Error al obtener estado de usuarios');
+  }
+};
+
+/**
  * Función helper para convertir usuario paginado del backend al formato frontend
  */
 function convertirPaginatedUsuarioBackendAFrontend(u: any): IUsuario {
+  const idRol: number | undefined = u.idRol ?? undefined;
   return {
-    id: (u.idUsuario || u.email).toString(),
+    id: u.idUsuario ? u.idUsuario.toString() : u.email,
+    idUsuario: u.idUsuario ?? undefined,
+    idRol,
     nombreCompleto: u.nombreCompleto,
     correo: u.email,
     contrasena: '',
@@ -85,7 +143,7 @@ function convertirPaginatedUsuarioBackendAFrontend(u: any): IUsuario {
     segundoNombre: u.segundoNombre,
     apellidoPaterno: u.apellidoPaterno,
     apellidoMaterno: u.apellidoMaterno,
-    rol: u.rolFormateado,
+    rol: idRol ? (ID_ROL_A_NOMBRE[idRol] ?? u.rolFormateado) : u.rolFormateado,
     fotoPerfil: u.urlFotoPerfil,
     activo: u.activo,
     fechaCreacion: u.fechaCreacion || '',

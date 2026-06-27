@@ -5,6 +5,7 @@ import KuHub.modules.gestion_usuario.dtos.dtofilter.UserAuth;
 import KuHub.modules.gestion_usuario.dtos.response.proyection.UsersToManageCourseOrSectionView;
 import KuHub.modules.gestion_usuario.dtos.record.UserIdNameDTO;
 import KuHub.modules.gestion_usuario.dtos.request.CreateUser;
+import KuHub.modules.gestion_usuario.dtos.request.FindUsersRequest;
 import KuHub.modules.gestion_usuario.dtos.request.SearchUserRequest;
 import KuHub.modules.gestion_usuario.dtos.request.UpdateUser;
 import KuHub.modules.gestion_usuario.dtos.response.PaginatedUsersDTO;
@@ -22,8 +23,9 @@ public interface UsuarioService {
     Usuario findUserByToken ();
     List<UsersToManageCourseOrSectionView> usersToManageCourse();
     List<UsersToManageCourseOrSectionView> usersAssignedToSection();
-    PaginatedUsersDTO findAllUsersWithPagination(Integer pageRequested);
+    PaginatedUsersDTO findAllUsersWithPagination(FindUsersRequest request);
     PaginatedUsersDTO searchUsers(SearchUserRequest request);
+    List<UserStatusView> findUsersStatus();
     boolean createUser (CreateUser request);
     boolean updateUser(String currentEmail,UpdateUser request);
     boolean deleteUser(String email);

@@ -496,14 +496,21 @@ const ConglomeradoPedidosPage: React.FC = () => {
   };
 
   const handleAprobarTodos = async () => {
-    const pendientes = (consolidateData?.pedidosAprobacion ?? [])
-      .filter(p => p.estadoPedido === 'PENDIENTE')
-      .map(p => p.idPedido);
-    if (pendientes.length === 0) return;
+    const pedidosPend = (consolidateData?.pedidosAprobacion ?? [])
+      .filter(p => p.estadoPedido === 'PENDIENTE');
+    if (pedidosPend.length === 0) return;
+
+    // Si hay un solo pedido pendiente → flujo individual con modal de reserva
+    if (pedidosPend.length === 1) {
+      handleAprobarPedido(pedidosPend[0]);
+      return;
+    }
+
+    // Múltiples pendientes → aprobación masiva
     setIsAprobando(true);
     try {
-      await aprobarPedidosService({ idsPedidos: pendientes, estado: 'APROBADO' });
-      toast.success(`${pendientes.length} pedido${pendientes.length > 1 ? 's' : ''} aprobado${pendientes.length > 1 ? 's' : ''} correctamente`);
+      await aprobarPedidosService({ idsPedidos: pedidosPend.map(p => p.idPedido), estado: 'APROBADO' });
+      toast.success(`${pedidosPend.length} pedidos aprobados correctamente`);
       await recargarDatos();
     } catch { toast.error('Error al aprobar los pedidos'); }
     finally { setIsAprobando(false); }
@@ -1855,7 +1862,7 @@ const ConglomeradoPedidosPage: React.FC = () => {
                   {pedidoReservaModal?.estadoPedido === 'APROBADO' ? (
                     'Estos productos tienen stock disponible. Si reservas, ese stock queda asociado a las solicitudes de este pedido y dejará de aparecer como disponible.'
                   ) : (
-                    'Estos productos tienen stock disponible. Si reservas, ese stock queda asociado a las solicitudes de este pedido y dejará de aparecer como disponible. Igual puedes no reservar y hacerlo después al generar la orden de compra.'
+                    'Estos productos tienen stock disponible. Si reservas, ese stock queda asociado a las solicitudes de este pedido y dejará de aparecer como disponible. Igual puedes no reservar y hacerlo después al generar la orden de pedido.'
                   )}
                 </span>
               </ModalHeader>

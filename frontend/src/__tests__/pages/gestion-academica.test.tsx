@@ -269,9 +269,8 @@ describe('GestionAsignaturasPage (GA)', () => {
   });
 
   // ── GA-09 ──────────────────────────────────────────────────────────────────
-  it('GA-09: sin GESTION_ACADEMICA pero con ADMIN_SALAS_RESERVAS → redirige a vista salas', async () => {
+  it('GA-09: sin GESTION_ACADEMICA pero con GA_VER_RESERVAS → redirige a vista salas', async () => {
     mockPermisos({
-      ADMIN_SALAS_RESERVAS: { canRead: true },
       GA_VER_RESERVAS:      { canRead: true },
     });
     renderPage();
@@ -283,7 +282,6 @@ describe('GestionAsignaturasPage (GA)', () => {
   it('GA-10: rail de navegación alterna entre vista académica y sala/reservas', async () => {
     mockPermisos({
       GESTION_ACADEMICA:    { canRead: true },
-      ADMIN_SALAS_RESERVAS: { canRead: true },
       GA_VER_RESERVAS:      { canRead: true },
     });
     const { container } = renderPage();

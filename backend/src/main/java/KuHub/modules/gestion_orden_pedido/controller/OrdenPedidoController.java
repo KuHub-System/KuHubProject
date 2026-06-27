@@ -92,6 +92,26 @@ public class OrdenPedidoController {
     }
 
     /**
+     * Cotización filtrada para re-generar OPs canceladas. Retorna solo los productos que
+     * formaban parte de las OPs CANCELADAS de los pedidos indicados; comportamiento idéntico
+     * al flujo normal (proveedor menor precio, distribución por día, mover solicitudes).
+     *
+     * 💻 INTEGRACIÓN CON EL FRONTEND:
+     * - **Servicio frontend:** {@code obtenerCotizacionDeCanceladasService} en proveedor-service.ts
+     * - **Pantalla:** Modal "Generar Orden Pedido" (Paso 2) cuando el pedido tiene chip "Existe un registro cancelado".
+     *
+     * GET /api/v1/orden-pedido/cotizacion-de-canceladas?idsPedido=1,2
+     */
+    @GetMapping("/cotizacion-de-canceladas")
+    public ResponseEntity<CotizacionConsolidadaDTO.CotizacionConsolidadaResponse> obtenerCotizacionDeCanceladas(
+            @RequestParam List<Integer> idsPedido
+    ) {
+        return ResponseEntity
+                .status(200)
+                .body(ordenPedidoService.obtenerCotizacionDeCanceladas(idsPedido));
+    }
+
+    /**
      * Disponible real por producto = (inventario + bodega de tránsito) − demanda comprometida
      * (Σ demanda de solicitudes EN_PEDIDO ya abastecidas, vía la puente detalle_orden_pedido_solicitud).
      * Permite ver, al generar la OP, cuánto sobra de cada producto para pedir menos al proveedor.

@@ -26,6 +26,7 @@ import {
     cambiarEstadoCategoriaService
 } from '../../services/categoria-service';
 import { useToast } from '../../hooks/useToast';
+import { useModulePermission } from '../../contexts/permission-context';
 
 interface GestionCategoriasModalProps {
     isOpen: boolean;
@@ -39,6 +40,7 @@ const GestionCategoriasModal: React.FC<GestionCategoriasModalProps> = ({
     onRefresh
 }) => {
     const toast = useToast();
+    const { canCreate: puedeCrear, canUpdate: puedeActualizar, canDelete: puedeEliminar } = useModulePermission('GESTION_CATEGORIAS');
     const [categorias, setCategorias] = React.useState<ICategoria[]>([]);
     const [nuevaCategoria, setNuevaCategoria] = React.useState('');
     const [isAdding, setIsAdding] = React.useState(false);
@@ -233,11 +235,6 @@ const GestionCategoriasModal: React.FC<GestionCategoriasModalProps> = ({
             return;
         }
 
-        if (confirmText !== 'ELIMINAR') {
-            toast.warning('Escribe ELIMINAR para confirmar');
-            return;
-        }
-
         setIsDeleting(true);
         try {
             const exito = await eliminarCategoriaService(catParaEliminar.id);
@@ -289,17 +286,18 @@ const GestionCategoriasModal: React.FC<GestionCategoriasModalProps> = ({
 
     return (
         <>
-            <Modal isOpen={isOpen} onOpenChange={onOpenChange} size="md" scrollBehavior="inside" isDismissable={false}>
+            <Modal isOpen={isOpen} onOpenChange={onOpenChange} size="md" scrollBehavior="inside" isDismissable={false} backdrop="blur" radius="lg" classNames={{ base: 'rounded-2xl overflow-hidden max-h-[75vh]', closeButton: 'hover:bg-default-100 cursor-pointer' }}>
                 <ModalContent>
                     {(onClose) => (
                         <>
                             <ModalHeader className="flex flex-col gap-1">
                                 Gestión de Categorías
                             </ModalHeader>
-                            <ModalBody>
+                            <ModalBody className="overflow-y-scroll custom-scrollbar">
                                 <div className="flex flex-col gap-4">
                                     <div className="flex items-center justify-between">
                                         <h3 className="text-sm font-semibold text-default-500 uppercase">Lista de Categorías</h3>
+                                        {puedeCrear && (
                                         <Button
                                             isIconOnly
                                             size="sm"
@@ -309,6 +307,7 @@ const GestionCategoriasModal: React.FC<GestionCategoriasModalProps> = ({
                                         >
                                             <Icon icon={isAdding ? "lucide:minus" : "lucide:plus"} />
                                         </Button>
+                                        )}
                                     </div>
 
                                     {isAdding && (
@@ -341,21 +340,8 @@ const GestionCategoriasModal: React.FC<GestionCategoriasModalProps> = ({
 
                                             <p className="text-sm text-danger-700">
                                                 ¿Estás seguro de eliminar la categoría <strong>{catParaEliminar.nombre}</strong>?
+                                                Esta acción no se puede deshacer.
                                             </p>
-
-                                            <div className="flex flex-col gap-1">
-                                                <p className="text-xs text-danger-500 italic">
-                                                    Escribe <strong>ELIMINAR</strong> para confirmar.
-                                                </p>
-                                                <Input
-                                                    size="sm"
-                                                    placeholder="ELIMINAR"
-                                                    value={confirmText}
-                                                    onValueChange={setConfirmText}
-                                                    isInvalid={confirmText !== '' && confirmText !== 'ELIMINAR'}
-                                                    autoFocus
-                                                />
-                                            </div>
 
                                             <div className="flex gap-2 justify-end">
                                                 <Button
@@ -365,6 +351,7 @@ const GestionCategoriasModal: React.FC<GestionCategoriasModalProps> = ({
                                                         setShowDeleteConfirm(false);
                                                         setCatParaEliminar(null);
                                                     }}
+                                                    isDisabled={isDeleting}
                                                 >
                                                     Cancelar
                                                 </Button>
@@ -373,7 +360,6 @@ const GestionCategoriasModal: React.FC<GestionCategoriasModalProps> = ({
                                                     color="danger"
                                                     onPress={handleConfirmarEliminacionSimple}
                                                     isLoading={isDeleting}
-                                                    isDisabled={confirmText !== 'ELIMINAR'}
                                                 >
                                                     Eliminar
                                                 </Button>
@@ -447,8 +433,9 @@ const GestionCategoriasModal: React.FC<GestionCategoriasModalProps> = ({
                                                     )}
 
                                                     <div className="flex items-center gap-1">
-                                                        {editId !== cat.id && (
+                                                        {editId !== cat.id && (puedeActualizar || puedeEliminar) && (
                                                             <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                                                {puedeActualizar && (
                                                                 <Button
                                                                     isIconOnly
                                                                     size="sm"
@@ -457,6 +444,8 @@ const GestionCategoriasModal: React.FC<GestionCategoriasModalProps> = ({
                                                                 >
                                                                     <Icon icon="lucide:edit-2" className="text-default-500" />
                                                                 </Button>
+                                                                )}
+                                                                {puedeEliminar && (
                                                                 <Button
                                                                     isIconOnly
                                                                     size="sm"
@@ -466,8 +455,10 @@ const GestionCategoriasModal: React.FC<GestionCategoriasModalProps> = ({
                                                                 >
                                                                     <Icon icon="lucide:trash-2" />
                                                                 </Button>
+                                                                )}
                                                             </div>
                                                         )}
+                                                        {puedeActualizar && (
                                                         <div className="flex items-center gap-2">
                                                             {togglingIds.has(cat.id) && (
                                                                 <div className="w-3 h-3 border-2 border-success border-t-transparent rounded-full animate-spin"></div>
@@ -493,6 +484,7 @@ const GestionCategoriasModal: React.FC<GestionCategoriasModalProps> = ({
                                                                 </div>
                                                             </label>
                                                         </div>
+                                                        )}
                                                     </div>
                                                 </div>
                                             ))

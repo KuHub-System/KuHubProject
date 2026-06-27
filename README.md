@@ -19,7 +19,7 @@ Sistema de gestión de bodega e inventario desarrollado para la escuela de Gastr
 - [Documentación de la API](#documentación-de-la-api)
 - [Estructura del equipo / Autores](#estructura-del-equipo--autores)
 - [Tests / Pruebas](#tests--pruebas)
-- [Licencia](#licencia)
+- [Licencia y Términos de Uso](#licencia)
 - [Módulos del sistema](#módulos-del-sistema)
 - [Roles y permisos](#roles-y-permisos)
 - [Flujos de negocio principales](#flujos-de-negocio-principales)
@@ -315,6 +315,7 @@ http://localhost:8080/swagger-ui/index.html
 | Prefijo | Módulo |
 |---|---|
 | `POST /api/v1/auth/login` | Autenticación — obtener token JWT |
+| `POST /api/v1/auth/terminos/aceptar` | Registrar aceptación de términos y condiciones |
 | `/api/v1/usuario/**` | Gestión de usuarios |
 | `/api/v1/rol/**` | Gestión de roles y permisos |
 | `/api/v1/solicitud/**` | Solicitudes de ingredientes |
@@ -332,10 +333,10 @@ Todos los endpoints (excepto `/auth/login`) requieren el header `Authorization: 
 
 ## Estructura del equipo / Autores
 
-| Nombre | Área | Responsabilidades |
-|---|---|---|
-| **Matheus de Lara** | Fullstack | Arquitecto del sistema y responsable general del proyecto. Planificación de arquitectura y modelo de base de datos. Desarrollo backend (integración y lógica de negocio) e implementación de vistas personalizadas en el frontend. Infraestructura, CI/CD y despliegue. Contacto secundario con el cliente cuando Francisco no puede comparecer. |
-| **Francisco Gomes** | Fullstack | Desarrollo backend y frontend según necesidad. Especialista en base de datos (diseño de consultas, optimización y migraciones). Contacto principal con el cliente: levantamiento de requerimientos y acuerdos. |
+| Nombre               | Área | Responsabilidades |
+|----------------------|---|---|
+| **Matheus de Lara**  | Fullstack | Arquitecto del sistema y responsable general del proyecto. Planificación de arquitectura y modelo de base de datos. Desarrollo backend (integración y lógica de negocio) e implementación de vistas personalizadas en el frontend. Infraestructura, CI/CD y despliegue. Contacto secundario con el cliente cuando Francisco no puede comparecer. |
+| **Francisco Gomez**  | Fullstack | Desarrollo backend y frontend según necesidad. Especialista en base de datos (diseño de consultas, optimización y migraciones). Contacto principal con el cliente: levantamiento de requerimientos y acuerdos. |
 | **Benjamin Aravena** | Fullstack | Responsable de la experiencia de usuario (UX) e implementaciones frontend de alta calidad con tecnologías modernas. Contacto auxiliar con el cliente. |
 
 ---
@@ -369,6 +370,21 @@ export JAVA_HOME=/ruta/a/jdk21
 Proyecto académico desarrollado para la asignatura de Taller de Proyecto en **DuocUC**. Todos los derechos reservados.
 
 El uso, distribución o modificación del código fuente fuera del contexto académico debe contar con autorización explícita de los autores.
+
+### Términos y Condiciones de Uso
+
+El sistema incluye un módulo de **Términos y Condiciones de Uso y Política de Privacidad** (versión 1.0, junio de 2026). Al iniciar sesión por primera vez, cada usuario debe aceptarlos explícitamente para continuar.
+
+El contenido legal se encuentra centralizado en `frontend/src/components/TerminosCondicionesContent.tsx` e incluye:
+
+- Objeto y aceptación del uso institucional
+- Tratamiento de datos personales recopilados
+- Marco legal chileno aplicable (Ley N° 19.628 y Ley N° 21.719)
+- Derechos del titular de los datos
+- Política de uso aceptable y confidencialidad
+- Consecuencias del incumplimiento
+
+El backend registra la aceptación vía `POST /api/v1/auth/terminos/aceptar` y el flag `terminos_aceptados` queda persistido por usuario.
 
 ---
 
@@ -539,37 +555,266 @@ El archivo `.env` en el servidor es generado automáticamente por el pipeline. *
 
 ```
 KuHubProject/
-├── backend/                        # Spring Boot (Java 21)
-│   └── src/main/java/KuHub/
-│       ├── config/
-│       │   └── security/           # JWT filters, rate limiting, permisos dinámicos
-│       ├── modules/
-│       │   ├── gestion_usuario/
-│       │   ├── gestion_academica/
-│       │   ├── gestion_inventario/
-│       │   ├── gestion_solicitud/
-│       │   ├── gestion_pedido/
-│       │   ├── gestion_proveedor/
-│       │   ├── gestion_sistema/
-│       │   ├── pedido_semana_a_bodega/
-│       │   └── dashboard/
-│       └── utils/
 │
-├── frontend/                       # React 18 + TypeScript + Vite
+├── backend/                                    # Spring Boot (Java 21)
+│   ├── pom.xml
 │   └── src/
-│       ├── pages/                  # 18 páginas lazy-loaded
-│       ├── components/             # Componentes reutilizables
-│       ├── services/               # 25+ clientes API tipados con Axios
-│       ├── types/                  # Interfaces TypeScript por dominio
-│       ├── contexts/               # Auth, Permisos, Tema
-│       ├── hooks/                  # useToast, useConfirm, useModulePermission
-│       ├── layouts/                # auth-layout, main-layout
-│       └── App.tsx                 # Router principal + ProtectedRoute
+│       ├── main/
+│       │   ├── java/KuHub/
+│       │   │   ├── config/
+│       │   │   │   └── security/               # JwtAuthFilter, JwtValidationFilter,
+│       │   │   │                               # RateLimitFilter, DynamicPermissionService
+│       │   │   ├── modules/
+│       │   │   │   ├── gestion_usuario/        # Usuario, Rol, PermisoRol, RefreshToken
+│       │   │   │   │   ├── assemblers/
+│       │   │   │   │   ├── controller/         # AuthController, UsuarioController (v1+v2)
+│       │   │   │   │   │                       # RolController (v1+v2), PermisoRolController
+│       │   │   │   │   ├── dtos/
+│       │   │   │   │   ├── entity/
+│       │   │   │   │   ├── exceptions/
+│       │   │   │   │   ├── repository/
+│       │   │   │   │   └── service/
+│       │   │   │   ├── gestion_academica/      # Asignatura, Seccion, Semana, Sala,
+│       │   │   │   │   ├── assemblers/         # BloqueHorario, ReservaSala
+│       │   │   │   │   ├── controller/
+│       │   │   │   │   ├── dtos/
+│       │   │   │   │   ├── entity/
+│       │   │   │   │   ├── exceptions/
+│       │   │   │   │   ├── repository/
+│       │   │   │   │   └── service/
+│       │   │   │   ├── gestion_inventario/     # Producto, Inventario, Categoria,
+│       │   │   │   │   ├── assemblers/         # UnidadMedida, Movimiento, BodegaTransito
+│       │   │   │   │   ├── controller/
+│       │   │   │   │   ├── dtos/
+│       │   │   │   │   ├── entity/
+│       │   │   │   │   ├── exceptions/
+│       │   │   │   │   ├── repository/
+│       │   │   │   │   └── service/
+│       │   │   │   ├── gestion_solicitud/      # Solicitud, DetalleSolicitud
+│       │   │   │   │   ├── controller/
+│       │   │   │   │   ├── dtos/
+│       │   │   │   │   ├── entity/
+│       │   │   │   │   ├── exceptions/
+│       │   │   │   │   ├── repository/
+│       │   │   │   │   └── service/
+│       │   │   │   ├── gestion_pedido/         # Pedido, DetallePedido, PedidoSolicitud
+│       │   │   │   │   ├── controller/
+│       │   │   │   │   ├── dtos/
+│       │   │   │   │   ├── entity/
+│       │   │   │   │   ├── exceptions/
+│       │   │   │   │   ├── repository/
+│       │   │   │   │   └── service/
+│       │   │   │   ├── gestion_proveedor/      # Proveedor, ContactoProveedor
+│       │   │   │   │   ├── controller/
+│       │   │   │   │   ├── dtos/
+│       │   │   │   │   ├── entity/
+│       │   │   │   │   ├── exceptions/
+│       │   │   │   │   ├── repository/
+│       │   │   │   │   └── service/
+│       │   │   │   ├── gestion_sistema/        # ConfiguracionSistema
+│       │   │   │   │   ├── controller/
+│       │   │   │   │   ├── dtos/
+│       │   │   │   │   ├── entity/
+│       │   │   │   │   ├── repository/
+│       │   │   │   │   └── service/
+│       │   │   │   ├── pedido_semana_a_bodega/ # PedidoSemanal
+│       │   │   │   │   ├── controller/
+│       │   │   │   │   ├── dtos/
+│       │   │   │   │   ├── entity/
+│       │   │   │   │   ├── repository/
+│       │   │   │   │   └── service/
+│       │   │   │   └── dashboard/              # Consultas agregadas para KPIs por rol
+│       │   │   │       ├── controller/
+│       │   │   │       ├── dto/
+│       │   │   │       └── service/
+│       │   │   └── utils/
+│       │   └── resources/
+│       │       ├── application.properties      # Perfil base (producción)
+│       │       └── application-local.properties# Perfil local (no versionado)
+│       └── test/
+│           └── java/KuHub/modules/
+│               ├── gestion_solicitud/services/
+│               │   └── SolicitudServiceImplTest.java
+│               ├── gestion_inventario/services/
+│               │   └── InventarioServiceImplTest.java
+│               ├── gestion_pedido/services/
+│               │   └── PedidoServiceImplTest.java
+│               └── pedido_semana_a_bodega/services/
+│                   └── PedidoSemanaBodegaServiceImpTest.java
 │
-├── diagramas/                      # Archivos draw.io (4+1 Views)
-├── docker-compose.yml              # Orquestación de containers
-├── pom.xml                         # POM raíz Maven (multi-módulo)
-└── .github/workflows/              # Pipeline CI/CD (GitHub Actions)
+├── frontend/                                   # React 18 + TypeScript + Vite
+│   ├── vite.config.ts                          # Build + chunks manuales
+│   ├── tailwind.config.js                      # Tema DuocUC (colores por escuela)
+│   ├── tsconfig.json
+│   ├── eslint.config.js
+│   ├── postcss.config.js
+│   ├── package.json
+│   ├── nginx.conf                              # Proxy + Gzip para el container
+│   └── src/
+│       ├── App.tsx                             # Router principal + ProtectedRoute + SmartRedirect
+│       ├── main.tsx                            # Entrada: HeroUIProvider + Router
+│       ├── index.css                           # Estilos globales + utilidades Tailwind
+│       ├── vite-env.d.ts
+│       │
+│       ├── pages/                              # 19 páginas lazy-loaded
+│       │   ├── login.tsx                       # Login + modal de Términos y Condiciones
+│       │   ├── dashboard.tsx                   # Dashboard por rol (dinámico)
+│       │   ├── inventario.tsx
+│       │   ├── solicitud.tsx
+│       │   ├── gestion-solicitudes.tsx
+│       │   ├── gestion-pedidos.tsx
+│       │   ├── historico-pedidos.tsx
+│       │   ├── conglomerado-pedidos.tsx
+│       │   ├── bodega-transito.tsx
+│       │   ├── pedido-semanal-a-bodega.tsx
+│       │   ├── gestion-proveedores.tsx
+│       │   ├── gestion-academica.tsx
+│       │   ├── gestion-usuarios.tsx
+│       │   ├── gestion-roles.tsx
+│       │   ├── admin-sistema.tsx
+│       │   ├── movimientos-producto.tsx
+│       │   ├── perfil-usuario.tsx
+│       │   ├── presentacion.tsx               # Pública, sin autenticación
+│       │   └── not-found.tsx
+│       │
+│       ├── components/                         # Componentes reutilizables
+│       │   ├── AlertaProcesoSolicitudes.tsx
+│       │   ├── BookPageLoader.tsx
+│       │   ├── ErrorBoundary.tsx
+│       │   ├── LoadingBookAnimation.tsx
+│       │   ├── TerminosCondicionesContent.tsx  # Contenido legal separado (Términos y Condiciones)
+│       │   ├── footer.tsx
+│       │   ├── header.tsx
+│       │   ├── protected-route.tsx
+│       │   ├── sidebar.tsx
+│       │   ├── dashboard/                      # Dashboards por rol
+│       │   │   ├── DashboardBodega.tsx
+│       │   │   ├── DashboardGeneral.tsx
+│       │   │   ├── DashboardGestor.tsx
+│       │   │   ├── DashboardInventarioView.tsx
+│       │   │   ├── DashboardPedidoSemanalBodegaView.tsx
+│       │   │   ├── DashboardProfesor.tsx
+│       │   │   ├── ProcesoPedidosSection.tsx
+│       │   │   └── shared/
+│       │   │       ├── DashboardHeader.tsx
+│       │   │       ├── EstadoSolicitudChip.tsx
+│       │   │       └── StatsCard.tsx
+│       │   └── modals/                         # 12 modales del sistema
+│       │       ├── ComprobacionModal.tsx
+│       │       ├── ConfirmarDisponibleBodegaModal.tsx
+│       │       ├── ConfirmarSalidaDisponibleModal.tsx
+│       │       ├── CotizacionModal.tsx
+│       │       ├── FinProcesoModal.tsx
+│       │       ├── GestionAbastecimientoModal.tsx
+│       │       ├── GestionCategoriasModal.tsx
+│       │       ├── GestionUnidadesModal.tsx
+│       │       ├── InactivityWarningModal.tsx
+│       │       ├── SolicitudBoardModal.tsx
+│       │       ├── SoporteModal.tsx
+│       │       └── StockDisponiblesModal.tsx
+│       │
+│       ├── services/                           # 28 clientes API tipados con Axios
+│       │   ├── api-dashboard.ts
+│       │   ├── asignatura-service.ts
+│       │   ├── auth-service.ts                 # Login, refresh token, aceptar términos
+│       │   ├── bloque-horario-service.ts
+│       │   ├── bodega-transito-service.ts
+│       │   ├── categoria-service.ts
+│       │   ├── dashboard-service.ts
+│       │   ├── gestionSistemaService.ts
+│       │   ├── historico-pedido-service.ts
+│       │   ├── init-system.ts
+│       │   ├── inventario-service.ts
+│       │   ├── movimiento-service.ts
+│       │   ├── notificacion-service.ts
+│       │   ├── notification-service.ts
+│       │   ├── pdf-service.ts
+│       │   ├── pedido-service.ts
+│       │   ├── pedido-semanal-bodega-service.ts
+│       │   ├── permission-service.ts
+│       │   ├── producto-service.ts
+│       │   ├── proveedor-service.ts
+│       │   ├── reserva-sala-service.ts
+│       │   ├── roles-helper.ts
+│       │   ├── sala-service.ts
+│       │   ├── semana-service.ts
+│       │   ├── soporte-service.ts
+│       │   ├── storage-service.ts
+│       │   ├── unidad-medida-service.ts
+│       │   └── usuario-service.ts
+│       │
+│       ├── types/                              # 13 archivos de interfaces TypeScript
+│       │   ├── asignatura.types.ts
+│       │   ├── auth.types.ts
+│       │   ├── bloque-horario.types.ts
+│       │   ├── inventario.types.ts
+│       │   ├── pedido.types.ts
+│       │   ├── permissions.types.ts
+│       │   ├── producto.types.ts
+│       │   ├── proveedor.types.ts
+│       │   ├── receta.types.ts
+│       │   ├── semana.types.ts
+│       │   ├── solicitud.types.ts
+│       │   ├── user.types.ts
+│       │   └── usuario.types.ts
+│       │
+│       ├── contexts/                           # 7 contextos React
+│       │   ├── auth-context.tsx                # Auth + JWT + permisos granulares
+│       │   ├── PageTitleContext.tsx
+│       │   ├── periodo-semana-context.tsx
+│       │   ├── permission-context.tsx
+│       │   ├── roles-context.tsx
+│       │   ├── sistema-config-context.tsx
+│       │   └── theme-context.tsx
+│       │
+│       ├── hooks/
+│       │   ├── useInactivityTimeout.ts         # Logout automático a los 25 min
+│       │   ├── usePageTitle.ts
+│       │   └── useToast.ts                     # Toast + useConfirm (reemplaza window.alert)
+│       │
+│       ├── layouts/
+│       │   ├── auth-layout.tsx
+│       │   └── main-layout.tsx
+│       │
+│       ├── config/
+│       │   ├── Axios.ts                        # Cliente HTTP con interceptores de auth
+│       │   └── roles-config.ts                 # 7 roles centralizados
+│       │
+│       ├── utils/
+│       │   ├── format-numbers.ts
+│       │   ├── logger.ts
+│       │   ├── notifications.tsx               # Sistema modal (reemplaza window.confirm)
+│       │   └── request-throttle.ts
+│       │
+│       ├── __tests__/                          # Suite Vitest — 11 páginas, 3 modales, 2 servicios
+│       │   ├── setup.ts                        # Configuración global de tests
+│       │   ├── test-utils.tsx                  # Wrappers y helpers de renderizado
+│       │   ├── pages/
+│       │   │   ├── bodega-transito.test.tsx
+│       │   │   ├── conglomerado-pedidos.test.tsx
+│       │   │   ├── gestion-academica.test.tsx
+│       │   │   ├── gestion-proveedores.test.tsx
+│       │   │   ├── inventario.test.tsx
+│       │   │   ├── login.test.tsx
+│       │   │   ├── movimientos-producto.test.tsx
+│       │   │   ├── pedido-semanal-a-bodega.test.tsx
+│       │   │   ├── roles-permisos.test.tsx
+│       │   │   ├── sala-reservas.test.tsx
+│       │   │   └── solicitud.test.tsx
+│       │   ├── components/
+│       │   │   ├── GestionAbastecimientoModal.test.tsx
+│       │   │   ├── GestionCategoriasModal.test.tsx
+│       │   │   └── GestionUnidadesModal.test.tsx
+│       │   └── services/
+│       │       ├── abastecimiento-proveedor.test.ts
+│       │       └── refresh-token.test.ts
+│       └── test/
+│           └── setup.ts                        # Setup alternativo (Vitest legacy)
+│
+├── diagramas/                                  # Archivos draw.io (4+1 Views)
+├── docker-compose.yml                          # Orquestación de containers
+├── pom.xml                                     # POM raíz Maven (multi-módulo)
+└── .github/workflows/                          # Pipeline CI/CD (GitHub Actions)
 ```
 
 ---
@@ -626,7 +871,7 @@ Este criterio aplica exclusivamente a consultas de solo lectura con resultados a
 | `<menor>` | Nuevas funcionalidades |
 | `<mayor>` | Cambios de arquitectura o refactors grandes |
 
-**Regla:** una tag por día, mismo número todo el día. El historial de versiones y el contexto de cada cambio se documentan en los archivos `CONTEXTO_*.md` del repositorio.
+**Regla:** una tag por día, mismo número todo el día.
 
 ---
 
@@ -636,7 +881,5 @@ Este criterio aplica exclusivamente a consultas de solo lectura con resultados a
 |---|---|
 | `ARQUITECTURA_4+1_VIEWS.md` | Diagramas completos de arquitectura (Mermaid) |
 | `DIAGRAMA_ER_KUHUB.md` | Diagrama entidad-relación de la base de datos |
-| `CONTEXTO_GENERAL.md` | Decisiones técnicas y contexto de implementación |
-| `GESTION_PERMISO.md` | Diseño del sistema de permisos dinámico |
-| `BACKUP_POSTGRESQL_SETUP.md` | Procedimiento de backup y restauración de la base de datos |
+| `BACKUP_BBDD_DEVS.md` | Documentación del sistema de backup automático diario hacia Google Drive (pg_dump + rclone) |
 | `CONFIGURATION_HOST_DEVS.md` | Configuración del servidor de desarrollo |

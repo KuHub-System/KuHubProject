@@ -229,20 +229,24 @@ export const actualizarProveedorService = async (
 
 /**
  * Elimina lógicamente un proveedor (activo = false).
- * DELETE /api/v1/proveedor/{id} → 204 No Content
+ * DELETE /api/v1/proveedor/{id}?force={force} → 204 No Content
+ * force=true solo debe usarlo el rol Administrador (desactiva productos automáticamente).
  */
 export const eliminarProveedorService = async (
-  idProveedor: number
+  idProveedor: number,
+  force = false
 ): Promise<boolean> => {
   try {
-    await api.delete(`/proveedor/${idProveedor}`);
+    await api.delete(`/proveedor/${idProveedor}`, { params: { force } });
     return true;
   } catch (error: any) {
     if (error.response?.status === 422) {
-      throw new Error(
+      const err = new Error(
         error.response.data?.message ||
         'No se puede eliminar el proveedor porque tiene productos activos asignados'
-      );
+      ) as Error & { isConProductosActivos: true };
+      err.isConProductosActivos = true;
+      throw err;
     }
     if (error.response?.status === 404) {
       throw new Error(
@@ -669,6 +673,28 @@ export const obtenerCotizacionConsolidadaService = async (
     throw new Error(
       error.response?.data?.message ||
       'Error al obtener la cotización consolidada'
+    );
+  }
+};
+
+/**
+ * Cotización filtrada para re-generar OPs canceladas. Solo retorna los productos que
+ * formaban parte de las OPs CANCELADAS de los pedidos indicados.
+ * GET /api/v1/orden-pedido/cotizacion-de-canceladas?idsPedido=1,2
+ */
+export const obtenerCotizacionDeCanceladasService = async (
+  idsPedido: number[]
+): Promise<ICotizacionConsolidadaResponse> => {
+  try {
+    const response = await api.get<ICotizacionConsolidadaResponse>(
+      '/orden-pedido/cotizacion-de-canceladas',
+      { params: { idsPedido: idsPedido.join(',') } }
+    );
+    return response.data ?? { cotizacion: [] };
+  } catch (error: any) {
+    throw new Error(
+      error.response?.data?.message ||
+      'Error al obtener la cotización de órdenes canceladas'
     );
   }
 };
