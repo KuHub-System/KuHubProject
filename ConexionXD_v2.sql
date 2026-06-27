@@ -41,7 +41,8 @@ DROP CAST IF EXISTS (varchar AS estado_solicitud_type) CASCADE;
 DROP CAST IF EXISTS (varchar AS estado_pedido_type) CASCADE;
 DROP CAST  IF EXISTS (varchar AS tipo_abastecimiento)CASCADE;
 DROP CAST  IF EXISTS (varchar AS estado_soporte_type)CASCADE;
-DROP CAST  IF EXISTS (varchar AS tipo_error_soporte_type) CASCADE; 
+DROP CAST  IF EXISTS (varchar AS tipo_error_soporte_type) CASCADE;
+DROP CAST  IF EXISTS (varchar AS tipo_equipo_soporte_type) CASCADE;
 -- Matamos los fantasmas viejos por si siguen dando vueltas
 DROP CAST IF EXISTS (varchar AS estado_receta_type) CASCADE;
 DROP CAST IF EXISTS (varchar AS estado_seccion_type) CASCADE;
@@ -249,7 +250,8 @@ CREATE CAST (varchar AS estado_pedido_type) WITH INOUT AS IMPLICIT;
 CREATE CAST (varchar AS estado_seccion_type) WITH INOUT AS IMPLICIT;
 CREATE CAST (varchar AS estado_orden_pedido_type) WITH INOUT AS IMPLICIT;
 CREATE CAST (varchar AS estado_soporte_type) WITH INOUT AS IMPLICIT;
-CREATE CAST (varchar AS tipo_error_soporte_type) WITH INOUT AS IMPLICIT; 
+CREATE CAST (varchar AS tipo_error_soporte_type) WITH INOUT AS IMPLICIT;
+CREATE CAST (varchar AS tipo_equipo_soporte_type) WITH INOUT AS IMPLICIT;
 
 -- =====================================================
 -- TABLAS PRINCIPALES

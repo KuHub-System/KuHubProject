@@ -27,7 +27,7 @@ public class SoporteTicket {
     private Usuario usuario;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "tipo_equipo", columnDefinition = "tipo_equipo_soporte", nullable = false)
+    @Column(name = "tipo_equipo", columnDefinition = "tipo_equipo_soporte_type", nullable = false)
     private TipoEquipoSoporte tipoEquipo;
 
     @Column(name = "equipo_otro", length = 100)
@@ -37,7 +37,7 @@ public class SoporteTicket {
     private String sistemaOperativo;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "tipo_error", columnDefinition = "tipo_error_soporte", nullable = false)
+    @Column(name = "tipo_error", columnDefinition = "tipo_error_soporte_type", nullable = false)
     private TipoErrorSoporte tipoError;
 
     @Column(name = "descripcion", columnDefinition = "TEXT", nullable = false)
@@ -47,7 +47,7 @@ public class SoporteTicket {
     private String urlOrigen;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "estado", columnDefinition = "estado_soporte", nullable = false)
+    @Column(name = "estado", columnDefinition = "estado_soporte_type", nullable = false)
     private EstadoSoporte estado = EstadoSoporte.ABIERTO;
 
     @Column(name = "fecha_creacion", insertable = false, updatable = false)

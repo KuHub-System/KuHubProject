@@ -30,8 +30,12 @@ public class SoporteServiceImpl implements SoporteService {
     @Override
     @Transactional
     public SoporteCreateResponseDTO crearTicket(SoporteCreateDTO dto) {
-        // Usuario que reporta: se obtiene del token (no se confía en el frontend).
-        Usuario usuarioActual = usuarioService.findUserByToken();
+        // Usuario que reporta: se obtiene del identificador en el SecurityContext.
+        // Se usa findUserByUsernameOrEmail porque busca por email O username, cubriendo
+        // ambos formatos que puede contener el subject del JWT según el flujo de login.
+        String identifier = org.springframework.security.core.context.SecurityContextHolder
+                .getContext().getAuthentication().getName();
+        Usuario usuarioActual = usuarioService.findUserByUsernameOrEmail(identifier);
 
         SoporteTicket ticket = new SoporteTicket();
         ticket.setUsuario(usuarioActual);
