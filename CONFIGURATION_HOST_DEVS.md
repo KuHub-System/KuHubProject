@@ -211,9 +211,11 @@ public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
    http.cors(cors -> cors.configurationSource(request -> {
       CorsConfiguration config = new CorsConfiguration();
       config.setAllowedOrigins(Arrays.asList(
-              "https://appkuhub.questweb.cl",    // Producción HTTPS
-              "http://localhost:3000",            // Desarrollo local
-              "http://localhost:5173"             // Vite dev server
+              "https://appkuhub.questweb.cl",          // Pruebas HTTPS
+              "https://web-kuhub.questweb.cl",         // Producción HTTPS (en configuración)
+              "https://www.web-kuhub.questweb.cl",     // Producción www
+              "http://localhost:3000",                  // Desarrollo local
+              "http://localhost:5173"                   // Vite dev server
       ));
       config.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
       config.setAllowedHeaders(Arrays.asList("*"));
@@ -227,7 +229,9 @@ public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
 ```
 
 **Explicación:**
-- `https://appkuhub.questweb.cl` — Producción (HTTPS válido con Let's Encrypt)
+- `https://appkuhub.questweb.cl` — Entorno de pruebas (HTTPS válido con Let's Encrypt)
+- `https://web-kuhub.questweb.cl` — Producción (HTTPS pendiente — SSL en configuración)
+- `https://www.web-kuhub.questweb.cl` — Producción con www (mismo servidor, misma IP)
 - `http://localhost:*` — Desarrollo local (protocolo inseguro permitido solo en dev)
 - Los headers `X-Forwarded-*` en nginx preservan la información de origen para que Spring vea la IP correcta
 

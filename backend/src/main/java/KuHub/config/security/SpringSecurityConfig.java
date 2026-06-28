@@ -102,9 +102,15 @@ public class SpringSecurityConfig {
                 "https://52.5.222.79",
                 "https://52.5.222.79:443",
 
-                // 🌐 PRODUCCIÓN (Subdominio QuestWeb)
+                // 🌐 PRUEBAS (Subdominio QuestWeb)
                 "https://appkuhub.questweb.cl",
-                "http://appkuhub.questweb.cl"
+                "http://appkuhub.questweb.cl",
+
+                // 🚀 PRODUCCIÓN (web-kuhub.questweb.cl)
+                "https://web-kuhub.questweb.cl",
+                "http://web-kuhub.questweb.cl",
+                "https://www.web-kuhub.questweb.cl",
+                "http://www.web-kuhub.questweb.cl"
         ));
 
         // ⚠️ PRODUCCIÓN: Cambiar a la URL de tu frontend en AWS

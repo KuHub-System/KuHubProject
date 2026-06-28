@@ -1,8 +1,8 @@
 # CONFIGURATION_HOST_PROD.MD — Infraestructura y Configuración de KuHub Producción
 
-**Fecha:** 2026-06-27
+**Fecha:** 2026-06-28
 **Entorno:** Producción — AWS Lightsail (Virginia, Zona A)
-**Dominio:** Pendiente (subdominio a vincular con certificado SSL)
+**Dominio:** `web-kuhub.questweb.cl` (SSL pendiente de activación)
 **Responsable:** Alumno desarrollador
 
 ---
@@ -14,8 +14,9 @@ KuHub producción es un **sistema de gestión gastronómica** desplegado en **AW
 - **Servidor único** (Frontend + Backend + Base de Datos): IP pública `18.209.52.224` — 4 GB RAM, 2 vCPU, 80 GB SSD
 - **Base de Datos**: PostgreSQL 17 **nativo en el host** (sin Docker) — máxima eficiencia de I/O
 - **Comunicación interna**: Backend Docker → PostgreSQL via `host.docker.internal` (bridge gateway)
-- **Protocolo actual**: HTTP puerto 80 (HTTPS pendiente al vincular subdominio)
-- **Acceso actual**: `http://18.209.52.224`
+- **Protocolo actual**: HTTP puerto 80 (HTTPS pendiente — certificado aún en configuración)
+- **Acceso actual**: `http://18.209.52.224` (temporal hasta activar SSL)
+- **Acceso futuro**: `https://web-kuhub.questweb.cl` / `https://www.web-kuhub.questweb.cl`
 
 ### Diferencia clave vs Entorno de Pruebas
 
@@ -142,9 +143,15 @@ psql -h 127.0.0.1 -U kuhub_prod kuhub_prod_db < kuhub_prod_backup.sql
 
 ---
 
-## 5. SSL/TLS — HTTPS (Pendiente)
+## 5. SSL/TLS — HTTPS (En configuración)
 
-El certificado SSL se configurará al vincular el subdominio. La arquitectura es diferente al entorno de pruebas: el certificado vive dentro del container frontend (no en un Nginx del host).
+**Subdominios definidos:**
+- `web-kuhub.questweb.cl` → IP estática `18.209.52.224`
+- `www.web-kuhub.questweb.cl` → IP estática `18.209.52.224`
+
+**Estado:** Configuración HTTPS en curso. Aún sin certificado activo. CORS ya actualizado en `SpringSecurityConfig.java`.
+
+La arquitectura es diferente al entorno de pruebas: el certificado vive dentro del container frontend (no en un Nginx del host).
 
 ### Plan de implementación SSL
 
@@ -156,7 +163,7 @@ sudo apt install certbot
 **2. Obtener certificado (modo standalone — detener frontend temporalmente):**
 ```bash
 docker stop kuhub-frontend
-sudo certbot certonly --standalone -d <subdominio>
+sudo certbot certonly --standalone -d web-kuhub.questweb.cl -d www.web-kuhub.questweb.cl
 docker start kuhub-frontend
 ```
 
@@ -164,16 +171,16 @@ docker start kuhub-frontend
 ```nginx
 server {
     listen 80;
-    server_name <subdominio>;
+    server_name web-kuhub.questweb.cl www.web-kuhub.questweb.cl;
     return 301 https://$host$request_uri;
 }
 
 server {
     listen 443 ssl;
-    server_name <subdominio>;
+    server_name web-kuhub.questweb.cl www.web-kuhub.questweb.cl;
 
-    ssl_certificate     /etc/letsencrypt/live/<subdominio>/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/<subdominio>/privkey.pem;
+    ssl_certificate     /etc/letsencrypt/live/web-kuhub.questweb.cl/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/web-kuhub.questweb.cl/privkey.pem;
     ssl_protocols       TLSv1.2 TLSv1.3;
 
     location /api/ {
@@ -206,9 +213,22 @@ frontend:
 
 **5. Abrir puerto 443 en Lightsail** — ya está abierto en el firewall.
 
-**6. Agregar CORS del nuevo dominio en `SpringSecurityConfig.java`.**
+**6. CORS ya actualizado en `SpringSecurityConfig.java`:**
+```java
+// ✅ Ya agregado — ambos subdominios habilitados
+"https://web-kuhub.questweb.cl",
+"http://web-kuhub.questweb.cl",
+"https://www.web-kuhub.questweb.cl",
+"http://www.web-kuhub.questweb.cl"
+```
 
 **7. Deploy con nuevo tag `PK*.*.*`.**
+
+**8. Configurar renovación automática:**
+```bash
+sudo systemctl enable snap.certbot.renew.timer
+sudo certbot renew --dry-run   # Verificar dry-run antes de activar
+```
 
 ---
 
@@ -357,11 +377,11 @@ Es comportamiento correcto si el código no cambió. Si se necesita forzar rebui
 
 ### ⏳ Pendiente
 
-- HTTPS con Let's Encrypt (al vincular subdominio)
-- HSTS headers (después de SSL)
+- HTTPS con Let's Encrypt para `web-kuhub.questweb.cl` (en configuración)
+- HSTS headers (después de activar SSL)
 - Renovación automática del certificado (Certbot timer)
-- CORS actualizado al nuevo subdominio en `SpringSecurityConfig.java`
+- CORS actualizado al subdominio `web-kuhub.questweb.cl` en `SpringSecurityConfig.java`
 
 ---
 
-**Última actualización:** 2026-06-27 — Primera versión. Deploy PK0.0.1 exitoso.
+**Última actualización:** 2026-06-28 — Subdominio de producción definido: `web-kuhub.questweb.cl`. SSL en configuración.

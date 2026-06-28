@@ -24,13 +24,16 @@ services:
         reservations:
           memory: 1536M
 
-  # Frontend (React + Nginx) — proxy inverso a backend, expone puerto 80
+  # Frontend (React + Nginx) — proxy inverso a backend, HTTPS via Let's Encrypt
   frontend:
     image: ${DOCKER_USERNAME}/kuhub-app:frontend-${TAG}
     container_name: kuhub-frontend
     restart: always
     ports:
       - "80:80"
+      - "443:443"
+    volumes:
+      - /etc/letsencrypt:/etc/letsencrypt:ro
     deploy:
       resources:
         limits:
