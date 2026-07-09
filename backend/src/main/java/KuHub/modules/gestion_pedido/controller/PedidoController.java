@@ -6,6 +6,7 @@ import KuHub.modules.gestion_pedido.dtos.request.ResumenHistoricoRequestDTO;
 import KuHub.modules.gestion_pedido.dtos.response.ResumenHistoricoResponse;
 import KuHub.modules.gestion_pedido.dtos.request.RechazarPedidoDTO;
 import KuHub.modules.gestion_pedido.dtos.response.RechazoPedidoResultDTO;
+import KuHub.modules.gestion_pedido.exceptions.GestionPedidoException;
 import KuHub.modules.gestion_pedido.record.ChangePedidoStatusDTO;
 import KuHub.modules.gestion_pedido.record.CreateOrder;
 import KuHub.modules.gestion_pedido.record.PedidoDashboardRecords;
@@ -106,11 +107,17 @@ public class PedidoController {
      * ✅ En uso: Consumido por aprobarPedidosService en solicitud-service.ts.
      */
     @PatchMapping("/change-massive-status")
-    public ResponseEntity<Boolean> changeMassiveStatus(
+    public ResponseEntity<?> changeMassiveStatus(
             @Validated @RequestBody ChangePedidoStatusDTO request){
-        return ResponseEntity
-                .status(200)
-                .body(pedidoService.changeMassiveStatus(request));
+        try {
+            return ResponseEntity
+                    .status(200)
+                    .body(pedidoService.changeMassiveStatus(request));
+        } catch (GestionPedidoException ex) {
+            // 409: otro usuario ya cambió el estado del pedido en paralelo. El body lleva "mensaje"
+            // para que el frontend lo muestre y refresque la vista.
+            return ResponseEntity.status(ex.getStatus()).body(Map.of("mensaje", ex.getMessage()));
+        }
     }
 
     /**

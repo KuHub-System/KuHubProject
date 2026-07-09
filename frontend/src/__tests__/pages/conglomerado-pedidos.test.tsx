@@ -19,6 +19,7 @@ const {
   mockToastSuccess,
   mockToastError,
   mockToastInfo,
+  mockToastWarning,
   mockUsePeriodoSemana,
 } = vi.hoisted(() => ({
   mockConsolidateQuery:    vi.fn(),
@@ -29,6 +30,7 @@ const {
   mockToastSuccess:        vi.fn(),
   mockToastError:          vi.fn(),
   mockToastInfo:           vi.fn(),
+  mockToastWarning:        vi.fn(),
   mockUsePeriodoSemana:    vi.fn(),
 }));
 
@@ -58,7 +60,7 @@ vi.mock('../../hooks/useToast', () => ({
     success: mockToastSuccess,
     error:   mockToastError,
     info:    mockToastInfo,
-    warning: vi.fn(),
+    warning: mockToastWarning,
   }),
   useConfirm: () => vi.fn().mockResolvedValue(true),
 }));
@@ -460,6 +462,44 @@ describe('ConglomeradoPedidosPage — Aprobación de Pedidos', () => {
       }),
       { timeout: 3000 },
     );
+  });
+
+  // CONG-21: concurrencia — si otro usuario modificó el pedido en paralelo, el backend
+  // responde 409 y el frontend debe avisar el conflicto y recargar (no un error genérico).
+  it('CONG-21: aprobar un pedido modificado en paralelo (409) avisa el conflicto y recarga la vista', async () => {
+    mockConsolidateQuery.mockResolvedValue({
+      ...emptyConsolidate,
+      pedidosAprobacion: [
+        mkPedidoAprobacion(10, 'PENDIENTE', [mkProductoAprobacion('Harina', 50)]),
+      ],
+    });
+    // El backend detecta que el pedido dejó de estar PENDIENTE (operación en paralelo de otro usuario)
+    mockAprobarPedidos.mockRejectedValueOnce({
+      response: { status: 409, data: { mensaje: 'El pedido #10 ya fue modificado por otro usuario. Se actualizó la vista.' } },
+    });
+
+    renderWithProviders(<ConglomeradoPedidosPage />);
+    await waitForLoad();
+
+    fireEvent.click(screen.getByRole('button', { name: /Aprobar pedido/ }));
+    await waitFor(
+      () => expect(screen.getByText(/Reservar disponibles del Pedido #10/)).toBeInTheDocument(),
+      { timeout: 3000 },
+    );
+    fireEvent.click(screen.getByRole('button', { name: /Aprobar sin reservar/ }));
+
+    // Se intentó aprobar
+    await waitFor(() => expect(mockAprobarPedidos).toHaveBeenCalled(), { timeout: 3000 });
+
+    // Aviso ESPECÍFICO del conflicto de concurrencia (no el error genérico)
+    await waitFor(
+      () => expect(mockToastWarning).toHaveBeenCalledWith('El pedido #10 ya fue modificado por otro usuario. Se actualizó la vista.'),
+      { timeout: 3000 },
+    );
+    expect(mockToastError).not.toHaveBeenCalledWith('Error al aprobar el pedido');
+
+    // Recarga el conglomerado para reflejar el cambio del otro usuario (1 inicial + 1 tras el 409)
+    await waitFor(() => expect(mockConsolidateQuery).toHaveBeenCalledTimes(2), { timeout: 3000 });
   });
 });
 

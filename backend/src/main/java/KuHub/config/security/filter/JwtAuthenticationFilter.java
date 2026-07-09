@@ -130,8 +130,13 @@ public class JwtAuthenticationFilter extends UsernamePasswordAuthenticationFilte
 
             Cookie refreshCookie = new Cookie(REFRESH_COOKIE_NAME, rt.getToken());
             refreshCookie.setHttpOnly(true);
-            // setSecure(true) cuando haya HTTPS en producción
-            // refreshCookie.setSecure(true);
+            // Secure automático segun el entorno:
+            // - En producción NGINX termina el TLS y reenvía X-Forwarded-Proto=https (el backend ve HTTP
+            //   internamente en la red Docker, pero el navegador habla HTTPS y respeta el atributo Secure).
+            // - En local (http://localhost) el header no llega, queda en false y no rompe el refresh en dev.
+            boolean isHttps = "https".equalsIgnoreCase(request.getHeader("X-Forwarded-Proto"));
+            refreshCookie.setSecure(isHttps);
+            refreshCookie.setAttribute("SameSite", "Lax");
             refreshCookie.setPath("/");
             refreshCookie.setMaxAge(REFRESH_COOKIE_DIAS * 24 * 60 * 60);
             response.addCookie(refreshCookie);

@@ -180,6 +180,23 @@ public class PedidoServiceImpl implements PedidoService{
     @Override
     @Transactional
     public boolean changeMassiveStatus(ChangePedidoStatusDTO request) {
+        // Control de concurrencia optimista: la aprobación masiva parte de pedidos en PENDIENTE.
+        // Si otro usuario ya cambió alguno (APROBADO/RECHAZADO) en paralelo, abortamos con 409 para
+        // que el frontend avise y refresque en lugar de sobrescribir el cambio ajeno.
+        List<Pedido> pedidos = pedidoRepository.findAllById(request.idsPedidos());
+        List<Integer> conflictivos = pedidos.stream()
+                .filter(p -> p.getEstadoPedido() != Pedido.EstadoPedidoType.PENDIENTE)
+                .map(Pedido::getIdPedido)
+                .toList();
+        if (!conflictivos.isEmpty()) {
+            String detalle = conflictivos.size() == 1
+                    ? "El pedido #" + conflictivos.get(0) + " ya fue modificado por otro usuario."
+                    : "Los pedidos " + conflictivos + " ya fueron modificados por otro usuario.";
+            log.warn("Conflicto de concurrencia al aprobar. Pedidos ya no PENDIENTE: {}", conflictivos);
+            throw new GestionPedidoException(
+                    detalle + " Se actualizó la vista con el estado real.",
+                    HttpStatus.CONFLICT);
+        }
         int filasAfectadas = pedidoRepository.updateMassiveStatePedido(request.idsPedidos(), request.estado());
         return filasAfectadas > 0;
     }

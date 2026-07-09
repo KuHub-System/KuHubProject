@@ -43,7 +43,7 @@ public class JwtValidationFilter extends BasicAuthenticationFilter {
 
     /**
      * Filtro que valida el token JWT y lo RENUEVA automáticamente en cada petición activa.
-     * ✅ Implementa Sliding Expiration (30 minutos de gracia desde el último acceso).
+     * ✅ Implementa Sliding Expiration (1 hora de gracia desde el último acceso).
      */
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
@@ -76,7 +76,7 @@ public class JwtValidationFilter extends BasicAuthenticationFilter {
             // =========================================================
             // ✨ LÓGICA DE RENOVACIÓN AUTOMÁTICA (SLIDING EXPIRATION)
             // =========================================================
-            // Si el token es válido, generamos uno nuevo con 30 minutos frescos (1,800,000 ms)
+            // Si el token es válido, generamos uno nuevo con 1 hora fresca (3,600,000 ms)
             String newToken = Jwts.builder()
                     .subject(username)
                     .claims(claims)

@@ -263,7 +263,7 @@ describe('SeccionReservas / SeccionGestionSalas (SA)', () => {
   });
 
   // ── SA-06 ──────────────────────────────────────────────────────────────────
-  it('SA-06: desactivar sala requiere "CONFIRMAR"; botón habilitado solo al escribirlo', async () => {
+  it('SA-06: desactivar sala abre el modal de confirmación y ejecuta la desactivación', async () => {
     mockPermisos({ ...permSalas, GA_ELIMINAR_SALA: { canDelete: true } });
     renderPage();
     await screen.findByText('Salas Activas');
@@ -274,14 +274,11 @@ describe('SeccionReservas / SeccionGestionSalas (SA)', () => {
     const desactivarIcon = document.querySelector('button[aria-label="Desactivar"]') as HTMLElement;
     fireEvent.click(desactivarIcon);
     await screen.findByText('Desactivar Sala');
-    // Botón deshabilitado sin texto
-    expect(findButton('Desactivar')).toBeDisabled();
-    // Escribir "CONFIRMAR"
-    const confirmInput = screen.getByPlaceholderText('CONFIRMAR');
-    fireEvent.change(confirmInput, { target: { value: 'CONFIRMAR' } });
-    await waitFor(() => expect(findButton('Desactivar')).not.toBeDisabled());
-    // Confirmar desactivación
-    fireEvent.click(findButton('Desactivar') as HTMLElement);
+    // El botón de confirmación está habilitado (el flujo ya no exige escribir "CONFIRMAR";
+    // el backend rechaza si la sala tiene reservas activas)
+    const confirmar = findButton('Desactivar') as HTMLElement;
+    expect(confirmar).not.toBeDisabled();
+    fireEvent.click(confirmar);
     await waitFor(() => expect(mockEliminarSala).toHaveBeenCalled());
     expect(mockToastSuccess).toHaveBeenCalledWith('Sala desactivada correctamente');
   });
@@ -299,10 +296,7 @@ describe('SeccionReservas / SeccionGestionSalas (SA)', () => {
     const desactivarIcon = document.querySelector('button[aria-label="Desactivar"]') as HTMLElement;
     fireEvent.click(desactivarIcon);
     await screen.findByText('Desactivar Sala');
-    // Confirmar
-    const confirmInput = screen.getByPlaceholderText('CONFIRMAR');
-    fireEvent.change(confirmInput, { target: { value: 'CONFIRMAR' } });
-    await waitFor(() => expect(findButton('Desactivar')).not.toBeDisabled());
+    // Confirmar (sin paso de escribir "CONFIRMAR")
     fireEvent.click(findButton('Desactivar') as HTMLElement);
     // Servicio falla → toast error
     await waitFor(() =>
@@ -324,6 +318,7 @@ describe('SeccionReservas / SeccionGestionSalas (SA)', () => {
       expect(document.querySelector('button[aria-label="Desactivar"]')).toBeNull()
     );
     expect(screen.queryByText('Nueva Sala')).not.toBeInTheDocument();
-    expect(screen.getByText('Solo lectura')).toBeInTheDocument();
+    // "Solo lectura" se renderiza por cada sala sin permisos de acción
+    expect(screen.getAllByText('Solo lectura').length).toBeGreaterThan(0);
   });
 });

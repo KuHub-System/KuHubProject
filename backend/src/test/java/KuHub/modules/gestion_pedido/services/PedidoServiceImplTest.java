@@ -11,6 +11,8 @@ import KuHub.modules.gestion_inventario.services.MovimientoService;
 import KuHub.modules.gestion_pedido.dtos.response.ResumenHistoricoResponse;
 import KuHub.modules.gestion_pedido.entity.DetallePedido;
 import KuHub.modules.gestion_pedido.entity.Pedido;
+import KuHub.modules.gestion_pedido.exceptions.GestionPedidoException;
+import org.springframework.http.HttpStatus;
 import KuHub.modules.gestion_pedido.record.ChangePedidoStatusDTO;
 import KuHub.modules.gestion_pedido.record.CreateOrder;
 import KuHub.modules.gestion_pedido.record.PedidoDashboardRecords;
@@ -179,6 +181,9 @@ class PedidoServiceImplTest {
     @Test
     void test05ChangeMassiveStatusTrue() {
         ChangePedidoStatusDTO dto = new ChangePedidoStatusDTO(List.of(1, 2), "APROBADO");
+        when(pedidoRepository.findAllById(List.of(1, 2)))
+                .thenReturn(List.of(pedidoConEstado(1, Pedido.EstadoPedidoType.PENDIENTE),
+                                    pedidoConEstado(2, Pedido.EstadoPedidoType.PENDIENTE)));
         when(pedidoRepository.updateMassiveStatePedido(List.of(1, 2), "APROBADO")).thenReturn(2);
 
         boolean result = service.changeMassiveStatus(dto);
@@ -189,11 +194,39 @@ class PedidoServiceImplTest {
     @Test
     void test06ChangeMassiveStatusFalse() {
         ChangePedidoStatusDTO dto = new ChangePedidoStatusDTO(List.of(999), "APROBADO");
+        when(pedidoRepository.findAllById(List.of(999)))
+                .thenReturn(List.of(pedidoConEstado(999, Pedido.EstadoPedidoType.PENDIENTE)));
         when(pedidoRepository.updateMassiveStatePedido(List.of(999), "APROBADO")).thenReturn(0);
 
         boolean result = service.changeMassiveStatus(dto);
 
         assertFalse(result);
+    }
+
+    @Test
+    void test07ChangeMassiveStatusConflicto409() {
+        // Arrange
+        // Un usuario intenta aprobar, pero otro ya cambió el estado en paralelo (ya no PENDIENTE).
+        ChangePedidoStatusDTO dto = new ChangePedidoStatusDTO(List.of(10), "APROBADO");
+        when(pedidoRepository.findAllById(List.of(10)))
+                .thenReturn(List.of(pedidoConEstado(10, Pedido.EstadoPedidoType.APROBADO)));
+
+        // Act
+        GestionPedidoException ex = assertThrows(GestionPedidoException.class,
+                () -> service.changeMassiveStatus(dto));
+
+        // Assert
+        assertEquals(HttpStatus.CONFLICT, ex.getStatus());
+        assertTrue(ex.getMessage().contains("#10"));
+        // No debe actualizar nada cuando hay conflicto de concurrencia.
+        verify(pedidoRepository, never()).updateMassiveStatePedido(anyList(), anyString());
+    }
+
+    private Pedido pedidoConEstado(Integer id, Pedido.EstadoPedidoType estado) {
+        Pedido p = new Pedido();
+        p.setIdPedido(id);
+        p.setEstadoPedido(estado);
+        return p;
     }
 
     // =====================================================

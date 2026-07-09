@@ -12,6 +12,7 @@ const {
   mockObtenerBodegaPaginada, mockBuscarBodega, mockBuscarBodegaCodigo,
   mockObtenerBulkBodega, mockBulkUpdateBodega, mockInicializarAbast, mockObtenerBodegaByIds,
   mockObtenerEntregasDiarias, mockObtenerFiltros, mockObtenerUnidades,
+  mockPrepararEntrega, mockRegistrarDisponibles,
   mockToastSuccess, mockToastError, mockToastWarning,
 } = vi.hoisted(() => ({
   mockObtenerBodegaPaginada: vi.fn(),
@@ -24,6 +25,8 @@ const {
   mockObtenerEntregasDiarias: vi.fn(),
   mockObtenerFiltros: vi.fn(),
   mockObtenerUnidades: vi.fn(),
+  mockPrepararEntrega: vi.fn(),
+  mockRegistrarDisponibles: vi.fn(),
   mockToastSuccess: vi.fn(),
   mockToastError: vi.fn(),
   mockToastWarning: vi.fn(),
@@ -82,8 +85,8 @@ vi.mock('../../services/bodega-transito-service', () => ({
 vi.mock('../../services/solicitud-service', () => ({
   actualizarEstadoBodegaService: vi.fn(),
   obtenerEntregasDiariasService: mockObtenerEntregasDiarias,
-  prepararEntregaService: vi.fn(),
-  registrarDisponiblesService: vi.fn(),
+  prepararEntregaService: mockPrepararEntrega,
+  registrarDisponiblesService: mockRegistrarDisponibles,
   consultarDisponiblesPorProductoService: vi.fn().mockResolvedValue({}),
   restarDisponiblesService: vi.fn(),
 }));
@@ -125,20 +128,27 @@ const defaultPerm = { canRead: false, canCreate: false, canUpdate: false, canDel
 interface PermConfig {
   bodCrud?: Partial<typeof defaultPerm>;
   pedidos?: Partial<typeof defaultPerm>;
+  bodNuevo?: boolean;
   controlMasivo?: boolean;
   abastecimiento?: boolean;
   categorias?: boolean;
   unidades?: boolean;
+  prepararEntrega?: boolean;
 }
 
+// La página gatea cada acción con la subfeature y el flag CRUD que realmente consume:
+//   BOD_NUEVO.canCreate → botón "Nuevo"        BOD_CONTROL_MASIVO.canCreate → "Control Masivo"
+//   GESTION_CATEGORIAS.canRead → ícono Categorías   GESTION_UNIDADES.canRead → ícono Unidades
 const mockPermisos = (cfg: PermConfig = {}) =>
   vi.spyOn(permissionContext, 'useModulePermission').mockImplementation((mod: any) => {
     if (mod === 'BODEGA_TRANSITO') return { ...defaultPerm, ...(cfg.bodCrud ?? {}) } as any;
     if (mod === 'GESTION_PEDIDOS_DIARIOS') return { ...defaultPerm, ...(cfg.pedidos ?? {}) } as any;
-    if (mod === 'BOD_CONTROL_MASIVO') return { ...defaultPerm, canRead: !!cfg.controlMasivo } as any;
-    if (mod === 'BOD_ABASTECIMIENTO') return { ...defaultPerm, canRead: !!cfg.abastecimiento } as any;
-    if (mod === 'GESTION_CATEGORIAS') return { ...defaultPerm, canCreate: !!cfg.categorias } as any;
-    if (mod === 'GESTION_UNIDADES') return { ...defaultPerm, canCreate: !!cfg.unidades } as any;
+    if (mod === 'BOD_NUEVO') return { ...defaultPerm, canCreate: !!cfg.bodNuevo } as any;
+    if (mod === 'BOD_CONTROL_MASIVO') return { ...defaultPerm, canCreate: !!cfg.controlMasivo } as any;
+    if (mod === 'BOD_ABASTECIMIENTO') return { ...defaultPerm, canCreate: !!cfg.abastecimiento } as any;
+    if (mod === 'GESTION_CATEGORIAS') return { ...defaultPerm, canRead: !!cfg.categorias } as any;
+    if (mod === 'GESTION_UNIDADES') return { ...defaultPerm, canRead: !!cfg.unidades } as any;
+    if (mod === 'GPD_PREPARAR_ENTREGA') return { ...defaultPerm, canCreate: !!cfg.prepararEntrega } as any;
     return { ...defaultPerm } as any;
   });
 
@@ -166,6 +176,46 @@ const respuestaBodega = {
 const findButton = (text: string): HTMLButtonElement | undefined =>
   Array.from(document.querySelectorAll('button')).find(b => b.textContent?.trim() === text) as HTMLButtonElement | undefined;
 
+// ── Entrega diaria con una solicitud ACEPTADA lista para preparar (BIM-17/18/19) ──
+const hoyEntregaStr = () => {
+  const d = new Date();
+  d.setHours(12, 0, 0, 0);
+  return d.toISOString().slice(0, 10);
+};
+
+const entregaPreparable = () => ({
+  fecha: hoyEntregaStr(),
+  totalSolicitudes: 1,
+  salas: [
+    {
+      idSala: 1, nombreSala: 'Sala A-101', codSala: 'A101',
+      solicitudes: [
+        {
+          idSolicitud: 10, estadoSolicitud: 'ACEPTADA', horaInicio: '10:00',
+          rangoHoras: '10:00 - 11:20', nombreSeccion: '001D', nombreAsignatura: 'Cocina',
+          nombreDocente: 'Chef Test', cantInscritos: 20, nombreReceta: 'Pan Amasado',
+          observaciones: null,
+          productos: [
+            { idProducto: 1, nombreProducto: 'Harina', cantidad: 5, unidadAbreviada: 'kg', esFraccionario: false, observacion: null, stockTransito: 10, diferencia: 5 },
+          ],
+        },
+      ],
+    },
+  ],
+});
+
+// Navega a la vista Pedidos Diarios, expande la solicitud y abre el modal "Preparar Entrega".
+const abrirPrepararEntrega = async (container: HTMLElement) => {
+  const toggles = container.querySelectorAll('button.w-12.h-12');
+  fireEvent.click(toggles[1]); // vista Pedidos Diarios
+  await waitFor(() => expect(screen.getByText('Sala A-101')).toBeInTheDocument());
+  // Expandir la solicitud (click en la fila) para revelar el botón "Preparar Entrega"
+  fireEvent.click(screen.getByText('Chef Test').closest('button') as HTMLElement);
+  fireEvent.click(await screen.findByRole('button', { name: /Preparar Entrega/ }));
+  // Modal abierto
+  await screen.findByText(/Ajusta las cantidades a entregar/);
+};
+
 // ============================================
 // SUITE
 // ============================================
@@ -179,6 +229,8 @@ describe('BodegaTransitoPage', () => {
     mockObtenerEntregasDiarias.mockResolvedValue([]);
     mockObtenerFiltros.mockResolvedValue({ categorias: [{ id: 1, nombre: 'Abarrotes' }], unidades: [{ id: 1, nombre: 'kilo' }] });
     mockObtenerUnidades.mockResolvedValue([{ id: 1, nombre: 'kilo', abreviatura: 'kg' }]);
+    mockPrepararEntrega.mockResolvedValue({});
+    mockRegistrarDisponibles.mockResolvedValue({});
   });
 
   afterEach(() => cleanup());
@@ -211,17 +263,17 @@ describe('BodegaTransitoPage', () => {
 
   // BIM-10
   it('BIM-10: oculta el botón "Control Masivo" sin permiso BOD_CONTROL_MASIVO', async () => {
-    mockPermisos({ bodCrud: { canRead: true, canCreate: true }, controlMasivo: false });
+    mockPermisos({ bodCrud: { canRead: true }, bodNuevo: true, controlMasivo: false });
     renderPage();
     await waitFor(() => expect(mockObtenerBodegaPaginada).toHaveBeenCalled());
     expect(findButton('Control Masivo')).toBeFalsy();
-    // El botón "Nuevo" sí está presente (BODEGA_TRANSITO.canCreate)
+    // El botón "Nuevo" sí está presente (BOD_NUEVO.canCreate)
     expect(findButton('Nuevo')).toBeTruthy();
   });
 
   // BIM-11
-  it('BIM-11: muestra el botón "Nuevo" con permiso BODEGA_TRANSITO.canCreate', async () => {
-    mockPermisos({ bodCrud: { canRead: true, canCreate: true } });
+  it('BIM-11: muestra el botón "Nuevo" con permiso BOD_NUEVO.canCreate', async () => {
+    mockPermisos({ bodCrud: { canRead: true }, bodNuevo: true });
     renderPage();
     await waitFor(() => expect(mockObtenerBodegaPaginada).toHaveBeenCalled());
     expect(findButton('Nuevo')).toBeTruthy();
@@ -265,7 +317,7 @@ describe('BodegaTransitoPage', () => {
     renderPage();
     await waitFor(() => expect(mockObtenerBodegaPaginada).toHaveBeenCalled());
     // Los modales GestionCategoriasModal y GestionUnidadesModal son los mismos que usa Inventario;
-    // sus disparadores se gatean por GESTION_CATEGORIAS.canCreate y GESTION_UNIDADES.canCreate.
+    // sus disparadores se gatean por GESTION_CATEGORIAS.canRead y GESTION_UNIDADES.canRead.
     expect(document.querySelector('button[title="Categorías"]')).toBeTruthy();
     expect(document.querySelector('button[title="Unidades"]')).toBeTruthy();
   });
@@ -307,5 +359,55 @@ describe('BodegaTransitoPage', () => {
     fireEvent.click(toggles[1]); // ir a la vista Pedidos Diarios
 
     await waitFor(() => expect(screen.getByText('Sala A-101')).toBeInTheDocument());
+  });
+
+  // BIM-17: Preparar entrega ejecuta el descuento en bodega de tránsito
+  it('BIM-17: preparar entrega llama prepararEntregaService con el stock en vista y la cantidad a descontar', async () => {
+    mockObtenerEntregasDiarias.mockResolvedValue([entregaPreparable()]);
+    mockPermisos({ bodCrud: { canRead: true }, pedidos: { canRead: true, canCreate: true }, prepararEntrega: true });
+
+    const { container } = renderPage();
+    await waitFor(() => expect(mockObtenerBodegaPaginada).toHaveBeenCalled());
+    await abrirPrepararEntrega(container);
+
+    // Sin sobrantes (entregar == solicitado) → confirmación directa
+    fireEvent.click(screen.getByRole('button', { name: /Confirmar Entrega/ }));
+    fireEvent.click(await screen.findByRole('button', { name: /^Confirmar$/ }));
+
+    await waitFor(() => expect(mockPrepararEntrega).toHaveBeenCalledTimes(1));
+    // stockEnVista = stock que el operador tenía a la vista (para que el backend detecte desincronización);
+    // cantidadAEntregar = lo que se descuenta de bodega de tránsito.
+    expect(mockPrepararEntrega).toHaveBeenCalledWith(
+      expect.objectContaining({
+        idSolicitud: 10,
+        productos: [expect.objectContaining({ idProducto: 1, stockEnVista: 10, cantidadAEntregar: 5 })],
+      })
+    );
+    await waitFor(() =>
+      expect(mockToastSuccess).toHaveBeenCalledWith('Entrega preparada y solicitud procesada correctamente.')
+    );
+  });
+
+  // BIM-18: el campo de cantidad solo acepta números
+  it('BIM-18: el campo "A Entregar" ignora letras y solo acepta valores numéricos', async () => {
+    mockObtenerEntregasDiarias.mockResolvedValue([entregaPreparable()]);
+    mockPermisos({ bodCrud: { canRead: true }, pedidos: { canRead: true, canCreate: true }, prepararEntrega: true });
+
+    const { container } = renderPage();
+    await waitFor(() => expect(mockObtenerBodegaPaginada).toHaveBeenCalled());
+    await abrirPrepararEntrega(container);
+
+    // El input arranca en la cantidad solicitada (5)
+    const input = document.querySelector('input[type="number"]') as HTMLInputElement;
+    expect(input).toBeTruthy();
+    expect(input.value).toBe('5');
+
+    // Escribir letras NO cambia el valor (parseInt('abc') = NaN → se ignora)
+    fireEvent.change(input, { target: { value: 'abc' } });
+    expect(input.value).toBe('5');
+
+    // Escribir un número sí lo actualiza
+    fireEvent.change(input, { target: { value: '3' } });
+    expect(input.value).toBe('3');
   });
 });

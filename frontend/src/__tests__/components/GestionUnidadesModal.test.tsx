@@ -40,6 +40,15 @@ vi.mock('../../services/unidad-medida-service', () => ({
   cambiarEstadoUnidadService: mockCambiarEstado,
 }));
 
+// El modal consume useModulePermission('GESTION_UNIDADES'); sin PermissionProvider el hook
+// lanzaría. Se stubea con permisos de escritura completos para ejercitar crear/eliminar/transferir.
+vi.mock('../../contexts/permission-context', () => ({
+  useModulePermission: () => ({
+    canRead: true, canCreate: true, canUpdate: true, canDelete: true,
+    accessLevel: 'ESCRITURA', hasAccess: true, isLoading: false,
+  }),
+}));
+
 // ============================================
 // RENDER
 // ============================================
@@ -83,16 +92,16 @@ describe('GestionUnidadesModal', () => {
   });
 
   // UNI-03
-  it('UNI-03: eliminar una unidad SIN productos asociados ejecuta eliminarUnidadService tras escribir ELIMINAR', async () => {
+  it('UNI-03: eliminar una unidad SIN productos asociados ejecuta eliminarUnidadService tras confirmar', async () => {
     renderModal();
     const nombre = await screen.findByText('Kilogramo');
     const fila = nombre.parentElement!.parentElement as HTMLElement;
     const botones = fila.querySelectorAll('button'); // [editar, eliminar]
     fireEvent.click(botones[botones.length - 1]); // trash
 
-    const inputConfirm = await screen.findByPlaceholderText('ELIMINAR');
-    fireEvent.change(inputConfirm, { target: { value: 'ELIMINAR' } });
-    fireEvent.click(screen.getByText('Eliminar Definitivamente'));
+    // Sin productos asociados → confirmación simple (ya no exige escribir "ELIMINAR")
+    await screen.findByText('Confirmar Eliminación');
+    fireEvent.click(screen.getByRole('button', { name: 'Eliminar Definitivamente' }));
 
     await vi.waitFor(() => expect(mockEliminarUnidad).toHaveBeenCalledWith('1'));
   });

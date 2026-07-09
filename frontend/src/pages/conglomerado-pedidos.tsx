@@ -449,7 +449,16 @@ const ConglomeradoPedidosPage: React.FC = () => {
       await aprobarPedidosService({ idsPedidos: [idPedido], estado: 'APROBADO' });
       toast.success(reservar ? 'Disponibles reservados y pedido aprobado' : 'Pedido aprobado correctamente');
       await recargarDatos();
-    } catch { toast.error('Error al aprobar el pedido'); }
+    } catch (err: any) {
+      // 409: otro usuario modificó el pedido en paralelo (control de concurrencia optimista del
+      // backend). Avisamos el conflicto y recargamos para que el operador vea el estado real.
+      if (err?.response?.status === 409) {
+        toast.warning(err.response.data?.mensaje ?? 'Este pedido fue modificado por otro usuario. Se actualizó la vista.');
+        await recargarDatos();
+      } else {
+        toast.error('Error al aprobar el pedido');
+      }
+    }
     finally { setIsAprobando(false); reservaModal.onClose(); setPedidoReservaModal(null); }
   };
 
@@ -512,7 +521,15 @@ const ConglomeradoPedidosPage: React.FC = () => {
       await aprobarPedidosService({ idsPedidos: pedidosPend.map(p => p.idPedido), estado: 'APROBADO' });
       toast.success(`${pedidosPend.length} pedidos aprobados correctamente`);
       await recargarDatos();
-    } catch { toast.error('Error al aprobar los pedidos'); }
+    } catch (err: any) {
+      // 409: al menos un pedido fue modificado en paralelo por otro usuario.
+      if (err?.response?.status === 409) {
+        toast.warning(err.response.data?.mensaje ?? 'Uno o más pedidos fueron modificados por otro usuario. Se actualizó la vista.');
+        await recargarDatos();
+      } else {
+        toast.error('Error al aprobar los pedidos');
+      }
+    }
     finally { setIsAprobando(false); }
   };
 
