@@ -12,15 +12,15 @@ import { Icon } from '@iconify/react';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useHistory } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ISolicitud, IItemSolicitud } from '../types/solicitud.types';
+import { ISolicitud, IItemSolicitud } from '../types/solicitud/solicitud.types';
 import { actualizarEstadoBodegaService, obtenerEntregasDiariasService, prepararEntregaService, registrarDisponiblesService, IRegistrarDisponibleDTO, consultarDisponiblesPorProductoService, restarDisponiblesService, IRestarDisponibleDTO, IEntregaDiaria, ISalaEntrega, ISolicitudEntrega } from '../services/solicitud/solicitud-service';
 import { obtenerRecetaPorIdService } from '../services/pedido/pedido-semanal-bodega-service';
 import { obtenerFiltrosInventarioService } from '../services/inventario/producto-service';
 import { buscarBodegaTransitoService, buscarBodegaTransitoPorCodigoService, obtenerBodegaPaginadaService, IBodegaTransitoItem, obtenerBulkBodegaListingService, bulkUpdateBodegaStockService, IBulkBodegaListing, IBulkWarehouseUpdateRequest, IBulkWarehouseProcessResult, inicializarDesdeAbastecimientoService, obtenerBodegaByInventarioIdsService } from '../services/inventario/bodega-transito-service';
 import { useToast } from '../hooks/useToast';
 import { useModulePermission } from '../contexts/permission-context';
-import { IProducto } from '../types/producto.types';
-import { IUnidadMedida } from '../types/inventario.types';
+import { IProducto } from '../types/inventario/producto.types';
+import { IUnidadMedida } from '../types/inventario/inventario.types';
 import { FormularioProducto } from './inventario';
 import { obtenerUnidadesActivasService } from '../services/inventario/unidad-medida-service';
 import GestionCategoriasModal from '../components/modals/GestionCategoriasModal';
@@ -30,7 +30,7 @@ import StockDisponiblesModal from '../components/modals/StockDisponiblesModal';
 import ConfirmarDisponibleBodegaModal, { ConfirmarDisponibleBodegaItem } from '../components/modals/ConfirmarDisponibleBodegaModal';
 import ConfirmarSalidaDisponibleModal, { ConfirmarSalidaDisponibleItem } from '../components/modals/ConfirmarSalidaDisponibleModal';
 import { obtenerAbastecimientoConfirmadoService, marcarEntregadosMasivoService } from '../services/proveedor/proveedor-service';
-import { IOrdenAbastecimiento, ICategoriaEntregaAbastecimiento } from '../types/proveedor.types';
+import { IOrdenAbastecimiento, ICategoriaEntregaAbastecimiento } from '../types/proveedor/proveedor.types';
 
 // Mapa de Bloques Horarios
 const BLOQUES_HORARIOS: Record<number, string> = {

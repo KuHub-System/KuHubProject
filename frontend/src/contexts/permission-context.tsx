@@ -20,7 +20,7 @@ import {
   ModulePermissions,
   RolePermission,
   levelFromPermissions,
-} from '../types/permissions.types';
+} from '../types/usuario/permissions.types';
 
 // ── Interfaz del contexto ─────────────────────────────────────────────────────
 

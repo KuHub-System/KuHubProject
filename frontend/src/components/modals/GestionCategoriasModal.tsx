@@ -15,7 +15,7 @@ import {
     Alert
 } from '@heroui/react';
 import { Icon } from '@iconify/react';
-import { ICategoria } from '../../types/inventario.types';
+import { ICategoria } from '../../types/inventario/inventario.types';
 import { obtenerCategorias, crearCategoria, actualizarCategoria } from '../../services/shared/storage-service';
 import {
     crearCategoriaService,

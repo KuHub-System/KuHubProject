@@ -5,7 +5,7 @@
  * Ubicación: src/services/roles-helper.ts
  */
 
-import { IRole } from '../../types/user.types';
+import { IRole } from '../../types/usuario/user.types';
 
 const STORAGE_KEY = 'sistema-roles-configurados';
 

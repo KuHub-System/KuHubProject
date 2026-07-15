@@ -11,7 +11,7 @@ import {
     Divider
 } from '@heroui/react';
 import { Icon } from '@iconify/react';
-import { IUnidadMedida } from '../../types/inventario.types';
+import { IUnidadMedida } from '../../types/inventario/inventario.types';
 import {
     obtenerUnidadesService,
     crearUnidadService,

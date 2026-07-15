@@ -7,7 +7,7 @@ import {
 } from '@heroui/react';
 import { Icon } from '@iconify/react';
 import { motion } from 'framer-motion';
-import { IUsuario, IUsuarioCreacion, IUsuarioActualizacion, RolUsuario } from '../types/usuario.types';
+import { IUsuario, IUsuarioCreacion, IUsuarioActualizacion, RolUsuario } from '../types/usuario/usuario.types';
 import {
   crearUsuarioService,
   actualizarUsuarioService,

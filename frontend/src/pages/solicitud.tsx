@@ -29,7 +29,7 @@ import {
   obtenerProductosOpcionConCategoriaService,
   generarSolicitudesMasivasService,
 } from '../services/solicitud/solicitud-service';
-import {ISemana} from "../types/semana.types.ts";
+import {ISemana} from "../types/academica/semana.types.ts";
 import { obtenerSemanasPorPeriodoService } from '../services/academica/semana-service';
 import { esFeriadoChile } from '../utils/feriados-chile';
 

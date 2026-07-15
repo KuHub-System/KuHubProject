@@ -4,7 +4,7 @@
 // ========================================
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { IRole } from '../types/user.types';
+import { IRole } from '../types/usuario/user.types';
 import { ROLES_STORAGE_KEY, cargarRoles, guardarRoles as guardarRolesConfig } from '../config/roles-config';
 
 /**

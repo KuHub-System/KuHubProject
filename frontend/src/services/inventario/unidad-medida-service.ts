@@ -1,5 +1,5 @@
 import api from '../../config/Axios';
-import { IUnidadMedida } from '../../types/inventario.types';
+import { IUnidadMedida } from '../../types/inventario/inventario.types';
 
 /**
  * Interface que representa el DTO de retorno del backend para la vista de unidades.

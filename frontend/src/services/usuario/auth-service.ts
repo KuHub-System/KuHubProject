@@ -4,7 +4,7 @@
  */
 
 import api from '../../config/Axios';
-import { RolUsuario, IUsuarioAuth } from '../../types/usuario.types';
+import { RolUsuario, IUsuarioAuth } from '../../types/usuario/usuario.types';
 import { logger } from '../../utils/logger';
 
 // Actualizamos la definición de Sesión para usar la nueva interfaz

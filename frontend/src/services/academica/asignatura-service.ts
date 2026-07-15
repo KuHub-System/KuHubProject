@@ -14,7 +14,7 @@ import {
   IBloqueHorario,
   EstadoSeccion,
   DiaSemana
-} from '../../types/asignatura.types';
+} from '../../types/academica/asignatura.types';
 
 // ============================================
 // INTERFACES PARA RESPUESTAS DEL BACKEND

@@ -10,7 +10,7 @@ import {
     Checkbox,
 } from '@heroui/react';
 import { Icon } from '@iconify/react';
-import { ICategoriaAbastecimientoView } from '../../types/inventario.types';
+import { ICategoriaAbastecimientoView } from '../../types/inventario/inventario.types';
 import {
     obtenerConfigAbastecimientoService,
     actualizarConfigAbastecimientoService,

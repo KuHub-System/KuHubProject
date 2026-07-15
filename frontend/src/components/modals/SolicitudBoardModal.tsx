@@ -12,8 +12,8 @@ import {
     Tooltip
 } from '@heroui/react';
 import { Icon } from '@iconify/react';
-import { ISolicitud } from '../../types/solicitud.types';
-import { IAsignatura, DiaSemana } from '../../types/asignatura.types';
+import { ISolicitud } from '../../types/solicitud/solicitud.types';
+import { IAsignatura, DiaSemana } from '../../types/academica/asignatura.types';
 import { obtenerAsignaturasService } from '../../services/academica/asignatura-service';
 
 interface SolicitudBoardModalProps {

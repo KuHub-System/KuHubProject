@@ -46,7 +46,7 @@ import {
   RolePermission,
   emptyModulePermissions,
   levelFromPermissions,
-} from '../types/permissions.types';
+} from '../types/usuario/permissions.types';
 
 // ── Opciones de nivel de acceso ───────────────────────────────────────────────
 

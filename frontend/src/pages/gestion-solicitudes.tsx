@@ -17,7 +17,7 @@ import {
 import { Icon } from '@iconify/react';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useToast } from '../hooks/useToast';
-import { ISemana } from '../types/semana.types';
+import { ISemana } from '../types/academica/semana.types';
 import {
   obtenerSolicitudesPorSemanaService,
   ISolicitudPorSemanaResponse,

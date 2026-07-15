@@ -3,7 +3,7 @@
  */
 
 import api from '../../config/Axios';
-import { ISemana, IWeekGeneratorDTO, IWeekReasignDTO } from '../../types/semana.types';
+import { ISemana, IWeekGeneratorDTO, IWeekReasignDTO } from '../../types/academica/semana.types';
 
 export interface IPeriodoAcademico {
   anio: number;

@@ -19,7 +19,7 @@ import { DashboardHeader } from './shared/DashboardHeader';
 import { StatsCard } from './shared/StatsCard';
 import { EstadoSolicitudChip } from './shared/EstadoSolicitudChip';
 import { AlertaProcesoSolicitudes } from '../AlertaProcesoSolicitudes';
-import { ISolicitud } from '../../types/solicitud.types';
+import { ISolicitud } from '../../types/solicitud/solicitud.types';
 import { useAuth } from '../../contexts/auth-context';
 
 export const DashboardProfesor: React.FC = () => {

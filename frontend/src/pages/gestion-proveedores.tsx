@@ -37,7 +37,7 @@ import { useModulePermission, usePermission } from '../contexts/permission-conte
 import { usePeriodoSemana } from '../contexts/periodo-semana-context';
 import { obtenerSemanasPorPeriodoService } from '../services/academica/semana-service';
 import BookPageLoader from '../components/BookPageLoader';
-import type { ISemana } from '../types/semana.types';
+import type { ISemana } from '../types/academica/semana.types';
 import {
   obtenerProveedoresService,
   obtenerProveedoresPaginadoService,
@@ -99,8 +99,8 @@ import type {
   IOrdenPedidoConDetalles,
   IDetalleOrdenPedido,
   IEntregaReal,
-} from '../types/proveedor.types';
-import type { IProductoRecetaSelection } from '../types/producto.types';
+} from '../types/proveedor/proveedor.types';
+import type { IProductoRecetaSelection } from '../types/inventario/producto.types';
 import { nombreFeriadoChile } from '../utils/feriados-chile';
 
 // ── Constantes de días de semana ──────────────────────────────────────────────
@@ -1151,7 +1151,7 @@ const GestionProveedoresPage: React.FC = () => {
     clearBlurTimeout();
     if (!editingPrecio) return;
     const esCampoTexto = editingPrecio.campo === 'marca' || editingPrecio.campo === 'contenido';
-    let dto: import('../types/proveedor.types').IProveedorProductoUpdateDTO;
+    let dto: import('../types/proveedor/proveedor.types').IProveedorProductoUpdateDTO;
     if (esCampoTexto) {
       dto = editingPrecio.campo === 'marca'
         ? { marcaProducto: precioTemp.trim() }

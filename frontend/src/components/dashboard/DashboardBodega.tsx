@@ -13,7 +13,7 @@ import { logger } from '../../utils/logger';
 import { cargarDashboardBodega } from '../../services/dashboard/dashboard-service';
 import { DashboardHeader } from './shared/DashboardHeader';
 import { StatsCard } from './shared/StatsCard';
-import { IProducto } from '../../types/producto.types';
+import { IProducto } from '../../types/inventario/producto.types';
 import { useAuth } from '../../contexts/auth-context';
 
 export const DashboardBodega: React.FC = () => {

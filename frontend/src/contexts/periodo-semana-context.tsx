@@ -1,5 +1,5 @@
 import React from 'react';
-import { ISemana, IPeriodoAcademico } from '../types/semana.types';
+import { ISemana, IPeriodoAcademico } from '../types/academica/semana.types';
 import {
   obtenerPeriodosAcademicosService,
   obtenerSemanasPorPeriodoService,

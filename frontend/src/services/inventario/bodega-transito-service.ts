@@ -235,7 +235,7 @@ export const crearBodegaConProductoService = async (
     }
 };
 
-import type { ISincronizarInventarioExcelResultado } from '../../types/inventario.types';
+import type { ISincronizarInventarioExcelResultado } from '../../types/inventario/inventario.types';
 
 /**
  * Sincroniza el stock de bodega de tránsito desde un Excel.

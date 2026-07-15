@@ -8,7 +8,7 @@
  * ⚠️ IMPORTANTE: Los nombres DEBEN coincidir con los del backend
  */
 
-import { IRole } from '../types/user.types';
+import { IRole } from '../types/usuario/user.types';
 
 /**
  * CLAVE PARA LOCALSTORAGE

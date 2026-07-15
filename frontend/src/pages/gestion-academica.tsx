@@ -35,8 +35,8 @@ import { useModulePermission, usePermission } from '../contexts/permission-conte
 import { useHistory } from 'react-router-dom';
 
 // Importar tipos y servicios actualizados
-import { IAsignatura, ISeccion, IBloqueHorario, EstadoSeccion } from '../types/asignatura.types';
-import { IUsuario } from '../types/usuario.types';
+import { IAsignatura, ISeccion, IBloqueHorario, EstadoSeccion } from '../types/academica/asignatura.types';
+import { IUsuario } from '../types/usuario/usuario.types';
 import {
   obtenerAsignaturasService,
   crearAsignaturaService,

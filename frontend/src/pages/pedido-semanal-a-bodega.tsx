@@ -39,7 +39,7 @@ import { usePeriodoSemana } from '../contexts/periodo-semana-context';
 import BookPageLoader from '../components/BookPageLoader';
 
 // IMPORTAR TIPOS Y SERVICIOS
-import { IPedidoSemanaBodega, IIngrediente, IPedidoSemanaBodegaWithDetailsUpdateDTO, IResultadoItemExcel, IImportarExcelResultado, IAsignatura } from '../types/receta.types';
+import { IPedidoSemanaBodega, IIngrediente, IPedidoSemanaBodegaWithDetailsUpdateDTO, IResultadoItemExcel, IImportarExcelResultado, IAsignatura } from '../types/pedido/receta.types';
 import { parallelWithLimit } from '../utils/request-throttle';
 import {
   obtenerRecetasPaginadasService,
@@ -56,8 +56,8 @@ import {
   obtenerAsignaturasActivasService
 } from '../services/pedido/pedido-semanal-bodega-service';
 import { obtenerProductosParaRecetaService } from '../services/inventario/producto-service';
-import { IProductoRecetaSelection } from '../types/producto.types';
-import { IPedidoSemanaBodegaPaginedDTO, IDetallePedidoSemanaBodegaDTO, IPaginationMeta, IPedidoSemanaBodegaCountResponse } from '../types/receta.types';
+import { IProductoRecetaSelection } from '../types/inventario/producto.types';
+import { IPedidoSemanaBodegaPaginedDTO, IDetallePedidoSemanaBodegaDTO, IPaginationMeta, IPedidoSemanaBodegaCountResponse } from '../types/pedido/receta.types';
 
 /**
  * Página de pedido semanal a bodega.

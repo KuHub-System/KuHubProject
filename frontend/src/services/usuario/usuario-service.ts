@@ -4,7 +4,7 @@
  */
 
 import api from '../../config/Axios';
-import { IUsuario, IUsuarioCreacion, IUsuarioActualizacion, IPaginatedUsuarioResponse, IUsuarioEstado, RolUsuario } from '../../types/usuario.types';
+import { IUsuario, IUsuarioCreacion, IUsuarioActualizacion, IPaginatedUsuarioResponse, IUsuarioEstado, RolUsuario } from '../../types/usuario/usuario.types';
 
 /**
  * Mapeo centralizado de roles Frontend → Backend

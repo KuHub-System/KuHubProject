@@ -24,7 +24,7 @@ import {
   IOrdenPedidoListItem,
   IOrdenPedidoConDetalles,
   IAbastecimientoProveedorResponse,
-} from '../../types/proveedor.types';
+} from '../../types/proveedor/proveedor.types';
 
 // ── Helpers de transformación ─────────────────────────────────────────────────
 

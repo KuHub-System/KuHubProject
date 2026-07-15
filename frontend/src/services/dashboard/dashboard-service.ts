@@ -4,8 +4,8 @@
  */
 
 import { obtenerProductos } from '../shared/storage-service';
-import { IProducto } from '../../types/producto.types';
-import { ISolicitud } from '../../types/solicitud.types';
+import { IProducto } from '../../types/inventario/producto.types';
+import { ISolicitud } from '../../types/solicitud/solicitud.types';
 
 /**
  * Estado del proceso de pedidos

@@ -17,12 +17,12 @@ import {
     IValidateStockRequest,
     IValidateStockConflictResponse,
     IProductoRecetaSelection
-} from '../../types/producto.types';
+} from '../../types/inventario/producto.types';
 import {
     ISincronizarInventarioExcelResultado,
     ICategoriaAbastecimientoView,
     ICategoriaAbastecimientoItemDTO,
-} from '../../types/inventario.types';
+} from '../../types/inventario/inventario.types';
 
 /**
  * Obtiene las categorías y unidades de medida para los filtros

@@ -10,7 +10,7 @@ import {
   IAprobarRechazarSolicitud,
   IFiltrosSolicitudes,
   EstadoSolicitud
-} from '../../types/solicitud.types';
+} from '../../types/solicitud/solicitud.types';
 import { obtenerUsuarioActualService } from '../usuario/auth-service';
 import api from '../../config/Axios';
 
@@ -993,7 +993,7 @@ export const obtenerSolicitudesAceptadasParaPedidoService = (): Promise<ISolicit
 export const actualizarEstadoBodegaService = (
   id: string,
   estado: 'Pendiente' | 'Armado',
-  itemsAdicionales?: import('../../types/solicitud.types').IItemSolicitud[]
+  itemsAdicionales?: import('../../types/solicitud/solicitud.types').IItemSolicitud[]
 ): Promise<ISolicitud> => {
   return new Promise((resolve, reject) => {
     setTimeout(() => {

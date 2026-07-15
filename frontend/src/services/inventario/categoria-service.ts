@@ -6,7 +6,7 @@
  */
 
 import api from '../../config/Axios';
-import { ICategoria } from '../../types/inventario.types';
+import { ICategoria } from '../../types/inventario/inventario.types';
 
 /**
  * DTO para la categoría que viene del backend

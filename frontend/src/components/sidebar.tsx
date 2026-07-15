@@ -4,7 +4,7 @@ import { Button, Divider } from '@heroui/react';
 import { Icon } from '@iconify/react';
 import { useAuth } from '../contexts/auth-context';
 import { usePermission } from '../contexts/permission-context';
-import { PAGE_TO_MODULE } from '../types/permissions.types';
+import { PAGE_TO_MODULE } from '../types/usuario/permissions.types';
 import { useSistemaConfig } from '../contexts/sistema-config-context';
 import { motion } from 'framer-motion';
 

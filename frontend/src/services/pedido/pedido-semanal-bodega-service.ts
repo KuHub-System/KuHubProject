@@ -14,7 +14,7 @@ import {
   IPedidoSemanaBodegaCountResponse,
   IImportarExcelResultado,
   IAsignatura
-} from '../../types/receta.types';
+} from '../../types/pedido/receta.types';
 
 import api from '../../config/Axios';
 

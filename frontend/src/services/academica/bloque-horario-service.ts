@@ -3,7 +3,7 @@
  */
 
 import api from '../../config/Axios';
-import { IBloqueHorario } from '../../types/bloque-horario.types';
+import { IBloqueHorario } from '../../types/academica/bloque-horario.types';
 
 export interface IBloqueDisponible {
     idBloque: number;

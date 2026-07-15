@@ -38,7 +38,7 @@ import { Icon } from '@iconify/react';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useHistory } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import {IInventoryPageItem, IProducto} from '../types/producto.types';
+import {IInventoryPageItem, IProducto} from '../types/inventario/producto.types';
 import {
   crearProductoService,
   actualizarProductoService,
@@ -63,7 +63,7 @@ import ConfirmarDisponibleBodegaModal from '../components/modals/ConfirmarDispon
 import ConfirmarSalidaDisponibleModal, { ConfirmarSalidaDisponibleItem } from '../components/modals/ConfirmarSalidaDisponibleModal';
 import { obtenerCategoriasActivasService } from '../services/inventario/categoria-service';
 import { obtenerUnidadesActivasService } from '../services/inventario/unidad-medida-service';
-import { IUnidadMedida, ISincronizarInventarioExcelResultado, IResultadoItemInventarioExcel, ICategoriaAbastecimientoView } from '../types/inventario.types';
+import { IUnidadMedida, ISincronizarInventarioExcelResultado, IResultadoItemInventarioExcel, ICategoriaAbastecimientoView } from '../types/inventario/inventario.types';
 import { actualizarBodegaTransitoConProductoService, crearBodegaConProductoService, sincronizarBodegaTransitoDesdeExcelService, confirmarNuevosBodegaExcelService, WarehouseWithProductUpdateDTO, IBodegaStockSyncWarning, IBodegaStockInsuficiente } from '../services/inventario/bodega-transito-service';
 import {
   obtenerBulkProductoInventoryListingService,
@@ -95,7 +95,7 @@ import {
   IEntregaDiaAbastecimiento,
   ICategoriaEntregaAbastecimiento,
   IProductoEntregaAbastecimiento,
-} from '../types/proveedor.types';
+} from '../types/proveedor/proveedor.types';
 
 interface ItemPedidoMasivo {
   id: string;

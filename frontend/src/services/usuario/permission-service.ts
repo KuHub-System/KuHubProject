@@ -17,7 +17,7 @@ import {
   PermisoMatrizDTO,
   PermisoRolRequestDTO,
   RolePermission,
-} from '../../types/permissions.types';
+} from '../../types/usuario/permissions.types';
 
 // ── Cache en memoria para la matriz (evita llamadas repetidas) ────────────────
 let matrixCache: Record<string, PermisoMatrizDTO[]> | null = null;

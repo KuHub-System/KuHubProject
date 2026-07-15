@@ -18,7 +18,7 @@ import {
   levelFromPermissions,
   ModulePermissions,
   ModuleKey,
-} from '../../types/permissions.types';
+} from '../../types/usuario/permissions.types';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // HOISTED — vi.fn() disponibles antes del hoisting de vi.mock

@@ -15,7 +15,7 @@ import {
   IInventoryPageItem,
   IInventoryPageResponse,
   IProductoRecetaSelection
-} from '../../types/producto.types';
+} from '../../types/inventario/producto.types';
 
 // Importar el servicio real de inventario
 import {

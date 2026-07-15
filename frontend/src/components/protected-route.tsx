@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/auth-context';
 import { usePermission } from '../contexts/permission-context';
 import { Spinner } from '@heroui/react';
 import { logger } from '../utils/logger';
-import { PAGE_TO_MODULE } from '../types/permissions.types';
+import { PAGE_TO_MODULE } from '../types/usuario/permissions.types';
 
 interface ProtectedRouteProps extends RouteProps {
   roles?: string[]; // Roles permitidos (DEPRECADO - usar pageId)

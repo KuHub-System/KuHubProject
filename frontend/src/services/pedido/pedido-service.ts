@@ -3,7 +3,7 @@
  * Persiste los procesos de pedidos iniciados por la administración.
  */
 
-import { IPedido, EstadoPedido } from '../../types/pedido.types';
+import { IPedido, EstadoPedido } from '../../types/pedido/pedido.types';
 
 const STORAGE_KEY = 'kuhub-pedidos';
 

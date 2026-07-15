@@ -5,16 +5,16 @@
  * Ubicación: src/services/storage-service.ts
  */
 
-import { IProducto, IMovimientoProducto } from '../../types/producto.types';
-import { IUser, IRole } from '../../types/user.types';
+import { IProducto, IMovimientoProducto } from '../../types/inventario/producto.types';
+import { IUser, IRole } from '../../types/usuario/user.types';
 import {
   IPedidoSemanaBodega,
   IIngrediente,
   ISolicitud,
   IItemSolicitud,
   IActualizarSolicitud
-} from '../../types/receta.types';
-import { ICategoria, IUnidadMedida } from '../../types/inventario.types.ts';
+} from '../../types/pedido/receta.types';
+import { ICategoria, IUnidadMedida } from '../../types/inventario/inventario.types.ts';
 import { ROLES_STORAGE_KEY, ROLES_SISTEMA, guardarRoles as guardarRolesConfig } from '../../config/roles-config';
 
 // ==========================================

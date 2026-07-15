@@ -39,9 +39,9 @@ import { useSistemaConfig } from '../contexts/sistema-config-context';
 import { usePeriodoSemana } from '../contexts/periodo-semana-context';
 
 // ─── TIPOS Y SERVICIOS ───────────────────────────────────────────────────────
-import { IBloqueHorario } from '../types/bloque-horario.types';
+import { IBloqueHorario } from '../types/academica/bloque-horario.types';
 import { obtenerBloquesHorarioService, reasignarBloquesService, restaurarBloquesDefaultService, IBloqueReasignar } from '../services/academica/bloque-horario-service';
-import { ISemana } from '../types/semana.types';
+import { ISemana } from '../types/academica/semana.types';
 import { obtenerSemanasService, generarCalendarioService, obtenerAniosFiltroService, invalidarCacheSemanas, reasignarCalendarioService } from '../services/academica/semana-service';
 import {
   getConfiguracionSistema,
