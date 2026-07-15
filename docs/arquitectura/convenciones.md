@@ -30,29 +30,16 @@ return (
 apretado en el centro con franjas vacías a los costados — desperdicia espacio de pantalla real en
 tablas, grids y dashboards que se benefician de más ancho.
 
-### Páginas corregidas para cumplir esta norma
+### Estado
 
-Se les quitó `container mx-auto` del wrapper raíz (había sido agregado por error en un cambio previo):
+Todas las páginas de `frontend/src/pages/*.tsx` cumplen esta norma — se les quitó `container mx-auto`
+o `max-w-7xl mx-auto` del wrapper raíz:
 
-- `frontend/src/pages/pedido-semanal-a-bodega.tsx`
-- `frontend/src/pages/inventario.tsx`
-- `frontend/src/pages/admin-sistema.tsx`
-- `frontend/src/pages/historico-pedidos.tsx`
+`pedido-semanal-a-bodega`, `inventario`, `admin-sistema`, `historico-pedidos`, `dashboard`, `solicitud`,
+`gestion-usuarios`, `gestion-proveedores`, `gestion-academica`, `perfil-usuario`, `not-found`,
+`gestion-solicitudes`, `gestion-pedidos`.
 
-### Páginas pendientes de corregir (aún usan `container`/`max-w-*` en el wrapper raíz)
-
-- `frontend/src/pages/dashboard.tsx`
-- `frontend/src/pages/solicitud.tsx`
-- `frontend/src/pages/gestion-usuarios.tsx`
-- `frontend/src/pages/gestion-proveedores.tsx`
-- `frontend/src/pages/gestion-academica.tsx`
-- `frontend/src/pages/perfil-usuario.tsx`
-- `frontend/src/pages/not-found.tsx`
-- `frontend/src/pages/gestion-solicitudes.tsx` (usa `max-w-7xl mx-auto`)
-- `frontend/src/pages/gestion-pedidos.tsx` (usa `max-w-7xl mx-auto`)
-
-Al tocar cualquiera de estas páginas, quitar el `container`/`max-w-*`/`mx-auto` del wrapper raíz para
-alinearla con la norma.
+Al crear una página nueva, no introducir `container`/`max-w-*`/`mx-auto` en su wrapper raíz.
 
 ### Excepción: layouts full-bleed con paneles fijos
 

@@ -1074,7 +1074,7 @@ const SolicitudPage: React.FC = () => {
   // ─────────────────────────────────────────────────────────────────────────
 
   return (
-    <div className="container mx-auto px-4 py-6 space-y-5">
+    <div className="px-4 py-6 space-y-5">
 
       {/* ── Selector de periodo académico ── */}
       <Card className="shadow-sm border border-default-200">

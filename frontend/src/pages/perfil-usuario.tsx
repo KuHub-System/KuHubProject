@@ -47,7 +47,7 @@ const PerfilUsuarioPage: React.FC = () => {
   };
 
   return (
-    <div className="container mx-auto px-4">
+    <div className="px-4">
       <motion.div
         variants={containerVariants}
         initial="hidden"

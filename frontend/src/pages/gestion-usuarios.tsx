@@ -1144,7 +1144,7 @@ const GestionUsuariosPage: React.FC = () => {
   // ── Render ──────────────────────────────────────────────────────────────────
 
   return (
-    <div className="container mx-auto px-4 py-8 space-y-6 font-sans">
+    <div className="px-4 py-8 space-y-6 font-sans">
       <Tabs
         selectedKey={activeTab}
         onSelectionChange={(key) => setActiveTab(key as 'usuarios' | 'roles')}

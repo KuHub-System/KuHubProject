@@ -1319,7 +1319,7 @@ const GestionSolicitudesPage: React.FC = () => {
   // ── Render ──────────────────────────────────────────────────────────────────
   return (
     <>
-      <div className="max-w-7xl mx-auto px-4 pt-4">
+      <div className="px-4 pt-4">
         <Tabs
           selectedKey={activeTab}
           onSelectionChange={(key) => setActiveTab(key as 'solicitudes' | 'pedido')}
@@ -1333,7 +1333,7 @@ const GestionSolicitudesPage: React.FC = () => {
       </div>
 
       {activeTab === 'solicitudes' && (
-    <div className="max-w-7xl mx-auto px-4 py-6 space-y-5">
+    <div className="px-4 py-6 space-y-5">
 
       {/* ── Selector período + semana ── */}
       <Card className="shadow-sm">
@@ -2091,7 +2091,7 @@ const GestionSolicitudesPage: React.FC = () => {
       )}
 
       {activeTab === 'pedido' && (
-    <div className="max-w-7xl mx-auto px-4 py-6 space-y-5">
+    <div className="px-4 py-6 space-y-5">
 
       {/* ── Selector período + semana ── */}
       <Card className="shadow-sm">

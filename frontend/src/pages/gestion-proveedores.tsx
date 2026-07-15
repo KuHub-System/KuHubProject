@@ -2313,7 +2313,7 @@ const GestionProveedoresPage: React.FC = () => {
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <div className="container mx-auto px-4 pb-8 font-sans -mt-6">
+    <div className="px-4 pb-8 font-sans -mt-6">
 
       {/* Toast */}
       <AnimatePresence>

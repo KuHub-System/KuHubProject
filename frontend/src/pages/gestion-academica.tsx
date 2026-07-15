@@ -936,7 +936,7 @@ const GestionAsignaturasPage: React.FC = () => {
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -20 }}
                 transition={{ duration: 0.3 }}
-                className="container mx-auto px-4 py-8"
+                className="px-4 py-8"
               >
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}

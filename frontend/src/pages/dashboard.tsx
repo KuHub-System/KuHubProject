@@ -25,7 +25,7 @@ export {
 // ─── Admin Tabbed Layout ──────────────────────────────────────────────────────
 
 const DashboardAdminTabs: React.FC = () => (
-  <div className="container mx-auto px-4 py-6 space-y-4">
+  <div className="px-4 py-6 space-y-4">
     {/* Tabs */}
     <Tabs
       aria-label="Dashboard views"
@@ -78,7 +78,7 @@ const DashboardAdminTabs: React.FC = () => (
 // ─── Profesor Layout ──────────────────────────────────────────────────────────
 
 const DashboardProfesorView: React.FC = () => (
-  <div className="container mx-auto px-4 py-6 space-y-4">
+  <div className="px-4 py-6 space-y-4">
     <DashboardPedidoSemanalBodegaView />
   </div>
 );
@@ -111,7 +111,7 @@ const DashboardPage: React.FC = () => {
   // ── Gestor de Pedidos: analítica de gestión ──
   if (canRead('GESTION_PEDIDOS')) {
     return (
-      <div className="container mx-auto px-4 py-6">
+      <div className="px-4 py-6">
         <DashboardGestor />
       </div>
     );
@@ -120,7 +120,7 @@ const DashboardPage: React.FC = () => {
   // ── Encargado / Asistente de Bodega: inventario ──
   if (canRead('INVENTARIO') || canRead('BODEGA_TRANSITO')) {
     return (
-      <div className="container mx-auto px-4 py-6">
+      <div className="px-4 py-6">
         <DashboardInventarioView />
       </div>
     );
@@ -134,7 +134,7 @@ const DashboardPage: React.FC = () => {
   // ── Fallback ──
   return (
     <div className="bg-gray-50 dark:bg-zinc-900 min-h-screen py-8">
-      <div className="container mx-auto px-4">
+      <div className="px-4">
         <div className="text-center py-12">
           <Icon icon="lucide:alert-circle" className="text-6xl text-default-400 mx-auto mb-4" />
           <h2 className="text-2xl font-bold mb-2">Sin Permisos para Dashboard</h2>
