@@ -18,7 +18,6 @@ import AuthLayout from './layouts/auth-layout';
 const LoginPage = lazy(() => import('./pages/login'));
 const DashboardPage = lazy(() => import('./pages/dashboard'));
 const InventarioPage = lazy(() => import('./pages/inventario'));
-const MovimientosProductoPage = lazy(() => import('./pages/movimientos-producto'));
 const PerfilUsuarioPage = lazy(() => import('./pages/perfil-usuario'));
 const GestionRolesPage = lazy(() => import('./pages/gestion-roles'));
 const SolicitudPage = lazy(() => import('./pages/solicitud'));
@@ -168,17 +167,18 @@ const App: React.FC = () => {
                     </MainLayout>
                   </ProtectedRoute>
 
-                  {/* 🔥 NUEVA RUTA GENERICA DE MOVIMIENTOS */}
-                  <ProtectedRoute exact path="/movimientos" pageId="historial-movimientos">
+                  {/* "Movimientos" se fusionó como pestaña de Inventario -- estas rutas
+                      quedan solo por compatibilidad con enlaces/bookmarks antiguos y
+                      renderizan la misma InventarioPage, que abre en la pestaña Movimientos. */}
+                  <ProtectedRoute exact path="/movimientos" pageId="inventario">
                     <MainLayout>
-                      <MovimientosProductoPage />
+                      <InventarioPage />
                     </MainLayout>
                   </ProtectedRoute>
 
-                  {/* Mantenemos la ruta anterior por compatibilidad, pero ahora es opcional */}
-                  <ProtectedRoute path="/movimientos-producto/:id" pageId="historial-movimientos">
+                  <ProtectedRoute path="/movimientos-producto/:id" pageId="inventario">
                     <MainLayout>
-                      <MovimientosProductoPage />
+                      <InventarioPage />
                     </MainLayout>
                   </ProtectedRoute>
 

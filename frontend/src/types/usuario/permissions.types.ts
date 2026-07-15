@@ -337,7 +337,10 @@ export const MODULE_ICONS: Record<ModuleKey, string> = {
 // Cuando el valor es un array, el acceso se concede si CUALQUIERA de los módulos tiene lectura.
 export const PAGE_TO_MODULE: Record<string, ModuleKey | ModuleKey[]> = {
   'dashboard':              'DASHBOARD',
-  'inventario':             'INVENTARIO',
+  // "Movimientos" se fusionó como pestaña de /inventario -- se acepta cualquiera de los
+  // dos permisos para que un rol con solo HISTORIAL_MOVIMIENTOS (ej. Asistente de Bodega)
+  // no pierda acceso a su pestaña.
+  'inventario':             ['INVENTARIO', 'HISTORIAL_MOVIMIENTOS'],
   'historial-movimientos':  'HISTORIAL_MOVIMIENTOS',
   'solicitud':              'SOLICITUD',
   'gestion-pedidos':      'GESTION_PEDIDOS',

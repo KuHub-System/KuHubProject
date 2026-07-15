@@ -89,7 +89,6 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar, onLogout }) =>
       title: 'Inventario',
       items: [
         { title: 'Inventario', path: '/inventario', icon: 'lucide:package', pageId: 'inventario' },
-        { title: 'Historial / Movimientos', path: '/movimientos', icon: 'lucide:history', pageId: 'historial-movimientos' },
         { title: 'Bodega de Tránsito', path: '/bodega-transito', icon: 'lucide:warehouse', pageId: 'bodega-transito' }
       ]
     },

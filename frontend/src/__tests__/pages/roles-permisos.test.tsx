@@ -666,14 +666,34 @@ describe('Módulo Roles y Permisos Dinámicos — Plan de Pruebas EP3', () => {
 
   // ============================================================
   // RP-15 — Verificación
-  // ASISTENTE_BODEGA sin acceso a /inventario (módulo no asignado)
+  // "Movimientos" se fusionó como pestaña de /inventario (ver
+  // PAGE_TO_MODULE['inventario'] en permissions.types.ts): la ruta ahora
+  // acepta acceso vía INVENTARIO *o* HISTORIAL_MOVIMIENTOS, para que un rol
+  // como ASISTENTE_BODEGA (que solo tiene HISTORIAL_MOVIMIENTOS) no pierda
+  // la posibilidad de llegar a su pestaña.
   // ============================================================
-  describe('RP-15: ASISTENTE_BODEGA redirigido a /sin-acceso en /inventario', () => {
-    it('protected-route redirige porque INVENTARIO: puedeLeer=false para ASISTENTE', async () => {
+  describe('RP-15: ASISTENTE_BODEGA con solo HISTORIAL_MOVIMIENTOS accede a /inventario', () => {
+    it('protected-route permite el acceso porque HISTORIAL_MOVIMIENTOS: puedeLeer=true para ASISTENTE', async () => {
       // ARRANGE
       mockAuth(USERS.asistente);
-      // ASISTENTE no tiene acceso a INVENTARIO
+      // ASISTENTE no tiene INVENTARIO, pero sí HISTORIAL_MOVIMIENTOS
       mockPermission((m) => m !== 'INVENTARIO');
+
+      // ACT
+      renderProtectedRoute('/inventario', 'inventario');
+
+      // ASSERT
+      await waitFor(() => {
+        expect(screen.getByTestId('pagina-contenido')).toBeInTheDocument();
+      });
+      expect(screen.queryByTestId('sin-acceso')).not.toBeInTheDocument();
+    });
+
+    it('protected-route redirige a /sin-acceso si el rol no tiene NI INVENTARIO NI HISTORIAL_MOVIMIENTOS', async () => {
+      // ARRANGE
+      mockAuth(USERS.docente);
+      // DOCENTE no tiene acceso a ningún módulo de inventario
+      mockPermission(() => false);
 
       // ACT
       renderProtectedRoute('/inventario', 'inventario');
