@@ -95,7 +95,6 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar, onLogout }) =>
     {
       title: 'Usuarios',
       items: [
-        { title: 'Gestión de Roles', path: '/gestion-roles', icon: 'lucide:users', pageId: 'gestion-roles' },
         { title: 'Gestión de Usuarios', path: '/gestion-usuarios', icon: 'lucide:user-cog', pageId: 'gestion-usuarios' }
       ]
     },

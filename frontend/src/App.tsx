@@ -19,7 +19,6 @@ const LoginPage = lazy(() => import('./pages/login'));
 const DashboardPage = lazy(() => import('./pages/dashboard'));
 const InventarioPage = lazy(() => import('./pages/inventario'));
 const PerfilUsuarioPage = lazy(() => import('./pages/perfil-usuario'));
-const GestionRolesPage = lazy(() => import('./pages/gestion-roles'));
 const SolicitudPage = lazy(() => import('./pages/solicitud'));
 const GestionAcademicaPage = lazy(() => import('./pages/gestion-academica'));
 const GestionPedidosPage = lazy(() => import('./pages/gestion-pedidos'));
@@ -188,13 +187,16 @@ const App: React.FC = () => {
                     </MainLayout>
                   </ProtectedRoute>
 
-                  <ProtectedRoute path="/gestion-roles" pageId="gestion-roles">
+                  {/* "Gestión de Roles" se fusionó como pestaña de /gestion-usuarios --
+                      esta ruta queda solo por compatibilidad con enlaces/bookmarks
+                      antiguos y renderiza la misma GestionUsuariosPage, que abre
+                      directo en la pestaña "Roles y permisos". */}
+                  <ProtectedRoute path="/gestion-roles" pageId="gestion-usuarios">
                     <MainLayout>
-                      <GestionRolesPage />
+                      <GestionUsuariosPage />
                     </MainLayout>
                   </ProtectedRoute>
 
-                  {/* 🔥 NUEVAS RUTAS AGREGADAS */}
                   <ProtectedRoute path="/gestion-usuarios" pageId="gestion-usuarios">
                     <MainLayout>
                       <GestionUsuariosPage />

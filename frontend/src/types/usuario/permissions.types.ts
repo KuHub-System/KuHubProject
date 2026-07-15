@@ -352,6 +352,10 @@ export const PAGE_TO_MODULE: Record<string, ModuleKey | ModuleKey[]> = {
   'pedido-semanal-a-bodega': 'PEDIDO_SEMANAL_BODEGA',
   'gestion-academica':    ['GESTION_ACADEMICA', 'GA_VER_ASIGNATURA', 'GA_VER_RESERVAS', 'GA_VER_SALAS'],
   'gestion-roles':        'GESTION_ROLES',
-  'gestion-usuarios':     'GESTION_USUARIOS',
+  // "Gestión de Roles" se fusionó como pestaña de /gestion-usuarios -- se acepta
+  // cualquiera de los dos permisos para no dejar sin acceso a un rol no-admin que
+  // solo tenga GESTION_ROLES otorgado (caso raro, pero la pestaña Roles igual queda
+  // oculta para no-Administrador vía el guard isAdmin dentro del componente).
+  'gestion-usuarios':     ['GESTION_USUARIOS', 'GESTION_ROLES'],
   'admin-sistema':        'ADMIN_SISTEMA',
 };
