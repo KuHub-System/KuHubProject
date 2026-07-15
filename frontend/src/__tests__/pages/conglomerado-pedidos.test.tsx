@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react';
-import { BrowserRouter } from 'react-router-dom';
+import { MemoryRouter } from 'react-router-dom';
 import { HeroUIProvider } from '@heroui/react';
-import ConglomeradoPedidosPage from '../../pages/conglomerado-pedidos';
+import GestionSolicitudesPage from '../../pages/gestion-solicitudes';
 import * as authContext from '../../contexts/auth-context';
 import * as permissionContext from '../../contexts/permission-context';
 
@@ -86,6 +86,8 @@ vi.mock('../../services/solicitud/solicitud-service', async (importOriginal) => 
     reservarDisponiblePedidoService: mockReservarDisponible,
     obtenerOrdenesPorPedidoService:  mockObtenerOrdenes,
     rechazarPedidoService:           mockRechazarPedido,
+    // La pestaña "Revisar solicitudes" carga sus datos en paralelo aunque no esté activa.
+    obtenerSolicitudesPorSemanaService: vi.fn().mockResolvedValue([]),
   };
 });
 
@@ -173,13 +175,16 @@ const emptyConsolidate = {
 // HELPERS DE RENDERIZADO Y CONTEXTO
 // ============================================
 
+// "Gestión de Solicitudes" se fusionó con "Conglomerado de Pedidos" en pestañas dentro de
+// GestionSolicitudesPage. Entrar por /conglomerado-pedidos abre directo en la pestaña
+// "Consolidar pedido", igual que hacía la página standalone que este archivo probaba antes.
 const renderWithProviders = (ui: React.ReactElement) =>
   render(
-    <BrowserRouter>
+    <MemoryRouter initialEntries={['/conglomerado-pedidos']}>
       <HeroUIProvider disableAnimation={true}>
         {ui}
       </HeroUIProvider>
-    </BrowserRouter>
+    </MemoryRouter>
   );
 
 const periodoVacio = {
@@ -253,7 +258,7 @@ const waitForLoad = () =>
 // SUITE 1: Carga y Estado (CONG-01, 02, 03, 04, 06)
 // ============================================
 
-describe('ConglomeradoPedidosPage — Carga y Estado', () => {
+describe('GestionSolicitudesPage / pestaña Conglomerado — Carga y Estado', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockAdmin();
@@ -272,7 +277,7 @@ describe('ConglomeradoPedidosPage — Carga y Estado', () => {
       return defaultMod;
     });
 
-    renderWithProviders(<ConglomeradoPedidosPage />);
+    renderWithProviders(<GestionSolicitudesPage />);
     await waitForLoad();
 
     expect(screen.queryByRole('button', { name: /Aprobación de Pedidos/ })).not.toBeInTheDocument();
@@ -280,7 +285,7 @@ describe('ConglomeradoPedidosPage — Carga y Estado', () => {
   });
 
   it('CONG-02: con semanaId llama consolidatePedidoQueryService con fechas de la semana', async () => {
-    renderWithProviders(<ConglomeradoPedidosPage />);
+    renderWithProviders(<GestionSolicitudesPage />);
     await waitForLoad();
 
     expect(mockConsolidateQuery).toHaveBeenCalledTimes(1);
@@ -293,7 +298,7 @@ describe('ConglomeradoPedidosPage — Carga y Estado', () => {
   it('CONG-03: sin semanaId muestra empty state de selección de semana', async () => {
     mockUsePeriodoSemana.mockReturnValue(periodoVacio);
 
-    renderWithProviders(<ConglomeradoPedidosPage />);
+    renderWithProviders(<GestionSolicitudesPage />);
 
     expect(
       screen.getByText('Seleccione una semana para ver el pedido consolidado.'),
@@ -302,7 +307,7 @@ describe('ConglomeradoPedidosPage — Carga y Estado', () => {
   });
 
   it('CONG-04: con semanaId y sin datos muestra empty state de pedidos', async () => {
-    renderWithProviders(<ConglomeradoPedidosPage />);
+    renderWithProviders(<GestionSolicitudesPage />);
     await waitForLoad();
 
     expect(
@@ -326,7 +331,7 @@ describe('ConglomeradoPedidosPage — Carga y Estado', () => {
       pedidosAprobacion: [],
     });
 
-    renderWithProviders(<ConglomeradoPedidosPage />);
+    renderWithProviders(<GestionSolicitudesPage />);
     await waitForLoad();
 
     // Sol. procesadas = 3
@@ -347,7 +352,7 @@ describe('ConglomeradoPedidosPage — Carga y Estado', () => {
 // SUITE 2: Vista Aprobación — Aprobación (CONG-07, 08, 09, 10)
 // ============================================
 
-describe('ConglomeradoPedidosPage — Aprobación de Pedidos', () => {
+describe('GestionSolicitudesPage / pestaña Conglomerado — Aprobación de Pedidos', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockAdmin();
@@ -367,7 +372,7 @@ describe('ConglomeradoPedidosPage — Aprobación de Pedidos', () => {
       ],
     });
 
-    renderWithProviders(<ConglomeradoPedidosPage />);
+    renderWithProviders(<GestionSolicitudesPage />);
     await waitForLoad();
 
     expect(screen.getByRole('button', { name: /Aprobar pedido/ })).toBeInTheDocument();
@@ -381,7 +386,7 @@ describe('ConglomeradoPedidosPage — Aprobación de Pedidos', () => {
       ],
     });
 
-    renderWithProviders(<ConglomeradoPedidosPage />);
+    renderWithProviders(<GestionSolicitudesPage />);
     await waitForLoad();
 
     // Abrir modal de reserva
@@ -412,7 +417,7 @@ describe('ConglomeradoPedidosPage — Aprobación de Pedidos', () => {
       ],
     });
 
-    renderWithProviders(<ConglomeradoPedidosPage />);
+    renderWithProviders(<GestionSolicitudesPage />);
     await waitForLoad();
 
     fireEvent.click(screen.getByRole('button', { name: /Aprobar pedido/ }));
@@ -450,7 +455,7 @@ describe('ConglomeradoPedidosPage — Aprobación de Pedidos', () => {
       ],
     });
 
-    renderWithProviders(<ConglomeradoPedidosPage />);
+    renderWithProviders(<GestionSolicitudesPage />);
     await waitForLoad();
 
     fireEvent.click(screen.getByRole('button', { name: /Aprobar 2 pendientes/ }));
@@ -478,7 +483,7 @@ describe('ConglomeradoPedidosPage — Aprobación de Pedidos', () => {
       response: { status: 409, data: { mensaje: 'El pedido #10 ya fue modificado por otro usuario. Se actualizó la vista.' } },
     });
 
-    renderWithProviders(<ConglomeradoPedidosPage />);
+    renderWithProviders(<GestionSolicitudesPage />);
     await waitForLoad();
 
     fireEvent.click(screen.getByRole('button', { name: /Aprobar pedido/ }));
@@ -507,7 +512,7 @@ describe('ConglomeradoPedidosPage — Aprobación de Pedidos', () => {
 // SUITE 3: Vista Aprobación — Rechazo (CONG-11, 12, 13)
 // ============================================
 
-describe('ConglomeradoPedidosPage — Rechazo de Pedidos', () => {
+describe('GestionSolicitudesPage / pestaña Conglomerado — Rechazo de Pedidos', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockAdmin();
@@ -540,14 +545,14 @@ describe('ConglomeradoPedidosPage — Rechazo de Pedidos', () => {
       return defaultMod;
     });
 
-    renderWithProviders(<ConglomeradoPedidosPage />);
+    renderWithProviders(<GestionSolicitudesPage />);
     await waitForLoad();
 
     expect(screen.queryByRole('button', { name: /Rechazar pedido/ })).not.toBeInTheDocument();
   });
 
   it('CONG-12: flujo de rechazo llama rechazarPedidoService con el motivo ingresado', async () => {
-    renderWithProviders(<ConglomeradoPedidosPage />);
+    renderWithProviders(<GestionSolicitudesPage />);
     await waitForLoad();
 
     // Abrir modal de rechazo
@@ -586,7 +591,7 @@ describe('ConglomeradoPedidosPage — Rechazo de Pedidos', () => {
       { idOrdenPedido: 1, nombreProveedor: 'Proveedor A', estado: 'RECIBIDA' },
     ]);
 
-    renderWithProviders(<ConglomeradoPedidosPage />);
+    renderWithProviders(<GestionSolicitudesPage />);
     await waitForLoad();
 
     fireEvent.click(screen.getByRole('button', { name: /Rechazar pedido/ }));
@@ -613,7 +618,7 @@ describe('ConglomeradoPedidosPage — Rechazo de Pedidos', () => {
 // SUITE 4: Vista Cronograma y Totales (CONG-14, 15, 16)
 // ============================================
 
-describe('ConglomeradoPedidosPage — Cronograma y Totales', () => {
+describe('GestionSolicitudesPage / pestaña Conglomerado — Cronograma y Totales', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockAdmin();
@@ -633,7 +638,7 @@ describe('ConglomeradoPedidosPage — Cronograma y Totales', () => {
       pedidosCompletos: [mkPedidoCompleto([sol1, sol2])],
     });
 
-    renderWithProviders(<ConglomeradoPedidosPage />);
+    renderWithProviders(<GestionSolicitudesPage />);
     await waitForLoad();
 
     fireEvent.click(screen.getByRole('button', { name: /Cronograma Semanal/ }));
@@ -656,7 +661,7 @@ describe('ConglomeradoPedidosPage — Cronograma y Totales', () => {
       pedidosCompletos: [mkPedidoCompleto([sol1, sol2])],
     });
 
-    renderWithProviders(<ConglomeradoPedidosPage />);
+    renderWithProviders(<GestionSolicitudesPage />);
     await waitForLoad();
 
     fireEvent.click(screen.getByRole('button', { name: /Cronograma Semanal/ }));
@@ -687,7 +692,7 @@ describe('ConglomeradoPedidosPage — Cronograma y Totales', () => {
       ],
     });
 
-    renderWithProviders(<ConglomeradoPedidosPage />);
+    renderWithProviders(<GestionSolicitudesPage />);
     await waitForLoad();
 
     fireEvent.click(screen.getByRole('button', { name: /Totales del Pedido/ }));
@@ -710,7 +715,7 @@ describe('ConglomeradoPedidosPage — Cronograma y Totales', () => {
 // SUITE 5: Permisos y Sub-vistas (CONG-19, 20)
 // ============================================
 
-describe('ConglomeradoPedidosPage — Permisos y Sub-vistas', () => {
+describe('GestionSolicitudesPage / pestaña Conglomerado — Permisos y Sub-vistas', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockAdmin();
@@ -732,7 +737,7 @@ describe('ConglomeradoPedidosPage — Permisos y Sub-vistas', () => {
       pedidosResumen: [mkPedidoResumen(1, [mkProductoResumen('Harina', 50)])],
     });
 
-    renderWithProviders(<ConglomeradoPedidosPage />);
+    renderWithProviders(<GestionSolicitudesPage />);
     await waitForLoad();
 
     expect(screen.queryByRole('button', { name: /Descargar Excel/ })).not.toBeInTheDocument();
@@ -749,7 +754,7 @@ describe('ConglomeradoPedidosPage — Permisos y Sub-vistas', () => {
       ],
     });
 
-    renderWithProviders(<ConglomeradoPedidosPage />);
+    renderWithProviders(<GestionSolicitudesPage />);
     await waitForLoad();
 
     // Cambiar a sub-vista Unificada

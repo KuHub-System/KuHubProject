@@ -23,7 +23,6 @@ const SolicitudPage = lazy(() => import('./pages/solicitud'));
 const GestionAcademicaPage = lazy(() => import('./pages/gestion-academica'));
 const GestionPedidosPage = lazy(() => import('./pages/gestion-pedidos'));
 const HistoricoPedidosPage    = lazy(() => import('./pages/historico-pedidos'));
-const ConglomeradoPedidosPage = lazy(() => import('./pages/conglomerado-pedidos'));
 const GestionProveedoresPage = lazy(() => import('./pages/gestion-proveedores'));
 const BodegaTransitoPage = lazy(() => import('./pages/bodega-transito'));
 const PedidoSemanalABodegaPage = lazy(() => import('./pages/pedido-semanal-a-bodega'));
@@ -233,9 +232,13 @@ const App: React.FC = () => {
                     </MainLayout>
                   </ProtectedRoute>
 
-                  <ProtectedRoute path="/conglomerado-pedidos" pageId="conglomerado-pedidos">
+                  {/* "Conglomerado de Pedidos" se fusionó como pestaña de /gestion-solicitudes --
+                      esta ruta queda solo por compatibilidad con enlaces/bookmarks antiguos y
+                      renderiza la misma GestionSolicitudesPage, que abre directo en la
+                      pestaña "Consolidar pedido". */}
+                  <ProtectedRoute path="/conglomerado-pedidos" pageId="gestion-solicitudes">
                     <MainLayout>
-                      <ConglomeradoPedidosPage />
+                      <GestionSolicitudesPage />
                     </MainLayout>
                   </ProtectedRoute>
 

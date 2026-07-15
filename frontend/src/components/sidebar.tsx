@@ -79,7 +79,6 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar, onLogout }) =>
         { title: 'Solicitud', path: '/solicitud', icon: 'lucide:clipboard-list', pageId: 'solicitud' },
         { title: 'Gestión de Solicitudes', path: '/gestion-solicitudes', icon: 'lucide:clipboard-check', pageId: 'gestion-solicitudes' },
         { title: 'Gestión de Pedidos', path: '/gestion-pedidos', icon: 'lucide:shopping-cart', pageId: 'gestion-pedidos' },
-        { title: 'Conglomerado de Pedidos', path: '/conglomerado-pedidos', icon: 'lucide:layers', pageId: 'conglomerado-pedidos' },
         { title: 'Gestión de Proveedores', path: '/gestion-proveedores', icon: 'lucide:truck', pageId: 'gestion-proveedores' },
         { title: 'Gestión Académica', path: '/gestion-academica', icon: 'lucide:graduation-cap', pageId: 'gestion-academica' },
         { title: 'Histórico de Pedidos', path: '/historico-pedidos', icon: 'lucide:bar-chart-2', pageId: 'historico-pedidos' }

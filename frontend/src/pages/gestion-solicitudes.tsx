@@ -1,10 +1,15 @@
 /**
- * GESTIÓN DE SOLICITUDES
- * Vista por semana, agrupada por asignatura.
- * Estados: Pendiente → Aceptada | Rechazada  (Procesada = solo lectura, flujo automático)
+ * SOLICITUDES + CONGLOMERADO DE PEDIDOS
+ * Fusión de gestion-solicitudes.tsx y conglomerado-pedidos.tsx en pestañas:
+ * "Revisar solicitudes" (aceptar/rechazar por semana) y "Consolidar pedido"
+ * (seguimiento del pedido consolidado). Comparten el mismo selector de
+ * período/semana vía usePeriodoSemana(), así que cambiar de pestaña no
+ * pierde el contexto de qué semana se está viendo.
  */
 
 import React from 'react';
+import XLSXStyle from 'xlsx-js-style';
+import { motion } from 'framer-motion';
 import { fmtCL } from '../utils/format-numbers';
 import {
   Card, CardBody, CardHeader,
@@ -13,20 +18,34 @@ import {
   Table, TableHeader, TableColumn, TableBody, TableRow, TableCell,
   Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, useDisclosure,
   Textarea, Divider, Spinner, Tooltip, Checkbox,
+  Tabs, Tab,
 } from '@heroui/react';
 import { Icon } from '@iconify/react';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useToast } from '../hooks/useToast';
-import { ISemana } from '../types/academica/semana.types';
+import BookPageLoader from '../components/BookPageLoader';
 import {
   obtenerSolicitudesPorSemanaService,
   ISolicitudPorSemanaResponse,
   cambiarEstadoMasivoService,
   rechazarSolicitudEnPedidoService,
+  IConsolidatePedidoResponse,
+  IPedidoAprobacion,
+  ISolicitudVinculada,
+  IOrdenPedidoResumen,
+  consolidatePedidoQueryService,
+  aprobarPedidosService,
+  reservarDisponiblePedidoService,
+  obtenerOrdenesPorPedidoService,
+  rechazarPedidoService,
 } from '../services/solicitud/solicitud-service';
 import { useModulePermission, usePermission } from '../contexts/permission-context';
 import { usePeriodoSemana } from '../contexts/periodo-semana-context';
-import { useHistory } from 'react-router-dom';
+import { useHistory, useLocation } from 'react-router-dom';
+
+// ═══════════════════════════════════════════════════════════════════════════
+// TIPOS Y HELPERS — pestaña "Revisar solicitudes" (de gestion-solicitudes.tsx)
+// ═══════════════════════════════════════════════════════════════════════════
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TIPOS
@@ -156,19 +175,100 @@ const MotivoTexto: React.FC<{ texto: string }> = ({ texto }) => {
   );
 };
 
+// ═══════════════════════════════════════════════════════════════════════════
+// TIPOS Y HELPERS — pestaña "Consolidar pedido" (de conglomerado-pedidos.tsx)
+// ═══════════════════════════════════════════════════════════════════════════
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TIPOS INTERNOS
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface IGrupoDia {
+  fecha: string;
+  diaSemana: number;
+  solicitudes: ISolicitudVinculada[];
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CONSTANTES UI
+// ─────────────────────────────────────────────────────────────────────────────
+
+// bgHeader / bgBadge / border / textColor → colores CSS explícitos para garantizar
+// distinción visual real entre días consecutivos, independiente del tema HeroUI.
+// Fondos en nivel -100 (más saturados que -50) para mayor separación visual.
+// Martes usa naranja (NO amber) para no confundirse con el indicador HOY (amber).
+const DIA_CONFIG: Record<number, {
+  nombre: string;
+  bgHeader: string;
+  bgBadge: string;
+  border: string;       // color CSS (hex) para borderColor inline
+  textColor: string;    // color CSS para texto
+}> = {
+  0: { nombre: 'Domingo',   bgHeader: '#f1f5f9', bgBadge: '#cbd5e1', border: '#64748b', textColor: '#334155' }, // slate
+  1: { nombre: 'Lunes',     bgHeader: '#dbeafe', bgBadge: '#93c5fd', border: '#2563eb', textColor: '#1e3a8a' }, // blue
+  2: { nombre: 'Martes',    bgHeader: '#ffedd5', bgBadge: '#fdba74', border: '#ea580c', textColor: '#7c2d12' }, // orange (≠ amber HOY)
+  3: { nombre: 'Miércoles', bgHeader: '#d1fae5', bgBadge: '#6ee7b7', border: '#059669', textColor: '#064e3b' }, // emerald
+  4: { nombre: 'Jueves',    bgHeader: '#ede9fe', bgBadge: '#c4b5fd', border: '#7c3aed', textColor: '#3b0764' }, // violet
+  5: { nombre: 'Viernes',   bgHeader: '#ffe4e6', bgBadge: '#fda4af', border: '#e11d48', textColor: '#881337' }, // rose
+  6: { nombre: 'Sábado',    bgHeader: '#ccfbf1', bgBadge: '#5eead4', border: '#0d9488', textColor: '#134e4a' }, // teal
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// HELPERS
+// ─────────────────────────────────────────────────────────────────────────────
+
+const fmtFechaLarga = (iso: string) =>
+  new Date(iso + 'T00:00:00').toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long' });
+
+const fmtFechaCortaCong = (iso: string) =>
+  new Date(iso + 'T00:00:00').toLocaleDateString('es-CL', { day: 'numeric', month: 'short' });
+
+const isHoy = (iso: string) => iso === new Date().toISOString().slice(0, 10);
+
+const getDiaSemana = (iso: string) => new Date(iso + 'T00:00:00').getDay();
+
+/** Parses "08:01-09:20" or "08:01 - 09:20" → { inicio, fin } */
+const parseRango = (rango: string) => {
+  const m = rango.match(/^(\d{2}:\d{2})\s*[-–]\s*(\d{2}:\d{2})/);
+  if (m) return { inicio: m[1], fin: m[2] };
+  return { inicio: rango, fin: '' };
+};
+
+/** Formatea una cantidad numérica con locale chileno (es-CL): separador decimal coma, miles punto. */
+const fmtCant = (n: number): string => {
+  if (n === null || n === undefined || isNaN(n)) return '0';
+  return new Intl.NumberFormat('es-CL', { minimumFractionDigits: 0, maximumFractionDigits: 3 }).format(n);
+};
+
 // ─────────────────────────────────────────────────────────────────────────────
 // PAGE
 // ─────────────────────────────────────────────────────────────────────────────
 
+
+// ═══════════════════════════════════════════════════════════════════════════
+// PÁGINA PRINCIPAL — Solicitudes + Conglomerado, con pestañas
+// ═══════════════════════════════════════════════════════════════════════════
+
 const GestionSolicitudesPage: React.FC = () => {
-  usePageTitle('Gestión de Solicitudes', 'Administre las solicitudes de insumos realizadas por los docentes.', 'lucide:clipboard-check');
   const toast = useToast();
-  const { canUpdate: sol_Gestionar } = useModulePermission('GEST_SOL_GESTIONAR');
-  const { canUpdate: sol_Rechazar  } = useModulePermission('GEST_SOL_RECHAZAR');
   const { isAdmin } = usePermission();
   const history = useHistory();
-
   const { periodos, semanas, semanaId, defaultSemanaId, isLoading: isLoadingSem, seleccionarPeriodo, seleccionarSemana } = usePeriodoSemana();
+  const semanaActual = semanas.find(s => String(s.idSemana) === semanaId) ?? null;
+  const sinPeriodos = periodos.length === 0 && !isLoadingSem;
+
+  // ── Tab activa (Revisar solicitudes / Consolidar pedido) ──
+  const location = useLocation();
+  const [activeTab, setActiveTab] = React.useState<'solicitudes' | 'pedido'>(
+    location.pathname.startsWith('/conglomerado-pedidos') ? 'pedido' : 'solicitudes'
+  );
+
+  usePageTitle('Gestión de Solicitudes', 'Administre las solicitudes de insumos y el pedido consolidado semanal.', 'lucide:clipboard-check');
+
+  // ── Estado propio de "Revisar solicitudes" ──
+  const { canUpdate: sol_Gestionar } = useModulePermission('GEST_SOL_GESTIONAR');
+  const { canUpdate: sol_Rechazar  } = useModulePermission('GEST_SOL_RECHAZAR');
+
 
   // ── Solicitudes ──
   const [solicitudes,  setSolicitudes]  = React.useState<ISolicitudGestion[]>([]);
@@ -444,11 +544,795 @@ const GestionSolicitudesPage: React.FC = () => {
     setIsSaving(false);
   };
 
-  const semanaActual = semanas.find(s => String(s.idSemana) === semanaId) ?? null;
-  const sinPeriodos = periodos.length === 0 && !isLoadingSem;
   const haySeleccionados = seleccionados.size > 0;
 
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // Estado y lógica de "Consolidar pedido" (de conglomerado-pedidos.tsx)
+  // ═══════════════════════════════════════════════════════════════════════
+  const { canUpdate: permAprobar }  = useModulePermission('CONG_APROBAR_PEDIDO');
+  const { canUpdate: permRechazar } = useModulePermission('CONG_RECHAZAR_PEDIDO');
+  const { canCreate: permDescargarExcel } = useModulePermission('CONG_VISTA_CATEGORIAS');
+  const { canRead: verCongAprob }   = useModulePermission('CONG_VISTA_APROBACION');
+  const { canRead: verCongCrono }   = useModulePermission('CONG_VISTA_CRONOGRAMA');
+  const { canRead: verCongTotales } = useModulePermission('CONG_VISTA_TOTALES');
+  const { canRead: verCongCateg }   = useModulePermission('CONG_VISTA_CATEGORIAS');
+
+
+  // ── Datos ──
+  const [consolidateData, setConsolidateData] = React.useState<IConsolidatePedidoResponse | null>(null);
+  const [isLoadingDatos,  setIsLoadingDatos]  = React.useState(false);
+
+  // ── Cache por semanaId ──
+  const cache = React.useRef<Map<string, IConsolidatePedidoResponse>>(new Map());
+
+  // ── UI ──
+  const [busquedaProductos,      setBusquedaProductos]      = React.useState('');
+  const [busquedaCrono, setBusquedaCrono] = React.useState('');
+  const [busquedaAprob, setBusquedaAprob] = React.useState('');
+  const [expandidos,    setExpandidos]    = React.useState<Set<string>>(new Set());
+  const [vistaActiva,   setVistaActiva]   = React.useState<'categorias' | 'cronograma' | 'totales' | 'aprobacion'>('aprobacion');
+
+  // Conmutar a la primera vista permitida si el rol no puede ver la activa
+  React.useEffect(() => {
+    const permitida: Record<string, boolean> = { aprobacion: verCongAprob, cronograma: verCongCrono, totales: verCongTotales, categorias: verCongCateg };
+    if (!permitida[vistaActiva]) {
+      const primera = (['aprobacion', 'cronograma', 'totales', 'categorias'] as const).find(v => permitida[v]);
+      if (primera) setVistaActiva(primera);
+    }
+  }, [verCongAprob, verCongCrono, verCongTotales, verCongCateg, vistaActiva]);
+  const [aprobVista,    setAprobVista]    = React.useState<'unificado' | 'individual'>('individual');
+  const [isAprobando,   setIsAprobando]   = React.useState(false);
+  const reservaModal = useDisclosure();
+  const [pedidoReservaModal, setPedidoReservaModal] = React.useState<IPedidoAprobacion | null>(null);
+  // ── Rechazo (cancelación) de pedido ──
+  const rechazoModal = useDisclosure();
+  const [pedidoRechazo, setPedidoRechazo] = React.useState<IPedidoAprobacion | null>(null);
+  const [ordenesRechazo, setOrdenesRechazo] = React.useState<IOrdenPedidoResumen[]>([]);
+  const [loadingOrdenesRechazo, setLoadingOrdenesRechazo] = React.useState(false);
+  const [motivoRechazoCong, setMotivoRechazoCong] = React.useState('');
+  const [cancelarOrdenesChk, setCancelarOrdenesChk] = React.useState(false);
+  const [isRechazando, setIsRechazando] = React.useState(false);
+  const [diaCategoria,  setDiaCategoria]  = React.useState<number | 'completa'>(1);
+  const [conColores,    setConColores]    = React.useState(true);
+
+  // ── Carga de datos al cambiar semana (con cache) ──
+  React.useEffect(() => {
+    if (!semanaId) { setConsolidateData(null); return; }
+
+    if (cache.current.has(semanaId)) {
+      setConsolidateData(cache.current.get(semanaId)!);
+      setExpandidos(new Set());
+      setBusquedaProductos('');
+      return;
+    }
+
+    const semana = semanas.find(s => String(s.idSemana) === semanaId);
+    if (!semana) return;
+
+    setIsLoadingDatos(true);
+    setExpandidos(new Set());
+    setBusquedaProductos('');
+    setBusquedaCrono('');
+    setBusquedaAprob('');
+
+    consolidatePedidoQueryService({ fechaInicio: semana.fechaInicio, fechaFin: semana.fechaFin })
+      .then(data => {
+        cache.current.set(semanaId, data);
+        setConsolidateData(data);
+      })
+      .catch(() => toast.error('Error al cargar el conglomerado de pedidos'))
+      .finally(() => setIsLoadingDatos(false));
+  }, [semanaId, semanas]);
+
+  // ── Derivados ──
+  const todasSolicitudes = React.useMemo(
+    () => consolidateData?.pedidosCompletos.flatMap(p => p.solicitudesVinculadas) ?? [],
+    [consolidateData]
+  );
+
+  const gruposDia = React.useMemo((): IGrupoDia[] => {
+    const mapa = new Map<string, ISolicitudVinculada[]>();
+    for (const sol of todasSolicitudes) {
+      if (!mapa.has(sol.fechaSolicitada)) mapa.set(sol.fechaSolicitada, []);
+      mapa.get(sol.fechaSolicitada)!.push(sol);
+    }
+    return Array.from(mapa.entries())
+      .map(([fecha, sols]) => ({
+        fecha,
+        diaSemana: getDiaSemana(fecha),
+        solicitudes: sols.sort((a, b) => a.horarios.rangoHoras.localeCompare(b.horarios.rangoHoras)),
+      }))
+      .sort((a, b) => a.fecha.localeCompare(b.fecha));
+  }, [todasSolicitudes]);
+
+  // Merge products across multiple pedidos (same product may appear in different pedidos)
+  const productosResumen = React.useMemo(() => {
+    const mapa = new Map<string, import('../services/solicitud/solicitud-service').IProductoResumen>();
+    for (const pedido of (consolidateData?.pedidosResumen ?? [])) {
+      for (const prod of pedido.productosConsolidados) {
+        const key = `${prod.nombreProducto}||${prod.abreviatura}`;
+        if (mapa.has(key)) {
+          const e = mapa.get(key)!;
+          e.cantidadTotal += prod.cantidadTotal;
+          e.totalSecciones += prod.totalSecciones;
+          e.detalles = [...e.detalles, ...prod.detalles];
+        } else {
+          mapa.set(key, { ...prod, detalles: [...prod.detalles] });
+        }
+      }
+    }
+    return Array.from(mapa.values()).sort((a, b) => a.nombreProducto.localeCompare(b.nombreProducto));
+  }, [consolidateData]);
+
+  const productosFiltrados = React.useMemo(() => {
+    if (!busquedaProductos.trim()) return productosResumen;
+    const q = busquedaProductos.toLowerCase();
+    return productosResumen.filter(p => p.nombreProducto.toLowerCase().includes(q));
+  }, [productosResumen, busquedaProductos]);
+
+  const gruposDiaFiltrados = React.useMemo(() => {
+    if (!busquedaCrono.trim()) return gruposDia;
+    const q = busquedaCrono.toLowerCase();
+    return gruposDia.map(g => ({
+      ...g,
+      solicitudes: g.solicitudes.filter(s =>
+        s.nombreReceta.toLowerCase().includes(q) ||
+        (s.seccion.nombreDocente ?? '').toLowerCase().includes(q) ||
+        (s.seccion.nombreSeccion ?? '').toLowerCase().includes(q) ||
+        s.productosSolicitados.some(p => p.nombreProducto.toLowerCase().includes(q))
+      ),
+    })).filter(g => g.solicitudes.length > 0);
+  }, [gruposDia, busquedaCrono]);
+
+  const pedidosAprobFiltrados = React.useMemo(() => {
+    if (!busquedaAprob.trim()) return consolidateData?.pedidosAprobacion ?? [];
+    const q = busquedaAprob.toLowerCase();
+    return (consolidateData?.pedidosAprobacion ?? [])
+      .map(ped => ({ ...ped, productos: ped.productos.filter(p => p.nombreProducto.toLowerCase().includes(q)) }))
+      .filter(ped => ped.productos.length > 0);
+  }, [consolidateData, busquedaAprob]);
+
+  // Productos unificados a través de todos los pedidos de aprobación.
+  // cantidadTotal/reservado/solicitado se SUMAN; disponibleReal es global por producto (mismo valor en
+  // todos los pedidos), así que se conserva sin sumar.
+  const productosUnificadosAprob = React.useMemo(() => {
+    interface ProdUnif { nombreProducto: string; abreviatura: string; categoria?: string; cantidadTotal: number; reservado: number; solicitadoFirme: number; solicitadoRevision: number; disponibleReal: number; }
+    const mapa = new Map<string, ProdUnif>();
+    for (const ped of (consolidateData?.pedidosAprobacion ?? [])) {
+      for (const p of ped.productos) {
+        const key = p.nombreProducto;
+        if (mapa.has(key)) {
+          const acc = mapa.get(key)!;
+          acc.cantidadTotal += p.cantidadPedido;
+          acc.reservado += p.reservado ?? 0;
+          acc.solicitadoFirme += p.solicitadoFirme ?? 0;
+          acc.solicitadoRevision += p.solicitadoRevision ?? 0;
+        } else {
+          mapa.set(key, { nombreProducto: p.nombreProducto, abreviatura: p.abreviatura, categoria: p.categoria, cantidadTotal: p.cantidadPedido, reservado: p.reservado ?? 0, solicitadoFirme: p.solicitadoFirme ?? 0, solicitadoRevision: p.solicitadoRevision ?? 0, disponibleReal: p.disponibleReal ?? 0 });
+        }
+      }
+    }
+    return Array.from(mapa.values())
+      .sort((a, b) => a.nombreProducto.localeCompare(b.nombreProducto));
+  }, [consolidateData]);
+
+  const productosUnificadosFiltrados = React.useMemo(() => {
+    if (!busquedaAprob.trim()) return productosUnificadosAprob;
+    const q = busquedaAprob.toLowerCase();
+    return productosUnificadosAprob.filter(p => p.nombreProducto.toLowerCase().includes(q));
+  }, [productosUnificadosAprob, busquedaAprob]);
+
+  // ── Paleta de colores para secciones (vista categorías) ──
+  const SECCION_COLORS = ['#dbeafe','#dcfce7','#fef9c3','#fce7f3','#f3e8ff','#ffedd5','#ccfbf1','#cffafe','#ecfccb','#ffe4e6','#e0e7ff','#fef2f2'];
+
+  const productosParaCategorias = React.useMemo(() => {
+    interface ProdCat {
+      idProducto: number;
+      nombreProducto: string;
+      idCategoria: number;
+      nombreCategoria: string;
+      abreviatura: string;
+      detalles: Array<{ diaSemana: number; nombreSeccion: string; nombreAsignatura: string; cantidad: number; }>;
+    }
+    const prodMap = new Map<number, ProdCat>();
+    for (const pedido of (consolidateData?.pedidosCompletos ?? [])) {
+      for (const prod of pedido.productos) {
+        if (!prodMap.has(prod.idProducto)) {
+          prodMap.set(prod.idProducto, {
+            idProducto: prod.idProducto,
+            nombreProducto: prod.nombreProducto,
+            idCategoria: prod.idCategoria ?? 0,
+            nombreCategoria: prod.nombreCategoria ?? 'Sin categoría',
+            abreviatura: prod.abreviatura,
+            detalles: [],
+          });
+        }
+        const entry = prodMap.get(prod.idProducto)!;
+        for (const det of prod.detallesPorSolicitud) {
+          entry.detalles.push({
+            diaSemana: getDiaSemana(det.fechaSolicitada),
+            nombreSeccion: det.nombreSeccion,
+            nombreAsignatura: det.nombreAsignatura,
+            cantidad: det.cantidad,
+          });
+        }
+      }
+    }
+    return Array.from(prodMap.values()).sort((a, b) => {
+      const c = a.nombreCategoria.localeCompare(b.nombreCategoria);
+      return c !== 0 ? c : a.nombreProducto.localeCompare(b.nombreProducto);
+    });
+  }, [consolidateData]);
+
+  // clave: nombreAsignatura → color único por asignatura
+  const asignaturaColorMap = React.useMemo(() => {
+    const keys = new Set<string>();
+    for (const p of productosParaCategorias) {
+      for (const d of p.detalles) keys.add(d.nombreAsignatura);
+    }
+    const map = new Map<string, string>();
+    Array.from(keys).sort().forEach((key, i) => {
+      map.set(key, SECCION_COLORS[i % SECCION_COLORS.length]);
+    });
+    return map;
+  }, [productosParaCategorias]);
+
+  // Categorías únicas con sus productos (usadas en ambas sub-vistas)
+  const categoriasPorDia = React.useMemo(() => {
+    interface ProdFiltrado {
+      idProducto: number;
+      nombreProducto: string;
+      abreviatura: string;
+      detallesFiltrados: Array<{ nombreSeccion: string; nombreAsignatura: string; cantidad: number; }>;
+      totalDia: number;
+    }
+    interface CatGroup { idCategoria: number; nombreCategoria: string; productos: ProdFiltrado[]; }
+
+    const catMap = new Map<number, CatGroup>();
+    for (const prod of productosParaCategorias) {
+      const detallesFiltrados = diaCategoria === 'completa'
+        ? prod.detalles.map(d => ({ nombreSeccion: d.nombreSeccion, nombreAsignatura: d.nombreAsignatura, cantidad: d.cantidad }))
+        : prod.detalles.filter(d => d.diaSemana === diaCategoria).map(d => ({ nombreSeccion: d.nombreSeccion, nombreAsignatura: d.nombreAsignatura, cantidad: d.cantidad }));
+      if (detallesFiltrados.length === 0) continue;
+      const totalDia = detallesFiltrados.reduce((s, d) => s + d.cantidad, 0);
+      if (!catMap.has(prod.idCategoria)) {
+        catMap.set(prod.idCategoria, { idCategoria: prod.idCategoria, nombreCategoria: prod.nombreCategoria, productos: [] });
+      }
+      catMap.get(prod.idCategoria)!.productos.push({ idProducto: prod.idProducto, nombreProducto: prod.nombreProducto, abreviatura: prod.abreviatura, detallesFiltrados, totalDia });
+    }
+    return Array.from(catMap.values()).sort((a, b) => a.nombreCategoria.localeCompare(b.nombreCategoria));
+  }, [productosParaCategorias, diaCategoria]);
+
+  // Para Vista Completa: matriz [idProducto][diaSemana] → { total, secciones[] }
+  const matrizCompleta = React.useMemo(() => {
+    const dias = [1, 2, 3, 4, 5, 6, 0]; // Lun → Dom
+    interface CellData { total: number; secciones: Array<{ compositeKey: string; nombre: string; cantidad: number; }>; }
+    interface FilaMatrix {
+      idProducto: number;
+      nombreProducto: string;
+      idCategoria: number;
+      nombreCategoria: string;
+      abreviatura: string;
+      diasData: Record<number, CellData>;
+      totalSemana: number;
+    }
+    const rows: FilaMatrix[] = productosParaCategorias.map(prod => {
+      const diasData: Record<number, CellData> = {};
+      for (const dia of dias) {
+        const detallesDia = prod.detalles.filter(d => d.diaSemana === dia);
+        if (detallesDia.length > 0) {
+          const secMap = new Map<string, number>();
+          for (const d of detallesDia) {
+            const key = `${d.nombreAsignatura}::${d.nombreSeccion}`;
+            secMap.set(key, (secMap.get(key) ?? 0) + d.cantidad);
+          }
+          diasData[dia] = {
+            total: detallesDia.reduce((s, d) => s + d.cantidad, 0),
+            secciones: Array.from(secMap.entries()).map(([compositeKey, cantidad]) => ({
+              compositeKey,
+              nombre: compositeKey.split('::')[1],
+              cantidad,
+            })),
+          };
+        }
+      }
+      const totalSemana = prod.detalles.reduce((s, d) => s + d.cantidad, 0);
+      return { idProducto: prod.idProducto, nombreProducto: prod.nombreProducto, idCategoria: prod.idCategoria, nombreCategoria: prod.nombreCategoria, abreviatura: prod.abreviatura, diasData, totalSemana };
+    }).filter(r => r.totalSemana > 0);
+    // agrupar por categoría
+    const catMap = new Map<number, { nombre: string; filas: FilaMatrix[] }>();
+    for (const row of rows) {
+      if (!catMap.has(row.idCategoria)) catMap.set(row.idCategoria, { nombre: row.nombreCategoria, filas: [] });
+      catMap.get(row.idCategoria)!.filas.push(row);
+    }
+    return Array.from(catMap.values()).sort((a, b) => a.nombre.localeCompare(b.nombre));
+  }, [productosParaCategorias]);
+
+  const pedidosPendientes = React.useMemo(
+    () => (consolidateData?.pedidosAprobacion ?? []).filter(p => p.estadoPedido === 'PENDIENTE'),
+    [consolidateData]
+  );
+
+  const contadoresCong = React.useMemo(() => ({
+    procesadas:      todasSolicitudes.length,
+    productosUnicos: productosResumen.length,
+    secciones:       new Set(todasSolicitudes.map(s => `${s.seccion.nombreAsignatura}::${s.seccion.nombreSeccion}`)).size,
+    dias:            gruposDia.length,
+  }), [todasSolicitudes, productosResumen, gruposDia]);
+
+  const toggleExpandido = (key: string) => {
+    setExpandidos(prev => { const n = new Set(prev); n.has(key) ? n.delete(key) : n.add(key); return n; });
+  };
+
+  const hayDatos = !!consolidateData && (
+    consolidateData.pedidosCompletos.length > 0 ||
+    consolidateData.pedidosResumen.length > 0 ||
+    consolidateData.pedidosAprobacion.length > 0
+  );
+
+  const recargarDatos = React.useCallback(async () => {
+    if (!semanaId) return;
+    const semana = semanas.find(s => String(s.idSemana) === semanaId);
+    if (!semana) return;
+    cache.current.delete(semanaId);
+    setIsLoadingDatos(true);
+    try {
+      const data = await consolidatePedidoQueryService({ fechaInicio: semana.fechaInicio, fechaFin: semana.fechaFin });
+      cache.current.set(semanaId, data);
+      setConsolidateData(data);
+    } catch { toast.error('Error al recargar datos'); }
+    finally { setIsLoadingDatos(false); }
+  }, [semanaId, semanas]);
+
+  // Ejecuta la aprobación de un pedido, reservando antes su disponible si el usuario lo pidió.
+  const ejecutarAprobacion = async (idPedido: number, reservar: boolean) => {
+    setIsAprobando(true);
+    try {
+      if (reservar) await reservarDisponiblePedidoService(idPedido);
+      await aprobarPedidosService({ idsPedidos: [idPedido], estado: 'APROBADO' });
+      toast.success(reservar ? 'Disponibles reservados y pedido aprobado' : 'Pedido aprobado correctamente');
+      await recargarDatos();
+    } catch (err: any) {
+      // 409: otro usuario modificó el pedido en paralelo (control de concurrencia optimista del
+      // backend). Avisamos el conflicto y recargamos para que el operador vea el estado real.
+      if (err?.response?.status === 409) {
+        toast.warning(err.response.data?.mensaje ?? 'Este pedido fue modificado por otro usuario. Se actualizó la vista.');
+        await recargarDatos();
+      } else {
+        toast.error('Error al aprobar el pedido');
+      }
+    }
+    finally { setIsAprobando(false); reservaModal.onClose(); setPedidoReservaModal(null); }
+  };
+
+  // Ejecuta la reserva de un pedido ya aprobado
+  const ejecutarSoloReserva = async (idPedido: number) => {
+    setIsAprobando(true);
+    try {
+      const reservadas = await reservarDisponiblePedidoService(idPedido);
+      if (reservadas > 0) {
+        toast.success(`${reservadas} línea${reservadas !== 1 ? 's' : ''} de reserva registrada${reservadas !== 1 ? 's' : ''}`);
+      } else {
+        toast.info('No se realizaron nuevas reservas');
+      }
+      await recargarDatos();
+    } catch {
+      toast.error('Error al registrar las reservas');
+    } finally {
+      setIsAprobando(false);
+      reservaModal.onClose();
+      setPedidoReservaModal(null);
+    }
+  };
+
+  // Al presionar "Aprobar pedido": siempre abre el modal de reserva para que el usuario
+  // confirme antes de aprobar. Si hay disponible > 0, lo lista para reservar; si no, muestra
+  // la lista vacía y el usuario elige "Aprobar sin reservar".
+  const handleAprobarPedido = (ped: IPedidoAprobacion) => {
+    setPedidoReservaModal(ped);
+    reservaModal.onOpen();
+  };
+
+  const handleBuscarReserva = (ped: IPedidoAprobacion) => {
+    const reservables = ped.productos
+      .map(p => Math.min(p.disponibleReal ?? 0, p.cantidadPedido - (p.reservado ?? 0)))
+      .filter(cant => cant > 0);
+
+    if (reservables.length === 0) {
+      toast.info('No hay productos pendientes por reservar con stock disponible.');
+      return;
+    }
+
+    setPedidoReservaModal(ped);
+    reservaModal.onOpen();
+  };
+
+  const handleAprobarTodos = async () => {
+    const pedidosPend = (consolidateData?.pedidosAprobacion ?? [])
+      .filter(p => p.estadoPedido === 'PENDIENTE');
+    if (pedidosPend.length === 0) return;
+
+    // Si hay un solo pedido pendiente → flujo individual con modal de reserva
+    if (pedidosPend.length === 1) {
+      handleAprobarPedido(pedidosPend[0]);
+      return;
+    }
+
+    // Múltiples pendientes → aprobación masiva
+    setIsAprobando(true);
+    try {
+      await aprobarPedidosService({ idsPedidos: pedidosPend.map(p => p.idPedido), estado: 'APROBADO' });
+      toast.success(`${pedidosPend.length} pedidos aprobados correctamente`);
+      await recargarDatos();
+    } catch (err: any) {
+      // 409: al menos un pedido fue modificado en paralelo por otro usuario.
+      if (err?.response?.status === 409) {
+        toast.warning(err.response.data?.mensaje ?? 'Uno o más pedidos fueron modificados por otro usuario. Se actualizó la vista.');
+        await recargarDatos();
+      } else {
+        toast.error('Error al aprobar los pedidos');
+      }
+    }
+    finally { setIsAprobando(false); }
+  };
+
+  // Abre el modal de rechazo: carga las OPs del pedido para advertir cuáles se cancelarían.
+  const handleAbrirRechazo = async (ped: IPedidoAprobacion) => {
+    setPedidoRechazo(ped);
+    setMotivoRechazoCong('');
+    setCancelarOrdenesChk(false);
+    setOrdenesRechazo([]);
+    rechazoModal.onOpen();
+    setLoadingOrdenesRechazo(true);
+    try {
+      const ordenes = await obtenerOrdenesPorPedidoService(ped.idPedido);
+      setOrdenesRechazo(ordenes);
+    } catch {
+      toast.error('No se pudieron cargar las órdenes de pedido asociadas');
+    } finally {
+      setLoadingOrdenesRechazo(false);
+    }
+  };
+
+  // OPs vigentes (no canceladas) del pedido en el modal de rechazo.
+  const ordenesVigentesRechazo = React.useMemo(
+    () => ordenesRechazo.filter(o => o.estado !== 'CANCELADA'),
+    [ordenesRechazo],
+  );
+  const hayOrdenRecibida = React.useMemo(
+    () => ordenesVigentesRechazo.some(o => o.estado === 'RECIBIDA'),
+    [ordenesVigentesRechazo],
+  );
+  // Productos del pedido cuya reserva se liberará al rechazar.
+  const reservasALiberar = React.useMemo(
+    () => (pedidoRechazo?.productos ?? []).filter(p => (p.reservado ?? 0) > 0),
+    [pedidoRechazo],
+  );
+  // El botón de confirmar se habilita si hay motivo, no hay OPs recibidas y, de haber OPs vigentes,
+  // el usuario confirmó su cancelación.
+  const puedeRechazar =
+    motivoRechazoCong.trim().length > 0 &&
+    !hayOrdenRecibida &&
+    (ordenesVigentesRechazo.length === 0 || cancelarOrdenesChk);
+
+  // Ejecuta el rechazo del pedido (y opcionalmente la cancelación de sus OPs vigentes).
+  const ejecutarRechazo = async () => {
+    if (!pedidoRechazo || !puedeRechazar) return;
+    setIsRechazando(true);
+    try {
+      const res = await rechazarPedidoService(pedidoRechazo.idPedido, motivoRechazoCong.trim(), cancelarOrdenesChk);
+      const partes = [`${res.solicitudesRechazadas} solicitud${res.solicitudesRechazadas !== 1 ? 'es' : ''} rechazada${res.solicitudesRechazadas !== 1 ? 's' : ''}`];
+      if (res.ordenesCanceladas > 0) partes.push(`${res.ordenesCanceladas} OP${res.ordenesCanceladas !== 1 ? 's' : ''} cancelada${res.ordenesCanceladas !== 1 ? 's' : ''}`);
+      if (res.reservasLiberadas > 0) partes.push(`${res.reservasLiberadas} reserva${res.reservasLiberadas !== 1 ? 's' : ''} liberada${res.reservasLiberadas !== 1 ? 's' : ''}`);
+      toast.success(`Pedido #${pedidoRechazo.idPedido} rechazado · ${partes.join(' · ')}`);
+      rechazoModal.onClose();
+      setPedidoRechazo(null);
+      await recargarDatos();
+    } catch (err) {
+      const e = err as { response?: { data?: string } };
+      toast.error(typeof e?.response?.data === 'string' ? e.response.data : 'No se pudo rechazar el pedido');
+    } finally {
+      setIsRechazando(false);
+    }
+  };
+
+  // ── Render de celdas nuevas de la tabla de aprobación (compartidas entre ambas vistas) ──
+  const renderReservado = (res: number, abrev: string) => {
+    const v = res ?? 0;
+    if (v <= 0) return <span className="text-default-300">—</span>;
+    return (
+      <>
+        <span className="font-mono font-semibold text-primary">{fmtCant(v)}</span>
+        <span className="text-xs text-default-400 ml-1">{abrev}</span>
+      </>
+    );
+  };
+
+  // Solicitado al proveedor: firme (negro, OP CONFIRMADA/RECIBIDA) + en revisión (amarillo, OP PENDIENTE/ENVIADA).
+  const renderSolicitado = (firme: number, revision: number, abrev: string) => {
+    const f = firme ?? 0, r = revision ?? 0;
+    if (f <= 0 && r <= 0) return <span className="text-default-300">—</span>;
+    return (
+      <span className="inline-flex items-baseline gap-1 justify-center flex-wrap">
+        {f > 0 && <span className="font-mono font-semibold text-default-800">{fmtCant(f)}</span>}
+        {r > 0 && (
+          <Tooltip content="OP en revisión (PENDIENTE / ENVIADA)" color="foreground" className="text-xs">
+            <span className="font-mono font-semibold text-warning-600">{f > 0 ? `+${fmtCant(r)}` : fmtCant(r)}</span>
+          </Tooltip>
+        )}
+        <span className="text-xs text-default-400">{abrev}</span>
+      </span>
+    );
+  };
+
+  // Disponible real: nunca negativo (si no hay, es 0).
+  const renderDisponible = (disp: number, abrev: string) => {
+    const d = Math.max(0, disp ?? 0);
+    return (
+      <>
+        <span className={`font-mono font-semibold ${d > 0 ? 'text-success-600' : 'text-default-400'}`}>{fmtCant(d)}</span>
+        <span className="text-xs text-default-400 ml-1">{abrev}</span>
+      </>
+    );
+  };
+
+  // Productos del pedido objetivo del modal con disponible > 0 (cantidad propuesta a reservar).
+  const productosReservables = React.useMemo(() => {
+    if (!pedidoReservaModal) return [] as Array<{ nombreProducto: string; abreviatura: string; aReservar: number }>;
+    return pedidoReservaModal.productos
+      .map(p => {
+        const aReservar = Math.min(p.disponibleReal ?? 0, p.cantidadPedido - (p.reservado ?? 0));
+        return {
+          nombreProducto: p.nombreProducto,
+          abreviatura: p.abreviatura,
+          aReservar: aReservar > 0 ? aReservar : 0,
+        };
+      })
+      .filter(p => p.aReservar > 0)
+      .sort((a, b) => a.nombreProducto.localeCompare(b.nombreProducto));
+  }, [pedidoReservaModal]);
+
+  // ── Helpers de estilo Excel ──
+  const styleTitle   = { font: { bold: true, sz: 14, color: { rgb: '1A1A1A' } }, fill: { fgColor: { rgb: 'FFB800' } }, alignment: { horizontal: 'center', vertical: 'center', wrapText: false } };
+  const styleHeader  = { font: { bold: true, sz: 11, color: { rgb: 'FFFFFF' } }, fill: { fgColor: { rgb: '2D3748' } }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true }, border: { top: { style: 'thin', color: { rgb: 'FFFFFF' } }, bottom: { style: 'thin', color: { rgb: 'FFFFFF' } }, left: { style: 'thin', color: { rgb: 'FFFFFF' } }, right: { style: 'thin', color: { rgb: 'FFFFFF' } } } };
+  const styleCat     = { font: { bold: true, sz: 11, color: { rgb: '1A1A1A' } }, fill: { fgColor: { rgb: 'FFF3CD' } }, alignment: { horizontal: 'left', vertical: 'center' }, border: { top: { style: 'thin', color: { rgb: 'E2C97E' } }, bottom: { style: 'thin', color: { rgb: 'E2C97E' } }, left: { style: 'thin', color: { rgb: 'E2C97E' } }, right: { style: 'thin', color: { rgb: 'E2C97E' } } } };
+  const styleTotal   = { font: { bold: true, sz: 10, color: { rgb: 'FFFFFF' } }, fill: { fgColor: { rgb: '4A5568' } }, alignment: { horizontal: 'center', vertical: 'center' }, border: { top: { style: 'thin', color: { rgb: '718096' } }, bottom: { style: 'thin', color: { rgb: '718096' } }, left: { style: 'thin', color: { rgb: '718096' } }, right: { style: 'thin', color: { rgb: '718096' } } } };
+  const styleTotalN  = { font: { bold: true, sz: 10, color: { rgb: 'FFFFFF' } }, fill: { fgColor: { rgb: '4A5568' } }, alignment: { horizontal: 'right', vertical: 'center' }, border: { top: { style: 'thin', color: { rgb: '718096' } }, bottom: { style: 'thin', color: { rgb: '718096' } }, left: { style: 'thin', color: { rgb: '718096' } }, right: { style: 'thin', color: { rgb: '718096' } } } };
+  const styleData    = { font: { sz: 10 }, fill: { fgColor: { rgb: 'FFFFFF' } }, alignment: { horizontal: 'left', vertical: 'center', wrapText: true }, border: { top: { style: 'thin', color: { rgb: 'E2E8F0' } }, bottom: { style: 'thin', color: { rgb: 'E2E8F0' } }, left: { style: 'thin', color: { rgb: 'E2E8F0' } }, right: { style: 'thin', color: { rgb: 'E2E8F0' } } } };
+  const styleDataAlt = { font: { sz: 10 }, fill: { fgColor: { rgb: 'F7FAFC' } }, alignment: { horizontal: 'left', vertical: 'center', wrapText: true }, border: { top: { style: 'thin', color: { rgb: 'E2E8F0' } }, bottom: { style: 'thin', color: { rgb: 'E2E8F0' } }, left: { style: 'thin', color: { rgb: 'E2E8F0' } }, right: { style: 'thin', color: { rgb: 'E2E8F0' } } } };
+  const styleNum     = { font: { sz: 10 }, fill: { fgColor: { rgb: 'FFFFFF' } }, alignment: { horizontal: 'right', vertical: 'center' }, border: { top: { style: 'thin', color: { rgb: 'E2E8F0' } }, bottom: { style: 'thin', color: { rgb: 'E2E8F0' } }, left: { style: 'thin', color: { rgb: 'E2E8F0' } }, right: { style: 'thin', color: { rgb: 'E2E8F0' } } } };
+  const styleNumAlt  = { font: { sz: 10 }, fill: { fgColor: { rgb: 'F7FAFC' } }, alignment: { horizontal: 'right', vertical: 'center' }, border: { top: { style: 'thin', color: { rgb: 'E2E8F0' } }, bottom: { style: 'thin', color: { rgb: 'E2E8F0' } }, left: { style: 'thin', color: { rgb: 'E2E8F0' } }, right: { style: 'thin', color: { rgb: 'E2E8F0' } } } };
+  const styleNumHL   = { font: { bold: true, sz: 10, color: { rgb: '276749' } }, fill: { fgColor: { rgb: 'C6F6D5' } }, alignment: { horizontal: 'right', vertical: 'center' }, border: { top: { style: 'thin', color: { rgb: '9AE6B4' } }, bottom: { style: 'thin', color: { rgb: '9AE6B4' } }, left: { style: 'thin', color: { rgb: '9AE6B4' } }, right: { style: 'thin', color: { rgb: '9AE6B4' } } } };
+
+  // Formatea número con locale chileno: miles con punto, decimal con coma, máx 3 decimales
+  const fmtN = (v: number): string =>
+    v.toLocaleString('es-CL', { maximumFractionDigits: 3 });
+  // Celda texto — garantiza formato chileno (punto miles, coma decimal) sin depender del locale de Excel
+  const sc = (v: string | number | null, s: object) => ({
+    v: typeof v === 'number' ? fmtN(v) : (v ?? ''),
+    t: 's',
+    s,
+  });
+  // Convierte índice de columna (0-based) a letra(s) Excel: 0→A, 25→Z, 26→AA …
+  const cl = (c: number): string => {
+    let s = ''; let n = c + 1;
+    while (n > 0) { n--; s = String.fromCharCode(65 + (n % 26)) + s; n = Math.floor(n / 26); }
+    return s;
+  };
+  // Celda de total: valor pre-calculado como texto chileno (fórmulas SUM no operan sobre celdas texto)
+  const sf = (_formula: string, v: number, s: object) => ({ v: fmtN(v), t: 's', s });
+
+  const autoColWidth = (data: (string | number | null)[][], startRow: number) =>
+    data[startRow]?.map((_, ci) => ({
+      wch: Math.min(40, Math.max(8, ...data.map(row => String(row[ci] ?? '').length + 2)))
+    })) ?? [];
+
+  // ── Descarga Excel: vista por día ──
+  const descargarExcelDia = () => {
+    const nombreDia = DIA_CONFIG[diaCategoria as number]?.nombre ?? 'Día';
+    const semNombre = semanaActual?.nombreSemana ?? '';
+
+    // Cols: Categoría | Producto | Asignatura | Unidad | Cantidad | Total Producto
+    const nCols = 6;
+
+    // Helper: construye asignaturaMap para un producto (asignatura → cantidad)
+    const buildAsignaturaMap = (detallesFiltrados: Array<{ nombreAsignatura: string; nombreSeccion: string; cantidad: number }>) => {
+      const m = new Map<string, number>();
+      for (const d of detallesFiltrados)
+        m.set(d.nombreAsignatura, (m.get(d.nombreAsignatura) ?? 0) + d.cantidad);
+      return m;
+    };
+
+    // ── Construir filas como arrays de valores (para autoColWidth) ──
+    const rawRows: (string | number | null)[][] = [];
+    rawRows.push([`Por Categoría — ${nombreDia} — ${semNombre}`, null, null, null, null, null]);
+    rawRows.push([null, null, null, null, null, null]);
+    rawRows.push(['Categoría', 'Producto', 'Asignatura', 'Unidad', 'Cantidad', 'Total Producto']);
+    for (const cat of categoriasPorDia) {
+      rawRows.push([cat.nombreCategoria, null, null, null, null, null]);
+      for (const prod of cat.productos) {
+        const asigs = Array.from(buildAsignaturaMap(prod.detallesFiltrados).entries()).sort(([a], [b]) => a.localeCompare(b));
+        asigs.forEach(([asig, cantidad], idx) => {
+          const isLast = idx === asigs.length - 1;
+          rawRows.push([cat.nombreCategoria, prod.nombreProducto, asig, prod.abreviatura, cantidad, isLast ? prod.totalDia : null]);
+        });
+      }
+      rawRows.push([null, null, null, null, null, null]);
+    }
+
+    // ── Construir worksheet con estilos ──
+    const ws: Record<string, any> = {};
+    const merges: any[] = [];
+    let R = 0;
+
+    // Fila título (fusionada)
+    merges.push({ s: { r: 0, c: 0 }, e: { r: 0, c: nCols - 1 } });
+    ws[XLSXStyle.utils.encode_cell({ r: 0, c: 0 })] = sc(`Por Categoría — ${nombreDia} — ${semNombre}`, styleTitle);
+    for (let C = 1; C < nCols; C++) ws[XLSXStyle.utils.encode_cell({ r: 0, c: C })] = sc(null, styleTitle);
+    R = 2;
+
+    // Fila encabezados
+    const headers = ['Categoría', 'Producto', 'Asignatura', 'Unidad', 'Cantidad', 'Total Producto'];
+    headers.forEach((h, C) => { ws[XLSXStyle.utils.encode_cell({ r: R, c: C })] = sc(h, styleHeader); });
+    R++;
+
+    let alt = false;
+    for (const cat of categoriasPorDia) {
+      // Fila nombre categoría (fusionada)
+      merges.push({ s: { r: R, c: 0 }, e: { r: R, c: nCols - 1 } });
+      ws[XLSXStyle.utils.encode_cell({ r: R, c: 0 })] = sc(cat.nombreCategoria, styleCat);
+      for (let C = 1; C < nCols; C++) ws[XLSXStyle.utils.encode_cell({ r: R, c: C })] = sc(null, styleCat);
+      R++;
+
+      alt = false;
+      for (const prod of cat.productos) {
+        const asigs = Array.from(buildAsignaturaMap(prod.detallesFiltrados).entries()).sort(([a], [b]) => a.localeCompare(b));
+        const sd = alt ? styleDataAlt : styleData;
+        const sn = alt ? styleNumAlt : styleNum;
+        asigs.forEach(([asig, cantidad], idx) => {
+          const isLast = idx === asigs.length - 1;
+          ws[XLSXStyle.utils.encode_cell({ r: R, c: 0 })] = sc(cat.nombreCategoria, sd);
+          ws[XLSXStyle.utils.encode_cell({ r: R, c: 1 })] = sc(prod.nombreProducto, sd);
+          ws[XLSXStyle.utils.encode_cell({ r: R, c: 2 })] = sc(asig, sd);
+          ws[XLSXStyle.utils.encode_cell({ r: R, c: 3 })] = sc(prod.abreviatura, { ...sn, alignment: { horizontal: 'center', vertical: 'center' } });
+          ws[XLSXStyle.utils.encode_cell({ r: R, c: 4 })] = sc(cantidad, styleNumHL);
+          ws[XLSXStyle.utils.encode_cell({ r: R, c: 5 })] = isLast ? sc(prod.totalDia, styleTotalN) : sc(null, sd);
+          R++;
+        });
+        alt = !alt;
+      }
+
+      // Fila separadora
+      for (let C = 0; C < nCols; C++) ws[XLSXStyle.utils.encode_cell({ r: R, c: C })] = sc(null, { fill: { fgColor: { rgb: 'EDF2F7' } } });
+      R++;
+    }
+
+    ws['!ref'] = XLSXStyle.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: R - 1, c: nCols - 1 } });
+    ws['!merges'] = merges;
+    ws['!cols'] = autoColWidth(rawRows, 2);
+    ws['!rows'] = [{ hpt: 28 }, {}, { hpt: 22 }];
+    ws['!freeze'] = { xSplit: 4, ySplit: 3 };
+
+    const wb = XLSXStyle.utils.book_new();
+    XLSXStyle.utils.book_append_sheet(wb, ws, nombreDia.slice(0, 31));
+    XLSXStyle.writeFile(wb, `categorias_${nombreDia.toLowerCase()}_${semNombre.replace(/\s+/g, '_')}.xlsx`);
+  };
+
+  // ── Descarga Excel: vista completa (todos los días) ──
+  const descargarExcelCompleta = () => {
+    const semNombre = semanaActual?.nombreSemana ?? '';
+    const diasOrden = [1, 2, 3, 4, 5, 6, 0];
+    const diasNombres = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+    // Cols: Categoría | Producto | Asignatura | Unidad | Lun…Dom | Total Asignatura | Total Producto
+    const nCols = 4 + diasNombres.length + 2;
+
+    // Mapa idProducto → asignatura → { days: por día, total }
+    const prodAsignaturaMap = new Map<number, Map<string, { days: Record<number, number>; total: number }>>();
+    for (const prod of productosParaCategorias) {
+      const am = new Map<string, { days: Record<number, number>; total: number }>();
+      for (const d of prod.detalles) {
+        if (!am.has(d.nombreAsignatura)) am.set(d.nombreAsignatura, { days: {}, total: 0 });
+        const e = am.get(d.nombreAsignatura)!;
+        e.days[d.diaSemana] = (e.days[d.diaSemana] ?? 0) + d.cantidad;
+        e.total += d.cantidad;
+      }
+      prodAsignaturaMap.set(prod.idProducto, am);
+    }
+
+    const styleSecRow = { font: { sz: 10, italic: true, color: { rgb: '4A5568' } }, fill: { fgColor: { rgb: 'F7FAFC' } }, alignment: { horizontal: 'left', vertical: 'center' }, border: { top: { style: 'thin', color: { rgb: 'E2E8F0' } }, bottom: { style: 'thin', color: { rgb: 'E2E8F0' } }, left: { style: 'thin', color: { rgb: 'E2E8F0' } }, right: { style: 'thin', color: { rgb: 'E2E8F0' } } } };
+    const styleSecNum = { font: { sz: 10, italic: true }, fill: { fgColor: { rgb: 'F7FAFC' } }, alignment: { horizontal: 'right', vertical: 'center' }, border: { top: { style: 'thin', color: { rgb: 'E2E8F0' } }, bottom: { style: 'thin', color: { rgb: 'E2E8F0' } }, left: { style: 'thin', color: { rgb: 'E2E8F0' } }, right: { style: 'thin', color: { rgb: 'E2E8F0' } } } };
+    const styleProdTotal = { font: { bold: true, sz: 10 }, fill: { fgColor: { rgb: 'EBF8FF' } }, alignment: { horizontal: 'right', vertical: 'center' }, border: { top: { style: 'thin', color: { rgb: 'BEE3F8' } }, bottom: { style: 'thin', color: { rgb: 'BEE3F8' } }, left: { style: 'thin', color: { rgb: 'BEE3F8' } }, right: { style: 'thin', color: { rgb: 'BEE3F8' } } } };
+    const styleProdTotalLabel = { font: { bold: true, sz: 10 }, fill: { fgColor: { rgb: 'EBF8FF' } }, alignment: { horizontal: 'left', vertical: 'center' }, border: { top: { style: 'thin', color: { rgb: 'BEE3F8' } }, bottom: { style: 'thin', color: { rgb: 'BEE3F8' } }, left: { style: 'thin', color: { rgb: 'BEE3F8' } }, right: { style: 'thin', color: { rgb: 'BEE3F8' } } } };
+
+    // ── rawRows para autoColWidth ──
+    const rawRows: (string | number | null)[][] = [];
+    rawRows.push([`Vista Completa por Categoría — ${semNombre}`, ...Array(nCols - 1).fill(null)]);
+    rawRows.push(Array(nCols).fill(null));
+    rawRows.push(['Categoría', 'Producto', 'Asignatura', 'Unidad', ...diasNombres, 'Total Asignatura', 'Total Producto']);
+    for (const cat of matrizCompleta) {
+      rawRows.push([cat.nombre, ...Array(nCols - 1).fill(null)]);
+      for (const row of cat.filas) {
+        const asigs = Array.from(prodAsignaturaMap.get(row.idProducto)?.entries() ?? []).sort(([a], [b]) => a.localeCompare(b));
+        asigs.forEach(([asig, data], idx) => {
+          const isLast = idx === asigs.length - 1;
+          rawRows.push([cat.nombre, row.nombreProducto, asig, row.abreviatura, ...diasOrden.map(d => data.days[d] ?? 0), data.total, isLast ? row.totalSemana : null]);
+        });
+      }
+      rawRows.push(Array(nCols).fill(null));
+    }
+
+    const ws: Record<string, any> = {};
+    const merges: any[] = [];
+    let R = 0;
+
+    // Título fusionado
+    merges.push({ s: { r: 0, c: 0 }, e: { r: 0, c: nCols - 1 } });
+    ws[XLSXStyle.utils.encode_cell({ r: 0, c: 0 })] = sc(`Vista Completa por Categoría — ${semNombre}`, styleTitle);
+    for (let C = 1; C < nCols; C++) ws[XLSXStyle.utils.encode_cell({ r: 0, c: C })] = sc(null, styleTitle);
+    R = 2;
+
+    // Encabezados
+    const headers = ['Categoría', 'Producto', 'Asignatura', 'Unidad', ...diasNombres, 'Total Asignatura', 'Total Producto'];
+    headers.forEach((h, C) => { ws[XLSXStyle.utils.encode_cell({ r: R, c: C })] = sc(h, styleHeader); });
+    R++;
+
+    for (const cat of matrizCompleta) {
+      // Fila nombre categoría fusionada
+      merges.push({ s: { r: R, c: 0 }, e: { r: R, c: nCols - 1 } });
+      ws[XLSXStyle.utils.encode_cell({ r: R, c: 0 })] = sc(cat.nombre, styleCat);
+      for (let C = 1; C < nCols; C++) ws[XLSXStyle.utils.encode_cell({ r: R, c: C })] = sc(null, styleCat);
+      R++;
+
+      for (const row of cat.filas) {
+        const asigs = Array.from(prodAsignaturaMap.get(row.idProducto)?.entries() ?? []).sort(([a], [b]) => a.localeCompare(b));
+        asigs.forEach(([asig, data], idx) => {
+          const isLast = idx === asigs.length - 1;
+          ws[XLSXStyle.utils.encode_cell({ r: R, c: 0 })] = sc(cat.nombre, styleSecRow);
+          ws[XLSXStyle.utils.encode_cell({ r: R, c: 1 })] = sc(row.nombreProducto, styleSecRow);
+          ws[XLSXStyle.utils.encode_cell({ r: R, c: 2 })] = sc(asig, styleSecRow);
+          ws[XLSXStyle.utils.encode_cell({ r: R, c: 3 })] = sc(row.abreviatura, { ...styleSecNum, alignment: { horizontal: 'center', vertical: 'center' } });
+          diasOrden.forEach((dia, i) => { ws[XLSXStyle.utils.encode_cell({ r: R, c: 4 + i })] = sc(data.days[dia] ?? 0, styleSecNum); });
+          ws[XLSXStyle.utils.encode_cell({ r: R, c: nCols - 2 })] = sf(`SUM(${cl(4)}${R+1}:${cl(4+diasOrden.length-1)}${R+1})`, data.total, styleNumHL);
+          ws[XLSXStyle.utils.encode_cell({ r: R, c: nCols - 1 })] = isLast ? sc(row.totalSemana, styleTotalN) : sc(null, styleSecRow);
+          R++;
+        });
+      }
+
+      for (let C = 0; C < nCols; C++) ws[XLSXStyle.utils.encode_cell({ r: R, c: C })] = sc(null, { fill: { fgColor: { rgb: 'EDF2F7' } } });
+      R++;
+    }
+
+    ws['!ref'] = XLSXStyle.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: R - 1, c: nCols - 1 } });
+    ws['!merges'] = merges;
+    ws['!cols'] = autoColWidth(rawRows, 2);
+    ws['!rows'] = [{ hpt: 28 }, {}, { hpt: 22 }];
+    ws['!freeze'] = { xSplit: 4, ySplit: 3 };
+
+    const wb = XLSXStyle.utils.book_new();
+    XLSXStyle.utils.book_append_sheet(wb, ws, 'Vista Completa');
+    XLSXStyle.writeFile(wb, `categorias_completo_${semNombre.replace(/\s+/g, '_')}.xlsx`);
+  };
+
+
+
+  // ── Render ──────────────────────────────────────────────────────────────────
   return (
+    <>
+      <div className="max-w-7xl mx-auto px-4 pt-4">
+        <Tabs
+          selectedKey={activeTab}
+          onSelectionChange={(key) => setActiveTab(key as 'solicitudes' | 'pedido')}
+          variant="underlined"
+          color="primary"
+          classNames={{ tabList: 'gap-6' }}
+        >
+          <Tab key="solicitudes" title="Revisar solicitudes" />
+          <Tab key="pedido" title="Consolidar pedido" />
+        </Tabs>
+      </div>
+
+      {activeTab === 'solicitudes' && (
     <div className="max-w-7xl mx-auto px-4 py-6 space-y-5">
 
       {/* ── Selector período + semana ── */}
@@ -1204,6 +2088,1213 @@ const GestionSolicitudesPage: React.FC = () => {
         </ModalContent>
       </Modal>
     </div>
+      )}
+
+      {activeTab === 'pedido' && (
+    <div className="max-w-7xl mx-auto px-4 py-6 space-y-5">
+
+      {/* ── Selector período + semana ── */}
+      <Card className="shadow-sm">
+        <CardBody className="px-5 py-4">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+            <div className="flex items-center gap-2 shrink-0 flex-wrap">
+              <Icon icon="lucide:calendar-days" className="text-default-400" width={16} />
+              <span className="text-xs font-bold text-default-500 uppercase tracking-wider">Período</span>
+              {sinPeriodos && !isAdmin && (
+                <p className="text-sm text-warning-600 dark:text-warning-400 flex items-center gap-1.5">
+                  <Icon icon="lucide:alert-triangle" width={13} />
+                  Contacte el administrador para generar los periodos académicos.
+                </p>
+              )}
+              {sinPeriodos && isAdmin && (
+                <button
+                  type="button"
+                  className="flex items-center gap-1.5 text-sm text-primary hover:text-primary-600 underline underline-offset-2 cursor-pointer transition-colors"
+                  onClick={() => history.push('/admin-sistema?tab=semanas')}
+                >
+                  <Icon icon="lucide:calendar-plus" width={14} />
+                  Genere el período académico
+                  <Icon icon="lucide:arrow-right" width={12} />
+                </button>
+              )}
+              {!sinPeriodos && periodos.map(p =>
+                p.semestres.map(s => {
+                  const isActive = semanas.length > 0 && semanas[0].anio === p.anio && semanas[0].semestre === s;
+                  return (
+                    <button key={`${p.anio}-${s}`} onClick={() => { seleccionarPeriodo(p.anio, s); setConsolidateData(null); }}
+                      className={`px-3 py-1 rounded-full text-xs font-bold border transition-all cursor-pointer ${
+                        isActive ? 'bg-warning text-white border-warning' : 'bg-default-100 text-default-600 border-default-200 hover:bg-default-200'
+                      }`}>
+                      {p.anio} S{s}
+                    </button>
+                  );
+                })
+              )}
+            </div>
+
+            <Divider orientation="vertical" className="hidden sm:block h-6" />
+
+            <div className="flex-1 min-w-0">
+              {isLoadingSem ? (
+                <div className="flex items-center gap-2 text-sm text-default-400"><Spinner size="sm" /> Cargando semanas...</div>
+              ) : semanas.length === 0 ? (
+                <p className="text-sm text-default-400">Sin semanas disponibles.</p>
+              ) : (
+                <Select size="sm" variant="bordered"
+                  selectedKeys={semanaId ? new Set([semanaId]) : new Set()}
+                  onSelectionChange={keys => { const v = Array.from(keys as Set<string>)[0]; if (v) seleccionarSemana(v); }}
+                  placeholder="Seleccione una semana"
+                  classNames={{ trigger: 'bg-default-50 cursor-pointer', base: 'max-w-xs' }}
+                  startContent={<Icon icon="lucide:calendar" width={14} className="text-default-400 shrink-0" />}
+                >
+                  {semanas.map(s => (
+                    <SelectItem key={String(s.idSemana)} textValue={s.nombreSemana}>
+                      <span className="font-semibold">{s.nombreSemana}</span>
+                      <span className="text-default-400 ml-2 text-xs">
+                        {new Date(s.fechaInicio + 'T00:00:00').toLocaleDateString('es-CL', { day: 'numeric', month: 'short' })}
+                        {' – '}
+                        {new Date(s.fechaFin + 'T00:00:00').toLocaleDateString('es-CL', { day: 'numeric', month: 'short' })}
+                      </span>
+                      {String(s.idSemana) === defaultSemanaId && defaultSemanaId && (
+                        <Chip size="sm" color="success" variant="flat" className="ml-auto shrink-0">Actual</Chip>
+                      )}
+                    </SelectItem>
+                  ))}
+                </Select>
+              )}
+            </div>
+
+            {semanaActual && (
+              <p className="text-xs text-default-400 shrink-0">
+                {new Date(semanaActual.fechaInicio + 'T00:00:00').toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long' })}
+                {' al '}
+                {new Date(semanaActual.fechaFin + 'T00:00:00').toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long' })}
+                {semanaId === defaultSemanaId && defaultSemanaId && (
+                  <span className="text-success ml-1 font-medium">· en curso</span>
+                )}
+              </p>
+            )}
+          </div>
+        </CardBody>
+      </Card>
+
+      {/* ── Banner informativo ── */}
+      <div className="flex items-start gap-3 px-4 py-3 bg-secondary-50 border border-secondary-200 rounded-xl text-secondary-800">
+        <Icon icon="lucide:truck" width={18} className="shrink-0 text-secondary-500 mt-0.5" />
+        <div>
+          <p className="font-semibold text-sm">Pedido consolidado → Bodega de Tránsito</p>
+          <p className="text-xs mt-0.5 text-secondary-700">
+            Los pedidos en estado <strong>Pendiente</strong> agrupan solicitudes aprobadas.
+            Al aprobarse, pasan a <strong>Procesado</strong> y quedan disponibles en bodega de tránsito para su retiro.
+            El descuento se realiza automáticamente en la bodega de tránsito una vez que el asistente de bodega confirma la verificación de los productos.
+          </p>
+        </div>
+      </div>
+
+      {/* ── Stats ── */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {([
+          { label: 'Sol. procesadas', val: contadoresCong.procesadas,     color: 'border-secondary-200', icon: 'lucide:clipboard-check', text: 'text-secondary-700' },
+          { label: 'Productos únicos', val: contadoresCong.productosUnicos, color: 'border-primary-200',   icon: 'lucide:package',         text: 'text-primary-700'  },
+          { label: 'Secciones',        val: contadoresCong.secciones,       color: 'border-warning-200',   icon: 'lucide:users',           text: 'text-warning-700'  },
+          { label: 'Días con clases',  val: contadoresCong.dias,            color: 'border-success-200',   icon: 'lucide:calendar-check',  text: 'text-success-700'  },
+        ] as const).map(c => (
+          <Card key={c.label} className={`shadow-sm border ${c.color}`}>
+            <CardBody className="px-4 py-3 flex flex-row items-center gap-3">
+              <Icon icon={c.icon} width={22} className={c.text} />
+              <div>
+                <p className={`text-2xl font-bold ${c.text}`}>{c.val}</p>
+                <p className="text-xs text-default-500">{c.label}</p>
+              </div>
+            </CardBody>
+          </Card>
+        ))}
+      </div>
+
+      {/* ── Contenido principal ── */}
+      <Card className="shadow-sm">
+        <CardHeader className="px-5 py-4 flex flex-col sm:flex-row gap-3 items-start sm:items-center flex-wrap">
+          {/* Tabs */}
+          <div className="flex items-center gap-1 bg-default-100 rounded-lg p-1 flex-wrap">
+            {(['aprobacion', 'cronograma', 'totales', 'categorias'] as const).filter(v => ({ aprobacion: verCongAprob, cronograma: verCongCrono, totales: verCongTotales, categorias: verCongCateg } as Record<string, boolean>)[v]).map(v => (
+              <button key={v} onClick={() => { setVistaActiva(v); setExpandidos(new Set()); }}
+                className={`px-3 py-1.5 rounded-md text-xs font-semibold cursor-pointer transition-all ${
+                  vistaActiva === v ? 'bg-white shadow-sm text-primary' : 'text-default-500 hover:text-default-700'
+                }`}>
+                {v === 'categorias'  && <span className="flex items-center gap-1.5"><Icon icon="lucide:tag"             width={12} />Por Categoría</span>}
+                {v === 'cronograma'  && <span className="flex items-center gap-1.5"><Icon icon="lucide:calendar-range"  width={12} />Cronograma Semanal</span>}
+                {v === 'totales'     && <span className="flex items-center gap-1.5"><Icon icon="lucide:package-check"   width={12} />Totales del Pedido</span>}
+                {v === 'aprobacion'  && <span className="flex items-center gap-1.5"><Icon icon="lucide:shield-check"    width={12} />Aprobación de Pedidos</span>}
+              </button>
+            ))}
+          </div>
+
+          {vistaActiva === 'categorias' && (
+            <div className="flex items-center gap-2 flex-wrap">
+              {/* Selector día */}
+              <div className="flex items-center gap-1 bg-default-100 rounded-lg p-1 flex-wrap">
+                {([
+                  { val: 1,          label: 'Lunes'         },
+                  { val: 2,          label: 'Martes'        },
+                  { val: 3,          label: 'Miércoles'     },
+                  { val: 4,          label: 'Jueves'        },
+                  { val: 5,          label: 'Viernes'       },
+                  { val: 6,          label: 'Sábado'        },
+                  { val: 0,          label: 'Domingo'       },
+                  { val: 'completa', label: 'Vista Completa'},
+                ] as const).map(d => (
+                  <button key={String(d.val)} onClick={() => setDiaCategoria(d.val as number | 'completa')}
+                    className={`px-2.5 py-1 rounded-md text-xs font-semibold cursor-pointer transition-all ${
+                      diaCategoria === d.val ? 'bg-white shadow-sm text-primary' : 'text-default-500 hover:text-default-700'
+                    }`}>
+                    {d.label}
+                  </button>
+                ))}
+              </div>
+              {/* Toggle colores */}
+              <button onClick={() => setConColores(c => !c)}
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${
+                  conColores ? 'bg-primary-50 border-primary-200 text-primary-700' : 'bg-default-100 border-default-200 text-default-500'
+                }`}>
+                <Icon icon="lucide:palette" width={12} />
+                {conColores ? 'Con colores' : 'Sin colores'}
+              </button>
+              {/* Botón descarga Excel */}
+              {hayDatos && permDescargarExcel && (
+                <button
+                  onClick={diaCategoria === 'completa' ? descargarExcelCompleta : descargarExcelDia}
+                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold border border-success-300 bg-success-50 text-success-700 hover:bg-success-100 transition-all cursor-pointer">
+                  <Icon icon="lucide:download" width={12} />
+                  Descargar Excel
+                </button>
+              )}
+            </div>
+          )}
+
+          {vistaActiva === 'totales' && (
+            <Input size="sm" variant="bordered" placeholder="Buscar producto..."
+              value={busquedaProductos} onValueChange={setBusquedaProductos}
+              startContent={<Icon icon="lucide:search" className="text-default-400" width={14} />}
+              classNames={{ base: 'max-w-xs', inputWrapper: 'bg-default-50' }}
+            />
+          )}
+          {vistaActiva === 'cronograma' && (
+            <Input size="sm" variant="bordered" placeholder="Buscar receta, docente, producto..."
+              value={busquedaCrono} onValueChange={setBusquedaCrono}
+              startContent={<Icon icon="lucide:search" className="text-default-400" width={14} />}
+              classNames={{ base: 'max-w-xs', inputWrapper: 'bg-default-50' }}
+            />
+          )}
+          {vistaActiva === 'aprobacion' && (
+            <Input size="sm" variant="bordered" placeholder="Buscar producto..."
+              value={busquedaAprob} onValueChange={setBusquedaAprob}
+              startContent={<Icon icon="lucide:search" className="text-default-400" width={14} />}
+              classNames={{ base: 'max-w-xs', inputWrapper: 'bg-default-50' }}
+            />
+          )}
+        </CardHeader>
+
+        <Divider />
+
+        <CardBody className="p-4">
+          {isLoadingDatos ? (
+            <div className="py-16 flex items-center justify-center">
+              <BookPageLoader message="Cargando pedidos" subMessage="Consolidando datos..." />
+            </div>
+          ) : !semanaId ? (
+            <div className="py-16 flex flex-col items-center gap-3 text-default-400">
+              <Icon icon="lucide:calendar-search" width={48} className="opacity-40" />
+              <p className="text-sm">Seleccione una semana para ver el pedido consolidado.</p>
+            </div>
+          ) : !hayDatos ? (
+            <div className="py-16 flex flex-col items-center gap-3 text-default-400">
+              <Icon icon="lucide:inbox" width={48} className="opacity-40" />
+              <p className="text-sm">No hay pedidos consolidados para esta semana.</p>
+              <p className="text-xs">Los pedidos deben estar generados para aparecer aquí.</p>
+            </div>
+          ) : vistaActiva === 'categorias' ? (
+
+            /* ════════════════════════════════════════
+               VISTA POR CATEGORÍA
+            ════════════════════════════════════════ */
+            diaCategoria === 'completa' ? (
+
+              /* ── VISTA COMPLETA: tabla cruzada ── */
+              <div className="overflow-x-auto">
+                {matrizCompleta.length === 0 ? (
+                  <div className="py-10 flex flex-col items-center gap-3 text-default-400">
+                    <Icon icon="lucide:tag" width={36} className="opacity-40" />
+                    <p className="text-sm">Sin productos para esta semana.</p>
+                  </div>
+                ) : (
+                  <table className="w-full text-sm border-collapse">
+                    <thead>
+                      <tr className="bg-default-50 border-b border-default-200">
+                        <th className="text-left px-3 py-2 text-[10px] font-bold text-default-500 uppercase tracking-wider min-w-[200px]">Categoría / Producto</th>
+                        {['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'].map(d => (
+                          <th key={d} className="text-center px-2 py-2 text-[10px] font-bold text-default-500 uppercase tracking-wider min-w-[70px]">{d}</th>
+                        ))}
+                        <th className="text-center px-2 py-2 text-[10px] font-bold text-default-500 uppercase tracking-wider min-w-[70px]">Total</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {matrizCompleta.map(cat => (
+                        <React.Fragment key={cat.nombre}>
+                          {/* Fila cabecera categoría */}
+                          <tr className="bg-default-100 border-t-2 border-default-300">
+                            <td colSpan={9} className="px-3 py-1.5">
+                              <span className="text-xs font-bold text-default-700 uppercase tracking-wider flex items-center gap-1.5">
+                                <Icon icon="lucide:tag" width={11} className="text-default-500" />
+                                {cat.nombre}
+                              </span>
+                            </td>
+                          </tr>
+                          {/* Filas de productos */}
+                          {cat.filas.map(row => (
+                            <tr key={row.idProducto} className="border-b border-default-100 hover:bg-default-50/50">
+                              <td className="px-3 py-2 text-default-700 font-medium pl-7">{row.nombreProducto}</td>
+                              {[1,2,3,4,5,6,0].map(dia => {
+                                const cell = row.diasData[dia];
+                                if (!cell) return <td key={dia} className="text-center px-2 py-2 text-default-300">—</td>;
+                                const bgColor = conColores && cell.secciones.length === 1
+                                  ? asignaturaColorMap.get(cell.secciones[0].compositeKey.split('::')[0]) ?? 'transparent'
+                                  : 'transparent';
+                                return (
+                                  <td key={dia} className="text-center px-2 py-2">
+                                    <div className="inline-flex flex-col items-center gap-0.5">
+                                      {conColores && cell.secciones.length > 1
+                                        ? (() => {
+                                            const asigMap = new Map<string, number>();
+                                            for (const sec of cell.secciones) {
+                                              const asig = sec.compositeKey.split('::')[0];
+                                              asigMap.set(asig, (asigMap.get(asig) ?? 0) + sec.cantidad);
+                                            }
+                                            return Array.from(asigMap.entries()).map(([asig, cant]) => (
+                                              <span key={asig} className="text-[11px] font-mono font-semibold px-1.5 py-0.5 rounded"
+                                                style={{ backgroundColor: asignaturaColorMap.get(asig) ?? '#f4f4f5' }}>
+                                                {fmtCant(cant)}
+                                                <span className="text-[9px] text-default-500 ml-0.5">{row.abreviatura}</span>
+                                              </span>
+                                            ));
+                                          })()
+                                        : (
+                                          <span className="text-[11px] font-mono font-semibold px-1.5 py-0.5 rounded"
+                                            style={{ backgroundColor: bgColor }}>
+                                            {fmtCant(cell.total)}
+                                            <span className="text-[9px] text-default-500 ml-0.5">{row.abreviatura}</span>
+                                          </span>
+                                        )
+                                      }
+                                    </div>
+                                  </td>
+                                );
+                              })}
+                              <td className="text-center px-2 py-2">
+                                <span className="text-xs font-bold text-secondary font-mono">
+                                  {fmtCant(row.totalSemana)}
+                                  <span className="text-[9px] text-default-400 ml-0.5">{row.abreviatura}</span>
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </React.Fragment>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+
+                {/* Leyenda asignaturas */}
+                {conColores && asignaturaColorMap.size > 0 && (
+                  <div className="mt-4 p-4 bg-default-50 rounded-xl border border-default-200">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Icon icon="lucide:palette" width={13} className="text-default-500" />
+                      <p className="text-[10px] font-bold text-default-500 uppercase tracking-wider">Leyenda de asignaturas</p>
+                      <span className="ml-auto text-[10px] text-default-400">{asignaturaColorMap.size} asignatura{asignaturaColorMap.size !== 1 ? 's' : ''}</span>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {Array.from(asignaturaColorMap.entries()).map(([nombreAsignatura, color]) => (
+                        <div key={nombreAsignatura}
+                          className="flex items-center gap-1.5 pl-2 pr-3 py-1 rounded-lg border border-default-200 text-default-700"
+                          style={{ backgroundColor: color }}>
+                          <span className="text-[11px] font-medium truncate max-w-[200px]" title={nombreAsignatura}>{nombreAsignatura}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+            ) : (
+
+              /* ── VISTA POR DÍA: agrupada por categoría ── */
+              <div className="space-y-4">
+                {categoriasPorDia.length === 0 ? (
+                  <div className="py-10 flex flex-col items-center gap-3 text-default-400">
+                    <Icon icon="lucide:tag" width={36} className="opacity-40" />
+                    <p className="text-sm">Sin productos para el {DIA_CONFIG[diaCategoria as number]?.nombre ?? 'día seleccionado'}.</p>
+                  </div>
+                ) : (
+                  <>
+                    {categoriasPorDia.map(cat => (
+                      <div key={cat.idCategoria} className="border border-default-200 rounded-xl overflow-hidden">
+                        {/* Cabecera categoría */}
+                        <div className="flex items-center gap-2 px-4 py-2 bg-default-100 border-b border-default-200">
+                          <Icon icon="lucide:tag" width={13} className="text-default-500" />
+                          <span className="text-xs font-bold text-default-700 uppercase tracking-wider">{cat.nombreCategoria}</span>
+                          <span className="ml-auto text-[10px] text-default-400">{cat.productos.length} producto{cat.productos.length !== 1 ? 's' : ''}</span>
+                        </div>
+
+                        {/* Encabezado tabla */}
+                        <div className="grid grid-cols-[1fr_auto] px-4 py-1.5 bg-default-50 border-b border-default-100 text-[10px] font-bold text-default-500 uppercase tracking-wider">
+                          <span>Producto</span>
+                          <span className="text-right">Cantidad por Sección</span>
+                        </div>
+
+                        {/* Filas de productos */}
+                        {cat.productos.map(prod => {
+                          // Agrupar por asignatura
+                          const asignaturaMapDia = new Map<string, number>();
+                          for (const d of prod.detallesFiltrados) {
+                            asignaturaMapDia.set(d.nombreAsignatura, (asignaturaMapDia.get(d.nombreAsignatura) ?? 0) + d.cantidad);
+                          }
+                          return (
+                            <div key={prod.idProducto}
+                              className="grid grid-cols-[1fr_auto] items-center gap-3 px-4 py-2.5 border-b border-default-50 last:border-0 hover:bg-default-50/50">
+                              <div className="min-w-0">
+                                <p className="font-medium text-sm text-default-800 truncate">{prod.nombreProducto}</p>
+                                <p className="text-sm font-bold font-mono" style={{ color: '#374151' }}>
+                                  {fmtCant(prod.totalDia)}
+                                  <span className="text-xs font-normal text-default-400 ml-1">{prod.abreviatura} total</span>
+                                </p>
+                              </div>
+                              <div className="flex flex-wrap gap-1 justify-end">
+                                {Array.from(asignaturaMapDia.entries()).map(([asignatura, cantidad]) => (
+                                  <span key={asignatura}
+                                    className="px-2 py-1 rounded-lg text-xs font-semibold border border-default-200 text-default-700 font-mono"
+                                    style={{ backgroundColor: conColores ? (asignaturaColorMap.get(asignatura) ?? '#f4f4f5') : 'white' }}>
+                                    {asignatura} · {fmtCant(cantidad)} {prod.abreviatura}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          );
+                        })}
+
+                        {/* Total categoría */}
+                        <div className="flex items-center justify-between px-4 py-2 bg-default-50 border-t border-default-200">
+                          <span className="text-[11px] text-default-500 font-medium">Total categoría</span>
+                          <span className="text-xs font-bold text-primary font-mono">
+                            {fmtCant(cat.productos.reduce((s, p) => s + p.totalDia, 0))} und.
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+
+                    {/* Leyenda */}
+                    {conColores && asignaturaColorMap.size > 0 && (
+                      <div className="p-4 bg-default-50 rounded-xl border border-default-200">
+                        <div className="flex items-center gap-2 mb-3">
+                          <Icon icon="lucide:palette" width={13} className="text-default-500" />
+                          <p className="text-[10px] font-bold text-default-500 uppercase tracking-wider">Leyenda de asignaturas</p>
+                          <span className="ml-auto text-[10px] text-default-400">{asignaturaColorMap.size} asignatura{asignaturaColorMap.size !== 1 ? 's' : ''}</span>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          {Array.from(asignaturaColorMap.entries()).map(([nombreAsignatura, color]) => (
+                            <div key={nombreAsignatura}
+                              className="flex items-center gap-1.5 pl-2 pr-3 py-1 rounded-lg border border-default-200 text-default-700"
+                              style={{ backgroundColor: color }}>
+                              <span className="text-[11px] font-medium truncate max-w-[200px]" title={nombreAsignatura}>{nombreAsignatura}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            )
+
+          ) : vistaActiva === 'cronograma' ? (
+
+            /* ════════════════════════════════════════
+               VISTA CRONOGRAMA SEMANAL
+            ════════════════════════════════════════ */
+            <div className="space-y-5">
+              {gruposDiaFiltrados.length === 0 ? (
+                <div className="py-10 flex flex-col items-center gap-3 text-default-400">
+                  <Icon icon="lucide:calendar-x" width={36} className="opacity-40" />
+                  <p className="text-sm">{busquedaCrono ? `Sin resultados para "${busquedaCrono}"` : 'Sin solicitudes vinculadas para esta semana.'}</p>
+                </div>
+              ) : gruposDiaFiltrados.map(grupo => {
+                const cfg = DIA_CONFIG[grupo.diaSemana] ?? DIA_CONFIG[1];
+                const hoy = isHoy(grupo.fecha);
+                const productosDelDia = new Set<string>();
+                grupo.solicitudes.forEach(s => s.productosSolicitados.forEach(p => productosDelDia.add(p.nombreProducto)));
+
+                return (
+                  <div key={grupo.fecha}
+                    className={`rounded-2xl border-2 overflow-hidden shadow-sm`}
+                    style={{ borderColor: hoy ? '#B45309' : cfg.border, boxShadow: `0 2px 8px 0 ${hoy ? '#B4530940' : cfg.border + '30'}` }}>
+
+                    {/* Cabecera del día */}
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 px-5 py-3"
+                      style={{ backgroundColor: hoy ? '#FEF3C7' : cfg.bgHeader }}>
+                      <div className="flex items-center gap-3 flex-1">
+                        <div className="flex flex-col items-center justify-center rounded-xl px-3 py-1.5 min-w-[56px] text-center"
+                          style={{ backgroundColor: hoy ? '#FCD34D' : cfg.bgBadge }}>
+                          <span className="text-[11px] font-black uppercase tracking-wide"
+                            style={{ color: hoy ? '#78350F' : cfg.textColor }}>
+                            {cfg.nombre.slice(0, 3).toUpperCase()}
+                          </span>
+                          <span className="text-xl font-black leading-tight"
+                            style={{ color: hoy ? '#78350F' : cfg.textColor }}>
+                            {new Date(grupo.fecha + 'T00:00:00').getDate()}
+                          </span>
+                          {hoy && <span className="text-[9px] font-black leading-none" style={{ color: '#92400E' }}>HOY</span>}
+                        </div>
+                        <div>
+                          <p className="font-bold text-sm capitalize"
+                            style={{ color: hoy ? '#78350F' : cfg.textColor }}>
+                            {fmtFechaLarga(grupo.fecha)}
+                          </p>
+                          <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                            <span className="text-xs text-default-500 flex items-center gap-1">
+                              <Icon icon="lucide:book-open" width={10} />
+                              {grupo.solicitudes.length} clase{grupo.solicitudes.length > 1 ? 's' : ''}
+                            </span>
+                            <span className="text-xs text-default-400">·</span>
+                            <span className="text-xs text-default-500 flex items-center gap-1">
+                              <Icon icon="lucide:package" width={10} />
+                              {productosDelDia.size} producto{productosDelDia.size > 1 ? 's' : ''} distintos
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      {hoy && (
+                        <Chip size="sm" color="warning" variant="solid" className="shrink-0">
+                          Hoy · En curso
+                        </Chip>
+                      )}
+                    </div>
+
+                    {/* Solicitudes del día */}
+                    <div className="bg-white">
+                      {grupo.solicitudes.map((sol, solIdx) => {
+                        const { seccion, horarios } = sol;
+                        const rango   = parseRango(horarios.rangoHoras);
+                        const solKey  = String(sol.idSolicitud);
+                        const abierto = expandidos.has(solKey);
+
+                        return (
+                          <div key={sol.idSolicitud}
+                            style={solIdx > 0 ? { borderTop: '2px solid #1a1a1a' } : undefined}>
+                            <button
+                              className="w-full flex flex-col sm:flex-row sm:items-stretch gap-0 hover:bg-default-50/70 cursor-pointer transition-colors text-left"
+                              onClick={() => toggleExpandido(solKey)}
+                            >
+                              {/* Barra de hora lateral */}
+                              <div className="hidden sm:flex flex-col items-center justify-center px-3 py-3 min-w-[80px] border-r"
+                                style={{ backgroundColor: hoy ? '#FEF3C7' : cfg.bgHeader, borderColor: hoy ? '#FCD34D' : cfg.border }}>
+                                <span className="text-xs font-bold" style={{ color: hoy ? '#78350F' : cfg.textColor }}>{rango.inicio}</span>
+                                <div className="w-px flex-1 my-1 min-h-[20px] border-l-2 border-dashed" style={{ borderColor: hoy ? '#FCD34D' : cfg.border }} />
+                                <span className="text-xs font-bold" style={{ color: hoy ? '#78350F' : cfg.textColor }}>{rango.fin}</span>
+                              </div>
+
+                              {/* Contenido */}
+                              <div className="flex-1 flex flex-col sm:flex-row sm:items-center gap-3 px-4 py-3">
+
+                                {/* Bloque móvil: hora */}
+                                <div className="sm:hidden flex items-center gap-2 text-xs font-bold" style={{ color: hoy ? '#78350F' : cfg.textColor }}>
+                                  <Icon icon="lucide:clock" width={12} />
+                                  {rango.inicio} – {rango.fin}
+                                </div>
+
+                                {/* Info principal */}
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <span className="font-bold text-sm text-default-800">§{seccion.nombreSeccion}</span>
+                                    <span className="text-xs text-default-400">·</span>
+                                    <span className="text-sm text-default-600">{seccion.nombreDocente}</span>
+                                    <span className="text-xs text-default-400">·</span>
+                                    <span className="text-xs text-default-500">{seccion.nombreAsignatura}</span>
+                                  </div>
+                                  <div className="flex items-center gap-3 mt-0.5 flex-wrap text-xs text-default-400">
+                                    <span className="flex items-center gap-1">
+                                      <Icon icon="lucide:book-open" width={10} />
+                                      {sol.nombreReceta}
+                                    </span>
+                                    <span className="flex items-center gap-1">
+                                      <Icon icon="lucide:door-open" width={10} />
+                                      {horarios.nombreSala}
+                                    </span>
+                                    <span className="flex items-center gap-1">
+                                      <Icon icon="lucide:users" width={10} />
+                                      {seccion.cantInscritos} alumnos
+                                    </span>
+                                    <span className="flex items-center gap-1">
+                                      <Icon icon="lucide:layers" width={10} />
+                                      {sol.cantProductos} producto{sol.cantProductos > 1 ? 's' : ''}
+                                    </span>
+                                  </div>
+                                  {sol.observaciones && (
+                                    <p className="mt-0.5 text-xs text-default-400 italic truncate">
+                                      <Icon icon="lucide:message-square" width={10} className="inline mr-1" />
+                                      {sol.observaciones}
+                                    </p>
+                                  )}
+                                </div>
+
+                                {/* Productos pills (preview) */}
+                                <div className="flex flex-wrap gap-1.5 shrink-0 max-w-xs">
+                                  {sol.productosSolicitados.slice(0, 3).map((p, i) => (
+                                    <span key={i}
+                                      className="px-2 py-0.5 rounded-full bg-default-100 text-default-600 text-[11px] font-medium whitespace-nowrap">
+                                      {fmtCant(p.cantidad)} {p.unidadAbreviada} {p.nombreProducto}
+                                    </span>
+                                  ))}
+                                  {sol.productosSolicitados.length > 3 && (
+                                    <span className="px-2 py-0.5 rounded-full bg-primary-50 text-primary-600 text-[11px] font-medium">
+                                      +{sol.productosSolicitados.length - 3} más
+                                    </span>
+                                  )}
+                                </div>
+
+                                {/* Chevron */}
+                                <div className="flex items-center gap-2 shrink-0">
+                                  <Icon icon={abierto ? 'lucide:chevron-up' : 'lucide:chevron-down'} width={16} className="text-default-400" />
+                                </div>
+                              </div>
+                            </button>
+
+                            {/* Detalle expandido */}
+                            {abierto && (
+                              <div className="mx-4 mb-3 rounded-xl overflow-hidden border-2"
+                                style={{ borderColor: hoy ? '#FCD34D' : cfg.border }}>
+                                {/* Horario y sala — cabecera */}
+                                <div className="flex items-center gap-2 px-4 py-2 border-b"
+                                  style={{
+                                    backgroundColor: hoy ? '#FEF3C7' : cfg.bgHeader,
+                                    borderColor: hoy ? '#FCD34D' : cfg.border,
+                                  }}>
+                                  <Icon icon="lucide:clock" width={12} style={{ color: hoy ? '#B45309' : cfg.textColor }} />
+                                  <span className="text-xs font-bold uppercase tracking-wide"
+                                    style={{ color: hoy ? '#B45309' : cfg.textColor }}>Horario y Sala</span>
+                                </div>
+                                {/* Horario y sala — contenido */}
+                                <div className="flex flex-wrap gap-2 px-4 py-2.5"
+                                  style={{ backgroundColor: hoy ? '#FFFBEB' : '#f9fafb' }}>
+                                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs"
+                                    style={{
+                                      backgroundColor: hoy ? '#FEF9C3' : '#ffffff',
+                                      borderColor: hoy ? '#FDE68A' : '#e5e7eb',
+                                    }}>
+                                    <Icon icon="lucide:clock" width={12} style={{ color: hoy ? '#B45309' : cfg.textColor }} />
+                                    <span className="font-mono" style={{ color: hoy ? '#78350F' : '#374151' }}>{rango.inicio} – {rango.fin}</span>
+                                    <span style={{ color: hoy ? '#D97706' : '#9ca3af' }}>·</span>
+                                    <Icon icon="lucide:door-open" width={12} style={{ color: hoy ? '#B45309' : '#9ca3af' }} />
+                                    <span style={{ color: hoy ? '#78350F' : '#6b7280' }}>{horarios.nombreSala}</span>
+                                  </div>
+                                </div>
+
+                                {/* Tabla de productos — cabecera */}
+                                <div className="flex items-center gap-2 px-4 py-2 border-t border-b"
+                                  style={{ borderColor: hoy ? '#FCD34D' : cfg.border }}>
+                                  <Icon icon="lucide:package" width={12} style={{ color: hoy ? '#B45309' : cfg.textColor }} />
+                                  <span className="text-xs font-bold uppercase tracking-wide"
+                                    style={{ color: hoy ? '#B45309' : cfg.textColor }}>
+                                    Productos requeridos · {sol.productosSolicitados.length} ítem{sol.productosSolicitados.length > 1 ? 's' : ''}
+                                  </span>
+                                </div>
+                                {/* Tabla de productos — filas */}
+                                <div>
+                                  <div className="grid grid-cols-[1fr_0.4fr_0.25fr] px-4 py-1.5 text-[10px] font-bold uppercase tracking-wider"
+                                    style={{
+                                      backgroundColor: hoy ? '#FEF3C7' : '#f9fafb',
+                                      color: hoy ? '#B45309' : '#6b7280',
+                                    }}>
+                                    <span>Producto</span>
+                                    <span className="text-center">Cantidad</span>
+                                    <span className="text-center">Unidad</span>
+                                  </div>
+                                  {sol.productosSolicitados.map((p, i) => (
+                                    <div key={i}
+                                      className="grid grid-cols-[1fr_0.4fr_0.25fr] px-4 py-2 text-sm border-t transition-colors"
+                                      style={{
+                                        borderColor: hoy ? '#FDE68A' : '#f3f4f6',
+                                        backgroundColor: 'transparent',
+                                      }}
+                                      onMouseEnter={e => (e.currentTarget.style.backgroundColor = hoy ? '#FFFBEB' : '#f9fafb')}
+                                      onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}>
+                                      <span className="font-medium" style={{ color: hoy ? '#78350F' : '#374151' }}>{p.nombreProducto}</span>
+                                      <span className={`text-center font-mono font-bold${!hoy ? ' text-primary' : ''}`} style={{ color: hoy ? '#D97706' : undefined }}>{fmtCant(p.cantidad)}</span>
+                                      <span className="text-center" style={{ color: hoy ? '#B45309' : '#6b7280' }}>{p.unidadAbreviada}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+          ) : vistaActiva === 'totales' ? (
+
+            /* ════════════════════════════════════════
+               VISTA TOTALES DEL PEDIDO
+            ════════════════════════════════════════ */
+            <div className="space-y-2">
+              {productosFiltrados.length === 0 ? (
+                <div className="py-10 flex flex-col items-center gap-3 text-default-400">
+                  <Icon icon="lucide:search-x" width={36} className="opacity-40" />
+                  <p className="text-sm">{busquedaProductos ? `Sin resultados para "${busquedaProductos}"` : 'Sin productos en el período.'}</p>
+                </div>
+              ) : productosFiltrados.map(prod => {
+                const key = `${prod.nombreProducto}||${prod.abreviatura}`;
+                const abierto = expandidos.has(key);
+                return (
+                  <div key={key} className="border border-default-200 rounded-xl overflow-hidden">
+
+                    {/* Cabecera producto */}
+                    <button
+                      className="w-full flex items-center gap-3 px-4 py-3 bg-default-50 hover:bg-default-100 cursor-pointer transition-colors text-left"
+                      onClick={() => toggleExpandido(key)}
+                    >
+                      <Icon icon="lucide:package" width={15} className="text-secondary shrink-0" />
+                      <span className="flex-1 font-semibold text-sm text-default-800">{prod.nombreProducto}</span>
+
+                      <div className="flex items-center gap-3 mr-2">
+                        <div className="text-right">
+                          <p className="text-lg font-bold text-secondary leading-none">{fmtCant(prod.cantidadTotal)}</p>
+                          <p className="text-[10px] text-default-400">{prod.abreviatura} total</p>
+                        </div>
+                        <Chip size="sm" color="default" variant="flat">
+                          {prod.totalSecciones} sección{prod.totalSecciones !== 1 ? 'es' : ''}
+                        </Chip>
+                      </div>
+
+                      <Icon icon={abierto ? 'lucide:chevron-up' : 'lucide:chevron-down'} width={16} className="text-default-400 shrink-0" />
+                    </button>
+
+                    {/* Distribuciones */}
+                    {abierto && (
+                      <div className="divide-y divide-default-100">
+                        {prod.detalles.map((det, detIdx) => {
+                          const dia = getDiaSemana(det.fechaSolicitada);
+                          const cfg = DIA_CONFIG[dia] ?? DIA_CONFIG[1];
+                          const hoy = isHoy(det.fechaSolicitada);
+                          const rango = parseRango(det.rangoHoras);
+                          return (
+                            <div key={`${det.idSolicitud}-${detIdx}`}
+                              className="flex flex-col sm:flex-row sm:items-center gap-3 px-4 py-2.5 bg-white hover:bg-default-50/50">
+
+                              {/* Badge fecha */}
+                              <div className="shrink-0 flex flex-col items-center justify-center rounded-xl px-2.5 py-1.5 min-w-[56px] text-center border"
+                                style={{ backgroundColor: hoy ? '#FEF3C7' : cfg.bgHeader, borderColor: hoy ? '#B45309' : cfg.border }}>
+                                <span className="text-[10px] font-black uppercase leading-none"
+                                  style={{ color: hoy ? '#78350F' : cfg.textColor }}>
+                                  {DIA_CONFIG[dia]?.nombre.slice(0, 3).toUpperCase() ?? ''}
+                                </span>
+                                <span className="text-sm font-black leading-tight"
+                                  style={{ color: hoy ? '#78350F' : cfg.textColor }}>
+                                  {fmtFechaCortaCong(det.fechaSolicitada)}
+                                </span>
+                                {hoy && <span className="text-[9px] font-bold text-warning-600">HOY</span>}
+                              </div>
+
+                              {/* Info */}
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="font-bold text-sm text-default-800">§{det.nombreSeccion}</span>
+                                  <span className="text-xs text-default-400">·</span>
+                                  <span className="text-sm text-default-600">{det.nombreDocente}</span>
+                                </div>
+                                <div className="flex items-center gap-3 mt-0.5 text-xs text-default-400 flex-wrap">
+                                  <span className="flex items-center gap-1"><Icon icon="lucide:clock" width={11} />{rango.inicio}–{rango.fin}</span>
+                                  <span className="flex items-center gap-1"><Icon icon="lucide:door-open" width={11} />{det.nombreSala}</span>
+                                  {det.observacion && (
+                                    <span className="flex items-center gap-1 italic">
+                                      <Icon icon="lucide:message-square" width={11} />{det.observacion}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Cantidad sección */}
+                              <div className="shrink-0 text-right">
+                                <p className="text-base font-bold text-default-700">
+                                  {fmtCant(det.cantidad)} <span className="text-xs font-normal text-default-400">{prod.abreviatura}</span>
+                                </p>
+                                <p className="text-[10px] text-default-400">esta sección</p>
+                              </div>
+                            </div>
+                          );
+                        })}
+
+                        {/* Total fila */}
+                        <div className="flex items-center justify-between px-4 py-2.5 bg-secondary-50 border-t border-secondary-200">
+                          <div className="flex items-center gap-2">
+                            <Icon icon="lucide:truck" width={13} className="text-secondary-500" />
+                            <span className="text-xs text-secondary-700 font-semibold">Total a despachar desde Bodega de Tránsito:</span>
+                          </div>
+                          <span className="text-sm font-bold text-secondary">{fmtCant(prod.cantidadTotal)} {prod.abreviatura}</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+          ) : (
+
+            /* ════════════════════════════════════════
+               VISTA APROBACIÓN DE PEDIDOS
+            ════════════════════════════════════════ */
+            <div className="space-y-4">
+
+              {/* Sub-toggle Unificado / Por Pedido */}
+              <div className="flex items-center gap-3 flex-wrap">
+                <div className="flex items-center gap-1 bg-default-100 rounded-lg p-1">
+                  {(['individual', 'unificado'] as const).map(v => (
+                    <button key={v} onClick={() => setAprobVista(v)}
+                      className={`px-3 py-1.5 rounded-md text-xs font-semibold cursor-pointer transition-all ${
+                        aprobVista === v ? 'bg-white shadow-sm text-primary' : 'text-default-500 hover:text-default-700'
+                      }`}>
+                      {v === 'unificado'
+                        ? <span className="flex items-center gap-1.5"><Icon icon="lucide:layers" width={12} />Vista Unificada</span>
+                        : <span className="flex items-center gap-1.5"><Icon icon="lucide:files" width={12} />Por Pedido</span>}
+                    </button>
+                  ))}
+                </div>
+                <span className="text-xs text-default-400">
+                  {aprobVista === 'unificado'
+                    ? `${productosUnificadosFiltrados.length} producto${productosUnificadosFiltrados.length !== 1 ? 's' : ''} totales`
+                    : `${pedidosAprobFiltrados.length} pedido${pedidosAprobFiltrados.length !== 1 ? 's' : ''}`}
+                </span>
+                {permAprobar && aprobVista === 'individual' && pedidosPendientes.length > 0 && (
+                  <Button
+                    size="sm"
+                    color="warning"
+                    variant="flat"
+                    isLoading={isAprobando}
+                    onPress={handleAprobarTodos}
+                    className="ml-auto hover:bg-success hover:text-white transition-colors"
+                    startContent={!isAprobando && <Icon icon="lucide:check-circle" width={14} />}>
+                    Aprobar {pedidosPendientes.length} pendiente{pedidosPendientes.length > 1 ? 's' : ''}
+                  </Button>
+                )}
+              </div>
+
+              {/* ── VISTA UNIFICADA: todos los productos combinados ── */}
+              {aprobVista === 'unificado' ? (
+                productosUnificadosFiltrados.length === 0 ? (
+                  <div className="py-10 flex flex-col items-center gap-3 text-default-400">
+                    <Icon icon="lucide:shield-off" width={36} className="opacity-40" />
+                    <p className="text-sm">{busquedaAprob ? `Sin resultados para "${busquedaAprob}"` : 'Sin pedidos para esta semana.'}</p>
+                  </div>
+                ) : (
+                  <div className="border border-default-200 rounded-2xl overflow-hidden">
+                    {/* Cabecera resumen */}
+                    <div className={`flex flex-col sm:flex-row sm:items-center gap-3 px-5 py-3 ${
+                      pedidosPendientes.length === 0 ? 'bg-success-50 border-b border-success-200' : 'bg-primary-50 border-b border-primary-100'
+                    }`}>
+                      <div className="flex items-center gap-3 flex-1">
+                        <Icon icon="lucide:layers" width={18} className={pedidosPendientes.length === 0 ? 'text-success-600' : 'text-primary'} />
+                        <div>
+                          <p className={`font-bold text-sm ${pedidosPendientes.length === 0 ? 'text-success-700' : 'text-primary'}`}>Resumen Unificado de la Semana</p>
+                          <p className="text-xs text-default-500">
+                            {consolidateData?.pedidosAprobacion.length ?? 0} pedido{(consolidateData?.pedidosAprobacion.length ?? 0) !== 1 ? 's' : ''} combinados · {productosUnificadosFiltrados.length} productos
+                          </p>
+                        </div>
+                      </div>
+                      {pedidosPendientes.length === 0 && (
+                        <Chip size="sm" color="success" variant="flat"
+                          startContent={<Icon icon="lucide:check-circle-2" width={10} />}>
+                          Aprobado
+                        </Chip>
+                      )}
+                    </div>
+
+                    {/* Tabla encabezado */}
+                    <div className="grid grid-cols-12 px-4 py-2 bg-default-50 border-b border-default-100 text-[10px] font-bold text-default-500 uppercase tracking-wider">
+                      <span className="col-span-4">Producto</span>
+                      <span className="col-span-2 text-center">Total Pedido</span>
+                      <span className="col-span-2 text-center">Reservado</span>
+                      <span className="col-span-2 text-center">Solicitado Proveedor</span>
+                      <span className="col-span-2 text-center">Disponible</span>
+                    </div>
+
+                    {/* Filas */}
+                    {productosUnificadosFiltrados.map((p, i) => (
+                        <div key={i} className="grid grid-cols-12 px-4 py-2.5 text-sm border-b border-default-50 last:border-0 hover:bg-default-50/50">
+                          <div className="col-span-4 flex items-center gap-2 min-w-0">
+                            <Icon icon="lucide:package" width={14} className="text-default-400 shrink-0" />
+                            <div className="min-w-0">
+                              <Tooltip content={p.nombreProducto} placement="top-start" delay={500}>
+                                <p className="font-medium text-default-800 truncate cursor-default block pr-2">{p.nombreProducto}</p>
+                              </Tooltip>
+                              {p.categoria && <p className="text-[10px] text-default-400">{p.categoria}</p>}
+                            </div>
+                          </div>
+                          <div className="col-span-2 text-center self-center">
+                            <span className="font-mono font-semibold text-default-700">{fmtCant(p.cantidadTotal)}</span>
+                            <span className="text-xs text-default-400 ml-1">{p.abreviatura}</span>
+                          </div>
+                          <div className="col-span-2 text-center self-center">{renderReservado(p.reservado, p.abreviatura)}</div>
+                          <div className="col-span-2 text-center self-center">{renderSolicitado(p.solicitadoFirme, p.solicitadoRevision, p.abreviatura)}</div>
+                          <div className="col-span-2 text-center self-center">{renderDisponible(p.disponibleReal, p.abreviatura)}</div>
+                        </div>
+                    ))}
+
+                    {/* Leyenda */}
+                    <div className="flex items-center gap-2 px-4 py-2.5 bg-default-50 border-t border-default-100">
+                      <Icon icon="lucide:info" width={13} className="text-default-400" />
+                      <span className="text-[11px] text-default-500">
+                        En <strong className="text-default-700">Solicitado Proveedor</strong>: número en
+                        <span className="text-warning-600 font-semibold"> amarillo</span> = OP en revisión;
+                        en <span className="text-default-800 font-semibold">negro</span> = dato confirmado.
+                      </span>
+                    </div>
+                  </div>
+                )
+              ) : (
+
+              /* ── VISTA POR PEDIDO: individual ── */
+              pedidosAprobFiltrados.length === 0 ? (
+                <div className="py-10 flex flex-col items-center gap-3 text-default-400">
+                  <Icon icon="lucide:shield-off" width={36} className="opacity-40" />
+                  <p className="text-sm">{busquedaAprob ? `Sin resultados para "${busquedaAprob}"` : 'Sin pedidos para aprobar esta semana.'}</p>
+                </div>
+              ) : <div className="space-y-4">{pedidosAprobFiltrados.map(ped => {
+                const isPendiente  = ped.estadoPedido === 'PENDIENTE';
+                const isAprobado   = ped.estadoPedido === 'APROBADO';
+                const isEntregado  = ped.estadoPedido === 'ENTREGADO';
+                const isExitoso    = isAprobado || isEntregado;
+                const labelEstado: Record<string, string> = { PENDIENTE: 'Pendiente', APROBADO: 'Aprobado', ENTREGADO: 'Entregado', RECHAZADO: 'Rechazado' };
+                const chipColor    = isEntregado ? 'success' : isAprobado ? 'success' : isPendiente ? 'warning' : 'danger';
+                const chipIcon     = isEntregado ? 'lucide:package-check' : isAprobado ? 'lucide:check-circle-2' : isPendiente ? 'lucide:clock' : 'lucide:x-circle';
+
+                return (
+                  <div key={ped.idPedido} className="border border-default-200 rounded-2xl overflow-hidden">
+                    <div className={`flex flex-col sm:flex-row sm:items-center gap-3 px-5 py-3 ${
+                      isExitoso ? 'bg-success-50 border-b border-success-200' : 'bg-default-50 border-b border-default-200'
+                    }`}>
+                      <div className="flex items-center gap-3 flex-1">
+                        <Icon icon="lucide:file-text" width={18} className={isExitoso ? 'text-success-600' : 'text-default-500'} />
+                        <div>
+                          <p className="font-bold text-sm text-default-800">Pedido #{ped.idPedido}</p>
+                          <p className="text-xs text-default-400">
+                            {ped.productos.length} producto{ped.productos.length !== 1 ? 's' : ''}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Chip size="sm" color={chipColor} variant="flat"
+                          startContent={<Icon icon={chipIcon} width={10} />}>
+                          {labelEstado[ped.estadoPedido] ?? ped.estadoPedido}
+                        </Chip>
+                        {permAprobar && isPendiente && (
+                          <Button size="sm" color="success" variant="flat"
+                            isLoading={isAprobando}
+                            onPress={() => handleAprobarPedido(ped)}
+                            startContent={!isAprobando && <Icon icon="lucide:check" width={12} />}>
+                            Aprobar pedido
+                          </Button>
+                        )}
+                        {permAprobar && isAprobado && !ped.tieneOpActiva && (
+                          <Button size="sm" color="warning" variant="flat"
+                            isLoading={isAprobando}
+                            onPress={() => handleBuscarReserva(ped)}
+                            startContent={!isAprobando && <Icon icon="lucide:bookmark-check" width={12} />}>
+                            Buscar reserva al pedido
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+
+                    <div>
+                      <div className="grid grid-cols-12 px-4 py-2 bg-default-50 border-b border-default-100 text-[10px] font-bold text-default-500 uppercase tracking-wider">
+                        <span className="col-span-4">Producto</span>
+                        <span className="col-span-2 text-center">Pedido</span>
+                        <span className="col-span-2 text-center">Reservado</span>
+                        <span className="col-span-2 text-center">Solicitado Proveedor</span>
+                        <span className="col-span-2 text-center">Disponible</span>
+                      </div>
+                      {ped.productos.map((p, i) => (
+                          <div key={i} className="grid grid-cols-12 px-4 py-2.5 text-sm border-b border-default-50 last:border-0 hover:bg-default-50/50">
+                            <div className="col-span-4 flex items-center gap-2 min-w-0">
+                              <Icon icon="lucide:package" width={14} className="text-default-400 shrink-0" />
+                              <div className="min-w-0">
+                                <Tooltip content={p.nombreProducto} placement="top-start" delay={500}>
+                                  <p className="font-medium text-default-800 truncate cursor-default block pr-2">{p.nombreProducto}</p>
+                                </Tooltip>
+                                {p.categoria && <p className="text-[10px] text-default-400">{p.categoria}</p>}
+                              </div>
+                            </div>
+                            <div className="col-span-2 text-center self-center">
+                              <span className="font-mono font-semibold text-default-700">{fmtCant(p.cantidadPedido)}</span>
+                              <span className="text-xs text-default-400 ml-1">{p.abreviatura}</span>
+                            </div>
+                            <div className="col-span-2 text-center self-center">{renderReservado(p.reservado, p.abreviatura)}</div>
+                            <div className="col-span-2 text-center self-center">{renderSolicitado(p.solicitadoFirme, p.solicitadoRevision, p.abreviatura)}</div>
+                            <div className="col-span-2 text-center self-center">{renderDisponible(p.disponibleReal, p.abreviatura)}</div>
+                          </div>
+                      ))}
+                    </div>
+
+                    <div className="flex items-center justify-between gap-3 px-4 py-2.5 bg-default-50 border-t border-default-100">
+                      <span className="flex items-center gap-2 text-[11px] text-default-500">
+                        <Icon icon="lucide:info" width={13} className="text-default-400 shrink-0" />
+                        <span>
+                          En <strong className="text-default-700">Solicitado Proveedor</strong>: número en
+                          <span className="text-warning-600 font-semibold"> amarillo</span> = OP en revisión;
+                          en <span className="text-default-800 font-semibold">negro</span> = dato confirmado.
+                        </span>
+                      </span>
+                      {permRechazar && (isPendiente || isAprobado) && (
+                        <Button size="sm" color="danger" variant="flat" className="shrink-0"
+                          onPress={() => void handleAbrirRechazo(ped)}
+                          startContent={<Icon icon="lucide:x-circle" width={12} />}>
+                          Rechazar pedido
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}</div>
+              )}
+
+            </div>
+          )}
+        </CardBody>
+      </Card>
+
+      {/* Modal: reservar disponibles al aprobar un pedido */}
+      <Modal
+        isOpen={reservaModal.isOpen}
+        onOpenChange={reservaModal.onOpenChange}
+        size="lg"
+        backdrop="blur"
+        radius="lg"
+        scrollBehavior="inside"
+        classNames={{ base: 'rounded-2xl max-h-[75vh]' }}
+      >
+        <ModalContent>
+          {() => (
+            <>
+              <ModalHeader className="flex flex-col gap-1">
+                <span className="flex items-center gap-2 text-secondary">
+                  <Icon icon="lucide:bookmark-check" width={20} className="text-primary" />
+                  Reservar disponibles del Pedido #{pedidoReservaModal?.idPedido}
+                </span>
+                <span className="text-xs font-normal text-default-500">
+                  {pedidoReservaModal?.estadoPedido === 'APROBADO' ? (
+                    'Estos productos tienen stock disponible. Si reservas, ese stock queda asociado a las solicitudes de este pedido y dejará de aparecer como disponible.'
+                  ) : (
+                    'Estos productos tienen stock disponible. Si reservas, ese stock queda asociado a las solicitudes de este pedido y dejará de aparecer como disponible. Igual puedes no reservar y hacerlo después al generar la orden de pedido.'
+                  )}
+                </span>
+              </ModalHeader>
+              <ModalBody className="overflow-y-scroll custom-scrollbar">
+                <div className="border border-default-200 rounded-xl overflow-hidden">
+                  <div className="grid grid-cols-12 px-4 py-2 bg-default-50 border-b border-default-100 text-[10px] font-bold text-default-500 uppercase tracking-wider">
+                    <span className="col-span-8">Producto</span>
+                    <span className="col-span-4 text-right">A reservar</span>
+                  </div>
+                  {productosReservables.map((p, i) => (
+                    <div key={i} className="grid grid-cols-12 px-4 py-2.5 text-sm border-b border-default-50 last:border-0">
+                      <div className="col-span-8 min-w-0">
+                        <Tooltip content={p.nombreProducto} placement="top-start" delay={500}>
+                          <span className="font-medium text-default-800 truncate block pr-2">{p.nombreProducto}</span>
+                        </Tooltip>
+                      </div>
+                      <div className="col-span-4 text-right self-center">
+                        <span className="font-mono font-semibold text-primary">{fmtCant(p.aReservar)}</span>
+                        <span className="text-xs text-default-400 ml-1">{p.abreviatura}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </ModalBody>
+              <ModalFooter>
+                {pedidoReservaModal?.estadoPedido === 'APROBADO' ? (
+                  <>
+                    <Button
+                      variant="flat"
+                      isDisabled={isAprobando}
+                      onPress={() => { reservaModal.onClose(); setPedidoReservaModal(null); }}
+                    >
+                      Cancelar
+                    </Button>
+                    <Button
+                      color="warning"
+                      isLoading={isAprobando}
+                      startContent={!isAprobando && <Icon icon="lucide:bookmark-check" width={16} />}
+                      onPress={() => { if (pedidoReservaModal) void ejecutarSoloReserva(pedidoReservaModal.idPedido); }}
+                    >
+                      Reservar disponibles
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Button
+                      variant="flat"
+                      isDisabled={isAprobando}
+                      onPress={() => { if (pedidoReservaModal) void ejecutarAprobacion(pedidoReservaModal.idPedido, false); }}
+                    >
+                      Aprobar sin reservar
+                    </Button>
+                    <Button
+                      color="primary"
+                      isLoading={isAprobando}
+                      startContent={!isAprobando && <Icon icon="lucide:bookmark-check" width={16} />}
+                      onPress={() => { if (pedidoReservaModal) void ejecutarAprobacion(pedidoReservaModal.idPedido, true); }}
+                    >
+                      Reservar y aprobar
+                    </Button>
+                  </>
+                )}
+              </ModalFooter>
+            </>
+          )}
+        </ModalContent>
+      </Modal>
+
+      {/* Modal: rechazar (cancelar) un pedido completo */}
+      <Modal
+        isOpen={rechazoModal.isOpen}
+        onOpenChange={rechazoModal.onOpenChange}
+        size="lg"
+        backdrop="blur"
+        radius="lg"
+        scrollBehavior="inside"
+        classNames={{ base: 'rounded-2xl max-h-[75vh]' }}
+      >
+        <ModalContent>
+          {() => (
+            <>
+              <ModalHeader className="flex flex-col gap-1">
+                <span className="flex items-center gap-2 text-danger">
+                  <Icon icon="lucide:alert-triangle" width={20} />
+                  Rechazar Pedido #{pedidoRechazo?.idPedido}
+                </span>
+                <span className="text-xs font-normal text-default-500">
+                  Esta acción es <strong className="text-danger">irreversible</strong>. Las solicitudes del
+                  pedido pasarán a <strong>Rechazada</strong> y el pedido quedará cancelado.
+                </span>
+              </ModalHeader>
+              <ModalBody className="overflow-y-scroll custom-scrollbar">
+                <div className="space-y-4">
+                  {/* Reservas que se liberarán */}
+                  {reservasALiberar.length > 0 && (
+                    <div className="rounded-xl border border-warning-200 bg-warning-50/60 p-3">
+                      <p className="flex items-center gap-2 text-xs font-semibold text-warning-700 mb-2">
+                        <Icon icon="lucide:bookmark-x" width={14} />
+                        {reservasALiberar.length} producto{reservasALiberar.length !== 1 ? 's' : ''} reservado{reservasALiberar.length !== 1 ? 's' : ''} volverá{reservasALiberar.length !== 1 ? 'n' : ''} a estar disponible{reservasALiberar.length !== 1 ? 's' : ''}:
+                      </p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {reservasALiberar.map((p, i) => (
+                          <Chip key={i} size="sm" variant="flat" color="warning" className="text-[11px]">
+                            {p.nombreProducto}: {fmtCant(p.reservado)} {p.abreviatura}
+                          </Chip>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Órdenes de Pedido asociadas */}
+                  {loadingOrdenesRechazo ? (
+                    <div className="flex items-center gap-2 text-sm text-default-400 py-2">
+                      <Spinner size="sm" color="warning" /> Cargando órdenes de pedido asociadas…
+                    </div>
+                  ) : ordenesRechazo.length > 0 && (
+                    <div className="rounded-xl border border-default-200 p-3">
+                      <p className="flex items-center gap-2 text-xs font-semibold text-default-700 mb-2">
+                        <Icon icon="lucide:file-text" width={14} />
+                        Este pedido tiene {ordenesRechazo.length} Orden{ordenesRechazo.length !== 1 ? 'es' : ''} de Pedido:
+                      </p>
+                      <div className="space-y-1.5">
+                        {ordenesRechazo.map(o => {
+                          const estColor: Record<string, string> = {
+                            PENDIENTE: 'text-warning-600', ENVIADA: 'text-primary',
+                            CONFIRMADA: 'text-success-600', RECIBIDA: 'text-success-700',
+                            CANCELADA: 'text-default-400',
+                          };
+                          return (
+                            <div key={o.idOrdenPedido} className="flex items-center justify-between text-xs">
+                              <span className="text-default-600">OP #{o.idOrdenPedido} · {o.nombreProveedor}</span>
+                              <span className={`font-semibold ${estColor[o.estado] ?? 'text-default-600'}`}>{o.estado}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {hayOrdenRecibida ? (
+                        <div className="mt-3 flex items-start gap-2 rounded-lg bg-danger-50 border border-danger-200 p-2.5 text-[11px] text-danger-700">
+                          <Icon icon="lucide:ban" width={14} className="mt-0.5 shrink-0" />
+                          <span>No se puede rechazar el pedido porque tiene una OP en estado <strong>RECIBIDA</strong> (la mercadería ya fue recibida).</span>
+                        </div>
+                      ) : ordenesVigentesRechazo.length > 0 && (
+                        <div className="mt-3 space-y-2">
+                          <Checkbox
+                            size="sm"
+                            color="danger"
+                            isSelected={cancelarOrdenesChk}
+                            onValueChange={setCancelarOrdenesChk}
+                          >
+                            <span className="text-xs">
+                              También <strong>cancelar las {ordenesVigentesRechazo.length} OP{ordenesVigentesRechazo.length !== 1 ? 's' : ''} vigente{ordenesVigentesRechazo.length !== 1 ? 's' : ''}</strong> asociada{ordenesVigentesRechazo.length !== 1 ? 's' : ''}
+                            </span>
+                          </Checkbox>
+                          <p className="flex items-start gap-1.5 text-[11px] text-default-500 pl-6">
+                            <Icon icon="lucide:phone" width={12} className="mt-0.5 shrink-0" />
+                            Obligatorio para poder rechazar. Deberás contactar al proveedor para informar la cancelación.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Motivo */}
+                  <Textarea
+                    label="Motivo del rechazo"
+                    placeholder="Indica por qué se rechaza este pedido…"
+                    value={motivoRechazoCong}
+                    onValueChange={setMotivoRechazoCong}
+                    minRows={2}
+                    maxRows={4}
+                    maxLength={500}
+                    isRequired
+                    variant="bordered"
+                  />
+                </div>
+              </ModalBody>
+              <ModalFooter>
+                <Button variant="flat" isDisabled={isRechazando} onPress={() => rechazoModal.onClose()}>
+                  Cancelar
+                </Button>
+                <Button
+                  color="danger"
+                  isLoading={isRechazando}
+                  isDisabled={!puedeRechazar || loadingOrdenesRechazo}
+                  startContent={!isRechazando && <Icon icon="lucide:x-circle" width={16} />}
+                  onPress={() => void ejecutarRechazo()}
+                >
+                  Rechazar pedido
+                </Button>
+              </ModalFooter>
+            </>
+          )}
+        </ModalContent>
+      </Modal>
+    </div>
+      )}
+    </>
   );
 };
 

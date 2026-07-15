@@ -344,7 +344,10 @@ export const PAGE_TO_MODULE: Record<string, ModuleKey | ModuleKey[]> = {
   'historial-movimientos':  'HISTORIAL_MOVIMIENTOS',
   'solicitud':              'SOLICITUD',
   'gestion-pedidos':      'GESTION_PEDIDOS',
-  'gestion-solicitudes':  'GESTION_SOLICITUDES',
+  // "Conglomerado de Pedidos" se fusionó como pestaña de /gestion-solicitudes -- se
+  // acepta cualquiera de los dos permisos por si la matriz dinámica quedó desincronizada
+  // de roles-config.ts (donde ambos siempre van juntos hoy).
+  'gestion-solicitudes':  ['GESTION_SOLICITUDES', 'CONGLOMERADO_PEDIDOS'],
   'historico-pedidos':    'HISTORICO_PEDIDOS',
   'conglomerado-pedidos': 'CONGLOMERADO_PEDIDOS',
   'gestion-proveedores':  ['GESTION_PROVEEDORES', 'GPRV_ORDENES', 'GPRV_DATOS_PROV'],
