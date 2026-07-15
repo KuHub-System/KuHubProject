@@ -236,10 +236,6 @@ public class SpringSecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/v1/roles").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/roles/**").permitAll()
 
-                        // Endpoints de roles v2 con HATEOAS (lectura pública)
-                        .requestMatchers(HttpMethod.GET, "/api/v2/roles").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/v2/roles/**").permitAll()
-
                         // Escritura de roles: autorización dinámica (GESTION_ROLES) vía DynamicPermissionInterceptor
                         .requestMatchers(HttpMethod.POST, "/api/v*/roles").authenticated()
                         .requestMatchers(HttpMethod.PUT, "/api/v*/roles/**").authenticated()
