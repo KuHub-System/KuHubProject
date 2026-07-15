@@ -100,12 +100,12 @@ CONTEXTO_CAMBIO_VERSION_AXIO_MAWARE.MD
 ### Opción 2: Ignorarlo solo localmente (sin cambiar `.gitignore`)
 
 ```bash
-git update-index --skip-worktree CONTEXTO_CAMBIO_VERSION_AXIO_MAWARE.MD
+git update-index --skip-worktree docs/notas/CONTEXTO_CAMBIO_VERSION_AXIO_MAWARE.MD
 ```
 
 Para revertir:
 ```bash
-git update-index --no-skip-worktree CONTEXTO_CAMBIO_VERSION_AXIO_MAWARE.MD
+git update-index --no-skip-worktree docs/notas/CONTEXTO_CAMBIO_VERSION_AXIO_MAWARE.MD
 ```
 
 ### Opción 3 (Recomendada): Usar `.gitignore` local sin versionar
@@ -113,7 +113,7 @@ git update-index --no-skip-worktree CONTEXTO_CAMBIO_VERSION_AXIO_MAWARE.MD
 Si solo quieres que nadie lo vea, crea `.gitignore.local`:
 
 ```bash
-echo "CONTEXTO_CAMBIO_VERSION_AXIO_MAWARE.MD" >> .gitignore.local
+echo "docs/notas/CONTEXTO_CAMBIO_VERSION_AXIO_MAWARE.MD" >> .gitignore.local
 ```
 
 Y agrega `.gitignore.local` a `.gitignore` principal:

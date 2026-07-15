@@ -215,7 +215,7 @@ La versión en producción está disponible en: `https://appkuhub.questweb.cl/lo
 
 ### Credencial de prueba (solo entorno de desarrollo)
 
-El sistema incluye un usuario administrador por defecto al restaurar el backup de desarrollo. Consultar `BACKUP_BBDD_DEVS.md` para instrucciones de restauración.
+El sistema incluye un usuario administrador por defecto al restaurar el backup de desarrollo. Consultar `docs/infraestructura/BACKUP_BBDD_DEVS.md` para instrucciones de restauración.
 
 ---
 
@@ -294,7 +294,7 @@ La tabla `movimiento` usa **particionamiento por rango** (`PARTITION BY RANGE (f
 
 ### Diagrama
 
-El diagrama entidad-relación completo está disponible en [`DIAGRAMA_ER_KUHUB.md`](DIAGRAMA_ER_KUHUB.md).
+El diagrama entidad-relación completo está disponible en [`docs/arquitectura/DIAGRAMA_ER_KUHUB.md`](docs/arquitectura/DIAGRAMA_ER_KUHUB.md).
 
 El script SQL inicial de la base de datos se encuentra en [`ConexionXD_v2.sql`](ConexionXD_v2.sql).
 
@@ -879,7 +879,10 @@ Este criterio aplica exclusivamente a consultas de solo lectura con resultados a
 
 | Archivo | Contenido |
 |---|---|
-| `ARQUITECTURA_4+1_VIEWS.md` | Diagramas completos de arquitectura (Mermaid) |
-| `DIAGRAMA_ER_KUHUB.md` | Diagrama entidad-relación de la base de datos |
-| `BACKUP_BBDD_DEVS.md` | Documentación del sistema de backup automático diario hacia Google Drive (pg_dump + rclone) |
-| `CONFIGURATION_HOST_DEVS.md` | Configuración del servidor de desarrollo |
+| `docs/arquitectura/ARQUITECTURA_4+1_VIEWS.md` | Diagramas completos de arquitectura (Mermaid) |
+| `docs/arquitectura/DIAGRAMA_ER_KUHUB.md` | Diagrama entidad-relación de la base de datos |
+| `docs/arquitectura/MODULOS_Y_PANTALLAS.md` | Módulos del sistema y detalle de pantallas |
+| `docs/infraestructura/BACKUP_BBDD_DEVS.md` | Documentación del sistema de backup automático diario hacia Google Drive (pg_dump + rclone) |
+| `docs/infraestructura/CONFIGURATION_HOST_DEVS.md` | Configuración del servidor de desarrollo |
+| `docs/infraestructura/CONFIGURATION_HOST_PROD.MD` | Configuración del servidor de producción |
+| `docs/notas/` | Notas de contexto e investigaciones puntuales (cambios de versión, verificaciones, etc.) |
