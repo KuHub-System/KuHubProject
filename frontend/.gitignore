@@ -1,1 +1,9 @@
 node_modules/
+
+# Salidas de herramientas (dev server, lint, tsc, test runs) -- nunca commitear
+*.log
+lint-output.txt
+test_result.txt
+tsc_errors.txt
+*_errors.txt
+*-output.txt
