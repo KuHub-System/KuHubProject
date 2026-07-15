@@ -16,7 +16,6 @@
 
     <properties>
         <java.version>21</java.version>
-        <spring-cloud.version>2024.0.1</spring-cloud.version>
         <!-- Versiones específicas para mayor control -->
         <postgresql.version>42.7.3</postgresql.version>
         <lombok.version>1.18.38</lombok.version>
@@ -34,17 +33,6 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.cloud</groupId>
-            <artifactId>spring-cloud-starter-openfeign</artifactId>
-        </dependency>
-
-        <!--Swagger-->
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-hateoas</artifactId>
-
         </dependency>
         <dependency>
             <groupId>org.springdoc</groupId>
@@ -93,12 +81,6 @@
             <version>42.7.3</version>
         </dependency>
 
-        <!-- Manejo nativo de ENUM PostgreSQL en Hibernate 6 -->
-        <dependency>
-            <groupId>com.vladmihalcea</groupId>
-            <artifactId>hibernate-types-60</artifactId>
-            <version>2.21.1</version>
-        </dependency>
 
         <!-- ===== VALIDACIONES ===== -->
         <dependency>
@@ -145,19 +127,6 @@
             <scope>test</scope>
         </dependency>
     </dependencies>
-
-    <!-- ===== GESTIÓN DE DEPENDENCIAS SPRING CLOUD ===== -->
-    <dependencyManagement>
-        <dependencies>
-            <dependency>
-                <groupId>org.springframework.cloud</groupId>
-                <artifactId>spring-cloud-dependencies</artifactId>
-                <version>${spring-cloud.version}</version>
-                <type>pom</type>
-                <scope>import</scope>
-            </dependency>
-        </dependencies>
-    </dependencyManagement>
 
     <build>
         <resources>
