@@ -123,7 +123,7 @@ const AdminSistemaPage: React.FC = () => {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4 }}
-        className="container mx-auto space-y-6"
+        className="space-y-6"
       >
         {/* Header resumen */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 px-4">

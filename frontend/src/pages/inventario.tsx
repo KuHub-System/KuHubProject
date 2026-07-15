@@ -1046,7 +1046,7 @@ const InventarioPage: React.FC = () => {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4 }}
-        className="container mx-auto space-y-6"
+        className="space-y-6"
       >
         <div className="px-4 mt-8">
           <Tabs
