@@ -19,7 +19,7 @@ import {
     IStockDisponiblePage,
     obtenerDisponibleRealService,
     IDisponibleRealItem,
-} from '../../services/solicitud-service';
+} from '../../services/solicitud/solicitud-service';
 import { useToast } from '../../hooks/useToast';
 import { useModulePermission } from '../../contexts/permission-context';
 

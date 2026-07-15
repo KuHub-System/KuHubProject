@@ -13,7 +13,7 @@ import { HeroUIProvider } from '@heroui/react';
 import * as authContext   from '../../contexts/auth-context';
 import * as permissionContext from '../../contexts/permission-context';
 import ProtectedRoute     from '../../components/protected-route';
-import { permissionService } from '../../services/permission-service';
+import { permissionService } from '../../services/usuario/permission-service';
 import {
   levelFromPermissions,
   ModulePermissions,

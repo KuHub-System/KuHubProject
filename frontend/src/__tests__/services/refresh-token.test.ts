@@ -22,7 +22,7 @@ import {
   renovarSesionService,
   cerrarSesionService,
   obtenerSesionActualService,
-} from '../../services/auth-service';
+} from '../../services/usuario/auth-service';
 import { useInactivityTimeout } from '../../hooks/useInactivityTimeout';
 
 // ============================================================

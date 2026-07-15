@@ -24,7 +24,7 @@ vi.mock('../../hooks/useToast', () => {
   return { useToast: () => toastObj, useConfirm: () => vi.fn() };
 });
 
-vi.mock('../../services/inventario-service', () => ({
+vi.mock('../../services/inventario/inventario-service', () => ({
   obtenerConfigAbastecimientoService: mockObtenerConfig,
   actualizarConfigAbastecimientoService: mockActualizarConfig,
 }));

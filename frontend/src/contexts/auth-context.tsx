@@ -1,6 +1,6 @@
 import React from 'react';
 import { IUser, IRole } from '../types/user.types';
-import { iniciarSesionService, cerrarSesionService, obtenerUsuarioActualService, renovarSesionService } from '../services/auth-service';
+import { iniciarSesionService, cerrarSesionService, obtenerUsuarioActualService, renovarSesionService } from '../services/usuario/auth-service';
 import { ROLES_STORAGE_KEY, ROLES_SISTEMA, cargarRoles as cargarRolesConfig } from '../config/roles-config';
 
 /**

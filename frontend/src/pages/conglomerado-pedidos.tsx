@@ -30,7 +30,7 @@ import {
   reservarDisponiblePedidoService,
   obtenerOrdenesPorPedidoService,
   rechazarPedidoService,
-} from '../services/solicitud-service';
+} from '../services/solicitud/solicitud-service';
 import { useModulePermission, usePermission } from '../contexts/permission-context';
 import { usePeriodoSemana } from '../contexts/periodo-semana-context';
 import { useHistory } from 'react-router-dom';
@@ -204,7 +204,7 @@ const ConglomeradoPedidosPage: React.FC = () => {
 
   // Merge products across multiple pedidos (same product may appear in different pedidos)
   const productosResumen = React.useMemo(() => {
-    const mapa = new Map<string, import('../services/solicitud-service').IProductoResumen>();
+    const mapa = new Map<string, import('../services/solicitud/solicitud-service').IProductoResumen>();
     for (const pedido of (consolidateData?.pedidosResumen ?? [])) {
       for (const prod of pedido.productosConsolidados) {
         const key = `${prod.nombreProducto}||${prod.abreviatura}`;

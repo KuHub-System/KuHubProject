@@ -20,7 +20,7 @@ const {
 // ============================================
 // MOCKS SERVICIOS
 // ============================================
-vi.mock('../../services/proveedor-service', () => ({
+vi.mock('../../services/proveedor/proveedor-service', () => ({
   obtenerProveedoresPaginadoService: mockObtenerProveedoresPaginado,
   listarOrdenesPedidoService: mockListarOrdenesPedido,
   obtenerProveedorDetalleService: vi.fn(),

@@ -22,7 +22,7 @@ import {
   findMovimientosConFiltros,
   IMotionAnswer,
   IMotionFilterRequest
-} from '../services/movimiento-service';
+} from '../services/inventario/movimiento-service';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useLocation } from 'react-router-dom';
 

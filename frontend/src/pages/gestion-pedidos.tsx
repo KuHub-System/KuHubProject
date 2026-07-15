@@ -22,7 +22,7 @@ import {
   IProductoConsolidadoResponse,
   obtenerOrdenConsolidacionService,
   consolidarPedidoService,
-} from '../services/solicitud-service';
+} from '../services/solicitud/solicitud-service';
 import { useModulePermission, usePermission } from '../contexts/permission-context';
 import { usePeriodoSemana } from '../contexts/periodo-semana-context';
 import { useHistory } from 'react-router-dom';

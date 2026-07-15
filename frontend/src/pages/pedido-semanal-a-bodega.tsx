@@ -54,8 +54,8 @@ import {
   softDeleteRecetaService,
   importarExcelPedidoService,
   obtenerAsignaturasActivasService
-} from '../services/pedido-semanal-bodega-service';
-import { obtenerProductosParaRecetaService } from '../services/producto-service';
+} from '../services/pedido/pedido-semanal-bodega-service';
+import { obtenerProductosParaRecetaService } from '../services/inventario/producto-service';
 import { IProductoRecetaSelection } from '../types/producto.types';
 import { IPedidoSemanaBodegaPaginedDTO, IDetallePedidoSemanaBodegaDTO, IPaginationMeta, IPedidoSemanaBodegaCountResponse } from '../types/receta.types';
 

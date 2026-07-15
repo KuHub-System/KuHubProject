@@ -72,7 +72,7 @@ vi.mock('../../components/modals/ConfirmarDisponibleBodegaModal', () => ({ defau
 vi.mock('../../components/modals/ConfirmarSalidaDisponibleModal', () => ({ default: () => null }));
 
 // Servicios
-vi.mock('../../services/bodega-transito-service', () => ({
+vi.mock('../../services/inventario/bodega-transito-service', () => ({
   obtenerBodegaPaginadaService: mockObtenerBodegaPaginada,
   buscarBodegaTransitoService: mockBuscarBodega,
   buscarBodegaTransitoPorCodigoService: mockBuscarBodegaCodigo,
@@ -82,7 +82,7 @@ vi.mock('../../services/bodega-transito-service', () => ({
   obtenerBodegaByInventarioIdsService: mockObtenerBodegaByIds,
 }));
 
-vi.mock('../../services/solicitud-service', () => ({
+vi.mock('../../services/solicitud/solicitud-service', () => ({
   actualizarEstadoBodegaService: vi.fn(),
   obtenerEntregasDiariasService: mockObtenerEntregasDiarias,
   prepararEntregaService: mockPrepararEntrega,
@@ -91,19 +91,19 @@ vi.mock('../../services/solicitud-service', () => ({
   restarDisponiblesService: vi.fn(),
 }));
 
-vi.mock('../../services/pedido-semanal-bodega-service', () => ({
+vi.mock('../../services/pedido/pedido-semanal-bodega-service', () => ({
   obtenerRecetaPorIdService: vi.fn().mockResolvedValue({}),
 }));
 
-vi.mock('../../services/producto-service', () => ({
+vi.mock('../../services/inventario/producto-service', () => ({
   obtenerFiltrosInventarioService: mockObtenerFiltros,
 }));
 
-vi.mock('../../services/unidad-medida-service', () => ({
+vi.mock('../../services/inventario/unidad-medida-service', () => ({
   obtenerUnidadesActivasService: mockObtenerUnidades,
 }));
 
-vi.mock('../../services/proveedor-service', () => ({
+vi.mock('../../services/proveedor/proveedor-service', () => ({
   obtenerAbastecimientoConfirmadoService: vi.fn().mockResolvedValue({ ordenes: [] }),
   marcarEntregadosMasivoService: vi.fn(),
 }));

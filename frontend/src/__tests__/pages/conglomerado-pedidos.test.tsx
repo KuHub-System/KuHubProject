@@ -77,8 +77,8 @@ vi.mock('../../contexts/periodo-semana-context', () => ({
 // MOCKS SERVICIOS
 // ============================================
 
-vi.mock('../../services/solicitud-service', async (importOriginal) => {
-  const original = await importOriginal<typeof import('../../services/solicitud-service')>();
+vi.mock('../../services/solicitud/solicitud-service', async (importOriginal) => {
+  const original = await importOriginal<typeof import('../../services/solicitud/solicitud-service')>();
   return {
     ...original,
     consolidatePedidoQueryService:   mockConsolidateQuery,

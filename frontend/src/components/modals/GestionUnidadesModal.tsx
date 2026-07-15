@@ -19,7 +19,7 @@ import {
     actualizarUnidadService,
     eliminarUnidadService,
     transferirProductosUnidadService
-} from '../../services/unidad-medida-service';
+} from '../../services/inventario/unidad-medida-service';
 import { useToast } from '../../hooks/useToast';
 import { useModulePermission } from '../../contexts/permission-context';
 import { Spinner, Select, SelectItem, Alert } from '@heroui/react';

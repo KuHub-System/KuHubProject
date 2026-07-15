@@ -18,7 +18,7 @@ import {
   obtenerEstadoUsuariosService,
   rolesNombresAIds,
   obtenerNombreRolPorId
-} from '../services/usuario-service';
+} from '../services/usuario/usuario-service';
 import { useAuth } from '../contexts/auth-context';
 import { useModulePermission } from '../contexts/permission-context';
 import { useToast, useConfirm } from '../hooks/useToast';

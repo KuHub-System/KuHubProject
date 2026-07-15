@@ -7,7 +7,7 @@ import React from 'react';
 import { Card, CardBody, CardHeader, Button, Chip, Select, SelectItem } from '@heroui/react';
 import { Icon } from '@iconify/react';
 import { motion } from 'framer-motion';
-import { EstadoProceso } from '../../services/dashboard-service';
+import { EstadoProceso } from '../../services/dashboard/dashboard-service';
 
 const getFirstSelectionValue = (keys: any): string | undefined => {
   if (!keys || keys === 'all') return undefined;

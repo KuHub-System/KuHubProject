@@ -14,7 +14,7 @@ import {
   IResumenHistorico,
   IProductoResumenHistorico,
   obtenerResumenHistoricoService,
-} from '../services/historico-pedido-service';
+} from '../services/pedido/historico-pedido-service';
 import XLSXStyle from 'xlsx-js-style';
 
 // ─────────────────────────────────────────────────────────────────────────────

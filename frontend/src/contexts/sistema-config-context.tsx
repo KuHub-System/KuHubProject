@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { getConfiguracionSistema } from '../services/gestionSistemaService';
+import { getConfiguracionSistema } from '../services/sistema/gestionSistemaService';
 import { useAuth } from './auth-context';
 
 interface SistemaConfigContextType {

@@ -20,7 +20,7 @@ export {
   puedenCrearseSolicitudes,
   obtenerEstadoProceso,
   calcularDiasRestantesProceso,
-} from '../services/dashboard-service';
+} from '../services/dashboard/dashboard-service';
 
 // ─── Admin Tabbed Layout ──────────────────────────────────────────────────────
 

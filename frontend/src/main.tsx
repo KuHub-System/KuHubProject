@@ -2,7 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { HeroUIProvider, ToastProvider } from "@heroui/react";
 import { BrowserRouter as Router } from 'react-router-dom';
-import { inicializarApp } from './services/init-system';
+import { inicializarApp } from './services/sistema/init-system';
 import App from './App';
 import './index.css';
 

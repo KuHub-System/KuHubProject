@@ -35,7 +35,7 @@ import XLSXStyle from 'xlsx-js-style';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useModulePermission, usePermission } from '../contexts/permission-context';
 import { usePeriodoSemana } from '../contexts/periodo-semana-context';
-import { obtenerSemanasPorPeriodoService } from '../services/semana-service';
+import { obtenerSemanasPorPeriodoService } from '../services/academica/semana-service';
 import BookPageLoader from '../components/BookPageLoader';
 import type { ISemana } from '../types/semana.types';
 import {
@@ -71,7 +71,7 @@ import {
   obtenerOrdenPedidoDetalleService,
   cambiarEstadoOrdenPedidoService,
   sincronizarEstadosOrdenPedidoService,
-} from '../services/proveedor-service';
+} from '../services/proveedor/proveedor-service';
 import type {
   IProveedor,
   IProveedorDetalle,

@@ -33,13 +33,13 @@ vi.mock('../../hooks/useToast', () => {
   return { useToast: () => toastObj, useConfirm: () => vi.fn() };
 });
 
-vi.mock('../../services/storage-service', () => ({
+vi.mock('../../services/shared/storage-service', () => ({
   obtenerCategorias: vi.fn().mockReturnValue([]),
   crearCategoria: vi.fn(),
   actualizarCategoria: vi.fn(),
 }));
 
-vi.mock('../../services/categoria-service', () => ({
+vi.mock('../../services/inventario/categoria-service', () => ({
   obtenerCategoriasService: mockObtenerCategorias,
   crearCategoriaService: mockCrearCategoria,
   actualizarCategoriaService: mockActualizarCategoria,

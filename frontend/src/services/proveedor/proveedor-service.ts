@@ -1,0 +1,948 @@
+/**
+ * SERVICIO DE GESTIÓN DE PROVEEDORES
+ * Conecta con el backend en /api/v1/proveedor
+ * Patrón: igual que inventario-service.ts (api de config/Axios con interceptor JWT)
+ */
+
+import api from '../../config/Axios';
+import {
+  IProveedor,
+  IProveedorDetalle,
+  IProveedorCreateDTO,
+  IProveedorUpdateDTO,
+  IProveedorProductoAddDTO,
+  IProveedorProductoUpdateDTO,
+  ICotizacionResponse,
+  IProductoDisponibleDTO,
+  IBusquedaProductosGlobal,
+  IProveedorSelector,
+  ISyncExcelResult,
+  IPedidoSemanaResumen,
+  ICotizacionConsolidadaResponse,
+  EstadoProveedor,
+  IOrdenPedidoResumen,
+  IOrdenPedidoListItem,
+  IOrdenPedidoConDetalles,
+  IAbastecimientoProveedorResponse,
+} from '../../types/proveedor.types';
+
+// ── Helpers de transformación ─────────────────────────────────────────────────
+
+/**
+ * Normaliza la respuesta del backend para garantizar que cantidadProductosActivos
+ * siempre sea un número (el backend puede devolver null si no hay productos).
+ */
+const normalizarProveedor = (p: any): IProveedor => ({
+  idProveedor: p.idProveedor,
+  rutProveedor: p.rutProveedor ?? null,
+  nombreDistribuidora: p.nombreDistribuidora,
+  nombreProveedor: p.nombreProveedor,
+  telefonoProveedor: p.telefonoProveedor,
+  emailProveedor: p.emailProveedor ?? null,
+  direccionProveedor: p.direccionProveedor ?? null,
+  estadoProveedor: p.estadoProveedor ?? 'DISPONIBLE',
+  activo: p.activo ?? true,
+  fechaCreacion: p.fechaCreacion ?? null,
+  cantidadProductosActivos: p.cantidadProductosActivos ?? 0,
+});
+
+const normalizarDetalle = (d: any): IProveedorDetalle => ({
+  ...normalizarProveedor(d),
+  productosPorCategoria: d.productosPorCategoria ?? {},
+  diasEntrega: d.diasEntrega ?? [],
+});
+
+// ── Proveedor CRUD ────────────────────────────────────────────────────────────
+
+/**
+ * Lista todos los proveedores activos con filtros opcionales.
+ * GET /api/v1/proveedor?estado=DISPONIBLE&busqueda=texto
+ */
+export const obtenerProveedoresService = async (
+  estado?: string,
+  busqueda?: string
+): Promise<IProveedor[]> => {
+  try {
+    const params: Record<string, string> = {};
+    if (estado) params.estado = estado;
+    if (busqueda) params.busqueda = busqueda;
+
+    const response = await api.get<any[]>('/proveedor', { params });
+    return response.data.map(normalizarProveedor);
+  } catch (error: any) {
+    throw new Error(
+      error.response?.data?.message ||
+      'Error al cargar los proveedores'
+    );
+  }
+};
+
+/**
+ * Lista proveedores activos con paginación asimétrica (20/10).
+ * GET /api/v1/proveedor/find-paginated?estado=DISPONIBLE&busqueda=texto&page=1
+ */
+export const obtenerProveedoresPaginadoService = async (
+  estado?: string,
+  busqueda?: string,
+  page: number = 1
+): Promise<{
+  data: IProveedor[];
+  page: number;
+  pageSize: number;
+  totalPaginas: number;
+  totalRegistros: number;
+}> => {
+  try {
+    const params: Record<string, any> = { page };
+    if (estado) params.estado = estado;
+    if (busqueda) params.busqueda = busqueda;
+
+    const response = await api.get<any>('/proveedor/find-paginated', { params });
+    return {
+      data: response.data.data.map(normalizarProveedor),
+      page: response.data.page,
+      pageSize: response.data.pageSize,
+      totalPaginas: response.data.totalPaginas,
+      totalRegistros: response.data.totalRegistros,
+    };
+  } catch (error: any) {
+    throw new Error(
+      error.response?.data?.message ||
+      'Error al cargar los proveedores'
+    );
+  }
+};
+
+/**
+ * Obtiene el detalle completo de un proveedor con sus productos agrupados por categoría.
+ * GET /api/v1/proveedor/{id}
+ */
+export const obtenerProveedorDetalleService = async (
+  idProveedor: number
+): Promise<IProveedorDetalle> => {
+  try {
+    const response = await api.get<any>(`/proveedor/${idProveedor}`);
+    return normalizarDetalle(response.data);
+  } catch (error: any) {
+    throw new Error(
+      error.response?.data?.message ||
+      `Error al cargar el detalle del proveedor ID=${idProveedor}`
+    );
+  }
+};
+
+/**
+ * Vista histórica: obtiene el detalle del proveedor con los precios vigentes hasta
+ * una fecha dada. Por cada producto retorna la versión cuya fecha_actualizacion sea
+ * la más reciente pero ≤ a la fecha consultada.
+ * GET /api/v1/proveedor/{id}/productos-por-fecha?fecha=YYYY-MM-DD
+ */
+export const obtenerProductosPorFechaService = async (
+  idProveedor: number,
+  fecha: string
+): Promise<IProveedorDetalle> => {
+  try {
+    const response = await api.get<any>(`/proveedor/${idProveedor}/productos-por-fecha`, {
+      params: { fecha },
+    });
+    return normalizarDetalle(response.data);
+  } catch (error: any) {
+    if (error.response?.status === 400) {
+      throw new Error(
+        error.response.data?.message ||
+        'Formato de fecha inválido. Use YYYY-MM-DD.'
+      );
+    }
+    if (error.response?.status === 404) {
+      throw new Error(
+        error.response.data?.message ||
+        `Proveedor ID=${idProveedor} no encontrado`
+      );
+    }
+    throw new Error(
+      error.response?.data?.message ||
+      'Error al cargar los precios históricos del proveedor'
+    );
+  }
+};
+
+/**
+ * Crea un nuevo proveedor.
+ * POST /api/v1/proveedor → 201 Created
+ */
+export const crearProveedorService = async (
+  dto: IProveedorCreateDTO
+): Promise<IProveedor> => {
+  try {
+    const response = await api.post<any>('/proveedor', dto);
+    return normalizarProveedor(response.data);
+  } catch (error: any) {
+    if (error.response?.status === 409) {
+      throw new Error(
+        error.response.data?.message ||
+        'Ya existe un proveedor con ese RUT'
+      );
+    }
+    if (error.response?.status === 400) {
+      throw new Error(
+        error.response.data?.message ||
+        'Datos inválidos para crear el proveedor'
+      );
+    }
+    throw new Error(
+      error.response?.data?.message ||
+      'Error al crear el proveedor'
+    );
+  }
+};
+
+/**
+ * Actualiza los datos de un proveedor existente.
+ * PATCH /api/v1/proveedor/{id} → 200 OK
+ */
+export const actualizarProveedorService = async (
+  idProveedor: number,
+  dto: IProveedorUpdateDTO
+): Promise<IProveedor> => {
+  try {
+    const response = await api.patch<any>(`/proveedor/${idProveedor}`, dto);
+    return normalizarProveedor(response.data);
+  } catch (error: any) {
+    if (error.response?.status === 409) {
+      throw new Error(
+        error.response.data?.message ||
+        'Ya existe otro proveedor con ese RUT'
+      );
+    }
+    if (error.response?.status === 404) {
+      throw new Error(
+        error.response.data?.message ||
+        `Proveedor ID=${idProveedor} no encontrado`
+      );
+    }
+    throw new Error(
+      error.response?.data?.message ||
+      'Error al actualizar el proveedor'
+    );
+  }
+};
+
+/**
+ * Elimina lógicamente un proveedor (activo = false).
+ * DELETE /api/v1/proveedor/{id}?force={force} → 204 No Content
+ * force=true solo debe usarlo el rol Administrador (desactiva productos automáticamente).
+ */
+export const eliminarProveedorService = async (
+  idProveedor: number,
+  force = false
+): Promise<boolean> => {
+  try {
+    await api.delete(`/proveedor/${idProveedor}`, { params: { force } });
+    return true;
+  } catch (error: any) {
+    if (error.response?.status === 422) {
+      const err = new Error(
+        error.response.data?.message ||
+        'No se puede eliminar el proveedor porque tiene productos activos asignados'
+      ) as Error & { isConProductosActivos: true };
+      err.isConProductosActivos = true;
+      throw err;
+    }
+    if (error.response?.status === 404) {
+      throw new Error(
+        error.response.data?.message ||
+        `Proveedor ID=${idProveedor} no encontrado`
+      );
+    }
+    throw new Error(
+      error.response?.data?.message ||
+      'Error al eliminar el proveedor'
+    );
+  }
+};
+
+// ── Relación Proveedor ↔ Producto ─────────────────────────────────────────────
+
+/**
+ * Asigna un producto a un proveedor con su precio específico.
+ * POST /api/v1/proveedor/{id}/productos → 201 Created
+ * [CAMBIO 2026-04-24] Ahora retorna boolean para indicar éxito.
+ */
+export const agregarProductoProveedorService = async (
+  idProveedor: number,
+  dto: IProveedorProductoAddDTO
+): Promise<boolean> => {
+  try {
+    const response = await api.post<boolean>(`/proveedor/${idProveedor}/productos`, dto);
+    return response.data;
+  } catch (error: any) {
+    if (error.response?.status === 409) {
+      throw new Error(
+        error.response.data?.message ||
+        'El producto ya está asignado a este proveedor'
+      );
+    }
+    if (error.response?.status === 404) {
+      throw new Error(
+        error.response.data?.message ||
+        'Proveedor o producto no encontrado'
+      );
+    }
+    throw new Error(
+      error.response?.data?.message ||
+      'Error al asignar el producto al proveedor'
+    );
+  }
+};
+
+/**
+ * Actualiza el precio de un producto asignado a un proveedor.
+ * PATCH /api/v1/proveedor/productos/{idProveedorProducto}
+ *
+ * Respuestas esperadas:
+ *   - 200 OK: Actualizado correctamente
+ *   - 400 BAD_REQUEST: Formato inválido o precio ≤ 0
+ *   - 404 NOT_FOUND: Relación no existe
+ *   - 409 CONFLICT: El precio ingresado es igual al actual (advierte sin error destructivo)
+ *
+ * [CAMBIO 2026-04-24] Usa idProveedorProducto (PK) + retorna boolean optimizado.
+ */
+export const actualizarPrecioProductoService = async (
+  idProveedorProducto: number,
+  dto: IProveedorProductoUpdateDTO
+): Promise<boolean> => {
+  try {
+    const response = await api.patch<boolean>(`/proveedor/productos/${idProveedorProducto}`, dto);
+    return response.data;
+  } catch (error: any) {
+    if (error.response?.status === 409) {
+      // 409 CONFLICT: El precio es igual al actual
+      throw new Error(
+        error.response.data?.message ||
+        'El precio ingresado es igual al valor actual. No hay cambios que guardar.'
+      );
+    }
+    if (error.response?.status === 404) {
+      throw new Error(
+        error.response.data?.message ||
+        'Relación proveedor-producto no encontrada'
+      );
+    }
+    throw new Error(
+      error.response?.data?.message ||
+      'Error al actualizar el precio del producto'
+    );
+  }
+};
+
+/**
+ * Quita (soft-delete) un producto del proveedor.
+ * DELETE /api/v1/proveedor/{id}/productos/{pid} → 200 OK
+ * [CAMBIO 2026-04-24] Retorna boolean para actualizar UI sin segunda petición.
+ */
+export const quitarProductoProveedorService = async (
+  idProveedor: number,
+  idProducto: number
+): Promise<boolean> => {
+  try {
+    const response = await api.delete<boolean>(`/proveedor/${idProveedor}/productos/${idProducto}`);
+    return response.data;
+  } catch (error: any) {
+    if (error.response?.status === 404) {
+      throw new Error(
+        error.response.data?.message ||
+        'Relación proveedor-producto no encontrada'
+      );
+    }
+    throw new Error(
+      error.response?.data?.message ||
+      'Error al quitar el producto del proveedor'
+    );
+  }
+};
+
+/**
+ * Habilita/deshabilita un producto del proveedor (toggle).
+ * PATCH /api/v1/proveedor/{id}/productos/{pid}/toggle → 200 OK
+ * [CAMBIO 2026-04-24] Retorna boolean para validar cambio exitoso.
+ */
+export const toggleProductoProveedorService = async (
+  idProveedor: number,
+  idProducto: number
+): Promise<boolean> => {
+  try {
+    const response = await api.patch<boolean>(`/proveedor/${idProveedor}/productos/${idProducto}/toggle`);
+    return response.data;
+  } catch (error: any) {
+    if (error.response?.status === 404) {
+      throw new Error(
+        error.response.data?.message ||
+        'Relación proveedor-producto no encontrada'
+      );
+    }
+    throw new Error(
+      error.response?.data?.message ||
+      'Error al cambiar el estado del producto'
+    );
+  }
+};
+
+/**
+ * Lista los proveedores que ofrecen un producto específico (para comparar precios).
+ * GET /api/v1/proveedor/por-producto/{idProducto}
+ */
+export const obtenerProveedoresPorProductoService = async (
+  idProducto: number
+): Promise<IProveedor[]> => {
+  try {
+    const response = await api.get<any[]>(`/proveedor/por-producto/${idProducto}`);
+    return response.data.map(normalizarProveedor);
+  } catch (error: any) {
+    throw new Error(
+      error.response?.data?.message ||
+      'Error al cargar los proveedores del producto'
+    );
+  }
+};
+
+/**
+ * Lista productos disponibles para asignar a un proveedor.
+ * Retorna todos los productos activos EXCEPTO los que están asignados con estado activo.
+ * Incluye productos con estado inactivo para poder reactivarlos.
+ * GET /api/v1/proveedor/{idProveedor}/productos-disponibles?idCategoria=X
+ *
+ * [CAMBIO 2026-04-24] Nuevo endpoint que reemplaza la lógica anterior de obtener todos
+ * los productos y filtrar en el frontend. Ahora el backend maneja la consulta optimizada.
+ */
+export const obtenerProductosDisponiblesService = async (
+  idProveedor: number,
+  idCategoria?: number
+): Promise<IProductoDisponibleDTO[]> => {
+  try {
+    const params: Record<string, any> = {};
+    if (idCategoria !== undefined) {
+      params.idCategoria = idCategoria;
+    }
+
+    const response = await api.get<string>(`/proveedor/${idProveedor}/productos-disponibles`, { params });
+
+    // El backend retorna una cadena JSON, necesita ser parseada
+    if (!response.data || response.data === '[]' || response.data === 'null') {
+      return [];
+    }
+
+    const parsed = typeof response.data === 'string' ? JSON.parse(response.data) : response.data;
+
+    return (Array.isArray(parsed) ? parsed : []).map(p => ({
+      idProducto: p.id_producto,
+      nombreProducto: p.nombre_producto,
+      idCategoria: p.id_categoria,
+      nombreCategoria: p.nombre_categoria,
+      idUnidad: p.id_unidad,
+      nombreUnidad: p.nombre_unidad,
+      abreviatura: p.abreviatura,
+      esFraccionario: p.es_fraccionario,
+    }));
+  } catch (error: any) {
+    throw new Error(
+      error.response?.data?.message ||
+      'Error al cargar los productos disponibles'
+    );
+  }
+};
+
+// ── Cotización por rango de fechas ────────────────────────────────────────────
+
+/**
+ * Obtiene la cotización agrupada por proveedor para un rango de fechas.
+ * POST /api/v1/proveedor/cotizacion-rango
+ */
+export const obtenerCotizacionPorRangoService = async (
+  fechaInicio: string,
+  fechaFin: string
+): Promise<ICotizacionResponse> => {
+  try {
+    const response = await api.post<ICotizacionResponse>('/proveedor/cotizacion-rango', {
+      fechaInicio,
+      fechaFin,
+    });
+    return response.data;
+  } catch (error: any) {
+    if (error.response?.status === 400) {
+      throw new Error(
+        error.response.data?.message ||
+        'Rango de fechas inválido'
+      );
+    }
+    throw new Error(
+      error.response?.data?.message ||
+      'Error al obtener la cotización por rango'
+    );
+  }
+};
+
+// ── Búsqueda global de productos ──────────────────────────────────────────────
+
+/**
+ * Búsqueda global optimizada de productos por nombre, código o descripción.
+ * GET /api/v1/proveedor/buscar-productos-global?q=searchTerm
+ *
+ * Retorna lista de proveedores que tienen productos coincidentes.
+ * La búsqueda es case-insensitive en el backend.
+ */
+export const buscarProductosGlobalService = async (
+  searchTerm: string
+): Promise<IBusquedaProductosGlobal[]> => {
+  try {
+    if (!searchTerm || searchTerm.trim().length === 0) {
+      return [];
+    }
+
+    const response = await api.get<IBusquedaProductosGlobal[]>('/proveedor/buscar-productos-global', {
+      params: { q: searchTerm.trim() },
+    });
+
+    return response.data || [];
+  } catch (error: any) {
+    throw new Error(
+      error.response?.data?.message ||
+      'Error al buscar productos'
+    );
+  }
+};
+
+/**
+ * Obtiene todas las categorías activas para filtrar productos en el modal de asignación.
+ * GET /api/v1/proveedor/categorias-activas-json → JSON string
+ * [CAMBIO 2026-04-24] Endpoint integrado en proveedor para centralizar la lógica de filtrado.
+ */
+export const obtenerCategoriasActivasJsonService = async (): Promise<{
+  id: number;
+  nombre: string;
+}[]> => {
+  try {
+    const response = await api.get<string>('/proveedor/categorias-activas-json');
+
+    if (!response.data || response.data === '[]' || response.data === 'null') {
+      return [];
+    }
+
+    const parsed = typeof response.data === 'string' ? JSON.parse(response.data) : response.data;
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (error: any) {
+    throw new Error(
+      error.response?.data?.message ||
+      'Error al cargar las categorías disponibles'
+    );
+  }
+};
+
+// ── Sincronización de precios desde Excel ─────────────────────────────────────
+
+/**
+ * Lista distribuidoras activas y disponibles para el selector del modal.
+ * GET /api/v1/proveedor/selector
+ */
+export const listarProveedoresSelectorService = async (): Promise<IProveedorSelector[]> => {
+  try {
+    const response = await api.get<IProveedorSelector[]>('/proveedor/selector');
+    return response.data ?? [];
+  } catch (error: any) {
+    throw new Error(
+      error.response?.data?.message ||
+      'Error al cargar las distribuidoras disponibles'
+    );
+  }
+};
+
+/**
+ * Sube un archivo .xlsx y sincroniza los precios de los productos del proveedor.
+ * POST /api/v1/proveedor/{id}/sync-precios-excel (multipart/form-data)
+ */
+export const sincronizarPreciosExcelService = async (
+  idProveedor: number,
+  file: File
+): Promise<ISyncExcelResult> => {
+  try {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const response = await api.post<ISyncExcelResult>(
+      `/proveedor/${idProveedor}/sync-precios-excel`,
+      formData,
+      { headers: { 'Content-Type': 'multipart/form-data' } }
+    );
+    return response.data;
+  } catch (error: any) {
+    throw new Error(
+      error.response?.data?.message ||
+      'Error al sincronizar los precios desde Excel'
+    );
+  }
+};
+
+/**
+ * Descarga el catálogo actual del proveedor como .xlsx en el mismo formato
+ * que la plantilla de sincronización. El archivo trae los valores actuales del sistema
+ * y se puede re-subir al endpoint de sync tras editar los precios.
+ * GET /api/v1/proveedor/{id}/excel-plantilla
+ */
+/**
+ * Sincroniza el precio con IVA recalculándolo desde el neto guardado (neto × 1.19).
+ * Update IN-PLACE, no crea versión nueva.
+ * PATCH /api/v1/proveedor/productos/{idProveedorProducto}/sincronizar-desde-neto
+ * Retorna true si cambió, false si ya estaba sincronizado.
+ */
+export const sincronizarPrecioDesdeNetoService = async (
+  idProveedorProducto: number
+): Promise<boolean> => {
+  try {
+    const response = await api.patch<boolean>(
+      `/proveedor/productos/${idProveedorProducto}/sincronizar-desde-neto`
+    );
+    return response.data;
+  } catch (error: any) {
+    throw new Error(
+      error.response?.data?.message ||
+      'Error al sincronizar el precio con IVA desde el neto'
+    );
+  }
+};
+
+/**
+ * Sincroniza el precio neto recalculándolo desde el IVA guardado (iva / 1.19).
+ * Update IN-PLACE, no crea versión nueva.
+ * PATCH /api/v1/proveedor/productos/{idProveedorProducto}/sincronizar-desde-iva
+ */
+export const sincronizarPrecioDesdeIvaService = async (
+  idProveedorProducto: number
+): Promise<boolean> => {
+  try {
+    const response = await api.patch<boolean>(
+      `/proveedor/productos/${idProveedorProducto}/sincronizar-desde-iva`
+    );
+    return response.data;
+  } catch (error: any) {
+    throw new Error(
+      error.response?.data?.message ||
+      'Error al sincronizar el precio neto desde el IVA'
+    );
+  }
+};
+
+// ── Orden Pedido (Paso 1 + Paso 2) ─────────────────────────────────────────
+
+/**
+ * Lista pedidos APROBADO cuyas fechas caen dentro del rango + cantidad de OPs ya activas
+ * por cada pedido (para mostrar chip 0/1/≥2 en el frontend).
+ * GET /api/v1/orden-pedido/pedidos-semana?fechaInicio=YYYY-MM-DD&fechaFin=YYYY-MM-DD
+ */
+export const obtenerPedidosSemanaService = async (
+  fechaInicio: string,
+  fechaFin: string
+): Promise<IPedidoSemanaResumen[]> => {
+  try {
+    const response = await api.get<IPedidoSemanaResumen[]>('/orden-pedido/pedidos-semana', {
+      params: { fechaInicio, fechaFin },
+    });
+    return response.data ?? [];
+  } catch (error: any) {
+    throw new Error(
+      error.response?.data?.message ||
+      'Error al cargar los pedidos de la semana'
+    );
+  }
+};
+
+/**
+ * Cotización consolidada de los pedidos seleccionados. Por cada producto retorna el
+ * proveedor con menor precio_neto vigente y la distribución de la cantidad por día
+ * de la semana (a partir de reserva_sala.dia_semana en la solicitud).
+ * GET /api/v1/orden-pedido/cotizacion-consolidada?idsPedido=1,2,3
+ */
+export const obtenerCotizacionConsolidadaService = async (
+  idsPedido: number[]
+): Promise<ICotizacionConsolidadaResponse> => {
+  try {
+    const response = await api.get<ICotizacionConsolidadaResponse>(
+      '/orden-pedido/cotizacion-consolidada',
+      { params: { idsPedido: idsPedido.join(',') } }
+    );
+    return response.data ?? { cotizacion: [] };
+  } catch (error: any) {
+    throw new Error(
+      error.response?.data?.message ||
+      'Error al obtener la cotización consolidada'
+    );
+  }
+};
+
+/**
+ * Cotización filtrada para re-generar OPs canceladas. Solo retorna los productos que
+ * formaban parte de las OPs CANCELADAS de los pedidos indicados.
+ * GET /api/v1/orden-pedido/cotizacion-de-canceladas?idsPedido=1,2
+ */
+export const obtenerCotizacionDeCanceladasService = async (
+  idsPedido: number[]
+): Promise<ICotizacionConsolidadaResponse> => {
+  try {
+    const response = await api.get<ICotizacionConsolidadaResponse>(
+      '/orden-pedido/cotizacion-de-canceladas',
+      { params: { idsPedido: idsPedido.join(',') } }
+    );
+    return response.data ?? { cotizacion: [] };
+  } catch (error: any) {
+    throw new Error(
+      error.response?.data?.message ||
+      'Error al obtener la cotización de órdenes canceladas'
+    );
+  }
+};
+
+/** Disponible real por producto (mapea DisponibleRealDTO del backend). */
+export interface IDisponibleReal {
+  idProducto: number;
+  stockFisico: number;
+  demandaComprometida: number;
+  disponible: number;
+}
+
+/**
+ * Disponible real por producto = (inventario + bodega de tránsito) − demanda comprometida
+ * (Σ demanda de solicitudes EN_PEDIDO ya abastecidas). Se usa en el Paso 2 para mostrar el
+ * sobrante por producto y decidir pedir menos al proveedor.
+ * GET /api/v1/orden-pedido/disponible-real?idsProducto=1,2,3
+ */
+export const obtenerDisponibleRealService = async (
+  idsProducto: number[]
+): Promise<IDisponibleReal[]> => {
+  if (idsProducto.length === 0) return [];
+  try {
+    const response = await api.get<IDisponibleReal[]>(
+      '/orden-pedido/disponible-real',
+      { params: { idsProducto: idsProducto.join(',') } }
+    );
+    return response.data ?? [];
+  } catch (error: any) {
+    throw new Error(
+      error.response?.data?.message ||
+      'Error al obtener el disponible real de los productos'
+    );
+  }
+};
+
+/**
+ * Registra (upsert) las reservas de stock cubierto por solicitud al generar la OP con
+ * "cubrir con disponible". Hace que ese stock deje de aparecer como disponible.
+ * POST /api/v1/orden-pedido/reservas
+ */
+export const registrarReservasStockService = async (
+  reservas: Array<{ idSolicitud: number; idProducto: number; cantidad: number }>
+): Promise<number> => {
+  if (reservas.length === 0) return 0;
+  try {
+    const response = await api.post<number>('/orden-pedido/reservas', reservas);
+    return response.data ?? 0;
+  } catch (error: any) {
+    throw new Error(
+      error.response?.data?.message ||
+      'Error al registrar las reservas de stock'
+    );
+  }
+};
+
+/**
+ * Cambia el estado del proveedor (DISPONIBLE ↔ NO_DISPONIBLE) en un PATCH.
+ * Reutiliza actualizarProveedorService completando los campos requeridos por el backend.
+ * PATCH /api/v1/proveedor/{id}
+ */
+export const actualizarEstadoProveedorService = async (
+  proveedor: IProveedor,
+  nuevoEstado: EstadoProveedor
+): Promise<IProveedor> => {
+  return actualizarProveedorService(proveedor.idProveedor, {
+    rutProveedor: proveedor.rutProveedor,
+    nombreDistribuidora: proveedor.nombreDistribuidora,
+    nombreProveedor: proveedor.nombreProveedor,
+    telefonoProveedor: proveedor.telefonoProveedor,
+    emailProveedor: proveedor.emailProveedor,
+    estadoProveedor: nuevoEstado,
+  });
+};
+
+// ── Orden Pedido — Crear (Tarea #27) ─────────────────────────────────────────
+
+/**
+ * Crea una Orden de Pedido para un proveedor con sus líneas de detalle por fecha.
+ * Se invoca una vez por proveedor. Solo se envían entradas con cantidad > 0.
+ * POST /api/v1/orden-pedido → 201 { idOrdenPedido, cantidadDetalles, ... }
+ */
+export const crearOrdenPedidoService = async (request: {
+  idPedido: number;
+  idProveedor: number;
+  observaciones?: string;
+  entregas: Array<{
+    idProducto: number;
+    cantidad: number;
+    fechaEntrega: string; // YYYY-MM-DD
+    /** Solicitudes que abastece esta línea y cuánto aporta cada una (puente de trazabilidad). */
+    solicitudes?: Array<{ idSolicitud: number; cantidadAtribuida: number }>;
+  }>;
+}): Promise<IOrdenPedidoResumen> => {
+  try {
+    const response = await api.post<IOrdenPedidoResumen>('/orden-pedido', request);
+    return response.data;
+  } catch (error: any) {
+    throw new Error(
+      error.response?.data?.message ||
+      `Error al crear orden de compra para proveedor ${request.idProveedor}`
+    );
+  }
+};
+
+// ── Orden Pedido — Listado y Detalle ─────────────────────────────────────────
+
+/**
+ * Lista las Órdenes de Pedido activas (sin líneas de detalle).
+ * @param diasAtras si se provee, filtra OPs de los últimos N días; undefined = todas.
+ * GET /api/v1/orden-pedido?diasAtras=30
+ */
+export const listarOrdenesPedidoService = async (diasAtras?: number): Promise<IOrdenPedidoListItem[]> => {
+  try {
+    const params = diasAtras != null ? { diasAtras } : {};
+    const response = await api.get<IOrdenPedidoListItem[]>('/orden-pedido', { params });
+    return response.data ?? [];
+  } catch (error: any) {
+    throw new Error(
+      error.response?.data?.message ||
+      'Error al cargar las órdenes de pedido'
+    );
+  }
+};
+
+/**
+ * Retorna el detalle completo de una Orden de Pedido: cabecera + líneas de entrega.
+ * GET /api/v1/orden-pedido/{id}
+ */
+export const obtenerOrdenPedidoDetalleService = async (
+  idOrdenPedido: number
+): Promise<IOrdenPedidoConDetalles> => {
+  try {
+    const response = await api.get<IOrdenPedidoConDetalles>(`/orden-pedido/${idOrdenPedido}`);
+    return response.data;
+  } catch (error: any) {
+    throw new Error(
+      error.response?.data?.message ||
+      `Error al cargar el detalle de la Orden de Pedido #${idOrdenPedido}`
+    );
+  }
+};
+
+/**
+ * Cambia el estado de una Orden de Pedido validando la transición en el backend.
+ * PATCH /api/v1/orden-pedido/{id}/estado
+ */
+export const cambiarEstadoOrdenPedidoService = async (
+  idOrdenPedido: number,
+  estado: string
+): Promise<IOrdenPedidoListItem> => {
+  try {
+    const response = await api.patch<IOrdenPedidoListItem>(`/orden-pedido/${idOrdenPedido}/estado`, { estado });
+    return response.data;
+  } catch (error: any) {
+    throw new Error(
+      error.response?.data?.message ||
+      `Error al cambiar el estado de la Orden de Pedido #${idOrdenPedido}`
+    );
+  }
+};
+
+/**
+ * Retorna OPs CONFIRMADA agrupadas por OP → día de entrega → productos, con marca e inventario.
+ * Siempre incluye historial de 15 días hacia atrás. fechaHasta controla el límite superior.
+ * tipoAbastecimiento: "INVENTARIO" (inventario.tsx) | "BODEGA_TRANSITO" (bodega-transito.tsx)
+ * GET /api/v1/orden-pedido/abastecimiento?fechaHasta=YYYY-MM-DD&tipoAbastecimiento=INVENTARIO
+ */
+export const obtenerAbastecimientoConfirmadoService = async (
+  fechaHasta?: string,
+  tipoAbastecimiento: 'INVENTARIO' | 'BODEGA_TRANSITO' = 'INVENTARIO'
+): Promise<IAbastecimientoProveedorResponse> => {
+  try {
+    const params: Record<string, string> = { tipoAbastecimiento };
+    if (fechaHasta) params.fechaHasta = fechaHasta;
+    const response = await api.get<IAbastecimientoProveedorResponse>('/orden-pedido/abastecimiento', { params });
+    return response.data;
+  } catch (error: any) {
+    throw new Error(
+      error.response?.data?.message ||
+      'Error al cargar el abastecimiento de proveedores'
+    );
+  }
+};
+
+/**
+ * Marca como entregados (entregado = true) en bloque los detalles de orden de pedido indicados.
+ * Se llama en paralelo con bulkUpdateInventoryStockService al confirmar el Control de Stock Masivo.
+ * PATCH /api/v1/orden-pedido/detalles/entregar → número de filas actualizadas
+ */
+export const marcarEntregadosMasivoService = async (ids: number[]): Promise<number> => {
+  try {
+    const response = await api.patch<number>('/orden-pedido/detalles/entregar', ids);
+    return response.data ?? 0;
+  } catch (error: any) {
+    throw new Error(
+      error.response?.data?.message ||
+      'Error al marcar los detalles de orden como entregados'
+    );
+  }
+};
+
+/**
+ * Evalúa todas las OPs CONFIRMADAS activas y transiciona a RECIBIDA las que tienen
+ * todos sus detalles activos con entregado=true.
+ * Se llama silenciosamente antes de refrescar la lista (botón Actualizar en Órdenes de Pedido).
+ * Falla silenciosamente — no propaga el error para no bloquear la carga de la lista.
+ * POST /api/v1/orden-pedido/sincronizar-estados → número de OPs transicionadas
+ */
+export const sincronizarEstadosOrdenPedidoService = async (): Promise<number> => {
+  try {
+    const response = await api.post<number>('/orden-pedido/sincronizar-estados');
+    return response.data ?? 0;
+  } catch {
+    return 0;
+  }
+};
+
+export const descargarExcelPlantillaService = async (
+  idProveedor: number,
+  nombreSugerido?: string
+): Promise<void> => {
+  try {
+    const response = await api.get(`/proveedor/${idProveedor}/excel-plantilla`, {
+      responseType: 'blob',
+    });
+
+    const dispo = response.headers['content-disposition'] as string | undefined;
+    const matchFilename = dispo?.match(/filename="?([^";]+)"?/i);
+    const filename =
+      matchFilename?.[1] ||
+      (nombreSugerido ? `${nombreSugerido}.xlsx` : `plantilla-proveedor-${idProveedor}.xlsx`);
+
+    const blob = new Blob([response.data], {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+  } catch (error: any) {
+    throw new Error(
+      error.response?.data?.message ||
+      'Error al generar el archivo Excel del proveedor'
+    );
+  }
+};

@@ -45,11 +45,11 @@ import {
   actualizarSeccionDeltaService,
   eliminarSeccionService,
   crearSeccionNuevaService,
-} from '../services/asignatura-service';
-import { obtenerSalasActivasService, ISala, crearSalaService, actualizarSalaService, eliminarSalaService } from '../services/sala-service';
-import { filtrarBloquesPorSalaYDiaService, IBloqueDisponible, obtenerBloquesReservadosPorDocenteService } from '../services/bloque-horario-service';
-import { obtenerUsuariosService, obtenerUsuariosGestoresAsignaturaService, obtenerUsuariosAsignadosSeccionService } from '../services/usuario-service';
-import { IReservaActiva, DIA_DISPLAY, obtenerReservasActivasService } from '../services/reserva-sala-service';
+} from '../services/academica/asignatura-service';
+import { obtenerSalasActivasService, ISala, crearSalaService, actualizarSalaService, eliminarSalaService } from '../services/academica/sala-service';
+import { filtrarBloquesPorSalaYDiaService, IBloqueDisponible, obtenerBloquesReservadosPorDocenteService } from '../services/academica/bloque-horario-service';
+import { obtenerUsuariosService, obtenerUsuariosGestoresAsignaturaService, obtenerUsuariosAsignadosSeccionService } from '../services/usuario/usuario-service';
+import { IReservaActiva, DIA_DISPLAY, obtenerReservasActivasService } from '../services/academica/reserva-sala-service';
 
 const DIAS_ABREV: Record<string, string> = {
   LUNES: 'Lun', MARTES: 'Mar', MIERCOLES: 'Mié',

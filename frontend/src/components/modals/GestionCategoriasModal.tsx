@@ -16,7 +16,7 @@ import {
 } from '@heroui/react';
 import { Icon } from '@iconify/react';
 import { ICategoria } from '../../types/inventario.types';
-import { obtenerCategorias, crearCategoria, actualizarCategoria } from '../../services/storage-service';
+import { obtenerCategorias, crearCategoria, actualizarCategoria } from '../../services/shared/storage-service';
 import {
     crearCategoriaService,
     obtenerCategoriasService,
@@ -24,7 +24,7 @@ import {
     eliminarCategoriaService,
     transferirProductosService,
     cambiarEstadoCategoriaService
-} from '../../services/categoria-service';
+} from '../../services/inventario/categoria-service';
 import { useToast } from '../../hooks/useToast';
 import { useModulePermission } from '../../contexts/permission-context';
 

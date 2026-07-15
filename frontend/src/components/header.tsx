@@ -7,7 +7,7 @@ import { useHistory } from 'react-router-dom';
 import { usePageTitleContext } from '../contexts/PageTitleContext';
 import { usePeriodoSemana } from '../contexts/periodo-semana-context';
 import { useSistemaConfig } from '../contexts/sistema-config-context';
-import { obtenerResumenNotificaciones, INotificacionSemana, INotificacionEntrega } from '../services/notification-service';
+import { obtenerResumenNotificaciones, INotificacionSemana, INotificacionEntrega } from '../services/notificacion/notification-service';
 import SoporteModal from './modals/SoporteModal';
 
 const LOGO_URL = new URL('./assets/KuHubLogoWBG.png', import.meta.url).href;

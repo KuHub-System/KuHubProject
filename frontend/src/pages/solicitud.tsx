@@ -28,9 +28,9 @@ import {
   obtenerRecetasSolicitudService,
   obtenerProductosOpcionConCategoriaService,
   generarSolicitudesMasivasService,
-} from '../services/solicitud-service';
+} from '../services/solicitud/solicitud-service';
 import {ISemana} from "../types/semana.types.ts";
-import { obtenerSemanasPorPeriodoService } from '../services/semana-service';
+import { obtenerSemanasPorPeriodoService } from '../services/academica/semana-service';
 import { esFeriadoChile } from '../utils/feriados-chile';
 
 // ─────────────────────────────────────────────────────────────────────────────

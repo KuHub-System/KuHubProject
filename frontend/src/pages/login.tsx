@@ -3,7 +3,7 @@ import { useHistory } from 'react-router-dom';
 import { Card, CardBody, Input, Button, Checkbox, Divider, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter } from '@heroui/react';
 import { Icon } from '@iconify/react';
 import { useAuth } from '../contexts/auth-context';
-import { aceptarTerminosService, obtenerTerminosAceptadosService } from '../services/auth-service';
+import { aceptarTerminosService, obtenerTerminosAceptadosService } from '../services/usuario/auth-service';
 import { motion, AnimatePresence } from 'framer-motion';
 import TerminosCondicionesContent from '../components/TerminosCondicionesContent';
 

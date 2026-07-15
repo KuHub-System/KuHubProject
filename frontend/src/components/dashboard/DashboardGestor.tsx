@@ -17,7 +17,7 @@ import {
   BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from 'recharts';
-import { getDashboardGestor, DashboardGestorData, SolicitudRechazada } from '../../services/api-dashboard';
+import { getDashboardGestor, DashboardGestorData, SolicitudRechazada } from '../../services/dashboard/api-dashboard';
 import { useAuth } from '../../contexts/auth-context';
 
 // ─── KPI Card ────────────────────────────────────────────────────────────────

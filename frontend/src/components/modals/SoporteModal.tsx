@@ -17,7 +17,7 @@ import {
   enviarTicketSoporte,
   TipoEquipo,
   TipoErrorSoporte,
-} from '../../services/soporte-service';
+} from '../../services/soporte/soporte-service';
 
 interface SoporteModalProps {
   isOpen: boolean;

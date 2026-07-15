@@ -10,7 +10,7 @@ import { motion } from 'framer-motion';
 import { useHistory } from 'react-router-dom';
 import { useToast } from '../../hooks/useToast';
 import { logger } from '../../utils/logger';
-import { cargarDashboardBodega } from '../../services/dashboard-service';
+import { cargarDashboardBodega } from '../../services/dashboard/dashboard-service';
 import { DashboardHeader } from './shared/DashboardHeader';
 import { StatsCard } from './shared/StatsCard';
 import { IProducto } from '../../types/producto.types';

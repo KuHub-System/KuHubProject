@@ -14,7 +14,7 @@ import {
   cargarDashboardProfesor,
   obtenerEstadoProceso,
   calcularDiasRestantesProceso,
-} from '../../services/dashboard-service';
+} from '../../services/dashboard/dashboard-service';
 import { DashboardHeader } from './shared/DashboardHeader';
 import { StatsCard } from './shared/StatsCard';
 import { EstadoSolicitudChip } from './shared/EstadoSolicitudChip';

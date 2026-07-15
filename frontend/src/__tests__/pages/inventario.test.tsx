@@ -83,23 +83,23 @@ vi.mock('../../hooks/useToast', () => {
   };
 });
 
-vi.mock('../../services/storage-service', () => ({
+vi.mock('../../services/shared/storage-service', () => ({
   obtenerCategorias: vi.fn().mockReturnValue([{ id: 1, nombre: 'Categoría 1' }]),
   obtenerUnidades: vi.fn().mockReturnValue([{ id: 1, nombre: 'unidad' }]),
 }));
 
-vi.mock('../../services/bodega-transito-service', () => ({
+vi.mock('../../services/inventario/bodega-transito-service', () => ({
   actualizarBodegaTransitoConProductoService: vi.fn().mockResolvedValue({}),
 }));
 
-vi.mock('../../services/solicitud-service', () => ({
+vi.mock('../../services/solicitud/solicitud-service', () => ({
   obtenerProyeccionAbastecimientoService: vi.fn().mockResolvedValue([]),
 }));
 
 vi.mock('../../components/modals/GestionCategoriasModal', () => ({ default: () => null }));
 vi.mock('../../components/modals/GestionUnidadesModal', () => ({ default: () => null }));
 
-vi.mock('../../services/inventario-service', () => ({
+vi.mock('../../services/inventario/inventario-service', () => ({
   obtenerBulkProductoInventoryListingService: mockObtenerBulkProductos,
   bulkUpdateInventoryStockService: vi.fn().mockResolvedValue({ exitosos: [], fallidos: [] }),
   obtenerConfigAbastecimientoService: vi.fn().mockResolvedValue([]),
@@ -119,7 +119,7 @@ vi.mock('../../services/inventario-service', () => ({
   }),
 }));
 
-vi.mock('../../services/producto-service', () => ({
+vi.mock('../../services/inventario/producto-service', () => ({
   obtenerProductosPaginadosService: mockObtenerProductosPaginados,
   buscarProductosService: mockBuscarProductos,
   buscarProductosPorCodigoService: mockBuscarPorCodigo,
@@ -143,11 +143,11 @@ vi.mock('../../services/producto-service', () => ({
   }),
 }));
 
-vi.mock('../../services/categoria-service', () => ({
+vi.mock('../../services/inventario/categoria-service', () => ({
   obtenerCategoriasActivasService: mockObtenerCategorias,
 }));
 
-vi.mock('../../services/unidad-medida-service', () => ({
+vi.mock('../../services/inventario/unidad-medida-service', () => ({
   obtenerUnidadesActivasService: mockObtenerUnidades,
 }));
 

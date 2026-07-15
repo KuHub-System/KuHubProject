@@ -55,7 +55,7 @@ vi.mock('../../utils/logger', () => ({
   logger: { error: vi.fn(), warn: vi.fn(), info: vi.fn(), debug: vi.fn(), log: vi.fn() },
 }));
 
-vi.mock('../../services/asignatura-service', () => ({
+vi.mock('../../services/academica/asignatura-service', () => ({
   obtenerAsignaturasService:            mockObtenerAsignaturas,
   crearAsignaturaService:               vi.fn(),
   actualizarAsignaturaService:          vi.fn(),
@@ -65,24 +65,24 @@ vi.mock('../../services/asignatura-service', () => ({
   eliminarSeccionService:               mockEliminarSeccion,
 }));
 
-vi.mock('../../services/usuario-service', () => ({
+vi.mock('../../services/usuario/usuario-service', () => ({
   obtenerUsuariosService:                       mockObtenerUsuarios,
   obtenerUsuariosGestoresAsignaturaService:     vi.fn().mockResolvedValue([]),
   obtenerUsuariosAsignadosSeccionService:       vi.fn().mockResolvedValue([]),
 }));
 
-vi.mock('../../services/sala-service', () => ({
+vi.mock('../../services/academica/sala-service', () => ({
   obtenerSalasActivasService: vi.fn().mockResolvedValue([]),
   crearSalaService:           vi.fn(),
   actualizarSalaService:      vi.fn(),
   eliminarSalaService:        vi.fn(),
 }));
 
-vi.mock('../../services/reserva-sala-service', () => ({
+vi.mock('../../services/academica/reserva-sala-service', () => ({
   obtenerReservasActivasService: vi.fn().mockResolvedValue([]),
 }));
 
-vi.mock('../../services/bloque-horario-service', () => ({
+vi.mock('../../services/academica/bloque-horario-service', () => ({
   filtrarBloquesPorSalaYDiaService:             vi.fn().mockResolvedValue([]),
   obtenerBloquesReservadosPorDocenteService:    vi.fn().mockResolvedValue([]),
 }));

@@ -31,7 +31,7 @@ vi.mock('../../hooks/useToast', () => {
   return { useToast: () => toastObj, useConfirm: () => vi.fn() };
 });
 
-vi.mock('../../services/unidad-medida-service', () => ({
+vi.mock('../../services/inventario/unidad-medida-service', () => ({
   obtenerUnidadesService: mockObtenerUnidades,
   crearUnidadService: mockCrearUnidad,
   actualizarUnidadService: mockActualizarUnidad,

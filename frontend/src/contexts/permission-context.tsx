@@ -12,7 +12,7 @@
 
 import React, { createContext, useContext, useEffect, useState, ReactNode, useCallback } from 'react';
 import { useAuth } from './auth-context';
-import { permissionService } from '../services/permission-service';
+import { permissionService } from '../services/usuario/permission-service';
 import {
   AccessLevel,
   ACCESS_HIERARCHY,

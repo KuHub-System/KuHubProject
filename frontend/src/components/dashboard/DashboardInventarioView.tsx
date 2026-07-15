@@ -12,7 +12,7 @@ import {
   BarChart, Bar, LineChart, Line,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from 'recharts';
-import { getDashboardInventario, DashboardInventarioData, ProductoCritico } from '../../services/api-dashboard';
+import { getDashboardInventario, DashboardInventarioData, ProductoCritico } from '../../services/dashboard/api-dashboard';
 
 // ─── KPI Card ────────────────────────────────────────────────────────────────
 

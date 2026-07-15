@@ -16,7 +16,7 @@ const { mockFindMovimientos } = vi.hoisted(() => ({
 // ============================================
 vi.mock('../../hooks/usePageTitle', () => ({ usePageTitle: vi.fn() }));
 
-vi.mock('../../services/movimiento-service', () => ({
+vi.mock('../../services/inventario/movimiento-service', () => ({
   findMovimientosConFiltros: mockFindMovimientos,
 }));
 

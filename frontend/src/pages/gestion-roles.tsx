@@ -35,7 +35,7 @@ import { Icon } from '@iconify/react';
 import { motion } from 'framer-motion';
 import { usePermission } from '../contexts/permission-context';
 import { usePageTitle } from '../hooks/usePageTitle';
-import { permissionService } from '../services/permission-service';
+import { permissionService } from '../services/usuario/permission-service';
 import {
   ACCESS_HIERARCHY,
   AccessLevel,

@@ -1,5 +1,5 @@
 import axios, { AxiosInstance, AxiosError, InternalAxiosRequestConfig } from 'axios';
-import { obtenerSesionActualService, renovarSesionService } from '../services/auth-service';
+import { obtenerSesionActualService, renovarSesionService } from '../services/usuario/auth-service';
 
 import { logger } from '../utils/logger';
 

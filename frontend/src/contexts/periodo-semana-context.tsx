@@ -5,7 +5,7 @@ import {
   obtenerSemanasPorPeriodoService,
   detectarPeriodoActual,
   encontrarSemanaActual,
-} from '../services/semana-service';
+} from '../services/academica/semana-service';
 import { useAuth } from './auth-context';
 
 interface PeriodoSemanaState {

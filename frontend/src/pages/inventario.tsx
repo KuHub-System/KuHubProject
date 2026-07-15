@@ -49,22 +49,22 @@ import {
   buscarProductosPorCodigoService,
   transformarPageItemAProducto,
   softDeleteInventarioService
-} from '../services/producto-service';
+} from '../services/inventario/producto-service';
 import { useToast, useConfirm } from '../hooks/useToast';
 import { logger } from '../utils/logger';
 import { useAuth } from '../contexts/auth-context';
 import { useModulePermission } from '../contexts/permission-context';
-import { obtenerCategorias, obtenerUnidades } from '../services/storage-service';
+import { obtenerCategorias, obtenerUnidades } from '../services/shared/storage-service';
 import GestionCategoriasModal from '../components/modals/GestionCategoriasModal';
 import GestionUnidadesModal from '../components/modals/GestionUnidadesModal';
 import GestionAbastecimientoModal from '../components/modals/GestionAbastecimientoModal';
 import StockDisponiblesModal from '../components/modals/StockDisponiblesModal';
 import ConfirmarDisponibleBodegaModal from '../components/modals/ConfirmarDisponibleBodegaModal';
 import ConfirmarSalidaDisponibleModal, { ConfirmarSalidaDisponibleItem } from '../components/modals/ConfirmarSalidaDisponibleModal';
-import { obtenerCategoriasActivasService } from '../services/categoria-service';
-import { obtenerUnidadesActivasService } from '../services/unidad-medida-service';
+import { obtenerCategoriasActivasService } from '../services/inventario/categoria-service';
+import { obtenerUnidadesActivasService } from '../services/inventario/unidad-medida-service';
 import { IUnidadMedida, ISincronizarInventarioExcelResultado, IResultadoItemInventarioExcel, ICategoriaAbastecimientoView } from '../types/inventario.types';
-import { actualizarBodegaTransitoConProductoService, crearBodegaConProductoService, sincronizarBodegaTransitoDesdeExcelService, confirmarNuevosBodegaExcelService, WarehouseWithProductUpdateDTO, IBodegaStockSyncWarning, IBodegaStockInsuficiente } from '../services/bodega-transito-service';
+import { actualizarBodegaTransitoConProductoService, crearBodegaConProductoService, sincronizarBodegaTransitoDesdeExcelService, confirmarNuevosBodegaExcelService, WarehouseWithProductUpdateDTO, IBodegaStockSyncWarning, IBodegaStockInsuficiente } from '../services/inventario/bodega-transito-service';
 import {
   obtenerBulkProductoInventoryListingService,
   IBulkProductoInventoryListing,
@@ -75,7 +75,7 @@ import {
   sincronizarInventarioDesdeExcelService,
   confirmarNuevosProductosExcelService,
   obtenerConfigAbastecimientoService
-} from '../services/inventario-service';
+} from '../services/inventario/inventario-service';
 import {
   obtenerAbastecimientoBodegaService,
   marcarEnviadoBodegaService,
@@ -85,11 +85,11 @@ import {
   ISolicitudBodegaItem,
   IDetalleBodegaItem,
   IRegistrarDisponibleDTO,
-} from '../services/solicitud-service';
+} from '../services/solicitud/solicitud-service';
 import {
   obtenerAbastecimientoConfirmadoService,
   marcarEntregadosMasivoService,
-} from '../services/proveedor-service';
+} from '../services/proveedor/proveedor-service';
 import {
   IOrdenAbastecimiento,
   IEntregaDiaAbastecimiento,

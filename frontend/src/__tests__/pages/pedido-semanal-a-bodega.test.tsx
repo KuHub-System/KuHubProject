@@ -82,7 +82,7 @@ vi.mock('../../contexts/periodo-semana-context', () => ({
 // MOCKS DE SERVICIOS
 // ============================================
 
-vi.mock('../../services/pedido-semanal-bodega-service', () => ({
+vi.mock('../../services/pedido/pedido-semanal-bodega-service', () => ({
   obtenerRecetasPaginadasService:       mockObtenerPaginados,
   obtenerRecetasCountService:           mockObtenerCounts,
   obtenerAsignaturasActivasService:     mockObtenerAsignaturas,
@@ -97,7 +97,7 @@ vi.mock('../../services/pedido-semanal-bodega-service', () => ({
   importarExcelPedidoService:           vi.fn().mockResolvedValue({ totalOk: 0, totalNoEncontrados: 0, resultados: [] }),
 }));
 
-vi.mock('../../services/producto-service', () => ({
+vi.mock('../../services/inventario/producto-service', () => ({
   obtenerProductosParaRecetaService: mockObtenerProductos,
 }));
 

@@ -15,7 +15,7 @@ vi.mock('../../config/Axios', () => ({
 import {
   obtenerAbastecimientoConfirmadoService,
   marcarEntregadosMasivoService,
-} from '../../services/proveedor-service';
+} from '../../services/proveedor/proveedor-service';
 
 // ============================================
 // SUITE — Abastecimiento de Proveedores (entrada a Inventario / Bodega de Tránsito)

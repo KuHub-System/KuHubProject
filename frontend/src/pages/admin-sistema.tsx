@@ -40,14 +40,14 @@ import { usePeriodoSemana } from '../contexts/periodo-semana-context';
 
 // ─── TIPOS Y SERVICIOS ───────────────────────────────────────────────────────
 import { IBloqueHorario } from '../types/bloque-horario.types';
-import { obtenerBloquesHorarioService, reasignarBloquesService, restaurarBloquesDefaultService, IBloqueReasignar } from '../services/bloque-horario-service';
+import { obtenerBloquesHorarioService, reasignarBloquesService, restaurarBloquesDefaultService, IBloqueReasignar } from '../services/academica/bloque-horario-service';
 import { ISemana } from '../types/semana.types';
-import { obtenerSemanasService, generarCalendarioService, obtenerAniosFiltroService, invalidarCacheSemanas, reasignarCalendarioService } from '../services/semana-service';
+import { obtenerSemanasService, generarCalendarioService, obtenerAniosFiltroService, invalidarCacheSemanas, reasignarCalendarioService } from '../services/academica/semana-service';
 import {
   getConfiguracionSistema,
   patchConfiguracionSistema,
   restaurarConfiguracionSistema,
-} from '../services/gestionSistemaService';
+} from '../services/sistema/gestionSistemaService';
 
 // ─── HELPERS ──────────────────────────────────────────────────────────────────
 

@@ -12,7 +12,7 @@ import {
   BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from 'recharts';
-import { getDashboardPedidoSemanalBodega, DashboardPedidoSemanalBodegaData } from '../../services/api-dashboard';
+import { getDashboardPedidoSemanalBodega, DashboardPedidoSemanalBodegaData } from '../../services/dashboard/api-dashboard';
 
 // ─── KPI Card ────────────────────────────────────────────────────────────────
 

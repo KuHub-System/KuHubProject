@@ -14,7 +14,7 @@ import { ICategoriaAbastecimientoView } from '../../types/inventario.types';
 import {
     obtenerConfigAbastecimientoService,
     actualizarConfigAbastecimientoService,
-} from '../../services/inventario-service';
+} from '../../services/inventario/inventario-service';
 import { useToast } from '../../hooks/useToast';
 
 interface GestionAbastecimientoModalProps {

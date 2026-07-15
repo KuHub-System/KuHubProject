@@ -13,7 +13,7 @@ import {
 import { Icon } from '@iconify/react';
 import { motion } from 'framer-motion';
 import { useAuth } from '../contexts/auth-context';
-import { cambiarPasswordService, actualizarFotoPerfilService } from '../services/auth-service';
+import { cambiarPasswordService, actualizarFotoPerfilService } from '../services/usuario/auth-service';
 import { ICambioPassword } from '../types/user.types';
 
 /**
