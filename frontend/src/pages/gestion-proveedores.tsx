@@ -2334,7 +2334,7 @@ const GestionProveedoresPage: React.FC = () => {
 
       <div className="flex gap-6 items-stretch">
         {/* ── Área de contenido principal ── */}
-        <div className="flex-1 min-w-0 pt-14">
+        <div className="flex-1 min-w-0">
           <AnimatePresence mode="wait">
 
             {currentView === 'ordenes' ? (
@@ -2865,7 +2865,7 @@ const GestionProveedoresPage: React.FC = () => {
         </div>
 
         {/* ── Riel de navegación derecho ── */}
-        <div className="w-[70px] shrink-0 bg-white dark:bg-content1 border-l border-default-200 dark:border-default-100 shadow-[-4px_0_15px_rgba(0,0,0,0.02)] self-stretch -mt-14 -mr-10 pb-[1000px] -mb-[1000px]">
+        <div className="w-[70px] shrink-0 bg-white dark:bg-content1 border-l border-default-200 dark:border-default-100 shadow-[-4px_0_15px_rgba(0,0,0,0.02)] self-stretch -mr-10">
           <div className="sticky top-8 flex flex-col items-center pt-28 pb-6 gap-4 z-30">
             {verTabProveedores && (
             <Tooltip content="Proveedores" placement="left">
