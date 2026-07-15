@@ -926,7 +926,7 @@ const GestionAsignaturasPage: React.FC = () => {
 
   return (
     <>
-      <div className="flex h-[calc(100vh-76px)] overflow-hidden font-sans relative -mt-6">
+      <div className="flex h-[calc(100vh-76px)] overflow-hidden font-sans relative -mt-6 -mr-6">
         <div className="flex-grow overflow-y-auto bg-default-50/50 dark:bg-background scrollbar-hide">
           <AnimatePresence mode="wait">
             {currentView === 'academica' ? (
@@ -1177,7 +1177,7 @@ const GestionAsignaturasPage: React.FC = () => {
         </div>
 
         {/* Riel de Navegación Derecho */}
-        <div className="w-[70px] shrink-0 bg-white dark:bg-content1 border-l border-default-200 dark:border-default-100 flex flex-col items-center pt-28 pb-6 gap-4 z-30 shadow-[-4px_0_15px_rgba(0,0,0,0.02)] -mr-10 self-stretch">
+        <div className="w-[70px] shrink-0 bg-white dark:bg-content1 border-l border-default-200 dark:border-default-100 flex flex-col items-center pt-28 pb-6 gap-4 z-30 shadow-[-4px_0_15px_rgba(0,0,0,0.02)] self-stretch">
           {verAcademica && (
           <Tooltip content="Gestión Académica" placement="left">
             <Button
