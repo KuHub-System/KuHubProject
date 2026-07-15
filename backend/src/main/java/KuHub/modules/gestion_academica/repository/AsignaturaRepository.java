@@ -2,7 +2,7 @@ package KuHub.modules.gestion_academica.repository;
 
 import KuHub.modules.gestion_academica.dtos.request.projection.CourseSolicitationSelectView;
 import KuHub.modules.gestion_academica.entity.Asignatura;
-import feign.Param;
+import org.springframework.data.repository.query.Param;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;

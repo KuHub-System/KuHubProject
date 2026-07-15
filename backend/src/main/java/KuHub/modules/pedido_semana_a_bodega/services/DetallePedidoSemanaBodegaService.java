@@ -4,7 +4,7 @@ import KuHub.modules.pedido_semana_a_bodega.dtos.projection.DetallePedidoSemanaB
 import KuHub.modules.pedido_semana_a_bodega.entity.DetallePedidoSemanaBodega;
 import KuHub.modules.pedido_semana_a_bodega.entity.PedidoSemanaBodega;
 import KuHub.modules.pedido_semana_a_bodega.dtos.projection.DetallePedidoSemanaBodegaIdProductoProjection;
-import feign.Param;
+import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 

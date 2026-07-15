@@ -5,7 +5,7 @@ import KuHub.modules.pedido_semana_a_bodega.entity.PedidoSemanaBodega;
 import KuHub.modules.pedido_semana_a_bodega.exceptions.PedidoSemanaBodegaException;
 import KuHub.modules.pedido_semana_a_bodega.dtos.projection.DetallePedidoSemanaBodegaIdProductoProjection;
 import KuHub.modules.pedido_semana_a_bodega.repository.DetallePedidoSemanaBodegaRepository;
-import feign.Param;
+import org.springframework.data.repository.query.Param;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
