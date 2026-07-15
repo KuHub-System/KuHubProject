@@ -31,6 +31,7 @@ import {
 } from '../services/solicitud-service';
 import {ISemana} from "../types/semana.types.ts";
 import { obtenerSemanasPorPeriodoService } from '../services/semana-service';
+import { esFeriadoChile } from '../utils/feriados-chile';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TIPOS LOCALES
@@ -61,48 +62,6 @@ interface AsigConfig {
 
 const DIA_OFFSET: Record<string, number> = { LUNES: 0, MARTES: 1, MIERCOLES: 2, JUEVES: 3, VIERNES: 4, SABADO: 5, DOMINGO: 6 };
 const DIA_ABREV: Record<string, string>  = { LUNES: 'Lun', MARTES: 'Mar', MIERCOLES: 'Mié', JUEVES: 'Jue', VIERNES: 'Vie', SABADO: 'Sáb', DOMINGO: 'Dom' };
-
-// ── Feriados Chile ────────────────────────────────────────────────────────────
-/** Algoritmo de Meeus/Jones/Butcher para calcular Pascua */
-const calcularPascua = (y: number): Date => {
-  const a = y % 19, b = Math.floor(y / 100), c = y % 100;
-  const d = Math.floor(b / 4), e = b % 4, f = Math.floor((b + 8) / 25);
-  const g = Math.floor((b - f + 1) / 3), h = (19 * a + b - d - g + 15) % 30;
-  const i = Math.floor(c / 4), k = c % 4, l = (32 + 2 * e + 2 * i - h - k) % 7;
-  const m = Math.floor((a + 11 * h + 22 * l) / 451);
-  const month = Math.floor((h + l - 7 * m + 114) / 31);
-  const day   = ((h + l - 7 * m + 114) % 31) + 1;
-  return new Date(y, month - 1, day);
-};
-
-const esFeriadoChile = (d: Date): boolean => {
-  const mm  = d.getMonth() + 1; // 1-12
-  const dd  = d.getDate();
-  const y   = d.getFullYear();
-  // Feriados fijos
-  const fijos: [number, number][] = [
-    [1,  1],  // Año Nuevo
-    [5,  1],  // Día del Trabajo
-    [5,  21], // Glorias Navales
-    [6,  29], // San Pedro y San Pablo
-    [7,  16], // Virgen del Carmen
-    [8,  15], // Asunción de la Virgen
-    [9,  18], // Independencia
-    [9,  19], // Glorias del Ejército
-    [10, 12], // Encuentro Dos Mundos
-    [10, 31], // Iglesias Evangélicas
-    [11, 1],  // Todos los Santos
-    [12, 8],  // Inmaculada Concepción
-    [12, 25], // Navidad
-  ];
-  if (fijos.some(([fm, fd]) => fm === mm && fd === dd)) return true;
-  // Viernes Santo y Sábado Santo
-  const pascua = calcularPascua(y);
-  const vs = new Date(pascua); vs.setDate(vs.getDate() - 2); // Viernes Santo
-  const ss = new Date(pascua); ss.setDate(ss.getDate() - 1); // Sábado Santo
-  return (d.getTime() === vs.getTime() || d.getTime() === ss.getTime());
-};
-
 
 /** Agrupa los horarios de una sección por (diaSemana + sala): calcula rango inicio→fin */
 interface HorarioAgrupado {
