@@ -1,6 +1,5 @@
 import React from 'react';
 import { NavLink, useLocation, useHistory } from 'react-router-dom';
-import { Button, Divider } from '@heroui/react';
 import { Icon } from '@iconify/react';
 import { useAuth } from '../contexts/auth-context';
 import { usePermission } from '../contexts/permission-context';
@@ -158,46 +157,34 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar, onLogout }) =>
     >
       <div className="flex flex-col h-full">
         {/* Encabezado del sidebar */}
-        <div className="p-5 flex items-center justify-between border-b border-default-100 dark:border-default-50">
-          <div className="flex items-center">
+        <div className="p-5 border-b border-default-100 dark:border-default-50">
+          <button
+            type="button"
+            onClick={toggleSidebar}
+            aria-label={isOpen ? 'Ocultar barra lateral' : 'Mostrar barra lateral'}
+            className="flex items-center w-full -m-1 p-1 rounded-lg hover:bg-default-100 dark:hover:bg-default-50 transition-colors"
+          >
             {/* Logo de KüHub */}
-            <div className="w-10 h-10 flex items-center justify-center rounded-lg shadow-md overflow-hidden">
+            <div className="w-10 h-10 flex items-center justify-center rounded-lg shadow-md overflow-hidden shrink-0">
               <img src={LOGO_URL} alt="Logo KüHub" className="w-full h-full object-cover scale-150 antialiased drop-shadow-sm" />
             </div>
             <motion.div
-              className="ml-3 flex flex-col justify-center"
+              className="ml-3 flex flex-col justify-center min-w-0"
               variants={headerVariants}
               animate={isOpen ? 'open' : 'closed'}
               initial={isOpen ? 'open' : 'closed'}
             >
-              <span className="text-xl font-bold text-secondary dark:text-foreground leading-none tracking-tight">KüHub</span>
-              <span className="text-[10px] font-semibold text-default-400 uppercase tracking-widest mt-0.5">Sistema de Gestión</span>
+              <span className="text-xl font-bold text-secondary dark:text-foreground leading-none tracking-tight whitespace-nowrap">KüHub</span>
+              <span className="text-[10px] font-semibold text-default-400 uppercase tracking-widest mt-0.5 whitespace-nowrap">Sistema de Gestión</span>
             </motion.div>
-          </div>
-          {isOpen && (
-            <Button
-              isIconOnly
-              size="sm"
-              variant="light"
-              aria-label="Toggle Sidebar"
-              onPress={toggleSidebar}
-              className="text-secondary font-bold hover:text-primary dark:hover:text-foreground hover:bg-default-100 dark:hover:bg-default-50"
-            >
-              <Icon icon="lucide:chevron-left" width={24} height={24} />
-            </Button>
-          )}
+            {isOpen && (
+              <Icon icon="lucide:chevron-left" width={20} height={20} className="ml-auto shrink-0 text-default-400" />
+            )}
+          </button>
         </div>
 
         {/* Elementos del menú */}
         <div className="flex-grow overflow-y-auto py-4 px-3 scrollbar-hide space-y-4">
-          {/* Botón flotante para abrir el sidebar si está cerrado */}
-          {!isOpen && (
-            <div className="flex justify-center mb-4">
-              <Button isIconOnly variant="light" onPress={toggleSidebar}>
-                <Icon icon="lucide:menu" className="text-default-500" width={24} />
-              </Button>
-            </div>
-          )}
 
           {filteredCategories.length > 0 ? (
             filteredCategories.map((category, index) => {
