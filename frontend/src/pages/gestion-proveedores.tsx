@@ -37,6 +37,7 @@ import { useModulePermission, usePermission } from '../contexts/permission-conte
 import { usePeriodoSemana } from '../contexts/periodo-semana-context';
 import { obtenerSemanasPorPeriodoService } from '../services/academica/semana-service';
 import BookPageLoader from '../components/BookPageLoader';
+import RielNavegacion from '../components/RielNavegacion';
 import type { ISemana } from '../types/academica/semana.types';
 import {
   obtenerProveedoresService,
@@ -2865,41 +2866,16 @@ const GestionProveedoresPage: React.FC = () => {
         </div>
 
         {/* ── Riel de navegación derecho ── */}
-        <div className="w-[70px] shrink-0 bg-white dark:bg-content1 border-l border-default-200 dark:border-default-100 shadow-[-4px_0_15px_rgba(0,0,0,0.02)] self-stretch -mr-10">
-          <div className="sticky top-8 flex flex-col items-center pt-28 pb-6 gap-4 z-30">
-            {verTabProveedores && (
-            <Tooltip content="Proveedores" placement="left">
-              <Button
-                isIconOnly
-                variant={currentView === 'proveedores' ? 'solid' : 'light'}
-                color={currentView === 'proveedores' ? 'primary' : 'default'}
-                onPress={() => setCurrentView('proveedores')}
-                className={`w-12 h-12 rounded-2xl transition-all duration-300 ${currentView === 'proveedores' ? 'shadow-lg shadow-primary/30' : 'text-default-400 hover:bg-default-100'}`}
-              >
-                <Icon icon="lucide:store" width={22} />
-              </Button>
-            </Tooltip>
-            )}
-            {verOrdenes && (
-            <Tooltip content="Órdenes de Pedido" placement="left">
-              <Button
-                isIconOnly
-                variant={currentView === 'ordenes' ? 'solid' : 'light'}
-                color={currentView === 'ordenes' ? 'warning' : 'default'}
-                onPress={() => setCurrentView('ordenes')}
-                className={`w-12 h-12 rounded-2xl transition-all duration-300 ${currentView === 'ordenes' ? 'shadow-lg shadow-warning/30' : 'text-default-400 hover:bg-default-100'}`}
-              >
-                <Icon icon="lucide:clipboard-list" width={22} />
-              </Button>
-            </Tooltip>
-            )}
-            {opLista.length > 0 && currentView !== 'ordenes' && (
-              <span className="px-2 py-0.5 bg-warning-100 text-warning-700 text-[10px] font-bold rounded-full">
-                {opLista.length}
-              </span>
-            )}
-          </div>
-        </div>
+        <RielNavegacion
+          sticky
+          className="-mr-10"
+          activeKey={currentView}
+          onChange={key => setCurrentView(key as 'proveedores' | 'ordenes')}
+          items={[
+            { key: 'proveedores', label: 'Proveedores', icon: 'lucide:store', visible: verTabProveedores },
+            { key: 'ordenes', label: 'Órdenes de Pedido', icon: 'lucide:clipboard-list', color: 'warning', visible: verOrdenes, badge: currentView !== 'ordenes' ? opLista.length : 0 },
+          ]}
+        />
       </div>
 
       {/* ── Modal Cotización por Rango ── */}

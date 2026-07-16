@@ -29,6 +29,7 @@ import GestionAbastecimientoModal from '../components/modals/GestionAbastecimien
 import StockDisponiblesModal from '../components/modals/StockDisponiblesModal';
 import ConfirmarDisponibleBodegaModal, { ConfirmarDisponibleBodegaItem } from '../components/modals/ConfirmarDisponibleBodegaModal';
 import ConfirmarSalidaDisponibleModal, { ConfirmarSalidaDisponibleItem } from '../components/modals/ConfirmarSalidaDisponibleModal';
+import RielNavegacion from '../components/RielNavegacion';
 import { obtenerAbastecimientoConfirmadoService, marcarEntregadosMasivoService } from '../services/proveedor/proveedor-service';
 import { IOrdenAbastecimiento, ICategoriaEntregaAbastecimiento } from '../types/proveedor/proveedor.types';
 
@@ -2381,7 +2382,7 @@ const BodegaTransitoPage: React.FC = () => {
 
   return (
     <>
-    <div className="flex h-[calc(100vh-76px)] overflow-hidden font-sans relative -mt-6">
+    <div className="flex h-[calc(100vh-76px)] overflow-hidden font-sans relative -mt-6 -mr-6">
       {/* Área de Contenido Principal */}
       <div ref={mainScrollerRef} className="flex-grow overflow-y-auto bg-default-50/50 dark:bg-background custom-scrollbar pb-20">
         <AnimatePresence mode="wait">
@@ -2959,41 +2960,14 @@ const BodegaTransitoPage: React.FC = () => {
       </div>
 
       {/* Riel de Navegación Derecho */}
-      <div className="w-[70px] shrink-0 bg-white dark:bg-content1 border-l border-default-200 dark:border-default-100 flex flex-col items-center py-6 gap-4 z-20 shadow-[-4px_0_15px_rgba(0,0,0,0.02)] self-stretch">
-        {bod_Leer && (
-          <Tooltip content="Bodega de Tránsito" placement="left">
-            <Button
-              isIconOnly
-              variant={currentView === 'inventario' ? 'solid' : 'light'}
-              color={currentView === 'inventario' ? 'primary' : 'default'}
-              onPress={() => setCurrentView('inventario')}
-              className={`w-12 h-12 rounded-2xl transition-all duration-300 ${currentView === 'inventario' ? 'shadow-lg shadow-primary/30' : 'text-default-400 hover:bg-default-100'}`}
-            >
-              <Icon icon="lucide:package-2" width={24} />
-            </Button>
-          </Tooltip>
-        )}
-
-        {ped_Leer && (
-          <Tooltip content="Gestión de Pedidos Diarios" placement="left">
-            <Button
-              isIconOnly
-              variant={currentView === 'pedidos' ? 'solid' : 'light'}
-              color={currentView === 'pedidos' ? 'secondary' : 'default'}
-              onPress={() => setCurrentView('pedidos')}
-              className={`w-12 h-12 rounded-2xl transition-all duration-300 ${currentView === 'pedidos' ? 'shadow-lg shadow-secondary/30' : 'text-default-400 hover:bg-default-100'}`}
-            >
-              <Icon icon="lucide:clipboard-list" width={24} />
-            </Button>
-          </Tooltip>
-        )}
-
-
-
-        <div className="mt-auto border-t border-default-100 w-8 pt-4 flex flex-col gap-4">
-          {/* Refresh icon removed as requested */}
-        </div>
-      </div>
+      <RielNavegacion
+        activeKey={currentView}
+        onChange={key => setCurrentView(key as 'inventario' | 'pedidos')}
+        items={[
+          { key: 'inventario', label: 'Bodega de Tránsito', icon: 'lucide:package-2', visible: bod_Leer },
+          { key: 'pedidos', label: 'Gestión de Pedidos Diarios', icon: 'lucide:clipboard-list', color: 'secondary', visible: ped_Leer },
+        ]}
+      />
 
       {/* Modals Functionality */}
       <Modal isOpen={isExtraOpen} onOpenChange={onExtraOpenChange} isDismissable={false}>

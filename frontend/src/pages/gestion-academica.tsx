@@ -33,6 +33,7 @@ import { logger } from '../utils/logger';
 import { useNotifications } from '../utils/notifications';
 import { useModulePermission, usePermission } from '../contexts/permission-context';
 import { useHistory } from 'react-router-dom';
+import RielNavegacion from '../components/RielNavegacion';
 
 // Importar tipos y servicios actualizados
 import { IAsignatura, ISeccion, IBloqueHorario, EstadoSeccion } from '../types/academica/asignatura.types';
@@ -1177,34 +1178,14 @@ const GestionAsignaturasPage: React.FC = () => {
         </div>
 
         {/* Riel de Navegación Derecho */}
-        <div className="w-[70px] shrink-0 bg-white dark:bg-content1 border-l border-default-200 dark:border-default-100 flex flex-col items-center pt-28 pb-6 gap-4 z-30 shadow-[-4px_0_15px_rgba(0,0,0,0.02)] self-stretch">
-          {verAcademica && (
-          <Tooltip content="Gestión Académica" placement="left">
-            <Button
-              isIconOnly
-              variant={currentView === 'academica' ? 'solid' : 'light'}
-              color={currentView === 'academica' ? 'primary' : 'default'}
-              onPress={() => setCurrentView('academica')}
-              className={`w-12 h-12 rounded-2xl transition-all duration-300 ${currentView === 'academica' ? 'shadow-lg shadow-primary/30' : 'text-default-400 hover:bg-default-100'}`}
-            >
-              <Icon icon="lucide:graduation-cap" width={24} />
-            </Button>
-          </Tooltip>
-          )}
-          {verSalaPanel && (
-            <Tooltip content="Gestión Sala y Reservas" placement="left">
-              <Button
-                isIconOnly
-                variant={currentView === 'salas' ? 'solid' : 'light'}
-                color={currentView === 'salas' ? 'warning' : 'default'}
-                onPress={() => setCurrentView('salas')}
-                className={`w-12 h-12 rounded-2xl transition-all duration-300 ${currentView === 'salas' ? 'shadow-lg shadow-warning/30' : 'text-default-400 hover:bg-default-100'}`}
-              >
-                <Icon icon="lucide:calendar-clock" width={24} />
-              </Button>
-            </Tooltip>
-          )}
-        </div>
+        <RielNavegacion
+          activeKey={currentView}
+          onChange={key => setCurrentView(key as 'academica' | 'salas')}
+          items={[
+            { key: 'academica', label: 'Gestión Académica', icon: 'lucide:graduation-cap', visible: verAcademica },
+            { key: 'salas', label: 'Gestión Sala y Reservas', icon: 'lucide:calendar-clock', color: 'warning', visible: verSalaPanel },
+          ]}
+        />
       </div>
 
       {/* Modal para editar sección */}
