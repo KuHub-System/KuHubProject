@@ -8,7 +8,6 @@
  */
 
 import React from 'react';
-import XLSXStyle from 'xlsx-js-style';
 import { motion } from 'framer-motion';
 import { fmtCL } from '../utils/format-numbers';
 import {
@@ -1129,7 +1128,8 @@ const GestionSolicitudesPage: React.FC = () => {
     })) ?? [];
 
   // ── Descarga Excel: vista por día ──
-  const descargarExcelDia = () => {
+  const descargarExcelDia = async () => {
+    const XLSXStyle = (await import('xlsx-js-style')).default;
     const nombreDia = DIA_CONFIG[diaCategoria as number]?.nombre ?? 'Día';
     const semNombre = semanaActual?.nombreSemana ?? '';
 
@@ -1220,7 +1220,8 @@ const GestionSolicitudesPage: React.FC = () => {
   };
 
   // ── Descarga Excel: vista completa (todos los días) ──
-  const descargarExcelCompleta = () => {
+  const descargarExcelCompleta = async () => {
+    const XLSXStyle = (await import('xlsx-js-style')).default;
     const semNombre = semanaActual?.nombreSemana ?? '';
     const diasOrden = [1, 2, 3, 4, 5, 6, 0];
     const diasNombres = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];

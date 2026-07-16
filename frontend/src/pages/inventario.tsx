@@ -1,5 +1,4 @@
 import React from 'react';
-import * as XLSX from 'xlsx';
 import { fmtCL } from '../utils/format-numbers';
 import {
   Table,
@@ -119,8 +118,9 @@ interface ItemPedidoMasivo {
 }
 
 // ── Helpers para sincronización Excel ──
-const leerNombresHojas = (file: File): Promise<string[]> =>
-  new Promise((resolve, reject) => {
+const leerNombresHojas = async (file: File): Promise<string[]> => {
+  const XLSX = await import('xlsx');
+  return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = (e) => {
       const data = new Uint8Array(e.target!.result as ArrayBuffer);
@@ -130,6 +130,7 @@ const leerNombresHojas = (file: File): Promise<string[]> =>
     reader.onerror = reject;
     reader.readAsArrayBuffer(file);
   });
+};
 
 const normalizarParaMatch = (s: string): string =>
   s.toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim();

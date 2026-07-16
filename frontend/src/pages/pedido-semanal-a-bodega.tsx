@@ -1,5 +1,4 @@
 import React from 'react';
-import * as XLSX from 'xlsx';
 import {
   Table,
   TableHeader,
@@ -859,8 +858,9 @@ interface DetallePedidoSemanaBodegaProps {
   onSave: (receta: IPedidoSemanaBodega, updatePayload?: IPedidoSemanaBodegaWithDetailsUpdateDTO) => Promise<void>;
 }
 
-const leerNombresHojas = (file: File): Promise<string[]> =>
-  new Promise((resolve, reject) => {
+const leerNombresHojas = async (file: File): Promise<string[]> => {
+  const XLSX = await import('xlsx');
+  return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = (e) => {
       try {
@@ -874,6 +874,7 @@ const leerNombresHojas = (file: File): Promise<string[]> =>
     reader.onerror = reject;
     reader.readAsArrayBuffer(file);
   });
+};
 
 const DetallePedidoSemanaBodega: React.FC<DetallePedidoSemanaBodegaProps> = ({ receta, mode, productos, onClose, onSave }) => {
   const toast = useToast();

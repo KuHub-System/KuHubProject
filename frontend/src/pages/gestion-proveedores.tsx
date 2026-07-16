@@ -31,7 +31,6 @@ import {
 import { CalendarDate } from '@internationalized/date';
 import { Icon } from '@iconify/react';
 import { motion, AnimatePresence } from 'framer-motion';
-import XLSXStyle from 'xlsx-js-style';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useModulePermission, usePermission } from '../contexts/permission-context';
 import { usePeriodoSemana } from '../contexts/periodo-semana-context';
@@ -5348,10 +5347,11 @@ const FormularioAsignarProducto: React.FC<FormularioAsignarProductoProps> = ({
 
 // ── Función de exportación Excel (estándar EXCEL.MD) ──────────────────────────
 
-const exportarCotizacionExcel = (
+const exportarCotizacionExcel = async (
   data: ICotizacionResponse,
   dateRange: { start: CalendarDate; end: CalendarDate }
 ) => {
+  const XLSXStyle = (await import('xlsx-js-style')).default;
   const fi = `${dateRange.start.year}-${String(dateRange.start.month).padStart(2, '0')}-${String(dateRange.start.day).padStart(2, '0')}`;
   const ff = `${dateRange.end.year}-${String(dateRange.end.month).padStart(2, '0')}-${String(dateRange.end.day).padStart(2, '0')}`;
 
@@ -7156,9 +7156,10 @@ type ProveedorTablaItem = {
 };
 
 // ── Exportación Excel de orden de pedido por proveedor (replica cabecera del modelo) ──
-const generarExcelOrdenPedidoProveedor = (prov: ProveedorTablaItem, lunesSeleccionado: string): void => {
+const generarExcelOrdenPedidoProveedor = async (prov: ProveedorTablaItem, lunesSeleccionado: string): Promise<void> => {
   const fechasSemana = prov.fechas.filter(f => prov.semanasDeFechas.get(f) === lunesSeleccionado);
   if (fechasSemana.length === 0) return;
+  const XLSXStyle = (await import('xlsx-js-style')).default;
   const domingo = getDomingoDe(lunesSeleccionado);
 
   const fmtCorta = (iso: string) => {
